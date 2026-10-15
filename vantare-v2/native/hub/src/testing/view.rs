@@ -11,8 +11,14 @@ use std::{path::PathBuf, time::Instant};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum ReportView {
+    Triage,
     Compose,
     List,
+}
+impl ReportView {
+    fn compose(tester: bool) -> Self {
+        if tester { Self::Triage } else { Self::Compose }
+    }
 }
 
 pub struct Testing {
@@ -36,6 +42,18 @@ pub struct Testing {
     pub(super) participation_form: super::participation::Form,
 }
 impl Testing {
+    pub(crate) fn show_reports(&mut self, cx: &mut Context<Self>) {
+        self.report_view = ReportView::List;
+        self.local_open = false;
+        self.tabs.update(cx, |tabs, cx| {
+            tabs.state.selected = Some(2);
+            cx.notify();
+        });
+        self.remote.update(cx, |remote, cx| {
+            remote.participation_request(Command::TestingRefresh, cx);
+        });
+        cx.notify();
+    }
     pub(crate) fn set_adapt(&mut self, adapt: orbit::Adapt, cx: &mut Context<Self>) {
         if self.adapt != adapt {
             self.adapt = adapt;
@@ -59,7 +77,7 @@ impl Testing {
             ReportView::Compose
         };
         #[cfg(not(feature = "parity-capture"))]
-        let report_view = ReportView::Compose;
+        let report_view = ReportView::compose(remote.read(cx).navigation_access().tester);
         let channel_label = super::model::channel_label(Some(crate::product::CHANNEL));
         let tabs = cx.new(|cx| {
             orbit::Choice::new(
@@ -497,8 +515,25 @@ impl Testing {
         }
         rows
     }
-    fn reports_panel(&self, cx: &mut Context<Self>) -> gpui::Div {
+    pub(super) fn session_reports_panel(&self, cx: &mut Context<Self>) -> gpui::Div {
         let rows = self.receipt_rows(cx);
+        let remote = self.remote.read(cx);
+        let triage_rows = remote
+            .participation
+            .contributions
+            .iter()
+            .map(|c| {
+                let state = super::model::session_contribution_status(&c.state);
+                orbit::text(
+                    format!("{} · {state}", c.title),
+                    13.0,
+                    400,
+                    orbit::ink_2(cx),
+                    cx,
+                )
+            })
+            .collect::<Vec<_>>();
+        let ready = remote.participation_ready();
         orbit::neo_card(cx)
             .flex_1()
             .min_h_0()
@@ -508,14 +543,17 @@ impl Testing {
                 "v-testing",
                 cx,
             ))
-            .child(orbit::text(
-                "Flujo previsto: Recibido → Reproducido → En arreglo → Arreglado en nightly.N",
-                11.0,
-                400,
-                orbit::ink_3(cx),
-                cx,
-            ))
             .child(rows)
+            .children(triage_rows)
+            .child(
+                orbit::small_button("testing-triage-refresh", "Recargar informes", cx)
+                    .tab_stop(ready)
+                    .on_click(cx.listener(|this, _, _, cx| {
+                        this.remote.update(cx, |r, cx| {
+                            r.participation_request(Command::TestingRefresh, cx);
+                        });
+                    })),
+            )
             .child(orbit::text(
                 "Recibos de esta sesión. Estado al enviar; seguimiento posterior próximamente.",
                 11.0,
@@ -528,19 +566,24 @@ impl Testing {
         let adapt = self.adapt;
         let action = orbit::button(
             "testing-compose",
-            if self.report_view == ReportView::Compose {
-                "Ver mis informes"
-            } else {
+            if self.report_view == ReportView::List {
                 "Nuevo informe"
+            } else {
+                "Ver mis informes"
             },
             cx,
         )
         .on_click(cx.listener(|this, _, _, cx| {
-            this.report_view = if this.report_view == ReportView::Compose {
-                ReportView::List
+            this.report_view = if this.report_view == ReportView::List {
+                ReportView::compose(this.remote.read(cx).navigation_access().tester)
             } else {
-                ReportView::Compose
+                ReportView::List
             };
+            if this.report_view == ReportView::List {
+                this.remote.update(cx, |remote, cx| {
+                    remote.participation_request(Command::TestingRefresh, cx);
+                });
+            }
             cx.notify();
         }));
         let mut body = div()
@@ -557,19 +600,40 @@ impl Testing {
                     .justify_between()
                     .gap(px(10.0))
                     .child(orbit::text("Informes", 18.0, 600, orbit::ink(cx), cx))
-                    .child(action),
+                    .child(action)
+                    .child(
+                        orbit::small_button("testing-legacy-captures", "Informe con capturas", cx)
+                            .on_click(cx.listener(|this, _, _, cx| {
+                                this.report_view = ReportView::Compose;
+                                cx.notify();
+                            })),
+                    ),
             );
-        if self.report_view == ReportView::Compose {
+        if self.report_view == ReportView::Triage {
+            let ready = self.remote.read(cx).participation_ready();
             body = body.child(
                 div()
-                    .id("testing-composer-scroll")
+                    .id("testing-triage-scroll")
                     .flex_1()
                     .min_h_0()
                     .overflow_y_scroll()
-                    .child(self.remote.update(cx, |remote, cx| {
-                        remote.testing(adapt.center_width() < 1050.0, cx)
-                    })),
+                    .child(self.remote.update(cx, |r, cx| r.triage.render(ready, cx))),
             );
+        } else if self.report_view == ReportView::Compose {
+            body = if self.remote.read(cx).navigation_access().tester {
+                body.child(
+                    div()
+                        .id("testing-composer-scroll")
+                        .flex_1()
+                        .min_h_0()
+                        .overflow_y_scroll()
+                        .child(self.remote.update(cx, |remote, cx| {
+                            remote.testing(adapt.center_width() < 1050.0, cx)
+                        })),
+                )
+            } else {
+                body.child(self.community(cx))
+            };
         } else {
             body = body.child(self.reports_panel(cx));
         }
@@ -580,9 +644,22 @@ impl Testing {
     }
     pub(crate) fn rail_sections(&self, cx: &mut Context<Self>) -> Vec<orbit::RailSection> {
         let adapt = self.adapt;
-        let tab = self.tabs.read(cx).state.selected.unwrap_or(0);
+        let tab = if self.remote.read(cx).navigation_access().tester {
+            self.tabs.read(cx).state.selected.unwrap_or(0)
+        } else {
+            2
+        };
         let note = |text: &str| orbit::text(text.to_owned(), 13.0, 400, orbit::ink_3(cx), cx);
-        let count = self.remote.read(cx).report_receipts.len();
+        let reports = &self.remote.read(cx).participation.contributions;
+        let count = reports.len();
+        let accepted = reports
+            .iter()
+            .filter(|report| report.state == "accepted")
+            .count();
+        let fixed = reports
+            .iter()
+            .filter(|report| report.state == "fixed")
+            .count();
         match tab {
             1 => vec![
                 orbit::RailSection::new(
@@ -607,7 +684,7 @@ impl Testing {
                         "Tus informes",
                         "v-testing",
                         note(&format!(
-                            "{count} recibos de esta sesión · {}",
+                            "{count} informes cargados · {accepted} aceptados · {fixed} arreglados · {}",
                             self.channel_label
                         )),
                     ),
@@ -662,7 +739,11 @@ impl Render for Testing {
             self.participation_form = super::participation::Form::new(None, cx);
             self.participation_form.generation = generation;
         }
-        let tab = self.tabs.read(cx).state.selected.unwrap_or(0);
+        let tab = if self.remote.read(cx).navigation_access().tester {
+            self.tabs.read(cx).state.selected.unwrap_or(0)
+        } else {
+            2
+        };
         let content = match tab {
             1 => self.questionnaires(cx),
             2 => self.reports(cx),
@@ -692,7 +773,7 @@ impl Render for Testing {
     }
 }
 impl Testing {
-    pub(crate) fn page_header(adapt: orbit::Adapt, cx: &mut Context<Self>) -> gpui::Div {
+    pub(crate) fn page_header(&self, adapt: orbit::Adapt, cx: &mut Context<Self>) -> gpui::Div {
         div()
             .flex()
             .items_center()
@@ -701,8 +782,8 @@ impl Testing {
             .gap(px(12.0))
             .child(
                 orbit::neo_page_header(
-                    "Testing Center",
-                    "Informes y cuestionarios de la beta. Tu experiencia ayuda a mejorar Vantare.",
+                    if self.remote.read(cx).navigation_access().tester { "Testing Center" } else { "Informes" },
+                    "Cuéntanos qué falla o qué mejorarías. Cada informe llega al equipo de Vantare.",
                     adapt,
                     cx,
                 )
@@ -821,7 +902,7 @@ impl Testing {
                 .when(adapt.show_optional(), |hero| hero.child(orbit::text("Consulta los cuestionarios publicados y comparte una contribución. Tus respuestas son privadas.", 14.0, 400, orbit::ink_2(cx), cx)))
                 .child(orbit::primary_button("testing-summary-report", "Nuevo informe", cx).self_start()
                     .on_click(cx.listener(|this, _, _, cx| {
-                        this.report_view = ReportView::Compose;
+                        this.report_view = ReportView::compose(this.remote.read(cx).navigation_access().tester);
                         this.local_open = false;
                         this.tabs.update(cx, |tabs, cx| { tabs.state.selected = Some(2); cx.notify(); });
                         cx.notify();

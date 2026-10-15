@@ -130,9 +130,12 @@ fn account_value(label: &str, value: &str, active: bool, cx: &gpui::App) -> gpui
 
 #[path = "access.rs"]
 mod access;
+#[path = "view/roadmap.rs"]
+mod roadmap;
 
 enum Area {
     Account,
+    Pilot,
     Licenses { renew: bool },
     Roadmap,
     Calendar,
@@ -156,13 +159,18 @@ enum Inflight {
     Profile,
     PurchaseRenew,
     PurchaseSession,
+    Roadmap,
     User,
 }
 impl Inflight {
     fn background(self) -> bool {
         matches!(
             self,
-            Self::Background | Self::Profile | Self::PurchaseRenew | Self::PurchaseSession
+            Self::Background
+                | Self::Profile
+                | Self::PurchaseRenew
+                | Self::PurchaseSession
+                | Self::Roadmap
         )
     }
 }
@@ -230,6 +238,7 @@ fn remember_receipt(
         ));
     }
 }
+pub(crate) mod pilot;
 pub struct Remote {
     pub(crate) adapt: orbit::Adapt,
     pipe: String,
@@ -265,12 +274,15 @@ pub struct Remote {
     pub(crate) participation_message: String,
     pub(crate) participation_pending: Option<u64>,
     pub(crate) participation_generation: u64,
+    pub(crate) triage: crate::testing::TriageEditor,
     recovery: Result<crate::testing::recovery::Recovery, String>,
     publication: Option<super::protocol::roadmap_document::Publication>,
     roadmap_message: String,
     roadmap_requested: bool,
+    roadmap_polled_at: Option<std::time::Instant>,
     pub(crate) manual_roadmap: crate::roadmap::State,
     stale: bool,
+    pub(crate) pilot: pilot::Projection,
 }
 
 // Margen para el cache de 1 s del núcleo, el tick de shell y la entrega IPC;
@@ -370,7 +382,7 @@ impl Remote {
                 super::protocol::report_document::ScreenshotPreview,
             >(&bytes)
         {
-            editor.screenshots = vec![preview];
+            editor.set_screenshots(vec![preview]);
             editor.message = "Vista previa de captura · ejemplo local; no se enviará".into();
         }
         cx.on_app_quit(|this, cx| {
@@ -395,6 +407,7 @@ impl Remote {
         .detach();
         let rights = core_feed(&pipe);
         let mut remote = Self {
+            pilot: pilot::Projection::default(),
             adapt: orbit::Adapt::default(),
             pipe,
             send: None,
@@ -423,10 +436,12 @@ impl Remote {
             participation_message: "Recarga para consultar cuestionarios y contribuciones".into(),
             participation_pending: None,
             participation_generation: 0,
+            triage: crate::testing::TriageEditor::new(cx),
             recovery,
             publication: None,
             roadmap_message: "No hay una publicación válida guardada".into(),
             roadmap_requested: false,
+            roadmap_polled_at: None,
             manual_roadmap: crate::roadmap::State::load(),
             stale: true,
         };
@@ -573,10 +588,6 @@ impl Remote {
         self.working()
     }
 
-    fn busy(&self) -> bool {
-        self.inflight != Inflight::Idle
-    }
-
     /// Ocupado a ojos del usuario: excluye la consulta periódica de política.
     fn working(&self) -> bool {
         self.inflight == Inflight::User
@@ -700,6 +711,7 @@ impl Remote {
     }
 
     fn dispatch_with_kind(&mut self, command: Command, kind: Option<Inflight>) -> bool {
+        let pilot_request = pilot::is_command(&command);
         let inflight = kind.unwrap_or(if matches!(command, Command::LicenseStatus) {
             Inflight::Background
         } else {
@@ -716,6 +728,7 @@ impl Remote {
         }
         if !background {
             self.active = match command {
+                Command::PilotLoad | Command::PilotSave { .. } | Command::PilotSync => Area::Pilot,
                 Command::CalendarRefresh => Area::Calendar,
                 Command::RoadmapCached | Command::RoadmapRefresh => Area::Roadmap,
                 Command::LicenseRenew => Area::Licenses { renew: true },
@@ -737,6 +750,7 @@ impl Remote {
             };
         }
         if !self.start() {
+            self.failed_pilot_dispatch(pilot_request);
             self.access.observe(
                 &Reply::Error {
                     message: self.message.clone(),
@@ -754,6 +768,7 @@ impl Remote {
             true
         } else {
             self.message = "Operación en curso".into();
+            self.failed_pilot_dispatch(pilot_request);
             self.access.observe(
                 &Reply::Error {
                     message: self.message.clone(),
@@ -785,7 +800,8 @@ impl Remote {
     ) {
         self.access.requested(&command);
         if matches!(command, Command::Logout | Command::AccountBegin) {
-            self.clear_participation();
+            self.clear_pilot();
+            self.clear_participation(cx);
         }
         if matches!(command, Command::Logout) {
             self.purchase_wait = None;
@@ -861,7 +877,7 @@ impl Remote {
                 |draft| (draft.fields, draft.screenshots),
             );
             self.editor = crate::testing::Editor::new(fields, cx);
-            self.editor.screenshots = screenshots;
+            self.editor.set_screenshots(screenshots);
             self.editor.message = message;
         } else {
             self.editor.message =
@@ -940,6 +956,7 @@ impl Remote {
             .next_command(&reply, &mut self.account.cancel_login)
             .or(after_renew);
         let background = self.inflight.background();
+        let roadmap_background = self.inflight == Inflight::Roadmap;
         self.inflight = Inflight::Idle;
         self.account.pending = false;
         let purchase_message_before = self.purchase_message.clone();
@@ -954,6 +971,10 @@ impl Remote {
             self.purchase_message = Some("Acceso solicitado verificado por el servicio.".into());
         }
         let quiet = background;
+        if roadmap_background && let Reply::Error { message } = &reply {
+            self.roadmap_message.clone_from(message);
+            self.stale = true;
+        }
         if background && failed && purchase_background {
             self.purchase_message = Some("No se pudo comprobar la compra. Reintentamos durante la espera; también puedes comprobar el acceso manualmente.".into());
         }
@@ -961,6 +982,7 @@ impl Remote {
             self.calendar_reply(reply.clone(), cx);
         }
         match reply {
+            Reply::Pilot { state, message } => self.accept_pilot(state, message, next.as_ref()),
             Reply::Checkout { url } => {
                 if let Some(product) = self.purchase_product.take() {
                     self.purchase_wait = Some(PurchaseWait {
@@ -981,6 +1003,8 @@ impl Remote {
                 } else if matches!(self.active, Area::Roadmap) {
                     self.roadmap_message = message;
                     self.stale = true;
+                } else if matches!(self.active, Area::Pilot) {
+                    self.failed_pilot_reply(message);
                 } else if matches!(self.active, Area::Report) {
                     self.editor.clear_approval(cx);
                     self.editor.error = failed;
@@ -1001,26 +1025,14 @@ impl Remote {
                 }
             }
             Reply::Calendar { .. } => {}
-            Reply::Testing { data } => {
-                if self.participation_pending == Some(self.participation_generation)
-                    && self.account.signed_in
-                    && !self.account.cancel_login
-                {
-                    self.participation = data;
-                    self.participation_message = "Datos confirmados por el servicio".into();
-                }
-                self.participation_pending = None;
-            }
+            Reply::Testing { data } => self.complete_participation(data),
+            Reply::TriagePreview { preview } => self.complete_triage(preview),
             Reply::Roadmap {
                 publication,
                 stale,
                 message,
                 ..
-            } => {
-                self.publication = publication;
-                self.stale = stale;
-                self.roadmap_message = message;
-            }
+            } => self.roadmap_reply(publication, stale, message),
             Reply::Account {
                 signed_in,
                 profile,
@@ -1053,8 +1065,9 @@ impl Remote {
                         self.purchase_product = None;
                         self.purchase_message = None;
                         self.report_receipts.clear();
-                        self.clear_participation();
+                        self.clear_participation(cx);
                     }
+                    self.clear_pilot_if_session_changed(signed_in);
                     self.account.signed_in = signed_in;
                 }
                 self.account.pending = pending;
@@ -1074,7 +1087,7 @@ impl Remote {
                 if self.report_revision == Some(self.editor.revision) {
                     self.editor.clear_approval(cx);
                     self.editor.error = false;
-                    self.editor.screenshots.clone_from(&preview.screenshots);
+                    self.editor.set_screenshots(preview.screenshots.clone());
                     self.editor.preview = Some(preview);
                     self.editor.message =
                         "Revise cuenta, canal y contenido; el envío exige su consentimiento".into();
@@ -1090,6 +1103,7 @@ impl Remote {
         let next = next_request(next, &mut self.queued, self.calendar_target.is_some())
             .or_else(|| missing_profile.then_some(Command::AccountProfileRefresh));
         let notify = !quiet
+            || roadmap_background
             || profile_changed
             || access_before != self.navigation_access()
             || next.is_some()
@@ -1708,26 +1722,6 @@ impl Remote {
             .child(self.editor.render(compact, cx))
     }
 
-    /// R6: todas las vistas leen la misma publicación real y su estado de caché.
-    pub(crate) fn roadmap_publication(
-        &self,
-    ) -> Option<&super::protocol::roadmap_document::Publication> {
-        self.manual_roadmap.publication(self.publication.as_ref())
-    }
-    pub(crate) fn roadmap_status(&self) -> &str {
-        if self.working() {
-            "Cargando roadmap…"
-        } else {
-            &self.roadmap_message
-        }
-    }
-    pub(crate) fn ensure_roadmap(&mut self, cx: &mut Context<Self>) {
-        if !self.roadmap_requested && !self.working() && self.queued.is_none() {
-            self.roadmap_requested = true;
-            self.request(Command::RoadmapCached, cx);
-        }
-    }
-
     pub fn licenses(&self, window: &gpui::Window, cx: &mut Context<Self>) -> gpui::Div {
         self.account(window, cx)
     }
@@ -1744,7 +1738,7 @@ impl Drop for Remote {
 mod account_tests;
 #[cfg(test)]
 #[path = "view/purchase_tests.rs"]
-mod purchase_tests;
+pub(crate) mod purchase_tests;
 #[cfg(test)]
 #[path = "view/receipt_tests.rs"]
 mod receipt_tests;

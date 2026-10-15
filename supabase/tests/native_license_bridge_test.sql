@@ -1,4 +1,12 @@
 begin;
+select to_regclass('private.clerk_issuers') is not null as b03 \gset
+\if :b03
+insert into private.clerk_issuers(issuer,authorized_parties,enabled) values
+ ('https://clerk.isa1444.test',array['https://app.invalid'],true),
+ ('https://other-clerk.isa1444.test',array['https://app.invalid'],true),
+ ('https://old-clerk.isa1444.test',array['https://app.invalid'],true);
+\endif
+
 select no_plan();
 
 select has_function('public', 'native_claim_license_device', array['text', 'text', 'text'],
@@ -46,8 +54,15 @@ insert into native_test_accounts values ('other-subject', public.native_claim_li
   'https://clerk.isa1444.test', 'user_' || repeat('b', 27), repeat('a', 64)));
 insert into native_test_accounts values ('other-issuer', public.native_claim_license_device(
   'https://other-clerk.isa1444.test', 'user_' || repeat('a', 27), repeat('a', 64)));
+\if :b03
+-- B03 uses exact registered origins: a slash is rejected rather than normalized.
+select throws_ok($$select public.native_claim_license_device(
+ 'https://clerk.isa1444.test/','user_'||repeat('a',27),repeat('a',64))$$,
+ '28000','invalid_clerk_identity','unregistered slash issuer fails closed');
+\else
 insert into native_test_accounts values ('slash', public.native_claim_license_device(
   'https://clerk.isa1444.test/', 'user_' || repeat('a', 27), repeat('a', 64)));
+\endif
 insert into native_test_accounts values ('other-device', public.native_claim_license_device(
   'https://clerk.isa1444.test', 'user_' || repeat('a', 27), repeat('b', 64)));
 reset role;
@@ -65,8 +80,14 @@ select isnt((select account_id from native_test_accounts where name = 'other-sub
   (select account_id from native_test_accounts where name = 'first'), 'different subject has another account');
 select isnt((select account_id from native_test_accounts where name = 'other-issuer'),
   (select account_id from native_test_accounts where name = 'first'), 'different issuer has another account');
+\if :b03
+select is((select count(*)::integer from public.account_identities where
+ issuer='https://clerk.isa1444.test/' and subject='user_'||repeat('a',27)),0,
+ 'rejected slash issuer creates no duplicate mapping');
+\else
 select is((select account_id from native_test_accounts where name = 'slash'),
   (select account_id from native_test_accounts where name = 'first'), 'issuer trailing slash does not duplicate account');
+\endif
 select is((select fingerprint_hash from public.devices where user_id =
   (select account_id from native_test_accounts where name = 'other-device')), repeat('a', 64),
   'claim preserves the original active device rather than resetting it');
@@ -75,7 +96,7 @@ select is((select count(*)::integer from public.billing_access_grants where user
 
 set local role authenticated;
 select set_config('request.jwt.claims', jsonb_build_object(
-  'iss', 'https://clerk.isa1444.test/', 'sub', 'user_' || repeat('a', 27), 'role', 'authenticated')::text, true);
+  'iss', CASE WHEN :'b03'::boolean THEN 'https://clerk.isa1444.test' ELSE 'https://clerk.isa1444.test/' END, 'sub', 'user_' || repeat('a', 27), 'role', 'authenticated','sid','sess_fixture','azp','https://app.invalid')::text, true);
 insert into native_test_accounts values ('tpa', public.claim_active_device(repeat('a', 64)));
 reset role;
 select is((select account_id from native_test_accounts where name = 'tpa'),
@@ -85,17 +106,29 @@ insert into public.profiles (id) values
   ('00000000-0000-4000-8000-000000001444'), ('00000000-0000-4000-8000-000000002444');
 insert into public.account_identities (issuer, subject, account_id) values
   ('https://old-clerk.isa1444.test/', 'user_' || repeat('c', 27), '00000000-0000-4000-8000-000000001444');
+\if :b03
+-- Equivalent to B03's forward alias migration for this synthetic legacy row.
+insert into public.account_identities(issuer,subject,account_id)
+ values('https://old-clerk.isa1444.test','user_'||repeat('c',27),'00000000-0000-4000-8000-000000001444');
+\endif
 set local role service_role;
 select is(public.native_claim_license_device('https://old-clerk.isa1444.test',
   'user_' || repeat('c', 27), repeat('a', 64)), '00000000-0000-4000-8000-000000001444'::uuid,
   'preexisting slash mapping is reused without rewriting it');
 reset role;
+\if :b03
+select throws_ok($$insert into public.account_identities(issuer,subject,account_id)
+ values('https://old-clerk.isa1444.test','user_'||repeat('c',27),'00000000-0000-4000-8000-000000002444')$$,
+ '23505',null,'an existing exact identity cannot be rebound to a colliding account');
+set local role service_role;
+\else
 insert into public.account_identities (issuer, subject, account_id) values
   ('https://old-clerk.isa1444.test', 'user_' || repeat('c', 27), '00000000-0000-4000-8000-000000002444');
 set local role service_role;
 select throws_ok($$select public.native_claim_license_device('https://old-clerk.isa1444.test',
   'user_' || repeat('c', 27), repeat('a', 64))$$, 'P0001', 'account_conflict',
   'two canonical-equivalent mappings fail closed without email linking');
+\endif
 select throws_ok($$select public.native_claim_license_device('https://clerk.isa1444.test',
   'user_' || repeat('d', 27), 'invalid')$$, 'P0001', 'invalid_identity', 'RPC rejects invalid fingerprint');
 select throws_ok($$select public.native_claim_license_device('https://clerk.isa1444.test',

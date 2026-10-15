@@ -1,0 +1,11 @@
+[Unit]
+Description=Refresh Vantare roadmap every five minutes
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=5min
+AccuracySec=1s
+Unit=vantare-roadmap.service
+
+[Install]
+WantedBy=timers.target

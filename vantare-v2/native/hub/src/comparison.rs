@@ -47,6 +47,10 @@ pub fn different_percent(candidate: &[u8], reference: &[u8]) -> Result<f64, Stri
 
 pub fn load_png(path: &Path) -> Result<Arc<RenderImage>, String> {
     let bytes = files::read(path, MAX_PNG)?;
+    decode_png(bytes)
+}
+
+fn decode_png(bytes: Vec<u8>) -> Result<Arc<RenderImage>, String> {
     // Acotar antes de decodificar evita que un IHDR pequeño provoque una
     // asignación desmesurada. GPUI valida CRC, chunks y formato después.
     if bytes.len() < 33 || &bytes[..8] != b"\x89PNG\r\n\x1a\n" || &bytes[12..16] != b"IHDR" {
@@ -60,6 +64,27 @@ pub fn load_png(path: &Path) -> Result<Arc<RenderImage>, String> {
     Image::from_bytes(ImageFormat::Png, bytes)
         .to_image_data(SvgRenderer::new(Arc::new(())))
         .map_err(|error| format!("decodificar PNG: {error}"))
+}
+
+#[derive(Default)]
+pub struct Reference {
+    bytes: Vec<u8>,
+    image: Option<Result<Arc<RenderImage>, String>>,
+}
+
+impl Reference {
+    pub fn load(&mut self, path: &Path) -> Result<Arc<RenderImage>, String> {
+        let bytes = files::read(path, MAX_PNG)?;
+        if self.bytes == bytes
+            && let Some(image) = &self.image
+        {
+            return image.clone();
+        }
+        let image = decode_png(bytes.clone());
+        self.bytes = bytes;
+        self.image = Some(image.clone());
+        image
+    }
 }
 
 pub struct Comparison {
@@ -267,5 +292,64 @@ mod tests {
             Comparison::from_pngs(&reference, &reference).expect("referencia obligatoria");
         assert!(comparison.percent.abs() < f64::EPSILON);
         assert!(Comparison::from_pngs(&reference, &super::reference(Kind::Pedals)).is_err());
+    }
+
+    #[test]
+    fn unchanged_reference_reuses_decoded_pixels() {
+        let mut cache = Reference::default();
+        let path = reference(Kind::Standings);
+        let first = cache.load(&path).expect("referencia");
+        let second = cache.load(&path).expect("misma referencia");
+        assert!(
+            Arc::ptr_eq(&first, &second),
+            "reiniciar una escena no debe decodificar de nuevo el PNG idéntico"
+        );
+    }
+
+    #[test]
+    fn reference_changes_and_errors_do_not_return_old_pixels() {
+        let mut cache = Reference::default();
+        let first = cache.load(&reference(Kind::Standings)).expect("Standings");
+        let next = cache.load(&reference(Kind::Pedals)).expect("Pedals");
+        assert!(!Arc::ptr_eq(&first, &next));
+        assert!(cache.load(Path::new("missing-reference-1607.png")).is_err());
+        assert!(cache.load(&reference(Kind::Standings)).is_ok());
+    }
+
+    #[test]
+    fn overwritten_reference_is_checked_by_content_and_recovers_after_invalid_png() {
+        let path = std::env::temp_dir().join(format!("reference-1607-{}.png", std::process::id()));
+        let standings = std::fs::read(reference(Kind::Standings)).expect("Standings");
+        let pedals = std::fs::read(reference(Kind::Pedals)).expect("Pedals");
+        let mut cache = Reference::default();
+        std::fs::write(&path, &standings).expect("referencia propia");
+        let first = cache.load(&path).expect("Standings");
+        std::fs::write(&path, pedals).expect("cambiar misma ruta");
+        let changed = cache.load(&path).expect("Pedals");
+        assert_ne!(first.size(0), changed.size(0));
+        std::fs::write(&path, b"not a PNG").expect("PNG inválido");
+        assert!(cache.load(&path).is_err());
+        assert!(cache.load(&path).is_err());
+        std::fs::write(&path, standings).expect("reparar PNG");
+        assert_eq!(cache.load(&path).expect("reparado").size(0), first.size(0));
+        std::fs::remove_file(path).expect("limpiar referencia");
+    }
+
+    #[test]
+    #[ignore = "Banco Release exclusivo #1607; requiere pc-medicion.lock"]
+    fn measure_reference_loads() {
+        let path = reference(Kind::Standings);
+        let mut cache = Reference::default();
+        cache.load(&path).expect("referencia");
+        for run in 1..=3 {
+            let start = Instant::now();
+            for _ in 0..300 {
+                std::hint::black_box(cache.load(&path).expect("PNG"));
+            }
+            println!(
+                "ISA1607 reference run={run} iterations=300 elapsed_us={}",
+                start.elapsed().as_micros()
+            );
+        }
     }
 }

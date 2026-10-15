@@ -1,0 +1,17 @@
+{
+  "enabled": false,
+  "privacy_approved": false,
+  "privacy_conditions_file": "/etc/vantare-triage/privacy-conditions.txt",
+  "privacy_conditions_sha256": null,
+  "state_dir": "/var/lib/vantare-triage",
+  "ca": "/etc/vantare-triage/supabase-prod-ca-2021.crt",
+  "known_versions": {},
+  "provider": {},
+  "webhook_url": null,
+  "plane_intake": {
+    "enabled": true,
+    "base_url": "http://sapphireos.tail357eab.ts.net:8088",
+    "workspace": "vantare-simracing-suite",
+    "project_id": "89da40f4-ae2a-443d-9e3e-6024e01247c9"
+  }
+}

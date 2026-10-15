@@ -8,6 +8,9 @@ export const SANDBOX_IDS = {
   proPrice: "00000000-0000-0000-0000-000000000004",
   proPlusProduct: "00000000-0000-0000-0000-000000000005",
   proPlusPrice: "00000000-0000-0000-0000-000000000006",
+  proAnnualProduct: "00000000-0000-0000-0000-000000000007",
+  proAnnualPrice: "00000000-0000-0000-0000-000000000008",
+  proMonthlyPriceV2: "00000000-0000-0000-0000-000000000009",
 } as const;
 
 export const VALID_POLAR_PRODUCT_MAP_JSON = JSON.stringify({
@@ -120,3 +123,30 @@ export const FULL_SANDBOX_PRODUCT_MAP_JSON = JSON.stringify({
     [SANDBOX_IDS.proPlusPrice]: "pro_plus_monthly",
   },
 });
+
+/**
+ * ISA-1499 catalog: adds the yearly Pro product and a second (current) monthly
+ * price next to the archived one, as the Polar price-update runbook leaves it.
+ */
+export function withProAnnualAndNewMonthlyPrice(json: string): string {
+  const raw = JSON.parse(json);
+  raw.checkout_keys.pro_monthly.polar_price_ids.push(
+    SANDBOX_IDS.proMonthlyPriceV2,
+  );
+  raw.price_id_to_checkout_key[SANDBOX_IDS.proMonthlyPriceV2] = "pro_monthly";
+  raw.checkout_keys.pro_annual = {
+    polar_product_id: SANDBOX_IDS.proAnnualProduct,
+    polar_price_ids: [SANDBOX_IDS.proAnnualPrice],
+    plan_sku: "pro_annual",
+    billing_type: "subscription",
+    lifetime: false,
+    active: true,
+    capabilities: ["vantare.plan.pro"],
+    channels: ["stable"],
+    launch_scope_version: null,
+    trial: { enabled: false },
+  };
+  raw.product_id_to_checkout_key[SANDBOX_IDS.proAnnualProduct] = "pro_annual";
+  raw.price_id_to_checkout_key[SANDBOX_IDS.proAnnualPrice] = "pro_annual";
+  return JSON.stringify(raw);
+}

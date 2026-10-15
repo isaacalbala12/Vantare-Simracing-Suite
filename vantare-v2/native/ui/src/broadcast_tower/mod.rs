@@ -100,10 +100,7 @@ impl Widget {
         changed || (was_animating && self.motion.wake(Instant::now()) == Wake::Idle)
     }
 
-    pub(crate) fn frame(&mut self, prefs: Preferences) -> (Paint, Wake) {
-        self.frame_with_motion(prefs, false)
-    }
-    pub(crate) fn frame_with_motion(&mut self, prefs: Preferences, reduced: bool) -> (Paint, Wake) {
+    pub(crate) fn frame(&mut self, prefs: Preferences, reduced: bool) -> (Paint, Wake) {
         let now = Instant::now();
         let vm = self.vm.clone();
         let carousel = !reduced
@@ -602,13 +599,13 @@ mod tests {
             let cards = carousel_cards(&widget.vm, 15.0);
             assert_eq!(cards.len(), count * 2);
             assert_eq!(cards[0].slot, -(count as f32) / 2.0);
-            assert_eq!(widget.frame(prefs).1, Wake::Frame);
-            assert_eq!(widget.frame_with_motion(prefs, true).1, Wake::Idle);
-            assert_eq!(widget.frame(prefs).1, Wake::Frame);
+            assert_eq!(widget.frame(prefs, false).1, Wake::Frame);
+            assert_eq!(widget.frame(prefs, true).1, Wake::Idle);
+            assert_eq!(widget.frame(prefs, false).1, Wake::Frame);
             let mut lost = snapshot.clone();
             lost.state.source_state = vantare_domain::SourceState::Lost;
             widget.ingest(&lost, prefs);
-            assert_eq!(widget.frame(prefs).1, Wake::Idle);
+            assert_eq!(widget.frame(prefs, false).1, Wake::Idle);
         }
     }
 
@@ -713,7 +710,7 @@ mod tests {
         let mut widget = Widget::new(&Settings::default(), prefs);
         widget.ingest(&snapshot, prefs);
         assert_eq!(widget.size(), (1920.0, 86.0));
-        assert_eq!(widget.frame(prefs).1, Wake::Idle);
+        assert_eq!(widget.frame(prefs, false).1, Wake::Idle);
         #[cfg(feature = "parity-capture")]
         assert!(!widget.animating());
     }

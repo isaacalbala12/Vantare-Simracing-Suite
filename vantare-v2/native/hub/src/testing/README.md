@@ -1,8 +1,42 @@
+# Testing Center — corte #1610 / VANTA-29
+
+IPC services v9, contrato combinado #1594/#1610; Hub y services se recompilan
+juntos y rechazan peers v7/v8. F7=C (Isaac, 14/10): título, notas, pasos y
+comentarios son locales y no se envían; SQL recibe etiquetas fijas. Solo salen
+campos estructurados cerrados; logs JSON, eventos y hardware sin nombres libres.
+Proveedor/T3/Intake/replay omiten prosa; los resúmenes generados usan una etiqueta
+fija. Sin texto, el criterio antiguo de 200 caracteres no queda acreditado.
+Se conserva el seguimiento de cuentas verificadas normales, con
+consentimiento separado; historial privado, avisos y crédito opt-in. La lista
+remota omite el cuerpo privado y muestra título/estado/versión. Recibos legacy
+con capturas se conservan aparte. Sin producción ni transporte Plane real.
+Intake/capturas públicas dependen de #1602 y referencia PostHog de #1609.
+Ver [runbook vigente](../../../../docs/runbooks/testing-report-followup.md) y
+[handoff](../../../../docs/vantare-program/handoffs/testing-center.md).
+
+Las secciones siguientes conservan la evidencia y los límites de cortes anteriores.
+
 ## Participación #1535
 
-Cuestionarios por versión y contribuciones mediante services IPC v6; ver
+Cuestionarios por versión y contribuciones mediante services IPC v7; ver
 [contrato y límites](../../../../docs/testing-participation.md). No se aplicó
 la migración ni se envió feedback real. Bugs conservan la RPC existente.
+
+## Triaje #1594
+
+Nuevo informe prepara etiquetas fijas, juego/versión observados, hardware de lista
+blanca y log reciente real de services. Vista previa del paquete exacto,
+cinco casillas opcionales y consentimiento obligatorio DeepSeek. En ronda 7
+se envía por la Edge de admisión #1610 y su adaptador exclusivo de servidor;
+v2 queda como validación interna, sin EXECUTE directo. Contexto/adjuntos,
+UUID y bytes de reintento se conservan. La lista con recibos legacy mantiene
+fixed como Arreglado.
+Texto/casillas invalidan vista previa y consentimiento; logout elimina contenido
+y rechaza respuestas tardías. PostHog/fragmento no disponibles quedan vacíos.
+Informe con capturas conserva la ruta previa; las imágenes no van al modelo.
+La migración #1594 sí fue aplicada tras OK, con backup/restore y ACL/RLS 25/25;
+no se acredita login/envío real ni proveedor. Worker, cron y credenciales siguen
+inactivos. Véase [runbook](../../../../docs/runbooks/testing-contribution-triage.md).
 
 # Testing Center — editor de envío y diagnóstico local
 

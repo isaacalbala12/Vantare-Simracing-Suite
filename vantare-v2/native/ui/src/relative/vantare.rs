@@ -8,7 +8,7 @@
 use crate::app::Wake;
 use crate::efficiency::preview::PaintWindow as Window;
 use crate::efficiency::text;
-use crate::standings::{Accent, Look};
+use crate::look::{Accent, Tone};
 use crate::vantare::columns::ColumnBoxes;
 use crate::vantare::motion::{Flash, Motion, Sample};
 use crate::vantare::paint::{BOX, Face, Kit, WHITE, estimate, estimate_mono, round_rect};
@@ -127,7 +127,7 @@ impl Cols {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct Options {
-    pub look: Look,
+    pub look: Tone,
     pub accent: Accent,
     pub cols: Cols,
     pub ahead: usize,
@@ -164,8 +164,8 @@ impl Options {
 
     fn variant<'a>(&self, style: &'a Style) -> &'a Variant {
         match self.look {
-            Look::Neo => &style.styles.neo,
-            Look::Neutro => &style.styles.neutro,
+            Tone::Neo => &style.styles.neo,
+            Tone::Neutro => &style.styles.neutro,
         }
     }
 

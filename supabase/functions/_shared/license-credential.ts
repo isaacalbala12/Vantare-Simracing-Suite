@@ -346,7 +346,7 @@ async function signWithEnvironmentKey(
 
 function createCredentialStore(): CredentialStore {
   return {
-    async load(token, fingerprint, _environment) {
+    async load(token, fingerprint, environment) {
       const url = Deno.env.get("SUPABASE_URL") ?? "";
       const anon = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
       if (!url || !anon) throw new Error("Supabase client is not configured");
@@ -371,7 +371,12 @@ function createCredentialStore(): CredentialStore {
         throw new Error("Account resolution returned no identifier");
       }
       const admin = getSupabaseAdmin();
-      return await loadCredentialAccount(admin, accountId, fingerprint);
+      return await loadCredentialAccount(
+        admin,
+        accountId,
+        fingerprint,
+        environment,
+      );
     },
   };
 }
@@ -507,6 +512,7 @@ export async function loadCredentialAccount(
   admin: SupabaseClient,
   accountId: string,
   fingerprint: string,
+  environment: BillingEnvironment,
 ): Promise<CredentialState> {
   const { data: device, error: deviceError } = await admin
     .from("devices").select("fingerprint_hash").eq("user_id", accountId)
@@ -516,7 +522,8 @@ export async function loadCredentialAccount(
     .from("billing_effective_access_grants").select(
       "capability,valid_until,provider,environment,source_type",
     )
-    .eq("user_id", accountId).eq("status", "active");
+    .eq("user_id", accountId).eq("status", "active")
+    .eq("environment", environment);
   if (grantsError) throw grantsError;
   const { data: operationalAssignments, error: operationalError } = await admin
     .from("operational_access_assignments").select(

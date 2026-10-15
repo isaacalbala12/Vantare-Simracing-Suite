@@ -104,8 +104,10 @@ descarta los bloques de la identidad anterior.
 Solo se retienen el bloque abierto y el último sellado: máximo 18.000 muestras
 en cada ventana. Reciclar la ventana no corta el feed (ver offsets abajo).
 Marcan hueco las fotos obsoletas, jugador/progreso ausentes y retrocesos de
-distancia o tiempo. En un retroceso se espera al avance del contador para
-evitar meter datos de la vuelta nueva en la anterior. Las señales ausentes o
+distancia o tiempo. Si retrocede el tiempo se espera al avance del contador para
+evitar meter datos de la vuelta nueva en la anterior. Si solo retrocede la
+distancia, se omiten muestras hasta recuperar el último progreso retenido.
+Las señales ausentes o
 estimadas de velocidad/pedales conservan su etiqueta y no frenan el muestreo.
 Las series no escriben disco, tampoco con recording. La entrega incremental
 de ISA-1429 descrita abajo añade una cola volátil; esta cola no confirma

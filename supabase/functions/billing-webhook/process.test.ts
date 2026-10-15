@@ -7,7 +7,11 @@ import {
   loadPolarProductMap,
   resolveCheckoutKeyByProductId,
 } from "../_shared/mapping.ts";
-import { VALID_POLAR_PRODUCT_MAP_JSON } from "../_shared/test-fixtures.ts";
+import {
+  SANDBOX_IDS,
+  VALID_POLAR_PRODUCT_MAP_JSON,
+  withProAnnualAndNewMonthlyPrice,
+} from "../_shared/test-fixtures.ts";
 import {
   minimizePolarWebhookEvent,
   parsePolarWebhookEvent,
@@ -158,6 +162,13 @@ function loadTestMap() {
   });
 }
 
+function loadProAnnualTestMap() {
+  return loadPolarProductMap(
+    withProAnnualAndNewMonthlyPrice(VALID_POLAR_PRODUCT_MAP_JSON),
+    { environment: "sandbox" },
+  );
+}
+
 function loadProductionTestMap() {
   const raw = JSON.parse(VALID_POLAR_PRODUCT_MAP_JSON);
   raw.environment = "production";
@@ -237,6 +248,17 @@ function processDeps(
     projection,
     lifecycle,
     orderRefundLedger,
+    resolveIdentity: async (
+      client: SupabaseClient,
+      data: Record<string, unknown>,
+      environment: "sandbox" | "production",
+    ) => {
+      const bound = await resolveUserId(client, data, environment);
+      if (bound) return bound;
+      const customer = data.customer as Record<string, unknown> | undefined;
+      const external = data.external_customer_id ?? customer?.external_id;
+      return typeof external === "string" ? external : null;
+    },
   };
 }
 
@@ -657,7 +679,7 @@ Deno.test("processPolarWebhookEvent: subscription.revoked revokes monthly withou
   assertEquals([...deps.projection.grants.values()][0].status, "revoked");
 });
 
-Deno.test("processPolarWebhookEvent: only an attributed succeeded refund revokes lifetime safely", async () => {
+Deno.test("processPolarWebhookEvent: aggregate and ordinary refund revoke lifetime safely", async () => {
   const mock = createMockSupabase();
   const deps = processDeps(mock);
 
@@ -685,11 +707,11 @@ Deno.test("processPolarWebhookEvent: only an attributed succeeded refund revokes
   );
   assertEquals(aggregate, {
     status: "processed",
-    action: "awaiting_attributed_refund",
+    action: "revoked_lifetime_order",
   });
   assertEquals(
     [...deps.orderRefundLedger.grants.values()].every((grant) =>
-      grant === "active"
+      grant === "revoked"
     ),
     true,
   );
@@ -715,7 +737,7 @@ Deno.test("processPolarWebhookEvent: only an attributed succeeded refund revokes
   );
 });
 
-Deno.test("processPolarWebhookEvent: multiple partial refunds keep access until their attributed sum is total", async () => {
+Deno.test("processPolarWebhookEvent: partial refund retires the affected source immediately", async () => {
   const mock = createMockSupabase();
   const deps = processDeps(mock);
   await processPolarWebhookEvent(
@@ -738,11 +760,11 @@ Deno.test("processPolarWebhookEvent: multiple partial refunds keep access until 
   );
   assertEquals(partial, {
     status: "processed",
-    action: "recorded_partial_refund",
+    action: "revoked_lifetime_order",
   });
   assertEquals(
     [...deps.orderRefundLedger.grants.values()].every((grant) =>
-      grant === "active"
+      grant === "revoked"
     ),
     true,
   );
@@ -767,7 +789,7 @@ Deno.test("processPolarWebhookEvent: multiple partial refunds keep access until 
   });
 });
 
-Deno.test("processPolarWebhookEvent: subscription order refunds never enter the one-time ledger", async () => {
+Deno.test("processPolarWebhookEvent: Pro refund blocks its subscription without issuing perpetual Pro", async () => {
   const mock = createMockSupabase();
   const deps = processDeps(mock);
   await processPolarWebhookEvent(
@@ -800,10 +822,10 @@ Deno.test("processPolarWebhookEvent: subscription order refunds never enter the 
     deps,
   );
   assertEquals(order, {
-    status: "ignored",
-    reason: "order_not_lifetime_product",
+    status: "processed",
+    action: "recorded_subscription_order",
   });
-  assertEquals(deps.orderRefundLedger.orders.size, 0);
+  assertEquals(deps.orderRefundLedger.orders.size, 1);
   assertEquals([...deps.projection.grants.values()][0].status, "active");
 
   const refund = await processPolarWebhookEvent(
@@ -818,13 +840,19 @@ Deno.test("processPolarWebhookEvent: subscription order refunds never enter the 
     deps,
   );
   assertEquals(refund, {
-    status: "quarantined",
-    reason: "order_refund_ledger_missing_order",
+    status: "processed",
+    action: "blocked_subscription_refund",
   });
-  assertEquals([...deps.projection.grants.values()][0].status, "active");
+  assertEquals(
+    deps.orderRefundLedger.grants.size,
+    0,
+  );
+  // Base lifecycle remains intact; effective access excludes the refund block.
+  assertEquals([...deps.projection.grants.values()][0].status, "revoked");
+  assertEquals([...deps.projection.baseGrants.values()][0].status, "active");
 });
 
-Deno.test("processPolarWebhookEvent: refund without payment identity is quarantined", async () => {
+Deno.test("processPolarWebhookEvent: official Refund without payment_id retires Launch", async () => {
   const mock = createMockSupabase();
   const deps = processDeps(mock);
   await processPolarWebhookEvent(
@@ -844,12 +872,12 @@ Deno.test("processPolarWebhookEvent: refund without payment identity is quaranti
     deps,
   );
   assertEquals(result, {
-    status: "quarantined",
-    reason: "missing_payment_id",
+    status: "processed",
+    action: "revoked_lifetime_order",
   });
   assertEquals(
     [...deps.orderRefundLedger.grants.values()].every((grant) =>
-      grant === "active"
+      grant === "revoked"
     ),
     true,
   );
@@ -1098,6 +1126,8 @@ Deno.test("processPolarWebhookEvent: active claim defers a concurrent worker and
     payloadHash,
     payload: event,
   });
+  assertEquals(receipt.status, "received");
+  if (receipt.id === null) throw new Error("live event has no inbox row");
   const firstClaim = await deps.inbox.claim(
     receipt.id,
     "00000000-0000-4000-8000-000000000001",
@@ -2270,4 +2300,323 @@ Deno.test("processPolarWebhookEvent: terminal subscription revokes recovery but 
     ),
     true,
   );
+});
+
+// ISA-1499: the yearly Pro product walks the same lifecycle as the monthly one
+// (alta, renovación, cancelación al final del periodo y revocación) and must
+// end with identical grants; only the period length differs.
+async function runProLifecycle(productId: string, periodDays: number) {
+  const mock = createMockSupabase();
+  const deps = processDeps(mock, loadProAnnualTestMap);
+  const day = 24 * 60 * 60 * 1000;
+  const start = Date.parse("2026-07-09T12:00:00.000Z");
+  const firstEnd = new Date(start + periodDays * day).toISOString();
+  const renewedEnd = new Date(start + 2 * periodDays * day).toISOString();
+  const base = {
+    id: `sub-${productId}`,
+    product_id: productId,
+    external_customer_id: USER_ID,
+  };
+  const grants = () =>
+    [...deps.projection.grants.values()].map((grant) => ({ ...grant }));
+  const steps: unknown[] = [];
+
+  steps.push(
+    await processPolarWebhookEvent(
+      {
+        type: "subscription.active",
+        data: {
+          ...base,
+          status: "active",
+          modified_at: "2026-07-09T12:00:00.000Z",
+          current_period_end: firstEnd,
+        },
+      },
+      `evt-${productId}-active`,
+      deps,
+    ),
+    grants(),
+  );
+  steps.push(
+    await processPolarWebhookEvent(
+      {
+        type: "subscription.updated",
+        data: {
+          ...base,
+          status: "active",
+          modified_at: "2026-07-09T12:10:00.000Z",
+          current_period_end: renewedEnd,
+        },
+      },
+      `evt-${productId}-renewal`,
+      deps,
+    ),
+    grants(),
+  );
+  steps.push(
+    await processPolarWebhookEvent(
+      {
+        type: "subscription.canceled",
+        data: {
+          ...base,
+          status: "active",
+          cancel_at_period_end: true,
+          modified_at: "2026-07-09T12:20:00.000Z",
+          current_period_end: renewedEnd,
+        },
+      },
+      `evt-${productId}-cancel`,
+      deps,
+    ),
+    grants(),
+  );
+  steps.push(
+    await processPolarWebhookEvent(
+      {
+        type: "subscription.revoked",
+        data: {
+          ...base,
+          status: "revoked",
+          modified_at: "2026-07-09T12:30:00.000Z",
+          current_period_end: renewedEnd,
+        },
+      },
+      `evt-${productId}-revoked`,
+      deps,
+    ),
+    grants(),
+  );
+  return { steps, firstEnd, renewedEnd };
+}
+
+Deno.test("processPolarWebhookEvent: Pro annual alta, renovación y cancelación conceden Pro", async () => {
+  const { steps, firstEnd, renewedEnd } = await runProLifecycle(
+    SANDBOX_IDS.proAnnualProduct,
+    365,
+  );
+  const pro = (status: string, validUntil: string | null) => [{
+    capability: "vantare.plan.pro",
+    status,
+    validUntil,
+  }];
+  assertEquals(steps[0], {
+    status: "processed",
+    action: "updated_monthly_bundle",
+  });
+  assertEquals(steps[1], pro("active", firstEnd));
+  assertEquals(steps[3], pro("active", renewedEnd));
+  assertEquals(steps[5], pro("active", renewedEnd));
+  assertEquals(steps[6], {
+    status: "processed",
+    action: "revoked_monthly_revoked",
+  });
+  assertEquals(
+    (steps[7] as { status: string }[]).map((grant) => grant.status),
+    ["revoked"],
+  );
+});
+
+Deno.test("processPolarWebhookEvent: Pro annual and monthly produce identical grants", async () => {
+  const annual = await runProLifecycle(SANDBOX_IDS.proAnnualProduct, 30);
+  const monthly = await runProLifecycle(SANDBOX_IDS.proProduct, 30);
+  assertEquals(annual.steps, monthly.steps);
+});
+
+Deno.test("P2-2: launch subscriptions grant, renew and cancel the same Pro/Plus rights", async () => {
+  const base = loadProPlusTestMap();
+  if (!base.ok) throw Error("Fixture map invalid");
+  const raw = JSON.parse(
+    withProAnnualAndNewMonthlyPrice(JSON.stringify(base.map)),
+  );
+  const annualId = "00000000-0000-4000-8000-000000000930";
+  const annualPrice = "00000000-0000-4000-8000-000000000931";
+  raw.checkout_keys.pro_plus_annual = {
+    ...raw.checkout_keys.pro_plus_monthly,
+    plan_sku: "pro_plus_annual",
+    polar_product_id: annualId,
+    polar_price_ids: [annualPrice],
+  };
+  raw.product_id_to_checkout_key[annualId] = "pro_plus_annual";
+  raw.price_id_to_checkout_key[annualPrice] = "pro_plus_annual";
+  const keys = [
+    "pro_monthly",
+    "pro_annual",
+    "pro_plus_monthly",
+    "pro_plus_annual",
+  ];
+  for (const [i, key] of keys.entries()) {
+    const id = `00000000-0000-4000-8000-${String(940 + i).padStart(12, "0")}`;
+    raw.checkout_keys[key].polar_launch_product_id = id;
+    raw.product_id_to_checkout_key[id] = key;
+  }
+  const loaded = loadPolarProductMap(JSON.stringify(raw), {
+    environment: "sandbox",
+  });
+  if (!loaded.ok) throw Error(loaded.code);
+  for (const key of keys) {
+    const mock = createMockSupabase();
+    const deps = processDeps(mock, () => loaded);
+    const config = raw.checkout_keys[key];
+    const data = {
+      id: `sub-launch-${key}`,
+      product_id: config.polar_launch_product_id,
+      external_customer_id: USER_ID,
+      status: "active",
+      modified_at: "2026-07-09T12:00:00.000Z",
+      current_period_end: "2027-07-09T12:00:00.000Z",
+    };
+    const first = await processPolarWebhookEvent(
+      { type: "subscription.active", data },
+      `evt-launch-${key}`,
+      deps,
+    );
+    assertEquals(first.status, "processed");
+    assertEquals(
+      [...deps.projection.grants.values()].map((g) => g.capability).sort(),
+      [...config.capabilities].sort(),
+    );
+    const renewal = await processPolarWebhookEvent(
+      {
+        type: "subscription.updated",
+        data: {
+          ...data,
+          modified_at: "2026-08-09T12:00:00.000Z",
+          current_period_end: "2028-07-09T12:00:00.000Z",
+        },
+      },
+      `evt-launch-renew-${key}`,
+      deps,
+    );
+    assertEquals(renewal.status, "processed");
+    assertEquals(
+      [...deps.projection.grants.values()].every((g) => g.status === "active"),
+      true,
+    );
+    const canceled = await processPolarWebhookEvent(
+      {
+        type: "subscription.canceled",
+        data: {
+          ...data,
+          status: "canceled",
+          cancel_at_period_end: false,
+          modified_at: "2026-08-10T12:00:00.000Z",
+        },
+      },
+      `evt-launch-cancel-${key}`,
+      deps,
+    );
+    assertEquals(canceled.status, "processed");
+    assertEquals(
+      [...deps.projection.grants.values()].every((g) => g.status === "revoked"),
+      true,
+    );
+  }
+});
+
+Deno.test("refund delivered before its order retries and revokes without manual replay", async () => {
+  const deps = processDeps(createMockSupabase());
+  const refund = {
+    type: "refund.updated",
+    data: succeededRefundData({ order_id: "order-out-of-order" }),
+  };
+  await assertRejects(() =>
+    processPolarWebhookEvent(refund, "evt_out_of_order_refund", deps)
+  );
+  assertEquals(deps.inbox.snapshot("evt_out_of_order_refund").status, "failed");
+  await processPolarWebhookEvent(
+    { type: "order.paid", data: paidOrderData({ id: "order-out-of-order" }) },
+    "evt_out_of_order_paid",
+    deps,
+  );
+  deps.inbox.makeRetryDue("evt_out_of_order_refund");
+  const result = await processPolarWebhookEvent(
+    refund,
+    "evt_out_of_order_refund",
+    deps,
+  );
+  assertEquals(result, {
+    status: "processed",
+    action: "revoked_lifetime_order",
+  });
+  assertEquals(
+    [...deps.orderRefundLedger.grants.values()].every((grant) =>
+      grant === "revoked"
+    ),
+    true,
+  );
+  assertEquals(deps.inbox.replayAudit.length, 0);
+});
+Deno.test("untrusted user_id metadata cannot attribute a purchase without a server binding", async () => {
+  const mock = createMockSupabase();
+  assertEquals(
+    await resolveUserId(
+      mock.client,
+      { metadata: { user_id: USER_ID } },
+      "sandbox",
+    ),
+    null,
+  );
+  const bound = createMockSupabase({
+    billing_customers: [{
+      user_id: USER_ID,
+      provider: "polar",
+      environment: "sandbox",
+      provider_customer_id: "customer-bound",
+    }],
+  });
+  assertEquals(
+    await resolveUserId(bound.client, {
+      customer_id: "customer-bound",
+      metadata: { user_id: PRODUCTION_USER_ID },
+    }, "sandbox"),
+    USER_ID,
+  );
+});
+
+Deno.test("durable customer binding wins over contradictory external_customer_id", async () => {
+  const mock = createMockSupabase({
+    billing_customers: [{
+      user_id: USER_ID,
+      provider: "polar",
+      environment: "sandbox",
+      provider_customer_id: "bound-customer",
+    }, {
+      user_id: PRODUCTION_USER_ID,
+      provider: "polar",
+      environment: "production",
+      provider_customer_id: "bound-customer",
+    }],
+  });
+  assertEquals(
+    await resolveUserId(mock.client, {
+      customer_id: "bound-customer",
+      external_customer_id: PRODUCTION_USER_ID,
+    }, "sandbox"),
+    USER_ID,
+  );
+  assertEquals(
+    await resolveUserId(mock.client, {
+      customer: { id: "bound-customer", external_id: USER_ID },
+    }, "production"),
+    PRODUCTION_USER_ID,
+  );
+});
+
+Deno.test("missing order retry remains bounded and never grants access", async () => {
+  const deps = processDeps(createMockSupabase());
+  const refund = {
+    type: "refund.updated",
+    data: succeededRefundData({ order_id: "order-never-arrives" }),
+  };
+  for (let attempt = 0; attempt < 5; attempt++) {
+    await assertRejects(() =>
+      processPolarWebhookEvent(refund, "evt_order_never_arrives", deps)
+    );
+    deps.inbox.makeRetryDue("evt_order_never_arrives");
+  }
+  assertEquals(
+    await processPolarWebhookEvent(refund, "evt_order_never_arrives", deps),
+    { status: "quarantined", reason: "existing_quarantine" },
+  );
+  assertEquals(deps.orderRefundLedger.grants.size, 0);
 });

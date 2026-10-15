@@ -80,7 +80,7 @@ impl Widget {
         replace_if_changed(&mut self.vm, next)
     }
 
-    pub(crate) fn frame(&mut self, _prefs: Preferences) -> (Paint, Wake) {
+    pub(crate) fn frame(&mut self, _prefs: Preferences, _reduced: bool) -> (Paint, Wake) {
         let vm = self.vm.clone();
         (
             Box::new(move |window, cx| paint(&vm, window, cx)),
@@ -313,7 +313,7 @@ mod tests {
         assert!(widget.ingest(&snapshot, english));
         assert!(!widget.ingest(&snapshot, english));
         assert_eq!(widget.size(), (WIDTH, 16.0 + 220.0 * SCALE));
-        assert_eq!(widget.frame(english).1, Wake::Idle);
+        assert_eq!(widget.frame(english, false).1, Wake::Idle);
         #[cfg(feature = "parity-capture")]
         assert!(!widget.animating());
     }
@@ -394,7 +394,7 @@ mod tests {
             ),
             "el idioma no cambia texto oculto"
         );
-        assert_eq!(widget.frame(prefs).1, Wake::Idle);
+        assert_eq!(widget.frame(prefs, false).1, Wake::Idle);
         assert!(!widget.animating());
     }
 
@@ -415,7 +415,7 @@ mod tests {
             assert!(widget.ingest(&snapshot, Preferences::default()));
             assert_eq!(widget.size(), (WIDTH, 16.0 + 220.0 * SCALE));
             assert!(widget.vm.outline.is_empty());
-            assert_eq!(widget.frame(Preferences::default()).1, Wake::Idle);
+            assert_eq!(widget.frame(Preferences::default(), false).1, Wake::Idle);
             assert!(!widget.animating());
         }
     }

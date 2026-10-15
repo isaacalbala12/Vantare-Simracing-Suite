@@ -64,6 +64,7 @@ pub(crate) struct Widget {
     started: Option<Instant>,
     identity: Option<(u64, SessionId, Option<CarId>)>,
     trace: Trace,
+    paint_samples: Option<std::sync::Arc<Vec<Sample>>>,
 }
 
 impl Widget {
@@ -76,6 +77,7 @@ impl Widget {
             started: None,
             identity: None,
             trace: Trace::default(),
+            paint_samples: None,
         }
     }
 
@@ -101,6 +103,9 @@ impl Widget {
             snapshot,
             Duration::from_secs(u64::from(self.settings.history_seconds)),
         );
+        if trace_changed {
+            self.paint_samples = None;
+        }
         let next = self.settings.project(snapshot, prefs);
         if reset {
             self.from = next.pedals;
@@ -128,14 +133,7 @@ impl Widget {
             && self.vm.pedals.iter().any(Option::is_some)
     }
 
-    pub(crate) fn frame(&mut self, prefs: Preferences) -> (Paint, Wake) {
-        self.frame_with_motion(prefs, false)
-    }
-    pub(crate) fn frame_with_motion(
-        &mut self,
-        _prefs: Preferences,
-        reduced: bool,
-    ) -> (Paint, Wake) {
+    pub(crate) fn frame(&mut self, _prefs: Preferences, reduced: bool) -> (Paint, Wake) {
         let vm = self.vm.clone();
         let now = Instant::now();
         let pedals = if reduced {
@@ -143,7 +141,7 @@ impl Widget {
         } else {
             self.pedals_at(now)
         };
-        let samples: Vec<_> = self.trace.samples().iter().copied().collect();
+        let samples = self.paint_samples();
         let wake = if !reduced && self.moving(now) {
             Wake::Frame
         } else {
@@ -155,11 +153,22 @@ impl Widget {
         )
     }
 
+    fn paint_samples(&mut self) -> std::sync::Arc<Vec<Sample>> {
+        self.paint_samples
+            .get_or_insert_with(|| {
+                std::sync::Arc::new(self.trace.samples().iter().copied().collect())
+            })
+            .clone()
+    }
+
     #[cfg(feature = "parity-capture")]
     pub(crate) fn animating(&self) -> bool {
         self.moving(Instant::now())
     }
 }
+
+#[cfg(test)]
+mod performance_tests;
 
 fn interpolate(
     from: [Option<f64>; 3],
@@ -605,7 +614,7 @@ mod tests {
         assert!(!widget.ingest(&snapshot, prefs));
         widget.started = Instant::now().checked_sub(TRANSITION);
         assert!(!widget.moving(Instant::now()));
-        assert_eq!(widget.frame(prefs).1, Wake::Idle);
+        assert_eq!(widget.frame(prefs, false).1, Wake::Idle);
         snapshot.state.player = None;
         assert!(widget.ingest(&snapshot, prefs));
         assert!(!widget.moving(Instant::now()));

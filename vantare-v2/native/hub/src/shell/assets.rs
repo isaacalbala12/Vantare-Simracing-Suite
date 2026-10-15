@@ -4,6 +4,44 @@ use std::borrow::Cow;
 
 pub struct Icons;
 
+/// Miniatura (`widgets/<kind>.svg`, a color, para `gpui::img`) e icono
+/// (`icons/w-<kind>.svg`, monocromo) de cada widget del catálogo (#1569).
+macro_rules! widgets {
+    ($($name:literal),+ $(,)?) => {
+        &[$(
+            (
+                concat!("widgets/", $name, ".svg"),
+                include_bytes!(concat!("../../assets/widgets/", $name, ".svg")),
+            ),
+            (
+                concat!("icons/w-", $name, ".svg"),
+                include_bytes!(concat!("../../assets/widgets/w-", $name, ".svg")),
+            ),
+        )+]
+    };
+}
+
+const WIDGETS: &[(&str, &[u8])] = widgets![
+    "standings",
+    "relative",
+    "multiclass-relative",
+    "broadcast-tower",
+    "head-to-head",
+    "fastest-lap",
+    "racing-flags",
+    "delta",
+    "delta-trace",
+    "pedals",
+    "pedals-telemetry",
+    "input-telemetry",
+    "radar",
+    "car-damage-visual",
+    "car-damage-numbers",
+    "fuel-strategy",
+    "track-map",
+    "track-weather",
+];
+
 const ASSETS: &[(&str, &[u8])] = &[
     (
         "brand/wordmark.svg",
@@ -295,12 +333,14 @@ impl AssetSource for Icons {
     fn load(&self, path: &str) -> gpui::Result<Option<Cow<'static, [u8]>>> {
         Ok(ASSETS
             .iter()
+            .chain(WIDGETS)
             .find(|(name, _)| *name == path)
             .map(|(_, data)| Cow::Borrowed(*data)))
     }
     fn list(&self, path: &str) -> gpui::Result<Vec<SharedString>> {
         Ok(ASSETS
             .iter()
+            .chain(WIDGETS)
             .filter(|(name, _)| name.starts_with(path))
             .map(|(name, _)| (*name).into())
             .collect())
@@ -324,6 +364,23 @@ mod tests {
                 .is_some()
         );
         assert_eq!(Icons.list("brand/").expect("brand list").len(), 1);
-        assert_eq!(Icons.list("icons/").expect("list").len(), ASSETS.len() - 1);
+        assert_eq!(
+            Icons.list("icons/").expect("list").len(),
+            ASSETS.len() - 1 + vantare_ui::Kind::ALL.len()
+        );
+    }
+
+    #[test]
+    fn every_widget_has_an_embedded_thumbnail_and_icon() {
+        assert_eq!(WIDGETS.len(), 2 * vantare_ui::Kind::ALL.len());
+        for kind in vantare_ui::Kind::ALL {
+            for path in [
+                format!("widgets/{}.svg", kind.name()),
+                format!("icons/w-{}.svg", kind.name()),
+            ] {
+                let svg = Icons.load(&path).expect("asset").expect(&path);
+                assert!(svg.starts_with(b"<svg"), "{path}");
+            }
+        }
     }
 }

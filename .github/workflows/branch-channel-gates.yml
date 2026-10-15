@@ -23,7 +23,8 @@ env:
 jobs:
   policy:
     name: Validate promotion path
-    runs-on: ubuntu-latest
+    if: '!github.event.repository.private || github.event_name != ''pull_request'' || github.event.pull_request.head.repo.full_name == github.repository'
+    runs-on: ${{ github.event.repository.private && fromJSON('["self-hosted","Linux","X64","vantare-1565"]') || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
@@ -47,6 +48,11 @@ jobs:
       - name: Test branch topology policy
         run: python .github/scripts/test_validate_branch_channels.py
 
+      - name: Test public roadmap contracts offline
+        run: |
+          python -B -m unittest discover -s vantare-v2/scripts -p 'test*roadmap*.py'
+          node --test vantare-v2/scripts/test_roadmap_web.mjs
+
       - name: Test Testing Center deterministic diff gate
         run: python .github/scripts/test_testing_center_diff_gate.py
 
@@ -60,6 +66,11 @@ jobs:
 
       - name: Test release notes rendering and its gate
         run: python .github/scripts/tests/test_release_notes.py
+
+      - name: Test private runner hooks and artifact budget
+        run: |
+          python -m unittest discover -s tools/ci-runners -v
+          python -m unittest discover -s .github/scripts -p test_artifact_budget.py -v
 
       - name: Test inert Testing Center Nightly closeout policies
         run: |
@@ -83,12 +94,18 @@ jobs:
   product:
     name: Validate Vantare blocking gates
     needs: policy
-    runs-on: windows-latest
+    if: '!github.event.repository.private || github.event_name != ''pull_request'' || github.event.pull_request.head.repo.full_name == github.repository'
+    runs-on: ${{ github.event.repository.private && fromJSON('["self-hosted","Windows","X64","vantare-1565"]') || 'windows-latest' }}
     defaults:
       run:
         shell: pwsh
         working-directory: ${{ env.VANTARE_DIR }}
     steps:
+      - name: Wait until Windows screen is available
+        working-directory: ${{ runner.temp }}
+        run: |
+          while (Test-Path 'C:/tmp/fase2/pantalla-ocupada') { Start-Sleep -Seconds 10 }
+
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           fetch-depth: 0
@@ -123,6 +140,14 @@ jobs:
             throw "automatic frontend scope retired; no native preauthorization is granted"
           }
 
+      - name: Test Windows runner hooks and beta feed origin
+        run: |
+          python -m unittest discover -s ../tools/ci-runners -v
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          # Windows PowerShell 5.1, el mismo host que ejecuta beta.ps1 instalado.
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File native/packaging/feed-origin-tests.ps1
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+
       - name: Install native test runner
         working-directory: ${{ env.VANTARE_DIR }}/native
         run: cargo install cargo-nextest --locked --version 0.9.146
@@ -139,7 +164,8 @@ jobs:
         working-directory: ${{ env.VANTARE_DIR }}/native
         shell: pwsh
         env:
-          NEXTEST_TEST_THREADS: '1'
+          # Dos hilos de test, como hasta ahora: el antiguo -j 2 de gates.ps1 los fijaba (#1465).
+          NEXTEST_TEST_THREADS: '2'
         run: |
           cargo fmt --all -- --check
           if ($LASTEXITCODE) { throw "native format failed" }

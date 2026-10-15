@@ -112,14 +112,14 @@ class FragmentTests(unittest.TestCase):
 
 
 class DevelopmentDigestSourceTests(unittest.TestCase):
-    """The digest uses the public ClickUp publication or honest silence."""
+    """The digest uses the public roadmap publication or honest silence."""
 
     def test_public_text_neutralizes_discord_mass_mentions(self):
         value = communications.sanitize_public_text("@everyone avance @here")
         self.assertNotIn("@everyone", value)
         self.assertNotIn("@here", value)
 
-    def test_clickup_is_the_source_with_completed_over_total_progress(self):
+    def test_public_roadmap_is_the_source_with_completed_over_total_progress(self):
         publication = {"published_at":"2026-10-10T00:00:00Z", "document":{"schemaVersion":2,"items":[
             {"area":"Studio","section":"done" if i < 2 else "now","title":{"es":"Tarea"}} for i in range(10)]}}
 
@@ -140,7 +140,7 @@ class DevelopmentDigestSourceTests(unittest.TestCase):
             token="t", repository="owner/repo", supabase_url="https://fixture.supabase.co", anon_key="public-fixture",
             opener=lambda *args, **kwargs: _Response(),
         )
-        self.assertEqual(source, communications.DEVELOPMENT_SOURCE_CLICKUP)
+        self.assertEqual(source, communications.DEVELOPMENT_SOURCE_ROADMAP)
         self.assertAlmostEqual(projects[0]["progress"], 0.2)
         self.assertEqual(projects[0]["url"], "")
 

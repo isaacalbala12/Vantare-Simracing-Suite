@@ -192,7 +192,13 @@ pub(super) fn render(cal: &mut Calendar, cx: &mut Context<Calendar>) -> Div {
                     .flex()
                     .gap(px(10.0))
                     .mt(px(8.0))
-                    .child(t(series.track_short().to_owned(), 13.0, 700, skin.text1, cx))
+                    .child(t(
+                        series.track_short().to_owned(),
+                        13.0,
+                        700,
+                        skin.text1,
+                        cx,
+                    ))
                     .child(t(
                         series.track_layout().to_owned(),
                         13.0,

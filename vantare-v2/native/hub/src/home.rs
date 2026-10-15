@@ -252,71 +252,84 @@ fn command(cx: &gpui::App) -> Stateful<Div> {
         )
 }
 
-/// Tarjeta «Tu próxima carrera»: la salida más cercana de tus favoritas.
+/// Tarjeta «Tu próxima carrera»: la salida más cercana de tus favoritas. Los
+/// botones los añade la shell, que sabe lanzar el perfil y navegar.
 pub(crate) fn next_race(calendar: &Calendar, cx: &gpui::App) -> Option<Div> {
+    let skin = orbit::skin(cx);
     let now = calendar.now();
     let hero = calendar.schedule().and_then(|schedule| {
         super::rows::hero(schedule, now, calendar.favorites(), &calendar.alerts)
-    });
-    let hero = hero.as_ref();
-    let mut card = div()
+    })?;
+    let zone = calendar.zone();
+    let when = format!("{} {}", zone.day_rel(hero.at, now), zone.hm(hero.at));
+    let lead = Duration::minutes(i64::from(calendar.alerts.lead_min));
+    let card = div()
         .w(px(380.0))
         .flex_none()
         .flex()
         .flex_col()
-        .gap(px(6.0))
-        .p(px(18.0))
-        .rounded(px(14.0))
-        .bg(orbit::alpha(0x0000_0040))
+        .gap(px(10.0))
+        .px(px(16.0))
+        .py(px(14.0))
+        .rounded(px(12.0))
+        .bg(super::chrome::tint(0x0012_0C0E, 0.55))
         .border_1()
-        .border_color(orbit::alpha(0xffff_ff1f));
-    let hero = hero?;
-    let at = hero.at.with_timezone(&Local);
-    let when = if at.date_naive() == now.with_timezone(&Local).date_naive() {
-        format!("hoy {}", at.format("%H:%M"))
-    } else {
-        at.format("%d/%m %H:%M").to_string()
-    };
-    card = card
+        .border_color(orbit::alpha(skin.line2))
         .child(
             div()
                 .flex()
                 .items_center()
                 .gap(px(8.0))
-                .child(orbit::eyebrow("Tu próxima carrera", cx))
+                .child(super::chrome::cap(
+                    "Tu próxima carrera",
+                    super::chrome::acct(cx),
+                    cx,
+                ))
                 .child(super::chrome::tier(hero.series, cx))
                 .child(div().flex_1())
                 .when(hero.alert, |row| {
-                    row.child(text("con aviso", 12.0, 400, orbit::ink_3(cx), cx))
+                    row.child(super::chrome::icon(
+                        "bell-fill",
+                        12.0,
+                        super::chrome::acct(cx),
+                    ))
+                    .child(super::chrome::t(
+                        format!("aviso {}", zone.hm(hero.at - lead)),
+                        12.0,
+                        400,
+                        skin.cap,
+                        cx,
+                    ))
                 }),
         )
         .child(
             div()
                 .flex()
                 .items_end()
+                .gap(px(12.0))
                 .child(
                     div()
                         .flex_1()
                         .min_w_0()
-                        .child(text(
-                            hero.series.name.clone(),
-                            20.0,
-                            600,
-                            orbit::ink_2(cx),
-                            cx,
-                        ))
-                        .child(text(
-                            format!("{} · {when}", hero.series.track_short()),
-                            12.0,
-                            400,
-                            orbit::ink_3(cx),
-                            cx,
-                        )),
+                        .child(
+                            super::chrome::disp(hero.series.name.clone(), 24.0, skin.text1, cx)
+                                .truncate(),
+                        )
+                        .child(
+                            super::chrome::t(
+                                format!("{} · {when}", hero.series.track_short()),
+                                13.0,
+                                400,
+                                skin.text3,
+                                cx,
+                            )
+                            .mt(px(4.0)),
+                        ),
                 )
                 .child(orbit::mono_text(
                     super::clock::countdown(hero.at - now),
                     30.0,
-                    orbit::ink_2(cx),
+                    skin.text1,
                     cx,
                 )),
         );

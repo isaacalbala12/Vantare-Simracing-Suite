@@ -48,12 +48,14 @@ fn swatch(kind: u8, cx: &gpui::App) -> Div {
     let skin = chrome::skin(cx);
     let base = div().w(px(14.0)).h(px(12.0)).flex_none().rounded(px(3.0));
     match kind {
-        0 => base.bg(rgb(skin.l2)).child(
-            div()
-                .size_full()
-                .rounded(px(3.0))
-                .bg(gpui::pattern_slash(orbit::alpha(skin.line2), 1.0, 5.0)),
-        ),
+        0 => {
+            base.bg(rgb(skin.l2))
+                .child(div().size_full().rounded(px(3.0)).bg(gpui::pattern_slash(
+                    orbit::alpha(skin.line2),
+                    1.0,
+                    5.0,
+                )))
+        }
         1 => base.bg(tint(chrome::acc(cx), 0.75)),
         _ => base
             .bg(rgb(skin.l3))
@@ -447,13 +449,11 @@ fn outings_card(cal: &Calendar, p: &Page<'_>, cx: &mut Context<Calendar>) -> Div
             .copied()
     });
     left = left
-        .child(
-            div().mt(px(14.0)).child(section_title(
-                "Así es cada salida",
-                first.map(|a| format!("la de las {}", zone.hm(a))),
-                cx,
-            )),
-        )
+        .child(div().mt(px(14.0)).child(section_title(
+            "Así es cada salida",
+            first.map(|a| format!("la de las {}", zone.hm(a))),
+            cx,
+        )))
         .child(phase_block(&series, first, zone, cx));
 
     // Historial en esta serie.
@@ -718,7 +718,13 @@ fn rotation_card(cal: &Calendar, p: &Page<'_>, cx: &mut Context<Calendar>) -> Di
     weeks.drain(..skip);
     let mut cells: Vec<(String, String, u8)> = weeks
         .iter()
-        .map(|(from, track)| (clock::week_title(&clock::week_days(*from)), track.clone(), 0))
+        .map(|(from, track)| {
+            (
+                clock::week_title(&clock::week_days(*from)),
+                track.clone(),
+                0,
+            )
+        })
         .collect();
     cells.push((
         clock::week_title(&clock::week_days(valid_from)),
@@ -900,10 +906,11 @@ fn heat_map(
                     })
                     .when(!in_band && past, |c| {
                         c.bg(rgb(skin.l2)).child(
-                            div()
-                                .size_full()
-                                .rounded(px(3.0))
-                                .bg(gpui::pattern_slash(orbit::alpha(skin.line2), 1.0, 5.0)),
+                            div().size_full().rounded(px(3.0)).bg(gpui::pattern_slash(
+                                orbit::alpha(skin.line2),
+                                1.0,
+                                5.0,
+                            )),
                         )
                     })
                     .when(!in_band && !past, |c| c.bg(rgb(skin.l3)))

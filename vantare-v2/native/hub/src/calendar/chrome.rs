@@ -245,6 +245,117 @@ pub(super) fn btn_pri(
         )
 }
 
+/// Botón principal carmín solo con texto (Guardar, Descargar…).
+pub(super) fn btn_text_pri(
+    id: impl Into<gpui::ElementId>,
+    label: &str,
+    cx: &gpui::App,
+) -> Stateful<Div> {
+    let skin = orbit::skin(cx);
+    let hover = skin.button_hover;
+    div()
+        .id(id)
+        .role(gpui::Role::Button)
+        .aria_label(label.to_owned())
+        .tab_index(0)
+        .h(px(34.0))
+        .flex_none()
+        .flex()
+        .items_center()
+        .justify_center()
+        .px(px(14.0))
+        .rounded(px(8.0))
+        .bg(orbit::ramp(skin.button, 180.0))
+        .shadow(vec![orbit::kit_shadow(0xffff_ff30, 1.0, 0.0, 0.0, true)])
+        .cursor_pointer()
+        .hover(move |s| s.bg(orbit::ramp(hover, 180.0)))
+        .focus_visible(|s| s.border_2().border_color(rgb(skin.text1)))
+        .child(orbit::text(label.to_owned(), 13.0, 600, 0x00ff_ffff, cx).whitespace_nowrap())
+}
+
+/// Maqueta de la notificación de Windows (`.toast`): así llega el aviso.
+pub(super) fn windows_toast(title: &str, body: &str, lead_min: u8, cx: &gpui::App) -> Div {
+    let button = |label: &str, primary: bool| {
+        div()
+            .flex_1()
+            .h(px(32.0))
+            .flex()
+            .items_center()
+            .justify_center()
+            .rounded(px(4.0))
+            .bg(rgb(if primary { 0xC4_2B36 } else { 0x3A_3A3A }))
+            .child(orbit::text(label.to_owned(), 12.5, 400, 0x00ff_ffff, cx).whitespace_nowrap())
+    };
+    div()
+        .w_full()
+        .max_w(px(364.0))
+        .rounded(px(8.0))
+        .overflow_hidden()
+        .bg(rgb(0x2B_2B2B))
+        .border_1()
+        .border_color(tint(0x00ff_ffff, 0.08))
+        .shadow(vec![orbit::kit_shadow(0x0000_0073, 18.0, 40.0, 0.0, false)])
+        .child(
+            div()
+                .flex()
+                .items_center()
+                .gap(px(8.0))
+                .px(px(12.0))
+                .pt(px(10.0))
+                .child(icon("i-vantare", 14.0, 0xE1_4A54))
+                .child(orbit::text(
+                    "Vantare · Calendario",
+                    12.0,
+                    400,
+                    0xCF_CFCF,
+                    cx,
+                ))
+                .child(div().flex_1())
+                .child(orbit::text("ahora", 12.0, 400, 0xCF_CFCF, cx)),
+        )
+        .child(
+            div()
+                .flex()
+                .gap(px(12.0))
+                .px(px(12.0))
+                .pt(px(10.0))
+                .pb(px(12.0))
+                .child(
+                    div()
+                        .size(px(44.0))
+                        .flex_none()
+                        .rounded(px(8.0))
+                        .flex()
+                        .items_center()
+                        .justify_center()
+                        .bg(rgb(0x3A_1A20))
+                        .child(
+                            orbit::mono_text(format!("{lead_min}′"), 13.0, 0xFF_8A91, cx)
+                                .font_weight(gpui::FontWeight(700.0)),
+                        ),
+                )
+                .child(
+                    div()
+                        .flex_1()
+                        .min_w_0()
+                        .child(
+                            orbit::text(title.to_owned(), 14.0, 600, 0x00ff_ffff, cx).mb(px(3.0)),
+                        )
+                        .child(orbit::text(body.to_owned(), 12.5, 400, 0xD6_D6D6, cx)),
+                ),
+        )
+        .child(
+            div()
+                .flex()
+                .gap(px(6.0))
+                .px(px(12.0))
+                .pb(px(12.0))
+                .child(button("Lanzar perfil", true))
+                .child(button("Ver ficha", false))
+                .child(button("Posponer 5′", false)),
+        )
+}
+
 /// Botón de icono de 32 px (28 px `small`).
 pub(super) fn ib(
     id: impl Into<gpui::ElementId>,
@@ -404,7 +515,9 @@ pub(super) fn pick_chip(
                 orbit::alpha(skin.line2)
             })
         })
-        .when(alerted, |chip| chip.child(icon("bell-fill", 10.0, acct(cx))))
+        .when(alerted, |chip| {
+            chip.child(icon("bell-fill", 10.0, acct(cx)))
+        })
         .child(if on {
             bold_mono(label, 12.0, skin.text1, cx)
         } else {
@@ -737,21 +850,6 @@ pub(super) fn fact(label: &str, value: impl Into<SharedString>, cx: &gpui::App) 
         .border_color(orbit::alpha(skin.line1))
         .child(orbit::caps(label, 10.5, skin.cap, cx))
         .child(t(value, 13.0, 600, skin.text1, cx).mt(px(2.0)).truncate())
-}
-
-/// Caja de dato clave: rótulo pequeño y valor destacado.
-pub(super) fn kv_box(label: &str, value: impl Into<SharedString>, cx: &gpui::App) -> Div {
-    let skin = skin(cx);
-    div()
-        .min_w_0()
-        .px(px(12.0))
-        .py(px(9.0))
-        .rounded(px(8.0))
-        .bg(rgb(skin.l2))
-        .border_1()
-        .border_color(orbit::alpha(skin.line1))
-        .child(cap(label, skin.cap, cx))
-        .child(t(value, 14.0, 700, skin.text1, cx).truncate())
 }
 
 /// Capa que cubre toda la ventana (no solo el área del calendario), por encima de la shell.

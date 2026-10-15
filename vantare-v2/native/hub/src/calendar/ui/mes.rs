@@ -120,13 +120,7 @@ pub(super) fn render(cal: &mut Calendar, cx: &mut Context<Calendar>) -> Div {
             )),
         )
         .when(!compact, |bar| {
-            bar.child(t(
-                "semanas LMU, de martes a lunes",
-                12.0,
-                400,
-                skin.cap,
-                cx,
-            ))
+            bar.child(t("semanas LMU, de martes a lunes", 12.0, 400, skin.cap, cx))
         })
         .child(div().flex_1())
         .child(full_button(cal, cx))
@@ -205,9 +199,7 @@ pub(super) fn render(cal: &mut Calendar, cx: &mut Context<Calendar>) -> Div {
                     .flex_col()
                     .items_start()
                     .when(state == State::Now, |c| {
-                        c.border_l_2()
-                            .border_color(rgb(acc(cx)))
-                            .bg(acc_bg(cx))
+                        c.border_l_2().border_color(rgb(acc(cx))).bg(acc_bg(cx))
                     })
                     .child(disp(range, 15.0, skin.text1, cx))
                     .child(pill(label, tone, cx))
@@ -238,11 +230,7 @@ pub(super) fn render(cal: &mut Calendar, cx: &mut Context<Calendar>) -> Div {
                     c.border_2().border_color(rgb(acc(cx))).bg(acc_bg(cx))
                 })
                 .when(schedule.is_none(), |c| c.bg(chrome::stripe(cx)));
-            let ran = cal
-                .runs
-                .iter()
-                .filter(|r| zone.date(r.at) == day)
-                .count();
+            let ran = cal.runs.iter().filter(|r| zone.date(r.at) == day).count();
             let alerts = schedule
                 .filter(|_| state == State::Now)
                 .map_or(0, |s| day_alerts(cal, s, a.max(now), b));
@@ -262,15 +250,13 @@ pub(super) fn render(cal: &mut Calendar, cx: &mut Context<Calendar>) -> Div {
                     )),
             );
             if ran > 0 {
-                head = head.child(
-                    day_pill(
-                        chrome::tint(skin.ok, 0.13).into(),
-                        chrome::ok_text(cx),
-                        "check",
-                        ran,
-                        cx,
-                    ),
-                );
+                head = head.child(day_pill(
+                    chrome::tint(skin.ok, 0.13).into(),
+                    chrome::ok_text(cx),
+                    "check",
+                    ran,
+                    cx,
+                ));
             }
             if alerts > 0 {
                 head = head.child(day_pill(
@@ -298,12 +284,7 @@ pub(super) fn render(cal: &mut Calendar, cx: &mut Context<Calendar>) -> Div {
                         div()
                             .px(px(8.0))
                             .when(a + Duration::hours(24) <= now, |d| d.opacity(0.55))
-                            .child(chrome::mono(
-                                format!("{total} salidas"),
-                                10.5,
-                                skin.cap,
-                                cx,
-                            )),
+                            .child(chrome::mono(format!("{total} salidas"), 10.5, skin.cap, cx)),
                     );
                 }
             }
@@ -403,7 +384,11 @@ fn legend_bar(label: &str, special: bool, cx: &gpui::App) -> Div {
             label.to_owned(),
             11.0,
             600,
-            if special { 0x00ff_ffff } else { chrome::acct(cx) },
+            if special {
+                0x00ff_ffff
+            } else {
+                chrome::acct(cx)
+            },
             cx,
         ))
 }
@@ -497,7 +482,11 @@ fn event_bars(
                             name,
                             11.0,
                             600,
-                            if special { 0x00ff_ffff } else { chrome::acct(cx) },
+                            if special {
+                                0x00ff_ffff
+                            } else {
+                                chrome::acct(cx)
+                            },
                             cx,
                         )
                         .whitespace_nowrap()

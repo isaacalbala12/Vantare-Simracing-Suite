@@ -2,7 +2,7 @@
 use super::super::{
     Calendar, Event,
     alerts::{Alerts, Band, Days, LEADS, Mode},
-    chrome::{self, acc, acct, btn, btn_pri, disp, ib, icon, rule, t},
+    chrome::{self, acc, acct, btn, btn_text_pri, disp, ib, icon, rule, t},
     ics,
 };
 use crate::orbit;
@@ -163,8 +163,9 @@ fn check_card(
         .aria_selected(on)
         .tab_index(0)
         .flex()
-        .gap(px(12.0))
-        .p(px(12.0))
+        .gap(px(10.0))
+        .px(px(12.0))
+        .py(px(10.0))
         .rounded(px(9.0))
         .cursor_pointer()
         .border_1()
@@ -176,31 +177,65 @@ fn check_card(
         .bg(if on {
             chrome::acc_bg(cx)
         } else {
-            orbit::alpha(skin.hover)
+            gpui::hsla(0.0, 0.0, 0.0, 0.0)
         })
         .child(
             div()
-                .size(px(18.0))
+                .size(px(16.0))
                 .flex_none()
-                .mt(px(1.0))
+                .mt(px(2.0))
                 .rounded(px(4.0))
                 .flex()
                 .items_center()
                 .justify_center()
-                .border_1()
-                .border_color(if on {
-                    rgb(acc(cx)).into()
-                } else {
-                    orbit::alpha(skin.line2)
+                .when(on, |b| {
+                    b.bg(orbit::ramp(skin.button, 180.0))
+                        .child(icon("check", 12.0, 0x00ff_ffff))
                 })
-                .bg(rgb(if on { acc(cx) } else { skin.l2 }))
-                .when(on, |b| b.child(icon("check", 12.0, 0x00ff_ffff))),
+                .when(!on, |b| b.border_2().border_color(rgb(skin.text3))),
         )
         .child(
             div()
                 .flex_1()
-                .child(t(label.to_owned(), 13.0, 700, skin.text1, cx))
-                .child(t(hint.to_owned(), 12.0, 400, skin.text3, cx)),
+                .child(t(label.to_owned(), 13.0, 600, skin.text1, cx))
+                .child(t(hint.to_owned(), 12.5, 400, skin.text3, cx)),
+        )
+}
+
+/// Opción con interruptor dentro de una tarjeta (`.opt` con `.sw`).
+fn switch_card(
+    id: &'static str,
+    label: &str,
+    hint: &str,
+    on: bool,
+    cx: &gpui::App,
+) -> Stateful<Div> {
+    let skin = chrome::skin(cx);
+    div()
+        .id(id)
+        .role(gpui::Role::Switch)
+        .aria_label(label.to_owned())
+        .aria_selected(on)
+        .tab_index(0)
+        .flex()
+        .gap(px(10.0))
+        .px(px(12.0))
+        .py(px(10.0))
+        .rounded(px(9.0))
+        .cursor_pointer()
+        .border_1()
+        .border_color(if on {
+            chrome::acc_line(cx)
+        } else {
+            orbit::alpha(skin.line1)
+        })
+        .child(div().mt(px(2.0)).child(chrome::switch(on, cx)))
+        .child(
+            div()
+                .flex_1()
+                .min_w_0()
+                .child(t(label.to_owned(), 13.0, 600, skin.text1, cx))
+                .child(t(hint.to_owned(), 12.5, 400, skin.text3, cx)),
         )
 }
 
@@ -242,7 +277,12 @@ pub(super) fn band_box(
             .bg(rgb(skin.l1))
             .border_1()
             .border_color(orbit::alpha(skin.line2))
-            .child(chrome::bold_mono(minutes_txt(minutes), 12.5, skin.text1, cx))
+            .child(chrome::bold_mono(
+                minutes_txt(minutes),
+                12.5,
+                skin.text1,
+                cx,
+            ))
             .on_click(edit(cx, move |a| {
                 let mut band = band_or_default(a, &id);
                 if is_to {
@@ -286,9 +326,12 @@ pub(super) fn band_box(
         );
     }
     let mut mode_seg = chrome::seg_mini_group(cx);
-    for (index, (value, label)) in [(Mode::Each, "Cada salida"), (Mode::First, "Solo la primera")]
-        .into_iter()
-        .enumerate()
+    for (index, (value, label)) in [
+        (Mode::Each, "Cada salida"),
+        (Mode::First, "Solo la primera"),
+    ]
+    .into_iter()
+    .enumerate()
     {
         let id = id.clone();
         mode_seg = mode_seg.child(
@@ -443,7 +486,7 @@ pub(super) fn alerts_modal(cal: &mut Calendar, cx: &mut Context<Calendar>) -> im
             .map_or_else(|| format!("{id} (ya no está)"), |s| s.name.clone())
     };
 
-    let mut leads = div().flex().gap(px(6.0));
+    let mut leads = chrome::seg_mini_group(cx).mb(px(16.0)).self_start();
     for lead in LEADS {
         leads = leads.child(
             chrome::seg_button(
@@ -508,7 +551,7 @@ pub(super) fn alerts_modal(cal: &mut Calendar, cx: &mut Context<Calendar>) -> im
         )
         .child(chrome::section_title("Al avisar", None, cx))
         .child(
-            toggle(
+            switch_card(
                 "calendar-auto-launch",
                 &cal.launch_label().replace('»', "» automáticamente"),
                 "3 min antes de la salida, si el simulador está cerrado. Apagado por defecto.",
@@ -522,13 +565,38 @@ pub(super) fn alerts_modal(cal: &mut Calendar, cx: &mut Context<Calendar>) -> im
         )
         .child(chrome::section_title("Qué se avisa", None, cx))
         .child(
-            t(
-                "Series diarias: por franja horaria («de 20:00 a 23:00»), desde su ficha o su página. Eventos semanales y especiales: tanda a tanda, con la campana.",
-                12.5,
-                400,
-                skin.text2,
-                cx,
-            ),
+            div()
+                .flex()
+                .flex_col()
+                .gap(px(2.0))
+                .child(
+                    div()
+                        .flex()
+                        .flex_wrap()
+                        .gap(px(4.0))
+                        .child(t("Series diarias:", 12.0, 700, skin.text2, cx))
+                        .child(t(
+                            "por franja horaria («de 20:00 a 23:00»), desde su ficha o su página.",
+                            12.0,
+                            400,
+                            skin.cap,
+                            cx,
+                        )),
+                )
+                .child(
+                    div()
+                        .flex()
+                        .flex_wrap()
+                        .gap(px(4.0))
+                        .child(t(
+                            "Eventos semanales y especiales:",
+                            12.0,
+                            700,
+                            skin.text2,
+                            cx,
+                        ))
+                        .child(t("tanda a tanda.", 12.0, 400, skin.cap, cx)),
+                ),
         );
 
     // Vista previa de cómo llega el aviso.
@@ -546,51 +614,44 @@ pub(super) fn alerts_modal(cal: &mut Calendar, cx: &mut Context<Calendar>) -> im
             })
     });
     let (sample_name, sample_track, sample_race) = sample.unwrap_or_default();
-    let preview = chrome::card(cx)
+    let sample_at = schedule
+        .as_ref()
+        .and_then(|s| {
+            s.series
+                .iter()
+                .find(|x| alerts.band(&x.id).is_some())
+                .or_else(|| s.series.first())
+                .and_then(|series| s.next_start(series, now))
+        })
+        .map(|at| zone.hm(at))
+        .unwrap_or_default();
+    let band_txt = schedule
+        .as_ref()
+        .and_then(|s| {
+            s.series
+                .iter()
+                .find_map(|x| alerts.band(&x.id).map(|b| (x, b)))
+        })
+        .map(|(_, b)| format!(" · tu franja {}–{}", minutes_txt(b.from), minutes_txt(b.to)))
+        .unwrap_or_default();
+    let preview = div()
         .flex_none()
-        .p(px(14.0))
-        .gap(px(10.0))
-        .child(
-            div()
-                .flex()
-                .items_start()
-                .gap(px(12.0))
-                .child(
-                    div()
-                        .size(px(40.0))
-                        .flex_none()
-                        .rounded(px(9.0))
-                        .flex()
-                        .items_center()
-                        .justify_center()
-                        .bg(chrome::acc_bg(cx))
-                        .child(chrome::bold_mono(
-                            format!("{}'", alerts.lead_min),
-                            13.0,
-                            chrome::acct(cx),
-                            cx,
-                        )),
-                )
-                .child(
-                    div()
-                        .flex_1()
-                        .min_w_0()
-                        .child(t(
-                            format!("{sample_name} sale en {} min", alerts.lead_min),
-                            13.5,
-                            700,
-                            skin.text1,
-                            cx,
-                        ))
-                        .child(t(
-                            format!("{sample_track} · carrera {sample_race} min"),
-                            12.0,
-                            400,
-                            skin.text2,
-                            cx,
-                        )),
-                ),
-        );
+        .p(px(18.0))
+        .rounded(px(12.0))
+        .mb(px(4.0))
+        .bg(gpui::linear_gradient(
+            135.0,
+            gpui::linear_color_stop(rgb(0x1D_3557), 0.0),
+            gpui::linear_color_stop(rgb(0x3A_2140), 1.0),
+        ))
+        .child(chrome::windows_toast(
+            &format!("{sample_name} sale a las {sample_at}"),
+            &format!(
+                "{sample_track} · carrera {sample_race} min{band_txt}. Si no llegas, la siguiente sale unos minutos después."
+            ),
+            alerts.lead_min,
+            cx,
+        ));
 
     let mut list = div().flex().flex_col();
     for band in &alerts.bands {
@@ -732,7 +793,7 @@ pub(super) fn alerts_modal(cal: &mut Calendar, cx: &mut Context<Calendar>) -> im
             )),
         )
         .child(
-            btn_pri("calendar-alerts-done", "Listo", false, cx).on_click(cx.listener(
+            btn_text_pri("calendar-alerts-done", "Guardar", cx).on_click(cx.listener(
                 |this, _, _, cx| {
                     this.escape(cx);
                 },
@@ -901,15 +962,12 @@ pub(super) fn ics_modal(cal: &mut Calendar, cx: &mut Context<Calendar>) -> impl 
             .mt(px(2.0))
             .rounded_full()
             .border_2()
-            .border_color(if on {
-                rgb(acc(cx))
-            } else {
-                rgb(skin.text3)
-            })
+            .border_color(if on { rgb(acc(cx)) } else { rgb(skin.text3) })
             .when(on, |d| {
-                d.flex().items_center().justify_center().child(
-                    div().size(px(6.0)).rounded_full().bg(rgb(acc(cx))),
-                )
+                d.flex()
+                    .items_center()
+                    .justify_center()
+                    .child(div().size(px(6.0)).rounded_full().bg(rgb(acc(cx))))
             })
     };
     let option = |id: &'static str, label: &str, hint: &str, on: bool, cx: &gpui::App| {
@@ -1050,13 +1108,7 @@ pub(super) fn ics_modal(cal: &mut Calendar, cx: &mut Context<Calendar>) -> impl 
                 .border_1()
                 .border_color(orbit::alpha(skin.line1))
                 .opacity(0.7)
-                .child(t(
-                    "Suscripción · próximamente",
-                    13.0,
-                    600,
-                    skin.text1,
-                    cx,
-                ))
+                .child(t("Suscripción · próximamente", 13.0, 600, skin.text1, cx))
                 .child(t(
                     "Se actualizaría sola cada semana; necesita servidor y cuenta.",
                     12.5,
@@ -1102,7 +1154,7 @@ pub(super) fn ics_modal(cal: &mut Calendar, cx: &mut Context<Calendar>) -> impl 
             )),
         )
         .child(
-            btn_pri("calendar-ics-download", "Descargar .ics", false, cx)
+            btn_text_pri("calendar-ics-download", "Descargar .ics", cx)
                 .on_click(cx.listener(|this, _, _, cx| this.download_ics(cx))),
         );
     modal(

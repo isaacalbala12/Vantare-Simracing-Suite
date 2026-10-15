@@ -3,8 +3,8 @@
 use super::super::{
     Calendar,
     chrome::{
-        self, acct, btn, btn_pri, class_chip, disp, ib, icon, mono, section_title, star, t,
-        tier, tint,
+        self, acct, btn, btn_pri, class_chip, disp, ib, icon, mono, section_title, star, t, tier,
+        tint,
     },
     clock::{day_name, duration_txt, in_txt},
     rows,
@@ -118,19 +118,12 @@ pub(super) fn phase_block(
                     rgb(skin.l3).into()
                 })
                 .when(race, |d| {
-                    d.border_1().border_color(chrome::acc_line(cx)).rounded(px(7.0))
+                    d.border_1()
+                        .border_color(chrome::acc_line(cx))
+                        .rounded(px(7.0))
                 })
                 .child(t(names[index], 11.0, 600, skin.text1, cx).whitespace_nowrap())
-                .child(
-                    t(
-                        text,
-                        11.0,
-                        400,
-                        skin.text2,
-                        cx,
-                    )
-                    .whitespace_nowrap(),
-                ),
+                .child(t(text, 11.0, 400, skin.text2, cx).whitespace_nowrap()),
         );
     }
     let lead_in = series.lead_in_min();
@@ -203,9 +196,16 @@ pub(super) fn render(
         };
         let alerted = cal.alerts.slot_at(&series.id, start);
         picks = picks.child(
-            chrome::pick_chip(("calendar-ficha-pick", index), label, Some(start) == at, alerted, cx).on_click(cx.listener(
-                move |this, _, _, cx| this.open_ficha(sid.clone(), Some(start), cx),
-            )),
+            chrome::pick_chip(
+                ("calendar-ficha-pick", index),
+                label,
+                Some(start) == at,
+                alerted,
+                cx,
+            )
+            .on_click(
+                cx.listener(move |this, _, _, cx| this.open_ficha(sid.clone(), Some(start), cx)),
+            ),
         );
     }
 
@@ -443,11 +443,7 @@ pub(super) fn render(
         )
         .child(favorite)
         .child(alert_block)
-        .child(
-            div()
-                .child(section_title("Reglas", None, cx))
-                .child(rules),
-        )
+        .child(div().child(section_title("Reglas", None, cx)).child(rules))
         .child(history)
         .when(tracerudp, |b| {
             b.child(
@@ -467,15 +463,13 @@ pub(super) fn render(
                         div()
                             .flex_1()
                             .min_w_0()
-                            .child(
-                                t(
-                                    "Este evento pide +tracerudp=3 en las opciones de lanzamiento.",
-                                    12.5,
-                                    700,
-                                    skin.text1,
-                                    cx,
-                                ),
-                            )
+                            .child(t(
+                                "Este evento pide +tracerudp=3 en las opciones de lanzamiento.",
+                                12.5,
+                                700,
+                                skin.text1,
+                                cx,
+                            ))
                             .child(t(
                                 format!(
                                     "Al lanzar {} la añadimos solo para esta sesión.",
@@ -536,19 +530,19 @@ pub(super) fn render(
                 .when_some(launch_at.filter(|l| *l > now), |f, launch| {
                     f.child(
                         btn("calendar-ficha-schedule", "", false, cx)
-                        .h(px(40.0))
-                        .px(px(18.0))
-                        .child(icon("clock", 15.0, skin.text1))
-                        .child(t(
-                            format!("Lanzar a las {}", zone.hm(launch)),
-                            14.0,
-                            500,
-                            skin.text1,
-                            cx,
-                        ))
-                        .on_click(cx.listener(move |this, _, _, cx| {
-                            this.arm_launch(&sid_launch, launch, cx);
-                        })),
+                            .h(px(40.0))
+                            .px(px(18.0))
+                            .child(icon("clock", 15.0, skin.text1))
+                            .child(t(
+                                format!("Lanzar a las {}", zone.hm(launch)),
+                                14.0,
+                                500,
+                                skin.text1,
+                                cx,
+                            ))
+                            .on_click(cx.listener(move |this, _, _, cx| {
+                                this.arm_launch(&sid_launch, launch, cx);
+                            })),
                     )
                 })
                 .child(
@@ -599,37 +593,29 @@ pub(super) fn render(
                 .child(t(format!("{kind}{license}"), 12.0, 400, skin.cap, cx).whitespace_nowrap()),
         )
         .child(
-            div()
-                .absolute()
-                .top(px(13.0))
-                .right(px(52.0))
-                .child(
-                    btn("calendar-ficha-serie", "Ver serie", true, cx)
-                        .bg(gpui::hsla(0.0, 0.0, 0.0, 0.0))
-                        .child(icon("chevron-right", 13.0, skin.text1))
-                        .on_click(
-                            cx.listener(move |this, _, _, cx| this.open_serie(sid_serie.clone(), cx)),
-                        ),
-                ),
+            div().absolute().top(px(13.0)).right(px(52.0)).child(
+                btn("calendar-ficha-serie", "Ver serie", true, cx)
+                    .bg(gpui::hsla(0.0, 0.0, 0.0, 0.0))
+                    .child(icon("chevron-right", 13.0, skin.text1))
+                    .on_click(
+                        cx.listener(move |this, _, _, cx| this.open_serie(sid_serie.clone(), cx)),
+                    ),
+            ),
         )
         .child(
-            div()
-                .absolute()
-                .top(px(12.0))
-                .right(px(12.0))
-                .child(
-                    ib(
-                        "calendar-ficha-close",
-                        "x",
-                        "Cerrar (Esc)",
-                        false,
-                        false,
-                        cx,
-                    )
-                    .on_click(cx.listener(|this, _, _, cx| {
-                        this.escape(cx);
-                    })),
-                ),
+            div().absolute().top(px(12.0)).right(px(12.0)).child(
+                ib(
+                    "calendar-ficha-close",
+                    "x",
+                    "Cerrar (Esc)",
+                    false,
+                    false,
+                    cx,
+                )
+                .on_click(cx.listener(|this, _, _, cx| {
+                    this.escape(cx);
+                })),
+            ),
         )
         .child(
             div()
@@ -647,8 +633,20 @@ pub(super) fn render(
                                 .flex()
                                 .gap(px(6.0))
                                 .mt(px(6.0))
-                                .child(t(series.track_short().to_owned(), 13.0, 700, skin.text2, cx))
-                                .child(t(series.track_layout().to_owned(), 13.0, 400, skin.text3, cx)),
+                                .child(t(
+                                    series.track_short().to_owned(),
+                                    13.0,
+                                    700,
+                                    skin.text2,
+                                    cx,
+                                ))
+                                .child(t(
+                                    series.track_layout().to_owned(),
+                                    13.0,
+                                    400,
+                                    skin.text3,
+                                    cx,
+                                )),
                         )
                         .child(
                             div()

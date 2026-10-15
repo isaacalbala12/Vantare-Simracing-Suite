@@ -124,7 +124,13 @@ pub(super) fn card(cal: &Calendar, readonly: bool, cx: &mut Context<Calendar>) -
                 })),
         )
         .when(!compact, |bar| {
-            bar.child(t("mar → lun, como publica LMU", 12.0, 400, skin.cap, cx).ml(px(4.0)))
+            bar.child(div().w(px(100.0)).flex_none().ml(px(4.0)).child(t(
+                "mar → lun, como publica LMU",
+                12.0,
+                400,
+                skin.cap,
+                cx,
+            )))
         })
         .child(div().flex_1())
         .child(full_button(cal, cx))
@@ -159,14 +165,18 @@ pub(super) fn card(cal: &Calendar, readonly: bool, cx: &mut Context<Calendar>) -
                 &format!("LMU aún no ha publicado la semana {next_title}"),
                 "Suele llegar el lunes por la mañana. La buscamos sola cada 15 minutos; tus favoritas y avisos pasan a la nueva semana sin hacer nada.",
                 vec![
-                    btn("calendar-week-back", &format!("Volver a {back}"), false, cx)
+                    btn("calendar-week-back", "", false, cx)
+                        .aria_label(format!("Volver a {back}"))
                         .child(icon("chevron-left", 15.0, skin.text1))
+                        .child(t(format!("Volver a {back}"), 13.0, 500, skin.text1, cx))
                         .on_click(cx.listener(|this, _, _, cx| {
                             this.ui.week = (this.ui.week - 1).max(-1);
                             cx.notify();
                         })),
-                    btn("calendar-week-refresh", "Buscar ahora", false, cx)
+                    btn("calendar-week-refresh", "", false, cx)
+                        .aria_label("Buscar ahora")
                         .child(icon("refresh", 15.0, skin.text1))
+                        .child(t("Buscar ahora", 13.0, 500, skin.text1, cx))
                         .on_click(cx.listener(|this, _, _, cx| this.refresh(cx))),
                 ],
                 cx,
@@ -359,7 +369,6 @@ fn legend(cx: &gpui::App) -> Div {
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(super) enum Chip {
-    Plain,
     Fav,
     Bell,
     Next,
@@ -367,6 +376,11 @@ pub(super) enum Chip {
 
 /// Hora pequeña de una tanda (`.tm`).
 pub(super) fn time_chip(label: &str, kind: Chip, cx: &gpui::App) -> Div {
+    time_chip_sized(label, kind, false, cx)
+}
+
+/// `.tm` en su tamaño de lista (Mis carreras): 22 px y mono de 11 px.
+pub(super) fn time_chip_sized(label: &str, kind: Chip, big: bool, cx: &gpui::App) -> Div {
     let skin = chrome::skin(cx);
     let (bg, fg, ring): (gpui::Background, u32, Option<gpui::Hsla>) = match kind {
         Chip::Bell => (orbit::ramp(skin.button, 180.0), 0x00ff_ffff, None),
@@ -376,25 +390,20 @@ pub(super) fn time_chip(label: &str, kind: Chip, cx: &gpui::App) -> Div {
             skin.text1,
             Some(orbit::alpha(skin.text2)),
         ),
-        Chip::Plain => (
-            rgb(skin.l2).into(),
-            skin.text2,
-            Some(orbit::alpha(skin.line1)),
-        ),
     };
     div()
-        .h(px(18.0))
+        .h(px(if big { 22.0 } else { 18.0 }))
         .flex_none()
         .flex()
         .items_center()
         .gap(px(3.0))
-        .px(px(4.0))
+        .px(px(if big { 5.0 } else { 4.0 }))
         .rounded(px(5.0))
         .bg(bg)
         .when_some(ring, |c, ring| c.border_1().border_color(ring))
         .when(kind == Chip::Bell, |c| c.child(icon("bell-fill", 9.0, fg)))
         .child(
-            orbit::mono_text(label.to_owned(), 10.5, fg, cx)
+            orbit::mono_text(label.to_owned(), if big { 11.0 } else { 10.5 }, fg, cx)
                 .when(kind == Chip::Next, |s| {
                     s.font_weight(gpui::FontWeight(700.0))
                 })

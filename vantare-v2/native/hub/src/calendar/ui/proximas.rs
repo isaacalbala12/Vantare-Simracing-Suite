@@ -2,8 +2,9 @@
 use super::super::{
     Calendar, Health,
     chrome::{
-        self, Tone, acc, acc_bg, acc_line, bold_mono, btn, btn_pri, cap, center_message,
-        class_chip, class_dot, disp, group_row, ib, icon, mono, pill, star, t, tier, tint,
+        self, Tone, acc, acc_bg, acc_line, bold_mono, btn, btn_pri, btn_text_pri, cap,
+        center_message, class_chip, class_dot, disp, group_row, ib, icon, mono, pill, star, t,
+        tier, tint,
     },
     clock::{self, Zone, countdown, duration_txt, in_txt},
     model::Series,
@@ -43,7 +44,7 @@ pub(super) fn render(cal: &mut Calendar, cx: &mut Context<Calendar>) -> Div {
     if health == Health::Loading {
         return page
             .child(hero_skeleton(compact, cx))
-            .child(board_skeleton(cx));
+            .child(board_skeleton(compact, cx));
     }
     if health == Health::Missing {
         return missing(cal, cx);
@@ -87,8 +88,35 @@ fn hero_skeleton(compact: bool, cx: &gpui::App) -> Div {
         .child(orbit::skeleton(0.0, 44.0, cx).w(px(180.0)))
 }
 
-fn board_skeleton(cx: &gpui::App) -> Div {
-    let mut card = chrome::card(cx).flex_1();
+fn board_skeleton(compact: bool, cx: &gpui::App) -> Div {
+    let skin = chrome::skin(cx);
+    let (pad, gap) = if compact { (12.0, 10.0) } else { (16.0, 12.0) };
+    let mut card = chrome::card(cx).flex_1().child(
+        div()
+            .flex_none()
+            .flex()
+            .items_center()
+            .px(px(16.0))
+            .py(px(12.0))
+            .child(orbit::caps("Salidas", 13.0, skin.text1, cx)),
+    );
+    card = card.child(
+        div()
+            .h(px(30.0))
+            .flex_none()
+            .flex()
+            .items_center()
+            .gap(px(gap))
+            .px(px(pad))
+            .border_t_1()
+            .border_b_1()
+            .border_color(orbit::alpha(skin.line1))
+            .child(div().w(px(34.0)).flex_none())
+            .child(cap("Serie", skin.cap, cx).flex_1())
+            .child(cap("Clases", skin.cap, cx).w(px(104.0)).flex_none())
+            .child(cap("Próxima", skin.cap, cx).w(px(92.0)).flex_none())
+            .child(div().flex_1()),
+    );
     for _ in 0..9 {
         card = card.child(
             div()
@@ -96,10 +124,27 @@ fn board_skeleton(cx: &gpui::App) -> Div {
                 .flex_none()
                 .flex()
                 .items_center()
-                .gap(px(14.0))
-                .px(px(16.0))
-                .child(orbit::skeleton(0.0, 12.0, cx).w(px(220.0)))
-                .child(orbit::skeleton(0.0, 12.0, cx).w(px(90.0)))
+                .gap(px(gap))
+                .px(px(pad))
+                .border_b_1()
+                .border_color(orbit::alpha(skin.line1))
+                .child(div().w(px(34.0)).flex_none())
+                .child(
+                    div()
+                        .flex_1()
+                        .flex()
+                        .flex_col()
+                        .gap(px(6.0))
+                        .child(orbit::skeleton(0.0, 10.0, cx).w(px(140.0)))
+                        .child(orbit::skeleton(0.0, 8.0, cx).w(px(90.0))),
+                )
+                .child(orbit::skeleton(0.0, 10.0, cx).w(px(104.0)).flex_none())
+                .child(
+                    orbit::skeleton(0.0, 10.0, cx)
+                        .w(px(54.0))
+                        .mr(px(38.0))
+                        .flex_none(),
+                )
                 .child(orbit::skeleton(0.0, 22.0, cx).flex_1()),
         );
     }
@@ -560,6 +605,7 @@ fn board(cal: &Calendar, compact: bool, cx: &mut Context<Calendar>) -> Div {
         .py(px(12.0))
         .child(
             div()
+                .when(!compact, |title| title.w(px(96.0)))
                 .child(orbit::caps("Salidas", 13.0, skin.text1, cx))
                 .when(!compact, |title| {
                     title.child(
@@ -835,7 +881,14 @@ fn series_row(
         }
         has_future |= *start >= now;
         let is_next = row.next == Some(*start);
-        let alerted = cal.alerts.cause(schedule, series, *start).is_some();
+        // Con franja, solo la próxima salida cubierta enseña la campana; las demás
+        // quedan dentro de la banda y las tandas sueltas con aviso, marcadas.
+        let covered = cal.alerts.cause(schedule, series, *start).is_some();
+        let alerted = if band.is_some() {
+            cal.alerts.slot_at(&series.id, *start) || (is_next && covered)
+        } else {
+            covered
+        };
         timeline = timeline.child(start_pill(
             zone.hm(*start),
             *start < now,
@@ -1129,8 +1182,15 @@ pub(super) fn missing(cal: &Calendar, cx: &mut Context<Calendar>) -> Div {
         skin.err,
         "No hemos podido descargar el horario",
         "Hace falta conexión la primera vez. En cuanto lo descarguemos queda guardado en este equipo y el calendario funciona sin internet.",
-        vec![btn_pri("calendar-missing-retry", "Reintentar", false, cx)
-            .on_click(cx.listener(|this, _, _, cx| this.refresh(cx)))],
+        vec![
+            btn_text_pri("calendar-missing-retry", "", cx)
+                .gap(px(8.0))
+                .child(icon("refresh", 15.0, 0x00ff_ffff))
+                .child(
+                    orbit::text("Reintentar", 13.0, 600, 0x00ff_ffff, cx).whitespace_nowrap(),
+                )
+                .on_click(cx.listener(|this, _, _, cx| this.refresh(cx))),
+        ],
         cx,
     ))
 }

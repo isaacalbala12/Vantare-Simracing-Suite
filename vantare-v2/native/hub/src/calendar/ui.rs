@@ -214,6 +214,9 @@ impl Calendar {
                     )
                 },
             ),
+            (Health::Loading, None) => {
+                "Comprobando el horario de las carreras online de LMU".into()
+            }
             (_, Some(schedule)) => {
                 let per_hour: f64 = schedule
                     .series
@@ -252,21 +255,46 @@ impl Calendar {
     pub(crate) fn page_header(&self, adapt: orbit::Adapt, cx: &mut Context<Self>) -> Div {
         let compact = adapt.width < 1400.0;
         let skin = chrome::skin(cx);
-        let has = self.schedule().is_some() || self.last_week.is_some();
+        let has = self.schedule().is_some()
+            || self.last_week.is_some()
+            || self.health() == Health::Loading;
         let alerts = self.alerts.count();
         div()
             .flex_none()
             .flex()
             .items_center()
             .gap(px(8.0))
-            .child(orbit::neo_page_header("Calendario LMU", &self.subtitle(), adapt, cx).flex_1())
+            .child(
+                div()
+                    .flex_1()
+                    .min_w(px(160.0))
+                    .child(
+                        chrome::disp(
+                            "Calendario LMU",
+                            if compact { 24.0 } else { 28.0 },
+                            skin.text1,
+                            cx,
+                        )
+                        .truncate(),
+                    )
+                    .when(adapt.show_optional(), |block| {
+                        block.child(
+                            t(self.subtitle(), 13.0, 400, skin.text3, cx)
+                                .mt(px(6.0))
+                                .whitespace_nowrap()
+                                .truncate(),
+                        )
+                    }),
+            )
             .when(has, |header| {
                 header
                     .child(
                         btn("calendar-alerts", "", false, cx)
                             .aria_label("Avisos")
                             .child(chrome::icon("v-bell", 16.0, skin.text1))
-                            .when(!compact, |b| b.child(t("Avisos", 13.0, 500, skin.text1, cx)))
+                            .when(!compact, |b| {
+                                b.child(t("Avisos", 13.0, 500, skin.text1, cx))
+                            })
                             .child(pill(alerts.to_string(), Tone::Acc, cx))
                             .on_click(
                                 cx.listener(|this, _, _, cx| this.open_modal(Modal::Avisos, cx)),
@@ -287,7 +315,9 @@ impl Calendar {
                                 skin.text1,
                                 cx,
                             ))
-                            .on_click(cx.listener(|this, _, _, cx| this.open_modal(Modal::Ics, cx))),
+                            .on_click(
+                                cx.listener(|this, _, _, cx| this.open_modal(Modal::Ics, cx)),
+                            ),
                     )
             })
             .child(
@@ -385,16 +415,19 @@ impl Calendar {
             let week = current.and_then(|s| s.window().ok()).map(|(from, to)| {
                 clock::week_days(if health == Health::Expired { to } else { from })
             });
-            let title = week.map_or_else(String::new, |d| {
-                format!(
-                    "{} {} – {} {} {}",
-                    clock::day_name(d[0]),
-                    chrono::Datelike::day(&d[0]),
-                    clock::day_name(d[6]),
-                    chrono::Datelike::day(&d[6]),
-                    clock::month_name(d[6])
-                )
-            });
+            let title = week.map_or_else(
+                || "—".to_owned(),
+                |d| {
+                    format!(
+                        "{} {} – {} {} {}",
+                        clock::day_name(d[0]),
+                        chrono::Datelike::day(&d[0]),
+                        clock::day_name(d[6]),
+                        chrono::Datelike::day(&d[6]),
+                        clock::month_name(d[6])
+                    )
+                },
+            );
             // «hoy 08:02 · hace 11 h»; de otro día, solo «lun 12 · 08:01».
             let when = |ts: i64| {
                 DateTime::from_timestamp(ts, 0).map_or_else(
@@ -596,9 +629,12 @@ impl Calendar {
             );
         }
         body = body.child(
-            btn("calendar-rail-alerts", "Configurar avisos", true, cx)
+            btn("calendar-rail-alerts", "", true, cx)
+                .aria_label("Configurar avisos")
                 .mt(px(10.0))
                 .w_full()
+                .child(chrome::icon("i-ajustes", 15.0, skin.text1))
+                .child(t("Configurar avisos", 12.5, 600, skin.text1, cx))
                 .on_click(cx.listener(|this, _, _, cx| this.open_modal(Modal::Avisos, cx))),
         );
         orbit::RailSection::new("Tus avisos", "v-bell", body).action(t(
@@ -612,19 +648,43 @@ impl Calendar {
 
     fn rail_export(cx: &mut Context<Self>) -> orbit::RailSection {
         let skin = chrome::skin(cx);
+        let target = |id: &'static str,
+                      name: &'static str,
+                      glyph: &'static str,
+                      color: u32,
+                      cx: &mut Context<Self>| {
+            btn(id, "", true, cx)
+                .aria_label(name)
+                .flex_1()
+                .child(
+                    div()
+                        .size(px(15.0))
+                        .flex_none()
+                        .rounded(px(3.0))
+                        .flex()
+                        .items_center()
+                        .justify_center()
+                        .bg(gpui::rgb(color))
+                        .child(orbit::text(glyph, 9.0, 800, 0x00ff_ffff, cx)),
+                )
+                .child(t(name, 12.5, 500, skin.text1, cx))
+                .on_click(cx.listener(|this, _, _, cx| this.open_modal(Modal::Ics, cx)))
+        };
         let body = div()
             .flex()
             .flex_col()
             .gap(px(10.0))
             .child(t(
-                "Descarga tus favoritas en un archivo .ics y ábrelo con Google Calendar, Apple Calendar u Outlook.",
+                "Tus favoritas en Google, Apple u Outlook: descarga un archivo .ics y ábrelo en tu calendario.",
                 12.5, 400, skin.text3, cx,
             ))
             .child(
-                btn("calendar-rail-ics", "Descargar .ics", false, cx)
-                    .w_full()
-                    .child(chrome::icon("v-download", 15.0, skin.text1))
-                    .on_click(cx.listener(|this, _, _, cx| this.open_modal(Modal::Ics, cx))),
+                div()
+                    .flex()
+                    .gap(px(6.0))
+                    .child(target("calendar-rail-google", "Google", "G", 0x1A_73E8, cx))
+                    .child(target("calendar-rail-apple", "Apple", "A", 0x00_0000, cx))
+                    .child(target("calendar-rail-outlook", "Outlook", "O", 0x0F_6CBD, cx)),
             );
         orbit::RailSection::new("En tu calendario", "v-calendar", body)
     }

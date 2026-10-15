@@ -2,7 +2,7 @@
 use super::super::{
     Calendar, Series,
     alerts::Cause,
-    chrome::{self, acc, acc_bg, bold_mono, cap, center_message, mono, skin, t, tier},
+    chrome::{self, acc, acc_bg, bold_mono, cap, center_message, disp, mono, skin, t, tier},
     clock, rows,
 };
 use super::{fav_seg, full_button, span_seg};
@@ -73,9 +73,9 @@ pub(super) fn render(cal: &mut Calendar, cx: &mut Context<Calendar>) -> Div {
                     },
                     cx,
                 ))
-                .child(bold_mono(
+                .child(disp(
                     d.day().to_string(),
-                    15.0,
+                    17.0,
                     if past && !on { skin.text3 } else { skin.text1 },
                     cx,
                 ))
@@ -93,16 +93,13 @@ pub(super) fn render(cal: &mut Calendar, cx: &mut Context<Calendar>) -> Div {
         .px(px(16.0))
         .py(px(10.0))
         .child(chips)
-        .child(t(
-            format!(
-                "{total} salidas · {}",
-                zone.long(now)
-            ),
+        .child(div().w(px(96.0)).flex_none().child(t(
+            format!("{total} salidas · {}", zone.long(now)),
             12.0,
             400,
             skin.cap,
             cx,
-        ))
+        )))
         .child(div().flex_1())
         .child(full_button(cal, cx))
         .child(span_seg(cal, cx))

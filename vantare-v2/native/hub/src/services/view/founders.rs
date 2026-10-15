@@ -1,4 +1,4 @@
-use super::{Command, Remote, account_demo, purchase_disabled_reason};
+use super::{Area, Command, Remote, account_demo, purchase_disabled_reason};
 use crate::orbit;
 use gpui::{Context, div, prelude::*, px};
 

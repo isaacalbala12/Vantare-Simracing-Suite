@@ -1,3 +1,32 @@
+## VANTA-42 / #1620 · R3 · Checkout compartido (15/10/2026)
+
+Rama aislada `vantareapp/isa-1620-checkout-web`, base nightly
+`3f82af867321876c9bcca19703831d9da7a3fed5` (#1622 y #1633 incluidos).
+La [migración y runbook](../../billing/checkout-web-shared.md) llevan a código
+el guard de app/web: UUID antes de filas, tombstone, derecho activo, dedupe
+de familia y binding obligatorio. Edge exige guard v1. Venta sigue cerrada.
+La web incorpora master `d9f040a` sin promesas de prueba gratis.
+
+Docker propio con lock: 69 migraciones, 137 pgTAP y ocho carreras reales PASS.
+Control RED sin migración: 1/3 (doble compra y derecho activo no bloqueados);
+GREEN 3/3. Edge 617 PASS/0 FAIL/2 ignored; calidad 456 y superficie PASS.
+Fmt y lint de producción PASS; ocho avisos require-await preexistentes en tests
+contrastados contra la base, sin nuevos. Sin gates Rust por no afectar native.
+Web: 50 tests y 40 capturas PASS; E2E con procesador real y dobles documentado
+en su expediente. Evidencia completa `~/evidence/web-compra/r3-*`.
+
+Baja D1 manual obligatoria: #1622 no tiene transporte privado hacia Cloudflare.
+Pausar/drenar compra, borrar solo el UUID verificado y comprobar cero filas
+antes de cerrar la baja. Responsable de soporte pendiente de asignar.
+No se configura un endpoint destructivo nuevo ni se modifican secretos/productos.
+
+Entrega únicamente a los bares del Mac; SHA final, commits y verificación de
+refs en `~/orq/web-compra.buzon.md`. El orquestador publica backend y revisa.
+Sin GitHub/PR/CI remota ni despliegue, promoción, release o servicios reales.
+Siguiente: revisión conjunta backend/web, despliegue autorizado y sandbox;
+no se declara APTO ni lista para venta. Plane VANTA-42 sigue en curso;
+el orquestador actualiza tracker/issue con esta entrega.
+
 ## #1608 · R11 · Guarda y permisos de triage (15/10/2026)
 
 Base `1ac73ce20`; comparación con nightly `64c493e4f`. Solo cambian el fixture

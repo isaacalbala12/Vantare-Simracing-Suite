@@ -25,3 +25,10 @@ Esta recuperación es manual: no hay borrado ni reset automático en el Hub.
 El worker de #1542 prueba únicamente fixtures/HTTP loopback. No realiza estos
 pasos sobre datos reales, no consulta Polar/Clerk/Supabase y no acredita una
 reconciliación comercial real. Un estado remoto incierto requiere soporte.
+
+## Intento del servidor compartido con la web (VANTA-42 / #1620)
+
+Recuperar el archivo local no elimina el intento remoto. El guard compartido
+bloquea también otros periodos/canales de la misma familia y los leases
+caducados. Completar la [reconciliación del servidor](checkout-web-shared.md)
+antes de retirar el intento transitorio concreto; conservar binding y ledger.

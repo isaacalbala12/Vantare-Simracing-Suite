@@ -2,7 +2,7 @@
 # Uso (simulación por defecto; -Aplicar borra de verdad):
 #   pwsh -NoProfile -File native/scripts/limpiar-targets.ps1 -Raiz C:\VantareServer\targets,C:\VantareServer\wt -Dias 7
 # Un target es un directorio con el CACHEDIR.TAG que crea Cargo. Se busca hasta
-# -Profundidad niveles bajo cada raíz (worktree/vantare-v2/native/target = 4).
+# -Profundidad niveles bajo cada raíz (wt/<worktree>/vantare-v2/native/target/gates = 5).
 # Nunca borra un target con un build en marcha (su .cargo-lock está abierto),
 # ni enlaces/junctions, ni nada fuera de las raíces indicadas. Todo lo borrado
 # es regenerable compilando de nuevo.
@@ -10,7 +10,7 @@
 param(
     [Parameter(Mandatory)][string[]]$Raiz,
     [ValidateRange(1, 365)][int]$Dias = 7,
-    [ValidateRange(1, 6)][int]$Profundidad = 4,
+    [ValidateRange(1, 6)][int]$Profundidad = 5,
     [switch]$Aplicar
 )
 Set-StrictMode -Version Latest

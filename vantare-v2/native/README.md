@@ -371,8 +371,11 @@ marca el tiempo.
 Medido y no aplicado: `[profile.test] incremental = false` ahorra 2,2 GB y 20 s
 en frío pero recompilar tests tras editar pasa de 48 s a 78 s; `debug = 0` en los
 crates propios ahorra 0,9 GB y 5 s pero quita fichero/línea de las trazas.
-`cargo build -p vantare-hub` recompila ~25 crates frente a `--workspace` porque
-cambian las features unificadas (`resolver.feature-unification` aún es inestable).
+`cargo build -p vantare-hub` recompilaba ~25 crates frente a `--workspace` porque
+cambiaban las features unificadas (`resolver.feature-unification` aún es inestable);
+desde #1654 r3 hub declara `network` explícito, así que `-p vantare-hub` compila solo
+y ya no recompila services y sus dependientes al alternar (quedan las diferencias de
+`--all-targets` y `test-support`).
 
 ## Build para probar con Isaac (#1465)
 

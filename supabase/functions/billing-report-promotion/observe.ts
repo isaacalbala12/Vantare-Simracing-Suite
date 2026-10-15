@@ -51,6 +51,7 @@ export async function promotionCheckoutDiscount(
   readCheckout = readPolarCheckoutSession,
 ): Promise<string | null | { checkoutUrl: string }> {
   if (!enabled) return null;
+  if(!attemptId) throw new PromotionCheckoutError("promotion_attempt_required","Es necesario iniciar un intento de pago válido.",400);
   const args = {
     p_account: account,
     p_environment: environment,

@@ -24,10 +24,10 @@ insert into private.report_promotion_catalog values
  ('sandbox','pro','pro',599,399,'pro1','pro3','pro6'),('sandbox','plus','pro_plus',999,699,'plus1','plus3','plus6');
 insert into private.report_promotion_creators values('sandbox','pro','creator',2000,2,'2026-10-01'),('sandbox','plus','creator',2000,2,'2026-10-01');
 create function pg_temp.account(n int) returns uuid language sql as $$select ('15930000-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid$$;
-select is(public.report_promotion_checkout(pg_temp.account(1),'sandbox','pro','2026-10-26 19:00 Europe/Madrid'),'pro1','first month launch discount');
-select is(public.report_promotion_checkout(pg_temp.account(1),'sandbox','plus','2026-10-26 19:00 Europe/Madrid'),'plus1','Plus first month launch discount');
-select is(public.report_promotion_checkout(pg_temp.account(1),'sandbox','pro','2026-11-02 19:00 Europe/Madrid'),null::text,'no launch outside week');
-select is(public.report_promotion_checkout(pg_temp.account(1),'sandbox','annual','2026-10-27'),null::text,'annual catalog not eligible');
+select is(public.report_promotion_checkout(pg_temp.account(1),'sandbox','pro','2026-10-26 19:00 Europe/Madrid','00000000-0000-4000-8000-000000000039'),'pro1','first month launch discount');
+select is(public.report_promotion_checkout(pg_temp.account(40),'sandbox','plus','2026-10-26 19:00 Europe/Madrid','00000000-0000-4000-8000-000000000039'),'plus1','Plus first month launch discount');
+select is(public.report_promotion_checkout(pg_temp.account(1),'sandbox','pro','2026-11-02 19:00 Europe/Madrid','00000000-0000-4000-8000-000000000039'),null::text,'no launch outside week');
+select is(public.report_promotion_checkout(pg_temp.account(1),'sandbox','annual','2026-10-27','00000000-0000-4000-8000-000000000039'),null::text,'annual catalog not eligible');
 create function pg_temp.enroll(n int,product text default 'pro',started timestamptz default '2026-10-26 19:00 Europe/Madrid',discount text default 'pro1') returns void language plpgsql as $$begin
  insert into public.billing_subscriptions(user_id,provider,environment,provider_subscription_id,provider_product_id,status,current_period_start,current_period_end)
  values(pg_temp.account(n),'polar','sandbox','sub'||n,product,'active',started,private.report_promotion_months(started,1));
@@ -184,7 +184,7 @@ select throws_ok($$select public.report_promotion_checkout(pg_temp.account(1),'s
 select throws_ok($$select public.report_promotion_checkout_pending(pg_temp.account(1),'sandbox','2026-10-30')$$,'28000','account_deleted','P1-2 deleted account cannot read checkout recovery references');
 select ok(not public.report_promotion_claim((select id from private.report_promotion_changes where account_id=pg_temp.account(1) and applied_at is null and superseded_at is null),'00000000-0000-4000-8000-000000000003','2026-11-12'),'tombstone denies pending HTTP claim');
 select is((select count(*)::int from private.report_promotion_changes where account_id=pg_temp.account(1) and applied_at is not null),1,'deletion preserves financial trace');
-select is(public.report_promotion_checkout(pg_temp.account(2),'sandbox','plus','2026-10-30'),null::text,'existing customer cannot earn another first month');
+select is(public.report_promotion_checkout(pg_temp.account(2),'sandbox','plus','2026-10-30','00000000-0000-4000-8000-000000000039'),null::text,'existing customer cannot earn another first month');
 select public.report_promotion_observe(pg_temp.account(2),'sandbox','sub2','plus','2026-10-26 19:00 Europe/Madrid','2026-10-25','old');
 select is((select remote_discount from private.report_promotions where account_id=pg_temp.account(2)),'creator','stale webhook ignored');
 -- End of reward and creator windows: no fresh duration from repeated selection.
@@ -202,7 +202,7 @@ select throws_ok($$select public.report_promotion_checkout(pg_temp.account(11),'
 select is(public.report_promotion_checkout(pg_temp.account(11),'sandbox','pro','2026-10-30 00:31','00000000-0000-4000-8000-000000000012'),'pro1','P1-2 unused account right survives an expired reservation without remote checkout');
 select is((select count(*)::int from private.report_promotion_launch_uses where account_id=pg_temp.account(11)),1,'P1-2 rollover keeps a single account entitlement');
 select ok((select consumed_at is not null from private.report_promotion_launch_uses where account_id=pg_temp.account(5)),'P3-8 paid history consumes launch without an enrolled campaign');
-select is(public.report_promotion_checkout(pg_temp.account(5),'sandbox','pro','2026-10-30'),null::text,'P3-8 flag-off historical subscription cannot re-earn launch');
+select is(public.report_promotion_checkout(pg_temp.account(5),'sandbox','pro','2026-10-30','00000000-0000-4000-8000-000000000039'),null::text,'P3-8 flag-off historical subscription cannot re-earn launch');
 select pg_temp.report(6,'2026-11-02 19:00 Europe/Madrid'); select pg_temp.report(6,'2026-11-03 19:00 Europe/Madrid'); select pg_temp.report(6,'2026-11-09 19:00 Europe/Madrid');
 select public.report_promotion_prepare(pg_temp.account(6),'sandbox','2027-01-03');
 select is((select tier from private.report_promotions where account_id=pg_temp.account(6)),3,'P3-7 spam blocks upgrade while keeping granted tier');
@@ -321,5 +321,6 @@ select is((select discount from recovered_checkouts where n=22),'pro1','P2-9 rec
 select is((select discount from recovered_checkouts where n=23),'plus1','P2-9 recovered Plus receives its own launch price');
 select is(private.report_promotion_progress(pg_temp.account(22),'sandbox','2026-10-30 00:31')->>'last_error','promotion_checkout_recovered','P2-9 owner sees the recovery incident before any subscription exists');
 select is((select count(*)::int from private.report_promotion_launch_uses where account_id=pg_temp.account(22)),1,'P2-9 recovered attempt still shares one account right');
+select throws_ok($$select public.report_promotion_checkout(pg_temp.account(24),'sandbox','pro','2026-10-30')$$,'22023','promotion_attempt_required','P3-19 direct callers cannot obtain launch discount without reserving an attempt');
 select * from finish();
 rollback;

@@ -70,7 +70,8 @@ demás clientes.
 
 El derecho al primer mes pertenece a la cuenta/entorno durante la semana de
 lanzamiento. report_promotion_launch_uses conserva consumo, reserva y referencia
-remota incluso tras la limpieza de billing_checkout_attempts. El intento
+remota incluso tras la limpieza de billing_checkout_attempts. El RPC exige p_attempt y reserva siempre el beneficio antes de concederlo.
+El intento
 comercial caduca a los 30 minutos; eso no consume ni pierde el derecho.
 
 Una nueva solicitud espera el intento en vuelo. Al cumplirse los 30 minutos:

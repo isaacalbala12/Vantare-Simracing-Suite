@@ -226,6 +226,7 @@ returns text language plpgsql security definer set search_path='' as $$
 declare discount text; used private.report_promotion_launch_uses; prior public.billing_checkout_attempts;
 begin
  if private.lock_account_write(p_account) then raise sqlstate '28000' using message='account_deleted'; end if;
+ if p_attempt is null then raise sqlstate '22023' using message='promotion_attempt_required'; end if;
  if not private.report_promotion_eligible(p_now) then return null; end if;
  select launch_discount into discount from private.report_promotion_catalog where environment=p_environment and product_id=p_product;
  if not found then return null; end if;
@@ -249,12 +250,11 @@ begin
    if p_replaces is not null and p_replaces is distinct from used.attempt_id then
      raise sqlstate '55000' using message='promotion_checkout_pending';
    end if;
-   if p_attempt is null then raise sqlstate '55000' using message='promotion_checkout_pending'; end if;
    if used.remote_pending and coalesce(used.checkout_id,prior.provider_checkout_id) is null then
      perform public.report_promotion_failed(p_account,p_environment,'promotion_checkout_recovered',p_now);
    end if;
    update private.report_promotion_launch_uses set attempt_id=p_attempt,product_id=p_product,reserved_at=p_now,checkout_id=null,remote_pending=false where account_id=p_account and environment=p_environment;
- elsif p_attempt is not null then
+ else
    insert into private.report_promotion_launch_uses(account_id,environment,product_id,attempt_id,reserved_at) values(p_account,p_environment,p_product,p_attempt,p_now);
  end if;
  return discount;

@@ -152,7 +152,7 @@ Deno.test("first checkout is inert while disabled, then asks SQL with the inject
   );
   assertEquals(calls.length, 0);
   assertEquals(
-    await promotionCheckoutDiscount(admin, "a", "sandbox", "pro", now, true),
+    await promotionCheckoutDiscount(admin, "a", "sandbox", "pro", now, true, "attempt"),
     "launch1",
   );
   assertEquals(calls, [["report_promotion_checkout", {
@@ -160,6 +160,7 @@ Deno.test("first checkout is inert while disabled, then asks SQL with the inject
     p_environment: "sandbox",
     p_product: "pro",
     p_now: now.toISOString(),
+    p_attempt: "attempt",
   }]]);
 });
 Deno.test("launch checkout uses exactly one discount, disables trial and code stacking", async () => {

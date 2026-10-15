@@ -926,6 +926,9 @@ impl Remote {
         let mut profile_changed = false;
         let mut missing_profile = false;
         let failed = matches!(&reply, Reply::Error { .. });
+        // Una acción de email en vuelo deshabilita el formulario; un error de
+        // transporte no debe dejarlo así hasta pulsar «Volver».
+        let email_waiting = self.email.is_some() && self.inflight == Inflight::User;
         if let Reply::Error { message } = &reply
             && self.participation_pending.is_some()
         {
@@ -1012,6 +1015,9 @@ impl Remote {
                     self.editor.message = message;
                     self.editor.preview = None;
                 } else {
+                    if failed && email_waiting {
+                        self.email_failed(&message, cx);
+                    }
                     self.message = message;
                 }
             }

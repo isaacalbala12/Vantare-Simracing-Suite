@@ -163,6 +163,14 @@ impl Remote {
             form.message = message.into();
         }
     }
+    /// La petición de email volvió como error de transporte sin respuesta del
+    /// formulario: reactívalo para poder reintentar sin volver a empezar.
+    pub(super) fn email_failed(&mut self, message: &str, cx: &mut Context<Self>) {
+        if let Some(form) = &mut self.email {
+            form.set_enabled(true, cx);
+            form.message = message.into();
+        }
+    }
     pub(super) fn select_email(&mut self, mode: EmailMode, cx: &mut Context<Self>) {
         if self.working() {
             return;
@@ -484,6 +492,40 @@ mod tests {
                     remote.email.as_ref().expect("form").email.read(cx).enabled,
                     "IPC fallido: se puede reintentar"
                 );
+            });
+            crate::quit_headless_test(cx);
+        });
+    }
+
+    #[test]
+    fn transport_error_releases_the_email_form_for_another_attempt() {
+        gpui_platform::headless().run(|cx| {
+            let file = crate::document::tests::File::new();
+            let (send, requests) = mpsc::sync_channel(8);
+            let remote = cx.new(|cx| fixture(cx, send, file.path.parent().expect("root")));
+            remote.update(cx, |remote, cx| {
+                remote.select_email(EmailMode::SignInCode, cx);
+                remote.email_submit(cx);
+                assert!(matches!(
+                    requests.try_recv(),
+                    Ok(Command::AccountEmail { .. })
+                ));
+                assert!(
+                    !remote.email.as_ref().expect("form").email.read(cx).enabled,
+                    "la petición en vuelo deshabilita el formulario"
+                );
+                remote.complete(
+                    Reply::Error {
+                        message: "Conexión interrumpida".into(),
+                    },
+                    cx,
+                );
+                let form = remote.email.as_ref().expect("form");
+                assert!(
+                    form.email.read(cx).enabled,
+                    "el error de transporte reactiva el formulario"
+                );
+                assert_eq!(form.message, "Conexión interrumpida");
             });
             crate::quit_headless_test(cx);
         });

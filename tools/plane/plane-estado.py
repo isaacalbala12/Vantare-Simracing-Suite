@@ -29,6 +29,10 @@ class Parser(argparse.ArgumentParser):
         self.exit(2, "Error: argumentos inválidos; consulta --help.\n")
 
 
+# El vigilante del servidor (#1647) ignora los comentarios con esta firma.
+COMMENT_PREFIX = "[orquestador] "
+
+
 def parse_args(argv=None):
     parser = Parser(description=__doc__)
     parser.add_argument("tarea", help="VANTA-N")
@@ -165,7 +169,7 @@ def run(args, plane):
     if args.comentario is not None:
         try:
             plane.call(path + "comments/", "POST", {
-                "comment_html": "<p>" + html.escape(args.comentario).replace("\n", "<br>") + "</p>"})
+                "comment_html": "<p>" + html.escape(COMMENT_PREFIX + args.comentario).replace("\n", "<br>") + "</p>"})
         except PlaneError:
             raise PlaneError("Estado cambiado y verificado, pero falló el comentario; no se repite automáticamente.") from None
     return f"{args.tarea}: {current} → {args.estado} (verificado)"

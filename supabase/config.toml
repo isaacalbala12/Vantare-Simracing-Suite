@@ -61,3 +61,7 @@ verify_jwt = false
 # #1636 R2, queue-only authenticated maintenance worker; no scheduler configured.
 [functions.mail-cleanup]
 verify_jwt = false
+
+# #1636 R2, native OAuth + verified primary email enforced by handler.
+[functions.native-mail-consent]
+verify_jwt = false

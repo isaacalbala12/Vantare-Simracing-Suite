@@ -26,6 +26,7 @@ const recognizedFunctions = new Set([
   "mail-unsubscribe",
   "mail-webhook",
   "mail-cleanup",
+  "native-mail-consent",
   ...productionFunctions,
   ...testingPilotFunctions,
   ...testingAutomationFunctions,

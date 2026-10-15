@@ -187,3 +187,10 @@ borra los datos de espera y encola la retirada de Brevo. El POST RFC 8058
 No requiere login; el token firmado solo autoriza la dirección del enlace.
 RPC interna `mail_forget_waitlist(p_email)` solo disponible para service_role;
 no se concede al cliente OAuth ni anon. Borrar una cuenta sigue pasando por #1622.
+
+## R2 / P2-3: colector listo para onboarding y ajustes
+
+Endpoint `native-mail-consent` con OAuth nativo y dirección primaria verificada,
+permiso único y evidencia fija de servidor. Contrato de integración con #1637,
+Ajustes y backend de lista de espera: [CONSENT.md](CONSENT.md). #1637 no está en
+esta base; el enganche de esa UI y del repo web corresponde a sus ramas.

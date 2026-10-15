@@ -77,14 +77,21 @@ impl Form {
             return "Esperando…";
         }
         match self.stage {
+            EmailStage::Form if self.restarted && !self.password_mode() => "Pedir otro código",
             EmailStage::Form if matches!(self.mode, EmailMode::SignInPassword) => "Entrar",
-            EmailStage::Form if self.restarted => "Pedir otro código",
             EmailStage::Form => "Continuar",
             EmailStage::Code => "Verificar código",
             EmailStage::NewPassword => "Guardar contraseña",
             EmailStage::Consent => "Autorizar Vantare y entrar",
             EmailStage::HostedRequired | EmailStage::Authorizing => unreachable!(),
         }
+    }
+    /// Los modos con contraseña no piden un código nuevo al reiniciarse el acceso.
+    fn password_mode(&self) -> bool {
+        matches!(
+            self.mode,
+            EmailMode::SignInPassword | EmailMode::SignUpPassword
+        )
     }
     /// Mismo criterio que el pintado del botón: atenuado significa que no envía.
     pub(super) fn submit_enabled(&self, working: bool) -> bool {
@@ -207,7 +214,12 @@ impl Remote {
             if restarted {
                 form.clear_secrets(cx);
             }
-            form.message = message;
+            form.message = if restarted && form.password_mode() {
+                // En modo contraseña no hay ningún código que pedir otra vez.
+                "El acceso se reinició. Vuelve a introducir tu contraseña para continuar.".into()
+            } else {
+                message
+            };
             form.retry_notified = retry == 0;
             form.retry_at = Instant::now() + Duration::from_secs(retry.min(600));
             if error.is_none() && stage != EmailStage::Form {
@@ -608,6 +620,43 @@ mod tests {
                 );
                 assert!(matches!(requests.try_recv(), Ok(Command::Logout)));
                 assert!(!remote.navigation_access().verified);
+            });
+            crate::quit_headless_test(cx);
+        });
+    }
+
+    #[test]
+    fn password_mode_restart_never_asks_for_another_code() {
+        gpui_platform::headless().run(|cx| {
+            let file = crate::document::tests::File::new();
+            let (send, _requests) = mpsc::sync_channel(8);
+            let remote = cx.new(|cx| fixture(cx, send, file.path.parent().expect("root")));
+            remote.update(cx, |remote, cx| {
+                for (mode, label) in [
+                    (EmailMode::SignInPassword, "Entrar"),
+                    (EmailMode::SignUpPassword, "Continuar"),
+                ] {
+                    remote.select_email(mode, cx);
+                    remote.email.as_mut().expect("form").stage = EmailStage::Consent;
+                    remote.email_reply(
+                        Reply::Email {
+                            stage: EmailStage::Form,
+                            retry_after_seconds: 0,
+                            message: "El código ha caducado. Pide otro código.".into(),
+                            error: Some("expired".into()),
+                        },
+                        cx,
+                    );
+                    let form = remote.email.as_ref().expect("form");
+                    assert_eq!(form.stage, EmailStage::Form);
+                    assert!(form.restarted);
+                    assert_eq!(form.submit_label(false), label, "el botón encaja con el modo");
+                    assert_eq!(
+                        form.message,
+                        "El acceso se reinició. Vuelve a introducir tu contraseña para continuar."
+                    );
+                    assert!(!form.message.contains("Pide otro código"));
+                }
             });
             crate::quit_headless_test(cx);
         });

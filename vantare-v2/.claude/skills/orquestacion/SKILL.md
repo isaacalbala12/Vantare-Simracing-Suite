@@ -11,74 +11,118 @@ Esta skill fija **qué modelo hace qué** y **cómo se delega**. Complementa
 
 ## 1. Roles
 
-| Rol | Modelos | Para qué | Para qué NO |
+Decisión de Isaac del 15-oct-2026 ([#1645](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1645)):
+repartir el trabajo entre suscripciones para equilibrar su uso.
+
+| Rol | Modelo | Suscripción | Para qué |
 |---|---|---|---|
-| **Advisor** | Fable 5.1, GPT 6 Astra | Fijar la dirección al inicio de un plan grande. Desbloquear una duda seria cuando lo demás ha fallado. | Ejecutar, revisar entregas rutinarias, consultas "por si acaso". |
-| **Orquestador y optimizador** | Opus 5.5 | Planificar, repartir, redactar encargos, revisar **todo** lo que entregan los workers, optimizar (rendimiento, memoria, simplificación) y hacer el **diseño visual nuevo**. | Picar código a gran escala que un ejecutor puede hacer. |
-| **Ejecutor principal** | Sonnet 5.5 | Código a gran escala: features, portes, refactors acotados, tests, **réplicas y paridad visual** de diseños ya existentes. | Diseño visual nuevo, decisiones de arquitectura. |
-| **Worker barato** | DeepSeek V4.1 Flash (DeepSeek Harness / opencode-go); Muse Spark 1.3 (free, y cuando se agote, contributor) | Trabajo repetitivo, sencillo o mecánico: renombrados, fixtures, docs, búsquedas, tests triviales, migraciones en serie. | Arquitectura, seguridad, diseño, lógica delicada sin revisión. |
+| **Orquestador** | Opus 5.5 medio | Claude | Planificar, repartir, redactar encargos y decidir sobre las entregas con la revisión general de Codex. |
+| **Ejecutor principal** | Codex gpt-6.1-sol high | Codex | Backend, SQL, Rust, features, refactors acotados, arreglos de reviews, tests, réplica de diseños y rendimiento. |
+| **Ejecutor visual fino** | Sonnet 5.5 medio | Claude | Solo ajustes visuales finos cuando Codex no llegue y trabajo del calendario. |
+| **Diseño visual nuevo** | Opus 5.5 medio | Claude | Crear una dirección visual nueva y fijar la referencia para la implementación. |
+| **Revisor de seguridad** | DeepSeek V4.1 Flash en DeepSeek Harness | DeepSeek | Revisiones de cuentas, pagos, login y permisos. |
+| **Revisor general** | Codex gpt-6.1-sol high | Codex | Revisar corrección, alcance, simplicidad, rendimiento, tests y evidencia de las entregas. |
+| **Consulta difícil** | Fable 5.1 medio | Claude | Resolver una duda seria con una pregunta concreta; nunca en paralelo. |
+| **Trabajo mecánico** | DeepSeek V4.1 Flash en DeepSeek Harness | DeepSeek | Renombrados, fixtures, docs, búsquedas y migraciones repetitivas con alcance cerrado. |
+
+La seguridad se asigna a DeepSeek porque Codex rechaza esas revisiones como «posible riesgo de ciberseguridad».
 
 ### Nivel de razonamiento por modelo
 
 | Modelo | Razonamiento |
 |---|---|
-| Fable 5.1 | medio |
-| GPT 6 Astra | max |
-| Opus 5.5 | medio |
-| Sonnet 5.5 | medio |
-| DeepSeek V4.1 Flash | max |
-| Muse Spark 1.3 | max |
+| Codex gpt-6.1-sol | high, siempre explícito: `reasoningEffort=high` |
+| Opus 5.5 | medio: `effort=medium` |
+| Sonnet 5.5 | medio: `effort=medium` |
+| Fable 5.1 | medio: `effort=medium` |
+| DeepSeek V4.1 Flash | max; confirmar cómo fijarlo al instalar DeepSeek Harness |
 
-Fíjalo al lanzar cada worker o consulta. Si la vía de invocación no permite
+Fíjalo al lanzar cada worker o consulta. Nunca dejes el esfuerzo de Codex por
+defecto: es **low**. Si la vía de invocación no permite
 elegir el nivel, dilo en el informe en vez de asumir que se aplicó.
 
-Los advisors se consultan **solo si es estrictamente necesario**. Cada consulta
+Fable se consulta **solo si es estrictamente necesario**, nunca en paralelo
+con otros workers o consultas. Cada consulta
 debe llevar una pregunta concreta, el contexto mínimo y las opciones ya
 consideradas. Su respuesta orienta; la decisión la registra el orquestador.
 
 ## 2. Cómo elegir modelo
 
-1. ¿Es el arranque de un plan grande o una decisión difícil de revertir y hay
-   dudas reales de dirección? → un advisor. Si no, sigue.
-2. ¿Es optimizar, revisar, planificar o diseñar algo visual nuevo? → Opus.
-3. ¿Es implementar o replicar algo con alcance claro y volumen apreciable? → Sonnet.
-4. ¿Es repetitivo, mecánico o de bajo riesgo? → worker barato.
-5. ¿Es trivial y más rápido hacerlo que explicarlo? → lo hace el orquestador
+1. ¿Es planificar, repartir o decidir sobre entregas? → Opus.
+2. ¿Es diseño visual nuevo? → Opus; la réplica del diseño va a Codex.
+3. ¿Es una consulta difícil que sigue bloqueada? → Fable medio, en serie.
+4. ¿Es una revisión de seguridad de cuentas, pagos, login o permisos? → DeepSeek V4.1 Flash en DeepSeek Harness.
+5. ¿Es trabajo del calendario o visual fino al que Codex no llega? → Sonnet medio.
+6. ¿Es trabajo mecánico con alcance cerrado? → DeepSeek V4.1 Flash en DeepSeek Harness.
+7. Implementación, optimización y revisión general → Codex gpt-6.1-sol high.
+8. ¿Es trivial y más rápido hacerlo que explicarlo? → lo hace el orquestador
    directamente (regla de `AGENTS.md`).
 
 ### Modo ahorro de cuota
 
-Cuando quede **menos del 50 % de la cuota de uso del plan** de Claude:
-
-- Todo lo que encaje en "worker barato" va a DeepSeek o Muse Spark, aunque
-  normalmente lo haría Sonnet.
-- Sonnet se reserva para lo que un worker barato haría mal.
-- Los advisors solo para bloqueos.
-- Muse Spark: primero la variante free; al agotarse, contributor.
+Por defecto, todo el trabajo de ejecución y revisión general va a **Codex
+gpt-6.1-sol high**, sin esperar a que la cuota de Claude baje del 50 %.
+Se mantienen las asignaciones de seguridad y trabajo mecánico a DeepSeek.
+Claude se reserva para orquestar con Opus, diseño visual nuevo con Opus,
+calendario con Sonnet y consultas difíciles con Fable; Sonnet solo recibe
+además el visual fino cuando Codex no llegue.
 
 ## 3. Cómo invocar cada modelo
 
-**Vía preferente: T3 Code** (MCP `t3code` o CLI `t3cli`). Permite muchos
-workers en paralelo, cada uno con su modelo, esfuerzo y worktree:
-`t3cli start --stdin --provider <p> --model <m> --option <k>=<v> --worktree <ruta> --title "..."`,
-y `t3cli show|wait|transcript --thread <id>` para seguirlos.
+**Vía preferente para delegar: T3 Code**, herramienta `delegate_task`.
+Consulta `orchestrator_capabilities` para verificar proveedor, modelo y opciones
+disponibles. Cada worker recibe su encargo y worktree propios; no crees
+conversaciones de primer nivel para sustituir una delegación.
 
-| Modelo | Proveedor T3 Code y opciones |
+Ejemplo de ejecución o revisión general con Codex:
+
+```json
+{
+  "task": "<encargo con worktree, rama, base, rutas y checks>",
+  "target": {
+    "providerInstanceId": "codex",
+    "model": "gpt-6.1-sol",
+    "options": { "reasoningEffort": "high" }
+  },
+  "mode": "async",
+  "clientRequestId": "<identificador único del encargo>"
+}
+```
+
+| Modelo | `target` de `delegate_task` |
 |---|---|
-| Sonnet 5.5 (ejecutor) | `--provider claudeAgent --model claude-sonnet-5-5 --option effort=medium` |
-| Opus 5.5 | `--provider claudeAgent --model claude-opus-5-5 --option effort=medium` |
-| Fable 5.1 (advisor) | `--provider claudeAgent --model claude-fable-5-1 --option effort=medium` |
-| GPT 6 Astra (advisor) | `--provider codex --model gpt-6-astra --reasoning-effort max` |
-| DeepSeek V4.1 Flash (barato) | `--provider opencode --model opencode-go/deepseek-v4.1-flash --option variant=max --option agent=build` |
-| Muse Spark 1.3 (barato) | `--provider opencode` con su modelo de `opencode-go` (free o contributor), `variant=max` |
+| Codex gpt-6.1-sol | `providerInstanceId: "codex"`, `model: "gpt-6.1-sol"`, `options: { "reasoningEffort": "high" }` |
+| Opus 5.5 | `providerInstanceId: "claudeAgent"`, `model: "claude-opus-5-5"`, `options: { "effort": "medium" }` |
+| Sonnet 5.5 | `providerInstanceId: "claudeAgent"`, `model: "claude-sonnet-5-5"`, `options: { "effort": "medium" }` |
+| Fable 5.1 | `providerInstanceId: "claudeAgent"`, `model: "claude-fable-5-1"`, `options: { "effort": "medium" }`; nunca en paralelo |
 
-Alternativas: subagentes de Claude Code (`Agent`, `model: sonnet|opus|fable`;
-no permiten fijar el esfuerzo) y MCP `deepseek-harness` (`task_inbox` /
-`task_result`; **un solo worker a la vez**, solo bajo `C:/tmp`). El MCP
-`codex` falla en Windows (sandbox y prompts multilínea truncados): no usarlo.
+Conserva el `taskId` devuelto para `task_status` o `task_cancel`. Cada ronda de
+revisión usa un nuevo `delegate_task` y un `clientRequestId` distinto, estable
+si se reintenta esa misma ronda; incluye el encargo y los hallazgos previos.
 
-Si el MCP necesario no está disponible en la sesión, dilo y pide que se
-habilite; no sustituyas en silencio por otro modelo de otro rol.
+**DeepSeek V4.1 Flash: DeepSeek Harness.** **pendiente de instalar en el servidor: completar comando**.
+El repo solo conserva como antecedente el MCP `deepseek-harness` y sus nombres
+`task_inbox` / `task_result`, sin contrato de argumentos ni comando de lanzamiento
+verificado. Ese antecedente limita su uso a **un solo worker a la vez**, bajo
+`C:/tmp`; confirmar esas restricciones y el esfuerzo al instalarlo. No inventar
+un comando ni usar Opencode como sustituto.
+
+### Vías retiradas e historial útil
+
+- **Opencode / opencode-go y Muse Spark 1.3: retirados** del reparto vigente.
+  Antes se usaban `--provider opencode --model opencode-go/deepseek-v4.1-flash --option variant=max --option agent=build`
+  y Muse Spark free/contributor. Se conservan como historial.
+- GPT 6 Astra figuraba como advisor a esfuerzo max; queda fuera del reparto
+  vigente de #1645.
+- La vía anterior `t3cli start --stdin --provider <p> --model <m> --option <k>=<v> --worktree <ruta> --title "..."`
+  creaba hilos ordinarios; para subagentes se usa `delegate_task`.
+- Los subagentes de Claude Code (`Agent`, `model: sonnet|opus|fable`) no permitían
+  fijar el esfuerzo. El antiguo MCP `codex` fallaba en Windows por sandbox y
+  prompts multilínea truncados; esta limitación histórica no se aplica al
+  proveedor `codex` de T3 Code.
+
+Si la vía necesaria no está disponible en la sesión, informa del bloqueo al
+orquestador; no sustituyas en silencio por otro modelo o vía retirada.
 
 ## 4. Reglas de delegación
 

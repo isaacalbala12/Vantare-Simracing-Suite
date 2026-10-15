@@ -307,5 +307,19 @@ select pg_temp.invoice(21,'total-five21','2027-03-26 19:00 Europe/Madrid','pro1'
 select pg_temp.invoice(21,'total-six21','2027-04-26 19:00 Europe/Madrid','pro1',200);
 select is(public.report_promotion_prepare(pg_temp.account(21),'sandbox','2027-04-27')->>'remaining','0','P2-8 six settled renewals exhaust both tiers together');
 select is(public.report_promotion_prepare(pg_temp.account(21),'sandbox','2027-04-27')->>'discount_id',null::text,'P2-8 no seventh discounted renewal is granted');
+-- R4 P2-9: unknown remote results expire as reservations, not account rights.
+create temporary table recovered_checkouts(n int,discount text);
+select public.report_promotion_checkout(pg_temp.account(22),'sandbox','pro','2026-10-30','00000000-0000-4000-8000-000000000022');
+select public.report_promotion_checkout(pg_temp.account(23),'sandbox','pro','2026-10-30','00000000-0000-4000-8000-000000000023');
+insert into public.billing_checkout_attempts(user_id,attempt_id,checkout_key,environment,catalog_version,status,expires_at)
+ values(pg_temp.account(22),'00000000-0000-4000-8000-000000000022','pro_monthly','sandbox','fixture','creating','2026-10-30 00:30'),
+       (pg_temp.account(23),'00000000-0000-4000-8000-000000000023','pro_monthly','sandbox','fixture','uncertain','2026-10-30 00:30');
+select throws_ok($$select public.report_promotion_checkout(pg_temp.account(22),'sandbox','pro','2026-10-30 00:29','00000000-0000-4000-8000-000000000032')$$,'55000','promotion_checkout_pending','P2-9 unknown result remains reserved before timeout');
+select lives_ok($$insert into recovered_checkouts values(22,public.report_promotion_checkout(pg_temp.account(22),'sandbox','pro','2026-10-30 00:30','00000000-0000-4000-8000-000000000032'))$$,'P2-9 creating without remote ID recovers at the timeout');
+select lives_ok($$insert into recovered_checkouts values(23,public.report_promotion_checkout(pg_temp.account(23),'sandbox','plus','2026-10-30 00:31','00000000-0000-4000-8000-000000000033'))$$,'P2-9 uncertain without remote ID recovers in a new plan too');
+select is((select discount from recovered_checkouts where n=22),'pro1','P2-9 recovered account retains its launch price');
+select is((select discount from recovered_checkouts where n=23),'plus1','P2-9 recovered Plus receives its own launch price');
+select is(private.report_promotion_progress(pg_temp.account(22),'sandbox','2026-10-30 00:31')->>'last_error','promotion_checkout_recovered','P2-9 owner sees the recovery incident before any subscription exists');
+select is((select count(*)::int from private.report_promotion_launch_uses where account_id=pg_temp.account(22)),1,'P2-9 recovered attempt still shares one account right');
 select * from finish();
 rollback;

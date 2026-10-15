@@ -137,7 +137,7 @@ grant execute on function public.report_promotion_invoice(text,text,text,integer
 create table private.report_promotion_failures (
  account_id uuid not null references public.profiles(id), environment text not null check(environment in ('sandbox','production')),
  code text not null check(code in ('polar_discount_unmanaged','polar_discount_catalog_mismatch','polar_discount_subscription_changed',
- 'polar_discount_not_applied','polar_discount_invalid_response','polar_discount_http_failed','promotion_account_failed','promotion_not_authorized','promotion_repair_lease_lost','promotion_invoice_details_missing','promotion_initial_invoice_missing')),
+ 'polar_discount_not_applied','polar_discount_invalid_response','polar_discount_http_failed','promotion_account_failed','promotion_not_authorized','promotion_repair_lease_lost','promotion_invoice_details_missing','promotion_initial_invoice_missing','promotion_checkout_recovered','promotion_checkout_recovery_required','promotion_checkout_plan_change_pending')),
  attempts integer not null default 1, first_at timestamptz not null, last_at timestamptz not null, resolved_at timestamptz,
  primary key(account_id,environment)
 );
@@ -197,6 +197,7 @@ begin
  values(new.user_id,new.environment,new.provider_product_id,new.provider_subscription_id,new.provider_order_id,new.created_at,new.created_at)
  on conflict(account_id,environment) do update set consumed_at=coalesce(private.report_promotion_launch_uses.consumed_at,excluded.consumed_at),
   subscription_id=coalesce(private.report_promotion_launch_uses.subscription_id,excluded.subscription_id),order_id=coalesce(private.report_promotion_launch_uses.order_id,excluded.order_id);
+ update private.report_promotion_failures set resolved_at=clock_timestamp() where account_id=new.user_id and environment=new.environment and resolved_at is null and code like 'promotion_checkout_%';
  return new;
 end $$;
 create trigger report_promotion_launch_paid after insert or update on public.billing_orders for each row execute function private.report_promotion_mark_launch();
@@ -241,7 +242,7 @@ begin
    if used.attempt_id=p_attempt and used.product_id=p_product then return discount; end if;
    select * into prior from public.billing_checkout_attempts where user_id=p_account and attempt_id=used.attempt_id and environment=p_environment;
    if p_now<greatest(used.reserved_at+interval '30 minutes',prior.expires_at)
-    or (used.remote_pending and (p_replaces is distinct from used.attempt_id or coalesce(used.checkout_id,prior.provider_checkout_id) is null)) then
+    or (used.remote_pending and coalesce(used.checkout_id,prior.provider_checkout_id) is not null and p_replaces is distinct from used.attempt_id) then
      raise sqlstate '55000' using message='promotion_checkout_pending';
    end if;
    -- CAS under the B03 account lock: another replacement invalidates old proof.
@@ -249,6 +250,9 @@ begin
      raise sqlstate '55000' using message='promotion_checkout_pending';
    end if;
    if p_attempt is null then raise sqlstate '55000' using message='promotion_checkout_pending'; end if;
+   if used.remote_pending and coalesce(used.checkout_id,prior.provider_checkout_id) is null then
+     perform public.report_promotion_failed(p_account,p_environment,'promotion_checkout_recovered',p_now);
+   end if;
    update private.report_promotion_launch_uses set attempt_id=p_attempt,product_id=p_product,reserved_at=p_now,checkout_id=null,remote_pending=false where account_id=p_account and environment=p_environment;
  elsif p_attempt is not null then
    insert into private.report_promotion_launch_uses(account_id,environment,product_id,attempt_id,reserved_at) values(p_account,p_environment,p_product,p_attempt,p_now);
@@ -261,10 +265,10 @@ language plpgsql security definer set search_path='' as $$
 declare result jsonb;
 begin
  if private.lock_account_write(p_account) then raise sqlstate '28000' using message='account_deleted'; end if;
- select jsonb_build_object('attempt_id',u.attempt_id,'checkout_id',coalesce(u.checkout_id,a.provider_checkout_id),'product_id',u.product_id) into result
+ select jsonb_build_object('attempt_id',u.attempt_id,'checkout_id',coalesce(u.checkout_id,a.provider_checkout_id),'product_id',u.product_id,'retry_at',greatest(u.reserved_at+interval '30 minutes',a.expires_at)) into result
  from private.report_promotion_launch_uses u left join public.billing_checkout_attempts a on a.user_id=u.account_id and a.attempt_id=u.attempt_id and a.environment=u.environment
  where u.account_id=p_account and u.environment=p_environment and u.consumed_at is null and private.report_promotion_eligible(p_now)
- and p_now>=greatest(u.reserved_at+interval '30 minutes',a.expires_at);
+;
  return result;
 end $$;
 revoke all on function public.report_promotion_checkout(uuid,text,text,timestamptz,uuid,uuid),public.report_promotion_checkout_pending(uuid,text,timestamptz) from public,anon,authenticated;
@@ -315,7 +319,8 @@ end $$;
 
 create function private.report_promotion_progress(p_account uuid,p_environment text,p_now timestamptz)
 returns jsonb language sql stable security definer set search_path='' as $$
- select jsonb_build_object('accepted',
+ select coalesce((
+select jsonb_build_object('accepted',
   (select count(*) from public.testing_contributions c join public.testing_contribution_reviews r on r.contribution_id=c.id
    where c.account_id=p.account_id and r.decision='accepted' and c.state in ('accepted','fixed')
    and c.created_at>=p.subscribed_at and c.created_at < p.subscribed_at+interval '1080 hours'
@@ -325,7 +330,10 @@ returns jsonb language sql stable security definer set search_path='' as $$
  'last_error',(select f.code from private.report_promotion_failures f where f.account_id=p.account_id and f.environment=p.environment and f.resolved_at is null),'tier',p.tier,'first_refunded',p.first_refunded,'forfeited',p.forfeited,'active_discount',p.remote_discount,'applied_at',p.applied_at,
  'reward_until',p.reward_until,'reward_expires_at',p.reward_expires_at,'reward_expired',p.reward_expires_at<=p_now,'window_end',p.subscribed_at+interval '1080 hours')
  from private.report_promotions p where account_id=p_account and environment=p_environment
- and not exists(select 1 from public.account_identities i where i.account_id=p.account_id and i.deleted_at is not null)
+ ),(
+ select jsonb_build_object('accepted',0,'spam',0,'tier',0,'first_refunded',false,'forfeited',false,'active_discount',null,'last_error',f.code,'incident_at',f.last_at)
+ from private.report_promotion_failures f where f.account_id=p_account and f.environment=p_environment and f.resolved_at is null
+ )) where not exists(select 1 from public.account_identities i where i.account_id=p_account and i.deleted_at is not null)
 $$;
 
 -- A stable pending operation survives HTTP timeouts. Repeated webhooks never add months.

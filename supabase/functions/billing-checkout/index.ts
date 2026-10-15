@@ -1,4 +1,4 @@
-import { promotionCheckoutDiscount } from "../billing-report-promotion/observe.ts";
+import { PromotionCheckoutError, promotionCheckoutDiscount } from "../billing-report-promotion/observe.ts";
 import { getSupabaseAdmin } from "../_shared/supabase-admin.ts";
 import { type AuthResult, requireUserAuth } from "../_shared/auth.ts";
 import {
@@ -143,7 +143,8 @@ export async function handleCheckoutRequest(
       undefined,
       attemptId,
     );
-  } catch {
+  } catch (error) {
+    if(error instanceof PromotionCheckoutError) return errorResponse(error.code,error.message,error.status);
     // No Polar request and no attempt reservation yet: a transient policy lookup
     // must remain retryable with exactly the same attemptId.
     return errorResponse("promotion_unavailable", "Retry checkout", 503);

@@ -73,14 +73,26 @@ lanzamiento. report_promotion_launch_uses conserva consumo, reserva y referencia
 remota incluso tras la limpieza de billing_checkout_attempts. El intento
 comercial caduca a los 30 minutos; eso no consume ni pierde el derecho.
 
-Una nueva solicitud espera el intento en vuelo. Tras caducar, GET autenticado
-comprueba el checkout previo y su cuenta/producto: si está abierto, devuelve el
-mismo enlace sin crear otro; si Polar confirma expired/failed, traslada la
-reserva con comparación de la referencia anterior bajo lock de cuenta. Si está
-confirmed/succeeded, no crea otro: espera sus hechos comerciales. Un resultado
-incierto sin ID remoto requiere reconciliación/soporte y devuelve 503, nunca
-continúa en silencio a precio normal. La ausencia de una fila de espejo, por sí
-sola, no demuestra que un checkout remoto abierto no pueda pagarse.
+Una nueva solicitud espera el intento en vuelo. Al cumplirse los 30 minutos:
+si no se recibió ID remoto (creating/uncertain), libera esa reserva y conserva
+el derecho por cuenta para un intento nuevo, también al cambiar Pro→Plus.
+Lo hace bajo lock de cuenta y solo si aún no hay consumo/suscripción/orden.
+Registra promotion_checkout_recovered, visible al Owner aunque todavía no haya
+suscripción; el pago posterior resuelve la incidencia sin borrar su auditoría.
+Una respuesta tardía del intento anterior no recupera su reserva. Un checkout
+remoto huérfano sin ID/enlace entregado puede quedar en Polar; reconciliar sus
+hechos si llegasen, sin prometer atomicidad entre proveedores.
+
+Con ID remoto conocido se mantiene GET autenticado y comprobación de
+cuenta/producto: abierto para el mismo plan devuelve el mismo enlace;
+expired/failed permite reemplazarlo con CAS. Confirmed/succeeded espera los
+hechos comerciales y muestra mensaje específico. **Pro→Plus con checkout Pro
+abierto:** no crea otro ni reutiliza un enlace del plan equivocado; devuelve
+409 promotion_checkout_plan_change_pending, explica esperar su caducidad y
+conserva el primer mes. La incidencia es visible al Owner; tras expirar/fallar
+el checkout previo, un intento nuevo elige Plus. Fallos de comprobación o
+espera sin ID antes del plazo tienen mensaje y código propios, no 503 genérico
+permanente. La ausencia del espejo por sí sola no libera un ID conocido.
 
 La factura pagada consume la marca durable desde SQL incluso sin flag. El
 historial de suscripciones/órdenes también impide otra oferta, aunque el

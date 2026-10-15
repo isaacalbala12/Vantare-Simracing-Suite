@@ -140,8 +140,8 @@ CASES += [
  ('inbox-effect', "insert into public.billing_webhook_effects(inbox_id,effect_key) values('{inbox}','fixture')"),
  ('inbox-replay', "insert into public.billing_webhook_replay_audit(inbox_id,actor_id,reason_code,previous_status) values('{inbox}','fixture','fixture','received')"),
  ('tc-idempotency', "insert into public.testing_center_idempotency(aggregate_id,idempotency_key,payload_digest,from_state,to_state,origin) values('issue_{h}','fixture','{h}','reported','needs_info','orchestrator')"),
- ('admin-target', "insert into public.admin_audit_log(actor_account_id,action,target) values('{other}','get_account','{a}')"),
- ('admin-search-result', "insert into public.admin_audit_log(actor_account_id,action,target,after_value) values('{other}','search_accounts','search_accounts','[{{\"account_id\":\"{a}\"}}]')"),
+ ('admin-target', "insert into public.admin_audit_log(actor_account_id,action,target) values('{other}','set_tester','{a}')"),
+ ('admin-mutation-result', "insert into public.admin_audit_log(actor_account_id,action,target,after_value) values('{other}','set_tester','set_tester','[{{\"account_id\":\"{a}\"}}]')"),
 ]
 
 CASES.append(('calendar-publisher', "insert into public.race_schedule_publications(status,schedule,source_text,valid_from,series_count,created_by,published_by,published_at) values('published','{{}}','Fixture schedule',now(),1,'{other}','{a}',now())"))
@@ -171,4 +171,11 @@ CASES += [
  ('storage-bucket-child-object', "insert into storage.objects(bucket_id,name) values('{case}','{case}')"),
  ('storage-bucket-child-upload', "insert into storage.s3_multipart_uploads(id,upload_signature,bucket_id,key,version) values('{case}','fixture','{case}','{case}','fixture')"),
  ('storage-bucket-child-part', "insert into storage.s3_multipart_uploads_parts(upload_id,part_number,bucket_id,key,etag,version) values('{case}',1,'{case}','{case}','fixture','fixture')"),
+]
+
+# R7: descendants incorporated from nightly (#1612).
+CASES += [
+ ('pilot-profile', "insert into public.pilot_profiles(account_id,profile) values('{a}','{{\"public_name\":\"Fixture\"}}')"),
+ ('pilot-operation', "insert into pilot_private.operations(account_id,op_id,result) values('{a}','{new_id}','{{}}')"),
+ ('pilot-photo-ownerless', "insert into storage.objects(bucket_id,name) values('pilot-photos','{a}/{h}.jpg')"),
 ]

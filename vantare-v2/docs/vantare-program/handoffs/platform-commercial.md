@@ -1,3 +1,16 @@
+## #1608 · R7 · Barrera tras incorporar #1612 (15/10/2026)
+
+El gate de catálogo detectó dos tablas nuevas desde nightly: pilot_profiles ya
+hereda la barrera; pilot_private.operations queda cubierto por el mismo guard.
+Añadidas tres carreras reales: perfil, recibo y foto sin owner atribuida por
+UUID/hash.jpg. Borrado elimina perfil y recibos, y encola también esas fotos.
+GREEN: 105 rutas / 620 checks, catálogo con pilot_private y cobertura completa;
+cinco regresiones pgTAP de purga. No se rebaja el gate que detectó la omisión.
+Las antiguas carreras de audit de lectura pasan a mutación set_tester: las
+lecturas de borrados ahora tienen sus siete controles positivos/negativos propios.
+Paquete #1612 original verificado aparte: 90 pgTAP, concurrencia y 10 rollback.
+Evidencia `~/evidence/1608/r7/`; fuera de native, sin cambios Rust propios.
+
 ## #1608 · R7 · Storage gestionado (15/10/2026)
 
 R6-P1-1/P2-1: imagen original v1.70.3, sin variante. El preflight abort

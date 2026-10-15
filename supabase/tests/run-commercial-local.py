@@ -27,6 +27,7 @@ parser.add_argument('--admin-lock-order', action='store_true', help='Native admi
 parser.add_argument('--before-admin-lock-order', action='store_true', help='RED: omit r6 outer admin lock migration')
 parser.add_argument('--storage-buckets', action='store_true', help='Real Storage bucket ownership regression')
 parser.add_argument('--before-storage-buckets', action='store_true', help='RED: omit r6 bucket ownership barrier')
+parser.add_argument('--before-admin-deleted-reads', action='store_true', help='RED: omit r7 admin read fix')
 args=parser.parse_args()
 ROOT=pathlib.Path(__file__).resolve().parents[2]
 OUT=pathlib.Path(args.output).resolve(); OUT.mkdir(parents=True,exist_ok=True)
@@ -65,6 +66,7 @@ $$;
   if args.storage_schema:
    run('psql',*conn,'-c',"create role supabase_storage_admin noinherit bypassrls; grant usage on schema storage to supabase_storage_admin; grant all on all tables in schema storage to supabase_storage_admin;")
   for m in sorted((ROOT/'supabase/migrations').glob('*.sql')):
+   if args.before_admin_deleted_reads and 'admin_deleted_reads' in m.name: continue
    if args.before_storage_buckets and 'storage_buckets' in m.name: continue
    if args.before_admin_lock_order and 'admin_uuid_before_rows' in m.name: continue
    r5 = m.name.startswith('2026101415') and 'isa_1608_' in m.name
@@ -224,7 +226,7 @@ $$;
    'billing_webhook_inbox.test.sql','billing_commercial_projection.test.sql',
    'billing_reconciliation.test.sql','billing_subscription_lifecycle.test.sql',
    'billing_observability.test.sql','operational_access.test.sql']
-  for optional in ['commercial_tombstone.test.sql','commercial_data_boundary.test.sql','commercial_refunds.test.sql']:
+  for optional in ['commercial_tombstone.test.sql','commercial_data_boundary.test.sql','commercial_refunds.test.sql','commercial_admin_deleted.test.sql','commercial_storage_probe.test.sql','commercial_pilot_deletion.test.sql']:
    if (ROOT/'supabase/tests'/optional).exists(): suites.append(optional)
   for name in suites:
    try: result=run('psql',*conn,'-f',ROOT/'supabase/tests'/name)

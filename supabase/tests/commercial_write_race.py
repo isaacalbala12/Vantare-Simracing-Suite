@@ -33,7 +33,7 @@ select jsonb_pretty(jsonb_agg(x)) from (
    exists(select 1 from pg_trigger t where t.tgrelid=c.oid and t.tgname='a_account_write_barrier'
      and t.tgenabled='O') as protected
  from pg_class c join pg_namespace n on n.oid=c.relnamespace
- where n.nspname in ('public','private','storage') and c.relkind='r'
+ where n.nspname in ('public','private','storage','pilot_private') and c.relkind='r'
  order by 1) x;
 """)
     (out / 'inventory.json').write_text(inventory + '\n')
@@ -48,7 +48,7 @@ set search_path='' as $$ begin
 revoke all on function public.fixture_trace_write() from public,anon,authenticated,service_role;
 do $$ declare r record; begin
  for r in select c.oid from pg_class c join pg_namespace n on n.oid=c.relnamespace
-  where n.nspname in ('public','private','storage') and c.relkind='r'
+  where n.nspname in ('public','private','storage','pilot_private') and c.relkind='r'
  loop execute format('create trigger zz_fixture_trace after insert or update on %s for each row execute function public.fixture_trace_write()',r.oid::regclass); end loop;
 end $$;
 """)
@@ -190,7 +190,7 @@ with recursive expected(rel) as (
  'public.admin_audit_log']::regclass[])::oid
  union select c.conrelid from expected e join pg_constraint c on c.confrelid=e.rel
  join pg_class t on t.oid=c.conrelid join pg_namespace n on n.oid=t.relnamespace
- where c.contype='f' and n.nspname in ('public','private','storage'))
+ where c.contype='f' and n.nspname in ('public','private','storage','pilot_private'))
 select coalesce(string_agg(rel::regclass::text,','),'') from expected where not exists(
  select 1 from pg_trigger t where t.tgrelid=rel and t.tgname='a_account_write_barrier'
  and t.tgenabled='O' and (t.tgtype & 31)=31);

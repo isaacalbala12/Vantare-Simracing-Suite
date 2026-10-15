@@ -1,5 +1,39 @@
 -- #1593 / VANTA-39. Preparation only: empty catalogue, no activation or network.
 begin;
+-- Operational history only: no account, payload or provider error prose.
+create table private.billing_reconciliation_item_failures (
+ environment text not null check(environment in ('sandbox','production')),
+ resource text not null check(resource in ('subscriptions','refunds','disputes')),
+ item_key text not null check(item_key ~ '^[a-f0-9]{64}$'),
+ resource_id text check(resource_id is null or length(resource_id) between 1 and 200),
+ code text not null default 'reconciliation_item_failed' check(code='reconciliation_item_failed'),
+ attempts bigint not null default 1,
+ first_at timestamptz not null,
+ last_at timestamptz not null,
+ primary key(environment,resource,item_key)
+);
+alter table private.billing_reconciliation_item_failures enable row level security;
+revoke all on private.billing_reconciliation_item_failures from public,anon,authenticated,service_role;
+create function public.billing_reconciliation_item_failed(p_environment text,p_resource text,p_item_key text,p_resource_id text,p_now timestamptz default clock_timestamp()) returns void
+language plpgsql security definer set search_path='' as $$
+begin
+ if p_environment is null or p_environment not in ('sandbox','production')
+  or p_resource is null or p_resource not in ('subscriptions','refunds','disputes')
+  or p_item_key is null or p_item_key !~ '^[a-f0-9]{64}$'
+  or (p_resource_id is not null and length(p_resource_id) not between 1 and 200)
+  or p_now is null or not isfinite(p_now) then
+  raise sqlstate '22023' using message='invalid_reconciliation_incident';
+ end if;
+ insert into private.billing_reconciliation_item_failures(environment,resource,item_key,resource_id,first_at,last_at)
+ values(p_environment,p_resource,p_item_key,p_resource_id,p_now,p_now)
+ on conflict(environment,resource,item_key) do update set
+ attempts=private.billing_reconciliation_item_failures.attempts+1,
+ first_at=least(private.billing_reconciliation_item_failures.first_at,excluded.first_at),
+ last_at=greatest(private.billing_reconciliation_item_failures.last_at,excluded.last_at);
+end $$;
+alter function public.billing_reconciliation_item_failed(text,text,text,text,timestamptz) owner to postgres;
+revoke all on function public.billing_reconciliation_item_failed(text,text,text,text,timestamptz) from public,anon,authenticated;
+grant execute on function public.billing_reconciliation_item_failed(text,text,text,text,timestamptz) to service_role;
 -- Isaac's configurable policy. Snapshot only when a new tier is earned.
 create table private.report_promotion_policy (
  singleton boolean primary key default true check(singleton),

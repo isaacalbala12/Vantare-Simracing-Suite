@@ -331,5 +331,23 @@ select is(public.report_promotion_checkout(pg_temp.account(22),'sandbox','pro','
 select lives_ok($$select public.report_promotion_failed(pg_temp.account(23),'sandbox','promotion_checkout_owner_mismatch','2026-10-31')$$,'P3-24 owner mismatch is an allowlisted durable incident');
 select is(private.report_promotion_progress(pg_temp.account(23),'sandbox','2026-10-31')->>'last_error','promotion_checkout_owner_mismatch','P3-24 owner sees remote mismatch even without a subscription');
 
+-- P3-25 incidents are keyed by environment/resource/item, with no remote prose.
+select lives_ok($$select public.billing_reconciliation_item_failed('sandbox','subscriptions',repeat('a',64),'subscription-bad','2026-10-30')$$,'P3-25 record a failed subscription');
+select public.billing_reconciliation_item_failed('sandbox','subscriptions',repeat('a',64),'subscription-bad','2026-10-31');
+select is((select attempts from private.billing_reconciliation_item_failures where item_key=repeat('a',64) and environment='sandbox' and resource='subscriptions'),2::bigint,'P3-25 repeated item increments one durable row');
+select is((select first_at from private.billing_reconciliation_item_failures where item_key=repeat('a',64) and environment='sandbox' and resource='subscriptions'),'2026-10-30'::timestamptz,'P3-25 preserve the first failure time');
+select is((select last_at from private.billing_reconciliation_item_failures where item_key=repeat('a',64) and environment='sandbox' and resource='subscriptions'),'2026-10-31'::timestamptz,'P3-25 retain the last failure time');
+select public.billing_reconciliation_item_failed('production','subscriptions',repeat('a',64),'subscription-bad','2026-10-31');
+select public.billing_reconciliation_item_failed('sandbox','refunds',repeat('a',64),'refund-bad','2026-10-31');
+select public.billing_reconciliation_item_failed('sandbox','disputes',repeat('b',64),null,'2026-10-31');
+select is((select count(*)::int from private.billing_reconciliation_item_failures),4,'P3-25 environment/resource and unidentified items remain isolated');
+select throws_ok($$select public.billing_reconciliation_item_failed('sandbox','unknown',repeat('a',64),'bad')$$,'22023','invalid_reconciliation_incident','P3-25 rejects arbitrary resources');
+select throws_ok($$select public.billing_reconciliation_item_failed('sandbox','refunds','raw remote prose','bad')$$,'22023','invalid_reconciliation_incident','P3-25 requires a digest, never a raw payload');
+select ok(not has_function_privilege('authenticated','public.billing_reconciliation_item_failed(text,text,text,text,timestamptz)','execute'),'P3-25 authenticated users cannot forge incidents');
+select ok(not has_function_privilege('anon','public.billing_reconciliation_item_failed(text,text,text,text,timestamptz)','execute'),'P3-25 anonymous users cannot forge incidents');
+select ok(has_function_privilege('service_role','public.billing_reconciliation_item_failed(text,text,text,text,timestamptz)','execute'),'P3-25 service RPC is available');
+select ok(not has_table_privilege('service_role','private.billing_reconciliation_item_failures','insert'),'P3-25 service cannot bypass RPC');
+select ok((select relrowsecurity from pg_class where oid='private.billing_reconciliation_item_failures'::regclass),'P3-25 incident storage uses RLS');
+select is((select proowner::regrole::text from pg_proc where oid='public.billing_reconciliation_item_failed(text,text,text,text,timestamptz)'::regprocedure),'postgres','P3-25 explicit non-superuser runtime owner');
 select * from finish();
 rollback;

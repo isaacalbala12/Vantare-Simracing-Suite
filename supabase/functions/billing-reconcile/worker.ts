@@ -142,6 +142,32 @@ export async function reconcilePage(args: {
           /* Keep the page retryable even if the incident store is down. */
         }
       }
+      if (args.cursor.resource !== "orders") {
+        try {
+          const resourceId =
+            typeof item.id === "string" && item.id.length > 0 &&
+              item.id.length <= 200
+              ? item.id
+              : null;
+          // Stable across retries. An unidentified item keeps only a digest,
+          // never its raw payload or provider error message.
+          const itemKey = await computeWebhookPayloadHash(
+            resourceId === null ? JSON.stringify(item) : resourceId,
+          );
+          const { error } = await args.supabase.rpc(
+            "billing_reconciliation_item_failed",
+            {
+              p_environment: args.environment,
+              p_resource: args.cursor.resource,
+              p_item_key: itemKey,
+              p_resource_id: resourceId,
+            },
+          );
+          recorded = !error;
+        } catch {
+          /* The retained cursor retries the item and its incident on outage. */
+        }
+      }
       failed.push({
         resource_id: typeof item.id === "string" ? item.id : null,
         code: "reconciliation_item_failed",

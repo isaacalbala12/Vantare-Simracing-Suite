@@ -304,3 +304,83 @@ Deno.test("P3-18 a poisoned item does not abort the page and its retry cannot lo
   assertEquals(recovered.next, { resource: "subscriptions", page: 1 });
   assertEquals(invoices.size, 2);
 });
+
+Deno.test("P3-25 every failed non-order item has a durable sanitized incident and later items still run", async () => {
+  for (const resource of ["subscriptions", "refunds", "disputes"] as const) {
+    const incidents: Record<string, unknown>[] = [];
+    let reads = 0;
+    const supabase = {
+      rpc: (name: string, args: Record<string, unknown>) => {
+        if (name === "billing_reconciliation_item_failed") {
+          incidents.push(args);
+          return Promise.resolve({ data: null, error: null });
+        }
+        reads++;
+        return Promise.reject(
+          new Error("fixture transport with private remote prose"),
+        );
+      },
+    } as unknown as SupabaseClient;
+    const cursor = { resource, page: 1 };
+    const items = ["bad-one", "bad-two"].map((id) => ({
+      id,
+      order_id: "order",
+      status: "won",
+      created_at: "2026-10-30T12:00:00Z",
+      customer_email: "private@example.invalid",
+    }));
+    const result = await reconcilePage({
+      cursor,
+      page: { items, maxPage: 1 },
+      environment: "sandbox",
+      supabase,
+      processDeps: {
+        inbox: new MemoryWebhookInbox(),
+        loadMap: () => {
+          reads++;
+          throw new Error("fixture transport");
+        },
+      },
+    });
+    assertEquals(result.failed.length, 2);
+    assertEquals(result.failed.every((f) => f.incident_recorded), true);
+    assertEquals(result.next, cursor);
+    assertEquals(
+      incidents.map((i) => [i.p_environment, i.p_resource, i.p_resource_id]),
+      [
+        ["sandbox", resource, "bad-one"],
+        ["sandbox", resource, "bad-two"],
+      ],
+    );
+    assertEquals(
+      incidents.every((i) => /^[a-f0-9]{64}$/.test(String(i.p_item_key))),
+      true,
+    );
+    assertEquals(JSON.stringify(incidents).includes("private"), false);
+    assertEquals(reads >= 2, true);
+  }
+});
+
+Deno.test("P3-25 incident-store outage retains the cursor; unidentified items have stable separate digests", async () => {
+  const keys: string[] = [];
+  let outage = true;
+  const supabase = {
+    rpc: (_name: string, args: Record<string,unknown>) => {
+      keys.push(String(args.p_item_key));
+      assertEquals(args.p_resource_id,null);
+      return Promise.resolve({data:null,error:outage ? {code:"fixture"} : null});
+    },
+  } as unknown as SupabaseClient;
+  const args = {
+    cursor:{resource:"disputes" as const,page:3},environment:"sandbox" as const,supabase,
+    page:{items:[{status:"bad-one"},{status:"bad-two"}],maxPage:3},
+  };
+  const first = await reconcilePage(args);
+  assertEquals(first.failed.map(f=>f.incident_recorded),[false,false]);
+  assertEquals(first.next,args.cursor);
+  outage = false;
+  const retry = await reconcilePage(args);
+  assertEquals(retry.failed.map(f=>f.incident_recorded),[true,true]);
+  assertEquals(keys.slice(0,2),keys.slice(2));
+  assertEquals(keys[0] === keys[1],false);
+});

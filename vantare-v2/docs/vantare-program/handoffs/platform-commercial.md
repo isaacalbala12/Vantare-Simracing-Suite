@@ -21,7 +21,22 @@ Web: worktree `C:/VantareServer/wt/web-fechas`, rama
 Workers Builds publica cualquier rama en producción. SHA/comando de
 publicación se entregan en `C:/tmp/buzon/fechas.md`; publica el orquestador.
 
-Validación y SHA finales se registran en #1620/#1624 y el buzón al terminar.
+Código validado `e5f721735`; web local `2b79c36fed86e96cfa3bc6759a3e2064bdb30a17`.
+Mac temporal desde bundle local: catálogo **47 PASS**, suite Edge completa con
+tipos **613 PASS / 0 FAIL / 2 ignored** (integraciones externas no configuradas).
+Deno 2.9.6, entorno vacío y `TMPDIR=/tmp`, sin permiso de red. La resolución
+del package.json del monorepo y su lock exigía un SDK ausente de caché:
+solo en el worktree temporal se apartó package.json y se usó `--no-lock`,
+con dependencias ya instaladas. No se cambia package.json/lock del PR.
+Intentos fallidos de configuración y de permiso temporal conservados.
+Calidad/retirada **456 huellas PASS**, fragmento ISA-1620 y diff PASS.
+Web: build y **23/23 tests PASS**, relojes probados justo antes y en ambos
+límites, JSON-LD de cuatro idiomas y tres estados, legales ES/EN alineados.
+Persisten los **60 pendientes legales heredados**; no se abre lista ni acceso.
+Logs y auditoría de fechas: `C:/VantareServer/evidence/fechas/`.
+Las tres coincidencias ISO antiguas restantes son fixtures/migración de
+Testing Center (`2026-10-19 00:00Z`), ajenas a la ventana comercial.
+SHA final del PR y última lectura remota en #1620/#1624 y el buzón.
 Sin Rust propio: gates nativos y telemetría omitidos por alcance documental.
 Sin servicios reales, cambios de precios/IDs/derechos, release o despliegue.
 Siguiente: revisar el nuevo HEAD del PR principal y el commit local de la web.

@@ -430,10 +430,14 @@ impl Remote {
                 ),
             ] {
                 if mode != form.mode {
-                    panel =
-                        panel.child(orbit::button(index, label, cx).on_click(
-                            cx.listener(move |this, _, _, cx| this.select_email(mode, cx)),
-                        ));
+                    panel = panel.child(
+                        orbit::button(index, label, cx)
+                            .tab_stop(!self.working())
+                            .when(self.working(), |button| button.opacity(orbit::DISABLED))
+                            .on_click(
+                                cx.listener(move |this, _, _, cx| this.select_email(mode, cx)),
+                            ),
+                    );
                 }
             }
         }

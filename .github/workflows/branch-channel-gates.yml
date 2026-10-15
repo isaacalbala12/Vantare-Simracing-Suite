@@ -202,7 +202,15 @@ jobs:
         working-directory: ${{ env.VANTARE_DIR }}/native
         shell: pwsh
         env:
-          # Dos hilos de test, como hasta ahora: el antiguo -j 2 de gates.ps1 los fijaba (#1465).
+          # Compilación con los 4 vCPU del runner hosted (16 GB); gates.ps1 lo
+          # aplica a -j y a --build-jobs (#1654 ronda 2).
+          CARGO_BUILD_JOBS: '4'
+          # Hilos de ejecución de tests: 2, como hasta ahora. El motivo viejo
+          # (triage lanzaba PowerShell con plazo de 8 s) lo retiró #1651, pero
+          # quedan plazos duros en el pipe (ipc/tests/control.rs: <1 s),
+          # lanzador (launcher/src/tests.rs: <1 s) y runtime
+          # (flows/transport_tests.rs: <2 s; tests/core_e2e.rs: <3 s). Subirlos
+          # exige medirlo antes; ver el cuaderno de #1654.
           NEXTEST_TEST_THREADS: '2'
         run: |
           cargo fmt --all -- --check

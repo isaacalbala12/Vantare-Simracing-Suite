@@ -42,6 +42,10 @@ select is((select count(*)::integer from private.founders_subscription_transitio
 select ok(private.native_admin_account_summary('00000000-0000-4000-8000-000000001661','https://fixture.invalid','sandbox')->'founders_transitions' @> '[{"state":"pending","policy":"end_period"}]','Owner sees pending cancellation immediately');
 select lives_ok($$select public.billing_complete_founders_transition('sandbox','founders-existing-sub')$$,'confirmation records completion');
 select is(public.billing_founders_subscription_transitions('sandbox','founders-order'),'[]'::jsonb,'completed cancellation is not repeated');
+insert into public.billing_subscriptions(user_id,provider,provider_subscription_id,status,environment,current_period_end,cancel_at_period_end)
+ values('00000000-0000-4000-8000-000000001661','polar','founders-already-cancelled','active','sandbox',now()+interval '1 day',true);
+select is(public.billing_founders_subscription_transitions('sandbox','founders-order'),'[]'::jsonb,'already scheduled cancellation needs no Polar mutation');
+select ok(private.native_admin_account_summary('00000000-0000-4000-8000-000000001661','https://fixture.invalid','sandbox')->'founders_transitions' @> '[{"subscription_id":"founders-already-cancelled","state":"completed"}]','Owner also sees a previously scheduled cancellation');
 delete from public.billing_subscriptions where user_id='00000000-0000-4000-8000-000000001661';
 select is((select count(*)::integer from public.billing_effective_access_grants where source_id='founders-order' and valid_until is null),1,'one perpetual right');
 select ok((select expires_at is null and status='active' from public.user_entitlements where user_id='00000000-0000-4000-8000-000000001661' and product_key='bundle'),'compatibility bundle is perpetual');

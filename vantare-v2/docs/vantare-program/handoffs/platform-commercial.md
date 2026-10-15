@@ -29,12 +29,25 @@ Repo web intacto. Founders no concede roles ni canales privados.
 Límites: credencial perpetua offline no revocable hasta reconexión; para cerrar
 venta futura, desactivar también producto/enlaces entregados de Polar.
 
-Mac: SQL local con lock Docker, **150 pgTAP PASS**; Edge actualizado en validación.
-Rust anterior: **1795 Nextest PASS**, 14 omitidos por perfil; check/Clippy/lifecycle
-PASS; telemetría en curso. Próximo: gates incrementales sobre los últimos textos
-Hub/Owner y evidencia final. Conservados fallos de infraestructura por RAM/mmap,
-reintento sin sccache con un job y VANTARE_CARGO_MIN_GB=0 autorizado.
-Sin capturas (#1655), deploy, dinero, merge ni release.
+Validación final local: **152 pgTAP PASS** (42 Founders, 57 Owner,
+34 reembolsos, 19 tombstones), **193 Edge PASS** en Mac con lock Docker.
+**1795 Nextest PASS** (14 omitidos por perfil) y **494 pruebas incrementales
+Hub/Owner PASS** (4 omitidas), check/Clippy/fmt PASS. Lifecycle PASS y
+telemetría **25/25 PASS**. Gates de Windows seriales, target propio;
+última fuente Rust validada `5f39b449880b7a637ecd29559b9e0e9a1fbb2bac`.
+El cierre posterior solo añade compatibilidad SQL para una suscripción ya
+cancelada, su test y evidencia/texto. Quality/retirement PASS (456 huellas).
+Regresión de credencial RED con normalizador original. Diff completo revisado.
+Logs en `C:/tmp/founders-1661-evidence` y Mac `~/orq/founders-1661-evidence`.
+Conservados fallos previos de RAM/mmap y cortes del orquestador/T3; repetición
+sin sccache con un job y VANTARE_CARGO_MIN_GB=0 autorizado.
+
+Entrega aislada: PR #1666 draft a nightly, push autorizado; Plane pasa a
+Por revisar con resumen. Última consulta CI: promoción, quality ratchet y
+GitGuardian PASS; native-linux y agregado bloqueante en curso. No se afirma
+CI completa ni integración. Sin captura (#1655), deploy, dinero, merge ni release.
+Siguiente: orquestador revisa PR/CI y coordina rebase de #1624 y compra web
+VANTA-42; Isaac configura producto real y valida apertura cuando corresponda.
 
 ## #1627 / PR #1639 · VANTA-21 · ronda 5 (15/10/2026)
 

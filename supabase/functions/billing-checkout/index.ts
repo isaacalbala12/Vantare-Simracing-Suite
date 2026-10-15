@@ -131,7 +131,7 @@ export async function handleCheckoutRequest(
   if (policy.reason) {
     return errorResponse(
       policy.reason,
-      "Purchase is unavailable for this account or sale window",
+      "Purchase is unavailable for this account or sale availability",
       409,
     );
   }

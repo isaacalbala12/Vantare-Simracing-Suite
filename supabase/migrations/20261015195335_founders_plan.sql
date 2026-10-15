@@ -112,10 +112,10 @@ begin
  insert into private.founders_subscription_transitions
  (environment,subscription_id,account_id,founders_order_id,policy,state,paid_period_end)
  select p_environment,s.provider_subscription_id,v_user,p_order_id,v_policy,
- 'pending',s.current_period_end
+ case when s.cancel_at_period_end then 'completed' else 'pending' end,s.current_period_end
  from public.billing_subscriptions s where s.user_id=v_user and s.environment=p_environment
  and s.provider='polar' and s.status in ('active','trialing','past_due','unpaid')
- and not s.cancel_at_period_end
+
  on conflict(environment,subscription_id) do update set
  founders_order_id=excluded.founders_order_id,policy=excluded.policy,state=excluded.state,
  paid_period_end=excluded.paid_period_end,updated_at=now()

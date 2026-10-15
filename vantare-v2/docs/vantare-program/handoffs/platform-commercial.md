@@ -1,23 +1,43 @@
 ## #1636 · VANTA-72 · R3 menores de seguridad (15/10/2026)
 
-PR #1657, rama `vantareapp/isa-1636-correos`, base `3fcb0420a` aprobada por
-seguridad R2 y subida por el orquestador. Mismo worktree Mac, sin SaaS ni
-activación. M1: HMAC antes de ambos presupuestos; 601 firmas inválidas no gastan
-SQL ni bloquean una baja válida. Regresión roja antes del arreglo y verde después.
-M3: recibo público indistinguible (200/cuerpo/cabeceras) para espera/ausente/cuenta;
-regresión roja y verde registrada. Owner mantiene diagnóstico autenticado.
-M4: DELETE espera hasta lease anterior +10 s, cubriendo PUT de 4 s iniciado al
-final del lease; test de plazo exacto rojo y verde (25 SQL).
-M2: máximo ocho intentos o 24 h por trabajo; terminal failed purga dirección,
-conserva huella privada para impedir altas hasta ACK manual y muestra aviso/20
-recibos al Owner sin PII en claro. Expiración antes de flags/clave Brevo, en claim
-y lectura Owner; requiere tick periódico independiente para cumplir retención sin
-tráfico. Runbook manual en MAIL.md; no se pierde la obligación. SQL rojo antes,
-verde después; regresión HTTP 401, clave ausente y último lease caído.
-Checks R3: 199 SQL + E2E1 con PostgreSQL real/dobles, 97 Edge/contratos,
-Clippy/fmt/build admin y Nextest29 PASS. Primer Clippy rechazó dos lints,
-corregidos sin supresión. Queda en curso aislamiento y contrato del gate Docker. Evidencia `~/evidence/1636-r3/`.
-El orquestador mantiene tracker/GitHub; push del worker solo al bare.
+PR #1657, rama `vantareapp/isa-1636-correos`, entrada limpia `3fcb0420a`, aprobada
+por seguridad R2 y subida por el orquestador. Mismo Mac `~/wt-1636`, sin
+subagentes ni SaaS real. Orquestador mantiene Plane/GitHub; worker solo bare.
+
+- M1, `072462f6`: HMAC mediante subtle.verify antes de ambos presupuestos.
+  601 firmas inválidas no gastan SQL ni impiden una baja válida (regresión roja/verde).
+- M3, `d006335c`: recibo público idéntico para espera, ausencia o cuenta vinculada;
+  mismo 200/cuerpo/cabeceras. No afirma borrar cuentas. Owner mantiene diagnóstico.
+- M4, `e3671427`: DELETE espera lease previo +10 s, cubriendo PUT tardío. Test de
+  plazo exacto rojo/verde; la migración de retención conserva ese margen.
+- M2, `8f473514`: máximo ocho intentos o 24 h por trabajo; estado failed retira
+  correo, deja recibo/huella privada y bloquea nuevas altas hasta ACK manual.
+  Owner ve aviso y hasta 20 recibos sin dirección, motivo/intentos/HTTP. Expiración
+  antes de flags/clave Brevo, en cada claim y lectura Owner. Runbook manual MAIL.md;
+  requiere tick periódico independiente y alarma de fallos/scheduler antes de activar.
+  No se pierde la obligación: failed no acredita borrado del proveedor.
+- M5: SQL/E2E separado de policy/product en job alojado ubuntu-latest, con
+  preflight Docker visible y pull explícito de imagen fijada. Público automático;
+  privado requiere variable MARKETING_POSTGRES_CI=true tras autorización del
+  presupuesto alojado. No se modifica configuración. Runbook #1565 excluye Docker
+  del runner privado Linux; inspección read-only confirma runs públicos hosted.
+  Prueba roja/verde y tres escenarios: Docker ausente, daemon denegado, disponible.
+
+Evidencia `~/evidence/1636-r3/`: SQL **199/199** + E2E **1/1** (PostgreSQL real,
+RPC mediante adaptador psql, OAuth/Brevo dobles), Edge/contratos **97/97** sin red,
+Nextest admin **29/29**, Clippy all-targets -D warnings, fmt, build normal PASS.
+CI contrato **2/2** con tres escenarios de capacidad; YAML/shell nuevos parseados.
+Quality y **456** huellas PASS. Primer Clippy R3 rechazó dos lints, corregidos sin
+suprimirlos. Diff completo revisado; sin dependencias ni manifiestos/locks nuevos.
+La escena mail-cleanup abre ventana nativa; `Vantare1636R3QA.app` queda en evidencia.
+Preflight de captura macOS sigue false: sin PNG ni QA visual/Windows. Target propio
+se elimina al cierre. Lifecycle/telemetría omitidos: no cambia runtime/domain/ipc/testdata.
+
+Antes de activar siguen pendientes CI remoto y QA visual/Windows, conexión UI
+#1637/web, configuración de proveedor/secretos/flags/scheduler/alertas. M6/M7 del
+informe siguen observaciones de escala/retención de hashes, fuera de estos cinco
+arreglos. No se despliega ni activa, sin merge/promoción/release/gasto. SHA final,
+commits/push bare y FIN en `~/orq/1636.buzon.md`; informe completo en evidencia.
 
 ## #1636 · VANTA-72 · R2 para revisión (15/10/2026)
 

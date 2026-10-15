@@ -228,3 +228,16 @@ Procedimiento manual (operador autorizado, nunca un cliente/anon):
    fallido y bloquea nuevas altas de esa dirección.
 5. Releer el panel y comprobar que el contador baja y que el proveedor continúa
    sin el contacto. No hacer un reset masivo de estados ni reintroducir PII.
+
+## R3 · Capacidad CI
+
+`policy` conserva Edge offline y pruebas del contrato CI, sin Docker. SQL/E2E
+corre en job separado `marketing-postgres`, siempre `ubuntu-latest`, sin relación
+`needs` desde `product`. #1565 no garantiza Docker en el runner privado Linux y
+reserva estos trabajos para runners alojados. En público corre automáticamente;
+en privado requiere `MARKETING_POSTGRES_CI=true` como variable de repositorio,
+tras autorización de presupuesto/capacidad alojada. Aquí no se configura.
+Preflight comprueba CLI/daemon; si falta Docker deja warning y resumen explícito,
+no lo presenta como test SQL pasado. Si existe, descarga la imagen fijada y
+ejecuta SQL/E2E: un error real falla ese job. La activación requiere evidencia de
+esa ejecución, nunca solo un job omitido. No añade `continue-on-error` a tests.

@@ -91,20 +91,54 @@ jobs:
             supabase/functions/_shared/testing-center-agent-observability.test.ts \
             supabase/functions/scripts/verify-deploy-surface.test.ts
 
+      - name: Test marketing CI capability contract
+        run: python .github/scripts/test_marketing_postgres_ci.py
+
       - name: Test marketing handlers offline
         working-directory: supabase/functions
         run: |
           deno test --frozen --node-modules-dir=auto --allow-env \
             native-admin/ native-mail-consent/ _shared/mail-erasure.test.ts
 
+  marketing-postgres:
+    name: Validate marketing PostgreSQL and E2E
+    # #1565 reserves Docker for hosted runners. Private hosted usage is explicit opt-in.
+    if: >-
+      (!github.event.repository.private || vars.MARKETING_POSTGRES_CI == 'true') &&
+      (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository || !github.event.repository.private)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282
+        with:
+          deno-version: 2.7.13
+      - name: Check Docker capability
+        id: docker
+        shell: bash
+        run: |
+          if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
+            printf '%s\n' 'available=true' >> "$GITHUB_OUTPUT"
+          else
+            printf '%s\n' 'available=false' >> "$GITHUB_OUTPUT"
+            printf '%s\n' '::warning::Marketing SQL/E2E omitted: Docker daemon unavailable; run before production activation.'
+            printf '%s\n' 'Marketing SQL/E2E omitted: Docker unavailable. This is not a passing database test.' >> "$GITHUB_STEP_SUMMARY"
+          fi
+
       - name: Test marketing SQL and end-to-end consent locally
+        if: steps.docker.outputs.available == 'true'
         run: |
           until mkdir "$HOME/.vantare-marketing-docker.lock" 2>/dev/null; do sleep 5; done
           trap 'rmdir "$HOME/.vantare-marketing-docker.lock"' EXIT
+          docker pull public.ecr.aws/supabase/postgres:17.6.1.165
           python3 supabase/tests/run-admin-local.py \
             --output "$RUNNER_TEMP/marketing-sql" \
             --test marketing_mail.test.sql \
             --test marketing_mail_erasure.test.sql \
+            --test marketing_mail_erasure_retention.test.sql \
             --test marketing_mail_waitlist_erasure.test.sql \
             --test marketing_mail_consent.test.sql \
             --test marketing_mail_hardening.test.sql \

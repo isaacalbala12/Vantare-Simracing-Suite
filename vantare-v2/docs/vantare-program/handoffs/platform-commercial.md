@@ -8,7 +8,15 @@ M3: recibo público indistinguible (200/cuerpo/cabeceras) para espera/ausente/cu
 regresión roja y verde registrada. Owner mantiene diagnóstico autenticado.
 M4: DELETE espera hasta lease anterior +10 s, cubriendo PUT de 4 s iniciado al
 final del lease; test de plazo exacto rojo y verde (25 SQL).
-Quedan en curso: retención/alerta de borrados y aislamiento del gate Docker. Evidencia `~/evidence/1636-r3/`.
+M2: máximo ocho intentos o 24 h por trabajo; terminal failed purga dirección,
+conserva huella privada para impedir altas hasta ACK manual y muestra aviso/20
+recibos al Owner sin PII en claro. Expiración antes de flags/clave Brevo, en claim
+y lectura Owner; requiere tick periódico independiente para cumplir retención sin
+tráfico. Runbook manual en MAIL.md; no se pierde la obligación. SQL rojo antes,
+verde después; regresión HTTP 401, clave ausente y último lease caído.
+Checks R3: 199 SQL + E2E1 con PostgreSQL real/dobles, 97 Edge/contratos,
+Clippy/fmt/build admin y Nextest29 PASS. Primer Clippy rechazó dos lints,
+corregidos sin supresión. Queda en curso aislamiento y contrato del gate Docker. Evidencia `~/evidence/1636-r3/`.
 El orquestador mantiene tracker/GitHub; push del worker solo al bare.
 
 ## #1636 · VANTA-72 · R2 para revisión (15/10/2026)

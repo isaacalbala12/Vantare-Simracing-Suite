@@ -1018,6 +1018,13 @@ impl Admin {
             "mail-cleanup" => {
                 self.state.screen = Screen::Mail;
                 self.state.mail.cleanup_pending = 2;
+                self.state.mail.cleanup_failed = 1;
+                self.state.mail.cleanup_failures = vec![crate::mail::ErasureFailure {
+                    id: "00000000-0000-4000-8000-000000001781".into(),
+                    attempts: 8,
+                    last_http_status: Some(401),
+                    reason: "attempt_limit".into(),
+                }];
                 self.state
                     .propose(Action::MailCleanup)
                     .map_err(|_| "confirmación de limpieza demo")?;

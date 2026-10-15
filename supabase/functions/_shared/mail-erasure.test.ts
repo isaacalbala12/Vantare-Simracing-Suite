@@ -8,13 +8,14 @@ const env = (key: string) =>
     MAIL_CLEANUP_KEY: "local-cleanup-key-at-least-32-characters",
   })[key as "BREVO_API_KEY"];
 Deno.test("Brevo erasure retries timeout and 503, accepts DELETE 204/404, never sends", async () => {
-  for (const status of [0, 503, 204, 404]) {
+  for (const status of [0, 401, 503, 204, 404]) {
     let claimed = false;
     let http = 0;
     let finished = 0;
     await drainMailErasures({
       env,
       rpc: (name, args) => {
+        if (name === "mail_erasure_expire") return Promise.resolve(0);
         if (name === "mail_erasure_claim") {
           if (claimed) return Promise.resolve({ job: null });
           claimed = true;
@@ -53,15 +54,16 @@ Deno.test("erasure worker is bounded, disabled by default and authenticates befo
   try {
     await drainMailErasures({
       env: () => undefined,
-      rpc: () => {
+      rpc: (name) => {
         calls++;
-        throw new Error("unexpected");
+        assert(name === "mail_erasure_expire");
+        return Promise.resolve(1);
       },
     });
   } catch {
     threw = true;
   }
-  assert(threw && calls === 0);
+  assert(threw && calls === 1);
   const response = await handleMailCleanup(
     new Request("https://project.invalid/", {
       method: "POST",
@@ -76,13 +78,13 @@ Deno.test("erasure worker is bounded, disabled by default and authenticates befo
       },
     },
   );
-  assert(response.status === 401 && calls === 0);
+  assert(response.status === 401 && calls === 1);
   let claimed = 0;
   await drainMailErasures({
     env,
     rpc: (name) =>
       Promise.resolve(
-        name === "mail_erasure_claim"
+        name === "mail_erasure_expire" ? 0 : name === "mail_erasure_claim"
           ? {
             job: {
               id: String(++claimed),
@@ -103,7 +105,9 @@ Deno.test("erasure cannot claim a false result as a confirmed ACK", async () => 
       env,
       rpc: (name) =>
         Promise.resolve(
-          name === "mail_erasure_claim"
+          name === "mail_erasure_expire"
+            ? 0
+            : name === "mail_erasure_claim"
             ? { job: { id: "id", lease: "lease", email: "x@example.invalid" } }
             : false,
         ),
@@ -120,6 +124,7 @@ Deno.test("authenticated queue endpoint accepts only the closed maintenance requ
   const deps = {
     env,
     rpc: (name: string) => {
+      if (name === "mail_erasure_expire") return Promise.resolve(0);
       assert(name === "mail_erasure_claim");
       claims++;
       return Promise.resolve({ job: null });
@@ -143,5 +148,30 @@ Deno.test("authenticated queue endpoint accepts only the closed maintenance requ
   assert(
     valid.status === 200 && Number(claims) === 1 &&
       (await valid.json()).processed === 0,
+  );
+});
+
+Deno.test("retention runs even with missing Brevo key, and no job is claimed", async () => {
+  const names: string[] = [];
+  let http = 0;
+  let disabled = false;
+  try {
+    await drainMailErasures({
+      env: (key) => key === "MARKETING_CLEANUP_ENABLED" ? "true" : undefined,
+      rpc: (name) => {
+        names.push(name);
+        return Promise.resolve(1);
+      },
+      fetch: () => {
+        http++;
+        throw new Error("must not call provider");
+      },
+    });
+  } catch {
+    disabled = true;
+  }
+  assert(
+    disabled && http === 0 &&
+      JSON.stringify(names) === '["mail_erasure_expire"]',
   );
 });

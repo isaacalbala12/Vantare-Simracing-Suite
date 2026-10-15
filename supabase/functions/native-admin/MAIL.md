@@ -62,9 +62,12 @@ confirmación, sin retirar permiso ni borrar contactos: escáneres/vistas previa
 no provocan bajas. POST de formulario `action=unsubscribe` retira todo el permiso;
 POST RFC 8058 `List-Unsubscribe=One-Click` lo hace sin una segunda confirmación.
 POST `action=forget` borra solo espera sin cuenta actual/anterior y encola Brevo.
-Cuenta vinculada devuelve 409 y se borra mediante #1622. No pide login.
+El recibo público es idéntico para espera, ausencia o cuenta vinculada; no revela
+pertenencia a una cuenta ni afirma borrarla. Las cuentas se borran mediante #1622.
+No pide login.
 
-Límites persistentes: 600 solicitudes/minuto globales antes de verificar firma,
+Límites persistentes: tras verificar HMAC en tiempo constante, 600 solicitudes/minuto
+globales de enlaces válidos,
 20/minuto por token válido; 429 incluye Retry-After 60. Solo se conserva hash del
 token durante el intervalo necesario; sin IP ni dirección en el limitador.
 El servidor web/edge puede añadir límites de origen en su despliegue autorizado.
@@ -105,14 +108,14 @@ retiene resultado/fecha/intentos/UUID sin dirección en la auditoría.
 `mail-cleanup`, POST `{"version":1}`, es worker de cola con
 `Authorization: Bearer <MAIL_CLEANUP_KEY>`. No permite elegir destinatarios.
 Procesa hasta cinco; timeout por DELETE 4 s, lease 60 s, backoff de 5 s a 1 h,
-reintentos persistentes y fencing de ACK viejos. 404 ya ausente es éxito.
+máximo ocho intentos o 24 h de retención y fencing de ACK viejos. 404 ya ausente es éxito.
 No declarar limpieza del proveedor completada con trabajos pendientes.
 
 `MARKETING_CLEANUP_ENABLED` es independiente de envíos: mantener limpieza
 operativa aunque se apaguen campañas. Configurar una llamada periódica de
 servidor (p. ej. cada minuto) en el despliegue autorizado. Aquí no se crea
 scheduler ni secreto. Owner puede usar «Reintentar borrados de Brevo»; el contador
-pendiente/completado se obtiene de `mail_list.cleanup`. DELETE espera a que venza
+pendiente/completado/fallido y hasta 20 recibos sin dirección se obtienen de `mail_list.cleanup`. DELETE espera a que venza
 un lease de sincronización previo más 10 s (HTTP PUT 4 s y margen 6 s), y un alta nueva de la misma dirección espera
 el ACK de borrado: el trabajo antiguo no puede retirar el alta nueva.
 
@@ -173,6 +176,55 @@ nativos usan `--workspace` e incluyen admin. Reproducción Mac en
 `~/evidence/1636-r2/`; Docker siempre bajo `~/orq/docker.lock`, jobs Rust 4 y
 target aislado `~/target-1636`. No hay compilación ni llamada SaaS en el servidor PC.
 
-R3: se verifica HMAC en tiempo constante antes de consumir cupos. Las firmas inválidas no acceden a SQL ni gastan capacidad de baja de enlaces legítimos.
+Las firmas inválidas no acceden a SQL ni gastan capacidad de baja de enlaces legítimos.
 
-R3: el enlace de borrado devuelve el mismo 200 y el mismo recibo para una dirección ausente, de espera o vinculada a una cuenta. El recibo no afirma un borrado de cuenta. El Owner conserva errores explícitos en su ruta autenticada.
+El Owner conserva errores explícitos en su ruta autenticada de borrado de espera.
+
+
+## R3 · Borrados fallidos y procedimiento manual
+
+Tras ocho intentos fallidos, un lease final vencido o 24 h desde el encolado, el
+trabajo pasa a `failed`, deja de reintentarse y elimina `email`. Se conservan
+recibo UUID, intentos, fecha, motivo, HTTP y huella SHA-256 normalizada, sin correo
+en claro. La huella sigue siendo dato seudónimo privado, cerrado por RLS/ACL; no
+se entrega al cliente. Impide volver a sincronizar esa dirección antes de resolver
+la obligación. Éxito automático o manual elimina también la huella. Un estado
+fallido **no significa que el contacto esté borrado de Brevo**.
+
+Owner ve aviso «borrados fallidos» y los primeros 20 recibos, motivo/intentos/HTTP;
+el total incluye todos. «Reintentar» solo drena pendientes, no reabre fallidos.
+El monitor autorizado debe alertar si `mail_list.cleanup.failed > 0` o si la
+invocación periódica falla. Aquí no se instala monitor ni scheduler.
+
+Retención: la llamada periódica de `mail-cleanup` debe mantenerse aunque falle
+Brevo o se apaguen campañas. Su primer paso es `mail_erasure_expire`, antes de
+mirar clave/flag Brevo; también se ejecuta en cada claim y lectura Owner. Con
+limpieza deshabilitada/sin clave devuelve 503 **después** de purgar por edad. Se
+puede programar directamente la RPC solo-servidor `mail_erasure_expire` cada
+minuto, independiente del worker HTTP. El límite de 24 h se evalúa en cada tick;
+un scheduler detenido retrasaría la purga: verificarlo y alertarlo antes de
+producción. La migración ya purga trabajos antiguos al aplicarse.
+
+Procedimiento manual (operador autorizado, nunca un cliente/anon):
+
+1. Anotar el recibo fallido sin copiar direcciones a issue/chat/log. Corregir la
+   configuración de Brevo en el almacén seguro y comprobar el resultado con un
+   contacto de sandbox autorizado.
+2. Recuperar la dirección desde la solicitud de borrado verificada y compararla
+   con la huella privada del recibo en una sesión restringida. Si falta la
+   solicitud original, una exportación autorizada de Brevo permite comparar la
+   SHA-256 de cada dirección normalizada con la huella, solo en memoria, sin
+   guardar/publicar exportaciones. No intentar invertir la huella ni adivinar
+   direcciones. Mantener la obligación abierta si no hay identificación fiable.
+3. Eliminar el contacto identificado en el panel/API autorizado de Brevo.
+   Confirmar ausencia (204/404 o comprobación del panel) y conservar un recibo
+   de proveedor sin dirección. Revisar la causa común de todos los fallidos.
+4. Solo después, una operación administrativa de base de datos en transacción,
+   con `pg_advisory_xact_lock(1636,300)`, puede cambiar **ese UUID** de `failed` a
+   `completed`, `outcome=manual_deleted` o `manual_absent`, `completed_at=clock_timestamp()`
+   y `email_fingerprint=null`. Registrar actor, UUID y resultado en `mail_audit`,
+   nunca correo ni texto libre del proveedor. No hay botón ni RPC pública que
+   permita afirmar manualmente el borrado. Sin ACK humano verificado permanece
+   fallido y bloquea nuevas altas de esa dirección.
+5. Releer el panel y comprobar que el contador baja y que el proveedor continúa
+   sin el contacto. No hacer un reset masivo de estados ni reintroducir PII.

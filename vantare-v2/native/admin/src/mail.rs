@@ -60,9 +60,47 @@ impl Campaign {
         Ok(())
     }
 }
+#[derive(Clone, Debug, Deserialize)]
+pub struct ErasureFailure {
+    pub id: String,
+    pub attempts: u32,
+    pub last_http_status: Option<u16>,
+    pub reason: String,
+}
+#[derive(Default, Deserialize)]
+#[serde(default)]
+struct CleanupStatus {
+    pending: u32,
+    failed: u32,
+    failures: Vec<ErasureFailure>,
+}
+impl CleanupStatus {
+    fn read(response: &serde_json::Value) -> Result<Self> {
+        let status: Self = response
+            .get("cleanup")
+            .map(|v| serde_json::from_value(v.clone()))
+            .transpose()
+            .map_err(|_| Error::Protocol)?
+            .unwrap_or_default();
+        if status.failures.len() > 20
+            || status.failures.len() > status.failed as usize
+            || status.failures.iter().any(|f| {
+                !vantare_services::license::uuid(&f.id)
+                    || f.attempts > 1_000_000
+                    || f.last_http_status.is_some_and(|s| s > 599)
+                    || !["attempt_limit", "retention_limit"].contains(&f.reason.as_str())
+            })
+        {
+            return Err(Error::Protocol);
+        }
+        Ok(status)
+    }
+}
 #[derive(Default)]
 pub struct MailState {
     pub cleanup_pending: u32,
+    pub cleanup_failed: u32,
+    pub cleanup_failures: Vec<ErasureFailure>,
     pub campaigns: Vec<Campaign>,
     pub campaign: Option<Campaign>,
     pub counts: BTreeMap<String, u32>,
@@ -204,13 +242,10 @@ impl crate::state::State {
                 if quota > 300 {
                     return Err(Error::Protocol);
                 }
-                self.mail.cleanup_pending = response
-                    .get("cleanup")
-                    .and_then(|c| c.get("pending"))
-                    .map(|v| serde_json::from_value(v.clone()))
-                    .transpose()
-                    .map_err(|_| Error::Protocol)?
-                    .unwrap_or_default();
+                let cleanup = CleanupStatus::read(response)?;
+                self.mail.cleanup_failed = cleanup.failed;
+                self.mail.cleanup_failures = cleanup.failures;
+                self.mail.cleanup_pending = cleanup.pending;
                 self.mail.campaigns = campaigns;
                 self.mail.counts = counts;
                 self.mail.quota = quota;
@@ -440,5 +475,27 @@ mod workflow_tests {
         state.mail.campaign = Some(c.clone());
         assert!(state.accept(&Action::MailGet{campaign_id:c.id.clone()},&serde_json::json!({"campaign":{"id":c.id,"revision":1,"name":"bad","template":"news","target_group":"testers","state":"draft","content":{}}})).is_err());
         assert_eq!(state.mail.campaign, Some(c));
+    }
+}
+
+#[cfg(test)]
+mod erasure_alert_tests {
+    use super::*;
+    use crate::state::{Screen, State};
+    #[test]
+    fn failed_erasure_stays_visible_until_manual_provider_confirmation() {
+        let mut state = State::new(true, Screen::Mail);
+        let reply = serde_json::json!({"campaigns":[],"counts":{},"quota_remaining":300,
+            "cleanup":{"pending":0,"failed":1,"failures":[{
+                "id":"00000000-0000-4000-8000-000000001781","attempts":8,"last_http_status":401,"reason":"attempt_limit"}]}});
+        state
+            .accept(&Action::MailList, &reply)
+            .expect("Owner failure receipt");
+        assert_eq!(state.mail.cleanup_failed, 1);
+        assert_eq!(state.mail.cleanup_failures[0].attempts, 8);
+        assert_eq!(state.mail.cleanup_failures[0].last_http_status, Some(401));
+        state.failed(Error::Denied);
+        assert_eq!(state.mail.cleanup_failed, 0);
+        assert!(state.mail.cleanup_failures.is_empty());
     }
 }

@@ -35,6 +35,7 @@ export async function drainMailErasures(
 ): Promise<{ processed: number }> {
   const env = deps.env ?? Deno.env.get;
   const rpc = deps.rpc ?? mailRpc;
+  await rpc("mail_erasure_expire", {});
   if (env("MARKETING_CLEANUP_ENABLED") !== "true" || !env("BREVO_API_KEY")) {
     throw new NativeError(503, "mail_cleanup_disabled");
   }

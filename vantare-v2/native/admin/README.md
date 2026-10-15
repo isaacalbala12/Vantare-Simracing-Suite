@@ -133,3 +133,8 @@ La sincronización devuelve cursor UUID opaco y conserva cambios no confirmados.
 Escenas adicionales sin red: `mail-forget`, `mail-cleanup`. Colector para app y
 web: [CONSENT.md](../../../supabase/functions/native-admin/CONSENT.md); la rama
 onboarding #1637 no está aquí y no se finge su integración visual.
+
+R3: Correos avisa de borrados fallidos en Brevo, con recibos UUID, motivo,
+intentos y HTTP; sin dirección. Ocho fallos/24 h retiran el correo temporal de
+la cola, manteniendo la obligación para revisión manual en MAIL.md. La escena
+`mail-cleanup` incluye un fallo 401 de ejemplo.

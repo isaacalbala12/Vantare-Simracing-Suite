@@ -344,6 +344,31 @@ impl Admin {
             "Borrados pendientes en Brevo: {}",
             self.state.mail.cleanup_pending
         )));
+        if self.state.mail.cleanup_failed > 0 {
+            toolbar = toolbar.child(tag(
+                &format!(
+                    "Atención: {} borrados fallidos en Brevo. Requieren revisión manual.",
+                    self.state.mail.cleanup_failed
+                ),
+                EMBER,
+            ));
+            for failure in &self.state.mail.cleanup_failures {
+                let reason = if failure.reason == "attempt_limit" {
+                    "8 intentos agotados"
+                } else {
+                    "retención de 24 h agotada"
+                };
+                toolbar = toolbar.child(muted(&format!(
+                    "Recibo {} · {} · intentos {} · HTTP {}",
+                    failure.id,
+                    reason,
+                    failure.attempts,
+                    failure
+                        .last_http_status
+                        .map_or_else(|| "sin respuesta".into(), |s| s.to_string())
+                )));
+            }
+        }
         toolbar
     }
     fn mail_detail(&self, c: &Campaign, cx: &mut Context<Self>) -> Div {

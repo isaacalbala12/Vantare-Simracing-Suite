@@ -76,6 +76,7 @@ async function rpc(
     mail_forget_waitlist: ["p_email"],
     mail_unsubscribe: ["p_email"],
     mail_unsubscribe_budget: ["p_token_hash"],
+    mail_erasure_expire: [],
     mail_erasure_claim: [],
     mail_erasure_finish: ["p_id", "p_lease", "p_http_status"],
   };

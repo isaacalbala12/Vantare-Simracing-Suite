@@ -1,3 +1,72 @@
+## #1627 / PR #1639 · VANTA-21 · ronda 4 (15/10/2026)
+
+Worker Codex macOS arm64, sin subagentes, GitHub ni servicios reales. Excepción
+explícita del orquestador: sin Notion/Plane; seguimiento en `~/orq/1627.buzon.md`.
+Rama `vantareapp/isa-1627-miniapp-gestion`, entrada `1ce7c0edd`.
+Nightly `bf5eead43` (#1622 incluido) fusionado mediante merge `9a70cbc7`.
+Código entregado por hitos, incluido borrado separado `83494734`; SHA final de
+la entrega documental y copia al bare `~/vantare.git` en el buzón y la evidencia.
+Pendiente de revisión del orquestador; sin promoción de canal, deploy ni release.
+
+**Regla de informes:** una decisión de contribución es final. Aceptado,
+rechazado, spam y arreglado no vuelven a Recibido/En revisión, tampoco los
+históricos sin fila de revisión. SQL devuelve conflicto y la UI oculta esas
+vueltas. No se añade una acción Reabrir. Arreglado sigue ocupando 1/día y
+2/semana UTC/cuenta; también cuentan las revisiones aceptadas si un servidor
+anterior alteró el estado. La migración restaura el estado de esas revisiones,
+sin borrar su nota/fecha ni los arreglos válidos. Los informes antiguos
+`testing_center_reports` admiten Spam; sus títulos se alinean a la izquierda.
+
+**Anual cerrado por Isaac el 15/10:** 30 % del pago anual completo, sin
+prorrateo. 100,00 € → 30,00 € al pagar en el mes 1; renovación en mes 13 → 0 €.
+No autoriza pagos reales ni producción.
+
+**Borrado conectado a #1622:** Edge compara el correo actual de Clerk antes
+de iniciar la solicitud; SQL vuelve a proteger dueño y actor bajo locks.
+La barrera, anonimización y auditoría se confirman juntas antes de cancelar
+Polar, borrar Clerk y drenar Storage con el limpiador común. Una solicitud
+privada conserva solo hash del correo normalizado, UUID/issuer/subject y fecha.
+Un fallo posterior exige repetir con el mismo correo; no necesita recuperar
+PII ya borrada y acepta 404 de Clerk solo con esa solicitud previa. No hay
+reembolso ni reintento automático. Sigue limitado a sandbox.
+
+Compatibilidad del merge: se conservan locks UUID de #1622 y su identidad
+Clerk; el resolver mantiene además el bloqueo de gestión. El espejo de
+pagos/refunds acompaña al ledger comercial de nightly, sin saltarse la
+revocación por reembolso. Fixtures de identidad y la prueba concurrente se
+adaptan al dispatcher, sin ampliar permisos de producto.
+
+| Check local | Nightly bf5eead43 | Rama R4 |
+| --- | --- | --- |
+| Catálogo SQL completo, Docker sin red | 59 suites: 34 PASS / 25 FAIL | 72: 47 PASS / 25 FAIL |
+| Aserciones de suites SQL comunes | 1306 PASS | 1306 PASS; cero pérdidas |
+| Gestión pgTAP | 57 checks / 1 suite | 178 checks / 14 suites, todas PASS |
+| Triaje / seguimiento, runners canónicos | 83 / 35 PASS | 83 / 35 PASS |
+| Locks de admin frente a borrado | 4 órdenes PASS | 4 órdenes PASS |
+| Borrado miniapp frente a webhook | No existe | 2 órdenes PASS, espera observada |
+| Edge/Deno sin red | 613 PASS / 2 omitidos | 638 PASS / 2 omitidos |
+| Clippy admin/services `-D warnings` | PASS | PASS |
+| Nextest admin/services Mac, serial | 172 PASS | 178 PASS |
+
+Los 25 fallos del catálogo genérico se conservan en ambos árboles: no se
+presentan como SQL verde. Las 13 suites exclusivas de gestión pasan. Los
+runners canónicos cubren cuota concurrente, snapshot obsoleto, ACL y rollback.
+La aserción comercial de auditoría ahora exige actor/acción/objetivo sin copiar
+resultados de cuentas; conserva la comprobación en lugar de omitirla.
+Fmt Rust/Deno, quality y retirada (456 huellas) PASS. Rust 1.95 fijado,
+`CARGO_BUILD_JOBS=4`, target propio `~/target-1627r4`, retirado al cerrar.
+
+Evidencia: `~/evidence/1627-r4/RESULTADOS.md` y `TABLA-SQL.md`, logs completos,
+comparación por número de aserción y capturas GPUI demo `informes.png`,
+`informe-decidido.png`, `borrado-confirmacion.png`. Se inspeccionaron títulos,
+ausencia de reapertura y confirmación de correo; no son pruebas de SaaS real.
+
+Límites: Windows/DPI/teclado físico, OAuth/Clerk/Polar/Storage reales, CI remota,
+despliegue y actualización de un esquema remoto previo no se verifican.
+SQL completo validado desde catálogo limpio; la intercalación de migraciones
+R1/R3 con #1622 requiere revisar el orden de aplicación antes de un despliegue.
+Sin cambios en runtime/domain/ipc/testdata: no se repiten lifecycle/telemetría.
+
 ## #1627 / PR #1639 · VANTA-21 · corrección R1 (15/10/2026)
 
 Worker Codex macOS arm64, encargo del orquestador, sin subagentes ni servicios
@@ -46,7 +115,7 @@ fallos. Se usan los runners canónicos para triaje y seguimiento, que sí pasan.
 Quality/retirada: 456 huellas PASS. Target propio `~/target-1627r3`, borrado al cerrar.
 
 Límites: Windows/DPI/teclado físico y OAuth/Clerk/Polar reales pendientes;
-borrado de cuenta continúa sin conectar a #1622, como en el candidato revisado.
+en esta R1 histórica el borrado aún no estaba conectado; R4 lo sustituye.
 Los efectos externos nuevos siguen limitados a sandbox. Falta revisión del
 orquestador. La decisión anual queda cerrada el 15/10/2026. No hay activación en producción.
 Evidencia anterior r1: `~/evidence/1627/RESUMEN.md` (histórica).

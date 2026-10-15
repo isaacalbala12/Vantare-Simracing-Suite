@@ -68,6 +68,9 @@ export async function synchronizeDiscount(client: DiscountClient, expected: {
   discountId: string | null;
   managedDiscountIds?: (string | null)[];
   normalCents: number;
+  repair?: boolean;
+  phase?: "pending" | "cleared";
+  markCleared?: () => Promise<void>;
 }): Promise<boolean> {
   const current = await client.read(expected.subscriptionId);
   if (
@@ -79,7 +82,19 @@ export async function synchronizeDiscount(client: DiscountClient, expected: {
     current.recurring_interval !== "month" ||
     current.recurring_interval_count !== 1
   ) throw new Error("polar_discount_catalog_mismatch");
-  if (current.discount_id === expected.discountId) return false;
+  if (expected.repair && expected.phase !== "cleared") {
+    if (!expected.markCleared) throw new Error("polar_repair_unconfigured");
+    if (current.discount_id === expected.discountId) {
+      const cleared = await client.change(expected.subscriptionId, null);
+      if (cleared.discount_id !== null) {
+        throw new Error("polar_repair_not_cleared");
+      }
+    } else if (
+      current.discount_id !== null &&
+      !expected.managedDiscountIds?.includes(current.discount_id)
+    ) throw new Error("polar_discount_unmanaged");
+    await expected.markCleared();
+  } else if (current.discount_id === expected.discountId) return false;
   if (
     current.discount_id !== null &&
     !expected.managedDiscountIds?.includes(current.discount_id)

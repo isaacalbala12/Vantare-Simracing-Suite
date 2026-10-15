@@ -54,3 +54,37 @@ export async function promotionCheckoutDiscount(
   }
   return data;
 }
+
+export async function observePromotionInvoice(
+  admin: SupabaseClient,
+  environment: string,
+  data: Record<string, unknown>,
+  configured = Deno.env.get("REPORT_PROMOTION_ENABLED") !== undefined,
+): Promise<void> {
+  if (
+    !configured || data.billing_reason !== "subscription_cycle" ||
+    data.paid !== true || !Array.isArray(data.items)
+  ) return;
+  const items = data.items.filter((item) =>
+    item && typeof item === "object" && item.proration === false
+  );
+  if (items.length !== 1) return;
+  const item = items[0];
+  if (
+    typeof data.id !== "string" || typeof data.created_at !== "string" ||
+    !Number.isInteger(data.discount_amount) ||
+    Number(data.discount_amount) < 0 ||
+    typeof item.start_timestamp !== "string" ||
+    typeof item.end_timestamp !== "string"
+  ) return;
+  const { error } = await admin.rpc("report_promotion_invoice", {
+    p_environment: environment,
+    p_order: data.id,
+    p_discount: typeof data.discount_id === "string" ? data.discount_id : null,
+    p_amount: data.discount_amount,
+    p_billed: data.created_at,
+    p_start: item.start_timestamp,
+    p_end: item.end_timestamp,
+  });
+  if (error) throw new Error("report_promotion_invoice_failed");
+}

@@ -15,6 +15,8 @@ type Operation = {
   discount_id: string | null;
   managed_discount_ids: (string | null)[];
   normal_cents: number;
+  repair?: boolean;
+  phase?: "pending" | "cleared";
 };
 export type PromotionDeps = {
   rpc: Rpc;
@@ -65,6 +67,17 @@ export async function runPromotionBatch(
       discountId: operation.discount_id,
       managedDiscountIds: operation.managed_discount_ids,
       normalCents: operation.normal_cents,
+      repair: operation.repair,
+      phase: operation.phase,
+      markCleared: async () => {
+        if (
+          !await deps.rpc("report_promotion_cleared", {
+            p_id: operation.id,
+            p_token: token,
+            p_now: deps.now().toISOString(),
+          })
+        ) throw new Error("promotion_repair_lease_lost");
+      },
     });
     if (
       await deps.rpc("report_promotion_ack", {

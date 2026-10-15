@@ -16,7 +16,7 @@ select ok(not has_function_privilege('anon','public.report_promotion_prepare(uui
 select ok(not has_table_privilege('service_role','private.report_promotions','insert'),'no direct service writes');
 select is((select count(*)::int from pg_class where oid in ('private.report_promotions'::regclass,'private.report_promotion_changes'::regclass,'private.report_promotion_catalog'::regclass,'private.report_promotion_creators'::regclass) and relrowsecurity),4,'all new tables RLS');
 insert into private.clerk_issuers values('https://promotion.clerk.invalid',array['https://app.invalid'],true);
-insert into public.profiles(id) select ('15930000-0000-4000-8000-'||lpad(i::text,12,'0'))::uuid from generate_series(1,9)i;
+insert into public.profiles(id) select ('15930000-0000-4000-8000-'||lpad(i::text,12,'0'))::uuid from generate_series(1,10)i;
 insert into public.account_identities(issuer,subject,account_id) select 'https://promotion.clerk.invalid','user_'||replace(id::text,'-',''),id from public.profiles where id::text like '15930000%';
 insert into private.report_promotion_catalog values
  ('sandbox','pro','pro',599,399,'pro1','pro3','pro6'),('sandbox','plus','pro_plus',999,699,'plus1','plus3','plus6');
@@ -61,8 +61,8 @@ select pg_temp.report(1,'2026-10-29 19:00 Europe/Madrid','received'); select pg_
 select is((private.report_promotion_progress(pg_temp.account(1),'sandbox','2026-11-01')->>'accepted')::int,2,'only confirmed accepted count');
 create temporary table planned as select public.report_promotion_prepare(pg_temp.account(1),'sandbox','2026-11-01') as op;
 select is((select op->>'discount_id' from planned),'pro3','two accepted gives three months');
-select is((select reward_from from private.report_promotions where account_id=pg_temp.account(1)),'2026-11-26 19:00 Europe/Madrid'::timestamptz,'reports begin next invoice, never first month');
-select is((select reward_until from private.report_promotions where account_id=pg_temp.account(1)),'2027-02-26 19:00 Europe/Madrid'::timestamptz,'three calendar months');
+select is((select reward_from from private.report_promotions where account_id=pg_temp.account(1)),null::timestamptz,'unsettled reward has no invented starting invoice');
+select is((select reward_until from private.report_promotions where account_id=pg_temp.account(1)),null::timestamptz,'unsettled reward has no mirror-clock expiry');
 select is(public.report_promotion_prepare(pg_temp.account(1),'sandbox','2026-11-02')->>'id',(select op->>'id' from planned),'retry retains stable operation');
 select is((select count(*)::int from private.report_promotion_changes),1,'one change per retry');
 select ok(public.report_promotion_claim((select (op->>'id')::uuid from planned),'00000000-0000-4000-8000-000000000001','2026-11-02'),'first worker owns operation');
@@ -79,8 +79,8 @@ select is(public.report_promotion_prepare(pg_temp.account(8),'sandbox','2026-11-
 select pg_temp.report(6,'2026-10-27 19:00 Europe/Madrid'); select pg_temp.report(6,'2026-10-28 19:00 Europe/Madrid');
 select public.report_promotion_prepare(pg_temp.account(6),'sandbox','2026-11-01');
 select pg_temp.report(6,'2026-11-02 19:00 Europe/Madrid','spam'); select pg_temp.report(6,'2026-11-03 19:00 Europe/Madrid','spam');
-select is(public.report_promotion_prepare(pg_temp.account(6),'sandbox','2026-11-04')->>'discount_id',null::text,'two spam supersede unsent reward with removal');
-select is((select count(*)::int from private.report_promotion_changes where account_id=pg_temp.account(6) and superseded_at is not null),1,'superseded attempt retained in audit');
+select is(public.report_promotion_prepare(pg_temp.account(6),'sandbox','2026-11-04')->>'discount_id','pro3','two spam preserve already granted months');
+select is((select count(*)::int from private.report_promotion_changes where account_id=pg_temp.account(6) and superseded_at is not null),0,'spam does not supersede an already granted award');
 select ok((select forfeited from private.report_promotions where account_id=pg_temp.account(6)),'spam forfeiture durable');
 -- Exact 45 elapsed days: the final second counts; exact end and before signup do not.
 select pg_temp.report(7,'2026-10-26 18:59 Europe/Madrid'); select pg_temp.report(7,'2026-12-10 18:59:59 Europe/Madrid'); select pg_temp.report(9,'2026-12-10 19:00 Europe/Madrid');
@@ -88,6 +88,38 @@ select is((private.report_promotion_progress(pg_temp.account(7),'sandbox','2026-
 select is((private.report_promotion_progress(pg_temp.account(9),'sandbox','2026-12-11')->>'accepted')::int,0,'exact 45 day boundary excluded');
 select ok(private.report_promotion_progress(pg_temp.account(1),'production','2026-11-10') is null,'environments isolated');
 select is(private.native_admin_account(pg_temp.account(1),'https://promotion.clerk.invalid','sandbox')->'report_promotion'->>'tier','6','owner account payload includes earned tier');
+-- P2-2: late PATCH and stale mirror; only actual discounted, settled periods consume months.
+select pg_temp.enroll(10);
+select pg_temp.report(10,'2026-10-27 19:00 Europe/Madrid'); select pg_temp.report(10,'2026-10-28 19:00 Europe/Madrid');
+create temporary table late_op as select public.report_promotion_prepare(pg_temp.account(10),'sandbox','2026-11-25') op;
+select ok(public.report_promotion_claim((select (op->>'id')::uuid from late_op),'00000000-0000-4000-8000-000000000010','2026-11-26 19:05 Europe/Madrid'),'P2-2 stale mirror does not freeze late PATCH');
+select ok(public.report_promotion_ack((select (op->>'id')::uuid from late_op),'00000000-0000-4000-8000-000000000010','2026-11-26 19:05 Europe/Madrid'),'P2-2 late PATCH confirmed');
+create function pg_temp.invoice(n int,oid text,t timestamptz,discount text,amount int) returns void language plpgsql as $$begin
+ insert into public.billing_orders(user_id,provider,environment,provider_order_id,provider_product_id,provider_subscription_id,status,paid,net_amount,currency,remote_modified_at,snapshot_hash)
+ values(pg_temp.account(n),'polar','sandbox',oid,'pro','sub'||n,'paid',true,599-amount,'eur',t,repeat('b',64));
+ perform public.report_promotion_invoice('sandbox',oid,discount,amount,t,t,private.report_promotion_months(t,1));
+end$$;
+select pg_temp.invoice(10,'late-full','2026-11-26 19:00 Europe/Madrid',null,0);
+select is(public.report_promotion_prepare(pg_temp.account(10),'sandbox','2026-11-27'),null::jsonb,'P2-2 invoice issued before late PATCH does not consume or restart reward');
+select pg_temp.invoice(10,'late-one','2026-12-26 19:00 Europe/Madrid','pro3',200);
+select public.report_promotion_prepare(pg_temp.account(10),'sandbox','2026-12-27');
+select is((select reward_from from private.report_promotions where account_id=pg_temp.account(10)),'2026-12-26 19:00 Europe/Madrid'::timestamptz,'P2-2 reward anchored to first settled discounted invoice');
+select pg_temp.invoice(10,'late-two','2027-01-26 19:00 Europe/Madrid','pro3',200);
+select is(public.report_promotion_prepare(pg_temp.account(10),'sandbox','2027-02-01'),null::jsonb,'P2-2 two invoices cannot remove a three-month award');
+select pg_temp.invoice(10,'late-three','2027-02-26 19:00 Europe/Madrid','pro3',200);
+select is(public.report_promotion_prepare(pg_temp.account(10),'sandbox','2027-02-27')->>'discount_id',null::text,'P2-2 removal only after all three settled invoices');
+select public.report_promotion_invoice('sandbox','late-three','pro3',200,'2027-02-26 19:00 Europe/Madrid','2027-02-26 19:00 Europe/Madrid','2027-03-26 19:00 Europe/Madrid');
+select is((select count(*)::int from private.report_promotion_invoices where account_id=pg_temp.account(10)),4,'P2-2 repeated paid webhook cannot duplicate month credit');
+-- P2-2 recovery of a provider-expired coupon, without consuming any missing invoice.
+select ok(public.report_promotion_claim((select id from private.report_promotion_changes where account_id=pg_temp.account(6) and applied_at is null and superseded_at is null),'00000000-0000-4000-8000-000000000006','2026-11-05'),'P2-2 granted months remain claimable after spam');
+select public.report_promotion_ack((select id from private.report_promotion_changes where account_id=pg_temp.account(6) and applied_at is null and superseded_at is null),'00000000-0000-4000-8000-000000000006','2026-11-05');
+select pg_temp.invoice(6,'missed-benefit','2026-12-26 19:00 Europe/Madrid',null,0);
+create temporary table repair_op as select public.report_promotion_prepare(pg_temp.account(6),'sandbox','2026-12-27') op;
+select is((select (op->>'repair')::boolean from repair_op),true,'P2-2 paid renewal without discount schedules automatic repair');
+select ok(public.report_promotion_claim((select (op->>'id')::uuid from repair_op),'00000000-0000-4000-8000-000000000006','2026-12-27'),'P2-2 repair lease');
+select ok(public.report_promotion_cleared((select (op->>'id')::uuid from repair_op),'00000000-0000-4000-8000-000000000006','2026-12-27'),'P2-2 clear phase persisted before attach');
+select public.report_promotion_ack((select (op->>'id')::uuid from repair_op),'00000000-0000-4000-8000-000000000006','2026-12-27');
+select is(public.report_promotion_prepare(pg_temp.account(6),'sandbox','2026-12-28'),null::jsonb,'P2-2 same missing invoice cannot restart the repair twice');
 -- P2-1: the award and original 45-day window survive a plan change and a later re-subscription.
 update public.billing_subscriptions set provider_product_id='plus' where provider_subscription_id='sub1';
 select lives_ok($$select public.report_promotion_observe(pg_temp.account(1),'sandbox','sub1','plus','2026-10-26 19:00 Europe/Madrid','2026-11-12',null)$$,'P2-1 plan change does not fail webhook');
@@ -116,6 +148,6 @@ select public.report_promotion_observe(pg_temp.account(2),'sandbox','sub2','plus
 select is((select remote_discount from private.report_promotions where account_id=pg_temp.account(2)),'creator','stale webhook ignored');
 -- End of reward and creator windows: no fresh duration from repeated selection.
 update public.billing_subscriptions set current_period_end='2027-08-26 19:00 Europe/Madrid' where user_id=pg_temp.account(2);
-select is(public.report_promotion_prepare(pg_temp.account(2),'sandbox','2027-08-01')->>'discount_id',null::text,'expired reward and creator never restart');
+select is(public.report_promotion_prepare(pg_temp.account(2),'sandbox','2027-08-01')->>'discount_id','plus3','mirror dates never consume unsettled reward months');
 select * from finish();
 rollback;

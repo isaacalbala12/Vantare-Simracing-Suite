@@ -7,10 +7,11 @@ crean productos, descuentos, códigos, enlaces ni scheduler automáticamente.
 ## Reglas y decisiones conservadoras
 
 Altas mensuales Pro/Pro Plus desde **26/10/2026 19:00 Europe/Madrid** inclusive
-hasta **02/11/2026 19:00 Europe/Madrid** exclusivo. Cierre confirmado por el orquestador en ronda 2. 45
-días significa 1080 horas desde el alta, intervalo `[alta, alta+45 días)`. La
-aritmética de meses usa Europe/Madrid, independientemente de la conexión SQL. No
-se inventa un premio anual; la campaña se expresa en cobros mensuales.
+hasta **02/11/2026 19:00 Europe/Madrid** exclusivo. Cierre confirmado por el
+orquestador en ronda 2. 45 días significa 1080 horas desde el alta, intervalo
+`[alta, alta+45 días)`. La aritmética de meses usa Europe/Madrid,
+independientemente de la conexión SQL. No se inventa un premio anual; la campaña
+se expresa en cobros mensuales.
 
 Cuenta solo `testing_contribution_reviews.decision=accepted`, con contribución
 `accepted/fixed`, enviada dentro de la ventana. La revisión humana, evidencia,
@@ -142,9 +143,18 @@ abren admisión. No hay credenciales ni sandbox real usados. Ventas, webhooks
 alojados, facturas reales y repetición calendaria Polar necesitan verificación
 sandbox autorizada.
 
-Ronda 2 · P2-1: el premio conserva alta/ventana originales y sigue la suscripción
-activa más reciente. Pro↔Plus conserva tramo y cambia el descuento correspondiente.
-Se audita cada cambio; entregas antiguas no recuperan la suscripción anterior.
-Antes de aplicar en otra suscripción se liquida una operación de limpieza de la
-anterior, esperando cualquier lease que estuviera en vuelo. No se lanza conflicto
-comercial ni se manda el webhook a cuarentena por este caso.
+Ronda 2 · P2-1: el premio conserva alta/ventana originales y sigue la
+suscripción activa más reciente. Pro↔Plus conserva tramo y cambia el descuento
+correspondiente. Se audita cada cambio; entregas antiguas no recuperan la
+suscripción anterior. Antes de aplicar en otra suscripción se liquida una
+operación de limpieza de la anterior, esperando cualquier lease que estuviera en
+vuelo. No se lanza conflicto comercial ni se manda el webhook a cuarentena por
+este caso.
+
+Ronda 2 · P2-2: ya no se retira por `current_period_end` ni por calendario local.
+Se consumen periodos de facturas `subscription_cycle` pagadas, con descuento del
+tramo y sin prorrateo. Duplicados no consumen dos meses; el periodo real determina
+inicio/último fin. Un cobro sin descuento posterior al ACK provoca reparación
+una sola vez: clear/attach con fase durable y recuperación de respuesta perdida.
+Así un PATCH tardío conserva los tres/seis cobros futuros. Los dos spams impiden
+nuevos tramos; los meses que ya estaban concedidos se terminan de servir.

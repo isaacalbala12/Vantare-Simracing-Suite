@@ -1,4 +1,7 @@
-import { observeReportPromotion } from "../billing-report-promotion/observe.ts";
+import {
+  observePromotionInvoice,
+  observeReportPromotion,
+} from "../billing-report-promotion/observe.ts";
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import {
   type BillingEnvironment,
@@ -551,6 +554,16 @@ async function applyOrderRefundEvent(args: {
       "billing_order_ledger",
       () => Promise.resolve(),
     );
+    await applyEffect(
+      args.deps,
+      "report_promotion_invoice",
+      () =>
+        observePromotionInvoice(
+          args.deps.supabase,
+          args.environment,
+          args.event.data,
+        ),
+    );
     decision = await ledger.readDecision(args.environment, orderId);
     if (!decision) return { status: "ignored", reason: "missing_order" };
     await touchCustomerIfPresent(
@@ -861,6 +874,7 @@ const REPLAY_DATA_KEYS = [
   "current_period_end",
   "cancel_at_period_end",
   "paid",
+  "discount_amount",
   "net_amount",
   "applied_balance_amount",
   "refunded_amount",
@@ -891,6 +905,11 @@ export function minimizePolarWebhookEvent(
   event: PolarWebhookEvent,
 ): PolarWebhookEvent {
   const data = pickReplayFields(event.data, REPLAY_DATA_KEYS);
+  if (Array.isArray(event.data.items)) {
+    data.items = event.data.items.slice(0, 100).filter(isRecord).map((item) =>
+      pickReplayFields(item, ["proration", "start_timestamp", "end_timestamp"])
+    );
+  }
   const customer = nestedRecord(event.data.customer);
   if (customer) {
     data.customer = pickReplayFields(customer, [

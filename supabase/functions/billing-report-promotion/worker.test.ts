@@ -199,3 +199,47 @@ Deno.test("launch checkout uses exactly one discount, disables trial and code st
   assertEquals(body.allow_discount_codes, false);
   assertEquals(body.trial_interval, undefined);
 });
+Deno.test("P2-2 paid invoice projection carries actual cycle and excludes line-item PII", async () => {
+  const { observePromotionInvoice } = await import("./observe.ts");
+  const { minimizePolarWebhookEvent } = await import(
+    "../billing-webhook/process.ts"
+  );
+  const calls: unknown[] = [];
+  const admin = {
+    rpc: (...args: unknown[]) => {
+      calls.push(args);
+      return Promise.resolve({ error: null });
+    },
+  } as unknown as SupabaseClient;
+  const data = {
+    id: "order",
+    paid: true,
+    billing_reason: "subscription_cycle",
+    discount_id: "reward3",
+    discount_amount: 200,
+    created_at: "2026-12-26T18:00:00Z",
+    items: [{
+      proration: false,
+      start_timestamp: "2026-12-26T18:00:00Z",
+      end_timestamp: "2027-01-26T18:00:00Z",
+      label: "private customer text",
+    }],
+  };
+  const replay = minimizePolarWebhookEvent({ type: "order.paid", data });
+  assertEquals(JSON.stringify(replay).includes("private customer text"), false);
+  await observePromotionInvoice(admin, "sandbox", replay.data, true);
+  assertEquals(calls, [["report_promotion_invoice", {
+    p_environment: "sandbox",
+    p_order: "order",
+    p_discount: "reward3",
+    p_amount: 200,
+    p_billed: data.created_at,
+    p_start: data.items[0].start_timestamp,
+    p_end: data.items[0].end_timestamp,
+  }]]);
+  await observePromotionInvoice(admin, "sandbox", {
+    ...data,
+    billing_reason: "subscription_update",
+  }, true);
+  assertEquals(calls.length, 1);
+});

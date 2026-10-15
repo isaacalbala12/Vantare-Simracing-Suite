@@ -203,3 +203,49 @@ Deno.test("annual, launch-price and wrong-currency subscriptions are never mutat
     );
   }
 });
+Deno.test("P2-2 expired repeating coupon repairs through durable clear/attach and survives lost attach response", async () => {
+  let coupon: string | null = "reward3";
+  let phase: "pending" | "cleared" = "pending";
+  let writes = 0;
+  const client = {
+    read: () =>
+      Promise.resolve({
+        id: "sub",
+        product_id: "product",
+        status: "active",
+        discount_id: coupon,
+        amount: 599,
+        currency: "eur",
+        recurring_interval: "month",
+        recurring_interval_count: 1,
+      }),
+    change: (_id: string, value: string | null) => {
+      coupon = value;
+      writes++;
+      if (value === "reward3") throw new Error("lost attach response");
+      return client.read();
+    },
+  };
+  const expected = {
+    subscriptionId: "sub",
+    productId: "product",
+    discountId: "reward3",
+    normalCents: 599,
+    managedDiscountIds: ["reward3"],
+    repair: true,
+    markCleared: () => {
+      phase = "cleared";
+      return Promise.resolve();
+    },
+  };
+  await assertRejects(() =>
+    synchronizeDiscount(client, { ...expected, phase })
+  );
+  assertEquals(phase, "cleared");
+  assertEquals(coupon, "reward3");
+  assertEquals(
+    await synchronizeDiscount(client, { ...expected, phase }),
+    false,
+  );
+  assertEquals(writes, 2);
+});

@@ -1,10 +1,11 @@
 //! Primer arranque GPUI. Cuenta, layout y privacidad conservan sus propietarios.
 mod art;
 mod view;
-use super::Hub;
+use super::{Hub, navigation::Access};
 use crate::onboarding::{Choices, Equipment, SAY, usage_say};
 use gpui::{Context, Window, prelude::*};
 use std::time::{Duration, Instant};
+use vantare_ipc::control::CatalogAccess;
 use vantare_services::diagnostics::{Privacy, Usage};
 
 fn plan_request(
@@ -152,6 +153,28 @@ const fn most_private(privacy: Privacy) -> Privacy {
         crashes_decided: true,
         ..privacy
     }
+}
+/// Nombre corto del plan que el núcleo confirma para la cuenta; `None` mientras
+/// no haya política vigente. Una cuenta conectada sin confirmar no es «Gratis».
+fn confirmed_plan(access: Access) -> Option<&'static str> {
+    (access.verified && !access.blocked).then(|| match access.catalog {
+        CatalogAccess::Free => "Gratis",
+        CatalogAccess::LaunchV1 => "Lanzamiento",
+        CatalogAccess::Pro => "Pro",
+    })
+}
+/// Fila «Plan» del resumen: el plan real si se conoce; «Gratis» solo sin cuenta.
+fn plan_label(signed: bool, access: Access) -> String {
+    if !signed {
+        return "Gratis · sin cuenta".into();
+    }
+    if access.blocked {
+        return "Acceso bloqueado".into();
+    }
+    confirmed_plan(access).map_or_else(
+        || "Cuenta conectada · plan sin confirmar".into(),
+        |plan| format!("{plan} · cuenta conectada"),
+    )
 }
 impl Hub {
     pub(super) fn onboarding_plan(
@@ -381,6 +404,8 @@ impl Hub {
 mod tests {
     use super::*;
     use crate::services::protocol::{BillingProduct, Command};
+    use crate::shell::navigation::Access;
+    use vantare_ipc::control::CatalogAccess;
     #[test]
     fn plus_and_launch_open_prices_without_login_or_checkout() {
         for signed in [false, true] {
@@ -397,5 +422,44 @@ mod tests {
                 product: BillingProduct::ProMonthly
             })
         ));
+    }
+    #[test]
+    fn plan_labels_follow_the_confirmed_license_and_never_presume_free() {
+        let unverified = Access::default();
+        let launch = Access {
+            verified: true,
+            catalog: CatalogAccess::LaunchV1,
+            ..Access::default()
+        };
+        let pro = Access {
+            verified: true,
+            catalog: CatalogAccess::Pro,
+            ..Access::default()
+        };
+        let free = Access {
+            verified: true,
+            ..Access::default()
+        };
+        let blocked = Access {
+            blocked: true,
+            ..Access::default()
+        };
+        // Sin cuenta la fila no inventa nada: el núcleo no confirma plan alguno.
+        for access in [unverified, launch, blocked] {
+            assert_eq!(plan_label(false, access), "Gratis · sin cuenta");
+        }
+        assert_eq!(confirmed_plan(unverified), None);
+        assert_eq!(
+            plan_label(true, unverified),
+            "Cuenta conectada · plan sin confirmar"
+        );
+        assert_eq!(confirmed_plan(blocked), None);
+        assert_eq!(plan_label(true, blocked), "Acceso bloqueado");
+        assert_eq!(confirmed_plan(free), Some("Gratis"));
+        assert_eq!(plan_label(true, free), "Gratis · cuenta conectada");
+        assert_eq!(confirmed_plan(launch), Some("Lanzamiento"));
+        assert_eq!(plan_label(true, launch), "Lanzamiento · cuenta conectada");
+        assert_eq!(confirmed_plan(pro), Some("Pro"));
+        assert_eq!(plan_label(true, pro), "Pro · cuenta conectada");
     }
 }

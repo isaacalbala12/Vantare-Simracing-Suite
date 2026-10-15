@@ -1,4 +1,4 @@
-use super::{Hub, art, private_exit_available};
+use super::{Hub, art, confirmed_plan, plan_label, private_exit_available};
 use crate::{onboarding as model, orbit};
 use gpui::{Context, Div, SharedString, Stateful, Window, div, prelude::*, px, rgb};
 use vantare_ui::performance::Level;
@@ -687,7 +687,13 @@ impl Hub {
         let state = self.onboarding.as_ref().expect("visible");
         let mut column = div().w(px(440.0 * s)).flex().flex_col().gap(px(12.0 * s));
         if state.signed {
-            column = column.child(text("Tu plan: Gratis", 22.0 * s, 600, orbit::ink(cx), cx));
+            let access = self.remote.read(cx).navigation_access();
+            let heading = match confirmed_plan(access) {
+                Some(plan) => format!("Tu plan: {plan}"),
+                None if access.blocked => "Acceso bloqueado".to_owned(),
+                None => "Cuenta conectada · plan sin confirmar".to_owned(),
+            };
+            column = column.child(text(heading, 22.0 * s, 600, orbit::ink(cx), cx));
         } else {
             for (i, label) in [
                 "Continuar con Discord",
@@ -979,12 +985,7 @@ impl Hub {
                     ("Widgets", choices.widgets_summary()),
                     (
                         "Plan",
-                        if state.signed {
-                            "Gratis · cuenta conectada"
-                        } else {
-                            "Gratis · sin cuenta"
-                        }
-                        .into(),
+                        plan_label(state.signed, self.remote.read(cx).navigation_access()),
                     ),
                     (
                         "Rendimiento",

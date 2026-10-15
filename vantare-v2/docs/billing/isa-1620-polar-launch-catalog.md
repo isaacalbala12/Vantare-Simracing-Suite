@@ -46,7 +46,19 @@ dominio propio está en [personalización Polar](isa-1620-polar-checkout-persona
 y en `~/orq/polar-checkout-personalizacion.md`. Logo, imágenes, beta de
 localización y eventual embed son pasos del operador; no se ejecutan aquí.
 
-## Tabla y duración
+## Decisión posterior VANTA-42 R4 (15/10/2026)
+
+Isaac fija la renovación **Pro 5,99 €/mes y 59,99 €/año**, incluida la oferta
+inicial de lanzamiento. Sustituye las renovaciones Pro reducidas de este
+snapshot. La web lo aplica desde src/site/prices.json en sus cuatro idiomas.
+Pro Plus no tiene decisión nueva: conserva6,99/69,90 en lanzamiento y9,99/99,90
+normal. Antes de abrir, Isaac debe ajustar/verificar productos/precios de Polar
+y el procedimiento del catálogo: polar-launch-prices.json sigue siendo el
+snapshot anterior, no ejecutar su apply como si implementara la decisión R4.
+Esta entrega no modifica Polar real ni migra suscripciones existentes.
+[Checkout, refund automático y baja D1](checkout-web-shared.md).
+
+## Tabla y duración (snapshot anterior; Pro sustituido por R4)
 
 Fuente: `supabase/functions/scripts/polar-launch-prices.json`, versión
 `isa-1620-launch-v2`. EUR con IVA incluido, céntimos enteros.

@@ -1,31 +1,26 @@
-## VANTA-42 / #1620 · R3 · Checkout compartido (15/10/2026)
+## VANTA-42 / #1620 · R4 · Intentos, compensación y baja D1 (15/10/2026)
 
-Rama aislada `vantareapp/isa-1620-checkout-web`, base nightly
-`3f82af867321876c9bcca19703831d9da7a3fed5` (#1622 y #1633 incluidos).
-La [migración y runbook](../../billing/checkout-web-shared.md) llevan a código
-el guard de app/web: UUID antes de filas, tombstone, derecho activo, dedupe
-de familia y binding obligatorio. Edge exige guard v1. Venta sigue cerrada.
-La web incorpora master `d9f040a` sin promesas de prueba gratis.
+Rama/base/PR: `vantareapp/isa-1620-checkout-web`, nightly `3f82af8`, draft #1663.
+[Contrato y despliegue](../../billing/checkout-web-shared.md): guard2, begin antes
+de Polar, caducidad automática solo segura, nonce sellado para ACK perdido,
+reembolso total automático de cobro sin licencia, ledger/outbox y retries.
+No hay recuperación comercial por soporte ni cambio de identidad por metadata.
+Pull D1 automático mínimo privilegio y cursor de commit; barrera #1622 intacta.
+Sustituye expresamente el paso manual R3. Owner recibe avisos mediante
+receptor privado firmado por configurar; no se añade pantalla Admin.
 
-Docker propio con lock: 69 migraciones, 137 pgTAP y ocho carreras reales PASS.
-Control RED sin migración: 1/3 (doble compra y derecho activo no bloqueados);
-GREEN 3/3. Edge 617 PASS/0 FAIL/2 ignored; calidad 456 y superficie PASS.
-Fmt y lint de producción PASS; ocho avisos require-await preexistentes en tests
-contrastados contra la base, sin nuevos. Sin gates Rust por no afectar native.
-Web: 50 tests y 40 capturas PASS; E2E con procesador real y dobles documentado
-en su expediente. Evidencia completa `~/evidence/web-compra/r3-*`.
+Web conserva master d9f040a sin prueba gratis; renovación Pro de una fuente
+5,99/59,99 en cuatro idiomas, sin tocar Polar. Plus conserva renovación lanzamiento6,99/69,90; normal9,99/99,90.
+71 migraciones /212pgTAP/13carreras PASS; F1 RED conductual sobre R3.
+Edge630PASS/2ignored; web66PASS, SQLite y E2E real cinco planes con dobles;
+Chrome40capturas/CSP/backoff/precios PASS. Calidad456/superficie/fmt/lintproducción
+PASS. Native no cambia. Evidencia `~/evidence/web-compra/r4-*`.
 
-Baja D1 manual obligatoria: #1622 no tiene transporte privado hacia Cloudflare.
-Pausar/drenar compra, borrar solo el UUID verificado y comprobar cero filas
-antes de cerrar la baja. Responsable de soporte pendiente de asignar.
-No se configura un endpoint destructivo nuevo ni se modifican secretos/productos.
-
-Entrega únicamente a los bares del Mac; SHA final, commits y verificación de
-refs en `~/orq/web-compra.buzon.md`. El orquestador publica backend y revisa.
-Sin GitHub/PR/CI remota ni despliegue, promoción, release o servicios reales.
-Siguiente: revisión conjunta backend/web, despliegue autorizado y sandbox;
-no se declara APTO ni lista para venta. Plane VANTA-42 sigue en curso;
-el orquestador actualiza tracker/issue con esta entrega.
+Entrega solo a bares del Mac. SHA/commits/refs en buzón web-compra.
+Venta cerrada #1633. Sin API real, GitHub push, despliegue, promoción ni release.
+Siguiente: revisión conjunta y despliegue autorizado por etapas; configurar JWT
+mínimo/salts, cron y receptor visible Owner, verificar precios Polar y sandbox.
+Orquestador actualiza VANTA-42/issue/PR; último estado comunicado En curso.
 
 ## #1608 · R11 · Guarda y permisos de triage (15/10/2026)
 

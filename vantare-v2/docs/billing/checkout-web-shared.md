@@ -1,105 +1,174 @@
-# VANTA-42 / #1620 · Checkout compartido de app y web
+# VANTA-42 / #1620 · Compra compartida, caducidad y reembolso automático
 
-Entrega aislada desde nightly `3f82af867321876c9bcca19703831d9da7a3fed5`,
-rama `vantareapp/isa-1620-checkout-web`. No acredita despliegue ni apertura.
+Rama `vantareapp/isa-1620-checkout-web`, base nightly
+`3f82af867321876c9bcca19703831d9da7a3fed5` (#1622/#1633), PR draft #1663.
+Entrega de código y pruebas locales. No acredita despliegue ni apertura.
 
-## Contrato único
+## Contrato y barrera de cuenta
 
-La migración canónica es
-[`20261015191316_checkout_web_shared_guard.sql`](../../../supabase/migrations/20261015191316_checkout_web_shared_guard.sql).
-Sustituye el borrador R2 de la web. Mantiene los cinco argumentos y outcomes
-de claim; añade `guard_version=1`. Tanto el adaptador Edge de la app como
-el Worker web exigen esa versión antes de llamar a Polar.
+Las migraciones canónicas son:
+- `20261015191316_checkout_web_shared_guard.sql`: guard compartido.
+- `20261015193638_checkout_automatic_compensation.sql`: protocolo guard **2**,
+  marcador previo al POST, compensación y resolución de intentos.
+- `20261015195425_web_purchase_erasure_pull.sql`: baja D1 por pull, mantenimiento
+  y avisos duraderos al Owner.
 
-La RPC toma el lock canónico de UUID de #1622 ANTES de filas y comprueba el
-tombstone. Ese mismo lock serializa app/web. Rechaza derechos efectivos activos
-y otro intento de la misma cuenta/entorno/familia (suscripción o Launch).
-Un lease caducado no prueba que Polar no pueda cobrar: sigue bloqueado hasta
-reconciliación. No hay borrado global por antigüedad ni reset por cambiar de canal.
+Se mantienen los cinco argumentos y outcomes de claim. App/Worker exigen
+guard 2 antes de Polar. La RPC bloquea UUID antes de filas (#1622), rechaza
+tombstone/derecho activo y serializa cuenta/entorno/familia entre canales.
+`billing_begin_checkout_request` sella intento/producto con un nonce aleatorio
+ANTES del POST. Complete exige ese marcador y retiene el binding mediante el
+trigger original. Sin ACK no se devuelve URL. El webhook sigue resolviendo
+solo por binding/customer; metadata nunca concede licencia ni vincula cuenta.
 
-La finalización exige ID de checkout y conserva la barrera incluso en un no-op.
-El trigger existente `retain_checkout_binding` registra el binding en la misma
-transacción; sin ACK no sale URL. Reutilizar exige el binding coherente.
-El webhook sigue resolviendo por binding/customer canónicos, nunca por correo
-o metadata. No se añade endpoint, proveedor, secreto, dependencia ni lógica
-alternativa de licencia. `mark_billing_checkout_attempt_uncertain` conserva
-su implementación protegida de #1622.
+## Caducidad automática (F1)
 
-## Orden de integración autorizado
+Un lease local caducado no demuestra que un checkout pueda dejar de cobrar.
+Cada ejecución del reconciliador:
+1. Resuelve `unpaid_expired` los intentos no enviados, bajo el mismo lock UUID.
+   Begin compite con caducidad: solo uno puede ganar, y no hay POST sin su ACK.
+2. Para checkouts conocidos, consulta Polar; solo `expired/failed` autoritativos
+   liberan el hold, y no si existe un cobro observado aún sin reembolsar.
+   `open/confirmed/succeeded`, timeout o error conservan el hold.
+3. Recorre también sesiones Polar para recuperar ACK perdidos mediante el nonce
+   sellado. Solo guarda ID de recuperación/estado: no fabrica binding ni URL.
+4. Un rechazo cierto 400/401/403/404/422/429 del POST libera el intento.
+   Un fallo de transporte/5xx sigue incierto. Reutilizar UUID terminal devuelve
+   `checkout_attempt_expired`; el siguiente clic explícito crea uno nuevo.
 
-1. Revisar esta rama y la web `vantareapp/web-compra`; mantener venta cerrada.
-2. Aplicar la migración por el pipeline autorizado del backend y comprobar ACL.
-3. Publicar los adaptadores Edge que usan el contrato; esquema antiguo produce
-   cierre seguro. Verificar app y web en sandbox.
-4. Aplicar D1 0003/0004 y cron de la web; completar catálogo, Clerk, privacidad,
-   responsable de bajas y matriz comercial antes de solicitar apertura a Isaac.
+El guard ignora únicamente intentos con resolución terminal. Un intento incierto
+no permite evadir el bloqueo cambiando periodo, pestaña o canal. Un hold enviado
+sin ID recuperable queda conservadoramente retenido y genera aviso al Owner.
+No se borra ni se vuelve a cobrar para salir de un estado desconocido.
 
-No se modifican mapas de productos, `PURCHASE_OPEN`, política de privacidad
-ni autorización comercial de #1633. No hay migración remota en esta entrega.
+## Cobro sin licencia: compensación, nunca recuperación por soporte
 
-## Intentos pendientes
+El reconciliador existente observa pedidos iniciales pagados del catálogo y
+organización verificados, antes de procesar cualquier proyección de su página.
+Renovaciones y otros productos no se convierten en compensaciones de checkout.
+El registro privado tiene clave única entorno/pedido y snapshot inmutable.
+Tras 15 minutos de gracia, si no hay bundle completo de grants del origen
+canónico, selecciona el reembolso. Grants históricos completos también prueban
+cumplimiento: no se reembolsa una suscripción antigua legítima ya caducada.
+Una selección de reembolso impide activar grants tardíos del pedido/suscripción;
+se refresca la cuenta viva sin resucitar una baja de #1622.
 
-Investigar creando/pending >15 minutos; primera revisión humana en 24 horas,
-escalado en siete días y revisión de cualquier hold a los 30 días.
-Consultar intento, binding, customer, inbox, ledger y grants del entorno.
-Confirmar en Polar el estado terminal y que ya no puede cobrar antes de retirar
-el intento transitorio concreto. Conservar binding y ledger. Si hubo pago,
-reconciliar por el camino de billing; no fabricar una licencia. No repetir el
-POST ante timeout o resultado incierto. Los cambios de plan siguen fuera de alcance.
+Lease de dos minutos por pedido; reintentos con backoff 30 s hasta una hora.
+Antes de cada escritura se lee pedido y lista paginada de refunds, validando
+organización/producto/pedido/moneda. Se solicita solo el neto restante tras
+descuentos; Polar añade el impuesto. Éxito exige confirmar todo el neto y todo
+el impuesto en el pedido autoritativo. Un 201 no es liquidación definitiva.
+Una suscripción se revoca idempotentemente tras aceptar/encontrar el refund
+para impedir renovaciones. Tras respuesta POST o ACK DB perdidos se relee:
+no se repite a ciegas. No se inventa una cabecera de idempotencia de Polar.
+La unicidad local y los límites del pedido evitan duplicar el importe; no se
+promete exactamente una petición HTTP bajo todos los fallos posibles.
 
-Para la app, completar también [recuperación nativa](native-checkout-recovery.md).
-Para la web, el runbook `docs/web-compra-recuperacion.md` fija la retención D1:
-contadores efímeros, minimización ready a 24h de caducidad, borrado a 30 días
-y holds revisados hasta reconciliar.
+Cada fallo deja código cerrado, auditoría y outbox Owner; un refund pendiente
+tras tres intentos también alerta. Un éxito financiero no elimina un aviso
+anterior sin entregar. El ledger financiero sin correo ni UUID de cuenta
+sobrevive la baja para terminar la devolución. Sin cobro, solo caduca el intento.
+Soporte no activa/vincula pagos a medias ni pide otro pago: el sistema devuelve
+el dinero. Owner puede reparar configuración/API; la cola sigue reintentando.
 
-## Baja #1622 y D1: paso manual obligatorio
+## Baja automática D1 por pull (#1622)
 
-El webhook Clerk y sus tareas duraderas limpian Supabase/Storage; no existe un
-transporte privado autenticado hacia el D1 de esta web. No se introduce una ruta
-HTTP destructiva ni una credencial Cloudflare con permisos amplios para suplirlo.
-El borrado D1 NO es automático y el ACK de Clerk NO acredita haberlo hecho.
+El tombstone canónico encola un UUID borrado. Un contador transaccional serializa
+el orden de commit: una secuencia ordinaria podría saltarse un evento no
+confirmado. La RPC STABLE `web_purchase_erasure_pull` solo lee hasta 50 eventos
+desde el cursor confirmado del consumidor fijo. No borra cuentas.
 
-Antes de cerrar una baja, el responsable debe:
-1. Completar #1622 y comprobar tombstone con el UUID interno verificado.
-   Pausar la compra web y drenar solicitudes admitidas antes del borrado
-   para evitar escrituras D1 tardías; no basta con el ACK de Clerk.
-2. Reconciliar cualquier cobro pendiente sin eliminar evidencia financiera.
-3. En mantenimiento privado del Worker, ejecutar
-   `erasePurchaseAccount(env, account)` de `purchase-limits.mjs`.
-   Alternativamente borrar mediante consulta parametrizada únicamente
-   `purchase_attempts WHERE account_id=?` en D1 y comprobar su resultado.
-4. Comprobar cero filas para el UUID, que no hay solicitudes previas pendientes,
-   y que los contadores efímeros han sido purgados. Con la alternativa SQL,
-   comprobar cron/ventanas caducadas antes de cerrar; no se puede atribuir un
-   contador IP agregado a una cuenta. Registrar responsable y evidencia.
-5. Reabrir la compra solo después de esa comprobación. La identidad borrada
-   queda rechazada por Supabase en claim/complete/uncertain.
+El cron Worker de cinco minutos instala en una transacción D1 el hash HMAC de
+supresión, borra las filas de cuenta y guarda cursor local. Después purga sus
+contadores y confirma rango/recuento mediante `web_purchase_erasure_ack`.
+La supresión impide INSERT/UPDATE tardíos admitidos antes de la baja. No existe
+endpoint HTTP destructivo. Un ACK perdido repite borrados idempotentes.
+El cursor de servidor solo avanza tras los borrados; #1622 no espera red externa.
 
-La apertura comercial exige asignar este procedimiento a soporte. Automatizar
-el transporte, autenticación, retries y drenaje requiere un encargo propio.
+Credencial separada **D1_ERASURE_JWT**, rol NOLOGIN NOINHERIT
+`web_purchase_erasure` (miembro de authenticator), sin acceso directo a tablas.
+Solo cuatro RPC: pull de lectura, ACK de cursor, fallo cerrado y lookup de
+estado de hasta 50 intentos. No tiene funciones de compra, licencia ni borrado.
+Se exige JWT firmado por el proyecto: `iss=supabase`,
+`role=web_purchase_erasure`, `aud=authenticated`,
+`purpose=web_purchase_erasure`, con expiración corta y rotación operativa.
+Un JWT Clerk no puede asumir este propósito. Isaac provisiona el JWT mediante
+su procedimiento privado; jamás copiar la clave de firma del proyecto al Worker.
+El transporte de baja nunca lee service_role; la compra conserva su credencial
+servidor previa. Variables Worker: `SUPABASE_PUBLIC_KEY`, `D1_ERASURE_JWT`,
+`PURCHASE_ERASURE_SALT` (>=32), además de URL/binding y salt de ritmo existentes.
+
+Tres fallos consecutivos generan aviso Owner; un éxito reinicia el contador.
+Un watchdog independiente del backend alerta si no hay heartbeat en 15 minutos,
+incluyendo JWT caducado o cron ausente que no puede reportarse a sí mismo.
+Logs contienen códigos/recuentos, sin UUID/JWT/respuestas. Los hashes de supresión
+y tombstones fuente duran mientras dure la barrera #1622. Rotar el salt requiere
+pausar compras y reejecutar TODO el stream desde cursor cero antes de reabrir.
+No resetear el cursor ni borrar hashes por antigüedad sin ese procedimiento.
+
+## Conservación y observación
+
+D1: URLs/IDs minimizados tras resolución; fila terminal purgada 24 h después.
+Una fila sin intento canónico se purga a las 24 h; toda caché restante a 30 días
+tras consultar el estado canónico. El hold financiero sigue en Supabase.
+El cron también conserva la minimización ready a 24 h de caducidad y purga a
+30 días, contadores por ventana de cinco minutos y logs operativos 30 días.
+Supabase purga intentos resueltos >30 días (hasta 100/tick), auditoría operativa
+y avisos entregados >30 días. Bindings/ledger financiero conservan su retención
+de billing; un hold incierto no se elimina ciegamente. A partir de una hora
+genera aviso sin datos personales. La privacidad debe reflejar estos plazos.
+
+Avisos: outbox durable, entrega HTTPS firmada HMAC SHA-256 con timestamp,
+ID estable y reintento. Variables backend: `BILLING_OWNER_ALERT_URL`,
+`BILLING_OWNER_ALERT_SECRET` (>=32). Isaac configura un receptor privado que
+muestre los incidentes al Owner y valide firma/ventana temporal/dedupe antes
+de habilitar venta; la prueba usa un receptor doble, no una bandeja real.
+No se ha añadido una pantalla a la miniapp Admin. El ACK HTTP del receptor
+significa aceptación durable, nunca descartar si no se mostró/persistió.
+Sin configuración/ACK la outbox sigue pendiente; no se silencian fallos.
+El payload tiene entorno, tipo, código y correlación hash, sin PII.
+
+## Despliegue posterior autorizado (venta cerrada)
+
+1. Revisar rama y web juntas. Actualizar Edge a guard 2 antes de migrar:
+   con esquema antiguo las compras fallan cerradas, sin POST no marcado.
+2. Aplicar migraciones por pipeline autorizado; verificar ACL y contrato.
+   Clientes R3 exigen guard 1 y se cierran al recibir 2; complete exige begin.
+3. Publicar/configurar y programar billing-reconcile cada cinco minutos
+   con su secreto servidor existente, POLAR_ACCESS_TOKEN con permisos necesarios
+   de lectura/refund/revocación, mapa completo y destino Owner privado.
+   Su despliegue sigue pendiente: continúa fuera de wrappers generales.
+4. Aplicar D1 0003/0004/**0005**, publicar Worker actualizado y configurar
+   credencial mínima/salts y cron. No mantener Worker antiguo con esquema nuevo.
+5. Verificar borrado/ACK perdido/alertas/refund y todos los planes en sandbox
+   autorizado; completar privacidad/Clerk/retornos antes de pedir apertura.
+   Pro renueva a **5,99 €/mes y 59,99 €/año**. Isaac debe comprobar y ajustar
+   productos/precios recurrentes de Polar: el código web no modifica Polar.
+   Pro Plus conserva su contrato aprobado: 6,99/69,90 de lanzamiento también
+   en renovación, 9,99/99,90 para altas normales. Sin decisión nueva de Plus.
+
+No se cambian mapas reales, PURCHASE_OPEN ni cierre comercial #1633. Los
+comandos de despliegue quedan reservados al orquestador/Isaac, sin ejecutarlos.
 
 ## Evidencia reproducible
 
-Desde raíz, en el Mac:
 ```sh
-python3 supabase/tests/run-checkout-web-docker.py --output ~/evidence/web-compra/r3-docker
-# Control RED esperado: sale con error, dos de tres aserciones fallan
-python3 supabase/tests/run-checkout-web-docker.py --baseline --output ~/evidence/web-compra/r3-docker-red
+python3 supabase/tests/run-checkout-web-docker.py --output ~/evidence/web-compra/r4-docker
+# RED F1 esperado (guard R3 retiene la familia tras expiración terminal):
+python3 supabase/tests/run-checkout-web-docker.py --before-expiry --output ~/evidence/web-compra/r4-f1-red
 deno test --cached-only --no-lock --node-modules-dir=none --config supabase/functions/deno.json --allow-env --allow-read --allow-write supabase/functions
 ```
 
-El runner adquiere `~/orq/docker.lock`, usa un contenedor desechable sin red/puertos
-y libera ambos en finally. Carga 69 migraciones: 137 pgTAP PASS y ocho carreras
-reales app/web y claim/complete/uncertain frente a borrado, en ambos órdenes.
-Observa el blocker advisory real; no usa un sleep como oráculo.
-El esquema anterior admite dos compras: RED 1/3; la migración da GREEN 3/3.
-No es un stack gestionado: bootstrap PostgreSQL/Storage sintético, rol postgres
-superusuario solo en el contenedor fixture; ACL de clientes/service_role reales.
+71 migraciones, **212 pgTAP y 13 carreras reales PASS**; RED F1 busy frente a
+claimed esperado, no por función ausente. Locks observados con pg_blocking_pids,
+sin sleeps como oráculo. Runner adquiere lock Docker y limpia contenedor propio.
+Edge **630 PASS, 0 FAIL, 2 ignored** preexistentes. Tests sin permiso de red.
+Fmt/lint producción y nuevos tests PASS; ocho require-await previos permanecen
+en tests históricos. Calidad456 y superficie de deploy PASS. Native no cambia:
+sin compilación Rust/telemetría. Web:66 tests, SQLite real, E2E cinco planes con
+webhook real, Chrome40 capturas/CSP/backoff/precios/reintento explícito PASS.
 
-Edge: 617 PASS, 0 FAIL, dos ignored preexistentes (integraciones HTTP/SQL).
-Fmt de los tres TS PASS; lint de producción PASS con la exclusión
-`no-import-prefix` ya documentada en el repo. Los tests afectados conservan
-ocho `require-await` de la base, sin diagnósticos nuevos; comparación guardada
-en `~/evidence/web-compra/r3-lint-comparison.json`. No se presenta lint global verde.
-Calidad 456 y superficie de deploy PASS. No Rust/telemetría: native no cambia.
-Resultados y límites del E2E web→webhook→derechos en el expediente de la web.
+Referencias públicas contrastadas: [Polar refund2026-10](https://polar.sh/docs/api-reference/2026-10/refunds/create-refund),
+[revocación](https://polar.sh/docs/api-reference/2026-10/subscriptions/revoke-subscription)
+y [JWT Supabase](https://supabase.com/docs/guides/auth/jwts). Lectura de documentos,
+sin llamadas a las APIs de cobro/identidad.

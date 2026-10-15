@@ -329,3 +329,20 @@ fn spam_report_roundtrips_and_decisions_require_a_review_note() {
     };
     assert!(action.validate().is_ok());
 }
+
+#[test]
+fn decided_reports_never_offer_implicit_reopening() {
+    for current in [
+        Status::Validated,
+        Status::Rejected,
+        Status::Spam,
+        Status::Fixed,
+    ] {
+        assert!(!current.can_transition_to(Status::Submitted));
+        assert!(!current.can_transition_to(Status::InReview));
+    }
+    assert!(Status::Submitted.can_transition_to(Status::InReview));
+    assert!(Status::InReview.can_transition_to(Status::Submitted));
+    assert!(Status::Validated.can_transition_to(Status::Fixed));
+    assert!(!Status::Rejected.can_transition_to(Status::Fixed));
+}

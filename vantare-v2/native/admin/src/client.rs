@@ -77,6 +77,13 @@ impl Status {
         Self::Spam,
         Self::Fixed,
     ];
+    pub fn can_transition_to(self, next: Self) -> bool {
+        match next {
+            Self::Submitted | Self::InReview => matches!(self, Self::Submitted | Self::InReview),
+            Self::Fixed => matches!(self, Self::Validated | Self::Fixed),
+            _ => true,
+        }
+    }
     pub fn label(self) -> &'static str {
         match self {
             Self::Draft => "Borrador",

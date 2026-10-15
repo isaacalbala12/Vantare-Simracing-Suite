@@ -12,8 +12,8 @@ aceptación 1/día y 2/semana UTC por cuenta, revisión duradera y purga a 90 d�
 de logs/telemetría. `human` identifica revisión manual sin fingir propuesta de
 modelo; la ruta pública anterior conserva propuesta obligatoria y permisos.
 Spam se lee, filtra y confirma en la miniapp. La decisión sigue siendo inmutable;
-un cambio incompatible devuelve conflicto. Reabrir retira los metadatos de
-arreglo en el trigger compartido, también para los lectores del tester.
+un cambio incompatible devuelve conflicto. El trigger compartido retira los metadatos de arreglo al salir de `fixed`;
+R4 bloquea la reapertura de contribuciones decididas.
 
 Personas usa resúmenes sin pagos y recuentos agregados. Creadores agrega las
 líneas una sola vez. En Docker, con 3.000 cuentas, 36.000 pagos y 100 creadores:
@@ -24,14 +24,11 @@ Polar. Un refund identificable pero inválido pone esa factura pendiente de
 revisión y bloquea su comisión; el resto se muestra. Cuarentenas y pagos históricos
 atrasados requieren reconciliación revisada, sin un nuevo barrido automático.
 
-**Anual pendiente de Isaac; este arreglo conserva el resultado anterior.**
+**Decisión de Isaac, 15/10/2026: anual = 30 % del pago anual completo.**
 La tasa activa está centralizada en `private.native_admin_commission_rate`.
-Lectura actual: 30 % de lo cobrado al pagar en el mes 1; un anual de **100,00 €
-genera 30,00 €**; renovación en mes 13 genera 0 €. Otra lectura posible es repartir
-100 €/12 entre los meses: **100 × (30 % + 10 % × 11) / 12 = 11,666… €**, unos
-**11,67 € (11,7 %)** antes de concretar redondeo por línea y calendario de devengo.
-No se implementa ese prorrateo ni se autoriza pagar comisiones reales.
-La frase anterior «anual sin prorratear aprobado» no era una decisión confirmada.
+Un anual de **100,00 € genera 30,00 €** al pagar en el mes 1; renovación en
+mes 13 genera 0 €. No se prorratea entre meses. Esta decisión fija el cálculo;
+no autoriza pagar comisiones reales ni activar producción.
 
 UI: «· anual», etiqueta «—», Owner y Tester simultáneos, tarjeta Clientes/Ventas,
 fechas «2 sep» y nota obligatoria de revisión. Capturas GPUI demo frente al HTML
@@ -51,7 +48,7 @@ Quality/retirada: 456 huellas PASS. Target propio `~/target-1627r3`, borrado al 
 Límites: Windows/DPI/teclado físico y OAuth/Clerk/Polar reales pendientes;
 borrado de cuenta continúa sin conectar a #1622, como en el candidato revisado.
 Los efectos externos nuevos siguen limitados a sandbox. Falta revisión del
-orquestador y decisión anual de Isaac. No hay activación en producción.
+orquestador. La decisión anual queda cerrada el 15/10/2026. No hay activación en producción.
 Evidencia anterior r1: `~/evidence/1627/RESUMEN.md` (histórica).
 
 ## #1608 · R11 · Guarda y permisos de triage (15/10/2026)

@@ -63,10 +63,13 @@ Personas: consulta inicial paginada (50), búsqueda remota tras 300 ms sin tecle
 filtros sobre página cargada y recuentos globales. Módulos muestra fuente efectiva
 (plan, rol, rollout, individual), con cambio únicamente del acceso propio.
 Informes: incluye Spam y nota obligatoria al aceptar/rechazar/marcar spam; aceptación antes de arreglado y versión obligatoria;
-se siguen leyendo estados históricos. Capturas firmadas solo del origen/bucket
+se siguen leyendo estados históricos. Las decisiones son finales: una contribución
+aceptada, rechazada, spam o arreglada no vuelve a Recibido/En revisión; arreglado
+sigue ocupando el cupo diario/semanal. La UI oculta esas vueltas también en
+informes históricos, que ahora admiten Spam. No se ofrece una acción Reabrir. Capturas firmadas solo del origen/bucket
 Supabase configurados, sin OAuth/apikey, acotadas a 10 MiB, 4096×4096 y 64 MiB.
 
-Creadores: céntimos y tasas calculados en servidor. El candidato conserva el anual sin prorratear, pendiente de la decisión de Isaac; las dos lecturas y ejemplo están en el handoff comercial.
+Creadores: céntimos y tasas calculados en servidor. Isaac decidió el 15/10/2026: anual = 30 % del pago anual completo, sin prorrateo (100 € → 30 € en el mes 1).
 Ejemplo aprobado CARLOSGT: 3,92 € ganados − 0,96 € pagados = 2,96 € pendientes.
 Historial incompleto se advierte y desactiva el pago. «Apuntar pago» solo registra
 que se ha pagado el saldo disponible de meses cerrados, no envía dinero. Facturas

@@ -80,6 +80,8 @@ impl Admin {
                         self.button("select-report", &r.title, Event::SelectReport(i), cx)
                             .id(("select-report", i))
                             .h_auto()
+                            .justify_start()
+                            .text_left()
                             .p_0()
                             .gap_0()
                             .py(px(7.))
@@ -185,6 +187,9 @@ impl Admin {
         detail = detail.child(eyebrow("CAMBIAR ESTADO"));
         let mut statuses = div().flex().flex_wrap().gap(px(6.));
         for (i, status) in Status::ALL.into_iter().enumerate() {
+            if !r.status.can_transition_to(status) {
+                continue;
+            }
             statuses = statuses.child(
                 self.button(
                     "status",

@@ -37,8 +37,12 @@ sin inventar una propuesta o confianza de modelo. La ruta pública anterior sigu
 exigiendo propuesta y Owner autenticado; no se amplían permisos EXECUTE.
 La decisión es inmutable como en #1594; un intento incompatible devuelve 409.
 La purga existente usa `decided_at + 90 días` para logs y telemetría.
-Arreglado exige aceptación previa y versión. Reabrir borra versión, título y
-resumen del arreglo en el trigger común; el tester deja de ver esa versión.
+Arreglado exige aceptación previa y versión, y sigue consumiendo cupo. Las
+contribuciones aceptadas/rechazadas/spam/arregladas no vuelven a Recibido ni En
+revisión (409); tampoco las históricas sin fila de revisión. No hay acción de
+reapertura. R4 restaura decisiones que el adaptador anterior había reabierto,
+conservando nota y fecha originales. El cupo cuenta también revisiones aceptadas
+si una versión anterior alteró el estado. Los informes antiguos admiten Spam.
 Capturas privadas `ready`, firmadas durante 600 s. Las lecturas se auditan con
 actor, acción, fecha y objetivo; sin duplicar nombres, correos ni pagos.
 
@@ -93,10 +97,9 @@ saldo aplicado, divisa/producto desconocido o campos incompletos dejan la cuenta
 sin certificar y bloquean el pago manual. Pendientes de reembolso no se liquidan.
 Motivo del refund y fecha de su confirmación, cuando existen, proceden del último estado verificado (`modified_at`), no de una liquidación bancaria. La primera compra pagada fija creador; cohortes por aniversario mensual UTC:
 la tasa vive solo en `private.native_admin_commission_rate`: 30 % mes 1,
-10 % meses 2–12, 0 % desde mes 13. Se conserva el cobro anual sin prorratear
-como comportamiento del candidato, pendiente de decisión explícita de Isaac
-(no una regla aprobada para pagar en producción). Ver las dos lecturas con un
-anual de 100 € en el handoff comercial. Redondeo half-up por línea. Los registros legacy netos se identifican
+10 % meses 2–12, 0 % desde mes 13. Decisión de Isaac del 15/10/2026:
+anual = 30 % del pago anual completo, sin prorrateo; 100 € generan 30 €
+en el mes 1. No autoriza pagos reales ni producción. Redondeo half-up por línea. Los registros legacy netos se identifican
 como tales, con fecha de registro; no se inventan impuestos ni enlace de cliente.
 
 Solo se apunta saldo de meses UTC cerrados, >0 y ≤ disponible, con bloqueo

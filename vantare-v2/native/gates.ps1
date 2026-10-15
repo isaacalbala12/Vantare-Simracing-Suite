@@ -51,7 +51,9 @@ try {
         'lifecycle' { @('test', '--workspace', '--test', 'lifecycle') }
         'prueba' { @('build', '--workspace', '--exclude', 'vantare-admin', '--bins', '--profile', 'prueba') }
     }
-    $arguments += @('--locked', '--offline', '-j', '2', '--no-default-features')
+    # En nextest `-j` son hilos de test; los jobs de compilación van en --build-jobs (#1465).
+    $jobs = if ($Gate -in @('test', 'telemetria')) { '--build-jobs' } else { '-j' }
+    $arguments += @('--locked', '--offline', $jobs, '2', '--no-default-features')
     if ($defaults.Count) { $arguments += @('--features', ($defaults -join ',')) }
     if ($Gate -eq 'clippy') { $arguments += @('--', '-D', 'warnings') }
     & cargo @arguments

@@ -193,9 +193,10 @@ pub fn show(window: &mut Window, width: i32, height: i32, cx: &mut App) -> Resul
     // owner. Sync the cached viewport explicitly and invalidate the full frame
     // after the native resize; otherwise PrintWindow can include the old size.
     window.bounds_changed(cx);
-    let viewport = window.viewport_size() * window.scale_factor();
-    if (viewport.width.0 - width as f32).abs() > 0.5
-        || (viewport.height.0 - height as f32).abs() > 0.5
+    let viewport = window.viewport_size();
+    let physical_width = f32::from(viewport.width) * window.scale_factor();
+    let physical_height = f32::from(viewport.height) * window.scale_factor();
+    if (physical_width - width as f32).abs() > 0.5 || (physical_height - height as f32).abs() > 0.5
     {
         // SAFETY: hide our HWND before rejecting a stale GPUI viewport.
         unsafe {
@@ -204,8 +205,7 @@ pub fn show(window: &mut Window, width: i32, height: i32, cx: &mut App) -> Resul
         return Err("el viewport GPUI no coincide con el cliente de captura".into());
     }
     println!(
-        "capture-viewport physical={}x{} expected={width}x{height}",
-        viewport.width.0, viewport.height.0
+        "capture-viewport physical={physical_width}x{physical_height} expected={width}x{height}"
     );
     Ok(hwnd)
 }

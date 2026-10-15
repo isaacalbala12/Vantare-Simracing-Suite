@@ -1,3 +1,114 @@
+## #1608 · R10 · Fixtures Clerk y revocación de replay (15/10/2026)
+
+Encargo del orquestador sobre PR #1622; base `28b71186f`, nightly comparada
+`64c493e4f`. Worktrees propios `~/wt-1608-r10` y
+`~/wt-1608-r10-nightly`. Commits: `07d80038` (revocación/P3), `0d79ae42`
+(fixtures/runner). SHA de entrega documental y push local en
+`~/orq/1608.buzon.md`. Sin GitHub, Notion, Plane ni subagentes, por excepción
+expresa; el orquestador gestiona el seguimiento y revisa el diff.
+
+**R9-P1-1 resuelto:** las 12 suites que se rompían con B03 vuelven a pasar
+con sus archivos originales del repo, sobre el catálogo completo:
+hardening **48/48**, Clerk bootstrap **31/31**, native bridge **28/28**,
+checkout **20/20**, report submission **55/55**, screenshots **80/80**,
+agent jobs **71/71**, closeout **45/45**, candidate feedback **45/45**,
+triage outbox **40/40**, F2 **6/6**, F3 **8/8**. También se recuperan todas
+las aserciones que la identidad rompía en las suites previamente rojas:
+Codex **60/61**, privacidad **34/33** (plan antiguo desajustado), core **61/72**,
+access **33/56** (aborta), participación **14/20**, followup **5/35** (aborta)
+y triage **42/83**, igual número aprobado que en nightly. El test nativo de
+concurrencia `.psql` también pasa **6/6** en ambos árboles.
+
+Los fixtures crean perfil y binding Clerk antes de filas dependientes y usan
+claims completos (`iss/sub/role/sid/azp`). Conservan la ruta de fixtures antigua
+solo cuando no existe el registro B03, para sus runners de checkpoint.
+No se modifican ACL, RLS ni funciones de producto para satisfacer esos tests.
+Los archivos son autocontenidos: funcionan también al copiarlos el runner Docker.
+
+Cambios de significado explícitos por el modelo nuevo (no se eliminan checks):
+
+- Bootstrap: Auth de Supabase y un `sub` UUID ya no crean/resuelven cuentas;
+  se comprueba su rechazo. Un login Clerk hace bootstrap explícito antes del
+  claim de dispositivo; se conservan UUID estable, separación por subject y
+  ausencia de vinculación por correo. Identidad incompleta devuelve `28000`.
+- Bridge nativo: el issuer debe coincidir exactamente con el registro. La
+  barra final se rechaza y se comprueba que no crea un alias. El alias legado
+  canónico se siembra como hace la migración B03; no se normaliza al leer.
+  Una identidad exacta ya vinculada no se puede reasignar a otro UUID (`23505`).
+  Son 28 checks en lugar de 27 por el rechazo explícito adicional de la barra.
+  La carrera conserva dos sesiones que compiten por la MISMA identidad exacta.
+- `native_account_data_upgrade`: el FK de validaciones continúa existiendo,
+  ahora hacia `profiles` tras B03; antes del corte sigue hacia `auth.users`.
+- Core: la misma promoción con SHA incoherente se rechaza por el guard previo
+  de referencias (`23503`) en vez del CHECK posterior (`23514`).
+- Triage: se comprueba EXECUTE cerrado del resolver privado, ya que B03 necesita
+  USAGE de schema para `current_account`. El borrado usa el webhook y conserva
+  el UUID duradero del reviewer en auditoría privada; el borrado del autor sigue
+  purgando contexto y reviews. La aserción de auditoría sigue exigiendo tres
+  filas (en el catálogo completo falla por las mismas dos reviews que no llegan
+  a crearse en nightly). Este cambio de etiqueta no se presenta como fallo
+  literalmente idéntico; está detallado en `COMPARACION.json`.
+
+**R9-P2-1 resuelto:** migración aditiva
+`20261015110000_isa_1608_revoke_deleted_authorizer.sql`. Retirar replay puede
+limpiar la referencia al Owner borrado. Conserva TODOS los locks de UUID en
+orden; solo deja de atribuir el tombstone del autorizador retirado a esa limpieza.
+El reporter sigue sujeto a la barrera. La excepción exige que los ocho campos
+de replay/autorización queden vacíos/falsos y que TODOS los demás campos sean
+idénticos. No permite cambiar report, diagnóstico ni propietario.
+Regresión **RED 7/11 → GREEN 11/11**, con revocación real como authenticated,
+limpieza de los ocho campos, auditoría y diagnóstico conservados; cambios
+adicionales y reporter borrado siguen rechazados. El runner incluye
+`--before-deleted-authorizer` para reproducir RED. P3: eliminado el segundo
+`p_account is null` redundante en el helper de reports.
+
+**Verificación nueva, no heredada de R9:** catálogo completo sin adaptar
+fixtures: **48 suites nightly / 59 rama**, una DB clonada por suite; ninguna
+suite compartida pierde checks aprobados ni pasa de PASS a FAIL. Los tests
+nuevos de upgrade se ejecutan además con sus datos anteriores a la migración:
+identidad **18**, conflicto **4** y refunds **26**, todos PASS. En el catálogo
+completo esos tres salen rojos por no sembrar el estado anterior: no son
+fallos compartidos con nightly (sus archivos no existen allí).
+
+`run-supabase-hardening-postgres.ps1` reproducido con PostgreSQL **17.11**
+instalado y pgTAP, sin pwsh/Docker: **1059 checks pgTAP PASS**, clean/upgrade/
+restore, 8 pares de carreras y comprobaciones de resultados, sentinel/RLS/ACL,
+archivos truncado/corrupto rechazados (**48 filas PASS** en el resumen).
+El propio `.ps1` actualiza sus fixtures de carreras (sesión completa y hashes),
+separa el checkpoint histórico del corte B03 y guarda dump antes de liberar
+la DB clean y sus roles globales para el upgrade. No se reejecutan resolutores
+antiguos después del corte. El intérprete local extrae sus SQL/heredocs y no
+reescribe fixtures. La sintaxis PowerShell y la imagen Supabase no se han
+ejecutado en este Mac; el procedimiento y sus diferencias están en RESULTADOS.
+Nightly ejecutada con el mismo intérprete: clean hardening48/Clerk31 pasan,
+projection42/43 falla y las carreras originales fallan por fingerprints no
+válidos; no se afirma que el script entero pase en nightly.
+
+Runner comercial: **19 suites / 574 pgTAP**, **108 rutas / 638 checks** de
+carreras PASS. Edge desde raíz, con tipos y config del repo: **594 nightly /
+613 rama PASS, 0 FAIL, 2 ignored**. Deno `supabase/tests`: mismo TS2353 en ambos;
+sin check, **28 PASS / 5 FAIL**, mismos cinco nombres. Calidad: **456 PASS**.
+
+**R9-P2-2 rectificado:** la tabla nueva enumera cada resultado rojo y enlaza
+su salida nightly/rama. Solo se llaman idénticos los fallos contrastados por
+aserción, SQLSTATE y salida normalizada. Codex60/61 y privacidad34/33 mantienen
+planes desajustados en ambos. Quince suites rojas comunes conservan etiquetas y
+abortos iguales. **No se presentan como abortos idénticos** estos tres casos:
+Pilot11 pasa de `23503 pilot_profiles_account_id_fkey` a `42501 authentication
+required`; GitHub delivery8 pasa de permiso denegado a `23503
+account_owner_unresolved`; Linear outbox8 pasa de FK ausente a ese guard previo.
+Los tres siguen rojos sin perder checks aprobados, pero su causa exacta cambia.
+Triage42 se documenta arriba por su cambio explícito de contrato. No se califican las 12 regresiones
+corregidas como fallos preexistentes. Evidencia completa:
+`~/evidence/1608-r10/RESULTADOS.md` y `COMPARACION.json`.
+
+Límites: PostgreSQL/Storage local sintético; ningún servicio, secreto ni dato
+real; sin dependencias nuevas. Rust omitido: sin cambios propios en `native/`.
+Sin CI remota, despliegue, merge, promoción, release ni autorización de venta.
+Siguen pendientes staging gestionado e inventario real de buckets antes de vender.
+Docker lock tomado y liberado; sin servidor PG ni stack propio al terminar.
+Siguiente: review del orquestador; entrega únicamente al bare local.
+
 ## #1608 · R9 · Identidad de servidor y batería completa (15/10/2026)
 
 Base autorizada `494f5c452`; nightly `64c493e4f` incorporada sin conflictos
@@ -32,9 +143,11 @@ completo y conservan sus pruebas anteriores a B03 (admin56 en ese contexto).
 La batería completa encontró otra regresión real: retirar replay después de una
 autorización Owner fallaba con `account_owner_is_immutable`. Corrección aditiva
 limitada a borrar los campos de replay/autorización con el mismo `report_id`.
-Ambos UUID, incluido el autorizador anterior, conservan bloqueo y comprobación
-de tombstone. RED 2/6 → GREEN **6/6**, con cambio de dueño y autorizador borrado
-rechazados. No hay excepción general para cambios de propietario.
+En R9 ambos UUID conservaban bloqueo y comprobación de tombstone; el test
+6/6 fijaba incorrectamente como válido bloquear la revocación si el autorizador
+estaba borrado. **Decisión del orquestador en R10: ese bloqueo es un bug**;
+la corrección y el nuevo RED/GREEN figuran arriba. El cambio de report sigue
+rechazado y no hay excepción general para cambios de propietario.
 
 **Inventario de causa raíz:** todas las migraciones + catálogo instalado de
 nightly/rama: solo dos fabricantes de claims, ambos corregidos; 33 funciones
@@ -44,19 +157,16 @@ Storage usa propietarios persistidos/manifest/ruta y su preflight sin filas.
 Inventario y evidencia: `~/evidence/1608-r9/inventario-identidad.md`;
 tabla por TODAS las suites: `~/evidence/1608-r9/RESULTADOS.md`.
 
-Se ejecutaron todos los SQL/pgTAP y Deno de Supabase en ambos árboles. Los
-snapshots históricos tienen checkpoints y fixtures propios: no equivalen a
-una prueba del último esquema. El informe conserva cada fallo de la ejecución
-sin adaptar y la comprobación con su contrato vigente. Tras B03 no se reabre
-Auth ni se aceptan claims incompletos para satisfacer snapshots antiguos.
-Persisten en ambos árboles planes pgTAP desajustados (Codex 60/61, webhook
-30/27, privacidad 34/33) y Deno histórico: un error de tipos y cinco tests
-que esperan un comportamiento retirado. No se presentan como checks verdes.
-Edge con tipos y preview activada: **nightly 595 / rama 614 PASS, 1 ignored**
-(integración PostgREST opcional). Pilot original90+rollback10+carrera, triage83,
-admisión27, roadmap20+31/carreras, upgrades11+8/8 y heartbeat/roadmap standalone
-pasan en ambos contextos. Upgrades comerciales18/4/26, locks17/admin24,
-Storage owners10/multipart64/buckets17 y calidad456 pasan en la rama.
+**Rectificación R10 de la entrega R9:** era incorrecto presentar las suites
+rojas de la rama como fallos compartidos o solo como snapshots históricos.
+La review R9 y la nueva ejecución R10 demuestran que **12 suites pasaban en
+nightly y fallaban en la rama**. R10 corrige sus fixtures EN EL REPO y las doce
+pasan sobre todas las migraciones, sin traducción externa de fixtures ni grants
+adicionales. No se debe usar el informe R9 para afirmar paridad con nightly.
+La comparación válida y sus fallos concretos están en
+`~/evidence/1608-r10/RESULTADOS.md`, con logs separados de ambos árboles.
+Los recuentos y checkpoints que preceden a esta rectificación son evidencia
+histórica R9; la sección R10 de arriba fija el resultado y los límites vigentes.
 
 **R8-P3-1 documentado:** son **11 policies TO public en 10 tablas distintas**,
 no 11 tablas: profiles aporta SELECT y UPDATE. Son profiles, licenses, devices,

@@ -241,15 +241,20 @@ jobs:
         if: needs.policy.outputs.native != 'false'
         working-directory: ${{ env.VANTARE_DIR }}/native
         run: |
+          # Prueba esta comprobación también con caché CALIENTE: un falso
+          # negativo (pasó con `--version` multilínea en Linux) no debe tumbar
+          # el trabajo; --force reinstala encima de lo que ya haya.
           $have = ''
           $exe = Join-Path $env:USERPROFILE '.cargo\bin\cargo-nextest.exe'
           if (Test-Path -LiteralPath $exe) {
-            try { $have = (& $exe --version 2>$null) -join ' ' } catch { $have = '' }
+            try { $have = (& $exe --version 2>$null) -join "`n" } catch { $have = '' }
           }
-          if ($have -match 'cargo-nextest 0\.9\.146') {
+          $first = ($have -split "`n")[0].Trim()
+          "cargo-nextest encontrado: '$first'"
+          if ($first -match 'cargo-nextest 0\.9\.146') {
             'cargo-nextest 0.9.146 ya disponible: no se instala'
           } else {
-            cargo install cargo-nextest --locked --version 0.9.146
+            cargo install cargo-nextest --locked --version 0.9.146 --force
           }
 
       - name: Fetch locked native dependencies

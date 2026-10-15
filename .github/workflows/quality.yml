@@ -170,15 +170,20 @@ jobs:
       - name: Install pinned Nextest
         if: steps.native_scope.outputs.native != 'false'
         run: |
+          # Prueba esta comprobación también con caché CALIENTE: un falso
+          # negativo (pasó con `--version` multilínea) no debe tumbar el
+          # trabajo; --force reinstala encima de lo que ya haya.
           have=""
           if command -v cargo-nextest >/dev/null 2>&1; then
             have="$(cargo nextest --version 2>/dev/null || true)"
           fi
           # `--version` imprime varias líneas (release, commit…): basta con la primera.
-          if [ "$(printf '%s' "$have" | head -n 1)" = "cargo-nextest 0.9.146" ]; then
+          first="$(printf '%s' "$have" | head -n 1)"
+          echo "cargo-nextest encontrado: '$first'"
+          if [ "$first" = "cargo-nextest 0.9.146" ]; then
             echo 'cargo-nextest 0.9.146 ya disponible: no se instala'
           else
-            cargo install cargo-nextest --locked --version 0.9.146
+            cargo install cargo-nextest --locked --version 0.9.146 --force
           fi
 
       # En nextest, `-j` son hilos de ejecución de tests y los jobs de

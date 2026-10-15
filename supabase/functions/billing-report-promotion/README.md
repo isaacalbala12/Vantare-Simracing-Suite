@@ -214,8 +214,10 @@ afirma protección contra ese abuso ni se recoge PII adicional.
 
 Owner recibe aceptados, tramo, descuento confirmado, incidencia y pérdida por
 refund/spam; estados de política visibles en la miniapp. El descuento es el
-último confirmado/observado, no una simulación de factura. Integrar el pequeño
-bloque al fusionar #1639. Progreso en app del usuario sigue como propuesta para
+último confirmado/observado, no una simulación de factura. La miniapp de #1639
+incluye el bloque en la ficha Persona, junto al plan y sus pagos; conserva los
+permisos y controles de cuenta de esa miniapp. La lista paginada puede omitirlo
+hasta abrir el detalle. Progreso en app del usuario sigue como propuesta para
 otro contrato/DTO.
 
 ## Verificación local
@@ -290,3 +292,17 @@ una poda automática en este candidato.
 Si falla también el registro, incident_recorded=false y el cursor queda
 retenido: se reintentan elemento y registro sin abortar la página. Los huecos de
 órdenes siguen su registro contable existente visible al Owner.
+
+## Integración con nightly eb553c7fe · 16/10/2026
+
+El merge de #1639 conserva pagos/devoluciones y la promoción: un mismo
+order.paid actualiza la factura del ledger y el recibo del Owner, con sus
+propios efectos durables. La minimización del evento mantiene descuento,
+periodo, totales e impuestos necesarios para ambas proyecciones. La restricción
+comercial sigue siendo autoridad antes del espejo de gestión. Los dobles
+rechazan RPC desconocidas y admiten explícitamente las de ambas funciones.
+
+La respuesta de detalle Owner conserva plan, pagos y accesos, y añade
+report_promotion opcional; se prueban juntos en SQL y Rust. La demo aprobada
+mantiene sus personas/acciones y muestra un ejemplo falso para Ana. No añade
+operaciones de descuentos a la miniapp ni activa la campaña.

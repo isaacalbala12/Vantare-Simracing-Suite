@@ -977,7 +977,6 @@ const REPLAY_DATA_KEYS = [
   "order_id",
   "subscription_id",
   "started_at",
-  "discount_id",
   "modified_at",
   "created_at",
   "updated_at",

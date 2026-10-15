@@ -1,4 +1,4 @@
-## #1593 / VANTA-39 · merge de nightly en validación · 16/10/2026
+## #1593 / VANTA-39 · merge de nightly entregado al bare · 16/10/2026
 
 Encargo explícito del orquestador: merge de origin/nightly eb553c7fe sobre
 53b1fdf29, misma rama de PR #1659. Nightly importado al bare mediante bundle
@@ -10,9 +10,20 @@ de informes. DTO combina promoción con plan/pagos/accesos/bloqueo de #1639;
 fixture aprobado conservado, con ejemplo falso de Ana añadido. Históricos
 de ambos handoffs preservados. Cola/optimización Rust y retirada CI Linux
 exactamente de nightly, sin activar servicios ni cambiar reglas comerciales.
-Primer Edge combinado678PASS/0FAIL/2ignored; catálogo SQL y regresiones
-específicas de contrato nuevo en curso. Rust pendiente de validar en servidor
-por la cola nueva, secuencial y MIN_GB=0. Sin merge hacia nightly o producción.
+Edge combinado679PASS/0FAIL/2ignored. SQL75suites/49PASS/26FAIL: las74 suites
+de nightly idénticas,169 comprobaciones de promoción (incluye contrato combinado
+de detalle Owner) y0regresiones. Prueba nueva de una factura actualizando a la
+vez promoción y pagos. Gates Mac fmt/lint/superficies/quality/retirada PASS.
+Rust Windows PASS: fmt/check/Clippy, perfilci1818/1818 (14 skips de perfil),
+incluida telemetría real congelada, y lifecycle18/18. Secuenciales por la cola
+nueva con MIN_GB=0/jobs2.20 entradas nativas idénticas Mac/Windows al normalizar
+LF. Targets propios se limpian con Cargo al cerrar.
+Dos commits: merge2dd6761d (padres53b1fdf29+eb553c7fe) y cierre con formato,
+prueba de coproyección y evidencia. SHA final/pushbare en issue y buzón.
+Plane Por revisar al cerrar, PR1659 todavía en53b1fdf29 hasta publicación por
+el orquestador; CI del nuevo SHA pendiente. No se promocionó hacia nightly,
+testers o master; sin deploy, release, productos ni servicios reales.
+Evidencia ~/evidence/1593-merge y C:/VantareServer/evidence/1593-merge.
 
 ## #1593 / VANTA-39 · ronda 5 entregada al bare · 16/10/2026
 

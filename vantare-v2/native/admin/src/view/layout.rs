@@ -18,7 +18,7 @@ impl Admin {
             Some(Dialog::Creator)=>("Añadir creador","Se creará su código en Polar: 20 % de descuento durante dos meses, en los planes de lanzamiento.".to_owned()),
             Some(Dialog::Payout)=>("Apuntar pago al creador",format!("Apunta que has pagado {}. Esta acción no envía dinero.",money(self.state.creator.as_ref().map_or(0,|c|c.payable_cents)))),
             Some(Dialog::Report(Status::Fixed))=>("Arreglado en una versión","Indica la versión donde se ha corregido. El informe debe estar aceptado.".to_owned()),
-            Some(Dialog::Report(Status::Rejected))=>("No aceptar este informe","Puedes explicar el motivo a la persona que lo envió.".to_owned()),
+            Some(Dialog::Report(Status::Rejected))=>("No aceptar este informe","Escribe la nota de revisión para la persona que lo envió.".to_owned()),
             Some(Dialog::Report(_))=>("Cambiar estado del informe","Confirma el nuevo estado.".to_owned()),
             None=>("Confirmar cambio",match action {
                 Some(Action::SetTester{enabled,..})=>format!("{} el acceso de tester a esta persona.",if *enabled{"Activar"}else{"Desactivar"}),
@@ -242,9 +242,11 @@ impl Admin {
                     .child(muted("Versión de la corrección"))
                     .child(self.form_a.clone());
             }
-            Some(Dialog::Report(Status::Rejected)) => {
+            Some(Dialog::Report(Status::Validated | Status::Rejected | Status::Spam)) => {
                 dialog = dialog
-                    .child(muted("Motivo · opcional, hasta 500 caracteres"))
+                    .child(muted(
+                        "Nota de revisión · obligatoria, hasta 500 caracteres",
+                    ))
                     .child(self.form_a.clone());
             }
             _ => {}

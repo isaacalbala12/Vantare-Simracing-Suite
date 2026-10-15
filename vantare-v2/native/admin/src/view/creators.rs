@@ -126,7 +126,15 @@ impl Admin {
         if c.status == "pending" {
             body=body.child(note("El código aún no está activo en Polar. Repite el alta con los mismos datos para terminar.",EMBER));
         }
-        body=body.child(div().flex().gap(px(16.)).child(kpi("HA GANADO",&money(c.earned_cents),false)).child(kpi("YA LE PAGASTE",&money(c.paid_out_cents),false)).child(kpi("LE DEBES",&money(c.owed_cents),true))).child(note(&format!("Disponible para pagar de meses cerrados: {}. Las comisiones ya liquidadas no se reclaman por reembolsos posteriores.",money(c.payable_cents)),INK3));
+        body = body.child(div().flex().gap(px(16.))
+            .child(kpi("SE LE DEBE", &money(c.owed_cents), true)
+                .child(muted(&c.last_payout_at.as_ref().map_or("Aún no le has pagado nada".to_owned(), |v| format!("Último pago: {}", date(v))))))
+            .child(kpi("HA GANADO EN TOTAL", &money(c.earned_cents), false)
+                .child(muted(&format!("Ya pagado: {}", money(c.paid_out_cents)))))
+            .child(kpi("CLIENTES", &c.clients_count.to_string(), false)
+                .child(muted(&format!("Ventas: {}", money(c.sales_cents))))))
+            .child(note(&format!("Disponible para pagar de meses cerrados: {}. Las comisiones ya liquidadas no se reclaman por reembolsos posteriores.", money(c.payable_cents)), INK3));
+
         let mut rows = panel()
             .gap(px(12.))
             .child(heading("De dónde sale su comisión", 15.));

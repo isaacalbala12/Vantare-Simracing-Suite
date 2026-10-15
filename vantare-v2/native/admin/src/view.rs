@@ -717,7 +717,7 @@ impl Admin {
                     report_id: report.report_id.clone(),
                     status,
                     fixed_in_version: (status == Status::Fixed).then_some(a.clone()),
-                    reason: (status == Status::Rejected && !a.is_empty()).then_some(a),
+                    reason: (status != Status::Fixed && !a.is_empty()).then_some(a),
                 }
             }
         };
@@ -1211,11 +1211,33 @@ fn money(cents: i64) -> String {
     format!("{} €", money_amount(cents))
 }
 fn date(value: &str) -> String {
-    if value.len() >= 10 && value.as_bytes().get(4) == Some(&b'-') {
-        value.chars().take(10).collect()
-    } else {
-        value.to_owned()
+    let Some(prefix) = value.get(..10) else {
+        return value.to_owned();
+    };
+    let parts: Vec<_> = prefix.split('-').collect();
+    if parts.len() == 3
+        && parts[0].len() == 4
+        && let (Ok(month), Ok(day)) = (parts[1].parse::<usize>(), parts[2].parse::<u8>())
+        && (1..=12).contains(&month)
+        && (1..=31).contains(&day)
+    {
+        let months = [
+            "ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic",
+        ];
+        return format!("{day} {}", months[month - 1]);
     }
+    value.to_owned()
+}
+fn plan_label(user: &crate::client::User) -> String {
+    format!(
+        "{}{}",
+        user.plan.label(),
+        if user.billing.as_deref() == Some("yearly") {
+            " · anual"
+        } else {
+            ""
+        }
+    )
 }
 fn account_matches(user: &crate::client::User, filter: &str) -> bool {
     match filter {
@@ -1229,7 +1251,7 @@ fn status_color(status: Status) -> u32 {
     match status {
         Status::InReview => EMBER,
         Status::Validated => CYAN,
-        Status::Rejected | Status::Incomplete | Status::DuplicateLinked => RED,
+        Status::Rejected | Status::Spam | Status::Incomplete | Status::DuplicateLinked => RED,
         Status::Fixed => GREEN,
         _ => INK3,
     }
@@ -1240,5 +1262,18 @@ fn module_description(module: Module) -> &'static str {
         Module::Engineer => "Tu ingeniero en pista, con voz y avisos.",
         Module::Analysis => "Revisa tus vueltas y tu telemetría.",
         Module::Calendar => "Organiza tus carreras y campeonatos.",
+    }
+}
+
+#[cfg(test)]
+mod presentation_tests {
+    use super::*;
+
+    #[test]
+    fn dates_follow_the_approved_short_spanish_format() {
+        assert_eq!(date("2026-09-02T14:00:00Z"), "2 sep");
+        assert_eq!(date("2026-10-01"), "1 oct");
+        assert_eq!(date("Sin datos"), "Sin datos");
+        assert_eq!(date("2026-99-01"), "2026-99-01");
     }
 }

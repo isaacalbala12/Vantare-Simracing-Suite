@@ -131,7 +131,7 @@ impl Admin {
                             div()
                                 .flex()
                                 .gap(px(6.))
-                                .child(tag(user.plan.label(), GREEN))
+                                .child(tag(&super::plan_label(user), GREEN))
                                 .when(user.owner, |d| d.child(tag("Dueño", GREEN)))
                                 .when(user.blocked, |d| d.child(tag("Bloqueada", RED)))
                                 .when(
@@ -289,25 +289,32 @@ impl Admin {
                     ),
             )
             .child(div().w(px(132.)).flex().child(tag(
-                user.plan.label(),
+                &super::plan_label(user),
                 if user.plan == Plan::ProPlus {
                     RED
                 } else {
                     INK3
                 },
             )))
-            .child(div().w(px(126.)).flex().child(tag(
-                if user.blocked {
-                    "Bloqueada"
-                } else if user.owner {
-                    "Dueño"
-                } else if user.roles.iter().any(|r| r == "tester") {
-                    "Tester"
-                } else {
-                    "Normal"
-                },
-                if user.blocked { RED } else { GREEN },
-            )))
+            .child(
+                div()
+                    .w(px(126.))
+                    .flex()
+                    .flex_wrap()
+                    .gap(px(4.))
+                    .when(user.blocked, |d| d.child(tag("Bloqueada", RED)))
+                    .when(!user.blocked && user.owner, |d| {
+                        d.child(tag("Tú · dueño", GREEN))
+                    })
+                    .when(
+                        !user.blocked && user.roles.iter().any(|r| r == "tester"),
+                        |d| d.child(tag("Tester", GREEN)),
+                    )
+                    .when(
+                        !user.blocked && !user.owner && !user.roles.iter().any(|r| r == "tester"),
+                        |d| d.child(tag("—", INK3)),
+                    ),
+            )
             .child(div().w(px(80.)).child(user.reports_count.to_string()))
             .child(div().w(px(114.)).child(text(
                 &date(user.last_seen_at.as_deref().unwrap_or("Sin datos")),
@@ -353,15 +360,7 @@ impl Admin {
                             .gap(px(5.))
                             .child(eyebrow("PLAN ACTUAL"))
                             .child(heading(
-                                &format!(
-                                    "{}{}",
-                                    user.plan.label(),
-                                    match user.billing.as_deref() {
-                                        Some("yearly") => " anual",
-                                        Some("monthly") => " mensual",
-                                        _ => "",
-                                    }
-                                ),
+                                &super::plan_label(user),
                                 20.,
                             ))
                             .when_some(user.renews_at.as_ref(), |d, renew| {

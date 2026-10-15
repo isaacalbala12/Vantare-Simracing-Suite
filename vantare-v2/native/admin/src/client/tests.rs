@@ -152,7 +152,7 @@ fn local_contract_server_verifies_every_action_and_oauth_header() {
             report_id: "report-1".into(),
             status: Status::Closed,
             fixed_in_version: None,
-            reason: None,
+            reason: Some("Revisado".into()),
         },
     ];
     for action in actions {
@@ -308,4 +308,24 @@ fn account_errors_have_distinct_recoverable_messages() {
         assert_eq!(client.request("test", &Action::GetRollout), Err(expected));
         server.join().expect("server");
     }
+}
+
+#[test]
+fn spam_report_roundtrips_and_decisions_require_a_review_note() {
+    let status: Status = serde_json::from_str("\"spam\"").expect("spam status");
+    assert_eq!(status.label(), "Spam");
+    let action = Action::SetReportStatus {
+        report_id: "report-1".into(),
+        status,
+        fixed_in_version: None,
+        reason: None,
+    };
+    assert!(action.validate().is_err());
+    let action = Action::SetReportStatus {
+        report_id: "report-1".into(),
+        status,
+        fixed_in_version: None,
+        reason: Some("Contenido sin relación".into()),
+    };
+    assert!(action.validate().is_ok());
 }

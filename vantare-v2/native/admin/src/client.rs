@@ -50,6 +50,7 @@ pub enum Status {
     Closed,
     InReview,
     Rejected,
+    Spam,
     Fixed,
 }
 impl Status {
@@ -59,6 +60,7 @@ impl Status {
             Status::InReview => "in_review",
             Status::Validated => "validated",
             Status::Rejected => "rejected",
+            Status::Spam => "spam",
             Status::Fixed => "fixed",
             Status::Draft => "draft",
             Status::DuplicateLinked => "duplicate_linked",
@@ -67,11 +69,12 @@ impl Status {
         }
     }
 
-    pub const ALL: [Self; 5] = [
+    pub const ALL: [Self; 6] = [
         Self::Submitted,
         Self::InReview,
         Self::Validated,
         Self::Rejected,
+        Self::Spam,
         Self::Fixed,
     ];
     pub fn label(self) -> &'static str {
@@ -84,6 +87,7 @@ impl Status {
             Self::Closed => "Cerrado",
             Self::InReview => "En revisión",
             Self::Rejected => "No aceptado",
+            Self::Spam => "Spam",
             Self::Fixed => "Arreglado",
         }
     }
@@ -460,7 +464,18 @@ impl Action {
                     reason,
                     ..
                 } => {
-                    reason.as_ref().is_none_or(|r| r.len() <= 500)
+                    reason
+                        .as_ref()
+                        .is_none_or(|r| !r.trim().is_empty() && r.len() <= 500)
+                        && (!matches!(
+                            status,
+                            Status::Validated
+                                | Status::Rejected
+                                | Status::Spam
+                                | Status::Closed
+                                | Status::DuplicateLinked
+                                | Status::Incomplete
+                        ) || reason.is_some())
                         && (*status != Status::Fixed
                             || fixed_in_version.as_ref().is_some_and(|v| valid_version(v)))
                 }

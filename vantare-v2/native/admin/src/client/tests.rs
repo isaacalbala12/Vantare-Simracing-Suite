@@ -366,3 +366,19 @@ fn founders_transition_receipt_has_a_visible_pending_and_completed_state() {
         assert!(transition.label().contains(expected));
     }
 }
+
+#[test]
+fn billing_incidents_make_rejected_payments_and_portal_reactivation_visible() {
+    for (reason, expected) in [
+        ("launch_payment_retired", "CRÍTICO"),
+        ("founders_duplicate_payment", "CRÍTICO"),
+        ("founders_subscription_reactivated", "reactivada"),
+    ] {
+        let incident = super::BillingIncident {
+            resource_id: "fixture-order".into(),
+            reason: reason.into(),
+            severity: "critical".into(),
+        };
+        assert!(incident.label().contains(expected));
+    }
+}

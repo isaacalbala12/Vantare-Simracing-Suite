@@ -128,9 +128,31 @@ pub struct User {
     #[serde(default)]
     pub founders_transitions: Vec<FoundersTransition>,
     #[serde(default)]
+    pub billing_incidents: Vec<BillingIncident>,
+    #[serde(default)]
     pub module_access: Vec<ModuleAccess>,
     #[serde(default)]
     pub polar_customer_url: Option<String>,
+}
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+pub struct BillingIncident {
+    pub resource_id: String,
+    pub reason: String,
+    pub severity: String,
+}
+impl BillingIncident {
+    pub fn label(&self) -> &'static str {
+        match self.reason.as_str() {
+            "launch_payment_retired" => "CRÍTICO: pago de Launch retirada; revisar manualmente",
+            "founders_duplicate_payment" => {
+                "CRÍTICO: segundo pago de Founders; revisar manualmente"
+            }
+            "founders_subscription_reactivated" => {
+                "Aviso: suscripción reactivada; se vuelve a cancelar su renovación"
+            }
+            _ => "Incidencia de pago: revisar manualmente",
+        }
+    }
 }
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct FoundersTransition {

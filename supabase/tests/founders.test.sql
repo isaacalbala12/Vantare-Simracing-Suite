@@ -2,19 +2,19 @@ begin;
 select no_plan();
 select ok(not has_table_privilege('authenticated','private.founders_sale_config','update'),'client cannot change sale dates');
 select ok(not has_function_privilege('authenticated','public.billing_purchase_policy(uuid,text,text)','execute'),'eligibility is backend only');
-select ok(has_function_privilege('anon','public.founders_sale_window()','execute'),'web can read public window');
+select ok(has_function_privilege('anon','public.founders_sale_window(text)','execute'),'web can read public window');
 select is(public.founders_sale_window()->>'amount_cents','5000','fixed 50 EUR');
-select is(public.billing_founders_payment_allowed('2026-10-26 18:00:00Z'),true,'opening instant is included');
-select is(public.billing_founders_payment_allowed('2026-10-26 17:59:59.999Z'),false,'before opening denied');
-select is(public.billing_founders_payment_allowed('2026-11-26 18:00:00Z'),true,'November is no longer a deadline');
-select is(public.billing_founders_payment_allowed('2026-11-26 17:59:59.999Z'),true,'no end date');
+select is(public.billing_founders_payment_allowed('production','2026-10-26 18:00:00Z'),true,'opening instant is included');
+select is(public.billing_founders_payment_allowed('production','2026-10-26 17:59:59.999Z'),false,'before opening denied');
+select is(public.billing_founders_payment_allowed('production','2026-11-26 18:00:00Z'),true,'November is no longer a deadline');
+select is(public.billing_founders_payment_allowed('production','2026-11-26 17:59:59.999Z'),true,'no end date');
 insert into public.profiles(id) values('00000000-0000-4000-8000-000000001661');
-update private.founders_sale_config set opens_at=now()+interval '1 day';
+update private.founders_sale_config set opens_at=now()+interval '1 day' where environment='sandbox';
 select is(public.billing_purchase_policy('00000000-0000-4000-8000-000000001661','sandbox','founders')->>'reason',
  'founders_sale_closed','before launch cannot checkout');
-update private.founders_sale_config set opens_at=now()-interval '2 days',sales_enabled=false;
+update private.founders_sale_config set opens_at=now()-interval '2 days',sales_enabled=false where environment='sandbox';
 select is(public.billing_purchase_policy('00000000-0000-4000-8000-000000001661','sandbox','founders')->>'reason','founders_sale_closed','sales switch closes checkout on the server');
-update private.founders_sale_config set opens_at=now()-interval '1 hour',sales_enabled=true;
+update private.founders_sale_config set opens_at=now()-interval '1 hour',sales_enabled=true where environment='sandbox';
 select is(public.billing_purchase_policy('00000000-0000-4000-8000-000000001661','sandbox','founders')->>'reason',null::text,'single configuration controls live window');
 select is((select outcome from public.claim_billing_checkout_attempt('00000000-0000-4000-8000-000000001661',
  '00000000-0000-4000-8000-000000001662','founders','sandbox','founders-test')),'claimed','existing checkout claim accepts Founders');

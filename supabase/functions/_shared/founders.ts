@@ -26,11 +26,15 @@ export async function purchasePolicy(
   return data as PurchasePolicy;
 }
 
-export async function foundersPaymentAllowed(paidAt: string): Promise<boolean> {
+export async function foundersPaymentAllowed(
+  paidAt: string,
+  environment: BillingEnvironment,
+): Promise<boolean> {
   const { data, error } = await getSupabaseAdmin().rpc(
     "billing_founders_payment_allowed",
     {
       p_paid_at: paidAt,
+      p_environment: environment,
     },
   );
   if (error || typeof data !== "boolean") {
@@ -66,6 +70,62 @@ export async function transitionFoundersSubscriptions(
     const receipt = await supabase.rpc("billing_complete_founders_transition", {
       p_environment: environment,
       p_subscription_id: item.subscription_id,
+      p_revision: item.revision ?? null,
+    });
+    if (receipt.error) throw new Error("founders_transition_receipt_failed");
+  }
+}
+
+export async function admitLifetimeOrder(
+  supabase: ReturnType<typeof getSupabaseAdmin>,
+  userId: string,
+  environment: BillingEnvironment,
+  checkoutKey: string,
+  orderId: string,
+  productId: string,
+): Promise<string | null> {
+  const { data, error } = await supabase.rpc("billing_admit_lifetime_order", {
+    p_user_id: userId,
+    p_environment: environment,
+    p_checkout_key: checkoutKey,
+    p_order_id: orderId,
+    p_product_id: productId,
+  });
+  if (error || !(data === null || typeof data === "string")) {
+    throw new Error("lifetime_admission_unavailable");
+  }
+  return data;
+}
+export async function enforceFoundersRenewal(
+  supabase: ReturnType<typeof getSupabaseAdmin>,
+  environment: BillingEnvironment,
+  userId: string,
+  subscriptionId: string,
+  revision: string,
+  stopRenewal = stopSubscriptionRenewal,
+): Promise<void> {
+  const { data, error } = await supabase.rpc(
+    "billing_founders_subscription_transitions",
+    {
+      p_environment: environment,
+      p_order_id: null,
+      p_user_id: userId,
+      p_subscription_id: subscriptionId,
+      p_revision: revision,
+    },
+  );
+  if (error || !Array.isArray(data)) {
+    throw new Error("founders_transition_unavailable");
+  }
+  for (const item of data) {
+    if (
+      item.subscription_id !== subscriptionId || item.policy !== "end_period"
+    ) throw new Error("founders_transition_invalid");
+    await stopRenewal(subscriptionId, environment);
+    const receipt = await supabase.rpc("billing_complete_founders_transition", {
+      p_environment: environment,
+      p_subscription_id: subscriptionId,
+      p_revision: item.revision ?? null,
     });
     if (receipt.error) throw new Error("founders_transition_receipt_failed");
   }

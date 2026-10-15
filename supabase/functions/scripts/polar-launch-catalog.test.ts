@@ -32,7 +32,7 @@ Deno.test("launch table: issue #1620 and creator extra 20% rounded to cents", ()
     ),
     [
       ["pro_monthly", 599, 399, 319],
-      ["pro_annual", 5990, 3990, 3192],
+      ["pro_annual", 5999, 3990, 3192],
       ["pro_plus_monthly", 999, 699, 559],
       ["pro_plus_annual", 9990, 6990, 5592],
     ],
@@ -247,7 +247,7 @@ Deno.test("customer copy: repairs all nine existing products with cosmetic PATCH
   assertEquals((await syncCatalog(f.http, repaired, options)).writes, 0);
 });
 
-Deno.test("retired Launch Edition is ignored and its historical mapping survives", async () => {
+Deno.test("retired Launch is absent from sales; only historical ID mapping is retained", async () => {
   for (const problem of ["missing", "recurring", "archived"]) {
     const f = fake();
     const index = f.products.findIndex((p) =>
@@ -263,12 +263,12 @@ Deno.test("retired Launch Edition is ignored and its historical mapping survives
     );
     assertEquals(resolveCheckoutKey(result.map, "launch_lifetime").ok, false);
     assertEquals(
-      resolveCheckoutKeyByProductId(
-        result.map,
-        sandbox.checkout_keys.launch_lifetime.polar_product_id,
-      ).ok,
-      true,
-    );
+      result.map
+        .product_id_to_checkout_key[
+          sandbox.checkout_keys.launch_lifetime.polar_product_id
+        ],
+      "launch_lifetime",
+    ); // Read compatibility is not payment admission (covered by R2 webhook/SQL).
     assertEquals(
       f.writes.some((w) =>
         (w as { path: string }).path.includes(
@@ -311,7 +311,7 @@ Deno.test("Founders: ES one-time founder price, no deadline, no creation of Isaa
       amount_type: "fixed",
       price_amount: 5000,
       price_currency: "eur",
-      tax_behavior: "inclusive",
+      tax_behavior: null,
     }],
   });
   const result = await syncCatalog(f.http, input, options);

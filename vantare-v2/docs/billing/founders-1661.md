@@ -16,13 +16,13 @@ No concede roles Owner/tester ni canales privados: el producto se configura con
 IPC de servicios v10 y control v5; fotos siguen v10. Recompilar juntos Hub,
 services, runtime y overlays; se rechazan componentes con contratos anteriores.
 
-**Único sitio para abrir/cerrar la venta:** fila `singleton=true` de
+**Único sitio para abrir/cerrar la venta:** fila por `environment` (`sandbox` o `production`) de
 `private.founders_sale_config`, creada por `20261015195335_founders_plan.sql`.
 `opens_at = 2026-10-26 19:00 Europe/Madrid` (18:00 UTC),
 `sales_enabled = true` por defecto. No existe fecha de fin.
 El precio de fundador subirá más adelante, sin fecha prevista.
 El reloj SQL decide la apertura. La RPC pública `founders_sale_window()` conserva
-su nombre por compatibilidad y devuelve apertura, interruptor, disponibilidad y precio.
+su nombre por compatibilidad, acepta `p_environment` (por defecto `production`) y devuelve apertura, interruptor, disponibilidad y precio.
 `subscription_transition = end_period` recoge la política definitiva, confirmada
 por Isaac: no renovar la suscripción al acabar el periodo pagado, sin reembolso.
 La alternativa proporcional se ha retirado para simplificar, con autorización de Isaac.
@@ -88,7 +88,7 @@ activar esa campaña. Las simulaciones de sandbox conservan la historia técnica
 
 Se conserva inbox firmado, atribución por UUID/binding del servidor, ledger
 monótono y bloqueos de #1622. Toda orden Founders, también al reconciliar una ya reembolsada, exige pago único, EUR,
-`total_amount=5000`, sin descuento y `paid_at` (o `created_at` de la orden si el
+precio de la lista configurada `polar_price_ids`, sin descuento y neto + IVA = total, y base de precio 5000 céntimos (neto sin IVA o total con IVA). Se exige `product_price_id`/`product_price.id`/única línea `items.product_price_id` configurado; importes o identidad de precio no comprobables van a cuarentena. `paid_at` (o `created_at` de la orden si el
 proveedor no envía `paid_at`) a partir de la apertura y con venta habilitada. Un pago inválido queda en cuarentena sin derecho.
 Reembolsos y reconciliación siguen funcionando después del cierre. Cambiar la
 configuración no invalida el replay ni el reembolso de una orden ya admitida. Los bloqueos
@@ -111,7 +111,7 @@ no se promete revocación instantánea de una máquina desconectada.
 
 ## Integración web posterior — VANTA-42 (sin tocar su repo)
 
-1. Leer `POST /rest/v1/rpc/founders_sale_window`, cuerpo `{}`, clave pública del
+1. Leer `POST /rest/v1/rpc/founders_sale_window`, cuerpo `{"p_environment":"production"}`, clave pública del
    proyecto. Respuesta: `{"opens_at":"…","sales_enabled":true,"available":false,
    "amount_cents":5000,"currency":"eur"}`. Convertir fechas a la zona del usuario.
 2. Autenticación del checkout existente: `POST /functions/v1/billing-checkout`
@@ -151,3 +151,29 @@ suscripción y cancelación al final del periodo y reintentos, derecho perpetuo,
 Edge: mapping/checkout/Polar/webhook/credenciales. Rust: firma y formato,
 catálogo futuro, módulos offline, invalidación y confirmación de compra distinta de Pro.
 Gates y SHA finales se registran en #1661, PR y handoff. No se capturó la app (#1655).
+
+## Seguridad · ronda 2
+
+- Launch solo admite replay/reembolso de una orden ya registrada. Un pago nuevo
+  queda en cuarentena y genera incidencia crítica Owner; ningún reembolso automático.
+  Isaac archivará el producto. Inventario real comunicado: cero clientes/pedidos.
+- `private.lifetime_order_admissions` serializa Founders por cuenta/entorno y
+  persiste antes del ledger/grant. Otro pago no se admite aunque caduque el intento
+  de checkout. Grants existentes y otra orden admitida también lo bloquean.
+  Checkout rechaza `founders_payment_pending` si hay admisión o un `order.paid`
+  recibido pendiente con binding de checkout de servidor. Un pago todavía no
+  recibido por el backend no se puede conocer; si ya se cobró dos veces, cuarentena
+  y revisión manual crítica Owner. No se promete impedir un cargo ya hecho en Polar.
+- Las incidencias (Launch retirada, doble Founders, suscripción reactivada) se
+  muestran en Owner por cliente, sin email ni payload privado. No se borran reservas
+  automáticamente al reembolsar: revisar manualmente antes de permitir otra compra.
+- Una actualización/uncancel de Pro con Founders activo vuelve a solicitar fin de
+  renovación. La revisión remota evita reabrir un efecto por replay y una confirmación
+  vieja no completa una reactivación posterior. Se registra aviso Owner.
+- Decisión aceptada: reembolsar Founders **no reactiva** la suscripción ya cancelada.
+
+Antes de abrir venta, Isaac debe comprobar en sandbox cómo llegan `net_amount`,
+`tax_amount`, `total_amount` y la identidad del precio con el IVA. Producción tiene
+`tax_behavior` nulo: no se asume IVA incluido ni se cambia ese dato automáticamente.
+El catálogo offline admite ese dato nulo para Founders. No se han hecho pruebas
+contra Polar real. El interruptor de sandbox no modifica producción.

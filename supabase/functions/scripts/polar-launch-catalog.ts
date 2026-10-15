@@ -1,3 +1,5 @@
+import productionFounders from "./founders-production-config.json" with { type: "json" };
+import productionInventory from "./polar-production-inventory.json" with { type: "json" };
 // ISA-1620. Offline plan by default; --apply is an explicit operator action.
 import table from "./polar-launch-prices.json" with { type: "json" };
 import {
@@ -29,7 +31,7 @@ export type Resource = {
     amount_type?: string;
     price_amount?: number;
     price_currency?: string;
-    tax_behavior?: string;
+    tax_behavior?: string | null;
   }[];
   trial_interval?: string | null;
   trial_interval_count?: number | null;
@@ -145,12 +147,18 @@ async function list(
   return resources;
 }
 
-function currentPrice(product: Resource, cents: number) {
+function currentPrice(
+  product: Resource,
+  cents: number,
+  allowUnknownTax = false,
+) {
   const active = (product.prices ?? []).filter((p) => !p.is_archived);
   const p = active[0];
   return active.length === 1 && p.amount_type === "fixed" &&
       p.price_amount === cents && p.price_currency === "eur" &&
-      p.tax_behavior === "inclusive"
+      (p.tax_behavior === "inclusive" ||
+        (allowUnknownTax &&
+          (p.tax_behavior == null || p.tax_behavior === "exclusive")))
     ? p
     : undefined;
 }
@@ -248,7 +256,7 @@ export async function syncCatalog(http: Http, raw: unknown, options: Options) {
   if (
     foundersId && (!founders || founders.is_archived ||
       founders.recurring_interval != null || !noTrial(founders) ||
-      !currentPrice(founders, 5000))
+      !currentPrice(founders, 5000, true))
   ) throw Error("Invalid or missing Founders product");
   // Both normal and launch products are preflighted before the first mutation.
   for (const plan of PRICES.plans) {
@@ -570,6 +578,9 @@ export function planOffline(creator?: string) {
   const code = creatorCode(creator);
   return {
     ...PRICES,
+    production_apply_ready: false,
+    production_apply_blocker:
+      "Subscription first-period renewals and non-combinable creator codes require reconciliation before applying production",
     creator_discount: code
       ? {
         code,
@@ -689,7 +700,7 @@ export async function runCatalog(
   const plan = planOffline(creator);
   if (!flags.has("--apply")) {
     console.log(
-      JSON.stringify({ environment, offline: true, ...plan }, null, 2),
+      JSON.stringify({ environment, offline: true, ...plan, ...(environment === "production" ? {production_inventory:{...productionInventory,founders:productionFounders}} : {}) }, null, 2),
     );
   } else {
     if (environment === "production") {

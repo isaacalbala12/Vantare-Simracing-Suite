@@ -1,3 +1,16 @@
+## VANTA-83 / #1661 · ronda 2 de seguridad (15/10/2026)
+
+Review R1 NO APTO: B1/I1 y M1–M4 corregidos en validación. Admisión SQL
+persistente de Founders por cuenta/entorno antes de grants, rechazo de altas
+nuevas Launch, incidencias críticas Owner y compatibilidad de replay/reembolso.
+Venta separada por entorno; precio configurado e IVA coherente; reactivaciones
+Pro vuelven a cancelar renovación con confirmación por revisión remota.
+No hay reembolso automático ni reactivación de Pro al devolver Founders.
+Cuatro regresiones Edge RED contra ec47efa5; SQL R2 RED sin configuración por
+entorno. Resultados finales y SHA se añaden al cerrar. Pro anual corregido a
+5999; Pro Plus intacto. Plan offline producción solicitado, sin token/--apply;
+aplicación real sigue bloqueada por la campaña de primer periodo heredada.
+
 ## VANTA-83 / #1661 · Plan Founders (15/10/2026)
 
 Rama `vantareapp/isa-1661-founders`, base asignada

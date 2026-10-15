@@ -247,6 +247,8 @@ function processDeps(
   const orderRefundLedger = new MemoryOrderRefundLedger();
   return {
     supabase: mock.client,
+    admitLifetimeOrder: async () => null as string | null,
+    enforceFoundersRenewal: async () => {},
     inbox: new MemoryWebhookInbox(now),
     loadMap,
     now,
@@ -282,6 +284,8 @@ function paidOrderData(overrides: Record<string, unknown> = {}) {
     applied_balance_amount: 0,
     refunded_amount: 0,
     currency: "eur",
+    product_price_id: "00000000-0000-4000-8000-000000001662",
+    tax_amount: 0,
     ...overrides,
   };
 }
@@ -351,9 +355,18 @@ Deno.test("Founders paid order is idempotent and refund removes only its own rig
 
 Deno.test("Founders rejects wrong amount, currency, recurring or pre-beta payment", async () => {
   for (
-    const overrides of [{ total_amount: 4999 }, { currency: "usd" }, {
-      subscription_id: "sub-wrong",
-    }, { paid_at: "2026-10-26T17:59:59Z" }]
+    const overrides of [
+      { total_amount: 4999 },
+      { product_price_id: "wrong-price" },
+      { product_price_id: null },
+      { tax_amount: 1 },
+      { discount_amount: 1 },
+      { currency: "usd" },
+      {
+        subscription_id: "sub-wrong",
+      },
+      { paid_at: "2026-10-26T17:59:59Z" },
+    ]
   ) {
     const mock = createMockSupabase();
     const deps = {
@@ -2835,4 +2848,144 @@ Deno.test("Founders entitlement activates before a failed renewal stop and retry
   assertEquals((await applyPolarWebhookEvent(event, deps)).status, "processed");
   assertEquals(calls, 2);
   assertEquals(deps.orderRefundLedger.grants.size, 1);
+});
+
+Deno.test("R2 new Launch payment is quarantined while historical lookup remains available", async () => {
+  const deps = {
+    ...processDeps(createMockSupabase()),
+    admitLifetimeOrder: async () => "launch_payment_retired",
+  };
+  const result = await processPolarWebhookEvent(
+    { type: "order.paid", data: paidOrderData({ id: "new-launch-r2" }) },
+    "new-launch-r2",
+    deps,
+  );
+  assertEquals(result.status, "quarantined");
+  assertEquals(deps.orderRefundLedger.grants.size, 0);
+});
+Deno.test("R2 a second Founders payment is quarantined before ledger or grant", async () => {
+  const deps = {
+    ...processDeps(
+      createMockSupabase(),
+      () =>
+        loadPolarProductMap(withFounders(VALID_POLAR_PRODUCT_MAP_JSON), {
+          environment: "sandbox",
+        }),
+    ),
+    foundersPaymentAllowed: async () => true,
+    transitionFoundersSubscriptions: async () => {},
+    admitLifetimeOrder: async () => "founders_duplicate_payment",
+  };
+  const result = await processPolarWebhookEvent(
+    {
+      type: "order.paid",
+      data: paidOrderData({
+        id: "duplicate-founders-r2",
+        product_id: "00000000-0000-4000-8000-000000001661",
+        paid_at: "2026-10-26T18:00:00Z",
+        total_amount: 5000,
+        net_amount: 5000,
+        product_price_id: "00000000-0000-4000-8000-000000001662",
+        tax_amount: 0,
+      }),
+    },
+    "duplicate-founders-r2",
+    deps,
+  );
+  assertEquals(result.status, "quarantined");
+  assertEquals(deps.orderRefundLedger.grants.size, 0);
+});
+Deno.test("R2 configured Founders price accepts coherent tax-exclusive total", async () => {
+  const deps = {
+    ...processDeps(
+      createMockSupabase(),
+      () =>
+        loadPolarProductMap(withFounders(VALID_POLAR_PRODUCT_MAP_JSON), {
+          environment: "sandbox",
+        }),
+    ),
+    foundersPaymentAllowed: async () => true,
+    transitionFoundersSubscriptions: async () => {},
+    admitLifetimeOrder: async () => null,
+  };
+  const result = await processPolarWebhookEvent(
+    {
+      type: "order.paid",
+      data: paidOrderData({
+        id: "tax-founders-r2",
+        product_id: "00000000-0000-4000-8000-000000001661",
+        paid_at: "2026-10-26T18:00:00Z",
+        total_amount: 6050,
+        net_amount: 5000,
+        product_price_id: "00000000-0000-4000-8000-000000001662",
+        tax_amount: 1050,
+      }),
+    },
+    "tax-founders-r2",
+    deps,
+  );
+  assertEquals(result.status, "processed");
+  assertEquals(deps.orderRefundLedger.grants.size, 1);
+});
+Deno.test("R2 uncanceled subscription invokes Founders renewal enforcement after lifecycle", async () => {
+  let calls = 0;
+  const deps = {
+    ...processDeps(createMockSupabase()),
+    enforceFoundersRenewal: async () => {
+      calls++;
+    },
+  };
+  const result = await applyPolarWebhookEvent({
+    type: "subscription.uncanceled",
+    data: {
+      id: "sub-reactivated-r2",
+      product_id: PRO_MONTHLY_PRODUCT_ID,
+      external_customer_id: USER_ID,
+      status: "active",
+      cancel_at_period_end: false,
+      current_period_end: "2026-08-09T12:00:00Z",
+      modified_at: RESOURCE_MODIFIED_AT,
+    },
+  }, deps);
+  assertEquals(result.status, "processed");
+  assertEquals(calls, 1);
+});
+
+Deno.test("R2 configured Founders price accepts tax-inclusive net and preserves price through replay minimization", async () => {
+  const deps = {
+    ...processDeps(
+      createMockSupabase(),
+      () =>
+        loadPolarProductMap(withFounders(VALID_POLAR_PRODUCT_MAP_JSON), {
+          environment: "sandbox",
+        }),
+    ),
+    foundersPaymentAllowed: async () => true,
+    transitionFoundersSubscriptions: async () => {},
+  };
+  const event = {
+    type: "order.paid",
+    data: paidOrderData({
+      id: "inclusive-founders-r2",
+      product_id: "00000000-0000-4000-8000-000000001661",
+      paid_at: "2026-10-26T18:00:00Z",
+      net_amount: 4132,
+      tax_amount: 868,
+      total_amount: 5000,
+      product_price_id: null,
+      items: [{
+        product_price_id: "00000000-0000-4000-8000-000000001662",
+        customer_email: "must-be-removed",
+      }],
+    }),
+  };
+  const minimized = minimizePolarWebhookEvent(event);
+  assertEquals(minimized.data.items, [{
+    product_price_id: "00000000-0000-4000-8000-000000001662",
+  }]);
+  assertEquals(
+    (await processPolarWebhookEvent(minimized, "inclusive-founders-r2", deps))
+      .status,
+    "processed",
+  );
 });

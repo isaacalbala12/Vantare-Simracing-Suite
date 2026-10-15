@@ -393,6 +393,9 @@ impl Admin {
                 }
             )))
             .when(user.payments.iter().any(|p|p.amount_basis.as_deref()==Some("net")), |d|d.child(note("Los pagos históricos marcados como netos no incluyen impuestos y muestran su fecha de registro.",EMBER)))
+            .children(user.billing_incidents.iter().map(|incident| {
+                note(&format!("{} · {}", incident.label(), incident.resource_id), EMBER)
+            }))
             .children(user.founders_transitions.iter().map(|transition| {
                 note(&format!("{} · {}", transition.label(), transition.subscription_id), EMBER)
             }))

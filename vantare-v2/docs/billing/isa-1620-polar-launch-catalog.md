@@ -54,7 +54,7 @@ Fuente: `supabase/functions/scripts/polar-launch-prices.json`, versión
 | Plan | Normal | Lanzamiento | Creador durante 2 meses | Base después del descuento |
 |---|---:|---:|---:|---:|
 | Pro mensual | 5,99 € | 3,99 € | 3,19 € | 3,99 € |
-| Pro anual | 59,90 € | 39,90 € | 31,92 € | 39,90 € |
+| Pro anual | 59,99 € | 39,90 € | 31,92 € | 39,90 € |
 | Pro Plus mensual | 9,99 € | 6,99 € | 5,59 € | 6,99 € |
 | Pro Plus anual | 99,90 € | 69,90 € | 55,92 € | 69,90 € |
 

@@ -528,7 +528,7 @@ export function resolveCheckoutKeyByProductId(
     ) as ProductIdResolveResult;
   }
   const config = map.checkout_keys[key];
-  if (!config || !config.active) {
+  if (!config || (!config.active && key !== "launch_lifetime")) {
     return {
       ok: false,
       code: "mapping_checkout_unavailable",
@@ -550,7 +550,7 @@ export function resolveCheckoutKeyByPriceId(
     ) as ProductIdResolveResult;
   }
   const config = map.checkout_keys[key];
-  if (!config || !config.active) {
+  if (!config || (!config.active && key !== "launch_lifetime")) {
     return {
       ok: false,
       code: "mapping_checkout_unavailable",

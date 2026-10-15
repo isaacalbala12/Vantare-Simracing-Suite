@@ -1,6 +1,5 @@
 import {
   assertEquals,
-  assertRejects,
   assertThrows,
 } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import { advanceCursor, reconcilePage, reconciliationEvent } from "./worker.ts";
@@ -128,7 +127,9 @@ Deno.test("orphan recovers automatically after durable binding appears; DB outag
   assertEquals(ledger.grants.size, 0);
   bound = true;
   outage = true;
-  await assertRejects(() => reconcilePage(args));
+  const retry = await reconcilePage(args);
+  assertEquals(retry.failed.length,1);
+  assertEquals(retry.next,args.cursor);
   assertEquals(ledger.grants.size, 0);
   outage = false;
   now = new Date("2026-10-08T12:10:00Z");
@@ -213,4 +214,44 @@ Deno.test("P2-5 reconciliation repairs the invoice ledger even when the same inb
   assertEquals(invoices.get(item.id)?.p_source, "reconciliation");
   await reconcilePage(args);
   assertEquals(invoices.size, 1);
+});
+
+Deno.test("P3-18 a poisoned item does not abort the page and its retry cannot lose the cursor", async () => {
+  const account="4b6d8919-1c89-492d-a0e2-364124c17878";
+  let poison=true;
+  let now=new Date("2026-11-27T12:00:00Z");
+  const invoices=new Map<string,unknown>();
+  const gaps:string[]=[];
+  const supabase={
+    rpc:(name:string,args:Record<string,unknown>)=>{
+      if(name==="report_promotion_invoice_missing") gaps.push(String(args.p_order));
+      if(name==="report_promotion_invoice") {
+        if(args.p_order==="bad" && poison) return Promise.resolve({data:null,error:{code:"fixture_invoice_outage"}});
+        invoices.set(String(args.p_order),args);
+      }
+      return Promise.resolve({data:null,error:null});
+    },
+    from:()=>{
+      const chain={select:()=>chain,eq:()=>chain,maybeSingle:()=>Promise.resolve({data:{user_id:account},error:null}),
+        insert:()=>Promise.resolve({error:null}),upsert:()=>Promise.resolve({error:null})};
+      return chain;
+    },
+  } as unknown as SupabaseClient;
+  const item=(id:string)=>({id,subscription_id:"sub",product_id:"00000000-0000-0000-0000-000000000003",status:"paid",paid:true,
+    billing_reason:"subscription_cycle",net_amount:399,refunded_amount:0,applied_balance_amount:0,currency:"eur",discount_id:"pro3",discount_amount:200,
+    created_at:"2026-11-26T18:00:00Z",items:[{proration:false,start_timestamp:"2026-11-26T18:00:00Z",end_timestamp:"2026-12-26T18:00:00Z"}]});
+  const args={cursor:{resource:"orders" as const,page:1},page:{items:[item("bad"),item("good")],maxPage:1},environment:"sandbox" as const,supabase,
+    processDeps:{inbox:new MemoryWebhookInbox(()=>now),orderRefundLedger:new MemoryOrderRefundLedger(),projection:new MemoryCommercialProjection(),
+      lifecycle:new MemorySubscriptionLifecycleStore(),resolveIdentity:()=>Promise.resolve(account),now:()=>now,
+      loadMap:()=>loadPolarProductMap(VALID_POLAR_PRODUCT_MAP_JSON,{environment:"sandbox"})}};
+  const first:{next:unknown;failed?:unknown[]}=await reconcilePage(args);
+  assertEquals(first.failed?.length,1);
+  assertEquals(first.next,args.cursor);
+  assertEquals(invoices.has("good"),true);
+  assertEquals(gaps.includes("bad"),true);
+  poison=false;now=new Date("2026-11-27T12:10:00Z");
+  const recovered:{next:unknown;failed?:unknown[]}=await reconcilePage(args);
+  assertEquals(recovered.failed?.length,0);
+  assertEquals(recovered.next,{resource:"subscriptions",page:1});
+  assertEquals(invoices.size,2);
 });

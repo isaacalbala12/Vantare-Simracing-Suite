@@ -4,7 +4,10 @@ Base d90b8ec04 publicada por el orquestador en PR #1659. Mac ~/wt-1593,
 misma rama y nightly3f82af867. Informe R3 leído completo. P2-8 corregido:
 seis cobros en total, conservando consumo del tramo menor; caducidad del tramo
 nuevo independiente. Regresión RED→GREEN con factura liquidada entre tramos.
-Faltan recuperación sin ID, robustez por elemento y controles de R4.
+P2-9 recupera sin ID a los30min con incidencia Owner previa al alta; Pro→Plus
+abierto espera con mensaje409. P3-18 termina la página pese a un elemento fallido,
+registra hueco y conserva cursor para reintento sin perder facturas.
+Regresiones SQL/Edge RED→GREEN. Faltan P3-19/20/21 y gates completos.
 
 ## #1593 / VANTA-39 · Ronda 3 entregada al bare · 15/10/2026
 

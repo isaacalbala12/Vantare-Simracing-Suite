@@ -241,3 +241,14 @@ funciones de producto para dejarlos verdes. Deno cubre fallo de lote, checkout
 activado y clear/attach. Sin servicios reales ni sandbox autenticado.
 Facturas/renovaciones Polar reales, Windows, nueva revisión independiente y QA
 visual siguen pendientes.
+
+## Reconciliación por elemento · ronda 4
+
+Cada elemento tiene su captura de error: una factura problemática no impide
+procesar las siguientes órdenes, suscripciones, devoluciones o disputas de la
+página. Un fallo deja código saneado en la respuesta y, para órdenes conocidas,
+intenta registrar el hueco contable visible al Owner. Si ese registro también
+falla, se informa incident_recorded=false. La página se termina, pero conserva
+su cursor para repetirla en la siguiente invocación; los elementos ya aplicados
+se deduplican. El handler sale del bucle y marca la pasada fallida, sin repetir
+ocho veces la misma página en una petición.

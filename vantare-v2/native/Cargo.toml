@@ -66,6 +66,18 @@ opt-level = 3
 [profile.dev.package.adler2]
 opt-level = 3
 
+# Decodificar las imágenes del garaje de Strategy (2 PNG de ~1,9 MB + un SVG de 1 KB)
+# cuesta ~8 s por test en dev: `Strategy::new` las decodifica siempre y con opt-level 0
+# el código de `image`/`png`/`fdeflate` va muy lento. Medido en #1654 r5: los seis
+# tests `isa1544_*` (y solo ellos, los que crean un Strategy) tardan 8 s cada uno; el
+# resto de tests con headless, 0,02-1 s. Se compilan una vez, como los de arriba.
+[profile.dev.package.png]
+opt-level = 3
+[profile.dev.package.fdeflate]
+opt-level = 3
+[profile.dev.package.image]
+opt-level = 3
+
 # Build para pruebas manuales, no para distribución ni mediciones de rendimiento.
 [profile.prueba]
 inherits = "release"

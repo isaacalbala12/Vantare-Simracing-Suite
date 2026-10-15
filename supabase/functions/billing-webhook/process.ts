@@ -683,6 +683,14 @@ async function applyOrderRefundEvent(args: {
       );
   }
 
+  if (decision.order.subscriptionId && args.deps.projection?.restrictSource) {
+    await args.deps.projection.restrictSource({
+      environment: args.environment,
+      sourceId: decision.order.subscriptionId,
+      causeId: orderId,
+      blocked: decision.accessState === "revoked",
+    });
+  }
   if (
     decision.order.subscriptionId &&
     (decision.accessState === "revoked" || decision.succeededRefundAmount > 0 ||
@@ -698,14 +706,6 @@ async function applyOrderRefundEvent(args: {
         reason: "refund",
       },
     );
-  }
-  if (decision.order.subscriptionId && args.deps.projection?.restrictSource) {
-    await args.deps.projection.restrictSource({
-      environment: args.environment,
-      sourceId: decision.order.subscriptionId,
-      causeId: orderId,
-      blocked: decision.accessState === "revoked",
-    });
   }
   if (writeOutcome === "duplicate") {
     return { status: "processed", action: "resource_duplicate" };
@@ -1039,6 +1039,18 @@ export async function applyPolarWebhookEvent(
     () => lifecycle.apply(lifecycleApply),
   );
   if (
+    !cancelAtPeriodEnd &&
+    ["active", "uncanceled", "trialing", "past_due", "unpaid"].includes(status)
+  ) {
+    await (deps.enforceFoundersRenewal ?? enforceFoundersRenewal)(
+      deps.supabase,
+      environment,
+      userId,
+      resourceId,
+      snapshotWithoutHash.modifiedAt,
+    );
+  }
+  if (
     event.type === "subscription.revoked" ||
     ["active", "uncanceled", "trialing", "past_due", "unpaid"].includes(status)
   ) {
@@ -1053,18 +1065,6 @@ export async function applyPolarWebhookEvent(
           ? "subscription_revoked"
           : "reconcile",
       },
-    );
-  }
-  if (
-    !cancelAtPeriodEnd &&
-    ["active", "uncanceled", "trialing", "past_due", "unpaid"].includes(status)
-  ) {
-    await (deps.enforceFoundersRenewal ?? enforceFoundersRenewal)(
-      deps.supabase,
-      environment,
-      userId,
-      resourceId,
-      snapshotWithoutHash.modifiedAt,
     );
   }
   if (result.outcome === "duplicate") {

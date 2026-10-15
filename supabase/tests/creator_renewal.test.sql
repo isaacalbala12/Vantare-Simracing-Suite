@@ -104,5 +104,7 @@ insert into public.account_identities(issuer,subject,account_id,deleted_at) valu
 select is(public.billing_creator_renewal_authorized('sandbox','creator-sub',(select (op->>'token')::uuid from prepared)),false,'deleted account blocks remote changes');
 select is(public.billing_creator_renewal_finish('sandbox','creator-sub',(select (op->>'token')::uuid from prepared),true),false,'deleted account blocks ACK');
 select is(public.billing_creator_renewal_prepare('sandbox','00000000-0000-4000-8000-000000001681',null,'creator-sub','creator-order','00000000-0000-4000-8000-000000001685','pro_monthly',null,120),null::jsonb,'deleted account never prepares a new operation');
+select ok(pg_get_userbyid(proowner)='postgres' and proconfig @> array['search_path=""'],'fixed owner/search_path on R5 function '||proname) from pg_proc where oid in ('public.native_admin_execute(uuid,text,text,jsonb,text)'::regprocedure,'public.billing_creator_revocation(text,text,uuid,text,text,text,uuid,boolean)'::regprocedure);
+select ok(not has_function_privilege('service_role','private.native_admin_execute_before_creator_coupon(uuid,text,text,jsonb,text)','execute'),'old Owner entrypoint cannot bypass the new boundary');
 select * from finish();
 rollback;

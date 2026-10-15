@@ -3202,3 +3202,32 @@ Deno.test("R5 subscription revoked hook withdraws creator independently of live 
     reason: "subscription_revoked",
   }]);
 });
+
+Deno.test("R5 creator cleanup failure cannot postpone Founders renewal stop", async () => {
+  const deps = processDeps(createMockSupabase());
+  const order: string[] = [];
+  await assertRejects(() =>
+    applyPolarWebhookEvent({
+      type: "subscription.active",
+      data: {
+        id: "r5-active-sub",
+        product_id: PRO_MONTHLY_PRODUCT_ID,
+        external_customer_id: USER_ID,
+        status: "active",
+        modified_at: RESOURCE_MODIFIED_AT,
+        current_period_end: "2026-08-09T12:00:00Z",
+        cancel_at_period_end: false,
+      },
+    }, {
+      ...deps,
+      enforceFoundersRenewal: async () => {
+        order.push("stop-renewal");
+      },
+      revokeCreatorRenewals: async () => {
+        order.push("creator-cleanup");
+        throw Error("provider unavailable");
+      },
+    })
+  );
+  assertEquals(order, ["stop-renewal", "creator-cleanup"]);
+});

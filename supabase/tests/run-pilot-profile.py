@@ -1,0 +1,79 @@
+"""Only disposable loopback PostgreSQL; no DSN, production or existing database."""
+import argparse
+import os
+import re
+from pathlib import Path
+import socket
+import subprocess
+import tempfile
+from pilot_profile_concurrency import check as check_concurrency
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--pg-bin', type=Path, required=True)
+    parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--non-superuser-migration', action='store_true',
+                        help='Apply as a disposable CREATEROLE administrator without SUPERUSER')
+    args = parser.parse_args()
+    args.output.mkdir(parents=True, exist_ok=True)
+    root = Path(__file__).resolve().parents[2]
+    env = {key: value for key, value in os.environ.items() if not key.startswith('PG')}
+    with socket.socket() as probe:
+        probe.bind(('127.0.0.1', 0))
+        port = probe.getsockname()[1]
+    with tempfile.TemporaryDirectory(prefix='vantare-1612-') as temp:
+        data = Path(temp) / 'data'
+
+        def run(program, *parameters, name, expected=0):
+            result = subprocess.run([str(args.pg_bin / program), *map(str, parameters)],
+                                    env=env, capture_output=True, text=True, encoding='utf-8', timeout=120)
+            output = result.stdout + result.stderr
+            (args.output / name).write_text(output, encoding='utf-8')
+            if result.returncode != expected:
+                raise RuntimeError(f'{name} failed; inspect local log')
+            return output
+
+        run('initdb', '-D', data, '-U', 'postgres', '--auth-local=trust', '--auth-host=trust',
+            '--encoding=UTF8', '--no-locale', name='initdb.log')
+        run('pg_ctl', '-D', data, '-l', args.output / 'postgres.log', '-o',
+            f'-h 127.0.0.1 -p {port} -k {temp}', '-w', 'start', name='start.log')
+        try:
+            connection = ['-X', '-h', '127.0.0.1', '-p', str(port), '-d', 'postgres',
+                          '-U', 'postgres', '-v', 'ON_ERROR_STOP=1', '-At']
+            run('psql', *connection, '-c', 'create extension pgtap;', name='pgtap.log')
+            if args.non_superuser_migration:
+                run('psql', *connection, '-c', 'create role pilot_qa_migrator nologin nosuperuser createrole; grant create on database postgres to pilot_qa_migrator; grant usage,create on schema public to pilot_qa_migrator with grant option;', name='non-superuser-setup.log')
+            for path in ('supabase/tests/pilot-profile-bootstrap.sql',
+                         'supabase/migrations/20261013225839_pilot_profile_private.sql',
+                         'supabase/tests/pilot-profile.test.sql'):
+                role = ['-c', 'set role pilot_qa_migrator;'] if args.non_superuser_migration and path != 'supabase/tests/pilot-profile.test.sql' else []
+                output = run('psql', *connection, *role, '-f', root / path, name=Path(path).name + '.log')
+            count = re.search(r'^1\.\.(\d+)$', output, re.MULTILINE)
+            if 'not ok ' in output or count is None or f'ok {count[1]} ' not in output:
+                raise RuntimeError('pilot pgTAP failed')
+            print(f'PASS {count[1]} local PostgreSQL profile/storage/RLS checks')
+            check_concurrency(args.pg_bin, connection, env, args.output, run)
+            down = root / 'supabase/rollback/pilot-profile-empty-qa.sql'
+            rollback_role = ['-c', 'set role pilot_qa_migrator;'] if args.non_superuser_migration else []
+            run('psql', *connection, *rollback_role, '-f', down, name='rollback-no-authorization.log', expected=3)
+            run('psql', *connection, '-c', "insert into public.pilot_profiles(account_id) values('16120000-0000-0000-0000-000000000001');", name='rollback-profile-fixture.log')
+            setting = "set vantare.pilot_qa_rollback='empty-disposable';"
+            run('psql', *connection, *rollback_role, '-c', setting, '-f', down, name='rollback-profile-refused.log', expected=3)
+            run('psql', *connection, '-c', "select 1 / count(*) from public.pilot_profiles; delete from public.pilot_profiles; insert into storage.objects(bucket_id,name) values('pilot-photos','qa-object');", name='rollback-photo-fixture.log')
+            run('psql', *connection, *rollback_role, '-c', setting, '-f', down, name='rollback-photo-refused.log', expected=3)
+            run('psql', *connection, '-c', "select 1 / count(*) from storage.objects where bucket_id='pilot-photos'; delete from storage.objects where bucket_id='pilot-photos';", name='rollback-fixture-cleanup.log')
+            run('psql', *connection, '-c', "insert into pilot_private.operations(account_id,op_id,result) values('16120000-0000-0000-0000-000000000001','16120000-0000-4000-8000-000000000030','{}');", name='rollback-receipt-fixture.log')
+            run('psql', *connection, *rollback_role, '-c', setting, '-f', down, name='rollback-receipt-refused.log', expected=3)
+            run('psql', *connection, '-c', 'select 1 / count(*) from pilot_private.operations; delete from pilot_private.operations;', name='rollback-receipt-cleanup.log')
+            run('psql', *connection, *rollback_role, '-c', setting, '-f', down, name='rollback-empty.log')
+            output = run('psql', *connection, '-f', root / 'supabase/tests/pilot-profile-rollback.test.sql', name='rollback-postcheck.log')
+            if 'not ok ' in output or '1..10' not in output or 'ok 10 ' not in output:
+                raise RuntimeError('rollback pgTAP failed')
+            print('PASS rollback: refuses missing consent/profiles/photos/receipts, removes empty QA package; 10 postchecks')
+        finally:
+            run('pg_ctl', '-D', data, '-m', 'fast', '-w', 'stop', name='stop.log')
+
+
+if __name__ == '__main__':
+    main()

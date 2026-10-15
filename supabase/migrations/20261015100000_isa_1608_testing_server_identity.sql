@@ -111,7 +111,6 @@ begin
   -- Same UUID lock as deletion, before membership/row locks; recheck after wait.
   if private.lock_account_write(p_account) then
     raise sqlstate '28000' using message='account_deleted'; end if;
-  if p_account is null then raise exception 'testing_auth_required' using errcode='42501'; end if;
   if p_consent is distinct from true or p_id is null or p_channel not in ('nightly','testers','master') then
     raise exception 'testing_report_consent_required' using errcode='22023'; end if;
   insert into public.testing_contributions(id,account_id,channel,title,body)

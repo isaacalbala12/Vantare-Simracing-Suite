@@ -1,0 +1,104 @@
+# Creador desde la renovación · VANTA-83 / #1661 · ronda 4
+
+Decisión Isaac: el primer periodo no recibe descuento de creador. El código
+atribuye la venta y puede acompañar al lanzamiento. Pro 5,99/59,99 EUR, primer
+periodo 3,99/39,90; Pro Plus 9,99/99,90, primer periodo 6,99/69,90. La promoción
+inicial sigue siendo once del 26-oct al 26-nov-2026 19:00 Madrid.
+
+## Configuración y duración
+
+Fuente única `supabase/functions/scripts/polar-launch-prices.json`:
+`creator_discount_basis_points=2000`; `creator_renewals` configura 11 meses para
+mensuales y 12 para anuales, anclados en la primera renovación con descuento.
+Mensual: meses 2–12; anual: una renovación anual desde el segundo año. La
+comisión conserva 30 % mes 1 / 10 % meses 2–12, sin pago automático ni extensión
+por la oferta anual. Cambiar esta tabla no altera cupones históricos: preflight
+rechaza drift y requiere revisión manual.
+
+Polar cuenta repeating desde el primer ciclo en que lo utiliza; asociarlo tras
+el cobro inicial no rebaja esa factura. Documentación primaria:
+[Create Discount](https://polar.sh/docs/api-reference/discounts/create),
+[modelo de expiración](https://github.com/polarsource/polar/blob/main/server/polar/models/discount.py),
+[aplicación a ciclos](https://github.com/polarsource/polar/blob/main/server/polar/subscription/service.py).
+La comprobación real de calendario, IVA y primera renovación sigue en checklist
+sandbox; los tests locales no acreditan una factura de Polar.
+
+El script con `--creator CODE` crea dos cupones sin `code` público, restringidos
+respectivamente a normales mensuales/anuales. Salida `creator_discounts[CODE]`
+y `creator_annual_discounts[CODE]`. Ninguno entra en el primer checkout.
+La miniapp Owner crea ambos en sandbox; devuelve el ID mensual para su registro
+histórico. El operador incorpora ambos IDs al mapa de checkout. No se adoptan
+cupones históricos de dos meses ni se modifica su comportamiento silenciosamente.
+
+## Flujo y recuperación
+
+1. POST billing-checkout `{productKey,attemptId,creatorCode?}` con OAuth de la
+   cuenta. Solo código exacto allowlisted, sin IDs ni importes del cliente.
+2. Claim durable y `billing_save_creator_attribution`: creador activo, cuenta
+   viva, intento creando suscripción. Guarda cuenta/entorno/intento/creador/ID.
+   El checkout Polar lleva metadata `creator_code` y solo descuento inicial de
+   lanzamiento si aplica. Fuera de campaña: precio normal, sin descuento inicial
+   de creador. Sin trial cuando se atribuye creador.
+3. Al completar se conserva la binding de checkout. Un order.paid
+   subscription_create, ya admitido por identidad/ledger, puede preparar la
+   operación. La metadata del webhook no concede atribución. No se crea desde
+   un checkout ajeno, una renovación ni una orden sin pagar.
+4. `billing_creator_renewal_prepare` fija primera orden y creator ID por
+   suscripción, selecciona ganador, guarda perdedor y adquiere lease 60 s.
+   GET Polar comprueba ID, producto, precio/moneda/intervalo y estado activo.
+   RPC de autorización revalida lease, borrado, pago inicial no reembolsado y
+   ausencia de Founders inmediatamente antes del PATCH.
+5. PATCH solo discount_id; nunca precio/producto, factura, reembolso o dinero.
+   GET ya coincidente no escribe: recuperación de respuesta perdida sin
+   reiniciar repeating. Descuento remoto ajeno bloquea y deja incidencia.
+   ACK durable solo después de confirmar. Fallo libera lease, registra
+   creator_renewal_discount_failed visible Owner y permite retry del inbox.
+   La reconciliación de órdenes usa el mismo procesador. No se crea scheduler.
+
+La comisión usa la atribución de la primera compra de la cuenta, independiente
+del descuento de esa factura. Se conservan fallback de lectura de descuentos
+históricos y liquidaciones ya asentadas, sin reatribuirlas. Los datos privados
+son server-only; RPC sin permisos anon/authenticated y search_path vacío.
+
+## Contrato con VANTA-39 / rama isa-1593-descuento-informes
+
+La rama se ha leído, no modificado. Su estado revisado todavía asume creador de
+dos meses y tiene escritor propio de descuentos. **Antes de activar ambas
+campañas juntas**, #1659 debe adoptar este contrato y coordinar su escritor con
+el lease común; no ejecutar dos PATCH independientes. No se afirma integración
+ni validación de su rama en esta entrega.
+
+El backend de informes, después de verificar su elegibilidad y saldo, publica
+`billing_set_report_renewal_candidate(p_environment,p_user,p_subscription,
+p_discount,p_savings,p_valid_until)`. Solo service_role, cuenta/suscripción
+ligadas; 200 c Pro o 300 c Plus. Una operación en vuelo bloquea el cambio para
+reintentar; una candidatura distinta vuelve pending la selección.
+A continuación invoca `applyCreatorRenewal` con cuenta/suscripción/producto/key
+servidor, initial=false; el primer pago ya está en la operación durable.
+Elige mayor ahorro sobre el normal: Pro creador 120 c vs informes 200 c;
+Plus 200 c vs 300 c. Empate favorece informes. Guarda not_applied y Owner lo ve.
+Un fallo no deshace la atribución ni la comisión del primer pago.
+
+El adaptador #1659 debe conservar sus 3/6 cobros totales, caducidad, reembolso,
+spam, transferencias y fases clear/attach. Debe conservar también el límite
+temporal original del creador al volver de informes: **nunca reasociar el cupón
+completo de 11 meses para reiniciar el derecho**. Publicar/retirar candidatura
+no inventa ni consume un periodo. No extender un descuento vencido ni retirar
+un ID ajeno. Este límite necesita prueba conjunta al integrar las ramas;
+la candidatura de informes queda sin publicar hasta esa integración.
+
+Founders no recibe descuentos ni comisión de creador. Incluye Stable y Nightly
+vitalicios, y cancela la renovación Pro/Plus al fin pagado sin reembolso. Un
+reembolso Founders retira sus derechos y no reactiva la suscripción.
+
+## Checklist pendiente del operador
+
+- Revisar/copiar mapa real e IDs de cupones antes de desplegar; no hay despliegue.
+- Primer checkout con y sin campaña: atribución, precio y un solo cupón inicial.
+- Primer order.paid llega antes/después de subscription.created; retry y ACK perdido.
+- Próxima factura mensual/anual: creador 20 %, sin modificar factura inicial.
+- Calendario 28/29/30/31 y duración real de repeating; IVA de Founders con precio
+  configurado y tax_behavior nulo.
+- Integración #1659: candidatura posterior al primer pago, mayor ahorro,
+  pérdida/expiración/traslado y regreso sin extender ninguno de los derechos.
+- Sin servicios comerciales reales, dinero ni capturas en esta entrega.

@@ -78,7 +78,7 @@ function productCopy(key: CheckoutKey, launch = false) {
     return {
       name: "Vantare Founders · Precio de fundador",
       description:
-        "- Pago único de **50 €**: todos los módulos y widgets presentes y futuros, para siempre.\n- Disponible desde la **beta pública**, sin fecha de fin. El precio subirá más adelante, sin fecha prevista.\n- Sin caducidad ni renovación. No incluye roles privados ni Nightly.",
+        "- Pago único de **50 €**: todos los módulos y widgets presentes y futuros, para siempre.\n- Disponible desde la **beta pública**, sin fecha de fin. El precio subirá más adelante, sin fecha prevista.\n- Sin caducidad ni renovación. Incluye acceso a Nightly.",
     };
   }
   const plus = key.startsWith("pro_plus_");
@@ -199,11 +199,20 @@ function launchDiscountMatches(
     Date.parse(discount.ends_at ?? "") ===
       Date.parse(window.ends_at);
 }
-function creatorMatches(discount: Resource, code: string, ids: string[]) {
+function creatorMatches(
+  discount: Resource,
+  code: string,
+  ids: string[],
+  annual = false,
+) {
   return !discount.is_archived && discount.type === "percentage" &&
     discount.basis_points === PRICES.creator_discount_basis_points &&
-    discount.duration === "repeating" && discount.duration_in_months === 2 &&
-    discount.code === code &&
+    discount.duration === "repeating" &&
+    discount.duration_in_months ===
+      (annual
+        ? PRICES.creator_renewals.annual_duration_months
+        : PRICES.creator_renewals.monthly_duration_months) &&
+    !discount.code &&
     sameProducts(discount, ids) && !discount.starts_at && !discount.ends_at &&
     !discount.max_redemptions;
 }
@@ -228,6 +237,17 @@ function catalogReadiness(
   ];
   const modelReady =
     PRICES.launch_model === "fixed_discount_once_on_normal_products" &&
+    Number.isSafeInteger(PRICES.creator_discount_basis_points) &&
+    PRICES.creator_discount_basis_points > 0 &&
+    PRICES.creator_discount_basis_points <= 10000 &&
+    [
+      PRICES.creator_renewals.monthly_duration_months,
+      PRICES.creator_renewals.annual_duration_months,
+    ].every((months) =>
+      Number.isSafeInteger(months) && months > 0 && months <= 999
+    ) &&
+    PRICES.creator_renewals.first_period_discount === false &&
+    PRICES.creator_renewals.public_polar_code === false &&
     Number.isFinite(Date.parse(window.starts_at)) &&
     Date.parse(window.ends_at) > Date.parse(window.starts_at) &&
     PRICES.plans.length === keys.length &&
@@ -429,10 +449,12 @@ export async function syncCatalog(http: Http, raw: unknown, options: Options) {
   const idsBefore = PRICES.plans.map((p) => selected.get(p.key)?.id).filter((
     id,
   ): id is string => !!id);
+  const monthlyIdsBefore = PRICES.plans.filter((p) => p.interval === "month")
+    .map((p) => selected.get(p.key)?.id).filter((id): id is string => !!id);
   const creatorDiscounts = discounts.filter((d) =>
     creator &&
     (d.id === map.creator_discounts?.[creator] ||
-      d.metadata?.vantare_offer_key === `creator:${creator}`)
+      d.metadata?.vantare_offer_key === `creator:${creator}:renewals-v4`)
   );
   if (creatorDiscounts.length > 1) throw Error("Ambiguous creator discount");
   let creatorDiscount = creatorDiscounts[0] as Resource | undefined;
@@ -446,8 +468,25 @@ export async function syncCatalog(http: Http, raw: unknown, options: Options) {
   if (
     creatorDiscount &&
     (!creator || idsBefore.length !== PRICES.plans.length ||
-      !creatorMatches(creatorDiscount, creator, idsBefore))
+      !creatorMatches(creatorDiscount, creator, monthlyIdsBefore))
   ) throw Error("Creator discount drift; review manually");
+  const annualIdsBefore = PRICES.plans.filter((p) => p.interval === "year").map(
+    (p) => selected.get(p.key)?.id,
+  ).filter((id): id is string => !!id);
+
+  const annualMatches = discounts.filter((d) =>
+    creator &&
+    (d.id === map.creator_annual_discounts?.[creator] ||
+      d.metadata?.vantare_offer_key === `creator:${creator}:annual-renewals-v4`)
+  );
+  if (annualMatches.length > 1) {
+    throw Error("Ambiguous annual creator discount");
+  }
+  let annualCreator = annualMatches[0] as Resource | undefined;
+  if (
+    annualCreator &&
+    (!creator || !creatorMatches(annualCreator, creator, annualIdsBefore, true))
+  ) throw Error("Annual creator discount drift");
   const liveInventory = options.environment === "production"
     ? await verifyEmptyProductionInventory(
       http,
@@ -576,28 +615,62 @@ export async function syncCatalog(http: Http, raw: unknown, options: Options) {
         type: "percentage",
         basis_points: PRICES.creator_discount_basis_points,
         duration: "repeating",
-        duration_in_months: 2,
-        products: normalIds,
-        code: creator,
-        metadata: { vantare_offer_key: `creator:${creator}` },
+        duration_in_months: PRICES.creator_renewals.monthly_duration_months,
+        products: PRICES.plans.filter((p) => p.interval === "month").map((p) =>
+          map.checkout_keys[p.key]!.polar_product_id
+        ),
+        metadata: { vantare_offer_key: `creator:${creator}:renewals-v4` },
       }) as Resource;
       writes++;
     }
     if (
       creatorDiscount.organization_id !== map.organization_id ||
-      !creatorMatches(creatorDiscount, creator, normalIds)
+      !creatorMatches(
+        creatorDiscount,
+        creator,
+        PRICES.plans.filter((p) => p.interval === "month").map((p) =>
+          map.checkout_keys[p.key]!.polar_product_id
+        ),
+      )
     ) throw Error("Creator discount response mismatch");
     map.creator_discounts = {
       ...map.creator_discounts,
       [creator]: creatorDiscount.id,
     };
+    const annualIds = PRICES.plans.filter((p) => p.interval === "year").map(
+      (p) => map.checkout_keys[p.key]!.polar_product_id,
+    );
+    if (!annualCreator) {
+      annualCreator = await http("POST", "/discounts/", {
+        name: `Vantare ${creator} · Renovación anual`,
+        type: "percentage",
+        basis_points: PRICES.creator_discount_basis_points,
+        duration: "repeating",
+        duration_in_months: PRICES.creator_renewals.annual_duration_months,
+        products: annualIds,
+        metadata: {
+          vantare_offer_key: `creator:${creator}:annual-renewals-v4`,
+        },
+      }) as Resource;
+      writes++;
+    }
+    if (
+      annualCreator.organization_id !== map.organization_id ||
+      !creatorMatches(annualCreator, creator, annualIds, true)
+    ) throw Error("Annual creator response mismatch");
+    map.creator_annual_discounts = {
+      ...map.creator_annual_discounts,
+      [creator]: annualCreator.id,
+    };
     for (const plan of PRICES.plans) {
       offers[`${plan.key}:creator:${creator}`] = {
         product_id: map.checkout_keys[plan.key]!.polar_product_id,
-        discount_id: creatorDiscount.id,
-        code: creator,
-        final_cents: creatorPrice(plan.normal_cents),
-        renewal_cents: plan.normal_cents,
+        discount_id: plan.interval === "year"
+          ? annualCreator.id
+          : creatorDiscount.id,
+        code: null,
+        final_cents: plan.normal_cents,
+        renewal_cents: creatorPrice(plan.normal_cents),
       };
     }
   }
@@ -641,7 +714,8 @@ export function planOffline(
       automatic_launch_discount: true,
       allow_discount_codes: false,
       creator_code_server_validated: true,
-      launch_creator_combination: "rejected",
+      launch_creator_combination:
+        "attribution_first_invoice_discount_from_renewal",
       launch_trial: false,
     },
     creator_discount: code
@@ -650,9 +724,13 @@ export function planOffline(
         type: "percentage",
         basis_points: PRICES.creator_discount_basis_points,
         duration: "repeating",
-        duration_in_months: 2,
+        duration_in_months: PRICES.creator_renewals.monthly_duration_months,
+        annual_duration_in_months:
+          PRICES.creator_renewals.annual_duration_months,
+        starts_on: "first_paid_renewal_after_initial_invoice",
+        polar_public_code: null,
         scope: "normal_subscription_products_only",
-        combinable_with_launch: false,
+        combinable_with_launch: true,
       }
       : null,
     plans: PRICES.plans.map((p) => ({
@@ -664,7 +742,8 @@ export function planOffline(
         amounts: { eur: p.normal_cents - p.launch_cents },
         ...window,
       },
-      creator_cents: creatorPrice(p.normal_cents),
+      creator_first_period_cents: p.normal_cents,
+      creator_renewal_cents: creatorPrice(p.normal_cents),
       creator_code: code ?? null,
       renewal_cents: p.normal_cents,
     })),

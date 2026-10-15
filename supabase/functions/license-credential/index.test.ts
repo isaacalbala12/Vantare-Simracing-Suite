@@ -57,6 +57,33 @@ Deno.test("Founders is signed as its own perpetual order right, never as a subsc
   }
 });
 
+Deno.test("R4 Founders keeps perpetual Nightly only for its own paid order", () => {
+  const now = new Date("2026-10-26T18:00:00Z");
+  const founder = {
+    ...productionGrant("vantare.plan.founders", null, "order"),
+    source_id: "founder-order",
+  };
+  const nightly = {
+    ...productionGrant("vantare.channel.nightly", null, "order"),
+    source_id: "founder-order",
+  };
+  const result = normalizeGrants([founder, nightly], now, "production");
+  if (
+    !result.ok ||
+    !result.grants.some((g) =>
+      g.key === "vantare.channel.nightly" && g.perpetual
+    )
+  ) throw Error("Founder lost Nightly");
+  if (
+    normalizeGrants([nightly], now, "production").ok ||
+    normalizeGrants(
+      [founder, { ...nightly, source_id: "other-order" }],
+      now,
+      "production",
+    ).ok
+  ) throw Error("unbound perpetual Nightly accepted");
+});
+
 Deno.test("credential request signs exact independent capabilities without PII", async () => {
   const keys = await crypto.subtle.generateKey(
     "Ed25519",

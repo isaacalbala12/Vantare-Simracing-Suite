@@ -130,6 +130,8 @@ pub struct User {
     #[serde(default)]
     pub billing_incidents: Vec<BillingIncident>,
     #[serde(default)]
+    pub creator_renewal_operations: Vec<CreatorRenewalOperation>,
+    #[serde(default)]
     pub module_access: Vec<ModuleAccess>,
     #[serde(default)]
     pub polar_customer_url: Option<String>,
@@ -147,12 +149,19 @@ impl BillingIncident {
             "founders_duplicate_payment" => {
                 "CRÍTICO: segundo pago de Founders; revisar manualmente"
             }
+            "creator_renewal_discount_failed" => "Descuento de creador pendiente de revisión",
             "founders_subscription_reactivated" => {
                 "Aviso: suscripción reactivada; se vuelve a cancelar su renovación"
             }
             _ => "Incidencia de pago: revisar manualmente",
         }
     }
+}
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+pub struct CreatorRenewalOperation {
+    pub subscription_id: String,
+    pub state: String,
+    pub not_applied: Option<String>,
 }
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct FoundersTransition {

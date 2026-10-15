@@ -12,10 +12,12 @@
       "lifetime": true,
       "active": true,
       "capabilities": [
-        "vantare.plan.founders"
+        "vantare.plan.founders",
+        "vantare.channel.nightly"
       ],
       "channels": [
-        "stable"
+        "stable",
+        "nightly"
       ],
       "launch_scope_version": null,
       "trial": {

@@ -103,13 +103,30 @@ el producto normal. No se crean productos recurrentes a precio reducido:
 | Pro Plus mensual | 6,99 EUR | 9,99 EUR/mes | 3,00 EUR |
 | Pro Plus anual | 69,90 EUR | 99,90 EUR/año | 30,00 EUR |
 
-El código de creador **no se combina con el precio del primer periodo**.
-Polar recibe un solo `discount_id`, sin entrada libre de códigos; nuestro servidor
-rechaza `creatorCode` durante la campaña. Fuera de ella solo acepta códigos
-exactos registrados en la configuración y aplica su descuento separado (-20 %,
-repeating dos meses, sobre precio normal). No hay trial cuando se aplica descuento.
-Pro normal mantiene su trial configurado; Pro Plus y Founders no tienen trial.
-Los informes se habilitan **desde el segundo mes**, no el primer día por comprar.
+El código de creador **sí puede acompañar al lanzamiento**: atribuye la venta,
+pero no rebaja el primer periodo. El checkout inicial lleva solo el `discount_id`
+de lanzamiento si corresponde y metadata `creator_code`; sin campaña cobra normal.
+El servidor valida el código exacto y guarda la atribución ligada al intento y
+al checkout. Metadata editable por sí sola nunca acredita atribución ni identidad.
+Tras confirmar el primer pago, aplica el **20 % desde la primera renovación**,
+con GET/PATCH/ACK durable e incidencia Owner si falla. No modifica la factura pagada.
+Duración única configurable en `polar-launch-prices.json.creator_renewals`:
+mensual `repeating` 11 meses desde su primera renovación rebajada (meses 2–12);
+anual `repeating` 12 meses para una renovación anual (el primer año no se rebaja
+por creador). No se reaplica ni reinicia al repetir el webhook. Códigos Polar
+públicos desactivados: los cupones de renovación se aplican solo por API.
+Comisión sin cambios: 30 % mes 1, 10 % meses 2–12 sobre lo pagado; pago manual.
+La comisión anual sigue esa ventana temporal, no se amplía por el descuento anual.
+
+Los descuentos por informes de VANTA-39 y creador comienzan después del primer
+periodo. No se suman: gana el mayor ahorro en céntimos sobre el precio normal;
+empate para informes. Se registra el otro como no aplicado. Pro: informes 200 c
+frente a creador 120 c; Plus: 300 c frente a 200 c. La integración con #1593 debe
+usar un único escritor y preservar saldo/caducidad de ambos derechos, sin
+reiniciar cupones al cambiar de ganador. Véase el [contrato de integración](../billing/creator-renewals-1661.md).
+No hay trial con lanzamiento ni atribución de creador. Pro normal mantiene su
+trial configurado; Pro Plus y Founders no tienen trial. Los descuentos por
+informes se aplican **desde el segundo mes**, no el primer día por comprar.
 
 Este modelo sustituye los productos de lanzamiento permanentes de #1620.
 Los IDs históricos se conservan para lectura/reembolso, pero no se seleccionan
@@ -134,7 +151,7 @@ El ID de Founders se documenta en el [contrato técnico](../billing/founders-166
 - Quien tiene Pro o Pro Plus puede comprarlo. Se activa al instante y su
   suscripción deja de renovar al final del periodo ya pagado, sin reembolso.
   Owner ve la cancelación pendiente o confirmada y puede revisar incidencias.
-- No añade roles Owner/tester ni canales privados por sí solo.
+- Incluye canales **Stable y Nightly** de forma vitalicia. No concede roles Owner/tester.
 - Implementación preparada en VANTA-83/#1661; no certifica apertura comercial.
   [Contrato, configuración e integración web](../billing/founders-1661.md).
 

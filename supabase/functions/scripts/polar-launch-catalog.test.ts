@@ -160,7 +160,7 @@ const options = {
 Deno.test("once launch discounts use normal products and renew at normal prices; rerun is inert", async () => {
   const f = fake();
   const first = await syncCatalog(f.http, sandbox, options);
-  assertEquals(first.writes, 7);
+  assertEquals(first.writes, 8);
   assertEquals(f.products.length, 5); // four normal plans + historical Launch, never separate launch products
   for (const plan of PRICES.plans) {
     const config = first.map.checkout_keys[plan.key]!;
@@ -215,7 +215,7 @@ Deno.test("offline plan is production-ready with once fixed EUR amounts and norm
       9990,
     ]],
   );
-  assertEquals(plan.creator_discount?.combinable_with_launch, false);
+  assertEquals(plan.creator_discount?.combinable_with_launch, true);
   assertEquals(plan.application_checkout.allow_discount_codes, false);
   assertEquals(plan.founders.ends_at, null);
   assertEquals(plan.creator_commission, PRICES.creator_commission);
@@ -230,14 +230,34 @@ Deno.test("creator discount is separate and scoped to normal products; mapping p
   const discount = f.discounts.find((d) => d.id === id)!;
   assertEquals(discount.type, "percentage");
   assertEquals(discount.duration, "repeating");
-  assertEquals(discount.duration_in_months, 2);
+  assertEquals(
+    discount.duration_in_months,
+    PRICES.creator_renewals.monthly_duration_months,
+  );
   assertEquals(
     discount.products!.map((p) => p.id).sort(),
-    PRICES.plans.map((p) => result.map.checkout_keys[p.key]!.polar_product_id)
+    PRICES.plans.filter((p) => p.interval === "month").map((p) =>
+      result.map.checkout_keys[p.key]!.polar_product_id
+    )
       .sort(),
   );
+  const annual = f.discounts.find((d) =>
+    d.id === result.map.creator_annual_discounts?.MiCodigo
+  )!;
+  assertEquals(
+    annual.duration_in_months,
+    PRICES.creator_renewals.annual_duration_months,
+  );
+  assertEquals(
+    annual.products!.map((p) => p.id).sort(),
+    PRICES.plans.filter((p) => p.interval === "year").map((p) =>
+      result.map.checkout_keys[p.key]!.polar_product_id
+    ).sort(),
+  );
+  assertEquals(annual.code ?? null, null);
+  assertEquals(discount.code ?? null, null);
   assertEquals(result.map.creator_discounts?.MICODIGO, undefined);
-  assertEquals(result.offers["pro_monthly:creator:MiCodigo"].final_cents, 479);
+  assertEquals(result.offers["pro_monthly:creator:MiCodigo"].final_cents, 599);
 });
 Deno.test("retired Launch never enters offers or writes; historical lookup remains refundable", async () => {
   const f = fake();
@@ -311,7 +331,7 @@ Deno.test("lost product, price or discount responses can be safely retried by me
     await assertRejects(() => syncCatalog(http, sandbox, options));
     const second = await syncCatalog(f.http, sandbox, options);
     assertEquals(f.products.length, 5);
-    assertEquals(f.discounts.length, 5);
+    assertEquals(f.discounts.length, 6);
     assertEquals((await syncCatalog(f.http, second, options)).writes, 0);
   }
 });
@@ -383,8 +403,8 @@ Deno.test("Founders: ES one-time founder price, no deadline, no creation of Isaa
     polar_product_id: id,
     polar_price_ids: ["00000000-0000-4000-8000-000000001662"],
     plan_sku: "founders",
-    capabilities: ["vantare.plan.founders"],
-    channels: ["stable"],
+    capabilities: ["vantare.plan.founders", "vantare.channel.nightly"],
+    channels: ["stable", "nightly"],
     launch_scope_version: null,
   };
   input.product_id_to_checkout_key[id] = "founders";
@@ -488,8 +508,8 @@ Deno.test("sandbox output: failed apply leaves no file and same path can be retr
     fail = false;
     await runCatalog(args, fetcher);
     const saved = JSON.parse(await Deno.readTextFile(output));
-    assertEquals(saved.map.catalog_version, "vanta-83-launch-once-v3");
-    assertEquals(saved.writes, 7);
+    assertEquals(saved.map.catalog_version, PRICES.catalog_version);
+    assertEquals(saved.writes, 8);
     const before = requests;
     const contents = await Deno.readTextFile(output);
     await assertRejects(

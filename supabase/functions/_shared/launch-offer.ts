@@ -14,6 +14,8 @@ export function selectCheckoutOffer(
 ): {
   ok: true;
   discountId: string | null;
+  creatorCode: string | null;
+  creatorDiscountId: string | null;
   trial: TrialConfig;
   fingerprint: string;
 } | { ok: false; reason: string; status: number } {
@@ -22,53 +24,37 @@ export function selectCheckoutOffer(
   const active = !!plan &&
     now.getTime() >= Date.parse(window.starts_at) &&
     now.getTime() < Date.parse(window.ends_at);
-  if (active) {
-    if (creatorCode) {
-      return {
-        ok: false,
-        reason: "launch_creator_not_combinable",
-        status: 409,
-      };
-    }
-    if (!config.polar_launch_discount_id) {
-      return {
-        ok: false,
-        reason: "launch_discount_not_configured",
-        status: 503,
-      };
-    }
-    return {
-      ok: true,
-      discountId: config.polar_launch_discount_id,
-      trial: { enabled: false },
-      fingerprint: "launch:" + config.polar_launch_discount_id,
-    };
-  }
+  let creatorDiscountId: string | null = null;
   if (creatorCode) {
-    if (!plan || !/^[A-Za-z0-9]{3,32}$/.test(creatorCode)) {
-      return { ok: false, reason: "invalid_creator_code", status: 400 };
-    }
-    const codes = map.creator_discounts;
+    const codes = key.endsWith("annual")
+      ? map.creator_annual_discounts
+      : map.creator_discounts;
     const id = codes && Object.hasOwn(codes, creatorCode)
       ? codes[creatorCode]
       : null;
     if (
+      !plan || !/^[A-Za-z0-9]{3,32}$/.test(creatorCode) ||
       typeof id !== "string" ||
       !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
         id,
       )
-    ) return { ok: false, reason: "invalid_creator_code", status: 400 };
-    return {
-      ok: true,
-      discountId: id,
-      trial: { enabled: false },
-      fingerprint: "creator:" + id,
-    };
+    ) {
+      return { ok: false, reason: "invalid_creator_code", status: 400 };
+    }
+    creatorDiscountId = id;
   }
+  if (active && !config.polar_launch_discount_id) {
+    return { ok: false, reason: "launch_discount_not_configured", status: 503 };
+  }
+  const discountId = active ? config.polar_launch_discount_id! : null;
   return {
     ok: true,
-    discountId: null,
-    trial: config.trial,
-    fingerprint: "standard",
+    discountId,
+    creatorCode: creatorCode ?? null,
+    creatorDiscountId,
+    trial: active || creatorCode ? { enabled: false } : config.trial,
+    fingerprint: `${discountId ? "launch:" + discountId : "standard"}:creator:${
+      creatorCode ?? ""
+    }:${creatorDiscountId ?? ""}`,
   };
 }

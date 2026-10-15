@@ -170,6 +170,8 @@ export async function handleCheckoutRequest(
 
   const attempt = {
     userId: auth.userId,
+    creatorCode: offer.creatorCode,
+    creatorDiscountId: offer.creatorDiscountId,
     attemptId,
     checkoutKey: resolved.key,
     environment: mapping.map.environment,
@@ -242,6 +244,7 @@ export async function handleCheckoutRequest(
         launchScopeVersion: resolved.config.launch_scope_version,
         trial: offer.trial,
         discountId: offer.discountId,
+        creatorCode: offer.creatorCode,
       },
       { signal: req.signal },
     );

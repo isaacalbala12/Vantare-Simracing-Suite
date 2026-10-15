@@ -304,6 +304,7 @@ Deno.test("Founders is an optional own plan, not a subscription or frozen editio
   if (result.ok) {
     assertEquals(result.map.checkout_keys.founders?.capabilities, [
       "vantare.plan.founders",
+      "vantare.channel.nightly",
     ]);
     assertEquals(result.map.checkout_keys.founders?.lifetime, true);
     assertEquals(result.map.checkout_keys.founders?.launch_scope_version, null);

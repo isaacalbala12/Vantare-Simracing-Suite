@@ -314,7 +314,10 @@ Deno.test("Founders uses the existing authenticated idempotent checkout with its
     ) => {
       calls++;
       assertEquals(params.productId, "00000000-0000-4000-8000-000000001661");
-      assertEquals(params.capabilities, ["vantare.plan.founders"]);
+      assertEquals(params.capabilities, [
+        "vantare.plan.founders",
+        "vantare.channel.nightly",
+      ]);
       assertEquals(params.trial, { enabled: false });
       return {
         url: "https://sandbox.polar.sh/checkout/founders",
@@ -380,7 +383,7 @@ Deno.test("once campaign: opening included, closing excluded, normal product and
     if (id) assertEquals(sent.trial, { enabled: false });
   }
 });
-Deno.test("once campaign: missing mapping fails closed and creator cannot combine", async () => {
+Deno.test("once campaign: missing mapping fails closed and creator attribution combines", async () => {
   const missing = await handleCheckoutRequest(
     post({ productKey: "pro_monthly", attemptId: ATTEMPT_ID }),
     campaignDeps("2026-10-26T18:00:00Z", false),
@@ -394,8 +397,7 @@ Deno.test("once campaign: missing mapping fails closed and creator cannot combin
     }),
     campaignDeps("2026-10-26T18:00:00Z"),
   );
-  assertEquals(combined.status, 409);
-  assertEquals((await combined.json()).error, "launch_creator_not_combinable");
+  assertEquals(combined.status, 200);
 });
 Deno.test("once campaign: outside window only exact configured creator code is accepted", async () => {
   for (
@@ -425,7 +427,8 @@ Deno.test("once campaign: outside window only exact configured creator code is a
     );
     assertEquals(response.status, status);
     if (status === 200) {
-      assertEquals(sent.discountId, "00000000-0000-4000-8000-000000001681");
+      assertEquals(sent.discountId, null);
+      assertEquals(sent.creatorCode, "ISAAC");
       assertEquals(sent.trial, { enabled: false });
     }
   }

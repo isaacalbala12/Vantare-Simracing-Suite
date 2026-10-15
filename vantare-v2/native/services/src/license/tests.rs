@@ -646,3 +646,24 @@ fn forward_wall_clock_drift_does_not_reject_repeated_authority_observation() {
     drop(store);
     crate::cleanup_store(&root, "clock-drift", &["authority"]);
 }
+
+#[test]
+fn founders_keeps_perpetual_nightly_after_pro_plus_expires() {
+    let founder = Capability {
+        key: "vantare.plan.founders".into(),
+        paid_through: String::new(),
+        perpetual: true,
+        scope_version: String::new(),
+    };
+    let nightly = Capability {
+        key: "vantare.channel.nightly".into(),
+        ..founder.clone()
+    };
+    assert!(grants(std::slice::from_ref(&nightly), None).is_err());
+    assert_eq!(
+        grants(&[founder, nightly], None)
+            .expect("Founder Nightly")
+            .len(),
+        2
+    );
+}

@@ -8,6 +8,8 @@ export type CheckoutAttempt = {
   checkoutKey: CheckoutKey;
   environment: "sandbox" | "production";
   catalogVersion: string;
+  creatorCode?: string | null;
+  creatorDiscountId?: string | null;
 };
 
 export type CheckoutClaim =
@@ -54,6 +56,18 @@ export function createCheckoutAttemptStore(
       );
       if (error) throw new Error("checkout_attempt_claim_failed");
       const row = singleRpcRow(data);
+      if (row?.outcome === "claimed" && input.creatorCode) {
+        const saved = await client.rpc("billing_save_creator_attribution", {
+          p_user: input.userId,
+          p_environment: input.environment,
+          p_attempt: input.attemptId,
+          p_code: input.creatorCode,
+          p_discount: input.creatorDiscountId,
+        });
+        if (saved.error || saved.data !== true) {
+          throw new Error("creator_attribution_unavailable");
+        }
+      }
       switch (row?.outcome) {
         case "claimed":
         case "busy":

@@ -1,3 +1,4 @@
+import { applyCreatorRenewal } from "../_shared/creator-renewal.ts";
 import {
   admitLifetimeOrder,
   enforceFoundersRenewal,
@@ -72,6 +73,7 @@ type EffectRunner = (
 ) => Promise<void>;
 
 export type WebhookProcessorDeps = {
+  applyCreatorRenewal?: typeof applyCreatorRenewal;
   foundersPaymentAllowed?: typeof foundersPaymentAllowed;
   admitLifetimeOrder?: typeof admitLifetimeOrder;
   enforceFoundersRenewal?: typeof enforceFoundersRenewal;
@@ -838,6 +840,24 @@ export async function applyPolarWebhookEvent(
         );
         if (error) throw databaseWriteError("admin_payment_receipt", error);
       });
+      if (
+        event.type === "order.paid" &&
+        (mapping.map.creator_discounts || mapping.map.creator_annual_discounts)
+      ) {
+        await (deps.applyCreatorRenewal ?? applyCreatorRenewal)(
+          deps.supabase,
+          mapping.map,
+          {
+            userId,
+            checkoutId: asString(event.data.checkout_id),
+            subscriptionId: asString(event.data.subscription_id),
+            orderId: String(event.data.id),
+            productId: productId!,
+            key: resolved.key,
+            initial: event.data.billing_reason === "subscription_create",
+          },
+        );
+      }
     }
   }
   if (commercialResult) return commercialResult;

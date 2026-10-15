@@ -11,8 +11,9 @@ No es Launch Edition, un descuento ni un precio de suscripción.
 El derecho es `vantare.plan.founders`, de fuente Polar `order`, sin `valid_until`,
 sin `scope_version`. El catálogo `Founders` permite cualquier widget y módulo,
 incluidos identificadores futuros; no depende de enumerar cada módulo comprado.
-No concede roles Owner/tester ni canales privados: el producto se configura con
-`channels: ["stable"]`. Isaac debe validar por separado cualquier ampliación de canales.
+Incluye Stable y Nightly: `channels: ["stable", "nightly"]` y capacidades
+`vantare.plan.founders` + `vantare.channel.nightly`. No concede roles Owner/tester.
+Nightly se firma vitalicio solo ligado a la misma orden Founders; reembolso retira ambos.
 IPC de servicios v10 y control v5; fotos siguen v10. Recompilar juntos Hub,
 services, runtime y overlays; se rechazan componentes con contratos anteriores.
 
@@ -129,16 +130,16 @@ no se promete revocación instantánea de una máquina desconectada.
    o estado no se ha podido comprobar, no permite inventar otro intento.
    El checkout conserva también sus errores de intento ocupado/incierto/caducado.
 5. No aplicar el código de creador ni el descuento de suscripciones al plan.
-   No mostrarlo como una promoción ni prometer canales privados.
+   Mostrarlo como plan propio con Nightly incluido.
 
 Textos para app/web y base de revisión legal (no sustituyen condiciones aprobadas):
 
 | Idioma | Compra | Contenido | Suscripción vigente |
 |---|---|---|---|
-| ES | Founders · 50 € · precio de fundador | Todos los módulos y widgets presentes y futuros, para siempre. Pago único. Disponible desde la beta pública. Este precio subirá más adelante, sin fecha prevista. | Founders se activa al instante. Si tienes Pro o Pro Plus, se desactiva su renovación al terminar el periodo pagado, sin reembolso automático. El servidor confirma la disponibilidad. |
-| EN | Founders · €50 · founder price | All current and future modules and widgets, forever. One-time payment. Available from the public beta. This price will rise later, with no date set. | Founders activates immediately. If you have Pro or Pro Plus, renewal stops at the end of the paid period, with no automatic refund. The server confirms availability. |
-| IT | Founders · 50 € · prezzo fondatore | Tutti i moduli e widget presenti e futuri, per sempre. Pagamento unico. Disponibile dalla beta pubblica. Il prezzo aumenterà in futuro, senza una data prevista. | Founders si attiva subito. Con Pro o Pro Plus, il rinnovo termina alla fine del periodo pagato, senza rimborso automatico. Il server conferma la disponibilità. |
-| PT-BR | Founders · € 50 · preço de fundador | Todos os módulos e widgets atuais e futuros, para sempre. Pagamento único. Disponível a partir da beta pública. O preço aumentará no futuro, sem data prevista. | Founders é ativado imediatamente. Com Pro ou Pro Plus, a renovação termina ao final do período pago, sem reembolso automático. O servidor confirma a disponibilidade. |
+| ES | Founders · 50 € · precio de fundador | Todos los módulos y widgets presentes y futuros, para siempre. Incluye Nightly. Pago único. Disponible desde la beta pública. Este precio subirá más adelante, sin fecha prevista. | Founders se activa al instante. Si tienes Pro o Pro Plus, se desactiva su renovación al terminar el periodo pagado, sin reembolso automático. El servidor confirma la disponibilidad. |
+| EN | Founders · €50 · founder price | All current and future modules and widgets, forever. Includes Nightly. One-time payment. Available from the public beta. This price will rise later, with no date set. | Founders activates immediately. If you have Pro or Pro Plus, renewal stops at the end of the paid period, with no automatic refund. The server confirms availability. |
+| IT | Founders · 50 € · prezzo fondatore | Tutti i moduli e widget presenti e futuri, per sempre. Include Nightly. Pagamento unico. Disponibile dalla beta pubblica. Il prezzo aumenterà in futuro, senza una data prevista. | Founders si attiva subito. Con Pro o Pro Plus, il rinnovo termina alla fine del periodo pagato, senza rimborso automatico. Il server conferma la disponibilità. |
+| PT-BR | Founders · € 50 · preço de fundador | Todos os módulos e widgets atuais e futuros, para sempre. Inclui Nightly. Pagamento único. Disponível a partir da beta pública. O preço aumentará no futuro, sem data prevista. | Founders é ativado imediatamente. Com Pro ou Pro Plus, a renovação termina ao final do período pago, sem reembolso automático. O servidor confirma a disponibilidade. |
 
 El Hub sigue mayoritariamente en español; el bloque Founders permite consultar
 estos cuatro idiomas sin cambiar preferencias de widgets ni traducir otras pantallas.
@@ -186,13 +187,13 @@ Las fechas de campaña son independientes de la venta sin fecha final de Founder
 Se centralizan por entorno en `supabase/functions/scripts/polar-launch-prices.json`
 (`launch_windows`). La configuración de cada suscripción añade
 `polar_launch_discount_id`; el script devuelve sus IDs reales después de aplicar.
-`creator_discounts` relaciona código exacto con descuento separado. El endpoint
-existente admite opcionalmente `creatorCode` para suscripciones fuera de campaña;
-los campos de descuento/importe/ID Polar enviados por cliente se rechazan.
+`creator_discounts` (mensual) y `creator_annual_discounts` relacionan el código
+exacto con cupones de renovación. El endpoint admite `creatorCode` con o sin
+campaña: atribución, sin descuento de creador en el primer cobro. Los campos de
+descuento/importe/ID Polar del cliente se rechazan. El servidor decide oferta y
+trial antes de reclamar/reutilizar el intento. Falta de cupón de lanzamiento
+configurado devuelve 503; código inválido devuelve 400. La huella incluye oferta
+y creador para no reutilizar un checkout con otra atribución. Ventana solo de
+suscripciones: 26-oct a 26-nov 2026 19:00 Madrid.
 
-El servidor decide oferta y trial antes de reclamar/reutilizar el intento. Si
-falta el descuento durante la campaña devuelve 503 (no cobra el precio normal
-por sorpresa); creador + campaña devuelve 409 `launch_creator_not_combinable`.
-Cambiar oferta altera la huella de catálogo del intento y evita reutilizar
-una sesión de otra oferta. Las fechas de los propios descuentos Polar son la
-segunda barrera. Ventana: 26-oct a 26-nov de 2026, 19:00 Madrid.
+[Descuento desde renovaciones, comisión y coordinación VANTA-39](creator-renewals-1661.md).

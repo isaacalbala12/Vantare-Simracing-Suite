@@ -318,6 +318,14 @@ fn grants(capabilities: &[Capability], envelope: Option<DateTime<Utc>>) -> Resul
                     && capability.scope_version == "launch_v1")
                     || (capability.key == "vantare.plan.founders"
                         && capability.scope_version.is_empty())
+                    || (capability.key == "vantare.channel.nightly"
+                        && capability.scope_version.is_empty()
+                        && capabilities.iter().any(|grant| {
+                            grant.key == "vantare.plan.founders"
+                                && grant.perpetual
+                                && grant.scope_version.is_empty()
+                                && grant.paid_through.is_empty()
+                        }))
                     || (capability.key == "vantare.channel.testers"
                         && capability.scope_version.is_empty())
                     || (capability.key.starts_with("vantare.module.")

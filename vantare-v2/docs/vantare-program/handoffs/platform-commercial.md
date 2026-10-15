@@ -1,3 +1,17 @@
+## VANTA-83 / #1661 · ronda 4 en curso · 15-oct-2026
+
+- Isaac confirma Pro Plus 9,99/99,90; primer periodo 6,99/69,90.
+- Creador atribuye primer pago sin rebajarlo; combinable con once de lanzamiento.
+  Después del pago se prepara descuento de renovación con lease, GET/PATCH/ACK
+  e incidencia Owner. Atribución de comisión independiente del cupón inicial.
+- Founders incluye Stable + Nightly vitalicios; reembolso retira ambos.
+- [Contrato de integración #1593](../../billing/creator-renewals-1661.md): rama
+  leída sin modificar. Requiere adaptar su escritor antes de activar ambas
+  campañas, preservando saldo y plazo de creador al volver de informes.
+- Edge 250 PASS y SQL 219 PASS antes de las últimas regresiones de borrado;
+  revalidación final y gates Windows services/admin/hub pendientes.
+- Sin Polar real, despliegue, dinero ni capturas. PR draft #1666 sigue a nightly.
+
 ## VANTA-83 / #1661 · ronda 3 de acabado (16/10/2026)
 
 Re-review R2 **APTO**, informe `C:/VantareServer/evidence/ds-rev-1661/review-r2.md`.

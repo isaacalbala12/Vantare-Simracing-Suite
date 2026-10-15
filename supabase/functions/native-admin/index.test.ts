@@ -633,13 +633,14 @@ Deno.test("r1: miniapp creates a scoped Polar discount and retries it without du
     raw.checkout_keys[key] = {
       ...raw.checkout_keys.pro_monthly,
       plan_sku: key,
-      polar_launch_product_id: `launch-${i}`,
+      polar_product_id: `normal-${i}`,
     };
   }
   const map = raw as PolarProductMap;
   let active = false;
   let created = 0;
   let stored: Record<string, unknown> | null = null;
+  const allStored: Record<string, unknown>[] = [];
   const fake = deps({
     environment: "sandbox",
     productMap: map,
@@ -672,7 +673,7 @@ Deno.test("r1: miniapp creates a scoped Polar discount and retries it without du
         if (init?.method === "GET") {
           return Promise.resolve(
             Response.json({
-              items: stored ? [stored] : [],
+              items: allStored,
               pagination: { max_page: 1 },
             }),
           );
@@ -681,9 +682,10 @@ Deno.test("r1: miniapp creates a scoped Polar discount and retries it without du
         assert(!("organization_id" in JSON.parse(String(init?.body))));
         stored = {
           ...JSON.parse(String(init?.body)),
-          id: "discount-created",
+          id: created === 1 ? "discount-created" : "discount-annual",
           organization_id: map.organization_id,
         };
+        allStored.push(stored!);
         return Promise.resolve(Response.json(stored));
       },
     },
@@ -702,9 +704,9 @@ Deno.test("r1: miniapp creates a scoped Polar discount and retries it without du
   active = false;
   assert((await handleNativeAdmin(request(input), fake)).status === 200);
   assert(
-    created === 1 &&
+    created === 2 &&
       (stored as Record<string, unknown> | null)?.basis_points === 2000 &&
-      (stored as Record<string, unknown> | null)?.duration_in_months === 2,
+      (stored as Record<string, unknown> | null)?.duration_in_months === 12,
   );
 });
 

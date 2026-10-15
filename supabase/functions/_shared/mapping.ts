@@ -49,6 +49,7 @@ export interface PolarProductMap {
   catalog_version: string;
   organization_id: string;
   creator_discounts?: Record<string, string>;
+  creator_annual_discounts?: Record<string, string>;
   checkout_keys: Partial<Record<CheckoutKey, CheckoutKeyConfig>>;
   product_id_to_checkout_key: Record<string, CheckoutKey>;
   price_id_to_checkout_key: Record<string, CheckoutKey>;
@@ -110,8 +111,8 @@ const EXPECTED_KEY_META: Record<
     plan_sku: "founders",
     billing_type: "one_time",
     lifetime: true,
-    capabilities: ["vantare.plan.founders"],
-    channels: ["stable"],
+    capabilities: ["vantare.plan.founders", "vantare.channel.nightly"],
+    channels: ["stable", "nightly"],
     launch_scope_version: null,
   },
   launch_lifetime: {
@@ -381,14 +382,18 @@ export function loadPolarProductMap(
     );
   }
 
-  if (
-    parsed.creator_discounts !== undefined &&
-    (!isRecord(parsed.creator_discounts) ||
-      Object.entries(parsed.creator_discounts).some(([code, id]) =>
-        !/^[A-Za-z0-9]{3,32}$/.test(code) || !isUuid(id)
-      ))
+  for (
+    const field of ["creator_discounts", "creator_annual_discounts"] as const
   ) {
-    return fail("mapping_invalid_shape", "Invalid creator discounts");
+    if (
+      parsed[field] !== undefined &&
+      (!isRecord(parsed[field]) ||
+        Object.entries(parsed[field]).some(([code, id]) =>
+          !/^[A-Za-z0-9]{3,32}$/.test(code) || !isUuid(id)
+        ))
+    ) {
+      return fail("mapping_invalid_shape", "Invalid creator discounts");
+    }
   }
   const checkoutKeys: Partial<Record<CheckoutKey, CheckoutKeyConfig>> = {};
   for (const [rawKey, rawConfig] of Object.entries(parsed.checkout_keys)) {
@@ -512,6 +517,14 @@ export function loadPolarProductMap(
       ...(parsed.creator_discounts
         ? {
           creator_discounts: parsed.creator_discounts as Record<string, string>,
+        }
+        : {}),
+      ...(parsed.creator_annual_discounts
+        ? {
+          creator_annual_discounts: parsed.creator_annual_discounts as Record<
+            string,
+            string
+          >,
         }
         : {}),
       checkout_keys: checkoutKeys,

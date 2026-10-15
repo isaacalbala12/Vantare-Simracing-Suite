@@ -2,7 +2,7 @@
 
 **#1661 / VANTA-83:** Founders añade el plan perpetuo para contenido presente y
 futuro. Corte actual services v10 / control v5 / fotos v10; recompilar el conjunto.
-No se concede rol ni canal privado. [Contrato](../../docs/billing/founders-1661.md).
+Incluye Nightly vitalicio junto al derecho Founders; no concede roles. [Contrato](../../docs/billing/founders-1661.md).
 
 **Corte combinado #1610/#1594:** protocolo services v9 (DTO v10/derechos v4
 independientes); recompilar Hub/services juntos. F7=C: campos escritos locales,

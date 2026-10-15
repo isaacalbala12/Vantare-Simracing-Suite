@@ -93,10 +93,16 @@ mismo correo completa los ACK pendientes. No hay reembolsos ni reintento automá
 El webhook firmado puede llegar después: la barrera y las colas son idempotentes.
 
 Los códigos reservan identidad estable y se reconcilian tras perder un ACK.
-Descuento 20 %, dos meses, exactamente los cuatro productos de lanzamiento.
-Organización verificada mediante GET (OAT: no `organization_id` en POST), portal
-sin cambio de plan. Se rechazan códigos ajenos o de alcance distinto. Se admite
-adoptar un código anterior identificado por `vantare_offer_key: creator:CODE`.
+Descuento de renovación 20 %, configurado en `scripts/polar-launch-prices.json`:
+11 meses mensuales / 12 meses para una renovación anual; dos cupones API-only,
+scope de los productos normales de cada intervalo, sin código público Polar.
+La reserva crea ambos y solo se activa tras confirmarlos; un ACK perdido se
+reconcilia por metadata `creator:CODE:renewals-v4` / `creator:CODE:annual-renewals-v4`.
+No adopta ni convierte silenciosamente cupones viejos de dos meses. Organización
+verificada mediante GET, portal sin cambio de plan. Incorporar IDs mensuales y
+anuales al mapa del checkout mediante el script de catálogo. El código atribuye
+el primer pago aunque lleve cupón de lanzamiento: no recibe 20 % hasta renovar.
+[Contrato completo](../../../vantare-v2/docs/billing/creator-renewals-1661.md).
 
 ## Recibos y comisiones
 

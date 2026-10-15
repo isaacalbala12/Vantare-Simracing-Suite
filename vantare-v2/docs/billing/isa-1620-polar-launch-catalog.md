@@ -21,15 +21,15 @@ Launch Edition queda fuera de venta; Isaac archivará su producto existente.
 Founders conserva pago único 50 EUR y venta sin fecha final. Su precio puede
 tener IVA no especificado: validación manual de neto/IVA/total en sandbox antes de abrir.
 
-Creador opcional `--creator ISAAC`: descuento distinto de -20 %, repeating dos
-meses, sobre productos normales. No se crean checkout links que eludan el servidor.
-El checkout de la app/web selecciona un único descuento, desactiva trial al
-aplicarlo y rechaza combinar creador con campaña. Códigos exactos de servidor,
-no IDs del cliente. El portal debe tener cambio de plan deshabilitado antes de
-configurar creador; mantener bloqueo administrativo/programado de cambios de
-producto mientras siga su descuento, pues Polar puede conservarlo al cambiar plan.
-Contabilidad: 30 % primer mes, 10 % meses 2–12 sobre lo pagado, luego renegociar;
-sin pagos automáticos. Informes desde el segundo mes.
+Creador opcional `--creator ISAAC`: crea dos cupones API-only de -20 %, sin
+código Polar público: mensual repeating 11 meses y anual repeating 12 meses,
+con scope en sus productos normales de intervalo correspondiente. El primer
+checkout solo atribuye la venta y puede llevar la promoción de lanzamiento.
+Tras el primer pago confirmado, el backend aplica el cupón de renovación.
+Configuración única: `creator_renewals` en la tabla anterior. No hay links que
+eludan el servidor. Portal sin cambio de plan; cambios administrativos bloqueados
+mientras siga su descuento. Comisión 30 % mes 1 / 10 % meses 2–12, pago manual.
+[Contrato de renovación y competencia con informes](creator-renewals-1661.md).
 
 ## Entrada, salida y seguridad
 
@@ -45,7 +45,7 @@ sustituirlo, se detiene. No convierte descuentos viejos/combinados silenciosamen
 Reintentos buscan metadata propia; una ejecución ya reconciliada hace cero escrituras.
 La salida exclusiva no sobreescribe entrada ni un fichero existente, ni imprime token.
 
-El resultado incluye `polar_launch_discount_id` por plan y `creator_discounts`
+El resultado incluye `polar_launch_discount_id` por plan y `creator_discounts` / `creator_annual_discounts`
 si se solicitó creador. Revisar e incorporar el mapa resultante al backend;
 crear descuentos por sí solo no configura el checkout ni despliega Edge.
 Inventario comunicado por Isaac (no consultado aquí): Pro mensual 4,99 EUR,

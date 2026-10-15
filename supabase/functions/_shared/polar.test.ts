@@ -1,3 +1,4 @@
+import { synchronizeRenewalDiscount } from "./polar.ts";
 import {
   assertEquals,
   assertRejects,
@@ -77,6 +78,10 @@ Deno.test("Polar checkout sends explicit no-trial and versioned capability metad
   );
   assertEquals(result.url, "https://sandbox.polar.sh/checkout/test");
   assertEquals(body.allow_trial, false);
+  assertEquals(
+    (body.metadata as Record<string, unknown>).creator_code,
+    undefined,
+  );
   assertEquals(body.trial_interval, undefined);
   const metadata = body.metadata as Record<string, unknown>;
   assertEquals(metadata.user_id, checkout.userId);
@@ -345,7 +350,11 @@ Deno.test("Founders transition stops renewal idempotently without revoke or refu
 Deno.test("once checkout sends one server-selected discount, no trial or customer discount entry", async () => {
   let body: Record<string, unknown> = {};
   await createPolarCheckoutSession(
-    { ...checkout, discountId: "00000000-0000-4000-8000-000000001680" },
+    {
+      ...checkout,
+      creatorCode: "ISAAC",
+      discountId: "00000000-0000-4000-8000-000000001680",
+    },
     checkoutDeps(async (input, init) => {
       body = await new Request(input, init).json();
       return Response.json({
@@ -357,5 +366,55 @@ Deno.test("once checkout sends one server-selected discount, no trial or custome
   assertEquals(body.discount_id, "00000000-0000-4000-8000-000000001680");
   assertEquals(body.allow_discount_codes, false);
   assertEquals(body.allow_trial, false);
+  assertEquals(
+    (body.metadata as Record<string, unknown>).creator_code,
+    "ISAAC",
+  );
   assertEquals(body.trial_interval, undefined);
+});
+
+Deno.test("R4 renewal GET recovers lost PATCH response without restarting repeating and refuses foreign discounts", async () => {
+  let discount: string | null = "launch";
+  let writes = 0;
+  const deps = checkoutDeps(async (_url, init) => {
+    if (init?.method === "PATCH") {
+      writes++;
+      assertEquals(JSON.parse(String(init.body)), { discount_id: "creator" });
+      discount = "creator";
+    }
+    return Response.json({
+      id: "sub",
+      product_id: checkout.productId,
+      status: "active",
+      amount: 599,
+      currency: "eur",
+      recurring_interval: "month",
+      recurring_interval_count: 1,
+      discount_id: discount,
+    });
+  });
+  const expected = {
+    productId: checkout.productId,
+    discountId: "creator",
+    managedIds: [null, "launch"],
+    normalCents: 599,
+    interval: "month",
+    authorize: () => Promise.resolve(true),
+  };
+  await synchronizeRenewalDiscount("sub", "sandbox", expected, deps);
+  await synchronizeRenewalDiscount("sub", "sandbox", expected, deps);
+  assertEquals(writes, 1);
+  discount = "foreign";
+  await assertRejects(() =>
+    synchronizeRenewalDiscount("sub", "sandbox", expected, deps)
+  );
+  assertEquals(writes, 1);
+  discount = "launch";
+  await assertRejects(() =>
+    synchronizeRenewalDiscount("sub", "sandbox", {
+      ...expected,
+      authorize: () => Promise.resolve(false),
+    }, deps)
+  );
+  assertEquals(writes, 1);
 });

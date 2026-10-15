@@ -336,7 +336,7 @@ Deno.test("Founders paid order is idempotent and refund removes only its own rig
   assertEquals([...deps.orderRefundLedger.grants.entries()], [[
     "sandbox:founders-order:vantare.plan.founders",
     "active",
-  ]]);
+  ], ["sandbox:founders-order:vantare.channel.nightly", "active"]]);
   await processPolarWebhookEvent(
     {
       type: "refund.updated",
@@ -350,7 +350,10 @@ Deno.test("Founders paid order is idempotent and refund removes only its own rig
     "founders-refund",
     deps,
   );
-  assertEquals([...deps.orderRefundLedger.grants.values()], ["revoked"]);
+  assertEquals([...deps.orderRefundLedger.grants.values()], [
+    "revoked",
+    "revoked",
+  ]);
 });
 
 Deno.test("Founders rejects wrong amount, currency, recurring or pre-beta payment", async () => {
@@ -2808,7 +2811,10 @@ Deno.test("Founders admitted order still replays and refunds after sale configur
     "processed",
   );
   assertEquals(admissions, 1);
-  assertEquals([...deps.orderRefundLedger.grants.values()], ["revoked"]);
+  assertEquals([...deps.orderRefundLedger.grants.values()], [
+    "revoked",
+    "revoked",
+  ]);
 });
 
 Deno.test("Founders entitlement activates before a failed renewal stop and retry preserves the grant", async () => {
@@ -2823,7 +2829,10 @@ Deno.test("Founders entitlement activates before a failed renewal stop and retry
     ),
     foundersPaymentAllowed: async () => true,
     transitionFoundersSubscriptions: async () => {
-      assertEquals([...deps.orderRefundLedger.grants.values()], ["active"]);
+      assertEquals([...deps.orderRefundLedger.grants.values()], [
+        "active",
+        "active",
+      ]);
       if (++calls === 1) {
         throw Error("polar_unavailable");
       }
@@ -2844,10 +2853,13 @@ Deno.test("Founders entitlement activates before a failed renewal stop and retry
     await applyPolarWebhookEvent(event, deps);
   } catch { /* existing durable inbox owns retries */ }
   assertEquals(calls, 1);
-  assertEquals([...deps.orderRefundLedger.grants.values()], ["active"]);
+  assertEquals([...deps.orderRefundLedger.grants.values()], [
+    "active",
+    "active",
+  ]);
   assertEquals((await applyPolarWebhookEvent(event, deps)).status, "processed");
   assertEquals(calls, 2);
-  assertEquals(deps.orderRefundLedger.grants.size, 1);
+  assertEquals(deps.orderRefundLedger.grants.size, 2);
 });
 
 Deno.test("R2 new Launch payment is quarantined while historical lookup remains available", async () => {
@@ -2925,7 +2937,7 @@ Deno.test("R2 configured Founders price accepts coherent tax-exclusive total", a
     deps,
   );
   assertEquals(result.status, "processed");
-  assertEquals(deps.orderRefundLedger.grants.size, 1);
+  assertEquals(deps.orderRefundLedger.grants.size, 2);
 });
 Deno.test("R2 uncanceled subscription invokes Founders renewal enforcement after lifecycle", async () => {
   let calls = 0;

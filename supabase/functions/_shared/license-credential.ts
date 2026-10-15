@@ -79,6 +79,7 @@ type StoredGrant = {
   provider: string;
   environment: string;
   source_type: string;
+  source_id?: string;
 };
 
 export type StoredOperationalAssignment = {
@@ -284,7 +285,17 @@ export function normalizeGrants(
       if (
         row.capability !== "vantare.edition.launch_v1" &&
         row.capability !== "vantare.plan.founders" &&
-        row.capability !== "vantare.channel.testers"
+        row.capability !== "vantare.channel.testers" &&
+        !(row.capability === "vantare.channel.nightly" &&
+          row.source_type === "order" &&
+          rows.some((founder) =>
+            founder.capability === "vantare.plan.founders" &&
+            founder.provider === "polar" &&
+            founder.environment === environment &&
+            founder.source_type === "order" &&
+            !!row.source_id && founder.source_id === row.source_id &&
+            founder.valid_until === null
+          ))
       ) {
         return { ok: false };
       }
@@ -529,7 +540,7 @@ export async function loadCredentialAccount(
   if (deviceError) throw deviceError;
   const { data: grants, error: grantsError } = await admin
     .from("billing_effective_access_grants").select(
-      "capability,valid_until,provider,environment,source_type",
+      "capability,valid_until,provider,environment,source_type,source_id",
     )
     .eq("user_id", accountId).eq("status", "active")
     .eq("environment", environment);

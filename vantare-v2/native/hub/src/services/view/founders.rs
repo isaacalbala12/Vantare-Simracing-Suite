@@ -23,25 +23,25 @@ impl Language {
         match self {
             Self::Es => Copy {
                 button: "Founders · 50 € · precio de fundador",
-                included: "Todos los módulos y widgets presentes y futuros, para siempre. Pago único. Disponible desde la beta pública. Este precio subirá más adelante, sin fecha prevista.",
+                included: "Todos los módulos y widgets presentes y futuros, para siempre. Incluye Nightly. Pago único. Disponible desde la beta pública. Este precio subirá más adelante, sin fecha prevista.",
                 subscription: "Founders se activa al instante. Si tienes Pro o Pro Plus, se desactiva su renovación al terminar el periodo pagado, sin reembolso automático. El servidor confirma la disponibilidad.",
                 owned: "Founders · todo para siempre",
             },
             Self::En => Copy {
                 button: "Founders · €50 · founder price",
-                included: "All current and future modules and widgets, forever. One-time payment. Available from the public beta. This price will rise later, with no date set.",
+                included: "All current and future modules and widgets, forever. Includes Nightly. One-time payment. Available from the public beta. This price will rise later, with no date set.",
                 subscription: "Founders activates immediately. If you have Pro or Pro Plus, renewal stops at the end of the paid period, with no automatic refund. The server confirms availability.",
                 owned: "Founders · everything forever",
             },
             Self::It => Copy {
                 button: "Founders · 50 € · prezzo fondatore",
-                included: "Tutti i moduli e widget presenti e futuri, per sempre. Pagamento unico. Disponibile dalla beta pubblica. Il prezzo aumenterà in futuro, senza una data prevista.",
+                included: "Tutti i moduli e widget presenti e futuri, per sempre. Include Nightly. Pagamento unico. Disponibile dalla beta pubblica. Il prezzo aumenterà in futuro, senza una data prevista.",
                 subscription: "Founders si attiva subito. Con Pro o Pro Plus, il rinnovo termina alla fine del periodo pagato, senza rimborso automatico. Il server conferma la disponibilità.",
                 owned: "Founders · tutto per sempre",
             },
             Self::PtBr => Copy {
                 button: "Founders · € 50 · preço de fundador",
-                included: "Todos os módulos e widgets atuais e futuros, para sempre. Pagamento único. Disponível a partir da beta pública. O preço aumentará no futuro, sem data prevista.",
+                included: "Todos os módulos e widgets atuais e futuros, para sempre. Inclui Nightly. Pagamento único. Disponível a partir da beta pública. O preço aumentará no futuro, sem data prevista.",
                 subscription: "Founders é ativado imediatamente. Com Pro ou Pro Plus, a renovação termina ao final do período pago, sem reembolso automático. O servidor confirma a disponibilidade.",
                 owned: "Founders · tudo para sempre",
             },
@@ -213,6 +213,7 @@ mod tests {
         ] {
             let copy = language.copy();
             assert!(copy.included.contains(future));
+            assert!(copy.included.contains("Nightly"));
             assert!(copy.button.contains("50"));
             assert!(copy.owned.starts_with("Founders"));
             assert!(!copy.subscription.is_empty());

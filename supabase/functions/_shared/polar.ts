@@ -7,6 +7,7 @@ import type {
 
 export type CreateCheckoutParams = {
   discountId?: string | null;
+  creatorCode?: string | null;
   productId: string;
   userId: string;
   email: string | null;
@@ -330,6 +331,7 @@ export async function createPolarCheckoutSession(
     allow_discount_codes: false,
     ...(params.discountId ? { discount_id: params.discountId } : {}),
     metadata: {
+      ...(params.creatorCode ? { creator_code: params.creatorCode } : {}),
       user_id: params.userId,
       product_key: params.productKey,
       plan_sku: params.planSku,
@@ -738,4 +740,66 @@ export async function stopSubscriptionRenewal(
       }
     },
   );
+}
+
+// Invoice is already paid. GET/confirm makes retries safe without restarting a coupon.
+export async function synchronizeRenewalDiscount(
+  subscriptionId: string,
+  environment: BillingEnvironment,
+  expected: {
+    productId: string;
+    discountId: string;
+    managedIds: (string | null)[];
+    normalCents: number;
+    interval: string;
+    authorize: () => Promise<boolean>;
+  },
+  deps: PolarClientDeps = {},
+): Promise<void> {
+  if (!/^[A-Za-z0-9_-]{1,200}$/.test(subscriptionId)) {
+    throw new Error("invalid_subscription_id");
+  }
+  const url = `${apiBase(environment, deps)}/subscriptions/${subscriptionId}`;
+  const request = async (method: "GET" | "PATCH") =>
+    await polarRequest(
+      url,
+      {
+        method,
+        headers: {
+          Authorization: `Bearer ${requireToken(deps)}`,
+          "Content-Type": "application/json",
+        },
+        ...(method === "PATCH"
+          ? { body: JSON.stringify({ discount_id: expected.discountId }) }
+          : {}),
+      },
+      {...deps,timeoutMs:10000,maxRateLimitRetries:0},
+      async (response) => {
+        if (!response.ok) throw new Error("creator_discount_http_failed");
+        const value = await response.json();
+        if (
+          value.id !== subscriptionId ||
+          value.product_id !== expected.productId ||
+          !["active", "uncanceled"].includes(value.status) ||
+          value.currency !== "eur" ||
+          value.amount !== expected.normalCents ||
+          value.recurring_interval !== expected.interval ||
+          value.recurring_interval_count !== 1 ||
+          !(value.discount_id === null || typeof value.discount_id === "string")
+        ) throw new Error("creator_discount_remote_mismatch");
+        return value;
+      },
+    );
+  const current = await request("GET");
+  if (!await expected.authorize()) {
+    throw new Error("creator_discount_authorization_lost");
+  }
+  if (current.discount_id === expected.discountId) return;
+  if (!expected.managedIds.includes(current.discount_id)) {
+    throw new Error("creator_discount_unmanaged");
+  }
+  const updated = await request("PATCH");
+  if (updated.discount_id !== expected.discountId) {
+    throw new Error("creator_discount_unconfirmed");
+  }
 }

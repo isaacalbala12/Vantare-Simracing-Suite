@@ -1,5 +1,5 @@
 {
-  "catalog_version": "vanta-83-launch-once-v3",
+  "catalog_version": "vanta-83-creator-renewals-v4",
   "currency": "eur",
   "tax_behavior": "inclusive",
   "creator_discount_basis_points": 2000,
@@ -54,7 +54,7 @@
   "launch_model": "fixed_discount_once_on_normal_products",
   "distribution": {
     "launch_month": "application_checkout_automatic_discount",
-    "after_launch_month": "normal_price_or_server_validated_creator_code"
+    "after_launch_month": "normal_first_period_with_optional_creator_attribution"
   },
   "launch_windows": {
     "production": {
@@ -67,5 +67,15 @@
       "ends_at": "2026-11-26T18:00:00Z",
       "timezone": "Europe/Madrid"
     }
+  },
+  "creator_renewals": {
+    "monthly_duration_months": 11,
+    "annual_duration_months": 12,
+    "monthly_max_discounted_renewals": 11,
+    "annual_max_discounted_renewals": 1,
+    "first_period_discount": false,
+    "public_polar_code": false,
+    "report_tie_break": "reports",
+    "duration_anchor": "first_discounted_renewal"
   }
 }

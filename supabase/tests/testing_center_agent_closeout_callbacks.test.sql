@@ -1,4 +1,18 @@
 begin;
+SELECT set_config('fixture.clerk',(to_regclass('private.clerk_issuers') IS NOT NULL)::text,true);
+-- The old schema-cut runner uses UUID claims; B03 requires a bound Clerk session.
+CREATE FUNCTION pg_temp.fixture_claims(account text) RETURNS text LANGUAGE plpgsql AS $$
+BEGIN
+  PERFORM set_config('request.jwt.claims', CASE
+    WHEN current_setting('fixture.clerk',true)='true' THEN
+      jsonb_build_object('iss','https://fixtures.clerk.invalid',
+        'sub','user_'||replace(account,'-',''),'role','authenticated',
+        'sid','sess_fixture','azp','https://app.invalid')
+    ELSE jsonb_build_object('iss','https://local.supabase.test/auth/v1',
+        'sub',account,'role','authenticated') END::text, true);
+  RETURN set_config('request.jwt.claim.sub',account,true);
+END $$;
+
 set local search_path = public,extensions;
 select plan(45);
 
@@ -11,6 +25,20 @@ select ok(has_function_privilege('authenticated','public.testing_center_get_agen
 insert into auth.users(id,email) values
   ('00000000-0000-4000-8000-000000000324','isa324@example.invalid'),
   ('00000000-0000-4000-8000-000000000325','other@example.invalid');
+-- B03 fixture: internal profile plus an explicit Clerk binding before child rows.
+DO $fixture$ BEGIN
+  IF to_regclass('private.clerk_issuers') IS NOT NULL THEN
+    INSERT INTO private.clerk_issuers(issuer,authorized_parties,enabled)
+      VALUES ('https://fixtures.clerk.invalid',ARRAY['https://app.invalid'],true)
+      ON CONFLICT (issuer) DO NOTHING;
+    INSERT INTO public.profiles(id,email) SELECT id,email FROM auth.users
+      ON CONFLICT (id) DO NOTHING;
+    INSERT INTO public.account_identities(issuer,subject,account_id)
+      SELECT 'https://fixtures.clerk.invalid','user_'||replace(id::text,'-',''),id
+      FROM public.profiles ON CONFLICT (issuer,subject) DO NOTHING;
+  END IF;
+END $fixture$;
+
 insert into public.testing_center_memberships(user_id,actor_id,role,active)
 values ('00000000-0000-4000-8000-000000000324','isa324-owner','owner',true);
 insert into public.testing_center_reports(
@@ -191,11 +219,11 @@ select is((select callback_status from public.testing_center_record_agent_phase_
 select is((select state from public.testing_center_agent_jobs where job_key=(select job_key from isa324_jobs where n='f')),'needs_owner','stale pre-GREEN HEAD closes automation');
 
 reset role;
-set local request.jwt.claims = '{"sub":"00000000-0000-4000-8000-000000000324","role":"authenticated"}';
+select pg_temp.fixture_claims('00000000-0000-4000-8000-000000000324');
 set role authenticated;
 select is((select state from public.testing_center_get_agent_job_state('report_'||repeat('a',64))),'completed','reporter can load its own agent state');
 reset role;
-set local request.jwt.claims = '{"sub":"00000000-0000-4000-8000-000000000325","role":"authenticated"}';
+select pg_temp.fixture_claims('00000000-0000-4000-8000-000000000325');
 set role authenticated;
 select is((select count(*)::integer from public.testing_center_get_agent_job_state('report_'||repeat('a',64))),0,'another user cannot load the agent state');
 

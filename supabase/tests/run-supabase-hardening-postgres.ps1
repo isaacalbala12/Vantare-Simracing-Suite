@@ -10,6 +10,21 @@ $claimFile = Join-Path $env:TEMP "$container-claim.sql"
 $claimAFile = Join-Path $env:TEMP "$container-claim-a.sql"
 $claimBFile = Join-Path $env:TEMP "$container-claim-b.sql"
 
+# Only disposable fixtures: no Auth trigger or product grants are restored.
+$bindAccounts = @'
+do $$ begin
+ if to_regclass('private.clerk_issuers') is not null then
+  insert into private.clerk_issuers(issuer,authorized_parties,enabled)
+   values('https://fixtures.clerk.invalid',array['https://app.invalid'],true)
+   on conflict(issuer) do nothing;
+  insert into public.profiles(id,email) select id,email from auth.users on conflict(id) do nothing;
+  insert into public.account_identities(issuer,subject,account_id)
+   select 'https://fixtures.clerk.invalid','user_'||replace(id::text,'-',''),id
+   from public.profiles on conflict(issuer,subject) do nothing;
+ end if;
+end $$;
+'@
+
 function Write-Utf8NoBom([string]$Path, [string]$Content) {
   [IO.File]::WriteAllText($Path, $Content, (New-Object Text.UTF8Encoding($false)))
 }
@@ -172,6 +187,9 @@ grant execute on function extensions.vantare_test_dblink_connect(text, text) to 
   Assert-PgTap "clean" "/tmp/clerk-account-bootstrap-test.sql" "1\.\.31" "Clean install Clerk account bootstrap"
 
   docker exec $container psql -v ON_ERROR_STOP=1 -U postgres -d clean -c `
+    "insert into private.clerk_issuers(issuer,authorized_parties,enabled) values('https://clerk.isa909.test',array['https://app.invalid'],true)" | Out-Null
+  if ($LASTEXITCODE -ne 0) { throw "Could not prepare registered Clerk fixture" }
+  docker exec $container psql -v ON_ERROR_STOP=1 -U postgres -d clean -c `
     "create table public.isa909_bootstrap_barrier (participant text primary key)" | Out-Null
   Write-Utf8NoBom $claimAFile @'
 insert into public.isa909_bootstrap_barrier values ('a');
@@ -183,8 +201,9 @@ do $$ begin
   if (select count(*) from public.isa909_bootstrap_barrier) <> 2 then raise exception 'barrier_timeout'; end if;
 end $$;
 set role authenticated;
-select set_config('request.jwt.claims', '{"iss":"https://clerk.isa909.test","sub":"user_isa909_concurrent","role":"authenticated"}', false);
-select public.claim_active_device('isa909-concurrent-device');
+select set_config('request.jwt.claims', '{"iss":"https://clerk.isa909.test","sub":"user_isa909_concurrent","role":"authenticated","sid":"sess_fixture","azp":"https://app.invalid"}', false);
+select public.clerk_bootstrap_account();
+select public.claim_active_device('79a46168c1ad474b78c41080f28e3852cb81fcea676cdf90ed6c5b26f624aaad');
 '@
   Write-Utf8NoBom $claimBFile @'
 insert into public.isa909_bootstrap_barrier values ('b');
@@ -196,8 +215,9 @@ do $$ begin
   if (select count(*) from public.isa909_bootstrap_barrier) <> 2 then raise exception 'barrier_timeout'; end if;
 end $$;
 set role authenticated;
-select set_config('request.jwt.claims', '{"iss":"https://clerk.isa909.test","sub":"user_isa909_concurrent","role":"authenticated"}', false);
-select public.claim_active_device('isa909-concurrent-device');
+select set_config('request.jwt.claims', '{"iss":"https://clerk.isa909.test","sub":"user_isa909_concurrent","role":"authenticated","sid":"sess_fixture","azp":"https://app.invalid"}', false);
+select public.clerk_bootstrap_account();
+select public.claim_active_device('79a46168c1ad474b78c41080f28e3852cb81fcea676cdf90ed6c5b26f624aaad');
 '@
   docker cp $claimAFile "${container}:/tmp/isa909-bootstrap-a.sql"
   docker cp $claimBFile "${container}:/tmp/isa909-bootstrap-b.sql"
@@ -208,21 +228,21 @@ select public.claim_active_device('isa909-concurrent-device');
   if ($accountBootstrap.Trim() -ne "1:1:0") { throw "Concurrent Clerk account bootstrap contract failed: $accountBootstrap" }
 
   docker exec $container psql -v ON_ERROR_STOP=1 -U postgres -d clean -c `
-    "insert into auth.users (id, email) values ('00000000-0000-4000-8000-000000000089', 'concurrency@example.invalid')" | Out-Null
+    "insert into auth.users (id, email) values ('00000000-0000-4000-8000-000000000089', 'concurrency@example.invalid'); $bindAccounts " | Out-Null
   Write-Utf8NoBom $claimFile @'
 set role authenticated;
-select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000089', false);
-select public.claim_active_device('concurrent-fingerprint');
+select set_config('request.jwt.claims',jsonb_build_object('iss','https://fixtures.clerk.invalid','sub','user_00000000000040008000000000000089','role','authenticated','sid','sess_fixture','azp','https://app.invalid')::text,false);
+select public.claim_active_device('53261d06a77678207afc7b9a5a0afb958f55deb8ae548f17e54ced072731883b');
 '@
   docker cp $claimFile "${container}:/tmp/concurrent-claim.sql"
   docker exec $container sh -c 'psql -q -v ON_ERROR_STOP=1 -U postgres -d clean -f /tmp/concurrent-claim.sql & p1=$!; psql -q -v ON_ERROR_STOP=1 -U postgres -d clean -f /tmp/concurrent-claim.sql & p2=$!; wait $p1; wait $p2'
   if ($LASTEXITCODE -ne 0) { throw "Concurrent device claim failed" }
   $deviceClaim = docker exec $container psql -At -U postgres -d clean -c `
     "select count(*) || ':' || min(fingerprint_hash) from public.devices where user_id = '00000000-0000-4000-8000-000000000089'"
-  if ($deviceClaim.Trim() -ne "1:concurrent-fingerprint") { throw "Concurrent device claim contract failed: $deviceClaim" }
+  if ($deviceClaim.Trim() -ne "1:53261d06a77678207afc7b9a5a0afb958f55deb8ae548f17e54ced072731883b") { throw "Concurrent device claim contract failed: $deviceClaim" }
 
   docker exec $container psql -v ON_ERROR_STOP=1 -U postgres -d clean -c `
-    "insert into auth.users (id, email) values ('00000000-0000-4000-8000-000000000090', 'race@example.invalid')" | Out-Null
+    "insert into auth.users (id, email) values ('00000000-0000-4000-8000-000000000090', 'race@example.invalid'); $bindAccounts " | Out-Null
   docker exec $container psql -v ON_ERROR_STOP=1 -U postgres -d clean -c `
     "create table public.isa88_concurrency_barrier (race text not null, participant text not null, primary key (race, participant))" | Out-Null
   Write-Utf8NoBom $claimAFile @'
@@ -237,8 +257,8 @@ do $$ begin
   end if;
 end $$;
 set role authenticated;
-select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000090', false);
-select public.claim_active_device('race-fingerprint-a');
+select set_config('request.jwt.claims',jsonb_build_object('iss','https://fixtures.clerk.invalid','sub','user_00000000000040008000000000000090','role','authenticated','sid','sess_fixture','azp','https://app.invalid')::text,false);
+select public.claim_active_device('ce76fc7f618824c6623dac1bf060244e39fd6d2b4383f9d344e9679b748b7dc7');
 '@
   Write-Utf8NoBom $claimBFile @'
 insert into public.isa88_concurrency_barrier values ('different-claim', 'b');
@@ -252,19 +272,19 @@ do $$ begin
   end if;
 end $$;
 set role authenticated;
-select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000090', false);
-select public.claim_active_device('race-fingerprint-b');
+select set_config('request.jwt.claims',jsonb_build_object('iss','https://fixtures.clerk.invalid','sub','user_00000000000040008000000000000090','role','authenticated','sid','sess_fixture','azp','https://app.invalid')::text,false);
+select public.claim_active_device('6e06da088bcb753facabb90d0b99cf4d6b06811caba0ab806e448012db422642');
 '@
   docker cp $claimAFile "${container}:/tmp/concurrent-claim-a.sql"
   docker cp $claimBFile "${container}:/tmp/concurrent-claim-b.sql"
   docker exec $container sh -c 'psql -q -v ON_ERROR_STOP=1 -U postgres -d clean -f /tmp/concurrent-claim-a.sql & p1=$!; psql -q -v ON_ERROR_STOP=1 -U postgres -d clean -f /tmp/concurrent-claim-b.sql & p2=$!; wait $p1; wait $p2'
   if ($LASTEXITCODE -ne 0) { throw "Concurrent different-fingerprint claim failed" }
   $raceClaim = docker exec $container psql -At -U postgres -d clean -c `
-    "select count(*) || ':' || (min(fingerprint_hash) in ('race-fingerprint-a','race-fingerprint-b'))::text from public.devices where user_id = '00000000-0000-4000-8000-000000000090'"
+    "select count(*) || ':' || (min(fingerprint_hash) in ('ce76fc7f618824c6623dac1bf060244e39fd6d2b4383f9d344e9679b748b7dc7','6e06da088bcb753facabb90d0b99cf4d6b06811caba0ab806e448012db422642'))::text from public.devices where user_id = '00000000-0000-4000-8000-000000000090'"
   if ($raceClaim.Trim() -ne "1:true") { throw "Different-fingerprint race did not preserve one stable binding: $raceClaim" }
 
   docker exec $container psql -v ON_ERROR_STOP=1 -U postgres -d clean -c `
-    "insert into auth.users (id, email) values ('00000000-0000-4000-8000-000000000092', 'claim-reset@example.invalid'); insert into public.devices (user_id, fingerprint_hash) values ('00000000-0000-4000-8000-000000000092', 'claim-reset-original')" | Out-Null
+    "insert into auth.users (id, email) values ('00000000-0000-4000-8000-000000000092', 'claim-reset@example.invalid'); $bindAccounts  insert into public.devices (user_id, fingerprint_hash) values ('00000000-0000-4000-8000-000000000092', '94cb6b3ddf019898f2c41efd6082b03c9a7de25726ee447d6990442b739ed2d8')" | Out-Null
   Write-Utf8NoBom $claimAFile @'
 insert into public.isa88_concurrency_barrier values ('claim-reset', 'claim');
 do $$ begin
@@ -275,8 +295,8 @@ do $$ begin
   if (select count(*) from public.isa88_concurrency_barrier where race = 'claim-reset') <> 2 then raise exception 'barrier_timeout'; end if;
 end $$;
 set role authenticated;
-select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000092', false);
-select public.claim_active_device('claim-reset-original');
+select set_config('request.jwt.claims',jsonb_build_object('iss','https://fixtures.clerk.invalid','sub','user_00000000000040008000000000000092','role','authenticated','sid','sess_fixture','azp','https://app.invalid')::text,false);
+select public.claim_active_device('94cb6b3ddf019898f2c41efd6082b03c9a7de25726ee447d6990442b739ed2d8');
 '@
   Write-Utf8NoBom $claimBFile @'
 insert into public.isa88_concurrency_barrier values ('claim-reset', 'reset');
@@ -288,8 +308,8 @@ do $$ begin
   if (select count(*) from public.isa88_concurrency_barrier where race = 'claim-reset') <> 2 then raise exception 'barrier_timeout'; end if;
 end $$;
 set role authenticated;
-select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000092', false);
-select public.reset_active_device('claim-reset-final');
+select set_config('request.jwt.claims',jsonb_build_object('iss','https://fixtures.clerk.invalid','sub','user_00000000000040008000000000000092','role','authenticated','sid','sess_fixture','azp','https://app.invalid')::text,false);
+select public.reset_active_device('5eb90667457088de3e6b89428e42a225ddc34e7c5e189b5ff50f5281b37ab1a1');
 '@
   docker cp $claimAFile "${container}:/tmp/claim-vs-reset-a.sql"
   docker cp $claimBFile "${container}:/tmp/claim-vs-reset-b.sql"
@@ -297,10 +317,10 @@ select public.reset_active_device('claim-reset-final');
   if ($LASTEXITCODE -ne 0) { throw "Concurrent claim-vs-reset failed" }
   $claimReset = docker exec $container psql -At -U postgres -d clean -c `
     "select fingerprint_hash from public.devices where user_id = '00000000-0000-4000-8000-000000000092'"
-  if ($claimReset.Trim() -ne "claim-reset-final") { throw "Claim-vs-reset final binding is inconsistent: $claimReset" }
+  if ($claimReset.Trim() -ne "5eb90667457088de3e6b89428e42a225ddc34e7c5e189b5ff50f5281b37ab1a1") { throw "Claim-vs-reset final binding is inconsistent: $claimReset" }
 
   docker exec $container psql -v ON_ERROR_STOP=1 -U postgres -d clean -c `
-    "insert into auth.users (id, email) values ('00000000-0000-4000-8000-000000000093', 'reset-race@example.invalid'); insert into public.devices (user_id, fingerprint_hash) values ('00000000-0000-4000-8000-000000000093', 'reset-race-original')" | Out-Null
+    "insert into auth.users (id, email) values ('00000000-0000-4000-8000-000000000093', 'reset-race@example.invalid'); $bindAccounts  insert into public.devices (user_id, fingerprint_hash) values ('00000000-0000-4000-8000-000000000093', 'bf1a87d5fa2ecfd7c999e3520ac993a1e201c5c7d46eb86dc25cfac862582314')" | Out-Null
   Write-Utf8NoBom $claimAFile @'
 insert into public.isa88_concurrency_barrier values ('reset-reset', 'a');
 do $$ begin
@@ -311,8 +331,8 @@ do $$ begin
   if (select count(*) from public.isa88_concurrency_barrier where race = 'reset-reset') <> 2 then raise exception 'barrier_timeout'; end if;
 end $$;
 set role authenticated;
-select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000093', false);
-select public.reset_active_device('reset-race-a');
+select set_config('request.jwt.claims',jsonb_build_object('iss','https://fixtures.clerk.invalid','sub','user_00000000000040008000000000000093','role','authenticated','sid','sess_fixture','azp','https://app.invalid')::text,false);
+select public.reset_active_device('8fd4eec30b59d8e206284d2b554b5e55f3c83461635729f296ebeaefdf3d17c1');
 '@
   Write-Utf8NoBom $claimBFile @'
 insert into public.isa88_concurrency_barrier values ('reset-reset', 'b');
@@ -324,26 +344,26 @@ do $$ begin
   if (select count(*) from public.isa88_concurrency_barrier where race = 'reset-reset') <> 2 then raise exception 'barrier_timeout'; end if;
 end $$;
 set role authenticated;
-select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000093', false);
-select public.reset_active_device('reset-race-b');
+select set_config('request.jwt.claims',jsonb_build_object('iss','https://fixtures.clerk.invalid','sub','user_00000000000040008000000000000093','role','authenticated','sid','sess_fixture','azp','https://app.invalid')::text,false);
+select public.reset_active_device('59e11e34eb26942b8727cd282f0b072314fc9998fe846617279d3c68d979ecc0');
 '@
   docker cp $claimAFile "${container}:/tmp/reset-race-a.sql"
   docker cp $claimBFile "${container}:/tmp/reset-race-b.sql"
   docker exec $container sh -c 'psql -q -v ON_ERROR_STOP=1 -U postgres -d clean -f /tmp/reset-race-a.sql >/tmp/reset-a.log 2>&1 & p1=$!; psql -q -v ON_ERROR_STOP=1 -U postgres -d clean -f /tmp/reset-race-b.sql >/tmp/reset-b.log 2>&1 & p2=$!; wait $p1; s1=$?; wait $p2; s2=$?; if { [ "$s1" -eq 0 ] && [ "$s2" -ne 0 ]; } || { [ "$s1" -ne 0 ] && [ "$s2" -eq 0 ]; }; then exit 0; fi; cat /tmp/reset-a.log /tmp/reset-b.log; exit 1'
   if ($LASTEXITCODE -ne 0) { throw "Reset-vs-reset did not allow exactly one winner" }
   $resetRace = docker exec $container psql -At -U postgres -d clean -c `
-    "select (fingerprint_hash in ('reset-race-a','reset-race-b'))::text || ':' || (last_reset_at is not null)::text from public.devices where user_id = '00000000-0000-4000-8000-000000000093'"
+    "select (fingerprint_hash in ('8fd4eec30b59d8e206284d2b554b5e55f3c83461635729f296ebeaefdf3d17c1','59e11e34eb26942b8727cd282f0b072314fc9998fe846617279d3c68d979ecc0'))::text || ':' || (last_reset_at is not null)::text from public.devices where user_id = '00000000-0000-4000-8000-000000000093'"
   if ($resetRace.Trim() -ne "true:true") { throw "Reset-vs-reset final binding is inconsistent: $resetRace" }
 
   docker exec $container psql -v ON_ERROR_STOP=1 -U postgres -d clean -c `
-    "set role authenticated; select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000090',false); select public.reset_active_device('race-reset-fingerprint')" | Out-Null
+    "set role authenticated; select set_config('request.jwt.claims',jsonb_build_object('iss','https://fixtures.clerk.invalid','sub','user_00000000000040008000000000000090','role','authenticated','sid','sess_fixture','azp','https://app.invalid')::text,false); select public.reset_active_device('7ded0705690b12a3bab54f7d796505933056654e362296606f3df0d60b49779a')" | Out-Null
   if ($LASTEXITCODE -ne 0) { throw "Device reset after concurrent claim failed" }
   $resetClaim = docker exec $container psql -At -U postgres -d clean -c `
     "select fingerprint_hash from public.devices where user_id = '00000000-0000-4000-8000-000000000090'"
-  if ($resetClaim.Trim() -ne "race-reset-fingerprint") { throw "Reset did not bind the explicit fingerprint: $resetClaim" }
+  if ($resetClaim.Trim() -ne "7ded0705690b12a3bab54f7d796505933056654e362296606f3df0d60b49779a") { throw "Reset did not bind the explicit fingerprint: $resetClaim" }
 
   docker exec $container psql -v ON_ERROR_STOP=1 -U postgres -d clean -c `
-    "insert into auth.users (id,email) values ('00000000-0000-4000-8000-000000000609','reconciliation-race@example.invalid'); create table public.billing_reconciliation_concurrency_results (participant text primary key, status text not null)" | Out-Null
+    "insert into auth.users (id,email) values ('00000000-0000-4000-8000-000000000609','reconciliation-race@example.invalid'); $bindAccounts  create table public.billing_reconciliation_concurrency_results (participant text primary key, status text not null)" | Out-Null
   if ($LASTEXITCODE -ne 0) { throw "Could not prepare reconciliation concurrency" }
   Write-Utf8NoBom $claimAFile @'
 insert into public.isa88_concurrency_barrier values ('reconciliation-plan', 'a');
@@ -390,7 +410,7 @@ select 'b', status from public.billing_apply_reconciliation_plan(
   if ($reconciliationRace.Trim() -ne "1:1:1:1") { throw "Concurrent reconciliation contract failed: $reconciliationRace" }
 
   docker exec $container psql -v ON_ERROR_STOP=1 -U postgres -d clean -c `
-    "insert into auth.users (id,email) values ('00000000-0000-4000-8000-000000000811','order-race@example.invalid'); insert into public.profiles (id,email) values ('00000000-0000-4000-8000-000000000811','order-race@example.invalid') on conflict (id) do nothing; create table public.billing_order_concurrency_results (participant text primary key, outcome text not null)" | Out-Null
+    "insert into auth.users (id,email) values ('00000000-0000-4000-8000-000000000811','order-race@example.invalid'); $bindAccounts  insert into public.profiles (id,email) values ('00000000-0000-4000-8000-000000000811','order-race@example.invalid') on conflict (id) do nothing; create table public.billing_order_concurrency_results (participant text primary key, outcome text not null)" | Out-Null
   if ($LASTEXITCODE -ne 0) { throw "Could not prepare order ledger concurrency" }
   Write-Utf8NoBom $claimAFile @'
 insert into public.isa88_concurrency_barrier values ('order-first-seen', 'a');
@@ -431,7 +451,7 @@ select 'b', outcome from public.billing_record_order_snapshot(
   if ($orderRace.Trim() -ne "1:1:1") { throw "Concurrent first-seen order contract failed: $orderRace" }
 
   docker exec $container psql -v ON_ERROR_STOP=1 -U postgres -d clean -c `
-    "insert into auth.users (id,email) values ('00000000-0000-4000-8000-000000000810','lifecycle-race@example.invalid'); insert into public.profiles (id,email) values ('00000000-0000-4000-8000-000000000810','lifecycle-race@example.invalid') on conflict (id) do nothing; select * from public.billing_apply_resource_snapshot('polar','sandbox','subscription','sub-lifecycle-race','00000000-0000-4000-8000-000000000810','2026-08-01T13:00:00Z',repeat('a',64),'active','[{`"capability`":`"vantare.plan.pro`",`"status`":`"active`",`"validUntil`":`"2026-08-02T13:00:00Z`"}]'::jsonb); select * from public.billing_apply_subscription_lifecycle('00000000-0000-4000-8000-000000000810','sandbox','sub-lifecycle-race','product-pro','active','2026-07-02T13:00:00Z','2026-08-02T13:00:00Z','2026-08-02T13:00:00Z',false,'2026-08-01T13:00:00Z',repeat('a',64),'close',null,null,'2026-08-01T14:00:00Z',array['vantare.plan.pro']); select * from public.billing_apply_resource_snapshot('polar','sandbox','subscription','sub-lifecycle-race','00000000-0000-4000-8000-000000000810','2026-08-02T13:05:00Z',repeat('b',64),'past_due','[{`"capability`":`"vantare.plan.pro`",`"status`":`"revoked`",`"validUntil`":`"2026-08-02T13:00:00Z`"}]'::jsonb); create table public.billing_lifecycle_concurrency_results (participant text primary key, outcome text not null)" | Out-Null
+    "insert into auth.users (id,email) values ('00000000-0000-4000-8000-000000000810','lifecycle-race@example.invalid'); $bindAccounts  insert into public.profiles (id,email) values ('00000000-0000-4000-8000-000000000810','lifecycle-race@example.invalid') on conflict (id) do nothing; select * from public.billing_apply_resource_snapshot('polar','sandbox','subscription','sub-lifecycle-race','00000000-0000-4000-8000-000000000810','2026-08-01T13:00:00Z',repeat('a',64),'active','[{`"capability`":`"vantare.plan.pro`",`"status`":`"active`",`"validUntil`":`"2026-08-02T13:00:00Z`"}]'::jsonb); select * from public.billing_apply_subscription_lifecycle('00000000-0000-4000-8000-000000000810','sandbox','sub-lifecycle-race','product-pro','active','2026-07-02T13:00:00Z','2026-08-02T13:00:00Z','2026-08-02T13:00:00Z',false,'2026-08-01T13:00:00Z',repeat('a',64),'close',null,null,'2026-08-01T14:00:00Z',array['vantare.plan.pro']); select * from public.billing_apply_resource_snapshot('polar','sandbox','subscription','sub-lifecycle-race','00000000-0000-4000-8000-000000000810','2026-08-02T13:05:00Z',repeat('b',64),'past_due','[{`"capability`":`"vantare.plan.pro`",`"status`":`"revoked`",`"validUntil`":`"2026-08-02T13:00:00Z`"}]'::jsonb); create table public.billing_lifecycle_concurrency_results (participant text primary key, outcome text not null)" | Out-Null
   if ($LASTEXITCODE -ne 0) { throw "Could not prepare subscription lifecycle concurrency" }
   Write-Utf8NoBom $claimAFile @'
 insert into public.isa88_concurrency_barrier values ('subscription-lifecycle', 'a');
@@ -473,6 +493,23 @@ select 'b', outcome from public.billing_apply_subscription_lifecycle(
     "select count(*) filter (where outcome='applied') || ':' || (select count(*) from public.billing_subscription_recovery_cycles where subscription_id='sub-lifecycle-race') || ':' || (select count(*) from public.billing_access_grants where source_type='subscription_recovery' and metadata->>'subscription_id'='sub-lifecycle-race') from public.billing_lifecycle_concurrency_results"
   if ($lifecycleRace.Trim() -ne "2:1:1") { throw "Concurrent lifecycle contract failed: $lifecycleRace" }
 
+  docker exec $container psql -v ON_ERROR_STOP=1 -U postgres -d clean -c `
+    "insert into auth.users (id, email) values ('00000000-0000-4000-8000-000000000091', 'restore-sentinel@example.invalid'); $bindAccounts  insert into public.user_entitlements (user_id, product_key, status, source) values ('00000000-0000-4000-8000-000000000091', 'restore_sentinel', 'revoked', 'restore-test')" | Out-Null
+  if ($LASTEXITCODE -ne 0) { throw "Could not create restore sentinel" }
+
+  $started = Get-Date
+  docker exec $container pg_dump -U postgres -d clean -Fc -f /tmp/clean.dump
+  $dumpExit = $LASTEXITCODE
+  if ($dumpExit -ne 0) { throw "pg_dump failed with exit code $dumpExit" }
+  # Global roles belong to the disposable server. Release clean's dependencies
+  # before replaying CREATE ROLE in the independent upgrade database. The binary
+  # dump above retains clean's exact schema/data/ACLs for the restore drill.
+  docker exec $container dropdb -U postgres clean
+  if ($LASTEXITCODE -ne 0) { throw "Could not isolate upgrade from clean database" }
+  docker exec $container psql -v ON_ERROR_STOP=1 -U postgres -d postgres -c `
+    "drop role if exists vantare_triage; drop role if exists pilot_profile_writer" | Out-Null
+  if ($LASTEXITCODE -ne 0) { throw "Could not release clean-only fixture roles" }
+
   Initialize-Database "upgrade"
   $authHardeningMigration = "20260802020000_supabase_auth_license_hardening.sql"
   $commercialProjectionMigration = "20260802100000_billing_commercial_projection.sql"
@@ -481,42 +518,38 @@ select 'b', outcome from public.billing_apply_subscription_lifecycle(
   $operationalAccessMigration = "20260803140000_operational_access_assignments.sql"
   $raceScheduleMigration = "20260808000000_race_schedule_publications.sql"
   $accountBootstrapMigration = "20260828124540_clerk_account_bootstrap.sql"
-  foreach ($migration in $migrations | Where-Object Name -notin @($authHardeningMigration, $commercialProjectionMigration, $subscriptionLifecycleMigration, $orderRefundLedgerMigration, $operationalAccessMigration, $raceScheduleMigration, $accountBootstrapMigration)) {
+  foreach ($migration in $migrations | Where-Object { $_.Name -le $accountBootstrapMigration -and $_.Name -notin @($authHardeningMigration, $commercialProjectionMigration, $subscriptionLifecycleMigration, $orderRefundLedgerMigration, $operationalAccessMigration, $raceScheduleMigration, $accountBootstrapMigration) }) {
     Invoke-Psql "upgrade" "/tmp/$($migration.Name)"
   }
   Invoke-Psql "upgrade" "/tmp/$authHardeningMigration"
   docker exec $container psql -v ON_ERROR_STOP=1 -U postgres -d upgrade -c `
-    "insert into auth.users (id, email) values ('00000000-0000-4000-8000-000000000701','bounded-past-due@example.invalid'),('00000000-0000-4000-8000-000000000702','unproven-past-due@example.invalid'),('00000000-0000-4000-8000-000000000703','legacy-pro@example.invalid'); insert into public.user_entitlements (id,user_id,product_key,status,source,expires_at,updated_at) values ('00000000-0000-4000-8000-000000000701','00000000-0000-4000-8000-000000000701','bundle','past_due','polar',now() + interval '30 days',now() - interval '1 day'),('00000000-0000-4000-8000-000000000702','00000000-0000-4000-8000-000000000702','bundle','past_due','polar',null,now() - interval '1 hour'),('00000000-0000-4000-8000-000000000703','00000000-0000-4000-8000-000000000703','vantare_pro','active','polar',now() + interval '30 days',now() - interval '1 hour')" | Out-Null
+    "insert into auth.users (id, email) values ('00000000-0000-4000-8000-000000000701','bounded-past-due@example.invalid'),('00000000-0000-4000-8000-000000000702','unproven-past-due@example.invalid'),('00000000-0000-4000-8000-000000000703','legacy-pro@example.invalid'); $bindAccounts  insert into public.user_entitlements (id,user_id,product_key,status,source,expires_at,updated_at) values ('00000000-0000-4000-8000-000000000701','00000000-0000-4000-8000-000000000701','bundle','past_due','polar',now() + interval '30 days',now() - interval '1 day'),('00000000-0000-4000-8000-000000000702','00000000-0000-4000-8000-000000000702','bundle','past_due','polar',null,now() - interval '1 hour'),('00000000-0000-4000-8000-000000000703','00000000-0000-4000-8000-000000000703','vantare_pro','active','polar',now() + interval '30 days',now() - interval '1 hour')" | Out-Null
   if ($LASTEXITCODE -ne 0) { throw "Could not seed legacy past_due upgrade cases" }
   Invoke-Psql "upgrade" "/tmp/$commercialProjectionMigration"
   docker exec $container psql -v ON_ERROR_STOP=1 -U postgres -d upgrade -c `
-    "insert into auth.users (id,email) values ('00000000-0000-4000-8000-000000000711','legacy-active-sub@example.invalid'),('00000000-0000-4000-8000-000000000712','legacy-past-due-sub@example.invalid'); insert into public.profiles (id,email) values ('00000000-0000-4000-8000-000000000711','legacy-active-sub@example.invalid'),('00000000-0000-4000-8000-000000000712','legacy-past-due-sub@example.invalid') on conflict (id) do nothing; insert into public.billing_commercial_resources (user_id,provider,environment,resource_type,resource_id,remote_state,remote_modified_at,snapshot_hash) values ('00000000-0000-4000-8000-000000000711','polar','sandbox','subscription','legacy-active-sub','active',now()-interval '1 hour',repeat('a',64)),('00000000-0000-4000-8000-000000000712','polar','sandbox','subscription','legacy-past-due-sub','past_due',now()-interval '1 hour',repeat('b',64)); insert into public.billing_subscriptions (user_id,provider,provider_subscription_id,provider_product_id,status,current_period_end,updated_at) values ('00000000-0000-4000-8000-000000000711','polar','legacy-active-sub','product-pro','active',now()+interval '30 days',now()-interval '1 hour'),('00000000-0000-4000-8000-000000000712','polar','legacy-past-due-sub','product-pro','past_due',now()+interval '30 days',now()-interval '1 hour'); insert into public.billing_access_grants (user_id,provider,environment,source_type,source_id,capability,status,valid_until,resource_modified_at,snapshot_hash) values ('00000000-0000-4000-8000-000000000711','polar','sandbox','subscription','legacy-active-sub','vantare.plan.pro','active',now()+interval '30 days',now()-interval '1 hour',repeat('a',64)),('00000000-0000-4000-8000-000000000712','polar','sandbox','subscription','legacy-past-due-sub','vantare.plan.pro','active',now()+interval '30 days',now()-interval '1 hour',repeat('b',64))" | Out-Null
+    "insert into auth.users (id,email) values ('00000000-0000-4000-8000-000000000711','legacy-active-sub@example.invalid'),('00000000-0000-4000-8000-000000000712','legacy-past-due-sub@example.invalid'); $bindAccounts  insert into public.profiles (id,email) values ('00000000-0000-4000-8000-000000000711','legacy-active-sub@example.invalid'),('00000000-0000-4000-8000-000000000712','legacy-past-due-sub@example.invalid') on conflict (id) do nothing; insert into public.billing_commercial_resources (user_id,provider,environment,resource_type,resource_id,remote_state,remote_modified_at,snapshot_hash) values ('00000000-0000-4000-8000-000000000711','polar','sandbox','subscription','legacy-active-sub','active',now()-interval '1 hour',repeat('a',64)),('00000000-0000-4000-8000-000000000712','polar','sandbox','subscription','legacy-past-due-sub','past_due',now()-interval '1 hour',repeat('b',64)); insert into public.billing_subscriptions (user_id,provider,provider_subscription_id,provider_product_id,status,current_period_end,updated_at) values ('00000000-0000-4000-8000-000000000711','polar','legacy-active-sub','product-pro','active',now()+interval '30 days',now()-interval '1 hour'),('00000000-0000-4000-8000-000000000712','polar','legacy-past-due-sub','product-pro','past_due',now()+interval '30 days',now()-interval '1 hour'); insert into public.billing_access_grants (user_id,provider,environment,source_type,source_id,capability,status,valid_until,resource_modified_at,snapshot_hash) values ('00000000-0000-4000-8000-000000000711','polar','sandbox','subscription','legacy-active-sub','vantare.plan.pro','active',now()+interval '30 days',now()-interval '1 hour',repeat('a',64)),('00000000-0000-4000-8000-000000000712','polar','sandbox','subscription','legacy-past-due-sub','vantare.plan.pro','active',now()+interval '30 days',now()-interval '1 hour',repeat('b',64))" | Out-Null
   if ($LASTEXITCODE -ne 0) { throw "Could not seed legacy subscription lifecycle cases" }
   Invoke-Psql "upgrade" "/tmp/$subscriptionLifecycleMigration"
   Invoke-Psql "upgrade" "/tmp/$orderRefundLedgerMigration"
   Invoke-Psql "upgrade" "/tmp/$operationalAccessMigration"
   Invoke-Psql "upgrade" "/tmp/$raceScheduleMigration"
   Invoke-Psql "upgrade" "/tmp/$accountBootstrapMigration"
+  # Check the historical data migration before the forward identity cutover.
+  Assert-PgTap "upgrade" "/tmp/commercial-legacy-upgrade-test.sql" "1\.\.11" "Legacy commercial projection"
+  Assert-PgTap "upgrade" "/tmp/subscription-lifecycle-upgrade-test.sql" "1\.\.8" "Legacy lifecycle migration"
+  foreach ($migration in $migrations | Where-Object Name -gt $accountBootstrapMigration) {
+    Invoke-Psql "upgrade" "/tmp/$($migration.Name)"
+  }
   Assert-PgTap "upgrade" "/tmp/hardening-test.sql" "1\.\.48" "Upgrade hardening"
   Assert-PgTap "upgrade" "/tmp/inbox-test.sql" "1\.\.54" "Upgrade inbox"
   Assert-PgTap "upgrade" "/tmp/commercial-projection-test.sql" "1\.\.43" "Upgrade commercial projection"
-  Assert-PgTap "upgrade" "/tmp/commercial-legacy-upgrade-test.sql" "1\.\.11" "Upgrade legacy commercial projection"
   Assert-PgTap "upgrade" "/tmp/reconciliation-test.sql" "1\.\.17" "Upgrade reconciliation"
   Assert-PgTap "upgrade" "/tmp/subscription-lifecycle-test.sql" "1\.\.51" "Upgrade subscription lifecycle"
-  Assert-PgTap "upgrade" "/tmp/subscription-lifecycle-upgrade-test.sql" "1\.\.8" "Upgrade subscription lifecycle migration"
   Assert-PgTap "upgrade" "/tmp/order-refund-ledger-test.sql" "1\.\.37" "Upgrade order refund ledger"
   Assert-PgTap "upgrade" "/tmp/observability-test.sql" "1\.\.20" "Upgrade billing observability"
   Assert-PgTap "upgrade" "/tmp/operational-access-test.sql" "1\.\.56" "Upgrade operational access"
   Assert-PgTap "upgrade" "/tmp/clerk-account-bootstrap-test.sql" "1\.\.31" "Upgrade Clerk account bootstrap"
 
-  docker exec $container psql -v ON_ERROR_STOP=1 -U postgres -d clean -c `
-    "insert into auth.users (id, email) values ('00000000-0000-4000-8000-000000000091', 'restore-sentinel@example.invalid'); insert into public.user_entitlements (user_id, product_key, status, source) values ('00000000-0000-4000-8000-000000000091', 'restore_sentinel', 'revoked', 'restore-test')" | Out-Null
-  if ($LASTEXITCODE -ne 0) { throw "Could not create restore sentinel" }
-
-  $started = Get-Date
-  docker exec $container pg_dump -U postgres -d clean -Fc -f /tmp/clean.dump
-  $dumpExit = $LASTEXITCODE
-  if ($dumpExit -ne 0) { throw "pg_dump failed with exit code $dumpExit" }
   docker exec $container createdb -U postgres restore_drill
   if ($LASTEXITCODE -ne 0) { throw "Could not create restore drill database" }
   docker exec $container pg_restore --exit-on-error -U postgres -d restore_drill --no-owner /tmp/clean.dump

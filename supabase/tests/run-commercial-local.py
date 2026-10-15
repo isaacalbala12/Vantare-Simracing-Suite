@@ -30,6 +30,7 @@ parser.add_argument('--before-storage-buckets', action='store_true', help='RED: 
 parser.add_argument('--pilot-patch-drift', choices=['owner','deletion','objects','uploads'], help='Pilot migration must reject changed source text atomically')
 parser.add_argument('--before-pilot-identity', action='store_true', help='RED: omit only r8 Pilot identity permissions/cutover')
 parser.add_argument('--before-posthog-consent-clear', action='store_true', help='RED: omit R9 privacy revocation correction only')
+parser.add_argument('--before-deleted-authorizer', action='store_true', help='RED: omit only R10 deleted-authorizer replay revocation')
 parser.add_argument('--before-testing-identity', action='store_true', help='RED: omit R9 server UUID adapter correction only')
 parser.add_argument('--testing-identity', action='store_true', help='F1IP and triage live/deleted after ALL migrations')
 parser.add_argument('--pilot-profile', action='store_true', help='Pilot live/deleted native-data regression after ALL migrations')
@@ -72,7 +73,8 @@ $$;
   if args.storage_schema:
    run('psql',*conn,'-c',"create role supabase_storage_admin noinherit bypassrls; grant usage on schema storage to supabase_storage_admin; grant all on all tables in schema storage to supabase_storage_admin;")
   for m in sorted((ROOT/'supabase/migrations').glob('*.sql')):
-   if args.before_posthog_consent_clear and 'posthog_consent_clear' in m.name: continue
+   if args.before_deleted_authorizer and 'revoke_deleted_authorizer' in m.name: continue
+   if args.before_posthog_consent_clear and any(n in m.name for n in ('posthog_consent_clear','revoke_deleted_authorizer')): continue
    if args.before_testing_identity and 'testing_server_identity' in m.name: continue
    if args.before_pilot_identity and 'pilot_identity' in m.name: continue
    # RED controls omit the dependent adapters as well as their missing guards.

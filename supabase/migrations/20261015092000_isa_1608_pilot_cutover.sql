@@ -9,6 +9,8 @@ do $$
 declare definition text;
 begin
  definition:=pg_get_functiondef('private.storage_owner_accounts(jsonb)'::regprocedure);
+ if position('  -- Deprecated owner' in definition)=0 then
+   raise exception 'pilot_cutover_owner_changed'; end if;
  definition:=replace(definition,'  -- Deprecated owner', $p$
   -- Pilot paths are UUID/hash.jpg and may be written with a service owner NULL.
   if p_row->>'bucket_id'='pilot-photos' and coalesce(p_row->>'name',p_row->>'key')
@@ -18,11 +20,17 @@ begin
   -- Deprecated owner$p$);
  execute definition;
  definition:=pg_get_functiondef('public.apply_clerk_user_event(text,text,text,text,text,timestamptz,text)'::regprocedure);
+ if position('    delete from public.testing_answers' in definition)=0 then
+   raise exception 'pilot_cutover_deletion_changed'; end if;
  definition:=replace(definition,'    delete from public.testing_answers',
   '    delete from pilot_private.operations where account_id=account;'||chr(10)||
   '    delete from public.pilot_profiles where account_id=account;'||chr(10)||'    delete from public.testing_answers');
+ if position('where o.owner_id::text=account::text' in definition)=0 then
+   raise exception 'pilot_cutover_objects_changed'; end if;
  definition:=replace(definition,'where o.owner_id::text=account::text',
    'where account in (select private.storage_owner_accounts(to_jsonb(o))) or o.owner_id::text=account::text');
+ if position('where u.owner_id=account::text' in definition)=0 then
+   raise exception 'pilot_cutover_uploads_changed'; end if;
  definition:=replace(definition,'where u.owner_id=account::text',
    'where account in (select private.storage_owner_accounts(to_jsonb(u))) or u.owner_id=account::text');
  execute definition;

@@ -1,3 +1,41 @@
+## #1608 · R8 · Migración y requisitos previos a vender (15/10/2026)
+
+R7-P3-3: cada uno de los cuatro reemplazos de texto Pilot comprueba su patrón
+y lanza RAISE específico si falta. RED: los cuatro cambios de fuente se
+aceptaban en silencio; GREEN: los cuatro se rechazan y revierten funciones y
+trigger completos. Runner reproducible `--pilot-patch-drift
+owner|deletion|objects|uploads`, evidencia `~/evidence/1608-r8/patch-{red,green}-*/`.
+
+**Requisitos obligatorios antes de vender (R7-P3-1/P3-2):**
+
+- Probar en staging gestionado `commercial_storage_cleanup.py` contra la versión
+  Storage y backend S3 que se desplegarán, con NULL/UUID, abort, fallo real,
+  recuperación y retries; acreditar 0 uploads/partes/bytes/colas. El test local
+  v1.70.3 no lo sustituye. Si cambian GUC, version preflight o codificación del
+  uploadId, la adaptación falla cerrado: 503 y cola conservada. Validación y
+  despliegue gestionado siguen pendientes del orquestador/Isaac.
+- Inventariar buckets de producción con `owner IS NOT NULL OR
+  nullif(owner_id,'') IS NOT NULL`, con autorización separada y sin exportar PII.
+  Si hay propietarios de usuario históricos, resolver su retirada mediante
+  una entrega de purga por API y verificarla antes de vender. Este corte no
+  purga esos owners ni demuestra su ausencia. Registrar también el contrato
+  global sin PII de objetos sin owner/manifest, según `tools/storage/README.md`.
+
+**R7-P3-4, riesgo aceptado en este alcance:** la excepción de auditoría de
+lecturas identifica la acción por el texto de la fila. No demuestra por sí
+sola la procedencia de una lectura. Hoy `admin_audit_log` no admite INSERT de
+anon/authenticated/service_role/Pilot/publicador: el único escritor de aplicación
+es `native_admin_execute`, SECURITY DEFINER con Owner vivo verificado, acciones
+cerradas y campos de auditoría construidos por el servidor; no acepta una fila
+arbitraria. Cambiar el texto en una petición tampoco permite omitir el actor
+borrado ni mutar un target borrado. Por eso no hay un bypass alcanzable por
+estos clientes. Un escritor DEFINER futuro podría etiquetar una mutación como
+lectura: deberá revisar esta excepción antes de añadirlo o ampliar ACLs.
+Un marcador GUC o un booleano en la fila tendría la misma autoridad que el
+escritor; autenticar de verdad el origen requeriría separar el canal/rol de
+auditoría, complejidad injustificada aquí. Se conserva el límite explícito;
+no se afirma que PostgreSQL autentique el nombre de acción.
+
 ## #1608 · R8 · Identidad Pilot tras B03 (15/10/2026)
 
 R7-P1-1: migración aditiva concede solo USAGE de `private` y EXECUTE de

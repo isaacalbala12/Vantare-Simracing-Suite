@@ -27,6 +27,9 @@ parser.add_argument('--admin-lock-order', action='store_true', help='Native admi
 parser.add_argument('--before-admin-lock-order', action='store_true', help='RED: omit r6 outer admin lock migration')
 parser.add_argument('--storage-buckets', action='store_true', help='Real Storage bucket ownership regression')
 parser.add_argument('--before-storage-buckets', action='store_true', help='RED: omit r6 bucket ownership barrier')
+parser.add_argument('--pilot-patch-drift', choices=['owner','deletion','objects','uploads'], help='Pilot migration must reject changed source text atomically')
+parser.add_argument('--before-pilot-identity', action='store_true', help='RED: omit only r8 Pilot identity permissions/cutover')
+parser.add_argument('--pilot-profile', action='store_true', help='Pilot live/deleted native-data regression after ALL migrations')
 parser.add_argument('--before-admin-deleted-reads', action='store_true', help='RED: omit r7 admin read fix')
 args=parser.parse_args()
 ROOT=pathlib.Path(__file__).resolve().parents[2]
@@ -66,6 +69,7 @@ $$;
   if args.storage_schema:
    run('psql',*conn,'-c',"create role supabase_storage_admin noinherit bypassrls; grant usage on schema storage to supabase_storage_admin; grant all on all tables in schema storage to supabase_storage_admin;")
   for m in sorted((ROOT/'supabase/migrations').glob('*.sql')):
+   if args.before_pilot_identity and 'pilot_identity' in m.name: continue
    # RED controls omit the dependent adapters as well as their missing guards.
    legacy = args.baseline or args.before_write_barrier
    if legacy and m.name.startswith(('2026101416','2026101509')) and 'isa_1608_' in m.name: continue
@@ -84,9 +88,29 @@ $$;
    if cutover:
     result=run('psql',*conn,'-f',ROOT/'supabase/tests'/('commercial_'+args.upgrade.replace('-', '_')+'_upgrade.before.sql'))
     (OUT/'upgrade-before.log').write_text(result)
+   pilot_patch='pilot_cutover' in m.name and args.pilot_patch_drift
+   if pilot_patch:
+    signature,pattern={
+     'owner':('private.storage_owner_accounts(jsonb)','  -- Deprecated owner'),
+     'deletion':('public.apply_clerk_user_event(text,text,text,text,text,timestamptz,text)','    delete from public.testing_answers'),
+     'objects':('public.apply_clerk_user_event(text,text,text,text,text,timestamptz,text)','where o.owner_id::text=account::text'),
+     'uploads':('public.apply_clerk_user_event(text,text,text,text,text,timestamptz,text)','where u.owner_id=account::text'),
+    }[args.pilot_patch_drift]
+    # Whitespace/comment drift preserves the real function's behavior.
+    replacement=pattern.replace('-- Deprecated','-- Historical') if args.pilot_patch_drift=='owner' else pattern.replace(' ', '  ')
+    definition=run('psql',*conn,'-c',f"select pg_get_functiondef('{signature}'::regprocedure)").strip()
+    assert pattern in definition
+    run('psql',*conn,'-c',definition.replace(pattern,replacement))
+    before=run('psql',*conn,'-c',"select pg_get_functiondef('private.storage_owner_accounts(jsonb)'::regprocedure),pg_get_functiondef('public.apply_clerk_user_event(text,text,text,text,text,timestamptz,text)'::regprocedure)")
    try: result=run('psql',*conn,'-f',m)
    except Exception as e:
     (OUT/(m.name+'.log')).write_text(str(e))
+    if pilot_patch and 'P0001' in str(e) and 'pilot_cutover_'+args.pilot_patch_drift+'_changed' in str(e):
+     after=run('psql',*conn,'-c',"select pg_get_functiondef('private.storage_owner_accounts(jsonb)'::regprocedure),pg_get_functiondef('public.apply_clerk_user_event(text,text,text,text,text,timestamptz,text)'::regprocedure)")
+     assert before==after, 'failed Pilot migration left a partial function patch'
+     assert run('psql',*conn,'-c',"select count(*) from pg_trigger where tgrelid='pilot_private.operations'::regclass and tgname='a_account_write_barrier'").strip()=='0', 'failed Pilot migration left a partial trigger'
+     print('Pilot patch drift '+args.pilot_patch_drift+': rejected atomically PASS',flush=True)
+     raise SystemExit(0)
     if cutover and args.upgrade=='identity-conflict' and '23505' in str(e) and 'account_alias_conflict' in str(e):
      result=run('psql',*conn,'-f',ROOT/'supabase/tests/commercial_identity_conflict_upgrade.test.sql')
      (OUT/'upgrade-results.log').write_text(result)
@@ -94,9 +118,16 @@ $$;
      print('identity-conflict upgrade: rejected atomically PASS',flush=True)
      raise SystemExit(0)
     raise RuntimeError(m.name+': '+str(e))
+   if pilot_patch: raise AssertionError('Pilot migration silently accepted '+args.pilot_patch_drift+' source drift')
    if cutover and args.upgrade=='identity-conflict':
     raise AssertionError('ambiguous historical issuer aliases were not rejected by B03')
    (OUT/(m.name+'.log')).write_text(result)
+  if args.pilot_profile:
+   result=run('psql',*conn,'-f',ROOT/'supabase/tests/commercial_pilot_deletion.test.sql')
+   (OUT/'commercial_pilot_deletion.test.sql.log').write_text(result)
+   if 'not ok ' in result or '# Looks like' in result: raise RuntimeError(result)
+   print('Pilot native-data live/deleted PASS',flush=True)
+   raise SystemExit(0)
   if args.upgrade:
    result=run('psql',*conn,'-f',ROOT/'supabase/tests'/('commercial_'+args.upgrade+'_upgrade.test.sql'))
    (OUT/'upgrade-results.log').write_text(result)
@@ -179,6 +210,24 @@ $$;
       leaked=old_profile()
       (OUT/'jwt-results.log').write_text('B03 signed prior bearer own profile before user.deleted: 1; after deletion delivery: '+str(len(leaked))+'\n')
       assert leaked==[], 'B03: historical valid bearer still reads profile after user.deleted'
+     # Through PostgREST with the JWT emitted by the actual native handler.
+     def save_pilot(token,photo=None,revision=0,op='16080000-0000-0000-0000-000000000021'):
+      req=urllib.request.Request(f'http://127.0.0.1:{http_port}/rpc/pilot_profile_save',
+       data=json.dumps({'p_profile':{'public_name':'Native pilot'},'p_photo_hash':photo,
+         'p_expected_revision':revision,'p_op_id':op}).encode(),
+       headers={'Content-Type':'application/json','Authorization':'Bearer '+token})
+      try:
+       with urllib.request.urlopen(req,timeout=30) as r: return r.status,json.load(r)
+      except urllib.error.HTTPError as e: return e.code,json.load(e)
+     if not args.baseline and not args.before_b01:
+      code,profile=save_pilot(tokens['valid'])
+      assert code==200 and profile['revision']==1, f'native Pilot create: {code} {profile}'
+      assert save_pilot(tokens['valid'])==(code,profile), 'native Pilot replay differs'
+      run('psql',*conn,'-c',f"insert into storage.objects(bucket_id,name) values('pilot-photos','{account}/"+'a'*64+".jpg')")
+      code,profile=save_pilot(tokens['valid'],'a'*64,1,'16080000-0000-0000-0000-000000000022')
+      assert code==200 and profile['revision']==2 and profile['photo_hash']=='a'*64, f'native Pilot photo: {code} {profile}'
+      assert save_pilot(tokens['other'])[0]>=400, 'unbound native JWT saved Pilot'
+      (OUT/'pilot-jwt-results.log').write_text('signed native JWT: create without photo 200, replay 200, update with photo 200, mismatched binding denied\n')
      def reset(token):
       req=urllib.request.Request(f'http://127.0.0.1:{http_port}/rpc/reset_active_device',data=b'{"device_fingerprint":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}',headers={'Content-Type':'application/json','Authorization':'Bearer '+token})
       try:
@@ -219,6 +268,10 @@ $$;
       (OUT/'native-issuance.log').write_text(issued.stdout)
       print(issued.stdout.strip(),flush=True)
      run('psql',*conn,'-c',"select public.apply_clerk_user_event('jwt-delete',repeat('d',64),'https://fixture.clerk.invalid','user_aaaaaaaaaaaaaaaaaaaaaaaaaaa','user.deleted',now(),null)")
+     if not args.baseline and not args.before_b01:
+      code,profile=save_pilot(tokens['valid'])
+      assert code>=400, 'previous native JWT recreated erased Pilot'
+      with (OUT/'pilot-jwt-results.log').open('a') as result_log: result_log.write('same signed native JWT after deletion: denied '+str(code)+'\n')
      code=reset(tokens['valid']); assert code>=400,'previous bearer survived deletion'
      assert profiles(tokens['valid'])==[], 'previous bearer read profile after deletion'
      results.append('previous bearer after tombstone: denied '+str(code))

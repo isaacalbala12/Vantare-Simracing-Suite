@@ -1,0 +1,11 @@
+begin; select no_plan();
+insert into public.profiles(id) values('16270000-0000-4000-8000-000000000001'),('16270000-0000-4000-8000-000000000002');
+select * from public.operational_access_set('16270000-0000-4000-8000-000000000001','owner','grant','test:admin','Admin r3','test:r3',null);
+select public.native_admin_execute('16270000-0000-4000-8000-000000000001','https://clerk.admin.test','finish_payment_sync','{"account_ids":[]}','sandbox');
+select public.native_admin_record_payment('sandbox',jsonb_build_object('payment_id','new-customer','account_id','16270000-0000-4000-8000-000000000002','subscription_id','new-sub','product','Pro mensual','paid_at',clock_timestamp(),'amount_cents',319,'currency','eur','discount_id',null,'refunded_cents',0,'modified_at',clock_timestamp()));
+select is(public.native_admin_execute('16270000-0000-4000-8000-000000000001','https://clerk.admin.test','get_payment_sync','{}','sandbox')->>'needs_sync','false','primer pago nuevo no invalida sincronización global');
+select is((select item->>'history_complete' from private.native_admin_creator_lines('sandbox') where item->>'payment_id'='new-customer'),'true','pago nuevo tras watermark tiene historia completa');
+select lives_ok($$select public.native_admin_execute('16270000-0000-4000-8000-000000000001','https://clerk.admin.test','sync_admin_refund_issue','{"payment_id":"new-customer"}','sandbox')$$,'reembolso incompleto afecta solo a su factura');
+select is((select item->>'status' from private.native_admin_creator_lines('sandbox') where item->>'payment_id'='new-customer'),'refund_pending','factura marcada pendiente sin romper ficha');
+select is((select item->>'commission_cents' from private.native_admin_creator_lines('sandbox') where item->>'payment_id'='new-customer'),'0','no se paga factura con refund desconocido');
+select * from finish(); rollback;

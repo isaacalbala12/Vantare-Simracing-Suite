@@ -1,0 +1,10 @@
+begin; select no_plan();
+insert into public.profiles(id) values('16270000-0000-4000-8000-000000000001'),('16270000-0000-4000-8000-000000000002');
+select * from public.operational_access_set('16270000-0000-4000-8000-000000000001','owner','grant','test:admin','Admin r3','test:r3',null);
+insert into public.testing_contributions(id,account_id,channel,title,body,state) values('16270000-0000-4000-8000-000000000010','16270000-0000-4000-8000-000000000002','nightly','Informe heredado','Reproducción','accepted');
+select public.native_admin_execute('16270000-0000-4000-8000-000000000001','https://clerk.admin.test','set_report_status','{"report_id":"16270000-0000-4000-8000-000000000010","status":"fixed","fixed_in_version":"1.2.3"}','sandbox');
+select public.native_admin_execute('16270000-0000-4000-8000-000000000001','https://clerk.admin.test','set_report_status','{"report_id":"16270000-0000-4000-8000-000000000010","status":"in_review"}','sandbox');
+set local request.jwt.claim.sub='16270000-0000-4000-8000-000000000002';
+select ok((public.testing_participation_current_v2('nightly')->'contributions'->0->>'fixed_version') is null,'tester no ve versión de arreglo tras reapertura');
+select ok(not exists(select 1 from public.testing_report_followup where fixed_version is not null or reviewed_title is not null or reviewed_summary is not null),'reapertura retira también metadatos revisados');
+select * from finish(); rollback;

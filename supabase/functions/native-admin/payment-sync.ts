@@ -140,19 +140,39 @@ export async function syncAdminPayments(
     });
   }
   for (const refund of refunds) {
-    if (refund.currency !== "eur") continue;
+    const amount = grossRefund(refund.amount, refund.tax_amount);
+    const modified = refund.modified_at ?? refund.updated_at ??
+      refund.created_at;
+    if (
+      typeof refund.order_id !== "string" || refund.order_id.length < 1 ||
+      refund.order_id.length > 200
+    ) {
+      throw new NativeError(503, "history_unavailable");
+    }
+    if (
+      refund.currency !== "eur" || !Number.isSafeInteger(amount) ||
+      Number(amount) <= 0 || Number(amount) > 100000000 ||
+      typeof refund.id !== "string" || refund.id.length < 1 ||
+      refund.id.length > 200 ||
+      !["pending", "succeeded", "failed", "canceled"].includes(
+        String(refund.status),
+      ) ||
+      typeof modified !== "string" || !Number.isFinite(Date.parse(modified))
+    ) {
+      await run("sync_admin_refund_issue", { payment_id: refund.order_id });
+      continue;
+    }
     await run("sync_admin_refund", {
       refund: {
         refund_id: refund.id,
         payment_id: refund.order_id,
-        amount_cents: grossRefund(refund.amount, refund.tax_amount),
+        amount_cents: amount,
         currency: refund.currency,
         status: refund.status,
         reason: typeof refund.reason === "string"
           ? refund.reason.slice(0, 500)
           : null,
-        modified_at: refund.modified_at ?? refund.updated_at ??
-          refund.created_at,
+        modified_at: modified,
       },
     });
   }

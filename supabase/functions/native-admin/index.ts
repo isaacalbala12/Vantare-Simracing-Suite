@@ -32,6 +32,7 @@ const statuses = [
   "in_review",
   "rejected",
   "fixed",
+  "spam",
 ];
 type ObjectValue = Record<string, unknown>;
 export type AdminDeps = NativeAuthDeps & {
@@ -146,6 +147,15 @@ export function validateAdminRequest(
         return boundedText(params.report_id, 256) &&
           statuses.includes(params.status as string) &&
           (params.reason === undefined || boundedText(params.reason, 500)) &&
+          (![
+            "validated",
+            "rejected",
+            "spam",
+            "closed",
+            "duplicate_linked",
+            "incomplete",
+          ].includes(String(params.status)) ||
+            boundedText(params.reason, 500)) &&
           (params.fixed_in_version === undefined ||
             (boundedText(params.fixed_in_version, 60) &&
               /^[0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+)?(-[a-z0-9.-]+)?$/.test(

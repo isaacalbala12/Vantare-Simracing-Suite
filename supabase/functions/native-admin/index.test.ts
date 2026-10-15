@@ -1,6 +1,10 @@
 import { VALID_POLAR_PRODUCT_MAP_JSON } from "../_shared/test-fixtures.ts";
 import { type PolarProductMap } from "../_shared/mapping.ts";
-import { type AdminDeps, handleNativeAdmin } from "./index.ts";
+import {
+  type AdminDeps,
+  handleNativeAdmin,
+  validateAdminRequest,
+} from "./index.ts";
 import { NativeError } from "../_shared/native-auth.ts";
 import {
   account,
@@ -174,7 +178,11 @@ const happy = [
       screenshots: [{ object_path: imagePath }],
     },
   }],
-  ["set_report_status", { report_id: reportId, status: "closed" }, {
+  ["set_report_status", {
+    report_id: reportId,
+    status: "closed",
+    reason: "Revisado por Isaac",
+  }, {
     report_id: reportId,
     status: "closed",
   }],
@@ -936,4 +944,29 @@ Deno.test("r1: blocking retry accepts an already canceled Polar subscription", a
     }),
   );
   assert(response.status === 200 && deletes === 0);
+});
+
+Deno.test("r3: spam and acceptance require a human note at the public boundary", () => {
+  for (const status of ["spam", "validated", "rejected"]) {
+    let rejected = false;
+    try {
+      validateAdminRequest({
+        version: 1,
+        action: "set_report_status",
+        report_id: "report-1",
+        status,
+      });
+    } catch {
+      rejected = true;
+    }
+    assert(rejected);
+    const request = validateAdminRequest({
+      version: 1,
+      action: "set_report_status",
+      report_id: "report-1",
+      status,
+      reason: "Revisado por Isaac",
+    });
+    assert(request.params.status === status);
+  }
 });

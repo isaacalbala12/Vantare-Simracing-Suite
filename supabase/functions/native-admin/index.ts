@@ -554,10 +554,20 @@ export async function handleNativeAdmin(
       if (error.message === "native_admin_not_found") {
         failure = new NativeError(404, "not_found");
       }
-      if (error.message === "native_admin_invalid") {
+      if (
+        ["native_admin_invalid", "testing_review_invalid"].includes(
+          String(error.message),
+        )
+      ) {
         failure = new NativeError(400, "invalid_request");
       }
-      if (error.message === "native_admin_owner_conflict") {
+      if (
+        [
+          "native_admin_owner_conflict",
+          "testing_review_conflict",
+          "testing_acceptance_limit",
+        ].includes(String(error.message))
+      ) {
         failure = new NativeError(409, "account_conflict");
       }
     }

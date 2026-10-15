@@ -18,7 +18,14 @@ select throws_ok($$select pg_temp.change(12,'validated')$$,'23514','testing_acce
 select lives_ok($$select pg_temp.change(13,'spam')$$,'spam tiene revisión propia');
 select is((select item->>'status' from private.native_admin_reports('https://clerk.admin.test') where item->>'report_id'='16270000-0000-4000-8000-000000000013'),'spam','miniapp conserva spam');
 insert into public.testing_contribution_attachments values('16270000-0000-4000-8000-000000000010','app_log','synthetic',encode(sha256(convert_to('synthetic','UTF8')),'hex'));
+insert into public.testing_contribution_context(contribution_id,app_version,app_channel,game,system,telemetry_summary,consent) values('16270000-0000-4000-8000-000000000010','1.2.3','nightly','none','{}','{"events":[]}','{}');
 update public.testing_contribution_reviews set decided_at=clock_timestamp()-interval '91 days';
 select private.testing_contribution_purge_evidence();
 select is((select count(*)::int from public.testing_contribution_attachments),0,'evidencia aceptada por miniapp se purga a 90 días');
+select ok((select telemetry_summary is null from public.testing_contribution_context),'telemetría se purga junto al registro a los 90 días');
+select ok(not has_function_privilege('authenticated','private.testing_contribution_review_as(uuid,uuid,text,text,jsonb)','execute'),'cliente no puede invocar motor con actor elegido');
+select ok(not has_function_privilege('service_role','private.testing_contribution_review_as(uuid,uuid,text,text,jsonb)','execute'),'service_role no puede invocar motor privado');
+insert into public.testing_center_memberships(user_id,actor_id,role) values('16270000-0000-4000-8000-000000000001','admin-owner','owner');
+set local request.jwt.claim.sub='16270000-0000-4000-8000-000000000001';
+select throws_ok($$select public.testing_contribution_review('16270000-0000-4000-8000-000000000013','spam','Revisado',null)$$,'22023','testing_review_invalid','ruta pública de modelo sigue exigiendo propuesta');
 select * from finish(); rollback;

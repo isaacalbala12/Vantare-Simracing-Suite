@@ -360,7 +360,7 @@ impl Admin {
                             .gap(px(5.))
                             .child(eyebrow("PLAN ACTUAL"))
                             .child(heading(
-                                &super::plan_label(user),
+                                &format!("{}{}", super::plan_label(user), if user.billing.as_deref() == Some("monthly") { " mensual" } else { "" }),
                                 20.,
                             ))
                             .when_some(user.renews_at.as_ref(), |d, renew| {

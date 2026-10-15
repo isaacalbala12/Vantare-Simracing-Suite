@@ -8,4 +8,6 @@ select is((select item->>'history_complete' from private.native_admin_creator_li
 select lives_ok($$select public.native_admin_execute('16270000-0000-4000-8000-000000000001','https://clerk.admin.test','sync_admin_refund_issue','{"payment_id":"new-customer"}','sandbox')$$,'reembolso incompleto afecta solo a su factura');
 select is((select item->>'status' from private.native_admin_creator_lines('sandbox') where item->>'payment_id'='new-customer'),'refund_pending','factura marcada pendiente sin romper ficha');
 select is((select item->>'commission_cents' from private.native_admin_creator_lines('sandbox') where item->>'payment_id'='new-customer'),'0','no se paga factura con refund desconocido');
+select lives_ok($$select public.native_admin_execute('16270000-0000-4000-8000-000000000001','https://clerk.admin.test','sync_admin_refund','{"refund":{"refund_id":"too-large","payment_id":"new-customer","amount_cents":99999,"currency":"eur","status":"succeeded","modified_at":"2026-10-15T00:00:00Z"}}','sandbox')$$,'refund mayor que factura no rompe lectura global');
+select is((select count(*)::int from private.admin_payment_refunds where refund_id='too-large'),0,'refund inválido se revierte entero');
 select * from finish(); rollback;

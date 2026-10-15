@@ -25,7 +25,7 @@ begin
   if not found then raise exception 'testing_contribution_missing' using errcode = 'P0002'; end if;
   select * into r from public.testing_contribution_reviews where contribution_id = p_id;
   if found then
-    if r.reviewer = p_reviewer and r.decision = p_decision and r.note = p_note and r.proposal is not distinct from p_proposal then return; end if;
+    if r.reviewer = p_reviewer and r.decision = p_decision and r.note = p_note and r.proposal is not distinct from p_proposal and (c.state=p_decision or (p_decision='accepted' and c.state='fixed')) then return; end if;
     raise exception 'testing_review_conflict' using errcode = '23505'; end if;
   if c.state not in ('received','reviewing') then raise exception 'testing_review_conflict' using errcode = '23505'; end if;
   -- Serializes acceptance for different contributions of one account.
@@ -71,7 +71,6 @@ begin
     set fixed_version=excluded.fixed_version,reviewed_title=excluded.reviewed_title,reviewed_summary=excluded.reviewed_summary;
   update public.testing_contributions set state='fixed' where id=p_id;
  elsif p_status in ('submitted','in_review') then
-  update public.testing_report_followup set fixed_version=null,reviewed_title=null,reviewed_summary=null where contribution_id=p_id;
   update public.testing_contributions set state=case p_status when 'submitted' then 'received' else 'reviewing' end where id=p_id;
  else raise exception 'native_admin_invalid' using errcode='22023'; end if;
  insert into public.testing_report_followup(contribution_id,reject_reason) values(p_id,case when p_status in ('rejected','spam') then p_note else null end)
@@ -401,7 +400,13 @@ begin
   insert into private.admin_payment_issues values(p_environment,p_params->>'payment_id') on conflict do nothing;
   return '{}'::jsonb;
  elsif p_action='sync_admin_refund' then
-  perform public.native_admin_record_refund(p_environment,p_params->'refund'); return '{}'::jsonb;
+  begin
+   perform public.native_admin_record_refund(p_environment,p_params->'refund');
+  exception when data_exception or check_violation or object_not_in_prerequisite_state then
+   -- Roll back this refund only; an inconsistent invoice stays unavailable for payout.
+   insert into private.admin_payment_issues values(p_environment,p_params->'refund'->>'payment_id') on conflict do nothing;
+  end;
+  return '{}'::jsonb;
  elsif p_action='finish_payment_sync' then
   if jsonb_typeof(p_params->'account_ids') is distinct from 'array' or jsonb_array_length(p_params->'account_ids')>10000 then raise exception 'native_admin_invalid' using errcode='22023'; end if;
   insert into private.admin_payment_history(environment,account_id) select p_environment,value::uuid from jsonb_array_elements_text(p_params->'account_ids') on conflict do nothing;
@@ -573,6 +578,20 @@ begin
   and not exists(select 1 from private.admin_payments p join private.admin_payment_sync s using(environment) where p.environment=p_environment and p.account_id=(p_payment->>'account_id')::uuid and p.paid_at<s.last_synced_at) then
   insert into private.admin_payment_history values(p_environment,(p_payment->>'account_id')::uuid) on conflict do nothing;
  end if;
+end $$;
+
+create or replace function private.testing_report_status() returns trigger language plpgsql security definer set search_path='' as $$
+begin
+  if new.state is distinct from old.state then
+    insert into public.testing_report_followup(contribution_id) values(new.id) on conflict do nothing;
+    update public.testing_report_followup set updated_at=clock_timestamp() where contribution_id=new.id;
+    if new.state<>'fixed' then
+      update public.testing_report_followup set fixed_version=null,reviewed_title=null,reviewed_summary=null where contribution_id=new.id;
+    end if;
+    if new.state='fixed' and not exists(select 1 from public.testing_report_followup where contribution_id=new.id and fixed_version is not null) then
+      raise exception 'testing_report_fix_requires_review' using errcode='22023'; end if;
+  end if;
+  return new;
 end $$;
 
 commit;

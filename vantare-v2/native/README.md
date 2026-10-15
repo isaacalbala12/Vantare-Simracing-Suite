@@ -280,6 +280,8 @@ Los comparadores `hub/reference/compare.ps1`, `capture-alpha.ps1`,
 preparan manifiestos. Los scripts externos deben invocar el lote una vez,
 en lugar de un proceso por entrada. El mutex global y el turno `pantalla-ocupada` se comprueban dentro del proceso;
 no envolver la invocación con otro mutex del mismo nombre.
+`hub/src/testing/capture.ps1` solo permite copiar un HWND QA ya fuera de los
+monitores: rechaza teclas, clics y rueda; no lo activa ni lo recoloca.
 
 El recibo `salida.png.capture.json` enlaza el contenido de la PNG con SHA-256 de
 sus entradas: escena/datos, ajustes, tamaño, apariencia, ejecutable, DLL y

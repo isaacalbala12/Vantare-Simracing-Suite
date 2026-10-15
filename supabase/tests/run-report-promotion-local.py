@@ -9,7 +9,7 @@ p.add_argument('--only', nargs='*')
 p.add_argument('--baseline-summary', help='Compare every shared suite; fail on any regression')
 p.add_argument('--storage-schema', default=str(pathlib.Path.home()/'evidence/1608/r6/storage-schema.sql'), help='Schema-only dump from disposable local Storage')
 p.add_argument('--without-promotion', action='store_true')
-p.add_argument('--mutation',choices=['launch','launch-end','window','tier','spam','creator','deleted','idempotency','first-month','invoice','transfer','settlements','repair','first-refund','launch-used','checkout-proof','cleanup-inactive','invoice-gap','initial-incident','reward-expiry','accounts-deleted','attempt-required','tier-total','checkout-no-id'])
+p.add_argument('--mutation',choices=['launch','launch-end','window','tier','spam','creator','deleted','idempotency','first-month','invoice','transfer','settlements','repair','first-refund','launch-used','checkout-proof','cleanup-inactive','invoice-gap','initial-incident','reward-expiry','accounts-deleted','attempt-required','tier-total','checkout-no-id','checkout-owner-incident','reconciliation-item-incident'])
 a=p.parse_args(); root=pathlib.Path(a.root).resolve(); out=pathlib.Path(a.output).resolve(); out.mkdir(parents=True,exist_ok=True)
 if not (pathlib.Path.home()/'orq/docker.lock').is_dir(): raise SystemExit('Acquire ~/orq/docker.lock first')
 container='vantare-1593-'+str(int(time.time()))
@@ -42,6 +42,8 @@ try:
   if result.returncode: raise RuntimeError(migration.name+': '+result.stderr[-4000:])
  if a.mutation:
   signature, before, after = {
+   'checkout-owner-incident':('public.report_promotion_failed(uuid,text,text,timestamptz)',"if private.lock_account_write(p_account) then return; end if;","if p_code='promotion_checkout_owner_mismatch' then return; end if; if private.lock_account_write(p_account) then return; end if;"),
+   'reconciliation-item-incident':('public.billing_reconciliation_item_failed(text,text,text,text,timestamptz)',"insert into private.billing_reconciliation_item_failures(environment,resource,item_key,resource_id,first_at,last_at)","return; insert into private.billing_reconciliation_item_failures(environment,resource,item_key,resource_id,first_at,last_at)"),
    'accounts-deleted':('public.report_promotion_accounts(text,uuid)','and not exists(select 1 from public.account_identities i where i.account_id=p.account_id and i.deleted_at is not null)',''),
    'attempt-required':('public.report_promotion_checkout(uuid,text,text,timestamptz,uuid,uuid)',"if p_attempt is null then raise sqlstate '22023' using message='promotion_attempt_required'; end if;","null;"),
    'tier-total':('public.report_promotion_prepare(uuid,text,timestamptz)','p.reward_granted_at:=coalesce(p.reward_granted_at,grant_at);','p.reward_granted_at:=grant_at;'),

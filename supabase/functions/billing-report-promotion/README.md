@@ -1,4 +1,4 @@
-# Descuento por informes · #1593 / VANTA-39 · ronda 4
+# Descuento por informes · #1593 / VANTA-39 · ronda 5
 
 Candidato local de PR #1659. Catálogo vacío y flag ausente/false: no se activa.
 No crea productos, descuentos, enlaces, scheduler ni despliegue automáticamente.
@@ -238,11 +238,11 @@ Controles `--mutation`: launch, launch-end, window, tier, spam, creator,
 deleted, idempotency, first-month, invoice, transfer, settlements, repair,
 first-refund, launch-used, checkout-proof, cleanup-inactive, invoice-gap,
 initial-incident, reward-expiry, accounts-deleted, attempt-required, tier-total
-y checkout-no-id. Deben fallar; no se relajan tests ni cambian funciones de
-producto para dejarlos verdes. Deno cubre fallo de lote, checkout activado y
-clear/attach. Sin servicios reales ni sandbox autenticado. Facturas/renovaciones
-Polar reales, Windows, nueva revisión independiente y QA visual siguen
-pendientes.
+checkout-no-id, checkout-owner-incident y reconciliation-item-incident. Deben
+fallar; no se relajan tests ni cambian funciones de producto para dejarlos
+verdes. Deno cubre fallo de lote, checkout activado y clear/attach. Sin
+servicios reales ni sandbox autenticado. Facturas/renovaciones Polar reales,
+nueva revisión independiente y QA visual siguen pendientes.
 
 ## Reconciliación por elemento · ronda 4
 
@@ -254,3 +254,39 @@ falla, se informa incident_recorded=false. La página se termina, pero conserva
 su cursor para repetirla en la siguiente invocación; los elementos ya aplicados
 se deduplican. El handler sale del bucle y marca la pasada fallida, sin repetir
 ocho veces la misma página en una petición.
+
+## Acabado de recuperación y diagnóstico · ronda 5
+
+La app nativa traduce únicamente los códigos allowlisted 503
+promotion_checkout_recovery_pending / payment_pending y recovery_required, y 409
+promotion_checkout_plan_change_pending, a mensajes propios y seguros:
+esperar/comprobar el pago, conservar el primer mes o esperar al cambio de plan.
+No muestra prosa remota ni borra el intento durable al recibir estos códigos. El
+error HTTP genérico sigue vigente para códigos desconocidos y otros servicios.
+La comprobación Windows usa fixtures DPAPI y HTTP loopback; no acredita pagos
+reales ni QA visual del Hub.
+
+La espera sin ID usa retry_at del RPC y el reloj inyectado: minutos restantes
+redondeados hacia arriba, reintento inmediato si venció y texto sin plazo si
+falta o es inválido. No promete siempre treinta minutos: el intento puede tener
+un vencimiento posterior. El primer mes sigue perteneciendo a la cuenta.
+
+Un GET con dueño o producto distinto registra promotion_checkout_owner_mismatch
+en el mismo almacén privado de incidencias por cuenta/entorno antes de
+rechazarlo. El Owner lo recibe incluso sin suscripción. No devuelve su enlace ni
+libera su reserva por ese desajuste.
+
+Los fallos de subscriptions/refunds/disputes guardan historia operativa en
+private.billing_reconciliation_item_failures, con entorno, recurso, digest de
+identidad del elemento, ID remoto acotado si existe, código fijo, contador y
+primera/última fecha. Sin ID se guarda solo el digest del snapshot; nunca el
+cuerpo ni el mensaje del proveedor. La RPC es exclusiva de service_role, con
+owner postgres y search_path vacío; no se conceden accesos directos a la tabla.
+Es historia de fallos (no afirma que sigan abiertos); el operador puede
+consultarla en el entorno autorizado, ordenando por last_at para diagnosticar.
+La política de retención futura debe conservar la traza necesaria; no se añade
+una poda automática en este candidato.
+
+Si falla también el registro, incident_recorded=false y el cursor queda
+retenido: se reintentan elemento y registro sin abortar la página. Los huecos de
+órdenes siguen su registro contable existente visible al Owner.

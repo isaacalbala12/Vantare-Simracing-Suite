@@ -365,22 +365,27 @@ Deno.test("P3-25 incident-store outage retains the cursor; unidentified items ha
   const keys: string[] = [];
   let outage = true;
   const supabase = {
-    rpc: (_name: string, args: Record<string,unknown>) => {
+    rpc: (_name: string, args: Record<string, unknown>) => {
       keys.push(String(args.p_item_key));
-      assertEquals(args.p_resource_id,null);
-      return Promise.resolve({data:null,error:outage ? {code:"fixture"} : null});
+      assertEquals(args.p_resource_id, null);
+      return Promise.resolve({
+        data: null,
+        error: outage ? { code: "fixture" } : null,
+      });
     },
   } as unknown as SupabaseClient;
   const args = {
-    cursor:{resource:"disputes" as const,page:3},environment:"sandbox" as const,supabase,
-    page:{items:[{status:"bad-one"},{status:"bad-two"}],maxPage:3},
+    cursor: { resource: "disputes" as const, page: 3 },
+    environment: "sandbox" as const,
+    supabase,
+    page: { items: [{ status: "bad-one" }, { status: "bad-two" }], maxPage: 3 },
   };
   const first = await reconcilePage(args);
-  assertEquals(first.failed.map(f=>f.incident_recorded),[false,false]);
-  assertEquals(first.next,args.cursor);
+  assertEquals(first.failed.map((f) => f.incident_recorded), [false, false]);
+  assertEquals(first.next, args.cursor);
   outage = false;
   const retry = await reconcilePage(args);
-  assertEquals(retry.failed.map(f=>f.incident_recorded),[true,true]);
-  assertEquals(keys.slice(0,2),keys.slice(2));
-  assertEquals(keys[0] === keys[1],false);
+  assertEquals(retry.failed.map((f) => f.incident_recorded), [true, true]);
+  assertEquals(keys.slice(0, 2), keys.slice(2));
+  assertEquals(keys[0] === keys[1], false);
 });

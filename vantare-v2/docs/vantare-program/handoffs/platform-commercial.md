@@ -1,3 +1,33 @@
+## #1593 / VANTA-39 · ronda 5 entregada al bare · 16/10/2026
+
+PR #1659, rama vantareapp/isa-1593-descuento-informes; base de ronda
+011ca3cbe (R4 APTO), base de rama 3f82af867. Commits por punto:
+c1402432 (P3-23 plazo real retry_at), b0974da6 (P3-24 desajuste dueño/producto
+visible al Owner), 15bcd59f (P3-25 historia durable por elemento no-orden) y
+6cc7e663 (P3-22 mensajes locales en app, conserva UUID y no muestra prosa remota).
+Regresiones RED→GREEN de los cuatro puntos. SQL167/167, Edge648PASS/0FAIL y
+dos ignores históricos. Dos controles SQL nuevos fallan al quitar las incidencias.
+Catálogo contra base 3f82af867: 59→60 suites,33→34PASS,26rojas idénticas,
+1266→1433 aserciones,0regresiones. Runner NOSUPERUSER BYPASSRLS, Docker/Edge
+en Mac con lock/trap, sin servicios reales.
+
+Nightly remoto ahora eb553c7fe, con miniapp #1639 y tooling. Comparación nueva
+desde snapshot exacto: SQL74suites/48PASS/26FAIL; las59 comunes son idénticas a
+esta rama (15 nuevas de miniapp no están en la base aislada). Edge643PASS/0FAIL/
+2ignored. PR remoto sigue011ca3cbe y GitHub marca CONFLICTING; requiere
+integración del conjunto y CI del SHA final por el orquestador, no se acredita
+un candidato integrado con ese nightly.
+
+Rust Windows: fmt/check/Clippy y Nextest servicios188PASS/2skips, incluidos
+procesos reales con fixtures. Workspace completo: fmt/check/Clippy PASS,
+Nextest1786/1786 (14 skips del perfil existente) y lifecycle18/18 PASS.
+Ejecución secuencial por compilar.ps1,MIN_GB=0,jobs2 y targets propios que se
+eliminan al cerrar. Sin cambios en runtime/domain/IPC/testdata; telemetría
+no repetida. SHA final/pushbare y limpieza verificados en buzón e issue.
+Plane pasa a Por revisar al cerrar desde servidor. Evidencia Mac
+~/evidence/1593-r5 y servidor C:/VantareServer/evidence/1593-r5.
+Campaña inerte; sin Polar/Clerk reales, productos, deploy, merge ni release.
+
 ## #1593 / VANTA-39 · Ronda 4 entregada al bare · 15/10/2026
 
 Base de ronda d90b8ec04 ya publicada en PR draft #1659 por el orquestador.

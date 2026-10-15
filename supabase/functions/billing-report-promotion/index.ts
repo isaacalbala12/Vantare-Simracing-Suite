@@ -65,12 +65,16 @@ export async function runPromotionBatch(
           return deps.client.change(id, discount);
         },
       };
+      let observedDiscount: string | null = null;
       await synchronizeDiscount(client, {
         subscriptionId: operation.subscription_id,
         productId: operation.product_id,
         discountId: operation.discount_id,
         managedDiscountIds: operation.managed_discount_ids,
         normalCents: operation.normal_cents,
+        observed: (discount) => {
+          observedDiscount = discount;
+        },
         repair: operation.repair,
         phase: operation.phase,
         markCleared: async () => {
@@ -85,6 +89,7 @@ export async function runPromotionBatch(
       });
       if (
         await deps.rpc("report_promotion_ack", {
+          p_observed_discount: observedDiscount,
           p_id: operation.id,
           p_token: token,
           p_now: deps.now().toISOString(),

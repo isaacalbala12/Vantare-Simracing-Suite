@@ -20,7 +20,7 @@ insert into public.profiles(id) select ('15930000-0000-4000-8000-'||lpad(i::text
 insert into public.account_identities(issuer,subject,account_id) select 'https://promotion.clerk.invalid','user_'||replace(id::text,'-',''),id from public.profiles where id::text like '15930000%';
 insert into private.report_promotion_catalog values
  ('sandbox','pro','pro',599,399,'pro1','pro3','pro6'),('sandbox','plus','pro_plus',999,699,'plus1','plus3','plus6');
-insert into private.report_promotion_creators values('sandbox','pro','creator'),('sandbox','plus','creator');
+insert into private.report_promotion_creators values('sandbox','pro','creator',2000,2,'2026-10-01'),('sandbox','plus','creator',2000,2,'2026-10-01');
 create function pg_temp.account(n int) returns uuid language sql as $$select ('15930000-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid$$;
 select is(public.report_promotion_checkout(pg_temp.account(1),'sandbox','pro','2026-10-26 19:00 Europe/Madrid'),'pro1','first month launch discount');
 select is(public.report_promotion_checkout(pg_temp.account(1),'sandbox','plus','2026-10-26 19:00 Europe/Madrid'),'plus1','Plus first month launch discount');
@@ -75,6 +75,9 @@ select is(public.report_promotion_prepare(pg_temp.account(1),'sandbox','2026-11-
 select is((select tier from private.report_promotions where account_id=pg_temp.account(1)),6,'maximum tier six');
 select pg_temp.report(2,'2026-10-27 19:00 Europe/Madrid'); select pg_temp.report(2,'2026-10-28 19:00 Europe/Madrid');
 select is(public.report_promotion_prepare(pg_temp.account(2),'sandbox','2026-11-01')->>'discount_id','plus3','Plus reward 3 EUR beats creator 20 percent');
+update private.report_promotion_creators set basis_points=4000 where product_id='plus';
+select is(public.report_promotion_prepare(pg_temp.account(2),'sandbox','2026-11-01')->>'discount_id','creator','P3-1 validated 40 percent creator beats fixed Plus reward');
+update private.report_promotion_creators set basis_points=2000 where product_id='plus';
 select is(public.report_promotion_prepare(pg_temp.account(8),'sandbox','2026-11-01')->>'discount_id','creator','without reward creator wins next invoice');
 select pg_temp.report(6,'2026-10-27 19:00 Europe/Madrid'); select pg_temp.report(6,'2026-10-28 19:00 Europe/Madrid');
 select public.report_promotion_prepare(pg_temp.account(6),'sandbox','2026-11-01');

@@ -249,3 +249,41 @@ Deno.test("P2-2 expired repeating coupon repairs through durable clear/attach an
   );
   assertEquals(writes, 2);
 });
+Deno.test("P3-2 campaign expiry preserves external and expired creator coupons without a PATCH", async () => {
+  for (const coupon of ["external-forever", "creator-two-months"]) {
+    let writes = 0;
+    let observed: string | null = null;
+    const client = {
+      read: () =>
+        Promise.resolve({
+          id: "sub",
+          product_id: "product",
+          status: "active",
+          discount_id: coupon,
+          amount: 599,
+          currency: "eur",
+          recurring_interval: "month",
+          recurring_interval_count: 1,
+        }),
+      change: () => {
+        writes++;
+        throw new Error("must preserve foreign benefit");
+      },
+    };
+    assertEquals(
+      await synchronizeDiscount(client, {
+        subscriptionId: "sub",
+        productId: "product",
+        discountId: null,
+        normalCents: 599,
+        managedDiscountIds: ["reward3"],
+        observed: (id) => {
+          observed = id;
+        },
+      }),
+      false,
+    );
+    assertEquals(writes, 0);
+    assertEquals(observed, coupon);
+  }
+});

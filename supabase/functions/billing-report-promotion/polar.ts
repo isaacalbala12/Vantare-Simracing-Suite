@@ -68,6 +68,7 @@ export async function synchronizeDiscount(client: DiscountClient, expected: {
   discountId: string | null;
   managedDiscountIds?: (string | null)[];
   normalCents: number;
+  observed?: (discountId: string | null) => void;
   repair?: boolean;
   phase?: "pending" | "cleared";
   markCleared?: () => Promise<void>;
@@ -82,6 +83,12 @@ export async function synchronizeDiscount(client: DiscountClient, expected: {
     current.recurring_interval !== "month" ||
     current.recurring_interval_count !== 1
   ) throw new Error("polar_discount_catalog_mismatch");
+  expected.observed?.(current.discount_id);
+  // Finishing our campaign never removes a benefit belonging to another one.
+  if (
+    expected.discountId === null && current.discount_id !== null &&
+    !expected.managedDiscountIds?.includes(current.discount_id)
+  ) return false;
   if (expected.repair && expected.phase !== "cleared") {
     if (!expected.markCleared) throw new Error("polar_repair_unconfigured");
     if (current.discount_id === expected.discountId) {
@@ -107,5 +114,6 @@ export async function synchronizeDiscount(client: DiscountClient, expected: {
     updated.discount_id !== expected.discountId ||
     updated.product_id !== expected.productId
   ) throw new Error("polar_discount_not_applied");
+  expected.observed?.(updated.discount_id);
   return true;
 }

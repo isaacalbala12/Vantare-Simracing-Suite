@@ -161,7 +161,14 @@ cobros futuros. Los dos spams impiden nuevos tramos; los meses que ya estaban
 concedidos se terminan de servir.
 
 Ronda 2 · P2-3: cada cliente se procesa con captura de error propia. El fallo
-queda en SQL (código cerrado, intentos y fechas, sin respuesta HTTP bruta), aparece
-en el payload Owner y en `failed` del lote. Las demás cuentas y la paginación
-continúan. La operación no se confirma; un éxito posterior resuelve su marca.
-El kill switch sí detiene deliberadamente los efectos del lote.
+queda en SQL (código cerrado, intentos y fechas, sin respuesta HTTP bruta),
+aparece en el payload Owner y en `failed` del lote. Las demás cuentas y la
+paginación continúan. La operación no se confirma; un éxito posterior resuelve
+su marca. El kill switch sí detiene deliberadamente los efectos del lote.
+
+Ronda 2 · P3-1/2: los creadores autorizados incluyen `basis_points`, duración
+exacta de dos meses y fecha de validación del catálogo Polar (tipo porcentaje y
+scope del producto verificados por el operador). El ahorro se calcula con ese
+valor; un 40 % autorizado puede ganar al tramo fijo. Al acabar esta campaña solo
+se retiran IDs propios de lanzamiento/informes. Un beneficio externo, incluido
+el de creador, se conserva y no se vuelve a aplicar para prolongar su duración.

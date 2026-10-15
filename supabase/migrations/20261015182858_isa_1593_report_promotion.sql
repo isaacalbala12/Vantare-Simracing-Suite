@@ -17,6 +17,9 @@ create table private.report_promotion_catalog (
 -- Explicit allowlist: creator codes from other campaigns/products are never imported.
 create table private.report_promotion_creators (
  environment text not null, product_id text not null, discount_id text not null,
+ basis_points integer not null check(basis_points between 1 and 10000),
+ duration_in_months integer not null check(duration_in_months=2),
+ validated_at timestamptz not null,
  primary key(environment,product_id,discount_id),
  foreign key(environment,product_id) references private.report_promotion_catalog
 );
@@ -198,7 +201,7 @@ returns jsonb language sql stable security definer set search_path='' as $$
    and r.decided_at<=p_now),
  'spam',(select count(*) from public.testing_contributions c join public.testing_contribution_reviews r on r.contribution_id=c.id
    where c.account_id=p.account_id and r.decision='spam' and c.created_at>=p.subscribed_at and r.decided_at<=p_now),
- 'last_error',(select f.code from private.report_promotion_failures f where f.account_id=p.account_id and f.environment=p.environment and f.resolved_at is null),'tier',p.tier,'forfeited',p.forfeited,'active_discount',case when p.applied_at is null then p.remote_discount else p.applied_discount end,'applied_at',p.applied_at,
+ 'last_error',(select f.code from private.report_promotion_failures f where f.account_id=p.account_id and f.environment=p.environment and f.resolved_at is null),'tier',p.tier,'forfeited',p.forfeited,'active_discount',p.remote_discount,'applied_at',p.applied_at,
  'reward_until',p.reward_until,'window_end',p.subscribed_at+interval '1080 hours')
  from private.report_promotions p where account_id=p_account and environment=p_environment
  and not exists(select 1 from public.account_identities i where i.account_id=p.account_id and i.deleted_at is not null)
@@ -208,7 +211,7 @@ $$;
 create function public.report_promotion_prepare(p_account uuid,p_environment text,p_now timestamptz default clock_timestamp())
 returns jsonb language plpgsql security definer set search_path='' as $$
 declare p private.report_promotions; s public.billing_subscriptions; c private.report_promotion_catalog;
- stats jsonb; earned integer; desired text; next_bill timestamptz; op private.report_promotion_changes; prior private.report_promotion_transfers; target_sub text; target_product text; action_kind text:='apply'; spent integer; repair text;
+ stats jsonb; earned integer; desired text; next_bill timestamptz; op private.report_promotion_changes; prior private.report_promotion_transfers; target_sub text; target_product text; action_kind text:='apply'; spent integer; repair text; creator private.report_promotion_creators;
 begin
  if private.lock_account_write(p_account) then return null; end if;
  select * into p from private.report_promotions where account_id=p_account and environment=p_environment for update;
@@ -247,8 +250,10 @@ begin
  next_bill:=coalesce(s.current_period_end,p_now); -- creator comparison only; never reward budget
  -- Compare actual cents, never stack. Ties keep the report reward. Creator is
  -- available for the first two calendar months only; reports never affect invoice 1.
- if p.creator_discount is not null and next_bill<private.report_promotion_months(p.subscribed_at,2)
-  and (desired is null or round(c.normal_cents*0.20)>c.normal_cents-c.launch_cents) then desired:=p.creator_discount; end if;
+ select * into creator from private.report_promotion_creators where environment=p_environment and product_id=p.product_id and discount_id=p.creator_discount;
+ if found and p_now<private.report_promotion_months(p.subscribed_at,creator.duration_in_months)
+  and next_bill<private.report_promotion_months(p.subscribed_at,creator.duration_in_months)
+  and (desired is null or round(c.normal_cents*creator.basis_points/10000.0)>c.normal_cents-c.launch_cents) then desired:=p.creator_discount; repair:=null; end if;
  update private.report_promotions set tier=p.tier,reward_granted_at=p.reward_granted_at,reward_from=p.reward_from,reward_until=p.reward_until,forfeited=p.forfeited
   where account_id=p_account and environment=p_environment;
  target_sub:=p.subscription_id; target_product:=p.product_id;
@@ -265,11 +270,11 @@ begin
    op.id:=null;
  end if;
  if op.id is null then
-   if repair is null and action_kind='apply' and p.applied_at is not null and p.applied_discount is not distinct from desired and p.remote_discount is not distinct from desired then return null; end if;
+   if repair is null and action_kind='apply' and p.applied_at is not null and p.applied_discount is not distinct from desired and (p.remote_discount is not distinct from desired or (desired is null and not exists(select 1 from private.report_promotion_catalog x where x.environment=p_environment and p.remote_discount in (x.launch_discount,x.reward3_discount,x.reward6_discount)))) then return null; end if;
    insert into private.report_promotion_changes(account_id,environment,discount_id,tier,subscription_id,product_id,kind,repair_order_id) values(p_account,p_environment,desired,p.tier,target_sub,target_product,action_kind,repair) returning * into op;
  end if;
  return jsonb_build_object('id',op.id,'subscription_id',op.subscription_id,'product_id',op.product_id,'kind',op.kind,'repair',op.repair_order_id is not null,'phase',op.phase,'remaining',greatest(0,p.tier-spent),
-  'discount_id',op.discount_id,'tier',op.tier,'normal_cents',c.normal_cents,'managed_discount_ids',(select jsonb_agg(d) from (select unnest(array[x.launch_discount,x.reward3_discount,x.reward6_discount]) d from private.report_promotion_catalog x where x.environment=p_environment union select p.creator_discount where op.kind='apply') discounts));
+  'discount_id',op.discount_id,'tier',op.tier,'normal_cents',c.normal_cents,'managed_discount_ids',(select jsonb_agg(d) from (select unnest(array[x.launch_discount,x.reward3_discount,x.reward6_discount]) d from private.report_promotion_catalog x where x.environment=p_environment union select p.creator_discount where op.kind='apply' and op.discount_id is not null) discounts));
 end $$;
 
 -- Revalidate immediately before HTTP, and again at ACK, using the same B03 UUID lock.
@@ -296,7 +301,7 @@ begin
 end $$;
 revoke all on function public.report_promotion_cleared(uuid,uuid,timestamptz) from public,anon,authenticated;
 grant execute on function public.report_promotion_cleared(uuid,uuid,timestamptz) to service_role;
-create function public.report_promotion_ack(p_id uuid,p_token uuid,p_now timestamptz default clock_timestamp()) returns boolean
+create function public.report_promotion_ack(p_id uuid,p_token uuid,p_now timestamptz default clock_timestamp(),p_observed_discount text default null) returns boolean
 language plpgsql security definer set search_path='' as $$
 declare op private.report_promotion_changes;
 begin
@@ -308,7 +313,7 @@ begin
  if op.kind='cleanup' then
    update private.report_promotion_transfers set cleared_at=p_now where account_id=op.account_id and environment=op.environment and subscription_id=op.subscription_id and product_id=op.product_id and cleared_at is null;
  else
-   update private.report_promotions set applied_discount=op.discount_id,remote_discount=op.discount_id,applied_at=p_now,repaired_order_id=coalesce(op.repair_order_id,repaired_order_id) where account_id=op.account_id and environment=op.environment and subscription_id=op.subscription_id and product_id=op.product_id;
+   update private.report_promotions set applied_discount=op.discount_id,remote_discount=coalesce(p_observed_discount,op.discount_id),applied_at=p_now,repaired_order_id=coalesce(op.repair_order_id,repaired_order_id) where account_id=op.account_id and environment=op.environment and subscription_id=op.subscription_id and product_id=op.product_id;
  end if;
  return true;
 end $$;
@@ -331,8 +336,8 @@ revoke all on function private.native_admin_account_before_1593(uuid,text,text),
  from public,anon,authenticated,service_role;
 revoke all on function public.report_promotion_observe(uuid,text,text,text,timestamptz,timestamptz,text),
  public.report_promotion_prepare(uuid,text,timestamptz),public.report_promotion_claim(uuid,uuid,timestamptz),
- public.report_promotion_ack(uuid,uuid,timestamptz),public.report_promotion_accounts(text,uuid) from public,anon,authenticated;
+ public.report_promotion_ack(uuid,uuid,timestamptz,text),public.report_promotion_accounts(text,uuid) from public,anon,authenticated;
 grant execute on function public.report_promotion_observe(uuid,text,text,text,timestamptz,timestamptz,text),
  public.report_promotion_prepare(uuid,text,timestamptz),public.report_promotion_claim(uuid,uuid,timestamptz),
- public.report_promotion_ack(uuid,uuid,timestamptz),public.report_promotion_accounts(text,uuid) to service_role;
+ public.report_promotion_ack(uuid,uuid,timestamptz,text),public.report_promotion_accounts(text,uuid) to service_role;
 commit;

@@ -15,7 +15,14 @@ def main():
     repo = pathlib.Path(__file__).resolve().parents[2]
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--target-dir", required=True, type=pathlib.Path)
-    target = parser.parse_args().target_dir.resolve()
+    parser.add_argument("--test-bin", type=pathlib.Path,
+                        help="test UI ya compilado; no compilar mientras Isaac espera")
+    args = parser.parse_args()
+    target = args.target_dir.resolve()
+    test_bin = args.test_bin.resolve() if args.test_bin else None
+    if test_bin and (not test_bin.is_file() or test_bin.parent != target / "debug/deps"
+                     or not test_bin.name.startswith("vantare_ui-") or test_bin.suffix != ".exe"):
+        raise RuntimeError("--test-bin debe ser un test vantare_ui del target propio")
     core = target / "debug/vantare-core.exe"
     if pathlib.Path("C:/tmp/buzon/pc-medicion.lock").exists():
         raise RuntimeError("medición ajena en curso; no iniciar procesos QA")
@@ -43,13 +50,19 @@ def main():
             VANTARE_NATIVE_DATA_ROOT=str(data),
             VANTARE_1638_LIVE_PIPE=pipe, VANTARE_1638_CORE_IMAGE=str(core),
         )
-        return subprocess.call([
+        command = [
             "pwsh", "-NoProfile", "-File", "native/scripts/compilar.ps1",
             "cargo", "test", "--manifest-path", "native/Cargo.toml", "-p", "vantare-ui",
             "--lib", "--features", "vantare-services/network", "--locked", "--offline",
             "--target-dir", str(target), "-j", test_environment["CARGO_BUILD_JOBS"], "demand::tests::live_lmu_photos_preserve_every_widget_projection",
             "--", "--ignored", "--exact", "--nocapture",
-        ], cwd=repo, env=test_environment)
+        ]
+        if test_bin:
+            command = [str(test_bin),
+                       "demand::tests::live_lmu_photos_preserve_every_widget_projection",
+                       "--ignored", "--exact", "--nocapture"]
+        return subprocess.call(command, cwd=repo, env=test_environment,
+                               creationflags=subprocess.CREATE_NO_WINDOW, timeout=180)
     finally:
         child.stdin.close()  # EOF es la cancelación ordenada del Core productivo.
         try:

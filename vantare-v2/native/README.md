@@ -177,6 +177,11 @@ retiró: ver `docs/analysis/fase0-medicion-2026-09-29.md`.
 
 ## Desarrollar en Linux y macOS
 
+> **CI de Linux retirada (#1654, ronda 9, opción C).** El producto es Windows; el job `native-linux`
+> se ha eliminado de `quality.yml` (quedaban 27 tests `#[cfg(unix)]` frente a 1806 solo-Windows y ~18 min
+> por PR). El desarrollo local en Linux/macOS sigue soportado por la base Unix (#1437) y este README, pero
+> ya no lo verifica la CI: si se retoma, volver a añadir el job (histórico en el cuaderno de #1654).
+
 La base Unix (#1437) permite compilar y probar en Linux y macOS el workspace
 completo:
 los 13 crates listados arriba, incluido `strategy` en el mismo workspace. IPC usa los mismos DTO,

@@ -369,7 +369,7 @@ begin
    select r.decided_at into grant_at from public.testing_contributions t join public.testing_contribution_reviews r on r.contribution_id=t.id
    where t.account_id=p_account and t.state in ('accepted','fixed') and r.decision='accepted' and t.created_at>=p.subscribed_at and t.created_at<p.subscribed_at+interval '1080 hours'
    and r.decided_at<=p_now and (p.forfeited_at is null or r.decided_at<p.forfeited_at) order by r.decided_at,t.id offset (case earned when 6 then 4 else 1 end) limit 1;
-   p.tier:=earned; p.reward_granted_at:=grant_at;
+   p.tier:=earned; p.reward_granted_at:=coalesce(p.reward_granted_at,grant_at);
    select reward_valid_months into strict valid_months from private.report_promotion_policy where singleton;
    p.reward_expires_at:=private.report_promotion_months(grant_at,valid_months);
  end if;

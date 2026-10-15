@@ -18,7 +18,7 @@ select ok(not has_function_privilege('anon','public.report_promotion_prepare(uui
 select ok(not has_table_privilege('service_role','private.report_promotions','insert'),'no direct service writes');
 select is((select count(*)::int from pg_class where oid in ('private.report_promotions'::regclass,'private.report_promotion_changes'::regclass,'private.report_promotion_catalog'::regclass,'private.report_promotion_creators'::regclass) and relrowsecurity),4,'all new tables RLS');
 insert into private.clerk_issuers values('https://promotion.clerk.invalid',array['https://app.invalid'],true);
-insert into public.profiles(id) select ('15930000-0000-4000-8000-'||lpad(i::text,12,'0'))::uuid from generate_series(1,20)i;
+insert into public.profiles(id) select ('15930000-0000-4000-8000-'||lpad(i::text,12,'0'))::uuid from generate_series(1,40)i;
 insert into public.account_identities(issuer,subject,account_id) select 'https://promotion.clerk.invalid','user_'||replace(id::text,'-',''),id from public.profiles where id::text like '15930000%';
 insert into private.report_promotion_catalog values
  ('sandbox','pro','pro',599,399,'pro1','pro3','pro6'),('sandbox','plus','pro_plus',999,699,'plus1','plus3','plus6');
@@ -288,5 +288,24 @@ select ok((select first_refunded from private.report_promotions where account_id
 select ok(not exists(select 1 from private.report_promotion_changes where account_id=pg_temp.account(16) and applied_at is null and superseded_at is null and discount_id is not null),'P2-5 refund still withdraws pending report benefits despite another invoice gap');
 select ok(not has_function_privilege('authenticated','public.report_promotion_checkout_pending(uuid,text,timestamptz)','execute'),'P1-2 checkout recovery is server-only');
 select ok(not has_function_privilege('authenticated','public.report_promotion_invoice_missing(text,text,timestamptz)','execute'),'P2-5 client cannot forge an invoice gap');
+-- R4 P2-8: the higher tier is six TOTAL discounted renewals, including earlier use.
+update private.report_promotion_policy set reward_valid_months=6;
+select pg_temp.enroll(21);
+select pg_temp.report(21,'2026-10-27 19:00 Europe/Madrid'); select pg_temp.report(21,'2026-10-28 19:00 Europe/Madrid');
+select public.report_promotion_prepare(pg_temp.account(21),'sandbox','2026-11-01');
+select pg_temp.invoice(21,'between-tiers21','2026-11-26 19:00 Europe/Madrid','pro3',200);
+select is(public.report_promotion_prepare(pg_temp.account(21),'sandbox','2026-11-27')->>'remaining','2','P2-8 first tier has already spent one real renewal');
+create temporary table delayed_acceptances as select pg_temp.report(21,d) id from (values('2026-11-02 19:00 Europe/Madrid'::timestamptz),('2026-11-03 19:00 Europe/Madrid'::timestamptz),('2026-11-09 19:00 Europe/Madrid'::timestamptz)) dates(d);
+update public.testing_contribution_reviews set decided_at='2026-12-01 19:00 Europe/Madrid' where contribution_id in (select id from delayed_acceptances);
+select is(public.report_promotion_prepare(pg_temp.account(21),'sandbox','2026-12-02')->>'remaining','5','P2-8 tier upgrade preserves settled usage and grants only five remaining months');
+select is((select reward_granted_at from private.report_promotions where account_id=pg_temp.account(21)),'2026-10-28 19:00 Europe/Madrid'::timestamptz,'P2-8 consumption remains anchored to the first human grant');
+select is((select reward_expires_at from private.report_promotions where account_id=pg_temp.account(21)),'2027-06-01 19:00 Europe/Madrid'::timestamptz,'P2-8 expiry still belongs to the new tier grant');
+select pg_temp.invoice(21,'total-two21','2026-12-26 19:00 Europe/Madrid','pro3',200);
+select pg_temp.invoice(21,'total-three21','2027-01-26 19:00 Europe/Madrid','pro3',200);
+select pg_temp.invoice(21,'total-four21','2027-02-26 19:00 Europe/Madrid','pro3',200);
+select pg_temp.invoice(21,'total-five21','2027-03-26 19:00 Europe/Madrid','pro1',200);
+select pg_temp.invoice(21,'total-six21','2027-04-26 19:00 Europe/Madrid','pro1',200);
+select is(public.report_promotion_prepare(pg_temp.account(21),'sandbox','2027-04-27')->>'remaining','0','P2-8 six settled renewals exhaust both tiers together');
+select is(public.report_promotion_prepare(pg_temp.account(21),'sandbox','2027-04-27')->>'discount_id',null::text,'P2-8 no seventh discounted renewal is granted');
 select * from finish();
 rollback;

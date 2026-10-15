@@ -17,8 +17,8 @@ upgrade aparte.
   tiempo es válido. No se añaden descuentos anuales.
 - Primer mes a lanzamiento. Desde el segundo, normal salvo tramo: 2 aceptados
   dan **3 cobros mensuales rebajados**; 5 dan **6** en sustitución del tramo
-  menor. El mayor empieza con sus seis cobros siguientes, no suma meses de ambos
-  tramos.
+  menor. El mayor permite seis cobros **en total**: descuenta los ya consumidos con
+  el tramo menor; nunca son 3+6 acumulados.
 - Se consumen periodos únicos de órdenes `subscription_cycle` /
   `subscription_cycle_after_trial` **pagadas**, con el descuento del tramo,
   importe de descuento positivo y una línea completa sin prorrateo.
@@ -184,7 +184,8 @@ private.report_promotion_policy.reward_valid_months (fila singleton, inicial 6,
 rango 1..120, solo operador de base). La duración se guarda como
 reward_expires_at al conceder un nuevo tramo; cambiar la configuración afecta
 solo a nuevas concesiones. El tramo mayor sustituye al menor y obtiene su plazo
-desde la quinta aceptación; no suma los saldos de ambos.
+desde la quinta aceptación. El consumo conserva la fecha de la primera
+concesión: subir a seis no repone los meses ya consumidos del tramo de tres.
 
 El límite es exclusivo. Al vencer no se puede asociar ni rearmar otro cupón, y
 las operaciones pendientes se invalidan. **Un bloque finito ya confirmado se

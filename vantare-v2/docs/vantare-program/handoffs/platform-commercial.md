@@ -1,3 +1,11 @@
+## #1593 / VANTA-39 · Ronda 4 en curso · 15/10/2026
+
+Base d90b8ec04 publicada por el orquestador en PR #1659. Mac ~/wt-1593,
+misma rama y nightly3f82af867. Informe R3 leído completo. P2-8 corregido:
+seis cobros en total, conservando consumo del tramo menor; caducidad del tramo
+nuevo independiente. Regresión RED→GREEN con factura liquidada entre tramos.
+Faltan recuperación sin ID, robustez por elemento y controles de R4.
+
 ## #1593 / VANTA-39 · Ronda 3 entregada al bare · 15/10/2026
 
 PR draft [#1659](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1659),

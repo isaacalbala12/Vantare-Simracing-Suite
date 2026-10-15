@@ -22,7 +22,12 @@ script y estado previos también en `/var/lib/vantare/vigilante-backup-1647/`.
 [Operación, límites y reversión](../../../../tools/server/vigilante-plane.md).
 Siguiente: revisar la PR borrador apilada contra #1583; al integrar en nightly,
 conservar la CLI existente y aplicar su firma/test (la base antigua no los tenía).
-PR, SHA, CI y última comprobación quedan en #1647 y `C:/tmp/buzon/1647.md`.
+PR borrador [#1649](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1649)
+contra la rama #1583; commit de implementación `ea03795c5`, subido a origin.
+Pasada programada posterior verificada: `Result=success`, `ExecMainStatus=0`,
+382 observados y 0 pendientes. GitGuardian PASS; CI de calidad/native pendiente
+al abrir la PR. HEAD final, CI y última comprobación en #1647 y
+`C:/tmp/buzon/1647.md`. Sin integración en nightly/testers/master.
 
 ## 1. Resultado
 

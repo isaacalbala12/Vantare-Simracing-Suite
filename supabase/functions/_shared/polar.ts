@@ -773,7 +773,7 @@ export async function synchronizeRenewalDiscount(
           ? { body: JSON.stringify({ discount_id: expected.discountId }) }
           : {}),
       },
-      {...deps,timeoutMs:10000,maxRateLimitRetries:0},
+      { ...deps, timeoutMs: 10000, maxRateLimitRetries: 0 },
       async (response) => {
         if (!response.ok) throw new Error("creator_discount_http_failed");
         const value = await response.json();

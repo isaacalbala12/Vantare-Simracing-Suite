@@ -41,8 +41,8 @@ El archivo contiene organización, producto, precio y contratos de derecho,
 sin secretos; no se repiten esos IDs en código, SQL ni textos.
 
 La entrada exige `plan_sku: "founders"`, `billing_type: "one_time"`,
-`lifetime: true`, `active: true`, `capabilities: ["vantare.plan.founders"]`,
-`channels: ["stable"]`, `launch_scope_version: null`, `trial: {"enabled": false}`,
+`lifetime: true`, `active: true`, `capabilities: ["vantare.plan.founders", "vantare.channel.nightly"]`,
+`channels: ["stable", "nightly"]`, `launch_scope_version: null`, `trial: {"enabled": false}`,
 `entitlement_product_key: "bundle"`. Ausencia de entrada deja compra deshabilitada.
 No retirar el mapping después del cierre: lo necesitan reembolsos y reconciliación.
 Configurar no equivale a desplegar ni habilitar ventas antes de la beta pública.

@@ -71,11 +71,7 @@
   "creator_renewals": {
     "monthly_duration_months": 11,
     "annual_duration_months": 12,
-    "monthly_max_discounted_renewals": 11,
-    "annual_max_discounted_renewals": 1,
     "first_period_discount": false,
-    "public_polar_code": false,
-    "report_tie_break": "reports",
-    "duration_anchor": "first_discounted_renewal"
+    "public_polar_code": false
   }
 }

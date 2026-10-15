@@ -201,7 +201,6 @@ function launchDiscountMatches(
 }
 function creatorMatches(
   discount: Resource,
-  code: string,
   ids: string[],
   annual = false,
 ) {
@@ -468,7 +467,7 @@ export async function syncCatalog(http: Http, raw: unknown, options: Options) {
   if (
     creatorDiscount &&
     (!creator || idsBefore.length !== PRICES.plans.length ||
-      !creatorMatches(creatorDiscount, creator, monthlyIdsBefore))
+      !creatorMatches(creatorDiscount, monthlyIdsBefore))
   ) throw Error("Creator discount drift; review manually");
   const annualIdsBefore = PRICES.plans.filter((p) => p.interval === "year").map(
     (p) => selected.get(p.key)?.id,
@@ -485,7 +484,7 @@ export async function syncCatalog(http: Http, raw: unknown, options: Options) {
   let annualCreator = annualMatches[0] as Resource | undefined;
   if (
     annualCreator &&
-    (!creator || !creatorMatches(annualCreator, creator, annualIdsBefore, true))
+    (!creator || !creatorMatches(annualCreator, annualIdsBefore, true))
   ) throw Error("Annual creator discount drift");
   const liveInventory = options.environment === "production"
     ? await verifyEmptyProductionInventory(
@@ -515,7 +514,6 @@ export async function syncCatalog(http: Http, raw: unknown, options: Options) {
       renewal_cents: number;
     }
   > = {};
-  const normalIds: string[] = [];
   for (const plan of PRICES.plans) {
     const previous = map.checkout_keys[plan.key];
     const plus = plan.key.startsWith("pro_plus_");
@@ -572,7 +570,6 @@ export async function syncCatalog(http: Http, raw: unknown, options: Options) {
       throw Error(`Price response mismatch ${plan.key}`);
     }
     priceIds.add(price.id);
-    normalIds.push(product.id);
     let discount = selectedDiscounts.get(plan.key);
     if (!discount) {
       discount = await http("POST", "/discounts/", {
@@ -627,7 +624,6 @@ export async function syncCatalog(http: Http, raw: unknown, options: Options) {
       creatorDiscount.organization_id !== map.organization_id ||
       !creatorMatches(
         creatorDiscount,
-        creator,
         PRICES.plans.filter((p) => p.interval === "month").map((p) =>
           map.checkout_keys[p.key]!.polar_product_id
         ),
@@ -656,7 +652,7 @@ export async function syncCatalog(http: Http, raw: unknown, options: Options) {
     }
     if (
       annualCreator.organization_id !== map.organization_id ||
-      !creatorMatches(annualCreator, creator, annualIds, true)
+      !creatorMatches(annualCreator, annualIds, true)
     ) throw Error("Annual creator response mismatch");
     map.creator_annual_discounts = {
       ...map.creator_annual_discounts,

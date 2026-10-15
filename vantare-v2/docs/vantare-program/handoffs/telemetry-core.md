@@ -92,7 +92,8 @@ Disco agotado interrumpe compilación UI/lifecycle antes de ejecutar sus tests;
 logs de fallo conservados. Se recupera espacio solo con `cargo clean` sobre
 target-1638 (runtime/UI y Release), sin borrar evidencias. Repetición en
 `C:/tmp/1638-recovered-*.log`: fmt PASS, UI **321/321** (5 skips), lifecycle
-**13/13**; telemetría completa en curso (21/30 sin fallos al guardar este hito).
+**13/13**; telemetría completa **30/30**, 1 skip físico opt-in, exit 0 en
+1038,911 s; ACC completo **974,046 s**. No quedan gates locales en curso.
 Anti-slop/retirement **456/456** PASS de nuevo. `tasklist` no encuentra LMU y
 el sondeo de solo lectura no abre `LMU_Data`; además el Hub de #1634 vuelve a
 estar abierto. Fases físicas 3/4 pendientes, sin cerrar apps ajenas ni adquirir
@@ -107,7 +108,25 @@ Guarda opt-in comprobada con Core replay aislado: rechaza `Replay != Live`,
 exit 101 esperado. El script físico respeta el `pc-medicion.lock` heredado de
 rest-discard-01-a1-01 y termina sin arrancar Core. Ese lock (PID 13928) y
 pantalla-ocupada (PID 25728) siguen en disco; ambos PID ausentes. Comunicado al
-orquestador sin modificarlos. Liberarlos antes de las fases físicas.
+orquestador sin modificarlos en ese momento. Después el orquestador autoriza
+retirarlos por el buzón: comprobados ambos PID con tasklist y propietarios JSON,
+se retiran únicamente esos archivos. No quedan reservas antiguas #1638.
+
+Hitos nuevos: REST `9eff05cb`, QA/documentación `99b5963c`, más cierre documental
+de gates. Binarios/fuentes de control y candidato A/B verificados otra vez tras
+la limpieza: intactos. 0 pares completos, 0 intentos evaluados, 0 mejoras.
+Issue #1638 OPEN verificada, updatedAt `2026-10-14T19:41:08Z`, sin labels,
+milestone ni Project; seguimiento del orquestador sin escrituras al tracker.
+Push y SHA remoto final se releen al terminar y se registran en el buzón.
+Sin PR/merge/CI de aceptación/promoción/release; estado de lanzamiento parcial.
+Último chequeo: LMU ahora abierto (PID 20388), pero SHM sin parrilla activa y
+REST sin JSON de sesión admitible. Fases 3/4 esperan **sesión usable**, sin
+exigir movimiento. El Hub de #1634 ya no aparece en ese chequeo. No se cuentan
+intentos ni se mide sin fuente válida.
+Opt-in físico completo tras liberar reservas: Core QA arranca y se cierra por
+EOF; test exit 101 «LMU sin sesión usable en el pipe QA», log
+`C:/tmp/1638-live-coverage-final.log`. No es PASS físico ni mejora. Gates
+ordinarios verdes; QA física y A/B pendientes de cargar sesión.
 
 ### Evidencia anterior de #1606 conservada
 

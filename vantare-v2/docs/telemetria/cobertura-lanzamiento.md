@@ -293,14 +293,18 @@ El identificador `a49d9d9d8e92` es un digest de los dos archivos fuente del
 candidato, guardado después en el commit `9eff05cb`. Su manifiesto `build.json` conserva hashes de
 binarios y fuentes; solo cambia `vantare-core.exe` respecto al control.
 
-El sondeo de esta continuación no encuentra `LeMansUltimate.exe` ni el mapping
+El sondeo inicial de esta continuación no encontraba `Le Mans Ultimate.exe` ni el mapping
 `LMU_Data`. Esto bloquea únicamente las fases 3/4 físicas. No se arranca el juego,
 se controlan coches ni se leen/escriben ajustes o datos reales. No se espera IA.
 Hay además dos marcadores heredados de la toma cortada: `pc-medicion.lock`
 (#1638, PID 13928) y `pantalla-ocupada` (#1638, PID 25728), creados a las 00:57.
-Ningún PID existe en la continuación. Se comunican al orquestador y se conservan;
-el script de QA respeta el lock y termina antes de arrancar Core. Su liberación
-debe preceder a las nuevas campañas; no son reservas creadas por esta ejecución.
+Ningún PID existe en la continuación. Se comunicaron al orquestador y el script
+QA respetó el lock. El orquestador autoriza retirarlos expresamente por el buzón;
+se vuelven a verificar ambos PID con tasklist y sus propietarios JSON, y se
+retiran únicamente esos dos archivos. No quedan reservas antiguas de #1638.
+Al cerrar los gates LMU aparece abierto (PID 20388), pero `LMU_Data` sigue sin
+parrilla activa y `sessionInfo` no ofrece JSON admitible. Ahora el bloqueo físico
+es **sesión no cargada/usable**, no ausencia del proceso ni necesidad de conducir.
 Antes de medir se vuelve a comprobar con `tasklist` que no esté el Hub de #1634;
 una toma con QA/builds ajenos se descarta y no cuenta como intento sin mejora.
 Tras el reinicio hay que volver a estimar el ruido con seis controles del mismo
@@ -356,6 +360,12 @@ Validación de la guarda: Core QA aislado reproduciendo el fixture real
 `Replay != Live` (exit 101 esperado, `C:/tmp/1638-replay-guard.log`). No es una
 prueba física positiva. El comando completo se ejecutó después y respetó el
 lock heredado sin crear Core (`C:/tmp/1638-live-coverage-resume.log`).
+Después de retirar las reservas con autorización se ejecuta el comando completo:
+Core QA aislado y test opt-in terminan con exit 101, «LMU sin sesión usable en
+el pipe QA» (`C:/tmp/1638-live-coverage-final.log`, espera acotada de 10 s).
+El Core se cierra por EOF. No se transforma este fallo de precondición física en
+un PASS ni en una comparación de rendimiento; los 18 diseños siguen sin QA
+física positiva en esta continuación.
 
 ### Gates de la continuación
 
@@ -371,7 +381,7 @@ Services; Clippy incluye todos los targets de runtime/domain/ipc/UI y paint-stat
 | Nextest runtime/domain/ipc | 631/631 PASS, 5 skips | `1638-resume-nextest.log` |
 | Nextest UI | 321/321 PASS, 5 skips (incluye el opt-in nuevo) | `1638-recovered-ui.log` |
 | Lifecycle runtime | 13/13 PASS | `1638-recovered-lifecycle.log` |
-| Telemetría completa | En curso, 21/30 sin fallos al guardar este hito | `1638-recovered-telemetria.log` |
+| Telemetría completa | 30/30 PASS, 1 opt-in físico omitido; ACC completo 974,046 s | `1638-recovered-telemetria.log` |
 | Anti-slop y retirada | 456/456 PASS | Salida de los dos verificadores |
 
 El disco se agotó entre Clippy y los siguientes gates: fallaron la compilación
@@ -380,4 +390,15 @@ No fallaron assertions de producto. Se conservan `1638-resume-ui-nextest-final.l
 y `1638-resume-lifecycle.log`. Recuperación con `cargo clean` limitado a los
 paquetes runtime/UI y al perfil Release del **target propio**; fuentes, logs,
 capturas y binarios de A/B fuera del target intactos. La repetición anterior
-acredita UI/lifecycle; el corpus completo sigue hasta su exit final.
+acredita UI/lifecycle; el corpus completo terminó con exit 0 en 1038,911 s.
+
+Hitos de continuación: candidato REST `9eff05cb`, QA/demanda y cobertura
+`99b5963c`, seguidos por este cierre documental de gates. Rama
+`vantareapp/isa-1638-telemetria-lanzamiento`, base `79a1ace6` (nightly obtenida de
+nuevo sin cambiar). Push/SHA remoto y CI se verifican al terminar en el buzón;
+sin PR, merge, promoción ni release. GitHub #1638 se leyó OPEN, última
+actualización `2026-10-14T19:41:08Z`, sin labels/milestone/Project; el orquestador
+lleva ese seguimiento por la excepción explícita, sin escribir Plane/Notion.
+Entrega **parcial**: siguen las decisiones/fuentes pendientes y LMU sin sesión
+usable. Reservas heredadas retiradas con autorización. No hay comparación A/B
+ni mejora CPU/RAM acreditada.

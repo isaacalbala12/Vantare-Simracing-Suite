@@ -42,13 +42,14 @@ export async function handleUnsubscribe(
           "Content-Type": "text/plain; charset=utf-8",
         },
       });
-    if (!await budget()) return limited();
     const rawToken = new URL(request.url).searchParams.get("t") ?? "";
     const email = await verifyUnsubscribe(
       rawToken,
       secret,
     );
     if (!email) return reply("Invalid unsubscribe link", 400);
+    // Only authenticated links can consume shared capacity. HMAC uses subtle.verify.
+    if (!await budget()) return limited();
     const tokenHash = [
       ...new Uint8Array(
         await crypto.subtle.digest(

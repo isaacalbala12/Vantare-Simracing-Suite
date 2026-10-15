@@ -46,7 +46,7 @@ select public.mail_unsubscribe_budget(repeat('a',64)) from generate_series(1,20)
 select is(public.mail_unsubscribe_budget(repeat('a',64)),false,'twenty-one requests for a signed token are denied');
 select is(public.mail_unsubscribe_budget(repeat('a',64)),false,'denial does not reset its counter');
 select public.mail_unsubscribe_budget() from generate_series(1,600);
-select is(public.mail_unsubscribe_budget(),false,'global request budget enforced before signature work');
+select is(public.mail_unsubscribe_budget(),false,'global request budget for verified signatures enforced');
 select ok(not exists(select 1 from private.mail_unsubscribe_rate where bucket like '%@%'),'limiter never stores an address');
 select * from finish();
 rollback;

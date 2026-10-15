@@ -172,3 +172,5 @@ marketing y E2E con PostgreSQL desechable, guard PowerShell en Windows. Gates
 nativos usan `--workspace` e incluyen admin. Reproducción Mac en
 `~/evidence/1636-r2/`; Docker siempre bajo `~/orq/docker.lock`, jobs Rust 4 y
 target aislado `~/target-1636`. No hay compilación ni llamada SaaS en el servidor PC.
+
+R3: se verifica HMAC en tiempo constante antes de consumir cupos. Las firmas inválidas no acceden a SQL ni gastan capacidad de baja de enlaces legítimos.

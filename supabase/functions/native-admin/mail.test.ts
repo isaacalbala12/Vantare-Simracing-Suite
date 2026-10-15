@@ -592,3 +592,36 @@ Deno.test("P3: unsubscribe global and signed-token budgets return 429 before mut
     );
   }
 });
+
+Deno.test("anonymous invalid signatures cannot spend legitimate unsubscribe capacity", async () => {
+  const token = await unsubscribeToken("yes@example.invalid", secret);
+  let budgets = 0;
+  let mutations = 0;
+  const deps = {
+    env,
+    budget: () => Promise.resolve(++budgets <= 2),
+    unsubscribe: () => {
+      mutations++;
+      return Promise.resolve();
+    },
+  };
+  // Well-shaped but invalid HMAC: verification must run, without touching SQL budgets.
+  const bad = token.slice(0, token.indexOf(".") + 1) + "A".repeat(43);
+  for (let i = 0; i < 601; i++) {
+    const response = await realUnsubscribe(
+      new Request(`https://project.invalid/?t=${bad}`),
+      deps,
+    );
+    assert(response.status === 400);
+  }
+  assert(budgets === 0);
+  const valid = await realUnsubscribe(
+    new Request(`https://project.invalid/?t=${token}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: "List-Unsubscribe=One-Click",
+    }),
+    deps,
+  );
+  assert(valid.status === 200 && Number(budgets) === 2 && mutations === 1);
+});

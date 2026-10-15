@@ -661,7 +661,7 @@ fn founders_keeps_perpetual_nightly_after_pro_plus_expires() {
     };
     assert!(grants(std::slice::from_ref(&nightly), None).is_err());
     assert_eq!(
-        grants(&[founder, nightly], None)
+        grants(&[nightly, founder], None)
             .expect("Founder Nightly")
             .len(),
         2

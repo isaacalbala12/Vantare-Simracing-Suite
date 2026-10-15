@@ -169,8 +169,8 @@ no se incorpora al instalador público ni configura un servicio o tarea resident
 ## Promoción por informes (#1593)
 
 El detalle de usuario admite `report_promotion` opcional: informes aceptados,
-tramo de 0/3/6 meses y descuento confirmado por el servidor. Dos spams muestran
-la pérdida de la promoción. Ausente/null conserva compatibilidad con el backend
+tramo de 0/3/6 meses y descuento confirmado por el servidor. Dos spams bloquean nuevos premios y conservan los meses ya concedidos. El detalle
+muestra también la incidencia pendiente y la pérdida por devolución del primer mes. Ausente/null conserva compatibilidad con el backend
 anterior. DEMO incluye un ejemplo falso de dos informes y tres meses.
 No calcula elegibilidad ni concede descuentos desde el cliente. Contrato,
 configuración pendiente y límites en

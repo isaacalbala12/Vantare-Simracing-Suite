@@ -71,6 +71,10 @@ impl Status {
 }
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct ReportPromotion {
+    #[serde(default)]
+    pub last_error: Option<String>,
+    #[serde(default)]
+    pub first_refunded: bool,
     pub accepted: u32,
     pub tier: u8,
     pub forfeited: bool,
@@ -78,14 +82,20 @@ pub struct ReportPromotion {
 }
 impl ReportPromotion {
     pub fn summary(&self) -> String {
-        if self.forfeited {
-            return format!(
-                "{} informes aceptados · promoción perdida por spam",
-                self.accepted
-            );
-        }
+        let policy = if self.first_refunded {
+            " · promoción perdida por devolución del primer mes"
+        } else if self.forfeited {
+            " · sin nuevos premios por spam; se conservan los meses concedidos"
+        } else {
+            ""
+        };
+        let pending = if self.last_error.is_some() {
+            " · descuento pendiente de revisión"
+        } else {
+            ""
+        };
         format!(
-            "{} informes aceptados · tramo: {} meses · descuento confirmado: {}",
+            "{} informes aceptados · tramo: {} meses · descuento confirmado: {}{policy}{pending}",
             self.accepted,
             self.tier,
             self.active_discount.as_deref().unwrap_or("ninguno")

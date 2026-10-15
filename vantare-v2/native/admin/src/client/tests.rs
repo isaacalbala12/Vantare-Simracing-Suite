@@ -301,5 +301,17 @@ fn report_promotion_progress_and_spam_are_visible() {
     assert!(promotion.summary().contains("5 informes aceptados"));
     assert!(promotion.summary().contains("6 meses"));
     promotion.forfeited = true;
-    assert!(promotion.summary().contains("perdida por spam"));
+    assert!(
+        promotion
+            .summary()
+            .contains("se conservan los meses concedidos")
+    );
+    promotion.last_error = Some("polar_discount_unmanaged".into());
+    assert!(promotion.summary().contains("pendiente de revisión"));
+    promotion.first_refunded = true;
+    assert!(
+        promotion
+            .summary()
+            .contains("perdida por devolución del primer mes")
+    );
 }

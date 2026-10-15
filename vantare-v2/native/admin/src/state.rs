@@ -64,6 +64,8 @@ impl State {
                     modules: vec![Module::Strategy, Module::Analysis],
                     reports_count: 2,
                     report_promotion: Some(crate::client::ReportPromotion {
+                        last_error: None,
+                        first_refunded: false,
                         accepted: 2,
                         tier: 3,
                         forfeited: false,

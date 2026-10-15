@@ -8,7 +8,17 @@ existente afectado. Consulta fallida/incompleta también aborta. Ready calculado
 modelo válido + inventario verificado; offline false, sin afirmar revisión real.
 Merge autorizado de `origin/nightly eb553c7fe` sin conflictos; incluye cola nueva
 y retirada de CI Linux. No se fusiona la rama de issue en nightly.
-Regresiones R3 RED contra versión anterior; GREEN y SHA finales al cerrar.
+Regresiones R3 RED contra versión anterior; GREEN final: **181 Edge PASS**,
+**1797 Nextest PASS**, 14 omitidas por perfil; **check y Clippy global PASS**,
+fmt/quality/retirement PASS y **11 tests del alcance de gates PASS**. Rust serial
+por cola nueva, MIN_GB=0; no ha hecho falta fallback de Clippy por crates en R3.
+SQL/lifecycle/telemetría no se repiten en R3: no cambia schema ni su código;
+evidencia de rondas anteriores conservada. Diff R3 y merge revisados.
+PR #1666 draft a nightly; rama ya contiene eb553c7fe y no está BEHIND.
+Plane Por revisar al cierre; CI remota pendiente. Sin promoción a nightly,
+despliegue ni release. Evidencia en `C:/tmp/founders-1661-evidence` y Mac
+`~/orq/founders-1661-evidence`; siguientes acciones: revisión R3/CI y operación
+manual del catálogo con mapa completo, IVA sandbox y ventas cerradas durante corte.
 Plan/bundle/comando se regeneran; ninguna consulta ni mutación contra Polar real.
 
 ## VANTA-83 / #1661 · ronda 2 de seguridad (15/10/2026)

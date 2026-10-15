@@ -747,3 +747,37 @@ Deno.test("R3 readiness is derived from valid price model and live verification"
     PRICES.plans[0].normal_cents = original;
   }
 });
+
+Deno.test("R3 checks the last affected product and transport failures before any write", async () => {
+  for (const mode of ["last-product", "transport"]) {
+    const f = fake();
+    const first = await syncCatalog(f.http, sandbox, options);
+    const input = {
+      ...first,
+      map: { ...first.map, environment: "production" },
+    };
+    const target = first.map.checkout_keys.pro_plus_annual!.polar_product_id;
+    const count = f.writes.length;
+    const http: Http = async (method, path, body) => {
+      const query = new URL(`https://local.invalid${path}`);
+      if (mode === "transport" && path.startsWith("/customers/")) {
+        throw Error("inventory unavailable");
+      }
+      if (
+        mode === "last-product" && path.startsWith("/subscriptions/") &&
+        query.searchParams.get("product_id") === target
+      ) {
+        assertEquals(query.searchParams.get("active"), "true");
+        return {
+          items: [{ id: "fixture-active-sub" }],
+          pagination: { max_page: 1, total_count: 1 },
+        };
+      }
+      return await f.http(method, path, body);
+    };
+    await assertRejects(() =>
+      syncCatalog(http, input, { environment: "production", creator: "ISAAC" })
+    );
+    assertEquals(f.writes.length, count);
+  }
+});

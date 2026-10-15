@@ -77,7 +77,8 @@ el inventario **en vivo**: exige cero clientes en la organización (el endpoint 
 clientes no filtra por producto), y cero suscripciones activas/pedidos en cada
 producto existente afectado, incluido Founders si se va a gestionar. Es una guarda
 conservadora del catálogo inicial: clientes de otros productos también bloquean.
-Datos incompletos, errores de consulta o inventario distinto de cero abortan sin
+El token necesita lectura de clientes, suscripciones y pedidos, además de catálogo;
+permisos insuficientes también abortan. Datos incompletos, errores de consulta o inventario distinto de cero abortan sin
 escrituras. No usa como autorización el inventario histórico comunicado por Isaac.
 La comprobación refleja ese instante: mantener ventas cerradas durante el corte;
 Polar no ofrece aquí una transacción que congele altas entre consulta y escritura.

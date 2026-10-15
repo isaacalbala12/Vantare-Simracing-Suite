@@ -1,3 +1,4 @@
+import { applyCreatorRenewal } from "../_shared/creator-renewal.ts";
 import {
   assertEquals,
   assertRejects,
@@ -249,6 +250,7 @@ function processDeps(
     supabase: mock.client,
     admitLifetimeOrder: async () => null as string | null,
     enforceFoundersRenewal: async () => {},
+    revokeCreatorRenewals: async () => {},
     inbox: new MemoryWebhookInbox(now),
     loadMap,
     now,
@@ -3056,4 +3058,147 @@ Deno.test("R2 historical Launch replays and refunds even with inactive read mapp
     "revoked",
     "revoked",
   ]);
+});
+
+Deno.test("R5 webhook wires creator renewal only from signed reason and server binding, never metadata", async () => {
+  for (const enabled of [false, true]) {
+    for (
+      const reason of ["subscription_create", "subscription_cycle", undefined]
+    ) {
+      const mock = createMockSupabase();
+      const base = loadTestMap();
+      if (!base.ok) throw Error("fixture");
+      if (enabled) {
+        base.map.creator_discounts = {
+          ISAAC: "00000000-0000-4000-8000-000000001683",
+        };
+      }
+      const seen: Record<string, unknown>[] = [];
+      const deps = {
+        ...processDeps(mock, () => base),
+        supabase: {
+          ...mock.client,
+          rpc: (name: string) => {
+            assertEquals(name, "native_admin_record_payment");
+            return Promise.resolve({ data: true, error: null });
+          },
+        } as unknown as SupabaseClient,
+        applyCreatorRenewal: async (
+          _client: SupabaseClient,
+          map: typeof base.map,
+          input: Parameters<typeof applyCreatorRenewal>[2],
+        ) => {
+          assertEquals(input.userId, USER_ID);
+          assertEquals(input.productId, PRO_MONTHLY_PRODUCT_ID);
+          assertEquals(input.key, "pro_monthly");
+          const fake = {
+            rpc: (name: string, args: Record<string, unknown>) => {
+              assertEquals(name, "billing_creator_renewal_prepare");
+              seen.push(args);
+              return Promise.resolve({ data: null, error: null });
+            },
+          } as unknown as SupabaseClient;
+          await applyCreatorRenewal(fake, map, input, () => {
+            throw Error("no binding must never write a discount");
+          });
+        },
+      };
+      const event = {
+        type: "order.paid",
+        data: paidOrderData({
+          product_id: PRO_MONTHLY_PRODUCT_ID,
+          subscription_id: "r5-sub",
+          checkout_id: "r5-checkout",
+          net_amount: 599,
+          total_amount: 599,
+          refunded_tax_amount: 0,
+          created_at: RESOURCE_MODIFIED_AT,
+          billing_reason: reason,
+          metadata: {
+            creator_code: "FORGED",
+            user_id: PRODUCTION_USER_ID,
+            product_id: LAUNCH_PRODUCT_ID,
+            checkout_id: "forged",
+            billing_reason: "subscription_create",
+            initial: true,
+          },
+        }),
+      };
+      assertEquals(
+        (await applyPolarWebhookEvent(event, deps)).status,
+        "processed",
+      );
+      assertEquals(seen.length, enabled ? 1 : 0);
+      if (enabled) {
+        assertEquals(
+          seen[0].p_checkout,
+          reason === "subscription_create" ? "r5-checkout" : null,
+        );
+        assertEquals(seen[0].p_user, USER_ID);
+        assertEquals(seen[0].p_product, PRO_MONTHLY_PRODUCT_ID);
+      }
+    }
+  }
+});
+
+Deno.test("R5 refund hook uses ledger ownership even with creator configuration removed", async () => {
+  const deps = processDeps(createMockSupabase());
+  const calls: unknown[] = [];
+  const event = {
+    type: "order.paid",
+    data: paidOrderData({
+      id: "r5-paid",
+      product_id: PRO_MONTHLY_PRODUCT_ID,
+      subscription_id: "r5-sub",
+    }),
+  };
+  await applyPolarWebhookEvent(event, deps);
+  await applyPolarWebhookEvent({
+    type: "refund.updated",
+    data: succeededRefundData({
+      id: "r5-refund",
+      order_id: "r5-paid",
+      amount: 1,
+      metadata: { user_id: PRODUCTION_USER_ID, subscription_id: "forged" },
+    }),
+  }, {
+    ...deps,
+    revokeCreatorRenewals: async (_client, _env, input) => {
+      calls.push(input);
+    },
+  });
+  assertEquals(calls, [{
+    userId: USER_ID,
+    subscriptionId: "r5-sub",
+    orderId: "r5-paid",
+    reason: "refund",
+  }]);
+});
+Deno.test("R5 subscription revoked hook withdraws creator independently of live coupon map", async () => {
+  const deps = processDeps(createMockSupabase());
+  const calls: unknown[] = [];
+  const result = await applyPolarWebhookEvent({
+    type: "subscription.revoked",
+    data: {
+      id: "r5-revoked-sub",
+      product_id: PRO_MONTHLY_PRODUCT_ID,
+      external_customer_id: USER_ID,
+      status: "canceled",
+      modified_at: RESOURCE_MODIFIED_AT,
+      current_period_end: "2026-08-09T12:00:00Z",
+      cancel_at_period_end: false,
+    },
+  }, {
+    ...deps,
+    revokeCreatorRenewals: async (_client, _env, input) => {
+      calls.push(input);
+    },
+  });
+  assertEquals(result.status, "processed");
+  assertEquals(calls, [{
+    userId: USER_ID,
+    subscriptionId: "r5-revoked-sub",
+    orderId: null,
+    reason: "subscription_revoked",
+  }]);
 });

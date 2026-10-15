@@ -13,7 +13,7 @@ export async function ensureCreatorCode(
   code: string,
   map: PolarProductMap | undefined,
   polar: PolarClientDeps | undefined,
-): Promise<string> {
+): Promise<{ discount_id: string; annual_discount_id: string }> {
   const loaded = map
     ? { ok: true as const, map }
     : loadPolarProductMap(undefined, { environment: "sandbox" });
@@ -44,7 +44,7 @@ export async function ensureCreatorCode(
     settings?.subscription?.update_plan !== false
   ) throw new NativeError(503, "catalog_unavailable");
   const all = await polarPages("discounts", loaded.map.organization_id, polar);
-  let monthlyId = "";
+  let monthlyId = "", annualId = "";
   for (const annual of [false, true]) {
     const offerKey = annual
       ? `creator:${code}:annual-renewals-v4`
@@ -94,6 +94,9 @@ export async function ensureCreatorCode(
       : [];
     if (
       typeof discount.id !== "string" ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        discount.id,
+      ) ||
       discount.organization_id !== loaded.map.organization_id ||
       !!discount.code ||
       discount.type !== "percentage" ||
@@ -112,6 +115,7 @@ export async function ensureCreatorCode(
       ).every(([, p]) => scope.includes(p.polar_product_id))
     ) throw new NativeError(409, "account_conflict");
     if (!annual) monthlyId = String(discount.id);
+    else annualId = String(discount.id);
   }
-  return monthlyId;
+  return { discount_id: monthlyId, annual_discount_id: annualId };
 }

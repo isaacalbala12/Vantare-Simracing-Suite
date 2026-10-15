@@ -192,3 +192,11 @@ Founders se muestra como plan propio. El detalle de cliente incluye
 reintento. Launch Edition se conserva solo como etiqueta de compras históricas;
 no se ofrece ni habilita nuevos checkouts. No cambiar migraciones históricas para
 borrar esa compatibilidad. No hay reembolso automático al cambiar a Founders.
+
+Ronda 5: activate_creator registra discount_id mensual y annual_discount_id UUID
+anual juntos, tras verificar ambos cupones en Polar. Reintento exige mismos IDs;
+no se rotan silenciosamente. billing_save_creator_attribution exige pertenencia
+al creador, entorno e intervalo y revierte el claim si no coincide. Creador
+activo anterior sin vínculo anual debe reconciliarse antes de aceptar anual.
+Reembolso/revocación retira el cupón de creador por GET/PATCH/ACK; Owner distingue
+retirada confirmada y pendiente por error. Cupones ajenos no se eliminan.

@@ -1,4 +1,7 @@
-import { applyCreatorRenewal } from "../_shared/creator-renewal.ts";
+import {
+  applyCreatorRenewal,
+  revokeCreatorRenewals,
+} from "../_shared/creator-renewal.ts";
 import {
   admitLifetimeOrder,
   enforceFoundersRenewal,
@@ -74,6 +77,7 @@ type EffectRunner = (
 
 export type WebhookProcessorDeps = {
   applyCreatorRenewal?: typeof applyCreatorRenewal;
+  revokeCreatorRenewals?: typeof revokeCreatorRenewals;
   foundersPaymentAllowed?: typeof foundersPaymentAllowed;
   admitLifetimeOrder?: typeof admitLifetimeOrder;
   enforceFoundersRenewal?: typeof enforceFoundersRenewal;
@@ -679,6 +683,22 @@ async function applyOrderRefundEvent(args: {
       );
   }
 
+  if (
+    decision.order.subscriptionId &&
+    (decision.accessState === "revoked" || decision.succeededRefundAmount > 0 ||
+      decision.order.reportedRefundedAmount > 0)
+  ) {
+    await (args.deps.revokeCreatorRenewals ?? revokeCreatorRenewals)(
+      args.deps.supabase,
+      args.environment,
+      {
+        userId: decision.order.userId,
+        subscriptionId: decision.order.subscriptionId,
+        orderId,
+        reason: "refund",
+      },
+    );
+  }
   if (decision.order.subscriptionId && args.deps.projection?.restrictSource) {
     await args.deps.projection.restrictSource({
       environment: args.environment,
@@ -1018,6 +1038,23 @@ export async function applyPolarWebhookEvent(
     "billing_subscription_lifecycle",
     () => lifecycle.apply(lifecycleApply),
   );
+  if (
+    event.type === "subscription.revoked" ||
+    ["active", "uncanceled", "trialing", "past_due", "unpaid"].includes(status)
+  ) {
+    await (deps.revokeCreatorRenewals ?? revokeCreatorRenewals)(
+      deps.supabase,
+      environment,
+      {
+        userId,
+        subscriptionId: resourceId,
+        orderId: null,
+        reason: event.type === "subscription.revoked"
+          ? "subscription_revoked"
+          : "reconcile",
+      },
+    );
+  }
   if (
     !cancelAtPeriodEnd &&
     ["active", "uncanceled", "trialing", "past_due", "unpaid"].includes(status)

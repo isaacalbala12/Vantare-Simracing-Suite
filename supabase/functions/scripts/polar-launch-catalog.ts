@@ -59,6 +59,7 @@ export type Http = (
   body?: unknown,
 ) => Promise<unknown>;
 type Options = {
+  planOnly?: boolean;
   environment: BillingEnvironment;
   creator?: string;
 };
@@ -499,11 +500,6 @@ export async function syncCatalog(http: Http, raw: unknown, options: Options) {
     !readiness.model_ready ||
     (options.environment === "production" && !readiness.ready)
   ) throw Error("Catalog production preflight failed");
-  let writes = 0;
-  if (founders && !copyMatches(founders, productCopy("founders"))) {
-    await patchProductCopy(http, founders, productCopy("founders"));
-    writes++;
-  }
   const offers: Record<
     string,
     {
@@ -514,6 +510,104 @@ export async function syncCatalog(http: Http, raw: unknown, options: Options) {
       renewal_cents: number;
     }
   > = {};
+  if (options.planOnly) {
+    const plannedActions: Record<string, unknown>[] = [];
+    if (founders && !copyMatches(founders, productCopy("founders"))) {
+      plannedActions.push({
+        action: "update_product_copy",
+        product_id: founders.id,
+        ...productCopy("founders"),
+      });
+    }
+    for (const plan of PRICES.plans) {
+      const product = selected.get(plan.key);
+      if (!product) {
+        plannedActions.push({
+          action: "create_normal_product_draft",
+          key: plan.key,
+          interval: plan.interval,
+          normal_cents: plan.normal_cents,
+          ...productCopy(plan.key),
+        });
+      } else {
+        if (!currentPrice(product, plan.normal_cents)) {
+          plannedActions.push({
+            action: "replace_normal_price_preserve_history",
+            key: plan.key,
+            product_id: product.id,
+            price: fixedPrice(plan.normal_cents),
+          });
+        }
+        if (!copyMatches(product, productCopy(plan.key))) {
+          plannedActions.push({
+            action: "update_product_copy",
+            key: plan.key,
+            product_id: product.id,
+            ...productCopy(plan.key),
+          });
+        }
+      }
+      if (!selectedDiscounts.get(plan.key)) {
+        plannedActions.push({
+          action: "create_launch_discount",
+          key: plan.key,
+          duration: "once",
+          amounts: { eur: plan.normal_cents - plan.launch_cents },
+          ...window,
+        });
+      }
+    }
+    if (creator && !creatorDiscount) {
+      plannedActions.push({
+        action: "create_monthly_creator_discount",
+        code: creator,
+        duration_in_months: PRICES.creator_renewals.monthly_duration_months,
+      });
+    }
+    if (creator && !annualCreator) {
+      plannedActions.push({
+        action: "create_annual_creator_discount",
+        code: creator,
+        duration_in_months: PRICES.creator_renewals.annual_duration_months,
+      });
+    }
+    return {
+      ...planOffline(creator, options.environment),
+      production_apply_blockers: readiness.blockers,
+      writes: 0,
+      production_apply_ready: readiness.ready,
+      production_preflight: liveInventory ?? null,
+      map,
+      offers,
+      creator_link: null,
+      creator_link_pending: null,
+      distribution: PRICES.distribution,
+      creator_plan_changes: PRICES.creator_plan_changes,
+      creator_commission: PRICES.creator_commission,
+      read_only: true,
+      offline: false,
+      environment: options.environment,
+      planned_actions: plannedActions,
+      observed_products: products.map((p) => ({
+        id: p.id,
+        name: p.name,
+        is_archived: p.is_archived,
+        recurring_interval: p.recurring_interval,
+        prices: p.prices?.map((price) => ({
+          id: price.id,
+          price_amount: price.price_amount,
+          price_currency: price.price_currency,
+          tax_behavior: price.tax_behavior,
+          is_archived: price.is_archived,
+        })),
+      })),
+    };
+  }
+  let writes = 0;
+  if (founders && !copyMatches(founders, productCopy("founders"))) {
+    await patchProductCopy(http, founders, productCopy("founders"));
+    writes++;
+  }
   for (const plan of PRICES.plans) {
     const previous = map.checkout_keys[plan.key];
     const plus = plan.key.startsWith("pro_plus_");
@@ -762,7 +856,7 @@ export function parseArgs(args: string[]) {
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
     if (
-      ["--apply", "--confirm-production"].includes(
+      ["--apply", "--online", "--confirm-production"].includes(
         arg,
       )
     ) {
@@ -783,8 +877,14 @@ export function parseArgs(args: string[]) {
   if (environment !== "sandbox" && environment !== "production") {
     throw Error("--environment sandbox|production required");
   }
-  if (flags.has("--apply") && (!values["--map"] || !values["--output"])) {
-    throw Error("--apply requires --map and --output");
+  if (flags.has("--apply") && flags.has("--online")) {
+    throw Error("--online and --apply are mutually exclusive");
+  }
+  if (
+    (flags.has("--apply") || flags.has("--online")) &&
+    (!values["--map"] || !values["--output"])
+  ) {
+    throw Error("Online plan/apply requires --map and --output");
   }
   if (
     flags.has("--apply") && environment === "production" &&
@@ -843,7 +943,7 @@ export async function runCatalog(
   const { values, flags, environment } = parseArgs(args);
   const creator = values["--creator"];
   const plan = planOffline(creator, environment);
-  if (!flags.has("--apply")) {
+  if (!flags.has("--apply") && !flags.has("--online")) {
     console.log(
       JSON.stringify(
         {
@@ -880,6 +980,9 @@ export async function runCatalog(
       ? "https://sandbox-api.polar.sh/v1"
       : "https://api.polar.sh/v1";
     const http: Http = async (method, path, body) => {
+      if (flags.has("--online") && method !== "GET") {
+        throw Error("Read-only catalog prohibits mutation");
+      }
       let response: Response;
       try {
         response = await fetcher(`${base}${path}`, {
@@ -888,6 +991,7 @@ export async function runCatalog(
           signal: AbortSignal.timeout(30000),
           headers: {
             "Polar-Version": "2026-10",
+            "User-Agent": "Vantare-Catalog/1661",
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
@@ -914,6 +1018,7 @@ export async function runCatalog(
     const result = await syncCatalog(http, raw, {
       environment,
       creator,
+      planOnly: flags.has("--online"),
     });
     const bytes = new TextEncoder().encode(
       JSON.stringify(result, null, 2) + "\n",
@@ -936,7 +1041,7 @@ export async function runCatalog(
       if (!complete) await Deno.remove(values["--output"]);
     }
     console.log(
-      JSON.stringify({
+      flags.has("--online") ? JSON.stringify(result, null, 2) : JSON.stringify({
         environment,
         writes: result.writes,
         creator_link_id: null,

@@ -36,8 +36,9 @@ mientras siga su descuento. Comisión 30 % mes 1 / 10 % meses 2–12, pago manua
 `--map` debe contener el `POLAR_PRODUCT_MAP` completo de producción, con
 schema_version 2, entorno/organización correctos, IDs históricos y la entrada de
 Founders documentada en `scripts/founders-production-config.json`. No usar .env.
-El prefijo e61e9161 comunicado para el precio Pro actual no es un ID completo;
-Isaac debe aportar el mapa real completo, sin inventar el resto.
+Ronda 5 completa los IDs mediante GET de solo lectura: el mapa real observado
+está en POLAR_PRODUCT_MAP.production.json junto al plan online. No se inventan
+IDs de los productos/precios todavía ausentes.
 El script lista todas las páginas y verifica organización, ownership, intervalos,
 trials, duplicados, historia de precios y scope/duración/importe/fechas de descuentos
 antes de escribir. Conserva IDs observados; si falta registrar un precio antes de
@@ -92,3 +93,27 @@ HTTP simulado; el worker no consulta ni modifica producción.
 
 Los códigos de creador se consultan con `Object.hasOwn` y UUID validado. Nombres
 heredados como `constructor` se rechazan antes de reclamar un intento.
+
+## Ronda 5 · plan online de solo lectura
+
+`--online` es incompatible con `--apply`, requiere --map/--output y token de
+lectura. Ejecuta el mismo preflight completo, con transporte que solo permite
+GET, y guarda/expone el plan completo, inventario verificado, acciones previstas
+y writes=0. No crea ni modifica recursos. La aplicación vuelve a comprobar el
+inventario; un plan ready=true no congela altas concurrentes.
+
+Artefactos reales en C:/VantareServer/evidence/polar-auditoria/:
+POLAR_PRODUCT_MAP.production.json (todos los productos/precios existentes; no
+incluye IDs inventados de anual/Plus), plan-catalogo-online.txt y
+live-products-r5.json. El mapa inicial conserva el Pro actual 4,99 sin trial,
+Launch retirada active=false con lectura histórica, y Founders 50 EUR con
+Stable/Nightly. **Es entrada del script, no configuración del checkout ya lista
+para desplegar**: usar el mapa resultante después de aplicar y revisar drafts.
+
+Deno ya está en el Mac; en el servidor no hace falta instalarlo si se usa SSH.
+Comando exacto para Isaac, sin ejecutar por el worker, en aplicar-catalogo.txt
+junto al plan. Requiere token con permisos de escritura; el token de solo lectura
+usado para esta auditoría no sirve para aplicar. Mantener ventas cerradas durante
+el corte; publicar los drafts y archivar Launch son pasos humanos separados.
+Rotación de cupones: seguir la nota F4 de creator-renewals-1661.md antes de cambiar
+IDs con checkouts/facturas en vuelo. No borrar cupones/IDs históricos.

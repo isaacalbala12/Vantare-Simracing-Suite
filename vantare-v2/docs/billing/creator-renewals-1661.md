@@ -26,8 +26,7 @@ sandbox; los tests locales no acreditan una factura de Polar.
 El script con `--creator CODE` crea dos cupones sin `code` público, restringidos
 respectivamente a normales mensuales/anuales. Salida `creator_discounts[CODE]`
 y `creator_annual_discounts[CODE]`. Ninguno entra en el primer checkout.
-La miniapp Owner crea ambos en sandbox; devuelve el ID mensual para su registro
-histórico. El operador incorpora ambos IDs al mapa de checkout. No se adoptan
+La miniapp Owner crea ambos en sandbox y registra los dos IDs por intervalo. El operador incorpora ambos IDs al mapa de checkout. No se adoptan
 cupones históricos de dos meses ni se modifica su comportamiento silenciosamente.
 
 ## Flujo y recuperación
@@ -103,3 +102,48 @@ reembolso Founders retira sus derechos y no reactiva la suscripción.
 - Integración #1659: candidatura posterior al primer pago, mayor ahorro,
   pérdida/expiración/traslado y regreso sin extender ninguno de los derechos.
 - Sin servicios comerciales reales, dinero ni capturas en esta entrega.
+
+## Ronda 5 · decisiones F1/F2 y defensas F3/F4/F5
+
+Isaac acepta que cualquier persona que conozca un código activo puede usarlo,
+sin vinculación personal ni fecha de caducidad de campaña. Se mantienen el primer
+periodo sin descuento de creador y el tramo de renovaciones configurado.
+
+Un reembolso confirmado (parcial incluido) de la factura de origen o de la
+suscripción, o subscription.revoked, retira el cupón de creador. Un marcador
+privado por cuenta/entorno/suscripción conserva la decisión aunque el evento
+llegue antes del primer order.paid. Bloquea nuevas aplicaciones y sus ACK en
+vuelo. La retirada espera el lease anterior, hace GET y PATCH solo discount_id=null
+cuando coincide con el ID de creador guardado. Cupón ajeno/informes o null no se
+modifica; ACK confirma retirada/no aplicabilidad. Replay no repite la escritura.
+Fallo deja pending e incidencia creator_renewal_revocation_failed en Owner.
+Una observación activa/reconciliación vuelve a intentar solo retiradas ya
+solicitadas: no inicia revocaciones por sí sola. Si Polar rechaza PATCH en una
+suscripción terminal, conserva pendiente visible; no afirma haber retirado el
+cupón. Reintenta si vuelve activa y requiere revisión antes de reactivarla.
+No hay refunds ni cancelaciones adicionales automáticos.
+
+Los cupones quedan ligados al creador en private.admin_creators: discount_id
+mensual y annual_discount_id UUID anual. La miniapp verifica ambos en Polar y
+los registra en la misma activación, sin rotarlos silenciosamente. Producción
+requiere registrar esos IDs verificados junto al creador antes de aceptar el
+código. billing_save_creator_attribution exige UUID no nulo/no cero y pertenencia
+al mismo creador activo, entorno e intervalo del intento; cualquier discrepancia
+revierte el claim entero. Se conservan filas y lectura de cupones históricos.
+
+**Rotar lanzamiento (F4):** no sustituir polar_launch_discount_id mientras haya
+checkouts/facturas iniciales antiguas sin conciliar. Si se rota antes de preparar
+por primera vez el descuento de creador, el cupón remoto anterior puede quedar
+fuera del conjunto gestionado: se falla cerrado, pending e incidencia Owner.
+Las operaciones ya preparadas conservan su ID inicial. Antes de rotar, inventariar
+checkouts y órdenes, conciliar y verificar el ID remoto por cuenta/entorno.
+Conservar IDs/evidencia antiguos y revisar cada pending; nunca ampliar managedIds
+sin verificar propiedad, borrar historia o reiniciar repeating para forzar éxito.
+La retirada por reembolso usa el ID de creador persistido, independiente de esa
+rotación y de que el código ya no esté en el mapa vivo.
+
+F5 prueba el cableado real del procesador: sin mapa de creadores no llama;
+subscription_create pasa el checkout firmado; subscription_cycle o reason ausente
+pasan initial=false y el helper envía p_checkout=null. Metadata contradictoria no
+cambia cuenta/producto/clave ni crea atribución. Pruebas mutantes detectan tanto
+initial=true fijo como la retirada sin PATCH.

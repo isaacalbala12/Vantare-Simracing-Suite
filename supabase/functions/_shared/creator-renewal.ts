@@ -1,7 +1,10 @@
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import type { CheckoutKey, PolarProductMap } from "./mapping.ts";
 import table from "../scripts/polar-launch-prices.json" with { type: "json" };
-import { synchronizeRenewalDiscount } from "./polar.ts";
+import {
+  synchronizeRenewalDiscount,
+  withdrawCreatorDiscount,
+} from "./polar.ts";
 
 export async function applyCreatorRenewal(
   client: SupabaseClient,
@@ -81,6 +84,66 @@ export async function applyCreatorRenewal(
     if (failed.error || failed.data !== true) {
       throw new Error("creator_renewal_incident_failed");
     }
+    throw error;
+  }
+}
+
+export async function revokeCreatorRenewals(
+  client: SupabaseClient,
+  environment: "sandbox" | "production",
+  input: {
+    userId: string;
+    subscriptionId: string;
+    orderId: string | null;
+    reason: "refund" | "subscription_revoked" | "reconcile";
+  },
+  withdraw: typeof withdrawCreatorDiscount = withdrawCreatorDiscount,
+): Promise<void> {
+  const params = {
+    p_environment: environment,
+    p_user: input.userId,
+    p_subscription: input.subscriptionId,
+  };
+  const prepared = await client.rpc("billing_creator_revocation", {
+    ...params,
+    p_stage: "prepare",
+    p_order: input.orderId,
+    p_reason: input.reason,
+  });
+  if (prepared.error) throw Error("creator_revocation_prepare_failed");
+  const operation = prepared.data;
+  if (!operation) return;
+  if (operation.busy) throw Error("creator_revocation_busy");
+  const finish = async (success: boolean) => {
+    const result = await client.rpc("billing_creator_revocation", {
+      ...params,
+      p_stage: "finish",
+      p_token: operation.token,
+      p_success: success,
+    });
+    if (result.error || result.data?.completed !== true) {
+      throw Error("creator_revocation_ack_failed");
+    }
+  };
+  try {
+    await withdraw(input.subscriptionId, environment, {
+      productId: operation.product_id,
+      creatorDiscountId: operation.creator_discount_id,
+      authorize: async () => {
+        const result = await client.rpc("billing_creator_revocation", {
+          ...params,
+          p_stage: "authorize",
+          p_token: operation.token,
+        });
+        if (result.error) {
+          throw Error("creator_revocation_authorization_failed");
+        }
+        return result.data?.authorized === true;
+      },
+    });
+    await finish(true);
+  } catch (error) {
+    await finish(false);
     throw error;
   }
 }

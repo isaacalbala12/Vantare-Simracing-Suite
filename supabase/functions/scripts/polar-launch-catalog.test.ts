@@ -1,3 +1,4 @@
+import { assertThrows } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import {
   deepStrictEqual as assertEquals,
   rejects as assertRejects,
@@ -826,4 +827,93 @@ Deno.test("R4 lost annual creator coupon response is recovered without duplicate
     ).length,
     1,
   );
+});
+
+Deno.test("R5 online plan uses live preflight and never issues a mutation", async () => {
+  const f = fake();
+  const input = structuredClone(sandbox);
+  input.environment = "production";
+  const methods: string[] = [];
+  const http: Http = async (method, path, body) => {
+    methods.push(method);
+    if (method !== "GET") throw Error("online plan mutated Polar");
+    if (
+      path.startsWith("/customers/") || path.startsWith("/subscriptions/") ||
+      path.startsWith("/orders/")
+    ) return { items: [], pagination: { total_count: 0, max_page: 0 } };
+    return await f.http(method, path, body);
+  };
+  const plan = await syncCatalog(http, input, {
+    environment: "production",
+    planOnly: true,
+  });
+  assertEquals(plan.production_apply_ready, true);
+  assertEquals(plan.writes, 0);
+  assertEquals(methods.every((m) => m === "GET"), true);
+  assertEquals(f.writes.length, 0);
+});
+
+Deno.test("R5 CLI --online persists a complete live plan and forbids combining apply", async () => {
+  assertThrows(() =>
+    parseArgs([
+      "--environment",
+      "production",
+      "--map",
+      "map.json",
+      "--output",
+      "out.json",
+      "--online",
+      "--apply",
+      "--confirm-production",
+    ])
+  );
+  const dir = await Deno.makeTempDir();
+  const mapPath = dir + "/map.json", output = dir + "/online.json";
+  const input = structuredClone(sandbox);
+  input.environment = "production";
+  await Deno.writeTextFile(mapPath, JSON.stringify(input));
+  const previous = Deno.env.get("POLAR_ACCESS_TOKEN");
+  Deno.env.set("POLAR_ACCESS_TOKEN", "r5-fake-read-only");
+  try {
+    const f = fake();
+    const methods: string[] = [];
+    await runCatalog([
+      "--environment",
+      "production",
+      "--map",
+      mapPath,
+      "--output",
+      output,
+      "--online",
+    ], async (url, init) => {
+      methods.push(String(init?.method));
+      assertEquals(init?.method, "GET");
+      const u = new URL(String(url));
+      if (
+        ["/v1/customers/", "/v1/subscriptions/", "/v1/orders/"].includes(
+          u.pathname,
+        )
+      ) {
+        return Response.json({
+          items: [],
+          pagination: { total_count: 0, max_page: 0 },
+        });
+      }
+      return Response.json(
+        await f.http("GET", u.pathname.replace("/v1", "") + u.search),
+      );
+    });
+    const result = JSON.parse(await Deno.readTextFile(output));
+    assertEquals(result.production_apply_ready, true);
+    assertEquals(result.production_apply_blockers, []);
+    assertEquals(result.writes, 0);
+    assertEquals(result.read_only, true);
+    assertEquals(result.plans.length, 4);
+    assertEquals(result.planned_actions.length > 0, true);
+    assertEquals(methods.every((m) => m === "GET"), true);
+  } finally {
+    if (previous === undefined) Deno.env.delete("POLAR_ACCESS_TOKEN");
+    else Deno.env.set("POLAR_ACCESS_TOKEN", previous);
+    await Deno.remove(dir, { recursive: true });
+  }
 });

@@ -1,3 +1,4 @@
+import { withdrawCreatorDiscount } from "./polar.ts";
 import { synchronizeRenewalDiscount } from "./polar.ts";
 import {
   assertEquals,
@@ -412,6 +413,43 @@ Deno.test("R4 renewal GET recovers lost PATCH response without restarting repeat
   discount = "launch";
   await assertRejects(() =>
     synchronizeRenewalDiscount("sub", "sandbox", {
+      ...expected,
+      authorize: () => Promise.resolve(false),
+    }, deps)
+  );
+  assertEquals(writes, 1);
+});
+
+Deno.test("R5 refunded creator coupon is removed once, foreign report coupon is preserved", async () => {
+  let current: string | null = "creator";
+  let writes = 0;
+  const deps = checkoutDeps(async (_url, init) => {
+    if (init?.method === "PATCH") {
+      writes++;
+      assertEquals(JSON.parse(String(init.body)), { discount_id: null });
+      current = null;
+    }
+    return Response.json({
+      id: "sub",
+      product_id: checkout.productId,
+      discount_id: current,
+    });
+  });
+  const expected = {
+    productId: checkout.productId,
+    creatorDiscountId: "creator",
+    authorize: () => Promise.resolve(true),
+  };
+  await withdrawCreatorDiscount("sub", "sandbox", expected, deps);
+  await withdrawCreatorDiscount("sub", "sandbox", expected, deps);
+  assertEquals(writes, 1);
+  current = "reports";
+  await withdrawCreatorDiscount("sub", "sandbox", expected, deps);
+  assertEquals(current, "reports");
+  assertEquals(writes, 1);
+  current = "creator";
+  await assertRejects(() =>
+    withdrawCreatorDiscount("sub", "sandbox", {
       ...expected,
       authorize: () => Promise.resolve(false),
     }, deps)

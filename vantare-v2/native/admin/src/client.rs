@@ -149,6 +149,9 @@ impl BillingIncident {
             "founders_duplicate_payment" => {
                 "CRÍTICO: segundo pago de Founders; revisar manualmente"
             }
+            "creator_renewal_revocation_failed" => {
+                "Retirada del descuento de creador pendiente de revisión"
+            }
             "creator_renewal_discount_failed" => "Descuento de creador pendiente de revisión",
             "founders_subscription_reactivated" => {
                 "Aviso: suscripción reactivada; se vuelve a cancelar su renovación"

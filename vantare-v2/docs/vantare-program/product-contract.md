@@ -118,6 +118,18 @@ públicos desactivados: los cupones de renovación se aplican solo por API.
 Comisión sin cambios: 30 % mes 1, 10 % meses 2–12 sobre lo pagado; pago manual.
 La comisión anual sigue esa ventana temporal, no se amplía por el descuento anual.
 
+**Riesgo aceptado por Isaac (16-oct-2026):** cualquier persona que conozca un
+código activo puede usarlo. No está limitado a una persona ni a la campaña de
+lanzamiento: mientras siga activo y configurado, atribuye ventas y concede el
+20 % desde renovación durante el tramo mensual/anual indicado. Su difusión
+puede aumentar las ventas con descuento y comisiones; es el modelo autorizado.
+
+Si se reembolsa el pago de origen o una factura de esa suscripción, o se revoca
+la suscripción, se retira el descuento de creador de sus renovaciones. El
+registro es durable e idempotente; fallo de Polar deja incidencia Owner y
+reintento. No se elimina un descuento ajeno de informes/manual ni se devuelve
+ningún importe automáticamente. La comisión conserva sus reglas históricas.
+
 Los descuentos por informes de VANTA-39 y creador comienzan después del primer
 periodo. No se suman: gana el mayor ahorro en céntimos sobre el precio normal;
 empate para informes. Se registra el otro como no aplicado. Pro: informes 200 c

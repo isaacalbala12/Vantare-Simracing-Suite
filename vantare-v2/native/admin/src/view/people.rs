@@ -398,6 +398,8 @@ impl Admin {
             }))
             .children(user.creator_renewal_operations.iter().map(|operation| {
                 let choice = match operation.not_applied.as_deref() {
+                    Some("creator:revoked") => "descuento de creador retirado por reembolso o revocación",
+                    Some("creator:revocation_pending") => "retirada del descuento de creador pendiente de revisión",
                     Some("creator:reports_save_more_or_equal") => "informes seleccionado; creador no aplicado porque ahorra menos",
                     Some("reports:creator_saves_more") => "creador seleccionado; informes no aplicado porque ahorra menos",
                     _ => "creador desde la primera renovación",

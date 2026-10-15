@@ -374,6 +374,7 @@ fn billing_incidents_make_rejected_payments_and_portal_reactivation_visible() {
         ("founders_duplicate_payment", "CRÍTICO"),
         ("founders_subscription_reactivated", "reactivada"),
         ("creator_renewal_discount_failed", "pendiente de revisión"),
+        ("creator_renewal_revocation_failed", "Retirada"),
     ] {
         let incident = super::BillingIncident {
             resource_id: "fixture-order".into(),

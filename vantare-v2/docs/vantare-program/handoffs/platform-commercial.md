@@ -1,3 +1,20 @@
+## VANTA-83 / #1661 · ronda 5 en validación · 16-oct-2026
+
+- Re-review r3 APTO; F1 Isaac exige retirar creador al reembolsar/revocar,
+  F2 acepta uso por cualquiera que conozca código; contrato actualizado.
+- F3 UUID + vínculo creador/entorno/intervalo; Owner registra ambos cupones.
+  F4 runbook de rotación sin ampliar managedIds ni reiniciar repeating.
+  F5 cableado webhook probado, initial solo desde billing_reason y sin metadata.
+- Retirada durable GET/PATCH/ACK, fencing del escritor anterior, cuenta borrada,
+  marcador aun antes del primer pago, fallo Owner y recuperación al volver activa.
+- Consulta Polar real expresamente autorizada, únicamente GET con token de
+  lectura transmitido por stdin SSH, nunca impreso ni guardado en el Mac.
+  Mapa completo y plan online en C:/VantareServer/evidence/polar-auditoria/.
+  Ready=true, inventario vivo 0 clientes/0 subs activas/0 pedidos; writes=0.
+- SQL 283 pgTAP y Edge 258 PASS antes del test CLI adicional; mutaciones RED
+  initial=true y ausencia de PATCH. Gates Owner Windows y entrega pendientes.
+- Sin apply, dinero, deploy ni capturas; #1593 requiere integración del escritor.
+
 ## VANTA-83 / #1661 · ronda 4 terminada para revisión · 16-oct-2026
 
 - Pro Plus confirmado 9,99/99,90 EUR; primer periodo 6,99/69,90.

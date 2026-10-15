@@ -803,3 +803,54 @@ export async function synchronizeRenewalDiscount(
     throw new Error("creator_discount_unconfirmed");
   }
 }
+
+// Revoke only the stored creator coupon. Reports/manual discounts remain untouched.
+export async function withdrawCreatorDiscount(
+  subscriptionId: string,
+  environment: BillingEnvironment,
+  expected: {
+    productId: string;
+    creatorDiscountId: string;
+    authorize: () => Promise<boolean>;
+  },
+  deps: PolarClientDeps = {},
+): Promise<void> {
+  if (!/^[A-Za-z0-9_-]{1,200}$/.test(subscriptionId)) {
+    throw Error("invalid_subscription_id");
+  }
+  const url = `${apiBase(environment, deps)}/subscriptions/${subscriptionId}`;
+  const request = async (method: "GET" | "PATCH") =>
+    await polarRequest(
+      url,
+      {
+        method,
+        headers: {
+          Authorization: `Bearer ${requireToken(deps)}`,
+          "Content-Type": "application/json",
+        },
+        ...(method === "PATCH"
+          ? { body: JSON.stringify({ discount_id: null }) }
+          : {}),
+      },
+      { ...deps, timeoutMs: 10000, maxRateLimitRetries: 0 },
+      async (response) => {
+        if (!response.ok) throw Error("creator_revocation_http_failed");
+        const value = await response.json();
+        if (
+          value.id !== subscriptionId ||
+          value.product_id !== expected.productId ||
+          !(value.discount_id === null || typeof value.discount_id === "string")
+        ) throw Error("creator_revocation_remote_mismatch");
+        return value;
+      },
+    );
+  const current = await request("GET");
+  if (!await expected.authorize()) {
+    throw Error("creator_revocation_authorization_lost");
+  }
+  if (current.discount_id !== expected.creatorDiscountId) return;
+  const updated = await request("PATCH");
+  if (updated.discount_id !== null) {
+    throw Error("creator_revocation_unconfirmed");
+  }
+}

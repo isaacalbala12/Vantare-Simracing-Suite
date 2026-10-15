@@ -1,3 +1,18 @@
+## #1608 · R11 · Guarda y permisos de triage (15/10/2026)
+
+Base `1ac73ce20`; comparación con nightly `64c493e4f`. Solo cambian el fixture
+de triage y este handoff. `run-triage-local.py` ejecutado en ambos árboles:
+**83/83 PASS**, incluidos rollback, cap concurrente y login real del worker.
+La versión anterior de la rama reproduce el aborto tras ocho checks.
+Catálogo completo con B03: los dos checks de permisos pasan; triage queda en
+**43/84** frente a **42/83** en nightly, con los fallos de admisión ya documentados.
+Su ruta B03 de borrado sigue sin una ejecución completa en verde en este contexto;
+la cobertura de identidad citada en R10 procede de la suite comercial.
+Catálogo repetido: **48 suites nightly / 59 rama**, ninguna común empeora.
+Evidencia y comparación por aserción: `~/evidence/1608-r11/RESULTADOS.md`.
+Sin ejecución nueva de otros runners de checkpoint ni de Docker/PowerShell.
+SHA y entrega al bare local en `~/orq/1608.buzon.md`; revisión del orquestador pendiente.
+
 ## #1608 · R10 · Fixtures Clerk y revocación de replay (15/10/2026)
 
 Encargo del orquestador sobre PR #1622; base `28b71186f`, nightly comparada
@@ -20,10 +35,11 @@ y triage **42/83**, igual número aprobado que en nightly. El test nativo de
 concurrencia `.psql` también pasa **6/6** en ambos árboles.
 
 Los fixtures crean perfil y binding Clerk antes de filas dependientes y usan
-claims completos (`iss/sub/role/sid/azp`). Conservan la ruta de fixtures antigua
-solo cuando no existe el registro B03, para sus runners de checkpoint.
+claims completos (`iss/sub/role/sid/azp`). La detección del registro B03 selecciona
+la ruta de fixtures. R10 verificó el catálogo completo y el procedimiento de
+hardening descrito abajo; eso no demuestra el resultado de cada runner de
+checkpoint ni de la imagen Docker. El runner propio de triage se ejecutó en R11.
 No se modifican ACL, RLS ni funciones de producto para satisfacer esos tests.
-Los archivos son autocontenidos: funcionan también al copiarlos el runner Docker.
 
 Cambios de significado explícitos por el modelo nuevo (no se eliminan checks):
 
@@ -41,8 +57,10 @@ Cambios de significado explícitos por el modelo nuevo (no se eliminan checks):
   ahora hacia `profiles` tras B03; antes del corte sigue hacia `auth.users`.
 - Core: la misma promoción con SHA incoherente se rechaza por el guard previo
   de referencias (`23503`) en vez del CHECK posterior (`23514`).
-- Triage: se comprueba EXECUTE cerrado del resolver privado, ya que B03 necesita
-  USAGE de schema para `current_account`. El borrado usa el webhook y conserva
+- Triage (corregido en R11): con B03, `current_account()` debe ser la única
+  función privada ejecutable por authenticated y no puede haber privilegios
+  sobre tablas ni columnas privadas. Sin B03 se conserva exactamente el check
+  de nightly: schema `private` cerrado. El borrado usa el webhook y conserva
   el UUID duradero del reviewer en auditoría privada; el borrado del autor sigue
   purgando contexto y reviews. La aserción de auditoría sigue exigiendo tres
   filas (en el catálogo completo falla por las mismas dos reviews que no llegan

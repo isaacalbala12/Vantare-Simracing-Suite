@@ -56,10 +56,21 @@ select ok(not has_table_privilege('vantare_triage','public.testing_contribution_
 select ok(not has_function_privilege('vantare_triage','public.testing_contribution_review(uuid,text,text,jsonb)','execute'),'worker cannot confirm proposal');
 select ok(not has_function_privilege('anon','public.testing_contribution_submit_v2(uuid,text,text,text,jsonb,jsonb)','execute'),'anon cannot submit');
 select ok(not has_function_privilege('service_role','public.testing_contribution_review(uuid,text,text,jsonb)','execute'),'service role is not the human confirmation path');
--- B03 exposes only current_account through private schema USAGE; implementation
--- functions remain closed. Older cuts have no private schema USAGE at all.
-select ok(not has_function_privilege('authenticated','private.resolve_account_identity(text,text)','execute'),
- 'authenticated cannot call the private identity resolver');
+select to_regclass('private.clerk_issuers') is not null as b03 \gset
+\if :b03
+select ok((select coalesce(array_agg(p.oid order by p.oid),array[]::oid[])
+ = array['private.current_account()'::regprocedure::oid]
+ from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+ where n.nspname='private' and has_function_privilege('authenticated',p.oid,'execute')),
+ 'current_account is the only private function executable by authenticated');
+select ok(not exists(select 1 from pg_class c join pg_namespace n on n.oid=c.relnamespace
+ where n.nspname='private' and c.relkind in ('r','p','v','m','f')
+ and (has_table_privilege('authenticated',c.oid,'SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER,MAINTAIN')
+ or has_any_column_privilege('authenticated',c.oid,'SELECT,INSERT,UPDATE,REFERENCES'))),
+ 'authenticated has no private table or column privileges');
+\else
+select ok(not has_schema_privilege('authenticated','private','usage'),'private schema ACL stays closed');
+\endif
 
 set local role authenticated;
 select pg_temp.fixture_claims('15940000-0000-0000-0000-000000000001');
@@ -160,7 +171,6 @@ select is((select count(*)::integer from public.testing_contribution_attachments
 select is((select telemetry_summary from public.testing_contribution_context where contribution_id='15940000-0000-0000-0000-000000000010'),null::jsonb,'expired telemetry purged');
 select is((select count(*)::integer from public.testing_contribution_context),2,'system and consent retained');
 select is((select count(*)::integer from public.testing_contribution_reviews),3,'human audit retained');
-select to_regclass('private.clerk_issuers') is not null as b03 \gset
 \if :b03
 select public.apply_clerk_user_event('triage-delete-reviewer',repeat('a',64),
  'https://fixtures.clerk.invalid','user_15940000000000000000000000000003','user.deleted',now(),null);

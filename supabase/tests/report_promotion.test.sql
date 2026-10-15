@@ -138,6 +138,7 @@ select is((select product_id from private.report_promotions where account_id=pg_
 select is(public.report_promotion_prepare(pg_temp.account(1),'sandbox','2026-11-13')->>'discount_id','plus6','P2-1 existing tier uses Plus reward');
 insert into public.billing_subscriptions(user_id,provider,environment,provider_subscription_id,provider_product_id,status,current_period_end)
  values(pg_temp.account(1),'polar','sandbox','replacement','pro','active','2026-12-20');
+select public.report_promotion_observe(pg_temp.account(1),'sandbox','sub1','plus','2026-10-26 19:00 Europe/Madrid','2026-11-23',null);
 select lives_ok($$select public.report_promotion_observe(pg_temp.account(1),'sandbox','replacement','pro','2026-11-20','2026-11-20',null)$$,'P2-1 second signup outside launch never quarantines webhook');
 select is((select subscription_id from private.report_promotions where account_id=pg_temp.account(1)),'replacement','P2-1 current subscription selected');
 select is((select tier from private.report_promotions where account_id=pg_temp.account(1)),6,'P2-1 tier conserved');

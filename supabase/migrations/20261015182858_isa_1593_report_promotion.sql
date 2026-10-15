@@ -209,10 +209,13 @@ begin
  select * into existing from private.report_promotions where account_id=p_account and environment=p_environment for update;
  if found then
    -- Ignore old deliveries and an older subscription waking up after replacement.
-   if p_modified<=existing.observed_at or (p_subscription<>existing.subscription_id and p_started<existing.current_started_at) then return; end if;
+   if p_subscription=existing.subscription_id and p_modified<=existing.observed_at then return; end if;
+   if p_subscription<>existing.subscription_id and (p_started,p_subscription)<=(existing.current_started_at,existing.subscription_id)
+    and exists(select 1 from public.billing_subscriptions b where b.user_id=p_account and b.environment=p_environment and b.provider='polar' and b.provider_subscription_id=existing.subscription_id and b.status in ('active','uncanceled')) then return; end if;
    if existing.subscription_id<>p_subscription or existing.product_id<>p_product then
      select greatest(p_modified,coalesce(max(lease_until),p_modified)) into until_time from private.report_promotion_changes
       where account_id=p_account and environment=p_environment and applied_at is null and superseded_at is null;
+     update private.report_promotion_transfers set cleared_at=p_modified where account_id=p_account and environment=p_environment and subscription_id=p_subscription and cleared_at is null;
      insert into private.report_promotion_transfers(account_id,environment,subscription_id,product_id,next_subscription_id,next_product_id,observed_at,cleanup_after,cleared_at)
      values(p_account,p_environment,existing.subscription_id,existing.product_id,p_subscription,p_product,p_modified,until_time,
        case when existing.subscription_id=p_subscription then p_modified end);

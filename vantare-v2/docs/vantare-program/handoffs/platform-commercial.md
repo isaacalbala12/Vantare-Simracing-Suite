@@ -724,6 +724,40 @@ Siguiente: revisión del orquestador y actualización de issue/PR; por su vía
 autorizada aplicar en sandbox, confirmar cobro hoy en enlaces de creador y
 siete días solo en Pro normal, revisar checkouts/compras previos por separado.
 
+## #1631 / VANTA-70 · Reparación de la división de cuenta (15/10/2026)
+
+Continuación autorizada sobre `c532f53a7`, con los commits recibidos intactos,
+en `C:\VantareServer\wt\isa-1631`, rama `vantareapp/isa-1631-login-propio`.
+Base ya incorporada `64c493e4f`; PR borrador
+[#1635](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1635) a `nightly`.
+Se eliminan importaciones obsoletas de helpers que ya viven en
+`services/view/account.rs`, se importa `access` y el test de compra importa
+`account_module_access` y `Section` directamente. Se conservan los helpers
+privados y los tres compartidos con `pub(super)`. No cambia la lógica ni se
+añaden dependencias. Comparados los cuerpos de las **24 funciones** extraídas
+con el padre de `c532f53a7`: iguales salvo ruta relativa de `protocol` y espacios.
+`services/view.rs`: **1039 líneas**; `view/account.rs`: **724 líneas**.
+El techo de **1750** del test de arquitectura se conserva sin cambios.
+
+Gates por `compilar.ps1`, target `C:\VantareServer\targets\1631`, Rust 1.95,
+DuckDB oficial y defaults de los demás crates conservados:
+fmt y Clippy `--workspace --all-targets -- -D warnings` **PASS**;
+Nextest hub/services/ipc/runtime **1136/1136 PASS**, **8 omisiones** existentes,
+**352,894 s**, incluido `hub_source_files_stay_within_their_line_budgets`.
+El primer Clippy detectó además la importación perdida de `Section` en el test;
+se corrigió sin cambiar aserciones y el gate completo pasó al repetirlo.
+Logs `C:\VantareServer\logs\gates-1631-split-*.log`;
+el fallo inicial se conserva en `gates-1631-final.log`.
+Ciclo de vida no ejecutado: se cancela su espera en la cola tras varios minutos
+con 3,5–3,7 GB libres frente a 4 GB mínimos, sin cargo/rustc activos al comprobar.
+Se conserva el umbral; los tres gates pedidos en este relevo están aprobados.
+Telemetría no repetida: este arreglo solo toca importaciones del Hub.
+No se repiten capturas ni pruebas macOS/Clerk real; no cambia presentación ni
+comportamiento. Las pruebas reales de R2 siguen pendientes de Isaac.
+Siguiente: revisión del orquestador; SHA remoto, CI y estado en issue y PR.
+Repetir ciclo de vida cuando la cola disponga de RAM.
+Sin integración en canales, release ni despliegue.
+
 ## #1631 / VANTA-70 · R2 terminada para revisión en Windows (15/10/2026)
 
 Relevo autorizado al worker GPT, worktree `C:\VantareServer\wt\isa-1631`,

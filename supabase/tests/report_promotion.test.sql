@@ -246,5 +246,11 @@ select is((select count(*)::int from private.report_promotion_invoices where ord
 select ok((select source='reconciliation' and reconciled_at is not null from private.report_promotion_invoices where order_id='reconciled16'),'P2-5 recovered invoice has durable reconciliation trace');
 select ok((select resolved_at is not null from private.report_promotion_invoice_gaps where order_id='reconciled16'),'P2-5 repaired gap resolves durably');
 select is(public.report_promotion_prepare(pg_temp.account(16),'sandbox','2026-11-27')->>'remaining','2','P2-5 reconciled renewal consumes the missing month');
+select is(private.report_promotion_progress(pg_temp.account(9),'sandbox','2026-11-01')->>'last_error','promotion_initial_invoice_missing','P3-10 missing initial invoice is an owner-visible incident');
+insert into public.billing_orders(user_id,provider,environment,provider_order_id,provider_product_id,provider_subscription_id,status,paid,net_amount,currency,remote_modified_at,snapshot_hash)
+ values(pg_temp.account(9),'polar','sandbox','recovered-initial9','pro','sub9','paid',true,399,'eur','2026-10-26 19:00 Europe/Madrid',repeat('a',64));
+select public.report_promotion_invoice('sandbox','recovered-initial9','pro1',200,'2026-10-26 19:00 Europe/Madrid','2026-10-26 19:00 Europe/Madrid','2026-11-26 19:00 Europe/Madrid',true,'reconciliation');
+select public.report_promotion_prepare(pg_temp.account(9),'sandbox','2026-11-01');
+select is(private.report_promotion_progress(pg_temp.account(9),'sandbox','2026-11-01')->>'last_error',null::text,'P3-10 initial invoice recovery clears the incident');
 select * from finish();
 rollback;

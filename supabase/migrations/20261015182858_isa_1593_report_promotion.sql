@@ -126,7 +126,7 @@ grant execute on function public.report_promotion_invoice(text,text,text,integer
 create table private.report_promotion_failures (
  account_id uuid not null references public.profiles(id), environment text not null check(environment in ('sandbox','production')),
  code text not null check(code in ('polar_discount_unmanaged','polar_discount_catalog_mismatch','polar_discount_subscription_changed',
- 'polar_discount_not_applied','polar_discount_invalid_response','polar_discount_http_failed','promotion_account_failed','promotion_not_authorized','promotion_repair_lease_lost','promotion_invoice_details_missing')),
+ 'polar_discount_not_applied','polar_discount_invalid_response','polar_discount_http_failed','promotion_account_failed','promotion_not_authorized','promotion_repair_lease_lost','promotion_invoice_details_missing','promotion_initial_invoice_missing')),
  attempts integer not null default 1, first_at timestamptz not null, last_at timestamptz not null, resolved_at timestamptz,
  primary key(account_id,environment)
 );
@@ -333,7 +333,11 @@ begin
  -- the launch discount until a paid invoice for this exact subscription exists.
  select o.* into first_order from public.billing_orders o join private.report_promotion_invoices i on i.environment=o.environment and i.order_id=o.provider_order_id and i.is_initial
  where o.user_id=p_account and o.provider='polar' and o.environment=p_environment and o.provider_subscription_id=p.original_subscription_id and o.paid and o.currency='eur' order by i.billed_at,o.id limit 1;
- if not found then return null; end if;
+ if not found then
+   perform public.report_promotion_failed(p_account,p_environment,'promotion_initial_invoice_missing',p_now);
+   return null;
+ end if;
+ update private.report_promotion_failures set resolved_at=p_now where account_id=p_account and environment=p_environment and code='promotion_initial_invoice_missing' and resolved_at is null;
  p.first_refunded:=p.first_refunded or first_order.status<>'paid' or first_order.reported_refunded_amount>0
   or exists(select 1 from public.billing_refunds r where r.environment=p_environment and r.provider_order_id=first_order.provider_order_id and r.status='succeeded' and r.amount>0);
  select * into c from private.report_promotion_catalog where environment=p_environment and product_id=p.product_id;

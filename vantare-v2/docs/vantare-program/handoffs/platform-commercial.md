@@ -1,16 +1,58 @@
-## #1636 · VANTA-72 · R2 en curso (P2-1)
+## #1636 · VANTA-72 · R2 para revisión (15/10/2026)
 
-Base de revisión `b0f79982`, PR #1657 subido por el orquestador. Worker en el
-mismo worktree Mac. Cola privada de borrado Brevo conectada al DELETE de contacto
-que dispara #1622; reintentos, leases, ACK 204/404 idempotente y limpieza de PII
-tras confirmar. Worker `mail-cleanup` inerte, sin scheduler ni secretos. Sync
-fenced para impedir recreación tras borrado; altas esperan el borrado pendiente.
-Contratos en `supabase/functions/native-admin/MAIL.md`; evidencia en
-`~/evidence/1636-r2/`. P2-2 añade borrado de espera por Owner/enlace con POST confirmado: 35 SQL,
-80 Edge y Clippy/Nextest admin 27/27 pasan. P2-3: servidor de consentimiento propio listo y E2E con SQL real probado;
-contrato exacto en `supabase/functions/native-admin/CONSENT.md`. Onboarding #1637
-no está en la base; no se finge integración de esa UI ni del repo web. P3 en curso. Seguimiento
-Plane/GitHub por el orquestador. Sin SaaS real ni despliegue.
+PR #1657, rama `vantareapp/isa-1636-correos`, entrada `b0f799827`. Mismo worktree
+Mac `~/wt-1636`; sin subagentes, credenciales ni push GitHub. El orquestador
+mantiene Plane/issue/PR y sube del bare. Buzón `~/orq/1636.buzon.md`.
+
+**P2-1, 5f9e3806:** #1622 encola DELETE Brevo de direcciones actuales/anteriores
+antes de borrarlas localmente. Worker `mail-cleanup`, backoff 5 s–1 h, leases,
+fencing y ACK 204/404 idempotente. Al confirmar retira también la PII temporal de
+la cola y conserva resultado/intentos/fecha sin correo en auditoría. Sync anterior
+vence antes de DELETE; un alta nueva espera al borrado pendiente. Worker inerte,
+flag/secreto/scheduler no configurados. Owner puede drenar y ver lo pendiente.
+
+**P2-2, b3fbe59c:** borrar espera sin cuenta desde gestión (correo exacto y
+confirmación), RPC solo servidor o enlace firmado; misma cola Brevo. No permite
+borrar una cuenta por esa vía. GET muestra confirmación, POST de formulario actúa,
+POST RFC8058 de un clic conserva baja sin segunda pantalla.
+
+**P2-3, 4a8527ba:** `native-mail-consent`, OAuth + correo primario verificado en
+Clerk, UUID derivado en servidor, una decisión de novedades/ofertas y evidencia
+fija. Get/set, bloqueo/tombstone y límite persistente por cuenta. #1637 no está en
+esta base: servidor listo y enganche exacto documentado en
+`supabase/functions/native-admin/CONSENT.md`, también llamada backend del repo web
+tras su verificación de dirección. UI #1637/Ajustes y frontend web siguen en sus
+ramas; no se afirma haberlos conectado aquí. E2E local prueba el servidor con SQL
+real, no solo un mock de consentimiento.
+
+**P3:** CHECK de locale y escape/fallback de lang; cursor UUID sin dirección.
+La selección usa proyecciones pendientes por entorno, no límite de keyset: recoge
+cambios detrás del cursor, durante HTTP y cambios/expiración de grupos. ACK viejo
+no limpia datos nuevos. Reserva reevalúa como máximo 20 pendientes; el barrido
+identificador de cambios de sync sigue comparando la proyección efectiva de la
+cohorte. Rate de baja persistente global 600/min y token válido 20/min, hash con
+retención acotada, 429/Retry-After. PS guard reconoce rutas/candidatos ya conocidos
+por TS; wrapper permite desplegar cuatro rutas nuevas solo por nombre explícito,
+sin cambiar el conjunto comercial por defecto. CI añade Deno offline, SQL y E2E
+con Docker bajo lock, y ejecuta guard PS en Windows. Gates nativos --workspace
+ya incluyen admin; CI remoto pendiente de que el orquestador suba esta ronda.
+
+Evidencia `~/evidence/1636-r2/`: SQL **181/181**, E2E **1/1** con PostgreSQL real y
+OAuth/Brevo dobles, Edge/contratos **95/95** sin permiso runtime de red; Clippy admin
+`-D warnings`, Nextest **28/28**, build normal, fmt, quality/456 huellas PASS.
+YAML y shell de los steps nuevos parseados. Seis escenas nativas demo abren;
+`Vantare1636R2QA.app` privado debug conservado. **Capturas y revisión visual siguen
+bloqueadas** por permiso macOS para SSH (preflight false comprobado en esta ronda).
+No se afirma interacción física ni Windows/DPI. PowerShell solo se prueba por
+contrato aquí; ejecución en el nuevo step Windows CI. Lifecycle/telemetría omitidos:
+no cambia runtime/domain/ipc/testdata. Target aislado retirado al cerrar.
+
+Contrato/configuración vigente consolidado en `supabase/functions/native-admin/MAIL.md`.
+Antes de activar: review del orquestador, CI y QA visual/Windows, enganchar #1637/web,
+configurar Brevo/DNS/listas/bajas/secreto y scheduler de limpieza, probar sandbox
+con autorización y validar modelo/coste de Anthropic. El worker no configura nada
+real ni envía correos. Sin merge, promoción, despliegue, release, anuncios o gasto.
+Push únicamente al bare local del Mac; SHA final y verificación en el buzón.
 
 ## #1636 · VANTA-72 · Correos de gestión (15/10/2026, candidato local)
 

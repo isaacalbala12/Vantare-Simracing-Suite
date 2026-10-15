@@ -643,7 +643,9 @@ impl Client {
                 .ok()
                 .and_then(|v| v.get("error").and_then(|v| v.as_str()).map(str::to_owned));
             return Err(match code.as_deref() {
-                Some("mail_disabled" | "mail_unconfigured") => Error::Unconfigured,
+                Some("mail_disabled" | "mail_unconfigured" | "mail_cleanup_disabled") => {
+                    Error::Unconfigured
+                }
                 Some("confirmation_mismatch") => Error::ConfirmationMismatch,
                 Some("account_conflict") => Error::AccountConflict,
                 Some("rate_limited") => Error::RateLimited,

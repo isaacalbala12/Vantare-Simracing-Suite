@@ -75,6 +75,7 @@ async function rpc(
     ],
     mail_forget_waitlist: ["p_email"],
     mail_unsubscribe: ["p_email"],
+    mail_unsubscribe_budget: ["p_token_hash"],
     mail_erasure_claim: [],
     mail_erasure_finish: ["p_id", "p_lease", "p_http_status"],
   };
@@ -225,6 +226,10 @@ Deno.test({
     assert(
       (await handleUnsubscribe(new Request(url), {
         env,
+        budget: async (hash) =>
+          await rpc("mail_unsubscribe_budget", {
+            p_token_hash: hash ?? null,
+          }) === true,
         forget: async (email) => {
           await rpc("mail_forget_waitlist", { p_email: email });
         },
@@ -245,6 +250,10 @@ Deno.test({
         }),
         {
           env,
+          budget: async (hash) =>
+            await rpc("mail_unsubscribe_budget", {
+              p_token_hash: hash ?? null,
+            }) === true,
           forget: async (email) => {
             await rpc("mail_forget_waitlist", { p_email: email });
           },
@@ -257,20 +266,32 @@ Deno.test({
       ) === "0",
     );
     let deletes = 0;
-    await drainMailErasures({
-      env,
-      rpc,
-      fetch: (url, init) => {
-        assert(
-          init?.method === "DELETE" &&
-            String(url).includes("wait-e2e%40example.invalid"),
-        );
-        deletes++;
-        return Promise.resolve(new Response(null, { status: 404 }));
-      },
-    });
+    const drain = (status: number) =>
+      drainMailErasures({
+        env,
+        rpc,
+        fetch: (url, init) => {
+          assert(
+            init?.method === "DELETE" &&
+              String(url).includes("wait-e2e%40example.invalid"),
+          );
+          deletes++;
+          return Promise.resolve(new Response(null, { status }));
+        },
+      });
+    await drain(503);
     assert(
-      deletes === 1 &&
+      await sql(
+        "select count(*) from private.mail_contact_erasures where state='pending' and email='wait-e2e@example.invalid';",
+      ) === "1",
+      "failed provider delete remains queued with the minimum address needed to retry",
+    );
+    await sql(
+      "update private.mail_contact_erasures set next_attempt_at=now()-interval '1 second' where email='wait-e2e@example.invalid';",
+    );
+    await drain(404);
+    assert(
+      deletes === 2 &&
         await sql(
             "select count(*) from private.mail_contact_erasures where state='completed' and email is null;",
           ) === "1",

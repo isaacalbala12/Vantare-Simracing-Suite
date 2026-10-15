@@ -88,7 +88,7 @@ export function validateMail(action: string, p: Obj): void {
   ) throw invalid();
   if (
     action === "mail_sync" && p.cursor !== undefined &&
-    (typeof p.cursor !== "string" || p.cursor.length > 320)
+    (!isUuid(p.cursor))
   ) throw invalid();
 }
 export const escapeHtml = (s: string): string =>
@@ -100,13 +100,18 @@ export const escapeHtml = (s: string): string =>
       ]!,
   );
 export function renderMail(body: string, url: string, locale: string): string {
+  const language = locales.includes(locale as typeof locales[number])
+    ? locale
+    : "en";
   const labels: Record<string, string> = {
     es: "Darme de baja de todos los correos",
     en: "Unsubscribe from all emails",
     it: "Annulla tutte le email",
     "pt-BR": "Cancelar todos os e-mails",
   };
-  return `<!doctype html><html lang="${locale}"><body><h2>Vantare</h2><div style="white-space:pre-wrap">${
+  return `<!doctype html><html lang="${
+    escapeHtml(language)
+  }"><body><h2>Vantare</h2><div style="white-space:pre-wrap">${
     escapeHtml(body)
   }</div><hr><a href="${escapeHtml(url)}">${
     labels[locale] ?? labels.en
@@ -225,15 +230,20 @@ export async function executeMail(
         Number.isSafeInteger(map[g]) && map[g] > 0
       ) || new Set(Object.values(map)).size !== groups.length
     ) throw new NativeError(503, "mail_unconfigured");
-    const page = await run("mail_sync_page", { cursor: p.cursor ?? "" });
+    const page = await run(
+      "mail_sync_page",
+      p.cursor === undefined ? {} : { cursor: p.cursor },
+    );
     const contacts = page.contacts as Array<
       {
+        id: string;
         email: string;
         revision: number;
         consent: boolean;
         groups: string[] | null;
       }
     >;
+    let synced = 0;
     for (const c of contacts) {
       const claim = await run("mail_sync_lease", {
         email: c.email,
@@ -265,10 +275,13 @@ export async function executeMail(
         revision: c.revision,
         lease: claim.lease,
       });
+      synced++;
     }
     return {
-      synced: contacts.length,
-      next_cursor: contacts.length === 5 ? contacts.at(-1)!.email : null,
+      synced,
+      next_cursor: (await run("mail_sync_pending", {})).pending === true
+        ? (contacts.at(-1)?.id ?? p.cursor ?? crypto.randomUUID())
+        : null,
     };
   }
   const sender = require("BREVO_MARKETING_SENDER");
@@ -285,7 +298,10 @@ export async function executeMail(
   let processed = 0;
   for (let i = 0; i < 3; i++) {
     const claim = await run("mail_claim", p);
-    if (!claim.delivery) break;
+    if (!claim.delivery) {
+      if (claim.more_pending === true) continue;
+      break;
+    }
     const d = claim.delivery as { id: string; email: string; locale: string };
     const content = claim.content as { subject: string; body: string };
     let status = "uncertain";

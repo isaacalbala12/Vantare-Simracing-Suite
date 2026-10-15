@@ -6,7 +6,12 @@ import {
   validateMail,
 } from "./mail.ts";
 import { NativeError } from "../_shared/native-auth.ts";
-import { handleUnsubscribe } from "../mail-unsubscribe/index.ts";
+import {
+  handleUnsubscribe as realUnsubscribe,
+  type UnsubscribeDeps,
+} from "../mail-unsubscribe/index.ts";
+const handleUnsubscribe = (req: Request, deps: UnsubscribeDeps = {}) =>
+  realUnsubscribe(req, { budget: () => Promise.resolve(true), ...deps });
 import {
   unsubscribeToken,
   verifyUnsubscribe,
@@ -521,4 +526,69 @@ Deno.test("waitlist erasure uses only verified token address and GET never mutat
       confirm: false,
     })
   );
+});
+
+Deno.test("P3: locale cannot inject html attributes and cursor never exposes an address", async () => {
+  const html = renderMail("B", "https://project.invalid/", 'es" onload="x');
+  assert(html.includes('<html lang="en">') && !html.includes("onload"));
+  await rejects(() =>
+    validateMail("mail_sync", { cursor: "private@example.invalid" })
+  );
+  let sync = 0;
+  const response = await executeMail("mail_sync", { cursor: id }, (action) => {
+    if (action === "mail_sync_page") {
+      return Promise.resolve({
+        contacts: [{ id, email: "private@example.invalid", revision: 1 }],
+      });
+    }
+    if (action === "mail_sync_lease") {
+      return Promise.resolve({
+        allowed: true,
+        lease: id,
+        consent: true,
+        groups: ["free"],
+      });
+    }
+    if (action === "mail_sync_pending") {
+      return Promise.resolve({ pending: true });
+    }
+    sync++;
+    return Promise.resolve({});
+  }, {
+    env,
+    fetch: () => Promise.resolve(new Response(null, { status: 204 })),
+  });
+  assert(
+    response.next_cursor === id && response.synced === 1 &&
+      !JSON.stringify(response).includes("example.invalid") && sync > 0,
+  );
+});
+Deno.test("P3: unsubscribe global and signed-token budgets return 429 before mutation", async () => {
+  let changes = 0;
+  const token = await unsubscribeToken("yes@example.invalid", secret);
+  const req = () =>
+    new Request(`https://project.invalid/?t=${token}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: "List-Unsubscribe=One-Click",
+    });
+  for (const globalOnly of [true, false]) {
+    let budgets = 0;
+    const response = await realUnsubscribe(req(), {
+      env,
+      budget: (hash) => {
+        budgets++;
+        if (hash) assert(/^[a-f0-9]{64}$/.test(hash));
+        return Promise.resolve(globalOnly ? false : hash === undefined);
+      },
+      unsubscribe: () => {
+        changes++;
+        return Promise.resolve();
+      },
+    });
+    assert(
+      response.status === 429 && response.headers.get("Retry-After") === "60" &&
+        changes === 0 && budgets === (globalOnly ? 1 : 2),
+    );
+  }
 });

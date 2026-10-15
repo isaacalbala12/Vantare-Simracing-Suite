@@ -31,7 +31,7 @@ fn run() -> Result<(), String> {
             }
             "--help" => {
                 println!(
-                    "vantare-admin [--demo] [--screen login|users|creators|rollout|reports|mail] [--scene normal|cargando|vacio|error|ana|owner|eva|bloquear|borrar|carlos|pablo|nuevo|informe|arreglado|rechazado|mail-editor|mail-confirm|mail-history] [--diagnose-owner]"
+                    "vantare-admin [--demo] [--screen login|users|creators|rollout|reports|mail] [--scene normal|cargando|vacio|error|ana|owner|eva|bloquear|borrar|carlos|pablo|nuevo|informe|arreglado|rechazado|mail-editor|mail-confirm|mail-history|mail-forget|mail-cleanup] [--diagnose-owner]"
                 );
                 return Ok(());
             }

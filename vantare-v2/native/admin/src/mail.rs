@@ -174,7 +174,9 @@ impl crate::client::Action {
                     && brief.chars().count() <= 4000
                     && crate::mail::TEMPLATES.iter().any(|(k, _)| *k == template)
             }
-            Self::MailSync { cursor } => cursor.as_ref().is_none_or(|s| s.len() <= 320),
+            Self::MailSync { cursor } => cursor
+                .as_ref()
+                .is_none_or(|s| vantare_services::license::uuid(s)),
             _ => return None,
         })
     }
@@ -264,7 +266,14 @@ impl crate::state::State {
                 self.mail.generated = Some(content);
             }
             Action::MailSync { .. } => {
-                self.mail.sync_cursor = field(response, "next_cursor")?;
+                let cursor: Option<String> = field(response, "next_cursor")?;
+                if cursor
+                    .as_ref()
+                    .is_some_and(|value| !vantare_services::license::uuid(value))
+                {
+                    return Err(Error::Protocol);
+                }
+                self.mail.sync_cursor = cursor;
             }
             _ => return Err(Error::Protocol),
         }
@@ -394,6 +403,35 @@ mod workflow_tests {
         assert!(state.mail.campaigns.is_empty());
         assert!(state.mail.campaign.is_none());
         assert!(!state.signed_in);
+    }
+    #[test]
+    fn synchronization_cursor_is_opaque_in_requests_and_replies() {
+        let address = "person@example.invalid".to_owned();
+        assert!(
+            Action::MailSync {
+                cursor: Some(address.clone())
+            }
+            .validate()
+            .is_err()
+        );
+        let mut state = State::new(true, Screen::Mail);
+        assert!(
+            state
+                .accept(
+                    &Action::MailSync { cursor: None },
+                    &serde_json::json!({"next_cursor":address})
+                )
+                .is_err()
+        );
+        assert!(state.mail.sync_cursor.is_none());
+        let id = "00000000-0000-4000-8000-000000001741".to_owned();
+        state
+            .accept(
+                &Action::MailSync { cursor: None },
+                &serde_json::json!({"next_cursor":id}),
+            )
+            .expect("opaque cursor ACK");
+        assert_eq!(state.mail.sync_cursor.as_deref(), Some(id.as_str()));
     }
     #[test]
     fn malformed_mail_reply_cannot_replace_a_reviewed_campaign() {

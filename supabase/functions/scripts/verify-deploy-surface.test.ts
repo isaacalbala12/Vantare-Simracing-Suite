@@ -287,3 +287,51 @@ Deno.test("retired Wails binding pipeline cannot return or publish", () => {
     }
   }
 });
+
+Deno.test("marketing review routes are deployable explicitly with offline SQL/E2E gates", () => {
+  const routes = [
+    "mail-unsubscribe",
+    "mail-webhook",
+    "mail-cleanup",
+    "native-mail-consent",
+  ];
+  if (
+    invalidDeployableDirectories(
+      routes.map((name) => ({ name, isDirectory: true }) as Deno.DirEntry),
+    ).length
+  ) throw new Error("marketing route rejected");
+  const ps = Deno.readTextFileSync(
+    new URL("verify-deploy-surface.ps1", import.meta.url),
+  );
+  const deploy = Deno.readTextFileSync(
+    new URL("deploy-approved-functions.ps1", import.meta.url),
+  );
+  const defaults = deploy.match(/\$Functions = @\(([^\n]+)\)/)?.[1] ?? "";
+  for (const name of routes) {
+    if (
+      !ps.includes(`"${name}"`) || !deploy.includes(`"${name}"`) ||
+      defaults.includes(`"${name}"`)
+    ) throw new Error("marketing deployment is not explicit/inert");
+  }
+  const workflow = Deno.readTextFileSync(
+    new URL(
+      "../../../.github/workflows/branch-channel-gates.yml",
+      import.meta.url,
+    ),
+  );
+  for (
+    const part of [
+      "native-admin/ native-mail-consent/ _shared/mail-erasure.test.ts",
+      "--test marketing_mail_erasure.test.sql",
+      "--test marketing_mail_waitlist_erasure.test.sql",
+      "--test marketing_mail_consent.test.sql",
+      "--test marketing_mail_hardening.test.sql",
+      "--mail-e2e",
+      "verify-deploy-surface.ps1",
+    ]
+  ) {
+    if (!workflow.includes(part)) {
+      throw new Error("marketing gate missing: " + part);
+    }
+  }
+});

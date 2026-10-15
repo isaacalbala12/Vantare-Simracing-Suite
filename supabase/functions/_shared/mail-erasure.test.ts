@@ -114,3 +114,34 @@ Deno.test("erasure cannot claim a false result as a confirmed ACK", async () => 
   }
   assert(failed);
 });
+
+Deno.test("authenticated queue endpoint accepts only the closed maintenance request", async () => {
+  let claims = 0;
+  const deps = {
+    env,
+    rpc: (name: string) => {
+      assert(name === "mail_erasure_claim");
+      claims++;
+      return Promise.resolve({ job: null });
+    },
+  };
+  const make = (body: unknown) =>
+    new Request("https://project.invalid/", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${env("MAIL_CLEANUP_KEY")}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+  const invalid = await handleMailCleanup(
+    make({ version: 1, email: "chosen@example.invalid" }),
+    deps,
+  );
+  assert(invalid.status === 400 && claims === 0);
+  const valid = await handleMailCleanup(make({ version: 1 }), deps);
+  assert(
+    valid.status === 200 && Number(claims) === 1 &&
+      (await valid.json()).processed === 0,
+  );
+});

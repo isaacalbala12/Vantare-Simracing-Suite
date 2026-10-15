@@ -160,6 +160,12 @@ impl State {
         self.message = if self.screen == Screen::Mail && error == Error::Unconfigured {
             "Correos todavía no está activado. Revisa la configuración del servidor.".into()
         } else if self.screen == Screen::Mail
+            && self.mail.campaign.is_none()
+            && error == Error::AccountConflict
+        {
+            "Esa dirección está asociada a una cuenta. Usa el borrado de cuenta para retirarla."
+                .into()
+        } else if self.screen == Screen::Mail
             && matches!(error, Error::Conflict | Error::AccountConflict)
         {
             "La campaña ha cambiado. Actualiza y revisa el borrador antes de confirmar.".into()

@@ -2,6 +2,7 @@ import { mailRpc } from "../_shared/mail-erasure.ts";
 import { verifyUnsubscribe } from "./tokens.ts";
 export type UnsubscribeDeps = {
   env?: (key: string) => string | undefined;
+  budget?: (hash?: string) => Promise<boolean>;
   unsubscribe?: (email: string) => Promise<void>;
   forget?: (email: string) => Promise<void>;
 };
@@ -27,11 +28,36 @@ export async function handleUnsubscribe(
     }
     const secret = (deps.env ?? Deno.env.get)("MARKETING_UNSUBSCRIBE_KEY");
     if (!secret || secret.length < 32) return reply("Unavailable", 503);
+    const budget = deps.budget ??
+      (async (hash?: string) =>
+        await mailRpc("mail_unsubscribe_budget", {
+          p_token_hash: hash ?? null,
+        }) === true);
+    const limited = () =>
+      new Response("Espera un minuto antes de reintentar.", {
+        status: 429,
+        headers: {
+          ...headers,
+          "Retry-After": "60",
+          "Content-Type": "text/plain; charset=utf-8",
+        },
+      });
+    if (!await budget()) return limited();
+    const rawToken = new URL(request.url).searchParams.get("t") ?? "";
     const email = await verifyUnsubscribe(
-      new URL(request.url).searchParams.get("t") ?? "",
+      rawToken,
       secret,
     );
     if (!email) return reply("Invalid unsubscribe link", 400);
+    const tokenHash = [
+      ...new Uint8Array(
+        await crypto.subtle.digest(
+          "SHA-256",
+          new TextEncoder().encode(rawToken),
+        ),
+      ),
+    ].map((b) => b.toString(16).padStart(2, "0")).join("");
+    if (!await budget(tokenHash)) return limited();
     if (request.method === "GET") {
       return new Response(
         `<!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Vantare · Preferencias de correo</title><h1>Correos de Vantare</h1><p>Confirma la baja de todos los correos de novedades y ofertas.</p><p>Unsubscribe from all emails · Annulla tutte le email · Cancelar todos os e-mails</p><form method="post"><button name="action" value="unsubscribe">Darme de baja · Unsubscribe</button></form><hr><p>Si solo estás en la lista de espera, puedes borrar también tus datos de esa lista y de Brevo.</p><form method="post"><button name="action" value="forget">Borrar mis datos de la lista de espera</button></form></html>`,

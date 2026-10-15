@@ -1011,6 +1011,17 @@ impl Admin {
             return Err("Las escenas solo están disponibles con --demo".into());
         }
         match scene {
+            "mail-forget" => {
+                self.state.screen = Screen::Mail;
+                self.open_dialog(Dialog::ForgetWaitlist, cx);
+            }
+            "mail-cleanup" => {
+                self.state.screen = Screen::Mail;
+                self.state.mail.cleanup_pending = 2;
+                self.state
+                    .propose(Action::MailCleanup)
+                    .map_err(|_| "confirmación de limpieza demo")?;
+            }
             "mail-editor" | "mail-confirm" | "mail-history" => {
                 self.state.screen = Screen::Mail;
                 self.state.mail.campaign = self.state.mail.campaigns.first().cloned();

@@ -91,6 +91,26 @@ jobs:
             supabase/functions/_shared/testing-center-agent-observability.test.ts \
             supabase/functions/scripts/verify-deploy-surface.test.ts
 
+      - name: Test marketing handlers offline
+        working-directory: supabase/functions
+        run: |
+          deno test --frozen --node-modules-dir=auto --allow-env \
+            native-admin/ native-mail-consent/ _shared/mail-erasure.test.ts
+
+      - name: Test marketing SQL and end-to-end consent locally
+        run: |
+          until mkdir "$HOME/.vantare-marketing-docker.lock" 2>/dev/null; do sleep 5; done
+          trap 'rmdir "$HOME/.vantare-marketing-docker.lock"' EXIT
+          python3 supabase/tests/run-admin-local.py \
+            --output "$RUNNER_TEMP/marketing-sql" \
+            --test marketing_mail.test.sql \
+            --test marketing_mail_erasure.test.sql \
+            --test marketing_mail_waitlist_erasure.test.sql \
+            --test marketing_mail_consent.test.sql \
+            --test marketing_mail_hardening.test.sql \
+            --test native_admin_deletion_r4.test.sql \
+            --mail-e2e
+
   product:
     name: Validate Vantare blocking gates
     needs: policy
@@ -139,6 +159,9 @@ jobs:
           if (-not $scope.eligible -or $scope.lint_paths.Count -gt 0 -or $scope.visual_required) {
             throw "automatic frontend scope retired; no native preauthorization is granted"
           }
+
+      - name: Verify explicit Supabase deploy surface
+        run: ../supabase/functions/scripts/verify-deploy-surface.ps1
 
       - name: Test Windows runner hooks and beta feed origin
         run: |

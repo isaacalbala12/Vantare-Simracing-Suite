@@ -125,3 +125,11 @@ grabación: SSH devuelve `CGPreflightScreenCaptureAccess=false` y screencapture
 no puede leer la ventana. El soporte de exportación de GPUI requería ampliar el
 lock de dependencias; se descartó por la prohibición de nuevas dependencias.
 No se incluye otro renderizador ni se manipulan permisos del sistema.
+
+R2: «Borrar de lista de espera» (correo exacto y confirmación) y «Reintentar
+borrados de Brevo», con contador de cola. No borra cuentas por la ruta de espera.
+Los enlaces usan GET de confirmación y POST de baja/borrado, con límite persistente.
+La sincronización devuelve cursor UUID opaco y conserva cambios no confirmados.
+Escenas adicionales sin red: `mail-forget`, `mail-cleanup`. Colector para app y
+web: [CONSENT.md](../../../supabase/functions/native-admin/CONSENT.md); la rama
+onboarding #1637 no está aquí y no se finge su integración visual.

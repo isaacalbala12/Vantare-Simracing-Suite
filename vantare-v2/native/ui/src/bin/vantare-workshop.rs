@@ -234,7 +234,30 @@ fn main() -> ExitCode {
                         Ok(json) => serde_json::from_str::<vantare_ui::Settings>(&json)
                             .map(|s| s.normalized())
                             .map_err(|e| e.to_string()),
-                        Err(_) => Ok(vantare_ui::Settings::default_for(widget)),
+                        Err(_) => {
+                            // Los mismos ajustes de partida que el Workshop del Hub.
+                            let mut settings = vantare_ui::Settings::default_for(widget);
+                            match &mut settings {
+                                vantare_ui::Settings::Standings(standings) => {
+                                    standings.row_count = 8;
+                                    standings.apply_session_presets();
+                                    standings.practice_columns = Some(
+                                        vantare_ui::standings::vantare_standard_session_template(),
+                                    );
+                                    standings.qualifying_columns = Some(
+                                        vantare_ui::standings::vantare_standard_session_template(),
+                                    );
+                                    standings.class_scope = "all-classes".into();
+                                    standings.columns =
+                                        Some(vantare_ui::standings::vantare_template("standard"));
+                                }
+                                vantare_ui::Settings::Relative(relative) => {
+                                    relative.class_scope = "all".into();
+                                }
+                                _ => {}
+                            }
+                            Ok(settings)
+                        }
                     };
                     match settings {
                         Ok(settings) => vantare_ui::capture::run_configured_sequence(

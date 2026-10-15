@@ -809,6 +809,8 @@ fn height(line: &Line, style: &Style, variant: &Variant) -> f32 {
 struct Plan2 {
     width: f32,
     height: f32,
+    /// Alto del panel: lo que ocupa el contenido; la ventana conserva `height`.
+    content: f32,
     /// Tipo y y de cada línea (sin textos: no dependen del idioma).
     tops: Vec<f32>,
 }
@@ -827,8 +829,10 @@ fn layout_lines(lines: &[Line], options: &Options, style: &Style) -> Plan2 {
         tops.push(y);
         y += height(line, style, variant);
     }
+    let content = y + variant.padding_y;
     Plan2 {
         width: options.width(style),
+        content,
         height: match options.size {
             Size::Compact => 128.0,
             Size::Standard => 204.0,
@@ -1159,12 +1163,12 @@ impl Visual {
             spark: &self.spark,
             band_text: &self.band_text,
         };
-        painter.panel(window, self.plan.height);
+        painter.panel(window, self.plan.content.min(self.plan.height));
         if self.low() {
             let period = self.style.fuel.low_pulse_ms.max(1.0) / 1000.0;
             let phase = now.saturating_duration_since(motion.started).as_secs_f32() / period;
             let alpha = 0.55 + 0.45 * (phase * std::f32::consts::TAU).cos().abs();
-            painter.border(window, self.plan.height, alpha);
+            painter.border(window, self.plan.content.min(self.plan.height), alpha);
         }
         let fitted = self.fitted_tiles.get().expect("prepared before paint");
         for ((line, &y), fitted) in self.lines.iter().zip(&self.plan.tops).zip(fitted) {

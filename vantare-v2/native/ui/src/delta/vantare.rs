@@ -250,9 +250,21 @@ impl Labels {
             ],
             sectors: board
                 .into_iter()
-                .flat_map(|b| &b.sectors)
+                .flat_map(|b| {
+                    // Diferencia del sector en curso: la total menos los sectores ya cerrados.
+                    let closed: Option<f64> = b
+                        .sectors
+                        .iter()
+                        .map_while(|s| match s {
+                            Sector::Done(_, delta) => Some(*delta),
+                            _ => None,
+                        })
+                        .sum::<Option<f64>>();
+                    let running = b.delta_s.zip(closed).map(|(total, done)| total - done);
+                    b.sectors.iter().map(move |s| (s, running))
+                })
                 .enumerate()
-                .map(|(i, sector)| {
+                .map(|(i, (sector, running))| {
                     let title = if matches!(sector, Sector::Live(_)) {
                         format!("S{} · {}", i + 1, if es { "en curso" } else { "live" })
                     } else {
@@ -260,7 +272,7 @@ impl Labels {
                     };
                     let value = match sector {
                         Sector::Done(_, delta) => delta.map_or_else(|| PLACEHOLDER.into(), signed),
-                        Sector::Live(_) => String::new(),
+                        Sector::Live(_) => running.map_or_else(String::new, signed),
                         Sector::Pending => PLACEHOLDER.into(),
                     };
                     (title, value)
@@ -1185,6 +1197,20 @@ mod tests {
                 .expect("cargar");
         assert!(restored.normalized().transparent_background);
         assert!(Options::from_settings(&restored).transparent);
+    }
+
+    #[test]
+    fn running_sector_subtracts_closed_sectors_and_requires_their_deltas() {
+        let options = options(Size::Expanded, Reference::PersonalBest);
+        let state = State::new(options.clone());
+        let mut board = state.project(&crate::source::fixed());
+        board.delta_s = Some(-0.214);
+        board.sectors = vec![Sector::Done(vantare_domain::delta::SectorTone::PersonalBest, Some(-0.118)), Sector::Live(Some(0.5)), Sector::Pending];
+        let labels = Labels::new(Some(&board), &options, &Style::compiled(), Language::Es);
+        assert_eq!(labels.sectors[1].1, "−0.096");
+        board.sectors[0] = Sector::Done(vantare_domain::delta::SectorTone::PersonalBest, None);
+        let labels = Labels::new(Some(&board), &options, &Style::compiled(), Language::Es);
+        assert!(labels.sectors[1].1.is_empty(), "sin delta cerrado no se inventa el sector en curso");
     }
 
     #[test]

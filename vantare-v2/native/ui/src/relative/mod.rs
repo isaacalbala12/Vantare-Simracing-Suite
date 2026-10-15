@@ -435,7 +435,8 @@ impl Widget {
             Presentation::Vantare {
                 visual: v,
                 motion: m,
-            } => v.wake(m, Instant::now()) != Wake::Idle,
+            // El pulso de tráfico dura mientras haya un coche rápido: no es movimiento por asentar.
+            } => v.wake(m, Instant::now()) == Wake::Frame,
         }
     }
 }

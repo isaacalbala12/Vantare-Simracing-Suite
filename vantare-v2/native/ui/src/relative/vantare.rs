@@ -398,6 +398,7 @@ fn plan(board: Option<&Board>, options: &Options, style: &Style) -> Plan {
 /// Texto del Look activo, preparado al cambiar datos o idioma, nunca por frame.
 struct Labels {
     language: Language,
+    title: String,
     header: String,
     yellow: String,
     traffic: String,
@@ -424,8 +425,14 @@ impl Labels {
         crate::benchmark::mark(crate::benchmark::Work::Labels);
         let es = language == Language::Es;
         let range = format!("±{}", options.ahead.max(options.behind));
+        // Fuera de carrera el título lleva la sesión: «RELATIVE · CLASIFICACIÓN».
+        let title = board
+            .map(|b| b.session.as_str())
+            .filter(|s| !s.is_empty() && *s != "CARRERA" && *s != "RACE")
+            .map_or_else(|| "RELATIVE".to_owned(), |s| format!("RELATIVE · {s}"));
         Self {
             language,
+            title,
             header: board.and_then(|b| b.slower_class.as_ref()).map_or_else(
                 || range.clone(),
                 |class| format!("{} · {range}", class.to_uppercase()),
@@ -983,7 +990,7 @@ impl Painter<'_> {
             v.header_tracking,
             v.header_color.hsla(),
         );
-        self.label(window, cx, "RELATIVE", pad, None, y, h, face, &ink);
+        self.label(window, cx, &self.labels.title, pad, None, y, h, face, &ink);
         let mut edge = w - pad;
         if self.options.brand {
             edge -= self.brand(window, cx, edge, y, h) + self.style.brand.margin;
@@ -1667,6 +1674,17 @@ mod tests {
             state.plan.columns.iter().any(|c| c.kind == Kind::Trend),
             "FCY conserva el espacio de tendencia"
         );
+    }
+
+    #[test]
+    fn session_title_identifies_practice_and_qualifying_without_repeating_race() {
+        let options = options("standard");
+        let state = State::new(options.clone());
+        let mut board = state.project(&crate::source::fixed());
+        for (session, expected) in [("CARRERA", "RELATIVE"), ("RACE", "RELATIVE"), ("", "RELATIVE"), ("CLASIFICACIÓN", "RELATIVE · CLASIFICACIÓN"), ("PRÁCTICA", "RELATIVE · PRÁCTICA")] {
+            board.session = session.into();
+            assert_eq!(Labels::new(Some(&board), &options, Language::Es).title, expected);
+        }
     }
 
     #[test]

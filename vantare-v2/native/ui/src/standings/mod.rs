@@ -165,6 +165,18 @@ pub fn vantare_template(name: &str) -> Vec<options::ColumnSetting> {
     .collect()
 }
 
+/// Columnas del tamaño estándar (520 px) del catálogo en Práctica y Clasificación:
+/// la mejor vuelta y la diferencia con el mejor mandan, sin sectores ni última.
+#[must_use]
+pub fn vantare_standard_session_template() -> Vec<options::ColumnSetting> {
+    let on = ["position", "driverName", "vehicle", "bestLap", "gap"];
+    let mut columns = vantare_template("standard");
+    for column in &mut columns {
+        column.enabled = on.contains(&column.metric_id.as_str());
+    }
+    columns
+}
+
 /// Preset de columnas de cada pestaña (#1564), en el orden de las plantillas.
 #[must_use]
 pub fn session_preset(session: Session) -> Vec<options::ColumnSetting> {

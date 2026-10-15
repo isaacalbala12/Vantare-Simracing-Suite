@@ -140,6 +140,11 @@ fn workshop_overlay(kind: Kind, prefs: Preferences) -> Overlay {
     let mut settings = WidgetSettings::default_for(kind);
     if let WidgetSettings::Standings(standings) = &mut settings {
         standings.row_count = 8;
+        standings.apply_session_presets();
+        standings.practice_columns =
+            Some(vantare_ui::standings::vantare_standard_session_template());
+        standings.qualifying_columns =
+            Some(vantare_ui::standings::vantare_standard_session_template());
         standings.class_scope = "all-classes".into();
         standings.columns = Some(vantare_ui::standings::vantare_template("standard"));
     }

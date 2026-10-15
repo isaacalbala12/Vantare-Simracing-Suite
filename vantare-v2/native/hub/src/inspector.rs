@@ -559,7 +559,12 @@ pub fn fields(settings: &Settings) -> Vec<Field> {
                 set!(Relative.range_behind as usize),
             ),
         ],
-        Settings::TrackWeather(_) => vec![],
+        Settings::TrackWeather(value) => vec![boolean(
+            "Columna vertical",
+            Tab::Appearance,
+            value.vertical,
+            set!(TrackWeather.vertical),
+        )],
     };
     if let Some(look) = settings.look() {
         let options: Vec<_> = vantare_ui::look::Look::ALL
@@ -1073,7 +1078,7 @@ mod tests {
         };
         assert_eq!(value.header_first, "rain");
         assert_eq!(value.footer_slots, Some(vec!["rain".into()]));
-        assert!(fields(&Settings::default_for(Kind::TrackWeather)).is_empty());
+        assert_eq!(fields(&Settings::default_for(Kind::TrackWeather)).len(), 1);
         assert_eq!(pending(&Settings::default_for(Kind::TrackWeather)).len(), 4);
         assert!(
             pending(&settings)

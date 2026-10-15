@@ -1,4 +1,4 @@
-//! Tiempo en pista: columna fija de 132 × 440.
+//! Tiempo en pista: tarjeta de 280 × 210 o columna vertical de 132 × 440.
 //! Sin efectos temporales en el productivo: el host solo despierta por datos.
 
 use crate::efficiency::preview::PaintWindow as Window;
@@ -15,12 +15,15 @@ use crate::vantare::{
     style::{Color, Style},
 };
 const SIZE: (f32, f32) = (132.0, 440.0);
+const WIDE: (f32, f32) = (280.0, 210.0);
 
 #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 // Claves independientes del contrato productivo, aunque su renderer aún las ignora.
 #[allow(clippy::struct_excessive_bools)]
 pub struct Settings {
+    /// Columna de 132 × 440 en vez de la tarjeta horizontal de 280 × 210.
+    pub vertical: bool,
     pub show_ambient: bool,
     pub show_track: bool,
     pub show_rain: bool,
@@ -29,6 +32,7 @@ pub struct Settings {
 impl Default for Settings {
     fn default() -> Self {
         Self {
+            vertical: false,
             show_ambient: true,
             show_track: true,
             show_rain: true,
@@ -56,20 +60,20 @@ impl Settings {
 }
 
 pub(crate) struct Widget {
+    vertical: bool,
     vm: ViewModel,
 }
 
 impl Widget {
     pub(crate) fn new(settings: &Settings, prefs: Preferences) -> Self {
-        let _ = settings;
         Self {
+            vertical: settings.vertical,
             vm: track_weather::project(&Snapshot::default(), prefs),
         }
     }
 
-    #[allow(clippy::unused_self)] // Contrato del registro; tamaño fijo.
     pub(crate) fn size(&self) -> (f32, f32) {
-        SIZE
+        if self.vertical { SIZE } else { WIDE }
     }
 
     pub(crate) fn ingest(&mut self, snapshot: &Snapshot, prefs: Preferences) -> bool {
@@ -78,8 +82,15 @@ impl Widget {
 
     pub(crate) fn frame(&mut self, prefs: Preferences, _reduced: bool) -> (Paint, Wake) {
         let vm = self.vm.clone();
+        let vertical = self.vertical;
         (
-            Box::new(move |window, cx| paint(&vm, prefs, window, cx)),
+            Box::new(move |window, cx| {
+                if vertical {
+                    paint(&vm, prefs, window, cx);
+                } else {
+                    paint_wide(&vm, prefs, window, cx);
+                }
+            }),
             Wake::Idle,
         )
     }
@@ -88,6 +99,170 @@ impl Widget {
     #[allow(clippy::unused_self)]
     pub(crate) fn animating(&self) -> bool {
         false
+    }
+}
+
+/// Tarjeta horizontal del catálogo: temperaturas, viento, agua y los cinco pasos del pronóstico.
+fn paint_wide(vm: &ViewModel, prefs: Preferences, window: &mut Window, cx: &mut App) {
+    let style = Style::compiled();
+    let kit = Kit {
+        style: &style,
+        variant: &style.styles.neo,
+        accent: style.accents.red,
+        language: prefs.language,
+        width: WIDE.0,
+    };
+    kit.panel(window, WIDE.1);
+    let metric = |i: usize| vm.metrics.get(i).map_or("—", |m| m.value.as_str());
+    let wet = metric(4)
+        .split_whitespace()
+        .next()
+        .and_then(|s| s.parse::<f32>().ok());
+    let is_wet = wet.is_some_and(|v| v > 0.0);
+    let banner = if vm.status != Status::Ready {
+        vm.status_text
+    } else if is_wet {
+        if kit.es() { "PISTA MOJADA" } else { "WET TRACK" }
+    } else if kit.es() {
+        "SECO"
+    } else {
+        "DRY"
+    };
+    let muted = kit.ink(Face::Body, 10.0, 0.4, style.colors.muted.hsla());
+    let text = style.colors.text.hsla();
+    round_rect(
+        window,
+        1.0,
+        1.0,
+        278.0,
+        26.0,
+        8.0,
+        Color(if is_wet { 0x20334f } else { 0x2b2527 }, 1.0).hsla(),
+    );
+    let heading = kit.ink(Face::Display, 11.0, 0.5, text);
+    kit.label(window, cx, banner, 12.0, None, 6.0, 18.0, Face::Display, &heading);
+    kit.label(
+        window,
+        cx,
+        if kit.es() { "TIEMPO EN PISTA" } else { "TRACK WEATHER" },
+        14.0,
+        None,
+        38.0,
+        14.0,
+        Face::Body,
+        &muted,
+    );
+    let big = kit.ink(Face::Display, 32.0, 0.0, Color(0xfaf7f7, 1.0).hsla());
+    let track = metric(0)
+        .split_whitespace()
+        .next()
+        .filter(|s| *s != "—")
+        .map_or_else(|| "--°".into(), |s| format!("{s}°"));
+    kit.label(window, cx, &track, 14.0, None, 54.0, 34.0, Face::Display, &big);
+    kit.label(
+        window,
+        cx,
+        if kit.es() { "PISTA" } else { "TRACK" },
+        14.0,
+        None,
+        92.0,
+        14.0,
+        Face::Body,
+        &muted,
+    );
+    let mid = kit.ink(Face::Display, 22.0, 0.0, text);
+    let air = metric(1).replace(" °C", "°").replace(" °F", "°");
+    kit.label(window, cx, &air, 104.0, None, 62.0, 26.0, Face::Display, &mid);
+    kit.label(
+        window,
+        cx,
+        if kit.es() { "AIRE" } else { "AIR" },
+        104.0,
+        None,
+        92.0,
+        14.0,
+        Face::Body,
+        &muted,
+    );
+    let mono = kit.ink(Face::Mono, 13.0, 0.0, text);
+    kit.label(window, cx, metric(2), 0.0, Some(266.0), 70.0, 18.0, Face::Mono, &mono);
+    kit.label(
+        window,
+        cx,
+        if kit.es() { "VIENTO" } else { "WIND" },
+        0.0,
+        Some(266.0),
+        92.0,
+        14.0,
+        Face::Body,
+        &muted,
+    );
+    kit.label(
+        window,
+        cx,
+        if kit.es() { "Agua" } else { "Water" },
+        14.0,
+        None,
+        116.0,
+        16.0,
+        Face::Body,
+        &muted,
+    );
+    round_rect(window, 56.0, 122.0, 176.0, 5.0, 2.5, Color(0xffffff, 0.08).hsla());
+    if let Some(wet) = wet {
+        round_rect(
+            window,
+            56.0,
+            122.0,
+            176.0 * wet.clamp(0.0, 100.0) / 100.0,
+            5.0,
+            2.5,
+            Color(0x4f8ef7, 1.0).hsla(),
+        );
+    }
+    kit.label(window, cx, metric(4), 0.0, Some(266.0), 116.0, 16.0, Face::Mono, &mono);
+    for (i, label) in [
+        if kit.es() { "Ahora" } else { "Now" },
+        "+15",
+        "+30",
+        "+45",
+        "+60",
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let x = 14.0 + i as f32 * 50.4;
+        round_rect(
+            window,
+            x,
+            142.0,
+            49.0,
+            58.0,
+            3.0,
+            Color(if i == 0 { 0x2a2426 } else { 0x110f10 }, 0.98).hsla(),
+        );
+        round_rect(
+            window,
+            x + 18.0,
+            150.0,
+            13.0,
+            13.0,
+            6.5,
+            Color(0xffffff, 0.06).hsla(),
+        );
+        let ink = kit.ink(Face::Mono, 11.0, 0.0, text);
+        kit.label(
+            window,
+            cx,
+            if i == 0 { metric(3) } else { "—" },
+            0.0,
+            Some(x + 24.5 + 8.0),
+            168.0,
+            14.0,
+            Face::Mono,
+            &ink,
+        );
+        kit.label(window, cx, label, x + 10.0, None, 183.0, 14.0, Face::Body, &muted);
     }
 }
 
@@ -382,7 +557,15 @@ mod tests {
                 .collect::<Vec<_>>(),
             ["28 °C", "21 °C", "14 km/h NO", "0 %", "0 %", "100%", "—"]
         );
-        assert_eq!(widget.size(), SIZE);
+        assert_eq!(widget.size(), WIDE);
+        let vertical = Widget::new(
+            &Settings {
+                vertical: true,
+                ..Settings::default()
+            },
+            prefs,
+        );
+        assert_eq!(vertical.size(), SIZE);
         assert_eq!(widget.frame(prefs, false).1, Wake::Idle);
         #[cfg(feature = "parity-capture")]
         assert!(!widget.animating());

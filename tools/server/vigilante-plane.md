@@ -1,4 +1,4 @@
-# Vigilante de Plane — ISA-1647 / 1647b
+# Vigilante de Plane — ISA-1647 / 1647b / 1647c
 
 `vantare-plane-para-claude.timer` ejecuta el sondeo cada 60 s como root en
 `vantare-svc`. Se instalan juntos `vantare-plane-para-claude.py` y
@@ -98,7 +98,8 @@ python -B -m unittest discover -s tools/server/linux -p 'test_*.py' -v
 python -B -m unittest discover -s tools/plane -v
 ```
 
-El corte 1647b tenía 47 tests únicos de vigilante/helper y 10 de CLI PASS.
+1647c: 54 tests únicos de vigilante/helper y 10 de CLI PASS en Windows/Linux.
+Quality: 456 huellas PASS; bash -n de seis scripts y cuatro unidades systemd PASS.
 Cubren cuatro tipos, agrupado, deduplicado, migración, reintento independiente,
 rutas Isaac/bot, texto y prioridad, errores internos de Plane y rollback simulado.
 
@@ -161,6 +162,14 @@ Exige dry-run con ambas colas a cero antes de reanudar. Si falla instalación o
 dry-run, restaura el backup y el timer; no vacía colas ni envía pruebas.
 Después verificar el resultado de la siguiente pasada y borrar la tarea
 temporal con `Unregister-ScheduledTask -TaskPath '\Vantare\' -TaskName Deploy-Vigilante -Confirm:$false`.
+
+Verificación 1647c: backup final `/var/backups/vigilante/1647c-20261015T180814Z`
+(root:700, SHA256SUMS), scripts instalados idénticos al repo; dry-run 0/0;
+468 IDs observados, 41 del bot y colas 0/0 con última marca persistida.
+Timer enabled/active; servicio Result=success / ExecMainStatus=0.
+API 200 después del reinicio de Plane (hubo 502 transitorio mientras arrancaba).
+Prueba con script alterado: hash rechazado y archivo instalado intacto.
+Cero avisos de prueba nuevos. Evidencia saneada: `C:/VantareServer/evidence/1647c/`.
 
 Procedimiento: validar tests y SQL; parar timer/servicio; guardar scripts y estado;
 instalar ambos scripts root:750 y sus copias ops; migrar sin `--seed`; dry-run

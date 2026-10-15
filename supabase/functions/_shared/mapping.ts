@@ -1,4 +1,5 @@
 export const CHECKOUT_KEYS = [
+  "founders",
   "launch_lifetime",
   "pro_monthly",
   "pro_annual",
@@ -103,6 +104,14 @@ const EXPECTED_KEY_META: Record<
     | "entitlement_product_key"
   >
 > = {
+  founders: {
+    plan_sku: "founders",
+    billing_type: "one_time",
+    lifetime: true,
+    capabilities: ["vantare.plan.founders"],
+    channels: ["stable"],
+    launch_scope_version: null,
+  },
   launch_lifetime: {
     plan_sku: "launch_lifetime",
     billing_type: "one_time",
@@ -245,7 +254,7 @@ function parseConfig(
     value.polar_launch_product_id !== undefined &&
     (!isUuid(value.polar_launch_product_id) ||
       value.polar_launch_product_id === value.polar_product_id ||
-      key === "launch_lifetime")
+      (key === "launch_lifetime" || key === "founders"))
   ) {
     return fail(
       "mapping_invalid_key_meta",

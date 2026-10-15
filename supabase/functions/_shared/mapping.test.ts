@@ -1,3 +1,4 @@
+import { withFounders } from "./test-fixtures.ts";
 import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import {
   loadPolarProductMap,
@@ -291,4 +292,29 @@ Deno.test("mapping v2: live sandbox catalogue is complete and cannot target prod
     }).ok,
     false,
   );
+});
+
+Deno.test("Founders is an optional own plan, not a subscription or frozen edition", () => {
+  const valid = withFounders(VALID_POLAR_PRODUCT_MAP_JSON);
+  const result = loadPolarProductMap(valid, { environment: "sandbox" });
+  assertEquals(result.ok, true);
+  if (result.ok) {
+    assertEquals(result.map.checkout_keys.founders?.capabilities, [
+      "vantare.plan.founders",
+    ]);
+    assertEquals(result.map.checkout_keys.founders?.lifetime, true);
+    assertEquals(result.map.checkout_keys.founders?.launch_scope_version, null);
+  }
+  for (
+    const patch of [{ lifetime: false }, { billing_type: "subscription" }, {
+      capabilities: ["vantare.edition.launch_v1"],
+    }, { polar_launch_product_id: "00000000-0000-4000-8000-000000001663" }]
+  ) {
+    const map = JSON.parse(valid);
+    Object.assign(map.checkout_keys.founders, patch);
+    assertEquals(
+      loadPolarProductMap(JSON.stringify(map), { environment: "sandbox" }).ok,
+      false,
+    );
+  }
 });

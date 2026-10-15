@@ -10,6 +10,7 @@ import {
 import {
   SANDBOX_IDS,
   VALID_POLAR_PRODUCT_MAP_JSON,
+  withFounders,
   withProAnnualAndNewMonthlyPrice,
 } from "../_shared/test-fixtures.ts";
 import {
@@ -297,6 +298,91 @@ function succeededRefundData(overrides: Record<string, unknown> = {}) {
     ...overrides,
   };
 }
+
+Deno.test("Founders paid order is idempotent and refund removes only its own right", async () => {
+  const mock = createMockSupabase();
+  const deps = {
+    ...processDeps(
+      mock,
+      () =>
+        loadPolarProductMap(withFounders(VALID_POLAR_PRODUCT_MAP_JSON), {
+          environment: "sandbox",
+        }),
+    ),
+    foundersPaymentAllowed: async (paid: string) =>
+      Date.parse(paid) === Date.parse("2026-10-26T18:00:00Z"),
+  };
+  const event = {
+    type: "order.paid",
+    data: paidOrderData({
+      id: "founders-order",
+      product_id: "00000000-0000-4000-8000-000000001661",
+      paid_at: "2026-10-26T18:00:00Z",
+      total_amount: 5000,
+      net_amount: 5000,
+    }),
+  };
+  assertEquals(
+    (await processPolarWebhookEvent(event, "founders-paid", deps)).status,
+    "processed",
+  );
+  await processPolarWebhookEvent(event, "founders-paid-retry", deps);
+  assertEquals([...deps.orderRefundLedger.grants.entries()], [[
+    "sandbox:founders-order:vantare.plan.founders",
+    "active",
+  ]]);
+  await processPolarWebhookEvent(
+    {
+      type: "refund.updated",
+      data: succeededRefundData({
+        id: "founders-refund",
+        order_id: "founders-order",
+        amount: 5000,
+        modified_at: "2026-11-28T18:00:00Z",
+      }),
+    },
+    "founders-refund",
+    deps,
+  );
+  assertEquals([...deps.orderRefundLedger.grants.values()], ["revoked"]);
+});
+
+Deno.test("Founders rejects wrong amount, currency, recurring or out-of-window payment", async () => {
+  for (
+    const overrides of [{ total_amount: 4999 }, { currency: "usd" }, {
+      subscription_id: "sub-wrong",
+    }, { paid_at: "2026-11-26T18:00:00Z" }]
+  ) {
+    const mock = createMockSupabase();
+    const deps = {
+      ...processDeps(
+        mock,
+        () =>
+          loadPolarProductMap(withFounders(VALID_POLAR_PRODUCT_MAP_JSON), {
+            environment: "sandbox",
+          }),
+      ),
+      foundersPaymentAllowed: async (paid: string) =>
+        Date.parse(paid) === Date.parse("2026-10-26T18:00:00Z"),
+    };
+    const result = await processPolarWebhookEvent(
+      {
+        type: "order.paid",
+        data: paidOrderData({
+          product_id: "00000000-0000-4000-8000-000000001661",
+          paid_at: "2026-10-26T18:00:00Z",
+          total_amount: 5000,
+          net_amount: 5000,
+          ...overrides,
+        }),
+      },
+      "founders-invalid",
+      deps,
+    );
+    assertEquals(result.status, "quarantined");
+    assertEquals(deps.orderRefundLedger.grants.size, 0);
+  }
+});
 
 Deno.test("parsePolarWebhookEvent: rejects invalid JSON", () => {
   assertEquals(parsePolarWebhookEvent("{"), null);
@@ -2622,5 +2708,36 @@ Deno.test("missing order retry remains bounded and never grants access", async (
     await processPolarWebhookEvent(refund, "evt_order_never_arrives", deps),
     { status: "quarantined", reason: "existing_quarantine" },
   );
+  assertEquals(deps.orderRefundLedger.grants.size, 0);
+});
+
+Deno.test("Founders refunded-order reconciliation cannot grant an out-of-window purchase", async () => {
+  const mock = createMockSupabase();
+  const deps = {
+    ...processDeps(
+      mock,
+      () =>
+        loadPolarProductMap(withFounders(VALID_POLAR_PRODUCT_MAP_JSON), {
+          environment: "sandbox",
+        }),
+    ),
+    foundersPaymentAllowed: async () => false,
+  };
+  const result = await processPolarWebhookEvent(
+    {
+      type: "order.refunded",
+      data: paidOrderData({
+        product_id: "00000000-0000-4000-8000-000000001661",
+        paid_at: "2026-11-26T18:00:00Z",
+        total_amount: 5000,
+        net_amount: 5000,
+        status: "refunded",
+        refunded_amount: 5000,
+      }),
+    },
+    "founders-invalid-refunded",
+    deps,
+  );
+  assertEquals(result.status, "quarantined");
   assertEquals(deps.orderRefundLedger.grants.size, 0);
 });

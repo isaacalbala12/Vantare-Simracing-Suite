@@ -144,6 +144,7 @@ pub enum Plan {
     Free,
     Pro,
     ProPlus,
+    Founders,
 }
 impl Plan {
     pub fn label(self) -> &'static str {
@@ -151,6 +152,7 @@ impl Plan {
             Self::Free => "Gratis",
             Self::Pro => "Pro",
             Self::ProPlus => "Pro Plus",
+            Self::Founders => "Founders",
         }
     }
 }

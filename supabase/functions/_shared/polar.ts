@@ -332,6 +332,7 @@ export async function createPolarCheckoutSession(
     payload.trial_interval_count = params.trial.interval_count;
   }
   if (params.email) payload.customer_email = params.email;
+  if (params.productKey === "founders") payload.allow_discount_codes = false;
 
   return await polarRequest(
     `${baseUrl}/checkouts/`,

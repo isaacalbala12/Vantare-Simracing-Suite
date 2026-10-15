@@ -116,6 +116,16 @@ mientras siga vigente el descuento. El scope solo restringe su aplicación
 inicial; no elimina descuentos heredados al cambiar producto. Configuración
 y verificación real pendientes, según el runbook enlazado.
 
+### Founders — 50 EUR una vez
+
+- Plan propio: todos los módulos y widgets presentes y futuros, para siempre.
+- Venta del 26-oct-2026 a las 19:00 al 26-nov-2026 a las 19:00 Europe/Madrid;
+  fechas configurables en servidor, apertura inclusiva y cierre exclusivo.
+- La transición desde suscripción queda bloqueada de forma conservadora para
+  evitar otro cobro; Isaac debe validar el procedimiento, sin cancelación automática.
+- Implementación preparada en VANTA-83/#1661; no certifica activación comercial.
+  [Contrato, configuración e integración web](../billing/founders-1661.md).
+
 ### Launch Edition — 30 EUR una vez
 
 - Acceso de por vida a los módulos existentes al comprar y sus mejoras.

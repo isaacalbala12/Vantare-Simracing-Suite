@@ -12,7 +12,7 @@ pub mod installation;
 
 const ISSUER: &str = "vantare-license";
 const AUDIENCE: &str = "vantare-native";
-pub const CAPABILITIES: [&str; 11] = [
+pub const CAPABILITIES: [&str; 12] = [
     "vantare.channel.nightly",
     "vantare.channel.testers",
     "vantare.edition.launch_v1",
@@ -23,6 +23,7 @@ pub const CAPABILITIES: [&str; 11] = [
     "vantare.operational.nightly_tester",
     "vantare.operational.owner",
     "vantare.operational.tester",
+    "vantare.plan.founders",
     "vantare.plan.pro",
 ];
 
@@ -315,6 +316,8 @@ fn grants(capabilities: &[Capability], envelope: Option<DateTime<Utc>>) -> Resul
             if !capability.paid_through.is_empty()
                 || !((capability.key == "vantare.edition.launch_v1"
                     && capability.scope_version == "launch_v1")
+                    || (capability.key == "vantare.plan.founders"
+                        && capability.scope_version.is_empty())
                     || (capability.key == "vantare.channel.testers"
                         && capability.scope_version.is_empty())
                     || (capability.key.starts_with("vantare.module.")
@@ -325,6 +328,7 @@ fn grants(capabilities: &[Capability], envelope: Option<DateTime<Utc>>) -> Resul
             envelope
         } else {
             if capability.key == "vantare.edition.launch_v1"
+                || capability.key == "vantare.plan.founders"
                 || capability.key.starts_with("vantare.module.")
                 || !capability.scope_version.is_empty()
             {

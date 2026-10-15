@@ -34,6 +34,31 @@ function checkoutDeps(fetchFn: typeof fetch) {
   };
 }
 
+Deno.test("Founders checkout cannot use trial or discount codes", async () => {
+  let body: Record<string, unknown> = {};
+  await createPolarCheckoutSession(
+    {
+      ...checkout,
+      productKey: "founders",
+      planSku: "founders",
+      capabilities: ["vantare.plan.founders"],
+    },
+    checkoutDeps(async (input, init) => {
+      body = await new Request(input, init).json();
+      return new Response(
+        JSON.stringify({
+          id: "founders",
+          url: "https://sandbox.polar.sh/checkout/founders",
+        }),
+        { status: 201 },
+      );
+    }),
+  );
+  assertEquals(body.allow_trial, false);
+  assertEquals(body.allow_discount_codes, false);
+  assertEquals(body.expires_at, undefined); // Not a CheckoutCreate input in Polar.
+});
+
 Deno.test("Polar checkout sends explicit no-trial and versioned capability metadata", async () => {
   let body: Record<string, unknown> = {};
   const result = await createPolarCheckoutSession(

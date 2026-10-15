@@ -35,6 +35,7 @@ const KNOWN_CAPABILITIES = new Set([
   "vantare.operational.nightly_tester",
   "vantare.operational.owner",
   "vantare.operational.tester",
+  "vantare.plan.founders",
   "vantare.plan.pro",
 ]);
 
@@ -243,6 +244,13 @@ export function normalizeGrants(
       grouped.set(row.capability, { perpetual: true, paidThrough: null });
       continue;
     }
+    if (
+      row.capability === "vantare.plan.founders" &&
+      (row.valid_until !== null || row.provider !== "polar" ||
+        row.source_type !== "order")
+    ) {
+      return { ok: false };
+    }
     const isRecovery = row.provider === "vantare" &&
       row.source_type === "subscription_recovery";
     if (isRecovery) {
@@ -275,6 +283,7 @@ export function normalizeGrants(
     if (paidThrough === null) {
       if (
         row.capability !== "vantare.edition.launch_v1" &&
+        row.capability !== "vantare.plan.founders" &&
         row.capability !== "vantare.channel.testers"
       ) {
         return { ok: false };

@@ -1,3 +1,4 @@
+import { type PurchasePolicy, purchasePolicy } from "../_shared/founders.ts";
 import { type AuthResult, requireUserAuth } from "../_shared/auth.ts";
 import {
   type CheckoutAttemptStore,
@@ -26,6 +27,7 @@ export type CheckoutDeps = {
     options?: { signal?: AbortSignal },
   ) => Promise<CreateCheckoutResult>;
   attempts?: CheckoutAttemptStore;
+  purchasePolicy?: typeof purchasePolicy;
 };
 
 const MAX_BODY_BYTES = 4096;
@@ -111,6 +113,28 @@ export async function handleCheckoutRequest(
   if (!mapping.ok) return errorResponse(mapping.code, mapping.message, 503);
   const resolved = resolveCheckoutKey(mapping.map, productKey);
   if (!resolved.ok) return errorResponse(resolved.code, resolved.message, 409);
+
+  let policy: PurchasePolicy;
+  try {
+    policy = await (deps.purchasePolicy ?? purchasePolicy)(
+      auth.userId,
+      mapping.map.environment,
+      resolved.key,
+    );
+  } catch {
+    return errorResponse(
+      "purchase_policy_unavailable",
+      "Purchase eligibility could not be verified",
+      503,
+    );
+  }
+  if (policy.reason) {
+    return errorResponse(
+      policy.reason,
+      "Purchase is unavailable for this account or sale window",
+      409,
+    );
+  }
 
   const attempt = {
     userId: auth.userId,

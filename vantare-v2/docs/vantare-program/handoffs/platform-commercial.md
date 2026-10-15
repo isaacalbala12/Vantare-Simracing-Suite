@@ -1,3 +1,34 @@
+## VANTA-83 / #1661 · Plan Founders (15/10/2026)
+
+Rama `vantareapp/isa-1661-founders`, worktree `C:/VantareServer/wt/isa-1661`,
+base asignada `28800654c5bb4ca425b49bd827d0ee8cbbeeb155`. Plane En curso;
+GitHub Project Vantare y `area:licencias`. Sin milestone asignado en la issue.
+
+Implementado derecho propio `vantare.plan.founders`: pago único de 50 EUR,
+todos los módulos/widgets presentes y futuros, sin caducidad; catálogo distinto
+de Launch Edition. Servicios v10/control v5, DTO de fotos v10. Configuración de
+fechas centralizada en SQL, checkout existente protegido y webhook/ledger #1622;
+Owner ve el plan y el pago. Cuenta ofrece textos ES/EN/IT/PT-BR.
+[Contrato, configuración y entrega exacta a VANTA-42](../../billing/founders-1661.md).
+No se toca el repo web.
+
+Decisión conservadora pendiente de Isaac: bloquear compra con suscripción vigente
+(también cancelada hasta fin del periodo pagado), sin cancelar Polar. Founders
+no concede canales privados/roles. Límite antes de activación: Polar no acepta
+`expires_at` en CheckoutCreate; un enlace entregado puede cobrar tras el cierre,
+aunque el webhook rechazará el derecho y lo dejará en cuarentena. Isaac debe
+validar cierre operativo y atención manual de excepciones. La credencial perpetua
+offline existente no tiene revocación remota instantánea.
+
+Evidencia Mac local: 139 pgTAP PASS (29 Founders, 57 Owner, 34 reembolsos,
+19 tombstones); 139 Edge PASS; regresión de credencial RED al restaurar el
+normalizador original. Docker con lock, contenedor propio cerrado. Quality y
+retirement PASS (456 huellas). Gates Rust en curso de uno en uno, con VANTARE_CARGO_MIN_GB=0 autorizado por
+el orquestador tras detener las esperas anteriores por RAM; target `C:/VantareServer/targets/isa-1661`.
+Sin captura (#1655), producto real, despliegue, cobro, merge o release.
+Siguiente: completar fmt/check/Clippy/Nextest/lifecycle/telemetría, revisar diff,
+push/PR draft a nightly y actualizar aquí/issue/Plane con SHA y resultados reales.
+
 ## #1627 / PR #1639 · VANTA-21 · ronda 5 (15/10/2026)
 
 Worker Codex macOS arm64, sin subagentes ni servicios reales. Seguimiento por

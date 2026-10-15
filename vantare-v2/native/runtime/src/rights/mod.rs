@@ -300,7 +300,9 @@ impl Owner {
         let module = |key: &str| {
             valid
                 && catalog.allows_module(key)
-                && (operational || rights.iter().any(|right| right == key))
+                && (operational
+                    || catalog == vantare_ipc::control::CatalogAccess::Founders
+                    || rights.iter().any(|right| right == key))
         };
         self.policy.revision = self.policy.revision.checked_add(1).ok_or(Error::Protocol)?;
         self.policy.checked_at_ms =
@@ -337,7 +339,7 @@ impl Owner {
                     || key.starts_with("vantare.operational.")
                     || matches!(
                         key.as_str(),
-                        "vantare.plan.pro" | "vantare.edition.launch_v1"
+                        "vantare.plan.pro" | "vantare.plan.founders" | "vantare.edition.launch_v1"
                     )
             })
             .collect();

@@ -8,6 +8,7 @@ import { loadPolarProductMap } from "../_shared/mapping.ts";
 import {
   SANDBOX_ENVIRONMENT,
   VALID_POLAR_PRODUCT_MAP_JSON,
+  withFounders,
 } from "../_shared/test-fixtures.ts";
 import { PolarClientError } from "../_shared/polar.ts";
 import { handleCheckoutRequest } from "./index.ts";
@@ -67,6 +68,10 @@ function deps(
         environment: SANDBOX_ENVIRONMENT,
       }),
     attempts: store,
+    purchasePolicy: async () => ({
+      reason: null,
+      closes_at: "2026-11-26T18:00:00Z",
+    }),
     createCheckout: createCheckout ??
       (async () => ({
         url: "https://sandbox.polar.sh/checkout/test",
@@ -74,6 +79,61 @@ function deps(
       })),
   };
 }
+
+Deno.test("Founders policy denies checkout before creating or reusing a Polar session", async () => {
+  for (
+    const reason of [
+      "founders_sale_closed",
+      "founders_subscription_active",
+      "founders_already_owned",
+      "account_unavailable",
+    ]
+  ) {
+    let contacted = false;
+    const result = await handleCheckoutRequest(
+      new Request("https://app.invalid", {
+        method: "POST",
+        body: JSON.stringify({
+          productKey: "pro_monthly",
+          attemptId: ATTEMPT_ID,
+        }),
+      }),
+      {
+        ...deps(),
+        purchasePolicy: async () => ({
+          reason,
+          closes_at: "2026-11-26T18:00:00Z",
+        }),
+        createCheckout: async () => {
+          contacted = true;
+          throw new Error("must not contact Polar");
+        },
+      },
+    );
+    assertEquals(result.status, 409);
+    assertEquals((await result.json()).error, reason);
+    assertEquals(contacted, false);
+  }
+});
+
+Deno.test("checkout fails closed if eligibility cannot be read", async () => {
+  const result = await handleCheckoutRequest(
+    new Request("https://app.invalid", {
+      method: "POST",
+      body: JSON.stringify({
+        productKey: "pro_monthly",
+        attemptId: ATTEMPT_ID,
+      }),
+    }),
+    {
+      ...deps(),
+      purchasePolicy: async () => {
+        throw new Error("offline");
+      },
+    },
+  );
+  assertEquals(result.status, 503);
+});
 
 function post(body: Record<string, unknown>, signal?: AbortSignal) {
   return new Request("http://localhost/billing-checkout", {
@@ -236,4 +296,40 @@ Deno.test("checkout propagates request cancellation to Polar", async () => {
   assertStrictEquals(receivedSignal, request.signal);
   assertEquals(response.status, 503);
   assertEquals((await response.json()).error, "request_cancelled");
+});
+
+Deno.test("Founders uses the existing authenticated idempotent checkout with its configured product", async () => {
+  const store = memoryStore();
+  let calls = 0;
+  const request = () =>
+    new Request("https://app.invalid", {
+      method: "POST",
+      body: JSON.stringify({ productKey: "founders", attemptId: ATTEMPT_ID }),
+    });
+  const options = {
+    ...deps(store),
+    loadMap: () =>
+      loadPolarProductMap(withFounders(VALID_POLAR_PRODUCT_MAP_JSON), {
+        environment: "sandbox",
+      }),
+    createCheckout: async (
+      params: import("../_shared/polar.ts").CreateCheckoutParams,
+    ) => {
+      calls++;
+      assertEquals(params.productId, "00000000-0000-4000-8000-000000001661");
+      assertEquals(params.capabilities, ["vantare.plan.founders"]);
+      assertEquals(params.trial, { enabled: false });
+      return {
+        url: "https://sandbox.polar.sh/checkout/founders",
+        checkoutId: "checkout-founders",
+      };
+    },
+  };
+  const first = await handleCheckoutRequest(request(), options);
+  assertEquals(first.status, 200);
+  assertEquals((await first.json()).reused, false);
+  const second = await handleCheckoutRequest(request(), options);
+  assertEquals(second.status, 200);
+  assertEquals((await second.json()).reused, true);
+  assertEquals(calls, 1);
 });

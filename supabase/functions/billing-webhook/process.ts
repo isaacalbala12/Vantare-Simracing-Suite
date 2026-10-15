@@ -1,3 +1,4 @@
+import { foundersPaymentAllowed } from "../_shared/founders.ts";
 import { grossRefund } from "../native-admin/amounts.ts";
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import {
@@ -66,6 +67,7 @@ type EffectRunner = (
 ) => Promise<void>;
 
 export type WebhookProcessorDeps = {
+  foundersPaymentAllowed?: typeof foundersPaymentAllowed;
   supabase: SupabaseClient;
   loadMap?: typeof loadPolarProductMap;
   now?: () => Date;
@@ -539,6 +541,21 @@ async function applyOrderRefundEvent(args: {
     if (typeof parsed === "string") {
       return { status: "ignored", reason: parsed };
     }
+    if (resolved.key === "founders") {
+      const paidAt = parseIsoTimestamp(
+        args.event.data.paid_at ?? args.event.data.created_at,
+      );
+      if (
+        !paidAt || !Number.isFinite(Date.parse(paidAt)) ||
+        args.event.data.total_amount !== 5000 || parsed.currency !== "eur" ||
+        parsed.subscriptionId || asString(args.event.data.discount_id) ||
+        !await (args.deps.foundersPaymentAllowed ?? foundersPaymentAllowed)(
+          paidAt,
+        )
+      ) {
+        return { status: "ignored", reason: "founders_payment_invalid" };
+      }
+    }
     orderId = parsed.orderId;
     // The ledger write is itself monotonic and idempotent. Evaluate its
     // outcome before completing the durable effect so an ambiguity can never
@@ -1010,6 +1027,7 @@ function storedPolarWebhookEvent(
 function quarantineReason(result: ProcessResult): string | null {
   if (result.status !== "ignored") return null;
   return [
+      "founders_payment_invalid",
       "missing_product_id",
       "unknown_product_id",
       "unresolved_user_id",

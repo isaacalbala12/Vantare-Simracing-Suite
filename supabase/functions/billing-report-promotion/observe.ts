@@ -96,7 +96,7 @@ export async function observePromotionInvoice(
   admin: SupabaseClient,
   environment: string,
   data: Record<string, unknown>,
-  configured = Deno.env.get("REPORT_PROMOTION_ENABLED") !== undefined,
+  configured = true, // Accounting survives false or missing activation flag.
   source: "webhook" | "reconciliation" = "webhook",
 ): Promise<void> {
   if (

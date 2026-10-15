@@ -304,3 +304,19 @@ Deno.test("P3-9 conversion after trial is a settled recurring invoice", async ()
   assertEquals(calls.length,1);
   assertEquals((calls[0] as unknown[])[0],"report_promotion_invoice");
 });
+Deno.test("P3-13 deleting the activation flag never disables settled invoice accounting", async () => {
+  const {observePromotionInvoice} = await import("./observe.ts");
+  const saved = Deno.env.get("REPORT_PROMOTION_ENABLED");
+  try {
+    Deno.env.delete("REPORT_PROMOTION_ENABLED");
+    let recorded = 0;
+    const admin = {rpc:()=>{recorded++;return Promise.resolve({error:null});}} as unknown as SupabaseClient;
+    await observePromotionInvoice(admin,"sandbox",{
+      id:"flag-absent",paid:true,billing_reason:"subscription_cycle",discount_id:"reward3",discount_amount:200,
+      created_at:"2026-12-26T18:00:00Z",items:[{proration:false,start_timestamp:"2026-12-26T18:00:00Z",end_timestamp:"2027-01-26T18:00:00Z"}]
+    });
+    assertEquals(recorded,1);
+  } finally {
+    if(saved===undefined) Deno.env.delete("REPORT_PROMOTION_ENABLED"); else Deno.env.set("REPORT_PROMOTION_ENABLED",saved);
+  }
+});

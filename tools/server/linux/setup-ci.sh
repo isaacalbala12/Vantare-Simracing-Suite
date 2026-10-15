@@ -17,7 +17,19 @@ install -o root -g root -m 755 /tmp/hooks/job-start.sh /tmp/hooks/job-end.sh /tm
 install -o root -g root -m 644 /tmp/hooks/cleanup.py /tmp/hooks/job-guard.py /opt/vantare-hooks/
 sed -i 's/\r$//' /opt/vantare-hooks/*
 # Rust fijado del rust-toolchain.toml, en el HOME del usuario CI
-su - vantare-ci -c 'test -x ~/.cargo/bin/rustup || curl --proto =https --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y -q --profile minimal --default-toolchain 1.95.0 -c rustfmt -c clippy'
+if ! su - vantare-ci -c 'test -x ~/.cargo/bin/rustup'; then
+  # rustup-init 1.28.2 oficial, x86_64 Linux; verificar antes de ejecutar.
+  rustup_stage=$(mktemp -d)
+  trap 'rm -rf "$rustup_stage"' EXIT
+  curl --proto '=https' --tlsv1.2 -fsSL \
+    https://static.rust-lang.org/rustup/archive/1.28.2/x86_64-unknown-linux-gnu/rustup-init \
+    -o "$rustup_stage/rustup-init"
+  echo "20a06e644b0d9bd2fbdbfd52d42540bdde820ea7df86e92e533c073da0cdd43c  $rustup_stage/rustup-init" | sha256sum --check --status
+  chmod 755 "$rustup_stage" "$rustup_stage/rustup-init"
+  su - vantare-ci -c "'$rustup_stage/rustup-init' -y -q --profile minimal --default-toolchain 1.95.0 -c rustfmt -c clippy"
+  rm -rf "$rustup_stage"
+  trap - EXIT
+fi
 su - vantare-ci -c '~/.cargo/bin/cargo nextest --version 2>/dev/null | grep -q 0.9.146 || ~/.cargo/bin/cargo install -q cargo-nextest --locked --version 0.9.146'
 # gh solo para register-linux.sh (Isaac autentica y cierra sesión tras registrar)
 if ! command -v gh >/dev/null; then

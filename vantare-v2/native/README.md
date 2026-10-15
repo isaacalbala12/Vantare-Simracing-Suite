@@ -278,11 +278,13 @@ una dependencia requiere volver a activar sus símbolos. Release no cambia.
 **Tests.** En nextest `-j` es `--test-threads`, no los jobs de compilación:
 `gates.ps1` compila con los jobs de `CARGO_BUILD_JOBS` (2 si no está definida;
 en nextest como `--build-jobs`) y ejecuta con los hilos de `.config/nextest.toml`
-(4). `NEXTEST_TEST_THREADS` tiene prioridad sobre ese valor (CI lo fija en 2).
-Los tests de triage lanzan `powershell.exe` con un plazo de 8 s que vence con la
-CPU cargada; van de uno en uno (grupo `triage-powershell`) y los más largos
-arrancan primero (`priority`). No subir hilos ni ese grupo sin medir. Para un
-`cargo nextest` a mano, usa `--build-jobs`, no `-j`.
+(4). `NEXTEST_TEST_THREADS` tiene prioridad sobre ese valor (CI también lo fija
+en 4 desde #1654 r3). Siete tests con plazos de reloj duros de 1-3 s (`ipc`,
+`launcher` y `runtime`) piden todos los hilos (`threads-required`): corren solos
+y primero (`priority`), así que sus plazos no dependen de la CPU que quede ni de
+cuántos hilos se usen. Si aparecen intermitentes en CI, volver a 2 hilos y
+anotarlo en el cuaderno de #1654. Para un `cargo nextest` a mano, usa
+`--build-jobs`, no `-j`.
 
 **Sccache.** `compilar.ps1` lo activa solo si está instalado (`VANTARE_SCCACHE=0`
 lo apaga). Cada worktree conserva su target propio; sccache solo comparte las

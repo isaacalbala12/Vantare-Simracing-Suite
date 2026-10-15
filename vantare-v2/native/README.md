@@ -349,18 +349,22 @@ worktree y `CARGO_BUILD_JOBS=4`.
 
 | Medida | Antes | Después |
 | --- | --- | --- |
-| Worktree nuevo → `check --workspace --all-targets` | 272 s | 134 s |
-| `clippy` tras ese check | 79 s | 57 s |
-| Worktree nuevo → nextest en verde | 765 s | 553 s |
-| … de ellos, ejecutar la suite | 461–482 s | 293 s |
-| Editar `ui` → `check` incremental | 16 s | 12 s |
-| Editar `ui` → recompilar tests | 44 s | 40 s |
+| Worktree nuevo → `check --workspace --all-targets` | 272 s | 129 s |
+| `clippy` tras ese check | 79 s | 55 s |
+| Worktree nuevo → nextest en verde | 765 s | 614 s |
+| … de ellos, ejecutar la suite | 461–482 s | 343 s |
+| Gate `telemetria` (ejecución) | 1190 s | 531 s |
+| Editar `ui` → `check` incremental | 16 s | 11 s |
+| Editar `ui` → recompilar tests | 44 s | 30 s |
 | `vantare-hub`, perfil `prueba`, worktree nuevo | 626 s | 351 s |
 | Dos workers a la vez, build de tests en frío (sin caché) | 842 s | 625 s |
 | Disco: check + clippy + nextest | 7,6 GB | 7,6 GB |
 
-Lo que más pesa es la suite: los tests de triage (~350 s de CPU lanzando
-`powershell.exe`) y la paridad del solver (60 s solo, 190 s con carga).
+Lo que más pesa es la suite: los tests de triage (~350 s lanzando
+`powershell.exe`, de uno en uno) y la paridad del solver (60 s solo, 190 s con
+carga). En `telemetria`, un solo test (`acc_real_corpus_matches_frozen_dtos`)
+marca el tiempo.
+
 Medido y no aplicado: `[profile.test] incremental = false` ahorra 2,2 GB y 20 s
 en frío pero recompilar tests tras editar pasa de 48 s a 78 s; `debug = 0` en los
 crates propios ahorra 0,9 GB y 5 s pero quita fichero/línea de las trazas.

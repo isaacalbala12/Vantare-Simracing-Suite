@@ -1,3 +1,53 @@
+## #1593 / VANTA-39 · Descuento por informes · 15/10/2026
+
+Implementación aislada desde nightly `3f82af867`, rama
+`vantareapp/isa-1593-descuento-informes`, worktree Mac `~/wt-1593`.
+Encargo aprobado del 15/10: Pro/Plus mensual, primer mes lanzamiento, siguientes
+normales salvo 2 aceptados → 3 meses / 5 → 6. Un premio por cliente/entorno;
+dos spams lo revocan. Consume decisiones finales #1594 y preserva B03/#1622.
+SQL privado/RLS, operaciones con lease, GET/PATCH y recuperación de respuesta
+perdida; cliente Polar abstracto probado con dobles. Owner recibe y muestra
+aceptados, tramo y último descuento confirmado. Progreso en Hub queda propuesta.
+
+Estado: preparado para revisión, no integrado ni activado. Catálogo vacío y
+feature flag off. **Sin** Polar/Clerk/Storage reales, productos/descuentos reales,
+secretos, deploy, scheduler, GitHub push/PR, merge, release ni promoción.
+Hito backend `7c7583caa`; SHA final y commits entregados al bare local constan en `~/orq/1593.buzon.md`.
+
+Evidencia local `~/evidence/1593/`: 46 pgTAP nuevos PASS; nueve mutaciones de reglas
+reproducen RED; catálogo completo 59→60 suites, ninguna común empeora (22 suites
+heredadas rojas conservadas, no se ocultan). Edge **613→624 PASS**, 0 FAIL,
+2 ignored históricos. Clippy y build admin PASS, Nextest **18/18** (incluye
+regresión nueva); fmt/lint, deploy surface, calidad/retirada PASS. SQL y Edge bajo
+lock Docker, contenedores desechables sin red; Deno con caché y sin permiso de red.
+No cambian runtime/domain/ipc/testdata: lifecycle y telemetría omitidos.
+QA visual pendiente: GPUI demo arranca, pero macOS devuelve
+`could not create image from window`; `CGPreflightScreenCaptureAccess()=false`.
+No se presenta una captura ni se afirma QA visual o Windows.
+
+Decisiones conservadoras para revisar antes de activar: fin de altas el
+02/11 **00:00** exclusivo (hora final no especificada); 45 días son 1080 horas;
+seis meses del tramo mayor empiezan en el siguiente cobro. #1620 conserva su
+campaña de productos de lanzamiento a precio permanente: esta implementación
+solo admite **normales** mensuales y no migra suscripciones. Códigos de esa
+campaña no se importan; Isaac debe decidir su distribución/atribución en esta.
+Prerrequisito de códigos: descuento 20 % / 2 meses con scope normal y atribución
+conservada al aplicar lanzamiento; no hay entrada de códigos nueva en la app.
+
+Crear después, con autorización: seis descuentos Polar EUR, Pro fijo 200 céntimos
+repeating 1/3/6 meses y Plus fijo 300 repeating 1/3/6, cada uno limitado a su
+producto normal mensual. No hace falta crear productos nuevos. Configurar IDs,
+secreto de cron/flag y verificar facturas en sandbox antes de producción.
+B03 se comprueba antes de PATCH y ACK; una petición ya enviada no tiene
+atomicidad con el borrado de otro proveedor: reconciliar/cancelar tras esa carrera.
+Integración de la UI nueva de #1639 pendiente de merge de dependencias; el campo
+opcional está listo y su pequeño bloque debe conservarse en el detalle nuevo.
+
+Siguiente acción del orquestador: revisar diff/evidencia y estas decisiones,
+resolver integración con #1639, generar PR/CI y solo promover tras autorización.
+Contrato/runbook completo y lista Polar:
+`supabase/functions/billing-report-promotion/README.md` desde raíz Git.
+
 ## #1608 · R11 · Guarda y permisos de triage (15/10/2026)
 
 Base `1ac73ce20`; comparación con nightly `64c493e4f`. Solo cambian el fixture

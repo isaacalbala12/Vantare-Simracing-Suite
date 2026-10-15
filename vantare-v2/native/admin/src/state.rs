@@ -63,6 +63,12 @@ impl State {
                     roles: vec!["tester".into()],
                     modules: vec![Module::Strategy, Module::Analysis],
                     reports_count: 2,
+                    report_promotion: Some(crate::client::ReportPromotion {
+                        accepted: 2,
+                        tier: 3,
+                        forfeited: false,
+                        active_discount: Some("DEMO · 2 EUR".into()),
+                    }),
                 },
                 User {
                     account_id: "22222222-2222-4222-8222-222222222222".into(),
@@ -73,6 +79,7 @@ impl State {
                     roles: vec![],
                     modules: vec![Module::Calendar],
                     reports_count: 0,
+                    report_promotion: None,
                 },
             ];
             state.user = state.users.first().cloned();

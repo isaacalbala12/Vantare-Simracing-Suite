@@ -70,6 +70,29 @@ impl Status {
     }
 }
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+pub struct ReportPromotion {
+    pub accepted: u32,
+    pub tier: u8,
+    pub forfeited: bool,
+    pub active_discount: Option<String>,
+}
+impl ReportPromotion {
+    pub fn summary(&self) -> String {
+        if self.forfeited {
+            return format!(
+                "{} informes aceptados · promoción perdida por spam",
+                self.accepted
+            );
+        }
+        format!(
+            "{} informes aceptados · tramo: {} meses · descuento confirmado: {}",
+            self.accepted,
+            self.tier,
+            self.active_discount.as_deref().unwrap_or("ninguno")
+        )
+    }
+}
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct User {
     pub account_id: String,
     pub email: Option<String>,
@@ -79,6 +102,8 @@ pub struct User {
     pub roles: Vec<String>,
     pub modules: Vec<Module>,
     pub reports_count: u32,
+    #[serde(default)]
+    pub report_promotion: Option<ReportPromotion>,
 }
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct Rollout {

@@ -743,6 +743,9 @@ impl Admin {
                     cx,
                 ))
                 .child(muted("El rol owner no se modifica desde esta app.", cx));
+            if let Some(promotion) = &user.report_promotion {
+                detail = detail.child(muted(&promotion.summary(), cx));
+            }
             for (index, module) in Module::ALL.into_iter().enumerate() {
                 let label = muted(
                     &format!(

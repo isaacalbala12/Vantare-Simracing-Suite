@@ -291,3 +291,15 @@ fn screenshots_are_bounded_and_downloaded_without_oauth() {
     assert_eq!(client.screenshot(url.as_str()), Err(Error::Protocol));
     server.join().expect("server");
 }
+
+#[test]
+fn report_promotion_progress_and_spam_are_visible() {
+    let mut promotion: super::ReportPromotion = serde_json::from_value(serde_json::json!({
+        "accepted": 5, "tier": 6, "forfeited": false, "active_discount": "reward6"
+    }))
+    .unwrap();
+    assert!(promotion.summary().contains("5 informes aceptados"));
+    assert!(promotion.summary().contains("6 meses"));
+    promotion.forfeited = true;
+    assert!(promotion.summary().contains("perdida por spam"));
+}

@@ -165,3 +165,13 @@ en `data/Vantare/native/services` dentro de esa instalación, separada de la bet
 Reinstalar actualiza binario/icono/accesos y conserva la sesión. Cierra Admin
 antes de actualizar; no afecta al Hub, núcleo ni overlays. Es instalación privada,
 no se incorpora al instalador público ni configura un servicio o tarea residente.
+
+## Promoción por informes (#1593)
+
+El detalle de usuario admite `report_promotion` opcional: informes aceptados,
+tramo de 0/3/6 meses y descuento confirmado por el servidor. Dos spams muestran
+la pérdida de la promoción. Ausente/null conserva compatibilidad con el backend
+anterior. DEMO incluye un ejemplo falso de dos informes y tres meses.
+No calcula elegibilidad ni concede descuentos desde el cliente. Contrato,
+configuración pendiente y límites en
+[`billing-report-promotion/README.md`](../../../supabase/functions/billing-report-promotion/README.md).

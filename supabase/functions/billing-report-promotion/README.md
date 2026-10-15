@@ -7,8 +7,7 @@ crean productos, descuentos, códigos, enlaces ni scheduler automáticamente.
 ## Reglas y decisiones conservadoras
 
 Altas mensuales Pro/Pro Plus desde **26/10/2026 19:00 Europe/Madrid** inclusive
-hasta **02/11/2026 00:00 Europe/Madrid** exclusivo. La hora final no figura en
-el encargo: se elige la más restrictiva y debe confirmarse antes de activar. 45
+hasta **02/11/2026 19:00 Europe/Madrid** exclusivo. Cierre confirmado por el orquestador en ronda 2. 45
 días significa 1080 horas desde el alta, intervalo `[alta, alta+45 días)`. La
 aritmética de meses usa Europe/Madrid, independientemente de la conexión SQL. No
 se inventa un premio anual; la campaña se expresa en cobros mensuales.

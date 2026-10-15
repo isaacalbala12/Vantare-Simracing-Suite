@@ -1,9 +1,15 @@
 begin;
 select no_plan();
+select ok(private.report_promotion_eligible('2026-11-02 18:59 Europe/Madrid'),'P1 end 18:59 included');
+select ok(not private.report_promotion_eligible('2026-11-02 19:00 Europe/Madrid'),'P1 end 19:00 excluded');
+select ok(not private.report_promotion_eligible('2026-11-02 19:01 Europe/Madrid'),'P1 end 19:01 excluded');
+select ok(not private.report_promotion_eligible('2026-10-25 00:30+00'),'P1 DST first 02:30 before launch');
+select ok(not private.report_promotion_eligible('2026-10-25 01:30+00'),'P1 DST repeated 02:30 before launch');
+select is(extract(epoch from(private.report_promotion_months('2026-09-26 19:00 Europe/Madrid',1)-timestamptz '2026-09-26 19:00 Europe/Madrid'))/3600,721::numeric,'P1 Madrid month crosses DST');
 select ok(not private.report_promotion_eligible('2026-10-26 18:59:59 Europe/Madrid'),'before launch');
 select ok(private.report_promotion_eligible('2026-10-26 19:00:00 Europe/Madrid'),'launch inclusive');
 select ok(private.report_promotion_eligible('2026-11-01 23:59:59 Europe/Madrid'),'end eve included');
-select ok(not private.report_promotion_eligible('2026-11-02 00:00:00 Europe/Madrid'),'end exclusive');
+select ok(not private.report_promotion_eligible('2026-11-02 19:00:00 Europe/Madrid'),'end exclusive');
 select is(private.report_promotion_months('2026-10-26 19:00 Europe/Madrid',1),'2026-11-26 19:00 Europe/Madrid'::timestamptz,'Madrid calendar clock');
 select ok(not has_function_privilege('authenticated','public.report_promotion_observe(uuid,text,text,text,timestamptz,timestamptz,text)','execute'),'clients cannot enroll');
 select ok(not has_function_privilege('anon','public.report_promotion_prepare(uuid,text,timestamptz)','execute'),'anonymous cannot plan');
@@ -18,7 +24,7 @@ insert into private.report_promotion_creators values('sandbox','pro','creator'),
 create function pg_temp.account(n int) returns uuid language sql as $$select ('15930000-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid$$;
 select is(public.report_promotion_checkout(pg_temp.account(1),'sandbox','pro','2026-10-26 19:00 Europe/Madrid'),'pro1','first month launch discount');
 select is(public.report_promotion_checkout(pg_temp.account(1),'sandbox','plus','2026-10-26 19:00 Europe/Madrid'),'plus1','Plus first month launch discount');
-select is(public.report_promotion_checkout(pg_temp.account(1),'sandbox','pro','2026-11-02 00:00 Europe/Madrid'),null::text,'no launch outside week');
+select is(public.report_promotion_checkout(pg_temp.account(1),'sandbox','pro','2026-11-02 19:00 Europe/Madrid'),null::text,'no launch outside week');
 select is(public.report_promotion_checkout(pg_temp.account(1),'sandbox','annual','2026-10-27'),null::text,'annual catalog not eligible');
 create function pg_temp.enroll(n int,product text default 'pro',started timestamptz default '2026-10-26 19:00 Europe/Madrid',discount text default 'pro1') returns void language plpgsql as $$begin
  insert into public.billing_subscriptions(user_id,provider,environment,provider_subscription_id,provider_product_id,status,current_period_start,current_period_end)
@@ -30,7 +36,7 @@ create function pg_temp.enroll(n int,product text default 'pro',started timestam
  perform public.report_promotion_observe(pg_temp.account(n),'sandbox','sub'||n,product,started,started,discount);
 end$$;
 select pg_temp.enroll(1); select pg_temp.enroll(2,'plus','2026-10-26 19:00 Europe/Madrid','creator');
-select pg_temp.enroll(3,'annual'); select pg_temp.enroll(4,'pro','2026-11-02 00:00 Europe/Madrid');
+select pg_temp.enroll(3,'annual'); select pg_temp.enroll(4,'pro','2026-11-02 19:00 Europe/Madrid');
 select pg_temp.enroll(5,'pro','2026-10-26 18:59 Europe/Madrid'); select pg_temp.enroll(6); select pg_temp.enroll(7); select pg_temp.enroll(9); select pg_temp.enroll(8,'pro','2026-10-27 00:00 Europe/Madrid','creator');
 select is(public.report_promotion_prepare(pg_temp.account(9),'sandbox','2026-11-01'),null::jsonb,'first invoice must be paid before replacing launch discount');
 select is((select count(*)::int from private.report_promotions),6,'Pro/Plus allowed, annual and outside week excluded');

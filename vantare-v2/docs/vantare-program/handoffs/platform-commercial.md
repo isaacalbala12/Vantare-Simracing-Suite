@@ -1,4 +1,11 @@
-## #1593 / VANTA-39 · Descuento por informes · 15/10/2026
+## #1593 / VANTA-39 · Ronda 2 en curso · 15/10/2026
+
+PR #1659, revisión DeepSeek NO APTO leída completa. P1 corregido: cierre
+02/11/2026 **19:00 Europe/Madrid** exclusivo; tests 18:59/19:00/19:01 y ambos
+02:30 del cambio de hora 25/10. Base de ronda `cc1989b0b`, misma rama/worktree.
+P2/P3 y políticas nuevas en curso; evidencia `~/evidence/1593-r2/`, sin servicios reales.
+
+## Histórico · #1593 / VANTA-39 · Entrega inicial · 15/10/2026
 
 Implementación aislada desde nightly `3f82af867`, rama
 `vantareapp/isa-1593-descuento-informes`, worktree Mac `~/wt-1593`.

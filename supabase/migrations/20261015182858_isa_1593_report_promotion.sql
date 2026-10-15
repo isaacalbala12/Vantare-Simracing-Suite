@@ -67,7 +67,7 @@ create function private.report_promotion_months(t timestamptz,n integer) returns
 language sql immutable set search_path='' as $$select ((t at time zone 'Europe/Madrid')+make_interval(months=>n)) at time zone 'Europe/Madrid'$$;
 create function private.report_promotion_eligible(t timestamptz) returns boolean
 language sql immutable set search_path='' as $$select t >= timestamp '2026-10-26 19:00' at time zone 'Europe/Madrid'
- and t < timestamp '2026-11-02 00:00' at time zone 'Europe/Madrid'$$;
+ and t < timestamp '2026-11-02 19:00' at time zone 'Europe/Madrid'$$;
 
 -- First invoice uses the one-month launch discount on the NORMAL monthly product.
 -- Existing permanent launch products and annual subscriptions are not rewritten.

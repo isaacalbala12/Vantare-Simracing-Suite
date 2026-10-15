@@ -47,11 +47,11 @@ revoke all on function private.testing_contribution_review_as(uuid,uuid,text,tex
 create or replace function public.testing_contribution_review(p_id uuid,p_decision text,p_note text,p_proposal jsonb) returns void
 language plpgsql security definer set search_path='' as $$
 begin
- if auth.uid() is null then raise exception 'testing_owner_required' using errcode='42501'; end if;
- perform 1 from public.testing_center_memberships where user_id=auth.uid() and active and role='owner' for share;
+ if private.current_account() is null then raise exception 'testing_owner_required' using errcode='42501'; end if;
+ perform 1 from public.testing_center_memberships where user_id=private.current_account() and active and role='owner' for share;
  if not found then raise exception 'testing_owner_required' using errcode='42501'; end if;
  if p_proposal is null then raise exception 'testing_review_invalid' using errcode='22023'; end if;
- perform private.testing_contribution_review_as(auth.uid(),p_id,p_decision,p_note,p_proposal);
+ perform private.testing_contribution_review_as(private.current_account(),p_id,p_decision,p_note,p_proposal);
 end $$;
 
 -- Trusted admin adapter: same review engine, explicit human note, no invented model proposal.

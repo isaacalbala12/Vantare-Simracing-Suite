@@ -94,7 +94,11 @@ pub(super) fn render(cal: &mut Calendar, cx: &mut Context<Calendar>) -> Div {
         .py(px(10.0))
         .child(chips)
         .child(div().w(px(84.0)).flex_none().child(t(
-            format!("{total} salidas · {}", zone.long(now)),
+            if cal.adapt.width < 1400.0 {
+                format!("{total} salidas")
+            } else {
+                format!("{total} salidas · {}", zone.long(now))
+            },
             12.0,
             400,
             skin.cap,
@@ -115,6 +119,7 @@ pub(super) fn render(cal: &mut Calendar, cx: &mut Context<Calendar>) -> Div {
         ));
     }
 
+    let compact = cal.adapt.width < 1400.0;
     let head = div()
         .flex_none()
         .flex()
@@ -126,7 +131,7 @@ pub(super) fn render(cal: &mut Calendar, cx: &mut Context<Calendar>) -> Div {
             let fav = rows::is_fav(cal.favorites(), s);
             div()
                 .flex_1()
-                .min_w(px(78.0))
+                .min_w(px(52.0))
                 .px(px(7.0))
                 .py(px(6.0))
                 .gap(px(3.0))
@@ -143,7 +148,9 @@ pub(super) fn render(cal: &mut Calendar, cx: &mut Context<Calendar>) -> Div {
                         .overflow_hidden(),
                 )
                 .child(div().flex().child(tier(s, cx)))
-                .child(t(s.track_short().to_owned(), 10.5, 400, skin.text3, cx).truncate())
+                .when(!compact, |c| {
+                    c.child(t(s.track_short().to_owned(), 10.5, 400, skin.text3, cx).truncate())
+                })
         }));
 
     let mut grid = div().relative().flex().flex_col();
@@ -196,7 +203,7 @@ pub(super) fn render(cal: &mut Calendar, cx: &mut Context<Calendar>) -> Div {
             let daily = rows::is_daily(s);
             let mut cell = div()
                 .flex_1()
-                .min_w(px(78.0))
+                .min_w(px(52.0))
                 .flex()
                 .items_center()
                 .gap(px(3.0))

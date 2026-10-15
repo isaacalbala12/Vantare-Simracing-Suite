@@ -17,6 +17,7 @@ export type CreateCheckoutParams = {
   channels: readonly ReleaseChannel[];
   launchScopeVersion: string | null;
   trial: TrialConfig;
+  discountId?: string;
 };
 
 export type CreateCheckoutResult = { url: string; checkoutId: string | null };
@@ -330,6 +331,10 @@ export async function createPolarCheckoutSession(
   if (params.trial.enabled) {
     payload.trial_interval = params.trial.interval;
     payload.trial_interval_count = params.trial.interval_count;
+  }
+  if (params.discountId) {
+    payload.discount_id = params.discountId;
+    payload.allow_discount_codes = false;
   }
   if (params.email) payload.customer_email = params.email;
 

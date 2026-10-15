@@ -1,3 +1,5 @@
+import { promotionCheckoutDiscount } from "../billing-report-promotion/observe.ts";
+import { getSupabaseAdmin } from "../_shared/supabase-admin.ts";
 import { type AuthResult, requireUserAuth } from "../_shared/auth.ts";
 import {
   type CheckoutAttemptStore,
@@ -172,6 +174,12 @@ export async function handleCheckoutRequest(
   }
 
   try {
+    const discount = await promotionCheckoutDiscount(
+      getSupabaseAdmin,
+      auth.userId,
+      mapping.map.environment,
+      resolved.config.polar_product_id,
+    );
     const session = await (deps.createCheckout ?? createPolarCheckoutSession)(
       {
         productId: resolved.config.polar_product_id,
@@ -184,7 +192,8 @@ export async function handleCheckoutRequest(
         capabilities: resolved.config.capabilities,
         channels: resolved.config.channels,
         launchScopeVersion: resolved.config.launch_scope_version,
-        trial: resolved.config.trial,
+        trial: discount ? { enabled: false } : resolved.config.trial,
+        ...(discount ? { discountId: discount } : {}),
       },
       { signal: req.signal },
     );

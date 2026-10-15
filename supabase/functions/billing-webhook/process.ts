@@ -1,3 +1,4 @@
+import { observeReportPromotion } from "../billing-report-promotion/observe.ts";
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import {
   type BillingEnvironment,
@@ -822,6 +823,18 @@ export async function applyPolarWebhookEvent(
     "billing_subscription_lifecycle",
     () => lifecycle.apply(lifecycleApply),
   );
+  await applyEffect(
+    deps,
+    "report_promotion_observe",
+    () =>
+      observeReportPromotion(deps.supabase, {
+        account: userId,
+        environment,
+        subscription: resourceId,
+        product: productId,
+        data: event.data,
+      }),
+  );
   if (result.outcome === "duplicate") {
     return { status: "processed", action: "resource_duplicate" };
   }
@@ -838,6 +851,8 @@ const REPLAY_DATA_KEYS = [
   "id",
   "order_id",
   "subscription_id",
+  "started_at",
+  "discount_id",
   "modified_at",
   "created_at",
   "updated_at",

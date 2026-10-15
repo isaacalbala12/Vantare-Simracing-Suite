@@ -30,11 +30,55 @@ jobs:
       run:
         working-directory: vantare-v2/native
     steps:
+      # fetch-depth 2 para tener también el primer padre del commit de merge
+      # (`$GITHUB_SHA^1` = base), que es contra quien se compara la PR.
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 2
+
+      # Clasifica si la PR puede saltarse los gates nativos (docs, web retirada,
+      # Supabase, tooling): este trabajo no es un check requerido, pero se
+      # mantiene y reporta «success» para no dejar la PR con checks colgados.
+      # Fail-closed: sin evento de PR, sin base o si algo falla, `native=true`.
+      - name: Clasificar si los gates nativos aplican
+        id: native_scope
+        working-directory: ${{ github.workspace }}
+        shell: bash
+        env:
+          SCOPE_PATH: ${{ runner.temp }}/native-gate-scope.json
+        run: |
+          set -euo pipefail
+          fail_closed() {
+            printf '{"native":true,"native_paths":[],"reasons":["%s"]}\n' "$1" > "$SCOPE_PATH"
+            echo 'native=true' >> "$GITHUB_OUTPUT"
+          }
+          if [ "$GITHUB_EVENT_NAME" != "pull_request" ]; then
+            fail_closed "non pull request event: native gates always run"
+            exit 0
+          fi
+          if ! diff_base="$(git rev-parse "$GITHUB_SHA^1" 2>/dev/null)"; then
+            fail_closed "no diff base: fail closed"
+            exit 0
+          fi
+          if ! git diff --name-only --diff-filter=ACMR -z "$diff_base" "$GITHUB_SHA" > "$RUNNER_TEMP/native-scope-paths.bin"; then
+            fail_closed "git diff failed: fail closed"
+            exit 0
+          fi
+          native="true"
+          if ! native="$(python3 .github/scripts/native_gate_scope.py --nul-file "$RUNNER_TEMP/native-scope-paths.bin" --output "$SCOPE_PATH")"; then
+            fail_closed "classifier failed: fail closed"
+            exit 0
+          fi
+          case "$native" in
+            true|false) ;;
+            *) native="true" ;;
+          esac
+          cat "$SCOPE_PATH"
+          echo "native=$native" >> "$GITHUB_OUTPUT"
 
       - name: Install native Linux dependencies
-        if: runner.environment != 'self-hosted'
+        if: runner.environment != 'self-hosted' && steps.native_scope.outputs.native != 'false'
         run: |
           sudo apt-get update
           sudo apt-get install --yes --no-install-recommends \
@@ -44,6 +88,7 @@ jobs:
             libzstd-dev
 
       - name: Verify pinned Rust toolchain
+        if: steps.native_scope.outputs.native != 'false'
         run: rustup show active-toolchain
 
       # Caché de los artefactos de *dependencias* (rust-cache borra antes de
@@ -56,6 +101,7 @@ jobs:
       # su cache queda en el merge ref y solo lo reutilizan las ejecuciones del
       # mismo PR (nightly no lo guarda).
       - name: Cache de artefactos de dependencias (target)
+        if: steps.native_scope.outputs.native != 'false'
         uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
           workspaces: |
@@ -72,6 +118,7 @@ jobs:
       # ejecutándose completos. NATIVE_FEATURE_ARGS va sin comillas a propósito
       # (0 o 2 argumentos).
       - name: Prepare prebuilt DuckDB (sin compilar C++)
+        if: steps.native_scope.outputs.native != 'false'
         run: |
           set -euo pipefail
           features="$(python3 - <<'PY'
@@ -100,23 +147,28 @@ jobs:
           echo "LD_LIBRARY_PATH=$duckdb_dir" >> "$GITHUB_ENV"
 
       - name: Format
+        if: steps.native_scope.outputs.native != 'false'
         run: cargo fmt --all -- --check
 
       - name: Check all workspace targets
+        if: steps.native_scope.outputs.native != 'false'
         run: cargo check --workspace --all-targets --locked $NATIVE_FEATURE_ARGS -j 4
 
       - name: Clippy all workspace targets
+        if: steps.native_scope.outputs.native != 'false'
         run: cargo clippy --workspace --all-targets --locked $NATIVE_FEATURE_ARGS -j 4 -- -D warnings
 
       # El binario solo cambia al subir la versión: se guarda en caché y se
       # evita recompilarlo (342–430 s por trabajo en Windows; 174–226 s aquí).
       - name: Cache de cargo-nextest
+        if: steps.native_scope.outputs.native != 'false'
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: ~/.cargo/bin/cargo-nextest
           key: cargo-nextest-0.9.146-${{ runner.os }}-${{ runner.arch }}
 
       - name: Install pinned Nextest
+        if: steps.native_scope.outputs.native != 'false'
         run: |
           have=""
           if command -v cargo-nextest >/dev/null 2>&1; then
@@ -134,14 +186,17 @@ jobs:
       # #1654). Antes había `-j 2` (que ganaba como hilos de test) y un
       # NEXTEST_TEST_THREADS=1 que no llegaba a aplicarse.
       - name: Test workspace
+        if: steps.native_scope.outputs.native != 'false'
         env:
           NEXTEST_TEST_THREADS: '2'
         run: cargo nextest run --workspace --locked $NATIVE_FEATURE_ARGS --build-jobs 4
 
       - name: Test real telemetry corpus
+        if: steps.native_scope.outputs.native != 'false'
         env:
           NEXTEST_TEST_THREADS: '2'
         run: cargo nextest run --workspace --locked $NATIVE_FEATURE_ARGS --build-jobs 4 --profile telemetria
 
       - name: Test lifecycle targets
+        if: steps.native_scope.outputs.native != 'false'
         run: cargo test --workspace --test lifecycle --locked $NATIVE_FEATURE_ARGS -j 4

@@ -174,7 +174,8 @@ jobs:
           if command -v cargo-nextest >/dev/null 2>&1; then
             have="$(cargo nextest --version 2>/dev/null || true)"
           fi
-          if [ "$have" = "cargo-nextest 0.9.146" ]; then
+          # `--version` imprime varias líneas (release, commit…): basta con la primera.
+          if [ "$(printf '%s' "$have" | head -n 1)" = "cargo-nextest 0.9.146" ]; then
             echo 'cargo-nextest 0.9.146 ya disponible: no se instala'
           else
             cargo install cargo-nextest --locked --version 0.9.146

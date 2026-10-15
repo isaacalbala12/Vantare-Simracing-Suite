@@ -34,7 +34,7 @@ WITH events AS (
     SELECT 'state:' || a.id AS event_id, a.created_at, 'state' AS kind,
            a.issue_id, a.actor_id, a.old_value AS old_state,
            a.new_value AS new_state, '' AS comment_html,
-           '' AS comment_text, false AS via_api, true AS ready
+           '' AS comment_text, '[]'::json AS via_api, true AS ready
     FROM issue_activities a
     WHERE a.project_id = '{PROJECT}' AND a.deleted_at IS NULL
       AND a.field = 'state' AND a.verb = 'updated'
@@ -43,7 +43,7 @@ WITH events AS (
     -- Si ya cambió después, la primera transición conserva el estado inicial.
     SELECT 'created:' || a.id, a.created_at, 'state', a.issue_id,
            a.actor_id, NULL, coalesce(first_change.old_value, s.name),
-           '', '', false, true
+           '', '', '[]'::json, true
     FROM issue_activities a
     JOIN issues ci ON ci.id = a.issue_id
     LEFT JOIN states s ON s.id = ci.state_id
@@ -58,10 +58,11 @@ WITH events AS (
     UNION ALL
     SELECT 'comment:' || c.id, c.created_at, 'comment', c.issue_id,
            c.actor_id, s.name, s.name, c.comment_html, c.comment_stripped,
-           EXISTS (SELECT 1 FROM api_activity_logs l
+           (SELECT coalesce(json_agg(json_build_object('id', l.id, 'body', l.response_body)), '[]')
+                   FROM api_activity_logs l
                    WHERE l.method = 'POST' AND l.response_code BETWEEN 200 AND 299
                      AND l.path LIKE '%/comments/'
-                     AND l.response_body::jsonb ->> 'id' = c.id::text),
+                     AND l.path LIKE '%' || c.issue_id::text || '/comments/'),
            c.created_at <= statement_timestamp() - interval '2 minutes'
     FROM issue_comments c
     JOIN issues ci ON ci.id = c.issue_id
@@ -77,7 +78,7 @@ WITH events AS (
                 ELSE 'workers_created' END,
            a.issue_id, a.actor_id, a.old_value, a.new_value,
            CASE WHEN a.field = 'comment' THEN coalesce(a.new_value, c.comment_html, '')
-                ELSE '' END, coalesce(c.comment_stripped, ''), true, true
+                ELSE '' END, coalesce(c.comment_stripped, ''), '[]'::json, true
     FROM issue_activities a
     JOIN users bot ON bot.id = a.actor_id
     LEFT JOIN issue_comments c ON c.id = a.issue_comment_id
@@ -110,7 +111,29 @@ def current():
          DB, "sh", "-c",
          'psql -h /var/run/postgresql -w -X -q -At -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"'],
         input=SQL, capture_output=True, text=True, timeout=30, check=True)
-    return json.loads(result.stdout)
+    return classify_api_comments(json.loads(result.stdout))
+
+
+def classify_api_comments(records):
+    invalid = set()
+    for row in records:
+        logs = row.get("via_api", [])
+        row["via_api"] = False
+        if row["kind"] != "comment":
+            continue
+        for log in logs:
+            try:
+                body = json.loads(log["body"])
+                if not isinstance(body, dict):
+                    raise ValueError("Respuesta no es objeto")
+            except (ValueError, TypeError) as exc:
+                if log["id"] not in invalid:
+                    print(f"registro API omitido id={log['id']} {type(exc).__name__}")
+                    invalid.add(log["id"])
+                continue
+            if body.get("id") == row["event_id"].removeprefix("comment:"):
+                row["via_api"] = True
+    return records
 
 
 class Text(HTMLParser):

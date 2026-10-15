@@ -257,6 +257,25 @@ class WatcherTests(unittest.TestCase):
         self.assertIn("issue_comments", run.call_args.kwargs["input"])
         self.assertNotIn("description_html", run.call_args.kwargs["input"])
 
+    def test_invalid_api_body_is_skipped_without_losing_other_comments(self):
+        records = [comment("comment:api", via_api=[
+            {"id": "bad", "body": "private-invalid-json"},
+            {"id": "empty", "body": ""}, {"id": "null", "body": None},
+            {"id": "scalar", "body": "[]"},
+            {"id": "valid", "body": '{"id":"api"}'}]),
+            comment("comment:ui", via_api=[{"id": "bad", "body": "private-invalid-json"}])]
+        with redirect_stdout(io.StringIO()) as output:
+            parsed = w.classify_api_comments(records)
+        self.assertTrue(parsed[0]["via_api"])
+        self.assertFalse(parsed[1]["via_api"])
+        self.assertEqual(output.getvalue().count("id=bad "), 1)
+        self.assertNotIn("private-invalid", output.getvalue())
+        self.assertIsNone(w.payload(parsed[0]))
+        self.assertIsNotNone(w.payload(parsed[1]))
+
+    def test_api_response_is_never_cast_to_json_in_sql(self):
+        self.assertNotIn("response_body::json", w.SQL)
+
     def test_post_user_agent_idempotency_and_no_redirect(self):
         response = Mock(status=202)
         response.__enter__ = Mock(return_value=response)

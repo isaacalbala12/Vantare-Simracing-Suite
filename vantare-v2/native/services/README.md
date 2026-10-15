@@ -1,6 +1,6 @@
 ## #1631 · Login propio (gates locales macOS)
 
-El protocolo services v9 añade AccountEmail y respuestas Email sin tokens.
+El protocolo services v10 añade AccountEmail y respuestas Email sin tokens.
 Hub/supervisor/servicios deben compilarse juntos. Entrada con código/contraseña,
 alta con verificación de email y recuperación usan FAPI nativa sin cookies.
 La sesión FAPI es temporal; la aprobación explícita de Device Grant obtiene la
@@ -16,7 +16,9 @@ QA y Windows pendientes del orquestador. Telemetría 25/25 y lifecycle macOS
 
 # Servicios nativos — ISA-1430
 
-**Corte #1610 (histórico):** protocolo services v8 (DTO v10/derechos v4 independientes).
+**Corte combinado #1610/#1594:** protocolo services v9 (DTO v10/derechos v4
+independientes); recompilar Hub/services juntos. F7=C: campos escritos locales,
+etiquetas SQL fijas y salida estructurada por catálogo; no se envía prosa del tester.
 Rutas cerradas: current_v2, envío consentido por Edge `testing-report-submit`,
 crédito y acuse por fecha. La RPC directa no está permitida. Historial sin cuerpo
 privado; arreglado requiere versión válida. No hay cliente Plane ni referencia PostHog productiva.

@@ -157,6 +157,10 @@ export type SubmitDeps = {
   account?: (request: Request) => Promise<string>;
   admit?: (scope: string, subject: string, week: string) => Promise<boolean>;
   submit?: (account: string, body: Record<string, unknown>) => Promise<void>;
+  rpc?: (
+    name: string,
+    body: Record<string, unknown>,
+  ) => Promise<{ error: { code?: string } | null }>;
 };
 
 export async function handleTestingReportSubmit(
@@ -201,7 +205,7 @@ export async function handleTestingReportSubmit(
       request.headers.get("content-type")?.split(";")[0].trim()
         .toLowerCase() !== "application/json"
     ) throw new NativeError(400, "invalid_request");
-    const parsed = await readJsonObject(request, 8192);
+    const parsed = await readJsonObject(request, 64 * 1024);
     if (!parsed.ok) {
       throw new NativeError(
         parsed.code === "body_too_large" ? 413 : 400,
@@ -209,7 +213,17 @@ export async function handleTestingReportSubmit(
       );
     }
     const body = parsed.value;
-    const fields = ["p_id", "p_channel", "p_title", "p_body", "p_consent"];
+    const structured = Object.hasOwn(body, "p_context") ||
+      Object.hasOwn(body, "p_attachments");
+    if (
+      !structured &&
+      new TextEncoder().encode(JSON.stringify(body)).length > 8192
+    ) {
+      throw new NativeError(413, "body_too_large");
+    }
+    const fields = structured
+      ? ["p_id", "p_channel", "p_title", "p_body", "p_context", "p_attachments"]
+      : ["p_id", "p_channel", "p_title", "p_body", "p_consent"];
     const text = (value: unknown, max: number) =>
       typeof value === "string" && value.trim().length > 0 &&
       [...value].length <= max &&
@@ -222,11 +236,15 @@ export async function handleTestingReportSubmit(
       typeof body.p_channel !== "string" ||
       !["nightly", "testers", "master"].includes(body.p_channel) ||
       !text(body.p_title, 120) || !text(body.p_body, 1000) ||
-      body.p_consent !== true
+      (structured ? !structuredConsent(body) : body.p_consent !== true)
     ) throw new NativeError(400, "invalid_request");
     await (deps.submit ?? (async (user, body) => {
-      const { error } = await getSupabaseAdmin().rpc(
-        "testing_report_submit_admitted",
+      const rpc = deps.rpc ??
+        ((name, args) => getSupabaseAdmin().rpc(name, args));
+      const { error } = await rpc(
+        structured
+          ? "testing_contribution_submit_admitted"
+          : "testing_report_submit_admitted",
         { ...body, p_account: user },
       );
       if (error) {
@@ -253,6 +271,22 @@ export async function handleTestingReportSubmit(
       ...(failure.status === 429 ? { "Retry-After": "86400" } : {}),
     });
   }
+}
+
+// Detailed closed shapes, consent items, hashes and exact retries are validated
+// again in SQL. Tester prose stays local under F7=C, including on this route.
+function structuredConsent(body: Record<string, unknown>): boolean {
+  const object = (value: unknown): value is Record<string, unknown> =>
+    value !== null && typeof value === "object" && !Array.isArray(value);
+  const context = body.p_context;
+  if (!object(context) || !object(context.consent)) return false;
+  const consent = context.consent;
+  return body.p_title === "[contenido retirado por privacidad]" &&
+    body.p_body === "[contenido retirado por privacidad]" &&
+    context.app_channel === body.p_channel &&
+    consent.version === "triage-v2" && Array.isArray(consent.items) &&
+    typeof consent.accepted_at === "string" &&
+    Array.isArray(body.p_attachments) && body.p_attachments.length <= 2;
 }
 
 if (import.meta.main) {

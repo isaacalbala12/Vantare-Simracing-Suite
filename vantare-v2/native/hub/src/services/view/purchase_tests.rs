@@ -133,7 +133,7 @@ fn participation_is_cleared_on_logout_and_delayed_reply_cannot_restore_private_d
         crate::quit_headless_test(cx);
     });
 }
-pub(super) fn fixture(
+pub(crate) fn fixture(
     cx: &mut Context<Remote>,
     send: SyncSender<Command>,
     data: &std::path::Path,
@@ -171,6 +171,7 @@ pub(super) fn fixture(
         participation_message: "Recarga para consultar cuestionarios y contribuciones".into(),
         participation_pending: None,
         participation_generation: 0,
+        triage: crate::testing::TriageEditor::new(cx),
         recovery,
         publication: None,
         roadmap_message: "No hay una publicación válida guardada".into(),

@@ -1,0 +1,57 @@
+{
+  "levels": [
+    "TRACE",
+    "DEBUG",
+    "INFO",
+    "WARN",
+    "ERROR",
+    "FATAL"
+  ],
+  "errors": [
+    "Unconfigured",
+    "BridgeUnconfigured",
+    "Authentication",
+    "Denied",
+    "DeviceLimit",
+    "Offline",
+    "InvalidCredential",
+    "Expired",
+    "Clock",
+    "Storage",
+    "CheckoutRecovery",
+    "Protocol",
+    "Unsupported",
+    "Busy",
+    "Canceled",
+    "Uncertain",
+    "EvidencePending",
+    "TooLarge",
+    "Conflict",
+    "PilotRejected",
+    "Version",
+    "NotFound",
+    "ServicesCommandFailure"
+  ],
+  "modules": [
+    "admin",
+    "build-support",
+    "domain",
+    "engineer",
+    "hub",
+    "ipc",
+    "launcher",
+    "profiling",
+    "runtime",
+    "services",
+    "storage",
+    "strategy",
+    "ui"
+  ],
+  "release_labels": [
+    "nightly",
+    "testers",
+    "alpha",
+    "beta",
+    "rc"
+  ]
+}

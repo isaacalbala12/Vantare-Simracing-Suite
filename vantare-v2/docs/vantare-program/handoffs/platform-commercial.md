@@ -21,8 +21,9 @@ validar cierre operativo y atención manual de excepciones. La credencial perpet
 offline existente no tiene revocación remota instantánea.
 
 Evidencia Mac local: 143 pgTAP PASS (33 Founders, 57 Owner, 34 reembolsos,
-19 tombstones); 139 Edge PASS; regresión de credencial RED al restaurar el
-normalizador original. Docker con lock, contenedor propio cerrado. Quality y
+19 tombstones); 140 Edge PASS; regresión de credencial RED al restaurar el
+normalizador original. Una orden ya admitida conserva replay/reembolso si
+Isaac modifica después las fechas de venta. Docker con lock, contenedor propio cerrado. Quality y
 retirement PASS (456 huellas). fmt/check Windows PASS; Clippy en curso tras separar funciones sin silenciar
 sus límites. Un intento posterior falló al mapear metadatos de dependencias
 (E0786, serde/regex_automata); evidencia conservada y repetición sin sccache

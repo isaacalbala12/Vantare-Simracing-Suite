@@ -2741,3 +2741,54 @@ Deno.test("Founders refunded-order reconciliation cannot grant an out-of-window 
   assertEquals(result.status, "quarantined");
   assertEquals(deps.orderRefundLedger.grants.size, 0);
 });
+
+Deno.test("Founders admitted order still replays and refunds after sale configuration changes", async () => {
+  const mock = createMockSupabase();
+  let admissions = 0;
+  const deps = {
+    ...processDeps(
+      mock,
+      () =>
+        loadPolarProductMap(withFounders(VALID_POLAR_PRODUCT_MAP_JSON), {
+          environment: "sandbox",
+        }),
+    ),
+    foundersPaymentAllowed: async () => ++admissions === 1,
+  };
+  const event = {
+    type: "order.paid",
+    data: paidOrderData({
+      id: "founders-config",
+      product_id: "00000000-0000-4000-8000-000000001661",
+      paid_at: "2026-10-26T18:00:00Z",
+      total_amount: 5000,
+      net_amount: 5000,
+    }),
+  };
+  assertEquals(
+    (await processPolarWebhookEvent(event, "founders-config-paid", deps))
+      .status,
+    "processed",
+  );
+  assertEquals(
+    (await processPolarWebhookEvent(event, "founders-config-replay", deps))
+      .status,
+    "processed",
+  );
+  const refund = {
+    type: "order.refunded",
+    data: {
+      ...event.data,
+      status: "refunded",
+      refunded_amount: 5000,
+      modified_at: "2026-11-28T18:00:00Z",
+    },
+  };
+  assertEquals(
+    (await processPolarWebhookEvent(refund, "founders-config-refund", deps))
+      .status,
+    "processed",
+  );
+  assertEquals(admissions, 1);
+  assertEquals([...deps.orderRefundLedger.grants.values()], ["revoked"]);
+});

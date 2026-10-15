@@ -542,6 +542,14 @@ async function applyOrderRefundEvent(args: {
       return { status: "ignored", reason: parsed };
     }
     if (resolved.key === "founders") {
+      // A recorded order already passed admission. Later date configuration
+      // changes must not prevent its idempotent replay or its refund.
+      const recorded = await ledger.readDecision(
+        args.environment,
+        parsed.orderId,
+      );
+      const admitted = recorded?.order.userId === userId &&
+        recorded.order.productId === productId;
       const paidAt = parseIsoTimestamp(
         args.event.data.paid_at ?? args.event.data.created_at,
       );
@@ -549,9 +557,10 @@ async function applyOrderRefundEvent(args: {
         !paidAt || !Number.isFinite(Date.parse(paidAt)) ||
         args.event.data.total_amount !== 5000 || parsed.currency !== "eur" ||
         parsed.subscriptionId || asString(args.event.data.discount_id) ||
-        !await (args.deps.foundersPaymentAllowed ?? foundersPaymentAllowed)(
-          paidAt,
-        )
+        (!admitted &&
+          !await (args.deps.foundersPaymentAllowed ?? foundersPaymentAllowed)(
+            paidAt,
+          ))
       ) {
         return { status: "ignored", reason: "founders_payment_invalid" };
       }

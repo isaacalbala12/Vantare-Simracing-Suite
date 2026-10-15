@@ -57,7 +57,8 @@ monótono y bloqueos de #1622. Toda orden Founders, también al reconciliar una 
 `total_amount=5000`, sin descuento y `paid_at` (o `created_at` de la orden si el
 proveedor no envía `paid_at`) dentro de la ventana. Un evento tardío de un pago
 válido se acepta por su fecha de pago; uno inválido queda en cuarentena sin derecho.
-Reembolsos y reconciliación siguen funcionando después del cierre. Los bloqueos
+Reembolsos y reconciliación siguen funcionando después del cierre. Cambiar las
+fechas no invalida el replay ni el reembolso de una orden ya admitida. Los bloqueos
 efectivos de #1622 retiran el acceso por reembolso, también parcial o pendiente,
 sin retirar otras fuentes. Gestión consulta esos derechos efectivos y distingue
 Founders tanto en el plan como en su pago. Los tombstones impiden nueva compra

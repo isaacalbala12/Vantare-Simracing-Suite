@@ -158,7 +158,9 @@ El resto conserva la comparación exacta y la tolerancia previa exclusiva de yaw
 
 «Esenciales» es la cobertura de datos actual; no confirma que el renderer actual
 reproduzca el HTML aprobado. Las opciones nuevas de presentación de #1629 no se
-portan en esta tarea de adquisición. Todos requieren QA **conduciendo** pendiente.
+portan en esta tarea de adquisición. La comprobación de entrega admite una sesión
+parada, pausada o en garaje. Las transiciones positivas de cada señal siguen
+necesitando su escenario propio; el movimiento no es precondición del A/B.
 
 | Entrada del catálogo | Datos esenciales tras el cambio | Qué falta para todo el diseño |
 | --- | --- | --- |
@@ -189,6 +191,11 @@ El endpoint archivado `/rest/sessions/weather` expone presets START/25/50/75/FIN
 no acredita forecast actual de servidor cada 15 min. No se sustituye por una
 predicción inventada. ABS/TC actuando, FFB, sanciones tipadas y plazos siguen DUDA.
 
+El orquestador asigna a #1629 el contrato de domain
+`PenaltyKind { DriveThrough, StopGo, Disqualified }`. No existe en esta base;
+#1638 lo consumirá cuando esté disponible y haya una fuente LMU positiva.
+No se redefine ese tipo ni se transforma el contador de pendientes en DT/SG.
+
 ## LMU físico y gates
 
 Prueba opt-in solo lectura, `launch_coverage::live_lmu_launch_probe`:
@@ -198,7 +205,7 @@ del orquestador corrige el requisito: basta una sesión incluso parado/garaje,
 sin IA ni movimiento. La prueba admite Live/Paused con parrilla y jugador y
 continúa informando avances por separado. Una sesión pausada no acredita QA
 conduciendo. Logs `C:/tmp/1638-lmu-live*.log`. No hubo ventanas, escritura al juego ni acciones
-en la instalación. Repetir cuando esté en pista y el reloj avance:
+en la instalación. Repetir con una sesión cargada, incluso pausada/parada:
 
 ```powershell
 $env:CARGO_BUILD_JOBS='2'
@@ -247,12 +254,130 @@ más que su ruido. Cada mejora necesita tests, antes/después y commit propio;
 se termina tras diez intentos consecutivos sin mejora. Campañas inválidas y
 preparación no cuentan como intentos. Sin PR/merge, push solo al final del encargo.
 
-Continuación al cerrar este turno: **0 tomas basales válidas / 0 candidatos / 0
-mejoras**. Cuatro tomas descartadas al aparecer builds/QA #1634. Diagnostic-03
+Actualización 15-oct local: **6 tomas basales válidas / 0 candidatos evaluados /
+0 mejoras**. Cinco tomas descartadas: cuatro por builds/QA #1634 y una al
+coincidir con nuestro cargo fmt por la cola. Diagnostic-03
 validó el arnés y el árbol completo (incluye conhost.exe de System32), pero solo
 duró 10 s con profiling y no se acepta como baseline. Ningún proceso ajeno fue
 cerrado. Slots/locks/reserva de pantalla propios liberados; sin campaña activa.
 La prioridad del PC está consultada. `campaign_baseline.py`, `measure.py`,
 `lmu_probe.py`, `summarize.py`, protocolo y resultados quedan en `C:/tmp/1638-perf`;
 control hasheado `builds/baseline-6dab6930`. No se afirma bucle terminado ni mejora
-CPU/RAM. Este pendiente es coordinación del PC, no falta de IA ni de sesión LMU.
+CPU/RAM. La campaña pudo continuar al quedar el PC libre de Hub/builds; no
+faltaba IA ni sesión LMU. Control `baseline-6dab6930`, seis tomas completas
+sin profiling, 60 s + 180 s. Resultados originales en `baseline-progress.json`,
+`baseline.json` y carpetas baseline-05/06/07/09/10/11 de `C:/tmp/1638-perf`:
+
+| Métrica del árbol completo | Mediana basal | Rango/ruido mínimo medido |
+| --- | ---: | ---: |
+| CPU de un núcleo | 4,746961 % | 1,556382 puntos |
+| CPU del equipo (16 CPUs lógicas) | 0,296685 % | 0,097274 puntos |
+| Memoria residente | 94,366391 MiB | 0,334759 MiB |
+| Memoria privada | 89,129430 MiB | 0,320356 MiB |
+
+Todas: PRACTICE1, 37 coches, fase SHM 5 y cero avances de reloj; no conducción.
+Estos datos son una línea base, no una mejora. Candidato REST preparado sin
+commit para evitar almacenar campos descartados conservando la validación
+JSON; Nextest 631/631, Clippy/fmt/Release y LMU (11 captura/oráculo + 10
+conformidad) PASS en la ejecución anterior; los tres pares A/B, B/A, A/B se
+interrumpieron al apagarse el PC. No contar preparación ni
+controles como diez intentos de optimización. Push verificado `13fea744`,
+rama de issue; sin PR/merge/promoción/release y sin runs CI de esa rama.
+
+## Continuación tras el reinicio del 15-oct
+
+La primera toma `rest-discard-01-a1-01` conserva solo logs/directorio de datos,
+sin `result.json`, `samples.csv` ni comparación: **0 pares completos, 0 intentos
+evaluados, 0 mejoras**. No se transforma una toma cortada en un resultado.
+El identificador `a49d9d9d8e92` es un digest de los dos archivos fuente del
+candidato, guardado después en el commit `9eff05cb`. Su manifiesto `build.json` conserva hashes de
+binarios y fuentes; solo cambia `vantare-core.exe` respecto al control.
+
+El sondeo de esta continuación no encuentra `LeMansUltimate.exe` ni el mapping
+`LMU_Data`. Esto bloquea únicamente las fases 3/4 físicas. No se arranca el juego,
+se controlan coches ni se leen/escriben ajustes o datos reales. No se espera IA.
+Hay además dos marcadores heredados de la toma cortada: `pc-medicion.lock`
+(#1638, PID 13928) y `pantalla-ocupada` (#1638, PID 25728), creados a las 00:57.
+Ningún PID existe en la continuación. Se comunican al orquestador y se conservan;
+el script de QA respeta el lock y termina antes de arrancar Core. Su liberación
+debe preceder a las nuevas campañas; no son reservas creadas por esta ejecución.
+Antes de medir se vuelve a comprobar con `tasklist` que no esté el Hub de #1634;
+una toma con QA/builds ajenos se descarta y no cuenta como intento sin mejora.
+Tras el reinicio hay que volver a estimar el ruido con seis controles del mismo
+contexto LMU de los pares nuevos; la tabla histórica anterior se conserva.
+Los scripts locales admiten una campaña nueva y un archivo de ruido explícito,
+y saltan nombres ya existentes sin sobrescribir evidencia cortada. Liberan la
+reserva ante un bloqueo de otra QA. Sintaxis Python verificada; falta ejecución
+física del protocolo después de estos cambios. En un hueco exclusivo con LMU:
+
+```powershell
+python -I C:/tmp/1638-perf/campaign_baseline.py --name baseline-reboot-20261015
+python -I C:/tmp/1638-perf/campaign_pair.py --candidate C:/tmp/1638-perf/builds/candidate-01-rest-discard --sha 13fea74431d44d2b1bed67207fb8006edbbf59fb+rest-discard-a49d9d9d8e92 --name rest-reboot-01 --noise C:/tmp/1638-perf/baseline-reboot-20261015.json
+```
+
+La fase 2 ha conectado las señales con evidencia positiva disponible. Los
+restantes huecos de adquisición no tienen equivalencia admitida en los corpus:
+
+| Pendiente | Evidencia y siguiente dependencia |
+| --- | --- |
+| Compuesto/grid y ratings | Los cuerpos REST sanitizados del 14-oct solo conservan identidad, dorsal, flags, finishStatus, paradas y energía; los corpus anteriores no acreditan esos campos. Hace falta una captura positiva y su equivalencia; no inferir compuesto del índice sin catálogo ni grid de la primera posición observada. |
+| Fase de sesión/FCY/fin, estado rival/pit loss | Los ceros SHM legacy fueron borrados por el sanitizador; la fase actual observada no demuestra las transiciones. Ver `runtime/src/adapter/lmu/REVIEW.md`, ISA-1425. `in_pits` no equivale a servicio, entrada/salida o garaje ajeno. |
+| Daños exactos/zonas/segundos de reparación | Dents ordinales sin correspondencia a integridad/componentes. Necesita decisión de representación o fuente nueva demostrada. |
+| DT/SG/tipo/plazo | Contador separado ya publicado; depende del contrato PenaltyKind de #1629 y de una fuente LMU positiva. No redefinirlo. |
+| ABS/TC/FFB, grados/calibración RPM, forecast | No hay fuente/equivalencia positiva en las capturas admitidas; exige decisión/fuente. |
+| Radar, centrado multiclase, vertical y nuevos looks | Señales base disponibles; pendiente portar los diseños aprobados en #1629 a ViewModels/presentación, sin segundo pipeline de adquisición. #1629 sigue siendo una tarea de diseño HTML. |
+
+Resumen de esenciales: **13 OK/condicionados, 4 parciales, 1 falta**. Esto no
+certifica que los diseños completos estén listos para lanzamiento.
+
+### Comprobación física preparada para los 18 widgets
+
+Desde `vantare-v2/`, con Core y tests UI previamente compilados en el target
+aislado y LMU con una sesión cargada:
+
+```powershell
+python -I native/scripts/verify-lmu-widget-coverage.py
+```
+
+El script arranca solo un Core QA con datos temporales, pipe y entorno propios;
+lo cierra por EOF al terminar. No abre ventanas ni guarda snapshots/nombres.
+El test opt-in `demand::tests::live_lmu_photos_preserve_every_widget_projection`
+comprueba simulador LMU, origen Live (rechaza replay), parrilla/jugador y estado
+Live/Paused. Sobre esa misma foto recibida del Core físico, compara la proyección
+completa con la seleccionada por la demanda productiva de cada widget a través
+de otro pipe aislado: 18 entradas y cuatro configuraciones adicionales.
+Imprime una línea por configuración. No prueba apariencia, series completas ni
+señales ausentes; una proyección que conserva ausencia no acredita daño/forecast.
+Los tests ordinarios hacen esa comparación con capturas reales LMU/ACC y menú/
+caducidad. La prueba física permanece opt-in y no sustituye esos gates.
+
+Validación de la guarda: Core QA aislado reproduciendo el fixture real
+`lmu-1.4.2.0-track-fixture.bin` → el opt-in rechaza explícitamente
+`Replay != Live` (exit 101 esperado, `C:/tmp/1638-replay-guard.log`). No es una
+prueba física positiva. El comando completo se ejecutó después y respetó el
+lock heredado sin crear Core (`C:/tmp/1638-live-coverage-resume.log`).
+
+### Gates de la continuación
+
+Siempre cola, `CARGO_BUILD_JOBS=2`, `-j 2` y `CARGO_TARGET_DIR=C:/tmp/target-1638`.
+No se modifica Hub/storage ni se afirma su build/QA. Network está activado para
+Services; Clippy incluye todos los targets de runtime/domain/ipc/UI y paint-stats.
+
+| Gate | Resultado | Log local en C:/tmp |
+| --- | --- | --- |
+| Build runtime/domain/ipc/UI | PASS, 8 min 09 s | `1638-resume-build.log` |
+| Clippy `-D warnings` | PASS, 5 min 14 s | `1638-resume-clippy.log` |
+| Fmt workspace | PASS | `1638-recovered-fmt.log` |
+| Nextest runtime/domain/ipc | 631/631 PASS, 5 skips | `1638-resume-nextest.log` |
+| Nextest UI | 321/321 PASS, 5 skips (incluye el opt-in nuevo) | `1638-recovered-ui.log` |
+| Lifecycle runtime | 13/13 PASS | `1638-recovered-lifecycle.log` |
+| Telemetría completa | En curso, 21/30 sin fallos al guardar este hito | `1638-recovered-telemetria.log` |
+| Anti-slop y retirada | 456/456 PASS | Salida de los dos verificadores |
+
+El disco se agotó entre Clippy y los siguientes gates: fallaron la compilación
+UI (os error 112), el enlace de lifecycle (LNK1108) y el primer intento de commit.
+No fallaron assertions de producto. Se conservan `1638-resume-ui-nextest-final.log`
+y `1638-resume-lifecycle.log`. Recuperación con `cargo clean` limitado a los
+paquetes runtime/UI y al perfil Release del **target propio**; fuentes, logs,
+capturas y binarios de A/B fuera del target intactos. La repetición anterior
+acredita UI/lifecycle; el corpus completo sigue hasta su exit final.

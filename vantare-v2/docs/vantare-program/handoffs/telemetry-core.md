@@ -1,5 +1,5 @@
 > Roadmap #1535: las referencias a plan.md/generador en este documento son históricas.
-> ClickUp es la única fuente; ver [mantenimiento vigente](../../roadmap-maintenance.md).
+> Plane es la única fuente del roadmap; ver [mantenimiento vigente](../../roadmap-maintenance.md).
 
 # Handoff vivo — Telemetry Core
 
@@ -49,28 +49,65 @@ sin alterar contrato IPC ni pedir pedales. GREEN por pipe real; gates UI finales
 El buzón incorpora fase 4 de #1630/VANTA-20. Arnés QA copiado a esta rama;
 scripts/resultados `C:/tmp/1638-perf`, worktree #1630 intacto. Release y Clippy UI
 PASS; 321 tests UI PASS tras la regresión de demanda. Cuatro tomas basales
-invalidadas por compilaciones/QA ajenas: **0 válidas, 0 intentos de optimización,
-0 mejoras**. Diagnostic-03 validó lectura/pintores y árbol de cuatro procesos,
+invalidadas por compilaciones/QA ajenas y una por nuestro cargo fmt. El 15-oct
+local, al quedar el PC libre, terminó la campaña: **6 válidas, 0 intentos de
+optimización completos, 0 mejoras**. Mediana CPU 4,746961 % de un núcleo
+(ruido 1,556382 puntos), residente 94,366391 MiB (ruido 0,334759), privada
+89,129430 MiB (ruido 0,320356). Mismo control, seis tomas 60 s + 180 s,
+PRACTICE1/37/fase SHM 5/reloj fijo. Diagnostic-03 validó lectura/pintores y árbol de cuatro procesos,
 incluido conhost.exe de System32, cuyo coste se incluye; 10 s con profiling
 no son baseline ni prueba de mejora. No se cerró ningún proceso ajeno.
 Se liberaron todos los slots/locks/marcadores propios y no queda campaña activa.
-Se espera coordinación del PC, con consulta de prioridad pendiente.
+Campaña basal completada; candidato REST sin commit pasó Nextest 631/631,
+Clippy/fmt/Release y LMU (11 captura/oráculo + 10 conformidad) antes del apagado.
+Los pares A/B, B/A, A/B se interrumpieron: a1 no contiene `result.json`, así que
+siguen siendo 0 pares completos, 0 intentos evaluados y 0 mejoras. No contar
+controles, preparación ni una toma cortada como intentos.
 Baseline seis tomas; tres pares por candidato, ruido medido, diez sin mejora
 consecutivos para terminar; cada mejora necesita su commit y antes/después.
 
 DUDA ya comunicada: daños exactos/zonas/reparación, forecast actual 15 min,
 ABS/TC/FFB y tipos/plazos DT/SG no tienen fuente/equivalencia acreditada. Dents
 ordinales no son integridad porcentual; presets weather no son forecast live.
-Entrega global **parcial** hasta resolverlos. Sin push, CI remota, merge,
-promoción ni release en este hito. Siguiente: obtener un tramo exclusivo de PC
-y ejecutar `python -I C:/tmp/1638-perf/campaign_baseline.py` (60 s + 180 s,
-seis válidas). Scripts compilados con py_compile; reservas por la cola y pantalla
+El orquestador asigna PenaltyKind a #1629; no existe en esta base. Conectar
+su tipo cuando esté disponible y haya fuente real positiva, sin redefinirlo.
+Entrega global **parcial** hasta resolverlos. Push remoto confirmado `13fea744`,
+sin runs CI de la rama; sin PR, merge, promoción ni release. Siguiente: cerrar
+gates del candidato REST y ejecutar `campaign_pair.py` con su build hasheada
+cuando LMU ofrezca una sesión y el Hub/QA de #1634 deje el PC libre.
+Scripts compilados con py_compile; reservas por la cola y pantalla
 se liberan al salir. Nunca contar las tomas inválidas como diez sin mejora.
 Después, profiling separado y tres pares por candidato. Scripts/CSV/JSON y
 binarios de control hasheados: `C:/tmp/1638-perf`, control `baseline-6dab6930`.
-Push de la entrega parcial al finalizar este turno; remoto/CI se verifican en
+Entrega parcial en la rama de issue; remoto/CI se verifican en
 el buzón, sin PR/merge ni promoción. Mantener issue abierta hasta resolver
 fuentes/decisiones y mediciones, con seguimiento del orquestador.
+
+Continuación 15-oct tras reinicio: fuentes/binarios del candidato
+`a49d9d9d8e92` verificados contra su manifiesto; es digest, no SHA de commit.
+Código guardado en `9eff05cb`; candidato A/B, sin mejora medida todavía.
+Nextest runtime/domain/ipc **631/631**, 5 skips, y fmt pasan de nuevo;
+build y Clippy con todos los targets PASS en `C:/tmp/1638-resume-*.log`.
+Disco agotado interrumpe compilación UI/lifecycle antes de ejecutar sus tests;
+logs de fallo conservados. Se recupera espacio solo con `cargo clean` sobre
+target-1638 (runtime/UI y Release), sin borrar evidencias. Repetición en
+`C:/tmp/1638-recovered-*.log`: fmt PASS, UI **321/321** (5 skips), lifecycle
+**13/13**; telemetría completa en curso (21/30 sin fallos al guardar este hito).
+Anti-slop/retirement **456/456** PASS de nuevo. `tasklist` no encuentra LMU y
+el sondeo de solo lectura no abre `LMU_Data`; además el Hub de #1634 vuelve a
+estar abierto. Fases físicas 3/4 pendientes, sin cerrar apps ajenas ni adquirir
+locks de medida. Recalibrar ruido después del reinicio en el mismo contexto LMU.
+Prueba física por widget preparada: `native/scripts/verify-lmu-widget-coverage.py`
+arranca solo Core QA con datos/pipe aislados y usa el test UI opt-in para comparar
+las 18 proyecciones y cuatro configuraciones con su demanda por pipe. Rechaza
+replay y acepta sesión pausada/parada/garaje; no abre ventanas ni guarda fotos.
+No se afirma QA física hasta ejecutarla con LMU. Esenciales: **13 OK/condicionados,
+4 parciales, 1 falta**, con fuentes/decisiones pendientes en la tabla de cobertura.
+Guarda opt-in comprobada con Core replay aislado: rechaza `Replay != Live`,
+exit 101 esperado. El script físico respeta el `pc-medicion.lock` heredado de
+rest-discard-01-a1-01 y termina sin arrancar Core. Ese lock (PID 13928) y
+pantalla-ocupada (PID 25728) siguen en disco; ambos PID ausentes. Comunicado al
+orquestador sin modificarlos. Liberarlos antes de las fases físicas.
 
 ### Evidencia anterior de #1606 conservada
 

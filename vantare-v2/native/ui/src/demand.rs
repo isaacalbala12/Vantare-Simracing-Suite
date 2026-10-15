@@ -141,6 +141,59 @@ mod tests {
         }
     }
 
+    #[cfg(windows)]
+    #[test]
+    #[ignore = "opt-in: núcleo LMU físico con pipe y datos aislados; no es gate CI"]
+    fn live_lmu_photos_preserve_every_widget_projection() {
+        use std::time::{Duration, Instant};
+        use vantare_domain::{SourceKind, SourceState};
+        let pipe = std::env::var("VANTARE_1638_LIVE_PIPE").expect("pipe QA explícito");
+        assert!(pipe.starts_with("vantare-1638-"), "pipe QA aislado");
+        let image = std::fs::canonicalize(
+            std::env::var_os("VANTARE_1638_CORE_IMAGE").expect("imagen Core QA explícita"),
+        )
+        .expect("imagen Core existente");
+        let mut subscriber = vantare_ipc::Subscriber::connect(&pipe, move |peer| {
+            std::fs::canonicalize(&peer.image).is_ok_and(|path| path == image)
+        })
+        .expect("lector Core real");
+        let deadline = Instant::now() + Duration::from_secs(10);
+        let snapshot = loop {
+            assert!(
+                Instant::now() < deadline,
+                "LMU sin sesión usable en el pipe QA"
+            );
+            if let Some(photo) = subscriber.next_photo(Duration::from_millis(250)) {
+                let snapshot = photo.snapshot;
+                if !snapshot.state.cars.is_empty() && snapshot.state.player.is_some() {
+                    assert_eq!(snapshot.origin.source.simulator, "lmu", "solo LMU");
+                    assert_eq!(
+                        snapshot.origin.source.kind,
+                        SourceKind::Live,
+                        "no admite replay"
+                    );
+                    if matches!(
+                        snapshot.state.source_state,
+                        SourceState::Live | SourceState::Paused
+                    ) {
+                        break snapshot;
+                    }
+                }
+            }
+        };
+        println!(
+            "LMU físico: sequence={}, state={:?}, cars={}, flags_current={}; sin guardar nombres/cuerpos",
+            snapshot.sequence,
+            snapshot.state.source_state,
+            snapshot.state.cars.len(),
+            snapshot.state.flags.current().is_some(),
+        );
+        // Misma foto física para todos los widgets: compara cada proyección
+        // completa con su demanda por el pipe productivo, sin abrir ventanas.
+        let json = vantare_ipc::snapshot_to_json(&snapshot).expect("DTO live");
+        check_requested_projections(Some(&json));
+    }
+
     fn check_requested_projections(real_scene: Option<&str>) {
         use std::{sync::Arc, time::Duration};
         let prefs = vantare_domain::format::Preferences::default();
@@ -212,6 +265,7 @@ mod tests {
                 "{}: la demanda cambia su proyección con {settings:?}",
                 kind.name(),
             );
+            println!("{}: demanda y proyección por pipe preservadas", kind.name());
         }
     }
     #[test]

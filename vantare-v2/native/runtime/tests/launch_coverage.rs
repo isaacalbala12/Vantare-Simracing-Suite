@@ -224,11 +224,26 @@ fn live_lmu_launch_probe() {
 #[test]
 fn real_frames_expose_only_demonstrable_session_timing() {
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../testdata");
-    for (file, build) in [
-        ("lmu-fixture.bin", "1.3.0.0"),
-        ("lmu-1.4-outlap-fixture.bin", "1.4.0.0"),
-        ("lmu-1.4.1.3-track-fixture.bin", "1.4.1.3"),
-        ("lmu-1.4.2.0-track-fixture.bin", "1.4.2.0"),
+    // Valores de los bytes originales: outlap conserva mLapDist=159.6062 m
+    // pero la longitud de circuito (@1720) es 0: no permite estimar metros a meta.
+    // Las otras dos capturas 1.4 tienen al jugador en boxes.
+    for (file, build, length, in_pits, distance) in [
+        (
+            "lmu-fixture.bin",
+            "1.3.0.0",
+            Some(4_655.109_863_281_25),
+            false,
+            Some(3_586.880_249_023_437_5),
+        ),
+        ("lmu-1.4-outlap-fixture.bin", "1.4.0.0", None, false, None),
+        ("lmu-1.4.1.3-track-fixture.bin", "1.4.1.3", None, true, None),
+        (
+            "lmu-1.4.2.0-track-fixture.bin",
+            "1.4.2.0",
+            Some(13_623.967_773_437_5),
+            true,
+            None,
+        ),
     ] {
         let bytes = std::fs::read(root.join(file)).expect("captura real");
         let mut replay = Replay::new(
@@ -251,21 +266,21 @@ fn real_frames_expose_only_demonstrable_session_timing() {
         assert_eq!(t.start_phase, Quality::Unavailable);
         assert_eq!(t.next_kind, Quality::Unavailable);
         assert_eq!(t.next_starts_at_s, Quality::Unavailable);
-        let player = s.state.player_car().unwrap();
-        if player.in_pits == Quality::Reliable(true) {
-            assert_eq!(t.distance_to_start_line_m, Quality::Unavailable);
-        } else if let Quality::Estimated(distance) = t.distance_to_start_line_m {
-            let index = (0..s.state.cars.len())
-                .find(|i| bytes[2192 + i * 584 + 196] == 1)
-                .unwrap();
-            let offset = 2192 + index * 584 + 104;
-            let raw = f64::from_le_bytes(bytes[offset..offset + 8].try_into().unwrap());
-            let length = *s.state.session.track_length_m.current().unwrap();
-            let expected = if raw <= 0.0 { -raw } else { length - raw };
-            assert!((distance - expected).abs() < 1e-9);
-        } else {
-            panic!("distancia ausente en {file}");
-        }
+        assert_eq!(
+            s.state.player_car().unwrap().in_pits,
+            Quality::Reliable(in_pits),
+            "{file}"
+        );
+        assert_eq!(
+            s.state.session.track_length_m,
+            length.map_or(Quality::Unavailable, Quality::Reliable),
+            "{file}"
+        );
+        assert_eq!(
+            t.distance_to_start_line_m,
+            distance.map_or(Quality::Unavailable, Quality::Estimated),
+            "{file}"
+        );
     }
 }
 

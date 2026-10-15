@@ -179,24 +179,7 @@ fn sanitize(state: &mut State) {
     finite(elapsed_s);
     finite(remaining_s);
     finite(track_length_m);
-    let vantare_domain::SessionTiming {
-        started_at_s,
-        finished_at_s,
-        scheduled_end_s,
-        distance_to_start_line_m,
-        next_starts_at_s,
-        start_phase: _,
-        next_kind: _,
-    } = timing;
-    for value in [
-        started_at_s,
-        finished_at_s,
-        scheduled_end_s,
-        distance_to_start_line_m,
-        next_starts_at_s,
-    ] {
-        nonnegative(value);
-    }
+    sanitize_session_timing(timing);
     sanitize_weather(weather);
     for car in cars {
         let Car {
@@ -261,6 +244,27 @@ fn sanitize(state: &mut State) {
     }
     if let Some(player) = player {
         sanitize_player(player);
+    }
+}
+
+fn sanitize_session_timing(timing: &mut vantare_domain::SessionTiming) {
+    let vantare_domain::SessionTiming {
+        started_at_s,
+        finished_at_s,
+        scheduled_end_s,
+        distance_to_start_line_m,
+        next_starts_at_s,
+        start_phase: _,
+        next_kind: _,
+    } = timing;
+    for value in [
+        started_at_s,
+        finished_at_s,
+        scheduled_end_s,
+        distance_to_start_line_m,
+        next_starts_at_s,
+    ] {
+        nonnegative(value);
     }
 }
 

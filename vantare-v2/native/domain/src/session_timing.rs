@@ -14,7 +14,7 @@ pub enum StartPhase {
 pub struct SessionTiming {
     /// Inicio real confirmado, no el instante de conexión del cliente.
     pub started_at_s: Quality<f64>,
-    /// Final real confirmado, no el fin programado ni remaining_s == 0.
+    /// Final real confirmado, no el fin programado ni `remaining_s == 0`.
     pub finished_at_s: Quality<f64>,
     /// Fin programado por el simulador; puede pasar sin terminar la sesión.
     pub scheduled_end_s: Quality<f64>,
@@ -25,8 +25,8 @@ pub struct SessionTiming {
     /// La siguiente sesión debe estar identificada por la fuente, sin asumir
     /// que después de prácticas siempre viene qualy o carrera.
     pub next_kind: Quality<SessionKind>,
-    /// Inicio anunciado de next_kind en el reloj de la sesión actual.
-    /// No se obtiene sumando remaining_s al reloj de pared.
+    /// Inicio anunciado de `next_kind` en el reloj de la sesión actual.
+    /// No se obtiene sumando `remaining_s` al reloj de pared.
     pub next_starts_at_s: Quality<f64>,
 }
 

@@ -516,7 +516,7 @@ fn flag(f: &d::Flag) -> FlagDto {
     FlagDto { kind, scope }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 enum StartPhaseDto {
     Grid,

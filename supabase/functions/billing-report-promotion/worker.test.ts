@@ -1,7 +1,4 @@
-import {
-  assertEquals,
-  assertRejects,
-} from "https://deno.land/std@0.224.0/assert/mod.ts";
+import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import { type PromotionDeps, runPromotionBatch } from "./index.ts";
 import { observeReportPromotion } from "./observe.ts";
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
@@ -88,8 +85,9 @@ Deno.test("deleted account at claim or after GET cannot PATCH or ACK", async () 
       name.endsWith("claim") && ++claim >= denyAt
         ? Promise.resolve(false)
         : original(name, args);
-    if (denyAt === 2) await assertRejects(() => runPromotionBatch(deps));
-    else assertEquals((await runPromotionBatch(deps)).completed, 0);
+    if (denyAt === 2) {
+      assertEquals((await runPromotionBatch(deps)).failed.length, 1);
+    } else assertEquals((await runPromotionBatch(deps)).completed, 0);
     assertEquals(calls.includes("PATCH"), false);
     assertEquals(calls.includes("report_promotion_ack"), false);
   }
@@ -99,10 +97,10 @@ Deno.test("kill switch and failed Polar operation leave pending change unacknowl
   deps.client.change = () => {
     throw new Error("timeout");
   };
-  await assertRejects(() => runPromotionBatch(deps));
+  assertEquals((await runPromotionBatch(deps)).failed.length, 1);
   assertEquals(calls.includes("report_promotion_ack"), false);
   deps.enabled = () => false;
-  await assertRejects(() => runPromotionBatch(deps));
+  assertEquals((await runPromotionBatch(deps)).disabled, true);
 });
 Deno.test("observation disabled is inert; enabled uses only allowlisted billing facts", async () => {
   const calls: unknown[] = [];
@@ -242,4 +240,37 @@ Deno.test("P2-2 paid invoice projection carries actual cycle and excludes line-i
     billing_reason: "subscription_update",
   }, true);
   assertEquals(calls.length, 1);
+});
+Deno.test("P2-3 poisoned first customer is durably marked and cannot starve the next customer", async () => {
+  const { deps, calls } = fixture();
+  const original = deps.rpc;
+  const failures: unknown[] = [];
+  deps.rpc = (name, args) =>
+    name.endsWith("accounts")
+      ? Promise.resolve(["bad", "good"])
+      : name.endsWith("prepare")
+      ? Promise.resolve({
+        id: String(args.p_account),
+        subscription_id: String(args.p_account),
+        product_id: "product",
+        discount_id: "reward",
+        managed_discount_ids: [],
+        normal_cents: 599,
+      })
+      : name.endsWith("failed")
+      ? (failures.push(args), Promise.resolve(null))
+      : original(name, args);
+  const read = deps.client.read;
+  deps.client.read = (id) => {
+    if (id === "bad") throw new Error("polar_discount_unmanaged");
+    return read(id);
+  };
+  const result = await runPromotionBatch(deps);
+  assertEquals(result.completed, 1);
+  assertEquals(result.failed, [{
+    account_id: "bad",
+    code: "polar_discount_unmanaged",
+  }]);
+  assertEquals(failures.length, 1);
+  assertEquals(calls.includes("PATCH"), true);
 });

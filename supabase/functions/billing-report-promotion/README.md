@@ -151,10 +151,17 @@ operación de limpieza de la anterior, esperando cualquier lease que estuviera e
 vuelo. No se lanza conflicto comercial ni se manda el webhook a cuarentena por
 este caso.
 
-Ronda 2 · P2-2: ya no se retira por `current_period_end` ni por calendario local.
-Se consumen periodos de facturas `subscription_cycle` pagadas, con descuento del
-tramo y sin prorrateo. Duplicados no consumen dos meses; el periodo real determina
-inicio/último fin. Un cobro sin descuento posterior al ACK provoca reparación
-una sola vez: clear/attach con fase durable y recuperación de respuesta perdida.
-Así un PATCH tardío conserva los tres/seis cobros futuros. Los dos spams impiden
-nuevos tramos; los meses que ya estaban concedidos se terminan de servir.
+Ronda 2 · P2-2: ya no se retira por `current_period_end` ni por calendario
+local. Se consumen periodos de facturas `subscription_cycle` pagadas, con
+descuento del tramo y sin prorrateo. Duplicados no consumen dos meses; el
+periodo real determina inicio/último fin. Un cobro sin descuento posterior al
+ACK provoca reparación una sola vez: clear/attach con fase durable y
+recuperación de respuesta perdida. Así un PATCH tardío conserva los tres/seis
+cobros futuros. Los dos spams impiden nuevos tramos; los meses que ya estaban
+concedidos se terminan de servir.
+
+Ronda 2 · P2-3: cada cliente se procesa con captura de error propia. El fallo
+queda en SQL (código cerrado, intentos y fechas, sin respuesta HTTP bruta), aparece
+en el payload Owner y en `failed` del lote. Las demás cuentas y la paginación
+continúan. La operación no se confirma; un éxito posterior resuelve su marca.
+El kill switch sí detiene deliberadamente los efectos del lote.

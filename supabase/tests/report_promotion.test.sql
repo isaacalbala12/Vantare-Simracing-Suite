@@ -149,5 +149,10 @@ select is((select remote_discount from private.report_promotions where account_i
 -- End of reward and creator windows: no fresh duration from repeated selection.
 update public.billing_subscriptions set current_period_end='2027-08-26 19:00 Europe/Madrid' where user_id=pg_temp.account(2);
 select is(public.report_promotion_prepare(pg_temp.account(2),'sandbox','2027-08-01')->>'discount_id','plus3','mirror dates never consume unsettled reward months');
+select public.report_promotion_failed(pg_temp.account(6),'sandbox','polar_discount_unmanaged','2027-01-01');
+select public.report_promotion_failed(pg_temp.account(6),'sandbox','polar_discount_unmanaged','2027-01-02');
+select is((select attempts from private.report_promotion_failures where account_id=pg_temp.account(6)),2,'P2-3 failed attempts are durable');
+select is(private.report_promotion_progress(pg_temp.account(6),'sandbox','2027-01-03')->>'last_error','polar_discount_unmanaged','P2-3 owner can inspect sanitized failure');
+select ok(not has_function_privilege('authenticated','public.report_promotion_failed(uuid,text,text,timestamptz)','execute'),'P2-3 client cannot forge processing status');
 select * from finish();
 rollback;

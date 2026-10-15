@@ -102,6 +102,24 @@ begin
 end $$;
 revoke all on function public.report_promotion_invoice(text,text,text,integer,timestamptz,timestamptz,timestamptz) from public,anon,authenticated;
 grant execute on function public.report_promotion_invoice(text,text,text,integer,timestamptz,timestamptz,timestamptz) to service_role;
+create table private.report_promotion_failures (
+ account_id uuid not null references public.profiles(id), environment text not null check(environment in ('sandbox','production')),
+ code text not null check(code in ('polar_discount_unmanaged','polar_discount_catalog_mismatch','polar_discount_subscription_changed',
+ 'polar_discount_not_applied','polar_discount_invalid_response','polar_discount_http_failed','promotion_account_failed','promotion_not_authorized','promotion_repair_lease_lost')),
+ attempts integer not null default 1, first_at timestamptz not null, last_at timestamptz not null, resolved_at timestamptz,
+ primary key(account_id,environment)
+);
+alter table private.report_promotion_failures enable row level security;
+revoke all on private.report_promotion_failures from public,anon,authenticated,service_role;
+create function public.report_promotion_failed(p_account uuid,p_environment text,p_code text,p_now timestamptz default clock_timestamp()) returns void
+language plpgsql security definer set search_path='' as $$
+begin
+ if private.lock_account_write(p_account) then return; end if;
+ insert into private.report_promotion_failures(account_id,environment,code,first_at,last_at) values(p_account,p_environment,p_code,p_now,p_now)
+ on conflict(account_id,environment) do update set code=excluded.code,last_at=excluded.last_at,attempts=private.report_promotion_failures.attempts+1,resolved_at=null;
+end $$;
+revoke all on function public.report_promotion_failed(uuid,text,text,timestamptz) from public,anon,authenticated;
+grant execute on function public.report_promotion_failed(uuid,text,text,timestamptz) to service_role;
 create unique index report_promotion_one_pending on private.report_promotion_changes(account_id,environment) where applied_at is null and superseded_at is null;
 create index report_promotion_changes_account on private.report_promotion_changes(account_id,environment,created_at);
 alter table private.report_promotion_catalog enable row level security;
@@ -180,7 +198,7 @@ returns jsonb language sql stable security definer set search_path='' as $$
    and r.decided_at<=p_now),
  'spam',(select count(*) from public.testing_contributions c join public.testing_contribution_reviews r on r.contribution_id=c.id
    where c.account_id=p.account_id and r.decision='spam' and c.created_at>=p.subscribed_at and r.decided_at<=p_now),
- 'tier',p.tier,'forfeited',p.forfeited,'active_discount',case when p.applied_at is null then p.remote_discount else p.applied_discount end,'applied_at',p.applied_at,
+ 'last_error',(select f.code from private.report_promotion_failures f where f.account_id=p.account_id and f.environment=p.environment and f.resolved_at is null),'tier',p.tier,'forfeited',p.forfeited,'active_discount',case when p.applied_at is null then p.remote_discount else p.applied_discount end,'applied_at',p.applied_at,
  'reward_until',p.reward_until,'window_end',p.subscribed_at+interval '1080 hours')
  from private.report_promotions p where account_id=p_account and environment=p_environment
  and not exists(select 1 from public.account_identities i where i.account_id=p.account_id and i.deleted_at is not null)
@@ -286,6 +304,7 @@ begin
  if not found or private.lock_account_write(op.account_id) then return false; end if;
  update private.report_promotion_changes set applied_at=p_now where id=p_id and applied_at is null and superseded_at is null and lease_token=p_token and lease_until>p_now;
  if not found then return false; end if;
+ update private.report_promotion_failures set resolved_at=p_now where account_id=op.account_id and environment=op.environment and resolved_at is null;
  if op.kind='cleanup' then
    update private.report_promotion_transfers set cleared_at=p_now where account_id=op.account_id and environment=op.environment and subscription_id=op.subscription_id and product_id=op.product_id and cleared_at is null;
  else

@@ -34,60 +34,97 @@ export async function runPromotionBatch(
     p_after: after,
   }) as string[];
   let completed = 0;
+  const failed: { account_id: string; code: string }[] = [];
   for (const account of accounts) {
-    if (!deps.enabled()) throw new Error("promotion_disabled");
-    const operation = await deps.rpc("report_promotion_prepare", {
-      p_account: account,
-      p_environment: deps.environment,
-      p_now: deps.now().toISOString(),
-    }) as Operation | null;
-    if (!operation) continue;
-    const token = crypto.randomUUID();
-    const authorized = () =>
-      deps.rpc("report_promotion_claim", {
-        p_id: operation.id,
-        p_token: token,
+    if (!deps.enabled()) {
+      return { completed, failed, disabled: true, next_cursor: account };
+    }
+    try {
+      const operation = await deps.rpc("report_promotion_prepare", {
+        p_account: account,
+        p_environment: deps.environment,
         p_now: deps.now().toISOString(),
+      }) as Operation | null;
+      if (!operation) continue;
+      const token = crypto.randomUUID();
+      const authorized = () =>
+        deps.rpc("report_promotion_claim", {
+          p_id: operation.id,
+          p_token: token,
+          p_now: deps.now().toISOString(),
+        });
+      if (!await authorized()) continue;
+      // A second check is after the GET and immediately before PATCH. Neither a
+      // tombstone nor kill switch observed here can lead to an external write.
+      const client: DiscountClient = {
+        read: (id) => deps.client.read(id),
+        change: async (id, discount) => {
+          if (!deps.enabled() || !await authorized()) {
+            throw new Error("promotion_not_authorized");
+          }
+          return deps.client.change(id, discount);
+        },
+      };
+      await synchronizeDiscount(client, {
+        subscriptionId: operation.subscription_id,
+        productId: operation.product_id,
+        discountId: operation.discount_id,
+        managedDiscountIds: operation.managed_discount_ids,
+        normalCents: operation.normal_cents,
+        repair: operation.repair,
+        phase: operation.phase,
+        markCleared: async () => {
+          if (
+            !await deps.rpc("report_promotion_cleared", {
+              p_id: operation.id,
+              p_token: token,
+              p_now: deps.now().toISOString(),
+            })
+          ) throw new Error("promotion_repair_lease_lost");
+        },
       });
-    if (!await authorized()) continue;
-    // A second check is after the GET and immediately before PATCH. Neither a
-    // tombstone nor kill switch observed here can lead to an external write.
-    const client: DiscountClient = {
-      read: (id) => deps.client.read(id),
-      change: async (id, discount) => {
-        if (!deps.enabled() || !await authorized()) {
-          throw new Error("promotion_not_authorized");
-        }
-        return deps.client.change(id, discount);
-      },
-    };
-    await synchronizeDiscount(client, {
-      subscriptionId: operation.subscription_id,
-      productId: operation.product_id,
-      discountId: operation.discount_id,
-      managedDiscountIds: operation.managed_discount_ids,
-      normalCents: operation.normal_cents,
-      repair: operation.repair,
-      phase: operation.phase,
-      markCleared: async () => {
-        if (
-          !await deps.rpc("report_promotion_cleared", {
-            p_id: operation.id,
-            p_token: token,
-            p_now: deps.now().toISOString(),
-          })
-        ) throw new Error("promotion_repair_lease_lost");
-      },
-    });
-    if (
-      await deps.rpc("report_promotion_ack", {
-        p_id: operation.id,
-        p_token: token,
-        p_now: deps.now().toISOString(),
-      })
-    ) completed++;
+      if (
+        await deps.rpc("report_promotion_ack", {
+          p_id: operation.id,
+          p_token: token,
+          p_now: deps.now().toISOString(),
+        })
+      ) completed++;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "";
+      const known = [
+        "polar_discount_unmanaged",
+        "polar_discount_catalog_mismatch",
+        "polar_discount_subscription_changed",
+        "polar_discount_not_applied",
+        "polar_discount_invalid_response",
+        "promotion_not_authorized",
+        "promotion_repair_lease_lost",
+      ];
+      const code = known.includes(message)
+        ? message
+        : /^polar_discount_http_[0-9]{3}$/.test(message)
+        ? "polar_discount_http_failed"
+        : "promotion_account_failed";
+      let recorded = true;
+      try {
+        await deps.rpc("report_promotion_failed", {
+          p_account: account,
+          p_environment: deps.environment,
+          p_code: code,
+          p_now: deps.now().toISOString(),
+        });
+      } catch {
+        recorded = false;
+      }
+      failed.push({
+        account_id: account,
+        code: recorded ? code : "promotion_failure_record_unavailable",
+      });
+    }
   }
   return {
+    failed,
     completed,
     next_cursor: accounts.length === 50 ? accounts.at(-1) : null,
   };

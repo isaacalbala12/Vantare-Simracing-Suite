@@ -310,10 +310,7 @@ impl Hub {
                     .opacity(if step == 0 { 0.0 } else { 1.0 })
                     .tab_stop(step > 0)
                     .on_click(cx.listener(|hub, _, _, cx| {
-                        if let Some(state) = &mut hub.onboarding {
-                            state.page(state.step.saturating_sub(1));
-                            cx.notify();
-                        }
+                        hub.onboarding_back(cx);
                     })),
             )
             .child(
@@ -364,7 +361,11 @@ impl Hub {
                         0.45
                     })
                     .tab_stop(step < 6 && can)
-                    .on_click(cx.listener(|hub, _, window, cx| hub.onboarding_next(window, cx))),
+                    .when(step < 6, |ready| {
+                        ready.on_click(
+                            cx.listener(|hub, _, window, cx| hub.onboarding_next(window, cx)),
+                        )
+                    }),
             );
         div()
             .id("onboarding")
@@ -390,10 +391,7 @@ impl Hub {
                     hub.onboarding_next(window, cx);
                     cx.stop_propagation();
                 } else if event.keystroke.key == "escape" {
-                    if let Some(state) = &mut hub.onboarding {
-                        state.page(state.step.saturating_sub(1));
-                        cx.notify();
-                    }
+                    hub.onboarding_back(cx);
                     cx.stop_propagation();
                 }
             }))
@@ -472,10 +470,7 @@ impl Hub {
                             .opacity(if step >= 5 { 0.0 } else { 1.0 })
                             .tab_stop(step < 5)
                             .on_click(cx.listener(|hub, _, _, cx| {
-                                if let Some(state) = &mut hub.onboarding {
-                                    state.page(6);
-                                    cx.notify();
-                                }
+                                hub.onboarding_skip(cx);
                             })),
                     ),
             )

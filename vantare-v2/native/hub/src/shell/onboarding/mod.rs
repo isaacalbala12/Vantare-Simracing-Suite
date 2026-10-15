@@ -176,6 +176,35 @@ fn plan_label(signed: bool, access: Access) -> String {
         |plan| format!("{plan} · cuenta conectada"),
     )
 }
+/// Control de navegación del asistente.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Nav {
+    Back,
+    Next,
+    Skip,
+}
+/// Qué hace un control en el paso actual, sin tocar el estado.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Motion {
+    Blocked,
+    Page(usize),
+    Exit(bool),
+}
+/// El pie decide con esto: un control oculto no navega. Atrás no sale del
+/// primer paso, Saltar desaparece desde el paso de privacidad (el resumen se
+/// alcanza terminando) y Continuar en el resumen sale con el teclado; los
+/// botones visibles del resumen son la salida explícita.
+const fn motion(nav: Nav, step: usize, can_advance: bool) -> Motion {
+    match nav {
+        Nav::Back if step == 0 => Motion::Blocked,
+        Nav::Back => Motion::Page(step - 1),
+        Nav::Skip if step < 5 => Motion::Page(6),
+        Nav::Skip => Motion::Blocked,
+        Nav::Next if step >= 6 => Motion::Exit(true),
+        Nav::Next if !can_advance => Motion::Blocked,
+        Nav::Next => Motion::Page(step + 1),
+    }
+}
 impl Hub {
     pub(super) fn onboarding_plan(
         &mut self,
@@ -204,20 +233,42 @@ impl Hub {
         let Some(state) = &self.onboarding else {
             return;
         };
-        if !state.choices.can_advance(state.step) {
-            return;
+        let step = state.step;
+        let usage = state.choices.usage;
+        match motion(Nav::Next, step, state.choices.can_advance(step)) {
+            Motion::Blocked => {}
+            Motion::Exit(show) => self.onboarding_finish(show, window, cx),
+            Motion::Page(next) => {
+                if step == 5 && !self.onboarding_consent(usage, cx) {
+                    // El error queda visible: el usuario puede reintentar o entrar sin guardar.
+                    cx.notify();
+                    return;
+                }
+                if let Some(state) = &mut self.onboarding {
+                    state.page(next);
+                }
+                cx.notify();
+            }
         }
-        if state.step == 6 {
-            self.onboarding_finish(true, window, cx);
+    }
+    /// Atrás retrocede un paso; en el primer paso el control oculto no navega.
+    pub(super) fn onboarding_back(&mut self, cx: &mut Context<Self>) {
+        self.onboarding_move(Nav::Back, cx);
+    }
+    /// Saltar va al resumen; desde el paso de privacidad el control oculto no navega.
+    pub(super) fn onboarding_skip(&mut self, cx: &mut Context<Self>) {
+        self.onboarding_move(Nav::Skip, cx);
+    }
+    fn onboarding_move(&mut self, nav: Nav, cx: &mut Context<Self>) {
+        let Some(state) = &self.onboarding else {
             return;
-        }
-        if state.step == 5 && !self.onboarding_consent(state.choices.usage, cx) {
-            // El error queda visible: el usuario puede reintentar o entrar sin guardar.
-            cx.notify();
+        };
+        let Motion::Page(step) = motion(nav, state.step, state.choices.can_advance(state.step))
+        else {
             return;
-        }
+        };
         if let Some(state) = &mut self.onboarding {
-            state.page(state.step + 1);
+            state.page(step);
         }
         cx.notify();
     }

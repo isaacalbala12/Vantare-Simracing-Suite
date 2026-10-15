@@ -63,6 +63,11 @@ históricos. `--seed` descarta todas las colas: no usar en una actualización no
 La notificación de Plane se ejecuta en una transacción con lock de actividad;
 comprueba la campana de cada suscriptor. Los errores que Plane captura y escribe
 se convierten en rollback/reintento sin filtrar ese mensaje. Una campana existente
+se reintenta como máximo tres veces por actividad (contador persistido). Al
+tercer fallo se registra `campana abandonada` con ID y clase del error, se deja
+de intentar ese destino y ntfy sigue independiente. Revisar ese registro para
+una actuación manual: abandonar no acredita que se haya recibido la campana.
+Una campana existente
 por ID de actividad (y revisión en descripción) evita repetirla si se pierde el
 acuse de Docker. T3 y ntfy llevan clave estable de idempotencia. Los HTTP 2xx
 confirmados no se repiten; **si el servidor acepta y se pierde la respuesta,

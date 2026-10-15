@@ -21,6 +21,7 @@ URL_FILE = "/etc/vantare/para-claude.url"
 DB = "vantare-plane-plane-db-1"
 USER_AGENT = "vantare-plane-para-claude/1"
 VERSION = 2
+MAX_PLANE_ATTEMPTS = 3
 BOT_EMAIL = "workers-bot@vantare.local"
 NTFY_TOPIC_FILE = "/mnt/c/VantareServer/secrets/ntfy-topic"
 PLANE_URL = ("http://sapphireos.tail357eab.ts.net:8088/vantare-simracing-suite/"
@@ -276,13 +277,19 @@ def deliver_workers(state, path, plane_sender, ntfy_sender):
     failures = 0
     for item in state["workers_pending"]:
         row = item["row"]
-        if item["plane_done"]:
+        if item["plane_done"] or item.get("plane_abandoned"):
             continue
         try:
             plane_sender(row)
         except Exception as exc:
-            print(f"campana fallida {row['key']}-{row['seq']} {type(exc).__name__}")
-            failures += 1
+            item["plane_attempts"] = item.get("plane_attempts", 0) + 1
+            item["plane_abandoned"] = item["plane_attempts"] >= MAX_PLANE_ATTEMPTS
+            status = "abandonada" if item["plane_abandoned"] else "fallida"
+            print(f"campana {status} {row['key']}-{row['seq']} "
+                  f"actividad={row['event_id']} intento={item['plane_attempts']} "
+                  f"{type(exc).__name__}")
+            save(state, path)
+            failures += not item["plane_abandoned"]
             continue
         item["plane_done"] = True
         save(state, path)
@@ -307,7 +314,7 @@ def deliver_workers(state, path, plane_sender, ntfy_sender):
         save(state, path)
         print(f"ntfy enviado {row['key']}-{row['seq']} actividades={len(rows)} http={code}")
     state["workers_pending"] = [i for i in state["workers_pending"]
-                                if not (i["plane_done"] and i["ntfy_done"])]
+                                if not ((i["plane_done"] or i.get("plane_abandoned")) and i["ntfy_done"])]
     save(state, path)
     return failures
 

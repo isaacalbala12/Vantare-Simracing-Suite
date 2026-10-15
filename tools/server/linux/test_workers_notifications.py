@@ -104,6 +104,33 @@ class WorkersTests(unittest.TestCase):
         self.assertEqual(len(self.ntfy.call_args.args[0]), 3)
         self.assertEqual(self.state()["workers_pending"], [])
 
+    def test_missing_bell_abandoned_after_three_persisted_attempts(self):
+        self.initialize()
+        self.plane.side_effect = RuntimeError("private-data")
+        self.assertEqual(self.run_watcher([bot()])[0], 1)
+        self.assertEqual(self.state()["workers_pending"][0]["plane_attempts"], 1)
+        self.assertEqual(self.run_watcher([])[0], 1)
+        code, output = self.run_watcher([])
+        self.assertEqual(code, 0)
+        self.assertIn("campana abandonada", output)
+        self.assertNotIn("private-data", output)
+        self.assertEqual(self.state()["workers_pending"], [])
+        self.run_watcher([bot()])
+        self.assertEqual(self.plane.call_count, 3)
+        self.assertEqual(self.ntfy.call_count, 1)
+
+    def test_abandoned_bell_does_not_block_ntfy_retry(self):
+        self.initialize()
+        self.plane.side_effect = RuntimeError()
+        self.ntfy.return_value = 503
+        for _ in range(4):
+            self.run_watcher([bot()])
+        self.assertEqual(self.plane.call_count, 3)
+        self.assertTrue(self.state()["workers_pending"][0]["plane_abandoned"])
+        self.ntfy.return_value = 200
+        self.run_watcher([])
+        self.assertEqual(self.state()["workers_pending"], [])
+
     def test_initial_deploy_migrates_without_history_or_loss_of_t3_queue(self):
         self.initialize()
         self.sender.side_effect = TimeoutError()

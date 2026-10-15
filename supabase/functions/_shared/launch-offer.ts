@@ -48,8 +48,16 @@ export function selectCheckoutOffer(
     if (!plan || !/^[A-Za-z0-9]{3,32}$/.test(creatorCode)) {
       return { ok: false, reason: "invalid_creator_code", status: 400 };
     }
-    const id = map.creator_discounts?.[creatorCode];
-    if (!id) return { ok: false, reason: "invalid_creator_code", status: 400 };
+    const codes = map.creator_discounts;
+    const id = codes && Object.hasOwn(codes, creatorCode)
+      ? codes[creatorCode]
+      : null;
+    if (
+      typeof id !== "string" ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        id,
+      )
+    ) return { ok: false, reason: "invalid_creator_code", status: 400 };
     return {
       ok: true,
       discountId: id,

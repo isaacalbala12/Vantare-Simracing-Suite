@@ -81,8 +81,9 @@ el script valida 50 EUR y prepara el plan
 **offline**, sin crear un producto real por su cuenta.
 El catálogo de suscripciones usa ahora descuentos `once` sobre productos
 normales; Pro anual normal es 5999 céntimos. No hay bloqueo de modelo para
-aplicarlo: `production_apply_ready: true` significa preparación técnica, no
-validación contra producción ni autorización de ejecutar el comando aquí.
+aplicarlo: `production_model_ready` valida tabla y ventana. `production_apply_ready` se calcula
+y permanece false offline por falta de verificación en vivo; solo pasa a true
+tras comprobar inventario vacío antes de escribir. No autoriza al worker a aplicar.
 [Tabla, operación y comando para Isaac](isa-1620-polar-launch-catalog.md).
 
 ## Pago, reembolso y borrado

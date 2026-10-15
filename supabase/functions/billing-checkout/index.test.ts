@@ -451,3 +451,45 @@ Deno.test("once campaign: offer fingerprint prevents reusing a checkout across o
   }
   assertEquals(versions[0] === versions[1], false);
 });
+
+Deno.test("R3 inherited creator names are rejected before claiming an attempt", async () => {
+  for (
+    const code of [
+      "constructor",
+      "toString",
+      "valueOf",
+      "hasOwnProperty",
+      "__proto__",
+    ]
+  ) {
+    let claims = 0, created = false;
+    const d = campaignDeps("2026-11-26T18:00:00Z");
+    const response = await handleCheckoutRequest(
+      post({
+        productKey: "pro_monthly",
+        attemptId: ATTEMPT_ID,
+        creatorCode: code,
+      }),
+      {
+        ...d,
+        attempts: {
+          ...d.attempts,
+          claim: async () => {
+            claims++;
+            return { kind: "claimed" };
+          },
+        },
+        createCheckout: async () => {
+          created = true;
+          return {
+            url: "https://sandbox.polar.sh/checkout/invalid",
+            checkoutId: "test",
+          };
+        },
+      },
+    );
+    assertEquals(response.status, 400);
+    assertEquals(claims, 0);
+    assertEquals(created, false);
+  }
+});

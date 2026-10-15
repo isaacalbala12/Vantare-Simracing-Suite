@@ -68,3 +68,26 @@ Antes de ejecutarlo: Isaac prepara el mapa completo, configura el token solo en
 su entorno, confirma precios/IVA, comprueba que output no existe y revisa el plan.
 `--confirm-production` es obligatorio para cualquier aplicación en producción.
 Esta entrega no ejecuta ese comando ni modifica productos reales.
+
+## Acabado de seguridad · ronda 3
+
+La herramienta oficial del corte es `polar-launch-catalog.ts`; no ejecutar a la
+vez `polar-pro-prices.ts`. En producción, antes de la primera escritura consulta
+el inventario **en vivo**: exige cero clientes en la organización (el endpoint de
+clientes no filtra por producto), y cero suscripciones activas/pedidos en cada
+producto existente afectado, incluido Founders si se va a gestionar. Es una guarda
+conservadora del catálogo inicial: clientes de otros productos también bloquean.
+Datos incompletos, errores de consulta o inventario distinto de cero abortan sin
+escrituras. No usa como autorización el inventario histórico comunicado por Isaac.
+La comprobación refleja ese instante: mantener ventas cerradas durante el corte;
+Polar no ofrece aquí una transacción que congele altas entre consulta y escritura.
+
+`production_model_ready` deriva de precios, modelo y ventana válidos.
+`production_apply_ready` exige además la verificación en vivo vacía; por eso el
+plan **offline** devuelve false y `live_inventory_not_checked`, aunque el modelo
+sea válido. Una aplicación autorizada registra `production_preflight` con fecha y
+productos comprobados y solo devuelve ready=true si superó la guarda. Tests usan
+HTTP simulado; el worker no consulta ni modifica producción.
+
+Los códigos de creador se consultan con `Object.hasOwn` y UUID validado. Nombres
+heredados como `constructor` se rechazan antes de reclamar un intento.

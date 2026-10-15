@@ -207,6 +207,92 @@ function creatorMatches(discount: Resource, code: string, ids: string[]) {
     sameProducts(discount, ids) && !discount.starts_at && !discount.ends_at &&
     !discount.max_redemptions;
 }
+type LiveInventory = {
+  verified: boolean;
+  customer_count: number;
+  active_subscription_count: number;
+  order_count: number;
+  checked_product_ids: string[];
+  checked_at: string;
+};
+function catalogReadiness(
+  environment: BillingEnvironment,
+  inventory?: LiveInventory,
+) {
+  const window = PRICES.launch_windows[environment];
+  const keys = [
+    "pro_monthly",
+    "pro_annual",
+    "pro_plus_monthly",
+    "pro_plus_annual",
+  ];
+  const modelReady =
+    PRICES.launch_model === "fixed_discount_once_on_normal_products" &&
+    Number.isFinite(Date.parse(window.starts_at)) &&
+    Date.parse(window.ends_at) > Date.parse(window.starts_at) &&
+    PRICES.plans.length === keys.length &&
+    new Set(PRICES.plans.map((p) => p.key)).size === keys.length &&
+    PRICES.plans.every((p) =>
+      keys.includes(p.key) && Number.isSafeInteger(p.normal_cents) &&
+      Number.isSafeInteger(p.launch_cents) &&
+      p.launch_cents > 0 && p.normal_cents > p.launch_cents &&
+      p.interval === (p.key.endsWith("annual") ? "year" : "month")
+    );
+  const blockers: string[] = [];
+  if (!modelReady) blockers.push("invalid_price_model_or_window");
+  if (!inventory?.verified) blockers.push("live_inventory_not_checked");
+  else if (
+    inventory.customer_count !== 0 ||
+    inventory.active_subscription_count !== 0 || inventory.order_count !== 0
+  ) blockers.push("live_inventory_not_empty");
+  return { model_ready: modelReady, ready: blockers.length === 0, blockers };
+}
+async function verifyEmptyProductionInventory(
+  http: Http,
+  organizationId: string,
+  productIds: string[],
+): Promise<LiveInventory> {
+  async function empty(kind: string, productId?: string, active = false) {
+    const query = new URLSearchParams({
+      organization_id: organizationId,
+      limit: "100",
+      page: "1",
+    });
+    if (productId) query.set("product_id", productId);
+    if (active) query.set("active", "true");
+    const raw = await http("GET", `/${kind}/?${query}`);
+    const response = raw as {
+      items?: unknown[];
+      pagination?: { total_count?: number; max_page?: number };
+    } | null;
+    if (
+      !response || !Array.isArray(response.items) ||
+      response.pagination?.total_count !== 0 ||
+      !Number.isInteger(response.pagination.max_page) ||
+      response.pagination.max_page! < 0 || response.pagination.max_page! > 1 ||
+      response.items.length !== 0
+    ) {
+      throw Error(
+        `Production inventory is not verifiably empty (${kind}); abort before writes`,
+      );
+    }
+  }
+  // Customer API has no product filter: the launch tool deliberately requires zero organization customers.
+  await empty("customers");
+  const ids = [...new Set(productIds)].sort();
+  for (const id of ids) {
+    await empty("subscriptions", id, true);
+    await empty("orders", id);
+  }
+  return {
+    verified: true,
+    customer_count: 0,
+    active_subscription_count: 0,
+    order_count: 0,
+    checked_product_ids: ids,
+    checked_at: new Date().toISOString(),
+  };
+}
 export async function syncCatalog(http: Http, raw: unknown, options: Options) {
   const source = typeof raw === "object" && raw !== null && "map" in raw
     ? raw.map
@@ -362,6 +448,19 @@ export async function syncCatalog(http: Http, raw: unknown, options: Options) {
     (!creator || idsBefore.length !== PRICES.plans.length ||
       !creatorMatches(creatorDiscount, creator, idsBefore))
   ) throw Error("Creator discount drift; review manually");
+  const liveInventory = options.environment === "production"
+    ? await verifyEmptyProductionInventory(
+      http,
+      map.organization_id,
+      [...selected.values()].filter((p): p is Resource => !!p).map((p) => p.id)
+        .concat(founders ? [founders.id] : []),
+    )
+    : undefined;
+  const readiness = catalogReadiness(options.environment, liveInventory);
+  if (
+    !readiness.model_ready ||
+    (options.environment === "production" && !readiness.ready)
+  ) throw Error("Catalog production preflight failed");
   let writes = 0;
   if (founders && !copyMatches(founders, productCopy("founders"))) {
     await patchProductCopy(http, founders, productCopy("founders"));
@@ -514,6 +613,8 @@ export async function syncCatalog(http: Http, raw: unknown, options: Options) {
   map.catalog_version = PRICES.catalog_version;
   return {
     writes,
+    production_apply_ready: readiness.ready,
+    production_preflight: liveInventory ?? null,
     map,
     offers,
     creator_link: null,
@@ -529,9 +630,13 @@ export function planOffline(
 ) {
   const window = PRICES.launch_windows[environment];
   const code = creatorCode(creator);
+  const readiness = catalogReadiness(environment);
   return {
     ...PRICES,
-    production_apply_ready: true,
+    production_apply_ready: readiness.ready,
+    production_model_ready: readiness.model_ready,
+    production_apply_blockers: readiness.blockers,
+    production_preflight: "not_checked_offline",
     application_checkout: {
       automatic_launch_discount: true,
       allow_discount_codes: false,

@@ -1,3 +1,16 @@
+## VANTA-83 / #1661 · ronda 3 de acabado (16/10/2026)
+
+Re-review R2 **APTO**, informe `C:/VantareServer/evidence/ds-rev-1661/review-r2.md`.
+N2: creador solo propiedad propia y UUID válido, rechazo anterior al claim.
+N3: aplicación de producción exige inventario en vivo vacío antes de escribir:
+cero clientes de organización y cero suscripciones activas/pedidos por producto
+existente afectado. Consulta fallida/incompleta también aborta. Ready calculado:
+modelo válido + inventario verificado; offline false, sin afirmar revisión real.
+Merge autorizado de `origin/nightly eb553c7fe` sin conflictos; incluye cola nueva
+y retirada de CI Linux. No se fusiona la rama de issue en nightly.
+Regresiones R3 RED contra versión anterior; GREEN y SHA finales al cerrar.
+Plan/bundle/comando se regeneran; ninguna consulta ni mutación contra Polar real.
+
 ## VANTA-83 / #1661 · ronda 2 de seguridad (15/10/2026)
 
 Review R1 NO APTO: B1/I1 y M1–M4 corregidos. Admisión SQL persistente de

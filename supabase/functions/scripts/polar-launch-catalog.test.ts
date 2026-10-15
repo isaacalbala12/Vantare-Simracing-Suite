@@ -198,7 +198,9 @@ Deno.test("once launch discounts use normal products and renew at normal prices;
 });
 Deno.test("offline plan is production-ready with once fixed EUR amounts and normal renewals", () => {
   const plan = planOffline("ISAAC");
-  assertEquals(plan.production_apply_ready, true);
+  assertEquals(plan.production_apply_ready, false);
+  assertEquals(plan.production_model_ready, true);
+  assertEquals(plan.production_apply_blockers, ["live_inventory_not_checked"]);
   assertEquals(
     plan.plans.map(
       (p) => [
@@ -653,6 +655,8 @@ Deno.test("production apply uses normal-price products and once discounts with e
     assertEquals(calls > 0, true);
     const result = JSON.parse(await Deno.readTextFile(output));
     assertEquals(result.map.environment, "production");
+    assertEquals(result.production_apply_ready, true);
+    assertEquals(result.production_preflight.verified, true);
     assertEquals(result.offers["pro_annual:launch"].final_cents, 3990);
     assertEquals(result.offers["pro_annual:launch"].renewal_cents, 5999);
     assertEquals(f.discounts.every((d) => d.duration === "once"), true);
@@ -682,4 +686,64 @@ Deno.test("pagination ambiguity and existing creator portal drift stop before wr
     syncCatalog(f.http, first, { environment: "sandbox" })
   );
   assertEquals(f.writes.length, count);
+});
+
+Deno.test("R3 production aborts before writes on live customers, active subscriptions or orders", async () => {
+  for (const resource of ["customers", "subscriptions", "orders"]) {
+    const f = fake();
+    const input = { ...structuredClone(sandbox), environment: "production" };
+    const http: Http = async (method, path, body) => {
+      if (method === "GET" && path.startsWith(`/${resource}/`)) {
+        return {
+          items: [{
+            id: "fixture-associated",
+            organization_id: sandbox.organization_id,
+          }],
+          pagination: { max_page: 1, total_count: 1 },
+        };
+      }
+      return await f.http(method, path, body);
+    };
+    await assertRejects(() =>
+      syncCatalog(http, input, { environment: "production" })
+    );
+    assertEquals(f.writes.length, 0);
+  }
+});
+Deno.test("R3 production refuses unavailable or incomplete inventory before writes", async () => {
+  for (
+    const response of [{ items: [], pagination: { max_page: 1 } }, {
+      items: [],
+      pagination: { max_page: 2, total_count: 1 },
+    }, null]
+  ) {
+    const f = fake();
+    const http: Http = async (method, path, body) =>
+      method === "GET" && path.startsWith("/customers/")
+        ? response
+        : await f.http(method, path, body);
+    await assertRejects(() =>
+      syncCatalog(http, {
+        ...structuredClone(sandbox),
+        environment: "production",
+      }, { environment: "production" })
+    );
+    assertEquals(f.writes.length, 0);
+  }
+});
+
+Deno.test("R3 readiness is derived from valid price model and live verification", () => {
+  const original = PRICES.plans[0].normal_cents;
+  try {
+    PRICES.plans[0].normal_cents = PRICES.plans[0].launch_cents;
+    const plan = planOffline();
+    assertEquals(plan.production_model_ready, false);
+    assertEquals(plan.production_apply_ready, false);
+    assertEquals(
+      plan.production_apply_blockers.includes("invalid_price_model_or_window"),
+      true,
+    );
+  } finally {
+    PRICES.plans[0].normal_cents = original;
+  }
 });

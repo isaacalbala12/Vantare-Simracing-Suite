@@ -1,3 +1,57 @@
+## #1627 / PR #1639 · VANTA-21 · ronda 5 (15/10/2026)
+
+Worker Codex macOS arm64, sin subagentes ni servicios reales. Seguimiento por
+excepción explícita en `~/orq/1627.buzon.md`; sin Notion/Plane/GitHub.
+Entrada `980649944`; worktree `~/wt-1627r5`, misma rama de issue.
+
+R5 corrige reparación con cupo agotado (trigger de aceptación suspendido solo
+para restaurar decisiones en la misma transacción), añade auditoría por fila con
+reviewer original y marcador de reparación (también si fue borrado; barrera de
+auditoría suspendida solo bajo lock DDL en esa transacción y restaurada antes
+del commit), y repone `admin_report_owner_changed`
+(40001) tras el lock tanto para informes antiguos como contribuciones.
+Spam antiguo conserva motivo. Las decisiones de ambos orígenes son finales;
+la UI ofrece Aceptado/No aceptado/Spam solo antes de decidir y permite guardar
+versión desde Aceptado/Arreglado. **No se recupera «Arreglado en X» ya perdido
+por R3**: el Owner debe confirmarlo de nuevo desde evidencia; los `fixed` aún
+válidos se conservan.
+
+El borrado relee suscripciones después del tombstone #1622 para incluir compras
+anteriores a la barrera, y consulta Polar por el UUID del checkout para incluir
+compras completadas cuyo webhook aún no llegó. Combina/deduplica ambos orígenes.
+GET Polar 404 deja evento sanitizado y permite continuar;
+los errores transitorios siguen siendo incompletos/reintentables. Procedimiento
+manual del Owner en `supabase/functions/native-admin/README.md` (panel del mismo
+entorno, comprobar/cancelar y repetir con la confirmación original). Sin retirar
+barreras ni ampliar el candidato a producción.
+
+| Check local | Nightly bf5eead43 | Rama R5 |
+| --- | --- | --- |
+| Catálogo SQL completo, Docker sin red | 59: 34 PASS / 25 FAIL | 74: 49 PASS / 25 FAIL |
+| 59 suites SQL comunes | 1306 aserciones PASS | 1306 PASS; cero diferencias |
+| Gestión pgTAP | 57 / 1 suite | 206 / 16 suites PASS |
+| Seguimiento canónico | 35 PASS + concurrencia/rollback | 35 PASS + concurrencia/rollback |
+| Edge/Deno sin red | 613 PASS / 2 omitidos | 643 PASS / 2 omitidos |
+| Clippy admin/services `-D warnings` | PASS | PASS |
+| Nextest admin/services Mac serial | 172 PASS | 178 PASS |
+
+Rojo→verde conservado para reparación con cupo ocupado, auditoría con reviewer
+borrado, dueño cambiado, motivo/finalidad de informes antiguos, UI, suscripción
+tardía local y compra Polar con webhook retrasado/404. La reparación se prueba
+reaplicando el fichero real y verificando idempotencia y barreras restauradas.
+Los 25 fallos genéricos son heredados, idénticos en ambas ramas; no se declaran
+verdes. Nightly tuvo un fallo intermitente inicial de login; repetición serial
+completa 172/172. Fmt Rust/Deno, quality y 456 huellas de retirada PASS.
+
+Evidencia y SHAs finales: `~/evidence/1627r5/RESULTADOS.md`, `TABLA-SQL.md` y buzón.
+Rust 1.95 fijado, jobs=4 y target propio `~/target-1627r5` retirado al cerrar.
+PowerShell no está instalado y el wrapper usa Win32: Cargo directo en este Mac.
+Sin cambios runtime/domain/ipc/testdata; lifecycle/telemetría no se repiten.
+No valida Windows/DPI/teclado, SaaS real, CI remoto ni despliegue/upgrade remoto.
+Se han corregido migraciones del candidato R3/R4, sin aplicar nada a servicios
+reales; un entorno que ya las registró requiere plan de upgrade del orquestador.
+Pendiente revisión del orquestador; sin merge, promoción, deploy ni release.
+
 ## #1627 / PR #1639 · VANTA-21 · ronda 4 (15/10/2026)
 
 Worker Codex macOS arm64, sin subagentes, GitHub ni servicios reales. Excepción
@@ -14,7 +68,9 @@ históricos sin fila de revisión. SQL devuelve conflicto y la UI oculta esas
 vueltas. No se añade una acción Reabrir. Arreglado sigue ocupando 1/día y
 2/semana UTC/cuenta; también cuentan las revisiones aceptadas si un servidor
 anterior alteró el estado. La migración restaura el estado de esas revisiones,
-sin borrar su nota/fecha ni los arreglos válidos. Los informes antiguos
+sin borrar su nota/fecha ni los arreglos que todavía conservan estado `fixed`.
+No recupera «Arreglado en X» ya borrado al reabrir en R3; debe volver a confirmarse
+con evidencia. R5 añade auditoría por fila reparada y evita consumir de nuevo el cupo. Los informes antiguos
 `testing_center_reports` admiten Spam; sus títulos se alinean a la izquierda.
 
 **Anual cerrado por Isaac el 15/10:** 30 % del pago anual completo, sin

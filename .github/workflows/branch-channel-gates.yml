@@ -148,6 +148,18 @@ jobs:
           powershell.exe -NoProfile -ExecutionPolicy Bypass -File native/packaging/feed-origin-tests.ps1
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
 
+      # El registro y el clon git de zed (~1 GB) solo cambian con Cargo.lock:
+      # sin caché, cada trabajo los vuelve a descargar (cargo fetch = 129-243 s).
+      - name: Cache de registro y git de Cargo
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: cargo-registry-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('vantare-v2/native/Cargo.lock') }}
+          restore-keys: |
+            cargo-registry-${{ runner.os }}-${{ runner.arch }}-
+
       # El binario solo cambia al subir la versión: se guarda en caché y se
       # evita recompilarlo (342–430 s por trabajo aquí; 174–226 s en Linux).
       - name: Cache de cargo-nextest

@@ -1,3 +1,7 @@
+import {
+  drainMailErasures,
+  type ErasureDeps,
+} from "../_shared/mail-erasure.ts";
 import { NativeError } from "../_shared/native-auth.ts";
 import { isUuid } from "../_shared/request.ts";
 import { unsubscribeToken } from "../mail-unsubscribe/tokens.ts";
@@ -16,6 +20,7 @@ export const templates = ["news", "offer", "launch"];
 type Obj = Record<string, unknown>;
 export type MailRun = (action: string, params: Obj) => Promise<Obj>;
 export type MailDeps = {
+  cleanup?: ErasureDeps;
   fetch?: typeof fetch;
   env?: (key: string) => string | undefined;
 };
@@ -35,6 +40,7 @@ export function mailContent(
 }
 export function validateMail(action: string, p: Obj): void {
   const fields: Record<string, string[]> = {
+    mail_cleanup: [],
     mail_list: [],
     mail_new: [],
     mail_get: ["campaign_id"],
@@ -121,6 +127,12 @@ export async function executeMail(
     )
   ) return await run(action, p);
   await run("mail_list", {});
+  if (action === "mail_cleanup") {
+    return {
+      ...await drainMailErasures({ env, fetch: send, ...deps.cleanup }),
+      ...await run("mail_list", {}),
+    };
+  }
   const enabled = (name: string) => {
     if (env(name) !== "true") throw new NativeError(503, "mail_disabled");
   };
@@ -210,7 +222,12 @@ export async function executeMail(
       }
     >;
     for (const c of contacts) {
-      const selected = c.groups ?? [];
+      const claim = await run("mail_sync_lease", {
+        email: c.email,
+        revision: c.revision,
+      });
+      if (claim.allowed !== true) continue;
+      const selected = (claim.groups as string[] | null) ?? [];
       // Exact membership: remove stale groups and suppress any contact now ineligible.
       await brevo("contacts", {
         email: c.email,
@@ -221,7 +238,7 @@ export async function executeMail(
         `https://api.brevo.com/v3/contacts/${encodeURIComponent(c.email)}`,
         { "api-key": require("BREVO_API_KEY") },
         {
-          emailBlacklisted: !c.consent || selected.length === 0,
+          emailBlacklisted: claim.consent !== true || selected.length === 0,
           listIds: selected.map((g) => map[g]),
           unlinkListIds: groups.filter((g) => !selected.includes(g)).map((g) =>
             map[g]
@@ -230,7 +247,11 @@ export async function executeMail(
         4000,
         "PUT",
       );
-      await run("mail_sync_ack", { email: c.email, revision: c.revision });
+      await run("mail_sync_ack", {
+        email: c.email,
+        revision: c.revision,
+        lease: claim.lease,
+      });
     }
     return {
       synced: contacts.length,

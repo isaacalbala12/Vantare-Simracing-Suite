@@ -25,6 +25,7 @@ const recognizedFunctions = new Set([
   "billing-reconcile",
   "mail-unsubscribe",
   "mail-webhook",
+  "mail-cleanup",
   ...productionFunctions,
   ...testingPilotFunctions,
   ...testingAutomationFunctions,

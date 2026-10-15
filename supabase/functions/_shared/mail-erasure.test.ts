@@ -1,0 +1,116 @@
+import { drainMailErasures } from "./mail-erasure.ts";
+import { handleMailCleanup } from "../mail-cleanup/index.ts";
+import { assert } from "../native-account-authorize/testdata/auth.ts";
+const env = (key: string) =>
+  ({
+    MARKETING_CLEANUP_ENABLED: "true",
+    BREVO_API_KEY: "local-fake",
+    MAIL_CLEANUP_KEY: "local-cleanup-key-at-least-32-characters",
+  })[key as "BREVO_API_KEY"];
+Deno.test("Brevo erasure retries timeout and 503, accepts DELETE 204/404, never sends", async () => {
+  for (const status of [0, 503, 204, 404]) {
+    let claimed = false;
+    let http = 0;
+    let finished = 0;
+    await drainMailErasures({
+      env,
+      rpc: (name, args) => {
+        if (name === "mail_erasure_claim") {
+          if (claimed) return Promise.resolve({ job: null });
+          claimed = true;
+          return Promise.resolve({
+            job: {
+              id: "local-job",
+              lease: "local-lease",
+              email: "old@example.invalid",
+            },
+          });
+        }
+        assert(
+          name === "mail_erasure_finish" && args.p_http_status === status &&
+            args.p_id === "local-job" && args.p_lease === "local-lease",
+        );
+        finished++;
+        return Promise.resolve(true);
+      },
+      fetch: (url, init) => {
+        http++;
+        assert(
+          init?.method === "DELETE" &&
+            String(url) ===
+              "https://api.brevo.com/v3/contacts/old%40example.invalid?identifierType=email_id",
+        );
+        if (status === 0) throw new TypeError("local timeout");
+        return Promise.resolve(new Response(null, { status }));
+      },
+    });
+    assert(http === 1 && finished === 1);
+  }
+});
+Deno.test("erasure worker is bounded, disabled by default and authenticates before SQL", async () => {
+  let calls = 0;
+  let threw = false;
+  try {
+    await drainMailErasures({
+      env: () => undefined,
+      rpc: () => {
+        calls++;
+        throw new Error("unexpected");
+      },
+    });
+  } catch {
+    threw = true;
+  }
+  assert(threw && calls === 0);
+  const response = await handleMailCleanup(
+    new Request("https://project.invalid/", {
+      method: "POST",
+      headers: { Authorization: "Bearer wrong" },
+      body: '{"version":1}',
+    }),
+    {
+      env,
+      rpc: () => {
+        calls++;
+        throw new Error("unexpected");
+      },
+    },
+  );
+  assert(response.status === 401 && calls === 0);
+  let claimed = 0;
+  await drainMailErasures({
+    env,
+    rpc: (name) =>
+      Promise.resolve(
+        name === "mail_erasure_claim"
+          ? {
+            job: {
+              id: String(++claimed),
+              lease: "lease",
+              email: "x@example.invalid",
+            },
+          }
+          : true,
+      ),
+    fetch: () => Promise.resolve(new Response(null, { status: 404 })),
+  });
+  assert(claimed === 5);
+});
+Deno.test("erasure cannot claim a false result as a confirmed ACK", async () => {
+  let failed = false;
+  try {
+    await drainMailErasures({
+      env,
+      rpc: (name) =>
+        Promise.resolve(
+          name === "mail_erasure_claim"
+            ? { job: { id: "id", lease: "lease", email: "x@example.invalid" } }
+            : false,
+        ),
+      fetch: () => Promise.resolve(new Response(null, { status: 204 })),
+    });
+  } catch {
+    failed = true;
+  }
+  assert(failed);
+});

@@ -145,3 +145,28 @@ SQL: `supabase/tests/marketing_mail.test.sql`, ejecutado por
 lock Docker del encargo, contenedor aislado `--network none`. No usar un proyecto
 remoto para ejecutar fixtures. UI: `--demo --screen mail`, escenas
 `mail-editor`, `mail-confirm`, `mail-history`, datos falsos y cero red.
+
+## R2 / P2-1: borrado en Brevo
+
+El borrado de un contacto por #1622 encola su retirada de Brevo en la misma
+transacción. La cola conserva temporalmente la dirección solo hasta recibir
+DELETE 204 o 404 del proveedor; después la borra y conserva resultado, intentos,
+fecha y UUID, sin dirección en auditoría. Un fallo de red/HTTP se reintenta con
+espera exponencial (5 s a 1 h), con leases que recuperan caídas del worker y
+fencing de ACK antiguos. Nunca se usa un reintento de envío para esto.
+
+`mail-cleanup` es un worker de cola, POST `{"version":1}`, autenticado con
+`Authorization: Bearer <MAIL_CLEANUP_KEY>` (secreto aleatorio >=32 caracteres).
+`MARKETING_CLEANUP_ENABLED=true` y `BREVO_API_KEY` habilitan solo borrados;
+no depende de habilitar envíos. Cada invocación procesa hasta cinco trabajos.
+Configurar su llamada periódica (p. ej. cada minuto) desde un scheduler de servidor
+solo en el despliegue autorizado. No se crea scheduler ni secreto en esta entrega.
+El Owner puede iniciar la misma tarea con la acción `mail_cleanup` de native-admin;
+la lectura `mail_list.cleanup` da recuentos pendientes/completados sin direcciones.
+No declarar completada la limpieza del proveedor mientras queden trabajos.
+
+La sincronización adquiere un lease por contacto y relee permiso/grupos antes de
+llamar al proveedor. Borrarlo impide nuevas sincronizaciones y difiere su DELETE
+hasta que venza cualquier sincronización ya en curso. Un alta nueva para la misma
+dirección espera al ACK de borrado; así el DELETE pendiente no borra el alta nueva.
+Contrato del proveedor: [DELETE contact](https://developers.brevo.com/reference/delete-contact).

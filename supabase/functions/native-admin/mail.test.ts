@@ -298,7 +298,7 @@ Deno.test("mail sync exact groups, removal and suppression, no implicit recipien
   await executeMail(
     "mail_sync",
     {},
-    (a) =>
+    (a, args) =>
       Promise.resolve(
         a === "mail_sync_page"
           ? {
@@ -313,6 +313,13 @@ Deno.test("mail sync exact groups, removal and suppression, no implicit recipien
               consent: false,
               groups: null,
             }],
+          }
+          : a === "mail_sync_lease"
+          ? {
+            allowed: true,
+            lease: id,
+            consent: args.email === "yes@example.invalid",
+            groups: args.email === "yes@example.invalid" ? ["pro"] : null,
           }
           : {},
       ),

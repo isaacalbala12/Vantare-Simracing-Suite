@@ -55,8 +55,25 @@ jobs:
       - name: Clippy all workspace targets
         run: cargo clippy --workspace --all-targets --locked -j 2 -- -D warnings
 
+      # El binario solo cambia al subir la versión: se guarda en caché y se
+      # evita recompilarlo (342–430 s por trabajo en Windows; 174–226 s aquí).
+      - name: Cache de cargo-nextest
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.cargo/bin/cargo-nextest
+          key: cargo-nextest-0.9.146-${{ runner.os }}-${{ runner.arch }}
+
       - name: Install pinned Nextest
-        run: cargo install cargo-nextest --locked --version 0.9.146
+        run: |
+          have=""
+          if command -v cargo-nextest >/dev/null 2>&1; then
+            have="$(cargo nextest --version 2>/dev/null || true)"
+          fi
+          if [ "$have" = "cargo-nextest 0.9.146" ]; then
+            echo 'cargo-nextest 0.9.146 ya disponible: no se instala'
+          else
+            cargo install cargo-nextest --locked --version 0.9.146
+          fi
 
       - name: Test workspace
         env:

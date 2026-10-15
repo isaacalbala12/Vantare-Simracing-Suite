@@ -148,9 +148,27 @@ jobs:
           powershell.exe -NoProfile -ExecutionPolicy Bypass -File native/packaging/feed-origin-tests.ps1
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
 
+      # El binario solo cambia al subir la versión: se guarda en caché y se
+      # evita recompilarlo (342–430 s por trabajo aquí; 174–226 s en Linux).
+      - name: Cache de cargo-nextest
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: ~/.cargo/bin/cargo-nextest.exe
+          key: cargo-nextest-0.9.146-${{ runner.os }}-${{ runner.arch }}
+
       - name: Install native test runner
         working-directory: ${{ env.VANTARE_DIR }}/native
-        run: cargo install cargo-nextest --locked --version 0.9.146
+        run: |
+          $have = ''
+          $exe = Join-Path $env:USERPROFILE '.cargo\bin\cargo-nextest.exe'
+          if (Test-Path -LiteralPath $exe) {
+            try { $have = (& $exe --version 2>$null) -join ' ' } catch { $have = '' }
+          }
+          if ($have -match 'cargo-nextest 0\.9\.146') {
+            'cargo-nextest 0.9.146 ya disponible: no se instala'
+          } else {
+            cargo install cargo-nextest --locked --version 0.9.146
+          }
 
       - name: Fetch locked native dependencies
         working-directory: ${{ env.VANTARE_DIR }}/native

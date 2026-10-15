@@ -54,6 +54,9 @@ export function createCheckoutAttemptStore(
       );
       if (error) throw new Error("checkout_attempt_claim_failed");
       const row = singleRpcRow(data);
+      if (row?.guard_version !== 1) {
+        throw new Error("checkout_guard_unavailable");
+      }
       switch (row?.outcome) {
         case "claimed":
         case "busy":
@@ -70,6 +73,7 @@ export function createCheckoutAttemptStore(
     },
 
     async complete(input, checkoutId, url) {
+      if (!checkoutId?.trim()) throw new Error("checkout_binding_id_required");
       const { data, error } = await client.rpc(
         "complete_billing_checkout_attempt",
         {

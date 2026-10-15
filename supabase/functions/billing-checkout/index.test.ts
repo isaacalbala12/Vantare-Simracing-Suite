@@ -3,7 +3,10 @@ import {
   assertStrictEquals,
 } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import type { AuthResult } from "../_shared/auth.ts";
-import type { CheckoutAttemptStore } from "../_shared/checkout-attempts.ts";
+import {
+  type CheckoutAttemptStore,
+  createCheckoutAttemptStore,
+} from "../_shared/checkout-attempts.ts";
 import { loadPolarProductMap } from "../_shared/mapping.ts";
 import {
   SANDBOX_ENVIRONMENT,
@@ -236,4 +239,59 @@ Deno.test("checkout propagates request cancellation to Polar", async () => {
   assertStrictEquals(receivedSignal, request.signal);
   assertEquals(response.status, 503);
   assertEquals((await response.json()).error, "request_cancelled");
+});
+
+Deno.test("shared checkout refuses old schema, deleted account and family conflict before Polar", async () => {
+  for (const scenario of ["old", "deleted", "family"] as const) {
+    let calls = 0;
+    const rpc = () =>
+      Promise.resolve(
+        scenario === "deleted" ? { data: null, error: { code: "28000" } } : {
+          data: [{
+            outcome: scenario === "family" ? "busy" : "claimed",
+            checkout_url: null,
+            ...(scenario === "old" ? {} : { guard_version: 1 }),
+          }],
+          error: null,
+        },
+      );
+    const response = await handleCheckoutRequest(
+      post({ productKey: "pro_monthly", attemptId: ATTEMPT_ID }),
+      {
+        ...deps(createCheckoutAttemptStore({ rpc } as never)),
+        createCheckout: () => {
+          calls++;
+          throw new Error("must not reach Polar");
+        },
+      },
+    );
+    assertEquals(response.status, scenario === "family" ? 409 : 503);
+    assertEquals(calls, 0);
+    assertEquals((await response.json()).url, undefined);
+  }
+});
+Deno.test("shared checkout never releases URL when canonical binding completion fails", async () => {
+  const calls: string[] = [];
+  const rpc = (name: string) => {
+    calls.push(name);
+    return Promise.resolve({
+      data: name === "claim_billing_checkout_attempt"
+        ? [{ outcome: "claimed", checkout_url: null, guard_version: 1 }]
+        : name === "complete_billing_checkout_attempt"
+        ? false
+        : true,
+      error: null,
+    });
+  };
+  const response = await handleCheckoutRequest(
+    post({ productKey: "pro_monthly", attemptId: ATTEMPT_ID }),
+    deps(createCheckoutAttemptStore({ rpc } as never)),
+  );
+  assertEquals(response.status, 503);
+  assertEquals((await response.json()).url, undefined);
+  assertEquals(calls, [
+    "claim_billing_checkout_attempt",
+    "complete_billing_checkout_attempt",
+    "mark_billing_checkout_attempt_uncertain",
+  ]);
 });

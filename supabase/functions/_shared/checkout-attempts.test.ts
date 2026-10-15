@@ -25,7 +25,7 @@ function client(results: Array<{ data: unknown; error: unknown }>) {
 
 Deno.test("checkout attempt adapter uses the atomic claim RPC", async () => {
   const fake = client([{
-    data: [{ outcome: "claimed", checkout_url: null }],
+    data: [{ outcome: "claimed", checkout_url: null, guard_version: 1 }],
     error: null,
   }]);
   const result = await createCheckoutAttemptStore(fake as never).claim(attempt);
@@ -36,7 +36,11 @@ Deno.test("checkout attempt adapter uses the atomic claim RPC", async () => {
 
 Deno.test("checkout attempt adapter never reuses an expired URL", async () => {
   const fake = client([{
-    data: [{ outcome: "expired", checkout_url: "https://expired.test" }],
+    data: [{
+      outcome: "expired",
+      checkout_url: "https://expired.test",
+      guard_version: 1,
+    }],
     error: null,
   }]);
   assertEquals(await createCheckoutAttemptStore(fake as never).claim(attempt), {
@@ -61,4 +65,30 @@ Deno.test("checkout attempt transitions require exactly one changed row", async 
       "failed",
     );
   }
+});
+
+Deno.test("checkout adapter rejects an old unguarded database before Polar can be called", async () => {
+  const fake = client([{
+    data: [{ outcome: "claimed", checkout_url: null }],
+    error: null,
+  }]);
+  await assertRejects(
+    () => createCheckoutAttemptStore(fake as never).claim(attempt),
+    Error,
+    "checkout_guard_unavailable",
+  );
+});
+Deno.test("checkout adapter requires the provider ID for a durable binding", async () => {
+  const fake = client([]);
+  await assertRejects(
+    () =>
+      createCheckoutAttemptStore(fake as never).complete(
+        attempt,
+        null,
+        "https://sandbox.polar.sh/checkout/test",
+      ),
+    Error,
+    "checkout_binding_id_required",
+  );
+  assertEquals(fake.calls.length, 0);
 });

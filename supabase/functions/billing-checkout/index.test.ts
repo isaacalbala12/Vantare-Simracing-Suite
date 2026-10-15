@@ -330,16 +330,31 @@ Deno.test("P1-2 a new desktop attempt reuses the verified launch checkout withou
 });
 
 Deno.test("P2-9 plan-change waiting is explicit and creates no checkout or uncertain attempt", async () => {
-  const {PromotionCheckoutError}=await import("../billing-report-promotion/observe.ts");
-  let writes=0;
-  const response=await handleCheckoutRequest(post({productKey:"pro_monthly",attemptId:ATTEMPT_ID}),{
-    ...deps(memoryStore()),
-    promotionDiscount:()=>Promise.reject(new PromotionCheckoutError("promotion_checkout_plan_change_pending","Hay un pago abierto para otro plan. Espera a que caduque; tu primer mes se conserva.",409)),
-    createCheckout:()=>{writes++;throw new Error("must wait");},
-  });
-  assertEquals(response.status,409);
-  const body=await response.json();
-  assertEquals(body.error,"promotion_checkout_plan_change_pending");
-  assertEquals(typeof body.message,"string");
-  assertEquals(writes,0);
+  const { PromotionCheckoutError } = await import(
+    "../billing-report-promotion/observe.ts"
+  );
+  let writes = 0;
+  const response = await handleCheckoutRequest(
+    post({ productKey: "pro_monthly", attemptId: ATTEMPT_ID }),
+    {
+      ...deps(memoryStore()),
+      promotionDiscount: () =>
+        Promise.reject(
+          new PromotionCheckoutError(
+            "promotion_checkout_plan_change_pending",
+            "Hay un pago abierto para otro plan. Espera a que caduque; tu primer mes se conserva.",
+            409,
+          ),
+        ),
+      createCheckout: () => {
+        writes++;
+        throw new Error("must wait");
+      },
+    },
+  );
+  assertEquals(response.status, 409);
+  const body = await response.json();
+  assertEquals(body.error, "promotion_checkout_plan_change_pending");
+  assertEquals(typeof body.message, "string");
+  assertEquals(writes, 0);
 });

@@ -1,15 +1,55 @@
-## #1593 / VANTA-39 · Ronda 4 en curso · 15/10/2026
+## #1593 / VANTA-39 · Ronda 4 entregada al bare · 15/10/2026
 
-Base d90b8ec04 publicada por el orquestador en PR #1659. Mac ~/wt-1593,
-misma rama y nightly3f82af867. Informe R3 leído completo. P2-8 corregido:
-seis cobros en total, conservando consumo del tramo menor; caducidad del tramo
-nuevo independiente. Regresión RED→GREEN con factura liquidada entre tramos.
-P2-9 recupera sin ID a los30min con incidencia Owner previa al alta; Pro→Plus
-abierto espera con mensaje409. P3-18 termina la página pese a un elemento fallido,
-registra hueco y conserva cursor para reintento sin perder facturas.
-Regresiones SQL/Edge RED→GREEN. Faltan P3-19/20/21 y gates completos.
+Base de ronda d90b8ec04 ya publicada en PR draft #1659 por el orquestador.
+Misma rama vantareapp/isa-1593-descuento-informes, Mac ~/wt-1593, nightly
+3f82af867 verificada sin cambios. SHA final y siete commits en el buzón
+~/orq/1593.buzon.md; pendiente publicar el SHA nuevo en GitHub.
 
-## #1593 / VANTA-39 · Ronda 3 entregada al bare · 15/10/2026
+- P2-8: cinco aceptados dan **seis cobros en total**, contando los ya consumidos
+  con el tramo de tres. reward_granted_at conserva la primera concesión;
+  reward_expires_at sigue el plazo del tramo nuevo. Regresión con cobro entre
+  tramos, cinco restantes y corte tras seis totales.
+- P2-9: creación creating/uncertain sin ID se libera a los30min, conservando
+  el derecho por cuenta y admitiendo un intento nuevo/Plus. Marca durable de
+  recuperación visible al Owner aunque aún no exista promoción/suscripción;
+  el pago la resuelve y consume el derecho. IDs remotos conocidos mantienen
+  GET y prueba terminal/CAS. Pro→Plus con Pro abierto espera con409 y mensaje
+  claro, sin enlace de plan equivocado ni segundo checkout. Una creación remota
+  sin respuesta puede dejar un checkout huérfano sin enlace entregado; esta
+  recuperación es la decisión del orquestador R4, no atomicidad entre proveedores.
+- P3-18: captura por elemento, continúa toda la página, intenta registrar el
+  hueco y devuelve código saneado. Si falla conserva cursor para reintentar la
+  página; los éxitos previos deduplican. Handler corta su bucle de páginas
+  después de esa página y marca el fallo; no pierde facturas silenciosamente.
+- P3-19: p_attempt obligatorio en SQL y helper; no existe concesión sin reserva.
+- P3-20: resultado contable inseguro registra hueco antes de cuarentena, sin
+  proyectar como factura la instantánea ambigua.
+- P3-21: cuenta borrada fuera de la lista y cuenta viva dentro, con mutación
+  accounts-deleted que rompe precisamente ese filtro. B03 se mantiene.
+
+Evidencia Mac ~/evidence/1593-r4/RESULTADOS.md: **152/152 pgTAP** de promoción,
+**24 controles SQL y3 Edge** detectados. Regresiones de los seis puntos
+RED→GREEN con logs. Catálogo completo NOSUPERUSER BYPASSRLS: nightly59/33PASS,
+rama60/34PASS, mismas26 suites rojas,1266→1418 aserciones,**cero regresiones**.
+Baseline R2 mismo actor/runner y SHA nightly sin cambios. Edge completo
+**644PASS/0FAIL/2ignored** históricos. Formato, lint producción/nuevos módulos,
+superficies, quality, retirada y diff-check PASS. Ocho require-await del test
+checkout siguen históricos. Sin Rust tocado: clippy/nextest/lifecycle/telemetría
+omitidos; sin target propio creado. Docker/Edge con lock/trap, sin red real.
+
+Issue #1593 y Plane VANTA-39 pasan a Por revisar al cerrar desde servidor.
+Runbook actualizado sin las frases contradictorias de3+6 ni soporte obligatorio
+para una reserva sinID ya caducada. Decisiones multi-cuenta aceptado y caducidad
+configurable6meses permanecen. Sin Polar/Clerk reales, productos, secretos nuevos,
+deploy, scheduler, merge, release ni promoción.
+
+Siguiente: publicar SHA del bare a PR1659, ejecutar CI y re-review independiente
+R4; sandbox autorizado y QA visual/Windows siguen pendientes. El check remoto
+observado (GitGuardian SUCCESS) acredita d90b8ec04/R3, no R4. Seis descuentos
+Polar Pro200/Plus300 EUR repeating1/3/6, sin productos nuevos; catálogo vacío
+y campaña inactiva. #1620/#1639 conservan su coordinación pendiente.
+
+## Histórico · #1593 / VANTA-39 · Ronda 3 entregada al bare · 15/10/2026
 
 PR draft [#1659](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1659),
 todavía en el SHA de R2 d16f28426 hasta que publique el orquestador. Misma rama

@@ -128,8 +128,8 @@ export async function handleReconciliation(req: Request): Promise<Response> {
       observed += result.observed;
       quarantined += result.quarantined;
       cursor = result.next;
-      failed+=result.failed.length;
-      if(result.failed.length) break; // Finished the page; retry it on the next invocation.
+      failed += result.failed.length;
+      if (result.failed.length) break; // Finished the page; retry it on the next invocation.
       if (cursor.resource === "orders" && cursor.page === 1) break;
     }
     const { data: released, error: releaseError } = await admin.rpc(
@@ -137,7 +137,7 @@ export async function handleReconciliation(req: Request): Promise<Response> {
       {
         p_environment: environment,
         p_lease_token: lease,
-        p_failed: failed>0,
+        p_failed: failed > 0,
       },
     );
     if (releaseError || released !== true) {

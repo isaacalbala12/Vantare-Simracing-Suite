@@ -54,9 +54,24 @@ export async function reconcilePage(args: {
   environment: BillingEnvironment;
   supabase: SupabaseClient;
   processDeps?: Partial<WebhookProcessorDeps>;
-}): Promise<{ next: Cursor; quarantined: number; observed: number; failed: {resource_id:string|null;code:string;incident_recorded:boolean}[] }> {
+}): Promise<
+  {
+    next: Cursor;
+    quarantined: number;
+    observed: number;
+    failed: {
+      resource_id: string | null;
+      code: string;
+      incident_recorded: boolean;
+    }[];
+  }
+> {
   let quarantined = 0;
-  const failed: {resource_id:string|null;code:string;incident_recorded:boolean}[]=[];
+  const failed: {
+    resource_id: string | null;
+    code: string;
+    incident_recorded: boolean;
+  }[] = [];
   for (const item of args.page.items) {
     try {
       if (args.cursor.resource === "disputes") {
@@ -89,7 +104,8 @@ export async function reconcilePage(args: {
         );
       }
       if (
-        result.status === "quarantined" && result.reason === "existing_quarantine"
+        result.status === "quarantined" &&
+        result.reason === "existing_quarantine"
       ) {
         const { data: row, error } = await args.supabase.from(
           "billing_webhook_inbox",
@@ -114,18 +130,29 @@ export async function reconcilePage(args: {
         throw new Error("reconciliation_retry_pending");
       }
     } catch {
-      let recorded=false;
-      if(args.cursor.resource==="orders" && typeof item.id==="string") {
+      let recorded = false;
+      if (args.cursor.resource === "orders" && typeof item.id === "string") {
         try {
-          const {error}=await args.supabase.rpc("report_promotion_invoice_missing",{p_environment:args.environment,p_order:item.id});
-          recorded=!error;
-        } catch { /* Keep the page retryable even if the incident store is down. */ }
+          const { error } = await args.supabase.rpc(
+            "report_promotion_invoice_missing",
+            { p_environment: args.environment, p_order: item.id },
+          );
+          recorded = !error;
+        } catch {
+          /* Keep the page retryable even if the incident store is down. */
+        }
       }
-      failed.push({resource_id:typeof item.id==="string"?item.id:null,code:"reconciliation_item_failed",incident_recorded:recorded});
+      failed.push({
+        resource_id: typeof item.id === "string" ? item.id : null,
+        code: "reconciliation_item_failed",
+        incident_recorded: recorded,
+      });
     }
   }
   return {
-    next: failed.length ? args.cursor : advanceCursor(args.cursor, args.page.maxPage),
+    next: failed.length
+      ? args.cursor
+      : advanceCursor(args.cursor, args.page.maxPage),
     failed,
     quarantined,
     observed: args.page.items.length,

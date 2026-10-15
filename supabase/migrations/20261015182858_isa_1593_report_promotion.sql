@@ -220,7 +220,8 @@ language sql immutable set search_path='' as $$select t >= timestamp '2026-10-26
 -- First invoice uses the one-month launch discount on the NORMAL monthly product.
 -- Existing permanent launch products and annual subscriptions are not rewritten.
 -- The entitlement belongs to the account. A replacement attempt may reuse it
--- only after the prior lease expires and its remote checkout cannot be paid.
+-- after the prior lease expires: known checkout IDs need terminal proof;
+-- an unknown creation result can release its reservation without losing the right.
 create function public.report_promotion_checkout(p_account uuid,p_environment text,p_product text,p_now timestamptz default clock_timestamp(),p_attempt uuid default null,p_replaces uuid default null)
 returns text language plpgsql security definer set search_path='' as $$
 declare discount text; used private.report_promotion_launch_uses; prior public.billing_checkout_attempts;
@@ -267,8 +268,7 @@ begin
  if private.lock_account_write(p_account) then raise sqlstate '28000' using message='account_deleted'; end if;
  select jsonb_build_object('attempt_id',u.attempt_id,'checkout_id',coalesce(u.checkout_id,a.provider_checkout_id),'product_id',u.product_id,'retry_at',greatest(u.reserved_at+interval '30 minutes',a.expires_at)) into result
  from private.report_promotion_launch_uses u left join public.billing_checkout_attempts a on a.user_id=u.account_id and a.attempt_id=u.attempt_id and a.environment=u.environment
- where u.account_id=p_account and u.environment=p_environment and u.consumed_at is null and private.report_promotion_eligible(p_now)
-;
+ where u.account_id=p_account and u.environment=p_environment and u.consumed_at is null and private.report_promotion_eligible(p_now);
  return result;
 end $$;
 revoke all on function public.report_promotion_checkout(uuid,text,text,timestamptz,uuid,uuid),public.report_promotion_checkout_pending(uuid,text,timestamptz) from public,anon,authenticated;

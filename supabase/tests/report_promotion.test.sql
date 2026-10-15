@@ -324,5 +324,9 @@ select is((select discount from recovered_checkouts where n=23),'plus1','P2-9 re
 select is(private.report_promotion_progress(pg_temp.account(22),'sandbox','2026-10-30 00:31')->>'last_error','promotion_checkout_recovered','P2-9 owner sees the recovery incident before any subscription exists');
 select is((select count(*)::int from private.report_promotion_launch_uses where account_id=pg_temp.account(22)),1,'P2-9 recovered attempt still shares one account right');
 select throws_ok($$select public.report_promotion_checkout(pg_temp.account(24),'sandbox','pro','2026-10-30')$$,'22023','promotion_attempt_required','P3-19 direct callers cannot obtain launch discount without reserving an attempt');
+select pg_temp.enroll(22);
+select is(private.report_promotion_progress(pg_temp.account(22),'sandbox','2026-10-31')->>'last_error',null::text,'P2-9 paid recovery resolves the owner incident');
+select ok((select consumed_at is not null from private.report_promotion_launch_uses where account_id=pg_temp.account(22)),'P2-9 paid recovery consumes the single account right durably');
+select is(public.report_promotion_checkout(pg_temp.account(22),'sandbox','pro','2026-10-31','00000000-0000-4000-8000-000000000034'),null::text,'P2-9 another attempt after recovered payment cannot repeat the first month');
 select * from finish();
 rollback;

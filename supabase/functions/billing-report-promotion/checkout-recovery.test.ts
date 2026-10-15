@@ -13,7 +13,9 @@ Deno.test("P1-2 expired desktop attempt recovers the account right without two r
     const admin = () =>
       ({
         rpc: (name: string, input: Record<string, unknown>) => {
-          if(name==="report_promotion_failed") return Promise.resolve({data:null,error:null});
+          if (name === "report_promotion_failed") {
+            return Promise.resolve({ data: null, error: null });
+          }
           if (name.endsWith("_pending")) {
             return Promise.resolve({
               error: null,
@@ -148,14 +150,49 @@ Deno.test("P1-2 checkout recovery verifies remote owner, product and transport b
 });
 
 Deno.test("P2-9 an open Pro checkout blocks Plus with a specific incident and actionable error", async () => {
-  const incidents:string[]=[];
-  const admin=()=>({rpc:(name:string,args:Record<string,unknown>)=>{
-    if(name==="report_promotion_failed") {incidents.push(String(args.p_code));return Promise.resolve({data:null,error:null});}
-    if(name.endsWith("_pending")) return Promise.resolve({error:null,data:{attempt_id:"old",checkout_id:"remote",product_id:"pro"}});
-    return Promise.resolve({data:null,error:{code:"55000"}});
-  }}) as unknown as SupabaseClient;
-  const error=await assertRejects(()=>promotionCheckoutDiscount(admin,"account","sandbox","plus",new Date("2026-10-30T12:31:00Z"),true,"new",
-    ()=>Promise.resolve({id:"remote",accountId:"account",productId:"pro",status:"open",url:"https://sandbox.polar.sh/checkout/one"})));
-  assertEquals((error as Error & {code?:string}).code,"promotion_checkout_plan_change_pending");
-  assertEquals(incidents,["promotion_checkout_plan_change_pending"]);
+  const incidents: string[] = [];
+  const admin = () =>
+    ({
+      rpc: (name: string, args: Record<string, unknown>) => {
+        if (name === "report_promotion_failed") {
+          incidents.push(String(args.p_code));
+          return Promise.resolve({ data: null, error: null });
+        }
+        if (name.endsWith("_pending")) {
+          return Promise.resolve({
+            error: null,
+            data: {
+              attempt_id: "old",
+              checkout_id: "remote",
+              product_id: "pro",
+            },
+          });
+        }
+        return Promise.resolve({ data: null, error: { code: "55000" } });
+      },
+    }) as unknown as SupabaseClient;
+  const error = await assertRejects(() =>
+    promotionCheckoutDiscount(
+      admin,
+      "account",
+      "sandbox",
+      "plus",
+      new Date("2026-10-30T12:31:00Z"),
+      true,
+      "new",
+      () =>
+        Promise.resolve({
+          id: "remote",
+          accountId: "account",
+          productId: "pro",
+          status: "open",
+          url: "https://sandbox.polar.sh/checkout/one",
+        }),
+    )
+  );
+  assertEquals(
+    (error as Error & { code?: string }).code,
+    "promotion_checkout_plan_change_pending",
+  );
+  assertEquals(incidents, ["promotion_checkout_plan_change_pending"]);
 });

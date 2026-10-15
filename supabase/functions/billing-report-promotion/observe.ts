@@ -37,7 +37,8 @@ export async function observeReportPromotion(
 
 export class PromotionCheckoutError extends Error {
   constructor(public code: string, message: string, public status = 503) {
-    super(message);this.name="PromotionCheckoutError";
+    super(message);
+    this.name = "PromotionCheckoutError";
   }
 }
 export async function promotionCheckoutDiscount(
@@ -51,7 +52,13 @@ export async function promotionCheckoutDiscount(
   readCheckout = readPolarCheckoutSession,
 ): Promise<string | null | { checkoutUrl: string }> {
   if (!enabled) return null;
-  if(!attemptId) throw new PromotionCheckoutError("promotion_attempt_required","Es necesario iniciar un intento de pago válido.",400);
+  if (!attemptId) {
+    throw new PromotionCheckoutError(
+      "promotion_attempt_required",
+      "Es necesario iniciar un intento de pago válido.",
+      400,
+    );
+  }
   const args = {
     p_account: account,
     p_environment: environment,
@@ -66,41 +73,57 @@ export async function promotionCheckoutDiscount(
       p_environment: environment,
       p_now: now.toISOString(),
     });
-    if(pending.error) throw new Error("promotion_checkout_store_unavailable");
-    const incident = async (code:string) => {
-      const {error} = await admin().rpc("report_promotion_failed",{
-        p_account:account,p_environment:environment,p_code:code,p_now:now.toISOString(),
+    if (pending.error) throw new Error("promotion_checkout_store_unavailable");
+    const incident = async (code: string) => {
+      const { error } = await admin().rpc("report_promotion_failed", {
+        p_account: account,
+        p_environment: environment,
+        p_code: code,
+        p_now: now.toISOString(),
       });
-      if(error) throw new Error("promotion_checkout_incident_unavailable");
+      if (error) throw new Error("promotion_checkout_incident_unavailable");
     };
-    if(!pending.data?.checkout_id || !pending.data?.attempt_id) {
+    if (!pending.data?.checkout_id || !pending.data?.attempt_id) {
       await incident("promotion_checkout_recovery_required");
-      throw new PromotionCheckoutError("promotion_checkout_recovery_pending",
-        "El intento anterior sigue en curso. Cuando caduque el plazo de 30 minutos podrás reintentarlo; conservarás el primer mes.");
+      throw new PromotionCheckoutError(
+        "promotion_checkout_recovery_pending",
+        "El intento anterior sigue en curso. Cuando caduque el plazo de 30 minutos podrás reintentarlo; conservarás el primer mes.",
+      );
     }
     const previous = pending.data;
-    let remote:Awaited<ReturnType<typeof readPolarCheckoutSession>>;
+    let remote: Awaited<ReturnType<typeof readPolarCheckoutSession>>;
     try {
-      remote=await readCheckout(previous.checkout_id,environment as "sandbox"|"production");
+      remote = await readCheckout(
+        previous.checkout_id,
+        environment as "sandbox" | "production",
+      );
     } catch {
       await incident("promotion_checkout_recovery_required");
-      throw new PromotionCheckoutError("promotion_checkout_recovery_required","No se ha podido comprobar el pago anterior. Vuelve a intentarlo; tu primer mes sigue reservado.");
+      throw new PromotionCheckoutError(
+        "promotion_checkout_recovery_required",
+        "No se ha podido comprobar el pago anterior. Vuelve a intentarlo; tu primer mes sigue reservado.",
+      );
     }
     if (
       remote.accountId !== account || remote.productId !== previous.product_id
     ) {
       throw new Error("promotion_checkout_owner_mismatch");
     }
-    if(remote.status==="open") {
-      if(remote.productId===product) return {checkoutUrl:remote.url};
+    if (remote.status === "open") {
+      if (remote.productId === product) return { checkoutUrl: remote.url };
       await incident("promotion_checkout_plan_change_pending");
-      throw new PromotionCheckoutError("promotion_checkout_plan_change_pending",
-        "Hay un pago abierto para otro plan. Espera a que caduque antes de cambiar de plan; tu primer mes se conserva.",409);
+      throw new PromotionCheckoutError(
+        "promotion_checkout_plan_change_pending",
+        "Hay un pago abierto para otro plan. Espera a que caduque antes de cambiar de plan; tu primer mes se conserva.",
+        409,
+      );
     }
-    if(!["expired","failed"].includes(remote.status)) {
+    if (!["expired", "failed"].includes(remote.status)) {
       await incident("promotion_checkout_recovery_required");
-      throw new PromotionCheckoutError("promotion_checkout_payment_pending",
-        "El pago anterior se está confirmando. Espera su resultado antes de iniciar otro; tu primer mes sigue reservado.");
+      throw new PromotionCheckoutError(
+        "promotion_checkout_payment_pending",
+        "El pago anterior se está confirmando. Espera su resultado antes de iniciar otro; tu primer mes sigue reservado.",
+      );
     }
     ({ data, error } = await admin().rpc("report_promotion_checkout", {
       ...args,

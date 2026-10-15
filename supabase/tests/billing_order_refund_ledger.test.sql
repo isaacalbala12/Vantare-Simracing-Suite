@@ -60,7 +60,13 @@ select is((select outcome from public.billing_record_refund_snapshot(
   '2026-08-02T10:04:00Z',repeat('e',64)
 )), 'apply', 'second attributed partial refund is recorded');
 select lives_ok($$select public.billing_sync_order_access('sandbox','order-a','["vantare.edition.launch_v1","vantare.plan.pro"]'::jsonb)$$, 'total attributed refund syncs');
-select is((select status from public.billing_access_grants where source_type='order' and source_id='order-a' limit 1), 'revoked', 'sum of succeeded refunds revokes exactly the order grant');
+-- B02 preserves the financial source and blocks effective access separately.
+-- Before B02 the grant itself is revoked; both contracts must deny access.
+select coalesce(to_regclass('public.billing_effective_access_grants'),
+ 'public.billing_access_grants'::regclass)::text as effective_grants_relation \gset
+select is((select count(*)::integer from :effective_grants_relation
+ where source_type='order' and source_id='order-a' and status='active'),0,
+ 'sum of succeeded refunds removes effective access to exactly this order');
 
 select is((select outcome from public.billing_record_order_snapshot(
   'sandbox','order-b','00000000-0000-4000-8000-000000000901','product-launch','checkout-b',

@@ -50,7 +50,9 @@ select ok(public.visual_roadmap_valid(jsonb_build_object('schemaVersion',1,'item
  'section','now','title',jsonb_build_object('es','Hub','en','','pt','','it',''),
  'body',jsonb_build_object('es',repeat('á',600),'en','','pt','','it','')))
  from generate_series(1,35) n))),'existing multibyte v1 preserves character limit');
-select ok(not has_function_privilege('vantare_roadmap_publisher','public.handle_new_user()','EXECUTE'),'trigger helper closed to CI');
+select ok(to_regprocedure('public.handle_new_user()') is null or
+ not has_function_privilege('vantare_roadmap_publisher',to_regprocedure('public.handle_new_user()'),'EXECUTE'),
+ 'trigger helper absent after B03 or closed to CI');
 -- BEGIN predates insertion: a fresh nearly-one-hour approval must still work.
 select pg_sleep(0.1);
 select lives_ok($$insert into public.visual_roadmap_sync_approvals values('{"schemaVersion":2,"items":[]}',clock_timestamp()+interval '1 hour'-interval '0.05 seconds')$$,'approval insertion uses wall clock rather than transaction start');

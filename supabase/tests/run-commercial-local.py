@@ -294,7 +294,8 @@ $$;
   suites=['clerk_identity_cutover_test.sql',
    'billing_webhook_inbox.test.sql','billing_commercial_projection.test.sql',
    'billing_reconciliation.test.sql','billing_subscription_lifecycle.test.sql',
-   'billing_observability.test.sql','operational_access.test.sql']
+   'billing_observability.test.sql','operational_access.test.sql','billing_order_refund_ledger.test.sql',
+   'canonical_device_claim.test.sql','native_admin.test.sql','visual_roadmap_clickup.test.sql']
   for optional in ['commercial_tombstone.test.sql','commercial_data_boundary.test.sql','commercial_refunds.test.sql','commercial_admin_deleted.test.sql','commercial_storage_probe.test.sql','commercial_pilot_deletion.test.sql','testing_followup_F1IP.test.sql','commercial_testing_identity.test.sql','commercial_posthog_consent.test.sql']:
    if (ROOT/'supabase/tests'/optional).exists(): suites.append(optional)
   for name in suites:

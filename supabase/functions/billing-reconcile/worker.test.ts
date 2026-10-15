@@ -141,3 +141,76 @@ Deno.test("orphan recovers automatically after durable binding appears; DB outag
   assertEquals(ledger.grants.size, 2);
   assertEquals(inbox.replayAudit.length, 1);
 });
+
+Deno.test("P2-5 reconciliation repairs the invoice ledger even when the same inbox snapshot is already completed", async () => {
+  const account = "4b6d8919-1c89-492d-a0e2-364124c17878";
+  const invoices = new Map<string, Record<string, unknown>>();
+  const calls: string[] = [];
+  const supabase = {
+    rpc: (name: string, args: Record<string, unknown>) => {
+      calls.push(name);
+      if (name === "report_promotion_invoice") {
+        invoices.set(String(args.p_order), args);
+      }
+      return Promise.resolve({ data: null, error: null });
+    },
+    from: () => {
+      const chain = {
+        select: () => chain,
+        eq: () => chain,
+        maybeSingle: () =>
+          Promise.resolve({ data: { user_id: account }, error: null }),
+        upsert: () => Promise.resolve({ error: null }),
+        insert: () => Promise.resolve({ error: null }),
+      };
+      return chain;
+    },
+  } as unknown as SupabaseClient;
+  const item = {
+    id: "renewal-with-lost-webhook",
+    checkout_id: "checkout",
+    customer_id: "customer",
+    subscription_id: "sub",
+    product_id: "00000000-0000-0000-0000-000000000003",
+    status: "paid",
+    paid: true,
+    billing_reason: "subscription_cycle",
+    net_amount: 399,
+    applied_balance_amount: 0,
+    refunded_amount: 0,
+    currency: "eur",
+    discount_id: "pro3",
+    discount_amount: 200,
+    created_at: "2026-11-26T18:00:00Z",
+    items: [{
+      proration: false,
+      start_timestamp: "2026-11-26T18:00:00Z",
+      end_timestamp: "2026-12-26T18:00:00Z",
+    }],
+  };
+  const args = {
+    cursor: { resource: "orders" as const, page: 1 },
+    page: { items: [item], maxPage: 1 },
+    environment: "sandbox" as const,
+    supabase,
+    processDeps: {
+      inbox: new MemoryWebhookInbox(() => new Date("2026-11-27T12:00:00Z")),
+      orderRefundLedger: new MemoryOrderRefundLedger(),
+      projection: new MemoryCommercialProjection(),
+      lifecycle: new MemorySubscriptionLifecycleStore(),
+      resolveIdentity: () => Promise.resolve(account),
+      loadMap: () =>
+        loadPolarProductMap(VALID_POLAR_PRODUCT_MAP_JSON, {
+          environment: "sandbox",
+        }),
+    },
+  };
+  await reconcilePage(args);
+  invoices.clear();
+  calls.length = 0; // Simulate a historical completed effect with the promotion projection missing.
+  assertEquals((await reconcilePage(args)).quarantined, 0);
+  assertEquals(invoices.size, 1);
+  assertEquals(invoices.get(item.id)?.p_source, "reconciliation");
+  await reconcilePage(args);
+  assertEquals(invoices.size, 1);
+});

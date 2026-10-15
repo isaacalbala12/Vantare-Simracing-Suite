@@ -1,3 +1,4 @@
+import { observePromotionInvoice } from "../billing-report-promotion/observe.ts";
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import type { BillingEnvironment } from "../_shared/mapping.ts";
 import { computeWebhookPayloadHash } from "../billing-webhook/inbox.ts";
@@ -73,6 +74,18 @@ export async function reconcilePage(args: {
       await computeWebhookPayloadHash(JSON.stringify(event));
     const deps = { ...args.processDeps, supabase: args.supabase };
     let result = await processPolarWebhookEvent(event, id, deps);
+    // Reconciliation is also an independent repair of the promotion ledger.
+    // Do this even for a completed/quarantined inbox snapshot: SQL checks the
+    // durable order owner, B03 and catalogue, and deduplicates by order ID.
+    if (args.cursor.resource === "orders") {
+      await observePromotionInvoice(
+        args.supabase,
+        args.environment,
+        item,
+        true,
+        "reconciliation",
+      );
+    }
     if (
       result.status === "quarantined" && result.reason === "existing_quarantine"
     ) {

@@ -231,5 +231,20 @@ select ok((select cleared_at is not null and to_jsonb(t)->>'cleanup_reason'='mir
 -- Launch accounting stays durable after payment, including a new attempt.
 select pg_temp.enroll(11);
 select is(public.report_promotion_checkout(pg_temp.account(11),'sandbox','pro','2026-10-31','00000000-0000-4000-8000-000000000013'),null::text,'P1-2 paid account cannot repeat intro with a new attempt');
+-- P2-5 reconciliation supplies real periods once per order, with audit source.
+select pg_temp.enroll(16);
+select pg_temp.report(16,'2026-10-27 19:00 Europe/Madrid'); select pg_temp.report(16,'2026-10-28 19:00 Europe/Madrid');
+select public.report_promotion_prepare(pg_temp.account(16),'sandbox','2026-11-01');
+insert into public.billing_orders(user_id,provider,environment,provider_order_id,provider_product_id,provider_subscription_id,status,paid,net_amount,currency,remote_modified_at,snapshot_hash)
+ values(pg_temp.account(16),'polar','sandbox','reconciled16','pro','sub16','paid',true,399,'eur','2026-11-26',repeat('a',64));
+select public.report_promotion_invoice_missing('sandbox','reconciled16','2026-11-27');
+select is(public.report_promotion_prepare(pg_temp.account(16),'sandbox','2026-11-27'),null::jsonb,'P2-5 incomplete paid invoice prevents a silent rearm');
+select is(private.report_promotion_progress(pg_temp.account(16),'sandbox','2026-11-27')->>'last_error','promotion_invoice_details_missing','P2-5 missing invoice detail is owner-visible');
+select public.report_promotion_invoice('sandbox','reconciled16','pro3',200,'2026-11-26','2026-11-26','2026-12-26',false,'reconciliation');
+select public.report_promotion_invoice('sandbox','reconciled16','pro3',200,'2026-11-26','2026-11-26','2026-12-26',false,'webhook');
+select is((select count(*)::int from private.report_promotion_invoices where order_id='reconciled16'),1,'P2-5 reconciliation and repeated webhook share one order credit');
+select ok((select source='reconciliation' and reconciled_at is not null from private.report_promotion_invoices where order_id='reconciled16'),'P2-5 recovered invoice has durable reconciliation trace');
+select ok((select resolved_at is not null from private.report_promotion_invoice_gaps where order_id='reconciled16'),'P2-5 repaired gap resolves durably');
+select is(public.report_promotion_prepare(pg_temp.account(16),'sandbox','2026-11-27')->>'remaining','2','P2-5 reconciled renewal consumes the missing month');
 select * from finish();
 rollback;

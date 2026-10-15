@@ -97,18 +97,33 @@ export async function observePromotionInvoice(
   environment: string,
   data: Record<string, unknown>,
   configured = Deno.env.get("REPORT_PROMOTION_ENABLED") !== undefined,
+  source: "webhook" | "reconciliation" = "webhook",
 ): Promise<void> {
   if (
     !configured ||
     !(["subscription_cycle", "subscription_create"].includes(
       String(data.billing_reason),
     )) ||
-    data.paid !== true || !Array.isArray(data.items)
+    data.paid !== true || typeof data.id !== "string"
   ) return;
+  const missing = async () => {
+    const { error } = await admin.rpc("report_promotion_invoice_missing", {
+      p_environment: environment,
+      p_order: data.id,
+    });
+    if (error) throw new Error("report_promotion_invoice_gap_failed");
+  };
+  if (!Array.isArray(data.items)) {
+    await missing();
+    return;
+  }
   const items = data.items.filter((item) =>
     item && typeof item === "object" && item.proration === false
   );
-  if (items.length !== 1) return;
+  if (items.length !== 1) {
+    await missing();
+    return;
+  }
   const item = items[0];
   if (
     typeof data.id !== "string" || typeof data.created_at !== "string" ||
@@ -116,7 +131,10 @@ export async function observePromotionInvoice(
     Number(data.discount_amount) < 0 ||
     typeof item.start_timestamp !== "string" ||
     typeof item.end_timestamp !== "string"
-  ) return;
+  ) {
+    await missing();
+    return;
+  }
   const { error } = await admin.rpc("report_promotion_invoice", {
     p_environment: environment,
     p_order: data.id,
@@ -125,6 +143,7 @@ export async function observePromotionInvoice(
     p_billed: data.created_at,
     p_start: item.start_timestamp,
     p_end: item.end_timestamp,
+    ...(source === "reconciliation" ? { p_source: source } : {}),
     ...(data.billing_reason === "subscription_create"
       ? { p_initial: true }
       : {}),

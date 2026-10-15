@@ -24,6 +24,11 @@ upgrade aparte.
   prorrateo. `subscription_create` identifica la factura inicial y no consume
   premio. IDs repetidos no suman; una devolución posterior no repone meses ya
   consumidos.
+- Reconciliación de órdenes alimenta el mismo ledger por order ID aunque el
+  inbox ya esté completado o en cuarentena. Guarda origen y fecha de
+  reconciliación sin payload ni PII. Si una orden pagada conocida carece de
+  periodo/importe completos, deja un hueco durable y una incidencia Owner;
+  no rearma cupones hasta recuperarla. El ledger cierra el hueco al reconciliar.
 - El contador no usa `current_period_end` del espejo. Inicio y último fin son
   los periodos de las facturas liquidadas. Un PATCH tardío no pierde un mes: la
   factura previa sin rebaja no cuenta y se sirven los tres/seis cobros futuros.

@@ -87,33 +87,46 @@ create table private.report_promotion_invoices (
  account_id uuid not null references public.profiles(id), subscription_id text not null,
  product_id text not null, discount_id text, discount_amount integer not null check(discount_amount>=0),
  is_initial boolean not null default false,
+ source text not null default 'webhook' check(source in ('webhook','reconciliation')),
+ reconciled_at timestamptz,
  billed_at timestamptz not null, period_start timestamptz not null, period_end timestamptz not null,
  primary key(environment,order_id), check(period_end>period_start)
 );
 create index report_promotion_invoice_account on private.report_promotion_invoices(account_id,environment,period_start);
 alter table private.report_promotion_invoices enable row level security;
 revoke all on private.report_promotion_invoices from public,anon,authenticated,service_role;
+create table private.report_promotion_invoice_gaps (
+ environment text not null, order_id text not null, account_id uuid not null references public.profiles(id),
+ first_at timestamptz not null, last_at timestamptz not null, resolved_at timestamptz,
+ primary key(environment,order_id)
+);
+alter table private.report_promotion_invoice_gaps enable row level security;
+revoke all on private.report_promotion_invoice_gaps from public,anon,authenticated,service_role;
 create function public.report_promotion_invoice(p_environment text,p_order text,p_discount text,p_amount integer,
- p_billed timestamptz,p_start timestamptz,p_end timestamptz,p_initial boolean default false) returns void
+ p_billed timestamptz,p_start timestamptz,p_end timestamptz,p_initial boolean default false,p_source text default 'webhook') returns void
 language plpgsql security definer set search_path='' as $$
 declare o public.billing_orders;
 begin
+ if p_source not in ('webhook','reconciliation') then raise sqlstate '22023' using message='invalid_invoice_source'; end if;
  select * into o from public.billing_orders where provider='polar' and environment=p_environment and provider_order_id=p_order;
  if not found or o.provider_subscription_id is null or not o.paid or o.currency<>'eur' then return; end if;
  if private.lock_account_write(o.user_id) then return; end if;
  if not exists(select 1 from private.report_promotion_catalog where environment=p_environment and product_id=o.provider_product_id) then return; end if;
  if p_amount is null or p_amount<0 or p_billed is null or p_start is null or p_end is null
   or not isfinite(p_billed) or not isfinite(p_start) or not isfinite(p_end) or p_end<=p_start then return; end if;
- insert into private.report_promotion_invoices(environment,order_id,account_id,subscription_id,product_id,discount_id,discount_amount,billed_at,period_start,period_end,is_initial)
- values(p_environment,p_order,o.user_id,o.provider_subscription_id,o.provider_product_id,p_discount,p_amount,p_billed,p_start,p_end,p_initial)
- on conflict(environment,order_id) do nothing; -- a later refund never replenishes a spent month
+ insert into private.report_promotion_invoices(environment,order_id,account_id,subscription_id,product_id,discount_id,discount_amount,billed_at,period_start,period_end,is_initial,source,reconciled_at)
+ values(p_environment,p_order,o.user_id,o.provider_subscription_id,o.provider_product_id,p_discount,p_amount,p_billed,p_start,p_end,p_initial,p_source,case when p_source='reconciliation' then clock_timestamp() end)
+ on conflict(environment,order_id) do update set reconciled_at=coalesce(excluded.reconciled_at,private.report_promotion_invoices.reconciled_at);
+ update private.report_promotion_invoice_gaps set resolved_at=clock_timestamp() where environment=p_environment and order_id=p_order and resolved_at is null;
+ update private.report_promotion_failures set resolved_at=clock_timestamp() where account_id=o.user_id and environment=p_environment and resolved_at is null
+  and code='promotion_invoice_details_missing' and not exists(select 1 from private.report_promotion_invoice_gaps g where g.account_id=o.user_id and g.environment=p_environment and g.resolved_at is null); -- a later refund never replenishes a spent month
 end $$;
-revoke all on function public.report_promotion_invoice(text,text,text,integer,timestamptz,timestamptz,timestamptz,boolean) from public,anon,authenticated;
-grant execute on function public.report_promotion_invoice(text,text,text,integer,timestamptz,timestamptz,timestamptz,boolean) to service_role;
+revoke all on function public.report_promotion_invoice(text,text,text,integer,timestamptz,timestamptz,timestamptz,boolean,text) from public,anon,authenticated;
+grant execute on function public.report_promotion_invoice(text,text,text,integer,timestamptz,timestamptz,timestamptz,boolean,text) to service_role;
 create table private.report_promotion_failures (
  account_id uuid not null references public.profiles(id), environment text not null check(environment in ('sandbox','production')),
  code text not null check(code in ('polar_discount_unmanaged','polar_discount_catalog_mismatch','polar_discount_subscription_changed',
- 'polar_discount_not_applied','polar_discount_invalid_response','polar_discount_http_failed','promotion_account_failed','promotion_not_authorized','promotion_repair_lease_lost')),
+ 'polar_discount_not_applied','polar_discount_invalid_response','polar_discount_http_failed','promotion_account_failed','promotion_not_authorized','promotion_repair_lease_lost','promotion_invoice_details_missing')),
  attempts integer not null default 1, first_at timestamptz not null, last_at timestamptz not null, resolved_at timestamptz,
  primary key(account_id,environment)
 );
@@ -128,6 +141,21 @@ begin
 end $$;
 revoke all on function public.report_promotion_failed(uuid,text,text,timestamptz) from public,anon,authenticated;
 grant execute on function public.report_promotion_failed(uuid,text,text,timestamptz) to service_role;
+-- Record an incomplete paid cycle without copying the remote payload.
+create function public.report_promotion_invoice_missing(p_environment text,p_order text,p_now timestamptz default clock_timestamp()) returns void
+language plpgsql security definer set search_path='' as $$
+declare o public.billing_orders;
+begin
+ select * into o from public.billing_orders where provider='polar' and environment=p_environment and provider_order_id=p_order;
+ if not found or not o.paid or o.provider_subscription_id is null or private.lock_account_write(o.user_id) then return; end if;
+ if not exists(select 1 from private.report_promotion_catalog c where c.environment=p_environment and c.product_id=o.provider_product_id)
+ or exists(select 1 from private.report_promotion_invoices i where i.environment=p_environment and i.order_id=p_order) then return; end if;
+ insert into private.report_promotion_invoice_gaps(environment,order_id,account_id,first_at,last_at) values(p_environment,p_order,o.user_id,p_now,p_now)
+ on conflict(environment,order_id) do update set last_at=excluded.last_at,resolved_at=null;
+ perform public.report_promotion_failed(o.user_id,p_environment,'promotion_invoice_details_missing',p_now);
+end $$;
+revoke all on function public.report_promotion_invoice_missing(text,text,timestamptz) from public,anon,authenticated;
+grant execute on function public.report_promotion_invoice_missing(text,text,timestamptz) to service_role;
 create table private.report_promotion_launch_uses (
  account_id uuid not null references public.profiles(id), environment text not null check(environment in ('sandbox','production')),
  product_id text not null, attempt_id uuid, checkout_id text, remote_pending boolean not null default false, subscription_id text, order_id text,
@@ -309,6 +337,10 @@ begin
  p.first_refunded:=p.first_refunded or first_order.status<>'paid' or first_order.reported_refunded_amount>0
   or exists(select 1 from public.billing_refunds r where r.environment=p_environment and r.provider_order_id=first_order.provider_order_id and r.status='succeeded' and r.amount>0);
  select * into c from private.report_promotion_catalog where environment=p_environment and product_id=p.product_id;
+ if exists(select 1 from private.report_promotion_invoice_gaps g where g.account_id=p_account and g.environment=p_environment and g.resolved_at is null) then
+   perform public.report_promotion_failed(p_account,p_environment,'promotion_invoice_details_missing',p_now);
+   return null; -- Do not rearm while a known paid cycle has incomplete accounting.
+ end if;
  -- Benefits are consumed by settled recurring invoice periods, never by the mirror clock.
  select r.decided_at into spam_at from public.testing_contribution_reviews r join public.testing_contributions t on t.id=r.contribution_id
  where t.account_id=p_account and t.created_at>=p.subscribed_at and r.decision='spam' and r.decided_at<=p_now order by r.decided_at,t.id offset 1 limit 1;
@@ -448,6 +480,7 @@ grant execute on function public.report_promotion_observe(uuid,text,text,text,ti
  public.report_promotion_prepare(uuid,text,timestamptz),public.report_promotion_claim(uuid,uuid,timestamptz),
  public.report_promotion_ack(uuid,uuid,timestamptz,text,text),public.report_promotion_accounts(text,uuid) to service_role;
 
+alter function public.report_promotion_invoice_missing(text,text,timestamptz) owner to postgres;
 alter function public.report_promotion_period(uuid,text,text,timestamptz) owner to postgres;
 alter function private.report_promotion_checkout_started() owner to postgres;
 alter function public.report_promotion_checkout_pending(uuid,text,timestamptz) owner to postgres;
@@ -462,7 +495,7 @@ alter function public.report_promotion_prepare(uuid,text,timestamptz) owner to p
 alter function public.report_promotion_claim(uuid,uuid,timestamptz) owner to postgres;
 alter function public.report_promotion_ack(uuid,uuid,timestamptz,text,text) owner to postgres;
 alter function public.report_promotion_accounts(text,uuid) owner to postgres;
-alter function public.report_promotion_invoice(text,text,text,integer,timestamptz,timestamptz,timestamptz,boolean) owner to postgres;
+alter function public.report_promotion_invoice(text,text,text,integer,timestamptz,timestamptz,timestamptz,boolean,text) owner to postgres;
 alter function public.report_promotion_failed(uuid,text,text,timestamptz) owner to postgres;
 alter function public.report_promotion_cleared(uuid,uuid,timestamptz) owner to postgres;
 alter function private.native_admin_account(uuid,text,text) owner to postgres;

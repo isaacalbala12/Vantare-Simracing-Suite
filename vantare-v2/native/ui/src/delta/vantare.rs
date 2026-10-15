@@ -103,6 +103,7 @@ enum Item {
 struct Layout {
     width: f32,
     height: f32,
+    content: f32,
     items: Vec<(f32, Item)>,
 }
 
@@ -130,6 +131,7 @@ fn layout(board: Option<&Board>, options: &Options, style: &Style) -> Layout {
         return Layout {
             width: d.pill_width,
             height: d.pill_height,
+            content: 34.0,
             items: Vec::new(),
         };
     }
@@ -139,9 +141,10 @@ fn layout(board: Option<&Board>, options: &Options, style: &Style) -> Layout {
     let shown = board.filter(|b| !waiting(Some(b)));
     if shown.is_some_and(|b| b.banner.is_some()) {
         items.push((0.0, Item::Banner));
-    } else {
-        items.push((y, Item::Header));
+        // La placa de boxes del catálogo ocupa 27 px adicionales.
+        y += 27.0;
     }
+    items.push((y, Item::Header));
     y += variant.header_height + variant.header_gap;
     if message(board) {
         items.push((y, Item::Message));
@@ -166,7 +169,22 @@ fn layout(board: Option<&Board>, options: &Options, style: &Style) -> Layout {
             Size::Expanded => d.width_expanded,
             _ => d.width_bar,
         },
-        height: y + variant.padding_y,
+        content: y + variant.padding_y,
+        height: 2.0 * variant.padding_y
+            + variant.header_height
+            + variant.header_gap
+            + d.message_height.max(d.big_height)
+            + if options.show_bar {
+                d.bar + d.tick_labels
+            } else {
+                0.0
+            }
+            + if options.size == Size::Expanded && options.show_sectors {
+                d.sector_height
+            } else {
+                0.0
+            }
+            + 27.0,
         items,
     }
 }
@@ -430,11 +448,11 @@ impl Visual {
             flash: self.flash(movement, now),
         };
         if self.options.size == Size::Pill {
-            painter.pill_widget(window, cx, self.layout.height);
+            painter.pill_widget(window, cx, self.layout.content);
             return;
         }
         if !self.options.transparent {
-            painter.panel(window, self.layout.height);
+            painter.panel(window, self.layout.content);
         }
         for &(y, item) in &self.layout.items {
             match item {
@@ -604,11 +622,35 @@ impl Painter<'_> {
     fn pill_widget(&self, window: &mut Window, cx: &mut App, height: f32) {
         let d = &self.style.delta;
         let c = &self.style.colors;
-        if !self.options.transparent {
-            self.panel(window, height);
-        }
-        let pad = 16.0;
+        let pad = if self.options.transparent { 16.0 } else { 17.0 };
         let label = self.ink(Face::Body, d.pill_label, 0.3, c.muted.hsla());
+        let (value, color) = self.number();
+        let face = if self.live().is_some() {
+            Face::Display
+        } else {
+            Face::Mono
+        };
+        let size = if self.live().is_some() {
+            d.pill_value
+        } else {
+            d.pill_value - 2.0
+        };
+        let ink = self.ink(face, size, 0.0, color);
+        if !self.options.transparent {
+            let width = (2.0 * pad
+                + text::width(window, "DELTA", &label)
+                + 14.0
+                + text::width(window, value, &ink))
+            .min(self.width);
+            Kit {
+                width,
+                style: self.style,
+                variant: self.variant,
+                accent: self.accent,
+                language: self.language,
+            }
+            .panel(window, height);
+        }
         let x = pad
             + self.label(
                 window,
@@ -621,18 +663,6 @@ impl Painter<'_> {
                 Face::Body,
                 &label,
             );
-        let (value, color) = self.number();
-        let face = if self.live().is_some() {
-            Face::Display
-        } else {
-            Face::Mono
-        };
-        let size = if self.live().is_some() {
-            d.pill_value
-        } else {
-            d.pill_value - 2.0
-        };
-        let ink = self.ink(face, size, 0.3, color);
         self.label(window, cx, value, x + 14.0, None, 0.0, height, face, &ink);
     }
 
@@ -1205,12 +1235,22 @@ mod tests {
         let state = State::new(options.clone());
         let mut board = state.project(&crate::source::fixed());
         board.delta_s = Some(-0.214);
-        board.sectors = vec![Sector::Done(vantare_domain::delta::SectorTone::PersonalBest, Some(-0.118)), Sector::Live(Some(0.5)), Sector::Pending];
+        board.sectors = vec![
+            Sector::Done(
+                vantare_domain::delta::SectorTone::PersonalBest,
+                Some(-0.118),
+            ),
+            Sector::Live(Some(0.5)),
+            Sector::Pending,
+        ];
         let labels = Labels::new(Some(&board), &options, &Style::compiled(), Language::Es);
         assert_eq!(labels.sectors[1].1, "−0.096");
         board.sectors[0] = Sector::Done(vantare_domain::delta::SectorTone::PersonalBest, None);
         let labels = Labels::new(Some(&board), &options, &Style::compiled(), Language::Es);
-        assert!(labels.sectors[1].1.is_empty(), "sin delta cerrado no se inventa el sector en curso");
+        assert!(
+            labels.sectors[1].1.is_empty(),
+            "sin delta cerrado no se inventa el sector en curso"
+        );
     }
 
     #[test]

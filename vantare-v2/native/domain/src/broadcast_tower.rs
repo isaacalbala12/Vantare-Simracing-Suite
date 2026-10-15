@@ -39,6 +39,7 @@ pub struct ViewModel {
     pub session: String,
     pub lap: String,
     pub total_laps: Option<u32>,
+    pub remaining: String,
     pub weather: String,
     pub flag: Option<FlagKind>,
     pub rows: Vec<Row>,
@@ -59,6 +60,11 @@ pub fn project_rows(snapshot: &Snapshot, prefs: Preferences, row_count: usize) -
         _ => Status::Missing,
     };
     let mut cars: Vec<_> = state.cars.iter().collect();
+    let best_laps = state
+        .session
+        .kind
+        .current()
+        .is_some_and(crate::SessionKind::ranks_by_best_lap);
     // Los puestos ausentes van al final, nunca pasan por líderes.
     cars.sort_by_key(|car| {
         car.position
@@ -81,24 +87,17 @@ pub fn project_rows(snapshot: &Snapshot, prefs: Preferences, row_count: usize) -
                 class: class.chars().take(3).collect::<String>().to_uppercase(),
                 accent: class_accent(class),
                 number: car.number.clone(),
-                gap: gap_text(car.gap_leader.current().copied(), place == Some(1), prefs),
+                gap: if best_laps {
+                    classification_gap(car, snapshot)
+                } else {
+                    gap_text(car.gap_leader.current().copied(), place == Some(1), prefs)
+                },
                 in_pits: car.in_pits.current() == Some(&true),
                 is_player: state.player.is_some_and(|player| player.car == car.id),
             }
         })
         .collect();
-    let weather = format::temperature(
-        state
-            .session
-            .weather
-            .track_temperature_k
-            .current()
-            .copied()
-            .filter(|_| available),
-        prefs,
-    );
-    // El diseño de la tira usa solo °, manteniendo la conversión de format.
-    let weather = weather.replace(" °C", "°").replace(" °F", "°");
+    let weather = weather_label(snapshot, prefs, available);
     ViewModel {
         status,
         session: state
@@ -124,6 +123,14 @@ pub fn project_rows(snapshot: &Snapshot, prefs: Preferences, row_count: usize) -
             .current()
             .copied()
             .filter(|laps| available && *laps > 0 && *laps < 2_147_483_647),
+        remaining: format::clock(
+            state
+                .session
+                .remaining_s
+                .current()
+                .copied()
+                .filter(|_| available),
+        ),
         weather,
         flag: if status == Status::Ready {
             state
@@ -136,6 +143,47 @@ pub fn project_rows(snapshot: &Snapshot, prefs: Preferences, row_count: usize) -
         },
         rows,
     }
+}
+
+fn weather_label(snapshot: &Snapshot, prefs: Preferences, available: bool) -> String {
+    format::temperature(
+        snapshot
+            .state
+            .session
+            .weather
+            .track_temperature_k
+            .current()
+            .copied()
+            .filter(|_| available),
+        prefs,
+    )
+    .replace(" °C", "°")
+    .replace(" °F", "°")
+}
+
+fn classification_gap(car: &crate::Car, snapshot: &Snapshot) -> String {
+    car.best_lap_s
+        .current()
+        .copied()
+        .filter(|v| v.is_finite() && *v > 0.0)
+        .map_or_else(
+            || PLACEHOLDER.into(),
+            |lap| {
+                let best = snapshot
+                    .state
+                    .cars
+                    .iter()
+                    .filter(|other| other.class == car.class)
+                    .filter_map(|other| other.best_lap_s.current().copied())
+                    .filter(|v| v.is_finite() && *v > 0.0)
+                    .fold(lap, f64::min);
+                if (lap - best).abs() < 1e-6 {
+                    format::lap_time(Some(lap))
+                } else {
+                    format!("+{:.3}", lap - best)
+                }
+            },
+        )
 }
 
 #[allow(clippy::float_cmp)] // Igualdad exacta del empate de Number.toFixed.

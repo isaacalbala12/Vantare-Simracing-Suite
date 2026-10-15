@@ -7,17 +7,14 @@ use std::sync::OnceLock;
 use vantare_domain::{Snapshot, track_map::Geometry};
 
 pub(super) fn geometry(snapshot: &Snapshot) -> Option<Geometry<'static>> {
-    static DESIGN: OnceLock<Option<Snapshot>> = OnceLock::new();
+    static DESIGN: OnceLock<Vec<Snapshot>> = OnceLock::new();
     let reference = DESIGN.get_or_init(|| {
-        vantare_ipc::snapshot_from_json(
-            include_str!("../../fixtures/track-map-design-system.sequence.json")
-                .trim()
-                .trim_start_matches('[')
-                .trim_end_matches(']'),
-        )
-        .ok()
+        crate::workshop::snapshots_from_json(include_str!(
+            "../../fixtures/track-map-design-system.sequence.json"
+        ))
+        .unwrap_or_default()
     });
-    if reference.as_ref().is_some_and(|r| {
+    if reference.iter().any(|r| {
         r.epoch == snapshot.epoch && r.origin == snapshot.origin && r.state == snapshot.state
     }) {
         return Some(Geometry {

@@ -183,6 +183,9 @@ impl Options {
         match self.cols.driver {
             Preset::Sm => r.driver_sm,
             Preset::Md => r.driver_md,
+            Preset::Lg if self.cols.has(Kind::Number) && !self.cols.has(Kind::Position) => {
+                r.driver_lg - (style.geometry.number_min_width - r.col_position)
+            }
             Preset::Lg => r.driver_lg,
         }
     }
@@ -279,12 +282,14 @@ enum Footer {
     Traffic,
     Pits,
     Legend,
+    Session,
 }
 
 #[derive(Clone, Debug, PartialEq)]
 struct Plan {
     width: f32,
     height: f32,
+    content: f32,
     items: Vec<(f32, Item)>,
     columns: Vec<Placed>,
     /// Franja vertical de las filas (para editar columnas).
@@ -314,9 +319,9 @@ fn plan(board: Option<&Board>, options: &Options, style: &Style) -> Plan {
     let mut y = variant.padding_y + 1.0;
     if shown.is_some_and(|b| b.banner.is_some()) {
         items.push((0.0, Item::Banner));
-    } else {
-        items.push((y, Item::Header));
+        y += g.banner_height + g.banner_gap - variant.padding_y;
     }
+    items.push((y, Item::Header));
     y += variant.header_height + variant.header_gap;
     if options.cols.strip {
         if shown.is_some() {
@@ -334,11 +339,9 @@ fn plan(board: Option<&Board>, options: &Options, style: &Style) -> Plan {
                 y += g.row_height;
             }
             bottom = y;
-            items.retain(|(_, item)| *item != Item::Header);
-            items.push((
-                variant.padding_y - g.footer_gap - 1.0,
-                Item::Footer(Footer::Waiting),
-            ));
+            y += g.footer_gap;
+            items.push((y, Item::Footer(Footer::Waiting)));
+            y += 1.0 + g.footer_gap + g.footer_height;
         }
         Some(board) => {
             top = y;
@@ -348,28 +351,31 @@ fn plan(board: Option<&Board>, options: &Options, style: &Style) -> Plan {
                 y += g.row_height;
             }
             bottom = y;
-            if board.banner.is_none()
-                && ((board.player_in_pits && board.pit_exit.is_some()) || board.traffic.is_some())
+            let footer = if board.player_in_pits && board.pit_exit.is_some() {
+                Some(Footer::Pits)
+            } else if board.traffic.is_some() {
+                Some(Footer::Traffic)
+            } else if options.cols.has(Kind::Trend) {
+                Some(Footer::Legend)
+            } else if !board.session.is_empty()
+                && board.session != "CARRERA"
+                && board.session != "RACE"
             {
-                items.retain(|(_, item)| *item != Item::Header);
-                items.push((
-                    variant.padding_y - g.footer_gap - 1.0,
-                    Item::Footer(if board.player_in_pits {
-                        Footer::Pits
-                    } else {
-                        Footer::Traffic
-                    }),
-                ));
-            }
-            if options.cols.has(Kind::Trend) {
+                Some(Footer::Session)
+            } else {
+                None
+            };
+            if let Some(footer) = footer {
                 y += g.footer_gap;
-                items.push((y, Item::Footer(Footer::Legend)));
+                items.push((y, Item::Footer(footer)));
+                y += 1.0 + g.footer_gap + g.footer_height;
             }
         }
     }
     let rows = (top, bottom.max(top + g.row_height));
     Plan {
         width,
+        content: y + variant.padding_y + 1.0,
         height: 2.0
             + 2.0 * variant.padding_y
             + variant.header_height
@@ -384,7 +390,13 @@ fn plan(board: Option<&Board>, options: &Options, style: &Style) -> Plan {
                 2.0 * g.footer_gap + 1.0 + g.footer_height
             } else {
                 0.0
-            },
+            }
+            + g.banner_height
+            + g.banner_gap
+            - variant.padding_y
+            + 2.0 * g.footer_gap
+            + 1.0
+            + g.footer_height,
         items,
         columns,
         rows,
@@ -919,7 +931,7 @@ impl<'a> std::ops::Deref for Painter<'a> {
 
 impl Painter<'_> {
     fn paint(&self, window: &mut Window, cx: &mut App) {
-        self.panel(window, self.plan.height);
+        self.panel(window, self.plan.content);
         for &(y, item) in &self.plan.items {
             match item {
                 Item::Banner => self.banner(window, cx),
@@ -1374,6 +1386,17 @@ impl Painter<'_> {
         let ink = self.ink(Face::Body, f.header, 0.0, c.muted.hsla());
         let es = self.es();
         match footer {
+            Footer::Session => {
+                let session = self.board.map_or("", |b| b.session.as_str());
+                let text = if session.to_lowercase().starts_with("pr") {
+                    if es { "Tanda —" } else { "Run —" }
+                } else if es {
+                    "Delta de vuelta lanzada —"
+                } else {
+                    "Flying lap delta —"
+                };
+                self.label(window, cx, text, pad, None, top, h, Face::Body, &ink);
+            }
             Footer::Waiting => {
                 let pulse = g.pulse;
                 round_rect(
@@ -1681,9 +1704,18 @@ mod tests {
         let options = options("standard");
         let state = State::new(options.clone());
         let mut board = state.project(&crate::source::fixed());
-        for (session, expected) in [("CARRERA", "RELATIVE"), ("RACE", "RELATIVE"), ("", "RELATIVE"), ("CLASIFICACIÓN", "RELATIVE · CLASIFICACIÓN"), ("PRÁCTICA", "RELATIVE · PRÁCTICA")] {
+        for (session, expected) in [
+            ("CARRERA", "RELATIVE"),
+            ("RACE", "RELATIVE"),
+            ("", "RELATIVE"),
+            ("CLASIFICACIÓN", "RELATIVE · CLASIFICACIÓN"),
+            ("PRÁCTICA", "RELATIVE · PRÁCTICA"),
+        ] {
             board.session = session.into();
-            assert_eq!(Labels::new(Some(&board), &options, Language::Es).title, expected);
+            assert_eq!(
+                Labels::new(Some(&board), &options, Language::Es).title,
+                expected
+            );
         }
     }
 

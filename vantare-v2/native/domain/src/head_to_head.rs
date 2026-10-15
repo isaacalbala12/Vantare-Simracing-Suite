@@ -1,5 +1,6 @@
 //! H2H Eficiencia: vecinos de la clasificación general, sin reglas de simulador.
 //! El gap viene de `relative_s`; nunca de `gap_leader` ni `gap_ahead`.
+//! El duelo Vantare fuera de carrera compara mejores vueltas; no predice alcance.
 //! Sectores y mejor vuelta solo usan tiempos fiables del contrato neutral.
 
 use crate::format::{self, Language, PLACEHOLDER, Preferences};
@@ -54,6 +55,11 @@ pub fn project(snapshot: &Snapshot, prefs: Preferences, target: Target) -> ViewM
         duel: None,
     };
     if snapshot.state.source_state != SourceState::Live {
+        vm.no_rival = match prefs.language {
+            Language::Es => "ESPERANDO A LMU",
+            Language::En => "WAITING FOR LMU",
+        }
+        .into();
         return vm;
     }
     let Some(player) = snapshot.state.player else {
@@ -102,12 +108,16 @@ pub fn project(snapshot: &Snapshot, prefs: Preferences, target: Target) -> ViewM
         vm.rows
             .push(row(car, *position, false, target == Target::Behind, prefs));
     }
-    vm.duel = duel(snapshot, &vm.rows, prefs);
+    vm.duel = duel(snapshot, &vm.rows, prefs, target);
+    if vm.duel.as_ref().is_some_and(|d| d.best_laps) && target == Target::Ahead {
+        vm.header = "H2H · POLE".into();
+    }
     vm
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Duel {
+    pub best_laps: bool,
     pub left: Row,
     pub right: Row,
     pub laps: [String; 2],
@@ -117,15 +127,14 @@ pub struct Duel {
     pub catch: String,
     pub good: bool,
 }
-fn duel(snapshot: &Snapshot, rows: &[Row], prefs: Preferences) -> Option<Duel> {
+fn duel(snapshot: &Snapshot, rows: &[Row], prefs: Preferences, target: Target) -> Option<Duel> {
     let es = prefs.language == Language::Es;
     let player = rows.iter().find(|r| r.is_player)?;
     let rival = rows.iter().find(|r| r.selected)?;
     let player_car = snapshot.state.player_car()?;
-    let rival_car = snapshot.state.cars.iter().find(|c| {
+    let mut rival_car = snapshot.state.cars.iter().find(|c| {
         c.position.current().map(u32::to_string).as_deref() == Some(rival.place.as_str())
     })?;
-    let player_left = player.place.parse::<u32>().ok()? < rival.place.parse::<u32>().ok()?;
     let best = snapshot
         .state
         .session
@@ -139,13 +148,127 @@ fn duel(snapshot: &Snapshot, rows: &[Row], prefs: Preferences) -> Option<Duel> {
             &car.last_lap_s
         }))
     };
+    let pole_row;
+    let rival = if best && target == Target::Ahead {
+        let class = player_car.class.as_ref()?;
+        rival_car = snapshot
+            .state
+            .cars
+            .iter()
+            .filter(|car| {
+                car.id != player_car.id
+                    && car.class.as_ref().is_some_and(|other| other.id == class.id)
+            })
+            .filter_map(|car| lap(car).map(|time| (car, time)))
+            .min_by(|(_, a), (_, b)| a.total_cmp(b))
+            .map(|(car, _)| car)?;
+        if lap(rival_car)? > lap(player_car)? {
+            return None;
+        }
+        pole_row = row(
+            rival_car,
+            *rival_car.position.current()?,
+            false,
+            true,
+            prefs,
+        );
+        &pole_row
+    } else {
+        rival
+    };
+    let player_left = player.place.parse::<u32>().ok()? < rival.place.parse::<u32>().ok()?;
     let (left, right, left_car, right_car) = if player_left {
         (player, rival, player_car, rival_car)
     } else {
         (rival, player, rival_car, player_car)
     };
     let advantage = lap(rival_car).zip(lap(player_car)).map(|(a, b)| a - b);
-    let (trend, catch) = advantage.map_or_else(
+    let (trend, catch) = race_pace(
+        advantage.filter(|_| !best),
+        player_left,
+        crate::relative::relative_seconds(rival_car),
+        es,
+    );
+    let sector_delta = sector_deltas(player_car, rival_car, best);
+    let trend = if best {
+        losing_sectors(&sector_delta, es)
+    } else {
+        trend
+    };
+    Some(Duel {
+        best_laps: best,
+        left: left.clone(),
+        right: right.clone(),
+        gap: if best {
+            lap(player_car)
+                .zip(lap(rival_car))
+                .map_or_else(|| PLACEHOLDER.into(), |(a, b)| format!("{:+.3}", a - b))
+        } else {
+            rival.gap.clone()
+        },
+        laps: [
+            format::lap_time(lap(left_car)),
+            format::lap_time(lap(right_car)),
+        ],
+        sectors: sector_delta.map(|delta| {
+            delta.map_or_else(
+                || PLACEHOLDER.into(),
+                |v| {
+                    if best {
+                        format!("{v:+.3}")
+                    } else {
+                        format!("{v:+.2}")
+                    }
+                },
+            )
+        }),
+        trend,
+        catch,
+        good: advantage.is_some_and(|v| v > 0.0),
+    })
+}
+
+fn sector_deltas(player_car: &Car, rival_car: &Car, best: bool) -> [Option<f64>; 3] {
+    std::array::from_fn(|i| {
+        reliable_time(if best {
+            player_car.best_sectors_s.get(i)
+        } else {
+            player_car.last_sectors_s.get(i)
+        })
+        .zip(reliable_time(if best {
+            rival_car.best_sectors_s.get(i)
+        } else {
+            rival_car.last_sectors_s.get(i)
+        }))
+        .map(|(a, b)| a - b)
+    })
+}
+
+fn losing_sectors(sector_delta: &[Option<f64>; 3], es: bool) -> String {
+    let losing: Vec<_> = sector_delta
+        .iter()
+        .enumerate()
+        .filter(|(_, delta)| delta.is_some_and(|v| v > 0.0))
+        .map(|(i, _)| format!("S{}", i + 1))
+        .collect();
+    if losing.is_empty() {
+        String::new()
+    } else {
+        format!(
+            "{} {}",
+            if es { "pierdes en" } else { "losing in" },
+            losing.join(if es { " y " } else { " and " })
+        )
+    }
+}
+
+fn race_pace(
+    advantage: Option<f64>,
+    player_left: bool,
+    gap: Option<f64>,
+    es: bool,
+) -> (String, String) {
+    advantage.map_or_else(
         || (String::new(), String::new()),
         |adv| {
             let closing = if player_left { -adv } else { adv };
@@ -178,7 +301,7 @@ fn duel(snapshot: &Snapshot, rows: &[Row], prefs: Preferences) -> Option<Duel> {
                     if es { "s/v" } else { "s/lap" }
                 )
             };
-            let catch = crate::relative::relative_seconds(rival_car)
+            let catch = gap
                 .filter(|_| closing > 0.01)
                 .map(|gap| (gap.abs() / closing).ceil())
                 .filter(|n| n.is_finite() && *n <= 999.0)
@@ -196,24 +319,7 @@ fn duel(snapshot: &Snapshot, rows: &[Row], prefs: Preferences) -> Option<Duel> {
                 });
             (trend, catch)
         },
-    );
-    Some(Duel {
-        left: left.clone(),
-        right: right.clone(),
-        gap: rival.gap.clone(),
-        laps: [
-            format::lap_time(lap(left_car)),
-            format::lap_time(lap(right_car)),
-        ],
-        sectors: std::array::from_fn(|i| {
-            reliable_time(player_car.last_sectors_s.get(i))
-                .zip(reliable_time(rival_car.last_sectors_s.get(i)))
-                .map_or_else(|| PLACEHOLDER.into(), |(a, b)| format!("{:+.2}", a - b))
-        }),
-        trend,
-        catch,
-        good: advantage.is_some_and(|v| v > 0.0),
-    })
+    )
 }
 
 fn row(car: &Car, position: u32, is_player: bool, selected: bool, prefs: Preferences) -> Row {
@@ -312,6 +418,46 @@ mod tests {
             },
             ..Snapshot::default()
         }
+    }
+
+    #[test]
+    fn qualifying_duel_uses_the_measured_class_pole_instead_of_the_neighbour() {
+        let mut snapshot = scene(3);
+        snapshot.state.session.kind = Reliable(crate::SessionKind::Qualifying);
+        for car in &mut snapshot.state.cars {
+            car.class = Some(crate::Class {
+                id: crate::ClassId(7),
+                name: "Hypercar".into(),
+            });
+            car.best_lap_s = Reliable(match car.id.0 {
+                1 => 204.502,
+                2 => 204.689,
+                _ => 204.911,
+            });
+            car.relative_s = Reliable(99.0);
+        }
+        let vm = project(&snapshot, Preferences::default(), Target::Ahead);
+        let duel = vm.duel.expect("pole medida");
+        assert_eq!(vm.header, "H2H · POLE");
+        assert!(duel.best_laps);
+        assert_eq!(duel.left.place, "1");
+        assert_eq!(duel.right.place, "3");
+        assert_eq!(duel.gap, "+0.409");
+        assert_eq!(duel.laps, ["3:24.502", "3:24.911"]);
+        assert!(
+            duel.trend.is_empty() && duel.catch.is_empty(),
+            "no se predice alcance con mejores vueltas de qualy"
+        );
+        for car in &mut snapshot.state.cars {
+            if car.id != crate::CarId(3) {
+                car.best_lap_s = Unavailable;
+            }
+        }
+        assert!(
+            project(&snapshot, Preferences::default(), Target::Ahead)
+                .duel
+                .is_none()
+        );
     }
 
     #[test]

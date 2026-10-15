@@ -230,34 +230,35 @@ fn main() -> ExitCode {
                     {
                         snapshots.truncate(until.saturating_add(1));
                     }
-                    let settings = match std::env::var("VANTARE_CAPTURE_SETTINGS") {
-                        Ok(json) => serde_json::from_str::<vantare_ui::Settings>(&json)
+                    let settings = if let Ok(json) = std::env::var("VANTARE_CAPTURE_SETTINGS") {
+                        serde_json::from_str::<vantare_ui::Settings>(&json)
                             .map(|s| s.normalized())
-                            .map_err(|e| e.to_string()),
-                        Err(_) => {
-                            // Los mismos ajustes de partida que el Workshop del Hub.
-                            let mut settings = vantare_ui::Settings::default_for(widget);
-                            match &mut settings {
-                                vantare_ui::Settings::Standings(standings) => {
-                                    standings.row_count = 8;
-                                    standings.apply_session_presets();
-                                    standings.practice_columns = Some(
-                                        vantare_ui::standings::vantare_standard_session_template(),
-                                    );
-                                    standings.qualifying_columns = Some(
-                                        vantare_ui::standings::vantare_standard_session_template(),
-                                    );
-                                    standings.class_scope = "all-classes".into();
-                                    standings.columns =
-                                        Some(vantare_ui::standings::vantare_template("standard"));
-                                }
-                                vantare_ui::Settings::Relative(relative) => {
-                                    relative.class_scope = "all".into();
-                                }
-                                _ => {}
+                            .map_err(|e| e.to_string())
+                    } else {
+                        // Los mismos ajustes de partida que el Workshop del Hub.
+                        let mut settings = vantare_ui::Settings::default_for(widget);
+                        match &mut settings {
+                            vantare_ui::Settings::Standings(standings) => {
+                                standings.row_count = 8;
+                                standings.apply_session_presets();
+                                standings.practice_columns =
+                                    Some(vantare_ui::standings::vantare_standard_session_template(
+                                        vantare_ui::session::Session::Practice,
+                                    ));
+                                standings.qualifying_columns =
+                                    Some(vantare_ui::standings::vantare_standard_session_template(
+                                        vantare_ui::session::Session::Qualifying,
+                                    ));
+                                standings.class_scope = "all-classes".into();
+                                standings.columns =
+                                    Some(vantare_ui::standings::vantare_template("standard"));
                             }
-                            Ok(settings)
+                            vantare_ui::Settings::Relative(relative) => {
+                                relative.class_scope = "all".into();
+                            }
+                            _ => {}
                         }
+                        Ok(settings)
                     };
                     match settings {
                         Ok(settings) => vantare_ui::capture::run_configured_sequence(

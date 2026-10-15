@@ -124,9 +124,11 @@ impl Widget {
         {
             self.personal_improvement = Some((new as f64 - old as f64) / 1000.0);
         }
-        self.detail = details(snapshot, &next);
+        let detail_changed =
+            crate::app::replace_if_changed(&mut self.detail, details(snapshot, &next));
 
-        let labels_changed = self.vm.class_label != next.class_label
+        let labels_changed = detail_changed
+            || self.vm.class_label != next.class_label
             || self.vm.personal_label != next.personal_label
             || self.vm.active_class != next.active_class;
         let update = self.records.accept_visible(
@@ -306,11 +308,13 @@ fn ease_out(x: f32) -> f32 {
     t * t * (3.0 - 2.0 * t)
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 struct Detail {
     id: vantare_domain::CarId,
     subtitle: String,
     sectors: [Option<bool>; 3],
+    session: Option<crate::session::Session>,
+    clock: String,
 }
 fn details(snapshot: &Snapshot, vm: &ViewModel) -> Vec<Detail> {
     snapshot
@@ -322,6 +326,21 @@ fn details(snapshot: &Snapshot, vm: &ViewModel) -> Vec<Detail> {
                 || vm.personal.as_ref().is_some_and(|t| t.car == c.id)
         })
         .map(|car| Detail {
+            session: crate::session::Session::of(&snapshot.state.session.kind),
+            clock: if snapshot.state.session.kind.current()
+                == Some(&vantare_domain::SessionKind::Qualifying)
+            {
+                let clock = vantare_domain::format::clock(
+                    snapshot.state.session.remaining_s.current().copied(),
+                );
+                if clock.len() == 4 {
+                    format!("0{clock}")
+                } else {
+                    clock
+                }
+            } else {
+                String::new()
+            },
             id: car.id,
             subtitle: format!("{} #{}", car.vehicle.as_str(), car.number),
             sectors: std::array::from_fn(|i| {
@@ -410,10 +429,13 @@ fn paint(
             "PERSONAL BEST"
         }
     } else {
-        if kit.es() {
-            "VUELTA RÁPIDA"
-        } else {
-            "FASTEST LAP"
+        match (detail.and_then(|d| d.session), kit.es()) {
+            (Some(crate::session::Session::Qualifying), true) => "POLE PROVISIONAL",
+            (Some(crate::session::Session::Qualifying), false) => "PROVISIONAL POLE",
+            (Some(crate::session::Session::Practice), true) => "MEJOR DE LA PRÁCTICA",
+            (Some(crate::session::Session::Practice), false) => "PRACTICE BEST",
+            (_, true) => "VUELTA RÁPIDA",
+            (_, false) => "FASTEST LAP",
         }
     };
     kit.label(
@@ -439,7 +461,7 @@ fn paint(
             width,
             14.0,
             3.0,
-            Color(0xe14a54, alpha).hsla(),
+            style.class(&class).dot.alpha(alpha),
         );
         kit.label(
             window,
@@ -541,9 +563,14 @@ fn paint(
             &ink,
         );
     }
-    let lap = timing.laps.map_or_else(
-        || "—".into(),
-        |v| format!("{} {v}", if kit.es() { "V" } else { "L" }),
+    let lap = detail.filter(|d| !d.clock.is_empty()).map_or_else(
+        || {
+            timing.laps.map_or_else(
+                || "—".into(),
+                |v| format!("{} {v}", if kit.es() { "V" } else { "L" }),
+            )
+        },
+        |d| d.clock.clone(),
     );
     kit.label(
         window,
@@ -561,13 +588,43 @@ fn paint(
 impl Settings {
     #[allow(clippy::unused_self)] // Contrato común de demanda por renderer.
     pub fn demand(&self) -> vantare_ipc::Demand {
-        use vantare_ipc::Signal::{LapCount, LapTimes, TrackName};
-        crate::demand::signals(250, &[LapTimes, LapCount, TrackName])
+        use vantare_ipc::Signal::{LapCount, LapTimes, SessionClock, SessionInfo, TrackName};
+        crate::demand::signals(
+            250,
+            &[LapTimes, LapCount, TrackName, SessionInfo, SessionClock],
+        )
     }
 }
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn title_and_clock_follow_the_session_without_announcing_an_old_live_record() {
+        let mut photo = crate::workshop::snapshots_from_json(include_str!(
+            "../../fixtures/fastest-lap-design-system.sequence.json"
+        ))
+        .expect("fotos")
+        .remove(1);
+        photo.origin.source.kind = vantare_domain::SourceKind::Live;
+        let prefs = Preferences::default();
+        let mut widget = Widget::new(&Settings::default(), prefs);
+        widget.ingest(&photo, prefs);
+        photo.state.session.kind =
+            vantare_domain::Quality::Reliable(vantare_domain::SessionKind::Qualifying);
+        photo.state.session.remaining_s = vantare_domain::Quality::Reliable(522.0);
+        widget.ingest(&photo, prefs);
+        assert!(!widget.detail.is_empty());
+        assert!(
+            widget
+                .detail
+                .iter()
+                .all(|d| d.session == Some(crate::session::Session::Qualifying)
+                    && d.clock == "08:42")
+        );
+        assert!(!widget.ingest(&photo, prefs));
+        assert!(widget.notice.is_none());
+    }
+
     #[test]
     fn workshop_preview_is_explicit_and_does_not_announce_an_old_live_record() {
         let photos = crate::workshop::snapshots_from_json(include_str!(

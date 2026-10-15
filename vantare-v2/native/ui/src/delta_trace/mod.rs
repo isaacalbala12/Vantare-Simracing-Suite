@@ -114,9 +114,9 @@ fn paint(
         &tick,
     );
     if history.points.is_empty() {
-        paint_trace(samples, window);
+        paint_trace(samples, details.invalid, window);
     } else {
-        paint_lap(history, window);
+        paint_lap(history, details.invalid, window);
     }
     round_rect(
         window,
@@ -238,10 +238,13 @@ impl Settings {
     }
 }
 
-fn paint_trace(samples: &[Sample], window: &mut Window) {
+fn paint_trace(samples: &[Sample], invalid: bool, window: &mut Window) {
     let (ox, oy) = text::origin();
     let mut connected = false;
-    for pair in samples.windows(2) {
+    for (index, pair) in samples.windows(2).enumerate() {
+        if invalid && index / 3 % 2 == 1 {
+            continue;
+        }
         if let (Some(a), Some(b)) = (pair[0].delta_seconds, pair[1].delta_seconds) {
             if pair[1].break_before {
                 continue;
@@ -261,7 +264,17 @@ fn paint_trace(samples: &[Sample], window: &mut Window) {
             if let Ok(line) = line.build() {
                 window.paint_path(
                     line,
-                    Color(if b < 0.0 { 0x4ade80 } else { 0xff7a82 }, 1.0).hsla(),
+                    Color(
+                        if invalid {
+                            0x6e6668
+                        } else if b < 0.0 {
+                            0x4ade80
+                        } else {
+                            0xff7a82
+                        },
+                        1.0,
+                    )
+                    .hsla(),
                 );
             }
             connected = true;
@@ -280,11 +293,14 @@ fn paint_trace(samples: &[Sample], window: &mut Window) {
     }
 }
 
-fn paint_lap(history: &lap::History, window: &mut Window) {
+fn paint_lap(history: &lap::History, invalid: bool, window: &mut Window) {
     let (ox, oy) = text::origin();
     for (points, previous) in [(&history.previous, true), (&history.points, false)] {
-        for pair in points.windows(2) {
+        for (index, pair) in points.windows(2).enumerate() {
             if pair[1].cut {
+                continue;
+            }
+            if invalid && !previous && index / 3 % 2 == 1 {
                 continue;
             }
             let position = |p: &lap::Point| {
@@ -298,6 +314,8 @@ fn paint_lap(history: &lap::History, window: &mut Window) {
             line.line_to(position(&pair[1]));
             let color = if previous {
                 Color(0xffffff, 0.22)
+            } else if invalid {
+                Color(0x6e6668, 1.0)
             } else {
                 Color(
                     if pair[1].delta < 0.0 {
@@ -311,7 +329,7 @@ fn paint_lap(history: &lap::History, window: &mut Window) {
             if let Ok(line) = line.build() {
                 window.paint_path(line, color.hsla());
             }
-            if !previous {
+            if !previous && !invalid {
                 let mut fill = PathBuilder::fill();
                 fill.move_to(position(&pair[0]));
                 fill.line_to(position(&pair[1]));

@@ -53,6 +53,7 @@ pub(crate) enum Kind {
     Driver,
     Compound,
     Pit,
+    Laps,
     Sectors,
     Last,
     Best,
@@ -68,6 +69,7 @@ impl Kind {
             "driverName" => Self::Driver,
             "tireCompound" => Self::Compound,
             "pit" => Self::Pit,
+            "currentLap" => Self::Laps,
             "sectors" => Self::Sectors,
             "lastLap" => Self::Last,
             "bestLap" => Self::Best,
@@ -84,6 +86,7 @@ impl Kind {
             Self::Driver => "driverName",
             Self::Compound => "tireCompound",
             Self::Pit => "pit",
+            Self::Laps => "currentLap",
             Self::Sectors => "sectors",
             Self::Last => "lastLap",
             Self::Best => "bestLap",
@@ -94,7 +97,10 @@ impl Kind {
 
     /// Los tiempos y diferencias se alinean a la derecha de su columna.
     fn right_aligned(self) -> bool {
-        matches!(self, Self::Last | Self::Best | Self::Interval | Self::Gap)
+        matches!(
+            self,
+            Self::Laps | Self::Last | Self::Best | Self::Interval | Self::Gap
+        )
     }
 }
 
@@ -214,6 +220,16 @@ impl Options {
     /// Ancho máximo del piloto según su preset.
     fn driver_max(&self, style: &Style) -> f32 {
         let g = &style.geometry;
+        if self.numeric_sectors() && self.cols.driver == Preset::Lg {
+            return (900.0 - self.layout(style, 0.0).1).max(g.driver_xs);
+        }
+        if self.cols.driver == Preset::Md
+            && self.cols.has(Kind::Best)
+            && !self.cols.has(Kind::Number)
+            && !self.cols.has(Kind::Sectors)
+        {
+            return (520.0 - self.layout(style, 0.0).1).max(g.driver_xs);
+        }
         match self.cols.driver {
             Preset::Xs => g.driver_xs,
             Preset::Sm => g.driver_sm,
@@ -244,7 +260,16 @@ impl Options {
                 Kind::Number => dot + g.number_min_width,
                 Kind::Driver => driver + if number { 0.0 } else { dot },
                 Kind::Compound => g.compound_size,
+                Kind::Pit
+                    if self.cols.has(Kind::Best)
+                        && !self.cols.has(Kind::Number)
+                        && !self.cols.has(Kind::Sectors) =>
+                {
+                    56.0
+                }
                 Kind::Pit => g.col_pit,
+                Kind::Laps => 34.0,
+                Kind::Sectors if self.numeric_sectors() => 3.0 * g.col_gap + 2.0 * g.cell_gap,
                 Kind::Sectors => 3.0 * g.sector_width + 2.0 * g.sector_gap,
                 Kind::Last | Kind::Best => g.col_lap,
                 Kind::Interval | Kind::Gap => g.col_gap,
@@ -254,6 +279,10 @@ impl Options {
             x += width;
         }
         (placed, x + pad)
+    }
+
+    fn numeric_sectors(&self) -> bool {
+        self.cols.has(Kind::Sectors) && self.cols.has(Kind::Best) && !self.cols.has(Kind::Last)
     }
 
     #[cfg(test)]
@@ -306,14 +335,18 @@ enum Footer {
     Spectator,
     Pits,
     Session,
+    Frozen,
 }
 
 #[derive(Clone, Debug, PartialEq)]
 struct Plan {
     width: f32,
     height: f32,
+    content: f32,
     items: Vec<(f32, Item)>,
     columns: Vec<Placed>,
+    gaps: Vec<Vec<String>>,
+    sector_times: Vec<Vec<Vec<String>>>,
 }
 
 fn waiting(board: Option<&Board>) -> bool {
@@ -323,6 +356,36 @@ fn waiting(board: Option<&Board>) -> bool {
 /// Líder de su clase (la proyección rotula su gap como «Líder»).
 fn is_leader(row: &Row) -> bool {
     matches!(row.gap.as_str(), "Líder" | "Leader")
+}
+
+fn qualifying(board: &Board) -> bool {
+    let session = board.session.to_lowercase();
+    session.starts_with("clasi") || session.starts_with("qual")
+}
+
+fn gap_text(board: &Board, row: &Row) -> String {
+    if board.gap_to_best_lap {
+        row.classification_gap_s.map_or_else(
+            || PLACEHOLDER.into(),
+            |seconds| {
+                if seconds <= 1e-6 {
+                    if qualifying(board) { "Pole" } else { "" }.into()
+                } else {
+                    format!("+{seconds:.3}")
+                }
+            },
+        )
+    } else {
+        row.gap.clone()
+    }
+}
+
+fn header_clock(value: &str) -> String {
+    if value.matches(':').count() == 1 && value.split(':').next().is_some_and(|s| s.len() == 1) {
+        format!("0{value}")
+    } else {
+        value.into()
+    }
 }
 
 /// Clase mostrada: la del jugador o, sin jugador, la primera (la del líder).
@@ -379,13 +442,14 @@ fn plan(board: Option<&Board>, options: &Options, style: &Style) -> Plan {
     let (columns, width) = options.layout(style, options.driver_max(style));
     let mut items = Vec::new();
     let mut y = variant.padding_y + 1.0;
-    if board.is_some_and(|b| b.banner.is_some()) {
+    let shown = board.filter(|b| !waiting(Some(b)));
+    if shown.is_some_and(|b| b.banner.is_some()) {
         items.push((0.0, Item::Banner));
-    } else {
-        items.push((y, Item::Header));
+        y += g.banner_height + g.banner_gap - variant.padding_y;
     }
+    items.push((y, Item::Header));
     y += variant.header_height + variant.header_gap;
-    match board.filter(|b| !waiting(Some(b))) {
+    match shown {
         None => {
             items.push((y, Item::Wait));
             y += g.wait_height;
@@ -396,7 +460,7 @@ fn plan(board: Option<&Board>, options: &Options, style: &Style) -> Plan {
             }
         }
         Some(board) => {
-            if options.cols.has(Kind::Last) || options.cols.has(Kind::Best) {
+            if column_labels(options) {
                 items.push((y, Item::Columns));
                 y += g.column_header_height;
             }
@@ -411,21 +475,24 @@ fn plan(board: Option<&Board>, options: &Options, style: &Style) -> Plan {
                 items.push((y, Item::Row(gi, ri)));
                 y += g.row_height;
             }
-            if board.banner.is_none() && (!board.player_present || board.player_in_pits) {
-                // La información de espectador/boxes sustituye la cabecera.
-                items.retain(|(_, item)| *item != Item::Header);
-                items.push((
-                    variant.padding_y - g.footer_gap - 1.0,
-                    Item::Footer(if board.player_present {
-                        Footer::Pits
-                    } else {
-                        Footer::Spectator
-                    }),
-                ));
-            }
-            if options.cols.has(Kind::Last) || options.cols.has(Kind::Best) {
+            let footer = if matches!(board.banner, Some(Banner::FullCourseYellow)) {
+                Some(Footer::Frozen)
+            } else if board.player_in_pits {
+                Some(Footer::Pits)
+            } else if !board.player_present {
+                Some(Footer::Spectator)
+            } else if board.gap_to_best_lap
+                || options.cols.has(Kind::Last)
+                || options.cols.has(Kind::Best)
+            {
+                Some(Footer::Session)
+            } else {
+                None
+            };
+            if let Some(footer) = footer {
                 y += g.footer_gap;
-                items.push((y, Item::Footer(Footer::Session)));
+                items.push((y, Item::Footer(footer)));
+                y += 1.0 + g.footer_gap + g.footer_height;
             }
         }
     }
@@ -433,18 +500,78 @@ fn plan(board: Option<&Board>, options: &Options, style: &Style) -> Plan {
     Plan {
         width,
         height,
+        content: y + variant.padding_y + 1.0,
         items,
         columns,
+        gaps: gap_labels(board, options),
+        sector_times: sector_labels(board),
     }
 }
 
-/// Caja estable; los avisos sustituyen espacio dentro de ella.
+fn gap_labels(board: Option<&Board>, options: &Options) -> Vec<Vec<String>> {
+    board.map_or_else(Vec::new, |b| {
+        b.groups
+            .iter()
+            .map(|g| {
+                g.rows
+                    .iter()
+                    .map(|r| {
+                        if b.gap_to_best_lap
+                            && !options.cols.has(Kind::Best)
+                            && r.classification_gap_s.is_some_and(|v| v.abs() < 1e-6)
+                        {
+                            r.best_lap.clone()
+                        } else {
+                            gap_text(b, r)
+                        }
+                    })
+                    .collect()
+            })
+            .collect()
+    })
+}
+
+fn sector_labels(board: Option<&Board>) -> Vec<Vec<Vec<String>>> {
+    board.map_or_else(Vec::new, |b| {
+        b.groups
+            .iter()
+            .map(|g| {
+                g.rows
+                    .iter()
+                    .map(|r| {
+                        r.best_sector_times_s
+                            .iter()
+                            .map(|seconds| {
+                                seconds.map_or_else(
+                                    || PLACEHOLDER.into(),
+                                    |s| {
+                                        if s < 60.0 {
+                                            format!("{s:.3}")
+                                        } else {
+                                            vantare_domain::format::lap_time(Some(s))
+                                        }
+                                    },
+                                )
+                            })
+                            .collect()
+                    })
+                    .collect()
+            })
+            .collect()
+    })
+}
+
+fn column_labels(options: &Options) -> bool {
+    options.cols.has(Kind::Last) || options.cols.has(Kind::Laps) || options.cols.has(Kind::Sectors)
+}
+
+/// Caja estable, con reserva transparente para franja y pie contextuales.
 fn fixed_height(options: &Options, style: &Style) -> f32 {
     let g = &style.geometry;
     let v = options.variant(style);
     let detailed = options.cols.has(Kind::Last) || options.cols.has(Kind::Best);
     let table = options.rows as f32 * g.row_height
-        + if detailed {
+        + if column_labels(options) {
             g.column_header_height
         } else {
             0.0
@@ -463,6 +590,14 @@ fn fixed_height(options: &Options, style: &Style) -> f32 {
             2.0 * g.footer_gap + 1.0 + g.footer_height
         } else {
             0.0
+        }
+        + g.banner_height
+        + g.banner_gap
+        - v.padding_y
+        + if detailed {
+            0.0
+        } else {
+            2.0 * g.footer_gap + 1.0 + g.footer_height
         }
 }
 
@@ -506,6 +641,8 @@ fn same_board(a: &Board, b: &Board) -> bool {
                         &a.vehicle,
                         a.compound,
                         a.pit,
+                        &a.laps,
+                        a.in_pits,
                     ) == (
                         b.id,
                         &b.position,
@@ -515,6 +652,8 @@ fn same_board(a: &Board, b: &Board) -> bool {
                         &b.vehicle,
                         b.compound,
                         b.pit,
+                        &b.laps,
+                        b.in_pits,
                     ) && (
                         &a.sectors,
                         &a.last_lap,
@@ -522,7 +661,10 @@ fn same_board(a: &Board, b: &Board) -> bool {
                         a.best_mark,
                         &a.gap,
                         &a.interval,
+                        &a.classification_gap,
+                        a.classification_gap_s,
                         a.is_player,
+                        &a.best_sector_times_s,
                     ) == (
                         &b.sectors,
                         &b.last_lap,
@@ -530,7 +672,10 @@ fn same_board(a: &Board, b: &Board) -> bool {
                         b.best_mark,
                         &b.gap,
                         &b.interval,
+                        &b.classification_gap,
+                        b.classification_gap_s,
                         b.is_player,
+                        &b.best_sector_times_s,
                     )
                 })
         })
@@ -739,7 +884,7 @@ impl<'a> std::ops::Deref for Painter<'a> {
 
 impl Painter<'_> {
     fn paint(&self, window: &mut Window, cx: &mut App) {
-        self.panel(window, self.plan.height);
+        self.panel(window, self.plan.content);
         for &(y, item) in &self.plan.items {
             match item {
                 Item::Banner => self.banner(window, cx),
@@ -836,6 +981,16 @@ impl Painter<'_> {
         let mut x = pad;
         // Final del texto izquierdo: el derecho no puede pisarlo.
         let left_end = if lap.is_empty() {
+            let session = board.filter(|b| b.remaining != PLACEHOLDER).map_or_else(
+                || session.clone(),
+                |b| {
+                    format!(
+                        "{session} · {} {}",
+                        header_clock(&b.remaining),
+                        if self.es() { "restante" } else { "left" }
+                    )
+                },
+            );
             x + self.label(
                 window,
                 cx,
@@ -865,12 +1020,23 @@ impl Painter<'_> {
                     .map(|g| board.groups[g].short.as_str())
                     .into_iter()
                     .collect(),
-                Mode::AllClasses | Mode::Multiclass => {
-                    board.groups.iter().map(|g| g.short.as_str()).collect()
-                }
+                Mode::AllClasses | Mode::Multiclass => board
+                    .groups
+                    .iter()
+                    .map(|g| {
+                        if board.gap_to_best_lap && board.groups.len() == 1 {
+                            g.class.as_ref()
+                        } else {
+                            g.short.as_str()
+                        }
+                    })
+                    .collect(),
             };
             let mut parts: Vec<String> = Vec::new();
-            if self.plan.width >= self.style.geometry.wide_width && board.remaining != PLACEHOLDER {
+            if self.plan.width >= self.style.geometry.wide_width
+                && !board.gap_to_best_lap
+                && board.remaining != PLACEHOLDER
+            {
                 parts.push(format!(
                     "{} {}",
                     board.remaining,
@@ -955,6 +1121,18 @@ impl Painter<'_> {
         put(window, cx, "P", 0.0, Some(pad + g.col_position));
         let number = self.options.cols.has(Kind::Number);
         for column in &self.plan.columns {
+            if column.kind == Kind::Sectors && self.options.numeric_sectors() {
+                for (i, label) in ["S1", "S2", "S3"].into_iter().enumerate() {
+                    put(
+                        window,
+                        cx,
+                        label,
+                        0.0,
+                        Some(column.x + g.col_gap + i as f32 * (g.col_gap + g.cell_gap)),
+                    );
+                }
+                continue;
+            }
             let label = match (column.kind, es) {
                 (Kind::Gained, _) => "±",
                 (Kind::Number, true) => "Dorsal",
@@ -964,14 +1142,20 @@ impl Painter<'_> {
                 (Kind::Driver, true) => "Piloto",
                 (Kind::Driver, false) => "Driver",
                 (Kind::Compound, _) => "N",
+                (Kind::Pit, true) if self.board.is_some_and(|b| b.gap_to_best_lap) => "Estado",
+                (Kind::Pit, false) if self.board.is_some_and(|b| b.gap_to_best_lap) => "State",
                 (Kind::Pit, true) => "Par.",
                 (Kind::Pit, false) => "Stops",
+                (Kind::Laps, true) => "Vlt",
+                (Kind::Laps, false) => "Laps",
                 (Kind::Sectors, _) => "Sect.",
                 (Kind::Last, true) => "Última",
                 (Kind::Last, false) => "Last",
                 (Kind::Best, true) => "Mejor",
                 (Kind::Best, false) => "Best",
                 (Kind::Interval, _) => "Int.",
+                (Kind::Gap, true) if self.board.is_some_and(|b| b.gap_to_best_lap) => "Al mejor",
+                (Kind::Gap, false) if self.board.is_some_and(|b| b.gap_to_best_lap) => "To best",
                 (Kind::Gap, _) => "Gap",
             };
             let x = if column.kind == Kind::Driver && !number {
@@ -1050,7 +1234,10 @@ impl Painter<'_> {
             .motion
             .pose(row.id, self.style.motion.timing(), self.now);
         let y = y + pose.offset;
-        with_opacity(pose.alpha, || self.row(window, cx, y, gi, ri, pose.flash));
+        let missing = self.board.is_some_and(|b| b.gap_to_best_lap) && row.best_lap_s.is_none();
+        with_opacity(pose.alpha * if missing { 0.45 } else { 1.0 }, || {
+            self.row(window, cx, y, gi, ri, pose.flash);
+        });
     }
 
     fn row(
@@ -1143,7 +1330,49 @@ impl Painter<'_> {
                     self.name(window, cx, row, start, name_right, y);
                 }
                 Kind::Compound => self.compound(window, cx, row, x, y),
-                Kind::Pit => self.pit(window, cx, row, x, y, true),
+                Kind::Pit => {
+                    if !board.gap_to_best_lap || row.in_pits {
+                        self.pit(window, cx, row, x, y, true);
+                    }
+                }
+                Kind::Laps => {
+                    let ink = self.ink(Face::Mono, f.mono, 0.0, c.value.hsla());
+                    self.label(
+                        window,
+                        cx,
+                        &row.laps,
+                        0.0,
+                        Some(right),
+                        y,
+                        h,
+                        Face::Mono,
+                        &ink,
+                    );
+                }
+                Kind::Sectors if self.options.numeric_sectors() => {
+                    for index in 0..3 {
+                        let value = self.plan.sector_times[gi][ri]
+                            .get(index)
+                            .map_or(PLACEHOLDER, String::as_str);
+                        let color = if row.sectors.get(index) == Some(&Mark::Fastest) {
+                            c.purple
+                        } else {
+                            c.value
+                        };
+                        let ink = self.ink(Face::Mono, f.mono_small, 0.0, color.hsla());
+                        self.label(
+                            window,
+                            cx,
+                            value,
+                            0.0,
+                            Some(x + g.col_gap + index as f32 * (g.col_gap + g.cell_gap)),
+                            y,
+                            h,
+                            Face::Mono,
+                            &ink,
+                        );
+                    }
+                }
                 Kind::Sectors => self.sectors(window, cx, row, x, y),
                 Kind::Last | Kind::Best => {
                     let (text, color) = if column.kind == Kind::Last {
@@ -1153,6 +1382,7 @@ impl Painter<'_> {
                             &row.best_lap,
                             match row.best_mark {
                                 Mark::Fastest => c.purple,
+                                _ if me => c.best_personal,
                                 Mark::Personal => c.best_personal,
                                 _ => c.value,
                             },
@@ -1163,7 +1393,10 @@ impl Painter<'_> {
                 }
                 Kind::Interval | Kind::Gap => {
                     let is_gap = column.kind == Kind::Gap;
-                    let color = if frozen {
+                    let gap = &self.plan.gaps[gi][ri];
+                    let color = if is_gap && gap == "Pole" {
+                        c.purple
+                    } else if frozen {
                         c.frozen
                     } else if me {
                         c.text
@@ -1171,15 +1404,15 @@ impl Painter<'_> {
                         c.value
                     };
                     let class_leader = (is_gap
+                        && !board.gap_to_best_lap
                         && is_leader(row)
                         && self.options.mode == Mode::AllClasses
                         && shown_group(board) != Some(gi))
                     .then(|| format!("1º {}", group.short.trim_start_matches("LM")));
-                    let text = class_leader.as_deref().unwrap_or(if is_gap {
-                        &row.gap
-                    } else {
-                        &row.interval
-                    });
+                    let text =
+                        class_leader
+                            .as_deref()
+                            .unwrap_or(if is_gap { gap } else { &row.interval });
                     let ink = self.ink(Face::Mono, f.mono, 0.0, color.hsla());
                     self.label(window, cx, text, 0.0, Some(right), y, h, Face::Mono, &ink);
                 }
@@ -1419,6 +1652,10 @@ impl Painter<'_> {
         let ink = self.ink(Face::Body, f.header, 0.0, c.muted.hsla());
         let es = self.es();
         match footer {
+            Footer::Frozen => {
+                let message = if es { "Gaps congelados" } else { "Gaps frozen" };
+                self.label(window, cx, message, pad, None, top, h, Face::Body, &ink);
+            }
             Footer::Spectator => {
                 let pulse = g.pulse;
                 round_rect(
@@ -1519,11 +1756,17 @@ impl Painter<'_> {
                 // Compacto abrevia el pie para que quepa en 340 px.
                 let compact = self.narrow();
                 if let Some((time, driver)) = &board.fastest {
-                    let lead = match (compact, es) {
-                        (true, true) => "VR ",
-                        (true, false) => "FL ",
-                        (false, true) => "Vuelta rápida ",
-                        (false, false) => "Fastest lap ",
+                    let qualifying = board.session.to_lowercase().starts_with("clasi")
+                        || board.session.to_lowercase().starts_with("qual");
+                    let lead = if qualifying {
+                        "Pole "
+                    } else {
+                        match (compact, es) {
+                            (true, true) => "VR ",
+                            (true, false) => "FL ",
+                            (false, true) => "Vuelta rápida ",
+                            (false, false) => "Fastest lap ",
+                        }
                     };
                     x += self.label(window, cx, lead, x, None, top, h, Face::Body, &ink);
                     let mono = self.ink(Face::Mono, f.mono_small, 0.0, c.purple.hsla());
@@ -1547,7 +1790,19 @@ impl Painter<'_> {
                     };
                     self.label(window, cx, lead, x, None, top, h, Face::Body, &ink);
                 }
-                let track = if compact {
+                let track = if board.gap_to_best_lap {
+                    let own = board
+                        .groups
+                        .iter()
+                        .flat_map(|g| &g.rows)
+                        .find(|r| r.is_player)
+                        .and_then(|r| r.classification_gap_s);
+                    format!(
+                        "{} {}",
+                        if es { "Tuya" } else { "Yours" },
+                        own.map_or_else(|| PLACEHOLDER.into(), |v| format!("+{v:.3}"))
+                    )
+                } else if compact {
                     format!("{} · {}", board.track_temperature, board.surface)
                 } else {
                     format!(
@@ -1619,10 +1874,128 @@ mod tests {
             board.player_in_pits = true;
             let layout = plan(Some(&board), &opts, &style);
             assert!(layout.items.iter().any(|(_, item)| *item == Item::Banner));
-            assert!(!layout.items.iter().any(|(_, item)| matches!(
-                item,
-                Item::Header | Item::Footer(Footer::Pits | Footer::Spectator)
-            )));
+            let header = layout
+                .items
+                .iter()
+                .find(|(_, item)| *item == Item::Header)
+                .expect("cabecera conservada");
+            assert!(
+                header.0 >= style.geometry.banner_height,
+                "la franja no pisa la cabecera"
+            );
+            assert!(
+                layout.content <= layout.height,
+                "reserva suficiente para todos los avisos"
+            );
+        }
+    }
+
+    #[test]
+    fn expanded_qualifying_keeps_numeric_sectors_and_the_catalogue_width() {
+        let columns = [
+            "position",
+            "driverNumber",
+            "driverName",
+            "vehicle",
+            "tireCompound",
+            "pit",
+            "sectors",
+            "bestLap",
+            "gap",
+        ]
+        .into_iter()
+        .map(|metric| super::super::options::ColumnSetting {
+            id: metric.into(),
+            metric_id: metric.into(),
+            enabled: true,
+            width_preset: if metric == "driverName" { "lg" } else { "auto" }.into(),
+            ..super::super::options::ColumnSetting::default()
+        })
+        .collect();
+        let settings = super::super::Settings {
+            columns: Some(columns),
+            ..super::super::Settings::default()
+        };
+        let opts = Options::from_settings(&settings);
+        assert!(opts.numeric_sectors());
+        assert_eq!(opts.width(&Style::compiled()), 900.0);
+        let mut photo = crate::workshop::snapshots_from_json(include_str!(
+            "../../fixtures/standings-design-system.sequence.json"
+        ))
+        .expect("fotos")
+        .remove(0);
+        photo.state.session.kind =
+            vantare_domain::Quality::Reliable(vantare_domain::SessionKind::Qualifying);
+        photo.state.cars[0].best_sectors_s = [72.118, 83.410, 48.974]
+            .into_iter()
+            .map(vantare_domain::Quality::Reliable)
+            .collect();
+        let board = vantare_domain::standings::project(&photo, Preferences::default());
+        let plan = plan(Some(&board), &opts, &Style::compiled());
+        assert_eq!(plan.sector_times[0][0], ["1:12.118", "1:23.410", "48.974"]);
+    }
+
+    #[test]
+    fn observed_opponent_laps_and_pit_status_invalidate_the_cached_plan() {
+        let mut photo = crate::workshop::snapshots_from_json(include_str!(
+            "../../fixtures/standings-design-system.sequence.json"
+        ))
+        .expect("fotos")
+        .remove(0);
+        let before = vantare_domain::standings::project(&photo, Preferences::default());
+        photo.state.cars[1].laps = vantare_domain::Quality::Reliable(99);
+        let lap = vantare_domain::standings::project(&photo, Preferences::default());
+        assert!(!same_board(&before, &lap));
+        photo.state.cars[1].in_pits = vantare_domain::Quality::Reliable(true);
+        let pit = vantare_domain::standings::project(&photo, Preferences::default());
+        assert!(!same_board(&lap, &pit));
+    }
+
+    #[test]
+    fn qualifying_gap_uses_the_best_lap_instead_of_the_race_gap() {
+        let mut photo = crate::workshop::snapshots_from_json(include_str!(
+            "../../fixtures/standings-design-system.sequence.json"
+        ))
+        .expect("fotos")
+        .remove(0);
+        photo.state.session.kind =
+            vantare_domain::Quality::Reliable(vantare_domain::SessionKind::Qualifying);
+        let board = vantare_domain::standings::project(&photo, Preferences::default());
+        let leader = board.groups[0].rows[0].as_ref();
+        let second = board.groups[0].rows[1].as_ref();
+        assert_eq!(gap_text(&board, leader), "Pole");
+        assert_eq!(gap_text(&board, second), "+0.265");
+        assert_eq!(
+            second.gap, "+1.284",
+            "la foto contiene un gap de carrera diferente"
+        );
+        assert_eq!(header_clock("0:05"), "00:05");
+        assert_eq!(header_clock("8:42"), "08:42");
+        assert_eq!(header_clock("1:08:42"), "1:08:42");
+    }
+
+    #[test]
+    fn standard_sessions_fit_520_and_practice_exposes_observed_laps() {
+        let style = Style::compiled();
+        for session in [
+            crate::session::Session::Practice,
+            crate::session::Session::Qualifying,
+        ] {
+            let settings = super::super::Settings {
+                columns: Some(super::super::vantare_standard_session_template(session)),
+                row_count: 8,
+                ..super::super::Settings::default()
+            };
+            let options = Options::from_settings(&settings);
+            assert_eq!(options.width(&style), 520.0);
+            assert_eq!(
+                options.cols.has(Kind::Laps),
+                session == crate::session::Session::Practice
+            );
+            assert_eq!(
+                column_labels(&options),
+                session == crate::session::Session::Practice
+            );
         }
     }
 

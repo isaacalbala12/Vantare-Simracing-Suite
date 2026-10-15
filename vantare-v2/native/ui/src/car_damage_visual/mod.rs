@@ -187,7 +187,8 @@ fn paint(
         }
     } else {
         let (ox, oy) = text::origin();
-        let pt = |x: f32, y: f32| point(px(ox + 40.0 + x), px(oy + 59.0 + y));
+        // SVG aprobado: viewBox 120×180 ajustado al cuerpo de la tarjeta.
+        let pt = |x: f32, y: f32| point(px(ox + 47.2 + x * 0.88), px(oy + 70.0 + y * 0.88));
         let body_color = if vm.integrity[1] == Some(1.0) {
             Color(0x3a3335, 0.5)
         } else {
@@ -218,10 +219,10 @@ fn paint(
         for (x, y) in [(18.0, 24.0), (92.0, 24.0), (18.0, 118.0), (92.0, 118.0)] {
             round_rect(
                 window,
-                40.0 + x,
-                59.0 + y,
-                10.0,
-                28.0,
+                47.2 + x * 0.88,
+                70.0 + y * 0.88,
+                8.8,
+                24.64,
                 3.0,
                 Color(0x5a5052, 1.0).hsla(),
             );
@@ -255,10 +256,10 @@ fn paint(
             // Integridad aero agregada no identifica el estado de un alerón concreto.
             round_rect(
                 window,
-                64.0,
-                221.0,
-                72.0,
-                9.0,
+                68.32,
+                212.56,
+                63.36,
+                7.92,
                 2.0,
                 Color(0xffffff, 0.09).hsla(),
             );
@@ -271,7 +272,7 @@ fn paint(
                 &format!("Aero {}", percentage(vm.integrity[0])),
                 12.0,
                 None,
-                54.0,
+                62.0,
                 16.0,
                 Face::Mono,
                 &ink,

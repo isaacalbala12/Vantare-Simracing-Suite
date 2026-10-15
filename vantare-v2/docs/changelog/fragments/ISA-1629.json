@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-1629",
+  "type": "change",
+  "summary": "Los 17 widgets del Workshop incorporan el diseño Vantare aprobado y ejemplos por estado.",
+  "technicalNotes": [
+    "Los widgets usan Rust y GPUI, con las fuentes del diseño registradas en Windows.",
+    "Standings, Relative y Delta reservan espacio transparente para avisos sin tapar la cabecera; Fuel identifica la sesión y Tiempo ofrece tarjeta horizontal o columna vertical.",
+    "Clasificación usa diferencias de mejor vuelta a tres decimales y sectores numéricos en Standings ampliado; Torre muestra tiempos de sesión y no gaps de carrera fuera de carrera.",
+    "Fuel compacto reserva 137 px en lugar de 128 para conservar el pie de espera y sus márgenes sin recortarlos.",
+    "Daños reúne Coche y Cifras con tecla opcional; no cambia las licencias ni añade datos de telemetría."
+  ],
+  "testing": [
+    "Abrir el Workshop y contrastar las capturas de diseño y Windows por widget y estado en la evidencia de #1629.",
+    "Probar la tecla elegida de Daños, mantenerla pulsada, cerrar y reabrir; comprobar que vista y ajustes se conservan."
+  ],
+  "knownLimitations": [
+    "Los ejemplos son sintéticos: no certifican telemetría física, OBS ni licencias reales.",
+    "Algunas variantes del HTML necesitan señales aún no disponibles: previsión, ABS/TC/FFB, estado de vuelta lanzada, daños por zona y tiempos de sanción.",
+    "El catálogo productivo ofrece Neo y Neutro; Carmín/Limpio y algunos tamaños del HTML no tienen un ajuste equivalente en este contrato.",
+    "La aceptación visual final y la promoción de canal corresponden a Isaac."
+  ]
+}

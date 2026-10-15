@@ -2,12 +2,12 @@
 
 use crate::app::{Paint, Wake, replace_if_changed};
 use crate::efficiency::preview::PaintWindow as Window;
-use crate::efficiency::text;
+use crate::efficiency::{rect, text};
 use crate::vantare::{
     paint::{Face, Kit, round_rect},
     style::{Color, Style},
 };
-use gpui::App;
+use gpui::{App, BorderStyle, Corners, Edges, linear_color_stop, linear_gradient, px, quad};
 use std::time::{Duration, Instant};
 use vantare_domain::{
     FlagKind, Snapshot,
@@ -19,17 +19,18 @@ pub const SIZE: (f32, f32) = (340.0, 88.0);
 const PULSE: Duration = Duration::from_millis(920);
 
 pub fn paint(vm: &ViewModel, pulse: f32, window: &mut Window, cx: &mut App) {
-    paint_content(vm, pulse, Preferences::default(), window, cx);
+    paint_content(vm, pulse, Preferences::default(), false, window, cx);
 }
 fn paint_content(
     vm: &ViewModel,
     _pulse: f32,
     prefs: Preferences,
+    waiting: bool,
     window: &mut Window,
     cx: &mut App,
 ) {
     use vantare_domain::PenaltyKind;
-    if vm.hidden {
+    if vm.hidden && !waiting {
         return;
     }
     let style = Style::compiled();
@@ -41,93 +42,44 @@ fn paint_content(
         width: SIZE.0,
     };
     kit.panel(window, SIZE.1);
-    let (color, title, message, plate) = match vm.penalty {
-        Some(PenaltyKind::DriveThrough) => (
-            0xe14a54,
-            "DRIVE-THROUGH",
+    let (color, title, message, plate) = if waiting {
+        (
+            0x5a5052,
             if kit.es() {
-                "Sanción · pasa por el pit lane"
+                "ESPERANDO A LMU"
             } else {
-                "Penalty · drive through the pit lane"
-            },
-            Some("DT"),
-        ),
-        Some(PenaltyKind::StopGo) => (
-            0xe14a54,
-            "STOP & GO",
-            if kit.es() {
-                "Sanción · para en tu box"
-            } else {
-                "Penalty · stop in your pit box"
-            },
-            Some("SG"),
-        ),
-        Some(PenaltyKind::Disqualified) => (
-            0xe14a54,
-            if kit.es() {
-                "BANDERA NEGRA"
-            } else {
-                "BLACK FLAG"
+                "WAITING FOR LMU"
             },
             if kit.es() {
-                "Descalificado · vuelve a boxes"
+                "Las banderas aparecen al entrar en pista"
             } else {
-                "Disqualified · return to pits"
+                "Flags appear when you enter the track"
             },
             None,
-        ),
-        None => match vm.flag.as_ref() {
-            Some(FlagKind::Yellow) => (
-                0xf5c518,
-                if kit.es() { "AMARILLA" } else { "YELLOW" },
-                if kit.es() {
-                    "Precaución · no adelantes"
-                } else {
-                    "Caution · no overtaking"
-                },
-                None,
-            ),
-            Some(FlagKind::Green) => (
-                0x22c55e,
-                if kit.es() { "VERDE" } else { "GREEN" },
-                if kit.es() {
-                    "Pista libre · se puede adelantar"
-                } else {
-                    "Track clear · overtaking allowed"
-                },
-                None,
-            ),
-            Some(FlagKind::Red) => (
+        )
+    } else {
+        match vm.penalty {
+            Some(PenaltyKind::DriveThrough) => (
                 0xe14a54,
-                if kit.es() { "ROJA" } else { "RED" },
+                "DRIVE-THROUGH",
                 if kit.es() {
-                    "Sesión detenida · vuelve a boxes"
+                    "Sanción · pasa por el pit lane"
                 } else {
-                    "Session stopped · return to pits"
+                    "Penalty · drive through the pit lane"
                 },
-                None,
+                Some("DT"),
             ),
-            Some(FlagKind::Blue) => (
-                0x4f8ef7,
-                if kit.es() { "AZUL" } else { "BLUE" },
+            Some(PenaltyKind::StopGo) => (
+                0xe14a54,
+                "STOP & GO",
                 if kit.es() {
-                    "Coche más rápido · déjale pasar"
+                    "Sanción · para en tu box"
                 } else {
-                    "Faster car · let it pass"
+                    "Penalty · stop in your pit box"
                 },
-                None,
+                Some("SG"),
             ),
-            Some(FlagKind::White) => (
-                0xf2eeee,
-                if kit.es() { "BLANCA" } else { "WHITE" },
-                if kit.es() {
-                    "Coche lento delante"
-                } else {
-                    "Slow car ahead"
-                },
-                None,
-            ),
-            Some(FlagKind::Black) => (
+            Some(PenaltyKind::Disqualified) => (
                 0xe14a54,
                 if kit.es() {
                     "BANDERA NEGRA"
@@ -141,41 +93,114 @@ fn paint_content(
                 },
                 None,
             ),
-            Some(FlagKind::Checkered) => (
-                0xf2eeee,
-                if kit.es() {
-                    "BANDERA A CUADROS"
-                } else {
-                    "CHEQUERED FLAG"
-                },
-                if kit.es() {
-                    "Fin de la sesión"
-                } else {
-                    "Session finished"
-                },
-                None,
-            ),
-            _ => (
-                0x8e8587,
-                if kit.es() { "SIN BANDERAS" } else { "NO FLAGS" },
-                if kit.es() {
-                    "Esperando información de pista"
-                } else {
-                    "Waiting for track information"
-                },
-                None,
-            ),
-        },
+            None => match vm.flag.as_ref() {
+                Some(FlagKind::Yellow) => (
+                    0xf5c518,
+                    if kit.es() { "AMARILLA" } else { "YELLOW" },
+                    if kit.es() {
+                        "Precaución · no adelantes"
+                    } else {
+                        "Caution · no overtaking"
+                    },
+                    None,
+                ),
+                Some(FlagKind::Green) => (
+                    0x22c55e,
+                    if kit.es() { "VERDE" } else { "GREEN" },
+                    if kit.es() {
+                        "Pista libre · se puede adelantar"
+                    } else {
+                        "Track clear · overtaking allowed"
+                    },
+                    None,
+                ),
+                Some(FlagKind::Red) => (
+                    0xe14a54,
+                    if kit.es() { "ROJA" } else { "RED" },
+                    if kit.es() {
+                        "Sesión detenida · vuelve a boxes"
+                    } else {
+                        "Session stopped · return to pits"
+                    },
+                    None,
+                ),
+                Some(FlagKind::Blue) => (
+                    0x4f8ef7,
+                    if kit.es() { "AZUL" } else { "BLUE" },
+                    if kit.es() {
+                        "Coche más rápido · déjale pasar"
+                    } else {
+                        "Faster car · let it pass"
+                    },
+                    None,
+                ),
+                Some(FlagKind::White) => (
+                    0xf2eeee,
+                    if kit.es() { "BLANCA" } else { "WHITE" },
+                    if kit.es() {
+                        "Coche lento delante"
+                    } else {
+                        "Slow car ahead"
+                    },
+                    None,
+                ),
+                Some(FlagKind::Black) => (
+                    0xe14a54,
+                    if kit.es() {
+                        "BANDERA NEGRA"
+                    } else {
+                        "BLACK FLAG"
+                    },
+                    if kit.es() {
+                        "Descalificado · vuelve a boxes"
+                    } else {
+                        "Disqualified · return to pits"
+                    },
+                    None,
+                ),
+                Some(FlagKind::Checkered) => (
+                    0xf2eeee,
+                    if kit.es() {
+                        "BANDERA A CUADROS"
+                    } else {
+                        "CHEQUERED FLAG"
+                    },
+                    if kit.es() {
+                        "Fin de la sesión"
+                    } else {
+                        "Session finished"
+                    },
+                    None,
+                ),
+                _ => (
+                    0x8e8587,
+                    if kit.es() { "SIN BANDERAS" } else { "NO FLAGS" },
+                    if kit.es() {
+                        "Esperando información de pista"
+                    } else {
+                        "Waiting for track information"
+                    },
+                    None,
+                ),
+            },
+        }
     };
-    round_rect(
-        window,
-        1.0,
-        1.0,
-        150.0,
-        86.0,
-        9.0,
-        Color(color, 0.13).hsla(),
-    );
+    let quiet = waiting || (vm.flag.is_none() && vm.penalty.is_none());
+    let sectors = !quiet && vm.penalty.is_none() && !vm.sectors.is_empty();
+    if !quiet {
+        window.paint_quad(quad(
+            rect(1.0, 1.0, 250.0, 86.0),
+            Corners::all(px(9.0)),
+            linear_gradient(
+                90.0,
+                linear_color_stop(Color(color, 0.13).hsla(), 0.0),
+                linear_color_stop(Color(color, 0.0).hsla(), 1.0),
+            ),
+            Edges::all(px(0.0)),
+            gpui::transparent_black(),
+            BorderStyle::default(),
+        ));
+    }
     let swatch = if plate.is_some() {
         0x1a1214
     } else if vm.penalty == Some(PenaltyKind::Disqualified) || vm.flag == Some(FlagKind::Black) {
@@ -190,8 +215,35 @@ fn paint_content(
         48.0,
         34.0,
         4.0,
-        Color(if plate.is_some() { 0xe14a54 } else { swatch }, 1.0).hsla(),
+        if quiet {
+            Color(0xffffff, 0.08)
+        } else {
+            Color(if plate.is_some() { 0xe14a54 } else { swatch }, 1.0)
+        }
+        .hsla(),
     );
+    if quiet {
+        round_rect(
+            window,
+            15.0,
+            28.0,
+            46.0,
+            32.0,
+            3.0,
+            Color(0x151213, 1.0).hsla(),
+        );
+        if waiting {
+            round_rect(
+                window,
+                34.0,
+                40.0,
+                8.0,
+                8.0,
+                4.0,
+                Color(0x8e8587, 0.6).hsla(),
+            );
+        }
+    }
     if let Some(plate) = plate {
         round_rect(
             window,
@@ -214,7 +266,7 @@ fn paint_content(
             Face::Display,
             &ink,
         );
-    } else if vm.flag == Some(FlagKind::Checkered) {
+    } else if !waiting && vm.flag == Some(FlagKind::Checkered) {
         for row in 0..3 {
             for column in 0..4 {
                 round_rect(
@@ -237,15 +289,31 @@ fn paint_content(
             }
         }
     }
-    let heading = kit.ink(Face::Display, 20.0, 1.0, Color(0xfaf7f7, 1.0).hsla());
-    let title = text::fit(window, title, &heading, 250.0);
+    let heading = kit.ink(
+        Face::Display,
+        if quiet { 16.0 } else { 20.0 },
+        1.4,
+        Color(if quiet { 0xc9c0c2 } else { 0xfaf7f7 }, 1.0).hsla(),
+    );
+    let title = if vm.flag == Some(FlagKind::Yellow) && sectors {
+        vm.sectors
+            .iter()
+            .position(|f| *f == Some(FlagKind::Yellow))
+            .map_or_else(
+                || title.to_owned(),
+                |i| format!("{title} · SECTOR {}", i + 1),
+            )
+    } else {
+        title.to_owned()
+    };
+    let title = text::fit(window, &title, &heading, 250.0);
     kit.label(
         window,
         cx,
         &title,
         76.0,
         None,
-        17.0,
+        if sectors { 11.0 } else { 21.0 },
         22.0,
         Face::Display,
         &heading,
@@ -258,12 +326,12 @@ fn paint_content(
         &message,
         76.0,
         None,
-        41.0,
+        if sectors { 37.0 } else { 48.0 },
         16.0,
         Face::Body,
         &body,
     );
-    if vm.penalty.is_none() && !vm.sectors.is_empty() {
+    if sectors {
         for i in 0..3 {
             let active = vm
                 .sectors
@@ -273,7 +341,7 @@ fn paint_content(
             round_rect(
                 window,
                 x,
-                63.0,
+                59.0,
                 32.0,
                 14.0,
                 3.0,
@@ -295,7 +363,7 @@ fn paint_content(
                 &format!("S{}", i + 1),
                 x + 8.0,
                 None,
-                63.0,
+                59.0,
                 14.0,
                 Face::Display,
                 &ink,
@@ -380,6 +448,7 @@ impl Settings {
 pub(crate) struct Widget {
     settings: Settings,
     vm: ViewModel,
+    waiting: bool,
     yellow_since: Option<Instant>,
 }
 
@@ -390,6 +459,7 @@ impl Widget {
             vm: settings.project(&Snapshot::default(), prefs),
             settings,
             yellow_since: None,
+            waiting: true,
         }
     }
 
@@ -399,11 +469,19 @@ impl Widget {
     }
 
     pub(crate) fn ingest(&mut self, snapshot: &Snapshot, prefs: Preferences) -> bool {
+        let waiting = matches!(
+            snapshot.state.source_state,
+            vantare_domain::SourceState::Waiting | vantare_domain::SourceState::Lost
+        );
+        let changed = replace_if_changed(&mut self.waiting, waiting);
         let vm = self.settings.project(snapshot, prefs);
         if vm.flag != self.vm.flag {
             self.yellow_since = (vm.flag == Some(FlagKind::Yellow)).then(Instant::now);
         }
-        replace_if_changed(&mut self.vm, vm)
+        if waiting {
+            self.yellow_since = None;
+        }
+        replace_if_changed(&mut self.vm, vm) || changed
     }
 
     pub(crate) fn frame(&mut self, prefs: Preferences, reduced: bool) -> (Paint, Wake) {
@@ -417,8 +495,9 @@ impl Widget {
             self.yellow_since = None;
         }
         let vm = self.vm.clone();
+        let waiting = self.waiting;
         (
-            Box::new(move |window, cx| paint_content(&vm, pulse, prefs, window, cx)),
+            Box::new(move |window, cx| paint_content(&vm, pulse, prefs, waiting, window, cx)),
             wake,
         )
     }
@@ -472,6 +551,31 @@ mod tests {
             live.origin.source.kind = vantare_domain::SourceKind::Live;
             assert!(demo_penalty(&live).is_none());
         }
+    }
+
+    #[test]
+    fn source_interruption_repaints_even_when_the_cached_flag_is_unchanged() {
+        let mut snapshot = vantare_ipc::snapshot_from_json(include_str!(
+            "../../fixtures/racing-flags.snapshot.json"
+        ))
+        .expect("foto");
+        snapshot.state.source_state = vantare_domain::SourceState::Live;
+        let prefs = Preferences::default();
+        let mut widget = Widget::new(&Settings::default(), prefs);
+        assert!(widget.ingest(&snapshot, prefs));
+        assert!(!widget.ingest(&snapshot, prefs));
+        snapshot.state.source_state = vantare_domain::SourceState::Waiting;
+        assert!(
+            widget.ingest(&snapshot, prefs),
+            "debe dibujar la espera aunque conserve la última bandera"
+        );
+        assert_eq!(widget.frame(prefs, false).1, Wake::Idle);
+        assert!(!widget.ingest(&snapshot, prefs));
+        snapshot.state.source_state = vantare_domain::SourceState::Live;
+        assert!(
+            widget.ingest(&snapshot, prefs),
+            "debe recuperar la bandera al reconectar"
+        );
     }
 
     #[test]

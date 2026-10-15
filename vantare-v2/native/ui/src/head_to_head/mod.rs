@@ -105,7 +105,12 @@ fn paint_content(
         kit.label(
             window,
             cx,
-            if kit.es() { "ÚLTIMA" } else { "LAST" },
+            match (duel.best_laps, kit.es()) {
+                (true, true) => "MEJOR",
+                (true, false) => "BEST",
+                (false, true) => "ÚLTIMA",
+                (false, false) => "LAST",
+            },
             x + 10.0,
             None,
             40.0,
@@ -132,7 +137,7 @@ fn paint_content(
         22.0,
         0.5,
         Color(
-            if duel.gap.starts_with('-') {
+            if (duel.best_laps && !duel.good) || (!duel.best_laps && duel.gap.starts_with('-')) {
                 0xff7a82
             } else {
                 0x4ade80

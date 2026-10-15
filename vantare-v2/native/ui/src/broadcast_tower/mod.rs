@@ -190,11 +190,19 @@ fn paint(
         &title,
     );
     let small = kit.ink(Face::Mono, 11.0, 0.0, style.colors.muted.hsla());
-    let lap = format!(
-        "V {}{}",
-        vm.lap,
-        vm.total_laps.map_or_else(String::new, |n| format!("/{n}"))
-    );
+    let timed = vm.session.to_lowercase().starts_with("clasi")
+        || vm.session.to_lowercase().starts_with("qual")
+        || vm.session.to_lowercase().starts_with("pr");
+    let lap = if timed {
+        vm.remaining.clone()
+    } else {
+        format!(
+            "V {}{} · {}",
+            vm.lap,
+            vm.total_laps.map_or_else(String::new, |n| format!("/{n}")),
+            vm.remaining
+        )
+    };
     kit.label(window, cx, &lap, 16.0, None, 32.0, 14.0, Face::Mono, &small);
     if vm.status != Status::Ready {
         let muted = kit.ink(Face::Body, 12.0, 0.0, style.colors.muted.hsla());
@@ -399,13 +407,8 @@ fn paint(
     }
 }
 fn driver_code(name: &str) -> String {
-    name.split_whitespace()
-        .last()
-        .unwrap_or("—")
-        .chars()
-        .take(3)
-        .collect::<String>()
-        .to_uppercase()
+    let surname = name.split_once(". ").map_or(name, |(_, surname)| surname);
+    surname.chars().take(3).collect::<String>().to_uppercase()
 }
 fn class_color(accent: Accent) -> u32 {
     match accent {
@@ -474,6 +477,15 @@ mod tests {
         widget.ingest(&photos[0], Preferences::default());
         assert_eq!(widget.vm.rows.len(), 11);
         assert_eq!(widget.size(), (1400.0, 56.0));
+        let mut qualifying = photos[0].clone();
+        qualifying.state.session.kind =
+            vantare_domain::Quality::Reliable(vantare_domain::SessionKind::Qualifying);
+        qualifying.state.session.remaining_s = vantare_domain::Quality::Reliable(522.0);
+        widget.ingest(&qualifying, Preferences::default());
+        assert_eq!(widget.vm.rows[0].gap, "3:27.046");
+        assert_eq!(widget.vm.rows[1].gap, "+0.265");
+        assert!(widget.vm.remaining.ends_with("8:42"));
+        assert_eq!(driver_code("A. PIER GUIDI"), "PIE");
         let mut lost = photos[0].clone();
         lost.state.source_state = vantare_domain::SourceState::Lost;
         widget.ingest(&lost, Preferences::default());

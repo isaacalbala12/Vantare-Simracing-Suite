@@ -16,8 +16,22 @@ use crate::vantare::{
 };
 
 const WIDTH: f32 = 320.0;
-const SCALE: f32 = 296.0 / 320.0;
+// Mantener las proporciones de la proyección; el alto disponible es 188 px.
+const SCALE: f32 = 188.0 / 220.0;
 const SIZE: (f32, f32) = (320.0, 248.0);
+
+#[cfg(test)]
+mod projection_tests {
+    #[test]
+    fn equal_distances_keep_their_proportions_on_both_axes() {
+        let origin = super::svg_point(vantare_domain::track_map::Point { x: 0.0, y: 0.0 });
+        let horizontal = super::svg_point(vantare_domain::track_map::Point { x: 100.0, y: 0.0 });
+        let vertical = super::svg_point(vantare_domain::track_map::Point { x: 0.0, y: 100.0 });
+        let dx = f32::from(horizontal.x - origin.x);
+        let dy = f32::from(vertical.y - origin.y);
+        assert!((dx - dy).abs() < 0.001, "la pista no se estira en un eje");
+    }
+}
 
 #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(default, rename_all = "camelCase")]
@@ -104,8 +118,8 @@ fn height(_vm: &track_map::ViewModel) -> f32 {
 fn svg_point(p: track_map::Point) -> Point<Pixels> {
     let (ox, oy) = text::origin();
     point(
-        px(ox + 12.0 + p.x as f32 * SCALE),
-        px(oy + 32.0 + p.y as f32 * (180.0 / 220.0)),
+        px(ox + (WIDTH - 320.0 * SCALE) / 2.0 + p.x as f32 * SCALE),
+        px(oy + 32.0 + p.y as f32 * SCALE),
     )
 }
 
@@ -161,14 +175,37 @@ fn labels(snapshot: &Snapshot, prefs: Preferences) -> [String; 3] {
         (Some(vantare_domain::SessionKind::Race), false) => "RACE",
         (Some(vantare_domain::SessionKind::Qualifying), true) => "CLASIFICACIÓN",
         (Some(vantare_domain::SessionKind::Qualifying), false) => "QUALIFYING",
+        (Some(vantare_domain::SessionKind::Practice), true) => "PRÁCTICA",
+        (Some(vantare_domain::SessionKind::Practice), false) => "PRACTICE",
         _ => "",
     };
-    let lap = car
-        .and_then(|c| c.laps.current())
-        .zip(snapshot.state.session.laps_total.current())
-        .map_or_else(String::new, |(a, b)| {
-            format!("{session} · {} {a}/{b}", if es { "V" } else { "L" })
-        });
+    let lap = if snapshot
+        .state
+        .session
+        .kind
+        .current()
+        .is_some_and(vantare_domain::SessionKind::ranks_by_best_lap)
+    {
+        snapshot
+            .state
+            .session
+            .remaining_s
+            .current()
+            .filter(|v| v.is_finite() && **v >= 0.0)
+            .map_or_else(
+                || session.to_owned(),
+                |seconds| {
+                    let total = *seconds as u64;
+                    format!("{session} · {:02}:{:02}", total / 60, total % 60)
+                },
+            )
+    } else {
+        car.and_then(|c| c.laps.current())
+            .zip(snapshot.state.session.laps_total.current())
+            .map_or_else(String::new, |(a, b)| {
+                format!("{session} · {} {a}/{b}", if es { "V" } else { "L" })
+            })
+    };
     let player = car.and_then(|c| c.position.current()).map_or_else(
         || if es { "Tú" } else { "You" }.into(),
         |v| format!("{} P{v}", if es { "Tú" } else { "You" }),
@@ -342,6 +379,17 @@ mod tests {
         assert_eq!(widget.vm.markers.len(), 14);
         assert!(widget.vm.markers.iter().any(|m| m.is_player));
         assert_eq!(widget.size(), SIZE);
+        for (photo, markers, clock) in [(&photos[1], 5, "08:42"), (&photos[2], 4, "42:10")] {
+            widget.ingest(photo, Preferences::default());
+            assert_eq!(widget.vm.markers.len(), markers);
+            assert!(widget.labels[1].ends_with(clock));
+            let mut altered = photo.clone();
+            altered.epoch += 1;
+            assert!(scene::geometry(&altered).is_none());
+            altered = photo.clone();
+            altered.origin.source.kind = vantare_domain::SourceKind::Live;
+            assert!(scene::geometry(&altered).is_none());
+        }
         let mut live = snapshot.clone();
         live.origin.source.kind = vantare_domain::SourceKind::Live;
         assert!(scene::geometry(&live).is_none());

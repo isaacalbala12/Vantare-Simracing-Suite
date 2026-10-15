@@ -2,7 +2,7 @@
 //! Sin efectos temporales en el productivo: el host solo despierta por datos.
 
 use crate::efficiency::preview::PaintWindow as Window;
-use gpui::App;
+use gpui::{App, PathBuilder, point, px};
 use vantare_domain::{
     Snapshot,
     format::Preferences,
@@ -62,6 +62,8 @@ impl Settings {
 pub(crate) struct Widget {
     vertical: bool,
     vm: ViewModel,
+    session: String,
+    wind_heading: Option<f32>,
 }
 
 impl Widget {
@@ -69,6 +71,8 @@ impl Widget {
         Self {
             vertical: settings.vertical,
             vm: track_weather::project(&Snapshot::default(), prefs),
+            session: String::new(),
+            wind_heading: None,
         }
     }
 
@@ -77,18 +81,53 @@ impl Widget {
     }
 
     pub(crate) fn ingest(&mut self, snapshot: &Snapshot, prefs: Preferences) -> bool {
+        let label = snapshot
+            .state
+            .session
+            .kind
+            .current()
+            .map_or_else(String::new, |kind| {
+                let name = vantare_domain::format::session_kind(kind, prefs);
+                if kind.ranks_by_best_lap() {
+                    let clock = vantare_domain::format::clock(
+                        snapshot.state.session.remaining_s.current().copied(),
+                    );
+                    let clock = if clock.len() == 4 {
+                        format!("0{clock}")
+                    } else {
+                        clock
+                    };
+                    format!("{name} · {clock}")
+                } else {
+                    name
+                }
+            });
+        let changed = replace_if_changed(&mut self.session, label);
+        let heading = snapshot
+            .state
+            .session
+            .weather
+            .wind_direction_rad
+            .current()
+            .filter(|value| value.is_finite())
+            .map(|value| *value as f32);
+        let wind_changed = replace_if_changed(&mut self.wind_heading, heading) && !self.vertical;
         replace_if_changed(&mut self.vm, track_weather::project(snapshot, prefs))
+            || changed
+            || wind_changed
     }
 
     pub(crate) fn frame(&mut self, prefs: Preferences, _reduced: bool) -> (Paint, Wake) {
         let vm = self.vm.clone();
         let vertical = self.vertical;
+        let session = self.session.clone();
+        let wind_heading = self.wind_heading;
         (
             Box::new(move |window, cx| {
                 if vertical {
                     paint(&vm, prefs, window, cx);
                 } else {
-                    paint_wide(&vm, prefs, window, cx);
+                    paint_wide(&vm, &session, wind_heading, prefs, window, cx);
                 }
             }),
             Wake::Idle,
@@ -103,7 +142,14 @@ impl Widget {
 }
 
 /// Tarjeta horizontal del catálogo: temperaturas, viento, agua y los cinco pasos del pronóstico.
-fn paint_wide(vm: &ViewModel, prefs: Preferences, window: &mut Window, cx: &mut App) {
+fn paint_wide(
+    vm: &ViewModel,
+    session: &str,
+    wind_heading: Option<f32>,
+    prefs: Preferences,
+    window: &mut Window,
+    cx: &mut App,
+) {
     let style = Style::compiled();
     let kit = Kit {
         style: &style,
@@ -113,6 +159,57 @@ fn paint_wide(vm: &ViewModel, prefs: Preferences, window: &mut Window, cx: &mut 
         width: WIDE.0,
     };
     kit.panel(window, WIDE.1);
+    if matches!(vm.status, Status::Missing | Status::Disconnected) {
+        let muted = kit.ink(Face::Body, 11.0, 0.3, style.colors.muted.hsla());
+        kit.label(
+            window,
+            cx,
+            if kit.es() {
+                "TIEMPO EN PISTA"
+            } else {
+                "TRACK WEATHER"
+            },
+            14.0,
+            None,
+            10.0,
+            18.0,
+            Face::Body,
+            &muted,
+        );
+        for (x, size, label) in [
+            (14.0, 24.0, if kit.es() { "pista" } else { "track" }),
+            (104.0, 18.0, if kit.es() { "aire" } else { "air" }),
+        ] {
+            let ink = kit.ink(Face::Mono, size, 0.0, Color(0x5e5658, 1.0).hsla());
+            kit.label(window, cx, "--°", x, None, 36.0, 34.0, Face::Mono, &ink);
+            kit.label(window, cx, label, x, None, 74.0, 14.0, Face::Body, &muted);
+        }
+        round_rect(
+            window,
+            14.0,
+            109.0,
+            7.0,
+            7.0,
+            3.5,
+            style.colors.muted.hsla(),
+        );
+        kit.label(
+            window,
+            cx,
+            if kit.es() {
+                "Esperando a LMU"
+            } else {
+                "Waiting for LMU"
+            },
+            28.0,
+            None,
+            102.0,
+            20.0,
+            Face::Body,
+            &muted,
+        );
+        return;
+    }
     let metric = |i: usize| vm.metrics.get(i).map_or("—", |m| m.value.as_str());
     let wet = metric(4)
         .split_whitespace()
@@ -122,7 +219,11 @@ fn paint_wide(vm: &ViewModel, prefs: Preferences, window: &mut Window, cx: &mut 
     let banner = if vm.status != Status::Ready {
         vm.status_text
     } else if is_wet {
-        if kit.es() { "PISTA MOJADA" } else { "WET TRACK" }
+        if kit.es() {
+            "PISTA MOJADA"
+        } else {
+            "WET TRACK"
+        }
     } else if kit.es() {
         "SECO"
     } else {
@@ -140,11 +241,25 @@ fn paint_wide(vm: &ViewModel, prefs: Preferences, window: &mut Window, cx: &mut 
         Color(if is_wet { 0x20334f } else { 0x2b2527 }, 1.0).hsla(),
     );
     let heading = kit.ink(Face::Display, 11.0, 0.5, text);
-    kit.label(window, cx, banner, 12.0, None, 6.0, 18.0, Face::Display, &heading);
     kit.label(
         window,
         cx,
-        if kit.es() { "TIEMPO EN PISTA" } else { "TRACK WEATHER" },
+        banner,
+        12.0,
+        None,
+        6.0,
+        18.0,
+        Face::Display,
+        &heading,
+    );
+    kit.label(
+        window,
+        cx,
+        if kit.es() {
+            "TIEMPO EN PISTA"
+        } else {
+            "TRACK WEATHER"
+        },
         14.0,
         None,
         38.0,
@@ -153,12 +268,33 @@ fn paint_wide(vm: &ViewModel, prefs: Preferences, window: &mut Window, cx: &mut 
         &muted,
     );
     let big = kit.ink(Face::Display, 32.0, 0.0, Color(0xfaf7f7, 1.0).hsla());
+    kit.label(
+        window,
+        cx,
+        &session.to_uppercase(),
+        0.0,
+        Some(266.0),
+        38.0,
+        14.0,
+        Face::Body,
+        &muted,
+    );
     let track = metric(0)
         .split_whitespace()
         .next()
         .filter(|s| *s != "—")
         .map_or_else(|| "--°".into(), |s| format!("{s}°"));
-    kit.label(window, cx, &track, 14.0, None, 54.0, 34.0, Face::Display, &big);
+    kit.label(
+        window,
+        cx,
+        &track,
+        14.0,
+        None,
+        54.0,
+        34.0,
+        Face::Display,
+        &big,
+    );
     kit.label(
         window,
         cx,
@@ -172,7 +308,17 @@ fn paint_wide(vm: &ViewModel, prefs: Preferences, window: &mut Window, cx: &mut 
     );
     let mid = kit.ink(Face::Display, 22.0, 0.0, text);
     let air = metric(1).replace(" °C", "°").replace(" °F", "°");
-    kit.label(window, cx, &air, 104.0, None, 62.0, 26.0, Face::Display, &mid);
+    kit.label(
+        window,
+        cx,
+        &air,
+        104.0,
+        None,
+        62.0,
+        26.0,
+        Face::Display,
+        &mid,
+    );
     kit.label(
         window,
         cx,
@@ -185,7 +331,63 @@ fn paint_wide(vm: &ViewModel, prefs: Preferences, window: &mut Window, cx: &mut 
         &muted,
     );
     let mono = kit.ink(Face::Mono, 13.0, 0.0, text);
-    kit.label(window, cx, metric(2), 0.0, Some(266.0), 70.0, 18.0, Face::Mono, &mono);
+    if let Some(heading) = wind_heading {
+        window.paint_quad(gpui::quad(
+            crate::efficiency::rect(193.0, 69.0, 20.0, 20.0),
+            gpui::Corners::all(px(10.0)),
+            gpui::transparent_black(),
+            gpui::Edges::all(px(1.0)),
+            Color(0xffffff, 0.12).hsla(),
+            gpui::BorderStyle::default(),
+        ));
+        let (ox, oy) = crate::efficiency::text::origin();
+        let (sin, cos) = heading.sin_cos();
+        let mut arrow = PathBuilder::fill();
+        for (i, (x, y)) in [
+            (0.0, -7.0),
+            (4.0, 3.0),
+            (1.0, 2.0),
+            (1.0, 7.0),
+            (-1.0, 7.0),
+            (-1.0, 2.0),
+            (-4.0, 3.0),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            let p = point(
+                px(ox + 203.0 + x * cos - y * sin),
+                px(oy + 79.0 + x * sin + y * cos),
+            );
+            if i == 0 {
+                arrow.move_to(p);
+            } else {
+                arrow.line_to(p);
+            }
+        }
+        arrow.close();
+        if let Ok(path) = arrow.build() {
+            window.paint_path(path, text);
+        }
+    }
+    let wind = if wind_heading.is_some() {
+        metric(2)
+            .rsplit_once(' ')
+            .map_or(metric(2), |(speed, _)| speed)
+    } else {
+        metric(2)
+    };
+    kit.label(
+        window,
+        cx,
+        wind,
+        0.0,
+        Some(266.0),
+        70.0,
+        18.0,
+        Face::Mono,
+        &mono,
+    );
     kit.label(
         window,
         cx,
@@ -200,7 +402,7 @@ fn paint_wide(vm: &ViewModel, prefs: Preferences, window: &mut Window, cx: &mut 
     kit.label(
         window,
         cx,
-        if kit.es() { "Agua" } else { "Water" },
+        if kit.es() { "Pista" } else { "Track" },
         14.0,
         None,
         116.0,
@@ -208,7 +410,15 @@ fn paint_wide(vm: &ViewModel, prefs: Preferences, window: &mut Window, cx: &mut 
         Face::Body,
         &muted,
     );
-    round_rect(window, 56.0, 122.0, 176.0, 5.0, 2.5, Color(0xffffff, 0.08).hsla());
+    round_rect(
+        window,
+        56.0,
+        122.0,
+        176.0,
+        5.0,
+        2.5,
+        Color(0xffffff, 0.08).hsla(),
+    );
     if let Some(wet) = wet {
         round_rect(
             window,
@@ -220,7 +430,21 @@ fn paint_wide(vm: &ViewModel, prefs: Preferences, window: &mut Window, cx: &mut 
             Color(0x4f8ef7, 1.0).hsla(),
         );
     }
-    kit.label(window, cx, metric(4), 0.0, Some(266.0), 116.0, 16.0, Face::Mono, &mono);
+    kit.label(
+        window,
+        cx,
+        if wet == Some(0.0) {
+            if kit.es() { "Seca" } else { "Dry" }
+        } else {
+            metric(4)
+        },
+        0.0,
+        Some(266.0),
+        116.0,
+        16.0,
+        Face::Mono,
+        &mono,
+    );
     for (i, label) in [
         if kit.es() { "Ahora" } else { "Now" },
         "+15",
@@ -262,7 +486,17 @@ fn paint_wide(vm: &ViewModel, prefs: Preferences, window: &mut Window, cx: &mut 
             Face::Mono,
             &ink,
         );
-        kit.label(window, cx, label, x + 10.0, None, 183.0, 14.0, Face::Body, &muted);
+        kit.label(
+            window,
+            cx,
+            label,
+            x + 10.0,
+            None,
+            183.0,
+            14.0,
+            Face::Body,
+            &muted,
+        );
     }
 }
 
@@ -491,8 +725,8 @@ fn paint(vm: &ViewModel, prefs: Preferences, window: &mut Window, cx: &mut App) 
 impl Settings {
     #[allow(clippy::unused_self)] // Contrato común de demanda por renderer.
     pub fn demand(&self) -> vantare_ipc::Demand {
-        use vantare_ipc::Signal::Weather;
-        crate::demand::signals(500, &[Weather])
+        use vantare_ipc::Signal::{SessionClock, SessionInfo, Weather};
+        crate::demand::signals(500, &[Weather, SessionInfo, SessionClock])
     }
 }
 
@@ -558,6 +792,12 @@ mod tests {
             ["28 °C", "21 °C", "14 km/h NO", "0 %", "0 %", "100%", "—"]
         );
         assert_eq!(widget.size(), WIDE);
+        let mut timed = snapshot.clone();
+        timed.state.session.kind = Quality::Reliable(vantare_domain::SessionKind::Qualifying);
+        timed.state.session.remaining_s = Quality::Reliable(522.0);
+        assert!(widget.ingest(&timed, prefs));
+        assert_eq!(widget.session, "CLASIFICACIÓN · 08:42");
+        assert!(!widget.ingest(&timed, prefs));
         let vertical = Widget::new(
             &Settings {
                 vertical: true,

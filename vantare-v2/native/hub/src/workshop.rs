@@ -142,9 +142,13 @@ fn workshop_overlay(kind: Kind, prefs: Preferences) -> Overlay {
         standings.row_count = 8;
         standings.apply_session_presets();
         standings.practice_columns =
-            Some(vantare_ui::standings::vantare_standard_session_template());
+            Some(vantare_ui::standings::vantare_standard_session_template(
+                vantare_ui::session::Session::Practice,
+            ));
         standings.qualifying_columns =
-            Some(vantare_ui::standings::vantare_standard_session_template());
+            Some(vantare_ui::standings::vantare_standard_session_template(
+                vantare_ui::session::Session::Qualifying,
+            ));
         standings.class_scope = "all-classes".into();
         standings.columns = Some(vantare_ui::standings::vantare_template("standard"));
     }

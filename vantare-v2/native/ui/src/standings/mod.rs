@@ -81,6 +81,7 @@ const MOVABLE: &[&str] = &[
     "driverName",
     "tireCompound",
     "pit",
+    "currentLap",
     "sectors",
     "lastLap",
     "bestLap",
@@ -165,15 +166,36 @@ pub fn vantare_template(name: &str) -> Vec<options::ColumnSetting> {
     .collect()
 }
 
-/// Columnas del tamaño estándar (520 px) del catálogo en Práctica y Clasificación:
-/// la mejor vuelta y la diferencia con el mejor mandan, sin sectores ni última.
+/// Columnas del tamaño estándar (520 px) del catálogo fuera de carrera.
 #[must_use]
-pub fn vantare_standard_session_template() -> Vec<options::ColumnSetting> {
-    let on = ["position", "driverName", "vehicle", "bestLap", "gap"];
+pub fn vantare_standard_session_template(session: Session) -> Vec<options::ColumnSetting> {
+    let on: &[&str] = if session == Session::Practice {
+        &[
+            "position",
+            "driverName",
+            "vehicle",
+            "pit",
+            "currentLap",
+            "bestLap",
+            "gap",
+        ]
+    } else {
+        &["position", "driverName", "vehicle", "pit", "bestLap", "gap"]
+    };
     let mut columns = vantare_template("standard");
+    columns.push(options::ColumnSetting {
+        id: "currentLap".into(),
+        metric_id: "currentLap".into(),
+        ..options::ColumnSetting::default()
+    });
     for column in &mut columns {
         column.enabled = on.contains(&column.metric_id.as_str());
     }
+    columns.sort_by_key(|c| {
+        on.iter()
+            .position(|m| *m == c.metric_id)
+            .unwrap_or(on.len())
+    });
     columns
 }
 

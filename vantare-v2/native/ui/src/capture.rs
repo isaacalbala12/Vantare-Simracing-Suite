@@ -400,9 +400,25 @@ pub fn run_configured_sequence(
         }
         let names = cx.text_system().all_font_names();
         let style = crate::vantare::style::Style::compiled();
-        if ![&style.fonts.display_family, &style.fonts.mono_family].iter().all(|name| names.contains(name)) {
-            eprintln!("las fuentes del diseño no están registradas; se rechaza una captura con sustitución");
-            flag.set(true); cx.quit(); return;
+        let families = [
+            style.fonts.display_family.as_str(),
+            style.fonts.mono_family.as_str(),
+            "Inter W400",
+            "Inter W500",
+            "Inter W600",
+            "Inter W650",
+            "Inter W700",
+            "Inter W750",
+            "Inter W800",
+        ];
+        if !families
+            .iter()
+            .all(|name| names.iter().any(|registered| registered.as_str() == *name))
+        {
+            eprintln!("faltan fuentes del diseño; se rechaza la captura con sustitución");
+            flag.set(true);
+            cx.quit();
+            return;
         }
         let view = cx.new(|_| Overlay::configured(&settings, prefs));
         view.update(cx, |v, cx| {

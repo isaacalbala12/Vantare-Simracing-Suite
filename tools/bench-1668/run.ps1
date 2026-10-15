@@ -25,8 +25,12 @@ function Wait-Session {
   $game=Get-Process -Name 'Le Mans Ultimate' -ErrorAction SilentlyContinue
   if($game){
    try{
-    $session=Invoke-RestMethod http://127.0.0.1:6397/rest/watch/sessionInfo -TimeoutSec 2
-    if($null -ne $session){return $game[0]}
+    $response=Invoke-WebRequest http://127.0.0.1:6397/rest/watch/sessionInfo -TimeoutSec 2
+    $body=if($response.Content -is [byte[]]){[Text.Encoding]::UTF8.GetString($response.Content)}else{$response.Content}
+    if($body){
+     $session=$body | ConvertFrom-Json
+     if($session.session -match '^PRACTICE' -and $session.trackName){return $game[0]}
+    }
    }catch{}
   }
   Start-Sleep -Seconds 5

@@ -182,9 +182,10 @@ revoke all on function private.native_admin_account(uuid,text,text) from public,
 
 create function public.native_admin_execute(p_actor uuid,p_issuer text,p_action text,p_params jsonb,p_environment text)
 returns jsonb language plpgsql security definer set search_path='' as $$
-declare v_before jsonb; v_after jsonb; v_rows jsonb; v_counts jsonb; v_id text; v_status text; v_version text; v_state text; v_limit integer; v_account uuid; v_creator private.admin_creators%rowtype; v_amount bigint; v_paid_at timestamptz; v_lock record; v_remaining bigint; v_applied bigint;
+declare
+ v_before jsonb; v_after jsonb; v_rows jsonb; v_counts jsonb; v_id text; v_status text; v_version text; v_state text; v_limit integer; v_account uuid; v_creator private.admin_creators%rowtype; v_amount bigint; v_paid_at timestamptz; v_lock record; v_remaining bigint; v_applied bigint;
 begin
- perform private.native_admin_require_owner(p_actor);
+  perform private.native_admin_require_owner(p_actor);
  if p_environment is null or p_environment not in('sandbox','production') or p_issuer is null or p_issuer!~'^https://' or jsonb_typeof(p_params) is distinct from 'object' then
   raise exception 'native_admin_invalid' using errcode='22023'; end if;
  if p_action='get_payment_sync' then

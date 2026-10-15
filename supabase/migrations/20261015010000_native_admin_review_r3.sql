@@ -381,8 +381,19 @@ $$;
 
 create or replace function public.native_admin_execute(p_actor uuid,p_issuer text,p_action text,p_params jsonb,p_environment text)
 returns jsonb language plpgsql security definer set search_path='' as $$
-declare v_before jsonb; v_after jsonb; v_rows jsonb; v_counts jsonb; v_id text; v_status text; v_version text; v_limit integer; v_account uuid; v_creator private.admin_creators%rowtype; v_amount bigint; v_paid_at timestamptz; v_lock record; v_remaining bigint; v_applied bigint;
+declare
+ v_before jsonb; v_after jsonb; v_rows jsonb; v_counts jsonb; v_id text; v_status text; v_version text; v_limit integer; v_account uuid; v_creator private.admin_creators%rowtype; v_amount bigint; v_paid_at timestamptz; v_lock record; v_remaining bigint; v_applied bigint;
 begin
+ -- Preserve #1622 UUID-before-rows when replacing the older admin entry.
+ if p_action in ('get_account','set_tester','set_module','set_blocked','delete_account') then
+  v_account := (p_params->>'account_id')::uuid;
+ elsif p_action in ('get_report','set_report_status') then
+  select reporter_user_id into v_account from public.testing_center_reports where report_id=p_params->>'report_id';
+  if v_account is null then
+   select account_id into v_account from public.testing_contributions where id::text=p_params->>'report_id';
+  end if;
+ end if;
+ perform private.lock_accounts_before_rows(array[p_actor,v_account]);
  perform private.native_admin_require_owner(p_actor);
  if p_environment is null or p_environment not in('sandbox','production') or p_issuer is null or p_issuer!~'^https://' or jsonb_typeof(p_params) is distinct from 'object' then
   raise exception 'native_admin_invalid' using errcode='22023'; end if;

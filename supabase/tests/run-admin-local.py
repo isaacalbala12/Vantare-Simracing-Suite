@@ -21,22 +21,11 @@ try:
   time.sleep(.2)
  else: raise RuntimeError('postgres startup')
  run(['docker','exec',name,'createdb','-U','postgres','--template=template0','admin_1627'])
- bootstrap="""
- create schema if not exists auth; create schema if not exists extensions; create schema if not exists storage;
- create extension if not exists pgcrypto with schema extensions; create extension if not exists pgtap;
- do $$begin create role anon noinherit; exception when duplicate_object then null; end$$;
- do $$begin create role authenticated noinherit; exception when duplicate_object then null; end$$;
- do $$begin create role service_role noinherit bypassrls; exception when duplicate_object then null; end$$;
- create table if not exists auth.users(id uuid primary key,email text,raw_user_meta_data jsonb not null default '{}'::jsonb);
- create or replace function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
- create or replace function auth.jwt() returns jsonb language sql stable as $$select coalesce(nullif(current_setting('request.jwt.claims',true),'')::jsonb,jsonb_build_object('sub',current_setting('request.jwt.claim.sub',true),'role','authenticated'))$$;
- create table if not exists storage.buckets(id text primary key,name text unique not null,public boolean default false,file_size_limit bigint,allowed_mime_types text[]);
- create table if not exists storage.objects(id uuid primary key default gen_random_uuid(),bucket_id text references storage.buckets(id),name text not null,owner_id text,created_at timestamptz default now(),updated_at timestamptz default now(),unique(bucket_id,name));
- alter table storage.objects enable row level security;
- create or replace function storage.foldername(text) returns text[] language sql immutable as $$select (string_to_array($1,'/'))[1:array_length(string_to_array($1,'/'),1)-1]$$;
- grant usage on schema public,auth,storage,extensions to anon,authenticated,service_role;
- grant insert on storage.objects to authenticated; grant select,insert,update,delete on storage.objects,storage.buckets to service_role;
- """
+ # Reuse the full disposable auth/storage contract maintained by nightly.
+ runner=(root/'supabase/tests/run-supabase-hardening-postgres.ps1').read_text()
+ bootstrap=runner.split("Write-Utf8NoBom $bootstrap @'",1)[1].split("'@",1)[0]
+ bootstrap += """
+create or replace function storage.foldername(text) returns text[] language sql immutable as $$select (string_to_array($1,'/'))[1:array_length(string_to_array($1,'/'),1)-1]$$;"""
  (out/'baseline-sql-bootstrap.log').write_text(sql(bootstrap))
  for f in sorted((root/'supabase/migrations').glob('*.sql')):
   try: (out/('baseline-'+f.name+'.log')).write_text(sql(f.read_text(),'supabase_admin' if f.name=='20261010001000_visual_roadmap_clickup.sql' else 'postgres'))

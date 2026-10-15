@@ -3,8 +3,9 @@
 Auditoría inicial: 14-oct-2026, base `nightly@79a1ace66e5ec397126495dc5ce99353db9beed9`.
 Encargo: [#1638](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1638).
 La optimización #1630 quedaba fuera del encargo inicial; el buzón del orquestador
-la incorpora después como fase 4 (véase abajo). Seguimiento del orquestador
-por `C:/tmp/buzon/1638.md`, sin Plane/Notion, PR ni merge.
+la incorpora después como fase 4 (véase abajo). Seguimiento histórico del relevo por
+`C:/tmp/buzon/1638.md`, entonces sin Plane/Notion, PR ni merge. El encargo
+del 15-oct en el servidor reemplaza esas excepciones, según la sección siguiente.
 
 ## Continuación vigente — 15-oct, servidor
 
@@ -31,6 +32,9 @@ aportar transiciones y evidencia nueva; no se marca toda la cobertura completa.
 Fmt e integridad/anti-slop 456/456 PASS. Compilación Rust espera cola (1–2 GB libres, mínimo 5).
 El smoke de los 18 widgets se ha adaptado para `--target-dir` explícito; no se
 ha ejecutado con juego en esta continuación ni se han abierto ventanas.
+PR draft [#1664](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1664),
+Plane En curso. Check local cancelado mientras esperaba RAM, sin compilador;
+Clippy/Nextest/lifecycle/telemetría sin ejecutar. Fase A incompleta.
 
 ## Qué significa la tabla
 

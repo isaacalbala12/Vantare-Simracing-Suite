@@ -66,6 +66,14 @@ proyecciones, sin abrir ventanas de Vantare ni capturar la app.
 Desde `C:\VantareServer\wt\isa-1638\vantare-v2`, tras compilar Core en el
 target propio:
 
+La compilación previa, también por la cola y sin iniciar LMU, es:
+
+```powershell
+pwsh -NoProfile -File native/scripts/compilar.ps1 cargo build --manifest-path native/Cargo.toml -p vantare-runtime --bin vantare-core --features vantare-services/network --target-dir C:\VantareServer\targets\isa-1638 --locked --offline -j 4
+```
+
+Con LMU ya cargado por Isaac:
+
 ```powershell
 python -I native/scripts/verify-lmu-widget-coverage.py --target-dir C:\VantareServer\targets\isa-1638
 ```

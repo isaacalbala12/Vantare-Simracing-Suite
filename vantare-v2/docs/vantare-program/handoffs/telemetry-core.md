@@ -55,13 +55,22 @@ Primero práctica con jugador en boxes basta para transporte; luego conducir
 formación/salida y las transiciones práctica→qualy→carrera para fuentes nuevas.
 La prueba de proyecciones no graba ni certifica esas transiciones.
 
-Siguiente: liberar RAM, ejecutar fmt/check/Clippy/Nextest/lifecycle/telemetría,
-revisar diff y publicar draft con resultados reales. Después coordinar fase B
+Código de esta continuación `9a0163e60` y `794dd0a03` (saneado exhaustivo).
+[PR draft #1664](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1664)
+a nightly, registrado en T3. Push y HEAD final documental se verifican en el
+buzón. La CI de `9a0163e60` pasó formato, ratchet y ruta de promoción; Linux
+seguía compilando al consultar. No se extrapola a los commits posteriores.
+Se canceló únicamente la espera local de check sin arrancar compilador
+(RAM llegó a <1 GB); no quedan gates locales activos. Fmt final PASS.
+Plane conserva En curso con PR, comentario y resumen verificados.
+
+Siguiente: liberar RAM y ejecutar check/Clippy/Nextest/lifecycle/telemetría;
+comprobar la CI del HEAD final. La fase A sigue incompleta por esos gates. Después coordinar fase B
 con Isaac. Daño estructural exacto, forecast 15 min, ABS/TC/FFB y sanciones
 con tipo/plazo siguen sin fuente demostrada; presentación de #1629 está fuera
 de esta rama. No se inventan señales para completar la tabla.
 
-### #1638 / VANTA-33 — lanzamiento y optimización incorporada
+### Histórico del relevo #1638 / VANTA-33 — lanzamiento y optimización incorporada
 
 14-oct-2026, worktree `C:/tmp/wt-1638`, rama
 `vantareapp/isa-1638-telemetria-lanzamiento`, base `nightly@79a1ace6`.

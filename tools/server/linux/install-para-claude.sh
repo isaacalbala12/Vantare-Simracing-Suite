@@ -2,6 +2,7 @@
 # Instala el sondeo «Para Claude» en vantare-svc (root). La URL del aviso se escribe aparte en /etc/vantare/para-claude.url (600).
 set -eu
 install -m 750 /mnt/c/VantareServer/ops/linux/vantare-plane-para-claude.py /usr/local/sbin/
+install -m 750 /mnt/c/VantareServer/ops/linux/plane_notify_workers.py /usr/local/sbin/
 cat > /etc/systemd/system/vantare-plane-para-claude.service <<'U'
 [Unit]
 Description=Aviso de tareas nuevas en «Para Claude» (Plane)

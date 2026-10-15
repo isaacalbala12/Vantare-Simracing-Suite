@@ -18,9 +18,15 @@ export type CompensationJob = {
   net_amount: number;
   currency: string;
   attempt_count: number;
+  refund_amount_basis: "net" | "gross";
 };
 export interface CompensationStore {
   observe(order: Json, map: PolarProductMap): Promise<void>;
+  resolve?(
+    order: Json,
+    result: { status: string; reason?: string },
+    environment: BillingEnvironment,
+  ): Promise<void>;
   claim(
     environment: BillingEnvironment,
     token: string,
@@ -103,6 +109,23 @@ export function createCompensationStore(
         p_capabilities: [...resolved.config.capabilities].sort(),
       });
     },
+    async resolve(order, result, environment) {
+      if (!isUuid(order.id)) return;
+      const reason =
+        result.status === "quarantined" && result.reason === "account_deleted"
+          ? "account_deleted"
+          : result.status === "quarantined" &&
+              result.reason === "unresolved_user_id"
+          ? "checkout_attempt_expired"
+          : null;
+      if (reason) {
+        await rpc("billing_resolve_checkout_non_applicable", {
+          p_environment: environment,
+          p_order_id: order.id,
+          p_reason: reason,
+        });
+      }
+    },
     async claim(environment, token) {
       const value = await rpc("billing_claim_checkout_compensation", {
         p_environment: environment,
@@ -115,7 +138,9 @@ export function createCompensationStore(
         !isUuid(job.checkout_id) ||
         !isUuid(job.organization_id) || !isUuid(job.product_id) ||
         (job.subscription_id !== null && !isUuid(job.subscription_id)) ||
-        cents(job.net_amount) === 0 || !/^[a-z]{3}$/.test(String(job.currency))
+        cents(job.net_amount) === 0 ||
+        !["net", "gross"].includes(String(job.refund_amount_basis)) ||
+        !/^[a-z]{3}$/.test(String(job.currency))
       ) throw new Error("invalid_compensation_job");
       return job as CompensationJob;
     },
@@ -248,6 +273,12 @@ export function createPolarRefundClient(
 }
 function validateOrder(job: CompensationJob, order: Json): void {
   if (
+    cents(order.total_amount) !== job.net_amount + cents(order.tax_amount) ||
+    cents(order.applied_balance_amount) !== 0
+  ) {
+    throw new Error("polar_refund_total_mismatch");
+  }
+  if (
     order.id !== job.order_id || order.checkout_id !== job.checkout_id ||
     orderOrganization(order) !== job.organization_id ||
     order.product_id !== job.product_id ||
@@ -256,6 +287,31 @@ function validateOrder(job: CompensationJob, order: Json): void {
     order.paid !== true || cents(order.net_amount) !== job.net_amount ||
     !["paid", "partially_refunded", "refunded"].includes(String(order.status))
   ) throw new Error("polar_order_scope_mismatch");
+}
+// This policy is explicit and latched in SQL. Sandbox verification must establish
+// which request basis the deployed Polar API uses before the kill switch is enabled.
+export function refundRequestAmount(
+  job: CompensationJob,
+  order: Json,
+  remainingNet: number,
+): number {
+  if (!["net", "gross"].includes(job.refund_amount_basis)) {
+    throw new Error("polar_refund_basis_unverified");
+  }
+  const remainingTax = cents(order.tax_amount) -
+    cents(order.refunded_tax_amount);
+  if (remainingTax < 0) throw new Error("polar_refund_tax_mismatch");
+  const amount = remainingNet +
+    (job.refund_amount_basis === "gross" ? remainingTax : 0);
+  if (
+    amount <= 0 ||
+    amount >
+      job.net_amount + cents(order.tax_amount) - cents(order.refunded_amount) -
+        cents(order.refunded_tax_amount)
+  ) {
+    throw new Error("polar_refund_basis_mismatch");
+  }
+  return amount;
 }
 export async function refundUnlicensedCheckout(
   job: CompensationJob,
@@ -266,7 +322,14 @@ export async function refundUnlicensedCheckout(
   validateOrder(job, order);
   const refunds = await polar.refunds(job);
   const succeeded = refunds.filter((r) => r.status === "succeeded").reduce(
-    (n, r) => n + cents(r.amount),
+    (n, r) => {
+      const amount = cents(r.amount);
+      const net = job.refund_amount_basis === "gross"
+        ? amount - cents(r.tax_amount)
+        : amount;
+      if (net < 0) throw new Error("polar_refund_basis_mismatch");
+      return n + net;
+    },
     0,
   );
   const aggregate = cents(order.refunded_amount);
@@ -291,8 +354,9 @@ export async function refundUnlicensedCheckout(
   }
   // A stale aggregate must never cause a second partial refund. Retry reads.
   if (succeeded !== aggregate) throw new Error("polar_refund_not_converged");
-  const amount = job.net_amount - refunded; // Net after discount; Polar adds the tax.
-  if (amount <= 0) throw new Error("polar_refund_tax_not_converged");
+  const remainingNet = job.net_amount - refunded;
+  if (remainingNet <= 0) throw new Error("polar_refund_tax_not_converged");
+  const amount = refundRequestAmount(job, order, remainingNet);
   const created = await polar.create(job, amount);
   if (
     !isUuid(created.id) || created.order_id !== job.order_id ||

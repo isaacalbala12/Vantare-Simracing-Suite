@@ -1,11 +1,22 @@
 begin;
 create extension if not exists pgtap;
 select no_plan();
+-- A known Vantare checkout whose account was deleted has a terminal non-applicable outcome.
+update private.billing_compensation_policy set enabled=true,amount_basis='net' where environment='sandbox';
+insert into private.clerk_issuers(issuer,authorized_parties,enabled) values('https://refund-eligibility.clerk.invalid',array['https://app.invalid'],true);
+insert into public.profiles(id) values('43000000-0000-4000-8000-000000000009');
+insert into public.account_identities(issuer,subject,account_id) values('https://refund-eligibility.clerk.invalid','user_terminal','43000000-0000-4000-8000-000000000009');
+select * from public.claim_billing_checkout_attempt('43000000-0000-4000-8000-000000000009','43000000-0000-4000-8000-000000000090','pro_monthly','sandbox','test');
+select public.billing_begin_checkout_request('43000000-0000-4000-8000-000000000009','43000000-0000-4000-8000-000000000090','43000000-0000-4000-8000-000000000013');
+select public.complete_billing_checkout_attempt('43000000-0000-4000-8000-000000000009','43000000-0000-4000-8000-000000000090','43000000-0000-4000-8000-000000000011','https://sandbox.polar.sh/checkout/terminal');
+select public.apply_clerk_user_event('delete-terminal',repeat('d',64),'https://refund-eligibility.clerk.invalid','user_terminal','user.deleted',now(),null);
+
 select ok(not has_function_privilege('anon','public.billing_claim_checkout_compensation(text,uuid)','EXECUTE'),'anonymous cannot trigger financial compensation');
 select ok(not has_function_privilege('authenticated','public.billing_observe_checkout_payment(text,uuid,uuid,uuid,uuid,uuid,bigint,text,text[],uuid,uuid)','EXECUTE'),'browser cannot enqueue arbitrary refunds');
 select ok(not has_table_privilege('service_role','private.billing_checkout_compensations','SELECT'),'service has no raw private ledger access');
 select public.billing_observe_checkout_payment('sandbox','43000000-0000-4000-8000-000000000010','43000000-0000-4000-8000-000000000011','43000000-0000-4000-8000-000000000012','43000000-0000-4000-8000-000000000013',null,2500,'eur',array['vantare.plan.pro']);
 select public.billing_observe_checkout_payment('sandbox','43000000-0000-4000-8000-000000000010','43000000-0000-4000-8000-000000000011','43000000-0000-4000-8000-000000000012','43000000-0000-4000-8000-000000000013',null,2500,'eur',array['vantare.plan.pro']);
+select public.billing_resolve_checkout_non_applicable('sandbox','43000000-0000-4000-8000-000000000010','account_deleted');
 select is((select count(*)::integer from private.billing_checkout_compensations),1,'duplicate observation is one durable job');
 select throws_ok($$select public.billing_observe_checkout_payment('sandbox','43000000-0000-4000-8000-000000000010','43000000-0000-4000-8000-000000000011','43000000-0000-4000-8000-000000000012','43000000-0000-4000-8000-000000000013',null,3000,'eur',array['vantare.plan.pro'])$$,'P0001','compensation_order_conflict','immutable order snapshot cannot be reassigned');
 select is(public.billing_claim_checkout_compensation('sandbox','43000000-0000-4000-8000-000000000020'),null::jsonb,'activation grace prevents premature refund');
@@ -57,6 +68,8 @@ select * from public.claim_billing_checkout_attempt('43000000-0000-4000-8000-000
 select public.billing_begin_checkout_request('43000000-0000-4000-8000-000000000002','43000000-0000-4000-8000-000000000060','00000000-0000-0000-0000-000000000003');
 select public.complete_billing_checkout_attempt('43000000-0000-4000-8000-000000000002','43000000-0000-4000-8000-000000000060','43000000-0000-4000-8000-000000000061','https://sandbox.polar.sh/checkout/failed');
 select public.billing_observe_checkout_payment('sandbox','43000000-0000-4000-8000-000000000062','43000000-0000-4000-8000-000000000061','43000000-0000-4000-8000-000000000012','43000000-0000-4000-8000-000000000013',null,2500,'eur',array['vantare.plan.pro','vantare.channel.testers']);
+update public.billing_checkout_attempts set resolution='unpaid_expired',created_at=now()-interval '2 days' where attempt_id='43000000-0000-4000-8000-000000000060';
+select public.billing_resolve_checkout_non_applicable('sandbox','43000000-0000-4000-8000-000000000062','checkout_attempt_expired');
 update private.billing_checkout_compensations set next_attempt_at=now()-interval '1 second' where order_id='43000000-0000-4000-8000-000000000062';
 select is(public.billing_claim_checkout_compensation('sandbox','43000000-0000-4000-8000-000000000063')->>'state','refunding','missing entitlement bundle selects compensation');
 insert into public.billing_access_grants(user_id,provider,environment,source_type,source_id,capability,status,resource_modified_at,snapshot_hash)
@@ -76,6 +89,8 @@ select ok(public.billing_observe_checkout_session('sandbox','43000000-0000-4000-
 select is((select outcome from public.claim_billing_checkout_attempt('43000000-0000-4000-8000-000000000003','43000000-0000-4000-8000-000000000072','pro_monthly','sandbox','test')),'claimed','terminal provider expiry permits exactly a fresh attempt');
 select public.billing_begin_checkout_request('43000000-0000-4000-8000-000000000003','43000000-0000-4000-8000-000000000072','00000000-0000-0000-0000-000000000003');
 select public.billing_observe_checkout_payment('sandbox','43000000-0000-4000-8000-000000000074','43000000-0000-4000-8000-000000000073','43000000-0000-4000-8000-000000000012','00000000-0000-0000-0000-000000000003',null,2500,'eur',array['vantare.plan.pro'],'43000000-0000-4000-8000-000000000072',(select dispatch_token from public.billing_checkout_attempts where attempt_id='43000000-0000-4000-8000-000000000072'));
+update public.billing_checkout_attempts set resolution='unpaid_expired',created_at=now()-interval '2 days' where attempt_id='43000000-0000-4000-8000-000000000072';
+select public.billing_resolve_checkout_non_applicable('sandbox','43000000-0000-4000-8000-000000000074','checkout_attempt_expired');
 update private.billing_checkout_compensations set next_attempt_at=now()-interval '1 second' where order_id='43000000-0000-4000-8000-000000000074';
 select public.billing_claim_checkout_compensation('sandbox','43000000-0000-4000-8000-000000000075');
 select ok(public.billing_finish_checkout_compensation('sandbox','43000000-0000-4000-8000-000000000074','43000000-0000-4000-8000-000000000075','refunded'),'lost binding still allows a full financial refund');

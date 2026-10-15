@@ -56,14 +56,27 @@ export async function reconcilePage(args: {
   processDeps?: Partial<WebhookProcessorDeps>;
   observeCheckoutOrder?: (order: Record<string, unknown>) => Promise<void>;
   observeCheckoutSession?: (checkout: Record<string, unknown>) => Promise<void>;
+  resolveCheckoutOrder?: (
+    order: Record<string, unknown>,
+    result: { status: string; reason?: string },
+  ) => Promise<void>;
+  observationFailure?: (item: Record<string, unknown>) => Promise<void>;
 }): Promise<{ next: Cursor; quarantined: number; observed: number }> {
-  // Persist every paid-order candidate before processing any item: one poison
-  // projection cannot prevent the remaining paid orders entering compensation.
-  if (args.cursor.resource === "orders" && args.observeCheckoutOrder) {
-    for (const item of args.page.items) await args.observeCheckoutOrder(item);
-  }
-  if (args.cursor.resource === "checkouts" && args.observeCheckoutSession) {
-    for (const item of args.page.items) await args.observeCheckoutSession(item);
+  // A malformed observation must not prevent other items from reaching their
+  // webhook/ledger. Persist a PII-free Owner incident and continue this item.
+  const observe = args.cursor.resource === "orders"
+    ? args.observeCheckoutOrder
+    : args.cursor.resource === "checkouts"
+    ? args.observeCheckoutSession
+    : undefined;
+  if (observe) {
+    for (const item of args.page.items) {
+      try {
+        await observe(item);
+      } catch {
+        await args.observationFailure?.(item);
+      }
+    }
   }
   let quarantined = 0;
   for (const item of args.page.items) {
@@ -78,12 +91,26 @@ export async function reconcilePage(args: {
       }
       continue;
     }
-    const event = reconciliationEvent(args.cursor.resource, item);
+    let event;
+    try {
+      event = reconciliationEvent(args.cursor.resource, item);
+    } catch {
+      await args.observationFailure?.(item);
+      quarantined++;
+      continue;
+    }
     if (!event) continue;
     const id = "reconcile_" +
       await computeWebhookPayloadHash(JSON.stringify(event));
     const deps = { ...args.processDeps, supabase: args.supabase };
-    let result = await processPolarWebhookEvent(event, id, deps);
+    let result;
+    try {
+      result = await processPolarWebhookEvent(event, id, deps);
+    } catch {
+      await args.observationFailure?.(item);
+      quarantined++;
+      continue;
+    }
     if (
       result.status === "quarantined" && result.reason === "existing_quarantine"
     ) {
@@ -95,19 +122,33 @@ export async function reconcilePage(args: {
           args.environment,
         )
         .eq("provider_event_id", id).maybeSingle();
-      if (error || !row) throw new Error("reconciliation_inbox_unavailable");
+      if (error || !row) {
+        await args.observationFailure?.(item);
+        quarantined++;
+        continue;
+      }
       // Re-evaluate the same signed/API-derived snapshot with current durable
       // bindings. The processor still refuses email or editable metadata.
-      result = await replayPolarWebhookInboxItem(
-        row.id,
-        "billing_reconciler",
-        "automatic_reconciliation",
-        deps,
-      );
+      try {
+        result = await replayPolarWebhookInboxItem(
+          row.id,
+          "billing_reconciler",
+          "automatic_reconciliation",
+          deps,
+        );
+      } catch {
+        await args.observationFailure?.(item);
+        quarantined++;
+        continue;
+      }
+    }
+    if (args.cursor.resource === "orders") {
+      await args.resolveCheckoutOrder?.(item, result);
     }
     if (result.status === "quarantined") quarantined++;
     if (result.status === "deferred") {
-      throw new Error("reconciliation_retry_pending");
+      await args.observationFailure?.(item);
+      quarantined++;
     }
   }
   return {

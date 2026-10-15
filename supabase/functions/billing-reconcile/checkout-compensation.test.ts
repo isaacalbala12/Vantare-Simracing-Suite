@@ -39,6 +39,7 @@ const job: CompensationJob = {
   net_amount: 2500,
   currency: "eur",
   attempt_count: 1,
+  refund_amount_basis: "net",
 };
 function mapping() {
   const result = loadPolarProductMap(VALID_POLAR_PRODUCT_MAP_JSON, {
@@ -96,7 +97,8 @@ function api(fixture: CompensationJob = job) {
           const body = JSON.parse(String(init.body));
           assertEquals(
             body.amount,
-            fixture.net_amount - Number(order.refunded_amount),
+            fixture.net_amount - Number(order.refunded_amount) +
+              (fixture.refund_amount_basis === "gross" ? 525 : 0),
           );
           assertEquals(body.reason, "service_disruption");
           assertEquals(body.revoke_benefits, fixture.subscription_id === null);
@@ -133,6 +135,7 @@ function api(fixture: CompensationJob = job) {
       })) as typeof fetch;
   const settle = () => {
     refunds[0].status = "succeeded";
+    refunds[0].amount = fixture.refund_amount_basis === "gross" ? 3025 : 2500;
     order.refunded_amount = 2500;
     order.refunded_tax_amount = 525;
     order.status = "refunded";
@@ -534,4 +537,29 @@ Deno.test("pending refund cancels subscription immediately; full net without tax
   fake.order.refunded_tax_amount = 0;
   await assertRejects(() => refundUnlicensedCheckout(subJob, fake.polar));
   assertEquals(fake.posts(), 1);
+});
+
+Deno.test("refund amount policy covers net and gross; mismatched aggregates alert without a second write", async () => {
+  for (const basis of ["net", "gross"] as const) {
+    const configured = { ...job, refund_amount_basis: basis },
+      fake = api(configured);
+    const result = await refundUnlicensedCheckout(configured, fake.polar);
+    assertEquals(result.outcome, "pending");
+    const sent = JSON.parse(
+      String(fake.requests.find((r) => r.init.method === "POST")?.init.body),
+    );
+    assertEquals(sent.amount, basis === "gross" ? 3025 : 2500);
+    fake.settle();
+    assertEquals(
+      (await refundUnlicensedCheckout(configured, fake.polar)).outcome,
+      "refunded",
+    );
+    assertEquals(fake.posts(), 1);
+  }
+  const store = new MemoryStore(), fake = api();
+  fake.order.refunded_amount = 2500;
+  fake.order.refunded_tax_amount = 0;
+  await runCheckoutCompensation("sandbox", store, fake.polar);
+  assertEquals(store.alert, true);
+  assertEquals(fake.posts(), 0);
 });

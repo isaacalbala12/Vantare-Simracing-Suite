@@ -1,6 +1,5 @@
 import {
   assertEquals,
-  assertRejects,
   assertThrows,
 } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import { advanceCursor, reconcilePage, reconciliationEvent } from "./worker.ts";
@@ -132,7 +131,10 @@ Deno.test("orphan recovers automatically after durable binding appears; DB outag
   assertEquals(ledger.grants.size, 0);
   bound = true;
   outage = true;
-  await assertRejects(() => reconcilePage(args));
+  assertEquals((await reconcilePage(args)).next, {
+    resource: "subscriptions",
+    page: 1,
+  });
   assertEquals(ledger.grants.size, 0);
   outage = false;
   now = new Date("2026-10-08T12:10:00Z");
@@ -144,4 +146,31 @@ Deno.test("orphan recovers automatically after durable binding appears; DB outag
   await reconcilePage(args);
   assertEquals(ledger.grants.size, 2);
   assertEquals(inbox.replayAudit.length, 1);
+});
+
+Deno.test("one poison observation emits an incident and does not freeze the other item or cursor", async () => {
+  const observed: string[] = [], incidents: string[] = [];
+  const result = await reconcilePage({
+    cursor: { resource: "orders", page: 2 },
+    page: {
+      maxPage: 3,
+      items: [{ id: "poison", paid: false }, { id: "healthy", paid: false }],
+    },
+    environment: "sandbox",
+    supabase: {} as SupabaseClient,
+    observeCheckoutOrder: (item) => {
+      observed.push(String(item.id));
+      return item.id === "poison"
+        ? Promise.reject(new Error("invalid_polar_amount"))
+        : Promise.resolve();
+    },
+    observationFailure: (item) => {
+      incidents.push(String(item.id));
+      return Promise.resolve();
+    },
+  });
+  assertEquals(observed, ["poison", "healthy"]);
+  assertEquals(incidents, ["poison"]);
+  assertEquals(result.next, { resource: "orders", page: 3 });
+  assertEquals(result.observed, 2);
 });

@@ -68,7 +68,7 @@ def main():
         sql(bootstrap)
         migrations = []
         for migration in sorted((root/"supabase/migrations").glob("*.sql")):
-            if (args.baseline and "checkout_web_shared_guard" in migration.name) or ((args.baseline or args.before_expiry) and ("checkout_automatic_compensation" in migration.name or "web_purchase_erasure_pull" in migration.name)):
+            if (args.baseline and "checkout_web_shared_guard" in migration.name) or ((args.baseline or args.before_expiry) and ("checkout_automatic_compensation" in migration.name or "web_purchase_erasure_pull" in migration.name or "checkout_review_safety" in migration.name)):
                 continue
             try:
                 sql(migration.read_text())
@@ -81,6 +81,7 @@ def main():
             "checkout_web_shared_guard_regression.test.sql",
             "checkout_automatic_compensation.test.sql",
             "web_purchase_erasure_pull.test.sql",
+            "checkout_review_safety.test.sql",
             "billing_checkout_attempts_test.sql","checkout_web_shared_guard.test.sql",
             "native_checkout_internal_account.test.sql","native_checkout_annual.test.sql",
             "clerk_identity_cutover_test.sql","commercial_tombstone.test.sql",
@@ -168,7 +169,7 @@ def main():
             account,_,_ = seed(); attempt=str(uuid.uuid4())
             assert sql(claim(account,attempt))=="claimed"
             dispatch=f"select billing_begin_checkout_request('{account}','{attempt}','00000000-0000-0000-0000-000000000003'); update billing_checkout_attempts set expires_at=now()-interval '1 second' where user_id='{account}';"
-            expire=f"select billing_expire_unpublished_checkouts('sandbox',now()+interval '1 day'); select coalesce(resolution,'held') from billing_checkout_attempts where user_id='{account}' and attempt_id='{attempt}';"
+            expire=f"select billing_expire_unpublished_checkouts('sandbox',now()+interval '1 hour'); select coalesce(resolution,'held') from billing_checkout_attempts where user_id='{account}' and attempt_id='{attempt}';"
             race(dispatch,expire,"held","F1 dispatched unknown payment is not released")
             account,_,_ = seed(); attempt=str(uuid.uuid4())
             assert sql(claim(account,attempt))=="claimed"

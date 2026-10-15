@@ -136,6 +136,18 @@ export async function handleReconciliation(req: Request): Promise<Response> {
         supabase: admin,
         observeCheckoutOrder: (order) =>
           compensationStore.observe(order, map.map),
+        resolveCheckoutOrder: (order, result) =>
+          compensationStore.resolve!(order, result, environment),
+        observationFailure: async (item) => {
+          const incident = await admin.rpc("billing_checkout_incident", {
+            p_environment: environment,
+            p_correlation: typeof item.id === "string" && item.id.length <= 128
+              ? item.id
+              : "malformed_item",
+            p_code: "checkout_observation_failed",
+          });
+          if (incident.error) throw new Error("checkout_incident_unavailable");
+        },
         observeCheckoutSession: (checkout) =>
           observeCheckoutSession(admin, map.map, checkout),
       });

@@ -1,16 +1,32 @@
-## VANTA-83 / #1661 · ronda 4 en curso · 15-oct-2026
+## VANTA-83 / #1661 · ronda 4 terminada para revisión · 16-oct-2026
 
-- Isaac confirma Pro Plus 9,99/99,90; primer periodo 6,99/69,90.
-- Creador atribuye primer pago sin rebajarlo; combinable con once de lanzamiento.
-  Después del pago se prepara descuento de renovación con lease, GET/PATCH/ACK
-  e incidencia Owner. Atribución de comisión independiente del cupón inicial.
-- Founders incluye Stable + Nightly vitalicios; reembolso retira ambos.
-- [Contrato de integración #1593](../../billing/creator-renewals-1661.md): rama
-  leída sin modificar. Requiere adaptar su escritor antes de activar ambas
-  campañas, preservando saldo y plazo de creador al volver de informes.
-- Edge 250 PASS y SQL 219 PASS antes de las últimas regresiones de borrado;
-  revalidación final y gates Windows services/admin/hub pendientes.
-- Sin Polar real, despliegue, dinero ni capturas. PR draft #1666 sigue a nightly.
+- Pro Plus confirmado 9,99/99,90 EUR; primer periodo 6,99/69,90.
+- Creador puede acompañar al lanzamiento: solo atribución en primer checkout,
+  20 % desde renovación. Cupones API-only mensuales/anuales configurados en
+  polar-launch-prices.json (11/12 meses). Comisión manual 30 % mes 1 y 10 % meses 2–12.
+- Claim y atribución atómicos; primer pago obligatorio, lease/GET/PATCH/ACK,
+  reintento sin reiniciar repeating y fallo visible en Owner. Informes puede
+  reabrir selección tras el primer pago; mayor ahorro, empate informes,
+  perdedor registrado. Founders añade Stable + Nightly vitalicios; refund retira ambos.
+- [Contrato #1593](../../billing/creator-renewals-1661.md). Rama leída sin tocar;
+  coordinación en issuecomment-6204073057 de #1593. **Pendiente en su integración**:
+  adaptar el escritor al arbitraje/lease y preservar plazo/saldo al volver de
+  informes; no activar dos escritores independientes ni afirmar prueba conjunta.
+- Código 52fab00d6ad0e4932d434bd3ffab35613e79aa2b. PR draft #1666 → nightly;
+  contiene merge autorizado eb553c7fe; sin integración de esta feature.
+- RED creador + campaña y Nightly contra baseline; 252 Edge, 247 pgTAP,
+  1798 Nextest PASS (14 omitidas por perfil), check/Clippy global/fmt,
+  lifecycle y 25 telemetría PASS; quality/retirement PASS (456 huellas).
+  Primer Nextest falló por fixture nueva desordenada; se corrigió el orden,
+  conservando la validación estricta. Log del fallo y pasada verde conservados.
+- Plan offline completo regenerado en C:/VantareServer/evidence/polar-auditoria/plan-catalogo.txt.
+  Modelo válido; apply_ready=false hasta inventario vivo verificado. Comando
+  de Isaac en aplicar-catalogo.txt vecino; no se ha ejecutado apply ni consultado Polar real.
+- Plane se devuelve Por revisar con PR y resumen. CI remota del push final se
+  comprueba en la entrega; no se afirma despliegue, merge ni release.
+- Sin dinero, servicios comerciales reales ni capturas (#1655). Web intacta,
+  contrato VANTA-42 actualizado; #1624 debe rebasarse sin tocar su rama.
+  Validación de IVA/renovaciones reales y activación pendientes del operador.
 
 ## VANTA-83 / #1661 · ronda 3 de acabado (16/10/2026)
 

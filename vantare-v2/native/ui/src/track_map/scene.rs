@@ -1,6 +1,6 @@
 //! Geometría de demostración reconstruida para la captura, nunca para live.
-//! Solo Sebring, de `track-geometry-pack.ts`; mismos metros que la referencia.
-//! El selector exige el estado y origen exactos de la fixture. No es un pack
+//! Sebring y la demo Le Mans del diseño; mismos metros que las referencias.
+//! El selector exige origen e identidad espacial de la fixture. No es un pack
 //! productivo ni un fallback por nombre de circuito.
 
 use std::sync::OnceLock;
@@ -14,9 +14,7 @@ pub(super) fn geometry(snapshot: &Snapshot) -> Option<Geometry<'static>> {
         ))
         .unwrap_or_default()
     });
-    if reference.iter().any(|r| {
-        r.epoch == snapshot.epoch && r.origin == snapshot.origin && r.state == snapshot.state
-    }) {
+    if reference.iter().any(|r| same_scene(r, snapshot)) {
         return Some(Geometry {
             track_name: "Le Mans",
             label: "Le Mans",
@@ -50,15 +48,33 @@ fn legacy_geometry(snapshot: &Snapshot) -> Option<Geometry<'static>> {
             }
         })
         .as_ref()?;
-    (snapshot.epoch == reference.epoch
-        && snapshot.origin == reference.origin
-        && snapshot.state == reference.state)
-        .then_some(Geometry {
-            track_name: "Sebring",
-            label: "Sebring International Raceway",
-            points_m: POINTS,
-            synthetic: false, // El trazado del pack es real; la escena de coches es demo.
-        })
+    same_scene(reference, snapshot).then_some(Geometry {
+        track_name: "Sebring",
+        label: "Sebring International Raceway",
+        points_m: POINTS,
+        synthetic: false, // El trazado del pack es real; la escena de coches es demo.
+    })
+}
+
+/// La recepción y las señales ajenas al mapa pueden cambiar o ser filtradas
+/// por la demanda. La fuente, época, sesión y todos los coches con sus poses
+/// deben seguir siendo los de la demo cerrada, nunca una partida live.
+fn same_scene(reference: &Snapshot, snapshot: &Snapshot) -> bool {
+    let a = &reference.state;
+    let b = &snapshot.state;
+    reference.epoch == snapshot.epoch
+        && reference.origin.source == snapshot.origin.source
+        && reference.origin.source_time == snapshot.origin.source_time
+        && a.session.id == b.session.id
+        && a.session.kind == b.session.kind
+        && a.session.track_name == b.session.track_name
+        && a.session.track_length_m == b.session.track_length_m
+        && a.player.map(|p| p.car) == b.player.map(|p| p.car)
+        && a.cars.len() == b.cars.len()
+        && a.cars
+            .iter()
+            .zip(&b.cars)
+            .all(|(x, y)| x.id == y.id && x.class == y.class && x.pose == y.pose)
 }
 
 // Coordenadas originales del único circuito necesario, no píxeles congelados.

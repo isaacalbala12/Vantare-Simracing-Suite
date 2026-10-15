@@ -19,13 +19,27 @@ pub const SIZE: (f32, f32) = (340.0, 88.0);
 const PULSE: Duration = Duration::from_millis(920);
 
 pub fn paint(vm: &ViewModel, pulse: f32, window: &mut Window, cx: &mut App) {
-    paint_content(vm, pulse, Preferences::default(), false, window, cx);
+    paint_content(
+        vm,
+        pulse,
+        Preferences::default(),
+        false,
+        &SessionText::default(),
+        window,
+        cx,
+    );
+}
+#[derive(Clone, Default, PartialEq)]
+struct SessionText {
+    kind: Option<crate::session::Session>,
+    finish: Option<(u32, String)>,
 }
 fn paint_content(
     vm: &ViewModel,
     _pulse: f32,
     prefs: Preferences,
     waiting: bool,
+    session: &SessionText,
     window: &mut Window,
     cx: &mut App,
 ) {
@@ -266,15 +280,33 @@ fn paint_content(
             Face::Display,
             &ink,
         );
+    } else if !waiting && vm.flag == Some(FlagKind::Blue) {
+        let (ox, oy) = text::origin();
+        let mut stripe = gpui::PathBuilder::fill();
+        for (i, (x, y)) in [(16.0, 56.0), (20.0, 60.0), (60.0, 32.0), (56.0, 28.0)]
+            .into_iter()
+            .enumerate()
+        {
+            let p = gpui::point(px(ox + x), px(oy + y));
+            if i == 0 {
+                stripe.move_to(p);
+            } else {
+                stripe.line_to(p);
+            }
+        }
+        stripe.close();
+        if let Ok(path) = stripe.build() {
+            window.paint_path(path, Color(0xffffff, 0.75).hsla());
+        }
     } else if !waiting && vm.flag == Some(FlagKind::Checkered) {
-        for row in 0..3 {
-            for column in 0..4 {
+        for row in 0..5 {
+            for column in 0..6 {
                 round_rect(
                     window,
-                    14.0 + column as f32 * 12.0,
-                    27.0 + row as f32 * 11.33,
-                    12.0,
-                    11.33,
+                    14.0 + column as f32 * 8.0,
+                    27.0 + row as f32 * 8.0,
+                    8.0,
+                    if row == 4 { 2.0 } else { 8.0 },
                     0.0,
                     Color(
                         if (row + column) % 2 == 0 {
@@ -295,7 +327,29 @@ fn paint_content(
         1.4,
         Color(if quiet { 0xc9c0c2 } else { 0xfaf7f7 }, 1.0).hsla(),
     );
-    let title = if vm.flag == Some(FlagKind::Yellow) && sectors {
+    let title = if !waiting
+        && session.kind == Some(crate::session::Session::Qualifying)
+        && vm.penalty.is_none()
+        && vm.flag == Some(FlagKind::Red)
+    {
+        if kit.es() {
+            "ROJA · CLASIFICACIÓN"
+        } else {
+            "RED · QUALIFYING"
+        }
+        .into()
+    } else if !waiting
+        && session.kind == Some(crate::session::Session::Qualifying)
+        && vm.penalty.is_none()
+        && vm.flag == Some(FlagKind::Checkered)
+    {
+        if kit.es() {
+            "FIN DE LA CLASIFICACIÓN"
+        } else {
+            "QUALIFYING FINISHED"
+        }
+        .into()
+    } else if vm.flag == Some(FlagKind::Yellow) && sectors {
         vm.sectors
             .iter()
             .position(|f| *f == Some(FlagKind::Yellow))
@@ -319,7 +373,33 @@ fn paint_content(
         &heading,
     );
     let body = kit.ink(Face::Body, 12.0, 0.0, style.colors.text.hsla());
-    let message = text::fit(window, message, &body, 250.0);
+    let finish = if vm.flag == Some(FlagKind::Checkered) && vm.penalty.is_none() && !waiting {
+        if session.kind == Some(crate::session::Session::Qualifying) {
+            Some(
+                if kit.es() {
+                    "Termina la vuelta en curso"
+                } else {
+                    "Finish your current lap"
+                }
+                .into(),
+            )
+        } else {
+            session.finish.as_ref().map(|(position, class)| {
+                format!(
+                    "{} · P{position} {} {class}",
+                    if kit.es() {
+                        "Fin de la carrera"
+                    } else {
+                        "Race finished"
+                    },
+                    if kit.es() { "en" } else { "in" }
+                )
+            })
+        }
+    } else {
+        None
+    };
+    let message = text::fit(window, finish.as_deref().unwrap_or(message), &body, 250.0);
     kit.label(
         window,
         cx,
@@ -449,6 +529,7 @@ pub(crate) struct Widget {
     settings: Settings,
     vm: ViewModel,
     waiting: bool,
+    session: SessionText,
     yellow_since: Option<Instant>,
 }
 
@@ -460,6 +541,7 @@ impl Widget {
             settings,
             yellow_since: None,
             waiting: true,
+            session: SessionText::default(),
         }
     }
 
@@ -475,13 +557,34 @@ impl Widget {
         );
         let changed = replace_if_changed(&mut self.waiting, waiting);
         let vm = self.settings.project(snapshot, prefs);
+        let kind = crate::session::Session::of(&snapshot.state.session.kind);
+        let session = SessionText {
+            kind,
+            finish: if !waiting
+                && kind == Some(crate::session::Session::Race)
+                && vm.flag == Some(FlagKind::Checkered)
+                && vm.penalty.is_none()
+            {
+                snapshot.state.player_car().and_then(|car| {
+                    car.class_position
+                        .current()
+                        .copied()
+                        .filter(|p| *p > 0)
+                        .zip(car.class.as_ref())
+                        .map(|(p, c)| (p, c.name.clone()))
+                })
+            } else {
+                None
+            },
+        };
+        let session_changed = replace_if_changed(&mut self.session, session);
         if vm.flag != self.vm.flag {
             self.yellow_since = (vm.flag == Some(FlagKind::Yellow)).then(Instant::now);
         }
         if waiting {
             self.yellow_since = None;
         }
-        replace_if_changed(&mut self.vm, vm) || changed
+        replace_if_changed(&mut self.vm, vm) || changed || session_changed
     }
 
     pub(crate) fn frame(&mut self, prefs: Preferences, reduced: bool) -> (Paint, Wake) {
@@ -496,8 +599,11 @@ impl Widget {
         }
         let vm = self.vm.clone();
         let waiting = self.waiting;
+        let session = self.session.clone();
         (
-            Box::new(move |window, cx| paint_content(&vm, pulse, prefs, waiting, window, cx)),
+            Box::new(move |window, cx| {
+                paint_content(&vm, pulse, prefs, waiting, &session, window, cx);
+            }),
             wake,
         )
     }
@@ -523,8 +629,8 @@ fn pulse(elapsed: Option<Duration>) -> (f32, Wake) {
 impl Settings {
     #[allow(clippy::unused_self)] // Contrato común de demanda por renderer.
     pub fn demand(&self) -> vantare_ipc::Demand {
-        use vantare_ipc::Signal::Flags;
-        crate::demand::signals(33, &[Flags])
+        use vantare_ipc::Signal::{Flags, Positions, SessionInfo};
+        crate::demand::signals(33, &[Flags, Positions, SessionInfo])
     }
 }
 
@@ -576,6 +682,17 @@ mod tests {
             widget.ingest(&snapshot, prefs),
             "debe recuperar la bandera al reconectar"
         );
+        snapshot.state.session.kind =
+            vantare_domain::Quality::Reliable(vantare_domain::SessionKind::Qualifying);
+        assert!(
+            widget.ingest(&snapshot, prefs),
+            "el contexto de sesión también invalida la tarjeta"
+        );
+        assert_eq!(
+            widget.session.kind,
+            Some(crate::session::Session::Qualifying)
+        );
+        assert!(!widget.ingest(&snapshot, prefs));
     }
 
     #[test]

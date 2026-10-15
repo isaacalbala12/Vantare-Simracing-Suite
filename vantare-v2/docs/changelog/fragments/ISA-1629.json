@@ -11,13 +11,14 @@
     "Daños reúne Coche y Cifras con tecla opcional; no cambia las licencias ni añade datos de telemetría."
   ],
   "testing": [
-    "Abrir el Workshop y contrastar las capturas de diseño y Windows por widget y estado en la evidencia de #1629.",
+    "Cuando Isaac autorice una nueva sesión y esté disponible la herramienta nueva, recapturar los 17 widgets por estado y contrastarlos con el diseño; en esta sesión está prohibido abrir ventanas o capturar.",
     "Probar la tecla elegida de Daños, mantenerla pulsada, cerrar y reabrir; comprobar que vista y ajustes se conservan."
   ],
   "knownLimitations": [
     "Los ejemplos son sintéticos: no certifican telemetría física, OBS ni licencias reales.",
     "Algunas variantes del HTML necesitan señales aún no disponibles: previsión, ABS/TC/FFB, estado de vuelta lanzada, daños por zona y tiempos de sanción.",
     "El catálogo productivo ofrece Neo y Neutro; Carmín/Limpio y algunos tamaños del HTML no tienen un ajuste equivalente en este contrato.",
-    "La aceptación visual final y la promoción de canal corresponden a Isaac."
+    "La aceptación visual final y la promoción de canal corresponden a Isaac.",
+    "La evidencia Windows existente es provisional y anterior al cierre; la recaptura final está pendiente por orden de Isaac, también fuera de pantalla."
   ]
 }

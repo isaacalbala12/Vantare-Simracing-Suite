@@ -348,7 +348,7 @@ impl Settings {
     #[allow(clippy::unused_self)] // Contrato común de demanda por renderer.
     pub fn demand(&self) -> vantare_ipc::Demand {
         use vantare_ipc::Signal::{
-            LapCount, Positions, SessionInfo, Spatial, TrackLength, TrackName,
+            LapCount, Positions, SessionClock, SessionInfo, Spatial, TrackLength, TrackName,
         };
         crate::demand::signals(
             33,
@@ -358,6 +358,7 @@ impl Settings {
                 TrackLength,
                 LapCount,
                 SessionInfo,
+                SessionClock,
                 Positions,
             ],
         )
@@ -531,16 +532,16 @@ mod tests {
         assert!(!widget.ingest(&snapshot, prefs));
         snapshot.sequence += 1;
         assert!(!widget.ingest(&snapshot, prefs));
+        let english = Preferences {
+            language: Language::En,
+            ..prefs
+        };
         assert!(
-            !widget.ingest(
-                &snapshot,
-                Preferences {
-                    language: Language::En,
-                    ..prefs
-                }
-            ),
-            "el idioma no cambia texto oculto"
+            widget.ingest(&snapshot, english),
+            "la cabecera visible cambia de idioma"
         );
+        assert!(widget.labels[1].contains("RACE"));
+        assert!(!widget.ingest(&snapshot, english));
         assert_eq!(widget.frame(prefs, false).1, Wake::Idle);
         assert!(!widget.animating());
     }

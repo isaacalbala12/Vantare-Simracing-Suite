@@ -56,12 +56,6 @@ $hub = $measuredHub
 
 function Invoke-NativeCapture([string]$Name, [string]$Label) {
     $png = Join-Path $evidence "$Label-$Name.png"
-    $log = Join-Path $evidence "$Label-$Name.log"
-    & $hub --capture $Name --out $png --demo *> $log
-    if ($LASTEXITCODE -ne 0) {
-        $tail = (Get-Content -LiteralPath $log -Tail 30) -join [Environment]::NewLine
-        throw "Captura $Name fallida (exit $LASTEXITCODE). Log: $log`n$tail"
-    }
     if (-not (Test-Path -LiteralPath $png -PathType Leaf)) { throw "Captura sin PNG: $png" }
     return $png
 }
@@ -134,6 +128,15 @@ if (-not $names) { throw 'Indica -Pantalla nombre o -Todas' }
 $unknown = @($names | Where-Object { $_ -notin $allNames -and $_ -notin $strategyV5Names })
 if ($unknown.Count -gt 0) { throw "Pantalla fuera del manifiesto Wails: $($unknown -join ', ')" }
 
+$batch = @($names | ForEach-Object { @{scene=$_; output=(Join-Path $evidence "native-$_.png")} })
+if ($VerificarDeterminismo) {
+    $determinismScreen = if ($Todas) { 'inicio-base' } elseif ($StrategyV5A) { $strategyV5ANames[0] } else { $names[0] }
+    $batch += @(@{scene=$determinismScreen; output=(Join-Path $evidence "determinismo-a-$determinismScreen.png")}, @{scene=$determinismScreen; output=(Join-Path $evidence "determinismo-b-$determinismScreen.png")})
+}
+$batchPath = Join-Path $evidence 'capture-batch.json'
+ConvertTo-Json -InputObject $batch -Depth 20 | Set-Content -LiteralPath $batchPath -Encoding utf8
+& $hub --capture-batch $batchPath *> (Join-Path $evidence 'capture-batch.log')
+if ($LASTEXITCODE -ne 0) { throw 'Captura en lote falló; consulta capture-batch.log' }
 $results = @()
 foreach ($name in $names) { $results += Compare-Screen $name }
 $sorted = @($results | Sort-Object PorcentajeDistinto -Descending)
@@ -152,7 +155,7 @@ if ($overLimit.Count -gt 0) {
 }
 
 if ($VerificarDeterminismo) {
-    $determinismScreen = if ($Todas) { 'inicio-base' } elseif ($StrategyV5A) { $strategyV5ANames[0] } else { $Pantalla }
+    $determinismScreen = if ($Todas) { 'inicio-base' } elseif ($StrategyV5A) { $strategyV5ANames[0] } else { $names[0] }
     $first = Invoke-NativeCapture $determinismScreen 'determinismo-a'
     $second = Invoke-NativeCapture $determinismScreen 'determinismo-b'
     $hashA = (Get-FileHash -LiteralPath $first -Algorithm SHA256).Hash

@@ -442,7 +442,7 @@ impl Studio {
             );
             for tab in Tab::ALL {
                 #[cfg(feature = "parity-capture")]
-                if capture_session().is_some() {
+                if capture_session(cx).is_some() {
                     let behavior =
                         std::env::var("VANTARE_CAPTURE_INSPECTOR").as_deref() == Ok("behavior");
                     if tab

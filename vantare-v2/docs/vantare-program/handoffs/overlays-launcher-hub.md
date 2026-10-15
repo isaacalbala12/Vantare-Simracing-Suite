@@ -80,3 +80,18 @@ Hitos #1607: PNG `c40a90d9` (2234.920 → 115.473 µs/carga repetida; RED/GREEN)
 2026-10-13 · GitHub #1569 · Claude (Opus 5.5): merge de nightly@707514e2 (#1581 integrada); §3, §7, §8 y §9.
 2026-10-13 · GitHub #1561 · Codex. Merge de nightly con #1579 y #1580 conservados junto con PR-4/PR-6; estado y diario en issue/buzón.
 2026-10-13 · GitHub #1566 · Claude (Opus 5.5): §1, §4, §6 y §8 por Pedales Vantare; merge de nightly con #1578 y #1579 conservados.
+
+### #1655 / VANTA-82 · Capturas sin ventanas visibles, en lote e incrementales
+
+2026-10-15 · Implementación en curso por Codex gpt-6.1-sol high, sin subagentes,
+base origin/nightly `4651797cb`, rama `vantareapp/isa-1655-capturas`.
+HWND oculto desde creación fuera de todos los monitores, sin activar; verificación
+GetWindowRect previa a la presentación. Lotes en Hub/Workshop/overlays con una
+ventana reutilizada, PrintWindow directo e incremental SHA256 de entradas y PNG.
+Las escenas dejan de depender de argv para poder alternar en el mismo proceso.
+Scripts y native/README actualizados. Gates, capturas comparadas y tiempos aún
+pendientes; no se afirman mejoras medidas. Referencias 1634-r3/1629-r3 pertenecen
+a ramas no integradas: se validan sin importar sus features. Evidencia externa
+`C:/VantareServer/evidence/1655`, buzón `C:/tmp/buzon/1655.md`.
+Sin push/PR todavía, sin merge, promoción ni release. Siguiente: completar gates,
+probar primero seguridad del HWND, después paridad/medición y entregar PR draft.

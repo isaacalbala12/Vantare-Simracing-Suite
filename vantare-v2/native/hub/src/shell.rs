@@ -39,6 +39,7 @@ pub(crate) use settings::releases::news_for_channel;
 mod shortcuts;
 mod sidebar;
 
+#[derive(Clone)]
 pub struct Options {
     pub controlled: bool,
     pub data_dir: PathBuf,
@@ -57,7 +58,7 @@ pub struct Options {
     pub capture_zoom: Option<u16>,
 }
 
-struct Hub {
+pub(crate) struct Hub {
     analytics: analytics::State,
     section: Section,
     shell: chrome::State,
@@ -1008,7 +1009,14 @@ fn prepare_analysis(options: &Options) -> Result<Analysis, String> {
     let storage_exe = std::env::current_exe()
         .map_err(|error| format!("ruta del Hub: {error}"))?
         .with_file_name(format!("vantare-storage{}", std::env::consts::EXE_SUFFIX));
-    Ok(Analysis::new(recordings, storage_exe))
+    let analysis = Analysis::new(recordings, storage_exe);
+    #[cfg(feature = "parity-capture")]
+    let analysis = {
+        let mut analysis = analysis;
+        analysis.capture_scene(options.capture.as_ref().map(|c| c.name.as_str()));
+        analysis
+    };
+    Ok(analysis)
 }
 
 /// Sale al cerrar la última ventana o, en desarrollo, al cerrarse stdin.
@@ -1057,7 +1065,7 @@ fn create_engineer(engineer: Engineer, cx: &mut App) -> Entity<Engineer> {
 }
 
 /// Entradas ya cargadas y validadas antes de abrir la ventana.
-struct Loaded {
+pub(crate) struct Loaded {
     preview_fixtures: Option<[vantare_domain::Snapshot; 5]>,
     appearance: settings::appearance::Store,
     appearance_error: Option<String>,
@@ -1077,8 +1085,22 @@ struct Loaded {
 }
 
 impl Hub {
+    #[cfg(feature = "parity-capture")]
+    pub(crate) fn capture_build(
+        loaded: Loaded,
+        section: Section,
+        access: navigation::Access,
+        failure: std::rc::Rc<std::cell::RefCell<Option<String>>>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Self {
+        let mut hub = Self::build(loaded, section, access, failure, window, cx);
+        hub.settings_zoom_restore(window);
+        hub
+    }
+
     #[allow(clippy::too_many_lines)] // Conecta las entidades ya existentes y sus observadores.
-    fn build(
+    pub(crate) fn build(
         loaded: Loaded,
         section: Section,
         access: navigation::Access,
@@ -1109,6 +1131,10 @@ impl Hub {
             demo,
             capture,
         } = loaded;
+        #[cfg(feature = "parity-capture")]
+        if let Some(scene) = &capture {
+            cx.set_global(crate::capture::CurrentScene(scene.clone()));
+        }
         orbit::theme::install(appearance.settings, window, cx);
         start_source_poll(cx);
         let focus = cx.focus_handle();
@@ -1308,14 +1334,7 @@ fn wire_strategy(strategy: &Entity<Strategy>, cx: &mut Context<Hub>) {
     .detach();
 }
 
-pub fn run(options: Options) -> Result<(), String> {
-    run_with_access(options, navigation::Access::default())
-}
-
-/// La integración de cuenta entrega derechos ya resueltos. Esta shell no
-/// autentica el plan; sin integración deja el acceso monetizado sin verificar.
-#[allow(clippy::too_many_lines)] // Carga validada y apertura de una única ventana.
-pub fn run_with_access(mut options: Options, access: navigation::Access) -> Result<(), String> {
+pub(crate) fn load(options: &mut Options) -> Result<Loaded, String> {
     if let (Some(demo), Some(capture)) = (&mut options.demo, &options.capture) {
         demo.apply_capture(capture)?;
     }
@@ -1348,7 +1367,7 @@ pub fn run_with_access(mut options: Options, access: navigation::Access) -> Resu
             }
         }
     };
-    let loaded = Loaded {
+    Ok(Loaded {
         preview_fixtures: options
             .capture
             .as_ref()
@@ -1356,16 +1375,28 @@ pub fn run_with_access(mut options: Options, access: navigation::Access) -> Resu
             .transpose()?,
         appearance,
         appearance_error,
-        analysis: prepare_analysis(&options)?,
-        prepared: Prepared::load(&options.data_dir, options.scene)?,
-        studio: PreparedStudio::load(options.layout)?,
+        analysis: prepare_analysis(options)?,
+        prepared: Prepared::load(&options.data_dir, options.scene.clone())?,
+        studio: {
+            #[cfg(feature = "parity-capture")]
+            {
+                PreparedStudio::load_capture(
+                    options.layout.clone(),
+                    options.capture.as_ref().map(|s| s.name.as_str()),
+                )?
+            }
+            #[cfg(not(feature = "parity-capture"))]
+            {
+                PreparedStudio::load(options.layout.clone())?
+            }
+        },
         calendar: match options.demo.as_ref() {
             Some(demo) => Calendar::load_demo(&options.data_dir, demo)?,
             None => Calendar::load(&options.data_dir)?,
         },
         notifications,
         launcher,
-        engineer: Engineer::load(options.engineer),
+        engineer: Engineer::load(options.engineer.clone()),
         strategy_dir: options.data_dir.clone(),
         testing_dir: options.data_dir.clone(),
         service_pipe: options
@@ -1373,10 +1404,27 @@ pub fn run_with_access(mut options: Options, access: navigation::Access) -> Resu
             .clone()
             .map_or_else(vantare_ipc::default_pipe_name, Ok)
             .map_err(|_| "IPC no disponible")?,
-        subscriber: subscribe(options.pipe)?,
+        subscriber: subscribe(options.pipe.clone())?,
         demo: options.demo.clone(),
         capture: options.capture.clone(),
-    };
+    })
+}
+
+pub fn run(options: Options) -> Result<(), String> {
+    run_with_access(options, navigation::Access::default())
+}
+
+/// La integración de cuenta entrega derechos ya resueltos. Esta shell no
+/// autentica el plan; sin integración deja el acceso monetizado sin verificar.
+#[allow(clippy::too_many_lines)] // Carga validada y apertura de una única ventana.
+pub fn run_with_access(mut options: Options, access: navigation::Access) -> Result<(), String> {
+    if options.capture.is_some() {
+        #[cfg(feature = "parity-capture")]
+        return crate::capture::run_many(vec![options]);
+        #[cfg(not(feature = "parity-capture"))]
+        return Err("captura requiere parity-capture".into());
+    }
+    let loaded = load(&mut options)?;
     let stop = watch_stdin(options.controlled)?;
     let failure = std::rc::Rc::new(std::cell::RefCell::new(None));
     let result = failure.clone();

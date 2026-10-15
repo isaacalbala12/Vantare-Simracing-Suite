@@ -336,12 +336,70 @@ fn parse(args: &[String]) -> Result<Options, String> {
     RawOptions::parse(args)?.finish()
 }
 
+#[cfg(feature = "parity-capture")]
+fn capture_batch(path: &Path) -> Result<(), String> {
+    let requests = vantare_ui::capture_batch::read(path)?;
+    let mut options = Vec::new();
+    for request in requests {
+        if request.widget.is_some() || request.settings.is_some() || request.until.is_some() {
+            return Err("widget/settings/until son del Workshop".into());
+        }
+        let mut args = vec![
+            "--capture".into(),
+            request.scene,
+            "--out".into(),
+            request.output.to_string_lossy().into_owned(),
+        ];
+        if let Some(appearance) = request.appearance {
+            args.extend(["--appearance".into(), appearance]);
+        }
+        if let Some([w, h]) = request.size {
+            args.extend(["--size".into(), format!("{w}x{h}")]);
+        }
+        if let Some(zoom) = request.zoom {
+            args.extend(["--zoom".into(), zoom.to_string()]);
+        }
+        if request.collapsed {
+            args.push("--collapsed".into());
+        }
+        let mut parsed = parse(&args)?;
+        if let Some(state) = parsed.capture.as_mut() {
+            if request.parameters.keys().any(|key| key != "calendar")
+                || (!request.parameters.is_empty() && !state.name.starts_with("calendario-r6-"))
+            {
+                return Err("parameters solo admite calendar en escenas calendario-r6-*".into());
+            }
+            state.parameters = request.parameters;
+        }
+        options.push(parsed);
+    }
+    vantare_hub::capture::run_many(options)
+}
+
 fn main() -> ExitCode {
     if product::print_version() {
         return ExitCode::SUCCESS;
     }
     vantare_services::diagnostics::install_panic_hook("vantare-hub");
     let args: Vec<String> = std::env::args().skip(1).collect();
+    if let [flag, path] = args.as_slice()
+        && flag == "--capture-batch"
+    {
+        #[cfg(feature = "parity-capture")]
+        return match capture_batch(std::path::Path::new(path)) {
+            Ok(()) => ExitCode::SUCCESS,
+            Err(error) => {
+                eprintln!("vantare-hub: {error}");
+                ExitCode::FAILURE
+            }
+        };
+        #[cfg(not(feature = "parity-capture"))]
+        {
+            let _ = path;
+            eprintln!("reconstruye con --features parity-capture");
+            return ExitCode::from(2);
+        }
+    }
     if args.as_slice() == ["--kit"] {
         return match vantare_hub::orbit::run_kit() {
             Ok(()) => ExitCode::SUCCESS,

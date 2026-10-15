@@ -101,6 +101,12 @@ fn main() -> ExitCode {
         args.remove(0);
     }
     #[cfg(feature = "parity-capture")]
+    if let [flag, path] = std::env::args().skip(1).collect::<Vec<_>>().as_slice()
+        && flag == "--capture-batch"
+    {
+        return vantare_ui::capture::run_batch(std::path::Path::new(path));
+    }
+    #[cfg(feature = "parity-capture")]
     if let [flag, path] = args.as_slice()
         && flag == "--parity-capture"
     {

@@ -175,3 +175,14 @@ las nueve combinaciones a 1920 conservan paridad 0 px con r3 y el resize vivo
 recupera 125→112,5→125 sin alterar la preferencia. **Aceptación visual pendiente:**
 1280×800 lógicos no evita todos los recortes de Inicio/Launcher a 1440/125 elegido.
 El informe y handoff conservan las capturas y el hallazgo; no se integra al candidato.
+
+## Capturas con popup oculto (#1655)
+
+`window.rs` conserva los límites explícitos al crear un `PopUp` situado a la
+izquierda de todo el escritorio virtual, con `show: false` y `focus: false`: `CreateWindowExW` recibe posición/tamaño físicos
+y `WS_EX_NOACTIVATE`, sin `WS_VISIBLE` ni `TOPMOST`. No usa `CW_USEDEFAULT` ni
+`SetWindowPlacement` (que recoloca rectángulos fuera de pantalla). El propietario
+verifica el HWND y todos los monitores antes de `SWP_SHOWWINDOW | SWP_NOACTIVATE`.
+El resto de ventanas conserva la ruta existente. Al actualizar GPUI, conservar
+esta garantía o retirarla solo si upstream la implementa, y repetir el monitor
+de creación/foco y la comparación de píxeles del lote.

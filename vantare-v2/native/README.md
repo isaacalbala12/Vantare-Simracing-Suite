@@ -215,6 +215,79 @@ completo en ambos sistemas con esos gates y el smoke IPC. Las ventanas
 Unix son de desarrollo: telemetría live LMU/ACC, overlays sobre juego/OBS, MSIX
 y paridad por píxeles contra Wails siguen siendo exclusivamente Windows.
 
+## Capturas sin ocupar la pantalla (#1655)
+
+Compilar Hub y Workshop con `parity-capture`, por la cola y con target propio.
+Solo Windows, sesión gráfica y DPI 96. No se necesita
+`VANTARE_CAPTURE_OFFSCREEN`: todos los modos de captura crean el HWND oculto,
+fuera de **todos** los monitores y sin activar. El backend conserva esas
+coordenadas desde `CreateWindowExW`; antes de presentar se verifica
+`GetWindowRect`. `WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW` evita foco/barra de tareas.
+Un fallo de posición detiene el lote con la ventana oculta. No se usa el ratón,
+el teclado, el escritorio ni un vigilante que mueva ventanas después de aparecer.
+
+Un manifiesto JSON es una lista de entradas. Rutas relativas al directorio de
+trabajo; las PNG y sus recibos deben quedar fuera del repo:
+
+```json
+[
+  {"scene":"inicio-base","appearance":"vantare-dark","size":[1440,900],"output":"C:/tmp/capturas/inicio-dark.png"},
+  {"scene":"inicio-base","appearance":"vantare-light","size":[1280,800],"output":"C:/tmp/capturas/inicio-light.png"},
+  {"scene":"calendario-base","size":[1440,900],"output":"C:/tmp/capturas/calendario.png"}
+]
+```
+
+```powershell
+# Ejecutables ya compilados con parity-capture:
+& C:/targets/mi-issue/debug/vantare-hub.exe --capture-batch C:/tmp/hub.json
+& C:/targets/mi-issue/debug/vantare-workshop.exe --capture-batch C:/tmp/widgets.json
+# vantare-overlays admite el mismo manifiesto de widgets.
+```
+
+Cada proceso reutiliza **una sola ventana** para el lote entero y la cierra al
+terminar, también ante error. El manifiesto del Hub admite `collapsed` y `zoom`
+(90/100/110/125), además de escena, apariencia y tamaño. Los datos QA se vuelven
+a cargar para cada entrada; la escena actual no depende de los argumentos del
+proceso inicial. `parameters` admite la clave `calendar` en las escenas `calendario-r6-*` de la
+rama del calendario: transporta su especificación a la demo, sin ejecutar
+comandos ni modificar el entorno del proceso. Las claves no admitidas fallan. Al integrar #1634, aplicar desde la raíz Git
+`git apply vantare-v2/native/hub/reference/tools/calendar-batch-1634.patch`: conecta
+su selector QA con los datos de cada entrada y conserva la variable antigua.
+El parche está separado porque ese módulo aún no existe en esta base de nightly.
+
+En widgets, `scene` es el archivo de fotos existente (una foto o secuencia JSON),
+`widget` es el nombre del registro y `settings`, opcional, contiene exactamente
+los ajustes productivos con su campo `kind`. `until`, opcional, es el número de
+fotos desde el principio que se alimentan antes de congelar la animación.
+`size` fija el cliente de captura (por defecto 2304×1440); la PNG conserva el
+tamaño natural del widget. El alfa se recupera con las mismas dos pasadas
+negro/blanco, ahora con `PrintWindow` del HWND. El Hub también usa `PrintWindow`;
+GPUI no ofrece lectura de su textura en el binario normal de esta revisión.
+
+```json
+[
+  {"widget":"pedals","scene":"ui/fixtures/pedals.snapshot.json","output":"C:/tmp/capturas/pedals.png"},
+  {"widget":"standings","scene":"ui/fixtures/standings.snapshot.json","settings":{"kind":"standings","rowCount":7},"output":"C:/tmp/capturas/standings.png"}
+]
+```
+
+`--capture ESCENA --out PNG` del Hub, `--captura PNG` del Workshop y
+`--parity-capture PNG` de overlays siguen disponibles con la misma protección.
+Los comparadores `hub/reference/compare.ps1`, `capture-alpha.ps1`,
+`capture-native.ps1`, `ui/compare.ps1` y `ui/src/standings/capture-scenes.ps1`
+preparan manifiestos. Los scripts externos deben invocar el lote una vez,
+en lugar de un proceso por entrada. El mutex global y el turno `pantalla-ocupada` se comprueban dentro del proceso;
+no envolver la invocación con otro mutex del mismo nombre.
+
+El recibo `salida.png.capture.json` enlaza el contenido de la PNG con SHA-256 de
+sus entradas: escena/datos, ajustes, tamaño, apariencia, ejecutable, DLL y
+fixtures externos del Hub, más los controles QA heredados. Los archivos grandes
+se procesan en bloques de 1 MiB y se calcula SHA-256 de sus hashes concatenados.
+Recompilar después de editar código o recursos embebidos. Si entradas y PNG
+coinciden, no se abre ninguna ventana ni se reescribe el archivo; borrar/cambiar
+la PNG o su recibo provoca recaptura. No se omite un PNG dañado. El resumen del
+lote registra capturadas/omitidas, procesos de app, ventanas y tiempo.
+
 ## Compilar y probar
 
 ```powershell

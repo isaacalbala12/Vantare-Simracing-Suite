@@ -248,7 +248,7 @@ impl CalendarView {
 }
 
 #[cfg(feature = "parity-capture")]
-fn capture_view() -> CalendarView {
+fn capture_view(name: Option<&str>) -> CalendarView {
     // Selector exclusivamente QA: el reloj archivado puede cubrir las tres vistas.
     if let Ok(view) = std::env::var("VANTARE_CAPTURE_CALENDAR_VIEW") {
         match view.as_str() {
@@ -258,13 +258,8 @@ fn capture_view() -> CalendarView {
             _ => {}
         }
     }
-    let args: Vec<_> = std::env::args().collect();
-    for pair in args.windows(2) {
-        if pair[0] == "--capture"
-            && let Some(view) = CalendarView::from_capture_name(&pair[1])
-        {
-            return view;
-        }
+    if let Some(view) = name.and_then(CalendarView::from_capture_name) {
+        return view;
     }
     CalendarView::Times
 }
@@ -375,12 +370,8 @@ impl Calendar {
         calendar.status = "Horario de ejemplo".into();
         #[cfg(feature = "parity-capture")]
         {
-            calendar.view = capture_view();
-            if std::env::args()
-                .collect::<Vec<_>>()
-                .windows(2)
-                .any(|pair| pair[0] == "--capture" && pair[1] == "calendario-lmu-local")
-            {
+            calendar.view = capture_view(demo.capture_name.as_deref());
+            if demo.capture_name.as_deref() == Some("calendario-lmu-local") {
                 calendar.schedule = Schedule::parse(include_bytes!(
                     "../reference/fixtures/calendar-lmu-2026-10-06.json"
                 ))?;
@@ -390,14 +381,14 @@ impl Calendar {
                 calendar.follow(id.clone())?;
                 calendar.toggle_reminder(id)?;
             }
-            if calendar_test_capture() {
+            if demo.capture_name.as_deref() == Some("calendario-beta-prueba") {
                 calendar.toggle_test_schedule(true, Utc::now())?;
                 calendar.demo_now = None;
                 let id = calendar.schedule.series[0].id.clone();
                 calendar.follow(id.clone())?;
                 calendar.toggle_reminder(id)?;
             }
-            if std::env::args().any(|arg| arg == "calendario-beta-archivo") {
+            if demo.capture_name.as_deref() == Some("calendario-beta-archivo") {
                 // Escena QA explícita: catálogo oficial archivado y reloj dentro de su publicación.
                 calendar.demo_now = Some(
                     calendar.schedule.window()?.0 + Duration::hours(16) - Duration::minutes(13),
@@ -593,7 +584,7 @@ impl Calendar {
 
     fn tester_access(&self, cx: &gpui::App) -> bool {
         #[cfg(feature = "parity-capture")]
-        if calendar_test_capture() {
+        if crate::capture::current_name(cx) == Some("calendario-beta-prueba") {
             return true;
         }
         self.remote.as_ref().is_some_and(|remote| {
@@ -692,13 +683,6 @@ impl Calendar {
     }
 }
 
-#[cfg(feature = "parity-capture")]
-fn calendar_test_capture() -> bool {
-    std::env::args()
-        .collect::<Vec<_>>()
-        .windows(2)
-        .any(|pair| pair[0] == "--capture" && pair[1] == "calendario-beta-prueba")
-}
 impl Render for Calendar {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         if self.test_session.is_some() && !self.tester_access(cx) {

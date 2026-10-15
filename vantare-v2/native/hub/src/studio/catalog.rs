@@ -82,7 +82,7 @@ pub(super) fn capture_settings(kind: Kind) -> Settings {
     if let Settings::Standings(settings) = &mut settings {
         settings.row_count = 8;
         #[cfg(feature = "parity-capture")]
-        if capture_session().is_some() {
+        if std::env::var("VANTARE_CAPTURE_SESSION").is_ok() {
             settings.apply_session_preview();
         }
     }
@@ -90,8 +90,8 @@ pub(super) fn capture_settings(kind: Kind) -> Settings {
 }
 
 #[cfg(feature = "parity-capture")]
-pub(super) fn capture_session() -> Option<vantare_ui::session::Session> {
-    if !capture_name().is_some_and(|name| name.starts_with("studio-")) {
+pub(super) fn capture_session(cx: &gpui::App) -> Option<vantare_ui::session::Session> {
+    if !capture_name(cx).is_some_and(|name| name.starts_with("studio-")) {
         return None;
     }
     match std::env::var("VANTARE_CAPTURE_SESSION").as_deref() {
@@ -223,12 +223,17 @@ pub(super) fn hide_selected_for_capture(editor: &mut Editor) -> Result<(), Strin
 }
 impl Prepared {
     pub fn load(path: PathBuf) -> Result<Self, String> {
+        Self::load_capture(path, None)
+    }
+    pub fn load_capture(path: PathBuf, capture: Option<&str>) -> Result<Self, String> {
+        #[cfg(not(feature = "parity-capture"))]
+        let _ = capture;
         #[cfg(feature = "parity-capture")]
         let mut editor = Editor::open(path)?;
         #[cfg(not(feature = "parity-capture"))]
         let editor = Editor::open(path)?;
         #[cfg(feature = "parity-capture")]
-        if studio_demo_capture() && editor.layout().instances.is_empty() {
+        if is_demo_capture(capture) && editor.layout().instances.is_empty() {
             // Escena QA del rediseño: solo --capture studio-base --demo; usa los Settings y Overlay productivos.
             for (kind, x, y) in DEMO_ITEMS {
                 editor.add(kind)?;
@@ -253,7 +258,7 @@ impl Prepared {
             }
         }
         #[cfg(feature = "parity-capture")]
-        if let Some(name) = capture_name() {
+        if let Some(name) = capture {
             if name == "studio-vacio" {
                 while !editor.layout().instances.is_empty() {
                     editor.selected = editor
@@ -285,7 +290,7 @@ impl Prepared {
                 }
             }
             if matches!(
-                name.as_str(),
+                name,
                 "studio-sin-seleccion"
                     | "studio-catalogo-busqueda"
                     | "studio-catalogo-sin-resultados"
@@ -303,24 +308,28 @@ impl Prepared {
 }
 
 #[cfg(feature = "parity-capture")]
-pub(super) fn capture_name() -> Option<String> {
-    std::env::args()
-        .collect::<Vec<_>>()
-        .windows(2)
-        .find(|pair| pair[0] == "--capture")
-        .map(|pair| pair[1].clone())
+pub(super) fn capture_name(cx: &gpui::App) -> Option<String> {
+    crate::capture::current_name(cx).map(str::to_owned)
 }
 #[cfg(feature = "parity-capture")]
-pub(super) fn studio_demo_capture() -> bool {
-    let args: Vec<_> = std::env::args().collect();
-    args.iter().any(|arg| arg == "--demo")
-        && args.windows(2).any(|pair| {
-            pair[0] == "--capture"
-                && matches!(
-                    pair[1].as_str(),
-                    name if name.starts_with("studio-") || matches!(name, "inicio-base" | "inicio-error" | "inicio-opacidad" | "inicio-nombre-largo" | "inicio-sidebar" | "inicio-sidebar-sin-carril" | "inicio-sin-carril")
-                )
-        })
+fn is_demo_capture(name: Option<&str>) -> bool {
+    name.is_some_and(|name| {
+        name.starts_with("studio-")
+            || matches!(
+                name,
+                "inicio-base"
+                    | "inicio-error"
+                    | "inicio-opacidad"
+                    | "inicio-nombre-largo"
+                    | "inicio-sidebar"
+                    | "inicio-sidebar-sin-carril"
+                    | "inicio-sin-carril"
+            )
+    })
+}
+#[cfg(feature = "parity-capture")]
+pub(super) fn studio_demo_capture(cx: &gpui::App) -> bool {
+    is_demo_capture(crate::capture::current_name(cx))
 }
 impl Studio {
     pub(super) fn preview_snapshot(&self, kind: Kind) -> &Snapshot {

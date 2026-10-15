@@ -207,6 +207,12 @@ fn main() -> ExitCode {
     }
     vantare_services::diagnostics::install_panic_hook("vantare-workshop");
     let args: Vec<String> = std::env::args().skip(1).collect();
+    #[cfg(feature = "parity-capture")]
+    if let [flag, path] = args.as_slice()
+        && flag == "--capture-batch"
+    {
+        return vantare_ui::capture::run_batch(std::path::Path::new(path));
+    }
     let Some(command) = parse(&args) else {
         eprintln!("{USAGE}");
         return ExitCode::from(2);

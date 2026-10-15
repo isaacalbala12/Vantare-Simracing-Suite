@@ -24,7 +24,10 @@ fn account_demo() -> Option<&'static crate::demo::DemoData> {
             std::sync::OnceLock::new();
         DEMO.get_or_init(|| {
             let args: Vec<_> = std::env::args().collect();
-            if args.iter().any(|arg| arg == "--capture") && args.iter().any(|arg| arg == "--demo") {
+            if args
+                .iter()
+                .any(|arg| matches!(arg.as_str(), "--capture" | "--capture-batch"))
+            {
                 crate::demo::DemoData::load().ok()
             } else {
                 None
@@ -442,7 +445,7 @@ impl Remote {
             roadmap_message: "No hay una publicación válida guardada".into(),
             roadmap_requested: false,
             roadmap_polled_at: None,
-            manual_roadmap: crate::roadmap::State::load(),
+            manual_roadmap: crate::roadmap::State::load_capture(cx),
             stale: true,
         };
         remote.request(Command::Status, cx);

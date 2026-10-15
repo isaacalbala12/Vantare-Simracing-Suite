@@ -47,6 +47,20 @@ debug = 0
 [profile.dev.package.vantare-strategy]
 opt-level = 3
 
+# El test del corpus real de telemetría (190 471 fotos con DTO congelado) y la
+# suite que lo rodea pasan por domain/runtime/ipc a opt-level 0: es el mayor
+# coste aislado de CI (340 s Windows / 303 s Linux medidos en #1654 r8). Mismo
+# criterio que el solver: cálculo puro, se compila una vez y el resultado no
+# cambia (el test compara los hashes congelados byte a byte, así que si algo
+# cambiara fallaría). Si los workers notan más lentos los rebuilds al editar
+# estas crates, revertir solo estas líneas.
+[profile.dev.package.vantare-domain]
+opt-level = 3
+[profile.dev.package.vantare-runtime]
+opt-level = 3
+[profile.dev.package.vantare-ipc]
+opt-level = 3
+
 # Hash, JSON y gzip de los corpus de telemetría: optimizados también en dev/test.
 # El gate telemetria pasa de 1190 s a 531 s en el servidor (#1465); se compilan una vez.
 [profile.dev.package.sha2]
@@ -64,6 +78,18 @@ opt-level = 3
 [profile.dev.package.crc32fast]
 opt-level = 3
 [profile.dev.package.adler2]
+opt-level = 3
+
+# Decodificar las imágenes del garaje de Strategy (2 PNG de ~1,9 MB + un SVG de 1 KB)
+# cuesta ~8 s por test en dev: `Strategy::new` las decodifica siempre y con opt-level 0
+# el código de `image`/`png`/`fdeflate` va muy lento. Medido en #1654 r5: los seis
+# tests `isa1544_*` (y solo ellos, los que crean un Strategy) tardan 8 s cada uno; el
+# resto de tests con headless, 0,02-1 s. Se compilan una vez, como los de arriba.
+[profile.dev.package.png]
+opt-level = 3
+[profile.dev.package.fdeflate]
+opt-level = 3
+[profile.dev.package.image]
 opt-level = 3
 
 # Build para pruebas manuales, no para distribución ni mediciones de rendimiento.

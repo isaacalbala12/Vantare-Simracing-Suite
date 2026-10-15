@@ -120,3 +120,11 @@ class PlaneEstadoTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SummaryTests(unittest.TestCase):
+    def test_summary_replaces_previous_section_and_escapes(self):
+        first = plane.with_summary("<p>Encargo</p>", "- Uno\n\n- <b>Dos</b>")
+        self.assertEqual(first, "<p>Encargo</p><h3>Qué se ha hecho</h3><ul><li>Uno</li><li>&lt;b&gt;Dos&lt;/b&gt;</li></ul>")
+        second = plane.with_summary(first, "Tres")
+        self.assertEqual(second, "<p>Encargo</p><h3>Qué se ha hecho</h3><ul><li>Tres</li></ul>")

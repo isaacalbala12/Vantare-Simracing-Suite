@@ -277,6 +277,7 @@ pub struct Remote {
     pub(crate) participation_message: String,
     pub(crate) participation_pending: Option<u64>,
     pub(crate) participation_generation: u64,
+    pub(crate) triage: crate::testing::TriageEditor,
     recovery: Result<crate::testing::recovery::Recovery, String>,
     publication: Option<super::protocol::roadmap_document::Publication>,
     roadmap_message: String,
@@ -430,6 +431,7 @@ impl Remote {
             participation_message: "Recarga para consultar cuestionarios y contribuciones".into(),
             participation_pending: None,
             participation_generation: 0,
+            triage: crate::testing::TriageEditor::new(cx),
             recovery,
             publication: None,
             roadmap_message: "No hay una publicación válida guardada".into(),
@@ -794,7 +796,7 @@ impl Remote {
         self.access.requested(&command);
         if matches!(command, Command::Logout | Command::AccountBegin) {
             self.clear_pilot();
-            self.clear_participation();
+            self.clear_participation(cx);
         }
         if matches!(command, Command::Logout) {
             self.purchase_wait = None;
@@ -1018,16 +1020,8 @@ impl Remote {
                 }
             }
             Reply::Calendar { .. } => {}
-            Reply::Testing { data } => {
-                if self.participation_pending == Some(self.participation_generation)
-                    && self.account.signed_in
-                    && !self.account.cancel_login
-                {
-                    self.participation = data;
-                    self.participation_message = "Datos confirmados por el servicio".into();
-                }
-                self.participation_pending = None;
-            }
+            Reply::Testing { data } => self.complete_participation(data),
+            Reply::TriagePreview { preview } => self.complete_triage(preview),
             Reply::Roadmap {
                 publication,
                 stale,
@@ -1066,7 +1060,7 @@ impl Remote {
                         self.purchase_product = None;
                         self.purchase_message = None;
                         self.report_receipts.clear();
-                        self.clear_participation();
+                        self.clear_participation(cx);
                     }
                     self.clear_pilot_if_session_changed(signed_in);
                     self.account.signed_in = signed_in;
@@ -1739,7 +1733,7 @@ impl Drop for Remote {
 mod account_tests;
 #[cfg(test)]
 #[path = "view/purchase_tests.rs"]
-mod purchase_tests;
+pub(crate) mod purchase_tests;
 #[cfg(test)]
 #[path = "view/receipt_tests.rs"]
 mod receipt_tests;

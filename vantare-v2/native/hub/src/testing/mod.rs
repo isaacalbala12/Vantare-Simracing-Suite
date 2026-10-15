@@ -18,3 +18,5 @@ mod editor;
 mod model;
 mod screenshots;
 pub use editor::{Editor, empty_fields};
+mod triage_editor;
+pub use triage_editor::Editor as TriageEditor;

@@ -35,6 +35,14 @@ export type ProjectionApplyResult = {
 
 export interface CommercialProjection {
   apply(snapshot: CommercialResourceSnapshot): Promise<ProjectionApplyResult>;
+  restrictSource?(
+    value: {
+      environment: BillingEnvironment;
+      sourceId: string;
+      causeId: string;
+      blocked: boolean;
+    },
+  ): Promise<void>;
 }
 
 export async function hashCommercialSnapshot(
@@ -119,14 +127,40 @@ export class SupabaseCommercialProjection implements CommercialProjection {
 export class MemoryCommercialProjection implements CommercialProjection {
   readonly resources = new Map<string, CommercialResourceSnapshot>();
   readonly grants = new Map<string, CommercialGrant>();
+  readonly baseGrants = new Map<string, CommercialGrant>();
+  private readonly restrictions = new Map<string, Map<string, boolean>>();
+  restrictSource(
+    value: {
+      environment: BillingEnvironment;
+      sourceId: string;
+      causeId: string;
+      blocked: boolean;
+    },
+  ): Promise<void> {
+    const prefix = `polar:${value.environment}:subscription:${value.sourceId}:`;
+    const causes = this.restrictions.get(prefix) ?? new Map<string, boolean>();
+    causes.set(value.causeId, value.blocked);
+    this.restrictions.set(prefix, causes);
+    for (const [key, grant] of this.baseGrants) {
+      if (key.startsWith(prefix)) {
+        this.grants.set(key, {
+          ...grant,
+          status: [...causes.values()].some(Boolean) ? "revoked" : grant.status,
+        });
+      }
+    }
+    return Promise.resolve();
+  }
 
-  async apply(
+  apply(
     snapshot: CommercialResourceSnapshot,
   ): Promise<ProjectionApplyResult> {
     const resourceKey = this.#resourceKey(snapshot);
     const current = this.resources.get(resourceKey) ?? null;
     const outcome = compareResourceVersion(current, snapshot);
-    if (outcome !== "apply") return { outcome, grantsChanged: 0 };
+    if (outcome !== "apply") {
+      return Promise.resolve({ outcome, grantsChanged: 0 });
+    }
 
     this.resources.set(resourceKey, structuredClone(snapshot));
     let grantsChanged = 0;
@@ -136,6 +170,7 @@ export class MemoryCommercialProjection implements CommercialProjection {
         key.startsWith(`${resourceKey}:`) && !incoming.has(grant.capability)
       ) {
         this.grants.set(key, { ...grant, status: "revoked" });
+        this.baseGrants.set(key, { ...grant, status: "revoked" });
         grantsChanged++;
       }
     }
@@ -143,9 +178,16 @@ export class MemoryCommercialProjection implements CommercialProjection {
       const key = `${resourceKey}:${grant.capability}`;
       const previous = this.grants.get(key);
       if (JSON.stringify(previous) !== JSON.stringify(grant)) grantsChanged++;
-      this.grants.set(key, structuredClone(grant));
+      this.baseGrants.set(key, structuredClone(grant));
+      const causes = this.restrictions.get(resourceKey + ":");
+      this.grants.set(key, {
+        ...structuredClone(grant),
+        status: causes && [...causes.values()].some(Boolean)
+          ? "revoked"
+          : grant.status,
+      });
     }
-    return { outcome, grantsChanged };
+    return Promise.resolve({ outcome, grantsChanged });
   }
 
   #resourceKey(snapshot: CommercialResourceSnapshot): string {

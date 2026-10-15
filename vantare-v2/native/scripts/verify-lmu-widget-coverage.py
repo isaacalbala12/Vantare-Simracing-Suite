@@ -1,8 +1,8 @@
-"""QA física opt-in #1638, sin ventanas ni datos/instalación de Isaac.
+"""QA #1638 sin ventanas: grabación offline o smoke live opt-in histórico.
 
 Desde vantare-v2: python -I native/scripts/verify-lmu-widget-coverage.py
-Requiere build previo de vantare-runtime en el target indicado.
-No arranca/controla LMU ni graba snapshots. Pausa/garaje/parado son válidos.
+--recording reproduce un .lmu.gz por el adapter/Core y los 18 widgets.
+Requiere binarios previos en el target propio; no arranca ni controla LMU.
 """
 import argparse
 import os
@@ -12,7 +12,48 @@ import tempfile
 import json
 
 
-def offline(recording, target, output, test_bin=None):
+def recording_scope(scope):
+    limits = {"recording_scope": scope, "coverage_certified": False}
+    if scope == "practice-only":
+        limits["not_covered_by_recording"] = [
+            "reliable_session_start", "reliable_session_end", "qualifying",
+            "race", "formation_lap", "race_start", "next_session_schedule",
+        ]
+        limits["scope_note"] = (
+            "Solo práctica. Terminar una grabación parcial no demuestra el final de la sesión."
+        )
+    return limits
+
+
+def readable_report(telemetry, projections, scope):
+    lines = ["# Revisión offline de telemetría LMU", "",
+             f"Alcance declarado: `{scope}`. Fotos procesadas: {telemetry['photos']}.", "",
+             "Sesiones admitidas por el adaptador: " + ", ".join(telemetry.get("sessions", {})) + ".", "",
+             "Se comprueba recepción y proyección; no certifica todas las señales ni la pantalla.",
+             "Las calidades por campo y sesión están en widgets.json; los errores e inventario REST en telemetry.json.", "",
+             "| Widget | Fotos | Cambios de proyección |", "| --- | ---: | ---: |"]
+    for widget in projections["widgets"]:
+        lines.append(f"| {widget['widget']} | {widget['photos_evaluated']} | {widget['projection_changes']} |")
+    lines += ["", "| Avisos: campo | Calidades observadas | Alcance de la comprobación |",
+              "| --- | --- | --- |"]
+    for field, counts in telemetry["session_alerts"].items():
+        note = "Pendiente de revisión de transiciones reales"
+        if scope == "practice-only":
+            note = "No validado: falta captura de clasificación/carrera"
+            if field == "scheduled_end_s":
+                note = "Fin programado de práctica; no confirma fin real"
+            elif field == "distance_to_start_line_m":
+                note = "Dato longitudinal en práctica; no valida formación ni posición de salida"
+        qualities = ", ".join(f"{key}: {value}" for key, value in counts.items())
+        lines.append(f"| {field} | {qualities} | {note} |")
+    if scope == "practice-only":
+        lines += ["", "La práctica no acredita inicio/fin fiables de sesión, clasificación, carrera,",
+                  "formación, salida ni agenda de próxima sesión. Los valores observados no sustituyen",
+                  "esas situaciones. No se infiere fin de sesión al parar una grabación parcial."]
+    return "\n".join(lines) + "\n"
+
+
+def offline(recording, target, output, test_bin=None, scope="unspecified"):
     """Archivo -> Replay/Translator/Core -> DTO estricto -> 18 Widget::ingest."""
     output.mkdir(parents=True, exist_ok=False)
     producer = target / "release/vantare-verificar-lmu.exe"
@@ -47,9 +88,10 @@ def offline(recording, target, output, test_bin=None):
             widgets_code = widgets.wait(timeout=60)
         report = {"source_exit": source_code, "widgets_exit": widgets_code,
                   "status": "failed", "physical_live_qa": False}
+        report.update(recording_scope(scope))
         if source_code == 0 and widgets_code == 0:
-            telemetry = json.loads((output / "telemetry.json").read_text())
-            projections = json.loads((output / "widgets.json").read_text())
+            telemetry = json.loads((output / "telemetry.json").read_text(encoding="utf-8"))
+            projections = json.loads((output / "widgets.json").read_text(encoding="utf-8"))
             widgets = projections["widgets"]
             expected = {"standings", "relative", "radar", "pedals", "delta",
                         "car-damage-visual", "car-damage-numbers", "input-telemetry",
@@ -67,6 +109,7 @@ def offline(recording, target, output, test_bin=None):
             report.update(status="evaluated_pending_coverage_review", widgets=18,
                           photos=telemetry["photos"], session_alerts=telemetry["session_alerts"],
                           adapter_or_core_rejections=telemetry["adapter_or_core_rejections"])
+            (output / "report.md").write_text(readable_report(telemetry, projections, scope), encoding="utf-8")
         (output / "summary.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
         print(json.dumps(report, indent=2))
         return 0 if report["status"] == "evaluated_pending_coverage_review" else 1
@@ -87,13 +130,15 @@ def main():
                         help="QA offline del archivo completo .lmu.gz; no abre LMU ni sockets")
     parser.add_argument("--output-dir", type=pathlib.Path,
                         help="carpeta nueva para logs e informes offline")
+    parser.add_argument("--recording-scope", choices=("unspecified", "practice-only", "weekend"),
+                        default="unspecified", help="situaciones que la grabación permite revisar")
     args = parser.parse_args()
     target = args.target_dir.resolve()
     if args.recording:
         if not args.output_dir:
             parser.error("--recording necesita --output-dir (carpeta nueva)")
         return offline(args.recording, target, args.output_dir.resolve(),
-                       args.test_bin.resolve() if args.test_bin else None)
+                       args.test_bin.resolve() if args.test_bin else None, args.recording_scope)
     test_bin = args.test_bin.resolve() if args.test_bin else None
     if test_bin and (not test_bin.is_file() or test_bin.parent != target / "debug/deps"
                      or not test_bin.name.startswith("vantare_ui-") or test_bin.suffix != ".exe"):

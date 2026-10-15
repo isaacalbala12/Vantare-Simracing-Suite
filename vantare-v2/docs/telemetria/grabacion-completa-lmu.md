@@ -6,6 +6,63 @@ en `C:/VantareServer/logs/1638-phase-b-20261015-204225/summary.json`.
 La fase B pasa a captura en el PC de juego y análisis offline. No hay todavía
 evidencia nueva de conducción, formación o cambio de sesión.
 
+## Entrega inmediata: solo práctica en Imola
+
+El orquestador concreta después que otro worker (DeepSeek) graba por SSH en
+el PC de Isaac: **práctica de 6 h configuradas, unos 45 min grabados, con IA en
+Imola**. No se grabarán clasificación ni carrera en esta entrega. Los archivos
+llegarán a `C:/VantareServer/evidence/grabacion-lmu-imola/`; comprobar formato y
+cierre completo antes de procesar. El arnés admite el `.lmu.gz` de este kit;
+otro formato exige revisar su manifiesto y adaptar el lector, sin fingir buffers
+o endpoints que no estén grabados. No se inicia un supervisor live nuevo.
+
+Ejecutar el comando offline de abajo añadiendo `--recording-scope practice-only`.
+Genera también `report.md`: 18 filas de recepción/proyección y una tabla de
+calidades/alcance de los siete campos de Avisos. `summary.json` marca las
+situaciones no cubiertas, incluso si algún valor numérico aparece positivo.
+La configuración de 6 h y el plan de 45 min proceden del orquestador; duración,
+sesión, pista y hechos efectivamente grabados se contrastarán con la captura.
+
+Se podrán verificar las señales de práctica **realmente observadas** (vueltas,
+entradas/salidas de boxes, consumo, parrilla, mandos, etc., según lo que contenga
+el archivo). Recibir fotos en los 18 widgets no certifica todas sus opciones,
+geometría de mapa, forecast, daños exactos ni situaciones que no ocurran.
+**No cubre inicio/fin fiables de sesión, clasificación, carrera, formación,
+salida ni agenda de próxima sesión.** Fin programado de práctica no es fin
+real; parar una grabación parcial no termina una sesión de 6 h. La distancia
+longitudinal en práctica tampoco valida distancia de formación/parrilla.
+
+El fin de semana completo descrito en el README genérico del kit sigue siendo
+la receta para cubrir esos pendientes en otra grabación; no se pide a Isaac
+interrumpir la práctica ni añadir ahora clasificación/carrera. VANTA-33 sigue
+En curso y la fase B completa continúa pendiente.
+
+## Evidencia del kit y del arnés — 16-oct
+
+Código release del kit `1cbb167b289dc3681013300aeef8af49a6086173`, ZIP
+**507353 bytes**, SHA-256
+`1ec0bc04011ab9c7d42be5c624795a95c8acfa59553805b051ce121feac2c7fa`.
+Manifiesto interno con hashes de los siete archivos y commit; ocho entradas en
+el ZIP, incluido el manifiesto. Extracción/hashes, PowerShell 5, BOM, rutas con
+espacios/apóstrofo y guarda sin juego comprobados. El binario release importa
+solo DLL de Windows; STOP drena y cierra, y cero SHM no acredita captura.
+
+- Clippy workspace/all-targets `-D warnings`: **PASS**, log
+  `C:/VantareServer/logs/1638-full-clippy-2.log`.
+- Nextest runtime/domain/ipc con workspace: **644/644 PASS**, 5 skips,
+  `1638-full-nextest.log`; incluye los cuatro tests de proceso Services.
+- Perfil telemetría por cola: **32/32 PASS**, 1 skip opt-in, 663,271 s de tests,
+  `1638-full-telemetria.log`. Gates en serie, MIN_GB=0, target propio.
+- Arnés sobre fixture real existente: **18 widgets, 4 fotos, 7 campos de Avisos,
+  0 rechazos**; archivo truncado falla. No es evidencia nueva de Imola.
+  Regresión de alcance impide acreditar situaciones de carrera desde práctica.
+- Compresión de muestra real de 47 coches: 120 cuerpos SHM, **38978400 → 202236
+  bytes** mediante XOR/gzip. Solo cuerpos, sin metadatos/REST; no garantiza el
+  tamaño de la grabación nueva. Evidencia `1638-compression-sample.json`.
+- Fmt/diff y seis pruebas Python de catálogo, cancelación/guardas y alcance:
+  PASS. UI completa y lifecycle no repetidos en este encargo acotado; ningún
+  juego ni ventana/captura de Vantare. La grabación nueva sigue pendiente.
+
 ## Kit autónomo
 
 Fuentes: `native/scripts/lmu-recording-kit/`, binario runtime

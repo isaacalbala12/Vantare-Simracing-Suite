@@ -39,6 +39,23 @@ completa ni QA física aprobada. Falta grabación de práctica, qualy, carrera c
 formación/salida, final y transiciones para añadir productores con evidencia.
 No se ha editado la rama #1653/#1660 ni promovido, integrado o publicado nada.
 
+Recorte vigente: DeepSeek graba por SSH en el PC de Isaac **solo práctica
+Imola/IA**, 6 h configuradas y unos 45 min de grabación. Esperar artefactos en
+`C:/VantareServer/evidence/grabacion-lmu-imola/`. `--recording-scope practice-only`
+produce informe legible y marca sin cubrir inicio/fin fiables, clasificación,
+carrera, formación/salida y próxima sesión, aunque aparezcan números positivos.
+No se transforma el fin de grabación en fin real. Se verificará lo efectivamente
+observado para los 18 widgets; el resto exige una grabación posterior.
+
+Validación del kit `1cbb167b2`: Clippy workspace/all-targets **PASS**, Nextest
+runtime/domain/ipc con workspace **644/644 PASS**, 5 skips, y telemetría
+**32/32 PASS**, 1 skip. Kit ZIP **507353 bytes**, SHA-256 en su sidecar.
+Fixture real por arnés: 18 widgets/4 fotos/7 campos de Avisos, cero rechazos;
+archivo truncado y captura sin SHM no pasan. Seis tests Python y alcance
+solo-práctica comprobados. Logs `C:/VantareServer/logs/1638-full-*`; no hay
+todavía informe ni datos de la nueva práctica de Imola. UI completa/lifecycle
+no repetidos por encargo acotado; nunca juego ni capturas de Vantare.
+
 ### #1638 / VANTA-33 — revisión de gates del servidor (R2)
 
 El orquestador probó `25885bf5b`; log original

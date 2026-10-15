@@ -13,6 +13,13 @@ los siete campos de Avisos. El catálogo declara rutas no resueltas/excluidas y
 no acredita endpoints ocultos. Los datos crudos privados no se versionan.
 Sigue faltando recibir la captura; los campos sin evidencia no cambian.
 
+Recorte posterior del orquestador: la entrega en curso será **solo práctica
+Imola/IA, 6 h configuradas y unos 45 min grabados** por otro worker en el PC de
+Isaac, destino `C:/VantareServer/evidence/grabacion-lmu-imola/`. El informe se
+ejecuta con `--recording-scope practice-only`: separa recepción/datos realmente
+observados de inicio/fin de sesión, clasificación, carrera, formación y salida,
+que **no quedan cubiertos**. Parar la grabación no acredita terminar la sesión.
+
 Encargo: [#1638](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1638).
 La optimización #1630 quedaba fuera del encargo inicial; el buzón del orquestador
 la incorpora después como fase 4 (véase abajo). Seguimiento histórico del relevo por

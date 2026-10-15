@@ -284,6 +284,11 @@ impl Login {
         Ok(())
     }
     fn device_grant(&mut self, http: &Http, oauth: &OAuth, now: u64) -> Result<Secret> {
+        // Bloqueo local por 429: no hay nada que autorizar todavía y cada clic
+        // de «Autorizar» no debe enviar una petición evitable al endpoint.
+        if now < self.blocked_until {
+            return Err(Error::Busy);
+        }
         // Only the code created here can be approved. No IPC user_code field.
         #[derive(Deserialize)]
         struct Authorization {

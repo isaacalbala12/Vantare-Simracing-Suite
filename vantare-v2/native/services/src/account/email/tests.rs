@@ -791,3 +791,47 @@ fn local_rate_limit_survives_going_back() {
     drop(store);
     crate::cleanup_store(&root, "email-block", &[]);
 }
+
+#[test]
+fn blocked_device_grant_does_not_repeat_the_device_authorization_call() {
+    let server = Server::start_native(|base| {
+        vec![
+            metadata(base),
+            (200, "{}".into()),
+            attempt("complete", false),
+            (200, json!({"device_code":"fixture-device","user_code":"TEST-CODE","expires_in":300,"interval":5}).to_string()),
+            (429, "{}".into()),
+        ]
+    });
+    let (root, store) = crate::test_store("email-device-block");
+    let mut account = Account::restore(oauth(&server.base), &store).expect("account");
+    account
+        .email_action(&Http::default(), start(EmailMode::SignInPassword), 100)
+        .expect("begin");
+    assert_eq!(
+        account
+            .email_action(&Http::default(), EmailAction::Finish {}, 101)
+            .err(),
+        Some(Error::Busy),
+        "el endpoint de dispositivo responde 429"
+    );
+    // Bloqueo activo: el clic repetido de «Autorizar» no vuelve a llamar.
+    assert_eq!(
+        account
+            .email_action(&Http::default(), EmailAction::Finish {}, 102)
+            .err(),
+        Some(Error::Busy)
+    );
+    assert_eq!(
+        requests(&server)
+            .iter()
+            .filter(|r| r.starts_with("POST /oauth/device_authorization "))
+            .count(),
+        1,
+        "una sola llamada al endpoint de dispositivo durante el bloqueo"
+    );
+    server.finish();
+    drop(account);
+    drop(store);
+    crate::cleanup_store(&root, "email-device-block", &[]);
+}

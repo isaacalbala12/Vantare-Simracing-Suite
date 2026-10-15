@@ -101,7 +101,7 @@ export async function observePromotionInvoice(
 ): Promise<void> {
   if (
     !configured ||
-    !(["subscription_cycle", "subscription_create"].includes(
+    !(["subscription_cycle", "subscription_cycle_after_trial", "subscription_create"].includes(
       String(data.billing_reason),
     )) ||
     data.paid !== true || typeof data.id !== "string"

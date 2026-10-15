@@ -292,3 +292,15 @@ Deno.test("P2-3 elapsed budget returns the last processed cursor without skippin
   assertEquals(result.completed, 1);
   assertEquals(result.next_cursor, "first");
 });
+
+Deno.test("P3-9 conversion after trial is a settled recurring invoice", async () => {
+  const {observePromotionInvoice} = await import("./observe.ts");
+  const calls: unknown[] = [];
+  const admin = {rpc:(...args:unknown[]) => {calls.push(args);return Promise.resolve({error:null});}} as unknown as SupabaseClient;
+  await observePromotionInvoice(admin,"sandbox",{
+    id:"after-trial",paid:true,billing_reason:"subscription_cycle_after_trial",discount_id:"reward3",discount_amount:200,
+    created_at:"2026-12-26T18:00:00Z",items:[{proration:false,start_timestamp:"2026-12-26T18:00:00Z",end_timestamp:"2027-01-26T18:00:00Z"}]
+  },true);
+  assertEquals(calls.length,1);
+  assertEquals((calls[0] as unknown[])[0],"report_promotion_invoice");
+});

@@ -376,19 +376,26 @@ export async function handleNativeAdmin(
       request.headers.get("Content-Type")?.split(";")[0].trim()
         .toLowerCase() !== "application/json"
     ) throw new NativeError(400, "invalid_request");
-    const legacyCopy = request.clone();
-    const parsed = await readJsonObject(request, 128 * 1024);
+    let receivedBytes = 0;
+    const counted = new Request(request, {
+      body: request.body?.pipeThrough(
+        new TransformStream<Uint8Array, Uint8Array>({
+          transform(chunk, controller) {
+            receivedBytes += chunk.byteLength;
+            controller.enqueue(chunk);
+          },
+        }),
+      ),
+    });
+    const parsed = await readJsonObject(counted, 128 * 1024);
+    const mailRequest = parsed.ok && typeof parsed.value.action === "string" &&
+      parsed.value.action.startsWith("mail_");
     if (
-      parsed.ok &&
-      !(typeof parsed.value.action === "string" &&
-        parsed.value.action.startsWith("mail_"))
+      !mailRequest &&
+      (receivedBytes > 8192 ||
+        Number(request.headers.get("content-length")) > 8192)
     ) {
-      const legacy = await readJsonObject(legacyCopy, 8192);
-      if (!legacy.ok && legacy.code === "body_too_large") {
-        throw new NativeError(413, "request_too_large");
-      }
-    } else {
-      void legacyCopy.body?.cancel();
+      throw new NativeError(413, "request_too_large");
     }
     if (!parsed.ok) {
       throw new NativeError(

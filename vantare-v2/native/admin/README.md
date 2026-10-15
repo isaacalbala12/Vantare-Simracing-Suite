@@ -111,3 +111,17 @@ Isaac: excluir `vantare-admin` del instalador público y usar lista explícita d
 binarios, nunca glob de `target/release`. Este encargo no publica ni modifica el
 Hub, el instalador público o los canales. Dependencias existentes, sin nuevos
 motores gráficos, clientes HTTP ni SDK.
+
+## Correos de marketing (#1636)
+
+Sección Correos con campañas, plantillas Novedades/Oferta/Lanzamiento, editor de
+los cuatro idiomas, vista previa del texto seguro, recuentos de consentimiento,
+confirmación y tandas manuales. Guía de Isaac y contrato:
+[MAIL.md](../../../supabase/functions/native-admin/MAIL.md).
+
+QA sin red: `--demo --screen mail` y escenas `mail-editor`, `mail-confirm`,
+`mail-history`. Capturas físicas pendientes en una sesión Mac con permiso de
+grabación: SSH devuelve `CGPreflightScreenCaptureAccess=false` y screencapture
+no puede leer la ventana. El soporte de exportación de GPUI requería ampliar el
+lock de dependencias; se descartó por la prohibición de nuevas dependencias.
+No se incluye otro renderizador ni se manipulan permisos del sistema.

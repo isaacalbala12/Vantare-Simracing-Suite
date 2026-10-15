@@ -408,3 +408,47 @@ Deno.test("mail Brevo webhook authentication, duplicate withdrawals and failure 
     })).status === 503,
   );
 });
+
+Deno.test("mail byte caps preserve legacy malformed rejection and cancel oversized streams", async () => {
+  const base = request({ version: 1, action: "mail_list" });
+  const raw = new Request(base.url, {
+    method: "POST",
+    headers: base.headers,
+    body: "x".repeat(9000),
+  });
+  assert((await handleNativeAdmin(raw)).status === 413);
+  const large = new Request(base.url, {
+    method: "POST",
+    headers: base.headers,
+    body: new ReadableStream({
+      start(c) {
+        c.enqueue(new TextEncoder().encode("x".repeat(140000)));
+        c.close();
+      },
+    }),
+  });
+  assert((await handleNativeAdmin(large)).status === 413);
+  const result = await handleNativeAdmin(
+    request({
+      version: 1,
+      action: "mail_save",
+      ...p,
+      name: "Large draft",
+      template: "news",
+      target_group: "testers",
+      content: Object.fromEntries(
+        ["es", "en", "it", "pt-BR"].map(
+          (l) => [l, { subject: "S", body: "a".repeat(4000) }],
+        ),
+      ),
+    }),
+    {
+      ...authDeps(),
+      environment: "sandbox",
+      resolve: () => Promise.resolve(account),
+      begin: () => Promise.resolve(true),
+      mailExecute: () => Promise.resolve({}),
+    },
+  );
+  assert(result.status === 200);
+});

@@ -261,7 +261,7 @@ export async function executeMail(
       if (allowed.allowed !== true) {
         await run("mail_finish", {
           delivery_id: d.id,
-          status: "uncertain",
+          status: "skipped",
           provider_id: "withdrawn_before_http",
         });
         continue;

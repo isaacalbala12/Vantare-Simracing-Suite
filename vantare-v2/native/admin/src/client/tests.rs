@@ -352,3 +352,41 @@ fn decided_reports_never_offer_implicit_reopening() {
     assert!(Status::Validated.can_transition_to(Status::Fixed));
     assert!(!Status::Rejected.can_transition_to(Status::Fixed));
 }
+
+#[test]
+fn mail_draft_and_confirmation_use_owner_contract_over_local_http() {
+    let id = "00000000-0000-4000-8000-000000001636".to_owned();
+    for action in [
+        Action::MailDraft {
+            campaign_id: id.clone(),
+            revision: 3,
+            brief: "Solo novedades aprobadas".into(),
+            template: "news".into(),
+        },
+        Action::MailApprove {
+            campaign_id: id.clone(),
+            revision: 3,
+            confirm: true,
+        },
+        Action::MailSendBatch {
+            campaign_id: id,
+            revision: 3,
+        },
+    ] {
+        let (client, task) = serve(200, br#"{"version":1,"ok":true}"#.to_vec());
+        client
+            .request("owner-oauth-fixture", &action)
+            .expect("local mail reply");
+        let received = task.join().expect("local server");
+        assert!(
+            received
+                .to_lowercase()
+                .contains("authorization: bearer owner-oauth-fixture")
+        );
+        let body: serde_json::Value =
+            serde_json::from_str(received.split_once("\r\n\r\n").expect("body").1).expect("json");
+        assert_eq!(body["action"], action.label());
+        assert_eq!(body["revision"], 3);
+        assert_eq!(body["version"], 1);
+    }
+}

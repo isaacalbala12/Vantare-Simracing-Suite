@@ -3,6 +3,7 @@ begin;
 create table private.mail_contacts (
  email text primary key check(email=lower(btrim(email)) and email ~ '^[^[:space:]@]+@[^[:space:]@]+[.][^[:space:]@]+$' and length(email)<=320),
  account_id uuid references public.profiles(id) on delete cascade,
+ erasure_account uuid references public.profiles(id) on delete cascade,
  locale text not null check(locale in('es','en','it','pt-BR')),
  consent boolean not null default false,
  consent_at timestamptz not null default now(),
@@ -66,9 +67,9 @@ begin
    update private.mail_contacts set account_id=null,consent=false,revision=revision+1,consent_at=now(),evidence='address_changed' where email=old_email;
   end if;
  end if;
- insert into private.mail_contacts(email,account_id,locale,consent,evidence,waitlist)
- values(lower(btrim(p_email)),p_account,p_locale,p_consent,p_evidence,p_waitlist)
- on conflict(email) do update set account_id=excluded.account_id,locale=excluded.locale,consent=excluded.consent,
+ insert into private.mail_contacts(email,account_id,erasure_account,locale,consent,evidence,waitlist)
+ values(lower(btrim(p_email)),p_account,p_account,p_locale,p_consent,p_evidence,p_waitlist)
+ on conflict(email) do update set account_id=excluded.account_id,erasure_account=excluded.erasure_account,locale=excluded.locale,consent=excluded.consent,
  evidence=excluded.evidence,waitlist=excluded.waitlist,consent_at=now(),revision=private.mail_contacts.revision+1
  where private.mail_contacts.account_id is null or private.mail_contacts.account_id is not distinct from excluded.account_id;
  if not found then raise exception 'native_admin_invalid'; end if;
@@ -137,7 +138,7 @@ begin
  elsif p_action='mail_get' then
   result:=jsonb_build_object('campaign',to_jsonb(c),'history',coalesce((select jsonb_agg(to_jsonb(x)) from(
    select id,status,locale,reserved_at,finished_at,provider_id from private.mail_deliveries where campaign_id=c.id order by id limit 100)x),'[]'),
-   'totals',coalesce((select jsonb_object_agg(status,n) from(select status,count(*) n from private.mail_deliveries where campaign_id=c.id group by status)x),'{}'));
+   'quota_remaining',greatest(0,300-(select count(*) from private.mail_quota_reservations where reserved_at>clock_timestamp()-interval '24 hours')),'totals',coalesce((select jsonb_object_agg(status,n) from(select status,count(*) n from private.mail_deliveries where campaign_id=c.id group by status)x),'{}'));
  elsif p_action='mail_save' then
   if c.state<>'draft' or p_params->>'name' is null or p_params->>'template' is null or p_params->>'target_group' is null or jsonb_typeof(p_params->'content') is distinct from 'object' or
     not((p_params->'content') ?& array['es','en','it','pt-BR']) or ((p_params->'content')-array['es','en','it','pt-BR'])<>'{}' then raise exception 'native_admin_invalid'; end if;
@@ -185,7 +186,7 @@ begin
    end if;
   end if;
  elsif p_action='mail_finish' then
-  if p_params->>'status' is null or p_params->>'status' not in('accepted','uncertain') or length(p_params->>'provider_id')>200 then raise exception 'native_admin_invalid'; end if;
+  if p_params->>'status' is null or p_params->>'status' not in('accepted','uncertain','skipped') or length(p_params->>'provider_id')>200 then raise exception 'native_admin_invalid'; end if;
   update private.mail_deliveries set status=p_params->>'status',provider_id=p_params->>'provider_id',finished_at=now()
    where id=(p_params->>'delivery_id')::uuid and status='dispatching' and campaign_id in(select id from private.mail_campaigns where environment=p_environment);
   result:='{}';
@@ -214,7 +215,7 @@ language plpgsql security definer set search_path='' as $$
 begin
  if new.deleted_at is not null then
   perform pg_advisory_xact_lock(1636,300);
-  delete from private.mail_contacts where account_id=new.account_id;
+  delete from private.mail_contacts where account_id=new.account_id or erasure_account=new.account_id;
  end if;
  return new;
 end $$;

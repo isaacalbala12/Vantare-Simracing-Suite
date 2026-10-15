@@ -74,5 +74,14 @@ select throws_ok($$select public.mail_admin_execute('00000000-0000-4000-8000-000
 create temporary table quota_before as select count(*) n from private.mail_quota_reservations;
 delete from private.mail_contacts where email=(select email from private.mail_deliveries where reserved_at is not null limit 1);
 select is((select count(*) from private.mail_quota_reservations),(select n from quota_before),'quota survives PII erasure');
+-- Address replacement suppresses the old one but retains its erasure ownership.
+select public.mail_record_consent('00000000-0000-4000-8000-000000001637','changed@example.invalid','it',true,'new_verified_primary',false);
+select is((select consent from private.mail_contacts where email='member@example.invalid'),false,'old verified address suppressed after change');
+select is((select account_id from private.mail_contacts where email='member@example.invalid'),null::uuid,'old address no longer gets paid groups');
+insert into private.clerk_issuers(issuer,authorized_parties,enabled) values('https://clerk.mail.test',array['https://app.invalid'],true);
+insert into public.account_identities(issuer,subject,account_id) values('https://clerk.mail.test','user_mmmmmmmmmmmmmmmmmmmmmmmmmmm','00000000-0000-4000-8000-000000001637');
+update public.account_identities set deleted_at=now() where account_id='00000000-0000-4000-8000-000000001637';
+select is((select count(*)::integer from private.mail_contacts where email in('member@example.invalid','changed@example.invalid')),0,'tombstone erases current and previous mail addresses');
+select throws_ok($$select public.mail_record_consent('00000000-0000-4000-8000-000000001637','resurrect@example.invalid','en',true,'forged_after_delete',false)$$,'28000','account_deleted','consent cannot resurrect erased account');
 select * from finish();
 rollback;

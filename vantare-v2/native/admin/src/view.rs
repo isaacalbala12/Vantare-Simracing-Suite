@@ -1,4 +1,6 @@
 mod creators;
+mod mail;
+use mail::{MailEditor, MailEvent};
 mod layout;
 mod people;
 mod reports;
@@ -28,6 +30,7 @@ enum Dialog {
 }
 #[derive(Clone)]
 enum Event {
+    Mail(MailEvent),
     Screen(Screen),
     Search,
     Filter(Option<Status>),
@@ -49,6 +52,7 @@ enum Event {
     CloseImage,
 }
 pub struct Admin {
+    mail_editor: MailEditor,
     state: State,
     dialog: Option<Dialog>,
     form_a: Entity<Input>,
@@ -75,6 +79,7 @@ pub struct Admin {
 impl Admin {
     pub fn new(demo: bool, screen: Screen, cx: &mut Context<Self>) -> Self {
         let mut this = Self {
+            mail_editor: MailEditor::new(cx),
             state: State::new(demo, screen),
             dialog: None,
             account_filter: "all",
@@ -136,6 +141,7 @@ impl Admin {
                 });
             }));
         }));
+        this.mail_editor.watch(cx);
         this.watch_forms(cx);
         this
     }
@@ -234,6 +240,7 @@ impl Admin {
             Screen::Rollout => Action::GetRollout,
             Screen::Reports => self.reports_action(None),
             Screen::Creators => Action::ListCreators,
+            Screen::Mail => Action::MailList,
             Screen::Login => return,
         };
         self.read(action);
@@ -256,7 +263,7 @@ impl Admin {
     fn prefetch(&mut self) {
         let action = match self.state.screen {
             Screen::Users | Screen::Reports | Screen::Creators => Action::GetRollout,
-            Screen::Login => return,
+            Screen::Login | Screen::Mail => return,
             Screen::Rollout => self.reports_action(None),
         };
         if self.cache.get(&action, Instant::now()).is_none() {
@@ -314,6 +321,7 @@ impl Admin {
                     self.send(Command::Call(reload));
                 }
                 Ok(None) => {
+                    self.mail_loaded(&action, cx);
                     self.cache
                         .put(action.clone(), value.clone(), Instant::now());
                     if matches!(action, Action::GetReport { .. }) {
@@ -342,6 +350,10 @@ impl Admin {
                 Err(error) => self.state.failed(error),
             },
         }
+        if !self.state.signed_in {
+            self.mail_editor = MailEditor::new(cx);
+            self.mail_editor.watch(cx);
+        }
         if self.search_due
             && self.state.signed_in
             && !self.state.busy
@@ -350,6 +362,7 @@ impl Admin {
             self.search_due = false;
             self.load(cx);
         }
+        self.mail_input_access(cx);
         cx.notify();
     }
     fn accept_prefetch(&mut self, action: Action, result: Result<serde_json::Value, Error>) {
@@ -432,6 +445,7 @@ impl Admin {
             | Event::SelectCreator(_)
             | Event::OpenDialog(_)
             | Event::Screen(_)) => self.interface_event(&event, cx),
+            Event::Mail(event) => self.mail_event(event, cx),
             Event::Search => {
                 self.search_due = false;
                 self.debounce = None;
@@ -469,11 +483,7 @@ impl Admin {
             Event::SelectReport(index) => {
                 self.select_report(index);
             }
-            Event::Propose(action) => {
-                if let Err(error) = self.state.propose(action) {
-                    self.state.failed(error);
-                }
-            }
+            Event::Propose(action) => self.propose_change(action, cx),
             Event::Confirm => self.confirm_change(cx),
             Event::Cancel => {
                 self.state.confirmation = None;
@@ -488,6 +498,8 @@ impl Admin {
                 }
             }
             Event::Logout => {
+                self.mail_editor = MailEditor::new(cx);
+                self.mail_editor.watch(cx);
                 self.cache.clear();
                 if self.state.demo {
                     self.state.signed_in = false;
@@ -503,7 +515,17 @@ impl Admin {
         if !was_polling && (self.state.busy || self.prefetch_pending) {
             Self::poll_replies(cx);
         }
+        self.mail_input_access(cx);
         cx.notify();
+    }
+    fn propose_change(&mut self, action: Action, cx: &mut Context<Self>) {
+        if matches!(action, Action::MailApprove { .. }) && !self.mail_ready(cx) {
+            self.state.message = "Guarda y revisa los cuatro idiomas antes de enviar".into();
+            return;
+        }
+        if let Err(error) = self.state.propose(action) {
+            self.state.failed(error);
+        }
     }
     fn reload(&mut self, cx: &Context<Self>) {
         self.demo_state = "normal";
@@ -613,7 +635,10 @@ impl Admin {
             }
         }
         match self.state.confirm() {
-            Ok(action) if self.state.demo => self.state.demo_action(&action),
+            Ok(action) if self.state.demo => {
+                self.state.demo_action(&action);
+                self.mail_loaded(&action, cx);
+            }
             Ok(action) => {
                 self.cache.clear();
                 self.send(Command::Call(action));
@@ -979,6 +1004,42 @@ impl Admin {
             return Err("Las escenas solo están disponibles con --demo".into());
         }
         match scene {
+            "mail-editor" | "mail-confirm" | "mail-history" => {
+                self.state.screen = Screen::Mail;
+                self.state.mail.campaign = self.state.mail.campaigns.first().cloned();
+                if scene == "mail-history" {
+                    self.state
+                        .mail
+                        .campaign
+                        .as_mut()
+                        .expect("mail demo campaign")
+                        .state = "sending".into();
+                    self.state.mail.totals.insert("accepted".into(), 3);
+                    self.state.mail.totals.insert("pending".into(), 15);
+                }
+                let c = self
+                    .state
+                    .mail
+                    .campaign
+                    .as_ref()
+                    .expect("mail demo campaign")
+                    .clone();
+                self.mail_loaded(
+                    &Action::MailGet {
+                        campaign_id: c.id.clone(),
+                    },
+                    cx,
+                );
+                if scene == "mail-confirm" {
+                    self.state
+                        .propose(Action::MailApprove {
+                            campaign_id: c.id,
+                            revision: c.revision,
+                            confirm: true,
+                        })
+                        .map_err(|_| "confirmación demo")?;
+                }
+            }
             "normal" => {}
             "cargando" => self.demo_state = "cargando",
             "vacio" => self.demo_state = "vacio",
@@ -1008,6 +1069,7 @@ impl Admin {
             "rechazado" => self.select_report(3),
             _ => return Err("Escena demo desconocida".into()),
         }
+        self.mail_input_access(cx);
         Ok(())
     }
 }
@@ -1050,6 +1112,7 @@ impl Render for Admin {
                 Screen::Creators => self.creators(cx),
                 Screen::Reports => self.reports(cx),
                 Screen::Rollout => self.rollout(cx),
+                Screen::Mail => self.mails(cx),
                 Screen::Login => self.login(cx),
             };
             let mut content = column()

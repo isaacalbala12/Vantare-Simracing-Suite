@@ -8,21 +8,30 @@ pub enum Screen {
     Rollout,
     Reports,
     Creators,
+    Mail,
     Login,
 }
 impl Screen {
-    pub const ALL: [Self; 4] = [Self::Users, Self::Creators, Self::Reports, Self::Rollout];
+    pub const ALL: [Self; 5] = [
+        Self::Users,
+        Self::Creators,
+        Self::Reports,
+        Self::Rollout,
+        Self::Mail,
+    ];
     pub fn label(self) -> &'static str {
         match self {
             Self::Users => "Personas",
             Self::Rollout => "Módulos",
             Self::Reports => "Informes",
             Self::Creators => "Creadores",
+            Self::Mail => "Correos",
             Self::Login => "Entrar",
         }
     }
 }
 pub struct State {
+    pub mail: crate::mail::MailState,
     pub demo: bool,
     pub screen: Screen,
     pub signed_in: bool,
@@ -48,6 +57,11 @@ pub struct State {
 impl State {
     pub fn new(demo: bool, screen: Screen) -> Self {
         let mut state = Self {
+            mail: if demo {
+                crate::mail::MailState::demo()
+            } else {
+                crate::mail::MailState::default()
+            },
             demo,
             screen,
             signed_in: demo,
@@ -143,7 +157,13 @@ impl State {
     pub fn failed(&mut self, error: Error) {
         self.busy = false;
         self.confirmation = None;
-        self.message = if error == Error::DeletionUnavailable {
+        self.message = if self.screen == Screen::Mail && error == Error::Unconfigured {
+            "Correos todavía no está activado. Revisa la configuración del servidor.".into()
+        } else if self.screen == Screen::Mail
+            && matches!(error, Error::Conflict | Error::AccountConflict)
+        {
+            "La campaña ha cambiado. Actualiza y revisa el borrador antes de confirmar.".into()
+        } else if error == Error::DeletionUnavailable {
             "El borrado aún no está disponible. Falta revisar y conectar su barrera.".into()
         } else if error == Error::Conflict {
             "La cuenta o el correo ha cambiado. Actualiza sus datos antes de confirmar.".into()
@@ -169,6 +189,7 @@ impl State {
         }
     }
     pub fn clear_private(&mut self) {
+        self.mail = crate::mail::MailState::default();
         self.signed_in = false;
         self.users.clear();
         self.creators.clear();
@@ -197,6 +218,12 @@ impl State {
         action: &Action,
         response: &serde_json::Value,
     ) -> Result<Option<Action>> {
+        if action.label().starts_with("mail_") {
+            self.accept_mail(action, response)?;
+            self.busy = false;
+            self.message = "Datos de correos confirmados".into();
+            return Ok(None);
+        }
         let reload = match action {
             Action::SearchAccounts { query, .. } => {
                 self.accept_accounts(query, response)?;
@@ -278,6 +305,7 @@ impl State {
             Action::SetReportStatus { report_id, .. } => Some(Action::GetReport {
                 report_id: report_id.clone(),
             }),
+            _ => return Err(Error::Protocol),
         };
         self.busy = false;
         self.message = "Datos confirmados por el servidor".into();
@@ -387,6 +415,12 @@ impl State {
         Ok(())
     }
     pub fn demo_action(&mut self, action: &Action) {
+        if action.label().starts_with("mail_") {
+            self.demo_mail_action(action);
+            self.busy = false;
+            self.message = "DEMO · cambio de correo solo en memoria".into();
+            return;
+        }
         match action {
             Action::SetBlocked { blocked, .. } => {
                 if let Some(user) = &mut self.user {

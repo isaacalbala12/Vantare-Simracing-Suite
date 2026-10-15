@@ -28,7 +28,11 @@ impl Density {
 #[allow(clippy::struct_excessive_bools)]
 pub(in crate::shell) struct Preferences {
     pub onboarding_completed: bool,
+    // Retirados del asistente (#1628): general.json anteriores aún los traen,
+    // así que se toleran al leer pero ya no se escriben ni se usan.
+    #[serde(skip_serializing)]
     pub onboarding_simulators: [bool; 2],
+    #[serde(skip_serializing)]
     pub onboarding_automatic: bool,
     pub density: Density,
     pub startup: bool,
@@ -246,7 +250,6 @@ mod tests {
         assert!(!store.value.onboarding_completed);
         let mut next = store.value;
         next.onboarding_completed = true;
-        next.onboarding_automatic = true;
         store.save(next).expect("completed");
         assert!(
             Store::load(&root)
@@ -254,25 +257,34 @@ mod tests {
                 .value
                 .onboarding_completed
         );
-        assert!(
-            Store::load(&root)
-                .expect("automatic roundtrip")
-                .value
-                .onboarding_automatic
-        );
         std::fs::write(root.join("general.json"), b"{}").expect("legacy");
-        assert!(
-            !Store::load(&root)
-                .expect("legacy manual")
-                .value
-                .onboarding_automatic
-        );
         assert!(
             Store::load(&root)
                 .expect("existing installation")
                 .value
                 .onboarding_completed
         );
+        std::fs::remove_dir_all(root).expect("cleanup");
+    }
+    #[test]
+    fn retired_onboarding_choices_still_load_but_are_never_written() {
+        let root =
+            std::env::temp_dir().join(format!("vantare-onboarding-retired-{}", std::process::id()));
+        std::fs::create_dir_all(&root).expect("root");
+        // Una instalación previa conserva sus campos retirados al reabrir.
+        std::fs::write(
+            root.join("general.json"),
+            br#"{"onboarding_completed":true,"onboarding_simulators":[false,true],"onboarding_automatic":true}"#,
+        )
+        .expect("legacy choices");
+        let mut store = Store::load(&root).expect("legacy installation");
+        assert!(store.value.onboarding_completed);
+        store.save(store.value).expect("rewrite");
+        let saved = String::from_utf8(std::fs::read(root.join("general.json")).expect("read"))
+            .expect("utf8");
+        assert!(saved.contains("\"onboarding_completed\":true"));
+        assert!(!saved.contains("onboarding_simulators"));
+        assert!(!saved.contains("onboarding_automatic"));
         std::fs::remove_dir_all(root).expect("cleanup");
     }
     #[test]

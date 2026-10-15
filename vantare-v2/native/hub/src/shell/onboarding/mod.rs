@@ -282,8 +282,6 @@ impl Hub {
                     .and_then(|store| {
                         let mut next = store.value;
                         next.onboarding_completed = true;
-                        next.onboarding_simulators = choices.simulators;
-                        next.onboarding_automatic = choices.automatic;
                         store.save(next)
                     })
             });

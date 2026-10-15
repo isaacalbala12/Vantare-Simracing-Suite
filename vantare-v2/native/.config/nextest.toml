@@ -23,6 +23,17 @@ retries = 2
 filter = 'test(win32_reads_actual_process_identity_and_registry_without_writing_them)'
 threads-required = 'num-test-threads'
 
+# Plazos de reloj duros de 1-3 s: corren solos y primero (priority) para que la
+# contención de CPU no los tumbe, igual que el test de identidad. Son
+# ipc/src/pipe.rs, ipc/src/publisher.rs, ipc/tests/control.rs, launcher/src/tests.rs,
+# runtime/src/flows/transport_tests.rs y runtime/tests/core_e2e.rs (#1654 r3).
+# threads-required = num-test-threads los ejecuta en serie: mide la suite al
+# cambiar la lista (nexte.st/docs/configuration/threads-required).
+[[profile.default.overrides]]
+filter = 'test(read_times_out_and_stop_interrupts) | test(a_client_that_never_speaks_does_not_hold_up_shutdown) | test(a_client_that_never_reads_blocks_neither_publish_nor_shutdown) | test(initial_feed_failure_denies_and_cancellation_finishes_promptly) | test(cancellation_interrupts_delay_and_probe_without_starting_the_next_step) | test(server_rejects_ack_ahead_and_cancels_a_peer_waiting_without_ack) | test(the_service_shuts_down_in_order_when_asked)'
+threads-required = 'num-test-threads'
+priority = 100
+
 # Los tests más largos (>15 s) arrancan primero para no quedar solos al final.
 [[profile.default.overrides]]
 filter = 'test(/^solver::parity_tests::go_/) | test(golden_corpora_reach_every_widget) | test(mutated_and_truncated_real_frames_never_panic) | test(/^strategy::state_tests::isa1544_/)'

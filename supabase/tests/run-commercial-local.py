@@ -29,6 +29,8 @@ parser.add_argument('--storage-buckets', action='store_true', help='Real Storage
 parser.add_argument('--before-storage-buckets', action='store_true', help='RED: omit r6 bucket ownership barrier')
 parser.add_argument('--pilot-patch-drift', choices=['owner','deletion','objects','uploads'], help='Pilot migration must reject changed source text atomically')
 parser.add_argument('--before-pilot-identity', action='store_true', help='RED: omit only r8 Pilot identity permissions/cutover')
+parser.add_argument('--before-testing-identity', action='store_true', help='RED: omit R9 server UUID adapter correction only')
+parser.add_argument('--testing-identity', action='store_true', help='F1IP and triage live/deleted after ALL migrations')
 parser.add_argument('--pilot-profile', action='store_true', help='Pilot live/deleted native-data regression after ALL migrations')
 parser.add_argument('--before-admin-deleted-reads', action='store_true', help='RED: omit r7 admin read fix')
 args=parser.parse_args()
@@ -69,6 +71,7 @@ $$;
   if args.storage_schema:
    run('psql',*conn,'-c',"create role supabase_storage_admin noinherit bypassrls; grant usage on schema storage to supabase_storage_admin; grant all on all tables in schema storage to supabase_storage_admin;")
   for m in sorted((ROOT/'supabase/migrations').glob('*.sql')):
+   if args.before_testing_identity and 'testing_server_identity' in m.name: continue
    if args.before_pilot_identity and 'pilot_identity' in m.name: continue
    # RED controls omit the dependent adapters as well as their missing guards.
    legacy = args.baseline or args.before_write_barrier
@@ -122,6 +125,13 @@ $$;
    if cutover and args.upgrade=='identity-conflict':
     raise AssertionError('ambiguous historical issuer aliases were not rejected by B03')
    (OUT/(m.name+'.log')).write_text(result)
+  if args.testing_identity:
+   for name in ['testing_followup_F1IP.test.sql','commercial_testing_identity.test.sql']:
+    result=run('psql',*conn,'-f',ROOT/'supabase/tests'/name)
+    (OUT/(name+'.log')).write_text(result)
+    if 'not ok ' in result or '# Looks like' in result: raise RuntimeError(result)
+    print(name+' PASS',flush=True)
+   raise SystemExit(0)
   if args.pilot_profile:
    result=run('psql',*conn,'-f',ROOT/'supabase/tests/commercial_pilot_deletion.test.sql')
    (OUT/'commercial_pilot_deletion.test.sql.log').write_text(result)
@@ -283,7 +293,7 @@ $$;
    'billing_webhook_inbox.test.sql','billing_commercial_projection.test.sql',
    'billing_reconciliation.test.sql','billing_subscription_lifecycle.test.sql',
    'billing_observability.test.sql','operational_access.test.sql']
-  for optional in ['commercial_tombstone.test.sql','commercial_data_boundary.test.sql','commercial_refunds.test.sql','commercial_admin_deleted.test.sql','commercial_storage_probe.test.sql','commercial_pilot_deletion.test.sql']:
+  for optional in ['commercial_tombstone.test.sql','commercial_data_boundary.test.sql','commercial_refunds.test.sql','commercial_admin_deleted.test.sql','commercial_storage_probe.test.sql','commercial_pilot_deletion.test.sql','testing_followup_F1IP.test.sql','commercial_testing_identity.test.sql']:
    if (ROOT/'supabase/tests'/optional).exists(): suites.append(optional)
   for name in suites:
    try: result=run('psql',*conn,'-f',ROOT/'supabase/tests'/name)

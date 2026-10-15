@@ -179,3 +179,9 @@ CASES += [
  ('pilot-operation', "insert into pilot_private.operations(account_id,op_id,result) values('{a}','{new_id}','{{}}')"),
  ('pilot-photo-ownerless', "insert into storage.objects(bucket_id,name) values('pilot-photos','{a}/{h}.jpg')"),
 ]
+
+# R9: Edge admission must preserve live writes and reject a racing tombstone.
+CASES += [
+ ('testing-admitted-classic', "set local role service_role; select public.testing_report_submit_admitted('{a}','{new_id}','master','Fixture','Private body',true)"),
+ ('testing-admitted-triage', "set local role service_role; select public.testing_contribution_submit_admitted('{a}','{new_id}','testers','[contenido retirado por privacidad]','[contenido retirado por privacidad]','{{\"app_version\":\"1.0.0\",\"app_channel\":\"testers\",\"game\":\"lmu\",\"system\":{{}},\"consent\":{{\"version\":\"triage-v2\",\"items\":[],\"accepted_at\":\"2026-10-13T00:00:00Z\"}}}}','[]')"),
+]

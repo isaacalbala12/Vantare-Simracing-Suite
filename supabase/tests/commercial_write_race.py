@@ -63,6 +63,8 @@ end $$;
             values['sha'] = values['h'][:40]
             sql(SETUP.format(**values))
             sql(INDIRECT_SETUP.format(**values))
+            if name.startswith('testing-admitted-'):
+                sql("insert into public.testing_center_memberships(user_id,actor_id,role) values('{a}','{case}','tester')".format(**values))
             sql("insert into public.profiles(id) values('{other}'); insert into public.billing_webhook_inbox(id,provider,environment,provider_event_id,event_type,payload_hash,payload) values('{inbox}','polar','sandbox','seed-{case}','order.paid','{h}','{{\"data\":{{\"customer_id\":\"{case}\"}}}}')".format(**values))
             if name.startswith('storage-bucket-child-'):
                 sql("insert into storage.buckets(id,name,owner_id) values('{case}','{case}','{a}')".format(**values))

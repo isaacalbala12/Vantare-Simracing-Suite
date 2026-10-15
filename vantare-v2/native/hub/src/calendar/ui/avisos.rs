@@ -6,6 +6,7 @@ use super::super::{
     ics,
 };
 use crate::orbit;
+use chrono::Duration;
 use gpui::{ClickEvent, Context, Div, IntoElement, Stateful, div, prelude::*, px, rgb};
 
 /// Capa con velo: un clic fuera o Esc la cierra.
@@ -441,7 +442,7 @@ pub(super) fn band_box(
                 .flex()
                 .flex_wrap()
                 .items_center()
-                .gap(px(8.0))
+                .gap(px(6.0))
                 .child(label("Entre", cx))
                 .child(tin("calendar-bandbox-from", shown.from, false, cx))
                 .child(label("y", cx))
@@ -453,7 +454,7 @@ pub(super) fn band_box(
                 .flex()
                 .flex_wrap()
                 .items_center()
-                .gap(px(8.0))
+                .gap(px(5.0))
                 .child(label("Avisar", cx))
                 .child(mode_seg)
                 .child(div().flex_1())
@@ -614,17 +615,20 @@ pub(super) fn alerts_modal(cal: &mut Calendar, cx: &mut Context<Calendar>) -> im
             })
     });
     let (sample_name, sample_track, sample_race) = sample.unwrap_or_default();
-    let sample_at = schedule
-        .as_ref()
-        .and_then(|s| {
-            s.series
-                .iter()
-                .find(|x| alerts.band(&x.id).is_some())
-                .or_else(|| s.series.first())
-                .and_then(|series| s.next_start(series, now))
-        })
-        .map(|at| zone.hm(at))
-        .unwrap_or_default();
+    let sample_start = schedule.as_ref().and_then(|s| {
+        s.series
+            .iter()
+            .find(|x| alerts.band(&x.id).is_some())
+            .or_else(|| s.series.first())
+            .and_then(|series| {
+                let first = s.next_start(series, now)?;
+                Some((first, s.next_start(series, first + Duration::seconds(1))))
+            })
+    });
+    let sample_at = sample_start.map(|(at, _)| zone.hm(at)).unwrap_or_default();
+    let sample_next = sample_start
+        .and_then(|(_, next)| next)
+        .map(|at| zone.hm(at));
     let band_txt = schedule
         .as_ref()
         .and_then(|s| {
@@ -647,7 +651,11 @@ pub(super) fn alerts_modal(cal: &mut Calendar, cx: &mut Context<Calendar>) -> im
         .child(chrome::windows_toast(
             &format!("{sample_name} sale a las {sample_at}"),
             &format!(
-                "{sample_track} · carrera {sample_race} min{band_txt}. Si no llegas, la siguiente sale unos minutos después."
+                "{sample_track} · carrera {sample_race} min{band_txt}. {}",
+                sample_next.map_or_else(
+                    || "Si no llegas, la siguiente sale unos minutos después.".to_owned(),
+                    |at| format!("Si no llegas, la siguiente sale a las {at}."),
+                ),
             ),
             alerts.lead_min,
             cx,
@@ -802,7 +810,7 @@ pub(super) fn alerts_modal(cal: &mut Calendar, cx: &mut Context<Calendar>) -> im
     modal(
         cal.ui.viewport,
         "Avisos",
-        "Te avisamos antes de que salga la carrera que elijas. Los cambios se guardan al momento.",
+        "Te avisamos antes de que salga la carrera que elijas. Funciona con el Hub cerrado: queda un icono junto al reloj.",
         860.0,
         div().flex().gap(px(26.0)).child(left).child(right),
         footer,

@@ -367,14 +367,13 @@ pub(super) fn render(cal: &mut Calendar, cx: &mut Context<Calendar>) -> Div {
 }
 
 fn legend_bar(label: &str, special: bool, cx: &gpui::App) -> Div {
-    let skin = skin(cx);
     div()
         .h(px(20.0))
         .px(px(8.0))
         .flex()
         .items_center()
         .rounded(px(5.0))
-        .when(special, |d| d.bg(orbit::ramp(skin.button, 180.0)))
+        .when(special, |d| d.bg(rgb(0xC5_2F3B)))
         .when(!special, |d| {
             d.bg(acc_bg(cx))
                 .border_1()
@@ -422,14 +421,14 @@ fn event_bars(
     (zone, past_week): (clock::Zone, bool),
     cx: &gpui::App,
 ) -> Div {
-    let skin = skin(cx);
     let mut layer = div()
         .absolute()
         .top(px(31.0))
         .left(px(week_w))
         .right_0()
         .h(px(60.0));
-    let mut lane = 0.0_f32;
+    // Carriles: cada tramo ocupa el primer carril libre en sus días.
+    let mut lane_ends: Vec<usize> = vec![];
     for series in schedule.series.iter().filter(|s| !rows::is_daily(s)) {
         // Días de la semana con tandas de esta serie.
         let mut present = [false; 7];
@@ -440,7 +439,6 @@ fn event_bars(
         }
         let special = series.kind() == crate::calendar::model::Kind::Special;
         let mut offset = 0;
-        let mut drew = false;
         while offset < 7 {
             if !present[offset] {
                 offset += 1;
@@ -451,7 +449,14 @@ fn event_bars(
                 offset += 1;
             }
             let to = offset - 1;
-            drew = true;
+            let lane = lane_ends
+                .iter()
+                .position(|end| *end <= from)
+                .unwrap_or_else(|| {
+                    lane_ends.push(0);
+                    lane_ends.len() - 1
+                });
+            lane_ends[lane] = to + 1;
             let name = if special {
                 series.name.clone()
             } else {
@@ -460,7 +465,7 @@ fn event_bars(
             layer = layer.child(
                 div()
                     .absolute()
-                    .top(px(lane * 23.0))
+                    .top(px(lane as f32 * 23.0))
                     .left(relative(from as f32 / 7.0))
                     .right(relative((6 - to) as f32 / 7.0))
                     .ml(px(6.0))
@@ -471,7 +476,7 @@ fn event_bars(
                     .items_center()
                     .rounded(px(5.0))
                     .when(past_week, |d| d.opacity(0.55))
-                    .when(special, |d| d.bg(orbit::ramp(skin.button, 180.0)))
+                    .when(special, |d| d.bg(rgb(0xC5_2F3B)))
                     .when(!special, |d| {
                         d.bg(acc_bg(cx))
                             .border_1()
@@ -493,9 +498,6 @@ fn event_bars(
                         .truncate(),
                     ),
             );
-        }
-        if drew {
-            lane += 1.0;
         }
     }
     layer

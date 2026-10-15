@@ -89,11 +89,11 @@ pub(super) fn render(cal: &mut Calendar, cx: &mut Context<Calendar>) -> Div {
         .flex_none()
         .flex()
         .items_center()
-        .gap(px(12.0))
-        .px(px(16.0))
+        .gap(px(8.0))
+        .px(px(12.0))
         .py(px(10.0))
         .child(chips)
-        .child(div().w(px(96.0)).flex_none().child(t(
+        .child(div().w(px(84.0)).flex_none().child(t(
             format!("{total} salidas · {}", zone.long(now)),
             12.0,
             400,
@@ -289,6 +289,14 @@ pub(super) fn render(cal: &mut Calendar, cx: &mut Context<Calendar>) -> Div {
             .scroll
             .set_offset(point(px(0.0), px(-(hour as f32) * HOUR_H)));
     }
+    let item = |swatch: Div, label: &str| {
+        div()
+            .flex()
+            .items_center()
+            .gap(px(7.0))
+            .child(swatch)
+            .child(t(label.to_owned(), 11.5, 400, skin.text3, cx))
+    };
     let legend = div()
         .flex_none()
         .flex()
@@ -298,22 +306,35 @@ pub(super) fn render(cal: &mut Calendar, cx: &mut Context<Calendar>) -> Div {
         .py(px(9.0))
         .border_t_1()
         .border_color(line)
-        .child(t(
-            "15  Minuto de salida dentro de esa hora",
-            11.5,
-            400,
-            skin.text3,
-            cx,
+        .child(item(
+            mono("15", 11.0, skin.text3, cx),
+            "Minuto de salida dentro de esa hora",
         ))
-        .child(t("Contorno  Tu próxima", 11.5, 400, skin.text3, cx))
-        .child(t(
-            "Sombreado  Tu franja de aviso",
-            11.5,
-            400,
-            skin.text3,
-            cx,
+        .child(item(
+            div()
+                .px(px(4.0))
+                .rounded(px(4.0))
+                .border_1()
+                .border_color(rgb(skin.text1))
+                .child(bold_mono("00", 11.0, skin.text1, cx)),
+            "Tu próxima",
         ))
-        .child(t("Rojo  Tanda con aviso", 11.5, 400, skin.text3, cx))
+        .child(item(
+            div()
+                .w(px(18.0))
+                .h(px(12.0))
+                .rounded(px(3.0))
+                .bg(chrome::tint(acc(cx), 0.32)),
+            "Tu franja de aviso",
+        ))
+        .child(item(
+            div()
+                .px(px(4.0))
+                .rounded(px(4.0))
+                .bg(rgb(acc(cx)))
+                .child(bold_mono("22", 11.0, 0x00ff_ffff, cx)),
+            "Tanda con aviso",
+        ))
         .child(div().flex_1())
         .child(t(
             "Pulsa una hora para abrir su ficha",

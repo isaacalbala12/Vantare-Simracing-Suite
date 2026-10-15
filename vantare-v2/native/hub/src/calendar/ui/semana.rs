@@ -57,8 +57,8 @@ pub(super) fn card(cal: &Calendar, readonly: bool, cx: &mut Context<Calendar>) -
         .flex_none()
         .flex()
         .items_center()
-        .gap(px(10.0))
-        .px(px(16.0))
+        .gap(px(8.0))
+        .px(px(14.0))
         .py(px(12.0));
     let bar = if readonly {
         bar.child(disp(format!("Semana pasada · {title}"), 19.0, skin.text1, cx).flex_none())
@@ -98,7 +98,7 @@ pub(super) fn card(cal: &Calendar, readonly: bool, cx: &mut Context<Calendar>) -
         )
         .child(
             disp(format!("Semana {title}"), 19.0, skin.text1, cx)
-                .min_w(px(150.0))
+                .min_w(px(128.0))
                 .text_center(),
         )
         .child(
@@ -124,7 +124,7 @@ pub(super) fn card(cal: &Calendar, readonly: bool, cx: &mut Context<Calendar>) -
                 })),
         )
         .when(!compact, |bar| {
-            bar.child(div().w(px(100.0)).flex_none().ml(px(4.0)).child(t(
+            bar.child(div().w(px(92.0)).flex_none().child(t(
                 "mar → lun, como publica LMU",
                 12.0,
                 400,
@@ -306,8 +306,17 @@ fn day_header(
                 .justify_center()
                 .border_l_1()
                 .border_color(orbit::alpha(skin.line1))
+                .relative()
                 .when(is_today, |d| {
-                    d.bg(acc_bg(cx)).border_b_2().border_color(rgb(acc(cx)))
+                    d.bg(acc_bg(cx)).child(
+                        div()
+                            .absolute()
+                            .bottom_0()
+                            .left_0()
+                            .right_0()
+                            .h(px(2.0))
+                            .bg(rgb(acc(cx))),
+                    )
                 })
                 .child(cap(
                     &if is_today {

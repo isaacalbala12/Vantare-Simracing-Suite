@@ -54,7 +54,15 @@ pub(super) fn render(cal: &mut Calendar, cx: &mut Context<Calendar>) -> Div {
             .unwrap_or_default();
         let range = match (starts.first(), starts.last()) {
             (Some(a), Some(b)) => {
-                let (da, db) = (zone.date(*a), zone.date(*b));
+                let early = |at: DateTime<Utc>| {
+                    let local = zone.naive(at);
+                    if chrono::Timelike::hour(&local) < 6 {
+                        local.date() - chrono::Duration::days(1)
+                    } else {
+                        local.date()
+                    }
+                };
+                let (da, db) = (early(*a), early(*b));
                 format!(
                     "{} {} → {} {} {}",
                     clock::day_name(da),

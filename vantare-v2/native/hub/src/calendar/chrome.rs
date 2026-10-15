@@ -227,7 +227,11 @@ pub(super) fn btn_pri(
         .gap(px(8.0))
         .px(px(if large { 18.0 } else { 14.0 }))
         .rounded(px(8.0))
-        .bg(orbit::ramp(skin.button, 180.0))
+        .bg(gpui::linear_gradient(
+            180.0,
+            gpui::linear_color_stop(rgb(0xC5_2F3B), 0.0),
+            gpui::linear_color_stop(rgb(0xB9_2A35), 1.0),
+        ))
         .shadow(vec![orbit::kit_shadow(0xffff_ff30, 1.0, 0.0, 0.0, true)])
         .cursor_pointer()
         .hover(move |s| s.bg(orbit::ramp(hover, 180.0)))
@@ -265,7 +269,11 @@ pub(super) fn btn_text_pri(
         .justify_center()
         .px(px(14.0))
         .rounded(px(8.0))
-        .bg(orbit::ramp(skin.button, 180.0))
+        .bg(gpui::linear_gradient(
+            180.0,
+            gpui::linear_color_stop(rgb(0xC5_2F3B), 0.0),
+            gpui::linear_color_stop(rgb(0xB9_2A35), 1.0),
+        ))
         .shadow(vec![orbit::kit_shadow(0xffff_ff30, 1.0, 0.0, 0.0, true)])
         .cursor_pointer()
         .hover(move |s| s.bg(orbit::ramp(hover, 180.0)))
@@ -699,7 +707,7 @@ pub(super) fn section_title(label: &str, right: Option<String>, cx: &gpui::App) 
         .items_center()
         .gap(px(8.0))
         .mb(px(8.0))
-        .child(orbit::caps(label, 11.5, skin.text2, cx))
+        .child(orbit::caps(label, 10.5, skin.text2, cx))
         .when_some(right, |row, right| {
             row.child(div().flex_1())
                 .child(t(right, 12.0, 500, skin.text3, cx))

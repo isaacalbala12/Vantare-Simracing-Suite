@@ -126,7 +126,27 @@ fn header(cal: &Calendar, p: &Page<'_>, cx: &mut Context<Calendar>) -> Div {
     } else if series.event_kind == "special" {
         "Especial · fin de semana".to_owned()
     } else {
-        "Semanal · tandas fijas".to_owned()
+        // Las tandas de madrugada (antes de las 6:00) cuentan para el día anterior.
+        let starts = schedule
+            .starts(series, valid_from, valid_until)
+            .unwrap_or_default();
+        let day_of = |at| {
+            let local = zone.naive(at);
+            let date = local.date();
+            if chrono::Timelike::hour(&local) < 6 {
+                date - chrono::Duration::days(1)
+            } else {
+                date
+            }
+        };
+        match (starts.first(), starts.last()) {
+            (Some(a), Some(b)) => format!(
+                "Semanal · {} → {}",
+                clock::day_name(day_of(*a)),
+                clock::day_name(day_of(*b))
+            ),
+            _ => "Semanal · tandas fijas".to_owned(),
+        }
     };
 
     // Selector «Cambiar serie».
@@ -457,7 +477,14 @@ fn outings_card(cal: &Calendar, p: &Page<'_>, cx: &mut Context<Calendar>) -> Div
         .child(phase_block(&series, first, zone, cx));
 
     // Historial en esta serie.
-    let mine: Vec<_> = cal.runs.iter().filter(|r| r.series_id == id).collect();
+    // «Esta semana»: solo las carreras de la semana LMU publicada.
+    let week = cal.schedule().and_then(|s| s.window().ok());
+    let mine: Vec<_> = cal
+        .runs
+        .iter()
+        .filter(|r| r.series_id == id)
+        .filter(|r| week.is_none_or(|(from, to)| from <= r.at && r.at < to))
+        .collect();
     let (races, best, average) = if mine.is_empty() {
         ("Ninguna".to_owned(), "—".to_owned(), "—".to_owned())
     } else {

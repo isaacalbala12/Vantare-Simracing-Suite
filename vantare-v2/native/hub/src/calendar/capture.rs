@@ -43,6 +43,22 @@ pub(super) fn apply(calendar: &mut Calendar, demo: &DemoData) -> Result<(), Stri
     if state != "nosched" && state != "loading" {
         let mut value: serde_json::Value =
             serde_json::from_slice(OCTOBER).map_err(|error| error.to_string())?;
+        // Desfases ilustrativos del contrato visual (minuto de salida en el intervalo).
+        for (id, minute) in [
+            ("beginner-lmp3-fixed", 5),
+            ("beginner-logitech-mclaren-g-challenge-q1", 10),
+            ("intermediate-lmgt3-sprint", 10),
+            ("intermediate-elms-sprint", 15),
+            ("advanced-one-stint-sprint", 5),
+            ("advanced-elms-super-60", 25),
+            ("advanced-wec-xperience", 15),
+        ] {
+            for series in value["series"].as_array_mut().into_iter().flatten() {
+                if series["id"] == id {
+                    series["startOffsetMinute"] = minute.into();
+                }
+            }
+        }
         if state == "fallback" {
             for series in value["series"].as_array_mut().into_iter().flatten() {
                 if matches!(

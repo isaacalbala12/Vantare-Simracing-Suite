@@ -1456,15 +1456,16 @@ pub fn run_with_access(mut options: Options, access: navigation::Access) -> Resu
             // de los monitores y sin foco; la captura usa PrintWindow del HWND.
             let offscreen = options.capture.is_some()
                 && std::env::var_os("VANTARE_CAPTURE_OFFSCREEN").is_some();
-            let window_bounds = options
-                .capture_size
-                .filter(|_| offscreen)
-                .map(|(width, height)| {
-                    gpui::WindowBounds::Windowed(gpui::Bounds::new(
-                        gpui::point(gpui::px(-4000.0), gpui::px(0.0)),
-                        gpui::size(gpui::px(width as f32), gpui::px(height as f32)),
-                    ))
-                });
+            let window_bounds =
+                options
+                    .capture_size
+                    .filter(|_| offscreen)
+                    .map(|(width, height)| {
+                        gpui::WindowBounds::Windowed(gpui::Bounds::new(
+                            gpui::point(gpui::px(-4000.0), gpui::px(0.0)),
+                            gpui::size(gpui::px(width as f32), gpui::px(height as f32)),
+                        ))
+                    });
             let window_options = WindowOptions {
                 window_bounds,
                 focus: !minimized && !offscreen,

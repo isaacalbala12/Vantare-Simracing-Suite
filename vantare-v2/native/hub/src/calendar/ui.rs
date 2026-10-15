@@ -567,7 +567,10 @@ impl Calendar {
         if items.is_empty() {
             body = body.child(
                 t(
-                    if self.favorites().is_empty() && self.alerts.count() == 0 {
+                    if self.schedule().is_some()
+                        && self.favorites().is_empty()
+                        && self.alerts.count() == 0
+                    {
                         "Sin avisos todavía. Pulsa la campana en una hora para que te avisemos antes de salir."
                     } else {
                         "No tienes avisos pendientes."

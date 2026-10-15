@@ -103,6 +103,16 @@ impl Triage {
         input: Input<'_>,
         now: u64,
     ) -> Result<Preview> {
+        self.prepare_with_capture(account, channel, input, now, capture::capture)
+    }
+    fn prepare_with_capture(
+        &mut self,
+        account: &str,
+        channel: &str,
+        input: Input<'_>,
+        now: u64,
+        capture: impl FnOnce(bool) -> Result<capture::Observed>,
+    ) -> Result<Preview> {
         let Input {
             title,
             body,
@@ -121,7 +131,7 @@ impl Triage {
         {
             return Err(Error::Protocol);
         }
-        let observed = capture::capture(selection.items.contains(&Item::System))?;
+        let observed = capture(selection.items.contains(&Item::System))?;
         let system = evidence::system(&observed.system);
         let summary = if selection.items.contains(&Item::Session) {
             self.summary(now)

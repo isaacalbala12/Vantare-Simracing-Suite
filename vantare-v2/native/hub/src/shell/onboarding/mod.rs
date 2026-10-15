@@ -513,4 +513,54 @@ mod tests {
         assert_eq!(confirmed_plan(pro), Some("Pro"));
         assert_eq!(plan_label(true, pro), "Pro · cuenta conectada");
     }
+    // La navegación se prueba en la decisión pura: el render no tiene arnés
+    // GPUI en el repo, y el pie y la tecla Escape consultan esta misma función.
+    #[test]
+    fn the_footer_only_moves_in_visible_steps() {
+        assert_eq!(motion(Nav::Back, 0, true), Motion::Blocked);
+        for step in 1..=6 {
+            assert_eq!(motion(Nav::Back, step, true), Motion::Page(step - 1));
+        }
+        for step in 0..=4 {
+            assert_eq!(motion(Nav::Skip, step, true), Motion::Page(6));
+        }
+        for step in 5..=6 {
+            assert_eq!(motion(Nav::Skip, step, true), Motion::Blocked);
+        }
+        for step in 0..=5 {
+            assert_eq!(motion(Nav::Next, step, false), Motion::Blocked);
+            assert_eq!(motion(Nav::Next, step, true), Motion::Page(step + 1));
+        }
+        assert_eq!(motion(Nav::Next, 6, true), Motion::Exit(true));
+    }
+    #[test]
+    fn the_unsaved_exit_needs_the_consent_error_at_the_privacy_step() {
+        assert!(!private_exit_available(5, false));
+        assert!(!private_exit_available(6, false));
+        for step in 0..=4 {
+            assert!(!private_exit_available(step, true));
+        }
+        assert!(private_exit_available(5, true));
+        assert!(private_exit_available(6, true));
+    }
+    #[test]
+    fn most_private_turns_everything_off_without_losing_the_generation() {
+        let saved = Privacy {
+            generation: 7,
+            crashes: true,
+            usage: true,
+            crashes_decided: false,
+            usage_decided: false,
+        };
+        assert_eq!(
+            most_private(saved),
+            Privacy {
+                generation: 7,
+                crashes: false,
+                usage: false,
+                crashes_decided: true,
+                usage_decided: true,
+            }
+        );
+    }
 }

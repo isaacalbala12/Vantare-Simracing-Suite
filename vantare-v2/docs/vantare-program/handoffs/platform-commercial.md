@@ -6,8 +6,9 @@ activación. M1: HMAC antes de ambos presupuestos; 601 firmas inválidas no gast
 SQL ni bloquean una baja válida. Regresión roja antes del arreglo y verde después.
 M3: recibo público indistinguible (200/cuerpo/cabeceras) para espera/ausente/cuenta;
 regresión roja y verde registrada. Owner mantiene diagnóstico autenticado.
-Quedan en curso: retención/alerta de borrados, margen del
-DELETE y aislamiento del gate Docker. Evidencia `~/evidence/1636-r3/`.
+M4: DELETE espera hasta lease anterior +10 s, cubriendo PUT de 4 s iniciado al
+final del lease; test de plazo exacto rojo y verde (25 SQL).
+Quedan en curso: retención/alerta de borrados y aislamiento del gate Docker. Evidencia `~/evidence/1636-r3/`.
 El orquestador mantiene tracker/GitHub; push del worker solo al bare.
 
 ## #1636 · VANTA-72 · R2 para revisión (15/10/2026)

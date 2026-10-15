@@ -9,6 +9,7 @@ select public.mail_admin_execute('00000000-0000-4000-8000-000000001701',action,p
 select public.mail_record_consent('00000000-0000-4000-8000-000000001702','old@example.invalid','es',true,'verified_settings',false);
 select public.mail_record_consent('00000000-0000-4000-8000-000000001702','current@example.invalid','es',true,'verified_settings',false);
 create temporary table sync as select pg_temp.mail('mail_sync_lease','{"email":"current@example.invalid","revision":1}') data;
+create temporary table sync_deadline as select sync_lease_until deadline from private.mail_contacts where email='current@example.invalid';
 select is((select data->'allowed' from sync),'true'::jsonb,'sync lease acquired before erasure');
 select public.apply_clerk_user_event('mail-r2-erasure',repeat('a',64),'https://clerk.erasure.test','user_eeeeeeeeeeeeeeeeeeeeeeeeeee','user.deleted',now(),null);
 select is((select count(*)::integer from private.mail_contacts),0,'#1622 event removes current and previous contacts');
@@ -16,6 +17,7 @@ select is((select count(*)::integer from private.mail_contact_erasures),2,'#1622
 select is((pg_temp.mail('mail_list')->'cleanup'->>'pending')::integer,2,'Owner can inspect pending erasures without addresses');
 select is(pg_temp.mail('mail_sync_lease','{"email":"current@example.invalid","revision":1}')->'allowed','false'::jsonb,'erased snapshot cannot start a new provider sync');
 select ok((select next_attempt_at>clock_timestamp() from private.mail_contact_erasures where email='current@example.invalid'),'in-flight sync drains before provider deletion');
+select ok((select next_attempt_at >= (select deadline from sync_deadline)+interval '10 seconds' from private.mail_contact_erasures where email='current@example.invalid'),'DELETE waits beyond the prior PUT lease and its 4s HTTP timeout');
 select throws_ok($$select public.mail_record_consent(null,'current@example.invalid','en',true,'verified_waitlist',true)$$,'40001','mail_erasure_pending','new consent cannot race pending provider deletion');
 select ok(not has_function_privilege('anon','public.mail_erasure_claim()','execute'),'anon cannot drain queue');
 select ok(not has_function_privilege('authenticated','public.mail_erasure_finish(uuid,uuid,integer)','execute'),'client cannot forge provider ACK');

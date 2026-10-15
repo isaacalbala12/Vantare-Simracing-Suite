@@ -113,7 +113,7 @@ operativa aunque se apaguen campañas. Configurar una llamada periódica de
 servidor (p. ej. cada minuto) en el despliegue autorizado. Aquí no se crea
 scheduler ni secreto. Owner puede usar «Reintentar borrados de Brevo»; el contador
 pendiente/completado se obtiene de `mail_list.cleanup`. DELETE espera a que venza
-un lease de sincronización previo, y un alta nueva de la misma dirección espera
+un lease de sincronización previo más 10 s (HTTP PUT 4 s y margen 6 s), y un alta nueva de la misma dirección espera
 el ACK de borrado: el trabajo antiguo no puede retirar el alta nueva.
 
 ## Configuración futura de Brevo y Anthropic (Isaac)

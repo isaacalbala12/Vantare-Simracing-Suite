@@ -1,3 +1,30 @@
+## #1608 · R8 · Entrega local para revisión (15/10/2026)
+
+Inicio `d5796ad1a`; correcciones `9496d71d` (Pilot) y `54a605a3` (deriva de
+parches, regresiones HTTP y requisitos comerciales). Cinco archivos de rama,
+sin Rust ni dependencias nuevas. R7-P1-1 RED SQL42501/HTTP403→GREEN200 con JWT
+emitido por handler real; tras borrar, el mismo JWT queda bloqueado (403).
+R7-P3-3 cuatro RED→GREEN atómicos; P3-4 riesgo de escritor futuro documentado;
+P3-1/P3-2 obligatorios antes de vender, pendientes del orquestador/Isaac.
+
+63 migraciones; 12 suites/352 pgTAP PASS, histórico232, upgrades18/4/26,
+Pilot90+10+concurrencia; 80 tablas/105 rutas/620 checks, aliases40,
+owners10/multipart64/buckets17, locks17/admin24 PASS. PostgREST/JWT/Ed25519 y
+reconciliación SQL/HTTP PASS. Edge609/0/1 ignored desde raíz, con tipos.
+Storage original v1.70.3: RED retiene, restauración drena los mismos uploads;
+readonly conserva cola con 503, RW200 drena: **0 uploads/partes/colas/archivos**.
+Quality456, fmt, lint producción, compile Python, surface y diff PASS.
+Lint adicional del fixture TS sin modificar detecta su import HTTPS histórico
+(no-import-prefix); conservado, sin excluir regla ni cambiar dependencias.
+Fallos iniciales de permisos TMP Deno/iat redondeado del fixture conservados y
+corregidos en la ejecución. Evidencia `~/evidence/1608-r8/RESULTADOS.md`.
+
+Stack propio r8stack/sidecar/proxy retirados, auth sintética retirada y lock
+liberado; stack ajeno intacto. Árbol final/SHA/push al bare local en buzón e
+informe. Sin Notion/Plane/GitHub/subagentes/servicios reales, CI remota, merge,
+promoción, deploy, release o venta. Rust y QA física omitidos por alcance.
+Siguiente: review del diff por el orquestador; sin aceptación comercial implícita.
+
 ## #1608 · R8 · Migración y requisitos previos a vender (15/10/2026)
 
 R7-P3-3: cada uno de los cuatro reemplazos de texto Pilot comprueba su patrón

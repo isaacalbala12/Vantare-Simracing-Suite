@@ -650,7 +650,11 @@ mod tests {
                     let form = remote.email.as_ref().expect("form");
                     assert_eq!(form.stage, EmailStage::Form);
                     assert!(form.restarted);
-                    assert_eq!(form.submit_label(false), label, "el botón encaja con el modo");
+                    assert_eq!(
+                        form.submit_label(false),
+                        label,
+                        "el botón encaja con el modo"
+                    );
                     assert_eq!(
                         form.message,
                         "El acceso se reinició. Vuelve a introducir tu contraseña para continuar."

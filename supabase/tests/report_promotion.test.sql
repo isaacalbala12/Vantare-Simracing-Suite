@@ -187,7 +187,7 @@ select public.report_promotion_observe(pg_temp.account(2),'sandbox','sub2','plus
 select is((select remote_discount from private.report_promotions where account_id=pg_temp.account(2)),'creator','stale webhook ignored');
 -- End of reward and creator windows: no fresh duration from repeated selection.
 update public.billing_subscriptions set current_period_end='2027-08-26 19:00 Europe/Madrid' where user_id=pg_temp.account(2);
-select is(public.report_promotion_prepare(pg_temp.account(2),'sandbox','2027-08-01')->>'discount_id','plus3','mirror dates never consume unsettled reward months');
+select is(public.report_promotion_prepare(pg_temp.account(2),'sandbox','2027-08-01'),null::jsonb,'P3-12 unspent balance expires by policy rather than mirror dates');
 select public.report_promotion_failed(pg_temp.account(6),'sandbox','polar_discount_unmanaged','2027-01-01');
 select public.report_promotion_failed(pg_temp.account(6),'sandbox','polar_discount_unmanaged','2027-01-02');
 select is((select attempts from private.report_promotion_failures where account_id=pg_temp.account(6)),2,'P2-3 failed attempts are durable');
@@ -252,5 +252,29 @@ insert into public.billing_orders(user_id,provider,environment,provider_order_id
 select public.report_promotion_invoice('sandbox','recovered-initial9','pro1',200,'2026-10-26 19:00 Europe/Madrid','2026-10-26 19:00 Europe/Madrid','2026-11-26 19:00 Europe/Madrid',true,'reconciliation');
 select public.report_promotion_prepare(pg_temp.account(9),'sandbox','2026-11-01');
 select is(private.report_promotion_progress(pg_temp.account(9),'sandbox','2026-11-01')->>'last_error',null::text,'P3-10 initial invoice recovery clears the incident');
+-- P3-12: expiry is six Madrid calendar months from the human grant.
+select pg_temp.enroll(17);
+select pg_temp.report(17,'2026-10-27 19:00 Europe/Madrid'); select pg_temp.report(17,'2026-10-28 19:00 Europe/Madrid');
+create temporary table expiry_pending as select public.report_promotion_prepare(pg_temp.account(17),'sandbox','2027-04-28 18:59 Europe/Madrid') op;
+select is((select op->>'discount_id' from expiry_pending),'pro3','P3-12 pending balance remains usable immediately before six-month deadline');
+select is(public.report_promotion_prepare(pg_temp.account(17),'sandbox','2027-04-28 19:00 Europe/Madrid'),null::jsonb,'P3-12 no new application at exact six-month deadline');
+select is(public.report_promotion_prepare(pg_temp.account(17),'sandbox','2027-04-28 19:01 Europe/Madrid'),null::jsonb,'P3-12 expired pending balance cannot rearm');
+select pg_temp.enroll(18);
+select pg_temp.report(18,'2026-10-27 19:00 Europe/Madrid'); select pg_temp.report(18,'2026-10-28 19:00 Europe/Madrid');
+create temporary table expiry_applied as select public.report_promotion_prepare(pg_temp.account(18),'sandbox','2026-11-01') op;
+select public.report_promotion_claim((select (op->>'id')::uuid from expiry_applied),'00000000-0000-4000-8000-000000000018','2026-11-01');
+select public.report_promotion_ack((select (op->>'id')::uuid from expiry_applied),'00000000-0000-4000-8000-000000000018','2026-11-01');
+select is(public.report_promotion_prepare(pg_temp.account(18),'sandbox','2027-04-29'),null::jsonb,'P3-12 expiry never removes or restarts a block already confirmed');
+select is((select applied_discount from private.report_promotions where account_id=pg_temp.account(18)),'pro3','P3-12 already-applied tier is preserved');
+select is((select reward_expires_at from private.report_promotions where account_id=pg_temp.account(17)),'2027-04-28 19:00 Europe/Madrid'::timestamptz,'P3-12 deadline follows Madrid DST from the human grant');
+select ok(not exists(select 1 from private.report_promotion_changes where account_id=pg_temp.account(17) and applied_at is null and superseded_at is null),'P3-12 expired unapplied operation is superseded');
+select ok(not public.report_promotion_claim((select (op->>'id')::uuid from expiry_pending),'00000000-0000-4000-8000-000000000019','2027-04-29'),'P3-12 stale operation cannot claim after deadline');
+update private.report_promotion_policy set reward_valid_months=12;
+select pg_temp.enroll(19);
+select pg_temp.report(19,'2026-10-27 19:00 Europe/Madrid'); select pg_temp.report(19,'2026-10-28 19:00 Europe/Madrid');
+select is(public.report_promotion_prepare(pg_temp.account(19),'sandbox','2027-04-29')->>'discount_id','pro3','P3-12 single configured duration governs future awards');
+select is((select reward_expires_at from private.report_promotions where account_id=pg_temp.account(19)),'2027-10-28 19:00 Europe/Madrid'::timestamptz,'P3-12 custom calendar duration is snapshotted');
+select is((select reward_expires_at from private.report_promotions where account_id=pg_temp.account(18)),'2027-04-28 19:00 Europe/Madrid'::timestamptz,'P3-12 policy edits cannot change an already-applied tier');
+select ok(not has_table_privilege('service_role','private.report_promotion_policy','update'),'P3-12 client/worker cannot change the configured policy');
 select * from finish();
 rollback;

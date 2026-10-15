@@ -1,5 +1,13 @@
 -- #1593 / VANTA-39. Preparation only: empty catalogue, no activation or network.
 begin;
+-- Isaac's configurable policy. Snapshot only when a new tier is earned.
+create table private.report_promotion_policy (
+ singleton boolean primary key default true check(singleton),
+ reward_valid_months integer not null check(reward_valid_months between 1 and 120)
+);
+insert into private.report_promotion_policy(singleton,reward_valid_months) values(true,6);
+alter table private.report_promotion_policy enable row level security;
+revoke all on private.report_promotion_policy from public,anon,authenticated,service_role;
 create table private.report_promotion_catalog (
  environment text not null check(environment in ('sandbox','production')),
  product_id text not null,
@@ -38,6 +46,7 @@ create table private.report_promotions (
  remote_discount text,
  tier integer not null default 0 check(tier in (0,3,6)),
  reward_granted_at timestamptz,
+ reward_expires_at timestamptz,
  repaired_order_id text,
  reward_from timestamptz,
  reward_until timestamptz,
@@ -312,7 +321,7 @@ returns jsonb language sql stable security definer set search_path='' as $$
  'spam',(select count(*) from public.testing_contributions c join public.testing_contribution_reviews r on r.contribution_id=c.id
    where c.account_id=p.account_id and r.decision='spam' and c.created_at>=p.subscribed_at and r.decided_at<=p_now),
  'last_error',(select f.code from private.report_promotion_failures f where f.account_id=p.account_id and f.environment=p.environment and f.resolved_at is null),'tier',p.tier,'first_refunded',p.first_refunded,'forfeited',p.forfeited,'active_discount',p.remote_discount,'applied_at',p.applied_at,
- 'reward_until',p.reward_until,'window_end',p.subscribed_at+interval '1080 hours')
+ 'reward_until',p.reward_until,'reward_expires_at',p.reward_expires_at,'reward_expired',p.reward_expires_at<=p_now,'window_end',p.subscribed_at+interval '1080 hours')
  from private.report_promotions p where account_id=p_account and environment=p_environment
  and not exists(select 1 from public.account_identities i where i.account_id=p.account_id and i.deleted_at is not null)
 $$;
@@ -359,6 +368,7 @@ begin
    where t.account_id=p_account and t.state in ('accepted','fixed') and r.decision='accepted' and t.created_at>=p.subscribed_at and t.created_at<p.subscribed_at+interval '1080 hours'
    and r.decided_at<=p_now and (p.forfeited_at is null or r.decided_at<p.forfeited_at) order by r.decided_at,t.id offset (case earned when 6 then 4 else 1 end) limit 1;
    p.tier:=earned; p.reward_granted_at:=grant_at;
+   p.reward_expires_at:=private.report_promotion_months(grant_at,(select reward_valid_months from private.report_promotion_policy where singleton));
  end if;
  select count(distinct (i.subscription_id,i.period_start))::integer,min(i.period_start),max(i.period_end)
  into spent,p.reward_from,p.reward_until
@@ -384,8 +394,15 @@ begin
  if found and p_now<private.report_promotion_months(p.subscribed_at,creator.duration_in_months)
   and next_bill<private.report_promotion_months(p.subscribed_at,creator.duration_in_months)
   and (desired is null or round(c.normal_cents*creator.basis_points/10000.0)>c.normal_cents-c.launch_cents) then desired:=p.creator_discount; repair:=null; end if;
- update private.report_promotions set tier=p.tier,reward_granted_at=p.reward_granted_at,reward_from=p.reward_from,reward_until=p.reward_until,forfeited=p.forfeited,forfeited_at=p.forfeited_at,first_refunded=p.first_refunded
+ update private.report_promotions set tier=p.tier,reward_granted_at=p.reward_granted_at,reward_expires_at=p.reward_expires_at,reward_from=p.reward_from,reward_until=p.reward_until,forfeited=p.forfeited,forfeited_at=p.forfeited_at,first_refunded=p.first_refunded
   where account_id=p_account and environment=p_environment;
+ -- Expiry stops new allocations and repairs; an already-confirmed finite
+ -- coupon finishes naturally. Refund policy still revokes it independently.
+ if p.reward_expires_at<=p_now and not p.first_refunded then
+   update private.report_promotion_changes set superseded_at=p_now where account_id=p_account and environment=p_environment
+    and applied_at is null and superseded_at is null and (lease_until is null or lease_until<=p_now);
+   return null;
+ end if;
  target_sub:=p.subscription_id; target_product:=p.product_id;
  -- A non-billable predecessor needs no provider mutation. Keep its audit.
  update private.report_promotion_transfers t set cleared_at=p_now,cleanup_reason='mirror_inactive'

@@ -1,4 +1,4 @@
-# Descuento por informes · #1593 / VANTA-39 · ronda 2
+# Descuento por informes · #1593 / VANTA-39 · ronda 3
 
 Candidato local de PR #1659. Catálogo vacío y flag ausente/false: no se activa.
 No crea productos, descuentos, enlaces, scheduler ni despliegue automáticamente.
@@ -19,7 +19,7 @@ upgrade aparte.
   dan **3 cobros mensuales rebajados**; 5 dan **6** en sustitución del tramo
   menor. El mayor empieza con sus seis cobros siguientes, no suma meses de ambos
   tramos.
-- Se consumen periodos únicos de órdenes `subscription_cycle` **pagadas**, con
+- Se consumen periodos únicos de órdenes `subscription_cycle` / `subscription_cycle_after_trial` **pagadas**, con
   el descuento del tramo, importe de descuento positivo y una línea completa sin
   prorrateo. `subscription_create` identifica la factura inicial y no consume
   premio. IDs repetidos no suman; una devolución posterior no repone meses ya
@@ -27,8 +27,8 @@ upgrade aparte.
 - Reconciliación de órdenes alimenta el mismo ledger por order ID aunque el
   inbox ya esté completado o en cuarentena. Guarda origen y fecha de
   reconciliación sin payload ni PII. Si una orden pagada conocida carece de
-  periodo/importe completos, deja un hueco durable y una incidencia Owner;
-  no rearma cupones hasta recuperarla. El ledger cierra el hueco al reconciliar.
+  periodo/importe completos, deja un hueco durable y una incidencia Owner; no
+  rearma cupones hasta recuperarla. El ledger cierra el hueco al reconciliar.
 - El contador no usa `current_period_end` del espejo. Inicio y último fin son
   los periodos de las facturas liquidadas. Un PATCH tardío no pierde un mes: la
   factura previa sin rebaja no cuenta y se sirven los tres/seis cobros futuros.
@@ -60,11 +60,11 @@ Cada cambio deja registro privado con suscripción/producto anterior y nuevo y
 fecha de la observación. Antes de aplicar el premio en otra suscripción, se
 limpia el anterior mediante operación propia, esperando sus leases en vuelo. No
 se borra un descuento ajeno. Si la anterior está canceled/paused, se considera
-ya limpia: no admite PATCH ni puede facturar. Queda motivo durable mirror_inactive
-o remote_inactive (GET vivo), con fecha y traslado; el premio sigue a la vigente.
-El caso comercial no lanza conflicto ni cuarentena
-del webhook. Errores HTTP/de catálogo se marcan para revisión y no bloquean a
-los demás clientes.
+ya limpia: no admite PATCH ni puede facturar. Queda motivo durable
+mirror_inactive o remote_inactive (GET vivo), con fecha y traslado; el premio
+sigue a la vigente. El caso comercial no lanza conflicto ni cuarentena del
+webhook. Errores HTTP/de catálogo se marcan para revisión y no bloquean a los
+demás clientes.
 
 ## Primer mes consumido y checkout
 
@@ -84,10 +84,10 @@ sola, no demuestra que un checkout remoto abierto no pueda pagarse.
 
 La factura pagada consume la marca durable desde SQL incluso sin flag. El
 historial de suscripciones/órdenes también impide otra oferta, aunque el
-catálogo se configure tarde. El borrado/traslado/refund no elimina la marca.
-La consulta precede a reservar el intento comercial y a llamar a Polar; un
-fallo RPC devuelve 503 sin marcarlo incierto. No se promete backfill ni refund
-de compras normales anteriores a activar la campaña.
+catálogo se configure tarde. El borrado/traslado/refund no elimina la marca. La
+consulta precede a reservar el intento comercial y a llamar a Polar; un fallo
+RPC devuelve 503 sin marcarlo incierto. No se promete backfill ni refund de
+compras normales anteriores a activar la campaña.
 
 ## Creador y catálogo
 
@@ -163,10 +163,39 @@ deploy.
 Programar POST con `apikey` igual al secreto dedicado; sin cuerpo. Pasar
 `?after=<next_cursor>` hasta null y volver al inicio en la siguiente pasada.
 Sugerencia: cada minuto y después de revisiones. No hay scheduler creado aquí.
-Mantener el flag explícito `false` durante una pausa: se siguen recogiendo
-facturas normalizadas sin nuevos efectos. Si se retira la variable o faltan
-webhooks, reconciliar las órdenes con `billing-reconcile` antes de reactivar; no
-dar por completo el historial de cobros sin esa reconciliación.
+El flag solo habilita concesiones y escrituras de descuento. False o variable
+ausente detienen esos efectos, pero **nunca apagan el ledger de facturas**:
+contabilidad tiene default explícito true y el catálogo SQL filtra productos.
+billing-reconcile repara por order ID incluso un efecto histórico ya completado
+o un inbox en cuarentena. Conserva origen y fecha de recuperación. Una factura
+pagada conocida con datos incompletos deja un hueco durable y la incidencia
+promotion_invoice_details_missing; impide rearmar hasta recuperar los datos.
+La ausencia de factura inicial muestra promotion_initial_invoice_missing. Ambas
+se resuelven al llegar los hechos, sin duplicar créditos. Reconciliar órdenes
+antes de activar/retomar tras una interrupción; no dar por completo un historial
+solo por el espejo de suscripción.
+
+## Caducidad y riesgo aceptado por Isaac · ronda 3
+
+El saldo ganado caduca a los **seis meses de calendario Europe/Madrid** desde
+la revisión humana que alcanza el tramo. Único valor configurable:
+private.report_promotion_policy.reward_valid_months (fila singleton, inicial 6,
+rango 1..120, solo operador de base). La duración se guarda como
+reward_expires_at al conceder un nuevo tramo; cambiar la configuración afecta
+solo a nuevas concesiones. El tramo mayor sustituye al menor y obtiene su plazo
+desde la quinta aceptación; no suma los saldos de ambos.
+
+El límite es exclusivo. Al vencer no se puede asociar ni rearmar otro cupón, y
+las operaciones pendientes se invalidan. **Un bloque finito ya confirmado se
+respeta hasta su término natural**; la caducidad no lo retira ni lo reinicia.
+Devolución inicial y limpieza por cambio de suscripción conservan sus reglas.
+El payload Owner expone reward_expires_at y reward_expired; los clientes que
+todavía no pinten estos campos pueden ignorarlos.
+
+**Multi-cuenta: riesgo aceptado expresamente por Isaac.** La unidad es
+cuenta/entorno; no se añade huella de tarjeta, normalización de correo ni cruce
+entre cuentas. Una persona con varias cuentas puede repetir la promoción.
+No se afirma protección contra ese abuso ni se recoge PII adicional.
 
 Owner recibe aceptados, tramo, descuento confirmado, incidencia y pérdida por
 refund/spam; estados de política visibles en la miniapp. El descuento es el

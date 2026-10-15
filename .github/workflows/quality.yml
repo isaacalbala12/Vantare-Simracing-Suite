@@ -180,11 +180,13 @@ jobs:
           # `--version` imprime varias líneas (release, commit…): basta con la primera.
           first="$(printf '%s' "$have" | head -n 1)"
           echo "cargo-nextest encontrado: '$first'"
-          if [ "$first" = "cargo-nextest 0.9.146" ]; then
-            echo 'cargo-nextest 0.9.146 ya disponible: no se instala'
-          else
-            cargo install cargo-nextest --locked --version 0.9.146 --force
-          fi
+          # La primera línea puede llevar sufijo «(commit fecha)»: se compara el prefijo.
+          case "$first" in
+            "cargo-nextest 0.9.146" | "cargo-nextest 0.9.146 "*)
+              echo 'cargo-nextest 0.9.146 ya disponible: no se instala' ;;
+            *)
+              cargo install cargo-nextest --locked --version 0.9.146 --force ;;
+          esac
 
       # En nextest, `-j` son hilos de ejecución de tests y los jobs de
       # compilación van en --build-jobs: 4 vCPU para compilar y 4 hilos de test.

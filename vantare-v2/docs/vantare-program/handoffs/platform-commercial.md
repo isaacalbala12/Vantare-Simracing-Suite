@@ -1,19 +1,56 @@
-## #1636 · VANTA-72 · Correos de gestión (15/10/2026, en implementación)
+## #1636 · VANTA-72 · Correos de gestión (15/10/2026, candidato local)
 
 Worker Codex T3 por SSH en Mac, sin subagentes ni servicios reales. Rama
-`vantareapp/isa-1636-correos`, base miniapp `0ac70754`, no nightly. El orquestador
-mantiene Plane/GitHub y recoge el bare; buzón `~/orq/1636.buzon.md`.
+`vantareapp/isa-1636-correos`, base miniapp `0ac70754`, no nightly. Estado Plane
+informado por el encargo: «En curso»; el worker no consulta ni modifica trackers.
+Hitos locales: backend `8e3f4f30`; código integrado en esta rama `3ffc14f7`.
+El orquestador revisa y mantiene Plane/GitHub. Buzón `~/orq/1636.buzon.md`.
 
-Ledger privado con consentimiento único, siete grupos desde fuentes vigentes,
-cuatro idiomas, aprobación de revisión por Owner, reserva global de 300/24 h,
-no reintento de mensajes inciertos, baja firmada GET/POST y webhook autenticado.
-IA solo devuelve borradores (`claude-opus-5-5`, high), sin guardar ni enviar.
-Flags apagados por omisión. Contrato/guía de Isaac:
-`supabase/functions/native-admin/MAIL.md`. UI GPUI y QA en curso; evidencia en
-`~/evidence/1636/`. Pendiente gates finales, capturas y revisión del orquestador.
-Colectores de consentimiento en registro/cuenta/espera y borrado externo Brevo
-necesitan integración antes de producción; no se presume permiso histórico.
-Sin deploy, merge, promoción, release ni gasto.
+Backend: ledger privado con consentimiento único, siete grupos desde derechos
+comerciales efectivos/roles/creadores/espera, cuatro idiomas, aprobación de revisión
+por Owner, cuota global de 300 reservas por ventana de 24 h y tandas manuales de
+hasta tres. No reintenta respuestas inciertas. Bajas firmadas GET/POST globales y
+webhook Brevo autenticado; se vuelven a comprobar permisos antes del HTTP.
+Cambio de correo suprime el anterior; tombstone elimina direcciones actuales y
+anteriores y sus entregas, conservando cuota anónima. IA solo devuelve borradores
+(`claude-opus-5-5`, high), sin guardar/aprobar/enviar. Flags apagados por omisión.
+El cliente conserva límite de 8 KiB para otras acciones y permite 128 KiB en mail,
+sin duplicar el stream. Contrato/guía de Isaac en
+`supabase/functions/native-admin/MAIL.md`.
+
+UI GPUI: sección Correos, campañas, tres plantillas, editor ES/EN/IT/PT-BR con
+vista previa segura, grupos y recuentos, confirmaciones, historial y estado. No
+permite enviar cambios sin guardar; bloquea edición durante confirmación/petición.
+Limpia borradores al perder autorización. No se cambia Hub ni runtime nativo.
+
+Checks Mac: SQL Docker aislado **120/120** (42 correos + 57 admin + 21 borrado);
+Edge/Deno **76/76**, sin permiso de red, con dobles Brevo/Anthropic; Clippy admin
+`-D warnings` y Nextest **27/27**; fmt, build normal, quality y 456 huellas de
+retirada PASS. Cuatro escenas demo abren ventana nativa de 1280 puntos de ancho.
+Evidencia: `~/evidence/1636/`; app QA debug local en `Vantare1636QA.app`.
+
+**Pendiente de QA visual:** las capturas físicas están bloqueadas por permiso de
+macOS para SSH (`CGPreflightScreenCaptureAccess=false`; screencapture no pudo leer
+la ventana). El intento de exportar el fotograma con test-support de GPUI exigía
+cambiar Cargo.lock y se descartó por «sin dependencias nuevas»; no queda cambio de
+features, lock ni captura en el producto. No se acredita revisión visual,
+interacción física ni Windows/DPI. Escenas `mail-editor`, `mail-confirm`,
+`mail-history` preparadas para capturar desde sesión Mac autorizada.
+
+Antes de producción: conectar colectores verificados de consentimiento en
+registro/cuenta/espera (no existe permiso histórico que importar), configurar
+Brevo/dominio/listas/webhook/secretos y Anthropic con autorización de gasto,
+validar modelo, entrega y bajas, y completar procedimiento de borrado externo en
+Brevo. Las campañas viven en Vantare: envío individual SMTP API para reservar y
+revalidar cada destinatario, listas Brevo como espejo; no se crean campañas
+paralelas en su panel. El contador local no conoce correos enviados por otros
+sistemas: usar cuenta Brevo dedicada. Historial «aceptado» no significa entregado.
+
+Sin ejecución de lifecycle/telemetría: solo se toca la miniapp aislada y Edge/SQL,
+no runtime/domain/ipc/testdata. Gates Windows y CI remotos no ejecutados. El bare
+`~/vantare.git` recibe la rama por encargo; no es un canal de producto. Sin GitHub,
+merge, promoción, despliegue, release, anuncios ni gasto. Revisión y capturas por
+el orquestador antes de dar por cerrada la entrega.
 
 ## #1627 / PR #1639 · VANTA-21 · ronda 5 (15/10/2026)
 

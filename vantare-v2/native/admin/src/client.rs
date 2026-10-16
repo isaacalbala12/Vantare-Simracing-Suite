@@ -405,6 +405,43 @@ impl<'de> Deserialize<'de> for Report {
 #[derive(Clone, Debug, Serialize, PartialEq, Eq)]
 #[serde(tag = "action", rename_all = "snake_case")]
 pub enum Action {
+    MailForgetWaitlist {
+        email: String,
+        confirm: bool,
+    },
+    MailCleanup,
+    MailList,
+    MailNew,
+    MailGet {
+        campaign_id: String,
+    },
+    MailSave {
+        campaign_id: String,
+        revision: u32,
+        name: String,
+        template: String,
+        target_group: String,
+        content: crate::mail::Content,
+    },
+    MailApprove {
+        campaign_id: String,
+        revision: u32,
+        confirm: bool,
+    },
+    MailSendBatch {
+        campaign_id: String,
+        revision: u32,
+    },
+    MailDraft {
+        campaign_id: String,
+        revision: u32,
+        brief: String,
+        template: String,
+    },
+    MailSync {
+        #[serde(skip_serializing_if = "Option::is_none")]
+        cursor: Option<String>,
+    },
     SearchAccounts {
         query: String,
         limit: u8,
@@ -473,6 +510,16 @@ pub enum Action {
 impl Action {
     pub fn label(&self) -> &'static str {
         match self {
+            Self::MailForgetWaitlist { .. } => "mail_forget_waitlist",
+            Self::MailCleanup => "mail_cleanup",
+            Self::MailList => "mail_list",
+            Self::MailNew => "mail_new",
+            Self::MailGet { .. } => "mail_get",
+            Self::MailSave { .. } => "mail_save",
+            Self::MailApprove { .. } => "mail_approve",
+            Self::MailSendBatch { .. } => "mail_send_batch",
+            Self::MailDraft { .. } => "mail_draft",
+            Self::MailSync { .. } => "mail_sync",
             Self::SearchAccounts { .. } => "search_accounts",
             Self::GetAccount { .. } => "get_account",
             Self::SetTester { .. } => "set_tester",
@@ -493,7 +540,15 @@ impl Action {
     pub fn mutation(&self) -> bool {
         matches!(
             self,
-            Self::SetBlocked { .. }
+            Self::MailForgetWaitlist { .. }
+                | Self::MailCleanup
+                | Self::MailNew
+                | Self::MailSave { .. }
+                | Self::MailApprove { .. }
+                | Self::MailSendBatch { .. }
+                | Self::MailDraft { .. }
+                | Self::MailSync { .. }
+                | Self::SetBlocked { .. }
                 | Self::DeleteAccount { .. }
                 | Self::CreateCreator { .. }
                 | Self::RecordCreatorPayout { .. }
@@ -504,6 +559,9 @@ impl Action {
         )
     }
     pub fn validate(&self) -> Result<()> {
+        if let Some(valid) = self.mail_valid() {
+            return if valid { Ok(()) } else { Err(Error::Protocol) };
+        }
         let bounded = |s: &str| !s.trim().is_empty() && s.len() <= 256;
         let valid = match self {
             Self::SearchAccounts {
@@ -543,6 +601,7 @@ impl Action {
                         .all(|b| b.is_ascii_uppercase() || b.is_ascii_digit())
             }
             Self::ListCreators | Self::GetRollout | Self::SetRollout { .. } => true,
+            _ => return Err(Error::Protocol),
         };
         let valid = valid
             && match self {
@@ -641,8 +700,17 @@ impl Client {
         let mut payload = serde_json::to_value(action).map_err(|_| Error::Protocol)?;
         payload["version"] = 1.into();
         let bytes = serde_json::to_vec(&payload).map_err(|_| Error::Protocol)?;
-        let mut response = self
-            .agent
+        let agent = if action.label().starts_with("mail_") {
+            ureq::Agent::config_builder()
+                .timeout_global(Some(Duration::from_secs(65)))
+                .max_redirects(0)
+                .http_status_as_error(false)
+                .build()
+                .into()
+        } else {
+            self.agent.clone()
+        };
+        let mut response = agent
             .post(self.endpoint.as_str())
             .header("Authorization", format!("Bearer {bearer}"))
             .header("Content-Type", "application/json")
@@ -663,6 +731,9 @@ impl Client {
                 .ok()
                 .and_then(|v| v.get("error").and_then(|v| v.as_str()).map(str::to_owned));
             return Err(match code.as_deref() {
+                Some("mail_disabled" | "mail_unconfigured" | "mail_cleanup_disabled") => {
+                    Error::Unconfigured
+                }
                 Some("confirmation_mismatch") => Error::ConfirmationMismatch,
                 Some("account_conflict") => Error::AccountConflict,
                 Some("rate_limited") => Error::RateLimited,

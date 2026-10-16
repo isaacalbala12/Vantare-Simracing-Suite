@@ -1,16 +1,18 @@
 //! Los dos endpoints REST de LMU, decodificados con límites. REST solo aporta
-//! lo que la memoria compartida no trae (número de carrera, bandera global) o
-//! un respaldo del circuito y del tipo de sesión; nunca crea un coche.
+//! números, banderas explícitas, paradas y energía virtual, con un respaldo
+//! de circuito/tipo de sesión. Nunca crea un coche ni rejuvenece SHM.
 
 #[cfg(windows)]
 mod http;
 #[cfg(windows)]
 mod poller;
+mod standings;
 
 use std::collections::HashMap;
 use std::time::Duration;
 
 use serde_json::{Map, Value};
+use vantare_domain::{Flag, FlagKind, FlagScope};
 
 use super::frame::Kind;
 
@@ -28,11 +30,14 @@ pub(super) enum DecodeError {
     Malformed,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub(super) struct CarNumber {
     pub slot: i32,
     pub number: String,
     pub vehicle: String,
+    pub pit_stops: Option<u32>,
+    pub energy: Option<f64>,
+    pub flag: Option<FlagKind>,
 }
 
 #[derive(Debug, Default, PartialEq)]
@@ -40,6 +45,10 @@ pub(super) struct SessionInfo {
     pub track: Option<String>,
     pub kind: Option<Kind>,
     pub global_yellow: bool,
+    pub sector_flags: Vec<Flag>,
+    /// Ceros explícitos observados en Imola; ausencia no confirma calma/seco.
+    pub calm_wind: bool,
+    pub dry_track: bool,
 }
 
 /// Cada endpoint se confirma solo tras decodificar completo; una respuesta
@@ -91,6 +100,17 @@ impl Cache {
         }
     }
 
+    /// Metadata por coche conserva su reloj, incluso tras caducar. El slot
+    /// debe casarse además con la etiqueta SHM antes de usar estas señales.
+    pub(super) fn car_details(
+        &self,
+        now: Duration,
+        floor: Duration,
+    ) -> Option<(&[CarNumber], bool)> {
+        let (rows, started) = self.car_numbers.as_ref()?;
+        (*started >= floor).then(|| (rows.as_slice(), current(*started, now)))
+    }
+
     /// Sesión REST y si sigue siendo actual (`false`: dato caducado).
     pub(super) fn session(&self, now: Duration, floor: Duration) -> Option<(&SessionInfo, bool)> {
         let (info, started) = self.session.as_ref()?;
@@ -103,13 +123,18 @@ fn current(started: Duration, now: Duration) -> bool {
     now.checked_sub(started).is_some_and(|age| age <= TTL)
 }
 
-fn document(body: &[u8]) -> Result<Value, DecodeError> {
+fn bounded(body: &[u8]) -> Result<(), DecodeError> {
     if body.len() > MAX_RESPONSE_BYTES {
         return Err(DecodeError::TooLarge);
     }
     if body.iter().all(u8::is_ascii_whitespace) {
         return Err(DecodeError::Empty);
     }
+    Ok(())
+}
+
+fn document(body: &[u8]) -> Result<Value, DecodeError> {
+    bounded(body)?;
     serde_json::from_slice(body).map_err(|_| DecodeError::Malformed)
 }
 
@@ -130,20 +155,15 @@ fn text(row: &Map<String, Value>, name: &str) -> Result<Option<String>, DecodeEr
 }
 
 fn decode_standings(body: &[u8]) -> Result<Vec<CarNumber>, DecodeError> {
-    let document = document(body)?;
-    if document.is_null() {
-        return Err(DecodeError::Empty);
-    }
-    let rows = document.as_array().ok_or(DecodeError::Malformed)?;
+    bounded(body)?;
+    let rows: Option<Vec<Option<standings::Row>>> =
+        serde_json::from_slice(body).map_err(|_| DecodeError::Malformed)?;
+    let rows = rows.ok_or(DecodeError::Empty)?;
     // Se lee cada fila antes de publicar nada: una fila mala rechaza el cuerpo.
     let empty = Map::new();
     let mut parsed = Vec::with_capacity(rows.len());
-    for value in rows {
-        let row = if value.is_null() {
-            &empty
-        } else {
-            value.as_object().ok_or(DecodeError::Malformed)?
-        };
+    for value in &rows {
+        let row = value.as_ref().map_or(&empty, |row| &row.0);
         let slot = property(row, "slotID")
             .map(|value| {
                 value
@@ -156,6 +176,14 @@ fn decode_standings(body: &[u8]) -> Result<Vec<CarNumber>, DecodeError> {
             slot,
             text(row, "carNumber")?.unwrap_or_default(),
             text(row, "vehicleName")?.unwrap_or_default(),
+            property(row, "pitstops")
+                .and_then(Value::as_u64)
+                .and_then(|v| u32::try_from(v).ok())
+                .filter(|v| *v <= 10_000),
+            property(row, "veFraction")
+                .and_then(Value::as_f64)
+                .filter(|v| v.is_finite() && (0.0..=1.0).contains(v)),
+            property(row, "flag").and_then(rest_flag),
         ));
     }
     // Un hueco repetido es ambiguo: no se asigna número a ninguno de sus coches.
@@ -167,15 +195,24 @@ fn decode_standings(body: &[u8]) -> Result<Vec<CarNumber>, DecodeError> {
     }
     Ok(parsed
         .into_iter()
-        .filter_map(|(slot, number, vehicle)| {
+        .filter_map(|(slot, mut number, vehicle, pit_stops, energy, flag)| {
             let slot = slot.filter(|slot| counts.get(slot) == Some(&1))?;
             // LMU numera con enteros de hasta cuatro cifras; "007" se conserva.
-            ((1..=4).contains(&number.len()) && number.bytes().all(|byte| byte.is_ascii_digit()))
-                .then_some(CarNumber {
+            let numbered =
+                (1..=4).contains(&number.len()) && number.bytes().all(|byte| byte.is_ascii_digit());
+            if !numbered {
+                number.clear();
+            }
+            (numbered || pit_stops.is_some() || energy.is_some() || flag.is_some()).then_some(
+                CarNumber {
                     slot,
                     number,
                     vehicle,
-                })
+                    pit_stops,
+                    energy,
+                    flag,
+                },
+            )
         })
         .collect())
 }
@@ -207,7 +244,48 @@ fn decode_session_info(body: &[u8]) -> Result<SessionInfo, DecodeError> {
         track: text(row, "trackName")?,
         kind,
         global_yellow,
+        // La captura prueba el cero, sin tener que suponer unidades REST
+        // para velocidades positivas ni confundir ausencia con calma.
+        calm_wind: property(row, "windSpeed")
+            .and_then(Value::as_object)
+            .is_some_and(|wind| {
+                ["velocity", "x", "y", "z"]
+                    .iter()
+                    .all(|key| wind.get(*key).and_then(Value::as_f64) == Some(0.0))
+            }),
+        dry_track: property(row, "averagePathWetness").and_then(Value::as_f64) == Some(0.0),
+        // REST tiene códigos textuales explícitos, no números de fase. Un
+        // sector amarillo nunca se promueve a FCY/amarilla global.
+        sector_flags: property(row, "sectorFlag")
+            .and_then(Value::as_array)
+            .filter(|flags| flags.len() == 3)
+            .map(|flags| {
+                flags
+                    .iter()
+                    .zip(0_u8..3)
+                    .filter_map(|(value, sector)| {
+                        Some(Flag {
+                            kind: rest_flag(value)?,
+                            scope: FlagScope::Sector(sector),
+                        })
+                    })
+                    .collect()
+            })
+            .unwrap_or_default(),
     })
+}
+
+fn rest_flag(value: &Value) -> Option<FlagKind> {
+    match value.as_str()? {
+        "GREEN" => Some(FlagKind::Green),
+        "YELLOW" => Some(FlagKind::Yellow),
+        "BLUE" => Some(FlagKind::Blue),
+        "WHITE" => Some(FlagKind::White),
+        "RED" => Some(FlagKind::Red),
+        "BLACK" => Some(FlagKind::Black),
+        "CHECKERED" => Some(FlagKind::Checkered),
+        _ => None,
+    }
 }
 
 #[cfg(test)]
@@ -215,6 +293,54 @@ mod tests {
     use super::*;
 
     const S: Duration = Duration::from_secs(1);
+
+    #[test]
+    fn auxiliary_signals_do_not_depend_on_a_valid_race_number_or_unrelated_fields() {
+        let rows = decode_standings(
+            br#"[{"slotID":7,"carNumber":"A3","vehicleName":"Car-7",
+            "pitstops":2,"veFraction":0.5,"flag":"BLACK","finishStatus":"FSTAT_NONE"}]"#,
+        )
+        .unwrap();
+        assert_eq!(rows.len(), 1);
+        assert!(rows[0].number.is_empty());
+        assert_eq!(rows[0].pit_stops, Some(2));
+        assert_eq!(rows[0].energy, Some(0.5));
+        assert_eq!(rows[0].flag, Some(FlagKind::Black));
+        let rows = decode_standings(
+            br#"[{"slotID":7,"carNumber":"7","vehicleName":"Car-7",
+            "pitstops":-1,"veFraction":1.1,"flag":3}]"#,
+        )
+        .unwrap();
+        assert_eq!(rows[0].pit_stops, None);
+        assert_eq!(rows[0].energy, None);
+        assert_eq!(rows[0].flag, None);
+        assert_eq!(rows[0].number, "7");
+    }
+
+    #[test]
+    fn local_flags_keep_their_scope_and_ignore_unknown_codes() {
+        let info = decode_session_info(br#"{"sectorFlag":["YELLOW","invalid","GREEN"]}"#).unwrap();
+        assert!(!info.global_yellow);
+        assert_eq!(
+            info.sector_flags,
+            vec![
+                Flag {
+                    kind: FlagKind::Yellow,
+                    scope: FlagScope::Sector(0)
+                },
+                Flag {
+                    kind: FlagKind::Green,
+                    scope: FlagScope::Sector(2)
+                },
+            ]
+        );
+        for shape in [
+            br#"{"sectorFlag":[2,3,4]}"#.as_slice(),
+            br#"{"sectorFlag":["YELLOW"]}"#,
+        ] {
+            assert!(decode_session_info(shape).unwrap().sector_flags.is_empty());
+        }
+    }
 
     #[test]
     fn standings_keep_numbers_and_drop_ambiguous_slots() {
@@ -230,7 +356,8 @@ mod tests {
             vec![CarNumber {
                 slot: 0,
                 number: "007".to_owned(),
-                vehicle: "Team A".to_owned()
+                vehicle: "Team A".to_owned(),
+                ..CarNumber::default()
             }]
         );
         assert_eq!(decode_standings(b"[null]").unwrap(), vec![]);
@@ -252,6 +379,44 @@ mod tests {
             decode_standings(&vec![b' '; MAX_RESPONSE_BYTES + 1]),
             Err(DecodeError::TooLarge)
         );
+    }
+
+    #[test]
+    fn ignored_rest_data_is_still_validated_and_duplicate_properties_keep_the_last() {
+        let body = br#"[{"slotID":1,"slotID":2,"carNumber":"7","carNumber":"007",
+            "vehicleName":"Car-2","ignored":{"nested":[null,true,2.5,"text",{"a":3}]}}]"#;
+        assert_eq!(
+            decode_standings(body).unwrap(),
+            vec![CarNumber {
+                slot: 2,
+                number: "007".into(),
+                vehicle: "Car-2".into(),
+                ..CarNumber::default()
+            }]
+        );
+        for body in [
+            &br#"[{"slotID":2,"carNumber":"7","ignored":1e400}]"#[..],
+            br#"[{"slotID":2,"carNumber":"7","ignored":{"nested":[1e400]}}]"#,
+            br#"[{"slotID":2,"carNumber":"7","ignored":{"nested":[1,]}}]"#,
+            br#"[{"slotID":2,"carNumber":"7"},false]"#,
+        ] {
+            assert_eq!(decode_standings(body), Err(DecodeError::Malformed));
+        }
+    }
+
+    #[test]
+    fn absent_or_invalid_weather_is_not_explicit_calm_or_dry() {
+        for body in [
+            "{}",
+            r#"{"windSpeed":{},"averagePathWetness":null}"#,
+            r#"{"windSpeed":{"velocity":0,"x":0,"y":0},"averagePathWetness":"0"}"#,
+            r#"{"windSpeed":{"velocity":0,"x":1,"y":0,"z":0},"averagePathWetness":-1}"#,
+            r#"{"windSpeed":{"velocity":1,"x":0,"y":0,"z":0},"averagePathWetness":0.2}"#,
+        ] {
+            let info = decode_session_info(body.as_bytes()).expect("JSON válido");
+            assert!(!info.calm_wind);
+            assert!(!info.dry_track);
+        }
     }
 
     #[test]

@@ -114,7 +114,7 @@ Deno.test("P1-2 checkout recovery verifies remote owner, product and transport b
   assertEquals(
     (await readPolarCheckoutSession("remote", "sandbox", {
       getAccessToken: () => "fixture",
-      fetchFn: (url, init) => {
+      fetchFn: (url, init?: RequestInit) => {
         assertEquals(
           String(url),
           "https://sandbox-api.polar.sh/v1/checkouts/remote",

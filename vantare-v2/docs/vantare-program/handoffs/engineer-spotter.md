@@ -16,6 +16,19 @@ Leídos [#1485](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/
 
 ## 3. Estado real y canal
 
+Encargo posterior del orquestador en VANTA-33 / #1638, PR draft #1664:
+el run38847620638 de `08f52be56` pierde autoridad después de HELLO en dos
+tests recovery. No usa el adaptador LMU; aislados pasan46/46 antes del cambio.
+Se reserva toda la concurrencia Nextest para el banco recovery y prioridad100,
+como otros tests con plazos duros; no se modifica Engineer/Host/Feed, TTL2s,
+permisos, deadlines, aserciones ni retries. Contención compatible con caducidad;
+la edad de la política no está en el log antiguo. Evidencia, validación final
+y estado de CI en [informe](../../telemetria/ci-y-jugador-2026-10-16.md),
+#1638 y #1664. Base merge `nightly@8166277cb`; no promoción ni release.
+Gates locales posteriores: Clippy/fmt PASS; Nextest CI workspace
+Engineer/runtime/domain/ipc/services+telemetría **915/915 PASS**, 9 skips.
+Los seis recovery corren primero, también denegación y pérdida de autoridad.
+
 #1595 en `vantareapp/isa-1595-engineer-recovery-flaky`, base actual nightly
 `a0f8569b` tras rebase sin conflictos; validación iniciada en `38b59434` y
 código Engineer idéntico al validado:

@@ -1,9 +1,10 @@
 from pathlib import Path
-import subprocess,time,re
+import subprocess,time,re,os,sys
 import argparse
 args=argparse.ArgumentParser()
 args.add_argument('--output', type=Path, required=True)
 args.add_argument('--test', action='append')
+args.add_argument('--mail-e2e', action='store_true')
 opts=args.parse_args()
 root=Path(__file__).resolve().parents[2]
 out=opts.output
@@ -39,4 +40,13 @@ create or replace function storage.foldername(text) returns text[] language sql 
   count=len(re.findall(r'^ok [0-9]+',result,re.M)); total+=count
   print('PASS SQL local',test,count,'pgTAP checks',flush=True)
  print('TOTAL',total,'pgTAP checks')
+ if opts.mail_e2e:
+  test_env=os.environ.copy()
+  test_env.update(MARKETING_SQL_E2E='true',MARKETING_SQL_TEST_CONTAINER=name,MARKETING_SQL_TEST_DATABASE='admin_1627')
+  result=subprocess.run(['deno','test','--config',str(root/'supabase/functions/deno.json'),'--node-modules-dir=auto','--frozen','--allow-env','--allow-run=docker',str(root/'supabase/tests/marketing-mail-e2e.ts')],cwd=root/'supabase/functions',env=test_env,text=True,capture_output=True,timeout=120)
+  (out/'marketing-mail-e2e.log').write_text(result.stdout+result.stderr)
+  if result.returncode:
+   print(result.stdout+result.stderr,file=sys.stderr,flush=True)
+   raise RuntimeError('marketing E2E failed; see marketing-mail-e2e.log')
+  print('PASS marketing consent/erasure E2E with real PostgreSQL and SaaS doubles',flush=True)
 finally: run(['docker','rm','-f',name])

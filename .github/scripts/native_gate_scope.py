@@ -1,16 +1,27 @@
 #!/usr/bin/env python3
 """Clasifica si un PR puede saltarse los gates nativos sin perder protección.
 
-Fail-closed por diseño: solo responde ``false`` cuando *todas* las rutas
-cambiadas están en la lista explícita de zonas que no afectan al producto
-nativo (documentación, app web retirada, Supabase y tooling). Cualquier ruta
-desconocida, vacía o ambigua obliga a ejecutar los gates.
+Devuelve dos decisiones cerradas sobre el mismo conjunto de rutas cambiadas:
 
-Lo usan ``branch-channel-gates.yml`` y ``quality.yml``: el trabajo que reporta
-los checks requeridos sigue existiendo y reportando «success», pero sus pasos
-pesados se saltan. Filtrar en el disparador (``on.pull_request.paths``) dejaría
-los checks requeridos en «Pending» y bloquearía la fusión; ver la documentación
-de GitHub, «Workflow syntax» → ``on.<push|pull_request>.<paths|paths-ignore>``.
+- ``native``: *todos* los cambios caen en zonas sin efecto sobre el producto
+  nativo (documentación, app web retirada, Supabase y tooling) ⇒ no hacen falta
+  los gates nativos. Cualquier ruta desconocida, vacía o ambigua ⇒ ``true``.
+- ``telemetria``: *algún* cambio toca ``native/runtime/``, ``native/domain/``,
+  ``native/ipc/`` o ``testdata/``, que son las zonas que obligan a repetir el
+  corpus de grabaciones reales (AGENTS.md, #1498). Sin rutas o con cualquier
+  duda ⇒ ``true``; solo responde ``false`` cuando ninguna ruta cambiada está en
+  esas cuatro zonas. No toca ``native``: es un filtro sobre un gate que ya
+  corría, nunca una excusa para saltarse los gates.
+
+Lo usa ``branch-channel-gates.yml``: el trabajo que reporta los checks
+requeridos sigue existiendo y reportando «success», pero sus pasos pesados se
+saltan. Filtrar en el disparador (``on.pull_request.paths``) dejaría los checks
+requeridos en «Pending» y bloquearía la fusión; ver la documentación de GitHub,
+«Workflow syntax» → ``on.<push|pull_request>.<paths|paths-ignore>``.
+
+En la salida estándar imprime dos líneas, en este orden: ``native`` y
+``telemetria``. El flujo de trabajo las lee por número de línea y valida cada
+una contra ``true``/``false`` antes de usarla.
 """
 
 from __future__ import annotations
@@ -40,16 +51,31 @@ IGNORED_PREFIXES = (
 # tests de `tools/ci-runners` y no puede saltárselos.
 NEVER_IGNORED_PREFIXES = ("tools/ci-runners/",)
 IGNORED_SUFFIXES = (".md",)
+# Zonas que obligan a repetir el corpus de grabaciones reales (#1498): el código
+# del runtime y TODO lo que compila dentro de él (Cargo.toml de runtime: domain,
+# ipc, launcher, profiling, services) y las fixtures de `testdata/`. Si runtime
+# cambia de dependencias, ampliar esta lista con ellas.
+TELEMETRY_PREFIXES = (
+    "vantare-v2/native/domain/",
+    "vantare-v2/native/ipc/",
+    "vantare-v2/native/launcher/",
+    "vantare-v2/native/profiling/",
+    "vantare-v2/native/runtime/",
+    "vantare-v2/native/services/",
+    "vantare-v2/testdata/",
+)
 WINDOWS_ABSOLUTE = re.compile(r"^[A-Za-z]:[/\\]")
 
 
 @dataclass(frozen=True)
 class NativeGateScope:
-    """Decisión cerrada: `native` y las rutas que la justifican."""
+    """Decisión cerrada: `native`, `telemetria` y las rutas que las justifican."""
 
     native: bool
+    telemetria: bool
     reasons: tuple[str, ...]
     native_paths: tuple[str, ...]
+    telemetria_paths: tuple[str, ...]
 
 
 def _validated(paths: Iterable[str]) -> tuple[str, ...]:
@@ -84,26 +110,38 @@ def _is_ignored(path: str) -> bool:
     return PurePosixPath(path).suffix.casefold() in IGNORED_SUFFIXES
 
 
+def _needs_telemetry(path: str) -> bool:
+    """¿Esta ruta obliga a repetir el corpus de telemetría? (AGENTS.md, #1498)."""
+    return path.startswith(TELEMETRY_PREFIXES)
+
+
 def classify_paths(paths: Iterable[str]) -> NativeGateScope:
     """Devuelve la decisión determinista o rechaza el conjunto de rutas."""
     ordered = _validated(paths)
     if not ordered:
         return NativeGateScope(
             native=True,
+            telemetria=True,
             reasons=("no changed paths: fail closed",),
             native_paths=(),
+            telemetria_paths=(),
         )
     native_paths = tuple(path for path in ordered if not _is_ignored(path))
+    telemetria_paths = tuple(path for path in native_paths if _needs_telemetry(path))
     if native_paths:
         return NativeGateScope(
             native=True,
+            telemetria=bool(telemetria_paths),
             reasons=("changed paths require the native gates",),
             native_paths=native_paths,
+            telemetria_paths=telemetria_paths,
         )
     return NativeGateScope(
         native=False,
+        telemetria=False,
         reasons=("every changed path is outside the native product",),
         native_paths=(),
+        telemetria_paths=(),
     )
 
 
@@ -124,8 +162,9 @@ def main() -> int:
         json.dumps(asdict(scope), sort_keys=True, separators=(",", ":")) + "\n",
         encoding="utf-8",
     )
-    # El flujo de trabajo lee esta línea; el JSON queda como explicación.
+    # El flujo de trabajo lee estas dos líneas; el JSON queda como explicación.
     print("true" if scope.native else "false")
+    print("true" if scope.telemetria else "false")
     return 0
 
 

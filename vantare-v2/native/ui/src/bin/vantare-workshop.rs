@@ -306,7 +306,8 @@ mod tests {
 
     #[test]
     fn the_default_scene_is_a_real_lmu_snapshot_that_every_widget_can_draw() {
-        let snapshot = vantare_ipc::snapshot_from_json(DEFAULT_SCENE).expect("escena válida");
+        let snapshot =
+            vantare_ipc::snapshot_from_fixture_json(DEFAULT_SCENE).expect("escena válida");
         assert_eq!(snapshot.state.cars.len(), 47);
         assert_eq!(snapshot.origin.source.simulator, "lmu");
         assert!(

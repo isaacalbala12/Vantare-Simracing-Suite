@@ -9,7 +9,7 @@ test-threads = 4
 default-filter = 'not binary(lifecycle) & not (package(vantare-runtime) & (binary(telemetry_golden) | binary(acc_conformance) | binary(lmu_conformance) | binary(lmu_oracle)))'
 
 [profile.telemetria]
-default-filter = 'package(vantare-runtime) & (binary(telemetry_golden) | binary(acc_conformance) | binary(lmu_conformance) | binary(lmu_oracle))'
+default-filter = 'package(vantare-runtime) & (binary(telemetry_golden) | binary(acc_conformance) | binary(lmu_conformance) | binary(lmu_oracle) | binary(launch_coverage))'
 
 # Perfil de CI: UNA invocación con todo lo que hoy corren los dos pasos de nextest
 # (suite + corpus de telemetría), para no compilar dos veces ni serializar 5-6 min.
@@ -40,6 +40,14 @@ threads-required = 'num-test-threads'
 # cambiar la lista (nexte.st/docs/configuration/threads-required).
 [[profile.default.overrides]]
 filter = 'test(read_times_out_and_stop_interrupts) | test(a_client_that_never_speaks_does_not_hold_up_shutdown) | test(a_client_that_never_reads_blocks_neither_publish_nor_shutdown) | test(initial_feed_failure_denies_and_cancellation_finishes_promptly) | test(cancellation_interrupts_delay_and_probe_without_starting_the_next_step) | test(server_rejects_ack_ahead_and_cancels_a_peer_waiting_without_ack) | test(the_service_shuts_down_in_order_when_asked)'
+threads-required = 'num-test-threads'
+priority = 100
+
+[[profile.default.overrides]]
+# recovery levanta un Host de derechos y un proceso Engineer: su permiso vence
+# a los 2 s si el runner no programa el refresco. No compite con los corpus CPU
+# mientras mide checkpoint/ACK ni se relajan TTL, aserciones o reintentos.
+filter = 'package(vantare-engineer) & binary(recovery)'
 threads-required = 'num-test-threads'
 priority = 100
 

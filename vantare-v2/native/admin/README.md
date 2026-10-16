@@ -123,3 +123,30 @@ descuentos ni cambios de suscripción nuevos en esta miniapp.
 Contrato y reglas: supabase/functions/billing-report-promotion/README.md.
 La demo aprobada conserva sus personas y acciones; Ana incluye progreso falso
 para comprobar el bloque sin consultar servicios reales.
+
+## Correos de marketing (#1636)
+
+Sección Correos con campañas, plantillas Novedades/Oferta/Lanzamiento, editor de
+los cuatro idiomas, vista previa del texto seguro, recuentos de consentimiento,
+confirmación y tandas manuales. Guía de Isaac y contrato:
+[MAIL.md](../../../supabase/functions/native-admin/MAIL.md).
+
+QA sin red: `--demo --screen mail` y escenas `mail-editor`, `mail-confirm`,
+`mail-history`. Capturas físicas pendientes en una sesión Mac con permiso de
+grabación: SSH devuelve `CGPreflightScreenCaptureAccess=false` y screencapture
+no puede leer la ventana. El soporte de exportación de GPUI requería ampliar el
+lock de dependencias; se descartó por la prohibición de nuevas dependencias.
+No se incluye otro renderizador ni se manipulan permisos del sistema.
+
+R2: «Borrar de lista de espera» (correo exacto y confirmación) y «Reintentar
+borrados de Brevo», con contador de cola. No borra cuentas por la ruta de espera.
+Los enlaces usan GET de confirmación y POST de baja/borrado, con límite persistente.
+La sincronización devuelve cursor UUID opaco y conserva cambios no confirmados.
+Escenas adicionales sin red: `mail-forget`, `mail-cleanup`. Colector para app y
+web: [CONSENT.md](../../../supabase/functions/native-admin/CONSENT.md); la rama
+onboarding #1637 no está aquí y no se finge su integración visual.
+
+R3: Correos avisa de borrados fallidos en Brevo, con recibos UUID, motivo,
+intentos y HTTP; sin dirección. Ocho fallos/24 h retiran el correo temporal de
+la cola, manteniendo la obligación para revisión manual en MAIL.md. La escena
+`mail-cleanup` incluye un fallo 401 de ejemplo.

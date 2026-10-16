@@ -19,6 +19,10 @@ const testingAutomationFunctions = new Set([
   "testing-center-agent-callback",
 ]);
 const recognizedFunctions = new Set([
+  "mail-unsubscribe",
+  "mail-webhook",
+  "mail-cleanup",
+  "native-mail-consent",
   // Review candidate, absent from all deploy wrappers.
   "testing-report-submit",
   "clerk-webhook",

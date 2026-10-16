@@ -1,7 +1,11 @@
 # Catálogo Polar de beta pública · VANTA-83 / #1661
 
-Sustituye el modelo de productos separados de #1620. No ejecutado contra Polar
-real. El plan offline es una preparación revisable, no apertura comercial.
+Sustituye el modelo de productos separados de #1620. El orquestador confirma
+aplicación en Polar producción el 16-oct-2026. Mapa vigente completo, procedencia
+y registro SQL #1673: [configuración de compra](production-purchase-configuration.md).
+El worker no ejecutó esa aplicación ni abre ventas. Los planes/inventarios
+offline de los apartados siguientes conservan su fecha histórica; no ejecutar
+de nuevo el apply por asumir que siguen faltando productos.
 
 | Plan | Producto normal/renovación | Primer periodo | Descuento `fixed` / `once` |
 |---|---:|---:|---:|
@@ -49,12 +53,13 @@ La salida exclusiva no sobreescribe entrada ni un fichero existente, ni imprime 
 El resultado incluye `polar_launch_discount_id` por plan y `creator_discounts` / `creator_annual_discounts`
 si se solicitó creador. Revisar e incorporar el mapa resultante al backend;
 crear descuentos por sí solo no configura el checkout ni despliega Edge.
-Inventario comunicado por Isaac (no consultado aquí): Pro mensual 4,99 EUR,
+Inventario histórico anterior a la aplicación (15-oct; no es configuración vigente): Pro mensual 4,99 EUR,
 Launch histórica 30 EUR y Founders 50 EUR; cero descuentos/links/clientes/pedidos.
-Pro anual y Plus todavía no existen. Eventos refund.created/updated y
+En aquel inventario faltaban Pro anual y Plus; el mapa aprobado R9 ya incluye
+sus IDs de aplicación. Eventos refund.created/updated y
 subscription.uncanceled confirmados; localización checkout activada.
 
-## Plan offline y aplicación por Isaac
+## Procedimiento previo de plan offline y aplicación por Isaac
 
 Plan completo solicitado en servidor:
 `C:\VantareServer\evidence\polar-auditoria\plan-catalogo.txt`.

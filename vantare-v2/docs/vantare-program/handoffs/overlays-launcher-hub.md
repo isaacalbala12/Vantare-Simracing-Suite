@@ -104,9 +104,18 @@ Review DeepSeek de `C:/VantareServer/evidence/ds-rev1637`: arreglos P2/P3
 conservados con tests de navegación, planes, textos y salida privada.
 P1 de widgets completos sigue abierto: depende de #1641 (no fusionado).
 #1675 también OPEN; cero capturas/ventanas en este encargo.
-Gates Windows locales pendientes por cola ocupada por verificación offline
-#1638; diagnóstico registrado en buzón. Mac: fmt, check de Hub/services/IPC
-y clippy --all-targets -D warnings PASS; Nextest en curso. La CI del merge
-intermedio detectó el match Founders ausente, ya corregido con regresión.
-El estado medido final, SHA y CI se registran en #1628/PR #1637 antes de entregar.
-Revisión e integración en nightly corresponden al orquestador.
+Validación del código `cec0bed8d`: Mac fmt/check/clippy -D warnings PASS;
+cuatro tests nuevos de consentimiento y once regresiones onboarding PASS.
+Suite amplia Mac: 702 PASS, 52 FAIL, 5 omitidos. Cincuenta son el fallo GPUI
+ya documentado en #1653; dos smoke tests carecen del binario storage en ese
+target. Sin filtrar ni debilitar pruebas. Telemetría 32/32, lifecycle 11/11,
+456 huellas PASS. Worktree y target del Mac retirados tras copiar los logs.
+Windows: fmt y check de Hub/services/IPC/Launcher PASS tras esperar la cola;
+clippy, Nextest, telemetría y lifecycle siguen en curso, seriales, MIN_GB=0,
+target `C:/VantareServer/targets/1637`. Evidencia en
+`C:/VantareServer/evidence/1628-integration-20261016`.
+PR #1637 fuera de borrador por encargo de Isaac; CI en curso. El fallo de
+Founders del merge intermedio está corregido y cubierto por regresión.
+VANTA-51 sigue En curso hasta terminar los gates; después Por revisar.
+No hay merge a nightly ni release. Revisión e integración corresponden
+al orquestador; el P1 de #1641 sigue bloqueando la integración completa.

@@ -1,4 +1,5 @@
 export const CHECKOUT_KEYS = [
+  "founders",
   "launch_lifetime",
   "pro_monthly",
   "pro_annual",
@@ -7,7 +8,6 @@ export const CHECKOUT_KEYS = [
 ] as const;
 
 export const REQUIRED_CONFIGURED_CHECKOUT_KEYS = [
-  "launch_lifetime",
   "pro_monthly",
 ] as const;
 
@@ -30,6 +30,7 @@ export interface CheckoutKeyConfig {
   polar_product_id: string;
   // Separate launch price; grants the same plan, never selected by app checkout.
   polar_launch_product_id?: string;
+  polar_launch_discount_id?: string;
   polar_price_ids: string[];
   plan_sku: CheckoutKey;
   billing_type: "one_time" | "subscription";
@@ -47,6 +48,8 @@ export interface PolarProductMap {
   environment: BillingEnvironment;
   catalog_version: string;
   organization_id: string;
+  creator_discounts?: Record<string, string>;
+  creator_annual_discounts?: Record<string, string>;
   checkout_keys: Partial<Record<CheckoutKey, CheckoutKeyConfig>>;
   product_id_to_checkout_key: Record<string, CheckoutKey>;
   price_id_to_checkout_key: Record<string, CheckoutKey>;
@@ -97,12 +100,21 @@ const EXPECTED_KEY_META: Record<
     CheckoutKeyConfig,
     | "polar_product_id"
     | "polar_launch_product_id"
+    | "polar_launch_discount_id"
     | "polar_price_ids"
     | "active"
     | "trial"
     | "entitlement_product_key"
   >
 > = {
+  founders: {
+    plan_sku: "founders",
+    billing_type: "one_time",
+    lifetime: true,
+    capabilities: ["vantare.plan.founders", "vantare.channel.nightly"],
+    channels: ["stable", "nightly"],
+    launch_scope_version: null,
+  },
   launch_lifetime: {
     plan_sku: "launch_lifetime",
     billing_type: "one_time",
@@ -245,7 +257,7 @@ function parseConfig(
     value.polar_launch_product_id !== undefined &&
     (!isUuid(value.polar_launch_product_id) ||
       value.polar_launch_product_id === value.polar_product_id ||
-      key === "launch_lifetime")
+      (key === "launch_lifetime" || key === "founders"))
   ) {
     return fail(
       "mapping_invalid_key_meta",
@@ -253,10 +265,20 @@ function parseConfig(
     );
   }
 
+  if (
+    value.polar_launch_discount_id !== undefined &&
+    (!isUuid(value.polar_launch_discount_id) || key === "founders" ||
+      key === "launch_lifetime")
+  ) {
+    return fail("mapping_invalid_key_meta", "Invalid launch discount");
+  }
   const config: CheckoutKeyConfig = {
     polar_product_id: value.polar_product_id,
     ...(value.polar_launch_product_id
       ? { polar_launch_product_id: value.polar_launch_product_id as string }
+      : {}),
+    ...(value.polar_launch_discount_id
+      ? { polar_launch_discount_id: value.polar_launch_discount_id as string }
       : {}),
     polar_price_ids: priceIds,
     plan_sku: value.plan_sku as CheckoutKey,
@@ -360,6 +382,19 @@ export function loadPolarProductMap(
     );
   }
 
+  for (
+    const field of ["creator_discounts", "creator_annual_discounts"] as const
+  ) {
+    if (
+      parsed[field] !== undefined &&
+      (!isRecord(parsed[field]) ||
+        Object.entries(parsed[field]).some(([code, id]) =>
+          !/^[A-Za-z0-9]{3,32}$/.test(code) || !isUuid(id)
+        ))
+    ) {
+      return fail("mapping_invalid_shape", "Invalid creator discounts");
+    }
+  }
   const checkoutKeys: Partial<Record<CheckoutKey, CheckoutKeyConfig>> = {};
   for (const [rawKey, rawConfig] of Object.entries(parsed.checkout_keys)) {
     if (!isAllowedCheckoutProductKey(rawKey)) {
@@ -479,6 +514,19 @@ export function loadPolarProductMap(
       environment: parsed.environment,
       catalog_version: parsed.catalog_version,
       organization_id: parsed.organization_id,
+      ...(parsed.creator_discounts
+        ? {
+          creator_discounts: parsed.creator_discounts as Record<string, string>,
+        }
+        : {}),
+      ...(parsed.creator_annual_discounts
+        ? {
+          creator_annual_discounts: parsed.creator_annual_discounts as Record<
+            string,
+            string
+          >,
+        }
+        : {}),
       checkout_keys: checkoutKeys,
       product_id_to_checkout_key: productInverse,
       price_id_to_checkout_key: priceInverse,
@@ -498,7 +546,7 @@ export function resolveCheckoutKey(
     };
   }
   const config = map.checkout_keys[productKey];
-  if (!config || !config.active) {
+  if (!config || !config.active || productKey === "launch_lifetime") {
     return {
       ok: false,
       code: "mapping_checkout_unavailable",
@@ -520,7 +568,7 @@ export function resolveCheckoutKeyByProductId(
     ) as ProductIdResolveResult;
   }
   const config = map.checkout_keys[key];
-  if (!config || !config.active) {
+  if (!config || (!config.active && key !== "launch_lifetime")) {
     return {
       ok: false,
       code: "mapping_checkout_unavailable",
@@ -542,7 +590,7 @@ export function resolveCheckoutKeyByPriceId(
     ) as ProductIdResolveResult;
   }
   const config = map.checkout_keys[key];
-  if (!config || !config.active) {
+  if (!config || (!config.active && key !== "launch_lifetime")) {
     return {
       ok: false,
       code: "mapping_checkout_unavailable",

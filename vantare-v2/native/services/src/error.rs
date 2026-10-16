@@ -16,6 +16,9 @@ pub enum Error {
     Clock,
     Storage,
     CheckoutRecovery,
+    CheckoutPromotionPending,
+    CheckoutPlanChangePending,
+    CheckoutPromotionRecovery,
     Protocol,
     Unsupported,
     Busy,
@@ -27,6 +30,11 @@ pub enum Error {
     PilotRejected,
     Version,
     NotFound,
+    ConfirmationMismatch,
+    AccountConflict,
+    AccountChangeIncomplete,
+    DeletionUnavailable,
+    RateLimited,
 }
 
 impl fmt::Display for Error {
@@ -43,6 +51,9 @@ impl fmt::Display for Error {
             Self::Clock => "revalidación del reloj necesaria",
             Self::Storage => "almacenamiento protegido no disponible",
             Self::CheckoutRecovery => "Intento de compra ilegible. Se conserva para recuperación asistida: contacta con soporte para comprobar la compra antes de crear otro intento.",
+            Self::CheckoutPromotionPending => "Espera: el pago anterior sigue en curso. Tu primer mes se conserva; vuelve a intentarlo cuando termine.",
+            Self::CheckoutPlanChangePending => "Hay un pago abierto para otro plan. Espera a que caduque antes de cambiar de plan; tu primer mes se conserva.",
+            Self::CheckoutPromotionRecovery => "No se ha podido comprobar el pago anterior. Vuelve a intentarlo; tu primer mes se conserva. Si persiste, contacta con soporte.",
             Self::Protocol => "respuesta o protocolo inválido",
             Self::Unsupported => "plataforma no compatible",
             Self::Busy => "operación en curso",
@@ -54,6 +65,11 @@ impl fmt::Display for Error {
             Self::PilotRejected => "perfil pendiente de corrección: revisa los datos y vuelve a guardar",
             Self::Version => "actualización requerida",
             Self::NotFound => "sin datos guardados",
+            Self::ConfirmationMismatch=>"el correo de confirmación no coincide con el correo actual",
+            Self::AccountConflict=>"esta cuenta está protegida o ha cambiado de estado",
+            Self::AccountChangeIncomplete=>"el cambio quedó incompleto; consulta la cuenta antes de volver a confirmarlo",
+            Self::DeletionUnavailable=>"el borrado todavía no está disponible",
+            Self::RateLimited=>"espera un minuto antes de volver a intentarlo",
         })
     }
 }

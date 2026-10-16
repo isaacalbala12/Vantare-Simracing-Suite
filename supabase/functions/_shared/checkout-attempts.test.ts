@@ -62,3 +62,23 @@ Deno.test("checkout attempt transitions require exactly one changed row", async 
     );
   }
 });
+
+Deno.test("R4 attributed attempt reserves checkout and creator in one transaction before Polar", async () => {
+  const fake = client([{
+    data: [{ outcome: "claimed", checkout_url: null }],
+    error: null,
+  }]);
+  const result = await createCheckoutAttemptStore(fake as never).claim({
+    ...attempt,
+    creatorCode: "ISAAC",
+    creatorDiscountId: "00000000-0000-4000-8000-000000001683",
+  });
+  assertEquals(result, { kind: "claimed" });
+  assertEquals(fake.calls.length, 1);
+  assertEquals(fake.calls[0].name, "claim_billing_creator_checkout_attempt");
+  assertEquals(fake.calls[0].args.p_creator_code, "ISAAC");
+  assertEquals(
+    fake.calls[0].args.p_creator_discount,
+    "00000000-0000-4000-8000-000000001683",
+  );
+});

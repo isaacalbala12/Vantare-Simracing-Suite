@@ -133,6 +133,7 @@ fn account_value(label: &str, value: &str, active: bool, cx: &gpui::App) -> gpui
 
 #[path = "access.rs"]
 mod access;
+mod founders;
 #[path = "view/roadmap.rs"]
 mod roadmap;
 
@@ -189,11 +190,15 @@ impl PurchaseWait {
         access.verified
             && !access.blocked
             && match self.product {
+                BillingProduct::Founders => access.catalog == CatalogAccess::Founders,
                 BillingProduct::ProMonthly | BillingProduct::ProAnnual => {
-                    access.catalog == CatalogAccess::Pro
+                    matches!(access.catalog, CatalogAccess::Pro | CatalogAccess::Founders)
                 }
                 BillingProduct::LaunchLifetime => {
-                    matches!(access.catalog, CatalogAccess::LaunchV1 | CatalogAccess::Pro)
+                    matches!(
+                        access.catalog,
+                        CatalogAccess::LaunchV1 | CatalogAccess::Pro | CatalogAccess::Founders
+                    )
                 }
             }
     }
@@ -243,6 +248,7 @@ fn remember_receipt(
 }
 pub(crate) mod pilot;
 pub struct Remote {
+    founders_language: founders::Language,
     pub(crate) adapt: orbit::Adapt,
     pipe: String,
     send: Option<SyncSender<Command>>,
@@ -410,6 +416,7 @@ impl Remote {
         .detach();
         let rights = core_feed(&pipe);
         let mut remote = Self {
+            founders_language: founders::Language::default(),
             pilot: pilot::Projection::default(),
             adapt: orbit::Adapt::default(),
             pipe,
@@ -1134,106 +1141,6 @@ impl Remote {
         }
     }
 
-    fn account_identity_actions(&self, cx: &mut Context<Self>) -> gpui::Div {
-        if account_demo().is_some() {
-            return div()
-                .flex()
-                .flex_none()
-                .flex_col()
-                .gap(px(6.0))
-                .child(
-                    orbit::small_button("services-account-check", "Comprobar acceso", cx)
-                        .tab_stop(false),
-                )
-                .child(
-                    orbit::small_button("services-sign-out", "Cerrar sesión", cx)
-                        .tab_stop(false)
-                        .aria_description("Datos de demostración; acciones deshabilitadas"),
-                );
-        }
-        let signed_in = self.account.signed_in;
-        let can_start = self.requires_access();
-        div()
-            .flex()
-            .flex_none()
-            .flex_col()
-            .gap(px(6.0))
-            .child(
-                orbit::small_button(
-                    "services-account-check",
-                    if self.working() && matches!(self.active, Area::Licenses { .. }) {
-                        "Comprobando…"
-                    } else {
-                        "Comprobar acceso"
-                    },
-                    cx,
-                )
-                .tab_stop(!self.working())
-                .when(self.working(), |button| button.opacity(orbit::DISABLED))
-                .on_click(cx.listener(|this, _, _, cx| {
-                    if !this.working() {
-                        this.request(Command::LicenseRenew, cx);
-                    }
-                })),
-            )
-            .children(
-                [
-                    super::protocol::BillingProduct::ProMonthly,
-                    super::protocol::BillingProduct::ProAnnual,
-                    super::protocol::BillingProduct::LaunchLifetime,
-                ]
-                .into_iter()
-                .enumerate()
-                .map(|(index, product)| {
-                    orbit::small_button(
-                        ["purchase-monthly", "purchase-annual", "purchase-launch"][index],
-                        ["Pro · 5,99 €/mes", "Pro · 59,90 €/año", "Launch · 30 €"][index],
-                        cx,
-                    )
-                    .tab_stop(signed_in && !self.working())
-                    .when_some(
-                        purchase_disabled_reason(signed_in, self.working()),
-                        orbit::disabled,
-                    )
-                    .on_click(cx.listener(move |this, _, _, cx| {
-                        if this.account.signed_in && !this.working() {
-                            this.request(Command::Purchase { product }, cx);
-                        }
-                    }))
-                }),
-            )
-            .child(if signed_in {
-                orbit::small_button("services-sign-out", "Cerrar sesión", cx)
-                    .tab_stop(!self.working())
-                    .when(self.working(), |button| button.opacity(orbit::DISABLED))
-                    .on_click(cx.listener(|this, _, _, cx| {
-                        if !this.working() {
-                            this.request(Command::Logout, cx);
-                        }
-                    }))
-            } else {
-                orbit::small_button(
-                    "services-login",
-                    if self.account.pending {
-                        "Esperando…"
-                    } else {
-                        "Iniciar sesión"
-                    },
-                    cx,
-                )
-                .tab_stop(can_start && !self.working())
-                .when(!can_start || self.working(), |button| {
-                    button
-                        .opacity(orbit::DISABLED)
-                        .aria_description("El servicio de cuenta no está configurado")
-                })
-                .on_click(cx.listener(|this, _, _, cx| {
-                    if this.requires_access() && !this.working() {
-                        this.request(Command::AccountBegin, cx);
-                    }
-                }))
-            })
-    }
     fn account_access(&self) -> Access {
         if account_demo().is_some() {
             // Fixture visual explícita; no alcanza la navegación ni el núcleo.
@@ -1266,7 +1173,11 @@ impl Remote {
         ))
     }
     fn account_access_label(&self) -> &'static str {
-        if account_demo().is_some() {
+        if self.account_access().verified
+            && self.account_access().catalog == vantare_ipc::control::CatalogAccess::Founders
+        {
+            self.founders_language.copy().owned
+        } else if account_demo().is_some() {
             account_plan_label(self.account_access().verified)
         } else {
             self.access
@@ -1590,7 +1501,8 @@ impl Remote {
         let access = orbit::neo_card(cx).p(px(16.0)).flex_1().min_w_0()
             .child(text("Acceso beta", 16.0, 600, orbit::ink(cx), cx))
             .child(text("Acceso gratuito durante la beta para testers. La sesión valida tu acceso; no muestra ni copia claves privadas.", 13.0, 400, orbit::ink_2(cx), cx))
-            .child(orbit::pill(self.account_access_label(), orbit::Tone::Neutral, cx).self_start());
+            .child(orbit::pill(self.account_access_label(), orbit::Tone::Neutral, cx).self_start())
+            .child(self.founders_details(cx));
         let contribution = orbit::neo_card(cx)
             .p(px(16.0))
             .flex_1()

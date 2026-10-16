@@ -63,7 +63,7 @@ class ValidateBranchChannelsTest(unittest.TestCase):
         for line in workflow.splitlines():
             if "uses:" in line:
                 self.assertRegex(line, r"uses: [^@]+@[0-9a-f]{40}$")
-        for required in ("Native format and blocking gates", "'check', 'clippy', 'test', 'lifecycle', 'telemetria'", "native/retirement/verify.py"):
+        for required in ("Native format and blocking gates", "'check', 'clippy', 'completa', 'lifecycle'", "native/retirement/verify.py"):
             self.assertIn(required, workflow)
         self.assertNotIn("continue-on-error:", workflow)
         self.assertNotIn("actions/setup-go", workflow)

@@ -67,6 +67,13 @@ impl Http {
     fn read(
         response: std::result::Result<http_response::Response, ureq::Error>,
     ) -> Result<Response> {
+        Self::read_limited(response, RESPONSE_LIMIT)
+    }
+
+    fn read_limited(
+        response: std::result::Result<http_response::Response, ureq::Error>,
+        limit: u64,
+    ) -> Result<Response> {
         let mut response = response.map_err(|_| Error::Offline)?;
         let status = response.status().as_u16();
         let retry_after = response
@@ -82,7 +89,7 @@ impl Http {
         let body = response
             .body_mut()
             .with_config()
-            .limit(RESPONSE_LIMIT)
+            .limit(limit)
             .read_to_vec()
             .map_err(|error| match error {
                 ureq::Error::BodyExceedsLimit(_) => Error::TooLarge,
@@ -106,6 +113,12 @@ impl Http {
             request = request.header("apikey", key);
         }
         Self::read(request.call())
+    }
+
+    /// Página pública sin credenciales ni cabeceras propias, con su propio tope.
+    pub fn get_page(&self, url: &Url, limit: u64) -> Result<Response> {
+        Self::validate_url(url)?;
+        Self::read_limited(self.agent.get(url.as_str()).call(), limit)
     }
 
     /// Foto pública sin credenciales: presupuesto menor que el login y sin redirects.

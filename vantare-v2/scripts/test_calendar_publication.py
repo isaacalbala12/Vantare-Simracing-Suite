@@ -14,7 +14,7 @@ class CalendarPublicationTests(unittest.TestCase):
     def setUp(self):
         root = Path(__file__).resolve().parents[1]
         source = (root / "scripts/testdata/daily-schedule-2026-08-25.txt").read_text(encoding="utf-8")
-        schedule = json.loads((root / "native/hub/data/lmu-weekly-schedule.json").read_text(encoding="utf-8"))
+        schedule = json.loads((root / "scripts/testdata/lmu-weekly-schedule-2026-08.json").read_text(encoding="utf-8"))
         self.inbox = {"version": 1, "candidates": [{
             "messageId": "fixture", "guildId": "731597245992009768",
             "channelId": "1529245213598552134", "sourceText": source,

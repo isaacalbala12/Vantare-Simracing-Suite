@@ -321,6 +321,8 @@ jobs:
           # Windows PowerShell 5.1, el mismo host que ejecuta beta.ps1 instalado.
           powershell.exe -NoProfile -ExecutionPolicy Bypass -File native/packaging/feed-origin-tests.ps1
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File native/packaging/publish-installer-tests.ps1
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
 
       # Caché de los artefactos de *dependencias* (rust-cache borra antes de
       # guardar los crates del workspace y el fork vendorizado, y limpia el

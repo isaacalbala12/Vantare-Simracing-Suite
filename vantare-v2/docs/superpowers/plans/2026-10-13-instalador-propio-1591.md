@@ -1,5 +1,12 @@
 # #1591 — Plan de implementación del instalador propio
 
+> Continuación autorizada 16-oct-2026, VANTA-103: Isaac aprueba el instalador
+> para el lanzamiento del 26-oct 19:00. Incorporar origin/nightly por merge,
+> asegurar selección GPUI y su regresión en CI, gates por cola uno a uno,
+> push y PR #1600 ready para review del orquestador. No merge, firma USB ni
+> publicación. Estado/evidencia actuales en el handoff de plataforma y #1591;
+> la autorización draft y la decisión manual pendiente de abajo son históricas.
+
 > FASE 2 autorizada por Isaac el 2026-10-13 tras revisar FASE 1. Ejecución directa, por hitos, sin subagentes. Al terminar: push y PR draft a nightly, enlazada en T3, y FIN en buzón; revisión independiente antes de integrar. No autoriza merge, firma real ni release.
 
 **Objetivo:** reemplazar la interfaz NSIS de `VantareSetup.exe` y su desinstalador por Rust/GPUI, copiando el diseño aprobado y conservando instalación, actualizaciones, reparación, rollback, datos e identidad técnica.

@@ -7,6 +7,9 @@ embebidos. Reutilizan exclusivamente dependencias ya fijadas. No requieren
 Rust ni NSIS en el equipo del usuario. El corte 0.0.976 de #1565 mantiene NSIS;
 `-LegacyNsis` conserva también ese build como rollback explícito.
 `-NsisCompiler <ruta>` solo se usa en esa ruta legacy.
+El check Windows bloqueante ejecuta `publish-installer-tests.ps1`: selección
+GPUI por defecto sin NSIS disponible, excepciones legacy, hash del Setup y
+fallo de build sin fallback. Usa builds/firma simulados; no publica assets.
 Instalador sin firma: SmartScreen puede pedir «Más información → Ejecutar de todas formas» (aceptado por Isaac).
 
 ## Instalar y desinstalar

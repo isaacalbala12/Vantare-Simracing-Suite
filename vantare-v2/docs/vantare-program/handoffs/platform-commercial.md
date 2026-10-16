@@ -2930,6 +2930,38 @@ Leídos [#1568](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/
 
 ## 3. Estado real y canal
 
+### #1591 / VANTA-103 — preparación para RC (16-oct-2026)
+
+Isaac ha aprobado el instalador para la beta pública del 26-oct a las 19:00,
+según el encargo del orquestador del 16-oct. Esta decisión sustituye el estado
+«Isaac prueba y decide» de la entrega del 13-oct. Objetivo: PR #1600 lista para
+review e integración en nightly antes del RC del 23-oct; el worker no mergea.
+
+Entrada limpia `95bff4956`, rama `vantareapp/isa-1591-instalador-propio`, worktree
+`C:/VantareServer/wt/isa-1591`. Merge local `d2184fc8a` de
+`origin/nightly@bcaa0e3f2de0278b329b94bd2095505d56c3ed1d` (32 commits), sin
+rebase. Único conflicto en gates.ps1: conserva `--target-dir` de nightly y
+el parámetro de target propio, incluida la copia de DuckDB en el perfil prueba.
+
+El publisher del PR ya construye GPUI por defecto; 0.0.976 y `-LegacyNsis`
+conservan NSIS explícitamente. Se añade `publish-installer-tests.ps1` al check
+Windows bloqueante: ejecuta el publisher real con build/firma inertes y prueba
+selección GPUI sin NSIS instalado, ambas excepciones legacy, sidecars y rechazo
+del fallo GPUI sin fallback. 13 checks PASS en PowerShell 5.1; shell aislado 23 PASS, canales 45 PASS e
+integridad 456 PASS. Issue bajo `area:plataforma`, Project Vantare In Review y
+milestone «Plataforma, CI y releases · testers». No crea binarios
+distribuibles ni prueba una firma real. La CI no publica instaladores/releases;
+la preparación manual autorizada sigue siendo `publish-beta.ps1`.
+
+Gates Rust secuenciales por `native/scripts/compilar.ps1`, mínimo RAM solicitado
+0 y target exclusivo del worktree: pendientes mientras la cola está ocupada.
+Evidencia de esta continuación: `C:/VantareServer/evidence/installer-1591/`.
+Siguiente: cerrar fmt/check/Clippy/Nextest de installer/build-support y lifecycle,
+push, PR ready y verificar ambos checks requeridos. Sin tocar firma USB ni
+publicación; sin secretos, `.env`, ventanas, subagentes, merge o release.
+La aprobación no añade evidencia de Windows limpio, DPI o feed live; se
+conservan los límites y la recuperación legacy aceptada en la entrega anterior.
+
 ### #1591 — instalador propio, FASE 2 autorizada (2026-10-13)
 
 Plan aprobado: [plan versionado](../../superpowers/plans/2026-10-13-instalador-propio-1591.md), copia solicitada `C:/tmp/ola2/plan-1591.md`.

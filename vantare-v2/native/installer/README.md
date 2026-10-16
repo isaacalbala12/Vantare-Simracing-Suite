@@ -38,7 +38,8 @@ interrupción sincronizada, reinstalación pública y estas guardas.
 
 ## Build y QA
 
-Desde native, siempre mediante `C:/tmp/fase2/compilar.ps1`:
+Desde native; envolver cada comando con `native/scripts/compilar.ps1` desde
+`vantare-v2/`, como indica el README nativo:
 
 ```powershell
 powershell -NoProfile -File packaging/candidate.ps1 -Operation Build `

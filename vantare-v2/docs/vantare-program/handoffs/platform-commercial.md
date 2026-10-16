@@ -14,7 +14,7 @@ Captura real sandbox anual: raw[220] GET3990 sobre base5999 y precio anual
 `4f5216ce-9b71-438c-ae8b-e78d19be0520`; raw[226] PATCH4799 y [227] GET4799,
 creador20 % repeating12. Fixture anual sustituido por estas formas con identidad
 propia. Solo el caso anual normal5999 es variación explícita, no captura adicional.
-Diez llamadas solo sandbox, un PATCH de cupón a suscripción propia existente;
+Once llamadas solo sandbox, un PATCH de cupón a suscripción propia existente;
 sin nuevas compras, productos, descuentos, refunds ni llamadas a producción.
 
 El importe debe coincidir con el descuento gestionado incluido en la respuesta,

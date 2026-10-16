@@ -192,4 +192,3 @@ no garantiza plazo si el peer no responde). Atrás/Escape permiten retroceder.
 Locale de correos permanece es y los PNG incrustados conservan su tamaño.
 Widgets completos tras #1641 y QA visual tras #1675 siguen como pendientes previos.
 Estado de esta ronda En curso; gates y SHA final se verificarán en issue/PR.
-

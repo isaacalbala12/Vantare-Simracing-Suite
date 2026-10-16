@@ -1,3 +1,37 @@
+## #1680 / VANTA-117 · Importe descontado de creador (16/10/2026)
+
+Arreglo autorizado por Isaac tras la investigación sandbox; issue
+[#1680](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1680),
+`area:licencias`, Project Vantare, sin milestone comprometido.
+Rama `vantareapp/isa-1680-creador-importe-descontado`, worktree propio isa-1680,
+base `origin/nightly@95abdcc6e8a87b909848131231dc3031356b4fb7`.
+Regresiones iniciales `dcb5b027d`; implementación `4d1ae38dd`.
+PR a nightly y SHA final/CI se verifican en la issue y el buzón polar-sandbox;
+no se afirma integración ni despliegue.
+
+Polar devuelve `subscription.amount` descontado. La sincronización ahora valida
+el precio base seleccionado contra IDs autorizados del mapa, producto, importe
+normal, EUR e intervalo; conserva estado activo, allowlist, autorización durable,
+ACK confirmado y reintento sin PATCH si ya está aplicado. Un precio/cupón ajeno
+falla cerrado antes de escribir o al confirmar. No cambia contratos ni SQL.
+Fixture proyectado desde raw[103], [106] y [168] del sandbox real; normal activo
+corregido tras detectar que el primer fixture usaba una respuesta ya cancelada.
+Anuales construidos sobre la misma forma con importes de la orden real, no se
+atribuyen a una respuesta de suscripción anual observada.
+
+RED final contra nightly: 24 PASS /30 FAIL; GREEN completo Mac: 812 PASS,
+0 FAIL, 2 omisiones existentes. Fmt, lint de producción y nuevas regresiones,
+superficie de despliegue, quality y456 huellas PASS. `polar.test.ts` conserva13
+avisos require-await idénticos a nightly; las otras reglas pasan. Sin silenciar
+reglas en el repo. Evidencia `C:/VantareServer/evidence/polar-sandbox/isa-1680-*`.
+pgTAP omitido: sin cambio de migración/RPC/SQL; Rust/telemetría omitidos porque
+solo cambia Edge. Sin llamadas nuevas a Polar, secretos, deploy, merge o release.
+
+`INFORME.md` y `raw.json` saneado conservados fuera del repo. Pendientes por
+decisión de Isaac: refund realmente pending; origen de ventana repeating11/12
+meses; webhook real a Edge aislada. No se persiguen en este arreglo. Siguiente:
+CI verde y revisión del orquestador antes de integrar; no activar campañas.
+
 ## #1631 / VANTA-70 · Integración con nightly (16/10/2026)
 
 Encargo del orquestador: preparar #1635 para integrar antes del 23-oct.

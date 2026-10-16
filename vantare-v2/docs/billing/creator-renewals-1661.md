@@ -46,6 +46,12 @@ cupones históricos de dos meses ni se modifica su comportamiento silenciosament
 4. `billing_creator_renewal_prepare` fija primera orden y creator ID por
    suscripción, selecciona ganador, guarda perdedor y adquiere lease 60 s.
    GET Polar comprueba ID, producto, precio/moneda/intervalo y estado activo.
+   #1680 valida el único precio seleccionado en `subscription.prices`: ID del
+   mapa del plan, producto esperado, catálogo fijo EUR y céntimos normales.
+   Si llega `price_id` legacy debe coincidir; el intervalo del precio, si llega,
+   también. `subscription.amount` es el importe ya descontado: se admite entero
+   entre cero y el normal, sin exigir igualdad. GET y respuesta PATCH usan la
+   misma validación y rechazan cupones fuera de la allowlist durable.
    RPC de autorización revalida lease, borrado, pago inicial no reembolsado y
    ausencia de Founders inmediatamente antes del PATCH.
 5. PATCH solo discount_id; nunca precio/producto, factura, reembolso o dinero.

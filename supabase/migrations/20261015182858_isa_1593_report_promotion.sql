@@ -252,8 +252,8 @@ create function private.report_promotion_eligible(t timestamptz) returns boolean
 language sql immutable set search_path='' as $$select t >= timestamp '2026-10-26 19:00' at time zone 'Europe/Madrid'
  and t < timestamp '2026-11-26 19:00' at time zone 'Europe/Madrid'$$;
 
--- First invoice uses the one-month launch discount on the NORMAL monthly product.
--- Existing permanent launch products and annual subscriptions are not rewritten.
+-- First period uses #1661's canonical once offer on NORMAL recurring products.
+-- Report rewards remain monthly; historical products/subscriptions are not rewritten.
 -- The entitlement belongs to the account. A replacement attempt may reuse it
 -- after the prior lease expires: known checkout IDs need terminal proof;
 -- an unknown creation result can release its reservation without losing the right.
@@ -272,7 +272,7 @@ begin
  if used.consumed_at is not null then return null; end if;
  if exists(select 1 from private.report_promotions where account_id=p_account and environment=p_environment)
  or exists(select 1 from public.billing_subscriptions b where b.user_id=p_account and b.environment=p_environment and b.provider='polar')
- or exists(select 1 from public.billing_orders b where b.user_id=p_account and b.environment=p_environment and b.provider='polar' and b.paid) then
+ or exists(select 1 from public.billing_orders b where b.user_id=p_account and b.environment=p_environment and b.provider='polar' and b.paid and b.provider_subscription_id is not null) then
   insert into private.report_promotion_launch_uses(account_id,environment,product_id,reserved_at,consumed_at) values(p_account,p_environment,p_product,p_now,p_now)
    on conflict(account_id,environment) do update set consumed_at=coalesce(private.report_promotion_launch_uses.consumed_at,excluded.consumed_at);
   return null;

@@ -54,7 +54,7 @@ try:
    assert re.fullmatch(r'[0-9TZ:.+-]+',opened) and re.fullmatch(r'[0-9TZ:.+-]+',closed)
    checks=sql(f"select private.report_promotion_eligible('{opened}'::timestamptz), not private.report_promotion_eligible('{opened}'::timestamptz-interval '1 millisecond'), private.report_promotion_eligible('{closed}'::timestamptz-interval '1 millisecond'), not private.report_promotion_eligible('{closed}'::timestamptz)").stdout.strip()
    if checks!='t|t|t|t': raise RuntimeError('Canonical #1661 launch window disagrees with SQL: '+environment+' '+checks)
-  (out/'launch-contract.json').write_text(json.dumps(windows,indent=2)+'\\n')
+  (out/'launch-contract.json').write_text(json.dumps(windows,indent=2)+'\n')
  if a.mutation:
   signature, before, after = {
    'revocation-ack':('public.report_promotion_ack(uuid,uuid,timestamptz,text,text)',"if done is distinct from true then","if done is distinct from true then raise exception 'creator_renewal_ack_failed'; end if; if false then"),

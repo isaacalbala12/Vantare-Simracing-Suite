@@ -327,19 +327,51 @@ Deno.test("R7 canonical once guard survives false or missing report flag and use
 });
 
 Deno.test("R7 a known open checkout cannot silently reuse a different creator offer", async () => {
-  const admin = () => ({
-    rpc: (name: string) => Promise.resolve(
-      name === "billing_launch_checkout" ? { data: null, error: { code: "55000" } } :
-      name === "report_promotion_checkout_pending" ? { data: {
-        attempt_id: "old", checkout_id: "remote", product_id: "pro",
-        catalog_version: "old:creator:OTHER",
-      }, error: null } : { data: null, error: null },
-    ),
-  }) as unknown as SupabaseClient;
-  const failure = await assertRejects(() => promotionCheckoutDiscount(
-    admin, "account", "sandbox", "pro", new Date("2026-11-25T18:00:00Z"), false, "new",
-    () => Promise.resolve({ id: "remote", status: "open", accountId: "account", productId: "pro", url: "https://sandbox.polar.sh/checkout/old" }),
-    { discountId: "once", key: "pro_monthly", catalogVersion: "new:creator:ISAAC" },
-  ));
-  assertEquals((failure as { code?: string }).code, "promotion_checkout_plan_change_pending");
+  const admin = () =>
+    ({
+      rpc: (name: string) =>
+        Promise.resolve(
+          name === "billing_launch_checkout"
+            ? { data: null, error: { code: "55000" } }
+            : name === "report_promotion_checkout_pending"
+            ? {
+              data: {
+                attempt_id: "old",
+                checkout_id: "remote",
+                product_id: "pro",
+                catalog_version: "old:creator:OTHER",
+              },
+              error: null,
+            }
+            : { data: null, error: null },
+        ),
+    }) as unknown as SupabaseClient;
+  const failure = await assertRejects(() =>
+    promotionCheckoutDiscount(
+      admin,
+      "account",
+      "sandbox",
+      "pro",
+      new Date("2026-11-25T18:00:00Z"),
+      false,
+      "new",
+      () =>
+        Promise.resolve({
+          id: "remote",
+          status: "open",
+          accountId: "account",
+          productId: "pro",
+          url: "https://sandbox.polar.sh/checkout/old",
+        }),
+      {
+        discountId: "once",
+        key: "pro_monthly",
+        catalogVersion: "new:creator:ISAAC",
+      },
+    )
+  );
+  assertEquals(
+    (failure as { code?: string }).code,
+    "promotion_checkout_plan_change_pending",
+  );
 });

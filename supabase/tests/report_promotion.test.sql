@@ -363,5 +363,9 @@ insert into public.billing_orders(user_id,provider,environment,provider_order_id
 select ok((select consumed_at is not null from private.report_promotion_launch_uses where account_id=pg_temp.account(41)),'R7 any paid recurring first period durably consumes the account right');
 select is(public.billing_launch_checkout(pg_temp.account(41),'sandbox','pro','canonical-monthly-once','pro_monthly','2026-11-25 19:33 Europe/Madrid','00000000-0000-4000-8000-000000000043'),null::text,'R7 annual to monthly cannot obtain a second launch first period');
 select is(public.billing_launch_checkout(pg_temp.account(41),'sandbox','pro','canonical-monthly-once','pro_monthly','2026-11-26 19:00 Europe/Madrid','00000000-0000-4000-8000-000000000043'),null::text,'R7 canonical closure exclusive');
+insert into public.profiles(id) values('15930000-0000-4000-8000-000000000042');
+insert into public.billing_orders(user_id,provider,environment,provider_order_id,provider_product_id,status,paid,net_amount,currency,remote_modified_at,snapshot_hash)
+ values(pg_temp.account(42),'polar','sandbox','historical-lifetime42','historical-lifetime','paid',true,3000,'eur','2026-10-01',repeat('b',64));
+select is(public.billing_launch_checkout(pg_temp.account(42),'sandbox','pro','canonical-once','pro_monthly','2026-11-25 19:00 Europe/Madrid','00000000-0000-4000-8000-000000000042'),'canonical-once','R7 a historical lifetime purchase does not consume a recurring first period');
 select * from finish();
 rollback;

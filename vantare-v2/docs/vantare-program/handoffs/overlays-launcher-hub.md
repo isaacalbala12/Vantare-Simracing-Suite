@@ -2,36 +2,42 @@
 
 [Histórico previo por SHA](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/8c6e83f977c8d2245a04266cdaaf896ed8c1b131/vantare-v2/docs/vantare-program/handoffs/overlays-launcher-hub.md). El diario y avances están en las issues; este documento conserva el estado actual.
 
-## Entrega asignada #1653 / VANTA-74 · 2026-10-15
+## Continuación #1653 / VANTA-74 · v11 · 2026-10-16
 
-Implementación Mac por SSH en `~/wt-1653`,
-`vantareapp/isa-1653-avisos-sesion`, base nightly `3f82af86`.
-[Issue](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1653),
-área overlays-runtime / Project Vantare; sin milestone. Ronda 4 v2 aprobada.
-Motor puro en domain, widget Pro y mini enlazada del registro, panel/franja/píldora
-del kit, ajustes Studio y agenda local del calendario nightly con toasts existentes.
-[Contrato y QA](../../../native/ui/session-alerts.md). Sin dependencias nuevas.
+[PR #1660](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1660)
+a nightly, rama `vantareapp/isa-1653-avisos-sesion`; merge limpio `ff9bc31f`
+de origin/nightly `bcaa0e3f`, que incluye #1664.
+GitHub Project Vantare / area:overlays-runtime, sin milestone.
+Estado Plane y SHA final publicados se verifican al cerrar en la issue y buzón.
+Worker Mac por SSH, target propio; gates uno a uno con VANTARE_CARGO_MIN_GB=0.
+[Contrato v11](../../telemetria/session-alerts-contract.md) y
+[consumo del widget](../../../native/ui/session-alerts.md).
 
-LMU aún no publica estado/fase fiables ni metros a línea: huecos explícitos
-para #1638, sin inventar valores ni bandera verde. Fin de prácticas/qualy por
-transición observada; el tiempo restante no acredita el comienzo/tipo siguiente.
-PR #1640 aún abierta: enganche mínimo en Calendar::alert_feed, sin fusionarla.
-Capturas de app pendientes de #1655; solo tests puros/escenas/layout.
-Código `e1dd1747ab69b5a72ddaebf9a7fb700c2b6345e7`, entrega técnica para revisión.
-Fmt (incluidos módulos de macro), check workspace/all-targets y Clippy -D warnings
-PASS. Nextest focalizado 17/17; tanda completa 1040 ejecutados: 989 PASS,
-51 FAIL, 8 omitidos. 50 fallos son GPUI macOS «Mac platform not created on main
-thread»; el restante es IPC accept/ENOTCONN y pasa al repetirlo solo. No se
-cambian ni omiten esas pruebas. Suites Windows/QA física siguen pendientes.
-Lifecycle Mac 10/10 (Engineer tiene cero casos aplicables aquí), telemetría
-25/25, calidad/456 huellas PASS. Regresión de caducidad con igual secuencia
-y contrato de demanda reales LMU/ACC PASS. Logs `~/orq/1653-evidence/`.
+Se conecta SessionTiming actual: fin programado como «FIN PREVISTO»,
+sin afirmar carrera ni fin real al llegar a cero. Sesiones consecutivas
+reinician la cuenta sin blanco inferido. Blanco solo con finished_at_s
+confirmado reciente; fases explícitas y metros estimados (≈) solo juntos;
+próxima sesión solo con tipo, instante anunciado y reloj actual del mismo ID.
+El calendario UTC sigue independiente. Amarillo sólido FCY / rojo final /
+blanco terminado y mini configurable del diseño aprobado se conservan.
 
-El worker publica al bare del Mac; el orquestador sube a GitHub/abre el PR.
-Estado Plane y HEAD final del bare verificados al cerrar en issue y buzón
-`~/orq/1653.buzon.md`. Sin PR/CI remotos de esta rama, merge ni promoción/release.
-Siguiente: revisar el diff y los fallos Mac, ejecutar suite Windows, adaptar
-#1640 al integrarla, completar señales de #1638 y capturas con #1655.
+LMU aún NO demuestra inicio/fin reales, fase formación/salida ni próxima sesión:
+se ocultan sin inventar datos. Sí publica fin programado, distancia estimada
+a salida/meta fuera de boxes e identidad de sesiones consecutivas.
+Se corrige el fallo de CI Windows de Sound::stop (función asociada).
+Código `722c2bf0fcc9d9eee8c50392efe65f8254db5943`, publicado en GitHub.
+PR fuera de draft, autorización del orquestador. Fmt/check/Clippy workspace
+PASS; feature/contrato 23/23; lifecycle Mac 10/10 (Engineer cero aplicables);
+telemetría 32/32 PASS. Nextest workspace: 1692 ejecutados, 1642 PASS y 50 FAIL
+por «Mac platform not created on main thread», 12 omitidos por la configuración
+vigente. No se filtran ni modifican esas pruebas; la CI Windows del SHA final
+se verifica en #1660/#1653 y el buzón, sin extrapolar los resultados Mac.
+Sin LMU ni ventanas/capturas de app.
+
+Primera entrega conservada: código e1dd1747, docs a4385ed4; evidencia histórica
+en ~/orq/1653-evidence/informe.md. Nueva evidencia con prefijo v11 en el mismo
+directorio. El orquestador autorizó push y sacar #1660 de draft; no autorizó
+merge a nightly, promoción ni release.
 
 ## 1. Resultado
 

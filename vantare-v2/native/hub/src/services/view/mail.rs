@@ -1,6 +1,6 @@
 //! Proyección efímera. Una petición a la vez; ningún reintento de escrituras.
 use super::{Command, Remote, Reply};
-use crate::services::protocol::MailSource;
+use crate::services::protocol::{EmailAction, MailSource};
 #[derive(Default)]
 pub(crate) struct State {
     pub consent: Option<bool>,
@@ -24,7 +24,11 @@ impl State {
                 self.source = Some(*source);
                 self.onboarding_saved = false;
             }
-            Command::Logout | Command::AccountBegin => *self = Self::default(),
+            Command::Logout
+            | Command::AccountBegin
+            | Command::AccountEmail {
+                action: EmailAction::Begin { .. } | EmailAction::Finish {},
+            } => *self = Self::default(),
             _ => {}
         }
     }
@@ -97,6 +101,49 @@ impl Remote {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn native_email_login_does_not_inherit_the_previous_accounts_marketing_choice() {
+        for action in [
+            EmailAction::Begin {
+                mode: crate::services::protocol::EmailMode::SignInCode,
+                email: "new-account@example.invalid".into(),
+                password: String::new(),
+            },
+            EmailAction::Finish {},
+        ] {
+            let mut state = State {
+                consent: Some(true),
+                onboarding_saved: true,
+                requested: true,
+                desired: Some(true),
+                ..State::default()
+            };
+            state.dispatched(&Command::AccountEmail { action });
+            assert_eq!(state.consent, None);
+            assert_eq!(state.desired, None);
+            assert!(!state.requested && !state.onboarding_saved);
+            state.complete(&Reply::Account {
+                signed_in: true,
+                profile: None,
+                expires_at: Some(1000),
+                pending: false,
+                message: String::new(),
+                error: None,
+            });
+            assert!(
+                !state.requested,
+                "the new session must fetch its own permission"
+            );
+            state.dispatched(&Command::MailConsentGet);
+            state.complete(&Reply::MailConsent {
+                consent: false,
+                locale: None,
+                revision: 0,
+            });
+            assert_eq!(state.consent, Some(false));
+            assert!(!state.onboarding_saved);
+        }
+    }
     #[test]
     fn only_ack_changes_consent_and_errors_require_explicit_retry() {
         let mut state = State::default();

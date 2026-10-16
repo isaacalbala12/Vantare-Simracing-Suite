@@ -653,7 +653,10 @@ mod tests {
                     now,
                     cx,
                 );
-                assert_eq!(remote.account_access_label(), "Founders · todo para siempre");
+                assert_eq!(
+                    remote.account_access_label(),
+                    "Founders · todo para siempre"
+                );
                 remote.request(Command::Logout, cx);
                 assert!(matches!(requests.try_recv(), Ok(Command::Logout)));
                 assert_eq!(remote.account_access_label(), "Acceso sin verificar");

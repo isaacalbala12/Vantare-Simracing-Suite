@@ -30,9 +30,9 @@ fn text(
 mod access;
 #[path = "view/account.rs"]
 mod account;
+mod founders;
 #[path = "login.rs"]
 mod login;
-mod founders;
 #[path = "view/roadmap.rs"]
 mod roadmap;
 

@@ -20,7 +20,8 @@ captura física SHM de Imola ni una transición de sesión.
 10 segundos de ese mismo archivo: `at_ns` del registro, `mCurrentET` de scoring
 y `mElapsedTime` de la fila del jugador. Números originales, sin redondeo,
 nombres, paths, posiciones ni inputs. La regresión de frescura usa ambos
-relojes por separado: mantiene los huecos >=500 ms y exige recuperar al
-siguiente avance, sin esperar 2 s continuos. No es una captura de conducción.
+relojes por separado: mantiene los huecos >=500 ms y exige dos avances cercanos
+(separados por menos de 500 ms) para recuperar, sin esperar 2 s continuos.
+Un avance aislado no rehabilita el bloque. No es una captura de conducción.
 Extracción reproducible: test opt-in `recorded_clock_cadence`; su informe
 `first_10s_trace` añade una cuarta columna diagnóstica que esta fixture omite.

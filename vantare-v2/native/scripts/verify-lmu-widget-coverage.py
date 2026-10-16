@@ -32,7 +32,7 @@ def readable_report(telemetry, projections, scope):
              "Se comprueba recepción y proyección; no certifica todas las señales ni la pantalla.",
              "Las calidades por campo y sesión están en widgets.json; los errores e inventario REST en telemetry.json.", "",
              "Estados de fuente: " + json.dumps(projections.get("source_state_counts", {})) + ".",
-             "Los datos caducados no acreditan señales actuales. La recuperación exige avance sostenido; no se relajan los límites de frescura.", "",
+             "Los datos caducados no acreditan señales actuales. LMU recupera tras dos avances del propio bloque separados por menos de 500 ms; un tick aislado no basta y no se exigen 2 s continuos.", "",
              "projection_changes cuenta retornos true de ingest (cambios solicitados); cero no significa falta de recepción.", "",
              "| Widget | Fotos | Cambios solicitados | Evidencia que revisar |", "| --- | ---: | ---: | --- |"]
     motion = projections.get("motion_evidence", {})

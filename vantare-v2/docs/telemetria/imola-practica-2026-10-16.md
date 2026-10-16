@@ -1,5 +1,10 @@
 # Imola: verificación offline de práctica — VANTA-33 / #1638
 
+**Resultado histórico.** La [pasada íntegra posterior al pulido](imola-practica-pulido-2026-10-16.md)
+repite los 18 widgets con dos avances para recuperar: 196.376 Live y 91.119 Stale
+(31,6941 %), 287.495 fotos por widget y cero rechazos. Conserva este informe
+los números originales, sin reescribir la evidencia que motivó el arreglo.
+
 **Actualización de frescura:** [investigación y corrección posteriores](imola-frescura-2026-10-16.md)
 demuestran huecos reales SHM y un bloqueo de recuperación de 2 s. Tras el arreglo,
 Replay/Core completo da 25,4488 % Stale. Los resultados por widget y hashes de

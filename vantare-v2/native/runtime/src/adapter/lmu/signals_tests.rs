@@ -359,9 +359,18 @@ fn weather_and_damage_expire_with_their_blocks() {
         .expect("primero");
     let mut next = REAL_44.to_vec();
     write(&mut next, 1_700, 113.2);
-    let state = t
+    let pending = t
         .observe(&next, "1.3.0.0", Duration::from_millis(600))
-        .expect("solo scoring avanza")
+        .expect("primer avance tras caducar")
+        .state;
+    assert_eq!(
+        pending.session.weather.air_temperature_k,
+        Quality::Stale(289.15)
+    );
+    write(&mut next, 1_700, 113.4);
+    let state = t
+        .observe(&next, "1.3.0.0", Duration::from_millis(800))
+        .expect("segundo avance solo de scoring")
         .state;
     near(state.session.weather.air_temperature_k, 289.15);
     assert!(matches!(
@@ -392,10 +401,17 @@ fn all_telemetry_signals_follow_their_clock_and_recovery() {
             .observe(&bytes, "1.3.0.0", Duration::ZERO)
             .expect("inicial");
         let initial = initial.state.player.expect("jugador");
+        // Scoring sigue publicando mientras se congela el bloque telemetry.
+        for now in [200_u32, 400] {
+            write(&mut bytes, 1700, 112.6 + f64::from(now) / 1000.0);
+            t.observe(&bytes, "1.3.0.0", Duration::from_millis(u64::from(now)))
+                .expect("avance scoring");
+        }
         for (now, advance, stale) in [
             (600_u32, false, true),
-            (800, true, false),
-            (2800, true, false),
+            (800, true, true),
+            (1000, true, false),
+            (1400, true, false),
         ] {
             write(&mut bytes, 1700, 112.6 + f64::from(now) / 1000.0);
             if advance {
@@ -483,6 +499,12 @@ fn scoring_freeze_does_not_expire_a_running_telemetry_clock() {
         .state
         .player
         .expect("jugador inicial");
+    // Telemetry realmente sigue publicando; no simular un hueco de 600 ms.
+    for now in [200_u32, 400] {
+        write(&mut bytes, PLAYER + 12, 112.6 + f64::from(now) / 1000.0);
+        t.observe(&bytes, "1.3.0.0", Duration::from_millis(u64::from(now)))
+            .expect("avance telemetry independiente");
+    }
     write(&mut bytes, PLAYER + 12, 113.2);
     let state = t
         .observe(&bytes, "1.3.0.0", Duration::from_millis(600))
@@ -523,7 +545,7 @@ fn a_frozen_telemetry_clock_recovers_when_its_own_data_resumes() {
     assert!(t.needs_refresh(Duration::from_millis(500)));
     for (now, tel, expected) in [
         (600_u32, 112.6, Capability::WithData),
-        (800, 112.8, Capability::Fresh),
+        (800, 112.8, Capability::WithData),
         (1200, 113.2, Capability::Fresh),
         (1600, 113.6, Capability::Fresh),
         (2000, 114.0, Capability::Fresh),
@@ -687,6 +709,11 @@ fn pit_signals_require_native_presence_and_expire_with_their_own_clock() {
         .expect("primera");
     // Scoring avanza mientras telemetría queda congelada: solo el limitador caduca.
     let et = f64::from_le_bytes(bytes[1700..1708].try_into().expect("ET"));
+    for now in [200_u32, 400] {
+        write(&mut bytes, 1700, et + f64::from(now) / 1000.0);
+        t.observe(&bytes, "1.3.0.0", Duration::from_millis(u64::from(now)))
+            .expect("avance scoring independiente");
+    }
     bytes[1700..1708].copy_from_slice(&(et + 1.0).to_le_bytes());
     let p = t
         .observe(&bytes, "1.3.0.0", Duration::from_millis(500))

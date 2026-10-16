@@ -2,7 +2,21 @@
 
 Auditoría inicial: 14-oct-2026, base `nightly@79a1ace66e5ec397126495dc5ce99353db9beed9`.
 
-## Fase B: práctica de Imola recibida — 16-oct
+## Evidencia vigente: pulido posterior a #1664 — 16-oct
+
+[M-1…M-6 y regresión lifecycle](pulido-1638-2026-10-16.md),
+[pasada completa actualizada por widget](imola-practica-pulido-2026-10-16.md).
+Código `8d53d2cf1`, PR draft #1679 desde `nightly@bcaa0e3f2`.
+Mismo archivo Imola, dos avances cercanos tras caducar: **287.495 fotos por
+cada widget, cero rechazos; 196.376 Live y 91.119 Stale (31,6941 %)**.
+37 rivales con movimiento fiable; jugador parado, cero vueltas/inputs.
+Fastest-lap sin aviso nuevo; mapa sin geometría acreditada. Inicio/fin reales,
+qualy/carrera, formación/salida y próxima sesión no cubiertos por esta captura.
+CI del código: Windows Nextest 1870/1870 y Engineer lifecycle 5/5 PASS;
+gates locales 935/935 y cinco tandas lifecycle 25/25. VANTA-33 sigue En curso.
+Los números siguientes conservan las ejecuciones históricas; no son el resultado actual.
+
+## Histórico: práctica de Imola recibida — 16-oct
 
 **Kit A/B listo para VANTA-118:** [13 minutos y procedimiento del worker](ab-lmu-2026-10-16.md).
 Control solo SHM + A/B/A/B con dos GET productivos; B añade únicamente race/car.

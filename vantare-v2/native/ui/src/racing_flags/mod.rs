@@ -310,9 +310,9 @@ impl Settings {
     #[allow(clippy::unused_self)] // Contrato común de demanda por renderer.
     pub fn demand(&self) -> vantare_ipc::Demand {
         // Las banderas personales necesitan la identidad del jugador;
-        // Penalties incluye coches/jugador sin pedir sus entradas de conducción.
-        use vantare_ipc::Signal::{Flags, Penalties};
-        crate::demand::signals(33, &[Flags, Penalties])
+        // Cars mantiene coches/jugador sin arrastrar sanciones ni inputs.
+        use vantare_ipc::Signal::{Cars, Flags};
+        crate::demand::signals(33, &[Flags, Cars])
     }
 }
 

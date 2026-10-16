@@ -1,8 +1,10 @@
 ## #1593 / VANTA-39 · endurecimiento P3-D/P3-E · 16/10/2026
 
 #1659 ya integrado por el orquestador en nightly9e48eb86f. Seguimiento aislado
-vantareapp/isa-1593-endurecer, base exacta9e48eb86f; PR nuevo hacia nightly,
-URL/SHA finales en issue y evidencia. Plane En curso hasta verificar entrega.
+vantareapp/isa-1593-endurecer, base exacta9e48eb86f; [PR draft #1673](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1673)
+hacia nightly. Código30389aec; SHA final en issue/evidencia/buzón. Publicado
+al bare Mac y a GitHub desde servidor; CI automático en curso al cerrar.
+Plane Por revisar tras verificación final; integración reservada al orquestador.
 
 - P3-D: retira report_promotion_checkout y fallback Edge. billing_launch_checkout
   valida SQL entorno/clave/producto/cupón/ventana/reloj finito contra registro
@@ -30,7 +32,9 @@ URL/SHA finales en issue y evidencia. Plane En curso hasta verificar entrega.
   Rust/clippy/nextest/lifecycle/telemetría omitidos: ningún archivo nativo tocado.
 - Mac Docker sin red/puertos, actor NOSUPERUSER BYPASSRLS y lock/trap liberado.
   Fmt/lint producción, superficie deploy, quality/retirada456huellas y diff-check PASS.
-  Evidencia ~/evidence/1593-endurecer; nuevo PR/CI en cierre. Sin merge, deploy,
+  Evidencia ~/evidence/1593-endurecer y C:/VantareServer/evidence/1593-endurecer.
+  PR#1673 abierto draft y enlazado al hilo, CI en curso; estado final en issue.
+  Sin merge, deploy,
   productos/cupones reales, pagos/refunds, release ni promoción desde este worker.
   Multi-cuenta aceptado y saldo ganado caduca6meses: sin cambios.
 

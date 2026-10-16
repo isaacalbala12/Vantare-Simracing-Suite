@@ -3,7 +3,8 @@
 param(
     [Parameter(Mandatory)][ValidateSet('check', 'clippy', 'test', 'telemetria', 'completa', 'lifecycle', 'prueba')][string]$Gate,
     [string]$DuckDbDirectory = $env:DUCKDB_LIB_DIR,
-    [string]$BuildConfig
+    [string]$BuildConfig,
+    [string]$TargetDirectory = 'target/gates'
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -56,14 +57,14 @@ try {
     $jobsFlag = if ($Gate -in @('test', 'telemetria', 'completa')) { '--build-jobs' } else { '-j' }
     # --target-dir y no CARGO_TARGET_DIR: sccache mete las variables CARGO_* en su clave
     # y así comparte caché con los builds de los workers en sus targets propios.
-    $arguments += @('--target-dir', 'target/gates', '--locked', '--offline', $jobsFlag, $jobs, '--no-default-features')
+    $arguments += @('--target-dir', $TargetDirectory, '--locked', '--offline', $jobsFlag, $jobs, '--no-default-features')
     if ($defaults.Count) { $arguments += @('--features', ($defaults -join ',')) }
     if ($Gate -eq 'clippy') { $arguments += @('--', '-D', 'warnings') }
     & cargo @arguments
     if ($LASTEXITCODE) { throw "Gate $Gate falló (código $LASTEXITCODE)." }
     if ($Gate -eq 'prueba') {
-        Copy-Item -LiteralPath (Join-Path $directory 'duckdb.dll') -Destination 'target/gates/prueba/duckdb.dll' -Force
-        'Binarios públicos de prueba en native/target/gates/prueba; no distribuir ni medir rendimiento con este perfil.'
+        Copy-Item -LiteralPath (Join-Path $directory 'duckdb.dll') -Destination (Join-Path $TargetDirectory 'prueba/duckdb.dll') -Force
+        "Binarios públicos de prueba en $TargetDirectory/prueba; no distribuir ni medir rendimiento con este perfil."
     }
 } finally {
     if ($null -ne $previousConfig) { Restore-NativeBuildConfig $previousConfig }

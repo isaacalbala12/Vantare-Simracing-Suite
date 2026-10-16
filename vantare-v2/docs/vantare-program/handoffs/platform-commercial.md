@@ -3207,6 +3207,160 @@ Leídos [#1568](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/
 
 ## 3. Estado real y canal
 
+### #1591 / VANTA-103 — preparación para RC (16-oct-2026)
+
+Isaac ha aprobado el instalador para la beta pública del 26-oct a las 19:00,
+según el encargo del orquestador del 16-oct. Esta decisión sustituye el estado
+«Isaac prueba y decide» de la entrega del 13-oct. Objetivo: PR #1600 lista para
+review e integración en nightly antes del RC del 23-oct; el worker no mergea.
+
+Entrada limpia `95bff4956`, rama `vantareapp/isa-1591-instalador-propio`, worktree
+`C:/VantareServer/wt/isa-1591`. Merge local `d2184fc8a` de
+`origin/nightly@bcaa0e3f2de0278b329b94bd2095505d56c3ed1d` (32 commits), sin
+rebase. Único conflicto en gates.ps1: conserva `--target-dir` de nightly y
+el parámetro de target propio, incluida la copia de DuckDB en el perfil prueba.
+
+El publisher del PR ya construye GPUI por defecto; 0.0.976 y `-LegacyNsis`
+conservan NSIS explícitamente. Se añade `publish-installer-tests.ps1` al check
+Windows bloqueante: ejecuta el publisher real con build/firma inertes y prueba
+selección GPUI sin NSIS instalado, ambas excepciones legacy, sidecars y rechazo
+del fallo GPUI sin fallback. 13 checks PASS en PowerShell 5.1; shell aislado 23 PASS, canales 45 PASS e
+integridad 456 PASS. Issue bajo `area:plataforma`, Project Vantare In Review y
+milestone «Plataforma, CI y releases · testers». No crea binarios
+distribuibles ni prueba una firma real. La CI no publica instaladores/releases;
+la preparación manual autorizada sigue siendo `publish-beta.ps1`.
+
+Código y CI propios de esta continuación: `a18ab4379010a4d0f1fb46c50154e9a5b9368828`,
+push verificado. Gates Rust secuenciales por `native/scripts/compilar.ps1`,
+`VANTARE_CARGO_MIN_GB=0`, jobs 2, locked/offline y target exclusivo
+`native/target/gates`: fmt de workspace, check y Clippy (`-D warnings`, todos
+los targets de installer/build-support), Nextest 8/8 sin omisiones y lifecycle
+18/18 PASS. El único intento retirado antes de compilar fue una espera propia
+para reagrupar los gates en un runner secuencial; no hubo errores del compilador.
+Telemetría local omitida: el diff propio no cambia runtime/domain/ipc/testdata;
+la CI aplica además el clasificador vigente al PR completo.
+Evidencia: `C:/VantareServer/evidence/installer-1591/`, logs por gate y
+`gates.ps1` reproducible; fmt esperó 581 s y el runner posterior 31 s en cola.
+Sin recompilar un Setup distribuible: el cambio adicional es CI/documentación;
+la QA Release 0.0.978 previa y sus límites no se atribuyen a este SHA.
+
+Entrega autorizada: push y PR #1600 ready a nightly; SHA documental final y
+resultados remotos de «Validate promotion path» y «Validate Vantare blocking
+gates» se registran y releen en #1591/PR, separados de los gates locales.
+Siguiente: orquestador revisa y decide el merge. Canal alcanzado: rama de issue,
+ninguna integración en nightly. Sin tocar firma USB ni publicación; sin secretos,
+`.env`, ventanas, subagentes, merge o release.
+La aprobación no añade evidencia de Windows limpio, DPI o feed live; se
+conservan los límites y la recuperación legacy aceptada en la entrega anterior.
+
+### #1591 — instalador propio, FASE 2 autorizada (2026-10-13)
+
+Plan aprobado: [plan versionado](../../superpowers/plans/2026-10-13-instalador-propio-1591.md), copia solicitada `C:/tmp/ola2/plan-1591.md`.
+Issue [#1591](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1591), rama `vantareapp/isa-1591-instalador-propio`, worktree T3 propio,
+base/HEAD de entrada `cec4364a5b4fc03f111dde6073c01e5fb36dad68` = origin/nightly obtenido.
+Diseño aprobado `instalador-r3.html`, ventana #E; SHA-256 `ca1e9bd31ba76fda1031e1b93ba6a090ef889b911cf20d58f30e0181867ad841`.
+Propuesta: crate `vantare-installer`, GPUI fijado y ZIP/scripts embebidos; motor PowerShell existente, sin dependencias externas nuevas.
+Mantiene identidad VantareNativeBeta, QA TEST_INSTALLER, datos por generación, códigos 0–4 y bootstrap renovado solo por Setup.
+#1565/PR #1592 ya está integrado en nightly al cierre. Se incorpora esa base
+localmente (`298abc335da7d09d62917d3954bd63fb69e5389d`) conservando Downloads,
+orígenes, sidecars y CI; 0.0.976 mantiene NSIS. No se publica desde #1591.
+§4 cerrado: escritorio ON/autostart OFF en interactivo, ninguno nuevo en /S;
+datos SIEMPRE conservados, sin casilla; Repair solo con igual versión; valores reales.
+H1: crate/CLI/puente/payload/builder y recurso PE. Tests Rust 4/4, shell 9,
+Clippy sin UI y comparación del lock PASS; solo nuevo paquete local, cero dependencias externas.
+H2: Register conserva la UI propia, opciones/accesos exclusivos y limpieza
+diferida validada por hash. Shell 23 PASS y uninstall interrumpido 2 PASS;
+son fixtures, no acreditan instalación completa ni equipo limpio.
+Sin instalación real, secretos, firma real, promoción ni release. Hitos/SHA en la issue.
+H3: seis pantallas GPUI, controles, opciones y worker conectado al motor;
+fuentes del HTML convertidas sin dependencias nuevas. Capturas nativas iniciales
+de seis pantallas más opciones/desinstalado a 720x460, DPI 96, revisadas en
+`C:/tmp/ola2/1591-qa/visual/gpui-h3/`; todavía usan un snapshot fixture 0.0.0.
+Clippy UI y contratos Rust se registran con el SHA del hito en la issue.
+H4: publisher construye Setup propio con CRT estático y firma de feed intacta;
+0.0.976/`-LegacyNsis` conserva NSIS. Scripts de QA headless/interacción añadidos.
+Paquetes reales 0.0.977/0.0.978; bootstrap refrescado conservando hashes de todos
+los EXE de aplicación (QA-PROVENANCE.json). Regresión del fallback PowerShell
+corregida: Beta 99 PASS, packaging 175 PASS, matriz propia 68 PASS, interacción
+real 22 PASS, feed remoto simulado 9 PASS, shell 23 y uninstall 2 PASS.
+Gates finales tras incorporar nightly: fmt/check/Clippy PASS; Nextest
+1646/1646 (7 skips), lifecycle 18/18 (`1591-merge-*.log`). Matriz Release
+68 PASS, feed remoto Downloads 9 PASS y origen exacto + 8 rechazos PASS.
+Target de gates propio trasladado a E por disco lleno en C; parámetro de ruta
+sin cambiar expectativas. Fallos previos y mapa de evidencia archivada conservados.
+H5 local: NSIS actual→propio 50 PASS; interacción final 22 PASS y seis
+comparativas HTML/GPUI revisadas, en `C:/tmp/ola2/1591-qa/visual/comparativa-1591.html`.
+[Informe de QA y límites](../../reviews/2026-10-13-1591-instalador-qa.md).
+PR draft [#1600](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1600)
+a nightly, enlazado en T3. Implementación y base validadas en el merge local
+`8389ca8d020eaf24b7c189f2f78a431d025bb7dd`; el HEAD documental de entrega
+queda registrado en la issue y la PR. Setup/Uninstall Release construidos con payload
+Debug QA, sin firma real ni publicación; no certifica una release completa.
+**Siguiente paso #1591: revisión independiente y acreditar el entorno
+live/Windows limpio; sin subagentes, sin integración.**
+VM/cuenta con otro SID, arranque live, Windows limpio y DPI físicos siguen
+pendientes de entorno; no se infieren de las capturas ni de los tests headless.
+Push/PR draft a nightly y enlace T3 autorizados al finalizar; no integración antes de review independiente.
+QA futura bajo `C:/tmp/ola2/1591-qa`; arranque live solo en cuenta/VM de prueba por el SID/instancia compartida, capturas con pantalla libre y mutex.
+
+Cambio puntual aprobado por Isaac en #1591: bienvenida y Opciones muestran
+«Vantare, creado por y para pilotos»; medición QA y comparativa actualizadas.
+Gates Rust por cola: fmt/check/Clippy PASS, Nextest 1646/1646 (7 skips), lifecycle
+18/18 (`1591-copy-*.log`, lifecycle-r2). SHA en issue/PR #1600; revisión en curso.
+
+Correcciones de revisión #1600 autorizadas: P1 y P2-2 a P2-5. P1 reproduce
+carga previa a Rust y pasa tras restringir imports estáticos a System32:
+2 PE y 4 probes con DLL inocua (con/sin /S). [Evidencia de correcciones](../../reviews/2026-10-13-1600-correcciones.md).
+P2-2 y P2-3: reparación e2e (2 casos/8 checks) y reintentos en 7 fronteras PASS,
+manteniendo hashes/datos y retirando solo accesos propios. P2-4: contratos y
+CLI real de /D y _?=, incluidos Unicode/espacios repetidos, PASS.
+P2-5 RED con NSIS/base verdaderamente pre-PR `298abc33` limpia: Register de A
+tras rollback vuelve a PowerShell. El orquestador acepta esa limitación y
+resuelve la DUDA: no se reescribe A. Dos recuperaciones PASS: reinstalar B
+tras rollback, y desinstalar desde la entrada antigua antes de reinstalar B
+con metadatos huérfanos. Restauran GPUI/accesos/preferencias y datos exactos;
+Register B es real, readiness es fixture. README y PR documentan el escenario.
+Gates locales 1650/1650 (7 skips), lifecycle 18/18, fmt/check/Clippy, matriz
+Release 68, shell 23 y beta 99 PASS. SHA/canal final en issue/PR; sigue draft
+para revisión independiente, sin integración ni acreditación live/Windows limpio.
+SHA por hito en la issue; no integrar, firmar ni publicar una release.
+
+Ronda 2 sobre `5f53b34c`: revisión confirma P1/P2-2/3/4 y aceptación P2-5,
+pero abre P2-6 (Cleanup retira EXE y deja marker huérfano). Regresión nueva
+`installer-cleanup-recovery-tests.ps1`: handle real FileShare.Read e interrupción
+sincronizada en copia privada del helper; ambos dejan datos exactos y Setup
+público devuelve 2 al reinstalar (RED, hito `2fe91323`). Arreglo mínimo del
+driver validado localmente: Setup reclama solo marker
+sin EXE/state/registro, con raíz/identidad/metadatos válidos. Ambas variantes
+GREEN (16 checks) restauran GPUI y datos exactos; rechazan raíces/identidades
+ajenas, marker inválido y limpieza pendiente, y conservan instalación renovada
+ante helper antiguo. Gates por cola: fmt/check/Clippy, Nextest 1650/1650 (7
+skips), lifecycle 18/18, matriz 68, shell 23 e integridad 456 PASS. AST 25
+scripts y lock sin dependencias nuevas; EXE Release TEST `review-b-r4` embeben
+los scripts exactos, 2 PE con 0x800/CRT estático, paquete Debug de aplicación
+idéntico. SHA/push final en issue/PR/buzón; sigue draft para revisión, sin live,
+integración, firma ni release.
+
+Ronda 3 de Sol: **APTO** sobre `ea7b782c`, sin P1/P2 abiertos, conforme a
+`C:/tmp/ola2/review-1600-sol-r3.md`; no acredita Windows limpio/live/DPI.
+Prueba manual de Isaac preparada en `C:/tmp/1591-prueba-isaac/`: Setup QA
+0.0.978, paquete y ambos instaladores Release desde ese SHA **limpio**, con
+`beta-dev-clerk.env` cargado por el validador público, sin mostrar/copiar sus
+valores y sin USB/firma de feed. Target de paquete propio en C; installer en E.
+SHA-256 del Setup: `5198a0a5aa81e8eae0463c4ab90c4034c282b6d18d2976526930a2aa68ef37a7`.
+`PROCEDENCIA.json` identifica fuente/configuración/hash; 10 EXE de aplicación
+reales, sin admin/installer ni imports VC Redist. Ambos instaladores mantienen
+0x800/CRT estático y scripts/ZIP/Uninstall embebidos exactos; NotSigned y
+probe --version exit 0. Evidencia `1591-manual-build-r2.log`/verify/version.
+`PRUEBA.md` tiene 8 pasos para VM limpia, DPI 100/125/150, abrir, reparar,
+desinstalar/reinstalar y conservación/borrado manual de datos solo en la VM.
+`INSTALAR.cmd` pasa la raíz QA explícita; su helper bloquea el PC de origen y
+otra instalación real existente. Bloqueo del origen comprobado sin abrir UI.
+El producto sigue conservando siempre datos; no se añade borrado ni cambia
+código. **Siguiente: Isaac prueba en VM y decide; no merge ni release.**
+
+### Estado previo de plataforma (su base propia)
+
 Base incorporada mediante merge (sin rebase): `origin/nightly@b2186f82746424b4844a5909efd31530c5bbe5b3`,
 que contiene #1570 (handoffs de estado), #1572 (#1563 pedales) y #1573 (#1568 acceso).
 Rama `vantareapp/isa-1535-roadmap-testing`, entrega #1535 `3d762e8b`, PR
@@ -3284,6 +3438,9 @@ P2-4 aceptado por Isaac en #1535; no implica configurar credenciales ni desplega
 de cambiar la visibilidad.
 
 ## 10. Última actualización
+
+2026-10-13 · GitHub #1591 · Codex: hito de planificación y DUDA; no cambia
+el estado remoto de las entregas anteriores. Plan/issue/metadata verificados al cerrar FASE 1.
 
 2026-10-10 · GitHub #1535 · Codex. PR #1578, base nightly y cambios
 #1570/#1572/#1573 contrastados. Estado sustituido segun plantilla; diario,

@@ -1,25 +1,43 @@
 ## #1636 · VANTA-72 · Sincronización con nightly (16/10/2026)
 
-Encargo del orquestador: fusionar nightly `9e48eb86f` en la rama de Correos
-`vantareapp/isa-1636-correos` desde `2de604cc2`; no promocionar ni publicar.
-25 conflictos resueltos conservando nightly actual en Founders/disputas/informes,
-refunds, ledger y miniapp de creadores/personas; se reenganchan solo los cambios
-específicos de Correos sobre esa base (delta comparado con miniapp `0ac70754`).
-Handoff conserva ambas entregas. CI conserva scope/cache/gates de nightly y el
-job SQL/E2E independiente de Correos; guard PS respeta el scope nativo nuevo.
+PR #1657 / rama `vantareapp/isa-1636-correos`, entrada `2de604cc2`. Merge
+`8c6362f0` incorpora `nightly@9e48eb86f` autorizado por el orquestador; segundo
+merge `d75fd2e3` incorpora avance `ceb999f5` de avisos/handoff durante los gates.
+No se promociona la rama ni se publica en GitHub desde el worker.
 
-Validación en curso: SQL/Edge en Mac con Docker lock y dobles, Rust admin/services
-en worktree aislado del servidor, secuencial por cola, VANTARE_CARGO_MIN_GB=0
-según autorización explícita de este encargo. No cambia variables de máquina.
-No se toca el checkout principal del servidor ni su untracked ajeno.
-Evidencia Mac `~/evidence/1636-nightly/`; evidencia Rust servidor
-`C:/VantareServer/evidence/1636-nightly/`. Tracker/PR/publicación a cargo del
-orquestador; worker hará push solo al bare y FIN en buzón. Gates Mac verdes: SQL756 + E2E1 con PostgreSQL/dobles y Edge363; contrato CI2,
-clasificador nativo11 y quality/456 huellas PASS. Guard PS detectó candidato
-billing-report-promotion de nightly no reconocido; se añadió inerte con test
-rojo/verde, sin habilitar despliegues. Rust servidor fmt/check verdes; Clippy y
-Nextest en curso. Nightly avanzó a ceb999f5 solo en tooling de avisos/handoff;
-incorporado también para dejar la rama actualizada sin tocar esos cambios.
+25 conflictos resueltos conservando nightly actual en Founders/disputas/informes,
+refunds, ledger y miniapp de creadores/personas; se reenganchan solo cambios de
+Correos sobre esa base (delta comparado con miniapp `0ac70754`). Los seis archivos
+críticos polar/webhook/creator-code/payment-sync/fixtures/people se conservan
+idénticos a nightly. Handoff conserva ambas entregas. CI mantiene scope/cache y
+gates de nightly junto al job SQL/E2E de Correos; el guard PS respeta scope nativo.
+
+Fix `950aac58`: guard PowerShell reconoce también billing-report-promotion,
+como candidato inerte (sin habilitarlo); ejecución Windows detectó el fallo y
+regresión Deno fue roja/verde. Guard PS real Windows ya PASS tras corregirlo.
+
+Checks combinados: Mac SQL **756/756** (26 suites admin/marketing/Founders/
+renovaciones/informes) y E2E **1/1**, Edge **363/363**, CI marketing **2/2**,
+clasificador nativo **11/11**, YAML/shell, fmt Deno y quality/**456** huellas PASS.
+Docker bajo lock con contenedor limpio; PostgreSQL real, OAuth/Brevo/Polar dobles.
+E2E usa adaptador RPC psql, no transporte PostgREST ni proyecto remoto.
+Windows admin/services: **fmt, check, Clippy -D warnings PASS; Nextest 224 PASS,
+2 ignorados existentes**, comandos seriales por compilar.ps1, jobs2 y tests1,
+VANTARE_CARGO_MIN_GB=0 en proceso según encargo; sin cambiar variables de máquina.
+Todo `native/` idéntico al snapshot de validación `8c6362f0` tras el segundo merge.
+No se modifican runtime/domain/ipc/testdata frente a nightly: lifecycle/telemetría
+no se repiten en este encargo de resolución; CI de producto sigue con sus gates.
+
+Evidencia Mac `~/evidence/1636-nightly/`; Rust/guard Windows en
+`C:/VantareServer/evidence/1636-nightly/`. Checkout de gates aislado
+`C:/VantareServer/wt/isa-1636-sync`, target propio, sin tocar el checkout principal
+ni su untracked ajeno. No se compila Rust en Mac en esta ronda por instrucción
+expresa. Sin cambio visual adicional ni nueva QA física de UI.
+
+Entrega local para publicación/revisión de CI por el orquestador. Push solo al
+bare del Mac, SHA/FIN en `~/orq/1636.buzon.md`. Sin merge a nightly ni release,
+despliegue, servicios reales o gasto. Se conservan pendientes de activación
+#1637/web, QA visual/Windows, secretos/flags/tick y alarmas documentados en MAIL.md.
 
 ## #1636 · VANTA-72 · R3 menores de seguridad (15/10/2026)
 

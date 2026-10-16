@@ -1,0 +1,4 @@
+# Los hashes de despliegue deben corresponder a los bytes de cualquier checkout.
+*.sh text eol=lf
+*.py text eol=lf
+*.sha256 text eol=lf

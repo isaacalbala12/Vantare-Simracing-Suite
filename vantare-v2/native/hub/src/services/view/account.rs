@@ -648,6 +648,7 @@ mod tests {
                         revision: 1,
                         checked_at_ms: now,
                         catalog: vantare_ipc::control::CatalogAccess::Founders,
+                        overlays_advanced: true,
                         ..Default::default()
                     },
                     now,

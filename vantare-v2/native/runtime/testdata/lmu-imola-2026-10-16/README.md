@@ -15,3 +15,12 @@ no prueba rumbo geográfico, presión, previsión ni unidades de viento no nulo.
 El test la asocia deliberadamente a un frame histórico para comprobar identidad,
 caducidad y ausencia; esa asociación es una frontera sintética, no una nueva
 captura física SHM de Imola ni una transición de sesión.
+
+`clock-trace.json` conserva las 582 lecturas SHM estables de los primeros
+10 segundos de ese mismo archivo: `at_ns` del registro, `mCurrentET` de scoring
+y `mElapsedTime` de la fila del jugador. Números originales, sin redondeo,
+nombres, paths, posiciones ni inputs. La regresión de frescura usa ambos
+relojes por separado: mantiene los huecos >=500 ms y exige recuperar al
+siguiente avance, sin esperar 2 s continuos. No es una captura de conducción.
+Extracción reproducible: test opt-in `recorded_clock_cadence`; su informe
+`first_10s_trace` añade una cuarta columna diagnóstica que esta fixture omite.

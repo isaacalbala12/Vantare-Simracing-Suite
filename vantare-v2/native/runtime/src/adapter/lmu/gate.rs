@@ -1,18 +1,17 @@
 //! Frescura por el reloj del simulador, no por la frecuencia de lectura: el
-//! frame caduca si `mCurrentET` no avanza y solo se recupera tras un periodo
-//! de avance sostenido (asimetría heredada del driver Go).
+//! bloque caduca si su reloj no avanza durante 500 ms. Un nuevo dato del
+//! productor recupera la frescura inmediatamente: la espera heredada de 2 s
+//! impedía recuperarse entre interrupciones breves de la captura de Imola.
 
 use std::time::Duration;
 
 pub(super) const STALL_LIMIT: Duration = Duration::from_millis(500);
-pub(super) const RECOVERY_WINDOW: Duration = Duration::from_secs(2);
 
 #[derive(Default)]
 pub(super) struct Gate {
     previous_source: Option<Duration>,
     unchanged_since: Option<Duration>,
     stale: bool,
-    recovering_since: Option<Duration>,
 }
 
 impl Gate {
@@ -22,7 +21,7 @@ impl Gate {
         self.stale || self.is_stalled_at(now)
     }
 
-    /// Distingue reloj detenido de la ventana de recuperación tras un fallo.
+    /// Tiempo sin avance del productor, independientemente del ritmo de lectura.
     pub(super) fn is_stalled_at(&self, now: Duration) -> bool {
         self.unchanged_since
             .is_some_and(|since| now.saturating_sub(since) >= STALL_LIMIT)
@@ -46,26 +45,11 @@ impl Gate {
         if advanced || self.unchanged_since.is_none() || rewound {
             self.unchanged_since = Some(now);
         }
-        if rewound {
-            self.recovering_since = None;
-        }
         let stalled = now.saturating_sub(self.unchanged_since.unwrap_or(now)) >= STALL_LIMIT;
-        if !self.stale {
-            self.stale = stalled;
-            return self.stale;
-        }
-        if stalled {
-            self.recovering_since = None;
-            return true;
-        }
-        let since = match self.recovering_since {
-            Some(since) => since,
-            None if advanced => *self.recovering_since.insert(now),
-            None => return true,
-        };
-        if now.saturating_sub(since) >= RECOVERY_WINDOW {
+        if advanced {
             self.stale = false;
-            self.recovering_since = None;
+        } else if stalled {
+            self.stale = true;
         }
         self.stale
     }
@@ -80,7 +64,7 @@ mod tests {
     }
 
     #[test]
-    fn asymmetric_stall_and_recovery_boundaries() {
+    fn stall_boundaries_and_recovery_on_new_producer_data() {
         // (ahora, reloj del simulador, caducado esperado), en ms.
         for steps in [
             &[
@@ -92,18 +76,18 @@ mod tests {
             &[
                 (0, 1000, false),
                 (500, 1000, true),
-                (600, 1200, true),
-                (1000, 1600, true),
-                (2599, 3000, true),
+                (600, 1200, false),
+                (1000, 1600, false),
+                (2599, 3000, false),
                 (2600, 3200, false),
             ],
             &[
                 (0, 1000, false),
                 (500, 1000, true),
-                (600, 1200, true),
+                (600, 1200, false),
                 (1100, 1200, true),
-                (1200, 1400, true),
-                (2600, 2800, true),
+                (1200, 1400, false),
+                (2600, 2800, false),
                 (3200, 3400, false),
             ],
             &[
@@ -125,8 +109,8 @@ mod tests {
         let mut gate = Gate::default();
         assert!(!gate.observe(ms(1000), Some(ms(1000))));
         assert!(gate.observe(ms(1500), Some(ms(1000))));
-        assert!(gate.observe(ms(1600), Some(ms(1200))));
-        assert!(gate.observe(ms(100), Some(ms(1200))));
+        assert!(!gate.observe(ms(1600), Some(ms(1200))));
+        assert!(!gate.observe(ms(100), Some(ms(1200))));
         assert!(gate.observe(ms(600), Some(ms(1200))));
     }
 
@@ -148,7 +132,7 @@ mod tests {
     }
 
     #[test]
-    fn the_irregular_54_car_cadence_does_not_flap() {
+    fn intermittent_source_gaps_do_not_latch_stale_after_resuming() {
         let pattern = [300, 650, 420, 700, 380, 540, 310, 690];
         let mut intervals: Vec<u64> = (0..60)
             .map(|index| pattern[index % pattern.len()])
@@ -173,6 +157,9 @@ mod tests {
             to_fresh += u32::from(!current && stale);
             stale = current;
         }
-        assert_eq!((to_stale, to_fresh, stale), (1, 1, false));
+        // Each actual interruption is visible; it cannot poison later data.
+        assert!(to_stale > 1);
+        assert_eq!(to_stale, to_fresh);
+        assert!(!stale);
     }
 }

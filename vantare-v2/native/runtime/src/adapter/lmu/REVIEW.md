@@ -249,7 +249,10 @@ Clima envejece con el reloj de scoring existente. Daño tiene un `Gate` propio
 con `mElapsedTime` de telemetría: scoring avanzando no rejuvenece un bloque
 telemetría congelado, ni telemetría avanzando rejuvenece clima congelado.
 Sin reloj (los fixtures lo borran), se vigilan cambios en los inputs admitidos.
-El umbral heredado es 500 ms y recuperación sostenida de 2 s. Esta vigilancia
+El umbral es 500 ms y se recupera al avanzar el reloj de ese mismo bloque.
+La espera heredada de 2 s se retiró tras medir Imola: los huecos periódicos
+reales de la fuente impedían recuperarse incluso cuando volvían los datos.
+No se amplía el TTL ni se usa REST para rejuvenecer SHM. Esta vigilancia
 sin reloj puede marcar obsoletas señales de un coche perfectamente estático;
 es un límite de evidencia, no una prueba de que LMU esté colgado. La calidad
 de las señales anteriores de pedales, combustible y delta no se cambia.

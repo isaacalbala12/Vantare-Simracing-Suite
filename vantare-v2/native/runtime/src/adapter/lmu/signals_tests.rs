@@ -394,7 +394,7 @@ fn all_telemetry_signals_follow_their_clock_and_recovery() {
         let initial = initial.state.player.expect("jugador");
         for (now, advance, stale) in [
             (600_u32, false, true),
-            (800, true, true),
+            (800, true, false),
             (2800, true, false),
         ] {
             write(&mut bytes, 1700, 112.6 + f64::from(now) / 1000.0);
@@ -514,7 +514,7 @@ fn scoring_freeze_does_not_expire_a_running_telemetry_clock() {
 }
 
 #[test]
-fn a_frozen_telemetry_clock_and_recovery_keep_the_existing_hysteresis() {
+fn a_frozen_telemetry_clock_recovers_when_its_own_data_resumes() {
     let mut bytes = REAL_44.to_vec();
     write(&mut bytes, PLAYER + 12, 112.6);
     let mut t = Translator::new(SourceKind::Replay);
@@ -523,11 +523,11 @@ fn a_frozen_telemetry_clock_and_recovery_keep_the_existing_hysteresis() {
     assert!(t.needs_refresh(Duration::from_millis(500)));
     for (now, tel, expected) in [
         (600_u32, 112.6, Capability::WithData),
-        (800, 112.8, Capability::WithData),
-        (1200, 113.2, Capability::WithData),
-        (1600, 113.6, Capability::WithData),
-        (2000, 114.0, Capability::WithData),
-        (2400, 114.4, Capability::WithData),
+        (800, 112.8, Capability::Fresh),
+        (1200, 113.2, Capability::Fresh),
+        (1600, 113.6, Capability::Fresh),
+        (2000, 114.0, Capability::Fresh),
+        (2400, 114.4, Capability::Fresh),
         (2800, 114.8, Capability::Fresh),
     ] {
         write(&mut bytes, 1_700, 112.6 + f64::from(now) / 1000.0);

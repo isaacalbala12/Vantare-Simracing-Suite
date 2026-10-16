@@ -604,7 +604,12 @@ Deno.test("r1: creator creation reserves a stable id before Polar and activates 
         assert(action === "create_creator");
         assert(params.code === "CARLOSGT");
         return Promise.resolve({
-          creator: { creator_id: target, status: "active", code: "CARLOSGT" },
+          creator: {
+            creator_id: target,
+            status: "active",
+            code: "CARLOSGT",
+            annual_discount_id: "00000000-0000-4000-8000-000000001684",
+          },
         });
       },
     }),
@@ -633,19 +638,23 @@ Deno.test("r1: miniapp creates a scoped Polar discount and retries it without du
     raw.checkout_keys[key] = {
       ...raw.checkout_keys.pro_monthly,
       plan_sku: key,
-      polar_launch_product_id: `launch-${i}`,
+      polar_product_id: `normal-${i}`,
     };
   }
   const map = raw as PolarProductMap;
   let active = false;
   let created = 0;
   let stored: Record<string, unknown> | null = null;
+  const allStored: Record<string, unknown>[] = [];
   const fake = deps({
     environment: "sandbox",
     productMap: map,
     execute: (_a, _i, action, params) => {
       if (action === "activate_creator") {
-        assert(params.discount_id === "discount-created");
+        assert(params.discount_id === "00000000-0000-4000-8000-000000001683");
+        assert(
+          params.annual_discount_id === "00000000-0000-4000-8000-000000001684",
+        );
         active = true;
       }
       return Promise.resolve({
@@ -672,7 +681,7 @@ Deno.test("r1: miniapp creates a scoped Polar discount and retries it without du
         if (init?.method === "GET") {
           return Promise.resolve(
             Response.json({
-              items: stored ? [stored] : [],
+              items: allStored,
               pagination: { max_page: 1 },
             }),
           );
@@ -681,9 +690,12 @@ Deno.test("r1: miniapp creates a scoped Polar discount and retries it without du
         assert(!("organization_id" in JSON.parse(String(init?.body))));
         stored = {
           ...JSON.parse(String(init?.body)),
-          id: "discount-created",
+          id: created === 1
+            ? "00000000-0000-4000-8000-000000001683"
+            : "00000000-0000-4000-8000-000000001684",
           organization_id: map.organization_id,
         };
+        allStored.push(stored!);
         return Promise.resolve(Response.json(stored));
       },
     },
@@ -702,9 +714,9 @@ Deno.test("r1: miniapp creates a scoped Polar discount and retries it without du
   active = false;
   assert((await handleNativeAdmin(request(input), fake)).status === 200);
   assert(
-    created === 1 &&
+    created === 2 &&
       (stored as Record<string, unknown> | null)?.basis_points === 2000 &&
-      (stored as Record<string, unknown> | null)?.duration_in_months === 2,
+      (stored as Record<string, unknown> | null)?.duration_in_months === 12,
   );
 });
 

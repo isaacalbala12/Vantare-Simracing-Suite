@@ -2,6 +2,7 @@
 -- Install after both candidate migrations; no remote side effects or operator IDs.
 alter table private.report_promotion_changes add column renewal_token uuid;
 alter table private.report_promotion_changes add column selected_discount text;
+alter table private.report_promotion_changes add column revocation_pending_at timestamptz;
 create table private.report_creator_terms (
  environment text not null, subscription_id text not null, account_id uuid not null,
  duration_months integer not null check(duration_months between 1 and 120),
@@ -220,6 +221,32 @@ begin
  alter function public.billing_creator_renewal_prepare(text,uuid,text,text,text,uuid,text,uuid,integer) owner to postgres;
  revoke all on function public.billing_creator_renewal_prepare(text,uuid,text,text,text,uuid,text,uuid,integer) from public,anon,authenticated;
  grant execute on function public.billing_creator_renewal_prepare(text,uuid,text,text,text,uuid,text,uuid,integer) to service_role;
+ -- Preserve #1661 revocation and extend it only with verified creator remainders.
+ if to_regprocedure('public.billing_creator_revocation(text,text,uuid,text,text,text,uuid,boolean)') is not null then
+  alter function public.billing_creator_revocation(text,text,uuid,text,text,text,uuid,boolean) set schema private;
+  alter function private.billing_creator_revocation(text,text,uuid,text,text,text,uuid,boolean) rename to billing_creator_revocation_before_1593;
+  revoke all on function private.billing_creator_revocation_before_1593(text,text,uuid,text,text,text,uuid,boolean) from public,anon,authenticated,service_role;
+  original:=pg_get_functiondef('private.billing_creator_revocation_before_1593(text,text,uuid,text,text,text,uuid,boolean)'::regprocedure);
+  if position('perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(p_user::text,0));' in original)=0 then raise exception 'creator_revocation_lock_contract_changed'; end if;
+  execute replace(original,'perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(p_user::text,0));','if private.lock_account_write(p_user) then return null; end if;');
+  execute $revoke$
+  create function public.billing_creator_revocation(p_stage text,p_environment text,p_user uuid,p_subscription text,p_order text default null,p_reason text default null,p_token uuid default null,p_success boolean default null)
+  returns jsonb language plpgsql security definer set search_path='' as $body$
+  declare result jsonb; managed jsonb;
+  begin
+   if private.lock_account_write(p_user) then return null; end if;
+   result:=private.billing_creator_revocation_before_1593(p_stage,p_environment,p_user,p_subscription,p_order,p_reason,p_token,p_success);
+   if result->>'token' is not null then
+    select coalesce(jsonb_agg(r.discount_id::text),'[]') into managed from private.report_creator_remainders r
+     where r.environment=p_environment and r.product_id=(result->>'product_id')::uuid and r.creator_discount_id=(result->>'creator_discount_id')::uuid;
+    result:=result||jsonb_build_object('managed_creator_ids',managed);
+   end if;
+   return result;
+  end $body$ $revoke$;
+  alter function public.billing_creator_revocation(text,text,uuid,text,text,text,uuid,boolean) owner to postgres;
+  revoke all on function public.billing_creator_revocation(text,text,uuid,text,text,text,uuid,boolean) from public,anon,authenticated;
+  grant execute on function public.billing_creator_revocation(text,text,uuid,text,text,text,uuid,boolean) to service_role;
+ end if;
  return true;
 end $install$;
 select public.install_report_creator_bridge();
@@ -265,9 +292,18 @@ begin
  -- selection under #1661's lease. GET skips any already-confirmed desired state.
  execute 'update private.creator_renewal_operations set state=''pending'',completed_at=null where environment=$1 and subscription_id=$2'
  using op.environment,op.subscription_id;
- -- Injected clock for the bound; the original RPC owns lease/identity/payment checks.
- execute 'select private.billing_creator_renewal_prepare_before_1593($1,$2,null,$3,$4,$5,$6,$7,$8)'
- into selected using op.environment,op.account_id,op.subscription_id,context->>'first_order_id',op.product_id::uuid,context->>'checkout_key',(context->>'initial_discount_id')::uuid,case when private.report_creator_end(op.environment,op.subscription_id,p_now)<=p_now then 0 else p_creator_savings end;
+ -- A revoked creator cannot compete. Reports retain their independently
+ -- verified balance; the SAME central lease serializes with pending withdrawal.
+ if context->>'revocation_requested_at' is not null then
+  selected:=jsonb_build_object('token',gen_random_uuid(),'discount_id',op.discount_id,
+    'creator_discount_id',context->>'creator_discount_id','initial_discount_id',context->>'initial_discount_id');
+  execute 'update private.creator_renewal_operations set lease_token=$3,lease_until=now()+interval ''60 seconds'',selected_discount_id=$4 where environment=$1 and subscription_id=$2'
+   using op.environment,op.subscription_id,(selected->>'token')::uuid,op.discount_id::uuid;
+ else
+  -- Original RPC still owns the comparison and creator eligibility.
+  execute 'select private.billing_creator_renewal_prepare_before_1593($1,$2,null,$3,$4,$5,$6,$7,$8)'
+  into selected using op.environment,op.account_id,op.subscription_id,context->>'first_order_id',op.product_id::uuid,context->>'checkout_key',(context->>'initial_discount_id')::uuid,case when private.report_creator_end(op.environment,op.subscription_id,p_now)<=p_now then 0 else p_creator_savings end;
+ end if;
  selected:=private.report_creator_bound(op.environment,op.subscription_id,selected,p_now);
  if selected is null or selected->>'busy'='true' then return null; end if;
  update private.report_promotion_changes set renewal_token=(selected->>'token')::uuid,selected_discount=selected->>'discount_id' where id=p_id;
@@ -294,6 +330,12 @@ begin
    permitted:=ctx->>'state'='pending' and (ctx->>'lease_token')::uuid=op.renewal_token and (ctx->>'lease_until')::timestamptz>clock_timestamp()
     and exists(select 1 from private.report_promotions p where p.account_id=op.account_id and p.environment=op.environment and p.first_refunded);
   end if;
+  if permitted is distinct from true and ctx->>'revocation_requested_at' is not null then
+   permitted:=ctx->>'state'='pending' and (ctx->>'lease_token')::uuid=op.renewal_token and (ctx->>'lease_until')::timestamptz>clock_timestamp()
+    and (op.selected_discount is null or (op.selected_discount=op.discount_id
+     and exists(select 1 from private.report_promotion_catalog c where c.environment=op.environment and c.product_id=op.product_id and op.selected_discount in(c.launch_discount,c.reward3_discount,c.reward6_discount))))
+    and not exists(select 1 from public.billing_effective_access_grants g where g.environment=op.environment and g.user_id=op.account_id and g.capability='vantare.plan.founders' and g.status='active');
+  end if;
   if permitted is distinct from true then return false; end if;
  end if;
  return public.report_promotion_claim_before_1661(p_id,p_token,p_now);
@@ -301,14 +343,24 @@ end $$;
 alter function public.report_promotion_ack(uuid,uuid,timestamptz,text,text) rename to report_promotion_ack_before_1661;
 create function public.report_promotion_ack(p_id uuid,p_token uuid,p_now timestamptz default clock_timestamp(),p_observed_discount text default null,p_cleanup_reason text default null) returns boolean
 language plpgsql security definer set search_path='' as $$
-declare op private.report_promotion_changes; done boolean;
+declare op private.report_promotion_changes; done boolean; ctx jsonb;
 begin
  select * into op from private.report_promotion_changes where id=p_id;
  if not found or private.lock_account_write(op.account_id) then return false; end if;
  if not public.report_promotion_ack_before_1661(p_id,p_token,p_now,p_observed_discount,p_cleanup_reason) then return false; end if;
  if op.renewal_token is not null then
   execute 'select public.billing_creator_renewal_finish($1,$2,$3,true)' into done using op.environment,op.subscription_id,op.renewal_token;
-  if done is distinct from true then raise exception 'creator_renewal_ack_failed'; end if;
+  if done is distinct from true then
+    -- PATCH has a confirmed report receipt. Revocation invalidates creator
+    -- completion, not the observed remote fact. Never accept an arbitrary false.
+    execute 'select to_jsonb(c) from private.creator_renewal_operations c where environment=$1 and subscription_id=$2 and account_id=$3 for update'
+     into ctx using op.environment,op.subscription_id,op.account_id;
+    if ctx->>'revocation_requested_at' is null or (ctx->>'lease_token')::uuid is distinct from op.renewal_token
+     or ctx->>'state' is distinct from 'pending' or not coalesce((ctx->>'lease_until')::timestamptz>clock_timestamp(),false) then raise exception 'creator_renewal_ack_failed'; end if;
+    execute 'update private.creator_renewal_operations set lease_token=null,lease_until=null,state=''pending'',completed_at=null,not_applied=''creator:revocation_pending'' where environment=$1 and subscription_id=$2 and lease_token=$3'
+     using op.environment,op.subscription_id,op.renewal_token;
+    update private.report_promotion_changes set revocation_pending_at=p_now where id=p_id;
+   end if;
   if op.kind='apply' then
    update private.report_promotions set applied_discount=op.selected_discount,remote_discount=coalesce(p_observed_discount,op.selected_discount) where account_id=op.account_id and environment=op.environment;
   end if;

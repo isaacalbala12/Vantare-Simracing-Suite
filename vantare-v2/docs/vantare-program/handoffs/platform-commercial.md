@@ -1,3 +1,25 @@
+## #1593 / VANTA-39 · ronda 7 en validación · 16/10/2026
+
+Merge autorizado EN la rama de PR #1659 desde nightly1f07e8e28 (#1661/#1666).
+Conserva guards de checkout, Founders, atribución y renovación/retirada de creador,
+con los efectos Owner y ledger de informes. Catálogo JSON completo de #1661;
+primer periodo once durante26-oct→26-nov19Madrid, derecho único por cuenta
+independiente del flag de informes. RPC/consumo para mensual y anual, reserva,
+recuperación/CAS y huella de creador conservadas. Premio mensual desde mes2.
+Revocación entre PATCH/ACK: recibo confirmado durable con conflicto blando
+fenced; retirada sigue pendiente, sin falsa incidencia ni completar creador.
+Retirada incluye remanentes privados verificados y preserva cupones de informes;
+revocar creador no congela el premio independiente. Remanentes1..10 obligatorios
+antes de activar. SQL/Edge de ambas ramas en árbol unido real, sin overlay viejo.
+Edge702PASS/0FAIL/2ignored; dirigidoSQL176+84+89+43+36PASS en primera pasada.
+Catálogo completo, controles y gates Rust Windows pendientes en este checkpoint.
+Nightlybaseline real: SQL50PASS/27FAIL; Edge651PASS/7FAIL/2ignored (dobles
+antiguos de refunds, reproducidos sin cambios). Falta cerrar comparación final.
+Plane En curso, proyecto Vantare/area:licencias; rama
+vantareapp/isa-1593-descuento-informes, base ronda b5378d166. Sin push aGitHub,
+deploy, Polar real, cupones/productos creados ni promoción de canal.
+Evidencia y plan ~/evidence/1593-r7. Cierre posterior actualizará SHA/checks/FIN.
+
 ## #1593 / VANTA-39 · ronda 6, convivencia con #1661 · 16/10/2026
 
 Entrega para revisión de PR [#1659](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1659),
@@ -327,6 +349,187 @@ Siguiente acción del orquestador: revisar diff/evidencia y estas decisiones,
 resolver integración con #1639, generar PR/CI y solo promover tras autorización.
 Contrato/runbook completo y lista Polar:
 `supabase/functions/billing-report-promotion/README.md` desde raíz Git.
+## VANTA-83 / #1661 · ronda 5 terminada para revisión · 16-oct-2026
+
+- Código validado d037f8f661083791c848ba7081452d3488b974c1; PR draft #1666
+  hacia nightly. Re-review r3 APTO; esta ronda requiere revisión nueva.
+- F1 definitivo: refund del origen o de factura de la suscripción, o revocación,
+  retira el descuento de creador mediante GET/PATCH/ACK durable e idempotente.
+  Fencing, marcador anterior al primer pago y cuenta borrada; fallo visible Owner.
+  Founders conserva prioridad para detener renovación antes de limpiar creador.
+- F2 riesgo aceptado por Isaac: puede usar el código cualquiera que lo conozca.
+  F3 UUID y pertenencia por creador/entorno/intervalo; Owner registra ambos cupones.
+  F4 runbook de rotación sin ampliar managedIds ni reiniciar repeating.
+  F5 webhook real probado: initial solo desde billing_reason, nunca metadata.
+- Consulta Polar real autorizada: solo GET con token de lectura por stdin SSH,
+  nunca impreso ni guardado en Mac. Mapa real completo y plan online en
+  C:/VantareServer/evidence/polar-auditoria/POLAR_PRODUCT_MAP.production.json
+  y plan-catalogo-online.txt. Producción ready=true, writes=0, inventario
+  0 clientes/0 subs activas/0 pedidos (2026-10-15T23:45:37.832Z).
+  Se revalida al aplicar. aplicar-catalogo.txt contiene comando exacto para Isaac;
+  Deno instalado en Mac, requiere otro token con escritura. Bundle conservado.
+- Rojo→verde: online sin escrituras, initial falsificado, retirada ausente y
+  pertenencia SQL. Final: 286 pgTAP, 260 Edge y 25 Owner Nextest PASS;
+  check workspace, Clippy Owner -D warnings, fmt Rust/Deno y quality/retirement
+  PASS (456 huellas). Logs C:/tmp/founders-1661-evidence y Mac ~/orq/founders-1661-evidence.
+- No repetir Nextest global/lifecycle/telemetría: R5 Rust solo toca Owner;
+  se conservan R4 1798 Nextest (14 omitidas), lifecycle y 25 telemetría PASS.
+- Plane Por revisar al entregar; SHA final y CI verificados en PR/issue.
+  Sin apply, dinero, deploy, merge de feature, release ni capturas (#1655).
+  #1593 debe adoptar escritor común/preservar plazos y respetar revocación;
+  #1624 debe rebasarse. Web intacta. IVA y renovaciones sandbox pendientes.
+
+## VANTA-83 / #1661 · ronda 4 terminada para revisión · 16-oct-2026
+
+- Pro Plus confirmado 9,99/99,90 EUR; primer periodo 6,99/69,90.
+- Creador puede acompañar al lanzamiento: solo atribución en primer checkout,
+  20 % desde renovación. Cupones API-only mensuales/anuales configurados en
+  polar-launch-prices.json (11/12 meses). Comisión manual 30 % mes 1 y 10 % meses 2–12.
+- Claim y atribución atómicos; primer pago obligatorio, lease/GET/PATCH/ACK,
+  reintento sin reiniciar repeating y fallo visible en Owner. Informes puede
+  reabrir selección tras el primer pago; mayor ahorro, empate informes,
+  perdedor registrado. Founders añade Stable + Nightly vitalicios; refund retira ambos.
+- [Contrato #1593](../../billing/creator-renewals-1661.md). Rama leída sin tocar;
+  coordinación en issuecomment-6204073057 de #1593. **Pendiente en su integración**:
+  adaptar el escritor al arbitraje/lease y preservar plazo/saldo al volver de
+  informes; no activar dos escritores independientes ni afirmar prueba conjunta.
+- Código 52fab00d6ad0e4932d434bd3ffab35613e79aa2b. PR draft #1666 → nightly;
+  contiene merge autorizado eb553c7fe; sin integración de esta feature.
+- RED creador + campaña y Nightly contra baseline; 252 Edge, 247 pgTAP,
+  1798 Nextest PASS (14 omitidas por perfil), check/Clippy global/fmt,
+  lifecycle y 25 telemetría PASS; quality/retirement PASS (456 huellas).
+  Primer Nextest falló por fixture nueva desordenada; se corrigió el orden,
+  conservando la validación estricta. Log del fallo y pasada verde conservados.
+- Plan offline completo regenerado en C:/VantareServer/evidence/polar-auditoria/plan-catalogo.txt.
+  Modelo válido; apply_ready=false hasta inventario vivo verificado. Comando
+  de Isaac en aplicar-catalogo.txt vecino; no se ha ejecutado apply ni consultado Polar real.
+- Plane se devuelve Por revisar con PR y resumen. CI remota del push final se
+  comprueba en la entrega; no se afirma despliegue, merge ni release.
+- Sin dinero, servicios comerciales reales ni capturas (#1655). Web intacta,
+  contrato VANTA-42 actualizado; #1624 debe rebasarse sin tocar su rama.
+  Validación de IVA/renovaciones reales y activación pendientes del operador.
+
+## VANTA-83 / #1661 · ronda 3 de acabado (16/10/2026)
+
+Re-review R2 **APTO**, informe `C:/VantareServer/evidence/ds-rev-1661/review-r2.md`.
+N2: creador solo propiedad propia y UUID válido, rechazo anterior al claim.
+N3: aplicación de producción exige inventario en vivo vacío antes de escribir:
+cero clientes de organización y cero suscripciones activas/pedidos por producto
+existente afectado. Consulta fallida/incompleta también aborta. Ready calculado:
+modelo válido + inventario verificado; offline false, sin afirmar revisión real.
+Merge autorizado de `origin/nightly eb553c7fe` sin conflictos; incluye cola nueva
+y retirada de CI Linux. No se fusiona la rama de issue en nightly.
+Regresiones R3 RED contra versión anterior; GREEN final: **181 Edge PASS**,
+**1797 Nextest PASS**, 14 omitidas por perfil; **check y Clippy global PASS**,
+fmt/quality/retirement PASS y **11 tests del alcance de gates PASS**. Rust serial
+por cola nueva, MIN_GB=0; no ha hecho falta fallback de Clippy por crates en R3.
+SQL/lifecycle/telemetría no se repiten en R3: no cambia schema ni su código;
+evidencia de rondas anteriores conservada. Diff R3 y merge revisados.
+PR #1666 draft a nightly; rama ya contiene eb553c7fe y no está BEHIND.
+Plane Por revisar al cierre; CI remota pendiente. Sin promoción a nightly,
+despliegue ni release. Evidencia en `C:/tmp/founders-1661-evidence` y Mac
+`~/orq/founders-1661-evidence`; siguientes acciones: revisión R3/CI y operación
+manual del catálogo con mapa completo, IVA sandbox y ventas cerradas durante corte.
+Plan/bundle/comando se regeneran; ninguna consulta ni mutación contra Polar real.
+
+## VANTA-83 / #1661 · ronda 2 de seguridad (15/10/2026)
+
+Review R1 NO APTO: B1/I1 y M1–M4 corregidos. Admisión SQL persistente de
+Founders por cuenta/entorno antes del grant; rechazo de Launch nueva con
+cuarentena e incidencia crítica Owner, sin cortar replay/reembolso histórico.
+Checkout bloqueado ante admisión o pago recibido pendiente con binding.
+Venta separada por entorno, ACL verificadas, precio configurado e IVA coherente;
+reactivar Pro vuelve a cancelar renovación con recibo por revisión remota.
+Una confirmación vieja no completa una reactivación posterior. Reembolsar
+Founders no reactiva Pro (decisión aceptada), ni hay refunds automáticos.
+
+Decisión adicional de Isaac: campaña de beta pública con **descuento `once`**
+sobre productos normales, sin productos recurrentes de lanzamiento nuevos.
+Pro 599→399 / 5999→3990, Plus 999→699 / 9990→6990; renueva siempre al normal.
+Ventana por entorno en JSON, producción 26-oct→26-nov 19:00 Madrid.
+Checkout aplica descuento servidor, sin trial ni entrada libre de códigos;
+rechaza creador + campaña, valida código exacto fuera de ella y cambia la
+huella del intento al cambiar oferta. Los tests del modelo retirado de productos
+separados se sustituyen por tests de precio normal, `once`, fechas, no acumulación,
+historia, preflight, ownership, reintentos, token y salida exclusiva.
+
+RED: cuatro regresiones webhook contra ec47efa5; SQL R2 sin columna de entorno;
+cuatro regresiones de checkout once contra handler original. GREEN Mac:
+188 pgTAP y 176 Edge PASS tras cambio de modelo. Check workspace y Clippy del
+crate Owner PASS; Nextest Owner **25/25 PASS**. Clippy workspace falló por RAM dos
+veces, evidencia conservada; alcance incremental de crate tocado, un job,
+sin sccache, VANTARE_CARGO_MIN_GB=0. Sin repetir telemetría/lifecycle: runtime,
+IPC y servicios Rust no cambian en R2; validación completa anterior conservada.
+
+Plan completo regenerado sin token/--apply en servidor:
+`C:/VantareServer/evidence/polar-auditoria/plan-catalogo.txt`,
+`production_apply_ready: true`. Comando exacto (no ejecutado): fichero vecino
+`aplicar-catalogo.txt`; bundle Mac `~/orq/polar-auditoria/isa-1661` fuera del
+worktree desechable. Isaac debe aportar mapa completo, token en entorno,
+verificar IVA en sandbox y revisar/publicar los nuevos productos draft.
+No consultas ni cambios contra Polar real; web intacta, #1624 debe rebasarse.
+Entrega R2 aislada: push y PR #1666 draft a nightly. Siguiente: orquestador revisa
+R2/CI y coordina #1624/VANTA-42; Isaac verifica IVA en sandbox y decide aplicar
+el catálogo con su mapa completo. Sin merge, deploy, release, capturas (#1655)
+ni operaciones reales. fmt, quality y retirement PASS. Evidencia R2 conservada
+en `C:/tmp/founders-1661-evidence` y Mac `~/orq/founders-1661-evidence`.
+
+## VANTA-83 / #1661 · Plan Founders (15/10/2026)
+
+Rama `vantareapp/isa-1661-founders`, base asignada
+`28800654c5bb4ca425b49bd827d0ee8cbbeeb155`, worktree propio isa-1661.
+Plane En curso; PR draft [#1666](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1666)
+a nightly; Project Vantare, `area:licencias`, sin milestone asignado.
+
+Decisión definitiva de Isaac: **Founders es un plan de 50 EUR una vez**,
+todo el catálogo presente/futuro para siempre; desde la beta pública del
+26-oct-2026 19:00 Madrid **sin fecha final**, con interruptor SQL de venta.
+Pro/Pro Plus pueden comprar: derecho inmediato y cancelación de renovación al
+final del periodo pagado, sin reembolso. Una única política `end_period`,
+recibo persistente de cancelación y estado pendiente/completado visible en Owner;
+los errores reintentan mediante el inbox existente. Alternativa proporcional
+retirada con autorización de Isaac por simplicidad. Sin operaciones reales.
+
+Launch Edition retirada del catálogo de compra y de los botones. Se conserva
+la lectura de mappings, pagos y derechos históricos, migraciones y tests.
+El script prepara Founders en español. El producto real ya existe según Isaac;
+los IDs se centralizan en `supabase/functions/scripts/founders-production-config.json`,
+fragmento para fusionar con `POLAR_PRODUCT_MAP`, sin aplicar cambios reales. El contrato incorpora primer periodo Pro
+3,99/39,90 y renovación 5,99/59,99, extra Pro Plus, creador no combinable,
+informes desde mes 2 y beta pública. El modelo recurrente antiguo de #1620
+requiere reconciliación antes de aplicar catálogo en producción; se impide esa
+aplicación. **#1624 debe rebasarse sobre este PR**, sin tocar su rama aquí.
+
+Derecho `vantare.plan.founders`, servicios v10/control v5/fotos v10, textos de
+cuenta ES/EN/IT/PT-BR. [Contrato y payload web para VANTA-42](../../billing/founders-1661.md).
+Repo web intacto. Founders no concede roles ni canales privados.
+Límites: credencial perpetua offline no revocable hasta reconexión; para cerrar
+venta futura, desactivar también producto/enlaces entregados de Polar.
+
+Validación final local: **152 pgTAP PASS** (42 Founders, 57 Owner,
+34 reembolsos, 19 tombstones), **193 Edge PASS** en Mac con lock Docker.
+**1795 Nextest PASS** (14 omitidos por perfil) y **494 pruebas incrementales
+Hub/Owner PASS** (4 omitidas), check/Clippy/fmt PASS. Lifecycle PASS y
+telemetría **25/25 PASS**. Gates de Windows seriales, target propio;
+última fuente Rust validada `5f39b449880b7a637ecd29559b9e0e9a1fbb2bac`.
+El cierre posterior solo añade compatibilidad SQL para una suscripción ya
+cancelada, su test y evidencia/texto. Quality/retirement PASS (456 huellas).
+Regresión de credencial RED con normalizador original. Diff completo revisado.
+Logs en `C:/tmp/founders-1661-evidence` y Mac `~/orq/founders-1661-evidence`.
+Conservados fallos previos de RAM/mmap y cortes del orquestador/T3; repetición
+sin sccache con un job y VANTARE_CARGO_MIN_GB=0 autorizado.
+
+Entrega aislada: PR #1666 draft a nightly, push autorizado; Plane pasa a
+Por revisar con resumen. Última consulta CI: promoción, quality ratchet y
+GitGuardian PASS; native-linux y agregado bloqueante en curso. No se afirma
+CI completa ni integración. Sin captura (#1655), deploy, dinero, merge ni release.
+Siguiente: orquestador revisa PR/CI y coordina rebase de #1624 y compra web
+VANTA-42; Isaac incorpora el fragmento a la configuración y valida apertura cuando corresponda.
+
+Actualización posterior: inventario real comunicado por Isaac documentado: Pro mensual
+4,99 EUR, Launch Edition histórica 30 EUR y Founders 50 EUR. Pro anual, 5,99/59,99
+y Pro Plus aún no existen en producción. 69 pruebas offline de mapping y catálogo PASS, incluida la regresión del fragmento de
+Founders; sin repetir Rust/SQL porque no cambian código nativo ni schema.
 
 ## #1627 / PR #1639 · VANTA-21 · ronda 5 (15/10/2026)
 

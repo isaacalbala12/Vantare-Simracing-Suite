@@ -100,6 +100,9 @@ function createMockSupabase(tables: Record<string, MockRow[]> = {}) {
       // No promotion catalogue or admin refund attribution in this fixture.
       // Both server-only projections are explicit; unknown RPCs still fail.
       rpc: (name: string) => {
+        if (name === "billing_founders_subscription_transitions") return Promise.resolve({ data: [], error: null });
+        if (name === "billing_admit_lifetime_order") return Promise.resolve({ data: null, error: null });
+        if (name === "billing_creator_revocation") return Promise.resolve({ data: null, error: null });
         if (name === "native_admin_record_refund") {
           return Promise.resolve({ data: false, error: null });
         }

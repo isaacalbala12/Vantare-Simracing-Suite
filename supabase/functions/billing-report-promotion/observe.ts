@@ -63,8 +63,9 @@ export async function promotionCheckoutDiscount(
   enabled = Deno.env.get("REPORT_PROMOTION_ENABLED") === "true",
   attemptId?: string,
   readCheckout = readPolarCheckoutSession,
+  launchOffer?: { discountId: string | null; key: string; catalogVersion?: string },
 ): Promise<string | null | { checkoutUrl: string }> {
-  if (!enabled) return null;
+  if (launchOffer ? !launchOffer.discountId : !enabled) return null;
   if (!attemptId) {
     throw new PromotionCheckoutError(
       "promotion_attempt_required",
@@ -79,7 +80,14 @@ export async function promotionCheckoutDiscount(
     p_now: now.toISOString(),
     ...(attemptId ? { p_attempt: attemptId } : {}),
   };
-  let { data, error } = await admin().rpc("report_promotion_checkout", args);
+  const rpc = launchOffer ? "billing_launch_checkout" : "report_promotion_checkout";
+  const offerArgs = {
+    ...args,
+    ...(launchOffer
+      ? { p_discount: launchOffer.discountId, p_key: launchOffer.key }
+      : {}),
+  };
+  let { data, error } = await admin().rpc(rpc, offerArgs);
   if (error?.code === "55000" && attemptId) {
     const pending = await admin().rpc("report_promotion_checkout_pending", {
       p_account: account,
@@ -124,11 +132,11 @@ export async function promotionCheckoutDiscount(
       throw new Error("promotion_checkout_owner_mismatch");
     }
     if (remote.status === "open") {
-      if (remote.productId === product) return { checkoutUrl: remote.url };
+      if (remote.productId === product && (!launchOffer?.catalogVersion || previous.catalog_version === launchOffer.catalogVersion)) return { checkoutUrl: remote.url };
       await incident("promotion_checkout_plan_change_pending");
       throw new PromotionCheckoutError(
         "promotion_checkout_plan_change_pending",
-        "Hay un pago abierto para otro plan. Espera a que caduque antes de cambiar de plan; tu primer mes se conserva.",
+        "Hay un pago abierto para otro plan u oferta. Espera a que caduque antes de cambiar; tu primer mes se conserva.",
         409,
       );
     }
@@ -139,8 +147,8 @@ export async function promotionCheckoutDiscount(
         "El pago anterior se está confirmando. Espera su resultado antes de iniciar otro; tu primer mes sigue reservado.",
       );
     }
-    ({ data, error } = await admin().rpc("report_promotion_checkout", {
-      ...args,
+    ({ data, error } = await admin().rpc(rpc, {
+      ...offerArgs,
       p_replaces: previous.attempt_id,
     }));
   }

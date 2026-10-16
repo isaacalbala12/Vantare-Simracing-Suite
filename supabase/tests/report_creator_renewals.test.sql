@@ -77,6 +77,31 @@ select is((select applied_discount from private.report_promotions where subscrip
 select is(private.native_admin_account('15936611-0000-4000-8000-000000000001','fixture','sandbox')->'report_promotion'->>'tier','3','Owner preserves reports alongside #1661 plan/payments/incidents');
 
 -- Previous rounds' commercial rules continue to hold when a creator is present.
+-- R7 revocation landing after the confirmed PATCH cannot invalidate its receipt.
+savepoint revocation_race;
+update private.report_promotions set tier=6,reward_expires_at='2027-06-01' where subscription_id='joint-sub';
+create temporary table race_op as select public.report_promotion_prepare('15936611-0000-4000-8000-000000000001','sandbox','2026-11-02') op;
+select public.report_promotion_renewal_prepare((select (op->>'id')::uuid from race_op),120,11,'2026-11-02');
+select ok(public.report_promotion_claim((select (op->>'id')::uuid from race_op),'15936611-0000-4000-8000-000000000041','2026-11-02'),'R7 PATCH lease acquired before revocation');
+select is(public.billing_creator_revocation('prepare','sandbox','15936611-0000-4000-8000-000000000001','joint-sub',null,'subscription_revoked')->>'busy','true','R7 revocation is durable while confirmed PATCH owns the lease');
+select lives_ok($$select public.report_promotion_ack((select (op->>'id')::uuid from race_op),'15936611-0000-4000-8000-000000000041','2026-11-02')$$,'R7 revocation after PATCH is a soft receipt conflict, not a generic failure');
+select ok((select applied_at is not null from private.report_promotion_changes where id=(select (op->>'id')::uuid from race_op)),'R7 confirmed PATCH receipt remains durable');
+select is((select state from private.creator_renewal_operations where subscription_id='joint-sub'),'pending','R7 revoked creator renewal is never marked completed');
+select ok((select lease_token is null and revocation_requested_at is not null and revocation_completed_at is null from private.creator_renewal_operations where subscription_id='joint-sub'),'R7 lease released while revocation remains pending');
+select ok(not exists(select 1 from private.billing_payment_incidents where resource_id='joint-sub' and reason='creator_renewal_discount_failed'),'R7 soft receipt produces no false renewal failure incident');
+select ok(public.billing_creator_revocation('prepare','sandbox','15936611-0000-4000-8000-000000000001','joint-sub',null,'reconcile')->>'token' is not null,'R7 withdrawal can acquire the released lease immediately');
+select ok((select revocation_pending_at is not null from private.report_promotion_changes where id=(select (op->>'id')::uuid from race_op)),'R7 soft revocation conflict leaves a durable trace');
+-- Finish the independent withdrawal, then a later report tier can still be applied.
+select public.billing_creator_revocation('finish','sandbox','15936611-0000-4000-8000-000000000001','joint-sub',null,null,(select lease_token from private.creator_renewal_operations where subscription_id='joint-sub'),true);
+update private.report_promotion_changes set superseded_at=now() where applied_at is null and superseded_at is null;
+update private.report_promotions set applied_candidate=null,applied_discount=null,remote_discount=null where subscription_id='joint-sub';
+create temporary table revoked_report as select public.report_promotion_prepare('15936611-0000-4000-8000-000000000001','sandbox','2026-11-03') op;
+select is(public.report_promotion_renewal_prepare((select (op->>'id')::uuid from revoked_report),120,11,'2026-11-03')->>'discount_id','15936611-0000-4000-8000-000000000008','R7 creator revocation does not freeze independent earned reports');
+select ok(public.report_promotion_claim((select (op->>'id')::uuid from revoked_report),'15936611-0000-4000-8000-000000000042','2026-11-03'),'R7 report-only benefit still uses fenced shared lease after creator revocation');
+select ok(public.report_promotion_ack((select (op->>'id')::uuid from revoked_report),'15936611-0000-4000-8000-000000000042','2026-11-03'),'R7 revoked creator never causes a false report ACK failure');
+rollback to revocation_race;
+release revocation_race;
+
 savepoint shared_plan;
 update public.billing_subscriptions set provider_product_id='15936611-0000-4000-8000-000000000021' where provider_subscription_id='joint-sub';
 select lives_ok($$select public.report_promotion_observe('15936611-0000-4000-8000-000000000001','sandbox','joint-sub','15936611-0000-4000-8000-000000000021','2026-10-26 19:00 Europe/Madrid','2026-11-02',null)$$,'observed plan change with creator never quarantines webhook');
@@ -175,6 +200,13 @@ select is(public.report_promotion_renewal_prepare((select (op->>'id')::uuid from
 select ok(public.report_promotion_claim((select (op->>'id')::uuid from expired_handoff),'15936611-0000-4000-8000-000000000033','2027-02-27'),'expired reports handoff lease remains stable');
 select ok(public.report_promotion_ack((select (op->>'id')::uuid from expired_handoff),'15936611-0000-4000-8000-000000000033','2027-02-27'),'expired reports handoff acknowledged');
 select is(public.report_promotion_prepare('15936611-0000-4000-8000-000000000001','sandbox','2027-03-01'),null::jsonb,'expired reports do not interrupt the already-running creator');
+savepoint remainder_revocation;
+update private.creator_renewal_operations set lease_until=null,lease_token=null where subscription_id='joint-sub';
+create temporary table remainder_withdrawal as select public.billing_creator_revocation('prepare','sandbox','15936611-0000-4000-8000-000000000001','joint-sub',null,'subscription_revoked') op;
+select ok((select op->'managed_creator_ids' ? '15936611-0000-4000-8000-000000000010' from remainder_withdrawal),'R7 withdrawal derives validated creator remainder IDs from private catalogue');
+select ok(not (select op->'managed_creator_ids' ? '15936611-0000-4000-8000-000000000007' from remainder_withdrawal),'R7 withdrawal never includes report coupons');
+rollback to remainder_revocation;
+release remainder_revocation;
 -- Reconciled earlier invoices can shorten the cached clock, never extend it.
 update private.report_creator_terms set started_at='2026-12-26 19:00 Europe/Madrid',ends_at='2027-11-26 19:00 Europe/Madrid';
 select is(private.report_creator_end('sandbox','joint-sub','2027-02-27'),'2027-10-26 19:00 Europe/Madrid'::timestamptz,'earlier reconciled creator invoice shortens the cached term');
@@ -183,7 +215,7 @@ update private.report_creator_terms set started_at=null,ends_at=null;
 delete from private.report_promotion_invoices where order_id='joint-creator-cycle';
 select is(private.report_creator_end('sandbox','joint-sub','2027-02-27'),'2027-11-26 19:00 Europe/Madrid'::timestamptz,'first rebated renewal can be reports; creator cannot start a fresh clock afterwards');
 \else
-select pass('Joint #1661 scenarios require prepare-report-creator-fixture.py; standalone reports stay independent');
+select pass('Joint scenarios run against real installed #1661 migrations; standalone reports stay independent');
 \endif
 select * from finish();
 rollback;

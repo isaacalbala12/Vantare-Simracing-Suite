@@ -1,6 +1,8 @@
-# Descuento por informes · #1593 / VANTA-39 · ronda 6
+# Descuento por informes · #1593 / VANTA-39 · ronda 7
 
-Candidato local de PR #1659. Catálogo vacío y flag ausente/false: no se activa.
+Candidato de PR #1659 unido a nightly #1661. Catálogo vacío y flag ausente/false:
+no se activa el premio por informes. El primer periodo usa siempre la oferta
+canónica de #1661 y su protección por cuenta, independiente de ese flag.
 No crea productos, descuentos, enlaces, scheduler ni despliegue automáticamente.
 La migración sigue inédita; sus correcciones son para el candidato, no un
 upgrade sobre una migración ya aplicada. Si se hubiera aplicado, revisar un
@@ -9,7 +11,8 @@ upgrade aparte.
 ## Reglas vigentes
 
 - Altas Pro/Plus **mensuales** desde 26/10/2026 19:00 Europe/Madrid inclusive
-  hasta 02/11/2026 19:00 exclusivo. Cierre confirmado por el orquestador. Los
+  hasta 26/11/2026 19:00 exclusivo. Ventana única de #1661, confirmada
+  por el orquestador en R7; sustituye el cierre antiguo de 02/11. Los
   tests incluyen 18:59/19:00/19:01 y las dos 02:30 del cambio de hora 25/10.
 - Informes enviados en `[alta, alta+1080 horas)`. Cuenta solo revisión humana
   aceptada de #1594, con estado accepted/fixed. Su frontera conserva evidencia,
@@ -51,7 +54,7 @@ perdiendo el premio.
 ## Cambio de plan o suscripción
 
 Una campaña por cliente/entorno. Conserva alta, ventana y tramo originales al
-pasar Pro↔Plus o a una segunda alta, incluso fuera de la semana. El premio sigue
+pasar Pro↔Plus o a una segunda alta, incluso fuera de la ventana. El premio sigue
 la suscripción activa más reciente. Versiones de distintas suscripciones se
 comparan por alta, no por el modified_at global de otra; una entrega atrasada no
 roba el premio. Si la vigente está inactiva, puede volver a una anterior activa.
@@ -68,9 +71,11 @@ demás clientes.
 
 ## Primer mes consumido y checkout
 
-El derecho al primer mes pertenece a la cuenta/entorno durante la semana de
-lanzamiento. report_promotion_launch_uses conserva consumo, reserva y referencia
-remota incluso tras la limpieza de billing_checkout_attempts. El RPC exige
+El derecho al primer mes pertenece a la cuenta/entorno durante la ventana de
+lanzamiento de #1661 (26-oct→26-nov, 19:00 Madrid). report_promotion_launch_uses conserva consumo, reserva y referencia
+remota incluso tras la limpieza de billing_checkout_attempts. El checkout usa billing_launch_checkout con la oferta once allowlisted del
+mapa canónico de #1661, para mensual y anual, sin depender del catálogo de premios.
+El RPC exige
 p_attempt y reserva siempre el beneficio antes de concederlo. El intento
 comercial caduca a los 30 minutos; eso no consume ni pierde el derecho.
 
@@ -85,7 +90,7 @@ remoto huérfano sin ID/enlace entregado puede quedar en Polar; reconciliar sus
 hechos si llegasen, sin prometer atomicidad entre proveedores.
 
 Con ID remoto conocido se mantiene GET autenticado y comprobación de
-cuenta/producto: abierto para el mismo plan devuelve el mismo enlace;
+cuenta/producto: abierto para el mismo plan y huella de oferta/creador devuelve el mismo enlace;
 expired/failed permite reemplazarlo con CAS. Confirmed/succeeded espera los
 hechos comerciales y muestra mensaje específico. **Pro→Plus con checkout Pro
 abierto:** no crea otro ni reutiliza un enlace del plan equivocado; devuelve 409
@@ -109,7 +114,7 @@ céntimos Pro y 999→699 Plus. No migra ni modifica los productos de lanzamient
 permanente ni los links de #1620: no se les pueden sumar otros 2/3 EUR. Resolver
 esa distribución antes de activar esta campaña sobre normales.
 
-El contrato vigente es #1661, HEAD leído `271e20053`. El creador atribuye la
+El contrato vigente es #1661, integrado en nightly `1f07e8e28`. El creador atribuye la
 venta inicial, **sin rebajar esa factura**; el 20 % empieza en la primera
 renovación. La fuente de porcentaje y duración es el mismo archivo
 `../scripts/polar-launch-prices.json` que importa `_shared/creator-renewal.ts`:
@@ -152,16 +157,16 @@ descarta su ahorro antes de comparar: puede pasar a ganar informes. Un bloque de
 informes ya confirmado termina naturalmente aunque haya caducado su saldo;
 después puede volver el creador vigente.
 
-**Integración/despliegue pendiente del orquestador:** esta rama NO fusiona
-Founders ni su checkout. La nueva migración instala el puente si #1661 ya está
-en el conjunto; si llega después, ejecutar como operador
+**Unión R7:** esta rama fusiona nightly `1f07e8e28`, incluidos Founders,
+guards de checkout, atribución y hooks de renovación/retirada de creador.
+La migración instala el puente sobre el contrato actual de revocación;
+si cambia el orden de instalación, ejecutar como operador
 `select public.install_report_creator_bridge()` y comprobar `true`. Es
-idempotente y conserva el payload Owner más reciente. Integrar el helper
-`_shared/creator-renewal.ts` de esta entrega con el de #1661 (se añade
-`managed_report_ids`) y conservar el catálogo/checkout de #1661: su lanzamiento
-`once`, código solo de atribución y su primer periodo. El catálogo de informes
-no debe sustituir ese cupón `once` por su cupón repeating de saldo. No activar
-ambas campañas hasta resolver y probar ese punto del checkout en el conjunto. Si
+idempotente y conserva el payload Owner más reciente. Hay un único JSON:
+el catálogo completo de #1661, sin una copia parcial de informes. El checkout usa
+su cupón once para el primer periodo; el repeating1 de informes solo consume
+saldo desde el segundo mes. Conserva claim/atribución atómicos y huella de oferta.
+Si
 hay atribución pero faltan su operación inicial, puente, producto o remanente,
 la escritura se detiene con incidencia específica, sin un PATCH independiente.
 #1661 bloquea iniciar cambios de plan con creador activo. Si aun así llega un
@@ -173,10 +178,25 @@ informes y conserva/restaura solo su creador vigente bajo el lease común. Una
 anterior canceled/paused se considera limpia sin PATCH. Devolver el primer mes
 permite exclusivamente retirar el descuento propio: nunca asociar otro.
 
-La prueba reproducible construye un archivo de integración desechable desde el
-Git exacto de #1661, añade estas migraciones y conserva sus tests; no equivale a
-un merge Git ni a un despliegue. SQL conjunto y Edge se prueban aparte del árbol
-aislado. La prueba de coexistencia no acredita el checkout final de ambas ramas.
+Los gates ejecutan los tests de ambas funciones en el árbol Git unido real.
+prepare-report-creator-fixture.py ahora archiva ese árbol y exige el ancestro
+nightly integrado: no superpone copias de ficheros ni usa271e20053.
+
+**Revocación durante PATCH→ACK:** una respuesta confirmada conserva su recibo.
+Solo un token común propio y vivo admite el conflicto blando; se guarda
+revocation_pending_at y libera el lease sin marcar completado el creador ni
+crear una incidencia falsa. La retirada queda pendiente y se reintenta por
+#1661. Tokens ajenos/caducados y cuentas borradas siguen rechazados.
+La revocación también retira remanentes de creador verificados para el mismo
+producto/cupón/entorno; conserva cupones de informes o manuales. Un refund de
+renovación retira creador y permite el saldo de informes; el refund inicial
+mantiene su política de pérdida, con limpieza negativa bajo el lease común.
+
+**Prerrequisito obligatorio ANTES de activar la convivencia:** crear y validar
+todos los remanentes mensuales20% de1..10meses para cada producto/cupón de creador.
+Deben estar listos antes de la primera renovación posterior a los meses de
+informes. Si falta alguno, no activar; el fallo queda visible y no autoriza
+asociar de nuevo once meses. Crearlos en Polar real requiere a Isaac.
 
 Pendiente de autorización de Isaac en Polar real:
 

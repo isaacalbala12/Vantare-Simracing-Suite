@@ -1,3 +1,5 @@
+import { withdrawCreatorDiscount } from "./polar.ts";
+import { synchronizeRenewalDiscount } from "./polar.ts";
 import {
   assertEquals,
   assertRejects,
@@ -8,6 +10,7 @@ import {
   getPolarCustomerStateByExternalId,
   PolarClientError,
   publicPolarErrorExtras,
+  stopSubscriptionRenewal,
 } from "./polar.ts";
 
 const checkout = {
@@ -34,6 +37,31 @@ function checkoutDeps(fetchFn: typeof fetch) {
   };
 }
 
+Deno.test("Founders checkout cannot use trial or discount codes", async () => {
+  let body: Record<string, unknown> = {};
+  await createPolarCheckoutSession(
+    {
+      ...checkout,
+      productKey: "founders",
+      planSku: "founders",
+      capabilities: ["vantare.plan.founders"],
+    },
+    checkoutDeps(async (input, init) => {
+      body = await new Request(input, init).json();
+      return new Response(
+        JSON.stringify({
+          id: "founders",
+          url: "https://sandbox.polar.sh/checkout/founders",
+        }),
+        { status: 201 },
+      );
+    }),
+  );
+  assertEquals(body.allow_trial, false);
+  assertEquals(body.allow_discount_codes, false);
+  assertEquals(body.expires_at, undefined); // Not a CheckoutCreate input in Polar.
+});
+
 Deno.test("Polar checkout sends explicit no-trial and versioned capability metadata", async () => {
   let body: Record<string, unknown> = {};
   const result = await createPolarCheckoutSession(
@@ -51,6 +79,10 @@ Deno.test("Polar checkout sends explicit no-trial and versioned capability metad
   );
   assertEquals(result.url, "https://sandbox.polar.sh/checkout/test");
   assertEquals(body.allow_trial, false);
+  assertEquals(
+    (body.metadata as Record<string, unknown>).creator_code,
+    undefined,
+  );
   assertEquals(body.trial_interval, undefined);
   const metadata = body.metadata as Record<string, unknown>;
   assertEquals(metadata.user_id, checkout.userId);
@@ -286,5 +318,186 @@ Deno.test("Polar Customer State honors Retry-After seconds and HTTP dates", asyn
     });
     assertEquals(requests, 2);
     assertEquals(delays, [retryAfter === "2" ? 2000 : 3000]);
+  }
+});
+
+Deno.test("Founders transition stops renewal idempotently without revoke or refund", async () => {
+  const requests: unknown[] = [];
+  const deps = checkoutDeps(async (input, init) => {
+    assertEquals(
+      String(input),
+      "https://sandbox-api.polar.sh/v1/subscriptions/sub_founders",
+    );
+    assertEquals(init?.method, "PATCH");
+    requests.push(JSON.parse(String(init?.body)));
+    return Response.json({ id: "sub_founders", cancel_at_period_end: true });
+  });
+  await stopSubscriptionRenewal("sub_founders", "sandbox", deps);
+  await stopSubscriptionRenewal("sub_founders", "sandbox", deps);
+  assertEquals(requests, [{ cancel_at_period_end: true }, {
+    cancel_at_period_end: true,
+  }]);
+  await assertRejects(() =>
+    stopSubscriptionRenewal(
+      "sub_founders",
+      "sandbox",
+      checkoutDeps(async () =>
+        Response.json({ id: "sub_founders", cancel_at_period_end: false })
+      ),
+    )
+  );
+});
+
+Deno.test("once checkout sends one server-selected discount, no trial or customer discount entry", async () => {
+  let body: Record<string, unknown> = {};
+  await createPolarCheckoutSession(
+    {
+      ...checkout,
+      creatorCode: "ISAAC",
+      discountId: "00000000-0000-4000-8000-000000001680",
+    },
+    checkoutDeps(async (input, init) => {
+      body = await new Request(input, init).json();
+      return Response.json({
+        id: "test",
+        url: "https://sandbox.polar.sh/checkout/once",
+      });
+    }),
+  );
+  assertEquals(body.discount_id, "00000000-0000-4000-8000-000000001680");
+  assertEquals(body.allow_discount_codes, false);
+  assertEquals(body.allow_trial, false);
+  assertEquals(
+    (body.metadata as Record<string, unknown>).creator_code,
+    "ISAAC",
+  );
+  assertEquals(body.trial_interval, undefined);
+});
+
+Deno.test("R4 renewal GET recovers lost PATCH response without restarting repeating and refuses foreign discounts", async () => {
+  let discount: string | null = "launch";
+  let writes = 0;
+  const deps = checkoutDeps(async (_url, init) => {
+    if (init?.method === "PATCH") {
+      writes++;
+      assertEquals(JSON.parse(String(init.body)), { discount_id: "creator" });
+      discount = "creator";
+    }
+    return Response.json({
+      id: "sub",
+      product_id: checkout.productId,
+      status: "active",
+      amount: 599,
+      currency: "eur",
+      recurring_interval: "month",
+      recurring_interval_count: 1,
+      discount_id: discount,
+    });
+  });
+  const expected = {
+    productId: checkout.productId,
+    discountId: "creator",
+    managedIds: [null, "launch"],
+    normalCents: 599,
+    interval: "month",
+    authorize: () => Promise.resolve(true),
+  };
+  await synchronizeRenewalDiscount("sub", "sandbox", expected, deps);
+  await synchronizeRenewalDiscount("sub", "sandbox", expected, deps);
+  assertEquals(writes, 1);
+  discount = "foreign";
+  await assertRejects(() =>
+    synchronizeRenewalDiscount("sub", "sandbox", expected, deps)
+  );
+  assertEquals(writes, 1);
+  discount = "launch";
+  await assertRejects(() =>
+    synchronizeRenewalDiscount("sub", "sandbox", {
+      ...expected,
+      authorize: () => Promise.resolve(false),
+    }, deps)
+  );
+  assertEquals(writes, 1);
+});
+
+Deno.test("R5 refunded creator coupon is removed once, foreign report coupon is preserved", async () => {
+  let current: string | null = "creator";
+  let writes = 0;
+  const deps = checkoutDeps(async (_url, init) => {
+    if (init?.method === "PATCH") {
+      writes++;
+      assertEquals(JSON.parse(String(init.body)), { discount_id: null });
+      current = null;
+    }
+    return Response.json({
+      id: "sub",
+      product_id: checkout.productId,
+      discount_id: current,
+    });
+  });
+  const expected = {
+    productId: checkout.productId,
+    creatorDiscountId: "creator",
+    authorize: () => Promise.resolve(true),
+  };
+  await withdrawCreatorDiscount("sub", "sandbox", expected, deps);
+  await withdrawCreatorDiscount("sub", "sandbox", expected, deps);
+  assertEquals(writes, 1);
+  current = "reports";
+  await withdrawCreatorDiscount("sub", "sandbox", expected, deps);
+  assertEquals(current, "reports");
+  assertEquals(writes, 1);
+  current = "creator";
+  await assertRejects(() =>
+    withdrawCreatorDiscount("sub", "sandbox", {
+      ...expected,
+      authorize: () => Promise.resolve(false),
+    }, deps)
+  );
+  assertEquals(writes, 1);
+});
+
+Deno.test("R7 invalid launch offers fail before transport and public codes stay disabled without a coupon", async () => {
+  let calls = 0;
+  const deps = checkoutDeps(async () => {
+    calls++;
+    return new Response(JSON.stringify({ id: "r7", url: "https://sandbox.polar.sh/checkout/r7" }), { status: 201 });
+  });
+  for (const invalid of [
+    { ...checkout, discountId: "invalid" },
+    { ...checkout, productKey: "founders" as const, discountId: "00000000-0000-4000-8000-000000001680" },
+    { ...checkout, trial: { enabled: true as const, interval: "day" as const, interval_count: 7 as const, provider_anti_abuse_confirmed: true as const }, discountId: "00000000-0000-4000-8000-000000001680" },
+  ]) {
+    const error = await assertRejects(() => createPolarCheckoutSession(invalid, deps), PolarClientError);
+    assertEquals(error.code, "invalid_checkout_offer");
+  }
+  assertEquals(calls, 0);
+  let payload: Record<string, unknown> = {};
+  await createPolarCheckoutSession({ ...checkout, creatorCode: "ISAAC" }, checkoutDeps(async (_url, init) => {
+    payload = JSON.parse(String(init?.body));
+    return new Response(JSON.stringify({ id: "r7", url: "https://sandbox.polar.sh/checkout/r7" }), { status: 201 });
+  }));
+  assertEquals(payload.allow_discount_codes, false);
+  assertEquals(payload.discount_id, undefined);
+  assertEquals((payload.metadata as Record<string, unknown>).creator_code, "ISAAC");
+});
+
+Deno.test("R7 creator withdrawal includes only validated remainders and preserves reports", async () => {
+  for (const initial of ["remainder", "reports"]) {
+    let current: string | null = initial;
+    let patches = 0;
+    await withdrawCreatorDiscount("sub-r7", "sandbox", {
+      productId: "product", creatorDiscountId: "original",
+      managedCreatorDiscountIds: ["remainder"], authorize: async () => true,
+    }, { getAccessToken: () => "fixture", fetchFn: (_url, init) => {
+      if (init?.method === "PATCH") {
+        patches++;
+        assertEquals(JSON.parse(String(init.body)), { discount_id: null });
+        current = null;
+      }
+      return Promise.resolve(Response.json({ id: "sub-r7", product_id: "product", discount_id: current }));
+    } });
+    assertEquals(patches, initial === "remainder" ? 1 : 0);
+    assertEquals(current, initial === "remainder" ? null : "reports");
   }
 });

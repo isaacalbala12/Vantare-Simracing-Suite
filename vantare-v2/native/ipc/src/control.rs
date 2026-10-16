@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use std::io::{self, Read, Write};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-pub const VERSION: u32 = 4;
+pub const VERSION: u32 = 5;
 const LIMIT: usize = 64 * 1024;
 pub const VERSION_ERROR: &str =
     "versiones IPC incompatibles: reinicia núcleo, Hub y overlays de la misma build";
@@ -48,6 +48,7 @@ pub enum CatalogAccess {
     Free,
     LaunchV1,
     Pro,
+    Founders,
 }
 impl CatalogAccess {
     pub fn allows_widget(self, id: &str) -> bool {
@@ -55,7 +56,7 @@ impl CatalogAccess {
             Self::Free | Self::LaunchV1 => {
                 matches!(id, "standings" | "relative" | "delta" | "pedals")
             }
-            Self::Pro => true,
+            Self::Pro | Self::Founders => true,
         }
     }
 

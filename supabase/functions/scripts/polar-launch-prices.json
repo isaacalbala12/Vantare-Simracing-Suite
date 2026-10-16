@@ -1,5 +1,5 @@
 {
-  "catalog_version": "isa-1620-launch-v2",
+  "catalog_version": "vanta-83-creator-renewals-v4",
   "currency": "eur",
   "tax_behavior": "inclusive",
   "creator_discount_basis_points": 2000,
@@ -35,7 +35,7 @@
     {
       "key": "pro_annual",
       "interval": "year",
-      "normal_cents": 5990,
+      "normal_cents": 5999,
       "launch_cents": 3990
     },
     {
@@ -51,10 +51,22 @@
       "launch_cents": 6990
     }
   ],
-  "launch_model": "separate_products",
+  "launch_model": "fixed_discount_once_on_normal_products",
   "distribution": {
-    "launch_month": "website_and_creator_links",
-    "after_launch_month": "creator_links_only"
+    "launch_month": "application_checkout_automatic_discount",
+    "after_launch_month": "normal_first_period_with_optional_creator_attribution"
+  },
+  "launch_windows": {
+    "production": {
+      "starts_at": "2026-10-26T18:00:00Z",
+      "ends_at": "2026-11-26T18:00:00Z",
+      "timezone": "Europe/Madrid"
+    },
+    "sandbox": {
+      "starts_at": "2026-10-26T18:00:00Z",
+      "ends_at": "2026-11-26T18:00:00Z",
+      "timezone": "Europe/Madrid"
+    }
   },
   "creator_renewals": {
     "monthly_duration_months": 11,

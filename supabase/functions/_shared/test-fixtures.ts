@@ -150,3 +150,24 @@ export function withProAnnualAndNewMonthlyPrice(json: string): string {
   raw.price_id_to_checkout_key[SANDBOX_IDS.proAnnualPrice] = "pro_annual";
   return JSON.stringify(raw);
 }
+export function withFounders(json: string): string {
+  const map = JSON.parse(json);
+  const product = "00000000-0000-4000-8000-000000001661";
+  const price = "00000000-0000-4000-8000-000000001662";
+  map.checkout_keys.founders = {
+    polar_product_id: product,
+    polar_price_ids: [price],
+    plan_sku: "founders",
+    billing_type: "one_time",
+    lifetime: true,
+    active: true,
+    capabilities: ["vantare.plan.founders", "vantare.channel.nightly"],
+    channels: ["stable", "nightly"],
+    launch_scope_version: null,
+    trial: { enabled: false },
+    entitlement_product_key: "bundle",
+  };
+  map.product_id_to_checkout_key[product] = "founders";
+  map.price_id_to_checkout_key[price] = "founders";
+  return JSON.stringify(map);
+}

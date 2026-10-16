@@ -6,6 +6,43 @@ onboarding independiente. Rama local `vantareapp/isa-1631-login-propio`, base
 nightly `b9ec75ed5435fb95130946cd207a4fa1ce8b8a64`. Sin servicios reales,
 secretos, cambios Supabase/Polar ni dependencias nuevas.
 
+## Integración con nightly — 16/10/2026
+
+Base de esta ronda: `bcaa0e3f2`, incorporada a la rama de #1635 conservando
+Founders, compra web, consentimiento de correo y los mensajes de billing.
+Services **v11** combina AccountEmail y Founders: ambas ramas usaban v10 con
+contratos distintos. Control conserva v5 y fotos v11; recompilar el conjunto.
+El host rechaza v9/v10 y contratos futuros sin negociar silenciosamente.
+
+La pantalla sigue en `view/account.rs`. Las acciones/precios de Founders viven
+en `view/founders.rs`: 50 EUR, módulos actuales/futuros y Nightly, sin sustituir
+los textos nuevos ni restaurar Launch como compra. «Iniciar sesión» abre el
+formulario propio; Google/Discord conservan su flujo por navegador.
+El contrato de correo `native-mail-consent` sigue exigiendo OAuth y correo
+primario verificado en servidor; esta integración no añade consentimiento al
+login ni modifica SQL/Edge. El árbol `supabase/` coincide con la base nightly.
+
+Repaso de DeepSeek R2 (`rev1635-r2/review-A-seguridad.md` y
+`review-B-uso.md`, evidencia del servidor):
+
+- Caducidad/reinicio, intervalo/slow_down, ventana de 30 s, cancelación y
+  respuestas tardías: se conservan los tests de regresión de R2.
+- P3-3 de seguridad: el bloqueo local se comprueba antes de device authorization;
+  `blocked_device_grant_does_not_repeat_the_device_authorization_call` lo cubre.
+- P3-4 de seguridad / P3-A de uso: `Reply::Error` reactiva el formulario;
+  `transport_error_releases_the_email_form_for_another_attempt` sigue presente.
+- P3-B/C/D de uso: envío sin efecto durante cooldown, modos atenuados durante red
+  y texto de reinicio propio de contraseña; se conservan handlers y regresiones.
+- Cierre FAPI al logout: `logout_ends_the_clerk_fapi_session` sigue presente.
+  El cierre remoto es de mejor esfuerzo; su prueba contra Clerk real y las
+  ventanas residuales de P3-1/P3-2 de seguridad siguen como límites documentados,
+  sin afirmar que esta ronda los haya verificado en vivo.
+- GitGuardian: el hallazgo P2-1 depende del check del SHA nuevo y de #1652;
+  no se silencian avisos ni se reinterpretan alertas como falsos positivos.
+
+No se generan capturas mientras #1675 no esté integrado en nightly.
+Los resultados y el SHA final de esta ronda se registran en el handoff y #1631.
+
 ## Resultado y diseño
 
 Clerk ofrece una Frontend API (FAPI) para clientes nativos. Podemos dibujar los

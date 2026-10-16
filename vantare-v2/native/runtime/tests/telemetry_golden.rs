@@ -14,12 +14,53 @@ use vantare_runtime::core::Core;
 // hashes without rewriting the frozen oracle. Situation has independent tests.
 fn legacy_fixture(text: &str) -> String {
     text.replace("\"version\":10", "\"version\":9")
+        .replace("\"version\":11", "\"version\":9")
 }
 fn legacy_dto(snapshot: &vantare_domain::Snapshot) -> String {
-    let dto = vantare_ipc::snapshot_to_json(snapshot).expect("DTO v10");
+    // #1638 delivers two previously omitted, existing DTO fields. Frozen
+    // oracles remain intact; launch_coverage and lmu_conformance independently
+    // check those values against the original SHM/REST, not against this view.
+    let mut snapshot = snapshot.clone();
+    if snapshot.origin.source.simulator == "lmu" {
+        for car in &mut snapshot.state.cars {
+            car.vehicle.clear();
+            car.pit_stops = vantare_domain::Quality::Unavailable;
+        }
+        // #1638: el REST explícito confirma ahora calma/seco. El parser SHM
+        // histórico nunca admitía esos dos ceros. Solo esta extensión exacta
+        // se vuelve a representar como ausencia en la vista del oráculo v9;
+        // números no nulos, otras calidades y todos los demás bytes siguen
+        // comparándose. La fixture real de Imola comprueba cero/TTL/identidad.
+        let weather = &mut snapshot.state.session.weather;
+        for value in [&mut weather.wind_speed_mps, &mut weather.track_wetness] {
+            if matches!(
+                value,
+                vantare_domain::Quality::Reliable(0.0) | vantare_domain::Quality::Stale(0.0)
+            ) {
+                *value = vantare_domain::Quality::Unavailable;
+            }
+        }
+    }
+    let dto = vantare_ipc::snapshot_to_json(&snapshot).expect("DTO v10");
     let start = dto.find(",\"driving_situation\":").expect("situation v10");
     let end = start + 1 + dto[start + 1..].find(',').expect("metadata siguiente");
     let mut old = dto;
+    // Only v11 additions are excluded from the frozen v9 oracle. Independent
+    // launch_coverage and DTO tests verify their values and quality.
+    for field in [
+        ",\"started_at_s\":",
+        ",\"finished_at_s\":",
+        ",\"scheduled_end_s\":",
+        ",\"start_phase\":",
+        ",\"distance_to_start_line_m\":",
+        ",\"next_kind\":",
+        ",\"next_starts_at_s\":",
+    ] {
+        let start = old.find(field).expect("campo v11");
+        let end = start + 1 + old[start + 1..].find(',').expect("campo siguiente");
+        old.replace_range(start..end, "");
+    }
+
     old.replace_range(start..end, "");
     legacy_fixture(&old)
 }

@@ -70,6 +70,7 @@ pub struct Session {
     /// Duración de la sesión en vueltas; `Unavailable` si es por tiempo.
     pub laps_total: Quality<u32>,
     pub track_length_m: Quality<f64>,
+    pub timing: crate::SessionTiming,
     pub weather: Weather,
 }
 
@@ -475,6 +476,7 @@ pub fn degrade(state: &mut State) {
         laps_remaining,
         laps_total,
         track_length_m,
+        timing,
         weather,
     } = session;
     make_stale(kind);
@@ -485,6 +487,22 @@ pub fn degrade(state: &mut State) {
     make_stale(laps_remaining);
     make_stale(laps_total);
     make_stale(track_length_m);
+    let crate::SessionTiming {
+        started_at_s,
+        finished_at_s,
+        scheduled_end_s,
+        start_phase,
+        distance_to_start_line_m,
+        next_kind,
+        next_starts_at_s,
+    } = timing;
+    make_stale(started_at_s);
+    make_stale(finished_at_s);
+    make_stale(scheduled_end_s);
+    make_stale(start_phase);
+    make_stale(distance_to_start_line_m);
+    make_stale(next_kind);
+    make_stale(next_starts_at_s);
     degrade_weather(weather);
     make_stale(flags);
     cars.iter_mut().for_each(degrade_car);

@@ -1,3 +1,1432 @@
+## #1631 / VANTA-70 · Integración con nightly (16/10/2026)
+
+Encargo del orquestador: preparar #1635 para integrar antes del 23-oct.
+Inicio `c69cb745d` limpio; nightly fijada `bcaa0e3f2de0278b329b94bd2095505d56c3ed1d`
+incorporada mediante merge en la rama `vantareapp/isa-1631-login-propio`.
+Cinco conflictos resueltos: cuenta, protocolo services, errores y dos documentos.
+Se conserva el handoff de las dos ramas y toda la entrega nueva de nightly.
+
+Services pasa a **v11**, combinación de login nativo y Founders (ambas ramas
+usaban v10 con contratos distintos); control v5 y fotos v11 conservados.
+Cuenta sigue dividida y usa las acciones/precios nuevos de Founders, con
+«Iniciar sesión» hacia el formulario propio. Se conservan su catálogo perpetuo,
+Nightly, los mensajes de recuperación de compras y los contratos de descuentos.
+Regresiones: etiqueta Founders/logout y rechazo de services v9/v10/futuros.
+
+Repaso DeepSeek R2 y límites: [guía](../../auth/login-propio.md#integración-con-nightly--16102026).
+Se conservan los arreglos de caducidad, polling acotado, cancelación, cola,
+transporte, cooldown, contraseña y cierre FAPI al logout. Clerk real y el
+cierre remoto de mejor esfuerzo conservan sus límites, no se presentan como
+pruebas nuevas. GitGuardian depende del nuevo SHA y clasificación #1652.
+
+Gates pendientes por la cola, en serie, `VANTARE_CARGO_MIN_GB=0`, target propio
+`C:\VantareServer\targets\1631`, jobs de máquina. No se hacen capturas hasta
+#1675 en nightly. SQL/Edge no cambian frente a nightly; no se necesita un gate
+Mac propio para código de servidor idéntico. `native-mail-consent` conserva
+OAuth y correo primario verificado: no se incorpora consentimiento al login.
+Plane VANTA-70 En curso verificado. Siguiente: gates, push, PR fuera de draft,
+CI verde y revisión del orquestador. Sin merge del PR ni promoción de canales.
+
+## #1636 · VANTA-72 · Reintentos del registro PostgreSQL de CI (16/10/2026)
+
+Seguimiento pedido por el orquestador tras el límite público ECR de #1657.
+#1657 ya integrado: nueva rama `vantareapp/isa-1636-postgres-ci-retry`, worktree
+`~/wt-1636-ci-image`, base nightly `e3d69f828`. PR independiente draft
+[#1678](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1678), publicado
+desde el servidor por petición expresa; CI remoto pendiente, sin merge.
+Solo adquisición de imagen y tests: tres rondas ECR/Docker Hub, esperas15/45s,
+80s por pull +10s para matar el proceso; máximo6 pulls. Fallo explícito al agotar
+registros o fallar tag; SQL/E2E no se omiten ni se cambian. Sin nuevas acciones,
+dependencias, credenciales o caché grande; se usa la opción reintentos+mirror
+permitida por el encargo («y/o»). Versión17.6.1.165 sin cambios.
+
+Ambos registros oficiales publican el índice multiarch
+`sha256:28f0e16a019e648089fc1a6d333549a55548f6019c15ae4bd7cd58b989027518`,
+comprobado con imagetools inspect antes de fijarlo. Docker elige la arquitectura
+del daemon; se etiqueta ese digest para el runner desechable existente.
+Origen oficial: [publicación](https://github.com/supabase/postgres/blob/develop/.github/workflows/dockerhub-release-matrix.yml)
+y [mirror](https://github.com/supabase/postgres/blob/develop/.github/workflows/mirror.yml).
+
+Pruebas nuevas rojas con la adquisición anterior; **6 tests** del contrato CI
+verdes en Ubuntu24.04/amd64:429,transitorio,timeout,ambos registros caídos,
+éxito primario y tag fallido. Dobles de docker/sleep/timeout, esperas simuladas.
+Adquisición real por digest PASS, **142 SQL +E2E1 PASS** con Deno2.7.13 y daemon
+Docker del Mac (PostgreSQL nativo arm64), SaaS dobles y pruebas sin red.
+Bajo lock, sin contenedores pendientes. YAML/Bash/diff y quality456 PASS.
+Rust/Edge generales omitidos: no cambia producto nativo, handlers ni SQL.
+Evidencia `~/evidence/1636-ci-image/`; publicación del PR solicitada desde el
+servidor, nunca GitHub desde Mac. Sin merge, deploy, release ni SaaS real.
+Plane/issue y aceptación al orquestador; CI remoto del nuevo PR pendiente.
+
+## #1636 · VANTA-72 · Integración de compra web (16/10/2026)
+
+Entrada limpia `dd7c3a895`; incorpora `nightly@8166277cb` (#1663) en #1657.
+Conflicto único de handoff: se conservan ambas entregas íntegras. Código y
+migraciones de compra web sin alteraciones. Merge `382c123f7`; `d44e9612` tipa
+RequestInit en cinco dobles adicionales de Polar/compra/informes: Ubuntu24.04
+Deno2.7.13 reproducía 21 TS2339 antes; **391 Edge PASS** después, sin no-check
+ni quitar assertions. El commit del runner queda en el log de esta entrega.
+Orquestador publica y fusiona, worker solo push al bare del Mac.
+
+Combinados: **815 SQL + E2E1** de admin/Correos/Founders/informes y **741 SQL
++16 carreras reales** de compra web, con las 92 migraciones y PostgreSQL real.
+E2E con RPC psql y SaaS dobles, tests sin red. Docker siempre bajo lock, limpio.
+La carrera heredada D1 esperaba bloqueo de fila: Correos bloquea antes en
+advisory(1636,300). El runner ahora comprueba esa clave exacta en el borrado
+completo, la retirada de dos contactos y sus dos trabajos pendientes; prueba
+aparte el contador web con bloqueo de fila para que Correos no enmascare una
+regresión del cursor. Control deliberadamente roto con secuencia: **rojo** en
+el contador aislado; implementación real: verde. Sin cambiar migraciones.
+
+Windows servidor: fmt/check/Clippy -D warnings PASS; Nextest admin/services
+**224 PASS, 2 ignorados existentes**. Cola serial, target propio, MIN_GB=0 solo
+proceso. Native íntegro del snapshot validado `382c123f7`. Lifecycle/telemetría
+omitidos: ningún cambio runtime/domain/ipc/testdata en esta sincronización.
+CI marketing2 + diagnóstico1; scope nativo17; canales45; quality/retirement456
+PASS. Diff revisado y sin whitespace. No gate ocultado o debilitado.
+
+Evidencia Mac `~/evidence/1636-web-merge/`, servidor
+`C:/VantareServer/evidence/1636-web-merge/`. Bare nightly sigue8166277cb al cierre.
+VANTA-72/PR1657, estados y CI quedan al orquestador según cabecera; no se muta
+Plane/GitHub. Sin integración a nightly desde el worker, deploy, release, gasto
+ni servicios reales. Publicación/CI del nuevo SHA y activación siguen pendientes.
+
+GitGuardian en dd7c3a895, check116948409973: mismos incidentes38177715/38177716
+con las mismas ocurrencias304307121/304307118 del commit histórico2354cd416.
+No identifica fixtures nuevos del arreglo75c40dc1. El check remoto sigue rojo
+por el historial: requiere gestionar esos falsos positivos en el panel; no
+se ignoran remotamente ni se amplían exclusiones desde esta entrega.
+
+## #1636 · VANTA-72 · Corrección de CI Deno/GitGuardian (16/10/2026)
+
+Entrada limpia `b1ad884ae`, PR #1657; run fallido 38891374186. Mac usaba Deno
+2.9.6 (TS6.0.3), workflow fija 2.7.13 (TS5.9.2). Repro exacta en Ubuntu24.04
+amd64/Deno2.7.13 bajo Docker del Mac: 18 errores de tipos offline y dos TS2339
+del E2E antes de corregir. El run no tenía artefactos; runner ocultaba la salida.
+
+Commit `75c40dc1`: RequestInit explícito en dobles fetch/fetchFn y forEach para
+comparar Headers sin depender de dom.iterable; no quita checking ni assertions.
+Runner imprime diagnóstico original; workflow conserva solo log E2E en fallo,
+tres días, acción ya fijada/reutilizada. Regresión posterior comprueba salida
+original, log persistido y limpieza de BD; roja con runner antiguo y verde
+con el nuevo, también en Linux; test enganchado a policy.
+
+GG38177715/38177716: PostgreSQL y Basic Auth sintéticos heredados de commit2354cd4,
+rutas tools/triage/test_review_1602.py y native/services/src/triage/tests.rs.
+Valores preparados por tests, psql/red con dobles; Basic codifica synthetic:fixture.
+Se construyen ahora en ejecución manteniendo valor equivalente y cobertura de
+redacción. No se amplía ninguna exclusión. .gitguardian.yaml aclara que la lista
+existente es local de ggshield; no acredita la app verde ni cambia el panel.
+**Resultado remoto de GitGuardian pendiente del nuevo push del orquestador**;
+no se afirma escaneo local de ese proveedor ni se ignoraron incidentes remotos.
+
+Verdes en Ubuntu24.04 amd64/Deno2.7.13: comandos exactos CI **88 Edge +142 SQL
++E2E1** con PostgreSQL real (daemon Docker del Mac, imagen fijada), sin red en
+los tests, OAuth/Brevo/Clerk dobles. CI contrato **2**, diagnóstico **1**, formato
+Deno PASS. Privacidad Python **9**; URI fixture idéntica en memoria comprobada.
+Windows services: fmt y Clippy all-targets -D warnings PASS, **19** tests de
+privacidad seleccionados PASS (174 no ejecutados/ignorados por el filtro).
+Comandos seriales por cola y target propio. Quality/**456** huellas PASS.
+Sin cambios de producto ni migraciones; lifecycle/telemetría no repetidos.
+
+Evidencia ~/evidence/1636-ci/ y C:/VantareServer/evidence/1636-ci/. Log fallido GH
+descargado; sin artefactos disponibles de aquel run. Handoff actualizado; SHA,
+push bare y FIN al cierre. Orquestador publica y vigila CI; sin push GitHub,
+configuración real, llamadas SaaS de producto, promoción, deploy o gasto.
+
+## #1636 · VANTA-72 · Segunda sincronización nightly (16/10/2026)
+
+Entrada limpia `7d873cdcf`; merge `3159e214` de `nightly@e8aa2077c` en la rama
+`vantareapp/isa-1636-correos` / PR #1657, autorizado por el orquestador.
+Solo conflicto de handoff: ambos bloques íntegros. Oferta inicial y programa por
+informes apagado de #1673, avisos #1649, cola por comprometido #1674 y filtro
+CI/telemetría #1676 preservados. Sin cambios adicionales de producto ni SQL/Rust.
+
+Repetición completa del alcance: Mac **815 SQL** en 28 suites, **367 Edge** y
+**E2E1** verdes con PostgreSQL real y RPC psql/OAuth/Brevo/Polar dobles. Incluye
+launch_offer_sql y report_enrollment_policy nuevos. Docker bajo lock/trap y
+contenedor retirado. Contratos CI marketing, scope nativo/telemetría y canales,
+YAML/shell y quality/**456** huellas PASS. Nuevos contratos/migraciones/cola y
+clasificador idénticos byte a byte a nightly; workflow combina ambos conjuntos.
+
+Windows servidor, worktree aislado ya existente y target propio, comandos
+seriales vía compilar.ps1 actualizado, MIN_GB=0 solo proceso: **fmt/check/Clippy
+-D warnings PASS, Nextest admin/services 224 PASS y 2 ignorados existentes**.
+Jobs2/tests1. Guard PS real PASS. Lifecycle/telemetría omitidos: no cambia código
+runtime/domain/ipc/testdata; solo scripts/docs nativos llegan desde nightly.
+No se cambian variables de máquina, checkout principal ni datos ajenos.
+
+Evidencia `~/evidence/1636-nightly2/` y
+`C:/VantareServer/evidence/1636-nightly2/`. SHA final/bare, base verificada y FIN
+se registran al cierre. El orquestador publica y fusiona; worker solo push bare.
+CI remoto tras publicación pendiente. Sin promoción a nightly, activación,
+despliegue, SaaS real ni gasto; pendientes de activación anteriores conservados.
+
+## #1636 · VANTA-72 · Sincronización con nightly (16/10/2026)
+
+PR #1657 / rama `vantareapp/isa-1636-correos`, entrada `2de604cc2`. Merge
+`8c6362f0` incorpora `nightly@9e48eb86f` autorizado por el orquestador; segundo
+merge `d75fd2e3` incorpora avance `ceb999f5` de avisos/handoff durante los gates.
+No se promociona la rama ni se publica en GitHub desde el worker.
+
+25 conflictos resueltos conservando nightly actual en Founders/disputas/informes,
+refunds, ledger y miniapp de creadores/personas; se reenganchan solo cambios de
+Correos sobre esa base (delta comparado con miniapp `0ac70754`). Los seis archivos
+críticos polar/webhook/creator-code/payment-sync/fixtures/people se conservan
+idénticos a nightly. Handoff conserva ambas entregas. CI mantiene scope/cache y
+gates de nightly junto al job SQL/E2E de Correos; el guard PS respeta scope nativo.
+
+Fix `950aac58`: guard PowerShell reconoce también billing-report-promotion,
+como candidato inerte (sin habilitarlo); ejecución Windows detectó el fallo y
+regresión Deno fue roja/verde. Guard PS real Windows ya PASS tras corregirlo.
+
+Checks combinados: Mac SQL **756/756** (26 suites admin/marketing/Founders/
+renovaciones/informes) y E2E **1/1**, Edge **363/363**, CI marketing **2/2**,
+clasificador nativo **11/11**, YAML/shell, fmt Deno y quality/**456** huellas PASS.
+Docker bajo lock con contenedor limpio; PostgreSQL real, OAuth/Brevo/Polar dobles.
+E2E usa adaptador RPC psql, no transporte PostgREST ni proyecto remoto.
+Windows admin/services: **fmt, check, Clippy -D warnings PASS; Nextest 224 PASS,
+2 ignorados existentes**, comandos seriales por compilar.ps1, jobs2 y tests1,
+VANTARE_CARGO_MIN_GB=0 en proceso según encargo; sin cambiar variables de máquina.
+Todo `native/` idéntico al snapshot de validación `8c6362f0` tras el segundo merge.
+No se modifican runtime/domain/ipc/testdata frente a nightly: lifecycle/telemetría
+no se repiten en este encargo de resolución; CI de producto sigue con sus gates.
+
+Evidencia Mac `~/evidence/1636-nightly/`; Rust/guard Windows en
+`C:/VantareServer/evidence/1636-nightly/`. Checkout de gates aislado
+`C:/VantareServer/wt/isa-1636-sync`, target propio, sin tocar el checkout principal
+ni su untracked ajeno. No se compila Rust en Mac en esta ronda por instrucción
+expresa. Sin cambio visual adicional ni nueva QA física de UI.
+
+Entrega local para publicación/revisión de CI por el orquestador. Push solo al
+bare del Mac, SHA/FIN en `~/orq/1636.buzon.md`. Sin merge a nightly ni release,
+despliegue, servicios reales o gasto. Se conservan pendientes de activación
+#1637/web, QA visual/Windows, secretos/flags/tick y alarmas documentados en MAIL.md.
+
+## #1636 · VANTA-72 · R3 menores de seguridad (15/10/2026)
+
+PR #1657, rama `vantareapp/isa-1636-correos`, entrada limpia `3fcb0420a`, aprobada
+por seguridad R2 y subida por el orquestador. Mismo Mac `~/wt-1636`, sin
+subagentes ni SaaS real. Orquestador mantiene Plane/GitHub; worker solo bare.
+
+- M1, `072462f6`: HMAC mediante subtle.verify antes de ambos presupuestos.
+  601 firmas inválidas no gastan SQL ni impiden una baja válida (regresión roja/verde).
+- M3, `d006335c`: recibo público idéntico para espera, ausencia o cuenta vinculada;
+  mismo 200/cuerpo/cabeceras. No afirma borrar cuentas. Owner mantiene diagnóstico.
+- M4, `e3671427`: DELETE espera lease previo +10 s, cubriendo PUT tardío. Test de
+  plazo exacto rojo/verde; la migración de retención conserva ese margen.
+- M2, `8f473514`: máximo ocho intentos o 24 h por trabajo; estado failed retira
+  correo, deja recibo/huella privada y bloquea nuevas altas hasta ACK manual.
+  Owner ve aviso y hasta 20 recibos sin dirección, motivo/intentos/HTTP. Expiración
+  antes de flags/clave Brevo, en cada claim y lectura Owner. Runbook manual MAIL.md;
+  requiere tick periódico independiente y alarma de fallos/scheduler antes de activar.
+  No se pierde la obligación: failed no acredita borrado del proveedor.
+- M5: SQL/E2E separado de policy/product en job alojado ubuntu-latest, con
+  preflight Docker visible y pull explícito de imagen fijada. Público automático;
+  privado requiere variable MARKETING_POSTGRES_CI=true tras autorización del
+  presupuesto alojado. No se modifica configuración. Runbook #1565 excluye Docker
+  del runner privado Linux; inspección read-only confirma runs públicos hosted.
+  Prueba roja/verde y tres escenarios: Docker ausente, daemon denegado, disponible.
+
+Evidencia `~/evidence/1636-r3/`: SQL **199/199** + E2E **1/1** (PostgreSQL real,
+RPC mediante adaptador psql, OAuth/Brevo dobles), Edge/contratos **97/97** sin red,
+Nextest admin **29/29**, Clippy all-targets -D warnings, fmt, build normal PASS.
+CI contrato **2/2** con tres escenarios de capacidad; YAML/shell nuevos parseados.
+Quality y **456** huellas PASS. Primer Clippy R3 rechazó dos lints, corregidos sin
+suprimirlos. Diff completo revisado; sin dependencias ni manifiestos/locks nuevos.
+La escena mail-cleanup abre ventana nativa; `Vantare1636R3QA.app` queda en evidencia.
+Preflight de captura macOS sigue false: sin PNG ni QA visual/Windows. Target propio
+se elimina al cierre. Lifecycle/telemetría omitidos: no cambia runtime/domain/ipc/testdata.
+
+Antes de activar siguen pendientes CI remoto y QA visual/Windows, conexión UI
+#1637/web, configuración de proveedor/secretos/flags/scheduler/alertas. M6/M7 del
+informe siguen observaciones de escala/retención de hashes, fuera de estos cinco
+arreglos. No se despliega ni activa, sin merge/promoción/release/gasto. SHA final,
+commits/push bare y FIN en `~/orq/1636.buzon.md`; informe completo en evidencia.
+
+## #1636 · VANTA-72 · R2 para revisión (15/10/2026)
+
+PR #1657, rama `vantareapp/isa-1636-correos`, entrada `b0f799827`. Mismo worktree
+Mac `~/wt-1636`; sin subagentes, credenciales ni push GitHub. El orquestador
+mantiene Plane/issue/PR y sube del bare. Buzón `~/orq/1636.buzon.md`.
+
+**P2-1, 5f9e3806:** #1622 encola DELETE Brevo de direcciones actuales/anteriores
+antes de borrarlas localmente. Worker `mail-cleanup`, backoff 5 s–1 h, leases,
+fencing y ACK 204/404 idempotente. Al confirmar retira también la PII temporal de
+la cola y conserva resultado/intentos/fecha sin correo en auditoría. Sync anterior
+vence antes de DELETE; un alta nueva espera al borrado pendiente. Worker inerte,
+flag/secreto/scheduler no configurados. Owner puede drenar y ver lo pendiente.
+
+**P2-2, b3fbe59c:** borrar espera sin cuenta desde gestión (correo exacto y
+confirmación), RPC solo servidor o enlace firmado; misma cola Brevo. No permite
+borrar una cuenta por esa vía. GET muestra confirmación, POST de formulario actúa,
+POST RFC8058 de un clic conserva baja sin segunda pantalla.
+
+**P2-3, 4a8527ba:** `native-mail-consent`, OAuth + correo primario verificado en
+Clerk, UUID derivado en servidor, una decisión de novedades/ofertas y evidencia
+fija. Get/set, bloqueo/tombstone y límite persistente por cuenta. #1637 no está en
+esta base: servidor listo y enganche exacto documentado en
+`supabase/functions/native-admin/CONSENT.md`, también llamada backend del repo web
+tras su verificación de dirección. UI #1637/Ajustes y frontend web siguen en sus
+ramas; no se afirma haberlos conectado aquí. E2E local prueba el servidor con SQL
+real, no solo un mock de consentimiento.
+
+**P3:** CHECK de locale y escape/fallback de lang; cursor UUID sin dirección.
+La selección usa proyecciones pendientes por entorno, no límite de keyset: recoge
+cambios detrás del cursor, durante HTTP y cambios/expiración de grupos. ACK viejo
+no limpia datos nuevos. Reserva reevalúa como máximo 20 pendientes; el barrido
+identificador de cambios de sync sigue comparando la proyección efectiva de la
+cohorte. Rate de baja persistente global 600/min y token válido 20/min, hash con
+retención acotada, 429/Retry-After. PS guard reconoce rutas/candidatos ya conocidos
+por TS; wrapper permite desplegar cuatro rutas nuevas solo por nombre explícito,
+sin cambiar el conjunto comercial por defecto. CI añade Deno offline, SQL y E2E
+con Docker bajo lock, y ejecuta guard PS en Windows. Gates nativos --workspace
+ya incluyen admin; CI remoto pendiente de que el orquestador suba esta ronda.
+
+Evidencia `~/evidence/1636-r2/`: SQL **181/181**, E2E **1/1** con PostgreSQL real y
+OAuth/Brevo dobles, Edge/contratos **95/95** sin permiso runtime de red; Clippy admin
+`-D warnings`, Nextest **28/28**, build normal, fmt, quality/456 huellas PASS.
+YAML y shell de los steps nuevos parseados. Seis escenas nativas demo abren;
+`Vantare1636R2QA.app` privado debug conservado. **Capturas y revisión visual siguen
+bloqueadas** por permiso macOS para SSH (preflight false comprobado en esta ronda).
+No se afirma interacción física ni Windows/DPI. PowerShell solo se prueba por
+contrato aquí; ejecución en el nuevo step Windows CI. Lifecycle/telemetría omitidos:
+no cambia runtime/domain/ipc/testdata. Target aislado retirado al cerrar.
+
+Contrato/configuración vigente consolidado en `supabase/functions/native-admin/MAIL.md`.
+Antes de activar: review del orquestador, CI y QA visual/Windows, enganchar #1637/web,
+configurar Brevo/DNS/listas/bajas/secreto y scheduler de limpieza, probar sandbox
+con autorización y validar modelo/coste de Anthropic. El worker no configura nada
+real ni envía correos. Sin merge, promoción, despliegue, release, anuncios o gasto.
+Push únicamente al bare local del Mac; SHA final y verificación en el buzón.
+
+## #1636 · VANTA-72 · Correos de gestión (15/10/2026, candidato local)
+
+Worker Codex T3 por SSH en Mac, sin subagentes ni servicios reales. Rama
+`vantareapp/isa-1636-correos`, base miniapp `0ac70754`, no nightly. Estado Plane
+informado por el encargo: «En curso»; el worker no consulta ni modifica trackers.
+Hitos locales: backend `8e3f4f30`; código integrado en esta rama `3ffc14f7`.
+El orquestador revisa y mantiene Plane/GitHub. Buzón `~/orq/1636.buzon.md`.
+
+Backend: ledger privado con consentimiento único, siete grupos desde derechos
+comerciales efectivos/roles/creadores/espera, cuatro idiomas, aprobación de revisión
+por Owner, cuota global de 300 reservas por ventana de 24 h y tandas manuales de
+hasta tres. No reintenta respuestas inciertas. Bajas firmadas GET/POST globales y
+webhook Brevo autenticado; se vuelven a comprobar permisos antes del HTTP.
+Cambio de correo suprime el anterior; tombstone elimina direcciones actuales y
+anteriores y sus entregas, conservando cuota anónima. IA solo devuelve borradores
+(`claude-opus-5-5`, high), sin guardar/aprobar/enviar. Flags apagados por omisión.
+El cliente conserva límite de 8 KiB para otras acciones y permite 128 KiB en mail,
+sin duplicar el stream. Contrato/guía de Isaac en
+`supabase/functions/native-admin/MAIL.md`.
+
+UI GPUI: sección Correos, campañas, tres plantillas, editor ES/EN/IT/PT-BR con
+vista previa segura, grupos y recuentos, confirmaciones, historial y estado. No
+permite enviar cambios sin guardar; bloquea edición durante confirmación/petición.
+Limpia borradores al perder autorización. No se cambia Hub ni runtime nativo.
+
+Checks Mac: SQL Docker aislado **120/120** (42 correos + 57 admin + 21 borrado);
+Edge/Deno **76/76**, sin permiso de red, con dobles Brevo/Anthropic; Clippy admin
+`-D warnings` y Nextest **27/27**; fmt, build normal, quality y 456 huellas de
+retirada PASS. Cuatro escenas demo abren ventana nativa de 1280 puntos de ancho.
+Evidencia: `~/evidence/1636/`; app QA debug local en `Vantare1636QA.app`.
+
+**Pendiente de QA visual:** las capturas físicas están bloqueadas por permiso de
+macOS para SSH (`CGPreflightScreenCaptureAccess=false`; screencapture no pudo leer
+la ventana). El intento de exportar el fotograma con test-support de GPUI exigía
+cambiar Cargo.lock y se descartó por «sin dependencias nuevas»; no queda cambio de
+features, lock ni captura en el producto. No se acredita revisión visual,
+interacción física ni Windows/DPI. Escenas `mail-editor`, `mail-confirm`,
+`mail-history` preparadas para capturar desde sesión Mac autorizada.
+
+Antes de producción: conectar colectores verificados de consentimiento en
+registro/cuenta/espera (no existe permiso histórico que importar), configurar
+Brevo/dominio/listas/webhook/secretos y Anthropic con autorización de gasto,
+validar modelo, entrega y bajas, y completar procedimiento de borrado externo en
+Brevo. Las campañas viven en Vantare: envío individual SMTP API para reservar y
+revalidar cada destinatario, listas Brevo como espejo; no se crean campañas
+paralelas en su panel. El contador local no conoce correos enviados por otros
+sistemas: usar cuenta Brevo dedicada. Historial «aceptado» no significa entregado.
+
+Sin ejecución de lifecycle/telemetría: solo se toca la miniapp aislada y Edge/SQL,
+no runtime/domain/ipc/testdata. Gates Windows y CI remotos no ejecutados. El bare
+`~/vantare.git` recibe la rama por encargo; no es un canal de producto. Sin GitHub,
+merge, promoción, despliegue, release, anuncios ni gasto. Revisión y capturas por
+el orquestador antes de dar por cerrada la entrega.
+## VANTA-42 / PR #1663 · R7 · Atribución de creador en compra web (16/10/2026)
+
+Decisión de Isaac: primer pago solo atribuye la venta/comisión;20% cliente
+desde segundo mes, aplicado por backend1661 después del primer pago.
+La web acepta creatorCode exacto en lanzamiento y fuera; registro canónico
+billing_save_creator_attribution tras claim y antes de begin/POST, ACKtrue
+obligatorio; metadata.creator_code y binding del intento. Mensual usa
+creator_discounts, anual creator_annual_discounts. Código/ID forman huella
+inmutable del intento; no se cambia creador en reintento. Solo once de
+lanzamiento en primer pago si corresponde, ningún descuento inicial de creador
+y allow_discount_codes=false siempre. Sin contrato1661 desplegado cierra
+antes de Polar; no se pierde atribución en un fallback sin código.
+
+Backend financiero/renovación pertenece a1661: no copiado ni mergeado aquí.
+Adaptador contrastado con contrato confirmado1661@39afa230, hashes y SHA en
+r7-contract.json. Orquestador debe integrar/desplegar su RPC antes de abrir
+códigos; sin ella falla sin cobro. Checkout anual aclara segunda anualidad.
+Al integrar, conservar guard2/begin/marcador y barrera1622 en los helpers
+compartidos. Repetir auditoría ACL del rol erasure tras sus RPC nuevas.
+Condiciones de activar reembolsos R6 intactas; switch sigue apagado.
+
+Textos4idiomas:20%desde segundo mes, primera factura solo atribución.
+Founders incluye Nightly; CTA permanece apagado. Plus confirmado999/9990,
+primer periodo699/6990, desde fuente única. Sin cambios de productos reales.
+Checks web79NodeSQLite, ocho flujos(4planes con/sincódigo)->webhookreal/licencia,
+48capturas Mac con códigoISAAC/dobleclick/CSP/backoff/descargas.
+SQL/Edge/Rust no se repiten: este lote solo cambia docs de esta rama backend;
+código conserva baseeb553c7fe y última verificación R6(662Edge/235pgTAP/13carreras).
+Evidencia ~/evidence/web-compra/r7-*; SHA/estadofinal en buzónweb-compra.
+Solo bares; orquestador publica/actualizaVANTA42/PR1663. SinAPIreal/deploy/release.
+
+## VANTA-42 / PR #1663 · R9 · Registro SQL y catálogo aplicado (16/10/2026)
+
+Merge de nightly@e8aa2077c7c6de0a7733a3f2fc616dc63fdf7456. Se conserva
+#1673: registro privado billing_launch_offers, RPC pública billing_launch_checkout
+con validación SQL y retirada de report_promotion_checkout; programa de informes
+aplazado mediante su política de inscripción. #1649/#1674/#1676 se integran intactos.
+El conflicto era solo de handoff; se conservaron ambas historias.
+
+La migración pendiente de este PR adapta la liberación terminal al helper
+privado cuando #1673 ya está instalado, sin sustituir el validador ni abrir
+EXECUTE al helper. La misma migración sigue funcionando en instalación limpia.
+SQL85migraciones/741pgTAP/15carreras PASS en ambas rutas; incluye pruebas de
+registro y de la nueva política de inscripción. Compensación OFF y baja D1/ACK
+firmado se conservan; el rol de pull sigue sin RPC adicionales.
+
+Catálogo de Polar aplicado confirmado por el orquestador. El único mapa completo
+vigente es scripts/polar-production-map.json (bajo supabase/functions), objeto
+map exacto del resultado aprobado catalogo-1661-result-r5.json. Procedencia/hash
+e instrucciones en docs/billing/production-purchase-configuration.md.
+Registro SQL generado offline en r9-production-launch-offers.sql; no aplicado
+en servicio real. El operador debe configurar el mismo POLAR_PRODUCT_MAP en
+Supabase y Worker, registrar las ofertas y comprobar apertura/estado de productos.
+No se inventan IDs de creador ni se reejecuta apply de Polar.
+
+Web conserva la RPC pública y cierra antes de cobrar si el registro no está
+disponible/no coincide. Tests usan las ofertas y IDs del mapa aprobado sin red.
+La landing retira el anuncio de informes aplazados;regeneradas cuatro lenguas
+y prueba de todas las fases. Edge731 PASS+2ignorados previos;NodeSQLite83;12E2E+controlsinbinding;48capturas.
+Quality456/fmt/lint/surface PASS. Windows secuencial por cola nueva:
+fmt/check/Clippy/Nextest1801/lifecycle/telemetría25 PASS;árbol native
+afb553c158cc20ab1ce2a7d147f55f3d0067934b idéntico a nightly. Target propio
+reutilizado de R8, sin intentar de nuevo el borrado rechazado por política.
+Evidencia Mac ~/evidence/web-compra/r9-*;Windows checkout-web-r9.
+
+Solo bares del Mac. Orquestador publica las ramas, revisa CI/PR1663 y actualiza
+PlaneVANTA42. Sin deploy, API comercial real, cobro,refund,baja real ni merge de
+canal/release. Dudas nuevas ninguna. Registro/configuración de servidor aún por
+confirmar;compensación solo se habilita tras los tres requisitos formales de R6.
+
+## VANTA-42 / PR #1663 · R8 · Integración nightly (16/10/2026)
+
+Se fusiona nightly@9e48eb86f8d2cfc43b64010d2b1ac1c58768826a en
+vantareapp/isa-1620-checkout-web. Se conserva la versión de nightly de
+Founders, oferta once, atribución/renovación de creador, informes, lease común
+y contracargos. Pro599/5999, Plus999/9990 y sus primeros periodos no cambian.
+No se modifica Polar real. Compensación continúa apagada; activar exige
+sandbox net/gross, inventario e inbox, y receptor privado Owner con ACK.
+
+La migración de integración añade Founders al guard compartido sin saltar su
+política de venta ni el bloqueo entre compras. La reserva de creador sigue
+siendo atómica y devuelve guard2; begin y binding siguen obligatorios.
+Un rechazo terminal canónico libera también la reserva de oferta de #1593,
+conservando CAS y bloqueo de los intentos vivos. La web adopta sus RPC comunes
+en lugar de guardar atribución por separado; una oferta ya consumida se
+rechaza antes de cobrar un precio distinto del mostrado.
+
+Reconciliación conserva reparación de facturas, disputas y reintentos de
+nightly, además de observación de compensación por ítem. Baja D1 automática,
+supresión, ACK firmado y permisos mínimos se vuelven a probar sobre la unión
+real de migraciones. Código nativo exactamente igual a nightly: árbol
+36cf87011d750968a1b57a5a4793410dbba294d3; gates Windows en worktree aislado
+checkout-web-integration por compilar.ps1, secuenciales.
+
+Evidencia Mac ~/evidence/web-compra/r8-*:83 migraciones,682 pgTAP,15 carreras
+en instalación limpia y actualización desde nightly;
+726 Edge PASS y2 ignorados preexistentes;81 tests Node/SQLite;8 recorridos
+web→webhook real→licencia y control sin binding;48 capturas headless locales;
+fmt/lint de archivos afectados, quality456 y superficie de deploy PASS.
+Control RED sin migración reproduce promotion_checkout_pending tras rechazo
+cierto. Rust Windows PASS:fmt/check/Clippy,Nextest1801,lifecycle ytelemetría25.
+Evidencia en docs/billing/checkout-integration-r8.md;target conservado porque
+la revisión automática rechazó el borrado con blocked by policy.
+Solo ramas aisladas y pushes a bares del Mac; publicación/CI/merge a nightly
+quedan al orquestador. Sin deploy, cobros, refunds, bajas reales ni release.
+Para Plane VANTA-42: actualizar resumen/Por revisar desde el orquestador.
+
+## VANTA-42 / PR #1663 · R6 · Acabado y actualización de base (16/10/2026)
+
+Aprobación de seguridad R5 recibida por el orquestador; informe review-r5.md.
+Fusionado origin/nightly eb553c7fe905c225d66ef8718eabb72fa84dbb49 en la rama
+vantareapp/isa-1620-checkout-web, sin reescritura ni promoción de canal.
+Único conflicto: handoff; se conservan completas las entradas VANTA-42 y1627.
+Polar compartido conserva guard2/marcador y helper admin sandbox de nightly.
+[Condición formal de activación](../../billing/checkout-review-r5.md):
+refund apagado hasta sandbox net/gross, inventario de pedidos y receptor Owner
+visible con ACK durable, con evidencia y decisión de Isaac por entorno.
+
+Web: descuento sin archivar/sin código/duration_in_months=null, validación
+estricta incluso si faltan campos. Sin versiónSetup, CTA sin href; before
+permanece informativo/Discord. Prueba Chrome con JS desactivado y clic central:
+cero pestañas nuevas. Retirados headers de launch-edition y textos fallback
+de30EUR/snapshot/cierre; Founders usa la fuente común y permanece deshabilitado.
+
+Checks sobre nueva base:77migraciones/235pgTAP/13carreras;662EdgePASS/2ignored
+preexistentes;74NodeSQLite;E2E4suscripciones->webhookreal->licencia;48capturas;
+125assets reproducibles;fmt/calidad456/superficie/diff PASS. Native sin cambios
+propios respecto a nightly: no se repiten gates Rust/telemetría.
+Evidencia ~/evidence/web-compra/r6-*, SHAs/bares en buzón web-compra.
+Sin API real/GitHub push/CI remota/deploy/release ni merge de canal.
+Orquestador publica backend y actualiza PR1663/PlaneVANTA-42; último estado
+comunicado En curso. Descarga sigue sin versión, Founders apagado y venta
+cerrada hasta configuración/QA/autorización de Isaac.
+
+## VANTA-42 / #1620 · R5 · Compensación restringida y oferta web (16/10/2026)
+
+Rama backend vantareapp/isa-1620-checkout-web, base nightly3f82af8, draft#1663.
+[Contrato R5](../../billing/checkout-review-r5.md) prevalece sobre R4:
+refund automático apagado por defecto; exige vínculo/marcador y resolución
+terminal no aplicable, con consulta del inbox. Pendientes/cuarentenas genéricas/
+enlaces de creador/históricos => incidencia Owner, nunca refund automático.
+IVA net/gross configurable pendiente sandbox; lectura antes de reintentar,
+avisos durables y sin doble refund. Expiración24h del no publicado sellado,
+aislamiento de venenos por ítem. ACK D1 con hash/recuento y HMAC propio;
+JWT1h/rotación30min; auditoría cero RPC PUBLIC extras para rol de erasure.
+Barrera #1622 y cierre #1633 conservados.
+
+Web: Launch Edition fuera de venta, derechos antiguos legibles; Founders50
+para siempre/todo presente y futuro/sin fin, CTA y hueco apagados hasta integrar
+1661 (contratoc846d7c6 requiere Supabase bearer, no Clerk directo).
+Beta pública26oct-26nov: Pro399/3990 primer periodo y599/5999 renovación;
+Plus opcional699/6990 y999/9990. Una fuente en céntimos también legales.
+Checkout normal+polar_launch_discount_id del mapa común1661@c846d7c6,
+nunca IDs de lanzamiento; validación servidor
+de tarifa/importe/duración/producto y no combinación con creador. Informes
+desde segundo mes. Downloads URL fijada por version en launch.json, null
+pendienteIsaac, CTA desactivado hasta elegir versión; nunca releases/latest.
+
+72migraciones/235pgTAP/13carreras,632EdgePASS/2ignored preexistentes;
+73Node/SQLite, E2E cuatro suscripciones/webhook real,48capturas Chrome Mac,
+CSP/backoff/429/precios/descarga PASS. Rust/telemetría omitidos: native intacto.
+Evidencia ~/evidence/web-compra/r5-*. SHA final/ref en buzón web-compra.
+Solo bares locales; sin GitHub/API real/deploy/merge/release.
+Orquestador: revisar y actualizar VANTA-42/PR1663; último estado En curso.
+Isaac: precios/once de catálogo1661 (Polar59,90 debe pasar59,99),
+versiónSetup, privacidad/Clerk/mapa/cron/JWT/claves/receptor Owner y sandboxIVA
+antes de abrir. Webhookrefund/uncanceled y localización activos según comunicación
+del orquestador; no se verificaron contra producción.
+
+## VANTA-42 / #1620 · R4 · Intentos, compensación y baja D1 (15/10/2026)
+
+Rama/base/PR: `vantareapp/isa-1620-checkout-web`, nightly `3f82af8`, draft #1663.
+[Contrato y despliegue](../../billing/checkout-web-shared.md): guard2, begin antes
+de Polar, caducidad automática solo segura, nonce sellado para ACK perdido,
+reembolso total automático de cobro sin licencia, ledger/outbox y retries.
+No hay recuperación comercial por soporte ni cambio de identidad por metadata.
+Pull D1 automático mínimo privilegio y cursor de commit; barrera #1622 intacta.
+Sustituye expresamente el paso manual R3. Owner recibe avisos mediante
+receptor privado firmado por configurar; no se añade pantalla Admin.
+
+Web conserva master d9f040a sin prueba gratis; renovación Pro de una fuente
+5,99/59,99 en cuatro idiomas, sin tocar Polar. Plus conserva renovación lanzamiento6,99/69,90; normal9,99/99,90.
+71 migraciones /212pgTAP/13carreras PASS; F1 RED conductual sobre R3.
+Edge630PASS/2ignored; web66PASS, SQLite y E2E real cinco planes con dobles;
+Chrome40capturas/CSP/backoff/precios PASS. Calidad456/superficie/fmt/lintproducción
+PASS. Native no cambia. Evidencia `~/evidence/web-compra/r4-*`.
+
+Entrega solo a bares del Mac. SHA/commits/refs en buzón web-compra.
+Venta cerrada #1633. Sin API real, GitHub push, despliegue, promoción ni release.
+Siguiente: revisión conjunta y despliegue autorizado por etapas; configurar JWT
+mínimo/salts, cron y receptor visible Owner, verificar precios Polar y sandbox.
+Orquestador actualiza VANTA-42/issue/PR; último estado comunicado En curso.
+
+## #1593 / VANTA-39 · decisión de Isaac P3-E y revisión P3-F/G/H · 16/10/2026
+
+PR draft [#1673](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1673),
+rama vantareapp/isa-1593-endurecer desde nightly 9e48eb86f; esta ronda continúa
+bc631a839. Review de esa base APTO; cambios nuevos pendientes de CI del nuevo SHA.
+SHA final y estado de CI se verifican en issue/evidencia/buzón al publicar.
+
+- Isaac NO abre el programa por informes con el lanzamiento: queda apagado por
+  defecto, sin fechas de inscripción y pendiente de un anuncio posterior.
+  Sustituye la propuesta P3-E anterior, que ya no está pendiente de confirmar.
+- SQL incorpora enrollment_enabled=false y fechas NULL en la política privada
+  existente, solo para operador. Una ventana propia finita y ordenada es
+  obligatoria antes de habilitar nuevas inscripciones. El flag Edge también
+  arranca apagado si está ausente o false; encenderlo solo no inscribe.
+- La observación solo usa esa política para nuevas inscripciones, sin derivar
+  fechas del JSON de lanzamiento. El helper histórico de checkout conserva
+  su ventana de #1661, sin cambios en precio/cupón inicial ni en su consumo.
+  Se conservan hechos contables y observación de derechos ya concedidos.
+- P3-F: generador imprime SELECT del registro tras commit; checklist exige
+  comparar las claves activas, IDs, ventana y versión antes de desplegar Edge.
+  P3-G: comentario histórico identifica la RPC retirada y su migración de baja.
+  P3-H: begin/commit explícitos en la migración del registro; también en la nueva.
+- Rojo inicial: suscripción de lanzamiento se inscribía sin configurar programa.
+  Verde:24 comprobaciones nuevas de política y fechas futuras ficticias,
+  además de183 informes,29 checkout,88 convivencia,89 creador y Founders43+36.
+  Ambos órdenes de migración pasan; tests antiguos habilitan explícitamente
+  su ventana ficticia. No se atribuyen esas fechas a un anuncio real.
+- SQL completo81 suites,54PASS/27FAIL heredadas frente al PR anterior80/53/27;
+  1885→1909 aserciones aprobadas, sin regresiones. Mutaciones de flag SQL y
+  acoplamiento con lanzamiento detectadas. Edge711PASS/0FAIL/2ignored,
+  frente a710/0/2. Fmt/lint, superficie, quality/retirada y diff-check PASS.
+- SQL y Edge en Mac; Docker desechable sin red/puertos, actor sin superusuario,
+  lock/trap liberado. Sin Rust tocado: fmt/clippy/nextest/lifecycle/telemetría
+  nativos omitidos. Sin servicios reales, productos/cupones, deploy, merge,
+  release o anuncio comercial. Activación futura requiere a Isaac.
+
+Evidencia de esta ronda: ~/evidence/1673-programa-apagado y copia servidor.
+Evidencia completa anterior: ~/evidence/1593-endurecer (no ~/evidence/*1673*),
+incluida copia en C:/VantareServer/evidence/1593-endurecer. Próximo paso:
+publicar el nuevo SHA en #1673, comprobar CI y entregar Por revisar al orquestador.
+
+## #1593 / VANTA-39 · endurecimiento P3-D/P3-E · 16/10/2026
+
+#1659 ya integrado por el orquestador en nightly9e48eb86f. Seguimiento aislado
+vantareapp/isa-1593-endurecer, base exacta9e48eb86f; [PR draft #1673](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1673)
+hacia nightly. Código30389aec; SHA final en issue/evidencia/buzón. Publicado
+al bare Mac y a GitHub desde servidor; CI automático en curso al cerrar.
+Plane Por revisar tras verificación final; integración reservada al orquestador.
+
+- P3-D: retira report_promotion_checkout y fallback Edge. billing_launch_checkout
+  valida SQL entorno/clave/producto/cupón/ventana/reloj finito contra registro
+  privado exclusivo del operador. No reserva/consume ante oferta no registrada.
+  Reserva/CAS/consumo por cuenta y B03 preservados en único core privado sin
+  permisos API; owners explícitos, search_path vacío y RLS.
+- Proyección SQL offline del único JSON #1661 y loadPolarProductMap.
+  Registro inicialmente vacío: aplicar SQL revisado ANTES del checkout
+  actualizado. Repetición conserva auditoría; deriva aborta/rollback, sin rotación
+  silenciosa. Verificación remota de importe/duración once/ámbito por operador,
+  no certificada por este generador. No activa ni consulta Polar.
+- P3-E: inscripción de Pro/Plus mensual durante26oct→26nov19Madrid,
+  apertura inclusiva/cierre exclusivo; 45 días individuales (1080h).
+  Decisión operativa del orquestador PENDIENTE de confirmación de Isaac.
+  Contrato/regla lo dicen expresamente; premio sigue desde segundo mes.
+- SQL RED inicial0/3 confirma los fallos previos. Verde29 nuevas +183 informes
+  +88 convivencia +89 creador en ambos órdenes; suites Founders43+36 verdes.
+  Catálogo80/53PASS/27FAIL frente al baseline exacto79/52/27,
+  1850→1885 checks y ninguna regresión. Fallas heredadas idénticas.
+  Generación SQL real aplicada/repetida y deriva revertida en BD desechable.
+- Edge710PASS/0FAIL/2ignored frente a nightly707/0/2.
+  Tres mutantes detectados: cupón, intento y B03; los dos últimos eliminan
+  ambos guards redundantes para comprobar la ausencia completa del control.
+  La primera prueba P3-E chocó con cupo1/día: separadas cuentas sin debilitarlo.
+  Rust/clippy/nextest/lifecycle/telemetría omitidos: ningún archivo nativo tocado.
+- Mac Docker sin red/puertos, actor NOSUPERUSER BYPASSRLS y lock/trap liberado.
+  Fmt/lint producción, superficie deploy, quality/retirada456huellas y diff-check PASS.
+  Evidencia ~/evidence/1593-endurecer y C:/VantareServer/evidence/1593-endurecer.
+  PR#1673 abierto draft y enlazado al hilo, CI en curso; estado final en issue.
+  Sin merge, deploy,
+  productos/cupones reales, pagos/refunds, release ni promoción desde este worker.
+  Multi-cuenta aceptado y saldo ganado caduca6meses: sin cambios.
+
+## #1593 / VANTA-39 · R7 terminada al bare, pendiente publicación · 16/10/2026
+
+PR #1659, proyecto Vantare/area:licencias; misma rama. Base R7 b5378d166.
+Merge autorizado8392038d desde nightly1f07e8e28 y ff079767 desde
+nightly460c39e45 (#1661/#1672). Cierre posterior solo documentación y tooling;
+SHA final en issue/evidencia/buzón. Sin promoción de esta rama hacia nightly.
+
+- Conserva checkout/guards de #1661, compra Founders y renovación/retirada
+  de creador, incluida cancelación definitiva por subscription.updated.
+  Webhooks conservan ledger e incidencias de informes y pagos Owner.
+- Un JSON canónico de #1661, sin copia parcial. Ventana única26oct→26nov19
+  Madrid; primer periodo once por cuenta, recuperable tras TTL, consume desde
+  SQL incluso sin flag de informes. Mensual/anual comparten el derecho,
+  sin consumirlo por una compra vitalicia histórica. Reserva/CAS, identidad,
+  huella de oferta/creador y claim/atribución transaccionales conservados.
+- Mayor ahorro con selector original único; informes desde mes2. Conserva
+  seis cobros totales, caducidad6meses, spam, traslados y barrera de borrados.
+  Revocación PATCH→ACK: recibo durable, solo token propio/vivo, conflicto
+  blando auditado y lease liberado; no completar creador ni falsa incidencia.
+  Retirada de creador incluye remanentes verificados; preserva informes/manual.
+  Refund inicial sigue perdiendo el premio y autoriza solo limpieza.
+- SQL177+88+89+43+36 PASS en ambos órdenes sobre migraciones reales.
+  Catálogo completo79/52PASS/27FAIL heredadas frente a nightly77/50/27:
+  1585→1850 aserciones PASS,265 nuevas, cero regresiones y mismas fallas.
+  #1672 no cambia ni un fichero SQL: baseline1f07 se conserva con prueba Git.
+- Edge707PASS/0FAIL/2ignored frente a nightly460662/0/2. Conservadas593
+  declaraciones literales de tests de nightly y sus casos dinámicos. La
+  copia vieja superpuesta fue sustituida por archivo del árbol Git unido,
+  que exige el ancestro460. Sin suites sustituidas por un fixture parcial.
+- Diez controles SQL y siete Edge detectados: fecha, revocación/ACK y remanentes,
+  comparación, locks/lease, total de meses, recuperación, borrados; guards,
+  hooks/retirada/cancelación definitiva, once/fingerprint y configJWT.
+  Primeras pruebas rojas de ventana y carrera ACK conservadas. Dos mutantes
+  Edge iniciales solo rompían el tipado: corregidos para probar conducta.
+- Windows serial MIN_GB0 por compilar.ps1:fmt/check/Clippy PASS, Nextestci
+  1826PASS/14skips (telemetría incluida), lifecycle18PASS.24 entradas
+  nativas Mac/Windows idénticas normalizandoLF; #1672 no toca Rust.
+  Targets propios se limpian por Cargo al cerrar. Fmt/lint Edge, superficie,
+  quality, retirada y diff-check PASS. Docker aislado sin red/puertos,
+  SQL NOSUPERUSER BYPASSRLS, lock/trap liberado tras cada gate.
+- Remanentes20%1..10 son requisito ANTES de activar convivencia. Runbook y
+  fragmento ISA-1593 actualizados. Multi-cuenta aceptado; progreso en Hub
+  sigue propuesta, Owner conserva bloque. Sin nuevos productos ni cupones,
+  servicios reales, deploy, scheduler, pagos/refunds o release.
+
+Estado al cierre:Plane Por revisar tras verificar entrega; publicación GitHub,
+CI y re-review R7 por orquestador. PR remoto aún b5378d166, CI SUCCESS solo de
+esa base; no acredita R7. Evidencia ~/evidence/1593-r7/RESULTADOS.md y copia
+C:/VantareServer/evidence/1593-r7. FIN en ~/orq/1593.buzon.md al completar
+seguimiento. Pendientes sandbox autorizado/QA visual y activación de catálogo.
+Polar real:seis fijos Pro200c/Plus300c repeating1/3/6, creador #1661 y remanentes
+mensuales20%1..10 validados; oferta inicial once solo del catálogo de #1661.
+Isaac autoriza/crea; este worker no ha consultado ni escrito Polar real.
+
+## #1593 / VANTA-39 · R7 incorpora retirada definitiva #1672 · 16/10/2026
+
+Nightly460c39e45 añadido por encargo explícito del orquestador. Conserva la
+retirada de creador por subscription.updated canceled definitivo, sin confundir
+cancelación al fin pagado ni paused. Hooks originales y pruebas de #1672 unidos
+con el ledger de informes. Edge707PASS/0FAIL/2ignored; baseline460 intacto
+662PASS/0FAIL/2ignored. Mantiene todos los tests de ambas ramas, incluidos
+creador-only/retirada. Cuatro conflictos de tests/handoff resueltos con la versión
+más estricta y los casos de informes añadidos, no con stubs permisivos de Launch.
+No hay cambios SQL ni Rust entre1f07e8e28 y460c39e45: baseline SQL y entradas
+de los gates nativos conservan sus hashes. Rust sigue validándose serialmente
+sobre fuentes nativas idénticas. Pendientes controles finales/evidencia/cierre.
+
+## VANTA-83 / #1661 · seguimiento O1/O3 (16-oct-2026)
+
+- #1666 integrado por el orquestador en nightly 1f07e8e28. Seguimiento aislado
+  vantareapp/isa-1661-disputas desde esa base; no promoción de este seguimiento.
+- O1: las disputas se reciben mediante revocación de suscripción o refund
+  preventivo. Polar no enumera dispute.*; no añadir un evento inventado.
+  Se acepta también status=canceled con cancel_at_period_end=false en updated;
+  cancelación diferida no inicia retirada. Mismo lease/GET/PATCH/ACK durable,
+  cupón persistido y fallo Owner. Contrato documenta ausencia de señal al abrir.
+- O3 confirmado: refund confirmado de cualquier factura de esa suscripción,
+  parcial incluido, retira permanentemente el 20 %. Sin afectar otras suscripciones.
+- O2 sigue en sandbox: PATCH sobre suscripción ya revocada y payload/entrega reales.
+  Fuentes oficiales y lista exacta de eventos en creator-renewals-1661.md.
+- Rojo→verde: updated terminal omitía retirada. 484 Edge y 142 pgTAP PASS;
+  quality/retirement PASS (456 huellas), Deno fmt PASS. Siete fixtures heredadas
+  fallaban también en la base: actualizadas para llamadas sin operación creador
+  y compras Launch históricas, conservando las comprobaciones comerciales.
+  Logs Mac ~/orq/disputas-1661-evidence; copia servidor al cerrar.
+- No cambia Rust/schema/dependencias: no repetir gates Rust/lifecycle/telemetría.
+  PR nuevo y CI se anotan en issue/entrega; Plane Por revisar al cierre.
+  Sin llamadas a Polar real, despliegues, dinero ni capturas (#1655).
+
+## #1593 / VANTA-39 · ronda 7 en validación · 16/10/2026
+
+Merge autorizado EN la rama de PR #1659 desde nightly1f07e8e28 (#1661/#1666).
+Conserva guards de checkout, Founders, atribución y renovación/retirada de creador,
+con los efectos Owner y ledger de informes. Catálogo JSON completo de #1661;
+primer periodo once durante26-oct→26-nov19Madrid, derecho único por cuenta
+independiente del flag de informes. RPC/consumo para mensual y anual, reserva,
+recuperación/CAS y huella de creador conservadas. Premio mensual desde mes2.
+Revocación entre PATCH/ACK: recibo confirmado durable con conflicto blando
+fenced; retirada sigue pendiente, sin falsa incidencia ni completar creador.
+Retirada incluye remanentes privados verificados y preserva cupones de informes;
+revocar creador no congela el premio independiente. Remanentes1..10 obligatorios
+antes de activar. SQL/Edge de ambas ramas en árbol unido real, sin overlay viejo.
+Edge702PASS/0FAIL/2ignored; dirigidoSQL176+84+89+43+36PASS en primera pasada.
+Catálogo completo, controles y gates Rust Windows pendientes en este checkpoint.
+Nightlybaseline real: SQL50PASS/27FAIL; Edge651PASS/7FAIL/2ignored (dobles
+antiguos de refunds, reproducidos sin cambios). Falta cerrar comparación final.
+Plane En curso, proyecto Vantare/area:licencias; rama
+vantareapp/isa-1593-descuento-informes, base ronda b5378d166. Sin push aGitHub,
+deploy, Polar real, cupones/productos creados ni promoción de canal.
+Evidencia y plan ~/evidence/1593-r7. Cierre posterior actualizará SHA/checks/FIN.
+
+## #1593 / VANTA-39 · ronda 6, convivencia con #1661 · 16/10/2026
+
+Entrega para revisión de PR [#1659](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1659),
+proyecto Vantare / area:licencias. Misma rama, base de ronda c99b306fd;
+nightly ya integrado eb553c7fe. Código85614da0 y cierre documental posterior;
+SHA final verificado en issue, evidencia y buzón. Contrato y código de #1661
+leídos en271e20053. No se fusiona Founders ni se promociona un canal.
+
+- Creador20 % desde primera renovación; informes desde segundo mes. Se retira
+  la selección antigua de dos meses. Porcentaje/plazo en el catálogo común de
+  #1661; su comparación en céntimos es única y empate favorece informes.
+  Registra el perdedor para Owner.
+- La campaña tiene un solo escritor externo. El webhook de creador guarda
+  atribución/primer pago y delega sin rearmar una candidatura antigua. El
+  worker calcula el saldo real y usa la selección, lease y ACK de #1661.
+  Fuera de esta campaña, creador mantiene su flujo normal.
+- Conserva saldo3/6 total, caducidad6meses, spam/refund y B03. Al volver al
+  creador usa un cupón validado para el plazo restante, nunca once meses
+  nuevos. El primer ciclo rebajado fija su reloj; una factura anterior
+  reconciliada solo lo puede acortar. Sin remanente, incidencia Owner durable.
+- Premio sigue cambios observados de plan/segunda alta, con auditoría.
+  Limpieza conserva/restaura el creador de la anterior; canceled/paused no
+  recibe PATCH. Refund solo autoriza retirada, nunca otro beneficio.
+  Publisher/selector comparten B03, sin invertir el lock de checkout;
+  regresión real de pg_locks y control que detecta la inversión.
+- SQL169 de informes +70 de convivencia +58 originales de #1661 PASS.
+  Catálogo aislado76suites/50PASS/26FAIL heredadas, frente a nightly74/48/26:
+  1415→1589 aserciones, cero regresiones. Conjunto79/52/27 frente al
+  #1661 intacto77/50/27:1551→1790, cero regresiones. La suite anual roja
+  adicional ya falla en271e20053. Instalación en ambos órdenes PASS.
+- Edge684PASS/0FAIL/2ignored. Conjunto675/5/2 frente al #1661 intacto645/5/2:
+  mismos cinco tests comerciales de refund con dobles RPC antiguos.
+  Precio de producto y periodos de factura sobreviven juntos a minimización,
+  sin PII. Ocho controles SQL RED; regresiones rojas contra c99 confirmadas.
+- Gates Mac con lock/trap liberado; SQL NOSUPERUSER BYPASSRLS, Docker sin red
+  ni puertos. Fmt/lint, superficie, quality/retirada y diff-check PASS.
+  Rust/clippy/nextest/lifecycle/telemetría omitidos: no hay código Rust tocado
+  ni target creado; checkout Windows de integración sin cambios propios.
+
+Integración prevista en runbook: combinar checkout once/atribución y catálogo
+de #1661 con hooks/ledger de #1593. Conservar helper con managed_report_ids,
+proyección de cuatro campos de línea y verify_jwt=false. El fixture Git no
+acredita merge Git ni checkout final combinado. Si #1661 llega después, ejecutar
+el instalador idempotente y exigir true. El cron de informes lleva también al
+creador de estas cuentas; su flag detiene nuevas asociaciones de ambos, nunca
+el ledger ni el calendario de cupones ya aplicados. No activar aún.
+
+Polar pendiente de Isaac: seis cupones fijos Pro200c/Plus300c repeating1/3/6;
+creador según #1661 (20 %, mensual11/anual12, solo API), sin ampliar históricos.
+Para reanudación: remanentes mensuales20 % de1..10meses, validados con producto
+y cupón original; pueden compartir ID si coinciden porcentaje/ámbito.
+Nada creado en Polar, productos nuevos, servicios reales, deploy o release.
+
+Evidencia ~/evidence/1593-r6/RESULTADOS.md, resumen.json y comparaciones completas;
+copia servidor C:/VantareServer/evidence/1593-r6. FIN en ~/orq/1593.buzon.md.
+Plane Por revisar al cerrar. Orquestador publica SHA y pide CI/re-review;
+después integración final de checkout, sandbox/QA autorizado. CI SUCCESS
+observado solo acredita c99b306fd. Sin promoción hacia nightly/testers/master.
+
+## #1593 / VANTA-39 · merge de nightly entregado al bare · 16/10/2026
+
+Encargo explícito del orquestador: merge de origin/nightly eb553c7fe sobre
+53b1fdf29, misma rama de PR #1659. Nightly importado al bare mediante bundle
+desde origin del servidor (el Mac no tiene credenciales GitHub).
+Nueve conflictos resueltos: webhooks conservan sincronización de pagos/refunds
+Owner y ledger de informes; dobles admiten solo las RPC esperadas de ambos.
+La miniapp nueva se conserva y su ficha Persona muestra el progreso/incidencia
+de informes. DTO combina promoción con plan/pagos/accesos/bloqueo de #1639;
+fixture aprobado conservado, con ejemplo falso de Ana añadido. Históricos
+de ambos handoffs preservados. Cola/optimización Rust y retirada CI Linux
+exactamente de nightly, sin activar servicios ni cambiar reglas comerciales.
+Edge combinado679PASS/0FAIL/2ignored. SQL75suites/49PASS/26FAIL: las74 suites
+de nightly idénticas,169 comprobaciones de promoción (incluye contrato combinado
+de detalle Owner) y0regresiones. Prueba nueva de una factura actualizando a la
+vez promoción y pagos. Gates Mac fmt/lint/superficies/quality/retirada PASS.
+Rust Windows PASS: fmt/check/Clippy, perfilci1818/1818 (14 skips de perfil),
+incluida telemetría real congelada, y lifecycle18/18. Secuenciales por la cola
+nueva con MIN_GB=0/jobs2.20 entradas nativas idénticas Mac/Windows al normalizar
+LF. Targets propios se limpian con Cargo al cerrar.
+Dos commits: merge2dd6761d (padres53b1fdf29+eb553c7fe) y cierre con formato,
+prueba de coproyección y evidencia. SHA final/pushbare en issue y buzón.
+Plane Por revisar al cerrar, PR1659 todavía en53b1fdf29 hasta publicación por
+el orquestador; CI del nuevo SHA pendiente. No se promocionó hacia nightly,
+testers o master; sin deploy, release, productos ni servicios reales.
+Evidencia ~/evidence/1593-merge y C:/VantareServer/evidence/1593-merge.
+
+## #1593 / VANTA-39 · ronda 5 entregada al bare · 16/10/2026
+
+PR #1659, rama vantareapp/isa-1593-descuento-informes; base de ronda
+011ca3cbe (R4 APTO), base de rama 3f82af867. Commits por punto:
+c1402432 (P3-23 plazo real retry_at), b0974da6 (P3-24 desajuste dueño/producto
+visible al Owner), 15bcd59f (P3-25 historia durable por elemento no-orden) y
+6cc7e663 (P3-22 mensajes locales en app, conserva UUID y no muestra prosa remota).
+Regresiones RED→GREEN de los cuatro puntos. SQL167/167, Edge648PASS/0FAIL y
+dos ignores históricos. Dos controles SQL nuevos fallan al quitar las incidencias.
+Catálogo contra base 3f82af867: 59→60 suites,33→34PASS,26rojas idénticas,
+1266→1433 aserciones,0regresiones. Runner NOSUPERUSER BYPASSRLS, Docker/Edge
+en Mac con lock/trap, sin servicios reales.
+
+Nightly remoto ahora eb553c7fe, con miniapp #1639 y tooling. Comparación nueva
+desde snapshot exacto: SQL74suites/48PASS/26FAIL; las59 comunes son idénticas a
+esta rama (15 nuevas de miniapp no están en la base aislada). Edge643PASS/0FAIL/
+2ignored. PR remoto sigue011ca3cbe y GitHub marca CONFLICTING; requiere
+integración del conjunto y CI del SHA final por el orquestador, no se acredita
+un candidato integrado con ese nightly.
+
+Rust Windows: fmt/check/Clippy y Nextest servicios188PASS/2skips, incluidos
+procesos reales con fixtures. Workspace completo: fmt/check/Clippy PASS,
+Nextest1786/1786 (14 skips del perfil existente) y lifecycle18/18 PASS.
+Ejecución secuencial por compilar.ps1,MIN_GB=0,jobs2 y targets propios que se
+eliminan al cerrar. Sin cambios en runtime/domain/IPC/testdata; telemetría
+no repetida. SHA final/pushbare y limpieza verificados en buzón e issue.
+Plane pasa a Por revisar al cerrar desde servidor. Evidencia Mac
+~/evidence/1593-r5 y servidor C:/VantareServer/evidence/1593-r5.
+Campaña inerte; sin Polar/Clerk reales, productos, deploy, merge ni release.
+
+## #1593 / VANTA-39 · Ronda 4 entregada al bare · 15/10/2026
+
+Base de ronda d90b8ec04 ya publicada en PR draft #1659 por el orquestador.
+Misma rama vantareapp/isa-1593-descuento-informes, Mac ~/wt-1593, nightly
+3f82af867 verificada sin cambios. SHA final y siete commits en el buzón
+~/orq/1593.buzon.md; pendiente publicar el SHA nuevo en GitHub.
+
+- P2-8: cinco aceptados dan **seis cobros en total**, contando los ya consumidos
+  con el tramo de tres. reward_granted_at conserva la primera concesión;
+  reward_expires_at sigue el plazo del tramo nuevo. Regresión con cobro entre
+  tramos, cinco restantes y corte tras seis totales.
+- P2-9: creación creating/uncertain sin ID se libera a los30min, conservando
+  el derecho por cuenta y admitiendo un intento nuevo/Plus. Marca durable de
+  recuperación visible al Owner aunque aún no exista promoción/suscripción;
+  el pago la resuelve y consume el derecho. IDs remotos conocidos mantienen
+  GET y prueba terminal/CAS. Pro→Plus con Pro abierto espera con409 y mensaje
+  claro, sin enlace de plan equivocado ni segundo checkout. Una creación remota
+  sin respuesta puede dejar un checkout huérfano sin enlace entregado; esta
+  recuperación es la decisión del orquestador R4, no atomicidad entre proveedores.
+- P3-18: captura por elemento, continúa toda la página, intenta registrar el
+  hueco y devuelve código saneado. Si falla conserva cursor para reintentar la
+  página; los éxitos previos deduplican. Handler corta su bucle de páginas
+  después de esa página y marca el fallo; no pierde facturas silenciosamente.
+- P3-19: p_attempt obligatorio en SQL y helper; no existe concesión sin reserva.
+- P3-20: resultado contable inseguro registra hueco antes de cuarentena, sin
+  proyectar como factura la instantánea ambigua.
+- P3-21: cuenta borrada fuera de la lista y cuenta viva dentro, con mutación
+  accounts-deleted que rompe precisamente ese filtro. B03 se mantiene.
+
+Evidencia Mac ~/evidence/1593-r4/RESULTADOS.md: **152/152 pgTAP** de promoción,
+**24 controles SQL y3 Edge** detectados. Regresiones de los seis puntos
+RED→GREEN con logs. Catálogo completo NOSUPERUSER BYPASSRLS: nightly59/33PASS,
+rama60/34PASS, mismas26 suites rojas,1266→1418 aserciones,**cero regresiones**.
+Baseline R2 mismo actor/runner y SHA nightly sin cambios. Edge completo
+**644PASS/0FAIL/2ignored** históricos. Formato, lint producción/nuevos módulos,
+superficies, quality, retirada y diff-check PASS. Ocho require-await del test
+checkout siguen históricos. Sin Rust tocado: clippy/nextest/lifecycle/telemetría
+omitidos; sin target propio creado. Docker/Edge con lock/trap, sin red real.
+
+Issue #1593 y Plane VANTA-39 pasan a Por revisar al cerrar desde servidor.
+Runbook actualizado sin las frases contradictorias de3+6 ni soporte obligatorio
+para una reserva sinID ya caducada. Decisiones multi-cuenta aceptado y caducidad
+configurable6meses permanecen. Sin Polar/Clerk reales, productos, secretos nuevos,
+deploy, scheduler, merge, release ni promoción.
+
+Siguiente: publicar SHA del bare a PR1659, ejecutar CI y re-review independiente
+R4; sandbox autorizado y QA visual/Windows siguen pendientes. El check remoto
+observado (GitGuardian SUCCESS) acredita d90b8ec04/R3, no R4. Seis descuentos
+Polar Pro200/Plus300 EUR repeating1/3/6, sin productos nuevos; catálogo vacío
+y campaña inactiva. #1620/#1639 conservan su coordinación pendiente.
+
+## Histórico · #1593 / VANTA-39 · Ronda 3 entregada al bare · 15/10/2026
+
+PR draft [#1659](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1659),
+todavía en el SHA de R2 d16f28426 hasta que publique el orquestador. Misma rama
+vantareapp/isa-1593-descuento-informes, worktree Mac ~/wt-1593, base nightly
+3f82af867. SHA final y commits separados por punto en ~/orq/1593.buzon.md.
+
+- P1-2: derecho de primer mes por cuenta durante la semana, recuperable tras
+  expirar el intento. GET remoto devuelve el enlace abierto sin duplicarlo;
+  solo expired/failed permite otro. CAS y datos durables sobreviven GC, pago
+  consume una sola vez; incierto sin ID devuelve 503 y requiere reconciliar.
+  No continúa silenciosamente a precio normal. B03 y RPC solo servidor probados.
+- P2-4: canceled/paused anteriores se dan por limpios con fecha/motivo durable,
+  sin PATCH prohibido. Prueba de lote confirma el premio en la suscripción
+  vigente en la siguiente pasada, incluyendo el fallo remoto real 422.
+- P2-5: reconciliación alimenta el ledger por order ID aunque el inbox ya
+  completó/quarantinó su efecto. Traza de origen/fecha y huecos durables por
+  datos incompletos; incidencia Owner y sin rearme hasta reparar. Un refund
+  inicial sigue siendo autoritativo aunque otra factura tenga datos incompletos.
+- P3-9/10/13: ciclo después de trial incluido, factura inicial ausente visible
+  y resolución automática; false o retirar el flag nunca apagan contabilidad.
+- Decisiones de Isaac P3-11/12: multi-cuenta aceptado sin control ni más PII.
+  Saldo pendiente caduca a seis meses de calendario Madrid desde la concesión,
+  duración única en private.report_promotion_policy.reward_valid_months,
+  guardada por tramo. No cambia tramos existentes al editar la configuración;
+  bloques ya confirmados terminan naturalmente sin retirarlos por caducidad.
+  Fechas de caducidad disponibles en payload Owner; no UI Rust nueva.
+
+Evidencia ~/evidence/1593-r3/RESULTADOS.md: **133/133 pgTAP** de promoción,
+**20 mutaciones SQL y 5 Edge** detectadas con fallo de comportamiento. Catálogo
+completo NOSUPERUSER BYPASSRLS: nightly 59/33 PASS, rama 60/34 PASS, mismas
+26 suites rojas del entorno, 1266→1399 aserciones, **cero regresiones**.
+Baseline R2 reutilizado con mismo runner/actor y base nightly verificada sin
+cambios; comparación final guardada. Edge completo **640 PASS / 0 FAIL /
+2 ignored** históricos. Lint producción/nuevos módulos, formato, superficies,
+quality, retirada y diff-check PASS. Dobles antiguos completan la RPC contable,
+sin suprimir checks. Ocho require-await del test checkout siguen históricos.
+No Rust modificado: clippy/nextest/lifecycle/telemetría omitidos esta ronda.
+
+La mutación histórica de quitar solo el guard de prepare sobrevive por las
+otras barreras y por ausencia de suscripción tras B03; se conserva su evidencia.
+El control deleted ahora rompe la frontera nueva de recuperación y cae en la
+aserción de cuenta borrada, sin desactivar defensas de producto.
+
+Sin Polar/Clerk/Storage reales, productos, secretos nuevos, deploy, scheduler,
+merge, release ni promoción. Lock huérfano del reinicio comprobado y liberado;
+gates posteriores con lock y trap, sin contenedores propios pendientes. Sin
+target Rust creado. QA visual/Windows y sandbox siguen pendientes. Polar no
+cambia: seis cupones fijos EUR Pro200/Plus300, repeating1/3/6, sin productos.
+
+Siguiente: el orquestador sube el SHA del bare al PR, ejecuta CI y pide revisión
+independiente R3. El check remoto visto solo acredita R2 (GitGuardian SUCCESS).
+Catálogo sigue vacío, campaña inactiva; integración #1620/#1639 y activación
+requieren su coordinación/autorización. Runbook:
+supabase/functions/billing-report-promotion/README.md.
+
+## Histórico · #1593 / VANTA-39 · Ronda 2 · 15/10/2026
+
+PR draft [#1659](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1659).
+Revisión DeepSeek NO APTO leída y corregida; pendiente revisión independiente nueva.
+Base de ronda `cc1989b0b`, nightly `3f82af867`, misma rama
+`vantareapp/isa-1593-descuento-informes` y worktree Mac `~/wt-1593`.
+SHA final y commits por punto, push al bare y FIN: `~/orq/1593.buzon.md`.
+El PR remoto sigue en la entrega anterior hasta que lo suba el orquestador.
+
+- P1: cierre 02/11/2026 **19:00 Europe/Madrid** exclusivo; bordes y DST probados.
+- P2-1: el premio sigue el plan/suscripción activos; conserva alta/ventana y saldo,
+  audita traslados, limpia el descuento anterior y soporta entregas fuera de orden.
+  Este caso ya no lanza conflicto ni manda el webhook a cuarentena.
+- P2-2: saldo por periodos de facturas pagadas con descuento, sin prorrateo; la
+  factura inicial va separada. No se consume por el reloj del espejo. Cupón finito
+  de 6/3/1 según saldo restante: un traslado/reparación no regala meses extra.
+  Rearme de un mes solo tras factura real, con clear/attach y fase durable que
+  recupera respuestas perdidas. PATCH tardío conserva los cobros pendientes.
+- P2-3: error saneado durable por cuenta, visible al Owner; sigue el lote.
+  Presupuesto 45 s y cursor del último cliente procesado.
+- P3: porcentaje/duración/validación en allowlist; comparación del mayor ahorro y
+  ciclo leído de Polar; conserva beneficios ajenos. RPC de checkout anterior a
+  reservar intento, inyectable y probado con campaña encendida. Config gateway
+  verify_jwt=false y gate obligatorio, sin activar deploy. Owners explícitos.
+  Marca/reserva durable de primer mes; facturas e historial la consumen aun sin flag.
+- Política: devolver la factura inicial pierde el premio; dos spams bloquean nuevos
+  tramos **desde la segunda revisión**, conservando los ganados antes de ella,
+  aunque el cron vaya tarde. El corte queda persistido. Miniapp refleja incidencia,
+  devolución y conservación de meses tras spam.
+
+**Evidencia `~/evidence/1593-r2/`:** 98 pgTAP de promoción PASS, 15 controles SQL
+RED y tres controles Edge RED de comportamiento (lote, checkout, gateway).
+SQL completo con el MISMO runner NOSUPERUSER BYPASSRLS: nightly 59 suites/33 PASS,
+rama 60/34 PASS; 1266→1364 aserciones aprobadas y **0 regresiones**. Se conservan
+26 suites rojas comunes; no se ocultan. Cuatro que pasaban con el superusuario de
+R1 exponen requisitos de fixtures (dblink, schema extensions, SET ROLE); no se
+presentan como regresiones de producto ni se elevan privilegios para taparlas.
+Edge **632 PASS / 0 FAIL / 2 ignored**. Clippy admin PASS, Nextest **18/18**, fmt,
+lint de producción/nuevos módulos, superficies deploy, calidad y retirada PASS.
+El test de checkout conserva ocho require-await históricos, idénticos a nightly;
+comparación JSON y fallo inicial de lint guardados. No cambian runtime/domain/ipc/
+testdata: lifecycle y telemetría omitidos. QA visual/Windows siguen sin acreditar;
+permiso de captura Mac ausente en R1, no se afirma captura nueva.
+
+Sin Polar/Clerk/Storage reales, credenciales nuevas, productos, deploy, scheduler,
+merge, release o promoción. Catálogo vacío y flag deshabilitado. Siguen haciendo
+falta los seis descuentos fijos (Pro 200 / Plus 300 céntimos, repeating 1/3/6),
+no productos nuevos; el de un mes sirve también saldos parciales. Reconciliar
+historial de órdenes antes de activar/retomar si faltaron webhooks. Distribución y
+atribución de creador frente a #1620 y fusión con la UI #1639 siguen al orquestador.
+No se promete atomicidad entre una petición Polar ya enviada y un borrado B03.
+
+Siguiente: revisar diff/controles, subir SHA del bare a PR #1659, ejecutar CI del
+nuevo SHA y repetir revisión independiente. Después, sandbox autorizado para
+facturas, traslados, rearmes, devoluciones y pausas; sin activación automática.
+Contrato vigente: `supabase/functions/billing-report-promotion/README.md`.
+
+## Histórico · #1593 / VANTA-39 · Entrega inicial · 15/10/2026
+
+Implementación aislada desde nightly `3f82af867`, rama
+`vantareapp/isa-1593-descuento-informes`, worktree Mac `~/wt-1593`.
+Encargo aprobado del 15/10: Pro/Plus mensual, primer mes lanzamiento, siguientes
+normales salvo 2 aceptados → 3 meses / 5 → 6. Un premio por cliente/entorno;
+dos spams lo revocan. Consume decisiones finales #1594 y preserva B03/#1622.
+SQL privado/RLS, operaciones con lease, GET/PATCH y recuperación de respuesta
+perdida; cliente Polar abstracto probado con dobles. Owner recibe y muestra
+aceptados, tramo y último descuento confirmado. Progreso en Hub queda propuesta.
+
+Estado: preparado para revisión, no integrado ni activado. Catálogo vacío y
+feature flag off. **Sin** Polar/Clerk/Storage reales, productos/descuentos reales,
+secretos, deploy, scheduler, GitHub push/PR, merge, release ni promoción.
+Hito backend `7c7583caa`; SHA final y commits entregados al bare local constan en `~/orq/1593.buzon.md`.
+
+Evidencia local `~/evidence/1593/`: 46 pgTAP nuevos PASS; nueve mutaciones de reglas
+reproducen RED; catálogo completo 59→60 suites, ninguna común empeora (22 suites
+heredadas rojas conservadas, no se ocultan). Edge **613→624 PASS**, 0 FAIL,
+2 ignored históricos. Clippy y build admin PASS, Nextest **18/18** (incluye
+regresión nueva); fmt/lint, deploy surface, calidad/retirada PASS. SQL y Edge bajo
+lock Docker, contenedores desechables sin red; Deno con caché y sin permiso de red.
+No cambian runtime/domain/ipc/testdata: lifecycle y telemetría omitidos.
+QA visual pendiente: GPUI demo arranca, pero macOS devuelve
+`could not create image from window`; `CGPreflightScreenCaptureAccess()=false`.
+No se presenta una captura ni se afirma QA visual o Windows.
+
+Decisiones conservadoras para revisar antes de activar: fin de altas el
+02/11 **00:00** exclusivo (hora final no especificada); 45 días son 1080 horas;
+seis meses del tramo mayor empiezan en el siguiente cobro. #1620 conserva su
+campaña de productos de lanzamiento a precio permanente: esta implementación
+solo admite **normales** mensuales y no migra suscripciones. Códigos de esa
+campaña no se importan; Isaac debe decidir su distribución/atribución en esta.
+Prerrequisito de códigos: descuento 20 % / 2 meses con scope normal y atribución
+conservada al aplicar lanzamiento; no hay entrada de códigos nueva en la app.
+
+Crear después, con autorización: seis descuentos Polar EUR, Pro fijo 200 céntimos
+repeating 1/3/6 meses y Plus fijo 300 repeating 1/3/6, cada uno limitado a su
+producto normal mensual. No hace falta crear productos nuevos. Configurar IDs,
+secreto de cron/flag y verificar facturas en sandbox antes de producción.
+B03 se comprueba antes de PATCH y ACK; una petición ya enviada no tiene
+atomicidad con el borrado de otro proveedor: reconciliar/cancelar tras esa carrera.
+Integración de la UI nueva de #1639 pendiente de merge de dependencias; el campo
+opcional está listo y su pequeño bloque debe conservarse en el detalle nuevo.
+
+Siguiente acción del orquestador: revisar diff/evidencia y estas decisiones,
+resolver integración con #1639, generar PR/CI y solo promover tras autorización.
+Contrato/runbook completo y lista Polar:
+`supabase/functions/billing-report-promotion/README.md` desde raíz Git.
+## VANTA-83 / #1661 · ronda 5 terminada para revisión · 16-oct-2026
+
+- Código validado d037f8f661083791c848ba7081452d3488b974c1; PR draft #1666
+  hacia nightly. Re-review r3 APTO; esta ronda requiere revisión nueva.
+- F1 definitivo: refund del origen o de factura de la suscripción, o revocación,
+  retira el descuento de creador mediante GET/PATCH/ACK durable e idempotente.
+  Fencing, marcador anterior al primer pago y cuenta borrada; fallo visible Owner.
+  Founders conserva prioridad para detener renovación antes de limpiar creador.
+- F2 riesgo aceptado por Isaac: puede usar el código cualquiera que lo conozca.
+  F3 UUID y pertenencia por creador/entorno/intervalo; Owner registra ambos cupones.
+  F4 runbook de rotación sin ampliar managedIds ni reiniciar repeating.
+  F5 webhook real probado: initial solo desde billing_reason, nunca metadata.
+- Consulta Polar real autorizada: solo GET con token de lectura por stdin SSH,
+  nunca impreso ni guardado en Mac. Mapa real completo y plan online en
+  C:/VantareServer/evidence/polar-auditoria/POLAR_PRODUCT_MAP.production.json
+  y plan-catalogo-online.txt. Producción ready=true, writes=0, inventario
+  0 clientes/0 subs activas/0 pedidos (2026-10-15T23:45:37.832Z).
+  Se revalida al aplicar. aplicar-catalogo.txt contiene comando exacto para Isaac;
+  Deno instalado en Mac, requiere otro token con escritura. Bundle conservado.
+- Rojo→verde: online sin escrituras, initial falsificado, retirada ausente y
+  pertenencia SQL. Final: 286 pgTAP, 260 Edge y 25 Owner Nextest PASS;
+  check workspace, Clippy Owner -D warnings, fmt Rust/Deno y quality/retirement
+  PASS (456 huellas). Logs C:/tmp/founders-1661-evidence y Mac ~/orq/founders-1661-evidence.
+- No repetir Nextest global/lifecycle/telemetría: R5 Rust solo toca Owner;
+  se conservan R4 1798 Nextest (14 omitidas), lifecycle y 25 telemetría PASS.
+- Plane Por revisar al entregar; SHA final y CI verificados en PR/issue.
+  Sin apply, dinero, deploy, merge de feature, release ni capturas (#1655).
+  #1593 debe adoptar escritor común/preservar plazos y respetar revocación;
+  #1624 debe rebasarse. Web intacta. IVA y renovaciones sandbox pendientes.
+
+## VANTA-83 / #1661 · ronda 4 terminada para revisión · 16-oct-2026
+
+- Pro Plus confirmado 9,99/99,90 EUR; primer periodo 6,99/69,90.
+- Creador puede acompañar al lanzamiento: solo atribución en primer checkout,
+  20 % desde renovación. Cupones API-only mensuales/anuales configurados en
+  polar-launch-prices.json (11/12 meses). Comisión manual 30 % mes 1 y 10 % meses 2–12.
+- Claim y atribución atómicos; primer pago obligatorio, lease/GET/PATCH/ACK,
+  reintento sin reiniciar repeating y fallo visible en Owner. Informes puede
+  reabrir selección tras el primer pago; mayor ahorro, empate informes,
+  perdedor registrado. Founders añade Stable + Nightly vitalicios; refund retira ambos.
+- [Contrato #1593](../../billing/creator-renewals-1661.md). Rama leída sin tocar;
+  coordinación en issuecomment-6204073057 de #1593. **Pendiente en su integración**:
+  adaptar el escritor al arbitraje/lease y preservar plazo/saldo al volver de
+  informes; no activar dos escritores independientes ni afirmar prueba conjunta.
+- Código 52fab00d6ad0e4932d434bd3ffab35613e79aa2b. PR draft #1666 → nightly;
+  contiene merge autorizado eb553c7fe; sin integración de esta feature.
+- RED creador + campaña y Nightly contra baseline; 252 Edge, 247 pgTAP,
+  1798 Nextest PASS (14 omitidas por perfil), check/Clippy global/fmt,
+  lifecycle y 25 telemetría PASS; quality/retirement PASS (456 huellas).
+  Primer Nextest falló por fixture nueva desordenada; se corrigió el orden,
+  conservando la validación estricta. Log del fallo y pasada verde conservados.
+- Plan offline completo regenerado en C:/VantareServer/evidence/polar-auditoria/plan-catalogo.txt.
+  Modelo válido; apply_ready=false hasta inventario vivo verificado. Comando
+  de Isaac en aplicar-catalogo.txt vecino; no se ha ejecutado apply ni consultado Polar real.
+- Plane se devuelve Por revisar con PR y resumen. CI remota del push final se
+  comprueba en la entrega; no se afirma despliegue, merge ni release.
+- Sin dinero, servicios comerciales reales ni capturas (#1655). Web intacta,
+  contrato VANTA-42 actualizado; #1624 debe rebasarse sin tocar su rama.
+  Validación de IVA/renovaciones reales y activación pendientes del operador.
+
+## VANTA-83 / #1661 · ronda 3 de acabado (16/10/2026)
+
+Re-review R2 **APTO**, informe `C:/VantareServer/evidence/ds-rev-1661/review-r2.md`.
+N2: creador solo propiedad propia y UUID válido, rechazo anterior al claim.
+N3: aplicación de producción exige inventario en vivo vacío antes de escribir:
+cero clientes de organización y cero suscripciones activas/pedidos por producto
+existente afectado. Consulta fallida/incompleta también aborta. Ready calculado:
+modelo válido + inventario verificado; offline false, sin afirmar revisión real.
+Merge autorizado de `origin/nightly eb553c7fe` sin conflictos; incluye cola nueva
+y retirada de CI Linux. No se fusiona la rama de issue en nightly.
+Regresiones R3 RED contra versión anterior; GREEN final: **181 Edge PASS**,
+**1797 Nextest PASS**, 14 omitidas por perfil; **check y Clippy global PASS**,
+fmt/quality/retirement PASS y **11 tests del alcance de gates PASS**. Rust serial
+por cola nueva, MIN_GB=0; no ha hecho falta fallback de Clippy por crates en R3.
+SQL/lifecycle/telemetría no se repiten en R3: no cambia schema ni su código;
+evidencia de rondas anteriores conservada. Diff R3 y merge revisados.
+PR #1666 draft a nightly; rama ya contiene eb553c7fe y no está BEHIND.
+Plane Por revisar al cierre; CI remota pendiente. Sin promoción a nightly,
+despliegue ni release. Evidencia en `C:/tmp/founders-1661-evidence` y Mac
+`~/orq/founders-1661-evidence`; siguientes acciones: revisión R3/CI y operación
+manual del catálogo con mapa completo, IVA sandbox y ventas cerradas durante corte.
+Plan/bundle/comando se regeneran; ninguna consulta ni mutación contra Polar real.
+
+## VANTA-83 / #1661 · ronda 2 de seguridad (15/10/2026)
+
+Review R1 NO APTO: B1/I1 y M1–M4 corregidos. Admisión SQL persistente de
+Founders por cuenta/entorno antes del grant; rechazo de Launch nueva con
+cuarentena e incidencia crítica Owner, sin cortar replay/reembolso histórico.
+Checkout bloqueado ante admisión o pago recibido pendiente con binding.
+Venta separada por entorno, ACL verificadas, precio configurado e IVA coherente;
+reactivar Pro vuelve a cancelar renovación con recibo por revisión remota.
+Una confirmación vieja no completa una reactivación posterior. Reembolsar
+Founders no reactiva Pro (decisión aceptada), ni hay refunds automáticos.
+
+Decisión adicional de Isaac: campaña de beta pública con **descuento `once`**
+sobre productos normales, sin productos recurrentes de lanzamiento nuevos.
+Pro 599→399 / 5999→3990, Plus 999→699 / 9990→6990; renueva siempre al normal.
+Ventana por entorno en JSON, producción 26-oct→26-nov 19:00 Madrid.
+Checkout aplica descuento servidor, sin trial ni entrada libre de códigos;
+rechaza creador + campaña, valida código exacto fuera de ella y cambia la
+huella del intento al cambiar oferta. Los tests del modelo retirado de productos
+separados se sustituyen por tests de precio normal, `once`, fechas, no acumulación,
+historia, preflight, ownership, reintentos, token y salida exclusiva.
+
+RED: cuatro regresiones webhook contra ec47efa5; SQL R2 sin columna de entorno;
+cuatro regresiones de checkout once contra handler original. GREEN Mac:
+188 pgTAP y 176 Edge PASS tras cambio de modelo. Check workspace y Clippy del
+crate Owner PASS; Nextest Owner **25/25 PASS**. Clippy workspace falló por RAM dos
+veces, evidencia conservada; alcance incremental de crate tocado, un job,
+sin sccache, VANTARE_CARGO_MIN_GB=0. Sin repetir telemetría/lifecycle: runtime,
+IPC y servicios Rust no cambian en R2; validación completa anterior conservada.
+
+Plan completo regenerado sin token/--apply en servidor:
+`C:/VantareServer/evidence/polar-auditoria/plan-catalogo.txt`,
+`production_apply_ready: true`. Comando exacto (no ejecutado): fichero vecino
+`aplicar-catalogo.txt`; bundle Mac `~/orq/polar-auditoria/isa-1661` fuera del
+worktree desechable. Isaac debe aportar mapa completo, token en entorno,
+verificar IVA en sandbox y revisar/publicar los nuevos productos draft.
+No consultas ni cambios contra Polar real; web intacta, #1624 debe rebasarse.
+Entrega R2 aislada: push y PR #1666 draft a nightly. Siguiente: orquestador revisa
+R2/CI y coordina #1624/VANTA-42; Isaac verifica IVA en sandbox y decide aplicar
+el catálogo con su mapa completo. Sin merge, deploy, release, capturas (#1655)
+ni operaciones reales. fmt, quality y retirement PASS. Evidencia R2 conservada
+en `C:/tmp/founders-1661-evidence` y Mac `~/orq/founders-1661-evidence`.
+
+## VANTA-83 / #1661 · Plan Founders (15/10/2026)
+
+Rama `vantareapp/isa-1661-founders`, base asignada
+`28800654c5bb4ca425b49bd827d0ee8cbbeeb155`, worktree propio isa-1661.
+Plane En curso; PR draft [#1666](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1666)
+a nightly; Project Vantare, `area:licencias`, sin milestone asignado.
+
+Decisión definitiva de Isaac: **Founders es un plan de 50 EUR una vez**,
+todo el catálogo presente/futuro para siempre; desde la beta pública del
+26-oct-2026 19:00 Madrid **sin fecha final**, con interruptor SQL de venta.
+Pro/Pro Plus pueden comprar: derecho inmediato y cancelación de renovación al
+final del periodo pagado, sin reembolso. Una única política `end_period`,
+recibo persistente de cancelación y estado pendiente/completado visible en Owner;
+los errores reintentan mediante el inbox existente. Alternativa proporcional
+retirada con autorización de Isaac por simplicidad. Sin operaciones reales.
+
+Launch Edition retirada del catálogo de compra y de los botones. Se conserva
+la lectura de mappings, pagos y derechos históricos, migraciones y tests.
+El script prepara Founders en español. El producto real ya existe según Isaac;
+los IDs se centralizan en `supabase/functions/scripts/founders-production-config.json`,
+fragmento para fusionar con `POLAR_PRODUCT_MAP`, sin aplicar cambios reales. El contrato incorpora primer periodo Pro
+3,99/39,90 y renovación 5,99/59,99, extra Pro Plus, creador no combinable,
+informes desde mes 2 y beta pública. El modelo recurrente antiguo de #1620
+requiere reconciliación antes de aplicar catálogo en producción; se impide esa
+aplicación. **#1624 debe rebasarse sobre este PR**, sin tocar su rama aquí.
+
+Derecho `vantare.plan.founders`, servicios v10/control v5/fotos v10, textos de
+cuenta ES/EN/IT/PT-BR. [Contrato y payload web para VANTA-42](../../billing/founders-1661.md).
+Repo web intacto. Founders no concede roles ni canales privados.
+Límites: credencial perpetua offline no revocable hasta reconexión; para cerrar
+venta futura, desactivar también producto/enlaces entregados de Polar.
+
+Validación final local: **152 pgTAP PASS** (42 Founders, 57 Owner,
+34 reembolsos, 19 tombstones), **193 Edge PASS** en Mac con lock Docker.
+**1795 Nextest PASS** (14 omitidos por perfil) y **494 pruebas incrementales
+Hub/Owner PASS** (4 omitidas), check/Clippy/fmt PASS. Lifecycle PASS y
+telemetría **25/25 PASS**. Gates de Windows seriales, target propio;
+última fuente Rust validada `5f39b449880b7a637ecd29559b9e0e9a1fbb2bac`.
+El cierre posterior solo añade compatibilidad SQL para una suscripción ya
+cancelada, su test y evidencia/texto. Quality/retirement PASS (456 huellas).
+Regresión de credencial RED con normalizador original. Diff completo revisado.
+Logs en `C:/tmp/founders-1661-evidence` y Mac `~/orq/founders-1661-evidence`.
+Conservados fallos previos de RAM/mmap y cortes del orquestador/T3; repetición
+sin sccache con un job y VANTARE_CARGO_MIN_GB=0 autorizado.
+
+Entrega aislada: PR #1666 draft a nightly, push autorizado; Plane pasa a
+Por revisar con resumen. Última consulta CI: promoción, quality ratchet y
+GitGuardian PASS; native-linux y agregado bloqueante en curso. No se afirma
+CI completa ni integración. Sin captura (#1655), deploy, dinero, merge ni release.
+Siguiente: orquestador revisa PR/CI y coordina rebase de #1624 y compra web
+VANTA-42; Isaac incorpora el fragmento a la configuración y valida apertura cuando corresponda.
+
+Actualización posterior: inventario real comunicado por Isaac documentado: Pro mensual
+4,99 EUR, Launch Edition histórica 30 EUR y Founders 50 EUR. Pro anual, 5,99/59,99
+y Pro Plus aún no existen en producción. 69 pruebas offline de mapping y catálogo PASS, incluida la regresión del fragmento de
+Founders; sin repetir Rust/SQL porque no cambian código nativo ni schema.
+
+## #1627 / PR #1639 · VANTA-21 · ronda 5 (15/10/2026)
+
+Worker Codex macOS arm64, sin subagentes ni servicios reales. Seguimiento por
+excepción explícita en `~/orq/1627.buzon.md`; sin Notion/Plane/GitHub.
+Entrada `980649944`; worktree `~/wt-1627r5`, misma rama de issue.
+
+R5 corrige reparación con cupo agotado (trigger de aceptación suspendido solo
+para restaurar decisiones en la misma transacción), añade auditoría por fila con
+reviewer original y marcador de reparación (también si fue borrado; barrera de
+auditoría suspendida solo bajo lock DDL en esa transacción y restaurada antes
+del commit), y repone `admin_report_owner_changed`
+(40001) tras el lock tanto para informes antiguos como contribuciones.
+Spam antiguo conserva motivo. Las decisiones de ambos orígenes son finales;
+la UI ofrece Aceptado/No aceptado/Spam solo antes de decidir y permite guardar
+versión desde Aceptado/Arreglado. **No se recupera «Arreglado en X» ya perdido
+por R3**: el Owner debe confirmarlo de nuevo desde evidencia; los `fixed` aún
+válidos se conservan.
+
+El borrado relee suscripciones después del tombstone #1622 para incluir compras
+anteriores a la barrera, y consulta Polar por el UUID del checkout para incluir
+compras completadas cuyo webhook aún no llegó. Combina/deduplica ambos orígenes.
+GET Polar 404 deja evento sanitizado y permite continuar;
+los errores transitorios siguen siendo incompletos/reintentables. Procedimiento
+manual del Owner en `supabase/functions/native-admin/README.md` (panel del mismo
+entorno, comprobar/cancelar y repetir con la confirmación original). Sin retirar
+barreras ni ampliar el candidato a producción.
+
+| Check local | Nightly bf5eead43 | Rama R5 |
+| --- | --- | --- |
+| Catálogo SQL completo, Docker sin red | 59: 34 PASS / 25 FAIL | 74: 49 PASS / 25 FAIL |
+| 59 suites SQL comunes | 1306 aserciones PASS | 1306 PASS; cero diferencias |
+| Gestión pgTAP | 57 / 1 suite | 206 / 16 suites PASS |
+| Seguimiento canónico | 35 PASS + concurrencia/rollback | 35 PASS + concurrencia/rollback |
+| Edge/Deno sin red | 613 PASS / 2 omitidos | 643 PASS / 2 omitidos |
+| Clippy admin/services `-D warnings` | PASS | PASS |
+| Nextest admin/services Mac serial | 172 PASS | 178 PASS |
+
+Rojo→verde conservado para reparación con cupo ocupado, auditoría con reviewer
+borrado, dueño cambiado, motivo/finalidad de informes antiguos, UI, suscripción
+tardía local y compra Polar con webhook retrasado/404. La reparación se prueba
+reaplicando el fichero real y verificando idempotencia y barreras restauradas.
+Los 25 fallos genéricos son heredados, idénticos en ambas ramas; no se declaran
+verdes. Nightly tuvo un fallo intermitente inicial de login; repetición serial
+completa 172/172. Fmt Rust/Deno, quality y 456 huellas de retirada PASS.
+
+Evidencia y SHAs finales: `~/evidence/1627r5/RESULTADOS.md`, `TABLA-SQL.md` y buzón.
+Rust 1.95 fijado, jobs=4 y target propio `~/target-1627r5` retirado al cerrar.
+PowerShell no está instalado y el wrapper usa Win32: Cargo directo en este Mac.
+Sin cambios runtime/domain/ipc/testdata; lifecycle/telemetría no se repiten.
+No valida Windows/DPI/teclado, SaaS real, CI remoto ni despliegue/upgrade remoto.
+Se han corregido migraciones del candidato R3/R4, sin aplicar nada a servicios
+reales; un entorno que ya las registró requiere plan de upgrade del orquestador.
+Pendiente revisión del orquestador; sin merge, promoción, deploy ni release.
+
+## #1627 / PR #1639 · VANTA-21 · ronda 4 (15/10/2026)
+
+Worker Codex macOS arm64, sin subagentes, GitHub ni servicios reales. Excepción
+explícita del orquestador: sin Notion/Plane; seguimiento en `~/orq/1627.buzon.md`.
+Rama `vantareapp/isa-1627-miniapp-gestion`, entrada `1ce7c0edd`.
+Nightly `bf5eead43` (#1622 incluido) fusionado mediante merge `9a70cbc7`.
+Código entregado por hitos, incluido borrado separado `83494734`; SHA final de
+la entrega documental y copia al bare `~/vantare.git` en el buzón y la evidencia.
+Pendiente de revisión del orquestador; sin promoción de canal, deploy ni release.
+
+**Regla de informes:** una decisión de contribución es final. Aceptado,
+rechazado, spam y arreglado no vuelven a Recibido/En revisión, tampoco los
+históricos sin fila de revisión. SQL devuelve conflicto y la UI oculta esas
+vueltas. No se añade una acción Reabrir. Arreglado sigue ocupando 1/día y
+2/semana UTC/cuenta; también cuentan las revisiones aceptadas si un servidor
+anterior alteró el estado. La migración restaura el estado de esas revisiones,
+sin borrar su nota/fecha ni los arreglos que todavía conservan estado `fixed`.
+No recupera «Arreglado en X» ya borrado al reabrir en R3; debe volver a confirmarse
+con evidencia. R5 añade auditoría por fila reparada y evita consumir de nuevo el cupo. Los informes antiguos
+`testing_center_reports` admiten Spam; sus títulos se alinean a la izquierda.
+
+**Anual cerrado por Isaac el 15/10:** 30 % del pago anual completo, sin
+prorrateo. 100,00 € → 30,00 € al pagar en el mes 1; renovación en mes 13 → 0 €.
+No autoriza pagos reales ni producción.
+
+**Borrado conectado a #1622:** Edge compara el correo actual de Clerk antes
+de iniciar la solicitud; SQL vuelve a proteger dueño y actor bajo locks.
+La barrera, anonimización y auditoría se confirman juntas antes de cancelar
+Polar, borrar Clerk y drenar Storage con el limpiador común. Una solicitud
+privada conserva solo hash del correo normalizado, UUID/issuer/subject y fecha.
+Un fallo posterior exige repetir con el mismo correo; no necesita recuperar
+PII ya borrada y acepta 404 de Clerk solo con esa solicitud previa. No hay
+reembolso ni reintento automático. Sigue limitado a sandbox.
+
+Compatibilidad del merge: se conservan locks UUID de #1622 y su identidad
+Clerk; el resolver mantiene además el bloqueo de gestión. El espejo de
+pagos/refunds acompaña al ledger comercial de nightly, sin saltarse la
+revocación por reembolso. Fixtures de identidad y la prueba concurrente se
+adaptan al dispatcher, sin ampliar permisos de producto.
+
+| Check local | Nightly bf5eead43 | Rama R4 |
+| --- | --- | --- |
+| Catálogo SQL completo, Docker sin red | 59 suites: 34 PASS / 25 FAIL | 72: 47 PASS / 25 FAIL |
+| Aserciones de suites SQL comunes | 1306 PASS | 1306 PASS; cero pérdidas |
+| Gestión pgTAP | 57 checks / 1 suite | 178 checks / 14 suites, todas PASS |
+| Triaje / seguimiento, runners canónicos | 83 / 35 PASS | 83 / 35 PASS |
+| Locks de admin frente a borrado | 4 órdenes PASS | 4 órdenes PASS |
+| Borrado miniapp frente a webhook | No existe | 2 órdenes PASS, espera observada |
+| Edge/Deno sin red | 613 PASS / 2 omitidos | 638 PASS / 2 omitidos |
+| Clippy admin/services `-D warnings` | PASS | PASS |
+| Nextest admin/services Mac, serial | 172 PASS | 178 PASS |
+
+Los 25 fallos del catálogo genérico se conservan en ambos árboles: no se
+presentan como SQL verde. Las 13 suites exclusivas de gestión pasan. Los
+runners canónicos cubren cuota concurrente, snapshot obsoleto, ACL y rollback.
+La aserción comercial de auditoría ahora exige actor/acción/objetivo sin copiar
+resultados de cuentas; conserva la comprobación en lugar de omitirla.
+Fmt Rust/Deno, quality y retirada (456 huellas) PASS. Rust 1.95 fijado,
+`CARGO_BUILD_JOBS=4`, target propio `~/target-1627r4`, retirado al cerrar.
+
+Evidencia: `~/evidence/1627-r4/RESULTADOS.md` y `TABLA-SQL.md`, logs completos,
+comparación por número de aserción y capturas GPUI demo `informes.png`,
+`informe-decidido.png`, `borrado-confirmacion.png`. Se inspeccionaron títulos,
+ausencia de reapertura y confirmación de correo; no son pruebas de SaaS real.
+
+Límites: Windows/DPI/teclado físico, OAuth/Clerk/Polar/Storage reales, CI remota,
+despliegue y actualización de un esquema remoto previo no se verifican.
+SQL completo validado desde catálogo limpio; la intercalación de migraciones
+R1/R3 con #1622 requiere revisar el orden de aplicación antes de un despliegue.
+Sin cambios en runtime/domain/ipc/testdata: no se repiten lifecycle/telemetría.
+
+## #1627 / PR #1639 · VANTA-21 · corrección R1 (15/10/2026)
+
+Worker Codex macOS arm64, encargo del orquestador, sin subagentes ni servicios
+reales. Excepción explícita: no Notion/Plane/GitHub; seguimiento en
+`~/orq/1627.buzon.md`. Rama `vantareapp/isa-1627-miniapp-gestion`, entrada
+`52b1d3c39`; nightly `64c493e4f` fusionado primero mediante merge `2354cd416`.
+Se recoge mediante el bare local `~/vantare.git`; no promoción de canal,
+despliegue, release ni CI remoto. SHAs finales en el buzón y la evidencia.
+
+Las contribuciones ya pasan por el motor de revisión de #1594: nota humana,
+aceptación 1/día y 2/semana UTC por cuenta, revisión duradera y purga a 90 días
+de logs/telemetría. `human` identifica revisión manual sin fingir propuesta de
+modelo; la ruta pública anterior conserva propuesta obligatoria y permisos.
+Spam se lee, filtra y confirma en la miniapp. La decisión sigue siendo inmutable;
+un cambio incompatible devuelve conflicto. El trigger compartido retira los metadatos de arreglo al salir de `fixed`;
+R4 bloquea la reapertura de contribuciones decididas.
+
+Personas usa resúmenes sin pagos y recuentos agregados. Creadores agrega las
+líneas una sola vez. En Docker, con 3.000 cuentas, 36.000 pagos y 100 creadores:
+Personas 16,8 ms y Creadores 958,7 ms; antes la búsqueda excede el límite sintético
+de 6 s y se cancela. Las lecturas auditan quién/qué/cuándo/objetivo sin copiar PII
+ni pagos. La primera compra posterior al watermark usa el ledger, sin releer todo
+Polar. Un refund identificable pero inválido pone esa factura pendiente de
+revisión y bloquea su comisión; el resto se muestra. Cuarentenas y pagos históricos
+atrasados requieren reconciliación revisada, sin un nuevo barrido automático.
+
+**Decisión de Isaac, 15/10/2026: anual = 30 % del pago anual completo.**
+La tasa activa está centralizada en `private.native_admin_commission_rate`.
+Un anual de **100,00 € genera 30,00 €** al pagar en el mes 1; renovación en
+mes 13 genera 0 €. No se prorratea entre meses. Esta decisión fija el cálculo;
+no autoriza pagar comisiones reales ni activar producción.
+
+UI: «· anual», etiqueta «—», Owner y Tester simultáneos, tarjeta Clientes/Ventas,
+fechas «2 sep» y nota obligatoria de revisión. Capturas GPUI demo frente al HTML
+en `~/evidence/1627-r3/comparativa.html`; no representan acceso a SaaS real.
+
+Verificación: Docker con todas las migraciones y 133 pgTAP de gestión; motor
+compartido con runner canónico #1594, 83 pgTAP + concurrencia/ACL; seguimiento
+#1610, 35 pgTAP + concurrencia/rollback. Edge completo 613 PASS / 2 omitidos.
+Clippy `-D warnings` y fmt con Rust fijado 1.95 PASS; Nextest admin/services
+177 PASS con tests seriales y `CARGO_BUILD_JOBS=4`. Dos ejecuciones paralelas
+mostraron fallos intermitentes existentes de callback; logs conservados.
+Comparación de todas las suites SQL comunes bajo el runner genérico: mismos
+937 asserts válidos y 22 suites incompatibles en nightly y candidato, sin nuevos
+fallos. Se usan los runners canónicos para triaje y seguimiento, que sí pasan.
+Quality/retirada: 456 huellas PASS. Target propio `~/target-1627r3`, borrado al cerrar.
+
+Límites: Windows/DPI/teclado físico y OAuth/Clerk/Polar reales pendientes;
+en esta R1 histórica el borrado aún no estaba conectado; R4 lo sustituye.
+Los efectos externos nuevos siguen limitados a sandbox. Falta revisión del
+orquestador. La decisión anual queda cerrada el 15/10/2026. No hay activación en producción.
+Evidencia anterior r1: `~/evidence/1627/RESUMEN.md` (histórica).
+
 ## #1608 · R11 · Guarda y permisos de triage (15/10/2026)
 
 Base `1ac73ce20`; comparación con nightly `64c493e4f`. Solo cambian el fixture
@@ -1577,7 +3006,84 @@ QA web real pendiente. Logs `C:/tmp/ola2/1603-*.log`, tabla RED→GREEN en
 `C:/tmp/ola2/fix-1603-results.md`; SHA del push en issue/PR/buzón.
 El runbook documenta estas guardas. Sin nuevas acciones de producción.
 
+## Servidor · VANTA-77 / ISA-1647c · 2026-10-15
+
+Actualización 16/10 por encargo del orquestador: merge de `origin/nightly`
+`9e48eb86f8d2cfc43b64010d2b1ac1c58768826a` en esta rama de issue.
+Cuatro conflictos resueltos: vigilante ampliado y su instalador con manifiesto,
+helper y hardening conservados; README con los avisos ampliados; CLI idéntica
+a nightly, incluida la firma `[orquestador] ` de #1650. Vigilante/helper 54 y
+CLI 10 PASS; calidad 456 huellas PASS. Suites Python activas de tools: 170 PASS
+y 1 FAIL heredado de nightly, catálogo triage desalineado con ocho variantes
+nuevas de services::Error (test_review_1602_r5). Reproducido el mismo fallo
+en snapshot limpio de nightly; no se corrige fuera del encargo de merge.
+SHA y resultados finales en #1647/#1649 y buzón 1647c.
+No se despliega ni se envían pruebas reales en esta ronda; no fusiona la PR
+ni promociona la rama a ningún canal. Las pruebas de runtime de abajo
+corresponden al despliegue del 15/10, no se atribuyen a este merge.
+
+Encargo del orquestador: revisión completa DeepSeek ds-rev1583-1649.
+PR [#1649](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1649),
+rama `vantareapp/isa-1647-vigilante-plane`, ahora incorpora la base #1583
+`vantareapp/isa-1565-servidor@1d7e6edb5` mediante merge entre ramas de issue.
+Se resolvió solo el instalador conservando hashes, helper y hardening.
+P2-1: scripts ops/linux y todos los archivos del backup 1647b pasan de
+svc Modify a RX; dueño Administrators; solo Administrators/SYSTEM escriben.
+Backup con ACL propia y SHA256SUMS (integridad acreditada desde la revocación).
+Instalación exige SHA-256 de instalador y ambos scripts en snapshot privado;
+prueba de alteración abortó sin modificar el script instalado. Scripts Linux,
+/etc/vantare y /var/lib/vantare son root, sin escritura de grupo/otros.
+P3-6: tres intentos persistidos por campana, después abandono registrado;
+ntfy sigue independiente. P3-8: cuerpos API no JSON omitidos con ID/clase.
+P3-9: consulta desde última marca con solape 5 min, máximo 30 días al recuperar;
+poda IDs antiguos, conserva pendientes. Fuera de esa ventana requiere revisión
+manual. P3-10: lanzadores y despliegue reproducibles incluidos en el repo.
+
+54 tests de vigilante/helper + 10 CLI PASS en Windows y Linux; quality
+456 huellas PASS; bash -n de seis scripts y cuatro unidades systemd PASS.
+Despliegue autorizado con backup root:700 sin secretos:
+`/var/backups/vigilante/1647c-20261015T180814Z`, hashes verificados,
+dry-run 0/0 y timer enabled/active. Pasada real success/0, 468 IDs, 41 bot,
+colas 0/0, marca temporal persistida y código instalado idéntico al repo.
+No se enviaron nuevas pruebas. La prueba histórica VANTA-73 queda intacta.
+Hubo HTTP 502 transitorio tras recrear la stack; recuperación verificada a 200.
+Evidencia saneada: `C:/VantareServer/evidence/1647c/`; permisos antes/después,
+prueba de alteración, SQL solo lectura y final-runtime.txt. Sin capturas de app.
+Rust y gates nativos omitidos por encargo explícito de tooling sin Rust.
+
+[Runbook y reversión](../../../../tools/server/vigilante-plane.md).
+La reversión mantiene ACL seguras y verifica hashes antes de restaurar; no
+borra campanas ni comentario. Riesgo previo de ntfy ante pérdida de acuse
+sigue documentado; no se afirma deduplicación del receptor. Conservar CLI
+vigente de nightly al integrar esta pila antigua. SHA, push, CI y estados
+verificados en #1647/#1649, Plane VANTA-77 y buzón 1647c.
+Siguiente: revisión del orquestador; **registro de Plane anuncia habilitado**
+(ENABLE_SIGNUP=1), pendiente de decisión en VANTA-47. Sin merge de PR,
+promoción a nightly/testers/master ni release por el worker.
+
 ## 1. Resultado
+
+### Servidor · VANTA-47 / revisión 1647c · 2026-10-15
+
+Encargo de implementación del orquestador sobre PR #1583, rama
+`vantareapp/isa-1565-servidor`, base previa `f385f7937` (merge-base nightly
+`ee3725407`). Worktree `C:/VantareServer/wt/isa-1565`, inicialmente limpio.
+P3-2: cuatro servicios root con NoNewPrivileges, ProtectSystem=strict,
+ProtectHome y PrivateTmp, escritura limitada a rutas de copia/estado/latido.
+Drop-ins aplicados en vivo con backup root:700 y SHA256SUMS en
+`/var/backups/vantare-hardening/20261015T180427Z`; cuatro unidades verificadas,
+Plane reiniciado y copia/supervisión/vigilante ejecutados satisfactoriamente.
+P3-3: rustup-init 1.28.2 con SHA-256 fijado y contrastado con fuente oficial
+y descarga local; sin ejecutar instalación Rust. Riesgos de plane.env en copias
+y HTTP LAN documentados, sin cambiar secretos, datos ni red.
+P3-5 **pendiente de decisión**: lectura pública enable_signup=True, BD
+ENABLE_SIGNUP=1 y 5 cuentas activas/totales. No se acreditó registro cerrado,
+no se intentó crear cuenta ni se cambió configuración; avisado en buzón 1647c.
+Evidencia saneada `C:/VantareServer/evidence/1647c/`, detalle y reversión en
+`tools/server/README.md`. Checks finales, SHA/push y CI se verifican en #1583,
+#1565/#1571 y buzón. Siguiente: revisión del orquestador y decisión sobre alta.
+Sin merge, promoción de canal ni release. VANTA-77/PR #1649 conserva el vigilante
+ampliado encima de esta base y su propio runbook; integrar ambos sin perderlo.
 
 Servicios remotos de cuenta/licencia, Billing, calendario, reportes y distribución; Hub presenta su estado. La existencia del cliente/backend no certifica apertura comercial, producción ni release.
 

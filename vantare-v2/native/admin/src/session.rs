@@ -442,6 +442,18 @@ fn diagnose_searches(session: &Session, profile: Profile) -> Result<()> {
     Ok(())
 }
 
+/// Admin always owns a separate session store; no token copying from the Hub.
+pub fn data_root() -> Result<PathBuf> {
+    if let Some(root) = std::env::var_os("VANTARE_ADMIN_DATA_ROOT") {
+        let root = PathBuf::from(root);
+        if !root.is_absolute() {
+            return Err(Error::Storage);
+        }
+        return Ok(root);
+    }
+    vantare_services::app::default_root().map(|root| root.join("admin"))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

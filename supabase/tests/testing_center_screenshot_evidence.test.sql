@@ -1,4 +1,18 @@
 begin;
+SELECT set_config('fixture.clerk',(to_regclass('private.clerk_issuers') IS NOT NULL)::text,true);
+-- The old schema-cut runner uses UUID claims; B03 requires a bound Clerk session.
+CREATE FUNCTION pg_temp.fixture_claims(account text) RETURNS text LANGUAGE plpgsql AS $$
+BEGIN
+  PERFORM set_config('request.jwt.claims', CASE
+    WHEN current_setting('fixture.clerk',true)='true' THEN
+      jsonb_build_object('iss','https://fixtures.clerk.invalid',
+        'sub','user_'||replace(account,'-',''),'role','authenticated',
+        'sid','sess_fixture','azp','https://app.invalid')
+    ELSE jsonb_build_object('iss','https://local.supabase.test/auth/v1',
+        'sub',account,'role','authenticated') END::text, true);
+  RETURN set_config('request.jwt.claim.sub',account,true);
+END $$;
+
 select plan(80);
 
 select has_table('public', 'testing_center_evidence_batches', 'private batch table exists');
@@ -120,6 +134,20 @@ insert into auth.users(id,email) values
   ('00000000-0000-4000-8000-000000000501','evidence-primary@example.invalid'),
   ('00000000-0000-4000-8000-000000000502','evidence-tester@example.invalid'),
   ('00000000-0000-4000-8000-000000000503','evidence-inactive@example.invalid');
+-- B03 fixture: internal profile plus an explicit Clerk binding before child rows.
+DO $fixture$ BEGIN
+  IF to_regclass('private.clerk_issuers') IS NOT NULL THEN
+    INSERT INTO private.clerk_issuers(issuer,authorized_parties,enabled)
+      VALUES ('https://fixtures.clerk.invalid',ARRAY['https://app.invalid'],true)
+      ON CONFLICT (issuer) DO NOTHING;
+    INSERT INTO public.profiles(id,email) SELECT id,email FROM auth.users
+      ON CONFLICT (id) DO NOTHING;
+    INSERT INTO public.account_identities(issuer,subject,account_id)
+      SELECT 'https://fixtures.clerk.invalid','user_'||replace(id::text,'-',''),id
+      FROM public.profiles ON CONFLICT (issuer,subject) DO NOTHING;
+  END IF;
+END $fixture$;
+
 set local role service_role;
 insert into public.testing_center_memberships(user_id,actor_id,role,active) values
   ('00000000-0000-4000-8000-000000000501','evidence-primary','primary_tester',true),
@@ -152,17 +180,17 @@ select throws_ok(
 reset role;
 
 set local role authenticated;
-select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000503',true);
+select pg_temp.fixture_claims('00000000-0000-4000-8000-000000000503');
 select throws_ok(
   $$select * from public.testing_center_prepare_screenshot_batch('testing-center.screenshot-evidence.v1','nightly','inactive-key',pg_temp.manifest())$$,
   '42501', null, 'inactive membership is rejected'
 );
-select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000502',true);
+select pg_temp.fixture_claims('00000000-0000-4000-8000-000000000502');
 select throws_ok(
   $$select * from public.testing_center_prepare_screenshot_batch('testing-center.screenshot-evidence.v1','nightly','tester-nightly',pg_temp.manifest())$$,
   '42501', null, 'tester cannot prepare for nightly'
 );
-select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000501',true);
+select pg_temp.fixture_claims('00000000-0000-4000-8000-000000000501');
 select throws_ok(
   $$select * from public.testing_center_prepare_screenshot_batch('wrong','nightly','bad-contract',pg_temp.manifest())$$,
   '22023', null, 'unknown contract fails closed'
@@ -218,7 +246,7 @@ select is(
 );
 
 set local role authenticated;
-select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000501',true);
+select pg_temp.fixture_claims('00000000-0000-4000-8000-000000000501');
 create temporary table prepared_result as
 select * from public.testing_center_prepare_screenshot_batch(
   'testing-center.screenshot-evidence.v1','nightly','prepare-key',
@@ -254,7 +282,7 @@ select ok(
 );
 
 set local role authenticated;
-select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000501',true);
+select pg_temp.fixture_claims('00000000-0000-4000-8000-000000000501');
 create temporary table revoked_batch as
 select * from public.testing_center_prepare_screenshot_batch(
   'testing-center.screenshot-evidence.v1','nightly','revoked-after-prepare',
@@ -267,7 +295,7 @@ set active=false
 where user_id='00000000-0000-4000-8000-000000000501';
 reset role;
 set local role authenticated;
-select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000501',true);
+select pg_temp.fixture_claims('00000000-0000-4000-8000-000000000501');
 select throws_ok(
   format(
     'insert into storage.objects(bucket_id,name,owner_id) values (%L,%L,%L::uuid)',
@@ -306,7 +334,7 @@ set active=true,role='primary_tester'
 where user_id='00000000-0000-4000-8000-000000000501';
 reset role;
 set local role authenticated;
-select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000501',true);
+select pg_temp.fixture_claims('00000000-0000-4000-8000-000000000501');
 create temporary table degraded_batch as
 select * from public.testing_center_prepare_screenshot_batch(
   'testing-center.screenshot-evidence.v1','nightly','degraded-after-prepare',
@@ -319,7 +347,7 @@ set role='tester'
 where user_id='00000000-0000-4000-8000-000000000501';
 reset role;
 set local role authenticated;
-select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000501',true);
+select pg_temp.fixture_claims('00000000-0000-4000-8000-000000000501');
 select throws_ok(
   format(
     'insert into storage.objects(bucket_id,name,owner_id) values (%L,%L,%L::uuid)',
@@ -358,7 +386,7 @@ where user_id='00000000-0000-4000-8000-000000000501';
 reset role;
 
 set local role authenticated;
-select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000501',true);
+select pg_temp.fixture_claims('00000000-0000-4000-8000-000000000501');
 select throws_ok(
   $$insert into storage.objects(bucket_id,name,owner_id) values ('testing-center-evidence','chosen/by/client','00000000-0000-4000-8000-000000000501')$$,
   '42501', null, 'client cannot choose a storage path'
@@ -381,13 +409,13 @@ select throws_ok(
 reset role;
 
 set local role authenticated;
-select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000502',true);
+select pg_temp.fixture_claims('00000000-0000-4000-8000-000000000502');
 select throws_ok(
   format('select * from public.testing_center_finalize_screenshot(%L::uuid,%L::uuid)',
     (select batch_id from prepared_result),(select (slots->0->>'evidenceId') from prepared_result)),
   '42501', null, 'another user cannot finalize the slot'
 );
-select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000501',true);
+select pg_temp.fixture_claims('00000000-0000-4000-8000-000000000501');
 select is(
   (select idempotent from public.testing_center_finalize_screenshot(
     (select batch_id from prepared_result),
@@ -411,7 +439,7 @@ select is((select state from public.testing_center_screenshot_evidence where evi
 select is((select state from public.testing_center_evidence_batches where batch_id=(select batch_id from prepared_result)),'uploading','partial finalize leaves the batch uploading');
 
 set local role authenticated;
-select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000501',true);
+select pg_temp.fixture_claims('00000000-0000-4000-8000-000000000501');
 select is(
   (select idempotent from public.testing_center_finalize_screenshot(
     (select batch_id from prepared_result),
@@ -445,7 +473,7 @@ select ok(
 );
 
 set local role authenticated;
-select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000501',true);
+select pg_temp.fixture_claims('00000000-0000-4000-8000-000000000501');
 select throws_ok(
   $$select * from public.testing_center_submit_report_with_evidence('testing-center.v1','nightly','Opened settings','Settings stays visible','Settings closed',null,'v0.4.0-nightly','windows','Windows 11','hub',false,false,null,null,'prepare-key',(select batch_id from prepared_result))$$,
   '55000', null, 'submit rejects a batch that is not fully ready'
@@ -457,7 +485,7 @@ set state='rejected',failure_code='validation_failed',validated_at=now(),updated
 where evidence_id=(select (slots->0->>'evidenceId')::uuid from prepared_result);
 reset role;
 set local role authenticated;
-select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000501',true);
+select pg_temp.fixture_claims('00000000-0000-4000-8000-000000000501');
 select throws_ok(
   $$select * from public.testing_center_submit_report_with_evidence('testing-center.v1','nightly','Opened settings','Settings stays visible','Settings closed',null,'v0.4.0-nightly','windows','Windows 11','hub',false,false,null,null,'prepare-key',(select batch_id from prepared_result))$$,
   '55000', null, 'submit rejects a batch containing rejected evidence'
@@ -471,12 +499,12 @@ where batch_id=(select batch_id from prepared_result);
 reset role;
 
 set local role authenticated;
-select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000502',true);
+select pg_temp.fixture_claims('00000000-0000-4000-8000-000000000502');
 select throws_ok(
   $$select * from public.testing_center_submit_report_with_evidence('testing-center.v1','nightly','Opened settings','Settings stays visible','Settings closed',null,'v0.4.0-nightly','windows','Windows 11','hub',false,false,null,null,'prepare-key',(select batch_id from prepared_result))$$,
   '42501', null, 'another user cannot submit the batch'
 );
-select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000501',true);
+select pg_temp.fixture_claims('00000000-0000-4000-8000-000000000501');
 create temporary table submitted_result as
 select * from public.testing_center_submit_report_with_evidence(
   'testing-center.v1','nightly','Opened settings','Settings stays visible','Settings closed',null,

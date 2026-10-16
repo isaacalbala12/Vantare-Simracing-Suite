@@ -80,7 +80,7 @@ pub fn load() -> Result<Vec<Photo>, String> {
             snapshot,
         });
     }
-    let snapshot = vantare_ipc::snapshot_from_json(include_str!(
+    let snapshot = vantare_ipc::snapshot_from_fixture_json(include_str!(
         "../../../ui/fixtures/telemetry-real/acc.snapshot.json"
     ))
     .map_err(|e| e.to_string())?;
@@ -125,7 +125,7 @@ mod tests {
         assert_eq!(
             vantare_ipc::snapshot_to_json(&photos[12].snapshot).expect("json"),
             vantare_ipc::snapshot_to_json(
-                &vantare_ipc::snapshot_from_json(include_str!(
+                &vantare_ipc::snapshot_from_fixture_json(include_str!(
                     "../../../ui/fixtures/telemetry-real/acc.snapshot.json"
                 ))
                 .expect("source")

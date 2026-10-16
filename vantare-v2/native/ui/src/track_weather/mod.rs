@@ -221,7 +221,7 @@ mod tests {
     #[test]
     fn reference_fixture_preserves_frozen_weather_and_absent_pressure() {
         // Demostración Workshop reconstruida, no captura real de un simulador.
-        let snapshot = vantare_ipc::snapshot_from_json(include_str!(
+        let snapshot = vantare_ipc::snapshot_from_fixture_json(include_str!(
             "../../fixtures/track-weather.snapshot.json"
         ))
         .expect("escena DTO v3 válida");

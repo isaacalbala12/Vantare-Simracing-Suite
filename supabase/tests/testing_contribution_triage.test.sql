@@ -1,7 +1,33 @@
 -- Synthetic LOCAL fixtures only. Invoked by run-triage-local.py, never production.
 begin;
+SELECT set_config('fixture.clerk',(to_regclass('private.clerk_issuers') IS NOT NULL)::text,true);
+-- The old schema-cut runner uses UUID claims; B03 requires a bound Clerk session.
+CREATE FUNCTION pg_temp.fixture_claims(account text) RETURNS text LANGUAGE plpgsql AS $$
+BEGIN
+  PERFORM set_config('request.jwt.claims', CASE
+    WHEN current_setting('fixture.clerk',true)='true' THEN
+      jsonb_build_object('iss','https://fixtures.clerk.invalid',
+        'sub','user_'||replace(account,'-',''),'role','authenticated',
+        'sid','sess_fixture','azp','https://app.invalid')
+    ELSE jsonb_build_object('iss','https://local.supabase.test/auth/v1',
+        'sub',account,'role','authenticated') END::text, true);
+  RETURN set_config('request.jwt.claim.sub',account,true);
+END $$;
+
 select no_plan();
 insert into public.profiles(id) select ('15940000-0000-0000-0000-' || lpad(i::text,12,'0'))::uuid from generate_series(1,5) i;
+-- B03 fixture: internal profile plus an explicit Clerk binding before child rows.
+DO $fixture$ BEGIN
+  IF to_regclass('private.clerk_issuers') IS NOT NULL THEN
+    INSERT INTO private.clerk_issuers(issuer,authorized_parties,enabled)
+      VALUES ('https://fixtures.clerk.invalid',ARRAY['https://app.invalid'],true)
+      ON CONFLICT (issuer) DO NOTHING;
+    INSERT INTO public.account_identities(issuer,subject,account_id)
+      SELECT 'https://fixtures.clerk.invalid','user_'||replace(id::text,'-',''),id
+      FROM public.profiles ON CONFLICT (issuer,subject) DO NOTHING;
+  END IF;
+END $fixture$;
+
 insert into public.testing_center_memberships(user_id,actor_id,role) values
  ('15940000-0000-0000-0000-000000000001','1594-a','primary_tester'),
  ('15940000-0000-0000-0000-000000000002','1594-b','tester'),
@@ -30,10 +56,24 @@ select ok(not has_table_privilege('vantare_triage','public.testing_contribution_
 select ok(not has_function_privilege('vantare_triage','public.testing_contribution_review(uuid,text,text,jsonb)','execute'),'worker cannot confirm proposal');
 select ok(not has_function_privilege('anon','public.testing_contribution_submit_v2(uuid,text,text,text,jsonb,jsonb)','execute'),'anon cannot submit');
 select ok(not has_function_privilege('service_role','public.testing_contribution_review(uuid,text,text,jsonb)','execute'),'service role is not the human confirmation path');
+select to_regclass('private.clerk_issuers') is not null as b03 \gset
+\if :b03
+select ok((select coalesce(array_agg(p.oid order by p.oid),array[]::oid[])
+ = array['private.current_account()'::regprocedure::oid]
+ from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+ where n.nspname='private' and has_function_privilege('authenticated',p.oid,'execute')),
+ 'current_account is the only private function executable by authenticated');
+select ok(not exists(select 1 from pg_class c join pg_namespace n on n.oid=c.relnamespace
+ where n.nspname='private' and c.relkind in ('r','p','v','m','f')
+ and (has_table_privilege('authenticated',c.oid,'SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER,MAINTAIN')
+ or has_any_column_privilege('authenticated',c.oid,'SELECT,INSERT,UPDATE,REFERENCES'))),
+ 'authenticated has no private table or column privileges');
+\else
 select ok(not has_schema_privilege('authenticated','private','usage'),'private schema ACL stays closed');
+\endif
 
 set local role authenticated;
-set local request.jwt.claim.sub = '15940000-0000-0000-0000-000000000001';
+select pg_temp.fixture_claims('15940000-0000-0000-0000-000000000001');
 select lives_ok($$select public.testing_contribution_submit_v2('15940000-0000-0000-0000-000000000010','testers','Failure',repeat('steps expected actual ',12),pg_temp.ctx(),pg_temp.att())$$,'atomic upload with hardware and cropped log');
 select is((select count(*)::integer from public.testing_contribution_context),1,'own context visible');
 select is((select count(*)::integer from public.testing_contribution_attachments),1,'own attachment visible');
@@ -62,13 +102,13 @@ select is((select count(*)::integer from public.testing_contribution_context),2,
 select throws_ok($$select public.testing_contribution_submit_v2('15940000-0000-0000-0000-000000000013','testers','Oversize',repeat('x',210),pg_temp.ctx(),jsonb_build_array(jsonb_build_object('kind','app_log','content',repeat('é',131073),'sha256',encode(sha256(convert_to(repeat('é',131073),'UTF8')),'hex'))))$$,'23514',null,'attachment limit measured in UTF8 bytes');
 select throws_ok($$select public.testing_contribution_submit_v2('15940000-0000-0000-0000-000000000013','testers','Duplicate',repeat('x',210),pg_temp.ctx(),pg_temp.att()||pg_temp.att())$$,'23505',null,'duplicate attachment kinds denied atomically');
 
-set local request.jwt.claim.sub = '15940000-0000-0000-0000-000000000002';
+select pg_temp.fixture_claims('15940000-0000-0000-0000-000000000002');
 select is((select count(*)::integer from public.testing_contribution_context),0,'B cannot read A context');
 select is((select count(*)::integer from public.testing_contribution_attachments),0,'B cannot read A log');
 select throws_ok($$select public.testing_contribution_submit_v2('15940000-0000-0000-0000-000000000010','testers','Failure',repeat('steps expected actual ',12),pg_temp.ctx(),pg_temp.att())$$,'23505','testing_contribution_conflict','other account cannot replay A UUID');
-set local request.jwt.claim.sub = '15940000-0000-0000-0000-000000000005';
+select pg_temp.fixture_claims('15940000-0000-0000-0000-000000000005');
 select throws_ok($$select public.testing_contribution_submit_v2('15940000-0000-0000-0000-000000000015','testers','None','text',pg_temp.ctx(),pg_temp.att())$$,'42501','testing_membership_required','account without membership denied');
-set local request.jwt.claim.sub = '15940000-0000-0000-0000-000000000003';
+select pg_temp.fixture_claims('15940000-0000-0000-0000-000000000003');
 select is((select count(*)::integer from public.testing_contribution_attachments),1,'owner can inspect evidence for confirmation');
 select throws_ok($$select public.testing_contribution_review('15940000-0000-0000-0000-000000000010','accepted','confirmed',null)$$,'22023','testing_review_invalid','confirmation requires proposal snapshot');
 select throws_ok($$select public.testing_contribution_review('15940000-0000-0000-0000-000000000010','accepted','',pg_temp.proposal())$$,'22023','testing_review_invalid','confirmation requires human note');
@@ -93,16 +133,16 @@ insert into public.testing_contributions(id,account_id,channel,title,body,create
  ('15940000-0000-0000-0000-000000000016','15940000-0000-0000-0000-000000000001','testers','Third','text','2026-10-14T12:00:00Z'),
  ('15940000-0000-0000-0000-000000000017','15940000-0000-0000-0000-000000000002','testers','Old','text',statement_timestamp()-interval '31 days');
 set local role authenticated;
-set local request.jwt.claim.sub = '15940000-0000-0000-0000-000000000003';
+select pg_temp.fixture_claims('15940000-0000-0000-0000-000000000003');
 select lives_ok($$select public.testing_contribution_review('15940000-0000-0000-0000-000000000012','accepted','confirmed',pg_temp.proposal())$$,'second acceptance on another day');
 select throws_ok($$select public.testing_contribution_review('15940000-0000-0000-0000-000000000016','accepted','confirmed',pg_temp.proposal())$$,'23514','testing_acceptance_limit','third acceptance in UTC week denied');
 reset role;
 update public.testing_center_memberships set active=false where user_id='15940000-0000-0000-0000-000000000003';
 set local role authenticated;
 select throws_ok($$select public.testing_contribution_review('15940000-0000-0000-0000-000000000016','declined','confirmed',pg_temp.proposal())$$,'42501','testing_owner_required','revoked owner cannot decide');
-set local request.jwt.claim.sub = '15940000-0000-0000-0000-000000000002';
+select pg_temp.fixture_claims('15940000-0000-0000-0000-000000000002');
 select is((select count(*)::integer from public.testing_contribution_reviews),0,'B cannot read A review');
-set local request.jwt.claim.sub = '15940000-0000-0000-0000-000000000001';
+select pg_temp.fixture_claims('15940000-0000-0000-0000-000000000001');
 select is((select count(*)::integer from public.testing_contribution_reviews),3,'author can read own reviews');
 reset role;
 set local role vantare_triage;
@@ -131,9 +171,23 @@ select is((select count(*)::integer from public.testing_contribution_attachments
 select is((select telemetry_summary from public.testing_contribution_context where contribution_id='15940000-0000-0000-0000-000000000010'),null::jsonb,'expired telemetry purged');
 select is((select count(*)::integer from public.testing_contribution_context),2,'system and consent retained');
 select is((select count(*)::integer from public.testing_contribution_reviews),3,'human audit retained');
+\if :b03
+select public.apply_clerk_user_event('triage-delete-reviewer',repeat('a',64),
+ 'https://fixtures.clerk.invalid','user_15940000000000000000000000000003','user.deleted',now(),null);
+\else
 delete from public.profiles where id='15940000-0000-0000-0000-000000000003';
+\endif
+\if :b03
+select is((select count(*)::integer from public.testing_contribution_reviews where reviewer='15940000-0000-0000-0000-000000000003'),3,'deleted reviewer retains private audit with durable account ID');
+\else
 select is((select count(*)::integer from public.testing_contribution_reviews where reviewer is null),3,'deleting reviewer keeps audit without blocking account deletion');
+\endif
+\if :b03
+select public.apply_clerk_user_event('triage-delete-author',repeat('b',64),
+ 'https://fixtures.clerk.invalid','user_15940000000000000000000000000001','user.deleted',now(),null);
+\else
 delete from public.profiles where id='15940000-0000-0000-0000-000000000001';
+\endif
 select is((select count(*)::integer from public.testing_contribution_context),0,'deleting author cascades context');
 select is((select count(*)::integer from public.testing_contribution_reviews),0,'deleting author cascades private review');
 select * from finish();

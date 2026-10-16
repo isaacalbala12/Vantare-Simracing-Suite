@@ -32,6 +32,7 @@ mod access;
 mod account;
 #[path = "login.rs"]
 mod login;
+mod founders;
 #[path = "view/roadmap.rs"]
 mod roadmap;
 
@@ -88,11 +89,15 @@ impl PurchaseWait {
         access.verified
             && !access.blocked
             && match self.product {
+                BillingProduct::Founders => access.catalog == CatalogAccess::Founders,
                 BillingProduct::ProMonthly | BillingProduct::ProAnnual => {
-                    access.catalog == CatalogAccess::Pro
+                    matches!(access.catalog, CatalogAccess::Pro | CatalogAccess::Founders)
                 }
                 BillingProduct::LaunchLifetime => {
-                    matches!(access.catalog, CatalogAccess::LaunchV1 | CatalogAccess::Pro)
+                    matches!(
+                        access.catalog,
+                        CatalogAccess::LaunchV1 | CatalogAccess::Pro | CatalogAccess::Founders
+                    )
                 }
             }
     }
@@ -142,6 +147,7 @@ fn remember_receipt(
 }
 pub(crate) mod pilot;
 pub struct Remote {
+    founders_language: founders::Language,
     pub(crate) adapt: orbit::Adapt,
     pipe: String,
     send: Option<SyncSender<Command>>,
@@ -263,6 +269,7 @@ impl Remote {
         .detach();
         let rights = core_feed(&pipe);
         let mut remote = Self {
+            founders_language: founders::Language::default(),
             pilot: pilot::Projection::default(),
             adapt: orbit::Adapt::default(),
             pipe,

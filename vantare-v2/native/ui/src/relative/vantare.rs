@@ -1581,7 +1581,7 @@ mod tests {
             .as_array()
             .expect("fases")
             .iter()
-            .map(|f| vantare_ipc::snapshot_from_json(&f["snapshot"].to_string()).expect("foto"))
+            .map(|f| vantare_ipc::snapshot_from_fixture_json(&f["snapshot"].to_string()).expect("foto"))
             .collect()
     }
 

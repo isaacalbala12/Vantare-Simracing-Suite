@@ -267,7 +267,12 @@ impl Hub {
         if state.capture {
             return;
         }
-        if !state.signed && product == Some(crate::services::protocol::BillingProduct::ProMonthly) {
+        if !state.signed
+            && matches!(
+                product,
+                Some(crate::services::protocol::BillingProduct::ProMonthly)
+            )
+        {
             state.page(3);
             state.say("Conecta tu cuenta para consultar los planes disponibles.");
             self.onboarding_account_login(2, cx);

@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-1682",
+  "type": "fix",
+  "summary": "El descuento de creador solo se confirma si el importe final coincide con el cupón gestionado de Polar.",
+  "technicalNotes": [
+    "Valida descuentos fijos en EUR y porcentajes con el redondeo del ahorro de Polar, además del precio base autorizado, moneda, intervalo y autoridad durable.",
+    "Sin un único precio se bloquea antes del PATCH; si la confirmación devuelve un importe incoherente queda incidencia y permite reintento sin duplicar la escritura."
+  ],
+  "testing": [
+    "Fixture anual real de sandbox: 3990→4799 sobre precio5999 con ID de precio anual propio; mantiene lanzamiento, compra normal y replay mensual.",
+    "Regresiones de importes incoherentes, redondeo de medio céntimo, cardinalidad antes del PATCH y ACK/retry: suite completa841 PASS, 0 fallos, 2 omisiones existentes."
+  ],
+  "knownLimitations": [
+    "El producto de lanzamiento histórico queda documentado y sigue bloqueado; no se amplía su admisión.",
+    "Sin despliegue. Siguen pendientes refund realmente pending, inicio repeating11/12 meses y webhook real a Edge aislada."
+  ]
+}

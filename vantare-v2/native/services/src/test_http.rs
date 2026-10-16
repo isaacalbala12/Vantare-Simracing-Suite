@@ -18,6 +18,17 @@ impl Server {
     }
 
     pub fn start_with(responses: impl FnOnce(&Url) -> Vec<(u16, String)>) -> Self {
+        Self::start_with_header(responses, None)
+    }
+
+    pub fn start_native(responses: impl FnOnce(&Url) -> Vec<(u16, String)>) -> Self {
+        Self::start_with_header(responses, Some("fixture-client-token"))
+    }
+
+    fn start_with_header(
+        responses: impl FnOnce(&Url) -> Vec<(u16, String)>,
+        client: Option<&'static str>,
+    ) -> Self {
         let listener = TcpListener::bind("127.0.0.1:0").expect("servidor test");
         let base = Url::parse(&format!(
             "http://{}/",
@@ -27,6 +38,7 @@ impl Server {
         let responses = responses(&base);
         let (tx, requests) = mpsc::channel();
         let thread = std::thread::spawn(move || {
+            let mut native_rotation = 0;
             for (status, body) in responses {
                 let (mut socket, _) = listener.accept().expect("aceptar test");
                 socket
@@ -55,9 +67,15 @@ impl Server {
                 socket
                     .read_exact(&mut bytes[header_end..])
                     .expect("body test");
+                if client.is_some() && bytes.starts_with(b"POST /v1/") {
+                    native_rotation += 1;
+                }
                 tx.send(String::from_utf8_lossy(&bytes).into_owned())
                     .expect("capture test");
-                write!(socket, "HTTP/1.1 {status} Test\r\nContent-Length: {}\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n{body}", body.len()).expect("response test");
+                let authorization = client.map_or(String::new(), |token| {
+                    format!("Authorization: {token}-{native_rotation}\r\n")
+                });
+                write!(socket, "HTTP/1.1 {status} Test\r\nContent-Length: {}\r\nContent-Type: application/json\r\n{authorization}Connection: close\r\n\r\n{body}", body.len()).expect("response test");
             }
         });
         Self {

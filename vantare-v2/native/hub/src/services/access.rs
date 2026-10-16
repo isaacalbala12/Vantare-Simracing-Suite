@@ -1,4 +1,5 @@
 //! Acceso alojado: el estado viene del mismo servicio que la sección Cuenta.
+use super::super::protocol::{EmailAction, EmailMode};
 use super::{Command, Remote, Reply};
 use crate::orbit;
 use gpui::{Context, Div, Stateful, div, prelude::*, px, rgb, rgba};
@@ -53,6 +54,16 @@ impl State {
     }
 
     pub(super) fn requested(&mut self, command: &Command) {
+        if let Command::AccountEmail { action } = command {
+            self.error = None;
+            self.login_requested = false;
+            if matches!(action, EmailAction::Begin { .. } | EmailAction::Finish {}) {
+                self.invalidate();
+                self.transition = Transition::Login;
+            } else if matches!(action, EmailAction::Cancel {}) {
+                self.transition = Transition::Idle;
+            }
+        }
         if matches!(command, Command::Logout | Command::AccountBegin) {
             self.invalidate();
             self.transition = if matches!(command, Command::AccountBegin) {
@@ -78,7 +89,14 @@ impl State {
     }
 
     pub(super) fn next_command(&mut self, reply: &Reply, cancel: &mut bool) -> Option<Command> {
-        let pending = matches!(reply, Reply::Account { pending: true, .. });
+        let pending = matches!(
+            reply,
+            Reply::Account { pending: true, .. }
+                | Reply::Email {
+                    stage: super::super::protocol::EmailStage::Authorizing,
+                    ..
+                }
+        );
         let check_session = matches!(
             reply,
             Reply::Status {
@@ -222,6 +240,10 @@ impl State {
             {
                 self.policy = Some(policy.clone());
             }
+            Reply::Email { .. } => {
+                self.login_requested = false;
+                self.error = None;
+            }
             Reply::Closed => self.invalidate(),
             Reply::Error { message } if account => {
                 self.login_requested = false;
@@ -293,7 +315,7 @@ impl Remote {
         self.access.required(self.account.signed_in)
     }
 
-    fn begin_access(&mut self, cx: &mut Context<Self>) {
+    pub(super) fn begin_access(&mut self, cx: &mut Context<Self>) {
         if self.working() {
             return;
         }
@@ -351,10 +373,20 @@ impl Remote {
                     .tab_stop(false)
                     .aria_description("Esperando respuesta")
             })
-            .on_click(cx.listener(|this, _, _, cx| this.begin_access(cx)))
-            .on_key_down(cx.listener(|this, event: &gpui::KeyDownEvent, _, cx| {
-                if matches!(event.keystroke.key.as_str(), "enter" | "space") {
+            .on_click(cx.listener(move |this, _, _, cx| {
+                if id == "access-email" {
+                    this.select_email(EmailMode::SignInCode, cx);
+                } else {
                     this.begin_access(cx);
+                }
+            }))
+            .on_key_down(cx.listener(move |this, event: &gpui::KeyDownEvent, _, cx| {
+                if matches!(event.keystroke.key.as_str(), "enter" | "space") {
+                    if id == "access-email" {
+                        this.select_email(EmailMode::SignInCode, cx);
+                    } else {
+                        this.begin_access(cx);
+                    }
                     cx.stop_propagation();
                 }
             }))
@@ -376,10 +408,18 @@ impl Remote {
             .rounded(px(4.0))
             .focus_visible(|style| style.border_1().border_color(rgb(orbit::carmine(cx))))
             .child(orbit::text(label, 12.0, 400, color, cx))
-            .on_click(cx.listener(move |this, _, _, cx| this.open_portal(page, cx)))
+            .on_click(cx.listener(move |this, _, _, cx| match page {
+                Portal::SignUp => this.select_email(EmailMode::SignUpCode, cx),
+                Portal::Reset => this.select_email(EmailMode::Recovery, cx),
+                Portal::Profile => this.open_portal(page, cx),
+            }))
             .on_key_down(cx.listener(move |this, event: &gpui::KeyDownEvent, _, cx| {
                 if matches!(event.keystroke.key.as_str(), "enter" | "space") {
-                    this.open_portal(page, cx);
+                    match page {
+                        Portal::SignUp => this.select_email(EmailMode::SignUpCode, cx),
+                        Portal::Reset => this.select_email(EmailMode::Recovery, cx),
+                        Portal::Profile => this.open_portal(page, cx),
+                    }
                     cx.stop_propagation();
                 }
             }))
@@ -409,18 +449,20 @@ impl Remote {
                     .gap(px(8.0))
                     .child(orbit::icon("i-vantare", 48.0, orbit::carmine(cx)))
                     .child(
-                        orbit::text("Welcome to Vantare", 20.0, 600, orbit::ink(cx), cx)
+                        orbit::text("Bienvenido a Vantare", 20.0, 600, orbit::ink(cx), cx)
                             .mt(px(8.0)),
                     )
                     .child(orbit::text(
-                        "Sign in or create an account",
+                        "Inicia sesión o crea tu cuenta",
                         14.0,
                         400,
                         orbit::ink_2(cx),
                         cx,
                     )),
             );
-        if waiting || checking {
+        if self.email.is_some() {
+            body = body.child(self.email_view(cx));
+        } else if waiting || checking {
             body = body.child(orbit::text(
                 if waiting {
                     "Continúa en tu navegador…"
@@ -544,7 +586,7 @@ impl Remote {
                     )),
             )
             .child(orbit::text(
-                "Google es el acceso recomendado para la beta pública.",
+                "Discord y Google continúan en el navegador de Clerk.",
                 10.0,
                 400,
                 orbit::ink_3(cx),
@@ -1284,5 +1326,91 @@ mod navigation_tests {
             state(false, false).navigation(true, 1000),
             Access::default()
         );
+    }
+}
+
+#[cfg(test)]
+mod native_email_tests {
+    use super::super::super::protocol::{EmailAction, EmailMode, EmailStage};
+    use super::*;
+
+    #[test]
+    fn pending_device_grant_polls_and_cancel_has_priority_over_a_retry() {
+        let mut state = State::from_build();
+        state.requested(&Command::AccountEmail {
+            action: EmailAction::Finish {},
+        });
+        let pending = Reply::Email {
+            stage: EmailStage::Authorizing,
+            retry_after_seconds: 0,
+            message: "esperando".into(),
+            error: None,
+        };
+        assert!(matches!(
+            state.next_command(&pending, &mut false),
+            Some(Command::AccountPoll)
+        ));
+        let mut cancel = true;
+        assert!(matches!(
+            state.next_command(&pending, &mut cancel),
+            Some(Command::Logout)
+        ));
+        assert!(!cancel);
+        let exhausted = Reply::Email {
+            stage: EmailStage::Consent,
+            retry_after_seconds: 0,
+            message: "reintentar".into(),
+            error: Some("pendiente".into()),
+        };
+        assert!(state.next_command(&exhausted, &mut false).is_none());
+    }
+    #[test]
+    fn email_waits_for_consent_and_oauth_before_license_renewal() {
+        let mut state = State::from_build();
+        state.requested(&Command::AccountEmail {
+            action: EmailAction::Begin {
+                mode: EmailMode::SignInCode,
+                email: "fixture@example.invalid".into(),
+                password: String::new(),
+            },
+        });
+        let reply = Reply::Email {
+            stage: EmailStage::Code,
+            retry_after_seconds: 30,
+            message: "fixture".into(),
+            error: None,
+        };
+        state.observe(&reply, true);
+        assert!(!state.login_requested);
+        assert!(
+            state.next_command(&reply, &mut false).is_none(),
+            "native input never starts automatic polling/renewal"
+        );
+        let reply = Reply::Email {
+            stage: EmailStage::Consent,
+            retry_after_seconds: 0,
+            message: "fixture".into(),
+            error: None,
+        };
+        assert!(state.next_command(&reply, &mut false).is_none());
+        state.requested(&Command::AccountEmail {
+            action: EmailAction::Finish {},
+        });
+        let reply = Reply::Account {
+            signed_in: true,
+            profile: None,
+            expires_at: Some(500),
+            pending: false,
+            message: "fixture".into(),
+            error: None,
+        };
+        assert!(matches!(
+            state.next_command(&reply, &mut false),
+            Some(Command::LicenseRenew)
+        ));
+        state.requested(&Command::AccountEmail {
+            action: EmailAction::Cancel {},
+        });
+        assert_eq!(state.transition as u8, Transition::Idle as u8);
     }
 }

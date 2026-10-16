@@ -312,7 +312,17 @@
     },
     "native/hub/reference/README.md": {
       "source": "native/hub/reference/README.md",
-      "sha256": "c11064554c51e5da863d6c3e44872576ccbe44c1d15aed212680f9391637cd25"
+      "sha256": "ae8252830afb38cb66e006ccbe9e7201f4f56811856331ff39a1537d3c900c3c",
+      "source_sha256": "c11064554c51e5da863d6c3e44872576ccbe44c1d15aed212680f9391637cd25",
+      "revisions": [
+        {
+          "commit": "65e4809d17f6c83640258d7a44689a52653ed477",
+          "issues": [
+            "#1655"
+          ],
+          "archived_original": "native/retirement/legacy-evidence/hub-capture-before-1655/README.md.txt"
+        }
+      ]
     },
     "native/hub/reference/compare.ps1": {
       "source": "native/hub/reference/compare.ps1",
@@ -2983,6 +2993,10 @@
     "native/retirement/legacy-evidence/hub-capture-before-1655/capture-window.ps1.txt": {
       "source": "native/hub/reference/tools/capture-window.ps1",
       "sha256": "d8e0f8c9de46fe74134c22a492f17146bbd779d27a7e49c3c826d151be2bfc8f"
+    },
+    "native/retirement/legacy-evidence/hub-capture-before-1655/README.md.txt": {
+      "source": "native/hub/reference/README.md",
+      "sha256": "c11064554c51e5da863d6c3e44872576ccbe44c1d15aed212680f9391637cd25"
     }
   }
 }

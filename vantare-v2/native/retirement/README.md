@@ -47,3 +47,8 @@ Las entradas activas conservan `source_sha256` y añaden revisión al commit
 archivos exactos: los 456 originales/versionados y los cinco originales
 archivados. No ejecutar los scripts históricos: activaban ventanas o capturaban
 el escritorio. Las referencias PNG y los corpus conservan sus pins.
+
+El README de referencias también conserva su original exacto como
+`hub-capture-before-1655/README.md.txt`; el documento activo señala el protocolo
+visible como histórico y remite al lote seguro. Su revisión es `65e4809d1`.
+El verificador comprueba 462 archivos exactos; se conserva el pin original.

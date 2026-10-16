@@ -397,14 +397,27 @@ pub fn fields(settings: &Settings) -> Vec<Field> {
                 set!(CarDamageVisual.show_aero),
             ),
         ],
-        Settings::DeltaTrace(value) => vec![number(
-            "Ventana (segundos)",
-            value.window_seconds,
-            1.0,
-            8.0,
-            1.0,
-            set!(DeltaTrace.window_seconds),
-        )],
+        Settings::DeltaTrace(value) => vec![
+            choice(
+                "Referencia",
+                Tab::Content,
+                &value.reference,
+                &[
+                    ("Tu mejor", "best"),
+                    ("Óptima", "optimal"),
+                    ("Líder de clase", "leader"),
+                ],
+                set!(DeltaTrace.reference string),
+            ),
+            number(
+                "Ventana (segundos)",
+                value.window_seconds,
+                1.0,
+                8.0,
+                1.0,
+                set!(DeltaTrace.window_seconds),
+            ),
+        ],
         Settings::FastestLap(value) => vec![
             boolean(
                 "Vuelta personal",

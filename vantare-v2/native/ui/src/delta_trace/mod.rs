@@ -204,6 +204,7 @@ fn paint(
 #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct Settings {
+    pub reference: String,
     pub window_seconds: f64,
     pub show_sectors: bool,
     pub show_track_map: bool,
@@ -211,6 +212,7 @@ pub struct Settings {
 impl Default for Settings {
     fn default() -> Self {
         Self {
+            reference: "best".into(),
             window_seconds: 4.0,
             show_sectors: true,
             show_track_map: true,
@@ -219,7 +221,10 @@ impl Default for Settings {
 }
 impl Settings {
     pub const UNSUPPORTED: &'static [(&'static str, &'static str)] = &[
-        ("showSectors", "Snapshot no publica deltas por sector"),
+        (
+            "showSectors",
+            "El diseño mantiene los indicadores de sector en el pie",
+        ),
         (
             "showTrackMap",
             "Snapshot no publica trackPath ni turnInsight",
@@ -228,6 +233,10 @@ impl Settings {
     #[must_use]
     pub fn normalized(&self) -> Self {
         Self {
+            reference: match self.reference.as_str() {
+                "optimal" | "leader" => self.reference.clone(),
+                _ => "best".into(),
+            },
             window_seconds: if self.window_seconds.is_finite() {
                 self.window_seconds.clamp(1.0, 8.0)
             } else {
@@ -379,13 +388,18 @@ struct Details {
     sectors: [Option<f64>; 3],
 }
 impl Details {
-    fn from(snapshot: &Snapshot, prefs: Preferences) -> Self {
+    fn from(snapshot: &Snapshot, prefs: Preferences, board: &vantare_domain::delta::Board) -> Self {
         let es = prefs.language == vantare_domain::format::Language::Es;
         let car = snapshot.state.player_car();
-        let best = car.and_then(|c| c.best_lap_s.current()).map_or_else(
-            || "—".into(),
-            |v| vantare_domain::format::lap_time(Some(*v)),
-        );
+        let best = vantare_domain::format::lap_time(board.reference_lap_s);
+        let reference = match (board.reference, es) {
+            (vantare_domain::delta::Reference::Optimal, true) => "ÓPTIMA",
+            (vantare_domain::delta::Reference::Optimal, false) => "OPTIMAL",
+            (vantare_domain::delta::Reference::Leader, true) => "LÍDER DE CLASE",
+            (vantare_domain::delta::Reference::Leader, false) => "CLASS LEADER",
+            (_, true) => "TU MEJOR",
+            (_, false) => "YOUR BEST",
+        };
         let progress = car
             .and_then(|c| c.lap_distance_m.current())
             .zip(snapshot.state.session.track_length_m.current())
@@ -397,9 +411,9 @@ impl Details {
                 .player
                 .is_some_and(|p| p.lap_invalid.current() == Some(&true)),
             header: if es {
-                format!("HISTORIAL DE DELTA · VS TU MEJOR {best}")
+                format!("HISTORIAL DE DELTA · VS {reference} {best}")
             } else {
-                format!("DELTA HISTORY · VS YOUR BEST {best}")
+                format!("DELTA HISTORY · VS {reference} {best}")
             },
             position: car
                 .and_then(|c| c.laps.current())
@@ -412,7 +426,8 @@ impl Details {
                     )
                 }),
             sectors: std::array::from_fn(|i| {
-                car.and_then(|c| c.current_sectors_s.get(i).zip(c.best_sectors_s.get(i)))
+                car.filter(|_| board.reference != vantare_domain::delta::Reference::Leader)
+                    .and_then(|c| c.current_sectors_s.get(i).zip(c.best_sectors_s.get(i)))
                     .and_then(|(a, b)| a.current().zip(b.current()))
                     .map(|(a, b)| a - b)
             }),
@@ -437,7 +452,11 @@ impl Widget {
             vm: vantare_domain::delta_trace::project(&Snapshot::default(), prefs),
             trace: Trace::default(),
             history: lap::History::default(),
-            details: Details::from(&Snapshot::default(), prefs),
+            details: Details::from(
+                &Snapshot::default(),
+                prefs,
+                &vantare_domain::delta::project(&Snapshot::default(), prefs),
+            ),
             paint_samples: None,
         }
     }
@@ -448,17 +467,32 @@ impl Widget {
     }
 
     pub(crate) fn ingest(&mut self, snapshot: &Snapshot, prefs: Preferences) -> bool {
-        let details_changed = replace_if_changed(&mut self.details, Details::from(snapshot, prefs));
-        let lap_changed = self.history.push(snapshot);
-        let changed = self.trace.push_with_window(
+        let reference = match self.settings.reference.as_str() {
+            "optimal" => vantare_domain::delta::Reference::Optimal,
+            "leader" => vantare_domain::delta::Reference::Leader,
+            _ => vantare_domain::delta::Reference::PersonalBest,
+        };
+        let mut board = vantare_domain::delta::project_reference(snapshot, prefs, reference);
+        if reference != vantare_domain::delta::Reference::PersonalBest
+            && board.reference_lap_s.is_none()
+        {
+            board.delta = vantare_domain::Quality::Unavailable;
+        }
+        let details_changed =
+            replace_if_changed(&mut self.details, Details::from(snapshot, prefs, &board));
+        let lap_changed = self.history.push_with_board(snapshot, &board);
+        let changed = self.trace.push_with_board(
             snapshot,
             std::time::Duration::from_secs_f64(self.settings.window_seconds),
+            &board,
         );
         if changed {
             self.paint_samples = None;
         }
-        replace_if_changed(&mut self.vm, self.trace.project(snapshot, prefs))
-            || changed
+        replace_if_changed(
+            &mut self.vm,
+            self.trace.project_with_board(snapshot, prefs, &board),
+        ) || changed
             || lap_changed
             || details_changed
     }
@@ -496,12 +530,17 @@ impl Settings {
     #[allow(clippy::unused_self)] // Contrato común de demanda por renderer.
     pub fn demand(&self) -> vantare_ipc::Demand {
         use vantare_ipc::Signal::{
-            Delta, LapCount, LapProgress, LapTimes, Sectors, SessionInfo, TrackLength,
+            Cars, Delta, Flags, LapCount, LapProgress, LapTimes, PitStatus, Positions, Sectors,
+            SessionInfo, TrackLength,
         };
         // La historia distingue pérdida real de fotos; no introducir huecos por cadencia.
         crate::demand::signals(
             0,
             &[
+                Cars,
+                Positions,
+                PitStatus,
+                Flags,
                 Delta,
                 LapTimes,
                 LapCount,
@@ -516,6 +555,91 @@ impl Settings {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn selected_reference_reaches_both_histories_and_missing_never_falls_back() {
+        use vantare_domain::{Car, CarId, Class, ClassId, Quality::Reliable, SessionKind};
+        let mut snapshot = crate::source::fixed();
+        snapshot.state.source_state = vantare_domain::SourceState::Live;
+        snapshot.state.session.kind = Reliable(SessionKind::Qualifying);
+        snapshot.state.session.track_length_m = Reliable(1000.0);
+        let own = snapshot.state.player.expect("jugador").car;
+        let class = Class {
+            id: ClassId(91),
+            name: "Hypercar".into(),
+        };
+        snapshot.state.cars = vec![
+            Car {
+                id: own,
+                class: Some(class.clone()),
+                position: Reliable(2),
+                class_position: Reliable(2),
+                best_lap_s: Reliable(90.0),
+                best_sectors_s: vec![Reliable(29.0); 3],
+                laps: Reliable(4),
+                lap_distance_m: Reliable(100.0),
+                ..Car::default()
+            },
+            Car {
+                id: CarId(own.0 + 1),
+                class: Some(class),
+                position: Reliable(1),
+                class_position: Reliable(1),
+                best_lap_s: Reliable(88.0),
+                ..Car::default()
+            },
+        ];
+        let player = snapshot.state.player.as_mut().expect("jugador");
+        player.delta_best_s = Reliable(-0.1);
+        player.delta_optimal_s = Reliable(0.4);
+        player.delta_leader_s = Reliable(0.8);
+        let prefs = Preferences::default();
+        for (reference, expected, title) in [
+            ("best", -0.1, "TU MEJOR"),
+            ("optimal", 0.4, "ÓPTIMA"),
+            ("leader", 0.8, "LÍDER DE CLASE"),
+        ] {
+            let mut widget = Widget::new(
+                &Settings {
+                    reference: reference.into(),
+                    ..Settings::default()
+                },
+                prefs,
+            );
+            widget.ingest(&snapshot, prefs);
+            assert_eq!(
+                widget
+                    .trace
+                    .samples()
+                    .back()
+                    .expect("muestra")
+                    .delta_seconds,
+                Some(expected)
+            );
+            assert_eq!(
+                widget.history.points.last().expect("distancia").delta,
+                expected as f32
+            );
+            assert!(widget.details.header.contains(title));
+            let mut absent = snapshot.clone();
+            absent.sequence += 1;
+            absent.origin.received_at += std::time::Duration::from_millis(100);
+            let player = absent.state.player.as_mut().expect("jugador");
+            match reference {
+                "optimal" => player.delta_optimal_s = Quality::Unavailable,
+                "leader" => player.delta_leader_s = Quality::Unavailable,
+                _ => player.delta_best_s = Quality::Unavailable,
+            }
+            widget.ingest(&absent, prefs);
+            assert_eq!(
+                widget.vm.current_text, "—",
+                "sin sustituir por delta personal"
+            );
+        }
+        let legacy: Settings =
+            serde_json::from_str(r#"{"windowSeconds":6}"#).expect("guardado anterior");
+        assert_eq!(legacy.reference, "best");
+    }
+
     #[test]
     fn selected_history_window_changes_the_projected_observed_trace() {
         let snapshots = crate::workshop::snapshots_from_json(include_str!(

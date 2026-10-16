@@ -7,7 +7,14 @@ pub(super) struct Point {
     pub delta: f32,
     pub cut: bool,
 }
-type Identity = (u64, SessionId, CarId, Option<u64>, Option<u64>);
+type Identity = (
+    u64,
+    SessionId,
+    CarId,
+    vantare_domain::delta::Reference,
+    Option<u64>,
+    Option<u64>,
+);
 
 #[derive(Clone, Default)]
 pub(super) struct History {
@@ -20,13 +27,22 @@ pub(super) struct History {
     last_at: Option<std::time::Duration>,
 }
 impl History {
+    #[cfg(test)]
     pub fn push(&mut self, snapshot: &Snapshot) -> bool {
-        let reference = snapshot
-            .state
-            .player_car()
-            .and_then(|c| c.best_lap_s.current())
-            .filter(|v| v.is_finite() && **v > 0.0)
-            .map(|v| v.to_bits());
+        let board = vantare_domain::delta::project(
+            snapshot,
+            vantare_domain::format::Preferences::default(),
+        );
+        self.push_with_board(snapshot, &board)
+    }
+
+    pub fn push_with_board(
+        &mut self,
+        snapshot: &Snapshot,
+        board: &vantare_domain::delta::Board,
+    ) -> bool {
+        let mut changed = false;
+        let reference = board.reference_lap_s.map(f64::to_bits);
         let length = snapshot
             .state
             .session
@@ -39,6 +55,7 @@ impl History {
                 snapshot.epoch,
                 snapshot.state.session.id,
                 p.car,
+                board.reference,
                 reference,
                 length,
             )
@@ -49,7 +66,7 @@ impl History {
                 SourceState::Waiting | SourceState::Lost
             )
         {
-            let changed = !self.points.is_empty() || !self.previous.is_empty();
+            changed = !self.points.is_empty() || !self.previous.is_empty();
             *self = Self {
                 identity,
                 ..Self::default()
@@ -73,8 +90,8 @@ impl History {
             self.last_sequence = None;
             self.cut = true;
         }
-        let Some(player) = snapshot.state.player else {
-            return false;
+        let Some(_player) = snapshot.state.player else {
+            return changed;
         };
         let car = snapshot.state.player_car();
         let progress = car
@@ -84,17 +101,17 @@ impl History {
                 (d.is_finite() && l.is_finite() && *l > 0.0 && *d >= 0.0 && d <= l)
                     .then_some((d / l) as f32)
             });
-        let delta = match player.delta_best_s {
+        let delta = match board.delta {
             Quality::Reliable(v) | Quality::Estimated(v) if v.is_finite() => Some(v as f32),
             _ => None,
         };
         if snapshot.state.source_state != SourceState::Live || progress.is_none() || delta.is_none()
         {
             self.cut = true;
-            return false;
+            return changed;
         }
         if self.last_sequence.is_some_and(|n| snapshot.sequence <= n) {
-            return false;
+            return changed;
         }
         self.cut |= self
             .last_sequence
@@ -106,7 +123,7 @@ impl History {
         self.last_at = Some(at);
         self.last_sequence = Some(snapshot.sequence);
         let (Some(progress), Some(delta)) = (progress, delta) else {
-            return false;
+            return changed;
         };
         if self.points.last().is_some_and(|p| progress < p.progress) {
             self.points.clear();
@@ -118,7 +135,7 @@ impl History {
             .last()
             .is_some_and(|p| (p.progress * 1000.0) as u32 == (progress * 1000.0) as u32)
         {
-            return false;
+            return changed;
         }
         self.points.push(Point {
             progress,

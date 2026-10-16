@@ -150,18 +150,7 @@ fn paint(
         ));
     }
     if settings.show_phrases || !vm.available {
-        let message = match (vm.available, vm.overlap_left, vm.overlap_right, kit.es()) {
-            (false, _, _, true) => "Esperando a LMU",
-            (false, _, _, false) => "Waiting for LMU",
-            (true, true, true, true) => "Tres en paralelo",
-            (true, true, false, true) => "Coche a la izquierda",
-            (true, false, true, true) => "Coche a la derecha",
-            (true, true, true, false) => "Three wide",
-            (true, true, false, false) => "Car left",
-            (true, false, true, false) => "Car right",
-            (_, _, _, true) => "Pista libre",
-            (_, _, _, false) => "Clear track",
-        };
+        let message = phrase(vm, kit.es());
         round_rect(
             window,
             1.0,
@@ -181,7 +170,7 @@ fn paint(
                 style.colors.muted.hsla()
             },
         );
-        let label = message.to_uppercase();
+        let label = crate::efficiency::text::fit(window, &message.to_uppercase(), &ink, 202.0);
         let width = crate::efficiency::text::width(window, &label, &ink);
         kit.label(
             window,
@@ -195,6 +184,42 @@ fn paint(
             &ink,
         );
     }
+}
+
+fn phrase(vm: &ViewModel, es: bool) -> String {
+    if vm.available && !vm.overlap_left && !vm.overlap_right {
+        let closing = vm
+            .cars
+            .iter()
+            .filter(|c| c.ahead_m < 0.0)
+            .filter_map(|c| c.closing_mps)
+            .filter(|v| (v * 3.6).round() >= 1.0)
+            .max_by(f64::total_cmp);
+        if let Some(speed) = closing {
+            return format!(
+                "{} · +{:.0} km/h",
+                if es {
+                    "Se acerca detrás"
+                } else {
+                    "Closing behind"
+                },
+                (speed * 3.6).round()
+            );
+        }
+    }
+    (match (vm.available, vm.overlap_left, vm.overlap_right, es) {
+        (false, _, _, true) => "Esperando a LMU",
+        (false, _, _, false) => "Waiting for LMU",
+        (true, true, true, true) => "Tres en paralelo",
+        (true, true, false, true) => "Coche a la izquierda",
+        (true, false, true, true) => "Coche a la derecha",
+        (true, true, true, false) => "Three wide",
+        (true, true, false, false) => "Car left",
+        (true, false, true, false) => "Car right",
+        (_, _, _, true) => "Pista libre",
+        (_, _, _, false) => "Clear track",
+    })
+    .into()
 }
 
 use crate::app::{Paint, Wake, replace_if_changed};
@@ -286,21 +311,97 @@ impl Widget {
 impl Settings {
     #[allow(clippy::unused_self)] // Contrato común de demanda por renderer.
     pub fn demand(&self) -> vantare_ipc::Demand {
-        use vantare_ipc::Signal::{LapCount, LapProgress, Spatial, TrackLength};
-        crate::demand::signals(33, &[Spatial, LapCount, LapProgress, TrackLength])
+        use vantare_ipc::Signal::{LapCount, LapProgress, Spatial, TrackLength, Velocity};
+        crate::demand::signals(33, &[Spatial, Velocity, LapCount, LapProgress, TrackLength])
     }
 }
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn closing_phrase_uses_current_velocity_and_overlap_keeps_priority() {
+        use vantare_domain::{Car, Player, Pose, Quality, SourceState};
+        let mut snapshot = Snapshot {
+            epoch: 1629,
+            sequence: 1,
+            ..Snapshot::default()
+        };
+        snapshot.state.source_state = SourceState::Live;
+        snapshot.state.capabilities.spatial = vantare_domain::Capability::Fresh;
+        snapshot.state.player = Some(Player {
+            car: CarId(1),
+            ..Player::default()
+        });
+        snapshot.state.cars = vec![
+            Car {
+                id: CarId(1),
+                pose: Quality::Reliable(Pose::default()),
+                velocity_mps: Quality::Reliable([40.0, 0.0]),
+                ..Car::default()
+            },
+            Car {
+                id: CarId(2),
+                pose: Quality::Reliable(Pose {
+                    x_m: -20.0,
+                    ..Pose::default()
+                }),
+                velocity_mps: Quality::Reliable([50.0, 0.0]),
+                ..Car::default()
+            },
+        ];
+        assert_eq!(
+            phrase(&vantare_domain::radar::project(&snapshot), true),
+            "Se acerca detrás · +36 km/h"
+        );
+        // El DTO parcial debe conservar la frase, no solo el VM de una foto completa.
+        let name = format!("radar-velocity-{}", std::process::id());
+        let mut publisher = vantare_ipc::Publisher::new(&name, |_| true).expect("pipe");
+        let demand = Settings::default().demand();
+        let source = publisher.demand_source();
+        let mut subscriber =
+            vantare_ipc::Subscriber::connect_requested(&name, demand.clone(), |_| true)
+                .expect("suscriptor");
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
+        while source.mask() != demand.mask() {
+            assert!(std::time::Instant::now() < deadline, "demanda aceptada");
+            std::thread::yield_now();
+        }
+        publisher.publish(Arc::new(snapshot.clone())).expect("foto");
+        let filtered = subscriber
+            .next_photo(std::time::Duration::from_secs(2))
+            .expect("DTO v11");
+        assert_eq!(
+            phrase(&vantare_domain::radar::project(&filtered.snapshot), true),
+            "Se acerca detrás · +36 km/h"
+        );
+        snapshot.state.cars[1].pose = Quality::Reliable(Pose {
+            y_m: 2.0,
+            ..Pose::default()
+        });
+        assert_eq!(
+            phrase(&vantare_domain::radar::project(&snapshot), true),
+            "Coche a la izquierda"
+        );
+        snapshot.state.cars[1].pose = Quality::Reliable(Pose {
+            x_m: -20.0,
+            ..Pose::default()
+        });
+        snapshot.state.cars[1].velocity_mps = Quality::Stale([50.0, 0.0]);
+        assert_eq!(
+            phrase(&vantare_domain::radar::project(&snapshot), true),
+            "Pista libre"
+        );
+    }
+
     use super::*;
     use crate::source;
 
     #[test]
     fn parity_scene_keeps_the_reference_sides() {
-        let snapshot =
-            vantare_ipc::snapshot_from_fixture_json(include_str!("../fixtures/radar.snapshot.json"))
-                .expect("escena Radar DTO v3 válida");
+        let snapshot = vantare_ipc::snapshot_from_fixture_json(include_str!(
+            "../fixtures/radar.snapshot.json"
+        ))
+        .expect("escena Radar DTO v3 válida");
         let vm = vantare_domain::radar::project(&snapshot);
         let positions: Vec<_> = vm
             .cars

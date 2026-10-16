@@ -202,7 +202,7 @@ fn labels(snapshot: &Snapshot, prefs: Preferences) -> [String; 3] {
     } else {
         car.and_then(|c| c.laps.current())
             .zip(snapshot.state.session.laps_total.current())
-            .map_or_else(String::new, |(a, b)| {
+            .map_or_else(|| session.to_owned(), |(a, b)| {
                 format!("{session} · {} {a}/{b}", if es { "V" } else { "L" })
             })
     };
@@ -540,8 +540,11 @@ mod tests {
             widget.ingest(&snapshot, english),
             "la cabecera visible cambia de idioma"
         );
-        assert!(widget.labels[1].contains("RACE"));
+        assert_eq!(widget.labels[1], "RACE", "sin total no se inventan vueltas");
         assert!(!widget.ingest(&snapshot, english));
+        snapshot.state.session.laps_total = vantare_domain::Quality::Reliable(200);
+        assert!(widget.ingest(&snapshot, english));
+        assert!(widget.labels[1].starts_with("RACE · L "));
         assert_eq!(widget.frame(prefs, false).1, Wake::Idle);
         assert!(!widget.animating());
     }

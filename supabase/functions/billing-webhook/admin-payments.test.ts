@@ -80,6 +80,13 @@ Deno.test("subscription refunds update management AND the common commercial rest
   const ledger = await subscriptionLedger();
   const supabase = {
     rpc: (name: string, args: Record<string, unknown>) => {
+      if (name === "billing_creator_revocation") {
+        assert(
+          args.p_stage === "prepare" && args.p_subscription === "sub-test" &&
+            args.p_reason === "refund",
+        );
+        return Promise.resolve({ data: null, error: null }); // no attributed creator operation
+      }
       assert(name === "native_admin_record_refund");
       persisted = true;
       assert((args.p_refund as Record<string, unknown>).amount_cents === 159);
@@ -123,7 +130,15 @@ Deno.test("admin commission refunds include VAT paid back to the customer", asyn
   });
   assert(mapping.ok);
   const supabase = {
-    rpc: (_name: string, args: Record<string, unknown>) => {
+    rpc: (name: string, args: Record<string, unknown>) => {
+      if (name === "billing_creator_revocation") {
+        assert(
+          args.p_stage === "prepare" && args.p_subscription === "sub-test" &&
+            args.p_reason === "refund",
+        );
+        return Promise.resolve({ data: null, error: null });
+      }
+      assert(name === "native_admin_record_refund");
       assert((args.p_refund as Record<string, unknown>).amount_cents === 319);
       return Promise.resolve({ data: true, error: null });
     },
@@ -145,4 +160,72 @@ Deno.test("admin commission refunds include VAT paid back to the customer", asyn
     orderRefundLedger: await subscriptionLedger(),
   });
   assert(result.status === "processed");
+});
+
+Deno.test("merged paid subscription projects both the promotion invoice and the owner payment", async () => {
+  const calls = new Map<string, Record<string, unknown>>();
+  const supabase = {
+    rpc: (name: string, args: Record<string, unknown>) => {
+      assert(
+        ["report_promotion_invoice", "native_admin_record_payment"].includes(
+          name,
+        ),
+      );
+      calls.set(name, args);
+      return Promise.resolve({ data: null, error: null });
+    },
+  } as unknown as SupabaseClient;
+  const mapping = loadPolarProductMap(VALID_POLAR_PRODUCT_MAP_JSON, {
+    environment: "sandbox",
+  });
+  assert(mapping.ok);
+  const event = minimizePolarWebhookEvent({
+    type: "order.paid",
+    data: {
+      id: "combined-order",
+      external_customer_id: "00000000-0000-4000-8000-000000001628",
+      product_id: "00000000-0000-0000-0000-000000000003",
+      subscription_id: "combined-sub",
+      paid: true,
+      status: "paid",
+      billing_reason: "subscription_cycle",
+      created_at: "2026-11-26T18:00:00Z",
+      modified_at: "2026-11-26T18:00:00Z",
+      applied_balance_amount: 0,
+      total_amount: 399,
+      net_amount: 330,
+      tax_amount: 69,
+      currency: "eur",
+      refunded_amount: 0,
+      refunded_tax_amount: 0,
+      discount_id: "pro3",
+      discount_amount: 200,
+      items: [{
+        proration: false,
+        start_timestamp: "2026-11-26T18:00:00Z",
+        end_timestamp: "2026-12-26T18:00:00Z",
+      }],
+    },
+  });
+  const result = await applyPolarWebhookEvent(event, {
+    supabase,
+    loadMap: () => mapping,
+    orderRefundLedger: new MemoryOrderRefundLedger(),
+    resolveIdentity: () =>
+      Promise.resolve("00000000-0000-4000-8000-000000001628"),
+  });
+  assert(result.status === "processed");
+  assert(calls.size === 2);
+  assert(calls.get("report_promotion_invoice")?.p_order === "combined-order");
+  assert(
+    calls.get("report_promotion_invoice")?.p_start === "2026-11-26T18:00:00Z",
+  );
+  const payment = calls.get("native_admin_record_payment")?.p_payment as Record<
+    string,
+    unknown
+  >;
+  assert(
+    payment.payment_id === "combined-order" && payment.amount_cents === 399 &&
+      payment.discount_id === "pro3",
+  );
 });

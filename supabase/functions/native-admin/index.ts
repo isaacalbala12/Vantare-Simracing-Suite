@@ -506,13 +506,16 @@ export async function handleNativeAdmin(
       }
       const reserved = await run(action, params);
       const creator = objectValue(reserved.creator);
-      if (creator.status === "active") {
+      if (
+        creator.status === "active" &&
+        typeof creator.annual_discount_id === "string"
+      ) {
         return respond({ ...reserved, ok: true });
       }
       if (typeof creator.creator_id !== "string") {
         throw new NativeError(503, "bridge_unavailable");
       }
-      const discount_id = await ensureCreatorCode(
+      const discounts = await ensureCreatorCode(
         creator.creator_id,
         String(params.code),
         deps.productMap,
@@ -521,7 +524,7 @@ export async function handleNativeAdmin(
       return respond({
         ...await run("activate_creator", {
           creator_id: creator.creator_id,
-          discount_id,
+          ...discounts,
         }),
         ok: true,
       });

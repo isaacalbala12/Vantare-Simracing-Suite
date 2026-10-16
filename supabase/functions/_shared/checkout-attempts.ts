@@ -8,6 +8,8 @@ export type CheckoutAttempt = {
   checkoutKey: CheckoutKey;
   environment: "sandbox" | "production";
   catalogVersion: string;
+  creatorCode?: string | null;
+  creatorDiscountId?: string | null;
 };
 
 export type CheckoutClaim =
@@ -43,13 +45,21 @@ export function createCheckoutAttemptStore(
   return {
     async claim(input) {
       const { data, error } = await client.rpc(
-        "claim_billing_checkout_attempt",
+        input.creatorCode
+          ? "claim_billing_creator_checkout_attempt"
+          : "claim_billing_checkout_attempt",
         {
           p_user_id: input.userId,
           p_attempt_id: input.attemptId,
           p_checkout_key: input.checkoutKey,
           p_environment: input.environment,
           p_catalog_version: input.catalogVersion,
+          ...(input.creatorCode
+            ? {
+              p_creator_code: input.creatorCode,
+              p_creator_discount: input.creatorDiscountId,
+            }
+            : {}),
         },
       );
       if (error) throw new Error("checkout_attempt_claim_failed");

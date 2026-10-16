@@ -112,6 +112,18 @@ binarios, nunca glob de `target/release`. Este encargo no publica ni modifica el
 Hub, el instalador público o los canales. Dependencias existentes, sin nuevos
 motores gráficos, clientes HTTP ni SDK.
 
+## Promoción por informes · #1593 / VANTA-39
+
+La ficha de cada persona conserva el bloque de promoción: informes aceptados,
+tramo y descuento confirmado; avisa de incidencias, devolución inicial y spam.
+La devolución del primer mes pierde el premio. Dos spams bloquean nuevos
+tramos y conservan los meses ya concedidos. El detalle viene del servidor;
+la lista paginada puede omitirlo hasta abrir la persona. No hay controles de
+descuentos ni cambios de suscripción nuevos en esta miniapp.
+Contrato y reglas: supabase/functions/billing-report-promotion/README.md.
+La demo aprobada conserva sus personas y acciones; Ana incluye progreso falso
+para comprobar el bloque sin consultar servicios reales.
+
 ## Correos de marketing (#1636)
 
 Sección Correos con campañas, plantillas Novedades/Oferta/Lanzamiento, editor de

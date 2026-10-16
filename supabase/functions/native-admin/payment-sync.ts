@@ -125,7 +125,9 @@ export async function syncAdminPayments(
         payment_id: order.id,
         account_id: account,
         subscription_id: order.subscription_id ?? null,
-        product: selection.key === "launch_lifetime"
+        product: selection.key === "founders"
+          ? "Founders"
+          : selection.key === "launch_lifetime"
           ? "Launch Edition"
           : `${selection.key.startsWith("pro_plus") ? "Pro Plus" : "Pro"} ${
             selection.key.endsWith("annual") ? "anual" : "mensual"

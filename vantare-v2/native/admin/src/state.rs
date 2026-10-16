@@ -763,6 +763,40 @@ mod tests {
         assert_eq!(state.account_counts.get("blocked"), Some(&1));
     }
     #[test]
+    fn merged_person_detail_preserves_plan_payments_accesses_and_promotion() {
+        let mut state = State::new(true, Screen::Users);
+        let fixture: serde_json::Value =
+            serde_json::from_str(include_str!("../fixtures/r1.json")).expect("wire fixture");
+        let mut wire = fixture["users"][1].clone();
+        let account_id = wire["account_id"].as_str().expect("account").to_owned();
+        wire["report_promotion"] = serde_json::json!({
+            "accepted":5,"tier":6,"forfeited":false,"active_discount":"DEMO6",
+            "last_error":"promotion_checkout_owner_mismatch"
+        });
+        state
+            .accept(
+                &Action::GetAccount { account_id },
+                &serde_json::json!({"account":wire}),
+            )
+            .expect("fresh detail");
+        let user = state.user.as_ref().expect("detail");
+        assert_eq!(user.plan, crate::client::Plan::Pro);
+        assert!(!user.owner && !user.blocked);
+        assert!(!user.payments.is_empty());
+        assert!(!user.module_access.is_empty());
+        let promotion = user.report_promotion.as_ref().expect("promotion");
+        assert_eq!((promotion.accepted, promotion.tier), (5, 6));
+        assert!(promotion.summary().contains("pendiente de revisión"));
+        // A paginated summary may omit the optional detail; the old contract remains valid.
+        wire.as_object_mut()
+            .expect("wire")
+            .remove("report_promotion");
+        let summary: crate::client::User = serde_json::from_value(wire).expect("summary");
+        assert!(summary.report_promotion.is_none());
+        assert_eq!(summary.plan, user.plan);
+        assert_eq!(summary.payments, user.payments);
+    }
+    #[test]
     fn approved_creator_example_and_private_cleanup_are_preserved() {
         let mut state = State::new(true, Screen::Creators);
         let carlos = state

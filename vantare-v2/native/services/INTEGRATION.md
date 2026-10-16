@@ -35,8 +35,9 @@ histórico ajeno a este corte; no se modificó su lock ni se incorpora aquí.
   deadline y permisos, sin credenciales ni PII. Overlays/Engineer usan el feed
   de control autenticado, sin HTTP propio. Política incompatible, antigua,
   expirada, reloj hacia atrás o sin heartbeat durante dos segundos deniega.
-  Standings/Pedals siguen disponibles; los restantes overlays requieren acceso
-  avanzado. Engineer conserva su cursor/eventos y vacía radio/voz al denegar.
+  Standings, Relative, Delta y Pedals siguen disponibles; los restantes
+  overlays requieren acceso avanzado. Engineer conserva su cursor/eventos y
+  vacía radio/voz al denegar.
   Workshop, capturas y fuente `local` son previsualizaciones de prueba explícitas.
 
 ## Juego, cierre y revocación

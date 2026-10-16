@@ -86,15 +86,14 @@ $bitmap = $null
 $graphics = $null
 $nativeBitmap = $null
 try {
-    $offscreen = [bool]$env:VANTARE_CAPTURE_OFFSCREEN
-    if (-not $offscreen) { [HubReferenceWindow]::Focus($handle) }
+    [HubReferenceWindow]::Focus($handle)
     $outer = New-Object HubReferenceWindow+RECT
     $client = New-Object HubReferenceWindow+RECT
     # GPUI recalcula el marco tras el primer resize; vuelve a medirlo antes de corregir.
     for ($attempt = 0; $attempt -lt 3; $attempt++) {
         if (-not [HubReferenceWindow]::GetWindowRect($handle,[ref]$outer) -or
             -not [HubReferenceWindow]::GetClientRect($handle,[ref]$client)) { throw 'No se pudo medir la ventana' }
-        if (-not [HubReferenceWindow]::MoveWindow($handle,$(if ($offscreen) { -4000 } else { 0 }),0,$width+($outer.R-$outer.L-$client.R),$height+($outer.B-$outer.T-$client.B),$true)) {
+        if (-not [HubReferenceWindow]::MoveWindow($handle,0,0,$width+($outer.R-$outer.L-$client.R),$height+($outer.B-$outer.T-$client.B),$true)) {
             throw 'No se pudo ajustar el área cliente'
         }
         Start-Sleep -Milliseconds 300
@@ -106,7 +105,7 @@ try {
     }
     $origin = New-Object HubReferenceWindow+POINT
     if (-not [HubReferenceWindow]::ClientToScreen($handle,[ref]$origin)) { throw 'No se pudo localizar el área cliente' }
-    if (-not $offscreen -and [HubReferenceWindow]::GetForegroundWindow() -ne $handle) { throw 'El Hub no tiene el foco' }
+    if ([HubReferenceWindow]::GetForegroundWindow() -ne $handle) { throw 'El Hub no tiene el foco' }
     if ($X -ge 0 -or $Y -ge 0) {
         if ($X -lt 0 -or $X -ge $width -or $Y -lt 0 -or $Y -ge $height) { throw 'Click fuera del área cliente' }
         if (-not [HubReferenceWindow]::SetCursorPos($origin.X+$X,$origin.Y+$Y)) { throw 'No se pudo mover el cursor' }
@@ -121,7 +120,7 @@ try {
     }
     if ($Keys) { [System.Windows.Forms.SendKeys]::SendWait($Keys) }
     Start-Sleep -Milliseconds 500
-    if (-not $offscreen -and [HubReferenceWindow]::GetForegroundWindow() -ne $handle) { throw 'Otra ventana ha recibido el foco' }
+    if ([HubReferenceWindow]::GetForegroundWindow() -ne $handle) { throw 'Otra ventana ha recibido el foco' }
     [void][IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($output))
     $nativeBitmap = [HubCaptureBitmap]::new($width,$height)
     if ($nativeBitmap.Capture($handle)) {

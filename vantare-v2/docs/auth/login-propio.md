@@ -1,10 +1,10 @@
 # Inicio de sesión propio — VANTA-70 / ISA-1631
 
-Investigación del 14/10/2026. Encargo aprobado: email con código y contraseña,
+Diseño iniciado el 14/10/2026. Encargo aprobado: email con código y contraseña,
 alta, entrada y recuperación en GPUI; Google/Discord conservan navegador;
-onboarding independiente. Rama local `vantareapp/isa-1631-login-propio`, base
-nightly `b9ec75ed5435fb95130946cd207a4fa1ce8b8a64`. Sin servicios reales,
-secretos, cambios Supabase/Polar ni dependencias nuevas.
+onboarding independiente. Seguimiento `vantareapp/isa-1631-login-p3`, base
+nightly `32c3f3a14bd22e9bcedff9e21e1cb138f5cc5226` (incluye #1635).
+Sin servicios reales, secretos, cambios Supabase/Polar ni dependencias nuevas.
 
 ## Integración con nightly — 16/10/2026
 
@@ -270,6 +270,9 @@ Cambios tras la revisión R1 de PR #1635:
   mensaje claro y conserva FAPI para que Autorizar pueda crear otro grant.
 - **Sesión FAPI.** Se cierra (`POST /v1/client/sessions/{id}/end`, mejor
   esfuerzo) tras el canje, al cancelar, al caducar y al cerrar sesión.
+  Tras un canje correcto se retira el intento consumido: si falla el guardado
+  local, vuelve al formulario con un aviso para iniciar el acceso de nuevo,
+  sin ofrecer «Autorizar» sobre la sesión FAPI ya cerrada.
 - **Cola llena.** Una acción de email descartada reactiva el formulario y avisa.
 - **Límite local de intentos** sobrevive a «Volver» mientras viva el proceso;
   contraseña débil/filtrada (`form_password_*`) tiene mensaje propio.
@@ -278,7 +281,8 @@ Cambios tras la revisión R1 de PR #1635:
   envía con prioridad al terminar el comando HTTP en vuelo (cada petición
   conserva su timeout de 8 s). Cancelar no deshace una petición que Clerk ya
   haya recibido. Los intervalos de autorización no retienen el worker.
-- Protocolo services sube a **v10** (nightly ya había tomado v9 con #1594/#1610).
+- Protocolo services **v11**, combinación de AccountEmail y Founders; conserva
+  los contratos de #1594/#1610. Control v5 y fotos v11 son independientes.
 
 Decisiones documentadas sin cambio de código:
 

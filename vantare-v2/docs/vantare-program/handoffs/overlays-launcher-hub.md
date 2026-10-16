@@ -4,6 +4,12 @@
 
 ## Reanudación #1653 · catálogo de cobertura · 2026-10-16
 
+El primer HEAD actualizado pasa CI Windows: 1911/1911 Nextest (19 omitidos),
+lifecycle 5/5, formato/check/Clippy y cinco checks SUCCESS (run 38973145705).
+Mientras corría, nightly avanzó a `1a8ddee33` (#1684); se fusiona también,
+sin rebase ni force-push. La conclusión del HEAD definitivo se registra al
+cerrar en #1660/#1653 y el buzón, no se extrapola el verde del SHA anterior.
+
 Se fusiona origin/nightly `32c3f3a14` mediante `725cce28`, sin conflictos,
 rebase ni force-push. El evaluador offline deja de fijar 18 widgets:
 el consumidor Rust exporta el catálogo de `Kind::ALL`, y Python valida

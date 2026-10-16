@@ -118,7 +118,7 @@ pequeños se registran como redondeo de rasterizado/alfa, sin tolerancia que los
 oculte. No se afirma paridad histórica total: los residuos quedan para revisión.
 
 
-## Comprobaciones
+## Comprobaciones de la primera entrega
 
 Repetidas tras fusionar nightly `9e48eb86f` (merge `563262ad2`); logs
 `post-merge-*.log`, `final-verified-*.log` y sus JSON. La última base
@@ -160,7 +160,7 @@ separados, PATH correcto y todos los tests ejecutados.
 ## Entrega y evidencia
 
 Implementación: rama `vantareapp/isa-1655-capturas`; motor medido `d32f82dc4`,
-desde nightly `4651797cb`. La publicación es un PR draft a nightly para revisión
+desde nightly `4651797cb`. El PR #1675 está abierto y fuera de draft a nightly para revisión
 del orquestador; el PR, HEAD final, estado de CI y tarea Plane se registran en
 la issue [#1655](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1655)
 y en el [handoff vivo](../vantare-program/handoffs/overlays-launcher-hub.md).
@@ -185,7 +185,8 @@ despliegue ni acciones de cuenta/datos reales.
 ## Revisión R2 · banco IPC vivo (16 de octubre)
 
 Se incorpora nightly `bcaa0e3f2` mediante `560c9fef8`, sin conflictos.
-El código Rust R2 es `366902b3b`. Se conserva `ui-quality` como banco persistente:
+H1 se implementa en `366902b3b`, la fixture validada en `746c423b7` y la unidad
+de caducidad se expresa en minutos (mismos 900 s) en `195992658`. Se conserva `ui-quality` como banco persistente:
 `capture_output: None` sigue leyendo IPC y sirve un HWND al capturador externo;
 las capturas con archivo de salida siguen la ruta determinista y sus recibos.
 El banco usa las mismas opciones de creación oculta y los mismos controles
@@ -218,8 +219,31 @@ sin abrir ventana. Las medidas completas de calendario/widgets anteriores
 se conservan; no se repiten ni se sustituyen por este control de dos entradas.
 Las referencias históricas siguen intactas.
 
-Build Hub/ejemplo y **34/34 tests focales PASS**. Gates completos R2 pendientes
-al registrar este avance; los resultados definitivos se añaden al cierre.
+Resultados definitivos R2 (código Rust `195992658`):
+
+- Build Hub/ejemplo y **34/34 tests focales PASS**.
+- Fmt y Clippy producto **workspace/all-targets -D warnings PASS**.
+- Nextest producto Hub/UI **793/793 PASS**, 10 skips. La primera pasada dio
+  792/793 por `AlreadyExists` en el temporal de Análisis cuyo nombre solo usa
+  PID. La suite completa se repite con `TMP`/`TEMP` exclusivos y pasa, sin editar
+  ni debilitar ese test; se conserva el fallo inicial.
+- Nextest captura **806/808**, 10 skips: los mismos dos fallos previos
+  `app::tests::new_samples_with_unchanged_values_request_no_repaint_without_histories`
+  y `demand::tests::requested_photos_preserve_every_default_widget_projection`.
+  Todos los tests nuevos de captura/marcador pasan. No se afirma suite QA verde.
+- Clippy captura **FAIL: 18 avisos previos** de `analysis/view.rs` y `calendar.rs`.
+  Diagnósticos comparados: exactamente los mismos 18 de la primera entrega
+  (`known-clippy-comparison.json`). El aviso propio de unidad de duración está
+  corregido; no se añaden `allow` ni se rebajan gates.
+- Lifecycle **13 escenarios PASS**, cero fallos. Python de regresión compila.
+  Calidad/retirada **462 pins PASS**; scripts PS conservan la validación previa
+  (R2 no cambia ninguno).
+- Los 10 skips son benchmarks/manuales Release que requieren reserva y pruebas
+  opt-in de telemetría física/offline; no son omisiones añadidas por R2.
+  Telemetría de runtime no repetida: no hay cambios propios en runtime/domain/ipc/testdata.
+
+PR #1675 fuera de draft por orden del orquestador; estados/SHA/CI finales se
+releen en la issue. Sin merge del PR a nightly, promoción ni release.
 Evidencia: `C:/VantareServer/evidence/1655/round2/`, `gates.json`,
 `qa-live-final/result.json`, `window-audit.json`, `qa-pixels-and-placement.json`,
 `pe-binaries.json`, `batch-full.json` y `batch-incremental.json`.

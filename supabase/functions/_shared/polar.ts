@@ -908,8 +908,10 @@ export async function withdrawCreatorDiscount(
   if (!await expected.authorize()) {
     throw Error("creator_revocation_authorization_lost");
   }
-  if (current.discount_id !== expected.creatorDiscountId &&
-    !expected.managedCreatorDiscountIds?.includes(current.discount_id)) return;
+  if (
+    current.discount_id !== expected.creatorDiscountId &&
+    !expected.managedCreatorDiscountIds?.includes(current.discount_id)
+  ) return;
   const updated = await request("PATCH");
   if (updated.discount_id !== null) {
     throw Error("creator_revocation_unconfirmed");

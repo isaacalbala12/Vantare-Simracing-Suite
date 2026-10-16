@@ -9,7 +9,8 @@ p.add_argument('--only', nargs='*')
 p.add_argument('--baseline-summary', help='Compare every shared suite; fail on any regression')
 p.add_argument('--storage-schema', default=str(pathlib.Path.home()/'evidence/1608/r6/storage-schema.sql'), help='Schema-only dump from disposable local Storage')
 p.add_argument('--without-promotion', action='store_true')
-p.add_argument('--mutation',choices=['launch','launch-end','window','tier','spam','creator','deleted','idempotency','first-month','invoice','transfer','settlements','repair','first-refund','launch-used','checkout-proof','cleanup-inactive','invoice-gap','initial-incident','reward-expiry','accounts-deleted','attempt-required','tier-total','checkout-no-id','checkout-owner-incident','reconciliation-item-incident','creator-remainder','creator-clock','renewal-lease','creator-expiry','creator-lock-order'])
+p.add_argument('--creator-first', action='store_true', help='Install both report migrations after the actual Founders migrations')
+p.add_argument('--mutation',choices=['launch','launch-end','window','tier','spam','creator','deleted','idempotency','first-month','invoice','transfer','settlements','repair','first-refund','launch-used','checkout-proof','cleanup-inactive','invoice-gap','initial-incident','reward-expiry','accounts-deleted','attempt-required','tier-total','checkout-no-id','checkout-owner-incident','reconciliation-item-incident','creator-remainder','creator-clock','renewal-lease','creator-expiry','creator-lock-order','revocation-ack','revocation-remainders'])
 a=p.parse_args(); root=pathlib.Path(a.root).resolve(); out=pathlib.Path(a.output).resolve(); out.mkdir(parents=True,exist_ok=True)
 if not (pathlib.Path.home()/'orq/docker.lock').is_dir(): raise SystemExit('Acquire ~/orq/docker.lock first')
 container='vantare-1593-'+str(int(time.time()))
@@ -36,12 +37,29 @@ try:
  sql(bootstrap)
  sql("alter default privileges in schema public grant all on tables to service_role; create or replace function auth.uid() returns uuid language sql stable as $$select coalesce(nullif(current_setting('request.jwt.claim.sub',true),''),auth.jwt()->>'sub')::uuid$$;")
  sql("alter database postgres set timezone='UTC'")
- for migration in sorted((root/'supabase/migrations').glob('*.sql')):
+ migrations=sorted((root/'supabase/migrations').glob('*.sql'))
+ if a.creator_first:
+  report_names={'20261015182858_isa_1593_report_promotion.sql','20261016090000_report_creator_renewals.sql'}
+  migrations=[m for m in migrations if m.name not in report_names]+[m for m in migrations if m.name in report_names]
+ for migration in migrations:
   if a.without_promotion and 'isa_1593_' in migration.name: continue
   result=run('docker','exec','-i',container,'psql','-X','-U','supabase_admin','-d','promotion_base','-v','ON_ERROR_STOP=1','-At',input=migration.read_text(),check=False) if migration.name=='20261010001000_visual_roadmap_clickup.sql' else sql(migration.read_text(),check=False); (out/(migration.name+'.log')).write_text(result.stdout+result.stderr)
   if result.returncode: raise RuntimeError(migration.name+': '+result.stderr[-4000:])
+ # Read the ONLY launch JSON from #1661 and exercise the installed SQL clock
+ # at those exact boundaries. A future catalogue change cannot silently diverge.
+ if (root/'supabase/migrations/20261015182858_isa_1593_report_promotion.sql').exists() and not a.without_promotion:
+  windows=json.loads((root/'supabase/functions/scripts/polar-launch-prices.json').read_text())['launch_windows']
+  for environment,window in windows.items():
+   opened=window['starts_at']; closed=window['ends_at']
+   assert re.fullmatch(r'[0-9TZ:.+-]+',opened) and re.fullmatch(r'[0-9TZ:.+-]+',closed)
+   checks=sql(f"select private.report_promotion_eligible('{opened}'::timestamptz), not private.report_promotion_eligible('{opened}'::timestamptz-interval '1 millisecond'), private.report_promotion_eligible('{closed}'::timestamptz-interval '1 millisecond'), not private.report_promotion_eligible('{closed}'::timestamptz)").stdout.strip()
+   if checks!='t|t|t|t': raise RuntimeError('Canonical #1661 launch window disagrees with SQL: '+environment+' '+checks)
+  (out/'launch-contract.json').write_text(json.dumps(windows,indent=2)+'\\n')
  if a.mutation:
   signature, before, after = {
+   'revocation-ack':('public.report_promotion_ack(uuid,uuid,timestamptz,text,text)',"if done is distinct from true then","if done is distinct from true then raise exception 'creator_renewal_ack_failed'; end if; if false then"),
+   'revocation-remainders':('public.billing_creator_revocation(text,text,uuid,text,text,text,uuid,boolean)',"select coalesce(jsonb_agg(r.discount_id::text),'[]')","select '[]'::jsonb"),
+
    'creator-lock-order':('private.billing_creator_renewal_prepare_before_1593(text,uuid,text,text,text,uuid,text,uuid,integer)','if private.lock_account_write(p_user) then return null; end if;','perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(p_user::text,0));'),
 
    'creator-remainder':('private.report_creator_bound(text,text,jsonb,timestamptz)','select discount_id into chosen from private.report_creator_remainders','select creator_discount_id into chosen from private.report_creator_remainders'),
@@ -54,9 +72,9 @@ try:
    'accounts-deleted':('public.report_promotion_accounts(text,uuid)','and not exists(select 1 from public.account_identities i where i.account_id=p.account_id and i.deleted_at is not null)',''),
    'attempt-required':('public.report_promotion_checkout(uuid,text,text,timestamptz,uuid,uuid)',"if p_attempt is null then raise sqlstate '22023' using message='promotion_attempt_required'; end if;","null;"),
    'tier-total':('public.report_promotion_prepare(uuid,text,timestamptz)','p.reward_granted_at:=coalesce(p.reward_granted_at,grant_at);','p.reward_granted_at:=grant_at;'),
-   'checkout-no-id':('public.report_promotion_checkout(uuid,text,text,timestamptz,uuid,uuid)','used.remote_pending and coalesce(used.checkout_id,prior.provider_checkout_id) is not null and p_replaces is distinct from used.attempt_id','used.remote_pending and (p_replaces is distinct from used.attempt_id or coalesce(used.checkout_id,prior.provider_checkout_id) is null)'),
+   'checkout-no-id':('public.billing_launch_checkout(uuid,text,text,text,text,timestamptz,uuid,uuid)','used.remote_pending and coalesce(used.checkout_id,prior.provider_checkout_id) is not null and p_replaces is distinct from used.attempt_id','used.remote_pending and (p_replaces is distinct from used.attempt_id or coalesce(used.checkout_id,prior.provider_checkout_id) is null)'),
    'launch':('private.report_promotion_eligible(timestamptz)','2026-10-26 19:00','2026-10-26 18:00'),
-   'launch-end':('private.report_promotion_eligible(timestamptz)','2026-11-02 19:00','2026-11-02 00:00'),
+   'launch-end':('private.report_promotion_eligible(timestamptz)','2026-11-26 19:00','2026-11-02 19:00'),
    'window':('private.report_promotion_progress(uuid,text,timestamptz)','1080 hours','1081 hours'),
    'tier':('public.report_promotion_prepare(uuid,text,timestamptz)',">=5 then 6",">=50 then 6"),
    'spam':('public.report_promotion_prepare(uuid,text,timestamptz)','p.forfeited:=p.forfeited or p.forfeited_at is not null','p.forfeited:=false'),
@@ -69,8 +87,8 @@ try:
    'settlements':('public.report_promotion_prepare(uuid,text,timestamptz)','spent<p.tier','spent<p.tier-1'),
    'repair':('public.report_promotion_prepare(uuid,text,timestamptz)','where i.account_id=p_account and i.environment=p_environment and i.subscription_id=p.subscription_id','where false and i.account_id=p_account and i.environment=p_environment and i.subscription_id=p.subscription_id'),
    'first-refund':('public.report_promotion_prepare(uuid,text,timestamptz)',"p.first_refunded:=p.first_refunded or first_order.status<>'paid' or first_order.reported_refunded_amount>0","p.first_refunded:=false or false or false"),
-   'launch-used':('public.report_promotion_checkout(uuid,text,text,timestamptz,uuid,uuid)','used.attempt_id=p_attempt and used.product_id=p_product','used.product_id=p_product'),
-   'checkout-proof':('public.report_promotion_checkout(uuid,text,text,timestamptz,uuid,uuid)','p_replaces is distinct from used.attempt_id','false'),
+   'launch-used':('public.billing_launch_checkout(uuid,text,text,text,text,timestamptz,uuid,uuid)','used.attempt_id=p_attempt and used.product_id=p_product','used.product_id=p_product'),
+   'checkout-proof':('public.billing_launch_checkout(uuid,text,text,text,text,timestamptz,uuid,uuid)','p_replaces is distinct from used.attempt_id','false'),
    'cleanup-inactive':('public.report_promotion_prepare(uuid,text,timestamptz)',"and b.status in ('canceled','paused'));","and false);"),
    'invoice-gap':('public.report_promotion_prepare(uuid,text,timestamptz)','if exists(select 1 from private.report_promotion_invoice_gaps g','if false and exists(select 1 from private.report_promotion_invoice_gaps g'),
    'initial-incident':('public.report_promotion_prepare(uuid,text,timestamptz)',"perform public.report_promotion_failed(p_account,p_environment,'promotion_initial_invoice_missing',p_now);","null;"),

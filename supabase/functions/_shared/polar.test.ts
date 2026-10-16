@@ -461,25 +461,58 @@ Deno.test("R7 invalid launch offers fail before transport and public codes stay 
   let calls = 0;
   const deps = checkoutDeps(async () => {
     calls++;
-    return new Response(JSON.stringify({ id: "r7", url: "https://sandbox.polar.sh/checkout/r7" }), { status: 201 });
+    return new Response(
+      JSON.stringify({ id: "r7", url: "https://sandbox.polar.sh/checkout/r7" }),
+      { status: 201 },
+    );
   });
-  for (const invalid of [
-    { ...checkout, discountId: "invalid" },
-    { ...checkout, productKey: "founders" as const, discountId: "00000000-0000-4000-8000-000000001680" },
-    { ...checkout, trial: { enabled: true as const, interval: "day" as const, interval_count: 7 as const, provider_anti_abuse_confirmed: true as const }, discountId: "00000000-0000-4000-8000-000000001680" },
-  ]) {
-    const error = await assertRejects(() => createPolarCheckoutSession(invalid, deps), PolarClientError);
+  for (
+    const invalid of [
+      { ...checkout, discountId: "invalid" },
+      {
+        ...checkout,
+        productKey: "founders" as const,
+        discountId: "00000000-0000-4000-8000-000000001680",
+      },
+      {
+        ...checkout,
+        trial: {
+          enabled: true as const,
+          interval: "day" as const,
+          interval_count: 7 as const,
+          provider_anti_abuse_confirmed: true as const,
+        },
+        discountId: "00000000-0000-4000-8000-000000001680",
+      },
+    ]
+  ) {
+    const error = await assertRejects(
+      () => createPolarCheckoutSession(invalid, deps),
+      PolarClientError,
+    );
     assertEquals(error.code, "invalid_checkout_offer");
   }
   assertEquals(calls, 0);
   let payload: Record<string, unknown> = {};
-  await createPolarCheckoutSession({ ...checkout, creatorCode: "ISAAC" }, checkoutDeps(async (_url, init) => {
-    payload = JSON.parse(String(init?.body));
-    return new Response(JSON.stringify({ id: "r7", url: "https://sandbox.polar.sh/checkout/r7" }), { status: 201 });
-  }));
+  await createPolarCheckoutSession(
+    { ...checkout, creatorCode: "ISAAC" },
+    checkoutDeps(async (_url, init) => {
+      payload = JSON.parse(String(init?.body));
+      return new Response(
+        JSON.stringify({
+          id: "r7",
+          url: "https://sandbox.polar.sh/checkout/r7",
+        }),
+        { status: 201 },
+      );
+    }),
+  );
   assertEquals(payload.allow_discount_codes, false);
   assertEquals(payload.discount_id, undefined);
-  assertEquals((payload.metadata as Record<string, unknown>).creator_code, "ISAAC");
+  assertEquals(
+    (payload.metadata as Record<string, unknown>).creator_code,
+    "ISAAC",
+  );
 });
 
 Deno.test("R7 creator withdrawal includes only validated remainders and preserves reports", async () => {
@@ -487,16 +520,27 @@ Deno.test("R7 creator withdrawal includes only validated remainders and preserve
     let current: string | null = initial;
     let patches = 0;
     await withdrawCreatorDiscount("sub-r7", "sandbox", {
-      productId: "product", creatorDiscountId: "original",
-      managedCreatorDiscountIds: ["remainder"], authorize: async () => true,
-    }, { getAccessToken: () => "fixture", fetchFn: (_url, init) => {
-      if (init?.method === "PATCH") {
-        patches++;
-        assertEquals(JSON.parse(String(init.body)), { discount_id: null });
-        current = null;
-      }
-      return Promise.resolve(Response.json({ id: "sub-r7", product_id: "product", discount_id: current }));
-    } });
+      productId: "product",
+      creatorDiscountId: "original",
+      managedCreatorDiscountIds: ["remainder"],
+      authorize: async () => true,
+    }, {
+      getAccessToken: () => "fixture",
+      fetchFn: (_url, init) => {
+        if (init?.method === "PATCH") {
+          patches++;
+          assertEquals(JSON.parse(String(init.body)), { discount_id: null });
+          current = null;
+        }
+        return Promise.resolve(
+          Response.json({
+            id: "sub-r7",
+            product_id: "product",
+            discount_id: current,
+          }),
+        );
+      },
+    });
     assertEquals(patches, initial === "remainder" ? 1 : 0);
     assertEquals(current, initial === "remainder" ? null : "reports");
   }

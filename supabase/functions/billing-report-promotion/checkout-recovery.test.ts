@@ -295,18 +295,51 @@ Deno.test("P3-24 remote owner or product mismatch records an owner incident befo
 Deno.test("R7 canonical once guard survives false or missing report flag and uses no report coupon", async () => {
   for (const enabled of [false, undefined]) {
     let calls = 0;
-    const admin = () => ({
-      rpc: (name: string, args: Record<string, unknown>) => {
-        assertEquals(name, "billing_launch_checkout");
-        assertEquals(args.p_discount, "canonical-once");
-        assertEquals(args.p_key, "pro_annual");
-        calls++;
-        return Promise.resolve({ data: calls === 1 ? "canonical-once" : null, error: null });
-      },
-    }) as unknown as SupabaseClient;
-    const run = () => promotionCheckoutDiscount(admin, "account", "sandbox", "annual", new Date("2026-11-25T18:00:00Z"), enabled, "new", undefined, { discountId: "canonical-once", key: "pro_annual" });
+    const admin = () =>
+      ({
+        rpc: (name: string, args: Record<string, unknown>) => {
+          assertEquals(name, "billing_launch_checkout");
+          assertEquals(args.p_discount, "canonical-once");
+          assertEquals(args.p_key, "pro_annual");
+          calls++;
+          return Promise.resolve({
+            data: calls === 1 ? "canonical-once" : null,
+            error: null,
+          });
+        },
+      }) as unknown as SupabaseClient;
+    const run = () =>
+      promotionCheckoutDiscount(
+        admin,
+        "account",
+        "sandbox",
+        "annual",
+        new Date("2026-11-25T18:00:00Z"),
+        enabled,
+        "new",
+        undefined,
+        { discountId: "canonical-once", key: "pro_annual" },
+      );
     assertEquals(await run(), "canonical-once");
     assertEquals(await run(), null); // Consumed account never falls back to the offer coupon.
     assertEquals(calls, 2);
   }
+});
+
+Deno.test("R7 a known open checkout cannot silently reuse a different creator offer", async () => {
+  const admin = () => ({
+    rpc: (name: string) => Promise.resolve(
+      name === "billing_launch_checkout" ? { data: null, error: { code: "55000" } } :
+      name === "report_promotion_checkout_pending" ? { data: {
+        attempt_id: "old", checkout_id: "remote", product_id: "pro",
+        catalog_version: "old:creator:OTHER",
+      }, error: null } : { data: null, error: null },
+    ),
+  }) as unknown as SupabaseClient;
+  const failure = await assertRejects(() => promotionCheckoutDiscount(
+    admin, "account", "sandbox", "pro", new Date("2026-11-25T18:00:00Z"), false, "new",
+    () => Promise.resolve({ id: "remote", status: "open", accountId: "account", productId: "pro", url: "https://sandbox.polar.sh/checkout/old" }),
+    { discountId: "once", key: "pro_monthly", catalogVersion: "new:creator:ISAAC" },
+  ));
+  assertEquals((failure as { code?: string }).code, "promotion_checkout_plan_change_pending");
 });

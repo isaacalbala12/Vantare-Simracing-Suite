@@ -205,7 +205,11 @@ export async function handleCheckoutRequest(
       undefined,
       attemptId,
       undefined,
-      { discountId: offer.discountId, key: resolved.key, catalogVersion: attempt.catalogVersion },
+      {
+        discountId: offer.discountId,
+        key: resolved.key,
+        catalogVersion: attempt.catalogVersion,
+      },
     );
   } catch (error) {
     if (error instanceof PromotionCheckoutError) {

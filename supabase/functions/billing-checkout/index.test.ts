@@ -467,7 +467,11 @@ function campaignDeps(at: string, withDiscount = true) {
   return {
     ...base,
     now: () => new Date(at),
-    promotionDiscount: async () => Date.parse(at) >= Date.parse('2026-10-26T18:00:00Z') && Date.parse(at) < Date.parse('2026-11-26T18:00:00Z') ? raw.checkout_keys.pro_monthly.polar_launch_discount_id ?? null : null,
+    promotionDiscount: async () =>
+      Date.parse(at) >= Date.parse("2026-10-26T18:00:00Z") &&
+        Date.parse(at) < Date.parse("2026-11-26T18:00:00Z")
+        ? raw.checkout_keys.pro_monthly.polar_launch_discount_id ?? null
+        : null,
     loadMap: () =>
       loadPolarProductMap(JSON.stringify(raw), { environment: "sandbox" }),
   };
@@ -623,20 +627,36 @@ Deno.test("R3 inherited creator names are rejected before claiming an attempt", 
 Deno.test("R7 consumed launch account never falls back to canonical offer and creator remains attributed", async () => {
   let sent: Record<string, unknown> = {};
   const d = campaignDeps("2026-11-25T18:00:00Z");
-  const response = await handleCheckoutRequest(post({ productKey: "pro_monthly", attemptId: ATTEMPT_ID, creatorCode: "ISAAC" }), {
-    ...d,
-    promotionDiscount: async (...args) => {
-      assertEquals(args[4]?.toISOString(), "2026-11-25T18:00:00.000Z");
-      assertEquals(args[8]?.discountId, "00000000-0000-4000-8000-000000001680");
-      assertEquals(args[8]?.key, "pro_monthly");
-      assertEquals(args[8]?.catalogVersion?.includes(":creator:ISAAC:"), true);
-      return null;
+  const response = await handleCheckoutRequest(
+    post({
+      productKey: "pro_monthly",
+      attemptId: ATTEMPT_ID,
+      creatorCode: "ISAAC",
+    }),
+    {
+      ...d,
+      promotionDiscount: async (...args) => {
+        assertEquals(args[4]?.toISOString(), "2026-11-25T18:00:00.000Z");
+        assertEquals(
+          args[8]?.discountId,
+          "00000000-0000-4000-8000-000000001680",
+        );
+        assertEquals(args[8]?.key, "pro_monthly");
+        assertEquals(
+          args[8]?.catalogVersion?.includes(":creator:ISAAC:"),
+          true,
+        );
+        return null;
+      },
+      createCheckout: async (params) => {
+        sent = Object.fromEntries(Object.entries(params));
+        return {
+          url: "https://sandbox.polar.sh/checkout/r7",
+          checkoutId: "r7",
+        };
+      },
     },
-    createCheckout: async (params) => {
-      sent = Object.fromEntries(Object.entries(params));
-      return { url: "https://sandbox.polar.sh/checkout/r7", checkoutId: "r7" };
-    },
-  });
+  );
   assertEquals(response.status, 200);
   assertEquals(sent.discountId, null);
   assertEquals(sent.creatorCode, "ISAAC");

@@ -3137,7 +3137,13 @@ Deno.test("R5 webhook wires creator renewal only from signed reason and server b
         supabase: {
           ...mock.client,
           rpc: (name: string) => {
-            assertEquals(["native_admin_record_payment", "report_promotion_invoice_missing"].includes(name), true);
+            assertEquals(
+              [
+                "native_admin_record_payment",
+                "report_promotion_invoice_missing",
+              ].includes(name),
+              true,
+            );
             return Promise.resolve({ data: true, error: null });
           },
         } as unknown as SupabaseClient,

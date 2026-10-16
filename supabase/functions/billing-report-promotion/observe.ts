@@ -63,7 +63,11 @@ export async function promotionCheckoutDiscount(
   enabled = Deno.env.get("REPORT_PROMOTION_ENABLED") === "true",
   attemptId?: string,
   readCheckout = readPolarCheckoutSession,
-  launchOffer?: { discountId: string | null; key: string; catalogVersion?: string },
+  launchOffer?: {
+    discountId: string | null;
+    key: string;
+    catalogVersion?: string;
+  },
 ): Promise<string | null | { checkoutUrl: string }> {
   if (launchOffer ? !launchOffer.discountId : !enabled) return null;
   if (!attemptId) {
@@ -80,7 +84,9 @@ export async function promotionCheckoutDiscount(
     p_now: now.toISOString(),
     ...(attemptId ? { p_attempt: attemptId } : {}),
   };
-  const rpc = launchOffer ? "billing_launch_checkout" : "report_promotion_checkout";
+  const rpc = launchOffer
+    ? "billing_launch_checkout"
+    : "report_promotion_checkout";
   const offerArgs = {
     ...args,
     ...(launchOffer
@@ -132,7 +138,11 @@ export async function promotionCheckoutDiscount(
       throw new Error("promotion_checkout_owner_mismatch");
     }
     if (remote.status === "open") {
-      if (remote.productId === product && (!launchOffer?.catalogVersion || previous.catalog_version === launchOffer.catalogVersion)) return { checkoutUrl: remote.url };
+      if (
+        remote.productId === product &&
+        (!launchOffer?.catalogVersion ||
+          previous.catalog_version === launchOffer.catalogVersion)
+      ) return { checkoutUrl: remote.url };
       await incident("promotion_checkout_plan_change_pending");
       throw new PromotionCheckoutError(
         "promotion_checkout_plan_change_pending",

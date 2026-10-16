@@ -84,6 +84,17 @@ create temporary table race_op as select public.report_promotion_prepare('159366
 select public.report_promotion_renewal_prepare((select (op->>'id')::uuid from race_op),120,11,'2026-11-02');
 select ok(public.report_promotion_claim((select (op->>'id')::uuid from race_op),'15936611-0000-4000-8000-000000000041','2026-11-02'),'R7 PATCH lease acquired before revocation');
 select is(public.billing_creator_revocation('prepare','sandbox','15936611-0000-4000-8000-000000000001','joint-sub',null,'subscription_revoked')->>'busy','true','R7 revocation is durable while confirmed PATCH owns the lease');
+select ok(not public.report_promotion_ack((select (op->>'id')::uuid from race_op),'15936611-0000-4000-8000-000000000099','2026-11-02'),'R7 revocation does not accept a foreign report receipt token');
+savepoint expired_common_lease;
+update private.creator_renewal_operations set lease_until=clock_timestamp()-interval '1 second' where subscription_id='joint-sub';
+select throws_ok($$select public.report_promotion_ack((select (op->>'id')::uuid from race_op),'15936611-0000-4000-8000-000000000041','2026-11-02')$$,'P0001','creator_renewal_ack_failed','R7 soft conflict never accepts expired central lease');
+rollback to expired_common_lease;
+release expired_common_lease;
+savepoint foreign_common_lease;
+update private.creator_renewal_operations set lease_token='15936611-0000-4000-8000-000000000099' where subscription_id='joint-sub';
+select throws_ok($$select public.report_promotion_ack((select (op->>'id')::uuid from race_op),'15936611-0000-4000-8000-000000000041','2026-11-02')$$,'P0001','creator_renewal_ack_failed','R7 soft conflict never accepts a different central token');
+rollback to foreign_common_lease;
+release foreign_common_lease;
 select lives_ok($$select public.report_promotion_ack((select (op->>'id')::uuid from race_op),'15936611-0000-4000-8000-000000000041','2026-11-02')$$,'R7 revocation after PATCH is a soft receipt conflict, not a generic failure');
 select ok((select applied_at is not null from private.report_promotion_changes where id=(select (op->>'id')::uuid from race_op)),'R7 confirmed PATCH receipt remains durable');
 select is((select state from private.creator_renewal_operations where subscription_id='joint-sub'),'pending','R7 revoked creator renewal is never marked completed');
@@ -128,6 +139,10 @@ release shared_transfer;
 
 savepoint shared_refund;
 update public.billing_orders set status='partially_refunded',reported_refunded_amount=1 where provider_order_id='joint-initial';
+create temporary table initial_revocation as select public.billing_creator_revocation('prepare','sandbox','15936611-0000-4000-8000-000000000001','joint-sub','joint-initial','refund') op;
+select ok((select op->>'token' is not null from initial_revocation),'R7 initial refund requests creator withdrawal before report cleanup');
+select public.billing_creator_revocation('finish','sandbox','15936611-0000-4000-8000-000000000001','joint-sub',p_token=>(select (op->>'token')::uuid from initial_revocation),p_success=>true);
+
 create temporary table shared_refund_op as select public.report_promotion_prepare('15936611-0000-4000-8000-000000000001','sandbox','2026-11-02') op;
 select is(public.report_promotion_renewal_prepare((select (op->>'id')::uuid from shared_refund_op),120,11,'2026-11-02')->>'discount_id',null::text,'initial refund never substitutes a fresh creator coupon');
 select ok(public.report_promotion_claim((select (op->>'id')::uuid from shared_refund_op),'15936611-0000-4000-8000-000000000031','2026-11-02'),'refunded account may only remove its managed discount under shared lease');

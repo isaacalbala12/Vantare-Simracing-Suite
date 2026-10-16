@@ -70,6 +70,7 @@ export async function handleReconciliation(req: Request): Promise<Response> {
   try {
     let observed = 0;
     let quarantined = 0;
+    let failed = 0;
     const started = Date.now();
     // Process multiple resources immediately; bounded work keeps the request
     // below the Edge runtime deadline. The durable cursor covers larger orgs.
@@ -127,6 +128,8 @@ export async function handleReconciliation(req: Request): Promise<Response> {
       observed += result.observed;
       quarantined += result.quarantined;
       cursor = result.next;
+      failed += result.failed.length;
+      if (result.failed.length) break; // Finished the page; retry it on the next invocation.
       if (cursor.resource === "orders" && cursor.page === 1) break;
     }
     const { data: released, error: releaseError } = await admin.rpc(
@@ -134,13 +137,13 @@ export async function handleReconciliation(req: Request): Promise<Response> {
       {
         p_environment: environment,
         p_lease_token: lease,
-        p_failed: false,
+        p_failed: failed > 0,
       },
     );
     if (releaseError || released !== true) {
       throw new Error("reconciliation_lease_lost");
     }
-    return jsonResponse({ observed, quarantined, next: cursor });
+    return jsonResponse({ observed, quarantined, failed, next: cursor });
   } catch {
     // Cursor remains unchanged. Automatic next invocation retries this page;
     // effects and snapshots are idempotent. Never log tokens or customer data.

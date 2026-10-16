@@ -100,6 +100,39 @@ impl Status {
     }
 }
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+pub struct ReportPromotion {
+    #[serde(default)]
+    pub last_error: Option<String>,
+    #[serde(default)]
+    pub first_refunded: bool,
+    pub accepted: u32,
+    pub tier: u8,
+    pub forfeited: bool,
+    pub active_discount: Option<String>,
+}
+impl ReportPromotion {
+    pub fn summary(&self) -> String {
+        let policy = if self.first_refunded {
+            " · promoción perdida por devolución del primer mes"
+        } else if self.forfeited {
+            " · sin nuevos premios por spam; se conservan los meses concedidos"
+        } else {
+            ""
+        };
+        let pending = if self.last_error.is_some() {
+            " · descuento pendiente de revisión"
+        } else {
+            ""
+        };
+        format!(
+            "{} informes aceptados · tramo: {} meses · descuento confirmado: {}{policy}{pending}",
+            self.accepted,
+            self.tier,
+            self.active_discount.as_deref().unwrap_or("ninguno")
+        )
+    }
+}
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct User {
     pub account_id: String,
     pub email: Option<String>,
@@ -109,6 +142,8 @@ pub struct User {
     pub roles: Vec<String>,
     pub modules: Vec<Module>,
     pub reports_count: u32,
+    #[serde(default)]
+    pub report_promotion: Option<ReportPromotion>,
     #[serde(default)]
     pub owner: bool,
     #[serde(default)]
@@ -126,9 +161,60 @@ pub struct User {
     #[serde(default)]
     pub payments: Vec<Payment>,
     #[serde(default)]
+    pub founders_transitions: Vec<FoundersTransition>,
+    #[serde(default)]
+    pub billing_incidents: Vec<BillingIncident>,
+    #[serde(default)]
+    pub creator_renewal_operations: Vec<CreatorRenewalOperation>,
+    #[serde(default)]
     pub module_access: Vec<ModuleAccess>,
     #[serde(default)]
     pub polar_customer_url: Option<String>,
+}
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+pub struct BillingIncident {
+    pub resource_id: String,
+    pub reason: String,
+    pub severity: String,
+}
+impl BillingIncident {
+    pub fn label(&self) -> &'static str {
+        match self.reason.as_str() {
+            "launch_payment_retired" => "CRÍTICO: pago de Launch retirada; revisar manualmente",
+            "founders_duplicate_payment" => {
+                "CRÍTICO: segundo pago de Founders; revisar manualmente"
+            }
+            "creator_renewal_revocation_failed" => {
+                "Retirada del descuento de creador pendiente de revisión"
+            }
+            "creator_renewal_discount_failed" => "Descuento de creador pendiente de revisión",
+            "founders_subscription_reactivated" => {
+                "Aviso: suscripción reactivada; se vuelve a cancelar su renovación"
+            }
+            _ => "Incidencia de pago: revisar manualmente",
+        }
+    }
+}
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+pub struct CreatorRenewalOperation {
+    pub subscription_id: String,
+    pub state: String,
+    pub not_applied: Option<String>,
+}
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+pub struct FoundersTransition {
+    pub subscription_id: String,
+    pub policy: String,
+    pub state: String,
+    pub paid_period_end: Option<String>,
+}
+impl FoundersTransition {
+    pub fn label(&self) -> &'static str {
+        match self.state.as_str() {
+            "completed" => "Founders activo · renovación de Pro desactivada",
+            _ => "Founders activo · pendiente de desactivar la renovación de Pro",
+        }
+    }
 }
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct Rollout {
@@ -144,6 +230,7 @@ pub enum Plan {
     Free,
     Pro,
     ProPlus,
+    Founders,
 }
 impl Plan {
     pub fn label(self) -> &'static str {
@@ -151,6 +238,7 @@ impl Plan {
             Self::Free => "Gratis",
             Self::Pro => "Pro",
             Self::ProPlus => "Pro Plus",
+            Self::Founders => "Founders",
         }
     }
 }

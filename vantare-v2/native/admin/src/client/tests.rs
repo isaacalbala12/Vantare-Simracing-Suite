@@ -352,3 +352,59 @@ fn decided_reports_never_offer_implicit_reopening() {
     assert!(Status::Validated.can_transition_to(Status::Fixed));
     assert!(!Status::Rejected.can_transition_to(Status::Fixed));
 }
+
+#[test]
+fn report_promotion_progress_and_spam_are_visible() {
+    let mut promotion: super::ReportPromotion = serde_json::from_value(serde_json::json!({
+        "accepted": 5, "tier": 6, "forfeited": false, "active_discount": "reward6"
+    }))
+    .unwrap();
+    assert!(promotion.summary().contains("5 informes aceptados"));
+    assert!(promotion.summary().contains("6 meses"));
+    promotion.forfeited = true;
+    assert!(
+        promotion
+            .summary()
+            .contains("se conservan los meses concedidos")
+    );
+    promotion.last_error = Some("polar_discount_unmanaged".into());
+    assert!(promotion.summary().contains("pendiente de revisión"));
+    promotion.first_refunded = true;
+    assert!(
+        promotion
+            .summary()
+            .contains("perdida por devolución del primer mes")
+    );
+}
+
+#[test]
+fn founders_transition_receipt_has_a_visible_pending_and_completed_state() {
+    for (state, expected) in [("pending", "pendiente"), ("completed", "desactivada")] {
+        let transition: super::FoundersTransition = serde_json::from_value(serde_json::json!({
+            "subscription_id": "fixture-subscription",
+            "policy": "end_period",
+            "state": state,
+            "paid_period_end": null
+        }))
+        .unwrap();
+        assert!(transition.label().contains(expected));
+    }
+}
+
+#[test]
+fn billing_incidents_make_rejected_payments_and_portal_reactivation_visible() {
+    for (reason, expected) in [
+        ("launch_payment_retired", "CRÍTICO"),
+        ("founders_duplicate_payment", "CRÍTICO"),
+        ("founders_subscription_reactivated", "reactivada"),
+        ("creator_renewal_discount_failed", "pendiente de revisión"),
+        ("creator_renewal_revocation_failed", "Retirada"),
+    ] {
+        let incident = super::BillingIncident {
+            resource_id: "fixture-order".into(),
+            reason: reason.into(),
+            severity: "critical".into(),
+        };
+        assert!(incident.label().contains(expected));
+    }
+}

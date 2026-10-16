@@ -825,7 +825,7 @@ fn has_commercial_license(capabilities: &[crate::license::Capability], now: u64)
     capabilities
         .iter()
         .any(|capability| match capability.key.as_str() {
-            "vantare.edition.launch_v1" => capability.perpetual,
+            "vantare.edition.launch_v1" | "vantare.plan.founders" => capability.perpetual,
             "vantare.plan.pro" => chrono::DateTime::parse_from_rfc3339(&capability.paid_through)
                 .is_ok_and(|end| u64::try_from(end.timestamp()).is_ok_and(|end| end > now)),
             _ => false,

@@ -60,6 +60,12 @@
       "account_id": "00000000-0000-4000-8000-000000000002",
       "name": "Ana Martín",
       "email": "ana.martin@demo.invalid",
+      "report_promotion": {
+        "accepted": 2,
+        "tier": 3,
+        "forfeited": false,
+        "active_discount": "DEMO · 2 EUR"
+      },
       "owner": false,
       "blocked": false,
       "plan": "pro",

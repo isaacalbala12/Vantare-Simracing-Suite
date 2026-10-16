@@ -392,6 +392,7 @@ impl Account {
                 Error::Busy => "Espera antes de volver a intentarlo.".into(),
                 Error::Expired | Error::Canceled => "El código ha caducado o el acceso se reinició. Pide otro código para continuar.".into(),
                 Error::Pending => "Clerk aún no ha confirmado la autorización. Espera unos segundos y pulsa «Autorizar» otra vez.".into(),
+                Error::Storage => "No se pudo guardar la sesión. Vuelve a iniciar el acceso para continuar.".into(),
                 Error::WeakPassword => "La contraseña es demasiado débil o corta. Elige una más larga y menos común.".into(),
                 Error::CompromisedPassword => "Esta contraseña apareció en una filtración. Elige una contraseña diferente.".into(),
                 Error::Unsupported | Error::Unconfigured => "Este acceso no está disponible aquí o necesita un paso adicional. Continúa en el navegador.".into(),
@@ -450,6 +451,9 @@ impl Account {
                 login.stage = EmailStage::Consent;
                 if result.is_ok() {
                     self.end_email_session(http);
+                    // El canje consumió el intento y cerró FAPI. Si luego falla
+                    // el guardado local, se empieza de nuevo desde el formulario.
+                    self.email = None;
                 }
                 result.map(Some)
             }

@@ -682,6 +682,76 @@ fn pending_authorization_exhaustion_and_cancellation_leave_no_oauth_session() {
 }
 
 #[test]
+fn failed_persistence_after_exchange_restarts_instead_of_reauthorizing_closed_fapi() {
+    let mut tail = complete_responses();
+    tail.push((200, "{}".into()));
+    let (server, root, store, mut account) = ready_to_finish("email-save-failed", tail);
+    let ticket = account
+        .email_action(&Http::default(), EmailAction::Finish {}, 101)
+        .expect("grant")
+        .expect("ticket");
+    let completion = account
+        .exchange_email(&Http::default(), Some(ticket), 101)
+        .expect("exchange")
+        .expect("completed");
+    // Un directorio en el destino impide el reemplazo atómico en Windows/Unix.
+    let namespace = std::fs::read_dir(&root)
+        .expect("root")
+        .next()
+        .expect("namespace")
+        .expect("entry")
+        .path();
+    std::fs::create_dir(namespace.join(if cfg!(windows) {
+        "account.dpapi"
+    } else {
+        "account.json"
+    }))
+    .expect("block account persistence");
+    let error = account
+        .complete(completion, &store)
+        .expect_err("storage failure");
+    assert_eq!(error, Error::Storage);
+    assert!(account.identity().is_none());
+    let Reply::Email { stage, message, .. } = account.email_reply(102, Some(error)) else {
+        panic!("email reply");
+    };
+    assert_eq!(stage, EmailStage::Form);
+    assert!(
+        message.contains("Vuelve a iniciar"),
+        "restart guidance: {message}"
+    );
+    assert_eq!(
+        account
+            .email_action(&Http::default(), EmailAction::Finish {}, 102)
+            .err(),
+        Some(Error::Canceled),
+        "Autorizar no puede reutilizar una sesión FAPI cerrada"
+    );
+    let wire = requests(&server);
+    assert_eq!(
+        wire.iter()
+            .filter(|r| r.starts_with("POST /oauth/device_authorization "))
+            .count(),
+        1
+    );
+    assert_eq!(
+        wire.iter()
+            .filter(|r| r.starts_with("POST /oauth/token "))
+            .count(),
+        1
+    );
+    assert!(
+        wire.last()
+            .expect("end")
+            .starts_with("POST /v1/client/sessions/sess_fixture/end?")
+    );
+    server.finish();
+    drop(account);
+    drop(store);
+    crate::cleanup_store(&root, "email-save-failed", &[]);
+}
+
+#[test]
 fn fapi_session_is_ended_and_weak_password_has_its_own_error() {
     let mut tail = complete_responses();
     tail.push((200, "{}".into()));

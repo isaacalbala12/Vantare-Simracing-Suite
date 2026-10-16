@@ -463,6 +463,7 @@ impl App {
                     .and_then(Account::identity)
                     .is_none_or(|old| old != completion.identity())
                 {
+                    self.triage.cancel();
                     self.revoke_local()?;
                 }
                 self.account

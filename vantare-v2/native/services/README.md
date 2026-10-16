@@ -5,7 +5,9 @@ R2 mantiene el canje pendiente en memoria y hace un solo intento por AccountPoll
 con reloj inyectado, intervalo de Clerk/slow_down y ventana de 30 s. Cancel y
 Logout pueden interrumpir los intervalos sin sleeps. La sesión FAPI se cierra
 al canjear, cancelar o cerrar sesión (mejor esfuerzo); al agotar el plazo se
-conserva para permitir «Autorizar» de nuevo. El bloqueo local por 429 vive en
+conserva para permitir «Autorizar» de nuevo. Un canje correcto retira el intento:
+si falla el guardado local, el formulario pide iniciar el acceso de nuevo y no
+reutiliza la sesión FAPI cerrada. El bloqueo local por 429 vive en
 Account y sobrevive a «Volver». No se añade persistencia ni dependencias.
 Hub/supervisor/servicios deben compilarse juntos. Entrada con código/contraseña,
 alta con verificación de email y recuperación usan FAPI nativa sin cookies.

@@ -128,6 +128,7 @@ fn control_inputs(
     for name in [
         "GPUI_DISABLE_DIRECT_COMPOSITION",
         "VANTARE_CAPTURE_POLICY",
+        "VANTARE_CAPTURE_EMAIL",
         "VANTARE_TESTING_CAPTURE_PREVIEW",
         "VANTARE_CAPTURE_CALENDAR_VIEW",
         "VANTARE_CAPTURE_CALENDAR",
@@ -263,6 +264,19 @@ mod tests {
         );
         fs::remove_file(path).expect("limpiar preview");
     }
+    #[test]
+    fn login_capture_states_invalidate_inputs_without_environment_mutation() {
+        let inputs = |scene: &str| {
+            control_inputs(|name| (name == "VANTARE_CAPTURE_EMAIL").then(|| scene.into()))
+                .expect("entradas de login")
+        };
+        let code = inputs("code");
+        let password = inputs("password");
+        assert_ne!(code, password);
+        assert_ne!(code, control_inputs(|_| None).expect("sin login"));
+        assert_eq!(password, inputs("password"));
+    }
+
     #[test]
     fn manifest_rejects_duplicates_bad_dimensions_and_unknown_fields() {
         let path =

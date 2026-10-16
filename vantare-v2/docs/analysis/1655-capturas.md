@@ -261,3 +261,8 @@ El banco sin salida mantiene el IPC vivo, creación oculta, reserva y cierre EOF
 Marcador, error de política y requisito DPI 96 se conservan. Los resultados R2
 anteriores siguen identificados por su código; la nueva validación se registra
 en `C:/VantareServer/evidence/1655/round2-sync/` y en la issue/PR.
+
+La sincronización incorpora también `VANTARE_CAPTURE_EMAIL` a las entradas
+del recibo: cambiar el estado de login del nuevo nightly invalida la PNG.
+Una regresión con entradas inyectadas comprueba código, contraseña y ausencia
+de selector sin modificar el entorno compartido de los tests.

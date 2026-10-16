@@ -16,6 +16,34 @@ Leídos [#1562](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/
 
 ## 3. Estado real y canal
 
+### #1638 / VANTA-33 — pulido M-1…M-6 tras integración de #1664
+
+Rama `vantareapp/isa-1638-pulido`, base `nightly@bcaa0e3f2` verificada; #1664
+ya integrada por el orquestador. [Alcance y regresiones](../../telemetria/pulido-1638-2026-10-16.md).
+M-1 exige dos avances cercanos tras un stall, sin ventana de 2 s; M-2 reconoce
+alias Hypercar sin asignar por frame; M-3 delimita los goldens; M-4 Flags+Cars
+omite sanciones; M-5 limita a 64 MiB agregados el historial del lector ajeno.
+M-6 repite el archivo íntegro por Core/DTO y los 18 widgets, scope practice-only.
+[Resultado íntegro actualizado](../../telemetria/imola-practica-pulido-2026-10-16.md):
+código `8d53d2cf1`, PR draft #1679 a nightly; **287.495 fotos por cada widget,
+cero rechazos, ambos procesos exit 0**, footer/hashes/CRC válidos.
+196.376 Live / 91.119 Stale (31,6941 %); dos avances conservan 17.955 fotos más
+caducadas que el fix previo, sin ampliar 500 ms ni volver a 2 s. 37 rivales
+en movimiento fiable; jugador parado, cero vueltas/inputs. Fastest-lap sin aviso
+nuevo; mapa no acreditado. Artefactos privados `logs/1638-imola-pulido-01/`.
+Los resultados anteriores de abajo son históricos.
+
+Lifecycle Engineer: se fuerza la llegada tardía de derechos con barrera y se
+distingue el clear de fuente stale de la base autorizada. Mutación sin barrera
+reproduce `assertion failed: lap`; cinco tandas completas 25/25 PASS sin cambiar
+permisos, plazos, concurrencia ni Engineer productivo. Gates por cola MIN_GB=0.
+Clippy workspace/all-targets -D warnings, fmt/diff, Nextest con telemetría
+935/935 PASS. CI del código [run38904835599](https://github.com/isaacalbala12/Vantare-Simracing-Suite/actions/runs/38904835599)
+verde: Windows 1870/1870 Nextest y Engineer lifecycle 5/5. El cierre de M-6
+solo añade documentación; consultar los checks del SHA final en #1679.
+VANTA-33 sigue En curso: conducción/A-B, qualy/carrera/formación/salida y agenda
+de siguiente sesión no quedan cubiertas por la práctica estática de Imola.
+
 ### #1638 / VANTA-33 — CI Engineer y contraste de jugador (16-oct)
 
 [Investigación y límites](../../telemetria/ci-y-jugador-2026-10-16.md).

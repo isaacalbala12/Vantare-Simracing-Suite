@@ -194,3 +194,7 @@ Widgets completos tras #1641 y QA visual tras #1675 siguen como pendientes previ
 El estado verificado de esta ronda, gates y SHA final constan en #1628 y PR
 #1637. La siguiente acción del orquestador es la ronda 2 de DeepSeek cuando la
 CI del HEAD final esté verde; no hay merge a nightly ni release del worker.
+Nightly avanzó durante los gates a a3fea01f9 (#1679, pulido de telemetría):
+también incorporado por merge sin conflictos. La regresión de documento ahora
+comprueba reutilizar Pedals ya existente, conservando su orden y posición al
+añadir los otros tres widgets Gratis; no se reordena el layout del usuario.

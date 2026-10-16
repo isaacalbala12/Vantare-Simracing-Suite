@@ -400,7 +400,12 @@ pub(crate) mod tests {
             .filter(|i| i.visible)
             .map(|i| i.settings.kind())
             .collect();
-        assert_eq!(active, kit);
+        // Pedals ahora pertenece al kit Gratis: se reutiliza en su posición y
+        // orden anteriores; los otros tres se añaden sin duplicarlo.
+        assert_eq!(
+            active,
+            [Kind::Pedals, Kind::Standings, Kind::Relative, Kind::Delta]
+        );
         assert_eq!(
             reopened.layout().instances[0].x.to_bits(),
             300.0_f32.to_bits()

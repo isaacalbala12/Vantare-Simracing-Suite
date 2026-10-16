@@ -146,10 +146,18 @@ fn engineer_process_consumes_productive_facts_checkpoint_and_lap_radio_over_real
     use vantare_domain::{Car, CarId, Observation, Player, Quality, State};
     use vantare_runtime::{core::Core, flows::Cursor};
     let name = format!("vantare-engineer-authorized-{}", std::process::id());
-    let _rights = rights::Fixture::new(&name);
+    // Forzar el orden que antes dependía de la carga de CI: el pipe entrega
+    // la base mientras el primer Read de derechos sigue pendiente. El hijo
+    // emitirá clear por fuente congelada; eso NO confirma radio autorizada.
+    let rights = rights::Fixture::with_pending_reads(&name, || {});
     let expected = std::path::PathBuf::from(env!("CARGO_BIN_EXE_vantare-engineer"));
+    let (connected, connection) = mpsc::sync_channel(1);
     let mut host = EventHost::start(&pipe_name(&name), 1, None, move |peer| {
-        peer.is_image(&expected)
+        let permitted = peer.is_image(&expected);
+        if permitted {
+            let _ = connected.try_send(peer.pid);
+        }
+        permitted
     })
     .unwrap();
     let mut core = Core::with_event_base(host.base()).unwrap();
@@ -176,10 +184,27 @@ fn engineer_process_consumes_productive_facts_checkpoint_and_lap_radio_over_real
     host.publish(Arc::clone(&core.snapshot()), core.events());
     let mut worker = Process::start_as(&name, Some(&std::env::current_exe().unwrap()));
     assert_eq!(worker.next().unwrap()["events"], "connecting");
-    assert_eq!(worker.next().unwrap()["clear"], true); // Base inicial, ya checkpointada.
+    assert_eq!(
+        connection.recv_timeout(Duration::from_secs(10)).unwrap(),
+        worker.child.id()
+    );
+    let frozen = worker.next().unwrap();
+    assert_eq!(frozen["source"], "stale");
+    assert_eq!(frozen["clear"], true);
     assert_eq!(
         vantare_engineer::load_cursor(&worker.checkpoint).unwrap(),
         Some(Cursor { epoch: 1, index: 0 })
+    );
+    rights.release_reads();
+    let baseline = worker.next().unwrap();
+    assert_eq!(baseline["clear"], true);
+    assert!(
+        baseline.get("source").is_none(),
+        "clear de ingest autorizado, no retirada por timeout"
+    );
+    assert!(
+        baseline.get("intent").is_none(),
+        "la base no anuncia una vuelta"
     );
     core.observe(observation(2, 1)).unwrap();
     host.publish(Arc::clone(&core.snapshot()), core.events());

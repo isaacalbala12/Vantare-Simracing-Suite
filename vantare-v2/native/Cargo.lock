@@ -6471,6 +6471,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "vantare-installer"
+version = "0.0.0"
+dependencies = [
+ "gpui",
+ "gpui_platform",
+ "serde",
+ "serde_json",
+ "vantare-build-support",
+]
+
+[[package]]
 name = "vantare-ipc"
 version = "0.0.0"
 dependencies = [

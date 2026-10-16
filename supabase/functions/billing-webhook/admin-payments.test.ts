@@ -80,6 +80,13 @@ Deno.test("subscription refunds update management AND the common commercial rest
   const ledger = await subscriptionLedger();
   const supabase = {
     rpc: (name: string, args: Record<string, unknown>) => {
+      if (name === "billing_creator_revocation") {
+        assert(
+          args.p_stage === "prepare" && args.p_subscription === "sub-test" &&
+            args.p_reason === "refund",
+        );
+        return Promise.resolve({ data: null, error: null }); // no attributed creator operation
+      }
       assert(name === "native_admin_record_refund");
       persisted = true;
       assert((args.p_refund as Record<string, unknown>).amount_cents === 159);
@@ -123,7 +130,15 @@ Deno.test("admin commission refunds include VAT paid back to the customer", asyn
   });
   assert(mapping.ok);
   const supabase = {
-    rpc: (_name: string, args: Record<string, unknown>) => {
+    rpc: (name: string, args: Record<string, unknown>) => {
+      if (name === "billing_creator_revocation") {
+        assert(
+          args.p_stage === "prepare" && args.p_subscription === "sub-test" &&
+            args.p_reason === "refund",
+        );
+        return Promise.resolve({ data: null, error: null });
+      }
+      assert(name === "native_admin_record_refund");
       assert((args.p_refund as Record<string, unknown>).amount_cents === 319);
       return Promise.resolve({ data: true, error: null });
     },

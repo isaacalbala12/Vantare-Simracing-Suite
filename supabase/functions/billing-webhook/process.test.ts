@@ -3231,3 +3231,127 @@ Deno.test("R5 creator cleanup failure cannot postpone Founders renewal stop", as
   );
   assertEquals(order, ["stop-renewal", "creator-cleanup"]);
 });
+
+Deno.test("O1 terminal cancellation from Polar updated withdraws creator, scheduled cancellation does not", async () => {
+  for (const scheduled of [false, true]) {
+    const deps = processDeps(createMockSupabase());
+    const calls: unknown[] = [];
+    const event = minimizePolarWebhookEvent({
+      type: "subscription.updated",
+      data: {
+        id: "disputed-sub",
+        product_id: PRO_MONTHLY_PRODUCT_ID,
+        external_customer_id: USER_ID,
+        status: "canceled",
+        cancel_at_period_end: scheduled,
+        current_period_end: "2026-08-09T12:00:00Z",
+        modified_at: RESOURCE_MODIFIED_AT,
+        metadata: { subscription_id: "forged", user_id: PRODUCTION_USER_ID },
+      },
+    });
+    assertEquals(
+      (await applyPolarWebhookEvent(event, {
+        ...deps,
+        revokeCreatorRenewals: async (_client, _env, input) => {
+          calls.push(input);
+        },
+      })).status,
+      "processed",
+    );
+    assertEquals(
+      calls,
+      scheduled ? [] : [{
+        userId: USER_ID,
+        subscriptionId: "disputed-sub",
+        orderId: null,
+        reason: "subscription_revoked",
+      }],
+    );
+  }
+});
+
+Deno.test("O1 dispute prevention refund follows ledger subscription even when Polar refund subscription is null", async () => {
+  const deps = processDeps(createMockSupabase());
+  await applyPolarWebhookEvent({
+    type: "order.paid",
+    data: paidOrderData({
+      id: "disputed-order",
+      product_id: PRO_MONTHLY_PRODUCT_ID,
+      subscription_id: "disputed-sub",
+    }),
+  }, deps);
+  const calls: unknown[] = [];
+  const refund = minimizePolarWebhookEvent({
+    type: "refund.created",
+    data: succeededRefundData({
+      id: "dispute-refund",
+      order_id: "disputed-order",
+      subscription_id: null,
+      amount: 1,
+      reason: "dispute_prevention",
+      dispute: {
+        id: "dispute",
+        status: "prevented",
+        order_id: "disputed-order",
+      },
+      metadata: { user_id: PRODUCTION_USER_ID, subscription_id: "forged" },
+    }),
+  });
+  assertEquals(
+    (await applyPolarWebhookEvent(refund, {
+      ...deps,
+      revokeCreatorRenewals: async (_client, _env, input) => {
+        calls.push(input);
+      },
+    })).status,
+    "processed",
+  );
+  assertEquals(calls, [{
+    userId: USER_ID,
+    subscriptionId: "disputed-sub",
+    orderId: "disputed-order",
+    reason: "refund",
+  }]);
+});
+
+Deno.test("O3 any later invoice partial refund withdraws only that subscription creator benefit", async () => {
+  const deps = processDeps(createMockSupabase());
+  for (
+    const [id, sub] of [["first", "sub-a"], ["renewal", "sub-a"], [
+      "other",
+      "sub-b",
+    ]]
+  ) {
+    await applyPolarWebhookEvent({
+      type: "order.paid",
+      data: paidOrderData({
+        id,
+        product_id: PRO_MONTHLY_PRODUCT_ID,
+        subscription_id: sub,
+        billing_reason: id === "renewal"
+          ? "subscription_cycle"
+          : "subscription_create",
+      }),
+    }, deps);
+  }
+  const calls: unknown[] = [];
+  await applyPolarWebhookEvent({
+    type: "refund.updated",
+    data: succeededRefundData({
+      id: "renewal-partial",
+      order_id: "renewal",
+      amount: 1,
+    }),
+  }, {
+    ...deps,
+    revokeCreatorRenewals: async (_client, _env, input) => {
+      calls.push(input);
+    },
+  });
+  assertEquals(calls, [{
+    userId: USER_ID,
+    subscriptionId: "sub-a",
+    orderId: "renewal",
+    reason: "refund",
+  }]);
+});

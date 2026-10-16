@@ -2,8 +2,34 @@
 
 Entrada limpia `dd7c3a895`; incorpora `nightly@8166277cb` (#1663) en #1657.
 Conflicto único de handoff: se conservan ambas entregas íntegras. Código y
-migraciones de compra web sin alteraciones; verificaciones combinadas en curso.
+migraciones de compra web sin alteraciones. Merge `382c123f7`; `d44e9612` tipa
+RequestInit en cinco dobles adicionales de Polar/compra/informes: Ubuntu24.04
+Deno2.7.13 reproducía 21 TS2339 antes; **391 Edge PASS** después, sin no-check
+ni quitar assertions. El commit del runner queda en el log de esta entrega.
 Orquestador publica y fusiona, worker solo push al bare del Mac.
+
+Combinados: **815 SQL + E2E1** de admin/Correos/Founders/informes y **741 SQL
++16 carreras reales** de compra web, con las 92 migraciones y PostgreSQL real.
+E2E con RPC psql y SaaS dobles, tests sin red. Docker siempre bajo lock, limpio.
+La carrera heredada D1 esperaba bloqueo de fila: Correos bloquea antes en
+advisory(1636,300). El runner ahora comprueba esa clave exacta en el borrado
+completo, la retirada de dos contactos y sus dos trabajos pendientes; prueba
+aparte el contador web con bloqueo de fila para que Correos no enmascare una
+regresión del cursor. Control deliberadamente roto con secuencia: **rojo** en
+el contador aislado; implementación real: verde. Sin cambiar migraciones.
+
+Windows servidor: fmt/check/Clippy -D warnings PASS; Nextest admin/services
+**224 PASS, 2 ignorados existentes**. Cola serial, target propio, MIN_GB=0 solo
+proceso. Native íntegro del snapshot validado `382c123f7`. Lifecycle/telemetría
+omitidos: ningún cambio runtime/domain/ipc/testdata en esta sincronización.
+CI marketing2 + diagnóstico1; scope nativo17; canales45; quality/retirement456
+PASS. Diff revisado y sin whitespace. No gate ocultado o debilitado.
+
+Evidencia Mac `~/evidence/1636-web-merge/`, servidor
+`C:/VantareServer/evidence/1636-web-merge/`. Bare nightly sigue8166277cb al cierre.
+VANTA-72/PR1657, estados y CI quedan al orquestador según cabecera; no se muta
+Plane/GitHub. Sin integración a nightly desde el worker, deploy, release, gasto
+ni servicios reales. Publicación/CI del nuevo SHA y activación siguen pendientes.
 
 GitGuardian en dd7c3a895, check116948409973: mismos incidentes38177715/38177716
 con las mismas ocurrencias304307121/304307118 del commit histórico2354cd416.

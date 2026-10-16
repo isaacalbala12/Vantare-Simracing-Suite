@@ -533,9 +533,13 @@ impl App {
                 return self.report_reply(command);
             }
             Command::CalendarRefresh => {
-                return Ok(Reply::Calendar {
-                    schedule: crate::calendar::current(&self.http, &self.config)?,
-                });
+                let racecontrol = url::Url::parse(crate::calendar::RACECONTROL_URL)
+                    .map_err(|_| Error::Unconfigured)?;
+                let at = chrono::DateTime::from_timestamp(i64::try_from(now()?).unwrap_or(0), 0)
+                    .ok_or(Error::Clock)?;
+                let (schedule, fallback) =
+                    crate::calendar::refresh(&self.http, &self.config, &racecontrol, at)?;
+                return Ok(Reply::Calendar { schedule, fallback });
             }
             Command::RoadmapCached | Command::RoadmapRefresh => {
                 return self.roadmap_reply(matches!(command, Command::RoadmapRefresh));

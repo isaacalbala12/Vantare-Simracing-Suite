@@ -2,6 +2,18 @@
 
 [Histórico previo por SHA](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/8c6e83f977c8d2245a04266cdaaf896ed8c1b131/vantare-v2/docs/vantare-program/handoffs/overlays-launcher-hub.md). El diario y avances están en las issues; este documento conserva el estado actual.
 
+## Integración del calendario #1640 en #1660 · 2026-10-17
+
+Merge de origin/nightly `2a580c458` sobre la rama de #1660, sin rebase ni
+force-push. Resueltos los dos conflictos del calendario conservando su modelo
+nuevo, degradación con copia .invalid y protocolo services 12. El feed del
+overlay sigue la ruta compartida de IPC desde el layout real; se adapta a
+franjas/tandas y al canal En pista. Windows usa el emisor del calendario nuevo,
+sin el segundo toast del widget. Regresiones: feed, canales, caducidad,
+franjas/tandas y copia intacta tras guardar. CI/SHA definitivos en issue/PR/buzón.
+El seguimiento de tests MSIX de R2 queda en una rama aparte después del merge
+de #1660 por el orquestador. Sin ventanas, capturas, LMU físico ni release.
+
 ## Review R1 #1660 · correcciones para ronda 2 · 2026-10-17
 
 Informe NO APTO de DeepSeek leído. Correcciones `c7ffd8d9`; se fusiona

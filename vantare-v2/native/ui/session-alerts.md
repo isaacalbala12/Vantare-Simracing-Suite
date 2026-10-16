@@ -72,30 +72,32 @@ Por eso el contador real actual es «fin previsto»; formación/salida, blanco d
 fin confirmado y próxima carrera del juego permanecen ocultos hasta tener fuente.
 Las entradas positivas sintéticas prueban el consumo v11, no acreditan LMU real.
 
-## Calendario nightly y enganche #1640
+## Calendario nightly · #1640 integrado
 
-La selección disponible en nightly es `Calendar.following.reminder_ids`
-(persistida en calendar-reminders.json). El Hub expande las salidas UTC marcadas
-del horario vigente para los próximos 61 minutos, incluso sin servidor/juego.
-Agenda vencida, pruebas del calendario y demo no publican carreras reales.
+El productor usa las franjas y tandas de `Calendar.alerts` del calendario
+integrado en nightly `2a580c458`. Expande únicamente salidas marcadas del horario
+vigente durante los próximos 61 minutos, incluso sin servidor/juego.
+Respeta el canal «En pista»; las franjas se callan si ya estás en pista,
+igual que en el calendario. Las tandas explícitas siguen disponibles.
+Semana caducada, canal apagado y demo publican una agenda vacía.
 
-Interfaz mínima en `ipc::session_alerts`: documento local calendar-alerts.json
-v1 junto al layout, `updatedAtMs` y eventos {id, label, startsAtMs}. id identifica
-una salida concreta: serie:timestamp. El Hub escribe atómicamente con el helper
-existente cada segundo; el host de overlays lee como máximo 64 KiB cada 500 ms.
-Máximo 256 salidas; agenda sin latido de 10 s se retira. Sin cuenta ni secretos.
-Cancelar la marca elimina aviso/cola/mini; no hay notificaciones de salidas pasadas.
+Interfaz local en `ipc::session_alerts`: documento calendar-alerts.json v1
+junto al layout, `updatedAtMs` y eventos {id, label, startsAtMs}. id identifica
+una salida concreta: serie:timestamp. El Hub escribe atómicamente cada segundo;
+el host de overlays lee como máximo 64 KiB cada 500 ms. Máximo 256 salidas;
+agenda sin latido de 10 s se retira. Sin cuenta ni secretos.
+Cancelar la marca elimina aviso/cola/mini; no se recuperan salidas pasadas.
 
-El Hub usa el mismo motor puro para los avisos del calendario y reutiliza
-`Hub::notify_system` (preferencia general de toasts Windows y No molestar).
-Con un widget configurado toma sus umbrales; sin widget usa 5/1.
-No requiere overlay abierto para pedir el toast; el overlay consume la agenda
-mientras esté abierto. No se añade otro servicio ni transporte de telemetría.
+El archivo de preferencias privado del calendario también se llama
+calendar-alerts.json, pero vive en `--data-dir` del Hub; no es el feed del
+layout. Si es inválido, el calendario conserva una copia .invalid y arranca
+sin avisos, con explicación al usuario. El siguiente guardado no borra la copia.
 
-PR #1640 estaba OPEN durante la implementación. Al integrarla, adaptar SOLO
-`Calendar::alert_feed(now)` a sus recordatorios de salidas individuales/franjas;
-conservar el contrato de agenda y la identidad por salida para evitar duplicados.
-No se ha fusionado ni copiado la rama de calendario.
+Las notificaciones Windows las emite el calendario integrado, con su canal
+Windows y antelación propios. Se retira el segundo emisor del widget para
+evitar duplicados y respetar ese canal. El widget conserva sus umbrales 5/1
+configurables y consume la agenda mientras el overlay esté abierto.
+Hub/services mantienen el protocolo 12 de nightly; Core/overlays siguen DTO v11.
 
 ## Verificación
 

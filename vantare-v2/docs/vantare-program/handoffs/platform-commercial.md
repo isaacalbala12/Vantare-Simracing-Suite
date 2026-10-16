@@ -1,3 +1,34 @@
+## #1636 · VANTA-72 · Reintentos del registro PostgreSQL de CI (16/10/2026)
+
+Seguimiento pedido por el orquestador tras el límite público ECR de #1657.
+#1657 ya integrado: nueva rama `vantareapp/isa-1636-postgres-ci-retry`, worktree
+`~/wt-1636-ci-image`, base nightly `e3d69f828`. PR independiente draft
+[#1678](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1678), publicado
+desde el servidor por petición expresa; CI remoto pendiente, sin merge.
+Solo adquisición de imagen y tests: tres rondas ECR/Docker Hub, esperas15/45s,
+80s por pull +10s para matar el proceso; máximo6 pulls. Fallo explícito al agotar
+registros o fallar tag; SQL/E2E no se omiten ni se cambian. Sin nuevas acciones,
+dependencias, credenciales o caché grande; se usa la opción reintentos+mirror
+permitida por el encargo («y/o»). Versión17.6.1.165 sin cambios.
+
+Ambos registros oficiales publican el índice multiarch
+`sha256:28f0e16a019e648089fc1a6d333549a55548f6019c15ae4bd7cd58b989027518`,
+comprobado con imagetools inspect antes de fijarlo. Docker elige la arquitectura
+del daemon; se etiqueta ese digest para el runner desechable existente.
+Origen oficial: [publicación](https://github.com/supabase/postgres/blob/develop/.github/workflows/dockerhub-release-matrix.yml)
+y [mirror](https://github.com/supabase/postgres/blob/develop/.github/workflows/mirror.yml).
+
+Pruebas nuevas rojas con la adquisición anterior; **6 tests** del contrato CI
+verdes en Ubuntu24.04/amd64:429,transitorio,timeout,ambos registros caídos,
+éxito primario y tag fallido. Dobles de docker/sleep/timeout, esperas simuladas.
+Adquisición real por digest PASS, **142 SQL +E2E1 PASS** con Deno2.7.13 y daemon
+Docker del Mac (PostgreSQL nativo arm64), SaaS dobles y pruebas sin red.
+Bajo lock, sin contenedores pendientes. YAML/Bash/diff y quality456 PASS.
+Rust/Edge generales omitidos: no cambia producto nativo, handlers ni SQL.
+Evidencia `~/evidence/1636-ci-image/`; publicación del PR solicitada desde el
+servidor, nunca GitHub desde Mac. Sin merge, deploy, release ni SaaS real.
+Plane/issue y aceptación al orquestador; CI remoto del nuevo PR pendiente.
+
 ## #1636 · VANTA-72 · Integración de compra web (16/10/2026)
 
 Entrada limpia `dd7c3a895`; incorpora `nightly@8166277cb` (#1663) en #1657.

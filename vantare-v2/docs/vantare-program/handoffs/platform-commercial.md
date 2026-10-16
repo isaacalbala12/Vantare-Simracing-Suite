@@ -1,3 +1,25 @@
+## #1636 · VANTA-72 · Corrección de CI Deno/GitGuardian (16/10/2026)
+
+Entrada limpia `b1ad884ae`, PR #1657; run fallido 38891374186. Mac tenía Deno
+2.9.6, CI fija 2.7.13. Binario exacto instalado solo en evidencia: reproduce
+18 errores offline y dos TS2339 del E2E ocultados por el runner (sin artefactos).
+Dobles fetch/fetchFn anotados con RequestInit; comparación de Headers mediante
+forEach, sin quitar type checking ni ampliar permisos. Runner imprime diagnóstico
+original y CI conserva solo log E2E en fallo, tres días.
+
+GG38177715/38177716 son fixtures sintéticos heredados de commit2354cd4 (#1602),
+en las dos rutas exactas ya excluidas por ggshield; la app mantiene exclusiones
+propias. URI PostgreSQL y Basic Auth se construyen ahora en ejecución sin
+versionar los literales detectados. Se mantiene contenido equivalente, mock de
+psql/red y assertions de redacción; no se amplían exclusiones ni ocultan secretos.
+No se resuelven incidentes del panel ni se afirma check remoto verde sin CI.
+
+Validando comandos exactos en Ubuntu24.04 amd64/Deno2.7.13 con Docker bajo lock,
+además de privacidad Python y Rust services Windows. Sin cambios de producto,
+migraciones o configuración real. Evidencia ~/evidence/1636-ci/ y
+C:/VantareServer/evidence/1636-ci/. Estado final/bare/FIN al cierre; orquestador
+publica y vigila CI. Sin llamadas SaaS reales ni gasto por worker.
+
 ## #1636 · VANTA-72 · Segunda sincronización nightly (16/10/2026)
 
 Entrada limpia `7d873cdcf`; merge `3159e214` de `nightly@e8aa2077c` en la rama

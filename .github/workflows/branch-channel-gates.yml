@@ -214,6 +214,15 @@ jobs:
             --test native_admin_deletion_r4.test.sql \
             --mail-e2e
 
+      - name: Preserve marketing E2E failure diagnostics
+        if: failure() && steps.docker.outputs.available == 'true'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: marketing-e2e-failure
+          path: ${{ runner.temp }}/marketing-sql/marketing-mail-e2e.log
+          if-no-files-found: ignore
+          retention-days: 3
+
   product:
     name: Validate Vantare blocking gates
     needs: policy

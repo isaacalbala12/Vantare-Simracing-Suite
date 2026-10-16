@@ -182,7 +182,7 @@ Deno.test({
     };
     const env = (k: string) => vars[k];
     const writes: Array<Record<string, unknown>> = [];
-    const fetcher: typeof fetch = (url, init) => {
+    const fetcher: typeof fetch = (url, init?: RequestInit) => {
       assert(String(url).startsWith("https://api.brevo.com/v3/contacts"));
       writes.push(JSON.parse(String(init?.body)));
       return Promise.resolve(new Response(null, { status: 204 }));
@@ -271,7 +271,7 @@ Deno.test({
       drainMailErasures({
         env,
         rpc,
-        fetch: (url, init) => {
+        fetch: (url, init?: RequestInit) => {
           assert(
             init?.method === "DELETE" &&
               String(url).includes("wait-e2e%40example.invalid"),

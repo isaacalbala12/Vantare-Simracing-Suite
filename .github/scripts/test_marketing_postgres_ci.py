@@ -22,6 +22,12 @@ class MarketingPostgresCI(unittest.TestCase):
         self.assertIn("--mail-e2e", job)
         self.assertIn("--test marketing_mail_erasure_retention.test.sql", job)
         self.assertNotIn("continue-on-error", job)
+        self.assertIn("name: Preserve marketing E2E failure diagnostics", job)
+        self.assertIn("if: failure() && steps.docker.outputs.available == 'true'", job)
+        self.assertIn("${{ runner.temp }}/marketing-sql/marketing-mail-e2e.log", job)
+        self.assertIn("retention-days: 3", job)
+        runner = (WORKFLOW.parents[2] / "supabase/tests/run-admin-local.py").read_text()
+        self.assertIn("print(result.stdout+result.stderr,file=sys.stderr,flush=True)", runner)
         product = workflow.split("  product:", 1)[1]
         self.assertIn("needs: policy", product)
         self.assertNotIn("needs: [policy, marketing-postgres]", product)

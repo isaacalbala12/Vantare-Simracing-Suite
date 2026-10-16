@@ -484,7 +484,7 @@ Deno.test("r1: blocking persists before Clerk ban and cancels sandbox subscripti
             : {},
         );
       },
-      fetch: (url, init) => {
+      fetch: (url, init?: RequestInit) => {
         const path = String(url);
         if (path.endsWith("/ban")) {
           calls.push("ban");
@@ -494,7 +494,7 @@ Deno.test("r1: blocking persists before Clerk ban and cancels sandbox subscripti
       },
       polar: {
         getAccessToken: () => "fake-polar",
-        fetchFn: (url, init) => {
+        fetchFn: (url, init?: RequestInit) => {
           assert(
             String(url) ===
                 "https://sandbox-api.polar.sh/v1/subscriptions/subscription-test" &&
@@ -539,7 +539,7 @@ Deno.test("r1: owner protection and production containment precede all external 
             throw Error("external write");
           },
         },
-        fetch: (url, init) => {
+        fetch: (url, init?: RequestInit) => {
           if (
             init?.method === "POST" && !String(url).endsWith("verify")
           ) writes++;
@@ -667,7 +667,7 @@ Deno.test("r1: miniapp creates a scoped Polar discount and retries it without du
     },
     polar: {
       getAccessToken: () => "fake",
-      fetchFn: (_url, init) => {
+      fetchFn: (_url, init?: RequestInit) => {
         if (String(_url).includes("/organizations/")) {
           return Promise.resolve(
             Response.json({
@@ -879,7 +879,7 @@ Deno.test("r1: foreign organization or editable portal cannot create creator cod
     try {
       await ensureCreatorCode(target, "CARLOSGT", map, {
         getAccessToken: () => "fake",
-        fetchFn: (_url, init) => {
+        fetchFn: (_url, init?: RequestInit) => {
           if (init?.method !== "GET") writes++;
           return Promise.resolve(Response.json(organization));
         },
@@ -914,13 +914,13 @@ Deno.test("r1: blocking retry accepts an already canceled Polar subscription", a
             }
             : {},
         ),
-      fetch: (url, init) =>
+      fetch: (url, init?: RequestInit) =>
         String(url).endsWith("/ban")
           ? Promise.resolve(Response.json(user))
           : authDeps().fetch!(url, init),
       polar: {
         getAccessToken: () => "fake",
-        fetchFn: (_url, init) => {
+        fetchFn: (_url, init?: RequestInit) => {
           if (init?.method === "DELETE") deletes++;
           return Promise.resolve(
             Response.json({ id: "subscription-test", status: "canceled" }),
@@ -1013,7 +1013,7 @@ function deletionFixture(options: {
       pending = true;
       return Promise.resolve({ deletion: job });
     },
-    fetch: (url, init) => {
+    fetch: (url, init?: RequestInit) => {
       if (String(url).endsWith("/verify")) {
         return Promise.resolve(Response.json(claims));
       }
@@ -1029,7 +1029,7 @@ function deletionFixture(options: {
     },
     polar: {
       getAccessToken: () => "fake",
-      fetchFn: (_url, init) => {
+      fetchFn: (_url, init?: RequestInit) => {
         if (String(_url).includes("/customers/external/")) {
           assert(pending, "remote subscriptions must be read after tombstone");
           calls.push("polar-state");

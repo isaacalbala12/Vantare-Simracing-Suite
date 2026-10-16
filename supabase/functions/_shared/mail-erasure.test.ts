@@ -34,7 +34,7 @@ Deno.test("Brevo erasure retries timeout and 503, accepts DELETE 204/404, never 
         finished++;
         return Promise.resolve(true);
       },
-      fetch: (url, init) => {
+      fetch: (url, init?: RequestInit) => {
         http++;
         assert(
           init?.method === "DELETE" &&

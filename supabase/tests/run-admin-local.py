@@ -1,5 +1,5 @@
 from pathlib import Path
-import subprocess,time,re,os
+import subprocess,time,re,os,sys
 import argparse
 args=argparse.ArgumentParser()
 args.add_argument('--output', type=Path, required=True)
@@ -45,6 +45,8 @@ create or replace function storage.foldername(text) returns text[] language sql 
   test_env.update(MARKETING_SQL_E2E='true',MARKETING_SQL_TEST_CONTAINER=name,MARKETING_SQL_TEST_DATABASE='admin_1627')
   result=subprocess.run(['deno','test','--config',str(root/'supabase/functions/deno.json'),'--node-modules-dir=auto','--frozen','--allow-env','--allow-run=docker',str(root/'supabase/tests/marketing-mail-e2e.ts')],cwd=root/'supabase/functions',env=test_env,text=True,capture_output=True,timeout=120)
   (out/'marketing-mail-e2e.log').write_text(result.stdout+result.stderr)
-  if result.returncode: raise RuntimeError('marketing E2E failed; see marketing-mail-e2e.log')
+  if result.returncode:
+   print(result.stdout+result.stderr,file=sys.stderr,flush=True)
+   raise RuntimeError('marketing E2E failed; see marketing-mail-e2e.log')
   print('PASS marketing consent/erasure E2E with real PostgreSQL and SaaS doubles',flush=True)
 finally: run(['docker','rm','-f',name])

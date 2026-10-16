@@ -164,7 +164,7 @@ Deno.test("mail only claimed and still consented recipient sent; receipt and uns
   };
   await executeMail("mail_send_batch", p, run, {
     env,
-    fetch: (_url, init) => {
+    fetch: (_url, init?: RequestInit) => {
       const b = JSON.parse(String(init?.body));
       assert(
         b.to.length === 1 && b.to[0].email === "yes@example.invalid" &&
@@ -247,7 +247,7 @@ Deno.test("mail AI exact model/high/four locales, review only, no save approve o
     return Promise.resolve({ campaign: { revision: 1, state: "draft" } });
   }, {
     env,
-    fetch: (url, init) => {
+    fetch: (url, init?: RequestInit) => {
       assert(String(url) === "https://api.anthropic.com/v1/messages");
       const b = JSON.parse(String(init?.body));
       assert(
@@ -330,7 +330,7 @@ Deno.test("mail sync exact groups, removal and suppression, no implicit recipien
       ),
     {
       env,
-      fetch: (url, init) => {
+      fetch: (url, init?: RequestInit) => {
         calls++;
         const b = JSON.parse(String(init?.body));
         if (init?.method === "PUT") {
@@ -512,7 +512,9 @@ Deno.test("waitlist erasure uses only verified token address and GET never mutat
     ]
   ) {
     const reply = await handleUnsubscribe(post(), { ...deps, forget });
-    publicReplies.push([reply.status, [...reply.headers], await reply.text()]);
+    const responseHeaders: [string, string][] = [];
+    reply.headers.forEach((value, name) => responseHeaders.push([name, value]));
+    publicReplies.push([reply.status, responseHeaders, await reply.text()]);
   }
   assert(publicReplies[0][0] === 200);
   assert(JSON.stringify(publicReplies[0]) === JSON.stringify(publicReplies[1]));

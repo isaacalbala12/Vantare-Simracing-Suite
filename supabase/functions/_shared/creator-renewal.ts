@@ -57,6 +57,7 @@ export async function applyCreatorRenewal(
         operation.initial_discount_id,
         operation.creator_discount_id,
         operation.report_discount_id,
+        ...(operation.managed_report_ids ?? []),
       ],
       normalCents: plan.normal_cents,
       interval: plan.interval,
@@ -129,6 +130,7 @@ export async function revokeCreatorRenewals(
     await withdraw(input.subscriptionId, environment, {
       productId: operation.product_id,
       creatorDiscountId: operation.creator_discount_id,
+      managedCreatorDiscountIds: operation.managed_creator_ids ?? [],
       authorize: async () => {
         const result = await client.rpc("billing_creator_revocation", {
           ...params,

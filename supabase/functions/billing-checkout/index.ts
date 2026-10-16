@@ -1,3 +1,8 @@
+import {
+  promotionCheckoutDiscount,
+  PromotionCheckoutError,
+} from "../billing-report-promotion/observe.ts";
+import { getSupabaseAdmin } from "../_shared/supabase-admin.ts";
 import { selectCheckoutOffer } from "../_shared/launch-offer.ts";
 import { type PurchasePolicy, purchasePolicy } from "../_shared/founders.ts";
 import { type AuthResult, requireUserAuth } from "../_shared/auth.ts";
@@ -29,6 +34,7 @@ export type CheckoutDeps = {
     options?: { signal?: AbortSignal },
   ) => Promise<CreateCheckoutResult>;
   attempts?: CheckoutAttemptStore;
+  promotionDiscount?: typeof promotionCheckoutDiscount;
   purchasePolicy?: typeof purchasePolicy;
 };
 
@@ -131,11 +137,12 @@ export async function handleCheckoutRequest(
       400,
     );
   }
+  const now = deps.now?.() ?? new Date();
   const offer = selectCheckoutOffer(
     mapping.map,
     resolved.key,
     resolved.config,
-    deps.now?.() ?? new Date(),
+    now,
     body.creatorCode as string | undefined,
   );
   if (!offer.ok) {
@@ -186,6 +193,34 @@ export async function handleCheckoutRequest(
       "Checkout could not be started safely",
       503,
     );
+  }
+  let discount: Awaited<ReturnType<typeof promotionCheckoutDiscount>>;
+  try {
+    discount = await (deps.promotionDiscount ?? promotionCheckoutDiscount)(
+      getSupabaseAdmin,
+      auth.userId,
+      mapping.map.environment,
+      resolved.config.polar_product_id,
+      now,
+      undefined,
+      attemptId,
+      undefined,
+      {
+        discountId: offer.discountId,
+        key: resolved.key,
+        catalogVersion: attempt.catalogVersion,
+      },
+    );
+  } catch (error) {
+    if (error instanceof PromotionCheckoutError) {
+      return errorResponse(error.code, error.message, error.status);
+    }
+    // No Polar request and no attempt reservation yet: a transient policy lookup
+    // must remain retryable with exactly the same attemptId.
+    return errorResponse("promotion_unavailable", "Retry checkout", 503);
+  }
+  if (discount && typeof discount === "object") {
+    return jsonResponse({ url: discount.checkoutUrl, reused: true }, 200);
   }
   let claim;
   try {
@@ -242,8 +277,8 @@ export async function handleCheckoutRequest(
         capabilities: resolved.config.capabilities,
         channels: resolved.config.channels,
         launchScopeVersion: resolved.config.launch_scope_version,
-        trial: offer.trial,
-        discountId: offer.discountId,
+        trial: discount ? { enabled: false } : offer.trial,
+        discountId: discount,
         creatorCode: offer.creatorCode,
       },
       { signal: req.signal },

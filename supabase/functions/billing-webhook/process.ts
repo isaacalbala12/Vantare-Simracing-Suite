@@ -1,4 +1,9 @@
 import {
+  observePromotionInvoice,
+  observeReportPromotion,
+} from "../billing-report-promotion/observe.ts";
+
+import {
   applyCreatorRenewal,
   revokeCreatorRenewals,
 } from "../_shared/creator-renewal.ts";
@@ -616,11 +621,33 @@ async function applyOrderRefundEvent(args: {
     // be replayed later as if it had been accepted.
     writeOutcome = await ledger.recordOrder(parsed);
     const unsafe = unsafeLedgerOutcome(writeOutcome);
-    if (unsafe) return { status: "ignored", reason: unsafe };
+    if (unsafe) {
+      // The durable order resolves its owner/B03 in SQL; never project an
+      // ambiguous snapshot as a paid promotion invoice.
+      const { error } = await args.deps.supabase.rpc(
+        "report_promotion_invoice_missing",
+        {
+          p_environment: args.environment,
+          p_order: orderId,
+        },
+      );
+      if (error) throw new Error("report_promotion_invoice_gap_failed");
+      return { status: "ignored", reason: unsafe };
+    }
     await applyEffect(
       args.deps,
       "billing_order_ledger",
       () => Promise.resolve(),
+    );
+    await applyEffect(
+      args.deps,
+      "report_promotion_invoice",
+      () =>
+        observePromotionInvoice(
+          args.deps.supabase,
+          args.environment,
+          args.event.data,
+        ),
     );
     decision = await ledger.readDecision(args.environment, orderId);
     if (!decision) return { status: "ignored", reason: "missing_order" };
@@ -1069,6 +1096,18 @@ export async function applyPolarWebhookEvent(
       },
     );
   }
+  await applyEffect(
+    deps,
+    "report_promotion_observe",
+    () =>
+      observeReportPromotion(deps.supabase, {
+        account: userId,
+        environment,
+        subscription: resourceId,
+        product: productId,
+        data: event.data,
+      }),
+  );
   if (result.outcome === "duplicate") {
     return { status: "processed", action: "resource_duplicate" };
   }
@@ -1085,6 +1124,7 @@ const REPLAY_DATA_KEYS = [
   "id",
   "order_id",
   "subscription_id",
+  "started_at",
   "modified_at",
   "created_at",
   "updated_at",
@@ -1093,6 +1133,7 @@ const REPLAY_DATA_KEYS = [
   "current_period_end",
   "cancel_at_period_end",
   "paid",
+  "discount_amount",
   "net_amount",
   "total_amount",
   "product_price_id",
@@ -1144,8 +1185,13 @@ export function minimizePolarWebhookEvent(
   const price = nestedRecord(event.data.product_price);
   if (price) data.product_price = pickReplayFields(price, ["id"]);
   if (Array.isArray(event.data.items)) {
-    data.items = event.data.items.filter(isRecord).map((item) =>
-      pickReplayFields(item, ["product_price_id"])
+    data.items = event.data.items.slice(0, 100).filter(isRecord).map((item) =>
+      pickReplayFields(item, [
+        "product_price_id",
+        "proration",
+        "start_timestamp",
+        "end_timestamp",
+      ])
     );
   }
   const metadata = nestedRecord(event.data.metadata);

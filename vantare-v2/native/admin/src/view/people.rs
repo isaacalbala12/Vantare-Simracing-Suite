@@ -162,6 +162,13 @@ impl Admin {
                         .flex_1()
                         .min_w_0()
                         .child(Self::person_plan(user))
+                        .when_some(user.report_promotion.as_ref(), |d, promotion| {
+                            d.child(
+                                panel()
+                                    .child(eyebrow("PROMOCIÓN POR INFORMES"))
+                                    .child(muted(&promotion.summary())),
+                            )
+                        })
                         .child(self.person_danger(user, cx)),
                 )
                 .child(

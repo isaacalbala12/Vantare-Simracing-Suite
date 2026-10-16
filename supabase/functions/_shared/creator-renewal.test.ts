@@ -171,3 +171,43 @@ for (const reason of ["refund", "subscription_revoked"] as const) {
     assertEquals(attempts, 2);
   });
 }
+
+Deno.test("R6 creator entrypoint recognizes the shared report/remainder coupons and uses canonical savings", async () => {
+  const loaded = loadPolarProductMap(VALID_POLAR_PRODUCT_MAP_JSON, {
+    environment: "sandbox",
+  });
+  if (!loaded.ok) throw Error("fixture");
+  const client = {
+    rpc: (name: string, args: Record<string, unknown>) => {
+      if (name === "billing_creator_renewal_prepare") {
+        assertEquals(args.p_creator_savings, 120);
+        return Promise.resolve({
+          data: {
+            token: "lease",
+            discount_id: "report-next",
+            creator_discount_id: "creator-original",
+            report_discount_id: "report-next",
+            initial_discount_id: "launch",
+            managed_report_ids: ["report-old", "creator-remainder"],
+          },
+          error: null,
+        });
+      }
+      return Promise.resolve({ data: true, error: null });
+    },
+  } as unknown as SupabaseClient;
+  await applyCreatorRenewal(client, loaded.map, {
+    userId: "account",
+    checkoutId: null,
+    subscriptionId: "sub",
+    orderId: "paid",
+    productId: loaded.map.checkout_keys.pro_monthly!.polar_product_id,
+    key: "pro_monthly",
+    initial: false,
+  }, async (_id, _environment, expected) => {
+    assertEquals(expected.discountId, "report-next");
+    assertEquals(expected.managedIds.includes("report-old"), true);
+    assertEquals(expected.managedIds.includes("creator-remainder"), true);
+    assertEquals(await expected.authorize(), true);
+  });
+});

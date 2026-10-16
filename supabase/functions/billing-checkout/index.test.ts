@@ -68,6 +68,7 @@ function deps(
         environment: SANDBOX_ENVIRONMENT,
       }),
     attempts: store,
+    promotionDiscount: async () => null as string | null,
     purchasePolicy: async () => ({
       reason: null,
     }),
@@ -294,6 +295,127 @@ Deno.test("checkout propagates request cancellation to Polar", async () => {
   assertEquals(response.status, 503);
   assertEquals((await response.json()).error, "request_cancelled");
 });
+Deno.test("P3-3 activated campaign RPC failure is retryable without uncertain checkout attempt", async () => {
+  const previous = Deno.env.get("REPORT_PROMOTION_ENABLED");
+  Deno.env.set("REPORT_PROMOTION_ENABLED", "true");
+  try {
+    const store = memoryStore();
+    let claims = 0;
+    let uncertain = 0;
+    let calls = 0;
+    let policy = 0;
+    const configured = {
+      ...deps(store),
+      attempts: {
+        ...store,
+        claim: (input: Parameters<CheckoutAttemptStore["claim"]>[0]) => {
+          claims++;
+          return store.claim(input);
+        },
+        markUncertain: (
+          input: Parameters<CheckoutAttemptStore["markUncertain"]>[0],
+        ) => {
+          uncertain++;
+          return store.markUncertain(input);
+        },
+      },
+      promotionDiscount: () => {
+        assertEquals(Deno.env.get("REPORT_PROMOTION_ENABLED"), "true");
+        policy++;
+        return policy === 1
+          ? Promise.reject(new Error("transient SQL outage"))
+          : Promise.resolve("launch1");
+      },
+      createCheckout: (
+        params: Parameters<
+          NonNullable<import("./index.ts").CheckoutDeps["createCheckout"]>
+        >[0],
+      ) => {
+        calls++;
+        assertEquals(params.discountId, "launch1");
+        assertEquals(params.trial, { enabled: false });
+        return Promise.resolve({
+          url: "https://sandbox.polar.sh/checkout/test",
+          checkoutId: "checkout-test",
+        });
+      },
+    };
+    const body = { productKey: "pro_monthly", attemptId: ATTEMPT_ID };
+    assertEquals(
+      (await handleCheckoutRequest(post(body), configured)).status,
+      503,
+    );
+    assertEquals(claims, 0);
+    assertEquals(uncertain, 0);
+    assertEquals(calls, 0);
+    assertEquals(
+      (await handleCheckoutRequest(post(body), configured)).status,
+      200,
+    );
+    assertEquals(
+      (await handleCheckoutRequest(post(body), configured)).status,
+      200,
+    );
+    assertEquals(calls, 1);
+    assertEquals(uncertain, 0);
+  } finally {
+    if (previous === undefined) Deno.env.delete("REPORT_PROMOTION_ENABLED");
+    else Deno.env.set("REPORT_PROMOTION_ENABLED", previous);
+  }
+});
+
+Deno.test("P1-2 a new desktop attempt reuses the verified launch checkout without another Polar creation", async () => {
+  let writes = 0;
+  const configured = {
+    ...deps(memoryStore()),
+    promotionDiscount: () =>
+      Promise.resolve({ checkoutUrl: "https://sandbox.polar.sh/checkout/old" }),
+    createCheckout: () => {
+      writes++;
+      throw new Error("must reuse old checkout");
+    },
+  };
+  const response = await handleCheckoutRequest(
+    post({ productKey: "pro_monthly", attemptId: ATTEMPT_ID }),
+    configured,
+  );
+  assertEquals(response.status, 200);
+  assertEquals(await response.json(), {
+    url: "https://sandbox.polar.sh/checkout/old",
+    reused: true,
+  });
+  assertEquals(writes, 0);
+});
+
+Deno.test("P2-9 plan-change waiting is explicit and creates no checkout or uncertain attempt", async () => {
+  const { PromotionCheckoutError } = await import(
+    "../billing-report-promotion/observe.ts"
+  );
+  let writes = 0;
+  const response = await handleCheckoutRequest(
+    post({ productKey: "pro_monthly", attemptId: ATTEMPT_ID }),
+    {
+      ...deps(memoryStore()),
+      promotionDiscount: () =>
+        Promise.reject(
+          new PromotionCheckoutError(
+            "promotion_checkout_plan_change_pending",
+            "Hay un pago abierto para otro plan. Espera a que caduque; tu primer mes se conserva.",
+            409,
+          ),
+        ),
+      createCheckout: () => {
+        writes++;
+        throw new Error("must wait");
+      },
+    },
+  );
+  assertEquals(response.status, 409);
+  const body = await response.json();
+  assertEquals(body.error, "promotion_checkout_plan_change_pending");
+  assertEquals(typeof body.message, "string");
+  assertEquals(writes, 0);
+});
 
 Deno.test("Founders uses the existing authenticated idempotent checkout with its configured product", async () => {
   const store = memoryStore();
@@ -345,6 +467,11 @@ function campaignDeps(at: string, withDiscount = true) {
   return {
     ...base,
     now: () => new Date(at),
+    promotionDiscount: async () =>
+      Date.parse(at) >= Date.parse("2026-10-26T18:00:00Z") &&
+        Date.parse(at) < Date.parse("2026-11-26T18:00:00Z")
+        ? raw.checkout_keys.pro_monthly.polar_launch_discount_id ?? null
+        : null,
     loadMap: () =>
       loadPolarProductMap(JSON.stringify(raw), { environment: "sandbox" }),
   };
@@ -495,4 +622,43 @@ Deno.test("R3 inherited creator names are rejected before claiming an attempt", 
     assertEquals(claims, 0);
     assertEquals(created, false);
   }
+});
+
+Deno.test("R7 consumed launch account never falls back to canonical offer and creator remains attributed", async () => {
+  let sent: Record<string, unknown> = {};
+  const d = campaignDeps("2026-11-25T18:00:00Z");
+  const response = await handleCheckoutRequest(
+    post({
+      productKey: "pro_monthly",
+      attemptId: ATTEMPT_ID,
+      creatorCode: "ISAAC",
+    }),
+    {
+      ...d,
+      promotionDiscount: async (...args) => {
+        assertEquals(args[4]?.toISOString(), "2026-11-25T18:00:00.000Z");
+        assertEquals(
+          args[8]?.discountId,
+          "00000000-0000-4000-8000-000000001680",
+        );
+        assertEquals(args[8]?.key, "pro_monthly");
+        assertEquals(
+          args[8]?.catalogVersion?.includes(":creator:ISAAC:"),
+          true,
+        );
+        return null;
+      },
+      createCheckout: async (params) => {
+        sent = Object.fromEntries(Object.entries(params));
+        return {
+          url: "https://sandbox.polar.sh/checkout/r7",
+          checkoutId: "r7",
+        };
+      },
+    },
+  );
+  assertEquals(response.status, 200);
+  assertEquals(sent.discountId, null);
+  assertEquals(sent.creatorCode, "ISAAC");
+  assertEquals(sent.trial, { enabled: false });
 });

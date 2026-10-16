@@ -105,6 +105,10 @@ function createMockSupabase(tables: Record<string, MockRow[]> = {}) {
           assertEquals(args.p_stage, "prepare");
           return Promise.resolve({ data: null, error: null }); // fixture has no creator operation
         }
+        if (
+          ["report_promotion_invoice", "report_promotion_invoice_missing"]
+            .includes(name)
+        ) return Promise.resolve({ data: null, error: null });
         assertEquals(
           ["native_admin_record_refund", "native_admin_record_payment"]
             .includes(name),

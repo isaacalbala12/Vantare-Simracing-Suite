@@ -347,6 +347,10 @@ export async function createPolarCheckoutSession(
     payload.trial_interval = params.trial.interval;
     payload.trial_interval_count = params.trial.interval_count;
   }
+  if (params.discountId) {
+    payload.discount_id = params.discountId;
+    payload.allow_discount_codes = false;
+  }
   if (params.email) payload.customer_email = params.email;
   if (params.productKey === "founders") payload.allow_discount_codes = false;
 
@@ -392,6 +396,61 @@ export async function createPolarCheckoutSession(
       return {
         url: validateHostedUrl(data.url, runtimeEnvironment, "checkout"),
         checkoutId: typeof data.id === "string" ? data.id : null,
+      };
+    },
+  );
+}
+
+// Authenticated server read recovers a single account-owned launch checkout.
+export async function readPolarCheckoutSession(
+  id: string,
+  environment: BillingEnvironment,
+  deps: PolarClientDeps = {},
+): Promise<
+  {
+    id: string;
+    status: string;
+    productId: string;
+    accountId: string;
+    url: string;
+  }
+> {
+  const token = requireToken(deps);
+  return await polarRequest(
+    apiBase(environment, deps) + "/checkouts/" + encodeURIComponent(id),
+    {
+      method: "GET",
+      headers: { Authorization: "Bearer " + token, Accept: "application/json" },
+    },
+    deps,
+    async (response) => {
+      if (!response.ok) {
+        throw new PolarClientError(
+          "checkout_recovery_unavailable",
+          "Retry checkout",
+          503,
+        );
+      }
+      const value: unknown = await response.json();
+      if (
+        !isRecord(value) || value.id !== id ||
+        typeof value.status !== "string" ||
+        typeof value.product_id !== "string" ||
+        typeof value.external_customer_id !== "string" ||
+        typeof value.url !== "string"
+      ) {
+        throw new PolarClientError(
+          "checkout_recovery_invalid",
+          "Retry checkout",
+          503,
+        );
+      }
+      return {
+        id,
+        status: value.status,
+        productId: value.product_id,
+        accountId: value.external_customer_id,
+        url: validateHostedUrl(value.url, environment, "checkout"),
       };
     },
   );
@@ -748,7 +807,7 @@ export async function synchronizeRenewalDiscount(
   environment: BillingEnvironment,
   expected: {
     productId: string;
-    discountId: string;
+    discountId: string | null;
     managedIds: (string | null)[];
     normalCents: number;
     interval: string;
@@ -811,6 +870,7 @@ export async function withdrawCreatorDiscount(
   expected: {
     productId: string;
     creatorDiscountId: string;
+    managedCreatorDiscountIds?: string[];
     authorize: () => Promise<boolean>;
   },
   deps: PolarClientDeps = {},
@@ -848,7 +908,10 @@ export async function withdrawCreatorDiscount(
   if (!await expected.authorize()) {
     throw Error("creator_revocation_authorization_lost");
   }
-  if (current.discount_id !== expected.creatorDiscountId) return;
+  if (
+    current.discount_id !== expected.creatorDiscountId &&
+    !expected.managedCreatorDiscountIds?.includes(current.discount_id)
+  ) return;
   const updated = await request("PATCH");
   if (updated.discount_id !== null) {
     throw Error("creator_revocation_unconfirmed");

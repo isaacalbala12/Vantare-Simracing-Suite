@@ -104,9 +104,19 @@ function createMockSupabase(tables: Record<string, MockRow[]> = {}) {
 
   return {
     client: {
+      // No promotion catalogue or admin refund attribution in this fixture.
+      // Both server-only projections are explicit; unknown RPCs still fail.
       rpc: (name: string) => {
-        assertEquals(name, "native_admin_record_refund");
-        return Promise.resolve({ data: false, error: null });
+        if (name === "native_admin_record_refund") {
+          return Promise.resolve({ data: false, error: null });
+        }
+        if (
+          !["report_promotion_invoice", "report_promotion_invoice_missing"]
+            .includes(name)
+        ) {
+          throw new Error("unexpected fixture RPC: " + name);
+        }
+        return Promise.resolve({ data: null, error: null });
       },
       from: (table: string) => ({
         select: (columns?: string) => query(table).select(columns),
@@ -2732,6 +2742,54 @@ Deno.test("missing order retry remains bounded and never grants access", async (
   assertEquals(deps.orderRefundLedger.grants.size, 0);
 });
 
+Deno.test("P3-20 an unsafe order ledger outcome records the missing invoice without completing its financial effect", async () => {
+  const mock = createMockSupabase();
+  const deps = processDeps(mock);
+  const calls: { name: string; args?: Record<string, unknown> }[] = [];
+  const rpc = mock.client.rpc;
+  mock.client.rpc = (name: string, args?: Record<string, unknown>) => {
+    calls.push({ name, args });
+    return rpc(name);
+  };
+  const order = paidOrderData({
+    id: "unsafe-promotion-order",
+    product_id: PRO_MONTHLY_PRODUCT_ID,
+    subscription_id: "sub-unsafe",
+    billing_reason: "subscription_cycle",
+  });
+  await processPolarWebhookEvent(
+    { type: "order.paid", data: order },
+    "evt_unsafe_promotion_seed",
+    deps,
+  );
+  calls.length = 0;
+  const result = await processPolarWebhookEvent(
+    {
+      type: "order.refunded",
+      data: { ...order, status: "refunded", refunded_amount: 3000 },
+    },
+    "evt_unsafe_promotion",
+    deps,
+  );
+  assertEquals(result, {
+    status: "quarantined",
+    reason: "order_refund_ledger_version_conflict",
+  });
+  assertEquals(
+    calls.filter((call) => call.name === "report_promotion_invoice_missing"),
+    [{
+      name: "report_promotion_invoice_missing",
+      args: { p_environment: "sandbox", p_order: "unsafe-promotion-order" },
+    }],
+  );
+  assertEquals(
+    deps.inbox.effectAttempts(
+      "evt_unsafe_promotion",
+      "report_promotion_invoice",
+    ),
+    0,
+  );
+});
 Deno.test("Founders refunded-order reconciliation cannot grant an out-of-window purchase", async () => {
   const mock = createMockSupabase();
   const deps = {
@@ -3079,7 +3137,13 @@ Deno.test("R5 webhook wires creator renewal only from signed reason and server b
         supabase: {
           ...mock.client,
           rpc: (name: string) => {
-            assertEquals(name, "native_admin_record_payment");
+            assertEquals(
+              [
+                "native_admin_record_payment",
+                "report_promotion_invoice_missing",
+              ].includes(name),
+              true,
+            );
             return Promise.resolve({ data: true, error: null });
           },
         } as unknown as SupabaseClient,

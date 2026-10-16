@@ -1,5 +1,10 @@
 # Imola: causa de `Stale` — VANTA-33 / #1638
 
+**Resultado histórico.** La [pasada íntegra tras el pulido](imola-practica-pulido-2026-10-16.md)
+verifica Core y los 18 widgets con dos avances cercanos para recuperar:
+**31,6941 % Stale**, 287.495 fotos por widget, cero rechazos. Este diagnóstico
+conserva el resultado previo de un solo avance (25,4488 %) y su evidencia causal.
+
 **El 99,9833 % combinaba huecos reales de publicación SHM con un fallo de
 recuperación del adaptador.** Tras corregirlo, el mismo archivo completo produce
 214.331 fotos Live y 73.164 Stale: **25,4488 % Stale**, sobre las mismas 287.495.

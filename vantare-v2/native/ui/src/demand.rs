@@ -51,6 +51,9 @@ mod tests {
         ))
         .expect("captura real");
         let player = snapshot.state.player.expect("jugador de la captura").car;
+        for car in &mut snapshot.state.cars {
+            car.pending_penalties = vantare_domain::Quality::Reliable(2);
+        }
         // Controlled positive flag: the real corpus does not certify a DQ.
         snapshot.state.flags = vantare_domain::Quality::Reliable(vec![vantare_domain::Flag {
             kind: vantare_domain::FlagKind::Black,
@@ -59,6 +62,8 @@ mod tests {
         let name = format!("vantare-1638-flags-demand-{}", std::process::id());
         let mut publisher = vantare_ipc::Publisher::new(&name, |_| true).expect("pipe aislado");
         let demand = Settings::default_for(Kind::RacingFlags).demand();
+        assert!(demand.contains(Signal::Cars));
+        assert!(!demand.contains(Signal::Penalties));
         let source = publisher.demand_source();
         let mut subscriber =
             vantare_ipc::Subscriber::connect_requested(&name, demand.clone(), |_| true)
@@ -77,6 +82,18 @@ mod tests {
             vantare_domain::format::Preferences::default(),
         );
         assert_eq!(vm.message, "DESCALIFICADO");
+        assert_eq!(
+            photo.signal_state(Signal::Penalties),
+            vantare_ipc::SignalState::NotRequested
+        );
+        assert!(
+            photo
+                .snapshot
+                .state
+                .cars
+                .iter()
+                .all(|car| car.pending_penalties == vantare_domain::Quality::Unavailable)
+        );
     }
 
     #[test]

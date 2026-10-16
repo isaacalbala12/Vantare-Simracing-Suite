@@ -20,6 +20,18 @@ use super::rest;
 #[path = "signals_tests.rs"]
 mod signals_tests;
 
+/// Alias de clase admitidos; no inferir energía para una clase ajena
+/// solo porque REST incluya `veFraction`. Tokens ASCII, sin `String` por fotograma.
+fn is_hypercar_class(class: &str) -> bool {
+    class
+        .split(|c: char| !c.is_ascii_alphabetic())
+        .any(|token| {
+            ["Hyper", "Hypercar", "LMH", "LMDh"]
+                .iter()
+                .any(|alias| token.eq_ignore_ascii_case(alias))
+        })
+}
+
 /// Un hueco que reaparece con el mismo piloto y clase dentro de este número de
 /// frames es el mismo coche (parpadeo de la parrilla); pasado, es otro.
 const SLOT_GRACE_FRAMES: u64 = 30;
@@ -244,7 +256,7 @@ impl Translator {
     ) -> Player {
         let mut player = player(vehicle, car, stale, telemetry_stale);
         // Energía virtual solo en Hypercar, nunca veFraction como litros.
-        if vehicle.class.to_ascii_uppercase().contains("HYPER")
+        if is_hypercar_class(&vehicle.class)
             && let Some((info, fresh)) = self.car_details(vehicle, now)
         {
             player.fuel.energy = quality(info.energy, stale || !fresh);

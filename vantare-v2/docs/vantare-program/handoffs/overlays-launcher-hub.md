@@ -6,6 +6,10 @@
 
 Informe NO APTO de DeepSeek leído. Correcciones `c7ffd8d9`; se fusiona
 origin/nightly `de68847f7` (instalador #1600) sin conflictos ni rebase.
+La CI de `6ca18326` pasa 1927/1927, lifecycle 5/5 y cinco checks;
+durante esa ejecución entra el pulido #1679 en `a3fea01f`. Se fusiona
+también sin conflictos, conservando su corrección de recuperación LMU y
+los catálogos/regresiones R1; CI del HEAD final en issue/PR/buzón.
 Ruta de agenda compartida desde el layout
 real de Studio/overlay mediante `ipc::session_alerts::calendar_path`, con
 regresión para argumentos beta/MSIX. El supervisor live deriva catálogo desde

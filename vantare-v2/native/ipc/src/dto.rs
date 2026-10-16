@@ -2015,6 +2015,34 @@ mod demand_tests {
     }
 
     #[test]
+    fn flags_with_cars_omit_penalties_and_serialize_less_than_the_previous_demand() {
+        let source = crate::snapshot_from_fixture_json(include_str!(
+            "../../ui/fixtures/telemetry-real/lmu47.snapshot.json"
+        ))
+        .expect("captura real");
+        let encode = |identity| {
+            let mut demand = Demand::default();
+            demand.request(Signal::Flags, 33);
+            demand.request(identity, 33);
+            let dto = SnapshotDto::selected(&source, &demand).expect("selección");
+            serde_json::to_vec(&(dto, &demand, &demand)).expect("foto y demandas")
+        };
+        let old = encode(Signal::Penalties);
+        let lean = encode(Signal::Cars);
+        assert!(lean.len() < old.len(), "menos bytes reales con Cars");
+        let value: serde_json::Value = serde_json::from_slice(&lean).expect("JSON");
+        assert!(value[0]["state"]["player"].is_object());
+        for car in value[0]["state"]["cars"].as_array().expect("parrilla") {
+            assert!(car.get("pending_penalties").is_none());
+        }
+        eprintln!(
+            "flags identity: Penalties={} bytes, Cars={} bytes",
+            old.len(),
+            lean.len()
+        );
+    }
+
+    #[test]
     fn selected_with_all_signals_matches_the_full_encoding() {
         let source = crate::codec::tests::rich_snapshot(1, 1);
         let partial = SnapshotDto::selected(&source, &Demand::all()).expect("selección");

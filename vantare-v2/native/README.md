@@ -3,7 +3,7 @@
 Los ejemplos Cargo muestran el comando interior: ejecutarlo siempre por la
 cola de `AGENTS.md`: `native/scripts/compilar.ps1` desde `vantare-v2/`. Usar target aislado y `-j 2` (o `CARGO_BUILD_JOBS` de la máquina, ver «Workers»).
 
-El workspace tiene 13 crates; `default-members` excluye storage y admin.
+El workspace tiene 14 crates; `default-members` excluye storage, admin e installer.
 
 | Crate | Contiene |
 | --- | --- |
@@ -20,6 +20,7 @@ El workspace tiene 13 crates; `default-members` excluye storage y admin.
 | `build-support` | Recurso Win32 compartido; icono en `native/assets/icon.ico`. |
 | `strategy` | Documento JSON y solver; miembro del mismo workspace. |
 | `admin` | Herramienta privada del owner, fuera del instalador público. |
+| `installer` | Setup/Uninstall Rust y GPUI con payload embebido; el motor de generaciones sigue en packaging. |
 
 `packaging/` contiene scripts de distribución; versión y contratos viven en ipc,
 el recurso Win32 vive en build-support. No es un crate.
@@ -29,6 +30,7 @@ el recurso Win32 vive en build-support. No es un crate.
 ```text
 runtime → domain, ipc      ipc → domain, profiling      ui → domain, ipc
 engineer → domain, ipc, runtime (flujos neutrales y cierre; sin adaptadores)
+installer → build-support (build); GPUI fijado, sin runtime/domain/ipc
 ```
 
 `domain` no depende de nada del workspace; `domain` y `ui` **nunca** dependen de
@@ -184,7 +186,7 @@ retiró: ver `docs/analysis/fase0-medicion-2026-09-29.md`.
 
 La base Unix (#1437) permite compilar y probar en Linux y macOS el workspace
 completo:
-los 13 crates listados arriba, incluido `strategy` en el mismo workspace. IPC usa los mismos DTO,
+los 14 crates listados arriba, incluido `strategy` en el mismo workspace. IPC usa los mismos DTO,
 cursores, límites y nonce que Windows, mediante sockets de dominio Unix 0600 en
 un directorio 0700 por UID dentro de `$XDG_RUNTIME_DIR` o del temporal (`/tmp`
 en macOS, para no superar el límite de longitud del socket). Verifica UID, PID e

@@ -1,6 +1,10 @@
 
 begin;
 select no_plan();
+-- Test-only enabled program; production defaults remain disabled without dates.
+update private.report_promotion_policy set enrollment_enabled=true,
+ enrollment_starts_at='2026-10-26 19:00 Europe/Madrid',
+ enrollment_ends_at='2026-11-26 19:00 Europe/Madrid' where singleton;
 select ok(not has_function_privilege('authenticated','public.report_promotion_renewal_prepare(uuid,integer,integer,timestamptz)','execute'),'shared writer is service-only');
 select ok(not has_function_privilege('service_role','public.report_promotion_claim_before_1661(uuid,uuid,timestamptz)','execute'),'old claim cannot bypass shared lease');
 select ok(not has_function_privilege('service_role','public.report_promotion_ack_before_1661(uuid,uuid,timestamptz,text,text)','execute'),'old ACK cannot bypass shared lease');

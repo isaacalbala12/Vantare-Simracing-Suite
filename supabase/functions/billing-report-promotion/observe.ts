@@ -60,7 +60,7 @@ export async function promotionCheckoutDiscount(
   environment: string,
   product: string,
   now = new Date(),
-  enabled = Deno.env.get("REPORT_PROMOTION_ENABLED") === "true",
+  _enabled = Deno.env.get("REPORT_PROMOTION_ENABLED") === "true",
   attemptId?: string,
   readCheckout = readPolarCheckoutSession,
   launchOffer?: {
@@ -69,7 +69,13 @@ export async function promotionCheckoutDiscount(
     catalogVersion?: string;
   },
 ): Promise<string | null | { checkoutUrl: string }> {
-  if (launchOffer ? !launchOffer.discountId : !enabled) return null;
+  if (!launchOffer) {
+    throw new PromotionCheckoutError(
+      "launch_offer_required",
+      "La oferta de lanzamiento no está configurada. Tu primer mes se conserva.",
+    );
+  }
+  if (!launchOffer.discountId) return null;
   if (!attemptId) {
     throw new PromotionCheckoutError(
       "promotion_attempt_required",
@@ -84,14 +90,11 @@ export async function promotionCheckoutDiscount(
     p_now: now.toISOString(),
     ...(attemptId ? { p_attempt: attemptId } : {}),
   };
-  const rpc = launchOffer
-    ? "billing_launch_checkout"
-    : "report_promotion_checkout";
+  const rpc = "billing_launch_checkout";
   const offerArgs = {
     ...args,
-    ...(launchOffer
-      ? { p_discount: launchOffer.discountId, p_key: launchOffer.key }
-      : {}),
+    p_discount: launchOffer.discountId,
+    p_key: launchOffer.key,
   };
   let { data, error } = await admin().rpc(rpc, offerArgs);
   if (error?.code === "55000" && attemptId) {

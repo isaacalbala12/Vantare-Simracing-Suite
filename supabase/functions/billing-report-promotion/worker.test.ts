@@ -207,7 +207,7 @@ Deno.test("launch checkout uses exactly one discount, disables trial and code st
     getAccessToken: () => "test",
     getSuccessUrl: () => "https://example.invalid/success",
     getCancelUrl: () => "https://example.invalid/cancel",
-    fetchFn: (_url, init) => {
+    fetchFn: (_url, init?: RequestInit) => {
       body = JSON.parse(String(init?.body));
       return Promise.resolve(
         Response.json({

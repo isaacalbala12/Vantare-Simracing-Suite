@@ -11,6 +11,9 @@ verificación íntegra offline terminó: **287.495 fotos por cada widget, 0 rech
 conducción ni carrera. 26 rivales con movimiento fiable; jugador con ruido
 ~1,8e-7 m/s, cero vueltas e inputs. Calma/seco REST se verifican en 45 fotos fiables.
 [Informe vigente por widget, cambios y pendientes](imola-practica-2026-10-16.md).
+Sincronizado `nightly@354c207aa` en la rama de issue (`6db5879f5`); conflicto
+README resuelto con DTO v11 / Services v10 / derechos v5. Clippy y fmt PASS;
+Nextest CI workspace runtime/domain/ipc + corpus: **673/673 PASS**, 5 skips.
 **No se abrirá LMU en el servidor**. Supervisor 16280 cancelado y salida `cancelled` verificada.
 [Kit release y verificación offline](grabacion-completa-lmu.md): SHM completo,
 REST descubierto desde la UI instalada, gzip/XOR con hashes y cierre verificado,

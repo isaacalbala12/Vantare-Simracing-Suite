@@ -22,7 +22,10 @@ Leídos [#1562](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/
 a nightly. Rust evaluado `acf7d09dc`; sincronización local posterior
 `6db5879f5` con `nightly@354c207aa`, autorizada por el encargo inicial.
 La PR remota dd029a9be detectó conflicto de README: se resolvió conservando
-DTO v11 / Services v10 / derechos v5. Gates tras sync en curso. No es una
+DTO v11 / Services v10 / derechos v5. Tras sync: Clippy PASS, Nextest CI
+runtime/domain/ipc con workspace **673/673 PASS**, 5 skips (incluye los 32
+tests de telemetría), fmt PASS. Logs `C:/VantareServer/logs/1638-postsync-*`.
+No es una
 promoción a nightly; no hay release ni cambios en la rama #1653/#1660.
 
 Recibida `C:/VantareServer/evidence/grabacion-lmu-imola/sesion.lmu.gz`,

@@ -152,6 +152,13 @@ por sí solos a demostrar cómo se comportaría una pausa confirmada en vivo.
 
 ## Checks y trazabilidad
 
+**Tras sincronizar nightly (`6db5879f5`):** Clippy workspace/all-targets
+-D warnings PASS; Nextest `--workspace --profile ci` para runtime/domain/ipc,
+incluyendo todos los corpus de telemetría: **673/673 PASS**, 5 skips,
+109,76 s de tests. Fmt PASS. Logs `C:/VantareServer/logs/1638-postsync-*`.
+Los siguientes resultados corresponden al código y binarios del replay original:
+
+
 - Clippy workspace/all-targets -D warnings: PASS.
 - Nextest runtime/domain/ipc con workspace: **646/646 PASS**, 5 skips;
   los cuatro tests de proceso Services pasan al incluir su binario.

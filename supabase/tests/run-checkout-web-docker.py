@@ -100,7 +100,8 @@ def main():
             "clerk_identity_cutover_test.sql","commercial_tombstone.test.sql",
              "billing_order_refund_ledger.test.sql","commercial_admin_deleted.test.sql",
             "checkout_web_nightly_integration.test.sql","founders.test.sql","founders_review_r2.test.sql","creator_renewal.test.sql",
-            "report_promotion.test.sql","report_creator_renewals.test.sql"]
+            "report_promotion.test.sql","report_creator_renewals.test.sql",
+            "launch_offer_sql.test.sql","report_enrollment_policy.test.sql"]
         if args.before_expiry: suites=[]
         if args.integration_control: suites=["checkout_web_nightly_integration.test.sql"]
         total = 0

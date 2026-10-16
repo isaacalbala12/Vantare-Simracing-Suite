@@ -130,6 +130,20 @@ registro es durable e idempotente; fallo de Polar deja incidencia Owner y
 reintento. No se elimina un descuento ajeno de informes/manual ni se devuelve
 ningún importe automáticamente. La comisión conserva sus reglas históricas.
 
+**Decisión de Isaac (16-oct-2026): el programa de premios por informes de
+VANTA-39 no se abre con el lanzamiento; se anunciará más adelante.** Queda
+desactivado por defecto, sin ventana de inscripción fijada. La ventana futura
+será propia del programa y se definirá cuando se anuncie; no deriva del
+26-oct→26-nov de la oferta inicial ni inscribe automáticamente a sus compradores.
+Flag operativo apagado y configuración SQL privada deshabilitada, con fechas
+sin fijar; encender solo el flag no concede inscripciones.
+
+Se conserva preparada la mecánica Pro/Pro Plus mensual: 45 días (1080 horas)
+desde el alta individual, apertura inclusiva y cierre exclusivo de la ventana
+que se apruebe. No se anuncia fecha ni se activa la campaña en esta entrega.
+Esta decisión sustituye la propuesta anterior de inscripción durante todo el
+mes de lanzamiento. La oferta inicial de #1661 conserva su propio contrato.
+
 Los descuentos por informes de VANTA-39 y creador comienzan después del primer
 periodo. No se suman: gana el mayor ahorro en céntimos sobre el precio normal;
 empate para informes. Se registra el otro como no aplicado. Pro: informes 200 c

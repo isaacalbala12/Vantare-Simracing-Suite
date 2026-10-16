@@ -1,0 +1,51 @@
+begin;
+select no_plan();
+insert into public.profiles(id) values('16730000-0000-4000-8000-000000000001');
+insert into private.report_promotion_catalog values('sandbox','pro','pro',599,399,'pro1','pro3','pro6');
+insert into public.billing_subscriptions(user_id,provider,environment,provider_subscription_id,provider_product_id,status,current_period_start,current_period_end)
+values('16730000-0000-4000-8000-000000000001','polar','sandbox','launch-without-program','pro','active','2026-10-27','2026-11-27');
+select public.report_promotion_observe('16730000-0000-4000-8000-000000000001','sandbox','launch-without-program','pro','2026-10-27','2026-10-27',null);
+select is((select count(*)::int from private.report_promotions where account_id='16730000-0000-4000-8000-000000000001'),0,'P3-E launch subscription never enrolls by default');
+select ok((select not enrollment_enabled and enrollment_starts_at is null and enrollment_ends_at is null from private.report_promotion_policy where singleton),'P3-E defaults disabled with no scheduled window');
+select ok(not private.report_promotion_enrollment_open('2026-10-27'),'P3-E canonical launch dates do not open report program');
+select ok(private.report_promotion_eligible('2026-10-27'),'P3-E initial launch offer retains its independent window');
+select ok(not has_table_privilege('service_role','private.report_promotion_policy','update'),'API cannot activate the program');
+select ok(not has_function_privilege('service_role','private.report_promotion_enrollment_open(timestamptz)','execute'),'enrollment helper cannot bypass public observation');
+select throws_ok($$update private.report_promotion_policy set enrollment_enabled=true where singleton$$,'23514',null,'P3-E enabling without announcement dates is rejected');
+select throws_ok($$update private.report_promotion_policy set enrollment_starts_at='2027-02-01',enrollment_ends_at='infinity' where singleton$$,'23514',null,'P3-E infinite enrollment window rejected');
+select throws_ok($$update private.report_promotion_policy set enrollment_starts_at='2027-02-08',enrollment_ends_at='2027-02-01' where singleton$$,'23514',null,'P3-E inverted window rejected');
+update private.report_promotion_policy set enrollment_starts_at='2027-02-01 19:00 Europe/Madrid',enrollment_ends_at='2027-02-08 19:00 Europe/Madrid' where singleton;
+select ok(not private.report_promotion_enrollment_open('2027-02-02'),'P3-E dates alone cannot activate program');
+update private.report_promotion_policy set enrollment_enabled=true where singleton;
+select ok(not private.report_promotion_enrollment_open('2026-10-27'),'P3-E configured program still excludes launch subscriptions');
+select ok(not private.report_promotion_enrollment_open('2027-02-01 18:59:59 Europe/Madrid'),'P3-E own opening excludes previous second');
+select ok(private.report_promotion_enrollment_open('2027-02-01 19:00 Europe/Madrid'),'P3-E own opening inclusive after launch');
+select ok(private.report_promotion_enrollment_open('2027-02-08 18:59:59 Europe/Madrid'),'P3-E own closing minus second included');
+select ok(not private.report_promotion_enrollment_open('2027-02-08 19:00 Europe/Madrid'),'P3-E own closing exclusive');
+select ok(not private.report_promotion_enrollment_open(null),'P3-E missing subscription date rejected');
+select ok(not private.report_promotion_enrollment_open('infinity'),'P3-E infinite subscription date rejected');
+insert into public.profiles(id) select ('16730000-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid from generate_series(2,5)n;
+insert into private.report_promotion_catalog values('sandbox','plus','pro_plus',999,699,'plus1','plus3','plus6');
+create function pg_temp.observe(n int,product text,started timestamptz) returns void language plpgsql as $$
+declare account uuid:=('16730000-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid;
+begin
+ insert into public.billing_subscriptions(user_id,provider,environment,provider_subscription_id,provider_product_id,status,current_period_start,current_period_end)
+ values(account,'polar','sandbox','program'||n,product,'active',started,private.report_promotion_months(started,1));
+ perform public.report_promotion_observe(account,'sandbox','program'||n,product,started,started,null);
+end $$;
+select pg_temp.observe(2,'pro','2027-02-01 19:00 Europe/Madrid');
+select pg_temp.observe(3,'plus','2027-02-08 18:59:59 Europe/Madrid');
+select pg_temp.observe(4,'pro','2027-02-08 19:00 Europe/Madrid');
+select is((select count(*)::int from private.report_promotions where account_id::text like '16730000%'),2,'P3-E Pro and Plus enroll only in the separately enabled window');
+select is((select subscribed_at from private.report_promotions where account_id='16730000-0000-4000-8000-000000000002'),'2027-02-01 19:00 Europe/Madrid'::timestamptz,'P3-E records actual later subscription date');
+select is((private.report_promotion_progress('16730000-0000-4000-8000-000000000002','sandbox','2027-02-03')->>'window_end')::timestamptz,'2027-03-18 19:00 Europe/Madrid'::timestamptz,'P3-E later enrollment retains own 45 days');
+update private.report_promotion_policy set enrollment_enabled=false where singleton;
+select pg_temp.observe(5,'pro','2027-02-03');
+select is((select count(*)::int from private.report_promotions where account_id='16730000-0000-4000-8000-000000000005'),0,'P3-E disabled policy rejects new enrollment even within dates');
+select public.report_promotion_observe('16730000-0000-4000-8000-000000000002','sandbox','program2','pro','2027-02-01 19:00 Europe/Madrid','2027-03-01','already-earned');
+select is((select remote_discount from private.report_promotions where account_id='16730000-0000-4000-8000-000000000002'),'already-earned','P3-E closing enrollment preserves observation of existing rights');
+select is((select subscribed_at from private.report_promotions where account_id='16730000-0000-4000-8000-000000000002'),'2027-02-01 19:00 Europe/Madrid'::timestamptz,'P3-E closing enrollment never restarts report deadline');
+delete from private.report_promotion_policy where singleton;
+select ok(not private.report_promotion_enrollment_open('2027-02-02'),'P3-E missing configuration fails closed');
+select * from finish();
+rollback;

@@ -29,6 +29,44 @@ código conserva baseeb553c7fe y última verificación R6(662Edge/235pgTAP/13car
 Evidencia ~/evidence/web-compra/r7-*; SHA/estadofinal en buzónweb-compra.
 Solo bares; orquestador publica/actualizaVANTA42/PR1663. SinAPIreal/deploy/release.
 
+## VANTA-42 / PR #1663 · R9 · Registro SQL y catálogo aplicado (16/10/2026)
+
+Merge de nightly@e8aa2077c7c6de0a7733a3f2fc616dc63fdf7456. Se conserva
+#1673: registro privado billing_launch_offers, RPC pública billing_launch_checkout
+con validación SQL y retirada de report_promotion_checkout; programa de informes
+aplazado mediante su política de inscripción. #1649/#1674/#1676 se integran intactos.
+El conflicto era solo de handoff; se conservaron ambas historias.
+
+La migración pendiente de este PR adapta la liberación terminal al helper
+privado cuando #1673 ya está instalado, sin sustituir el validador ni abrir
+EXECUTE al helper. La misma migración sigue funcionando en instalación limpia.
+SQL85migraciones/741pgTAP/15carreras PASS en ambas rutas; incluye pruebas de
+registro y de la nueva política de inscripción. Compensación OFF y baja D1/ACK
+firmado se conservan; el rol de pull sigue sin RPC adicionales.
+
+Catálogo de Polar aplicado confirmado por el orquestador. El único mapa completo
+vigente es scripts/polar-production-map.json (bajo supabase/functions), objeto
+map exacto del resultado aprobado catalogo-1661-result-r5.json. Procedencia/hash
+e instrucciones en docs/billing/production-purchase-configuration.md.
+Registro SQL generado offline en r9-production-launch-offers.sql; no aplicado
+en servicio real. El operador debe configurar el mismo POLAR_PRODUCT_MAP en
+Supabase y Worker, registrar las ofertas y comprobar apertura/estado de productos.
+No se inventan IDs de creador ni se reejecuta apply de Polar.
+
+Web conserva la RPC pública y cierra antes de cobrar si el registro no está
+disponible/no coincide. Tests usan las ofertas y IDs del mapa aprobado sin red.
+Edge731 PASS+2ignorados previos;NodeSQLite82;12E2E+controlsinbinding;48capturas.
+Quality456/fmt/lint/surface PASS. Windows secuencial por cola nueva:
+fmt/check/Clippy/Nextest1801/lifecycle/telemetría25 PASS;árbol native
+afb553c158cc20ab1ce2a7d147f55f3d0067934b idéntico a nightly. Target propio
+reutilizado de R8, sin intentar de nuevo el borrado rechazado por política.
+Evidencia Mac ~/evidence/web-compra/r9-*;Windows checkout-web-r9.
+
+Solo bares del Mac. Orquestador publica las ramas, revisa CI/PR1663 y actualiza
+PlaneVANTA42. Sin deploy, API comercial real, cobro,refund,baja real ni merge de
+canal/release. Dudas nuevas ninguna. Registro/configuración de servidor aún por
+confirmar;compensación solo se habilita tras los tres requisitos formales de R6.
+
 ## VANTA-42 / PR #1663 · R8 · Integración nightly (16/10/2026)
 
 Se fusiona nightly@9e48eb86f8d2cfc43b64010d2b1ac1c58768826a en
@@ -151,6 +189,87 @@ Venta cerrada #1633. Sin API real, GitHub push, despliegue, promoción ni releas
 Siguiente: revisión conjunta y despliegue autorizado por etapas; configurar JWT
 mínimo/salts, cron y receptor visible Owner, verificar precios Polar y sandbox.
 Orquestador actualiza VANTA-42/issue/PR; último estado comunicado En curso.
+
+## #1593 / VANTA-39 · decisión de Isaac P3-E y revisión P3-F/G/H · 16/10/2026
+
+PR draft [#1673](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1673),
+rama vantareapp/isa-1593-endurecer desde nightly 9e48eb86f; esta ronda continúa
+bc631a839. Review de esa base APTO; cambios nuevos pendientes de CI del nuevo SHA.
+SHA final y estado de CI se verifican en issue/evidencia/buzón al publicar.
+
+- Isaac NO abre el programa por informes con el lanzamiento: queda apagado por
+  defecto, sin fechas de inscripción y pendiente de un anuncio posterior.
+  Sustituye la propuesta P3-E anterior, que ya no está pendiente de confirmar.
+- SQL incorpora enrollment_enabled=false y fechas NULL en la política privada
+  existente, solo para operador. Una ventana propia finita y ordenada es
+  obligatoria antes de habilitar nuevas inscripciones. El flag Edge también
+  arranca apagado si está ausente o false; encenderlo solo no inscribe.
+- La observación solo usa esa política para nuevas inscripciones, sin derivar
+  fechas del JSON de lanzamiento. El helper histórico de checkout conserva
+  su ventana de #1661, sin cambios en precio/cupón inicial ni en su consumo.
+  Se conservan hechos contables y observación de derechos ya concedidos.
+- P3-F: generador imprime SELECT del registro tras commit; checklist exige
+  comparar las claves activas, IDs, ventana y versión antes de desplegar Edge.
+  P3-G: comentario histórico identifica la RPC retirada y su migración de baja.
+  P3-H: begin/commit explícitos en la migración del registro; también en la nueva.
+- Rojo inicial: suscripción de lanzamiento se inscribía sin configurar programa.
+  Verde:24 comprobaciones nuevas de política y fechas futuras ficticias,
+  además de183 informes,29 checkout,88 convivencia,89 creador y Founders43+36.
+  Ambos órdenes de migración pasan; tests antiguos habilitan explícitamente
+  su ventana ficticia. No se atribuyen esas fechas a un anuncio real.
+- SQL completo81 suites,54PASS/27FAIL heredadas frente al PR anterior80/53/27;
+  1885→1909 aserciones aprobadas, sin regresiones. Mutaciones de flag SQL y
+  acoplamiento con lanzamiento detectadas. Edge711PASS/0FAIL/2ignored,
+  frente a710/0/2. Fmt/lint, superficie, quality/retirada y diff-check PASS.
+- SQL y Edge en Mac; Docker desechable sin red/puertos, actor sin superusuario,
+  lock/trap liberado. Sin Rust tocado: fmt/clippy/nextest/lifecycle/telemetría
+  nativos omitidos. Sin servicios reales, productos/cupones, deploy, merge,
+  release o anuncio comercial. Activación futura requiere a Isaac.
+
+Evidencia de esta ronda: ~/evidence/1673-programa-apagado y copia servidor.
+Evidencia completa anterior: ~/evidence/1593-endurecer (no ~/evidence/*1673*),
+incluida copia en C:/VantareServer/evidence/1593-endurecer. Próximo paso:
+publicar el nuevo SHA en #1673, comprobar CI y entregar Por revisar al orquestador.
+
+## #1593 / VANTA-39 · endurecimiento P3-D/P3-E · 16/10/2026
+
+#1659 ya integrado por el orquestador en nightly9e48eb86f. Seguimiento aislado
+vantareapp/isa-1593-endurecer, base exacta9e48eb86f; [PR draft #1673](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1673)
+hacia nightly. Código30389aec; SHA final en issue/evidencia/buzón. Publicado
+al bare Mac y a GitHub desde servidor; CI automático en curso al cerrar.
+Plane Por revisar tras verificación final; integración reservada al orquestador.
+
+- P3-D: retira report_promotion_checkout y fallback Edge. billing_launch_checkout
+  valida SQL entorno/clave/producto/cupón/ventana/reloj finito contra registro
+  privado exclusivo del operador. No reserva/consume ante oferta no registrada.
+  Reserva/CAS/consumo por cuenta y B03 preservados en único core privado sin
+  permisos API; owners explícitos, search_path vacío y RLS.
+- Proyección SQL offline del único JSON #1661 y loadPolarProductMap.
+  Registro inicialmente vacío: aplicar SQL revisado ANTES del checkout
+  actualizado. Repetición conserva auditoría; deriva aborta/rollback, sin rotación
+  silenciosa. Verificación remota de importe/duración once/ámbito por operador,
+  no certificada por este generador. No activa ni consulta Polar.
+- P3-E: inscripción de Pro/Plus mensual durante26oct→26nov19Madrid,
+  apertura inclusiva/cierre exclusivo; 45 días individuales (1080h).
+  Decisión operativa del orquestador PENDIENTE de confirmación de Isaac.
+  Contrato/regla lo dicen expresamente; premio sigue desde segundo mes.
+- SQL RED inicial0/3 confirma los fallos previos. Verde29 nuevas +183 informes
+  +88 convivencia +89 creador en ambos órdenes; suites Founders43+36 verdes.
+  Catálogo80/53PASS/27FAIL frente al baseline exacto79/52/27,
+  1850→1885 checks y ninguna regresión. Fallas heredadas idénticas.
+  Generación SQL real aplicada/repetida y deriva revertida en BD desechable.
+- Edge710PASS/0FAIL/2ignored frente a nightly707/0/2.
+  Tres mutantes detectados: cupón, intento y B03; los dos últimos eliminan
+  ambos guards redundantes para comprobar la ausencia completa del control.
+  La primera prueba P3-E chocó con cupo1/día: separadas cuentas sin debilitarlo.
+  Rust/clippy/nextest/lifecycle/telemetría omitidos: ningún archivo nativo tocado.
+- Mac Docker sin red/puertos, actor NOSUPERUSER BYPASSRLS y lock/trap liberado.
+  Fmt/lint producción, superficie deploy, quality/retirada456huellas y diff-check PASS.
+  Evidencia ~/evidence/1593-endurecer y C:/VantareServer/evidence/1593-endurecer.
+  PR#1673 abierto draft y enlazado al hilo, CI en curso; estado final en issue.
+  Sin merge, deploy,
+  productos/cupones reales, pagos/refunds, release ni promoción desde este worker.
+  Multi-cuenta aceptado y saldo ganado caduca6meses: sin cambios.
 
 ## #1593 / VANTA-39 · R7 terminada al bare, pendiente publicación · 16/10/2026
 
@@ -2396,6 +2515,61 @@ evidencia de la implementación inicial. Bfcache probado con eventos simulados;
 QA web real pendiente. Logs `C:/tmp/ola2/1603-*.log`, tabla RED→GREEN en
 `C:/tmp/ola2/fix-1603-results.md`; SHA del push en issue/PR/buzón.
 El runbook documenta estas guardas. Sin nuevas acciones de producción.
+
+## Servidor · VANTA-77 / ISA-1647c · 2026-10-15
+
+Actualización 16/10 por encargo del orquestador: merge de `origin/nightly`
+`9e48eb86f8d2cfc43b64010d2b1ac1c58768826a` en esta rama de issue.
+Cuatro conflictos resueltos: vigilante ampliado y su instalador con manifiesto,
+helper y hardening conservados; README con los avisos ampliados; CLI idéntica
+a nightly, incluida la firma `[orquestador] ` de #1650. Vigilante/helper 54 y
+CLI 10 PASS; calidad 456 huellas PASS. Suites Python activas de tools: 170 PASS
+y 1 FAIL heredado de nightly, catálogo triage desalineado con ocho variantes
+nuevas de services::Error (test_review_1602_r5). Reproducido el mismo fallo
+en snapshot limpio de nightly; no se corrige fuera del encargo de merge.
+SHA y resultados finales en #1647/#1649 y buzón 1647c.
+No se despliega ni se envían pruebas reales en esta ronda; no fusiona la PR
+ni promociona la rama a ningún canal. Las pruebas de runtime de abajo
+corresponden al despliegue del 15/10, no se atribuyen a este merge.
+
+Encargo del orquestador: revisión completa DeepSeek ds-rev1583-1649.
+PR [#1649](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1649),
+rama `vantareapp/isa-1647-vigilante-plane`, ahora incorpora la base #1583
+`vantareapp/isa-1565-servidor@1d7e6edb5` mediante merge entre ramas de issue.
+Se resolvió solo el instalador conservando hashes, helper y hardening.
+P2-1: scripts ops/linux y todos los archivos del backup 1647b pasan de
+svc Modify a RX; dueño Administrators; solo Administrators/SYSTEM escriben.
+Backup con ACL propia y SHA256SUMS (integridad acreditada desde la revocación).
+Instalación exige SHA-256 de instalador y ambos scripts en snapshot privado;
+prueba de alteración abortó sin modificar el script instalado. Scripts Linux,
+/etc/vantare y /var/lib/vantare son root, sin escritura de grupo/otros.
+P3-6: tres intentos persistidos por campana, después abandono registrado;
+ntfy sigue independiente. P3-8: cuerpos API no JSON omitidos con ID/clase.
+P3-9: consulta desde última marca con solape 5 min, máximo 30 días al recuperar;
+poda IDs antiguos, conserva pendientes. Fuera de esa ventana requiere revisión
+manual. P3-10: lanzadores y despliegue reproducibles incluidos en el repo.
+
+54 tests de vigilante/helper + 10 CLI PASS en Windows y Linux; quality
+456 huellas PASS; bash -n de seis scripts y cuatro unidades systemd PASS.
+Despliegue autorizado con backup root:700 sin secretos:
+`/var/backups/vigilante/1647c-20261015T180814Z`, hashes verificados,
+dry-run 0/0 y timer enabled/active. Pasada real success/0, 468 IDs, 41 bot,
+colas 0/0, marca temporal persistida y código instalado idéntico al repo.
+No se enviaron nuevas pruebas. La prueba histórica VANTA-73 queda intacta.
+Hubo HTTP 502 transitorio tras recrear la stack; recuperación verificada a 200.
+Evidencia saneada: `C:/VantareServer/evidence/1647c/`; permisos antes/después,
+prueba de alteración, SQL solo lectura y final-runtime.txt. Sin capturas de app.
+Rust y gates nativos omitidos por encargo explícito de tooling sin Rust.
+
+[Runbook y reversión](../../../../tools/server/vigilante-plane.md).
+La reversión mantiene ACL seguras y verifica hashes antes de restaurar; no
+borra campanas ni comentario. Riesgo previo de ntfy ante pérdida de acuse
+sigue documentado; no se afirma deduplicación del receptor. Conservar CLI
+vigente de nightly al integrar esta pila antigua. SHA, push, CI y estados
+verificados en #1647/#1649, Plane VANTA-77 y buzón 1647c.
+Siguiente: revisión del orquestador; **registro de Plane anuncia habilitado**
+(ENABLE_SIGNUP=1), pendiente de decisión en VANTA-47. Sin merge de PR,
+promoción a nightly/testers/master ni release por el worker.
 
 ## 1. Resultado
 

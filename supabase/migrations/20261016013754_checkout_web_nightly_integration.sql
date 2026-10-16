@@ -51,8 +51,13 @@ grant execute on function public.claim_billing_creator_checkout_attempt(uuid,uui
 alter function public.claim_billing_creator_checkout_attempt(uuid,uuid,text,text,text,text,uuid) owner to postgres;
 -- A canonical terminal attempt can release the offer reservation immediately.
 -- Keep #1593's CAS, account history and remote proof rules for all other cases.
-do $merge$ declare definition text; before text; begin
- definition:=pg_get_functiondef('public.billing_launch_checkout(uuid,text,text,text,text,timestamptz,uuid,uuid)'::regprocedure);
+-- #1673 may already be installed during an upgrade. Patch its private
+-- reservation implementation, never the public registry validator.
+do $merge$ declare definition text; before text; reservation regprocedure; begin
+ reservation:=coalesce(
+  to_regprocedure('private.billing_launch_checkout_before_1593_guard(uuid,text,text,text,text,timestamptz,uuid,uuid)'),
+  'public.billing_launch_checkout(uuid,text,text,text,text,timestamptz,uuid,uuid)'::regprocedure);
+ definition:=pg_get_functiondef(reservation);
  before:=$a$if p_now<greatest(used.reserved_at+interval '30 minutes',prior.expires_at)
     or (used.remote_pending and coalesce(used.checkout_id,prior.provider_checkout_id) is not null and p_replaces is distinct from used.attempt_id) then$a$;
  if position(before in definition)=0 then raise exception 'launch_guard_contract_changed'; end if;

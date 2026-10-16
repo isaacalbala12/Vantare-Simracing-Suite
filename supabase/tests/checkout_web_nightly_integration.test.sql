@@ -2,16 +2,19 @@
 begin;
 select no_plan();
 insert into public.profiles(id) values('16200008-0000-4000-8000-000000000001');
-select is(public.billing_launch_checkout('16200008-0000-4000-8000-000000000001','sandbox','product','once','pro_monthly',
- '2026-11-01','16200008-0000-4000-8000-000000000002'),'once','web and desktop reserve the canonical first period');
+insert into private.billing_launch_offers(environment,checkout_key,product_id,discount_id,starts_at,ends_at,catalog_version)
+values('sandbox','pro_monthly','16200009-0000-4000-8000-000000000001','16200009-0000-4000-8000-000000000002',
+ '2026-10-26 18:00Z','2026-11-26 18:00Z','merge');
+select is(public.billing_launch_checkout('16200008-0000-4000-8000-000000000001','sandbox','16200009-0000-4000-8000-000000000001','16200009-0000-4000-8000-000000000002','pro_monthly',
+ '2026-11-01','16200008-0000-4000-8000-000000000002'),'16200009-0000-4000-8000-000000000002','web and desktop reserve the canonical first period');
 select is((select guard_version from public.claim_billing_checkout_attempt('16200008-0000-4000-8000-000000000001',
  '16200008-0000-4000-8000-000000000002','pro_monthly','sandbox','merge')),2,'shared guard attests dispatch protocol');
-select throws_ok($$select public.billing_launch_checkout('16200008-0000-4000-8000-000000000001','sandbox','product','once','pro_monthly',
+select throws_ok($$select public.billing_launch_checkout('16200008-0000-4000-8000-000000000001','sandbox','16200009-0000-4000-8000-000000000001','16200009-0000-4000-8000-000000000002','pro_monthly',
  '2026-11-01','16200008-0000-4000-8000-000000000003')$$,'55000','promotion_checkout_pending','live app/web attempt cannot repeat offer');
 select ok(public.billing_reject_checkout_request('16200008-0000-4000-8000-000000000001','16200008-0000-4000-8000-000000000002'),'certain rejection records terminal proof');
-select is(public.billing_launch_checkout('16200008-0000-4000-8000-000000000001','sandbox','product','once','pro_monthly',
- '2026-11-01','16200008-0000-4000-8000-000000000003','16200008-0000-4000-8000-000000000002'),'once','terminal shared attempt releases offer without another thirty-minute hold');
-select throws_ok($$select public.billing_launch_checkout('16200008-0000-4000-8000-000000000001','sandbox','product','once','pro_monthly',
+select is(public.billing_launch_checkout('16200008-0000-4000-8000-000000000001','sandbox','16200009-0000-4000-8000-000000000001','16200009-0000-4000-8000-000000000002','pro_monthly',
+ '2026-11-01','16200008-0000-4000-8000-000000000003','16200008-0000-4000-8000-000000000002'),'16200009-0000-4000-8000-000000000002','terminal shared attempt releases offer without another thirty-minute hold');
+select throws_ok($$select public.billing_launch_checkout('16200008-0000-4000-8000-000000000001','sandbox','16200009-0000-4000-8000-000000000001','16200009-0000-4000-8000-000000000002','pro_monthly',
  '2026-11-01','16200008-0000-4000-8000-000000000004','16200008-0000-4000-8000-000000000002')$$,'55000','promotion_checkout_pending','stale replacement proof cannot replace new reservation');
 select is((select guard_version from public.claim_billing_checkout_attempt('16200008-0000-4000-8000-000000000001',
  '16200008-0000-4000-8000-000000000003','pro_monthly','sandbox','merge')),2,'new family member can be claimed once');

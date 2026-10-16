@@ -10,7 +10,16 @@ Rama `vantareapp/isa-1620-checkout-web`, actualizada mediante merge de nightly
 `9e48eb86f8d2cfc43b64010d2b1ac1c58768826a` (#1661/#1593), PR #1663.
 Entrega de código y pruebas locales. No acredita despliegue ni apertura.
 
-## Integración vigente con nightly (R8)
+## Registro de ofertas vigente (R9)
+
+Nightly e8aa2077c incorpora #1673:billing_launch_checkout comprueba el registro
+privado de ofertas y retira report_promotion_checkout. La liberación terminal
+se adapta al helper privado si la validación SQL ya está instalada; nunca se
+modifica ni salta el validador público. Pruebas de instalación limpia y upgrade.
+Mapa aplicado por el operador e instrucciones de registro:
+[configuración de producción](production-purchase-configuration.md).
+
+## Integración anterior con nightly (R8)
 
 La oferta inicial, atribución/renovación de creador, arbitraje de informes y
 Founders proceden de nightly, incluidos los contracargos. El adaptador web

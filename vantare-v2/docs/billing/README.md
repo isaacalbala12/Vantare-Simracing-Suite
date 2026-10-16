@@ -33,3 +33,5 @@ Los estados «no desplegado», resultados y recuentos BIL pertenecen a sus corte
 Los comandos legacy `vantare-admin grant`/`revoke` son bocetos no operativos en este checkout: sus helpers devuelven `not implemented in this version`. No reparan la fuente comercial de Polar. Para una discrepancia usar reconciliación y diagnosticar la fuente. Para acceso operativo usar el subcomando auditado, con preview y autorización cuando corresponda. No convertir una incidencia de compra en un grant manual.
 
 Guardar evidencia sanitizada en Notion: código/SHA, entorno, resultado y conteos. No copiar tokens, PII ni material privado. No hay venta pública habilitada por mantener estos runbooks: hacen falta la matriz comercial, el estado verificado y la aceptación aplicable.
+
+- [Configuración de compra en producción y registro de ofertas #1673](production-purchase-configuration.md).

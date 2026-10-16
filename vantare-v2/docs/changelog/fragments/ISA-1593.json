@@ -6,7 +6,8 @@
   "technicalNotes": [
     "El primer periodo usa la campaña de #1661 del 26-oct al 26-nov de 2026 a las 19:00 Madrid; una vez por cuenta y recuperable si caduca el intento.",
     "Dos aceptados conceden tres cobros rebajados y cinco conceden seis en total desde el segundo mes; saldo pendiente caduca a los seis meses.",
-    "Un único escritor coordina el descuento de informes y creador; conserva la retirada por devolución y los cupones ajenos."
+    "Un único escritor coordina el descuento de informes y creador; conserva la retirada por devolución y los cupones ajenos.",
+    "Endurecimiento: SQL valida el cupón inicial contra la proyección privada del catálogo #1661 y elimina la entrada heredada; registro por operador antes del despliegue."
   ],
   "testing": [
     "Con dobles locales, comprobar Pro y Pro Plus, ambos descuentos y cambio de ganador, reserva/caducidad, spam y devolución.",
@@ -15,6 +16,7 @@
   "knownLimitations": [
     "Requiere configurar el catálogo y validar todos los remanentes de creador de 1 a 10 meses antes de activar; esta entrega no crea cupones ni despliega.",
     "La comprobación de facturas/IVA/calendario en sandbox y la revisión visual siguen pendientes.",
-    "Progreso en la app del usuario queda como propuesta; la vista Owner está incluida."
+    "Progreso en la app del usuario queda como propuesta; la vista Owner está incluida.",
+    "Isaac ha aplazado el programa por informes: apagado por defecto y sin fechas de inscripción; ventana propia cuando se anuncie, independiente del lanzamiento."
   ]
 }

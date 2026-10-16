@@ -199,12 +199,39 @@ jobs:
             printf '%s\n' 'Marketing SQL/E2E omitted: Docker unavailable. This is not a passing database test.' >> "$GITHUB_STEP_SUMMARY"
           fi
 
+      - name: Prepare marketing PostgreSQL image
+        if: steps.docker.outputs.available == 'true'
+        shell: bash
+        timeout-minutes: 11
+        run: |
+          set -euo pipefail
+          # Both official registries publish this 17.6.1.165 multiarch digest.
+          digest=sha256:28f0e16a019e648089fc1a6d333549a55548f6019c15ae4bd7cd58b989027518
+          image=public.ecr.aws/supabase/postgres:17.6.1.165
+          for delay in 0 15 45; do
+            if [ "$delay" -gt 0 ]; then
+              printf 'Retrying PostgreSQL image download in %s seconds\n' "$delay"
+              sleep "$delay"
+            fi
+            for registry in public.ecr.aws/supabase/postgres docker.io/supabase/postgres; do
+              source="$registry@$digest"
+              if timeout --kill-after=10s 80s docker pull "$source"; then
+                # The disposable SQL runner consumes this existing local tag.
+                docker tag "$source" "$image"
+                printf 'PostgreSQL 17.6.1.165 ready from %s\n' "$source"
+                exit 0
+              fi
+              printf '::warning::PostgreSQL image unavailable from %s; trying the next official source.\n' "$source"
+            done
+          done
+          printf '%s\n' '::error::Both official PostgreSQL registries failed after three bounded rounds.'
+          exit 1
+
       - name: Test marketing SQL and end-to-end consent locally
         if: steps.docker.outputs.available == 'true'
         run: |
           until mkdir "$HOME/.vantare-marketing-docker.lock" 2>/dev/null; do sleep 5; done
           trap 'rmdir "$HOME/.vantare-marketing-docker.lock"' EXIT
-          docker pull public.ecr.aws/supabase/postgres:17.6.1.165
           python3 supabase/tests/run-admin-local.py \
             --output "$RUNNER_TEMP/marketing-sql" \
             --test marketing_mail.test.sql \

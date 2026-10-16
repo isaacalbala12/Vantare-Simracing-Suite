@@ -26,6 +26,20 @@ fn legacy_dto(snapshot: &vantare_domain::Snapshot) -> String {
             car.vehicle.clear();
             car.pit_stops = vantare_domain::Quality::Unavailable;
         }
+        // #1638: el REST explícito confirma ahora calma/seco. El parser SHM
+        // histórico nunca admitía esos dos ceros. Solo esta extensión exacta
+        // se vuelve a representar como ausencia en la vista del oráculo v9;
+        // números no nulos, otras calidades y todos los demás bytes siguen
+        // comparándose. La fixture real de Imola comprueba cero/TTL/identidad.
+        let weather = &mut snapshot.state.session.weather;
+        for value in [&mut weather.wind_speed_mps, &mut weather.track_wetness] {
+            if matches!(
+                value,
+                vantare_domain::Quality::Reliable(0.0) | vantare_domain::Quality::Stale(0.0)
+            ) {
+                *value = vantare_domain::Quality::Unavailable;
+            }
+        }
     }
     let dto = vantare_ipc::snapshot_to_json(&snapshot).expect("DTO v10");
     let start = dto.find(",\"driving_situation\":").expect("situation v10");

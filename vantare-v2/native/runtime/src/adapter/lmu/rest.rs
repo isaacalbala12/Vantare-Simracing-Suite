@@ -46,6 +46,9 @@ pub(super) struct SessionInfo {
     pub kind: Option<Kind>,
     pub global_yellow: bool,
     pub sector_flags: Vec<Flag>,
+    /// Ceros explícitos observados en Imola; ausencia no confirma calma/seco.
+    pub calm_wind: bool,
+    pub dry_track: bool,
 }
 
 /// Cada endpoint se confirma solo tras decodificar completo; una respuesta
@@ -241,6 +244,16 @@ fn decode_session_info(body: &[u8]) -> Result<SessionInfo, DecodeError> {
         track: text(row, "trackName")?,
         kind,
         global_yellow,
+        // La captura prueba el cero, sin tener que suponer unidades REST
+        // para velocidades positivas ni confundir ausencia con calma.
+        calm_wind: property(row, "windSpeed")
+            .and_then(Value::as_object)
+            .is_some_and(|wind| {
+                ["velocity", "x", "y", "z"]
+                    .iter()
+                    .all(|key| wind.get(*key).and_then(Value::as_f64) == Some(0.0))
+            }),
+        dry_track: property(row, "averagePathWetness").and_then(Value::as_f64) == Some(0.0),
         // REST tiene códigos textuales explícitos, no números de fase. Un
         // sector amarillo nunca se promueve a FCY/amarilla global.
         sector_flags: property(row, "sectorFlag")
@@ -388,6 +401,21 @@ mod tests {
             br#"[{"slotID":2,"carNumber":"7"},false]"#,
         ] {
             assert_eq!(decode_standings(body), Err(DecodeError::Malformed));
+        }
+    }
+
+    #[test]
+    fn absent_or_invalid_weather_is_not_explicit_calm_or_dry() {
+        for body in [
+            "{}",
+            r#"{"windSpeed":{},"averagePathWetness":null}"#,
+            r#"{"windSpeed":{"velocity":0,"x":0,"y":0},"averagePathWetness":"0"}"#,
+            r#"{"windSpeed":{"velocity":0,"x":1,"y":0,"z":0},"averagePathWetness":-1}"#,
+            r#"{"windSpeed":{"velocity":1,"x":0,"y":0,"z":0},"averagePathWetness":0.2}"#,
+        ] {
+            let info = decode_session_info(body.as_bytes()).expect("JSON válido");
+            assert!(!info.calm_wind);
+            assert!(!info.dry_track);
         }
     }
 

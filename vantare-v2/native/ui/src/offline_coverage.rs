@@ -7,6 +7,9 @@ use std::{
     io::{self, BufRead, Write},
 };
 
+#[path = "offline_motion.rs"]
+mod motion;
+
 fn qualities(value: &Value, path: &str, counts: &mut BTreeMap<String, BTreeMap<String, u64>>) {
     if let Some(text) = value.as_str() {
         if matches!(text, "unavailable" | "not_requested") {
@@ -56,6 +59,8 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     let mut counts = BTreeMap::new();
     let mut per_session = BTreeMap::new();
     let mut photos = 0_u64;
+    let mut motion = motion::Motion::default();
+    let mut source_states = BTreeMap::<String, u64>::new();
     for line in io::stdin().lock().lines() {
         let line = line?;
         let snapshot = vantare_ipc::snapshot_from_json(&line)?;
@@ -63,6 +68,13 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
             return Err("QA offline exige SourceKind::Replay".into());
         }
         photos += 1;
+        motion.observe(&snapshot);
+        *source_states
+            .entry(format!("{:?}", snapshot.state.source_state))
+            .or_default() += 1;
+        if photos.is_multiple_of(10_000) {
+            eprintln!("QA widgets: {photos} fotos evaluadas");
+        }
         for (_, widget, changes, _) in &mut widgets {
             if widget.ingest(&snapshot, prefs) {
                 *changes += 1;
@@ -81,7 +93,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         );
     }
     let widgets:Vec<_>=widgets.into_iter().map(|(kind,_,changes,demand)|json!({"widget":kind.name(),"photos_evaluated":photos,"projection_changes":changes,"required_signals":demand,"status":if photos>0 {"evaluated_not_certified"} else {"no_data"}})).collect();
-    let report = json!({"schema":"vantare.widgets-offline-report.v1","photos":photos,"widgets":widgets,"field_quality_counts":counts,"field_quality_per_session":per_session,"note":"Evaluar proyecciones no acredita todas las señales. Revisar los unavailable/stale y el informe de avisos, por sesión y situación."});
+    let report = json!({"schema":"vantare.widgets-offline-report.v1","photos":photos,"widgets":widgets,"motion_evidence":motion.report(),"source_state_counts":source_states,"field_quality_counts":counts,"field_quality_per_session":per_session,"note":"Evaluar proyecciones no acredita todas las señales. Revisar los unavailable/stale y el informe de avisos, por sesión y situación."});
     output.write_all(&serde_json::to_vec_pretty(&report)?)?;
     output.sync_all()?;
     if photos == 0 {

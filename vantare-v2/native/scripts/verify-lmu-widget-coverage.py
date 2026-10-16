@@ -31,9 +31,38 @@ def readable_report(telemetry, projections, scope):
              "Sesiones admitidas por el adaptador: " + ", ".join(telemetry.get("sessions", {})) + ".", "",
              "Se comprueba recepción y proyección; no certifica todas las señales ni la pantalla.",
              "Las calidades por campo y sesión están en widgets.json; los errores e inventario REST en telemetry.json.", "",
-             "| Widget | Fotos | Cambios de proyección |", "| --- | ---: | ---: |"]
+             "Estados de fuente: " + json.dumps(projections.get("source_state_counts", {})) + ".",
+             "Los datos caducados no acreditan señales actuales. La recuperación exige avance sostenido; no se relajan los límites de frescura.", "",
+             "| Widget | Fotos | Cambios de proyección | Evidencia que revisar |", "| --- | ---: | ---: | --- |"]
+    motion = projections.get("motion_evidence", {})
+    moving = motion.get("opponent_moving_samples", 0) > 0
+    speed = motion.get("player_speed_mps", {})
+    stationary = speed.get("reliable_samples", 0) > 0 and speed.get("min") == speed.get("max") == 0
+    grid = {"standings", "relative", "radar", "multiclass-relative",
+            "broadcast-tower", "head-to-head", "fastest-lap"}
     for widget in projections["widgets"]:
-        lines.append(f"| {widget['widget']} | {widget['photos_evaluated']} | {widget['projection_changes']} |")
+        name = widget["widget"]
+        note = "Recepción/proyección; no certificada"
+        if name in grid and moving:
+            note = "Parrilla/IA en movimiento; revisar calidades, faltantes y caducidad"
+        elif name == "track-map":
+            note = "Poses no acreditan mapa: hace falta geometría productiva de pista"
+        elif name == "track-weather":
+            note = "Clima real; no acredita presión, rumbo geográfico ni pronóstico"
+        elif name == "racing-flags":
+            note = "Solo banderas observadas; sin cobertura de salida/formación"
+        elif stationary:
+            note = "Solo estructura del jugador parado; dinámica pendiente"
+        lines.append(f"| {name} | {widget['photos_evaluated']} | {widget['projection_changes']} | {note} |")
+    if motion:
+        lines += ["", "## Movimiento observado en el DTO", "",
+                  f"IA/rivales: {motion['moving_opponent_ids']} identidades con velocidad fiable >0,1 m/s; máximo {motion['opponents_max_speed_mps']:.3f} m/s.",
+                  f"Jugador: velocidad fiable mín./máx. {speed.get('min')}/{speed.get('max')} m/s ({speed.get('reliable_samples', 0)} fotos).",
+                  "Vueltas completadas del jugador: " + json.dumps(motion["player_completed_laps"]) + ".",
+                  "Inputs del jugador: " + json.dumps(motion["player_inputs"]) + ".",
+                  "Son fotos del DTO, no muestras independientes del simulador. Stale/Estimated no cuentan como evidencia de movimiento."]
+        if stationary:
+            lines += ["El jugador no aporta conducción verificada. Pedales, trazas, delta, consumo, estrategia y evolución de daños quedan sin validación dinámica."]
     lines += ["", "| Avisos: campo | Calidades observadas | Alcance de la comprobación |",
               "| --- | --- | --- |"]
     for field, counts in telemetry["session_alerts"].items():
@@ -108,6 +137,7 @@ def offline(recording, target, output, test_bin=None, scope="unspecified"):
                 raise RuntimeError("faltan campos de Avisos en el informe")
             report.update(status="evaluated_pending_coverage_review", widgets=18,
                           photos=telemetry["photos"], session_alerts=telemetry["session_alerts"],
+                          motion_evidence=projections.get("motion_evidence"),
                           adapter_or_core_rejections=telemetry["adapter_or_core_rejections"])
             (output / "report.md").write_text(readable_report(telemetry, projections, scope), encoding="utf-8")
         (output / "summary.json").write_text(json.dumps(report, indent=2), encoding="utf-8")

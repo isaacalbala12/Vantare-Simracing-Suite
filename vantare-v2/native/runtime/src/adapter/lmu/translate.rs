@@ -203,7 +203,7 @@ impl Translator {
                     vantare_domain::SourceState::Live
                 },
                 capabilities: capabilities(
-                    &frame,
+                    &session,
                     &cars,
                     player.as_ref(),
                     &flags,
@@ -555,7 +555,7 @@ impl Translator {
                 // y REST no anuncia la siguiente sesión. No inferirlas.
                 ..vantare_domain::SessionTiming::default()
             },
-            weather: weather(frame.weather, stale),
+            weather: weather(frame, rest, stale),
         }
     }
 }
@@ -621,7 +621,24 @@ fn stale_quality<T>(value: Quality<T>, stale: bool) -> Quality<T> {
     }
 }
 
-fn weather(value: Weather, stale: bool) -> Weather {
+fn weather(frame: &Frame, rest: Option<&rest::SessionInfo>, stale: bool) -> Weather {
+    let mut value = frame.weather;
+    // Los ceros SHM son ambiguos en fixtures históricos saneados. El REST
+    // explícito de esta misma sesión confirma calma/pista seca sin cambiar
+    // el reloj SHM ni rellenar presión/dirección que la fuente no demuestra.
+    if let Some(info) = rest.filter(|info| {
+        !frame.vehicles.is_empty()
+            && info.kind.is_some()
+            && info.kind == frame.kind
+            && info.track.as_deref() == Some(frame.track.as_str())
+    }) {
+        if matches!(value.wind_speed_mps, Quality::Unavailable) && info.calm_wind {
+            value.wind_speed_mps = Quality::Reliable(0.0);
+        }
+        if matches!(value.track_wetness, Quality::Unavailable) && info.dry_track {
+            value.track_wetness = Quality::Reliable(0.0);
+        }
+    }
     Weather {
         air_temperature_k: stale_quality(value.air_temperature_k, stale),
         track_temperature_k: stale_quality(value.track_temperature_k, stale),
@@ -665,7 +682,7 @@ fn flags(
 }
 
 fn capabilities(
-    frame: &Frame,
+    session: &Session,
     cars: &[Car],
     player: Option<&Player>,
     flags: &Quality<Vec<Flag>>,
@@ -674,8 +691,9 @@ fn capabilities(
 ) -> Capabilities {
     let has_cars = !cars.is_empty();
     let telemetry = player.map(|player| &player.telemetry);
+    let weather = &session.weather;
     Capabilities {
-        session_clock: capability(frame.source_time.is_some(), stale),
+        session_clock: capability(has(&session.elapsed_s), stale),
         positions: capability(has_cars, stale),
         lap_times: capability(has_cars, stale),
         gaps: capability(
@@ -716,11 +734,11 @@ fn capabilities(
         ),
         weather: capability(
             [
-                frame.weather.air_temperature_k,
-                frame.weather.track_temperature_k,
-                frame.weather.wind_speed_mps,
-                frame.weather.rain,
-                frame.weather.track_wetness,
+                weather.air_temperature_k,
+                weather.track_temperature_k,
+                weather.wind_speed_mps,
+                weather.rain,
+                weather.track_wetness,
             ]
             .iter()
             .any(has),

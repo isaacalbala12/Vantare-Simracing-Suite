@@ -6,6 +6,61 @@ const TRACK_1420: &[u8] = include_bytes!("../../../../../testdata/lmu-1.4.2.0-tr
 const PLAYER: usize = 128_468 + 43 * 1_888;
 
 #[test]
+fn imola_explicit_rest_zeros_confirm_calm_and_dry_only_for_the_current_session() {
+    let body = include_bytes!("../../../testdata/lmu-imola-2026-10-16/sessionInfo.json");
+    let mut cache = rest::Cache::default();
+    cache
+        .accept_session(body, Duration::ZERO)
+        .expect("REST real saneado");
+    let mut frame = frame::admit(REAL_44, "1.3.0.0").expect("captura real");
+    // Asociación controlada para probar fronteras de identidad y frescura;
+    // no se presenta el frame histórico como captura física de Imola.
+    frame.track = "Autodromo Enzo e Dino Ferrari".into();
+    frame.weather = Weather::default();
+    let read = |frame: &Frame, now, floor, stale| {
+        weather(
+            frame,
+            cache
+                .session(now, floor)
+                .filter(|(_, fresh)| *fresh)
+                .map(|(i, _)| i),
+            stale,
+        )
+    };
+    let current = read(&frame, Duration::ZERO, Duration::ZERO, false);
+    assert_eq!(current.wind_speed_mps, Quality::Reliable(0.0));
+    assert_eq!(current.track_wetness, Quality::Reliable(0.0));
+    assert_eq!(current.wind_direction_rad, Quality::Unavailable);
+    assert_eq!(current.pressure_pa, Quality::Unavailable);
+    let stale = read(&frame, Duration::ZERO, Duration::ZERO, true);
+    assert_eq!(stale.wind_speed_mps, Quality::Stale(0.0));
+    assert_eq!(stale.track_wetness, Quality::Stale(0.0));
+    for (now, floor) in [
+        (Duration::from_secs(3), Duration::ZERO),
+        (Duration::ZERO, Duration::from_nanos(1)),
+    ] {
+        assert_eq!(read(&frame, now, floor, false), Weather::default());
+    }
+    frame.track = "Otro circuito".into();
+    assert_eq!(
+        read(&frame, Duration::ZERO, Duration::ZERO, false),
+        Weather::default()
+    );
+    frame.track = "Autodromo Enzo e Dino Ferrari".into();
+    frame.kind = Some(Kind::Race);
+    assert_eq!(
+        read(&frame, Duration::ZERO, Duration::ZERO, false),
+        Weather::default()
+    );
+    frame.kind = Some(Kind::Practice);
+    frame.vehicles.clear();
+    assert_eq!(
+        read(&frame, Duration::ZERO, Duration::ZERO, false),
+        Weather::default()
+    );
+}
+
+#[test]
 fn garage_stall_is_explicit_not_pit_state_and_legacy_zero_is_absent() {
     use vantare_domain::DrivingSituation as S;
     assert_eq!(

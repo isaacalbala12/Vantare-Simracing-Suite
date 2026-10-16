@@ -58,6 +58,9 @@ fn inventory(
         footer |= record.kind == "footer";
         if record.kind == "shm" && record.key == "LMU_Data" && record.details["stable"] == true {
             stable_frames += 1;
+            if stable_frames.is_multiple_of(25_000) {
+                eprintln!("Integridad: {stable_frames} frames SHM estables verificados");
+            }
         }
         if record.kind == "rest" {
             let entry = inventory

@@ -161,7 +161,9 @@ jobs:
             supabase/functions/scripts/verify-deploy-surface.test.ts
 
       - name: Test marketing CI capability contract
-        run: python .github/scripts/test_marketing_postgres_ci.py
+        run: |
+          python .github/scripts/test_marketing_postgres_ci.py
+          python -m unittest discover -s supabase/tests -p test_run_admin_local.py
 
       - name: Test marketing handlers offline
         working-directory: supabase/functions

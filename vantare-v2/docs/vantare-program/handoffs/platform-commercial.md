@@ -1,24 +1,39 @@
 ## #1636 · VANTA-72 · Corrección de CI Deno/GitGuardian (16/10/2026)
 
-Entrada limpia `b1ad884ae`, PR #1657; run fallido 38891374186. Mac tenía Deno
-2.9.6, CI fija 2.7.13. Binario exacto instalado solo en evidencia: reproduce
-18 errores offline y dos TS2339 del E2E ocultados por el runner (sin artefactos).
-Dobles fetch/fetchFn anotados con RequestInit; comparación de Headers mediante
-forEach, sin quitar type checking ni ampliar permisos. Runner imprime diagnóstico
-original y CI conserva solo log E2E en fallo, tres días.
+Entrada limpia `b1ad884ae`, PR #1657; run fallido 38891374186. Mac usaba Deno
+2.9.6 (TS6.0.3), workflow fija 2.7.13 (TS5.9.2). Repro exacta en Ubuntu24.04
+amd64/Deno2.7.13 bajo Docker del Mac: 18 errores de tipos offline y dos TS2339
+del E2E antes de corregir. El run no tenía artefactos; runner ocultaba la salida.
 
-GG38177715/38177716 son fixtures sintéticos heredados de commit2354cd4 (#1602),
-en las dos rutas exactas ya excluidas por ggshield; la app mantiene exclusiones
-propias. URI PostgreSQL y Basic Auth se construyen ahora en ejecución sin
-versionar los literales detectados. Se mantiene contenido equivalente, mock de
-psql/red y assertions de redacción; no se amplían exclusiones ni ocultan secretos.
-No se resuelven incidentes del panel ni se afirma check remoto verde sin CI.
+Commit `75c40dc1`: RequestInit explícito en dobles fetch/fetchFn y forEach para
+comparar Headers sin depender de dom.iterable; no quita checking ni assertions.
+Runner imprime diagnóstico original; workflow conserva solo log E2E en fallo,
+tres días, acción ya fijada/reutilizada. Regresión posterior comprueba salida
+original, log persistido y limpieza de BD; roja con runner antiguo y verde
+con el nuevo, también en Linux; test enganchado a policy.
 
-Validando comandos exactos en Ubuntu24.04 amd64/Deno2.7.13 con Docker bajo lock,
-además de privacidad Python y Rust services Windows. Sin cambios de producto,
-migraciones o configuración real. Evidencia ~/evidence/1636-ci/ y
-C:/VantareServer/evidence/1636-ci/. Estado final/bare/FIN al cierre; orquestador
-publica y vigila CI. Sin llamadas SaaS reales ni gasto por worker.
+GG38177715/38177716: PostgreSQL y Basic Auth sintéticos heredados de commit2354cd4,
+rutas tools/triage/test_review_1602.py y native/services/src/triage/tests.rs.
+Valores preparados por tests, psql/red con dobles; Basic codifica synthetic:fixture.
+Se construyen ahora en ejecución manteniendo valor equivalente y cobertura de
+redacción. No se amplía ninguna exclusión. .gitguardian.yaml aclara que la lista
+existente es local de ggshield; no acredita la app verde ni cambia el panel.
+**Resultado remoto de GitGuardian pendiente del nuevo push del orquestador**;
+no se afirma escaneo local de ese proveedor ni se ignoraron incidentes remotos.
+
+Verdes en Ubuntu24.04 amd64/Deno2.7.13: comandos exactos CI **88 Edge +142 SQL
++E2E1** con PostgreSQL real (daemon Docker del Mac, imagen fijada), sin red en
+los tests, OAuth/Brevo/Clerk dobles. CI contrato **2**, diagnóstico **1**, formato
+Deno PASS. Privacidad Python **9**; URI fixture idéntica en memoria comprobada.
+Windows services: fmt y Clippy all-targets -D warnings PASS, **19** tests de
+privacidad seleccionados PASS (174 no ejecutados/ignorados por el filtro).
+Comandos seriales por cola y target propio. Quality/**456** huellas PASS.
+Sin cambios de producto ni migraciones; lifecycle/telemetría no repetidos.
+
+Evidencia ~/evidence/1636-ci/ y C:/VantareServer/evidence/1636-ci/. Log fallido GH
+descargado; sin artefactos disponibles de aquel run. Handoff actualizado; SHA,
+push bare y FIN al cierre. Orquestador publica y vigila CI; sin push GitHub,
+configuración real, llamadas SaaS de producto, promoción, deploy o gasto.
 
 ## #1636 · VANTA-72 · Segunda sincronización nightly (16/10/2026)
 

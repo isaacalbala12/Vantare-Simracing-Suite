@@ -26,8 +26,7 @@ class MarketingPostgresCI(unittest.TestCase):
         self.assertIn("if: failure() && steps.docker.outputs.available == 'true'", job)
         self.assertIn("${{ runner.temp }}/marketing-sql/marketing-mail-e2e.log", job)
         self.assertIn("retention-days: 3", job)
-        runner = (WORKFLOW.parents[2] / "supabase/tests/run-admin-local.py").read_text()
-        self.assertIn("print(result.stdout+result.stderr,file=sys.stderr,flush=True)", runner)
+        self.assertIn("python -m unittest discover -s supabase/tests -p test_run_admin_local.py", workflow)
         product = workflow.split("  product:", 1)[1]
         self.assertIn("needs: policy", product)
         self.assertNotIn("needs: [policy, marketing-postgres]", product)

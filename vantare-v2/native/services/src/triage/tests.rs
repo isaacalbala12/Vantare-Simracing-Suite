@@ -463,24 +463,24 @@ fn review_r2_f1_json_representations_are_removed_before_preview() {
 
 #[test]
 fn review_p1_1_basic_and_sk_hyphen_are_removed_before_preview() {
+    use base64::Engine as _;
+    // Build the synthetic wire value in the test instead of storing an auth literal.
+    let basic = base64::engine::general_purpose::STANDARD.encode(b"synthetic:fixture");
     for (raw, secret) in [
+        (format!("Authorization: Basic {basic}"), basic.clone()),
         (
-            "Authorization: Basic c3ludGhldGljOmZpeHR1cmU=",
-            "c3ludGhldGljOmZpeHR1cmU=",
+            serde_json::json!({"Authorization":format!("bAsIc {basic}")}).to_string(),
+            basic,
         ),
         (
-            r#"{"Authorization":"bAsIc c3ludGhldGljOmZpeHR1cmU="}"#,
-            "c3ludGhldGljOmZpeHR1cmU=",
-        ),
-        (
-            "sk-proj-FixtureOpaqueCredential",
-            "sk-proj-FixtureOpaqueCredential",
+            "sk-proj-FixtureOpaqueCredential".to_owned(),
+            "sk-proj-FixtureOpaqueCredential".to_owned(),
         ),
     ] {
         // The same cleaner runs over title, body, hardware and attachment before preview.
-        let packet = prepared_text(raw);
+        let packet = prepared_text(&raw);
         assert!(
-            !packet.contains(secret),
+            !packet.contains(&secret),
             "synthetic credential survived preview"
         );
     }

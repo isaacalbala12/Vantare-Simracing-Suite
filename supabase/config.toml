@@ -56,3 +56,17 @@ verify_jwt = false
 # This does not add a deployment wrapper or enable the campaign.
 [functions.billing-report-promotion]
 verify_jwt = false
+
+# #1636 review candidate. Public withdrawals authenticate their signed link or webhook header.
+[functions.mail-unsubscribe]
+verify_jwt = false
+[functions.mail-webhook]
+verify_jwt = false
+
+# #1636 R2, queue-only authenticated maintenance worker; no scheduler configured.
+[functions.mail-cleanup]
+verify_jwt = false
+
+# #1636 R2, native OAuth + verified primary email enforced by handler.
+[functions.native-mail-consent]
+verify_jwt = false

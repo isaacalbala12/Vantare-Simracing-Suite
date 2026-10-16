@@ -138,7 +138,7 @@ def main():
                 return account,subject,issuer
             def claim(account,attempt,plan="pro_monthly",catalog="fixture"):
                 return f"select outcome from claim_billing_checkout_attempt('{account}','{attempt}','{plan}','sandbox','{catalog}');"
-            def race(first,second,expected,label,allowed_wait=("advisory",)):
+            def race(first,second,expected,label,allowed_wait=("advisory",),expected_advisory=None):
                 holder = subprocess.Popen([str(binary),*connection],env=env,stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
                 contender = None
                 try:
@@ -152,9 +152,12 @@ def main():
                         wait = sql(f"select wait_event from pg_stat_activity where application_name='checkout-contender' and {pid}=any(pg_blocking_pids(pid));")
                         if wait:
                             assert wait in allowed_wait,label+": wrong lock order: "+wait
+                            if expected_advisory is not None:
+                                class_id,object_id = expected_advisory
+                                assert sql(f"select count(*) from pg_locks l join pg_stat_activity a on a.pid=l.pid where a.application_name='checkout-contender' and l.locktype='advisory' and not l.granted and l.classid={class_id} and l.objid={object_id} and l.objsubid=2;")=="1",label+": wrong advisory barrier"
                             break
                         if contender.poll() is not None or time.monotonic()>deadline:
-                            raise AssertionError(label+": contender did not wait for the real UUID lock")
+                            raise AssertionError(label+": contender did not wait for the expected transaction barrier")
                         time.sleep(.01)  # Observe actual blocker, not elapsed-time correctness.
                     holder.stdin.write(b"commit;\n")
                     holder.stdin.close()
@@ -205,12 +208,23 @@ def main():
             race("select billing_expire_unpublished_checkouts('sandbox');",
                  f"select coalesce(billing_begin_checkout_request('{account}','{attempt}','00000000-0000-0000-0000-000000000003')::text,'blocked');",
                  "blocked","F1 expired undispatched claim cannot POST later")
-            # Deletions for different accounts serialize the event counter through
-            # commit. A plain sequence would permit cursor gaps.
+            # Isolate the transactional web counter: the earlier marketing
+            # advisory lock must not mask a sequence-induced cursor gap.
+            aa,_,_=seed(); bb,_,_=seed()
+            race(f"select private.enqueue_web_purchase_erasure('{aa}');",
+                 f"select private.enqueue_web_purchase_erasure('{bb}'); select 'enqueued';",
+                 "enqueued","D1 isolated web counter commit order",allowed_wait=("transactionid","tuple"))
+            assert sql(f"select (select id from private.web_purchase_erasure_events where account_id='{aa}')<(select id from private.web_purchase_erasure_events where account_id='{bb}');")=="t"
+            # Full account deletion reaches the marketing barrier first; require
+            # its exact two-integer key, not any unrelated advisory wait.
             aa,sa,ia=seed(); bb,sb,ib=seed(); event=str(uuid.uuid4())
+            for account,suffix in [(aa,"a"),(bb,"b")]:
+                sql(f"select public.mail_record_consent('{account}','web-mail-{suffix}-{event}@example.invalid','es',true,'local integration fixture',false);")
             delete_a=f"select apply_clerk_user_event('pull-a-{event}',repeat('a',64),'{ia}','{sa}','user.deleted',now(),null);"
             delete_b=f"select apply_clerk_user_event('pull-b-{event}',repeat('b',64),'{ib}','{sb}','user.deleted',now(),null);"
-            race(delete_a,delete_b,"applied","D1 erasure commit order has no cursor gap",allowed_wait=("transactionid","tuple"))
+            race(delete_a,delete_b,"applied","D1 full erasure serializes at marketing barrier",expected_advisory=(1636,300))
+            assert sql(f"select count(*) from private.mail_contacts where account_id in('{aa}','{bb}');")=="0"
+            assert sql(f"select count(*) from private.mail_contact_erasures where account_id in('{aa}','{bb}') and state='pending';")=="2"
             assert sql(f"select (select id from private.web_purchase_erasure_events where account_id='{aa}')<(select id from private.web_purchase_erasure_events where account_id='{bb}');")=="t"
 
             for direction in ["app-first","web-first"]:

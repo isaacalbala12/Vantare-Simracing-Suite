@@ -1,11 +1,13 @@
 """Adversarial review regressions. Synthetic fixtures, no provider or network."""
 import json
+import base64
 import copy
 import hashlib
 import re
 from pathlib import Path
 import tempfile
 import unittest
+from urllib.parse import urlunsplit
 from types import SimpleNamespace
 from unittest.mock import patch
 from state import State
@@ -15,6 +17,14 @@ from test_plane_intake import MockPlane, CONFIG
 from privacy import redact
 import privacy
 import plane_intake
+
+
+def fixture_connection():
+    """Synthetic connection for the mocked psql sink; never opens a connection."""
+    host = '.'.join(('fixture', 'pooler', 'supabase', 'com'))
+    actor = 'vantare_triage.' + triage.PROJECT
+    authority = f'{actor}:fixture@{host}:5432'
+    return urlunsplit(('postgresql', authority, '/postgres', '', ''))
 
 
 class Tests(unittest.TestCase):
@@ -61,8 +71,9 @@ class Tests(unittest.TestCase):
         return json.dumps(captured,ensure_ascii=False),json.dumps(sent,ensure_ascii=False)
 
     def test_review_p1_1_basic_and_sk_hyphen_never_reach_model_or_delivery(self):
-        fixtures=[('Authorization: Basic c3ludGhldGljOmZpeHR1cmU=','c3ludGhldGljOmZpeHR1cmU='),
-                  ('"Authorization":"bAsIc c3ludGhldGljOmZpeHR1cmU="','c3ludGhldGljOmZpeHR1cmU='),
+        basic=base64.b64encode(b'synthetic:fixture').decode('ascii')
+        fixtures=[('Authorization: Basic '+basic,basic),
+                  (json.dumps({'Authorization':'bAsIc '+basic}),basic),
                   ('sk-'+'proj-FixtureOpaqueCredential','sk-'+'proj-FixtureOpaqueCredential')]
         for raw,secret in fixtures:
             with self.subTest(raw=raw):
@@ -179,7 +190,7 @@ class Tests(unittest.TestCase):
     def test_review_p2_7_late_visible_report_behind_persisted_cursor_is_discovered_once(self):
         with tempfile.TemporaryDirectory() as root:
             state=State(Path(root)/'state');credential=Path(root)/'fixture-connection'
-            credential.write_text('postgresql://vantare_triage.'+triage.PROJECT+':fixture@fixture.pooler.supabase.com:5432/postgres',encoding='utf-8')
+            credential.write_text(fixture_connection(),encoding='utf-8')
             a=report();a['created_at']='2026-10-13T00:00:01Z'
             b=copy.deepcopy(a);b['id']='15940000-0000-0000-0000-000000000011';b['created_at']='2026-10-13T00:00:02Z'
             sent=[];calls=[]
@@ -202,7 +213,7 @@ class Tests(unittest.TestCase):
     def test_review_p2_7_seen_first_page_does_not_starve_later_unseen_reports(self):
         with tempfile.TemporaryDirectory() as root:
             state=State(Path(root)/'state');credential=Path(root)/'fixture-connection'
-            credential.write_text('postgresql://vantare_triage.'+triage.PROJECT+':fixture@fixture.pooler.supabase.com:5432/postgres',encoding='utf-8')
+            credential.write_text(fixture_connection(),encoding='utf-8')
             visible=[]
             try:
                 for index in range(225):

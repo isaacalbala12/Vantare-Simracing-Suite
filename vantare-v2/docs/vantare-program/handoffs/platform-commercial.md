@@ -2324,6 +2324,61 @@ QA web real pendiente. Logs `C:/tmp/ola2/1603-*.log`, tabla RED→GREEN en
 `C:/tmp/ola2/fix-1603-results.md`; SHA del push en issue/PR/buzón.
 El runbook documenta estas guardas. Sin nuevas acciones de producción.
 
+## Servidor · VANTA-77 / ISA-1647c · 2026-10-15
+
+Actualización 16/10 por encargo del orquestador: merge de `origin/nightly`
+`9e48eb86f8d2cfc43b64010d2b1ac1c58768826a` en esta rama de issue.
+Cuatro conflictos resueltos: vigilante ampliado y su instalador con manifiesto,
+helper y hardening conservados; README con los avisos ampliados; CLI idéntica
+a nightly, incluida la firma `[orquestador] ` de #1650. Vigilante/helper 54 y
+CLI 10 PASS; calidad 456 huellas PASS. Suites Python activas de tools: 170 PASS
+y 1 FAIL heredado de nightly, catálogo triage desalineado con ocho variantes
+nuevas de services::Error (test_review_1602_r5). Reproducido el mismo fallo
+en snapshot limpio de nightly; no se corrige fuera del encargo de merge.
+SHA y resultados finales en #1647/#1649 y buzón 1647c.
+No se despliega ni se envían pruebas reales en esta ronda; no fusiona la PR
+ni promociona la rama a ningún canal. Las pruebas de runtime de abajo
+corresponden al despliegue del 15/10, no se atribuyen a este merge.
+
+Encargo del orquestador: revisión completa DeepSeek ds-rev1583-1649.
+PR [#1649](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1649),
+rama `vantareapp/isa-1647-vigilante-plane`, ahora incorpora la base #1583
+`vantareapp/isa-1565-servidor@1d7e6edb5` mediante merge entre ramas de issue.
+Se resolvió solo el instalador conservando hashes, helper y hardening.
+P2-1: scripts ops/linux y todos los archivos del backup 1647b pasan de
+svc Modify a RX; dueño Administrators; solo Administrators/SYSTEM escriben.
+Backup con ACL propia y SHA256SUMS (integridad acreditada desde la revocación).
+Instalación exige SHA-256 de instalador y ambos scripts en snapshot privado;
+prueba de alteración abortó sin modificar el script instalado. Scripts Linux,
+/etc/vantare y /var/lib/vantare son root, sin escritura de grupo/otros.
+P3-6: tres intentos persistidos por campana, después abandono registrado;
+ntfy sigue independiente. P3-8: cuerpos API no JSON omitidos con ID/clase.
+P3-9: consulta desde última marca con solape 5 min, máximo 30 días al recuperar;
+poda IDs antiguos, conserva pendientes. Fuera de esa ventana requiere revisión
+manual. P3-10: lanzadores y despliegue reproducibles incluidos en el repo.
+
+54 tests de vigilante/helper + 10 CLI PASS en Windows y Linux; quality
+456 huellas PASS; bash -n de seis scripts y cuatro unidades systemd PASS.
+Despliegue autorizado con backup root:700 sin secretos:
+`/var/backups/vigilante/1647c-20261015T180814Z`, hashes verificados,
+dry-run 0/0 y timer enabled/active. Pasada real success/0, 468 IDs, 41 bot,
+colas 0/0, marca temporal persistida y código instalado idéntico al repo.
+No se enviaron nuevas pruebas. La prueba histórica VANTA-73 queda intacta.
+Hubo HTTP 502 transitorio tras recrear la stack; recuperación verificada a 200.
+Evidencia saneada: `C:/VantareServer/evidence/1647c/`; permisos antes/después,
+prueba de alteración, SQL solo lectura y final-runtime.txt. Sin capturas de app.
+Rust y gates nativos omitidos por encargo explícito de tooling sin Rust.
+
+[Runbook y reversión](../../../../tools/server/vigilante-plane.md).
+La reversión mantiene ACL seguras y verifica hashes antes de restaurar; no
+borra campanas ni comentario. Riesgo previo de ntfy ante pérdida de acuse
+sigue documentado; no se afirma deduplicación del receptor. Conservar CLI
+vigente de nightly al integrar esta pila antigua. SHA, push, CI y estados
+verificados en #1647/#1649, Plane VANTA-77 y buzón 1647c.
+Siguiente: revisión del orquestador; **registro de Plane anuncia habilitado**
+(ENABLE_SIGNUP=1), pendiente de decisión en VANTA-47. Sin merge de PR,
+promoción a nightly/testers/master ni release por el worker.
+
 ## 1. Resultado
 
 ### Servidor · VANTA-47 / revisión 1647c · 2026-10-15

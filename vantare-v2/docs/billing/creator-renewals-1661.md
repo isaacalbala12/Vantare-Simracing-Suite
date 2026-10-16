@@ -49,9 +49,17 @@ cupones históricos de dos meses ni se modifica su comportamiento silenciosament
    #1680 valida el único precio seleccionado en `subscription.prices`: ID del
    mapa del plan, producto esperado, catálogo fijo EUR y céntimos normales.
    Si llega `price_id` legacy debe coincidir; el intervalo del precio, si llega,
-   también. `subscription.amount` es el importe ya descontado: se admite entero
-   entre cero y el normal, sin exigir igualdad. GET y respuesta PATCH usan la
-   misma validación y rechazan cupones fuera de la allowlist durable.
+   también. `subscription.amount` debe ser entero y coincidir con el descuento
+   gestionado devuelto en `discount`, cuyo ID debe igualar `discount_id`:
+   fijo → normal menos `min(amounts.eur, normal)`; porcentaje → normal menos
+   `Math.round(normal * (basis_points / 10000))`. Polar redondea el ahorro antes
+   de restarlo; no se redondea el importe final. Sin cupón exige importe normal
+   y `discount=null`. Datos ausentes/malformados o importe incoherente fallan
+   cerrado, sin ACK de éxito. GET y respuesta PATCH usan la misma validación;
+   permanecen la allowlist durable y todos los controles del precio base.
+   `prices` distinto de una entrada falla antes de autorización/PATCH.
+   La respuesta de una escritura incoherente conserva incidencia y retry;
+   un GET posterior coherente recupera ACK sin volver a escribir.
    RPC de autorización revalida lease, borrado, pago inicial no reembolsado y
    ausencia de Founders inmediatamente antes del PATCH.
 5. PATCH solo discount_id; nunca precio/producto, factura, reembolso o dinero.
@@ -96,6 +104,16 @@ la candidatura de informes queda sin publicar hasta esa integración.
 Founders no recibe descuentos ni comisión de creador. Incluye Stable y Nightly
 vitalicios, y cancela la renovación Pro/Plus al fin pagado sin reembolso. Un
 reembolso Founders retira sus derechos y no reactiva la suscripción.
+
+### Producto de lanzamiento histórico · P3-4 / #1682
+
+El guardia del mapa solo admite `polar_product_id` normal. Una suscripción
+antigua sobre `polar_launch_product_id` puede quedar bloqueada con incidencia
+`creator_renewal_product_mismatch`; esta entrega no amplía la allowlist ni
+convierte productos/precios. El catálogo actual aplica once sobre productos
+normales y no crea ese caso. Antes de operar suscripciones históricas: inventariar
+producto/precio/atribución y decidir su tratamiento en una issue autorizada.
+No cambiar el ID por el normal para forzar el ACK ni reaplicar cupones a ciegas.
 
 ## Checklist pendiente del operador
 

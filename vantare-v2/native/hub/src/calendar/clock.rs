@@ -12,6 +12,22 @@ pub enum Zone {
     Utc,
     /// Segundos al este de UTC.
     Fixed(i32),
+    /// Zona con la regla horaria de la UE (último domingo de marzo a último de
+    /// octubre, 01:00 UTC) y su desfase estándar en segundos. Solo en tests:
+    /// fija Europa/Madrid sin depender de la máquina ni de una base de zonas.
+    #[cfg(test)]
+    Eu(i32),
+}
+
+/// Último domingo del mes, a la 01:00 UTC.
+#[cfg(test)]
+fn eu_switch(year: i32, month: u32) -> DateTime<Utc> {
+    let last = NaiveDate::from_ymd_opt(year, month, 31).unwrap_or_default();
+    let back = i64::from(last.weekday().num_days_from_sunday());
+    (last - Duration::days(back))
+        .and_hms_opt(1, 0, 0)
+        .unwrap_or_default()
+        .and_utc()
 }
 
 const DAYS: [&str; 7] = ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"];
@@ -31,6 +47,11 @@ impl Zone {
         match self {
             Self::Utc => 0,
             Self::Fixed(secs) => secs,
+            #[cfg(test)]
+            Self::Eu(standard) => {
+                let summer = at >= eu_switch(at.year(), 3) && at < eu_switch(at.year(), 10);
+                standard + if summer { 3600 } else { 0 }
+            }
             Self::Local => at.with_timezone(&Local).offset().fix().local_minus_utc(),
         }
     }
@@ -58,6 +79,20 @@ impl Zone {
             Self::Fixed(secs) => FixedOffset::east_opt(secs)
                 .and_then(|zone| zone.from_local_datetime(&midnight).earliest())
                 .map_or_else(|| midnight.and_utc(), |at| at.with_timezone(&Utc)),
+            #[cfg(test)]
+            Self::Eu(standard) => [standard + 3600, standard]
+                .into_iter()
+                .map(|offset| {
+                    (
+                        midnight.and_utc() - Duration::seconds(i64::from(offset)),
+                        offset,
+                    )
+                })
+                // Un desfase vale si es el que rige en el instante que produce.
+                .filter(|(at, offset)| self.offset_secs(*at) == *offset)
+                .map(|(at, _)| at)
+                .min()
+                .unwrap_or_else(|| midnight.and_utc() - Duration::seconds(i64::from(standard))),
             Self::Local => Local
                 .from_local_datetime(&midnight)
                 .earliest()
@@ -69,6 +104,23 @@ impl Zone {
                 })
                 .map_or_else(|| midnight.and_utc(), |at| at.with_timezone(&Utc)),
         }
+    }
+    /// Las horas del día civil, en orden: `(desde, hasta)` en instantes. Se
+    /// recorren instantes y no «medianoche + k horas»: el día del cambio de hora
+    /// tiene 25 o 23 filas y cubre exactamente de una medianoche a la siguiente.
+    pub fn day_hours(self, date: NaiveDate) -> Vec<(DateTime<Utc>, DateTime<Utc>)> {
+        let (start, end) = (
+            self.day_start(date),
+            self.day_start(date + Duration::days(1)),
+        );
+        let mut hours = vec![];
+        let mut from = start;
+        while from < end {
+            let to = (from + Duration::hours(1)).min(end);
+            hours.push((from, to));
+            from = to;
+        }
+        hours
     }
     /// «UTC», «+2» o «+5:30».
     pub fn short(self, at: DateTime<Utc>) -> String {
@@ -92,11 +144,29 @@ impl Zone {
                 self.short(at)
             ),
             Self::Fixed(_) => format!("Tu hora · UTC{}", self.short(at)),
+            #[cfg(test)]
+            Self::Eu(_) => format!("Zona de prueba · UTC{}", self.short(at)),
         }
+    }
+    /// Día al que cuenta una tanda: una de madrugada (antes de las 3:00) es la
+    /// cola de la noche anterior. Es la única regla de «a qué día pertenece».
+    pub fn race_day(self, at: DateTime<Utc>) -> NaiveDate {
+        let local = self.naive(at);
+        if local.hour() < 3 {
+            local.date() - Duration::days(1)
+        } else {
+            local.date()
+        }
+    }
+    /// Como `day_rel`, con el día de carrera de la tanda.
+    pub fn race_day_rel(self, at: DateTime<Utc>, now: DateTime<Utc>) -> String {
+        Self::rel_of(self.race_day(at), self.date(now))
     }
     /// «hoy», «mañana» o «vie 9».
     pub fn day_rel(self, at: DateTime<Utc>, now: DateTime<Utc>) -> String {
-        let (day, today) = (self.date(at), self.date(now));
+        Self::rel_of(self.date(at), self.date(now))
+    }
+    fn rel_of(day: NaiveDate, today: NaiveDate) -> String {
         if day == today {
             "hoy".into()
         } else if day == today + Duration::days(1) {
@@ -308,6 +378,84 @@ mod tests {
         );
         assert!(b > a);
         assert_eq!(Zone::Local.date(a), day);
+    }
+
+    /// Europa/Madrid fijada sin depender de la máquina: +1 en invierno, +2 en verano.
+    const MADRID: Zone = Zone::Eu(3600);
+
+    fn labels(zone: Zone, day: NaiveDate) -> Vec<u32> {
+        zone.day_hours(day)
+            .into_iter()
+            .map(|(from, _)| zone.naive(from).hour())
+            .collect()
+    }
+
+    #[test]
+    fn madrid_rule_matches_the_2026_clock_changes() {
+        assert_eq!(MADRID.offset_secs(at("2026-10-25T00:59:00Z")), 7200);
+        assert_eq!(MADRID.offset_secs(at("2026-10-25T01:00:00Z")), 3600);
+        assert_eq!(MADRID.offset_secs(at("2026-03-29T00:59:00Z")), 3600);
+        assert_eq!(MADRID.offset_secs(at("2026-03-29T01:00:00Z")), 7200);
+    }
+
+    #[test]
+    fn the_25_hour_day_shows_every_hour_once_and_none_missing() {
+        // 25-oct-2026: a las 03:00 CEST vuelven a ser las 02:00 CET.
+        let day = NaiveDate::from_ymd_opt(2026, 10, 25).expect("fecha");
+        let hours = MADRID.day_hours(day);
+        assert_eq!(hours.len(), 25);
+        assert_eq!(hours[0].0, at("2026-10-24T22:00:00Z"));
+        assert_eq!(hours[24].1, at("2026-10-25T23:00:00Z"));
+        assert!(hours.windows(2).all(|pair| pair[0].1 == pair[1].0));
+        let shown = labels(MADRID, day);
+        assert_eq!(&shown[..5], &[0, 1, 2, 2, 3]);
+        assert_eq!(shown[24], 23, "la hora 23 existe");
+        // Una salida de la última hora local (23:15 CET) cae en una fila.
+        let late = at("2026-10-25T22:15:00Z");
+        assert_eq!(MADRID.hm(late), "23:15");
+        assert_eq!(
+            hours
+                .iter()
+                .filter(|(a, b)| *a <= late && late < *b)
+                .count(),
+            1
+        );
+    }
+
+    #[test]
+    fn the_23_hour_day_stops_at_its_own_midnight() {
+        // 29-mar-2026: a las 02:00 CET saltan a las 03:00 CEST.
+        let day = NaiveDate::from_ymd_opt(2026, 3, 29).expect("fecha");
+        let hours = MADRID.day_hours(day);
+        assert_eq!(hours.len(), 23);
+        assert_eq!(hours[22].1, MADRID.day_start(day + Duration::days(1)));
+        let shown = labels(MADRID, day);
+        assert_eq!(shown.last(), Some(&23));
+        assert!(!shown.contains(&2), "la hora 02 no existe ese día");
+        // Ninguna fila cae ya en el día siguiente.
+        assert!(hours.iter().all(|(from, _)| MADRID.date(*from) == day));
+    }
+
+    #[test]
+    fn an_ordinary_day_has_24_rows_in_any_zone() {
+        let day = NaiveDate::from_ymd_opt(2026, 10, 8).expect("fecha");
+        for zone in [Zone::Utc, Zone::Fixed(7200), MADRID] {
+            assert_eq!(zone.day_hours(day).len(), 24);
+            assert_eq!(labels(zone, day), (0..24).collect::<Vec<_>>());
+        }
+    }
+
+    #[test]
+    fn small_hours_belong_to_the_night_before_in_one_rule() {
+        let madrid = Zone::Fixed(2 * 3600);
+        let now = at("2026-10-08T17:47:13Z");
+        // 01:00 del viernes 9 en Madrid cuenta como jueves 8.
+        let late = at("2026-10-08T23:00:00Z");
+        assert_eq!(madrid.date(late).day(), 9);
+        assert_eq!(madrid.race_day(late).day(), 8);
+        assert_eq!(madrid.race_day_rel(late, now), "hoy");
+        // Las 03:00 ya son del día nuevo.
+        assert_eq!(madrid.race_day(at("2026-10-09T01:00:00Z")).day(), 9);
     }
 
     #[test]

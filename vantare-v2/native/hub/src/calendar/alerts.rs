@@ -61,6 +61,16 @@ pub struct Band {
     pub mode: Mode,
 }
 
+impl Band {
+    /// ¿Cae la hora que empieza en `from` dentro de la franja? La franja va en
+    /// minutos de la hora del sistema (`system`, `Zone::Local` en la app), aunque
+    /// la rejilla se muestre en otra zona como UTC.
+    pub fn covers(&self, from: DateTime<Utc>, system: Zone) -> bool {
+        let minute = u16::try_from(system.minute_of_day(from)).unwrap_or(0);
+        (self.from..self.to).contains(&minute)
+    }
+}
+
 /// Aviso de una tanda concreta: serie y salida UTC (segundos Unix).
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -356,6 +366,24 @@ mod tests {
     fn local_eight_pm() -> DateTime<Utc> {
         let day = Zone::Local.date(at("2026-10-08T12:00:00Z"));
         Zone::Local.day_start(day) + Duration::hours(20)
+    }
+
+    #[test]
+    fn the_alert_band_is_measured_in_system_time_even_if_the_grid_shows_utc() {
+        // Franja 20:00–23:00 de Madrid (sistema); la rejilla enseña UTC.
+        let madrid = Zone::Eu(3600);
+        let band = evening_band("any");
+        // 18:00Z del 8-oct = 20:00 CEST: dentro. Con la hora de la rejilla (UTC)
+        // se habría mirado 18:00 y quedaría fuera: el desfase de 2 h del informe.
+        assert!(band.covers(at("2026-10-08T18:00:00Z"), madrid));
+        assert!(
+            !band.covers(at("2026-10-08T21:00:00Z"), madrid),
+            "23:00 CEST ya es el fin"
+        );
+        assert!(!band.covers(at("2026-10-08T18:00:00Z"), Zone::Utc));
+        // Tras el cambio de hora el mismo 20:00 local son las 19:00Z.
+        assert!(band.covers(at("2026-10-26T19:00:00Z"), madrid));
+        assert!(!band.covers(at("2026-10-26T18:00:00Z"), madrid));
     }
 
     #[test]

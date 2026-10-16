@@ -154,11 +154,9 @@ pub(super) fn render(cal: &mut Calendar, cx: &mut Context<Calendar>) -> Div {
         }));
 
     let mut grid = div().relative().flex().flex_col();
-    for hour in 0..24u32 {
-        let (h0, h1) = (
-            a + Duration::hours(i64::from(hour)),
-            a + Duration::hours(i64::from(hour) + 1),
-        );
+    // Una vez por repintado: no depende de la hora de la fila.
+    let next: Vec<_> = series.iter().map(|s| schedule.next_start(s, now)).collect();
+    for (h0, h1) in zone.day_hours(days[index]) {
         let local_hour = zone.naive(h0).hour();
         let is_now = now >= h0 && now < h1;
         let past = h1 <= now;
@@ -195,11 +193,11 @@ pub(super) fn render(cal: &mut Calendar, cx: &mut Context<Calendar>) -> Div {
                 .copied()
                 .filter(|t| *t >= h0 && *t < h1)
                 .collect();
-            let in_band = cal.alerts.band(&s.id).is_some_and(|band| {
-                let m = u16::try_from(local_hour * 60).unwrap_or(0);
-                band.from <= m && m < band.to
-            });
-            let next = schedule.next_start(s, now);
+            let in_band = cal
+                .alerts
+                .band(&s.id)
+                .is_some_and(|band| band.covers(h0, clock::Zone::Local));
+            let next = next[i];
             let daily = rows::is_daily(s);
             let mut cell = div()
                 .flex_1()

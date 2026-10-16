@@ -469,27 +469,6 @@ pub(super) fn ib(
         })
 }
 
-/// Control segmentado: `options` son (etiqueta, activo).
-pub(super) fn seg(id: &'static str, options: &[(String, bool)], cx: &gpui::App) -> Div {
-    let skin = skin(cx);
-    div()
-        .flex()
-        .flex_none()
-        .items_center()
-        .gap(px(2.0))
-        .p(px(3.0))
-        .rounded(px(9.0))
-        .bg(rgb(skin.l2))
-        .border_1()
-        .border_color(orbit::alpha(skin.line1))
-        .children(
-            options
-                .iter()
-                .enumerate()
-                .map(|(i, (label, on))| seg_button((id, i), label, *on, cx)),
-        )
-}
-
 pub(super) fn seg_button(
     id: impl Into<gpui::ElementId>,
     label: &str,

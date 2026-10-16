@@ -54,13 +54,7 @@ pub(super) fn render(cal: &mut Calendar, cx: &mut Context<Calendar>) -> Div {
             .unwrap_or_default();
         let range = match (starts.first(), starts.last()) {
             (Some(a), Some(b)) => {
-                let late = zone.naive(*b);
-                let db = if chrono::Timelike::hour(&late) < 3 {
-                    late.date() - chrono::Duration::days(1)
-                } else {
-                    late.date()
-                };
-                let da = zone.date(*a);
+                let (da, db) = (zone.race_day(*a), zone.race_day(*b));
                 format!(
                     "{} {} → {} {} {}",
                     clock::day_name(da),
@@ -74,7 +68,7 @@ pub(super) fn render(cal: &mut Calendar, cx: &mut Context<Calendar>) -> Div {
         };
         let mut by_day: Vec<(chrono::NaiveDate, Vec<DateTime<Utc>>)> = vec![];
         for at in &starts {
-            let day = zone.date(*at);
+            let day = zone.race_day(*at);
             match by_day.last_mut() {
                 Some((d, v)) if *d == day => v.push(*at),
                 _ => by_day.push((day, vec![*at])),
@@ -82,7 +76,7 @@ pub(super) fn render(cal: &mut Calendar, cx: &mut Context<Calendar>) -> Div {
         }
         let mut days = div().flex().flex_col().gap(px(6.0));
         for (day, day_starts) in by_day {
-            let label = match zone.day_rel(day_starts[0], now).as_str() {
+            let label = match zone.race_day_rel(day_starts[0], now).as_str() {
                 rel @ ("hoy" | "mañana") => rel.to_uppercase(),
                 _ => format!("{} {}", clock::day_name(day), day.day()).to_uppercase(),
             };

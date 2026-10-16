@@ -182,6 +182,8 @@ pub struct Calendar {
     armed: Option<(String, DateTime<Utc>)>,
     pub(crate) demo_now: Option<DateTime<Utc>>,
     ui: ui::State,
+    /// Sube con cada cambio de horario, avisos o zona: invalida las cachés de pintado.
+    revision: u64,
     pub error: Option<String>,
 }
 
@@ -225,12 +227,21 @@ impl Calendar {
         {
             return Err("seguimiento inválido: límite o identidad vacía/duplicada".into());
         }
-        let alerts = docs
+        // Un archivo de avisos dañado o de otra versión no impide abrir el Hub:
+        // se empieza sin avisos y se dice (el siguiente guardado lo reemplaza).
+        let (alerts, alerts_error) = match docs
             .alerts
-            .read()?
-            .map(|data| Alerts::parse(&data))
-            .transpose()?
-            .unwrap_or_default();
+            .read()
+            .map(|data| data.map(|data| Alerts::parse(&data)).transpose())
+        {
+            Ok(Ok(alerts)) => (alerts.unwrap_or_default(), None),
+            Ok(Err(error)) | Err(error) => (
+                Alerts::default(),
+                Some(format!(
+                    "No se pudieron leer tus avisos ({error}). Empiezas sin avisos."
+                )),
+            ),
+        };
         // Un archivo dañado de ajustes menores no impide abrir el calendario.
         let prefs = docs
             .prefs
@@ -287,7 +298,8 @@ impl Calendar {
             armed: None,
             demo_now: None,
             ui: ui::State::default(),
-            error: None,
+            revision: 0,
+            error: alerts_error,
         };
         calendar.rebuild(Utc::now());
         Ok(calendar)
@@ -353,6 +365,7 @@ impl Calendar {
         .max_by_key(|schedule| schedule.window().ok().map(|(_, to)| to))
         .cloned();
         self.alerts.prune(now);
+        self.revision += 1;
     }
 
     pub(crate) fn health(&self) -> Health {
@@ -398,13 +411,21 @@ impl Calendar {
         let following = Following { series_ids: next };
         self.docs.following.json(&following)?;
         self.following = following;
+        self.revision += 1;
         Ok(())
     }
 
     fn save_alerts(&mut self, next: Alerts) -> Result<(), String> {
         self.docs.alerts.json(&next)?;
         self.alerts = next;
+        self.revision += 1;
         Ok(())
+    }
+    /// Cambia los avisos desde la interfaz: el error (si lo hay) se enseña y el
+    /// cartel de «serie que ya no está» se rehace con lo que quede.
+    pub(crate) fn update_alerts(&mut self, change: impl FnOnce(&mut Alerts) -> Result<(), String>) {
+        self.error = self.edit_alerts(change).err();
+        self.report_orphans();
     }
     /// Cambia los avisos con una función y los guarda; si falla, no cambia nada.
     pub(crate) fn edit_alerts(
@@ -420,6 +441,7 @@ impl Calendar {
         self.error = self.docs.prefs.json(&prefs).err();
         if self.error.is_none() {
             self.prefs = prefs;
+            self.revision += 1;
         }
     }
 

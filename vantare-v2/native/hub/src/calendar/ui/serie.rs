@@ -130,20 +130,11 @@ fn header(cal: &Calendar, p: &Page<'_>, cx: &mut Context<Calendar>) -> Div {
         let starts = schedule
             .starts(series, valid_from, valid_until)
             .unwrap_or_default();
-        let day_of = |at| {
-            let local = zone.naive(at);
-            let date = local.date();
-            if chrono::Timelike::hour(&local) < 3 {
-                date - chrono::Duration::days(1)
-            } else {
-                date
-            }
-        };
         match (starts.first(), starts.last()) {
             (Some(a), Some(b)) => format!(
                 "Semanal · {} → {}",
-                clock::day_name(zone.date(*a)),
-                clock::day_name(day_of(*b))
+                clock::day_name(zone.race_day(*a)),
+                clock::day_name(zone.race_day(*b))
             ),
             _ => "Semanal · tandas fijas".to_owned(),
         }
@@ -415,7 +406,7 @@ fn outings_card(cal: &Calendar, p: &Page<'_>, cx: &mut Context<Calendar>) -> Div
             .starts(series, valid_from, valid_until)
             .unwrap_or_default()
         {
-            let label = zone.day_rel(at, now);
+            let label = zone.race_day_rel(at, now);
             match by_day.last_mut() {
                 Some((l, v)) if *l == label => v.push(at),
                 _ => by_day.push((label, vec![at])),
@@ -906,17 +897,12 @@ fn heat_map(
             .child(labels),
     );
     for day in days {
-        let start = zone.day_start(day);
         let is_today = zone.date(now) == day;
         let mut cells = div().flex_1().flex().gap(px(2.0));
-        for h in 0..24 {
-            let (a, b) = (start + Duration::hours(h), start + Duration::hours(h + 1));
+        for (a, b) in zone.day_hours(day) {
             let past = b <= now;
             let current = now >= a && now < b;
-            let in_band = band.is_some_and(|band| {
-                let m = u16::try_from(chrono::Timelike::hour(&zone.naive(a)) * 60).unwrap_or(0);
-                band.from <= m && m < band.to
-            });
+            let in_band = band.is_some_and(|band| band.covers(a, clock::Zone::Local));
             cells = cells.child(
                 div()
                     .flex_1()

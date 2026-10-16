@@ -101,7 +101,7 @@ pub(super) fn edit(
     change: impl Fn(&mut Alerts) -> Result<(), String> + 'static,
 ) -> impl Fn(&ClickEvent, &mut gpui::Window, &mut gpui::App) + 'static {
     cx.listener(move |this, _, _, cx| {
-        this.error = this.edit_alerts(&change).err();
+        this.update_alerts(&change);
         cx.notify();
     })
 }
@@ -959,10 +959,23 @@ pub(super) fn ics_modal(cal: &mut Calendar, cx: &mut Context<Calendar>) -> impl 
     let skin = chrome::skin(cx);
     let options = cal.ui.ics;
     let (now, zone) = (cal.now(), cal.zone());
-    let preview: Vec<ics::Entry> = cal
-        .schedule()
-        .and_then(|s| ics::entries(s, cal.favorites(), &cal.alerts, options, now).ok())
-        .unwrap_or_default();
+    // La lista completa se arma una vez por minuto o cambio de datos, no en cada
+    // repintado: solo se enseñan cuatro y el total.
+    let key = (cal.revision, now.timestamp().div_euclid(60), options);
+    if cal.ui.ics_preview.as_ref().is_none_or(|(k, _)| *k != key) {
+        let entries = cal
+            .schedule()
+            .and_then(|s| ics::entries(s, cal.favorites(), &cal.alerts, options, now).ok())
+            .unwrap_or_default();
+        cal.ui.ics_preview = Some((key, entries));
+    }
+    let entries = cal
+        .ui
+        .ics_preview
+        .as_ref()
+        .map_or(&[][..], |(_, e)| e.as_slice());
+    let (preview, total): (Vec<ics::Entry>, usize) =
+        (entries.iter().take(4).cloned().collect(), entries.len());
     let radio = |on: bool| {
         div()
             .size(px(16.0))
@@ -1074,7 +1087,7 @@ pub(super) fn ics_modal(cal: &mut Calendar, cx: &mut Context<Calendar>) -> impl 
             })),
         ));
     let mut list = div().flex().flex_col();
-    for entry in preview.iter().take(4) {
+    for entry in &preview {
         list = list.child(
             div()
                 .flex()
@@ -1135,8 +1148,8 @@ pub(super) fn ics_modal(cal: &mut Calendar, cx: &mut Context<Calendar>) -> impl 
         .child(div().mt(px(12.0)).child(chrome::section_title(
             &format!(
                 "Vista previa · {} evento{} esta semana",
-                preview.len(),
-                if preview.len() == 1 { "" } else { "s" }
+                total,
+                if total == 1 { "" } else { "s" }
             ),
             None,
             cx,

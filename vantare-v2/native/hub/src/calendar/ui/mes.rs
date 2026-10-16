@@ -21,8 +21,50 @@ enum State {
 /// Salidas por hora que llenan la barra entera de la minigráfica.
 const DENSITY_MAX: f32 = 40.0;
 
-#[allow(clippy::too_many_lines)] // Cabecera, cuadrícula de cinco semanas y leyenda.
+/// Lo que el Mes necesita saber de un día; sale de expandir las recurrencias.
+#[derive(Clone, Default)]
+pub(crate) struct DayFacts {
+    /// Posición en `schedule.series` de las series con tandas de evento ese día.
+    event_series: Vec<usize>,
+    per_hour: [u32; 24],
+    event_hours: [bool; 24],
+    total: u32,
+    /// Avisos de lo que queda del día (depende del minuto actual).
+    alerts: usize,
+}
+
+/// Hechos por día del Mes. Se rehacen cuando cambian los datos (`revision`) o
+/// el minuto; los repintados de cada segundo los reutilizan.
+#[derive(Default)]
+pub(crate) struct MonthCache {
+    key: (u64, i64),
+    days: std::collections::HashMap<NaiveDate, DayFacts>,
+}
+
+impl MonthCache {
+    fn facts(
+        &mut self,
+        key: (u64, i64),
+        day: NaiveDate,
+        make: impl FnOnce() -> DayFacts,
+    ) -> &DayFacts {
+        if self.key != key {
+            self.days.clear();
+            self.key = key;
+        }
+        self.days.entry(day).or_insert_with(make)
+    }
+}
+
 pub(super) fn render(cal: &mut Calendar, cx: &mut Context<Calendar>) -> Div {
+    let mut cache = std::mem::take(&mut cal.ui.month_cache);
+    let page = render_with(cal, &mut cache, cx);
+    cal.ui.month_cache = cache;
+    page
+}
+
+#[allow(clippy::too_many_lines)] // Cabecera, cuadrícula de cinco semanas y leyenda.
+fn render_with(cal: &mut Calendar, cache: &mut MonthCache, cx: &mut Context<Calendar>) -> Div {
     let skin = skin(cx);
     let (now, zone) = (cal.now(), cal.zone());
     let compact = cal.adapt.width < 1400.0;
@@ -231,9 +273,15 @@ pub(super) fn render(cal: &mut Calendar, cx: &mut Context<Calendar>) -> Div {
                 })
                 .when(schedule.is_none(), |c| c.bg(chrome::stripe(cx)));
             let ran = cal.runs.iter().filter(|r| zone.date(r.at) == day).count();
-            let alerts = schedule
-                .filter(|_| state == State::Now)
-                .map_or(0, |s| day_alerts(cal, s, a.max(now), b));
+            let key = (cal.revision, now.timestamp().div_euclid(60));
+            let facts = schedule.map(|s| {
+                cache
+                    .facts(key, day, || {
+                        day_facts(cal, s, (a, b), now, state == State::Now)
+                    })
+                    .clone()
+            });
+            let alerts = facts.as_ref().map_or(0, |f| f.alerts);
             let mut head = div().flex().items_center().gap(px(4.0)).px(px(8.0));
             head = head.child(
                 div()
@@ -268,30 +316,29 @@ pub(super) fn render(cal: &mut Calendar, cx: &mut Context<Calendar>) -> Div {
                 ));
             }
             cell = cell.child(head);
-            if let Some(schedule) = schedule {
+            if let Some(facts) = &facts {
                 // Reserva la línea de los eventos, que se dibuja encima de toda la fila.
-                let events = schedule
-                    .series
-                    .iter()
-                    .filter(|s| !rows::is_daily(s))
-                    .filter(|s| schedule.starts(s, a, b).is_ok_and(|v| !v.is_empty()))
-                    .count();
+                let events = facts.event_series.len();
                 cell = cell.child(div().h(px(23.0 * events as f32)).flex_none());
-                let (density, total) = density(schedule, a, now, cx);
-                cell = cell.child(density);
+                cell = cell.child(density(facts, b <= now, cx));
                 if !compact {
-                    cell = cell.child(
-                        div()
-                            .px(px(8.0))
-                            .when(a + Duration::hours(24) <= now, |d| d.opacity(0.55))
-                            .child(chrome::mono(format!("{total} salidas"), 10.5, skin.cap, cx)),
-                    );
+                    cell = cell.child(div().px(px(8.0)).when(b <= now, |d| d.opacity(0.55)).child(
+                        chrome::mono(format!("{} salidas", facts.total), 10.5, skin.cap, cx),
+                    ));
                 }
             }
             row = row.child(cell);
         }
         if let Some(schedule) = schedule {
-            row = row.child(event_bars(schedule, *week, week_w, (zone, past_week), cx));
+            let week_facts: Vec<&[usize]> = (0..7)
+                .map(|offset| {
+                    cache
+                        .days
+                        .get(&(*week + Duration::days(offset)))
+                        .map_or(&[][..], |f| f.event_series.as_slice())
+                })
+                .collect();
+            row = row.child(event_bars(schedule, &week_facts, week_w, past_week, cx));
         }
         grid = grid.child(row);
     }
@@ -416,9 +463,9 @@ fn day_pill(
 /// Barras continuas de los eventos de la semana, encima de las siete celdas.
 fn event_bars(
     schedule: &Schedule,
-    week: NaiveDate,
+    week_facts: &[&[usize]],
     week_w: f32,
-    (zone, past_week): (clock::Zone, bool),
+    past_week: bool,
     cx: &gpui::App,
 ) -> Div {
     let mut layer = div()
@@ -429,13 +476,16 @@ fn event_bars(
         .h(px(60.0));
     // Carriles: cada tramo ocupa el primer carril libre en sus días.
     let mut lane_ends: Vec<usize> = vec![];
-    for series in schedule.series.iter().filter(|s| !rows::is_daily(s)) {
+    for (index, series) in schedule
+        .series
+        .iter()
+        .enumerate()
+        .filter(|(_, s)| !rows::is_daily(s))
+    {
         // Días de la semana con tandas de esta serie.
         let mut present = [false; 7];
-        for (offset, slot) in present.iter_mut().enumerate() {
-            let day = week + Duration::days(offset as i64);
-            let (a, b) = (zone.day_start(day), zone.day_start(day + Duration::days(1)));
-            *slot = schedule.starts(series, a, b).is_ok_and(|v| !v.is_empty());
+        for (slot, day) in present.iter_mut().zip(week_facts) {
+            *slot = day.contains(&index);
         }
         let special = series.kind() == crate::calendar::model::Kind::Special;
         let mut offset = 0;
@@ -504,64 +554,62 @@ fn event_bars(
 }
 
 /// Barritas: salidas por hora de las series, en rojo si hay tandas de evento.
-fn density(
-    schedule: &Schedule,
-    day_start: DateTime<Utc>,
-    now: DateTime<Utc>,
-    cx: &gpui::App,
-) -> (Div, u32) {
+fn density(facts: &DayFacts, past_day: bool, cx: &gpui::App) -> Div {
     let skin = skin(cx);
-    let mut per_hour = [0u32; 24];
-    let mut events = [false; 24];
-    for series in &schedule.series {
-        for start in schedule
-            .starts(series, day_start, day_start + Duration::hours(24))
-            .unwrap_or_default()
-        {
-            let hour = ((start - day_start).num_minutes() / 60).clamp(0, 23) as usize;
-            per_hour[hour] += 1;
-            events[hour] |= !rows::is_daily(series);
-        }
-    }
-    let total = per_hour.iter().sum();
-    let past_day = day_start + Duration::hours(24) <= now;
-    (
-        div()
-            .flex()
-            .items_end()
-            .gap(px(1.0))
-            .h(px(20.0))
-            .px(px(8.0))
-            .mt_auto()
-            .when(past_day, |d| d.opacity(0.55))
-            .children((0..24).map(|h| {
-                div()
-                    .flex_1()
-                    .h(relative((per_hour[h] as f32 / DENSITY_MAX).clamp(0.1, 1.0)))
-                    .rounded_t(px(1.0))
-                    .bg(if events[h] {
-                        rgb(acc(cx)).into()
-                    } else {
-                        orbit::alpha(skin.text3 << 8 | 0x4d)
-                    })
-            })),
-        total,
-    )
+    div()
+        .flex()
+        .items_end()
+        .gap(px(1.0))
+        .h(px(20.0))
+        .px(px(8.0))
+        .mt_auto()
+        .when(past_day, |d| d.opacity(0.55))
+        .children((0..24).map(|h| {
+            div()
+                .flex_1()
+                .h(relative(
+                    (facts.per_hour[h] as f32 / DENSITY_MAX).clamp(0.1, 1.0),
+                ))
+                .rounded_t(px(1.0))
+                .bg(if facts.event_hours[h] {
+                    rgb(acc(cx)).into()
+                } else {
+                    orbit::alpha(skin.text3 << 8 | 0x4d)
+                })
+        }))
 }
 
-fn day_alerts(cal: &Calendar, schedule: &Schedule, a: DateTime<Utc>, b: DateTime<Utc>) -> usize {
-    schedule
-        .series
-        .iter()
-        .map(|s| {
-            schedule
-                .starts(s, a, b)
-                .unwrap_or_default()
-                .into_iter()
-                .filter(|at| cal.alerts.cause(schedule, s, *at).is_some())
-                .count()
-        })
-        .sum()
+/// Expande las recurrencias del día una sola vez: `(a, b)` son sus dos medianoches.
+fn day_facts(
+    cal: &Calendar,
+    schedule: &Schedule,
+    (a, b): (DateTime<Utc>, DateTime<Utc>),
+    now: DateTime<Utc>,
+    with_alerts: bool,
+) -> DayFacts {
+    let mut facts = DayFacts::default();
+    for (index, series) in schedule.series.iter().enumerate() {
+        let starts = schedule.starts(series, a, b).unwrap_or_default();
+        let event = !rows::is_daily(series);
+        if event && !starts.is_empty() {
+            facts.event_series.push(index);
+        }
+        for start in &starts {
+            let hour = ((*start - a).num_minutes() / 60).clamp(0, 23) as usize;
+            facts.per_hour[hour] += 1;
+            facts.event_hours[hour] |= event;
+            facts.total += 1;
+        }
+        // Avisos de lo que queda del día; solo la semana en curso los lleva.
+        if with_alerts {
+            facts.alerts += starts
+                .iter()
+                .filter(|at| **at >= now)
+                .filter(|at| cal.alerts.cause(schedule, series, **at).is_some())
+                .count();
+        }
+    }
+    facts
 }
 
 fn month_label(month: u32) -> &'static str {
@@ -585,4 +633,33 @@ fn month_short(month: u32) -> &'static str {
     [
         "ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic",
     ][month as usize - 1]
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn day_facts_are_expanded_once_per_revision_and_minute() {
+        let day = NaiveDate::from_ymd_opt(2026, 10, 8).expect("fecha");
+        let mut cache = MonthCache::default();
+        let expansions = std::cell::Cell::new(0);
+        let ask = |cache: &mut MonthCache, key| {
+            cache
+                .facts(key, day, || {
+                    expansions.set(expansions.get() + 1);
+                    DayFacts::default()
+                })
+                .total
+        };
+        // Un repintado por segundo dentro del mismo minuto: una sola expansión.
+        for _ in 0..60 {
+            ask(&mut cache, (1, 100));
+        }
+        assert_eq!(expansions.get(), 1);
+        // Cambia el minuto o los datos: se rehace.
+        ask(&mut cache, (1, 101));
+        ask(&mut cache, (2, 101));
+        assert_eq!(expansions.get(), 3);
+    }
 }

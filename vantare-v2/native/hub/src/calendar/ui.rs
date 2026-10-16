@@ -2,7 +2,7 @@
 //! vistas (cabecera, pestañas, carril y capas). Cada vista vive en su archivo.
 use super::{
     Calendar, Health,
-    chrome::{self, Tone, banner, btn, ib, kv, pill, seg, t},
+    chrome::{self, Tone, banner, btn, ib, kv, pill, t},
     clock::{self},
     rows::Filter,
 };
@@ -97,6 +97,11 @@ pub(crate) struct State {
     /// Tamaño de la ventana, para las capas que la cubren entera.
     pub viewport: gpui::Size<gpui::Pixels>,
     pub toast: Option<String>,
+    /// Hechos por día del Mes (salidas, densidad, avisos): se rehacen al cambiar
+    /// los datos o el minuto, no en cada fotograma.
+    pub month_cache: mes::MonthCache,
+    /// Salidas del `.ics` para la vista previa; se rehacen con los datos o el minuto.
+    pub ics_preview: Option<((u64, i64, super::ics::Options), Vec<super::ics::Entry>)>,
 }
 
 impl Calendar {
@@ -167,7 +172,7 @@ impl Calendar {
         at: DateTime<Utc>,
         cx: &mut Context<Self>,
     ) {
-        self.error = self.edit_alerts(|alerts| alerts.toggle_slot(id, at)).err();
+        self.update_alerts(|alerts| alerts.toggle_slot(id, at));
         cx.notify();
     }
     /// Texto del botón de lanzar, con el perfil recortado si es largo.
@@ -204,7 +209,6 @@ impl Calendar {
 
     /// Series visibles y salidas por hora del horario, para la cabecera.
     fn subtitle(&self) -> String {
-        let now = self.now();
         match (self.health(), self.schedule()) {
             (Health::Expired, _) => self.last_week.as_ref().map_or_else(
                 || "La semana LMU ha terminado".into(),
@@ -230,7 +234,6 @@ impl Calendar {
                     .window()
                     .map(|(from, _)| clock::week_days(from))
                     .ok();
-                let _ = now;
                 format!(
                     "Semana LMU · {} · {} series · {} salidas por hora",
                     days.map_or_else(String::new, |d| format!(
@@ -492,24 +495,6 @@ impl Calendar {
                     )
                 });
         }
-        let zone_row = div()
-            .flex()
-            .items_center()
-            .justify_between()
-            .py(px(4.0))
-            .child(t("Horas en", 12.5, 400, skin.text3, cx))
-            .child(
-                seg(
-                    "calendar-zone",
-                    &[
-                        (clock::local_label(now), !self.prefs.utc),
-                        ("UTC".into(), self.prefs.utc),
-                    ],
-                    cx,
-                )
-                .children(None::<Div>),
-            );
-        let _ = zone_row;
         let zone_control = div()
             .flex()
             .items_center()

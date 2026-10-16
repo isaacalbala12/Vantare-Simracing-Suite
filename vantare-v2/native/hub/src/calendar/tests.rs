@@ -233,3 +233,94 @@ fn new_week_notice_is_on_by_default_and_old_files_keep_it() {
     let old: Alerts = serde_json::from_str(r#"{"leadMin":10}"#).expect("archivo antiguo");
     assert!(old.notify_week);
 }
+
+#[test]
+fn an_unreadable_alerts_file_does_not_stop_the_hub_from_opening() {
+    let dir = dir("bad-alerts");
+    for garbage in [
+        &b"no es json"[..],
+        br#"{"leadMin":7}"#,
+        br#"{"campoNuevo":1}"#,
+    ] {
+        std::fs::write(dir.join("calendar-alerts.json"), garbage).expect("escribe");
+        let calendar = Calendar::load(&dir).expect("el Hub abre igualmente");
+        assert_eq!(calendar.alerts, Alerts::default());
+        assert!(
+            calendar
+                .error
+                .as_deref()
+                .is_some_and(|e| e.contains("avisos")),
+            "se avisa de que se empieza sin avisos"
+        );
+    }
+    // Un guardado posterior reemplaza el archivo dañado y vuelve a cargar bien.
+    let mut calendar = Calendar::load(&dir).expect("carga");
+    calendar
+        .edit_alerts(|alerts| {
+            alerts.auto_launch = true;
+            Ok(())
+        })
+        .expect("guarda");
+    assert!(Calendar::load(&dir).expect("recarga").alerts.auto_launch);
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
+fn the_missing_series_notice_follows_what_is_left_in_avisos() {
+    let (mut calendar, dir) = calendar("orphans");
+    calendar
+        .apply_publication(Some(OFFICIAL), None, now())
+        .expect("publica");
+    let band = |id: &str| alerts::Band {
+        series_id: id.into(),
+        from: 20 * 60,
+        to: 22 * 60,
+        days: alerts::Days::All,
+        mode: alerts::Mode::Each,
+    };
+    calendar
+        .edit_alerts(|a| {
+            a.set_band("serie-fantasma-1", Some(band("serie-fantasma-1")))?;
+            a.set_band("serie-fantasma-2", Some(band("serie-fantasma-2")))
+        })
+        .expect("guarda");
+    calendar.report_orphans();
+    let notice = calendar.error.clone().expect("cartel");
+    assert!(notice.contains("serie-fantasma-1") && notice.contains("serie-fantasma-2"));
+    // Quitar una: el cartel sigue, pero solo con la que queda.
+    calendar.update_alerts(|a| a.set_band("serie-fantasma-1", None));
+    let notice = calendar.error.clone().expect("sigue el cartel");
+    assert!(!notice.contains("serie-fantasma-1") && notice.contains("serie-fantasma-2"));
+    // Quitar la última: el cartel desaparece.
+    calendar.update_alerts(|a| a.set_band("serie-fantasma-2", None));
+    assert_eq!(calendar.error, None);
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
+fn paint_caches_are_invalidated_by_every_change_of_data() {
+    let (mut calendar, dir) = calendar("revision");
+    let mut seen = vec![calendar.revision];
+    calendar
+        .apply_publication(Some(OFFICIAL), None, now())
+        .expect("publica");
+    seen.push(calendar.revision);
+    calendar
+        .edit_alerts(|alerts| {
+            alerts.auto_launch = true;
+            Ok(())
+        })
+        .expect("guarda");
+    seen.push(calendar.revision);
+    calendar.set_utc(true);
+    seen.push(calendar.revision);
+    calendar
+        .follow("beginner-lmgt3-fixed".into())
+        .expect("sigue");
+    seen.push(calendar.revision);
+    assert!(
+        seen.windows(2).all(|pair| pair[0] < pair[1]),
+        "cada cambio sube la revisión: {seen:?}"
+    );
+    let _ = std::fs::remove_dir_all(dir);
+}

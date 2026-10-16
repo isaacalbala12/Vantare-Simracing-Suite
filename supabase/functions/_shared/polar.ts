@@ -809,6 +809,39 @@ export async function stopSubscriptionRenewal(
   );
 }
 
+function renewalDiscountedAmount(
+  normalCents: number,
+  discountId: unknown,
+  discount: unknown,
+): number | null {
+  if (discountId === null) return discount === null ? normalCents : null;
+  if (!isRecord(discount) || discount.id !== discountId) return null;
+  if (discount.type === "percentage") {
+    const basisPoints = discount.basis_points;
+    if (
+      typeof basisPoints !== "number" || !Number.isSafeInteger(basisPoints) ||
+      basisPoints <= 0 || basisPoints > 10000
+    ) return null;
+    // Polar rounds the saving, half away from zero, before subtracting it.
+    // models/discount.py::get_discount_amount and kit/math.py::polar_round.
+    return normalCents - Math.round(normalCents * (basisPoints / 10000));
+  }
+  if (discount.type === "fixed") {
+    // amounts is authoritative; amount/currency are legacy single-currency fields.
+    const savings = isRecord(discount.amounts)
+      ? discount.amounts.eur
+      : discount.amounts === undefined && discount.currency === "eur"
+      ? discount.amount
+      : null;
+    if (
+      typeof savings !== "number" || !Number.isSafeInteger(savings) ||
+      savings < 0
+    ) return null;
+    return normalCents - Math.min(savings, normalCents);
+  }
+  return null;
+}
+
 // Invoice is already paid. GET/confirm makes retries safe without restarting a coupon.
 export async function synchronizeRenewalDiscount(
   subscriptionId: string,
@@ -872,7 +905,12 @@ export async function synchronizeRenewalDiscount(
           value.recurring_interval_count !== 1 ||
           !(value.discount_id === null ||
             typeof value.discount_id === "string") ||
-          !expected.managedIds.includes(value.discount_id)
+          !expected.managedIds.includes(value.discount_id) ||
+          value.amount !== renewalDiscountedAmount(
+              expected.normalCents,
+              value.discount_id,
+              value.discount,
+            )
         ) throw new Error("creator_discount_remote_mismatch");
         return value;
       },

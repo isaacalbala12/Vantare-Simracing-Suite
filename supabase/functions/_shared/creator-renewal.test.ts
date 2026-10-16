@@ -46,6 +46,85 @@ Deno.test("R4 creator attribution combines with launch without discounting first
 
 import { applyCreatorRenewal } from "./creator-renewal.ts";
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { synchronizeRenewalDiscount } from "./polar.ts";
+import captured from "./fixtures/creator-renewal-sandbox.json" with {
+  type: "json",
+};
+
+Deno.test("ISA-1682 inconsistent PATCH amount records failure; coherent retry ACKs without PATCH", async () => {
+  const loaded = loadPolarProductMap(VALID_POLAR_PRODUCT_MAP_JSON, {
+    environment: "sandbox",
+  });
+  if (!loaded.ok) throw Error("fixture");
+  const config = loaded.map.checkout_keys.pro_monthly!;
+  const outcomes: boolean[] = [];
+  const methods: string[] = [];
+  const client = {
+    rpc: (name: string, args: Record<string, unknown>) => {
+      if (name === "billing_creator_renewal_prepare") {
+        return Promise.resolve({
+          data: {
+            token: "lease",
+            discount_id: captured.creator.discount_id,
+            creator_discount_id: captured.creator.discount_id,
+            initial_discount_id: captured.launch.discount_id,
+          },
+          error: null,
+        });
+      }
+      if (name === "billing_creator_renewal_finish") {
+        outcomes.push(args.p_success as boolean);
+      } else assertEquals(name, "billing_creator_renewal_authorized");
+      return Promise.resolve({ data: true, error: null });
+    },
+  } as unknown as SupabaseClient;
+  // Adapt captured identity to this test's configured map; preserve prices/discount amounts.
+  const responses = [
+    captured.launch,
+    { ...captured.creator, amount: 599 },
+    captured.creator,
+  ];
+  const synchronize: typeof synchronizeRenewalDiscount = (
+    id,
+    environment,
+    expected,
+  ) =>
+    synchronizeRenewalDiscount(id, environment, expected, {
+      getAccessToken: () => "offline-test-token",
+      fetchFn: (_url, init) => {
+        methods.push(init!.method!);
+        const response = responses.shift()!;
+        return Promise.resolve(Response.json({
+          ...response,
+          id,
+          product_id: config.polar_product_id,
+          price_id: config.polar_price_ids[0],
+          prices: [{
+            ...response.prices[0],
+            id: config.polar_price_ids[0],
+            product_id: config.polar_product_id,
+          }],
+        }));
+      },
+    });
+  const input = {
+    userId: "account",
+    checkoutId: "checkout",
+    subscriptionId: "sub",
+    orderId: "paid",
+    productId: config.polar_product_id,
+    key: "pro_monthly" as const,
+    initial: true,
+  };
+  await assertRejects(() =>
+    applyCreatorRenewal(client, loaded.map, input, synchronize)
+  );
+  assertEquals(outcomes, [false]);
+  await applyCreatorRenewal(client, loaded.map, input, synchronize);
+  assertEquals(outcomes, [false, true]);
+  assertEquals(methods, ["GET", "PATCH", "GET"]);
+});
+
 Deno.test("ISA-1680 a product outside the configured plan records failure without calling Polar", async () => {
   const loaded = loadPolarProductMap(VALID_POLAR_PRODUCT_MAP_JSON, {
     environment: "sandbox",

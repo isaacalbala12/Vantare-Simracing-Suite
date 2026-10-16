@@ -179,6 +179,9 @@ export async function resolveNativeAccount(
     "native_resolve_account",
     { issuer, subject },
   );
+  if (error?.message === "native_account_blocked") {
+    throw new NativeError(403, "forbidden");
+  }
   if (error) throw error;
   if (!isUuid(data)) throw new NativeError(503, "bridge_unavailable");
   return data;

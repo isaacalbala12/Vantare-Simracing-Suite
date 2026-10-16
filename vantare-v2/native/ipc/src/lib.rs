@@ -85,7 +85,7 @@ pub fn snapshot_from_json(text: &str) -> Result<Snapshot, Error> {
     decode_snapshot(serde_json::from_str(text)?)
 }
 
-/// Lee datos guardados (Studio, Workshop o exportaciones) v7/v8/v9/v10.
+/// Lee datos guardados (Studio, Workshop o exportaciones) v7/v8/v9/v10/v11.
 /// Nunca se usa en el pipe live ni en el canal de eventos.
 ///
 /// # Errors
@@ -93,7 +93,10 @@ pub fn snapshot_from_json(text: &str) -> Result<Snapshot, Error> {
 pub fn snapshot_from_saved_json(text: &str) -> Result<Snapshot, Error> {
     let mut dto = serde_json::from_str::<dto::SnapshotDto>(text)?;
     match dto.version {
-        7..=9 => dto.version = dto::VERSION,
+        7..=10 => {
+            dto.migrate_saved_timing();
+            dto.version = dto::VERSION;
+        }
         dto::VERSION => {}
         got => return Err(Error::Version { got }),
     }
@@ -245,8 +248,8 @@ mod tests {
     fn saved_photos_remain_readable_without_accepting_old_peers() {
         let snapshot = rich_snapshot(1, 1);
         let current = snapshot_to_json(&snapshot).expect("v9");
-        for version in [7, 8, 9] {
-            let legacy = current.replacen("\"version\":10", &format!("\"version\":{version}"), 1);
+        for version in [7, 8, 9, 10] {
+            let legacy = current.replacen("\"version\":11", &format!("\"version\":{version}"), 1);
             assert_eq!(
                 snapshot_from_saved_json(&legacy).expect("dato guardado"),
                 snapshot
@@ -261,10 +264,10 @@ mod tests {
             assert!(!crate::codec::supports(version));
             assert_eq!(crate::codec::negotiate(version, version), None);
         }
-        let future = current.replacen("\"version\":10", "\"version\":11", 1);
+        let future = current.replacen("\"version\":11", "\"version\":12", 1);
         assert!(matches!(
             snapshot_from_saved_json(&future),
-            Err(Error::Version { got: 11 })
+            Err(Error::Version { got: 12 })
         ));
     }
 
@@ -272,7 +275,8 @@ mod tests {
     fn every_workshop_scene_decodes_and_round_trips_at_the_current_version() {
         fn snapshots(value: &serde_json::Value, count: &mut usize) {
             if value.get("state").is_some() && value.get("epoch").is_some() {
-                let snapshot = snapshot_from_json(&value.to_string()).expect("escena DTO actual");
+                let snapshot =
+                    snapshot_from_saved_json(&value.to_string()).expect("escena guardada");
                 assert_eq!(
                     snapshot_from_json(&snapshot_to_json(&snapshot).expect("serializa"))
                         .expect("ida y vuelta"),
@@ -316,8 +320,9 @@ mod tests {
 
     #[test]
     fn workshop_scene_decodes_with_unavailable_weather_and_damage() {
-        let scene = snapshot_from_json(include_str!("../../ui/fixtures/lmu47.snapshot.json"))
-            .expect("escena migrada al DTO vigente");
+        let scene =
+            snapshot_from_fixture_json(include_str!("../../ui/fixtures/lmu47.snapshot.json"))
+                .expect("escena migrada al DTO vigente");
         assert_eq!(scene.state.cars.len(), 47);
         assert_eq!(
             scene.state.session.weather,

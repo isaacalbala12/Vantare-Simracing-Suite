@@ -19,10 +19,15 @@ const testingAutomationFunctions = new Set([
   "testing-center-agent-callback",
 ]);
 const recognizedFunctions = new Set([
+  "mail-unsubscribe",
+  "mail-webhook",
+  "mail-cleanup",
+  "native-mail-consent",
   // Review candidate, absent from all deploy wrappers.
   "testing-report-submit",
   "clerk-webhook",
   "billing-reconcile",
+  "billing-report-promotion",
   ...productionFunctions,
   ...testingPilotFunctions,
   ...testingAutomationFunctions,
@@ -41,8 +46,25 @@ export function invalidDeployableDirectories(
     .sort();
 }
 
+export function invalidPromotionGatewayConfig(config: string): boolean {
+  const block = config.replaceAll("\r\n", "\n").match(
+    /\[functions\.billing-report-promotion\]([^[]*)/,
+  );
+  return !block || !/^\s*verify_jwt\s*=\s*false\s*$/m.test(block[1]);
+}
+
 if (import.meta.main) {
   const functionsRoot = new URL("..", import.meta.url);
+  if (
+    invalidPromotionGatewayConfig(
+      Deno.readTextFileSync(new URL("../../config.toml", import.meta.url)),
+    )
+  ) {
+    console.error(
+      "billing-report-promotion must declare verify_jwt=false; handler owns server authentication",
+    );
+    Deno.exit(1);
+  }
   const invalid = invalidDeployableDirectories([
     ...Deno.readDirSync(functionsRoot),
   ]);

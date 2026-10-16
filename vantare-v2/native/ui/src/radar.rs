@@ -158,7 +158,7 @@ mod tests {
     #[test]
     fn parity_scene_keeps_the_reference_sides() {
         let snapshot =
-            vantare_ipc::snapshot_from_json(include_str!("../fixtures/radar.snapshot.json"))
+            vantare_ipc::snapshot_from_fixture_json(include_str!("../fixtures/radar.snapshot.json"))
                 .expect("escena Radar DTO v3 válida");
         let vm = vantare_domain::radar::project(&snapshot);
         let positions: Vec<_> = vm

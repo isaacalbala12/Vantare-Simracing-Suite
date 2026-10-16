@@ -870,7 +870,8 @@ fn beta_grants(capability: Option<&str>, start: i64) -> Vec<Capability> {
             } else {
                 String::new()
             },
-            perpetual: key.starts_with("vantare.module.") || key == "vantare.edition.launch_v1",
+            perpetual: key.starts_with("vantare.module.")
+                || matches!(key, "vantare.edition.launch_v1" | "vantare.plan.founders"),
             scope_version: if key == "vantare.edition.launch_v1" {
                 "launch_v1".into()
             } else {
@@ -878,6 +879,43 @@ fn beta_grants(capability: Option<&str>, start: i64) -> Vec<Capability> {
             },
         })
         .collect()
+}
+
+#[test]
+fn founders_alone_enables_all_modules_offline_until_revoked() {
+    use vantare_ipc::control::CatalogAccess;
+    let start = 1_790_800_000;
+    let (credential, keys) =
+        signed_v1(start - 1, beta_grants(Some("vantare.plan.founders"), start));
+    let root = test_root();
+    let mut owner = Owner::open(&root, Some(&keys), devices(), 1, wall(start)).expect("abrir");
+    owner
+        .install(credential, wall(start), Duration::ZERO)
+        .expect("firma");
+    drop(owner);
+    let mut owner =
+        Owner::open(&root, Some(&keys), devices(), 2, wall(start + 86400)).expect("offline");
+    let policy = owner
+        .advance(&Snapshot::default(), wall(start + 86400), Duration::ZERO)
+        .expect("Founders");
+    assert_eq!(policy.catalog, CatalogAccess::Founders);
+    assert!(policy.engineer && policy.strategy && policy.analysis && policy.calendar);
+    assert!(policy.catalog.allows_widget("future-widget"));
+    assert!(!policy.tester);
+    owner
+        .invalidate(wall(start + 86401), Duration::from_secs(1))
+        .expect("retirar");
+    let policy = owner
+        .advance(
+            &Snapshot::default(),
+            wall(start + 86401),
+            Duration::from_secs(1),
+        )
+        .expect("retirado");
+    assert_eq!(policy.catalog, CatalogAccess::Free);
+    assert!(!policy.engineer && !policy.strategy && !policy.analysis && !policy.calendar);
+    drop(owner);
+    clean(&root);
 }
 
 #[test]

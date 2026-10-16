@@ -1,4 +1,4 @@
-// ISA-1499: deja el catálogo Pro de Polar en 5,99 €/mes y 59,90 €/año (IVA incluido).
+// ISA-1499: deja el catálogo Pro de Polar en 5,99 €/mes y 59,99 €/año (IVA incluido).
 //
 // Idempotente: si los precios ya están como deben, no escribe nada.
 //   - Pro mensual: mismo producto; se sustituye el precio activo. Polar archiva
@@ -13,7 +13,7 @@
 // Producción exige además --confirm-production. --dry-run no usa red.
 
 export const PRO_MONTHLY_CENTS = 599;
-export const PRO_ANNUAL_CENTS = 5990;
+export const PRO_ANNUAL_CENTS = 5999;
 export const CURRENCY = "eur";
 export const ANNUAL_METADATA_KEY = "vantare_checkout_key";
 const API_BASE = {

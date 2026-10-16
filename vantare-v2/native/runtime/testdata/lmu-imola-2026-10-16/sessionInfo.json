@@ -1,0 +1,11 @@
+{
+  "trackName": "Autodromo Enzo e Dino Ferrari",
+  "session": "PRACTICE1",
+  "windSpeed": {
+    "velocity": 0.0,
+    "x": 0.0,
+    "y": 0.0,
+    "z": 0.0
+  },
+  "averagePathWetness": 0.0
+}

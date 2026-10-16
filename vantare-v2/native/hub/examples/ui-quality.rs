@@ -95,7 +95,7 @@ fn qa_telemetry(
                 Err(error) => return Err(format!("leer foto QA: {error}")),
             };
             if let Some(bytes) = bytes.filter(|bytes| previous.as_ref() != Some(bytes)) {
-                let photo = vantare_ipc::snapshot_from_json(
+                let photo = vantare_ipc::snapshot_from_fixture_json(
                     std::str::from_utf8(&bytes).map_err(|error| error.to_string())?,
                 )
                 .map_err(|error| format!("foto QA inválida: {error}"))?;

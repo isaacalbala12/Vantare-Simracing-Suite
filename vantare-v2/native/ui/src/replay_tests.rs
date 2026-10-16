@@ -47,7 +47,7 @@ fn real_photos() -> Vec<(String, Snapshot)> {
     ] {
         photos.push((
             name.to_owned(),
-            vantare_ipc::snapshot_from_json(json).expect("foto real"),
+            vantare_ipc::snapshot_from_fixture_json(json).expect("foto real"),
         ));
     }
     photos
@@ -232,7 +232,7 @@ fn golden_corpora_reach_every_widget_through_the_pipe_without_hiding_current_val
 /// Foto de 104 coches en tres clases intercaladas, ampliada desde la captura
 /// real de lmu47; el jugador va último.
 pub(crate) fn photo_104() -> Snapshot {
-    let mut snapshot = vantare_ipc::snapshot_from_json(include_str!(
+    let mut snapshot = vantare_ipc::snapshot_from_fixture_json(include_str!(
         "../fixtures/telemetry-real/lmu47.snapshot.json"
     ))
     .expect("foto real");

@@ -1,3 +1,10 @@
+import {
+  promotionCheckoutDiscount,
+  PromotionCheckoutError,
+} from "../billing-report-promotion/observe.ts";
+import { getSupabaseAdmin } from "../_shared/supabase-admin.ts";
+import { selectCheckoutOffer } from "../_shared/launch-offer.ts";
+import { type PurchasePolicy, purchasePolicy } from "../_shared/founders.ts";
 import { type AuthResult, requireUserAuth } from "../_shared/auth.ts";
 import {
   type CheckoutAttemptStore,
@@ -19,6 +26,7 @@ import { isUuid, readJsonObject } from "../_shared/request.ts";
 import { errorResponse, jsonResponse } from "../_shared/responses.ts";
 
 export type CheckoutDeps = {
+  now?: () => Date;
   requireAuth?: (req: Request) => Promise<AuthResult>;
   loadMap?: typeof loadPolarProductMap;
   createCheckout?: (
@@ -26,10 +34,16 @@ export type CheckoutDeps = {
     options?: { signal?: AbortSignal },
   ) => Promise<CreateCheckoutResult>;
   attempts?: CheckoutAttemptStore;
+  promotionDiscount?: typeof promotionCheckoutDiscount;
+  purchasePolicy?: typeof purchasePolicy;
 };
 
 const MAX_BODY_BYTES = 4096;
 const FORBIDDEN_CLIENT_FIELDS = [
+  "discountId",
+  "discount_id",
+  "discountCode",
+  "discount_code",
   "priceId",
   "price_id",
   "productId",
@@ -81,7 +95,7 @@ export async function handleCheckoutRequest(
       );
     }
   }
-  const allowed = new Set(["productKey", "attemptId"]);
+  const allowed = new Set(["productKey", "attemptId", "creatorCode"]);
   if (Object.keys(body).some((key) => !allowed.has(key))) {
     return errorResponse(
       "unexpected_field",
@@ -112,12 +126,63 @@ export async function handleCheckoutRequest(
   const resolved = resolveCheckoutKey(mapping.map, productKey);
   if (!resolved.ok) return errorResponse(resolved.code, resolved.message, 409);
 
+  if (
+    body.creatorCode !== undefined &&
+    (typeof body.creatorCode !== "string" ||
+      !/^[A-Za-z0-9]{3,32}$/.test(body.creatorCode))
+  ) {
+    return errorResponse(
+      "invalid_creator_code",
+      "Creator code is invalid",
+      400,
+    );
+  }
+  const now = deps.now?.() ?? new Date();
+  const offer = selectCheckoutOffer(
+    mapping.map,
+    resolved.key,
+    resolved.config,
+    now,
+    body.creatorCode as string | undefined,
+  );
+  if (!offer.ok) {
+    return errorResponse(
+      offer.reason,
+      "Checkout offer is unavailable",
+      offer.status,
+    );
+  }
+
+  let policy: PurchasePolicy;
+  try {
+    policy = await (deps.purchasePolicy ?? purchasePolicy)(
+      auth.userId,
+      mapping.map.environment,
+      resolved.key,
+    );
+  } catch {
+    return errorResponse(
+      "purchase_policy_unavailable",
+      "Purchase eligibility could not be verified",
+      503,
+    );
+  }
+  if (policy.reason) {
+    return errorResponse(
+      policy.reason,
+      "Purchase is unavailable for this account or sale availability",
+      409,
+    );
+  }
+
   const attempt = {
     userId: auth.userId,
+    creatorCode: offer.creatorCode,
+    creatorDiscountId: offer.creatorDiscountId,
     attemptId,
     checkoutKey: resolved.key,
     environment: mapping.map.environment,
-    catalogVersion: mapping.map.catalog_version,
+    catalogVersion: `${mapping.map.catalog_version}:${offer.fingerprint}`,
   } as const;
   let attempts: CheckoutAttemptStore;
   try {
@@ -128,6 +193,34 @@ export async function handleCheckoutRequest(
       "Checkout could not be started safely",
       503,
     );
+  }
+  let discount: Awaited<ReturnType<typeof promotionCheckoutDiscount>>;
+  try {
+    discount = await (deps.promotionDiscount ?? promotionCheckoutDiscount)(
+      getSupabaseAdmin,
+      auth.userId,
+      mapping.map.environment,
+      resolved.config.polar_product_id,
+      now,
+      undefined,
+      attemptId,
+      undefined,
+      {
+        discountId: offer.discountId,
+        key: resolved.key,
+        catalogVersion: attempt.catalogVersion,
+      },
+    );
+  } catch (error) {
+    if (error instanceof PromotionCheckoutError) {
+      return errorResponse(error.code, error.message, error.status);
+    }
+    // No Polar request and no attempt reservation yet: a transient policy lookup
+    // must remain retryable with exactly the same attemptId.
+    return errorResponse("promotion_unavailable", "Retry checkout", 503);
+  }
+  if (discount && typeof discount === "object") {
+    return jsonResponse({ url: discount.checkoutUrl, reused: true }, 200);
   }
   let claim;
   try {
@@ -152,29 +245,37 @@ export async function handleCheckoutRequest(
   if (claim.kind === "uncertain") {
     return errorResponse(
       "checkout_state_uncertain",
-      "The previous checkout result is uncertain; retry later with support",
+      "The previous payment is still being verified. Do not pay again until its result is confirmed.",
       409,
     );
   }
   if (claim.kind === "expired") {
     return errorResponse(
       "checkout_attempt_expired",
-      "Checkout attempt expired; start a new attempt",
+      "This attempt expired. A new payment is allowed after automatic confirmation that the previous checkout cannot charge.",
       409,
     );
   }
   if (claim.kind === "busy") {
     return errorResponse(
       "checkout_in_progress",
-      "Checkout is already being created",
+      "Another checkout or payment is still being verified. Wait for its confirmed result before starting another payment.",
       409,
     );
   }
 
   try {
+    const dispatchToken = await attempts.begin?.(
+      attempt,
+      resolved.config.polar_product_id,
+    );
     const session = await (deps.createCheckout ?? createPolarCheckoutSession)(
       {
         productId: resolved.config.polar_product_id,
+        attemptId: attempt.attemptId,
+        dispatchToken: typeof dispatchToken === "string"
+          ? dispatchToken
+          : undefined,
         userId: auth.userId,
         email: auth.email,
         productKey: resolved.key,
@@ -184,7 +285,9 @@ export async function handleCheckoutRequest(
         capabilities: resolved.config.capabilities,
         channels: resolved.config.channels,
         launchScopeVersion: resolved.config.launch_scope_version,
-        trial: resolved.config.trial,
+        trial: discount ? { enabled: false } : offer.trial,
+        discountId: discount,
+        creatorCode: offer.creatorCode,
       },
       { signal: req.signal },
     );
@@ -200,7 +303,12 @@ export async function handleCheckoutRequest(
     }
     return jsonResponse({ url: session.url, reused: false }, 200);
   } catch (error) {
-    await attempts.markUncertain(attempt).catch(() => undefined);
+    const rejected = error instanceof PolarClientError &&
+      error.code === "polar_checkout_failed" &&
+      [400, 401, 403, 404, 422, 429].includes(error.details.polar_status ?? 0);
+    if (rejected && attempts.reject) {
+      await attempts.reject(attempt).catch(() => undefined);
+    } else await attempts.markUncertain(attempt).catch(() => undefined);
     if (error instanceof PolarClientError) {
       return errorResponse(
         error.code,

@@ -1,0 +1,10 @@
+begin; select no_plan();
+insert into public.profiles(id) values('00000000-0000-4000-8000-000000001627'),('00000000-0000-4000-8000-000000001628'),('00000000-0000-4000-8000-000000001630');
+select * from public.operational_access_set('00000000-0000-4000-8000-000000001627','owner','grant','test:admin','Admin r1','test:r1',null);
+create temporary table creator_probe as select public.native_admin_execute('00000000-0000-4000-8000-000000001627','https://clerk.admin.test','create_creator','{"name":"Carlos GT","email":"carlos@example.invalid","code":"CARLOSGT"}','sandbox') result;
+select public.native_admin_execute('00000000-0000-4000-8000-000000001627','https://clerk.admin.test','activate_creator',jsonb_build_object('creator_id',(select result->'creator'->>'creator_id' from creator_probe),'discount_id','discount-test'),'sandbox');
+select public.native_admin_record_payment('sandbox','{"payment_id":"no-code-first","account_id":"00000000-0000-4000-8000-000000001628","subscription_id":"sub","product":"Pro mensual","paid_at":"2026-08-01T00:00:00Z","amount_cents":319,"currency":"eur","modified_at":"2026-08-01T00:00:00Z","refunded_cents":0}');
+select public.native_admin_record_payment('sandbox','{"payment_id":"later-code","account_id":"00000000-0000-4000-8000-000000001628","subscription_id":"sub","product":"Pro mensual","paid_at":"2026-09-01T00:00:00Z","amount_cents":319,"currency":"eur","discount_id":"discount-test","modified_at":"2026-09-01T00:00:00Z","refunded_cents":0}');
+select is(public.native_admin_execute('00000000-0000-4000-8000-000000001627','https://clerk.admin.test','get_account','{"account_id":"00000000-0000-4000-8000-000000001628"}','sandbox')->'account'->'creator_code','null'::jsonb,'un código posterior no se presenta como código de la primera compra');
+select is(public.native_admin_execute('00000000-0000-4000-8000-000000001627','https://clerk.admin.test','get_creator',jsonb_build_object('creator_id',(select result->'creator'->>'creator_id' from creator_probe)),'sandbox')->'creator'->>'clients_count','0','el creador no se atribuye un cliente que compró primero sin código');
+select * from finish();rollback;

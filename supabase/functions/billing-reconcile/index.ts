@@ -1,3 +1,11 @@
+import {
+  createCompensationStore,
+  createPolarRefundClient,
+  deliverCheckoutOwnerAlerts,
+  expireUnpaidCheckouts,
+  observeCheckoutSession,
+  runCheckoutCompensation,
+} from "./checkout-compensation.ts";
 import { getSupabaseAdmin } from "../_shared/supabase-admin.ts";
 import { loadPolarProductMap } from "../_shared/mapping.ts";
 import { errorResponse, jsonResponse } from "../_shared/responses.ts";
@@ -68,8 +76,23 @@ export async function handleReconciliation(req: Request): Promise<Response> {
     );
   }
   try {
+    const compensationStore = createCompensationStore(admin);
+    const polar = createPolarRefundClient(environment, token);
+    // Run independently of cursor/page processing; a poisoned webhook does not
+    // starve money already owed back to the buyer.
+    const maintenance = await admin.rpc("billing_checkout_maintenance", {
+      p_environment: environment,
+    });
+    if (maintenance.error) throw new Error("checkout_maintenance_unavailable");
+    await runCheckoutCompensation(environment, compensationStore, polar);
+    await deliverCheckoutOwnerAlerts(environment, compensationStore, {
+      url: Deno.env.get("BILLING_OWNER_ALERT_URL") ?? "",
+      secret: Deno.env.get("BILLING_OWNER_ALERT_SECRET") ?? "",
+    });
+    await expireUnpaidCheckouts(admin, map.map, polar);
     let observed = 0;
     let quarantined = 0;
+    let failed = 0;
     const started = Date.now();
     // Process multiple resources immediately; bounded work keeps the request
     // below the Edge runtime deadline. The durable cursor covers larger orgs.
@@ -82,6 +105,7 @@ export async function handleReconciliation(req: Request): Promise<Response> {
         headers: {
           Authorization: `Bearer ${token}`,
           Accept: "application/json",
+          "Polar-Version": "2026-10",
         },
         redirect: "error",
         signal: AbortSignal.timeout(
@@ -111,6 +135,22 @@ export async function handleReconciliation(req: Request): Promise<Response> {
         page,
         environment,
         supabase: admin,
+        observeCheckoutOrder: (order) =>
+          compensationStore.observe(order, map.map),
+        resolveCheckoutOrder: (order, result) =>
+          compensationStore.resolve!(order, result, environment),
+        observationFailure: async (item) => {
+          const incident = await admin.rpc("billing_checkout_incident", {
+            p_environment: environment,
+            p_correlation: typeof item.id === "string" && item.id.length <= 128
+              ? item.id
+              : "malformed_item",
+            p_code: "checkout_observation_failed",
+          });
+          if (incident.error) throw new Error("checkout_incident_unavailable");
+        },
+        observeCheckoutSession: (checkout) =>
+          observeCheckoutSession(admin, map.map, checkout),
       });
       const { data: completed, error } = await admin.rpc(
         "complete_billing_reconciliation",
@@ -127,6 +167,8 @@ export async function handleReconciliation(req: Request): Promise<Response> {
       observed += result.observed;
       quarantined += result.quarantined;
       cursor = result.next;
+      failed += result.failed.length;
+      if (result.failed.length) break; // Finished the page; retry it on the next invocation.
       if (cursor.resource === "orders" && cursor.page === 1) break;
     }
     const { data: released, error: releaseError } = await admin.rpc(
@@ -134,13 +176,13 @@ export async function handleReconciliation(req: Request): Promise<Response> {
       {
         p_environment: environment,
         p_lease_token: lease,
-        p_failed: false,
+        p_failed: failed > 0,
       },
     );
     if (releaseError || released !== true) {
       throw new Error("reconciliation_lease_lost");
     }
-    return jsonResponse({ observed, quarantined, next: cursor });
+    return jsonResponse({ observed, quarantined, failed, next: cursor });
   } catch {
     // Cursor remains unchanged. Automatic next invocation retries this page;
     // effects and snapshots are idempotent. Never log tokens or customer data.

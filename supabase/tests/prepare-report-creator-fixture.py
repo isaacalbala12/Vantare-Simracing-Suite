@@ -4,7 +4,7 @@ Requires the integrated Founders nightly ancestor; no network or remote services
 import argparse, io, pathlib, subprocess, tarfile
 p=argparse.ArgumentParser()
 p.add_argument('--output',required=True)
-p.add_argument('--dependency',default='1f07e8e2803f3e42f3cbf229c8fcdfdea437b842')
+p.add_argument('--dependency',default='460c39e45ea961857666959aba3242f5bf9d1e18')
 p.add_argument('--revision',default='HEAD')
 a=p.parse_args()
 root=pathlib.Path(__file__).resolve().parents[2]

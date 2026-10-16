@@ -1,3 +1,57 @@
+## #1593 / VANTA-39 · R7 terminada al bare, pendiente publicación · 16/10/2026
+
+PR #1659, proyecto Vantare/area:licencias; misma rama. Base R7 b5378d166.
+Merge autorizado8392038d desde nightly1f07e8e28 y ff079767 desde
+nightly460c39e45 (#1661/#1672). Cierre posterior solo documentación y tooling;
+SHA final en issue/evidencia/buzón. Sin promoción de esta rama hacia nightly.
+
+- Conserva checkout/guards de #1661, compra Founders y renovación/retirada
+  de creador, incluida cancelación definitiva por subscription.updated.
+  Webhooks conservan ledger e incidencias de informes y pagos Owner.
+- Un JSON canónico de #1661, sin copia parcial. Ventana única26oct→26nov19
+  Madrid; primer periodo once por cuenta, recuperable tras TTL, consume desde
+  SQL incluso sin flag de informes. Mensual/anual comparten el derecho,
+  sin consumirlo por una compra vitalicia histórica. Reserva/CAS, identidad,
+  huella de oferta/creador y claim/atribución transaccionales conservados.
+- Mayor ahorro con selector original único; informes desde mes2. Conserva
+  seis cobros totales, caducidad6meses, spam, traslados y barrera de borrados.
+  Revocación PATCH→ACK: recibo durable, solo token propio/vivo, conflicto
+  blando auditado y lease liberado; no completar creador ni falsa incidencia.
+  Retirada de creador incluye remanentes verificados; preserva informes/manual.
+  Refund inicial sigue perdiendo el premio y autoriza solo limpieza.
+- SQL177+88+89+43+36 PASS en ambos órdenes sobre migraciones reales.
+  Catálogo completo79/52PASS/27FAIL heredadas frente a nightly77/50/27:
+  1585→1850 aserciones PASS,265 nuevas, cero regresiones y mismas fallas.
+  #1672 no cambia ni un fichero SQL: baseline1f07 se conserva con prueba Git.
+- Edge707PASS/0FAIL/2ignored frente a nightly460662/0/2. Conservadas593
+  declaraciones literales de tests de nightly y sus casos dinámicos. La
+  copia vieja superpuesta fue sustituida por archivo del árbol Git unido,
+  que exige el ancestro460. Sin suites sustituidas por un fixture parcial.
+- Diez controles SQL y siete Edge detectados: fecha, revocación/ACK y remanentes,
+  comparación, locks/lease, total de meses, recuperación, borrados; guards,
+  hooks/retirada/cancelación definitiva, once/fingerprint y configJWT.
+  Primeras pruebas rojas de ventana y carrera ACK conservadas. Dos mutantes
+  Edge iniciales solo rompían el tipado: corregidos para probar conducta.
+- Windows serial MIN_GB0 por compilar.ps1:fmt/check/Clippy PASS, Nextestci
+  1826PASS/14skips (telemetría incluida), lifecycle18PASS.24 entradas
+  nativas Mac/Windows idénticas normalizandoLF; #1672 no toca Rust.
+  Targets propios se limpian por Cargo al cerrar. Fmt/lint Edge, superficie,
+  quality, retirada y diff-check PASS. Docker aislado sin red/puertos,
+  SQL NOSUPERUSER BYPASSRLS, lock/trap liberado tras cada gate.
+- Remanentes20%1..10 son requisito ANTES de activar convivencia. Runbook y
+  fragmento ISA-1593 actualizados. Multi-cuenta aceptado; progreso en Hub
+  sigue propuesta, Owner conserva bloque. Sin nuevos productos ni cupones,
+  servicios reales, deploy, scheduler, pagos/refunds o release.
+
+Estado al cierre:Plane Por revisar tras verificar entrega; publicación GitHub,
+CI y re-review R7 por orquestador. PR remoto aún b5378d166, CI SUCCESS solo de
+esa base; no acredita R7. Evidencia ~/evidence/1593-r7/RESULTADOS.md y copia
+C:/VantareServer/evidence/1593-r7. FIN en ~/orq/1593.buzon.md al completar
+seguimiento. Pendientes sandbox autorizado/QA visual y activación de catálogo.
+Polar real:seis fijos Pro200c/Plus300c repeating1/3/6, creador #1661 y remanentes
+mensuales20%1..10 validados; oferta inicial once solo del catálogo de #1661.
+Isaac autoriza/crea; este worker no ha consultado ni escrito Polar real.
+
 ## #1593 / VANTA-39 · R7 incorpora retirada definitiva #1672 · 16/10/2026
 
 Nightly460c39e45 añadido por encargo explícito del orquestador. Conserva la

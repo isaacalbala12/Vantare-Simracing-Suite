@@ -157,7 +157,7 @@ descarta su ahorro antes de comparar: puede pasar a ganar informes. Un bloque de
 informes ya confirmado termina naturalmente aunque haya caducado su saldo;
 después puede volver el creador vigente.
 
-**Unión R7:** esta rama fusiona nightly `1f07e8e28`, incluidos Founders,
+**Unión R7:** esta rama fusiona nightly `460c39e45` (#1661 y retirada definitiva #1672), incluidos Founders,
 guards de checkout, atribución y hooks de renovación/retirada de creador.
 La migración instala el puente sobre el contrato actual de revocación;
 si cambia el orden de instalación, ejecutar como operador
@@ -308,6 +308,17 @@ hasta abrir el detalle. Progreso en app del usuario sigue como propuesta para
 otro contrato/DTO.
 
 ## Verificación local
+
+R7 usa el árbol Git unido con nightly460c39e45, incluidos #1661 y #1672.
+SQL completo:79 suites,52 PASS/27 FAIL idénticas a nightly77/50/27;265
+aserciones adicionales de informes/convivencia, cero regresiones.
+Dirigido en ambos órdenes:177+88+89+43+36 PASS. Edge707PASS/0FAIL/2ignored
+frente a nightly662/0/2. Diez controles SQL y siete Edge detectados, incluidos
+guards de checkout, hook de creador, retirada, recuperación, once y JWT.
+Rust Windows serial:fmt/check/Clippy PASS, Nextestci1826PASS/14skips con
+telemetría y lifecycle18PASS.24 entradas nativas iguales Mac/Windows.
+Evidencia ~/evidence/1593-r7; no acredita servicios reales ni activación.
+
 
 Adquirir `~/orq/docker.lock` y liberar con trap. Desde raíz:
 

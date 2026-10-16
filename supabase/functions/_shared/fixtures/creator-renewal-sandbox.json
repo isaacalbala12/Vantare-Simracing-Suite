@@ -82,12 +82,12 @@
     ]
   },
   "normal": {
-    "id": "95ba0a05-937f-4e22-9e64-62e25755ed99",
+    "id": "aa63f16c-4c28-4958-a1ef-1fdc466ba1f1",
     "amount": 599,
     "currency": "eur",
     "recurring_interval": "month",
     "recurring_interval_count": 1,
-    "status": "canceled",
+    "status": "active",
     "product_id": "0d0de79b-30ba-4d00-8429-c9e6cba8ca56",
     "discount_id": null,
     "price_id": "7a6d9bc3-4a83-4f16-82f7-c496f67d7d09",

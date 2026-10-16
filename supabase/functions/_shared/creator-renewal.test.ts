@@ -46,6 +46,41 @@ Deno.test("R4 creator attribution combines with launch without discounting first
 
 import { applyCreatorRenewal } from "./creator-renewal.ts";
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+Deno.test("ISA-1680 a product outside the configured plan records failure without calling Polar", async () => {
+  const loaded = loadPolarProductMap(VALID_POLAR_PRODUCT_MAP_JSON, {
+    environment: "sandbox",
+  });
+  if (!loaded.ok) throw Error("fixture");
+  const outcomes: boolean[] = [];
+  const client = {
+    rpc: (name: string, args: Record<string, unknown>) => {
+      if (name === "billing_creator_renewal_prepare") {
+        return Promise.resolve({ data: { token: "lease" }, error: null });
+      }
+      assertEquals(name, "billing_creator_renewal_finish");
+      outcomes.push(args.p_success as boolean);
+      return Promise.resolve({ data: true, error: null });
+    },
+  } as unknown as SupabaseClient;
+  let polarCalls = 0;
+  await assertRejects(() =>
+    applyCreatorRenewal(client, loaded.map, {
+      userId: "account",
+      checkoutId: "checkout",
+      subscriptionId: "sub",
+      orderId: "paid",
+      productId: "foreign",
+      key: "pro_monthly",
+      initial: true,
+    }, () => {
+      polarCalls++;
+      return Promise.resolve();
+    })
+  );
+  assertEquals(polarCalls, 0);
+  assertEquals(outcomes, [false]);
+});
+
 Deno.test("R4 paid receipt retries after failure, records Owner issue, and ACKs only confirmed state", async () => {
   const loaded = loadPolarProductMap(VALID_POLAR_PRODUCT_MAP_JSON, {
     environment: "sandbox",
@@ -94,6 +129,10 @@ Deno.test("R4 paid receipt retries after failure, records Owner issue, and ACKs 
     _env,
     expected,
   ) => {
+    assertEquals(
+      expected.priceIds,
+      loaded.map.checkout_keys.pro_monthly!.polar_price_ids,
+    );
     assertEquals(await expected.authorize(), true);
     if (fail) throw Error("provider unavailable");
     writes++;

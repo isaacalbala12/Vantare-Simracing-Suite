@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-1591",
+  "type": "feat",
+  "summary": "Vantare tiene un instalador propio con opciones, progreso y reparación; tus datos siempre se conservan al desinstalar.",
+  "technicalNotes": [
+    "Setup y Uninstall Rust/GPUI reproducen el diseño #E aprobado; reutilizan el motor por generaciones y las dependencias ya fijadas.",
+    "Conserva HKCU por usuario, identidad QA1492, modo /S y renovación del bootstrap solo por Setup.",
+    "El feed y su firma permanecen intactos; 0.0.976 conserva NSIS para el corte de #1565."
+  ],
+  "testing": ["Contratos Rust, shell, QA aislada y gates se registran en #1591 con sus SHA y evidencia."],
+  "knownLimitations": ["Arranque live, equipo Windows limpio y DPI físicos requieren evidencia en cuenta/VM de prueba; no implica integración, firma real ni release."]
+}

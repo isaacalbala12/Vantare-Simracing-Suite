@@ -4,7 +4,9 @@
 
 ## Review R1 #1660 · correcciones para ronda 2 · 2026-10-17
 
-Informe NO APTO de DeepSeek leído. Ruta de agenda compartida desde el layout
+Informe NO APTO de DeepSeek leído. Correcciones `c7ffd8d9`; se fusiona
+origin/nightly `de68847f7` (instalador #1600) sin conflictos ni rebase.
+Ruta de agenda compartida desde el layout
 real de Studio/overlay mediante `ipc::session_alerts::calendar_path`, con
 regresión para argumentos beta/MSIX. El supervisor live deriva catálogo desde
 `widgets!` (origen de `Kind::ALL`) y variantes desde `LIVE_EXTRA_SETTINGS`;

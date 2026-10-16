@@ -284,3 +284,15 @@ propios en runtime/domain/ipc/testdata; los del merge pertenecen a nightly.
 Primera espera de fmt acabó -1 sin ejecutar Cargo; reintento conservado y PASS,
 sin sccache. Evidencia nueva: `round2-sync/retry-results.json`, logs,
 `qa-live/result.json`, auditoría Win32 y `batch-*.json`.
+
+### Segundo avance de nightly durante la verificación
+
+La CI de `f9c301668` termina **5/5 SUCCESS**: fmt/check/Clippy workspace,
+Nextest **1862/1862** (19 skips), lifecycle y462 huellas PASS. Marketing
+SQL/E2E se omite porque el runner no dispone de Docker; no se presenta como
+test de base de datos pasado. Telemetría se excluye por scope del diff propio.
+
+Nightly recibe #1684 durante esa espera. Se integra `1a8ddee33` también,
+sin conflictos ni reescritura de historia; únicamente services/login y sus
+tests/documentación. Capturas en Hub/UI/vendor conservan bytes validados.
+Los checks del SHA resultante se vuelven a verificar y registrar en issue/PR.

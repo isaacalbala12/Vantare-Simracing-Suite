@@ -139,3 +139,13 @@ Plane VANTA-82 y Project Vantare se actualizan al cerrar la verificación de CI;
 su lectura final vive en la issue junto con HEAD/remoto/checks.
 Siguiente: revisión del orquestador y aceptación visual histórica.
 Sin merge del PR a nightly, promoción ni release.
+
+Verificación final: `f9c301668` obtuvo **5/5 checks verdes**, incluidos fmt,
+check, Clippy -D warnings, Nextest workspace **1862/1862** (19 skips) y lifecycle.
+SQL/E2E Marketing se omite en ese job por falta de Docker, sin cambios propios
+en Marketing. Telemetría excluida por el clasificador (diff propio fuera de
+runtime/domain/ipc/testdata). Mientras corría CI, nightly recibió #1684:
+se incorpora también **1a8ddee33** con merge normal sin conflictos. Solo cambia
+el guardado de login en services y su regresión/documentación; Hub/UI/vendor
+de capturas permanecen iguales al código validado. La CI del nuevo SHA se
+verifica otra vez en la issue antes de cerrar; sin modificar gates ni fixtures.

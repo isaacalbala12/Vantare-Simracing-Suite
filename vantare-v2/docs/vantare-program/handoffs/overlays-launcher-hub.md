@@ -83,6 +83,19 @@ Hitos #1607: PNG `c40a90d9` (2234.920 → 115.473 µs/carga repetida; RED/GREEN)
 
 ### #1655 / VANTA-82 · Capturas sin ventanas visibles, en lote e incrementales
 
+**Ronda 2 (16/10), código Rust `366902b3b`:** nightly `bcaa0e3f2` incorporado
+mediante `560c9fef8`. Banco ui-quality live-IPC restaurado sin salida ni caché,
+misma creación oculta/NOACTIVATE que el lote. Redimensiona con `AnyWindowHandle`
+sin prestar Hub; error correcto para política viva en capturas a archivo.
+Marcador configurable, caducidad/limpieza a 15 minutos y DPI 96/100 % explícito.
+Regresión real PASS: 1 proceso/1 HWND, políticas 1→2, dos PNG externas distintas
+(11980 píxeles), EOF exit 0, marcador huérfano eliminado, cero foco/cruces.
+Rectángulo observado (-3488,0,-2048,900), no (184,-4); ambos PE sin consola.
+Control de dos entradas: 35,228 s; incremental 0,140 s, sin ventana/reescritura.
+Build Hub/ejemplo y 34/34 tests focales PASS. Gates completos en curso por cola.
+Intentos y evidencia conservados en `C:/VantareServer/evidence/1655/round2/`.
+El PR sigue draft y VANTA-82 En curso hasta cerrar gates y documentación.
+
 2026-10-16 · Implementación terminada por Codex gpt-6.1-sol, sin subagentes.
 Rama `vantareapp/isa-1655-capturas`; base inicial nightly `4651797cb`, actualizada
 con `origin/nightly@9e48eb86f` mediante merge `563262ad2` y después

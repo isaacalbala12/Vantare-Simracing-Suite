@@ -181,3 +181,49 @@ referencias congeladas, binarios/hash, `benchmark-calendar.json`,
 orden del orquestador; después `354c207aa` mediante `01b067766`, sin cambios
 nativos adicionales. Sin merge del PR a nightly, promoción de canal, release,
 despliegue ni acciones de cuenta/datos reales.
+
+## Revisión R2 · banco IPC vivo (16 de octubre)
+
+Se incorpora nightly `bcaa0e3f2` mediante `560c9fef8`, sin conflictos.
+El código Rust R2 es `366902b3b`. Se conserva `ui-quality` como banco persistente:
+`capture_output: None` sigue leyendo IPC y sirve un HWND al capturador externo;
+las capturas con archivo de salida siguen la ruta determinista y sus recibos.
+El banco usa las mismas opciones de creación oculta y los mismos controles
+Win32 que el lote. La sincronización del viewport usa `AnyWindowHandle` para
+no prestar Hub mientras sus callbacks de foco actualizan esa entidad.
+No llama a `activate` ni necesita `VANTARE_CAPTURE_OFFSCREEN`.
+
+La regresión real `native/hub/src/testing/test_live_capture.py` usa el
+ejemplo QA compilado y cambia derechos por IPC en un único proceso. Resultado: **PASS**,
+1 proceso y 1 HWND de captura, revisiones 1 y 2 recibidas, dos PNG de 1440×900
+por `testing/capture.ps1`, 11980 píxeles diferentes tras el cambio, cierre por EOF
+con código 0 y cero incidencias de foco/monitores. El rectángulo real es
+`(-3488,0,-2048,900)`, comprobado desde nacimiento oculto: no se recoloca a
+`(184,-4)`. Ambos ejecutables QA usan subsistema Windows (2), sin consola.
+El banco no usa caché. La prueba también confirma la retirada de un marcador
+huérfano desde una ruta configurada. El error de captura a archivo con política
+`ipc` explica que necesita una política congelada y remite al banco vivo.
+
+El marcador admite `VANTARE_CAPTURE_TURN_FILE` y conserva la ruta antigua como
+valor de compatibilidad. Caduca a los 15 minutos de su mtime y se elimina bajo
+el mutex. Dos regresiones con reloj inyectado cubren turno propio/ajeno activo,
+caducidad exacta, retirada del huérfano, ruta distinta y fecha futura/vacío.
+`native/README.md` documenta la gestión de esa reserva y el requisito operativo
+DPI 96 / escalado 100 %: otros DPI fallan antes de presentar, no se degradan.
+
+Control actual de lote (Inicio/Studio, dos tamaños/apariencias): 2 PNG en
+35,228 s, un proceso/una ventana; incremental 0,140 s, un proceso/cero ventanas,
+ambas salidas omitidas y mtimes intactos. Política IPC con salida se rechaza
+sin abrir ventana. Las medidas completas de calendario/widgets anteriores
+se conservan; no se repiten ni se sustituyen por este control de dos entradas.
+Las referencias históricas siguen intactas.
+
+Build Hub/ejemplo y **34/34 tests focales PASS**. Gates completos R2 pendientes
+al registrar este avance; los resultados definitivos se añaden al cierre.
+Evidencia: `C:/VantareServer/evidence/1655/round2/`, `gates.json`,
+`qa-live-final/result.json`, `window-audit.json`, `qa-pixels-and-placement.json`,
+`pe-binaries.json`, `batch-full.json` y `batch-incremental.json`.
+Se conservan los intentos fallidos: disco lleno durante fmt (recuperado con
+`cargo clean` solo de Hub/UI del target propio), reentrada de GPUI (corregida)
+y una respuesta de perfil ausente en la fixture de prueba (completada).
+Ningún intento detectó una ventana visible en monitores ni foco.

@@ -296,3 +296,20 @@ Nightly recibe #1684 durante esa espera. Se integra `1a8ddee33` también,
 sin conflictos ni reescritura de historia; únicamente services/login y sus
 tests/documentación. Capturas en Hub/UI/vendor conservan bytes validados.
 Los checks del SHA resultante se vuelven a verificar y registrar en issue/PR.
+
+### H1: perfil de Cuenta en el banco sin salida
+
+La revisión final detecta que la detección genérica de `--capture` también
+podía sobreponer el perfil congelado sobre la cuenta del banco IPC. Se limita
+esa fixture a archivo (`--out`), lote o `--demo` explícita. El banco sin
+salida conserva el perfil real de su peer QA, además de los derechos vivos.
+Las capturas a archivo/lote mantienen sus datos y su clave incremental.
+
+Regresión con argumentos inyectados: banco sin demo, demo explícita, archivo,
+lote, demo sin captura y modo normal. **42/42 tests focales PASS**, incluyendo
+la regresión nueva. Formato aplicado por la cola, un job y MIN_GB=0.
+El backend/creación de ventanas no cambia; se conserva la auditoría IPC real
+con cero foco/cruces. La pasada anterior `aa2fa3465` pasó5/5checks,
+Nextest1863/1863 (19skips) y lifecycle; la CI del ajuste final se verifica
+por separado en issue/PR. Evidencia `account-*.log` y
+`account-final-results.json` dentro de `round2-sync/`.

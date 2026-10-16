@@ -149,3 +149,13 @@ se incorpora también **1a8ddee33** con merge normal sin conflictos. Solo cambia
 el guardado de login en services y su regresión/documentación; Hub/UI/vendor
 de capturas permanecen iguales al código validado. La CI del nuevo SHA se
 verifica otra vez en la issue antes de cerrar; sin modificar gates ni fixtures.
+
+Cierre H1 de Cuenta: el banco `--capture` sin salida ni `--demo` conserva
+también el perfil/módulos recibidos por IPC; no se sobrepone el perfil congelado.
+Capturas con `--out`, lote y demo explícita mantienen sus fixtures. Regresión
+con argumentos inyectados (sin tocar el entorno): banco, archivo, lote,
+demo explícita y modo normal. **42/42 focales PASS** tras el ajuste
+(`round2-sync/account-final-results.json`). GPUI/ventanas y su auditoría real
+anterior no cambian. El SHA intermedio `aa2fa3465` obtuvo5/5checks verdes,
+Nextest1863/1863 (19skips), Clippy/fmt/check/lifecycle; la CI del último ajuste
+se registra en la issue/PR al terminar, sin reutilizar ese verde para otro SHA.

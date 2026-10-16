@@ -6,8 +6,9 @@ Arreglo autorizado por Isaac tras la investigación sandbox; issue
 Rama `vantareapp/isa-1680-creador-importe-descontado`, worktree propio isa-1680,
 base `origin/nightly@95abdcc6e8a87b909848131231dc3031356b4fb7`.
 Regresiones iniciales `dcb5b027d`; implementación `4d1ae38dd`.
-PR a nightly y SHA final/CI se verifican en la issue y el buzón polar-sandbox;
-no se afirma integración ni despliegue.
+PR draft [#1681](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1681)
+a nightly, sin auto-merge; CI remoto en curso al abrirlo. SHA final y resultado
+de CI se verifican en la issue y el buzón polar-sandbox; sin integración ni deploy.
 
 Polar devuelve `subscription.amount` descontado. La sincronización ahora valida
 el precio base seleccionado contra IDs autorizados del mapa, producto, importe

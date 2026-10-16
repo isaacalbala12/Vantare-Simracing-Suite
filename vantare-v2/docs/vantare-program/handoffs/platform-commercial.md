@@ -2,7 +2,9 @@
 
 Seguimiento pedido por el orquestador tras el límite público ECR de #1657.
 #1657 ya integrado: nueva rama `vantareapp/isa-1636-postgres-ci-retry`, worktree
-`~/wt-1636-ci-image`, base nightly `e3d69f828`. PR pequeño independiente.
+`~/wt-1636-ci-image`, base nightly `e3d69f828`. PR independiente draft
+[#1678](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1678), publicado
+desde el servidor por petición expresa; CI remoto pendiente, sin merge.
 Solo adquisición de imagen y tests: tres rondas ECR/Docker Hub, esperas15/45s,
 80s por pull +10s para matar el proceso; máximo6 pulls. Fallo explícito al agotar
 registros o fallar tag; SQL/E2E no se omiten ni se cambian. Sin nuevas acciones,

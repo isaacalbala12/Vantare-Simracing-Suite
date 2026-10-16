@@ -16,6 +16,17 @@ Leídos [#1485](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/
 
 ## 3. Estado real y canal
 
+Pulido posterior de VANTA-33 / #1638, rama `vantareapp/isa-1638-pulido`, base
+`nightly@bcaa0e3f2` (#1664 integrada). Lifecycle confundía `clear:true` de fuente
+stale con ingest autorizado mientras derechos seguían pendientes. La nueva
+fixture fuerza esa intercalación, confirma PID del pipe, cursor0, liberación
+de derechos y base autorizada antes de publicar la vuelta. Conserva aviso antes
+del cursor1, checkpoint, cierre, concurrencia y límites originales. Mutación
+reproduce el mismo `assertion failed: lap`; cinco tandas completas 25/25 PASS.
+El `os error 2` compartido de CI no identifica al hijo; existe además un test
+con Core ausente. Host ya creaba el primer pipe antes de devolver. Sin cambios
+de producto, permisos o TTL. [Evidencia y límites](../../telemetria/pulido-1638-2026-10-16.md).
+
 Encargo posterior del orquestador en VANTA-33 / #1638, PR draft #1664:
 el run38847620638 de `08f52be56` pierde autoridad después de HELLO en dos
 tests recovery. No usa el adaptador LMU; aislados pasan46/46 antes del cambio.

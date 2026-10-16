@@ -16,6 +16,24 @@ Leídos [#1562](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/
 
 ## 3. Estado real y canal
 
+### #1638 / VANTA-33 — pulido M-1…M-6 tras integración de #1664
+
+Rama `vantareapp/isa-1638-pulido`, base `nightly@bcaa0e3f2` verificada; #1664
+ya integrada por el orquestador. [Alcance y regresiones](../../telemetria/pulido-1638-2026-10-16.md).
+M-1 exige dos avances cercanos tras un stall, sin ventana de 2 s; M-2 reconoce
+alias Hypercar sin asignar por frame; M-3 delimita los goldens; M-4 Flags+Cars
+omite sanciones; M-5 limita a 64 MiB agregados el historial del lector ajeno.
+M-6 repite el archivo íntegro por Core/DTO y los 18 widgets, scope practice-only.
+Resultados, SHA/PR/checks y artefactos se registran al cerrar la ejecución;
+la pasada anterior de abajo sigue siendo histórica hasta esa actualización.
+
+Lifecycle Engineer: se fuerza la llegada tardía de derechos con barrera y se
+distingue el clear de fuente stale de la base autorizada. Mutación sin barrera
+reproduce `assertion failed: lap`; cinco tandas completas 25/25 PASS sin cambiar
+permisos, plazos, concurrencia ni Engineer productivo. Gates por cola MIN_GB=0.
+VANTA-33 sigue En curso: conducción/A-B, qualy/carrera/formación/salida y agenda
+de siguiente sesión no quedan cubiertas por la práctica estática de Imola.
+
 ### #1638 / VANTA-33 — CI Engineer y contraste de jugador (16-oct)
 
 [Investigación y límites](../../telemetria/ci-y-jugador-2026-10-16.md).

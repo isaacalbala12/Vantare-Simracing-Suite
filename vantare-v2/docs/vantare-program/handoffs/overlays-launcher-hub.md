@@ -145,3 +145,7 @@ marketing anterior y se consulta la propia de la nueva sesión, con regresión.
 Los gates y el estado verificado de cada SHA de este merge viven en #1628 y
 PR #1637 (CI Windows); no se extrapolan los checks de la entrega anterior. No hay promoción a nightly ni release.
 P1 widgets completos #1641 y capturas #1675 quedan fuera de este arreglo del merge.
+
+Durante la CI avanzó nightly a 1a8ddee33 (#1684): se incorpora también con merge,
+sin conflictos; conserva la retirada de triage y el reinicio del login si falla
+el guardado tras el canje. Se repiten los checks sobre el HEAD resultante.

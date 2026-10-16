@@ -14,7 +14,10 @@ required-features = ["parity-capture"]
 
 [dependencies]
 vantare-launcher.workspace = true
-vantare-services.workspace = true
+# `network` explícito: hub usa `services::config::account_portal_origin`. Sin la
+# feature, `cargo check/build -p vantare-hub` no compila y alternar con
+# `--workspace` recompilaba services y sus dependientes (#1654 r3).
+vantare-services = { workspace = true, features = ["network"] }
 vantare-ui = { path = "../ui" }
 vantare-domain.workspace = true
 vantare-ipc.workspace = true

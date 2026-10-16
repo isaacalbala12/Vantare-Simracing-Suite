@@ -17,11 +17,11 @@ use vantare_domain::{Snapshot, delta, format::Preferences};
 #[serde(default, rename_all = "camelCase")]
 pub struct Settings {
     /// Sistema de diseño: Vantare (principal) o Eficiencia (heredado).
-    pub design_system: crate::standings::DesignSystem,
+    pub design_system: crate::look::Look,
     #[serde(default)]
     pub content_version: u8,
-    pub style: crate::standings::Look,
-    pub accent: crate::standings::Accent,
+    pub style: crate::look::Tone,
+    pub accent: crate::look::Accent,
     /// Formato Vantare: `pill` (el del Studio), `bar` (380) o `expanded` (520).
     pub size: String,
     /// Referencia Vantare: `best`, `optimal` o `leader`.
@@ -54,8 +54,8 @@ impl Settings {
         Self {
             design_system,
             content_version: 1,
-            style: crate::standings::Look::Neo,
-            accent: crate::standings::Accent::Red,
+            style: crate::look::Tone::Neo,
+            accent: crate::look::Accent::Red,
             size: "pill".into(),
             reference: "best".into(),
             show_bar: true,
@@ -251,10 +251,7 @@ impl Widget {
             visual.attach(self.board.clone());
         }
     }
-    pub(crate) fn frame(&mut self, prefs: Preferences) -> (Paint, Wake) {
-        self.frame_with_motion(prefs, false)
-    }
-    pub(crate) fn frame_with_motion(&mut self, prefs: Preferences, reduced: bool) -> (Paint, Wake) {
+    pub(crate) fn frame(&mut self, prefs: Preferences, reduced: bool) -> (Paint, Wake) {
         let now = Instant::now();
         match &mut self.presentation {
             Presentation::Vantare {
@@ -379,14 +376,14 @@ mod tests {
         let mut widget = Widget::new(&Settings::eficiencia(), prefs);
         let mut snapshot = crate::source::fixed();
         widget.ingest(&snapshot, prefs);
-        drop(widget.frame(prefs));
+        drop(widget.frame(prefs, false));
         assert!(widget.idle_frame.is_some());
-        drop(widget.frame(prefs));
+        drop(widget.frame(prefs, false));
         assert!(widget.idle_frame.is_some());
         snapshot.state.source_state = vantare_domain::SourceState::Lost;
         widget.ingest(&snapshot, prefs);
         assert!(widget.idle_frame.is_none());
-        assert_eq!(widget.frame(prefs).1, Wake::Idle);
+        assert_eq!(widget.frame(prefs, false).1, Wake::Idle);
         assert!(widget.idle_frame.is_some());
     }
 

@@ -8,6 +8,9 @@ const DATA: &str = include_str!("../reference/fixtures/demo-data.json");
 const SCREENS: &str = include_str!("../reference/tools/demo-states.json");
 const STRATEGY_REVIEW: &str = include_str!("../reference/fixtures/strategy-review-demo.json");
 const QUALITY_CAPTURES: &[&str] = &[
+    "ajustes-perfil",
+    "ajustes-perfil-foto",
+    "ajustes-perfil-recorte",
     "inicio-sidebar",
     "inicio-sidebar-sin-carril",
     "inicio-sin-carril",
@@ -22,6 +25,9 @@ const QUALITY_CAPTURES: &[&str] = &[
     "studio-sidebar",
     "studio-vacio",
     "studio-sin-seleccion",
+    "studio-catalogo-busqueda",
+    "studio-catalogo-sin-resultados",
+    "studio-anadido",
     "studio-oculto",
     "studio-manual",
     "studio-en-vivo",
@@ -519,6 +525,7 @@ impl StrategyCaptureDemo {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CaptureSettingsPage {
+    Account,
     Application,
     Appearance,
     Performance,
@@ -690,6 +697,9 @@ impl CaptureState {
             _ => None,
         };
         let settings_page = match name {
+            "ajustes-perfil" | "ajustes-perfil-foto" | "ajustes-perfil-recorte" => {
+                Some(CaptureSettingsPage::Account)
+            }
             "ajustes-preparacion-oscuro"
             | "ajustes-apariencia"
             | "ajustes-apariencia-detalle"

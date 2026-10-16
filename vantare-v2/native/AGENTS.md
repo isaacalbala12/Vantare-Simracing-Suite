@@ -10,12 +10,14 @@ El mapa de crates y sus fronteras viven en [README.md](README.md),
 
 1. Widget nuevo o portado: una proyección en domain, un módulo en ui y una
    línea en registry.rs. N Looks sobre un estado, integrado para los cuatro widgets de #1531.
-2. Justificar cambios en frame_with_motion, Level::hz o allows_widget.
+2. Justificar cambios en Level::hz; cada widget recibe frame(prefs, reduced).
 3. Campo nuevo en SnapshotDto: subir VERSION o explicar por qué no.
    El pipe live es estricto; compatibilidad guardada usa un lector explícito.
 4. Ningún #[path] nuevo entre crates; reutilizar la interfaz del crate dueño.
 5. Ningún commit en internal/, cmd/, pkg/ o frontend/ salvo hotfix autorizado.
-6. Ningún fichero hub/src >2000 LOC sin plan de partición en el mismo PR.
+6. `hub/tests/architecture.rs` vigila los techos de tamaño de los archivos Rust
+   de hub/src y define sus excepciones (#1561). Bajar un techo es libre;
+   subirlo exige un plan de partición en el mismo PR. Studio no tiene excepción.
 7. Adapter neutral: reglas del simulador dentro de su adapter; widgets reciben
    ViewModels, sin persistencia, permisos, red ni posición espacial.
 
@@ -23,7 +25,8 @@ El mapa de crates y sus fronteras viven en [README.md](README.md),
 
 - Compilar solo por la cola desde `vantare-v2/`:
   `pwsh -NoProfile -File native/scripts/compilar.ps1 <comando>`.
-- Target aislado por worktree, `-j 2`, Rust fijado y dependencias locked/offline.
+- Target aislado por worktree, `-j 2` (o `CARGO_BUILD_JOBS` de la máquina; en nextest
+  `--build-jobs`), Rust fijado y dependencias locked/offline.
 - Desde native/: cargo fmt --all -- --check; gates.ps1 -Gate clippy
   (-D warnings), test (Nextest) y lifecycle, todos por la cola.
 - Añadir gates.ps1 -Gate telemetria si cambia código/fixtures de runtime, domain, ipc o testdata.

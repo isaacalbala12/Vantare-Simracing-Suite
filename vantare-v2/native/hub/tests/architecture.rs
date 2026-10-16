@@ -303,3 +303,50 @@ fn installed_layout_bootstrap_child() {
     assert_eq!(reopened.layout(), studio.layout());
     assert_eq!(reopened.layout().instances.len(), 5);
 }
+
+#[test]
+fn hub_source_files_stay_within_their_line_budgets() {
+    // Solo los cuatro archivos preexistentes de #1561 PR-6.
+    // Bajar un techo es libre; subirlo exige un plan de particion en el mismo PR.
+    const EXCEPTIONS: [(&str, usize); 4] = [
+        ("analysis/view.rs", 2069),
+        ("launcher/showcase.rs", 2139),
+        ("services/view.rs", 1750),
+        ("settings/view.rs", 2145),
+    ];
+    fn visit(root: &std::path::Path, directory: &std::path::Path) {
+        for entry in std::fs::read_dir(directory).expect("directorio fuente del Hub") {
+            let path = entry.expect("entrada fuente del Hub").path();
+            if path.is_dir() {
+                visit(root, &path);
+            } else if path.extension().is_some_and(|extension| extension == "rs") {
+                let relative = path
+                    .strip_prefix(root)
+                    .expect("fuente bajo hub/src")
+                    .to_str()
+                    .expect("ruta UTF-8")
+                    .replace('\\', "/");
+                let ceiling = EXCEPTIONS
+                    .iter()
+                    .find(|(file, _)| *file == relative)
+                    .map_or(2000, |(_, ceiling)| *ceiling);
+                let lines = std::fs::read_to_string(&path)
+                    .expect("fuente Rust UTF-8")
+                    .lines()
+                    .count();
+                assert!(
+                    lines <= ceiling,
+                    "hub/src/{relative}: {lines} lineas, techo {ceiling}; partir el archivo"
+                );
+            }
+        }
+    }
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+    for (relative, _) in EXCEPTIONS {
+        assert!(
+            root.join(relative).is_file(),
+            "hub/src/{relative}: excepcion de tamaño sin archivo existente"
+        );
+    }
+    visit(&root, &root);
+}

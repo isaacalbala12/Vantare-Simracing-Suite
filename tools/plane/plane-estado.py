@@ -29,6 +29,10 @@ class Parser(argparse.ArgumentParser):
         self.exit(2, "Error: argumentos inválidos; consulta --help.\n")
 
 
+# El vigilante del servidor (#1647) ignora los comentarios con esta firma.
+COMMENT_PREFIX = "[orquestador] "
+
+
 def parse_args(argv=None):
     parser = Parser(description=__doc__)
     parser.add_argument("tarea", help="VANTA-N")
@@ -119,7 +123,6 @@ class Plane:
         return PROJECT_ID
 
 
-COMMENT_PREFIX = "[orquestador] "
 SUMMARY = "<h3>Qué se ha hecho</h3>"
 
 

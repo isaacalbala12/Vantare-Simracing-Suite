@@ -1,5 +1,18 @@
 # Servicios nativos — ISA-1430
 
+**#1661 / VANTA-83:** Founders añade el plan perpetuo para contenido presente y
+futuro. Corte actual services v10 / control v5 / fotos v10; recompilar el conjunto.
+Incluye Nightly vitalicio junto al derecho Founders; no concede roles. [Contrato](../../docs/billing/founders-1661.md).
+
+**Corte combinado #1610/#1594:** protocolo services v9 (DTO v10/derechos v4
+independientes); recompilar Hub/services juntos. F7=C: campos escritos locales,
+etiquetas SQL fijas y salida estructurada por catálogo; no se envía prosa del tester.
+Rutas cerradas: current_v2, envío consentido por Edge `testing-report-submit`,
+crédito y acuse por fecha. La RPC directa no está permitida. Historial sin cuerpo
+privado; arreglado requiere versión válida. No hay cliente Plane ni referencia PostHog productiva.
+SQL y dependencias #1602/#1609 siguen sujetos a revisión e integración:
+[contrato vigente](../../docs/runbooks/testing-report-followup.md).
+
 `vantare-services` es miembro de `native/`: un workspace, `Cargo.lock`, edición
 y lints compartidas. Proceso de usuario bajo demanda, sin GPUI/simuladores.
 El supervisor `vantare` posee el auxiliar; el Hub solo manda comandos IPC.

@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-1608",
+  "type": "fix",
+  "summary": "El cambio de cuenta, el cierre de sesión y la renovación requieren el núcleo para confirmar revocación; un refresh rechazado retira derechos y sesión, y los fallos temporales conservan el acceso offline válido.",
+  "technicalNotes": [
+    "El emisor deniega cuentas Clerk bloqueadas o borradas; se corrigen el UUID interno del intento de compra, el plan anual y los grants por entorno. El binding durable Polar prevalece sobre el external_customer_id contradictorio; la metadata de usuario no atribuye compras.",
+    "Los refunds de Launch anteriores a su order pueden reintentarse con límite; las huellas inválidas se rechazan antes de modificar identidad o dispositivo.",
+    "Se preparan tombstone de cuentas, bearer de datos ligado al UUID Clerk y restricciones de refunds/Pro por fuente, con reconciliación local y pruebas de aislamiento."
+  ],
+  "testing": [
+    "En un entorno de prueba autorizado, comprobar cierre, rechazo online y conservación offline ante fallos de red; no usar cuentas ni compras reales para validar esta rama.",
+    "Regresiones rojo a verde con HTTP local, caché aislada y PostgreSQL desechable; el informe de #1608 conserva la evidencia y los bloqueos."
+  ],
+  "knownLimitations": [
+    "Los arreglos SQL y de Functions están preparados en la rama, sin migraciones ni despliegues en producción. Un auxiliar sin vínculo autorizado al núcleo devuelve error y conserva estado para reintentar desde la ejecución gestionada.",
+    "B01/B02/B03 están implementados y probados localmente; su activación, configuración de confianza y aceptación comercial real requieren autorización separada. No se ha desplegado backend ni habilitado venta."
+  ]
+}

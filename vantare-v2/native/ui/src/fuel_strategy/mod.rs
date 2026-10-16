@@ -11,9 +11,9 @@ pub(crate) mod vantare;
 #[serde(default, rename_all = "camelCase")]
 pub struct Settings {
     /// Sistema de diseño: Vantare (principal) o Eficiencia (heredado).
-    pub design_system: crate::standings::DesignSystem,
-    pub style: crate::standings::Look,
-    pub accent: crate::standings::Accent,
+    pub design_system: crate::look::Look,
+    pub style: crate::look::Tone,
+    pub accent: crate::look::Accent,
     /// Tamaño Vantare: `compact` (230), `standard` (300) o `expanded` (460).
     pub size: String,
     /// Marca Vantare: decisión inyectada por el host según la licencia.
@@ -46,8 +46,8 @@ impl Settings {
     pub fn for_look(design_system: crate::look::Look) -> Self {
         Self {
             design_system,
-            style: crate::standings::Look::Neo,
-            accent: crate::standings::Accent::Red,
+            style: crate::look::Tone::Neo,
+            accent: crate::look::Accent::Red,
             size: "standard".into(),
             brand_visible: None,
             content_version: 1,
@@ -247,7 +247,10 @@ impl Widget {
         self.settings.design_system = look;
         self.presentation = Self::presentation(&self.settings, prefs, &self.board, motion);
     }
-    pub(crate) fn frame(&mut self, prefs: Preferences) -> (Paint, Wake) {
+    pub(crate) fn frame(&mut self, prefs: Preferences, reduced: bool) -> (Paint, Wake) {
+        if reduced {
+            self.settle();
+        }
         match &mut self.presentation {
             Presentation::Eficiencia {
                 visual: labels,
@@ -462,7 +465,7 @@ mod tests {
         };
         let saved = v.clone();
         for _ in 0..3 {
-            drop(widget.frame(prefs));
+            drop(widget.frame(prefs, false));
         }
         let Presentation::Vantare { visual: v, .. } = &widget.presentation else {
             unreachable!()
@@ -597,13 +600,13 @@ mod tests {
             player.fuel.level_l = Quality::Unavailable;
         }
         assert!(widget.ingest(&data, prefs));
-        assert_eq!(widget.frame(prefs).1, Wake::Idle);
+        assert_eq!(widget.frame(prefs, false).1, Wake::Idle);
         let english = Preferences {
             language: vantare_domain::format::Language::En,
             ..prefs
         };
         assert!(widget.ingest(&data, english));
-        assert_eq!(widget.frame(english).1, Wake::Idle);
+        assert_eq!(widget.frame(english, false).1, Wake::Idle);
         #[cfg(feature = "parity-capture")]
         assert!(!widget.animating());
     }

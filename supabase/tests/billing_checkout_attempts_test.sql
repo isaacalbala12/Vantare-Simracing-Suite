@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap;
-select plan(18);
+select plan(20);
 
 select has_table('public', 'billing_checkout_attempts', 'checkout attempts table exists');
 select col_is_pk('public', 'billing_checkout_attempts', array['user_id', 'attempt_id'], 'attempt identity is scoped to the account');
@@ -18,6 +18,20 @@ select has_function('public', 'complete_billing_checkout_attempt', array['uuid',
 insert into auth.users (id)
 values ('00000000-0000-4000-8000-000000000010')
 on conflict (id) do nothing;
+-- B03 fixture: internal profile plus an explicit Clerk binding before child rows.
+DO $fixture$ BEGIN
+  IF to_regclass('private.clerk_issuers') IS NOT NULL THEN
+    INSERT INTO private.clerk_issuers(issuer,authorized_parties,enabled)
+      VALUES ('https://fixtures.clerk.invalid',ARRAY['https://app.invalid'],true)
+      ON CONFLICT (issuer) DO NOTHING;
+    INSERT INTO public.profiles(id,email) SELECT id,email FROM auth.users
+      ON CONFLICT (id) DO NOTHING;
+    INSERT INTO public.account_identities(issuer,subject,account_id)
+      SELECT 'https://fixtures.clerk.invalid','user_'||replace(id::text,'-',''),id
+      FROM public.profiles ON CONFLICT (issuer,subject) DO NOTHING;
+  END IF;
+END $fixture$;
+
 
 select is(
   (select outcome from public.claim_billing_checkout_attempt(
@@ -128,6 +142,26 @@ select is(
    where attempt_id = '00000000-0000-4000-8000-000000000023'),
   0,
   'expired attempts older than the bounded retention are cleaned up'
+);
+
+select is(
+  (select outcome from public.claim_billing_checkout_attempt(
+    '00000000-0000-4000-8000-000000000010',
+    '00000000-0000-4000-8000-000000000025',
+    'pro_annual', 'sandbox', 'catalog-v2'
+  )),
+  'claimed',
+  'Pro annual is an accepted checkout key (ISA-1499)'
+);
+
+select is(
+  (select outcome from public.claim_billing_checkout_attempt(
+    '00000000-0000-4000-8000-000000000010',
+    '00000000-0000-4000-8000-000000000026',
+    'pro_plus_annual', 'sandbox', 'catalog-v2'
+  )),
+  'claimed',
+  'Pro Plus annual is an accepted checkout key (ISA-1620)'
 );
 
 select * from finish();

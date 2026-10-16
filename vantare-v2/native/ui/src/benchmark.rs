@@ -89,7 +89,7 @@ impl Render for Panel {
             count(true);
         }
         let start = Instant::now();
-        let (paint, _) = self.widget.frame(self.prefs);
+        let (paint, _) = self.widget.frame(self.prefs, false);
         let preparation = ns(start);
         let preparation_alloc = self.count.map(|count| count(false)).unwrap_or_default();
         let count = self.count;

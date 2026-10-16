@@ -24,7 +24,7 @@ iterativas y después lanzamiento estable. Sustituye la decisión anterior de
 lanzamiento directo sin beta abierta. Consultar [etapas y decisiones aún pendientes](../plan-beta-publica-y-lanzamiento.md) y el [roadmap](../roadmap-maintenance.md);
 este contrato no anuncia apertura ni fija una fecha nueva.
 
-El lanzamiento debe incluir Hub, Launcher, Overlay Studio, los widgets
+La beta pública debe incluir Hub, Launcher, Overlay Studio, los widgets
 principales, Telemetry Core, Telemetry Analysis, Engineer/Spotter Beta, Strategy
 Planner, calendario, cuenta, Billing, ajustes, instalador y actualizador.
 
@@ -73,37 +73,118 @@ la primera variante de Engineer. El tono es profesional y cercano.
 
 - Hub y Launcher completos.
 - Calendario básico, cuenta local y ajustes.
-- Standings y Pedals.
+- Standings, Relative, Delta y Pedals.
 - Vantare Original.
 - Vantare Crystal con marca Vantare integrada y no eliminable.
 - Overlay Studio limitado a los widgets gratuitos.
 
-### Vantare Pro — 4,99 EUR/mes
+### Vantare Pro — 5,99 EUR/mes o 59,99 EUR/año
 
+- Precios normales con IVA incluido; catálogo preparado en ISA-1499/1620,
+  sin certificar venta ni ejecución Polar.
+  Mensual y anual conceden exactamente las mismas capabilities.
 - Toda la aplicación publicada en Stable.
 - Soporte en Discord.
 
-### Vantare Pro Plus — 9,99 EUR/mes
+### Vantare Pro Plus — 9,99 EUR/mes o 99,90 EUR/año
 
 - Todo Pro.
 - Acceso a Nightly/Beta privada, tests, encuestas y previews activas.
 
-### Launch Edition — 30 EUR una vez
+Durante el mes de apertura de la **beta pública**, del 26-oct-2026 19:00 al
+26-nov-2026 19:00 Europe/Madrid (apertura inclusiva, cierre exclusivo), nuestro
+checkout aplica automáticamente un descuento Polar de duración **`once`** sobre
+el producto normal. No se crean productos recurrentes a precio reducido:
 
-- Acceso de por vida a los módulos existentes al comprar y sus mejoras.
-- Los módulos completamente nuevos pueden venderse aparte.
-- Acceso a tests/encuestas/builds de testers, pero no Nightly.
-- Engineer se considera incluido en la edición inicial.
+| Plan | Primer periodo | Renovaciones | Descuento fijo una vez |
+|---|---:|---:|---:|
+| Pro mensual | 3,99 EUR | 5,99 EUR/mes | 2,00 EUR |
+| Pro anual | 39,90 EUR | 59,99 EUR/año | 20,09 EUR |
+| Pro Plus mensual | 6,99 EUR | 9,99 EUR/mes | 3,00 EUR |
+| Pro Plus anual | 69,90 EUR | 99,90 EUR/año | 30,00 EUR |
 
-Crystal pierde la marca con cualquier licencia de pago. Relative, Delta y los
-demás widgets no gratuitos requieren licencia.
+El código de creador **sí puede acompañar al lanzamiento**: atribuye la venta,
+pero no rebaja el primer periodo. El checkout inicial lleva solo el `discount_id`
+de lanzamiento si corresponde y metadata `creator_code`; sin campaña cobra normal.
+El servidor valida el código exacto y guarda la atribución ligada al intento y
+al checkout. Metadata editable por sí sola nunca acredita atribución ni identidad.
+Tras confirmar el primer pago, aplica el **20 % desde la primera renovación**,
+con GET/PATCH/ACK durable e incidencia Owner si falla. No modifica la factura pagada.
+Duración única configurable en `polar-launch-prices.json.creator_renewals`:
+mensual `repeating` 11 meses desde su primera renovación rebajada (meses 2–12);
+anual `repeating` 12 meses para una renovación anual (el primer año no se rebaja
+por creador). No se reaplica ni reinicia al repetir el webhook. Códigos Polar
+públicos desactivados: los cupones de renovación se aplican solo por API.
+Comisión sin cambios: 30 % mes 1, 10 % meses 2–12 sobre lo pagado; pago manual.
+La comisión anual sigue esa ventana temporal, no se amplía por el descuento anual.
+
+**Riesgo aceptado por Isaac (16-oct-2026):** cualquier persona que conozca un
+código activo puede usarlo. No está limitado a una persona ni a la campaña de
+lanzamiento: mientras siga activo y configurado, atribuye ventas y concede el
+20 % desde renovación durante el tramo mensual/anual indicado. Su difusión
+puede aumentar las ventas con descuento y comisiones; es el modelo autorizado.
+
+Si se reembolsa el pago de origen o una factura de esa suscripción, o se revoca
+la suscripción, se retira el descuento de creador de sus renovaciones. El
+registro es durable e idempotente; fallo de Polar deja incidencia Owner y
+reintento. No se elimina un descuento ajeno de informes/manual ni se devuelve
+ningún importe automáticamente. La comisión conserva sus reglas históricas.
+
+Los descuentos por informes de VANTA-39 y creador comienzan después del primer
+periodo. No se suman: gana el mayor ahorro en céntimos sobre el precio normal;
+empate para informes. Se registra el otro como no aplicado. Pro: informes 200 c
+frente a creador 120 c; Plus: 300 c frente a 200 c. La integración con #1593 debe
+usar un único escritor y preservar saldo/caducidad de ambos derechos, sin
+reiniciar cupones al cambiar de ganador. Véase el [contrato de integración](../billing/creator-renewals-1661.md).
+No hay trial con lanzamiento ni atribución de creador. Pro normal mantiene su
+trial configurado; Pro Plus y Founders no tienen trial. Los descuentos por
+informes se aplican **desde el segundo mes**, no el primer día por comprar.
+
+Este modelo sustituye los productos de lanzamiento permanentes de #1620.
+Los IDs históricos se conservan para lectura/reembolso, pero no se seleccionan
+para nuevos checkouts. El script prepara productos normales, cuatro descuentos
+`once` con fechas y, si se pide, el descuento de creador separado. Crear catálogo
+no abre por sí solo ventas ni prueba despliegue; la contabilidad de creadores
+sigue sin pagos automáticos. Compra web coordinada en VANTA-42.
+
+Inventario real comunicado por Isaac el 15-oct-2026: Pro mensual 4,99 EUR,
+Launch Edition 30 EUR (retirada de oferta) y Founders 50 EUR. Aún no existen
+Pro anual, precios 5,99/59,99 ni Pro Plus en producción. Los precios anteriores
+son decisiones de producto pendientes de configurar; no acreditan disponibilidad.
+El ID de Founders se documenta en el [contrato técnico](../billing/founders-1661.md).
+
+### Founders — precio de fundador: 50 EUR una vez
+
+- Plan propio: todos los módulos y widgets presentes y futuros, para siempre.
+- Disponible desde la beta pública: **26-oct-2026 a las 19:00 Europe/Madrid**,
+  **sin fecha de fin**. Una configuración del servidor permite cerrar la venta.
+- Pago único, sin caducidad ni renovación. El precio subirá más adelante,
+  sin fecha prevista. No es el precio fijo de lanzamiento de una suscripción.
+- Quien tiene Pro o Pro Plus puede comprarlo. Se activa al instante y su
+  suscripción deja de renovar al final del periodo ya pagado, sin reembolso.
+  Owner ve la cancelación pendiente o confirmada y puede revisar incidencias.
+- Incluye canales **Stable y Nightly** de forma vitalicia. No concede roles Owner/tester.
+- Implementación preparada en VANTA-83/#1661; no certifica apertura comercial.
+  [Contrato, configuración e integración web](../billing/founders-1661.md).
+
+### Launch Edition retirada de la oferta
+
+No se ofrece ni se vende. Se conserva exclusivamente la lectura de posibles
+compras históricas, sus derechos originales, reembolsos y reconciliación:
+módulos existentes al comprar y sus mejoras, incluido Engineer inicial;
+Testers sin Nightly. Esos derechos no se convierten ni se borran al retirar
+la opción de compra. Las migraciones y pruebas históricas se mantienen.
+
+Crystal pierde la marca con cualquier licencia de pago. Los widgets fuera del
+catálogo gratuito requieren licencia.
 
 ## Billing
 
 - Polar es la autoridad comercial.
 - Supabase permanece como backend de cuenta/licencia endurecido.
 - Stripe se retira cuando Polar esté operativo y reconciliado.
-- Trial de siete días con método de pago y recordatorio.
+- Trial de siete días con método de pago y recordatorio solo para Pro a precio
+  normal (mensual/anual); sin trial en lanzamiento, creador ni Pro Plus.
 - Tras un fallo existe recuperación técnica máxima de tres días; después se
   baja al modo gratuito.
 - Cancelar conserva acceso hasta la fecha pagada.
@@ -119,3 +200,19 @@ demás widgets no gratuitos requieren licencia.
 - Cero fallbacks sintéticos presentados como datos reales.
 - UI visual: capturas, comparación e interacción.
 - Runtime: replays deterministas y evidencia real cuando exista la fuente.
+
+### VANTA-83 · disputas y reembolsos (Isaac, 16-oct-2026)
+
+**O1 confirmado:** una disputa/contracargo retira permanentemente el 20 % de
+creador de esa suscripción cuando Polar notifica su revocación/cancelación
+inmediata o el reembolso equivalente. Se usa la misma retirada durable e
+idempotente, sin retirar descuentos ajenos; fallo visible en Owner.
+**O3 confirmado:** cualquier reembolso confirmado de cualquier factura de esa
+suscripción, parcial incluido y aunque no sea la factura de origen, retira ese
+20 %; no afecta a otras suscripciones del cliente. No se restaura automáticamente
+si se gana la disputa o se reactiva la suscripción. No se efectúa ningún reembolso.
+
+Polar no expone actualmente eventos públicos `dispute.*`; no se inventa esa
+suscripción de webhook. Una disputa abierta sin revocación ni reembolso no llega
+por estos eventos. Véase el runbook de creador para señales, fuentes y pruebas
+pendientes en sandbox (O2).

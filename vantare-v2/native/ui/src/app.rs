@@ -11,6 +11,7 @@ use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
+mod usage;
 
 use gpui::{
     App, Bounds, Context, DisplayId, Entity, IntoElement, Pixels, Render, StyleRefinement, Window,
@@ -180,6 +181,7 @@ impl Overlay {
             Widget::Relative(widget) => widget.set_vantare_style(style),
             Widget::FuelStrategy(widget) => widget.set_vantare_style(style),
             Widget::Delta(widget) => widget.set_vantare_style(style),
+            Widget::Pedals(widget) => widget.set_vantare_style(style),
             _ => return,
         }
         cx.notify();
@@ -250,6 +252,7 @@ impl Overlay {
             Widget::Relative(w) => w.set_look(look, self.prefs),
             Widget::Delta(w) => w.set_look(look, self.prefs),
             Widget::FuelStrategy(w) => w.set_look(look, self.prefs),
+            Widget::Pedals(w) => w.set_look(look, self.prefs),
             _ => {}
         }
     }
@@ -456,7 +459,7 @@ impl Render for Overlay {
         let reduced = cx
             .try_global::<crate::MotionPolicy>()
             .is_some_and(|policy| policy.0);
-        let (paint, wake) = self.widget.frame_with_motion(self.prefs, reduced);
+        let (paint, wake) = self.widget.frame(self.prefs, reduced);
         #[cfg(feature = "paint-stats")]
         let profile_photo = self.profile_photo.take();
         #[cfg(feature = "parity-capture")]
@@ -742,6 +745,7 @@ fn window_action(existing: bool, occupied: bool) -> WindowAction {
 }
 
 struct LiveScreens {
+    usage: usage::State,
     cadences: HashMap<String, crate::performance::Cadence>,
     usage_widgets: Option<Vec<String>>,
     /// Último layout aplicado y su ocultación (bandeja o Studio).
@@ -831,7 +835,8 @@ impl LiveScreens {
         widget_types.sort();
         widget_types.dedup();
         if self.usage_widgets.as_ref() != Some(&widget_types) {
-            vantare_services::diagnostics::record_usage(
+            crate::analytics::record(
+                cx,
                 &vantare_services::diagnostics::Usage::LayoutWidgets {
                     widget_types: widget_types.clone(),
                 },
@@ -1106,6 +1111,7 @@ fn run_layout_feed<T: Send + 'static>(
     let mut presentation = crate::layout::Presentation::watch(&path)?;
     let mut document = crate::layout::Document::open(path)?;
     gpui_platform::application().run(move |cx: &mut App| {
+        crate::analytics::init(cx);
         if !init(cx) {
             return;
         }
@@ -1132,6 +1138,7 @@ fn run_layout_feed<T: Send + 'static>(
             cx,
         );
         let screens = Rc::new(RefCell::new(LiveScreens {
+            usage: usage::State::default(),
             cadences: HashMap::new(),
             usage_widgets: None,
             layout: crate::layout::Layout::default(),
@@ -1149,6 +1156,12 @@ fn run_layout_feed<T: Send + 'static>(
             demand.set(document.layout().demand());
         }
         screens.borrow_mut().apply(document.layout(), cx);
+        let quit_screens = screens.clone();
+        cx.on_app_quit(move |cx| {
+            quit_screens.borrow_mut().usage.finish(cx);
+            async {}
+        })
+        .detach();
         #[cfg(windows)]
         match crate::tray::spawn() {
             Ok(actions) => {
@@ -1178,6 +1191,7 @@ fn run_layout_feed<T: Send + 'static>(
                 cx.background_executor()
                     .timer(Duration::from_millis(500))
                     .await;
+                cx.update(|cx| screens.borrow_mut().sample_usage(cx));
                 match presentation.poll() {
                     Ok(Some(showing)) => cx.update(|cx| {
                         let mut screens = screens.borrow_mut();
@@ -1324,6 +1338,61 @@ fn run_placed_authorized(
 #[cfg(test)]
 mod tests {
     #[test]
+    fn reduced_motion_covers_active_flags_records_and_pedal_transitions() {
+        use vantare_domain::{Flag, FlagKind, FlagScope, Quality, SourceState};
+        let prefs = Preferences::default();
+        for kind in [
+            Kind::RacingFlags,
+            Kind::FastestLap,
+            Kind::InputTelemetry,
+            Kind::PedalsTelemetry,
+        ] {
+            let json = std::fs::read_to_string(format!(
+                "{}/fixtures/{}.snapshot.json",
+                env!("CARGO_MANIFEST_DIR"),
+                kind.name()
+            ))
+            .expect("fixture");
+            let mut snapshot = vantare_ipc::snapshot_from_json(&json).expect("snapshot");
+            snapshot.state.source_state = SourceState::Live;
+            let mut normal = crate::Widget::new(&crate::Settings::default_for(kind), prefs);
+            let mut reduced = crate::Widget::new(&crate::Settings::default_for(kind), prefs);
+            normal.ingest(&snapshot, prefs);
+            reduced.ingest(&snapshot, prefs);
+            snapshot.sequence += 1;
+            match kind {
+                Kind::RacingFlags => {
+                    snapshot.state.flags = Quality::Reliable(vec![Flag {
+                        kind: FlagKind::Yellow,
+                        scope: FlagScope::Session,
+                    }]);
+                }
+                Kind::FastestLap => {
+                    for car in &mut snapshot.state.cars {
+                        if let Some(best) = car.best_lap_s.current() {
+                            car.best_lap_s = Quality::Reliable(best - 1.0);
+                        }
+                    }
+                }
+                _ => {
+                    let player = snapshot.state.player.as_mut().expect("jugador con pedales");
+                    let old = player.telemetry.throttle.current().expect("acelerador");
+                    player.telemetry.throttle =
+                        Quality::Reliable(if *old < 0.5 { 1.0 } else { 0.0 });
+                }
+            }
+            assert!(normal.ingest(&snapshot, prefs), "{kind:?}");
+            assert!(reduced.ingest(&snapshot, prefs), "{kind:?}");
+            // FastestLap usa un preview estático solo con parity-capture.
+            if kind != Kind::FastestLap || !cfg!(feature = "parity-capture") {
+                assert_eq!(normal.frame(prefs, false).1, Wake::Frame, "{kind:?}");
+            }
+            for _ in 0..3 {
+                assert_ne!(reduced.frame(prefs, true).1, Wake::Frame, "{kind:?}");
+            }
+        }
+    }
+    #[test]
     fn reduced_motion_never_requests_animation_frames_for_any_widget() {
         let prefs = Preferences::default();
         for &kind in Kind::ALL {
@@ -1337,12 +1406,7 @@ mod tests {
             let mut widget = crate::Widget::new(&crate::Settings::default_for(kind), prefs);
             widget.ingest(&snapshot, prefs);
             for _ in 0..3 {
-                assert_ne!(
-                    widget.frame_with_motion(prefs, true).1,
-                    Wake::Frame,
-                    "{}",
-                    kind.name()
-                );
+                assert_ne!(widget.frame(prefs, true).1, Wake::Frame, "{}", kind.name());
             }
         }
     }
@@ -1373,12 +1437,7 @@ mod tests {
                 let snapshot =
                     vantare_ipc::snapshot_from_json(&frame["snapshot"].to_string()).expect("foto");
                 widget.ingest(&snapshot, prefs);
-                assert_ne!(
-                    widget.frame_with_motion(prefs, true).1,
-                    Wake::Frame,
-                    "{}",
-                    kind.name()
-                );
+                assert_ne!(widget.frame(prefs, true).1, Wake::Frame, "{}", kind.name());
             }
         }
     }
@@ -2009,10 +2068,13 @@ mod tests {
         for &kind in Kind::ALL {
             let parsed: Settings = serde_json::from_value(serde_json::json!({"kind": kind.name()}))
                 .expect("opciones parciales");
-            assert_eq!(
-                parsed.normalized(),
-                Settings::default_for(kind).normalized()
-            );
+            // Pedales sin `designSystem` es un layout anterior a #1566: sigue en
+            // Eficiencia; solo las instancias nuevas nacen en Vantare.
+            let expected = match kind {
+                Kind::Pedals => Settings::Pedals(crate::pedals::Settings::eficiencia()),
+                _ => Settings::default_for(kind),
+            };
+            assert_eq!(parsed.normalized(), expected.normalized());
             assert_eq!(parsed.normalized().normalized(), parsed.normalized());
             assert!(settings_limit(&parsed).is_none());
         }

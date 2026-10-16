@@ -1,5 +1,11 @@
 -- Disposable local PostgreSQL only. Run via psql, passing a test-only dblink_password.
 -- Two real sessions contend for the same identity while the first transaction is open.
+-- Commit the registered issuer before opening the two remote sessions.
+select to_regclass('private.clerk_issuers') is not null as b03 \gset
+\if :b03
+insert into private.clerk_issuers(issuer,authorized_parties,enabled)
+ values('https://race-clerk.isa1444.test',array['https://app.invalid'],true);
+\endif
 begin;
 select no_plan();
 create extension if not exists dblink with schema extensions;
@@ -27,7 +33,7 @@ select 'one', account_id from extensions.dblink('native_one',
     'user_' || repeat('r', 27), repeat('a', 64))$$) as result(account_id uuid);
 
 select is(extensions.dblink_send_query('native_two',
-  $$select public.native_claim_license_device('https://race-clerk.isa1444.test/',
+  $$select public.native_claim_license_device('https://race-clerk.isa1444.test',
     'user_' || repeat('r', 27), repeat('a', 64))$$), 1, 'second session submits concurrent bootstrap');
 
 -- Wait for a real advisory-lock wait, not a fixed sleep; fail if the contender never reaches it.
@@ -60,7 +66,14 @@ select is((select count(*)::integer from public.profiles p where
   0, 'concurrent bootstrap leaves no orphan profiles in the disposable database');
 select extensions.dblink_disconnect('native_one');
 select extensions.dblink_disconnect('native_two');
+\if :b03
+-- B03 intentionally retains the UUID/binding as a tombstone. The disposable
+-- database is removed by the runner after the assertions.
+select public.apply_clerk_user_event('native-race-delete',repeat('a',64),
+ 'https://race-clerk.isa1444.test','user_'||repeat('r',27),'user.deleted',now(),null);
+\else
 delete from public.profiles where id = (select account_id from native_race_result where name = 'one');
+\endif
 select * from finish();
 -- Remote sessions committed a fixture; commit its cleanup as well.
 commit;

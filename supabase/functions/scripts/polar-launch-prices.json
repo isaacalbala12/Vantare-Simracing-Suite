@@ -1,0 +1,77 @@
+{
+  "catalog_version": "vanta-83-creator-renewals-v4",
+  "currency": "eur",
+  "tax_behavior": "inclusive",
+  "creator_discount_basis_points": 2000,
+  "creator_plan_changes": {
+    "customer_portal": "disabled",
+    "administrator": "blocked_while_creator_discount_active"
+  },
+  "creator_commission": {
+    "basis": "amount_paid_by_customer",
+    "requires_active_subscription": true,
+    "automatic_payouts": false,
+    "schedule": [
+      {
+        "from_month": 1,
+        "to_month": 1,
+        "basis_points": 3000
+      },
+      {
+        "from_month": 2,
+        "to_month": 12,
+        "basis_points": 1000
+      }
+    ],
+    "after_month_12": "renegotiate"
+  },
+  "plans": [
+    {
+      "key": "pro_monthly",
+      "interval": "month",
+      "normal_cents": 599,
+      "launch_cents": 399
+    },
+    {
+      "key": "pro_annual",
+      "interval": "year",
+      "normal_cents": 5999,
+      "launch_cents": 3990
+    },
+    {
+      "key": "pro_plus_monthly",
+      "interval": "month",
+      "normal_cents": 999,
+      "launch_cents": 699
+    },
+    {
+      "key": "pro_plus_annual",
+      "interval": "year",
+      "normal_cents": 9990,
+      "launch_cents": 6990
+    }
+  ],
+  "launch_model": "fixed_discount_once_on_normal_products",
+  "distribution": {
+    "launch_month": "application_checkout_automatic_discount",
+    "after_launch_month": "normal_first_period_with_optional_creator_attribution"
+  },
+  "launch_windows": {
+    "production": {
+      "starts_at": "2026-10-26T18:00:00Z",
+      "ends_at": "2026-11-26T18:00:00Z",
+      "timezone": "Europe/Madrid"
+    },
+    "sandbox": {
+      "starts_at": "2026-10-26T18:00:00Z",
+      "ends_at": "2026-11-26T18:00:00Z",
+      "timezone": "Europe/Madrid"
+    }
+  },
+  "creator_renewals": {
+    "monthly_duration_months": 11,
+    "annual_duration_months": 12,
+    "first_period_discount": false,
+    "public_polar_code": false
+  }
+}

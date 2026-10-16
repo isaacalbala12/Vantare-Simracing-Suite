@@ -42,8 +42,9 @@ $null = Read-BetaManifest $json $false $verifier
 [IO.File]::WriteAllText((Join-Path $output 'vantare-native-beta.json'), $json, [Text.UTF8Encoding]::new($false))
 & $compiler.Source "/DOUTPUT=$output" "/DBOOTSTRAP=$PSScriptRoot" "/DVERSION=$Version" "/DPACKAGE_SHA=$($artifacts.sha256)" (Join-Path $PSScriptRoot 'beta-installer.nsi')
 if ($LASTEXITCODE) { throw 'Falló NSIS; no hay instalador listo.' }
+[IO.File]::WriteAllText((Join-Path $output 'vantare-native-amd64-package.zip.sha256'), "$($artifacts.sha256)  vantare-native-amd64-package.zip`n")
 $setup = Join-Path $output 'VantareSetup.exe'
 [IO.File]::WriteAllText("$setup.sha256", "$(Get-NativeHash $setup)  VantareSetup.exe`n")
 # Solo imprime el comando; la publicación pertenece al orquestador.
 Write-Output "Listo: $output"
-Write-Output "gh release create native-beta-v$Version --repo $script:BetaRepository --prerelease --title 'Vantare $Version' --notes-file '<notas-revisadas>' '$output/VantareSetup.exe' '$output/VantareSetup.exe.sha256' '$output/vantare-native-amd64-package.zip' '$output/vantare-native-beta.json'"
+Write-Output "gh release create native-beta-v$Version --repo $script:BetaRepository --prerelease --title 'Vantare $Version' --notes-file '<notas-revisadas>' '$output/VantareSetup.exe' '$output/VantareSetup.exe.sha256' '$output/vantare-native-amd64-package.zip' '$output/vantare-native-amd64-package.zip.sha256' '$output/vantare-native-beta.json'"

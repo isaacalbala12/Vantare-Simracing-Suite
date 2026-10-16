@@ -35,6 +35,7 @@ const KNOWN_CAPABILITIES = new Set([
   "vantare.operational.nightly_tester",
   "vantare.operational.owner",
   "vantare.operational.tester",
+  "vantare.plan.founders",
   "vantare.plan.pro",
 ]);
 
@@ -78,6 +79,7 @@ type StoredGrant = {
   provider: string;
   environment: string;
   source_type: string;
+  source_id?: string;
 };
 
 export type StoredOperationalAssignment = {
@@ -243,6 +245,13 @@ export function normalizeGrants(
       grouped.set(row.capability, { perpetual: true, paidThrough: null });
       continue;
     }
+    if (
+      row.capability === "vantare.plan.founders" &&
+      (row.valid_until !== null || row.provider !== "polar" ||
+        row.source_type !== "order")
+    ) {
+      return { ok: false };
+    }
     const isRecovery = row.provider === "vantare" &&
       row.source_type === "subscription_recovery";
     if (isRecovery) {
@@ -275,7 +284,18 @@ export function normalizeGrants(
     if (paidThrough === null) {
       if (
         row.capability !== "vantare.edition.launch_v1" &&
-        row.capability !== "vantare.channel.testers"
+        row.capability !== "vantare.plan.founders" &&
+        row.capability !== "vantare.channel.testers" &&
+        !(row.capability === "vantare.channel.nightly" &&
+          row.source_type === "order" &&
+          rows.some((founder) =>
+            founder.capability === "vantare.plan.founders" &&
+            founder.provider === "polar" &&
+            founder.environment === environment &&
+            founder.source_type === "order" &&
+            !!row.source_id && founder.source_id === row.source_id &&
+            founder.valid_until === null
+          ))
       ) {
         return { ok: false };
       }
@@ -346,7 +366,7 @@ async function signWithEnvironmentKey(
 
 function createCredentialStore(): CredentialStore {
   return {
-    async load(token, fingerprint, _environment) {
+    async load(token, fingerprint, environment) {
       const url = Deno.env.get("SUPABASE_URL") ?? "";
       const anon = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
       if (!url || !anon) throw new Error("Supabase client is not configured");
@@ -371,7 +391,12 @@ function createCredentialStore(): CredentialStore {
         throw new Error("Account resolution returned no identifier");
       }
       const admin = getSupabaseAdmin();
-      return await loadCredentialAccount(admin, accountId, fingerprint);
+      return await loadCredentialAccount(
+        admin,
+        accountId,
+        fingerprint,
+        environment,
+      );
     },
   };
 }
@@ -507,6 +532,7 @@ export async function loadCredentialAccount(
   admin: SupabaseClient,
   accountId: string,
   fingerprint: string,
+  environment: BillingEnvironment,
 ): Promise<CredentialState> {
   const { data: device, error: deviceError } = await admin
     .from("devices").select("fingerprint_hash").eq("user_id", accountId)
@@ -514,9 +540,10 @@ export async function loadCredentialAccount(
   if (deviceError) throw deviceError;
   const { data: grants, error: grantsError } = await admin
     .from("billing_effective_access_grants").select(
-      "capability,valid_until,provider,environment,source_type",
+      "capability,valid_until,provider,environment,source_type,source_id",
     )
-    .eq("user_id", accountId).eq("status", "active");
+    .eq("user_id", accountId).eq("status", "active")
+    .eq("environment", environment);
   if (grantsError) throw grantsError;
   const { data: operationalAssignments, error: operationalError } = await admin
     .from("operational_access_assignments").select(

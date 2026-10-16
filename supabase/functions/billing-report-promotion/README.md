@@ -1,26 +1,33 @@
 # Descuento por informes · #1593 / VANTA-39
 
-PR #1659 integrado en nightly 9e48eb86f; endurecimiento P3-D/P3-E en PR aparte. Catálogo vacío y flag ausente/false:
-no se activa el premio por informes. El primer periodo usa siempre la oferta
+PR #1659 integrado en nightly 9e48eb86f; endurecimiento en PR #1673.
+**Decisión de Isaac: el programa de informes no se abre con el lanzamiento.**
+Se anunciará más adelante; queda apagado por defecto y sin fechas de inscripción.
+El primer periodo usa siempre la oferta
 canónica de #1661 y su protección por cuenta, independiente de ese flag.
 No crea productos, descuentos, enlaces, scheduler ni despliegue automáticamente.
-La migración nueva 20261016090001 es un upgrade sobre #1659 integrado; no modifica las migraciones anteriores.
+Las migraciones nuevas 20261016090001/090002 actualizan #1659 integrado;
+la migración histórica solo añade una nota sobre la RPC retirada.
 
 ## Reglas vigentes
 
-- Altas Pro/Plus **mensuales** desde 26/10/2026 19:00 Europe/Madrid inclusive
-  hasta 26/11/2026 19:00 exclusivo: la inscripción al premio por informes vale
-  durante toda esa ventana, también para altas posteriores al 02/11. Es la
-  decisión operativa del orquestador P3-E, pendiente de confirmación de Isaac;
-  si decide otra cosa se cambiará la regla y sus pruebas. Ventana única de
-  #1661; sustituye el cierre antiguo de 02/11. Los
-  tests incluyen 18:59/19:00/19:01 y las dos 02:30 del cambio de hora 25/10.
+- La inscripción Pro/Plus **mensual** tendrá una ventana propia, independiente
+  de la oferta inicial de #1661. Sus fechas se fijarán cuando se anuncie el
+  programa; no se heredan ni se generan desde el JSON de lanzamiento.
+  La política SQL privada arranca con enrollment_enabled=false y
+  enrollment_starts_at/enrollment_ends_at=NULL. Flag Edge ausente/false y
+  configuración SQL apagada impiden altas automáticas con el lanzamiento.
+  Activar solo el flag no abre la inscripción: SQL exige habilitación y ambas
+  fechas finitas, apertura inclusiva y cierre exclusivo. No hay alta retroactiva
+  automática. Las fechas de pruebas son ficticias, no un anuncio comercial.
 - Informes enviados en `[alta, alta+1080 horas)`. Cuenta solo revisión humana
   aceptada de #1594, con estado accepted/fixed. Su frontera conserva evidencia,
   duplicados y cupos UTC 1/día, 2/semana. Aceptar tarde un informe enviado a
   tiempo es válido. No se añaden descuentos anuales.
-- Primer mes a lanzamiento. Desde el segundo, normal salvo tramo: 2 aceptados
-  dan **3 cobros mensuales rebajados**; 5 dan **6** en sustitución del tramo
+- El primer periodo usa únicamente la oferta de checkout que corresponda según
+  #1661; el programa de informes no lo rebaja. Cuando se active el programa,
+  el premio empieza desde el segundo mes: 2 aceptados dan **3 cobros mensuales
+  rebajados**; 5 dan **6** en sustitución del tramo
   menor. El mayor permite seis cobros **en total**: descuenta los ya consumidos
   con el tramo menor; nunca son 3+6 acumulados.
 - Se consumen periodos únicos de órdenes `subscription_cycle` /
@@ -91,10 +98,27 @@ Antes de desplegar el checkout actualizado:
 3. Revisar el SQL y aplicarlo con el usuario operador de migraciones; no con
    las claves de API. Aplicarlo antes de cambiar Edge. Esta entrega no aplica
    registros ni modifica productos/descuentos reales.
-4. Repetir la misma proyección es idempotente. Una diferencia de cupón,
+4. Ejecutar el SELECT que imprime el generador (también abajo) con el operador.
+   Comparar cada clave activa del mapa con producto, cupón once, fechas y versión
+   aprobados. Las cuatro claves posibles son pro_monthly, pro_annual,
+   pro_plus_monthly y pro_plus_annual. Registro vacío, clave activa ausente o
+   cualquier diferencia: detener la activación y no desplegar Edge.
+5. Repetir la misma proyección es idempotente. Una diferencia de cupón,
    producto, ventana, catálogo o claves registradas aborta toda la transacción;
    exige una migración de rotación revisada. No borra ni sustituye ofertas.
    El generador no consulta Polar ni certifica por sí solo la semántica remota.
+
+Consulta de preparación del checkout (usar el entorno aprobado):
+
+```sql
+select environment, checkout_key, product_id, discount_id, starts_at, ends_at,
+       catalog_version, registered_at
+from private.billing_launch_offers
+where environment = 'production'
+order by checkout_key;
+```
+
+Este registro habilita únicamente la oferta inicial, no el programa por informes.
 
 La proyección procede del único polar-launch-prices.json de #1661 y del
 validador loadPolarProductMap. No se añade una segunda configuración pública
@@ -247,6 +271,27 @@ según los saldos posibles, por cupón de creador/producto. Registrar IDs en
 `private.report_creator_remainders` con fecha de validación. No crear ni
 modificar esos cupones automáticamente; su ausencia es incidencia, no permiso
 para reasociar once meses. No hacen falta nuevos productos.
+
+## Inscripción pendiente del anuncio (P3-E)
+
+REPORT_PROMOTION_ENABLED no se configura a true en esta entrega: ausente y
+false apagan la observación Edge y el worker. Además, la inscripción se valida
+en SQL mediante private.report_promotion_policy (solo operador): enrollment_enabled
+false y enrollment_starts_at/enrollment_ends_at sin fechas. No se puede habilitar
+sin fijar ambas fechas finitas y ordenadas. No hay RPC pública para configurarlas.
+Una fila ausente o apagada falla cerrado incluso si se llama directamente a la
+observación con service_role. El calendario de checkout #1661 no las configura.
+
+Cuando Isaac anuncie el programa se fijarán su ventana y activación con el
+operador, se validarán catálogo/cron/condiciones y solo entonces se habilitará
+el flag. No se programa ni se anuncia aquí una fecha. Las ventanas habilitadas
+en tests sirven únicamente para probar las reglas.
+
+Cerrar la inscripción no borra derechos que ya se hayan concedido ni sus hechos
+contables: la política SQL controla primeras inscripciones. La observación de
+derechos existentes y el ledger siguen sus reglas de idempotencia; el flag
+operativo conserva su kill switch sobre PATCH. No se purgan datos ni se retiran
+premios existentes como efecto de esta decisión.
 
 ## Operaciones, reintentos y fallos
 

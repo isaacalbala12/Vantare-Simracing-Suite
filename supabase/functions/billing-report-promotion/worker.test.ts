@@ -504,3 +504,39 @@ Deno.test("R6 a shared lease in use skips effects; failed PATCH releases it and 
   assertEquals(calls.includes("report_promotion_renewal_failed"), true);
   assertEquals(calls.includes("report_promotion_failed"), true);
 });
+
+Deno.test("P3-E observation defaults off with absent or false activation flag", async () => {
+  const { observeReportPromotion } = await import("./observe.ts");
+  const saved = Deno.env.get("REPORT_PROMOTION_ENABLED");
+  let calls = 0;
+  const admin = {
+    rpc: () => {
+      calls++;
+      return Promise.resolve({ data: null, error: null });
+    },
+  } as unknown as SupabaseClient;
+  const input = {
+    account: "account",
+    environment: "sandbox",
+    subscription: "subscription",
+    product: "pro",
+    data: {
+      started_at: "2026-10-27T18:00:00Z",
+      modified_at: "2026-10-27T18:00:00Z",
+    },
+  };
+  try {
+    for (const value of [undefined, "false", "TRUE", "1"]) {
+      if (value === undefined) Deno.env.delete("REPORT_PROMOTION_ENABLED");
+      else Deno.env.set("REPORT_PROMOTION_ENABLED", value);
+      await observeReportPromotion(admin, input);
+    }
+    assertEquals(calls, 0);
+    Deno.env.set("REPORT_PROMOTION_ENABLED", "true");
+    await observeReportPromotion(admin, input);
+    assertEquals(calls, 1); // SQL separately requires an enabled, scheduled program.
+  } finally {
+    if (saved === undefined) Deno.env.delete("REPORT_PROMOTION_ENABLED");
+    else Deno.env.set("REPORT_PROMOTION_ENABLED", saved);
+  }
+});

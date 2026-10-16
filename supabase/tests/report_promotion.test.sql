@@ -1,5 +1,9 @@
 begin;
 select no_plan();
+-- Test-only enabled program; production defaults remain disabled without dates.
+update private.report_promotion_policy set enrollment_enabled=true,
+ enrollment_starts_at='2026-10-26 19:00 Europe/Madrid',
+ enrollment_ends_at='2026-11-26 19:00 Europe/Madrid' where singleton;
 select ok((select not rolsuper and rolbypassrls from pg_roles where rolname=current_user),'P3-5 tests execute as NOSUPERUSER BYPASSRLS');
 select is((select count(*)::int from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname in ('public','private') and p.proname like 'report_promotion_%' and p.prosecdef and p.proowner<>'postgres'::regrole),0,'P3-5 every promotion definer explicitly belongs to postgres');
 select ok(private.report_promotion_eligible('2026-11-26 18:59 Europe/Madrid'),'P1 end 18:59 included');
@@ -381,14 +385,14 @@ insert into public.profiles(id) values('15930000-0000-4000-8000-000000000042');
 insert into public.billing_orders(user_id,provider,environment,provider_order_id,provider_product_id,status,paid,net_amount,currency,remote_modified_at,snapshot_hash)
  values(pg_temp.account(42),'polar','sandbox','historical-lifetime42','historical-lifetime','paid',true,3000,'eur','2026-10-01',repeat('b',64));
 select is(public.billing_launch_checkout(pg_temp.account(42),'sandbox','1593eeee-0000-4000-8000-000000000010','1593eeee-0000-4000-8000-000000000011','pro_monthly','2026-11-25 19:00 Europe/Madrid','00000000-0000-4000-8000-000000000042'),'1593eeee-0000-4000-8000-000000000011','R7 a historical lifetime purchase does not consume a recurring first period');
--- P3-E: report enrollment, not just checkout, covers the whole launch month.
+-- P3-E: independently configured enrollment window (synthetic dates in this suite).
 insert into public.profiles(id) select pg_temp.account(i) from generate_series(43,45)i;
 select pg_temp.enroll(43,'pro','2026-11-02 19:01 Europe/Madrid');
 select pg_temp.enroll(44,'plus','2026-11-25 18:59 Europe/Madrid','plus1');
 select pg_temp.enroll(45,'pro','2026-11-26 19:00 Europe/Madrid');
-select is((select subscribed_at from private.report_promotions where account_id=pg_temp.account(43)),'2026-11-02 19:01 Europe/Madrid'::timestamptz,'P3-E enrollment survives historical week closing');
-select is((select subscribed_at from private.report_promotions where account_id=pg_temp.account(44)),'2026-11-25 18:59 Europe/Madrid'::timestamptz,'P3-E Plus enrolls in final launch day');
-select is((select count(*)::int from private.report_promotions where account_id=pg_temp.account(45)),0,'P3-E exclusive closing forbids new report enrollment');
+select is((select subscribed_at from private.report_promotions where account_id=pg_temp.account(43)),'2026-11-02 19:01 Europe/Madrid'::timestamptz,'P3-E enrollment follows explicitly configured opening');
+select is((select subscribed_at from private.report_promotions where account_id=pg_temp.account(44)),'2026-11-25 18:59 Europe/Madrid'::timestamptz,'P3-E Plus enrolls before configured closing');
+select is((select count(*)::int from private.report_promotions where account_id=pg_temp.account(45)),0,'P3-E configured exclusive closing forbids new enrollment');
 select pg_temp.report(44,'2027-01-09 18:58:59 Europe/Madrid');
 select pg_temp.report(43,'2026-12-17 19:01:00 Europe/Madrid');
 select is((private.report_promotion_progress(pg_temp.account(44),'sandbox','2027-01-10')->>'accepted')::int,1,'P3-E own 45-day window includes last second');

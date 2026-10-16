@@ -10,7 +10,7 @@ p.add_argument('--baseline-summary', help='Compare every shared suite; fail on a
 p.add_argument('--storage-schema', default=str(pathlib.Path.home()/'evidence/1608/r6/storage-schema.sql'), help='Schema-only dump from disposable local Storage')
 p.add_argument('--without-promotion', action='store_true')
 p.add_argument('--creator-first', action='store_true', help='Install both report migrations after the actual Founders migrations')
-p.add_argument('--mutation',choices=['launch','launch-end','window','tier','spam','creator','deleted','idempotency','first-month','invoice','transfer','settlements','repair','first-refund','launch-used','checkout-proof','cleanup-inactive','invoice-gap','initial-incident','reward-expiry','accounts-deleted','attempt-required','tier-total','checkout-no-id','checkout-owner-incident','reconciliation-item-incident','creator-remainder','creator-clock','renewal-lease','creator-expiry','creator-lock-order','revocation-ack','revocation-remainders','launch-offer-binding'])
+p.add_argument('--mutation',choices=['launch','launch-end','window','tier','spam','creator','deleted','idempotency','first-month','invoice','transfer','settlements','repair','first-refund','launch-used','checkout-proof','cleanup-inactive','invoice-gap','initial-incident','reward-expiry','accounts-deleted','attempt-required','tier-total','checkout-no-id','checkout-owner-incident','reconciliation-item-incident','creator-remainder','creator-clock','renewal-lease','creator-expiry','creator-lock-order','revocation-ack','revocation-remainders','launch-offer-binding','enrollment-policy','enrollment-window'])
 a=p.parse_args(); root=pathlib.Path(a.root).resolve(); out=pathlib.Path(a.output).resolve(); out.mkdir(parents=True,exist_ok=True)
 if not (pathlib.Path.home()/'orq/docker.lock').is_dir(): raise SystemExit('Acquire ~/orq/docker.lock first')
 container='vantare-1593-'+str(int(time.time()))
@@ -39,7 +39,7 @@ try:
  sql("alter database postgres set timezone='UTC'")
  migrations=sorted((root/'supabase/migrations').glob('*.sql'))
  if a.creator_first:
-  report_names={'20261015182858_isa_1593_report_promotion.sql','20261016090000_report_creator_renewals.sql','20261016090001_isa_1593_launch_offer_sql.sql'}
+  report_names={'20261015182858_isa_1593_report_promotion.sql','20261016090000_report_creator_renewals.sql','20261016090001_isa_1593_launch_offer_sql.sql','20261016090002_isa_1593_report_enrollment_policy.sql'}
   migrations=[m for m in migrations if m.name not in report_names]+[m for m in migrations if m.name in report_names]
  for migration in migrations:
   if a.without_promotion and 'isa_1593_' in migration.name: continue
@@ -47,6 +47,7 @@ try:
   if result.returncode: raise RuntimeError(migration.name+': '+result.stderr[-4000:])
  # Read the ONLY launch JSON from #1661 and exercise the installed SQL clock
  # at those exact boundaries. A future catalogue change cannot silently diverge.
+ # This historical helper guards initial checkout only; report enrollment has its own policy.
  if (root/'supabase/migrations/20261015182858_isa_1593_report_promotion.sql').exists() and not a.without_promotion:
   windows=json.loads((root/'supabase/functions/scripts/polar-launch-prices.json').read_text())['launch_windows']
   for environment,window in windows.items():
@@ -77,6 +78,8 @@ console.log(prepareLaunchOffersSql(JSON.stringify(map),"sandbox"));'''
   sql('drop database registration_test')
  if a.mutation:
   signature, before, after = {
+   'enrollment-policy':('private.report_promotion_enrollment_open(timestamptz)','select enrollment_enabled and t','select true and t'),
+   'enrollment-window':('public.report_promotion_observe(uuid,text,text,text,timestamptz,timestamptz,text)','private.report_promotion_enrollment_open(p_started)','private.report_promotion_eligible(p_started)'),
    'launch-offer-binding':('public.billing_launch_checkout(uuid,text,text,text,text,timestamptz,uuid,uuid)','and discount_id=p_discount::uuid',''),
    'revocation-ack':('public.report_promotion_ack(uuid,uuid,timestamptz,text,text)',"if done is distinct from true then","if done is distinct from true then raise exception 'creator_renewal_ack_failed'; end if; if false then"),
    'revocation-remainders':('public.billing_creator_revocation(text,text,uuid,text,text,text,uuid,boolean)',"select coalesce(jsonb_agg(r.discount_id::text),'[]')","select '[]'::jsonb"),

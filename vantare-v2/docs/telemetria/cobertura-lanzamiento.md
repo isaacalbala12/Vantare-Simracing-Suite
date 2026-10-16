@@ -130,6 +130,15 @@ no demuestra esos Hz medidos en LMU ni modifica su adquisición.
 
 ## Widget × dato — estado en la base auditada
 
+La tabla conserva el estado inicial de la auditoría. La integración de #1629
+(PR #1641, rama de issue; todavía sin integrar en nightly) conecta las referencias
+personal/óptima/líder de clase con el número y ambas trazas de Historial Delta.
+Radar expone aproximación radial en km/h desde ambas velocidades actuales,
+solapes y clases; pide `Velocity` además de `Spatial` en el pipe v11. No aporta
+TTC ni hueco libre entre carrocerías. Ver [informe R4 y límites por widget](../vantare-program/research/1629-v11-r4.md).
+Estos cambios de presentación no certifican conducción física ni añaden
+productores para ABS/TC/FFB, previsión, daños por zona o sanciones tipadas.
+
 | Widget | Dato requerido por diseño | Campo/fuente/unidad | Estado inicial y calidad/límite |
 | --- | --- | --- | --- |
 | standings (gratis) | Piloto, clase, posición global/clase, vueltas | `Car.driver/class/position/class_position/laps`, S+D, ordinal/conteo | OK; clase derivada, posiciones frescas |

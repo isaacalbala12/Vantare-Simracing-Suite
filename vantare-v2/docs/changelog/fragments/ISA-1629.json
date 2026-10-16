@@ -8,17 +8,19 @@
     "Standings, Relative y Delta reservan espacio transparente para avisos sin tapar la cabecera; Fuel identifica la sesión y Tiempo ofrece tarjeta horizontal o columna vertical.",
     "Clasificación usa diferencias de mejor vuelta a tres decimales y sectores numéricos en Standings ampliado; Torre muestra tiempos de sesión y no gaps de carrera fuera de carrera.",
     "Fuel compacto reserva 137 px en lugar de 128 para conservar el pie de espera y sus márgenes sin recortarlos.",
-    "Daños reúne Coche y Cifras con tecla opcional; no cambia las licencias ni añade datos de telemetría."
+    "Daños reúne Coche y Cifras con tecla opcional; no cambia las licencias ni añade datos de telemetría.",
+    "Contrato de fotos v11 integrado: Historial Delta permite referencias personal/óptima/líder de clase coherentes en número y trazas, y el Radar calcula aproximación radial con dos velocidades actuales; sin sustituir señales ausentes."
   ],
   "testing": [
-    "Cuando Isaac autorice una nueva sesión y esté disponible la herramienta nueva, recapturar los 17 widgets por estado y contrastarlos con el diseño; en esta sesión está prohibido abrir ventanas o capturar.",
-    "Probar la tecla elegida de Daños, mantenerla pulsada, cerrar y reabrir; comprobar que vista y ajustes se conservan."
+    "Con #1675 integrado en nightly, recapturar los 17 widgets por estado y contrastarlos con el diseño usando solo el modo lote sin ventanas. Mientras no esté integrado, no abrir ni capturar la app.",
+    "Probar la tecla elegida de Daños, mantenerla pulsada, cerrar y reabrir; comprobar que vista y ajustes se conservan.",
+    "Sin abrir ventanas: comprobar referencias del Historial Delta, cambio/pérdida de referencia, selección por demanda del pipe y aproximación del Radar con solapes y velocidad obsoleta."
   ],
   "knownLimitations": [
     "Los ejemplos son sintéticos: no certifican telemetría física, OBS ni licencias reales.",
     "Algunas variantes del HTML necesitan señales aún no disponibles: previsión, ABS/TC/FFB, estado de vuelta lanzada, daños por zona y tiempos de sanción.",
     "El catálogo productivo ofrece Neo y Neutro; Carmín/Limpio y algunos tamaños del HTML no tienen un ajuste equivalente en este contrato.",
     "La aceptación visual final y la promoción de canal corresponden a Isaac.",
-    "La evidencia Windows existente es provisional y anterior al cierre; la recaptura final está pendiente por orden de Isaac, también fuera de pantalla."
+    "La evidencia Windows existente es histórica y anterior al contrato v11; la recaptura final espera la herramienta #1675 integrada en nightly."
   ]
 }

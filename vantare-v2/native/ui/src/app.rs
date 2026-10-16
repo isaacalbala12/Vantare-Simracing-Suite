@@ -1114,7 +1114,7 @@ fn run_layout_feed<T: Send + 'static>(
 ) -> Result<(), crate::layout::Error> {
     #[cfg(windows)]
     let track_path = path.clone();
-    let alerts_directory = path.parent().map(std::path::Path::to_path_buf);
+    let alerts_path = crate::session_alerts::calendar::path_for_layout(&path);
     let mut presentation = crate::layout::Presentation::watch(&path)?;
     let mut document = crate::layout::Document::open(path)?;
     gpui_platform::application().run(move |cx: &mut App| {
@@ -1201,9 +1201,7 @@ fn run_layout_feed<T: Send + 'static>(
                     .await;
                 cx.update(|cx| {
                     screens.borrow_mut().sample_usage(cx);
-                    if let Some(dir) = &alerts_directory {
-                        crate::session_alerts::calendar::poll(dir, cx);
-                    }
+                    crate::session_alerts::calendar::poll(&alerts_path, cx);
                 });
                 match presentation.poll() {
                     Ok(Some(showing)) => cx.update(|cx| {

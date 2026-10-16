@@ -65,7 +65,7 @@ class WidgetCatalogTests(unittest.TestCase):
         for catalog in (["standings"], ["standings", "session-alerts", "future-widget"]):
             report = {"widget_catalog": catalog,
                       "widgets": [{"widget": name} for name in reversed(catalog)]}
-            self.assertEqual(MODULE.validate_widget_catalog(report), len(catalog))
+            self.assertEqual(MODULE.validate_widget_catalog(report, expected=catalog), len(catalog))
 
     def test_missing_extra_and_duplicate_widgets_are_rejected(self):
         for actual in (["standings"], ["standings", "session-alerts", "extra"],
@@ -73,7 +73,18 @@ class WidgetCatalogTests(unittest.TestCase):
             with self.subTest(actual=actual), self.assertRaises(RuntimeError):
                 MODULE.validate_widget_catalog({
                     "widget_catalog": ["standings", "session-alerts"],
-                    "widgets": [{"widget": name} for name in actual]})
+                    "widgets": [{"widget": name} for name in actual]},
+                    expected=["standings", "session-alerts"])
+
+    def test_self_consistent_old_binary_is_rejected_against_source_registry(self):
+        names = MODULE.source_catalog()
+        self.assertIn("session-alerts", names)
+        old = [name for name in names if name != "session-alerts"]
+        with self.assertRaises(RuntimeError):
+            MODULE.validate_widget_catalog({
+                "widget_catalog": old, "widgets": [{"widget": name} for name in old]})
+        self.assertEqual(MODULE.validate_widget_catalog({
+            "widget_catalog": names, "widgets": [{"widget": name} for name in names]}), len(names))
 
     def test_old_or_invalid_catalog_cannot_accredit_partial_report(self):
         for catalog in (None, [], ["standings", "standings"], ["standings", None],

@@ -81,8 +81,8 @@ impl Settings {
         s
     }
     pub fn demand(&self) -> vantare_ipc::Demand {
-        use vantare_ipc::Signal::{LapTimes, Positions, SessionClock, SessionInfo};
-        crate::demand::signals(250, &[SessionInfo, SessionClock, Positions, LapTimes])
+        use vantare_ipc::Signal::{SessionClock, SessionInfo};
+        crate::demand::signals(250, &[SessionInfo, SessionClock])
     }
     fn options(&self) -> Options {
         Options {
@@ -200,10 +200,7 @@ impl Widget {
         let preview = !self.live;
         let settings = self.settings.clone();
         let view = self.view.clone();
-        let active = view.active.is_some()
-            || !view.minis.is_empty()
-            || view.queued > 0
-            || !self.calendar.is_empty();
+        let active = view.active.is_some() || !view.minis.is_empty() || view.queued > 0;
         let transition = view.active.as_ref().is_some_and(|n| {
             !reduced
                 && (now.saturating_sub(n.started_at_ms) < 150
@@ -219,7 +216,11 @@ impl Widget {
                 (1000 - now % 1000).min(until_fade.max(1)),
             ))
         } else {
-            Wake::Idle
+            self.machine
+                .next_wake_at(now, &self.settings.options())
+                .map_or(Wake::Idle, |at| {
+                    Wake::At(Duration::from_millis(at.saturating_sub(now).max(1)))
+                })
         };
         (
             Box::new(move |window, cx| {
@@ -265,6 +266,42 @@ mod tests {
         assert!(!widget.ingest(&photo, prefs));
     }
     #[test]
+    fn pause_or_stale_then_same_photo_never_replays_notice_or_sound() {
+        let photo = vantare_ipc::snapshot_from_saved_json(include_str!(
+            "../../fixtures/session-alerts.snapshot.json"
+        ))
+        .expect("foto");
+        let prefs = Preferences::default();
+        for state in [
+            vantare_domain::SourceState::Paused,
+            vantare_domain::SourceState::Stale,
+        ] {
+            let mut widget = Widget::new(&Settings::default(), prefs);
+            widget.ingest(&photo, prefs);
+            drop(widget.frame(prefs, false));
+            let revision = widget.view.sound_revision;
+            assert_eq!(revision, 1);
+            let mut unavailable = photo.clone();
+            unavailable.state.source_state = state;
+            assert!(widget.ingest(&unavailable, prefs));
+            assert_eq!(widget.frame(prefs, false).1, Wake::Idle);
+            assert!(widget.ingest(&photo, prefs));
+            drop(widget.frame(prefs, false));
+            assert!(widget.view.active.is_none());
+            assert_eq!(widget.view.sound_revision, revision);
+        }
+    }
+
+    #[test]
+    fn unproduced_finish_details_do_not_request_positions_or_laps() {
+        let demand = Settings::default().demand();
+        assert!(demand.contains(vantare_ipc::Signal::SessionInfo));
+        assert!(demand.contains(vantare_ipc::Signal::SessionClock));
+        assert!(!demand.contains(vantare_ipc::Signal::Positions));
+        assert!(!demand.contains(vantare_ipc::Signal::LapTimes));
+    }
+
+    #[test]
     fn normalized_settings_roundtrip_and_calendar_wakes_without_telemetry() {
         let settings = Settings {
             thresholds: vec![0, 5, 1, 5, 90, 10, 30, 60, 40],
@@ -290,10 +327,11 @@ mod tests {
             label: "Spa".into(),
             starts_at_ms: time + 600000,
         }]);
-        assert!(matches!(
-            widget.frame(Preferences::default(), false).1,
-            Wake::At(_)
-        ));
+        let Wake::At(delay) = widget.frame(Preferences::default(), false).1 else {
+            panic!("despertar en el umbral sin telemetría");
+        };
+        assert!(delay > Duration::from_secs(299));
+        assert!(widget.view.active.is_none() && widget.view.minis.is_empty());
         widget.calendar(&[]);
         assert_eq!(widget.frame(Preferences::default(), false).1, Wake::Idle);
     }

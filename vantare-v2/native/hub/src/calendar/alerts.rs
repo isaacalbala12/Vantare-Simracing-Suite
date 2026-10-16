@@ -41,8 +41,8 @@ impl Calendar {
             events,
         })
     }
-    pub(crate) fn alert_path(&self) -> std::path::PathBuf {
-        self.path.with_file_name(vantare_ipc::session_alerts::FILE)
+    pub fn alert_path(layout: &std::path::Path) -> std::path::PathBuf {
+        vantare_ipc::session_alerts::calendar_path(layout)
     }
 }
 

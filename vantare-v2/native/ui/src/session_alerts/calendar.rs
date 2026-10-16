@@ -8,9 +8,13 @@ use vantare_ipc::session_alerts::Feed;
 pub(crate) struct Agenda(pub Vec<CalendarInput>);
 impl Global for Agenda {}
 
-pub(crate) fn poll(directory: &Path, cx: &mut App) {
+pub fn path_for_layout(layout: &Path) -> std::path::PathBuf {
+    vantare_ipc::session_alerts::calendar_path(layout)
+}
+
+pub(crate) fn poll(path: &Path, cx: &mut App) {
     let now = vantare_ipc::control::wall_ms().unwrap_or(0);
-    let next = read(&directory.join(vantare_ipc::session_alerts::FILE), now);
+    let next = read(path, now);
     if cx.try_global::<Agenda>().is_none_or(|old| old.0 != next) {
         cx.set_global(Agenda(next));
         cx.refresh_windows();

@@ -620,6 +620,49 @@ mod tests {
     }
 
     #[test]
+    fn calendar_writer_and_reader_share_packaged_layout_paths() {
+        // Fija las plantillas reales del paquete: si cambian, revisar estos argumentos.
+        let beta = include_str!("../../packaging/beta.ps1");
+        assert!(beta.contains("(Join-Path $generation 'data/hub')"));
+        assert!(beta.contains("(Join-Path $generation 'data/Vantare/native/layout.json')"));
+        let msix = include_str!("../../packaging/msix/verify.ps1");
+        assert!(msix.contains(r#"$data + '/hub" --layout "' + $data + '/layout.json"#));
+        for (data, layout, expected) in [
+            (
+                "generation/data/hub",
+                "generation/data/Vantare/native/layout.json",
+                "generation/data/Vantare/native/calendar-alerts.json",
+            ),
+            (
+                "msix-probe/hub",
+                "msix-probe/layout.json",
+                "msix-probe/calendar-alerts.json",
+            ),
+        ] {
+            let options = parse(&[
+                "--data-dir".into(),
+                data.into(),
+                "--layout".into(),
+                layout.into(),
+            ])
+            .expect("argumentos del paquete");
+            let writer = vantare_hub::calendar::Calendar::alert_path(&options.layout);
+            let reader = vantare_ui::session_alerts::calendar::path_for_layout(&options.layout);
+            assert_eq!(writer, PathBuf::from(expected));
+            assert_eq!(reader, writer);
+            assert_ne!(writer.parent(), Some(options.data_dir.as_path()));
+        }
+        let defaults = parse(&[]).expect("paquete sin overrides");
+        let writer = vantare_hub::calendar::Calendar::alert_path(&defaults.layout);
+        assert_eq!(
+            writer,
+            vantare_ui::session_alerts::calendar::path_for_layout(
+                &vantare_ui::layout::default_path().expect("layout del overlay")
+            )
+        );
+    }
+
+    #[test]
     fn data_paths_share_the_platform_directory() {
         let root = vantare_ui::paths::default_data_dir().expect("directorio de datos");
         assert_eq!(

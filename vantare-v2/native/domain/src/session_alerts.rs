@@ -94,14 +94,9 @@ pub fn project(snapshot: &Snapshot) -> Option<SessionInput> {
         finished_at_s: current_time(&timing.finished_at_s),
         next_kind: timing.next_kind.current().cloned(),
         next_starts_at_s: current_time(&timing.next_starts_at_s),
-        position: s
-            .player_car()
-            .and_then(|car| car.class_position.current().copied()),
-        best_lap_ms: s
-            .player_car()
-            .and_then(|car| car.best_lap_s.current().copied())
-            .filter(|s| s.is_finite() && *s > 0.0)
-            .map(|s| (s * 1000.0).round().min(u64::MAX as f64) as u64),
+        // Sin fuente LMU de fin real: no solicitar Positions/LapTimes para esta rama.
+        position: None,
+        best_lap_ms: None,
         phase,
         distance_m: (phase == Some(Phase::Start))
             .then(|| current_time(&timing.distance_to_start_line_m))
@@ -224,6 +219,7 @@ struct Countdown {
     calendar: bool,
     deadline: u64,
     fresh_until: u64,
+    available: bool,
     shown: bool,
     alerted: BTreeSet<u8>,
     distance_m: Option<u32>,
@@ -238,7 +234,7 @@ impl Countdown {
 }
 #[derive(Default)]
 pub struct Machine {
-    previous: Option<(SessionInput, u64)>,
+    previous: Option<(SessionInput, Option<u64>)>,
     confirmed_finish: Option<u64>,
     countdowns: BTreeMap<String, Countdown>,
     queue: Vec<Notice>,
@@ -247,11 +243,16 @@ pub struct Machine {
     zero_revision: u64,
 }
 impl Machine {
-    /// Fotos nuevas solamente. Un hueco de datos rompe la detección de cambios.
+    /// Fotos nuevas; un hueco suspende los avisos, conservando identidad y deduplicado.
     pub fn session(&mut self, input: Option<SessionInput>, now: u64, options: &Options) {
         let Some(next) = input else {
-            self.previous = None;
-            self.clear_sessions();
+            if let Some((_, observed)) = &mut self.previous {
+                *observed = None;
+            }
+            for c in self.countdowns.values_mut().filter(|c| !c.calendar) {
+                c.available = false;
+            }
+            self.clear_session_notices();
             return;
         };
         let key = format!("session:{}:{}", next.epoch, next.id);
@@ -260,7 +261,13 @@ impl Machine {
             .as_ref()
             .is_some_and(|(s, _)| s.epoch == next.epoch && s.id == next.id && s.kind == next.kind);
         if same {
-            self.finish(&key, &next, old.as_ref().map(|(_, t)| *t), now, options);
+            self.finish(
+                &key,
+                &next,
+                old.as_ref().and_then(|(_, t)| *t),
+                now,
+                options,
+            );
         } else {
             self.clear_sessions();
             // Conectarse a una sesión ya terminada solo establece la base.
@@ -292,7 +299,7 @@ impl Machine {
         if next.finished_at_s.is_some() {
             self.countdowns.remove(&key);
         }
-        self.previous = Some((next, now));
+        self.previous = Some((next, Some(now)));
         self.thresholds(now, options);
     }
     fn finish(
@@ -310,7 +317,6 @@ impl Machine {
         if self.confirmed_finish == Some(mark) {
             return;
         }
-        self.confirmed_finish = Some(mark);
         let recent = observed.is_some_and(|t| now.saturating_sub(t) <= 1500)
             && next
                 .elapsed_s
@@ -321,6 +327,7 @@ impl Machine {
         {
             return;
         }
+        self.confirmed_finish = Some(mark);
         self.enqueue(
             Notice {
                 event: format!("ended:{key}:{mark}"),
@@ -355,7 +362,9 @@ impl Machine {
             options.session && s.is_finite() && *s >= 0.0 && next.finished_at_s.is_none()
         });
         let Some((label, seconds, scheduled)) = target else {
-            self.countdowns.remove(key);
+            if let Some(c) = self.countdowns.get_mut(key) {
+                c.available = false;
+            }
             return;
         };
         if self
@@ -374,6 +383,7 @@ impl Machine {
             .entry(key.to_owned())
             .and_modify(|c| {
                 c.deadline = deadline;
+                c.available = true;
                 c.fresh_until = now.saturating_add(1500);
             })
             .or_insert(Countdown {
@@ -383,6 +393,7 @@ impl Machine {
                 distance_estimated: false,
                 deadline,
                 fresh_until: now.saturating_add(1500),
+                available: true,
                 shown: false,
                 alerted: BTreeSet::new(),
                 distance_m: None,
@@ -422,6 +433,7 @@ impl Machine {
                         calendar: false,
                         deadline: u64::MAX,
                         fresh_until: now.saturating_add(1500),
+                        available: true,
                         shown: true,
                         alerted: BTreeSet::new(),
                         distance_m: Some(m.ceil().min(f64::from(u32::MAX)) as u32),
@@ -437,6 +449,9 @@ impl Machine {
     }
     fn clear_sessions(&mut self) {
         self.countdowns.retain(|_, c| c.calendar);
+        self.clear_session_notices();
+    }
+    fn clear_session_notices(&mut self) {
         self.queue.retain(|n| n.calendar);
         if self.active.as_ref().is_some_and(|n| !n.calendar) {
             self.active = None;
@@ -476,6 +491,7 @@ impl Machine {
                     distance_estimated: false,
                     deadline: input.starts_at_ms,
                     fresh_until: u64::MAX,
+                    available: true,
                     shown: false,
                     alerted: BTreeSet::new(),
                     distance_m: None,
@@ -487,7 +503,7 @@ impl Machine {
     fn thresholds(&mut self, now: u64, options: &Options) {
         let mut notices = Vec::new();
         for (key, c) in &mut self.countdowns {
-            if c.distance_m.is_some() || now > c.fresh_until || now >= c.deadline {
+            if !c.available || c.distance_m.is_some() || now > c.fresh_until || now >= c.deadline {
                 continue;
             }
             // Al entrar tarde, solo el umbral más próximo. Nunca recuperar avisos caducados.
@@ -535,7 +551,8 @@ impl Machine {
     pub fn tick(&mut self, now: u64, options: &Options) -> View {
         self.thresholds(now, options);
         for c in self.countdowns.values_mut() {
-            if c.shown
+            if c.available
+                && c.shown
                 && !c.scheduled
                 && c.distance_m.is_none()
                 && now <= c.fresh_until
@@ -550,7 +567,7 @@ impl Machine {
         let valid = |n: &Notice| {
             now < n.expires_at_ms && (!matches!(n.kind, Kind::Threshold(_))
                 || self.countdowns.get(&n.event).is_some_and(|c| {
-                    now <= c.fresh_until && now < c.deadline
+                    c.available && now <= c.fresh_until && now < c.deadline
                         && !matches!(n.kind, Kind::Threshold(m) if m > 1 && c.seconds(now) <= 60)
                 }))
         };
@@ -577,6 +594,7 @@ impl Machine {
             .iter()
             .filter(|(key, c)| {
                 options.mini
+                    && c.available
                     && c.shown
                     && now <= c.fresh_until
                     && now
@@ -613,9 +631,29 @@ impl Machine {
             zero_revision: self.zero_revision,
         }
     }
+    /// Próximo umbral absoluto: una agenda lejana no necesita ticks cada segundo.
+    pub fn next_wake_at(&self, now: u64, options: &Options) -> Option<u64> {
+        self.countdowns
+            .values()
+            .filter(|c| c.available && now <= c.fresh_until && c.distance_m.is_none())
+            .flat_map(|c| {
+                let thresholds = options
+                    .thresholds
+                    .iter()
+                    .copied()
+                    .filter(move |m| (1..=60).contains(m) && !c.alerted.contains(m))
+                    .map(move |m| c.deadline.saturating_sub(u64::from(m) * 60_000));
+                let zero = (c.shown && !c.scheduled && !c.zero_fired).then_some(c.deadline);
+                thresholds
+                    .chain(zero)
+                    .filter(move |at| *at > now && *at <= c.fresh_until)
+            })
+            .min()
+    }
+
     pub fn countdown(&self, event: &str, now: u64) -> Option<Mini> {
         let c = self.countdowns.get(event)?;
-        (now <= c.fresh_until).then(|| Mini {
+        (c.available && now <= c.fresh_until).then(|| Mini {
             event: event.into(),
             label: c.label.clone(),
             calendar: c.calendar,

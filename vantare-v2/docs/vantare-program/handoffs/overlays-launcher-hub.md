@@ -2,6 +2,26 @@
 
 [Histórico previo por SHA](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/8c6e83f977c8d2245a04266cdaaf896ed8c1b131/vantare-v2/docs/vantare-program/handoffs/overlays-launcher-hub.md). El diario y avances están en las issues; este documento conserva el estado actual.
 
+## Review R1 #1660 · correcciones para ronda 2 · 2026-10-17
+
+Informe NO APTO de DeepSeek leído. Ruta de agenda compartida desde el layout
+real de Studio/overlay mediante `ipc::session_alerts::calendar_path`, con
+regresión para argumentos beta/MSIX. El supervisor live deriva catálogo desde
+`widgets!` (origen de `Kind::ALL`) y variantes desde `LIVE_EXTRA_SETTINGS`;
+valida multiplicidades, no fija 18/22. Offline contrasta el catálogo exportado
+con el fuente independiente, rechazando también binarios antiguos coherentes.
+Tests del supervisor usan una expectativa explícita independiente.
+
+Frescura/opción se validan antes de consumir el fin. Pausa/garaje/hueco de reloj
+ocultan la sesión y conservan umbrales/sonido; nueva identidad sí reinicia.
+Agenda lejana despierta en el umbral en vez de 1 Hz; la demanda retira
+Positions/LapTimes hasta demostrar la fuente de fin real.
+P3-3/P3-5/P3-6 y límites se documentan en `native/ui/session-alerts.md`:
+etiqueta de umbral al entrar tarde, E/S periódica existente, audio físico y
+blanco limitado a prácticas/qualy. Las listas Python de notas/timing permanecen.
+La CI anterior solo acredita 39c8720f; SHA/checks de esta ronda en issue/PR/buzón.
+Sin capturas/ventanas, LMU físico, merge a nightly ni release.
+
 ## Reanudación #1653 · catálogo de cobertura · 2026-10-16
 
 El primer HEAD actualizado pasa CI Windows: 1911/1911 Nextest (19 omitidos),

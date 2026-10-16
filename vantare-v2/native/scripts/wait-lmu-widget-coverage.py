@@ -1,9 +1,11 @@
-"""Espera LMU y verifica las 18 proyecciones sin iniciar juego ni ventanas.
+"""Espera LMU y verifica el catálogo de proyecciones sin iniciar juego ni ventanas.
 
 Solo lee proceso/SHM. No guarda frames, nombres ni respuestas REST. La admisión
 real de build, sesión y calidad corresponde después al Core productivo.
 """
 import argparse
+from collections import Counter
+import runpy
 import ctypes
 from ctypes import wintypes
 import datetime
@@ -20,10 +22,8 @@ import time
 SIZE = 324_820
 SCORING_BASE = 2_192
 SCORING_STRIDE = 584
-WIDGETS = set("standings relative multiclass-relative delta delta-trace fuel-strategy "
-              "radar input-telemetry pedals pedals-telemetry track-map track-weather "
-              "racing-flags fastest-lap head-to-head broadcast-tower "
-              "car-damage-numbers car-damage-visual".split())
+CATALOG = runpy.run_path(str(Path(__file__).with_name("widget_catalog.py")))
+
 
 
 def grid_status(data):
@@ -130,11 +130,14 @@ def result_from_log(text, returncode):
     checks = re.findall(r"^([a-z-]+): demanda y proyección por pipe preservadas\s*$",
                         text, re.MULTILINE)
     covered = set(checks)
+    expected = CATALOG["source_catalog"]()
+    configurations = CATALOG["live_configurations"]()
     # Un filtro mal escrito que ejecuta cero tests nunca es PASS.
     passed = (returncode == 0 and "1 passed; 0 failed" in text
-              and covered == WIDGETS and len(checks) == 22)
+              and Counter(checks) == Counter(configurations))
     return {"passed": passed, "returncode": returncode, "widget_checks": len(checks),
-            "covered_widgets": sorted(covered), "missing_widgets": sorted(WIDGETS - covered)}
+            "covered_widgets": sorted(covered), "missing_widgets": sorted(set(expected) - covered),
+            "expected_widgets": len(expected), "expected_checks": len(configurations)}
 
 
 def main():
@@ -229,7 +232,7 @@ def wait_and_run(args, probe, directory):
             report(summary["state"].upper())
             mailbox(f"{'FIN' if outcome['passed'] else 'BLOQUEO'} FASE B: "
                     f"{summary['state']}; {outcome['widget_checks']} comprobaciones, "
-                    f"{len(outcome['covered_widgets'])}/18 widgets; resumen {summary_path}. "
+                    f"{len(outcome['covered_widgets'])}/{outcome['expected_widgets']} widgets; resumen {summary_path}. "
                     "No acredita formación/salida ni todas las señales opcionales.")
             return 0 if outcome["passed"] else 1
         except Exception as error:

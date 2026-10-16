@@ -1502,7 +1502,7 @@ fn start_session_alerts(cx: &mut Context<Hub>) {
                     }
                     let calendar = hub.calendar.read(cx);
                     let result = calendar.alert_feed(now).and_then(|feed| {
-                        let path = calendar.alert_path();
+                        let path = Calendar::alert_path(hub.studio.read(cx).layout_path());
                         let bytes = serde_json::to_vec(&feed).map_err(|e| e.to_string())?;
                         let old = match std::fs::metadata(&path) {
                             Ok(_) => Some(crate::files::read(&path, 65536)?),

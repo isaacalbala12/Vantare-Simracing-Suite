@@ -132,7 +132,14 @@ Descriptor local: `C:/tmp/1638-phase-b-active.json`. Directorio de esta espera:
 - `waiter.log` registra cambios de estado, `verification.log` recoge la prueba
   y `summary.json` se actualiza de forma atómica. Guarda hashes de ambos
   binarios y rechaza cambios mientras espera. Un filtro con cero tests nunca
-  pasa: exige un test correcto, **22 comprobaciones y los 18 widgets**.
+  pasa: exige un test correcto, **el catálogo fuente completo y todas sus variantes
+  live de inspector**. El supervisor deriva nombres desde el bloque `widgets!`
+  que genera `Kind::ALL` y la multiplicidad desde `LIVE_EXTRA_SETTINGS` de
+  `ui/src/demand.rs`; no fija cantidades en Python. Contrasta el multiconjunto
+  completo de líneas, no solo su número. Con el catálogo actual son 19 widgets
+  y 23 comprobaciones; incorporar otro widget actualiza la expectativa desde
+  el fuente. El evaluador offline también contrasta el catálogo exportado por
+  el binario con ese registro fuente: un binario anterior autoconsistente falla.
 - Solo se hace un intento tras confirmar la sesión. Éxito/fallo queda en el
   resumen y en `C:/tmp/buzon/telemetria-1638.md`. No se graban snapshots,
   nombres ni cuerpos REST. La prueba no acredita formación/salida ni fuentes

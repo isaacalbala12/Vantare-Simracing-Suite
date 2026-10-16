@@ -10,6 +10,9 @@ import pathlib
 import subprocess
 import tempfile
 import json
+import runpy
+
+source_catalog = runpy.run_path(str(pathlib.Path(__file__).with_name("widget_catalog.py")))["source_catalog"]
 
 
 def recording_scope(scope):
@@ -98,13 +101,15 @@ def readable_report(telemetry, projections, scope):
     return "\n".join(lines) + "\n"
 
 
-def validate_widget_catalog(projections):
-    """El binario exporta los nombres de Kind::ALL, sin catálogo paralelo Python."""
-    expected = projections.get("widget_catalog")
-    if (not isinstance(expected, list) or not expected
-            or any(not isinstance(name, str) or not name for name in expected)
-            or len(set(expected)) != len(expected)):
-        raise RuntimeError("falta catálogo Kind::ALL válido; recompilar el consumidor QA")
+def validate_widget_catalog(projections, expected=None):
+    """Contrasta el Kind::ALL exportado con el registro fuente independiente."""
+    expected = source_catalog() if expected is None else expected
+    exported = projections.get("widget_catalog")
+    if (not isinstance(exported, list) or not exported
+            or any(not isinstance(name, str) or not name for name in exported)
+            or len(set(exported)) != len(exported)
+            or set(exported) != set(expected)):
+        raise RuntimeError("catálogo del binario distinto del fuente; recompilar el consumidor QA")
     widgets = projections["widgets"]
     actual = [widget["widget"] for widget in widgets]
     if set(actual) != set(expected) or len(actual) != len(expected):

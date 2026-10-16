@@ -324,3 +324,85 @@ fn estimated_metres_stay_estimated_and_missing_phase_withdraws_start_notice() {
     let view = m.tick(250, &o);
     assert!(view.active.is_none() && view.minis.is_empty());
 }
+
+#[test]
+fn delayed_or_disabled_finish_is_not_consumed_before_it_can_be_announced() {
+    for disabled in [false, true] {
+        let mut m = Machine::default();
+        let mut o = Options::default();
+        let mut p = practice(600.0);
+        p.elapsed_s = Some(100.0);
+        m.session(Some(p.clone()), 0, &o);
+        p.finished_at_s = Some(101.0);
+        p.elapsed_s = Some(if disabled { 101.0 } else { 105.0 });
+        o.finished = !disabled;
+        m.session(Some(p.clone()), 250, &o);
+        assert!(m.tick(250, &o).active.is_none());
+        // La confirmación retrasada no produce un aviso viejo. Si la fuente corrige
+        // su reloj o se habilita la opción mientras es fresca, aún se puede aceptar.
+        p.elapsed_s = Some(101.5);
+        o.finished = true;
+        m.session(Some(p.clone()), 500, &o);
+        let view = m.tick(500, &o);
+        assert_eq!(
+            view.active.expect("fin fresco admitido").tone(),
+            Tone::Finished
+        );
+        assert_eq!(view.sound_revision, 1);
+        m.session(Some(p), 750, &o);
+        assert_eq!(m.tick(750, &o).sound_revision, 1);
+    }
+}
+
+#[test]
+fn pauses_garage_and_clock_gaps_preserve_threshold_memory() {
+    let o = Options::default();
+    for missing_input in [true, false] {
+        let mut m = Machine::default();
+        m.session(Some(practice(300.0)), 0, &o);
+        assert_eq!(m.tick(0, &o).sound_revision, 1);
+        let mut missing_clock = practice(300.0);
+        missing_clock.remaining_s = None;
+        m.session(
+            if missing_input {
+                None
+            } else {
+                Some(missing_clock)
+            },
+            500,
+            &o,
+        );
+        let hidden = m.tick(500, &o);
+        assert!(hidden.active.is_none() && hidden.minis.is_empty());
+        // Incluso al volver dentro del mismo umbral tras un hueco largo.
+        m.session(Some(practice(270.0)), 30_000, &o);
+        let resumed = m.tick(30_000, &o);
+        assert!(resumed.active.is_none());
+        assert_eq!(resumed.sound_revision, 1);
+        assert_eq!(resumed.minis[0].seconds, 270);
+        m.session(Some(practice(60.0)), 31_000, &o);
+        assert_eq!(m.tick(31_000, &o).sound_revision, 2);
+        m.session(None, 31_100, &o);
+        m.session(Some(practice(59.0)), 31_200, &o);
+        assert_eq!(m.tick(31_200, &o).sound_revision, 2);
+        // Una identidad nueva sí tiene umbrales nuevos.
+        let mut next = practice(300.0);
+        next.id = 2;
+        m.session(Some(next), 31_500, &o);
+        assert_eq!(m.tick(31_500, &o).sound_revision, 3);
+    }
+}
+
+#[test]
+fn distant_calendar_sleeps_until_threshold_and_still_fires_without_photos() {
+    let mut m = Machine::default();
+    let o = Options::default();
+    m.calendar(&[race("far", 3_600_000)], 0, &o);
+    assert!(m.tick(0, &o).active.is_none());
+    assert_eq!(m.next_wake_at(0, &o), Some(3_300_000));
+    assert_eq!(
+        m.tick(3_300_000, &o).active.expect("umbral").kind,
+        Kind::Threshold(5)
+    );
+    assert_eq!(m.tick(3_300_000, &o).sound_revision, 1);
+}

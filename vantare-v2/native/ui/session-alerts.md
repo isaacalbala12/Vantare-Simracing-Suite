@@ -126,3 +126,38 @@ VANTARE_CARGO_MIN_GB=0 (entorno equivalente en el Mac). Fmt/check/Clippy PASS,
 Workspace Mac: 1642 PASS / 50 FAIL por hilo principal GPUI / 12 omitidos.
 La CI Windows y el SHA final se verifican en PR #1660, issue #1653 y
 ~/orq/1653.buzon.md; no se extrapola el gate Mac a Windows.
+
+## Correcciones de review R1 (#1660)
+
+La ruta se resuelve con `ipc::session_alerts::calendar_path(layout)`: el Hub usa
+el layout real de Studio y el lector el layout abierto del overlay, nunca el
+directorio privado `--data-dir` del Hub. La regresión fija las plantillas de
+argumentos de beta.ps1/MSIX y verifica escritor/lector con rutas esperadas
+independientes. El smoke MSIX numérico no acredita calendario en pista.
+
+Pausar/ir al garaje o perder el reloj oculta los avisos/mini de sesión y conserva
+los umbrales ya emitidos de esa identidad, sin repetir pitidos al volver.
+Un cambio de epoch/id/tipo sí reinicia la memoria. Un fin retrasado o desactivado
+no se marca consumido antes de las guardas; sigue exigiendo frescura de 1,5 s
+y no se recuperan finales viejos. La primera conexión solo establece la base.
+
+Sin aviso/mini, una carrera lejana programa un único despertar en el próximo
+umbral: no genera ticks a 1 Hz mientras no hay nada que pintar.
+La demanda queda en SessionInfo/SessionClock. Hasta demostrar fin real LMU,
+no se solicitan Positions/LapTimes ni se proyectan puesto/mejor vuelta para esa
+rama. Cuando se añada la fuente habrá que habilitar conjuntamente demanda y
+proyección; los campos opcionales del motor puro se conservan para ese contrato.
+
+Pendientes explícitos de review (no corregidos aquí):
+- P3-3: «Aviso · 5 min» identifica el umbral, aunque se entre a 4:00; el contador
+  muestra el resto real. Pendiente decidir otra etiqueta con Isaac.
+- P3-5: se mantiene la publicación atómica cada segundo y lectura de hasta
+  64 KiB cada 500 ms, incluso sin widget. Optimización de E/S pendiente de medir;
+  no se afirma que estos timers o el coste de E/S hayan desaparecido. winmm
+  permanece como frontera existente; audio/toasts físicos siguen sin validar.
+- P3-6: blanco de fin confirmado solo para prácticas/qualy, conforme al alcance;
+  no se añade aviso de fin de carrera. Inicio/fin reales, formación y próxima
+  sesión continúan sin fuente LMU demostrada y permanecen ocultos.
+- Las listas Python de notas por widget y los siete campos de timing son contratos
+  explícitos y se mantienen. Solo el catálogo y la cantidad de comprobaciones
+  derivan del fuente; no se afirma ausencia general de listas o números fijos.

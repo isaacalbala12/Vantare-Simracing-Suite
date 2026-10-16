@@ -1,0 +1,19 @@
+{
+  "captured_on": "2026-10-14",
+  "actual_build": null,
+  "layout_used_for_replay": "1.4.2.0",
+  "source": "LMU_Data (FILE_MAP_READ) and GET 127.0.0.1:6397/rest/watch/{sessionInfo,standings}",
+  "observed_vehicles": 37,
+  "observed_elapsed_s": [
+    5052.400000000001,
+    5052.400000000001,
+    5052.400000000001
+  ],
+  "observed_game_phase": 9,
+  "driving_verified": false,
+  "files": {
+    "frame.bin": "793515ffe56883eaf30d506d528990e31b50ee99a33c5d44011fb8307677f75e",
+    "sessionInfo.json": "9445573c76680eaab7cb68d734d16c46c3c5a58ef4d69acfd49093a6d420a322",
+    "standings.json": "b99560f960591747279f702d99c1c93c4ed053c46e7b46f286d09bb7f2516ffc"
+  }
+}

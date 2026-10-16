@@ -1,0 +1,34 @@
+-- Disposable database only. Reapply the actual migration over an R3 fixture.
+begin;
+select no_plan();
+insert into public.profiles(id) values('16275000-0000-4000-8000-000000000001'),('16275000-0000-4000-8000-000000000002');
+alter table public.testing_contributions disable trigger testing_report_limit;
+insert into public.testing_contributions(id,account_id,channel,title,body)
+ select ('16275000-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid,'16275000-0000-4000-8000-000000000002','nightly','Reparación','Sintético' from generate_series(10,12)n;
+alter table public.testing_contributions enable trigger testing_report_limit;
+update public.testing_contributions set created_at='2026-10-12 12:00Z';
+-- Old R3 reopened the first accepted report, then accepted another the same day.
+alter table public.testing_contributions disable trigger user;
+update public.testing_contributions set state='accepted' where id='16275000-0000-4000-8000-000000000011';
+insert into public.testing_contribution_reviews(contribution_id,reviewer,decision,note,model)
+ values('16275000-0000-4000-8000-000000000010','16275000-0000-4000-8000-000000000001','accepted','Decisión original','human');
+alter table public.testing_contributions enable trigger user;
+-- The original reviewer may already be erased; the review UUID remains durable.
+insert into private.clerk_issuers(issuer,authorized_parties,enabled) values('https://repair.clerk.invalid',array['https://app.invalid'],true);
+insert into public.account_identities(issuer,subject,account_id,deleted_at)
+ values('https://repair.clerk.invalid','user_repair_reviewer','16275000-0000-4000-8000-000000000001',now());
+commit;
+\ir ../migrations/20261015120000_native_admin_final_decision_r4.sql
+begin;
+select is((select state from public.testing_contributions where id='16275000-0000-4000-8000-000000000010'),'accepted','reparación no vuelve a consumir cupo diario');
+select is((select note from public.testing_contribution_reviews where contribution_id='16275000-0000-4000-8000-000000000010'),'Decisión original','conserva decisión original');
+select is((select count(*)::int from public.admin_audit_log where target='16275000-0000-4000-8000-000000000010' and after_value->>'repair'='native_admin_final_decision_r4'),1,'reparación auditada una vez');
+select throws_ok($$insert into public.admin_audit_log(actor_account_id,action,target) values('16275000-0000-4000-8000-000000000001','get_report','fixture')$$,'28000','account_deleted','barrera de auditoría vuelve a rechazar actor borrado');
+select is((select tgenabled::text from pg_trigger where tgrelid='public.testing_contributions'::regclass and tgname='testing_report_acceptance_limit'),'O','cupo sigue activo después de reparar');
+select throws_ok($$update public.testing_contributions set state='accepted' where id='16275000-0000-4000-8000-000000000012'$$,'23514','testing_acceptance_limit','nuevas aceptaciones siguen sujetas al cupo');
+commit;
+\ir ../migrations/20261015120000_native_admin_final_decision_r4.sql
+begin;
+select is((select count(*)::int from public.admin_audit_log where after_value->>'repair'='native_admin_final_decision_r4'),1,'reaplicar reparación no duplica auditoría');
+select * from finish();
+rollback;

@@ -276,7 +276,8 @@ select is(
   pg_temp.webhook_test_dblink_connect(
     'billing_worker_one',
     format(
-      'host=127.0.0.1 dbname=%I user=postgres password=%s',
+      'host=127.0.0.1 port=%s dbname=%I user=postgres password=%s',
+      current_setting('port'),
       current_database(),
       :'dblink_password'
     )
@@ -289,7 +290,8 @@ select is(
   pg_temp.webhook_test_dblink_connect(
     'billing_worker_two',
     format(
-      'host=127.0.0.1 dbname=%I user=postgres password=%s',
+      'host=127.0.0.1 port=%s dbname=%I user=postgres password=%s',
+      current_setting('port'),
       current_database(),
       :'dblink_password'
     )

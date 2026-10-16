@@ -1,0 +1,433 @@
+import {
+  assertEquals,
+  assertRejects,
+} from "https://deno.land/std@0.224.0/assert/mod.ts";
+import {
+  type DiscountClient,
+  PolarDiscountClient,
+  synchronizeDiscount,
+} from "./polar.ts";
+
+Deno.test("discount change uses PATCH only, no product or proration, then GET retry avoids a second write", async () => {
+  let discount: string | null = null;
+  const calls: string[] = [];
+  const client = new PolarDiscountClient(
+    "sandbox",
+    "test",
+    (url, init?: RequestInit) => {
+      calls.push(`${init?.method ?? "GET"} ${url}`);
+      if (init?.method === "PATCH") {
+        assertEquals(JSON.parse(String(init.body)), { discount_id: "reward3" });
+        discount = "reward3";
+      }
+      return Promise.resolve(Response.json({
+        id: "sub",
+        discount_id: discount,
+        product_id: "product",
+        amount: 599,
+        currency: "eur",
+        recurring_interval: "month",
+        recurring_interval_count: 1,
+        status: "active",
+      }));
+    },
+  );
+  const expected = {
+    subscriptionId: "sub",
+    productId: "product",
+    normalCents: 599,
+    discountId: "reward3",
+  };
+  assertEquals(await synchronizeDiscount(client, expected), true);
+  assertEquals(await synchronizeDiscount(client, expected), false);
+  assertEquals(calls.filter((c) => c.startsWith("PATCH")).length, 1);
+});
+Deno.test("lost PATCH response is recovered by GET without restarting repeating discount", async () => {
+  let discount: string | null = null;
+  let writes = 0;
+  const client = new PolarDiscountClient(
+    "sandbox",
+    "test",
+    (_url, init?: RequestInit) => {
+      if (init?.method === "PATCH") {
+        discount = "reward6";
+        writes++;
+        throw new Error("lost response");
+      }
+      return Promise.resolve(Response.json({
+        id: "sub",
+        discount_id: discount,
+        product_id: "product",
+        amount: 599,
+        currency: "eur",
+        recurring_interval: "month",
+        recurring_interval_count: 1,
+        status: "active",
+      }));
+    },
+  );
+  const expected = {
+    subscriptionId: "sub",
+    productId: "product",
+    normalCents: 599,
+    discountId: "reward6",
+  };
+  await assertRejects(() => synchronizeDiscount(client, expected));
+  assertEquals(await synchronizeDiscount(client, expected), false);
+  assertEquals(writes, 1);
+});
+Deno.test("unexpected product, canceled subscription, unknown discount and remote errors fail closed", async () => {
+  for (
+    const remote of [
+      {
+        product_id: "changed",
+        amount: 599,
+        currency: "eur",
+        recurring_interval: "month",
+        recurring_interval_count: 1,
+        status: "active",
+        discount_id: null,
+      },
+      {
+        product_id: "product",
+        amount: 599,
+        currency: "eur",
+        recurring_interval: "month",
+        recurring_interval_count: 1,
+        status: "canceled",
+        discount_id: null,
+      },
+      {
+        product_id: "product",
+        amount: 599,
+        currency: "eur",
+        recurring_interval: "month",
+        recurring_interval_count: 1,
+        status: "active",
+        discount_id: "unmanaged",
+      },
+    ]
+  ) {
+    const client = new PolarDiscountClient(
+      "sandbox",
+      "test",
+      () => Promise.resolve(Response.json({ id: "sub", ...remote })),
+    );
+    await assertRejects(() =>
+      synchronizeDiscount(client, {
+        subscriptionId: "sub",
+        productId: "product",
+        normalCents: 599,
+        discountId: "reward",
+        managedDiscountIds: [],
+      })
+    );
+  }
+  const client = new PolarDiscountClient(
+    "sandbox",
+    "test",
+    () => Promise.resolve(new Response("private remote data", { status: 500 })),
+  );
+  await assertRejects(
+    () => client.read("sub"),
+    Error,
+    "polar_discount_http_500",
+  );
+});
+Deno.test("removing reward after spam uses explicit null", async () => {
+  let seen: unknown;
+  const client = new PolarDiscountClient(
+    "sandbox",
+    "test",
+    (_url, init?: RequestInit) => {
+      if (init?.method === "PATCH") seen = JSON.parse(String(init.body));
+      return Promise.resolve(
+        Response.json({
+          id: "sub",
+          discount_id: init?.method === "PATCH" ? null : "reward",
+          product_id: "product",
+          amount: 599,
+          currency: "eur",
+          recurring_interval: "month",
+          recurring_interval_count: 1,
+          status: "active",
+        }),
+      );
+    },
+  );
+  await synchronizeDiscount(client, {
+    subscriptionId: "sub",
+    productId: "product",
+    normalCents: 599,
+    discountId: null,
+    managedDiscountIds: ["reward"],
+  });
+  assertEquals(seen, { discount_id: null });
+});
+Deno.test("annual, launch-price and wrong-currency subscriptions are never mutated", async () => {
+  for (
+    const remote of [
+      {
+        amount: 399,
+        currency: "eur",
+        recurring_interval: "month",
+        recurring_interval_count: 1,
+      },
+      {
+        amount: 599,
+        currency: "eur",
+        recurring_interval: "year",
+        recurring_interval_count: 1,
+      },
+      {
+        amount: 599,
+        currency: "usd",
+        recurring_interval: "month",
+        recurring_interval_count: 1,
+      },
+    ]
+  ) {
+    const client = new PolarDiscountClient(
+      "sandbox",
+      "test",
+      () =>
+        Promise.resolve(
+          Response.json({
+            id: "sub",
+            product_id: "product",
+            status: "active",
+            discount_id: null,
+            ...remote,
+          }),
+        ),
+    );
+    await assertRejects(() =>
+      synchronizeDiscount(client, {
+        subscriptionId: "sub",
+        productId: "product",
+        normalCents: 599,
+        discountId: "reward",
+      })
+    );
+  }
+});
+Deno.test("P2-2 expired repeating coupon repairs through durable clear/attach and survives lost attach response", async () => {
+  let coupon: string | null = "reward3";
+  let phase: "pending" | "cleared" = "pending";
+  let writes = 0;
+  const client = {
+    read: () =>
+      Promise.resolve({
+        id: "sub",
+        product_id: "product",
+        status: "active",
+        discount_id: coupon,
+        amount: 599,
+        currency: "eur",
+        recurring_interval: "month",
+        recurring_interval_count: 1,
+      }),
+    change: (_id: string, value: string | null) => {
+      coupon = value;
+      writes++;
+      if (value === "reward3") throw new Error("lost attach response");
+      return client.read();
+    },
+  };
+  const expected = {
+    subscriptionId: "sub",
+    productId: "product",
+    discountId: "reward3",
+    normalCents: 599,
+    managedDiscountIds: ["reward3"],
+    repair: true,
+    markCleared: () => {
+      phase = "cleared";
+      return Promise.resolve();
+    },
+  };
+  await assertRejects(() =>
+    synchronizeDiscount(client, { ...expected, phase })
+  );
+  assertEquals(phase, "cleared");
+  assertEquals(coupon, "reward3");
+  assertEquals(
+    await synchronizeDiscount(client, { ...expected, phase }),
+    false,
+  );
+  assertEquals(writes, 2);
+});
+Deno.test("P3-2 campaign expiry preserves external and expired creator coupons without a PATCH", async () => {
+  for (const coupon of ["external-forever", "creator-two-months"]) {
+    let writes = 0;
+    let observed: string | null = null;
+    const client = {
+      read: () =>
+        Promise.resolve({
+          id: "sub",
+          product_id: "product",
+          status: "active",
+          discount_id: coupon,
+          amount: 599,
+          currency: "eur",
+          recurring_interval: "month",
+          recurring_interval_count: 1,
+        }),
+      change: () => {
+        writes++;
+        throw new Error("must preserve foreign benefit");
+      },
+    };
+    assertEquals(
+      await synchronizeDiscount(client, {
+        subscriptionId: "sub",
+        productId: "product",
+        discountId: null,
+        normalCents: 599,
+        managedDiscountIds: ["reward3"],
+        observed: (id) => {
+          observed = id;
+        },
+      }),
+      false,
+    );
+    assertEquals(writes, 0);
+    assertEquals(observed, coupon);
+  }
+});
+Deno.test("P2-2 lost clear response or failed phase RPC resumes without clearing twice", async () => {
+  for (const failure of ["clear", "phase"]) {
+    let coupon: string | null = "reward3";
+    let phase: "pending" | "cleared" = "pending";
+    let writes = 0;
+    let failed = false;
+    const client = {
+      read: () =>
+        Promise.resolve({
+          id: "sub",
+          product_id: "product",
+          status: "active",
+          discount_id: coupon,
+          amount: 599,
+          currency: "eur",
+          recurring_interval: "month",
+          recurring_interval_count: 1,
+        }),
+      change: (_id: string, value: string | null) => {
+        coupon = value;
+        writes++;
+        if (failure === "clear" && value === null && !failed) {
+          failed = true;
+          throw new Error("lost clear");
+        }
+        return client.read();
+      },
+    };
+    const markCleared = () => {
+      if (failure === "phase" && !failed) {
+        failed = true;
+        throw new Error("phase RPC failed");
+      }
+      phase = "cleared";
+      return Promise.resolve();
+    };
+    const expected = {
+      subscriptionId: "sub",
+      productId: "product",
+      discountId: "reward3",
+      normalCents: 599,
+      managedDiscountIds: ["reward3"],
+      repair: true,
+      markCleared,
+    };
+    await assertRejects(() =>
+      synchronizeDiscount(client, { ...expected, phase })
+    );
+    assertEquals(coupon, null);
+    assertEquals(phase, "pending");
+    assertEquals(
+      await synchronizeDiscount(client, { ...expected, phase }),
+      true,
+    );
+    assertEquals(coupon, "reward3");
+    assertEquals(writes, 2);
+  }
+});
+
+Deno.test("P2-4 cleanup of canceled or paused predecessor succeeds without a forbidden PATCH", async () => {
+  for (const status of ["canceled", "paused"]) {
+    let writes = 0;
+    const client = new PolarDiscountClient(
+      "sandbox",
+      "fixture",
+      (_url, init?: RequestInit) => {
+        if (init?.method === "PATCH") {
+          writes++;
+          return Promise.resolve(new Response(null, { status: 422 }));
+        }
+        return Promise.resolve(
+          Response.json({
+            id: "old",
+            product_id: "product",
+            status,
+            discount_id: "reward3",
+            amount: 599,
+            currency: "eur",
+            recurring_interval: "month",
+            recurring_interval_count: 1,
+          }),
+        );
+      },
+    );
+    assertEquals(
+      await synchronizeDiscount(client, {
+        subscriptionId: "old",
+        productId: "product",
+        normalCents: 599,
+        discountId: null,
+        managedDiscountIds: ["reward3"],
+        ...{ cleanup: true },
+      }),
+      false,
+    );
+    assertEquals(writes, 0);
+  }
+});
+
+Deno.test("R6 inactive predecessor with creator restoration is already clean; Polar PATCH 422 is avoided", async () => {
+  let patches = 0;
+  let reason = "";
+  const client: DiscountClient = {
+    read: () =>
+      Promise.resolve({
+        id: "old",
+        product_id: "pro",
+        status: "canceled",
+        discount_id: "report",
+        amount: 599,
+        currency: "eur",
+        recurring_interval: "month",
+        recurring_interval_count: 1,
+      }),
+    change: () => {
+      patches++;
+      throw new Error("polar_discount_http_422");
+    },
+  };
+  assertEquals(
+    await synchronizeDiscount(client, {
+      subscriptionId: "old",
+      productId: "pro",
+      discountId: "creator",
+      managedDiscountIds: ["report", "creator"],
+      normalCents: 599,
+      cleanup: true,
+      skippedCleanup: (value) => {
+        reason = value;
+      },
+    }),
+    false,
+  );
+  assertEquals(patches, 0);
+  assertEquals(reason, "remote_inactive");
+});

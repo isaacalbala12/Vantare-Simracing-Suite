@@ -1,0 +1,14 @@
+begin;
+select no_plan();
+insert into public.profiles(id)values('00000000-0000-4000-8000-000000001731');
+select is(public.mail_consent_execute('00000000-0000-4000-8000-000000001731','self@example.invalid','get')->'consent','false'::jsonb,'account starts without consent');
+select is(public.mail_consent_execute('00000000-0000-4000-8000-000000001731','self@example.invalid','set','es',true,'onboarding')->'consent','true'::jsonb,'onboarding records explicit opt-in');
+select is((select evidence from private.mail_contacts where email='self@example.invalid'),'marketing.onboarding.v1','evidence fixed by server');
+select is(public.mail_consent_execute('00000000-0000-4000-8000-000000001731','self@example.invalid','set','en',false,'settings')->'consent','false'::jsonb,'settings withdraws the same permission');
+select throws_ok($$select public.mail_consent_execute('00000000-0000-4000-8000-000000001731','self@example.invalid','set','pt-PT',true,'settings')$$,'P0001','native_admin_invalid','only four supported locales');
+select throws_ok($$select public.mail_consent_execute('00000000-0000-4000-8000-000000001731','self@example.invalid','set','en',true,'forged-version')$$,'P0001','native_admin_invalid','caller cannot choose arbitrary evidence version');
+select ok(not has_function_privilege('authenticated','public.mail_consent_execute(uuid,text,text,text,boolean,text)','execute'),'client cannot provide a forged verified identity directly to SQL');
+select public.mail_consent_execute('00000000-0000-4000-8000-000000001731','self@example.invalid','get') from generate_series(1,57);
+select is(public.mail_consent_execute('00000000-0000-4000-8000-000000001731','self@example.invalid','get')->'rate_limited','true'::jsonb,'server persists a per-account request limit');
+select * from finish();
+rollback;

@@ -193,6 +193,10 @@ struct Tokens {
     expires_in: u64,
 }
 #[derive(Deserialize)]
+struct OAuthFailure {
+    error: String,
+}
+#[derive(Deserialize)]
 struct UserInfo {
     sub: String,
     #[serde(default)]
@@ -230,10 +234,17 @@ impl Exchange {
                 ("refresh_token", refresh.expose()),
             ],
         };
-        let tokens: Tokens = http
-            .post_form(&self.oauth.token, &fields)?
-            .success()?
-            .json()?;
+        let response = http.post_form(&self.oauth.token, &fields)?;
+        // RFC 6749 §5.2: refresh expirado/revocado, no un fallo de protocolo.
+        // Un 400 genérico o malformado conserva su clasificación anterior.
+        if response.status == 400
+            && response
+                .json::<OAuthFailure>()
+                .is_ok_and(|failure| failure.error == "invalid_grant")
+        {
+            return Err(Error::Authentication);
+        }
+        let tokens: Tokens = response.success()?.json()?;
         if !tokens.token_type.eq_ignore_ascii_case("bearer")
             || tokens.expires_in == 0
             || tokens.expires_in > 7 * 86400

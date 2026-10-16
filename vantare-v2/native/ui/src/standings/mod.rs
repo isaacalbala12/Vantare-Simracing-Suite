@@ -923,7 +923,7 @@ mod tests {
     }
     #[test]
     fn vantare_is_the_default_system_and_paints_its_own_board() {
-        let snapshot = vantare_ipc::snapshot_from_json(include_str!(
+        let snapshot = vantare_ipc::snapshot_from_fixture_json(include_str!(
             "../../fixtures/telemetry-real/acc.snapshot.json"
         ))
         .expect("foto real ACC");
@@ -1173,7 +1173,7 @@ mod tests {
     fn benchmark_unchanged_standings_projection() {
         let prefs = Preferences::default();
         let mut snapshot =
-            vantare_ipc::snapshot_from_json(include_str!("../../fixtures/standings.snapshot.json"))
+            vantare_ipc::snapshot_from_fixture_json(include_str!("../../fixtures/standings.snapshot.json"))
                 .expect("captura LMU");
         let mut widget = Widget::new(&Settings::eficiencia(), prefs);
         widget.ingest(&snapshot, prefs);
@@ -1197,7 +1197,7 @@ mod tests {
     #[test]
     fn real_lmu_footer_slots_preserve_visible_vm_through_requested_pipe() {
         use std::{sync::Arc, time::Duration};
-        let snapshot = vantare_ipc::snapshot_from_json(include_str!(
+        let snapshot = vantare_ipc::snapshot_from_fixture_json(include_str!(
             "../../fixtures/telemetry-real/lmu47.snapshot.json"
         ))
         .expect("foto LMU47 real");
@@ -1284,7 +1284,7 @@ mod tests {
     #[test]
     fn live_style_reflows_rows_and_rail_without_changing_data() {
         let snapshot =
-            vantare_ipc::snapshot_from_json(include_str!("../../fixtures/standings.snapshot.json"))
+            vantare_ipc::snapshot_from_fixture_json(include_str!("../../fixtures/standings.snapshot.json"))
                 .expect("escena");
         let prefs = Preferences::default();
         let mut widget = Widget::new(&Settings::eficiencia(), prefs);
@@ -1308,7 +1308,7 @@ mod tests {
     #[test]
     fn variants_project_templates_content_footer_and_brand() {
         let snapshot =
-            vantare_ipc::snapshot_from_json(include_str!("../../fixtures/standings.snapshot.json"))
+            vantare_ipc::snapshot_from_fixture_json(include_str!("../../fixtures/standings.snapshot.json"))
                 .expect("escena");
         let prefs = Preferences::default();
         for template in ["signature", "broadcast"] {
@@ -1455,7 +1455,7 @@ mod tests {
     #[test]
     fn phase_two_uses_player_class_last_lap_and_reserved_height() {
         let snapshot =
-            vantare_ipc::snapshot_from_json(include_str!("../../fixtures/standings.snapshot.json"))
+            vantare_ipc::snapshot_from_fixture_json(include_str!("../../fixtures/standings.snapshot.json"))
                 .expect("escena fase 2");
         let prefs = Preferences::default();
         let mut widget = Widget::new(&Settings::eficiencia(), prefs);

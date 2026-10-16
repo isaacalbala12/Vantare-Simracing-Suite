@@ -29,8 +29,8 @@ REQUIRED_FRAGMENT_FIELDS = {
     "knownLimitations": list,
 }
 USER_AGENT = "Vantare-GitHub-Actions/1.0"
-# The public digest and Hub read the same ClickUp publication; no GitHub fallback.
-DEVELOPMENT_SOURCE_CLICKUP = "clickup"
+# The public digest and Hub read the same public roadmap publication; no GitHub fallback.
+DEVELOPMENT_SOURCE_ROADMAP = "roadmap"
 DEVELOPMENT_SOURCE_NONE = "none"
 # The embed's accent stripe sits right beside the card image, so it uses the
 # same brand carmine as the app (--orbit-carmine in orbit.tokens.css).
@@ -851,9 +851,9 @@ def resolve_development_projects(*, token="", repository="", supabase_url="", an
             projects.append({"name": sanitize_public_text(name), "url": "",
                 "progress": done / len(items), "updatedAt": publication["published_at"],
                 "update": sanitize_public_text(f"{done}/{len(items)} tareas completadas. " + "; ".join(item["title"]["es"] for item in items if item["section"] != "done"))})
-        return projects, DEVELOPMENT_SOURCE_CLICKUP
+        return projects, DEVELOPMENT_SOURCE_ROADMAP
     except (urllib.error.URLError, OSError, ValueError, KeyError, TypeError):
-        print("warning: public ClickUp publication unavailable", file=sys.stderr)
+        print("warning: public roadmap publication unavailable", file=sys.stderr)
         return [], DEVELOPMENT_SOURCE_NONE
 
 

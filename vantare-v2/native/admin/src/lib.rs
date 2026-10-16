@@ -6,3 +6,5 @@ mod diagnostics;
 pub mod session;
 pub mod state;
 pub mod view;
+
+pub mod mail;

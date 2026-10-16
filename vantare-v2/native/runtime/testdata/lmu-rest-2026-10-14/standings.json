@@ -1,0 +1,372 @@
+[
+  {
+    "slotID": 1,
+    "carNumber": "007",
+    "vehicleName": "Car-1",
+    "flag": "GREEN",
+    "finishStatus": "FSTAT_NONE",
+    "pitstops": 0,
+    "veFraction": 0.17386594414710999,
+    "player": false
+  },
+  {
+    "slotID": 2,
+    "carNumber": "009",
+    "vehicleName": "Car-2",
+    "flag": "GREEN",
+    "finishStatus": "FSTAT_NONE",
+    "pitstops": 0,
+    "veFraction": 0.9787840247154236,
+    "player": false
+  },
+  {
+    "slotID": 3,
+    "carNumber": "7",
+    "vehicleName": "Car-3",
+    "flag": "GREEN",
+    "finishStatus": "FSTAT_NONE",
+    "pitstops": 0,
+    "veFraction": 0.07990793883800507,
+    "player": false
+  },
+  {
+    "slotID": 4,
+    "carNumber": "8",
+    "vehicleName": "Car-4",
+    "flag": "GREEN",
+    "finishStatus": "FSTAT_NONE",
+    "pitstops": 0,
+    "veFraction": 0.37643274664878845,
+    "player": false
+  },
+  {
+    "slotID": 5,
+    "carNumber": "12",
+    "vehicleName": "Car-5",
+    "flag": "GREEN",
+    "finishStatus": "FSTAT_NONE",
+    "pitstops": 0,
+    "veFraction": 0.9095104932785034,
+    "player": false
+  },
+  {
+    "slotID": 6,
+    "carNumber": "38",
+    "vehicleName": "Car-6",
+    "flag": "GREEN",
+    "finishStatus": "FSTAT_NONE",
+    "pitstops": 0,
+    "veFraction": 0.5799999833106995,
+    "player": false
+  },
+  {
+    "slotID": 7,
+    "carNumber": "15",
+    "vehicleName": "Car-7",
+    "flag": "GREEN",
+    "finishStatus": "FSTAT_NONE",
+    "pitstops": 0,
+    "veFraction": 0.9095255732536316,
+    "player": false
+  },
+  {
+    "slotID": 8,
+    "carNumber": "20",
+    "vehicleName": "Car-8",
+    "flag": "GREEN",
+    "finishStatus": "FSTAT_NONE",
+    "pitstops": 0,
+    "veFraction": 0.9213483929634094,
+    "player": false
+  },
+  {
+    "slotID": 9,
+    "carNumber": "17",
+    "vehicleName": "Car-9",
+    "flag": "GREEN",
+    "finishStatus": "FSTAT_NONE",
+    "pitstops": 0,
+    "veFraction": 0.688999354839325,
+    "player": false
+  },
+  {
+    "slotID": 10,
+    "carNumber": "19",
+    "vehicleName": "Car-10",
+    "flag": "GREEN",
+    "finishStatus": "FSTAT_NONE",
+    "pitstops": 0,
+    "veFraction": 0.6559068560600281,
+    "player": false
+  },
+  {
+    "slotID": 11,
+    "carNumber": "36",
+    "vehicleName": "Car-11",
+    "flag": "GREEN",
+    "finishStatus": "FSTAT_NONE",
+    "pitstops": 0,
+    "veFraction": 0.22840704023838043,
+    "player": false
+  },
+  {
+    "slotID": 12,
+    "carNumber": "50",
+    "vehicleName": "Car-12",
+    "flag": "GREEN",
+    "finishStatus": "FSTAT_NONE",
+    "pitstops": 0,
+    "veFraction": 0.48353686928749084,
+    "player": false
+  },
+  {
+    "slotID": 13,
+    "carNumber": "51",
+    "vehicleName": "Car-13",
+    "flag": "GREEN",
+    "finishStatus": "FSTAT_NONE",
+    "pitstops": 0,
+    "veFraction": 0.03313595801591873,
+    "player": false
+  },
+  {
+    "slotID": 14,
+    "carNumber": "83",
+    "vehicleName": "Car-14",
+    "flag": "GREEN",
+    "finishStatus": "FSTAT_NONE",
+    "pitstops": 0,
+    "veFraction": 0.9254395961761475,
+    "player": false
+  },
+  {
+    "slotID": 15,
+    "carNumber": "93",
+    "vehicleName": "Car-15",
+    "flag": "GREEN",
+    "finishStatus": "FSTAT_NONE",
+    "pitstops": 0,
+    "veFraction": 0.7976047396659851,
+    "player": false
+  },
+  {
+    "slotID": 16,
+    "carNumber": "94",
+    "vehicleName": "Car-16",
+    "flag": "GREEN",
+    "finishStatus": "FSTAT_NONE",
+    "pitstops": 0,
+    "veFraction": 0.19751879572868347,
+    "player": false
+  },
+  {
+    "slotID": 17,
+    "carNumber": "101",
+    "vehicleName": "Car-17",
+    "flag": "GREEN",
+    "finishStatus": "FSTAT_NONE",
+    "pitstops": 0,
+    "veFraction": 0.9213589429855347,
+    "player": false
+  },
+  {
+    "slotID": 18,
+    "carNumber": "3",
+    "vehicleName": "Car-18",
+    "flag": "GREEN",
+    "finishStatus": "FSTAT_NONE",
+    "pitstops": 0,
+    "veFraction": 0.0,
+    "player": false
+  },
+  {
+    "slotID": 19,
+    "carNumber": "4",
+    "vehicleName": "Car-19",
+    "flag": "GREEN",
+    "finishStatus": "FSTAT_NONE",
+    "pitstops": 0,
+    "veFraction": 0.0,
+    "player": false
+  },
+  {
+    "slotID": 20,
+    "carNumber": "9",
+    "vehicleName": "Car-20",
+    "flag": "GREEN",
+    "finishStatus": "FSTAT_NONE",
+    "pitstops": 0,
+    "veFraction": 0.0,
+    "player": false
+  },
+  {
+    "slotID": 21,
+    "carNumber": "14",
+    "vehicleName": "Car-21",
+    "flag": "GREEN",
+    "finishStatus": "FSTAT_NONE",
+    "pitstops": 0,
+    "veFraction": 0.0,
+    "player": false
+  },
+  {
+    "slotID": 22,
+    "carNumber": "22",
+    "vehicleName": "Car-22",
+    "flag": "GREEN",
+    "finishStatus": "FSTAT_NONE",
+    "pitstops": 0,
+    "veFraction": 0.0,
+    "player": false
+  },
+  {
+    "slotID": 23,
+    "carNumber": "24",
+    "vehicleName": "Car-23",
+    "flag": "GREEN",
+    "finishStatus": "FSTAT_NONE",
+    "pitstops": 0,
+    "veFraction": 0.0,
+    "player": false
+  },
+  {
+    "slotID": 24,
+    "carNumber": "25",
+    "vehicleName": "Car-24",
+    "flag": "GREEN",
+    "finishStatus": "FSTAT_NONE",
+    "pitstops": 0,
+    "veFraction": 0.0,
+    "player": false
+  },
+  {
+    "slotID": 25,
+    "carNumber": "26",
+    "vehicleName": "Car-25",
+    "flag": "GREEN",
+    "finishStatus": "FSTAT_NONE",
+    "pitstops": 0,
+    "veFraction": 0.0,
+    "player": false
+  },
+  {
+    "slotID": 26,
+    "carNumber": "28",
+    "vehicleName": "Car-26",
+    "flag": "GREEN",
+    "finishStatus": "FSTAT_NONE",
+    "pitstops": 0,
+    "veFraction": 0.0,
+    "player": false
+  },
+  {
+    "slotID": 27,
+    "carNumber": "29",
+    "vehicleName": "Car-27",
+    "flag": "GREEN",
+    "finishStatus": "FSTAT_NONE",
+    "pitstops": 0,
+    "veFraction": 0.0,
+    "player": false
+  },
+  {
+    "slotID": 28,
+    "carNumber": "30",
+    "vehicleName": "Car-28",
+    "flag": "GREEN",
+    "finishStatus": "FSTAT_NONE",
+    "pitstops": 0,
+    "veFraction": 0.0,
+    "player": false
+  },
+  {
+    "slotID": 29,
+    "carNumber": "37",
+    "vehicleName": "Car-29",
+    "flag": "GREEN",
+    "finishStatus": "FSTAT_NONE",
+    "pitstops": 0,
+    "veFraction": 0.0,
+    "player": false
+  },
+  {
+    "slotID": 30,
+    "carNumber": "43",
+    "vehicleName": "Car-30",
+    "flag": "GREEN",
+    "finishStatus": "FSTAT_NONE",
+    "pitstops": 0,
+    "veFraction": 0.0,
+    "player": false
+  },
+  {
+    "slotID": 31,
+    "carNumber": "44",
+    "vehicleName": "Car-31",
+    "flag": "GREEN",
+    "finishStatus": "FSTAT_NONE",
+    "pitstops": 0,
+    "veFraction": 0.0,
+    "player": false
+  },
+  {
+    "slotID": 32,
+    "carNumber": "48",
+    "vehicleName": "Car-32",
+    "flag": "GREEN",
+    "finishStatus": "FSTAT_NONE",
+    "pitstops": 0,
+    "veFraction": 0.0,
+    "player": false
+  },
+  {
+    "slotID": 33,
+    "carNumber": "99",
+    "vehicleName": "Car-33",
+    "flag": "GREEN",
+    "finishStatus": "FSTAT_NONE",
+    "pitstops": 0,
+    "veFraction": 0.0,
+    "player": false
+  },
+  {
+    "slotID": 34,
+    "carNumber": "183",
+    "vehicleName": "Car-34",
+    "flag": "GREEN",
+    "finishStatus": "FSTAT_NONE",
+    "pitstops": 0,
+    "veFraction": 0.0,
+    "player": false
+  },
+  {
+    "slotID": 35,
+    "carNumber": "222",
+    "vehicleName": "Car-35",
+    "flag": "GREEN",
+    "finishStatus": "FSTAT_NONE",
+    "pitstops": 0,
+    "veFraction": 0.0,
+    "player": false
+  },
+  {
+    "slotID": 36,
+    "carNumber": "343",
+    "vehicleName": "Car-36",
+    "flag": "GREEN",
+    "finishStatus": "FSTAT_NONE",
+    "pitstops": 0,
+    "veFraction": 0.0,
+    "player": false
+  },
+  {
+    "slotID": 0,
+    "carNumber": "35",
+    "vehicleName": "Car-0",
+    "flag": "GREEN",
+    "finishStatus": "FSTAT_NONE",
+    "pitstops": 0,
+    "veFraction": 0.9999520182609558,
+    "player": true
+  }
+]

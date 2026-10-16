@@ -81,3 +81,5 @@ No se usa la skill `vantare-core`: está desactualizada y no es fuente de verdad
 ## Histórico del tracker
 
 Retirado con autorización en #1561: [transición](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/ca17545f607b85f5d47dc9d060721b69e6a6a158/vantare-v2/docs/vantare-program/notion-transition.md) y [auditoría](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/ca17545f607b85f5d47dc9d060721b69e6a6a158/vantare-v2/docs/vantare-program/notion-document-audit.md). GitHub Issues es la autoridad operativa.
+
+- VANTA-42 / #1620: [checkout compartido, reembolso automático y baja D1](../billing/checkout-web-shared.md), entrega R4 aislada; despliegue pendiente.

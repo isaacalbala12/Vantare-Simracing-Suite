@@ -118,16 +118,28 @@ pub fn purchase(
             config.anon_key,
         )
     })?;
-    if response.status == 409 {
+    if matches!(response.status, 409 | 503) {
         #[derive(Deserialize)]
         struct Rejected {
             error: String,
         }
-        if response
-            .json::<Rejected>()
-            .is_ok_and(|value| value.error == "checkout_attempt_expired")
-        {
-            store.remove(&attempt_name(identity, product, environment)?)?;
+        if let Ok(value) = response.json::<Rejected>() {
+            match (response.status, value.error.as_str()) {
+                (409, "checkout_attempt_expired") => {
+                    store.remove(&attempt_name(identity, product, environment)?)?;
+                }
+                (409, "promotion_checkout_plan_change_pending") => {
+                    return Err(Error::CheckoutPlanChangePending);
+                }
+                (
+                    503,
+                    "promotion_checkout_recovery_pending" | "promotion_checkout_payment_pending",
+                ) => return Err(Error::CheckoutPromotionPending),
+                (503, "promotion_checkout_recovery_required") => {
+                    return Err(Error::CheckoutPromotionRecovery);
+                }
+                _ => {}
+            }
         }
     }
     let checkout: Checkout = response.success()?.json()?;
@@ -378,6 +390,81 @@ mod tests {
         server.finish();
         drop(store);
         crate::cleanup_store(&root, "billing-http", &[]);
+    }
+    #[test]
+    fn promotion_waits_have_local_messages_and_preserve_the_durable_attempt() {
+        for (status, code, expected) in [
+            (
+                503,
+                "promotion_checkout_recovery_pending",
+                Error::CheckoutPromotionPending,
+            ),
+            (
+                503,
+                "promotion_checkout_payment_pending",
+                Error::CheckoutPromotionPending,
+            ),
+            (
+                503,
+                "promotion_checkout_recovery_required",
+                Error::CheckoutPromotionRecovery,
+            ),
+            (
+                409,
+                "promotion_checkout_plan_change_pending",
+                Error::CheckoutPlanChangePending,
+            ),
+        ] {
+            let server = crate::test_http::Server::start(vec![
+                (
+                    status,
+                    serde_json::json!({"error":code,"message":"untrusted remote prose"})
+                        .to_string(),
+                ),
+                (
+                    200,
+                    r#"{"url":"https://sandbox.polar.sh/checkout/retry","reused":true}"#.into(),
+                ),
+            ]);
+            let (root, store) = crate::test_store("billing-promotion");
+            let account = crate::account::fixture(&server.base, &store);
+            let config = BuildConfig {
+                supabase: Some(server.base.clone()),
+                anon_key: None,
+                license_keys: None,
+                channel: None,
+                native_oauth: None,
+            };
+            let buy = || {
+                purchase(
+                    &Http::default(),
+                    &config,
+                    &account,
+                    100,
+                    &store,
+                    BillingProduct::ProMonthly,
+                    "sandbox",
+                )
+            };
+            let error = buy().expect_err("pending promotion");
+            assert_eq!(error, expected, "{code}");
+            // App::handle forwards this local Display string in Reply::Error.
+            assert!(error.to_string().contains("primer mes se conserva"));
+            assert!(!error.to_string().contains("untrusted"));
+            assert_eq!(
+                buy().expect("retry"),
+                "https://sandbox.polar.sh/checkout/retry"
+            );
+            let first = server.requests.recv().expect("first");
+            let second = server.requests.recv().expect("retry");
+            assert_eq!(
+                first.split("\r\n\r\n").nth(1),
+                second.split("\r\n\r\n").nth(1)
+            );
+            server.finish();
+            drop(store);
+            crate::cleanup_store(&root, "billing-promotion", &[]);
+        }
     }
     #[test]
     fn checkout_cannot_open_another_environment_or_authority() {

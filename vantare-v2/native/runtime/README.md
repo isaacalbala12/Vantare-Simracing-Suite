@@ -2,6 +2,11 @@
 
 Adaptadores LMU/ACC privados, validación y derivaciones centrales; publicación neutral y supervisor.
 
+QA #1638: `vantare-grabar-lmu-completo` graba SHM íntegro y REST descubierto en
+`.lmu.gz`; `open_replay` admite ese archivo y `vantare-verificar-lmu` produce
+DTOs/informe offline por el mismo adapter y Core. [Kit, formato y límites](../../docs/telemetria/grabacion-completa-lmu.md).
+Son herramientas de QA privadas; no se incorporan al instalador de producto.
+
 ## #1562 · Ocultar fuera de pista
 
 El núcleo publica `state.driving_situation` (Unknown/OnTrack/Garage/Paused/Replay)
@@ -34,3 +39,15 @@ Las fixtures UI migran únicamente la etiqueta 9→10. Los goldens v9 originales
 hashes se conservan: la comparación elimina exclusivamente la nueva metadata y
 restablece esa etiqueta, manteniendo cada byte del resto. Tests independientes
 protegen situación, transiciones, política y preview. No certifica juego/OBS físicos.
+
+## #1638 · Relojes para avisos
+
+El contrato live vigente es DTO v11 (recompilar todos los consumidores).
+LMU publica `session.timing.scheduled_end_s` desde mEndET válido y la distancia
+longitudinal estimada a la próxima línea de salida/meta desde mLapDist y
+la longitud de pista. En boxes o sin geometría válida no hay distancia.
+Se conserva el número nativo de sesión en su identidad: cambiar entre dos
+prácticas también invalida el REST anterior, aunque avance el reloj.
+Las capturas disponibles NO acreditan inicio/final real, fase de salida ni
+agenda de próxima sesión; esos campos permanecen `Unavailable`, también ACC.
+No se deducen de remaining_s, movimiento, boxes ni llegada de un coche.

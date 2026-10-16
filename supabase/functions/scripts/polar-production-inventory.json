@@ -1,0 +1,38 @@
+{
+  "source": "Isaac, 2026-10-15; no live query",
+  "products": [
+    {
+      "name": "Vantare Pro",
+      "checkout_key": "pro_monthly",
+      "product_id": "0f91f52f-f92f-4a7a-9782-da2ec44cf8b8",
+      "observed_amount_cents": 499,
+      "price_id_prefix": "e61e9161",
+      "interval": "month"
+    },
+    {
+      "name": "Vantare Launch Edition",
+      "checkout_key": "launch_lifetime",
+      "product_id": "b1b1e348-acd6-4a81-ba67-db6d98aca2e6",
+      "observed_amount_cents": 3000,
+      "retired_from_offer": true
+    }
+  ],
+  "founders_config_source": "founders-production-config.json",
+  "counts": {
+    "discounts": 0,
+    "checkout_links": 0,
+    "customers": 0,
+    "orders": 0
+  },
+  "missing_checkout_keys": [
+    "pro_annual",
+    "pro_plus_monthly",
+    "pro_plus_annual"
+  ],
+  "webhook_events_confirmed": [
+    "refund.created",
+    "refund.updated",
+    "subscription.uncanceled"
+  ],
+  "checkout_localization_enabled": true
+}

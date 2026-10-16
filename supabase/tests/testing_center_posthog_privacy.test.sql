@@ -1,4 +1,18 @@
 begin;
+SELECT set_config('fixture.clerk',(to_regclass('private.clerk_issuers') IS NOT NULL)::text,true);
+-- The old schema-cut runner uses UUID claims; B03 requires a bound Clerk session.
+CREATE FUNCTION pg_temp.fixture_claims(account text) RETURNS text LANGUAGE plpgsql AS $$
+BEGIN
+  PERFORM set_config('request.jwt.claims', CASE
+    WHEN current_setting('fixture.clerk',true)='true' THEN
+      jsonb_build_object('iss','https://fixtures.clerk.invalid',
+        'sub','user_'||replace(account,'-',''),'role','authenticated',
+        'sid','sess_fixture','azp','https://app.invalid')
+    ELSE jsonb_build_object('iss','https://local.supabase.test/auth/v1',
+        'sub',account,'role','authenticated') END::text, true);
+  RETURN set_config('request.jwt.claim.sub',account,true);
+END $$;
+
 
 select plan(33);
 
@@ -34,6 +48,20 @@ insert into auth.users(id,email) values
   ('00000000-0000-4000-8000-000000000501','reporter@example.invalid'),
   ('00000000-0000-4000-8000-000000000502','other@example.invalid'),
   ('00000000-0000-4000-8000-000000000503','owner@example.invalid');
+-- B03 fixture: internal profile plus an explicit Clerk binding before child rows.
+DO $fixture$ BEGIN
+  IF to_regclass('private.clerk_issuers') IS NOT NULL THEN
+    INSERT INTO private.clerk_issuers(issuer,authorized_parties,enabled)
+      VALUES ('https://fixtures.clerk.invalid',ARRAY['https://app.invalid'],true)
+      ON CONFLICT (issuer) DO NOTHING;
+    INSERT INTO public.profiles(id,email) SELECT id,email FROM auth.users
+      ON CONFLICT (id) DO NOTHING;
+    INSERT INTO public.account_identities(issuer,subject,account_id)
+      SELECT 'https://fixtures.clerk.invalid','user_'||replace(id::text,'-',''),id
+      FROM public.profiles ON CONFLICT (issuer,subject) DO NOTHING;
+  END IF;
+END $fixture$;
+
 
 set local role service_role;
 insert into public.testing_center_memberships(user_id,actor_id,role,active) values
@@ -111,7 +139,7 @@ select throws_ok($$
     'report_' || repeat('a',64),true,false,'isa253-no-auth')
 $$,'42501',null,'consent requires authentication');
 
-set local request.jwt.claim.sub='00000000-0000-4000-8000-000000000502';
+select pg_temp.fixture_claims('00000000-0000-4000-8000-000000000502');
 set local role authenticated;
 select throws_ok($$
   select * from public.testing_center_set_posthog_consent(
@@ -119,7 +147,7 @@ select throws_ok($$
 $$,'42501',null,'only the report owner can consent');
 reset role;
 
-set local request.jwt.claim.sub='00000000-0000-4000-8000-000000000501';
+select pg_temp.fixture_claims('00000000-0000-4000-8000-000000000501');
 set local role authenticated;
 select throws_ok($$
   select * from public.testing_center_set_posthog_consent(
@@ -158,7 +186,7 @@ select throws_ok($$
       p.value->>'projectionDigest',repeat('0',64)) result
 $$,'22023',null,'transport digest tampering fails closed');
 
-set local request.jwt.claim.sub='00000000-0000-4000-8000-000000000501';
+select pg_temp.fixture_claims('00000000-0000-4000-8000-000000000501');
 set local role authenticated;
 select is((select result_revision from public.testing_center_set_posthog_consent(
   'report_' || repeat('a',64),false,false,'isa253-revoke-all')),2,
@@ -167,7 +195,7 @@ reset role;
 select is((select count(*)::integer from public.testing_center_posthog_evidence),0,
   'diagnostic revocation removes local evidence');
 
-set local request.jwt.claim.sub='00000000-0000-4000-8000-000000000501';
+select pg_temp.fixture_claims('00000000-0000-4000-8000-000000000501');
 set local role authenticated;
 select is((select result_revision from public.testing_center_set_posthog_consent(
   'report_' || repeat('a',64),true,true,'isa253-replay-on')),3,
@@ -193,7 +221,7 @@ select is((select linear_link_authorized_by::text
   '00000000-0000-4000-8000-000000000503',
   'Linear authorization preserves the exact owner identity');
 
-set local request.jwt.claim.sub='00000000-0000-4000-8000-000000000501';
+select pg_temp.fixture_claims('00000000-0000-4000-8000-000000000501');
 set local role authenticated;
 select is((select result_revision from public.testing_center_set_posthog_consent(
   'report_' || repeat('a',64),true,false,'isa253-replay-off')),4,
@@ -205,7 +233,7 @@ select ok((select not replay_available and restricted_replay_url is null
   from public.testing_center_posthog_evidence),
   'replay revocation clears URL and owner authorization');
 
-set local request.jwt.claim.sub='00000000-0000-4000-8000-000000000501';
+select pg_temp.fixture_claims('00000000-0000-4000-8000-000000000501');
 set local role authenticated;
 select * from public.testing_center_set_posthog_consent(
   'report_' || repeat('a',64),true,true,'isa253-replay-on-2');

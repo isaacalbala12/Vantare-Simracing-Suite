@@ -1,0 +1,273 @@
+[
+  {
+    "name": "F6-exact",
+    "input": "{\"level\":\"ERROR\",\"error_code\":\"sk-proj-FixtureOpaqueCredential\",\"module\":\"192.168.12.7\",\"error_type\":\"aa:bb:cc:dd:ee:ff\"}",
+    "expected": [
+      {
+        "level": "ERROR",
+        "error_code": "otro",
+        "module": "otro",
+        "error_type": "otro"
+      }
+    ],
+    "secrets": [
+      "sk-proj-FixtureOpaqueCredential",
+      "192.168.12.7",
+      "aa:bb:cc:dd:ee:ff"
+    ]
+  },
+  {
+    "name": "F6-sk-proj-FixtureOpaqueCredential",
+    "input": "{\"level\": \"sk-proj-FixtureOpaqueCredential\", \"error_code\": \"sk-proj-FixtureOpaqueCredential\", \"error_type\": \"sk-proj-FixtureOpaqueCredential\", \"module\": \"sk-proj-FixtureOpaqueCredential\", \"version\": \"sk-proj-FixtureOpaqueCredential\"}",
+    "expected": [
+      {
+        "level": "otro",
+        "error_code": "otro",
+        "error_type": "otro",
+        "module": "otro",
+        "version": "otro"
+      }
+    ],
+    "secrets": [
+      "sk-proj-FixtureOpaqueCredential"
+    ]
+  },
+  {
+    "name": "F6-192.168.12.7",
+    "input": "{\"level\": \"192.168.12.7\", \"error_code\": \"192.168.12.7\", \"error_type\": \"192.168.12.7\", \"module\": \"192.168.12.7\", \"version\": \"192.168.12.7\"}",
+    "expected": [
+      {
+        "level": "otro",
+        "error_code": "otro",
+        "error_type": "otro",
+        "module": "otro",
+        "version": "otro"
+      }
+    ],
+    "secrets": [
+      "192.168.12.7"
+    ]
+  },
+  {
+    "name": "F6-aa:bb:cc:dd:ee:ff",
+    "input": "{\"level\": \"aa:bb:cc:dd:ee:ff\", \"error_code\": \"aa:bb:cc:dd:ee:ff\", \"error_type\": \"aa:bb:cc:dd:ee:ff\", \"module\": \"aa:bb:cc:dd:ee:ff\", \"version\": \"aa:bb:cc:dd:ee:ff\"}",
+    "expected": [
+      {
+        "level": "otro",
+        "error_code": "otro",
+        "error_type": "otro",
+        "module": "otro",
+        "version": "otro"
+      }
+    ],
+    "secrets": [
+      "aa:bb:cc:dd:ee:ff"
+    ]
+  },
+  {
+    "name": "F6-abcdefab-cdef-abcd-efab-abcdefabcdef",
+    "input": "{\"level\": \"abcdefab-cdef-abcd-efab-abcdefabcdef\", \"error_code\": \"abcdefab-cdef-abcd-efab-abcdefabcdef\", \"error_type\": \"abcdefab-cdef-abcd-efab-abcdefabcdef\", \"module\": \"abcdefab-cdef-abcd-efab-abcdefabcdef\", \"version\": \"abcdefab-cdef-abcd-efab-abcdefabcdef\"}",
+    "expected": [
+      {
+        "level": "otro",
+        "error_code": "otro",
+        "error_type": "otro",
+        "module": "otro",
+        "version": "otro"
+      }
+    ],
+    "secrets": [
+      "abcdefab-cdef-abcd-efab-abcdefabcdef"
+    ]
+  },
+  {
+    "name": "F6-SyntheticOtherPerson",
+    "input": "{\"level\": \"SyntheticOtherPerson\", \"error_code\": \"SyntheticOtherPerson\", \"error_type\": \"SyntheticOtherPerson\", \"module\": \"SyntheticOtherPerson\", \"version\": \"SyntheticOtherPerson\"}",
+    "expected": [
+      {
+        "level": "otro",
+        "error_code": "otro",
+        "error_type": "otro",
+        "module": "otro",
+        "version": "otro"
+      }
+    ],
+    "secrets": [
+      "SyntheticOtherPerson"
+    ]
+  },
+  {
+    "name": "invalid-semver-'01.2.3'",
+    "input": "{\"version\": \"01.2.3\"}",
+    "expected": [
+      {
+        "version": "otro"
+      }
+    ],
+    "secrets": []
+  },
+  {
+    "name": "invalid-semver-'1.02.3'",
+    "input": "{\"version\": \"1.02.3\"}",
+    "expected": [
+      {
+        "version": "otro"
+      }
+    ],
+    "secrets": []
+  },
+  {
+    "name": "invalid-semver-'1.2.03'",
+    "input": "{\"version\": \"1.2.03\"}",
+    "expected": [
+      {
+        "version": "otro"
+      }
+    ],
+    "secrets": []
+  },
+  {
+    "name": "invalid-semver-'1.2'",
+    "input": "{\"version\": \"1.2\"}",
+    "expected": [
+      {
+        "version": "otro"
+      }
+    ],
+    "secrets": []
+  },
+  {
+    "name": "invalid-semver-'1.2.3.4'",
+    "input": "{\"version\": \"1.2.3.4\"}",
+    "expected": [
+      {
+        "version": "otro"
+      }
+    ],
+    "secrets": []
+  },
+  {
+    "name": "invalid-semver-'1.2.3-rc.01'",
+    "input": "{\"version\": \"1.2.3-rc.01\"}",
+    "expected": [
+      {
+        "version": "otro"
+      }
+    ],
+    "secrets": []
+  },
+  {
+    "name": "invalid-semver-'1.2.3-sk-proj-FixtureOpaqueCredential'",
+    "input": "{\"version\": \"1.2.3-sk-proj-FixtureOpaqueCredential\"}",
+    "expected": [
+      {
+        "version": "otro"
+      }
+    ],
+    "secrets": []
+  },
+  {
+    "name": "invalid-semver-'1.2.3+SyntheticOtherPerson'",
+    "input": "{\"version\": \"1.2.3+SyntheticOtherPerson\"}",
+    "expected": [
+      {
+        "version": "otro"
+      }
+    ],
+    "secrets": []
+  },
+  {
+    "name": "invalid-semver-'1.2.3\\n'",
+    "input": "{\"version\": \"1.2.3\\n\"}",
+    "expected": [
+      {
+        "version": "otro"
+      }
+    ],
+    "secrets": []
+  },
+  {
+    "name": "invalid-semver-'1000000.0.0'",
+    "input": "{\"version\": \"1000000.0.0\"}",
+    "expected": [
+      {
+        "version": "otro"
+      }
+    ],
+    "secrets": []
+  },
+  {
+    "name": "semver-0.0.0",
+    "input": "{\"version\": \"0.0.0\"}",
+    "expected": [
+      {
+        "version": "0.0.0"
+      }
+    ],
+    "secrets": []
+  },
+  {
+    "name": "semver-1.2.3",
+    "input": "{\"version\": \"1.2.3\"}",
+    "expected": [
+      {
+        "version": "1.2.3"
+      }
+    ],
+    "secrets": []
+  },
+  {
+    "name": "semver-0.2.0-nightly.15",
+    "input": "{\"version\": \"0.2.0-nightly.15\"}",
+    "expected": [
+      {
+        "version": "0.2.0-nightly.15"
+      }
+    ],
+    "secrets": []
+  },
+  {
+    "name": "semver-1.2.3-rc.1+42",
+    "input": "{\"version\": \"1.2.3-rc.1+42\"}",
+    "expected": [
+      {
+        "version": "1.2.3-rc.1+42"
+      }
+    ],
+    "secrets": []
+  },
+  {
+    "name": "closed-counter-bounds",
+    "input": "[{\"count\": 1000000000, \"relative_ms\": 0}, {\"count\": 1000000001, \"relative_ms\": -1}, {\"count\": true, \"relative_ms\": 2.5}, {\"level\": null, \"module\": {}, \"error_type\": [\"Offline\"]}]",
+    "expected": [
+      {
+        "count": 1000000000,
+        "relative_ms": 0
+      },
+      {
+        "count": "otro",
+        "relative_ms": "otro"
+      },
+      {
+        "count": "otro",
+        "relative_ms": "otro"
+      },
+      {
+        "level": "otro",
+        "module": "otro",
+        "error_type": "otro"
+      }
+    ],
+    "secrets": []
+  },
+  {
+    "name": "semver-unknown-label",
+    "input": "{\"version\":\"1.2.3-otro\"}",
+    "expected": [
+      {
+        "version": "otro"
+      }
+    ],
+    "secrets": []
+  }
+]

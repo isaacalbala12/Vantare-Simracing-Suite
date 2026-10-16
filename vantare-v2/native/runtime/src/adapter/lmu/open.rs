@@ -55,12 +55,57 @@ pub fn open_replay(path: &Path, build: Option<&str>) -> io::Result<Replay> {
                 frame,
             }],
         ))
+    } else if name.ends_with(".lmu.gz") {
+        full_recording(File::open(path).map_err(open)?, build)
     } else if name.ends_with(".tar.gz") {
         let file = File::open(path).map_err(open)?;
         corpus(GzDecoder::new(BufReader::new(file)), build)
     } else {
-        Err(invalid("se esperaba un fixture .bin o un corpus .tar.gz"))
+        Err(invalid("se esperaba .bin, .tar.gz o .lmu.gz"))
     }
+}
+
+fn full_recording(file: File, build: Option<&str>) -> io::Result<Replay> {
+    let mut records = crate::lmu_recording::Reader::new(BufReader::new(file));
+    let header = records.next().ok_or_else(|| invalid("sin cabecera"))??;
+    if header.kind != "header" || header.details["schema"] != crate::lmu_recording::SCHEMA {
+        return Err(invalid("cabecera LMU desconocida"));
+    }
+    let build = build
+        .map(str::to_owned)
+        .or_else(|| header.details["build"].as_str().map(str::to_owned))
+        .ok_or_else(|| invalid("sin build"))?;
+    let events = records.map(|record| {
+        let record = record?;
+        let at = Duration::from_nanos(record.at_ns);
+        Ok(match record.kind.as_str() {
+            "shm" if record.key == "LMU_Data" && record.details["stable"] == true => {
+                // VirtualQuery incluye padding de página. El parser sigue exigiendo
+                // build admitida y el layout productivo completo, nunca otro offset.
+                if record.body.len() < super::frame::OBJECT_OUT_SIZE {
+                    return Err(invalid("LMU_Data demasiado corto"));
+                }
+                ReplayEvent::Shm {
+                    at,
+                    frame: record.body[..super::frame::OBJECT_OUT_SIZE].to_vec(),
+                }
+            }
+            "rest" => ReplayEvent::Endpoint {
+                at,
+                started: Duration::from_nanos(record.started_ns),
+                path: record.key,
+                body: if record.status == Some(200) && record.error.is_none() {
+                    Some(record.body)
+                } else {
+                    None
+                },
+            },
+            "gap" if record.key == "LMU_Data" => ReplayEvent::Disconnected { at },
+            "shm" | "gap" | "footer" => ReplayEvent::Tick { at },
+            _ => return Err(invalid("registro LMU desconocido")),
+        })
+    });
+    Ok(Replay::from_results(build, events))
 }
 
 fn corpus(archive: impl Read + Send + 'static, build: Option<&str>) -> io::Result<Replay> {
@@ -183,7 +228,7 @@ fn rest_bodies(content: &[u8]) -> io::Result<(Vec<u8>, Vec<u8>)> {
 /// del núcleo: cero es el primer evento, más un segundo de margen para que
 /// ningún instante de consulta sea negativo.
 struct Clock {
-    date: String,
+    date: chrono::NaiveDate,
     origin_ns: i128,
 }
 
@@ -191,17 +236,16 @@ impl Clock {
     fn new(first: &str) -> io::Result<Self> {
         let (date, ns) = split_utc(first)?;
         Ok(Self {
-            date: date.to_owned(),
+            date: date.parse().map_err(|_| invalid("fecha UTC inválida"))?,
             origin_ns: ns,
         })
     }
 
     fn at(&self, value: &str) -> io::Result<Duration> {
         let (date, ns) = split_utc(value)?;
-        if date != self.date {
-            return Err(invalid("el corpus no debe cruzar de día"));
-        }
-        let elapsed = ns - self.origin_ns + 1_000_000_000;
+        let date: chrono::NaiveDate = date.parse().map_err(|_| invalid("fecha UTC inválida"))?;
+        let days = i128::from(date.signed_duration_since(self.date).num_days());
+        let elapsed = days * 86_400_000_000_000 + ns - self.origin_ns + 1_000_000_000;
         u64::try_from(elapsed)
             .map(Duration::from_nanos)
             .map_err(|_| invalid("instante anterior al origen"))
@@ -358,9 +402,38 @@ mod tests {
             at("2026-09-29T10:01:01.0000000Z"),
             Duration::from_millis(61_500)
         );
-        assert!(clock.at("2026-09-30T10:00:00.5Z").is_err());
+        assert_eq!(
+            clock.at("2026-09-30T10:00:00.5Z").unwrap(),
+            Duration::from_secs(86_401)
+        );
+        assert!(clock.at("2026-02-30T10:00:00.5Z").is_err());
         assert!(clock.at("2026-09-29T09:00:00.0Z").is_err());
         assert!(clock.at("mañana").is_err());
+    }
+
+    #[test]
+    fn captured_lmu_frames_replay_across_utc_midnight() {
+        let frame = include_bytes!("../../../../../testdata/lmu-fixture.bin");
+        for (first, next) in [
+            ("2026-10-13T23:59:59.5Z", "2026-10-14T00:00:00.5Z"),
+            ("2026-12-31T23:59:59.5Z", "2027-01-01T00:00:00.5Z"),
+            ("2028-02-28T23:59:59.5Z", "2028-02-29T00:00:00.5Z"),
+        ] {
+            let manifest = serde_json::to_vec(&serde_json::json!({
+                "schema": CORPUS_SCHEMA, "build": "1.3.0.0",
+                "events": [{"kind":"shm", "atUtc":first}, {"kind":"shm", "atUtc":next}]
+            }))
+            .unwrap();
+            // Tar de frontera declarado; frames reales sin alterar, no nueva captura.
+            let archive = tar(&[
+                ("manifest.json", &manifest),
+                ("shm-0.bin", frame),
+                ("shm-1.bin", frame),
+            ]);
+            let mut replay = corpus(std::io::Cursor::new(archive), None).unwrap();
+            assert!(replay.poll(Duration::from_secs(1)).unwrap().is_some());
+            assert!(replay.poll(Duration::from_secs(2)).unwrap().is_some());
+        }
     }
 
     #[test]

@@ -12,9 +12,13 @@ pub(super) fn groups(access: navigation::Access) -> Vec<(Option<&'static str>, V
             Section::Launcher,
             Section::Studio,
             Section::Roadmap,
-        ],
+            Section::Testing,
+        ]
+        .into_iter()
+        .filter(|section| access.beta_visible(*section))
+        .collect(),
     )];
-    let testers: Vec<Section> = [Section::Testing, Section::Calendar]
+    let testers: Vec<Section> = [Section::Calendar]
         .into_iter()
         .filter(|section| access.beta_visible(*section))
         .collect();
@@ -79,6 +83,7 @@ impl Hub {
         let label = match section {
             Section::Strategy => "Strategy",
             Section::Engineer => "Engineer",
+            Section::Testing if !self.shell.access.tester => "Informes",
             other => navigation::title(other),
         };
         let mut item = orbit::nav_item(
@@ -441,7 +446,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn tester_group_is_not_painted_without_the_role() {
+    fn reports_are_public_to_verified_users_calendar_keeps_tester_role() {
         let user = navigation::Access {
             verified: true,
             ..Default::default()
@@ -456,7 +461,7 @@ mod tests {
             !groups_user
                 .iter()
                 .flat_map(|(_, sections)| sections)
-                .any(|section| matches!(section, Section::Testing | Section::Calendar))
+                .any(|section| *section == Section::Calendar)
         );
         let tester = navigation::Access {
             verified: true,
@@ -466,24 +471,45 @@ mod tests {
         let groups_tester = groups(tester);
         assert_eq!(
             groups_tester[1],
-            (
-                Some("Para testers"),
-                vec![Section::Testing, Section::Calendar]
-            )
+            (Some("Para testers"), vec![Section::Calendar])
         );
         assert_eq!(
             groups_tester.last(),
             Some(&(Some("Módulos"), vec![Section::Strategy, Section::Engineer]))
         );
-        // Sin «Lanzar» en la barra (R10.8) y con los cuatro destinos para todos.
+        // Cinco destinos generales; Informes no concede acceso a Calendario.
         assert_eq!(
             groups_user[0].1,
             vec![
                 Section::Home,
                 Section::Launcher,
                 Section::Studio,
-                Section::Roadmap
+                Section::Roadmap,
+                Section::Testing
             ]
         );
+        for access in [
+            navigation::Access::default(),
+            navigation::Access {
+                blocked: true,
+                ..user
+            },
+        ] {
+            assert!(
+                !groups(access)
+                    .iter()
+                    .flat_map(|(_, sections)| sections)
+                    .any(|section| *section == Section::Testing)
+            );
+        }
+        for menu in [groups_user, groups_tester] {
+            assert_eq!(
+                menu.iter()
+                    .flat_map(|(_, sections)| sections)
+                    .filter(|section| **section == Section::Testing)
+                    .count(),
+                1
+            );
+        }
     }
 }

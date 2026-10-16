@@ -16,6 +16,17 @@ const config = {
   issuer: "https://clerk.example.invalid",
 };
 const body = { version: 1, deviceFingerprint: fingerprint };
+const unblockedUser = {
+  id: subject,
+  banned: false,
+  locked: false,
+  primary_email_address_id: null,
+  email_addresses: [],
+  first_name: null,
+  last_name: null,
+  created_at: 1,
+  last_sign_in_at: null,
+};
 const verification = {
   object: "clerk_idp_oauth_access_token",
   id: `oat_${"a".repeat(32)}`,
@@ -80,7 +91,12 @@ function deps(overrides: NativeLicenseDeps = {}): NativeLicenseDeps {
     config,
     environment: "production",
     now: () => now,
-    fetch: () => Promise.resolve(Response.json(verification)),
+    fetch: (input) =>
+      Promise.resolve(
+        Response.json(
+          String(input).endsWith("/verify") ? verification : unblockedUser,
+        ),
+      ),
     load: () => Promise.resolve(state),
     sign: (claims) =>
       Promise.resolve({
@@ -122,6 +138,10 @@ Deno.test("native and TPA issue exactly the same signed credential and grants", 
       sign,
       config: { ...config, issuer: `${config.issuer}/` },
       fetch: (input, init) => {
+        if (String(input).includes("/v1/users/")) {
+          assert(String(input).endsWith(subject));
+          return Promise.resolve(Response.json(unblockedUser));
+        }
         verifications++;
         const options = init as {
           method: string;
@@ -671,15 +691,97 @@ Deno.test("credential loader reads rollout with admin and propagates query failu
     } as unknown as Parameters<typeof loadCredentialAccount>[0];
     let rejected = false;
     try {
-      const loaded = await loadCredentialAccount(admin, accountId, fingerprint);
+      const loaded = await loadCredentialAccount(
+        admin,
+        accountId,
+        fingerprint,
+        "production",
+      );
       assert(loaded.moduleRollout?.[0].module === "vantare.module.calendar");
       assert(loaded.deviceMatches);
     } catch {
       rejected = true;
     }
     assert(rejected === fail);
+    assert(
+      queried.includes("billing_effective_access_grants"),
+      "credential loader queried an absent relation instead of versioned grants",
+    );
     assert(queried.includes("module_rollout"));
   }
+});
+
+Deno.test("production issuance selects its grants when sandbox rights coexist", async () => {
+  const rows = [{
+    capability: "vantare.plan.pro",
+    valid_until: "2026-11-02T12:00:00Z",
+    provider: "polar",
+    environment: "production",
+    source_type: "subscription",
+  }, {
+    capability: "vantare.edition.launch_v1",
+    valid_until: null,
+    provider: "polar",
+    environment: "sandbox",
+    source_type: "order",
+  }, {
+    capability: "vantare.module.calendar",
+    valid_until: null,
+    provider: "vantare",
+    environment: "production",
+    source_type: "support",
+  }];
+  const admin = {
+    from(table: string) {
+      const filters = new Map<string, unknown>();
+      const query = {
+        select: () => query,
+        eq: (column: string, value: unknown) => {
+          filters.set(column, value);
+          return query;
+        },
+        maybeSingle: () =>
+          Promise.resolve({
+            data: { fingerprint_hash: fingerprint },
+            error: null,
+          }),
+        then(resolve: (value: unknown) => unknown) {
+          return Promise.resolve(
+            resolve({
+              data: table === "billing_effective_access_grants"
+                ? rows.filter((row) =>
+                  !filters.has("environment") ||
+                  row.environment === filters.get("environment")
+                )
+                : [],
+              error: null,
+            }),
+          );
+        },
+      };
+      return query;
+    },
+  } as unknown as Parameters<typeof loadCredentialAccount>[0];
+  const response = await handleNativeLicenseRequest(
+    request(),
+    deps({
+      load: (_issuer, _subject, device, environment) =>
+        loadCredentialAccount(admin, accountId, device, environment),
+    }),
+  );
+  assert(
+    response.status === 200,
+    `paid production account received ${response.status}`,
+  );
+  const result = await response.json();
+  assert(
+    JSON.stringify(
+      result.credential.claims.capabilities.map((grant: { key: string }) =>
+        grant.key
+      ),
+    ) ===
+      JSON.stringify(["vantare.module.calendar", "vantare.plan.pro"]),
+  );
 });
 
 Deno.test("legacy Wails credential omits native modules from account and global rollout", async () => {
@@ -756,4 +858,50 @@ Deno.test("cancelled on day thirteen signs seventeen remaining paid days", async
   assert(
     result.credential.claims.capabilities[0].paid_through !== now.toISOString(),
   );
+});
+Deno.test("native license denies banned, locked and deleted Clerk users before loading grants", async () => {
+  for (const userState of ["banned", "locked", "deleted"]) {
+    let loads = 0;
+    let signs = 0;
+    const response = await handleNativeLicenseRequest(
+      request(),
+      deps({
+        fetch: (input) =>
+          Promise.resolve(
+            String(input).endsWith("/verify")
+              ? Response.json(verification)
+              : userState === "deleted"
+              ? new Response(null, { status: 404 })
+              : Response.json({
+                id: subject,
+                banned: userState === "banned",
+                locked: userState === "locked",
+                primary_email_address_id: null,
+                email_addresses: [],
+                first_name: null,
+                last_name: null,
+                created_at: 1,
+                last_sign_in_at: null,
+              }),
+          ),
+        load: () => {
+          loads++;
+          return Promise.resolve(state);
+        },
+        sign: (claims) => {
+          signs++;
+          return deps().sign!(claims);
+        },
+      }),
+    );
+    await expectError(
+      response,
+      userState === "deleted" ? 401 : 403,
+      userState === "deleted" ? "unauthorized" : "forbidden",
+    );
+    assert(
+      loads === 0 && signs === 0,
+      "blocked account reached grants or signing",
+    );
+  }
 });

@@ -1,5 +1,5 @@
-//! DTO v10: situación de conducción de #1562; señales v9: vehículo, parrilla, paradas, compuesto, sectores, rating, tendencia,
-//! energía, servicio de boxes, stint y deltas de #1497. El cable exige v10.
+//! DTO v11: relojes y fases para avisos #1638. v10: situación de conducción de #1562; señales v9: vehículo, parrilla, paradas, compuesto, sectores, rating, tendencia,
+//! energía, servicio de boxes, stint y deltas de #1497. El cable exige v11.
 //! DTO explícito del `Snapshot`: es el formato del cable, no los tipos de
 //! `domain` (que no son ABI). Añadir una señal al modelo exige añadirla aquí a
 //! propósito. En fotos completas o señales declaradas entregadas, un campo de
@@ -13,7 +13,7 @@ use vantare_domain as d;
 use crate::Error;
 
 /// Versión del DTO. Se sube al cambiar el esquema de forma incompatible.
-pub const VERSION: u32 = 10;
+pub const VERSION: u32 = 11;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub(crate) struct SnapshotDto {
@@ -157,6 +157,21 @@ struct SessionDto {
     laps_total: QualityDto<u32>,
     #[serde(default, skip_serializing_if = "QualityDto::not_requested")]
     track_length_m: QualityDto<f64>,
+    #[serde(default, skip_serializing_if = "QualityDto::not_requested")]
+    started_at_s: QualityDto<f64>,
+    #[serde(default, skip_serializing_if = "QualityDto::not_requested")]
+    finished_at_s: QualityDto<f64>,
+    #[serde(default, skip_serializing_if = "QualityDto::not_requested")]
+    scheduled_end_s: QualityDto<f64>,
+    #[serde(default, skip_serializing_if = "QualityDto::not_requested")]
+    start_phase: QualityDto<StartPhaseDto>,
+    #[serde(default, skip_serializing_if = "QualityDto::not_requested")]
+    distance_to_start_line_m: QualityDto<f64>,
+    #[serde(default, skip_serializing_if = "QualityDto::not_requested")]
+    next_kind: QualityDto<SessionKindDto>,
+    #[serde(default, skip_serializing_if = "QualityDto::not_requested")]
+    next_starts_at_s: QualityDto<f64>,
+
     #[serde(default, skip_serializing_if = "QualityDto::not_requested")]
     weather_air_temperature_k: QualityDto<f64>,
     #[serde(default, skip_serializing_if = "QualityDto::not_requested")]
@@ -501,6 +516,47 @@ fn flag(f: &d::Flag) -> FlagDto {
     FlagDto { kind, scope }
 }
 
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum StartPhaseDto {
+    Grid,
+    Formation,
+    Countdown,
+    Racing,
+}
+fn start_phase(p: d::StartPhase) -> StartPhaseDto {
+    match p {
+        d::StartPhase::Grid => StartPhaseDto::Grid,
+        d::StartPhase::Formation => StartPhaseDto::Formation,
+        d::StartPhase::Countdown => StartPhaseDto::Countdown,
+        d::StartPhase::Racing => StartPhaseDto::Racing,
+    }
+}
+fn ustart_phase(p: StartPhaseDto) -> d::StartPhase {
+    match p {
+        StartPhaseDto::Grid => d::StartPhase::Grid,
+        StartPhaseDto::Formation => d::StartPhase::Formation,
+        StartPhaseDto::Countdown => d::StartPhase::Countdown,
+        StartPhaseDto::Racing => d::StartPhase::Racing,
+    }
+}
+fn session_kind(k: &d::SessionKind) -> SessionKindDto {
+    match k {
+        d::SessionKind::Practice => SessionKindDto::Practice,
+        d::SessionKind::Qualifying => SessionKindDto::Qualifying,
+        d::SessionKind::Race => SessionKindDto::Race,
+        d::SessionKind::Other(n) => SessionKindDto::Other(n.clone()),
+    }
+}
+fn usession_kind(k: SessionKindDto) -> d::SessionKind {
+    match k {
+        SessionKindDto::Practice => d::SessionKind::Practice,
+        SessionKindDto::Qualifying => d::SessionKind::Qualifying,
+        SessionKindDto::Race => d::SessionKind::Race,
+        SessionKindDto::Other(n) => d::SessionKind::Other(n),
+    }
+}
+
 fn session(s: &d::Session) -> SessionDto {
     SessionDto {
         id: s.id.0,
@@ -522,6 +578,13 @@ fn session(s: &d::Session) -> SessionDto {
         laps_remaining: q(&s.laps_remaining, copied),
         laps_total: q(&s.laps_total, copied),
         track_length_m: q(&s.track_length_m, copied),
+        started_at_s: q(&s.timing.started_at_s, copied),
+        finished_at_s: q(&s.timing.finished_at_s, copied),
+        scheduled_end_s: q(&s.timing.scheduled_end_s, copied),
+        start_phase: q(&s.timing.start_phase, |p| start_phase(*p)),
+        distance_to_start_line_m: q(&s.timing.distance_to_start_line_m, copied),
+        next_kind: q(&s.timing.next_kind, session_kind),
+        next_starts_at_s: q(&s.timing.next_starts_at_s, copied),
         weather_air_temperature_k: q(&s.weather.air_temperature_k, copied),
         weather_track_temperature_k: q(&s.weather.track_temperature_k, copied),
         weather_wind_speed_mps: q(&s.weather.wind_speed_mps, copied),
@@ -785,6 +848,45 @@ fn session_selected(s: &d::Session, delivered: &crate::Demand) -> SessionDto {
         laps_remaining: qs(&s.laps_remaining, Signal::LapsRemaining, delivered, copied),
         laps_total: qs(&s.laps_total, Signal::SessionInfo, delivered, copied),
         track_length_m: qs(&s.track_length_m, Signal::TrackLength, delivered, copied),
+        started_at_s: qs(
+            &s.timing.started_at_s,
+            Signal::SessionInfo,
+            delivered,
+            copied,
+        ),
+        finished_at_s: qs(
+            &s.timing.finished_at_s,
+            Signal::SessionInfo,
+            delivered,
+            copied,
+        ),
+        scheduled_end_s: qs(
+            &s.timing.scheduled_end_s,
+            Signal::SessionInfo,
+            delivered,
+            copied,
+        ),
+        start_phase: qs(&s.timing.start_phase, Signal::SessionInfo, delivered, |p| {
+            start_phase(*p)
+        }),
+        distance_to_start_line_m: qs(
+            &s.timing.distance_to_start_line_m,
+            Signal::SessionInfo,
+            delivered,
+            copied,
+        ),
+        next_kind: qs(
+            &s.timing.next_kind,
+            Signal::SessionInfo,
+            delivered,
+            session_kind,
+        ),
+        next_starts_at_s: qs(
+            &s.timing.next_starts_at_s,
+            Signal::SessionInfo,
+            delivered,
+            copied,
+        ),
         weather_air_temperature_k: qs(
             &s.weather.air_temperature_k,
             Signal::Weather,
@@ -1040,6 +1142,15 @@ fn usession(s: SessionDto) -> d::Session {
         laps_remaining: uq(s.laps_remaining, id),
         laps_total: uq(s.laps_total, id),
         track_length_m: uq(s.track_length_m, id),
+        timing: d::SessionTiming {
+            started_at_s: uq(s.started_at_s, id),
+            finished_at_s: uq(s.finished_at_s, id),
+            scheduled_end_s: uq(s.scheduled_end_s, id),
+            start_phase: uq(s.start_phase, ustart_phase),
+            distance_to_start_line_m: uq(s.distance_to_start_line_m, id),
+            next_kind: uq(s.next_kind, usession_kind),
+            next_starts_at_s: uq(s.next_starts_at_s, id),
+        },
         weather: d::Weather {
             air_temperature_k: uq(s.weather_air_temperature_k, id),
             track_temperature_k: uq(s.weather_track_temperature_k, id),
@@ -1215,6 +1326,15 @@ fn usession_ref(s: &SessionDto) -> d::Session {
         laps_remaining: uq_ref(&s.laps_remaining, id),
         laps_total: uq_ref(&s.laps_total, id),
         track_length_m: uq_ref(&s.track_length_m, id),
+        timing: d::SessionTiming {
+            started_at_s: uq_ref(&s.started_at_s, id),
+            finished_at_s: uq_ref(&s.finished_at_s, id),
+            scheduled_end_s: uq_ref(&s.scheduled_end_s, id),
+            start_phase: uq_ref(&s.start_phase, ustart_phase),
+            distance_to_start_line_m: uq_ref(&s.distance_to_start_line_m, id),
+            next_kind: uq_ref(&s.next_kind, usession_kind),
+            next_starts_at_s: uq_ref(&s.next_starts_at_s, id),
+        },
         weather: d::Weather {
             air_temperature_k: uq_ref(&s.weather_air_temperature_k, id),
             track_temperature_k: uq_ref(&s.weather_track_temperature_k, id),
@@ -1514,6 +1634,16 @@ impl<T, const N: usize> DeliveryField for [QualityDto<T>; N] {
 }
 
 impl SnapshotDto {
+    pub(crate) fn migrate_saved_timing(&mut self) {
+        self.state.session.started_at_s = QualityDto::Unavailable;
+        self.state.session.finished_at_s = QualityDto::Unavailable;
+        self.state.session.scheduled_end_s = QualityDto::Unavailable;
+        self.state.session.start_phase = QualityDto::Unavailable;
+        self.state.session.distance_to_start_line_m = QualityDto::Unavailable;
+        self.state.session.next_kind = QualityDto::Unavailable;
+        self.state.session.next_starts_at_s = QualityDto::Unavailable;
+    }
+
     pub(crate) fn same_scope(&self, old: &Self, delivered: &crate::Demand) -> bool {
         self.epoch == old.epoch
             && self.state.session.id == old.state.session.id
@@ -1577,7 +1707,7 @@ impl SnapshotDto {
         }
         fields!(self.state, previous.map(|old| &old.state), requested_mask, delivered_mask; Flags => [flags]);
         fields!(self.state.session, previous.map(|old| &old.state.session), requested_mask, delivered_mask;
-            SessionInfo => [kind, state, laps_total], SessionClock => [elapsed_s, remaining_s],
+            SessionInfo => [kind, state, laps_total, started_at_s, finished_at_s, scheduled_end_s, start_phase, distance_to_start_line_m, next_kind, next_starts_at_s], SessionClock => [elapsed_s, remaining_s],
             TrackName => [track_name], TrackLength => [track_length_m], LapsRemaining => [laps_remaining],
             Weather => [weather_air_temperature_k, weather_track_temperature_k, weather_wind_speed_mps,
                 weather_wind_direction_rad, weather_rain, weather_track_wetness, weather_pressure_pa]);
@@ -1614,6 +1744,59 @@ impl SnapshotDto {
 mod demand_tests {
     use super::*;
     use crate::{Demand, Signal};
+
+    #[test]
+    fn session_timing_round_trips_and_obeys_selective_delivery() {
+        let mut source = crate::codec::tests::rich_snapshot(1, 1);
+        source.state.session.timing = d::SessionTiming {
+            started_at_s: d::Quality::Reliable(12.0),
+            finished_at_s: d::Quality::Unavailable,
+            scheduled_end_s: d::Quality::Reliable(3612.0),
+            start_phase: d::Quality::Reliable(d::StartPhase::Formation),
+            distance_to_start_line_m: d::Quality::Estimated(45.0),
+            next_kind: d::Quality::Reliable(d::SessionKind::Race),
+            next_starts_at_s: d::Quality::Stale(3700.0),
+        };
+        let text = crate::snapshot_to_json(&source).unwrap();
+        assert_eq!(crate::snapshot_from_json(&text).unwrap(), source);
+        let mut requested = Demand::default();
+        requested.request(Signal::SessionInfo, 250);
+        let mut selected = SnapshotDto::from(&source);
+        selected.filter(&requested).unwrap();
+        selected.restore(None, &requested, &requested).unwrap();
+        assert_eq!(
+            d::Snapshot::try_from(&selected)
+                .unwrap()
+                .state
+                .session
+                .timing,
+            source.state.session.timing
+        );
+        let mut clock = Demand::default();
+        clock.request(Signal::SessionClock, 100);
+        let mut absent = SnapshotDto::from(&source);
+        absent.filter(&clock).unwrap();
+        absent.restore(None, &clock, &clock).unwrap();
+        assert_eq!(
+            d::Snapshot::try_from(&absent).unwrap().state.session.timing,
+            d::SessionTiming::default()
+        );
+        let mut missing: serde_json::Value = serde_json::from_str(&text).unwrap();
+        missing["state"]["session"]
+            .as_object_mut()
+            .unwrap()
+            .remove("start_phase");
+        assert!(crate::snapshot_from_json(&missing.to_string()).is_err());
+        missing["version"] = serde_json::json!(10);
+        assert_eq!(
+            crate::snapshot_from_saved_json(&missing.to_string())
+                .unwrap()
+                .state
+                .session
+                .timing,
+            d::SessionTiming::default()
+        );
+    }
 
     #[test]
     fn sparse_wire_distinguishes_unrequested_from_unavailable_and_restores_held_values() {

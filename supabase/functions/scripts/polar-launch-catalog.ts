@@ -1,0 +1,1062 @@
+import productionFounders from "./founders-production-config.json" with {
+  type: "json",
+};
+import productionInventory from "./polar-production-inventory.json" with {
+  type: "json",
+};
+// ISA-1620. Offline plan by default; --apply is an explicit operator action.
+import table from "./polar-launch-prices.json" with { type: "json" };
+import {
+  type BillingEnvironment,
+  type CheckoutKey,
+  loadPolarProductMap,
+} from "../_shared/mapping.ts";
+
+type Plan = {
+  key: CheckoutKey;
+  interval: string;
+  normal_cents: number;
+  launch_cents: number;
+};
+export const PRICES = table as Omit<typeof table, "plans"> & { plans: Plan[] };
+export type Resource = {
+  id: string;
+  organization_id: string;
+  name?: string;
+  description?: string | null;
+  metadata?: Record<string, string>;
+  recurring_interval?: string | null;
+  recurring_interval_count?: number;
+  is_archived?: boolean;
+  visibility?: "draft" | "public" | "private";
+  prices?: {
+    id: string;
+    is_archived?: boolean;
+    amount_type?: string;
+    price_amount?: number;
+    price_currency?: string;
+    tax_behavior?: string | null;
+  }[];
+  trial_interval?: string | null;
+  trial_interval_count?: number | null;
+  type?: string;
+  duration?: string;
+  duration_in_months?: number | null;
+  amounts?: Record<string, number>;
+  basis_points?: number;
+  discount_id?: string | null;
+  allow_discount_codes?: boolean;
+  url?: string;
+  code?: string | null;
+  products?: { id: string }[];
+  starts_at?: string | null;
+  ends_at?: string | null;
+  max_redemptions?: number | null;
+};
+export type Http = (
+  method: "GET" | "POST" | "PATCH",
+  path: string,
+  body?: unknown,
+) => Promise<unknown>;
+type Options = {
+  planOnly?: boolean;
+  environment: BillingEnvironment;
+  creator?: string;
+};
+export const creatorPrice = (cents: number) =>
+  Math.round(cents * (10000 - PRICES.creator_discount_basis_points) / 10000);
+const fixedPrice = (cents: number) => ({
+  amount_type: "fixed",
+  price_amount: cents,
+  price_currency: "eur",
+  tax_behavior: "inclusive",
+});
+
+// Customer copy from product-contract.md; interval is shown by Polar's price.
+// Product name/description are single strings, not localized fields in Polar.
+function productCopy(key: CheckoutKey, launch = false) {
+  if (key === "founders") {
+    return {
+      name: "Vantare Founders · Precio de fundador",
+      description:
+        "- Pago único de **50 €**: todos los módulos y widgets presentes y futuros, para siempre.\n- Disponible desde la **beta pública**, sin fecha de fin. El precio subirá más adelante, sin fecha prevista.\n- Sin caducidad ni renovación. Incluye acceso a Nightly.",
+    };
+  }
+  const plus = key.startsWith("pro_plus_");
+  return {
+    name: (plus ? "Vantare Pro Plus" : "Vantare Pro") +
+      (launch ? " · Precio de lanzamiento" : ""),
+    description: plus
+      ? "- Todo **Vantare Pro**: aplicación publicada en Stable y soporte en Discord.\n- Acceso a **Nightly/Beta privada**, tests, encuestas y previews activas."
+      : "- Toda la aplicación publicada en **Stable**.\n- Soporte en **Discord**.",
+  };
+}
+
+function copyMatches(product: Resource, copy: ReturnType<typeof productCopy>) {
+  return product.name === copy.name && product.description === copy.description;
+}
+
+async function patchProductCopy(
+  http: Http,
+  product: Resource,
+  copy: ReturnType<typeof productCopy>,
+) {
+  // Deliberately separate from price reconciliation: never send prices here.
+  const updated = await http(
+    "PATCH",
+    `/products/${product.id}`,
+    copy,
+  ) as Resource;
+  if (
+    updated.id !== product.id ||
+    updated.organization_id !== product.organization_id ||
+    !copyMatches(updated, copy)
+  ) throw Error("Product copy response mismatch");
+  return updated;
+}
+
+async function list(
+  http: Http,
+  kind: string,
+  organization: string,
+): Promise<Resource[]> {
+  const resources: Resource[] = [];
+  let page = 1;
+  let maxPage = 1;
+  do {
+    const query = new URLSearchParams({
+      organization_id: organization,
+      limit: "100",
+      page: String(page),
+    });
+    const response = await http("GET", `/${kind}/?${query}`) as {
+      items: Resource[];
+      pagination: { max_page: number };
+    };
+    if (
+      !Array.isArray(response.items) ||
+      !Number.isInteger(response.pagination?.max_page) ||
+      response.pagination.max_page < 0
+    ) throw Error(`Incomplete ${kind} list`);
+    if (response.items.some((r) => r.organization_id !== organization)) {
+      throw Error(`Foreign organization in ${kind}`);
+    }
+    resources.push(...response.items);
+    maxPage = response.pagination.max_page;
+    if (maxPage > 1000) throw Error(`Unbounded ${kind} list`);
+    page++;
+  } while (page <= maxPage);
+  if (new Set(resources.map((r) => r.id)).size !== resources.length) {
+    throw Error(`Duplicate IDs in ${kind}`);
+  }
+  return resources;
+}
+
+function currentPrice(
+  product: Resource,
+  cents: number,
+  allowUnknownTax = false,
+) {
+  const active = (product.prices ?? []).filter((p) => !p.is_archived);
+  const p = active[0];
+  return active.length === 1 && p.amount_type === "fixed" &&
+      p.price_amount === cents && p.price_currency === "eur" &&
+      (p.tax_behavior === "inclusive" ||
+        (allowUnknownTax &&
+          (p.tax_behavior == null || p.tax_behavior === "exclusive")))
+    ? p
+    : undefined;
+}
+function creatorCode(creator?: string) {
+  if (creator !== undefined && !/^[A-Za-z0-9]{3,32}$/.test(creator)) {
+    throw Error("Creator must contain 3-32 alphanumeric characters");
+  }
+  return creator;
+}
+function sameProducts(resource: Resource, ids: string[]) {
+  const actual = resource.products?.map((p) => p.id) ?? [];
+  return actual.length === ids.length && new Set(actual).size === ids.length &&
+    ids.every((id) => actual.includes(id));
+}
+function noTrial(resource: Resource) {
+  return resource.trial_interval == null &&
+    resource.trial_interval_count == null;
+}
+function launchDiscountMatches(
+  discount: Resource,
+  plan: Plan,
+  productId: string,
+  window: typeof PRICES.launch_windows.production,
+) {
+  return !discount.is_archived && discount.type === "fixed" &&
+    discount.duration === "once" &&
+    discount.duration_in_months == null &&
+    discount.amounts?.eur === plan.normal_cents - plan.launch_cents &&
+    Object.keys(discount.amounts ?? {}).length === 1 &&
+    sameProducts(discount, [productId]) && !discount.code &&
+    !discount.max_redemptions &&
+    Date.parse(discount.starts_at ?? "") ===
+      Date.parse(window.starts_at) &&
+    Date.parse(discount.ends_at ?? "") ===
+      Date.parse(window.ends_at);
+}
+function creatorMatches(
+  discount: Resource,
+  ids: string[],
+  annual = false,
+) {
+  return !discount.is_archived && discount.type === "percentage" &&
+    discount.basis_points === PRICES.creator_discount_basis_points &&
+    discount.duration === "repeating" &&
+    discount.duration_in_months ===
+      (annual
+        ? PRICES.creator_renewals.annual_duration_months
+        : PRICES.creator_renewals.monthly_duration_months) &&
+    !discount.code &&
+    sameProducts(discount, ids) && !discount.starts_at && !discount.ends_at &&
+    !discount.max_redemptions;
+}
+type LiveInventory = {
+  verified: boolean;
+  customer_count: number;
+  active_subscription_count: number;
+  order_count: number;
+  checked_product_ids: string[];
+  checked_at: string;
+};
+function catalogReadiness(
+  environment: BillingEnvironment,
+  inventory?: LiveInventory,
+) {
+  const window = PRICES.launch_windows[environment];
+  const keys = [
+    "pro_monthly",
+    "pro_annual",
+    "pro_plus_monthly",
+    "pro_plus_annual",
+  ];
+  const modelReady =
+    PRICES.launch_model === "fixed_discount_once_on_normal_products" &&
+    Number.isSafeInteger(PRICES.creator_discount_basis_points) &&
+    PRICES.creator_discount_basis_points > 0 &&
+    PRICES.creator_discount_basis_points <= 10000 &&
+    [
+      PRICES.creator_renewals.monthly_duration_months,
+      PRICES.creator_renewals.annual_duration_months,
+    ].every((months) =>
+      Number.isSafeInteger(months) && months > 0 && months <= 999
+    ) &&
+    PRICES.creator_renewals.first_period_discount === false &&
+    PRICES.creator_renewals.public_polar_code === false &&
+    Number.isFinite(Date.parse(window.starts_at)) &&
+    Date.parse(window.ends_at) > Date.parse(window.starts_at) &&
+    PRICES.plans.length === keys.length &&
+    new Set(PRICES.plans.map((p) => p.key)).size === keys.length &&
+    PRICES.plans.every((p) =>
+      keys.includes(p.key) && Number.isSafeInteger(p.normal_cents) &&
+      Number.isSafeInteger(p.launch_cents) &&
+      p.launch_cents > 0 && p.normal_cents > p.launch_cents &&
+      p.interval === (p.key.endsWith("annual") ? "year" : "month")
+    );
+  const blockers: string[] = [];
+  if (!modelReady) blockers.push("invalid_price_model_or_window");
+  if (!inventory?.verified) blockers.push("live_inventory_not_checked");
+  else if (
+    inventory.customer_count !== 0 ||
+    inventory.active_subscription_count !== 0 || inventory.order_count !== 0
+  ) blockers.push("live_inventory_not_empty");
+  return { model_ready: modelReady, ready: blockers.length === 0, blockers };
+}
+async function verifyEmptyProductionInventory(
+  http: Http,
+  organizationId: string,
+  productIds: string[],
+): Promise<LiveInventory> {
+  async function empty(kind: string, productId?: string, active = false) {
+    const query = new URLSearchParams({
+      organization_id: organizationId,
+      limit: "100",
+      page: "1",
+    });
+    if (productId) query.set("product_id", productId);
+    if (active) query.set("active", "true");
+    const raw = await http("GET", `/${kind}/?${query}`);
+    const response = raw as {
+      items?: unknown[];
+      pagination?: { total_count?: number; max_page?: number };
+    } | null;
+    if (
+      !response || !Array.isArray(response.items) ||
+      response.pagination?.total_count !== 0 ||
+      !Number.isInteger(response.pagination.max_page) ||
+      response.pagination.max_page! < 0 || response.pagination.max_page! > 1 ||
+      response.items.length !== 0
+    ) {
+      throw Error(
+        `Production inventory is not verifiably empty (${kind}); abort before writes`,
+      );
+    }
+  }
+  // Customer API has no product filter: the launch tool deliberately requires zero organization customers.
+  await empty("customers");
+  const ids = [...new Set(productIds)].sort();
+  for (const id of ids) {
+    await empty("subscriptions", id, true);
+    await empty("orders", id);
+  }
+  return {
+    verified: true,
+    customer_count: 0,
+    active_subscription_count: 0,
+    order_count: 0,
+    checked_product_ids: ids,
+    checked_at: new Date().toISOString(),
+  };
+}
+export async function syncCatalog(http: Http, raw: unknown, options: Options) {
+  const source = typeof raw === "object" && raw !== null && "map" in raw
+    ? raw.map
+    : raw;
+  const loaded = loadPolarProductMap(JSON.stringify(source), {
+    environment: options.environment,
+    trialAntiAbuseConfirmed: true,
+  });
+  if (!loaded.ok) throw Error(loaded.code);
+  const map = structuredClone(loaded.map);
+  const creator = creatorCode(options.creator);
+  const window = PRICES.launch_windows[options.environment];
+  const products = await list(http, "products", map.organization_id);
+  const discounts = await list(http, "discounts", map.organization_id);
+  const organization = await http(
+    "GET",
+    `/organizations/${map.organization_id}`,
+  ) as {
+    id?: string;
+    customer_portal_settings?: { subscription?: { update_plan?: boolean } };
+  };
+  if (organization?.id !== map.organization_id) {
+    throw Error("Unexpected Polar organization");
+  }
+  // Discounts remain attached across plan changes. Retain the existing operational guard.
+  if (
+    (creator ||
+      discounts.some((d) =>
+        d.metadata?.vantare_offer_key?.startsWith("creator:")
+      )) &&
+    organization.customer_portal_settings?.subscription?.update_plan !== false
+  ) {
+    throw Error(
+      "Creator offers require portal plan changes disabled; review organization settings",
+    );
+  }
+  const selected = new Map<string, Resource | undefined>();
+  const selectedDiscounts = new Map<string, Resource | undefined>();
+  const priceOwners = new Map(Object.entries(map.price_id_to_checkout_key));
+  const productOwners = new Map<string, string>();
+  for (const [key, config] of Object.entries(map.checkout_keys)) {
+    productOwners.set(config.polar_product_id, key);
+    if (config.polar_launch_product_id) {
+      productOwners.set(
+        config.polar_launch_product_id,
+        `${key}:historical-launch`,
+      );
+    }
+  }
+  const founderId = map.checkout_keys.founders?.polar_product_id;
+  const founders = founderId
+    ? products.find((p) => p.id === founderId)
+    : undefined;
+  if (
+    founderId &&
+    (!founders || founders.is_archived || founders.recurring_interval != null ||
+      !noTrial(founders) || !currentPrice(founders, 5000, true))
+  ) throw Error("Invalid or missing Founders product");
+  // Preflight every configured resource and price history before the first write.
+  for (const plan of PRICES.plans) {
+    const config = map.checkout_keys[plan.key];
+    const matches = products.filter((p) =>
+      p.id === config?.polar_product_id ||
+      p.metadata?.vantare_checkout_key === plan.key
+    );
+    if (matches.length > 1) throw Error(`Ambiguous product ${plan.key}`);
+    const product = matches[0];
+    if (config && (!product || product.id !== config.polar_product_id)) {
+      throw Error(`Configured product missing ${plan.key}`);
+    }
+    const owner = product && productOwners.get(product.id);
+    if (owner && owner !== plan.key) {
+      throw Error(`Product belongs to another catalog slot ${plan.key}`);
+    }
+    if (
+      product &&
+      (product.is_archived || product.recurring_interval !== plan.interval ||
+        (product.recurring_interval_count ?? 1) !== 1)
+    ) throw Error(`Invalid product interval/status ${plan.key}`);
+    if (
+      product &&
+      (config?.trial.enabled
+        ? product.trial_interval !== "day" || product.trial_interval_count !== 7
+        : !noTrial(product))
+    ) throw Error(`Trial mismatch ${plan.key}`);
+    for (const price of product?.prices ?? []) {
+      const priceOwner = priceOwners.get(price.id);
+      if (priceOwner && priceOwner !== plan.key) {
+        throw Error(`Observed price belongs to another plan ${plan.key}`);
+      }
+      priceOwners.set(price.id, plan.key);
+    }
+    if (
+      product && !currentPrice(product, plan.normal_cents) &&
+      (product.prices ?? []).some((p) =>
+        map.price_id_to_checkout_key[p.id] !== plan.key
+      )
+    ) {
+      throw Error(
+        `Save observed price IDs in the input map before updating ${plan.key}`,
+      );
+    }
+    selected.set(plan.key, product);
+    const offerKey = `${plan.key}:launch-once-v3`;
+    const found = discounts.filter((d) =>
+      d.id === config?.polar_launch_discount_id ||
+      d.metadata?.vantare_offer_key === offerKey
+    );
+    if (found.length > 1) throw Error(`Ambiguous launch discount ${plan.key}`);
+    const discount = found[0];
+    if (
+      config?.polar_launch_discount_id &&
+      discount?.id !== config.polar_launch_discount_id
+    ) throw Error(`Configured launch discount missing ${plan.key}`);
+    if (
+      discount &&
+      (!product || !launchDiscountMatches(discount, plan, product.id, window))
+    ) throw Error(`Launch discount drift ${plan.key}`);
+    selectedDiscounts.set(plan.key, discount);
+  }
+  // Existing legacy/composite promotions are never silently converted into the new offer.
+  if (
+    discounts.some((d) =>
+      PRICES.plans.some((p) =>
+        d.metadata?.vantare_offer_key?.startsWith(`${p.key}:`) &&
+        d.metadata.vantare_offer_key !== `${p.key}:launch-once-v3`
+      )
+    )
+  ) {
+    throw Error(
+      "Legacy launch discounts present; review manually before applying v3",
+    );
+  }
+  const idsBefore = PRICES.plans.map((p) => selected.get(p.key)?.id).filter((
+    id,
+  ): id is string => !!id);
+  const monthlyIdsBefore = PRICES.plans.filter((p) => p.interval === "month")
+    .map((p) => selected.get(p.key)?.id).filter((id): id is string => !!id);
+  const creatorDiscounts = discounts.filter((d) =>
+    creator &&
+    (d.id === map.creator_discounts?.[creator] ||
+      d.metadata?.vantare_offer_key === `creator:${creator}:renewals-v4`)
+  );
+  if (creatorDiscounts.length > 1) throw Error("Ambiguous creator discount");
+  let creatorDiscount = creatorDiscounts[0] as Resource | undefined;
+  if (
+    creator &&
+    discounts.some((d) =>
+      d.code?.toUpperCase() === creator.toUpperCase() &&
+      d.id !== creatorDiscount?.id
+    )
+  ) throw Error("Creator code already owned");
+  if (
+    creatorDiscount &&
+    (!creator || idsBefore.length !== PRICES.plans.length ||
+      !creatorMatches(creatorDiscount, monthlyIdsBefore))
+  ) throw Error("Creator discount drift; review manually");
+  const annualIdsBefore = PRICES.plans.filter((p) => p.interval === "year").map(
+    (p) => selected.get(p.key)?.id,
+  ).filter((id): id is string => !!id);
+
+  const annualMatches = discounts.filter((d) =>
+    creator &&
+    (d.id === map.creator_annual_discounts?.[creator] ||
+      d.metadata?.vantare_offer_key === `creator:${creator}:annual-renewals-v4`)
+  );
+  if (annualMatches.length > 1) {
+    throw Error("Ambiguous annual creator discount");
+  }
+  let annualCreator = annualMatches[0] as Resource | undefined;
+  if (
+    annualCreator &&
+    (!creator || !creatorMatches(annualCreator, annualIdsBefore, true))
+  ) throw Error("Annual creator discount drift");
+  const liveInventory = options.environment === "production"
+    ? await verifyEmptyProductionInventory(
+      http,
+      map.organization_id,
+      [...selected.values()].filter((p): p is Resource => !!p).map((p) => p.id)
+        .concat(founders ? [founders.id] : []),
+    )
+    : undefined;
+  const readiness = catalogReadiness(options.environment, liveInventory);
+  if (
+    !readiness.model_ready ||
+    (options.environment === "production" && !readiness.ready)
+  ) throw Error("Catalog production preflight failed");
+  const offers: Record<
+    string,
+    {
+      product_id: string;
+      discount_id: string | null;
+      code: string | null;
+      final_cents: number;
+      renewal_cents: number;
+    }
+  > = {};
+  if (options.planOnly) {
+    const plannedActions: Record<string, unknown>[] = [];
+    if (founders && !copyMatches(founders, productCopy("founders"))) {
+      plannedActions.push({
+        action: "update_product_copy",
+        product_id: founders.id,
+        ...productCopy("founders"),
+      });
+    }
+    for (const plan of PRICES.plans) {
+      const product = selected.get(plan.key);
+      if (!product) {
+        plannedActions.push({
+          action: "create_normal_product_draft",
+          key: plan.key,
+          interval: plan.interval,
+          normal_cents: plan.normal_cents,
+          ...productCopy(plan.key),
+        });
+      } else {
+        if (!currentPrice(product, plan.normal_cents)) {
+          plannedActions.push({
+            action: "replace_normal_price_preserve_history",
+            key: plan.key,
+            product_id: product.id,
+            price: fixedPrice(plan.normal_cents),
+          });
+        }
+        if (!copyMatches(product, productCopy(plan.key))) {
+          plannedActions.push({
+            action: "update_product_copy",
+            key: plan.key,
+            product_id: product.id,
+            ...productCopy(plan.key),
+          });
+        }
+      }
+      if (!selectedDiscounts.get(plan.key)) {
+        plannedActions.push({
+          action: "create_launch_discount",
+          key: plan.key,
+          duration: "once",
+          amounts: { eur: plan.normal_cents - plan.launch_cents },
+          ...window,
+        });
+      }
+    }
+    if (creator && !creatorDiscount) {
+      plannedActions.push({
+        action: "create_monthly_creator_discount",
+        code: creator,
+        duration_in_months: PRICES.creator_renewals.monthly_duration_months,
+      });
+    }
+    if (creator && !annualCreator) {
+      plannedActions.push({
+        action: "create_annual_creator_discount",
+        code: creator,
+        duration_in_months: PRICES.creator_renewals.annual_duration_months,
+      });
+    }
+    return {
+      ...planOffline(creator, options.environment),
+      production_apply_blockers: readiness.blockers,
+      writes: 0,
+      production_apply_ready: readiness.ready,
+      production_preflight: liveInventory ?? null,
+      map,
+      offers,
+      creator_link: null,
+      creator_link_pending: null,
+      distribution: PRICES.distribution,
+      creator_plan_changes: PRICES.creator_plan_changes,
+      creator_commission: PRICES.creator_commission,
+      read_only: true,
+      offline: false,
+      environment: options.environment,
+      planned_actions: plannedActions,
+      observed_products: products.map((p) => ({
+        id: p.id,
+        name: p.name,
+        is_archived: p.is_archived,
+        recurring_interval: p.recurring_interval,
+        prices: p.prices?.map((price) => ({
+          id: price.id,
+          price_amount: price.price_amount,
+          price_currency: price.price_currency,
+          tax_behavior: price.tax_behavior,
+          is_archived: price.is_archived,
+        })),
+      })),
+    };
+  }
+  let writes = 0;
+  if (founders && !copyMatches(founders, productCopy("founders"))) {
+    await patchProductCopy(http, founders, productCopy("founders"));
+    writes++;
+  }
+  for (const plan of PRICES.plans) {
+    const previous = map.checkout_keys[plan.key];
+    const plus = plan.key.startsWith("pro_plus_");
+    const config = previous ??
+      {
+        polar_product_id: "",
+        polar_price_ids: [],
+        plan_sku: plan.key,
+        billing_type: "subscription" as const,
+        lifetime: false,
+        active: true,
+        capabilities: plus
+          ? [
+            "vantare.plan.pro",
+            "vantare.channel.testers",
+            "vantare.channel.nightly",
+          ]
+          : ["vantare.plan.pro"],
+        channels: plus
+          ? ["stable", "testers", "nightly"] as const
+          : ["stable"] as const,
+        launch_scope_version: null,
+        trial: { enabled: false } as const,
+        entitlement_product_key: "bundle" as const,
+      };
+    const priceIds = new Set(config.polar_price_ids);
+    let product = selected.get(plan.key);
+    for (const price of product?.prices ?? []) priceIds.add(price.id);
+    if (!product) {
+      product = await http("POST", "/products/", {
+        ...productCopy(plan.key),
+        visibility: "draft",
+        recurring_interval: plan.interval,
+        recurring_interval_count: 1,
+        ...(config.trial.enabled
+          ? { trial_interval: "day", trial_interval_count: 7 }
+          : {}),
+        prices: [fixedPrice(plan.normal_cents)],
+        metadata: { vantare_checkout_key: plan.key },
+      }) as Resource;
+      writes++;
+    } else if (!currentPrice(product, plan.normal_cents)) {
+      product = await http("PATCH", `/products/${product.id}`, {
+        prices: [fixedPrice(plan.normal_cents)],
+      }) as Resource;
+      writes++;
+    }
+    if (!copyMatches(product, productCopy(plan.key))) {
+      product = await patchProductCopy(http, product, productCopy(plan.key));
+      writes++;
+    }
+    const price = currentPrice(product, plan.normal_cents);
+    if (!price || product.organization_id !== map.organization_id) {
+      throw Error(`Price response mismatch ${plan.key}`);
+    }
+    priceIds.add(price.id);
+    let discount = selectedDiscounts.get(plan.key);
+    if (!discount) {
+      discount = await http("POST", "/discounts/", {
+        name: `Vantare ${plan.key} · Primer periodo beta pública`,
+        type: "fixed",
+        duration: "once",
+        amounts: { eur: plan.normal_cents - plan.launch_cents },
+        products: [product.id],
+        starts_at: window.starts_at,
+        ends_at: window.ends_at,
+        metadata: { vantare_offer_key: `${plan.key}:launch-once-v3` },
+      }) as Resource;
+      writes++;
+    }
+    if (
+      discount.organization_id !== map.organization_id ||
+      !launchDiscountMatches(discount, plan, product.id, window)
+    ) throw Error(`Launch discount response mismatch ${plan.key}`);
+    map.checkout_keys[plan.key] = {
+      ...config,
+      channels: [...config.channels],
+      polar_product_id: product.id,
+      polar_launch_discount_id: discount.id,
+      polar_price_ids: [...priceIds],
+    };
+    map.product_id_to_checkout_key[product.id] = plan.key;
+    for (const id of priceIds) map.price_id_to_checkout_key[id] = plan.key;
+    offers[`${plan.key}:launch`] = {
+      product_id: product.id,
+      discount_id: discount.id,
+      code: null,
+      final_cents: plan.launch_cents,
+      renewal_cents: plan.normal_cents,
+    };
+  }
+  if (creator) {
+    if (!creatorDiscount) {
+      creatorDiscount = await http("POST", "/discounts/", {
+        name: `Vantare ${creator}`,
+        type: "percentage",
+        basis_points: PRICES.creator_discount_basis_points,
+        duration: "repeating",
+        duration_in_months: PRICES.creator_renewals.monthly_duration_months,
+        products: PRICES.plans.filter((p) => p.interval === "month").map((p) =>
+          map.checkout_keys[p.key]!.polar_product_id
+        ),
+        metadata: { vantare_offer_key: `creator:${creator}:renewals-v4` },
+      }) as Resource;
+      writes++;
+    }
+    if (
+      creatorDiscount.organization_id !== map.organization_id ||
+      !creatorMatches(
+        creatorDiscount,
+        PRICES.plans.filter((p) => p.interval === "month").map((p) =>
+          map.checkout_keys[p.key]!.polar_product_id
+        ),
+      )
+    ) throw Error("Creator discount response mismatch");
+    map.creator_discounts = {
+      ...map.creator_discounts,
+      [creator]: creatorDiscount.id,
+    };
+    const annualIds = PRICES.plans.filter((p) => p.interval === "year").map(
+      (p) => map.checkout_keys[p.key]!.polar_product_id,
+    );
+    if (!annualCreator) {
+      annualCreator = await http("POST", "/discounts/", {
+        name: `Vantare ${creator} · Renovación anual`,
+        type: "percentage",
+        basis_points: PRICES.creator_discount_basis_points,
+        duration: "repeating",
+        duration_in_months: PRICES.creator_renewals.annual_duration_months,
+        products: annualIds,
+        metadata: {
+          vantare_offer_key: `creator:${creator}:annual-renewals-v4`,
+        },
+      }) as Resource;
+      writes++;
+    }
+    if (
+      annualCreator.organization_id !== map.organization_id ||
+      !creatorMatches(annualCreator, annualIds, true)
+    ) throw Error("Annual creator response mismatch");
+    map.creator_annual_discounts = {
+      ...map.creator_annual_discounts,
+      [creator]: annualCreator.id,
+    };
+    for (const plan of PRICES.plans) {
+      offers[`${plan.key}:creator:${creator}`] = {
+        product_id: map.checkout_keys[plan.key]!.polar_product_id,
+        discount_id: plan.interval === "year"
+          ? annualCreator.id
+          : creatorDiscount.id,
+        code: null,
+        final_cents: plan.normal_cents,
+        renewal_cents: creatorPrice(plan.normal_cents),
+      };
+    }
+  }
+  if (founders) {
+    offers.founders = {
+      product_id: founders.id,
+      discount_id: null,
+      code: null,
+      final_cents: 5000,
+      renewal_cents: 0,
+    };
+  }
+  map.catalog_version = PRICES.catalog_version;
+  return {
+    writes,
+    production_apply_ready: readiness.ready,
+    production_preflight: liveInventory ?? null,
+    map,
+    offers,
+    creator_link: null,
+    creator_link_pending: null,
+    distribution: PRICES.distribution,
+    creator_plan_changes: PRICES.creator_plan_changes,
+    creator_commission: PRICES.creator_commission,
+  };
+}
+export function planOffline(
+  creator?: string,
+  environment: BillingEnvironment = "production",
+) {
+  const window = PRICES.launch_windows[environment];
+  const code = creatorCode(creator);
+  const readiness = catalogReadiness(environment);
+  return {
+    ...PRICES,
+    production_apply_ready: readiness.ready,
+    production_model_ready: readiness.model_ready,
+    production_apply_blockers: readiness.blockers,
+    production_preflight: "not_checked_offline",
+    application_checkout: {
+      automatic_launch_discount: true,
+      allow_discount_codes: false,
+      creator_code_server_validated: true,
+      launch_creator_combination:
+        "attribution_first_invoice_discount_from_renewal",
+      launch_trial: false,
+    },
+    creator_discount: code
+      ? {
+        code,
+        type: "percentage",
+        basis_points: PRICES.creator_discount_basis_points,
+        duration: "repeating",
+        duration_in_months: PRICES.creator_renewals.monthly_duration_months,
+        annual_duration_in_months:
+          PRICES.creator_renewals.annual_duration_months,
+        starts_on: "first_paid_renewal_after_initial_invoice",
+        polar_public_code: null,
+        scope: "normal_subscription_products_only",
+        combinable_with_launch: true,
+      }
+      : null,
+    plans: PRICES.plans.map((p) => ({
+      ...p,
+      normal_product: productCopy(p.key),
+      launch_discount: {
+        type: "fixed",
+        duration: "once",
+        amounts: { eur: p.normal_cents - p.launch_cents },
+        ...window,
+      },
+      creator_first_period_cents: p.normal_cents,
+      creator_renewal_cents: creatorPrice(p.normal_cents),
+      creator_code: code ?? null,
+      renewal_cents: p.normal_cents,
+    })),
+    founders: {
+      ...productCopy("founders"),
+      amount_cents: 5000,
+      billing_type: "one_time",
+      channels: productionFounders.checkout_keys.founders.channels,
+      capabilities: productionFounders.checkout_keys.founders.capabilities,
+      tax_behavior: null,
+      ends_at: null,
+      product_id_configuration:
+        "POLAR_PRODUCT_MAP.checkout_keys.founders.polar_product_id",
+    },
+  };
+}
+export function parseArgs(args: string[]) {
+  const values: Record<string, string> = {};
+  const flags = new Set<string>();
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    if (
+      ["--apply", "--online", "--confirm-production"].includes(
+        arg,
+      )
+    ) {
+      if (flags.has(arg)) throw Error(`Duplicate ${arg}`);
+      flags.add(arg);
+    } else if (
+      ["--environment", "--map", "--output", "--creator"].includes(arg)
+    ) {
+      if (values[arg] || !args[i + 1] || args[i + 1].startsWith("--")) {
+        throw Error(`Invalid ${arg}`);
+      }
+      values[arg] = args[++i];
+    } else {throw Error(
+        "Unknown option; tokens are accepted only via environment",
+      );}
+  }
+  const environment = values["--environment"];
+  if (environment !== "sandbox" && environment !== "production") {
+    throw Error("--environment sandbox|production required");
+  }
+  if (flags.has("--apply") && flags.has("--online")) {
+    throw Error("--online and --apply are mutually exclusive");
+  }
+  if (
+    (flags.has("--apply") || flags.has("--online")) &&
+    (!values["--map"] || !values["--output"])
+  ) {
+    throw Error("Online plan/apply requires --map and --output");
+  }
+  if (
+    flags.has("--apply") && environment === "production" &&
+    !flags.has("--confirm-production")
+  ) throw Error("Production requires --confirm-production");
+  if (
+    [values["--map"], values["--output"]].some((p) =>
+      p && /(^|[\\/])\.env[^\\/]*($|[\\/])/i.test(p)
+    )
+  ) throw Error("Environment files are forbidden");
+  if (values["--map"] && values["--map"] === values["--output"]) {
+    throw Error("Output must not overwrite input");
+  }
+  return { values, flags, environment: environment as BillingEnvironment };
+}
+
+// Never dump validation input, context, headers or the raw response body.
+async function validationDetails(response: Response, token: string) {
+  if (response.status < 400 || response.status >= 500) return "";
+  try {
+    const data: unknown = await response.json();
+    const detail = data && typeof data === "object" && "detail" in data
+      ? data.detail
+      : data;
+    const errors = (Array.isArray(detail) ? detail : [detail]).flatMap(
+      (entry) => {
+        if (!entry || typeof entry !== "object") return [];
+        const { type, loc, msg } = entry;
+        if (
+          typeof type !== "string" || typeof msg !== "string" ||
+          !Array.isArray(loc) ||
+          !loc.every((part) =>
+            typeof part === "string" || typeof part === "number"
+          )
+        ) return [];
+        const redact = (value: string) => value.replaceAll(token, "[REDACTED]");
+        return [{
+          type: redact(type),
+          loc: loc.map((part) =>
+            typeof part === "string" ? redact(part) : part
+          ),
+          msg: redact(msg),
+        }];
+      },
+    );
+    return errors.length ? `validation: ${JSON.stringify(errors)}` : "";
+  } catch {
+    return "";
+  }
+}
+
+export async function runCatalog(
+  args: string[],
+  fetcher: typeof fetch = fetch,
+) {
+  const { values, flags, environment } = parseArgs(args);
+  const creator = values["--creator"];
+  const plan = planOffline(creator, environment);
+  if (!flags.has("--apply") && !flags.has("--online")) {
+    console.log(
+      JSON.stringify(
+        {
+          environment,
+          offline: true,
+          ...plan,
+          ...(environment === "production"
+            ? {
+              production_inventory: {
+                ...productionInventory,
+                founders: productionFounders,
+              },
+            }
+            : {}),
+        },
+        null,
+        2,
+      ),
+    );
+  } else {
+    // Check before HTTP, but create only after successful synchronization.
+    try {
+      await Deno.lstat(values["--output"]);
+      throw new Deno.errors.AlreadyExists(
+        "Output already exists; use a new path",
+      );
+    } catch (error) {
+      if (!(error instanceof Deno.errors.NotFound)) throw error;
+    }
+    const raw = JSON.parse(await Deno.readTextFile(values["--map"]));
+    const token = Deno.env.get("POLAR_ACCESS_TOKEN");
+    if (!token) throw Error("POLAR_ACCESS_TOKEN not set");
+    const base = environment === "sandbox"
+      ? "https://sandbox-api.polar.sh/v1"
+      : "https://api.polar.sh/v1";
+    const http: Http = async (method, path, body) => {
+      if (flags.has("--online") && method !== "GET") {
+        throw Error("Read-only catalog prohibits mutation");
+      }
+      let response: Response;
+      try {
+        response = await fetcher(`${base}${path}`, {
+          method,
+          redirect: "error",
+          signal: AbortSignal.timeout(30000),
+          headers: {
+            "Polar-Version": "2026-10",
+            "User-Agent": "Vantare-Catalog/1661",
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: body ? JSON.stringify(body) : undefined,
+        });
+      } catch {
+        throw Error(
+          `Polar transport failed (${method}); inspect catalogue before retrying`,
+        );
+      }
+      if (!response.ok) {
+        throw Error(
+          `Polar HTTP ${response.status} (${method}); ${
+            await validationDetails(response, token) || "response body withheld"
+          }`,
+        );
+      }
+      try {
+        return await response.json();
+      } catch {
+        throw Error("Invalid Polar JSON response; body withheld");
+      }
+    };
+    const result = await syncCatalog(http, raw, {
+      environment,
+      creator,
+      planOnly: flags.has("--online"),
+    });
+    const bytes = new TextEncoder().encode(
+      JSON.stringify(result, null, 2) + "\n",
+    );
+    // Exclusive creation also protects an output created since the preflight.
+    const output = await Deno.open(values["--output"], {
+      write: true,
+      createNew: true,
+    });
+    let complete = false;
+    try {
+      let offset = 0;
+      while (offset < bytes.length) {
+        offset += await output.write(bytes.subarray(offset));
+      }
+      await output.sync();
+      complete = true;
+    } finally {
+      output.close();
+      if (!complete) await Deno.remove(values["--output"]);
+    }
+    console.log(
+      flags.has("--online") ? JSON.stringify(result, null, 2) : JSON.stringify({
+        environment,
+        writes: result.writes,
+        creator_link_id: null,
+        creator_link_pending: result.creator_link_pending,
+        output: values["--output"],
+      }),
+    );
+  }
+}
+
+if (import.meta.main) {
+  try {
+    await runCatalog(Deno.args);
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : "Catalogue failed");
+    Deno.exit(1);
+  }
+}

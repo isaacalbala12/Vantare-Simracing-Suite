@@ -23,6 +23,7 @@
 mod motion_policy;
 pub use motion_policy::MotionPolicy;
 
+pub mod analytics;
 mod app;
 #[cfg(test)]
 mod board_contracts;
@@ -34,8 +35,11 @@ pub mod efficiency;
 pub mod geometry;
 pub mod layout;
 pub mod look;
+#[cfg(test)]
+mod offline_coverage;
 mod overlay;
 pub mod paths;
+pub mod pilot_flag;
 pub mod session;
 #[cfg(feature = "paint-stats")]
 pub use vantare_profiling as profiling;

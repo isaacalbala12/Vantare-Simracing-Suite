@@ -278,7 +278,7 @@ impl Settings {
 mod tests {
     #[test]
     fn aero_setting_hides_only_the_legend_and_preserves_svg_damage() {
-        let snapshot = vantare_ipc::snapshot_from_json(include_str!(
+        let snapshot = vantare_ipc::snapshot_from_fixture_json(include_str!(
             "../../fixtures/car-damage-visual.snapshot.json"
         ))
         .expect("scene");
@@ -301,7 +301,7 @@ mod tests {
     -> Result<(), vantare_ipc::Error> {
         // Workshop default/race/track/ready: dents [1,2,3,4,5,6,7,8]
         // producen daño 1 en las tres partes, es decir, integridad 0.
-        let snapshot = vantare_ipc::snapshot_from_json(include_str!(
+        let snapshot = vantare_ipc::snapshot_from_fixture_json(include_str!(
             "../../fixtures/car-damage-visual.snapshot.json"
         ))?;
         let vm = car_damage_visual::project(&snapshot, Preferences::default());

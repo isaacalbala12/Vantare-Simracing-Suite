@@ -66,6 +66,7 @@ pub(super) enum Kind {
 pub(super) struct Frame {
     pub track: String,
     pub kind: Option<Kind>,
+    pub session_number: i32,
     /// Reloj de sesión del simulador (`mCurrentET`).
     pub source_time: Option<Duration>,
     /// `mEndET`, en segundos de reloj de sesión.
@@ -74,6 +75,7 @@ pub(super) struct Frame {
     pub maximum_laps: Option<u32>,
     /// Longitud del circuito en metros; `None` si el simulador no la da.
     pub track_length_m: Option<f64>,
+    pub distance_to_start_line_m: Option<f64>,
     pub weather: Weather,
     pub vehicles: Vec<Vehicle>,
     pub player: Option<usize>,
@@ -171,7 +173,7 @@ pub(super) fn admit(buffer: &[u8], verified_build: &str) -> Result<Frame, Reject
         let vehicle = vehicle(buffer, SCORING_BASE + index * SCORING_STRIDE, &telemetry)?;
         if vehicles
             .iter()
-            .any(|seen: &Vehicle| seen.slot == vehicle.slot)
+            .any(|seen: &Vehicle| seen.slot == vehicle.slot || seen.position == vehicle.position)
         {
             return Err(Rejection::InvalidActiveGrid);
         }
@@ -184,6 +186,7 @@ pub(super) fn admit(buffer: &[u8], verified_build: &str) -> Result<Frame, Reject
     align_scoring_poses(buffer, &mut vehicles, player, &telemetry);
     Ok(Frame {
         track: track.trim().to_owned(),
+        session_number: read_i32(buffer, 1_696),
         kind: match read_i32(buffer, 1_696) {
             1..=4 => Some(Kind::Practice),
             5..=8 => Some(Kind::Qualifying),
@@ -199,6 +202,22 @@ pub(super) fn admit(buffer: &[u8], verified_build: &str) -> Result<Frame, Reject
             .ok()
             .filter(|laps| (1..=MAX_SESSION_LAPS).contains(laps)),
         track_length_m: (track_length.is_finite() && track_length > 0.0).then_some(track_length),
+        distance_to_start_line_m: player.and_then(|index| {
+            let vehicle = &vehicles[index];
+            let distance = read_f64(buffer, SCORING_BASE + index * SCORING_STRIDE + 104);
+            (track_length.is_finite()
+                && track_length > 0.0
+                && distance.is_finite()
+                && distance.abs() <= track_length
+                && !vehicle.in_pit)
+                .then(|| {
+                    if distance <= 0.0 {
+                        -distance
+                    } else {
+                        track_length - distance
+                    }
+                })
+        }),
         weather: if count == 0 {
             Weather::default()
         } else {
@@ -703,6 +722,39 @@ mod tests {
     const MENU_1420: &[u8] = include_bytes!("../../../../../testdata/lmu-1.4.2.0-menu-fixture.bin");
     const PLAYER_BASE: usize = TELEMETRY_BASE + 43 * TELEMETRY_STRIDE;
 
+    #[test]
+    fn start_line_distance_handles_grid_negatives_and_rejects_pits_and_bad_geometry() {
+        let mut bytes = REAL_44.to_vec();
+        let offset = SCORING_BASE + 43 * SCORING_STRIDE;
+        bytes[1720..1728].copy_from_slice(&5000.0_f64.to_le_bytes());
+        for (raw, expected) in [
+            (-30.0_f64, Some(30.0)),
+            (0.0, Some(0.0)),
+            (20.0, Some(4980.0)),
+            (5000.0, Some(0.0)),
+            (5001.0, None),
+            (-5001.0, None),
+        ] {
+            bytes[offset + 104..offset + 112].copy_from_slice(&raw.to_le_bytes());
+            assert_eq!(
+                admit(&bytes, "1.3.0.0").unwrap().distance_to_start_line_m,
+                expected
+            );
+        }
+        bytes[offset + 104..offset + 112].copy_from_slice(&20.0_f64.to_le_bytes());
+        bytes[offset + 198] = 1;
+        assert_eq!(
+            admit(&bytes, "1.3.0.0").unwrap().distance_to_start_line_m,
+            None
+        );
+        bytes[offset + 198] = 0;
+        bytes[1720..1728].copy_from_slice(&0.0_f64.to_le_bytes());
+        assert_eq!(
+            admit(&bytes, "1.3.0.0").unwrap().distance_to_start_line_m,
+            None
+        );
+    }
+
     /// Cada build fijada admite sus fixtures reales y solo su versión exacta.
     #[test]
     fn every_supported_build_admits_its_real_frames_and_only_its_exact_version() {
@@ -756,6 +808,30 @@ mod tests {
         );
         assert_eq!(first.class, "LMP2_ELMS");
         assert!((first.time_behind_leader_s.unwrap() - 82.575_340_27).abs() < 1e-6);
+    }
+
+    #[test]
+    fn player_inputs_follow_slot_identity_when_telemetry_rows_are_reordered() {
+        let original = admit(REAL_44, "1.3.0.0").unwrap();
+        let mut bytes = REAL_44.to_vec();
+        let last = TELEMETRY_BASE + 43 * TELEMETRY_STRIDE;
+        for offset in 0..TELEMETRY_STRIDE {
+            bytes.swap(TELEMETRY_BASE + offset, last + offset);
+        }
+        bytes[128_465] = 0; // Cabecera telemetry, no índice de scoring ni slot ID.
+        // mControl no sustituye mIsPlayer ni enlaza los dos arrays.
+        bytes[SCORING_BASE + 197] = 0;
+        bytes[SCORING_BASE + 43 * SCORING_STRIDE + 197] = 1;
+        let reordered = admit(&bytes, "1.3.0.0").unwrap();
+        assert_eq!(reordered.player, Some(43));
+        let before = original.vehicles[43].inputs.as_ref().unwrap();
+        let after = reordered.vehicles[43].inputs.as_ref().unwrap();
+        assert_eq!(reordered.vehicles[43].slot, original.vehicles[43].slot);
+        assert_eq!(after.speed_mps, before.speed_mps);
+        assert_eq!(after.source_time, before.source_time);
+        assert_eq!(after.engine_rpm, before.engine_rpm);
+        assert!(after.speed_mps.unwrap() > 15.0); // Captura real en movimiento.
+        assert!(reordered.vehicles[0].inputs.is_none());
     }
 
     /// Del sidecar del fixture: +x local a la izquierda, +z a la trasera y las
@@ -1059,6 +1135,16 @@ mod tests {
                 "offset {offset}"
             );
         }
+    }
+
+    #[test]
+    fn duplicated_native_positions_are_rejected_before_publishing_two_leaders() {
+        let mut bytes = REAL_44.to_vec();
+        bytes[SCORING_BASE + SCORING_STRIDE + 199] = bytes[SCORING_BASE + 199];
+        assert_eq!(
+            admit(&bytes, "1.3.0.0").err(),
+            Some(Rejection::InvalidActiveGrid)
+        );
     }
 
     /// El parser indexa un buffer de tamano fijo con offsets constantes y con

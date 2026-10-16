@@ -581,7 +581,7 @@ mod tests {
     fn configured_cards_weather_and_carousel_follow_product_options() {
         let prefs = Preferences::default();
         let snapshot =
-            vantare_ipc::snapshot_from_json(include_str!("../../fixtures/standings.snapshot.json"))
+            vantare_ipc::snapshot_from_fixture_json(include_str!("../../fixtures/standings.snapshot.json"))
                 .expect("escena");
         for count in [3, 5, 10] {
             let mut widget = Widget::new(
@@ -649,7 +649,7 @@ mod tests {
 
     #[test]
     fn current_lap_uses_the_player_and_preserves_reference_absence() {
-        let mut data = vantare_ipc::snapshot_from_json(include_str!(
+        let mut data = vantare_ipc::snapshot_from_fixture_json(include_str!(
             "../../fixtures/broadcast-tower.snapshot.json"
         ))
         .expect("escena DTO v4");
@@ -669,7 +669,7 @@ mod tests {
 
     #[test]
     fn frozen_scene_decodes_and_preserves_the_product_texts_without_inventing_lap_or_gap() {
-        let snapshot = vantare_ipc::snapshot_from_json(include_str!(
+        let snapshot = vantare_ipc::snapshot_from_fixture_json(include_str!(
             "../../fixtures/broadcast-tower.snapshot.json"
         ))
         .expect("escena Broadcast Tower DTO v4");

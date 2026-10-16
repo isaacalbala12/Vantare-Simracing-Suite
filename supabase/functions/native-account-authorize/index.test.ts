@@ -58,10 +58,10 @@ Deno.test("data authorization signs actual HS256, internal UUID and bounded expi
   const tokenClaims = JSON.parse(new TextDecoder().decode(decode(payload)));
   assert(
     tokenClaims.sub === account && tokenClaims.role === "authenticated" &&
-      tokenClaims.aud === "authenticated",
+      tokenClaims.aud === "vantare-native-data",
   );
   assert(
-    tokenClaims.iss === `${signing.supabaseUrl}/auth/v1` &&
+    tokenClaims.iss === `${signing.supabaseUrl}/native-data/v1` &&
       tokenClaims.exp - tokenClaims.iat === 300,
   );
   assert(

@@ -13,6 +13,7 @@ import { getSupabaseAdmin } from "../_shared/supabase-admin.ts";
 import {
   type NativeConfig,
   NativeError,
+  requireUnblocked,
   verifyNativeOAuth,
 } from "../_shared/native-auth.ts";
 
@@ -24,6 +25,7 @@ export type NativeLicenseDeps = Pick<CredentialDeps, "now" | "sign"> & {
     issuer: string,
     subject: string,
     fingerprint: string,
+    environment: BillingEnvironment,
   ) => Promise<CredentialState>;
 };
 
@@ -77,17 +79,27 @@ export async function handleNativeLicenseRequest(
     }
 
     const verified = await verifyNativeOAuth(token, deps);
+    try {
+      await requireUnblocked(verified.subject, deps);
+    } catch (error) {
+      if (error instanceof NativeError && error.status === 404) {
+        throw new NativeError(401, "unauthorized");
+      }
+      throw error;
+    }
     const { issuer, now } = verified;
+    const environment = deps.environment ?? requirePolarEnvironment();
 
     const loaded = await (deps.load ?? loadNativeCredentialAccount)(
       issuer,
       verified.subject,
       deviceFingerprint,
+      environment,
     );
     const response = await issueCredential(
       loaded,
       deviceFingerprint,
-      deps.environment ?? requirePolarEnvironment(),
+      environment,
       { ...deps, now: () => now, includeModules: true },
     );
     if (response.status === 409) {
@@ -104,6 +116,12 @@ export async function handleNativeLicenseRequest(
     response.headers.set("Cache-Control", "no-store");
     return response;
   } catch (error) {
+    if (
+      error && typeof error === "object" && "code" in error &&
+      error.code === "28000"
+    ) {
+      return failure(401, "unauthorized", "Account is not active");
+    }
     if (error instanceof NativeError) {
       return failure(error.status, error.code, "OAuth authorization failed");
     }
@@ -127,6 +145,7 @@ async function loadNativeCredentialAccount(
   issuer: string,
   subject: string,
   fingerprint: string,
+  environment: BillingEnvironment,
 ): Promise<CredentialState> {
   const admin = getSupabaseAdmin();
   const { data: accountId, error } = await admin.rpc(
@@ -139,7 +158,12 @@ async function loadNativeCredentialAccount(
   );
   if (error) throw error;
   if (typeof accountId !== "string") throw new Error("Invalid account result");
-  return await loadCredentialAccount(admin, accountId, fingerprint);
+  return await loadCredentialAccount(
+    admin,
+    accountId,
+    fingerprint,
+    environment,
+  );
 }
 
 if (import.meta.main) {

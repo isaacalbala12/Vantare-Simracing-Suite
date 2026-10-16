@@ -167,12 +167,17 @@ impl Series {
             block.gap = true;
             return;
         };
-        if let Some(last) = block.samples.last()
-            && (last.distance_m.current().is_some_and(|v| distance < *v)
-                || last.elapsed_s.current().is_some_and(|v| elapsed < *v))
-        {
-            block.gap = true;
-            self.waiting_for_lap = true;
+        if let Some(last) = block.samples.last() {
+            if last.elapsed_s.current().is_some_and(|v| elapsed < *v) {
+                block.gap = true;
+                self.waiting_for_lap = true;
+            }
+            if last.distance_m.current().is_some_and(|v| distance < *v) {
+                // Maniobra con reloj creciente: omitir hasta recuperar el
+                // último progreso retenido, sin perder el resto de la vuelta.
+                block.gap = true;
+                return;
+            }
         }
         if self.waiting_for_lap {
             return;

@@ -22,6 +22,7 @@ pub mod http;
 pub mod license;
 #[cfg(feature = "network")]
 pub mod license_remote;
+pub mod pilot;
 #[cfg(any(windows, unix))]
 pub mod process;
 pub use vantare_ipc::product;
@@ -33,6 +34,8 @@ pub mod roadmap;
 pub mod storage;
 #[cfg(feature = "network")]
 mod testing;
+#[cfg(feature = "network")]
+pub(crate) mod triage;
 pub mod update_manifest;
 
 pub use error::{Error, Result};

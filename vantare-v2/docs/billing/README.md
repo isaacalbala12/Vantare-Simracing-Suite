@@ -22,6 +22,9 @@ Entrada contrastada con el código de nightly del 2026-09-14. [Notion](https://a
 | Aceptación comercial | [Matriz sandbox](bil-09-lifecycle-matrix.md) |
 | Métricas, errores y diagnóstico | [Observabilidad](bil-10-observability-runbook.md) |
 | Tester, Nightly Tester, Owner o retiro legacy | [Acceso operativo](bil-10c-operational-access-runbook.md) |
+| Cambio de precios Pro (mensual/anual) y vuelta atrás | [Precios Pro](bil-11-polar-precios-pro-runbook.md) |
+| Checkout app/web, guard compartido y baja D1 (VANTA-42 / #1620) | [Checkout compartido](checkout-web-shared.md) |
+| Catálogo completo Pro/Plus, lanzamiento y creadores (#1620) | [Catálogo de lanzamiento](isa-1620-polar-launch-catalog.md) |
 
 Los estados «no desplegado», resultados y recuentos BIL pertenecen a sus cortes originales; releer tarea, SHA y evidencia de despliegue antes de operar. Los comandos Deno/SQL se ejecutan desde la raíz Git; `go run ./cmd/vantare-admin` desde `vantare-v2/`. Las matrices PostgreSQL requieren el entorno Docker/PowerShell declarado por su runner. Dry-run no significa offline: puede leer servicios remotos y necesita el entorno administrativo autorizado.
 
@@ -30,3 +33,5 @@ Los estados «no desplegado», resultados y recuentos BIL pertenecen a sus corte
 Los comandos legacy `vantare-admin grant`/`revoke` son bocetos no operativos en este checkout: sus helpers devuelven `not implemented in this version`. No reparan la fuente comercial de Polar. Para una discrepancia usar reconciliación y diagnosticar la fuente. Para acceso operativo usar el subcomando auditado, con preview y autorización cuando corresponda. No convertir una incidencia de compra en un grant manual.
 
 Guardar evidencia sanitizada en Notion: código/SHA, entorno, resultado y conteos. No copiar tokens, PII ni material privado. No hay venta pública habilitada por mantener estos runbooks: hacen falta la matriz comercial, el estado verificado y la aceptación aplicable.
+
+- [Configuración de compra en producción y registro de ofertas #1673](production-purchase-configuration.md).

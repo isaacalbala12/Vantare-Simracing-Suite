@@ -1,9 +1,9 @@
 # Captura física demo, sin compilar ni tocar cuentas. Evidencia fuera del repo.
 param(
     [string]$Executable = (Join-Path $PSScriptRoot '../target/debug/vantare-admin.exe'),
-    [string]$Out = 'C:/tmp/isa-1456-evidence',
+    [string]$Out = 'C:/tmp/isa-1627-evidence',
     [string]$ReviewedNotesHash = '',
-    [ValidateSet('users', 'rollout', 'reports')][string[]]$Screens = @('users', 'rollout', 'reports')
+    [ValidateSet('login', 'users', 'creators', 'rollout', 'reports')][string[]]$Screens = @('login', 'users', 'creators', 'reports', 'rollout')
 )
 $ErrorActionPreference = 'Stop'
 $Executable = (Resolve-Path -LiteralPath $Executable).Path

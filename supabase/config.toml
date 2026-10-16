@@ -38,3 +38,35 @@ verify_jwt = false
 verify_jwt = false
 [functions.native-billing-portal]
 verify_jwt = false
+
+# #1610 review candidate only. Handler verifies the native bridge JWT itself.
+# Not included in any deployment wrapper; activation needs separate approval.
+[functions.testing-report-submit]
+verify_jwt = false
+
+# #1608 local review candidate; absent from deploy wrappers. Svix verified in handler.
+[functions.clerk-webhook]
+verify_jwt = false
+
+# #1608 local-only reconciliation; no scheduler or deploy wrapper.
+[functions.billing-reconcile]
+verify_jwt = false
+
+# #1593 review candidate only; dedicated server secret verified in handler.
+# This does not add a deployment wrapper or enable the campaign.
+[functions.billing-report-promotion]
+verify_jwt = false
+
+# #1636 review candidate. Public withdrawals authenticate their signed link or webhook header.
+[functions.mail-unsubscribe]
+verify_jwt = false
+[functions.mail-webhook]
+verify_jwt = false
+
+# #1636 R2, queue-only authenticated maintenance worker; no scheduler configured.
+[functions.mail-cleanup]
+verify_jwt = false
+
+# #1636 R2, native OAuth + verified primary email enforced by handler.
+[functions.native-mail-consent]
+verify_jwt = false

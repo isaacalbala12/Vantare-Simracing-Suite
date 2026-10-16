@@ -12,6 +12,17 @@ use super::translate::Translator;
 /// Un suceso grabado. `at` es el instante en el reloj del núcleo desde el que
 /// puede entregarse.
 pub enum ReplayEvent {
+    /// Una respuesta individual: la caché aplica los mismos límites que en vivo.
+    Endpoint {
+        at: Duration,
+        started: Duration,
+        path: String,
+        body: Option<Vec<u8>>,
+    },
+    /// Lectura no productiva o rasgada: avanza el reloj sin inventar una foto.
+    Tick { at: Duration },
+    /// Pérdida explícita del mapping.
+    Disconnected { at: Duration },
     /// Un frame completo de `LMU_Data`.
     Shm { at: Duration, frame: Vec<u8> },
     /// Una ronda REST completa, con el instante en que empezó cada consulta.
@@ -27,7 +38,11 @@ pub enum ReplayEvent {
 impl ReplayEvent {
     fn at(&self) -> Duration {
         match self {
-            Self::Shm { at, .. } | Self::Rest { at, .. } => *at,
+            Self::Shm { at, .. }
+            | Self::Rest { at, .. }
+            | Self::Endpoint { at, .. }
+            | Self::Tick { at }
+            | Self::Disconnected { at } => *at,
         }
     }
 }
@@ -42,6 +57,15 @@ pub struct Replay {
 }
 
 impl Replay {
+    /// Siguiente instante del archivo; permite QA acelerada sin cambiar TTLs.
+    pub fn next_recorded_at(&mut self) -> Option<Duration> {
+        if self.failure.is_some() {
+            return None;
+        }
+        self.events
+            .peek()
+            .map(|event| event.as_ref().map_or(Duration::ZERO, ReplayEvent::at))
+    }
     /// `build`: versión de LMU con que se grabó (la admisión del frame la exige).
     /// Los eventos se leen bajo demanda: un corpus grande no se carga entero.
     pub fn new(
@@ -86,6 +110,33 @@ impl Adapter for Replay {
             AdapterError::Rejected(message)
         })?;
         match event {
+            ReplayEvent::Tick { .. } => return Ok(None),
+            ReplayEvent::Disconnected { .. } => {
+                self.latest = None;
+                return Err(AdapterError::Disconnected);
+            }
+            ReplayEvent::Endpoint {
+                started,
+                path,
+                body,
+                ..
+            } => {
+                // Igual que live::take_rest: un error deja envejecer la caché.
+                let accepted = body.is_some_and(|body| match path.as_str() {
+                    "/rest/watch/standings" => self
+                        .translator
+                        .rest
+                        .accept_standings(&body, started)
+                        .is_ok(),
+                    "/rest/watch/sessionInfo" => {
+                        self.translator.rest.accept_session(&body, started).is_ok()
+                    }
+                    _ => false,
+                });
+                if !accepted {
+                    return Ok(None);
+                }
+            }
             ReplayEvent::Shm { frame, .. } => self.latest = Some(frame),
             ReplayEvent::Rest {
                 standings,

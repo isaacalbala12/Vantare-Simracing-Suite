@@ -64,6 +64,7 @@ pub(crate) struct Widget {
     started: Option<Instant>,
     identity: Option<(u64, SessionId, Option<CarId>)>,
     trace: Trace,
+    paint_samples: Option<std::sync::Arc<Vec<Sample>>>,
 }
 
 impl Widget {
@@ -76,6 +77,7 @@ impl Widget {
             started: None,
             identity: None,
             trace: Trace::default(),
+            paint_samples: None,
         }
     }
 
@@ -101,6 +103,9 @@ impl Widget {
             snapshot,
             Duration::from_secs(u64::from(self.settings.history_seconds)),
         );
+        if trace_changed {
+            self.paint_samples = None;
+        }
         let next = self.settings.project(snapshot, prefs);
         if reset {
             self.from = next.pedals;
@@ -136,7 +141,7 @@ impl Widget {
         } else {
             self.pedals_at(now)
         };
-        let samples: Vec<_> = self.trace.samples().iter().copied().collect();
+        let samples = self.paint_samples();
         let wake = if !reduced && self.moving(now) {
             Wake::Frame
         } else {
@@ -148,11 +153,22 @@ impl Widget {
         )
     }
 
+    fn paint_samples(&mut self) -> std::sync::Arc<Vec<Sample>> {
+        self.paint_samples
+            .get_or_insert_with(|| {
+                std::sync::Arc::new(self.trace.samples().iter().copied().collect())
+            })
+            .clone()
+    }
+
     #[cfg(feature = "parity-capture")]
     pub(crate) fn animating(&self) -> bool {
         self.moving(Instant::now())
     }
 }
+
+#[cfg(test)]
+mod performance_tests;
 
 fn interpolate(
     from: [Option<f64>; 3],
@@ -348,7 +364,7 @@ mod tests {
         let prefs = Preferences::default();
         let now = Instant::now();
         let mut snapshot =
-            vantare_ipc::snapshot_from_json(include_str!("../../fixtures/pedals.snapshot.json"))
+            vantare_ipc::snapshot_from_fixture_json(include_str!("../../fixtures/pedals.snapshot.json"))
                 .expect("foto de pedales");
         let mut widget = Widget::new(&Settings::default(), prefs);
         widget.ingest_at(&snapshot, prefs, now);
@@ -522,7 +538,7 @@ mod tests {
 
     #[test]
     fn unsupported_clutch_uses_two_bars_and_has_no_trace() {
-        let mut snapshot = vantare_ipc::snapshot_from_json(include_str!(
+        let mut snapshot = vantare_ipc::snapshot_from_fixture_json(include_str!(
             "../../fixtures/telemetry-real/lmu47.snapshot.json"
         ))
         .expect("corpus");

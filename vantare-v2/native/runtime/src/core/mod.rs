@@ -293,7 +293,7 @@ impl Core {
                 "SHM mCurrentET sin avance >=500ms; proceso vivo y REST de sesión <500ms"
             }
             SourceState::Stale if advanced && origin.source_time.is_some() => {
-                "adaptador: reloj SHM avanzando en recuperación de 2000ms tras caducar a 500ms"
+                "adaptador: fuente caducada pese a un nuevo reloj de origen"
             }
             SourceState::Stale => "adaptador: reloj SHM mCurrentET >=500ms sin pausa confirmada",
             SourceState::Live => "reloj de fuente avanzando",

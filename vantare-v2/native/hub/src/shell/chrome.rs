@@ -90,6 +90,7 @@ impl Hub {
             self.shell.navigation_notice = Some(format!("{} · {reason}", section.label()));
         } else {
             self.shell.navigation_notice = None;
+            self.poll_usage(cx, true);
         }
         cx.notify();
     }

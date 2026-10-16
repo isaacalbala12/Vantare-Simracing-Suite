@@ -1,0 +1,12 @@
+begin; select no_plan();
+insert into public.profiles(id) values('16270000-0000-4000-8000-000000000001'),('16270000-0000-4000-8000-000000000002');
+select * from public.operational_access_set('16270000-0000-4000-8000-000000000001','owner','grant','test:admin','Admin r3','test:r3',null);
+select public.native_admin_execute('16270000-0000-4000-8000-000000000001','https://clerk.admin.test','create_creator','{"name":"Persona privada","email":"privado@example.invalid","code":"PRIVADO"}','sandbox');
+create function pg_temp.read(a text,p jsonb default '{}'::jsonb) returns jsonb language sql as $$ select public.native_admin_execute('16270000-0000-4000-8000-000000000001','https://clerk.admin.test',a,p,'sandbox') $$;
+select pg_temp.read('list_creators');
+select pg_temp.read('get_creator',jsonb_build_object('creator_id',(select creator_id from private.admin_creators limit 1)));
+select pg_temp.read('get_account','{"account_id":"16270000-0000-4000-8000-000000000002"}');
+select pg_temp.read('search_accounts','{"query":"","limit":50}');
+select ok(not exists(select 1 from public.admin_audit_log where action in('get_creator','list_creators','get_account','search_accounts') and (before_value is not null or after_value is not null)),'las lecturas no duplican datos personales ni pagos');
+select is((select count(*)::int from public.admin_audit_log where action in('get_creator','list_creators','get_account','search_accounts') and actor_account_id='16270000-0000-4000-8000-000000000001' and target is not null and occurred_at is not null),4,'auditoría conserva quién, qué, cuándo y objetivo');
+select * from finish(); rollback;

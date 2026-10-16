@@ -300,7 +300,9 @@ impl Owner {
         let module = |key: &str| {
             valid
                 && catalog.allows_module(key)
-                && (operational || rights.iter().any(|right| right == key))
+                && (operational
+                    || catalog == vantare_ipc::control::CatalogAccess::Founders
+                    || rights.iter().any(|right| right == key))
         };
         self.policy.revision = self.policy.revision.checked_add(1).ok_or(Error::Protocol)?;
         self.policy.checked_at_ms =
@@ -332,14 +334,7 @@ impl Owner {
         });
         let decision_rights: Vec<_> = rights
             .into_iter()
-            .filter(|key| {
-                key.starts_with("vantare.module.")
-                    || key.starts_with("vantare.operational.")
-                    || matches!(
-                        key.as_str(),
-                        "vantare.plan.pro" | "vantare.edition.launch_v1"
-                    )
-            })
+            .filter(|key| affects_policy(key))
             .collect();
         self.policy.valid_until_ms = self
             .authority
@@ -355,6 +350,16 @@ impl Owner {
     pub fn policy(&self) -> Policy {
         self.policy.clone()
     }
+}
+
+// Only rights that affect the current policy participate in its expiry deadline.
+fn affects_policy(key: &str) -> bool {
+    key.starts_with("vantare.module.")
+        || key.starts_with("vantare.operational.")
+        || matches!(
+            key,
+            "vantare.plan.pro" | "vantare.plan.founders" | "vantare.edition.launch_v1"
+        )
 }
 
 fn session_identity(snapshot: &Snapshot, started: Option<&str>) -> Option<SessionIdentity> {

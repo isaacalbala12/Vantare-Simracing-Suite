@@ -116,8 +116,14 @@ impl DataSession {
                 | "rest/v1/rpc/testing_center_finalize_screenshot"
                 | "rest/v1/rpc/testing_center_submit_report_with_evidence"
                 | "rest/v1/rpc/testing_participation_current"
+                | "rest/v1/rpc/testing_participation_current_v2"
+                | "functions/v1/testing-report-submit"
+                | "rest/v1/rpc/testing_report_credit"
+                | "rest/v1/rpc/testing_report_notice_read"
                 | "rest/v1/rpc/testing_answer_save"
                 | "rest/v1/rpc/testing_contribution_submit"
+                | "rest/v1/rpc/pilot_profile_load"
+                | "rest/v1/rpc/pilot_profile_save"
         ) {
             return Err(Error::Protocol);
         }
@@ -158,6 +164,50 @@ pub struct DataRequest<'a> {
     now: u64,
 }
 impl DataRequest<'_> {
+    pub(crate) fn pilot_photo(
+        &self,
+        hash: &str,
+        upload: Option<&[u8]>,
+    ) -> Result<crate::http::Response> {
+        self.check()?;
+        if hash.len() != 64
+            || !hash
+                .bytes()
+                .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+        {
+            return Err(Error::Protocol);
+        }
+        let url = self
+            .config
+            .supabase
+            .join(&format!(
+                "storage/v1/object/pilot-photos/{}/{hash}.jpg",
+                self.account_id()
+            ))
+            .map_err(|_| Error::Protocol)?;
+        if let Some(bytes) = upload {
+            self.http.upload_jpeg(
+                &url,
+                bytes,
+                self.session.token.expose(),
+                &self.config.anon_key,
+            )
+        } else {
+            let url = self
+                .config
+                .supabase
+                .join(&format!(
+                    "storage/v1/object/authenticated/pilot-photos/{}/{hash}.jpg",
+                    self.account_id()
+                ))
+                .map_err(|_| Error::Protocol)?;
+            self.http.get(
+                &url,
+                Some(self.session.token.expose()),
+                Some(&self.config.anon_key),
+            )
+        }
+    }
     pub(crate) fn upload(&self, object: &str, bytes: &[u8]) -> Result<crate::http::Response> {
         self.check()?;
         // Solo nombres canónicos ya validados por screenshots::upload.

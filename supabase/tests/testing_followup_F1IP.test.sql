@@ -1,0 +1,31 @@
+-- Real ACLs and durable admission, synthetic hashes only; no IP storage.
+begin;
+select plan(26);
+insert into public.profiles(id) values
+ ('16100000-0000-0000-0000-000000000001'),('16100000-0000-0000-0000-000000000002');
+set local role service_role;
+select ok(public.testing_report_admit('ip',repeat('a',64),date_trunc('week',clock_timestamp() at time zone 'UTC')::date),'IP admits first five') from generate_series(1,5);
+select ok(not public.testing_report_admit('ip',repeat('a',64),date_trunc('week',clock_timestamp() at time zone 'UTC')::date),'second account same IP cannot reset budget');
+select ok(public.testing_report_admit('account','16100000-0000-0000-0000-000000000001',date_trunc('week',clock_timestamp() at time zone 'UTC')::date),'account first five across IPs') from generate_series(1,5);
+select ok(not public.testing_report_admit('account','16100000-0000-0000-0000-000000000001',date_trunc('week',clock_timestamp() at time zone 'UTC')::date),'sixth from a different IP cannot reset account');
+select lives_ok($$select public.testing_report_submit_admitted('16100000-0000-0000-0000-000000000002','16100000-0000-0000-0000-000000000021','master','Synthetic','Synthetic',true)$$,'server verified account can submit');
+reset role;
+select is((select count(*)::integer from public.testing_contributions where account_id='16100000-0000-0000-0000-000000000002'),1,'server identity preserved');
+select ok(not has_function_privilege('authenticated','public.testing_report_submit_admitted(uuid,uuid,text,text,text,boolean)','execute'),'client cannot bypass Edge');
+select ok(not has_table_privilege('authenticated','private.testing_report_attempts','select'),'hash counters are private');
+select is((select sum(attempts)::integer from private.testing_report_attempts where scope='ip' and subject=repeat('a',64)),6,'denied attempt durable');
+select ok(not has_function_privilege('authenticated','public.testing_report_admit(text,text,date)','execute'),'client cannot invent admission');
+select ok(not has_function_privilege('anon','public.testing_report_submit_admitted(uuid,uuid,text,text,text,boolean)','execute'),'anon cannot submit');
+select ok(not has_function_privilege('service_role','public.testing_report_submit(uuid,text,text,text,boolean)','execute'),'old direct RPC stays closed');
+insert into private.testing_report_attempts values('ip',repeat('c',64),date_trunc('week',clock_timestamp() at time zone 'UTC')::date,(clock_timestamp() at time zone 'UTC')::date-1,20);
+insert into private.testing_report_attempts values('ip',repeat('d',64),date_trunc('week',clock_timestamp() at time zone 'UTC')::date-14,(clock_timestamp() at time zone 'UTC')::date-14,5);
+set local role service_role;
+select ok(not public.testing_report_admit('ip',repeat('c',64),date_trunc('week',clock_timestamp() at time zone 'UTC')::date),'weekly IP budget includes previous days');
+select throws_ok($$select public.testing_report_admit('ip',repeat('a',64),'2020-01-01')$$,'22023',null,'client week cannot select another bucket');
+select throws_ok($$select public.testing_report_admit('ip','192.0.2.10',date_trunc('week',clock_timestamp() at time zone 'UTC')::date)$$,'22023',null,'raw IP cannot be stored');
+select lives_ok($$select public.testing_report_submit_admitted('16100000-0000-0000-0000-000000000002','16100000-0000-0000-0000-000000000021','master','Synthetic','Synthetic',true)$$,'retry is idempotent behind admission');
+select throws_ok($$select public.testing_report_submit_admitted('16100000-0000-0000-0000-000000000001','16100000-0000-0000-0000-000000000021','master','Synthetic','Synthetic',true)$$,'23505',null,'other account cannot take retry identity');
+reset role;
+select is((select count(*)::integer from private.testing_report_attempts where subject=repeat('d',64)),0,'expired hash counters purged on admission');
+select * from finish();
+rollback;

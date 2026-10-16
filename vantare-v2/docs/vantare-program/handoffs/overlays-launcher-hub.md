@@ -198,3 +198,9 @@ Nightly avanzó durante los gates a a3fea01f9 (#1679, pulido de telemetría):
 también incorporado por merge sin conflictos. La regresión de documento ahora
 comprueba reutilizar Pedals ya existente, conservando su orden y posición al
 añadir los otros tres widgets Gratis; no se reordena el layout del usuario.
+El arnés activa también el detector de fugas de GPUI. La prueba previa de catálogo
+creaba miniaturas con entidades fuera de draw y retenía sus handles en el arena
+TLS hasta salir del hilo: se adapta a una ventana de TestPlatform y libera su
+arena después de cada render. Conserva las aserciones de los tres cambios de
+catálogo, bloqueo de widgets, documento intacto e ingestión de la siguiente foto.
+No se desactiva el detector ni se omite la prueba.

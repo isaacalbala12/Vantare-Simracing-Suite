@@ -42,6 +42,24 @@ protegen situación, transiciones, política y preview. No certifica juego/OBS f
 
 ## #1638 · Relojes para avisos
 
+Pulido posterior a #1664: después de caducar, cada bloque LMU necesita dos
+avances de su propio reloj separados por menos de 500 ms. Las lecturas
+duplicadas no cuentan y un reloj ausente interrumpe esa confirmación. Un tick
+aislado seguido de otro congelamiento conserva `Stale`; no se exige la antigua
+ventana continua de 2 s. Scoring y telemetría se recuperan por separado.
+
+El lector `.lmu.gz` limita el historial XOR a **64 MiB agregados**, incluyendo
+las claves. Rechaza antes de reservar el cuerpo si no cabe; no expulsa fuentes
+porque se perdería la base del siguiente delta. Sigue admitiendo hasta 16 MiB
+por cuerpo, 256 KiB de metadatos y 512 claves. Los temporales de reconstrucción
+y el consumidor son memoria adicional a ese historial; no es una promesa de
+RSS total de 64 MiB. Al reducir una fuente libera su reserva anterior.
+
+La energía virtual admite los tokens ASCII de clase Hyper, Hypercar, LMH y
+LMDh, sin distinguir mayúsculas y con separadores/sufijos numéricos. La detección
+no crea un `String` por frame. Una clase desconocida no hereda energía solo
+porque REST incluya `veFraction`; se mantiene `Unavailable`.
+
 El contrato live vigente es DTO v11 (recompilar todos los consumidores).
 LMU publica `session.timing.scheduled_end_s` desde mEndET válido y la distancia
 longitudinal estimada a la próxima línea de salida/meta desde mLapDist y

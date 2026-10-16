@@ -32,6 +32,63 @@ fn replay() -> Replay {
 }
 
 #[test]
+fn hypercar_class_aliases_keep_real_energy_and_other_classes_do_not_inherit_it() {
+    // Frontera sintética de nombres sobre SHM/REST reales; no nuevas capturas.
+    for (class, hypercar) in [
+        ("Hyper", true),
+        ("HYPER", true),
+        ("Hypercar", true),
+        ("WEC Hypercar 2026", true),
+        ("LMH", true),
+        ("lmdh", true),
+        ("LMP2", false),
+        ("LMGT3", false),
+        ("SuperHyperGT", false),
+    ] {
+        let mut frame = FRAME.to_vec();
+        let base = 2192 + 36 * 584;
+        assert_eq!(frame[base + 196], 1, "jugador real del fixture");
+        frame[base + 200..base + 232].fill(0);
+        frame[base + 200..base + 200 + class.len()].copy_from_slice(class.as_bytes());
+        let mut source = Replay::new(
+            "1.4.2.0",
+            [
+                ReplayEvent::Shm {
+                    at: Duration::ZERO,
+                    frame,
+                },
+                ReplayEvent::Rest {
+                    at: Duration::ZERO,
+                    standings: STANDINGS.to_vec(),
+                    standings_started: Duration::ZERO,
+                    session: SESSION.to_vec(),
+                    session_started: Duration::ZERO,
+                },
+            ],
+        );
+        source.poll(Duration::ZERO).expect("SHM");
+        let energy = source
+            .poll(Duration::ZERO)
+            .expect("REST")
+            .expect("foto")
+            .state
+            .player
+            .expect("jugador")
+            .fuel
+            .energy;
+        assert_eq!(
+            energy,
+            if hypercar {
+                Quality::Reliable(0.999_952_018_260_955_8)
+            } else {
+                Quality::Unavailable
+            },
+            "{class}"
+        );
+    }
+}
+
+#[test]
 fn real_rest_delivers_sector_flags_energy_and_table_fields_through_the_live_dto() {
     let mut replay = replay();
     replay.poll(Duration::ZERO).expect("SHM");

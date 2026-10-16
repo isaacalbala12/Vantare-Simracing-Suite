@@ -410,8 +410,15 @@ mod tests {
         core.step(&mut lmu, MS(0)).unwrap();
         let player = core.snapshot().state.player;
         frame[1700..1708].copy_from_slice(&113.0_f64.to_le_bytes());
-        *script.lock().unwrap() = Ok(frame);
+        *script.lock().unwrap() = Ok(frame.clone());
         core.step(&mut lmu, MS(500)).unwrap();
+        assert_eq!(
+            core.snapshot().state.source_state,
+            vantare_domain::SourceState::Stale
+        );
+        frame[1700..1708].copy_from_slice(&113.2_f64.to_le_bytes());
+        *script.lock().unwrap() = Ok(frame);
+        core.step(&mut lmu, MS(700)).unwrap();
         let latest = core.snapshot();
         assert_eq!(latest.state.source_state, vantare_domain::SourceState::Live);
         assert_eq!(
@@ -420,9 +427,9 @@ mod tests {
         );
         lmu.translator
             .rest
-            .accept_session(br#"{"session":"PRACTICE1"}"#, MS(1000))
+            .accept_session(br#"{"session":"PRACTICE1"}"#, MS(1200))
             .unwrap();
-        core.step(&mut lmu, MS(1000)).unwrap();
+        core.step(&mut lmu, MS(1200)).unwrap();
         let paused = core.snapshot();
         assert_eq!(
             paused.state.source_state,

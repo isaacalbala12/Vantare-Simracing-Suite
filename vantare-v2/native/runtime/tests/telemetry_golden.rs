@@ -1,4 +1,22 @@
-//! Goldens congelados en 0ad40522: DTO completos de capturas reales, sin reloj de pared.
+//! Vista v9 de goldens congelados en 0ad40522, sin reloj de pared.
+//!
+//! Cobertura de este binario (no es una comparación íntegra del DTO live v11):
+//! - `every_golden_dto_survives_the_reader_byte_for_byte`: codec guardado/vista v9.
+//! - `lmu_real_fixtures_match_frozen_dtos`: fixtures SHM de pista y menú por build.
+//! - `lmu_real_temporal_corpus_matches_frozen_dtos`: 3839 observaciones SHM/REST.
+//! - `acc_real_corpus_matches_frozen_dtos`: corpus ACC, hashes y correcciones de orden.
+//! - `input_sequence_matches_real_lmu47_replay_with_observed_clock`: primeras 12 fotos.
+//! - `lmu47_comparison_only_allows_one_ulp_in_yaw`: tolerancia solo en yaw, no calidad.
+//! - `core_invariants_hold_on_every_real_photo`: invariantes de revisión/orden/gaps.
+//! - `lmu_practice_gaps_follow_the_position`: orden/gaps de práctica LMU.
+//! - `acc_native_positions_stay_unique_during_overtakes`: orden único en adelantamientos.
+//!
+//! `legacy_dto` omite vehículo/paradas LMU, ceros REST calma/seco, situación v10
+//! y los siete campos v11. No los certifica este golden: `launch_coverage`
+//! comprueba SHM/REST, energía y tiempos; `lmu_conformance` etiquetas/paradas;
+//! `signals_tests` ceros/TTL/identidad; `ipc` codec v11 y sus calidades.
+//! `gate`/`cadence_tests` protegen congelamiento/recuperación, también con Imola.
+//! No se reescriben goldens ni se ocultan cambios de frescura en esta vista.
 use std::fs;
 use std::io::{BufRead, BufReader, Read};
 use std::path::Path;
@@ -41,7 +59,7 @@ fn legacy_dto(snapshot: &vantare_domain::Snapshot) -> String {
             }
         }
     }
-    let dto = vantare_ipc::snapshot_to_json(&snapshot).expect("DTO v10");
+    let dto = vantare_ipc::snapshot_to_json(&snapshot).expect("DTO live vigente");
     let start = dto.find(",\"driving_situation\":").expect("situation v10");
     let end = start + 1 + dto[start + 1..].find(',').expect("metadata siguiente");
     let mut old = dto;

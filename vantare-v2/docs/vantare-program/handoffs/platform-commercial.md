@@ -2953,12 +2953,26 @@ milestone «Plataforma, CI y releases · testers». No crea binarios
 distribuibles ni prueba una firma real. La CI no publica instaladores/releases;
 la preparación manual autorizada sigue siendo `publish-beta.ps1`.
 
-Gates Rust secuenciales por `native/scripts/compilar.ps1`, mínimo RAM solicitado
-0 y target exclusivo del worktree: pendientes mientras la cola está ocupada.
-Evidencia de esta continuación: `C:/VantareServer/evidence/installer-1591/`.
-Siguiente: cerrar fmt/check/Clippy/Nextest de installer/build-support y lifecycle,
-push, PR ready y verificar ambos checks requeridos. Sin tocar firma USB ni
-publicación; sin secretos, `.env`, ventanas, subagentes, merge o release.
+Código y CI propios de esta continuación: `a18ab4379010a4d0f1fb46c50154e9a5b9368828`,
+push verificado. Gates Rust secuenciales por `native/scripts/compilar.ps1`,
+`VANTARE_CARGO_MIN_GB=0`, jobs 2, locked/offline y target exclusivo
+`native/target/gates`: fmt de workspace, check y Clippy (`-D warnings`, todos
+los targets de installer/build-support), Nextest 8/8 sin omisiones y lifecycle
+18/18 PASS. El único intento retirado antes de compilar fue una espera propia
+para reagrupar los gates en un runner secuencial; no hubo errores del compilador.
+Telemetría local omitida: el diff propio no cambia runtime/domain/ipc/testdata;
+la CI aplica además el clasificador vigente al PR completo.
+Evidencia: `C:/VantareServer/evidence/installer-1591/`, logs por gate y
+`gates.ps1` reproducible; fmt esperó 581 s y el runner posterior 31 s en cola.
+Sin recompilar un Setup distribuible: el cambio adicional es CI/documentación;
+la QA Release 0.0.978 previa y sus límites no se atribuyen a este SHA.
+
+Entrega autorizada: push y PR #1600 ready a nightly; SHA documental final y
+resultados remotos de «Validate promotion path» y «Validate Vantare blocking
+gates» se registran y releen en #1591/PR, separados de los gates locales.
+Siguiente: orquestador revisa y decide el merge. Canal alcanzado: rama de issue,
+ninguna integración en nightly. Sin tocar firma USB ni publicación; sin secretos,
+`.env`, ventanas, subagentes, merge o release.
 La aprobación no añade evidencia de Windows limpio, DPI o feed live; se
 conservan los límites y la recuperación legacy aceptada en la entrega anterior.
 

@@ -251,3 +251,13 @@ Se conservan los intentos fallidos: disco lleno durante fmt (recuperado con
 `cargo clean` solo de Hub/UI del target propio), reentrada de GPUI (corregida)
 y una respuesta de perfil ausente en la fixture de prueba (completada).
 Ningún intento detectó una ventana visible en monitores ni foco.
+
+## Sincronización final con nightly (16 de octubre)
+
+Se integra `origin/nightly@32c3f3a14` sin rebase ni force-push. El único
+conflicto corresponde al split de Cuenta del login propio: el modo demo de
+captura se conserva en el archivo nuevo, con soporte de `--capture-batch`.
+El banco sin salida mantiene el IPC vivo, creación oculta, reserva y cierre EOF.
+Marcador, error de política y requisito DPI 96 se conservan. Los resultados R2
+anteriores siguen identificados por su código; la nueva validación se registra
+en `C:/VantareServer/evidence/1655/round2-sync/` y en la issue/PR.

@@ -204,10 +204,9 @@ impl App {
         }
         if self.config.native_oauth.is_some() {
             self.ensure_account()?;
-            self.account
-                .as_mut()
-                .ok_or(Error::Unconfigured)?
-                .logout(self.store.as_ref().ok_or(Error::Storage)?)?;
+            let account = self.account.as_mut().ok_or(Error::Unconfigured)?;
+            account.end_email_session(&self.http);
+            account.logout(self.store.as_ref().ok_or(Error::Storage)?)?;
         }
         Ok(Reply::Account {
             signed_in: false,
@@ -328,6 +327,9 @@ impl App {
 
     fn poll_account(&mut self) -> Result<Reply> {
         self.ensure_account()?;
+        if self.account.as_ref().is_some_and(Account::email_pending) {
+            return Ok(self.email_account(None));
+        }
         let account = self.account.as_mut().ok_or(Error::Authentication)?;
         if account.login_pending()
             && let Some(ticket) = account.poll_login()?
@@ -361,6 +363,9 @@ impl App {
             command,
             Command::ReportSend { .. } | Command::TriageSend { .. }
         );
+        if let Command::AccountEmail { action } = command {
+            return self.email_account(Some(action));
+        }
         let operation = match &command {
             Command::TriagePrepare { .. } => "triage-prepare",
             Command::TriageSend { .. } => "triage-send",
@@ -438,6 +443,59 @@ impl App {
         }
     }
 
+    fn email_account(&mut self, action: Option<crate::protocol::EmailAction>) -> Reply {
+        let result: Result<Reply> = (|| {
+            self.ensure_account()?;
+            let time = now()?;
+            let account = self.account.as_mut().ok_or(Error::Authentication)?;
+            let ticket = match action {
+                Some(action) => account.email_action(&self.http, action, time)?,
+                None => None,
+            };
+            // Cancel devuelve un formulario sin login y no tiene canje pendiente.
+            if !account.email_pending() {
+                return Ok(account.email_reply(time, None));
+            }
+            if let Some(completion) = account.exchange_email(&self.http, ticket, time)? {
+                if self
+                    .account
+                    .as_ref()
+                    .and_then(Account::identity)
+                    .is_none_or(|old| old != completion.identity())
+                {
+                    self.revoke_local()?;
+                }
+                self.account
+                    .as_mut()
+                    .ok_or(Error::Authentication)?
+                    .complete(completion, self.store.as_ref().ok_or(Error::Storage)?)?;
+                crate::diagnostics::record_usage_once(
+                    &crate::diagnostics::Usage::AccountSignedIn {},
+                );
+                return Ok(Self::account_reply(
+                    self.account.as_ref().ok_or(Error::Authentication)?,
+                    None,
+                ));
+            }
+            Ok(self
+                .account
+                .as_ref()
+                .ok_or(Error::Authentication)?
+                .email_reply(time, None))
+        })();
+        result.unwrap_or_else(|error| {
+            self.account.as_ref().map_or_else(
+                || Reply::Email {
+                    stage: crate::protocol::EmailStage::Form,
+                    retry_after_seconds: 0,
+                    message: error.to_string(),
+                    error: Some(error.to_string()),
+                },
+                |account| account.email_reply(now().unwrap_or(0), Some(error)),
+            )
+        })
+    }
+
     fn execute(&mut self, command: Command) -> Result<Reply> {
         match command {
             Command::PilotLoad | Command::PilotSave { .. } | Command::PilotSync => {
@@ -454,6 +512,7 @@ impl App {
                     .into(),
                 });
             }
+            Command::AccountEmail { .. } => return Err(Error::Protocol),
             Command::Shutdown => return Ok(Reply::Closed),
             Command::DraftLoad
             | Command::DraftSave { .. }
@@ -1215,6 +1274,95 @@ mod tests {
         server.finish();
         drop(app);
         crate::cleanup_store(&root, "app-detached-logout", &[]);
+    }
+
+    #[test]
+    fn logout_ends_the_clerk_fapi_session() {
+        use crate::protocol::{EmailAction, EmailMode};
+        let server = crate::test_http::Server::start_native(|base| {
+            vec![
+                (
+                    200,
+                    serde_json::json!({
+                        "issuer": base.as_str(),
+                        "device_authorization_endpoint": base.join("oauth/device_authorization").expect("fixture"),
+                        "grant_types_supported": ["urn:ietf:params:oauth:grant-type:device_code"],
+                    })
+                    .to_string(),
+                ),
+                (200, "{}".into()),
+                (
+                    200,
+                    serde_json::json!({
+                        "response": {
+                            "id": "sia_fixture",
+                            "status": "complete",
+                            "created_session_id": "sess_fixture",
+                        },
+                        "client": {
+                            "sessions": [{
+                                "id": "sess_fixture",
+                                "status": "active",
+                                "tasks": [],
+                                "user": {"id": "user_fixture"},
+                            }],
+                        },
+                    })
+                    .to_string(),
+                ),
+                (200, "{}".into()), // cierre de la sesión FAPI
+            ]
+        });
+        let (root, store) = crate::test_store("app-logout-fapi");
+        let mut account = crate::account::fixture(&server.base, &store);
+        account
+            .email_action(
+                &Http::default(),
+                EmailAction::Begin {
+                    mode: EmailMode::SignInPassword,
+                    email: "pilot@example.invalid".into(),
+                    password: "generated-password-fixture".into(),
+                },
+                100,
+            )
+            .expect("login FAPI efímero");
+        let device = "logout-fapi-fixture";
+        let (_, keys) = crate::license_remote::tests::signed_fixture(device);
+        let (link, core) = core_fixture(device.into(), keys, vec![CoreStep::Invalidate]);
+        let config = BuildConfig {
+            supabase: None,
+            anon_key: None,
+            license_keys: None,
+            channel: None,
+            native_oauth: Some(crate::config::OAuthBuild {
+                issuer: server.base.clone(),
+                client_id: "public-fixture".into(),
+                redirect_uri: url::Url::parse("http://127.0.0.1:0/callback").expect("redirect"),
+            }),
+        };
+        let mut app = App::new(config, root.clone());
+        app.account = Some(account);
+        app.store = Some(store);
+        app.attach_core(link);
+        assert!(matches!(
+            app.handle(Command::Logout),
+            Reply::Account {
+                signed_in: false,
+                error: None,
+                ..
+            }
+        ));
+        assert!(app.account.as_ref().expect("account").identity().is_none());
+        let wire: Vec<String> = server.requests.try_iter().collect();
+        assert_eq!(wire.len(), 4, "una petición por paso del flujo");
+        assert!(
+            wire[3].starts_with("POST /v1/client/sessions/sess_fixture/end?"),
+            "cerrar sesión también cierra la sesión FAPI de Clerk"
+        );
+        core.join().expect("revocación ACK");
+        server.finish();
+        drop(app);
+        crate::cleanup_store(&root, "app-logout-fapi", &[]);
     }
 
     #[cfg(windows)]

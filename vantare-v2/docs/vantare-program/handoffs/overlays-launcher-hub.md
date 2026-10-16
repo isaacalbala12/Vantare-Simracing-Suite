@@ -83,7 +83,7 @@ Hitos #1607: PNG `c40a90d9` (2234.920 → 115.473 µs/carga repetida; RED/GREEN)
 
 ### #1655 / VANTA-82 · Capturas sin ventanas visibles, en lote e incrementales
 
-2026-10-16 · Ronda 2 terminada por Codex gpt-6.1-sol, sin subagentes.
+2026-10-16 · Ronda 2: sincronización final por Codex gpt-6.1-sol, sin subagentes.
 Rama `vantareapp/isa-1655-capturas`, base inicial nightly `4651797cb`, actualizada
 hasta `bcaa0e3f2` mediante `560c9fef8`, sin conflictos; remoto releído y cero
 commits pendientes de nightly. Código R2 `366902b3b`, fixture `746c423b7`,
@@ -137,3 +137,12 @@ Siguiente: revisión del orquestador y aceptación de los residuos históricos.
 Sin merge del PR, promoción, release ni acciones de cuentas/datos reales.
 Evidencia `C:/VantareServer/evidence/1655/round2/` y medición original en `1655/`;
 se conservan los intentos fallidos. Buzón `C:/tmp/buzon/1655.md`.
+
+Continuación del 16/10 tras reinicio: se integra origin/nightly `32c3f3a14`
+mediante merge normal, sin rebase ni force-push. El conflicto del split de
+Cuenta se resuelve conservando `account_demo` en el nuevo `view/account.rs`
+y reconociendo también `--capture-batch`; el nuevo login y sus fixtures siguen
+intactos. H1/H2/H3/H4 permanecen implementados. Nueva validación por la cola
+(MIN_GB=0, un job) y CI Windows pendiente; el detalle anterior corresponde
+a los gates anteriores a esta sincronización. Plane vuelve a En curso.
+Evidencia nueva: `C:/VantareServer/evidence/1655/round2-sync/`.

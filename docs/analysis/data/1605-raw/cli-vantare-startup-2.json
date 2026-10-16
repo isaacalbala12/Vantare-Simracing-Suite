@@ -1,0 +1,155 @@
+{
+  "label": "cli-vantare-startup-2",
+  "started_at": "2026-10-14T03:08:57.827737+02:00",
+  "duration_s": 0.3321529000022565,
+  "root_pids": [
+    33200
+  ],
+  "startup_endpoint": "first visible own top-level window; not usable UI or first data",
+  "collector": "startup_probe.py; GPU intentionally not sampled",
+  "windows_at_end": [
+    {
+      "hwnd": 4719790,
+      "pid": 33200,
+      "title": "",
+      "rect": [
+        0,
+        0,
+        1920,
+        1080
+      ]
+    }
+  ],
+  "metrics": {
+    "cpu_percent_total_pc": 5.706193730936899,
+    "working_set_mib": 37.76953125,
+    "private_bytes_mib": 30.30859375,
+    "threads": 21,
+    "gpu_engine_percent": null,
+    "startup_first_window_ms": 332.1412000004784
+  },
+  "sample_count": 3,
+  "samples": [
+    {
+      "t_s": 0.04371430000173859,
+      "dt_s": 0.04371430000173859,
+      "cpu_delta_s": 0.03125,
+      "cpu_percent_total_pc": 4.467931546249902,
+      "working_set_mib": 11.83203125,
+      "private_bytes_mib": 2.5078125,
+      "threads": 5,
+      "gpu_engine_percent": null,
+      "gpu_error": "NOT_SAMPLED_STARTUP_PDH_LATENCY_EXCLUDED",
+      "gpu_engines": [],
+      "processes": [
+        {
+          "pid": 33200,
+          "name": "vantare-overlays.exe",
+          "cpu_s": 0.03125,
+          "working_set_mib": 11.83203125,
+          "private_bytes_mib": 2.5078125,
+          "threads": 5
+        }
+      ],
+      "host_cpu_percent": 90.9,
+      "host_available_ram_mib": 5040.125,
+      "background_build_processes": [
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "rustc.exe"
+      ]
+    },
+    {
+      "t_s": 0.18158219999895664,
+      "dt_s": 0.13786789999721805,
+      "cpu_delta_s": 0.125,
+      "cpu_percent_total_pc": 5.666656270355641,
+      "working_set_mib": 37.76953125,
+      "private_bytes_mib": 30.30859375,
+      "threads": 21,
+      "gpu_engine_percent": null,
+      "gpu_error": "NOT_SAMPLED_STARTUP_PDH_LATENCY_EXCLUDED",
+      "gpu_engines": [],
+      "processes": [
+        {
+          "pid": 33200,
+          "name": "vantare-overlays.exe",
+          "cpu_s": 0.15625,
+          "working_set_mib": 37.76953125,
+          "private_bytes_mib": 30.30859375,
+          "threads": 21
+        }
+      ],
+      "host_cpu_percent": 87.8,
+      "host_available_ram_mib": 4866.0078125,
+      "background_build_processes": [
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "rustc.exe"
+      ]
+    },
+    {
+      "t_s": 0.3251674999992247,
+      "dt_s": 0.14358530000026803,
+      "cpu_delta_s": 0.140625,
+      "cpu_percent_total_pc": 6.121143668595318,
+      "working_set_mib": 52.01953125,
+      "private_bytes_mib": 106.19921875,
+      "threads": 28,
+      "gpu_engine_percent": null,
+      "gpu_error": "NOT_SAMPLED_STARTUP_PDH_LATENCY_EXCLUDED",
+      "gpu_engines": [],
+      "processes": [
+        {
+          "pid": 33200,
+          "name": "vantare-overlays.exe",
+          "cpu_s": 0.296875,
+          "working_set_mib": 52.01953125,
+          "private_bytes_mib": 106.19921875,
+          "threads": 28
+        }
+      ],
+      "host_cpu_percent": 77.9,
+      "host_available_ram_mib": 4837.875,
+      "background_build_processes": [
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "rustc.exe"
+      ]
+    }
+  ],
+  "product": "Vantare",
+  "scenario": "startup",
+  "repetition": 2,
+  "source_mode": "qa_overlay_host_four_widgets_synthetic_30hz_startup"
+}

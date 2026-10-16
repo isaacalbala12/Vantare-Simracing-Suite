@@ -1,0 +1,52 @@
+{
+  "collected_at": "2026-10-14T03:09:31.633688+02:00",
+  "initial_preflight": "1605-preflight-t3-initial.json",
+  "gate_1565_satisfied_by": "Explicit correction 01:05 in REGLAS-NOCHE-1014.md",
+  "rules_sha256": "f9f831972e2d924b48899294123c52842375754dd844e875b7b1a6d5e107c5c1",
+  "lock_acquired": true,
+  "lock_owner": "1605",
+  "lock_released": true,
+  "cleanup": {
+    "verified_at": "2026-10-14T03:09:31.363525+02:00",
+    "owned_processes_alive": [],
+    "lock_owner_released": "1605",
+    "lock_content_sha256_before_release": "fbfaf18ab54924e9421d37d83157082d1fce557642c969c8d3e9757a0ebd41b7",
+    "release_success": true,
+    "firewall_permission_granted": false,
+    "real_vantare_installation_touched": false
+  },
+  "measurement_count": 18,
+  "blocked_count": 9,
+  "firewall_permission_granted": false,
+  "racelab_free_access_verified": false,
+  "real_vantare_installation_touched": false,
+  "new_tool_installs": false,
+  "discarded_probes": [
+    "Hub beta registration root outside generations: process exited",
+    "Hub raw package --demo stays at access without supervisor: not usable idle",
+    "Initial startup timing used PDH: repeated without GPU query latency"
+  ],
+  "vantare_scope": "Overlay host QA only, no Hub/core/live/Engineer. Full suite not measured.",
+  "source_collectors": [
+    {
+      "path": "C:/tmp/1605-research/bench.py",
+      "sha256": "3e3fcc095b9f72bcdb6d8948867e4d14e204f53827ece305e89a08f9c5480735"
+    },
+    {
+      "path": "C:/tmp/1605-research/campaign.py",
+      "sha256": "e1f790d4bc9adf1503b9f9934b17727b3a0bd24aa83f3a3716bc8c6edfeca5b9"
+    },
+    {
+      "path": "C:/tmp/1605-research/window_probe.py",
+      "sha256": "97ce9970f43a6113b3f2a078d2766ac5281f7f3ba37c6c5258983144a208fd49"
+    },
+    {
+      "path": "C:/tmp/1605-research/overlays_only.py",
+      "sha256": "7039ccd8f5296d29b8b9daa644adeb548817bfadd9522d5324b8a61c6a45e6fb"
+    },
+    {
+      "path": "C:/tmp/1605-research/startup_probe.py",
+      "sha256": "39ceb5bf86ffd572f4def9fb14a1d32257c6c5f9e45638cc39721302648f152d"
+    }
+  ]
+}

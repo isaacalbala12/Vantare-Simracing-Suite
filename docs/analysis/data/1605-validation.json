@@ -1,0 +1,14 @@
+{
+  "result": "PASS",
+  "json_summary_files": 11,
+  "raw_files": 18,
+  "raw_samples": 757,
+  "planned_measurements": 27,
+  "executed_measurements": 18,
+  "blocked_measurements": 9,
+  "independent_recalculation": "CPU integration, temporal medians, GPU means and medians of repetitions; blocked metrics empty",
+  "local_links_checked": 25,
+  "native_evidence_hashes": 6,
+  "recommendations": 5,
+  "limits": "Consistency of observed descriptive loads; no matched/live benchmark, no first-data startup endpoint or RaceLab measures."
+}

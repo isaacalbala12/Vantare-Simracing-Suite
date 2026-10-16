@@ -1,0 +1,5101 @@
+{
+  "label": "cli-vantare-four_overlays-2",
+  "started_at": "2026-10-14T03:01:44.190178+02:00",
+  "duration_s": 60.0757364999954,
+  "root_pids": [
+    26212
+  ],
+  "startup_endpoint": null,
+  "windows_at_end": [
+    {
+      "hwnd": 1575280,
+      "pid": 26212,
+      "title": "",
+      "rect": [
+        0,
+        0,
+        1920,
+        1080
+      ]
+    }
+  ],
+  "metrics": {
+    "cpu_percent_total_pc": 0.3223736558342074,
+    "working_set_mib": 57.015625,
+    "private_bytes_mib": 94.734375,
+    "threads": 26,
+    "gpu_engine_percent": 0.12676056788380236,
+    "startup_first_window_ms": null
+  },
+  "sample_count": 60,
+  "samples": [
+    {
+      "t_s": 0.004234899999573827,
+      "dt_s": 0.004234899999573827,
+      "cpu_delta_s": 0,
+      "cpu_percent_total_pc": 0.0,
+      "working_set_mib": 57.02734375,
+      "private_bytes_mib": 94.7734375,
+      "threads": 27,
+      "gpu_engine_percent": 0.7370734068130015,
+      "gpu_error": null,
+      "gpu_engines": [
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_0_engtype_3D",
+          "percent": 0.7370734068130015
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_1_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_2_engtype_Compute 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_3_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_4_engtype_Timer 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_5_engtype_Security 1",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_6_engtype_Video JPEG 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_7_engtype_Video Codec Engine",
+          "percent": 0.0
+        }
+      ],
+      "processes": [
+        {
+          "pid": 26212,
+          "name": "vantare-overlays.exe",
+          "cpu_s": 1.765625,
+          "working_set_mib": 57.02734375,
+          "private_bytes_mib": 94.7734375,
+          "threads": 27
+        }
+      ],
+      "host_cpu_percent": 100.0,
+      "host_available_ram_mib": 8347.55078125,
+      "background_build_processes": [
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe"
+      ]
+    },
+    {
+      "t_s": 1.004839199995331,
+      "dt_s": 1.0006042999957572,
+      "cpu_delta_s": 0.15625,
+      "cpu_percent_total_pc": 0.9759727196896324,
+      "working_set_mib": 57.02734375,
+      "private_bytes_mib": 94.765625,
+      "threads": 27,
+      "gpu_engine_percent": 0.6706081916652706,
+      "gpu_error": null,
+      "gpu_engines": [
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_0_engtype_3D",
+          "percent": 0.6706081916652706
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_1_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_2_engtype_Compute 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_3_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_4_engtype_Timer 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_5_engtype_Security 1",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_6_engtype_Video JPEG 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_7_engtype_Video Codec Engine",
+          "percent": 0.0
+        }
+      ],
+      "processes": [
+        {
+          "pid": 26212,
+          "name": "vantare-overlays.exe",
+          "cpu_s": 1.921875,
+          "working_set_mib": 57.02734375,
+          "private_bytes_mib": 94.765625,
+          "threads": 27
+        }
+      ],
+      "host_cpu_percent": 99.7,
+      "host_available_ram_mib": 7840.69140625,
+      "background_build_processes": [
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe"
+      ]
+    },
+    {
+      "t_s": 2.005542899998545,
+      "dt_s": 1.0007037000032142,
+      "cpu_delta_s": 0.09375,
+      "cpu_percent_total_pc": 0.5855254657278853,
+      "working_set_mib": 57.0234375,
+      "private_bytes_mib": 94.76171875,
+      "threads": 27,
+      "gpu_engine_percent": 0.008630444660355917,
+      "gpu_error": null,
+      "gpu_engines": [
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_0_engtype_3D",
+          "percent": 0.008630444660355917
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_1_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_2_engtype_Compute 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_3_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_4_engtype_Timer 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_5_engtype_Security 1",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_6_engtype_Video JPEG 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_7_engtype_Video Codec Engine",
+          "percent": 0.0
+        }
+      ],
+      "processes": [
+        {
+          "pid": 26212,
+          "name": "vantare-overlays.exe",
+          "cpu_s": 2.015625,
+          "working_set_mib": 57.0234375,
+          "private_bytes_mib": 94.76171875,
+          "threads": 27
+        }
+      ],
+      "host_cpu_percent": 87.9,
+      "host_available_ram_mib": 7827.23828125,
+      "background_build_processes": [
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe"
+      ]
+    },
+    {
+      "t_s": 3.0056194999997388,
+      "dt_s": 1.0000766000011936,
+      "cpu_delta_s": 0.015625,
+      "cpu_percent_total_pc": 0.09764877010409348,
+      "working_set_mib": 57.0234375,
+      "private_bytes_mib": 94.76171875,
+      "threads": 27,
+      "gpu_engine_percent": 0.015213644833045803,
+      "gpu_error": null,
+      "gpu_engines": [
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_0_engtype_3D",
+          "percent": 0.015213644833045803
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_1_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_2_engtype_Compute 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_3_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_4_engtype_Timer 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_5_engtype_Security 1",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_6_engtype_Video JPEG 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_7_engtype_Video Codec Engine",
+          "percent": 0.0
+        }
+      ],
+      "processes": [
+        {
+          "pid": 26212,
+          "name": "vantare-overlays.exe",
+          "cpu_s": 2.03125,
+          "working_set_mib": 57.0234375,
+          "private_bytes_mib": 94.76171875,
+          "threads": 27
+        }
+      ],
+      "host_cpu_percent": 63.7,
+      "host_available_ram_mib": 7849.47265625,
+      "background_build_processes": [
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo-nextest.exe",
+        "rustc.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe"
+      ]
+    },
+    {
+      "t_s": 4.005668699996022,
+      "dt_s": 1.0000491999962833,
+      "cpu_delta_s": 0.046875,
+      "cpu_percent_total_pc": 0.29295433664772574,
+      "working_set_mib": 57.0234375,
+      "private_bytes_mib": 94.76171875,
+      "threads": 27,
+      "gpu_engine_percent": 0.015250411454896282,
+      "gpu_error": null,
+      "gpu_engines": [
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_0_engtype_3D",
+          "percent": 0.015250411454896282
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_1_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_2_engtype_Compute 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_3_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_4_engtype_Timer 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_5_engtype_Security 1",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_6_engtype_Video JPEG 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_7_engtype_Video Codec Engine",
+          "percent": 0.0
+        }
+      ],
+      "processes": [
+        {
+          "pid": 26212,
+          "name": "vantare-overlays.exe",
+          "cpu_s": 2.078125,
+          "working_set_mib": 57.0234375,
+          "private_bytes_mib": 94.76171875,
+          "threads": 27
+        }
+      ],
+      "host_cpu_percent": 50.0,
+      "host_available_ram_mib": 8736.203125,
+      "background_build_processes": [
+        "rustc.exe",
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo-nextest.exe",
+        "rustc.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe"
+      ]
+    },
+    {
+      "t_s": 5.005792299998575,
+      "dt_s": 1.0001236000025528,
+      "cpu_delta_s": 0,
+      "cpu_percent_total_pc": 0.0,
+      "working_set_mib": 57.0234375,
+      "private_bytes_mib": 94.76171875,
+      "threads": 27,
+      "gpu_engine_percent": 0.030203674006395287,
+      "gpu_error": null,
+      "gpu_engines": [
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_0_engtype_3D",
+          "percent": 0.030203674006395287
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_1_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_2_engtype_Compute 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_3_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_4_engtype_Timer 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_5_engtype_Security 1",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_6_engtype_Video JPEG 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_7_engtype_Video Codec Engine",
+          "percent": 0.0
+        }
+      ],
+      "processes": [
+        {
+          "pid": 26212,
+          "name": "vantare-overlays.exe",
+          "cpu_s": 2.078125,
+          "working_set_mib": 57.0234375,
+          "private_bytes_mib": 94.76171875,
+          "threads": 27
+        }
+      ],
+      "host_cpu_percent": 42.1,
+      "host_available_ram_mib": 8506.18359375,
+      "background_build_processes": [
+        "rustc.exe",
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo-nextest.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe"
+      ]
+    },
+    {
+      "t_s": 6.006248399993638,
+      "dt_s": 1.0004560999950627,
+      "cpu_delta_s": 0.015625,
+      "cpu_percent_total_pc": 0.09761172929075243,
+      "working_set_mib": 57.0234375,
+      "private_bytes_mib": 94.76171875,
+      "threads": 27,
+      "gpu_engine_percent": 0.009100949599302348,
+      "gpu_error": null,
+      "gpu_engines": [
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_0_engtype_3D",
+          "percent": 0.009100949599302348
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_1_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_2_engtype_Compute 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_3_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_4_engtype_Timer 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_5_engtype_Security 1",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_6_engtype_Video JPEG 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_7_engtype_Video Codec Engine",
+          "percent": 0.0
+        }
+      ],
+      "processes": [
+        {
+          "pid": 26212,
+          "name": "vantare-overlays.exe",
+          "cpu_s": 2.09375,
+          "working_set_mib": 57.0234375,
+          "private_bytes_mib": 94.76171875,
+          "threads": 27
+        }
+      ],
+      "host_cpu_percent": 80.2,
+      "host_available_ram_mib": 8628.26953125,
+      "background_build_processes": [
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo-nextest.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe"
+      ]
+    },
+    {
+      "t_s": 7.006906799993885,
+      "dt_s": 1.0006584000002476,
+      "cpu_delta_s": 0.03125,
+      "cpu_percent_total_pc": 0.1951839908603692,
+      "working_set_mib": 57.0234375,
+      "private_bytes_mib": 94.76171875,
+      "threads": 27,
+      "gpu_engine_percent": 0.00846859969015679,
+      "gpu_error": null,
+      "gpu_engines": [
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_0_engtype_3D",
+          "percent": 0.00846859969015679
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_1_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_2_engtype_Compute 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_3_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_4_engtype_Timer 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_5_engtype_Security 1",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_6_engtype_Video JPEG 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_7_engtype_Video Codec Engine",
+          "percent": 0.0
+        }
+      ],
+      "processes": [
+        {
+          "pid": 26212,
+          "name": "vantare-overlays.exe",
+          "cpu_s": 2.125,
+          "working_set_mib": 57.0234375,
+          "private_bytes_mib": 94.76171875,
+          "threads": 27
+        }
+      ],
+      "host_cpu_percent": 65.3,
+      "host_available_ram_mib": 7950.140625,
+      "background_build_processes": [
+        "rustc.exe",
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe"
+      ]
+    },
+    {
+      "t_s": 8.007293499998923,
+      "dt_s": 1.0003867000050377,
+      "cpu_delta_s": 0.078125,
+      "cpu_percent_total_pc": 0.48809250462600223,
+      "working_set_mib": 57.0234375,
+      "private_bytes_mib": 94.76171875,
+      "threads": 27,
+      "gpu_engine_percent": 0.01566760015583022,
+      "gpu_error": null,
+      "gpu_engines": [
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_0_engtype_3D",
+          "percent": 0.01566760015583022
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_1_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_2_engtype_Compute 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_3_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_4_engtype_Timer 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_5_engtype_Security 1",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_6_engtype_Video JPEG 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_7_engtype_Video Codec Engine",
+          "percent": 0.0
+        }
+      ],
+      "processes": [
+        {
+          "pid": 26212,
+          "name": "vantare-overlays.exe",
+          "cpu_s": 2.203125,
+          "working_set_mib": 57.0234375,
+          "private_bytes_mib": 94.76171875,
+          "threads": 27
+        }
+      ],
+      "host_cpu_percent": 96.4,
+      "host_available_ram_mib": 7569.484375,
+      "background_build_processes": [
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo-nextest.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe"
+      ]
+    },
+    {
+      "t_s": 9.007387699995888,
+      "dt_s": 1.0000941999969655,
+      "cpu_delta_s": 0.09375,
+      "cpu_percent_total_pc": 0.5858823098881865,
+      "working_set_mib": 57.0234375,
+      "private_bytes_mib": 94.76171875,
+      "threads": 27,
+      "gpu_engine_percent": 0.008806826094409961,
+      "gpu_error": null,
+      "gpu_engines": [
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_0_engtype_3D",
+          "percent": 0.008806826094409961
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_1_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_2_engtype_Compute 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_3_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_4_engtype_Timer 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_5_engtype_Security 1",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_6_engtype_Video JPEG 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_7_engtype_Video Codec Engine",
+          "percent": 0.0
+        }
+      ],
+      "processes": [
+        {
+          "pid": 26212,
+          "name": "vantare-overlays.exe",
+          "cpu_s": 2.296875,
+          "working_set_mib": 57.0234375,
+          "private_bytes_mib": 94.76171875,
+          "threads": 27
+        }
+      ],
+      "host_cpu_percent": 72.4,
+      "host_available_ram_mib": 7649.19140625,
+      "background_build_processes": [
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo-nextest.exe",
+        "rustc.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe"
+      ]
+    },
+    {
+      "t_s": 10.008930399999372,
+      "dt_s": 1.0015427000034833,
+      "cpu_delta_s": 0,
+      "cpu_percent_total_pc": 0.0,
+      "working_set_mib": 57.0234375,
+      "private_bytes_mib": 94.76171875,
+      "threads": 27,
+      "gpu_engine_percent": 0.012111511469430635,
+      "gpu_error": null,
+      "gpu_engines": [
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_0_engtype_3D",
+          "percent": 0.012111511469430635
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_1_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_2_engtype_Compute 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_3_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_4_engtype_Timer 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_5_engtype_Security 1",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_6_engtype_Video JPEG 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_7_engtype_Video Codec Engine",
+          "percent": 0.0
+        }
+      ],
+      "processes": [
+        {
+          "pid": 26212,
+          "name": "vantare-overlays.exe",
+          "cpu_s": 2.296875,
+          "working_set_mib": 57.0234375,
+          "private_bytes_mib": 94.76171875,
+          "threads": 27
+        }
+      ],
+      "host_cpu_percent": 81.8,
+      "host_available_ram_mib": 7861.73828125,
+      "background_build_processes": [
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "rustc.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe"
+      ]
+    },
+    {
+      "t_s": 11.009542100000544,
+      "dt_s": 1.0006117000011727,
+      "cpu_delta_s": 0.015625,
+      "cpu_percent_total_pc": 0.09759655019013425,
+      "working_set_mib": 57.0234375,
+      "private_bytes_mib": 94.76171875,
+      "threads": 27,
+      "gpu_engine_percent": 0.015114960024111241,
+      "gpu_error": null,
+      "gpu_engines": [
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_0_engtype_3D",
+          "percent": 0.015114960024111241
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_1_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_2_engtype_Compute 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_3_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_4_engtype_Timer 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_5_engtype_Security 1",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_6_engtype_Video JPEG 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_7_engtype_Video Codec Engine",
+          "percent": 0.0
+        }
+      ],
+      "processes": [
+        {
+          "pid": 26212,
+          "name": "vantare-overlays.exe",
+          "cpu_s": 2.3125,
+          "working_set_mib": 57.0234375,
+          "private_bytes_mib": 94.76171875,
+          "threads": 27
+        }
+      ],
+      "host_cpu_percent": 60.3,
+      "host_available_ram_mib": 8417.16015625,
+      "background_build_processes": [
+        "rustc.exe",
+        "rustc.exe",
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "rustc.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe"
+      ]
+    },
+    {
+      "t_s": 12.009904799997457,
+      "dt_s": 1.0003626999969129,
+      "cpu_delta_s": 0,
+      "cpu_percent_total_pc": 0.0,
+      "working_set_mib": 57.0234375,
+      "private_bytes_mib": 94.76171875,
+      "threads": 27,
+      "gpu_engine_percent": 0.01505803841401286,
+      "gpu_error": null,
+      "gpu_engines": [
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_0_engtype_3D",
+          "percent": 0.01505803841401286
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_1_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_2_engtype_Compute 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_3_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_4_engtype_Timer 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_5_engtype_Security 1",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_6_engtype_Video JPEG 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_7_engtype_Video Codec Engine",
+          "percent": 0.0
+        }
+      ],
+      "processes": [
+        {
+          "pid": 26212,
+          "name": "vantare-overlays.exe",
+          "cpu_s": 2.3125,
+          "working_set_mib": 57.0234375,
+          "private_bytes_mib": 94.76171875,
+          "threads": 27
+        }
+      ],
+      "host_cpu_percent": 60.7,
+      "host_available_ram_mib": 7834.08984375,
+      "background_build_processes": [
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "rustc.exe",
+        "rustc.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe"
+      ]
+    },
+    {
+      "t_s": 13.010282099996402,
+      "dt_s": 1.000377299998945,
+      "cpu_delta_s": 0.03125,
+      "cpu_percent_total_pc": 0.19523883638723705,
+      "working_set_mib": 57.0234375,
+      "private_bytes_mib": 94.76171875,
+      "threads": 27,
+      "gpu_engine_percent": 0.017853166137265907,
+      "gpu_error": null,
+      "gpu_engines": [
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_0_engtype_3D",
+          "percent": 0.017853166137265907
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_1_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_2_engtype_Compute 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_3_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_4_engtype_Timer 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_5_engtype_Security 1",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_6_engtype_Video JPEG 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_7_engtype_Video Codec Engine",
+          "percent": 0.0
+        }
+      ],
+      "processes": [
+        {
+          "pid": 26212,
+          "name": "vantare-overlays.exe",
+          "cpu_s": 2.34375,
+          "working_set_mib": 57.0234375,
+          "private_bytes_mib": 94.76171875,
+          "threads": 27
+        }
+      ],
+      "host_cpu_percent": 94.1,
+      "host_available_ram_mib": 8471.5078125,
+      "background_build_processes": [
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "rustc.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "rustc.exe"
+      ]
+    },
+    {
+      "t_s": 14.010789799998747,
+      "dt_s": 1.0005077000023448,
+      "cpu_delta_s": 0.015625,
+      "cpu_percent_total_pc": 0.09760669508067867,
+      "working_set_mib": 57.0234375,
+      "private_bytes_mib": 94.76171875,
+      "threads": 27,
+      "gpu_engine_percent": 0.02181565507643191,
+      "gpu_error": null,
+      "gpu_engines": [
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_0_engtype_3D",
+          "percent": 0.02181565507643191
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_1_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_2_engtype_Compute 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_3_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_4_engtype_Timer 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_5_engtype_Security 1",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_6_engtype_Video JPEG 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_7_engtype_Video Codec Engine",
+          "percent": 0.0
+        }
+      ],
+      "processes": [
+        {
+          "pid": 26212,
+          "name": "vantare-overlays.exe",
+          "cpu_s": 2.359375,
+          "working_set_mib": 57.0234375,
+          "private_bytes_mib": 94.76171875,
+          "threads": 27
+        }
+      ],
+      "host_cpu_percent": 57.9,
+      "host_available_ram_mib": 8545.81640625,
+      "background_build_processes": [
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe"
+      ]
+    },
+    {
+      "t_s": 15.011109599996416,
+      "dt_s": 1.0003197999976692,
+      "cpu_delta_s": 0.015625,
+      "cpu_percent_total_pc": 0.0976250295157884,
+      "working_set_mib": 57.0234375,
+      "private_bytes_mib": 94.76171875,
+      "threads": 27,
+      "gpu_engine_percent": 0.008724203729393077,
+      "gpu_error": null,
+      "gpu_engines": [
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_0_engtype_3D",
+          "percent": 0.008724203729393077
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_1_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_2_engtype_Compute 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_3_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_4_engtype_Timer 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_5_engtype_Security 1",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_6_engtype_Video JPEG 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_7_engtype_Video Codec Engine",
+          "percent": 0.0
+        }
+      ],
+      "processes": [
+        {
+          "pid": 26212,
+          "name": "vantare-overlays.exe",
+          "cpu_s": 2.375,
+          "working_set_mib": 57.0234375,
+          "private_bytes_mib": 94.76171875,
+          "threads": 27
+        }
+      ],
+      "host_cpu_percent": 60.3,
+      "host_available_ram_mib": 8284.96875,
+      "background_build_processes": [
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "rustc.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe"
+      ]
+    },
+    {
+      "t_s": 16.011314999996102,
+      "dt_s": 1.000205399999686,
+      "cpu_delta_s": 0.09375,
+      "cpu_percent_total_pc": 0.5858171731528183,
+      "working_set_mib": 57.02734375,
+      "private_bytes_mib": 94.765625,
+      "threads": 27,
+      "gpu_engine_percent": 0.2602802147879199,
+      "gpu_error": null,
+      "gpu_engines": [
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_0_engtype_3D",
+          "percent": 0.2602802147879199
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_1_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_2_engtype_Compute 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_3_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_4_engtype_Timer 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_5_engtype_Security 1",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_6_engtype_Video JPEG 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_7_engtype_Video Codec Engine",
+          "percent": 0.0
+        }
+      ],
+      "processes": [
+        {
+          "pid": 26212,
+          "name": "vantare-overlays.exe",
+          "cpu_s": 2.46875,
+          "working_set_mib": 57.02734375,
+          "private_bytes_mib": 94.765625,
+          "threads": 27
+        }
+      ],
+      "host_cpu_percent": 74.1,
+      "host_available_ram_mib": 8164.43359375,
+      "background_build_processes": [
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "rustc.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe"
+      ]
+    },
+    {
+      "t_s": 17.011662699995213,
+      "dt_s": 1.0003476999991108,
+      "cpu_delta_s": 0.15625,
+      "cpu_percent_total_pc": 0.9762230672403887,
+      "working_set_mib": 57.01953125,
+      "private_bytes_mib": 94.7578125,
+      "threads": 27,
+      "gpu_engine_percent": 0.8087498247713737,
+      "gpu_error": null,
+      "gpu_engines": [
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_0_engtype_3D",
+          "percent": 0.8087498247713737
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_1_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_2_engtype_Compute 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_3_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_4_engtype_Timer 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_5_engtype_Security 1",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_6_engtype_Video JPEG 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_7_engtype_Video Codec Engine",
+          "percent": 0.0
+        }
+      ],
+      "processes": [
+        {
+          "pid": 26212,
+          "name": "vantare-overlays.exe",
+          "cpu_s": 2.625,
+          "working_set_mib": 57.01953125,
+          "private_bytes_mib": 94.7578125,
+          "threads": 27
+        }
+      ],
+      "host_cpu_percent": 69.5,
+      "host_available_ram_mib": 8015.54296875,
+      "background_build_processes": [
+        "rustc.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "rustc.exe"
+      ]
+    },
+    {
+      "t_s": 18.01217529999849,
+      "dt_s": 1.000512600003276,
+      "cpu_delta_s": 0.125,
+      "cpu_percent_total_pc": 0.7808497364225517,
+      "working_set_mib": 57.01171875,
+      "private_bytes_mib": 94.75,
+      "threads": 27,
+      "gpu_engine_percent": 0.3084776154859182,
+      "gpu_error": null,
+      "gpu_engines": [
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_0_engtype_3D",
+          "percent": 0.3084776154859182
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_1_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_2_engtype_Compute 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_3_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_4_engtype_Timer 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_5_engtype_Security 1",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_6_engtype_Video JPEG 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_7_engtype_Video Codec Engine",
+          "percent": 0.0
+        }
+      ],
+      "processes": [
+        {
+          "pid": 26212,
+          "name": "vantare-overlays.exe",
+          "cpu_s": 2.75,
+          "working_set_mib": 57.01171875,
+          "private_bytes_mib": 94.75,
+          "threads": 27
+        }
+      ],
+      "host_cpu_percent": 58.0,
+      "host_available_ram_mib": 7700.3515625,
+      "background_build_processes": [
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "rustc.exe"
+      ]
+    },
+    {
+      "t_s": 19.01273279999441,
+      "dt_s": 1.0005574999959208,
+      "cpu_delta_s": 0,
+      "cpu_percent_total_pc": 0.0,
+      "working_set_mib": 57.01171875,
+      "private_bytes_mib": 94.75,
+      "threads": 27,
+      "gpu_engine_percent": 0.009034388249406791,
+      "gpu_error": null,
+      "gpu_engines": [
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_0_engtype_3D",
+          "percent": 0.009034388249406791
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_1_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_2_engtype_Compute 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_3_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_4_engtype_Timer 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_5_engtype_Security 1",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_6_engtype_Video JPEG 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_7_engtype_Video Codec Engine",
+          "percent": 0.0
+        }
+      ],
+      "processes": [
+        {
+          "pid": 26212,
+          "name": "vantare-overlays.exe",
+          "cpu_s": 2.75,
+          "working_set_mib": 57.01171875,
+          "private_bytes_mib": 94.75,
+          "threads": 27
+        }
+      ],
+      "host_cpu_percent": 72.1,
+      "host_available_ram_mib": 8029.5078125,
+      "background_build_processes": [
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe"
+      ]
+    },
+    {
+      "t_s": 20.013255499994557,
+      "dt_s": 1.0005227000001469,
+      "cpu_delta_s": 0,
+      "cpu_percent_total_pc": 0.0,
+      "working_set_mib": 57.01171875,
+      "private_bytes_mib": 94.75,
+      "threads": 27,
+      "gpu_engine_percent": 0.014546700164219054,
+      "gpu_error": null,
+      "gpu_engines": [
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_0_engtype_3D",
+          "percent": 0.014546700164219054
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_1_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_2_engtype_Compute 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_3_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_4_engtype_Timer 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_5_engtype_Security 1",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_6_engtype_Video JPEG 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_7_engtype_Video Codec Engine",
+          "percent": 0.0
+        }
+      ],
+      "processes": [
+        {
+          "pid": 26212,
+          "name": "vantare-overlays.exe",
+          "cpu_s": 2.75,
+          "working_set_mib": 57.01171875,
+          "private_bytes_mib": 94.75,
+          "threads": 27
+        }
+      ],
+      "host_cpu_percent": 55.2,
+      "host_available_ram_mib": 7737.39453125,
+      "background_build_processes": [
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "rustc.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "rustc.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "rustc.exe"
+      ]
+    },
+    {
+      "t_s": 21.013536399994337,
+      "dt_s": 1.0002808999997796,
+      "cpu_delta_s": 0.015625,
+      "cpu_percent_total_pc": 0.09762882606278048,
+      "working_set_mib": 57.01171875,
+      "private_bytes_mib": 94.75,
+      "threads": 27,
+      "gpu_engine_percent": 0.009038990661422375,
+      "gpu_error": null,
+      "gpu_engines": [
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_0_engtype_3D",
+          "percent": 0.009038990661422375
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_1_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_2_engtype_Compute 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_3_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_4_engtype_Timer 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_5_engtype_Security 1",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_6_engtype_Video JPEG 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_7_engtype_Video Codec Engine",
+          "percent": 0.0
+        }
+      ],
+      "processes": [
+        {
+          "pid": 26212,
+          "name": "vantare-overlays.exe",
+          "cpu_s": 2.765625,
+          "working_set_mib": 57.01171875,
+          "private_bytes_mib": 94.75,
+          "threads": 27
+        }
+      ],
+      "host_cpu_percent": 68.0,
+      "host_available_ram_mib": 7690.52734375,
+      "background_build_processes": [
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "rustc.exe"
+      ]
+    },
+    {
+      "t_s": 22.013945299993793,
+      "dt_s": 1.0004088999994565,
+      "cpu_delta_s": 0.0625,
+      "cpu_percent_total_pc": 0.3904653387232083,
+      "working_set_mib": 57.01171875,
+      "private_bytes_mib": 94.75,
+      "threads": 27,
+      "gpu_engine_percent": 0.008279325140462045,
+      "gpu_error": null,
+      "gpu_engines": [
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_0_engtype_3D",
+          "percent": 0.008279325140462045
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_1_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_2_engtype_Compute 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_3_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_4_engtype_Timer 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_5_engtype_Security 1",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_6_engtype_Video JPEG 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_7_engtype_Video Codec Engine",
+          "percent": 0.0
+        }
+      ],
+      "processes": [
+        {
+          "pid": 26212,
+          "name": "vantare-overlays.exe",
+          "cpu_s": 2.828125,
+          "working_set_mib": 57.01171875,
+          "private_bytes_mib": 94.75,
+          "threads": 27
+        }
+      ],
+      "host_cpu_percent": 83.5,
+      "host_available_ram_mib": 7339.7734375,
+      "background_build_processes": [
+        "cargo-nextest.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "rustc.exe"
+      ]
+    },
+    {
+      "t_s": 23.015138999995543,
+      "dt_s": 1.0011937000017497,
+      "cpu_delta_s": 0.125,
+      "cpu_percent_total_pc": 0.7803185337648796,
+      "working_set_mib": 57.015625,
+      "private_bytes_mib": 94.75,
+      "threads": 27,
+      "gpu_engine_percent": 0.015904123411837015,
+      "gpu_error": null,
+      "gpu_engines": [
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_0_engtype_3D",
+          "percent": 0.015904123411837015
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_1_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_2_engtype_Compute 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_3_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_4_engtype_Timer 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_5_engtype_Security 1",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_6_engtype_Video JPEG 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_7_engtype_Video Codec Engine",
+          "percent": 0.0
+        }
+      ],
+      "processes": [
+        {
+          "pid": 26212,
+          "name": "vantare-overlays.exe",
+          "cpu_s": 2.953125,
+          "working_set_mib": 57.015625,
+          "private_bytes_mib": 94.75,
+          "threads": 27
+        }
+      ],
+      "host_cpu_percent": 99.1,
+      "host_available_ram_mib": 7237.0390625,
+      "background_build_processes": [
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "link.exe",
+        "rustc.exe",
+        "rustc.exe"
+      ]
+    },
+    {
+      "t_s": 24.01548229999753,
+      "dt_s": 1.0003433000019868,
+      "cpu_delta_s": 0,
+      "cpu_percent_total_pc": 0.0,
+      "working_set_mib": 57.015625,
+      "private_bytes_mib": 94.75,
+      "threads": 27,
+      "gpu_engine_percent": 0.00898532897122491,
+      "gpu_error": null,
+      "gpu_engines": [
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_0_engtype_3D",
+          "percent": 0.00898532897122491
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_1_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_2_engtype_Compute 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_3_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_4_engtype_Timer 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_5_engtype_Security 1",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_6_engtype_Video JPEG 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_7_engtype_Video Codec Engine",
+          "percent": 0.0
+        }
+      ],
+      "processes": [
+        {
+          "pid": 26212,
+          "name": "vantare-overlays.exe",
+          "cpu_s": 2.953125,
+          "working_set_mib": 57.015625,
+          "private_bytes_mib": 94.75,
+          "threads": 27
+        }
+      ],
+      "host_cpu_percent": 93.9,
+      "host_available_ram_mib": 7372.58984375,
+      "background_build_processes": [
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "rustc.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "rustc.exe"
+      ]
+    },
+    {
+      "t_s": 25.015633299997717,
+      "dt_s": 1.0001510000001872,
+      "cpu_delta_s": 0,
+      "cpu_percent_total_pc": 0.0,
+      "working_set_mib": 57.015625,
+      "private_bytes_mib": 94.75,
+      "threads": 27,
+      "gpu_engine_percent": 0.02019282844792546,
+      "gpu_error": null,
+      "gpu_engines": [
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_0_engtype_3D",
+          "percent": 0.02019282844792546
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_1_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_2_engtype_Compute 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_3_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_4_engtype_Timer 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_5_engtype_Security 1",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_6_engtype_Video JPEG 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_7_engtype_Video Codec Engine",
+          "percent": 0.0
+        }
+      ],
+      "processes": [
+        {
+          "pid": 26212,
+          "name": "vantare-overlays.exe",
+          "cpu_s": 2.953125,
+          "working_set_mib": 57.015625,
+          "private_bytes_mib": 94.75,
+          "threads": 27
+        }
+      ],
+      "host_cpu_percent": 87.7,
+      "host_available_ram_mib": 7286.546875,
+      "background_build_processes": [
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "rustc.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "rustc.exe"
+      ]
+    },
+    {
+      "t_s": 26.01590419999411,
+      "dt_s": 1.0002708999963943,
+      "cpu_delta_s": 0,
+      "cpu_percent_total_pc": 0.0,
+      "working_set_mib": 57.015625,
+      "private_bytes_mib": 94.75,
+      "threads": 27,
+      "gpu_engine_percent": 0.016207938875115586,
+      "gpu_error": null,
+      "gpu_engines": [
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_0_engtype_3D",
+          "percent": 0.016207938875115586
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_1_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_2_engtype_Compute 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_3_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_4_engtype_Timer 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_5_engtype_Security 1",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_6_engtype_Video JPEG 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_7_engtype_Video Codec Engine",
+          "percent": 0.0
+        }
+      ],
+      "processes": [
+        {
+          "pid": 26212,
+          "name": "vantare-overlays.exe",
+          "cpu_s": 2.953125,
+          "working_set_mib": 57.015625,
+          "private_bytes_mib": 94.75,
+          "threads": 27
+        }
+      ],
+      "host_cpu_percent": 72.6,
+      "host_available_ram_mib": 6847.3359375,
+      "background_build_processes": [
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "rustc.exe"
+      ]
+    },
+    {
+      "t_s": 27.016364499999327,
+      "dt_s": 1.0004603000052157,
+      "cpu_delta_s": 0.015625,
+      "cpu_percent_total_pc": 0.09761131950912084,
+      "working_set_mib": 57.015625,
+      "private_bytes_mib": 94.75,
+      "threads": 27,
+      "gpu_engine_percent": 0.009050803504647717,
+      "gpu_error": null,
+      "gpu_engines": [
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_0_engtype_3D",
+          "percent": 0.009050803504647717
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_1_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_2_engtype_Compute 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_3_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_4_engtype_Timer 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_5_engtype_Security 1",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_6_engtype_Video JPEG 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_7_engtype_Video Codec Engine",
+          "percent": 0.0
+        }
+      ],
+      "processes": [
+        {
+          "pid": 26212,
+          "name": "vantare-overlays.exe",
+          "cpu_s": 2.96875,
+          "working_set_mib": 57.015625,
+          "private_bytes_mib": 94.75,
+          "threads": 27
+        }
+      ],
+      "host_cpu_percent": 87.8,
+      "host_available_ram_mib": 7635.37890625,
+      "background_build_processes": [
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "rustc.exe"
+      ]
+    },
+    {
+      "t_s": 28.01683839999896,
+      "dt_s": 1.0004738999996334,
+      "cpu_delta_s": 0.015625,
+      "cpu_percent_total_pc": 0.09760999262453102,
+      "working_set_mib": 57.015625,
+      "private_bytes_mib": 94.75,
+      "threads": 27,
+      "gpu_engine_percent": 0.030700042885007207,
+      "gpu_error": null,
+      "gpu_engines": [
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_0_engtype_3D",
+          "percent": 0.030700042885007207
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_1_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_2_engtype_Compute 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_3_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_4_engtype_Timer 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_5_engtype_Security 1",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_6_engtype_Video JPEG 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_7_engtype_Video Codec Engine",
+          "percent": 0.0
+        }
+      ],
+      "processes": [
+        {
+          "pid": 26212,
+          "name": "vantare-overlays.exe",
+          "cpu_s": 2.984375,
+          "working_set_mib": 57.015625,
+          "private_bytes_mib": 94.75,
+          "threads": 27
+        }
+      ],
+      "host_cpu_percent": 56.1,
+      "host_available_ram_mib": 7734.23828125,
+      "background_build_processes": [
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "rustc.exe"
+      ]
+    },
+    {
+      "t_s": 29.017168200000015,
+      "dt_s": 1.0003298000010545,
+      "cpu_delta_s": 0.015625,
+      "cpu_percent_total_pc": 0.09762405358702406,
+      "working_set_mib": 57.015625,
+      "private_bytes_mib": 94.75,
+      "threads": 27,
+      "gpu_engine_percent": 0.01537174087896106,
+      "gpu_error": null,
+      "gpu_engines": [
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_0_engtype_3D",
+          "percent": 0.01537174087896106
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_1_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_2_engtype_Compute 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_3_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_4_engtype_Timer 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_5_engtype_Security 1",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_6_engtype_Video JPEG 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_7_engtype_Video Codec Engine",
+          "percent": 0.0
+        }
+      ],
+      "processes": [
+        {
+          "pid": 26212,
+          "name": "vantare-overlays.exe",
+          "cpu_s": 3.0,
+          "working_set_mib": 57.015625,
+          "private_bytes_mib": 94.75,
+          "threads": 27
+        }
+      ],
+      "host_cpu_percent": 46.3,
+      "host_available_ram_mib": 7879.46875,
+      "background_build_processes": [
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "rustc.exe"
+      ]
+    },
+    {
+      "t_s": 30.023551899997983,
+      "dt_s": 1.0063836999979685,
+      "cpu_delta_s": 0.125,
+      "cpu_percent_total_pc": 0.7762943696341436,
+      "working_set_mib": 57.01953125,
+      "private_bytes_mib": 94.7109375,
+      "threads": 26,
+      "gpu_engine_percent": 0.024186612799691306,
+      "gpu_error": null,
+      "gpu_engines": [
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_0_engtype_3D",
+          "percent": 0.024186612799691306
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_1_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_2_engtype_Compute 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_3_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_4_engtype_Timer 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_5_engtype_Security 1",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_6_engtype_Video JPEG 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_7_engtype_Video Codec Engine",
+          "percent": 0.0
+        }
+      ],
+      "processes": [
+        {
+          "pid": 26212,
+          "name": "vantare-overlays.exe",
+          "cpu_s": 3.125,
+          "working_set_mib": 57.01953125,
+          "private_bytes_mib": 94.7109375,
+          "threads": 26
+        }
+      ],
+      "host_cpu_percent": 93.7,
+      "host_available_ram_mib": 8144.44140625,
+      "background_build_processes": [
+        "rustc.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe"
+      ]
+    },
+    {
+      "t_s": 31.024112799997965,
+      "dt_s": 1.0005608999999822,
+      "cpu_delta_s": 0.03125,
+      "cpu_percent_total_pc": 0.19520301063134035,
+      "working_set_mib": 57.01953125,
+      "private_bytes_mib": 94.7109375,
+      "threads": 26,
+      "gpu_engine_percent": 0.00941923365367859,
+      "gpu_error": null,
+      "gpu_engines": [
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_0_engtype_3D",
+          "percent": 0.00941923365367859
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_1_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_2_engtype_Compute 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_3_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_4_engtype_Timer 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_5_engtype_Security 1",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_6_engtype_Video JPEG 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_7_engtype_Video Codec Engine",
+          "percent": 0.0
+        }
+      ],
+      "processes": [
+        {
+          "pid": 26212,
+          "name": "vantare-overlays.exe",
+          "cpu_s": 3.15625,
+          "working_set_mib": 57.01953125,
+          "private_bytes_mib": 94.7109375,
+          "threads": 26
+        }
+      ],
+      "host_cpu_percent": 75.9,
+      "host_available_ram_mib": 8137.16796875,
+      "background_build_processes": [
+        "rustc.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "rustc.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe"
+      ]
+    },
+    {
+      "t_s": 32.02432349999435,
+      "dt_s": 1.0002106999963871,
+      "cpu_delta_s": 0.03125,
+      "cpu_percent_total_pc": 0.19527135632592763,
+      "working_set_mib": 57.0234375,
+      "private_bytes_mib": 94.71484375,
+      "threads": 26,
+      "gpu_engine_percent": 0.09918321773532161,
+      "gpu_error": null,
+      "gpu_engines": [
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_0_engtype_3D",
+          "percent": 0.09918321773532161
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_1_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_2_engtype_Compute 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_3_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_4_engtype_Timer 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_5_engtype_Security 1",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_6_engtype_Video JPEG 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_7_engtype_Video Codec Engine",
+          "percent": 0.0
+        }
+      ],
+      "processes": [
+        {
+          "pid": 26212,
+          "name": "vantare-overlays.exe",
+          "cpu_s": 3.1875,
+          "working_set_mib": 57.0234375,
+          "private_bytes_mib": 94.71484375,
+          "threads": 26
+        }
+      ],
+      "host_cpu_percent": 62.7,
+      "host_available_ram_mib": 7591.0703125,
+      "background_build_processes": [
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "rust-lld.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "rustc.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "rust-lld.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe"
+      ]
+    },
+    {
+      "t_s": 33.02440879999631,
+      "dt_s": 1.000085300001956,
+      "cpu_delta_s": 0.15625,
+      "cpu_percent_total_pc": 0.9764792063217907,
+      "working_set_mib": 57.04296875,
+      "private_bytes_mib": 94.734375,
+      "threads": 26,
+      "gpu_engine_percent": 0.8015739546735607,
+      "gpu_error": null,
+      "gpu_engines": [
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_0_engtype_3D",
+          "percent": 0.8015739546735607
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_1_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_2_engtype_Compute 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_3_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_4_engtype_Timer 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_5_engtype_Security 1",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_6_engtype_Video JPEG 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_7_engtype_Video Codec Engine",
+          "percent": 0.0
+        }
+      ],
+      "processes": [
+        {
+          "pid": 26212,
+          "name": "vantare-overlays.exe",
+          "cpu_s": 3.34375,
+          "working_set_mib": 57.04296875,
+          "private_bytes_mib": 94.734375,
+          "threads": 26
+        }
+      ],
+      "host_cpu_percent": 65.2,
+      "host_available_ram_mib": 7783.08984375,
+      "background_build_processes": [
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "rustc.exe",
+        "rust-lld.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "rust-lld.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo-nextest.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe"
+      ]
+    },
+    {
+      "t_s": 34.02467780000006,
+      "dt_s": 1.0002690000037546,
+      "cpu_delta_s": 0.140625,
+      "cpu_percent_total_pc": 0.8786698877968836,
+      "working_set_mib": 57.03125,
+      "private_bytes_mib": 94.72265625,
+      "threads": 26,
+      "gpu_engine_percent": 0.4584622751199142,
+      "gpu_error": null,
+      "gpu_engines": [
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_0_engtype_3D",
+          "percent": 0.4584622751199142
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_1_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_2_engtype_Compute 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_3_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_4_engtype_Timer 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_5_engtype_Security 1",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_6_engtype_Video JPEG 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_7_engtype_Video Codec Engine",
+          "percent": 0.0
+        }
+      ],
+      "processes": [
+        {
+          "pid": 26212,
+          "name": "vantare-overlays.exe",
+          "cpu_s": 3.484375,
+          "working_set_mib": 57.03125,
+          "private_bytes_mib": 94.72265625,
+          "threads": 26
+        }
+      ],
+      "host_cpu_percent": 66.2,
+      "host_available_ram_mib": 7471.25390625,
+      "background_build_processes": [
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "rustc.exe",
+        "link.exe",
+        "rust-lld.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "rust-lld.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe"
+      ]
+    },
+    {
+      "t_s": 35.02490859999671,
+      "dt_s": 1.0002307999966433,
+      "cpu_delta_s": 0.03125,
+      "cpu_percent_total_pc": 0.19526743227728585,
+      "working_set_mib": 57.03125,
+      "private_bytes_mib": 94.72265625,
+      "threads": 26,
+      "gpu_engine_percent": 0.01474087256248449,
+      "gpu_error": null,
+      "gpu_engines": [
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_0_engtype_3D",
+          "percent": 0.01474087256248449
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_1_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_2_engtype_Compute 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_3_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_4_engtype_Timer 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_5_engtype_Security 1",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_6_engtype_Video JPEG 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_7_engtype_Video Codec Engine",
+          "percent": 0.0
+        }
+      ],
+      "processes": [
+        {
+          "pid": 26212,
+          "name": "vantare-overlays.exe",
+          "cpu_s": 3.515625,
+          "working_set_mib": 57.03125,
+          "private_bytes_mib": 94.72265625,
+          "threads": 26
+        }
+      ],
+      "host_cpu_percent": 90.2,
+      "host_available_ram_mib": 6991.37890625,
+      "background_build_processes": [
+        "link.exe",
+        "cargo-nextest.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "rustc.exe",
+        "link.exe",
+        "rust-lld.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "rustc.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "rustc.exe"
+      ]
+    },
+    {
+      "t_s": 36.02505889999884,
+      "dt_s": 1.000150300002133,
+      "cpu_delta_s": 0.09375,
+      "cpu_percent_total_pc": 0.5858494468268923,
+      "working_set_mib": 57.03125,
+      "private_bytes_mib": 94.72265625,
+      "threads": 26,
+      "gpu_engine_percent": 0.014381828688117037,
+      "gpu_error": null,
+      "gpu_engines": [
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_0_engtype_3D",
+          "percent": 0.014381828688117037
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_1_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_2_engtype_Compute 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_3_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_4_engtype_Timer 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_5_engtype_Security 1",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_6_engtype_Video JPEG 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_7_engtype_Video Codec Engine",
+          "percent": 0.0
+        }
+      ],
+      "processes": [
+        {
+          "pid": 26212,
+          "name": "vantare-overlays.exe",
+          "cpu_s": 3.609375,
+          "working_set_mib": 57.03125,
+          "private_bytes_mib": 94.72265625,
+          "threads": 26
+        }
+      ],
+      "host_cpu_percent": 69.6,
+      "host_available_ram_mib": 7001.4765625,
+      "background_build_processes": [
+        "link.exe",
+        "cargo-nextest.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "rustc.exe"
+      ]
+    },
+    {
+      "t_s": 37.02547069999855,
+      "dt_s": 1.0004117999997106,
+      "cpu_delta_s": 0.078125,
+      "cpu_percent_total_pc": 0.48808025854967046,
+      "working_set_mib": 57.03125,
+      "private_bytes_mib": 94.72265625,
+      "threads": 26,
+      "gpu_engine_percent": 0.009222096055044263,
+      "gpu_error": null,
+      "gpu_engines": [
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_0_engtype_3D",
+          "percent": 0.009222096055044263
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_1_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_2_engtype_Compute 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_3_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_4_engtype_Timer 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_5_engtype_Security 1",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_6_engtype_Video JPEG 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_7_engtype_Video Codec Engine",
+          "percent": 0.0
+        }
+      ],
+      "processes": [
+        {
+          "pid": 26212,
+          "name": "vantare-overlays.exe",
+          "cpu_s": 3.6875,
+          "working_set_mib": 57.03125,
+          "private_bytes_mib": 94.72265625,
+          "threads": 26
+        }
+      ],
+      "host_cpu_percent": 54.0,
+      "host_available_ram_mib": 7808.4921875,
+      "background_build_processes": [
+        "cargo-nextest.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "rust-lld.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "rustc.exe",
+        "cargo.exe"
+      ]
+    },
+    {
+      "t_s": 38.026012999995146,
+      "dt_s": 1.0005422999965958,
+      "cpu_delta_s": 0.078125,
+      "cpu_percent_total_pc": 0.4880165986002404,
+      "working_set_mib": 57.03515625,
+      "private_bytes_mib": 94.7265625,
+      "threads": 26,
+      "gpu_engine_percent": 0.008367734278115282,
+      "gpu_error": null,
+      "gpu_engines": [
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_0_engtype_3D",
+          "percent": 0.008367734278115282
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_1_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_2_engtype_Compute 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_3_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_4_engtype_Timer 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_5_engtype_Security 1",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_6_engtype_Video JPEG 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_7_engtype_Video Codec Engine",
+          "percent": 0.0
+        }
+      ],
+      "processes": [
+        {
+          "pid": 26212,
+          "name": "vantare-overlays.exe",
+          "cpu_s": 3.765625,
+          "working_set_mib": 57.03515625,
+          "private_bytes_mib": 94.7265625,
+          "threads": 26
+        }
+      ],
+      "host_cpu_percent": 66.5,
+      "host_available_ram_mib": 7601.29296875,
+      "background_build_processes": [
+        "cargo-nextest.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "rustc.exe",
+        "cargo.exe"
+      ]
+    },
+    {
+      "t_s": 39.0688416999983,
+      "dt_s": 1.042828700003156,
+      "cpu_delta_s": 0.015625,
+      "cpu_percent_total_pc": 0.09364553353748747,
+      "working_set_mib": 57.03515625,
+      "private_bytes_mib": 94.7265625,
+      "threads": 26,
+      "gpu_engine_percent": 0.008847755865855001,
+      "gpu_error": null,
+      "gpu_engines": [
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_0_engtype_3D",
+          "percent": 0.008847755865855001
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_1_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_2_engtype_Compute 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_3_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_4_engtype_Timer 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_5_engtype_Security 1",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_6_engtype_Video JPEG 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_7_engtype_Video Codec Engine",
+          "percent": 0.0
+        }
+      ],
+      "processes": [
+        {
+          "pid": 26212,
+          "name": "vantare-overlays.exe",
+          "cpu_s": 3.78125,
+          "working_set_mib": 57.03515625,
+          "private_bytes_mib": 94.7265625,
+          "threads": 26
+        }
+      ],
+      "host_cpu_percent": 78.7,
+      "host_available_ram_mib": 7692.53125,
+      "background_build_processes": [
+        "cargo-nextest.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "rustc.exe",
+        "rust-lld.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe"
+      ]
+    },
+    {
+      "t_s": 40.06904009999562,
+      "dt_s": 1.0001983999973163,
+      "cpu_delta_s": 0.015625,
+      "cpu_percent_total_pc": 0.09763687884349947,
+      "working_set_mib": 56.88671875,
+      "private_bytes_mib": 94.578125,
+      "threads": 26,
+      "gpu_engine_percent": 0.0,
+      "gpu_error": null,
+      "gpu_engines": [
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_0_engtype_3D",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_1_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_2_engtype_Compute 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_3_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_4_engtype_Timer 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_5_engtype_Security 1",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_6_engtype_Video JPEG 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_7_engtype_Video Codec Engine",
+          "percent": 0.0
+        }
+      ],
+      "processes": [
+        {
+          "pid": 26212,
+          "name": "vantare-overlays.exe",
+          "cpu_s": 3.796875,
+          "working_set_mib": 56.88671875,
+          "private_bytes_mib": 94.578125,
+          "threads": 26
+        }
+      ],
+      "host_cpu_percent": 88.5,
+      "host_available_ram_mib": 7094.32421875,
+      "background_build_processes": [
+        "cargo-nextest.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "rust-lld.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe"
+      ]
+    },
+    {
+      "t_s": 41.06955609999568,
+      "dt_s": 1.0005160000000615,
+      "cpu_delta_s": 0,
+      "cpu_percent_total_pc": 0.0,
+      "working_set_mib": 56.8828125,
+      "private_bytes_mib": 94.57421875,
+      "threads": 26,
+      "gpu_engine_percent": 0.0151207004681935,
+      "gpu_error": null,
+      "gpu_engines": [
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_0_engtype_3D",
+          "percent": 0.0151207004681935
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_1_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_2_engtype_Compute 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_3_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_4_engtype_Timer 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_5_engtype_Security 1",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_6_engtype_Video JPEG 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_7_engtype_Video Codec Engine",
+          "percent": 0.0
+        }
+      ],
+      "processes": [
+        {
+          "pid": 26212,
+          "name": "vantare-overlays.exe",
+          "cpu_s": 3.796875,
+          "working_set_mib": 56.8828125,
+          "private_bytes_mib": 94.57421875,
+          "threads": 26
+        }
+      ],
+      "host_cpu_percent": 90.3,
+      "host_available_ram_mib": 6982.484375,
+      "background_build_processes": [
+        "cargo-nextest.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "rust-lld.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe"
+      ]
+    },
+    {
+      "t_s": 42.0707043999937,
+      "dt_s": 1.0011482999980217,
+      "cpu_delta_s": 0.015625,
+      "cpu_percent_total_pc": 0.09754423994945902,
+      "working_set_mib": 56.8828125,
+      "private_bytes_mib": 94.57421875,
+      "threads": 26,
+      "gpu_engine_percent": 0.014155195739612238,
+      "gpu_error": null,
+      "gpu_engines": [
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_0_engtype_3D",
+          "percent": 0.014155195739612238
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_1_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_2_engtype_Compute 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_3_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_4_engtype_Timer 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_5_engtype_Security 1",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_6_engtype_Video JPEG 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_7_engtype_Video Codec Engine",
+          "percent": 0.0
+        }
+      ],
+      "processes": [
+        {
+          "pid": 26212,
+          "name": "vantare-overlays.exe",
+          "cpu_s": 3.8125,
+          "working_set_mib": 56.8828125,
+          "private_bytes_mib": 94.57421875,
+          "threads": 26
+        }
+      ],
+      "host_cpu_percent": 96.5,
+      "host_available_ram_mib": 7831.1015625,
+      "background_build_processes": [
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe"
+      ]
+    },
+    {
+      "t_s": 43.07084919999761,
+      "dt_s": 1.000144800003909,
+      "cpu_delta_s": 0.03125,
+      "cpu_percent_total_pc": 0.19528422284376884,
+      "working_set_mib": 56.8828125,
+      "private_bytes_mib": 94.57421875,
+      "threads": 26,
+      "gpu_engine_percent": 0.009416087995864488,
+      "gpu_error": null,
+      "gpu_engines": [
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_0_engtype_3D",
+          "percent": 0.009416087995864488
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_1_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_2_engtype_Compute 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_3_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_4_engtype_Timer 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_5_engtype_Security 1",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_6_engtype_Video JPEG 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_7_engtype_Video Codec Engine",
+          "percent": 0.0
+        }
+      ],
+      "processes": [
+        {
+          "pid": 26212,
+          "name": "vantare-overlays.exe",
+          "cpu_s": 3.84375,
+          "working_set_mib": 56.8828125,
+          "private_bytes_mib": 94.57421875,
+          "threads": 26
+        }
+      ],
+      "host_cpu_percent": 54.5,
+      "host_available_ram_mib": 7546.63671875,
+      "background_build_processes": [
+        "rustc.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe"
+      ]
+    },
+    {
+      "t_s": 44.07097169999906,
+      "dt_s": 1.0001225000014529,
+      "cpu_delta_s": 0.046875,
+      "cpu_percent_total_pc": 0.2929328657235233,
+      "working_set_mib": 56.8828125,
+      "private_bytes_mib": 94.57421875,
+      "threads": 26,
+      "gpu_engine_percent": 0.015224448133840173,
+      "gpu_error": null,
+      "gpu_engines": [
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_0_engtype_3D",
+          "percent": 0.015224448133840173
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_1_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_2_engtype_Compute 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_3_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_4_engtype_Timer 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_5_engtype_Security 1",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_6_engtype_Video JPEG 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_7_engtype_Video Codec Engine",
+          "percent": 0.0
+        }
+      ],
+      "processes": [
+        {
+          "pid": 26212,
+          "name": "vantare-overlays.exe",
+          "cpu_s": 3.890625,
+          "working_set_mib": 56.8828125,
+          "private_bytes_mib": 94.57421875,
+          "threads": 26
+        }
+      ],
+      "host_cpu_percent": 76.1,
+      "host_available_ram_mib": 7717.640625,
+      "background_build_processes": [
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "rustc.exe"
+      ]
+    },
+    {
+      "t_s": 45.0712779999958,
+      "dt_s": 1.000306299996737,
+      "cpu_delta_s": 0.015625,
+      "cpu_percent_total_pc": 0.09762634705021708,
+      "working_set_mib": 56.8515625,
+      "private_bytes_mib": 94.54296875,
+      "threads": 26,
+      "gpu_engine_percent": 0.01554312539275156,
+      "gpu_error": null,
+      "gpu_engines": [
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_0_engtype_3D",
+          "percent": 0.01554312539275156
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_1_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_2_engtype_Compute 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_3_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_4_engtype_Timer 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_5_engtype_Security 1",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_6_engtype_Video JPEG 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_7_engtype_Video Codec Engine",
+          "percent": 0.0
+        }
+      ],
+      "processes": [
+        {
+          "pid": 26212,
+          "name": "vantare-overlays.exe",
+          "cpu_s": 3.90625,
+          "working_set_mib": 56.8515625,
+          "private_bytes_mib": 94.54296875,
+          "threads": 26
+        }
+      ],
+      "host_cpu_percent": 71.7,
+      "host_available_ram_mib": 8150.50390625,
+      "background_build_processes": [
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe"
+      ]
+    },
+    {
+      "t_s": 46.07141209999827,
+      "dt_s": 1.0001341000024695,
+      "cpu_delta_s": 0,
+      "cpu_percent_total_pc": 0.0,
+      "working_set_mib": 56.875,
+      "private_bytes_mib": 94.56640625,
+      "threads": 26,
+      "gpu_engine_percent": 0.028101543847865652,
+      "gpu_error": null,
+      "gpu_engines": [
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_0_engtype_3D",
+          "percent": 0.028101543847865652
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_1_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_2_engtype_Compute 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_3_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_4_engtype_Timer 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_5_engtype_Security 1",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_6_engtype_Video JPEG 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_7_engtype_Video Codec Engine",
+          "percent": 0.0
+        }
+      ],
+      "processes": [
+        {
+          "pid": 26212,
+          "name": "vantare-overlays.exe",
+          "cpu_s": 3.90625,
+          "working_set_mib": 56.875,
+          "private_bytes_mib": 94.56640625,
+          "threads": 26
+        }
+      ],
+      "host_cpu_percent": 71.3,
+      "host_available_ram_mib": 7813.83203125,
+      "background_build_processes": [
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe"
+      ]
+    },
+    {
+      "t_s": 47.071559599993634,
+      "dt_s": 1.0001474999953643,
+      "cpu_delta_s": 0,
+      "cpu_percent_total_pc": 0.0,
+      "working_set_mib": 56.8984375,
+      "private_bytes_mib": 94.58984375,
+      "threads": 26,
+      "gpu_engine_percent": 0.0155109288738647,
+      "gpu_error": null,
+      "gpu_engines": [
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_0_engtype_3D",
+          "percent": 0.0155109288738647
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_1_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_2_engtype_Compute 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_3_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_4_engtype_Timer 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_5_engtype_Security 1",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_6_engtype_Video JPEG 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_7_engtype_Video Codec Engine",
+          "percent": 0.0
+        }
+      ],
+      "processes": [
+        {
+          "pid": 26212,
+          "name": "vantare-overlays.exe",
+          "cpu_s": 3.90625,
+          "working_set_mib": 56.8984375,
+          "private_bytes_mib": 94.58984375,
+          "threads": 26
+        }
+      ],
+      "host_cpu_percent": 71.8,
+      "host_available_ram_mib": 7381.0859375,
+      "background_build_processes": [
+        "cargo.exe",
+        "rustc.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe"
+      ]
+    },
+    {
+      "t_s": 48.07183950000035,
+      "dt_s": 1.000279900006717,
+      "cpu_delta_s": 0,
+      "cpu_percent_total_pc": 0.0,
+      "working_set_mib": 56.87890625,
+      "private_bytes_mib": 94.5703125,
+      "threads": 26,
+      "gpu_engine_percent": 0.009010520898312257,
+      "gpu_error": null,
+      "gpu_engines": [
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_0_engtype_3D",
+          "percent": 0.009010520898312257
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_1_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_2_engtype_Compute 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_3_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_4_engtype_Timer 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_5_engtype_Security 1",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_6_engtype_Video JPEG 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_7_engtype_Video Codec Engine",
+          "percent": 0.0
+        }
+      ],
+      "processes": [
+        {
+          "pid": 26212,
+          "name": "vantare-overlays.exe",
+          "cpu_s": 3.90625,
+          "working_set_mib": 56.87890625,
+          "private_bytes_mib": 94.5703125,
+          "threads": 26
+        }
+      ],
+      "host_cpu_percent": 53.5,
+      "host_available_ram_mib": 8298.47265625,
+      "background_build_processes": [
+        "cargo.exe",
+        "rustc.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe"
+      ]
+    },
+    {
+      "t_s": 49.07197829999495,
+      "dt_s": 1.0001387999946019,
+      "cpu_delta_s": 0.078125,
+      "cpu_percent_total_pc": 0.4882134859707827,
+      "working_set_mib": 57.00390625,
+      "private_bytes_mib": 94.6953125,
+      "threads": 26,
+      "gpu_engine_percent": 0.32977170842664527,
+      "gpu_error": null,
+      "gpu_engines": [
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_0_engtype_3D",
+          "percent": 0.32977170842664527
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_1_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_2_engtype_Compute 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_3_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_4_engtype_Timer 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_5_engtype_Security 1",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_6_engtype_Video JPEG 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_7_engtype_Video Codec Engine",
+          "percent": 0.0
+        }
+      ],
+      "processes": [
+        {
+          "pid": 26212,
+          "name": "vantare-overlays.exe",
+          "cpu_s": 3.984375,
+          "working_set_mib": 57.00390625,
+          "private_bytes_mib": 94.6953125,
+          "threads": 26
+        }
+      ],
+      "host_cpu_percent": 58.8,
+      "host_available_ram_mib": 8508.06640625,
+      "background_build_processes": [
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "rustc.exe",
+        "cargo-nextest.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe"
+      ]
+    },
+    {
+      "t_s": 50.07232049999584,
+      "dt_s": 1.0003422000008868,
+      "cpu_delta_s": 0.140625,
+      "cpu_percent_total_pc": 0.8786055911659238,
+      "working_set_mib": 56.9765625,
+      "private_bytes_mib": 94.66796875,
+      "threads": 26,
+      "gpu_engine_percent": 0.7347382752466449,
+      "gpu_error": null,
+      "gpu_engines": [
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_0_engtype_3D",
+          "percent": 0.7347382752466449
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_1_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_2_engtype_Compute 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_3_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_4_engtype_Timer 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_5_engtype_Security 1",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_6_engtype_Video JPEG 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_7_engtype_Video Codec Engine",
+          "percent": 0.0
+        }
+      ],
+      "processes": [
+        {
+          "pid": 26212,
+          "name": "vantare-overlays.exe",
+          "cpu_s": 4.125,
+          "working_set_mib": 56.9765625,
+          "private_bytes_mib": 94.66796875,
+          "threads": 26
+        }
+      ],
+      "host_cpu_percent": 46.2,
+      "host_available_ram_mib": 8427.2265625,
+      "background_build_processes": [
+        "rustc.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "rust-lld.exe",
+        "cargo-nextest.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe"
+      ]
+    },
+    {
+      "t_s": 51.07259599999816,
+      "dt_s": 1.0002755000023171,
+      "cpu_delta_s": 0.0625,
+      "cpu_percent_total_pc": 0.3905174124519646,
+      "working_set_mib": 56.91015625,
+      "private_bytes_mib": 94.6015625,
+      "threads": 26,
+      "gpu_engine_percent": 0.03350485408154285,
+      "gpu_error": null,
+      "gpu_engines": [
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_0_engtype_3D",
+          "percent": 0.03350485408154285
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_1_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_2_engtype_Compute 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_3_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_4_engtype_Timer 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_5_engtype_Security 1",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_6_engtype_Video JPEG 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_7_engtype_Video Codec Engine",
+          "percent": 0.0
+        }
+      ],
+      "processes": [
+        {
+          "pid": 26212,
+          "name": "vantare-overlays.exe",
+          "cpu_s": 4.1875,
+          "working_set_mib": 56.91015625,
+          "private_bytes_mib": 94.6015625,
+          "threads": 26
+        }
+      ],
+      "host_cpu_percent": 58.9,
+      "host_available_ram_mib": 8376.01953125,
+      "background_build_processes": [
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe"
+      ]
+    },
+    {
+      "t_s": 52.073095199993986,
+      "dt_s": 1.0004991999958293,
+      "cpu_delta_s": 0.078125,
+      "cpu_percent_total_pc": 0.48803762162132214,
+      "working_set_mib": 56.98046875,
+      "private_bytes_mib": 94.671875,
+      "threads": 26,
+      "gpu_engine_percent": 0.36334043990840353,
+      "gpu_error": null,
+      "gpu_engines": [
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_0_engtype_3D",
+          "percent": 0.36334043990840353
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_1_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_2_engtype_Compute 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_3_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_4_engtype_Timer 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_5_engtype_Security 1",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_6_engtype_Video JPEG 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_7_engtype_Video Codec Engine",
+          "percent": 0.0
+        }
+      ],
+      "processes": [
+        {
+          "pid": 26212,
+          "name": "vantare-overlays.exe",
+          "cpu_s": 4.265625,
+          "working_set_mib": 56.98046875,
+          "private_bytes_mib": 94.671875,
+          "threads": 26
+        }
+      ],
+      "host_cpu_percent": 64.2,
+      "host_available_ram_mib": 8056.81640625,
+      "background_build_processes": [
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo-nextest.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe"
+      ]
+    },
+    {
+      "t_s": 53.07364360000065,
+      "dt_s": 1.0005484000066645,
+      "cpu_delta_s": 0.15625,
+      "cpu_percent_total_pc": 0.9760272466514317,
+      "working_set_mib": 56.984375,
+      "private_bytes_mib": 94.67578125,
+      "threads": 26,
+      "gpu_engine_percent": 0.7582834963165397,
+      "gpu_error": null,
+      "gpu_engines": [
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_0_engtype_3D",
+          "percent": 0.7582834963165397
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_1_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_2_engtype_Compute 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_3_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_4_engtype_Timer 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_5_engtype_Security 1",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_6_engtype_Video JPEG 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_7_engtype_Video Codec Engine",
+          "percent": 0.0
+        }
+      ],
+      "processes": [
+        {
+          "pid": 26212,
+          "name": "vantare-overlays.exe",
+          "cpu_s": 4.421875,
+          "working_set_mib": 56.984375,
+          "private_bytes_mib": 94.67578125,
+          "threads": 26
+        }
+      ],
+      "host_cpu_percent": 66.3,
+      "host_available_ram_mib": 8428.9296875,
+      "background_build_processes": [
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "rustc.exe"
+      ]
+    },
+    {
+      "t_s": 54.073895299996366,
+      "dt_s": 1.0002516999957152,
+      "cpu_delta_s": 0.078125,
+      "cpu_percent_total_pc": 0.4881583805377103,
+      "working_set_mib": 56.8515625,
+      "private_bytes_mib": 94.54296875,
+      "threads": 26,
+      "gpu_engine_percent": 0.15125409618381233,
+      "gpu_error": null,
+      "gpu_engines": [
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_0_engtype_3D",
+          "percent": 0.15125409618381233
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_1_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_2_engtype_Compute 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_3_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_4_engtype_Timer 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_5_engtype_Security 1",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_6_engtype_Video JPEG 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_7_engtype_Video Codec Engine",
+          "percent": 0.0
+        }
+      ],
+      "processes": [
+        {
+          "pid": 26212,
+          "name": "vantare-overlays.exe",
+          "cpu_s": 4.5,
+          "working_set_mib": 56.8515625,
+          "private_bytes_mib": 94.54296875,
+          "threads": 26
+        }
+      ],
+      "host_cpu_percent": 63.9,
+      "host_available_ram_mib": 8395.7421875,
+      "background_build_processes": [
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "rustc.exe",
+        "rustc.exe"
+      ]
+    },
+    {
+      "t_s": 55.074287799994636,
+      "dt_s": 1.00039249999827,
+      "cpu_delta_s": 0.109375,
+      "cpu_percent_total_pc": 0.6833255447248776,
+      "working_set_mib": 56.97265625,
+      "private_bytes_mib": 94.6640625,
+      "threads": 26,
+      "gpu_engine_percent": 0.5905916722734968,
+      "gpu_error": null,
+      "gpu_engines": [
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_0_engtype_3D",
+          "percent": 0.5905916722734968
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_1_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_2_engtype_Compute 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_3_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_4_engtype_Timer 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_5_engtype_Security 1",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_6_engtype_Video JPEG 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_7_engtype_Video Codec Engine",
+          "percent": 0.0
+        }
+      ],
+      "processes": [
+        {
+          "pid": 26212,
+          "name": "vantare-overlays.exe",
+          "cpu_s": 4.609375,
+          "working_set_mib": 56.97265625,
+          "private_bytes_mib": 94.6640625,
+          "threads": 26
+        }
+      ],
+      "host_cpu_percent": 54.4,
+      "host_available_ram_mib": 8517.28515625,
+      "background_build_processes": [
+        "rustc.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe"
+      ]
+    },
+    {
+      "t_s": 56.07445580000058,
+      "dt_s": 1.0001680000059423,
+      "cpu_delta_s": 0.09375,
+      "cpu_percent_total_pc": 0.5858390790312415,
+      "working_set_mib": 56.91015625,
+      "private_bytes_mib": 94.6015625,
+      "threads": 26,
+      "gpu_engine_percent": 0.48487809379464847,
+      "gpu_error": null,
+      "gpu_engines": [
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_0_engtype_3D",
+          "percent": 0.48487809379464847
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_1_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_2_engtype_Compute 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_3_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_4_engtype_Timer 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_5_engtype_Security 1",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_6_engtype_Video JPEG 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_7_engtype_Video Codec Engine",
+          "percent": 0.0
+        }
+      ],
+      "processes": [
+        {
+          "pid": 26212,
+          "name": "vantare-overlays.exe",
+          "cpu_s": 4.703125,
+          "working_set_mib": 56.91015625,
+          "private_bytes_mib": 94.6015625,
+          "threads": 26
+        }
+      ],
+      "host_cpu_percent": 41.8,
+      "host_available_ram_mib": 8459.30078125,
+      "background_build_processes": [
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rust-lld.exe",
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe"
+      ]
+    },
+    {
+      "t_s": 57.07512279999355,
+      "dt_s": 1.0006669999929727,
+      "cpu_delta_s": 0,
+      "cpu_percent_total_pc": 0.0,
+      "working_set_mib": 56.8671875,
+      "private_bytes_mib": 94.55859375,
+      "threads": 26,
+      "gpu_engine_percent": 0.015196944929060378,
+      "gpu_error": null,
+      "gpu_engines": [
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_0_engtype_3D",
+          "percent": 0.015196944929060378
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_1_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_2_engtype_Compute 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_3_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_4_engtype_Timer 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_5_engtype_Security 1",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_6_engtype_Video JPEG 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_7_engtype_Video Codec Engine",
+          "percent": 0.0
+        }
+      ],
+      "processes": [
+        {
+          "pid": 26212,
+          "name": "vantare-overlays.exe",
+          "cpu_s": 4.703125,
+          "working_set_mib": 56.8671875,
+          "private_bytes_mib": 94.55859375,
+          "threads": 26
+        }
+      ],
+      "host_cpu_percent": 31.0,
+      "host_available_ram_mib": 8673.65625,
+      "background_build_processes": [
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo-nextest.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe"
+      ]
+    },
+    {
+      "t_s": 58.075290199994924,
+      "dt_s": 1.0001674000013736,
+      "cpu_delta_s": 0.0625,
+      "cpu_percent_total_pc": 0.39055962031902214,
+      "working_set_mib": 56.8828125,
+      "private_bytes_mib": 94.57421875,
+      "threads": 26,
+      "gpu_engine_percent": 0.02423453779782068,
+      "gpu_error": null,
+      "gpu_engines": [
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_0_engtype_3D",
+          "percent": 0.02423453779782068
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_1_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_2_engtype_Compute 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_3_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_4_engtype_Timer 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_5_engtype_Security 1",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_6_engtype_Video JPEG 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_7_engtype_Video Codec Engine",
+          "percent": 0.0
+        }
+      ],
+      "processes": [
+        {
+          "pid": 26212,
+          "name": "vantare-overlays.exe",
+          "cpu_s": 4.765625,
+          "working_set_mib": 56.8828125,
+          "private_bytes_mib": 94.57421875,
+          "threads": 26
+        }
+      ],
+      "host_cpu_percent": 66.3,
+      "host_available_ram_mib": 8111.1953125,
+      "background_build_processes": [
+        "rustc.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "rustc.exe"
+      ]
+    },
+    {
+      "t_s": 59.07534199999645,
+      "dt_s": 1.000051800001529,
+      "cpu_delta_s": 0.046875,
+      "cpu_percent_total_pc": 0.29295357500436686,
+      "working_set_mib": 56.875,
+      "private_bytes_mib": 94.56640625,
+      "threads": 26,
+      "gpu_engine_percent": 0.01516351015788715,
+      "gpu_error": null,
+      "gpu_engines": [
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_0_engtype_3D",
+          "percent": 0.01516351015788715
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_1_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_2_engtype_Compute 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_3_engtype_Copy",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_4_engtype_Timer 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_5_engtype_Security 1",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_6_engtype_Video JPEG 0",
+          "percent": 0.0
+        },
+        {
+          "pid": 26212,
+          "engine": "luid_0x00000000_0x0000D0AB_phys_0_eng_7_engtype_Video Codec Engine",
+          "percent": 0.0
+        }
+      ],
+      "processes": [
+        {
+          "pid": 26212,
+          "name": "vantare-overlays.exe",
+          "cpu_s": 4.8125,
+          "working_set_mib": 56.875,
+          "private_bytes_mib": 94.56640625,
+          "threads": 26
+        }
+      ],
+      "host_cpu_percent": 50.2,
+      "host_available_ram_mib": 8385.0390625,
+      "background_build_processes": [
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "rustc.exe"
+      ]
+    }
+  ],
+  "product": "Vantare",
+  "scenario": "four_overlays",
+  "repetition": 2,
+  "source_mode": "qa_overlay_host_only_synthetic_30hz"
+}

@@ -1,0 +1,391 @@
+{
+  "label": "cli-tinypedal-startup-2",
+  "started_at": "2026-10-14T03:08:43.026956+02:00",
+  "duration_s": 1.1674602000057348,
+  "root_pids": [
+    25112
+  ],
+  "startup_endpoint": "first visible own top-level window; not usable UI or first data",
+  "collector": "startup_probe.py; GPU intentionally not sampled",
+  "windows_at_end": [
+    {
+      "hwnd": 1312848,
+      "pid": 25112,
+      "title": "TinyPedal v2.51.0",
+      "rect": [
+        798,
+        245,
+        1121,
+        764
+      ]
+    }
+  ],
+  "metrics": {
+    "cpu_percent_total_pc": 4.7151428618106195,
+    "working_set_mib": 64.71484375,
+    "private_bytes_mib": 37.94921875,
+    "threads": 25,
+    "gpu_engine_percent": null,
+    "startup_first_window_ms": 1167.4330000023474
+  },
+  "sample_count": 9,
+  "samples": [
+    {
+      "t_s": 0.03995030000078259,
+      "dt_s": 0.03995030000078259,
+      "cpu_delta_s": 0.03125,
+      "cpu_percent_total_pc": 4.888886941929698,
+      "working_set_mib": 10.015625,
+      "private_bytes_mib": 3.1015625,
+      "threads": 4,
+      "gpu_engine_percent": null,
+      "gpu_error": "NOT_SAMPLED_STARTUP_PDH_LATENCY_EXCLUDED",
+      "gpu_engines": [],
+      "processes": [
+        {
+          "pid": 25112,
+          "name": "tinypedal.exe",
+          "cpu_s": 0.03125,
+          "working_set_mib": 10.015625,
+          "private_bytes_mib": 3.1015625,
+          "threads": 4
+        }
+      ],
+      "host_cpu_percent": 100.0,
+      "host_available_ram_mib": 5465.625,
+      "background_build_processes": [
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo-nextest.exe"
+      ]
+    },
+    {
+      "t_s": 0.19062500000291038,
+      "dt_s": 0.1506747000021278,
+      "cpu_delta_s": 0.140625,
+      "cpu_percent_total_pc": 5.833137547229816,
+      "working_set_mib": 28.3125,
+      "private_bytes_mib": 14.5,
+      "threads": 4,
+      "gpu_engine_percent": null,
+      "gpu_error": "NOT_SAMPLED_STARTUP_PDH_LATENCY_EXCLUDED",
+      "gpu_engines": [],
+      "processes": [
+        {
+          "pid": 25112,
+          "name": "tinypedal.exe",
+          "cpu_s": 0.171875,
+          "working_set_mib": 28.3125,
+          "private_bytes_mib": 14.5,
+          "threads": 4
+        }
+      ],
+      "host_cpu_percent": 87.6,
+      "host_available_ram_mib": 5335.17578125,
+      "background_build_processes": [
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo-nextest.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo-nextest.exe"
+      ]
+    },
+    {
+      "t_s": 0.33759740000095917,
+      "dt_s": 0.14697239999804879,
+      "cpu_delta_s": 0.09375,
+      "cpu_percent_total_pc": 3.986717914436853,
+      "working_set_mib": 50.37890625,
+      "private_bytes_mib": 25.7578125,
+      "threads": 11,
+      "gpu_engine_percent": null,
+      "gpu_error": "NOT_SAMPLED_STARTUP_PDH_LATENCY_EXCLUDED",
+      "gpu_engines": [],
+      "processes": [
+        {
+          "pid": 25112,
+          "name": "tinypedal.exe",
+          "cpu_s": 0.265625,
+          "working_set_mib": 50.37890625,
+          "private_bytes_mib": 25.7578125,
+          "threads": 11
+        }
+      ],
+      "host_cpu_percent": 78.7,
+      "host_available_ram_mib": 5184.77734375,
+      "background_build_processes": [
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo-nextest.exe"
+      ]
+    },
+    {
+      "t_s": 0.47381610000593355,
+      "dt_s": 0.13621870000497438,
+      "cpu_delta_s": 0.140625,
+      "cpu_percent_total_pc": 6.45217029650044,
+      "working_set_mib": 58.21484375,
+      "private_bytes_mib": 32.71875,
+      "threads": 11,
+      "gpu_engine_percent": null,
+      "gpu_error": "NOT_SAMPLED_STARTUP_PDH_LATENCY_EXCLUDED",
+      "gpu_engines": [],
+      "processes": [
+        {
+          "pid": 25112,
+          "name": "tinypedal.exe",
+          "cpu_s": 0.40625,
+          "working_set_mib": 58.21484375,
+          "private_bytes_mib": 32.71875,
+          "threads": 11
+        }
+      ],
+      "host_cpu_percent": 91.0,
+      "host_available_ram_mib": 5153.71484375,
+      "background_build_processes": [
+        "cargo.exe",
+        "rustc.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo-nextest.exe"
+      ]
+    },
+    {
+      "t_s": 0.6234325000041281,
+      "dt_s": 0.14961639999819454,
+      "cpu_delta_s": 0.125,
+      "cpu_percent_total_pc": 5.221686927431937,
+      "working_set_mib": 64.71484375,
+      "private_bytes_mib": 37.94921875,
+      "threads": 25,
+      "gpu_engine_percent": null,
+      "gpu_error": "NOT_SAMPLED_STARTUP_PDH_LATENCY_EXCLUDED",
+      "gpu_engines": [],
+      "processes": [
+        {
+          "pid": 25112,
+          "name": "tinypedal.exe",
+          "cpu_s": 0.53125,
+          "working_set_mib": 64.71484375,
+          "private_bytes_mib": 37.94921875,
+          "threads": 25
+        }
+      ],
+      "host_cpu_percent": 91.7,
+      "host_available_ram_mib": 5105.73828125,
+      "background_build_processes": [
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo-nextest.exe"
+      ]
+    },
+    {
+      "t_s": 0.7582394000055501,
+      "dt_s": 0.13480690000142204,
+      "cpu_delta_s": 0.078125,
+      "cpu_percent_total_pc": 3.6220790626803914,
+      "working_set_mib": 67.9375,
+      "private_bytes_mib": 39.8046875,
+      "threads": 25,
+      "gpu_engine_percent": null,
+      "gpu_error": "NOT_SAMPLED_STARTUP_PDH_LATENCY_EXCLUDED",
+      "gpu_engines": [],
+      "processes": [
+        {
+          "pid": 25112,
+          "name": "tinypedal.exe",
+          "cpu_s": 0.609375,
+          "working_set_mib": 67.9375,
+          "private_bytes_mib": 39.8046875,
+          "threads": 25
+        }
+      ],
+      "host_cpu_percent": 84.9,
+      "host_available_ram_mib": 4936.91015625,
+      "background_build_processes": [
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo-nextest.exe"
+      ]
+    },
+    {
+      "t_s": 0.8918012000067392,
+      "dt_s": 0.1335618000011891,
+      "cpu_delta_s": 0.046875,
+      "cpu_percent_total_pc": 2.19350705064915,
+      "working_set_mib": 67.94921875,
+      "private_bytes_mib": 39.8046875,
+      "threads": 25,
+      "gpu_engine_percent": null,
+      "gpu_error": "NOT_SAMPLED_STARTUP_PDH_LATENCY_EXCLUDED",
+      "gpu_engines": [],
+      "processes": [
+        {
+          "pid": 25112,
+          "name": "tinypedal.exe",
+          "cpu_s": 0.65625,
+          "working_set_mib": 67.94921875,
+          "private_bytes_mib": 39.8046875,
+          "threads": 25
+        }
+      ],
+      "host_cpu_percent": 78.3,
+      "host_available_ram_mib": 4857.5546875,
+      "background_build_processes": [
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo-nextest.exe"
+      ]
+    },
+    {
+      "t_s": 1.0260376000005635,
+      "dt_s": 0.1342363999938243,
+      "cpu_delta_s": 0.09375,
+      "cpu_percent_total_pc": 4.364967326499793,
+      "working_set_mib": 75.8203125,
+      "private_bytes_mib": 43.1171875,
+      "threads": 25,
+      "gpu_engine_percent": null,
+      "gpu_error": "NOT_SAMPLED_STARTUP_PDH_LATENCY_EXCLUDED",
+      "gpu_engines": [],
+      "processes": [
+        {
+          "pid": 25112,
+          "name": "tinypedal.exe",
+          "cpu_s": 0.75,
+          "working_set_mib": 75.8203125,
+          "private_bytes_mib": 43.1171875,
+          "threads": 25
+        }
+      ],
+      "host_cpu_percent": 79.2,
+      "host_available_ram_mib": 4815.62109375,
+      "background_build_processes": [
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo-nextest.exe"
+      ]
+    },
+    {
+      "t_s": 1.1598270000031334,
+      "dt_s": 0.1337894000025699,
+      "cpu_delta_s": 0.125,
+      "cpu_percent_total_pc": 5.839401327646236,
+      "working_set_mib": 85.0078125,
+      "private_bytes_mib": 46.96484375,
+      "threads": 29,
+      "gpu_engine_percent": null,
+      "gpu_error": "NOT_SAMPLED_STARTUP_PDH_LATENCY_EXCLUDED",
+      "gpu_engines": [],
+      "processes": [
+        {
+          "pid": 25112,
+          "name": "tinypedal.exe",
+          "cpu_s": 0.875,
+          "working_set_mib": 85.0078125,
+          "private_bytes_mib": 46.96484375,
+          "threads": 29
+        }
+      ],
+      "host_cpu_percent": 94.7,
+      "host_available_ram_mib": 4819.9921875,
+      "background_build_processes": [
+        "cargo.exe",
+        "rustc.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "rustc.exe",
+        "cargo-nextest.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo.exe",
+        "cargo-nextest.exe"
+      ]
+    }
+  ],
+  "product": "TinyPedal",
+  "scenario": "startup",
+  "repetition": 2,
+  "source_mode": "lmu_api_no_simulator_no_data"
+}

@@ -6,6 +6,8 @@ import importlib.util
 import json
 import pathlib
 import struct
+import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -56,6 +58,24 @@ def block(folder,name,mode,anchor,moving=True,footer=True,unexpected=False):
 
 
 class ABTests(unittest.TestCase):
+    @unittest.skipUnless(sys.platform=="win32","Windows PowerShell 5")
+    def test_ps5_child_exit_codes_survive_polling_and_wait(self):
+        helper=MODULE.parent/"Process-AB.ps1"
+        with tempfile.TemporaryDirectory(prefix="1638 child '") as directory:
+            folder=pathlib.Path(directory)
+            script=folder/"probe.ps1"
+            script.write_text('''param([string]$Helper,[string]$Folder)
+$ErrorActionPreference='Stop'
+. $Helper
+foreach($expected in @(0,7)) {
+    $child=Start-ABChild -File "$env:SystemRoot/System32/cmd.exe" -Arguments @('/c','exit',[string]$expected) -Stdout (Join-Path $Folder "$expected.out") -Stderr (Join-Path $Folder "$expected.err")
+    while(-not $child.HasExited){Start-Sleep -Milliseconds 25;$child.Refresh()}
+    $child.WaitForExit()
+    if($null -eq $child.ExitCode -or $child.ExitCode -ne $expected){throw 'ExitCode no fiable en PS5'}
+}
+''',encoding="utf-8-sig")
+            subprocess.run(["powershell.exe","-NoProfile","-ExecutionPolicy","Bypass","-File",str(script),"-Helper",str(helper),"-Folder",str(folder)],check=True,capture_output=True,timeout=30)
+
     def test_a_reading_gap_is_not_evidence_that_the_producer_stopped(self):
         clock=ab.Clock(); clock.observe(0,100); clock.observe(1_000_000_000,101)
         result=clock.report(1_000_000_000,0)

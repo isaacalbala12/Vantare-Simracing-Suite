@@ -22,6 +22,7 @@ function Test-Driving {
     finally { if ($view) {$view.Dispose()}; if ($map) {$map.Dispose()} }
 }
 try {
+    . (Join-Path $kit 'Process-AB.ps1')
     $mutex=[Threading.Mutex]::new($false,'Local\VantareLMUAB')
     try { $held=$mutex.WaitOne(0) } catch [Threading.AbandonedMutexException] { $held=$true }
     if (-not $held) { throw 'Ya existe una prueba A/B en esta sesión.' }
@@ -44,7 +45,7 @@ try {
     $state.presentmon=@{state='starting';session=$session;clock='CPUStartQPC';gpu_tracking=$false;input_tracking=$false}
     $pmArgs=@('--process_id',[string]$GameProcessId,'--output_file',('"{0}"' -f (Join-Path $Run 'presentmon.csv')),'--qpc_time','--v2_metrics','--timed',[string]($ControlSeconds+4*$BlockSeconds+30),'--terminate_after_timed','--terminate_on_proc_exit','--session_name',$session,'--no_console_stats','--no_track_gpu','--no_track_input')
     try {
-        $pm=Start-Process -FilePath (Join-Path $kit 'PresentMon.exe') -ArgumentList $pmArgs -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $Run 'presentmon.log') -RedirectStandardError (Join-Path $Run 'presentmon-error.log')
+        $pm=Start-ABChild -File (Join-Path $kit 'PresentMon.exe') -Arguments $pmArgs -Stdout (Join-Path $Run 'presentmon.log') -Stderr (Join-Path $Run 'presentmon-error.log')
         $state.presentmon.state='started'; $state.presentmon.process_id=$pm.Id
     } catch { $state.presentmon.state='unavailable'; $state.presentmon.error=$_.Exception.Message }
     $blocks=@(); if ($ControlSeconds -gt 0) { $blocks+=@{name='C0';mode='C';duration=$ControlSeconds} }
@@ -59,7 +60,7 @@ try {
         $entry=[ordered]@{name=$block.name;mode=$block.mode;duration_s=$block.duration;state='running';started_utc=[DateTime]::UtcNow.ToString('o')}
         $state.blocks+=,$entry; Save-State
         $recArgs=@(('"{0}"' -f $active),$build,('"{0}"' -f $config))
-        $recorder=Start-Process -FilePath (Join-Path $kit 'vantare-grabar-lmu-completo.exe') -ArgumentList $recArgs -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $Run ($block.name+'.log')) -RedirectStandardError (Join-Path $Run ($block.name+'-error.log'))
+        $recorder=Start-ABChild -File (Join-Path $kit 'vantare-grabar-lmu-completo.exe') -Arguments $recArgs -Stdout (Join-Path $Run ($block.name+'.log')) -Stderr (Join-Path $Run ($block.name+'-error.log'))
         $deadline=[DateTime]::UtcNow.AddSeconds($block.duration+20)
         while (-not $recorder.HasExited) {
             if ((Has-Stop) -or -not (Test-GameAlive)) { if (Test-Path -LiteralPath $active) { New-Item -ItemType File -Path (Join-Path $active 'STOP') -Force | Out-Null } }

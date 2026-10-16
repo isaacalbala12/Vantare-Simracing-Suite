@@ -18,10 +18,15 @@ Leídos [#1562](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/
 
 ### #1638 / VANTA-33 — kit A/B preparado para VANTA-118 (16-oct)
 
+**Kit corregido:** no usar el ZIP inicial `f2851e…`. La regresión adicional
+reprodujo `ExitCode` nulo en PS5; `01d05fa1a` conserva handles de los hijos y
+prueba salidas reales 0/7. El ZIP actual tiene el nuevo SHA de abajo, Python7/7
+y se ha vuelto a comprobar su tarea/autoeliminación. Extraer en carpeta nueva.
+
 [Protocolo y comandos](../../telemetria/ab-lmu-2026-10-16.md). Fuente
-`e516ccfe713d4d9d3d1c2e9875c234e126f4cdaf`, kit privado listo en
-`C:/VantareServer/share/kit-ab-lmu/kit-ab-lmu.zip` (**995572 bytes**), SHA-256
-`f2851e1cd1c594eda201eaed03639a2474fa18543f8636e6691357c395eb874f`.
+`21bbe9401432d9646668f7a259ed082939ad1cd8`, kit privado listo en
+`C:/VantareServer/share/kit-ab-lmu/kit-ab-lmu.zip` (**995962 bytes**), SHA-256
+`39bfa69266b08ff18d532c235f67aac2a655316b9e50f946ad386022febd57f1`.
 Grabadora release CRT estático + PresentMon 2.6.0 portátil/licencia + scripts PS5
 con hashes, tarea interactiva efímera oculta, STOP y análisis offline streaming.
 No compilación/instalación en PC de juego, sin juego en servidor ni capturas de app.
@@ -41,7 +46,7 @@ Inventario productivo revisado: únicamente `standings` y `sessionInfo`, GET a
 la cadencia efectiva. No se cambian esos endpoints ni el adapter.
 
 Clippy/fmt PASS, Nextest CI workspace runtime/domain/ipc+telemetría **676/676 PASS**,
-7 skips; Python **6/6 PASS**, release/CRT y CLI/captura vacía comprobados. PS5,
+7 skips; Python **7/7 PASS**, release/CRT y CLI/captura vacía comprobados. PS5,
 hashes, espacios/apóstrofe y **tarea interactiva negativa real con autoeliminación** PASS.
 Verificador QA release actualizado; `Verificar-AB.ps1 -Widgets` ejecuta después
 los cuatro archivos A/B por las 18 proyecciones en serie, scope practice-only.

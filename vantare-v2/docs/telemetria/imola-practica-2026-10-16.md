@@ -179,7 +179,17 @@ asume que el encargo se haya invocado con `high`. No hay delegación.
 ## Entrega y canal
 
 Rama `vantareapp/isa-1638-telemetria-lanzamiento`, base ya fusionada
-`nightly@28800654c5bb4ca425b49bd827d0ee8cbbeeb155`, código Rust `acf7d09dc`.
+`nightly@354c207aa2dddbccee2c8d899d632d4c39b55449`, sincronización local
+`6db5879f5` tras detectar conflicto remoto en README. Se conserva DTO v11,
+Services v10 y derechos v5. El encargo original autorizaba merge de nightly
+y resolución de conflictos. Código Rust del replay evaluado: `acf7d09dc`.
+
+La sincronización no cambia adapter/Core/codec LMU, domain, DTO de fotos,
+registro, instrumentación ni proyecciones de los widgets; `git diff dd029a9be`
+confirma esos blobs intactos. Los cambios de derechos/control y perfiles de
+compilación se comprueban con gates nuevos; no se repite el replay completo
+para una ruta de datos que no ha cambiado. La evidencia conserva SHA de los
+binarios realmente utilizados, anteriores a la sincronización.
 [PR draft #1664](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1664)
 a nightly. VANTA-33, proyecto Vantare, sigue **En curso**: la fase B es parcial.
 No se ha integrado ni publicado una release. El fichero bruto permanece local;

@@ -19,8 +19,11 @@ Leídos [#1562](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/
 ### #1638 / VANTA-33 — práctica de Imola offline (16-oct)
 
 **Canal real:** Plane En curso, PR draft [#1664](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1664)
-a nightly. Código nuevo `acf7d09dc`, base ya fusionada `nightly@28800654c`.
-Sin nuevo merge, promoción, release ni cambios en la rama #1653/#1660.
+a nightly. Rust evaluado `acf7d09dc`; sincronización local posterior
+`6db5879f5` con `nightly@354c207aa`, autorizada por el encargo inicial.
+La PR remota dd029a9be detectó conflicto de README: se resolvió conservando
+DTO v11 / Services v10 / derechos v5. Gates tras sync en curso. No es una
+promoción a nightly; no hay release ni cambios en la rama #1653/#1660.
 
 Recibida `C:/VantareServer/evidence/grabacion-lmu-imola/sesion.lmu.gz`,
 3.006.324.579 bytes, LMU 1.4.2.0, 77 min 18 s de práctica Imola. SHM cuenta

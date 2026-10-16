@@ -26,7 +26,7 @@ No se consultó ni modificó Polar real. No hay claves ni archivos env.
   desde nightly aplicado. PostgreSQL NOSUPERUSER/BYPASSRLS durante pruebas.
 - Edge731PASS,2ignorados preexistentes. Configuración oficial de Deno/import map
   fijado, caché local, sin permiso de red. Incluye mapa de producción y generador.
-- Node/SQLite82PASS. E2E12 recorridos con webhook real y dobles:8 con/sin código
+- Node/SQLite83PASS. E2E12 recorridos con webhook real y dobles:8 con/sin código
   y4 con el mapa de producción aprobado;control sin binding sigue en cuarentena.
   Cliente Node no soporta los importsHTTPS;el E2E usa Deno sin permiso de red.
 - Chrome48capturas1440/390;red íntegramente interceptada. Quality456PASS,
@@ -37,6 +37,10 @@ No se consultó ni modificó Polar real. No hay claves ni archivos env.
   Código Rust íntegro de nightly;árbol native afb553c158cc20ab1ce2a7d147f55f3d0067934b.
   Logs en C:/VantareServer/evidence/checkout-web-r9 y copia Mac. No fallos Rust
   ni repetición sin caché. No nuevo intento de borrar target tras rechazo R8.
+
+La landing ya no anuncia el descuento por informes aplazado por #1673. Se
+retira el párrafo de los cuatro idiomas; la fila con fechas ya se excluía al
+generar. Publicación regenerada y regresión de los doce pares fase/idioma.
 
 ## Estado y siguientes pasos
 

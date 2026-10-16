@@ -55,7 +55,8 @@ No se inventan IDs de creador ni se reejecuta apply de Polar.
 
 Web conserva la RPC pública y cierra antes de cobrar si el registro no está
 disponible/no coincide. Tests usan las ofertas y IDs del mapa aprobado sin red.
-Edge731 PASS+2ignorados previos;NodeSQLite82;12E2E+controlsinbinding;48capturas.
+La landing retira el anuncio de informes aplazados;regeneradas cuatro lenguas
+y prueba de todas las fases. Edge731 PASS+2ignorados previos;NodeSQLite83;12E2E+controlsinbinding;48capturas.
 Quality456/fmt/lint/surface PASS. Windows secuencial por cola nueva:
 fmt/check/Clippy/Nextest1801/lifecycle/telemetría25 PASS;árbol native
 afb553c158cc20ab1ce2a7d147f55f3d0067934b idéntico a nightly. Target propio

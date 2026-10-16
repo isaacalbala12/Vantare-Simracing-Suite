@@ -19,6 +19,7 @@ def main():
     parser.add_argument("--baseline", action="store_true", help="RED: omit the new migration, run the new regression only")
     parser.add_argument("--before-expiry",action="store_true",help="RED F1: reviewed R3 guard without automatic expiry")
     parser.add_argument("--integration-control",action="store_true",help="RED: omit the integration migration, run its behavioral regression")
+    parser.add_argument("--nightly-upgrade",action="store_true",help="Apply origin/nightly first, then only this branch pending migrations")
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[2]
     args.output.mkdir(parents=True, exist_ok=True)
@@ -68,13 +69,20 @@ def main():
         select parts[1:array_length(parts,1)-1] from (select string_to_array(name,'/') parts) p $$;"""
         sql(bootstrap)
         migrations = []
-        for migration in sorted((root/"supabase/migrations").glob("*.sql")):
+        ordered = [(m,m.read_text()) for m in sorted((root/"supabase/migrations").glob("*.sql"))]
+        if args.nightly_upgrade:
+            existing = subprocess.check_output(["git","-C",str(root),"ls-tree","--name-only","origin/nightly:supabase/migrations"],text=True).splitlines()
+            known = {name for name in existing if name.endswith(".sql")}
+            ordered = [(root/"supabase/migrations"/name,
+                        subprocess.check_output(["git","-C",str(root),"show","origin/nightly:supabase/migrations/"+name],text=True))
+                       for name in sorted(known)] + [(m,body) for m,body in ordered if m.name not in known]
+        for migration,body in ordered:
             if args.integration_control and "checkout_web_nightly_integration" in migration.name:
                 continue
             if (args.baseline and "checkout_web_shared_guard" in migration.name) or ((args.baseline or args.before_expiry) and ("checkout_automatic_compensation" in migration.name or "web_purchase_erasure_pull" in migration.name or "checkout_review_safety" in migration.name)):
                 continue
             try:
-                sql(migration.read_text())
+                sql(body)
             except Exception as error:
                 raise RuntimeError(migration.name + ": " + str(error)) from error
             migrations.append(migration.name)

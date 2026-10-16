@@ -7,7 +7,8 @@ el guard con dispatch/binding, compensación apagada y baja D1 automática.
 
 ## Comprobación local
 
-- Mac:83 migraciones completas,682 comprobaciones pgTAP y15 carreras reales.
+- Mac:83 migraciones completas,682 comprobaciones pgTAP y15 carreras reales,
+  tanto en instalación limpia como actualizando un esquema con nightly aplicado.
   Rol postgres NOSUPERUSER BYPASSRLS durante suites/carreras. Incluye Founders,
   creador/informes y auditoría del rol web_purchase_erasure tras las nuevas RPC.
 - Control RED: omitir solo la migración de integración reproduce el bloqueo
@@ -19,14 +20,21 @@ el guard con dispatch/binding, compensación apagada y baja D1 automática.
   de RPC/Polar y control sin binding;48 capturas Chrome con toda red interceptada.
 - Deno fmt7 y lint5 de producción PASS (se excluye solo no-import-prefix de
   Deno2.9 por imports HTTPS preexistentes). Quality456 y deploy surface PASS.
-- Fallos intermedios conservados en evidencia: fixtures anteriores sin begin,
+- Incidencias de integración resueltas: fixtures anteriores sin begin,
   superusuario del runner y protocolo guard del mock; ajustados al contrato real.
   El runner completo final pasa. El arnés E2E usa Deno porque el webhook nuevo
   importa módulos HTTPS; no altera ni sustituye el código del webhook.
 
 ## Gates Rust Windows
 
-PENDIENTE: resultados al terminar la cola del servidor.
+PASS: fmt, check workspace/all-targets, Clippy workspace/all-targets con
+-D warnings, Nextest1801/1801, lifecycle sin fallos y telemetría25/25.
+Nextest registra14 saltados por su perfil; se ejecutan además los gates
+separados lifecycle/telemetría, sin modificar filtros ni configuración.
+Evidencia conservada y copiada al Mac. El target exclusivo queda en el servidor:
+la revisión automática rechazó su borrado con blocked by policy, sin motivo más
+concreto. No se cambió de herramienta para forzar el borrado.
+No hubo repetición sin caché: ningún gate Rust falló.
 Árbol nativo del merge idéntico a nightly:
 36cf87011d750968a1b57a5a4793410dbba294d3.
 Worktree aislado C:/VantareServer/wt/checkout-web-integration.

@@ -53,12 +53,15 @@ real de migraciones. Código nativo exactamente igual a nightly: árbol
 36cf87011d750968a1b57a5a4793410dbba294d3; gates Windows en worktree aislado
 checkout-web-integration por compilar.ps1, secuenciales.
 
-Evidencia Mac ~/evidence/web-compra/r8-*:83 migraciones,682 pgTAP,15 carreras;
+Evidencia Mac ~/evidence/web-compra/r8-*:83 migraciones,682 pgTAP,15 carreras
+en instalación limpia y actualización desde nightly;
 726 Edge PASS y2 ignorados preexistentes;81 tests Node/SQLite;8 recorridos
 web→webhook real→licencia y control sin binding;48 capturas headless locales;
 fmt/lint de archivos afectados, quality456 y superficie de deploy PASS.
 Control RED sin migración reproduce promotion_checkout_pending tras rechazo
-cierto. El resultado final Rust se registra en docs/billing/checkout-integration-r8.md.
+cierto. Rust Windows PASS:fmt/check/Clippy,Nextest1801,lifecycle ytelemetría25.
+Evidencia en docs/billing/checkout-integration-r8.md;target conservado porque
+la revisión automática rechazó el borrado con blocked by policy.
 Solo ramas aisladas y pushes a bares del Mac; publicación/CI/merge a nightly
 quedan al orquestador. Sin deploy, cobros, refunds, bajas reales ni release.
 Para Plane VANTA-42: actualizar resumen/Por revisar desde el orquestador.

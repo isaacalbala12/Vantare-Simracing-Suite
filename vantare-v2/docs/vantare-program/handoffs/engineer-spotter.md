@@ -26,6 +26,9 @@ reproduce el mismo `assertion failed: lap`; cinco tandas completas 25/25 PASS.
 El `os error 2` compartido de CI no identifica al hijo; existe además un test
 con Core ausente. Host ya creaba el primer pipe antes de devolver. Sin cambios
 de producto, permisos o TTL. [Evidencia y límites](../../telemetria/pulido-1638-2026-10-16.md).
+Código publicado `8d53d2cf1`, PR draft #1679 a nightly: CI run38904835599
+verde, Windows Nextest 1870/1870 y Engineer lifecycle 5/5 (2,17 s). El cierre
+de M-6 añade documentación, no cambia Engineer; verificar el SHA final en el PR.
 
 Encargo posterior del orquestador en VANTA-33 / #1638, PR draft #1664:
 el run38847620638 de `08f52be56` pierde autoridad después de HELLO en dos

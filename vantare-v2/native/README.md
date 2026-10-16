@@ -263,6 +263,9 @@ En widgets, `scene` es el archivo de fotos existente (una foto o secuencia JSON)
 `widget` es el nombre del registro y `settings`, opcional, contiene exactamente
 los ajustes productivos con su campo `kind`. `until`, opcional, es el número de
 fotos desde el principio que se alimentan antes de congelar la animación.
+Sin `settings`, se conserva el aspecto histórico de la captura individual:
+Eficiencia para Standings, Relative, Fuel, Delta y Pedals. Para comparar referencias
+Vantare, indicar `settings` con `kind` y `designSystem: "vantare"` explícitos.
 `size` fija el cliente de captura (por defecto 2304×1440); la PNG conserva el
 tamaño natural del widget. El alfa se recupera con las mismas dos pasadas
 negro/blanco, ahora con `PrintWindow` del HWND. El Hub también usa `PrintWindow`;
@@ -294,6 +297,9 @@ Recompilar después de editar código o recursos embebidos. Si entradas y PNG
 coinciden, no se abre ninguna ventana ni se reescribe el archivo; borrar/cambiar
 la PNG o su recibo provoca recaptura. No se omite un PNG dañado. El resumen del
 lote registra capturadas/omitidas, procesos de app, ventanas y tiempo.
+
+Mediciones completas, comparación de píxeles y límites de las referencias:
+[informe de #1655](../docs/analysis/1655-capturas.md).
 
 ## Compilar y probar
 

@@ -14,8 +14,12 @@ según autorización explícita de este encargo. No cambia variables de máquina
 No se toca el checkout principal del servidor ni su untracked ajeno.
 Evidencia Mac `~/evidence/1636-nightly/`; evidencia Rust servidor
 `C:/VantareServer/evidence/1636-nightly/`. Tracker/PR/publicación a cargo del
-orquestador; worker hará push solo al bare y FIN en buzón. Gates pendientes en
-este commit de merge; se registra el resultado antes de entregar.
+orquestador; worker hará push solo al bare y FIN en buzón. Gates Mac verdes: SQL756 + E2E1 con PostgreSQL/dobles y Edge363; contrato CI2,
+clasificador nativo11 y quality/456 huellas PASS. Guard PS detectó candidato
+billing-report-promotion de nightly no reconocido; se añadió inerte con test
+rojo/verde, sin habilitar despliegues. Rust servidor fmt/check verdes; Clippy y
+Nextest en curso. Nightly avanzó a ceb999f5 solo en tooling de avisos/handoff;
+se incorporará también para dejar la rama actualizada sin tocar esos cambios.
 
 ## #1636 · VANTA-72 · R3 menores de seguridad (15/10/2026)
 

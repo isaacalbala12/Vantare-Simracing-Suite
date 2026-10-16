@@ -361,3 +361,24 @@ Deno.test("marketing review routes are deployable explicitly with offline SQL/E2
     }
   }
 });
+
+Deno.test("merged marketing and report promotion stay recognized as inert PowerShell candidates", () => {
+  const ps = Deno.readTextFileSync(
+    new URL("verify-deploy-surface.ps1", import.meta.url),
+  );
+  const candidates = ps.match(/\$reviewCandidates = @\(([^\n]+)\)/)?.[1] ?? "";
+  const production = ps.match(/\$production = @\(([^\n]+)\)/)?.[1] ?? "";
+  for (
+    const name of [
+      "billing-report-promotion",
+      "mail-unsubscribe",
+      "mail-webhook",
+      "mail-cleanup",
+      "native-mail-consent",
+    ]
+  ) {
+    if (!candidates.includes(`"${name}"`) || production.includes(`"${name}"`)) {
+      throw new Error("merged review candidate lost or activated: " + name);
+    }
+  }
+});

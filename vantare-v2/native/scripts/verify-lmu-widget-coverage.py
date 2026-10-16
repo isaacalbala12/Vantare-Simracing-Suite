@@ -1,7 +1,7 @@
 """QA #1638 sin ventanas: grabación offline o smoke live opt-in histórico.
 
 Desde vantare-v2: python -I native/scripts/verify-lmu-widget-coverage.py
---recording reproduce un .lmu.gz por el adapter/Core y los 18 widgets.
+--recording reproduce un .lmu.gz por el adapter/Core y todo el catálogo de widgets.
 Requiere binarios previos en el target propio; no arranca ni controla LMU.
 """
 import argparse
@@ -98,8 +98,22 @@ def readable_report(telemetry, projections, scope):
     return "\n".join(lines) + "\n"
 
 
+def validate_widget_catalog(projections):
+    """El binario exporta los nombres de Kind::ALL, sin catálogo paralelo Python."""
+    expected = projections.get("widget_catalog")
+    if (not isinstance(expected, list) or not expected
+            or any(not isinstance(name, str) or not name for name in expected)
+            or len(set(expected)) != len(expected)):
+        raise RuntimeError("falta catálogo Kind::ALL válido; recompilar el consumidor QA")
+    widgets = projections["widgets"]
+    actual = [widget["widget"] for widget in widgets]
+    if set(actual) != set(expected) or len(actual) != len(expected):
+        raise RuntimeError("informe incompleto: widgets ausentes, extra o duplicados")
+    return len(expected)
+
+
 def offline(recording, target, output, test_bin=None, scope="unspecified"):
-    """Archivo -> Replay/Translator/Core -> DTO estricto -> 18 Widget::ingest."""
+    """Archivo -> Replay/Translator/Core -> DTO estricto -> Kind::ALL -> Widget::ingest."""
     output.mkdir(parents=True, exist_ok=False)
     producer = target / "release/vantare-verificar-lmu.exe"
     test = "offline_coverage::recorded_dtos_reach_all_widgets"
@@ -137,21 +151,14 @@ def offline(recording, target, output, test_bin=None, scope="unspecified"):
         if source_code == 0 and widgets_code == 0:
             telemetry = json.loads((output / "telemetry.json").read_text(encoding="utf-8"))
             projections = json.loads((output / "widgets.json").read_text(encoding="utf-8"))
-            widgets = projections["widgets"]
-            expected = {"standings", "relative", "radar", "pedals", "delta",
-                        "car-damage-visual", "car-damage-numbers", "input-telemetry",
-                        "multiclass-relative", "broadcast-tower", "delta-trace",
-                        "track-map", "track-weather", "head-to-head", "fuel-strategy",
-                        "pedals-telemetry", "racing-flags", "fastest-lap"}
-            if {widget["widget"] for widget in widgets} != expected or len(widgets) != 18:
-                raise RuntimeError("informe incompleto: no contiene exactamente los 18 widgets")
+            widget_count = validate_widget_catalog(projections)
             if projections["photos"] != telemetry["photos"] or telemetry["photos"] == 0:
                 raise RuntimeError("fotos perdidas entre Core y widgets")
             timing = {"started_at_s", "finished_at_s", "scheduled_end_s", "start_phase",
                       "distance_to_start_line_m", "next_kind", "next_starts_at_s"}
             if set(telemetry["session_alerts"]) != timing:
                 raise RuntimeError("faltan campos de Avisos en el informe")
-            report.update(status="evaluated_pending_coverage_review", widgets=18,
+            report.update(status="evaluated_pending_coverage_review", widgets=widget_count,
                           photos=telemetry["photos"], session_alerts=telemetry["session_alerts"],
                           motion_evidence=projections.get("motion_evidence"),
                           adapter_or_core_rejections=telemetry["adapter_or_core_rejections"])

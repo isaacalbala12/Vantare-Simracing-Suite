@@ -1,4 +1,4 @@
-//! Consume el DTO productivo por stdin; evalúa los 18 widgets sin crear ventanas.
+//! Consume el DTO productivo por stdin; evalúa Kind::ALL sin crear ventanas.
 use crate::{Kind, Settings, Widget};
 use serde_json::{Value, json};
 use std::{
@@ -93,7 +93,8 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         );
     }
     let widgets:Vec<_>=widgets.into_iter().map(|(kind,_,changes,demand)|json!({"widget":kind.name(),"photos_evaluated":photos,"projection_changes":changes,"required_signals":demand,"status":if photos>0 {"evaluated_not_certified"} else {"no_data"}})).collect();
-    let report = json!({"schema":"vantare.widgets-offline-report.v1","photos":photos,"widgets":widgets,"motion_evidence":motion.report(),"source_state_counts":source_states,"field_quality_counts":counts,"field_quality_per_session":per_session,"note":"Evaluar proyecciones no acredita todas las señales. Revisar los unavailable/stale y el informe de avisos, por sesión y situación."});
+    let catalog: Vec<_> = Kind::ALL.iter().map(|kind| kind.name()).collect();
+    let report = json!({"widget_catalog":catalog,"schema":"vantare.widgets-offline-report.v1","photos":photos,"widgets":widgets,"motion_evidence":motion.report(),"source_state_counts":source_states,"field_quality_counts":counts,"field_quality_per_session":per_session,"note":"Evaluar proyecciones no acredita todas las señales. Revisar los unavailable/stale y el informe de avisos, por sesión y situación."});
     output.write_all(&serde_json::to_vec_pretty(&report)?)?;
     output.sync_all()?;
     if photos == 0 {

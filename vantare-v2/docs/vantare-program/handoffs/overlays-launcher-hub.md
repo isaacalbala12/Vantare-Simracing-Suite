@@ -2,6 +2,17 @@
 
 [Histórico previo por SHA](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/8c6e83f977c8d2245a04266cdaaf896ed8c1b131/vantare-v2/docs/vantare-program/handoffs/overlays-launcher-hub.md). El diario y avances están en las issues; este documento conserva el estado actual.
 
+## Reanudación #1653 · catálogo de cobertura · 2026-10-16
+
+Se fusiona origin/nightly `32c3f3a14` mediante `725cce28`, sin conflictos,
+rebase ni force-push. El evaluador offline deja de fijar 18 widgets:
+el consumidor Rust exporta el catálogo de `Kind::ALL`, y Python valida
+nombres y cantidad contra él, rechazando faltantes, extras y duplicados.
+El resumen usa esa cantidad; informes antiguos sin catálogo exigen recompilar.
+Se conserva el límite de cobertura: evaluar proyecciones no certifica señales
+reales de formación/salida. CI y SHA de esta fase se verifican al cerrar en
+#1660/#1653 y el buzón; el verde anterior no acredita este nuevo HEAD.
+
 ## Continuación #1653 / VANTA-74 · v11 · 2026-10-16
 
 [PR #1660](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1660)

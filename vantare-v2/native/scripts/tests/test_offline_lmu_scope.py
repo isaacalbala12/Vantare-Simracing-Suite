@@ -60,5 +60,28 @@ class PracticeScopeTests(unittest.TestCase):
         self.assertIn("no valida formación", report)
 
 
+class WidgetCatalogTests(unittest.TestCase):
+    def test_catalog_growth_needs_no_python_widget_list(self):
+        for catalog in (["standings"], ["standings", "session-alerts", "future-widget"]):
+            report = {"widget_catalog": catalog,
+                      "widgets": [{"widget": name} for name in reversed(catalog)]}
+            self.assertEqual(MODULE.validate_widget_catalog(report), len(catalog))
+
+    def test_missing_extra_and_duplicate_widgets_are_rejected(self):
+        for actual in (["standings"], ["standings", "session-alerts", "extra"],
+                       ["standings", "standings"], ["standings", "session-alerts", "session-alerts"]):
+            with self.subTest(actual=actual), self.assertRaises(RuntimeError):
+                MODULE.validate_widget_catalog({
+                    "widget_catalog": ["standings", "session-alerts"],
+                    "widgets": [{"widget": name} for name in actual]})
+
+    def test_old_or_invalid_catalog_cannot_accredit_partial_report(self):
+        for catalog in (None, [], ["standings", "standings"], ["standings", None],
+                        "standings", [""]):
+            with self.subTest(catalog=catalog), self.assertRaises(RuntimeError):
+                MODULE.validate_widget_catalog({
+                    "widget_catalog": catalog, "widgets": [{"widget": "standings"}]})
+
+
 if __name__ == "__main__":
     unittest.main()

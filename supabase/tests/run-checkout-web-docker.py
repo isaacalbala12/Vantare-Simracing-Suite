@@ -18,6 +18,7 @@ def main():
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--baseline", action="store_true", help="RED: omit the new migration, run the new regression only")
     parser.add_argument("--before-expiry",action="store_true",help="RED F1: reviewed R3 guard without automatic expiry")
+    parser.add_argument("--integration-control",action="store_true",help="RED: omit the integration migration, run its behavioral regression")
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[2]
     args.output.mkdir(parents=True, exist_ok=True)
@@ -68,6 +69,8 @@ def main():
         sql(bootstrap)
         migrations = []
         for migration in sorted((root/"supabase/migrations").glob("*.sql")):
+            if args.integration_control and "checkout_web_nightly_integration" in migration.name:
+                continue
             if (args.baseline and "checkout_web_shared_guard" in migration.name) or ((args.baseline or args.before_expiry) and ("checkout_automatic_compensation" in migration.name or "web_purchase_erasure_pull" in migration.name or "checkout_review_safety" in migration.name)):
                 continue
             try:
@@ -77,6 +80,8 @@ def main():
             migrations.append(migration.name)
             if len(migrations)%50==0: print(str(len(migrations))+" migrations loaded",flush=True)
         (args.output/"migrations.txt").write_text("\n".join(migrations)+"\n")
+        docker("exec",container,"psql","-X","-U","supabase_admin","-d","postgres",
+               "-v","ON_ERROR_STOP=1","-c","ALTER ROLE postgres NOSUPERUSER BYPASSRLS")
         suites = ["checkout_web_shared_guard_regression.test.sql"] if args.baseline else [
             "checkout_web_shared_guard_regression.test.sql",
             "checkout_automatic_compensation.test.sql",
@@ -85,17 +90,31 @@ def main():
             "billing_checkout_attempts_test.sql","checkout_web_shared_guard.test.sql",
             "native_checkout_internal_account.test.sql","native_checkout_annual.test.sql",
             "clerk_identity_cutover_test.sql","commercial_tombstone.test.sql",
-            "billing_order_refund_ledger.test.sql","commercial_admin_deleted.test.sql"]
+             "billing_order_refund_ledger.test.sql","commercial_admin_deleted.test.sql",
+            "checkout_web_nightly_integration.test.sql","founders.test.sql","founders_review_r2.test.sql","creator_renewal.test.sql",
+            "report_promotion.test.sql","report_creator_renewals.test.sql"]
         if args.before_expiry: suites=[]
+        if args.integration_control: suites=["checkout_web_nightly_integration.test.sql"]
         total = 0
+        failures = []
         for name in suites:
-            result = sql((root/"supabase/tests"/name).read_text())
+            try:
+                result = sql((root/"supabase/tests"/name).read_text())
+            except Exception as error:
+                (args.output/(name+".log")).write_text(str(error))
+                failures.append(name)
+                print(name+": FAIL (SQL error)",flush=True)
+                continue
             (args.output/(name+".log")).write_text(result+"\n")
             if re.search(r"(^|\n)not ok |# Looks like", result):
-                raise AssertionError(name+" failed; see output log")
+                failures.append(name)
+                print(name+": FAIL; see output log",flush=True)
+                continue
             count = len(re.findall(r"(^|\n)ok \d+",result))
             total += count
             print(name+": "+str(count)+" PASS",flush=True)
+        if failures:
+            raise AssertionError("Failed suites: "+", ".join(failures))
         with tempfile.TemporaryDirectory(prefix="vantare-checkout-client-") as temp:
             binary = Path(temp)/"psql"
             binary.write_text("#!/bin/sh\nexec docker exec -i "+shlex.quote(container)+" psql \"$@\"\n")
@@ -190,6 +209,18 @@ def main():
                 first,second = str(uuid.uuid4()),str(uuid.uuid4())
                 race(claim(account,first),claim(account,second,"pro_plus_annual"),"busy",direction+" blocks duplicate family")
                 assert sql(f"select count(*) from billing_checkout_attempts where user_id='{account}';")=="1"
+            # The canonical creator wrapper shares the real account barrier:
+            # neither channel can create a second family member or stray attribution.
+            creator,discount = str(uuid.uuid4()),str(uuid.uuid4())
+            sql(f"insert into private.admin_creators(creator_id,environment,name,email,code,status,discount_id) values('{creator}','sandbox','Local race','race@example.invalid','MERGERACE','active','{discount}');")
+            for direction in ["creator-first","plain-first"]:
+                account,_,_=seed(); first,second=str(uuid.uuid4()),str(uuid.uuid4())
+                attributed=f"select outcome from claim_billing_creator_checkout_attempt('{account}','{first}','pro_monthly','sandbox','fixture','MERGERACE','{discount}');"
+                ordinary=claim(account,second,"pro_plus_annual")
+                race(attributed if direction=="creator-first" else ordinary,
+                     ordinary if direction=="creator-first" else attributed,"busy",direction+" atomic app/web reservation")
+                expected=1 if direction=="creator-first" else 0
+                assert sql(f"select count(*) from private.creator_checkout_attributions where account_id='{account}';")==str(expected)
             for operation in ["claim","complete","uncertain"]:
                 for direction in ["write-first","delete-first"]:
                     account,subject,issuer = seed()

@@ -80,9 +80,11 @@ intentos sin marcador suficiente permanecen conservadores y se escalan.
 
 Un rechazo4xx con ACK perdido también acaba por ese plazo aunque se cambie
 de periodo; reintentar el producto original confirma antes el rechazo cierto.
-El reconciliador aísla observación, procesamiento y replay por ítem. Un veneno
-genera incidencia durable sin congelar otros pedidos/cursor; el inbox conserva
-su retry. Si ni siquiera se puede persistir la incidencia, el tick falla.
+El reconciliador aísla observación, procesamiento y replay por ítem. Una
+observación de compensación inválida registra incidencia sin congelar el cursor.
+Al integrar #1593, un fallo de procesamiento/ledger conserva la página para
+reintento y procesa los otros ítems; no se salta una factura pendiente. Si no se
+puede persistir una incidencia de observación, el tick falla.
 
 ## B1/B2: evidencia de baja y privilegios
 

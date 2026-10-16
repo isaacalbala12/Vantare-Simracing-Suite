@@ -1,0 +1,35 @@
+{
+  "environment": "production",
+  "organization_id": "3ecc2e66-8d6c-416f-b7e0-0baabc0396d4",
+  "checkout_keys": {
+    "founders": {
+      "polar_product_id": "891ef5dd-2182-4726-aad5-5f9ed1ce8f3b",
+      "polar_price_ids": [
+        "5a5ed42e-4b61-407b-b3a6-b90124def52d"
+      ],
+      "plan_sku": "founders",
+      "billing_type": "one_time",
+      "lifetime": true,
+      "active": true,
+      "capabilities": [
+        "vantare.plan.founders",
+        "vantare.channel.nightly"
+      ],
+      "channels": [
+        "stable",
+        "nightly"
+      ],
+      "launch_scope_version": null,
+      "trial": {
+        "enabled": false
+      },
+      "entitlement_product_key": "bundle"
+    }
+  },
+  "product_id_to_checkout_key": {
+    "891ef5dd-2182-4726-aad5-5f9ed1ce8f3b": "founders"
+  },
+  "price_id_to_checkout_key": {
+    "5a5ed42e-4b61-407b-b3a6-b90124def52d": "founders"
+  }
+}

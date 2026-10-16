@@ -110,7 +110,7 @@ mod tests {
                         kind,
                         Kind::Standings | Kind::Pedals | Kind::Relative | Kind::Delta
                     ),
-                    CatalogAccess::Pro => true,
+                    CatalogAccess::Pro | CatalogAccess::Founders => true,
                 };
                 assert_eq!(allowed(kind, &policy), expected, "{catalog:?} {kind:?}");
             }

@@ -6,9 +6,36 @@ terminal no aplicable, nunca solo falta de licencia/cuarentena. IVA pendiente
 de sandbox y política net/gross; ACK D1 exige evidencia firmada independiente.
 Los apartados R4 siguientes documentan el mecanismo previo, no autorizan activarlo.
 
-Rama `vantareapp/isa-1620-checkout-web`, base nightly
-`3f82af867321876c9bcca19703831d9da7a3fed5` (#1622/#1633), PR draft #1663.
+Rama `vantareapp/isa-1620-checkout-web`, actualizada mediante merge de nightly
+`9e48eb86f8d2cfc43b64010d2b1ac1c58768826a` (#1661/#1593), PR #1663.
 Entrega de código y pruebas locales. No acredita despliegue ni apertura.
+
+## Integración vigente con nightly (R8)
+
+La oferta inicial, atribución/renovación de creador, arbitraje de informes y
+Founders proceden de nightly, incluidos los contracargos. El adaptador web
+consulta billing_launch_checkout y reserva creador mediante
+claim_billing_creator_checkout_attempt, igual que la app. Ningún segundo cupón
+entra en el primer pago. Si la oferta mostrada ya fue consumida, la web rechaza
+antes de Polar; no sustituye silenciosamente 3,99/39,90 por precio normal.
+
+La migración checkout_web_nightly_integration conserva la transacción de
+atribución de #1661 y devuelve además guard_version=2. Añade Founders al guard
+compartido, respeta billing_purchase_policy y mantiene el bloqueo entre Founders
+y una compra aún pendiente. No habilita su CTA web ni modifica derechos históricos.
+El marcador begin y binding siguen obligatorios antes de publicar una URL.
+
+La reserva de lanzamiento de #1593 solo se libera antes del plazo si el intento
+anterior tiene resolución canónica terminal; mantiene CAS y todo bloqueo de pago
+abierto/incierto. Las comprobaciones conjuntas prueban que un rechazo cierto
+permite nuevo intento y que una prueba antigua no reemplaza otra reserva viva.
+
+Compensación permanece apagada. Siguen siendo obligatorios sandbox net/gross,
+inventario de pedidos/inbox y receptor privado Owner con ACK antes de activarla.
+Los fallos del ledger de informes conservan su cursor para reintento, procesando
+los otros ítems de la página; una observación financiera inválida aislada conserva
+su incidencia Owner y no impide avanzar. La baja D1 automática y su ACK firmado
+conservan los cuatro únicos permisos del rol de pull, comprobados tras nightly.
 
 ## Contrato y barrera de cuenta
 

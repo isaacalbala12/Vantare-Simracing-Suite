@@ -30,8 +30,9 @@ Esta recuperación es manual: no hay borrado ni reset automático en el Hub.
 
 El worker de #1542 prueba únicamente fixtures/HTTP loopback. No realiza estos
 pasos sobre datos reales, no consulta Polar/Clerk/Supabase y no acredita una
-reconciliación comercial real. Un estado remoto incierto se conserva hasta verificación automática; si hubo
-cobro sin licencia corresponde devolución automática.
+reconciliación comercial real. Un estado remoto incierto se conserva hasta verificación automática; un cobro no aplicable solo puede devolverse automáticamente con intento propio,
+webhook terminal y política activada tras los tres requisitos de R6; los demás
+casos se muestran en Owner.
 
 ## Intento del servidor compartido con la web (VANTA-42 / #1620)
 
@@ -39,3 +40,27 @@ Recuperar el archivo local no elimina el intento remoto. El guard compartido
 bloquea también otros periodos/canales de la misma familia. La caducidad
 automática libera solo intentos no enviados o terminales sin pago confirmado. Completar la [reconciliación del servidor](checkout-web-shared.md)
 antes de retirar el intento transitorio concreto; conservar binding y ledger.
+
+La conciliación automática conserva el intento incierto y registra una incidencia Owner; no se recuperan pagos mediante soporte.
+
+
+## Esperas de promoción de lanzamiento · #1593 / VANTA-39
+
+Los códigos promotion_checkout_recovery_pending y payment_pending (503)
+muestran «Espera» y que se conserva el primer mes. recovery_required (503)
+pide reintentar la comprobación y contactar con soporte si persiste.
+promotion_checkout_plan_change_pending (409) explica que hay un pago abierto
+para otro plan y que hay que esperar su caducidad. Son mensajes locales
+allowlisted; no se muestra texto remoto arbitrario.
+
+Estas respuestas conservan el UUID protegido: reintentar no crea otro intento
+en el escritorio. La caducidad confirmada checkout_attempt_expired sigue siendo
+el único rechazo que retira automáticamente ese UUID para generar uno nuevo.
+Los errores de lectura locales mantienen la recuperación asistida anterior.
+El plazo remoto para una reserva sin ID lo determina retry_at; el servicio
+puede mostrar minutos restantes sin prometer un plazo fijo de treinta minutos.
+
+Prueba Windows de #1593: los cuatro códigos producen el error tipado propio y
+su texto, un reintento utiliza idéntico cuerpo/UUID y solo el éxito devuelve una
+URL Polar validada. Solo HTTP loopback y almacenamiento DPAPI de fixtures;
+la validación visual del Hub y los pagos reales siguen pendientes.

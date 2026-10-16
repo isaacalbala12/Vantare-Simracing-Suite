@@ -1,7 +1,14 @@
-import { invalidDeployableDirectories } from "./verify-deploy-surface.ts";
+import {
+  invalidDeployableDirectories,
+  invalidPromotionGatewayConfig,
+} from "./verify-deploy-surface.ts";
 
 Deno.test("native account/admin are recognized without changing default commercial deploy", () => {
-  const functions = ["native-account-authorize", "native-admin"];
+  const functions = [
+    "native-account-authorize",
+    "native-admin",
+    "billing-report-promotion",
+  ];
   if (
     invalidDeployableDirectories(
       functions.map((name) => ({ name, isDirectory: true }) as Deno.DirEntry),
@@ -286,4 +293,23 @@ Deno.test("retired Wails binding pipeline cannot return or publish", () => {
       );
     }
   }
+});
+
+Deno.test("P3-4 promotion gateway guard rejects absent or wrong JWT mode", () => {
+  for (
+    const config of [
+      "",
+      "[functions.billing-report-promotion]\nverify_jwt = true",
+      '[functions.billing-report-promotion]\nverify_jwt = "false"',
+    ]
+  ) {
+    if (!invalidPromotionGatewayConfig(config)) {
+      throw new Error("invalid gateway config accepted");
+    }
+  }
+  if (
+    invalidPromotionGatewayConfig(
+      "[functions.billing-report-promotion]\nverify_jwt = false\n",
+    )
+  ) throw new Error("server-authenticated candidate rejected");
 });

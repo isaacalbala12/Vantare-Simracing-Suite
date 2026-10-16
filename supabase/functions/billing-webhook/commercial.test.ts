@@ -97,8 +97,23 @@ function createMockSupabase(tables: Record<string, MockRow[]> = {}) {
 
   return {
     client: {
-      rpc: (name: string) => {
-        assertEquals(name, "native_admin_record_refund");
+      rpc: (name: string, args: Record<string, unknown>) => {
+        if (name === "billing_founders_subscription_transitions") {
+          return Promise.resolve({ data: [], error: null });
+        }
+        if (name === "billing_creator_revocation") {
+          assertEquals(args.p_stage, "prepare");
+          return Promise.resolve({ data: null, error: null }); // fixture has no creator operation
+        }
+        if (
+          ["report_promotion_invoice", "report_promotion_invoice_missing"]
+            .includes(name)
+        ) return Promise.resolve({ data: null, error: null });
+        assertEquals(
+          ["native_admin_record_refund", "native_admin_record_payment"]
+            .includes(name),
+          true,
+        );
         return Promise.resolve({ data: false, error: null });
       },
       from: (table: string) => ({
@@ -182,6 +197,28 @@ function processDeps(
   };
 }
 
+async function seedHistoricalLaunch(
+  deps: ReturnType<typeof processDeps>,
+  orderId: string,
+) {
+  // Launch is retired: these regression cases read purchases already admitted.
+  await deps.orderRefundLedger.recordOrder({
+    environment: "sandbox",
+    orderId,
+    userId: USER_ID,
+    productId: LAUNCH_PRODUCT_ID,
+    checkoutId: null,
+    subscriptionId: null,
+    status: "paid",
+    paid: true,
+    netAmount: 3000,
+    currency: "eur",
+    reportedRefundedAmount: 0,
+    modifiedAt: "2026-07-08T12:00:00.000Z",
+    snapshotHash: "historical",
+  });
+}
+
 function paidOrderData(overrides: Record<string, unknown> = {}) {
   return {
     id: "order-default",
@@ -217,6 +254,7 @@ function succeededRefundData(overrides: Record<string, unknown> = {}) {
 
 Deno.test("ISA1608 BLOCKER: ordinary refund without payment_id must revoke Launch", async () => {
   const deps = processDeps(createMockSupabase());
+  await seedHistoricalLaunch(deps, "order-real-refund");
   await processPolarWebhookEvent(
     { type: "order.paid", data: paidOrderData({ id: "order-real-refund" }) },
     "evt_real_paid",
@@ -283,6 +321,7 @@ Deno.test("ISA1608 BLOCKER: refunded Pro subscription must revoke immediately", 
 });
 Deno.test("ISA1608 BLOCKER: issued partial refund must remove its Launch source", async () => {
   const deps = processDeps(createMockSupabase());
+  await seedHistoricalLaunch(deps, "order-partial-required");
   await processPolarWebhookEvent(
     {
       type: "order.paid",
@@ -311,6 +350,7 @@ Deno.test("ISA1608 BLOCKER: issued partial refund must remove its Launch source"
 });
 Deno.test("ISA1608 BLOCKER: aggregate order.refunded without refund.updated must revoke", async () => {
   const deps = processDeps(createMockSupabase());
+  await seedHistoricalLaunch(deps, "order-aggregate");
   await processPolarWebhookEvent(
     { type: "order.paid", data: paidOrderData({ id: "order-aggregate" }) },
     "evt_aggregate_paid",

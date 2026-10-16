@@ -141,6 +141,7 @@ pub(crate) fn fixture(
     let recovery = crate::testing::recovery::Recovery::load(data);
     let editor = crate::testing::Editor::new(crate::testing::empty_fields(), cx);
     let mut remote = Remote {
+        founders_language: founders::Language::default(),
         pilot: pilot::Projection::default(),
         adapt: orbit::Adapt::default(),
         pipe: "qa-in-memory".into(),
@@ -677,6 +678,30 @@ fn purchase_wait_is_bounded_and_requires_the_requested_verified_catalog() {
             ..pro
         }));
     }
+}
+
+#[test]
+fn founders_purchase_is_not_confirmed_by_an_existing_pro_subscription() {
+    let wait = PurchaseWait {
+        product: BillingProduct::Founders,
+        started: std::time::Instant::now(),
+        polled: None,
+    };
+    let pro = Access {
+        verified: true,
+        catalog: vantare_ipc::control::CatalogAccess::Pro,
+        ..Default::default()
+    };
+    assert!(!wait.confirmed(pro));
+    let founders = Access {
+        catalog: vantare_ipc::control::CatalogAccess::Founders,
+        ..pro
+    };
+    assert!(wait.confirmed(founders));
+    assert!(!wait.confirmed(Access {
+        blocked: true,
+        ..founders
+    }));
 }
 #[test]
 fn background_errors_logout_and_receipts_never_grant_access_or_lose_the_draft() {

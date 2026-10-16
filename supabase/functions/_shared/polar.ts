@@ -815,6 +815,7 @@ export async function synchronizeRenewalDiscount(
   environment: BillingEnvironment,
   expected: {
     productId: string;
+    priceIds: readonly string[];
     discountId: string | null;
     managedIds: (string | null)[];
     normalCents: number;
@@ -825,6 +826,9 @@ export async function synchronizeRenewalDiscount(
 ): Promise<void> {
   if (!/^[A-Za-z0-9_-]{1,200}$/.test(subscriptionId)) {
     throw new Error("invalid_subscription_id");
+  }
+  if (!expected.managedIds.includes(expected.discountId)) {
+    throw new Error("creator_discount_unmanaged");
   }
   const url = `${apiBase(environment, deps)}/subscriptions/${subscriptionId}`;
   const request = async (method: "GET" | "PATCH") =>
@@ -844,15 +848,31 @@ export async function synchronizeRenewalDiscount(
       async (response) => {
         if (!response.ok) throw new Error("creator_discount_http_failed");
         const value = await response.json();
+        // Polar's subscription.amount already includes the discount. Validate the
+        // selected catalog price instead, on GET and on the PATCH confirmation.
+        const price = Array.isArray(value.prices) && value.prices.length === 1
+          ? value.prices[0]
+          : null;
         if (
           value.id !== subscriptionId ||
           value.product_id !== expected.productId ||
           !["active", "uncanceled"].includes(value.status) ||
           value.currency !== "eur" ||
-          value.amount !== expected.normalCents ||
+          !Number.isSafeInteger(value.amount) || value.amount < 0 ||
+          value.amount > expected.normalCents ||
+          !price || !expected.priceIds.includes(price.id) ||
+          (value.price_id !== undefined && value.price_id !== price.id) ||
+          price.product_id !== expected.productId ||
+          price.source !== "catalog" || price.amount_type !== "fixed" ||
+          price.price_amount !== expected.normalCents ||
+          price.price_currency !== "eur" ||
+          (price.recurring_interval !== undefined &&
+            price.recurring_interval !== expected.interval) ||
           value.recurring_interval !== expected.interval ||
           value.recurring_interval_count !== 1 ||
-          !(value.discount_id === null || typeof value.discount_id === "string")
+          !(value.discount_id === null ||
+            typeof value.discount_id === "string") ||
+          !expected.managedIds.includes(value.discount_id)
         ) throw new Error("creator_discount_remote_mismatch");
         return value;
       },
@@ -862,9 +882,6 @@ export async function synchronizeRenewalDiscount(
     throw new Error("creator_discount_authorization_lost");
   }
   if (current.discount_id === expected.discountId) return;
-  if (!expected.managedIds.includes(current.discount_id)) {
-    throw new Error("creator_discount_unmanaged");
-  }
   const updated = await request("PATCH");
   if (updated.discount_id !== expected.discountId) {
     throw new Error("creator_discount_unconfirmed");

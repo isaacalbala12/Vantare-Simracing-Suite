@@ -49,8 +49,13 @@ export async function applyCreatorRenewal(
     p_token: operation.token,
   };
   try {
+    const config = map.checkout_keys[input.key];
+    if (!config || config.polar_product_id !== input.productId) {
+      throw new Error("creator_renewal_product_mismatch");
+    }
     await synchronize(input.subscriptionId, map.environment, {
-      productId: input.productId,
+      productId: config.polar_product_id,
+      priceIds: config.polar_price_ids,
       discountId: operation.discount_id,
       managedIds: [
         null,

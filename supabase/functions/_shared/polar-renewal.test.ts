@@ -22,12 +22,13 @@ const expected = {
 function replay(
   responses: unknown[],
   options: typeof expected = expected,
+  subscriptionId = captured.launch.id,
 ) {
   const methods: string[] = [];
   return {
     methods,
     run: () =>
-      synchronizeRenewalDiscount(captured.launch.id, "sandbox", options, {
+      synchronizeRenewalDiscount(subscriptionId, "sandbox", options, {
         getAccessToken: () => "offline-test-token",
         fetchFn: (_url, init) => {
           methods.push(init!.method!);
@@ -56,26 +57,91 @@ for (const name of ["launch", "normal"] as const) {
   });
 }
 
-for (const initialAmount of [3990, 5999]) {
-  Deno.test(`ISA-1680 annual ${initialAmount}/5999 base -> creator 4799`, async () => {
-    // Same captured subscription shape; amounts from the real annual order.
-    const annual = structuredClone(captured.launch);
-    annual.amount = initialAmount;
-    annual.recurring_interval = "year";
-    annual.price.price_amount = 5999;
-    annual.price.recurring_interval = "year";
-    annual.prices = [annual.price];
-    const test = replay([annual, {
-      ...annual,
-      amount: 4799,
-      discount_id: expected.discountId,
-    }], {
-      ...expected,
-      normalCents: 5999,
-      interval: "year",
+const annualExpected = {
+  ...expected,
+  productId: captured.annualLaunch.product_id,
+  priceIds: [captured.annualLaunch.price_id],
+  normalCents: 5999,
+  interval: "year",
+  discountId: captured.annualCreator.discount_id,
+  managedIds: [null, captured.annualLaunch.discount_id, captured.annualCreator.discount_id],
+};
+Deno.test("ISA-1682 real annual 3990/5999 -> creator 4799 -> retry without PATCH", async () => {
+  assertEquals(captured.annualLaunch.price_id === captured.launch.price_id, false);
+  const test = replay([captured.annualLaunch, captured.annualCreator, captured.annualCreator], annualExpected, captured.annualLaunch.id);
+  await test.run();
+  await test.run();
+  assertEquals(test.methods, ["GET", "PATCH", "GET"]);
+});
+
+Deno.test("ISA-1682 annual normal 5999 uses the real annual price and creator response", async () => {
+  // Normal amount/no coupon constructed; both annual price and PATCH are real.
+  const test = replay([{ ...captured.annualLaunch, amount: 5999, discount_id: null, discount: null }, captured.annualCreator], annualExpected, captured.annualLaunch.id);
+  await test.run();
+  assertEquals(test.methods, ["GET", "PATCH"]);
+});
+
+for (const [name, changes] of Object.entries({
+  "creator normal amount": { amount: 599 },
+  "creator zero amount": { amount: 0 },
+  "creator arbitrary amount": { amount: 300 },
+  "wrong discount identity": { discount: { ...captured.creator.discount, id: "foreign" } },
+  "absent discount definition": { discount: null },
+  "invalid percentage": { discount: { ...captured.creator.discount, basis_points: 10001 } },
+  "fractional percentage": { discount: { ...captured.creator.discount, basis_points: 2000.5 } },
+  "unknown discount type": { discount: { ...captured.creator.discount, type: "other" } },
+})) {
+  for (const stage of ["GET", "PATCH"] as const) {
+    Deno.test(`ISA-1682 refuses ${name} on ${stage}`, async () => {
+      const invalid = { ...captured.creator, ...changes };
+      const test = replay(stage === "GET" ? [invalid] : [captured.launch, invalid]);
+      await assertRejects(test.run);
+      assertEquals(test.methods, stage === "GET" ? ["GET"] : ["GET", "PATCH"]);
     });
-    await test.run();
-    assertEquals(test.methods, ["GET", "PATCH"]);
+  }
+}
+
+for (const changes of [
+  { amount: 400 },
+  { discount: { ...captured.launch.discount, amounts: { usd: 200 } } },
+  { discount: { ...captured.launch.discount, amounts: { eur: -200 } } },
+  { discount: { ...captured.launch.discount, amounts: { eur: 200.5 } } },
+]) {
+  Deno.test("ISA-1682 inconsistent fixed launch amount or EUR discount blocks PATCH", async () => {
+    const test = replay([{ ...captured.launch, ...changes }]);
+    await assertRejects(test.run);
+    assertEquals(test.methods, ["GET"]);
+  });
+}
+
+Deno.test("ISA-1682 no discount requires normal amount and null definition", async () => {
+  for (const changes of [{ amount: 0 }, { discount: captured.creator.discount }]) {
+    const test = replay([{ ...captured.normal, id: captured.launch.id, ...changes }]);
+    await assertRejects(test.run);
+    assertEquals(test.methods, ["GET"]);
+  }
+});
+
+Deno.test("ISA-1682 half-cent rounds the saving up, not the final amount", async () => {
+  const definition = { ...captured.creator.discount, basis_points: 5000 };
+  const test = replay([{ ...captured.creator, amount: 299, discount: definition }]);
+  await test.run();
+  assertEquals(test.methods, ["GET"]);
+  const invalid = replay([{ ...captured.creator, amount: 300, discount: definition }]);
+  await assertRejects(invalid.run);
+  assertEquals(invalid.methods, ["GET"]);
+});
+
+for (const prices of [undefined, null, [], [captured.launch.price, captured.launch.price]]) {
+  Deno.test("ISA-1682 prices cardinality fails before authorization or PATCH", async () => {
+    let authorizations = 0;
+    const test = replay([{ ...captured.launch, prices }], {
+      ...expected,
+      authorize: () => { authorizations++; return Promise.resolve(true); },
+    });
+    await assertRejects(test.run);
+    assertEquals(test.methods, ["GET"]);
+    assertEquals(authorizations, 0);
   });
 }
 

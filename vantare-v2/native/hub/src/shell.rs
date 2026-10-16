@@ -1237,8 +1237,13 @@ impl Hub {
         {
             settings.status = Some(error);
         }
-        let mut onboarding =
-            (first_run || onboarding_capture).then(|| onboarding::State::new(capture.as_ref(), cx));
+        let mut onboarding = (first_run || onboarding_capture).then(|| {
+            onboarding::State::new(
+                capture.as_ref(),
+                settings.privacy.as_ref().ok().map(|store| store.value),
+                cx,
+            )
+        });
         if let Some(state) = &mut onboarding
             && settings.status.is_some()
         {

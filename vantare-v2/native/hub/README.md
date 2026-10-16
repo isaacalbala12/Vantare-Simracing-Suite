@@ -48,10 +48,31 @@ Automático en general.json. Los cinco niveles manuales siguen disponibles.
 
 LMU usa el discovery del Launcher. ACC solo se marca para el onboarding a
 partir del manifest instalado en las bibliotecas Steam; no entra en el Launcher.
-Los tres proveedores de cuenta usan AccountBegin hasta #1631. Pro conserva
+Email abre el formulario nativo de #1635 dentro del asistente; Google y Discord
+conservan AccountBegin en navegador. Pro sin sesión abre el mismo formulario
+de email antes de comprar. Pro conserva
 la compra existente; Pro Plus y Launch Edition abren https://vantare.app/#precios
 sin crear un checkout ni requerir sesión. Los cuatro widgets Gratis se
-reconcilian en #1633, sin modificar derechos comerciales en esta issue.
+forman el kit inicial de carreras online: Standings, Relative, Delta y Pedals.
+Los otros estilos identifican sus widgets Pro, sin modificar derechos comerciales.
+
+Privacidad: al reabrir se leen las decisiones de `settings.privacy`/privacy.json.
+Solo si fallos sigue sin decidir, el asistente propone activarlo con aviso
+(decisión de Isaac del 15-oct, reiterada en la review del 17-oct). Uso siempre
+parte apagado si no hay decisión. Terminar confirma lo mostrado; el resumen
+incluye uso, fallos y el permiso de correos confirmado por el servidor.
+La pregunta independiente de Ajustes es una recuperación para instalaciones
+sin decisión y sin asistente: conserva «Aceptar / No, gracias», sin activar
+fallos antes de esa respuesta. Una decisión guardada prevalece en ambas rutas.
+Los errores remotos de marketing no habilitan «Entrar sin guardar»: esa salida
+solo corresponde a un error local de privacidad, revoca también el grabador
+en memoria y no intenta escribir otra vez el archivo que falló.
+
+Teclado: Enter con foco en la página avanza; en un control enfocado GPUI
+activa su clic al soltar Enter/Espacio. No se captura Enter antes del control.
+Los tests usan gpui_platform::headless y TestPlatform con foco/eventos reales,
+sin renderer, ventanas del sistema ni capturas; `test-support` solo se habilita
+en la dependencia de desarrollo de la revisión GPUI ya fijada.
 
 ## #1564 · Widgets por sesión
 

@@ -30,7 +30,7 @@ pub const fn crash_say(on: bool) -> &'static str {
     }
 }
 pub const STY: [&str; 4] = [
-    "Para carreras online: Standings, Relative, Delta y Banderas.",
+    "Para carreras online: Standings, Relative, Delta y Pedals. Todos incluidos en Gratis.",
     "Para ligas añado el widget Duelo.",
     "Para resistencia añado Combustible y Clima.",
     "Para streaming añado Torre de TV, Mapa y Pedals.",
@@ -49,12 +49,7 @@ pub const ORDER: [Kind; 10] = [
     Kind::TrackMap,
 ];
 const KITS: [&[Kind]; 4] = [
-    &[
-        Kind::Standings,
-        Kind::Relative,
-        Kind::Delta,
-        Kind::RacingFlags,
-    ],
+    &[Kind::Standings, Kind::Relative, Kind::Delta, Kind::Pedals],
     &[
         Kind::Standings,
         Kind::Relative,
@@ -205,7 +200,8 @@ mod tests {
         assert!(choices.crashes);
         assert!(choices.automatic);
         assert_eq!(choices.kit(), KITS[0]);
-        assert_eq!(choices.widgets_summary(), "4 widgets · 1 Pro");
+        assert_eq!(choices.widgets_summary(), "4 widgets");
+        assert!(choices.kit().into_iter().all(free));
     }
     #[test]
     fn each_kit_and_union_follow_the_approved_order_without_duplicates() {

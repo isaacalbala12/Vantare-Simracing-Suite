@@ -149,3 +149,44 @@ P1 widgets completos #1641 y capturas #1675 quedan fuera de este arreglo del mer
 Durante la CI avanzó nightly a 1a8ddee33 (#1684): se incorpora también con merge,
 sin conflictos; conserva la retirada de triage y el reinicio del login si falla
 el guardado tras el canje. Se repiten los checks sobre el HEAD resultante.
+
+### VANTA-51 / #1637 · Correcciones de la review DeepSeek R1 · 17-oct-2026
+
+Encargo explícito del orquestador tras NO APTO en `4c317d5ad`; misma rama y
+worktree. Se corrige el restablecimiento de privacidad: State recibe el valor
+cargado de settings.privacy y solo propone defaults si cada permiso sigue sin
+decidir. Regresión de cerrar/reabrir/Terminar para fallos rechazados y uso
+aceptado, con privacy.json y flujo real de Hub. El resumen incluye fallos y
+correo confirmado por el servidor además de uso.
+
+Se mantiene el premarcado de fallos con aviso decidido por Isaac (15-oct,
+reiterado por el orquestador el 17-oct). La pregunta independiente de Ajustes
+es recuperación para instalaciones sin decisión ni asistente: conserva
+Aceptar/No gracias. Ambas rutas respetan la decisión guardada; la diferencia
+queda explicada en native/hub/README.md, no se convierte un permiso sin decidir
+en una autorización de envío antes de guardar la pantalla que lo muestra.
+
+Enter solo avanza con foco en la página. Los controles conservan la activación
+nativa de GPUI al soltar Enter/Espacio, sin captura raíz ni handlers duplicados.
+TestPlatform dentro de gpui_platform::headless prueba foco y eventos reales,
+sin ventanas del sistema ni capturas. Se habilita test-support únicamente en
+la dependencia de desarrollo GPUI ya fijada; Cargo.lock incorpora sus 11
+paquetes transitivos de test (incluido proptest fijado por GPUI), sin actualizar
+las versiones de producto existentes. Es necesario para el arnés de teclado
+pedido: el backend Windows headless normal no abre ventanas sin DirectX.
+
+Marketing ya no activa el error de guardado local ni la salida sin guardar.
+El kit inicial sustituye Banderas por Pedals y solo incluye widgets Gratis.
+Email y Pro sin sesión abren el login propio de #1635 dentro del asistente;
+Google/Discord conservan el navegador. La salida privada notifica al grabador
+y retira la generación anterior también en memoria, para que una lectura del
+archivo antiguo no pueda restaurar el permiso que acaba de revocarse.
+
+P3 documentados, sin modificar en esta ronda por encargo: precios de tarjetas
+incrustados (Pro 3,99/5,99 EUR, Plus 6,99/9,99 EUR, Launch 30 EUR) y fecha
+«HASTA EL 26 NOV» sin caducidad automática; marketing no tiene plazo/cancelación
+a nivel de asistente mientras pending siga activo (HTTP tiene timeout de 8 s;
+no garantiza plazo si el peer no responde). Atrás/Escape permiten retroceder.
+Locale de correos permanece es y los PNG incrustados conservan su tamaño.
+Widgets completos tras #1641 y QA visual tras #1675 siguen como pendientes previos.
+Estado de esta ronda En curso; gates y SHA final se verificarán en issue/PR.

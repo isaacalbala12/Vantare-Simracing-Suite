@@ -275,32 +275,17 @@ impl Hub {
                     .flex()
                     .gap(px(12.0 * s))
                     .child(
-                        button("onboarding-open", "Abrir mi overlay", true, s, cx)
-                            .on_click(cx.listener(|hub, _, window, cx| {
+                        button("onboarding-open", "Abrir mi overlay", true, s, cx).on_click(
+                            cx.listener(|hub, _, window, cx| {
                                 hub.onboarding_finish(true, window, cx);
-                            }))
-                            .on_key_down(cx.listener(
-                                |hub, event: &gpui::KeyDownEvent, window, cx| {
-                                    if matches!(event.keystroke.key.as_str(), "enter" | "space") {
-                                        hub.onboarding_finish(true, window, cx);
-                                        cx.stop_propagation();
-                                    }
-                                },
-                            )),
+                            }),
+                        ),
                     )
                     .child(
                         button("onboarding-edit", "Editar en Overlays Studio", false, s, cx)
                             .on_click(cx.listener(|hub, _, window, cx| {
                                 hub.onboarding_finish(false, window, cx);
-                            }))
-                            .on_key_down(cx.listener(
-                                |hub, event: &gpui::KeyDownEvent, window, cx| {
-                                    if matches!(event.keystroke.key.as_str(), "enter" | "space") {
-                                        hub.onboarding_finish(false, window, cx);
-                                        cx.stop_propagation();
-                                    }
-                                },
-                            )),
+                            })),
                     ),
             ),
         };
@@ -435,19 +420,16 @@ impl Hub {
             .track_focus(&self.focus)
             .flex()
             .flex_col()
-            .capture_key_down(cx.listener(|hub, event: &gpui::KeyDownEvent, window, cx| {
-                if event.keystroke.key == "enter"
-                    && hub.onboarding.as_ref().is_some_and(|state| state.step < 6)
-                {
-                    hub.onboarding_next(window, cx);
-                    cx.stop_propagation();
-                } else if event.keystroke.key == "escape" {
+            .capture_key_down(cx.listener(|hub, event: &gpui::KeyDownEvent, _, cx| {
+                if event.keystroke.key == "escape" {
                     hub.onboarding_back(cx);
                     cx.stop_propagation();
                 }
             }))
+            // Enter on the page advances; focused controls keep GPUI's own
+            // Enter/Space click, including text inputs in the email form.
             .on_key_down(cx.listener(|hub, event: &gpui::KeyDownEvent, window, cx| {
-                if event.keystroke.key == "enter" {
+                if event.keystroke.key == "enter" && hub.focus.is_focused(window) {
                     hub.onboarding_next(window, cx);
                     cx.stop_propagation();
                 }
@@ -749,6 +731,9 @@ impl Hub {
             .into_iter()
             .enumerate()
             {
+                if self.remote.read(cx).email_open() {
+                    break;
+                }
                 column = column.child(
                     button(format!("onboarding-account-{i}"), "", false, s, cx)
                         .aria_label(label)
@@ -765,19 +750,13 @@ impl Hub {
                         .child(text(label, 16.0 * s, 600, orbit::ink(cx), cx))
                         .child(div().flex_1())
                         .child(text("→", 16.0 * s, 400, orbit::ink_3(cx), cx))
-                        .on_click(cx.listener(|hub, _, _, cx| {
-                            if !hub.onboarding.as_ref().is_some_and(|s| s.capture) {
-                                hub.remote.update(cx, |remote, cx| {
-                                    remote.request(
-                                        crate::services::protocol::Command::AccountBegin,
-                                        cx,
-                                    );
-                                });
-                            }
+                        .on_click(cx.listener(move |hub, _, _, cx| {
+                            hub.onboarding_account_login(i, cx);
                         })),
                 );
             }
             if !state.capture {
+                column = column.child(self.remote.update(cx, |remote, cx| remote.email_view(cx)));
                 column = column.child(text(
                     self.remote.read(cx).onboarding_session().1.to_owned(),
                     12.0 * s,
@@ -878,6 +857,7 @@ impl Hub {
             .child(
                 div()
                     .id("onboarding-auto")
+                    .tab_stop(true)
                     .role(gpui::Role::Button)
                     .cursor_pointer()
                     .h(px(85.0 * s))
@@ -963,13 +943,7 @@ impl Hub {
             s,
             cx,
         )
-        .on_click(cx.listener(|hub, _, _, cx| hub.onboarding_toggle_crashes(cx)))
-        .on_key_down(cx.listener(|hub, event: &gpui::KeyDownEvent, _, cx| {
-            if event.keystroke.key == "space" {
-                hub.onboarding_toggle_crashes(cx);
-                cx.stop_propagation();
-            }
-        }));
+        .on_click(cx.listener(|hub, _, _, cx| hub.onboarding_toggle_crashes(cx)));
         let usage = onboarding_switch(
             "onboarding-usage",
             "Enviar datos de uso anónimos",
@@ -978,13 +952,7 @@ impl Hub {
             s,
             cx,
         )
-        .on_click(cx.listener(|hub, _, _, cx| hub.onboarding_toggle_usage(cx)))
-        .on_key_down(cx.listener(|hub, event: &gpui::KeyDownEvent, _, cx| {
-            if event.keystroke.key == "space" {
-                hub.onboarding_toggle_usage(cx);
-                cx.stop_propagation();
-            }
-        }));
+        .on_click(cx.listener(|hub, _, _, cx| hub.onboarding_toggle_usage(cx)));
         div()
             .flex()
             .flex_col()
@@ -1006,15 +974,7 @@ impl Hub {
                     s,
                     cx,
                 )
-                .on_click(cx.listener(|hub, _, _, cx| hub.onboarding_toggle_marketing(cx)))
-                .on_key_down(cx.listener(
-                    |hub, event: &gpui::KeyDownEvent, _, cx| {
-                        if matches!(event.keystroke.key.as_str(), "space" | "enter") {
-                            hub.onboarding_toggle_marketing(cx);
-                            cx.stop_propagation();
-                        }
-                    },
-                )),
+                .on_click(cx.listener(|hub, _, _, cx| hub.onboarding_toggle_marketing(cx))),
             )
             .child(text(mail_notice, 12.5 * s, 400, orbit::ink_3(cx), cx))
     }
@@ -1063,6 +1023,28 @@ impl Hub {
                             "Activados"
                         } else {
                             "Apagados"
+                        }
+                        .into(),
+                    ),
+                    (
+                        "Informes de fallos",
+                        if choices.crashes {
+                            "Activados"
+                        } else {
+                            "Apagados"
+                        }
+                        .into(),
+                    ),
+                    (
+                        "Correos",
+                        if !state.signed {
+                            "Apagados · sin cuenta"
+                        } else {
+                            match self.remote.read(cx).mail.consent {
+                                Some(true) => "Activados",
+                                Some(false) => "Apagados",
+                                None => "Sin confirmar",
+                            }
                         }
                         .into(),
                     ),

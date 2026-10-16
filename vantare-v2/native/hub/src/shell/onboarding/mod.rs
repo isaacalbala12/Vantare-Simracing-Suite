@@ -1,5 +1,7 @@
 //! Primer arranque GPUI. Cuenta, layout y privacidad conservan sus propietarios.
 mod art;
+#[cfg(test)]
+mod interaction_tests;
 mod view;
 use super::{Hub, navigation::Access};
 use crate::onboarding::{Choices, Equipment, SAY, crash_say, usage_say};
@@ -13,14 +15,8 @@ fn plan_request(
     signed: bool,
 ) -> Option<crate::services::protocol::Command> {
     use crate::services::protocol::{BillingProduct, Command};
-    matches!(product, Some(BillingProduct::ProMonthly)).then(|| {
-        if signed {
-            Command::Purchase {
-                product: BillingProduct::ProMonthly,
-            }
-        } else {
-            Command::AccountBegin
-        }
+    (signed && matches!(product, Some(BillingProduct::ProMonthly))).then_some(Command::Purchase {
+        product: BillingProduct::ProMonthly,
     })
 }
 
@@ -45,7 +41,11 @@ pub(super) struct State {
     pub previews: Vec<(vantare_ui::Kind, gpui::Entity<vantare_ui::Overlay>)>,
 }
 impl State {
-    pub fn new(capture: Option<&crate::demo::CaptureState>, cx: &mut gpui::App) -> Self {
+    pub fn new(
+        capture: Option<&crate::demo::CaptureState>,
+        privacy: Option<Privacy>,
+        cx: &mut gpui::App,
+    ) -> Self {
         let step = capture
             .and_then(|c| c.name.strip_prefix("onboarding-"))
             .and_then(|n| n.parse::<usize>().ok())
@@ -62,7 +62,7 @@ impl State {
         } else {
             Equipment::detect()
         };
-        let mut choices = Choices::default();
+        let mut choices = choices_from_privacy(privacy);
         choices.select_automatic(&equipment);
         // Assets estáticos preparados una vez: también deben estar listos en la primera
         // pintura con movimiento reducido, sin esperar un clic para mostrar el fondo.
@@ -142,6 +142,19 @@ impl State {
         }
     }
 }
+/// Los valores nuevos solo se proponen cuando aún no hay una decisión guardada.
+fn choices_from_privacy(privacy: Option<Privacy>) -> Choices {
+    let mut choices = Choices::default();
+    if let Some(privacy) = privacy {
+        if privacy.usage_decided {
+            choices.usage = privacy.usage;
+        }
+        if privacy.crashes_decided {
+            choices.crashes = privacy.crashes;
+        }
+    }
+    choices
+}
 /// La salida sin guardar solo se ofrece junto al error del paso de privacidad:
 /// sin consentimiento guardado, pero con la opción más privada.
 const fn private_exit_available(step: usize, consent_error: bool) -> bool {
@@ -154,7 +167,9 @@ const fn most_private(privacy: Privacy) -> Privacy {
         usage_decided: true,
         crashes: false,
         crashes_decided: true,
-        ..privacy
+        // La revocación en memoria debe prevalecer sobre las lecturas del
+        // privacy.json antiguo que sigue haciendo el grabador.
+        generation: privacy.generation.saturating_add(1),
     }
 }
 /// Consentimiento del paso de privacidad: guarda juntas las dos decisiones que
@@ -229,6 +244,20 @@ const fn motion(nav: Nav, step: usize, can_advance: bool) -> Motion {
     }
 }
 impl Hub {
+    fn onboarding_account_login(&mut self, provider: usize, cx: &mut Context<Self>) {
+        use crate::services::protocol::{Command, EmailMode};
+        if self.onboarding.as_ref().is_none_or(|state| state.capture) {
+            return;
+        }
+        self.remote.update(cx, |remote, cx| {
+            if provider == 2 {
+                remote.select_email(EmailMode::SignInCode, cx);
+            } else {
+                remote.request(Command::AccountBegin, cx);
+            }
+        });
+        cx.notify();
+    }
     pub(super) fn onboarding_plan(
         &mut self,
         product: Option<crate::services::protocol::BillingProduct>,
@@ -240,14 +269,17 @@ impl Hub {
         if state.capture {
             return;
         }
+        if !state.signed && product == Some(crate::services::protocol::BillingProduct::ProMonthly) {
+            state.page(3);
+            state.say("Conecta tu cuenta para consultar los planes disponibles.");
+            self.onboarding_account_login(2, cx);
+            return;
+        }
         // #1628 R2: Plus y Launch remiten a precios; nunca inventar un SKU.
         let Some(command) = plan_request(product, state.signed) else {
             cx.open_url("https://vantare.app/#precios");
             return;
         };
-        if !state.signed {
-            state.say("Conecta tu cuenta para consultar los planes disponibles.");
-        }
         self.remote
             .update(cx, |remote, cx| remote.request(command, cx));
         cx.notify();
@@ -337,7 +369,6 @@ impl Hub {
             && let Some(state) = &mut self.onboarding
         {
             state.error = Some(error);
-            state.consent_error = true;
         }
         if remote.mail.pending {
             return false;
@@ -482,7 +513,10 @@ impl Hub {
         // privacidad vuelva a bloquear el primer arranque en este mismo inicio.
         if let Ok(store) = &mut self.settings.privacy {
             store.value = most_private(store.value);
+            vantare_ui::analytics::consent(cx, store.value);
         }
+        self.analytics
+            .consent(vantare_ui::analytics::generation(cx));
         self.onboarding = None;
         self.section = crate::Section::Home;
         self.focus.focus(window, cx);
@@ -507,7 +541,6 @@ impl Hub {
             state.marketing_continue = false;
             if let Some(error) = error {
                 state.error = Some(error);
-                state.consent_error = true;
                 cx.notify();
                 return;
             }
@@ -600,10 +633,7 @@ mod tests {
             assert!(plan_request(None, signed).is_none());
             assert!(plan_request(Some(BillingProduct::LaunchLifetime), signed).is_none());
         }
-        assert!(matches!(
-            plan_request(Some(BillingProduct::ProMonthly), false),
-            Some(Command::AccountBegin)
-        ));
+        assert!(plan_request(Some(BillingProduct::ProMonthly), false).is_none());
         assert!(matches!(
             plan_request(Some(BillingProduct::ProMonthly), true),
             Some(Command::Purchase {
@@ -656,8 +686,7 @@ mod tests {
         assert_eq!(confirmed_plan(pro), Some("Pro"));
         assert_eq!(plan_label(true, pro), "Pro · cuenta conectada");
     }
-    // La navegación se prueba en la decisión pura: el render no tiene arnés
-    // GPUI en el repo, y el pie y la tecla Escape consultan esta misma función.
+    // La decisión del pie se cubre aquí; el teclado se prueba con GPUI headless.
     #[test]
     fn the_footer_only_moves_in_visible_steps() {
         assert_eq!(motion(Nav::Back, 0, true), Motion::Blocked);
@@ -687,7 +716,7 @@ mod tests {
         assert!(private_exit_available(6, true));
     }
     #[test]
-    fn most_private_turns_everything_off_without_losing_the_generation() {
+    fn most_private_revokes_the_recorders_previous_generation() {
         let saved = Privacy {
             generation: 7,
             crashes: true,
@@ -698,7 +727,7 @@ mod tests {
         assert_eq!(
             most_private(saved),
             Privacy {
-                generation: 7,
+                generation: 8,
                 crashes: false,
                 usage: false,
                 crashes_decided: true,
@@ -706,8 +735,7 @@ mod tests {
             }
         );
     }
-    // El paso de privacidad se prueba en sus decisiones puras: el render no
-    // tiene arnés GPUI en el repo, y el paso enseña y guarda estas decisiones.
+    // El aviso y las decisiones se cubren además de la interacción GPUI.
     #[test]
     fn the_privacy_step_offers_crash_reports_on_with_the_notice_visible() {
         let choices = Choices::default();
@@ -729,6 +757,21 @@ mod tests {
             notice.contains("Ajustes › Privacidad"),
             "el aviso remite a Ajustes para más tarde"
         );
+    }
+    #[test]
+    fn only_undecided_permissions_use_the_onboarding_proposal() {
+        let undecided = choices_from_privacy(Some(Privacy::default()));
+        assert!(undecided.crashes);
+        assert!(!undecided.usage);
+        let saved = choices_from_privacy(Some(Privacy {
+            crashes: false,
+            crashes_decided: true,
+            usage: true,
+            usage_decided: true,
+            generation: 4,
+        }));
+        assert!(!saved.crashes);
+        assert!(saved.usage);
     }
     #[test]
     fn consent_saves_the_two_decisions_of_the_privacy_step() {
@@ -784,6 +827,6 @@ mod tests {
         let entered = most_private(chosen);
         assert!(!entered.crashes && entered.crashes_decided);
         assert!(!entered.usage && entered.usage_decided);
-        assert_eq!(entered.generation, chosen.generation);
+        assert!(entered.generation > chosen.generation);
     }
 }

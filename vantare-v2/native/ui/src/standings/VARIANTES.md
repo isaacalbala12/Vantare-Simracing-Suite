@@ -68,7 +68,19 @@ Los slots numerosos ajustan texto y filas con medidas de GPUI; su salto de
 línea no demuestra equivalencia píxel a píxel con el motor de fuentes web.
 Estas escenas no demuestran LMU live, OBS ni paridad de todas las transiciones.
 
-Para reproducir el montaje nativo desde native/:
+Para capturar hoy, usar el Workshop compilado con `parity-capture` por la cola
+(ver [capturas actuales](../../../README.md#capturas-sin-ocupar-la-pantalla-1655)):
+
+```powershell
+& ui/src/standings/capture-scenes.ps1 -Exe C:/targets/mi-issue/debug/vantare-workshop.exe
+```
+
+El script crea un manifiesto, usa un proceso/ventana fuera de pantalla y produce
+PNG naturales con alfa. No necesita el ejecutable especial del montaje anterior.
+
+El montaje siguiente es histórico: **no ejecutarlo para capturar**. Sus ventanas
+eran visibles y el CLI de ese binario no admite el lote actual:
+
 
 ```powershell
 cargo build -p vantare-ui -j 2

@@ -6,10 +6,3 @@ impl Remote {
         (self.account.signed_in, &self.message)
     }
 }
-pub(super) fn account_plan_label(verified: bool) -> &'static str {
-    if verified {
-        "Acceso verificado"
-    } else {
-        "Acceso sin verificar"
-    }
-}

@@ -128,3 +128,18 @@ Evidencia `C:/VantareServer/evidence/1628-integration-20261016`.
 No hay merge a nightly ni release. Revisión/integración corresponden al
 orquestador. T3 rechazó watch_pull_request porque este hilo es un worker:
 la vigilancia final de CI corresponde al padre, avisado en buzón.
+
+
+### VANTA-51 / #1637 · Reanudación y merge de nightly · 16-oct-2026
+
+Reanudado desde `1278bc9e3`, limpio, en el mismo worktree. Encargo del
+orquestador: resolver DIRTY con merge, sin rebase ni force-push.
+Base incorporada `32c3f3a14`: login propio #1635 y correcciones Polar #1681/#1683.
+Cinco conflictos resueltos conservando MailConsent y AccountEmail, la pantalla
+Cuenta extraída a services/view/account.rs, Founders y los cambios comerciales.
+Servicios pasa a v12 para rechazar los peers v11 sin marketing; se conserva
+Debug redactado de las credenciales y se prueba el rechazo de v11 en el host.
+Retirada solo la copia de account_plan_label que ya vive en account.rs.
+Gates nuevos pendientes en esta base; se usará CI Windows. No se extrapolan
+los checks de la entrega anterior. No hay promoción a nightly ni release.
+P1 widgets completos #1641 y capturas #1675 quedan fuera de este arreglo del merge.

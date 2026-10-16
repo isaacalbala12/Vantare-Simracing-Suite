@@ -739,7 +739,12 @@ impl Render for Hub {
         if self.privacy_question_pending() {
             return self.privacy_question(window, cx).into_any_element();
         }
-        if self.capture.is_none() && self.remote.read(cx).requires_access() {
+        #[cfg(feature = "parity-capture")]
+        let email_capture =
+            self.capture.is_some() && std::env::var_os("VANTARE_CAPTURE_EMAIL").is_some();
+        #[cfg(not(feature = "parity-capture"))]
+        let email_capture = false;
+        if email_capture || (self.capture.is_none() && self.remote.read(cx).requires_access()) {
             return self
                 .remote
                 .update(cx, |remote, cx| remote.access_screen(&self.focus, cx))

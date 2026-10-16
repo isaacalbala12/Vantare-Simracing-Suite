@@ -1,4 +1,5 @@
-use super::{Area, Command, Remote, account_demo, purchase_disabled_reason};
+use super::account::{account_demo, purchase_disabled_reason};
+use super::{Area, Command, Remote};
 use crate::orbit;
 use gpui::{Context, div, prelude::*, px};
 
@@ -120,7 +121,7 @@ impl Remote {
                 })
                 .on_click(cx.listener(|this, _, _, cx| {
                     if this.requires_access() && !this.working() {
-                        this.request(Command::AccountBegin, cx);
+                        this.select_email(crate::services::protocol::EmailMode::SignInCode, cx);
                     }
                 }))
             })

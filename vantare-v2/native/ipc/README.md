@@ -2,12 +2,12 @@
 
 DTO explícito, transporte autenticado y demanda; la versión de foto es independiente de servicios y control.
 
-VANTA-51/#1628: servicios v11 añade consulta y cambio de consentimiento de
+VANTA-51/#1628: servicios v12 añade consulta y cambio de consentimiento de
 correos mediante OAuth nativo. Hub y servicios deben recompilarse juntos;
 `MailConsent` solo confirma la respuesta de `native-mail-consent`, nunca un
 flag local. El protocolo no transporta correo, identidad ni tokens.
 
-VANTA-83/#1661: `BillingProduct::Founders` en servicios v10 y
+VANTA-83/#1661: `BillingProduct::Founders` junto a AccountEmail (#1631) en servicios v11 y
 `CatalogAccess::Founders` en control v5. Las fotos usan v11 en esta rama (#1638). Los componentes
 del conjunto se recompilan juntos; no negociar silenciosamente el plan con peers antiguos.
 

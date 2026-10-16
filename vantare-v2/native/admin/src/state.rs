@@ -1,5 +1,5 @@
 //! Estado comprobable sin ventana: nunca aplica cambios antes del ACK.
-use crate::client::{Action, Module, Report, Rollout, Status, User, field};
+use crate::client::{Action, Creator, CreatorLine, Module, Report, Rollout, Status, User, field};
 use vantare_services::{Error, Result};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -7,18 +7,31 @@ pub enum Screen {
     Users,
     Rollout,
     Reports,
+    Creators,
+    Mail,
+    Login,
 }
 impl Screen {
-    pub const ALL: [Self; 3] = [Self::Users, Self::Rollout, Self::Reports];
+    pub const ALL: [Self; 5] = [
+        Self::Users,
+        Self::Creators,
+        Self::Reports,
+        Self::Rollout,
+        Self::Mail,
+    ];
     pub fn label(self) -> &'static str {
         match self {
-            Self::Users => "Usuarios",
-            Self::Rollout => "Módulos para todos",
-            Self::Reports => "Reportes",
+            Self::Users => "Personas",
+            Self::Rollout => "Módulos",
+            Self::Reports => "Informes",
+            Self::Creators => "Creadores",
+            Self::Mail => "Correos",
+            Self::Login => "Entrar",
         }
     }
 }
 pub struct State {
+    pub mail: crate::mail::MailState,
     pub demo: bool,
     pub screen: Screen,
     pub signed_in: bool,
@@ -26,6 +39,13 @@ pub struct State {
     pub message: String,
     pub confirmation: Option<Action>,
     pub users: Vec<User>,
+    pub creators: Vec<Creator>,
+    pub creator: Option<Creator>,
+    pub creator_lines: Vec<CreatorLine>,
+    pub demo_creator_lines: Vec<(String, Vec<CreatorLine>)>,
+    pub account_counts: std::collections::BTreeMap<String, u32>,
+    pub report_counts: std::collections::BTreeMap<String, u32>,
+    pub accounts_total: u32,
     pub user: Option<User>,
     pub rollout: Vec<Rollout>,
     pub reports: Vec<Report>,
@@ -37,6 +57,11 @@ pub struct State {
 impl State {
     pub fn new(demo: bool, screen: Screen) -> Self {
         let mut state = Self {
+            mail: if demo {
+                crate::mail::MailState::demo()
+            } else {
+                crate::mail::MailState::default()
+            },
             demo,
             screen,
             signed_in: demo,
@@ -44,6 +69,13 @@ impl State {
             message: String::new(),
             confirmation: None,
             users: vec![],
+            creators: vec![],
+            creator: None,
+            creator_lines: vec![],
+            demo_creator_lines: vec![],
+            account_counts: std::collections::BTreeMap::default(),
+            report_counts: std::collections::BTreeMap::default(),
+            accounts_total: 0,
             user: None,
             rollout: vec![],
             reports: vec![],
@@ -53,44 +85,54 @@ impl State {
             users_cursor: None,
         };
         if demo {
-            state.users = vec![
-                User {
-                    account_id: "11111111-1111-4111-8111-111111111111".into(),
-                    email: Some("ana@example.invalid".into()),
-                    name: Some("Ana Martín · DEMO".into()),
-                    created_at: "2026-10-01T10:00:00Z".into(),
-                    last_seen_at: Some("2026-10-03T09:30:00Z".into()),
-                    roles: vec!["tester".into()],
-                    modules: vec![Module::Strategy, Module::Analysis],
-                    reports_count: 2,
-                },
-                User {
-                    account_id: "22222222-2222-4222-8222-222222222222".into(),
-                    email: Some("pablo@example.invalid".into()),
-                    name: Some("Pablo Ruiz · DEMO".into()),
-                    created_at: "2026-10-02T10:00:00Z".into(),
-                    last_seen_at: None,
-                    roles: vec![],
-                    modules: vec![Module::Calendar],
-                    reports_count: 0,
-                },
-            ];
-            state.user = state.users.first().cloned();
-            state.rollout = Module::ALL
-                .into_iter()
-                .map(|module| Rollout {
-                    module,
-                    enabled_for_all: module == Module::Calendar,
-                })
-                .collect();
-            state.reports = vec![Report { report_id: "demo-report-1".into(), author: "ana@example.invalid".into(), module: "strategy".into(), app_version: "0.4.0-beta · DEMO".into(), text: "DATOS FALSOS DE DEMOSTRACIÓN\nAl cambiar de sesión, el plan conserva el combustible anterior.\nEsperaba que se recalculara al cargar la nueva sesión.\nPasos: abrir Strategy, seleccionar carrera y cambiar de sesión.".into(), created_at: "2026-10-03T09:30:00Z".into(), status: Status::Submitted, has_screenshots: true, screenshots: vec![] }, Report { report_id: "demo-report-2".into(), author: "ana@example.invalid".into(), module: "analysis".into(), app_version: "0.4.0-beta · DEMO".into(), text: "DEMO: el gráfico de vueltas no muestra la última vuelta.".into(), created_at: "2026-10-02T15:00:00Z".into(), status: Status::Validated, has_screenshots: false, screenshots: vec![] }];
+            #[derive(serde::Deserialize)]
+            struct DemoCreator {
+                #[serde(flatten)]
+                creator: Creator,
+                lines: Vec<CreatorLine>,
+            }
+            #[derive(serde::Deserialize)]
+            struct Fixture {
+                users: Vec<User>,
+                creators: Vec<DemoCreator>,
+                reports: Vec<Report>,
+                rollout: Vec<Rollout>,
+            }
+            let fixture: Fixture = serde_json::from_str(include_str!("../fixtures/r1.json"))
+                .expect("approved demo fixture");
+            state.users = fixture.users;
+            state.user = state.users.get(1).cloned();
+            state.rollout = fixture.rollout;
+            state.reports = fixture.reports;
+            for report in &state.reports {
+                *state
+                    .report_counts
+                    .entry(report.status.key().to_owned())
+                    .or_default() += 1;
+            }
             state.report = state.reports.first().cloned();
+            for row in fixture.creators {
+                state
+                    .demo_creator_lines
+                    .push((row.creator.creator_id.clone(), row.lines));
+                state.creators.push(row.creator);
+            }
+            state.accounts_total = state.users.len().try_into().expect("bounded fixture");
+            state.signed_in = screen != Screen::Login;
             state.message = "DEMO · datos falsos, cambios solo en memoria".into();
         }
         state
     }
     pub fn propose(&mut self, action: Action) -> Result<()> {
         action.validate()?;
+        if let Action::SetBlocked { account_id, .. } | Action::DeleteAccount { account_id, .. } =
+            &action
+            && self.users.iter().chain(self.user.iter()).any(|u| {
+                &u.account_id == account_id && (u.owner || u.roles.iter().any(|r| r == "owner"))
+            })
+        {
+            return Err(Error::AccountConflict);
+        }
         if self.busy || self.confirmation.is_some() {
             return Err(Error::Busy);
         }
@@ -115,8 +157,33 @@ impl State {
     pub fn failed(&mut self, error: Error) {
         self.busy = false;
         self.confirmation = None;
-        self.message = if error == Error::Denied {
-            "Acceso denegado: solo el owner puede administrar la beta".into()
+        self.message = if self.screen == Screen::Mail && error == Error::Unconfigured {
+            "Correos todavía no está activado. Revisa la configuración del servidor.".into()
+        } else if self.screen == Screen::Mail
+            && self.mail.campaign.is_none()
+            && error == Error::AccountConflict
+        {
+            "Esa dirección está asociada a una cuenta. Usa el borrado de cuenta para retirarla."
+                .into()
+        } else if self.screen == Screen::Mail
+            && matches!(error, Error::Conflict | Error::AccountConflict)
+        {
+            "La campaña ha cambiado. Actualiza y revisa el borrador antes de confirmar.".into()
+        } else if error == Error::DeletionUnavailable {
+            "El borrado aún no está disponible. Falta revisar y conectar su barrera.".into()
+        } else if error == Error::Conflict {
+            "La cuenta o el correo ha cambiado. Actualiza sus datos antes de confirmar.".into()
+        } else if error == Error::RateLimited {
+            "Espera un minuto antes de volver a intentarlo.".into()
+        } else if error == Error::AccountChangeIncomplete {
+            "El bloqueo quedó incompleto. Consulta la cuenta y vuelve a confirmar para terminar la cancelación.".into()
+        } else if error == Error::Uncertain {
+            "El resultado no está confirmado. Actualiza los datos antes de repetir el cambio."
+                .into()
+        } else if error == Error::NotFound {
+            "La persona, el creador o el informe ya no existe. Actualiza la lista.".into()
+        } else if error == Error::Denied {
+            "Esta cuenta no es la del dueño. Entra con la cuenta de Isaac.".into()
         } else {
             format!("Error: {error}. Vuelve a consultar antes de repetir un cambio.")
         };
@@ -128,8 +195,16 @@ impl State {
         }
     }
     pub fn clear_private(&mut self) {
+        self.mail = crate::mail::MailState::default();
         self.signed_in = false;
         self.users.clear();
+        self.creators.clear();
+        self.creator = None;
+        self.creator_lines.clear();
+        self.demo_creator_lines.clear();
+        self.account_counts.clear();
+        self.report_counts.clear();
+        self.accounts_total = 0;
         self.user = None;
         self.reports.clear();
         self.report = None;
@@ -149,26 +224,19 @@ impl State {
         action: &Action,
         response: &serde_json::Value,
     ) -> Result<Option<Action>> {
+        if action.label().starts_with("mail_") {
+            self.accept_mail(action, response)?;
+            self.busy = false;
+            self.message = "Datos de correos confirmados".into();
+            return Ok(if matches!(action, Action::MailForgetWaitlist { .. }) {
+                Some(Action::MailList)
+            } else {
+                None
+            });
+        }
         let reload = match action {
             Action::SearchAccounts { query, .. } => {
-                let users: Vec<User> = field(response, "accounts")?;
-                if users.len() > 50 {
-                    return Err(Error::TooLarge);
-                }
-                let cursor: Option<String> = if query.is_empty() {
-                    field(response, "next_cursor")?
-                } else {
-                    None
-                };
-                if cursor
-                    .as_ref()
-                    .is_some_and(|s| !vantare_services::license::uuid(s))
-                {
-                    return Err(Error::Protocol);
-                }
-                self.users_cursor = cursor;
-                self.users = users;
-                self.user = None;
+                self.accept_accounts(query, response)?;
                 None
             }
             Action::GetAccount { account_id } => {
@@ -176,13 +244,7 @@ impl State {
                 if &user.account_id != account_id {
                     return Err(Error::Protocol);
                 }
-                if let Some(row) = self
-                    .users
-                    .iter_mut()
-                    .find(|row| row.account_id == user.account_id)
-                {
-                    row.clone_from(&user);
-                }
+                self.replace_user_row(&user);
                 self.user = Some(user);
                 None
             }
@@ -195,6 +257,12 @@ impl State {
                 {
                     return Err(Error::Protocol);
                 }
+                self.accounts_total = response
+                    .get("accounts_total")
+                    .map(|v| serde_json::from_value(v.clone()))
+                    .transpose()
+                    .map_err(|_| Error::Protocol)?
+                    .unwrap_or(0);
                 self.rollout = rows;
                 None
             }
@@ -204,42 +272,183 @@ impl State {
                     return Err(Error::TooLarge);
                 }
                 let cursor: Option<String> = field(response, "next_cursor")?;
+                self.report_counts = response
+                    .get("counts")
+                    .map(|v| serde_json::from_value(v.clone()))
+                    .transpose()
+                    .map_err(|_| Error::Protocol)?
+                    .unwrap_or_default();
                 self.reports = reports;
                 self.cursor = cursor;
                 self.report = None;
                 None
             }
             Action::GetReport { report_id } => {
-                let report: Report = field(response, "report")?;
-                if &report.report_id != report_id || report.screenshots.len() > 3 {
-                    return Err(Error::Protocol);
-                }
-                if let Some(row) = self
-                    .reports
-                    .iter_mut()
-                    .find(|row| row.report_id == report.report_id)
-                {
-                    row.clone_from(&report);
-                }
-                self.report = Some(report);
+                self.accept_report(report_id, response)?;
                 None
             }
-            Action::SetTester { account_id, .. } | Action::SetModule { account_id, .. } => {
-                Some(Action::GetAccount {
-                    account_id: account_id.clone(),
-                })
+            Action::ListCreators => {
+                self.creators = field(response, "creators")?;
+                self.creator = None;
+                self.creator_lines.clear();
+                None
             }
+            Action::GetCreator { creator_id } => {
+                self.accept_creator(creator_id, response)?;
+                None
+            }
+            Action::CreateCreator { .. } => Some(Action::ListCreators),
+            Action::RecordCreatorPayout { creator_id, .. } => Some(Action::GetCreator {
+                creator_id: creator_id.clone(),
+            }),
+            Action::DeleteAccount { .. } => Some(Action::SearchAccounts {
+                query: String::new(),
+                limit: 50,
+                cursor: None,
+            }),
+            Action::SetBlocked { account_id, .. }
+            | Action::SetTester { account_id, .. }
+            | Action::SetModule { account_id, .. } => Some(Action::GetAccount {
+                account_id: account_id.clone(),
+            }),
             Action::SetRollout { .. } => Some(Action::GetRollout),
             Action::SetReportStatus { report_id, .. } => Some(Action::GetReport {
                 report_id: report_id.clone(),
             }),
+            _ => return Err(Error::Protocol),
         };
         self.busy = false;
         self.message = "Datos confirmados por el servidor".into();
         Ok(reload)
     }
+    fn accept_creator(&mut self, creator_id: &str, response: &serde_json::Value) -> Result<()> {
+        let creator: Creator = field(response, "creator")?;
+        if creator.creator_id != creator_id {
+            return Err(Error::Protocol);
+        }
+        let lines = field(response, "lines")?;
+        if let Some(row) = self
+            .creators
+            .iter_mut()
+            .find(|r| r.creator_id == creator.creator_id)
+        {
+            row.clone_from(&creator);
+        }
+        self.creator = Some(creator);
+        self.creator_lines = lines;
+        Ok(())
+    }
+    fn accept_report(&mut self, report_id: &str, response: &serde_json::Value) -> Result<()> {
+        let report: Report = field(response, "report")?;
+        if report.report_id != report_id || report.screenshots.len() > 3 {
+            return Err(Error::Protocol);
+        }
+        self.replace_report_row(&report);
+        self.report = Some(report);
+        Ok(())
+    }
+    fn replace_user_row(&mut self, user: &User) {
+        if let Some(row) = self
+            .users
+            .iter_mut()
+            .find(|row| row.account_id == user.account_id)
+        {
+            for (key, before, after) in [
+                (
+                    "paying",
+                    row.plan != crate::client::Plan::Free,
+                    user.plan != crate::client::Plan::Free,
+                ),
+                (
+                    "testers",
+                    row.roles.iter().any(|r| r == "tester"),
+                    user.roles.iter().any(|r| r == "tester"),
+                ),
+                ("blocked", row.blocked, user.blocked),
+            ] {
+                if let Some(n) = self.account_counts.get_mut(key) {
+                    if before && !after {
+                        *n = n.saturating_sub(1);
+                    }
+                    if !before && after {
+                        *n = n.saturating_add(1);
+                    }
+                }
+            }
+            row.clone_from(user);
+        }
+    }
+    fn replace_report_row(&mut self, report: &Report) {
+        if let Some(row) = self
+            .reports
+            .iter_mut()
+            .find(|row| row.report_id == report.report_id)
+        {
+            if row.status != report.status && !self.report_counts.is_empty() {
+                if let Some(n) = self.report_counts.get_mut(row.status.key()) {
+                    *n = n.saturating_sub(1);
+                }
+                let n = self
+                    .report_counts
+                    .entry(report.status.key().to_owned())
+                    .or_default();
+                *n = n.saturating_add(1);
+            }
+            row.clone_from(report);
+        }
+    }
+    fn accept_accounts(&mut self, query: &str, response: &serde_json::Value) -> Result<()> {
+        let users: Vec<User> = field(response, "accounts")?;
+        if users.len() > 50 {
+            return Err(Error::TooLarge);
+        }
+        let cursor: Option<String> = if query.is_empty() {
+            field(response, "next_cursor")?
+        } else {
+            None
+        };
+        if cursor
+            .as_ref()
+            .is_some_and(|s| !vantare_services::license::uuid(s))
+        {
+            return Err(Error::Protocol);
+        }
+        self.account_counts = response
+            .get("counts")
+            .map(|v| serde_json::from_value(v.clone()))
+            .transpose()
+            .map_err(|_| Error::Protocol)?
+            .unwrap_or_default();
+        self.users_cursor = cursor;
+        self.users = users;
+        self.user = None;
+        Ok(())
+    }
     pub fn demo_action(&mut self, action: &Action) {
+        if action.label().starts_with("mail_") {
+            self.demo_mail_action(action);
+            self.busy = false;
+            self.message = "DEMO · cambio de correo solo en memoria".into();
+            return;
+        }
         match action {
+            Action::SetBlocked { blocked, .. } => {
+                if let Some(user) = &mut self.user {
+                    user.blocked = *blocked;
+                    if *blocked {
+                        user.plan = crate::client::Plan::Free;
+                        user.billing = None;
+                        user.renews_at = None;
+                    }
+                }
+            }
+            Action::DeleteAccount { account_id, .. } => {
+                self.users.retain(|u| &u.account_id != account_id);
+                self.user = None;
+            }
+            Action::CreateCreator { .. } | Action::RecordCreatorPayout { .. } => {
+                self.demo_creator_action(action);
+            }
             Action::SetTester { enabled, .. } => {
                 if let Some(user) = &mut self.user {
                     user.roles.retain(|r| r != "tester");
@@ -252,6 +461,11 @@ impl State {
                 module, enabled, ..
             } => {
                 if let Some(user) = &mut self.user {
+                    if let Some(access) =
+                        user.module_access.iter_mut().find(|a| a.module == *module)
+                    {
+                        access.individual = *enabled;
+                    }
                     user.modules.retain(|m| m != module);
                     if *enabled {
                         user.modules.push(*module);
@@ -265,32 +479,73 @@ impl State {
                 if let Some(row) = self.rollout.iter_mut().find(|r| r.module == *module) {
                     row.enabled_for_all = *enabled_for_all;
                 }
+                for user in self.users.iter_mut().chain(self.user.iter_mut()) {
+                    if let Some(access) =
+                        user.module_access.iter_mut().find(|a| a.module == *module)
+                    {
+                        access.rollout = *enabled_for_all;
+                    }
+                }
             }
-            Action::SetReportStatus { status, .. } => {
+            Action::SetReportStatus {
+                status,
+                fixed_in_version,
+                reason,
+                ..
+            } => {
                 if let Some(report) = &mut self.report {
                     report.status = *status;
+                    report.fixed_in_version.clone_from(fixed_in_version);
+                    report.reject_reason.clone_from(reason);
                 }
             }
             _ => {}
         }
-        if let Some(user) = &self.user
-            && let Some(row) = self
-                .users
-                .iter_mut()
-                .find(|u| u.account_id == user.account_id)
-        {
-            row.clone_from(user);
+        if let Some(user) = self.user.clone() {
+            self.replace_user_row(&user);
         }
-        if let Some(report) = &self.report
-            && let Some(row) = self
-                .reports
-                .iter_mut()
-                .find(|r| r.report_id == report.report_id)
-        {
-            row.clone_from(report);
+        if let Some(report) = self.report.clone() {
+            self.replace_report_row(&report);
         }
         self.busy = false;
         self.message = "DEMO · cambio simulado, no se ha enviado al servidor".into();
+    }
+    fn demo_creator_action(&mut self, action: &Action) {
+        match action {
+            Action::CreateCreator { name, email, code } => {
+                self.creators.push(Creator {
+                    history_complete: true,
+                    creator_id: format!("00000000-0000-4000-8000-{:012}", self.creators.len() + 40),
+                    name: name.clone(),
+                    email: email.clone(),
+                    code: code.clone(),
+                    status: "active".into(),
+                    clients_count: 0,
+                    sales_cents: 0,
+                    earned_cents: 0,
+                    paid_out_cents: 0,
+                    owed_cents: 0,
+                    payable_cents: 0,
+                    last_payout_at: None,
+                });
+            }
+            Action::RecordCreatorPayout { amount_cents, .. } => {
+                if let Some(c) = &mut self.creator {
+                    c.paid_out_cents += amount_cents;
+                    c.owed_cents -= amount_cents;
+                    c.payable_cents -= amount_cents;
+                    c.last_payout_at = Some("Hoy".into());
+                    if let Some(row) = self
+                        .creators
+                        .iter_mut()
+                        .find(|r| r.creator_id == c.creator_id)
+                    {
+                        row.clone_from(c);
+                    }
+                }
+            }
+            _ => {}
+        }
     }
 }
 #[cfg(test)]
@@ -452,7 +707,118 @@ mod tests {
             Status::Closed
         );
         assert_eq!(state.visible_reports().count(), 0);
+        assert_eq!(state.report_counts.get("submitted"), Some(&0));
         state.filter = Some(Status::Closed);
         assert_eq!(state.visible_reports().count(), 1);
+    }
+    #[test]
+    fn owner_is_protected_and_block_ack_requires_fresh_read() {
+        let mut state = State::new(true, Screen::Users);
+        let owner = state
+            .users
+            .iter()
+            .find(|u| u.owner)
+            .expect("owner")
+            .account_id
+            .clone();
+        for action in [
+            Action::SetBlocked {
+                account_id: owner.clone(),
+                blocked: true,
+                reason: None,
+            },
+            Action::DeleteAccount {
+                account_id: owner,
+                confirm_email: "isaac@demo.invalid".into(),
+            },
+        ] {
+            assert_eq!(state.propose(action), Err(Error::AccountConflict));
+        }
+        let account = state.user.as_ref().expect("Ana").clone();
+        let action = Action::SetBlocked {
+            account_id: account.account_id.clone(),
+            blocked: true,
+            reason: None,
+        };
+        state.propose(action.clone()).expect("confirmation");
+        assert_eq!(state.confirm().expect("confirm"), action);
+        assert_eq!(
+            state.accept(&action, &serde_json::json!({})).expect("ack"),
+            Some(Action::GetAccount {
+                account_id: account.account_id.clone()
+            })
+        );
+        assert_eq!(state.user, Some(account.clone()));
+        state.account_counts.insert("blocked".into(), 0);
+        let mut blocked = account;
+        blocked.blocked = true;
+        state
+            .accept(
+                &Action::GetAccount {
+                    account_id: blocked.account_id.clone(),
+                },
+                &serde_json::json!({"account":blocked}),
+            )
+            .expect("fresh block");
+        assert_eq!(state.account_counts.get("blocked"), Some(&1));
+    }
+    #[test]
+    fn merged_person_detail_preserves_plan_payments_accesses_and_promotion() {
+        let mut state = State::new(true, Screen::Users);
+        let fixture: serde_json::Value =
+            serde_json::from_str(include_str!("../fixtures/r1.json")).expect("wire fixture");
+        let mut wire = fixture["users"][1].clone();
+        let account_id = wire["account_id"].as_str().expect("account").to_owned();
+        wire["report_promotion"] = serde_json::json!({
+            "accepted":5,"tier":6,"forfeited":false,"active_discount":"DEMO6",
+            "last_error":"promotion_checkout_owner_mismatch"
+        });
+        state
+            .accept(
+                &Action::GetAccount { account_id },
+                &serde_json::json!({"account":wire}),
+            )
+            .expect("fresh detail");
+        let user = state.user.as_ref().expect("detail");
+        assert_eq!(user.plan, crate::client::Plan::Pro);
+        assert!(!user.owner && !user.blocked);
+        assert!(!user.payments.is_empty());
+        assert!(!user.module_access.is_empty());
+        let promotion = user.report_promotion.as_ref().expect("promotion");
+        assert_eq!((promotion.accepted, promotion.tier), (5, 6));
+        assert!(promotion.summary().contains("pendiente de revisión"));
+        // A paginated summary may omit the optional detail; the old contract remains valid.
+        wire.as_object_mut()
+            .expect("wire")
+            .remove("report_promotion");
+        let summary: crate::client::User = serde_json::from_value(wire).expect("summary");
+        assert!(summary.report_promotion.is_none());
+        assert_eq!(summary.plan, user.plan);
+        assert_eq!(summary.payments, user.payments);
+    }
+    #[test]
+    fn approved_creator_example_and_private_cleanup_are_preserved() {
+        let mut state = State::new(true, Screen::Creators);
+        let carlos = state
+            .creators
+            .iter()
+            .find(|c| c.code == "CARLOSGT")
+            .expect("Carlos")
+            .clone();
+        assert_eq!(
+            (
+                carlos.earned_cents,
+                carlos.paid_out_cents,
+                carlos.owed_cents
+            ),
+            (392, 96, 296)
+        );
+        assert!(carlos.history_complete);
+        state.creator = Some(carlos);
+        state.failed(Error::Denied);
+        assert!(
+            state.creators.is_empty() && state.creator.is_none() && state.creator_lines.is_empty()
+        );
+        assert!(state.account_counts.is_empty() && state.report_counts.is_empty());
     }
 }

@@ -55,12 +55,57 @@ pub fn open_replay(path: &Path, build: Option<&str>) -> io::Result<Replay> {
                 frame,
             }],
         ))
+    } else if name.ends_with(".lmu.gz") {
+        full_recording(File::open(path).map_err(open)?, build)
     } else if name.ends_with(".tar.gz") {
         let file = File::open(path).map_err(open)?;
         corpus(GzDecoder::new(BufReader::new(file)), build)
     } else {
-        Err(invalid("se esperaba un fixture .bin o un corpus .tar.gz"))
+        Err(invalid("se esperaba .bin, .tar.gz o .lmu.gz"))
     }
+}
+
+fn full_recording(file: File, build: Option<&str>) -> io::Result<Replay> {
+    let mut records = crate::lmu_recording::Reader::new(BufReader::new(file));
+    let header = records.next().ok_or_else(|| invalid("sin cabecera"))??;
+    if header.kind != "header" || header.details["schema"] != crate::lmu_recording::SCHEMA {
+        return Err(invalid("cabecera LMU desconocida"));
+    }
+    let build = build
+        .map(str::to_owned)
+        .or_else(|| header.details["build"].as_str().map(str::to_owned))
+        .ok_or_else(|| invalid("sin build"))?;
+    let events = records.map(|record| {
+        let record = record?;
+        let at = Duration::from_nanos(record.at_ns);
+        Ok(match record.kind.as_str() {
+            "shm" if record.key == "LMU_Data" && record.details["stable"] == true => {
+                // VirtualQuery incluye padding de página. El parser sigue exigiendo
+                // build admitida y el layout productivo completo, nunca otro offset.
+                if record.body.len() < super::frame::OBJECT_OUT_SIZE {
+                    return Err(invalid("LMU_Data demasiado corto"));
+                }
+                ReplayEvent::Shm {
+                    at,
+                    frame: record.body[..super::frame::OBJECT_OUT_SIZE].to_vec(),
+                }
+            }
+            "rest" => ReplayEvent::Endpoint {
+                at,
+                started: Duration::from_nanos(record.started_ns),
+                path: record.key,
+                body: if record.status == Some(200) && record.error.is_none() {
+                    Some(record.body)
+                } else {
+                    None
+                },
+            },
+            "gap" if record.key == "LMU_Data" => ReplayEvent::Disconnected { at },
+            "shm" | "gap" | "footer" => ReplayEvent::Tick { at },
+            _ => return Err(invalid("registro LMU desconocido")),
+        })
+    });
+    Ok(Replay::from_results(build, events))
 }
 
 fn corpus(archive: impl Read + Send + 'static, build: Option<&str>) -> io::Result<Replay> {

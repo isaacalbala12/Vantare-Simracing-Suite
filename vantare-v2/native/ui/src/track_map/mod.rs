@@ -350,7 +350,7 @@ mod tests {
     }
 
     fn reference_snapshot() -> Snapshot {
-        vantare_ipc::snapshot_from_json(include_str!("../../fixtures/track-map.snapshot.json"))
+        vantare_ipc::snapshot_from_fixture_json(include_str!("../../fixtures/track-map.snapshot.json"))
             .expect("fixture DTO v4 reconstruida del frame congelado")
     }
 

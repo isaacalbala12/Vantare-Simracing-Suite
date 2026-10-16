@@ -31,6 +31,59 @@ const productionGrant = (
   source_type: sourceType,
 });
 
+Deno.test("Founders is signed as its own perpetual order right, never as a subscription", () => {
+  const now = new Date("2026-10-26T18:00:00Z");
+  const result = normalizeGrants(
+    [productionGrant("vantare.plan.founders", null, "order")],
+    now,
+    "production",
+  );
+  if (
+    !result.ok ||
+    JSON.stringify(result.grants) !==
+      '[{"key":"vantare.plan.founders","perpetual":true}]'
+  ) {
+    throw new Error("Founders must retain an independent perpetual right");
+  }
+  for (
+    const invalid of [
+      productionGrant("vantare.plan.founders", null),
+      productionGrant("vantare.plan.founders", "2027-01-01T00:00:00Z", "order"),
+    ]
+  ) {
+    if (normalizeGrants([invalid], now, "production").ok) {
+      throw new Error("Invalid Founders source or expiry accepted");
+    }
+  }
+});
+
+Deno.test("R4 Founders keeps perpetual Nightly only for its own paid order", () => {
+  const now = new Date("2026-10-26T18:00:00Z");
+  const founder = {
+    ...productionGrant("vantare.plan.founders", null, "order"),
+    source_id: "founder-order",
+  };
+  const nightly = {
+    ...productionGrant("vantare.channel.nightly", null, "order"),
+    source_id: "founder-order",
+  };
+  const result = normalizeGrants([founder, nightly], now, "production");
+  if (
+    !result.ok ||
+    !result.grants.some((g) =>
+      g.key === "vantare.channel.nightly" && g.perpetual
+    )
+  ) throw Error("Founder lost Nightly");
+  if (
+    normalizeGrants([nightly], now, "production").ok ||
+    normalizeGrants(
+      [founder, { ...nightly, source_id: "other-order" }],
+      now,
+      "production",
+    ).ok
+  ) throw Error("unbound perpetual Nightly accepted");
+});
+
 Deno.test("credential request signs exact independent capabilities without PII", async () => {
   const keys = await crypto.subtle.generateKey(
     "Ed25519",
@@ -440,7 +493,9 @@ Deno.test("PostgREST auth status is classified as a credential rejection", () =>
     throw new Error("a role rejection must stay an authentication failure");
   }
   if (!isCredentialAuthFailure(401, { message: "Invalid JWT" })) {
-    throw new Error("a gateway JWT rejection must stay an authentication failure");
+    throw new Error(
+      "a gateway JWT rejection must stay an authentication failure",
+    );
   }
 });
 
@@ -455,7 +510,9 @@ Deno.test("generic credential store failure stays HTTP 503", async () => {
     },
   );
   const body = await response.json();
-  if (response.status !== 503 || body.error !== "credential_state_unavailable") {
+  if (
+    response.status !== 503 || body.error !== "credential_state_unavailable"
+  ) {
     throw new Error(JSON.stringify(body));
   }
 });

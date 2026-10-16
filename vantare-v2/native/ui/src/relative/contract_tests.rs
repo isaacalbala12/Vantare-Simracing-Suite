@@ -125,7 +125,7 @@ fn header_quality_changes_without_text_changes_invalidate_and_survive_look_switc
     }
     let prefs = Preferences::default();
     let original =
-        vantare_ipc::snapshot_from_json(include_str!("../../fixtures/relative.snapshot.json"))
+        vantare_ipc::snapshot_from_fixture_json(include_str!("../../fixtures/relative.snapshot.json"))
             .unwrap();
     for field in 0..7 {
         let mut photo = original.clone();

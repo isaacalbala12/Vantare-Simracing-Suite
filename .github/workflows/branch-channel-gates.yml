@@ -25,12 +25,78 @@ jobs:
     name: Validate promotion path
     if: '!github.event.repository.private || github.event_name != ''pull_request'' || github.event.pull_request.head.repo.full_name == github.repository'
     runs-on: ${{ github.event.repository.private && fromJSON('["self-hosted","Linux","X64","vantare-1565"]') || 'ubuntu-latest' }}
+    outputs:
+      # Lo lee `product` para saltarse el trabajo pesado sin dejar de reportar
+      # su check requerido. Vacío o distinto de «false» ⇒ los gates corren.
+      native: ${{ steps.native_scope.outputs.native }}
+      # Lo lee `product` para elegir el gate de suite: `test` excluye el corpus
+      # de telemetría y `completa` lo incluye. Vacío o distinto de «false» ⇒
+      # corre el corpus (fail-closed).
+      telemetria: ${{ steps.native_scope.outputs.telemetria }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           fetch-depth: 0
           persist-credentials: false
           ref: ${{ github.sha }}
+
+      # Clasifica si la PR puede saltarse los gates nativos (docs, web retirada,
+      # Supabase, tooling) y si hace falta el corpus de telemetría (runtime,
+      # domain, ipc o testdata). El trabajo `product` sigue ejecutándose y
+      # reportando su check requerido: filtrar en `on.pull_request.paths`
+      # dejaría los checks requeridos en «Pending» y bloquearía la fusión (docs
+      # de GitHub, «Workflow syntax» →
+      # on.<push|pull_request>.<paths|paths-ignore>).
+      # Fail-closed: sin evento de PR, sin base o si algo falla, las dos
+      # decisiones valen `true`.
+      - name: Clasificar si los gates nativos aplican
+        id: native_scope
+        shell: bash
+        env:
+          SCOPE_PATH: ${{ runner.temp }}/native-gate-scope.json
+          DECISION_PATH: ${{ runner.temp }}/native-gate-scope.decision
+        run: |
+          set -euo pipefail
+          fail_closed() {
+            printf '{"native":true,"telemetria":true,"native_paths":[],"telemetria_paths":[],"reasons":["%s"]}\n' "$1" > "$SCOPE_PATH"
+            {
+              echo 'native=true'
+              echo 'telemetria=true'
+            } >> "$GITHUB_OUTPUT"
+          }
+          if [ "$GITHUB_EVENT_NAME" != "pull_request" ]; then
+            fail_closed "non pull request event: native gates always run"
+            exit 0
+          fi
+          if ! diff_base="$(git rev-parse "$GITHUB_SHA^1" 2>/dev/null)"; then
+            fail_closed "no diff base: fail closed"
+            exit 0
+          fi
+          if ! git diff --name-only --diff-filter=ACMR -z "$diff_base" "$GITHUB_SHA" > "$RUNNER_TEMP/native-scope-paths.bin"; then
+            fail_closed "git diff failed: fail closed"
+            exit 0
+          fi
+          if ! python .github/scripts/native_gate_scope.py --nul-file "$RUNNER_TEMP/native-scope-paths.bin" --output "$SCOPE_PATH" > "$DECISION_PATH"; then
+            fail_closed "classifier failed: fail closed"
+            exit 0
+          fi
+          # Dos líneas, en este orden: 1) native, 2) telemetria. Cualquier otro
+          # valor (o una línea ausente) vuelve a `true`.
+          native="$(sed -n 1p "$DECISION_PATH")"
+          telemetria="$(sed -n 2p "$DECISION_PATH")"
+          case "$native" in
+            true|false) ;;
+            *) native="true" ;;
+          esac
+          case "$telemetria" in
+            true|false) ;;
+            *) telemetria="true" ;;
+          esac
+          cat "$SCOPE_PATH"
+          {
+            echo "native=$native"
+            echo "telemetria=$telemetria"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Check branch topology
         env:
@@ -55,6 +121,9 @@ jobs:
 
       - name: Test Testing Center deterministic diff gate
         run: python .github/scripts/test_testing_center_diff_gate.py
+
+      - name: Test native gate path scope
+        run: python .github/scripts/test_native_gate_scope.py
 
       - name: Test Testing Center trusted manifest collector
         run: python .github/scripts/test_testing_center_manifest_collector.py
@@ -91,6 +160,98 @@ jobs:
             supabase/functions/_shared/testing-center-agent-observability.test.ts \
             supabase/functions/scripts/verify-deploy-surface.test.ts
 
+      - name: Test marketing CI capability contract
+        run: |
+          python .github/scripts/test_marketing_postgres_ci.py
+          python -m unittest discover -s supabase/tests -p test_run_admin_local.py
+
+      - name: Test marketing handlers offline
+        working-directory: supabase/functions
+        run: |
+          deno test --frozen --node-modules-dir=auto --allow-env \
+            native-admin/ native-mail-consent/ _shared/mail-erasure.test.ts
+
+  marketing-postgres:
+    name: Validate marketing PostgreSQL and E2E
+    # #1565 reserves Docker for hosted runners. Private hosted usage is explicit opt-in.
+    if: >-
+      (!github.event.repository.private || vars.MARKETING_POSTGRES_CI == 'true') &&
+      (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository || !github.event.repository.private)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282
+        with:
+          deno-version: 2.7.13
+      - name: Check Docker capability
+        id: docker
+        shell: bash
+        run: |
+          if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
+            printf '%s\n' 'available=true' >> "$GITHUB_OUTPUT"
+          else
+            printf '%s\n' 'available=false' >> "$GITHUB_OUTPUT"
+            printf '%s\n' '::warning::Marketing SQL/E2E omitted: Docker daemon unavailable; run before production activation.'
+            printf '%s\n' 'Marketing SQL/E2E omitted: Docker unavailable. This is not a passing database test.' >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Prepare marketing PostgreSQL image
+        if: steps.docker.outputs.available == 'true'
+        shell: bash
+        timeout-minutes: 11
+        run: |
+          set -euo pipefail
+          # Both official registries publish this 17.6.1.165 multiarch digest.
+          digest=sha256:28f0e16a019e648089fc1a6d333549a55548f6019c15ae4bd7cd58b989027518
+          image=public.ecr.aws/supabase/postgres:17.6.1.165
+          for delay in 0 15 45; do
+            if [ "$delay" -gt 0 ]; then
+              printf 'Retrying PostgreSQL image download in %s seconds\n' "$delay"
+              sleep "$delay"
+            fi
+            for registry in public.ecr.aws/supabase/postgres docker.io/supabase/postgres; do
+              source="$registry@$digest"
+              if timeout --kill-after=10s 80s docker pull "$source"; then
+                # The disposable SQL runner consumes this existing local tag.
+                docker tag "$source" "$image"
+                printf 'PostgreSQL 17.6.1.165 ready from %s\n' "$source"
+                exit 0
+              fi
+              printf '::warning::PostgreSQL image unavailable from %s; trying the next official source.\n' "$source"
+            done
+          done
+          printf '%s\n' '::error::Both official PostgreSQL registries failed after three bounded rounds.'
+          exit 1
+
+      - name: Test marketing SQL and end-to-end consent locally
+        if: steps.docker.outputs.available == 'true'
+        run: |
+          until mkdir "$HOME/.vantare-marketing-docker.lock" 2>/dev/null; do sleep 5; done
+          trap 'rmdir "$HOME/.vantare-marketing-docker.lock"' EXIT
+          python3 supabase/tests/run-admin-local.py \
+            --output "$RUNNER_TEMP/marketing-sql" \
+            --test marketing_mail.test.sql \
+            --test marketing_mail_erasure.test.sql \
+            --test marketing_mail_erasure_retention.test.sql \
+            --test marketing_mail_waitlist_erasure.test.sql \
+            --test marketing_mail_consent.test.sql \
+            --test marketing_mail_hardening.test.sql \
+            --test native_admin_deletion_r4.test.sql \
+            --mail-e2e
+
+      - name: Preserve marketing E2E failure diagnostics
+        if: failure() && steps.docker.outputs.available == 'true'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: marketing-e2e-failure
+          path: ${{ runner.temp }}/marketing-sql/marketing-mail-e2e.log
+          if-no-files-found: ignore
+          retention-days: 3
+
   product:
     name: Validate Vantare blocking gates
     needs: policy
@@ -101,18 +262,25 @@ jobs:
         shell: pwsh
         working-directory: ${{ env.VANTARE_DIR }}
     steps:
+      # Todos los pasos pesados se saltan cuando la PR solo toca zonas sin
+      # efecto nativo (lo decide `policy.native`). El trabajo sigue corriendo y
+      # reportando «success» porque es un check requerido de la rama: filtrar
+      # en el disparador lo dejaría en «Pending» y bloquearía la fusión.
       - name: Wait until Windows screen is available
+        if: needs.policy.outputs.native != 'false'
         working-directory: ${{ runner.temp }}
         run: |
           while (Test-Path 'C:/tmp/fase2/pantalla-ocupada') { Start-Sleep -Seconds 10 }
 
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        if: needs.policy.outputs.native != 'false'
         with:
           fetch-depth: 0
           persist-credentials: false
           ref: ${{ github.sha }}
 
       - name: Classify changed automatic scope
+        if: needs.policy.outputs.native != 'false'
         working-directory: ${{ github.workspace }}
         shell: bash
         env:
@@ -134,13 +302,19 @@ jobs:
             --enforce-testing-center-scope
 
       - name: Reject retired automatic UI scope
+        if: needs.policy.outputs.native != 'false'
         run: |
           $scope = Get-Content "$env:RUNNER_TEMP/testing-center-changed-scope.json" -Raw | ConvertFrom-Json
           if (-not $scope.eligible -or $scope.lint_paths.Count -gt 0 -or $scope.visual_required) {
             throw "automatic frontend scope retired; no native preauthorization is granted"
           }
 
+      - name: Verify explicit Supabase deploy surface
+        if: needs.policy.outputs.native != 'false'
+        run: ../supabase/functions/scripts/verify-deploy-surface.ps1
+
       - name: Test Windows runner hooks and beta feed origin
+        if: needs.policy.outputs.native != 'false'
         run: |
           python -m unittest discover -s ../tools/ci-runners -v
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
@@ -148,31 +322,100 @@ jobs:
           powershell.exe -NoProfile -ExecutionPolicy Bypass -File native/packaging/feed-origin-tests.ps1
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
 
+      # Caché de los artefactos de *dependencias* (rust-cache borra antes de
+      # guardar los crates del workspace y el fork vendorizado, y limpia el
+      # incremental). Incluye el registro y el clon git de Cargo (~1 GB, zed
+      # 388 MB): sustituye a la caché `cargo-registry` de la ronda 1. Apunta a
+      # target/gates, el --target-dir que usa gates.ps1. La clave la calcula la
+      # acción con rustc, las variables CARGO/RUST/CC y el Cargo.lock/Cargo.toml
+      # de todo el repo: no cambia por PR, y si cambia el lock restaura la
+      # entrada anterior. Un cache creado en una PR solo lo ve esa PR; los del
+      # push a nightly los comparten todas las PRs con esa base (docs de
+      # GitHub: «Restrictions for accessing a cache»). Para invalidar a mano:
+      # subir `prefix-key`. Nota: la línea de la acción no lleva comentario de
+      # versión al final porque el test del flujo de canales exige que acabe en
+      # el SHA fijado.
+      - name: Cache de artefactos de dependencias (target)
+        if: needs.policy.outputs.native != 'false'
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
+        with:
+          workspaces: |
+            vantare-v2/native -> target/gates
+          shared-key: native-windows-gates
+          # El binario de nextest se cachea aparte: no guardar ~/.cargo/bin dos veces.
+          cache-bin: "false"
+
+      # El binario solo cambia al subir la versión: se guarda en caché y se
+      # evita recompilarlo (342–430 s por trabajo aquí; 174–226 s en Linux).
+      - name: Cache de cargo-nextest
+        if: needs.policy.outputs.native != 'false'
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: ~/.cargo/bin/cargo-nextest.exe
+          key: cargo-nextest-0.9.146-${{ runner.os }}-${{ runner.arch }}
+
       - name: Install native test runner
+        if: needs.policy.outputs.native != 'false'
         working-directory: ${{ env.VANTARE_DIR }}/native
-        run: cargo install cargo-nextest --locked --version 0.9.146
+        run: |
+          # Prueba esta comprobación también con caché CALIENTE: un falso
+          # negativo (pasó con `--version` multilínea en Linux) no debe tumbar
+          # el trabajo; --force reinstala encima de lo que ya haya.
+          $have = ''
+          $exe = Join-Path $env:USERPROFILE '.cargo\bin\cargo-nextest.exe'
+          if (Test-Path -LiteralPath $exe) {
+            try { $have = (& $exe --version 2>$null) -join "`n" } catch { $have = '' }
+          }
+          $first = ($have -split "`n")[0].Trim()
+          "cargo-nextest encontrado: '$first'"
+          if ($first -match 'cargo-nextest 0\.9\.146') {
+            'cargo-nextest 0.9.146 ya disponible: no se instala'
+          } else {
+            cargo install cargo-nextest --locked --version 0.9.146 --force
+          }
 
       - name: Fetch locked native dependencies
+        if: needs.policy.outputs.native != 'false'
         working-directory: ${{ env.VANTARE_DIR }}/native
         run: cargo fetch --locked
 
       - name: Install verified DuckDB development library
+        if: needs.policy.outputs.native != 'false'
         working-directory: ${{ env.VANTARE_DIR }}/native
         run: ./setup-duckdb.ps1
 
       - name: Native format and blocking gates
+        if: needs.policy.outputs.native != 'false'
         working-directory: ${{ env.VANTARE_DIR }}/native
         shell: pwsh
         env:
-          # Dos hilos de test, como hasta ahora: el antiguo -j 2 de gates.ps1 los fijaba (#1465).
-          NEXTEST_TEST_THREADS: '2'
+          # Compilación con los 4 vCPU del runner hosted (16 GB); gates.ps1 lo
+          # aplica a -j y a --build-jobs (#1654 ronda 2).
+          CARGO_BUILD_JOBS: '4'
+          # Cuatro hilos de test (el runner tiene 4 vCPU). Los 7 tests con
+          # plazos de reloj duros de 1-3 s (ipc, launcher y runtime) llevan
+          # threads-required en .config/nextest.toml: corren solos y primero, así
+          # que no dependen de la CPU que quede. Si aparecen intermitentes,
+          # volver a 2 y anotarlo en el cuaderno de #1654.
+          NEXTEST_TEST_THREADS: '4'
+          # Decisión del clasificador de rutas (trabajo `policy`). Vacío o
+          # distinto de «false» ⇒ corre el corpus: fail-closed.
+          TELEMETRIA_SCOPE: ${{ needs.policy.outputs.telemetria }}
         run: |
           cargo fmt --all -- --check
           if ($LASTEXITCODE) { throw "native format failed" }
-          foreach ($gate in @('check', 'clippy', 'test', 'lifecycle', 'telemetria')) {
+          # `completa` = suite + corpus de telemetría en una sola invocación de
+          # nextest (perfil `ci`): mismos tests, sin segundo build ni serializar
+          # 5-6 min (#1654 ronda 7). `test` = solo la suite (perfil `default`),
+          # sin los 4 binarios del corpus: se usa cuando ninguna ruta cambiada
+          # toca runtime, domain, ipc ni testdata (#1654 ronda 12). La unión de
+          # `test` + `completa` es la misma que hoy: «todo menos lifecycle».
+          $suite = if ($env:TELEMETRIA_SCOPE -eq 'false') { 'test' } else { 'completa' }
+          foreach ($gate in @('check', 'clippy', $suite, 'lifecycle')) {
             ./gates.ps1 -Gate $gate
             if ($LASTEXITCODE) { throw "native $gate failed" }
           }
 
       - name: Verify retained fixtures and references
+        if: needs.policy.outputs.native != 'false'
         run: python native/retirement/verify.py

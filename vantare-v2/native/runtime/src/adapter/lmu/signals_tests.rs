@@ -6,6 +6,61 @@ const TRACK_1420: &[u8] = include_bytes!("../../../../../testdata/lmu-1.4.2.0-tr
 const PLAYER: usize = 128_468 + 43 * 1_888;
 
 #[test]
+fn imola_explicit_rest_zeros_confirm_calm_and_dry_only_for_the_current_session() {
+    let body = include_bytes!("../../../testdata/lmu-imola-2026-10-16/sessionInfo.json");
+    let mut cache = rest::Cache::default();
+    cache
+        .accept_session(body, Duration::ZERO)
+        .expect("REST real saneado");
+    let mut frame = frame::admit(REAL_44, "1.3.0.0").expect("captura real");
+    // Asociación controlada para probar fronteras de identidad y frescura;
+    // no se presenta el frame histórico como captura física de Imola.
+    frame.track = "Autodromo Enzo e Dino Ferrari".into();
+    frame.weather = Weather::default();
+    let read = |frame: &Frame, now, floor, stale| {
+        weather(
+            frame,
+            cache
+                .session(now, floor)
+                .filter(|(_, fresh)| *fresh)
+                .map(|(i, _)| i),
+            stale,
+        )
+    };
+    let current = read(&frame, Duration::ZERO, Duration::ZERO, false);
+    assert_eq!(current.wind_speed_mps, Quality::Reliable(0.0));
+    assert_eq!(current.track_wetness, Quality::Reliable(0.0));
+    assert_eq!(current.wind_direction_rad, Quality::Unavailable);
+    assert_eq!(current.pressure_pa, Quality::Unavailable);
+    let stale = read(&frame, Duration::ZERO, Duration::ZERO, true);
+    assert_eq!(stale.wind_speed_mps, Quality::Stale(0.0));
+    assert_eq!(stale.track_wetness, Quality::Stale(0.0));
+    for (now, floor) in [
+        (Duration::from_secs(3), Duration::ZERO),
+        (Duration::ZERO, Duration::from_nanos(1)),
+    ] {
+        assert_eq!(read(&frame, now, floor, false), Weather::default());
+    }
+    frame.track = "Otro circuito".into();
+    assert_eq!(
+        read(&frame, Duration::ZERO, Duration::ZERO, false),
+        Weather::default()
+    );
+    frame.track = "Autodromo Enzo e Dino Ferrari".into();
+    frame.kind = Some(Kind::Race);
+    assert_eq!(
+        read(&frame, Duration::ZERO, Duration::ZERO, false),
+        Weather::default()
+    );
+    frame.kind = Some(Kind::Practice);
+    frame.vehicles.clear();
+    assert_eq!(
+        read(&frame, Duration::ZERO, Duration::ZERO, false),
+        Weather::default()
+    );
+}
+
+#[test]
 fn garage_stall_is_explicit_not_pit_state_and_legacy_zero_is_absent() {
     use vantare_domain::DrivingSituation as S;
     assert_eq!(
@@ -339,7 +394,7 @@ fn all_telemetry_signals_follow_their_clock_and_recovery() {
         let initial = initial.state.player.expect("jugador");
         for (now, advance, stale) in [
             (600_u32, false, true),
-            (800, true, true),
+            (800, true, false),
             (2800, true, false),
         ] {
             write(&mut bytes, 1700, 112.6 + f64::from(now) / 1000.0);
@@ -459,7 +514,7 @@ fn scoring_freeze_does_not_expire_a_running_telemetry_clock() {
 }
 
 #[test]
-fn a_frozen_telemetry_clock_and_recovery_keep_the_existing_hysteresis() {
+fn a_frozen_telemetry_clock_recovers_when_its_own_data_resumes() {
     let mut bytes = REAL_44.to_vec();
     write(&mut bytes, PLAYER + 12, 112.6);
     let mut t = Translator::new(SourceKind::Replay);
@@ -468,11 +523,11 @@ fn a_frozen_telemetry_clock_and_recovery_keep_the_existing_hysteresis() {
     assert!(t.needs_refresh(Duration::from_millis(500)));
     for (now, tel, expected) in [
         (600_u32, 112.6, Capability::WithData),
-        (800, 112.8, Capability::WithData),
-        (1200, 113.2, Capability::WithData),
-        (1600, 113.6, Capability::WithData),
-        (2000, 114.0, Capability::WithData),
-        (2400, 114.4, Capability::WithData),
+        (800, 112.8, Capability::Fresh),
+        (1200, 113.2, Capability::Fresh),
+        (1600, 113.6, Capability::Fresh),
+        (2000, 114.0, Capability::Fresh),
+        (2400, 114.4, Capability::Fresh),
         (2800, 114.8, Capability::Fresh),
     ] {
         write(&mut bytes, 1_700, 112.6 + f64::from(now) / 1000.0);

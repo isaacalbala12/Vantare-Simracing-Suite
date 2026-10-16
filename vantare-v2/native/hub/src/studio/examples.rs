@@ -4,7 +4,7 @@ use vantare_domain::{CarId, DriverId, Gap, Quality, Snapshot};
 
 pub fn snapshot(scene: &str) -> Result<Snapshot, String> {
     let document: serde_json::Value = serde_json::from_str(scene).map_err(|e| e.to_string())?;
-    vantare_ipc::snapshot_from_json(&document["frames"][0]["snapshot"].to_string())
+    vantare_ipc::snapshot_from_fixture_json(&document["frames"][0]["snapshot"].to_string())
         .map_err(|e| e.to_string())
 }
 

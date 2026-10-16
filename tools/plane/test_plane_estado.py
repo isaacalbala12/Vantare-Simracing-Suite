@@ -96,7 +96,7 @@ class PlaneEstadoTests(unittest.TestCase):
         self.assertIn("verificado", result)
         self.assertEqual(client.call.call_args_list[1].args, ("projects/project/work-items/issue/", "PATCH", {"state": "new"}))
         self.assertEqual(client.call.call_args_list[-1].args,
-                         ("projects/project/work-items/issue/comments/", "POST", {"comment_html": "<p>PR &lt;https://example.com&gt;</p>"}))
+                         ("projects/project/work-items/issue/comments/", "POST", {"comment_html": "<p>[orquestador] PR &lt;https://example.com&gt;</p>"}))
 
     def test_unknown_remote_state_does_not_patch(self):
         from unittest.mock import Mock

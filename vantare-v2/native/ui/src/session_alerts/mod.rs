@@ -200,12 +200,14 @@ impl Widget {
         let preview = !self.live;
         let settings = self.settings.clone();
         let view = self.view.clone();
-        let active = view.active.is_some() || !view.minis.is_empty() || view.queued > 0;
-        let transition = view.active.as_ref().is_some_and(|n| {
-            !reduced
-                && (now.saturating_sub(n.started_at_ms) < 150
-                    || n.ends_at_ms.saturating_sub(now) <= 150)
-        });
+        let main = settings.companion_for.is_none();
+        let active = !view.minis.is_empty() || (main && (view.active.is_some() || view.queued > 0));
+        let transition = main
+            && view.active.as_ref().is_some_and(|n| {
+                !reduced
+                    && (now.saturating_sub(n.started_at_ms) < 150
+                        || n.ends_at_ms.saturating_sub(now) <= 150)
+            });
         let wake = if transition {
             Wake::Frame
         } else if active {
@@ -218,6 +220,9 @@ impl Widget {
         } else {
             self.machine
                 .next_wake_at(now, &self.settings.options())
+                .into_iter()
+                .chain(view.active.as_ref().filter(|_| !main).map(|n| n.ends_at_ms))
+                .min()
                 .map_or(Wake::Idle, |at| {
                     Wake::At(Duration::from_millis(at.saturating_sub(now).max(1)))
                 })
@@ -290,6 +295,35 @@ mod tests {
             assert!(widget.view.active.is_none());
             assert_eq!(widget.view.sound_revision, revision);
         }
+    }
+
+    #[test]
+    fn hidden_companion_sleeps_until_notice_ends_then_shows_mini() {
+        let prefs = Preferences::default();
+        let mut widget = Widget::new(
+            &Settings {
+                companion_for: Some("main".into()),
+                ..Settings::default()
+            },
+            prefs,
+        );
+        let now = widget.now();
+        widget.calendar(&[model::CalendarInput {
+            id: "race".into(),
+            label: "Spa".into(),
+            starts_at_ms: now + 60_000,
+        }]);
+        let Wake::At(delay) = widget.frame(prefs, false).1 else {
+            panic!("la mini oculta no anima el aviso principal");
+        };
+        assert!(delay > Duration::from_secs(7));
+        assert!(widget.view.minis.is_empty());
+        widget.wall += 8000;
+        let Wake::At(delay) = widget.frame(prefs, false).1 else {
+            panic!("la mini visible actualiza su cuenta");
+        };
+        assert!(delay <= Duration::from_secs(1));
+        assert_eq!(widget.view.minis.len(), 1);
     }
 
     #[test]

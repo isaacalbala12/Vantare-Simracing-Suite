@@ -81,68 +81,61 @@ Hitos #1607: PNG `c40a90d9` (2234.920 → 115.473 µs/carga repetida; RED/GREEN)
 2026-10-13 · GitHub #1561 · Codex. Merge de nightly con #1579 y #1580 conservados junto con PR-4/PR-6; estado y diario en issue/buzón.
 2026-10-13 · GitHub #1566 · Claude (Opus 5.5): §1, §4, §6 y §8 por Pedales Vantare; merge de nightly con #1578 y #1579 conservados.
 
-### #1655 / VANTA-82 · Capturas sin ventanas visibles, en lote e incrementales
+### #1655 / VANTA-82
 
-2026-10-16 · Ronda 2: sincronización final por Codex gpt-6.1-sol, sin subagentes.
-Rama `vantareapp/isa-1655-capturas`, base inicial nightly `4651797cb`, actualizada
-hasta `bcaa0e3f2` mediante `560c9fef8`, sin conflictos; remoto releído y cero
-commits pendientes de nightly. Código R2 `366902b3b`, fixture `746c423b7`,
-unidad de caducidad corregida sin cambiar 900 s en `195992658`.
+2026-10-17 · R2 terminada por Codex gpt-6.1-sol, sin subagentes.
+Rama `vantareapp/isa-1655-capturas`, PR #1675 OPEN fuera de draft a nightly.
+Se integra `origin/nightly@32c3f3a14` mediante `1ba27cf51`, sin rebase ni
+force-push. Conflicto del split de Cuenta resuelto en `view/account.rs`,
+conservando el soporte de lote y el nuevo login. `fe4d7f6b0` añade su selector
+EMAIL a la clave incremental, con regresión sin mutación del entorno.
 
-Hub/Workshop/overlays nacen ocultos fuera de todos los monitores,
-NOACTIVATE/TOOLWINDOW; GetWindowRect antes de presentar. El backend conserva el
-origen en CreateWindowExW y evita SetWindowPlacement (que recolocaba a 184,-4).
-PrintWindow del HWND propio, lote con una ventana y recibos de entradas/PNG.
-No se necesita variable OFFSCREEN ni vigilante. R2 restaura ui-quality sin
-salida: IPC vivo, sin caché, misma ventana protegida y cierre por EOF.
-AnyWindowHandle dimensiona sin prestar la entidad Hub; error claro para política
-viva en capturas a archivo. Marcador configurable con caducidad/limpieza de
-15 minutos; README exige Windows con DPI 96 / escalado 100 %.
+H1: ui-quality sin salida mantiene IPC vivo y no usa caché; crea el mismo HWND
+oculto/no activable fuera de todos los monitores y cierra por EOF. AnyWindowHandle
+sincroniza tamaño sin prestar Hub. H2: el error de capturas a archivo con política
+viva remite al banco IPC. H3: README exige DPI 96 / escalado 100 %. H4: marcador
+configurable, caducidad y limpieza a 15 minutos bajo el mutex compartido.
+El origen físico se conserva desde CreateWindowExW, sin SetWindowPlacement;
+GetWindowRect antes de mostrar, NOACTIVATE/TOOLWINDOW, sin variable ni vigilante.
 
-QA real R2 PASS: 1 app/1 HWND, políticas 1→2, dos PNG 1440×900 externas distintas
-(11980 píxeles), EOF exit 0, huérfano eliminado y cero foco/cruces. Rectángulo
-(-3488,0,-2048,900), no (184,-4); ambos PE sin consola. Control de dos entradas
-35,228 s; incremental 0,140 s, sin ventana ni reescritura. Política IPC con
-salida rechazada antes de abrir HWND.
+Validación tras el merge, código `fe4d7f6b0`: fmt, build Hub/ejemplo y Nextest
+**41/41 focales PASS** (790 excluidos por filtro, sin ejecutar aquí toda la suite).
+Banco real IPC/PrintWindow: **PASS**, 1 proceso/1 HWND, políticas1→2, dos PNG
+1440×900 distintas, huérfano eliminado, EOF0 y cero incidencias de foco/monitor.
+Rectángulo real **(-3488,0,-2048,900)**, no (184,-4).
+Lote de Cuenta/Studio: **32,438 s**, una app/una ventana; incremental
+**0,139 s**, una app/cero ventanas y mtimes intactos. Política IPC con salida
+rechazada antes de abrir HWND. Calidad/462 pins y sintaxis Python PASS.
+Compilaciones seriales, cola MIN_GB=0 y target1655; reintento sin sccache tras
+una espera inicial de fmt terminada con -1, antes de ejecutar Cargo.
+Los gates generales check/Clippy/Nextest/lifecycle se delegan a la **CI Windows
+requerida**, autorizada por el orquestador. Su SHA y resultado vigente se verifican
+y registran en issue/PR; no se equipara esta prueba focal con esos gates.
 
-Medidas completas conservadas: calendario 54 PNG 1682,88 → 345,04 s,
-incremental 4,05 s; apps/HWND 54/54 → 1/1 → 1/0. Widgets 236 PNG
-958,50 → 250,57 s; incremental 3,61 s, 236/236 → 1/1 → 1/0.
-290 individuales seguros auditados: nacimiento oculto, cero foco/cruces.
-Carga compartida y referencias congeladas; no se ejecutó el capturador visible.
-Control resize 1280→1440→1280: cero píxeles distintos. Paridad individual/lote
-calendario 23/54 exactas (23 máximo1, ocho controles con viewport antiguo),
-widgets 126/236 exactas (resto máximo2). Históricas no exactas: paleta/gradiente,
-una PNG casi negra, seis cambios Banderas y dos trazados Delta; no se alteran
-goldens. Aceptación visual de Isaac pendiente. [Informe y límites](../../analysis/1655-capturas.md).
-Al integrar #1634, aplicar/verificar `native/hub/reference/tools/calendar-batch-1634.patch`
-(pinned 97a0d7674; git apply --check PASS en esa fuente).
+Resultados previos R2: Clippy producto workspace/all-targets -D warnings,
+Nextest Hub/UI793/793 (10 skips), lifecycle13 y 34 focales PASS.
+Perfil captura806/808 (dos fallos Track Map previos), Clippy captura18 avisos
+previos de Análisis/Calendario, sin ocultar ni rebajar. No se repite aquí todo ese
+perfil opcional. Telemetría local no repetida: el diff propio no cambia
+runtime/domain/ipc/testdata; las modificaciones de esos crates proceden de nightly.
+Skips anteriores: bancos manuales/opt-in. Sin dependencias nuevas.
 
-Gates R2: build Hub/ejemplo, 34 focales, fmt, Clippy producto workspace/all-targets
--D warnings PASS. Nextest producto 793/793 PASS (10 skips), repetido con TMP/TEMP
-exclusivos tras una colisión de temporal PID. Captura 806/808, mismos dos
-fallos Track Map previos; Clippy captura conserva exactamente los 18 avisos
-anteriores de Análisis/Calendario (comparados por diagnóstico). Todos los tests
-nuevos pasan; no se rebajan checks. Lifecycle 13 PASS, calidad/462 pins PASS,
-Python PASS; PS sin cambios R2 y parse previo de ocho scripts PASS.
-Los skips son bancos manuales/opt-in. Telemetría omitida: diff propio no cambia
-runtime/domain/ipc/testdata. Builds seriales, compilar.ps1, mínimo0 y target1655.
-Sin dependencias nuevas; otros DPI no soportados y otras plataformas pendientes.
+Medidas completas conservadas: calendario54 PNG **1682,88→345,04 s**,
+incremental4,05 s, procesos/HWND54/54→1/1→1/0; widgets236 PNG
+**958,50→250,57 s**, incremental3,61 s, 236/236→1/1→1/0.
+Antes = invocaciones individuales seguras, nunca el capturador visible.
+290 ventanas individuales auditadas, cero foco/cruces; carga compartida.
+Resize1280→1440→1280: cero píxeles distintos. Paridad individual/lote:
+calendario23/54 exactas (23 máximo1, ocho controles con viewport antiguo);
+widgets126/236 exactas (resto máximo2). Diferencias con referencias antiguas
+explicadas, goldens intactos; aceptación visual pendiente.
+Adaptador #1634 `calendar-batch-1634.patch` validado sobre97a0d7674;
+aplicar/verificar al integrar esa rama. Otros DPI no soportados/plataformas sin validar.
 
-[PR #1675](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1675)
-OPEN fuera de draft a nightly. SHA final, CI y última lectura de estados se
-registran en la issue #1655. VANTA-82 Por revisar, resumen de cinco viñetas y GitHub Project Vantare
-In Review verificados el 16/10 a las 15:42 UTC (estado/resumen releídos).
-Siguiente: revisión del orquestador y aceptación de los residuos históricos.
-Sin merge del PR, promoción, release ni acciones de cuentas/datos reales.
-Evidencia `C:/VantareServer/evidence/1655/round2/` y medición original en `1655/`;
-se conservan los intentos fallidos. Buzón `C:/tmp/buzon/1655.md`.
-
-Continuación del 16/10 tras reinicio: se integra origin/nightly `32c3f3a14`
-mediante merge normal, sin rebase ni force-push. El conflicto del split de
-Cuenta se resuelve conservando `account_demo` en el nuevo `view/account.rs`
-y reconociendo también `--capture-batch`; el nuevo login y sus fixtures siguen
-intactos. H1/H2/H3/H4 permanecen implementados. Nueva validación por la cola
-(MIN_GB=0, un job) y CI Windows pendiente; el detalle anterior corresponde
-a los gates anteriores a esta sincronización. Plane vuelve a En curso.
-Evidencia nueva: `C:/VantareServer/evidence/1655/round2-sync/`.
+[Informe completo](../../analysis/1655-capturas.md).
+Evidencia `C:/VantareServer/evidence/1655/round2-sync/`, R2 previa en
+`round2/` y medidas originales en `1655/`; intentos fallidos conservados.
+Plane VANTA-82 y Project Vantare se actualizan al cerrar la verificación de CI;
+su lectura final vive en la issue junto con HEAD/remoto/checks.
+Siguiente: revisión del orquestador y aceptación visual histórica.
+Sin merge del PR a nightly, promoción ni release.

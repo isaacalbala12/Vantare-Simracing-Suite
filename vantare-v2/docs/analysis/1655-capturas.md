@@ -266,3 +266,21 @@ La sincronización incorpora también `VANTARE_CAPTURE_EMAIL` a las entradas
 del recibo: cambiar el estado de login del nuevo nightly invalida la PNG.
 Una regresión con entradas inyectadas comprueba código, contraseña y ausencia
 de selector sin modificar el entorno compartido de los tests.
+
+### Resultado de la revalidación tras el merge
+
+Código `fe4d7f6b0`: fmt/build Hub y ui-quality PASS; Nextest focal **41/41**
+(790 excluidos por filtro). Banco real **PASS** con políticas1→2, dos PNG
+distintas, 1 app/1 HWND, EOF0, huérfano retirado y cero foco/cruces.
+Rectángulo de captura (-3488,0,-2048,900). Lote Cuenta/Studio2 PNG:
+**32,438 s→0,139 s incremental**, ventanas1→0, sin reescritura; política IPC
+con salida rechazada sin HWND. Calidad/462 huellas y sintaxis Python PASS.
+
+Los gates generales del merge se comprueban en la CI Windows requerida,
+autorizada expresamente; SHA/checks finales se releen en la issue/PR.
+No se repiten las 290 referencias ni el perfil completo opcional de captura
+(cuyos dos fallos y18 avisos anteriores siguen documentados). No hay cambios
+propios en runtime/domain/ipc/testdata; los del merge pertenecen a nightly.
+Primera espera de fmt acabó -1 sin ejecutar Cargo; reintento conservado y PASS,
+sin sccache. Evidencia nueva: `round2-sync/retry-results.json`, logs,
+`qa-live/result.json`, auditoría Win32 y `batch-*.json`.

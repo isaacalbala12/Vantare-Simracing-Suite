@@ -1,3 +1,49 @@
+## #1631 / VANTA-70 · Integración con nightly (16/10/2026)
+
+Encargo del orquestador: preparar #1635 para integrar antes del 23-oct.
+Inicio `c69cb745d` limpio; nightly fijada `bcaa0e3f2de0278b329b94bd2095505d56c3ed1d`
+incorporada mediante merge en la rama `vantareapp/isa-1631-login-propio`.
+Cinco conflictos resueltos: cuenta, protocolo services, errores y dos documentos.
+Se conserva el handoff de las dos ramas y toda la entrega nueva de nightly.
+
+Services pasa a **v11**, combinación de login nativo y Founders (ambas ramas
+usaban v10 con contratos distintos); control v5 y fotos v11 conservados.
+Cuenta sigue dividida y usa las acciones/precios nuevos de Founders, con
+«Iniciar sesión» hacia el formulario propio. Se conservan su catálogo perpetuo,
+Nightly, los mensajes de recuperación de compras y los contratos de descuentos.
+Regresiones: etiqueta Founders/logout y rechazo de services v9/v10/futuros.
+
+Repaso DeepSeek R2 y límites: [guía](../../auth/login-propio.md#integración-con-nightly--16102026).
+Se conservan los arreglos de caducidad, polling acotado, cancelación, cola,
+transporte, cooldown, contraseña y cierre FAPI al logout. Clerk real y el
+cierre remoto de mejor esfuerzo conservan sus límites, no se presentan como
+pruebas nuevas. GitGuardian mantiene los incidentes 38177715/38177716 de
+#1652; el orquestador confirma que no es check obligatorio ni bloquea la
+fusión. Isaac los clasificará en el panel, sin exponer valores ni silenciarlos.
+
+Código validado y subido: `d943992cf10c8f887370cad0d97242bf331ee629`.
+[CI Windows run 38922353546](https://github.com/isaacalbala12/Vantare-Simracing-Suite/actions/runs/38922353546)
+SUCCESS: fmt, check, Clippy `-D warnings`, Nextest workspace perfil ci con
+telemetría **1888/1888 PASS**, **19 omisiones existentes**, y lifecycle PASS.
+Pasan la regresión Founders/logout y el test de líneas: `view.rs` 1046,
+`account.rs` 669, techo 1750 sin modificar. Ruta de promoción y marketing
+PostgreSQL/E2E PASS. El fixture Founders omitía un permiso; corregido sin
+cambiar producción. Se conservan el fallo previo de CI y los logs de Windows.
+
+**gate local omitido: cubierto por CI Windows run 38922353546**, por encargo
+expreso del orquestador. Cancelado solo el check propio PID7784 en cola;
+la cadena termina y no inicia los gates siguientes. Fmt local había pasado;
+primer check local falló por disco lleno antes de compilar. Cargo clean del
+target propio recuperó 12 GiB y el orquestador liberó más espacio. Logs
+`gates-1631-r3-*` conservados, incluido el log de CI. Ningún proceso ajeno parado.
+No se hacen capturas hasta
+#1675 en nightly. SQL/Edge no cambian frente a nightly; no se necesita un gate
+Mac propio para código de servidor idéntico. `native-mail-consent` conserva
+OAuth y correo primario verificado: no se incorpora consentimiento al login.
+PR #1635 fuera de draft. El orquestador autoriza pasar VANTA-70 a Por revisar
+y lanzará la review; el cierre se verifica en Plane y #1631. Sin merge del PR
+ni promoción de canales, release o despliegue. Clerk real y macOS manual pendientes.
+
 ## #1636 · VANTA-72 · Reintentos del registro PostgreSQL de CI (16/10/2026)
 
 Seguimiento pedido por el orquestador tras el límite público ECR de #1657.
@@ -2123,6 +2169,140 @@ servicios reales, secretos, dependencias nuevas o subagentes. Diff revisado.
 Siguiente: revisión del orquestador y actualización de issue/PR; por su vía
 autorizada aplicar en sandbox, confirmar cobro hoy en enlaces de creador y
 siete días solo en Pro normal, revisar checkouts/compras previos por separado.
+
+## #1631 / VANTA-70 · Reparación de la división de cuenta (15/10/2026)
+
+Continuación autorizada sobre `c532f53a7`, con los commits recibidos intactos,
+en `C:\VantareServer\wt\isa-1631`, rama `vantareapp/isa-1631-login-propio`.
+Base ya incorporada `64c493e4f`; PR borrador
+[#1635](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1635) a `nightly`.
+Se eliminan importaciones obsoletas de helpers que ya viven en
+`services/view/account.rs`, se importa `access` y el test de compra importa
+`account_module_access` y `Section` directamente. Se conservan los helpers
+privados y los tres compartidos con `pub(super)`. No cambia la lógica ni se
+añaden dependencias. Comparados los cuerpos de las **24 funciones** extraídas
+con el padre de `c532f53a7`: iguales salvo ruta relativa de `protocol` y espacios.
+`services/view.rs`: **1039 líneas**; `view/account.rs`: **724 líneas**.
+El techo de **1750** del test de arquitectura se conserva sin cambios.
+
+Gates por `compilar.ps1`, target `C:\VantareServer\targets\1631`, Rust 1.95,
+DuckDB oficial y defaults de los demás crates conservados:
+fmt y Clippy `--workspace --all-targets -- -D warnings` **PASS**;
+Nextest hub/services/ipc/runtime **1136/1136 PASS**, **8 omisiones** existentes,
+**352,894 s**, incluido `hub_source_files_stay_within_their_line_budgets`.
+El primer Clippy detectó además la importación perdida de `Section` en el test;
+se corrigió sin cambiar aserciones y el gate completo pasó al repetirlo.
+Logs `C:\VantareServer\logs\gates-1631-split-*.log`;
+el fallo inicial se conserva en `gates-1631-final.log`.
+Ciclo de vida no ejecutado: se cancela su espera en la cola tras varios minutos
+con 3,5–3,7 GB libres frente a 4 GB mínimos, sin cargo/rustc activos al comprobar.
+Se conserva el umbral; los tres gates pedidos en este relevo están aprobados.
+Telemetría no repetida: este arreglo solo toca importaciones del Hub.
+No se repiten capturas ni pruebas macOS/Clerk real; no cambia presentación ni
+comportamiento. Las pruebas reales de R2 siguen pendientes de Isaac.
+Siguiente: revisión del orquestador; SHA remoto, CI y estado en issue y PR.
+Repetir ciclo de vida cuando la cola disponga de RAM.
+Sin integración en canales, release ni despliegue.
+
+## #1631 / VANTA-70 · R2 terminada para revisión en Windows (15/10/2026)
+
+Relevo autorizado al worker GPT, worktree `C:\VantareServer\wt\isa-1631`,
+rama `vantareapp/isa-1631-login-propio`, HEAD inicial `45581fe3c` (nightly
+`64c493e4f` ya incorporada por el worker anterior). Se preservan los siete
+archivos R2 recibidos sin commit. Código R2 consolidado en `fb5292c5b`,
+con coautoría GPT. La entrega se publica en esa rama; el HEAD documental final
+se verifica en el PR draft
+[#1635](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1635),
+base `nightly`; Plane VANTA-70 «En curso» verificado al empezar. Issue en
+GitHub Project Vantare, `area:plataforma`; sin milestone comprometido.
+Al cerrar este encargo VANTA-70 pasa a «Por revisar», con resumen y enlace al PR;
+la issue y el PR registran el SHA remoto y la última verificación de estado.
+
+R2 corrige caducidad/reinicio, cola llena, límite local y contraseñas rechazadas;
+completa el canje pendiente con `AccountPoll`, reloj inyectado y máximo 30 s,
+sin bloquear el servicio entre intentos. Conserva la sesión FAPI si se agota
+el plazo y la cierra al canjear/cancelar/logout. No crea hilos ni dependencias.
+Gates secuenciales con cola, target `C:\VantareServer\targets\1631`,
+`CARGO_BUILD_JOBS=2`. Evidencia en `C:\VantareServer\evidence\1631-r2`.
+Fmt/check/Clippy de producto PASS; Nextest Windows **1131/1131 PASS**, ocho
+omitidos de la configuración existente; lifecycle **13/13 PASS**. Once
+regresiones fallan al reproducir comportamientos R1 y pasan con R2 restaurada.
+El build de capturas PASS; Clippy opcional `parity-capture` conserva 21 avisos
+previos en tres archivos idénticos a nightly, registrado aparte en
+[#1648](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1648).
+No se relajan lints ni se amplía el arreglo a esos archivos.
+Capturas GPUI **7/7** guardadas y revisadas, 1440×900, datos ficticios y
+comandos remotos bloqueados; `capturar.ps1` y hashes junto a los PNG.
+Telemetría **25/25 PASS**, sin omisiones ni corpus recortados: 722 s de suite,
+incluidas las 190.308 fotos ACC (655,896 s en el caso completo).
+Siguiente: revisión del orquestador y prueba real de Isaac con Clerk development,
+según los comandos exactos de [la guía](../../auth/login-propio.md).
+Clerk development queda como prueba manual de Isaac: no se llama a servicios
+reales desde este encargo. Sin nueva integración, promoción ni release.
+Nightly avanzó durante los gates a `bf5eead43` (#1622). Se conservan íntegras
+sus 683 líneas nuevas de handoff y las secciones de login, sin otro merge de
+ramas ni cambios de código: comprobación de contenido a tres vías PASS.
+GitGuardian marcó seis alertas en `tools/triage/test_review_1602.py` y
+`native/services/src/triage/tests.rs`, idénticos a la base `64c493e4f` y sin
+cambios R2. Solo se consultaron metadatos; clasificación pendiente del
+orquestador en [#1652](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1652).
+No se asumen falsos positivos ni se silencian checks. El CI remoto se consulta
+en el PR y no sustituye los gates locales aquí registrados.
+
+## #1631 / VANTA-70 · Evidencia previa macOS (14/10/2026)
+
+Encargo del orquestador al worker Codex macOS arm64, sin subagentes, GitHub,
+push ni servicios de producto reales. Proyecto Vantare; issue
+[#1631](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1631)
+según el brief, estado/labels/PR/CI remotos no verificables desde este Mac.
+Rama `vantareapp/isa-1631-login-propio`, base nightly local `b9ec75ed`; checkout
+inicial limpio. Solo se autoriza el script específico `~/orq/plane-estado.py`:
+VANTA-70 «En curso» verificado al retomar; resumen actualizado y «Por revisar»
+verificado el 14/10/2026 a las 18:05 UTC. Sin búsquedas de trackers ni Notion.
+
+Fase 1 `3f74eb58`: [investigación y diseño](../../auth/login-propio.md).
+Google requiere navegador o sesión web del sistema; Discord no tiene vía
+embebida confirmada. Ambos conservan el navegador. FAPI nativa mantiene el
+client API token efímero; la aprobación explícita de Device Grant obtiene la
+sesión OAuth v1 existente. Supabase/Polar, puente, licencia y almacén no cambian.
+Native API y Device Grant del client público deben habilitarse en development;
+no se ha configurado un servicio real ni probado compatibilidad en vivo.
+
+Fase 2: checkpoint `b6844b4c`, correcciones verificadas en `e08e48f2`.
+Servicios v9, cinco flujos email, código incorrecto, reenvío, cancelación,
+recuperación y consentimiento en Orbit. MFA/tareas/requisitos adicionales
+ofrecen el navegador. Los tokens FAPI no se guardan. El intercambio compara
+identidad/generación antes de persistir OAuth y renovar licencia. Sin nuevas
+dependencias. Se corrigen tipos/importaciones/fixtures, la exposición de la
+contraseña por accesibilidad y los campos extra de acciones IPC sin datos.
+La regresión de accesibilidad usa el constructor productivo sin AppKit.
+Se mueven los pasos de email a login.rs; view.rs respeta el techo de 1750 líneas
+sin elevarlo. Las expectativas de tests y los lints se conservan.
+
+Autorización de continuación: Cargo directo, CARGO_BUILD_JOBS=2 y target
+`~/target-1631`, --locked; sin pwsh ni compilar.ps1/cola Win32. Build de
+services/ipc/runtime/hub PASS; el smoke de Análisis exige compilar también
+storage (DuckDB bundled ya fijado, PASS). Clippy de los cuatro crates,
+--all-targets y -D warnings PASS. Nextest compatible: **1072/1072 PASS**,
+**53 omitidos** (49 AppKit + cuatro mediciones ignoradas por defecto).
+Suite completa inicial: 1071 PASS/50 FAIL; 49 fallan antes de la lógica por
+«Mac platform not created on main thread» y uno por tamaño, ya corregido.
+El filtro local enumera solo esos 49: no se ignoran en el repo ni se declaran PASS.
+Lifecycle macOS: **10/10 PASS**; tres escenarios Win32 no se compilan aquí.
+Build final del código e08e48f2 PASS. Telemetría: **25/25 PASS**, incluidas
+las 190.308 fotos ACC (959 s de suite; no se acorta ni altera el corpus).
+Fmt/diff y retirada **456 huellas PASS**; fragmento ISA-1631 válido, sin publicar.
+
+QA visual/interacción, esos 49 tests gráficos, Windows (DPAPI/lifecycle Win32)
+y Clerk development real quedan al orquestador. macOS conserva JSON sin cifrar
+con permisos 0600; máscara/Debug redactado no garantizan borrar todas las copias
+transitorias de credenciales. No hay SQL/Edge nuevos ni cambios de contrato servidor.
+Evidencia y fallos iniciales: `~/evidence/1631/`; comandos, inventario AppKit y
+resultados en ESTADO.md. AVANCE/FIN en `~/orq/1631.buzon.md`.
+Entrega local lista para review: FIN registra el HEAD documental final en el
+buzón. Siguiente: el orquestador recoge los commits, revisa el diff y valida
+development/Windows/QA antes de integrar. No se acredita ningún canal remoto.
+Sin push, PR, merge, release, deploy, pagos ni promoción.
 
 ## #1620 / PR #1621 · nombres de cliente (14/10/2026)
 

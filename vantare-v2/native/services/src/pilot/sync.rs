@@ -144,6 +144,8 @@ mod duplicate_tests {
         ] {
             assert_eq!(
                 duplicate(&crate::http::Response {
+                    client_token: None,
+                    retry_after: None,
                     status,
                     body: body.as_bytes().to_vec()
                 }),

@@ -387,17 +387,32 @@ Deno.test("R4 renewal GET recovers lost PATCH response without restarting repeat
       id: "sub",
       product_id: checkout.productId,
       status: "active",
-      amount: 599,
+      amount: discount === "launch" ? 399 : discount === "creator" ? 479 : 599,
       currency: "eur",
       recurring_interval: "month",
       recurring_interval_count: 1,
       discount_id: discount,
+      discount: discount === null ? null : {
+        id: discount,
+        ...(discount === "launch"
+          ? { type: "fixed", amounts: { eur: 200 } }
+          : { type: "percentage", basis_points: 2000 }),
+      },
+      prices: [{
+        id: "normal-price",
+        product_id: checkout.productId,
+        source: "catalog",
+        amount_type: "fixed",
+        price_amount: 599,
+        price_currency: "eur",
+      }],
     });
   });
   const expected = {
     productId: checkout.productId,
     discountId: "creator",
-    managedIds: [null, "launch"],
+    priceIds: ["normal-price"],
+    managedIds: [null, "launch", "creator"],
     normalCents: 599,
     interval: "month",
     authorize: () => Promise.resolve(true),

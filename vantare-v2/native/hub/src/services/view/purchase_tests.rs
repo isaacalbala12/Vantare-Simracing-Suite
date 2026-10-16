@@ -1,5 +1,7 @@
 use super::super::protocol::{BillingProduct, DraftState, report_document::Receipt};
+use super::account::account_module_access;
 use super::*;
+use crate::Section;
 
 #[test]
 fn pilot_dispatch_failure_releases_editor_and_can_retry() {
@@ -156,6 +158,7 @@ pub(crate) fn fixture(
         queued: None,
         account: AccountState::default(),
         access: access::State::from_build(),
+        email: None,
         device_limit: false,
         license_polled_at: None,
         purchase_product: None,

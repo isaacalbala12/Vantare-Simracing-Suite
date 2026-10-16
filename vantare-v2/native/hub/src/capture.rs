@@ -18,6 +18,10 @@ use vantare_ui::{
 pub(crate) struct CurrentScene(pub CaptureState);
 impl gpui::Global for CurrentScene {}
 
+fn clock_input(scene: &str, now_millis: impl FnOnce() -> i64) -> Option<i64> {
+    (scene == "calendario-beta-prueba").then(now_millis)
+}
+
 pub(crate) fn current_name(cx: &App) -> Option<&str> {
     cx.try_global::<CurrentScene>()
         .map(|scene| scene.0.name.as_str())
@@ -77,7 +81,10 @@ fn prepare_jobs(options: Vec<Options>) -> Result<(usize, Vec<Job>), String> {
             .as_ref()
             .ok_or("el lote solo admite capturas")?;
         let output = options.capture_output.clone().ok_or("falta output")?;
-        let inputs = serde_json::to_vec(&serde_json::json!({ "scene": state.name, "sidebar": state.sidebar, "column_open": state.column_open, "parameters": state.parameters, "appearance": options.capture_appearance, "size": options.capture_size, "zoom": options.capture_zoom })).map_err(|e| e.to_string())?;
+        // This legacy QA scene deliberately uses the wall clock rather than
+        // the frozen demo clock. Its changing time is part of the input too.
+        let live_clock = clock_input(&state.name, || chrono::Utc::now().timestamp_millis());
+        let inputs = serde_json::to_vec(&serde_json::json!({ "scene": state.name, "sidebar": state.sidebar, "column_open": state.column_open, "parameters": state.parameters, "appearance": options.capture_appearance, "size": options.capture_size, "zoom": options.capture_zoom, "live_clock": live_clock })).map_err(|e| e.to_string())?;
         let cache = Cache::new(output.clone(), &inputs, &common)?;
         if cache.fresh() {
             println!("capture-skip {}", output.display());
@@ -283,4 +290,17 @@ fn dimensions(options: &Options) -> (i32, i32) {
         }
     });
     (width.cast_signed(), height.cast_signed())
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn only_the_live_calendar_scene_reads_time_for_its_cache_key() {
+        let frozen = super::clock_input("calendario-base", || panic!("reloj demo congelado"));
+        assert_eq!(frozen, None);
+        let first = super::clock_input("calendario-beta-prueba", || 1000);
+        let next = super::clock_input("calendario-beta-prueba", || 2000);
+        assert_eq!(first, Some(1000));
+        assert_ne!(first, next);
+    }
 }

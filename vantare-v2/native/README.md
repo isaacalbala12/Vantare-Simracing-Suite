@@ -302,6 +302,9 @@ Recompilar después de editar código o recursos embebidos. Si entradas y PNG
 coinciden, no se abre ninguna ventana ni se reescribe el archivo; borrar/cambiar
 la PNG o su recibo provoca recaptura. No se omite un PNG dañado. El resumen del
 lote registra capturadas/omitidas, procesos de app, ventanas y tiempo.
+La escena QA heredada `calendario-beta-prueba` usa el reloj real: también entra
+en el hash, por lo que se vuelve a capturar cuando cambia. Las escenas con reloj
+de demo congelado conservan el incremental habitual.
 
 Mediciones completas, comparación de píxeles y límites de las referencias:
 [informe de #1655](../docs/analysis/1655-capturas.md).

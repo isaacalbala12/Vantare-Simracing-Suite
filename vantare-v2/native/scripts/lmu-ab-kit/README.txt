@@ -1,6 +1,6 @@
-1. Kit privado Windows x64: no instalar ni compilar; solo abrir LMU en el PC de juego.
+1. Kit privado Windows x64: extrae el ZIP actual en una carpeta nueva; no instalar ni compilar. LMU lo abre Isaac.
 2. Isaac: misma práctica, pista y Hypercar; combustible para 15 min. Cierra otros lectores REST/overlays antes de medir.
-3. Worker por SSH: powershell -NoProfile -ExecutionPolicy Bypass -File C:\Users\isaac\vantare-ab\Iniciar-AB.ps1
+3. Worker, desde la carpeta extraída por SSH: powershell -NoProfile -ExecutionPolicy Bypass -File .\Iniciar-AB.ps1
 4. Si no encuentra el juego, añade -GameExe "ruta\Le Mans Ultimate.exe"; -InteractiveUser DOMINIO\isaac si hace falta.
 5. Espera SHM y jugador rodando (máximo 3 min); no abre LMU, no cambia foco ni crea ventanas visibles.
 6. Conduce 13 min sin pausas ni cambios de sesión: C0 60 s solo SHM; A1/B2/A3/B4 180 s cada uno (A=6 min, B=6 min).

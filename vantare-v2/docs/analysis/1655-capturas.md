@@ -9,7 +9,9 @@ en el binario normal: mantener su renderer real es la ruta más sencilla y fiel.
 
 El manifiesto, los comandos individuales compatibles, los scripts y los recibos
 incrementales se describen en [native/README.md](../../native/README.md#capturas-sin-ocupar-la-pantalla-1655).
-Los recibos comparan entradas y contenido PNG; alterar la escena, ajustes,
+Los recibos comparan entradas y contenido PNG. La escena QA heredada
+`calendario-beta-prueba` añade su reloj real al hash; las demos congeladas
+conservan el caché. Alterar la escena, ajustes,
 dimensiones, apariencia, ejecutable, DLL, fixtures o PNG obliga a recapturar.
 
 ## Método y fuentes
@@ -118,28 +120,31 @@ oculte. No se afirma paridad histórica total: los residuos quedan para revisió
 
 ## Comprobaciones
 
-Los resultados siguientes son anteriores al merge de nightly. La tanda
-post-merge está preparada y espera hueco en la cola; todavía no se acredita
-que esos checks pasen sobre `563262ad2`. Se actualizará el PR al terminar.
+Repetidas tras fusionar nightly `9e48eb86f` (merge `563262ad2`); logs
+`post-merge-*.log`, `final-verified-*.log` y sus JSON. La última base
+nightly `354c207aa` se fusiona como `01b067766`; `git diff d0444395a HEAD -- native/`
+confirma cero cambios nativos en ese tramo (registro de equivalencia adjunto).
+No se repiten builds por cambios exclusivos de otras áreas. Captura se valida además sobre
+las fuentes de referencia fijadas arriba, sin importar sus features al producto.
 
 - `cargo fmt --all -- --check`, y formato del vendor GPUI: PASS.
 - Clippy `--workspace --all-targets -- -D warnings`, con defaults de producto
   conservados y DuckDB oficial según `gates.ps1`: PASS.
-- Nextest Hub/UI habitual: 789/789 PASS, 8 skips existentes.
-- Nextest con captura, sin fail-fast: 799/801 PASS, 8 skips. Fallan dos tests
+- Nextest Hub/UI habitual: 791/791 PASS, 8 skips existentes.
+- Nextest con captura, sin fail-fast: 802/804 PASS, 8 skips. Fallan dos tests
   previos de Track Map en `app.rs` y `demand.rs`, también registrados en 1629-r3:
   `new_samples_with_unchanged_values_request_no_repaint_without_histories` y
   `requested_photos_preserve_every_default_widget_projection`. No se modifican.
-- Las ocho pruebas focales de captura pasan, incluidas cuatro nuevas de manifiesto,
-  recibos, preview externo y posición con múltiples monitores.
+- Las nueve pruebas focales de captura pasan, incluidas cinco nuevas de manifiesto,
+  recibos, preview externo, reloj QA y posición con múltiples monitores.
 - Clippy con captura: FAIL por 18 avisos previos en `analysis/view.rs` (QA de
   #1648) y los brazos duplicados del selector antiguo de `calendar.rs`. Ningún
   aviso nuevo de la herramienta; el log completo se conserva.
 - Lifecycle workspace: PASS, cero fallos.
 - Sintaxis PowerShell de los ocho scripts modificados: PASS.
-- Retirada y calidad: 461 archivos fijados PASS. Los cinco scripts originales
-  siguen archivados byte a byte como `.txt`, con sus hashes originales; no se
-  cambia el verificador ni se recalibran baselines.
+- Retirada y calidad: 462 archivos fijados PASS. Los cinco scripts originales
+  y el README histórico siguen archivados byte a byte como `.txt`, con sus hashes
+  originales; no se cambia el verificador ni se recalibran baselines.
 - Telemetría omitida: no se cambia runtime/domain/ipc/testdata. La captura Win32
   se valida en Windows con DPI 96; no se afirma captura Linux/macOS ni DPI mixto.
 
@@ -154,11 +159,14 @@ separados, PATH correcto y todos los tests ejecutados.
 
 ## Entrega y evidencia
 
-Implementación: rama `vantareapp/isa-1655-capturas`, código `d32f82dc4`,
+Implementación: rama `vantareapp/isa-1655-capturas`; motor medido `d32f82dc4`,
 desde nightly `4651797cb`. La publicación es un PR draft a nightly para revisión
 del orquestador; el PR, HEAD final, estado de CI y tarea Plane se registran en
 la issue [#1655](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1655)
 y en el [handoff vivo](../vantare-program/handoffs/overlays-launcher-hub.md).
+Después de medir se añadió el hash del reloj de una escena QA antigua y se
+alejaron las ventanas ocultas de dos tests del perfil; no cambia el pintado
+de las vistas medidas. Código de esos ajustes: `399f670ce` y `d0444395a`.
 No hay nuevas dependencias. Falta aceptación visual de las referencias que
 ya difieren, aplicar el adaptador al integrar #1634 y validar otros DPI/plataformas.
 No se abre una ventana interactiva normal para comprobarla: el encargo prohíbe
@@ -170,5 +178,6 @@ Evidencia externa: `C:/VantareServer/evidence/1655/`, incluidos manifiestos,
 referencias congeladas, binarios/hash, `benchmark-calendar.json`,
 `benchmark-widgets.json`, `logs/`, `final-*.log`, `pe-subsystems.json`,
 `validation-sources.json`, el parche y las dos fuentes congeladas. Se fusiona `origin/nightly@9e48eb86f` en la rama propia (`563262ad2`), por
-orden del orquestador. Sin merge del PR a nightly, promoción de canal, release,
+orden del orquestador; después `354c207aa` mediante `01b067766`, sin cambios
+nativos adicionales. Sin merge del PR a nightly, promoción de canal, release,
 despliegue ni acciones de cuenta/datos reales.

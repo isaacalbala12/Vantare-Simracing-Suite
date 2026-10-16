@@ -83,58 +83,51 @@ Hitos #1607: PNG `c40a90d9` (2234.920 → 115.473 µs/carga repetida; RED/GREEN)
 
 ### #1655 / VANTA-82 · Capturas sin ventanas visibles, en lote e incrementales
 
-2026-10-15 · Implementación en curso por Codex gpt-6.1-sol high, sin subagentes,
-base origin/nightly `4651797cb`, rama `vantareapp/isa-1655-capturas`.
-HWND oculto desde creación fuera de todos los monitores, sin activar; verificación
-GetWindowRect previa a la presentación. Lotes en Hub/Workshop/overlays con una
-ventana reutilizada, PrintWindow directo e incremental SHA256 de entradas y PNG.
-Las escenas dejan de depender de argv para poder alternar en el mismo proceso.
-Scripts y native/README actualizados. Gates, capturas comparadas y tiempos aún
-pendientes; no se afirman mejoras medidas. Referencias 1634-r3/1629-r3 pertenecen
-a ramas no integradas: se validan sin importar sus features. Evidencia externa
-`C:/VantareServer/evidence/1655`, buzón `C:/tmp/buzon/1655.md`.
-Sin push/PR todavía, sin merge, promoción ni release. Siguiente: completar gates,
-probar primero seguridad del HWND, después paridad/medición y entregar PR draft.
+2026-10-16 · Implementación terminada por Codex gpt-6.1-sol, sin subagentes.
+Rama `vantareapp/isa-1655-capturas`; base inicial nightly `4651797cb`, actualizada
+con `origin/nightly@9e48eb86f` mediante merge `563262ad2` y después
+nightly `354c207aa` mediante `01b067766`, sin conflictos. El segundo tramo no
+cambia ningún archivo nativo: equivalencia con el código validado comprobada.
+Hub/Workshop/overlays crean un HWND oculto fuera de todos los monitores,
+NOACTIVATE/TOOLWINDOW desde creación; GetWindowRect antes de presentar.
+El backend conserva el origen en CreateWindowExW y evita SetWindowPlacement,
+que recolocaba a (184,-4). No hay variable opcional ni dependencia del vigilante.
+PrintWindow directo, `--capture-batch`, una ventana reutilizada y recibos SHA256
+de entradas/binarios/fixtures/PNG. CLI individual compatible, scripts/README listos.
 
-Hito #1655 `32d5a35d8`: código y documentación comprometidos. Check workspace
-con captura y Clippy habitual workspace/all-targets -D warnings PASS. Nextest
-Hub/UI habitual 789/789 PASS (8 skips); con captura 798/800 PASS (8 skips), dos
-fallos Track Map preexistentes en código sin tocar, también registrados en
-1629-r3. Los tests nuevos de recibos/hash/manifiesto/múltiples monitores pasan.
-Primer intento de Nextest: faltaba DuckDB en PATH del harness, corregido sin
-cambiar producto/tests. Smoke Hub y widgets: un HWND por lote, nacido oculto
-NOACTIVATE/TOOLWINDOW, cero foco y cero cruces visibles con monitores. Se amplió
-el margen para que el vigilante existente tampoco mueva ventanas ya seguras.
-Paridad completa y medidas antes/lote/incremental pendientes. Se adjunta
-`native/hub/reference/tools/calendar-batch-1634.patch` para conectar el selector
-QA al integrar la rama de #1634; `git apply --check` sobre 97a0d7674 PASS.
+Calendario 54 PNG: 1682.88 → 345.04 s; incremental
+4.05 s. Procesos/HWND 54/54 → 1/1 → 1/0. Widgets 236 PNG:
+958.50 → 250.57 s; incremental 3.61 s;
+236/236 → 1/1 → 1/0. Incrementales omiten todo y conservan mtimes.
+290 individuales auditados: todos nacen ocultos, cero foco y cruces visibles;
+lotes finales y controles también sin incidencias. Medidas con carga compartida,
+antes seguro, sin ejecutar el capturador antiguo visible; reinicios excluidos.
 
-Hito #1655 `c3966a116`: reutilización del Hub entre escenas de calendario
-compatibles y subsistema Windows en binarios QA para no crear consola.
-Gates finales y medición completa pendientes. Scripts históricos archivados
-con hashes originales, integridad y calidad 461/461 PASS; sin relajar gates.
+Control 1280→1440→1280: 0 píxeles distintos. Calendario individual/lote:
+23/54 idénticas, 23 con máximo 1 y ocho controles con viewport antiguo/bandas
+blancas corregidas. Widgets: 126/236 idénticas, resto máximo 2 por canal.
+Referencias históricas: Calendario 10/54 exactas, versiones de paleta/gradiente
+y una PNG casi negra; widgets 105/236 exactas con mismo Look, 123 con máximo 2,
+seis cambios previos de Banderas y dos trazados Delta con un píxel de máximo 39.
+No se afirma paridad histórica completa ni se alteran goldens.
+[Informe y límites](../../analysis/1655-capturas.md). Evidencia
+`C:/VantareServer/evidence/1655/`, incluidos binarios/hash, trazas y comparaciones.
+Las fuentes de referencia permanecen aisladas. Al integrar #1634, aplicar
+`native/hub/reference/tools/calendar-batch-1634.patch` (`git apply --check` PASS).
 
-2026-10-15 · #1655: reanudación tras reinicio T3, 52 imágenes individuales
-conservadas y verificadas; las dos restantes completadas. Calendario individual
-54/54: 1682,882 s, 54 procesos/HWND, cero foco y cruces visibles con monitores.
-La posición real fue (-3328,0,-2048,800) o (-3488,0,-2048,900), sin depender de
-VANTARE_CAPTURE_OFFSCREEN ni del vigilante. Primer lote: 297,660 s, 1 proceso y
-1 HWND; incremental 4,788 s, cero ventanas y mtimes intactos. Se descarta esa
-salida del lote: al pasar 1280→1440, GPUI retenía el viewport anterior. Arreglo
-preparado: sincronizar bounds_changed e invalidar el frame tras SetWindowPos,
-comprobando tamaño GPUI/cliente. Se conserva primera pasada en evidence/1655/
-calendar-first-pass y first-pass-calendar.json. Pendientes build/gates del
-arreglo y repetición completa del lote. Widgets individuales en marcha, sin
-incidencias. Se añade al hash el preview QA externo de Testing Center y una
-regresión sin mutar el entorno de proceso. Umbral de compilación siguiente 0,
-en serie, según nueva orden del orquestador. Todavía sin push/PR ni integración.
+Gates post-merge: fmt/Clippy workspace-all-targets de producto PASS;
+Nextest Hub/UI 791/791 PASS (8 skips); captura 802/804
+(8 skips), dos fallos Track Map previos en app/demand. Los cinco tests nuevos
+y los nueve focales de captura pasan. Clippy captura conserva 18 avisos previos
+Análisis/Calendario; lifecycle PASS. PowerShell 8 scripts PASS; calidad/retirada
+462 pins PASS. Telemetría omitida: diff frente a nightly no cambia runtime,
+domain, ipc ni testdata. Builds propios en serie por compilar.ps1, mínimo 0.
+No hay nuevas dependencias. Windows/DPI 96 validado; otros DPI/plataformas y
+aceptación visual de los residuos quedan para revisión.
 
-2026-10-16 · #1655: segundo reinicio T3 interrumpe widgets en 171/236; se
-conserva la traza y se repite el lote completo en un proceso. Resultado final:
-236 PNG en 250,575 s frente a 958,501 s individuales; incremental 3,608 s,
-236 omitidas, cero ventanas y mtimes intactos. Calendario final: 345,037 s
-frente a 1682,882 s, incremental 4,049 s; 54→1 procesos/HWND, incremental
-sin ventanas. Auditoría de 290 individuales: todos nacen ocultos NOACTIVATE/
-TOOLWINDOW; cero foco/cruces visibles. Merge autorizado de nightly 9e48eb86f
-en rama propia: 563262ad2, sin conflictos, uniones Cuenta/Studio revisadas.
-Gates post-merge en serie pendientes; no se publican aún PR ni resultados de CI.
+Publicación: [PR draft #1675](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1675)
+OPEN a nightly. HEAD final y CI se consultan en el PR/issue. VANTA-82 está
+Por revisar: estado y resumen releídos por API el 16/10/2026 a las 02:17 UTC.
+GitHub Project Vantare: In Review. Siguiente:
+revisión del orquestador. Sin merge del PR a nightly, promoción, release ni
+acciones de cuentas/datos reales. Buzón `C:/tmp/buzon/1655.md`.

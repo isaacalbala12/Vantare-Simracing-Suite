@@ -6,12 +6,13 @@
   "technicalNotes": [
     "Se puede entrar con un código de email o con contraseña; las altas verifican el email y la recuperación pide un código antes de cambiar la contraseña.",
     "Después de verificar la cuenta se pide autorización para mantener la sesión. Se conserva el almacén OAuth y el contrato con Supabase y Polar.",
-    "El protocolo de servicios pasa de v9 a v10: Hub, supervisor y servicios deben actualizarse juntos. Google y Discord mantienen el navegador.",
+    "El protocolo de servicios v11 combina el acceso por email y Founders: Hub, supervisor y servicios deben actualizarse juntos. Google y Discord mantienen el navegador.",
     "Un código caducado permite pedir otro; la autorización pendiente se reintenta durante 30 segundos y se puede cancelar. La sesión temporal de Clerk se cierra tras el canje y al cerrar sesión."
   ],
   "testing": [
     "En Clerk development con Native API y Device Grant habilitados, probar entrada y alta con código y contraseña, recuperación, código incorrecto, reenvío y cancelación.",
-    "Comprobar que la contraseña queda oculta y no se copia, que la sesión se restaura al reiniciar y que cerrar sesión retira el acceso."
+    "Comprobar que la contraseña queda oculta y no se copia, que la sesión se restaura al reiniciar y que cerrar sesión retira el acceso.",
+    "Tras entrar por email, comprobar la cuenta Founders, su acceso Nightly y los mensajes de compra; cerrar sesión debe retirar el acceso y la etiqueta del plan verificado."
   ],
   "knownLimitations": [
     "Las pruebas de red usan respuestas simuladas; Clerk development real y la prueba manual completa de cuenta y licencia en Windows y macOS quedan pendientes.",

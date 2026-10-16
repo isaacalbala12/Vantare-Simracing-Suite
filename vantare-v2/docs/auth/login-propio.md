@@ -37,8 +37,10 @@ Repaso de DeepSeek R2 (`rev1635-r2/review-A-seguridad.md` y
   El cierre remoto es de mejor esfuerzo; su prueba contra Clerk real y las
   ventanas residuales de P3-1/P3-2 de seguridad siguen como límites documentados,
   sin afirmar que esta ronda los haya verificado en vivo.
-- GitGuardian: el hallazgo P2-1 depende del check del SHA nuevo y de #1652;
-  no se silencian avisos ni se reinterpretan alertas como falsos positivos.
+- GitGuardian: los incidentes 38177715/38177716 se siguen en #1652. El
+  orquestador confirma que no es check obligatorio ni bloquea la fusión;
+  Isaac los clasificará en el panel. No se silencian avisos ni se
+  reinterpretan alertas como falsos positivos.
 
 No se generan capturas mientras #1675 no esté integrado en nightly.
 Los resultados y el SHA final de esta ronda se registran en el handoff y #1631.

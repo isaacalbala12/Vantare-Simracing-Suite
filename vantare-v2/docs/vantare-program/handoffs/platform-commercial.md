@@ -17,15 +17,32 @@ Repaso DeepSeek R2 y límites: [guía](../../auth/login-propio.md#integración-c
 Se conservan los arreglos de caducidad, polling acotado, cancelación, cola,
 transporte, cooldown, contraseña y cierre FAPI al logout. Clerk real y el
 cierre remoto de mejor esfuerzo conservan sus límites, no se presentan como
-pruebas nuevas. GitGuardian depende del nuevo SHA y clasificación #1652.
+pruebas nuevas. GitGuardian mantiene los incidentes 38177715/38177716 de
+#1652; el orquestador confirma que no es check obligatorio ni bloquea la
+fusión. Isaac los clasificará en el panel, sin exponer valores ni silenciarlos.
 
-Gates pendientes por la cola, en serie, `VANTARE_CARGO_MIN_GB=0`, target propio
-`C:\VantareServer\targets\1631`, jobs de máquina. No se hacen capturas hasta
+Código validado y subido: `d943992cf10c8f887370cad0d97242bf331ee629`.
+[CI Windows run 38922353546](https://github.com/isaacalbala12/Vantare-Simracing-Suite/actions/runs/38922353546)
+SUCCESS: fmt, check, Clippy `-D warnings`, Nextest workspace perfil ci con
+telemetría **1888/1888 PASS**, **19 omisiones existentes**, y lifecycle PASS.
+Pasan la regresión Founders/logout y el test de líneas: `view.rs` 1046,
+`account.rs` 669, techo 1750 sin modificar. Ruta de promoción y marketing
+PostgreSQL/E2E PASS. El fixture Founders omitía un permiso; corregido sin
+cambiar producción. Se conservan el fallo previo de CI y los logs de Windows.
+
+**gate local omitido: cubierto por CI Windows run 38922353546**, por encargo
+expreso del orquestador. Cancelado solo el check propio PID7784 en cola;
+la cadena termina y no inicia los gates siguientes. Fmt local había pasado;
+primer check local falló por disco lleno antes de compilar. Cargo clean del
+target propio recuperó 12 GiB y el orquestador liberó más espacio. Logs
+`gates-1631-r3-*` conservados, incluido el log de CI. Ningún proceso ajeno parado.
+No se hacen capturas hasta
 #1675 en nightly. SQL/Edge no cambian frente a nightly; no se necesita un gate
 Mac propio para código de servidor idéntico. `native-mail-consent` conserva
 OAuth y correo primario verificado: no se incorpora consentimiento al login.
-Plane VANTA-70 En curso verificado. Siguiente: gates, push, PR fuera de draft,
-CI verde y revisión del orquestador. Sin merge del PR ni promoción de canales.
+PR #1635 fuera de draft. El orquestador autoriza pasar VANTA-70 a Por revisar
+y lanzará la review; el cierre se verifica en Plane y #1631. Sin merge del PR
+ni promoción de canales, release o despliegue. Clerk real y macOS manual pendientes.
 
 ## #1636 · VANTA-72 · Reintentos del registro PostgreSQL de CI (16/10/2026)
 

@@ -1,3 +1,23 @@
+## VANTA-83 / VANTA-39 · preparación cupones producción (16-oct-2026)
+
+- Base nightly 1cb2f66d3, rama propia isa-1661-cupones. Catálogo inicial aplicado
+  por Isaac (10 escrituras); Launch archivada por él. Este worker no hace apply.
+- Script nuevo plan offline/online GET-only/apply humano: 22 cupones por creador
+  (mensual11/anual12 y20 remanentes por producto1..10) +6 informes2/3EUR1/3/6.
+  Nombres ES, API-only, metadata canónica, ámbito exacto y sin cambios a productos.
+- Genera mapa completo con IDs reales después de apply y SQL operador para
+  informes/remanentes/once. No activa informes ni códigos ni crea personas.
+  Runbook renewal-discount-catalog-1661.md; comando en evidence/polar-auditoria/aplicar-descuentos.txt.
+- Falta roster de códigos/UUID reales: mapa aplicado sin creadores. Se pidió al
+  orquestador; archivo [] explícito. Online producción cero escrituras/6 informes
+  pendientes, ready=false por creator_roster_required. Apply completo aborta con
+  roster vacío; --reports-only permite solo informes conscientemente. No inventar IDs.
+- 551 Edge PASS,181 pgTAP PASS (SQL generado y replay4, creador89, convivencia88),
+  calidad/retirada456 y fmt. Mutación de online con POST detectada en rojo.
+  Logs Mac ~/orq/cupones-1661-evidence. Sin Rust/schema/dependencias: no gates Rust.
+- PR/CI/SHA se anotan en issue y entrega. Sin deploy, apply, dinero ni capturas.
+  Bundle/artefactos conservados; tokens solo en memoria. Programa informes apagado.
+
 ## #1593 / VANTA-39 · decisión de Isaac P3-E y revisión P3-F/G/H · 16/10/2026
 
 PR draft [#1673](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1673),

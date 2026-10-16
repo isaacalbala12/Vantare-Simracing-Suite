@@ -1,3 +1,4 @@
+import prices from "../scripts/polar-launch-prices.json" with { type: "json" };
 import { getSupabaseAdmin } from "../_shared/supabase-admin.ts";
 import { requirePolarEnvironment } from "../_shared/polar.ts";
 import { serviceKeyMatches } from "../billing-reconcile/index.ts";
@@ -16,6 +17,7 @@ type Operation = {
   managed_discount_ids: (string | null)[];
   normal_cents: number;
   kind?: "apply" | "cleanup";
+  renewal_token?: string;
   repair?: boolean;
   phase?: "pending" | "cleared";
 };
@@ -46,17 +48,31 @@ export async function runPromotionBatch(
       return { completed, failed, disabled: true, next_cursor: cursor };
     }
     cursor = account;
+    let operationId: string | null = null;
+    let renewalToken: string | null = null;
     try {
-      const operation = await deps.rpc("report_promotion_prepare", {
+      let operation = await deps.rpc("report_promotion_prepare", {
         p_account: account,
         p_environment: deps.environment,
         p_now: deps.now().toISOString(),
       }) as Operation | null;
       if (!operation) continue;
+      operationId = operation.id;
+      operation = await deps.rpc("report_promotion_renewal_prepare", {
+        p_id: operation.id,
+        p_creator_savings: Math.round(
+          operation.normal_cents * prices.creator_discount_basis_points / 10000,
+        ),
+        p_creator_months: prices.creator_renewals.monthly_duration_months,
+        p_now: deps.now().toISOString(),
+      }) as Operation | null;
+      if (!operation) continue;
+      renewalToken = operation.renewal_token ?? null;
+      const selectedOperation = operation;
       const token = crypto.randomUUID();
       const authorized = () =>
         deps.rpc("report_promotion_claim", {
-          p_id: operation.id,
+          p_id: selectedOperation.id,
           p_token: token,
           p_now: deps.now().toISOString(),
         });
@@ -67,7 +83,7 @@ export async function runPromotionBatch(
         read: async (id) => {
           const current = await deps.client.read(id);
           if (
-            operation.kind !== "cleanup" &&
+            selectedOperation.kind !== "cleanup" &&
             typeof current.current_period_end === "string"
           ) {
             await deps.rpc("report_promotion_period", {
@@ -92,24 +108,24 @@ export async function runPromotionBatch(
       let observedDiscount: string | null = null;
       let cleanupReason: string | null = null;
       await synchronizeDiscount(client, {
-        subscriptionId: operation.subscription_id,
-        productId: operation.product_id,
-        discountId: operation.discount_id,
-        managedDiscountIds: operation.managed_discount_ids,
-        normalCents: operation.normal_cents,
+        subscriptionId: selectedOperation.subscription_id,
+        productId: selectedOperation.product_id,
+        discountId: selectedOperation.discount_id,
+        managedDiscountIds: selectedOperation.managed_discount_ids,
+        normalCents: selectedOperation.normal_cents,
         observed: (discount) => {
           observedDiscount = discount;
         },
-        cleanup: operation.kind === "cleanup",
+        cleanup: selectedOperation.kind === "cleanup",
         skippedCleanup: (reason) => {
           cleanupReason = reason;
         },
-        repair: operation.repair,
-        phase: operation.phase,
+        repair: selectedOperation.repair,
+        phase: selectedOperation.phase,
         markCleared: async () => {
           if (
             !await deps.rpc("report_promotion_cleared", {
-              p_id: operation.id,
+              p_id: selectedOperation.id,
               p_token: token,
               p_now: deps.now().toISOString(),
             })
@@ -120,12 +136,22 @@ export async function runPromotionBatch(
         await deps.rpc("report_promotion_ack", {
           p_observed_discount: observedDiscount,
           p_cleanup_reason: cleanupReason,
-          p_id: operation.id,
+          p_id: selectedOperation.id,
           p_token: token,
           p_now: deps.now().toISOString(),
         })
       ) completed++;
     } catch (error) {
+      if (operationId !== null) {
+        try {
+          await deps.rpc("report_promotion_renewal_failed", {
+            p_id: operationId,
+            p_token: renewalToken,
+          });
+        } catch {
+          // The shared lease still expires; the existing failure record remains mandatory.
+        }
+      }
       const message = error instanceof Error ? error.message : "";
       const known = [
         "polar_discount_unmanaged",
@@ -135,6 +161,11 @@ export async function runPromotionBatch(
         "polar_discount_invalid_response",
         "promotion_not_authorized",
         "promotion_repair_lease_lost",
+        "creator_renewal_initial_pending",
+        "creator_renewal_bridge_unconfigured",
+        "creator_renewal_remainder_unconfigured",
+        "creator_renewal_transfer_pending",
+        "creator_renewal_plan_changed",
       ];
       const code = known.includes(message)
         ? message
@@ -196,7 +227,20 @@ export async function handleReportPromotion(req: Request): Promise<Response> {
       enabled: () => Deno.env.get("REPORT_PROMOTION_ENABLED") === "true",
       rpc: async (name, args) => {
         const { data, error } = await admin.rpc(name, args);
-        if (error) throw new Error("promotion_store_unavailable");
+        if (error) {
+          const known = [
+            "creator_renewal_initial_pending",
+            "creator_renewal_bridge_unconfigured",
+            "creator_renewal_remainder_unconfigured",
+            "creator_renewal_transfer_pending",
+            "creator_renewal_plan_changed",
+          ];
+          throw new Error(
+            known.includes(error.message)
+              ? error.message
+              : "promotion_store_unavailable",
+          );
+        }
         return data;
       },
     }, after);

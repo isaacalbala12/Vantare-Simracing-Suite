@@ -1,4 +1,4 @@
-# Descuento por informes · #1593 / VANTA-39 · ronda 5
+# Descuento por informes · #1593 / VANTA-39 · ronda 6
 
 Candidato local de PR #1659. Catálogo vacío y flag ausente/false: no se activa.
 No crea productos, descuentos, enlaces, scheduler ni despliegue automáticamente.
@@ -109,15 +109,74 @@ céntimos Pro y 999→699 Plus. No migra ni modifica los productos de lanzamient
 permanente ni los links de #1620: no se les pueden sumar otros 2/3 EUR. Resolver
 esa distribución antes de activar esta campaña sobre normales.
 
-La allowlist de creador guarda ID, producto, `basis_points` (1..10000), duración
-**exacta de dos meses** y `validated_at`. El operador debe cotejar en Polar tipo
-porcentaje, importe, duración, moneda y scope; no introducir IDs de otra
-campaña. La selección compara su ahorro real en céntimos con el fijo; empate
-favorece informes. Un 40 % autorizado puede ganar al tramo. El GET vivo
-actualiza el próximo ciclo para evaluar su vencimiento; nunca consume con ese
-reloj los meses de informes. Al acabar la campaña solo se retiran IDs propios de
-lanzamiento/informes: se conserva un beneficio ajeno o de creador sin
-reaplicarlo ni prolongarlo.
+El contrato vigente es #1661, HEAD leído `271e20053`. El creador atribuye la
+venta inicial, **sin rebajar esa factura**; el 20 % empieza en la primera
+renovación. La fuente de porcentaje y duración es el mismo archivo
+`../scripts/polar-launch-prices.json` que importa `_shared/creator-renewal.ts`:
+11 meses mensuales / 12 anuales; informes sigue siendo solo mensual. El
+almacenamiento histórico `report_promotion_creators` queda inerte: no se
+consulta para elegir ni asociar un cupón. No configurar nuevos creadores ahí.
+
+**Un único arbitraje:** `report_promotion_renewal_prepare` publica o retira la
+candidatura con la RPC de #1661 `billing_set_report_renewal_candidate`, y pide
+selección a su implementación original de `billing_creator_renewal_prepare`. Su
+comparación en céntimos es la única: mayor ahorro, empate informes. Pro: 200 c
+frente a 120 c; Plus: 300 c frente a 200 c. El perdedor queda en
+`creator_renewal_operations.not_applied`, visible al Owner. Sin atribución
+privada, solo informes; sin premio, solo creador. La metadata no atribuye nada.
+
+Las cuentas de la promoción tienen **un solo escritor externo**, el worker de
+informes. El webhook de #1661 guarda atribución/primer pago si faltan y delega
+sin error ni cuarentena; no vuelve a asociar una candidatura guardada que pueda
+estar agotada. Fuera de esta promoción conserva el flujo normal de #1661. Cuando
+hay creador se usa su lease de 60 s, autorización y ACK, además de las barreras
+del premio. Un callback de informes no puede saltárselo usando el claim antiguo;
+sus alias están revocados. El escritor de creador también espera una operación
+de informes ya en vuelo. Se publica la candidatura incluso antes de conocer un
+creador, para que una atribución que llegue por reconciliación respete el
+premio. Un error libera solo su token, nunca el de otro worker. El helper
+compartido de #1661 se incorpora con sus comprobaciones GET/PATCH/ACK y reconoce
+cupones anteriores de informes y remanentes. Solo PATCH de `discount_id`, sin
+descuentos acumulados.
+
+**No reiniciar el creador al volver:** `report_creator_terms` fija una vez el
+plazo original desde la primera renovación rebajada (por creador o informes),
+con los meses de configuración guardados al entrar en convivencia. Las facturas
+iniciales no inician ese reloj. Usa periodos de facturas liquidadas, nunca el
+espejo de suscripción. El plazo corre aunque gane informes. Si vuelve el
+creador, solo se asocia un cupón validado que cabe en los meses restantes. GET
+ya coincidente no reinicia nada. Si falta ese cupón, devuelve
+`creator_renewal_remainder_unconfigured`, incidencia Owner durable; conserva los
+derechos y permite reintentar después de configurar. Al expirar el creador se
+descarta su ahorro antes de comparar: puede pasar a ganar informes. Un bloque de
+informes ya confirmado termina naturalmente aunque haya caducado su saldo;
+después puede volver el creador vigente.
+
+**Integración/despliegue pendiente del orquestador:** esta rama NO fusiona
+Founders ni su checkout. La nueva migración instala el puente si #1661 ya está
+en el conjunto; si llega después, ejecutar como operador
+`select public.install_report_creator_bridge()` y comprobar `true`. Es
+idempotente y conserva el payload Owner más reciente. Integrar el helper
+`_shared/creator-renewal.ts` de esta entrega con el de #1661 (se añade
+`managed_report_ids`) y conservar el catálogo/checkout de #1661: su lanzamiento
+`once`, código solo de atribución y su primer periodo. El catálogo de informes
+no debe sustituir ese cupón `once` por su cupón repeating de saldo. No activar
+ambas campañas hasta resolver y probar ese punto del checkout en el conjunto. Si
+hay atribución pero faltan su operación inicial, puente, producto o remanente,
+la escritura se detiene con incidencia específica, sin un PATCH independiente.
+#1661 bloquea iniciar cambios de plan con creador activo. Si aun así llega un
+hecho comercial válido, el premio de informes sigue la suscripción vigente y
+conserva el historial de traslado. El cupón mensual de creador de #1661 cubre
+ambos productos normales; se actualiza el producto servidor observado, sin
+reiniciar su reloj. Al limpiar una suscripción previa, retira la candidatura de
+informes y conserva/restaura solo su creador vigente bajo el lease común. Una
+anterior canceled/paused se considera limpia sin PATCH. Devolver el primer mes
+permite exclusivamente retirar el descuento propio: nunca asociar otro.
+
+La prueba reproducible construye un archivo de integración desechable desde el
+Git exacto de #1661, añade estas migraciones y conserva sus tests; no equivale a
+un merge Git ni a un despliegue. SQL conjunto y Edge se prueban aparte del árbol
+aislado. La prueba de coexistencia no acredita el checkout final de ambas ramas.
 
 Pendiente de autorización de Isaac en Polar real:
 
@@ -127,10 +186,15 @@ Pendiente de autorización de Isaac en Polar real:
 | Plus 9,99 EUR           |               3,00 | 1, 3 y 6 meses, tres descuentos |
 
 Seis descuentos, EUR, restringidos al ID mensual normal de su plan, sin código
-público ni descuento compuesto. No hace falta crear productos. Para creadores en
-normales: descuento independiente, inicialmente 2000 basis_points y dos meses,
-con atribución y distribución aprobadas; no ampliar silenciosamente los de
-#1620. No se añade un campo de código en la app en esta entrega.
+público ni descuento compuesto. No hace falta crear productos. Para creadores:
+usar el catálogo aprobado de #1661 (20 %, mensual repeating 11 meses / anual
+repeating 12 meses, sin código público), nunca ampliar un cupón histórico de dos
+meses. Para volver de informes sin reiniciar el plazo, el operador valida
+remanentes mensuales del mismo porcentaje y producto: duraciones 1..10 meses
+según los saldos posibles, por cupón de creador/producto. Registrar IDs en
+`private.report_creator_remainders` con fecha de validación. No crear ni
+modificar esos cupones automáticamente; su ausencia es incidencia, no permiso
+para reasociar once meses. No hacen falta nuevos productos.
 
 ## Operaciones, reintentos y fallos
 
@@ -177,12 +241,15 @@ deploy.
 Programar POST con `apikey` igual al secreto dedicado; sin cuerpo. Pasar
 `?after=<next_cursor>` hasta null y volver al inicio en la siguiente pasada.
 Sugerencia: cada minuto y después de revisiones. No hay scheduler creado aquí.
-El flag solo habilita concesiones y escrituras de descuento. False o variable
-ausente detienen esos efectos, pero **nunca apagan el ledger de facturas**:
-contabilidad tiene default explícito true y el catálogo SQL filtra productos.
-billing-reconcile repara por order ID incluso un efecto histórico ya completado
-o un inbox en cuarentena. Conserva origen y fecha de recuperación. Una factura
-pagada conocida con datos incompletos deja un hueco durable y la incidencia
+El flag habilita al único escritor de descuentos de las cuentas de la campaña,
+incluido el creador cuando convive con informes. Debe mantenerse su cron activo.
+Apagarlo detiene nuevas asociaciones de ambos para esas cuentas; los cupones ya
+confirmados siguen su calendario. False o variable ausente detienen esos
+efectos, pero **nunca apagan el ledger de facturas**: contabilidad tiene default
+explícito true y el catálogo SQL filtra productos. billing-reconcile repara por
+order ID incluso un efecto histórico ya completado o un inbox en cuarentena.
+Conserva origen y fecha de recuperación. Una factura pagada conocida con datos
+incompletos deja un hueco durable y la incidencia
 promotion_invoice_details_missing; impide rearmar hasta recuperar los datos. La
 ausencia de factura inicial muestra promotion_initial_invoice_missing. Ambas se
 resuelven al llegar los hechos, sin duplicar créditos. Reconciliar órdenes antes
@@ -306,3 +373,19 @@ La respuesta de detalle Owner conserva plan, pagos y accesos, y añade
 report_promotion opcional; se prueban juntos en SQL y Rust. La demo aprobada
 mantiene sus personas/acciones y muestra un ejemplo falso para Ana. No añade
 operaciones de descuentos a la miniapp ni activa la campaña.
+
+## Pruebas conjuntas con #1661 · ronda 6
+
+```sh
+python3 supabase/tests/prepare-report-creator-fixture.py --output ~/evidence/1593-r6/joint-new
+# Con el lock Docker:
+python3 supabase/tests/run-report-promotion-local.py --root ~/evidence/1593-r6/joint-new --output ~/evidence/1593-r6/joint-new-sql --only report_promotion.test.sql report_creator_renewals.test.sql creator_renewal.test.sql
+```
+
+El fixture usa el commit aprobado 271e20053, no un checkout ajeno que pueda
+moverse. Añade solo los componentes de integración documentados; conserva los
+tests y el modelo once/Founders de #1661. El catálogo combinado debe compararse
+también con ese mismo commit sin modificar, además de la comparación aislada con
+nightly. La suite conjunta comprueba solo informes Pro/Plus, solo creador,
+ambos, mayor ahorro, cambio temporal en ambos sentidos, plazo original,
+remanente ausente visible al Owner, lease, ACK, repetición y caducidad.

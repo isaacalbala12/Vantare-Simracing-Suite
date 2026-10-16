@@ -9,7 +9,7 @@ p.add_argument('--only', nargs='*')
 p.add_argument('--baseline-summary', help='Compare every shared suite; fail on any regression')
 p.add_argument('--storage-schema', default=str(pathlib.Path.home()/'evidence/1608/r6/storage-schema.sql'), help='Schema-only dump from disposable local Storage')
 p.add_argument('--without-promotion', action='store_true')
-p.add_argument('--mutation',choices=['launch','launch-end','window','tier','spam','creator','deleted','idempotency','first-month','invoice','transfer','settlements','repair','first-refund','launch-used','checkout-proof','cleanup-inactive','invoice-gap','initial-incident','reward-expiry','accounts-deleted','attempt-required','tier-total','checkout-no-id','checkout-owner-incident','reconciliation-item-incident'])
+p.add_argument('--mutation',choices=['launch','launch-end','window','tier','spam','creator','deleted','idempotency','first-month','invoice','transfer','settlements','repair','first-refund','launch-used','checkout-proof','cleanup-inactive','invoice-gap','initial-incident','reward-expiry','accounts-deleted','attempt-required','tier-total','checkout-no-id','checkout-owner-incident','reconciliation-item-incident','creator-remainder','creator-clock','renewal-lease','creator-expiry','creator-lock-order'])
 a=p.parse_args(); root=pathlib.Path(a.root).resolve(); out=pathlib.Path(a.output).resolve(); out.mkdir(parents=True,exist_ok=True)
 if not (pathlib.Path.home()/'orq/docker.lock').is_dir(): raise SystemExit('Acquire ~/orq/docker.lock first')
 container='vantare-1593-'+str(int(time.time()))
@@ -42,6 +42,13 @@ try:
   if result.returncode: raise RuntimeError(migration.name+': '+result.stderr[-4000:])
  if a.mutation:
   signature, before, after = {
+   'creator-lock-order':('private.billing_creator_renewal_prepare_before_1593(text,uuid,text,text,text,uuid,text,uuid,integer)','if private.lock_account_write(p_user) then return null; end if;','perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(p_user::text,0));'),
+
+   'creator-remainder':('private.report_creator_bound(text,text,jsonb,timestamptz)','select discount_id into chosen from private.report_creator_remainders','select creator_discount_id into chosen from private.report_creator_remainders'),
+   'creator-clock':('private.report_creator_bound(text,text,jsonb,timestamptz)','private.report_promotion_months(anchor,terms.duration_months)','private.report_promotion_months(p_now,terms.duration_months)'),
+   'renewal-lease':('public.report_promotion_claim(uuid,uuid,timestamptz)','if ctx is not null then','if false then'),
+   'creator-expiry':('public.report_promotion_renewal_prepare(uuid,integer,integer,timestamptz)','case when private.report_creator_end(op.environment,op.subscription_id,p_now)<=p_now then 0 else p_creator_savings end','p_creator_savings'),
+
    'checkout-owner-incident':('public.report_promotion_failed(uuid,text,text,timestamptz)',"if private.lock_account_write(p_account) then return; end if;","if p_code='promotion_checkout_owner_mismatch' then return; end if; if private.lock_account_write(p_account) then return; end if;"),
    'reconciliation-item-incident':('public.billing_reconciliation_item_failed(text,text,text,text,timestamptz)',"insert into private.billing_reconciliation_item_failures(environment,resource,item_key,resource_id,first_at,last_at)","return; insert into private.billing_reconciliation_item_failures(environment,resource,item_key,resource_id,first_at,last_at)"),
    'accounts-deleted':('public.report_promotion_accounts(text,uuid)','and not exists(select 1 from public.account_identities i where i.account_id=p.account_id and i.deleted_at is not null)',''),
@@ -53,9 +60,9 @@ try:
    'window':('private.report_promotion_progress(uuid,text,timestamptz)','1080 hours','1081 hours'),
    'tier':('public.report_promotion_prepare(uuid,text,timestamptz)',">=5 then 6",">=50 then 6"),
    'spam':('public.report_promotion_prepare(uuid,text,timestamptz)','p.forfeited:=p.forfeited or p.forfeited_at is not null','p.forfeited:=false'),
-   'creator':('public.report_promotion_prepare(uuid,text,timestamptz)','creator.basis_points/10000.0)>','creator.basis_points/10000.0)<'),
+   'creator':('private.billing_creator_renewal_prepare_before_1593(text,uuid,text,text,text,uuid,text,uuid,integer)','v_report.savings_cents>=p_creator_savings','v_report.savings_cents<=p_creator_savings'),
    'deleted':('public.report_promotion_checkout(uuid,text,text,timestamptz,uuid,uuid)',"if private.lock_account_write(p_account) then raise sqlstate '28000' using message='account_deleted'; end if;","if false then raise sqlstate '28000' using message='account_deleted'; end if;"),
-   'idempotency':('public.report_promotion_prepare(uuid,text,timestamptz)','p.applied_at is not null and p.applied_discount is not distinct from desired','false'),
+   'idempotency':('public.report_promotion_prepare(uuid,text,timestamptz)','p.applied_at is not null and p.applied_candidate is not distinct from desired','false'),
    'invoice':('public.report_promotion_prepare(uuid,text,timestamptz)','order by i.billed_at,o.id limit 1;\n if not found then\n   perform public.report_promotion_failed(p_account,p_environment,\'promotion_initial_invoice_missing\',p_now);\n   return null;\n end if;',"order by i.billed_at,o.id limit 1;\n if not found then first_order.status:='paid'; first_order.reported_refunded_amount:=0; end if;"),
    'first-month':('public.report_promotion_prepare(uuid,text,timestamptz)','when p.tier-spent>=3 then c.reward3_discount else c.launch_discount end','when p.tier-spent>=3 then c.launch_discount else c.launch_discount end'),
    'transfer':('public.report_promotion_observe(uuid,text,text,text,timestamptz,timestamptz,text)','set subscription_id=p_subscription,product_id=p_product','set subscription_id=existing.subscription_id,product_id=p_product'),

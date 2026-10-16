@@ -55,5 +55,11 @@
   "distribution": {
     "launch_month": "website_and_creator_links",
     "after_launch_month": "creator_links_only"
+  },
+  "creator_renewals": {
+    "monthly_duration_months": 11,
+    "annual_duration_months": 12,
+    "first_period_discount": false,
+    "public_polar_code": false
   }
 }

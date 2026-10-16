@@ -3,7 +3,7 @@ import { type PromotionDeps, runPromotionBatch } from "./index.ts";
 import { observeReportPromotion } from "./observe.ts";
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
-function fixture() {
+function fixture(normalCents = 599) {
   let discount: string | null = null;
   const calls: string[] = [];
   const deps: PromotionDeps = {
@@ -13,18 +13,19 @@ function fixture() {
     rpc: (name) => {
       calls.push(name);
       return Promise.resolve(
-        name.endsWith("accounts") ? ["account"] : name.endsWith("prepare")
+        name.endsWith("accounts") ? ["account"] : (name.endsWith("prepare") ||
+            name === "report_promotion_renewal_prepare")
           ? {
             id: "op",
             subscription_id: "sub",
             product_id: "product",
-            amount: 599,
+            amount: normalCents,
             currency: "eur",
             recurring_interval: "month",
             recurring_interval_count: 1,
             discount_id: "reward",
             managed_discount_ids: [],
-            normal_cents: 599,
+            normal_cents: normalCents,
           }
           : true,
       );
@@ -35,7 +36,7 @@ function fixture() {
         return Promise.resolve({
           id: "sub",
           product_id: "product",
-          amount: 599,
+          amount: normalCents,
           currency: "eur",
           recurring_interval: "month",
           recurring_interval_count: 1,
@@ -49,7 +50,7 @@ function fixture() {
         return Promise.resolve({
           id: "sub",
           product_id: "product",
-          amount: 599,
+          amount: normalCents,
           currency: "eur",
           recurring_interval: "month",
           recurring_interval_count: 1,
@@ -66,9 +67,10 @@ Deno.test("worker claims, rechecks before write, ACKs and retry does not PATCH a
   assertEquals((await runPromotionBatch(deps)).completed, 1);
   await runPromotionBatch(deps);
   assertEquals(calls.filter((c) => c === "PATCH").length, 1);
-  assertEquals(calls.slice(0, 7), [
+  assertEquals(calls.slice(0, 8), [
     "report_promotion_accounts",
     "report_promotion_prepare",
+    "report_promotion_renewal_prepare",
     "report_promotion_claim",
     "GET",
     "report_promotion_claim",
@@ -186,7 +188,7 @@ Deno.test("launch checkout uses exactly one discount, disables trial and code st
     channels: [],
     launchScopeVersion: null,
     trial: { enabled: false },
-    discountId: "launch1",
+    discountId: "15930000-0000-4000-8000-000000000001",
   }, {
     getAccessToken: () => "test",
     getSuccessUrl: () => "https://example.invalid/success",
@@ -201,7 +203,7 @@ Deno.test("launch checkout uses exactly one discount, disables trial and code st
       );
     },
   });
-  assertEquals(body.discount_id, "launch1");
+  assertEquals(body.discount_id, "15930000-0000-4000-8000-000000000001");
   assertEquals(body.allow_trial, false);
   assertEquals(body.allow_discount_codes, false);
   assertEquals(body.trial_interval, undefined);
@@ -229,11 +231,16 @@ Deno.test("P2-2 paid invoice projection carries actual cycle and excludes line-i
       proration: false,
       start_timestamp: "2026-12-26T18:00:00Z",
       end_timestamp: "2027-01-26T18:00:00Z",
+      product_price_id: "server-catalog-price",
       label: "private customer text",
     }],
   };
   const replay = minimizePolarWebhookEvent({ type: "order.paid", data });
   assertEquals(JSON.stringify(replay).includes("private customer text"), false);
+  assertEquals(
+    (replay.data.items as Record<string, unknown>[])[0].product_price_id,
+    "server-catalog-price",
+  );
   await observePromotionInvoice(admin, "sandbox", replay.data, true);
   assertEquals(calls, [["report_promotion_invoice", {
     p_environment: "sandbox",
@@ -257,16 +264,17 @@ Deno.test("P2-3 poisoned first customer is durably marked and cannot starve the 
   deps.rpc = (name, args) =>
     name.endsWith("accounts")
       ? Promise.resolve(["bad", "good"])
-      : name.endsWith("prepare")
+      : (name.endsWith("prepare") ||
+          name === "report_promotion_renewal_prepare")
       ? Promise.resolve({
-        id: String(args.p_account),
-        subscription_id: String(args.p_account),
+        id: String(args.p_account ?? args.p_id),
+        subscription_id: String(args.p_account ?? args.p_id),
         product_id: "product",
         discount_id: "reward",
         managed_discount_ids: [],
         normal_cents: 599,
       })
-      : name.endsWith("failed")
+      : name === "report_promotion_failed"
       ? (failures.push(args), Promise.resolve(null))
       : original(name, args);
   const read = deps.client.read;
@@ -371,7 +379,10 @@ Deno.test("P2-4 batch acknowledges a non-billable predecessor and grants the cur
       enabled: () => true,
       rpc: (name, args) => {
         if (name.endsWith("accounts")) return Promise.resolve(["account"]);
-        if (name.endsWith("prepare")) {
+        if (
+          (name.endsWith("prepare") ||
+            name === "report_promotion_renewal_prepare")
+        ) {
           return Promise.resolve({
             id: cleaned ? "next-op" : "cleanup-op",
             subscription_id: cleaned ? "current" : "previous",
@@ -415,4 +426,67 @@ Deno.test("P2-4 batch acknowledges a non-billable predecessor and grants the cur
     assertEquals(currentPatches, 1);
     assertEquals(currentDiscount, "reward3");
   }
+});
+
+Deno.test("R6 shared selection owns the winner; report worker never computes or stacks creator percentage", async () => {
+  for (const [normalCents, saving] of [[599, 120], [999, 200]]) {
+    for (const discount of ["reward", "creator", null]) {
+      const { deps, calls } = fixture(normalCents);
+      const rpc = deps.rpc;
+      let selectorArgs: Record<string, unknown> = {};
+      deps.rpc = async (name, args) => {
+        if (name === "report_promotion_renewal_prepare") {
+          calls.push(name);
+          selectorArgs = args;
+          return {
+            id: "op",
+            subscription_id: "sub",
+            product_id: "product",
+            discount_id: discount,
+            managed_discount_ids: ["creator", "reward"],
+            normal_cents: normalCents,
+            shared_renewal: true,
+          };
+        }
+        return await rpc(name, args);
+      };
+      await runPromotionBatch(deps);
+      assertEquals(calls.includes("report_promotion_renewal_prepare"), true);
+      assertEquals(selectorArgs.p_creator_savings, saving);
+      assertEquals(selectorArgs.p_creator_months, 11);
+      assertEquals(
+        calls.filter((x) => x === "PATCH").length,
+        discount === null ? 0 : 1,
+      );
+      assertEquals(calls.includes("report_promotion_ack"), true);
+    }
+  }
+});
+Deno.test("R6 a shared lease in use skips effects; failed PATCH releases it and records the account", async () => {
+  const { deps, calls } = fixture();
+  const rpc = deps.rpc;
+  let busy = true;
+  deps.rpc = async (name, args) => {
+    if (name === "report_promotion_renewal_prepare") {
+      if (busy) return null;
+      return {
+        id: "op",
+        subscription_id: "sub",
+        product_id: "product",
+        discount_id: "reward",
+        managed_discount_ids: [],
+        normal_cents: 599,
+      };
+    }
+    return await rpc(name, args);
+  };
+  assertEquals((await runPromotionBatch(deps)).completed, 0);
+  assertEquals(calls.includes("GET"), false);
+  busy = false;
+  deps.client.change = () => {
+    throw new Error("timeout");
+  };
+  assertEquals((await runPromotionBatch(deps)).failed.length, 1);
+  assertEquals(calls.includes("report_promotion_renewal_failed"), true);
+  assertEquals(calls.includes("report_promotion_failed"), true);
 });

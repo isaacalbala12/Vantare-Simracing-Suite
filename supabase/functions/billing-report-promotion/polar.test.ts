@@ -2,7 +2,11 @@ import {
   assertEquals,
   assertRejects,
 } from "https://deno.land/std@0.224.0/assert/mod.ts";
-import { PolarDiscountClient, synchronizeDiscount } from "./polar.ts";
+import {
+  type DiscountClient,
+  PolarDiscountClient,
+  synchronizeDiscount,
+} from "./polar.ts";
 
 Deno.test("discount change uses PATCH only, no product or proration, then GET retry avoids a second write", async () => {
   let discount: string | null = null;
@@ -384,4 +388,42 @@ Deno.test("P2-4 cleanup of canceled or paused predecessor succeeds without a for
     );
     assertEquals(writes, 0);
   }
+});
+
+Deno.test("R6 inactive predecessor with creator restoration is already clean; Polar PATCH 422 is avoided", async () => {
+  let patches = 0;
+  let reason = "";
+  const client: DiscountClient = {
+    read: () =>
+      Promise.resolve({
+        id: "old",
+        product_id: "pro",
+        status: "canceled",
+        discount_id: "report",
+        amount: 599,
+        currency: "eur",
+        recurring_interval: "month",
+        recurring_interval_count: 1,
+      }),
+    change: () => {
+      patches++;
+      throw new Error("polar_discount_http_422");
+    },
+  };
+  assertEquals(
+    await synchronizeDiscount(client, {
+      subscriptionId: "old",
+      productId: "pro",
+      discountId: "creator",
+      managedDiscountIds: ["report", "creator"],
+      normalCents: 599,
+      cleanup: true,
+      skippedCleanup: (value) => {
+        reason = value;
+      },
+    }),
+    false,
+  );
+  assertEquals(patches, 0);
+  assertEquals(reason, "remote_inactive");
 });

@@ -1024,7 +1024,12 @@ export function minimizePolarWebhookEvent(
   const data = pickReplayFields(event.data, REPLAY_DATA_KEYS);
   if (Array.isArray(event.data.items)) {
     data.items = event.data.items.slice(0, 100).filter(isRecord).map((item) =>
-      pickReplayFields(item, ["proration", "start_timestamp", "end_timestamp"])
+      pickReplayFields(item, [
+        "product_price_id",
+        "proration",
+        "start_timestamp",
+        "end_timestamp",
+      ])
     );
   }
   const customer = nestedRecord(event.data.customer);

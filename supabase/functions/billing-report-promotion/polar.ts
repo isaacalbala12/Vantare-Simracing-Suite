@@ -78,7 +78,7 @@ export async function synchronizeDiscount(client: DiscountClient, expected: {
 }): Promise<boolean> {
   const current = await client.read(expected.subscriptionId);
   if (
-    expected.cleanup && expected.discountId === null &&
+    expected.cleanup &&
     ["canceled", "paused"].includes(current.status)
   ) {
     expected.skippedCleanup?.("remote_inactive");

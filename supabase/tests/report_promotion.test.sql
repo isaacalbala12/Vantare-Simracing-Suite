@@ -79,12 +79,12 @@ select is((select tier from private.report_promotions where account_id=pg_temp.a
 select pg_temp.report(2,'2026-10-27 19:00 Europe/Madrid'); select pg_temp.report(2,'2026-10-28 19:00 Europe/Madrid');
 select is(public.report_promotion_prepare(pg_temp.account(2),'sandbox','2026-11-01')->>'discount_id','plus3','Plus reward 3 EUR beats creator 20 percent');
 update private.report_promotion_creators set basis_points=4000 where product_id='plus';
-select is(public.report_promotion_prepare(pg_temp.account(2),'sandbox','2026-11-01')->>'discount_id','creator','P3-1 validated 40 percent creator beats fixed Plus reward');
+select is(public.report_promotion_prepare(pg_temp.account(2),'sandbox','2026-11-01')->>'discount_id','plus3','R6 obsolete creator allowlist cannot override shared arbitration');
 select public.report_promotion_period(pg_temp.account(2),'sandbox','sub2','2026-12-26 19:00 Europe/Madrid');
 select is(public.report_promotion_prepare(pg_temp.account(2),'sandbox','2026-11-01')->>'discount_id','plus3','P3-1 live next cycle excludes creator after its own expiry');
 select public.report_promotion_period(pg_temp.account(2),'sandbox','sub2','2026-11-26 19:00 Europe/Madrid');
 update private.report_promotion_creators set basis_points=2000 where product_id='plus';
-select is(public.report_promotion_prepare(pg_temp.account(8),'sandbox','2026-11-01')->>'discount_id','creator','without reward creator wins next invoice');
+select is(public.report_promotion_prepare(pg_temp.account(8),'sandbox','2026-11-01')->>'discount_id',null::text,'R6 standalone report planner does not grant creator coupons');
 select pg_temp.report(6,'2026-10-27 19:00 Europe/Madrid'); select pg_temp.report(6,'2026-10-28 19:00 Europe/Madrid');
 select public.report_promotion_prepare(pg_temp.account(6),'sandbox','2026-11-01');
 select pg_temp.report(6,'2026-11-02 19:00 Europe/Madrid','spam'); select pg_temp.report(6,'2026-11-03 19:00 Europe/Madrid','spam');

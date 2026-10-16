@@ -56,7 +56,8 @@ create table private.report_promotion_catalog (
     or (plan='pro_plus' and normal_cents=999 and launch_cents=699)),
  check(launch_discount<>reward3_discount and launch_discount<>reward6_discount and reward3_discount<>reward6_discount)
 );
--- Explicit allowlist: creator codes from other campaigns/products are never imported.
+-- Deprecated R1/R2 fixture storage, never used for renewal selection after #1661.
+-- Do not configure new creators here: attribution and arbitration belong to #1661.
 create table private.report_promotion_creators (
  environment text not null, product_id text not null, discount_id text not null,
  basis_points integer not null check(basis_points between 1 and 10000),
@@ -88,6 +89,7 @@ create table private.report_promotions (
  forfeited_at timestamptz,
  first_refunded boolean not null default false,
  applied_discount text,
+ applied_candidate text,
  applied_at timestamptz,
  primary key(account_id,environment),
  unique(environment,subscription_id),
@@ -171,7 +173,7 @@ grant execute on function public.report_promotion_invoice(text,text,text,integer
 create table private.report_promotion_failures (
  account_id uuid not null references public.profiles(id), environment text not null check(environment in ('sandbox','production')),
  code text not null check(code in ('polar_discount_unmanaged','polar_discount_catalog_mismatch','polar_discount_subscription_changed',
- 'polar_discount_not_applied','polar_discount_invalid_response','polar_discount_http_failed','promotion_account_failed','promotion_not_authorized','promotion_repair_lease_lost','promotion_invoice_details_missing','promotion_initial_invoice_missing','promotion_checkout_recovered','promotion_checkout_recovery_required','promotion_checkout_plan_change_pending','promotion_checkout_owner_mismatch')),
+ 'polar_discount_not_applied','polar_discount_invalid_response','polar_discount_http_failed','promotion_account_failed','promotion_not_authorized','promotion_repair_lease_lost','promotion_invoice_details_missing','promotion_initial_invoice_missing','promotion_checkout_recovered','promotion_checkout_recovery_required','promotion_checkout_plan_change_pending','promotion_checkout_owner_mismatch','creator_renewal_initial_pending','creator_renewal_bridge_unconfigured','creator_renewal_remainder_unconfigured','creator_renewal_transfer_pending','creator_renewal_plan_changed')),
  attempts integer not null default 1, first_at timestamptz not null, last_at timestamptz not null, resolved_at timestamptz,
  primary key(account_id,environment)
 );
@@ -374,7 +376,7 @@ $$;
 create function public.report_promotion_prepare(p_account uuid,p_environment text,p_now timestamptz default clock_timestamp())
 returns jsonb language plpgsql security definer set search_path='' as $$
 declare p private.report_promotions; s public.billing_subscriptions; c private.report_promotion_catalog;
- earned integer; desired text; next_bill timestamptz; op private.report_promotion_changes; prior private.report_promotion_transfers; target_sub text; target_product text; action_kind text:='apply'; spent integer; repair text; creator private.report_promotion_creators; first_order public.billing_orders; spam_at timestamptz; accepted_before_spam integer; grant_at timestamptz; valid_months integer;
+ earned integer; desired text; op private.report_promotion_changes; prior private.report_promotion_transfers; target_sub text; target_product text; action_kind text:='apply'; spent integer; repair text; first_order public.billing_orders; spam_at timestamptz; accepted_before_spam integer; grant_at timestamptz; valid_months integer; renewal_changed boolean:=false;
 begin
  if private.lock_account_write(p_account) then return null; end if;
  select * into p from private.report_promotions where account_id=p_account and environment=p_environment for update;
@@ -432,21 +434,21 @@ begin
  and (i.discount_amount=0 or (p.applied_discount=c.launch_discount and i.discount_id=p.applied_discount and i.discount_amount>0))
  and i.order_id is distinct from p.repaired_order_id order by i.billed_at desc,i.order_id desc limit 1;
  if desired is null then repair:=null; end if;
- next_bill:=coalesce(p.remote_period_end,s.current_period_end,p_now); -- creator comparison only; never reward budget
- -- Compare actual cents, never stack. Ties keep the report reward. Creator is
- -- available for the first two calendar months only; reports never affect invoice 1.
- select * into creator from private.report_promotion_creators where environment=p_environment and product_id=p.product_id and discount_id=p.creator_discount;
- if found and p_now<private.report_promotion_months(p.subscribed_at,creator.duration_in_months)
-  and next_bill<private.report_promotion_months(p.subscribed_at,creator.duration_in_months)
-  and (desired is null or round(c.normal_cents*creator.basis_points/10000.0)>c.normal_cents-c.launch_cents) then desired:=p.creator_discount; repair:=null; end if;
+ -- Creator selection belongs exclusively to the leased #1661 renewal RPC.
  update private.report_promotions set tier=p.tier,reward_granted_at=p.reward_granted_at,reward_expires_at=p.reward_expires_at,reward_from=p.reward_from,reward_until=p.reward_until,forfeited=p.forfeited,forfeited_at=p.forfeited_at,first_refunded=p.first_refunded
   where account_id=p_account and environment=p_environment;
  -- Expiry stops new allocations and repairs; an already-confirmed finite
  -- coupon finishes naturally. Refund policy still revokes it independently.
  if p.reward_expires_at<=p_now and not p.first_refunded then
    update private.report_promotion_changes set superseded_at=p_now where account_id=p_account and environment=p_environment
-    and applied_at is null and superseded_at is null and (lease_until is null or lease_until<=p_now);
-   return null;
+    and applied_at is null and superseded_at is null and discount_id is not null and (lease_until is null or lease_until<=p_now);
+   -- A finite confirmed block may outlive the award expiry. After its actual
+   -- settled charges, withdraw reports and let the shared creator writer resume.
+   if to_regprocedure('private.report_creator_block_finished(uuid,text,timestamptz)') is not null then
+    execute 'select private.report_creator_block_finished($1,$2,$3)' into renewal_changed using p_account,p_environment,p_now;
+   end if;
+   if not coalesce(renewal_changed,false) then return null; end if;
+   desired:=null; repair:=null;
  end if;
  target_sub:=p.subscription_id; target_product:=p.product_id;
  -- A non-billable predecessor needs no provider mutation. Keep its audit.
@@ -465,12 +467,15 @@ begin
    update private.report_promotion_changes set superseded_at=p_now where id=op.id;
    op.id:=null;
  end if;
+ if to_regprocedure('private.report_creator_due(uuid,text,timestamptz)') is not null then
+  execute 'select private.report_creator_due($1,$2,$3)' into renewal_changed using p_account,p_environment,p_now;
+ end if;
  if op.id is null then
-   if repair is null and action_kind='apply' and p.applied_at is not null and p.applied_discount is not distinct from desired and (p.remote_discount is not distinct from desired or (desired is null and not exists(select 1 from private.report_promotion_catalog x where x.environment=p_environment and p.remote_discount in (x.launch_discount,x.reward3_discount,x.reward6_discount)))) then return null; end if;
+   if not coalesce(renewal_changed,false) and repair is null and action_kind='apply' and p.applied_at is not null and p.applied_candidate is not distinct from desired and (p.remote_discount is not distinct from p.applied_discount or (desired is null and not exists(select 1 from private.report_promotion_catalog x where x.environment=p_environment and p.remote_discount in (x.launch_discount,x.reward3_discount,x.reward6_discount)))) then return null; end if;
    insert into private.report_promotion_changes(account_id,environment,discount_id,tier,subscription_id,product_id,kind,repair_order_id) values(p_account,p_environment,desired,p.tier,target_sub,target_product,action_kind,repair) returning * into op;
  end if;
  return jsonb_build_object('id',op.id,'subscription_id',op.subscription_id,'product_id',op.product_id,'kind',op.kind,'repair',op.repair_order_id is not null,'phase',op.phase,'remaining',greatest(0,p.tier-spent),
-  'discount_id',op.discount_id,'tier',op.tier,'normal_cents',c.normal_cents,'managed_discount_ids',(select jsonb_agg(d) from (select unnest(array[x.launch_discount,x.reward3_discount,x.reward6_discount]) d from private.report_promotion_catalog x where x.environment=p_environment union select p.creator_discount where op.kind='apply' and op.discount_id is not null) discounts));
+  'discount_id',op.discount_id,'tier',op.tier,'normal_cents',c.normal_cents,'managed_discount_ids',(select jsonb_agg(d) from (select unnest(array[x.launch_discount,x.reward3_discount,x.reward6_discount]) d from private.report_promotion_catalog x where x.environment=p_environment) discounts));
 end $$;
 
 -- Revalidate immediately before HTTP, and again at ACK, using the same B03 UUID lock.
@@ -518,7 +523,7 @@ begin
  if op.kind='cleanup' then
    update private.report_promotion_transfers set cleared_at=p_now,cleanup_reason=case when p_cleanup_reason='remote_inactive' then p_cleanup_reason else 'removed' end where account_id=op.account_id and environment=op.environment and subscription_id=op.subscription_id and product_id=op.product_id and cleared_at is null;
  else
-   update private.report_promotions set applied_discount=op.discount_id,remote_discount=coalesce(p_observed_discount,op.discount_id),applied_at=p_now,repaired_order_id=coalesce(op.repair_order_id,repaired_order_id) where account_id=op.account_id and environment=op.environment and subscription_id=op.subscription_id and product_id=op.product_id;
+   update private.report_promotions set applied_discount=op.discount_id,applied_candidate=op.discount_id,remote_discount=coalesce(p_observed_discount,op.discount_id),applied_at=p_now,repaired_order_id=coalesce(op.repair_order_id,repaired_order_id) where account_id=op.account_id and environment=op.environment and subscription_id=op.subscription_id and product_id=op.product_id;
  end if;
  return true;
 end $$;

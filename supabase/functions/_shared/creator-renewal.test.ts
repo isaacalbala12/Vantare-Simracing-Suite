@@ -1,0 +1,113 @@
+import {
+  assertEquals,
+  assertRejects,
+} from "https://deno.land/std@0.224.0/assert/mod.ts";
+import { loadPolarProductMap } from "./mapping.ts";
+import { VALID_POLAR_PRODUCT_MAP_JSON } from "./test-fixtures.ts";
+import { applyCreatorRenewal } from "./creator-renewal.ts";
+import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+Deno.test("R4 paid receipt retries after failure, records Owner issue, and ACKs only confirmed state", async () => {
+  const loaded = loadPolarProductMap(VALID_POLAR_PRODUCT_MAP_JSON, {
+    environment: "sandbox",
+  });
+  if (!loaded.ok) throw Error("fixture");
+  const calls: string[] = [];
+  let completed = false;
+  let fail = true;
+  const client = {
+    rpc: (name: string, args: Record<string, unknown>) => {
+      calls.push(name);
+      if (name === "billing_creator_renewal_prepare") {
+        return Promise.resolve({
+          data: completed ? null : {
+            token: "lease",
+            discount_id: "creator",
+            creator_discount_id: "creator",
+            initial_discount_id: "launch",
+          },
+          error: null,
+        });
+      }
+      if (name === "billing_creator_renewal_authorized") {
+        return Promise
+          .resolve({ data: true, error: null });
+      }
+      if (name === "billing_creator_renewal_finish") {
+        completed = args.p_success === true;
+        return Promise.resolve({ data: true, error: null });
+      }
+      throw Error("unexpected RPC");
+    },
+  } as unknown as SupabaseClient;
+  const input = {
+    userId: "account",
+    checkoutId: "checkout",
+    subscriptionId: "sub",
+    orderId: "paid",
+    productId: loaded.map.checkout_keys.pro_monthly!.polar_product_id,
+    key: "pro_monthly" as const,
+    initial: true,
+  };
+  let writes = 0;
+  const synchronize: Parameters<typeof applyCreatorRenewal>[3] = async (
+    _id,
+    _env,
+    expected,
+  ) => {
+    assertEquals(await expected.authorize(), true);
+    if (fail) throw Error("provider unavailable");
+    writes++;
+  };
+  await assertRejects(() =>
+    applyCreatorRenewal(client, loaded.map, input, synchronize)
+  );
+  assertEquals(completed, false);
+  fail = false;
+  await applyCreatorRenewal(client, loaded.map, input, synchronize);
+  await applyCreatorRenewal(client, loaded.map, input, synchronize);
+  assertEquals(writes, 1);
+  assertEquals(
+    calls.filter((n) => n === "billing_creator_renewal_finish").length,
+    2,
+  );
+});
+
+Deno.test("R6 creator entrypoint recognizes the shared report/remainder coupons and uses canonical savings", async () => {
+  const loaded = loadPolarProductMap(VALID_POLAR_PRODUCT_MAP_JSON, {
+    environment: "sandbox",
+  });
+  if (!loaded.ok) throw Error("fixture");
+  const client = {
+    rpc: (name: string, args: Record<string, unknown>) => {
+      if (name === "billing_creator_renewal_prepare") {
+        assertEquals(args.p_creator_savings, 120);
+        return Promise.resolve({
+          data: {
+            token: "lease",
+            discount_id: "report-next",
+            creator_discount_id: "creator-original",
+            report_discount_id: "report-next",
+            initial_discount_id: "launch",
+            managed_report_ids: ["report-old", "creator-remainder"],
+          },
+          error: null,
+        });
+      }
+      return Promise.resolve({ data: true, error: null });
+    },
+  } as unknown as SupabaseClient;
+  await applyCreatorRenewal(client, loaded.map, {
+    userId: "account",
+    checkoutId: null,
+    subscriptionId: "sub",
+    orderId: "paid",
+    productId: loaded.map.checkout_keys.pro_monthly!.polar_product_id,
+    key: "pro_monthly",
+    initial: false,
+  }, async (_id, _environment, expected) => {
+    assertEquals(expected.discountId, "report-next");
+    assertEquals(expected.managedIds.includes("report-old"), true);
+    assertEquals(expected.managedIds.includes("creator-remainder"), true);
+    assertEquals(await expected.authorize(), true);
+  });
+});

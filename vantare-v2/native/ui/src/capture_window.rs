@@ -2,6 +2,10 @@
 use crate::overlay::{Hwnd, ffi::Rect};
 use gpui::{App, Bounds, Window, WindowBounds, WindowKind, WindowOptions, point, px, size};
 
+#[path = "capture_turn.rs"]
+#[cfg(any(windows, test))]
+mod turn;
+
 #[cfg(windows)]
 mod win {
     use super::{Hwnd, Rect};
@@ -53,16 +57,7 @@ pub fn lock() -> Result<CaptureLock, String> {
         return Err("el mutex de captura no quedó libre en cinco minutos".into());
     }
     let lock = CaptureLock(handle);
-    match std::fs::read_to_string("C:/tmp/fase2/pantalla-ocupada") {
-        Ok(turn) if std::env::var("VANTARE_CAPTURE_TURN").is_ok_and(|own| own == turn.trim()) => {}
-        Ok(_) => {
-            return Err(
-                "pantalla-ocupada pertenece a otro turno; no se abre ninguna ventana".into(),
-            );
-        }
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
-        Err(error) => return Err(format!("comprobar turno de captura: {error}")),
-    }
+    turn::check_environment()?;
     Ok(lock)
 }
 #[cfg(windows)]

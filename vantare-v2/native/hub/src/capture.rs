@@ -277,7 +277,7 @@ async fn save_frame(
     )
 }
 
-fn dimensions(options: &Options) -> (i32, i32) {
+pub(crate) fn dimensions(options: &Options) -> (i32, i32) {
     let (width, height) = options.capture_size.unwrap_or_else(|| {
         if options
             .capture

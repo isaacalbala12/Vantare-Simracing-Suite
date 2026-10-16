@@ -144,7 +144,7 @@ fn control_inputs(
                 hashes.push(file_hash(Path::new(&value))?);
             }
             if name == "VANTARE_CAPTURE_POLICY" && value == "ipc" {
-                return Err("captura incremental no admite política IPC live".into());
+                return Err("las capturas a archivo (individuales o en lote) requieren una política congelada; para IPC live usa el banco ui-quality sin salida y testing/capture.ps1".into());
             }
             hashes.push(format!("{name}={}", value.to_string_lossy()));
         }

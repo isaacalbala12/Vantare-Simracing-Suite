@@ -1456,12 +1456,22 @@ pub fn run(options: Options) -> Result<(), String> {
 /// autentica el plan; sin integración deja el acceso monetizado sin verificar.
 #[allow(clippy::too_many_lines)] // Carga validada y apertura de una única ventana.
 pub fn run_with_access(mut options: Options, access: navigation::Access) -> Result<(), String> {
-    if options.capture.is_some() {
-        #[cfg(feature = "parity-capture")]
+    #[cfg(feature = "parity-capture")]
+    if options.capture.is_some() && options.capture_output.is_some() {
         return crate::capture::run_many(vec![options]);
-        #[cfg(not(feature = "parity-capture"))]
+    }
+    #[cfg(not(feature = "parity-capture"))]
+    if options.capture.is_some() {
         return Err("captura requiere parity-capture".into());
     }
+    // The QA bank has no output: it stays alive for IPC and external PrintWindow.
+    // Hold the same process-wide capture reservation until its window closes.
+    #[cfg(feature = "parity-capture")]
+    let _capture_lock = options
+        .capture
+        .as_ref()
+        .map(|_| vantare_ui::capture_window::lock())
+        .transpose()?;
     let loaded = load(&mut options)?;
     let stop = watch_stdin(options.controlled)?;
     let failure = std::rc::Rc::new(std::cell::RefCell::new(None));
@@ -1512,9 +1522,23 @@ pub fn run_with_access(mut options: Options, access: navigation::Access) -> Resu
                 }),
                 ..Default::default()
             };
+            #[cfg(feature = "parity-capture")]
+            let window_options = if options.capture.is_some() {
+                let (width, height) = crate::capture::dimensions(&options);
+                match vantare_ui::capture_window::options(width, height) {
+                    Ok(options) => options,
+                    Err(error) => {
+                        *failure.borrow_mut() = Some(error);
+                        cx.quit();
+                        return;
+                    }
+                }
+            } else {
+                window_options
+            };
             let failure_on_quit = failure.clone();
             let initial_section = options.section;
-            if let Err(error) = cx.open_window(window_options, |window, cx| {
+            let window = cx.open_window(window_options, |window, cx| {
                 let hub = cx.new(|cx: &mut Context<Hub>| {
                     let mut hub =
                         Hub::build(loaded, initial_section, access, failure_on_quit, window, cx);
@@ -1529,10 +1553,36 @@ pub fn run_with_access(mut options: Options, access: navigation::Access) -> Resu
                     closing.update(cx, Hub::can_close).unwrap_or(true)
                 });
                 hub
-            }) {
-                *failure.borrow_mut() = Some(format!("abrir Hub: {error}"));
-                cx.quit();
-                return;
+            });
+            match window {
+                Ok(window) => {
+                    #[cfg(not(feature = "parity-capture"))]
+                    let _ = window;
+                    #[cfg(feature = "parity-capture")]
+                    if options.capture.is_some() {
+                        let (width, height) = crate::capture::dimensions(&options);
+                        // bounds_changed can update Hub's focus handlers;
+                        // borrow only the window, never its root entity here.
+                        if let Err(error) = gpui::AnyWindowHandle::from(window)
+                            .update(cx, |_, window, cx| {
+                                vantare_ui::capture_window::created(window)?;
+                                vantare_ui::capture_window::show(window, width, height, cx)?;
+                                Ok::<_, String>(())
+                            })
+                            .map_err(|error| error.to_string())
+                            .and_then(|result| result)
+                        {
+                            *failure.borrow_mut() = Some(error);
+                            cx.quit();
+                            return;
+                        }
+                    }
+                }
+                Err(error) => {
+                    *failure.borrow_mut() = Some(format!("abrir Hub: {error}"));
+                    cx.quit();
+                    return;
+                }
             }
             if options.capture.is_none()
                 && let Some(root) = std::env::var_os("VANTARE_BETA_ROOT")
@@ -1543,7 +1593,7 @@ pub fn run_with_access(mut options: Options, access: navigation::Access) -> Resu
                 return;
             }
             quit_when_done(cx, options.controlled, stop);
-            if !minimized {
+            if !minimized && options.capture.is_none() {
                 cx.activate(true);
             }
         });

@@ -23,5 +23,19 @@ select is((select guard_version from public.claim_billing_creator_checkout_attem
 select is((select count(*)::integer from private.creator_checkout_attributions where account_id='16200008-0000-4000-8000-000000000007'),1,'same transaction persists creator before dispatch');
 select ok(not has_function_privilege('web_purchase_erasure','public.claim_billing_creator_checkout_attempt(uuid,uuid,text,text,text,text,uuid)','execute'),'D1 pull credential cannot reserve purchases');
 select ok(not exists(select 1 from private.billing_compensation_policy where enabled),'integration leaves automatic compensation disabled');
+-- A newly supported Founders order is observable under the same R5 policy,
+-- without enabling compensation or broadening it to creator links/history.
+insert into public.profiles(id) values('16200008-0000-4000-8000-000000000010');
+update private.founders_sale_config set opens_at=now()-interval '1 day',sales_enabled=true where environment='sandbox';
+select * from public.claim_billing_checkout_attempt('16200008-0000-4000-8000-000000000010',
+ '16200008-0000-4000-8000-000000000011','founders','sandbox','merge');
+select public.billing_begin_checkout_request('16200008-0000-4000-8000-000000000010',
+ '16200008-0000-4000-8000-000000000011','16200008-0000-4000-8000-000000000012');
+select lives_ok($$select public.billing_observe_checkout_payment('sandbox','16200008-0000-4000-8000-000000000013',
+ '16200008-0000-4000-8000-000000000014','16200008-0000-4000-8000-000000000015','16200008-0000-4000-8000-000000000012',
+ null,5000,'eur',array['vantare.plan.founders','vantare.channel.nightly'],'16200008-0000-4000-8000-000000000011',
+ (select dispatch_token from billing_checkout_attempts where attempt_id='16200008-0000-4000-8000-000000000011'))$$,'Founders marked order uses the existing observer without invalid capability');
+select is((select state from private.billing_checkout_compensations where order_id='16200008-0000-4000-8000-000000000013'),'waiting','Founders observation alone does not resolve its webhook');
+select is(public.billing_claim_checkout_compensation('sandbox','16200008-0000-4000-8000-000000000016'),null::jsonb,'refunds remain OFF for Founders too');
 select * from finish();
 rollback;

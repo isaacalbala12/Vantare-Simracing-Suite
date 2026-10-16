@@ -7,7 +7,7 @@ el guard con dispatch/binding, compensación apagada y baja D1 automática.
 
 ## Comprobación local
 
-- Mac:83 migraciones completas,679 comprobaciones pgTAP y15 carreras reales.
+- Mac:83 migraciones completas,682 comprobaciones pgTAP y15 carreras reales.
   Rol postgres NOSUPERUSER BYPASSRLS durante suites/carreras. Incluye Founders,
   creador/informes y auditoría del rol web_purchase_erasure tras las nuevas RPC.
 - Control RED: omitir solo la migración de integración reproduce el bloqueo
@@ -32,6 +32,10 @@ PENDIENTE: resultados al terminar la cola del servidor.
 Worktree aislado C:/VantareServer/wt/checkout-web-integration.
 Logs C:/VantareServer/evidence/checkout-web-r8; compilar.ps1, target propio,
 jobs de la máquina, una invocación cada vez. No se toca checkout de integración.
+
+La observación de compensación reconoce también el derecho canónico Founders;
+solo pedidos con binding/marcador propio. El test confirma que observarlo no
+resuelve su webhook ni permite refund con la política apagada.
 
 ## Límites y operación
 

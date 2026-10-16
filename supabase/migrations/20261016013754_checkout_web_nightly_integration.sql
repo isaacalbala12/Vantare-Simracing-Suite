@@ -60,4 +60,12 @@ do $merge$ declare definition text; before text; begin
     or (used.remote_pending and coalesce(used.checkout_id,prior.provider_checkout_id) is not null and p_replaces is distinct from used.attempt_id)) then$b$);
  execute definition;
 end $merge$;
+-- Founders is now a canonical catalogue capability. This only lets its own
+-- marked orders be observed; all R5 inbox/disposition/switch checks remain.
+do $merge$ declare definition text; before text; begin
+ definition:=pg_get_functiondef('private.observe_checkout_payment_unchecked(text,uuid,uuid,uuid,uuid,uuid,bigint,text,text[],uuid,uuid)'::regprocedure);
+ before:=$a$'vantare.edition.launch_v1']$a$;
+ if position(before in definition)=0 then raise exception 'compensation_capability_contract_changed'; end if;
+ execute replace(definition,before,$b$'vantare.edition.launch_v1','vantare.plan.founders']$b$);
+end $merge$;
 commit;

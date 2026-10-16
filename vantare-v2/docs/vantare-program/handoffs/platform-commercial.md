@@ -53,7 +53,7 @@ real de migraciones. Código nativo exactamente igual a nightly: árbol
 36cf87011d750968a1b57a5a4793410dbba294d3; gates Windows en worktree aislado
 checkout-web-integration por compilar.ps1, secuenciales.
 
-Evidencia Mac ~/evidence/web-compra/r8-*:83 migraciones,679 pgTAP,15 carreras;
+Evidencia Mac ~/evidence/web-compra/r8-*:83 migraciones,682 pgTAP,15 carreras;
 726 Edge PASS y2 ignorados preexistentes;81 tests Node/SQLite;8 recorridos
 web→webhook real→licencia y control sin binding;48 capturas headless locales;
 fmt/lint de archivos afectados, quality456 y superficie de deploy PASS.

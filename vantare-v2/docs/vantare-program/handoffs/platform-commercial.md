@@ -1,3 +1,39 @@
+## #1593 / VANTA-39 · endurecimiento P3-D/P3-E · 16/10/2026
+
+#1659 ya integrado por el orquestador en nightly9e48eb86f. Seguimiento aislado
+vantareapp/isa-1593-endurecer, base exacta9e48eb86f; PR nuevo hacia nightly,
+URL/SHA finales en issue y evidencia. Plane En curso hasta verificar entrega.
+
+- P3-D: retira report_promotion_checkout y fallback Edge. billing_launch_checkout
+  valida SQL entorno/clave/producto/cupón/ventana/reloj finito contra registro
+  privado exclusivo del operador. No reserva/consume ante oferta no registrada.
+  Reserva/CAS/consumo por cuenta y B03 preservados en único core privado sin
+  permisos API; owners explícitos, search_path vacío y RLS.
+- Proyección SQL offline del único JSON #1661 y loadPolarProductMap.
+  Registro inicialmente vacío: aplicar SQL revisado ANTES del checkout
+  actualizado. Repetición conserva auditoría; deriva aborta/rollback, sin rotación
+  silenciosa. Verificación remota de importe/duración once/ámbito por operador,
+  no certificada por este generador. No activa ni consulta Polar.
+- P3-E: inscripción de Pro/Plus mensual durante26oct→26nov19Madrid,
+  apertura inclusiva/cierre exclusivo; 45 días individuales (1080h).
+  Decisión operativa del orquestador PENDIENTE de confirmación de Isaac.
+  Contrato/regla lo dicen expresamente; premio sigue desde segundo mes.
+- SQL RED inicial0/3 confirma los fallos previos. Verde29 nuevas +183 informes
+  +88 convivencia +89 creador en ambos órdenes; suites Founders43+36 verdes.
+  Catálogo80/53PASS/27FAIL frente al baseline exacto79/52/27,
+  1850→1885 checks y ninguna regresión. Fallas heredadas idénticas.
+  Generación SQL real aplicada/repetida y deriva revertida en BD desechable.
+- Edge710PASS/0FAIL/2ignored frente a nightly707/0/2.
+  Tres mutantes detectados: cupón, intento y B03; los dos últimos eliminan
+  ambos guards redundantes para comprobar la ausencia completa del control.
+  La primera prueba P3-E chocó con cupo1/día: separadas cuentas sin debilitarlo.
+  Rust/clippy/nextest/lifecycle/telemetría omitidos: ningún archivo nativo tocado.
+- Mac Docker sin red/puertos, actor NOSUPERUSER BYPASSRLS y lock/trap liberado.
+  Fmt/lint producción, superficie deploy, quality/retirada456huellas y diff-check PASS.
+  Evidencia ~/evidence/1593-endurecer; nuevo PR/CI en cierre. Sin merge, deploy,
+  productos/cupones reales, pagos/refunds, release ni promoción desde este worker.
+  Multi-cuenta aceptado y saldo ganado caduca6meses: sin cambios.
+
 ## #1593 / VANTA-39 · R7 terminada al bare, pendiente publicación · 16/10/2026
 
 PR #1659, proyecto Vantare/area:licencias; misma rama. Base R7 b5378d166.

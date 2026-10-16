@@ -137,7 +137,7 @@ Deno.test("observation disabled is inert; enabled uses only allowlisted billing 
     p_discount: "creator",
   }]]);
 });
-Deno.test("first checkout is inert while disabled, then asks SQL with the injected clock", async () => {
+Deno.test("canonical first checkout skips an inactive offer and asks SQL regardless of report flag", async () => {
   const { promotionCheckoutDiscount } = await import("./observe.ts");
   const calls: unknown[] = [];
   const admin = () =>
@@ -149,7 +149,17 @@ Deno.test("first checkout is inert while disabled, then asks SQL with the inject
     }) as unknown as SupabaseClient;
   const now = new Date("2026-10-26T18:00:00Z");
   assertEquals(
-    await promotionCheckoutDiscount(admin, "a", "sandbox", "pro", now, false),
+    await promotionCheckoutDiscount(
+      admin,
+      "a",
+      "sandbox",
+      "pro",
+      now,
+      false,
+      undefined,
+      undefined,
+      { discountId: null, key: "pro_monthly" },
+    ),
     null,
   );
   assertEquals(calls.length, 0);
@@ -160,17 +170,21 @@ Deno.test("first checkout is inert while disabled, then asks SQL with the inject
       "sandbox",
       "pro",
       now,
-      true,
+      false,
       "attempt",
+      undefined,
+      { discountId: "launch1", key: "pro_monthly" },
     ),
     "launch1",
   );
-  assertEquals(calls, [["report_promotion_checkout", {
+  assertEquals(calls, [["billing_launch_checkout", {
     p_account: "a",
     p_environment: "sandbox",
     p_product: "pro",
     p_now: now.toISOString(),
     p_attempt: "attempt",
+    p_discount: "launch1",
+    p_key: "pro_monthly",
   }]]);
 });
 Deno.test("launch checkout uses exactly one discount, disables trial and code stacking", async () => {

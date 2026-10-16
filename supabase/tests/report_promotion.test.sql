@@ -25,10 +25,24 @@ insert into private.report_promotion_catalog values
  ('sandbox','pro','pro',599,399,'pro1','pro3','pro6'),('sandbox','plus','pro_plus',999,699,'plus1','plus3','plus6');
 insert into private.report_promotion_creators values('sandbox','pro','creator',2000,2,'2026-10-01'),('sandbox','plus','creator',2000,2,'2026-10-01');
 create function pg_temp.account(n int) returns uuid language sql as $$select ('15930000-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid$$;
-select is(public.report_promotion_checkout(pg_temp.account(1),'sandbox','pro','2026-10-26 19:00 Europe/Madrid','00000000-0000-4000-8000-000000000039'),'pro1','first month launch discount');
-select is(public.report_promotion_checkout(pg_temp.account(40),'sandbox','plus','2026-10-26 19:00 Europe/Madrid','00000000-0000-4000-8000-000000000039'),'plus1','Plus first month launch discount');
-select is(public.report_promotion_checkout(pg_temp.account(1),'sandbox','pro','2026-11-26 19:00 Europe/Madrid','00000000-0000-4000-8000-000000000039'),null::text,'no launch outside canonical month');
-select is(public.report_promotion_checkout(pg_temp.account(1),'sandbox','annual','2026-10-27','00000000-0000-4000-8000-000000000039'),null::text,'annual catalog not eligible');
+-- Operator-only fixtures for #1661 once offers, separate from report repair coupons.
+insert into private.billing_launch_offers(environment,checkout_key,product_id,discount_id,starts_at,ends_at,catalog_version) values
+ ('sandbox','pro_monthly','1593eeee-0000-4000-8000-000000000010','1593eeee-0000-4000-8000-000000000011','2026-10-26 19:00 Europe/Madrid','2026-11-26 19:00 Europe/Madrid','fixture'),
+ ('sandbox','pro_plus_monthly','1593eeee-0000-4000-8000-000000000020','1593eeee-0000-4000-8000-000000000021','2026-10-26 19:00 Europe/Madrid','2026-11-26 19:00 Europe/Madrid','fixture'),
+ ('sandbox','pro_annual','1593eeee-0000-4000-8000-000000000030','1593eeee-0000-4000-8000-000000000031','2026-10-26 19:00 Europe/Madrid','2026-11-26 19:00 Europe/Madrid','fixture');
+create function pg_temp.launch_checkout(account uuid,environment text,product text,now_at timestamptz,attempt uuid default null,replaces uuid default null)
+returns text language plpgsql as $$
+declare offer private.billing_launch_offers; result text;
+begin
+ select * into offer from private.billing_launch_offers where billing_launch_offers.environment=launch_checkout.environment
+ and checkout_key=case product when 'pro' then 'pro_monthly' when 'plus' then 'pro_plus_monthly' else product end;
+ result:=public.billing_launch_checkout(account,environment,coalesce(offer.product_id::text,product),offer.discount_id::text,offer.checkout_key,now_at,attempt,replaces);
+ return case result when '1593eeee-0000-4000-8000-000000000011' then 'pro1' when '1593eeee-0000-4000-8000-000000000021' then 'plus1' else result end;
+end $$;
+select is(pg_temp.launch_checkout(pg_temp.account(1),'sandbox','pro','2026-10-26 19:00 Europe/Madrid','00000000-0000-4000-8000-000000000039'),'pro1','first month launch discount');
+select is(pg_temp.launch_checkout(pg_temp.account(40),'sandbox','plus','2026-10-26 19:00 Europe/Madrid','00000000-0000-4000-8000-000000000039'),'plus1','Plus first month launch discount');
+select is(pg_temp.launch_checkout(pg_temp.account(1),'sandbox','pro','2026-11-26 19:00 Europe/Madrid','00000000-0000-4000-8000-000000000039'),null::text,'no launch outside canonical month');
+select throws_ok($$select pg_temp.launch_checkout(pg_temp.account(1),'sandbox','annual','2026-10-27','00000000-0000-4000-8000-000000000039')$$,'22023','launch_offer_not_allowed','unknown product cannot grant first period');
 create function pg_temp.enroll(n int,product text default 'pro',started timestamptz default '2026-10-26 19:00 Europe/Madrid',discount text default 'pro1') returns void language plpgsql as $$begin
  insert into public.billing_subscriptions(user_id,provider,environment,provider_subscription_id,provider_product_id,status,current_period_start,current_period_end)
  values(pg_temp.account(n),'polar','sandbox','sub'||n,product,'active',started,private.report_promotion_months(started,1));
@@ -183,11 +197,11 @@ select is(private.report_promotion_progress(pg_temp.account(1),'sandbox','2026-1
 select ok(not exists(select 1 from public.report_promotion_accounts('sandbox') account where account=pg_temp.account(1)),'P3-21 deleted account is excluded from the worker account list');
 select ok(exists(select 1 from public.report_promotion_accounts('sandbox') account where account=pg_temp.account(2)),'P3-21 live account remains in the worker account list');
 select throws_ok($$select public.report_promotion_observe(pg_temp.account(1),'sandbox','sub1','pro','2026-10-26 19:00 Europe/Madrid','2026-11-12',null)$$,'28000','account_deleted','deleted webhook cannot restore campaign');
-select throws_ok($$select public.report_promotion_checkout(pg_temp.account(1),'sandbox','pro','2026-10-30','00000000-0000-4000-8000-000000000020')$$,'28000','account_deleted','P1-2 deleted account cannot recover a launch checkout');
+select throws_ok($$select pg_temp.launch_checkout(pg_temp.account(1),'sandbox','pro','2026-10-30','00000000-0000-4000-8000-000000000020')$$,'28000','account_deleted','P1-2 deleted account cannot recover a launch checkout');
 select throws_ok($$select public.report_promotion_checkout_pending(pg_temp.account(1),'sandbox','2026-10-30')$$,'28000','account_deleted','P1-2 deleted account cannot read checkout recovery references');
 select ok(not public.report_promotion_claim((select id from private.report_promotion_changes where account_id=pg_temp.account(1) and applied_at is null and superseded_at is null),'00000000-0000-4000-8000-000000000003','2026-11-12'),'tombstone denies pending HTTP claim');
 select is((select count(*)::int from private.report_promotion_changes where account_id=pg_temp.account(1) and applied_at is not null),1,'deletion preserves financial trace');
-select is(public.report_promotion_checkout(pg_temp.account(2),'sandbox','plus','2026-10-30','00000000-0000-4000-8000-000000000039'),null::text,'existing customer cannot earn another first month');
+select is(pg_temp.launch_checkout(pg_temp.account(2),'sandbox','plus','2026-10-30','00000000-0000-4000-8000-000000000039'),null::text,'existing customer cannot earn another first month');
 select public.report_promotion_observe(pg_temp.account(2),'sandbox','sub2','plus','2026-10-26 19:00 Europe/Madrid','2026-10-25','old');
 select is((select remote_discount from private.report_promotions where account_id=pg_temp.account(2)),'creator','stale webhook ignored');
 -- End of reward and creator windows: no fresh duration from repeated selection.
@@ -199,13 +213,13 @@ select is((select attempts from private.report_promotion_failures where account_
 select is(private.report_promotion_progress(pg_temp.account(6),'sandbox','2027-01-03')->>'last_error','polar_discount_unmanaged','P2-3 owner can inspect sanitized failure');
 select ok(not has_function_privilege('authenticated','public.report_promotion_failed(uuid,text,text,timestamptz)','execute'),'P2-3 client cannot forge processing status');
 -- P3-6/7/8 explicit commercial policies and durable launch consumption.
-select is(public.report_promotion_checkout(pg_temp.account(11),'sandbox','pro','2026-10-30','00000000-0000-4000-8000-000000000011'),'pro1','P3-8 first launch checkout reserves durable benefit');
-select is(public.report_promotion_checkout(pg_temp.account(11),'sandbox','pro','2026-10-30','00000000-0000-4000-8000-000000000011'),'pro1','P3-8 same attempt retries its reservation');
-select throws_ok($$select public.report_promotion_checkout(pg_temp.account(11),'sandbox','pro','2026-10-30 00:29','00000000-0000-4000-8000-000000000012')$$,'55000','promotion_checkout_pending','P1-2 concurrent attempt cannot create a second launch checkout or silently charge normal');
-select is(public.report_promotion_checkout(pg_temp.account(11),'sandbox','pro','2026-10-30 00:31','00000000-0000-4000-8000-000000000012'),'pro1','P1-2 unused account right survives an expired reservation without remote checkout');
+select is(pg_temp.launch_checkout(pg_temp.account(11),'sandbox','pro','2026-10-30','00000000-0000-4000-8000-000000000011'),'pro1','P3-8 first launch checkout reserves durable benefit');
+select is(pg_temp.launch_checkout(pg_temp.account(11),'sandbox','pro','2026-10-30','00000000-0000-4000-8000-000000000011'),'pro1','P3-8 same attempt retries its reservation');
+select throws_ok($$select pg_temp.launch_checkout(pg_temp.account(11),'sandbox','pro','2026-10-30 00:29','00000000-0000-4000-8000-000000000012')$$,'55000','promotion_checkout_pending','P1-2 concurrent attempt cannot create a second launch checkout or silently charge normal');
+select is(pg_temp.launch_checkout(pg_temp.account(11),'sandbox','pro','2026-10-30 00:31','00000000-0000-4000-8000-000000000012'),'pro1','P1-2 unused account right survives an expired reservation without remote checkout');
 select is((select count(*)::int from private.report_promotion_launch_uses where account_id=pg_temp.account(11)),1,'P1-2 rollover keeps a single account entitlement');
 select ok((select consumed_at is not null from private.report_promotion_launch_uses where account_id=pg_temp.account(5)),'P3-8 paid history consumes launch without an enrolled campaign');
-select is(public.report_promotion_checkout(pg_temp.account(5),'sandbox','pro','2026-10-30','00000000-0000-4000-8000-000000000039'),null::text,'P3-8 flag-off historical subscription cannot re-earn launch');
+select is(pg_temp.launch_checkout(pg_temp.account(5),'sandbox','pro','2026-10-30','00000000-0000-4000-8000-000000000039'),null::text,'P3-8 flag-off historical subscription cannot re-earn launch');
 select pg_temp.report(6,'2026-11-02 19:00 Europe/Madrid'); select pg_temp.report(6,'2026-11-03 19:00 Europe/Madrid'); select pg_temp.report(6,'2026-11-09 19:00 Europe/Madrid');
 select public.report_promotion_prepare(pg_temp.account(6),'sandbox','2027-01-03');
 select is((select tier from private.report_promotions where account_id=pg_temp.account(6)),3,'P3-7 spam blocks upgrade while keeping granted tier');
@@ -214,14 +228,14 @@ select public.report_promotion_prepare(pg_temp.account(2),'sandbox','2027-08-02'
 select ok((select first_refunded from private.report_promotions where account_id=pg_temp.account(2)),'P3-6 refund of the original first month durably forfeits reward');
 select ok(not exists(select 1 from private.report_promotion_changes where account_id=pg_temp.account(2) and applied_at is null and superseded_at is null and discount_id in ('plus3','plus6')),'P3-6 refunded first month cannot keep granting report discounts');
 -- An expired local attempt with a remote checkout needs verified terminal proof.
-select public.report_promotion_checkout(pg_temp.account(15),'sandbox','pro','2026-10-30','00000000-0000-4000-8000-000000000015');
+select pg_temp.launch_checkout(pg_temp.account(15),'sandbox','pro','2026-10-30','00000000-0000-4000-8000-000000000015');
 insert into public.billing_checkout_attempts(user_id,attempt_id,checkout_key,environment,catalog_version,status,provider_checkout_id,checkout_url,expires_at)
  values(pg_temp.account(15),'00000000-0000-4000-8000-000000000015','pro_monthly','sandbox','fixture','open','remote15','https://sandbox.polar.sh/checkout/remote15','2026-10-30 00:30');
-select throws_ok($$select public.report_promotion_checkout(pg_temp.account(15),'sandbox','pro','2026-10-30 00:31','00000000-0000-4000-8000-000000000016')$$,'55000','promotion_checkout_pending','P1-2 expired local attempt cannot bypass its possibly payable remote checkout');
+select throws_ok($$select pg_temp.launch_checkout(pg_temp.account(15),'sandbox','pro','2026-10-30 00:31','00000000-0000-4000-8000-000000000016')$$,'55000','promotion_checkout_pending','P1-2 expired local attempt cannot bypass its possibly payable remote checkout');
 delete from public.billing_checkout_attempts where user_id=pg_temp.account(15);
 select is(public.report_promotion_checkout_pending(pg_temp.account(15),'sandbox','2026-10-31')->>'checkout_id','remote15','P1-2 remote recovery survives generic attempt garbage collection');
-select is(public.report_promotion_checkout(pg_temp.account(15),'sandbox','pro','2026-10-31','00000000-0000-4000-8000-000000000016','00000000-0000-4000-8000-000000000015'),'pro1','P1-2 verified expired remote checkout releases the account entitlement');
-select throws_ok($$select public.report_promotion_checkout(pg_temp.account(15),'sandbox','pro','2026-10-31 00:31','00000000-0000-4000-8000-000000000017','00000000-0000-4000-8000-000000000015')$$,'55000','promotion_checkout_pending','P1-2 stale terminal proof cannot win a second replacement');
+select is(pg_temp.launch_checkout(pg_temp.account(15),'sandbox','pro','2026-10-31','00000000-0000-4000-8000-000000000016','00000000-0000-4000-8000-000000000015'),'pro1','P1-2 verified expired remote checkout releases the account entitlement');
+select throws_ok($$select pg_temp.launch_checkout(pg_temp.account(15),'sandbox','pro','2026-10-31 00:31','00000000-0000-4000-8000-000000000017','00000000-0000-4000-8000-000000000015')$$,'55000','promotion_checkout_pending','P1-2 stale terminal proof cannot win a second replacement');
 -- R3: terminal cleanup never prevents the current subscription receiving its award.
 select pg_temp.enroll(14);
 select pg_temp.report(14,'2026-10-27 19:00 Europe/Madrid'); select pg_temp.report(14,'2026-10-28 19:00 Europe/Madrid');
@@ -235,7 +249,7 @@ select ok((select cleared_at is not null and to_jsonb(t)->>'cleanup_reason'='mir
 -- A missing first invoice is visible and resolves when reconciliation supplies it.
 -- Launch accounting stays durable after payment, including a new attempt.
 select pg_temp.enroll(11);
-select is(public.report_promotion_checkout(pg_temp.account(11),'sandbox','pro','2026-10-31','00000000-0000-4000-8000-000000000013'),null::text,'P1-2 paid account cannot repeat intro with a new attempt');
+select is(pg_temp.launch_checkout(pg_temp.account(11),'sandbox','pro','2026-10-31','00000000-0000-4000-8000-000000000013'),null::text,'P1-2 paid account cannot repeat intro with a new attempt');
 -- P2-5 reconciliation supplies real periods once per order, with audit source.
 select pg_temp.enroll(16);
 select pg_temp.report(16,'2026-10-27 19:00 Europe/Madrid'); select pg_temp.report(16,'2026-10-28 19:00 Europe/Madrid');
@@ -312,23 +326,23 @@ select is(public.report_promotion_prepare(pg_temp.account(21),'sandbox','2027-04
 select is(public.report_promotion_prepare(pg_temp.account(21),'sandbox','2027-04-27')->>'discount_id',null::text,'P2-8 no seventh discounted renewal is granted');
 -- R4 P2-9: unknown remote results expire as reservations, not account rights.
 create temporary table recovered_checkouts(n int,discount text);
-select public.report_promotion_checkout(pg_temp.account(22),'sandbox','pro','2026-10-30','00000000-0000-4000-8000-000000000022');
-select public.report_promotion_checkout(pg_temp.account(23),'sandbox','pro','2026-10-30','00000000-0000-4000-8000-000000000023');
+select pg_temp.launch_checkout(pg_temp.account(22),'sandbox','pro','2026-10-30','00000000-0000-4000-8000-000000000022');
+select pg_temp.launch_checkout(pg_temp.account(23),'sandbox','pro','2026-10-30','00000000-0000-4000-8000-000000000023');
 insert into public.billing_checkout_attempts(user_id,attempt_id,checkout_key,environment,catalog_version,status,expires_at)
  values(pg_temp.account(22),'00000000-0000-4000-8000-000000000022','pro_monthly','sandbox','fixture','creating','2026-10-30 00:30'),
        (pg_temp.account(23),'00000000-0000-4000-8000-000000000023','pro_monthly','sandbox','fixture','uncertain','2026-10-30 00:30');
-select throws_ok($$select public.report_promotion_checkout(pg_temp.account(22),'sandbox','pro','2026-10-30 00:29','00000000-0000-4000-8000-000000000032')$$,'55000','promotion_checkout_pending','P2-9 unknown result remains reserved before timeout');
-select lives_ok($$insert into recovered_checkouts values(22,public.report_promotion_checkout(pg_temp.account(22),'sandbox','pro','2026-10-30 00:30','00000000-0000-4000-8000-000000000032'))$$,'P2-9 creating without remote ID recovers at the timeout');
-select lives_ok($$insert into recovered_checkouts values(23,public.report_promotion_checkout(pg_temp.account(23),'sandbox','plus','2026-10-30 00:31','00000000-0000-4000-8000-000000000033'))$$,'P2-9 uncertain without remote ID recovers in a new plan too');
+select throws_ok($$select pg_temp.launch_checkout(pg_temp.account(22),'sandbox','pro','2026-10-30 00:29','00000000-0000-4000-8000-000000000032')$$,'55000','promotion_checkout_pending','P2-9 unknown result remains reserved before timeout');
+select lives_ok($$insert into recovered_checkouts values(22,pg_temp.launch_checkout(pg_temp.account(22),'sandbox','pro','2026-10-30 00:30','00000000-0000-4000-8000-000000000032'))$$,'P2-9 creating without remote ID recovers at the timeout');
+select lives_ok($$insert into recovered_checkouts values(23,pg_temp.launch_checkout(pg_temp.account(23),'sandbox','plus','2026-10-30 00:31','00000000-0000-4000-8000-000000000033'))$$,'P2-9 uncertain without remote ID recovers in a new plan too');
 select is((select discount from recovered_checkouts where n=22),'pro1','P2-9 recovered account retains its launch price');
 select is((select discount from recovered_checkouts where n=23),'plus1','P2-9 recovered Plus receives its own launch price');
 select is(private.report_promotion_progress(pg_temp.account(22),'sandbox','2026-10-30 00:31')->>'last_error','promotion_checkout_recovered','P2-9 owner sees the recovery incident before any subscription exists');
 select is((select count(*)::int from private.report_promotion_launch_uses where account_id=pg_temp.account(22)),1,'P2-9 recovered attempt still shares one account right');
-select throws_ok($$select public.report_promotion_checkout(pg_temp.account(24),'sandbox','pro','2026-10-30')$$,'22023','promotion_attempt_required','P3-19 direct callers cannot obtain launch discount without reserving an attempt');
+select throws_ok($$select pg_temp.launch_checkout(pg_temp.account(24),'sandbox','pro','2026-10-30')$$,'22023','promotion_attempt_required','P3-19 direct callers cannot obtain launch discount without reserving an attempt');
 select pg_temp.enroll(22);
 select is(private.report_promotion_progress(pg_temp.account(22),'sandbox','2026-10-31')->>'last_error',null::text,'P2-9 paid recovery resolves the owner incident');
 select ok((select consumed_at is not null from private.report_promotion_launch_uses where account_id=pg_temp.account(22)),'P2-9 paid recovery consumes the single account right durably');
-select is(public.report_promotion_checkout(pg_temp.account(22),'sandbox','pro','2026-10-31','00000000-0000-4000-8000-000000000034'),null::text,'P2-9 another attempt after recovered payment cannot repeat the first month');
+select is(pg_temp.launch_checkout(pg_temp.account(22),'sandbox','pro','2026-10-31','00000000-0000-4000-8000-000000000034'),null::text,'P2-9 another attempt after recovered payment cannot repeat the first month');
 select lives_ok($$select public.report_promotion_failed(pg_temp.account(23),'sandbox','promotion_checkout_owner_mismatch','2026-10-31')$$,'P3-24 owner mismatch is an allowlisted durable incident');
 select is(private.report_promotion_progress(pg_temp.account(23),'sandbox','2026-10-31')->>'last_error','promotion_checkout_owner_mismatch','P3-24 owner sees remote mismatch even without a subscription');
 
@@ -356,16 +370,29 @@ select is(private.native_admin_account(pg_temp.account(23),'https://promotion.cl
 -- R7 canonical once offers do not depend on the report catalogue or activation.
 insert into public.profiles(id) values('15930000-0000-4000-8000-000000000041');
 select ok(not has_function_privilege('authenticated','public.billing_launch_checkout(uuid,text,text,text,text,timestamptz,uuid,uuid)','execute'),'R7 canonical launch guard remains service-only');
-select is(public.billing_launch_checkout(pg_temp.account(41),'sandbox','normal-annual','canonical-once','pro_annual','2026-11-25 19:00 Europe/Madrid','00000000-0000-4000-8000-000000000041'),'canonical-once','R7 canonical once works after old week and without report catalogue');
-select is(public.billing_launch_checkout(pg_temp.account(41),'sandbox','normal-annual','canonical-once','pro_annual','2026-11-25 19:31 Europe/Madrid','00000000-0000-4000-8000-000000000042'),'canonical-once','R7 expired attempt retains canonical launch right by account');
+select is(public.billing_launch_checkout(pg_temp.account(41),'sandbox','1593eeee-0000-4000-8000-000000000030','1593eeee-0000-4000-8000-000000000031','pro_annual','2026-11-25 19:00 Europe/Madrid','00000000-0000-4000-8000-000000000041'),'1593eeee-0000-4000-8000-000000000031','R7 canonical once works after old week and without report catalogue');
+select is(public.billing_launch_checkout(pg_temp.account(41),'sandbox','1593eeee-0000-4000-8000-000000000030','1593eeee-0000-4000-8000-000000000031','pro_annual','2026-11-25 19:31 Europe/Madrid','00000000-0000-4000-8000-000000000042'),'1593eeee-0000-4000-8000-000000000031','R7 expired attempt retains canonical launch right by account');
 insert into public.billing_orders(user_id,provider,environment,provider_order_id,provider_product_id,provider_subscription_id,status,paid,net_amount,currency,remote_modified_at,snapshot_hash)
  values(pg_temp.account(41),'polar','sandbox','annual-initial41','normal-annual','annual41','paid',true,3990,'eur','2026-11-25 19:32 Europe/Madrid',repeat('a',64));
 select ok((select consumed_at is not null from private.report_promotion_launch_uses where account_id=pg_temp.account(41)),'R7 any paid recurring first period durably consumes the account right');
-select is(public.billing_launch_checkout(pg_temp.account(41),'sandbox','pro','canonical-monthly-once','pro_monthly','2026-11-25 19:33 Europe/Madrid','00000000-0000-4000-8000-000000000043'),null::text,'R7 annual to monthly cannot obtain a second launch first period');
-select is(public.billing_launch_checkout(pg_temp.account(41),'sandbox','pro','canonical-monthly-once','pro_monthly','2026-11-26 19:00 Europe/Madrid','00000000-0000-4000-8000-000000000043'),null::text,'R7 canonical closure exclusive');
+select is(public.billing_launch_checkout(pg_temp.account(41),'sandbox','1593eeee-0000-4000-8000-000000000010','1593eeee-0000-4000-8000-000000000011','pro_monthly','2026-11-25 19:33 Europe/Madrid','00000000-0000-4000-8000-000000000043'),null::text,'R7 annual to monthly cannot obtain a second launch first period');
+select is(public.billing_launch_checkout(pg_temp.account(41),'sandbox','1593eeee-0000-4000-8000-000000000010','1593eeee-0000-4000-8000-000000000011','pro_monthly','2026-11-26 19:00 Europe/Madrid','00000000-0000-4000-8000-000000000043'),null::text,'R7 canonical closure exclusive');
 insert into public.profiles(id) values('15930000-0000-4000-8000-000000000042');
 insert into public.billing_orders(user_id,provider,environment,provider_order_id,provider_product_id,status,paid,net_amount,currency,remote_modified_at,snapshot_hash)
  values(pg_temp.account(42),'polar','sandbox','historical-lifetime42','historical-lifetime','paid',true,3000,'eur','2026-10-01',repeat('b',64));
-select is(public.billing_launch_checkout(pg_temp.account(42),'sandbox','pro','canonical-once','pro_monthly','2026-11-25 19:00 Europe/Madrid','00000000-0000-4000-8000-000000000042'),'canonical-once','R7 a historical lifetime purchase does not consume a recurring first period');
+select is(public.billing_launch_checkout(pg_temp.account(42),'sandbox','1593eeee-0000-4000-8000-000000000010','1593eeee-0000-4000-8000-000000000011','pro_monthly','2026-11-25 19:00 Europe/Madrid','00000000-0000-4000-8000-000000000042'),'1593eeee-0000-4000-8000-000000000011','R7 a historical lifetime purchase does not consume a recurring first period');
+-- P3-E: report enrollment, not just checkout, covers the whole launch month.
+insert into public.profiles(id) select pg_temp.account(i) from generate_series(43,45)i;
+select pg_temp.enroll(43,'pro','2026-11-02 19:01 Europe/Madrid');
+select pg_temp.enroll(44,'plus','2026-11-25 18:59 Europe/Madrid','plus1');
+select pg_temp.enroll(45,'pro','2026-11-26 19:00 Europe/Madrid');
+select is((select subscribed_at from private.report_promotions where account_id=pg_temp.account(43)),'2026-11-02 19:01 Europe/Madrid'::timestamptz,'P3-E enrollment survives historical week closing');
+select is((select subscribed_at from private.report_promotions where account_id=pg_temp.account(44)),'2026-11-25 18:59 Europe/Madrid'::timestamptz,'P3-E Plus enrolls in final launch day');
+select is((select count(*)::int from private.report_promotions where account_id=pg_temp.account(45)),0,'P3-E exclusive closing forbids new report enrollment');
+select pg_temp.report(44,'2027-01-09 18:58:59 Europe/Madrid');
+select pg_temp.report(43,'2026-12-17 19:01:00 Europe/Madrid');
+select is((private.report_promotion_progress(pg_temp.account(44),'sandbox','2027-01-10')->>'accepted')::int,1,'P3-E own 45-day window includes last second');
+select is((private.report_promotion_progress(pg_temp.account(43),'sandbox','2027-01-10')->>'accepted')::int,0,'P3-E exact individual deadline excluded');
+select is((private.report_promotion_progress(pg_temp.account(44),'sandbox','2027-01-10')->>'window_end')::timestamptz,'2027-01-09 18:59 Europe/Madrid'::timestamptz,'P3-E deadline derives from individual enrollment');
 select * from finish();
 rollback;

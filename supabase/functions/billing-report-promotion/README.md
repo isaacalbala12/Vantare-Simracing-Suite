@@ -1,18 +1,19 @@
-# Descuento por informes · #1593 / VANTA-39 · ronda 7
+# Descuento por informes · #1593 / VANTA-39
 
-Candidato de PR #1659 unido a nightly #1661. Catálogo vacío y flag ausente/false:
+PR #1659 integrado en nightly 9e48eb86f; endurecimiento P3-D/P3-E en PR aparte. Catálogo vacío y flag ausente/false:
 no se activa el premio por informes. El primer periodo usa siempre la oferta
 canónica de #1661 y su protección por cuenta, independiente de ese flag.
 No crea productos, descuentos, enlaces, scheduler ni despliegue automáticamente.
-La migración sigue inédita; sus correcciones son para el candidato, no un
-upgrade sobre una migración ya aplicada. Si se hubiera aplicado, revisar un
-upgrade aparte.
+La migración nueva 20261016090001 es un upgrade sobre #1659 integrado; no modifica las migraciones anteriores.
 
 ## Reglas vigentes
 
 - Altas Pro/Plus **mensuales** desde 26/10/2026 19:00 Europe/Madrid inclusive
-  hasta 26/11/2026 19:00 exclusivo. Ventana única de #1661, confirmada
-  por el orquestador en R7; sustituye el cierre antiguo de 02/11. Los
+  hasta 26/11/2026 19:00 exclusivo: la inscripción al premio por informes vale
+  durante toda esa ventana, también para altas posteriores al 02/11. Es la
+  decisión operativa del orquestador P3-E, pendiente de confirmación de Isaac;
+  si decide otra cosa se cambiará la regla y sus pruebas. Ventana única de
+  #1661; sustituye el cierre antiguo de 02/11. Los
   tests incluyen 18:59/19:00/19:01 y las dos 02:30 del cambio de hora 25/10.
 - Informes enviados en `[alta, alta+1080 horas)`. Cuenta solo revisión humana
   aceptada de #1594, con estado accepted/fixed. Su frontera conserva evidencia,
@@ -68,6 +69,37 @@ mirror_inactive o remote_inactive (GET vivo), con fecha y traslado; el premio
 sigue a la vigente. El caso comercial no lanza conflicto ni cuarentena del
 webhook. Errores HTTP/de catálogo se marcan para revisión y no bloquean a los
 demás clientes.
+
+## Registro SQL de la oferta inicial (P3-D)
+
+Se retira la RPC de compatibilidad report_promotion_checkout: los cupones de
+reparación por informes no pueden conceder el primer periodo. El único acceso
+es billing_launch_checkout, con comprobación SQL de entorno, clave, producto,
+cupón once, reloj finito y ventana registrados. La lógica única de reserva y
+consumo por cuenta queda privada, sin permiso de ejecución para service_role.
+
+private.billing_launch_offers arranca vacío y es exclusivo del operador:
+sin registro válido, falla cerrado y no reserva ni consume el derecho.
+Antes de desplegar el checkout actualizado:
+
+1. Validar el mapa y los descuentos once de #1661 (importe fijo, duración once,
+   producto y entorno correctos) con el procedimiento de su catálogo.
+2. Generar localmente, sin red, un SQL revisable desde ese mismo mapa:
+   `deno run --allow-read --allow-write supabase/functions/scripts/prepare-launch-offers-sql.ts --map approved-map.json --environment sandbox --output reviewed.sql`.
+   Cambiar solo el entorno para preparar producción. Si el mapa incluye trial
+   Pro, añadir --trial-anti-abuse-confirmed únicamente tras verificarlo.
+3. Revisar el SQL y aplicarlo con el usuario operador de migraciones; no con
+   las claves de API. Aplicarlo antes de cambiar Edge. Esta entrega no aplica
+   registros ni modifica productos/descuentos reales.
+4. Repetir la misma proyección es idempotente. Una diferencia de cupón,
+   producto, ventana, catálogo o claves registradas aborta toda la transacción;
+   exige una migración de rotación revisada. No borra ni sustituye ofertas.
+   El generador no consulta Polar ni certifica por sí solo la semántica remota.
+
+La proyección procede del único polar-launch-prices.json de #1661 y del
+validador loadPolarProductMap. No se añade una segunda configuración pública
+ni una vía de concesión heredada. Un cambio en el catálogo requiere actualizar
+y revisar su proyección SQL, manteniendo el mismo procedimiento de despliegue.
 
 ## Primer mes consumido y checkout
 

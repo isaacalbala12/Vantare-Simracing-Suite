@@ -206,7 +206,7 @@ mod tests {
     #[test]
     fn each_kit_and_union_follow_the_approved_order_without_duplicates() {
         let expected: [&[&str]; 4] = [
-            &["Standings", "Relative", "Delta", "Banderas"],
+            &["Standings", "Relative", "Delta", "Pedals"],
             &["Standings", "Relative", "Delta", "Banderas", "Duelo"],
             &[
                 "Standings",

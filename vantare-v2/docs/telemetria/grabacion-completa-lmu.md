@@ -183,3 +183,26 @@ Imola se procesó completa: 287.495 fotos por widget y cero rechazos, pero
 99,9833 % Stale y jugador parado. Calma/seco explícitos sí se añadieron con
 evidencia positiva. Siguen pendientes conducción y transiciones; la rama del
 widget #1653/#1660 no se modifica.
+
+## Diagnóstico de cadencia y frescura
+
+La [investigación posterior de Imola](imola-frescura-2026-10-16.md) corrige una
+recuperación bloqueada. Replay/Core completo pasa de 99,9833 % a 25,4488 % Stale;
+los datos por widget anteriores conservan la evaluación original. No es aún
+QA continua: faltan el A/B de carga del grabador y las situaciones de conducción/sesión.
+
+Desde `vantare-v2/`, solo en el servidor, sin juego ni UI:
+
+```powershell
+$env:VANTARE_CARGO_MIN_GB='0'
+$env:VANTARE_LMU_CADENCE_INPUT='C:/VantareServer/evidence/grabacion-lmu-imola/sesion.lmu.gz'
+$env:VANTARE_LMU_CADENCE_OUTPUT="C:/VantareServer/logs/1638-cadence-$(Get-Date -Format yyyyMMdd-HHmmss).json"
+pwsh -NoProfile -File native/scripts/compilar.ps1 cargo test --manifest-path native/Cargo.toml -p vantare-runtime --lib adapter::lmu::cadence_tests::recorded_ --target-dir C:/VantareServer/targets/isa-1638 --locked --offline -j $env:CARGO_BUILD_JOBS -- --ignored --nocapture --test-threads 1
+```
+
+Dos pruebas seriales en streaming: Reader audita relojes/intervalos/cuerpos/REST,
+y Replay/Core cuenta estados y causas. Producen el JSON elegido y su compañero
+`.replay.json`; rechazan sobrescribir resultados. `VANTARE_LMU_CADENCE_LIMIT_S`
+opcional limita solo el auditor a un prefijo (el informe dice `footer=false`);
+dejarla sin definir para verificar el archivo completo. Los cuerpos/nombres
+no se publican. La fixture versionada contiene solo los tres relojes numéricos.

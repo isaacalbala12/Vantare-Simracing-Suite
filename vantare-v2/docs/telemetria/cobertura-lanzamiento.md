@@ -4,6 +4,13 @@ Auditoría inicial: 14-oct-2026, base `nightly@79a1ace66e5ec397126495dc5ce99353d
 
 ## Fase B: práctica de Imola recibida — 16-oct
 
+**Investigación prioritaria de frescura:** [causa y corrección](imola-frescura-2026-10-16.md).
+El 99,9833 % original combinaba huecos SHM reales con recuperación bloqueada.
+Corregida la espera de 2 s, el mismo Replay/Core completo da **25,4488 % Stale**;
+se mantiene el límite de 500 ms. Los 2.233 huecos del jugador se solapan uno a
+uno con GET `/rest/race/car` del inventario del grabador, ajeno al adapter normal.
+Pendiente A/B para certificar continuidad en vivo; no es una nueva QA de los 18 widgets.
+
 Recibidos 77 min 18 s de práctica Imola/IA, LMU 1.4.2.0, 38 coches totales.
 Jugador Alpine #35 fuera del garaje pero parado, sin vueltas/inputs. La
 verificación íntegra offline terminó: **287.495 fotos por cada widget, 0 rechazos**.

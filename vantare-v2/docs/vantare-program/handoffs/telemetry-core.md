@@ -16,6 +16,37 @@ Leídos [#1562](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/
 
 ## 3. Estado real y canal
 
+### #1638 / VANTA-33 — investigación prioritaria de frescura (16-oct)
+
+Código corregido **`2264bcd20af0b922213af4b2e66cd0342f0cd2db`**, base
+`nightly@354c207aa` contenida. PR draft [#1664](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1664),
+Plane En curso. [Informe corto de causa y evidencia](../../telemetria/imola-frescura-2026-10-16.md).
+El replay usa tiempo grabado, sin retrocesos. Lecturas SHM p50 17,209 ms,
+ninguna separación >=500 ms; sí hay 2.245 huecos del reloj scoring y 2.233 del
+jugador. No es el coche parado: el reloj del jugador cambia 146.741 veces.
+La recuperación heredada de 2 s quedaba reiniciada por esos huecos; ahora cada
+bloque vuelve a fresco al avanzar su propio reloj. Se conservan stall de 500 ms,
+ausencias y TTL REST; no se reescriben goldens ni datos de la grabación.
+
+Replay/Core completo tras arreglo: **214.331 Live, 73.164 Stale / 287.495 fotos**,
+**99,9833 % → 25,4488 % Stale**, cero rechazos, footer completo. Los restantes
+son caducidad real de `origin.source_time` >=500 ms. La captura no acredita aún
+continuidad: los 2.233 huecos del jugador se solapan uno a uno con 2.233 GET
+sin respuesta a `/rest/race/car` del grabador, ajeno al adapter productivo.
+Asociación fuerte; falta A/B en PC de juego con dos GET vs inventario completo
+para atribución causal. No se ha abierto LMU ni cambiado el grabador para esta entrega.
+
+Gates en serie por cola MIN_GB=0: **Clippy workspace/all-targets -D warnings PASS,
+Nextest CI workspace runtime/domain/ipc con telemetría 674/674 PASS, 7 skips,
+fmt/diff PASS**. Dos opt-in sobre el archivo íntegro PASS (400,18 s conjuntos);
+regresión de 582 filas reales saneadas incluida en Nextest. Primer Clippy detectó
+nombres similares en el auditor; corregido y log conservado. Logs
+`C:/VantareServer/logs/1638-freshness-final-*` y `1638-cadence-*`.
+UI completa/lifecycle no repetidos por alcance/RAM; este turno verifica el
+productor completo, no otra ingestión de los 18 widgets. El informe siguiente
+conserva la ejecución UI inicial. Conducción, qualy/carrera/formación/salida/final
+siguen pendientes. Sin promoción ni release.
+
 ### #1638 / VANTA-33 — práctica de Imola offline (16-oct)
 
 **Canal real:** Plane En curso, PR draft [#1664](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1664)

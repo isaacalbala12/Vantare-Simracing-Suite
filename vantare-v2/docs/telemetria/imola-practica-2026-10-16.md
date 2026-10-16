@@ -1,5 +1,10 @@
 # Imola: verificación offline de práctica — VANTA-33 / #1638
 
+**Actualización de frescura:** [investigación y corrección posteriores](imola-frescura-2026-10-16.md)
+demuestran huecos reales SHM y un bloqueo de recuperación de 2 s. Tras el arreglo,
+Replay/Core completo da 25,4488 % Stale. Los resultados por widget y hashes de
+este documento conservan la ejecución original, anterior a esa corrección.
+
 ## Fuente y alcance
 
 Grabación privada `C:/VantareServer/evidence/grabacion-lmu-imola/sesion.lmu.gz`,

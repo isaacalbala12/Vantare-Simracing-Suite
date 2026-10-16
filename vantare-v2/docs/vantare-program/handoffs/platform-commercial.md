@@ -1,3 +1,298 @@
+## #1636 · VANTA-72 · Integración de compra web (16/10/2026)
+
+Entrada limpia `dd7c3a895`; incorpora `nightly@8166277cb` (#1663) en #1657.
+Conflicto único de handoff: se conservan ambas entregas íntegras. Código y
+migraciones de compra web sin alteraciones. Merge `382c123f7`; `d44e9612` tipa
+RequestInit en cinco dobles adicionales de Polar/compra/informes: Ubuntu24.04
+Deno2.7.13 reproducía 21 TS2339 antes; **391 Edge PASS** después, sin no-check
+ni quitar assertions. El commit del runner queda en el log de esta entrega.
+Orquestador publica y fusiona, worker solo push al bare del Mac.
+
+Combinados: **815 SQL + E2E1** de admin/Correos/Founders/informes y **741 SQL
++16 carreras reales** de compra web, con las 92 migraciones y PostgreSQL real.
+E2E con RPC psql y SaaS dobles, tests sin red. Docker siempre bajo lock, limpio.
+La carrera heredada D1 esperaba bloqueo de fila: Correos bloquea antes en
+advisory(1636,300). El runner ahora comprueba esa clave exacta en el borrado
+completo, la retirada de dos contactos y sus dos trabajos pendientes; prueba
+aparte el contador web con bloqueo de fila para que Correos no enmascare una
+regresión del cursor. Control deliberadamente roto con secuencia: **rojo** en
+el contador aislado; implementación real: verde. Sin cambiar migraciones.
+
+Windows servidor: fmt/check/Clippy -D warnings PASS; Nextest admin/services
+**224 PASS, 2 ignorados existentes**. Cola serial, target propio, MIN_GB=0 solo
+proceso. Native íntegro del snapshot validado `382c123f7`. Lifecycle/telemetría
+omitidos: ningún cambio runtime/domain/ipc/testdata en esta sincronización.
+CI marketing2 + diagnóstico1; scope nativo17; canales45; quality/retirement456
+PASS. Diff revisado y sin whitespace. No gate ocultado o debilitado.
+
+Evidencia Mac `~/evidence/1636-web-merge/`, servidor
+`C:/VantareServer/evidence/1636-web-merge/`. Bare nightly sigue8166277cb al cierre.
+VANTA-72/PR1657, estados y CI quedan al orquestador según cabecera; no se muta
+Plane/GitHub. Sin integración a nightly desde el worker, deploy, release, gasto
+ni servicios reales. Publicación/CI del nuevo SHA y activación siguen pendientes.
+
+GitGuardian en dd7c3a895, check116948409973: mismos incidentes38177715/38177716
+con las mismas ocurrencias304307121/304307118 del commit histórico2354cd416.
+No identifica fixtures nuevos del arreglo75c40dc1. El check remoto sigue rojo
+por el historial: requiere gestionar esos falsos positivos en el panel; no
+se ignoran remotamente ni se amplían exclusiones desde esta entrega.
+
+## #1636 · VANTA-72 · Corrección de CI Deno/GitGuardian (16/10/2026)
+
+Entrada limpia `b1ad884ae`, PR #1657; run fallido 38891374186. Mac usaba Deno
+2.9.6 (TS6.0.3), workflow fija 2.7.13 (TS5.9.2). Repro exacta en Ubuntu24.04
+amd64/Deno2.7.13 bajo Docker del Mac: 18 errores de tipos offline y dos TS2339
+del E2E antes de corregir. El run no tenía artefactos; runner ocultaba la salida.
+
+Commit `75c40dc1`: RequestInit explícito en dobles fetch/fetchFn y forEach para
+comparar Headers sin depender de dom.iterable; no quita checking ni assertions.
+Runner imprime diagnóstico original; workflow conserva solo log E2E en fallo,
+tres días, acción ya fijada/reutilizada. Regresión posterior comprueba salida
+original, log persistido y limpieza de BD; roja con runner antiguo y verde
+con el nuevo, también en Linux; test enganchado a policy.
+
+GG38177715/38177716: PostgreSQL y Basic Auth sintéticos heredados de commit2354cd4,
+rutas tools/triage/test_review_1602.py y native/services/src/triage/tests.rs.
+Valores preparados por tests, psql/red con dobles; Basic codifica synthetic:fixture.
+Se construyen ahora en ejecución manteniendo valor equivalente y cobertura de
+redacción. No se amplía ninguna exclusión. .gitguardian.yaml aclara que la lista
+existente es local de ggshield; no acredita la app verde ni cambia el panel.
+**Resultado remoto de GitGuardian pendiente del nuevo push del orquestador**;
+no se afirma escaneo local de ese proveedor ni se ignoraron incidentes remotos.
+
+Verdes en Ubuntu24.04 amd64/Deno2.7.13: comandos exactos CI **88 Edge +142 SQL
++E2E1** con PostgreSQL real (daemon Docker del Mac, imagen fijada), sin red en
+los tests, OAuth/Brevo/Clerk dobles. CI contrato **2**, diagnóstico **1**, formato
+Deno PASS. Privacidad Python **9**; URI fixture idéntica en memoria comprobada.
+Windows services: fmt y Clippy all-targets -D warnings PASS, **19** tests de
+privacidad seleccionados PASS (174 no ejecutados/ignorados por el filtro).
+Comandos seriales por cola y target propio. Quality/**456** huellas PASS.
+Sin cambios de producto ni migraciones; lifecycle/telemetría no repetidos.
+
+Evidencia ~/evidence/1636-ci/ y C:/VantareServer/evidence/1636-ci/. Log fallido GH
+descargado; sin artefactos disponibles de aquel run. Handoff actualizado; SHA,
+push bare y FIN al cierre. Orquestador publica y vigila CI; sin push GitHub,
+configuración real, llamadas SaaS de producto, promoción, deploy o gasto.
+
+## #1636 · VANTA-72 · Segunda sincronización nightly (16/10/2026)
+
+Entrada limpia `7d873cdcf`; merge `3159e214` de `nightly@e8aa2077c` en la rama
+`vantareapp/isa-1636-correos` / PR #1657, autorizado por el orquestador.
+Solo conflicto de handoff: ambos bloques íntegros. Oferta inicial y programa por
+informes apagado de #1673, avisos #1649, cola por comprometido #1674 y filtro
+CI/telemetría #1676 preservados. Sin cambios adicionales de producto ni SQL/Rust.
+
+Repetición completa del alcance: Mac **815 SQL** en 28 suites, **367 Edge** y
+**E2E1** verdes con PostgreSQL real y RPC psql/OAuth/Brevo/Polar dobles. Incluye
+launch_offer_sql y report_enrollment_policy nuevos. Docker bajo lock/trap y
+contenedor retirado. Contratos CI marketing, scope nativo/telemetría y canales,
+YAML/shell y quality/**456** huellas PASS. Nuevos contratos/migraciones/cola y
+clasificador idénticos byte a byte a nightly; workflow combina ambos conjuntos.
+
+Windows servidor, worktree aislado ya existente y target propio, comandos
+seriales vía compilar.ps1 actualizado, MIN_GB=0 solo proceso: **fmt/check/Clippy
+-D warnings PASS, Nextest admin/services 224 PASS y 2 ignorados existentes**.
+Jobs2/tests1. Guard PS real PASS. Lifecycle/telemetría omitidos: no cambia código
+runtime/domain/ipc/testdata; solo scripts/docs nativos llegan desde nightly.
+No se cambian variables de máquina, checkout principal ni datos ajenos.
+
+Evidencia `~/evidence/1636-nightly2/` y
+`C:/VantareServer/evidence/1636-nightly2/`. SHA final/bare, base verificada y FIN
+se registran al cierre. El orquestador publica y fusiona; worker solo push bare.
+CI remoto tras publicación pendiente. Sin promoción a nightly, activación,
+despliegue, SaaS real ni gasto; pendientes de activación anteriores conservados.
+
+## #1636 · VANTA-72 · Sincronización con nightly (16/10/2026)
+
+PR #1657 / rama `vantareapp/isa-1636-correos`, entrada `2de604cc2`. Merge
+`8c6362f0` incorpora `nightly@9e48eb86f` autorizado por el orquestador; segundo
+merge `d75fd2e3` incorpora avance `ceb999f5` de avisos/handoff durante los gates.
+No se promociona la rama ni se publica en GitHub desde el worker.
+
+25 conflictos resueltos conservando nightly actual en Founders/disputas/informes,
+refunds, ledger y miniapp de creadores/personas; se reenganchan solo cambios de
+Correos sobre esa base (delta comparado con miniapp `0ac70754`). Los seis archivos
+críticos polar/webhook/creator-code/payment-sync/fixtures/people se conservan
+idénticos a nightly. Handoff conserva ambas entregas. CI mantiene scope/cache y
+gates de nightly junto al job SQL/E2E de Correos; el guard PS respeta scope nativo.
+
+Fix `950aac58`: guard PowerShell reconoce también billing-report-promotion,
+como candidato inerte (sin habilitarlo); ejecución Windows detectó el fallo y
+regresión Deno fue roja/verde. Guard PS real Windows ya PASS tras corregirlo.
+
+Checks combinados: Mac SQL **756/756** (26 suites admin/marketing/Founders/
+renovaciones/informes) y E2E **1/1**, Edge **363/363**, CI marketing **2/2**,
+clasificador nativo **11/11**, YAML/shell, fmt Deno y quality/**456** huellas PASS.
+Docker bajo lock con contenedor limpio; PostgreSQL real, OAuth/Brevo/Polar dobles.
+E2E usa adaptador RPC psql, no transporte PostgREST ni proyecto remoto.
+Windows admin/services: **fmt, check, Clippy -D warnings PASS; Nextest 224 PASS,
+2 ignorados existentes**, comandos seriales por compilar.ps1, jobs2 y tests1,
+VANTARE_CARGO_MIN_GB=0 en proceso según encargo; sin cambiar variables de máquina.
+Todo `native/` idéntico al snapshot de validación `8c6362f0` tras el segundo merge.
+No se modifican runtime/domain/ipc/testdata frente a nightly: lifecycle/telemetría
+no se repiten en este encargo de resolución; CI de producto sigue con sus gates.
+
+Evidencia Mac `~/evidence/1636-nightly/`; Rust/guard Windows en
+`C:/VantareServer/evidence/1636-nightly/`. Checkout de gates aislado
+`C:/VantareServer/wt/isa-1636-sync`, target propio, sin tocar el checkout principal
+ni su untracked ajeno. No se compila Rust en Mac en esta ronda por instrucción
+expresa. Sin cambio visual adicional ni nueva QA física de UI.
+
+Entrega local para publicación/revisión de CI por el orquestador. Push solo al
+bare del Mac, SHA/FIN en `~/orq/1636.buzon.md`. Sin merge a nightly ni release,
+despliegue, servicios reales o gasto. Se conservan pendientes de activación
+#1637/web, QA visual/Windows, secretos/flags/tick y alarmas documentados en MAIL.md.
+
+## #1636 · VANTA-72 · R3 menores de seguridad (15/10/2026)
+
+PR #1657, rama `vantareapp/isa-1636-correos`, entrada limpia `3fcb0420a`, aprobada
+por seguridad R2 y subida por el orquestador. Mismo Mac `~/wt-1636`, sin
+subagentes ni SaaS real. Orquestador mantiene Plane/GitHub; worker solo bare.
+
+- M1, `072462f6`: HMAC mediante subtle.verify antes de ambos presupuestos.
+  601 firmas inválidas no gastan SQL ni impiden una baja válida (regresión roja/verde).
+- M3, `d006335c`: recibo público idéntico para espera, ausencia o cuenta vinculada;
+  mismo 200/cuerpo/cabeceras. No afirma borrar cuentas. Owner mantiene diagnóstico.
+- M4, `e3671427`: DELETE espera lease previo +10 s, cubriendo PUT tardío. Test de
+  plazo exacto rojo/verde; la migración de retención conserva ese margen.
+- M2, `8f473514`: máximo ocho intentos o 24 h por trabajo; estado failed retira
+  correo, deja recibo/huella privada y bloquea nuevas altas hasta ACK manual.
+  Owner ve aviso y hasta 20 recibos sin dirección, motivo/intentos/HTTP. Expiración
+  antes de flags/clave Brevo, en cada claim y lectura Owner. Runbook manual MAIL.md;
+  requiere tick periódico independiente y alarma de fallos/scheduler antes de activar.
+  No se pierde la obligación: failed no acredita borrado del proveedor.
+- M5: SQL/E2E separado de policy/product en job alojado ubuntu-latest, con
+  preflight Docker visible y pull explícito de imagen fijada. Público automático;
+  privado requiere variable MARKETING_POSTGRES_CI=true tras autorización del
+  presupuesto alojado. No se modifica configuración. Runbook #1565 excluye Docker
+  del runner privado Linux; inspección read-only confirma runs públicos hosted.
+  Prueba roja/verde y tres escenarios: Docker ausente, daemon denegado, disponible.
+
+Evidencia `~/evidence/1636-r3/`: SQL **199/199** + E2E **1/1** (PostgreSQL real,
+RPC mediante adaptador psql, OAuth/Brevo dobles), Edge/contratos **97/97** sin red,
+Nextest admin **29/29**, Clippy all-targets -D warnings, fmt, build normal PASS.
+CI contrato **2/2** con tres escenarios de capacidad; YAML/shell nuevos parseados.
+Quality y **456** huellas PASS. Primer Clippy R3 rechazó dos lints, corregidos sin
+suprimirlos. Diff completo revisado; sin dependencias ni manifiestos/locks nuevos.
+La escena mail-cleanup abre ventana nativa; `Vantare1636R3QA.app` queda en evidencia.
+Preflight de captura macOS sigue false: sin PNG ni QA visual/Windows. Target propio
+se elimina al cierre. Lifecycle/telemetría omitidos: no cambia runtime/domain/ipc/testdata.
+
+Antes de activar siguen pendientes CI remoto y QA visual/Windows, conexión UI
+#1637/web, configuración de proveedor/secretos/flags/scheduler/alertas. M6/M7 del
+informe siguen observaciones de escala/retención de hashes, fuera de estos cinco
+arreglos. No se despliega ni activa, sin merge/promoción/release/gasto. SHA final,
+commits/push bare y FIN en `~/orq/1636.buzon.md`; informe completo en evidencia.
+
+## #1636 · VANTA-72 · R2 para revisión (15/10/2026)
+
+PR #1657, rama `vantareapp/isa-1636-correos`, entrada `b0f799827`. Mismo worktree
+Mac `~/wt-1636`; sin subagentes, credenciales ni push GitHub. El orquestador
+mantiene Plane/issue/PR y sube del bare. Buzón `~/orq/1636.buzon.md`.
+
+**P2-1, 5f9e3806:** #1622 encola DELETE Brevo de direcciones actuales/anteriores
+antes de borrarlas localmente. Worker `mail-cleanup`, backoff 5 s–1 h, leases,
+fencing y ACK 204/404 idempotente. Al confirmar retira también la PII temporal de
+la cola y conserva resultado/intentos/fecha sin correo en auditoría. Sync anterior
+vence antes de DELETE; un alta nueva espera al borrado pendiente. Worker inerte,
+flag/secreto/scheduler no configurados. Owner puede drenar y ver lo pendiente.
+
+**P2-2, b3fbe59c:** borrar espera sin cuenta desde gestión (correo exacto y
+confirmación), RPC solo servidor o enlace firmado; misma cola Brevo. No permite
+borrar una cuenta por esa vía. GET muestra confirmación, POST de formulario actúa,
+POST RFC8058 de un clic conserva baja sin segunda pantalla.
+
+**P2-3, 4a8527ba:** `native-mail-consent`, OAuth + correo primario verificado en
+Clerk, UUID derivado en servidor, una decisión de novedades/ofertas y evidencia
+fija. Get/set, bloqueo/tombstone y límite persistente por cuenta. #1637 no está en
+esta base: servidor listo y enganche exacto documentado en
+`supabase/functions/native-admin/CONSENT.md`, también llamada backend del repo web
+tras su verificación de dirección. UI #1637/Ajustes y frontend web siguen en sus
+ramas; no se afirma haberlos conectado aquí. E2E local prueba el servidor con SQL
+real, no solo un mock de consentimiento.
+
+**P3:** CHECK de locale y escape/fallback de lang; cursor UUID sin dirección.
+La selección usa proyecciones pendientes por entorno, no límite de keyset: recoge
+cambios detrás del cursor, durante HTTP y cambios/expiración de grupos. ACK viejo
+no limpia datos nuevos. Reserva reevalúa como máximo 20 pendientes; el barrido
+identificador de cambios de sync sigue comparando la proyección efectiva de la
+cohorte. Rate de baja persistente global 600/min y token válido 20/min, hash con
+retención acotada, 429/Retry-After. PS guard reconoce rutas/candidatos ya conocidos
+por TS; wrapper permite desplegar cuatro rutas nuevas solo por nombre explícito,
+sin cambiar el conjunto comercial por defecto. CI añade Deno offline, SQL y E2E
+con Docker bajo lock, y ejecuta guard PS en Windows. Gates nativos --workspace
+ya incluyen admin; CI remoto pendiente de que el orquestador suba esta ronda.
+
+Evidencia `~/evidence/1636-r2/`: SQL **181/181**, E2E **1/1** con PostgreSQL real y
+OAuth/Brevo dobles, Edge/contratos **95/95** sin permiso runtime de red; Clippy admin
+`-D warnings`, Nextest **28/28**, build normal, fmt, quality/456 huellas PASS.
+YAML y shell de los steps nuevos parseados. Seis escenas nativas demo abren;
+`Vantare1636R2QA.app` privado debug conservado. **Capturas y revisión visual siguen
+bloqueadas** por permiso macOS para SSH (preflight false comprobado en esta ronda).
+No se afirma interacción física ni Windows/DPI. PowerShell solo se prueba por
+contrato aquí; ejecución en el nuevo step Windows CI. Lifecycle/telemetría omitidos:
+no cambia runtime/domain/ipc/testdata. Target aislado retirado al cerrar.
+
+Contrato/configuración vigente consolidado en `supabase/functions/native-admin/MAIL.md`.
+Antes de activar: review del orquestador, CI y QA visual/Windows, enganchar #1637/web,
+configurar Brevo/DNS/listas/bajas/secreto y scheduler de limpieza, probar sandbox
+con autorización y validar modelo/coste de Anthropic. El worker no configura nada
+real ni envía correos. Sin merge, promoción, despliegue, release, anuncios o gasto.
+Push únicamente al bare local del Mac; SHA final y verificación en el buzón.
+
+## #1636 · VANTA-72 · Correos de gestión (15/10/2026, candidato local)
+
+Worker Codex T3 por SSH en Mac, sin subagentes ni servicios reales. Rama
+`vantareapp/isa-1636-correos`, base miniapp `0ac70754`, no nightly. Estado Plane
+informado por el encargo: «En curso»; el worker no consulta ni modifica trackers.
+Hitos locales: backend `8e3f4f30`; código integrado en esta rama `3ffc14f7`.
+El orquestador revisa y mantiene Plane/GitHub. Buzón `~/orq/1636.buzon.md`.
+
+Backend: ledger privado con consentimiento único, siete grupos desde derechos
+comerciales efectivos/roles/creadores/espera, cuatro idiomas, aprobación de revisión
+por Owner, cuota global de 300 reservas por ventana de 24 h y tandas manuales de
+hasta tres. No reintenta respuestas inciertas. Bajas firmadas GET/POST globales y
+webhook Brevo autenticado; se vuelven a comprobar permisos antes del HTTP.
+Cambio de correo suprime el anterior; tombstone elimina direcciones actuales y
+anteriores y sus entregas, conservando cuota anónima. IA solo devuelve borradores
+(`claude-opus-5-5`, high), sin guardar/aprobar/enviar. Flags apagados por omisión.
+El cliente conserva límite de 8 KiB para otras acciones y permite 128 KiB en mail,
+sin duplicar el stream. Contrato/guía de Isaac en
+`supabase/functions/native-admin/MAIL.md`.
+
+UI GPUI: sección Correos, campañas, tres plantillas, editor ES/EN/IT/PT-BR con
+vista previa segura, grupos y recuentos, confirmaciones, historial y estado. No
+permite enviar cambios sin guardar; bloquea edición durante confirmación/petición.
+Limpia borradores al perder autorización. No se cambia Hub ni runtime nativo.
+
+Checks Mac: SQL Docker aislado **120/120** (42 correos + 57 admin + 21 borrado);
+Edge/Deno **76/76**, sin permiso de red, con dobles Brevo/Anthropic; Clippy admin
+`-D warnings` y Nextest **27/27**; fmt, build normal, quality y 456 huellas de
+retirada PASS. Cuatro escenas demo abren ventana nativa de 1280 puntos de ancho.
+Evidencia: `~/evidence/1636/`; app QA debug local en `Vantare1636QA.app`.
+
+**Pendiente de QA visual:** las capturas físicas están bloqueadas por permiso de
+macOS para SSH (`CGPreflightScreenCaptureAccess=false`; screencapture no pudo leer
+la ventana). El intento de exportar el fotograma con test-support de GPUI exigía
+cambiar Cargo.lock y se descartó por «sin dependencias nuevas»; no queda cambio de
+features, lock ni captura en el producto. No se acredita revisión visual,
+interacción física ni Windows/DPI. Escenas `mail-editor`, `mail-confirm`,
+`mail-history` preparadas para capturar desde sesión Mac autorizada.
+
+Antes de producción: conectar colectores verificados de consentimiento en
+registro/cuenta/espera (no existe permiso histórico que importar), configurar
+Brevo/dominio/listas/webhook/secretos y Anthropic con autorización de gasto,
+validar modelo, entrega y bajas, y completar procedimiento de borrado externo en
+Brevo. Las campañas viven en Vantare: envío individual SMTP API para reservar y
+revalidar cada destinatario, listas Brevo como espejo; no se crean campañas
+paralelas en su panel. El contador local no conoce correos enviados por otros
+sistemas: usar cuenta Brevo dedicada. Historial «aceptado» no significa entregado.
+
+Sin ejecución de lifecycle/telemetría: solo se toca la miniapp aislada y Edge/SQL,
+no runtime/domain/ipc/testdata. Gates Windows y CI remotos no ejecutados. El bare
+`~/vantare.git` recibe la rama por encargo; no es un canal de producto. Sin GitHub,
+merge, promoción, despliegue, release, anuncios ni gasto. Revisión y capturas por
+el orquestador antes de dar por cerrada la entrega.
 ## VANTA-42 / PR #1663 · R7 · Atribución de creador en compra web (16/10/2026)
 
 Decisión de Isaac: primer pago solo atribuye la venta/comisión;20% cliente

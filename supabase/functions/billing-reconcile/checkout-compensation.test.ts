@@ -247,7 +247,7 @@ Deno.test("Polar failure retries automatically and persists/sends signed Owner a
     "sandbox",
     store,
     config,
-    async (_input, init) => {
+    async (_input, init?: RequestInit) => {
       const headers = new Headers(init?.headers);
       const body = String(init?.body);
       notice = JSON.parse(body);

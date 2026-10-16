@@ -21,14 +21,17 @@ fn run() -> Result<(), String> {
                     Some("users") => Screen::Users,
                     Some("rollout") => Screen::Rollout,
                     Some("reports") => Screen::Reports,
+                    Some("mail") => Screen::Mail,
                     _ => {
-                        return Err("pantalla: login | users | creators | rollout | reports".into());
+                        return Err(
+                            "pantalla: login | users | creators | rollout | reports | mail".into(),
+                        );
                     }
                 }
             }
             "--help" => {
                 println!(
-                    "vantare-admin [--demo] [--screen login|users|creators|rollout|reports] [--scene normal|cargando|vacio|error|ana|owner|eva|bloquear|borrar|carlos|pablo|nuevo|informe|arreglado|rechazado] [--diagnose-owner]"
+                    "vantare-admin [--demo] [--screen login|users|creators|rollout|reports|mail] [--scene normal|cargando|vacio|error|ana|owner|eva|bloquear|borrar|carlos|pablo|nuevo|informe|arreglado|rechazado|mail-editor|mail-confirm|mail-history|mail-forget|mail-cleanup] [--diagnose-owner]"
                 );
                 return Ok(());
             }

@@ -323,7 +323,7 @@ Deno.test("Polar Customer State honors Retry-After seconds and HTTP dates", asyn
 
 Deno.test("Founders transition stops renewal idempotently without revoke or refund", async () => {
   const requests: unknown[] = [];
-  const deps = checkoutDeps(async (input, init) => {
+  const deps = checkoutDeps(async (input, init?: RequestInit) => {
     assertEquals(
       String(input),
       "https://sandbox-api.polar.sh/v1/subscriptions/sub_founders",
@@ -377,7 +377,7 @@ Deno.test("once checkout sends one server-selected discount, no trial or custome
 Deno.test("R4 renewal GET recovers lost PATCH response without restarting repeating and refuses foreign discounts", async () => {
   let discount: string | null = "launch";
   let writes = 0;
-  const deps = checkoutDeps(async (_url, init) => {
+  const deps = checkoutDeps(async (_url, init?: RequestInit) => {
     if (init?.method === "PATCH") {
       writes++;
       assertEquals(JSON.parse(String(init.body)), { discount_id: "creator" });
@@ -423,7 +423,7 @@ Deno.test("R4 renewal GET recovers lost PATCH response without restarting repeat
 Deno.test("R5 refunded creator coupon is removed once, foreign report coupon is preserved", async () => {
   let current: string | null = "creator";
   let writes = 0;
-  const deps = checkoutDeps(async (_url, init) => {
+  const deps = checkoutDeps(async (_url, init?: RequestInit) => {
     if (init?.method === "PATCH") {
       writes++;
       assertEquals(JSON.parse(String(init.body)), { discount_id: null });
@@ -496,7 +496,7 @@ Deno.test("R7 invalid launch offers fail before transport and public codes stay 
   let payload: Record<string, unknown> = {};
   await createPolarCheckoutSession(
     { ...checkout, creatorCode: "ISAAC" },
-    checkoutDeps(async (_url, init) => {
+    checkoutDeps(async (_url, init?: RequestInit) => {
       payload = JSON.parse(String(init?.body));
       return new Response(
         JSON.stringify({
@@ -526,7 +526,7 @@ Deno.test("R7 creator withdrawal includes only validated remainders and preserve
       authorize: async () => true,
     }, {
       getAccessToken: () => "fixture",
-      fetchFn: (_url, init) => {
+      fetchFn: (_url, init?: RequestInit) => {
         if (init?.method === "PATCH") {
           patches++;
           assertEquals(JSON.parse(String(init.body)), { discount_id: null });

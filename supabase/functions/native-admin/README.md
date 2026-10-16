@@ -200,3 +200,8 @@ al creador, entorno e intervalo y revierte el claim si no coincide. Creador
 activo anterior sin vínculo anual debe reconciliarse antes de aceptar anual.
 Reembolso/revocación retira el cupón de creador por GET/PATCH/ACK; Owner distingue
 retirada confirmada y pendiente por error. Cupones ajenos no se eliminan.
+
+## Correos de marketing (#1636)
+
+Contrato, consentimiento, cuota, bajas y configuración futura: [MAIL.md](MAIL.md).
+Candidato local; ninguna clave ni despliegue se habilita por añadir el código.

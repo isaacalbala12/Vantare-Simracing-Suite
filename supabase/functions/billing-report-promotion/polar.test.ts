@@ -14,7 +14,7 @@ Deno.test("discount change uses PATCH only, no product or proration, then GET re
   const client = new PolarDiscountClient(
     "sandbox",
     "test",
-    (url, init) => {
+    (url, init?: RequestInit) => {
       calls.push(`${init?.method ?? "GET"} ${url}`);
       if (init?.method === "PATCH") {
         assertEquals(JSON.parse(String(init.body)), { discount_id: "reward3" });
@@ -48,7 +48,7 @@ Deno.test("lost PATCH response is recovered by GET without restarting repeating 
   const client = new PolarDiscountClient(
     "sandbox",
     "test",
-    (_url, init) => {
+    (_url, init?: RequestInit) => {
       if (init?.method === "PATCH") {
         discount = "reward6";
         writes++;
@@ -136,21 +136,25 @@ Deno.test("unexpected product, canceled subscription, unknown discount and remot
 });
 Deno.test("removing reward after spam uses explicit null", async () => {
   let seen: unknown;
-  const client = new PolarDiscountClient("sandbox", "test", (_url, init) => {
-    if (init?.method === "PATCH") seen = JSON.parse(String(init.body));
-    return Promise.resolve(
-      Response.json({
-        id: "sub",
-        discount_id: init?.method === "PATCH" ? null : "reward",
-        product_id: "product",
-        amount: 599,
-        currency: "eur",
-        recurring_interval: "month",
-        recurring_interval_count: 1,
-        status: "active",
-      }),
-    );
-  });
+  const client = new PolarDiscountClient(
+    "sandbox",
+    "test",
+    (_url, init?: RequestInit) => {
+      if (init?.method === "PATCH") seen = JSON.parse(String(init.body));
+      return Promise.resolve(
+        Response.json({
+          id: "sub",
+          discount_id: init?.method === "PATCH" ? null : "reward",
+          product_id: "product",
+          amount: 599,
+          currency: "eur",
+          recurring_interval: "month",
+          recurring_interval_count: 1,
+          status: "active",
+        }),
+      );
+    },
+  );
   await synchronizeDiscount(client, {
     subscriptionId: "sub",
     productId: "product",
@@ -356,7 +360,7 @@ Deno.test("P2-4 cleanup of canceled or paused predecessor succeeds without a for
     const client = new PolarDiscountClient(
       "sandbox",
       "fixture",
-      (_url, init) => {
+      (_url, init?: RequestInit) => {
         if (init?.method === "PATCH") {
           writes++;
           return Promise.resolve(new Response(null, { status: 422 }));

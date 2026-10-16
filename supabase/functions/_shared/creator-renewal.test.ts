@@ -112,60 +112,62 @@ Deno.test("R4 paid receipt retries after failure, records Owner issue, and ACKs 
   );
 });
 
-Deno.test("R5 creator revocation records Owner failure and retries without a second removal", async () => {
-  let completed = false;
-  let first = true;
-  let attempts = 0;
-  const outcomes: boolean[] = [];
-  const client = {
-    rpc: (_name: string, args: Record<string, unknown>) => {
-      if (args.p_stage === "prepare") {
-        return Promise.resolve({
-          error: null,
-          data: completed ? null : {
-            token: "lease",
-            product_id: "product",
-            creator_discount_id: "creator",
-          },
-        });
+for (const reason of ["refund", "subscription_revoked"] as const) {
+  Deno.test(`${reason}: creator revocation records Owner failure and retries without a second removal`, async () => {
+    let completed = false;
+    let first = true;
+    let attempts = 0;
+    const outcomes: boolean[] = [];
+    const client = {
+      rpc: (_name: string, args: Record<string, unknown>) => {
+        if (args.p_stage === "prepare") {
+          return Promise.resolve({
+            error: null,
+            data: completed ? null : {
+              token: "lease",
+              product_id: "product",
+              creator_discount_id: "creator",
+            },
+          });
+        }
+        if (args.p_stage === "authorize") {
+          return Promise.resolve({
+            error: null,
+            data: { authorized: true },
+          });
+        }
+        if (args.p_stage === "finish") {
+          outcomes.push(args.p_success as boolean);
+          completed = args.p_success === true;
+          return Promise.resolve({ error: null, data: { completed: true } });
+        }
+        throw Error("unexpected stage");
+      },
+    } as unknown as SupabaseClient;
+    const input = {
+      userId: "account",
+      subscriptionId: "sub",
+      orderId: reason === "refund" ? "refunded-order" : null,
+      reason,
+    };
+    const withdraw: Parameters<typeof revokeCreatorRenewals>[3] = async (
+      _id,
+      _env,
+      expected,
+    ) => {
+      assertEquals(await expected.authorize(), true);
+      attempts++;
+      if (first) {
+        first = false;
+        throw Error("provider unavailable");
       }
-      if (args.p_stage === "authorize") {
-        return Promise.resolve({
-          error: null,
-          data: { authorized: true },
-        });
-      }
-      if (args.p_stage === "finish") {
-        outcomes.push(args.p_success as boolean);
-        completed = args.p_success === true;
-        return Promise.resolve({ error: null, data: { completed: true } });
-      }
-      throw Error("unexpected stage");
-    },
-  } as unknown as SupabaseClient;
-  const input = {
-    userId: "account",
-    subscriptionId: "sub",
-    orderId: "refunded-order",
-    reason: "refund" as const,
-  };
-  const withdraw: Parameters<typeof revokeCreatorRenewals>[3] = async (
-    _id,
-    _env,
-    expected,
-  ) => {
-    assertEquals(await expected.authorize(), true);
-    attempts++;
-    if (first) {
-      first = false;
-      throw Error("provider unavailable");
-    }
-  };
-  await assertRejects(() =>
-    revokeCreatorRenewals(client, "sandbox", input, withdraw)
-  );
-  await revokeCreatorRenewals(client, "sandbox", input, withdraw);
-  await revokeCreatorRenewals(client, "sandbox", input, withdraw);
-  assertEquals(outcomes, [false, true]);
-  assertEquals(attempts, 2);
-});
+    };
+    await assertRejects(() =>
+      revokeCreatorRenewals(client, "sandbox", input, withdraw)
+    );
+    await revokeCreatorRenewals(client, "sandbox", input, withdraw);
+    await revokeCreatorRenewals(client, "sandbox", input, withdraw);
+    assertEquals(outcomes, [false, true]);
+    assertEquals(attempts, 2);
+  });
+}

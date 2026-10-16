@@ -200,3 +200,19 @@ catálogo gratuito requieren licencia.
 - Cero fallbacks sintéticos presentados como datos reales.
 - UI visual: capturas, comparación e interacción.
 - Runtime: replays deterministas y evidencia real cuando exista la fuente.
+
+### VANTA-83 · disputas y reembolsos (Isaac, 16-oct-2026)
+
+**O1 confirmado:** una disputa/contracargo retira permanentemente el 20 % de
+creador de esa suscripción cuando Polar notifica su revocación/cancelación
+inmediata o el reembolso equivalente. Se usa la misma retirada durable e
+idempotente, sin retirar descuentos ajenos; fallo visible en Owner.
+**O3 confirmado:** cualquier reembolso confirmado de cualquier factura de esa
+suscripción, parcial incluido y aunque no sea la factura de origen, retira ese
+20 %; no afecta a otras suscripciones del cliente. No se restaura automáticamente
+si se gana la disputa o se reactiva la suscripción. No se efectúa ningún reembolso.
+
+Polar no expone actualmente eventos públicos `dispute.*`; no se inventa esa
+suscripción de webhook. Una disputa abierta sin revocación ni reembolso no llega
+por estos eventos. Véase el runbook de creador para señales, fuentes y pruebas
+pendientes en sandbox (O2).

@@ -1,3 +1,25 @@
+## VANTA-83 / #1661 · seguimiento O1/O3 (16-oct-2026)
+
+- #1666 integrado por el orquestador en nightly 1f07e8e28. Seguimiento aislado
+  vantareapp/isa-1661-disputas desde esa base; no promoción de este seguimiento.
+- O1: las disputas se reciben mediante revocación de suscripción o refund
+  preventivo. Polar no enumera dispute.*; no añadir un evento inventado.
+  Se acepta también status=canceled con cancel_at_period_end=false en updated;
+  cancelación diferida no inicia retirada. Mismo lease/GET/PATCH/ACK durable,
+  cupón persistido y fallo Owner. Contrato documenta ausencia de señal al abrir.
+- O3 confirmado: refund confirmado de cualquier factura de esa suscripción,
+  parcial incluido, retira permanentemente el 20 %. Sin afectar otras suscripciones.
+- O2 sigue en sandbox: PATCH sobre suscripción ya revocada y payload/entrega reales.
+  Fuentes oficiales y lista exacta de eventos en creator-renewals-1661.md.
+- Rojo→verde: updated terminal omitía retirada. 484 Edge y 142 pgTAP PASS;
+  quality/retirement PASS (456 huellas), Deno fmt PASS. Siete fixtures heredadas
+  fallaban también en la base: actualizadas para llamadas sin operación creador
+  y compras Launch históricas, conservando las comprobaciones comerciales.
+  Logs Mac ~/orq/disputas-1661-evidence; copia servidor al cerrar.
+- No cambia Rust/schema/dependencias: no repetir gates Rust/lifecycle/telemetría.
+  PR nuevo y CI se anotan en issue/entrega; Plane Por revisar al cierre.
+  Sin llamadas a Polar real, despliegues, dinero ni capturas (#1655).
+
 ## VANTA-83 / #1661 · ronda 5 terminada para revisión · 16-oct-2026
 
 - Código validado d037f8f661083791c848ba7081452d3488b974c1; PR draft #1666

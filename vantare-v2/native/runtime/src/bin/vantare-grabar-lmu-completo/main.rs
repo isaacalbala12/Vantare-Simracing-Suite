@@ -1,5 +1,7 @@
 //! Grabadora autónoma: no abre Vantare, no escribe en LMU, no necesita Python.
 #[cfg(windows)]
+mod experiment;
+#[cfg(windows)]
 mod windows;
 
 fn main() {

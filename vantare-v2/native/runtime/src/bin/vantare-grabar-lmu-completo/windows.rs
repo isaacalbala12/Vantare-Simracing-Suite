@@ -1,4 +1,5 @@
 #![allow(unsafe_code)]
+use super::experiment::{Plan, next_backoff};
 use serde_json::json;
 use std::{
     fs::{self, File},
@@ -23,6 +24,27 @@ use windows_sys::Win32::{
         },
     },
 };
+
+#[link(name = "kernel32")]
+unsafe extern "system" {
+    fn QueryPerformanceCounter(value: *mut i64) -> i32;
+    fn QueryPerformanceFrequency(value: *mut i64) -> i32;
+}
+
+fn clock_anchor(start: Instant) -> io::Result<serde_json::Value> {
+    let (mut counter, mut frequency) = (0, 0);
+    let before = ns(start);
+    // SAFETY: dos enteros locales válidos para las funciones Win32 de reloj.
+    if unsafe { QueryPerformanceCounter(&raw mut counter) } == 0
+        || unsafe { QueryPerformanceFrequency(&raw mut frequency) } == 0
+    {
+        return Err(io::Error::last_os_error());
+    }
+    let after = ns(start);
+    Ok(
+        json!({"counter":counter,"frequency":frequency,"at_ns":before+(after-before)/2,"uncertainty_ns":after-before}),
+    )
+}
 
 static STOP: AtomicBool = AtomicBool::new(false);
 unsafe extern "system" fn control(code: u32) -> i32 {
@@ -87,6 +109,7 @@ fn rest_worker(
     start: Instant,
     stop: Arc<AtomicBool>,
     tx: mpsc::SyncSender<Record>,
+    production: bool,
 ) -> thread::JoinHandle<()> {
     thread::spawn(move || {
         let agent: ureq::Agent = ureq::Agent::config_builder()
@@ -96,9 +119,11 @@ fn rest_worker(
             .timeout_global(Some(Duration::from_millis(750)))
             .build()
             .into();
+        let mut backoff = interval;
         while !stop.load(Ordering::Relaxed) {
             let round = Instant::now();
             let mut discovered = Vec::new();
+            let mut complete = true;
             for path in &paths {
                 if stop.load(Ordering::Relaxed) {
                     break;
@@ -113,16 +138,22 @@ fn rest_worker(
                 match agent.get(format!("http://127.0.0.1:6397{path}")).call() {
                     Ok(mut response) => {
                         record.status = Some(response.status().as_u16());
+                        let limit = if production { 4 << 20 } else { 16 << 20 };
                         match response
                             .body_mut()
                             .as_reader()
-                            .take((16 << 20) + 1)
+                            .take(limit + 1)
                             .read_to_end(&mut record.body)
                         {
-                            Ok(_) if record.body.len() <= (16 << 20) => {}
+                            Ok(_)
+                                if record.body.len()
+                                    <= usize::try_from(limit).expect("límite pequeño") => {}
                             Ok(_) => {
-                                record.body.truncate(16 << 20);
-                                record.error = Some("respuesta truncada: supera 16 MiB".into());
+                                record
+                                    .body
+                                    .truncate(usize::try_from(limit).expect("límite pequeño"));
+                                record.error =
+                                    Some("respuesta truncada: supera el límite del perfil".into());
                             }
                             Err(error) => record.error = Some(error.to_string()),
                         }
@@ -130,6 +161,10 @@ fn rest_worker(
                     Err(error) => record.error = Some(error.to_string()),
                 }
                 record.at_ns = ns(start);
+                complete &= record.status.is_some_and(|s| (200..300).contains(&s))
+                    && record.error.is_none()
+                    && record.body.len() <= (4 << 20)
+                    && record.body.iter().any(|b| !b.is_ascii_whitespace());
                 if path == "/navigation/GetLoadingScreen"
                     && record.status == Some(200)
                     && let Ok(value) = serde_json::from_slice::<serde_json::Value>(&record.body)
@@ -156,8 +191,17 @@ fn rest_worker(
                 }
             }
             paths.extend(discovered);
-            while round.elapsed() < interval && !stop.load(Ordering::Relaxed) {
-                thread::sleep(Duration::from_millis(25));
+            let wait = if production {
+                backoff = next_backoff(backoff, complete);
+                Instant::now() + backoff
+            } else {
+                round + interval
+            };
+            while Instant::now() < wait && !stop.load(Ordering::Relaxed) {
+                thread::sleep(
+                    wait.saturating_duration_since(Instant::now())
+                        .min(Duration::from_millis(25)),
+                );
             }
         }
     })
@@ -175,12 +219,13 @@ fn capture(
     start: Instant,
     rx: &mpsc::Receiver<Record>,
     counts: &mut Counts,
+    duration: Duration,
 ) -> io::Result<()> {
     let mut last_status = Instant::now();
     let mut last_missing = start;
     while !STOP.load(Ordering::Relaxed)
         && !output.join("STOP").exists()
-        && start.elapsed() < Duration::from_hours(4)
+        && start.elapsed() < duration
     {
         let tick = Instant::now();
         for name in ["LMU_Data", "LMU_SharedMemoryLockData"] {
@@ -266,16 +311,7 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
         .iter()
         .map(|p| p.as_str().map(str::to_owned).ok_or("ruta no textual"))
         .collect::<Result<_, _>>()?;
-    if paths.len() > 250
-        || paths
-            .iter()
-            .any(|p| !p.starts_with("/rest/") && !p.starts_with("/navigation/"))
-        || paths
-            .iter()
-            .any(|p| p.contains(['\r', '\n', '?', '#', '\\']) || p.contains(".."))
-    {
-        return Err("catálogo fuera de límites".into());
-    }
+    let plan = Plan::parse(&catalog, paths)?;
     let start = Instant::now();
     let mut writer = Writer::new(
         File::options()
@@ -283,30 +319,37 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
             .create_new(true)
             .open(output.join("sesion.lmu.gz"))?,
     );
-    writer.record(Record {kind:"header".into(),details:json!({"schema":SCHEMA,"build":build,"utc_unix_ns":SystemTime::now().duration_since(UNIX_EPOCH)?.as_nanos().to_string(),"catalog":catalog,"shm_hz":60,"rest_core_ms":250,"rest_inventory_min_ms":2000,"privacy":"RAW: nombres de pilotos, rutas locales, configuración. No compartir públicamente.","mappings":["LMU_Data","LMU_SharedMemoryLockData"],"mapping_size":"páginas completas VirtualQuery; incluye padding"}),..Record::default()})?;
+    writer.record(Record {kind:"header".into(),details:json!({"schema":SCHEMA,"build":build,"utc_unix_ns":SystemTime::now().duration_since(UNIX_EPOCH)?.as_nanos().to_string(),"qpc_anchor":clock_anchor(start)?,"catalog":catalog,"shm_hz":60,"rest_core_ms":250,"rest_core_production_policy":plan.production_core,"rest_inventory_min_ms":2000,"privacy":"RAW: nombres de pilotos, rutas locales, configuración. No compartir públicamente.","mappings":["LMU_Data","LMU_SharedMemoryLockData"],"mapping_size":"páginas completas VirtualQuery; incluye padding"}),..Record::default()})?;
     // SAFETY: handler estático; únicamente cambia un AtomicBool.
     if unsafe { SetConsoleCtrlHandler(Some(control), 1) } == 0 {
         return Err(io::Error::last_os_error().into());
     }
     let stop = Arc::new(AtomicBool::new(false));
     let (tx, rx) = mpsc::sync_channel(128);
-    let core = vec![
-        "/rest/watch/standings".into(),
-        "/rest/watch/sessionInfo".into(),
-    ];
-    let other = paths.into_iter().filter(|p| !core.contains(p)).collect();
-    let workers = [
-        rest_worker(
-            core,
+    let mut workers = Vec::new();
+    if !plan.core.is_empty() {
+        workers.push(rest_worker(
+            plan.core,
             Duration::from_millis(250),
             start,
             stop.clone(),
             tx.clone(),
-        ),
-        rest_worker(other, Duration::from_secs(2), start, stop.clone(), tx),
-    ];
+            plan.production_core,
+        ));
+    }
+    if !plan.inventory.is_empty() {
+        workers.push(rest_worker(
+            plan.inventory,
+            Duration::from_secs(2),
+            start,
+            stop.clone(),
+            tx.clone(),
+            false,
+        ));
+    }
+    drop(tx);
     let mut counts = Counts::default();
-    let result = capture(&mut writer, &output, start, &rx, &mut counts);
+    let result = capture(&mut writer, &output, start, &rx, &mut counts, plan.duration);
     stop.store(true, Ordering::Relaxed);
     // Drena antes de join para que una cola llena no bloquee el cierre.
     while workers.iter().any(|w| !w.is_finished()) {

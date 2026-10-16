@@ -621,34 +621,61 @@ mod tests {
 
     #[test]
     fn calendar_writer_and_reader_share_packaged_layout_paths() {
-        // Fija las plantillas reales del paquete: si cambian, revisar estos argumentos.
-        let beta = include_str!("../../packaging/beta.ps1");
-        assert!(beta.contains("(Join-Path $generation 'data/hub')"));
-        assert!(beta.contains("(Join-Path $generation 'data/Vantare/native/layout.json')"));
-        let msix = include_str!("../../packaging/msix/verify.ps1");
-        assert!(msix.contains(r#"$data + '/hub" --layout "' + $data + '/layout.json"#));
+        let beta = include_str!("../../packaging/beta.ps1")
+            .lines()
+            .find(|line| line.trim_start().starts_with("$hubArgs ="))
+            .expect("argumentos reales de Start-BetaHub");
+        let beta_path = |flag| {
+            beta.split_once(flag)
+                .expect("flag beta")
+                .1
+                .split_once("(Join-Path $generation '")
+                .expect("ruta beta")
+                .1
+                .split_once('\'')
+                .expect("fin ruta beta")
+                .0
+        };
+        let msix = include_str!("../../packaging/msix/verify.ps1")
+            .lines()
+            .find(|line| line.trim_start().starts_with("$hubArguments ="))
+            .expect("argumentos reales de activación MSIX");
+        let msix_path = |flag| {
+            msix.split_once(flag)
+                .expect("flag MSIX")
+                .1
+                .split_once("$data + '")
+                .expect("ruta MSIX")
+                .1
+                .split_once('\'')
+                .expect("fin ruta MSIX")
+                .0
+                .trim_start_matches('/')
+        };
+        let root = std::env::temp_dir().join("vantare-calendar-package-contract");
+        // Destinos esperados independientes de los scripts y del helper compartido.
         for (data, layout, expected) in [
             (
-                "generation/data/hub",
-                "generation/data/Vantare/native/layout.json",
-                "generation/data/Vantare/native/calendar-alerts.json",
+                beta_path("--data-dir"),
+                beta_path("--layout"),
+                "data/Vantare/native/calendar-alerts.json",
             ),
             (
-                "msix-probe/hub",
-                "msix-probe/layout.json",
-                "msix-probe/calendar-alerts.json",
+                msix_path("--data-dir"),
+                msix_path("--layout"),
+                "calendar-alerts.json",
             ),
         ] {
             let options = parse(&[
                 "--data-dir".into(),
-                data.into(),
+                root.join(data).to_string_lossy().into_owned(),
                 "--layout".into(),
-                layout.into(),
+                root.join(layout).to_string_lossy().into_owned(),
             ])
             .expect("argumentos del paquete");
             let writer = vantare_hub::calendar::Calendar::alert_path(&options.layout);
             let reader = vantare_ui::session_alerts::calendar::path_for_layout(&options.layout);
-            assert_eq!(writer, PathBuf::from(expected));
+            assert_eq!(writer, root.join(expected));
             assert_eq!(reader, writer);
             assert_ne!(writer.parent(), Some(options.data_dir.as_path()));
         }

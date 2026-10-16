@@ -810,6 +810,30 @@ mod tests {
         assert!((first.time_behind_leader_s.unwrap() - 82.575_340_27).abs() < 1e-6);
     }
 
+    #[test]
+    fn player_inputs_follow_slot_identity_when_telemetry_rows_are_reordered() {
+        let original = admit(REAL_44, "1.3.0.0").unwrap();
+        let mut bytes = REAL_44.to_vec();
+        let last = TELEMETRY_BASE + 43 * TELEMETRY_STRIDE;
+        for offset in 0..TELEMETRY_STRIDE {
+            bytes.swap(TELEMETRY_BASE + offset, last + offset);
+        }
+        bytes[128_465] = 0; // Cabecera telemetry, no índice de scoring ni slot ID.
+        // mControl no sustituye mIsPlayer ni enlaza los dos arrays.
+        bytes[SCORING_BASE + 197] = 0;
+        bytes[SCORING_BASE + 43 * SCORING_STRIDE + 197] = 1;
+        let reordered = admit(&bytes, "1.3.0.0").unwrap();
+        assert_eq!(reordered.player, Some(43));
+        let before = original.vehicles[43].inputs.as_ref().unwrap();
+        let after = reordered.vehicles[43].inputs.as_ref().unwrap();
+        assert_eq!(reordered.vehicles[43].slot, original.vehicles[43].slot);
+        assert_eq!(after.speed_mps, before.speed_mps);
+        assert_eq!(after.source_time, before.source_time);
+        assert_eq!(after.engine_rpm, before.engine_rpm);
+        assert!(after.speed_mps.unwrap() > 15.0); // Captura real en movimiento.
+        assert!(reordered.vehicles[0].inputs.is_none());
+    }
+
     /// Del sidecar del fixture: +x local a la izquierda, +z a la trasera y las
     /// columnas de `mOri` llevan los ejes locales al mundo; el orden de coches
     /// en pista confirma la proa (ver REVIEW.md). Para el jugador, -col2 =

@@ -16,6 +16,32 @@ Leídos [#1562](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/
 
 ## 3. Estado real y canal
 
+### #1638 / VANTA-33 — CI Engineer y contraste de jugador (16-oct)
+
+[Investigación y límites](../../telemetria/ci-y-jugador-2026-10-16.md).
+`08f52be56` sí tuvo CI, roja en run38847620638: cierre del hijo por derechos
+tras HELLO, no timeout ACK. El banco no pasa por LMU/Gate. Aislado antes del
+cambio Engineer46/46 PASS; se aísla `engineer::recovery` en Nextest, prioridad100,
+sin tocar TTL/plazos/permisos/retries/aserciones. El log previo no conserva edad
+de la política: contención/TTL compatible, sin afirmar una medición ausente.
+Base actualizada por merge de `nightly@8166277cb`.
+
+SDK y Imola contrastan `mIsPlayer → mID → fila telemetry`, junto al índice de
+cabecera; velocidad norma local en m/s, scoring independiente como contraste.
+La auditoría streaming completa guarda resultados sin nombres en
+`C:/VantareServer/logs/1638-player-imola-audit.json`; resultados/cierre/checks/SHA
+en #1638 y PR draft #1664. Nueva regresión permuta filas de una captura real
+con jugador a15,5922m/s, sin cambiar la lectura productiva. Los diagnostic A/B
+solo tienen índice/velocidad: faltan IDs y mIsPlayer para certificar aquellos
+dos intentos. No asumir si Isaac conducía ni retirar el requisito de movimiento.
+Kit/ZIP sin cambios; VANTA-118 y prueba física siguen pendientes. Plane En curso.
+
+Clippy workspace/all-targets `-D warnings`, fmt/diff PASS; Nextest CI workspace
+Engineer/runtime/domain/ipc/services y telemetría **915/915 PASS**, 9 skips,
+135,737 s. Recovery primero/seis PASS, incluida pérdida de autoridad.
+UI completa/lifecycle locales omitidos por alcance/RAM; CI remota por SHA
+se registra en #1664, no se confunde con estos gates locales.
+
 ### #1638 / VANTA-33 — kit A/B preparado para VANTA-118 (16-oct)
 
 **Kit corregido:** no usar el ZIP inicial `f2851e…`. La regresión adicional

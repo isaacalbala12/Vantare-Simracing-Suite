@@ -43,6 +43,14 @@ filter = 'test(read_times_out_and_stop_interrupts) | test(a_client_that_never_sp
 threads-required = 'num-test-threads'
 priority = 100
 
+[[profile.default.overrides]]
+# recovery levanta un Host de derechos y un proceso Engineer: su permiso vence
+# a los 2 s si el runner no programa el refresco. No compite con los corpus CPU
+# mientras mide checkpoint/ACK ni se relajan TTL, aserciones o reintentos.
+filter = 'package(vantare-engineer) & binary(recovery)'
+threads-required = 'num-test-threads'
+priority = 100
+
 # Los tests más largos (>15 s) arrancan primero para no quedar solos al final.
 [[profile.default.overrides]]
 filter = 'test(/^solver::parity_tests::go_/) | test(golden_corpora_reach_every_widget) | test(mutated_and_truncated_real_frames_never_panic) | test(/^strategy::state_tests::isa1544_/)'

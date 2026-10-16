@@ -289,7 +289,10 @@ en 4 desde #1654 r3). Siete tests con plazos de reloj duros de 1-3 s (`ipc`,
 y primero (`priority`), así que sus plazos no dependen de la CPU que quede ni de
 cuántos hilos se usen. Si aparecen intermitentes en CI, volver a 2 hilos y
 anotarlo en el cuaderno de #1654. Para un `cargo nextest` a mano, usa
-`--build-jobs`, no `-j`.
+`--build-jobs`, no `-j`. El banco `engineer::recovery` también corre solo y
+primero: su Host/hijo refrescan una política con TTL de 2 s. La contención del
+runner no debe convertir la prueba de checkpoint en pérdida de licencia; TTL,
+aserciones, tests de revocación y número de intentos se conservan.
 
 **Sccache.** `compilar.ps1` lo activa solo si está instalado (`VANTARE_SCCACHE=0`
 lo apaga). Cada worktree conserva su target propio; sccache solo comparte las

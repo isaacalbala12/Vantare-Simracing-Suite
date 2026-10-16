@@ -1,7 +1,35 @@
+## #1631 · Login propio
+
+El protocolo services v11 combina Founders y AccountEmail y respuestas Email sin tokens.
+R2 mantiene el canje pendiente en memoria y hace un solo intento por AccountPoll,
+con reloj inyectado, intervalo de Clerk/slow_down y ventana de 30 s. Cancel y
+Logout pueden interrumpir los intervalos sin sleeps. La sesión FAPI se cierra
+al canjear, cancelar o cerrar sesión (mejor esfuerzo); al agotar el plazo se
+conserva para permitir «Autorizar» de nuevo. Un canje correcto retira el intento:
+si falla el guardado local, el formulario pide iniciar el acceso de nuevo y no
+reutiliza la sesión FAPI cerrada. El bloqueo local por 429 vive en
+Account y sobrevive a «Volver». No se añade persistencia ni dependencias.
+Hub/supervisor/servicios deben compilarse juntos. Entrada con código/contraseña,
+alta con verificación de email y recuperación usan FAPI nativa sin cookies.
+La sesión FAPI es temporal; la aprobación explícita de Device Grant obtiene la
+misma sesión OAuth v1 guardada por Account.complete. Supabase/Polar no cambian.
+Google/Discord mantienen authorize alojado + PKCE + callback loopback.
+Requisitos de desarrollo, seguridad y límites: [login propio](../../docs/auth/login-propio.md).
+Windows R2 (15/10): fmt/check/Clippy de producto PASS, Nextest services/ipc/runtime/hub
+1131/1131 PASS (ocho omisiones existentes), lifecycle 13/13 y telemetría 25/25
+PASS; siete capturas revisadas. HTTP local con reloj inyectado, sin Clerk real.
+Evidencia previa macOS (14/10/2026):
+Cargo directo con target propio y dos jobs autorizado en este Mac. Build y
+Clippy --all-targets/-D warnings PASS; Nextest compatible 1072/1072 PASS.
+Los 49 tests GPUI de AppKit requieren otro harness/Windows; cuatro mediciones
+permanecen ignoradas por defecto. No acredita login real: Native API/Device Grant,
+QA y Windows pendientes del orquestador. Telemetría 25/25 y lifecycle macOS
+10/10 PASS. Evidencia y resultados en el handoff.
+
 # Servicios nativos — ISA-1430
 
 **#1661 / VANTA-83:** Founders añade el plan perpetuo para contenido presente y
-futuro. Corte actual services v10 / control v5 / fotos v10; recompilar el conjunto.
+futuro. Corte actual services v11 / control v5 / fotos v11; recompilar el conjunto.
 Incluye Nightly vitalicio junto al derecho Founders; no concede roles. [Contrato](../../docs/billing/founders-1661.md).
 
 **Corte combinado #1610/#1594:** protocolo services v9 (DTO v10/derechos v4

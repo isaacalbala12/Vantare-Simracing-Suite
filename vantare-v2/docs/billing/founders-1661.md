@@ -14,7 +14,7 @@ incluidos identificadores futuros; no depende de enumerar cada módulo comprado.
 Incluye Stable y Nightly: `channels: ["stable", "nightly"]` y capacidades
 `vantare.plan.founders` + `vantare.channel.nightly`. No concede roles Owner/tester.
 Nightly se firma vitalicio solo ligado a la misma orden Founders; reembolso retira ambos.
-IPC de servicios v10 y control v5; fotos siguen v10. Recompilar juntos Hub,
+IPC de servicios v11 (Founders + login propio #1631) y control v5; fotos v11. Recompilar juntos Hub,
 services, runtime y overlays; se rechazan componentes con contratos anteriores.
 
 **Único sitio para abrir/cerrar la venta:** fila por `environment` (`sandbox` o `production`) de

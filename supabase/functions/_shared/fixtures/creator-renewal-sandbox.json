@@ -1,0 +1,242 @@
+{
+  "launch": {
+    "id": "95ba0a05-937f-4e22-9e64-62e25755ed99",
+    "amount": 399,
+    "currency": "eur",
+    "recurring_interval": "month",
+    "recurring_interval_count": 1,
+    "status": "active",
+    "product_id": "0d0de79b-30ba-4d00-8429-c9e6cba8ca56",
+    "discount_id": "c11be064-f7bb-48c4-806d-5fae3aaeba9b",
+    "discount": {
+      "duration": "once",
+      "type": "fixed",
+      "amount": 200,
+      "currency": "eur",
+      "amounts": {
+        "eur": 200
+      },
+      "id": "c11be064-f7bb-48c4-806d-5fae3aaeba9b"
+    },
+    "price_id": "7a6d9bc3-4a83-4f16-82f7-c496f67d7d09",
+    "price": {
+      "created_at": "2026-10-16T16:40:21.334378Z",
+      "modified_at": null,
+      "id": "7a6d9bc3-4a83-4f16-82f7-c496f67d7d09",
+      "source": "catalog",
+      "amount_type": "fixed",
+      "price_currency": "eur",
+      "tax_behavior": "inclusive",
+      "is_archived": false,
+      "product_id": "0d0de79b-30ba-4d00-8429-c9e6cba8ca56",
+      "type": "recurring",
+      "recurring_interval": "month",
+      "price_amount": 599
+    },
+    "prices": [
+      {
+        "created_at": "2026-10-16T16:40:21.334378Z",
+        "modified_at": null,
+        "id": "7a6d9bc3-4a83-4f16-82f7-c496f67d7d09",
+        "source": "catalog",
+        "amount_type": "fixed",
+        "price_currency": "eur",
+        "tax_behavior": "inclusive",
+        "is_archived": false,
+        "product_id": "0d0de79b-30ba-4d00-8429-c9e6cba8ca56",
+        "type": "recurring",
+        "recurring_interval": "month",
+        "price_amount": 599
+      }
+    ]
+  },
+  "creator": {
+    "id": "95ba0a05-937f-4e22-9e64-62e25755ed99",
+    "amount": 479,
+    "currency": "eur",
+    "recurring_interval": "month",
+    "recurring_interval_count": 1,
+    "status": "active",
+    "product_id": "0d0de79b-30ba-4d00-8429-c9e6cba8ca56",
+    "discount_id": "1208d8bb-bf0e-4432-971a-98372588c7a4",
+    "discount": {
+      "duration": "repeating",
+      "duration_in_months": 11,
+      "type": "percentage",
+      "basis_points": 2000,
+      "id": "1208d8bb-bf0e-4432-971a-98372588c7a4"
+    },
+    "price_id": "7a6d9bc3-4a83-4f16-82f7-c496f67d7d09",
+    "price": {
+      "created_at": "2026-10-16T16:40:21.334378Z",
+      "modified_at": null,
+      "id": "7a6d9bc3-4a83-4f16-82f7-c496f67d7d09",
+      "source": "catalog",
+      "amount_type": "fixed",
+      "price_currency": "eur",
+      "tax_behavior": "inclusive",
+      "is_archived": false,
+      "product_id": "0d0de79b-30ba-4d00-8429-c9e6cba8ca56",
+      "type": "recurring",
+      "recurring_interval": "month",
+      "price_amount": 599
+    },
+    "prices": [
+      {
+        "created_at": "2026-10-16T16:40:21.334378Z",
+        "modified_at": null,
+        "id": "7a6d9bc3-4a83-4f16-82f7-c496f67d7d09",
+        "source": "catalog",
+        "amount_type": "fixed",
+        "price_currency": "eur",
+        "tax_behavior": "inclusive",
+        "is_archived": false,
+        "product_id": "0d0de79b-30ba-4d00-8429-c9e6cba8ca56",
+        "type": "recurring",
+        "recurring_interval": "month",
+        "price_amount": 599
+      }
+    ]
+  },
+  "normal": {
+    "id": "aa63f16c-4c28-4958-a1ef-1fdc466ba1f1",
+    "amount": 599,
+    "currency": "eur",
+    "recurring_interval": "month",
+    "recurring_interval_count": 1,
+    "status": "active",
+    "product_id": "0d0de79b-30ba-4d00-8429-c9e6cba8ca56",
+    "discount_id": null,
+    "discount": null,
+    "price_id": "7a6d9bc3-4a83-4f16-82f7-c496f67d7d09",
+    "price": {
+      "created_at": "2026-10-16T16:40:21.334378Z",
+      "modified_at": null,
+      "id": "7a6d9bc3-4a83-4f16-82f7-c496f67d7d09",
+      "source": "catalog",
+      "amount_type": "fixed",
+      "price_currency": "eur",
+      "tax_behavior": "inclusive",
+      "is_archived": false,
+      "product_id": "0d0de79b-30ba-4d00-8429-c9e6cba8ca56",
+      "type": "recurring",
+      "recurring_interval": "month",
+      "price_amount": 599
+    },
+    "prices": [
+      {
+        "created_at": "2026-10-16T16:40:21.334378Z",
+        "modified_at": null,
+        "id": "7a6d9bc3-4a83-4f16-82f7-c496f67d7d09",
+        "source": "catalog",
+        "amount_type": "fixed",
+        "price_currency": "eur",
+        "tax_behavior": "inclusive",
+        "is_archived": false,
+        "product_id": "0d0de79b-30ba-4d00-8429-c9e6cba8ca56",
+        "type": "recurring",
+        "recurring_interval": "month",
+        "price_amount": 599
+      }
+    ]
+  },
+  "annualLaunch": {
+    "id": "8b6a9d18-28fb-4d2a-97e1-a3f038067aa3",
+    "amount": 3990,
+    "currency": "eur",
+    "recurring_interval": "year",
+    "recurring_interval_count": 1,
+    "status": "active",
+    "product_id": "8fb8dfb8-d979-41f7-bdf7-632031f104ef",
+    "discount_id": "95d6fdfa-f710-4ed8-a1e0-df27c61d27e3",
+    "discount": {
+      "duration": "once",
+      "type": "fixed",
+      "amount": 2009,
+      "currency": "eur",
+      "amounts": {
+        "eur": 2009
+      },
+      "id": "95d6fdfa-f710-4ed8-a1e0-df27c61d27e3"
+    },
+    "price_id": "4f5216ce-9b71-438c-ae8b-e78d19be0520",
+    "price": {
+      "created_at": "2026-10-16T16:40:21.634011Z",
+      "modified_at": null,
+      "id": "4f5216ce-9b71-438c-ae8b-e78d19be0520",
+      "source": "catalog",
+      "amount_type": "fixed",
+      "price_currency": "eur",
+      "tax_behavior": "inclusive",
+      "is_archived": false,
+      "product_id": "8fb8dfb8-d979-41f7-bdf7-632031f104ef",
+      "type": "recurring",
+      "recurring_interval": "year",
+      "price_amount": 5999
+    },
+    "prices": [
+      {
+        "created_at": "2026-10-16T16:40:21.634011Z",
+        "modified_at": null,
+        "id": "4f5216ce-9b71-438c-ae8b-e78d19be0520",
+        "source": "catalog",
+        "amount_type": "fixed",
+        "price_currency": "eur",
+        "tax_behavior": "inclusive",
+        "is_archived": false,
+        "product_id": "8fb8dfb8-d979-41f7-bdf7-632031f104ef",
+        "type": "recurring",
+        "recurring_interval": "year",
+        "price_amount": 5999
+      }
+    ]
+  },
+  "annualCreator": {
+    "id": "8b6a9d18-28fb-4d2a-97e1-a3f038067aa3",
+    "amount": 4799,
+    "currency": "eur",
+    "recurring_interval": "year",
+    "recurring_interval_count": 1,
+    "status": "active",
+    "product_id": "8fb8dfb8-d979-41f7-bdf7-632031f104ef",
+    "discount_id": "1ef87b6b-9071-4e49-b9d5-80515eacd8c9",
+    "discount": {
+      "duration": "repeating",
+      "duration_in_months": 12,
+      "type": "percentage",
+      "basis_points": 2000,
+      "id": "1ef87b6b-9071-4e49-b9d5-80515eacd8c9"
+    },
+    "price_id": "4f5216ce-9b71-438c-ae8b-e78d19be0520",
+    "price": {
+      "created_at": "2026-10-16T16:40:21.634011Z",
+      "modified_at": null,
+      "id": "4f5216ce-9b71-438c-ae8b-e78d19be0520",
+      "source": "catalog",
+      "amount_type": "fixed",
+      "price_currency": "eur",
+      "tax_behavior": "inclusive",
+      "is_archived": false,
+      "product_id": "8fb8dfb8-d979-41f7-bdf7-632031f104ef",
+      "type": "recurring",
+      "recurring_interval": "year",
+      "price_amount": 5999
+    },
+    "prices": [
+      {
+        "created_at": "2026-10-16T16:40:21.634011Z",
+        "modified_at": null,
+        "id": "4f5216ce-9b71-438c-ae8b-e78d19be0520",
+        "source": "catalog",
+        "amount_type": "fixed",
+        "price_currency": "eur",
+        "tax_behavior": "inclusive",
+        "is_archived": false,
+        "product_id": "8fb8dfb8-d979-41f7-bdf7-632031f104ef",
+        "type": "recurring",
+        "recurring_interval": "year",
+        "price_amount": 5999
+      }
+    ]
+  }
+}

@@ -201,6 +201,7 @@ fn access_command(command: &Command) -> bool {
         command,
         Command::Status
             | Command::AccountBegin
+            | Command::AccountEmail { .. }
             | Command::AccountPoll
             | Command::AccountRenew
             | Command::LicenseRenew
@@ -217,10 +218,20 @@ fn handle(
     let access = access_command(&command);
     let reply = serve_command(state, options, command, cancellation, signing, stop);
     if access {
-        // Solo un OAuth pendiente (callback esperando) sigue reteniendo los servicios.
+        // OAuth esperando callback o email esperando una acción conservan servicios.
         set_signing_in(
             signing,
-            matches!(reply, Reply::Account { pending: true, .. }),
+            matches!(
+                reply,
+                Reply::Account { pending: true, .. }
+                    | Reply::Email {
+                        stage: protocol::EmailStage::Code
+                            | protocol::EmailStage::NewPassword
+                            | protocol::EmailStage::Consent
+                            | protocol::EmailStage::Authorizing,
+                        ..
+                    }
+            ),
         );
     }
     reply

@@ -15,6 +15,8 @@ pub struct Http {
 pub struct Response {
     pub status: u16,
     pub body: Vec<u8>,
+    pub(crate) client_token: Option<crate::account::Secret>,
+    pub(crate) retry_after: Option<u64>,
 }
 
 impl Response {
@@ -67,6 +69,16 @@ impl Http {
     ) -> Result<Response> {
         let mut response = response.map_err(|_| Error::Offline)?;
         let status = response.status().as_u16();
+        let retry_after = response
+            .headers()
+            .get("Retry-After")
+            .and_then(|header| header.to_str().ok())
+            .and_then(|value| value.parse::<u64>().ok());
+        let client_token = response
+            .headers()
+            .get("Authorization")
+            .and_then(|header| header.to_str().ok())
+            .map(|value| crate::account::Secret::new(value.to_owned()));
         let body = response
             .body_mut()
             .with_config()
@@ -76,7 +88,12 @@ impl Http {
                 ureq::Error::BodyExceedsLimit(_) => Error::TooLarge,
                 _ => Error::Offline,
             })?;
-        Ok(Response { status, body })
+        Ok(Response {
+            status,
+            body,
+            client_token,
+            retry_after,
+        })
     }
 
     pub fn get(&self, url: &Url, bearer: Option<&str>, anon: Option<&str>) -> Result<Response> {
@@ -136,6 +153,23 @@ impl Http {
                 .post(url.as_str())
                 .send_form(fields.iter().copied()),
         )
+    }
+
+    /// FAPI nativa: cookies/Origin ausentes; token de cliente en Authorization.
+    pub(crate) fn native_form(
+        &self,
+        url: &Url,
+        fields: &[(&str, &str)],
+        client: Option<&str>,
+    ) -> Result<Response> {
+        Self::validate_url(url)?;
+        let mut url = url.clone();
+        url.query_pairs_mut().append_pair("_is_native", "true");
+        let mut request = self.agent.post(url.as_str());
+        if let Some(client) = client {
+            request = request.header("Authorization", format!("Bearer {client}"));
+        }
+        Self::read(request.send_form(fields.iter().copied()))
     }
 
     pub fn upload_jpeg(

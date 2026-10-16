@@ -1,13 +1,30 @@
 ## #1636 · VANTA-72 · Segunda sincronización nightly (16/10/2026)
 
-Entrada limpia `7d873cdcf`; merge autorizado de `nightly@e8aa2077c` en la rama
-`vantareapp/isa-1636-correos` / PR #1657. Solo conflicto de handoff, resuelto
-conservando íntegros ambos bloques. Oferta inicial/programa por informes apagado,
-cola por memoria comprometida y filtro CI/telemetría de nightly preservados.
-Gates en curso: SQL/Edge en Mac con lock/dobles, Rust admin/services servidor
-serial con target propio y compilar.ps1 actualizado. MIN_GB=0 solo proceso.
-Evidencia `~/evidence/1636-nightly2/` y `C:/VantareServer/evidence/1636-nightly2/`.
-Orquestador publica y fusiona tras entrega; worker solo bare/FIN, sin activación.
+Entrada limpia `7d873cdcf`; merge `3159e214` de `nightly@e8aa2077c` en la rama
+`vantareapp/isa-1636-correos` / PR #1657, autorizado por el orquestador.
+Solo conflicto de handoff: ambos bloques íntegros. Oferta inicial y programa por
+informes apagado de #1673, avisos #1649, cola por comprometido #1674 y filtro
+CI/telemetría #1676 preservados. Sin cambios adicionales de producto ni SQL/Rust.
+
+Repetición completa del alcance: Mac **815 SQL** en 28 suites, **367 Edge** y
+**E2E1** verdes con PostgreSQL real y RPC psql/OAuth/Brevo/Polar dobles. Incluye
+launch_offer_sql y report_enrollment_policy nuevos. Docker bajo lock/trap y
+contenedor retirado. Contratos CI marketing, scope nativo/telemetría y canales,
+YAML/shell y quality/**456** huellas PASS. Nuevos contratos/migraciones/cola y
+clasificador idénticos byte a byte a nightly; workflow combina ambos conjuntos.
+
+Windows servidor, worktree aislado ya existente y target propio, comandos
+seriales vía compilar.ps1 actualizado, MIN_GB=0 solo proceso: **fmt/check/Clippy
+-D warnings PASS, Nextest admin/services 224 PASS y 2 ignorados existentes**.
+Jobs2/tests1. Guard PS real PASS. Lifecycle/telemetría omitidos: no cambia código
+runtime/domain/ipc/testdata; solo scripts/docs nativos llegan desde nightly.
+No se cambian variables de máquina, checkout principal ni datos ajenos.
+
+Evidencia `~/evidence/1636-nightly2/` y
+`C:/VantareServer/evidence/1636-nightly2/`. SHA final/bare, base verificada y FIN
+se registran al cierre. El orquestador publica y fusiona; worker solo push bare.
+CI remoto tras publicación pendiente. Sin promoción a nightly, activación,
+despliegue, SaaS real ni gasto; pendientes de activación anteriores conservados.
 
 ## #1636 · VANTA-72 · Sincronización con nightly (16/10/2026)
 

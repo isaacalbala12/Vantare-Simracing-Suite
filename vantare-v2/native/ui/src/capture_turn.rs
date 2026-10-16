@@ -5,7 +5,7 @@ use std::{
     time::{Duration, SystemTime},
 };
 
-const LEASE: Duration = Duration::from_secs(15 * 60);
+const LEASE: Duration = Duration::from_mins(15);
 
 #[cfg(windows)]
 pub(super) fn check_environment() -> Result<(), String> {

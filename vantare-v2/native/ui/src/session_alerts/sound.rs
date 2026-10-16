@@ -16,7 +16,7 @@ impl Sound {
     pub(super) fn play(&mut self, tone: Tone, volume: u8) {
         #[cfg(windows)]
         {
-            self.stop();
+            Self::stop();
             self.bytes = wave(tone, volume);
             // SAFETY: WAV completo; el Vec no cambia hasta stop/Drop.
             unsafe {
@@ -27,7 +27,7 @@ impl Sound {
         let _ = (tone, volume);
     }
     #[cfg(windows)]
-    fn stop(&self) {
+    fn stop() {
         // SAFETY: puntero nulo detiene el sonido asíncrono del proceso.
         unsafe {
             PlaySoundA(std::ptr::null(), 0, 0);
@@ -38,7 +38,7 @@ impl Drop for Sound {
     fn drop(&mut self) {
         #[cfg(windows)]
         if !self.bytes.is_empty() {
-            self.stop();
+            Self::stop();
         }
     }
 }

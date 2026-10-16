@@ -5,7 +5,7 @@
     clippy::cast_sign_loss,
     clippy::cast_precision_loss
 )]
-use crate::{SessionKind, SessionState, Snapshot, SourceState};
+use crate::{Quality, SessionKind, SessionState, Snapshot, SourceState, StartPhase};
 use std::collections::{BTreeMap, BTreeSet};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -53,29 +53,47 @@ pub struct SessionInput {
     pub id: u64,
     pub kind: SessionKind,
     pub state: Option<SessionState>,
+    /// Resto hasta el fin programado; nunca hasta la carrera siguiente.
     pub remaining_s: Option<f64>,
+    pub elapsed_s: Option<f64>,
+    pub started_at_s: Option<f64>,
+    pub finished_at_s: Option<f64>,
+    pub next_kind: Option<SessionKind>,
+    pub next_starts_at_s: Option<f64>,
     pub position: Option<u32>,
     pub best_lap_ms: Option<u64>,
-    // #1638: Preparing no distingue parrilla/formación. No inferir fase ni metros.
+    // Solo fase explícita v11: Preparing/Grid no distinguen formación/salida.
     pub phase: Option<Phase>,
     pub distance_m: Option<f64>,
+    pub distance_estimated: bool,
 }
 pub fn project(snapshot: &Snapshot) -> Option<SessionInput> {
     let s = &snapshot.state;
     if snapshot.origin.source.simulator != "lmu" || !matches!(s.source_state, SourceState::Live) {
         return None;
     }
+    let elapsed = current_time(&s.session.elapsed_s);
+    let timing = &s.session.timing;
+    let phase = match timing.start_phase.current() {
+        Some(StartPhase::Formation) => Some(Phase::Formation),
+        Some(StartPhase::Countdown) => Some(Phase::Start),
+        Some(StartPhase::Racing) => Some(Phase::Racing),
+        Some(StartPhase::Grid) | None => None,
+    };
     Some(SessionInput {
         epoch: snapshot.epoch,
         id: s.session.id.0,
         kind: s.session.kind.current()?.clone(),
         state: s.session.state.current().copied(),
-        remaining_s: s
-            .session
-            .remaining_s
-            .current()
-            .copied()
-            .filter(|s| s.is_finite() && *s >= 0.0),
+        remaining_s: elapsed
+            .zip(current_time(&timing.scheduled_end_s))
+            .filter(|(elapsed, end)| end >= elapsed)
+            .map(|(elapsed, end)| end - elapsed),
+        elapsed_s: elapsed,
+        started_at_s: current_time(&timing.started_at_s),
+        finished_at_s: current_time(&timing.finished_at_s),
+        next_kind: timing.next_kind.current().cloned(),
+        next_starts_at_s: current_time(&timing.next_starts_at_s),
         position: s
             .player_car()
             .and_then(|car| car.class_position.current().copied()),
@@ -84,10 +102,29 @@ pub fn project(snapshot: &Snapshot) -> Option<SessionInput> {
             .and_then(|car| car.best_lap_s.current().copied())
             .filter(|s| s.is_finite() && *s > 0.0)
             .map(|s| (s * 1000.0).round().min(u64::MAX as f64) as u64),
-        phase: None,
-        distance_m: None,
+        phase,
+        distance_m: (phase == Some(Phase::Start))
+            .then(|| current_time(&timing.distance_to_start_line_m))
+            .flatten(),
+        distance_estimated: phase == Some(Phase::Start)
+            && matches!(timing.distance_to_start_line_m, Quality::Estimated(_)),
     })
 }
+fn current_time(value: &Quality<f64>) -> Option<f64> {
+    value
+        .current()
+        .copied()
+        .filter(|v| v.is_finite() && *v >= 0.0)
+}
+fn session_label(kind: &SessionKind) -> &'static str {
+    match kind {
+        SessionKind::Practice => "PRÁCTICAS",
+        SessionKind::Qualifying => "QUALY",
+        SessionKind::Race => "CARRERA",
+        SessionKind::Other(_) => "SESIÓN",
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CalendarInput {
     /// Identidad de una salida concreta, no solo de la serie.
@@ -117,6 +154,7 @@ pub struct Notice {
     pub event: String,
     pub label: String,
     pub calendar: bool,
+    pub scheduled: bool,
     pub kind: Kind,
     pub started_at_ms: u64,
     pub ends_at_ms: u64,
@@ -147,6 +185,8 @@ pub struct Mini {
     pub calendar: bool,
     pub seconds: u64,
     pub distance_m: Option<u32>,
+    pub scheduled: bool,
+    pub distance_estimated: bool,
 }
 impl Mini {
     pub fn tone(&self) -> Tone {
@@ -159,13 +199,13 @@ impl Mini {
     pub fn value(&self) -> String {
         self.distance_m.map_or_else(
             || {
-                if self.seconds == 0 {
+                if self.seconds == 0 && !self.scheduled {
                     "YA".into()
                 } else {
                     format!("{:02}:{:02}", self.seconds / 60, self.seconds % 60)
                 }
             },
-            |m| format!("{m} m"),
+            |m| format!("{}{m} m", if self.distance_estimated { "≈" } else { "" }),
         )
     }
 }
@@ -188,6 +228,8 @@ struct Countdown {
     alerted: BTreeSet<u8>,
     distance_m: Option<u32>,
     zero_fired: bool,
+    scheduled: bool,
+    distance_estimated: bool,
 }
 impl Countdown {
     fn seconds(&self, now: u64) -> u64 {
@@ -197,6 +239,7 @@ impl Countdown {
 #[derive(Default)]
 pub struct Machine {
     previous: Option<(SessionInput, u64)>,
+    confirmed_finish: Option<u64>,
     countdowns: BTreeMap<String, Countdown>,
     queue: Vec<Notice>,
     active: Option<Notice>,
@@ -213,85 +256,138 @@ impl Machine {
         };
         let key = format!("session:{}:{}", next.epoch, next.id);
         let old = self.previous.take();
-        if let Some((old, observed)) = &old {
-            let changed = old.epoch != next.epoch || old.id != next.id || old.kind != next.kind;
-            if changed {
-                self.clear_sessions();
-            }
-            let ended = old.epoch == next.epoch
-                && now.saturating_sub(*observed) <= 1500
-                && (old.id != next.id
-                    || old.kind != next.kind
-                    || (old.state != Some(SessionState::Finished)
-                        && next.state == Some(SessionState::Finished)));
-            if ended && options.finished && old.state != Some(SessionState::Finished) {
-                let qualifying = old.kind == SessionKind::Qualifying;
-                if qualifying || old.kind == SessionKind::Practice {
-                    self.enqueue(
-                        Notice {
-                            event: format!("ended:{}:{}", old.epoch, old.id),
-                            label: if qualifying { "QUALY" } else { "PRÁCTICAS" }.into(),
-                            calendar: false,
-                            kind: Kind::Finished {
-                                qualifying,
-                                position: old.position,
-                                best_lap_ms: old.best_lap_ms,
-                            },
-                            started_at_ms: 0,
-                            ends_at_ms: 0,
-                            expires_at_ms: now.saturating_add(15000),
-                        },
-                        now,
-                    );
-                }
-            }
+        let same = old
+            .as_ref()
+            .is_some_and(|(s, _)| s.epoch == next.epoch && s.id == next.id && s.kind == next.kind);
+        if same {
+            self.finish(&key, &next, old.as_ref().map(|(_, t)| *t), now, options);
+        } else {
+            self.clear_sessions();
+            // Conectarse a una sesión ya terminada solo establece la base.
+            self.confirmed_finish = next.finished_at_s.map(f64::to_bits);
         }
-        let label = match next.kind {
-            SessionKind::Practice => "PRÁCTICAS",
-            SessionKind::Qualifying => "QUALY",
-            SessionKind::Race => "CARRERA",
-            SessionKind::Other(_) => "SESIÓN",
-        };
-        if options.session
-            && matches!(next.kind, SessionKind::Practice | SessionKind::Qualifying)
-            && next.state != Some(SessionState::Finished)
-        {
-            if let Some(seconds) = next.remaining_s.filter(|s| s.is_finite() && *s >= 0.0) {
-                let deadline = now.saturating_add((seconds * 1000.0).min(u64::MAX as f64) as u64);
-                self.countdowns
-                    .entry(key.clone())
-                    .and_modify(|c| {
-                        c.deadline = deadline;
-                        c.fresh_until = now.saturating_add(1500);
-                    })
-                    .or_insert(Countdown {
-                        label: label.into(),
-                        calendar: false,
-                        deadline,
-                        fresh_until: now.saturating_add(1500),
-                        shown: false,
-                        alerted: BTreeSet::new(),
-                        distance_m: None,
-                        zero_fired: false,
-                    });
-            } else {
-                self.countdowns.remove(&key);
-            }
-        }
+        self.session_countdown(&key, &next, now, options);
         if options.starts && next.kind == SessionKind::Race {
             self.start(&key, &next, old.as_ref().and_then(|(s, _)| s.phase), now);
         }
-        if next.phase == Some(Phase::Racing) {
+        // Fase ausente o distinta: retirar el aviso de salida, sin conservar metros.
+        let phase_matches = |kind: &Kind| {
+            matches!(
+                (kind, next.phase),
+                (Kind::Formation, Some(Phase::Formation)) | (Kind::Start, Some(Phase::Start))
+            )
+        };
+        self.queue.retain(|n| {
+            n.event != key
+                || !matches!(n.kind, Kind::Formation | Kind::Start)
+                || phase_matches(&n.kind)
+        });
+        if self.active.as_ref().is_some_and(|n| {
+            n.event == key
+                && matches!(n.kind, Kind::Formation | Kind::Start)
+                && !phase_matches(&n.kind)
+        }) {
+            self.active = None;
+        }
+        if next.finished_at_s.is_some() {
+            self.countdowns.remove(&key);
+        }
+        self.previous = Some((next, now));
+        self.thresholds(now, options);
+    }
+    fn finish(
+        &mut self,
+        key: &str,
+        next: &SessionInput,
+        observed: Option<u64>,
+        now: u64,
+        options: &Options,
+    ) {
+        let Some(finished) = next.finished_at_s else {
+            return;
+        };
+        let mark = finished.to_bits();
+        if self.confirmed_finish == Some(mark) {
+            return;
+        }
+        self.confirmed_finish = Some(mark);
+        let recent = observed.is_some_and(|t| now.saturating_sub(t) <= 1500)
+            && next
+                .elapsed_s
+                .is_some_and(|elapsed| elapsed >= finished && elapsed - finished <= 1.5);
+        if !recent
+            || !options.finished
+            || !matches!(next.kind, SessionKind::Practice | SessionKind::Qualifying)
+        {
+            return;
+        }
+        self.enqueue(
+            Notice {
+                event: format!("ended:{key}:{mark}"),
+                label: session_label(&next.kind).into(),
+                calendar: false,
+                scheduled: false,
+                kind: Kind::Finished {
+                    qualifying: next.kind == SessionKind::Qualifying,
+                    position: next.position,
+                    best_lap_ms: next.best_lap_ms,
+                },
+                started_at_ms: 0,
+                ends_at_ms: 0,
+                expires_at_ms: now.saturating_add(15000),
+            },
+            now,
+        );
+    }
+    fn session_countdown(&mut self, key: &str, next: &SessionInput, now: u64, options: &Options) {
+        let announced = next
+            .next_kind
+            .as_ref()
+            .zip(next.next_starts_at_s)
+            .zip(next.elapsed_s)
+            .filter(|((_, start), elapsed)| start >= elapsed)
+            .map(|((kind, start), elapsed)| (session_label(kind), start - elapsed, false));
+        let scheduled = matches!(next.kind, SessionKind::Practice | SessionKind::Qualifying)
+            .then_some(next.remaining_s)
+            .flatten()
+            .map(|s| (session_label(&next.kind), s, true));
+        let target = announced.or(scheduled).filter(|(_, s, _)| {
+            options.session && s.is_finite() && *s >= 0.0 && next.finished_at_s.is_none()
+        });
+        let Some((label, seconds, scheduled)) = target else {
+            self.countdowns.remove(key);
+            return;
+        };
+        if self
+            .countdowns
+            .get(key)
+            .is_some_and(|c| c.scheduled != scheduled || c.label != label)
+        {
+            self.countdowns.remove(key);
             self.queue.retain(|n| n.event != key);
             if self.active.as_ref().is_some_and(|n| n.event == key) {
                 self.active = None;
             }
         }
-        if next.state == Some(SessionState::Finished) {
-            self.countdowns.remove(&key);
-        }
-        self.previous = Some((next, now));
-        self.thresholds(now, options);
+        let deadline = now.saturating_add((seconds * 1000.0).min(u64::MAX as f64) as u64);
+        self.countdowns
+            .entry(key.to_owned())
+            .and_modify(|c| {
+                c.deadline = deadline;
+                c.fresh_until = now.saturating_add(1500);
+            })
+            .or_insert(Countdown {
+                label: label.into(),
+                calendar: false,
+                scheduled,
+                distance_estimated: false,
+                deadline,
+                fresh_until: now.saturating_add(1500),
+                shown: false,
+                alerted: BTreeSet::new(),
+                distance_m: None,
+                zero_fired: false,
+            });
     }
     fn start(&mut self, key: &str, next: &SessionInput, previous_phase: Option<Phase>, now: u64) {
         if next.phase.is_some() && next.phase != previous_phase {
@@ -306,6 +402,7 @@ impl Machine {
                         event: key.to_owned(),
                         label: "SALIDA".into(),
                         calendar: false,
+                        scheduled: false,
                         kind,
                         started_at_ms: 0,
                         ends_at_ms: 0,
@@ -329,6 +426,8 @@ impl Machine {
                         alerted: BTreeSet::new(),
                         distance_m: Some(m.ceil().min(f64::from(u32::MAX)) as u32),
                         zero_fired: false,
+                        scheduled: false,
+                        distance_estimated: next.distance_estimated,
                     },
                 );
             }
@@ -373,6 +472,8 @@ impl Machine {
                 .or_insert(Countdown {
                     label: input.label.chars().take(64).collect(),
                     calendar: true,
+                    scheduled: false,
+                    distance_estimated: false,
                     deadline: input.starts_at_ms,
                     fresh_until: u64::MAX,
                     shown: false,
@@ -403,6 +504,7 @@ impl Machine {
                     event: key.clone(),
                     label: c.label.clone(),
                     calendar: c.calendar,
+                    scheduled: c.scheduled,
                     kind: Kind::Threshold(m),
                     started_at_ms: 0,
                     ends_at_ms: 0,
@@ -434,6 +536,7 @@ impl Machine {
         self.thresholds(now, options);
         for c in self.countdowns.values_mut() {
             if c.shown
+                && !c.scheduled
                 && c.distance_m.is_none()
                 && now <= c.fresh_until
                 && now >= c.deadline
@@ -476,7 +579,9 @@ impl Machine {
                 options.mini
                     && c.shown
                     && now <= c.fresh_until
-                    && now < c.deadline.saturating_add(1500)
+                    && now
+                        < c.deadline
+                            .saturating_add(if c.scheduled { 0 } else { 1500 })
                     && self.active.as_ref().is_none_or(|n| &n.event != *key)
                     && if c.distance_m.is_some() {
                         options.mini_start
@@ -494,6 +599,8 @@ impl Machine {
                 calendar: c.calendar,
                 seconds: c.seconds(now),
                 distance_m: c.distance_m,
+                scheduled: c.scheduled,
+                distance_estimated: c.distance_estimated,
             })
             .collect();
         minis.sort_by_key(|m| (m.distance_m.is_none(), m.seconds));
@@ -514,6 +621,8 @@ impl Machine {
             calendar: c.calendar,
             seconds: c.seconds(now),
             distance_m: c.distance_m,
+            scheduled: c.scheduled,
+            distance_estimated: c.distance_estimated,
         })
     }
 }

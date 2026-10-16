@@ -1,5 +1,5 @@
 {
-  "version": 10,
+  "version": 11,
   "epoch": 1790704110985,
   "sequence": 216,
   "origin": {
@@ -56,7 +56,16 @@
       "weather_wind_direction_rad": "unavailable",
       "weather_rain": "unavailable",
       "weather_track_wetness": "unavailable",
-      "weather_pressure_pa": "unavailable"
+      "weather_pressure_pa": "unavailable",
+      "started_at_s": "unavailable",
+      "finished_at_s": "unavailable",
+      "scheduled_end_s": {
+        "reliable": 27475.6
+      },
+      "start_phase": "unavailable",
+      "distance_to_start_line_m": "unavailable",
+      "next_kind": "unavailable",
+      "next_starts_at_s": "unavailable"
     },
     "flags": "unavailable",
     "cars": [],

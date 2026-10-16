@@ -3,12 +3,12 @@
   "widget": "session-alerts",
   "label": "Avisos de sesión · r4 v2",
   "frameMs": 1200,
-  "watchFor": "Demostración sintética. No verifica fases ni distancia LMU; capturas pendientes de #1655.",
+  "watchFor": "Contrato v11 sintético: fin programado y fin confirmado de prueba. LMU no demuestra inicio/fin/fases/próxima sesión.",
   "frames": [
     {
-      "caption": "Aviso leve: prácticas a 5 min",
+      "caption": "Prácticas: aviso leve de fin previsto",
       "snapshot": {
-        "version": 10,
+        "version": 11,
         "epoch": 1790704110985,
         "sequence": 1,
         "origin": {
@@ -65,7 +65,16 @@
             "weather_wind_direction_rad": "unavailable",
             "weather_rain": "unavailable",
             "weather_track_wetness": "unavailable",
-            "weather_pressure_pa": "unavailable"
+            "weather_pressure_pa": "unavailable",
+            "started_at_s": "unavailable",
+            "finished_at_s": "unavailable",
+            "scheduled_end_s": {
+              "reliable": 27475.6
+            },
+            "start_phase": "unavailable",
+            "distance_to_start_line_m": "unavailable",
+            "next_kind": "unavailable",
+            "next_starts_at_s": "unavailable"
           },
           "flags": "unavailable",
           "cars": [],
@@ -75,9 +84,9 @@
       }
     },
     {
-      "caption": "Último minuto: rojo",
+      "caption": "Prácticas: último minuto del horario previsto",
       "snapshot": {
-        "version": 10,
+        "version": 11,
         "epoch": 1790704110985,
         "sequence": 2,
         "origin": {
@@ -134,7 +143,16 @@
             "weather_wind_direction_rad": "unavailable",
             "weather_rain": "unavailable",
             "weather_track_wetness": "unavailable",
-            "weather_pressure_pa": "unavailable"
+            "weather_pressure_pa": "unavailable",
+            "started_at_s": "unavailable",
+            "finished_at_s": "unavailable",
+            "scheduled_end_s": {
+              "reliable": 27235.6
+            },
+            "start_phase": "unavailable",
+            "distance_to_start_line_m": "unavailable",
+            "next_kind": "unavailable",
+            "next_starts_at_s": "unavailable"
           },
           "flags": "unavailable",
           "cars": [],
@@ -144,9 +162,9 @@
       }
     },
     {
-      "caption": "Qualy observada: prácticas terminadas",
+      "caption": "Fin confirmado sintético; no acredita fuente LMU",
       "snapshot": {
-        "version": 10,
+        "version": 11,
         "epoch": 1790704110985,
         "sequence": 3,
         "origin": {
@@ -180,9 +198,9 @@
             "damage": "unsupported"
           },
           "session": {
-            "id": 2,
+            "id": 1,
             "kind": {
-              "reliable": "qualifying"
+              "reliable": "practice"
             },
             "state": "unavailable",
             "elapsed_s": {
@@ -203,7 +221,18 @@
             "weather_wind_direction_rad": "unavailable",
             "weather_rain": "unavailable",
             "weather_track_wetness": "unavailable",
-            "weather_pressure_pa": "unavailable"
+            "weather_pressure_pa": "unavailable",
+            "started_at_s": "unavailable",
+            "finished_at_s": {
+              "reliable": 27175.6
+            },
+            "scheduled_end_s": {
+              "reliable": 28375.6
+            },
+            "start_phase": "unavailable",
+            "distance_to_start_line_m": "unavailable",
+            "next_kind": "unavailable",
+            "next_starts_at_s": "unavailable"
           },
           "flags": "unavailable",
           "cars": [],
@@ -213,9 +242,9 @@
       }
     },
     {
-      "caption": "Qualy: cuenta atrás",
+      "caption": "Qualy consecutiva: fin previsto reiniciado",
       "snapshot": {
-        "version": 10,
+        "version": 11,
         "epoch": 1790704110985,
         "sequence": 4,
         "origin": {
@@ -272,7 +301,16 @@
             "weather_wind_direction_rad": "unavailable",
             "weather_rain": "unavailable",
             "weather_track_wetness": "unavailable",
-            "weather_pressure_pa": "unavailable"
+            "weather_pressure_pa": "unavailable",
+            "started_at_s": "unavailable",
+            "finished_at_s": "unavailable",
+            "scheduled_end_s": {
+              "reliable": 27475.6
+            },
+            "start_phase": "unavailable",
+            "distance_to_start_line_m": "unavailable",
+            "next_kind": "unavailable",
+            "next_starts_at_s": "unavailable"
           },
           "flags": "unavailable",
           "cars": [],
@@ -282,9 +320,9 @@
       }
     },
     {
-      "caption": "Carrera observada: qualy terminada",
+      "caption": "Cambio a carrera sin fin confirmado: oculto",
       "snapshot": {
-        "version": 10,
+        "version": 11,
         "epoch": 1790704110985,
         "sequence": 5,
         "origin": {
@@ -339,7 +377,14 @@
             "weather_wind_direction_rad": "unavailable",
             "weather_rain": "unavailable",
             "weather_track_wetness": "unavailable",
-            "weather_pressure_pa": "unavailable"
+            "weather_pressure_pa": "unavailable",
+            "started_at_s": "unavailable",
+            "finished_at_s": "unavailable",
+            "scheduled_end_s": "unavailable",
+            "start_phase": "unavailable",
+            "distance_to_start_line_m": "unavailable",
+            "next_kind": "unavailable",
+            "next_starts_at_s": "unavailable"
           },
           "flags": "unavailable",
           "cars": [],

@@ -133,7 +133,8 @@ pub(super) fn paint(
                 };
                 mk.panel(window, 36.0 * scale);
                 let label = format!(
-                    "{}{}",
+                    "{}{}{}",
+                    if mini.scheduled { "FIN " } else { "" },
                     mini.label,
                     if mini.calendar { " · cal" } else { "" }
                 );
@@ -216,6 +217,8 @@ pub(super) fn paint(
         let band = if let Some(m) = threshold {
             if n.calendar {
                 format!("Calendario · {m} min")
+            } else if n.scheduled {
+                format!("Fin previsto · {m} min")
             } else if m == 1 {
                 "Último minuto".into()
             } else {
@@ -256,7 +259,19 @@ pub(super) fn paint(
         } else {
             None
         };
-        let title = result_title.as_deref().unwrap_or(title);
+        let countdown_title = matches!(n.kind, Kind::Threshold(_)).then(|| {
+            if n.scheduled {
+                format!("FIN PREVISTO · {}", n.label)
+            } else if n.calendar {
+                "TU CARRERA EMPIEZA PRONTO".into()
+            } else {
+                format!("EMPIEZA {}", n.label)
+            }
+        });
+        let title = result_title
+            .as_deref()
+            .or(countdown_title.as_deref())
+            .unwrap_or(title);
         let title_ink = kit.ink(Face::Display, 20.0, 1.4, Color(0xfaf7f7, 1.0).hsla());
         let title = text::fit(window, title, &title_ink, 340.0);
         draw_label(
@@ -276,8 +291,10 @@ pub(super) fn paint(
             n.label.as_str()
         } else if matches!(n.kind, Kind::Finished { .. }) {
             "Resultado de tu clase"
+        } else if n.scheduled {
+            "Horario programado · puede prolongarse"
         } else {
-            "Tiempo restante de la sesión"
+            "Inicio anunciado por la sesión"
         };
         let detail_ink = kit.ink(Face::Body, 12.0, 0.0, style.colors.header_em.hsla());
         let detail = text::fit(window, detail, &detail_ink, 338.0);
@@ -319,7 +336,9 @@ pub(super) fn paint(
             Face::Display,
             &value_ink,
         );
-        let label = if matches!(n.kind, Kind::Finished { .. }) {
+        let label = if n.scheduled {
+            "FIN PREVISTO"
+        } else if matches!(n.kind, Kind::Finished { .. }) {
             "POSICIÓN"
         } else if counter.is_some_and(|m| m.distance_m.is_some()) {
             "A LA LÍNEA"

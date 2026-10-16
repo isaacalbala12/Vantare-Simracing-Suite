@@ -35,6 +35,8 @@ pub mod efficiency;
 pub mod geometry;
 pub mod layout;
 pub mod look;
+#[cfg(test)]
+mod offline_coverage;
 mod overlay;
 pub mod paths;
 pub mod pilot_flag;

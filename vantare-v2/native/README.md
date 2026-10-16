@@ -41,18 +41,18 @@ exige un plan de partición en el mismo PR.
 
 ## Contrato de fotos y datos guardados
 
-El pipe Core→Hub/overlays negocia solo DTO v10; rechaza peers v7/v8/v9.
+El pipe Core→Hub/overlays negocia solo DTO v11; rechaza peers v7/v8/v9/v10.
 El host muestra una sola vez «Componentes incompatibles. Reinstala la misma
 versión de Vantare», conserva el aviso durante los reintentos y lo retira al
 recibir una foto compatible. No es una comprobación de versión de producto:
 binarios distintos con el mismo contrato pueden interoperar.
-Servicios usa protocolo v10 (#1661, Founders; conserva #1610/#1594); derechos/control conserva v5, independiente del DTO v10. Hub y services se recompilan juntos; los peers v7/v8/v9 se rechazan.
+Servicios usa protocolo v10 (#1661, Founders; conserva #1610/#1594); derechos/control conserva v5, independiente del DTO v11. Hub y services se recompilan juntos; los peers v7/v8/v9 se rechazan.
 El Hub distingue errores de versión de servicios y conserva su aviso de conexión.
 `snapshot_from_json` es estricto; `snapshot_from_saved_json` conserva escenas
-Studio/Workshop/exportaciones v7/v8/v9/v10 sin reescribir originales.
+Studio/Workshop/exportaciones v7/v8/v9/v10/v11 sin reescribir originales.
 `snapshot_from_fixture_json` es el helper explícito para fixtures históricas.
 No usar esos lectores de compatibilidad en pipes live ni eventos live.
-Fixtures actuales: DTO v10; `.scene.json` contiene fases con fotos/captions,
+Fixtures archivadas: DTO v10; el lector explícito las migra a v11 en memoria; `.scene.json` contiene fases con fotos/captions,
 no un protocolo alternativo. Ver [ui/README.md](ui/README.md).
 
 ## Contrato adaptador ↔ núcleo
@@ -289,7 +289,10 @@ en 4 desde #1654 r3). Siete tests con plazos de reloj duros de 1-3 s (`ipc`,
 y primero (`priority`), así que sus plazos no dependen de la CPU que quede ni de
 cuántos hilos se usen. Si aparecen intermitentes en CI, volver a 2 hilos y
 anotarlo en el cuaderno de #1654. Para un `cargo nextest` a mano, usa
-`--build-jobs`, no `-j`.
+`--build-jobs`, no `-j`. El banco `engineer::recovery` también corre solo y
+primero: su Host/hijo refrescan una política con TTL de 2 s. La contención del
+runner no debe convertir la prueba de checkpoint en pérdida de licencia; TTL,
+aserciones, tests de revocación y número de intentos se conservan.
 
 **Sccache.** `compilar.ps1` lo activa solo si está instalado (`VANTARE_SCCACHE=0`
 lo apaga). Cada worktree conserva su target propio; sccache solo comparte las

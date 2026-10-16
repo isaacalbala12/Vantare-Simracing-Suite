@@ -641,6 +641,35 @@ fn reliable_or_stale<T: Copy>(quality: Quality<T>) -> T {
     }
 }
 
+fn assert_launch_metadata(state: &vantare_domain::State, rest_received: bool) {
+    // #1638: signals omitted from the frozen DTO oracle are checked directly
+    // against this captured corpus (all native pitstops are 0).
+    for (row, car) in state.cars.iter().enumerate() {
+        assert_eq!(car.vehicle, format!("Vehicle-{:03}", row + 1));
+        assert_eq!(
+            car.pit_stops,
+            if rest_received {
+                Quality::Reliable(0)
+            } else {
+                Quality::Unavailable
+            }
+        );
+    }
+}
+
+#[test]
+fn all_3839_real_corpus_photos_deliver_native_labels_and_rest_pit_counts() {
+    let corpus = Corpus::open();
+    let mut replay = Replay::new("1.4.2.0", corpus.events);
+    let mut rest_received = false;
+    assert_eq!(corpus.schedule.len(), 3839);
+    for (now, is_rest) in corpus.schedule {
+        rest_received |= is_rest;
+        let observation = replay.poll(now).expect("corpus real").expect("foto");
+        assert_launch_metadata(&observation.state, rest_received);
+    }
+}
+
 /// Señales de fase 1 del SHM 1.4.2.0 en boxes: combustible, delta, sector,
 /// distancia y cronómetro reales; longitud publicada y sin máximo de vueltas.
 fn assert_corpus_phase_one_signals(observation: &Observation) {

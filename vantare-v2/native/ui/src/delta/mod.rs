@@ -391,7 +391,7 @@ mod tests {
     fn one_projection_per_ingest_and_switch_preserves_board_and_notice_clocks() {
         let prefs = Preferences::default();
         let mut snapshot =
-            vantare_ipc::snapshot_from_json(include_str!("../../fixtures/delta.snapshot.json"))
+            vantare_ipc::snapshot_from_fixture_json(include_str!("../../fixtures/delta.snapshot.json"))
                 .expect("escena");
         for &look in crate::look::Look::ALL {
             let mut widget = Widget::new(
@@ -460,7 +460,7 @@ mod tests {
     #[test]
     fn settings_project_capsule_without_changing_delta_values() {
         let snapshot =
-            vantare_ipc::snapshot_from_json(include_str!("../../fixtures/delta.snapshot.json"))
+            vantare_ipc::snapshot_from_fixture_json(include_str!("../../fixtures/delta.snapshot.json"))
                 .expect("escena");
         let settings = Settings {
             template_id: "capsule".into(),
@@ -483,7 +483,7 @@ mod tests {
     #[test]
     fn frozen_workshop_scene_decodes_into_the_production_projection() {
         let snapshot =
-            vantare_ipc::snapshot_from_json(include_str!("../../fixtures/delta.snapshot.json"))
+            vantare_ipc::snapshot_from_fixture_json(include_str!("../../fixtures/delta.snapshot.json"))
                 .expect("escena Delta DTO v3 válida");
         let prefs = Preferences::default();
         let vm = delta::project(&snapshot, prefs);

@@ -14,6 +14,9 @@ mod rest;
 mod shm;
 mod translate;
 
+#[cfg(test)]
+mod cadence_tests;
+
 #[cfg(windows)]
 pub use live::Lmu;
 pub use open::open_replay;

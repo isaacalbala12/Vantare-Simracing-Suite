@@ -658,7 +658,7 @@ mod tests {
         let scene: serde_json::Value =
             serde_json::from_str(include_str!("../../fixtures/relative-vantare.scene.json"))
                 .expect("escena multiclase");
-        let photo = vantare_ipc::snapshot_from_json(&scene["frames"][0]["snapshot"].to_string())
+        let photo = vantare_ipc::snapshot_from_fixture_json(&scene["frames"][0]["snapshot"].to_string())
             .expect("foto multiclase");
         let settings = Settings {
             class_scope: "all".into(),
@@ -696,7 +696,7 @@ mod tests {
         .into_iter()
         .enumerate()
         {
-            let snapshot = vantare_ipc::snapshot_from_json(scene).expect("foto real intacta");
+            let snapshot = vantare_ipc::snapshot_from_fixture_json(scene).expect("foto real intacta");
             for id in ["track", "ambient", "time"] {
                 let settings = Settings {
                     footer_slots: vec![id.into()],
@@ -783,7 +783,7 @@ mod tests {
     fn configured_columns_fill_and_slots_reach_the_rendered_model() {
         let prefs = Preferences::default();
         let snapshot =
-            vantare_ipc::snapshot_from_json(include_str!("../../fixtures/relative.snapshot.json"))
+            vantare_ipc::snapshot_from_fixture_json(include_str!("../../fixtures/relative.snapshot.json"))
                 .expect("escena");
         let settings: Settings = serde_json::from_str(r#"{"designSystem":"eficiencia","rangeAhead":1,"rangeBehind":2,"classScope":"sameClass","rowHeightMode":"fill","footerSlots":["time","lastLap","track"],"columns":[{"id":"driverName","metricId":"driverName","format":{"mode":"initial"}},{"id":"lastLap","metricId":"lastLap","widthPreset":"md"}]}"#).expect("ajustes");
         let mut widget = Widget::new(&settings, prefs);
@@ -826,7 +826,7 @@ mod tests {
         let prefs = Preferences::default();
         let mut widget = Widget::new(&Settings::eficiencia(), prefs);
         let mut snapshot =
-            vantare_ipc::snapshot_from_json(include_str!("../../fixtures/relative.snapshot.json"))
+            vantare_ipc::snapshot_from_fixture_json(include_str!("../../fixtures/relative.snapshot.json"))
                 .expect("escena reconstruida v4");
         assert!(widget.ingest(&snapshot, prefs));
         // Mover un rival visible de la clase del jugador; cambiar otra clase
@@ -863,7 +863,7 @@ mod tests {
         // Datos reconstruidos de tools/widget-reference/scene.tsx, congelados
         // en reference/relative.geometry.json; no son evidencia de LMU live.
         let snapshot =
-            vantare_ipc::snapshot_from_json(include_str!("../../fixtures/relative.snapshot.json"))
+            vantare_ipc::snapshot_from_fixture_json(include_str!("../../fixtures/relative.snapshot.json"))
                 .expect("escena Relative DTO v4");
         assert_eq!(snapshot.state.cars.len(), 20);
         assert_eq!(snapshot.epoch, 3);

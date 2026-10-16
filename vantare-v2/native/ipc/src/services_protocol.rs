@@ -2,8 +2,8 @@
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use std::io::{self, Read, Write};
 
-// #1661 Founders extends #1594/#1610; reject older services peers.
-pub const VERSION: u32 = 10;
+// #1628 adds verified marketing consent; reject older services peers.
+pub const VERSION: u32 = 11;
 #[path = "services_protocol/pilot_document.rs"]
 pub mod pilot_document;
 #[path = "services_protocol/report_document.rs"]
@@ -21,6 +21,11 @@ pub const MAX_TRIAGE_FRAME: usize = 4 * 1024 * 1024;
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "command", deny_unknown_fields)]
 pub enum Command {
+    MailConsentGet,
+    MailConsentSet {
+        consent: bool,
+        source: MailSource,
+    },
     PilotLoad,
     PilotSave {
         profile: pilot_document::PilotProfile,
@@ -92,6 +97,13 @@ pub enum Command {
     Shutdown,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum MailSource {
+    Onboarding,
+    Settings,
+}
+
 // Bootstrap privado: no Debug para evitar registrar el nonce.
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -112,6 +124,11 @@ pub struct Request {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "result", deny_unknown_fields)]
 pub enum Reply {
+    MailConsent {
+        consent: bool,
+        locale: Option<String>,
+        revision: u64,
+    },
     Pilot {
         state: pilot_document::PilotState,
         message: String,

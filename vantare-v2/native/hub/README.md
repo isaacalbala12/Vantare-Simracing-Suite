@@ -2,7 +2,15 @@
 
 ## #1628 · Primer arranque
 
-El asistente GPUI guarda el kit en el layout y el consentimiento en privacy.json.
+El asistente GPUI guarda el kit en el layout y las decisiones de uso/fallos en
+privacy.json. Fallos llega encendido con el aviso de datos y cómo apagarlo;
+«Saltar» siempre pasa por ese aviso. Marketing es un permiso separado, apagado
+para cuentas sin decisión: servicios usa OAuth actual → `native-mail-consent`;
+solo su ACK cambia el interruptor y permite continuar como guardado. En error
+hay reintento explícito o entrada sin guardar. Ajustes › Privacidad consulta el
+permiso remoto al abrir y permite cambiarlo con `source:settings`. No se guarda
+marketing en disco ni se infiere del permiso de uso. UI española: `locale:es`.
+Servicios v11 exige recompilar Hub y supervisor juntos.
 Automático es la opción inicial/recomendada: resuelve Equilibrado, o Ahorro si
 el PC tiene ≤4 núcleos físicos o menos de 8 GiB de RAM. La lectura local de
 CPU (registro/topología Windows), RAM (GlobalMemoryStatusEx) y GPU (primer

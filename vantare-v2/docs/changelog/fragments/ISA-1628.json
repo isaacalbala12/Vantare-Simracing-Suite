@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-1628",
+  "type": "feature",
+  "summary": "El primer arranque permite elegir los correos de novedades y ofertas y muestra el aviso de informes de fallos.",
+  "technicalNotes": [
+    "El permiso de correos se confirma con la cuenta y el correo principal verificado; es independiente de los datos de uso.",
+    "Saltar pasa por privacidad; Founders aparece cuando el núcleo confirma ese plan."
+  ],
+  "testing": [
+    "En una instalación nueva, comprobar fallos encendidos con aviso y uso y marketing apagados.",
+    "Iniciar sesión, activar correos, simular fallo de red y reintentar; no debe mostrarse guardado antes de la confirmación.",
+    "Abrir Ajustes › Privacidad y retirar el mismo permiso de correos."
+  ],
+  "knownLimitations": [
+    "Widgets completos pendientes de #1641. Capturas pendientes hasta que #1675 esté integrado en nightly."
+  ]
+}

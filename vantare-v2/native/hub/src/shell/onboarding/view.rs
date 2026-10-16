@@ -945,6 +945,16 @@ impl Hub {
         let state = self.onboarding.as_ref().expect("visible");
         let usage_on = state.choices.usage;
         let crashes_on = state.choices.crashes;
+        let mail = &self.remote.read(cx).mail;
+        let mail_notice = if mail.pending {
+            "Guardando permiso de correos…".to_owned()
+        } else if !state.signed {
+            "Sin cuenta: no se activa el envío de correos.".to_owned()
+        } else {
+            mail.error.clone().unwrap_or_else(|| {
+                "El permiso se confirma en el servidor. Se cambia en Ajustes › Privacidad.".into()
+            })
+        };
         let crashes = onboarding_switch(
             "onboarding-crashes",
             "Enviar informes de fallos",
@@ -987,6 +997,26 @@ impl Hub {
                     .line_height(px(18.0 * s)),
             )
             .child(usage)
+            .child(
+                onboarding_switch(
+                    "onboarding-marketing",
+                    "Recibir novedades y ofertas por correo",
+                    "Opcional. Requiere cuenta y correo principal verificado.",
+                    self.remote.read(cx).mail.consent.unwrap_or(false),
+                    s,
+                    cx,
+                )
+                .on_click(cx.listener(|hub, _, _, cx| hub.onboarding_toggle_marketing(cx)))
+                .on_key_down(cx.listener(
+                    |hub, event: &gpui::KeyDownEvent, _, cx| {
+                        if matches!(event.keystroke.key.as_str(), "space" | "enter") {
+                            hub.onboarding_toggle_marketing(cx);
+                            cx.stop_propagation();
+                        }
+                    },
+                )),
+            )
+            .child(text(mail_notice, 12.5 * s, 400, orbit::ink_3(cx), cx))
     }
     fn onboarding_summary(&self, s: f32, cx: &gpui::App) -> Div {
         let state = self.onboarding.as_ref().expect("visible");

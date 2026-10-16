@@ -9,6 +9,7 @@ use crate::{
 };
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
+mod mail;
 mod pilot;
 
 pub struct App {
@@ -440,6 +441,9 @@ impl App {
 
     fn execute(&mut self, command: Command) -> Result<Reply> {
         match command {
+            Command::MailConsentGet | Command::MailConsentSet { .. } => {
+                return self.mail_reply(&command);
+            }
             Command::PilotLoad | Command::PilotSave { .. } | Command::PilotSync => {
                 return self.pilot_reply(command);
             }

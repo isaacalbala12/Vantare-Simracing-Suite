@@ -138,6 +138,10 @@ impl Drop for Store {
 
 impl super::Hub {
     pub(in crate::shell) fn poll_privacy(&mut self, cx: &mut gpui::Context<Self>) {
+        if self.settings.page == super::Page::Privacy {
+            self.remote
+                .update(cx, crate::services::view::Remote::poll_mail);
+        }
         if let Ok(store) = &mut self.settings.privacy
             && let Some(result) = store.poll()
         {
@@ -306,6 +310,75 @@ impl super::Hub {
             )
     }
 
+    pub(super) fn settings_marketing(&self, cx: &mut Context<Self>) -> Div {
+        let mail = &self.remote.read(cx).mail;
+        let message = mail.error.clone().unwrap_or_else(|| {
+            if mail.pending {
+                "Guardando permiso de correos…".into()
+            } else if mail.consent.is_none() {
+                "Inicia sesión para consultar y cambiar el permiso de correos.".into()
+            } else {
+                "Novedades y ofertas para tu correo principal verificado. Es opcional.".into()
+            }
+        });
+        div()
+            .flex()
+            .flex_col()
+            .gap(px(12.0))
+            .p(px(20.0))
+            .child(orbit::text(message, 13.0, 400, orbit::skin(cx).text2, cx))
+            .child(
+                orbit::button(
+                    "settings-mail-consent",
+                    if mail.consent == Some(true) {
+                        "Desactivar novedades y ofertas"
+                    } else {
+                        "Activar novedades y ofertas"
+                    },
+                    cx,
+                )
+                .on_click(cx.listener(|hub, _, _, cx| hub.settings_marketing_toggle(cx)))
+                .on_key_down(cx.listener(
+                    |hub, event: &gpui::KeyDownEvent, _, cx| {
+                        if matches!(event.keystroke.key.as_str(), "space" | "enter") {
+                            hub.settings_marketing_toggle(cx);
+                            cx.stop_propagation();
+                        }
+                    },
+                )),
+            )
+            .child(
+                orbit::button("settings-mail-refresh", "Consultar permiso de correos", cx)
+                    .on_click(cx.listener(|hub, _, _, cx| {
+                        hub.remote
+                            .update(cx, crate::services::view::Remote::refresh_mail);
+                    }))
+                    .on_key_down(cx.listener(|hub, event: &gpui::KeyDownEvent, _, cx| {
+                        if matches!(event.keystroke.key.as_str(), "space" | "enter") {
+                            hub.remote
+                                .update(cx, crate::services::view::Remote::refresh_mail);
+                            cx.stop_propagation();
+                        }
+                    })),
+            )
+    }
+    pub(super) fn settings_marketing_toggle(&mut self, cx: &mut gpui::Context<Self>) {
+        use crate::services::protocol::{Command, MailSource};
+        let remote = self.remote.read(cx);
+        if remote.mail.pending {
+            return;
+        }
+        let consent = !remote.mail.consent.unwrap_or(false);
+        self.remote.update(cx, |remote, cx| {
+            remote.mail_command(
+                Command::MailConsentSet {
+                    consent,
+                    source: MailSource::Settings,
+                },
+                cx,
+            );
+        });
+    }
     pub(super) fn settings_privacy_toggle(&mut self, usage: bool, cx: &mut gpui::Context<Self>) {
         if let Ok(store) = &mut self.settings.privacy {
             let mut next = store.value;

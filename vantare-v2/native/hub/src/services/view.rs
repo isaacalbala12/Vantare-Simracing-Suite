@@ -134,6 +134,7 @@ fn account_value(label: &str, value: &str, active: bool, cx: &gpui::App) -> gpui
 #[path = "access.rs"]
 mod access;
 mod founders;
+pub(crate) mod mail;
 #[path = "view/roadmap.rs"]
 mod roadmap;
 
@@ -248,6 +249,7 @@ fn remember_receipt(
 }
 pub(crate) mod pilot;
 pub struct Remote {
+    pub(crate) mail: mail::State,
     founders_language: founders::Language,
     pub(crate) adapt: orbit::Adapt,
     pipe: String,
@@ -408,6 +410,7 @@ impl Remote {
         .detach();
         let rights = core_feed(&pipe);
         let mut remote = Self {
+            mail: mail::State::default(),
             founders_language: founders::Language::default(),
             pilot: pilot::Projection::default(),
             adapt: orbit::Adapt::default(),
@@ -714,6 +717,7 @@ impl Remote {
 
     fn dispatch_with_kind(&mut self, command: Command, kind: Option<Inflight>) -> bool {
         let pilot_request = pilot::is_command(&command);
+        self.mail.dispatched(&command);
         let inflight = kind.unwrap_or(if matches!(command, Command::LicenseStatus) {
             Inflight::Background
         } else {
@@ -923,6 +927,7 @@ impl Remote {
 
     #[allow(clippy::too_many_lines)]
     fn complete(&mut self, reply: Reply, cx: &mut Context<Self>) {
+        self.mail.complete(&reply);
         let access_before = self.navigation_access();
         let mut profile_changed = false;
         let mut missing_profile = false;
@@ -1026,7 +1031,7 @@ impl Remote {
                     self.message = message;
                 }
             }
-            Reply::Calendar { .. } => {}
+            Reply::MailConsent { .. } | Reply::Calendar { .. } => {}
             Reply::Testing { data } => self.complete_participation(data),
             Reply::TriagePreview { preview } => self.complete_triage(preview),
             Reply::Roadmap {

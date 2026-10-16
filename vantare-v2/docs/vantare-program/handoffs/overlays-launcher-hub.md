@@ -84,3 +84,29 @@ Hitos #1607: PNG `c40a90d9` (2234.920 → 115.473 µs/carga repetida; RED/GREEN)
 2026-10-14 · #1628 / VANTA-51 · Ronda 2, encargo directo Codex CLI; sin Plane, Notion, subagentes, PR ni merge. Base asignada b9ec75ed conservada. Código 7bd4dc00 (hito anterior 7b0a2769): detector local de CPU/núcleos físicos, RAM y primer adaptador DXGI de hardware; Automático inicial/recomendado = Equilibrado, o Ahorro con ≤4 núcleos o <8 GiB. Se guarda la elección junto al nivel resuelto, sin medición en carrera. ACC solo se detecta por los manifests instalados de las bibliotecas Steam existentes; fuera del catálogo Launcher. Pro Plus/Launch abren la web de precios; los proveedores siguen AccountBegin y no se duplican #1631/#1633.
 
 QA Windows real: LMU+ACC encontrados; Ryzen 7 3700X, 8 núcleos, RX 7800 XT y 32 GB; Máximo→Automático/Equilibrado, guardado y reapertura sin asistente, uso/fallos apagados. Gate workspace 1763/1763 (12 skips), repetición final Hub/Launcher/services 679/679 (4 skips), lifecycle 18/18, fmt/check/Clippy e integridad 456 PASS. Siete capturas 1600×900 en C:/tmp/onboarding/nativo/r2; diferencias >20 por píxel, media sin máscaras 18,69 % r1→9,68 % r2. Quedan rasterización/glow/espaciado de GPUI y previews productivas distintas de las miniaturas HTML; textos honestos de privacidad/local y regla Automático explicados en el informe. Publicación autorizada: solo push de vantareapp/isa-1628-onboarding; HEAD final, prueba remota, logs y límites en C:/tmp/buzon/1628.md y C:/tmp/onboarding/nativo/r2/informe.md. Sin CI remota acreditada, promoción, release ni servicios comerciales reales; revisión e integración corresponden al orquestador.
+
+
+### VANTA-51 / #1628 · Integración del consentimiento · 16-oct-2026
+
+PR #1637, rama `vantareapp/isa-1628-onboarding`, worktree
+`C:/VantareServer/wt/isa-1628-onboarding`. Merge de nightly `bcaa0e3f2`
+en `a2f9b8ee6`, publicado sin conflictos; sin promoción de canal.
+Marketing se conecta por servicios con OAuth actual a `native-mail-consent`
+según `supabase/functions/native-admin/CONSENT.md`: consulta remota, elección
+única de novedades/ofertas, locale es, fuentes onboarding/settings, ACK antes
+de cambiar proyección o completar el paso. Uso y fallos siguen separados y
+locales. 401 pasa por revocación del núcleo y cierra sesión; errores de correo
+no confirman permisos ni reenvían decisiones automáticamente. Servicios v11.
+Founders se presenta según el núcleo; Saltar lleva al aviso de fallos antes
+del resumen. Los fallos siguen encendidos con aviso y pueden apagarse.
+
+Review DeepSeek de `C:/VantareServer/evidence/ds-rev1637`: arreglos P2/P3
+conservados con tests de navegación, planes, textos y salida privada.
+P1 de widgets completos sigue abierto: depende de #1641 (no fusionado).
+#1675 también OPEN; cero capturas/ventanas en este encargo.
+Gates Windows locales pendientes por cola ocupada por verificación offline
+#1638; diagnóstico registrado en buzón. Mac: fmt, check de Hub/services/IPC
+y clippy --all-targets -D warnings PASS; Nextest en curso. La CI del merge
+intermedio detectó el match Founders ausente, ya corregido con regresión.
+El estado medido final, SHA y CI se registran en #1628/PR #1637 antes de entregar.
+Revisión e integración en nightly corresponden al orquestador.

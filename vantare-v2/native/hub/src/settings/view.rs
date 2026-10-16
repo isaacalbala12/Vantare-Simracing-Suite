@@ -1555,8 +1555,11 @@ impl Hub {
             ))
     }
     fn settings_privacy(&self, cx: &mut Context<Self>) -> Div {
-        stack().child(self.settings_privacy_diagnostics(cx).flex_none())
+        stack()
+            .child(self.settings_privacy_diagnostics(cx).flex_none())
+            .child(self.settings_marketing(cx))
     }
+
     fn settings_privacy_diagnostics(&self, cx: &mut Context<Self>) -> Div {
         let mut body = section_body();
         match &self.settings.privacy {

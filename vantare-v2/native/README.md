@@ -12,7 +12,7 @@ El workspace tiene 13 crates; `default-members` excluye storage y admin.
 | `runtime` | Adapters LMU/ACC privados, núcleo, flujos y supervisor `vantare`. |
 | `engineer` | Eventos, radio, spotter y voz local bajo demanda. |
 | `storage` | Propietario único de series DuckDB (`SeriesChunk`, contrato independiente del DTO de fotos). |
-| `services` | Cuenta Clerk, licencia, billing Polar, calendario/roadmap/reportes; protocolo v10, sin UI. |
+| `services` | Cuenta Clerk, licencia, billing Polar, calendario/roadmap/reportes; protocolo v11, sin UI. |
 | `ui` | 18 widgets, hosts de overlays/Workshop GPUI, kits Eficiencia y Vantare. |
 | `hub` | Hub, Studio, presentación del Launcher, análisis, Testing Center y páginas de producto GPUI. |
 | `launcher` | Motor de perfiles, discovery, procesos y archivos locales; sin GPUI. |
@@ -46,7 +46,7 @@ El host muestra una sola vez «Componentes incompatibles. Reinstala la misma
 versión de Vantare», conserva el aviso durante los reintentos y lo retira al
 recibir una foto compatible. No es una comprobación de versión de producto:
 binarios distintos con el mismo contrato pueden interoperar.
-Servicios usa protocolo v10 (#1661, Founders; conserva #1610/#1594); derechos/control conserva v5, independiente del DTO v11. Hub y services se recompilan juntos; los peers v7/v8/v9 se rechazan.
+Servicios usa protocolo v11 (#1628, consentimiento de correos; conserva #1661/#1610/#1594); derechos/control conserva v5, independiente del DTO v11. Hub y services se recompilan juntos; los peers v7/v8/v9/v10 se rechazan.
 El Hub distingue errores de versión de servicios y conserva su aviso de conexión.
 `snapshot_from_json` es estricto; `snapshot_from_saved_json` conserva escenas
 Studio/Workshop/exportaciones v7/v8/v9/v10/v11 sin reescribir originales.

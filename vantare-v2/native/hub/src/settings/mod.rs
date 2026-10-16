@@ -665,6 +665,10 @@ impl Hub {
         if page == Page::Account && self.settings.pilot_saved.is_none() {
             self.settings.pilot_load = pilot::Load::New;
         }
+        if page == Page::Privacy {
+            self.remote
+                .update(cx, super::super::services::view::Remote::refresh_mail);
+        }
         self.settings.page = page;
         self.settings.panel_scroll = gpui::ScrollHandle::new();
         self.settings.status = None;

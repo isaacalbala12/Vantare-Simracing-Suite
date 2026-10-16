@@ -37,6 +37,7 @@ pub(super) struct State {
     pub pointer: (f32, f32),
     pub error: Option<String>,
     pub consent_error: bool,
+    pub marketing_continue: bool,
     pub capture: bool,
     pub signed: bool,
     pub system_reduced: bool,
@@ -116,6 +117,7 @@ impl State {
             pointer: (0.0, 0.0),
             error: artwork_error,
             consent_error: false,
+            marketing_continue: false,
             capture,
             signed: false,
             system_reduced: crate::shell::settings::windows::reduced_motion(),
@@ -128,6 +130,7 @@ impl State {
         self.spoken = Instant::now();
     }
     pub fn page(&mut self, step: usize) {
+        self.marketing_continue = false;
         self.step = step.min(6);
         self.say(SAY[self.step]);
         if self.step == 1 && !self.found[0] && !self.capture {
@@ -180,6 +183,7 @@ fn confirmed_plan(access: Access) -> Option<&'static str> {
         CatalogAccess::Free => "Gratis",
         CatalogAccess::LaunchV1 => "Lanzamiento",
         CatalogAccess::Pro => "Pro",
+        CatalogAccess::Founders => "Founders",
     })
 }
 /// Fila «Plan» del resumen: el plan real si se conoce; «Gratis» solo sin cuenta.
@@ -217,7 +221,7 @@ const fn motion(nav: Nav, step: usize, can_advance: bool) -> Motion {
     match nav {
         Nav::Back if step == 0 => Motion::Blocked,
         Nav::Back => Motion::Page(step - 1),
-        Nav::Skip if step < 5 => Motion::Page(6),
+        Nav::Skip if step < 5 => Motion::Page(5),
         Nav::Skip => Motion::Blocked,
         Nav::Next if step >= 6 => Motion::Exit(true),
         Nav::Next if !can_advance => Motion::Blocked,
@@ -259,6 +263,9 @@ impl Hub {
             Motion::Blocked => {}
             Motion::Exit(show) => self.onboarding_finish(show, window, cx),
             Motion::Page(next) => {
+                if step == 5 && !self.onboarding_marketing(cx) {
+                    return;
+                }
                 if step == 5 && !self.onboarding_consent(usage, crashes, cx) {
                     // El error queda visible: el usuario puede reintentar o entrar sin guardar.
                     cx.notify();
@@ -275,7 +282,7 @@ impl Hub {
     pub(super) fn onboarding_back(&mut self, cx: &mut Context<Self>) {
         self.onboarding_move(Nav::Back, cx);
     }
-    /// Saltar va al resumen; desde el paso de privacidad el control oculto no navega.
+    /// Saltar lleva al aviso de privacidad; desde ese paso el control oculto no navega.
     pub(super) fn onboarding_skip(&mut self, cx: &mut Context<Self>) {
         self.onboarding_move(Nav::Skip, cx);
     }
@@ -315,6 +322,67 @@ impl Hub {
             state.consent_error = !success;
         }
         success
+    }
+    fn onboarding_marketing(&mut self, cx: &mut Context<Self>) -> bool {
+        use crate::services::protocol::{Command, MailSource};
+        if self
+            .onboarding
+            .as_ref()
+            .is_none_or(|s| s.capture || !s.signed)
+        {
+            return true;
+        }
+        let remote = self.remote.read(cx);
+        if let Some(error) = remote.mail.error.clone()
+            && let Some(state) = &mut self.onboarding
+        {
+            state.error = Some(error);
+            state.consent_error = true;
+        }
+        if remote.mail.pending {
+            return false;
+        }
+        if remote.mail.onboarding_saved {
+            return true;
+        }
+        let consent = remote.mail.desired.or(remote.mail.consent).unwrap_or(false);
+        if let Some(state) = &mut self.onboarding {
+            state.marketing_continue = true;
+        }
+        self.remote.update(cx, |remote, cx| {
+            remote.mail_command(
+                Command::MailConsentSet {
+                    consent,
+                    source: MailSource::Onboarding,
+                },
+                cx,
+            );
+        });
+        false
+    }
+    fn onboarding_toggle_marketing(&mut self, cx: &mut Context<Self>) {
+        use crate::services::protocol::{Command, MailSource};
+        if self
+            .onboarding
+            .as_ref()
+            .is_none_or(|s| s.capture || !s.signed)
+        {
+            return;
+        }
+        let remote = self.remote.read(cx);
+        if remote.mail.pending {
+            return;
+        }
+        let consent = !remote.mail.consent.unwrap_or(false);
+        self.remote.update(cx, |remote, cx| {
+            remote.mail_command(
+                Command::MailConsentSet {
+                    consent,
+                    source: MailSource::Onboarding,
+                },
+                cx,
+            );
+        });
     }
     fn onboarding_toggle_usage(&mut self, cx: &mut Context<Self>) {
         let Some(state) = &self.onboarding else {
@@ -420,7 +488,44 @@ impl Hub {
         self.focus.focus(window, cx);
         cx.notify();
     }
+    fn complete_onboarding_marketing(&mut self, cx: &mut Context<Self>) {
+        let Some(state) = &self.onboarding else {
+            return;
+        };
+        if state.step != 5 || !state.marketing_continue {
+            return;
+        }
+        let mail = &self.remote.read(cx).mail;
+        if mail.pending {
+            return;
+        }
+        let error = mail.error.clone();
+        let confirmed = mail.onboarding_saved;
+        let usage = state.choices.usage;
+        let crashes = state.choices.crashes;
+        if let Some(state) = &mut self.onboarding {
+            state.marketing_continue = false;
+            if let Some(error) = error {
+                state.error = Some(error);
+                state.consent_error = true;
+                cx.notify();
+                return;
+            }
+        }
+        if confirmed
+            && self.onboarding_consent(usage, crashes, cx)
+            && let Some(state) = &mut self.onboarding
+        {
+            state.page(6);
+        }
+        cx.notify();
+    }
     pub(super) fn poll_onboarding(&mut self, cx: &mut Context<Self>) {
+        if self.onboarding.as_ref().is_some_and(|s| !s.capture) {
+            self.remote
+                .update(cx, super::super::services::view::Remote::poll_mail);
+        }
+        self.complete_onboarding_marketing(cx);
         let Some(state) = &mut self.onboarding else {
             return;
         };
@@ -523,6 +628,12 @@ mod tests {
             verified: true,
             ..Access::default()
         };
+        let founders = Access {
+            verified: true,
+            catalog: CatalogAccess::Founders,
+            ..Access::default()
+        };
+        assert_eq!(confirmed_plan(founders), Some("Founders"));
         let blocked = Access {
             blocked: true,
             ..Access::default()
@@ -554,7 +665,7 @@ mod tests {
             assert_eq!(motion(Nav::Back, step, true), Motion::Page(step - 1));
         }
         for step in 0..=4 {
-            assert_eq!(motion(Nav::Skip, step, true), Motion::Page(6));
+            assert_eq!(motion(Nav::Skip, step, true), Motion::Page(5));
         }
         for step in 5..=6 {
             assert_eq!(motion(Nav::Skip, step, true), Motion::Blocked);

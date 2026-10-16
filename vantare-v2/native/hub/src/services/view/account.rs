@@ -659,7 +659,8 @@ mod tests {
                 );
                 remote.request(Command::Logout, cx);
                 assert!(matches!(requests.try_recv(), Ok(Command::Logout)));
-                assert_eq!(remote.account_access_label(), "Acceso sin verificar");
+                assert!(!remote.navigation_access().verified);
+                assert_eq!(remote.account_access_label(), "Sin política vigente");
             });
             crate::quit_headless_test(cx);
         });

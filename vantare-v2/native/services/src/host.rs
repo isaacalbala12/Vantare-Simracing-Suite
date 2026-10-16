@@ -90,7 +90,10 @@ mod tests {
         assert!(validate(&request, &request.nonce, 1).is_ok());
         assert_eq!(validate(&request, "other-peer", 1), Err(Error::Protocol));
         assert_eq!(validate(&request, &request.nonce, 2), Err(Error::Protocol));
-        request.version += 1;
-        assert_eq!(validate(&request, &request.nonce, 1), Err(Error::Version));
+        // v10 shipped Founders without AccountEmail; neither older contract can dispatch.
+        for version in [9, 10, protocol::VERSION + 1] {
+            request.version = version;
+            assert_eq!(validate(&request, &request.nonce, 1), Err(Error::Version));
+        }
     }
 }

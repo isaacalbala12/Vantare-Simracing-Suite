@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-1680",
+  "type": "fix",
+  "summary": "El cupón de creador puede aplicarse y reintentarse cuando Polar devuelve el importe con descuento.",
+  "technicalNotes": [
+    "Se valida el ID y el precio base autorizado del plan, EUR e intervalo en GET y PATCH, conservando la allowlist de descuentos, autorización durable y ACK confirmado.",
+    "Un reintento con el cupón ya aplicado no repite el PATCH ni reinicia su duración. No cambia precios, facturas, comisiones ni reembolsos."
+  ],
+  "testing": [
+    "Regresiones con respuestas reales saneadas: 399→479, 599→479 y GET posterior a 479; casos anuales construidos con 3990/5999 y rechazo de precios, productos y descuentos ajenos.",
+    "Suite completa de Edge en Mac sin red ni credenciales: 812 PASS, 0 fallos, 2 omisiones existentes. Calidad y 456 huellas conservadas PASS."
+  ],
+  "knownLimitations": [
+    "Sin despliegue ni validación real de Edge y firma. Siguen pendientes el refund pending real, el inicio de los 11/12 meses y el receptor de webhooks aislado."
+  ]
+}

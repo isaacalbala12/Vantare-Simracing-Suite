@@ -179,8 +179,10 @@ Marketing ya no activa el error de guardado local ni la salida sin guardar.
 El kit inicial sustituye Banderas por Pedals y solo incluye widgets Gratis.
 Email y Pro sin sesión abren el login propio de #1635 dentro del asistente;
 Google/Discord conservan el navegador. La salida privada notifica al grabador
-y retira la generación anterior también en memoria, para que una lectura del
-archivo antiguo no pueda restaurar el permiso que acaba de revocarse.
+y suspende la grabación en memoria hasta la siguiente decisión guardada, para
+que releer el archivo antiguo no reactive uso. No se inventa una generación:
+una aceptación posterior vuelve a funcionar sin reiniciar. Regresión del
+grabador cubre la cola, la lectura antigua y la aceptación posterior.
 
 P3 documentados, sin modificar en esta ronda por encargo: precios de tarjetas
 incrustados (Pro 3,99/5,99 EUR, Plus 6,99/9,99 EUR, Launch 30 EUR) y fecha
@@ -190,3 +192,4 @@ no garantiza plazo si el peer no responde). Atrás/Escape permiten retroceder.
 Locale de correos permanece es y los PNG incrustados conservan su tamaño.
 Widgets completos tras #1641 y QA visual tras #1675 siguen como pendientes previos.
 Estado de esta ronda En curso; gates y SHA final se verificarán en issue/PR.
+

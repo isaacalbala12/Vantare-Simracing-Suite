@@ -266,10 +266,7 @@ fn private_exit_revokes_memory_without_overwriting_the_unwritable_file() {
                 assert!(hub.onboarding.is_none());
                 let private = hub.settings.privacy.as_ref().expect("privacidad").value;
                 assert!(!private.usage && !private.crashes);
-                assert!(
-                    private.generation > saved.generation,
-                    "las lecturas antiguas del grabador no pueden restaurar el permiso"
-                );
+                assert_eq!(private.generation, saved.generation);
                 assert_eq!(Privacy::load(&root.0).expect("sin escrituras"), saved);
             })
             .expect("entrar sin guardar");

@@ -167,9 +167,7 @@ const fn most_private(privacy: Privacy) -> Privacy {
         usage_decided: true,
         crashes: false,
         crashes_decided: true,
-        // La revocación en memoria debe prevalecer sobre las lecturas del
-        // privacy.json antiguo que sigue haciendo el grabador.
-        generation: privacy.generation.saturating_add(1),
+        ..privacy
     }
 }
 /// Consentimiento del paso de privacidad: guarda juntas las dos decisiones que
@@ -515,6 +513,7 @@ impl Hub {
             store.value = most_private(store.value);
             vantare_ui::analytics::consent(cx, store.value);
         }
+        vantare_ui::analytics::suspend_until_consent(cx);
         self.analytics
             .consent(vantare_ui::analytics::generation(cx));
         self.onboarding = None;
@@ -716,7 +715,7 @@ mod tests {
         assert!(private_exit_available(6, true));
     }
     #[test]
-    fn most_private_revokes_the_recorders_previous_generation() {
+    fn most_private_turns_everything_off_without_changing_the_saved_generation() {
         let saved = Privacy {
             generation: 7,
             crashes: true,
@@ -727,7 +726,7 @@ mod tests {
         assert_eq!(
             most_private(saved),
             Privacy {
-                generation: 8,
+                generation: 7,
                 crashes: false,
                 usage: false,
                 crashes_decided: true,
@@ -827,6 +826,6 @@ mod tests {
         let entered = most_private(chosen);
         assert!(!entered.crashes && entered.crashes_decided);
         assert!(!entered.usage && entered.usage_decided);
-        assert!(entered.generation > chosen.generation);
+        assert_eq!(entered.generation, chosen.generation);
     }
 }

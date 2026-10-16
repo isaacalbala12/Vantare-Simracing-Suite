@@ -1,9 +1,7 @@
 diff --git a/vantare-v2/native/hub/src/calendar/capture.rs b/vantare-v2/native/hub/src/calendar/capture.rs
 --- a/vantare-v2/native/hub/src/calendar/capture.rs
 +++ b/vantare-v2/native/hub/src/calendar/capture.rs
-@@ -24,7 +24,12 @@
- }
- 
+@@ -26,5 +26,10 @@
  pub(super) fn apply(calendar: &mut Calendar, demo: &DemoData) -> Result<(), String> {
 -    let Ok(spec) = std::env::var("VANTARE_CAPTURE_CALENDAR") else {
 +    let spec = demo

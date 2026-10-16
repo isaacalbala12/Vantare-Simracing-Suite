@@ -128,3 +128,13 @@ arreglo y repetición completa del lote. Widgets individuales en marcha, sin
 incidencias. Se añade al hash el preview QA externo de Testing Center y una
 regresión sin mutar el entorno de proceso. Umbral de compilación siguiente 0,
 en serie, según nueva orden del orquestador. Todavía sin push/PR ni integración.
+
+2026-10-16 · #1655: segundo reinicio T3 interrumpe widgets en 171/236; se
+conserva la traza y se repite el lote completo en un proceso. Resultado final:
+236 PNG en 250,575 s frente a 958,501 s individuales; incremental 3,608 s,
+236 omitidas, cero ventanas y mtimes intactos. Calendario final: 345,037 s
+frente a 1682,882 s, incremental 4,049 s; 54→1 procesos/HWND, incremental
+sin ventanas. Auditoría de 290 individuales: todos nacen ocultos NOACTIVATE/
+TOOLWINDOW; cero foco/cruces visibles. Merge autorizado de nightly 9e48eb86f
+en rama propia: 563262ad2, sin conflictos, uniones Cuenta/Studio revisadas.
+Gates post-merge en serie pendientes; no se publican aún PR ni resultados de CI.

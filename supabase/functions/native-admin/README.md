@@ -93,10 +93,16 @@ mismo correo completa los ACK pendientes. No hay reembolsos ni reintento automá
 El webhook firmado puede llegar después: la barrera y las colas son idempotentes.
 
 Los códigos reservan identidad estable y se reconcilian tras perder un ACK.
-Descuento 20 %, dos meses, exactamente los cuatro productos de lanzamiento.
-Organización verificada mediante GET (OAT: no `organization_id` en POST), portal
-sin cambio de plan. Se rechazan códigos ajenos o de alcance distinto. Se admite
-adoptar un código anterior identificado por `vantare_offer_key: creator:CODE`.
+Descuento de renovación 20 %, configurado en `scripts/polar-launch-prices.json`:
+11 meses mensuales / 12 meses para una renovación anual; dos cupones API-only,
+scope de los productos normales de cada intervalo, sin código público Polar.
+La reserva crea ambos y solo se activa tras confirmarlos; un ACK perdido se
+reconcilia por metadata `creator:CODE:renewals-v4` / `creator:CODE:annual-renewals-v4`.
+No adopta ni convierte silenciosamente cupones viejos de dos meses. Organización
+verificada mediante GET, portal sin cambio de plan. Incorporar IDs mensuales y
+anuales al mapa del checkout mediante el script de catálogo. El código atribuye
+el primer pago aunque lleve cupón de lanzamiento: no recibe 20 % hasta renovar.
+[Contrato completo](../../../vantare-v2/docs/billing/creator-renewals-1661.md).
 
 ## Recibos y comisiones
 
@@ -177,3 +183,20 @@ Referencias API: [órdenes](https://polar.sh/docs/api-reference/orders/list),
 [orden e importes](https://polar.sh/docs/api-reference/orders/get),
 [refunds](https://polar.sh/docs/api-reference/refunds/list),
 [borrado Clerk](https://clerk.com/docs/reference/backend/user/delete-user).
+
+### Founders / VANTA-83
+
+Founders se muestra como plan propio. El detalle de cliente incluye
+`founders_transitions` (suscripción, política `end_period`, estado `pending` o
+`completed`, fin pagado). Un fallo no retrasa el derecho y queda pendiente de
+reintento. Launch Edition se conserva solo como etiqueta de compras históricas;
+no se ofrece ni habilita nuevos checkouts. No cambiar migraciones históricas para
+borrar esa compatibilidad. No hay reembolso automático al cambiar a Founders.
+
+Ronda 5: activate_creator registra discount_id mensual y annual_discount_id UUID
+anual juntos, tras verificar ambos cupones en Polar. Reintento exige mismos IDs;
+no se rotan silenciosamente. billing_save_creator_attribution exige pertenencia
+al creador, entorno e intervalo y revierte el claim si no coincide. Creador
+activo anterior sin vínculo anual debe reconciliarse antes de aceptar anual.
+Reembolso/revocación retira el cupón de creador por GET/PATCH/ACK; Owner distingue
+retirada confirmada y pendiente por error. Cupones ajenos no se eliminan.

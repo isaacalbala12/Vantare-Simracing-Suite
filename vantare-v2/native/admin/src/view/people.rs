@@ -364,7 +364,7 @@ impl Admin {
                                 20.,
                             ))
                             .when_some(user.renews_at.as_ref(), |d, renew| {
-                                d.child(muted(&format!("Se renueva el {}", date(renew))))
+                                d.child(muted(&format!("Fin del periodo de suscripción: {}", date(renew))))
                             }),
                     )
                     .child(
@@ -393,6 +393,22 @@ impl Admin {
                 }
             )))
             .when(user.payments.iter().any(|p|p.amount_basis.as_deref()==Some("net")), |d|d.child(note("Los pagos históricos marcados como netos no incluyen impuestos y muestran su fecha de registro.",EMBER)))
+            .children(user.billing_incidents.iter().map(|incident| {
+                note(&format!("{} · {}", incident.label(), incident.resource_id), EMBER)
+            }))
+            .children(user.creator_renewal_operations.iter().map(|operation| {
+                let choice = match operation.not_applied.as_deref() {
+                    Some("creator:revoked") => "descuento de creador retirado por reembolso o revocación",
+                    Some("creator:revocation_pending") => "retirada del descuento de creador pendiente de revisión",
+                    Some("creator:reports_save_more_or_equal") => "informes seleccionado; creador no aplicado porque ahorra menos",
+                    Some("reports:creator_saves_more") => "creador seleccionado; informes no aplicado porque ahorra menos",
+                    _ => "creador desde la primera renovación",
+                };
+                note(&format!("Descuento: {} · {}", operation.state, choice), EMBER)
+            }))
+            .children(user.founders_transitions.iter().map(|transition| {
+                note(&format!("{} · {}", transition.label(), transition.subscription_id), EMBER)
+            }))
             .child(Self::payments(&user.payments))
     }
 

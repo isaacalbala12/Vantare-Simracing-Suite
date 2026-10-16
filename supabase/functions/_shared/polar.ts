@@ -6,6 +6,8 @@ import type {
 } from "./mapping.ts";
 
 export type CreateCheckoutParams = {
+  discountId?: string | null;
+  creatorCode?: string | null;
   productId: string;
   userId: string;
   email: string | null;
@@ -305,6 +307,17 @@ export async function createPolarCheckoutSession(
   params: CreateCheckoutParams,
   deps: PolarClientDeps = {},
 ): Promise<CreateCheckoutResult> {
+  if (
+    params.discountId &&
+    (params.productKey === "founders" || params.trial.enabled ||
+      !/^[0-9a-f-]{36}$/i.test(params.discountId))
+  ) {
+    throw new PolarClientError(
+      "invalid_checkout_offer",
+      "Invalid checkout offer",
+      400,
+    );
+  }
   const token = requireToken(deps);
   const runtimeEnvironment = requirePolarEnvironment(params.environment);
   const baseUrl = apiBase(runtimeEnvironment, deps);
@@ -315,7 +328,10 @@ export async function createPolarCheckoutSession(
     success_url: successUrl,
     return_url: cancelUrl,
     allow_trial: params.trial.enabled,
+    allow_discount_codes: false,
+    ...(params.discountId ? { discount_id: params.discountId } : {}),
     metadata: {
+      ...(params.creatorCode ? { creator_code: params.creatorCode } : {}),
       user_id: params.userId,
       product_key: params.productKey,
       plan_sku: params.planSku,
@@ -332,6 +348,7 @@ export async function createPolarCheckoutSession(
     payload.trial_interval_count = params.trial.interval_count;
   }
   if (params.email) payload.customer_email = params.email;
+  if (params.productKey === "founders") payload.allow_discount_codes = false;
 
   return await polarRequest(
     `${baseUrl}/checkouts/`,
@@ -681,4 +698,159 @@ export async function polarAdminRequest(
       return result;
     },
   );
+}
+
+// Setting the same desired state twice is safe, including after a lost response.
+export async function stopSubscriptionRenewal(
+  subscriptionId: string,
+  environment: BillingEnvironment,
+  deps: PolarClientDeps = {},
+): Promise<void> {
+  if (!/^[A-Za-z0-9_-]{1,200}$/.test(subscriptionId)) {
+    throw new Error("invalid_subscription_id");
+  }
+  await polarRequest(
+    `${apiBase(environment, deps)}/subscriptions/${subscriptionId}`,
+    {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${requireToken(deps)}`,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ cancel_at_period_end: true }),
+      redirect: "error",
+    },
+    deps,
+    async (response) => {
+      if (!response.ok) {
+        throw new PolarClientError(
+          "founders_transition_failed",
+          "Renewal could not be stopped",
+          502,
+        );
+      }
+      const data = await response.json();
+      if (data.id !== subscriptionId || data.cancel_at_period_end !== true) {
+        throw new PolarClientError(
+          "founders_transition_unconfirmed",
+          "Renewal stop was not confirmed",
+          502,
+        );
+      }
+    },
+  );
+}
+
+// Invoice is already paid. GET/confirm makes retries safe without restarting a coupon.
+export async function synchronizeRenewalDiscount(
+  subscriptionId: string,
+  environment: BillingEnvironment,
+  expected: {
+    productId: string;
+    discountId: string;
+    managedIds: (string | null)[];
+    normalCents: number;
+    interval: string;
+    authorize: () => Promise<boolean>;
+  },
+  deps: PolarClientDeps = {},
+): Promise<void> {
+  if (!/^[A-Za-z0-9_-]{1,200}$/.test(subscriptionId)) {
+    throw new Error("invalid_subscription_id");
+  }
+  const url = `${apiBase(environment, deps)}/subscriptions/${subscriptionId}`;
+  const request = async (method: "GET" | "PATCH") =>
+    await polarRequest(
+      url,
+      {
+        method,
+        headers: {
+          Authorization: `Bearer ${requireToken(deps)}`,
+          "Content-Type": "application/json",
+        },
+        ...(method === "PATCH"
+          ? { body: JSON.stringify({ discount_id: expected.discountId }) }
+          : {}),
+      },
+      { ...deps, timeoutMs: 10000, maxRateLimitRetries: 0 },
+      async (response) => {
+        if (!response.ok) throw new Error("creator_discount_http_failed");
+        const value = await response.json();
+        if (
+          value.id !== subscriptionId ||
+          value.product_id !== expected.productId ||
+          !["active", "uncanceled"].includes(value.status) ||
+          value.currency !== "eur" ||
+          value.amount !== expected.normalCents ||
+          value.recurring_interval !== expected.interval ||
+          value.recurring_interval_count !== 1 ||
+          !(value.discount_id === null || typeof value.discount_id === "string")
+        ) throw new Error("creator_discount_remote_mismatch");
+        return value;
+      },
+    );
+  const current = await request("GET");
+  if (!await expected.authorize()) {
+    throw new Error("creator_discount_authorization_lost");
+  }
+  if (current.discount_id === expected.discountId) return;
+  if (!expected.managedIds.includes(current.discount_id)) {
+    throw new Error("creator_discount_unmanaged");
+  }
+  const updated = await request("PATCH");
+  if (updated.discount_id !== expected.discountId) {
+    throw new Error("creator_discount_unconfirmed");
+  }
+}
+
+// Revoke only the stored creator coupon. Reports/manual discounts remain untouched.
+export async function withdrawCreatorDiscount(
+  subscriptionId: string,
+  environment: BillingEnvironment,
+  expected: {
+    productId: string;
+    creatorDiscountId: string;
+    authorize: () => Promise<boolean>;
+  },
+  deps: PolarClientDeps = {},
+): Promise<void> {
+  if (!/^[A-Za-z0-9_-]{1,200}$/.test(subscriptionId)) {
+    throw Error("invalid_subscription_id");
+  }
+  const url = `${apiBase(environment, deps)}/subscriptions/${subscriptionId}`;
+  const request = async (method: "GET" | "PATCH") =>
+    await polarRequest(
+      url,
+      {
+        method,
+        headers: {
+          Authorization: `Bearer ${requireToken(deps)}`,
+          "Content-Type": "application/json",
+        },
+        ...(method === "PATCH"
+          ? { body: JSON.stringify({ discount_id: null }) }
+          : {}),
+      },
+      { ...deps, timeoutMs: 10000, maxRateLimitRetries: 0 },
+      async (response) => {
+        if (!response.ok) throw Error("creator_revocation_http_failed");
+        const value = await response.json();
+        if (
+          value.id !== subscriptionId ||
+          value.product_id !== expected.productId ||
+          !(value.discount_id === null || typeof value.discount_id === "string")
+        ) throw Error("creator_revocation_remote_mismatch");
+        return value;
+      },
+    );
+  const current = await request("GET");
+  if (!await expected.authorize()) {
+    throw Error("creator_revocation_authorization_lost");
+  }
+  if (current.discount_id !== expected.creatorDiscountId) return;
+  const updated = await request("PATCH");
+  if (updated.discount_id !== null) {
+    throw Error("creator_revocation_unconfirmed");
+  }
 }

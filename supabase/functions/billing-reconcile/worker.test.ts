@@ -65,6 +65,21 @@ Deno.test("orphan recovers automatically after durable binding appears; DB outag
   let now = new Date("2026-10-08T12:00:00Z");
   const inbox = new MemoryWebhookInbox(() => now);
   const ledger = new MemoryOrderRefundLedger();
+  // Previously recorded history, not admission of a new retired-product payment.
+  await ledger.recordOrder({
+    environment: "sandbox",
+    orderId: "order-orphan",
+    userId,
+    productId: "00000000-0000-0000-0000-000000000001",
+    checkoutId: "checkout-server",
+    status: "paid",
+    paid: true,
+    netAmount: 3000,
+    currency: "eur",
+    reportedRefundedAmount: 0,
+    modifiedAt: "2026-10-07T10:00:00Z",
+    snapshotHash: "historical-fixture",
+  });
   const supabase = {
     from: (table: string) => {
       const chain = {

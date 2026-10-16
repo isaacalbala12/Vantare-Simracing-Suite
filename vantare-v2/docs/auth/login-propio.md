@@ -6,6 +6,10 @@ onboarding independiente. Seguimiento `vantareapp/isa-1631-login-p3`, base
 nightly `32c3f3a14bd22e9bcedff9e21e1cb138f5cc5226` (incluye #1635).
 Sin servicios reales, secretos, cambios Supabase/Polar ni dependencias nuevas.
 
+Integración posterior en #1637: el corte actual es services **v12**, que añade
+MailConsent al contrato de AccountEmail y Founders; el host rechaza también v11.
+Las versiones v11 de la ronda siguiente describen su estado histórico.
+
 ## Integración con nightly — 16/10/2026
 
 Base de esta ronda: `bcaa0e3f2`, incorporada a la rama de #1635 conservando
@@ -281,7 +285,7 @@ Cambios tras la revisión R1 de PR #1635:
   envía con prioridad al terminar el comando HTTP en vuelo (cada petición
   conserva su timeout de 8 s). Cancelar no deshace una petición que Clerk ya
   haya recibido. Los intervalos de autorización no retienen el worker.
-- Protocolo services **v11**, combinación de AccountEmail y Founders; conserva
+- Protocolo services **v12**, combinación de MailConsent, AccountEmail y Founders; conserva
   los contratos de #1594/#1610. Control v5 y fotos v11 son independientes.
 
 Decisiones documentadas sin cambio de código:

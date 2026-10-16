@@ -4,7 +4,39 @@ import {
   assertStringIncludes,
 } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import { promotionCheckoutDiscount } from "./observe.ts";
+import { promotionCheckoutDiscount as checkoutWithOffer } from "./observe.ts";
+const promotionCheckoutDiscount = (
+  ...args: Parameters<typeof checkoutWithOffer>
+) => {
+  args[8] ??= { discountId: "pro1", key: "pro_monthly" };
+  return checkoutWithOffer(...args);
+};
+Deno.test("P3-D no legacy checkout fallback without a canonical offer", async () => {
+  let calls = 0;
+  const admin = () =>
+    ({
+      rpc: () => {
+        calls++;
+        throw new Error("unexpected RPC");
+      },
+    }) as unknown as SupabaseClient;
+  const error = await assertRejects(() =>
+    checkoutWithOffer(
+      admin,
+      "account",
+      "sandbox",
+      "pro",
+      new Date("2026-10-30"),
+      true,
+      "new",
+    )
+  );
+  assertEquals(
+    (error as Error & { code: string }).code,
+    "launch_offer_required",
+  );
+  assertEquals(calls, 0);
+});
 Deno.test("P1-2 expired desktop attempt recovers the account right without two remote checkouts", async () => {
   for (
     const status of ["open", "expired", "failed", "confirmed", "succeeded"]

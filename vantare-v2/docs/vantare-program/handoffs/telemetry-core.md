@@ -16,6 +16,40 @@ Leídos [#1562](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/
 
 ## 3. Estado real y canal
 
+### #1638 / VANTA-33 — kit A/B preparado para VANTA-118 (16-oct)
+
+[Protocolo y comandos](../../telemetria/ab-lmu-2026-10-16.md). Fuente
+`e516ccfe713d4d9d3d1c2e9875c234e126f4cdaf`, kit privado listo en
+`C:/VantareServer/share/kit-ab-lmu/kit-ab-lmu.zip` (**995572 bytes**), SHA-256
+`f2851e1cd1c594eda201eaed03639a2474fa18543f8636e6691357c395eb874f`.
+Grabadora release CRT estático + PresentMon 2.6.0 portátil/licencia + scripts PS5
+con hashes, tarea interactiva efímera oculta, STOP y análisis offline streaming.
+No compilación/instalación en PC de juego, sin juego en servidor ni capturas de app.
+
+Espera práctica/SHM usable, jugador >1 m/s y reloj avanzando; después **C0 60 s
+solo SHM + A/B/A/B 180 s cada tramo**, total **13 min**, A/B seis minutos cada uno.
+Mismos dos GET/orden/backoff que producción; B solo añade `/rest/race/car` cada
+≥2 s. Primeros 10 s excluidos. Ancla QPC relaciona peticiones, publicación y
+PresentMon. Mide FrameTime CPU/DisplayedTime separados; ausencia no es cero.
+Control C permite revisar el efecto conjunto de los GET productivos; si A corta
+no atribuir a un endpoint individual sin controles separados. B sin efecto no
+descarta otras rutas/interacciones del inventario original.
+
+Inventario productivo revisado: únicamente `standings` y `sessionInfo`, GET a
+127.0.0.1:6397, secuenciales, 250 ms después de ronda correcta; errores esperan
+500/1000/2000 ms, deadline750 ms/GET, cuerpo4 MiB, TTL auxiliar2 s. El kit registra
+la cadencia efectiva. No se cambian esos endpoints ni el adapter.
+
+Clippy/fmt PASS, Nextest CI workspace runtime/domain/ipc+telemetría **676/676 PASS**,
+7 skips; Python **6/6 PASS**, release/CRT y CLI/captura vacía comprobados. PS5,
+hashes, espacios/apóstrofe y **tarea interactiva negativa real con autoeliminación** PASS.
+Verificador QA release actualizado; `Verificar-AB.ps1 -Widgets` ejecuta después
+los cuatro archivos A/B por las 18 proyecciones en serie, scope practice-only.
+Logs `1638-ab-*`. Falta ejecutar con Isaac; no hay resultado físico ni CI remoto
+certificado por estos checks locales. Plane VANTA-33 En curso, PR draft #1664.
+VANTA-118 no se mueve desde este worker; conduce Isaac. Conducción/carrera y
+Avisos de inicio/fin/formación/salida siguen sin certificación hasta sus capturas.
+
 ### #1638 / VANTA-33 — investigación prioritaria de frescura (16-oct)
 
 Código corregido **`2264bcd20af0b922213af4b2e66cd0342f0cd2db`**, base

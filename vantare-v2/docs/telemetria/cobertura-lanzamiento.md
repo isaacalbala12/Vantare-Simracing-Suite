@@ -4,6 +4,11 @@ Auditoría inicial: 14-oct-2026, base `nightly@79a1ace66e5ec397126495dc5ce99353d
 
 ## Fase B: práctica de Imola recibida — 16-oct
 
+**Kit A/B listo para VANTA-118:** [13 minutos y procedimiento del worker](ab-lmu-2026-10-16.md).
+Control solo SHM + A/B/A/B con dos GET productivos; B añade únicamente race/car.
+Grabación del jugador rodando, QPC/PresentMon y verificación offline por condición.
+Kit compilado en `C:/VantareServer/share/kit-ab-lmu/kit-ab-lmu.zip`; ejecución física pendiente.
+
 **Investigación prioritaria de frescura:** [causa y corrección](imola-frescura-2026-10-16.md).
 El 99,9833 % original combinaba huecos SHM reales con recuperación bloqueada.
 Corregida la espera de 2 s, el mismo Replay/Core completo da **25,4488 % Stale**;

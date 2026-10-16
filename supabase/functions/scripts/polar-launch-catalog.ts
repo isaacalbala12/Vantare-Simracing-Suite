@@ -1,3 +1,9 @@
+import productionFounders from "./founders-production-config.json" with {
+  type: "json",
+};
+import productionInventory from "./polar-production-inventory.json" with {
+  type: "json",
+};
 // ISA-1620. Offline plan by default; --apply is an explicit operator action.
 import table from "./polar-launch-prices.json" with { type: "json" };
 import {
@@ -29,7 +35,7 @@ export type Resource = {
     amount_type?: string;
     price_amount?: number;
     price_currency?: string;
-    tax_behavior?: string;
+    tax_behavior?: string | null;
   }[];
   trial_interval?: string | null;
   trial_interval_count?: number | null;
@@ -53,6 +59,7 @@ export type Http = (
   body?: unknown,
 ) => Promise<unknown>;
 type Options = {
+  planOnly?: boolean;
   environment: BillingEnvironment;
   creator?: string;
 };
@@ -68,11 +75,11 @@ const fixedPrice = (cents: number) => ({
 // Customer copy from product-contract.md; interval is shown by Polar's price.
 // Product name/description are single strings, not localized fields in Polar.
 function productCopy(key: CheckoutKey, launch = false) {
-  if (key === "launch_lifetime") {
+  if (key === "founders") {
     return {
-      name: "Vantare Launch Edition",
+      name: "Vantare Founders · Precio de fundador",
       description:
-        "- Acceso de por vida a los módulos existentes al comprar y sus mejoras, incluido **Engineer** en la edición inicial.\n- Acceso a tests, encuestas y builds de **Testers**, sin Nightly.\n- Los módulos completamente nuevos pueden venderse aparte.",
+        "- Pago único de **50 €**: todos los módulos y widgets presentes y futuros, para siempre.\n- Disponible desde la **beta pública**, sin fecha de fin. El precio subirá más adelante, sin fecha prevista.\n- Sin caducidad ni renovación. Incluye acceso a Nightly.",
     };
   }
   const plus = key.startsWith("pro_plus_");
@@ -145,12 +152,18 @@ async function list(
   return resources;
 }
 
-function currentPrice(product: Resource, cents: number) {
+function currentPrice(
+  product: Resource,
+  cents: number,
+  allowUnknownTax = false,
+) {
   const active = (product.prices ?? []).filter((p) => !p.is_archived);
   const p = active[0];
   return active.length === 1 && p.amount_type === "fixed" &&
       p.price_amount === cents && p.price_currency === "eur" &&
-      p.tax_behavior === "inclusive"
+      (p.tax_behavior === "inclusive" ||
+        (allowUnknownTax &&
+          (p.tax_behavior == null || p.tax_behavior === "exclusive")))
     ? p
     : undefined;
 }
@@ -169,28 +182,137 @@ function noTrial(resource: Resource) {
   return resource.trial_interval == null &&
     resource.trial_interval_count == null;
 }
-function discountMatches(resource: Resource, ids: string[], code: string) {
-  return resource.type === "percentage" && resource.basis_points === 2000 &&
-    resource.duration === "repeating" && resource.duration_in_months === 2 &&
-    resource.code === code && sameProducts(resource, ids) &&
-    !resource.starts_at && !resource.ends_at && !resource.max_redemptions;
+function launchDiscountMatches(
+  discount: Resource,
+  plan: Plan,
+  productId: string,
+  window: typeof PRICES.launch_windows.production,
+) {
+  return !discount.is_archived && discount.type === "fixed" &&
+    discount.duration === "once" &&
+    discount.duration_in_months == null &&
+    discount.amounts?.eur === plan.normal_cents - plan.launch_cents &&
+    Object.keys(discount.amounts ?? {}).length === 1 &&
+    sameProducts(discount, [productId]) && !discount.code &&
+    !discount.max_redemptions &&
+    Date.parse(discount.starts_at ?? "") ===
+      Date.parse(window.starts_at) &&
+    Date.parse(discount.ends_at ?? "") ===
+      Date.parse(window.ends_at);
 }
-function linkMatches(resource: Resource, ids: string[], discountId: string) {
-  // The shared link inherits launch products, all without a trial (decision B).
-  return sameProducts(resource, ids) && resource.discount_id === discountId &&
-    noTrial(resource) &&
-    resource.allow_discount_codes === false && !!resource.url;
+function creatorMatches(
+  discount: Resource,
+  ids: string[],
+  annual = false,
+) {
+  return !discount.is_archived && discount.type === "percentage" &&
+    discount.basis_points === PRICES.creator_discount_basis_points &&
+    discount.duration === "repeating" &&
+    discount.duration_in_months ===
+      (annual
+        ? PRICES.creator_renewals.annual_duration_months
+        : PRICES.creator_renewals.monthly_duration_months) &&
+    !discount.code &&
+    sameProducts(discount, ids) && !discount.starts_at && !discount.ends_at &&
+    !discount.max_redemptions;
 }
-
-function darkCheckoutUrl(raw: string) {
-  // Polar supports theme as a URL parameter, not a persisted Checkout Link field.
-  // https://polar.sh/docs/features/checkout/links#query-parameters
-  const url = new URL(raw);
-  url.searchParams.set("theme", "dark");
-  return url.toString();
+type LiveInventory = {
+  verified: boolean;
+  customer_count: number;
+  active_subscription_count: number;
+  order_count: number;
+  checked_product_ids: string[];
+  checked_at: string;
+};
+function catalogReadiness(
+  environment: BillingEnvironment,
+  inventory?: LiveInventory,
+) {
+  const window = PRICES.launch_windows[environment];
+  const keys = [
+    "pro_monthly",
+    "pro_annual",
+    "pro_plus_monthly",
+    "pro_plus_annual",
+  ];
+  const modelReady =
+    PRICES.launch_model === "fixed_discount_once_on_normal_products" &&
+    Number.isSafeInteger(PRICES.creator_discount_basis_points) &&
+    PRICES.creator_discount_basis_points > 0 &&
+    PRICES.creator_discount_basis_points <= 10000 &&
+    [
+      PRICES.creator_renewals.monthly_duration_months,
+      PRICES.creator_renewals.annual_duration_months,
+    ].every((months) =>
+      Number.isSafeInteger(months) && months > 0 && months <= 999
+    ) &&
+    PRICES.creator_renewals.first_period_discount === false &&
+    PRICES.creator_renewals.public_polar_code === false &&
+    Number.isFinite(Date.parse(window.starts_at)) &&
+    Date.parse(window.ends_at) > Date.parse(window.starts_at) &&
+    PRICES.plans.length === keys.length &&
+    new Set(PRICES.plans.map((p) => p.key)).size === keys.length &&
+    PRICES.plans.every((p) =>
+      keys.includes(p.key) && Number.isSafeInteger(p.normal_cents) &&
+      Number.isSafeInteger(p.launch_cents) &&
+      p.launch_cents > 0 && p.normal_cents > p.launch_cents &&
+      p.interval === (p.key.endsWith("annual") ? "year" : "month")
+    );
+  const blockers: string[] = [];
+  if (!modelReady) blockers.push("invalid_price_model_or_window");
+  if (!inventory?.verified) blockers.push("live_inventory_not_checked");
+  else if (
+    inventory.customer_count !== 0 ||
+    inventory.active_subscription_count !== 0 || inventory.order_count !== 0
+  ) blockers.push("live_inventory_not_empty");
+  return { model_ready: modelReady, ready: blockers.length === 0, blockers };
 }
-
-/** Reuses configured IDs or owned metadata; never guesses product names. */
+async function verifyEmptyProductionInventory(
+  http: Http,
+  organizationId: string,
+  productIds: string[],
+): Promise<LiveInventory> {
+  async function empty(kind: string, productId?: string, active = false) {
+    const query = new URLSearchParams({
+      organization_id: organizationId,
+      limit: "100",
+      page: "1",
+    });
+    if (productId) query.set("product_id", productId);
+    if (active) query.set("active", "true");
+    const raw = await http("GET", `/${kind}/?${query}`);
+    const response = raw as {
+      items?: unknown[];
+      pagination?: { total_count?: number; max_page?: number };
+    } | null;
+    if (
+      !response || !Array.isArray(response.items) ||
+      response.pagination?.total_count !== 0 ||
+      !Number.isInteger(response.pagination.max_page) ||
+      response.pagination.max_page! < 0 || response.pagination.max_page! > 1 ||
+      response.items.length !== 0
+    ) {
+      throw Error(
+        `Production inventory is not verifiably empty (${kind}); abort before writes`,
+      );
+    }
+  }
+  // Customer API has no product filter: the launch tool deliberately requires zero organization customers.
+  await empty("customers");
+  const ids = [...new Set(productIds)].sort();
+  for (const id of ids) {
+    await empty("subscriptions", id, true);
+    await empty("orders", id);
+  }
+  return {
+    verified: true,
+    customer_count: 0,
+    active_subscription_count: 0,
+    order_count: 0,
+    checked_product_ids: ids,
+    checked_at: new Date().toISOString(),
+  };
+}
 export async function syncCatalog(http: Http, raw: unknown, options: Options) {
   const source = typeof raw === "object" && raw !== null && "map" in raw
     ? raw.map
@@ -202,20 +324,20 @@ export async function syncCatalog(http: Http, raw: unknown, options: Options) {
   if (!loaded.ok) throw Error(loaded.code);
   const map = structuredClone(loaded.map);
   const creator = creatorCode(options.creator);
+  const window = PRICES.launch_windows[options.environment];
   const products = await list(http, "products", map.organization_id);
   const discounts = await list(http, "discounts", map.organization_id);
-  // Organization tokens scope POSTs implicitly; verify their expected organization.
   const organization = await http(
     "GET",
     `/organizations/${map.organization_id}`,
   ) as {
     id?: string;
     customer_portal_settings?: { subscription?: { update_plan?: boolean } };
-  } | null;
+  };
   if (organization?.id !== map.organization_id) {
     throw Error("Unexpected Polar organization");
   }
-  // Product scope limits redemption, not an already attached subscription discount.
+  // Discounts remain attached across plan changes. Retain the existing operational guard.
   if (
     (creator ||
       discounts.some((d) =>
@@ -227,153 +349,157 @@ export async function syncCatalog(http: Http, raw: unknown, options: Options) {
       "Creator offers require portal plan changes disabled; review organization settings",
     );
   }
-  const links = creator
-    ? await list(http, "checkout-links", map.organization_id)
-    : [];
   const selected = new Map<string, Resource | undefined>();
+  const selectedDiscounts = new Map<string, Resource | undefined>();
   const priceOwners = new Map(Object.entries(map.price_id_to_checkout_key));
   const productOwners = new Map<string, string>();
   for (const [key, config] of Object.entries(map.checkout_keys)) {
     productOwners.set(config.polar_product_id, key);
     if (config.polar_launch_product_id) {
-      productOwners.set(config.polar_launch_product_id, `${key}:launch`);
+      productOwners.set(
+        config.polar_launch_product_id,
+        `${key}:historical-launch`,
+      );
     }
   }
-  // Launch Edition already belongs to the required input mapping. Only its copy
-  // is managed here: never create a replacement or reconcile its one-time price.
-  const lifetimeId = map.checkout_keys.launch_lifetime!.polar_product_id;
-  const lifetimeMatches = products.filter((p) =>
-    p.id === lifetimeId ||
-    p.metadata?.vantare_checkout_key === "launch_lifetime"
-  );
-  const lifetime = lifetimeMatches[0];
+  const founderId = map.checkout_keys.founders?.polar_product_id;
+  const founders = founderId
+    ? products.find((p) => p.id === founderId)
+    : undefined;
   if (
-    lifetimeMatches.length !== 1 || lifetime.id !== lifetimeId ||
-    lifetime.is_archived || lifetime.recurring_interval != null
-  ) throw Error("Invalid or missing Launch Edition product");
-  // Both normal and launch products are preflighted before the first mutation.
+    founderId &&
+    (!founders || founders.is_archived || founders.recurring_interval != null ||
+      !noTrial(founders) || !currentPrice(founders, 5000, true))
+  ) throw Error("Invalid or missing Founders product");
+  // Preflight every configured resource and price history before the first write.
   for (const plan of PRICES.plans) {
     const config = map.checkout_keys[plan.key];
-    for (const launch of [false, true]) {
-      const key = launch ? `${plan.key}:launch` : plan.key;
-      const configuredId = launch
-        ? config?.polar_launch_product_id
-        : config?.polar_product_id;
-      const matches = products.filter((p) =>
-        p.id === configuredId ||
-        (launch
-          ? p.metadata?.vantare_catalog_key === key
-          : p.metadata?.vantare_checkout_key === key)
-      );
-      if (matches.length > 1) throw Error(`Ambiguous product ${key}`);
-      const product = matches[0];
-      if (product) {
-        const owner = productOwners.get(product.id);
-        if (owner && owner !== key) {
-          throw Error(`Product belongs to another catalog slot ${key}`);
-        }
-        productOwners.set(product.id, key);
-      }
-      if (configuredId && (!product || product.id !== configuredId)) {
-        throw Error(`Configured product missing ${key}`);
-      }
-      if (
-        product &&
-        (product.is_archived || product.recurring_interval !== plan.interval ||
-          (product.recurring_interval_count ?? 1) !== 1)
-      ) {
-        throw Error(`Invalid product interval/status ${key}`);
-      }
-      // Launch trial drift is repairable below; normal Pro retains its trial.
-      if (
-        product && !launch &&
-        (config?.trial.enabled
-          ? product.trial_interval !== "day" ||
-            product.trial_interval_count !== 7
-          : !!product.trial_interval || !!product.trial_interval_count)
-      ) {
-        throw Error(`Trial mismatch ${key}`);
-      }
-      for (const price of product?.prices ?? []) {
-        const owner = priceOwners.get(price.id);
-        if (owner && owner !== plan.key) {
-          throw Error(`Observed price belongs to another plan ${key}`);
-        }
-        priceOwners.set(price.id, plan.key);
-      }
-      // PATCH hides replaced prices from future GETs. Memory cannot recover them
-      // after a committed PATCH whose response was lost: require durable input first.
-      if (
-        product &&
-        !currentPrice(
-          product,
-          launch ? plan.launch_cents : plan.normal_cents,
-        ) &&
-        (product.prices ?? []).some((p) =>
-          map.price_id_to_checkout_key[p.id] !== plan.key
-        )
-      ) {
-        throw Error(
-          `Save observed price IDs in the input map before updating ${key}`,
-        );
-      }
-      selected.set(key, product);
+    const matches = products.filter((p) =>
+      p.id === config?.polar_product_id ||
+      p.metadata?.vantare_checkout_key === plan.key
+    );
+    if (matches.length > 1) throw Error(`Ambiguous product ${plan.key}`);
+    const product = matches[0];
+    if (config && (!product || product.id !== config.polar_product_id)) {
+      throw Error(`Configured product missing ${plan.key}`);
     }
+    const owner = product && productOwners.get(product.id);
+    if (owner && owner !== plan.key) {
+      throw Error(`Product belongs to another catalog slot ${plan.key}`);
+    }
+    if (
+      product &&
+      (product.is_archived || product.recurring_interval !== plan.interval ||
+        (product.recurring_interval_count ?? 1) !== 1)
+    ) throw Error(`Invalid product interval/status ${plan.key}`);
+    if (
+      product &&
+      (config?.trial.enabled
+        ? product.trial_interval !== "day" || product.trial_interval_count !== 7
+        : !noTrial(product))
+    ) throw Error(`Trial mismatch ${plan.key}`);
+    for (const price of product?.prices ?? []) {
+      const priceOwner = priceOwners.get(price.id);
+      if (priceOwner && priceOwner !== plan.key) {
+        throw Error(`Observed price belongs to another plan ${plan.key}`);
+      }
+      priceOwners.set(price.id, plan.key);
+    }
+    if (
+      product && !currentPrice(product, plan.normal_cents) &&
+      (product.prices ?? []).some((p) =>
+        map.price_id_to_checkout_key[p.id] !== plan.key
+      )
+    ) {
+      throw Error(
+        `Save observed price IDs in the input map before updating ${plan.key}`,
+      );
+    }
+    selected.set(plan.key, product);
+    const offerKey = `${plan.key}:launch-once-v3`;
+    const found = discounts.filter((d) =>
+      d.id === config?.polar_launch_discount_id ||
+      d.metadata?.vantare_offer_key === offerKey
+    );
+    if (found.length > 1) throw Error(`Ambiguous launch discount ${plan.key}`);
+    const discount = found[0];
+    if (
+      config?.polar_launch_discount_id &&
+      discount?.id !== config.polar_launch_discount_id
+    ) throw Error(`Configured launch discount missing ${plan.key}`);
+    if (
+      discount &&
+      (!product || !launchDiscountMatches(discount, plan, product.id, window))
+    ) throw Error(`Launch discount drift ${plan.key}`);
+    selectedDiscounts.set(plan.key, discount);
   }
-  // Old fixed launch/composite discounts need manual review, never silent migration.
+  // Existing legacy/composite promotions are never silently converted into the new offer.
   if (
     discounts.some((d) =>
       PRICES.plans.some((p) =>
-        d.metadata?.vantare_offer_key?.startsWith(`${p.key}:`)
+        d.metadata?.vantare_offer_key?.startsWith(`${p.key}:`) &&
+        d.metadata.vantare_offer_key !== `${p.key}:launch-once-v3`
       )
     )
   ) {
     throw Error(
-      "Legacy launch discounts present; review manually before applying v2",
+      "Legacy launch discounts present; review manually before applying v3",
     );
   }
-  const idsBefore = PRICES.plans.map((p) =>
-    selected.get(`${p.key}:launch`)?.id
+  const idsBefore = PRICES.plans.map((p) => selected.get(p.key)?.id).filter((
+    id,
+  ): id is string => !!id);
+  const monthlyIdsBefore = PRICES.plans.filter((p) => p.interval === "month")
+    .map((p) => selected.get(p.key)?.id).filter((id): id is string => !!id);
+  const creatorDiscounts = discounts.filter((d) =>
+    creator &&
+    (d.id === map.creator_discounts?.[creator] ||
+      d.metadata?.vantare_offer_key === `creator:${creator}:renewals-v4`)
   );
-  const knownIds = idsBefore.filter((id): id is string => !!id);
-  const discountKey = creator ? `creator:${creator}` : undefined;
-  const matchingDiscounts = discounts.filter((d) =>
-    discountKey && d.metadata?.vantare_offer_key === discountKey
-  );
-  if (matchingDiscounts.length > 1) throw Error("Ambiguous creator discount");
-  let discount = matchingDiscounts[0] as Resource | undefined;
+  if (creatorDiscounts.length > 1) throw Error("Ambiguous creator discount");
+  let creatorDiscount = creatorDiscounts[0] as Resource | undefined;
   if (
     creator &&
     discounts.some((d) =>
-      d.code?.toUpperCase() === creator.toUpperCase() && d.id !== discount?.id
+      d.code?.toUpperCase() === creator.toUpperCase() &&
+      d.id !== creatorDiscount?.id
     )
-  ) {
-    throw Error(`Creator code already owned ${creator}`);
-  }
+  ) throw Error("Creator code already owned");
   if (
-    discount &&
-    (!creator || knownIds.length !== PRICES.plans.length ||
-      !discountMatches(discount, knownIds, creator))
-  ) {
-    throw Error("Creator discount drift; review manually");
-  }
-  const matchingLinks = links.filter((l) =>
-    l.metadata?.vantare_creator_link === creator
-  );
-  if (matchingLinks.length > 1) throw Error("Ambiguous creator link");
-  let link = matchingLinks[0] as Resource | undefined;
-  if (link && (!discount || !linkMatches(link, knownIds, discount.id))) {
-    throw Error("Creator link drift; review manually");
-  }
+    creatorDiscount &&
+    (!creator || idsBefore.length !== PRICES.plans.length ||
+      !creatorMatches(creatorDiscount, monthlyIdsBefore))
+  ) throw Error("Creator discount drift; review manually");
+  const annualIdsBefore = PRICES.plans.filter((p) => p.interval === "year").map(
+    (p) => selected.get(p.key)?.id,
+  ).filter((id): id is string => !!id);
 
-  let writes = 0;
-  const lifetimeCopy = productCopy("launch_lifetime");
-  if (!copyMatches(lifetime, lifetimeCopy)) {
-    await patchProductCopy(http, lifetime, lifetimeCopy);
-    writes++;
+  const annualMatches = discounts.filter((d) =>
+    creator &&
+    (d.id === map.creator_annual_discounts?.[creator] ||
+      d.metadata?.vantare_offer_key === `creator:${creator}:annual-renewals-v4`)
+  );
+  if (annualMatches.length > 1) {
+    throw Error("Ambiguous annual creator discount");
   }
-  const launchIds: string[] = [];
-  let launchProductsPublished = true;
+  let annualCreator = annualMatches[0] as Resource | undefined;
+  if (
+    annualCreator &&
+    (!creator || !creatorMatches(annualCreator, annualIdsBefore, true))
+  ) throw Error("Annual creator discount drift");
+  const liveInventory = options.environment === "production"
+    ? await verifyEmptyProductionInventory(
+      http,
+      map.organization_id,
+      [...selected.values()].filter((p): p is Resource => !!p).map((p) => p.id)
+        .concat(founders ? [founders.id] : []),
+    )
+    : undefined;
+  const readiness = catalogReadiness(options.environment, liveInventory);
+  if (
+    !readiness.model_ready ||
+    (options.environment === "production" && !readiness.ready)
+  ) throw Error("Catalog production preflight failed");
   const offers: Record<
     string,
     {
@@ -384,215 +510,353 @@ export async function syncCatalog(http: Http, raw: unknown, options: Options) {
       renewal_cents: number;
     }
   > = {};
+  if (options.planOnly) {
+    const plannedActions: Record<string, unknown>[] = [];
+    if (founders && !copyMatches(founders, productCopy("founders"))) {
+      plannedActions.push({
+        action: "update_product_copy",
+        product_id: founders.id,
+        ...productCopy("founders"),
+      });
+    }
+    for (const plan of PRICES.plans) {
+      const product = selected.get(plan.key);
+      if (!product) {
+        plannedActions.push({
+          action: "create_normal_product_draft",
+          key: plan.key,
+          interval: plan.interval,
+          normal_cents: plan.normal_cents,
+          ...productCopy(plan.key),
+        });
+      } else {
+        if (!currentPrice(product, plan.normal_cents)) {
+          plannedActions.push({
+            action: "replace_normal_price_preserve_history",
+            key: plan.key,
+            product_id: product.id,
+            price: fixedPrice(plan.normal_cents),
+          });
+        }
+        if (!copyMatches(product, productCopy(plan.key))) {
+          plannedActions.push({
+            action: "update_product_copy",
+            key: plan.key,
+            product_id: product.id,
+            ...productCopy(plan.key),
+          });
+        }
+      }
+      if (!selectedDiscounts.get(plan.key)) {
+        plannedActions.push({
+          action: "create_launch_discount",
+          key: plan.key,
+          duration: "once",
+          amounts: { eur: plan.normal_cents - plan.launch_cents },
+          ...window,
+        });
+      }
+    }
+    if (creator && !creatorDiscount) {
+      plannedActions.push({
+        action: "create_monthly_creator_discount",
+        code: creator,
+        duration_in_months: PRICES.creator_renewals.monthly_duration_months,
+      });
+    }
+    if (creator && !annualCreator) {
+      plannedActions.push({
+        action: "create_annual_creator_discount",
+        code: creator,
+        duration_in_months: PRICES.creator_renewals.annual_duration_months,
+      });
+    }
+    return {
+      ...planOffline(creator, options.environment),
+      production_apply_blockers: readiness.blockers,
+      writes: 0,
+      production_apply_ready: readiness.ready,
+      production_preflight: liveInventory ?? null,
+      map,
+      offers,
+      creator_link: null,
+      creator_link_pending: null,
+      distribution: PRICES.distribution,
+      creator_plan_changes: PRICES.creator_plan_changes,
+      creator_commission: PRICES.creator_commission,
+      read_only: true,
+      offline: false,
+      environment: options.environment,
+      planned_actions: plannedActions,
+      observed_products: products.map((p) => ({
+        id: p.id,
+        name: p.name,
+        is_archived: p.is_archived,
+        recurring_interval: p.recurring_interval,
+        prices: p.prices?.map((price) => ({
+          id: price.id,
+          price_amount: price.price_amount,
+          price_currency: price.price_currency,
+          tax_behavior: price.tax_behavior,
+          is_archived: price.is_archived,
+        })),
+      })),
+    };
+  }
+  let writes = 0;
+  if (founders && !copyMatches(founders, productCopy("founders"))) {
+    await patchProductCopy(http, founders, productCopy("founders"));
+    writes++;
+  }
   for (const plan of PRICES.plans) {
     const previous = map.checkout_keys[plan.key];
     const plus = plan.key.startsWith("pro_plus_");
-    const config = previous ?? {
-      polar_product_id: "",
-      polar_price_ids: [],
-      plan_sku: plan.key,
-      billing_type: "subscription" as const,
-      lifetime: false,
-      active: true,
-      capabilities: plus
-        ? [
-          "vantare.plan.pro",
-          "vantare.channel.testers",
-          "vantare.channel.nightly",
-        ]
-        : ["vantare.plan.pro"],
-      channels: plus
-        ? ["stable", "testers", "nightly"] as const
-        : ["stable"] as const,
-      launch_scope_version: null,
-      trial: { enabled: false } as const,
-      entitlement_product_key: "bundle" as const,
-    };
+    const config = previous ??
+      {
+        polar_product_id: "",
+        polar_price_ids: [],
+        plan_sku: plan.key,
+        billing_type: "subscription" as const,
+        lifetime: false,
+        active: true,
+        capabilities: plus
+          ? [
+            "vantare.plan.pro",
+            "vantare.channel.testers",
+            "vantare.channel.nightly",
+          ]
+          : ["vantare.plan.pro"],
+        channels: plus
+          ? ["stable", "testers", "nightly"] as const
+          : ["stable"] as const,
+        launch_scope_version: null,
+        trial: { enabled: false } as const,
+        entitlement_product_key: "bundle" as const,
+      };
     const priceIds = new Set(config.polar_price_ids);
-    const pair: Resource[] = [];
-    for (const launch of [false, true]) {
-      const key = launch ? `${plan.key}:launch` : plan.key;
-      const cents = launch ? plan.launch_cents : plan.normal_cents;
-      const copy = productCopy(plan.key, launch);
-      let product = selected.get(key);
-      // Snapshot before PATCH may omit replaced/archived prices.
-      for (const p of product?.prices ?? []) priceIds.add(p.id);
-      if (product && launch && !noTrial(product)) {
-        // Clear both fields, including partial configurations. Never send prices.
-        const productId = product.id;
-        product = await http("PATCH", `/products/${product.id}`, {
-          trial_interval: null,
-          trial_interval_count: null,
-        }) as Resource;
-        writes++;
-        if (
-          product.id !== productId ||
-          product.organization_id !== map.organization_id || !noTrial(product)
-        ) throw Error(`Launch product trial response mismatch ${key}`);
-      }
-      if (!product) {
-        product = await http("POST", "/products/", {
-          ...copy,
-          visibility: "draft",
-          recurring_interval: plan.interval,
-          recurring_interval_count: 1,
-          ...(!launch && config.trial.enabled
-            ? { trial_interval: "day", trial_interval_count: 7 }
-            : {}),
-          prices: [fixedPrice(cents)],
-          metadata: launch
-            ? { vantare_catalog_key: key }
-            : { vantare_checkout_key: key },
-        }) as Resource;
-        writes++;
-      } else if (!currentPrice(product, cents)) {
-        product = await http("PATCH", `/products/${product.id}`, {
-          prices: [fixedPrice(cents)],
-        }) as Resource;
-        writes++;
-      }
-      if (!copyMatches(product, copy)) {
-        product = await patchProductCopy(http, product, copy);
-        writes++;
-      }
-      // Link preflight: every launch product must be trial-free after all writes,
-      // before any creator discount/link is created or an existing link exported.
-      if (launch && !noTrial(product)) {
-        throw Error(`Launch product trial response mismatch ${key}`);
-      }
-      const price = currentPrice(product, cents);
-      if (!price || product.organization_id !== map.organization_id) {
-        throw Error(`Price response mismatch ${key}`);
-      }
-      priceIds.add(price.id);
-      pair.push(product);
-      map.product_id_to_checkout_key[product.id] = plan.key;
+    let product = selected.get(plan.key);
+    for (const price of product?.prices ?? []) priceIds.add(price.id);
+    if (!product) {
+      product = await http("POST", "/products/", {
+        ...productCopy(plan.key),
+        visibility: "draft",
+        recurring_interval: plan.interval,
+        recurring_interval_count: 1,
+        ...(config.trial.enabled
+          ? { trial_interval: "day", trial_interval_count: 7 }
+          : {}),
+        prices: [fixedPrice(plan.normal_cents)],
+        metadata: { vantare_checkout_key: plan.key },
+      }) as Resource;
+      writes++;
+    } else if (!currentPrice(product, plan.normal_cents)) {
+      product = await http("PATCH", `/products/${product.id}`, {
+        prices: [fixedPrice(plan.normal_cents)],
+      }) as Resource;
+      writes++;
     }
-    map.checkout_keys[plan.key] = {
-      ...config,
-      channels: [...config.channels],
-      polar_product_id: pair[0].id,
-      polar_launch_product_id: pair[1].id,
-      polar_price_ids: [...priceIds],
-    };
-    for (const id of priceIds) map.price_id_to_checkout_key[id] = plan.key;
-    launchIds.push(pair[1].id);
-    launchProductsPublished &&= pair[1].visibility === "public" ||
-      pair[1].visibility === "private";
-    offers[`${plan.key}:launch`] = {
-      product_id: pair[1].id,
-      discount_id: null,
-      code: null,
-      final_cents: plan.launch_cents,
-      renewal_cents: plan.launch_cents,
-    };
-  }
-  if (creator) {
+    if (!copyMatches(product, productCopy(plan.key))) {
+      product = await patchProductCopy(http, product, productCopy(plan.key));
+      writes++;
+    }
+    const price = currentPrice(product, plan.normal_cents);
+    if (!price || product.organization_id !== map.organization_id) {
+      throw Error(`Price response mismatch ${plan.key}`);
+    }
+    priceIds.add(price.id);
+    let discount = selectedDiscounts.get(plan.key);
     if (!discount) {
       discount = await http("POST", "/discounts/", {
-        name: `Vantare ${creator}`,
-        type: "percentage",
-        basis_points: PRICES.creator_discount_basis_points,
-        duration: "repeating",
-        duration_in_months: 2,
-        products: launchIds,
-        code: creator,
-        metadata: { vantare_offer_key: discountKey },
+        name: `Vantare ${plan.key} · Primer periodo beta pública`,
+        type: "fixed",
+        duration: "once",
+        amounts: { eur: plan.normal_cents - plan.launch_cents },
+        products: [product.id],
+        starts_at: window.starts_at,
+        ends_at: window.ends_at,
+        metadata: { vantare_offer_key: `${plan.key}:launch-once-v3` },
       }) as Resource;
       writes++;
     }
     if (
       discount.organization_id !== map.organization_id ||
-      !discountMatches(discount, launchIds, creator)
-    ) {
-      throw Error("Creator discount response mismatch");
-    }
-    // Polar rejects links to draft products. Publishing is a separate operator step.
-    if (!link && launchProductsPublished) {
-      link = await http("POST", "/checkout-links/", {
-        payment_processor: "stripe",
-        products: launchIds,
-        discount_id: discount.id,
-        allow_discount_codes: false,
-        label: `Vantare ${creator}`,
-        metadata: { vantare_creator_link: creator },
+      !launchDiscountMatches(discount, plan, product.id, window)
+    ) throw Error(`Launch discount response mismatch ${plan.key}`);
+    map.checkout_keys[plan.key] = {
+      ...config,
+      channels: [...config.channels],
+      polar_product_id: product.id,
+      polar_launch_discount_id: discount.id,
+      polar_price_ids: [...priceIds],
+    };
+    map.product_id_to_checkout_key[product.id] = plan.key;
+    for (const id of priceIds) map.price_id_to_checkout_key[id] = plan.key;
+    offers[`${plan.key}:launch`] = {
+      product_id: product.id,
+      discount_id: discount.id,
+      code: null,
+      final_cents: plan.launch_cents,
+      renewal_cents: plan.normal_cents,
+    };
+  }
+  if (creator) {
+    if (!creatorDiscount) {
+      creatorDiscount = await http("POST", "/discounts/", {
+        name: `Vantare ${creator}`,
+        type: "percentage",
+        basis_points: PRICES.creator_discount_basis_points,
+        duration: "repeating",
+        duration_in_months: PRICES.creator_renewals.monthly_duration_months,
+        products: PRICES.plans.filter((p) => p.interval === "month").map((p) =>
+          map.checkout_keys[p.key]!.polar_product_id
+        ),
+        metadata: { vantare_offer_key: `creator:${creator}:renewals-v4` },
       }) as Resource;
       writes++;
     }
     if (
-      link && (link.organization_id !== map.organization_id ||
-        !linkMatches(link, launchIds, discount.id))
-    ) {
-      throw Error("Creator link response mismatch");
+      creatorDiscount.organization_id !== map.organization_id ||
+      !creatorMatches(
+        creatorDiscount,
+        PRICES.plans.filter((p) => p.interval === "month").map((p) =>
+          map.checkout_keys[p.key]!.polar_product_id
+        ),
+      )
+    ) throw Error("Creator discount response mismatch");
+    map.creator_discounts = {
+      ...map.creator_discounts,
+      [creator]: creatorDiscount.id,
+    };
+    const annualIds = PRICES.plans.filter((p) => p.interval === "year").map(
+      (p) => map.checkout_keys[p.key]!.polar_product_id,
+    );
+    if (!annualCreator) {
+      annualCreator = await http("POST", "/discounts/", {
+        name: `Vantare ${creator} · Renovación anual`,
+        type: "percentage",
+        basis_points: PRICES.creator_discount_basis_points,
+        duration: "repeating",
+        duration_in_months: PRICES.creator_renewals.annual_duration_months,
+        products: annualIds,
+        metadata: {
+          vantare_offer_key: `creator:${creator}:annual-renewals-v4`,
+        },
+      }) as Resource;
+      writes++;
     }
+    if (
+      annualCreator.organization_id !== map.organization_id ||
+      !creatorMatches(annualCreator, annualIds, true)
+    ) throw Error("Annual creator response mismatch");
+    map.creator_annual_discounts = {
+      ...map.creator_annual_discounts,
+      [creator]: annualCreator.id,
+    };
     for (const plan of PRICES.plans) {
       offers[`${plan.key}:creator:${creator}`] = {
-        product_id: map.checkout_keys[plan.key]!.polar_launch_product_id!,
-        discount_id: discount.id,
-        code: creator,
-        final_cents: creatorPrice(plan.launch_cents),
-        renewal_cents: plan.launch_cents,
+        product_id: map.checkout_keys[plan.key]!.polar_product_id,
+        discount_id: plan.interval === "year"
+          ? annualCreator.id
+          : creatorDiscount.id,
+        code: null,
+        final_cents: plan.normal_cents,
+        renewal_cents: creatorPrice(plan.normal_cents),
       };
     }
   }
-  map.catalog_version = PRICES.catalog_version;
-  const validated = loadPolarProductMap(JSON.stringify(map), {
-    environment: options.environment,
-    trialAntiAbuseConfirmed: true,
-  });
-  if (!validated.ok) {
-    throw Error(`Generated mapping invalid: ${validated.code}`);
+  if (founders) {
+    offers.founders = {
+      product_id: founders.id,
+      discount_id: null,
+      code: null,
+      final_cents: 5000,
+      renewal_cents: 0,
+    };
   }
+  map.catalog_version = PRICES.catalog_version;
   return {
     writes,
+    production_apply_ready: readiness.ready,
+    production_preflight: liveInventory ?? null,
     map,
     offers,
-    creator_link: link
-      ? { id: link.id, url: darkCheckoutUrl(link.url!), code: creator }
-      : null,
-    creator_link_pending: creator && !link
-      ? "publish_launch_products_then_rerun"
-      : null,
+    creator_link: null,
+    creator_link_pending: null,
     distribution: PRICES.distribution,
     creator_plan_changes: PRICES.creator_plan_changes,
     creator_commission: PRICES.creator_commission,
   };
 }
-
-export function planOffline(creator?: string) {
+export function planOffline(
+  creator?: string,
+  environment: BillingEnvironment = "production",
+) {
+  const window = PRICES.launch_windows[environment];
   const code = creatorCode(creator);
+  const readiness = catalogReadiness(environment);
   return {
     ...PRICES,
+    production_apply_ready: readiness.ready,
+    production_model_ready: readiness.model_ready,
+    production_apply_blockers: readiness.blockers,
+    production_preflight: "not_checked_offline",
+    application_checkout: {
+      automatic_launch_discount: true,
+      allow_discount_codes: false,
+      creator_code_server_validated: true,
+      launch_creator_combination:
+        "attribution_first_invoice_discount_from_renewal",
+      launch_trial: false,
+    },
     creator_discount: code
       ? {
         code,
         type: "percentage",
         basis_points: PRICES.creator_discount_basis_points,
         duration: "repeating",
-        duration_in_months: 2,
-        scope: "launch_products_only",
-        checkout_link: "one_per_creator",
+        duration_in_months: PRICES.creator_renewals.monthly_duration_months,
+        annual_duration_in_months:
+          PRICES.creator_renewals.annual_duration_months,
+        starts_on: "first_paid_renewal_after_initial_invoice",
+        polar_public_code: null,
+        scope: "normal_subscription_products_only",
+        combinable_with_launch: true,
       }
       : null,
     plans: PRICES.plans.map((p) => ({
       ...p,
       normal_product: productCopy(p.key),
-      launch_product: productCopy(p.key, true),
-      creator_cents: creatorPrice(p.launch_cents),
+      launch_discount: {
+        type: "fixed",
+        duration: "once",
+        amounts: { eur: p.normal_cents - p.launch_cents },
+        ...window,
+      },
+      creator_first_period_cents: p.normal_cents,
+      creator_renewal_cents: creatorPrice(p.normal_cents),
       creator_code: code ?? null,
-      renewal_cents_after_creator: p.launch_cents,
+      renewal_cents: p.normal_cents,
     })),
-    launch_edition_copy: productCopy("launch_lifetime"),
+    founders: {
+      ...productCopy("founders"),
+      amount_cents: 5000,
+      billing_type: "one_time",
+      channels: productionFounders.checkout_keys.founders.channels,
+      capabilities: productionFounders.checkout_keys.founders.capabilities,
+      tax_behavior: null,
+      ends_at: null,
+      product_id_configuration:
+        "POLAR_PRODUCT_MAP.checkout_keys.founders.polar_product_id",
+    },
   };
 }
-
 export function parseArgs(args: string[]) {
   const values: Record<string, string> = {};
   const flags = new Set<string>();
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
     if (
-      ["--apply", "--confirm-production"].includes(
+      ["--apply", "--online", "--confirm-production"].includes(
         arg,
       )
     ) {
@@ -613,8 +877,14 @@ export function parseArgs(args: string[]) {
   if (environment !== "sandbox" && environment !== "production") {
     throw Error("--environment sandbox|production required");
   }
-  if (flags.has("--apply") && (!values["--map"] || !values["--output"])) {
-    throw Error("--apply requires --map and --output");
+  if (flags.has("--apply") && flags.has("--online")) {
+    throw Error("--online and --apply are mutually exclusive");
+  }
+  if (
+    (flags.has("--apply") || flags.has("--online")) &&
+    (!values["--map"] || !values["--output"])
+  ) {
+    throw Error("Online plan/apply requires --map and --output");
   }
   if (
     flags.has("--apply") && environment === "production" &&
@@ -672,10 +942,26 @@ export async function runCatalog(
 ) {
   const { values, flags, environment } = parseArgs(args);
   const creator = values["--creator"];
-  const plan = planOffline(creator);
-  if (!flags.has("--apply")) {
+  const plan = planOffline(creator, environment);
+  if (!flags.has("--apply") && !flags.has("--online")) {
     console.log(
-      JSON.stringify({ environment, offline: true, ...plan }, null, 2),
+      JSON.stringify(
+        {
+          environment,
+          offline: true,
+          ...plan,
+          ...(environment === "production"
+            ? {
+              production_inventory: {
+                ...productionInventory,
+                founders: productionFounders,
+              },
+            }
+            : {}),
+        },
+        null,
+        2,
+      ),
     );
   } else {
     // Check before HTTP, but create only after successful synchronization.
@@ -694,6 +980,9 @@ export async function runCatalog(
       ? "https://sandbox-api.polar.sh/v1"
       : "https://api.polar.sh/v1";
     const http: Http = async (method, path, body) => {
+      if (flags.has("--online") && method !== "GET") {
+        throw Error("Read-only catalog prohibits mutation");
+      }
       let response: Response;
       try {
         response = await fetcher(`${base}${path}`, {
@@ -702,6 +991,7 @@ export async function runCatalog(
           signal: AbortSignal.timeout(30000),
           headers: {
             "Polar-Version": "2026-10",
+            "User-Agent": "Vantare-Catalog/1661",
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
@@ -728,6 +1018,7 @@ export async function runCatalog(
     const result = await syncCatalog(http, raw, {
       environment,
       creator,
+      planOnly: flags.has("--online"),
     });
     const bytes = new TextEncoder().encode(
       JSON.stringify(result, null, 2) + "\n",
@@ -750,10 +1041,10 @@ export async function runCatalog(
       if (!complete) await Deno.remove(values["--output"]);
     }
     console.log(
-      JSON.stringify({
+      flags.has("--online") ? JSON.stringify(result, null, 2) : JSON.stringify({
         environment,
         writes: result.writes,
-        creator_link_id: result.creator_link?.id ?? null,
+        creator_link_id: null,
         creator_link_pending: result.creator_link_pending,
         output: values["--output"],
       }),

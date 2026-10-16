@@ -1,3 +1,7 @@
+import productionFounders from "../scripts/founders-production-config.json" with {
+  type: "json",
+};
+import { withFounders } from "./test-fixtures.ts";
 import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import {
   loadPolarProductMap,
@@ -67,7 +71,7 @@ Deno.test("mapping v2: fails closed across sandbox and production", () => {
   if (!result.ok) assertEquals(result.code, "mapping_environment_mismatch");
 });
 
-Deno.test("mapping v2: requires Launch and Pro, but not an invented Pro Plus id", () => {
+Deno.test("mapping v2: requires Pro but not an invented Pro Plus id", () => {
   const result = load();
   assertEquals(result.ok, true);
   if (!result.ok) return;
@@ -289,6 +293,97 @@ Deno.test("mapping v2: live sandbox catalogue is complete and cannot target prod
       environment: "production",
       trialAntiAbuseConfirmed: true,
     }).ok,
+    false,
+  );
+});
+
+Deno.test("Founders is an optional own plan, not a subscription or frozen edition", () => {
+  const valid = withFounders(VALID_POLAR_PRODUCT_MAP_JSON);
+  const result = loadPolarProductMap(valid, { environment: "sandbox" });
+  assertEquals(result.ok, true);
+  if (result.ok) {
+    assertEquals(result.map.checkout_keys.founders?.capabilities, [
+      "vantare.plan.founders",
+      "vantare.channel.nightly",
+    ]);
+    assertEquals(result.map.checkout_keys.founders?.lifetime, true);
+    assertEquals(result.map.checkout_keys.founders?.launch_scope_version, null);
+  }
+  for (
+    const patch of [{ lifetime: false }, { billing_type: "subscription" }, {
+      capabilities: ["vantare.edition.launch_v1"],
+    }, { polar_launch_product_id: "00000000-0000-4000-8000-000000001663" }]
+  ) {
+    const map = JSON.parse(valid);
+    Object.assign(map.checkout_keys.founders, patch);
+    assertEquals(
+      loadPolarProductMap(JSON.stringify(map), { environment: "sandbox" }).ok,
+      false,
+    );
+  }
+});
+
+Deno.test("documented production Founders fragment preserves existing products and resolves both IDs", () => {
+  const existing = JSON.parse(VALID_POLAR_PRODUCT_MAP_JSON);
+  const baseline = loadPolarProductMap(
+    JSON.stringify({
+      ...existing,
+      environment: productionFounders.environment,
+      organization_id: productionFounders.organization_id,
+    }),
+    { environment: "production" },
+  );
+  assertEquals(baseline.ok, true);
+  if (!baseline.ok) return;
+  const before = baseline.map.checkout_keys;
+  const merged = {
+    ...existing,
+    environment: productionFounders.environment,
+    organization_id: productionFounders.organization_id,
+    checkout_keys: {
+      ...existing.checkout_keys,
+      ...productionFounders.checkout_keys,
+    },
+    product_id_to_checkout_key: {
+      ...existing.product_id_to_checkout_key,
+      ...productionFounders.product_id_to_checkout_key,
+    },
+    price_id_to_checkout_key: {
+      ...existing.price_id_to_checkout_key,
+      ...productionFounders.price_id_to_checkout_key,
+    },
+  };
+  const result = loadPolarProductMap(JSON.stringify(merged), {
+    environment: "production",
+  });
+  assertEquals(result.ok, true);
+  if (!result.ok) return;
+  const config = productionFounders.checkout_keys.founders;
+  assertEquals(resolveCheckoutKey(result.map, "founders").ok, true);
+  const byProduct = resolveCheckoutKeyByProductId(
+    result.map,
+    config.polar_product_id,
+  );
+  const byPrice = resolveCheckoutKeyByPriceId(
+    result.map,
+    config.polar_price_ids[0],
+  );
+  assertEquals(byProduct.ok, true);
+  assertEquals(byPrice.ok, true);
+  if (byProduct.ok) {
+    assertEquals(byProduct.key, "founders");
+    assertEquals(byProduct.config.billing_type, "one_time");
+    assertEquals(byProduct.config.lifetime, true);
+    assertEquals(byProduct.config.trial.enabled, false);
+  }
+  for (const [key, value] of Object.entries(before)) {
+    assertEquals(
+      result.map.checkout_keys[key as keyof typeof result.map.checkout_keys],
+      value,
+    );
+  }
+  assertEquals(
+    loadPolarProductMap(JSON.stringify(merged), { environment: "sandbox" }).ok,
     false,
   );
 });

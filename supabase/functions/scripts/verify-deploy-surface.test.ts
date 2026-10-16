@@ -1,7 +1,14 @@
-import { invalidDeployableDirectories } from "./verify-deploy-surface.ts";
+import {
+  invalidDeployableDirectories,
+  invalidPromotionGatewayConfig,
+} from "./verify-deploy-surface.ts";
 
 Deno.test("native account/admin are recognized without changing default commercial deploy", () => {
-  const functions = ["native-account-authorize", "native-admin"];
+  const functions = [
+    "native-account-authorize",
+    "native-admin",
+    "billing-report-promotion",
+  ];
   if (
     invalidDeployableDirectories(
       functions.map((name) => ({ name, isDirectory: true }) as Deno.DirEntry),
@@ -284,6 +291,94 @@ Deno.test("retired Wails binding pipeline cannot return or publish", () => {
       throw new Error(
         `retired publisher has client credentials or effects: ${forbidden}`,
       );
+    }
+  }
+});
+
+Deno.test("P3-4 promotion gateway guard rejects absent or wrong JWT mode", () => {
+  for (
+    const config of [
+      "",
+      "[functions.billing-report-promotion]\nverify_jwt = true",
+      '[functions.billing-report-promotion]\nverify_jwt = "false"',
+    ]
+  ) {
+    if (!invalidPromotionGatewayConfig(config)) {
+      throw new Error("invalid gateway config accepted");
+    }
+  }
+  if (
+    invalidPromotionGatewayConfig(
+      "[functions.billing-report-promotion]\nverify_jwt = false\n",
+    )
+  ) throw new Error("server-authenticated candidate rejected");
+});
+
+Deno.test("marketing review routes are deployable explicitly with offline SQL/E2E gates", () => {
+  const routes = [
+    "mail-unsubscribe",
+    "mail-webhook",
+    "mail-cleanup",
+    "native-mail-consent",
+  ];
+  if (
+    invalidDeployableDirectories(
+      routes.map((name) => ({ name, isDirectory: true }) as Deno.DirEntry),
+    ).length
+  ) throw new Error("marketing route rejected");
+  const ps = Deno.readTextFileSync(
+    new URL("verify-deploy-surface.ps1", import.meta.url),
+  );
+  const deploy = Deno.readTextFileSync(
+    new URL("deploy-approved-functions.ps1", import.meta.url),
+  );
+  const defaults = deploy.match(/\$Functions = @\(([^\n]+)\)/)?.[1] ?? "";
+  for (const name of routes) {
+    if (
+      !ps.includes(`"${name}"`) || !deploy.includes(`"${name}"`) ||
+      defaults.includes(`"${name}"`)
+    ) throw new Error("marketing deployment is not explicit/inert");
+  }
+  const workflow = Deno.readTextFileSync(
+    new URL(
+      "../../../.github/workflows/branch-channel-gates.yml",
+      import.meta.url,
+    ),
+  );
+  for (
+    const part of [
+      "native-admin/ native-mail-consent/ _shared/mail-erasure.test.ts",
+      "--test marketing_mail_erasure.test.sql",
+      "--test marketing_mail_waitlist_erasure.test.sql",
+      "--test marketing_mail_consent.test.sql",
+      "--test marketing_mail_hardening.test.sql",
+      "--mail-e2e",
+      "verify-deploy-surface.ps1",
+    ]
+  ) {
+    if (!workflow.includes(part)) {
+      throw new Error("marketing gate missing: " + part);
+    }
+  }
+});
+
+Deno.test("merged marketing and report promotion stay recognized as inert PowerShell candidates", () => {
+  const ps = Deno.readTextFileSync(
+    new URL("verify-deploy-surface.ps1", import.meta.url),
+  );
+  const candidates = ps.match(/\$reviewCandidates = @\(([^\n]+)\)/)?.[1] ?? "";
+  const production = ps.match(/\$production = @\(([^\n]+)\)/)?.[1] ?? "";
+  for (
+    const name of [
+      "billing-report-promotion",
+      "mail-unsubscribe",
+      "mail-webhook",
+      "mail-cleanup",
+      "native-mail-consent",
+    ]
+  ) {
+    if (!candidates.includes(`"${name}"`) || production.includes(`"${name}"`)) {
+      throw new Error("merged review candidate lost or activated: " + name);
     }
   }
 });

@@ -20,7 +20,8 @@ acceso; no se compara la fecha del reloj, de compra ni de la build.
 Una ampliación funcional dentro de un widget inicial no puede presentarse como
 bugfix para heredar ese ID: necesita un corte explícito propio antes de publicarse.
 
-Free conserva Standings y Pedals. Pro vigente accede al catálogo completo.
+Free conserva Standings, Relative, Delta y Pedals. Pro vigente accede al
+catálogo completo.
 Owner puede verificar el catálogo completo; tester y nightly tester sin LE
 conservan sus permisos de prueba previos. Una LE junto a tester/nightly tester
 mantiene el corte comercial. Los permisos de canal `testers`/`nightly` no
@@ -71,9 +72,9 @@ cambiar el catálogo; importar/editar un JSON no amplía los derechos.
    de build del candidato. No mezclar ejecutables IPC v3 y v4.
 4. Con cuentas de QA Free, LE, LE+tester, Pro y LE+Pro: abrir Studio; los
    cuatro iniciales deben estar habilitados para LE, Radar debe mostrar
-   candado/«Incluida en Pro», y Free solo Standings/Pedals. Intentar añadir
-   por teclado y ratón. Abrir un perfil que ya tenga Radar: conservar la
-   instancia/ajustes y mostrar el bloqueo en Studio y pista.
+   candado/«Incluida en Pro», y Free solo Standings, Relative, Delta y Pedals.
+   Intentar añadir por teclado y ratón. Abrir un perfil que ya tenga Radar:
+   conservar la instancia/ajustes y mostrar el bloqueo en Studio y pista.
 5. Verificar LE offline después de reiniciar; vencer Pro en LE+Pro fuera
    de una sesión Live (la excepción Live existente conserva su contrato) y
    comprobar que Relative sigue y Radar se bloquea. Revocar LE online y

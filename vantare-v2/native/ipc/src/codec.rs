@@ -319,6 +319,7 @@ pub(crate) mod tests {
                     laps_remaining: Quality::Unavailable,
                     laps_total: Quality::Reliable(24),
                     track_length_m: Quality::Reliable(13_626.0),
+                    timing: vantare_domain::SessionTiming::default(),
                     weather: Weather {
                         air_temperature_k: Quality::Reliable(295.15),
                         track_temperature_k: Quality::Estimated(308.15),
@@ -598,6 +599,22 @@ pub(crate) mod tests {
                 laps_remaining: self.u(),
                 laps_total: self.u(),
                 track_length_m: self.f(),
+                timing: vantare_domain::SessionTiming {
+                    started_at_s: self.f(),
+                    finished_at_s: self.f(),
+                    scheduled_end_s: self.f(),
+                    start_phase: self.q(|n| {
+                        [
+                            vantare_domain::StartPhase::Grid,
+                            vantare_domain::StartPhase::Formation,
+                            vantare_domain::StartPhase::Countdown,
+                            vantare_domain::StartPhase::Racing,
+                        ][n as usize % 4]
+                    }),
+                    distance_to_start_line_m: self.f(),
+                    next_kind: self.q(|n| SessionKind::Other(format!("next-{n}"))),
+                    next_starts_at_s: self.f(),
+                },
                 weather: Weather {
                     air_temperature_k: self.f(),
                     track_temperature_k: self.f(),

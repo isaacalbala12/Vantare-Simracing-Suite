@@ -2,8 +2,8 @@
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use std::io::{self, Read, Write};
 
-// Combined #1594 triage and #1610 follow-up contract; reject either older peer.
-pub const VERSION: u32 = 9;
+// #1661 Founders extends #1594/#1610; reject older services peers.
+pub const VERSION: u32 = 10;
 #[path = "services_protocol/pilot_document.rs"]
 pub mod pilot_document;
 #[path = "services_protocol/report_document.rs"]
@@ -193,6 +193,7 @@ pub enum BillingProduct {
     ProMonthly,
     ProAnnual,
     LaunchLifetime,
+    Founders,
 }
 impl BillingProduct {
     pub fn key(self) -> &'static str {
@@ -200,6 +201,7 @@ impl BillingProduct {
             Self::ProMonthly => "pro_monthly",
             Self::ProAnnual => "pro_annual",
             Self::LaunchLifetime => "launch_lifetime",
+            Self::Founders => "founders",
         }
     }
 }

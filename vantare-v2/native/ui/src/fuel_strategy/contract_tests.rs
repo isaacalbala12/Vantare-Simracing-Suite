@@ -21,7 +21,7 @@ fn extreme_dto_counters_and_sector_project_safely_for_every_look() {
     car["in_pits"] = serde_json::json!({"reliable": false});
     dto["state"]["flags"] =
         serde_json::json!({"reliable": [{"kind": "yellow", "scope": {"sector": 255}}]});
-    let photo = vantare_ipc::snapshot_from_json(&dto.to_string()).unwrap();
+    let photo = vantare_ipc::snapshot_from_fixture_json(&dto.to_string()).unwrap();
     let prefs = Preferences::default();
     let mut common = None;
     for &look in crate::look::Look::ALL {

@@ -116,6 +116,12 @@ export async function handleNativeLicenseRequest(
     response.headers.set("Cache-Control", "no-store");
     return response;
   } catch (error) {
+    if (
+      error && typeof error === "object" && "code" in error &&
+      error.code === "28000"
+    ) {
+      return failure(401, "unauthorized", "Account is not active");
+    }
     if (error instanceof NativeError) {
       return failure(error.status, error.code, "OAuth authorization failed");
     }
@@ -152,7 +158,12 @@ async function loadNativeCredentialAccount(
   );
   if (error) throw error;
   if (typeof accountId !== "string") throw new Error("Invalid account result");
-  return await loadCredentialAccount(admin, accountId, fingerprint, environment);
+  return await loadCredentialAccount(
+    admin,
+    accountId,
+    fingerprint,
+    environment,
+  );
 }
 
 if (import.meta.main) {

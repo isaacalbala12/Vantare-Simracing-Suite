@@ -4,6 +4,37 @@ use ed25519_dalek::{Signer, SigningKey};
 use std::time::Duration;
 
 const SUBJECT: &str = "550e8400-e29b-41d4-a716-446655440000";
+
+#[test]
+fn founders_signed_right_is_perpetual_and_does_not_accept_a_scope_or_expiry() {
+    let signing = key();
+    let verifier = verifier(&signing);
+    let mut credential = v1(&signing, "2027-09-30T11:00:00Z");
+    for (paid_through, perpetual, scope, valid) in [
+        ("", true, "", true),
+        ("2027-09-30T11:00:00Z", false, "", false),
+        ("", true, "launch_v1", false),
+        ("2027-09-30T11:00:00Z", true, "", false),
+    ] {
+        credential.claims.capabilities = vec![Capability {
+            key: "vantare.plan.founders".into(),
+            paid_through: paid_through.into(),
+            perpetual,
+            scope_version: scope.into(),
+        }];
+        credential.signature = URL_SAFE_NO_PAD.encode(
+            signing
+                .sign(&credential.signing_bytes().expect("payload"))
+                .to_bytes(),
+        );
+        let result = verifier.v1(&credential, SUBJECT, "test-device");
+        assert_eq!(result.is_ok(), valid);
+        if let Ok(verified) = result {
+            assert_eq!(verified.grants().len(), 1);
+            assert!(verified.grants()[0].expires_at.is_none());
+        }
+    }
+}
 #[test]
 fn unknown_capabilities_are_ignored_even_when_the_server_knows_more_than_the_client() {
     let signing = key();
@@ -614,4 +645,25 @@ fn forward_wall_clock_drift_does_not_reject_repeated_authority_observation() {
     );
     drop(store);
     crate::cleanup_store(&root, "clock-drift", &["authority"]);
+}
+
+#[test]
+fn founders_keeps_perpetual_nightly_after_pro_plus_expires() {
+    let founder = Capability {
+        key: "vantare.plan.founders".into(),
+        paid_through: String::new(),
+        perpetual: true,
+        scope_version: String::new(),
+    };
+    let nightly = Capability {
+        key: "vantare.channel.nightly".into(),
+        ..founder.clone()
+    };
+    assert!(grants(std::slice::from_ref(&nightly), None).is_err());
+    assert_eq!(
+        grants(&[nightly, founder], None)
+            .expect("Founder Nightly")
+            .len(),
+        2
+    );
 }

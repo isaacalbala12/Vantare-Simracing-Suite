@@ -90,6 +90,7 @@ pub(super) struct Trackers {
     /// Sesión y coche de los que son los datos acumulados.
     identity: Option<(SessionId, CarId)>,
     fuel: fuel::Tracker,
+    energy: fuel::Tracker,
     delta: delta::Tracker,
     stint: stint::Tracker,
     trend: trend::Tracker,
@@ -105,6 +106,7 @@ impl Trackers {
             if self.identity != Some(identity) {
                 // Sesión o coche del jugador nuevos: nada es comparable.
                 self.fuel.reset();
+                self.energy.reset();
                 self.delta.reset();
                 self.stint.reset();
                 self.trend.reset();
@@ -119,16 +121,19 @@ impl Trackers {
         } = state;
         let Some(player) = player.as_mut() else {
             self.fuel.invalidate();
+            self.energy.invalidate();
             self.delta.invalidate();
             return;
         };
         self.trend.derive(cars, player.car);
         let Some(car) = cars.iter().find(|car| car.id == player.car) else {
             self.fuel.invalidate();
+            self.energy.invalidate();
             self.delta.invalidate();
             return;
         };
         self.fuel.derive(player, car);
+        self.energy.derive_energy(player, car);
         self.delta.derive(player, car, session.track_length_m);
         delta::references(player, car, cars);
         self.stint.derive(player, car, session);
@@ -168,11 +173,13 @@ fn sanitize(state: &mut State) {
         laps_remaining: _,
         laps_total: _,
         track_length_m,
+        timing,
         weather,
     } = session;
     finite(elapsed_s);
     finite(remaining_s);
     finite(track_length_m);
+    sanitize_session_timing(timing);
     sanitize_weather(weather);
     for car in cars {
         let Car {
@@ -237,6 +244,27 @@ fn sanitize(state: &mut State) {
     }
     if let Some(player) = player {
         sanitize_player(player);
+    }
+}
+
+fn sanitize_session_timing(timing: &mut vantare_domain::SessionTiming) {
+    let vantare_domain::SessionTiming {
+        started_at_s,
+        finished_at_s,
+        scheduled_end_s,
+        distance_to_start_line_m,
+        next_starts_at_s,
+        start_phase: _,
+        next_kind: _,
+    } = timing;
+    for value in [
+        started_at_s,
+        finished_at_s,
+        scheduled_end_s,
+        distance_to_start_line_m,
+        next_starts_at_s,
+    ] {
+        nonnegative(value);
     }
 }
 
@@ -418,6 +446,30 @@ mod tests {
                     } else {
                         Quality::Unavailable
                     }
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn session_timing_rejects_nonfinite_and_negative_values_without_clamping() {
+        for value in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY, -0.001] {
+            for quality in [
+                Quality::Reliable(value),
+                Quality::Estimated(value),
+                Quality::Stale(value),
+            ] {
+                let mut state = State::default();
+                let timing = &mut state.session.timing;
+                timing.started_at_s = quality;
+                timing.finished_at_s = quality;
+                timing.scheduled_end_s = quality;
+                timing.distance_to_start_line_m = quality;
+                timing.next_starts_at_s = quality;
+                sanitize(&mut state);
+                assert_eq!(
+                    state.session.timing,
+                    vantare_domain::SessionTiming::default()
                 );
             }
         }

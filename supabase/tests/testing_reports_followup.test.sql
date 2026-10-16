@@ -1,8 +1,34 @@
 begin;
+SELECT set_config('fixture.clerk',(to_regclass('private.clerk_issuers') IS NOT NULL)::text,true);
+-- The old schema-cut runner uses UUID claims; B03 requires a bound Clerk session.
+CREATE FUNCTION pg_temp.fixture_claims(account text) RETURNS text LANGUAGE plpgsql AS $$
+BEGIN
+  PERFORM set_config('request.jwt.claims', CASE
+    WHEN current_setting('fixture.clerk',true)='true' THEN
+      jsonb_build_object('iss','https://fixtures.clerk.invalid',
+        'sub','user_'||replace(account,'-',''),'role','authenticated',
+        'sid','sess_fixture','azp','https://app.invalid')
+    ELSE jsonb_build_object('iss','https://local.supabase.test/auth/v1',
+        'sub',account,'role','authenticated') END::text, true);
+  RETURN set_config('request.jwt.claim.sub',account,true);
+END $$;
+
 select plan(35);
 insert into public.profiles(id) values('16100000-0000-0000-0000-000000000001'),('16100000-0000-0000-0000-000000000002');
+-- B03 fixture: internal profile plus an explicit Clerk binding before child rows.
+DO $fixture$ BEGIN
+  IF to_regclass('private.clerk_issuers') IS NOT NULL THEN
+    INSERT INTO private.clerk_issuers(issuer,authorized_parties,enabled)
+      VALUES ('https://fixtures.clerk.invalid',ARRAY['https://app.invalid'],true)
+      ON CONFLICT (issuer) DO NOTHING;
+    INSERT INTO public.account_identities(issuer,subject,account_id)
+      SELECT 'https://fixtures.clerk.invalid','user_'||replace(id::text,'-',''),id
+      FROM public.profiles ON CONFLICT (issuer,subject) DO NOTHING;
+  END IF;
+END $fixture$;
+
 set local role authenticated;
-set local request.jwt.claim.sub='16100000-0000-0000-0000-000000000001';
+select pg_temp.fixture_claims('16100000-0000-0000-0000-000000000001');
 select throws_ok($$select public.testing_report_submit('16100000-0000-0000-0000-000000000010','master','Informe','Texto',false)$$,'22023',null,'consent required');
 select throws_ok($$select public.testing_report_submit('16100000-0000-0000-0000-000000000007','master',repeat(' ',120)||'A','Texto',true)$$,'22023',null,'padding cannot bypass title character cap');
 select throws_ok($$select public.testing_report_submit('16100000-0000-0000-0000-000000000008','master','Informe',repeat(' ',1000)||'A',true)$$,'22023',null,'padding cannot bypass body character cap');
@@ -14,7 +40,7 @@ select is(jsonb_array_length(public.testing_participation_current_v2('master')->
 select is(public.testing_participation_current_v2('master')->'contributions'->0->>'body','','history omits private body not displayed by UI');
 select lives_ok($$select public.testing_report_credit('16100000-0000-0000-0000-000000000010',true)$$,'credit opt in');
 select is((public.testing_participation_current_v2('master')->'contributions'->0->>'credit')::boolean,true,'credit persisted');
-set local request.jwt.claim.sub='16100000-0000-0000-0000-000000000002';
+select pg_temp.fixture_claims('16100000-0000-0000-0000-000000000002');
 select is(jsonb_array_length(public.testing_participation_current_v2('master')->'contributions'),0,'other account sees no history');
 select throws_ok($$select public.testing_report_credit('16100000-0000-0000-0000-000000000010',false)$$,'42501',null,'cannot change another credit');
 select throws_ok($$select public.testing_report_fixed('16100000-0000-0000-0000-000000000010','1.2.3','Revisado','Resumen')$$,'42501',null,'user cannot mark fixed');
@@ -26,7 +52,7 @@ select lives_ok($$select public.testing_report_fixed('16100000-0000-0000-0000-00
 select is(public.testing_report_patch_candidates('1.2.3')->0->>'summary','Resumen','patch candidate uses reviewed summary');
 select ok(not ((public.testing_report_patch_candidates('1.2.3')->0) ? 'account_id'),'patch candidate omits identity');
 select is(jsonb_array_length(public.testing_report_patch_candidates('1.2.4')),0,'other version has no candidates');
-set local request.jwt.claim.sub='16100000-0000-0000-0000-000000000001';
+select pg_temp.fixture_claims('16100000-0000-0000-0000-000000000001');
 select throws_ok($$select public.testing_report_patch_candidates('1.2.3')$$,'42501',null,'ordinary user cannot list patch candidates');
 select is(public.testing_participation_current_v2('master')->'contributions'->0->>'state','fixed','real fixed state');
 select is((public.testing_participation_current_v2('master')->'contributions'->0->>'notice')::boolean,true,'durable fixed notice');
@@ -49,6 +75,18 @@ select lives_ok($$select public.testing_report_submit('16100000-0000-0000-0000-0
 select is((select count(*)::integer from public.testing_contributions),5,'quota rejection preserves history');
 reset role;
 insert into public.profiles(id) values('16100000-0000-0000-0000-000000000003');
+-- B03 fixture: internal profile plus an explicit Clerk binding before child rows.
+DO $fixture$ BEGIN
+  IF to_regclass('private.clerk_issuers') IS NOT NULL THEN
+    INSERT INTO private.clerk_issuers(issuer,authorized_parties,enabled)
+      VALUES ('https://fixtures.clerk.invalid',ARRAY['https://app.invalid'],true)
+      ON CONFLICT (issuer) DO NOTHING;
+    INSERT INTO public.account_identities(issuer,subject,account_id)
+      SELECT 'https://fixtures.clerk.invalid','user_'||replace(id::text,'-',''),id
+      FROM public.profiles ON CONFLICT (issuer,subject) DO NOTHING;
+  END IF;
+END $fixture$;
+
 -- Supervisor seeds synthetic historical rows, never an API/user capability.
 do $$declare item uuid; begin for i in 1..20 loop
  item:=gen_random_uuid();
@@ -57,7 +95,7 @@ do $$declare item uuid; begin for i in 1..20 loop
  update public.testing_contributions set created_at=clock_timestamp()-interval '2 days' where id=item;
 end loop; end$$;
 set local role authenticated;
-set local request.jwt.claim.sub='16100000-0000-0000-0000-000000000003';
+select pg_temp.fixture_claims('16100000-0000-0000-0000-000000000003');
 select is((select count(*)::integer from public.testing_contributions),20,'twenty weekly reports present');
 select throws_ok($$select public.testing_report_submit('16100000-0000-0000-0000-000000000025','master','Weekly overflow','Texto',true)$$,'54000',null,'twenty first weekly report denied');
 select is(jsonb_array_length(public.testing_participation_current_v2('master')->'contributions'),20,'history remains bounded');

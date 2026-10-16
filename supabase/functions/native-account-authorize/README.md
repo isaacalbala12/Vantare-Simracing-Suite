@@ -1,3 +1,31 @@
+# #1608 B01 · contrato vigente preparado solo en local
+
+El bridge firma HS256 con **NATIVE_DATA_JWT_SECRET dedicado**; se retira el
+fallback a SUPABASE_JWT_SECRET. Issuer `<SUPABASE_URL>/native-data/v1`, audiencia
+`vantare-native-data`, role authenticated, sub UUID interno y proveniencia Clerk
+verificada. TTL <=300 s y <=OAuth. `private.current_account()` compara issuer,
+subject y UUID exactos, registry habilitado, tiempo vigente y tombstone; RPC,
+RLS y consumidor `testing-report-submit` comparten ese contrato. El cliente
+Rust trata el bearer como opaco: no cambia protocolo ni persistencia.
+
+Registry vacío por defecto: configurar la confianza del firmante/gateway y las
+instancias Clerk es una activación separada, no autorizada aquí. No compartir
+la clave de Supabase Auth ni aceptar los JWT legacy como identidades Clerk.
+La configuración de un proyecto gestionado debe revisarse antes de desplegar;
+este gate verifica PostgREST local, no el gateway gestionado ni Clerk real.
+
+Gate obligatorio: `supabase/tests/run-commercial-local.py` bajo WSL, con
+`--pg-bin`, `--output`, `--postgrest-bin` y `--deno-bin` instalados. Solo crea
+PostgreSQL desechable y PostgREST en loopback; no acepta DSN ni credenciales.
+El handler authorize real firma una fixture OAuth verificada inyectada; prueba
+reset propio, RLS, firma alterada, otro UUID/issuer/audiencia, legacy, TTL>300,
+caducado/futuro y bearer previo al tombstone. Logs sin JWTs ni material real.
+
+## Procedimiento #1452 histórico, supersedido por B01
+
+Los valores de issuer/audiencia/secretos y despliegue que siguen son históricos;
+no ejecutar su activación para este corte. Se conservan como evidencia de #1452.
+
 # native-account-authorize — #1452
 
 `POST {"version":1}`, OAuth Clerk en `Authorization`, sin apikey. Devuelve

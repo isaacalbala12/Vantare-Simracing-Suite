@@ -1,6 +1,20 @@
 use super::*;
 use crate::{account, bridge::Config, http::Http, test_http::Server};
 
+// Prepared input: these tests exercise privacy, consent, budgets and exact HTTP
+// retries, independently of the host's games, hardware or PowerShell startup.
+fn observed_fixture(system: bool) -> capture::Observed {
+    capture::Observed {
+        system: if system {
+            serde_json::json!({"cpu":{"cores":8},"ram_gb":32})
+        } else {
+            serde_json::json!({})
+        },
+        game: "acc".into(),
+        game_version: Some("1.10.3".into()),
+    }
+}
+
 #[test]
 fn f7_tester_free_text_never_reaches_the_rpc_preview() {
     for raw in [
@@ -47,7 +61,7 @@ fn f7_closed_session_metadata_is_independent_of_profile_names() {
     let mut triage = Triage::default();
     triage.record(100, true, "report-send");
     let preview = triage
-        .prepare(
+        .prepare_with_capture(
             "15940000-0000-0000-0000-000000000001",
             "testers",
             Input {
@@ -65,6 +79,7 @@ fn f7_closed_session_metadata_is_independent_of_profile_names() {
                 ],
             },
             100,
+            |system| Ok(observed_fixture(system)),
         )
         .expect("structured preparation");
     let summary = &preview.packet.context["telemetry_summary"];
@@ -193,7 +208,7 @@ fn review_r7_f8_real_preview_is_preserved_for_combined_sql_admission() {
     let mut triage = Triage::default();
     triage.record(99, true, "report-send");
     let preview = triage
-        .prepare(
+        .prepare_with_capture(
             "15940000-0000-4000-8000-000000000001",
             "testers",
             Input {
@@ -206,6 +221,7 @@ fn review_r7_f8_real_preview_is_preserved_for_combined_sql_admission() {
                 private_names: &[],
             },
             100,
+            |system| Ok(observed_fixture(system)),
         )
         .expect("actual preview");
     let payload = preview.packet.rpc_payload("testers");
@@ -447,24 +463,24 @@ fn review_r2_f1_json_representations_are_removed_before_preview() {
 
 #[test]
 fn review_p1_1_basic_and_sk_hyphen_are_removed_before_preview() {
+    use base64::Engine as _;
+    // Build the synthetic wire value in the test instead of storing an auth literal.
+    let basic = base64::engine::general_purpose::STANDARD.encode(b"synthetic:fixture");
     for (raw, secret) in [
+        (format!("Authorization: Basic {basic}"), basic.clone()),
         (
-            "Authorization: Basic c3ludGhldGljOmZpeHR1cmU=",
-            "c3ludGhldGljOmZpeHR1cmU=",
+            serde_json::json!({"Authorization":format!("bAsIc {basic}")}).to_string(),
+            basic,
         ),
         (
-            r#"{"Authorization":"bAsIc c3ludGhldGljOmZpeHR1cmU="}"#,
-            "c3ludGhldGljOmZpeHR1cmU=",
-        ),
-        (
-            "sk-proj-FixtureOpaqueCredential",
-            "sk-proj-FixtureOpaqueCredential",
+            "sk-proj-FixtureOpaqueCredential".to_owned(),
+            "sk-proj-FixtureOpaqueCredential".to_owned(),
         ),
     ] {
         // The same cleaner runs over title, body, hardware and attachment before preview.
-        let packet = prepared_text(raw);
+        let packet = prepared_text(&raw);
         assert!(
-            !packet.contains(secret),
+            !packet.contains(&secret),
             "synthetic credential survived preview"
         );
     }
@@ -509,7 +525,7 @@ fn prepared_text(raw: &str) -> String {
     let mut triage = Triage::default();
     triage.record(100, true, raw);
     let preview = triage
-        .prepare(
+        .prepare_with_capture(
             "15940000-0000-0000-0000-000000000001",
             "testers",
             Input {
@@ -522,6 +538,7 @@ fn prepared_text(raw: &str) -> String {
                 private_names: &[],
             },
             100,
+            |system| Ok(observed_fixture(system)),
         )
         .expect("synthetic preparation");
     serde_json::to_string(&preview.packet.rpc_payload("testers")).expect("RPC JSON")
@@ -535,7 +552,7 @@ fn review_r2_f3_expanded_redaction_fits_sql_and_retries_exact_preview() {
     assert_eq!(body.chars().count(), 999);
     let mut triage = Triage::default();
     let preview = triage
-        .prepare(
+        .prepare_with_capture(
             "15940000-0000-0000-0000-000000000001",
             "testers",
             Input {
@@ -548,6 +565,7 @@ fn review_r2_f3_expanded_redaction_fits_sql_and_retries_exact_preview() {
                 private_names: &[],
             },
             100,
+            |system| Ok(observed_fixture(system)),
         )
         .expect("UI-admitted text");
     let payload = preview.packet.rpc_payload("testers");
@@ -620,7 +638,7 @@ fn review_p2_4_full_escaped_preview_fits_http_and_sends_exact_hashed_tail() {
             triage.record(now, true, operation);
         }
         let preview = triage
-            .prepare(
+            .prepare_with_capture(
                 "15940000-0000-0000-0000-000000000001",
                 "testers",
                 Input {
@@ -633,6 +651,7 @@ fn review_p2_4_full_escaped_preview_fits_http_and_sends_exact_hashed_tail() {
                     private_names: &[],
                 },
                 now,
+                |system| Ok(observed_fixture(system)),
             )
             .expect("large valid preparation");
         let expected = serde_json::to_vec(&preview.packet.rpc_payload("testers")).expect("JSON");
@@ -705,4 +724,36 @@ fn review_p2_4_full_escaped_preview_fits_http_and_sends_exact_hashed_tail() {
         ),
         Err(Error::TooLarge)
     ));
+}
+
+#[test]
+fn prepared_context_uses_supplied_observations_and_capture_errors_clear_consent() {
+    let mut triage = Triage::default();
+    let input = || Input {
+        title: "local note",
+        body: "local note",
+        selection: Selection {
+            items: [Item::System].into_iter().collect(),
+        },
+        consent: true,
+        private_names: &[],
+    };
+    let preview = triage
+        .prepare_with_capture("account", "testers", input(), 100, |system| {
+            assert!(system);
+            Ok(observed_fixture(system))
+        })
+        .expect("prepared observations");
+    assert_eq!(preview.packet.context["game"], "acc");
+    assert_eq!(preview.packet.context["game_version"], "1.10.3");
+    assert_eq!(preview.packet.context["system"]["cpu"]["cores"], 8);
+    assert_eq!(preview.packet.context["system"]["ram_gb"], 32);
+    assert!(matches!(
+        triage.prepare_with_capture("account", "testers", input(), 101, |_| Err(Error::Offline)),
+        Err(Error::Offline)
+    ));
+    assert!(
+        triage.prepared.is_none(),
+        "a failed recapture must invalidate the old consent"
+    );
 }

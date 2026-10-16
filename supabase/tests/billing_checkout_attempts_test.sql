@@ -51,6 +51,11 @@ select is(
   'busy',
   'second request cannot claim a creating attempt'
 );
+DO $$ begin
+ if to_regprocedure('public.billing_begin_checkout_request(uuid,uuid,uuid)') is not null then
+  perform public.billing_begin_checkout_request('00000000-0000-4000-8000-000000000010','00000000-0000-4000-8000-000000000020','00000000-0000-0000-0000-000000000003');
+ end if;
+end $$;
 select ok(
   public.complete_billing_checkout_attempt(
     '00000000-0000-4000-8000-000000000010',
@@ -92,6 +97,10 @@ select is(
   'expired',
   'an expired URL is never reused'
 );
+
+-- Fixture has confirmed its only hosted checkout expired unpaid. Support removes
+-- the transient attempt; the durable binding remains. No automatic TTL reset.
+delete from public.billing_checkout_attempts where user_id='00000000-0000-4000-8000-000000000010';
 
 select is(
   (select outcome from public.claim_billing_checkout_attempt(
@@ -140,9 +149,11 @@ $$;
 select is(
   (select count(*)::integer from public.billing_checkout_attempts
    where attempt_id = '00000000-0000-4000-8000-000000000023'),
-  0,
-  'expired attempts older than the bounded retention are cleaned up'
+  1,
+  'expired unresolved attempts are retained for reconciliation, not erased by another claim'
 );
+
+delete from public.billing_checkout_attempts where user_id='00000000-0000-4000-8000-000000000010';
 
 select is(
   (select outcome from public.claim_billing_checkout_attempt(
@@ -153,6 +164,8 @@ select is(
   'claimed',
   'Pro annual is an accepted checkout key (ISA-1499)'
 );
+
+delete from public.billing_checkout_attempts where user_id='00000000-0000-4000-8000-000000000010';
 
 select is(
   (select outcome from public.claim_billing_checkout_attempt(

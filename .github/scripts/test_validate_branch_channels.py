@@ -63,8 +63,32 @@ class ValidateBranchChannelsTest(unittest.TestCase):
         for line in workflow.splitlines():
             if "uses:" in line:
                 self.assertRegex(line, r"uses: [^@]+@[0-9a-f]{40}$")
-        for required in ("Native format and blocking gates", "'check', 'clippy', 'completa', 'lifecycle'", "native/retirement/verify.py"):
+        for required in (
+            "Native format and blocking gates",
+            "native/retirement/verify.py",
+        ):
             self.assertIn(required, workflow)
+        # El bucle fija las cuatro coberturas: check, clippy, lifecycle y la
+        # suite. La suite es `completa` (suite + corpus de telemetría) cuando el
+        # clasificador no descarta el corpus, y `test` (solo suite) cuando
+        # ninguna ruta cambiada toca runtime, domain, ipc ni testdata
+        # (#1654 ronda 12). La unión de `test` y `completa` es la de hoy.
+        self.assertIn(
+            "foreach ($gate in @('check', 'clippy', $suite, 'lifecycle'))",
+            workflow,
+        )
+        self.assertIn(
+            "$suite = if ($env:TELEMETRIA_SCOPE -eq 'false') { 'test' } else { 'completa' }",
+            workflow,
+        )
+        self.assertIn(
+            "telemetria: ${{ steps.native_scope.outputs.telemetria }}", workflow
+        )
+        self.assertIn(
+            "TELEMETRIA_SCOPE: ${{ needs.policy.outputs.telemetria }}", workflow
+        )
+        # Fail-closed: sin evento de PR o sin base, las dos decisiones son true.
+        self.assertIn("echo 'telemetria=true'", workflow)
         self.assertNotIn("continue-on-error:", workflow)
         self.assertNotIn("actions/setup-go", workflow)
         self.assertNotIn("pnpm", workflow)

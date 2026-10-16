@@ -245,29 +245,37 @@ export async function handleCheckoutRequest(
   if (claim.kind === "uncertain") {
     return errorResponse(
       "checkout_state_uncertain",
-      "The previous checkout result is uncertain; retry later with support",
+      "The previous payment is still being verified. Do not pay again until its result is confirmed.",
       409,
     );
   }
   if (claim.kind === "expired") {
     return errorResponse(
       "checkout_attempt_expired",
-      "Checkout attempt expired; start a new attempt",
+      "This attempt expired. A new payment is allowed after automatic confirmation that the previous checkout cannot charge.",
       409,
     );
   }
   if (claim.kind === "busy") {
     return errorResponse(
       "checkout_in_progress",
-      "Checkout is already being created",
+      "Another checkout or payment is still being verified. Wait for its confirmed result before starting another payment.",
       409,
     );
   }
 
   try {
+    const dispatchToken = await attempts.begin?.(
+      attempt,
+      resolved.config.polar_product_id,
+    );
     const session = await (deps.createCheckout ?? createPolarCheckoutSession)(
       {
         productId: resolved.config.polar_product_id,
+        attemptId: attempt.attemptId,
+        dispatchToken: typeof dispatchToken === "string"
+          ? dispatchToken
+          : undefined,
         userId: auth.userId,
         email: auth.email,
         productKey: resolved.key,
@@ -295,7 +303,12 @@ export async function handleCheckoutRequest(
     }
     return jsonResponse({ url: session.url, reused: false }, 200);
   } catch (error) {
-    await attempts.markUncertain(attempt).catch(() => undefined);
+    const rejected = error instanceof PolarClientError &&
+      error.code === "polar_checkout_failed" &&
+      [400, 401, 403, 404, 422, 429].includes(error.details.polar_status ?? 0);
+    if (rejected && attempts.reject) {
+      await attempts.reject(attempt).catch(() => undefined);
+    } else await attempts.markUncertain(attempt).catch(() => undefined);
     if (error instanceof PolarClientError) {
       return errorResponse(
         error.code,

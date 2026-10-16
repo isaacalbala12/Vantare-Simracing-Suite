@@ -104,18 +104,27 @@ Review DeepSeek de `C:/VantareServer/evidence/ds-rev1637`: arreglos P2/P3
 conservados con tests de navegación, planes, textos y salida privada.
 P1 de widgets completos sigue abierto: depende de #1641 (no fusionado).
 #1675 también OPEN; cero capturas/ventanas en este encargo.
-Validación del código `cec0bed8d`: Mac fmt/check/clippy -D warnings PASS;
-cuatro tests nuevos de consentimiento y once regresiones onboarding PASS.
-Suite amplia Mac: 702 PASS, 52 FAIL, 5 omitidos. Cincuenta son el fallo GPUI
-ya documentado en #1653; dos smoke tests carecen del binario storage en ese
-target. Sin filtrar ni debilitar pruebas. Telemetría 32/32, lifecycle 11/11,
-456 huellas PASS. Worktree y target del Mac retirados tras copiar los logs.
-Windows: fmt y check de Hub/services/IPC/Launcher PASS tras esperar la cola;
-clippy, Nextest, telemetría y lifecycle siguen en curso, seriales, MIN_GB=0,
-target `C:/VantareServer/targets/1637`. Evidencia en
-`C:/VantareServer/evidence/1628-integration-20261016`.
-PR #1637 fuera de borrador por encargo de Isaac; CI en curso. El fallo de
-Founders del merge intermedio está corregido y cubierto por regresión.
-VANTA-51 sigue En curso hasta terminar los gates; después Por revisar.
-No hay merge a nightly ni release. Revisión e integración corresponden
-al orquestador; el P1 de #1641 sigue bloqueando la integración completa.
+Validación del código `cec0bed8d` / seguimiento `24d3d33c9`:
+- CI Windows verde en `24d3d33c9`: fmt/check/clippy del workspace PASS;
+  Nextest suite+corpus 1886/1886 PASS (19 omitidos por configuración existente),
+  lifecycle 18/18,456 huellas PASS. Run38914287454, job117018176509.
+- Los otros cuatro checks de ese SHA pasan: promoción, calidad, PostgreSQL/E2E
+  de marketing y GitGuardian. Sin cambios SQL/Edge de este worker.
+- Windows local fmt/check/clippy PASS. Nextest inicial paró en446 PASS/1 FAIL
+  por C:lleno (StorageFull112). Log conservado; reintento cancelado aún en
+  cola al comprobar la CI completa verde, evitando repetir trabajo ya validado.
+  No se retiraron archivos: limpieza propia directa bloqueada por revisión
+  automática; cargo clean alternativo cancelado en cola al recuperar espacio.
+- Mac fmt/check/clippy PASS; consentimiento4/4 y regresiones onboarding11/11
+  PASS; suite amplia702 PASS/52 FAIL/5 omitidos:50 GPUI conocidos en #1653 y
+  2 smoke sin binario storage en ese target. Sin filtrar ni debilitar tests.
+  Telemetría32/32,lifecycle11/11,456 huellas PASS. Worktree/target retirados.
+
+PR #1637 fuera de borrador por encargo de Isaac. VANTA-51 pasa a Por revisar;
+el cierre final solo actualiza este handoff, y su SHA/CI se verifica en #1628.
+P1 de DeepSeek sigue abierto hasta widgets completos de #1641. #1675 OPEN:
+sin capturas ni ventanas; QA visual pendiente del modo lote integrado en nightly.
+Evidencia `C:/VantareServer/evidence/1628-integration-20261016`.
+No hay merge a nightly ni release. Revisión/integración corresponden al
+orquestador. T3 rechazó watch_pull_request porque este hilo es un worker:
+la vigilancia final de CI corresponde al padre, avisado en buzón.

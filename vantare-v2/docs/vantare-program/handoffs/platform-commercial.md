@@ -1,3 +1,39 @@
+## #1682 / VANTA-117 · Seguimiento P3 de creador (16/10/2026)
+
+PR #1681 integrado por el orquestador en nightly `f428dddbe`; review DeepSeek
+APTO con cuatro P3. Isaac encarga este seguimiento aislado:
+[#1682](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1682),
+`area:licencias`, Project Vantare, sin milestone comprometido. Rama
+`vantareapp/isa-1682-creador-importe-confirmado`, worktree propio isa-1682,
+base `origin/nightly@f428dddbed674cc756aa0ff41a8ae8127c64bdfd`.
+PR draft [#1683](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1683)
+a nightly, sin auto-merge. Regresiones `2c9a5477d`, código `fdd116b59`;
+SHA final y CI se registran en la issue y buzón polar-sandbox al cerrar.
+
+Captura real sandbox anual: raw[220] GET3990 sobre base5999 y precio anual
+`4f5216ce-9b71-438c-ae8b-e78d19be0520`; raw[226] PATCH4799 y [227] GET4799,
+creador20 % repeating12. Fixture anual sustituido por estas formas con identidad
+propia. Solo el caso anual normal5999 es variación explícita, no captura adicional.
+Once llamadas solo sandbox, un PATCH de cupón a suscripción propia existente;
+sin nuevas compras, productos, descuentos, refunds ni llamadas a producción.
+
+El importe debe coincidir con el descuento gestionado incluido en la respuesta,
+con ID ligado al permitido: fijo EUR o porcentaje con ahorro redondeado antes
+de restarlo. Incoherencia falla cerrado y no confirma ACK; retry recupera con
+GET coherente sin repetir PATCH. `prices` no único ya fallaba antes de escribir;
+nueva prueba verifica también cero autorizaciones. P3-4: el producto histórico
+de lanzamiento sigue bloqueado; solo documentación, sin ampliar su admisión.
+
+RED contra nightly65 PASS/24 FAIL; GREEN completo Mac841 PASS/0 FAIL y dos
+omisiones existentes. Fmt, lint producción/nuevos tests, superficie de deploy,
+fragmento, quality y456 huellas PASS. polar.test.ts conserva13 require-await
+heredados; demás reglas PASS. pgTAP/Rust omitidos: sin SQL/RPC ni nativo.
+Informe y raw saneado en `C:/VantareServer/evidence/polar-sandbox/`; logs
+isa-1682-*. Sin despliegue Supabase, merge ni promoción por el worker.
+Pendientes expresos conservados: refund realmente pending, origen de ventana
+repeating11/12 meses y webhook real a Edge aislada. No se persiguen aquí.
+Siguiente: cierre de CI y revisión del orquestador; no activar campañas.
+
 ## #1680 / VANTA-117 · Importe descontado de creador (16/10/2026)
 
 Arreglo autorizado por Isaac tras la investigación sandbox; issue

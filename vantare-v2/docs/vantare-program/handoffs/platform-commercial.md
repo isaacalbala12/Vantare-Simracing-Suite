@@ -1,3 +1,29 @@
+## #1631 / VANTA-70 · Seguimiento P3 de login (#1684)
+
+Encargo tras fusionar #1635 en nightly `95abdcc6e`. Rama nueva
+`vantareapp/isa-1631-login-p3`, worktree propio isa-1631; base actualizada
+`origin/nightly@32c3f3a14bd22e9bcedff9e21e1cb138f5cc5226`.
+[PR #1684](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1684)
+draft a nightly; implementación `c5e31139f`, pendiente de review y CI.
+
+P3-5: un canje correcto retira el intento FAPI consumido. Si falla después
+el guardado, vuelve al formulario con un mensaje de reinicio; «Autorizar»
+no reutiliza la sesión cerrada. Regresión con HTTP local y fallo real del
+reemplazo atómico: exige Error::Storage, Form, mensaje, ninguna identidad
+y rechazo del reintento sin más llamadas a device authorization/token.
+P3-1: cambio de identidad por email cancela triage igual que poll_account.
+P3-2: changelog v11 ya corregido al integrar #1635, comprobado sin retocarlo.
+P3-3/4: guía con services v11 y SHA base de este seguimiento.
+
+Rustfmt aplicado a los fuentes y diff --check PASS. Gates locales omitidos
+por cola ocupada (target1634), conforme al encargo; CI Windows de #1684 debe
+ejecutar fmt/check/Clippy/Nextest/lifecycle, incluida la nueva regresión.
+No se afirma test aprobado ni se reutiliza CI del PR anterior. Plane En curso
+verificado al iniciar; cierre y SHA se registran en #1631 y el comentario del PR.
+Sin cambios runtime/IPC/domain/testdata: no requiere telemetría adicional.
+Sin SQL/Edge, capturas, Clerk real, merge de PR, promoción, release o despliegue.
+La prueba manual con Clerk real y macOS conserva sus límites anteriores.
+
 ## #1682 / VANTA-117 · Seguimiento P3 de creador (16/10/2026)
 
 PR #1681 integrado por el orquestador en nightly `f428dddbe`; review DeepSeek
@@ -3265,29 +3291,3 @@ SHA, push y checks en la issue/buzon. Sin autorizacion de produccion.
 
 2026-10-13 · GitHub #1565 · Claude. Feed en seco, CI privada y QA aislada;
 PR a nightly sin merge ni release.
-## #1631 / VANTA-70 · Seguimiento P3 de login (#1684)
-
-Encargo tras fusionar #1635 en nightly `95abdcc6e`. Rama nueva
-`vantareapp/isa-1631-login-p3`, worktree propio isa-1631; base actualizada
-`origin/nightly@32c3f3a14bd22e9bcedff9e21e1cb138f5cc5226`.
-[PR #1684](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1684)
-draft a nightly; implementación `c5e31139f`, pendiente de review y CI.
-
-P3-5: un canje correcto retira el intento FAPI consumido. Si falla después
-el guardado, vuelve al formulario con un mensaje de reinicio; «Autorizar»
-no reutiliza la sesión cerrada. Regresión con HTTP local y fallo real del
-reemplazo atómico: exige Error::Storage, Form, mensaje, ninguna identidad
-y rechazo del reintento sin más llamadas a device authorization/token.
-P3-1: cambio de identidad por email cancela triage igual que poll_account.
-P3-2: changelog v11 ya corregido al integrar #1635, comprobado sin retocarlo.
-P3-3/4: guía con services v11 y SHA base de este seguimiento.
-
-Rustfmt aplicado a los fuentes y diff --check PASS. Gates locales omitidos
-por cola ocupada (target1634), conforme al encargo; CI Windows de #1684 debe
-ejecutar fmt/check/Clippy/Nextest/lifecycle, incluida la nueva regresión.
-No se afirma test aprobado ni se reutiliza CI del PR anterior. Plane En curso
-verificado al iniciar; cierre y SHA se registran en #1631 y el comentario del PR.
-Sin cambios runtime/IPC/domain/testdata: no requiere telemetría adicional.
-Sin SQL/Edge, capturas, Clerk real, merge de PR, promoción, release o despliegue.
-La prueba manual con Clerk real y macOS conserva sus límites anteriores.
-

@@ -2,20 +2,23 @@
 
 Auditoría inicial: 14-oct-2026, base `nightly@79a1ace66e5ec397126495dc5ce99353db9beed9`.
 
-## Plan vigente de fase B — 16-oct
+## Fase B: práctica de Imola recibida — 16-oct
 
-Isaac grabará el fin de semana completo en su PC de juego; **no se abrirá LMU
-en el servidor**. Supervisor 16280 cancelado y salida `cancelled` verificada.
+Recibidos 77 min 18 s de práctica Imola/IA, LMU 1.4.2.0, 38 coches totales.
+Jugador Alpine #35 fuera del garaje pero parado, sin vueltas/inputs. La
+verificación íntegra offline terminó: **287.495 fotos por cada widget, 0 rechazos**.
+**287.447 fotos Stale (99,9833 %)**: no acredita funcionamiento continuo,
+conducción ni carrera. 26 rivales con movimiento fiable; jugador con ruido
+~1,8e-7 m/s, cero vueltas e inputs. Calma/seco REST se verifican en 45 fotos fiables.
+[Informe vigente por widget, cambios y pendientes](imola-practica-2026-10-16.md).
+**No se abrirá LMU en el servidor**. Supervisor 16280 cancelado y salida `cancelled` verificada.
 [Kit release y verificación offline](grabacion-completa-lmu.md): SHM completo,
 REST descubierto desde la UI instalada, gzip/XOR con hashes y cierre verificado,
 replay por adapter/Core/DTO y proyecciones de los 18 widgets, más calidades de
 los siete campos de Avisos. El catálogo declara rutas no resueltas/excluidas y
 no acredita endpoints ocultos. Los datos crudos privados no se versionan.
-Sigue faltando recibir la captura; los campos sin evidencia no cambian.
-
-Recorte posterior del orquestador: la entrega en curso será **solo práctica
-Imola/IA, 6 h configuradas y unos 45 min grabados** por otro worker en el PC de
-Isaac, destino `C:/VantareServer/evidence/grabacion-lmu-imola/`. El informe se
+La entrega recibida es **solo práctica**, 6 h configuradas, destino
+`C:/VantareServer/evidence/grabacion-lmu-imola/`. El informe se
 ejecuta con `--recording-scope practice-only`: separa recepción/datos realmente
 observados de inicio/fin de sesión, clasificación, carrera, formación y salida,
 que **no quedan cubiertos**. Parar la grabación no acredita terminar la sesión.
@@ -44,7 +47,7 @@ por fixture: **3586,8802490234375 m** en el caso con longitud válida, ausencia
 sin longitud o en boxes. Las capturas originales no cambian. Los campos sin
 fuente acreditada y la fase B siguen pendientes; estos gates no son QA LMU.
 
-## Continuación vigente — 15-oct, servidor
+## Histórico de continuación — 15-oct, servidor
 
 El encargo actual autoriza Plane y PR draft a nightly, sin merge ni A/B.
 Worktree `C:/VantareServer/wt/isa-1638`, target `C:/VantareServer/targets/isa-1638`,

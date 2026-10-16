@@ -16,45 +16,59 @@ Leídos [#1562](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/
 
 ## 3. Estado real y canal
 
-### #1638 / VANTA-33 — fase B offline, PC de juego (16-oct)
+### #1638 / VANTA-33 — práctica de Imola offline (16-oct)
 
-Cambio expreso de Isaac: no abrir LMU en el servidor, por RAM. El supervisor
-16280 recibió STOP y terminó `cancelled`, verificado en su summary.json bajo
-`C:/VantareServer/logs/1638-phase-b-20261015-204225`. No queda espera live activa
-ni hay resultado de juego nuevo. Plane sigue **En curso**, PR draft #1664 a nightly.
+**Canal real:** Plane En curso, PR draft [#1664](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1664)
+a nightly. Código nuevo `acf7d09dc`, base ya fusionada `nightly@28800654c`.
+Sin nuevo merge, promoción, release ni cambios en la rama #1653/#1660.
 
-[Procedimiento vigente, formato, límites y comando offline](../../telemetria/grabacion-completa-lmu.md).
-Kit release Windows x64 en `C:/VantareServer/share/kit-grabacion-lmu/` (ZIP).
-Captura ambos mappings del SDK en solo lectura, enteros, con bytes no usados
-por el adapter; SHM objetivo 60 Hz. Catálogo de GET de la UI instalada
-(60 rutas en la build del servidor), plantillas/exclusiones explícitas;
-no invoca acciones ni credenciales. No puede garantizar rutas ocultas que la UI
-no referencia. Gzip/XOR streaming, timestamps, hashes, footer obligatorio.
-Datos crudos privados con nombres y rutas locales; no versionar sin sanear.
+Recibida `C:/VantareServer/evidence/grabacion-lmu-imola/sesion.lmu.gz`,
+3.006.324.579 bytes, LMU 1.4.2.0, 77 min 18 s de práctica Imola. SHM cuenta
+38 coches totales; Alpine #35 del jugador parado fuera del garaje y sin vueltas,
+IA en movimiento. Datos crudos privados con nombres/paths: no versionar.
+[Informe vivo por widget, fuentes y pendientes](../../telemetria/imola-practica-2026-10-16.md).
 
-El arnés acepta --recording y recorre Replay/Translator/Core/DTO estricto y
-los 18 Widget::ingest sin abrir ventanas. Informa calidades y campos ausentes,
-por sesión, y los siete campos de Avisos. Evaluación correcta no es cobertura
-completa ni QA física aprobada. Falta grabación de práctica, qualy, carrera con
-formación/salida, final y transiciones para añadir productores con evidencia.
-No se ha editado la rama #1653/#1660 ni promovido, integrado o publicado nada.
+El arnés completo terminó con `--recording-scope practice-only` en
+`C:/VantareServer/logs/1638-imola-final-01`: productor/consumidor exit 0,
+**287.495 fotos por cada widget**, **0 rechazos**, **261.546 SHM estables**.
+REST: 61 endpoints, 159.083 respuestas, 51 con 200. **48 fotos Live y
+287.447 Stale (99,9833 %)**: no es cobertura continua. Una sola práctica id 1.
+Movimiento fiable: 26 rivales, máximo 82,7065 m/s. Jugador: 53 fotos fiables
+con ruido de velocidad <=1,81e-7 m/s, cero inputs y cero vueltas. Solo estructura.
+Calma/seco: 45 fotos Reliable con cero; se preservan las calidades restantes.
+RSS observado tras >=240k fotos: ~26,24 MiB total, sin descomprimir a disco.
+Fastest-lap no emitió aviso nuevo; ingest=false no significa no recibir datos.
+La clasificación legible se regenera desde los agregados sin cambiar números
+ni repetir el replay; Python cubre el ruido numérico real y casos no estáticos.
+Recorre Reader/Replay/Translator/Core,
+DTO estricto y los 18 Widget::ingest, más los 7 campos de Avisos. Streaming,
+hashes por cuerpo, footer/CRC; sin juego, HTTP, ventanas ni capturas de app.
+Métricas nuevas separan velocidad/inputs/vueltas del jugador y movimiento fiable
+IA. No contar Stale/Estimated como evidencia de movimiento. La preliminar se
+canceló deliberadamente tras 41.555 fotos: no es resultado final.
 
-Recorte vigente: DeepSeek graba por SSH en el PC de Isaac **solo práctica
-Imola/IA**, 6 h configuradas y unos 45 min de grabación. Esperar artefactos en
-`C:/VantareServer/evidence/grabacion-lmu-imola/`. `--recording-scope practice-only`
-produce informe legible y marca sin cubrir inicio/fin fiables, clasificación,
-carrera, formación/salida y próxima sesión, aunque aparezcan números positivos.
-No se transforma el fin de grabación en fin real. Se verificará lo efectivamente
-observado para los 18 widgets; el resto exige una grabación posterior.
+La captura confirma ceros explícitos REST de viento en calma y pista seca:
+se respaldan solo con respuesta vigente de esta misma sesión/circuito, sin
+rejuvenecer SHM. Fixture saneada y tests de ausencia, identidad y TTL. Daños
+por componente, geometría productiva de pista y estrategias por nombre no
+se inventan con REST ambiguo; ver informe.
 
-Validación del kit `1cbb167b2`: Clippy workspace/all-targets **PASS**, Nextest
-runtime/domain/ipc con workspace **644/644 PASS**, 5 skips, y telemetría
-**32/32 PASS**, 1 skip. Kit ZIP **507353 bytes**, SHA-256 en su sidecar.
-Fixture real por arnés: 18 widgets/4 fotos/7 campos de Avisos, cero rechazos;
-archivo truncado y captura sin SHM no pasan. Seis tests Python y alcance
-solo-práctica comprobados. Logs `C:/VantareServer/logs/1638-full-*`; no hay
-todavía informe ni datos de la nueva práctica de Imola. UI completa/lifecycle
-no repetidos por encargo acotado; nunca juego ni capturas de Vantare.
+Gates del código nuevo: Clippy workspace/all-targets -D warnings **PASS**,
+Nextest runtime/domain/ipc con workspace **646/646 PASS**, 5 skips (incluidos
+los tests de proceso Services), telemetría **32/32 PASS**, 1 skip, regresión
+UI de movimiento **1/1 PASS**, Python **7/7 PASS**. En serie por la cola,
+MIN_GB=0. Logs `C:/VantareServer/logs/1638-imola-final-*`. Los fallos iniciales
+y su justificación se conservan en el informe. UI completa y lifecycle no
+repetidos por alcance/RAM; no se ha capturado Vantare (#1655).
+
+Sigue pendiente conducción real del jugador, varias vueltas y servicio;
+además inicio/fin de sesión, clasificación/carrera, formación/salida y agenda
+fiable de próxima sesión. Una práctica parcial no cubre esas situaciones.
+No relajar frescura ante pausas SHM observadas. El supervisor live 16280 fue
+cancelado con STOP y terminó cancelled; **no abrir LMU en el servidor**.
+[Kit y comando offline](../../telemetria/grabacion-completa-lmu.md), ZIP release
+en `C:/VantareServer/share/kit-grabacion-lmu/`; procedimiento live histórico
+queda sustituido por grabación desde el PC de juego.
 
 ### #1638 / VANTA-33 — revisión de gates del servidor (R2)
 

@@ -145,8 +145,15 @@ salida, historia de consumo ni tiempos de vuelta.
 ## Arnés offline y significado del informe
 
 ```powershell
-python -I native/scripts/verify-lmu-widget-coverage.py --target-dir C:\VantareServer\targets\isa-1638 --recording C:\ruta\sesion.lmu.gz --output-dir C:\VantareServer\logs\1638-offline-nueva
+$env:VANTARE_CARGO_MIN_GB='0'
+pwsh -NoProfile -File native/scripts/compilar.ps1 python -I native/scripts/verify-lmu-widget-coverage.py --target-dir C:\VantareServer\targets\isa-1638 --recording C:\VantareServer\evidence\grabacion-lmu-imola\sesion.lmu.gz --recording-scope practice-only --output-dir C:\VantareServer\logs\1638-imola-repeticion-nueva
 ```
+
+Usar siempre una carpeta de salida nueva y esperar a que termine cualquier
+verificación anterior. El comando va por la cola y no vuelve a compilar.
+[Alcance real de Imola y revisión por widget](imola-practica-2026-10-16.md):
+77 min 18 s de práctica recibidos, Alpine #35 fuera del garaje pero parado,
+IA móvil; no cubre clasificación, carrera, formación ni salida.
 
 Requiere `release/vantare-verificar-lmu.exe` y
 el test UI `offline_coverage::recorded_dtos_reach_all_widgets` precompilado
@@ -164,11 +171,15 @@ el adapter, **no se afirma que ya alimenten señales productivas**.
 
 DTOs fluyen por un pipe anónimo, sin escribir snapshots personales a disco,
 hacia `Widget::ingest` de las 18 entradas del registro. `widgets.json` cuenta
-fotos, cambios de proyección, señales demandadas y calidades por campo/sesión.
+fotos, cambios solicitados por ingest, señales demandadas y calidades por campo/sesión.
+Además separa estados de fuente, velocidad/inputs/vueltas fiables del jugador
+y rivales con velocidad fiable >0,1 m/s. Stale y Estimated no acreditan movimiento.
 `telemetry.json` incluye inventario REST, rechazos, sesiones y las siete
 calidades de Avisos (inicio, fin, fin previsto, fase, metros, próximo tipo/hora).
 `verification.log` y `summary.json` recogen el resultado de ambos procesos.
 No hay éxito con cero fotos ni con menos de 18 widgets. `evaluated_pending_coverage_review`
 significa recorrido comprobado, **no** 18 widgets completos ni fase B aprobada.
-Tras recibir la sesión completa se revisarán los huecos y se añadirán productores
-solo con evidencia positiva; la rama del widget #1653/#1660 no se modifica.
+Imola se procesó completa: 287.495 fotos por widget y cero rechazos, pero
+99,9833 % Stale y jugador parado. Calma/seco explícitos sí se añadieron con
+evidencia positiva. Siguen pendientes conducción y transiciones; la rama del
+widget #1653/#1660 no se modifica.

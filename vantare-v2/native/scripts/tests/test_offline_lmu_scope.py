@@ -1,5 +1,6 @@
 """Una práctica no se convierte en QA de salida por contener números positivos."""
 import importlib.util
+from copy import deepcopy
 import pathlib
 import unittest
 
@@ -13,16 +14,35 @@ class PracticeScopeTests(unittest.TestCase):
     def test_moving_ai_never_certifies_stationary_player_or_track_geometry(self):
         motion = {"opponent_moving_samples": 100, "moving_opponent_ids": 37,
                   "opponents_max_speed_mps": 50,
-                  "player_speed_mps": {"min": 0, "max": 0, "reliable_samples": 4},
-                  "player_completed_laps": {"min": 0, "max": 0}, "player_inputs": {}}
+                  # Rango real de Imola: ruido numérico, no conducción.
+                  "player_speed_mps": {"min": 1.0941064948567774e-7,
+                                       "max": 1.8003685388777887e-7, "reliable_samples": 53},
+                  "player_completed_laps": {"min": 0, "max": 0, "reliable_samples": 48},
+                  "player_inputs": {key: {"min": 0, "max": 0, "reliable_samples": 53}
+                                    for key in ("throttle", "brake", "clutch", "steering")}}
         widgets = [{"widget": name, "photos_evaluated": 4, "projection_changes": 4}
                    for name in ("radar", "pedals", "fuel-strategy", "track-map")]
+        widgets.append({"widget": "fastest-lap", "photos_evaluated": 4, "projection_changes": 0})
         report = MODULE.readable_report({"photos": 4, "session_alerts": {}},
                                        {"widgets": widgets, "motion_evidence": motion}, "practice-only")
         self.assertIn("Parrilla/IA en movimiento", report)
         self.assertEqual(report.count("Solo estructura del jugador parado"), 2)
         self.assertIn("hace falta geometría", report)
         self.assertIn("sin validación dinámica", report)
+        self.assertIn("Sin aviso nuevo observado", report)
+        for change in ("speed", "laps", "inputs", "missing"):
+            changed = deepcopy(motion)
+            if change == "speed":
+                changed["player_speed_mps"]["max"] = 1.0
+            elif change == "laps":
+                changed["player_completed_laps"]["max"] = 1
+            elif change == "inputs":
+                changed["player_inputs"]["throttle"]["max"] = 0.2
+            else:
+                changed["player_speed_mps"] = {}
+            report = MODULE.readable_report({"photos": 4, "session_alerts": {}},
+                                           {"widgets": widgets, "motion_evidence": changed}, "practice-only")
+            self.assertNotIn("Solo estructura del jugador parado", report)
 
     def test_positive_values_do_not_certify_unrecorded_race_scenarios(self):
         telemetry = {"photos": 4, "session_alerts": {

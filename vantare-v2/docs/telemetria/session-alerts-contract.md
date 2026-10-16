@@ -1,6 +1,13 @@
 # Telemetría para Avisos de sesión — #1638 → #1653
 
 Continuación 15-oct-2026, VANTA-33. No modifica la rama del widget ni su agenda.
+
+**Estado 16-oct:** evaluación offline de Imola completada (287.495 fotos, cero rechazos); jugador
+parado, IA en movimiento. No incluye inicio/fin reales, qualy, carrera,
+formación, salida ni próxima sesión. El supervisor 16280 está cancelado por
+STOP; el procedimiento live de abajo es histórico y no debe reactivarse en
+el servidor. [Informe y límites vigentes](imola-practica-2026-10-16.md).
+
 El grupo `Signal::SessionInfo` entrega `Snapshot.state.session.timing` en DTO
 v11, tanto en foto completa como selectiva. El consumidor debe recompilarse con
 Core. La versión de Services y de derechos no cambia.

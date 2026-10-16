@@ -33,17 +33,32 @@ def readable_report(telemetry, projections, scope):
              "Las calidades por campo y sesión están en widgets.json; los errores e inventario REST en telemetry.json.", "",
              "Estados de fuente: " + json.dumps(projections.get("source_state_counts", {})) + ".",
              "Los datos caducados no acreditan señales actuales. La recuperación exige avance sostenido; no se relajan los límites de frescura.", "",
-             "| Widget | Fotos | Cambios de proyección | Evidencia que revisar |", "| --- | ---: | ---: | --- |"]
+             "projection_changes cuenta retornos true de ingest (cambios solicitados); cero no significa falta de recepción.", "",
+             "| Widget | Fotos | Cambios solicitados | Evidencia que revisar |", "| --- | ---: | ---: | --- |"]
     motion = projections.get("motion_evidence", {})
     moving = motion.get("opponent_moving_samples", 0) > 0
     speed = motion.get("player_speed_mps", {})
-    stationary = speed.get("reliable_samples", 0) > 0 and speed.get("min") == speed.get("max") == 0
+    laps = motion.get("player_completed_laps", {})
+    inputs = motion.get("player_inputs", {})
+    # El SDK conserva ruido ~1e-7 m/s con el coche parado. Se mantienen los
+    # valores originales: el mismo umbral de 0,1 m/s usado para IA solo
+    # clasifica evidencia, nunca cambia calidad ni valores de telemetría.
+    stationary = (speed.get("reliable_samples", 0) > 0
+                  and 0 <= speed.get("min", -1) <= speed.get("max", -1) <= 0.1
+                  and laps.get("reliable_samples", 0) > 0
+                  and laps.get("min") == laps.get("max") == 0
+                  and set(inputs) == {"throttle", "brake", "clutch", "steering"}
+                  and all(value.get("reliable_samples", 0) > 0
+                          and value.get("min") == value.get("max") == 0
+                          for value in inputs.values()))
     grid = {"standings", "relative", "radar", "multiclass-relative",
             "broadcast-tower", "head-to-head", "fastest-lap"}
     for widget in projections["widgets"]:
         name = widget["widget"]
         note = "Recepción/proyección; no certificada"
-        if name in grid and moving:
+        if name == "fastest-lap" and widget["projection_changes"] == 0:
+            note = "Sin aviso nuevo observado; recibir tiempos no acredita notificación de récord"
+        elif name in grid and moving:
             note = "Parrilla/IA en movimiento; revisar calidades, faltantes y caducidad"
         elif name == "track-map":
             note = "Poses no acreditan mapa: hace falta geometría productiva de pista"
@@ -62,7 +77,8 @@ def readable_report(telemetry, projections, scope):
                   "Inputs del jugador: " + json.dumps(motion["player_inputs"]) + ".",
                   "Son fotos del DTO, no muestras independientes del simulador. Stale/Estimated no cuentan como evidencia de movimiento."]
         if stationary:
-            lines += ["El jugador no aporta conducción verificada. Pedales, trazas, delta, consumo, estrategia y evolución de daños quedan sin validación dinámica."]
+            lines += ["Velocidad <=0,1 m/s, cero vueltas e inputs: compatible con coche parado; se conserva cualquier ruido numérico en los valores originales.",
+                      "El jugador no aporta conducción verificada. Pedales, trazas, delta, consumo, estrategia y evolución de daños quedan sin validación dinámica."]
     lines += ["", "| Avisos: campo | Calidades observadas | Alcance de la comprobación |",
               "| --- | --- | --- |"]
     for field, counts in telemetry["session_alerts"].items():

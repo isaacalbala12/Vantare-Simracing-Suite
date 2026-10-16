@@ -29,6 +29,10 @@ Deno.test("reconciler traverses every page then orders/subscriptions/refunds/dis
     page: 1,
   });
   assertEquals(advanceCursor({ resource: "disputes", page: 1 }, 1), {
+    resource: "checkouts",
+    page: 1,
+  });
+  assertEquals(advanceCursor({ resource: "checkouts", page: 1 }, 1), {
     resource: "orders",
     page: 1,
   });
@@ -403,4 +407,31 @@ Deno.test("P3-25 incident-store outage retains the cursor; unidentified items ha
   assertEquals(retry.failed.map((f) => f.incident_recorded), [true, true]);
   assertEquals(keys.slice(0, 2), keys.slice(2));
   assertEquals(keys[0] === keys[1], false);
+});
+
+Deno.test("one poison observation emits an incident and does not freeze the other item or cursor", async () => {
+  const observed: string[] = [], incidents: string[] = [];
+  const result = await reconcilePage({
+    cursor: { resource: "orders", page: 2 },
+    page: {
+      maxPage: 3,
+      items: [{ id: "poison", paid: false }, { id: "healthy", paid: false }],
+    },
+    environment: "sandbox",
+    supabase: {} as SupabaseClient,
+    observeCheckoutOrder: (item) => {
+      observed.push(String(item.id));
+      return item.id === "poison"
+        ? Promise.reject(new Error("invalid_polar_amount"))
+        : Promise.resolve();
+    },
+    observationFailure: (item) => {
+      incidents.push(String(item.id));
+      return Promise.resolve();
+    },
+  });
+  assertEquals(observed, ["poison", "healthy"]);
+  assertEquals(incidents, ["poison"]);
+  assertEquals(result.next, { resource: "orders", page: 3 });
+  assertEquals(result.observed, 2);
 });

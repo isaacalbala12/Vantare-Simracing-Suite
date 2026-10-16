@@ -22,6 +22,8 @@ export type CheckoutClaim =
 
 export interface CheckoutAttemptStore {
   claim(input: CheckoutAttempt): Promise<CheckoutClaim>;
+  begin?(input: CheckoutAttempt, productId: string): Promise<string | void>;
+  reject?(input: CheckoutAttempt): Promise<void>;
   complete(
     input: CheckoutAttempt,
     checkoutId: string | null,
@@ -64,6 +66,9 @@ export function createCheckoutAttemptStore(
       );
       if (error) throw new Error("checkout_attempt_claim_failed");
       const row = singleRpcRow(data);
+      if (row?.guard_version !== 2) {
+        throw new Error("checkout_guard_unavailable");
+      }
       switch (row?.outcome) {
         case "claimed":
         case "busy":
@@ -79,7 +84,32 @@ export function createCheckoutAttemptStore(
       throw new Error("checkout_attempt_claim_invalid_result");
     },
 
+    async begin(input, productId) {
+      const { data, error } = await client.rpc(
+        "billing_begin_checkout_request",
+        {
+          p_user_id: input.userId,
+          p_attempt_id: input.attemptId,
+          p_product_id: productId,
+        },
+      );
+      const row = singleRpcRow(data);
+      if (error || typeof row?.dispatch_token !== "string") {
+        throw new Error("checkout_dispatch_unavailable");
+      }
+      return row.dispatch_token;
+    },
+    async reject(input) {
+      const { data, error } = await client.rpc(
+        "billing_reject_checkout_request",
+        { p_user_id: input.userId, p_attempt_id: input.attemptId },
+      );
+      if (error || data !== true) {
+        throw new Error("checkout_rejection_unavailable");
+      }
+    },
     async complete(input, checkoutId, url) {
+      if (!checkoutId?.trim()) throw new Error("checkout_binding_id_required");
       const { data, error } = await client.rpc(
         "complete_billing_checkout_attempt",
         {

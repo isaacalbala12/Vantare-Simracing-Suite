@@ -48,6 +48,7 @@ insert into public.profiles(id) values('15936611-0000-4000-8000-000000000001');
 insert into private.admin_creators(creator_id,environment,name,email,code,status,discount_id) values('15936611-0000-4000-8000-000000000002','sandbox','Test','fixture@example.invalid','REPORTS','active','15936611-0000-4000-8000-000000000003');
 select * from public.claim_billing_checkout_attempt('15936611-0000-4000-8000-000000000001','15936611-0000-4000-8000-000000000004','pro_monthly','sandbox','joint');
 select ok(public.billing_save_creator_attribution('15936611-0000-4000-8000-000000000001','sandbox','15936611-0000-4000-8000-000000000004','REPORTS','15936611-0000-4000-8000-000000000003'),'creator attribution persisted');
+select public.billing_begin_checkout_request('15936611-0000-4000-8000-000000000001','15936611-0000-4000-8000-000000000004','15936611-0000-4000-8000-000000000005');
 select ok(public.complete_billing_checkout_attempt('15936611-0000-4000-8000-000000000001','15936611-0000-4000-8000-000000000004','joint-checkout','https://sandbox.polar.sh/checkout/joint'),'checkout binding persisted');
 insert into private.report_promotion_catalog values('sandbox','15936611-0000-4000-8000-000000000005','pro',599,399,'15936611-0000-4000-8000-000000000006','15936611-0000-4000-8000-000000000007','15936611-0000-4000-8000-000000000008');
 insert into public.billing_subscriptions(user_id,provider,environment,provider_subscription_id,provider_product_id,status,current_period_start,current_period_end)

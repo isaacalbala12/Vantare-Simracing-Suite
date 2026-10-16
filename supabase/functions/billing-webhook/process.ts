@@ -1077,8 +1077,12 @@ export async function applyPolarWebhookEvent(
       snapshotWithoutHash.modifiedAt,
     );
   }
+  // Polar reports chargeback resolution through subscription.revoked (and
+  // subscription.updated with canceled + cancel_at_period_end=false), not dispute.*.
+  const subscriptionRevoked = status === "revoked" ||
+    (status === "canceled" && !cancelAtPeriodEnd);
   if (
-    event.type === "subscription.revoked" ||
+    subscriptionRevoked ||
     ["active", "uncanceled", "trialing", "past_due", "unpaid"].includes(status)
   ) {
     await (deps.revokeCreatorRenewals ?? revokeCreatorRenewals)(
@@ -1088,9 +1092,7 @@ export async function applyPolarWebhookEvent(
         userId,
         subscriptionId: resourceId,
         orderId: null,
-        reason: event.type === "subscription.revoked"
-          ? "subscription_revoked"
-          : "reconcile",
+        reason: subscriptionRevoked ? "subscription_revoked" : "reconcile",
       },
     );
   }

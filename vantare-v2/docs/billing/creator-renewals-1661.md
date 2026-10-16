@@ -147,3 +147,42 @@ subscription_create pasa el checkout firmado; subscription_cycle o reason ausent
 pasan initial=false y el helper envía p_checkout=null. Metadata contradictoria no
 cambia cuenta/producto/clave ni crea atribución. Pruebas mutantes detectan tanto
 initial=true fijo como la retirada sin PATCH.
+
+## O1/O3 · contracargos y alcance definitivo (16-oct-2026)
+
+Isaac confirma: cualquier reembolso confirmado, parcial incluido, de cualquier
+factura de la suscripción retira permanentemente su descuento de creador, no solo
+el del primer pago. Una disputa/contracargo también lo retira cuando llega su
+señal de revocación o reembolso. No afecta a otras suscripciones ni restaura el
+20 % al ganar la disputa/reactivar. Conserva GET → autorización → PATCH solo si
+el cupón remoto coincide con el persistido → ACK; lease, marcador durable,
+reintentos e incidencia Owner existentes. Una cancelación programada al final
+del periodo pagado no inicia retirada; `subscription.updated`/`canceled` con
+`status=canceled` y `cancel_at_period_end=false` sí equivale a revocación final.
+No se deduce del estado local de impago, caducidad ni de metadata editable.
+
+### Señales oficiales verificadas, sin cambiar Polar
+
+- El enum público [WebhookEventType](https://github.com/polarsource/polar/blob/main/server/polar/models/webhook_endpoint.py)
+  no contiene `dispute.*`. No hay evento nuevo que Isaac deba activar.
+- [DisputeService](https://github.com/polarsource/polar/blob/main/server/polar/dispute/service.py)
+  llama `_revoke` para resoluciones de disputa; revoca inmediatamente la
+  suscripción asociada. La señal pública es `subscription.revoked`, con su
+  actualización equivalente `subscription.updated` (`canceled`, sin fin diferido).
+  Esto no prueba entrega inmediata de disputas abiertas; no se promete tal cosa.
+- Resoluciones rápidas/preventivas pueden crear
+  [refund con dispute](https://github.com/polarsource/polar/blob/main/server/polar/refund/service.py):
+  `refund.created`/`refund.updated`, `reason=dispute_prevention`, `status=succeeded`.
+  Polar puede dejar `subscription_id=null` en ese refund. Nuestra identidad y
+  suscripción salen del ledger de `order_id`, nunca del refund ni su metadata.
+- Mantener `subscription.revoked`, `subscription.updated`, `refund.created`,
+  `refund.updated` y `order.refunded` en el webhook. Ya estaban contemplados;
+  verificar selección real y entregas en sandbox. No configurar eventos Stripe
+  `charge.dispute.*` en Polar: pertenecen a su integración interna.
+
+O2 sigue pendiente en sandbox: comprobar GET→PATCH sobre una suscripción ya
+revocada (Polar podría rechazarlo); entonces queda retirada pendiente/incidencia
+Owner y debe resolverse antes de reactivar. Validar también payload real de una
+disputa/resolución y la entrega de `subscription.revoked`/`updated` y refunds
+preventivos; no existe cobertura automática de la apertura si Polar no emite señal.
+Este encargo no añade sondeo ni modifica la configuración real de Polar.

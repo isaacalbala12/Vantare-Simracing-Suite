@@ -1,3 +1,38 @@
+## #1593 / VANTA-39 · R7 incorpora retirada definitiva #1672 · 16/10/2026
+
+Nightly460c39e45 añadido por encargo explícito del orquestador. Conserva la
+retirada de creador por subscription.updated canceled definitivo, sin confundir
+cancelación al fin pagado ni paused. Hooks originales y pruebas de #1672 unidos
+con el ledger de informes. Edge707PASS/0FAIL/2ignored; baseline460 intacto
+662PASS/0FAIL/2ignored. Mantiene todos los tests de ambas ramas, incluidos
+creador-only/retirada. Cuatro conflictos de tests/handoff resueltos con la versión
+más estricta y los casos de informes añadidos, no con stubs permisivos de Launch.
+No hay cambios SQL ni Rust entre1f07e8e28 y460c39e45: baseline SQL y entradas
+de los gates nativos conservan sus hashes. Rust sigue validándose serialmente
+sobre fuentes nativas idénticas. Pendientes controles finales/evidencia/cierre.
+
+## VANTA-83 / #1661 · seguimiento O1/O3 (16-oct-2026)
+
+- #1666 integrado por el orquestador en nightly 1f07e8e28. Seguimiento aislado
+  vantareapp/isa-1661-disputas desde esa base; no promoción de este seguimiento.
+- O1: las disputas se reciben mediante revocación de suscripción o refund
+  preventivo. Polar no enumera dispute.*; no añadir un evento inventado.
+  Se acepta también status=canceled con cancel_at_period_end=false en updated;
+  cancelación diferida no inicia retirada. Mismo lease/GET/PATCH/ACK durable,
+  cupón persistido y fallo Owner. Contrato documenta ausencia de señal al abrir.
+- O3 confirmado: refund confirmado de cualquier factura de esa suscripción,
+  parcial incluido, retira permanentemente el 20 %. Sin afectar otras suscripciones.
+- O2 sigue en sandbox: PATCH sobre suscripción ya revocada y payload/entrega reales.
+  Fuentes oficiales y lista exacta de eventos en creator-renewals-1661.md.
+- Rojo→verde: updated terminal omitía retirada. 484 Edge y 142 pgTAP PASS;
+  quality/retirement PASS (456 huellas), Deno fmt PASS. Siete fixtures heredadas
+  fallaban también en la base: actualizadas para llamadas sin operación creador
+  y compras Launch históricas, conservando las comprobaciones comerciales.
+  Logs Mac ~/orq/disputas-1661-evidence; copia servidor al cerrar.
+- No cambia Rust/schema/dependencias: no repetir gates Rust/lifecycle/telemetría.
+  PR nuevo y CI se anotan en issue/entrega; Plane Por revisar al cierre.
+  Sin llamadas a Polar real, despliegues, dinero ni capturas (#1655).
+
 ## #1593 / VANTA-39 · ronda 7 en validación · 16/10/2026
 
 Merge autorizado EN la rama de PR #1659 desde nightly1f07e8e28 (#1661/#1666).

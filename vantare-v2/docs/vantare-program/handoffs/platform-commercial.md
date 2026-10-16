@@ -1,3 +1,62 @@
+## #1593 / VANTA-39 · ronda 6, convivencia con #1661 · 16/10/2026
+
+Entrega para revisión de PR [#1659](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1659),
+proyecto Vantare / area:licencias. Misma rama, base de ronda c99b306fd;
+nightly ya integrado eb553c7fe. Código85614da0 y cierre documental posterior;
+SHA final verificado en issue, evidencia y buzón. Contrato y código de #1661
+leídos en271e20053. No se fusiona Founders ni se promociona un canal.
+
+- Creador20 % desde primera renovación; informes desde segundo mes. Se retira
+  la selección antigua de dos meses. Porcentaje/plazo en el catálogo común de
+  #1661; su comparación en céntimos es única y empate favorece informes.
+  Registra el perdedor para Owner.
+- La campaña tiene un solo escritor externo. El webhook de creador guarda
+  atribución/primer pago y delega sin rearmar una candidatura antigua. El
+  worker calcula el saldo real y usa la selección, lease y ACK de #1661.
+  Fuera de esta campaña, creador mantiene su flujo normal.
+- Conserva saldo3/6 total, caducidad6meses, spam/refund y B03. Al volver al
+  creador usa un cupón validado para el plazo restante, nunca once meses
+  nuevos. El primer ciclo rebajado fija su reloj; una factura anterior
+  reconciliada solo lo puede acortar. Sin remanente, incidencia Owner durable.
+- Premio sigue cambios observados de plan/segunda alta, con auditoría.
+  Limpieza conserva/restaura el creador de la anterior; canceled/paused no
+  recibe PATCH. Refund solo autoriza retirada, nunca otro beneficio.
+  Publisher/selector comparten B03, sin invertir el lock de checkout;
+  regresión real de pg_locks y control que detecta la inversión.
+- SQL169 de informes +70 de convivencia +58 originales de #1661 PASS.
+  Catálogo aislado76suites/50PASS/26FAIL heredadas, frente a nightly74/48/26:
+  1415→1589 aserciones, cero regresiones. Conjunto79/52/27 frente al
+  #1661 intacto77/50/27:1551→1790, cero regresiones. La suite anual roja
+  adicional ya falla en271e20053. Instalación en ambos órdenes PASS.
+- Edge684PASS/0FAIL/2ignored. Conjunto675/5/2 frente al #1661 intacto645/5/2:
+  mismos cinco tests comerciales de refund con dobles RPC antiguos.
+  Precio de producto y periodos de factura sobreviven juntos a minimización,
+  sin PII. Ocho controles SQL RED; regresiones rojas contra c99 confirmadas.
+- Gates Mac con lock/trap liberado; SQL NOSUPERUSER BYPASSRLS, Docker sin red
+  ni puertos. Fmt/lint, superficie, quality/retirada y diff-check PASS.
+  Rust/clippy/nextest/lifecycle/telemetría omitidos: no hay código Rust tocado
+  ni target creado; checkout Windows de integración sin cambios propios.
+
+Integración prevista en runbook: combinar checkout once/atribución y catálogo
+de #1661 con hooks/ledger de #1593. Conservar helper con managed_report_ids,
+proyección de cuatro campos de línea y verify_jwt=false. El fixture Git no
+acredita merge Git ni checkout final combinado. Si #1661 llega después, ejecutar
+el instalador idempotente y exigir true. El cron de informes lleva también al
+creador de estas cuentas; su flag detiene nuevas asociaciones de ambos, nunca
+el ledger ni el calendario de cupones ya aplicados. No activar aún.
+
+Polar pendiente de Isaac: seis cupones fijos Pro200c/Plus300c repeating1/3/6;
+creador según #1661 (20 %, mensual11/anual12, solo API), sin ampliar históricos.
+Para reanudación: remanentes mensuales20 % de1..10meses, validados con producto
+y cupón original; pueden compartir ID si coinciden porcentaje/ámbito.
+Nada creado en Polar, productos nuevos, servicios reales, deploy o release.
+
+Evidencia ~/evidence/1593-r6/RESULTADOS.md, resumen.json y comparaciones completas;
+copia servidor C:/VantareServer/evidence/1593-r6. FIN en ~/orq/1593.buzon.md.
+Plane Por revisar al cerrar. Orquestador publica SHA y pide CI/re-review;
+después integración final de checkout, sandbox/QA autorizado. CI SUCCESS
+observado solo acredita c99b306fd. Sin promoción hacia nightly/testers/master.
+
 ## #1593 / VANTA-39 · merge de nightly entregado al bare · 16/10/2026
 
 Encargo explícito del orquestador: merge de origin/nightly eb553c7fe sobre

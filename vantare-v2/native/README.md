@@ -298,11 +298,15 @@ son incrementales y no se cachean; tampoco binarios, proc macros ni build script
 En Windows las DLL de proc macros cambian en cada target (marca de tiempo y GUID
 del PDB, también con `/Brepro`), así que los crates que usan derives fallan la
 caché entre worktrees: en el servidor, ~75 % de hits en el primer build de un
-worktree nuevo. La clave incluye las variables `CARGO_*`: no fijes
-`CARGO_TARGET_DIR` ni `CARGO_INCREMENTAL` por worker (parten la caché). Pasa el
-target con `--target-dir`, como hace gates con `target/gates`; así gates y los
+worktree nuevo. La clave incluye `CARGO_TARGET_DIR` y `CARGO_INCREMENTAL`: no los
+fijes por worker (parten la caché). Pasa el target con `--target-dir`, como hace
+gates con `target/gates`; así gates y los
 targets propios comparten la caché
 ([implementación fijada](https://github.com/mozilla/sccache/blob/v0.18.0/src/compiler/rust.rs)).
+En cambio `CARGO_BUILD_JOBS`, `CARGO_MAKEFLAGS` y `CARGO_REGISTRIES_*` quedan
+fuera de la clave (mismo fichero): bajarlos cuando aprieta la memoria **no** parte
+la caché. Aun así, para una tanda concreta se prefieren los jobs por línea de
+comandos (`gates.ps1 -Jobs N`, #1654 ronda 11).
 Para editar widgets con el watcher de Workshop conserva incremental.
 
 Medido en el servidor (#1654 r4, `sccache --show-stats`): 523 aciertos / 200
@@ -331,6 +335,25 @@ En el servidor (`SapphireOS`) está aplicado:
   memoria a swap (pico medido 19 GB comprometidos en #1654 r3), así que el segundo
   espera a que el primero deje aire. Toda la caché de dev, test y prueba ocupó 1,5 GB;
   sccache expulsa lo más antiguo al llenarse (`%LOCALAPPDATA%\Mozilla\sccache`).
+- Slots por memoria **comprometida** (#1654 r12). Además del aire libre, la cola mira
+  cuánta memoria está comprometida (límite de commit menos lo libre de ese límite) en
+  cada vuelta: con `VANTARE_CARGO_COMMIT_2GB` (14 GB por defecto; Machine > proceso >
+  por defecto, releído sin reiniciar T3) deja pasar 2 workers por debajo del umbral y
+  solo 1 a partir de él, nunca 0 ni más de `VANTARE_CARGO_SLOTS`. En el servidor el
+  comprometido vive por encima de 14 GB casi siempre (pico de 23,2 GB con 8 `rustc`
+  simultáneos; log `C:\VantareServer\logs\carga-2026-10.log`), así que en la práctica
+  se pasa de 2 a 1 worker como máximo. El log dice en cada intento el comprometido,
+  el umbral, sus slots efectivos y el motivo. Es conservador: si un worker entró con
+  2 slots y sigue en el hueco 1, cuenta como ocupado y el efectivo de 1 no deja
+  entrar a otro hasta que termine (así nunca se supera el tope efectivo).
+- Jobs de compilación bajo el mismo comprometido: palanca documentada, **hoy no-op**.
+  Con el comprometido muy alto, además de dejar 1 slot se pueden bajar los jobs
+  (`gates.ps1 -Jobs 1`, #1654 ronda 11, pasando `-j`/`--build-jobs` a cargo; o
+  `CARGO_BUILD_JOBS=1`). En el servidor `CARGO_BUILD_JOBS` ya es 2, así que una regla
+  que bajase a 2 no cambiaría nada; solo sirve si se sube el tope o en otra máquina.
+  La cola **no** lo automatiza: recortar jobs no parte la caché de sccache (ver
+  «Sccache»), pero alarga la compilación y hay que medirlo con el medidor de #1654
+  antes de fijarlo.
 - Tarea `\Vantare\LimpiarTargets` (diaria 05:30, SYSTEM): ejecuta el script del
   checkout de integración con `-Raiz C:\VantareServer\targets,C:\VantareServer\wt
   -Dias 7 -Aplicar` y anexa la salida a `C:\VantareServer\logs\limpiar-targets.log`.
@@ -340,6 +363,7 @@ Para replicarlo en otro PC Windows (PowerShell como administrador):
 
 ```powershell
 [Environment]::SetEnvironmentVariable('VANTARE_CARGO_SLOTS', '2', 'Machine')
+[Environment]::SetEnvironmentVariable('VANTARE_CARGO_COMMIT_2GB', '14', 'Machine') # 16 GB; por encima, 1 solo worker
 [Environment]::SetEnvironmentVariable('CARGO_BUILD_JOBS', '2', 'Machine') # 16 GB; la cola limita por RAM
 [Environment]::SetEnvironmentVariable('SCCACHE_CACHE_SIZE', '5G', 'Machine')
 $script = '<checkout>\vantare-v2\native\scripts\limpiar-targets.ps1'

@@ -1,3 +1,11 @@
+import {
+  createCompensationStore,
+  createPolarRefundClient,
+  deliverCheckoutOwnerAlerts,
+  expireUnpaidCheckouts,
+  observeCheckoutSession,
+  runCheckoutCompensation,
+} from "./checkout-compensation.ts";
 import { getSupabaseAdmin } from "../_shared/supabase-admin.ts";
 import { loadPolarProductMap } from "../_shared/mapping.ts";
 import { errorResponse, jsonResponse } from "../_shared/responses.ts";
@@ -68,6 +76,20 @@ export async function handleReconciliation(req: Request): Promise<Response> {
     );
   }
   try {
+    const compensationStore = createCompensationStore(admin);
+    const polar = createPolarRefundClient(environment, token);
+    // Run independently of cursor/page processing; a poisoned webhook does not
+    // starve money already owed back to the buyer.
+    const maintenance = await admin.rpc("billing_checkout_maintenance", {
+      p_environment: environment,
+    });
+    if (maintenance.error) throw new Error("checkout_maintenance_unavailable");
+    await runCheckoutCompensation(environment, compensationStore, polar);
+    await deliverCheckoutOwnerAlerts(environment, compensationStore, {
+      url: Deno.env.get("BILLING_OWNER_ALERT_URL") ?? "",
+      secret: Deno.env.get("BILLING_OWNER_ALERT_SECRET") ?? "",
+    });
+    await expireUnpaidCheckouts(admin, map.map, polar);
     let observed = 0;
     let quarantined = 0;
     let failed = 0;
@@ -83,6 +105,7 @@ export async function handleReconciliation(req: Request): Promise<Response> {
         headers: {
           Authorization: `Bearer ${token}`,
           Accept: "application/json",
+          "Polar-Version": "2026-10",
         },
         redirect: "error",
         signal: AbortSignal.timeout(
@@ -112,6 +135,22 @@ export async function handleReconciliation(req: Request): Promise<Response> {
         page,
         environment,
         supabase: admin,
+        observeCheckoutOrder: (order) =>
+          compensationStore.observe(order, map.map),
+        resolveCheckoutOrder: (order, result) =>
+          compensationStore.resolve!(order, result, environment),
+        observationFailure: async (item) => {
+          const incident = await admin.rpc("billing_checkout_incident", {
+            p_environment: environment,
+            p_correlation: typeof item.id === "string" && item.id.length <= 128
+              ? item.id
+              : "malformed_item",
+            p_code: "checkout_observation_failed",
+          });
+          if (incident.error) throw new Error("checkout_incident_unavailable");
+        },
+        observeCheckoutSession: (checkout) =>
+          observeCheckoutSession(admin, map.map, checkout),
       });
       const { data: completed, error } = await admin.rpc(
         "complete_billing_reconciliation",

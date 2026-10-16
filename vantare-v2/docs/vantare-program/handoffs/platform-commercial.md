@@ -1,3 +1,16 @@
+## #1636 · VANTA-72 · Integración de compra web (16/10/2026)
+
+Entrada limpia `dd7c3a895`; incorpora `nightly@8166277cb` (#1663) en #1657.
+Conflicto único de handoff: se conservan ambas entregas íntegras. Código y
+migraciones de compra web sin alteraciones; verificaciones combinadas en curso.
+Orquestador publica y fusiona, worker solo push al bare del Mac.
+
+GitGuardian en dd7c3a895, check116948409973: mismos incidentes38177715/38177716
+con las mismas ocurrencias304307121/304307118 del commit histórico2354cd416.
+No identifica fixtures nuevos del arreglo75c40dc1. El check remoto sigue rojo
+por el historial: requiere gestionar esos falsos positivos en el panel; no
+se ignoran remotamente ni se amplían exclusiones desde esta entrega.
+
 ## #1636 · VANTA-72 · Corrección de CI Deno/GitGuardian (16/10/2026)
 
 Entrada limpia `b1ad884ae`, PR #1657; run fallido 38891374186. Mac usaba Deno
@@ -254,6 +267,199 @@ no runtime/domain/ipc/testdata. Gates Windows y CI remotos no ejecutados. El bar
 `~/vantare.git` recibe la rama por encargo; no es un canal de producto. Sin GitHub,
 merge, promoción, despliegue, release, anuncios ni gasto. Revisión y capturas por
 el orquestador antes de dar por cerrada la entrega.
+## VANTA-42 / PR #1663 · R7 · Atribución de creador en compra web (16/10/2026)
+
+Decisión de Isaac: primer pago solo atribuye la venta/comisión;20% cliente
+desde segundo mes, aplicado por backend1661 después del primer pago.
+La web acepta creatorCode exacto en lanzamiento y fuera; registro canónico
+billing_save_creator_attribution tras claim y antes de begin/POST, ACKtrue
+obligatorio; metadata.creator_code y binding del intento. Mensual usa
+creator_discounts, anual creator_annual_discounts. Código/ID forman huella
+inmutable del intento; no se cambia creador en reintento. Solo once de
+lanzamiento en primer pago si corresponde, ningún descuento inicial de creador
+y allow_discount_codes=false siempre. Sin contrato1661 desplegado cierra
+antes de Polar; no se pierde atribución en un fallback sin código.
+
+Backend financiero/renovación pertenece a1661: no copiado ni mergeado aquí.
+Adaptador contrastado con contrato confirmado1661@39afa230, hashes y SHA en
+r7-contract.json. Orquestador debe integrar/desplegar su RPC antes de abrir
+códigos; sin ella falla sin cobro. Checkout anual aclara segunda anualidad.
+Al integrar, conservar guard2/begin/marcador y barrera1622 en los helpers
+compartidos. Repetir auditoría ACL del rol erasure tras sus RPC nuevas.
+Condiciones de activar reembolsos R6 intactas; switch sigue apagado.
+
+Textos4idiomas:20%desde segundo mes, primera factura solo atribución.
+Founders incluye Nightly; CTA permanece apagado. Plus confirmado999/9990,
+primer periodo699/6990, desde fuente única. Sin cambios de productos reales.
+Checks web79NodeSQLite, ocho flujos(4planes con/sincódigo)->webhookreal/licencia,
+48capturas Mac con códigoISAAC/dobleclick/CSP/backoff/descargas.
+SQL/Edge/Rust no se repiten: este lote solo cambia docs de esta rama backend;
+código conserva baseeb553c7fe y última verificación R6(662Edge/235pgTAP/13carreras).
+Evidencia ~/evidence/web-compra/r7-*; SHA/estadofinal en buzónweb-compra.
+Solo bares; orquestador publica/actualizaVANTA42/PR1663. SinAPIreal/deploy/release.
+
+## VANTA-42 / PR #1663 · R9 · Registro SQL y catálogo aplicado (16/10/2026)
+
+Merge de nightly@e8aa2077c7c6de0a7733a3f2fc616dc63fdf7456. Se conserva
+#1673: registro privado billing_launch_offers, RPC pública billing_launch_checkout
+con validación SQL y retirada de report_promotion_checkout; programa de informes
+aplazado mediante su política de inscripción. #1649/#1674/#1676 se integran intactos.
+El conflicto era solo de handoff; se conservaron ambas historias.
+
+La migración pendiente de este PR adapta la liberación terminal al helper
+privado cuando #1673 ya está instalado, sin sustituir el validador ni abrir
+EXECUTE al helper. La misma migración sigue funcionando en instalación limpia.
+SQL85migraciones/741pgTAP/15carreras PASS en ambas rutas; incluye pruebas de
+registro y de la nueva política de inscripción. Compensación OFF y baja D1/ACK
+firmado se conservan; el rol de pull sigue sin RPC adicionales.
+
+Catálogo de Polar aplicado confirmado por el orquestador. El único mapa completo
+vigente es scripts/polar-production-map.json (bajo supabase/functions), objeto
+map exacto del resultado aprobado catalogo-1661-result-r5.json. Procedencia/hash
+e instrucciones en docs/billing/production-purchase-configuration.md.
+Registro SQL generado offline en r9-production-launch-offers.sql; no aplicado
+en servicio real. El operador debe configurar el mismo POLAR_PRODUCT_MAP en
+Supabase y Worker, registrar las ofertas y comprobar apertura/estado de productos.
+No se inventan IDs de creador ni se reejecuta apply de Polar.
+
+Web conserva la RPC pública y cierra antes de cobrar si el registro no está
+disponible/no coincide. Tests usan las ofertas y IDs del mapa aprobado sin red.
+La landing retira el anuncio de informes aplazados;regeneradas cuatro lenguas
+y prueba de todas las fases. Edge731 PASS+2ignorados previos;NodeSQLite83;12E2E+controlsinbinding;48capturas.
+Quality456/fmt/lint/surface PASS. Windows secuencial por cola nueva:
+fmt/check/Clippy/Nextest1801/lifecycle/telemetría25 PASS;árbol native
+afb553c158cc20ab1ce2a7d147f55f3d0067934b idéntico a nightly. Target propio
+reutilizado de R8, sin intentar de nuevo el borrado rechazado por política.
+Evidencia Mac ~/evidence/web-compra/r9-*;Windows checkout-web-r9.
+
+Solo bares del Mac. Orquestador publica las ramas, revisa CI/PR1663 y actualiza
+PlaneVANTA42. Sin deploy, API comercial real, cobro,refund,baja real ni merge de
+canal/release. Dudas nuevas ninguna. Registro/configuración de servidor aún por
+confirmar;compensación solo se habilita tras los tres requisitos formales de R6.
+
+## VANTA-42 / PR #1663 · R8 · Integración nightly (16/10/2026)
+
+Se fusiona nightly@9e48eb86f8d2cfc43b64010d2b1ac1c58768826a en
+vantareapp/isa-1620-checkout-web. Se conserva la versión de nightly de
+Founders, oferta once, atribución/renovación de creador, informes, lease común
+y contracargos. Pro599/5999, Plus999/9990 y sus primeros periodos no cambian.
+No se modifica Polar real. Compensación continúa apagada; activar exige
+sandbox net/gross, inventario e inbox, y receptor privado Owner con ACK.
+
+La migración de integración añade Founders al guard compartido sin saltar su
+política de venta ni el bloqueo entre compras. La reserva de creador sigue
+siendo atómica y devuelve guard2; begin y binding siguen obligatorios.
+Un rechazo terminal canónico libera también la reserva de oferta de #1593,
+conservando CAS y bloqueo de los intentos vivos. La web adopta sus RPC comunes
+en lugar de guardar atribución por separado; una oferta ya consumida se
+rechaza antes de cobrar un precio distinto del mostrado.
+
+Reconciliación conserva reparación de facturas, disputas y reintentos de
+nightly, además de observación de compensación por ítem. Baja D1 automática,
+supresión, ACK firmado y permisos mínimos se vuelven a probar sobre la unión
+real de migraciones. Código nativo exactamente igual a nightly: árbol
+36cf87011d750968a1b57a5a4793410dbba294d3; gates Windows en worktree aislado
+checkout-web-integration por compilar.ps1, secuenciales.
+
+Evidencia Mac ~/evidence/web-compra/r8-*:83 migraciones,682 pgTAP,15 carreras
+en instalación limpia y actualización desde nightly;
+726 Edge PASS y2 ignorados preexistentes;81 tests Node/SQLite;8 recorridos
+web→webhook real→licencia y control sin binding;48 capturas headless locales;
+fmt/lint de archivos afectados, quality456 y superficie de deploy PASS.
+Control RED sin migración reproduce promotion_checkout_pending tras rechazo
+cierto. Rust Windows PASS:fmt/check/Clippy,Nextest1801,lifecycle ytelemetría25.
+Evidencia en docs/billing/checkout-integration-r8.md;target conservado porque
+la revisión automática rechazó el borrado con blocked by policy.
+Solo ramas aisladas y pushes a bares del Mac; publicación/CI/merge a nightly
+quedan al orquestador. Sin deploy, cobros, refunds, bajas reales ni release.
+Para Plane VANTA-42: actualizar resumen/Por revisar desde el orquestador.
+
+## VANTA-42 / PR #1663 · R6 · Acabado y actualización de base (16/10/2026)
+
+Aprobación de seguridad R5 recibida por el orquestador; informe review-r5.md.
+Fusionado origin/nightly eb553c7fe905c225d66ef8718eabb72fa84dbb49 en la rama
+vantareapp/isa-1620-checkout-web, sin reescritura ni promoción de canal.
+Único conflicto: handoff; se conservan completas las entradas VANTA-42 y1627.
+Polar compartido conserva guard2/marcador y helper admin sandbox de nightly.
+[Condición formal de activación](../../billing/checkout-review-r5.md):
+refund apagado hasta sandbox net/gross, inventario de pedidos y receptor Owner
+visible con ACK durable, con evidencia y decisión de Isaac por entorno.
+
+Web: descuento sin archivar/sin código/duration_in_months=null, validación
+estricta incluso si faltan campos. Sin versiónSetup, CTA sin href; before
+permanece informativo/Discord. Prueba Chrome con JS desactivado y clic central:
+cero pestañas nuevas. Retirados headers de launch-edition y textos fallback
+de30EUR/snapshot/cierre; Founders usa la fuente común y permanece deshabilitado.
+
+Checks sobre nueva base:77migraciones/235pgTAP/13carreras;662EdgePASS/2ignored
+preexistentes;74NodeSQLite;E2E4suscripciones->webhookreal->licencia;48capturas;
+125assets reproducibles;fmt/calidad456/superficie/diff PASS. Native sin cambios
+propios respecto a nightly: no se repiten gates Rust/telemetría.
+Evidencia ~/evidence/web-compra/r6-*, SHAs/bares en buzón web-compra.
+Sin API real/GitHub push/CI remota/deploy/release ni merge de canal.
+Orquestador publica backend y actualiza PR1663/PlaneVANTA-42; último estado
+comunicado En curso. Descarga sigue sin versión, Founders apagado y venta
+cerrada hasta configuración/QA/autorización de Isaac.
+
+## VANTA-42 / #1620 · R5 · Compensación restringida y oferta web (16/10/2026)
+
+Rama backend vantareapp/isa-1620-checkout-web, base nightly3f82af8, draft#1663.
+[Contrato R5](../../billing/checkout-review-r5.md) prevalece sobre R4:
+refund automático apagado por defecto; exige vínculo/marcador y resolución
+terminal no aplicable, con consulta del inbox. Pendientes/cuarentenas genéricas/
+enlaces de creador/históricos => incidencia Owner, nunca refund automático.
+IVA net/gross configurable pendiente sandbox; lectura antes de reintentar,
+avisos durables y sin doble refund. Expiración24h del no publicado sellado,
+aislamiento de venenos por ítem. ACK D1 con hash/recuento y HMAC propio;
+JWT1h/rotación30min; auditoría cero RPC PUBLIC extras para rol de erasure.
+Barrera #1622 y cierre #1633 conservados.
+
+Web: Launch Edition fuera de venta, derechos antiguos legibles; Founders50
+para siempre/todo presente y futuro/sin fin, CTA y hueco apagados hasta integrar
+1661 (contratoc846d7c6 requiere Supabase bearer, no Clerk directo).
+Beta pública26oct-26nov: Pro399/3990 primer periodo y599/5999 renovación;
+Plus opcional699/6990 y999/9990. Una fuente en céntimos también legales.
+Checkout normal+polar_launch_discount_id del mapa común1661@c846d7c6,
+nunca IDs de lanzamiento; validación servidor
+de tarifa/importe/duración/producto y no combinación con creador. Informes
+desde segundo mes. Downloads URL fijada por version en launch.json, null
+pendienteIsaac, CTA desactivado hasta elegir versión; nunca releases/latest.
+
+72migraciones/235pgTAP/13carreras,632EdgePASS/2ignored preexistentes;
+73Node/SQLite, E2E cuatro suscripciones/webhook real,48capturas Chrome Mac,
+CSP/backoff/429/precios/descarga PASS. Rust/telemetría omitidos: native intacto.
+Evidencia ~/evidence/web-compra/r5-*. SHA final/ref en buzón web-compra.
+Solo bares locales; sin GitHub/API real/deploy/merge/release.
+Orquestador: revisar y actualizar VANTA-42/PR1663; último estado En curso.
+Isaac: precios/once de catálogo1661 (Polar59,90 debe pasar59,99),
+versiónSetup, privacidad/Clerk/mapa/cron/JWT/claves/receptor Owner y sandboxIVA
+antes de abrir. Webhookrefund/uncanceled y localización activos según comunicación
+del orquestador; no se verificaron contra producción.
+
+## VANTA-42 / #1620 · R4 · Intentos, compensación y baja D1 (15/10/2026)
+
+Rama/base/PR: `vantareapp/isa-1620-checkout-web`, nightly `3f82af8`, draft #1663.
+[Contrato y despliegue](../../billing/checkout-web-shared.md): guard2, begin antes
+de Polar, caducidad automática solo segura, nonce sellado para ACK perdido,
+reembolso total automático de cobro sin licencia, ledger/outbox y retries.
+No hay recuperación comercial por soporte ni cambio de identidad por metadata.
+Pull D1 automático mínimo privilegio y cursor de commit; barrera #1622 intacta.
+Sustituye expresamente el paso manual R3. Owner recibe avisos mediante
+receptor privado firmado por configurar; no se añade pantalla Admin.
+
+Web conserva master d9f040a sin prueba gratis; renovación Pro de una fuente
+5,99/59,99 en cuatro idiomas, sin tocar Polar. Plus conserva renovación lanzamiento6,99/69,90; normal9,99/99,90.
+71 migraciones /212pgTAP/13carreras PASS; F1 RED conductual sobre R3.
+Edge630PASS/2ignored; web66PASS, SQLite y E2E real cinco planes con dobles;
+Chrome40capturas/CSP/backoff/precios PASS. Calidad456/superficie/fmt/lintproducción
+PASS. Native no cambia. Evidencia `~/evidence/web-compra/r4-*`.
+
+Entrega solo a bares del Mac. SHA/commits/refs en buzón web-compra.
+Venta cerrada #1633. Sin API real, GitHub push, despliegue, promoción ni release.
+Siguiente: revisión conjunta y despliegue autorizado por etapas; configurar JWT
+mínimo/salts, cron y receptor visible Owner, verificar precios Polar y sandbox.
+Orquestador actualiza VANTA-42/issue/PR; último estado comunicado En curso.
+
 ## #1593 / VANTA-39 · decisión de Isaac P3-E y revisión P3-F/G/H · 16/10/2026
 
 PR draft [#1673](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1673),

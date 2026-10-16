@@ -16,6 +16,7 @@ export const RESOURCES = [
   "subscriptions",
   "refunds",
   "disputes",
+  "checkouts",
 ] as const;
 export type Resource = typeof RESOURCES[number];
 export type Cursor = { resource: Resource; page: number };
@@ -38,7 +39,7 @@ export function reconciliationEvent(
   resource: Resource,
   data: Record<string, unknown>,
 ): PolarWebhookEvent | null {
-  if (resource === "disputes") return null;
+  if (resource === "disputes" || resource === "checkouts") return null;
   if (resource === "orders" && data.paid !== true) return null;
   const type = resource === "orders"
     ? (data.status === "refunded" ? "order.refunded" : "order.paid")
@@ -54,6 +55,13 @@ export async function reconcilePage(args: {
   environment: BillingEnvironment;
   supabase: SupabaseClient;
   processDeps?: Partial<WebhookProcessorDeps>;
+  observeCheckoutOrder?: (order: Record<string, unknown>) => Promise<void>;
+  observeCheckoutSession?: (checkout: Record<string, unknown>) => Promise<void>;
+  resolveCheckoutOrder?: (
+    order: Record<string, unknown>,
+    result: { status: string; reason?: string },
+  ) => Promise<void>;
+  observationFailure?: (item: Record<string, unknown>) => Promise<void>;
 }): Promise<
   {
     next: Cursor;
@@ -66,6 +74,22 @@ export async function reconcilePage(args: {
     }[];
   }
 > {
+  // A malformed observation must not prevent other items from reaching their
+  // webhook/ledger. Persist a PII-free Owner incident and continue this item.
+  const observe = args.cursor.resource === "orders"
+    ? args.observeCheckoutOrder
+    : args.cursor.resource === "checkouts"
+    ? args.observeCheckoutSession
+    : undefined;
+  if (observe) {
+    for (const item of args.page.items) {
+      try {
+        await observe(item);
+      } catch {
+        await args.observationFailure?.(item);
+      }
+    }
+  }
   let quarantined = 0;
   const failed: {
     resource_id: string | null;
@@ -124,6 +148,9 @@ export async function reconcilePage(args: {
           "automatic_reconciliation",
           deps,
         );
+      }
+      if (args.cursor.resource === "orders") {
+        await args.resolveCheckoutOrder?.(item, result);
       }
       if (result.status === "quarantined") quarantined++;
       if (result.status === "deferred") {

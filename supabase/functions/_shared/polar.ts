@@ -6,6 +6,8 @@ import type {
 } from "./mapping.ts";
 
 export type CreateCheckoutParams = {
+  attemptId?: string;
+  dispatchToken?: string;
   discountId?: string | null;
   creatorCode?: string | null;
   productId: string;
@@ -341,6 +343,12 @@ export async function createPolarCheckoutSession(
       launch_scope_version: params.launchScopeVersion ?? "",
       source: "desktop",
       app: "vantare",
+      ...(params.attemptId && params.dispatchToken
+        ? {
+          vantare_attempt_id: params.attemptId,
+          vantare_dispatch_token: params.dispatchToken,
+        }
+        : {}),
     },
   };
   if (params.trial.enabled) {

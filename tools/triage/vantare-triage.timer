@@ -1,0 +1,11 @@
+[Unit]
+Description=Vantare report proposal polling (keep disabled until approval)
+
+[Timer]
+OnBootSec=2min
+OnCalendar=*-*-* *:00/2:00
+Persistent=true
+Unit=vantare-triage.service
+
+[Install]
+WantedBy=timers.target

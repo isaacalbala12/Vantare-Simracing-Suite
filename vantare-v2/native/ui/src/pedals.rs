@@ -419,7 +419,7 @@ mod tests {
     #[test]
     fn transparent_projection_keeps_the_same_inputs() {
         let snapshot =
-            vantare_ipc::snapshot_from_json(include_str!("../fixtures/pedals.snapshot.json"))
+            vantare_ipc::snapshot_from_fixture_json(include_str!("../fixtures/pedals.snapshot.json"))
                 .expect("escena");
         let settings = Settings {
             transparent_background: true,

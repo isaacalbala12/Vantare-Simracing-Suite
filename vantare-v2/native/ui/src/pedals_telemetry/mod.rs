@@ -419,7 +419,7 @@ mod tests {
 
     #[test]
     fn frozen_workshop_scene_decodes_to_the_visible_product_values() {
-        let snapshot = vantare_ipc::snapshot_from_json(include_str!(
+        let snapshot = vantare_ipc::snapshot_from_fixture_json(include_str!(
             "../../fixtures/pedals-telemetry.snapshot.json"
         ))
         .expect("escena Workshop en DTO v3");

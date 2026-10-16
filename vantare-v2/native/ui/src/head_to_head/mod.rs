@@ -329,7 +329,7 @@ mod tests {
     #[test]
     fn real_acc_has_reliable_rival_sectors_and_timing_demand() {
         use vantare_ipc::Signal::{LapTimes, Sectors};
-        let snapshot = vantare_ipc::snapshot_from_json(include_str!(
+        let snapshot = vantare_ipc::snapshot_from_fixture_json(include_str!(
             "../../fixtures/telemetry-real/acc.snapshot.json"
         ))
         .expect("ACC real");
@@ -369,7 +369,7 @@ mod tests {
             sync::Arc,
             time::{Duration, Instant},
         };
-        let snapshot = vantare_ipc::snapshot_from_json(include_str!(
+        let snapshot = vantare_ipc::snapshot_from_fixture_json(include_str!(
             "../../fixtures/telemetry-real/lmu47.snapshot.json"
         ))
         .expect("DTO congelado del corpus real");
@@ -414,7 +414,7 @@ mod tests {
 
     #[test]
     fn fixed_strip_has_only_the_player_and_selected_rival_in_both_directions() {
-        let mut snapshot = vantare_ipc::snapshot_from_json(include_str!(
+        let mut snapshot = vantare_ipc::snapshot_from_fixture_json(include_str!(
             "../../fixtures/head-to-head.snapshot.json"
         ))
         .expect("escena");
@@ -442,7 +442,7 @@ mod tests {
 
     #[test]
     fn configured_direction_projects_the_selected_rival() {
-        let snapshot = vantare_ipc::snapshot_from_json(include_str!(
+        let snapshot = vantare_ipc::snapshot_from_fixture_json(include_str!(
             "../../fixtures/head-to-head.snapshot.json"
         ))
         .expect("escena");
@@ -477,7 +477,7 @@ mod tests {
     fn frozen_workshop_scene_contains_the_rival_without_changing_the_player() {
         // El golden tiene al líder mirando delante: SIN RIVAL. Detrás sí está
         // Ben Hanley; no ocultar coches para conseguir la captura vacía.
-        let snapshot = vantare_ipc::snapshot_from_json(include_str!(
+        let snapshot = vantare_ipc::snapshot_from_fixture_json(include_str!(
             "../../fixtures/head-to-head.snapshot.json"
         ))
         .expect("escena Workshop DTO v4 válida");
@@ -502,7 +502,7 @@ mod tests {
 
     #[test]
     fn qa_player_p2_scene_has_a_rival_ahead() {
-        let snapshot = vantare_ipc::snapshot_from_json(include_str!(
+        let snapshot = vantare_ipc::snapshot_from_fixture_json(include_str!(
             "../../fixtures/head-to-head-player-p2.snapshot.json"
         ))
         .expect("escena P2 válida");

@@ -439,7 +439,7 @@ mod tests {
     fn reconstructed_reference_scene_preserves_identity_and_relative_gaps() {
         // Reconstrucción de tools/widget-reference/scene.tsx desde los
         // metadatos congelados; estas señales no proceden de una captura live.
-        let snapshot = vantare_ipc::snapshot_from_json(include_str!(
+        let snapshot = vantare_ipc::snapshot_from_fixture_json(include_str!(
             "../../fixtures/multiclass-relative.snapshot.json"
         ))
         .expect("escena DTO v4");

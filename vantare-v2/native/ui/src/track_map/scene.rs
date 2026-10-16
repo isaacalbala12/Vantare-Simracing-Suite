@@ -37,7 +37,7 @@ fn legacy_geometry(snapshot: &Snapshot) -> Option<Geometry<'static>> {
     static REFERENCE: OnceLock<Option<Snapshot>> = OnceLock::new();
     let reference = REFERENCE
         .get_or_init(|| {
-            match vantare_ipc::snapshot_from_json(include_str!(
+            match vantare_ipc::snapshot_from_fixture_json(include_str!(
                 "../../fixtures/track-map.snapshot.json"
             )) {
                 Ok(snapshot) => Some(snapshot),

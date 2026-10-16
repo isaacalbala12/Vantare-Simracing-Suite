@@ -77,9 +77,24 @@ pub fn project_with_penalty(
     } else {
         penalty
     };
-    let flag = flags
-        .iter()
-        .find(|f| f.scope == FlagScope::Session)
+    let personal = snapshot.state.player.as_ref().and_then(|player| {
+        flags.iter().find(|f| {
+            f.scope == FlagScope::Car(player.car)
+                && matches!(
+                    f.kind,
+                    FlagKind::Black | FlagKind::Blue | FlagKind::White | FlagKind::Red
+                )
+        })
+    });
+    let flag = personal
+        .filter(|f| matches!(f.kind, FlagKind::Black | FlagKind::Red))
+        .or_else(|| flags.iter().find(|f| f.scope == FlagScope::Session))
+        .or_else(|| {
+            flags
+                .iter()
+                .find(|f| matches!(f.scope, FlagScope::Sector(_)) && f.kind == FlagKind::Yellow)
+        })
+        .or(personal)
         .map(|f| f.kind.clone());
     let heading = match (flag.as_ref(), prefs.language) {
         (Some(FlagKind::Yellow), Language::Es) => "PRECAUCIÓN",
@@ -119,14 +134,14 @@ fn label(flag: Option<&FlagKind>, language: Language) -> &'static str {
         (Some(FlagKind::Red), Language::Es) => "ROJA",
         (Some(FlagKind::Blue), Language::Es) => "AZUL",
         (Some(FlagKind::White), Language::Es) => "BLANCA",
-        (Some(FlagKind::Black), Language::Es) => "NEGRA",
+        (Some(FlagKind::Black), Language::Es) => "DESCALIFICADO",
         (Some(FlagKind::Checkered), Language::Es) => "CUADROS",
         (Some(FlagKind::Green), Language::En) => "GREEN",
         (Some(FlagKind::Yellow), Language::En) => "YELLOW",
         (Some(FlagKind::Red), Language::En) => "RED",
         (Some(FlagKind::Blue), Language::En) => "BLUE",
         (Some(FlagKind::White), Language::En) => "WHITE",
-        (Some(FlagKind::Black), Language::En) => "BLACK",
+        (Some(FlagKind::Black), Language::En) => "DISQUALIFIED",
         (Some(FlagKind::Checkered), Language::En) => "CHECKERED",
         _ => PLACEHOLDER,
     }
@@ -135,6 +150,7 @@ fn label(flag: Option<&FlagKind>, language: Language) -> &'static str {
 /// Los sectores del productivo usan la inicial del código, no del idioma.
 pub fn sector_label(flag: Option<&FlagKind>) -> String {
     match flag {
+        Some(FlagKind::Black) => "B".into(),
         Some(FlagKind::Other(original)) => original
             .chars()
             .next()
@@ -203,6 +219,38 @@ mod tests {
     }
 
     #[test]
+    fn local_yellow_and_player_disqualification_are_visible_without_inventing_green() {
+        let mut scene = snapshot(Quality::Reliable(vec![Flag {
+            kind: FlagKind::Yellow,
+            scope: FlagScope::Sector(1),
+        }]));
+        assert_eq!(
+            project(&scene, Preferences::default()).flag,
+            Some(FlagKind::Yellow)
+        );
+        scene.state.player = Some(crate::Player {
+            car: CarId(7),
+            ..crate::Player::default()
+        });
+        scene.state.flags = Quality::Reliable(vec![
+            session(FlagKind::Yellow),
+            Flag {
+                kind: FlagKind::Black,
+                scope: FlagScope::Car(CarId(7)),
+            },
+        ]);
+        assert_eq!(
+            project(&scene, Preferences::default()).message,
+            "DESCALIFICADO"
+        );
+        scene.state.flags = Quality::Reliable(vec![Flag {
+            kind: FlagKind::Green,
+            scope: FlagScope::Car(CarId(7)),
+        }]);
+        assert_eq!(project(&scene, Preferences::default()).flag, None);
+    }
+
+    #[test]
     fn all_colors_match_the_product_labels() {
         for (flag, es, en, initial) in [
             (FlagKind::Green, "VERDE", "GREEN", "G"),
@@ -210,7 +258,7 @@ mod tests {
             (FlagKind::Red, "ROJA", "RED", "R"),
             (FlagKind::Blue, "AZUL", "BLUE", "B"),
             (FlagKind::White, "BLANCA", "WHITE", "W"),
-            (FlagKind::Black, "NEGRA", "BLACK", "B"),
+            (FlagKind::Black, "DESCALIFICADO", "DISQUALIFIED", "B"),
             (FlagKind::Checkered, "CUADROS", "CHECKERED", "C"),
             (
                 FlagKind::Other("purple".into()),

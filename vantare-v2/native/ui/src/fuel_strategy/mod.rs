@@ -335,7 +335,7 @@ mod tests {
             prefs,
         );
         let mut photo =
-            vantare_ipc::snapshot_from_json(include_str!("scenes/eight-laps.snapshot.json"))
+            vantare_ipc::snapshot_from_fixture_json(include_str!("scenes/eight-laps.snapshot.json"))
                 .expect("escena existente con capacidad e historial");
         widget.ingest(&photo, prefs);
         photo
@@ -517,7 +517,7 @@ mod tests {
     #[test]
     fn eight_lap_scene_projects_all_canonical_rows() {
         let snapshot =
-            vantare_ipc::snapshot_from_json(include_str!("scenes/eight-laps.snapshot.json"))
+            vantare_ipc::snapshot_from_fixture_json(include_str!("scenes/eight-laps.snapshot.json"))
                 .expect("escena DTO v4 de variante");
         let settings = Settings {
             history_rows: 8,
@@ -537,7 +537,7 @@ mod tests {
             include_str!("../../fixtures/telemetry-real/lmu47.snapshot.json"),
             include_str!("../../fixtures/telemetry-real/acc.snapshot.json"),
         ] {
-            let snapshot = vantare_ipc::snapshot_from_json(json).expect("corpus real");
+            let snapshot = vantare_ipc::snapshot_from_fixture_json(json).expect("corpus real");
             let vm = Settings::default().project(&snapshot, Preferences::default());
             assert_eq!(
                 (vm.minimum.as_str(), vm.maximum.as_str(), vm.stops.as_str()),
@@ -548,7 +548,7 @@ mod tests {
 
     #[test]
     fn reference_scene_preserves_fuel_and_does_not_turn_session_laps_into_range() {
-        let snapshot = vantare_ipc::snapshot_from_json(include_str!(
+        let snapshot = vantare_ipc::snapshot_from_fixture_json(include_str!(
             "../../fixtures/fuel-strategy.snapshot.json"
         ))
         .expect("escena Workshop de combustible en DTO v4");

@@ -114,7 +114,9 @@ fn search_limits_match_deployed_validation() {
 
 #[test]
 fn local_contract_server_verifies_every_action_and_oauth_header() {
-    let id = "11111111-1111-4111-8111-111111111111".to_owned();
+    let id = crate::state::State::new(true, crate::state::Screen::Users).users[0]
+        .account_id
+        .clone();
     let actions = vec![
         Action::SearchAccounts {
             query: "Ana".into(),
@@ -149,6 +151,8 @@ fn local_contract_server_verifies_every_action_and_oauth_header() {
         Action::SetReportStatus {
             report_id: "report-1".into(),
             status: Status::Closed,
+            fixed_in_version: None,
+            reason: Some("Revisado".into()),
         },
     ];
     for action in actions {
@@ -201,7 +205,7 @@ fn http_and_contract_errors_are_sanitized() {
         (401, "token=private", Error::Authentication),
         (403, "private detail", Error::Denied),
         (500, "private detail", Error::Offline),
-        (429, "", Error::Offline),
+        (429, "", Error::RateLimited),
         (302, "", Error::Protocol),
         (200, "not-json", Error::Protocol),
         (200, r#"{"version":2,"ok":true}"#, Error::Version),
@@ -290,4 +294,155 @@ fn screenshots_are_bounded_and_downloaded_without_oauth() {
         .expect("url");
     assert_eq!(client.screenshot(url.as_str()), Err(Error::Protocol));
     server.join().expect("server");
+}
+
+#[test]
+fn account_errors_have_distinct_recoverable_messages() {
+    for (code, expected) in [
+        ("confirmation_mismatch", Error::ConfirmationMismatch),
+        ("account_change_incomplete", Error::AccountChangeIncomplete),
+        ("deletion_barrier_unavailable", Error::DeletionUnavailable),
+    ] {
+        let body = format!(r#"{{"version":1,"ok":false,"error":"{code}"}}"#);
+        let (client, server) = serve(503, body.into_bytes());
+        assert_eq!(client.request("test", &Action::GetRollout), Err(expected));
+        server.join().expect("server");
+    }
+}
+
+#[test]
+fn spam_report_roundtrips_and_decisions_require_a_review_note() {
+    let status: Status = serde_json::from_str("\"spam\"").expect("spam status");
+    assert_eq!(status.label(), "Spam");
+    let action = Action::SetReportStatus {
+        report_id: "report-1".into(),
+        status,
+        fixed_in_version: None,
+        reason: None,
+    };
+    assert!(action.validate().is_err());
+    let action = Action::SetReportStatus {
+        report_id: "report-1".into(),
+        status,
+        fixed_in_version: None,
+        reason: Some("Contenido sin relación".into()),
+    };
+    assert!(action.validate().is_ok());
+}
+
+#[test]
+fn decided_reports_never_offer_implicit_reopening() {
+    for current in [
+        Status::Validated,
+        Status::Rejected,
+        Status::Spam,
+        Status::Fixed,
+        Status::Closed,
+        Status::DuplicateLinked,
+        Status::Incomplete,
+    ] {
+        for decision in [Status::Validated, Status::Rejected, Status::Spam] {
+            assert!(!current.can_transition_to(decision));
+        }
+        assert!(!current.can_transition_to(Status::Submitted));
+        assert!(!current.can_transition_to(Status::InReview));
+    }
+    assert!(Status::Submitted.can_transition_to(Status::InReview));
+    assert!(Status::InReview.can_transition_to(Status::Submitted));
+    assert!(Status::Validated.can_transition_to(Status::Fixed));
+    assert!(!Status::Rejected.can_transition_to(Status::Fixed));
+}
+
+#[test]
+fn report_promotion_progress_and_spam_are_visible() {
+    let mut promotion: super::ReportPromotion = serde_json::from_value(serde_json::json!({
+        "accepted": 5, "tier": 6, "forfeited": false, "active_discount": "reward6"
+    }))
+    .unwrap();
+    assert!(promotion.summary().contains("5 informes aceptados"));
+    assert!(promotion.summary().contains("6 meses"));
+    promotion.forfeited = true;
+    assert!(
+        promotion
+            .summary()
+            .contains("se conservan los meses concedidos")
+    );
+    promotion.last_error = Some("polar_discount_unmanaged".into());
+    assert!(promotion.summary().contains("pendiente de revisión"));
+    promotion.first_refunded = true;
+    assert!(
+        promotion
+            .summary()
+            .contains("perdida por devolución del primer mes")
+    );
+}
+
+#[test]
+fn founders_transition_receipt_has_a_visible_pending_and_completed_state() {
+    for (state, expected) in [("pending", "pendiente"), ("completed", "desactivada")] {
+        let transition: super::FoundersTransition = serde_json::from_value(serde_json::json!({
+            "subscription_id": "fixture-subscription",
+            "policy": "end_period",
+            "state": state,
+            "paid_period_end": null
+        }))
+        .unwrap();
+        assert!(transition.label().contains(expected));
+    }
+}
+
+#[test]
+fn billing_incidents_make_rejected_payments_and_portal_reactivation_visible() {
+    for (reason, expected) in [
+        ("launch_payment_retired", "CRÍTICO"),
+        ("founders_duplicate_payment", "CRÍTICO"),
+        ("founders_subscription_reactivated", "reactivada"),
+        ("creator_renewal_discount_failed", "pendiente de revisión"),
+        ("creator_renewal_revocation_failed", "Retirada"),
+    ] {
+        let incident = super::BillingIncident {
+            resource_id: "fixture-order".into(),
+            reason: reason.into(),
+            severity: "critical".into(),
+        };
+        assert!(incident.label().contains(expected));
+    }
+}
+
+#[test]
+fn mail_draft_and_confirmation_use_owner_contract_over_local_http() {
+    let id = "00000000-0000-4000-8000-000000001636".to_owned();
+    for action in [
+        Action::MailDraft {
+            campaign_id: id.clone(),
+            revision: 3,
+            brief: "Solo novedades aprobadas".into(),
+            template: "news".into(),
+        },
+        Action::MailApprove {
+            campaign_id: id.clone(),
+            revision: 3,
+            confirm: true,
+        },
+        Action::MailSendBatch {
+            campaign_id: id,
+            revision: 3,
+        },
+    ] {
+        let (client, task) = serve(200, br#"{"version":1,"ok":true}"#.to_vec());
+        client
+            .request("owner-oauth-fixture", &action)
+            .expect("local mail reply");
+        let received = task.join().expect("local server");
+        assert!(
+            received
+                .to_lowercase()
+                .contains("authorization: bearer owner-oauth-fixture")
+        );
+        let body: serde_json::Value =
+            serde_json::from_str(received.split_once("\r\n\r\n").expect("body").1).expect("json");
+        assert_eq!(body["action"], action.label());
+        assert_eq!(body["revision"], 3);
+        assert_eq!(body["version"], 1);
+    }
 }

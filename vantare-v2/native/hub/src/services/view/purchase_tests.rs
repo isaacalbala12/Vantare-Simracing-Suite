@@ -133,7 +133,7 @@ fn participation_is_cleared_on_logout_and_delayed_reply_cannot_restore_private_d
         crate::quit_headless_test(cx);
     });
 }
-pub(super) fn fixture(
+pub(crate) fn fixture(
     cx: &mut Context<Remote>,
     send: SyncSender<Command>,
     data: &std::path::Path,
@@ -141,6 +141,7 @@ pub(super) fn fixture(
     let recovery = crate::testing::recovery::Recovery::load(data);
     let editor = crate::testing::Editor::new(crate::testing::empty_fields(), cx);
     let mut remote = Remote {
+        founders_language: founders::Language::default(),
         pilot: pilot::Projection::default(),
         adapt: orbit::Adapt::default(),
         pipe: "qa-in-memory".into(),
@@ -170,6 +171,7 @@ pub(super) fn fixture(
         participation_message: "Recarga para consultar cuestionarios y contribuciones".into(),
         participation_pending: None,
         participation_generation: 0,
+        triage: crate::testing::TriageEditor::new(cx),
         recovery,
         publication: None,
         roadmap_message: "No hay una publicación válida guardada".into(),
@@ -676,6 +678,30 @@ fn purchase_wait_is_bounded_and_requires_the_requested_verified_catalog() {
             ..pro
         }));
     }
+}
+
+#[test]
+fn founders_purchase_is_not_confirmed_by_an_existing_pro_subscription() {
+    let wait = PurchaseWait {
+        product: BillingProduct::Founders,
+        started: std::time::Instant::now(),
+        polled: None,
+    };
+    let pro = Access {
+        verified: true,
+        catalog: vantare_ipc::control::CatalogAccess::Pro,
+        ..Default::default()
+    };
+    assert!(!wait.confirmed(pro));
+    let founders = Access {
+        catalog: vantare_ipc::control::CatalogAccess::Founders,
+        ..pro
+    };
+    assert!(wait.confirmed(founders));
+    assert!(!wait.confirmed(Access {
+        blocked: true,
+        ..founders
+    }));
 }
 #[test]
 fn background_errors_logout_and_receipts_never_grant_access_or_lose_the_draft() {

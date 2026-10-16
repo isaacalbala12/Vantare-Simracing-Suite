@@ -73,7 +73,7 @@ function fakePolar(interval = "month") {
   return { http, writes, products };
 }
 
-Deno.test("polar-pro-prices: first run sets 5,99/mes and creates 59,90/año, second run is a no-op", async () => {
+Deno.test("polar-pro-prices: first run sets 5,99/mes and creates 59,99/año, second run is a no-op", async () => {
   const polar = fakePolar();
   const options = { organizationId: ORG, proMonthlyProductId: MONTHLY };
 
@@ -87,7 +87,7 @@ Deno.test("polar-pro-prices: first run sets 5,99/mes and creates 59,90/año, sec
   );
   const annual = polar.products.get(first.pro_annual.product_id)!;
   assertEquals(annual.recurring_interval, "year");
-  assertEquals(annual.prices[0].price_amount, 5990);
+  assertEquals(annual.prices[0].price_amount, 5999);
   assertEquals(annual.prices[0].tax_behavior, "inclusive");
 
   const second = await syncProPrices(polar.http, options);

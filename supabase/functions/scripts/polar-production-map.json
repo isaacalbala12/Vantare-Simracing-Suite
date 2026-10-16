@@ -1,0 +1,168 @@
+{
+  "schema_version": 2,
+  "environment": "production",
+  "catalog_version": "vanta-83-creator-renewals-v4",
+  "organization_id": "3ecc2e66-8d6c-416f-b7e0-0baabc0396d4",
+  "checkout_keys": {
+    "pro_monthly": {
+      "polar_product_id": "0f91f52f-f92f-4a7a-9782-da2ec44cf8b8",
+      "polar_price_ids": [
+        "e61e9161-1568-416f-9822-bbd8fe3785dc",
+        "c586f7b7-b9be-4493-b80b-d916ae82154c"
+      ],
+      "plan_sku": "pro_monthly",
+      "billing_type": "subscription",
+      "lifetime": false,
+      "active": true,
+      "capabilities": [
+        "vantare.plan.pro"
+      ],
+      "channels": [
+        "stable"
+      ],
+      "launch_scope_version": null,
+      "trial": {
+        "enabled": false
+      },
+      "entitlement_product_key": "bundle",
+      "polar_launch_discount_id": "ecad2262-3aa0-4a84-8524-8d0693103c25"
+    },
+    "launch_lifetime": {
+      "polar_product_id": "b1b1e348-acd6-4a81-ba67-db6d98aca2e6",
+      "polar_price_ids": [
+        "cbd08faa-0ea6-41ec-b4f1-336f5794ead4"
+      ],
+      "plan_sku": "launch_lifetime",
+      "billing_type": "one_time",
+      "lifetime": true,
+      "active": false,
+      "capabilities": [
+        "vantare.edition.launch_v1",
+        "vantare.channel.testers"
+      ],
+      "channels": [
+        "stable",
+        "testers"
+      ],
+      "launch_scope_version": "launch_v1",
+      "trial": {
+        "enabled": false
+      },
+      "entitlement_product_key": "bundle"
+    },
+    "founders": {
+      "polar_product_id": "891ef5dd-2182-4726-aad5-5f9ed1ce8f3b",
+      "polar_price_ids": [
+        "5a5ed42e-4b61-407b-b3a6-b90124def52d"
+      ],
+      "plan_sku": "founders",
+      "billing_type": "one_time",
+      "lifetime": true,
+      "active": true,
+      "capabilities": [
+        "vantare.plan.founders",
+        "vantare.channel.nightly"
+      ],
+      "channels": [
+        "stable",
+        "nightly"
+      ],
+      "launch_scope_version": null,
+      "trial": {
+        "enabled": false
+      },
+      "entitlement_product_key": "bundle"
+    },
+    "pro_annual": {
+      "polar_product_id": "a4f6ba5e-04da-4ae7-b2e1-5c9cb3012a52",
+      "polar_price_ids": [
+        "777a25ab-1dba-4b29-9600-657680d6f2f0"
+      ],
+      "plan_sku": "pro_annual",
+      "billing_type": "subscription",
+      "lifetime": false,
+      "active": true,
+      "capabilities": [
+        "vantare.plan.pro"
+      ],
+      "channels": [
+        "stable"
+      ],
+      "launch_scope_version": null,
+      "trial": {
+        "enabled": false
+      },
+      "entitlement_product_key": "bundle",
+      "polar_launch_discount_id": "184f26dc-dca6-4f45-a6e2-4e31191cb10b"
+    },
+    "pro_plus_monthly": {
+      "polar_product_id": "1688b3a9-95d8-4ded-a9f7-02df66acd03d",
+      "polar_price_ids": [
+        "0b6cc3e5-0029-44f8-be0f-1bccac376ce3"
+      ],
+      "plan_sku": "pro_plus_monthly",
+      "billing_type": "subscription",
+      "lifetime": false,
+      "active": true,
+      "capabilities": [
+        "vantare.plan.pro",
+        "vantare.channel.testers",
+        "vantare.channel.nightly"
+      ],
+      "channels": [
+        "stable",
+        "testers",
+        "nightly"
+      ],
+      "launch_scope_version": null,
+      "trial": {
+        "enabled": false
+      },
+      "entitlement_product_key": "bundle",
+      "polar_launch_discount_id": "8e5c5165-fd48-47d9-84ce-564308555a11"
+    },
+    "pro_plus_annual": {
+      "polar_product_id": "c074e94d-b261-4746-8626-de1485d6005a",
+      "polar_price_ids": [
+        "9a57a7c7-c597-4467-ba72-d72cbffffeba"
+      ],
+      "plan_sku": "pro_plus_annual",
+      "billing_type": "subscription",
+      "lifetime": false,
+      "active": true,
+      "capabilities": [
+        "vantare.plan.pro",
+        "vantare.channel.testers",
+        "vantare.channel.nightly"
+      ],
+      "channels": [
+        "stable",
+        "testers",
+        "nightly"
+      ],
+      "launch_scope_version": null,
+      "trial": {
+        "enabled": false
+      },
+      "entitlement_product_key": "bundle",
+      "polar_launch_discount_id": "24b51ff8-130d-4e4d-ac1f-ccf52da61b19"
+    }
+  },
+  "product_id_to_checkout_key": {
+    "0f91f52f-f92f-4a7a-9782-da2ec44cf8b8": "pro_monthly",
+    "b1b1e348-acd6-4a81-ba67-db6d98aca2e6": "launch_lifetime",
+    "891ef5dd-2182-4726-aad5-5f9ed1ce8f3b": "founders",
+    "a4f6ba5e-04da-4ae7-b2e1-5c9cb3012a52": "pro_annual",
+    "1688b3a9-95d8-4ded-a9f7-02df66acd03d": "pro_plus_monthly",
+    "c074e94d-b261-4746-8626-de1485d6005a": "pro_plus_annual"
+  },
+  "price_id_to_checkout_key": {
+    "e61e9161-1568-416f-9822-bbd8fe3785dc": "pro_monthly",
+    "cbd08faa-0ea6-41ec-b4f1-336f5794ead4": "launch_lifetime",
+    "5a5ed42e-4b61-407b-b3a6-b90124def52d": "founders",
+    "c586f7b7-b9be-4493-b80b-d916ae82154c": "pro_monthly",
+    "777a25ab-1dba-4b29-9600-657680d6f2f0": "pro_annual",
+    "0b6cc3e5-0029-44f8-be0f-1bccac376ce3": "pro_plus_monthly",
+    "9a57a7c7-c597-4467-ba72-d72cbffffeba": "pro_plus_annual"
+  }
+}

@@ -202,7 +202,7 @@ mod tests {
 
     #[test]
     fn reconstructed_workshop_scene_matches_the_frozen_display_values() {
-        let snapshot = vantare_ipc::snapshot_from_json(include_str!(
+        let snapshot = vantare_ipc::snapshot_from_fixture_json(include_str!(
             "../../fixtures/car-damage-numbers.snapshot.json"
         ))
         .expect("escena reconstruida en el DTO v3 vigente");

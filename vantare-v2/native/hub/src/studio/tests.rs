@@ -1256,7 +1256,7 @@ fn unverified_or_blocked_access_never_sells_pro() {
     };
     assert_eq!(
         locked_note(Some(free)),
-        "Tu plan Gratis incluye Standings y Pedales. Pro desbloquea los 15 restantes."
+        "Tu plan Gratis incluye 4 widgets. Pro desbloquea los 13 restantes."
     );
 }
 #[test]

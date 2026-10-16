@@ -416,6 +416,7 @@ pub(super) fn locked_note(access: Option<Access>) -> String {
         vantare_ipc::control::CatalogAccess::Free => "Tu plan Gratis",
         vantare_ipc::control::CatalogAccess::LaunchV1 => "Tu acceso de lanzamiento",
         vantare_ipc::control::CatalogAccess::Pro => "Tu plan Pro",
+        vantare_ipc::control::CatalogAccess::Founders => "Tu plan Founders",
     };
     let what = match included.as_slice() {
         [one, two] => format!("{one} y {two}"),
@@ -1165,9 +1166,13 @@ impl Studio {
     fn group_header(&self, group: &Group, cx: &mut Context<Self>) -> gpui::Div {
         let skin = orbit::skin(cx).clone();
         let empty = self.editor.layout().instances.is_empty();
-        let pro = self
-            .access
-            .is_none_or(|access| access.catalog == vantare_ipc::control::CatalogAccess::Pro);
+        let pro = self.access.is_none_or(|access| {
+            matches!(
+                access.catalog,
+                vantare_ipc::control::CatalogAccess::Pro
+                    | vantare_ipc::control::CatalogAccess::Founders
+            )
+        });
         let title = match group.kind {
             GroupKind::Suggested if empty => "Para empezar",
             GroupKind::Suggested => "Sugeridos para esta carrera",

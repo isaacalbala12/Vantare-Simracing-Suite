@@ -1,7 +1,7 @@
 # Gates con DuckDB oficial, sin desactivar defaults ajenos a storage.
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory)][ValidateSet('check', 'clippy', 'test', 'telemetria', 'lifecycle', 'prueba')][string]$Gate,
+    [Parameter(Mandatory)][ValidateSet('check', 'clippy', 'test', 'telemetria', 'completa', 'lifecycle', 'prueba')][string]$Gate,
     [string]$DuckDbDirectory = $env:DUCKDB_LIB_DIR,
     [string]$BuildConfig
 )
@@ -17,15 +17,12 @@ if (-not (Test-Path -LiteralPath (Join-Path $directory 'duckdb.lib')) -or
     -not (Test-Path -LiteralPath (Join-Path $directory 'duckdb.dll'))) { throw 'Se necesitan duckdb.lib y duckdb.dll oficiales (Windows).' }
 $previousDirectory = [Environment]::GetEnvironmentVariable('DUCKDB_LIB_DIR', 'Process')
 $previousPath = $env:PATH
-$previousTarget = [Environment]::GetEnvironmentVariable('CARGO_TARGET_DIR', 'Process')
 $previousIncremental = [Environment]::GetEnvironmentVariable('CARGO_INCREMENTAL', 'Process')
 $previousConfig = $null
 Push-Location $PSScriptRoot
 try {
     $env:DUCKDB_LIB_DIR = $directory
     $env:PATH = "$directory;$env:PATH"
-    # Ruta relativa estable: sccache incluye CARGO_TARGET_DIR en su clave.
-    $env:CARGO_TARGET_DIR = 'target/gates'
     if ($Gate -eq 'prueba') {
         . (Join-Path $PSScriptRoot 'packaging/build-config.ps1')
         $previousConfig = Import-NativeBuildConfig $BuildConfig
@@ -48,10 +45,18 @@ try {
         'clippy' { @('clippy', '--workspace', '--all-targets') }
         'test' { @('nextest', 'run', '--workspace') }
         'telemetria' { @('nextest', 'run', '--workspace', '--profile', 'telemetria') }
+        # Todo menos lifecycle en una sola invocación: para CI (#1654 ronda 7).
+        'completa' { @('nextest', 'run', '--workspace', '--profile', 'ci') }
         'lifecycle' { @('test', '--workspace', '--test', 'lifecycle') }
         'prueba' { @('build', '--workspace', '--exclude', 'vantare-admin', '--bins', '--profile', 'prueba') }
     }
-    $arguments += @('--locked', '--offline', '-j', '2', '--no-default-features')
+    # Jobs de compilación: CARGO_BUILD_JOBS de la máquina o 2 (#1465). En nextest
+    # `-j` son hilos de test; los jobs van en --build-jobs.
+    $jobs = if ($env:CARGO_BUILD_JOBS) { $env:CARGO_BUILD_JOBS } else { '2' }
+    $jobsFlag = if ($Gate -in @('test', 'telemetria', 'completa')) { '--build-jobs' } else { '-j' }
+    # --target-dir y no CARGO_TARGET_DIR: sccache mete las variables CARGO_* en su clave
+    # y así comparte caché con los builds de los workers en sus targets propios.
+    $arguments += @('--target-dir', 'target/gates', '--locked', '--offline', $jobsFlag, $jobs, '--no-default-features')
     if ($defaults.Count) { $arguments += @('--features', ($defaults -join ',')) }
     if ($Gate -eq 'clippy') { $arguments += @('--', '-D', 'warnings') }
     & cargo @arguments
@@ -67,7 +72,5 @@ try {
     if ($null -eq $previousDirectory) { Remove-Item Env:DUCKDB_LIB_DIR -ErrorAction SilentlyContinue }
     else { [Environment]::SetEnvironmentVariable('DUCKDB_LIB_DIR', $previousDirectory, 'Process') }
     $env:PATH = $previousPath
-    if ($null -eq $previousTarget) { Remove-Item Env:CARGO_TARGET_DIR -ErrorAction SilentlyContinue }
-    else { [Environment]::SetEnvironmentVariable('CARGO_TARGET_DIR', $previousTarget, 'Process') }
     Pop-Location
 }

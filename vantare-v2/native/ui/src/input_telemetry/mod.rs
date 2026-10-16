@@ -448,7 +448,7 @@ mod tests {
         let prefs = Preferences::default();
         let now = Instant::now();
         let mut snapshot =
-            vantare_ipc::snapshot_from_json(include_str!("../../fixtures/pedals.snapshot.json"))
+            vantare_ipc::snapshot_from_fixture_json(include_str!("../../fixtures/pedals.snapshot.json"))
                 .expect("foto de pedales");
         let mut widget = Widget::new(&Settings::default(), prefs);
         widget.ingest_at(&snapshot, prefs, now);
@@ -625,7 +625,7 @@ mod tests {
 
     #[test]
     fn unsupported_clutch_uses_two_bars_and_has_no_trace() {
-        let mut snapshot = vantare_ipc::snapshot_from_json(include_str!(
+        let mut snapshot = vantare_ipc::snapshot_from_fixture_json(include_str!(
             "../../fixtures/telemetry-real/lmu47.snapshot.json"
         ))
         .expect("corpus");

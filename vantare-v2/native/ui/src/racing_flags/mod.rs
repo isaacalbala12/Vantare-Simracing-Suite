@@ -629,8 +629,9 @@ fn pulse(elapsed: Option<Duration>) -> (f32, Wake) {
 impl Settings {
     #[allow(clippy::unused_self)] // Contrato común de demanda por renderer.
     pub fn demand(&self) -> vantare_ipc::Demand {
-        use vantare_ipc::Signal::{Flags, Positions, SessionInfo};
-        crate::demand::signals(33, &[Flags, Positions, SessionInfo])
+        // Identidad personal, posición de llegada y contexto de sesión.
+        use vantare_ipc::Signal::{Flags, Penalties, Positions, SessionInfo};
+        crate::demand::signals(33, &[Flags, Penalties, Positions, SessionInfo])
     }
 }
 
@@ -661,7 +662,7 @@ mod tests {
 
     #[test]
     fn source_interruption_repaints_even_when_the_cached_flag_is_unchanged() {
-        let mut snapshot = vantare_ipc::snapshot_from_json(include_str!(
+        let mut snapshot = vantare_ipc::snapshot_from_fixture_json(include_str!(
             "../../fixtures/racing-flags.snapshot.json"
         ))
         .expect("foto");
@@ -697,8 +698,9 @@ mod tests {
 
     #[test]
     fn variant_scenes_cover_sector_filter_and_green_hiding() {
-        let sectors = vantare_ipc::snapshot_from_json(include_str!("scenes/sectors.snapshot.json"))
-            .expect("sectores reconstruidos en DTO v4");
+        let sectors =
+            vantare_ipc::snapshot_from_fixture_json(include_str!("scenes/sectors.snapshot.json"))
+                .expect("sectores reconstruidos en DTO v4");
         let prefs = Preferences::default();
         let vm = Settings::default().project(&sectors, prefs);
         assert_eq!(vm.flag, Some(FlagKind::Yellow));
@@ -711,8 +713,9 @@ mod tests {
             ..Settings::default()
         };
         assert!(settings.project(&sectors, prefs).sectors.is_empty());
-        let green = vantare_ipc::snapshot_from_json(include_str!("scenes/green.snapshot.json"))
-            .expect("verde reconstruido en DTO v4");
+        let green =
+            vantare_ipc::snapshot_from_fixture_json(include_str!("scenes/green.snapshot.json"))
+                .expect("verde reconstruido en DTO v4");
         let settings = Settings {
             hide_when_green: true,
             ..Settings::default()
@@ -766,7 +769,7 @@ mod tests {
 
     #[test]
     fn default_scene_projects_the_frozen_green_banner() {
-        let snapshot = vantare_ipc::snapshot_from_json(include_str!(
+        let snapshot = vantare_ipc::snapshot_from_fixture_json(include_str!(
             "../../fixtures/racing-flags.snapshot.json"
         ))
         .expect("escena Workshop DTO v3 válida");
@@ -781,7 +784,7 @@ mod tests {
 
     #[test]
     fn qa_stale_scene_contains_old_flags_and_preserves_the_product_contract() {
-        let snapshot = vantare_ipc::snapshot_from_json(include_str!(
+        let snapshot = vantare_ipc::snapshot_from_fixture_json(include_str!(
             "../../fixtures/racing-flags-stale.snapshot.json"
         ))
         .expect("escena de banderas antiguas válida");

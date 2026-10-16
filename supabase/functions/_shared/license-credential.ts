@@ -35,6 +35,7 @@ const KNOWN_CAPABILITIES = new Set([
   "vantare.operational.nightly_tester",
   "vantare.operational.owner",
   "vantare.operational.tester",
+  "vantare.plan.founders",
   "vantare.plan.pro",
 ]);
 
@@ -78,6 +79,7 @@ type StoredGrant = {
   provider: string;
   environment: string;
   source_type: string;
+  source_id?: string;
 };
 
 export type StoredOperationalAssignment = {
@@ -243,6 +245,13 @@ export function normalizeGrants(
       grouped.set(row.capability, { perpetual: true, paidThrough: null });
       continue;
     }
+    if (
+      row.capability === "vantare.plan.founders" &&
+      (row.valid_until !== null || row.provider !== "polar" ||
+        row.source_type !== "order")
+    ) {
+      return { ok: false };
+    }
     const isRecovery = row.provider === "vantare" &&
       row.source_type === "subscription_recovery";
     if (isRecovery) {
@@ -275,7 +284,18 @@ export function normalizeGrants(
     if (paidThrough === null) {
       if (
         row.capability !== "vantare.edition.launch_v1" &&
-        row.capability !== "vantare.channel.testers"
+        row.capability !== "vantare.plan.founders" &&
+        row.capability !== "vantare.channel.testers" &&
+        !(row.capability === "vantare.channel.nightly" &&
+          row.source_type === "order" &&
+          rows.some((founder) =>
+            founder.capability === "vantare.plan.founders" &&
+            founder.provider === "polar" &&
+            founder.environment === environment &&
+            founder.source_type === "order" &&
+            !!row.source_id && founder.source_id === row.source_id &&
+            founder.valid_until === null
+          ))
       ) {
         return { ok: false };
       }
@@ -371,7 +391,12 @@ function createCredentialStore(): CredentialStore {
         throw new Error("Account resolution returned no identifier");
       }
       const admin = getSupabaseAdmin();
-      return await loadCredentialAccount(admin, accountId, fingerprint, environment);
+      return await loadCredentialAccount(
+        admin,
+        accountId,
+        fingerprint,
+        environment,
+      );
     },
   };
 }
@@ -514,8 +539,8 @@ export async function loadCredentialAccount(
     .maybeSingle();
   if (deviceError) throw deviceError;
   const { data: grants, error: grantsError } = await admin
-    .from("billing_access_grants").select(
-      "capability,valid_until,provider,environment,source_type",
+    .from("billing_effective_access_grants").select(
+      "capability,valid_until,provider,environment,source_type,source_id",
     )
     .eq("user_id", accountId).eq("status", "active")
     .eq("environment", environment);

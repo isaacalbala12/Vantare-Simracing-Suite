@@ -53,24 +53,43 @@ impl Tracker {
     /// Consume la foto y completa las señales derivadas del jugador si el
     /// adaptador no las trae actuales.
     pub(super) fn derive(&mut self, player: &mut Player, car: &Car) {
-        self.observe(player, car);
+        self.observe(
+            car,
+            player.fuel.level_l,
+            player.fuel.capacity_l,
+            REFUEL_EPSILON_L,
+        );
         self.write(player);
     }
 
-    fn observe(&mut self, player: &Player, car: &Car) {
+    /// Misma ventana de vueltas limpias, con un estado independiente para la
+    /// energía fraccional. No mezcla litros y energía ni escribe historia fuel.
+    pub(super) fn derive_energy(&mut self, player: &mut Player, car: &Car) {
+        self.observe(car, player.fuel.energy, Quality::Reliable(1.0), 0.000_001);
+        if player.fuel.energy.current().is_some()
+            && player.fuel.energy_per_lap.current().is_none()
+            && let Some(average) = self.per_lap()
+        {
+            player.fuel.energy_per_lap = Quality::Estimated(average);
+        }
+    }
+
+    fn observe(
+        &mut self,
+        car: &Car,
+        level: Quality<f64>,
+        capacity: Quality<f64>,
+        refuel_epsilon: f64,
+    ) {
         let (Some(lap), Some(level), Some(in_pit)) = (
             car.laps.current().copied(),
-            player.fuel.level_l.current().copied(),
+            level.current().copied(),
             car.in_pits.current().copied(),
         ) else {
             self.invalidate();
             return;
         };
-        let over_capacity = player
-            .fuel
-            .capacity_l
-            .current()
-            .is_some_and(|capacity| level > *capacity);
+        let over_capacity = capacity.current().is_some_and(|capacity| level > *capacity);
         if level < 0.0 || over_capacity {
             self.invalidate();
             return;
@@ -88,7 +107,7 @@ impl Tracker {
         };
         self.last_lap = Some(lap);
         let mut open = open;
-        if level > open.last_l + REFUEL_EPSILON_L || in_pit {
+        if level > open.last_l + refuel_epsilon || in_pit {
             open.invalid = true;
         }
         match i64::from(lap) - i64::from(open.lap) {
@@ -176,6 +195,36 @@ mod tests {
     use vantare_domain::{CarId, Fuel};
 
     use super::*;
+
+    #[test]
+    fn energy_uses_clean_full_laps_and_never_resurrects_an_expired_level() {
+        let mut tracker = Tracker::default();
+        let mut player = at_level(50.0);
+        for (lap, energy) in [(1, 1.0), (2, 0.9), (2, 0.85), (3, 0.8)] {
+            player.fuel.energy = Quality::Reliable(energy);
+            player.fuel.energy_per_lap = Quality::Unavailable;
+            tracker.derive_energy(&mut player, &car(lap, false));
+        }
+        assert!(
+            matches!(player.fuel.energy_per_lap, Quality::Estimated(value) if (value - 0.1).abs() < 1e-9)
+        );
+        assert_eq!(player.fuel.level_l, Quality::Reliable(50.0));
+        player.fuel.energy = Quality::Stale(0.8);
+        player.fuel.energy_per_lap = Quality::Unavailable;
+        tracker.derive_energy(&mut player, &car(3, false));
+        assert_eq!(player.fuel.energy_per_lap, Quality::Unavailable);
+        tracker.reset();
+        for (lap, energy, pits) in [
+            (1, 0.8, false),
+            (2, 0.7, false),
+            (2, 0.9, true),
+            (3, 0.8, false),
+        ] {
+            player.fuel.energy = Quality::Reliable(energy);
+            tracker.derive_energy(&mut player, &car(lap, pits));
+        }
+        assert_eq!(player.fuel.energy_per_lap, Quality::Unavailable);
+    }
 
     #[test]
     fn first_observation_is_not_a_full_lap() {

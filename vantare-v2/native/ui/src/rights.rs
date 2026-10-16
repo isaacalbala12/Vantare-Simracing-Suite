@@ -61,7 +61,10 @@ mod tests {
         // Identificadores del contrato comercial, independientes del registro.
         // Un rename, una baja o un alta accidental deben exigir revisión explícita.
         for (catalog, expected) in [
-            (CatalogAccess::Free, vec!["pedals", "standings"]),
+            (
+                CatalogAccess::Free,
+                vec!["delta", "pedals", "relative", "standings"],
+            ),
             (
                 CatalogAccess::LaunchV1,
                 vec!["delta", "pedals", "relative", "standings"],
@@ -99,12 +102,15 @@ mod tests {
             };
             for &kind in Kind::ALL {
                 let expected = match catalog {
-                    CatalogAccess::Free => matches!(kind, Kind::Standings | Kind::Pedals),
+                    CatalogAccess::Free => matches!(
+                        kind,
+                        Kind::Standings | Kind::Pedals | Kind::Relative | Kind::Delta
+                    ),
                     CatalogAccess::LaunchV1 => matches!(
                         kind,
                         Kind::Standings | Kind::Pedals | Kind::Relative | Kind::Delta
                     ),
-                    CatalogAccess::Pro => true,
+                    CatalogAccess::Pro | CatalogAccess::Founders => true,
                 };
                 assert_eq!(allowed(kind, &policy), expected, "{catalog:?} {kind:?}");
             }

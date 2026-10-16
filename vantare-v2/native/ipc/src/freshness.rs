@@ -29,7 +29,7 @@ pub fn log_transition(
         && current.1 == Capability::WithData
         && previous.1 != current.1
     {
-        "adaptador: SHM jugador mElapsedTime (o contenido sin reloj) sin avance >=500ms; recuperación sostenida 2000ms"
+        "adaptador: SHM jugador mElapsedTime (o contenido sin reloj) sin avance >=500ms"
     } else {
         reason
     };

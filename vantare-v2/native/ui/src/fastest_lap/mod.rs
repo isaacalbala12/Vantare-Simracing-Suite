@@ -669,7 +669,7 @@ mod tests {
     use super::*;
 
     fn reference_scene() -> Snapshot {
-        vantare_ipc::snapshot_from_json(include_str!("../../fixtures/fastest-lap.snapshot.json"))
+        vantare_ipc::snapshot_from_fixture_json(include_str!("../../fixtures/fastest-lap.snapshot.json"))
             .expect("escena DTO v3 válida")
     }
 

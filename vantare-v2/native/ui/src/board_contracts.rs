@@ -23,7 +23,7 @@ pub(crate) fn photos() -> Vec<(&'static str, Snapshot)> {
     .map(|(name, json)| {
         (
             name,
-            vantare_ipc::snapshot_from_json(json).expect("foto real intacta"),
+            vantare_ipc::snapshot_from_fixture_json(json).expect("foto real intacta"),
         )
     })
     .into()

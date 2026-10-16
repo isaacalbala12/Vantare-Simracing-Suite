@@ -91,7 +91,7 @@ pub(crate) fn execute(
             request
                 .post(
                     "rest/v1/rpc/testing_answer_save",
-                    &serde_json::json!({"p_id":id,"p_score":score,"p_note":note}),
+                    &serde_json::json!({"p_id":id,"p_score":score,"p_note":""}),
                 )?
                 .success()?;
         }
@@ -104,7 +104,7 @@ pub(crate) fn execute(
             if !consent || !uuid(&id) || !text(&title, 120, true) || !text(&body, 1000, true) {
                 return Err(Error::Protocol);
             }
-            request.post("functions/v1/testing-report-submit", &serde_json::json!({"p_id":id,"p_channel":channel,"p_title":title,"p_body":body,"p_consent":consent}))?.success()?;
+            request.post("functions/v1/testing-report-submit", &serde_json::json!({"p_id":id,"p_channel":channel,"p_title":"Informe estructurado","p_body":"Revisión humana pendiente","p_consent":consent}))?.success()?;
         }
         Command::TestingCredit { id, consent } => {
             if !uuid(&id) {
@@ -259,7 +259,7 @@ mod tests {
             serde_json::from_str(captured[1].split("\r\n\r\n").nth(1).unwrap()).unwrap();
         assert_eq!(
             body,
-            serde_json::json!({"p_id":id,"p_channel":"master","p_title":"Scroll","p_body":"Pasos","p_consent":true})
+            serde_json::json!({"p_id":id,"p_channel":"master","p_title":"Informe estructurado","p_body":"Revisión humana pendiente","p_consent":true})
         );
         assert!(captured[3].starts_with("POST /rest/v1/rpc/testing_report_credit "));
         assert!(captured[5].starts_with("POST /rest/v1/rpc/testing_report_notice_read "));
@@ -338,6 +338,12 @@ mod tests {
                 .contains("authorization: bearer data-fixture")
         );
         assert!(!captured[1].contains("account_id"));
+        assert!(!captured[1].contains("Mi experiencia"));
+        let payload: serde_json::Value =
+            serde_json::from_str(captured[1].split("\r\n\r\n").nth(1).expect("body"))
+                .expect("JSON");
+        assert_eq!(payload["p_note"], "");
+        assert_eq!(payload["p_score"], 5);
         assert_eq!(
             captured[1].split("\r\n\r\n").nth(1),
             captured[3].split("\r\n\r\n").nth(1)

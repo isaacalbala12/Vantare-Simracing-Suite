@@ -1,4 +1,4 @@
-//! Consume el DTO productivo por stdin; evalúa Kind::ALL sin crear ventanas.
+//! Consume el DTO productivo por stdin; evalúa `Kind::ALL` sin crear ventanas.
 use crate::{Kind, Settings, Widget};
 use serde_json::{Value, json};
 use std::{

@@ -1,4 +1,4 @@
-//! Interacción real de la shell sobre TestPlatform; sin ventanas ni capturas.
+//! Interacción real de la shell sobre `TestPlatform`; sin ventanas ni capturas.
 use super::*;
 use crate::shell::{Loaded, Prepared, PreparedStudio};
 use gpui::{HeadlessAppContext, WindowHandle, px, size};

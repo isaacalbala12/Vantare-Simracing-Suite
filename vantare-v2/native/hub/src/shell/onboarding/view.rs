@@ -1037,14 +1037,14 @@ impl Hub {
                     ),
                     (
                         "Correos",
-                        if !state.signed {
-                            "Apagados · sin cuenta"
-                        } else {
+                        if state.signed {
                             match self.remote.read(cx).mail.consent {
                                 Some(true) => "Activados",
                                 Some(false) => "Apagados",
                                 None => "Sin confirmar",
                             }
+                        } else {
+                            "Apagados · sin cuenta"
                         }
                         .into(),
                     ),

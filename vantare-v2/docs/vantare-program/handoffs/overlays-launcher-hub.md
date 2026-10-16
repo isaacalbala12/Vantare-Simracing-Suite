@@ -191,4 +191,6 @@ a nivel de asistente mientras pending siga activo (HTTP tiene timeout de 8 s;
 no garantiza plazo si el peer no responde). Atrás/Escape permiten retroceder.
 Locale de correos permanece es y los PNG incrustados conservan su tamaño.
 Widgets completos tras #1641 y QA visual tras #1675 siguen como pendientes previos.
-Estado de esta ronda En curso; gates y SHA final se verificarán en issue/PR.
+El estado verificado de esta ronda, gates y SHA final constan en #1628 y PR
+#1637. La siguiente acción del orquestador es la ronda 2 de DeepSeek cuando la
+CI del HEAD final esté verde; no hay merge a nightly ni release del worker.

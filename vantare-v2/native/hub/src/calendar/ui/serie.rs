@@ -899,31 +899,37 @@ fn heat_map(
     for day in days {
         let is_today = zone.date(now) == day;
         let mut cells = div().flex_1().flex().gap(px(2.0));
-        for (a, b) in zone.day_hours(day) {
-            let past = b <= now;
-            let current = now >= a && now < b;
-            let in_band = band.is_some_and(|band| band.covers(a, clock::Zone::Local));
-            cells = cells.child(
-                div()
-                    .flex_1()
-                    .min_w_0()
-                    .h(px(18.0))
-                    .rounded(px(3.0))
-                    .when(in_band, |c| {
-                        c.bg(tint(chrome::acc(cx), if past { 0.3 } else { 0.75 }))
-                    })
-                    .when(!in_band && past, |c| {
-                        c.bg(rgb(skin.l2)).child(
-                            div().size_full().rounded(px(3.0)).bg(gpui::pattern_slash(
-                                orbit::alpha(skin.line2),
-                                1.0,
-                                5.0,
-                            )),
-                        )
-                    })
-                    .when(!in_band && !past, |c| c.bg(rgb(skin.l3)))
-                    .when(current, |c| c.border_2().border_color(rgb(skin.text1))),
-            );
+        // Una columna por hora local, como los rótulos: el día de 25 h reparte la
+        // hora repetida en dos medias celdas y el de 23 h deja su hueco vacío.
+        for column in zone.hour_columns(day) {
+            let mut slot = div().flex_1().min_w_0().h(px(18.0)).flex().gap(px(1.0));
+            for (a, b) in column {
+                let past = b <= now;
+                let current = now >= a && now < b;
+                let in_band = band.is_some_and(|band| band.covers(a, clock::Zone::Local));
+                slot = slot.child(
+                    div()
+                        .flex_1()
+                        .min_w_0()
+                        .h_full()
+                        .rounded(px(3.0))
+                        .when(in_band, |c| {
+                            c.bg(tint(chrome::acc(cx), if past { 0.3 } else { 0.75 }))
+                        })
+                        .when(!in_band && past, |c| {
+                            c.bg(rgb(skin.l2)).child(
+                                div().size_full().rounded(px(3.0)).bg(gpui::pattern_slash(
+                                    orbit::alpha(skin.line2),
+                                    1.0,
+                                    5.0,
+                                )),
+                            )
+                        })
+                        .when(!in_band && !past, |c| c.bg(rgb(skin.l3)))
+                        .when(current, |c| c.border_2().border_color(rgb(skin.text1))),
+                );
+            }
+            cells = cells.child(slot);
         }
         map = map.child(
             div()

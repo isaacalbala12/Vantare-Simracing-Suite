@@ -122,6 +122,16 @@ impl Zone {
         }
         hours
     }
+    /// Las horas del día repartidas en 24 columnas por hora local (0..24): la
+    /// repetida del cambio de otoño ocupa dos huecos de su columna y la que
+    /// salta en primavera deja la suya vacía. Así rótulos y celdas coinciden.
+    pub fn hour_columns(self, date: NaiveDate) -> Vec<Vec<(DateTime<Utc>, DateTime<Utc>)>> {
+        let mut columns = vec![vec![]; 24];
+        for hour in self.day_hours(date) {
+            columns[self.naive(hour.0).hour() as usize].push(hour);
+        }
+        columns
+    }
     /// «UTC», «+2» o «+5:30».
     pub fn short(self, at: DateTime<Utc>) -> String {
         if self == Self::Utc {
@@ -434,6 +444,30 @@ mod tests {
         assert!(!shown.contains(&2), "la hora 02 no existe ese día");
         // Ninguna fila cae ya en el día siguiente.
         assert!(hours.iter().all(|(from, _)| MADRID.date(*from) == day));
+    }
+
+    #[test]
+    fn heat_map_columns_match_the_24_labels_on_clock_change_days() {
+        let counts = |zone: Zone, (y, m, d): (i32, u32, u32)| {
+            zone.hour_columns(NaiveDate::from_ymd_opt(y, m, d).expect("fecha"))
+                .iter()
+                .map(Vec::len)
+                .collect::<Vec<_>>()
+        };
+        let mut autumn = vec![1; 24];
+        autumn[2] = 2;
+        assert_eq!(counts(MADRID, (2026, 10, 25)), autumn);
+        let mut spring = vec![1; 24];
+        spring[2] = 0;
+        assert_eq!(counts(MADRID, (2026, 3, 29)), spring);
+        assert_eq!(counts(MADRID, (2026, 10, 8)), vec![1; 24]);
+        // Siempre 24 columnas: los rótulos 0..24 caen sobre ellas.
+        assert_eq!(
+            MADRID
+                .hour_columns(NaiveDate::from_ymd_opt(2026, 3, 29).expect("fecha"))
+                .len(),
+            24
+        );
     }
 
     #[test]

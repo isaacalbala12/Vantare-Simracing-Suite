@@ -103,11 +103,48 @@ struct Doc {
     path: PathBuf,
     seen: Option<Vec<u8>>,
 }
+/// Lee y valida el archivo de series seguidas.
+fn parse_following(data: &[u8]) -> Result<Following, String> {
+    let following: Following =
+        serde_json::from_slice(data).map_err(|error| format!("seguimiento inválido: {error}"))?;
+    let mut seen = HashSet::new();
+    if following.series_ids.len() > 256
+        || following
+            .series_ids
+            .iter()
+            .any(|id| id.trim().is_empty() || !seen.insert(id))
+    {
+        return Err("seguimiento inválido: límite o identidad vacía/duplicada".into());
+    }
+    Ok(following)
+}
+
 impl Doc {
     fn open(dir: &Path, name: &str) -> Self {
         Self {
             path: dir.join(name),
             seen: None,
+        }
+    }
+    /// Copia el archivo ilegible junto al original (`.invalid`, o con la hora si ya
+    /// había una) para que el siguiente guardado no lo pise en silencio, y devuelve
+    /// el aviso para el usuario con el nombre de la copia.
+    fn keep_invalid(&self, message: &str) -> String {
+        let name = |suffix: &str| {
+            let mut name = self.path.clone().into_os_string();
+            name.push(suffix);
+            PathBuf::from(name)
+        };
+        let mut copy = name(".invalid");
+        if copy.exists() {
+            copy = name(&format!(".invalid-{}", Utc::now().timestamp()));
+        }
+        match std::fs::copy(&self.path, &copy) {
+            Ok(_) => format!(
+                "{message}; la copia del archivo dañado queda en {}.",
+                copy.display()
+            ),
+            Err(_) => format!("{message}."),
         }
     }
     /// `Ok(None)` si no existe todavía.
@@ -211,22 +248,21 @@ impl Calendar {
             previous: Doc::open(data_dir, "official-schedule-previous.json"),
             fallback: Doc::open(data_dir, "fallback-schedule.json"),
         };
-        let following: Following = docs
-            .following
-            .read()?
-            .map(|data| serde_json::from_slice(&data))
-            .transpose()
-            .map_err(|error| format!("seguimiento inválido: {error}"))?
-            .unwrap_or_default();
-        let mut seen = HashSet::new();
-        if following.series_ids.len() > 256
-            || following
-                .series_ids
-                .iter()
-                .any(|id| id.trim().is_empty() || !seen.insert(id))
-        {
-            return Err("seguimiento inválido: límite o identidad vacía/duplicada".into());
-        }
+        // Un archivo de series seguidas dañado no impide abrir el Hub: se guarda una
+        // copia del malo, se empieza sin seguidas y se dice.
+        let (following, following_error) = match docs.following.read().and_then(|data| {
+            data.map(|data| parse_following(&data))
+                .transpose()
+                .map(Option::unwrap_or_default)
+        }) {
+            Ok(following) => (following, None),
+            Err(error) => (
+                Following::default(),
+                Some(docs.following.keep_invalid(&format!(
+                    "No se pudieron leer tus series seguidas ({error}). Empiezas sin series seguidas"
+                ))),
+            ),
+        };
         // Un archivo de avisos dañado o de otra versión no impide abrir el Hub:
         // se empieza sin avisos y se dice (el siguiente guardado lo reemplaza).
         let (alerts, alerts_error) = match docs
@@ -237,9 +273,9 @@ impl Calendar {
             Ok(Ok(alerts)) => (alerts.unwrap_or_default(), None),
             Ok(Err(error)) | Err(error) => (
                 Alerts::default(),
-                Some(format!(
-                    "No se pudieron leer tus avisos ({error}). Empiezas sin avisos."
-                )),
+                Some(docs.alerts.keep_invalid(&format!(
+                    "No se pudieron leer tus avisos ({error}). Empiezas sin avisos"
+                ))),
             ),
         };
         // Un archivo dañado de ajustes menores no impide abrir el calendario.
@@ -299,7 +335,10 @@ impl Calendar {
             demo_now: None,
             ui: ui::State::default(),
             revision: 0,
-            error: alerts_error,
+            error: [following_error, alerts_error]
+                .into_iter()
+                .flatten()
+                .reduce(|a, b| format!("{a} {b}")),
         };
         calendar.rebuild(Utc::now());
         Ok(calendar)

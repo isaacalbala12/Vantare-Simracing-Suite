@@ -244,7 +244,7 @@ pub(super) fn render(cal: &mut Calendar, cx: &mut Context<Calendar>) -> Div {
                             .gap(px(4.0))
                             .child(t("Siguiente:", 12.5, 400, skin.text2, cx))
                             .child(chrome::bold_mono(
-                                format!("{} {}", zone.day_rel(at, now), zone.hm(at)),
+                                format!("{} {}", zone.race_day_rel(at, now), zone.hm(at)),
                                 12.5,
                                 skin.text1,
                                 cx,

@@ -324,3 +324,41 @@ fn paint_caches_are_invalidated_by_every_change_of_data() {
     );
     let _ = std::fs::remove_dir_all(dir);
 }
+
+#[test]
+fn an_unreadable_following_file_degrades_and_a_copy_is_kept() {
+    let dir = dir("bad-following");
+    let file = dir.join("calendar-following.json");
+    let bad: [&[u8]; 3] = [
+        b"no es json",
+        br#"{"seriesIds":["a","a"]}"#,
+        br#"{"seriesIds":[" "]}"#,
+    ];
+    for (index, garbage) in bad.into_iter().enumerate() {
+        std::fs::write(&file, garbage).expect("escribe");
+        let mut calendar = Calendar::load(&dir).expect("el Hub abre igualmente");
+        assert!(calendar.favorites().is_empty());
+        let notice = calendar.error.clone().expect("se avisa");
+        assert!(notice.contains("series seguidas") && notice.contains(".invalid"));
+        // La copia conserva el contenido malo, sin pisar la anterior.
+        let copies = std::fs::read_dir(&dir)
+            .expect("lista")
+            .filter_map(Result::ok)
+            .filter(|e| e.file_name().to_string_lossy().contains(".invalid"))
+            .count();
+        assert!(copies >= 1, "ronda {index}");
+        assert_eq!(
+            std::fs::read(dir.join("calendar-following.json.invalid")).expect("copia"),
+            bad[0]
+        );
+        // Seguir una serie reemplaza el archivo dañado y vuelve a cargar bien.
+        calendar
+            .follow("beginner-lmgt3-fixed".into())
+            .expect("sigue");
+        assert_eq!(
+            Calendar::load(&dir).expect("recarga").favorites(),
+            ["beginner-lmgt3-fixed"]
+        );
+    }
+    let _ = std::fs::remove_dir_all(dir);
+}

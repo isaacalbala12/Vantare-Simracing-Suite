@@ -299,6 +299,8 @@ begin
 end $$;
 -- Compatibility entrypoint for the report catalogue. Checkout uses #1661's once
 -- offer; the report catalogue's one-cycle repair coupon is never an initial offer.
+-- Historical compatibility RPC: removed by 20261016090001_isa_1593_launch_offer_sql.sql.
+-- Never use it for new integrations; billing_launch_checkout is the canonical guarded entry.
 create function public.report_promotion_checkout(p_account uuid,p_environment text,p_product text,p_now timestamptz default clock_timestamp(),p_attempt uuid default null,p_replaces uuid default null)
 returns text language plpgsql security definer set search_path='' as $$
 declare c private.report_promotion_catalog;

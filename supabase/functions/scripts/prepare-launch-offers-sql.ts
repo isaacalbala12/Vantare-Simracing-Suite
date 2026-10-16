@@ -76,6 +76,10 @@ export function prepareLaunchOffersSql(
     "except " + expected + ")",
     ") then raise exception 'launch_offer_registry_drift'; end if; end $registry$;",
     "commit;",
+    "-- Activation check: compare every active configured key, UUID, window and version with the approved map.",
+    "select environment,checkout_key,product_id,discount_id,starts_at,ends_at,catalog_version,registered_at",
+    "from private.billing_launch_offers where environment=" +
+    quote(environment) + " order by checkout_key;",
     "",
   ].join("\n");
 }

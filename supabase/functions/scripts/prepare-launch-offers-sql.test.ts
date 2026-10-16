@@ -23,6 +23,11 @@ Deno.test("P3-D operator projection uses the canonical window and binds UUIDs wi
   );
   assertStringIncludes(sql, "on conflict(environment,checkout_key) do nothing");
   assertStringIncludes(sql, "launch_offer_registry_drift");
+  assertStringIncludes(
+    sql,
+    "select environment,checkout_key,product_id,discount_id,starts_at,ends_at,catalog_version,registered_at",
+  );
+  assertStringIncludes(sql, "order by checkout_key;");
   assertEquals(sql.includes("update set"), false);
   assertEquals(sql, prepareLaunchOffersSql(JSON.stringify(map), "sandbox"));
 });

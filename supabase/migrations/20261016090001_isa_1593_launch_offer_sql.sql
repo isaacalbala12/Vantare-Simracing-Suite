@@ -1,3 +1,5 @@
+begin;
+
 -- #1593 P3-D: operator projection of #1661's validated product map and catalogue.
 -- Empty by default: apply reviewed offline registration SQL before deploying checkout.
 create table private.billing_launch_offers (
@@ -43,3 +45,5 @@ end $$;
 alter function public.billing_launch_checkout(uuid,text,text,text,text,timestamptz,uuid,uuid) owner to postgres;
 revoke all on function public.billing_launch_checkout(uuid,text,text,text,text,timestamptz,uuid,uuid) from public,anon,authenticated;
 grant execute on function public.billing_launch_checkout(uuid,text,text,text,text,timestamptz,uuid,uuid) to service_role;
+
+commit;

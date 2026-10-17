@@ -30,7 +30,7 @@ fn button(
         .role(gpui::Role::Button)
         .aria_label(label.to_string())
         .cursor_pointer()
-        .tab_stop(true)
+        .tab_index(0)
         .h(px(52.0 * s))
         .px(px(26.0 * s))
         .rounded(px(10.0 * s))
@@ -67,7 +67,7 @@ fn card(
         .aria_selected(selected)
         .relative()
         .cursor_pointer()
-        .tab_stop(true)
+        .tab_index(0)
         .rounded(px(14.0 * s))
         .border_1()
         .border_color(rgb(if selected { 0x00d8_0000 } else { 0x0029_2325 }))
@@ -132,7 +132,7 @@ fn onboarding_switch(
         .aria_label(title)
         .aria_description(if on { "Activado" } else { "Apagado" })
         .cursor_pointer()
-        .tab_stop(true)
+        .tab_index(0)
         .p(px(20.0 * s))
         .rounded(px(14.0 * s))
         .border_1()
@@ -418,6 +418,7 @@ impl Hub {
                 )
             })
             .track_focus(&self.focus)
+            .tab_group()
             .flex()
             .flex_col()
             .capture_key_down(cx.listener(|hub, event: &gpui::KeyDownEvent, _, cx| {
@@ -624,7 +625,7 @@ impl Hub {
                     .role(gpui::Role::Button)
                     .aria_label(name)
                     .aria_selected(on)
-                    .tab_stop(true)
+                    .tab_index(0)
                     .cursor_pointer()
                     .h(px(98.0 * s))
                     .pl(px(16.0 * s))
@@ -857,7 +858,7 @@ impl Hub {
             .child(
                 div()
                     .id("onboarding-auto")
-                    .tab_stop(true)
+                    .tab_index(0)
                     .role(gpui::Role::Button)
                     .cursor_pointer()
                     .h(px(85.0 * s))
@@ -903,7 +904,6 @@ impl Hub {
                             )),
                     )
                     .child(check(state.choices.automatic, s, cx))
-                    .tab_stop(true)
                     .on_click(cx.listener(|hub, _, _, cx| {
                         if let Some(state) = &mut hub.onboarding {
                             state.choices.select_automatic(&state.equipment);

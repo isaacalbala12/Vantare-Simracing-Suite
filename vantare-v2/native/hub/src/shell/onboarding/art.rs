@@ -610,7 +610,7 @@ impl Hub {
                         div()
                             .id(gpui::SharedString::from(format!("onboarding-plan-{image}")))
                             .cursor_pointer()
-                            .tab_stop(true)
+                            .tab_index(0)
                             .h(px(48.0 * s))
                             .rounded(px(10.0 * s))
                             .bg(rgb(if image == "pro" {
@@ -692,7 +692,7 @@ impl Hub {
                     .id("onboarding-launch-plan")
                     .role(gpui::Role::Button)
                     .cursor_pointer()
-                    .tab_stop(true)
+                    .tab_index(0)
                     .on_click(cx.listener(|hub, _, _, cx| {
                         hub.onboarding_plan(
                             Some(crate::services::protocol::BillingProduct::LaunchLifetime),

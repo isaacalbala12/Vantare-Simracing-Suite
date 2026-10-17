@@ -204,3 +204,9 @@ TLS hasta salir del hilo: se adapta a una ventana de TestPlatform y libera su
 arena después de cada render. Conserva las aserciones de los tres cambios de
 catálogo, bloqueo de widgets, documento intacto e ingestión de la siguiente foto.
 No se desactiva el detector ni se omite la prueba.
+La regresión real de teclado detectó además que tab_stop(true) no crea foco en
+esta revisión GPUI: los controles ahora usan tab_index(0), dentro del tab_group
+del asistente. Se conserva el recorrido del test y se añade la aserción de que
+Tab abandona el foco de la página antes de enviar Enter/Espacio. El ciclo P1
+cerrar/reabrir/Terminar, error de marketing, salida privada y catálogo ya pasan
+en la CI 0c49bdd35; la nueva CI comprobará también el foco corregido.

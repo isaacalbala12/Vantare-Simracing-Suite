@@ -116,6 +116,16 @@ fn page(window: WindowHandle<Hub>, step: usize, tabs: usize, cx: &mut HeadlessAp
         }
     })
     .expect("tabulaciones");
+    if tabs > 0 {
+        window
+            .update(cx, |hub, window, _| {
+                assert!(
+                    !hub.focus.is_focused(window),
+                    "Tab debe alcanzar un control"
+                );
+            })
+            .expect("control enfocado");
+    }
     draw(window, cx);
 }
 

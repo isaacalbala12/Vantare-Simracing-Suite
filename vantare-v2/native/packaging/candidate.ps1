@@ -20,6 +20,14 @@ $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 Add-Type -AssemblyName System.IO.Compression
 $script:NativeBuildBins = @('vantare', 'vantare-core', 'vantare-overlays', 'vantare-hub', 'vantare-engineer', 'vantare-services', 'vantare-storage', 'vantare-workshop', 'vantare-grabar-lmu', 'vantare-grabar-acc', 'vantare-import-profile')
+# Runtime/README: estas herramientas se compilan en el workspace pero son QA privada.
+# No forman parte de Get-NativeBins ni del inventario distribuido de ningún canal.
+$script:NativePrivateBuildBins = @('vantare-grabar-lmu-completo', 'vantare-verificar-lmu')
+function Assert-NativeBuildInventory([string[]]$Bins) {
+    if (@(Compare-Object @($script:NativeBuildBins + $script:NativePrivateBuildBins) $Bins -CaseSensitive).Count) {
+        throw 'El inventario de binarios no coincide con cargo metadata; actualizarlo antes de empaquetar.'
+    }
+}
 function Get-NativeBins([string]$CandidateChannel) {
     # Workshop sigue compilándose para desarrollo/paridad, pero no se distribuye en beta.
     @($script:NativeBuildBins | Where-Object { $CandidateChannel -cne 'beta' -or $_ -cne 'vantare-workshop' })
@@ -30,6 +38,25 @@ $script:NativeBins = @(Get-NativeBins $Channel)
 # se instalo el paquete. Se enumeran aqui para que entren tambien en el
 # manifiesto y en la verificacion de reinstalacion.
 $script:NativeFixtures = @(
+    # Secuencias aprobadas que Workshop abre por nombre, incluida la inicial.
+    'bin/fixtures/broadcast-tower-design-system.sequence.json'
+    'bin/fixtures/car-damage-visual-design-system.sequence.json'
+    'bin/fixtures/delta-design-system.sequence.json'
+    'bin/fixtures/delta-trace-design-system.sequence.json'
+    'bin/fixtures/fastest-lap-design-system.sequence.json'
+    'bin/fixtures/fuel-strategy-design-system.sequence.json'
+    'bin/fixtures/head-to-head-design-system.sequence.json'
+    'bin/fixtures/input-telemetry-design-system.sequence.json'
+    'bin/fixtures/multiclass-relative-design-system.sequence.json'
+    'bin/fixtures/pedals-design-system.sequence.json'
+    'bin/fixtures/pedals-telemetry-design-system.sequence.json'
+    'bin/fixtures/racing-flags-design-system.sequence.json'
+    'bin/fixtures/radar-design-system.sequence.json'
+    'bin/fixtures/relative-design-system.sequence.json'
+    'bin/fixtures/standings-design-system.sequence.json'
+    'bin/fixtures/track-map-design-system.sequence.json'
+    'bin/fixtures/track-weather-design-system.sequence.json'
+    'bin/fixtures/session-alerts.snapshot.json'
     'bin/fixtures/broadcast-tower-crossing.scene.json'
     'bin/fixtures/broadcast-tower-default.scene.json'
     'bin/fixtures/broadcast-tower-exit-reentry.scene.json'
@@ -183,6 +210,27 @@ function Assert-NativePe([string]$Path) {
     } finally { $reader.Dispose() }
 }
 
+function Get-NativeDumpbin {
+    $command=Get-Command dumpbin.exe -ErrorAction SilentlyContinue
+    if($null -ne $command){return $command.Source}
+    $vswhere=Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer/vswhere.exe'
+    $paths=@(& $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -find 'VC/Tools/MSVC/**/bin/Hostx64/x64/dumpbin.exe')
+    if($LASTEXITCODE -or -not $paths.Count){throw 'Empaquetado requiere dumpbin de MSVC para validar dependencias CRT.'}
+    $paths[0]
+}
+
+function Assert-NativeStaticCrt([string]$Path,[string]$Dumpbin) {
+    Assert-NativePe $Path
+    # /DEPENDENTS lists both normal and delay-loaded DLLs. Never execute an
+    # unchecked application just to discover a missing runtime on the build PC.
+    $report=@(& $Dumpbin /NOLOGO /DEPENDENTS $Path)
+    if($LASTEXITCODE){throw "No se pudieron inspeccionar los imports de $Path"}
+    $dlls=@($report|ForEach-Object{if($_ -match '^\s+([A-Za-z0-9_.-]+\.dll)\s*$'){$matches[1]}})
+    if(-not $dlls.Count){throw "Inventario de imports vacío: $Path"}
+    $runtime=@($dlls|Where-Object{$_ -match '^(vcruntime|msvcp[0-9]|msvcr[0-9]|concrt[0-9]|ucrtbase|api-ms-win-crt-)'})
+    if($runtime.Count){throw "El binario de distribución exige CRT dinámico: $Path ($($runtime -join ', '))"}
+}
+
 function Read-NativeManifest([string]$Directory, [string]$ExpectedChannel, [bool]$VerifyFiles = $true) {
     $path = Join-Path $Directory 'manifest.json'
     if ((Get-Item -LiteralPath $path).Length -gt 65536) { throw 'Manifiesto demasiado grande.' }
@@ -281,29 +329,86 @@ function Test-NativeShortcutOwned($Link,[string]$Directory) {
     ($Link.TargetPath -eq (Join-Path $Directory 'Uninstall.exe'))
 }
 
+function Get-NativeShortcutFolder([string]$Name) {
+    [Environment]::GetFolderPath([Environment+SpecialFolder]$Name, [Environment+SpecialFolderOption]::DoNotVerify)
+}
+
+function Write-NativeShortcutWarning([string]$Message) { Write-Warning $Message }
+
+function Get-NativeProgramsFolder {
+    $programs=Get-NativeShortcutFolder 'Programs'
+    if([string]::IsNullOrWhiteSpace($programs)){throw [InvalidOperationException]::new('Windows no proporciona la carpeta Programs del usuario; no se modifican los accesos.')}
+    $programs
+}
+
 function Sync-NativeOptionalShortcuts([string]$Directory,[string]$Folder,$Ui,[bool]$Remove=$false) {
     if($null -eq $Ui){return}
-    $shell=New-Object -ComObject WScript.Shell
     $targets=@(
-        @{parent=[Environment]::GetFolderPath('DesktopDirectory'); enabled=$Ui.desktop},
-        @{parent=[Environment]::GetFolderPath('Startup'); enabled=$Ui.autostart}
+        @{name='DesktopDirectory'; enabled=$Ui.desktop},
+        @{name='Startup'; enabled=$Ui.autostart}
     )
     foreach($target in $targets){
-        $path=Join-Path $target.parent ($Folder+'.lnk')
-        $exists=Test-Path -LiteralPath $path
-        $owned=$exists -and (Test-NativeShortcutOwned ($shell.CreateShortcut($path)) $Directory)
-        if($Remove -or -not $target.enabled){if($owned){Remove-Item -LiteralPath $path}; continue}
-        if($exists -and -not $owned){throw 'El acceso opcional pertenece a otra instalación; se conserva.'}
-        $link=$shell.CreateShortcut($path)
-        $link.TargetPath=Join-Path $env:WINDIR 'System32/WindowsPowerShell/v1.0/powershell.exe'
-        $link.Arguments='-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "'+(Join-Path $Directory 'beta.ps1')+'" -Root "'+$Directory+'"'
-        $link.Save()
+        # OFF never asks Windows for a folder (new/headless profiles may lack it).
+        if(-not $target.enabled){continue}
+        try {
+            $shell=New-Object -ComObject WScript.Shell
+            $parent=Get-NativeShortcutFolder $target.name
+            if([string]::IsNullOrWhiteSpace($parent)){throw 'Windows no ofrece la carpeta opcional.'}
+            $path=Join-Path $parent ($Folder+'.lnk')
+            $exists=Test-Path -LiteralPath $path
+            $owned=$exists -and (Test-NativeShortcutOwned ($shell.CreateShortcut($path)) $Directory)
+            if($Remove){if($owned){Remove-Item -LiteralPath $path}; continue}
+            if($exists -and -not $owned){throw 'El acceso opcional pertenece a otra instalación; se conserva.'}
+            [IO.Directory]::CreateDirectory($parent)|Out-Null
+            $link=$shell.CreateShortcut($path)
+            $link.TargetPath=Join-Path $env:WINDIR 'System32/WindowsPowerShell/v1.0/powershell.exe'
+            $link.Arguments='-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "'+(Join-Path $Directory 'beta.ps1')+'" -Root "'+$Directory+'"'
+            $link.Save()
+        } catch { Write-NativeShortcutWarning ("No se pudo sincronizar el acceso opcional {0}: {1}" -f $target.name,$_.Exception.Message) }
+    }
+}
+
+# Undo only the registry values and exact shortcut files that Setup can change.
+# The caller holds beta-session.lock; Install-Beta restores generations/metadata.
+function Invoke-NativeRegistrationTransaction([string]$Key,[string]$Folder,[string]$Legacy,[scriptblock]$Action) {
+    $values=@{}; $existed=Test-Path -LiteralPath $Key
+    if($existed){
+        $registry=Get-Item -LiteralPath $Key
+        foreach($name in $registry.GetValueNames()){
+            $values[$name]=@{value=$registry.GetValue($name,$null,[Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames);kind=$registry.GetValueKind($name)}
+        }
+    }
+    $links=@{}; $paths=@()
+    $programs=Get-NativeProgramsFolder
+    foreach($name in @('Vantare.lnk','Desinstalar.lnk')){$paths+=Join-Path (Join-Path $programs $Folder) $name}
+    foreach($name in @('Vantare Native Beta.lnk','Desinstalar.lnk')){$paths+=Join-Path (Join-Path $programs $Legacy) $name}
+    # Optional shortcuts run last, after every mandatory write, and cannot throw.
+    # Do not resolve/read them here: even their backup can fail in a raw profile.
+    foreach($path in $paths){$links[$path]=if(Test-Path -LiteralPath $path){[IO.File]::ReadAllBytes($path)}else{$null}}
+    try { & $Action } catch {
+        $failure=$_
+        # Restore files even if Windows continues denying registry writes.
+        try {
+            foreach($path in $links.Keys){
+                if($null -ne $links[$path]){[IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($path))|Out-Null;[IO.File]::WriteAllBytes($path,$links[$path])}
+                elseif(Test-Path -LiteralPath $path){Remove-Item -LiteralPath $path}
+            }
+        } finally {
+            if(-not $existed){if(Test-Path -LiteralPath $Key){Remove-Item -LiteralPath $Key}}
+            else {
+                if(-not (Test-Path -LiteralPath $Key)){$null=New-Item -Path $Key -Force}
+                $registry=Get-Item -LiteralPath $Key
+                foreach($name in $registry.GetValueNames()){if(-not $values.ContainsKey($name)){Remove-ItemProperty -LiteralPath $Key -Name $name}}
+                foreach($name in $values.Keys){New-ItemProperty -LiteralPath $Key -Name $name -Value $values[$name].value -PropertyType ([string]$values[$name].kind) -Force|Out-Null}
+            }
+        }
+        throw $failure
     }
 }
 
 # La clave estable permite que el bootstrap antiguo siga corrigiendo la versión
 # tras rollback. Solo cambia la identidad visible; nunca se trasladan datos.
-function Sync-NativeRegistration([string]$Directory, [string]$Version) {
+function Sync-NativeRegistration([string]$Directory, [string]$Version, $PreviousUi=$null) {
     $directory = Assert-NativePath $Directory
     $identity = 'VantareNativeBeta'
     $folder = 'Vantare'
@@ -343,7 +448,7 @@ function Sync-NativeRegistration([string]$Directory, [string]$Version) {
         $uninstallTarget=Join-Path $directory 'Uninstall.exe'
         $uninstallArgs='/D="'+$directory+'"'
     }
-    $programs = [Environment]::GetFolderPath('Programs')
+    $programs = Get-NativeProgramsFolder
     $target = Join-Path $programs $folder
     $shell = New-Object -ComObject WScript.Shell
     foreach ($name in @('Vantare.lnk', 'Desinstalar.lnk')) {
@@ -389,8 +494,12 @@ function Sync-NativeRegistration([string]$Directory, [string]$Version) {
     }
     Set-ItemProperty -LiteralPath $key -Name DisplayName -Value 'Vantare'
     Set-ItemProperty -LiteralPath $key -Name DisplayVersion -Value $Version
-    Sync-NativeOptionalShortcuts $directory $folder $installerUi
     Set-ItemProperty -LiteralPath $key -Name UninstallString -Value ('"' + $uninstallTarget + '" ' + $uninstallArgs)
+    if($null -ne $PreviousUi -and $null -ne $installerUi){
+        # Only previously enabled options are resolved when explicitly disabling them.
+        Sync-NativeOptionalShortcuts $directory $folder @{desktop=($PreviousUi.desktop -and -not $installerUi.desktop);autostart=($PreviousUi.autostart -and -not $installerUi.autostart)} $true
+    }
+    Sync-NativeOptionalShortcuts $directory $folder $installerUi
 }
 
 function Uninstall-NativeRegistration([string]$Directory,[bool]$DeferUninstaller=$false,[string]$KnownIdentity='', [string]$KnownFolder='') {
@@ -425,7 +534,7 @@ function Uninstall-NativeRegistration([string]$Directory,[bool]$DeferUninstaller
         & (Join-Path $env:WINDIR 'System32/WindowsPowerShell/v1.0/powershell.exe') -NoProfile -ExecutionPolicy Bypass -File (Join-Path $directory 'beta.ps1') -Operation Uninstall -Root $directory
         if ($LASTEXITCODE) { throw 'Cierra Vantare antes de desinstalar. Tus datos se conservan.' }
     }
-    $target = Join-Path ([Environment]::GetFolderPath('Programs')) $folder
+    $target = Join-Path (Get-NativeProgramsFolder) $folder
     $shell = New-Object -ComObject WScript.Shell
     foreach ($name in @('Vantare.lnk', 'Desinstalar.lnk')) {
         $path = Join-Path $target $name
@@ -670,34 +779,43 @@ function Build-NativeCandidate([string]$Destination, [string]$CandidateVersion, 
     Push-Location $native
     try {
         # La miniapp owner se construye aparte y nunca entra en el paquete público.
-        $cargoArgs = @('build', '--offline', '--locked', '--workspace', '--exclude', 'vantare-admin', '--exclude', 'vantare-installer', '--bins', '-j', '2')
+        $cargoArgs = @('build', '--offline', '--locked', '--target', 'x86_64-pc-windows-msvc', '--workspace', '--exclude', 'vantare-admin', '--exclude', 'vantare-installer', '--bins', '-j', '2')
         if ($Profile -eq 'Release') { $cargoArgs += '--release' }
         $oldVersion = $env:VANTARE_VERSION
         $oldChannel = $env:VANTARE_BUILD_CHANNEL
+        $oldFlags = $env:CARGO_ENCODED_RUSTFLAGS
         try {
             $env:VANTARE_VERSION = $CandidateVersion
             $env:VANTARE_BUILD_CHANNEL = $CandidateChannel
+            # Only distribution uses static CRT; development and host build
+            # scripts/proc macros keep their existing target/toolchain settings.
+            $flags=$oldFlags
+            if(-not $flags -and $env:RUSTFLAGS){$flags=($env:RUSTFLAGS.Trim() -split '\s+') -join [char]31}
+            if($flags){$flags += [char]31}
+            $env:CARGO_ENCODED_RUSTFLAGS=$flags+'-C'+[char]31+'target-feature=+crt-static'
             & cargo @cargoArgs
             $buildExit = $LASTEXITCODE
         } finally {
             $env:VANTARE_VERSION = $oldVersion
             $env:VANTARE_BUILD_CHANNEL = $oldChannel
+            $env:CARGO_ENCODED_RUSTFLAGS = $oldFlags
         }
         $global:LASTEXITCODE = $buildExit
         if ($LASTEXITCODE) { throw 'Falló la compilación offline.' }
         $metadata = (& cargo metadata --offline --locked --format-version 1 --filter-platform x86_64-pc-windows-msvc | ConvertFrom-Json)
         if ($LASTEXITCODE) { throw 'Falló la lectura del grafo fijado.' }
         $bins = @($metadata.packages | Where-Object { $_.id -cin $metadata.workspace_members -and $_.name -cnotin @('vantare-admin', 'vantare-installer') } | ForEach-Object { $_.targets | Where-Object { 'bin' -cin $_.kind } | ForEach-Object { $_.name } })
-        if (@(Compare-Object $script:NativeBuildBins $bins -CaseSensitive).Count) { throw 'El inventario de binarios no coincide con cargo metadata; actualizarlo antes de empaquetar.' }
+        Assert-NativeBuildInventory $bins
         $installerBins = @($metadata.packages | Where-Object name -CEQ 'vantare-installer' | ForEach-Object { $_.targets | Where-Object { 'bin' -cin $_.kind } | ForEach-Object { $_.name } })
         if (@(Compare-Object @('vantare-setup','vantare-uninstall') $installerBins -CaseSensitive).Count) { throw 'Inventario del instalador propio incorrecto.' }
     } finally { Pop-Location }
     $payload = Join-Path $destination 'payload'
+    $dumpbin=Get-NativeDumpbin
     [IO.Directory]::CreateDirectory((Join-Path $payload 'bin')) | Out-Null
     [IO.Directory]::CreateDirectory((Join-Path $payload 'licenses')) | Out-Null
     foreach ($bin in (Get-NativeBins $CandidateChannel)) {
-        $source = Join-Path $metadata.target_directory ($Profile.ToLowerInvariant() + "/$bin.exe")
-        Assert-NativePe $source
+        $source = Join-Path $metadata.target_directory ('x86_64-pc-windows-msvc/' + $Profile.ToLowerInvariant() + "/$bin.exe")
+        Assert-NativeStaticCrt $source $dumpbin
         $embedded = & $source --version
         if ($LASTEXITCODE -or $embedded -cne "Vantare Native $CandidateVersion ($CandidateChannel)") { throw "Versión de producto no coincide: $bin" }
         Copy-Item -LiteralPath $source -Destination (Join-Path $payload "bin/$bin.exe")

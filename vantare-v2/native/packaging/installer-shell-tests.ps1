@@ -58,14 +58,15 @@ try {
     Assert-Installer ((Get-ItemProperty -LiteralPath $qaKey).UninstallString.Contains('Uninstall.exe')) 'Register conserva desinstalador propio'
     Assert-Installer ((($shell.CreateShortcut((Join-Path $qaStart 'Desinstalar.lnk'))).TargetPath) -eq (Join-Path $registrationRoot 'Uninstall.exe')) 'Inicio usa el mismo desinstalador'
     Assert-Installer ((Test-Path -LiteralPath $qaDesktop) -and (Test-Path -LiteralPath $qaBoot)) 'Opciones crean solo accesos QA'
+    $previousUi=@{desktop=$true;autostart=$true}
     $ui.autostart=$false; Write-BetaJson (Join-Path $registrationRoot 'installer-ui.json') $ui
-    Sync-NativeRegistration $registrationRoot '0.0.978'
+    Sync-NativeRegistration $registrationRoot '0.0.978' $previousUi
     Assert-Installer (-not (Test-Path -LiteralPath $qaBoot)) 'Desactivar autostart retira el acceso propio'
     Remove-Item -LiteralPath $qaDesktop
     $foreign=$shell.CreateShortcut($qaDesktop); $foreign.TargetPath=Join-Path $env:WINDIR 'notepad.exe'; $foreign.Save()
     $foreignHash=Get-NativeHash $qaDesktop
-    $failed=$false; try{Sync-NativeRegistration $registrationRoot '0.0.978'}catch{$failed=$true}
-    Assert-Installer ($failed -and (Get-NativeHash $qaDesktop) -ceq $foreignHash) 'Colisión preserva acceso ajeno y rechaza operación'
+    $warnings=@(Sync-NativeRegistration $registrationRoot '0.0.978' 3>&1)
+    Assert-Installer ($warnings.Count -gt 0 -and (Get-NativeHash $qaDesktop) -ceq $foreignHash) 'Colisión preserva acceso ajeno y avisa sin fallar registro'
     $ui.desktop=$false; Write-BetaJson (Join-Path $registrationRoot 'installer-ui.json') $ui
     Sync-NativeRegistration $registrationRoot '0.0.978'
     Assert-Installer ((Get-NativeHash $qaDesktop) -ceq $foreignHash) 'Opción OFF tampoco borra acceso ajeno'

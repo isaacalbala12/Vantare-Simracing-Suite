@@ -16,7 +16,8 @@ pub const FIXTURES: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../ui/fixtures"
 /// `FIXTURES` es una ruta absoluta de la maquina de compilacion: no existe en
 /// un equipo donde solo se instalo el paquete, y usarla al arrancar dejaba al
 /// Hub sin abrir ventana. Se prefiere la copia que viaja junto al ejecutable
-/// (`bin/fixtures`) y solo se cae a la de desarrollo si esa existe.
+/// (`bin/fixtures`). Solo Debug admite la carpeta de desarrollo; Release debe
+/// funcionar con su propio paquete y nunca ocultar un recurso ausente.
 pub fn fixtures_root() -> Option<std::path::PathBuf> {
     if let Some(dir) = std::env::current_exe()
         .ok()
@@ -25,8 +26,15 @@ pub fn fixtures_root() -> Option<std::path::PathBuf> {
     {
         return Some(dir);
     }
-    let development = std::path::PathBuf::from(FIXTURES);
-    development.is_dir().then_some(development)
+    #[cfg(debug_assertions)]
+    {
+        let development = std::path::PathBuf::from(FIXTURES);
+        development.is_dir().then_some(development)
+    }
+    #[cfg(not(debug_assertions))]
+    {
+        None
+    }
 }
 
 pub struct Scene {

@@ -1,5 +1,20 @@
 # Beta nativa — instalador y actualizaciones (#1454)
 
+Seguimiento #1695: el rollback intenta restaurar cada metadato aunque otro esté
+bloqueado y registra los fallos en stderr, conservando el error original. Si no
+se puede enumerar el estado anterior se aborta antes de activar; si no se puede
+comprobar el estado actual o enumerar durante rollback, se conservan las
+generaciones. Nunca se retira una generación aún referenciada por state.json.
+Un bloqueo persistente puede impedir la restauración completa; el log lo indica.
+
+El desinstalador mantiene beta-session.lock durante retirada de datos de
+programa, registro, accesos y creación del marker. Su EXE se retira después de
+salir mediante Cleanup, que toma el mismo lock hasta borrar EXE y marker.
+La recuperación de un marker huérfano por Setup también se valida bajo ese lock.
+Las suites de registro y shell se ejecutan en el check Windows bloqueante.
+Auditoría de recursos de arranque, inventario explícito y regresión del Hub
+Release aislado del checkout: [startup-resources.md](startup-resources.md) (#1694).
+
 El orquestador publica la beta; estos scripts **no publican ni usan tokens**.
 Windows x64, NTFS y PowerShell 5.1. Setup y Uninstall son binarios Rust/GPUI
 del crate [installer](../installer/README.md), con ZIP, bootstrap y fuentes
@@ -59,6 +74,20 @@ o reparación, devuelve código 4 y pide abrir y cerrar Vantare primero. No camb
 la generación ni el marcador pendiente: el arranque conserva su rollback.
 Los códigos 2 (sesión/binarios abiertos), 3 (versión anterior) y 4 provienen de
 errores tipados, sin depender del texto mostrado.
+
+#1690: Desktop/Startup apagados no consultan sus carpetas. Si se activan,
+se usa la ruta configurada por Windows y se crea la carpeta si falta; una
+carpeta inaccesible o un acceso ajeno se conserva y produce un aviso sin
+abortar la instalación. Al apagar una opción antes activa, Setup retira
+solo su acceso anterior; desinstalar retira solo los accesos activados propios.
+La finalización del registro permanece bajo el bloqueo de sesión de Setup.
+Si falla tras activar/copiar, se restauran los valores y tipos del registro,
+los bytes de accesos/bootstrap/metadatos y la generación anterior; se retira
+solo la generación nueva, conservando los datos originales. La restauración
+es para excepciones del proceso, no una garantía nueva ante corte de energía
+o permisos que impidan también restaurar. `installer-registration-tests.ps1`
+usa carpetas ausentes, PE inertes y errores reales de archivos compartidos;
+incluye el driver completo sin abrir la aplicación ni una UI de instalador.
 
 Después de desinstalar, Setup adopta automáticamente los datos de la generación
 activa conservada en `retained-data.json`. Desinstaladores antiguos sin esa
@@ -249,6 +278,20 @@ que el paquete cargue en este PC no certifica redistribución ni equipo limpio.
 
 # Candidato offline — fase 7 (ISA-1432)
 
+#1692: el builder de distribución compila con CRT estático y target explícito
+`x86_64-pc-windows-msvc`, igual que Setup/Uninstall. Se limita a esa invocación:
+no cambia el toolchain ni la configuración Cargo del desarrollo y restaura los
+flags previos incluso si Cargo falla. Los EXE salen de `<target>/x86_64-pc-windows-msvc/<perfil>`.
+DuckDB sigue siendo bundled (sin DUCKDB_LIB_DIR), y `cc` recibe crt-static para
+usar /MT en su C++. Antes de ejecutar --version o copiar cada EXE, dumpbin
+/DEPENDENTS revisa imports normales y diferidos: VC Runtime, MSVC C++ y UCRT
+dinámicos se rechazan. El inspector usa los Build Tools MSVC ya requeridos;
+no requiere Python ni incorpora un redistribuible. La UCRT dinámica es parte
+de Windows 10/11, pero esta guarda exige que el CRT del paquete sea estático.
+`build-crt-tests.ps1` prueba PE /MT, /MD, delay imports, fallos del inspector y
+restauración de flags en el builder. Las DLL del sistema y Windows limpio se
+verifican por separado: pasar el gate CRT no acredita GPU, Hub ni servicios remotos.
+
 Windows x64, PowerShell 5.1/.NET y volumen local con reemplazo atómico (NTFS).
 No requiere Python, NSIS, crates nuevas ni permisos de administrador.
 **Candidato técnico sin firma; Wails sigue siendo el producto distribuido.**
@@ -266,6 +309,10 @@ rendimiento de producto. Beta empaqueta diez: excluye `vantare-workshop.exe` y s
 sidecar, pero sigue compilándolo para desarrollo y capturas de paridad en el repo.
 Los demás canales conservan Workshop. El inventario se verifica según el canal
 guardado en el manifiesto/estado, también al actualizar, importar o consultar Status.
+
+Las herramientas privadas `vantare-grabar-lmu-completo` y `vantare-verificar-lmu`
+se validan en el inventario de compilación, pero no se distribuyen en ningún
+canal; no amplían los diez EXE beta. Regresión: `build-inventory-tests.ps1`.
 Para probar antes del commit, `-AllowDirty` registra `source_dirty=true`.
 El SHA de Git y los hashes de todos los archivos identifican lo construido;
 los binarios embeben `VANTARE_VERSION` y `VANTARE_BUILD_CHANNEL`, que el builder fija y restaura. Todos responden a `--version`.

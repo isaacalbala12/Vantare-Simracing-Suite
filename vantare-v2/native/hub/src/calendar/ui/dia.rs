@@ -148,7 +148,8 @@ pub(super) fn render(cal: &mut Calendar, cx: &mut Context<Calendar>) -> Div {
                         .overflow_hidden(),
                 )
                 .child(div().flex().child(tier(s, cx)))
-                .when(!compact, |c| {
+                // A pantalla completa el diseño no está «contraído»: enseña el circuito.
+                .when(!compact || cal.ui.full, |c| {
                     c.child(t(s.track_short().to_owned(), 10.5, 400, skin.text3, cx).truncate())
                 })
         }));
@@ -166,6 +167,8 @@ pub(super) fn render(cal: &mut Calendar, cx: &mut Context<Calendar>) -> Div {
             .h(px(HOUR_H))
             .border_b_1()
             .border_color(line)
+            // `.dgr.past{opacity:.45}`: la fila entera, no solo el texto.
+            .when(past, |r| r.opacity(0.45))
             .child(
                 div()
                     .w(px(46.0))
@@ -243,7 +246,7 @@ pub(super) fn render(cal: &mut Calendar, cx: &mut Context<Calendar>) -> Div {
                         } else {
                             mono(label, 11.0, if gone { skin.text3 } else { skin.text2 }, cx)
                         })
-                        .when(gone, |c| c.opacity(0.7))
+                        .when(gone, |c| c.opacity(0.6))
                         .on_click(cx.listener(move |this, _, _, cx| {
                             this.open_ficha(sid.clone(), Some(st), cx);
                         })),

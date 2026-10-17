@@ -1,3 +1,252 @@
+## #1695 / VANTA-105 · Seguimiento activo desde nightly95c08834b
+
+El orquestador confirma #1696 integrado en nightly95c08834b y ordena retomar
+este PR separado. Rama vantareapp/isa-1695-installer-transaccion, worktree propio
+isa-1695. PR #1699 READY, código8ecdde066 subido; CI remota pendiente, sin merge. WIP propio preservado en commit5c6121d61; merge949b4f5c7 de nightly,
+sin rebase/force-push. Conflictos documentales conservan ambos expedientes.
+#1698 sigue DRAFT e8cf16e6a hasta revisión con Isaac; no se toca su workflow.
+Target1694-hub queda exclusivamente a cargo del orquestador, no se toca.
+
+Rollback beta intenta cada archivo y registra fallos, conservando el error
+original. Estado primero; limpieza conserva generaciones referenciadas o todas
+si falla comprobar estado/enumeración. Snapshot inicial no legible aborta antes
+de activar. Desinstalación mantiene beta-session.lock hasta registro y marker;
+Cleanup lo adquiere para retirar EXE/marker, y Setup recupera huérfanos bajo lock.
+Programs vacío falla con diagnóstico antes de Join-Path; ON con carpeta vacía
+advierte sin abortar. Suite shell añadida al workflow Windows bloqueante.
+
+MSIX se documenta fuera de RC1/beta26-oct, sin habilitar Store ni cambiar su
+builder experimental. Setup/Uninstall usan la misma guarda real de imports
+que el payload, incluida cabecera PE. CRT24 PASS: build/metadata satisfactorios
+llegan a la guarda dentro del builder, rechazan PE dinámico antes de copiarlo;
+builder de Setup real rechaza cada entrada dinámica y acepta ambas estáticas.
+Compilación sustituida por PE C inertes, sin ejecutar esos binarios.
+
+Primera campaña PS5.1 privada PASS: registro65, shell23; SID1029/perfil retirados.
+Campaña final PASS: registro66 (incluye lock del driver real) y shell23; SID1030/perfil retirados, DACL restaurada. CRT24 e inventario14 finales PASS.
+AST/YAML/diff/462 huellas PASS. No Rust/Cargo/toolchain alterados: gates Rust
+los verificará la CI existente; las regresiones locales son scripts/procesos,
+registro/COM/NTFS y PE reales. PR #1699 preparado; no declarar CI verde hasta comprobar los checks del HEAD final.
+P2-1 real ya PASS con Setup nuevo de nightly7396, SHA bec8d3bb4394543169561cad07965987615e13914b6bdd00cd075dc80289e913;
+OFF limpio, reinstalación ON y NSIS0.0.975→OFF, sin crear Startup en el actor.
+Esta build histórica no contiene P2/P3 nuevos; no se mezclan sus resultados.
+Informe C:/VantareServer/evidence/rc1/seguimiento-1691/INFORME.md.
+Sin configuración beta: login/pagos sin probar. Sin firma/publicación/merge.
+
+## #1694 y propuesta #1697 · Entrega a revisión (2026-10-17 08:57:27 UTC)
+
+Verificación final 2026-10-17 08:57:27 UTC : PR #1696 READY, OPEN y MERGEABLE en e2fafdecbe4365acb86faf19915b4478f70df598. Cinco checks SUCCESS, incluidos los dos requeridos: Validate promotion path y Validate Vantare blocking gates. Run https://github.com/isaacalbala12/Vantare-Simracing-Suite/actions/runs/39018399770 . Sin merge por el worker; listo para review del orquestador. Hub-ready sigue NO acreditado (DirectX0x8007000E en desktop privado), sin firma/publicación.
+
+PR #1698 sigue DRAFT y MERGEABLE en e8cf16e6a5011b7deff0412313adc7d56f06e52a, también cinco checks SUCCESS (run39018263649). Estos checks existentes NO prueban el job propuesto ni hub-ready en hosted; la propuesta permanece omitida mientras draft y depende de #1694 integrado. No se cambia a ready.
+
+## Ampliación autorizada tras review #1693 (17-oct, VANTA-105)
+
+#1694 / PR #1696 sigue primero. Después, en este mismo PR de seguimiento de los puntos 2–4:
+
+- CRT-P2-1: revisar native/packaging/msix/build.ps1:50, que aún compila sin target explícito/crt-static/guarda de imports. Alinearlo con candidate.ps1 o documentar explícitamente que MSIX no se usa en este lanzamiento; hoy es ruta local experimental, sin envío a Store.
+- CRT-P3: añadir una regresión que recorra el builder con cargo satisfactorio y artefactos/metadata válidos, hasta la guarda real de imports. Debe detectar un EXE dinámico dentro del builder; el mock que siempre devuelve17 no cubre ese paso.
+- CRT-P3: reutilizar la guarda de imports en Setup y Uninstall, además de la cabecera PE, con prueba que detecte un binario de entrada dinámico.
+
+Referencia: C:/VantareServer/evidence/rev-1693/INFORME.md (review APTO). Este encargo no añade los demás P3 de la review ni cambios de toolchain. #1693 ya integrado en nightly64dc28446 por el orquestador. Al retomar, actualizar la base mediante merge sin rebase/force-push y preservar el WIP propio de esta rama. No se ejecutan aún estos cambios: primero #1694 y la propuesta draft de QA Windows #1698.
+
+## #1694 / VANTA-105 · Recursos de arranque (17-oct-2026)
+
+PR #1696, rama vantareapp/isa-1694-recursos-arranque. Base7396f65d0;
+merge de nightly64dc28446 (CRT #1693 ya integrado por el orquestador), sin
+rebase/force-push. Conflicto solo de handoff resuelto conservando ambos informes.
+Inventario cerrado completo: 17 secuencias aprobadas y snapshot Session Alerts.
+Release resuelve solo bin/fixtures, sin fallback al checkout; Debug lo conserva.
+Workshop sigue siendo entidad de la shell: distribuir sus recursos públicos
+versionados evita cambiar navegación/estado para resolver este bloqueo.
+Auditoría sistemática en native/packaging/startup-resources.md.
+
+Hub Release real recompilado; check y Clippy -D warnings PASS, fmt/inventario14,
+AST/diff/462 huellas PASS. Nextest final: 522/522 PASS, 4 omisiones previas,
+113,646s; Storage hermano real compilado con DuckDB de desarrollo tras detectar
+su ausencia en el primer intento. Sin omitir ni debilitar el test afectado.
+Setup QA productor91744adb4, SHA
+1241f57869627e5f4959d3c90c30f64ffffb7151b187293ee2fb97b40ac6b54c.
+Hub/Setup nuevos y otros nueve EXE f68e4a3db con Rust/lock idénticos verificados;
+PROCEDENCIA.json distingue cada productor. No es build beta pública completa.
+Artefactos y sidecars en share/rc1/hub-1694, RC1 original conservada.
+
+Cuatro campañas con usuarios estándar privados: faltan escena/directorio → exit1
+sin ready; paquete completo supera recursos y falla en DirectX resources:
+0x8007000E, exit1/00000001, sin hub-ready ni terminación forzada. Stderr completo
+conservado; cuentas/perfiles retirados y DACL restaurada. Sin ventanas ni procesos
+alterados en la sesión de Isaac. Desactivar DirectComposition tampoco resuelve.
+El orquestador autoriza entregar #1694 con este límite: probablemente entorno
+GPU/memoria de escritorio del servidor; no es prueba de defecto del producto.
+Hub-ready sigue pendiente. No hay otra VM/PC autorizado; propuesta aparte
+#1697 / PR draft #1698 para Windows hosted y pasos físicos para Isaac.
+Informe C:/VantareServer/evidence/rc1/hub-1694/INFORME.md.
+Regresión final SID1028 valida también la causa de ambos negativos y captura
+stderr UTF8; mismo fallo DirectX. Target D:/VantareServer/targets/1694-hub
+sin compilación activa: borrado literal rechazado por revisión automática
+(blocked by policy), pendiente de limpieza por el orquestador.
+Sin configuración beta: login/pagos sin probar. Sin firma/publicación/merge.
+
+P2-1 de #1695 ya acreditado con Setup nuevo de nightly7396f65d0, SHA
+bec8d3bb4394543169561cad07965987615e13914b6bdd00cd075dc80289e913. Tres usuarios
+sin Startup: OFF limpio, reinstalación ON (preferencia guardada) y NSIS0.0.975
+→nuevo OFF; actor nunca crea Startup/Desktop, datos conservados y SID/perfiles
+retirados. Informe seguimiento-1691/INFORME.md. La QA histórica de RC1 no acredita
+el arreglo. P2/P3 de #1695 siguen WIP aislado, sin PR; se retoman después.
+
+## #1692 / VANTA-105 · CRT de distribución (17-oct-2026)
+
+Actualización de integración: el orquestador fusionó #1691 en nightly
+`7396f65d0`; se incorpora mediante merge a #1693, sin rebase/force-push.
+Se conservan las suites CRT y registro y ambos expedientes; CI del nuevo HEAD
+pendiente. La evidencia del payload sigue ligada al productor f68e4a3db.
+Tras el merge: CRT17 y registro42 PASS en PS5.1; AST/diff/462 huellas PASS.
+Shell adicional bloqueado por acceso QA1492 preexistente en Startup: la guarda
+lo conserva. No se borra ni se afirma PASS; log merge-shell-tests.log en crt/.
+Seguimiento autorizado [#1695](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1695):
+Setup nuevo desde nightly, Startup ausente OFF/ON sin crearla en el actor;
+después rollback por fichero, lock de desinstalación y P3 en PR separado.
+La QA histórica con Startup creada y Setup antiguo no acredita el arreglo.
+
+Encargo posterior a #1690, cuyo PR #1691 quedó ready con cinco checks verdes
+en `a99f560c1` (run39007794185), sin merge por el worker. #1692 usa rama/worktree
+propios `vantareapp/isa-1692-crt-estatico`, isa-1692, base nightly `329520c20`.
+La inspección nueva de RC1 confirma vcruntime140 en diez EXE; Storage añade
+msvcp140 y vcruntime140_1. Inventario exacto y SHA en
+`C:/VantareServer/evidence/rc1/crt/imports-rc1-rechecked.json`. No se incluye
+redistribuible. Setup/Uninstall sí eran estáticos; el payload no lo era.
+
+Propuesta acotada al builder: target Windows explícito, crt-static solo para
+distribución y flags del llamador restaurados. DuckDB bundled conserva su
+contrato y cc1.5.1 elige /MT; no se cambian toolchain/lock, configuración global,
+dependencias ni DuckDB precompilado de desarrollo. Guarda dumpbin sobre cada
+EXE distribuido, antes de ejecutar/copiar; imports normales y diferidos.
+PR [#1693](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1693).
+Productor limpio `f68e4a3db`: Release completo por cola MIN_GB=0/jobs2,
+27m45s de Cargo; diez EXE reales pasan de importar CRT dinámico a cero.
+Suma EXE 103.861.760 → 106.403.328 bytes; paquete SHA
+`7402344778e5442dd8626eb2de2f0b629f157145ea8ee0cfe041dc4017548a3c`.
+CSV por EXE con DLL exactas/SHA, dumpbin y parser PE independientes en
+`C:/VantareServer/evidence/rc1/crt/`. Objeto DuckDB real acredita libcpmt/LIBCMT.
+17 regresiones PS5.1 PASS; CI del productor cinco SUCCESS (run39009881804).
+Storage distribuido escribe/cierra/reabre readonly y recupera mismos datos,
+exit0. Nextest Release estático de Storage 19/19 PASS, cero omitidos, 15,943s;
+WAL tras matar escritor, rollback y bloqueo entre procesos. Log en INFORME.md.
+Target propio `D:/VantareServer/targets/crt-1692-payload` sin compilación activa:
+su borrado literal fue rechazado por revisión automática (blocked by policy);
+queda pendiente para el orquestador. Sin native/target ni caché en evidencia.
+
+Dos usuarios estándar nuevos en escritorios privados: veinte --version exit0.
+Hub original y estático salen1 por escena ausente
+`standings-design-system.sequence.json`, sin marker. Hallazgo separado
+[#1694](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1694),
+pendiente de asignación por el orquestador, no corregido en este PR.
+Supervisor detecta instancia existente; stop AccessDenied. Ningún proceso de
+Isaac detenido. Ambos usuarios/perfiles retirados, escritorio/DACL restaurados.
+El servidor ya tiene las DLL (14.51.36247.0): no equivale a Windows limpio.
+UCRT es parte del Windows objetivo, diferente del redistribuible VC Runtime.
+Referencias: Rust Reference linkage, docs de cc1.5.1 y Microsoft Universal CRT,
+en `C:/VantareServer/evidence/rc1/crt/INFORME.md`. Configuración beta ausente:
+build QA local sin servicios, login/pagos sin probar, no candidata publicable.
+Sin nuevo Setup, firma/publicación/merge; share/rc1 histórico conservado.
+HEAD documental final requiere CI propia antes de ready; no se confunde con
+el productor del payload f68e4a3db, cuyos cinco checks ya pasaron.
+## #1690 / VANTA-105 · Startup ausente y finalización de Setup (17/10/2026)
+
+Hallazgo bloqueante de la QA local RC1 #1688; el orquestador confirma que
+continúa bajo VANTA-105. Rama `vantareapp/isa-1690-startup-ausente`, worktree
+propio isa-1690, base `origin/nightly@5e5c4d1854988604664c518c68beb31a27d2704c`.
+PR separado [#1691](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1691),
+implementación `67be3b9b55dea9ce7ba7c09d94eb65552ff7addb`. #1689 ya integrado
+por el orquestador: merge de `origin/nightly@329520c20` a esta rama, sin rebase.
+Conflictos solo en workflow/handoff: se conservan ambas suites con sus gates
+y ambos expedientes completos. CI pendiente del nuevo HEAD, registrado en #1690.
+CI `85f8777cd`/`25598a834` falla en el fixture: exit5, cancelación previa a copiar.
+.NET Framework antepone BOM de Console.InputEncoding al crear stdin del hijo;
+se reproduce localmente con UTF8-BOM. El harness selecciona UTF8 sin BOM solo
+durante Process.Start y restaura la codificación del llamador, enviando los
+mismos bytes ASCII de Rust. Regresión fuerza padre UTF8-BOM; no se relaja el
+acuse exacto del motor ni se cambia producción para hacer pasar este fallo.
+Sin merge del PR hacia nightly, firma ni publicación por el worker.
+
+Desktop/Startup OFF no consultan carpetas ni COM. ON usa la ruta configurada
+por Windows y crea la carpeta ausente; si no se puede, avisa y conserva lo
+ajeno sin abortar. Apagar una opción antes activa retira solo el acceso propio
+anterior; desinstalar no exige carpetas de opciones que nunca se activaron.
+Setup finaliza el registro bajo beta-session.lock. Ante excepción posterior a
+copiar/activar, restaura valores/tipos del registro, bytes de accesos y
+metadatos/bootstrap y estado anterior; elimina solo la generación nueva.
+Los datos originales y los datos conservados tras desinstalar se preservan.
+No añade recuperación durable ante corte de energía ni puede garantizar
+restauración si Windows impide también escribir los datos anteriores.
+
+Regresiones PS 5.1 `installer-registration-tests.ps1`, llamadas por
+`installer-tests.ps1` y por el gate Windows requerido: resolver que rechaza
+consultas OFF, carpetas ausentes/bloqueadas, COM real y PE inertes no ejecutados.
+Fallos reales de compartición después de activar/escribir para instalación
+nueva, actualización y adopción de datos; driver real instala en silencio y
+falla después al registrar una reparación con el bootstrap bloqueado, dejando
+exactamente el estado anterior y sin marker de arranque pendiente.
+Registro/driver: 42 PASS (incluida entrada UTF8-BOM); shell existente: 23 PASS; quality: 462 huellas PASS;
+AST y diff PASS. Los avisos del driver van al log, dejando stdout solo para
+eventos JSON. Los accesos opcionales se sincronizan tras la última escritura
+obligatoria: ni su resolución ni su copia de seguridad pueden abortar Setup.
+No cambia Rust/dependencias ni auth; no compila Rust localmente: la CI requerida
+ejecuta sus gates. No se abren Hub ni UI en la sesión principal, no se crean
+cuentas ni targets. Configuración beta, Hub, login, pagos y Windows limpio
+conservan los límites del informe RC1; no se reconstruye una candidata pública.
+
+## #1688 · VANTA-105 · Entrega local de mecánica (17-oct-2026)
+
+**QA local condicional PASS; NO candidata beta publicable.** El orquestador
+permitió probar sin config remota. BuildConfig ausente es soportado por Services;
+no se inventan valores ni se usa producción. Login/pagos no probados, Hub no
+acreditado en desktop privado y Windows limpio pendiente. Sin firma/release.
+
+Productor limpio `67f74b6050a9453feb3aa04bb8c5629677e3d712`, base nightly
+`5e5c4d1854988604664c518c68beb31a27d2704c`, rama
+`vantareapp/isa-1688-candidata-rc1-buildfix`, worktree aislado
+`C:/VantareServer/wt/isa-1688-rc1-build`. Release 0.0.979, designación
+RC1-LOCAL-QA-MECHANICS-ONLY, sin configuración de servicios. Setup en
+`C:/VantareServer/share/rc1/`, aviso SOLO-QA-LOCAL y sidecars verificados.
+SHA Setup `5cd546de0c0f519d11f8f774a27d9270fd4873fabf7260171181d464c720ecbf`;
+67.328.512 bytes. PROCEDENCIA.json e INFORME.md en `evidence/rc1/`.
+
+Release inicial compila en28m14s pero packaging bloquea dos bins QA privados
+no contemplados. Arreglo mínimo cerrado de inventario en PR draft
+[#1689](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1689):
+reconoce ambas herramientas al compilar y mantiene diez EXE públicos; bins
+privados fuera de todos los canales. No admite desconocidos/ausentes/duplicados.
+Regresión PS5.1 10, canales45 e integridad462 PASS; test en check Windows.
+ZIP real verificado10 EXE, sin QA privada/admin/Workshop/instaladores.
+CI del productor67f74b605: promotion path y blocking gates SUCCESS (run
+39000132766), además quality/marketing/GitGuardian. HEAD documental final y
+sus checks se registran por separado en issue/PR; ningún merge desde el worker.
+
+Dos recorridos con SID/perfil nuevos y carpetas Windows inicializadas: limpio
+0.0.979→reinstalar (generación distinta)→desinstalar, y NSIS público0.0.975→
+Setup0.0.979→desinstalar PASS. Exit0, versiones/registro/Uninstall propios,
+bytes opacos con hash idéntico, sin state/EXE/marker al terminar. Son pruebas
+reales /S; no se simula hub-ready. El mismo Setup/hash se usa en ambos casos.
+Evidencia `clean-VantareRC1_10bd01d`, `upgrade-VantareRC1_11ea3ff`,
+`final-verification.json`; control NSIS separado también conserva datos.
+
+Límites: sin Sandbox (Disabled/EXE ausente); W11Pro22631/SO/GPU/drivers
+compartidos. Primera prueba sin Startup devuelve exit1 incluso con autostart
+OFF: [#1690](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1690)
+para triage, sin arreglo aquí. Crear la ruta devuelta por Windows permite
+la mecánica, NO resuelve el defecto del producto. Hub nuevo no acreditado:
+bootstrap termina sin marker nuevo; no se determina causa en este entorno.
+Setup/Uninstall CRT estático y System32 PASS, pero diez EXE de app importan
+VC Runtime; Windows limpio y sus prerequisitos siguen pendientes. Tampoco
+se acredita feed firmado, navegador/SmartScreen, login, pagos ni DPI físicos.
+
+Cuentas/perfiles propios y ambos targets D `rc1-1688-{payload,installer}`
+retirados y verificados; logs/datos fixture preservados. Sin targets ajenos
+borrados ni app visible en desktop principal. Siguiente del orquestador:
+review #1689, triage #1690, config beta pública real y QA conectada/Hub en
+Windows limpio antes de candidata pública. Lista de nombres requeridos en
+CONFIG-PUBLICA-PENDIENTE.md; VANTA-104 conserva firma/publicación de Isaac.
+
 ## #1631 / VANTA-70 · Seguimiento P3 de login (#1684)
 
 Encargo tras fusionar #1635 en nightly `95abdcc6e`. Rama nueva
@@ -3448,3 +3697,32 @@ SHA, push y checks en la issue/buzon. Sin autorizacion de produccion.
 
 2026-10-13 · GitHub #1565 · Claude. Feed en seco, CI privada y QA aislada;
 PR a nightly sin merge ni release.
+## #1695 / VANTA-105 · Seguimiento de la review de #1691 (17-oct-2026)
+
+Rama/worktree propios `vantareapp/isa-1695-installer-transaccion`, isa-1695,
+desde nightly `7396f65d0` con #1691 fusionado por el orquestador. CRT cerrado
+en PR #1693 ready `f30ec08ef`, cinco checks SUCCESS (run39012555323), sin merge
+por el worker. Su payload real f68e4a3db conserva su propia procedencia.
+
+P2-1 acreditado con Setup/Uninstall Release nuevos desde nightly: builder
+421,44s, SHA Setup `bec8d3bb4394543169561cad07965987615e13914b6bdd00cd075dc80289e913`.
+App reutilizada f68e4a3db sin cambios Rust, bootstrap nuevo; manifest conserva
+SHA de la app y PROCEDENCIA.json distingue ambos componentes. No se presenta
+como build completa nueva del payload. Solo QA local, sin configuración beta.
+Evidencia `C:/VantareServer/evidence/rc1/seguimiento-1691/INFORME.md`.
+
+Tres usuarios estándar/escritorios privados: limpio OFF sin crear Startup;
+limpio OFF→reinstalar ON con Startup ausente antes de ON (preferencia guardada,
+Setup /S real, no GUI/limpio ON); NSIS público0.0.975→Setup nuevo OFF. Instalar,
+reinstalar/actualizar y desinstalar exit0, bootstrap nuevo, datos conservados.
+ON crea su carpeta/acceso, OFF conserva Startup ausente. Actor solo prepara
+Programs, nunca Startup/Desktop. Cuentas/perfiles SID1021/1022/1023 retirados.
+La QA RC1 histórica con Startup creada y Setup anterior NO acredita el arreglo.
+
+P2-3/P2-2/P3 autorizados en PR separado: restauración por fichero con log/error
+original, enumeración segura, lock hasta finalización/marker y durante Cleanup,
+recuperación de Setup bajo lock, Programs vacío y ON+GetFolderPath vacío.
+Suite shell añadida al workflow. Regresiones ampliadas en curso; no se afirman
+CI verde ni PR ready hasta comprobar el HEAD final. Sin Rust/dependencias nuevos.
+Windows limpio/login/pagos pendientes; Hub bloqueado por #1694. Sin ventanas
+en sesión principal, firma/publicación ni merge por el worker.

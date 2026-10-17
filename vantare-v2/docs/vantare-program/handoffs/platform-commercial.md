@@ -1,3 +1,23 @@
+## #1697 / VANTA-105 · Propuesta de QA hosted del Hub (17-oct-2026)
+
+Encargo del orquestador: PR draft #1698 separado desde nightly64dc28446.
+Código a2ac7f6e9 subido; CI existente pendiente. Mantener draft para revisión.
+El job se limita a la rama de esta propuesta, sin builds en otros PR. Nuevo
+workflow opcional solo PR a nightly, job omitido mientras draft; no modifica
+workflows existentes ni checks requeridos. Depende de #1694 / PR #1696.
+Compila payload/Setup Release nuevos sin configuración remota, instala en VM
+hosted efímera, exige hub-ready/PID/ventana/cierre exit0 y conserva evidencia.
+
+GPUI acepta software en enumeración DXGI, pero no permite forzar WARP. La
+propuesta exige todos los adaptadores software antes de probar; falla con
+diagnóstico ante hardware o fallo gráfico, sin tocar drivers/backend/toolchain.
+En el servidor, enumeración real PS5.1/7 acredita AMD hardware y Basic Render
+software; la guarda rechaza ese entorno. AST/YAML y guarda hosted PASS.
+No se lanza ninguna ventana local. No hay ejecución hosted ni hub-ready PASS.
+Pasos físicos ejecutables para Isaac en native/packaging/clean-windows-qa.md.
+El PC de Isaac y otras VM no están autorizados. Login/pagos sin probar.
+Sin firma, publicación ni merge. La propuesta queda para revisión explícita.
+
 ## #1692 / VANTA-105 · CRT de distribución (17-oct-2026)
 
 Actualización de integración: el orquestador fusionó #1691 en nightly

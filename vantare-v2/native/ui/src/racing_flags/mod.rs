@@ -500,6 +500,9 @@ fn demo_penalty(snapshot: &Snapshot) -> Option<vantare_domain::PenaltyKind> {
 #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct Settings {
+    /// 0 identifica el color negro heredado, antes ignorado por este pintor.
+    #[serde(default)]
+    pub content_version: u8,
     pub text_color: String,
     pub show_sector_flags: bool,
     pub hide_when_green: bool,
@@ -507,6 +510,7 @@ pub struct Settings {
 impl Default for Settings {
     fn default() -> Self {
         Self {
+            content_version: 1,
             text_color: format!("#{:06x}", Style::compiled().colors.text.0),
             show_sector_flags: true,
             hide_when_green: false,
@@ -532,13 +536,20 @@ impl Settings {
     #[must_use]
     pub fn normalized(&self) -> Self {
         let value = self.text_color.as_bytes();
-        if value.len() == 7 && value[0] == b'#' && value[1..].iter().all(u8::is_ascii_hexdigit) {
+        let legacy_black = self.content_version == 0 && self.text_color == "#000000";
+        if !legacy_black
+            && value.len() == 7
+            && value[0] == b'#'
+            && value[1..].iter().all(u8::is_ascii_hexdigit)
+        {
             Self {
+                content_version: self.content_version.max(1),
                 text_color: self.text_color.to_ascii_lowercase(),
                 ..self.clone()
             }
         } else {
             Self {
+                content_version: self.content_version.max(1),
                 text_color: Self::default().text_color,
                 ..self.clone()
             }
@@ -763,6 +774,7 @@ mod tests {
             text_color: "#123ABC".into(),
             show_sector_flags: false,
             hide_when_green: true,
+            ..Settings::default()
         }
         .normalized();
         let vm = settings.project(&snapshot, Preferences::default());
@@ -859,7 +871,7 @@ mod tests {
 mod caption_render_tests {
     use super::*;
     #[test]
-    fn new_caption_is_light_and_explicit_saved_black_is_preserved() {
+    fn legacy_black_migrates_to_readable_text_but_new_explicit_black_is_preserved() {
         use vantare_domain::{Flag, FlagScope, Quality, SourceState, format::Language};
         let mut photo = Snapshot::default();
         photo.state.source_state = SourceState::Live;
@@ -869,17 +881,28 @@ mod caption_render_tests {
         }]);
         let saved: Settings =
             serde_json::from_str(r##"{"textColor":"#000000"}"##).expect("ajuste guardado");
+        let explicit: Settings =
+            serde_json::from_str(r##"{"contentVersion":1,"textColor":"#000000"}"##)
+                .expect("negro elegido después de la migración");
+        let migrated = saved.normalized();
+        let restored: Settings =
+            serde_json::from_str(&serde_json::to_string(&migrated).expect("guardar migración"))
+                .expect("reabrir migración");
+        assert_eq!(restored.normalized(), migrated);
         crate::paint_tests::with_kit(SIZE.0, Language::Es, |kit| {
             for (settings, expected) in [
                 (Settings::default(), kit.style.colors.text),
-                (saved.normalized(), Color(0x000000, 1.0)),
+                (restored, kit.style.colors.text),
+                (explicit.normalized(), Color(0x000000, 1.0)),
             ] {
                 let vm = settings.project(&photo, Preferences::default());
-                let painted = crate::paint_tests::observe(|draw| {
-                    paint_caption(&vm, "AMARILLA", true, false, false, kit, draw);
-                });
-                assert_eq!(painted[0].value, "AMARILLA");
-                assert_eq!(painted[0].color, expected.hsla());
+                for (heading, value) in [(true, "AMARILLA"), (false, "Precaución")] {
+                    let painted = crate::paint_tests::observe(|draw| {
+                        paint_caption(&vm, value, heading, false, false, kit, draw);
+                    });
+                    assert_eq!(painted[0].value, value);
+                    assert_eq!(painted[0].color, expected.hsla());
+                }
             }
         });
     }

@@ -427,15 +427,12 @@ pub fn run_batch(path: &Path) -> ExitCode {
         let common = crate::capture_batch::inputs_hash(&[])?;
         let mut jobs = Vec::new();
         for request in requests {
-            if request.appearance.is_some()
-                || request.collapsed
-                || request.zoom.is_some()
-                || !request.parameters.is_empty()
-            {
+            if request.appearance.is_some() || request.collapsed || request.zoom.is_some() {
                 return Err(
                     "Workshop usa settings para su apariencia; collapsed/zoom son del Hub".into(),
                 );
             }
+            let prefs = batch_preferences(&request.parameters)?;
             let kind: Kind = request
                 .widget
                 .as_deref()
@@ -473,7 +470,7 @@ pub fn run_batch(path: &Path) -> ExitCode {
             }
             jobs.push(Job {
                 settings,
-                prefs: Preferences::default(),
+                prefs,
                 snapshots,
                 request,
                 cache,
@@ -489,6 +486,23 @@ pub fn run_batch(path: &Path) -> ExitCode {
         );
         Ok(())
     })())
+}
+
+fn batch_preferences(
+    parameters: &std::collections::BTreeMap<String, String>,
+) -> Result<Preferences, String> {
+    if parameters.keys().any(|key| key != "language") {
+        return Err("Workshop solo admite parameters.language (es/en)".into());
+    }
+    let language = match parameters.get("language").map(String::as_str) {
+        None | Some("es") => vantare_domain::format::Language::Es,
+        Some("en") => vantare_domain::format::Language::En,
+        Some(_) => return Err("idioma de captura desconocido; usa es/en".into()),
+    };
+    Ok(Preferences {
+        language,
+        ..Preferences::default()
+    })
 }
 
 fn default_settings(kind: Kind) -> crate::Settings {
@@ -627,6 +641,33 @@ fn run_jobs(jobs: Vec<Job>) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::solve_alpha;
+
+    #[test]
+    fn batch_language_is_explicit_and_rejects_unknown_parameters_before_opening() {
+        use std::collections::BTreeMap;
+        use vantare_domain::format::Language;
+        assert_eq!(
+            super::batch_preferences(&BTreeMap::new())
+                .expect("default")
+                .language,
+            Language::Es
+        );
+        for (value, expected) in [("es", Language::Es), ("en", Language::En)] {
+            let parameters = BTreeMap::from([("language".into(), value.into())]);
+            assert_eq!(
+                super::batch_preferences(&parameters)
+                    .expect("idioma")
+                    .language,
+                expected
+            );
+        }
+        for parameters in [
+            BTreeMap::from([("language".into(), "fr".into())]),
+            BTreeMap::from([("unknown".into(), "en".into())]),
+        ] {
+            assert!(super::batch_preferences(&parameters).is_err());
+        }
+    }
 
     #[test]
     fn capture_rejects_invalid_sizes_and_window_before_gdi_copy() {

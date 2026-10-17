@@ -126,7 +126,15 @@ function Run-RegistrationDriver {
     $info.Arguments='-NoProfile -ExecutionPolicy Bypass -File "'+(Join-Path $engine 'installer-driver.ps1')+'" -RequestFile "'+$request+'"'
     $info.UseShellExecute=$false;$info.CreateNoWindow=$true
     $info.RedirectStandardInput=$true;$info.RedirectStandardOutput=$true;$info.RedirectStandardError=$true
-    $process=[Diagnostics.Process]::Start($info)
+    # .NET Framework creates StandardInput with Console.InputEncoding and can
+    # emit its BOM immediately at Process.Start, before even BaseStream.Write.
+    # Rust sends ASCII continue/cancel bytes. Match those bytes without changing
+    # the caller's encoding or relaxing the driver's exact acknowledgement.
+    $previousEncoding=[Console]::InputEncoding
+    try {
+        [Console]::InputEncoding=[Text.UTF8Encoding]::new($false)
+        $process=[Diagnostics.Process]::Start($info)
+    }finally{[Console]::InputEncoding=$previousEncoding}
     try {
         $process.StandardInput.WriteLine('continue');$process.StandardInput.Close()
         $out=$process.StandardOutput.ReadToEndAsync();$err=$process.StandardError.ReadToEndAsync()
@@ -138,8 +146,11 @@ function Run-RegistrationDriver {
         $process.ExitCode
     }finally{$process.Dispose()}
 }
+$previousInputEncoding=[Console]::InputEncoding
+[Console]::InputEncoding=[Text.UTF8Encoding]::new($true)
 try {
     Assert-Registration ((Run-RegistrationDriver) -eq 0) 'real driver silently installs inert package with both options OFF'
+    Assert-Registration ([Console]::InputEncoding.GetPreamble().Length -eq 3) 'driver harness handles UTF8 BOM parent input and restores its encoding'
     $generation=(Read-NativeState $driverRoot).active.generation
     $stateHash=Get-NativeHash (Join-Path $driverRoot 'state.json')
     $uninstallString=(Get-ItemProperty $qaKey).UninstallString
@@ -159,6 +170,7 @@ try {
     $requestValue.autostart=$true;Write-BetaJson $request $requestValue
     Assert-Registration ((Run-RegistrationDriver) -eq 0 -and $script:driverError.Length -gt 0) 'real driver ON warning is logged with valid JSON progress and success'
 } finally {
-    if(Test-Path $qaKey){Uninstall-NativeRegistration $driverRoot}
+    try {if(Test-Path $qaKey){Uninstall-NativeRegistration $driverRoot}}
+    finally{[Console]::InputEncoding=$previousInputEncoding}
 }
 "$passed installer registration checks PASS; fixtures: $testRoot"

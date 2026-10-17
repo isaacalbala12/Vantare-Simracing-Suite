@@ -8,9 +8,12 @@ implementación `67be3b9b55dea9ce7ba7c09d94eb65552ff7addb`. #1689 ya integrado
 por el orquestador: merge de `origin/nightly@329520c20` a esta rama, sin rebase.
 Conflictos solo en workflow/handoff: se conservan ambas suites con sus gates
 y ambos expedientes completos. CI pendiente del nuevo HEAD, registrado en #1690.
-CI del merge `85f8777cd` falla en la instalación inicial del fixture del driver
-en el runner (las regresiones previas pasan). Se añade stderr al log del test
-para identificar la causa; no se atribuye ni se cambia producción sin diagnóstico.
+CI `85f8777cd`/`25598a834` falla en el fixture: exit5, cancelación previa a copiar.
+.NET Framework antepone BOM de Console.InputEncoding al crear stdin del hijo;
+se reproduce localmente con UTF8-BOM. El harness selecciona UTF8 sin BOM solo
+durante Process.Start y restaura la codificación del llamador, enviando los
+mismos bytes ASCII de Rust. Regresión fuerza padre UTF8-BOM; no se relaja el
+acuse exacto del motor ni se cambia producción para hacer pasar este fallo.
 Sin merge del PR hacia nightly, firma ni publicación por el worker.
 
 Desktop/Startup OFF no consultan carpetas ni COM. ON usa la ruta configurada
@@ -31,7 +34,7 @@ Fallos reales de compartición después de activar/escribir para instalación
 nueva, actualización y adopción de datos; driver real instala en silencio y
 falla después al registrar una reparación con el bootstrap bloqueado, dejando
 exactamente el estado anterior y sin marker de arranque pendiente.
-Registro/driver: 41 PASS; shell existente: 23 PASS; quality: 462 huellas PASS;
+Registro/driver: 42 PASS (incluida entrada UTF8-BOM); shell existente: 23 PASS; quality: 462 huellas PASS;
 AST y diff PASS. Los avisos del driver van al log, dejando stdout solo para
 eventos JSON. Los accesos opcionales se sincronizan tras la última escritura
 obligatoria: ni su resolución ni su copia de seguridad pueden abortar Setup.

@@ -829,6 +829,23 @@ fn session_lines(
         (plan_key, plan_value, plan_tone),
     ];
     for (i, (key, value, tone)) in rows.into_iter().enumerate() {
+        if i == 2 && !qualifying {
+            // La historia publicada mide litros, no energía virtual. No
+            // presentar el consumo de combustible como porcentaje de energía.
+            let last = (board.limit == Resource::Fuel)
+                .then(|| board.history.last().and_then(|entry| entry.consumed))
+                .flatten();
+            content.push(Line::Row {
+                key: w.pick("Última vuelta", "Last lap").into(),
+                value: amount(board.limit, last, 2),
+                tone: if last.zip(tank.per_lap).is_some_and(|(a, b)| a < b) {
+                    Tone::Green
+                } else {
+                    Tone::Plain
+                },
+                me: false,
+            });
+        }
         content.push(Line::Row {
             key: key.into(),
             value,
@@ -2207,6 +2224,90 @@ mod tests {
 #[cfg(test)]
 mod resource_render_tests {
     use super::*;
+
+    #[test]
+    fn practice_last_lap_paints_the_last_measurement_and_fits_the_standard_panel() {
+        use vantare_domain::fuel_strategy::HistoryEntry;
+        let mut board = State::project(&crate::source::fixed());
+        board.source_state = SourceState::Live;
+        board.player_present = true;
+        board.status = None;
+        board.banner = None;
+        board.service = None;
+        board.fcy = None;
+        board.history = vec![
+            HistoryEntry {
+                lap: 11,
+                consumed: Some(3.80),
+            },
+            HistoryEntry {
+                lap: 12,
+                consumed: Some(3.69),
+            },
+        ];
+        for look in [crate::look::Tone::Neo, crate::look::Tone::Neutro] {
+            for language in [Language::Es, Language::En] {
+                for (resource, last, expected) in [
+                    (Resource::Fuel, Some(3.69), "3.69 L"),
+                    (Resource::Fuel, None, PLACEHOLDER),
+                    (Resource::Energy, Some(3.69), PLACEHOLDER),
+                ] {
+                    board.limit = resource;
+                    board.history.last_mut().expect("última vuelta").consumed = last;
+                    let mut visual = Visual::new(Options {
+                        size: Size::Standard,
+                        look,
+                        accent: Accent::Red,
+                        brand: true,
+                    });
+                    visual
+                        .ingest_shared(Arc::new(board.clone()), &mut Movement::new(Instant::now()));
+                    visual.set_session(Some(crate::session::Session::Practice));
+                    visual.presentation(language);
+                    assert!(
+                        visual.plan.content <= visual.plan.height,
+                        "pie fuera del panel"
+                    );
+                    crate::paint_tests::with_kit(visual.plan.width, language, |kit| {
+                        let painted = crate::paint_tests::observe(|draw| {
+                            for (line, &top) in visual.lines.iter().zip(&visual.plan.tops) {
+                                if let Line::Row { key, value, .. } = line {
+                                    paint_row_text(
+                                        kit,
+                                        top,
+                                        key,
+                                        value,
+                                        kit.style.colors.value.hsla(),
+                                        &mut *draw,
+                                    );
+                                }
+                            }
+                        });
+                        let title = if language == Language::Es {
+                            "Última vuelta"
+                        } else {
+                            "Last lap"
+                        };
+                        let index = painted
+                            .iter()
+                            .position(|label| label.value == title)
+                            .expect("rótulo pintado");
+                        assert_eq!(painted[index + 1].value, expected);
+                        assert!(
+                            painted[index].top + kit.style.geometry.row_height
+                                <= visual.plan.height
+                        );
+                        assert!(painted.iter().any(|label| label.value
+                            == if language == Language::Es {
+                                "Restan"
+                            } else {
+                                "Laps left"
+                            }));
+                    });
+                }
+            }
+        }
+    }
     #[test]
     fn practice_and_qualifying_paint_the_limiting_resource() {
         for session in [

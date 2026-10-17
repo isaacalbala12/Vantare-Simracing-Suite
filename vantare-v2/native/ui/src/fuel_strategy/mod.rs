@@ -131,6 +131,7 @@ pub(crate) struct Widget {
     board: Arc<fuel_strategy::Board>,
     presentation: Presentation,
     prefs: Preferences,
+    session: Option<crate::session::Session>,
 }
 impl Widget {
     fn presentation(
@@ -173,6 +174,7 @@ impl Widget {
             board,
             presentation,
             prefs,
+            session: None,
         }
     }
     #[cfg(feature = "parity-capture")]
@@ -207,7 +209,10 @@ impl Widget {
         project: impl FnOnce(&Snapshot, Preferences, fuel_strategy::Config) -> fuel_strategy::Board,
     ) -> bool {
         let next = project(snapshot, prefs, self.content);
-        if next == *self.board && prefs == self.prefs {
+        let session = crate::session::Session::of(&snapshot.state.session.kind);
+        let session_changed = self.session != session;
+        self.session = session;
+        if next == *self.board && prefs == self.prefs && !session_changed {
             return false;
         }
         let next = Arc::new(next);
@@ -217,7 +222,7 @@ impl Widget {
                 motion: m,
             } => {
                 let changed = v.ingest_shared(next.clone(), Arc::make_mut(m));
-                changed | v.presentation(prefs.language)
+                changed | v.set_session(session) | v.presentation(prefs.language)
             }
             Presentation::Eficiencia {
                 visual: labels,
@@ -246,6 +251,9 @@ impl Widget {
         };
         self.settings.design_system = look;
         self.presentation = Self::presentation(&self.settings, prefs, &self.board, motion);
+        if let Presentation::Vantare { visual, .. } = &mut self.presentation {
+            visual.set_session(self.session);
+        }
     }
     pub(crate) fn frame(&mut self, prefs: Preferences, reduced: bool) -> (Paint, Wake) {
         if reduced {

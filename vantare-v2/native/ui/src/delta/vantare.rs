@@ -2,7 +2,7 @@
 //!
 //! El ViewModel es puro (`vantare_domain::delta`); aquí se mide y se
 //! pinta con el kit Vantare: píldora (la del Studio), barra de 380 y ampliado
-//! de 520 con referencia, vuelta predicha y sectores. La barra se desliza hacia
+//! de 768 con referencia, vuelta predicha y sectores. La barra se desliza hacia
 //! el valor nuevo y una vuelta récord personal destella en morado.
 
 use crate::app::Wake;
@@ -31,6 +31,7 @@ pub(crate) enum Size {
 }
 
 #[derive(Clone, Debug, PartialEq)]
+#[allow(clippy::struct_excessive_bools)] // Opciones visuales independientes: barra, sectores, marca y transparencia.
 pub(crate) struct Options {
     pub look: Tone,
     pub accent: Accent,
@@ -38,6 +39,7 @@ pub(crate) struct Options {
     pub reference: Reference,
     pub show_bar: bool,
     pub show_sectors: bool,
+    pub transparent: bool,
     /// Marca Vantare en la cabecera (`brandVisible`, decidido por la licencia).
     pub brand: bool,
 }
@@ -59,6 +61,7 @@ impl Options {
             },
             show_bar: settings.show_bar,
             show_sectors: settings.show_sectors,
+            transparent: settings.transparent_background,
             brand: settings.brand_visible == Some(true),
         }
     }
@@ -100,6 +103,7 @@ enum Item {
 struct Layout {
     width: f32,
     height: f32,
+    content: f32,
     items: Vec<(f32, Item)>,
 }
 
@@ -127,26 +131,27 @@ fn layout(board: Option<&Board>, options: &Options, style: &Style) -> Layout {
         return Layout {
             width: d.pill_width,
             height: d.pill_height,
+            content: 34.0,
             items: Vec::new(),
         };
     }
     let variant = options.variant(style);
-    let g = &style.geometry;
     let mut items = Vec::new();
     let mut y = variant.padding_y;
     let shown = board.filter(|b| !waiting(Some(b)));
     if shown.is_some_and(|b| b.banner.is_some()) {
         items.push((0.0, Item::Banner));
-        y = g.banner_height + g.banner_gap;
+        // La placa de boxes del catálogo ocupa 27 px adicionales.
+        y += 27.0;
     }
     items.push((y, Item::Header));
     y += variant.header_height + variant.header_gap;
     if message(board) {
         items.push((y, Item::Message));
-        y += d.message_height;
+        y += d.message_height.max(d.big_height);
     } else {
         items.push((y, Item::Big));
-        y += d.big_height;
+        y += d.message_height.max(d.big_height);
     }
     if options.show_bar {
         items.push((y, Item::Bar));
@@ -155,6 +160,8 @@ fn layout(board: Option<&Board>, options: &Options, style: &Style) -> Layout {
     let sectors = shown.is_some_and(|b| !b.sectors.is_empty() && !grey(b) && !message(Some(b)));
     if options.size == Size::Expanded && sectors && options.show_sectors {
         items.push((y, Item::Sectors));
+    }
+    if options.size == Size::Expanded && options.show_sectors {
         y += d.sector_height;
     }
     Layout {
@@ -162,7 +169,22 @@ fn layout(board: Option<&Board>, options: &Options, style: &Style) -> Layout {
             Size::Expanded => d.width_expanded,
             _ => d.width_bar,
         },
-        height: y + variant.padding_y,
+        content: y + variant.padding_y,
+        height: 2.0 * variant.padding_y
+            + variant.header_height
+            + variant.header_gap
+            + d.message_height.max(d.big_height)
+            + if options.show_bar {
+                d.bar + d.tick_labels
+            } else {
+                0.0
+            }
+            + if options.size == Size::Expanded && options.show_sectors {
+                d.sector_height
+            } else {
+                0.0
+            }
+            + 27.0,
         items,
     }
 }
@@ -246,9 +268,21 @@ impl Labels {
             ],
             sectors: board
                 .into_iter()
-                .flat_map(|b| &b.sectors)
+                .flat_map(|b| {
+                    // Diferencia del sector en curso: la total menos los sectores ya cerrados.
+                    let closed: Option<f64> = b
+                        .sectors
+                        .iter()
+                        .map_while(|s| match s {
+                            Sector::Done(_, delta) => Some(*delta),
+                            _ => None,
+                        })
+                        .sum::<Option<f64>>();
+                    let running = b.delta_s.zip(closed).map(|(total, done)| total - done);
+                    b.sectors.iter().map(move |s| (s, running))
+                })
                 .enumerate()
-                .map(|(i, sector)| {
+                .map(|(i, (sector, running))| {
                     let title = if matches!(sector, Sector::Live(_)) {
                         format!("S{} · {}", i + 1, if es { "en curso" } else { "live" })
                     } else {
@@ -256,7 +290,7 @@ impl Labels {
                     };
                     let value = match sector {
                         Sector::Done(_, delta) => delta.map_or_else(|| PLACEHOLDER.into(), signed),
-                        Sector::Live(_) => String::new(),
+                        Sector::Live(_) => running.map_or_else(String::new, signed),
                         Sector::Pending => PLACEHOLDER.into(),
                     };
                     (title, value)
@@ -414,10 +448,12 @@ impl Visual {
             flash: self.flash(movement, now),
         };
         if self.options.size == Size::Pill {
-            painter.pill_widget(window, cx, self.layout.height);
+            painter.pill_widget(window, cx, self.layout.content);
             return;
         }
-        painter.panel(window, self.layout.height);
+        if !self.options.transparent {
+            painter.panel(window, self.layout.content);
+        }
         for &(y, item) in &self.layout.items {
             match item {
                 Item::Banner => painter.banner(window, cx),
@@ -504,6 +540,40 @@ impl State {
 // Pintado
 // ---------------------------------------------------------------------------
 
+fn paint_sector_values(
+    board: &Board,
+    labels: &Labels,
+    kit: &Kit<'_>,
+    y: f32,
+    mut draw: impl FnMut(crate::vantare::paint::Label<'_>),
+) {
+    let pad = kit.variant.padding_x;
+    let cell = (kit.width - 2.0 * pad - 6.0 * (board.sectors.len().max(1) - 1) as f32)
+        / board.sectors.len().max(1) as f32;
+    for (index, sector) in board.sectors.iter().enumerate() {
+        let value = match sector {
+            Sector::Pending => PLACEHOLDER,
+            Sector::Done(_, _) | Sector::Live(_) => labels.sectors[index].1.as_str(),
+        };
+        let c = &kit.style.colors;
+        let color = match sector {
+            Sector::Done(SectorTone::SessionBest, _) => c.purple,
+            Sector::Done(SectorTone::PersonalBest, _) => c.gain,
+            Sector::Done(SectorTone::Slower, _) => c.yellow,
+            _ => c.muted,
+        };
+        draw(crate::vantare::paint::Label {
+            value,
+            x: 0.0,
+            right: Some(pad + index as f32 * (cell + 6.0) + cell),
+            top: y + 6.0 + kit.style.delta.sector_bar + 3.0,
+            height: 14.0,
+            face: Face::Mono,
+            ink: kit.ink(Face::Mono, 10.0, 0.0, color.hsla()),
+        });
+    }
+}
+
 struct Painter<'a> {
     labels: &'a Labels,
     kit: Kit<'a>,
@@ -521,6 +591,38 @@ impl<'a> std::ops::Deref for Painter<'a> {
 }
 
 impl Painter<'_> {
+    fn ink(&self, face: Face, size: f32, tracking: f32, color: Hsla) -> text::TextInk<'_> {
+        let color = if self.options.transparent && color == self.variant.header_color.hsla() {
+            self.style.colors.text.hsla()
+        } else if self.options.transparent && color == self.style.colors.muted.hsla() {
+            self.style.colors.header_em.hsla()
+        } else {
+            color
+        };
+        self.kit.ink(face, size, tracking, color)
+    }
+
+    fn label(
+        &self,
+        window: &mut Window,
+        cx: &mut App,
+        value: &str,
+        x: f32,
+        right: Option<f32>,
+        top: f32,
+        height: f32,
+        face: Face,
+        ink: &text::TextInk<'_>,
+    ) -> f32 {
+        if self.options.transparent {
+            self.kit
+                .label_shadow(window, cx, value, x, right, top, height, face, ink)
+        } else {
+            self.kit
+                .label(window, cx, value, x, right, top, height, face, ink)
+        }
+    }
+
     fn pick(&self, es: &'static str, en: &'static str) -> &'static str {
         if self.es() { es } else { en }
     }
@@ -554,9 +656,35 @@ impl Painter<'_> {
     fn pill_widget(&self, window: &mut Window, cx: &mut App, height: f32) {
         let d = &self.style.delta;
         let c = &self.style.colors;
-        self.panel(window, height);
-        let pad = 16.0;
+        let pad = if self.options.transparent { 16.0 } else { 17.0 };
         let label = self.ink(Face::Body, d.pill_label, 0.3, c.muted.hsla());
+        let (value, color) = self.number();
+        let face = if self.live().is_some() {
+            Face::Display
+        } else {
+            Face::Mono
+        };
+        let size = if self.live().is_some() {
+            d.pill_value
+        } else {
+            d.pill_value - 2.0
+        };
+        let ink = self.ink(face, size, 0.0, color);
+        if !self.options.transparent {
+            let width = (2.0 * pad
+                + text::width(window, "DELTA", &label)
+                + 14.0
+                + text::width(window, value, &ink))
+            .min(self.width);
+            Kit {
+                width,
+                style: self.style,
+                variant: self.variant,
+                accent: self.accent,
+                language: self.language,
+            }
+            .panel(window, height);
+        }
         let x = pad
             + self.label(
                 window,
@@ -569,18 +697,6 @@ impl Painter<'_> {
                 Face::Body,
                 &label,
             );
-        let (value, color) = self.number();
-        let face = if self.live().is_some() {
-            Face::Display
-        } else {
-            Face::Mono
-        };
-        let size = if self.live().is_some() {
-            d.pill_value
-        } else {
-            d.pill_value - 2.0
-        };
-        let ink = self.ink(face, size, 0.3, color);
         self.label(window, cx, value, x + 14.0, None, 0.0, height, face, &ink);
     }
 
@@ -735,7 +851,8 @@ impl Painter<'_> {
         }
         let x = pad + width + 12.0;
         let muted = self.ink(Face::Body, self.style.fonts.small, 0.0, c.muted.hsla());
-        let base = y + 6.0;
+        // La predicha comparte la línea de base de la cifra grande (HTML baseline).
+        let base = y + 12.0;
         let label_h = d.big - 6.0;
         match board.phase {
             Phase::Invalid => {
@@ -857,7 +974,18 @@ impl Painter<'_> {
         let (pad, w) = (self.variant.padding_x, self.width);
         let span = w - 2.0 * pad;
         let mid = pad + span / 2.0;
-        round_rect(window, pad, y, span, d.bar, d.bar / 2.0, d.track.hsla());
+        window.paint_quad(quad(
+            crate::efficiency::rect(pad, y, span, d.bar),
+            Corners::all(px(d.bar / 2.0)),
+            if self.options.transparent {
+                Color(0, 0.5).hsla()
+            } else {
+                d.track.hsla()
+            },
+            Edges::all(px(if self.options.transparent { 1.0 } else { 0.0 })),
+            Color(0xffffff, 0.14).hsla(),
+            BorderStyle::default(),
+        ));
         let live = self.live().is_some_and(|b| b.phase == Phase::Live);
         if live && self.bar != 0.0 {
             let half = span / 2.0;
@@ -983,29 +1111,12 @@ impl Painter<'_> {
                 SectorTone::PersonalBest => c.green,
                 SectorTone::Slower => c.yellow,
             };
-            let (fill, label, value, value_color) = match sector {
-                Sector::Done(tone, _) => (
-                    Some((1.0, tone_color(*tone))),
-                    self.labels.sectors[index].0.as_str(),
-                    self.labels.sectors[index].1.as_str(),
-                    match tone {
-                        SectorTone::SessionBest => c.purple.hsla(),
-                        SectorTone::PersonalBest => c.gain.hsla(),
-                        SectorTone::Slower => c.yellow.hsla(),
-                    },
-                ),
-                Sector::Live(fraction) => (
-                    fraction.map(|f| (f as f32, if gain { c.green } else { d.fill_loss })),
-                    self.labels.sectors[index].0.as_str(),
-                    "",
-                    c.muted.hsla(),
-                ),
-                Sector::Pending => (
-                    None,
-                    self.labels.sectors[index].0.as_str(),
-                    PLACEHOLDER,
-                    c.muted.hsla(),
-                ),
+            let fill = match sector {
+                Sector::Done(tone, _) => Some((1.0, tone_color(*tone))),
+                Sector::Live(fraction) => {
+                    fraction.map(|f| (f as f32, if gain { c.green } else { d.fill_loss }))
+                }
+                Sector::Pending => None,
             };
             if let Some((fraction, color)) = fill {
                 round_rect(
@@ -1022,7 +1133,7 @@ impl Painter<'_> {
             self.label(
                 window,
                 cx,
-                label,
+                &self.labels.sectors[index].0,
                 x,
                 None,
                 label_top,
@@ -1030,19 +1141,26 @@ impl Painter<'_> {
                 Face::Mono,
                 &small,
             );
-            let ink = self.ink(Face::Mono, 10.0, 0.0, value_color);
+        }
+        paint_sector_values(board, self.labels, &self.kit, y, |label| {
+            let ink = self.ink(
+                label.face,
+                label.ink.size,
+                label.ink.tracking,
+                label.ink.color,
+            );
             self.label(
                 window,
                 cx,
-                value,
-                0.0,
-                Some(x + cell),
-                label_top,
-                14.0,
-                Face::Mono,
+                label.value,
+                label.x,
+                label.right,
+                label.top,
+                label.height,
+                label.face,
                 &ink,
             );
-        }
+        });
     }
 }
 
@@ -1056,7 +1174,9 @@ mod tests {
             .as_array()
             .expect("fases")
             .iter()
-            .map(|f| vantare_ipc::snapshot_from_fixture_json(&f["snapshot"].to_string()).expect("foto"))
+            .map(|f| {
+                vantare_ipc::snapshot_from_fixture_json(&f["snapshot"].to_string()).expect("foto")
+            })
             .collect()
     }
 
@@ -1069,6 +1189,7 @@ mod tests {
             show_bar: true,
             show_sectors: true,
             brand: false,
+            transparent: false,
         }
     }
 
@@ -1104,6 +1225,71 @@ mod tests {
         );
         assert!(hidden.height < shown.height);
     }
+    #[test]
+    fn approved_delta_has_fixed_size_across_states_and_transparency_round_trips() {
+        let style = Style::compiled();
+        let photos = frames(include_str!("../../fixtures/delta-vantare.scene.json"));
+        for size in [Size::Pill, Size::Bar, Size::Expanded] {
+            let options = options(size, Reference::PersonalBest);
+            let state = State::new(options.clone());
+            let initial = layout(None, &options, &style);
+            for photo in &photos {
+                let layout = layout(Some(&state.project(photo)), &options, &style);
+                assert_eq!(
+                    (layout.width, layout.height),
+                    (initial.width, initial.height)
+                );
+                if size == Size::Expanded {
+                    assert_eq!(layout.width, 768.0);
+                }
+            }
+        }
+        let settings = super::super::Settings {
+            transparent_background: true,
+            ..Default::default()
+        };
+        let restored: super::super::Settings =
+            serde_json::from_str(&serde_json::to_string(&settings).expect("guardar"))
+                .expect("cargar");
+        assert!(restored.normalized().transparent_background);
+        assert!(Options::from_settings(&restored).transparent);
+    }
+
+    #[test]
+    fn running_sector_subtracts_closed_sectors_and_requires_their_deltas() {
+        let options = options(Size::Expanded, Reference::PersonalBest);
+        let state = State::new(options.clone());
+        let mut board = state.project(&crate::source::fixed());
+        board.delta_s = Some(-0.214);
+        board.sectors = vec![
+            Sector::Done(
+                vantare_domain::delta::SectorTone::PersonalBest,
+                Some(-0.118),
+            ),
+            Sector::Live(Some(0.5)),
+            Sector::Pending,
+        ];
+        let labels = Labels::new(Some(&board), &options, &Style::compiled(), Language::Es);
+        crate::paint_tests::with_kit(768.0, Language::Es, |kit| {
+            let painted = crate::paint_tests::observe(|draw| {
+                paint_sector_values(&board, &labels, kit, 0.0, draw);
+            });
+            assert_eq!(painted[1].value, "−0.096");
+            assert_eq!(painted[2].value, PLACEHOLDER);
+        });
+        board.sectors[0] = Sector::Done(vantare_domain::delta::SectorTone::PersonalBest, None);
+        let labels = Labels::new(Some(&board), &options, &Style::compiled(), Language::Es);
+        crate::paint_tests::with_kit(768.0, Language::Es, |kit| {
+            let painted = crate::paint_tests::observe(|draw| {
+                paint_sector_values(&board, &labels, kit, 0.0, draw);
+            });
+            assert!(
+                !painted.iter().any(|label| label.value == "−0.096"),
+                "sin delta cerrado no se pinta el sector en curso"
+            );
+        });
+    }
+
     #[test]
     fn sizes_match_the_catalogue_and_states_change_the_items() {
         let style = Style::compiled();

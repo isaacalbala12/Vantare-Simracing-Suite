@@ -1,13 +1,12 @@
 //! Aviso Eficiencia de vuelta rápida. Valores y reglas vienen de domain;
 //! geometría del renderer productivo a 480 × 104, captura congelada ISA-1427.
 
+use crate::app::{Paint, Wake};
 use crate::efficiency::preview::PaintWindow as Window;
-use crate::{
-    app::{Paint, Wake},
-    efficiency::{
-        col, paint_rect, rect,
-        text::{self, ink},
-    },
+use crate::efficiency::text;
+use crate::vantare::{
+    paint::{Face, Kit, round_rect},
+    style::{Color, Style},
 };
 use gpui::{App, BorderStyle, Corners, Edges, linear_color_stop, linear_gradient, px, quad};
 use std::time::{Duration, Instant};
@@ -72,6 +71,12 @@ pub(crate) struct Widget {
     vm: ViewModel,
     records: Records,
     notice: Option<Notice>,
+    preview: bool,
+    detail: std::sync::Arc<Vec<Detail>>,
+    improvement: Option<f64>,
+    personal_improvement: Option<f64>,
+    improvement_label: std::sync::Arc<str>,
+    personal_improvement_label: std::sync::Arc<str>,
 }
 
 impl Widget {
@@ -82,6 +87,12 @@ impl Widget {
             vm: settings.project(&Snapshot::default(), prefs),
             records: Records::default(),
             notice: None,
+            preview: false,
+            detail: std::sync::Arc::default(),
+            improvement: None,
+            personal_improvement: None,
+            improvement_label: std::sync::Arc::from("—"),
+            personal_improvement_label: std::sync::Arc::from("—"),
         }
     }
 
@@ -91,8 +102,52 @@ impl Widget {
     }
 
     pub(crate) fn ingest(&mut self, snapshot: &Snapshot, prefs: Preferences) -> bool {
+        let old_improvement = (self.improvement, self.personal_improvement);
+        let preview_changed = crate::app::replace_if_changed(&mut self.preview, is_demo(snapshot));
         let next = self.settings.project(snapshot, prefs);
-        let labels_changed = self.vm.class_label != next.class_label
+        if self.vm.scope != next.scope {
+            self.improvement = None;
+            self.personal_improvement = None;
+        }
+        if let Some((old, new)) = self
+            .vm
+            .candidate
+            .as_ref()
+            .and_then(|t| t.best_ms)
+            .zip(next.candidate.as_ref().and_then(|t| t.best_ms))
+            && new < old
+        {
+            self.improvement = Some((new as f64 - old as f64) / 1000.0);
+        }
+        if let Some((old, new)) = self
+            .vm
+            .personal
+            .as_ref()
+            .and_then(|t| t.best_ms)
+            .zip(next.personal.as_ref().and_then(|t| t.best_ms))
+            && new < old
+        {
+            self.personal_improvement = Some((new as f64 - old as f64) / 1000.0);
+        }
+        if old_improvement.0 != self.improvement {
+            self.improvement_label = self
+                .improvement
+                .map_or_else(|| "—".into(), |v| format!("{v:.3}"))
+                .into();
+        }
+        if old_improvement.1 != self.personal_improvement {
+            self.personal_improvement_label = self
+                .personal_improvement
+                .map_or_else(|| "—".into(), |v| format!("{v:.3}"))
+                .into();
+        }
+        let detail_changed = crate::app::replace_if_changed(
+            std::sync::Arc::make_mut(&mut self.detail),
+            details(snapshot, &next, prefs),
+        );
+
+        let labels_changed = detail_changed
+            || self.vm.class_label != next.class_label
             || self.vm.personal_label != next.personal_label
             || self.vm.active_class != next.active_class;
         let update = self.records.accept_visible(
@@ -101,7 +156,8 @@ impl Widget {
             self.settings.show_personal,
         );
         #[cfg(feature = "parity-capture")]
-        let preview_changed = self.vm.candidate != next.candidate
+        let preview_changed = preview_changed
+            || self.vm.candidate != next.candidate
             || self.vm.personal != next.personal
             || self.vm.ready != next.ready
             || self.vm.active_class != next.active_class;
@@ -123,11 +179,16 @@ impl Widget {
             changed || preview_changed || labels_changed
         }
         #[cfg(not(feature = "parity-capture"))]
-        changed
+        {
+            changed || preview_changed
+        }
     }
 
-    pub(crate) fn frame(&mut self, _prefs: Preferences, reduced: bool) -> (Paint, Wake) {
-        if cfg!(feature = "parity-capture") {
+    pub(crate) fn frame(&mut self, prefs: Preferences, reduced: bool) -> (Paint, Wake) {
+        let details = self.detail.clone();
+        let class_improvement = std::sync::Arc::clone(&self.improvement_label);
+        let personal_improvement = std::sync::Arc::clone(&self.personal_improvement_label);
+        if cfg!(feature = "parity-capture") || self.preview {
             // El harness productivo previsualiza el récord sin crear un aviso live.
             let vm = self.vm.clone();
             let timing = if vm.ready {
@@ -144,10 +205,26 @@ impl Widget {
             } else {
                 Kind::Personal
             };
+            let improvement = if kind == Kind::Personal {
+                personal_improvement
+            } else {
+                class_improvement
+            };
             (
                 Box::new(move |window, cx| {
                     if let Some(timing) = &timing {
-                        paint(&vm, kind, timing, 1.0, 0.0, window, cx);
+                        paint(
+                            &vm,
+                            kind,
+                            timing,
+                            details.iter().find(|d| d.id == timing.car),
+                            &improvement,
+                            1.0,
+                            0.0,
+                            prefs,
+                            window,
+                            cx,
+                        );
                     }
                 }),
                 Wake::Idle,
@@ -170,8 +247,26 @@ impl Widget {
             let vm = self.vm.clone();
             let kind = notice.kind;
             let timing = notice.timing.clone();
+            let improvement = if kind == Kind::Personal {
+                personal_improvement
+            } else {
+                class_improvement
+            };
             (
-                Box::new(move |window, cx| paint(&vm, kind, &timing, alpha, offset, window, cx)),
+                Box::new(move |window, cx| {
+                    paint(
+                        &vm,
+                        kind,
+                        &timing,
+                        details.iter().find(|d| d.id == timing.car),
+                        &improvement,
+                        alpha,
+                        offset,
+                        prefs,
+                        window,
+                        cx,
+                    );
+                }),
                 wake,
             )
         }
@@ -232,136 +327,379 @@ fn ease_out(x: f32) -> f32 {
     t * t * (3.0 - 2.0 * t)
 }
 
+#[derive(Clone, PartialEq)]
+struct Detail {
+    id: vantare_domain::CarId,
+    timing: Timing,
+    subtitle: String,
+    time: String,
+    lap: String,
+    sectors: [Option<bool>; 3],
+    session: Option<crate::session::Session>,
+    clock: String,
+}
+fn details(snapshot: &Snapshot, vm: &ViewModel, prefs: Preferences) -> Vec<Detail> {
+    snapshot
+        .state
+        .cars
+        .iter()
+        .filter(|c| {
+            vm.candidate.as_ref().is_some_and(|t| t.car == c.id)
+                || vm.personal.as_ref().is_some_and(|t| t.car == c.id)
+        })
+        .map(|car| {
+            let timing = vm
+                .candidate
+                .as_ref()
+                .filter(|timing| timing.car == car.id)
+                .or_else(|| vm.personal.as_ref().filter(|timing| timing.car == car.id))
+                .expect("el filtro anterior exige un aviso de este coche");
+            let session = crate::session::Session::of(&snapshot.state.session.kind);
+            let clock = if session == Some(crate::session::Session::Qualifying) {
+                vantare_domain::format::clock(snapshot.state.session.remaining_s.current().copied())
+            } else {
+                String::new()
+            };
+            let lap = if !clock.is_empty() && clock != "—" {
+                clock.clone()
+            } else {
+                timing.laps.map_or_else(
+                    || "—".into(),
+                    |n| {
+                        format!(
+                            "{} {n}",
+                            if prefs.language == vantare_domain::format::Language::Es {
+                                "V"
+                            } else {
+                                "L"
+                            }
+                        )
+                    },
+                )
+            };
+            Detail {
+                timing: timing.clone(),
+                session,
+                clock,
+                lap,
+                time: timing.text(),
+                id: car.id,
+                subtitle: format!(
+                    "{} · {} #{}",
+                    timing.driver,
+                    car.vehicle.as_str(),
+                    car.number
+                ),
+                sectors: std::array::from_fn(|i| {
+                    let value = car
+                        .last_sectors_s
+                        .get(i)?
+                        .current()
+                        .filter(|v| v.is_finite() && **v > 0.0)?;
+                    if car.last_lap_s.current() != car.best_lap_s.current() {
+                        return None;
+                    }
+                    snapshot
+                        .state
+                        .cars
+                        .iter()
+                        .filter(|c| c.class == car.class)
+                        .filter_map(|c| c.best_sectors_s.get(i)?.current())
+                        .filter(|v| v.is_finite() && **v > 0.0)
+                        .min_by(|a, b| a.total_cmp(b))
+                        .map(|best| value <= best)
+                }),
+            }
+        })
+        .collect()
+}
+
+fn is_demo(snapshot: &Snapshot) -> bool {
+    use std::sync::OnceLock;
+    static PHOTO: OnceLock<Option<Snapshot>> = OnceLock::new();
+    PHOTO
+        .get_or_init(|| {
+            crate::workshop::snapshots_from_json(include_str!(
+                "../../fixtures/fastest-lap-design-system.sequence.json"
+            ))
+            .ok()
+            .and_then(|v| v.into_iter().last())
+        })
+        .as_ref()
+        == Some(snapshot)
+}
+
+fn paint_sector_chips(
+    detail: Option<&Detail>,
+    kit: &Kit<'_>,
+    mut draw: impl FnMut(f32, Color, crate::vantare::paint::Label<'_>),
+) {
+    for i in 0..3 {
+        let x = 371.0 + i as f32 * 33.0;
+        let color = detail
+            .and_then(|d| d.sectors[i])
+            .map_or(Color(0xffffff, 0.08), |record| {
+                Color(if record { 0xb26bff } else { 0x22c55e }, 1.0)
+            });
+        draw(
+            x,
+            color,
+            crate::vantare::paint::Label {
+                value: ["S1", "S2", "S3"][i],
+                x: x + 8.0,
+                right: None,
+                top: 55.0,
+                height: 16.0,
+                face: Face::Display,
+                ink: kit.ink(Face::Display, 10.0, 1.0, kit.style.colors.text.hsla()),
+            },
+        );
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
 fn paint(
     vm: &ViewModel,
     kind: Kind,
     timing: &Timing,
+    detail: Option<&Detail>,
+    improvement: &str,
     alpha: f32,
-    offset: f32,
+    _offset: f32,
+    prefs: Preferences,
     window: &mut Window,
     cx: &mut App,
 ) {
-    let (ox, oy) = text::origin();
-    text::with_origin((ox, oy + offset), || {
-        window.paint_quad(quad(
-            rect(0.0, 0.0, SIZE.0, SIZE.1),
-            Corners::all(px(12.0)),
-            linear_gradient(
-                115.0,
-                linear_color_stop(col(0x18191c, alpha), 0.0),
-                linear_color_stop(col(0x0e0f12, alpha), 1.0),
-            ),
-            Edges::all(px(1.0)),
-            col(0xffffff, 0.24 * alpha),
-            BorderStyle::default(),
-        ));
-        // ::after productivo, recortado al interior redondo del panel.
-        if let Err(error) = window.paint_svg(
-            rect(0.0, 0.0, SIZE.0, SIZE.1),
-            "fastest-lap/stripes.svg".into(),
-            Some(include_bytes!("stripes.svg")),
-            gpui::TransformationMatrix::default(),
-            col(0xd31120, 0.22 * alpha),
-            cx,
-        ) {
-            eprintln!("franjas de vuelta rápida: {error}");
-        }
-        paint_rect(window, 77.0, 13.0, 1.0, 78.0, col(0xffffff, 0.24 * alpha));
-        stopwatch(window, cx, alpha);
-        paint_content(vm, kind, timing, alpha, window, cx);
-    });
-}
-
-fn paint_content(
-    vm: &ViewModel,
-    kind: Kind,
-    timing: &Timing,
-    alpha: f32,
-    window: &mut Window,
-    cx: &mut App,
-) {
-    let heading = match kind {
-        Kind::Class => &vm.class_label,
-        Kind::Personal => &vm.personal_label,
+    // Un aviso retenido puede sobrevivir al candidato actual. Sus textos
+    // preparados solo valen para la misma vuelta, no solo para el mismo coche.
+    let detail = detail.filter(|detail| &detail.timing == timing);
+    let style = Style::compiled();
+    let mut variant = style.styles.neo.clone();
+    variant.top.1 *= alpha;
+    variant.bottom.1 *= alpha;
+    variant.border.1 *= alpha;
+    variant.shadow_alpha *= alpha;
+    let kit = Kit {
+        style: &style,
+        variant: &variant,
+        accent: style.accents.red,
+        language: prefs.language,
+        width: SIZE.0,
     };
-    // Al faltar el piloto, CSS centra las dos líneas restantes.
-    let top_shift = if !vm.show_driver || timing.driver.is_empty() {
-        10.615
+    kit.panel(window, SIZE.1);
+    let color = if kind == Kind::Personal {
+        0x4ade80
     } else {
-        0.0
+        0xb26bff
     };
-    let heading_ink = ink(14.0, 750.0, 0.14, col(0xc05bff, alpha));
-    let heading = text::fit(window, heading, &heading_ink, 210.0);
-    text::draw(
+    window.paint_quad(quad(
+        crate::efficiency::rect(1.0, 1.0, 280.0, 102.0),
+        Corners::all(px(9.0)),
+        linear_gradient(
+            90.0,
+            linear_color_stop(Color(color, 0.26 * alpha).hsla(), 0.0),
+            linear_color_stop(Color(color, 0.0).hsla(), 1.0),
+        ),
+        Edges::all(px(0.0)),
+        Color(0x000000, 0.0).hsla(),
+        BorderStyle::default(),
+    ));
+    let heading = kit.ink(Face::Display, 12.0, 1.6, Color(color, alpha).hsla());
+    let title = if kind == Kind::Personal {
+        if kit.es() {
+            "TU MEJOR VUELTA"
+        } else {
+            "PERSONAL BEST"
+        }
+    } else {
+        match (detail.and_then(|d| d.session), kit.es()) {
+            (Some(crate::session::Session::Qualifying), true) => "POLE PROVISIONAL",
+            (Some(crate::session::Session::Qualifying), false) => "PROVISIONAL POLE",
+            (Some(crate::session::Session::Practice), true) => "MEJOR DE LA PRÁCTICA",
+            (Some(crate::session::Session::Practice), false) => "PRACTICE BEST",
+            (_, true) => "VUELTA RÁPIDA",
+            (_, false) => "FASTEST LAP",
+        }
+    };
+    kit.label(
         window,
         cx,
+        title,
+        16.0,
+        None,
+        12.0,
+        16.0,
+        Face::Display,
         &heading,
-        96.0,
-        text::baseline(6.0 + top_shift, 29.0, 14.0).round(),
-        &heading_ink,
     );
-    if kind == Kind::Class
-        && let Some(class) = &vm.active_class
-    {
-        let class_ink = ink(11.0, 750.0, 0.06, col(0xb7a2c6, alpha));
-        let x = 96.0 + text::width(window, &heading, &heading_ink) + 6.0;
-        let label = text::fit(window, class, &class_ink, 455.0 - x);
-        text::draw(
+    if let Some(class) = &vm.active_class {
+        let ink = kit.ink(Face::Display, 10.0, 0.0, Color(0xffffff, alpha).hsla());
+        let class = text::fit_borrowed(window, class, &ink, 92.0);
+        let width = text::width(window, &class, &ink) + 12.0;
+        let x = 16.0 + text::width(window, title, &heading) + 8.0;
+        round_rect(
+            window,
+            x,
+            12.0,
+            width,
+            14.0,
+            3.0,
+            style.class(&class).dot.alpha(alpha),
+        );
+        kit.label(
             window,
             cx,
-            &label,
-            x,
-            text::baseline(6.0 + top_shift, 29.0, 11.0).round(),
-            &class_ink,
+            &class,
+            x + 6.0,
+            None,
+            12.0,
+            14.0,
+            Face::Display,
+            &ink,
         );
     }
-    let time_ink = ink(30.38, 750.0, 0.015, col(0xf4f4f6, alpha));
-    text::draw(
+    let time = kit.ink(Face::Display, 40.0, 0.5, Color(0xfaf7f7, alpha).hsla());
+    let time_text = detail.map_or_else(
+        || std::borrow::Cow::Owned(timing.text()),
+        |detail| std::borrow::Cow::Borrowed(detail.time.as_str()),
+    );
+    kit.label(
         window,
         cx,
-        &timing.text(),
-        96.0,
-        text::baseline(36.48 + top_shift, 30.38, 30.38).round(),
-        &time_ink,
+        &time_text,
+        16.0,
+        None,
+        30.0,
+        40.0,
+        Face::Display,
+        &time,
     );
     if vm.show_driver {
-        let driver_ink = ink(14.0, 600.0, 0.0, col(0xc6c7cd, alpha));
-        let driver = text::fit(window, &timing.driver, &driver_ink, 359.0);
-        text::draw(
+        let ink = kit.ink(Face::Body, 12.0, 0.0, Color(0xc9c0c2, alpha).hsla());
+        let subtitle = detail.map_or(timing.driver.as_str(), |detail| detail.subtitle.as_str());
+        let driver = text::fit_borrowed(window, subtitle, &ink, 320.0);
+        kit.label(
             window,
             cx,
             &driver,
-            96.0,
-            text::baseline(69.0, 29.0, 14.0).round(),
-            &driver_ink,
+            16.0,
+            None,
+            74.0,
+            16.0,
+            Face::Body,
+            &ink,
         );
     }
-}
-
-fn stopwatch(window: &mut Window, cx: &App, alpha: f32) {
-    // SVG productivo: GPUI conserva curvas, uniones y extremos redondos.
-    if let Err(error) = window.paint_svg(
-        rect(21.0, 29.83, 38.0, 44.33),
-        "fastest-lap/stopwatch.svg".into(),
-        Some(include_bytes!("stopwatch.svg")),
-        gpui::TransformationMatrix::default(),
-        col(0xc05bff, alpha),
+    let muted = kit.ink(Face::Mono, 10.0, 0.0, style.colors.muted.hsla());
+    kit.label(
+        window,
         cx,
-    ) {
-        eprintln!("cronómetro de vuelta rápida: {error}");
-    }
+        if kit.es() {
+            "vs anterior"
+        } else {
+            "vs previous"
+        },
+        0.0,
+        Some(464.0),
+        32.0,
+        14.0,
+        Face::Mono,
+        &muted,
+    );
+    let value = kit.ink(Face::Display, 22.0, 0.0, Color(color, alpha).hsla());
+    kit.label(
+        window,
+        cx,
+        improvement,
+        0.0,
+        Some(464.0),
+        12.0,
+        22.0,
+        Face::Display,
+        &value,
+    );
+    paint_sector_chips(detail, &kit, |x, color, label| {
+        round_rect(window, x, 55.0, 30.0, 16.0, 3.0, color.hsla());
+        label.paint(&kit, window, cx);
+    });
+    let lap = detail.map_or_else(
+        || {
+            std::borrow::Cow::Owned(timing.laps.map_or_else(
+                || "—".into(),
+                |v| format!("{} {v}", if kit.es() { "V" } else { "L" }),
+            ))
+        },
+        |detail| std::borrow::Cow::Borrowed(detail.lap.as_str()),
+    );
+    kit.label(
+        window,
+        cx,
+        &lap,
+        0.0,
+        Some(464.0),
+        76.0,
+        14.0,
+        Face::Mono,
+        &muted,
+    );
 }
 
 impl Settings {
     #[allow(clippy::unused_self)] // Contrato común de demanda por renderer.
     pub fn demand(&self) -> vantare_ipc::Demand {
-        use vantare_ipc::Signal::{LapCount, LapTimes, TrackName};
-        crate::demand::signals(250, &[LapTimes, LapCount, TrackName])
+        use vantare_ipc::Signal::{LapCount, LapTimes, SessionClock, SessionInfo, TrackName};
+        crate::demand::signals(
+            250,
+            &[LapTimes, LapCount, TrackName, SessionInfo, SessionClock],
+        )
     }
 }
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn title_and_clock_follow_the_session_without_announcing_an_old_live_record() {
+        let mut photo = crate::workshop::snapshots_from_json(include_str!(
+            "../../fixtures/fastest-lap-design-system.sequence.json"
+        ))
+        .expect("fotos")
+        .remove(1);
+        photo.origin.source.kind = vantare_domain::SourceKind::Live;
+        let prefs = Preferences::default();
+        let mut widget = Widget::new(&Settings::default(), prefs);
+        widget.ingest(&photo, prefs);
+        photo.state.session.kind =
+            vantare_domain::Quality::Reliable(vantare_domain::SessionKind::Qualifying);
+        photo.state.session.remaining_s = vantare_domain::Quality::Reliable(522.0);
+        widget.ingest(&photo, prefs);
+        assert!(!widget.detail.is_empty());
+        assert!(
+            widget
+                .detail
+                .iter()
+                .all(|d| d.session == Some(crate::session::Session::Qualifying)
+                    && d.clock == "08:42")
+        );
+        assert!(!widget.ingest(&photo, prefs));
+        assert!(widget.notice.is_none());
+    }
+
+    #[test]
+    fn workshop_preview_is_explicit_and_does_not_announce_an_old_live_record() {
+        let photos = crate::workshop::snapshots_from_json(include_str!(
+            "../../fixtures/fastest-lap-design-system.sequence.json"
+        ))
+        .expect("demo");
+        assert!(is_demo(photos.last().expect("foto final")));
+        let mut live = photos[0].clone();
+        live.origin.source.kind = vantare_domain::SourceKind::Live;
+        assert!(!is_demo(&live));
+        let mut widget = Widget::new(&Settings::default(), Preferences::default());
+        widget.ingest(&live, Preferences::default());
+        assert!(widget.notice.is_none());
+        assert_eq!(widget.size(), SIZE);
+    }
+
     #[test]
     fn driver_and_duration_variants_affect_projection_and_expiry() {
         for duration in [3, 15] {
@@ -390,8 +728,10 @@ mod tests {
     use super::*;
 
     fn reference_scene() -> Snapshot {
-        vantare_ipc::snapshot_from_fixture_json(include_str!("../../fixtures/fastest-lap.snapshot.json"))
-            .expect("escena DTO v3 válida")
+        vantare_ipc::snapshot_from_fixture_json(include_str!(
+            "../../fixtures/fastest-lap.snapshot.json"
+        ))
+        .expect("escena DTO v3 válida")
     }
 
     #[test]
@@ -506,5 +846,64 @@ mod tests {
                 (0, Wake::Frame) | (1, Wake::At(_)) | (2, Wake::Idle)
             ));
         }
+    }
+}
+
+#[cfg(test)]
+mod record_render_tests {
+    use super::*;
+    #[test]
+    fn missing_class_sector_references_never_paint_a_record_chip() {
+        use vantare_domain::{Quality, SourceState, format::Language};
+        let prefs = Preferences::default();
+        let mut photo = crate::source::fixed();
+        photo.state.source_state = SourceState::Live;
+        let own = photo.state.player.expect("jugador").car;
+        for car in &mut photo.state.cars {
+            car.best_sectors_s = vec![Quality::Unavailable; 3];
+        }
+        let car = photo
+            .state
+            .cars
+            .iter_mut()
+            .find(|c| c.id == own)
+            .expect("coche");
+        car.last_lap_s = Quality::Reliable(90.0);
+        car.best_lap_s = Quality::Reliable(90.0);
+        car.last_sectors_s = vec![Quality::Reliable(30.0); 3];
+        let vm = vantare_domain::fastest_lap::project(&photo, prefs);
+        let detail = details(&photo, &vm, prefs);
+        let own_detail = detail.iter().find(|d| d.id == own).expect("detalle propio");
+        crate::paint_tests::with_kit(SIZE.0, Language::Es, |kit| {
+            let mut painted = Vec::new();
+            paint_sector_chips(Some(own_detail), kit, |_, color, label| {
+                painted.push((label.value.to_owned(), color));
+            });
+            assert_eq!(painted.len(), 3);
+            assert!(
+                painted
+                    .iter()
+                    .all(|(_, color)| *color == Color(0xffffff, 0.08)),
+                "sin una referencia no se afirma récord: {painted:?}"
+            );
+        });
+        photo
+            .state
+            .cars
+            .iter_mut()
+            .find(|c| c.id == own)
+            .expect("coche")
+            .best_sectors_s = vec![Quality::Reliable(31.0); 3];
+        let detail = details(&photo, &vm, prefs);
+        let own_detail = detail.iter().find(|d| d.id == own).expect("detalle propio");
+        crate::paint_tests::with_kit(SIZE.0, Language::Es, |kit| {
+            let mut painted = Vec::new();
+            paint_sector_chips(Some(own_detail), kit, |_, color, _| painted.push(color));
+            assert_eq!(
+                painted,
+                [Color(0xb26bff, 1.0); 3],
+                "referencia real superada, ficha morada"
+            );
+        });
     }
 }

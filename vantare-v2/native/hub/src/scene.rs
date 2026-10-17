@@ -97,6 +97,11 @@ impl Scene {
         })
     }
 
+    /// Fotos observadas hasta el cursor, para reconstruir widgets con historia.
+    pub fn observed(&self) -> &[Snapshot] {
+        &self.frames[..=self.index]
+    }
+
     pub fn snapshot(&self) -> &Snapshot {
         &self.frames[self.index]
     }

@@ -1,5 +1,8 @@
 //! Historial corto del widget construido solo con fotos observadas.
-use crate::{CarId, SessionId, SourceState};
+use crate::{
+    CarId, Quality, SessionId, SourceState,
+    delta::{Board, Reference},
+};
 use std::collections::VecDeque;
 use std::time::Duration;
 
@@ -14,7 +17,14 @@ const CADENCE: Duration = Duration::from_millis(50);
 // El silencio supera el plazo de frescura del nucleo (500 ms).
 const GAP: Duration = Duration::from_millis(500);
 
-type Identity = (u64, SessionId, Option<CarId>, Option<u32>, Option<u64>);
+type Identity = (
+    u64,
+    SessionId,
+    Option<CarId>,
+    Option<u32>,
+    Reference,
+    Option<u64>,
+);
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Sample {
@@ -40,26 +50,71 @@ impl Trace {
         self.push_with_window(snapshot, WINDOW)
     }
     pub fn push_with_window(&mut self, snapshot: &Snapshot, window: Duration) -> bool {
+        let reference = snapshot
+            .state
+            .player_car()
+            .and_then(|c| displayed(&c.best_lap_s))
+            .filter(|v| *v > 0.0);
+        self.push_values(
+            snapshot,
+            window,
+            Reference::PersonalBest,
+            reference,
+            snapshot
+                .state
+                .player
+                .map_or(Quality::Unavailable, |p| p.delta_best_s),
+        )
+    }
+
+    /// Misma historia observada, con la referencia ya proyectada por Delta.
+    pub fn push_with_board(
+        &mut self,
+        snapshot: &Snapshot,
+        window: Duration,
+        board: &Board,
+    ) -> bool {
+        self.push_values(
+            snapshot,
+            window,
+            board.reference,
+            board.reference_lap_s,
+            board.delta,
+        )
+    }
+
+    fn push_values(
+        &mut self,
+        snapshot: &Snapshot,
+        window: Duration,
+        reference_kind: Reference,
+        reference: Option<f64>,
+        delta: Quality<f64>,
+    ) -> bool {
         let window = window.clamp(Duration::from_secs(1), Duration::from_secs(8));
         let car = snapshot.state.player_car();
-        let lap = car.and_then(|c| match c.laps {
-            crate::Quality::Reliable(v)
-            | crate::Quality::Estimated(v)
-            | crate::Quality::Stale(v) => Some(v),
-            crate::Quality::Unavailable => None,
-        });
-        // El DTO no lleva ID de referencia: la mejor vuelta propia es su senal.
-        let reference = car
-            .and_then(|c| displayed(&c.best_lap_s))
-            .filter(|v| *v > 0.0)
-            .map(f64::to_bits);
-        let identity = (
+        let lap = car.and_then(|c| c.laps.last_known().copied());
+        let reference = reference.map(f64::to_bits);
+        let mut identity = (
             snapshot.epoch,
             snapshot.state.session.id,
             snapshot.state.player.map(|p| p.car),
             lap,
+            reference_kind,
             reference,
         );
+        // Mantener la serie observada durante una pausa/stale no crea muestras
+        // nuevas ni convierte la referencia anterior en un dato fresco.
+        if matches!(
+            snapshot.state.source_state,
+            SourceState::Paused | SourceState::Stale
+        ) && identity.5.is_none()
+            && let Some(previous) = self.identity
+            && (identity.0, identity.1, identity.2, identity.3, identity.4)
+                == (previous.0, previous.1, previous.2, previous.3, previous.4)
+        {
+            identity.5 = previous.5;
+        }
         let mut changed = false;
         if self.identity != Some(identity) {
             changed = !self.samples.is_empty();
@@ -93,11 +148,7 @@ impl Trace {
             }
         }
         self.last_seen = Some((snapshot.sequence, at));
-        let value = snapshot
-            .state
-            .player
-            .and_then(|p| p.delta_best_s.current().copied())
-            .filter(|v| v.is_finite());
+        let value = delta.current().copied().filter(|v| v.is_finite());
         self.cut |= value.is_none();
         if self
             .samples
@@ -148,6 +199,17 @@ pub enum Trend {
 }
 
 pub fn project(snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
+    project_delta(
+        snapshot,
+        prefs,
+        snapshot
+            .state
+            .player
+            .map_or(Quality::Unavailable, |p| p.delta_best_s),
+    )
+}
+
+fn project_delta(snapshot: &Snapshot, prefs: Preferences, delta: Quality<f64>) -> ViewModel {
     let current = snapshot
         .state
         .player
@@ -157,7 +219,7 @@ pub fn project(snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
                 SourceState::Waiting | SourceState::Lost
             )
         })
-        .and_then(|player| displayed(&player.delta_best_s));
+        .and_then(|_| displayed(&delta));
     ViewModel {
         current_text: delta_text(current),
         trend_text: match prefs.language {
@@ -192,7 +254,32 @@ fn displayed(q: &crate::Quality<f64>) -> Option<f64> {
 
 impl Trace {
     pub fn project(&self, snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
-        let mut vm = project(snapshot, prefs);
+        self.project_delta(
+            snapshot,
+            prefs,
+            snapshot
+                .state
+                .player
+                .map_or(Quality::Unavailable, |p| p.delta_best_s),
+        )
+    }
+
+    pub fn project_with_board(
+        &self,
+        snapshot: &Snapshot,
+        prefs: Preferences,
+        board: &Board,
+    ) -> ViewModel {
+        self.project_delta(snapshot, prefs, board.delta)
+    }
+
+    fn project_delta(
+        &self,
+        snapshot: &Snapshot,
+        prefs: Preferences,
+        delta: Quality<f64>,
+    ) -> ViewModel {
+        let mut vm = project_delta(snapshot, prefs, delta);
         if matches!(
             snapshot.state.source_state,
             SourceState::Waiting | SourceState::Lost
@@ -200,11 +287,7 @@ impl Trace {
             return vm;
         }
         // Una ausencia actual no hereda el ultimo valor conocido como fresco.
-        if snapshot
-            .state
-            .player
-            .and_then(|p| displayed(&p.delta_best_s))
-            .is_some()
+        if displayed(&delta).is_some()
             && let Some(value) = self.samples.back().and_then(|p| p.delta_seconds)
         {
             vm.current_text = delta_text(Some(value));
@@ -342,6 +425,49 @@ mod tests {
 
 #[cfg(test)]
 mod trace_tests {
+    #[test]
+    fn stale_retains_observed_reference_history_without_adding_fresh_samples() {
+        for reference in [Reference::PersonalBest, Reference::Optimal] {
+            let mut trace = Trace::default();
+            let first = sample(1, 0, Quality::Reliable(0.1));
+            let mut board = crate::delta::project(&first, Preferences::default());
+            board.reference = reference;
+            board.reference_lap_s = Some(90.0);
+            trace.push_with_board(&first, WINDOW, &board);
+            let mut stale = sample(2, 100, Quality::Stale(0.1));
+            stale.state.source_state = SourceState::Stale;
+            board.reference_lap_s = None;
+            board.delta = Quality::Stale(0.1);
+            assert!(!trace.push_with_board(&stale, WINDOW, &board));
+            assert_eq!(trace.samples().len(), 1);
+            stale.state.source_state = SourceState::Lost;
+            assert!(trace.push_with_board(&stale, WINDOW, &board));
+            assert!(trace.samples().is_empty());
+        }
+    }
+
+    #[test]
+    fn switching_reference_does_not_join_samples_even_with_equal_reference_times() {
+        let mut trace = Trace::default();
+        let first = sample(1, 0, Quality::Reliable(-0.1));
+        let mut board = crate::delta::project(&first, Preferences::default());
+        board.reference_lap_s = Some(90.0);
+        trace.push_with_board(&first, WINDOW, &board);
+        let next = sample(2, 100, Quality::Reliable(-0.1));
+        board.reference = Reference::Optimal;
+        board.delta = Quality::Reliable(0.4);
+        trace.push_with_board(&next, WINDOW, &board);
+        assert_eq!(trace.samples().len(), 1);
+        assert_eq!(trace.samples()[0].delta_seconds, Some(0.4));
+        assert!(trace.samples()[0].break_before);
+        board.delta = Quality::Unavailable;
+        assert_eq!(
+            trace
+                .project_with_board(&next, Preferences::default(), &board)
+                .current_text,
+            "—"
+        );
+    }
 
     #[test]
     fn eight_seconds_retain_the_full_window_at_native_cadence() {

@@ -30,6 +30,9 @@ pub struct Car {
     pub near: bool,
     /// Una vuelta completa detrás según progreso fresco; no solo el contador.
     pub lapped: bool,
+    /// Aproximación radial entre centros, m/s. Positivo = se acercan.
+    /// No es distancia libre entre carrocerías ni tiempo hasta colisión.
+    pub closing_mps: Option<f64>,
 }
 
 pub fn project(snapshot: &Snapshot) -> ViewModel {
@@ -60,7 +63,11 @@ pub fn project(snapshot: &Snapshot) -> ViewModel {
         let (dx, dy) = (pose.x_m - origin.x_m, pose.y_m - origin.y_m);
         let ahead_m = dx * cos + dy * sin;
         let right_m = dx * sin - dy * cos;
-        if ahead_m.abs() > RANGE_M || right_m.abs() > RANGE_M {
+        if !ahead_m.is_finite()
+            || !right_m.is_finite()
+            || ahead_m.abs() > RANGE_M
+            || right_m.abs() > RANGE_M
+        {
             continue;
         }
         let overlap = ahead_m.abs() < OVERLAP_AHEAD_M && right_m.abs() <= OVERLAP_SIDE_M;
@@ -73,9 +80,21 @@ pub fn project(snapshot: &Snapshot) -> ViewModel {
             overlap,
             near: ahead_m.hypot(right_m) <= NEAR_M,
             lapped: lapped_by_player(me, car, state.session.track_length_m.current()),
+            closing_mps: closing_speed(me, car, dx, dy),
         });
     }
     vm
+}
+
+fn closing_speed(me: &crate::Car, other: &crate::Car, dx: f64, dy: f64) -> Option<f64> {
+    let a = me.velocity_mps.current()?;
+    let b = other.velocity_mps.current()?;
+    let distance = dx.hypot(dy);
+    if !a.iter().chain(b).all(|v| v.is_finite()) || !distance.is_finite() || distance <= 0.0 {
+        return None;
+    }
+    let speed = -((b[0] - a[0]) * dx + (b[1] - a[1]) * dy) / distance;
+    speed.is_finite().then_some(speed)
 }
 
 // Mismo criterio de `overlayv2/builder_radar.go`: cruzar meta por sí solo
@@ -99,6 +118,24 @@ fn lapped_by_player(me: &crate::Car, car: &crate::Car, length: Option<&f64>) -> 
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn closing_uses_both_world_velocities_and_never_reuses_stale_speed() {
+        let mut scene = snapshot(vec![car(1, 0.0, 0.0, 0.0), car(2, -20.0, 0.0, 0.0)]);
+        scene.state.cars[0].velocity_mps = Reliable([40.0, 0.0]);
+        scene.state.cars[1].velocity_mps = Reliable([50.0, 0.0]);
+        assert_eq!(project(&scene).cars[0].closing_mps, Some(10.0));
+        scene.state.cars[1].velocity_mps = Reliable([30.0, 0.0]);
+        assert_eq!(project(&scene).cars[0].closing_mps, Some(-10.0));
+        for absent in [
+            crate::Quality::Unavailable,
+            crate::Quality::Stale([50.0, 0.0]),
+            Reliable([f64::NAN, 0.0]),
+        ] {
+            scene.state.cars[1].velocity_mps = absent;
+            assert_eq!(project(&scene).cars[0].closing_mps, None);
+        }
+    }
+
     use super::*;
     use crate::{Car as ModelCar, Player, Pose, Quality::Reliable, State};
     use std::f64::consts::FRAC_PI_2;

@@ -671,7 +671,11 @@ fn expanded(board: &Board, w: &Words, out: &mut Vec<Line>) {
             right: if right.is_empty() {
                 String::new()
             } else {
-                format!("{} {}", w.pick("MEDIA", "AVG"), right.join(" · "))
+                format!(
+                    "{} {}",
+                    w.pick("MEDIA 3 VUELTAS", "LAST 3 AVG"),
+                    right.join(" · ")
+                )
             },
         });
         out.push(Line::Spark);
@@ -787,6 +791,71 @@ fn stint_footer(board: &Board, w: &Words, out: &mut Vec<Line>) {
 // Medidas
 // ---------------------------------------------------------------------------
 
+fn session_lines(
+    board: &Board,
+    session: crate::session::Session,
+    es: bool,
+    content: &mut Vec<Line>,
+) {
+    let w = Words { es };
+    content.truncate(1);
+    let qualifying = session == crate::session::Session::Qualifying;
+    let tank = limiting(board);
+    let (level_key, level, average) = match board.limit {
+        Resource::Fuel => (
+            w.pick("En depósito", "In tank"),
+            litres(tank.level, 1),
+            litres(tank.per_lap, 2),
+        ),
+        Resource::Energy => (
+            w.pick("Energía virtual", "Virtual energy"),
+            percent(tank.level, 1),
+            percent(tank.per_lap, 2),
+        ),
+    };
+    let (plan_key, plan_value, plan_tone) = plan_text(board, &w);
+    let rows = [
+        (level_key, level, Tone::Hi),
+        (
+            w.pick("Media últimas 3 v", "Last 3 laps avg"),
+            average,
+            Tone::Plain,
+        ),
+        (
+            w.pick("Restan", "Laps left"),
+            w.laps(board.laps_left),
+            Tone::Plain,
+        ),
+        (plan_key, plan_value, plan_tone),
+    ];
+    for (i, (key, value, tone)) in rows.into_iter().enumerate() {
+        content.push(Line::Row {
+            key: key.into(),
+            value,
+            tone,
+            me: i == 3,
+        });
+    }
+    content.push(Line::Footer {
+        left: if qualifying {
+            w.pick("Carga mínima para el plan: —", "Minimum fuel for plan: —")
+                .into()
+        } else {
+            format!(
+                "{}: {}",
+                w.pick("Tanda", "Run"),
+                board
+                    .stint
+                    .laps
+                    .map_or_else(|| "—".into(), |n| format!("{n} {}", w.pick("v", "laps")))
+            )
+        },
+        right: None,
+        pill: None,
+        pulse: false,
+    });
+}
+
 fn height(line: &Line, style: &Style, variant: &Variant) -> f32 {
     let g = &style.geometry;
     let f = &style.fuel;
@@ -809,6 +878,8 @@ fn height(line: &Line, style: &Style, variant: &Variant) -> f32 {
 struct Plan2 {
     width: f32,
     height: f32,
+    /// Alto del panel: lo que ocupa el contenido; la ventana conserva `height`.
+    content: f32,
     /// Tipo y y de cada línea (sin textos: no dependen del idioma).
     tops: Vec<f32>,
 }
@@ -827,9 +898,24 @@ fn layout_lines(lines: &[Line], options: &Options, style: &Style) -> Plan2 {
         tops.push(y);
         y += height(line, style, variant);
     }
+    let content = y + variant.padding_y;
     Plan2 {
         width: options.width(style),
-        height: y + variant.padding_y,
+        content,
+        height: match options.size {
+            // Incluye el pie de espera y ambos márgenes: 137 px en Neo.
+            Size::Compact => {
+                2.0 * variant.padding_y
+                    + variant.header_height
+                    + variant.header_gap
+                    + style.fuel.big_height
+                    + 2.0 * style.geometry.footer_gap
+                    + 1.0
+                    + style.geometry.footer_height
+            }
+            Size::Standard => 204.0,
+            Size::Expanded => 440.0,
+        },
         tops,
     }
 }
@@ -958,6 +1044,7 @@ pub(crate) struct Visual {
     lines: Arc<Vec<Line>>,
     spark: Arc<Spark>,
     language: Language,
+    session: Option<crate::session::Session>,
     band_text: Arc<(String, String)>,
     fitted_tiles: Arc<OnceLock<Vec<Vec<String>>>>,
 }
@@ -975,6 +1062,7 @@ impl Visual {
             lines,
             spark: Arc::new(Spark::default()),
             language,
+            session: None,
             band_text: Arc::new((String::new(), String::new())),
             fitted_tiles: Arc::new(OnceLock::new()),
         }
@@ -1001,11 +1089,38 @@ impl Visual {
             Some(Band::Final(lap, total)) => (String::new(), format!("{lap}/{total}")),
             _ => (String::new(), String::new()),
         });
-        self.lines = Arc::new(lines(
+        let mut content = lines(
             self.board.as_deref(),
             &self.options,
             self.language == Language::Es,
-        ));
+        );
+        if let Some(session) = self.session.filter(|s| *s != crate::session::Session::Race)
+            && self.board.as_deref().is_some_and(|b| !waiting(Some(b)))
+        {
+            let es = self.language == Language::Es;
+            let label = match (session, es) {
+                (crate::session::Session::Qualifying, true) => "CLASIFICACIÓN",
+                (crate::session::Session::Qualifying, false) => "QUALIFYING",
+                (_, true) => "PRÁCTICA",
+                (_, false) => "PRACTICE",
+            };
+            if let Some(Line::Header { left, .. }) = content
+                .iter_mut()
+                .find(|l| matches!(l, Line::Header { .. }))
+            {
+                *left = format!("FUEL · {label}");
+            }
+            if self.options.size == Size::Standard
+                && self
+                    .board
+                    .as_deref()
+                    .is_some_and(|b| band(b).is_none() && b.service.is_none())
+            {
+                let board = self.board.as_deref().expect("tablero presente");
+                session_lines(board, session, es, &mut content);
+            }
+        }
+        self.lines = Arc::new(content);
         self.plan = Arc::new(layout_lines(&self.lines, &self.options, &self.style));
         self.spark = Arc::new(Spark::new(
             self.board.as_deref(),
@@ -1018,6 +1133,14 @@ impl Visual {
             return false;
         }
         self.language = language;
+        self.rebuild();
+        true
+    }
+    pub(crate) fn set_session(&mut self, session: Option<crate::session::Session>) -> bool {
+        if self.session == session {
+            return false;
+        }
+        self.session = session;
         self.rebuild();
         true
     }
@@ -1155,12 +1278,12 @@ impl Visual {
             spark: &self.spark,
             band_text: &self.band_text,
         };
-        painter.panel(window, self.plan.height);
+        painter.panel(window, self.plan.content.min(self.plan.height));
         if self.low() {
             let period = self.style.fuel.low_pulse_ms.max(1.0) / 1000.0;
             let phase = now.saturating_duration_since(motion.started).as_secs_f32() / period;
             let alpha = 0.55 + 0.45 * (phase * std::f32::consts::TAU).cos().abs();
-            painter.border(window, self.plan.height, alpha);
+            painter.border(window, self.plan.content.min(self.plan.height), alpha);
         }
         let fitted = self.fitted_tiles.get().expect("prepared before paint");
         for ((line, &y), fitted) in self.lines.iter().zip(&self.plan.tops).zip(fitted) {
@@ -1205,6 +1328,40 @@ impl State {
 // ---------------------------------------------------------------------------
 // Pintado
 // ---------------------------------------------------------------------------
+
+fn paint_row_text(
+    kit: &Kit<'_>,
+    y: f32,
+    key: &str,
+    value: &str,
+    color: gpui::Hsla,
+    mut draw: impl FnMut(crate::vantare::paint::Label<'_>),
+) {
+    let height = kit.style.geometry.row_height;
+    draw(crate::vantare::paint::Label {
+        value: key,
+        x: kit.variant.padding_x,
+        right: None,
+        top: y,
+        height,
+        face: Face::Body,
+        ink: kit.ink(
+            Face::Body,
+            kit.style.fuel.row_label,
+            0.0,
+            kit.style.colors.text.hsla(),
+        ),
+    });
+    draw(crate::vantare::paint::Label {
+        value,
+        x: 0.0,
+        right: Some(kit.width - kit.variant.padding_x),
+        top: y,
+        height,
+        face: Face::Mono,
+        ink: kit.ink(Face::Mono, kit.style.fonts.mono, 0.0, color),
+    });
+}
 
 struct Painter<'a> {
     kit: Kit<'a>,
@@ -1586,9 +1743,6 @@ impl Painter<'_> {
         tone: Tone,
         me: bool,
     ) {
-        let c = &self.style.colors;
-        let h = self.style.geometry.row_height;
-        let (pad, w) = (self.variant.padding_x, self.width);
         if me {
             let own = if self.variant.player_white > 0.0 {
                 crate::vantare::paint::WHITE
@@ -1597,20 +1751,9 @@ impl Painter<'_> {
             };
             self.highlight(window, y, own, 1.0);
         }
-        let key_ink = self.ink(Face::Body, self.style.fuel.row_label, 0.0, c.text.hsla());
-        self.label(window, cx, key, pad, None, y, h, Face::Body, &key_ink);
-        let ink = self.ink(Face::Mono, self.style.fonts.mono, 0.0, self.tone(tone));
-        self.label(
-            window,
-            cx,
-            value,
-            0.0,
-            Some(w - pad),
-            y,
-            h,
-            Face::Mono,
-            &ink,
-        );
+        paint_row_text(&self.kit, y, key, value, self.tone(tone), |label| {
+            label.paint(&self.kit, window, cx);
+        });
     }
 
     fn tiles(
@@ -1879,7 +2022,9 @@ mod tests {
             .as_array()
             .expect("fases")
             .iter()
-            .map(|f| vantare_ipc::snapshot_from_fixture_json(&f["snapshot"].to_string()).expect("foto"))
+            .map(|f| {
+                vantare_ipc::snapshot_from_fixture_json(&f["snapshot"].to_string()).expect("foto")
+            })
             .collect()
     }
 
@@ -1894,6 +2039,28 @@ mod tests {
 
     fn texts(lines: &[Line]) -> String {
         format!("{lines:?}")
+    }
+
+    #[test]
+    fn every_fuel_state_keeps_its_frame_and_all_lines_fit() {
+        let photos = frames(include_str!("../../fixtures/fuel-vantare.scene.json"));
+        let style = Style::compiled();
+        for size in [Size::Compact, Size::Standard, Size::Expanded] {
+            let options = options(size);
+            let initial = layout(None, &options, &style);
+            for photo in &photos {
+                let board = State::project(photo);
+                let lines = lines(Some(&board), &options, true);
+                let plan = layout_lines(&lines, &options, &style);
+                assert_eq!((plan.width, plan.height), (initial.width, initial.height));
+                for (line, top) in lines.iter().zip(&plan.tops) {
+                    assert!(
+                        *top + height(line, &style, options.variant(&style)) <= plan.height,
+                        "{size:?}: línea fuera de marco {line:?}"
+                    );
+                }
+            }
+        }
     }
 
     #[test]
@@ -1969,6 +2136,61 @@ mod tests {
     }
 
     #[test]
+    fn sessions_relabel_the_same_fuel_without_resizing_or_overflowing() {
+        let photos = crate::workshop::snapshots_from_json(include_str!(
+            "../../fixtures/fuel-strategy-design-system.sequence.json"
+        ))
+        .expect("estados aprobados");
+        for size in [Size::Compact, Size::Standard, Size::Expanded] {
+            let mut state = State::new(options(size));
+            let original = state.visual.size();
+            for photo in &photos {
+                state.ingest(State::project(photo));
+                let board = state.visual.board.clone();
+                for session in [
+                    crate::session::Session::Qualifying,
+                    crate::session::Session::Practice,
+                    crate::session::Session::Race,
+                ] {
+                    state.visual.set_session(Some(session));
+                    assert_eq!(
+                        state.visual.board, board,
+                        "el contexto no recalcula las medidas"
+                    );
+                    assert_eq!(state.visual.size(), original);
+                    assert!(
+                        state.visual.plan.content <= state.visual.plan.height,
+                        "{size:?} {session:?}: contenido {} / marco {}; líneas {:?}",
+                        state.visual.plan.content,
+                        state.visual.plan.height,
+                        state.visual.lines
+                    );
+                }
+            }
+        }
+        let mut state = State::new(options(Size::Standard));
+        state.ingest(State::project(&photos[0]));
+        state
+            .visual
+            .set_session(Some(crate::session::Session::Qualifying));
+        assert!(
+            state
+                .visual
+                .lines
+                .iter()
+                .any(|l| matches!(l, Line::Header { left, .. } if left=="FUEL · CLASIFICACIÓN"))
+        );
+        state.visual.presentation(Language::En);
+        assert!(
+            state
+                .visual
+                .lines
+                .iter()
+                .any(|l| matches!(l, Line::Header { left, .. } if left=="FUEL · QUALIFYING"))
+        );
+    }
+
+    #[test]
     fn english_keeps_the_same_layout() {
         let photos = frames(include_str!("../../fixtures/fuel-vantare.scene.json"));
         for photo in &photos {
@@ -1978,6 +2200,134 @@ mod tests {
                 let en = lines(Some(&board), &options(size), false);
                 assert_eq!(es.len(), en.len());
             }
+        }
+    }
+}
+
+#[cfg(test)]
+mod resource_render_tests {
+    use super::*;
+    #[test]
+    fn practice_and_qualifying_paint_the_limiting_resource() {
+        for session in [
+            crate::session::Session::Practice,
+            crate::session::Session::Qualifying,
+        ] {
+            for resource in [Resource::Fuel, Resource::Energy] {
+                let mut board = State::project(&crate::source::fixed());
+                board.source_state = SourceState::Live;
+                board.player_present = true;
+                board.status = None;
+                board.banner = None;
+                board.service = None;
+                board.fcy = None;
+                board.fuel = Tank {
+                    level: Some(80.0),
+                    capacity: Some(100.0),
+                    per_lap: Some(2.0),
+                    laps: Some(40.0),
+                };
+                board.energy = Some(Tank {
+                    level: Some(0.5),
+                    capacity: Some(1.0),
+                    per_lap: Some(0.1),
+                    laps: Some(5.0),
+                });
+                board.limit = resource;
+                board.laps_left = Some(if resource == Resource::Fuel {
+                    40.0
+                } else {
+                    5.0
+                });
+                board.plan = Plan::Stop(10);
+                let mut visual = Visual::new(Options {
+                    size: Size::Standard,
+                    look: crate::look::Tone::Neo,
+                    accent: Accent::Red,
+                    brand: false,
+                });
+                let mut motion = Movement::new(Instant::now());
+                visual.ingest_shared(Arc::new(board), &mut motion);
+                visual.set_session(Some(session));
+                for language in [Language::Es, Language::En] {
+                    visual.presentation(language);
+                    crate::paint_tests::with_kit(300.0, language, |kit| {
+                        let painted = crate::paint_tests::observe(|draw| {
+                            for line in visual.lines.iter() {
+                                if let Line::Row { key, value, .. } = line {
+                                    paint_row_text(
+                                        kit,
+                                        0.0,
+                                        key,
+                                        value,
+                                        kit.style.colors.value.hsla(),
+                                        &mut *draw,
+                                    );
+                                }
+                            }
+                        });
+                        let values: Vec<_> =
+                            painted.iter().map(|label| label.value.as_str()).collect();
+                        let es = language == Language::Es;
+                        if resource == Resource::Energy {
+                            assert!(values.contains(&if es {
+                                "Energía virtual"
+                            } else {
+                                "Virtual energy"
+                            }));
+                            assert!(values.contains(&"50.0 %") && values.contains(&"10.00 %"));
+                            assert!(values.contains(&if es { "5.0 v" } else { "5.0 laps" }));
+                            assert!(
+                                !values.iter().any(|value| value.ends_with(" L")),
+                                "energía no se rotula en litros: {values:?}"
+                            );
+                        } else {
+                            assert!(values.contains(&"80.0 L") && values.contains(&"2.00 L"));
+                        }
+                    });
+                }
+            }
+        }
+    }
+    #[test]
+    fn session_average_paints_the_three_measured_lap_window() {
+        let board = State::project(&crate::source::fixed());
+        for (language, session, expected) in [
+            (
+                Language::Es,
+                crate::session::Session::Practice,
+                "Media últimas 3 v",
+            ),
+            (
+                Language::En,
+                crate::session::Session::Qualifying,
+                "Last 3 laps avg",
+            ),
+        ] {
+            let mut lines = Vec::new();
+            session_lines(&board, session, language == Language::Es, &mut lines);
+            crate::paint_tests::with_kit(300.0, language, |kit| {
+                let painted = crate::paint_tests::observe(|draw| {
+                    for line in &lines {
+                        if let Line::Row { key, value, .. } = line {
+                            paint_row_text(
+                                kit,
+                                0.0,
+                                key,
+                                value,
+                                kit.style.colors.value.hsla(),
+                                &mut *draw,
+                            );
+                        }
+                    }
+                });
+                assert!(painted.iter().any(|label| label.value == expected));
+                assert!(
+                    !painted
+                        .iter()
+                        .any(|label| label.value == "Media tanda" || label.value == "Run average")
+                );
+            });
         }
     }
 }

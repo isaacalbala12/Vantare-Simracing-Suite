@@ -473,3 +473,7 @@ y repetición completa verde sin modificarlo. Capturas #1675: 7/7 PNG 1600x900,
 un proceso/una ventana fuera de monitores, focus=false, proceso cerrado.
 La verificación final descubre nightly 8ef018cef (#1685, rutas MSIX); merge
 sin conflictos. El PR/issue registran su nuevo SHA y CI, sin extrapolar verdes.
+
+El lote detecta que las dos filas nuevas acercaban las acciones del resumen
+al pie. Se reduce únicamente su espaciado vertical (12→9), conservando ocho
+filas y todos los controles; se repite la vista final con capture-batch.

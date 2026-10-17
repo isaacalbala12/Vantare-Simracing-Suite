@@ -1056,7 +1056,7 @@ impl Hub {
                         .items_center()
                         .gap(px(12.0 * s))
                         .px(px(16.0 * s))
-                        .py(px(12.0 * s))
+                        .py(px(9.0 * s))
                         .border_b_1()
                         .border_color(rgb(0x0029_2325))
                         .child(text(label, 14.0 * s, 400, orbit::ink_3(cx), cx).w(px(135.0 * s)))

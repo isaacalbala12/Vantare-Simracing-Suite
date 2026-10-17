@@ -1,7 +1,8 @@
 # Propuesta de QA de Hub instalado · #1697 / VANTA-105
 
 PR draft independiente de #1694. El workflow nuevo solo responde a PR hacia
-nightly y omite su job mientras el PR sea draft. No modifica workflows,
+nightly; el job se limita a la rama de esta propuesta y se omite mientras
+el PR sea draft. No añade compilaciones costosas a otros PR. No modifica workflows,
 rulesets ni checks requeridos existentes. Pasarlo a ready requiere la revisión
 del orquestador y que #1694 esté integrado. No se ha ejecutado esta propuesta
 en una VM hosted; ni su viabilidad gráfica ni hub-ready están acreditados.

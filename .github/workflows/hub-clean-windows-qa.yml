@@ -14,7 +14,7 @@ permissions:
 jobs:
   installed-hub:
     # Proposal remains inert while its PR is draft. Never a required gate.
-    if: github.event.pull_request.draft == false
+    if: github.event.pull_request.draft == false && github.head_ref == 'vantareapp/isa-1697-qa-hub-windows'
     runs-on: windows-latest
     timeout-minutes: 90
     defaults:

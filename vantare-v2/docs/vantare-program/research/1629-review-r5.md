@@ -52,7 +52,10 @@ Se restauran exactamente los 15 archivos mediante SHA-256. El segundo test de
 grupos pasaba porque las sugerencias reinsertaban Relative: se refuerza también
 con todas las tarjetas colocadas, sin sugerencias que oculten una omisión.
 Logs locales: regressions-first.log, mutation-red.log y mutate.py. Ningún cambio
-temporal se publica. Resultados finales, SHA y CI se añaden al cerrar la tanda. Evidencia de esta ronda:
+temporal se publica. Los resultados finales, SHA y CI vigentes se verifican en
+la descripción del [PR #1641](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1641)
+y de la [issue #1629](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1629); los JSON/logs del cierre quedan
+en la carpeta de evidencia. No se extrapola el verde de otro SHA. Evidencia de esta ronda:
 `C:/VantareServer/evidence/1629-r5/`. Se conservan los intentos que fallan.
 Se incorpora nightly `2a580c458` mediante merge tras las correcciones: instalador
 #1600, telemetría #1679 y calendario #1640. Un conflicto en la demanda de Banderas:
@@ -800,3 +803,11 @@ styles/vantare.json
 
 ---
 
+
+## Fuente congelada para los gates de cierre
+
+Correcciones `ae8a002df`, merge `db44554535231b2c1a327c01da808d8dfbb55791`,
+base nightly `2a580c458d34680cf061627059a06fbe98242aaf`. Árbol nativo
+`9fb8ef5aa8390904a91d9c58f2f8412b16eb1e4c`: permite comprobar que el cierre
+documental no altera la fuente sometida a CI. El estado de ejecución y el SHA
+remoto vigentes se consultan en el PR, no en los verdes históricos R4.

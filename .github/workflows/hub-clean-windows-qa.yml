@@ -1,0 +1,65 @@
+name: Optional installed Hub QA
+
+on:
+  pull_request:
+    branches: [nightly]
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - '.github/workflows/hub-clean-windows-qa.yml'
+      - 'vantare-v2/native/**'
+
+permissions:
+  contents: read
+
+jobs:
+  installed-hub:
+    # Proposal remains inert while its PR is draft. Never a required gate.
+    if: github.event.pull_request.draft == false
+    runs-on: windows-latest
+    timeout-minutes: 90
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: vantare-v2
+    env:
+      CARGO_BUILD_JOBS: '2'
+      VANTARE_CARGO_MIN_GB: '0'
+      CARGO_TARGET_DIR: ${{ runner.temp }}/hub-qa-target
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Record DXGI adapters and require software rendering
+        run: |
+          $evidence = Join-Path $env:RUNNER_TEMP 'hub-qa-evidence'
+          New-Item -ItemType Directory -Path $evidence -Force | Out-Null
+          ./native/packaging/windows-software-adapters.ps1 -OutputFile (Join-Path $evidence 'adapters.json') -RequireSoftwareOnly
+      - name: Fetch locked dependencies
+        working-directory: vantare-v2/native
+        run: |
+          cargo fetch --locked
+          if ($LASTEXITCODE) { throw 'Dependency fetch failed' }
+      - name: Build new Release payload and Setup
+        run: |
+          if (-not (Select-String -LiteralPath native/packaging/candidate.ps1 -SimpleMatch "'bin/fixtures/standings-design-system.sequence.json'" -Quiet)) { throw 'Merge #1694 before running this proposal' }
+          $output = Join-Path $env:RUNNER_TEMP 'hub-qa-build'
+          Remove-Item Env:DUCKDB_LIB_DIR -ErrorAction SilentlyContinue
+          # No BuildConfig and no remote credentials: local mechanics only.
+          ./native/scripts/compilar.ps1 pwsh -NoProfile -File native/packaging/candidate.ps1 -Operation Build -Channel beta -Version 0.0.979 -BuildProfile Release -OutputDirectory $output
+          if ($LASTEXITCODE) { throw 'Payload build failed' }
+          ./native/scripts/compilar.ps1 pwsh -NoProfile -File native/packaging/build-installer.ps1 -Version 0.0.979 -BuildProfile Release -OutputDirectory $output
+          if ($LASTEXITCODE) { throw 'Setup build failed' }
+      - name: Install Setup and require real hub-ready
+        run: ./native/packaging/hosted-hub-ready.ps1 -Setup (Join-Path $env:RUNNER_TEMP 'hub-qa-build/VantareSetup.exe') -EvidenceDirectory (Join-Path $env:RUNNER_TEMP 'hub-qa-evidence')
+      - name: Preserve QA evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: installed-hub-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/hub-qa-evidence
+          if-no-files-found: error
+          retention-days: 7
+      - name: Remove owned build target
+        if: always()
+        run: |
+          $target = [IO.Path]::GetFullPath((Join-Path $env:RUNNER_TEMP 'hub-qa-target'))
+          if (-not $target.StartsWith([IO.Path]::GetFullPath($env:RUNNER_TEMP) + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) { throw 'Target outside runner temp' }
+          if (Test-Path -LiteralPath $target) { Remove-Item -LiteralPath $target -Recurse -Force }

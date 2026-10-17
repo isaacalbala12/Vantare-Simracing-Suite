@@ -1,3 +1,55 @@
+## #1688 · VANTA-105 · Entrega local de mecánica (17-oct-2026)
+
+**QA local condicional PASS; NO candidata beta publicable.** El orquestador
+permitió probar sin config remota. BuildConfig ausente es soportado por Services;
+no se inventan valores ni se usa producción. Login/pagos no probados, Hub no
+acreditado en desktop privado y Windows limpio pendiente. Sin firma/release.
+
+Productor limpio `67f74b6050a9453feb3aa04bb8c5629677e3d712`, base nightly
+`5e5c4d1854988604664c518c68beb31a27d2704c`, rama
+`vantareapp/isa-1688-candidata-rc1-buildfix`, worktree aislado
+`C:/VantareServer/wt/isa-1688-rc1-build`. Release 0.0.979, designación
+RC1-LOCAL-QA-MECHANICS-ONLY, sin configuración de servicios. Setup en
+`C:/VantareServer/share/rc1/`, aviso SOLO-QA-LOCAL y sidecars verificados.
+SHA Setup `5cd546de0c0f519d11f8f774a27d9270fd4873fabf7260171181d464c720ecbf`;
+67.328.512 bytes. PROCEDENCIA.json e INFORME.md en `evidence/rc1/`.
+
+Release inicial compila en28m14s pero packaging bloquea dos bins QA privados
+no contemplados. Arreglo mínimo cerrado de inventario en PR draft
+[#1689](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1689):
+reconoce ambas herramientas al compilar y mantiene diez EXE públicos; bins
+privados fuera de todos los canales. No admite desconocidos/ausentes/duplicados.
+Regresión PS5.1 10, canales45 e integridad462 PASS; test en check Windows.
+ZIP real verificado10 EXE, sin QA privada/admin/Workshop/instaladores.
+CI del productor67f74b605: promotion path y blocking gates SUCCESS (run
+39000132766), además quality/marketing/GitGuardian. HEAD documental final y
+sus checks se registran por separado en issue/PR; ningún merge desde el worker.
+
+Dos recorridos con SID/perfil nuevos y carpetas Windows inicializadas: limpio
+0.0.979→reinstalar (generación distinta)→desinstalar, y NSIS público0.0.975→
+Setup0.0.979→desinstalar PASS. Exit0, versiones/registro/Uninstall propios,
+bytes opacos con hash idéntico, sin state/EXE/marker al terminar. Son pruebas
+reales /S; no se simula hub-ready. El mismo Setup/hash se usa en ambos casos.
+Evidencia `clean-VantareRC1_10bd01d`, `upgrade-VantareRC1_11ea3ff`,
+`final-verification.json`; control NSIS separado también conserva datos.
+
+Límites: sin Sandbox (Disabled/EXE ausente); W11Pro22631/SO/GPU/drivers
+compartidos. Primera prueba sin Startup devuelve exit1 incluso con autostart
+OFF: [#1690](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1690)
+para triage, sin arreglo aquí. Crear la ruta devuelta por Windows permite
+la mecánica, NO resuelve el defecto del producto. Hub nuevo no acreditado:
+bootstrap termina sin marker nuevo; no se determina causa en este entorno.
+Setup/Uninstall CRT estático y System32 PASS, pero diez EXE de app importan
+VC Runtime; Windows limpio y sus prerequisitos siguen pendientes. Tampoco
+se acredita feed firmado, navegador/SmartScreen, login, pagos ni DPI físicos.
+
+Cuentas/perfiles propios y ambos targets D `rc1-1688-{payload,installer}`
+retirados y verificados; logs/datos fixture preservados. Sin targets ajenos
+borrados ni app visible en desktop principal. Siguiente del orquestador:
+review #1689, triage #1690, config beta pública real y QA conectada/Hub en
+Windows limpio antes de candidata pública. Lista de nombres requeridos en
+CONFIG-PUBLICA-PENDIENTE.md; VANTA-104 conserva firma/publicación de Isaac.
+
 ## #1631 / VANTA-70 · Seguimiento P3 de login (#1684)
 
 Encargo tras fusionar #1635 en nightly `95abdcc6e`. Rama nueva

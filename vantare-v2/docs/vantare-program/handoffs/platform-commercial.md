@@ -1,5 +1,17 @@
 ## #1692 / VANTA-105 · CRT de distribución (17-oct-2026)
 
+Actualización de integración: el orquestador fusionó #1691 en nightly
+`7396f65d0`; se incorpora mediante merge a #1693, sin rebase/force-push.
+Se conservan las suites CRT y registro y ambos expedientes; CI del nuevo HEAD
+pendiente. La evidencia del payload sigue ligada al productor f68e4a3db.
+Tras el merge: CRT17 y registro42 PASS en PS5.1; AST/diff/462 huellas PASS.
+Shell adicional bloqueado por acceso QA1492 preexistente en Startup: la guarda
+lo conserva. No se borra ni se afirma PASS; log merge-shell-tests.log en crt/.
+Seguimiento autorizado [#1695](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1695):
+Setup nuevo desde nightly, Startup ausente OFF/ON sin crearla en el actor;
+después rollback por fichero, lock de desinstalación y P3 en PR separado.
+La QA histórica con Startup creada y Setup antiguo no acredita el arreglo.
+
 Encargo posterior a #1690, cuyo PR #1691 quedó ready con cinco checks verdes
 en `a99f560c1` (run39007794185), sin merge por el worker. #1692 usa rama/worktree
 propios `vantareapp/isa-1692-crt-estatico`, isa-1692, base nightly `329520c20`.
@@ -43,6 +55,50 @@ build QA local sin servicios, login/pagos sin probar, no candidata publicable.
 Sin nuevo Setup, firma/publicación/merge; share/rc1 histórico conservado.
 HEAD documental final requiere CI propia antes de ready; no se confunde con
 el productor del payload f68e4a3db, cuyos cinco checks ya pasaron.
+## #1690 / VANTA-105 · Startup ausente y finalización de Setup (17/10/2026)
+
+Hallazgo bloqueante de la QA local RC1 #1688; el orquestador confirma que
+continúa bajo VANTA-105. Rama `vantareapp/isa-1690-startup-ausente`, worktree
+propio isa-1690, base `origin/nightly@5e5c4d1854988604664c518c68beb31a27d2704c`.
+PR separado [#1691](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1691),
+implementación `67be3b9b55dea9ce7ba7c09d94eb65552ff7addb`. #1689 ya integrado
+por el orquestador: merge de `origin/nightly@329520c20` a esta rama, sin rebase.
+Conflictos solo en workflow/handoff: se conservan ambas suites con sus gates
+y ambos expedientes completos. CI pendiente del nuevo HEAD, registrado en #1690.
+CI `85f8777cd`/`25598a834` falla en el fixture: exit5, cancelación previa a copiar.
+.NET Framework antepone BOM de Console.InputEncoding al crear stdin del hijo;
+se reproduce localmente con UTF8-BOM. El harness selecciona UTF8 sin BOM solo
+durante Process.Start y restaura la codificación del llamador, enviando los
+mismos bytes ASCII de Rust. Regresión fuerza padre UTF8-BOM; no se relaja el
+acuse exacto del motor ni se cambia producción para hacer pasar este fallo.
+Sin merge del PR hacia nightly, firma ni publicación por el worker.
+
+Desktop/Startup OFF no consultan carpetas ni COM. ON usa la ruta configurada
+por Windows y crea la carpeta ausente; si no se puede, avisa y conserva lo
+ajeno sin abortar. Apagar una opción antes activa retira solo el acceso propio
+anterior; desinstalar no exige carpetas de opciones que nunca se activaron.
+Setup finaliza el registro bajo beta-session.lock. Ante excepción posterior a
+copiar/activar, restaura valores/tipos del registro, bytes de accesos y
+metadatos/bootstrap y estado anterior; elimina solo la generación nueva.
+Los datos originales y los datos conservados tras desinstalar se preservan.
+No añade recuperación durable ante corte de energía ni puede garantizar
+restauración si Windows impide también escribir los datos anteriores.
+
+Regresiones PS 5.1 `installer-registration-tests.ps1`, llamadas por
+`installer-tests.ps1` y por el gate Windows requerido: resolver que rechaza
+consultas OFF, carpetas ausentes/bloqueadas, COM real y PE inertes no ejecutados.
+Fallos reales de compartición después de activar/escribir para instalación
+nueva, actualización y adopción de datos; driver real instala en silencio y
+falla después al registrar una reparación con el bootstrap bloqueado, dejando
+exactamente el estado anterior y sin marker de arranque pendiente.
+Registro/driver: 42 PASS (incluida entrada UTF8-BOM); shell existente: 23 PASS; quality: 462 huellas PASS;
+AST y diff PASS. Los avisos del driver van al log, dejando stdout solo para
+eventos JSON. Los accesos opcionales se sincronizan tras la última escritura
+obligatoria: ni su resolución ni su copia de seguridad pueden abortar Setup.
+No cambia Rust/dependencias ni auth; no compila Rust localmente: la CI requerida
+ejecuta sus gates. No se abren Hub ni UI en la sesión principal, no se crean
+cuentas ni targets. Configuración beta, Hub, login, pagos y Windows limpio
+conservan los límites del informe RC1; no se reconstruye una candidata pública.
 
 ## #1688 · VANTA-105 · Entrega local de mecánica (17-oct-2026)
 

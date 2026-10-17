@@ -1,31 +1,46 @@
 ## #1694 / VANTA-105 · Recursos de arranque (17-oct-2026)
 
-Prioridad del orquestador sobre #1695. Rama propia
-`vantareapp/isa-1694-recursos-arranque`, worktree isa-1694, desde nightly
-`7396f65d0` con #1691. #1693 ready f30ec08ef, cinco checks verdes; review/merge
-reservados al orquestador. WIP #1695 preservado, sin mezclar con esta entrega.
+PR #1696, rama vantareapp/isa-1694-recursos-arranque. Base7396f65d0;
+merge de nightly64dc28446 (CRT #1693 ya integrado por el orquestador), sin
+rebase/force-push. Conflicto solo de handoff resuelto conservando ambos informes.
+Inventario cerrado completo: 17 secuencias aprobadas y snapshot Session Alerts.
+Release resuelve solo bin/fixtures, sin fallback al checkout; Debug lo conserva.
+Workshop sigue siendo entidad de la shell: distribuir sus recursos públicos
+versionados evita cambiar navegación/estado para resolver este bloqueo.
+Auditoría sistemática en native/packaging/startup-resources.md.
 
-Hub prepara Workshop incluso desde Home: la escena inicial aprobada faltaba
-en el ZIP. Inventario cerrado añade las 17 secuencias aprobadas y el snapshot
-Session Alerts, sin glob. Release deja de buscar el checkout; Debug conserva
-su fallback. Se mantiene Workshop como entidad de la shell; diferirlo o hacerlo
-opcional sería un cambio mayor que completar sus recursos públicos versionados.
-Auditoría sistemática de lecturas runtime frente a recursos embebidos en
-`native/packaging/startup-resources.md`; no se copian configuraciones del usuario.
+Hub Release real recompilado; check y Clippy -D warnings PASS, fmt/inventario14,
+AST/diff/462 huellas PASS. Nextest final: 522/522 PASS, 4 omisiones previas,
+113,646s; Storage hermano real compilado con DuckDB de desarrollo tras detectar
+su ausencia en el primer intento. Sin omitir ni debilitar el test afectado.
+Setup QA productor91744adb4, SHA
+1241f57869627e5f4959d3c90c30f64ffffb7151b187293ee2fb97b40ac6b54c.
+Hub/Setup nuevos y otros nueve EXE f68e4a3db con Rust/lock idénticos verificados;
+PROCEDENCIA.json distingue cada productor. No es build beta pública completa.
+Artefactos y sidecars en share/rc1/hub-1694, RC1 original conservada.
 
-Inventario14, AST/diff/462 huellas PASS. Regresión nueva para Release instalado
-en SID estándar/escritorio privado y CWD vacío: sin escena inicial, sin fixtures
-y paquete completo hasta hub-ready/PID real y cierre exit0. Compilación, gates
-Rust y arranque real pendientes; no se afirman aprobados antes de ejecutarlos.
-Evidencia `C:/VantareServer/evidence/rc1/hub-1694/`. Sin firma/publicación/merge.
+Cuatro campañas con usuarios estándar privados: faltan escena/directorio → exit1
+sin ready; paquete completo supera recursos y falla en DirectX resources:
+0x8007000E, exit1/00000001, sin hub-ready ni terminación forzada. Stderr completo
+conservado; cuentas/perfiles retirados y DACL restaurada. Sin ventanas ni procesos
+alterados en la sesión de Isaac. Desactivar DirectComposition tampoco resuelve.
+El orquestador autoriza entregar #1694 con este límite: probablemente entorno
+GPU/memoria de escritorio del servidor; no es prueba de defecto del producto.
+Hub-ready sigue pendiente. No hay otra VM/PC autorizado; propuesta aparte
+#1697 / PR draft #1698 para Windows hosted y pasos físicos para Isaac.
+Informe C:/VantareServer/evidence/rc1/hub-1694/INFORME.md.
+Regresión final SID1028 valida también la causa de ambos negativos y captura
+stderr UTF8; mismo fallo DirectX. Target D:/VantareServer/targets/1694-hub
+sin compilación activa: borrado literal rechazado por revisión automática
+(blocked by policy), pendiente de limpieza por el orquestador.
+Sin configuración beta: login/pagos sin probar. Sin firma/publicación/merge.
 
 P2-1 de #1695 ya acreditado con Setup nuevo de nightly7396f65d0, SHA
 bec8d3bb4394543169561cad07965987615e13914b6bdd00cd075dc80289e913. Tres usuarios
 sin Startup: OFF limpio, reinstalación ON (preferencia guardada) y NSIS0.0.975
 →nuevo OFF; actor nunca crea Startup/Desktop, datos conservados y SID/perfiles
 retirados. Informe seguimiento-1691/INFORME.md. La QA histórica de RC1 no acredita
-el arreglo. P2/P3 locales de #1695 aún sin cierre de regresiones/PR: acceso QA
-preexistente en el perfil de pruebas; se preserva para retomar en usuario aislado.
+el arreglo. P2/P3 de #1695 siguen WIP aislado, sin PR; se retoman después.
 
 ## #1692 / VANTA-105 · CRT de distribución (17-oct-2026)
 

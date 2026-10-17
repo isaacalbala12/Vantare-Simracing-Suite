@@ -39,3 +39,20 @@ Se conservan stdout, stderr y exit code; ningún test escribe un marker falso.
 La prueba GPUI requiere el runner gráfico aislado; no abre la app en el escritorio
 del operador ni presupone GPU disponible en un runner hosted. Sus resultados
 se registran separados de los gates unitarios/estáticos de CI.
+
+## Resultado acreditado en el servidor (17-oct-2026)
+
+Setup real instalado en tres usuarios estándar/escritorios privados. Los dos
+casos negativos salen1 sin hub-ready y stderr identifica la escena ausente o
+el catálogo instalado ausente. El paquete completo supera los recursos y sale1
+al crear recursos DirectX, HRESULT0x8007000E, sin hub-ready ni cierre forzado.
+El cambio de diagnóstico conserva toda la cadena de error. Desactivar
+DirectComposition también falla. Los resultados completos y cleanup de cuentas
+están en C:/VantareServer/evidence/rc1/hub-1694/INFORME.md.
+
+El orquestador acepta entregar el arreglo de recursos con este límite explícito.
+No se marca la prueba gráfica como PASS ni se sustituye el marker real. La causa
+es compatible con restricciones gráficas/memoria de escritorio del servidor y
+queda sin confirmar. No hay otra VM o PC autorizado. La propuesta de Windows
+hosted y los pasos físicos de Isaac van en #1697 / PR draft #1698, aparte;
+no se añade esta prueba a checks requeridos ni se toca el backend gráfico.

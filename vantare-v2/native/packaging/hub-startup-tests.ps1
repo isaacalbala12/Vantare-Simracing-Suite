@@ -32,12 +32,13 @@ $cwd=Join-Path $evidence 'isolated-cwd'
 [IO.Directory]::CreateDirectory($cwd)|Out-Null
 if(@(Get-ChildItem -LiteralPath $cwd -Force).Count){throw 'The launch CWD must be empty'}
 $events=[Collections.Generic.List[object]]::new()
-function Probe-Hub([string]$Case,[bool]$ExpectedReady){
+function Probe-Hub([string]$Case,[bool]$ExpectedReady,[string]$ExpectedDiagnostic=''){
     if(Test-Path -LiteralPath $ready){Remove-Item -LiteralPath $ready}
     $psi=[Diagnostics.ProcessStartInfo]::new();$psi.FileName=$hub
     $psi.Arguments='--control-stdin --data-dir "'+(Join-Path $evidence 'hub-data')+'"'
     $psi.WorkingDirectory=$cwd;$psi.UseShellExecute=$false;$psi.CreateNoWindow=$true
     $psi.RedirectStandardInput=$true;$psi.RedirectStandardOutput=$true;$psi.RedirectStandardError=$true
+    $psi.StandardOutputEncoding=[Text.Encoding]::UTF8;$psi.StandardErrorEncoding=[Text.Encoding]::UTF8
     $psi.EnvironmentVariables['VANTARE_BETA_ROOT']=$root
     $started=[DateTime]::UtcNow;$process=[Diagnostics.Process]::Start($psi)
     $stdout=$process.StandardOutput.ReadToEndAsync();$stderr=$process.StandardError.ReadToEndAsync()
@@ -67,15 +68,18 @@ function Probe-Hub([string]$Case,[bool]$ExpectedReady){
         $process.Dispose()
     }
     if($forced -or $observed -ne $ExpectedReady -or ($ExpectedReady -and ($code -ne 0 -or $window -eq 0)) -or (-not $ExpectedReady -and $code -eq 0)){throw "Hub startup regression failed: $Case"}
+    # A graphics failure must not satisfy a deliberately missing-resource case.
+    # CLI exposes only exit1, so retain and check its concrete file diagnostic.
+    if($ExpectedDiagnostic -and -not $stderr.Result.Contains($ExpectedDiagnostic)){throw "Unexpected failure cause: $Case"}
 }
 # Deliberately broken installed copies prove missing assets cannot be hidden
 # by the checkout still existing on the build server. Restore exact bytes/paths.
 $held=Join-Path $evidence 'initial-scene-held.json'
 [IO.File]::Move($initial,$held)
-try{Probe-Hub 'missing-initial-scene' $false}finally{[IO.File]::Move($held,$initial)}
+try{Probe-Hub 'missing-initial-scene' $false 'standings-design-system.sequence.json'}finally{[IO.File]::Move($held,$initial)}
 $held=Join-Path $evidence 'fixtures-held'
 [IO.Directory]::Move($fixtures,$held)
-try{Probe-Hub 'missing-fixture-directory' $false}finally{[IO.Directory]::Move($held,$fixtures)}
+try{Probe-Hub 'missing-fixture-directory' $false 'use --escena'}finally{[IO.Directory]::Move($held,$fixtures)}
 $null=Read-NativeManifest $generation 'beta'
 Probe-Hub 'complete-package' $true
 "3 isolated Release Hub startup checks PASS; $evidence"

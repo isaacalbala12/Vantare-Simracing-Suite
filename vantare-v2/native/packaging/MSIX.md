@@ -1,5 +1,20 @@
 # MSIX y firma gratuita en Microsoft Store — ISA-1432
 
+## Alcance del lanzamiento beta pública (VANTA-105 / #1695)
+
+MSIX no se utiliza para RC1 ni para el lanzamiento beta pública del 26-oct.
+El artefacto de distribución es el Setup propio construido con candidate.ps1
+y build-installer.ps1, con target MSVC explícito, CRT estático y guarda de
+imports para cada EXE, incluidos Setup y Uninstall. No hay publicación Store.
+
+El builder MSIX sigue siendo experimental: su compilación propia no aplica
+todavía ese contrato de CRT ni la guarda. No usar su salida como RC/release.
+Antes de habilitar ese canal hay que consumir binarios del candidato verificado
+o alinear target, CRT estático y validación de imports con candidate.ps1,
+y probarlos en Windows limpio. Esta entrega no cambia toolchain ni habilita MSIX.
+
+## Expediente experimental ISA-1432
+
 Encargo acotado de [#1432](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1432),
 ADR 0099, 2026-09-30. Worker Codex; revisión de todo el diff: Claude Opus 5.5.
 Base asignada `e8b0927a3e8f63b8e89d2043b18c57ac1753c0fd`, rama

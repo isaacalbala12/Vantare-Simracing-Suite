@@ -1,5 +1,17 @@
 # Beta nativa — instalador y actualizaciones (#1454)
 
+Seguimiento #1695: el rollback intenta restaurar cada metadato aunque otro esté
+bloqueado y registra los fallos en stderr, conservando el error original. Si no
+se puede enumerar el estado anterior se aborta antes de activar; si no se puede
+comprobar el estado actual o enumerar durante rollback, se conservan las
+generaciones. Nunca se retira una generación aún referenciada por state.json.
+Un bloqueo persistente puede impedir la restauración completa; el log lo indica.
+
+El desinstalador mantiene beta-session.lock durante retirada de datos de
+programa, registro, accesos y creación del marker. Su EXE se retira después de
+salir mediante Cleanup, que toma el mismo lock hasta borrar EXE y marker.
+La recuperación de un marker huérfano por Setup también se valida bajo ese lock.
+Las suites de registro y shell se ejecutan en el check Windows bloqueante.
 Auditoría de recursos de arranque, inventario explícito y regresión del Hub
 Release aislado del checkout: [startup-resources.md](startup-resources.md) (#1694).
 

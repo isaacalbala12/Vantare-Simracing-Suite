@@ -329,6 +329,8 @@ jobs:
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
           powershell.exe -NoProfile -ExecutionPolicy Bypass -File native/packaging/installer-registration-tests.ps1
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File native/packaging/installer-shell-tests.ps1 -EvidenceDirectory C:/tmp/ola2/1591-qa/ci-installer-shell
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
 
       # Caché de los artefactos de *dependencias* (rust-cache borra antes de
       # guardar los crates del workspace y el fork vendorizado, y limpia el

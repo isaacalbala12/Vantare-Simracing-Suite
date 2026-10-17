@@ -264,7 +264,7 @@ function Activate-BetaPackage([string]$Directory, [string]$Zip, [string]$Hash, [
     Set-BetaStatus $Directory 'applied' 'Instalación aplicada; comprobando el arranque' $Version $Notes
 }
 
-function Install-Beta([string]$Directory, [string]$Zip, [string]$Hash, [scriptblock]$Finalize=$null) {
+function Install-Beta([string]$Directory, [string]$Zip, [string]$Hash, [scriptblock]$Finalize=$null, [scriptblock]$Prepare=$null) {
     $directory = Open-NativeRoot $Directory -Initialize
     try { $session = [IO.File]::Open((Join-Path $directory 'beta-session.lock'), [IO.FileMode]::OpenOrCreate, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None) }
     catch { Throw-BetaInstallError 2 'Cierra Vantare para continuar. Si estás en carrera, espera a terminar.' }
@@ -272,12 +272,16 @@ function Install-Beta([string]$Directory, [string]$Zip, [string]$Hash, [scriptbl
         # Setup finalizes registration under the same session lock as activation.
         # Keep exact metadata/bootstrap bytes; existing generations/data are immutable.
         $before=@{}; $beforeHash=@{}; $generations=@()
+        if($null -ne $Prepare){& $Prepare}
         $metadata=@('state.json','candidate.ps1','beta.ps1','retained-data.json','boot-pending.json','update-status.json','registration-identity.txt','Uninstall.exe','uninstall-vantare.ps1','installer-ui.json','installer-notices.txt')
         if($null -ne $Finalize){
             foreach($file in Get-ChildItem -LiteralPath $directory -File -Force){
                 if($file.Name -in $metadata){$before[$file.Name]=[IO.File]::ReadAllBytes($file.FullName);$beforeHash[$file.Name]=Get-NativeHash $file.FullName}
             }
-            $generations=@(Get-ChildItem -LiteralPath (Join-Path $directory 'generations') -Directory -ErrorAction SilentlyContinue|ForEach-Object Name)
+            $generations=@()
+            if(Test-Path -LiteralPath (Join-Path $directory 'generations')){
+                $generations=@(Get-ChildItem -LiteralPath (Join-Path $directory 'generations') -Directory -ErrorAction Stop|ForEach-Object Name)
+            }
         }
         try {
             # Validar el paquete completo antes de seleccionar datos o cambiar el estado.
@@ -327,22 +331,38 @@ function Install-Beta([string]$Directory, [string]$Zip, [string]$Hash, [scriptbl
             if (Test-Path -LiteralPath $retained) { Remove-Item -LiteralPath $retained }
             if($null -ne $Finalize){& $Finalize}
         } catch {
+            $failure=$_
             if($null -ne $Finalize){
-                foreach($file in Get-ChildItem -LiteralPath $directory -File -Force){
-                    if($file.Name -in $metadata -and -not $before.ContainsKey($file.Name)){Remove-Item -LiteralPath $file.FullName}
-                }
-                foreach($name in $before.Keys){
+                # One denied file must not prevent the remaining restorations.
+                # State is first, so cleanup can retain anything still referenced.
+                foreach($name in $metadata){
                     $path=Join-Path $directory $name
-                    if(-not (Test-Path -LiteralPath $path) -or (Get-NativeHash $path) -cne $beforeHash[$name]){[IO.File]::WriteAllBytes($path,$before[$name])}
+                    try {
+                        if($before.ContainsKey($name)){
+                            if(-not (Test-Path -LiteralPath $path) -or (Get-NativeHash $path) -cne $beforeHash[$name]){[IO.File]::WriteAllBytes($path,$before[$name])}
+                        } elseif(Test-Path -LiteralPath $path){Remove-Item -LiteralPath $path}
+                    } catch {[Console]::Error.WriteLine("Rollback: no se pudo restaurar ${path}: $($_.Exception.Message)")}
                 }
-                foreach($generation in Get-ChildItem -LiteralPath (Join-Path $directory 'generations') -Directory -ErrorAction SilentlyContinue){
-                    if($generation.Name -cnotin $generations -and $generation.Name -cmatch '^[a-f0-9]{32}$'){
-                        Assert-NativeTree $generation.FullName
-                        Remove-Item -LiteralPath $generation.FullName -Recurse -Force
+                try {
+                    $referenced=@()
+                    if(Test-Path -LiteralPath (Join-Path $directory 'state.json')){
+                        $current=Read-NativeState $directory $false
+                        $referenced=@($current.active.generation)
+                        if($null -ne $current.previous){$referenced+= $current.previous.generation}
                     }
-                }
+                    # If enumeration or state validation fails, preserve all.
+                    $created=@(Get-ChildItem -LiteralPath (Join-Path $directory 'generations') -Directory -ErrorAction Stop)
+                    foreach($generation in $created){
+                        if($generation.Name -cnotin $generations -and $generation.Name -cnotin $referenced -and $generation.Name -cmatch '^[a-f0-9]{32}$'){
+                            try {
+                                Assert-NativeTree $generation.FullName
+                                Remove-Item -LiteralPath $generation.FullName -Recurse -Force
+                            } catch {[Console]::Error.WriteLine("Rollback: no se pudo retirar $($generation.FullName): $($_.Exception.Message)")}
+                        }
+                    }
+                } catch {[Console]::Error.WriteLine("Rollback: se conservan las generaciones al no poder comprobarlas: $($_.Exception.Message)")}
             }
-            throw
+            throw $failure
         }
     } finally { $session.Dispose() }
 }
@@ -480,11 +500,13 @@ function Run-BetaHub([string]$Directory, [string]$ManifestFile = '') {
     } finally { $session.Dispose() }
 }
 
-function Uninstall-Beta([string]$Directory) {
+function Uninstall-Beta([string]$Directory, [scriptblock]$Finalize=$null) {
     $directory = Open-NativeRoot $Directory
     $session = [IO.File]::Open((Join-Path $directory 'beta-session.lock'), [IO.FileMode]::OpenOrCreate, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
-    $lock = Open-NativeLock $directory
+    $lock = $null
     try {
+        $lock = Open-NativeLock $directory
+        if($null -ne $Finalize -and -not (Test-Path -LiteralPath (Join-Path $directory 'state.json'))){& $Finalize;return}
         # Una desinstalación interrumpida ya no tiene todos los hashes/archivos.
         # Validar el estado estructural, sin exigir integridad de lo que se va a borrar.
         $state = [IO.File]::ReadAllText((Join-Path $directory 'state.json')) | ConvertFrom-Json
@@ -524,7 +546,8 @@ function Uninstall-Beta([string]$Directory) {
             $path = Join-Path $directory $name
             if (Test-Path -LiteralPath $path) { Remove-Item -LiteralPath $path }
         }
-    } finally { $lock.Dispose(); $session.Dispose() }
+        if($null -ne $Finalize){& $Finalize}
+    } finally { if($null -ne $lock){$lock.Dispose()}; $session.Dispose() }
 }
 
 if ($MyInvocation.InvocationName -eq '.') { return }

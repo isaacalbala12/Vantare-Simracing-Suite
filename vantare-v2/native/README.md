@@ -282,6 +282,11 @@ fotos desde el principio que se alimentan antes de congelar la animación.
 Sin `settings`, se conserva el aspecto histórico de la captura individual:
 Eficiencia para Standings, Relative, Fuel, Delta y Pedals. Para comparar referencias
 Vantare, indicar `settings` con `kind` y `designSystem: "vantare"` explícitos.
+El lote de Workshop/overlays admite `parameters: {"language":"es"}` o `"en"`
+para pintar con esas preferencias; por defecto usa español. Rechaza otros
+idiomas o claves antes de crear el HWND. El idioma forma parte del recibo
+incremental; no se comparte una captura entre idiomas. Hub mantiene sus propios
+parámetros de escena.
 `size` fija el cliente de captura (por defecto 2304×1440); la PNG conserva el
 tamaño natural del widget. El alfa se recupera con las mismas dos pasadas
 negro/blanco, ahora con `PrintWindow` del HWND. El Hub también usa `PrintWindow`;

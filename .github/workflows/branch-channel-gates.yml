@@ -325,6 +325,8 @@ jobs:
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
           powershell.exe -NoProfile -ExecutionPolicy Bypass -File native/packaging/build-inventory-tests.ps1
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File native/packaging/build-crt-tests.ps1
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
           powershell.exe -NoProfile -ExecutionPolicy Bypass -File native/packaging/installer-registration-tests.ps1
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
 

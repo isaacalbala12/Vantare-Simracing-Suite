@@ -191,6 +191,27 @@ function Assert-NativePe([string]$Path) {
     } finally { $reader.Dispose() }
 }
 
+function Get-NativeDumpbin {
+    $command=Get-Command dumpbin.exe -ErrorAction SilentlyContinue
+    if($null -ne $command){return $command.Source}
+    $vswhere=Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer/vswhere.exe'
+    $paths=@(& $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -find 'VC/Tools/MSVC/**/bin/Hostx64/x64/dumpbin.exe')
+    if($LASTEXITCODE -or -not $paths.Count){throw 'Empaquetado requiere dumpbin de MSVC para validar dependencias CRT.'}
+    $paths[0]
+}
+
+function Assert-NativeStaticCrt([string]$Path,[string]$Dumpbin) {
+    Assert-NativePe $Path
+    # /DEPENDENTS lists both normal and delay-loaded DLLs. Never execute an
+    # unchecked application just to discover a missing runtime on the build PC.
+    $report=@(& $Dumpbin /NOLOGO /DEPENDENTS $Path)
+    if($LASTEXITCODE){throw "No se pudieron inspeccionar los imports de $Path"}
+    $dlls=@($report|ForEach-Object{if($_ -match '^\s+([A-Za-z0-9_.-]+\.dll)\s*$'){$matches[1]}})
+    if(-not $dlls.Count){throw "Inventario de imports vacío: $Path"}
+    $runtime=@($dlls|Where-Object{$_ -match '^(vcruntime|msvcp[0-9]|msvcr[0-9]|concrt[0-9]|ucrtbase|api-ms-win-crt-)'})
+    if($runtime.Count){throw "El binario de distribución exige CRT dinámico: $Path ($($runtime -join ', '))"}
+}
+
 function Read-NativeManifest([string]$Directory, [string]$ExpectedChannel, [bool]$VerifyFiles = $true) {
     $path = Join-Path $Directory 'manifest.json'
     if ((Get-Item -LiteralPath $path).Length -gt 65536) { throw 'Manifiesto demasiado grande.' }
@@ -733,18 +754,26 @@ function Build-NativeCandidate([string]$Destination, [string]$CandidateVersion, 
     Push-Location $native
     try {
         # La miniapp owner se construye aparte y nunca entra en el paquete público.
-        $cargoArgs = @('build', '--offline', '--locked', '--workspace', '--exclude', 'vantare-admin', '--exclude', 'vantare-installer', '--bins', '-j', '2')
+        $cargoArgs = @('build', '--offline', '--locked', '--target', 'x86_64-pc-windows-msvc', '--workspace', '--exclude', 'vantare-admin', '--exclude', 'vantare-installer', '--bins', '-j', '2')
         if ($Profile -eq 'Release') { $cargoArgs += '--release' }
         $oldVersion = $env:VANTARE_VERSION
         $oldChannel = $env:VANTARE_BUILD_CHANNEL
+        $oldFlags = $env:CARGO_ENCODED_RUSTFLAGS
         try {
             $env:VANTARE_VERSION = $CandidateVersion
             $env:VANTARE_BUILD_CHANNEL = $CandidateChannel
+            # Only distribution uses static CRT; development and host build
+            # scripts/proc macros keep their existing target/toolchain settings.
+            $flags=$oldFlags
+            if(-not $flags -and $env:RUSTFLAGS){$flags=($env:RUSTFLAGS.Trim() -split '\s+') -join [char]31}
+            if($flags){$flags += [char]31}
+            $env:CARGO_ENCODED_RUSTFLAGS=$flags+'-C'+[char]31+'target-feature=+crt-static'
             & cargo @cargoArgs
             $buildExit = $LASTEXITCODE
         } finally {
             $env:VANTARE_VERSION = $oldVersion
             $env:VANTARE_BUILD_CHANNEL = $oldChannel
+            $env:CARGO_ENCODED_RUSTFLAGS = $oldFlags
         }
         $global:LASTEXITCODE = $buildExit
         if ($LASTEXITCODE) { throw 'Falló la compilación offline.' }
@@ -756,11 +785,12 @@ function Build-NativeCandidate([string]$Destination, [string]$CandidateVersion, 
         if (@(Compare-Object @('vantare-setup','vantare-uninstall') $installerBins -CaseSensitive).Count) { throw 'Inventario del instalador propio incorrecto.' }
     } finally { Pop-Location }
     $payload = Join-Path $destination 'payload'
+    $dumpbin=Get-NativeDumpbin
     [IO.Directory]::CreateDirectory((Join-Path $payload 'bin')) | Out-Null
     [IO.Directory]::CreateDirectory((Join-Path $payload 'licenses')) | Out-Null
     foreach ($bin in (Get-NativeBins $CandidateChannel)) {
-        $source = Join-Path $metadata.target_directory ($Profile.ToLowerInvariant() + "/$bin.exe")
-        Assert-NativePe $source
+        $source = Join-Path $metadata.target_directory ('x86_64-pc-windows-msvc/' + $Profile.ToLowerInvariant() + "/$bin.exe")
+        Assert-NativeStaticCrt $source $dumpbin
         $embedded = & $source --version
         if ($LASTEXITCODE -or $embedded -cne "Vantare Native $CandidateVersion ($CandidateChannel)") { throw "Versión de producto no coincide: $bin" }
         Copy-Item -LiteralPath $source -Destination (Join-Path $payload "bin/$bin.exe")

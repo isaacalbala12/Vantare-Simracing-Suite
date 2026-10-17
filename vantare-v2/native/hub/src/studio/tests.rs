@@ -391,13 +391,46 @@ fn geometry_changes_cancel_manual_and_fitted_gestures_without_a_document_edit() 
         crate::quit_headless_test(cx);
     });
 }
+// Los elementos que contienen Entity deben vivir en la arena de un draw,
+// también cuando solo se inspeccionan sus estilos.
+fn assert_canvas_elements(assertions: fn(&mut Studio, &mut Context<Studio>)) {
+    struct Probe {
+        studio: Entity<Studio>,
+        assertions: fn(&mut Studio, &mut Context<Studio>),
+    }
+    impl gpui::Render for Probe {
+        fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+            self.studio.update(cx, self.assertions);
+            div()
+        }
+    }
+    gpui_platform::headless().run(|cx| {
+        let file = crate::document::tests::File::new();
+        let mut test = gpui::HeadlessAppContext::with_asset_source(
+            gpui_platform::current_platform(true).text_system(),
+            std::sync::Arc::new(crate::shell::assets::Icons),
+        );
+        test.update(|cx| cx.set_global(orbit::theme::Theme::default()));
+        let window = test
+            .open_window(gpui::size(px(850.0), px(500.0)), |_, cx| {
+                cx.new(|cx| Probe {
+                    studio: cx.new(|cx| Studio::new(prepared_widget(file.path.clone()), cx)),
+                    assertions,
+                })
+            })
+            .expect("ventana del arnés");
+        test.update_window(window.into(), |_, window, cx| window.draw(cx).clear(cx))
+            .expect("comprobar elementos en su arena");
+        test.update_window(window.into(), |_, window, _| window.remove_window())
+            .expect("cerrar");
+        drop(test);
+        crate::quit_headless_test(cx);
+    });
+}
 #[test]
 fn selection_frame_stays_opaque_and_keeps_its_size_when_content_becomes_transparent() {
-    gpui_platform::headless().run(|cx| {
-        cx.set_global(orbit::theme::Theme::default());
-        let file = crate::document::tests::File::new();
-        let studio = cx.new(|cx| Studio::new(prepared_widget(file.path.clone()), cx));
-        let frame = studio.read(cx).frames[0].1.clone();
+    assert_canvas_elements(|studio, cx| {
+        let frame = studio.frames[0].1.clone();
         let mut sizes = vec![];
         for opacity in [0.0, 0.25, 1.0] {
             frame.update(cx, |frame, cx| {
@@ -414,16 +447,12 @@ fn selection_frame_stays_opaque_and_keeps_its_size_when_content_becomes_transpar
             });
         }
         assert!(sizes.windows(2).all(|pair| pair[0] == pair[1]));
-        crate::quit_headless_test(cx);
     });
 }
 #[test]
 fn selection_matches_painted_bounds_for_every_widget_and_zoom() {
-    gpui_platform::headless().run(|cx| {
-        cx.set_global(orbit::theme::Theme::default());
-        let file = crate::document::tests::File::new();
-        let studio = cx.new(|cx| Studio::new(prepared_widget(file.path.clone()), cx));
-        let frame = studio.read(cx).frames[0].1.clone();
+    assert_canvas_elements(|studio, cx| {
+        let frame = studio.frames[0].1.clone();
         for &kind in Kind::ALL {
             for factor in [0.5, 1.0, 2.0] {
                 frame.update(cx, |frame, cx| {
@@ -458,7 +487,6 @@ fn selection_matches_painted_bounds_for_every_widget_and_zoom() {
                 });
             }
         }
-        crate::quit_headless_test(cx);
     });
 }
 #[test]

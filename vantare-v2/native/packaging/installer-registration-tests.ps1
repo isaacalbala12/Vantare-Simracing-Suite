@@ -134,6 +134,7 @@ function Run-RegistrationDriver {
         foreach($line in ($out.Result -split "`n")){if($line.Trim()){$null=$line|ConvertFrom-Json}}
         $script:driverError=$err.Result
         [IO.File]::WriteAllText((Join-Path $engine ('driver-'+$process.ExitCode+'.log')),($out.Result+$err.Result))
+        if($process.ExitCode -ne 0){[Console]::Error.WriteLine('Driver fixture exit '+$process.ExitCode+': '+$err.Result)}
         $process.ExitCode
     }finally{$process.Dispose()}
 }

@@ -8,6 +8,9 @@ implementación `67be3b9b55dea9ce7ba7c09d94eb65552ff7addb`. #1689 ya integrado
 por el orquestador: merge de `origin/nightly@329520c20` a esta rama, sin rebase.
 Conflictos solo en workflow/handoff: se conservan ambas suites con sus gates
 y ambos expedientes completos. CI pendiente del nuevo HEAD, registrado en #1690.
+CI del merge `85f8777cd` falla en la instalación inicial del fixture del driver
+en el runner (las regresiones previas pasan). Se añade stderr al log del test
+para identificar la causa; no se atribuye ni se cambia producción sin diagnóstico.
 Sin merge del PR hacia nightly, firma ni publicación por el worker.
 
 Desktop/Startup OFF no consultan carpetas ni COM. ON usa la ruta configurada

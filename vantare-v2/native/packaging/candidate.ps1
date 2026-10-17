@@ -289,29 +289,80 @@ function Test-NativeShortcutOwned($Link,[string]$Directory) {
     ($Link.TargetPath -eq (Join-Path $Directory 'Uninstall.exe'))
 }
 
+function Get-NativeShortcutFolder([string]$Name) {
+    [Environment]::GetFolderPath([Environment+SpecialFolder]$Name, [Environment+SpecialFolderOption]::DoNotVerify)
+}
+
+function Write-NativeShortcutWarning([string]$Message) { Write-Warning $Message }
+
 function Sync-NativeOptionalShortcuts([string]$Directory,[string]$Folder,$Ui,[bool]$Remove=$false) {
     if($null -eq $Ui){return}
-    $shell=New-Object -ComObject WScript.Shell
     $targets=@(
-        @{parent=[Environment]::GetFolderPath('DesktopDirectory'); enabled=$Ui.desktop},
-        @{parent=[Environment]::GetFolderPath('Startup'); enabled=$Ui.autostart}
+        @{name='DesktopDirectory'; enabled=$Ui.desktop},
+        @{name='Startup'; enabled=$Ui.autostart}
     )
     foreach($target in $targets){
-        $path=Join-Path $target.parent ($Folder+'.lnk')
-        $exists=Test-Path -LiteralPath $path
-        $owned=$exists -and (Test-NativeShortcutOwned ($shell.CreateShortcut($path)) $Directory)
-        if($Remove -or -not $target.enabled){if($owned){Remove-Item -LiteralPath $path}; continue}
-        if($exists -and -not $owned){throw 'El acceso opcional pertenece a otra instalación; se conserva.'}
-        $link=$shell.CreateShortcut($path)
-        $link.TargetPath=Join-Path $env:WINDIR 'System32/WindowsPowerShell/v1.0/powershell.exe'
-        $link.Arguments='-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "'+(Join-Path $Directory 'beta.ps1')+'" -Root "'+$Directory+'"'
-        $link.Save()
+        # OFF never asks Windows for a folder (new/headless profiles may lack it).
+        if(-not $target.enabled){continue}
+        try {
+            $shell=New-Object -ComObject WScript.Shell
+            $parent=Get-NativeShortcutFolder $target.name
+            if([string]::IsNullOrWhiteSpace($parent)){throw 'Windows no ofrece la carpeta opcional.'}
+            $path=Join-Path $parent ($Folder+'.lnk')
+            $exists=Test-Path -LiteralPath $path
+            $owned=$exists -and (Test-NativeShortcutOwned ($shell.CreateShortcut($path)) $Directory)
+            if($Remove){if($owned){Remove-Item -LiteralPath $path}; continue}
+            if($exists -and -not $owned){throw 'El acceso opcional pertenece a otra instalación; se conserva.'}
+            [IO.Directory]::CreateDirectory($parent)|Out-Null
+            $link=$shell.CreateShortcut($path)
+            $link.TargetPath=Join-Path $env:WINDIR 'System32/WindowsPowerShell/v1.0/powershell.exe'
+            $link.Arguments='-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "'+(Join-Path $Directory 'beta.ps1')+'" -Root "'+$Directory+'"'
+            $link.Save()
+        } catch { Write-NativeShortcutWarning ("No se pudo sincronizar el acceso opcional {0}: {1}" -f $target.name,$_.Exception.Message) }
+    }
+}
+
+# Undo only the registry values and exact shortcut files that Setup can change.
+# The caller holds beta-session.lock; Install-Beta restores generations/metadata.
+function Invoke-NativeRegistrationTransaction([string]$Key,[string]$Folder,[string]$Legacy,[scriptblock]$Action) {
+    $values=@{}; $existed=Test-Path -LiteralPath $Key
+    if($existed){
+        $registry=Get-Item -LiteralPath $Key
+        foreach($name in $registry.GetValueNames()){
+            $values[$name]=@{value=$registry.GetValue($name,$null,[Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames);kind=$registry.GetValueKind($name)}
+        }
+    }
+    $links=@{}; $paths=@()
+    $programs=Get-NativeShortcutFolder 'Programs'
+    foreach($name in @('Vantare.lnk','Desinstalar.lnk')){$paths+=Join-Path (Join-Path $programs $Folder) $name}
+    foreach($name in @('Vantare Native Beta.lnk','Desinstalar.lnk')){$paths+=Join-Path (Join-Path $programs $Legacy) $name}
+    # Optional shortcuts run last, after every mandatory write, and cannot throw.
+    # Do not resolve/read them here: even their backup can fail in a raw profile.
+    foreach($path in $paths){$links[$path]=if(Test-Path -LiteralPath $path){[IO.File]::ReadAllBytes($path)}else{$null}}
+    try { & $Action } catch {
+        $failure=$_
+        # Restore files even if Windows continues denying registry writes.
+        try {
+            foreach($path in $links.Keys){
+                if($null -ne $links[$path]){[IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($path))|Out-Null;[IO.File]::WriteAllBytes($path,$links[$path])}
+                elseif(Test-Path -LiteralPath $path){Remove-Item -LiteralPath $path}
+            }
+        } finally {
+            if(-not $existed){if(Test-Path -LiteralPath $Key){Remove-Item -LiteralPath $Key}}
+            else {
+                if(-not (Test-Path -LiteralPath $Key)){$null=New-Item -Path $Key -Force}
+                $registry=Get-Item -LiteralPath $Key
+                foreach($name in $registry.GetValueNames()){if(-not $values.ContainsKey($name)){Remove-ItemProperty -LiteralPath $Key -Name $name}}
+                foreach($name in $values.Keys){New-ItemProperty -LiteralPath $Key -Name $name -Value $values[$name].value -PropertyType ([string]$values[$name].kind) -Force|Out-Null}
+            }
+        }
+        throw $failure
     }
 }
 
 # La clave estable permite que el bootstrap antiguo siga corrigiendo la versión
 # tras rollback. Solo cambia la identidad visible; nunca se trasladan datos.
-function Sync-NativeRegistration([string]$Directory, [string]$Version) {
+function Sync-NativeRegistration([string]$Directory, [string]$Version, $PreviousUi=$null) {
     $directory = Assert-NativePath $Directory
     $identity = 'VantareNativeBeta'
     $folder = 'Vantare'
@@ -397,8 +448,12 @@ function Sync-NativeRegistration([string]$Directory, [string]$Version) {
     }
     Set-ItemProperty -LiteralPath $key -Name DisplayName -Value 'Vantare'
     Set-ItemProperty -LiteralPath $key -Name DisplayVersion -Value $Version
-    Sync-NativeOptionalShortcuts $directory $folder $installerUi
     Set-ItemProperty -LiteralPath $key -Name UninstallString -Value ('"' + $uninstallTarget + '" ' + $uninstallArgs)
+    if($null -ne $PreviousUi -and $null -ne $installerUi){
+        # Only previously enabled options are resolved when explicitly disabling them.
+        Sync-NativeOptionalShortcuts $directory $folder @{desktop=($PreviousUi.desktop -and -not $installerUi.desktop);autostart=($PreviousUi.autostart -and -not $installerUi.autostart)} $true
+    }
+    Sync-NativeOptionalShortcuts $directory $folder $installerUi
 }
 
 function Uninstall-NativeRegistration([string]$Directory,[bool]$DeferUninstaller=$false,[string]$KnownIdentity='', [string]$KnownFolder='') {

@@ -60,6 +60,20 @@ la generación ni el marcador pendiente: el arranque conserva su rollback.
 Los códigos 2 (sesión/binarios abiertos), 3 (versión anterior) y 4 provienen de
 errores tipados, sin depender del texto mostrado.
 
+#1690: Desktop/Startup apagados no consultan sus carpetas. Si se activan,
+se usa la ruta configurada por Windows y se crea la carpeta si falta; una
+carpeta inaccesible o un acceso ajeno se conserva y produce un aviso sin
+abortar la instalación. Al apagar una opción antes activa, Setup retira
+solo su acceso anterior; desinstalar retira solo los accesos activados propios.
+La finalización del registro permanece bajo el bloqueo de sesión de Setup.
+Si falla tras activar/copiar, se restauran los valores y tipos del registro,
+los bytes de accesos/bootstrap/metadatos y la generación anterior; se retira
+solo la generación nueva, conservando los datos originales. La restauración
+es para excepciones del proceso, no una garantía nueva ante corte de energía
+o permisos que impidan también restaurar. `installer-registration-tests.ps1`
+usa carpetas ausentes, PE inertes y errores reales de archivos compartidos;
+incluye el driver completo sin abrir la aplicación ni una UI de instalador.
+
 Después de desinstalar, Setup adopta automáticamente los datos de la generación
 activa conservada en `retained-data.json`. Desinstaladores antiguos sin esa
 referencia permiten recuperar una copia única (o copias idénticas); si quedan

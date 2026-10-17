@@ -5,6 +5,8 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
 . (Join-Path $PSScriptRoot 'beta.ps1')
+# stdout is exclusively the bounded JSON progress protocol; warnings go to log.
+function Write-NativeShortcutWarning([string]$Message) { [Console]::Error.WriteLine($Message) }
 if ((Get-Item -LiteralPath $RequestFile).Length -gt 65536) { throw 'Petición demasiado grande.' }
 $request = [IO.File]::ReadAllText((Assert-NativePath $RequestFile)) | ConvertFrom-Json
 $identity = if ($request.qa) { 'VantareNativeBetaQA1492' } else { 'VantareNativeBeta' }
@@ -49,6 +51,7 @@ if (Test-Path -LiteralPath (Join-Path $root 'state.json')) {
 }
 $desktop = -not [bool]$request.silent
 $autostart = $false
+$options = $null
 $optionsFile = Join-Path $root 'installer-ui.json'
 if (Test-Path -LiteralPath $optionsFile) {
     # Setup reads validated preferences, then restores its embedded uninstaller.
@@ -94,18 +97,21 @@ try {
             }
             if ($request.mode -ceq 'repair' -and $current -cne $request.version) { Throw-BetaInstallError 3 'Reparar exige el Setup de la misma versión.' }
             Send-InstallerProgress 'verify' 40 0 0 $true
-            Install-Beta $root (Join-Path $PSScriptRoot 'package.zip') $request.packageSha | Out-Null
-            Send-InstallerProgress 'shortcuts' 84
-            if ($request.qa) { [IO.File]::WriteAllText((Join-Path $root 'registration-identity.txt'), $identity) }
-            New-Item -Path $key -Force | Out-Null
-            foreach ($item in @{DisplayName='Vantare'; DisplayVersion=$request.version; InstallLocation=$root; UninstallString=('"'+(Join-Path $root 'Uninstall.exe')+'"')}.GetEnumerator()) { Set-ItemProperty -LiteralPath $key -Name $item.Key -Value $item.Value }
-            foreach ($name in @('NoModify','NoRepair')) { New-ItemProperty -LiteralPath $key -Name $name -PropertyType DWord -Value 1 -Force | Out-Null }
-            if ($request.qa) { Set-ItemProperty -LiteralPath $key -Name ShortcutFolder -Value $folder; Set-ItemProperty -LiteralPath $key -Name LegacyShortcutFolder -Value $legacy }
-            Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'Uninstall.exe') -Destination (Join-Path $root 'Uninstall.exe') -Force
-            Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'installer-notices.txt') -Destination (Join-Path $root 'installer-notices.txt') -Force
-            Write-BetaJson $optionsFile @{schema=1; kind='rust-gpui'; uninstaller='Uninstall.exe'; sha256=(Get-NativeHash (Join-Path $root 'Uninstall.exe')); desktop=[bool]$request.desktop; autostart=[bool]$request.autostart}
-            Send-InstallerProgress 'register' 93
-            Sync-NativeRegistration $root $request.version
+            Install-Beta $root (Join-Path $PSScriptRoot 'package.zip') $request.packageSha -Finalize {
+                Send-InstallerProgress 'shortcuts' 84
+                Invoke-NativeRegistrationTransaction $key $folder $legacy {
+                    if ($request.qa) { [IO.File]::WriteAllText((Join-Path $root 'registration-identity.txt'), $identity) }
+                    New-Item -Path $key -Force | Out-Null
+                    foreach ($item in @{DisplayName='Vantare'; DisplayVersion=$request.version; InstallLocation=$root; UninstallString=('"'+(Join-Path $root 'Uninstall.exe')+'"')}.GetEnumerator()) { Set-ItemProperty -LiteralPath $key -Name $item.Key -Value $item.Value }
+                    foreach ($name in @('NoModify','NoRepair')) { New-ItemProperty -LiteralPath $key -Name $name -PropertyType DWord -Value 1 -Force | Out-Null }
+                    if ($request.qa) { Set-ItemProperty -LiteralPath $key -Name ShortcutFolder -Value $folder; Set-ItemProperty -LiteralPath $key -Name LegacyShortcutFolder -Value $legacy }
+                    Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'Uninstall.exe') -Destination (Join-Path $root 'Uninstall.exe') -Force
+                    Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'installer-notices.txt') -Destination (Join-Path $root 'installer-notices.txt') -Force
+                    Write-BetaJson $optionsFile @{schema=1; kind='rust-gpui'; uninstaller='Uninstall.exe'; sha256=(Get-NativeHash (Join-Path $root 'Uninstall.exe')); desktop=[bool]$request.desktop; autostart=[bool]$request.autostart}
+                    Send-InstallerProgress 'register' 93
+                    Sync-NativeRegistration $root $request.version $options
+                }
+            } | Out-Null
         }
         'Uninstall' {
             if($null -eq $registration){

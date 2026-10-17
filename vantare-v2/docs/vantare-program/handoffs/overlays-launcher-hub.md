@@ -2,6 +2,21 @@
 
 [Histórico previo por SHA](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/8c6e83f977c8d2245a04266cdaaf896ed8c1b131/vantare-v2/docs/vantare-program/handoffs/overlays-launcher-hub.md). El diario y avances están en las issues; este documento conserva el estado actual.
 
+## Seguimiento MSIX de #1660 · VANTA-74 · 2026-10-17
+
+#1660 integrado en nightly `9c19b2993` por el orquestador. Rama nueva
+`vantareapp/isa-1653-avisos-msix`, base origin/nightly `c9a832d7`.
+La regresión separa beta, probe MSIX y arranque sin overrides. MSIX comprueba
+rutas completas sin contaminar con flags y fija que el overlay numérico no
+recibe el layout ni consume el feed del probe. Defaults compara escritor y
+lector por separado con el destino literal esperado bajo la raíz de datos.
+Documento ajustado: el smoke MSIX no acredita paridad del calendario.
+Mac: formato y cuatro pruebas PASS. RED/GREEN confirmado: el separador viejo
+falla en la ruta MSIX y cambiar la ruta compartida falla en defaults aunque
+escritor/lector coincidan; cambios temporales restaurados. Sin cambios de
+producto, empaquetado, protocolo ni dependencias. Gates workspace por CI Windows;
+SHA/PR definitivos en issue/buzón. Sin abrir/capturar ventanas ni LMU físico.
+
 ## Integración del calendario #1640 en #1660 · 2026-10-17
 
 Merge de origin/nightly `2a580c458` sobre la rama de #1660, sin rebase ni
@@ -449,3 +464,12 @@ VANTA-51 incorpora nightly c9a832d70 (#1675): conserva el cargador reutilizable
 y la visibilidad del Hub para el lote, junto con layout_preexisted y el estado
 del asistente. Handoff de ambas entregas preservado. Se habilita QA del asistente
 solo con capture-batch seguro; resultados y SHA final en #1637.
+
+VANTA-51 / ronda 2: f2b95ce3f obtiene CI verde en run38988768325 intento 2:
+fmt/check/Clippy -D warnings, Nextest 2004/2004 (19 skips), lifecycle Engineer
+5/5 y resto sin fallos; 462 huellas PASS. Intento 1: assert lap intermitente
+del lifecycle Engineer ya descrito en #1638; log conservado, test aislado 1/1
+y repetición completa verde sin modificarlo. Capturas #1675: 7/7 PNG 1600x900,
+un proceso/una ventana fuera de monitores, focus=false, proceso cerrado.
+La verificación final descubre nightly 8ef018cef (#1685, rutas MSIX); merge
+sin conflictos. El PR/issue registran su nuevo SHA y CI, sin extrapolar verdes.

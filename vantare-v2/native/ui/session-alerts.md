@@ -133,9 +133,22 @@ La CI Windows y el SHA final se verifican en PR #1660, issue #1653 y
 
 La ruta se resuelve con `ipc::session_alerts::calendar_path(layout)`: el Hub usa
 el layout real de Studio y el lector el layout abierto del overlay, nunca el
-directorio privado `--data-dir` del Hub. La regresión fija las plantillas de
-argumentos de beta.ps1/MSIX y verifica escritor/lector con rutas esperadas
-independientes. El smoke MSIX numérico no acredita calendario en pista.
+directorio privado `--data-dir` del Hub.
+
+La regresión beta extrae el layout del Hub y la raíz de datos heredada por el
+overlay desde `beta.ps1`, y compara ambos destinos con una ruta literal
+independiente. Sin overrides, Hub y overlay deben usar
+`<raíz de datos>/Vantare/native/calendar-alerts.json`; el test comprueba ese
+destino esperado para cada proceso por separado.
+
+En el probe `msix/verify.ps1`, el Hub recibe `$data/hub` y
+`$data/layout.json`: el test extrae y comprueba ambas rutas completas, sin
+arrastrar el siguiente argumento. El supervisor no pasa ese layout al overlay:
+lo lanza en modo numérico `4`, que no abre el documento ni consume su calendario.
+La regresión fija esa limitación del probe; este acredita activación, identidad
+y ventana, sin probar paridad del feed Hub↔overlay. El arranque normal MSIX sin
+overrides queda cubierto por el contrato de rutas por defecto, no por ese smoke.
+La paridad física del calendario en un MSIX instalado sigue pendiente.
 
 Pausar/ir al garaje o perder el reloj oculta los avisos/mini de sesión y conserva
 los umbrales ya emitidos de esa identidad, sin repetir pitidos al volver.

@@ -20,6 +20,14 @@ $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 Add-Type -AssemblyName System.IO.Compression
 $script:NativeBuildBins = @('vantare', 'vantare-core', 'vantare-overlays', 'vantare-hub', 'vantare-engineer', 'vantare-services', 'vantare-storage', 'vantare-workshop', 'vantare-grabar-lmu', 'vantare-grabar-acc', 'vantare-import-profile')
+# Runtime/README: estas herramientas se compilan en el workspace pero son QA privada.
+# No forman parte de Get-NativeBins ni del inventario distribuido de ningún canal.
+$script:NativePrivateBuildBins = @('vantare-grabar-lmu-completo', 'vantare-verificar-lmu')
+function Assert-NativeBuildInventory([string[]]$Bins) {
+    if (@(Compare-Object @($script:NativeBuildBins + $script:NativePrivateBuildBins) $Bins -CaseSensitive).Count) {
+        throw 'El inventario de binarios no coincide con cargo metadata; actualizarlo antes de empaquetar.'
+    }
+}
 function Get-NativeBins([string]$CandidateChannel) {
     # Workshop sigue compilándose para desarrollo/paridad, pero no se distribuye en beta.
     @($script:NativeBuildBins | Where-Object { $CandidateChannel -cne 'beta' -or $_ -cne 'vantare-workshop' })
@@ -743,7 +751,7 @@ function Build-NativeCandidate([string]$Destination, [string]$CandidateVersion, 
         $metadata = (& cargo metadata --offline --locked --format-version 1 --filter-platform x86_64-pc-windows-msvc | ConvertFrom-Json)
         if ($LASTEXITCODE) { throw 'Falló la lectura del grafo fijado.' }
         $bins = @($metadata.packages | Where-Object { $_.id -cin $metadata.workspace_members -and $_.name -cnotin @('vantare-admin', 'vantare-installer') } | ForEach-Object { $_.targets | Where-Object { 'bin' -cin $_.kind } | ForEach-Object { $_.name } })
-        if (@(Compare-Object $script:NativeBuildBins $bins -CaseSensitive).Count) { throw 'El inventario de binarios no coincide con cargo metadata; actualizarlo antes de empaquetar.' }
+        Assert-NativeBuildInventory $bins
         $installerBins = @($metadata.packages | Where-Object name -CEQ 'vantare-installer' | ForEach-Object { $_.targets | Where-Object { 'bin' -cin $_.kind } | ForEach-Object { $_.name } })
         if (@(Compare-Object @('vantare-setup','vantare-uninstall') $installerBins -CaseSensitive).Count) { throw 'Inventario del instalador propio incorrecto.' }
     } finally { Pop-Location }

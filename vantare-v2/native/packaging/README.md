@@ -280,6 +280,10 @@ rendimiento de producto. Beta empaqueta diez: excluye `vantare-workshop.exe` y s
 sidecar, pero sigue compilándolo para desarrollo y capturas de paridad en el repo.
 Los demás canales conservan Workshop. El inventario se verifica según el canal
 guardado en el manifiesto/estado, también al actualizar, importar o consultar Status.
+
+Las herramientas privadas `vantare-grabar-lmu-completo` y `vantare-verificar-lmu`
+se validan en el inventario de compilación, pero no se distribuyen en ningún
+canal; no amplían los diez EXE beta. Regresión: `build-inventory-tests.ps1`.
 Para probar antes del commit, `-AllowDirty` registra `source_dirty=true`.
 El SHA de Git y los hashes de todos los archivos identifican lo construido;
 los binarios embeben `VANTARE_VERSION` y `VANTARE_BUILD_CHANNEL`, que el builder fija y restaura. Todos responden a `--version`.

@@ -2,7 +2,7 @@
 
 El orquestador confirma #1696 integrado en nightly95c08834b y ordena retomar
 este PR separado. Rama vantareapp/isa-1695-installer-transaccion, worktree propio
-isa-1695. WIP propio preservado en commit5c6121d61; merge949b4f5c7 de nightly,
+isa-1695. PR #1699 READY, código8ecdde066 subido; CI remota pendiente, sin merge. WIP propio preservado en commit5c6121d61; merge949b4f5c7 de nightly,
 sin rebase/force-push. Conflictos documentales conservan ambos expedientes.
 #1698 sigue DRAFT e8cf16e6a hasta revisión con Isaac; no se toca su workflow.
 Target1694-hub queda exclusivamente a cargo del orquestador, no se toca.
@@ -26,7 +26,7 @@ Primera campaña PS5.1 privada PASS: registro65, shell23; SID1029/perfil retirad
 Campaña final PASS: registro66 (incluye lock del driver real) y shell23; SID1030/perfil retirados, DACL restaurada. CRT24 e inventario14 finales PASS.
 AST/YAML/diff/462 huellas PASS. No Rust/Cargo/toolchain alterados: gates Rust
 los verificará la CI existente; las regresiones locales son scripts/procesos,
-registro/COM/NTFS y PE reales. PR y CI aún pendientes, no declarar terminados.
+registro/COM/NTFS y PE reales. PR #1699 preparado; no declarar CI verde hasta comprobar los checks del HEAD final.
 P2-1 real ya PASS con Setup nuevo de nightly7396, SHA bec8d3bb4394543169561cad07965987615e13914b6bdd00cd075dc80289e913;
 OFF limpio, reinstalación ON y NSIS0.0.975→OFF, sin crear Startup en el actor.
 Esta build histórica no contiene P2/P3 nuevos; no se mezclan sus resultados.

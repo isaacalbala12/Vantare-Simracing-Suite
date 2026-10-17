@@ -1,5 +1,8 @@
 # Beta nativa — instalador y actualizaciones (#1454)
 
+Auditoría de recursos de arranque, inventario explícito y regresión del Hub
+Release aislado del checkout: [startup-resources.md](startup-resources.md) (#1694).
+
 El orquestador publica la beta; estos scripts **no publican ni usan tokens**.
 Windows x64, NTFS y PowerShell 5.1. Setup y Uninstall son binarios Rust/GPUI
 del crate [installer](../installer/README.md), con ZIP, bootstrap y fuentes

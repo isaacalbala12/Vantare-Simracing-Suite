@@ -13,17 +13,36 @@ distribución y flags del llamador restaurados. DuckDB bundled conserva su
 contrato y cc1.5.1 elige /MT; no se cambian toolchain/lock, configuración global,
 dependencias ni DuckDB precompilado de desarrollo. Guarda dumpbin sobre cada
 EXE distribuido, antes de ejecutar/copiar; imports normales y diferidos.
-17 pruebas locales de PE reales inertes y fallos de Cargo PASS. La build
-Release completa, imports finales y pruebas de Storage están pendientes;
-no se presentan fixtures como artefactos de producto. CI debe repetir la suite.
+PR [#1693](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1693).
+Productor limpio `f68e4a3db`: Release completo por cola MIN_GB=0/jobs2,
+27m45s de Cargo; diez EXE reales pasan de importar CRT dinámico a cero.
+Suma EXE 103.861.760 → 106.403.328 bytes; paquete SHA
+`7402344778e5442dd8626eb2de2f0b629f157145ea8ee0cfe041dc4017548a3c`.
+CSV por EXE con DLL exactas/SHA, dumpbin y parser PE independientes en
+`C:/VantareServer/evidence/rc1/crt/`. Objeto DuckDB real acredita libcpmt/LIBCMT.
+17 regresiones PS5.1 PASS; CI del productor cinco SUCCESS (run39009881804).
+Storage distribuido escribe/cierra/reabre readonly y recupera mismos datos,
+exit0. Nextest Release estático de Storage 19/19 PASS, cero omitidos, 15,943s;
+WAL tras matar escritor, rollback y bloqueo entre procesos. Log en INFORME.md.
+Target propio `D:/VantareServer/targets/crt-1692-payload` sin compilación activa:
+su borrado literal fue rechazado por revisión automática (blocked by policy);
+queda pendiente para el orquestador. Sin native/target ni caché en evidencia.
 
-El servidor ya tiene las tres DLL (14.51.36247.0), por lo que no se acredita
-su ausencia como causa del Hub sin marker. Se conserva el log fallido y se
-investigará con códigos de salida sin abrir ventanas en el escritorio principal.
+Dos usuarios estándar nuevos en escritorios privados: veinte --version exit0.
+Hub original y estático salen1 por escena ausente
+`standings-design-system.sequence.json`, sin marker. Hallazgo separado
+[#1694](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1694),
+pendiente de asignación por el orquestador, no corregido en este PR.
+Supervisor detecta instancia existente; stop AccessDenied. Ningún proceso de
+Isaac detenido. Ambos usuarios/perfiles retirados, escritorio/DACL restaurados.
+El servidor ya tiene las DLL (14.51.36247.0): no equivale a Windows limpio.
 UCRT es parte del Windows objetivo, diferente del redistribuible VC Runtime.
 Referencias: Rust Reference linkage, docs de cc1.5.1 y Microsoft Universal CRT,
-en `evidence/rc1/crt/INFORME-PRELIMINAR.md`. Configuración beta ausente: build
-QA local sin servicios, no candidata publicable. Sin firma/publicación/merge.
+en `C:/VantareServer/evidence/rc1/crt/INFORME.md`. Configuración beta ausente:
+build QA local sin servicios, login/pagos sin probar, no candidata publicable.
+Sin nuevo Setup, firma/publicación/merge; share/rc1 histórico conservado.
+HEAD documental final requiere CI propia antes de ready; no se confunde con
+el productor del payload f68e4a3db, cuyos cinco checks ya pasaron.
 
 ## #1688 · VANTA-105 · Entrega local de mecánica (17-oct-2026)
 

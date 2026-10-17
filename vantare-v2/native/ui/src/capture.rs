@@ -546,6 +546,30 @@ fn run_jobs(jobs: Vec<Job>) -> Result<(), String> {
             cx.quit();
             return;
         }
+        // Mantener la guarda de paridad de #1629 antes de crear el HWND:
+        // no aceptar silenciosamente una sustitución de las fuentes aprobadas.
+        let names = cx.text_system().all_font_names();
+        let style = crate::vantare::style::Style::compiled();
+        let families = [
+            style.fonts.display_family.as_str(),
+            style.fonts.mono_family.as_str(),
+            "Inter W400",
+            "Inter W500",
+            "Inter W600",
+            "Inter W650",
+            "Inter W700",
+            "Inter W750",
+            "Inter W800",
+        ];
+        if !families
+            .iter()
+            .all(|name| names.iter().any(|registered| registered.as_str() == *name))
+        {
+            *flag.borrow_mut() =
+                Some("faltan fuentes del diseño; se rechaza la captura con sustitución".into());
+            cx.quit();
+            return;
+        }
         let view = cx.new(|_| Overlay::new(jobs[0].settings.kind(), jobs[0].prefs));
         let window = match cx.open_window(options, |_, cx| {
             cx.new(|_| CaptureRoot { view: view.clone() })

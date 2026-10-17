@@ -657,6 +657,27 @@ Una situación estable no solicita `notify` ni fuerza `ingest`: mantiene la cade
 existente. La regresión cubre los 18 widgets, 100 repeticiones visibles y ocultas;
 no elimina repintados necesarios por cambios de telemetría o por sus historiales.
 
+## #1629 · Referencias y señales v11
+
+Historial Delta guarda `reference=best|optimal|leader` (por defecto `best`, también
+para los guardados anteriores). Studio ofrece la selección junto a la ventana
+1–8 s. El número, la traza temporal y la vuelta por distancia consumen el mismo
+Board de `domain::delta`; cambiar referencia corta ambas historias. Se piden
+Cars/Positions/LapTimes/Delta/PitStatus/SessionInfo además del progreso, longitud,
+sectores y banderas. Una referencia no disponible no se sustituye por la personal.
+Los indicadores de sector del líder quedan ausentes si no hay comparación admitida.
+
+Radar calcula la aproximación radial entre centros desde las dos velocidades
+actuales `Car.velocity_mps`. No usa velocidad escalar ni deriva velocidad desde
+las posiciones. Se anuncia un rival que se acerca por detrás con precisión de
+km/h enteros, tras dar prioridad a los solapes laterales. Stale, ausencia,
+valores no finitos o distancia nula no generan ese dato. No es hueco libre entre
+carrocerías ni tiempo hasta colisión. Las demandas Spatial y Velocity entregan poses y velocidades por separado.
+
+El pipe sigue siendo DTO v11 estricto. Las escenas históricas se leen solo por
+los lectores guardados/fixtures; sus archivos originales no se migran. En esta
+fase no se abre ni captura la app mientras #1675 no esté integrado en nightly.
+
 ## Avisos de sesión (#1653)
 
 Widget Pro LMU, ronda 4 v2: [contrato, mini, calendario y límites de señales](session-alerts.md).

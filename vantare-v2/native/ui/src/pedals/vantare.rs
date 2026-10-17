@@ -19,9 +19,9 @@ const PAD_X: f32 = 10.0;
 const COLUMN_W: f32 = 24.0;
 const TRACK_W: f32 = 16.0;
 const VALUE_SIZE: f32 = 10.0;
-const VALUE_TOP: f32 = 10.0;
+const VALUE_TOP: f32 = 11.0;
 const VALUE_H: f32 = 14.0;
-const PAD_BOTTOM: f32 = 10.0;
+const PAD_BOTTOM: f32 = 11.0;
 /// Opacidad del extremo inferior del relleno; el que avanza es opaco.
 const FILL_FROM: f32 = 0.55;
 
@@ -89,6 +89,8 @@ impl Visual {
     pub(crate) fn paint(
         &self,
         vm: &ViewModel,
+        brake_peak: Option<f64>,
+        limiter: bool,
         language: Language,
         window: &mut Window,
         cx: &mut App,
@@ -105,10 +107,9 @@ impl Visual {
             kit.panel(window, height);
         }
         let c = &self.style.colors;
-        let top = match vm.status_text {
-            Some(status) => self.status(&kit, status, window, cx),
-            None => 0.0,
-        };
+        let top = paint_status_band(vm, limiter, &kit, |status, height, size| {
+            self.status(&kit, status, height, size, window, cx);
+        });
         let value_top = top + VALUE_TOP;
         let track_top = value_top + VALUE_H + 6.0;
         let track_h = height - track_top - PAD_BOTTOM;
@@ -119,7 +120,9 @@ impl Visual {
             (vm.throttle, &vm.throttle_text, c.green),
         ];
         for (index, (value, value_text, color)) in pedals.into_iter().enumerate() {
-            let mid = PAD_X + index as f32 * (COLUMN_W + self.options.gap) + COLUMN_W / 2.0;
+            // CSS border-box reparte los dos píxeles de borde entre las tres columnas.
+            let column_w = COLUMN_W - 2.0 / 3.0;
+            let mid = PAD_X + 1.0 + index as f32 * (column_w + self.options.gap) + column_w / 2.0;
             let x = mid - TRACK_W / 2.0;
             round_rect(
                 window,
@@ -128,33 +131,80 @@ impl Visual {
                 TRACK_W,
                 track_h,
                 TRACK_W / 2.0,
-                self.style.fuel.track.hsla(),
+                if vm.transparent_background {
+                    Color(0, 0.5).hsla()
+                } else {
+                    self.style.fuel.track.hsla()
+                },
             );
+            if vm.transparent_background {
+                window.paint_quad(quad(
+                    rect(x - 1.0, track_top - 1.0, TRACK_W + 2.0, track_h + 2.0),
+                    Corners::all(px(TRACK_W / 2.0 + 1.0)),
+                    transparent(),
+                    Edges::all(px(1.0)),
+                    Color(0xffffff, 0.14).hsla(),
+                    BorderStyle::default(),
+                ));
+            }
             if let Some(value) = value {
                 let fill = fill_height(value, track_h);
                 fill_bar(window, x, track_top + track_h - fill, fill, color);
             }
+            if index == 1
+                && let Some(peak) = brake_peak
+            {
+                round_rect(
+                    window,
+                    x - 3.0,
+                    track_top + track_h * (1.0 - peak.clamp(0.0, 1.0) as f32) - 1.0,
+                    TRACK_W + 6.0,
+                    2.0,
+                    1.0,
+                    Color(0xffffff, 0.85).hsla(),
+                );
+            }
             let w = text::width(window, value_text, &value_ink);
-            kit.label(
-                window,
-                cx,
-                value_text,
-                mid - w / 2.0,
-                None,
-                value_top,
-                VALUE_H,
-                Face::Mono,
-                &value_ink,
-            );
+            if vm.transparent_background {
+                kit.label_shadow(
+                    window,
+                    cx,
+                    value_text,
+                    mid - w / 2.0,
+                    None,
+                    value_top,
+                    VALUE_H,
+                    Face::Mono,
+                    &value_ink,
+                );
+            } else {
+                kit.label(
+                    window,
+                    cx,
+                    value_text,
+                    mid - w / 2.0,
+                    None,
+                    value_top,
+                    VALUE_H,
+                    Face::Mono,
+                    &value_ink,
+                );
+            }
         }
     }
 
     /// Franja de aviso arriba, centrada y reducida si no cabe en el ancho.
     /// Devuelve su altura.
-    fn status(&self, kit: &Kit<'_>, status: &str, window: &mut Window, cx: &mut App) -> f32 {
+    fn status(
+        &self,
+        kit: &Kit<'_>,
+        status: &str,
+        h: f32,
+        size: f32,
+        window: &mut Window,
+        cx: &mut App,
+    ) -> f32 {
         let c = &self.style.colors;
-        let f = &self.style.fonts;
-        let h = self.style.geometry.banner_height;
         let radius = (kit.variant.radius - 1.0).max(0.0);
         window.paint_quad(quad(
             rect(0.0, 0.0, kit.width, h),
@@ -178,7 +228,7 @@ impl Visual {
             0.0,
             c.yellow_line.hsla(),
         );
-        let mut ink = kit.ink(Face::Display, f.banner, 0.6, c.yellow_text.hsla());
+        let mut ink = kit.ink(Face::Display, size, 0.6, c.yellow_text.hsla());
         let room = kit.width - 2.0 * PAD_X;
         let w = text::width(window, status, &ink);
         if w > room {
@@ -197,6 +247,62 @@ impl Visual {
             &ink,
         );
         h
+    }
+}
+
+/// La banda ocupa espacio aunque ninguno de los pedales tenga datos.
+fn paint_status_band(
+    vm: &ViewModel,
+    limiter: bool,
+    kit: &Kit<'_>,
+    mut draw: impl FnMut(&str, f32, f32),
+) -> f32 {
+    let band = if limiter {
+        Some((if kit.es() { "LIMITADOR" } else { "LIMITER" }, 20.0, 11.0))
+    } else {
+        vm.status_text.map(|status| {
+            (
+                status,
+                kit.style.geometry.banner_height,
+                kit.style.fonts.banner,
+            )
+        })
+    };
+    if let Some((status, height, size)) = band {
+        draw(status, height, size);
+        height
+    } else {
+        0.0
+    }
+}
+
+#[cfg(test)]
+mod status_render_tests {
+    use super::*;
+    #[test]
+    fn waiting_and_lost_paint_the_status_without_any_pedal_values() {
+        use vantare_domain::{Snapshot, SourceState, format::Preferences};
+        for (state, language, expected) in [
+            (SourceState::Waiting, Language::Es, "DESCONECTADO"),
+            (SourceState::Lost, Language::Es, "DESCONECTADO"),
+            (SourceState::Waiting, Language::En, "DISCONNECTED"),
+            (SourceState::Lost, Language::En, "DISCONNECTED"),
+        ] {
+            let mut snapshot = Snapshot::default();
+            snapshot.state.source_state = state;
+            let prefs = Preferences {
+                language,
+                ..Preferences::default()
+            };
+            let vm = vantare_domain::pedals::project(&snapshot, prefs);
+            crate::paint_tests::with_kit(96.0, language, |kit| {
+                let mut painted = Vec::new();
+                let height =
+                    paint_status_band(&vm, false, kit, |text, _, _| painted.push(text.to_owned()));
+                assert_eq!(painted, [expected]);
+                assert!(height > 0.0, "la banda reserva espacio sobre las barras");
+            });
+        }
     }
 }
 

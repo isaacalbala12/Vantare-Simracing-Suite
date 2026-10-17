@@ -1,225 +1,391 @@
-//! Eficiencia: SVG y leyenda del renderer productivo, en coordenadas propias.
-
+//! Daños: un único marco con vistas Coche y Cifras, ambas de 200×272.
 use crate::app::{Paint, Wake, replace_if_changed};
-use crate::efficiency::preview::PaintWindow as Window;
-use crate::efficiency::text::{self, ink};
-use crate::efficiency::{col, paint_frame, paint_panel, rect, tokens};
-use gpui::{
-    App, BorderStyle, Corners, Edges, Hsla, PathBuilder, linear_color_stop, linear_gradient, point,
-    px, quad,
+use crate::efficiency::{preview::PaintWindow as Window, text};
+use crate::vantare::{
+    paint::{Face, Kit, round_rect},
+    style::{Color, Style},
 };
+use gpui::{App, PathBuilder, point, px};
 use vantare_domain::{
     Snapshot,
     car_damage_visual::{self, ViewModel},
     format::Preferences,
 };
-
-const SIZE: (f32, f32) = (180.0, 201.0);
-
-fn fill(damage: Option<f64>) -> Hsla {
-    match damage {
-        Some(value) => col(0xff2a3b, 0.2 + value as f32 * 0.6),
-        None => col(tokens::INK, 0.1),
+const SIZE: (f32, f32) = (200.0, 272.0);
+fn tone(value: Option<f64>) -> Color {
+    Color(
+        match value {
+            Some(v) if v < 0.6 => 0xf25a5a,
+            Some(v) if v < 0.9 => 0xf59e0b,
+            Some(_) => 0x22c55e,
+            None => 0x5a5052,
+        },
+        1.0,
+    )
+}
+fn percentage(value: Option<f64>) -> String {
+    vantare_domain::format::percent(value.map(|v| (v * 100.0).round() / 100.0))
+}
+fn paint_number_text(
+    vm: &ViewModel,
+    kit: &Kit<'_>,
+    mut draw: impl FnMut(crate::vantare::paint::Label<'_>),
+) {
+    for (i, label) in [
+        "Aero",
+        if kit.es() { "Carrocería" } else { "Body" },
+        if kit.es() {
+            "Suspensión"
+        } else {
+            "Suspension"
+        },
+        if kit.es() { "Neumáticos" } else { "Tyres" },
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        if i == 0 && !vm.show_aero {
+            continue;
+        }
+        let slot = i - usize::from(!vm.show_aero);
+        let y = 62.0 + slot as f32 * 43.0;
+        draw(crate::vantare::paint::Label {
+            value: label,
+            x: 12.0,
+            right: None,
+            top: y,
+            height: 18.0,
+            face: Face::Body,
+            ink: kit.ink(Face::Body, 11.0, 0.3, kit.style.colors.muted.hsla()),
+        });
+        if i < 3 {
+            draw(crate::vantare::paint::Label {
+                value: &vm.percentages[i],
+                x: 0.0,
+                right: Some(188.0),
+                top: y + 12.0,
+                height: 24.0,
+                face: Face::Display,
+                ink: kit.ink(Face::Display, 22.0, 0.0, tone(vm.integrity[i]).hsla()),
+            });
+        } else {
+            for j in 0..4 {
+                let value = percentage(vm.tyres[j].map(|v| 1.0 - v));
+                draw(crate::vantare::paint::Label {
+                    value: &value,
+                    x: 16.0 + j as f32 * 43.0,
+                    right: None,
+                    top: y + 18.0,
+                    height: 16.0,
+                    face: Face::Mono,
+                    ink: kit.ink(Face::Mono, 10.0, 0.0, tone(vm.tyres[j]).hsla()),
+                });
+            }
+        }
     }
 }
 
-fn polygon(window: &mut Window, points: &[(f32, f32)], y: f32, color: Hsla) {
-    let (ox, oy) = text::origin();
-    for (mut builder, color) in [
-        (PathBuilder::fill(), color),
-        (PathBuilder::stroke(px(1.0)), col(tokens::INK, 0.15)),
+fn paint(
+    vm: &ViewModel,
+    numbers: bool,
+    percent: bool,
+    prefs: Preferences,
+    window: &mut Window,
+    cx: &mut App,
+) {
+    let style = Style::compiled();
+    let kit = Kit {
+        style: &style,
+        variant: &style.styles.neo,
+        accent: style.accents.red,
+        language: prefs.language,
+        width: SIZE.0,
+    };
+    kit.panel(window, SIZE.1);
+    let severe = vm.integrity.iter().flatten().any(|v| *v < 0.6);
+    if severe {
+        round_rect(
+            window,
+            1.0,
+            1.0,
+            198.0,
+            22.0,
+            9.0,
+            Color(0xb52b35, 1.0).hsla(),
+        );
+        let ink = kit.ink(Face::Display, 12.0, 1.4, style.colors.text.hsla());
+        kit.label(
+            window,
+            cx,
+            if kit.es() {
+                "REVISA EL COCHE"
+            } else {
+                "CHECK YOUR CAR"
+            },
+            12.0,
+            None,
+            2.0,
+            18.0,
+            Face::Display,
+            &ink,
+        );
+    }
+    let muted = kit.ink(Face::Body, 11.0, 0.3, style.colors.muted.hsla());
+    kit.label(
+        window,
+        cx,
+        if kit.es() { "DAÑOS" } else { "DAMAGE" },
+        12.0,
+        None,
+        31.0,
+        18.0,
+        Face::Body,
+        &muted,
+    );
+    for (label, x, selected) in [
+        (if kit.es() { "Coche" } else { "Car" }, 100.0, !numbers),
+        (if kit.es() { "Cifras" } else { "Values" }, 144.0, numbers),
     ] {
-        builder.move_to(point(
-            px(ox + (SIZE.0 - 120.0) / 2.0 + points[0].0),
-            px(oy + y + points[0].1),
-        ));
-        for &(x, py) in &points[1..] {
-            builder.line_to(point(px(ox + (SIZE.0 - 120.0) / 2.0 + x), px(oy + y + py)));
-        }
-        builder.close();
-        match builder.build() {
-            Ok(path) => window.paint_path(path, color),
-            Err(error) => eprintln!("car-damage-visual: polígono SVG: {error}"),
-        }
-    }
-}
-
-fn suspension(window: &mut Window, y: f32, color: Hsla) {
-    let (ox, oy) = text::origin();
-    let pt = |x, py| point(px(ox + (SIZE.0 - 120.0) / 2.0 + x), px(oy + y + py));
-    // El quad de GPUI ajusta sus bordes a píxel; el trazo SVG de 1 px
-    // necesita conservar medio píxel a cada lado de la geometría original.
-    for (mut builder, color) in [
-        (PathBuilder::fill(), color),
-        (PathBuilder::stroke(px(1.0)), col(tokens::INK, 0.15)),
-    ] {
-        builder.move_to(pt(22.0, 45.0));
-        builder.line_to(pt(98.0, 45.0));
-        builder.arc_to(
-            point(px(2.0), px(2.0)),
-            px(0.0),
-            false,
-            true,
-            pt(100.0, 47.0),
+        round_rect(
+            window,
+            x,
+            28.0,
+            44.0,
+            24.0,
+            4.0,
+            Color(
+                if selected { 0xe14a54 } else { 0xffffff },
+                if selected { 0.38 } else { 0.03 },
+            )
+            .hsla(),
         );
-        builder.line_to(pt(100.0, 49.0));
-        builder.arc_to(
-            point(px(2.0), px(2.0)),
-            px(0.0),
-            false,
-            true,
-            pt(98.0, 51.0),
-        );
-        builder.line_to(pt(22.0, 51.0));
-        builder.arc_to(
-            point(px(2.0), px(2.0)),
-            px(0.0),
-            false,
-            true,
-            pt(20.0, 49.0),
-        );
-        builder.line_to(pt(20.0, 47.0));
-        builder.arc_to(
-            point(px(2.0), px(2.0)),
-            px(0.0),
-            false,
-            true,
-            pt(22.0, 45.0),
-        );
-        builder.close();
-        match builder.build() {
-            Ok(path) => window.paint_path(path, color),
-            Err(error) => eprintln!("car-damage-visual: suspensión SVG: {error}"),
-        }
-    }
-}
-
-fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
-    paint_panel(window, SIZE.0, SIZE.1, 0.87);
-    window.paint_quad(quad(
-        rect(0.0, 0.0, SIZE.0, SIZE.1),
-        Corners::all(px(tokens::RADIUS)),
-        linear_gradient(
-            120.0,
-            linear_color_stop(col(0xffffff, 0.03), 0.0),
-            linear_color_stop(col(0xffffff, 0.0), 0.38),
-        ),
-        Edges::all(px(0.0)),
-        col(0x000000, 0.0),
-        BorderStyle::default(),
-    ));
-
-    if let Some(status) = vm.status {
-        let style = ink(14.0, 700.0, 0.0, col(0xe2c568, 1.0));
-        // .vf-status tiene 12 px de padding dentro de los 126 px disponibles.
-        let lines: &[&str] = match status {
-            "DATOS ANTIGUOS" => &["DATOS", "ANTIGUOS"],
-            "DATA OUT OF DATE" => &["DATA OUT OF", "DATE"],
-            _ => &[status],
-        };
-        let width = lines
-            .iter()
-            .map(|line| text::width(window, line, &style))
-            .fold(0.0, f32::max);
-        let top = (SIZE.1 - lines.len() as f32 * 18.0) / 2.0;
-        for (i, line) in lines.iter().enumerate() {
-            text::draw(
+        if selected {
+            round_rect(
                 window,
-                cx,
-                line,
-                (SIZE.0 - width) / 2.0,
-                text::baseline(top + i as f32 * 18.0, 18.0, 14.0),
-                &style,
+                x + 1.0,
+                29.0,
+                42.0,
+                22.0,
+                3.0,
+                Color(0x51272c, 1.0).hsla(),
             );
         }
-    } else {
-        let label = ink(11.0, 600.0, 0.1, col(tokens::MUTED, 1.0));
-        let value = ink(14.0, 700.0, 0.0, col(tokens::INK, 1.0));
-        let start = usize::from(!vm.show_aero);
-        let y = 8.0;
-        polygon(
-            window,
-            &[
-                (35.0, 15.0),
-                (85.0, 15.0),
-                (105.0, 40.0),
-                (100.0, 75.0),
-                (40.0, 75.0),
-                (35.0, 40.0),
-            ],
-            y,
-            fill(vm.damage[1]),
+        let ink = kit.ink(
+            Face::Body,
+            10.0,
+            0.0,
+            Color(if selected { 0xece6e7 } else { 0x8e8587 }, 1.0).hsla(),
         );
-        polygon(
+        kit.label(
             window,
-            &[(55.0, 12.0), (70.0, 12.0), (75.0, 20.0), (50.0, 20.0)],
-            y,
-            fill(vm.damage[0]),
+            cx,
+            label,
+            x + 6.0,
+            None,
+            32.0,
+            16.0,
+            Face::Body,
+            &ink,
         );
-        suspension(window, y, fill(vm.damage[2]));
-        // Each item owns a separate 29 px row: no locale-dependent wrapping.
-        for i in start..3 {
-            let top = 103.0 + (i - start) as f32 * 29.0;
-            let label_text = text::fit(window, vm.labels[i], &label, 80.0);
-            text::draw(
+    }
+    if numbers {
+        for slot in 0..(4 - usize::from(!vm.show_aero)) {
+            round_rect(
                 window,
-                cx,
-                &label_text,
                 12.0,
-                text::baseline(top, 29.0, 11.0).round(),
-                &label,
+                62.0 + slot as f32 * 43.0 + 39.0,
+                176.0,
+                1.0,
+                0.0,
+                Color(0xffffff, 0.06).hsla(),
             );
-            text::draw(
+        }
+        paint_number_text(vm, &kit, |label| {
+            label.paint(&kit, window, cx);
+        });
+    } else {
+        let (ox, oy) = text::origin();
+        // SVG aprobado: viewBox 120×180 ajustado al cuerpo de la tarjeta.
+        let pt = |x: f32, y: f32| point(px(ox + 47.2 + x * 0.88), px(oy + 70.0 + y * 0.88));
+        let body_color = if vm.integrity[1] == Some(1.0) {
+            Color(0x3a3335, 0.5)
+        } else {
+            let c = tone(vm.integrity[1]);
+            Color(c.0, 0.22)
+        };
+        for (mut body, color) in [
+            (PathBuilder::fill(), body_color),
+            (PathBuilder::stroke(px(1.2)), Color(0xffffff, 0.28)),
+        ] {
+            body.move_to(pt(32.0, 34.0));
+            body.curve_to(pt(48.0, 9.0), pt(30.0, 14.0));
+            body.line_to(pt(72.0, 9.0));
+            body.curve_to(pt(88.0, 34.0), pt(90.0, 14.0));
+            body.line_to(pt(90.0, 58.0));
+            body.curve_to(pt(90.0, 122.0), pt(85.0, 90.0));
+            body.line_to(pt(88.0, 148.0));
+            body.curve_to(pt(76.0, 158.0), pt(86.0, 158.0));
+            body.line_to(pt(44.0, 158.0));
+            body.curve_to(pt(32.0, 148.0), pt(34.0, 158.0));
+            body.line_to(pt(30.0, 122.0));
+            body.curve_to(pt(30.0, 58.0), pt(35.0, 90.0));
+            body.close();
+            if let Ok(body) = body.build() {
+                window.paint_path(body, color.hsla());
+            }
+        }
+        for (x, y) in [(18.0, 24.0), (92.0, 24.0), (18.0, 118.0), (92.0, 118.0)] {
+            round_rect(
+                window,
+                47.2 + x * 0.88,
+                70.0 + y * 0.88,
+                8.8,
+                24.64,
+                3.0,
+                Color(0x5a5052, 1.0).hsla(),
+            );
+        }
+        let mut panels = PathBuilder::stroke(px(2.0));
+        for (from, to) in [
+            ((60.0, 54.0), (60.0, 124.0)),
+            ((30.0, 54.0), (90.0, 54.0)),
+            ((30.0, 124.0), (90.0, 124.0)),
+        ] {
+            panels.move_to(pt(from.0, from.1));
+            panels.line_to(pt(to.0, to.1));
+        }
+        if let Ok(panels) = panels.build() {
+            window.paint_path(panels, Color(0x110f10, 1.0).hsla());
+        }
+        for (mut cabin, color) in [
+            (PathBuilder::fill(), Color(0x0d0b0c, 1.0)),
+            (PathBuilder::stroke(px(1.0)), Color(0xffffff, 0.18)),
+        ] {
+            cabin.move_to(pt(52.0, 62.0));
+            cabin.curve_to(pt(68.0, 62.0), pt(60.0, 50.0));
+            cabin.line_to(pt(68.0, 92.0));
+            cabin.curve_to(pt(52.0, 92.0), pt(60.0, 98.0));
+            cabin.close();
+            if let Ok(cabin) = cabin.build() {
+                window.paint_path(cabin, color.hsla());
+            }
+        }
+        if vm.show_aero {
+            // Integridad aero agregada no identifica el estado de un alerón concreto.
+            round_rect(
+                window,
+                68.32,
+                212.56,
+                63.36,
+                7.92,
+                2.0,
+                Color(0xffffff, 0.09).hsla(),
+            );
+        }
+        if percent && vm.show_aero {
+            let ink = kit.ink(Face::Mono, 10.0, 0.0, tone(vm.integrity[0]).hsla());
+            kit.label(
                 window,
                 cx,
-                &vm.percentages[i],
-                SIZE.0 - 12.0 - text::width(window, &vm.percentages[i], &value),
-                text::baseline(top, 29.0, 14.0).round(),
-                &value,
+                &format!("Aero {}", percentage(vm.integrity[0])),
+                12.0,
+                None,
+                62.0,
+                16.0,
+                Face::Mono,
+                &ink,
             );
         }
     }
-    paint_frame(window, SIZE.0, SIZE.1);
-    window.paint_quad(quad(
-        rect(0.0, 0.0, SIZE.0, 6.0),
-        Corners {
-            top_left: px(6.0),
-            top_right: px(6.0),
-            bottom_left: px(0.0),
-            bottom_right: px(0.0),
-        },
-        col(0x000000, 0.0),
-        Edges {
-            top: px(1.0),
-            ..Edges::default()
-        },
-        col(0xffffff, 0.136),
-        BorderStyle::default(),
-    ));
+    round_rect(
+        window,
+        12.0,
+        244.0,
+        176.0,
+        1.0,
+        0.0,
+        Color(0xffffff, 0.08).hsla(),
+    );
+    let status = vm
+        .status
+        .unwrap_or(if vm.integrity.iter().all(|v| *v == Some(1.0)) {
+            if kit.es() {
+                "Coche intacto"
+            } else {
+                "Car intact"
+            }
+        } else {
+            if kit.es() {
+                "Integridad del coche"
+            } else {
+                "Car integrity"
+            }
+        });
+    kit.label(
+        window,
+        cx,
+        status,
+        12.0,
+        None,
+        248.0,
+        16.0,
+        Face::Body,
+        &muted,
+    );
 }
 
 #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct Settings {
     pub show_aero: bool,
+    pub view: String,
+    pub toggle_key: String,
     pub show_percent: bool,
 }
 impl Default for Settings {
     fn default() -> Self {
         Self {
             show_aero: true,
+            view: "car".into(),
+            toggle_key: String::new(),
             show_percent: true,
         }
     }
 }
 impl Settings {
-    pub const UNSUPPORTED: &'static [(&'static str, &'static str)] = &[(
-        "showPercent",
-        "CarDamageVisualFunctional muestra porcentajes siempre",
-    )];
+    pub const UNSUPPORTED: &'static [(&'static str, &'static str)] = &[];
+    pub fn key_matches(&self, key: &gpui::Keystroke) -> bool {
+        !self.toggle_key.is_empty()
+            && key.key.eq_ignore_ascii_case(&self.toggle_key)
+            && !key.modifiers.control
+            && !key.modifiers.alt
+            && !key.modifiers.shift
+            && !key.modifiers.platform
+    }
+    pub fn toggle_view(&mut self) {
+        self.view = if self.view == "numbers" {
+            "car"
+        } else {
+            "numbers"
+        }
+        .into();
+    }
     #[must_use]
     pub fn normalized(&self) -> Self {
-        self.clone()
+        let mut s = self.clone();
+        if s.view != "numbers" {
+            s.view = "car".into();
+        }
+        s.toggle_key = s.toggle_key.to_ascii_lowercase();
+        if !s
+            .toggle_key
+            .strip_prefix('f')
+            .and_then(|n| n.parse::<u8>().ok())
+            .is_some_and(|n| (1..=12).contains(&n))
+        {
+            s.toggle_key.clear();
+        }
+        s
     }
     fn project(&self, snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
         let mut vm = car_damage_visual::project(snapshot, prefs);
@@ -231,12 +397,18 @@ impl Settings {
 pub(crate) struct Widget {
     settings: Settings,
     vm: ViewModel,
+    numbers: bool,
+    #[cfg(any(windows, test))]
+    key_down: bool,
 }
 
 impl Widget {
     pub(crate) fn new(settings: &Settings, prefs: Preferences) -> Self {
         let settings = settings.normalized();
         Self {
+            numbers: settings.view == "numbers",
+            #[cfg(any(windows, test))]
+            key_down: false,
             settings: settings.clone(),
             vm: settings.project(&Snapshot::default(), prefs),
         }
@@ -251,12 +423,28 @@ impl Widget {
         replace_if_changed(&mut self.vm, self.settings.project(snapshot, prefs))
     }
 
-    pub(crate) fn frame(&mut self, _prefs: Preferences, _reduced: bool) -> (Paint, Wake) {
+    pub(crate) fn frame(&mut self, prefs: Preferences, _reduced: bool) -> (Paint, Wake) {
         let vm = self.vm.clone();
+        let numbers = self.numbers;
+        let percent = self.settings.show_percent;
         (
-            Box::new(move |window, cx| paint(&vm, window, cx)),
+            Box::new(move |window, cx| paint(&vm, numbers, percent, prefs, window, cx)),
             Wake::Idle,
         )
+    }
+
+    #[cfg(windows)]
+    pub(crate) fn shortcut_key(&self) -> &str {
+        &self.settings.toggle_key
+    }
+    #[cfg(any(windows, test))]
+    pub(crate) fn handle_shortcut(&mut self, down: bool) -> bool {
+        let toggle = down && !self.key_down && !self.settings.toggle_key.is_empty();
+        self.key_down = down;
+        if toggle {
+            self.numbers = !self.numbers;
+        }
+        toggle
     }
 
     #[cfg(feature = "parity-capture")]
@@ -276,6 +464,37 @@ impl Settings {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn shortcut_is_unassigned_and_toggles_once_per_press_without_resizing() {
+        let prefs = Preferences::default();
+        let mut none = Widget::new(&Settings::default(), prefs);
+        assert!(!none.handle_shortcut(true));
+        assert!(!none.numbers);
+        let settings = Settings {
+            view: "car".into(),
+            toggle_key: "F7".into(),
+            ..Settings::default()
+        }
+        .normalized();
+        let saved = serde_json::to_string(&settings).expect("guardar");
+        assert_eq!(
+            serde_json::from_str::<Settings>(&saved)
+                .expect("leer")
+                .normalized(),
+            settings
+        );
+        let mut widget = Widget::new(&settings, prefs);
+        assert!(widget.handle_shortcut(true));
+        assert!(widget.numbers);
+        assert!(!widget.handle_shortcut(true));
+        assert!(!widget.handle_shortcut(false));
+        assert!(widget.handle_shortcut(true));
+        assert!(!widget.numbers);
+        assert_eq!(widget.size(), (200.0, 272.0));
+        widget.ingest(&Snapshot::default(), prefs);
+        assert_eq!(widget.size(), (200.0, 272.0));
+    }
+
     #[test]
     fn aero_setting_hides_only_the_legend_and_preserves_svg_damage() {
         let snapshot = vantare_ipc::snapshot_from_fixture_json(include_str!(
@@ -341,5 +560,47 @@ mod tests {
         assert!(matches!(widget.frame(prefs, false).1, Wake::Idle));
         #[cfg(feature = "parity-capture")]
         assert!(!widget.animating());
+    }
+}
+
+#[cfg(test)]
+mod numbers_render_tests {
+    use super::*;
+    fn photo() -> Snapshot {
+        use vantare_domain::{Capability, Quality::Reliable, SourceState};
+        let mut photo = crate::source::fixed();
+        photo.state.source_state = SourceState::Live;
+        photo.state.capabilities.damage = Capability::Fresh;
+        let p = photo.state.player.as_mut().expect("jugador");
+        p.damage.aero = Reliable(0.2);
+        p.damage.body = Reliable(0.7);
+        p.damage.suspension = Reliable(0.9);
+        p.damage.tyre_wear = [Reliable(0.98); 4];
+        photo
+    }
+    #[test]
+    fn numbers_paint_damage_loss_not_remaining_integrity() {
+        let vm = Settings::default().project(&photo(), Preferences::default());
+        crate::paint_tests::with_kit(SIZE.0, vantare_domain::format::Language::Es, |kit| {
+            let painted = crate::paint_tests::observe(|draw| paint_number_text(&vm, kit, draw));
+            let text: Vec<_> = painted.iter().map(|label| label.value.as_str()).collect();
+            assert!(text.contains(&"80%") && text.contains(&"30%") && text.contains(&"10%"));
+            assert_eq!(text.iter().filter(|v| **v == "2%").count(), 4);
+            assert!(!text.contains(&"98%"));
+        });
+    }
+    #[test]
+    fn show_aero_false_removes_the_painted_row_and_compacts_the_rest() {
+        let vm = Settings {
+            show_aero: false,
+            ..Settings::default()
+        }
+        .project(&photo(), Preferences::default());
+        crate::paint_tests::with_kit(SIZE.0, vantare_domain::format::Language::Es, |kit| {
+            let painted = crate::paint_tests::observe(|draw| paint_number_text(&vm, kit, draw));
+            assert!(!painted.iter().any(|label| label.value == "Aero"));
+            assert_eq!(painted[0].value, "Carrocería");
+            assert_eq!(painted[0].top, 62.0);
+        });
     }
 }

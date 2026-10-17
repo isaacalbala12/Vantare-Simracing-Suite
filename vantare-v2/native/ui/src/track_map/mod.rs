@@ -1,33 +1,50 @@
-//! `TrackMap` Eficiencia: ancho máximo 554 px, geometría proporcional y pie de 29 px.
+//! Mapa: marco fijo de 320 × 248, con transparencia opcional.
 //! Sin geometría en `Snapshot` se muestra PISTA SIN MAPA, nunca un mapa ficticio.
 
-#[cfg(feature = "parity-capture")]
 mod scene;
 
 use crate::efficiency::preview::PaintWindow as Window;
-use gpui::{
-    App, BorderStyle, Corners, Edges, Hsla, PathBuilder, Pixels, Point, linear_color_stop,
-    linear_gradient, point, px, quad,
-};
+use gpui::{App, Hsla, PathBuilder, Pixels, Point, point, px};
+use std::sync::Arc;
 use vantare_domain::format::Preferences;
 use vantare_domain::{Snapshot, track_map};
 
 use crate::app::{Paint, Wake, replace_if_changed};
-use crate::efficiency::text::{self, ink};
-use crate::efficiency::{col, paint_frame, paint_panel, paint_rect, rect, tokens};
+use crate::efficiency::text;
+use crate::vantare::{
+    paint::{Face, Kit},
+    style::{Color, Style},
+};
 
-const WIDTH: f32 = 554.0;
-const SCALE: f32 = (WIDTH - 16.0) / 320.0;
+const WIDTH: f32 = 320.0;
+// Mantener las proporciones de la proyección; el alto disponible es 188 px.
+const SCALE: f32 = 188.0 / 220.0;
+const SIZE: (f32, f32) = (320.0, 248.0);
+
+#[cfg(test)]
+mod projection_tests {
+    #[test]
+    fn equal_distances_keep_their_proportions_on_both_axes() {
+        let origin = super::svg_point(vantare_domain::track_map::Point { x: 0.0, y: 0.0 });
+        let horizontal = super::svg_point(vantare_domain::track_map::Point { x: 100.0, y: 0.0 });
+        let vertical = super::svg_point(vantare_domain::track_map::Point { x: 0.0, y: 100.0 });
+        let dx = f32::from(horizontal.x - origin.x);
+        let dy = f32::from(vertical.y - origin.y);
+        assert!((dx - dy).abs() < 0.001, "la pista no se estira en un eje");
+    }
+}
 
 #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct Settings {
     pub show_track_label: bool,
+    pub transparent: bool,
 }
 impl Default for Settings {
     fn default() -> Self {
         Self {
             show_track_label: true,
+            transparent: false,
         }
     }
 }
@@ -54,12 +71,14 @@ impl Settings {
 pub(crate) struct Widget {
     settings: Settings,
     vm: track_map::ViewModel,
+    labels: Arc<[String; 3]>,
 }
 
 impl Widget {
     pub(crate) fn new(settings: &Settings, prefs: Preferences) -> Self {
         let settings = settings.normalized();
         Self {
+            labels: Arc::new(labels(&Snapshot::default(), prefs)),
             settings: settings.clone(),
             vm: settings.project(&Snapshot::default(), prefs, None),
         }
@@ -70,20 +89,18 @@ impl Widget {
     }
 
     pub(crate) fn ingest(&mut self, snapshot: &Snapshot, prefs: Preferences) -> bool {
-        #[cfg(not(feature = "parity-capture"))]
-        let next = self.settings.project(snapshot, prefs, None);
-        #[cfg(feature = "parity-capture")]
-        let next = {
-            let geometry = scene::geometry(snapshot);
-            self.settings.project(snapshot, prefs, geometry.as_ref())
-        };
-        replace_if_changed(&mut self.vm, next)
+        let geometry = scene::geometry(snapshot);
+        let next = self.settings.project(snapshot, prefs, geometry.as_ref());
+        let changed = replace_if_changed(Arc::make_mut(&mut self.labels), labels(snapshot, prefs));
+        replace_if_changed(&mut self.vm, next) || changed
     }
 
-    pub(crate) fn frame(&mut self, _prefs: Preferences, _reduced: bool) -> (Paint, Wake) {
+    pub(crate) fn frame(&mut self, prefs: Preferences, _reduced: bool) -> (Paint, Wake) {
         let vm = self.vm.clone();
+        let transparent = self.settings.transparent;
+        let labels = self.labels.clone();
         (
-            Box::new(move |window, cx| paint(&vm, window, cx)),
+            Box::new(move |window, cx| paint(&vm, &labels, transparent, prefs, window, cx)),
             Wake::Idle,
         )
     }
@@ -95,29 +112,25 @@ impl Widget {
     }
 }
 
-fn height(vm: &track_map::ViewModel) -> f32 {
-    if vm.track_label.is_some() {
-        16.0 + 220.0 * SCALE + 29.0
-    } else {
-        16.0 + 220.0 * SCALE
-    }
+fn height(_vm: &track_map::ViewModel) -> f32 {
+    SIZE.1
 }
 
 fn svg_point(p: track_map::Point) -> Point<Pixels> {
     let (ox, oy) = text::origin();
     point(
-        px(ox + 8.0 + p.x as f32 * SCALE),
-        px(oy + 8.0 + p.y as f32 * SCALE),
+        px(ox + (WIDTH - 320.0 * SCALE) / 2.0 + p.x as f32 * SCALE),
+        px(oy + 32.0 + p.y as f32 * SCALE),
     )
 }
 
 /// Como el helper productivo: GTE usa unknown; solo GT3/LMGT3 usan verde.
 fn class_color(class: Option<&str>) -> u32 {
     match class.unwrap_or_default().to_ascii_uppercase().as_str() {
-        "HYPERCAR" => 0xc1121f,
-        "LMP2" => 0x0055a4,
+        "HYPERCAR" => 0xe14a54,
+        "LMP2" => 0x4f8ef7,
         "LMP3" => 0xf59e0b,
-        "GT3" | "LMGT3" => 0x2ecc71,
+        "GT3" | "LMGT3" => 0x22c55e,
         _ => 0x6b7280,
     }
 }
@@ -142,128 +155,289 @@ fn circle(builder: &mut PathBuilder, center: Point<Pixels>, radius: f32) {
     builder.close();
 }
 
-fn paint(vm: &track_map::ViewModel, window: &mut Window, cx: &mut App) {
-    let height = height(vm);
-    paint_panel(window, WIDTH, height, 0.87);
-    // Mismo primer tramo del degradado que Standings; el resto aporta <1%.
-    window.paint_quad(quad(
-        rect(0.0, 0.0, WIDTH, height),
-        Corners::all(px(tokens::RADIUS)),
-        linear_gradient(
-            120.0,
-            linear_color_stop(col(0xffffff, 0.03), 0.0),
-            linear_color_stop(col(0xffffff, 0.0), 0.38),
-        ),
-        Edges::all(px(0.0)),
-        col(0, 0.0),
-        BorderStyle::default(),
-    ));
+fn labels(snapshot: &Snapshot, prefs: Preferences) -> [String; 3] {
+    let es = prefs.language == vantare_domain::format::Language::Es;
+    let car = snapshot.state.player_car();
+    let name = snapshot
+        .state
+        .session
+        .track_name
+        .current()
+        .map_or(if es { "CIRCUITO" } else { "TRACK" }, String::as_str);
+    let length = snapshot
+        .state
+        .session
+        .track_length_m
+        .current()
+        .filter(|v| v.is_finite() && **v > 0.0)
+        .map_or_else(String::new, |v| format!(" · {:.3} KM", v / 1000.0));
+    let session = match (snapshot.state.session.kind.current(), es) {
+        (Some(vantare_domain::SessionKind::Race), true) => "CARRERA",
+        (Some(vantare_domain::SessionKind::Race), false) => "RACE",
+        (Some(vantare_domain::SessionKind::Qualifying), true) => "CLASIFICACIÓN",
+        (Some(vantare_domain::SessionKind::Qualifying), false) => "QUALIFYING",
+        (Some(vantare_domain::SessionKind::Practice), true) => "PRÁCTICA",
+        (Some(vantare_domain::SessionKind::Practice), false) => "PRACTICE",
+        _ => "",
+    };
+    let lap = if snapshot
+        .state
+        .session
+        .kind
+        .current()
+        .is_some_and(vantare_domain::SessionKind::ranks_by_best_lap)
+    {
+        snapshot
+            .state
+            .session
+            .remaining_s
+            .current()
+            .filter(|v| v.is_finite() && **v >= 0.0)
+            .map_or_else(
+                || session.to_owned(),
+                |seconds| {
+                    let total = *seconds as u64;
+                    format!("{session} · {:02}:{:02}", total / 60, total % 60)
+                },
+            )
+    } else {
+        car.and_then(|c| c.laps.current())
+            .zip(snapshot.state.session.laps_total.current())
+            .map_or_else(
+                || session.to_owned(),
+                |(a, b)| format!("{session} · {} {a}/{b}", if es { "V" } else { "L" }),
+            )
+    };
+    let player = car.and_then(|c| c.position.current()).map_or_else(
+        || if es { "Tú" } else { "You" }.into(),
+        |v| format!("{} P{v}", if es { "Tú" } else { "You" }),
+    );
+    [format!("{}{length}", name.to_uppercase()), lap, player]
+}
+
+fn paint_header_text<C>(
+    labels: &[String; 3],
+    kit: &Kit<'_>,
+    context: &mut C,
+    mut measure: impl FnMut(&mut C, &str, &text::TextInk<'_>) -> f32,
+    mut draw: impl FnMut(&mut C, crate::vantare::paint::Label<'_>),
+) {
+    let ink = kit.ink(Face::Body, 10.0, 0.3, kit.style.colors.muted.hsla());
+    let available = (WIDTH - 24.0 - 8.0 - measure(context, &labels[1], &ink)).max(0.0);
+    let track = text::fit_measured(&labels[0], available, |value| measure(context, value, &ink));
+    for (value, x, right) in [
+        (track.as_str(), 12.0, None),
+        (labels[1].as_str(), 0.0, Some(308.0)),
+    ] {
+        draw(
+            context,
+            crate::vantare::paint::Label {
+                value,
+                x,
+                right,
+                top: 10.0,
+                height: 18.0,
+                face: Face::Body,
+                ink,
+            },
+        );
+    }
+}
+
+fn paint(
+    vm: &track_map::ViewModel,
+    labels: &[String; 3],
+    transparent: bool,
+    prefs: Preferences,
+    window: &mut Window,
+    cx: &mut App,
+) {
+    let style = Style::compiled();
+    let kit = Kit {
+        style: &style,
+        variant: &style.styles.neo,
+        accent: style.accents.red,
+        language: prefs.language,
+        width: WIDTH,
+    };
+    if !transparent {
+        kit.panel(window, SIZE.1);
+    }
+    paint_header_text(
+        labels,
+        &kit,
+        &mut (&mut *window, &mut *cx),
+        |context, value, ink| text::width(context.0, value, ink),
+        |context, label| {
+            kit.label_shadow(
+                context.0,
+                context.1,
+                label.value,
+                label.x,
+                label.right,
+                label.top,
+                label.height,
+                label.face,
+                &label.ink,
+            );
+        },
+    );
     if let Some(first) = vm.outline.first() {
-        let mut builder = PathBuilder::stroke(px(10.0));
-        builder.move_to(svg_point(*first));
-        for &point in &vm.outline[1..] {
-            builder.line_to(svg_point(point));
+        for (stroke, color) in [
+            (
+                13.0,
+                Color(
+                    if transparent { 0x000000 } else { 0xffffff },
+                    if transparent { 0.55 } else { 0.07 },
+                ),
+            ),
+            (5.0, Color(0xa39a9c, 1.0)),
+        ] {
+            let mut path = PathBuilder::stroke(px(stroke));
+            path.move_to(svg_point(*first));
+            for &p in &vm.outline[1..] {
+                path.line_to(svg_point(p));
+            }
+            path.close();
+            draw_path(window, path, color.hsla());
         }
-        builder.close();
-        draw_path(window, builder, col(tokens::INK, 0.35));
         for marker in &vm.markers {
             let center = svg_point(marker.point);
-            let radius = if marker.is_player { 9.5 } else { 8.5 };
-            let mut fill = PathBuilder::fill();
-            circle(&mut fill, center, radius);
             let color = if marker.is_player {
-                0xc1121f
+                0xe14a54
             } else {
                 class_color(marker.class_name.as_deref())
             };
-            draw_path(window, fill, col(color, 1.0));
-            let mut border = PathBuilder::stroke(px(1.0));
-            circle(&mut border, center, radius);
-            draw_path(window, border, col(tokens::PANEL, 0.8));
+            if marker.is_player {
+                let mut halo = PathBuilder::fill();
+                circle(&mut halo, center, 9.0);
+                draw_path(window, halo, Color(color, 0.25).hsla());
+            }
+            let mut fill = PathBuilder::fill();
+            circle(&mut fill, center, if marker.is_player { 5.5 } else { 4.5 });
+            draw_path(window, fill, Color(color, 1.0).hsla());
+            let mut border = PathBuilder::stroke(px(if marker.is_player { 2.0 } else { 1.5 }));
+            circle(
+                &mut border,
+                center,
+                if marker.is_player { 5.5 } else { 4.5 },
+            );
+            draw_path(
+                window,
+                border,
+                Color(if marker.is_player { 0xffffff } else { 0x110f10 }, 1.0).hsla(),
+            );
         }
     } else {
-        let style = ink(14.0, 600.0, 0.08, col(tokens::MUTED, 1.0));
-        let x = (WIDTH - text::width(window, &vm.empty_text, &style)) / 2.0;
-        text::draw(
+        let muted = kit.ink(Face::Display, 13.0, 1.0, style.colors.muted.hsla());
+        kit.label_shadow(
             window,
             cx,
             &vm.empty_text,
-            x,
-            text::baseline((height - 29.0) / 2.0, 29.0, 14.0),
-            &style,
+            22.0,
+            None,
+            115.0,
+            20.0,
+            Face::Display,
+            &muted,
         );
     }
-    if let Some(label) = &vm.track_label {
-        paint_rect(
-            window,
-            8.0,
-            height - 29.0,
-            WIDTH - 16.0,
-            1.0,
-            col(tokens::INK, 0.1),
-        );
-        let style = ink(14.0, 650.0, 0.0, col(tokens::INK, 1.0));
-        let reference_width = vm.reference_text.as_ref().map_or(0.0, |reference| {
-            text::width(
-                window,
-                reference,
-                &ink(11.0, 600.0, 0.1, col(tokens::MUTED, 1.0)),
-            ) + 6.0
-        });
-        let label = text::fit(window, label, &style, WIDTH - 16.0 - reference_width);
-        text::draw(
-            window,
-            cx,
-            &label,
-            8.0,
-            text::baseline(height - 28.0, 28.0, 14.0),
-            &style,
-        );
-        if let Some(reference) = &vm.reference_text {
-            let style = ink(11.0, 600.0, 0.1, col(tokens::MUTED, 1.0));
-            let x = WIDTH - 8.0 - text::width(window, reference, &style);
-            text::draw(
-                window,
-                cx,
-                reference,
-                x,
-                text::baseline(height - 28.0, 28.0, 11.0),
-                &style,
-            );
+    let foot = kit.ink(Face::Body, 11.0, 0.0, style.colors.muted.hsla());
+    let message = if vm.markers.iter().any(|m| m.is_player) {
+        labels[2].as_str()
+    } else if vm.outline.is_empty() {
+        if kit.es() {
+            "Esperando trazado de la pista"
+        } else {
+            "Waiting for track layout"
         }
-    }
-    paint_frame(window, WIDTH, height);
-    // ::after tiene el borde superior al 24%, los otros al 12%.
-    window.paint_quad(quad(
-        rect(0.0, 0.0, WIDTH, 6.0),
-        Corners {
-            top_left: px(tokens::RADIUS),
-            top_right: px(tokens::RADIUS),
-            bottom_right: px(0.0),
-            bottom_left: px(0.0),
-        },
-        col(0, 0.0),
-        Edges {
-            top: px(1.0),
-            right: px(0.0),
-            bottom: px(0.0),
-            left: px(0.0),
-        },
-        col(0xffffff, 0.136),
-        BorderStyle::default(),
-    ));
+    } else {
+        if kit.es() {
+            "Coches por clase"
+        } else {
+            "Cars by class"
+        }
+    };
+    kit.label_shadow(
+        window,
+        cx,
+        message,
+        12.0,
+        None,
+        222.0,
+        18.0,
+        Face::Body,
+        &foot,
+    );
 }
 
 impl Settings {
     #[allow(clippy::unused_self)] // Contrato común de demanda por renderer.
     pub fn demand(&self) -> vantare_ipc::Demand {
-        use vantare_ipc::Signal::{Spatial, TrackName};
-        crate::demand::signals(33, &[Spatial, TrackName])
+        use vantare_ipc::Signal::{
+            LapCount, Positions, SessionClock, SessionInfo, Spatial, TrackLength, TrackName,
+        };
+        crate::demand::signals(
+            33,
+            &[
+                Spatial,
+                TrackName,
+                TrackLength,
+                LapCount,
+                SessionInfo,
+                SessionClock,
+                Positions,
+            ],
+        )
     }
 }
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn approved_demo_is_explicit_and_cannot_supply_geometry_to_live() {
+        let photos = crate::workshop::snapshots_from_json(include_str!(
+            "../../fixtures/track-map-design-system.sequence.json"
+        ))
+        .expect("demo DTO");
+        let snapshot = &photos[0];
+        let mut widget = Widget::new(&Settings::default(), Preferences::default());
+        widget.ingest(snapshot, Preferences::default());
+        assert!(!widget.vm.outline.is_empty());
+        assert_eq!(widget.vm.markers.len(), 14);
+        assert!(widget.vm.markers.iter().any(|m| m.is_player));
+        assert_eq!(widget.size(), SIZE);
+        for (photo, markers, clock) in [(&photos[1], 5, "08:42"), (&photos[2], 4, "42:10")] {
+            widget.ingest(photo, Preferences::default());
+            assert_eq!(widget.vm.markers.len(), markers);
+            assert!(widget.labels[1].ends_with(clock));
+            let mut altered = photo.clone();
+            altered.epoch += 1;
+            assert!(scene::geometry(&altered).is_none());
+            altered = photo.clone();
+            altered.origin.source.kind = vantare_domain::SourceKind::Live;
+            assert!(scene::geometry(&altered).is_none());
+        }
+        let mut live = snapshot.clone();
+        live.origin.source.kind = vantare_domain::SourceKind::Live;
+        assert!(scene::geometry(&live).is_none());
+        widget.ingest(&live, Preferences::default());
+        assert!(widget.vm.outline.is_empty());
+        assert_eq!(widget.size(), SIZE);
+        let transparent = Settings {
+            transparent: true,
+            ..Settings::default()
+        };
+        assert_eq!(
+            serde_json::from_str::<Settings>(
+                &serde_json::to_string(&transparent).expect("guardar")
+            )
+            .expect("leer")
+            .normalized(),
+            transparent
+        );
+    }
+
     #[test]
     fn unsupported_track_label_setting_preserves_the_productive_footer() {
         let mut snapshot = Snapshot::default();
@@ -279,11 +453,12 @@ mod tests {
             Settings::default().project(&snapshot, Preferences::default(), Some(&geometry));
         let hidden = Settings {
             show_track_label: false,
+            ..Settings::default()
         }
         .project(&snapshot, Preferences::default(), Some(&geometry));
         assert!(visible.track_label.is_some());
         assert_eq!(hidden, visible);
-        assert_eq!(height(&hidden), 16.0 + 220.0 * SCALE + 29.0);
+        assert_eq!(height(&hidden), SIZE.1);
     }
 
     use super::*;
@@ -303,8 +478,8 @@ mod tests {
         assert!(!widget.ingest(&snapshot, prefs));
         snapshot.state.session.track_name = vantare_domain::Quality::Reliable("Sebring".into());
         assert!(
-            !widget.ingest(&snapshot, prefs),
-            "sin geometría el dibujo no cambia"
+            widget.ingest(&snapshot, prefs),
+            "el nombre de pista de la cabecera cambia aun sin geometría"
         );
         let english = Preferences {
             language: Language::En,
@@ -312,7 +487,7 @@ mod tests {
         };
         assert!(widget.ingest(&snapshot, english));
         assert!(!widget.ingest(&snapshot, english));
-        assert_eq!(widget.size(), (WIDTH, 16.0 + 220.0 * SCALE));
+        assert_eq!(widget.size(), (WIDTH, SIZE.1));
         assert_eq!(widget.frame(english, false).1, Wake::Idle);
         #[cfg(feature = "parity-capture")]
         assert!(!widget.animating());
@@ -323,11 +498,11 @@ mod tests {
         for (class, expected) in [
             (None, 0x6b7280),
             (Some("gte"), 0x6b7280),
-            (Some("hypercar"), 0xc1121f),
-            (Some("LMP2"), 0x0055a4),
+            (Some("hypercar"), 0xe14a54),
+            (Some("LMP2"), 0x4f8ef7),
             (Some("lmp3"), 0xf59e0b),
-            (Some("GT3"), 0x2ecc71),
-            (Some("LMGT3"), 0x2ecc71),
+            (Some("GT3"), 0x22c55e),
+            (Some("LMGT3"), 0x22c55e),
         ] {
             assert_eq!(class_color(class), expected);
         }
@@ -346,12 +521,14 @@ mod tests {
         assert!(widget.vm.outline.is_empty());
         assert!(widget.vm.markers.is_empty());
         assert_eq!(widget.vm.empty_text, "PISTA SIN MAPA");
-        assert_eq!(widget.size(), (WIDTH, 16.0 + 220.0 * SCALE));
+        assert_eq!(widget.size(), (WIDTH, SIZE.1));
     }
 
     fn reference_snapshot() -> Snapshot {
-        vantare_ipc::snapshot_from_fixture_json(include_str!("../../fixtures/track-map.snapshot.json"))
-            .expect("fixture DTO v4 reconstruida del frame congelado")
+        vantare_ipc::snapshot_from_fixture_json(include_str!(
+            "../../fixtures/track-map.snapshot.json"
+        ))
+        .expect("fixture DTO v4 reconstruida del frame congelado")
     }
 
     #[cfg(feature = "parity-capture")]
@@ -366,7 +543,7 @@ mod tests {
         let prefs = Preferences::default();
         let mut widget = Widget::new(&Settings::default(), prefs);
         assert!(widget.ingest(&snapshot, prefs));
-        assert_eq!(widget.size(), (WIDTH, 16.0 + 220.0 * SCALE + 29.0));
+        assert_eq!(widget.size(), (WIDTH, SIZE.1));
         assert_eq!(
             widget.vm.track_label.as_deref(),
             Some("Sebring International Raceway")
@@ -384,16 +561,19 @@ mod tests {
         assert!(!widget.ingest(&snapshot, prefs));
         snapshot.sequence += 1;
         assert!(!widget.ingest(&snapshot, prefs));
+        let english = Preferences {
+            language: Language::En,
+            ..prefs
+        };
         assert!(
-            !widget.ingest(
-                &snapshot,
-                Preferences {
-                    language: Language::En,
-                    ..prefs
-                }
-            ),
-            "el idioma no cambia texto oculto"
+            widget.ingest(&snapshot, english),
+            "la cabecera visible cambia de idioma"
         );
+        assert_eq!(widget.labels[1], "RACE", "sin total no se inventan vueltas");
+        assert!(!widget.ingest(&snapshot, english));
+        snapshot.state.session.laps_total = vantare_domain::Quality::Reliable(200);
+        assert!(widget.ingest(&snapshot, english));
+        assert!(widget.labels[1].starts_with("RACE · L "));
         assert_eq!(widget.frame(prefs, false).1, Wake::Idle);
         assert!(!widget.animating());
     }
@@ -413,10 +593,44 @@ mod tests {
             let mut widget = Widget::new(&Settings::default(), Preferences::default());
             assert!(widget.ingest(&reference, Preferences::default()));
             assert!(widget.ingest(&snapshot, Preferences::default()));
-            assert_eq!(widget.size(), (WIDTH, 16.0 + 220.0 * SCALE));
+            assert_eq!(widget.size(), (WIDTH, SIZE.1));
             assert!(widget.vm.outline.is_empty());
             assert_eq!(widget.frame(Preferences::default(), false).1, Wake::Idle);
             assert!(!widget.animating());
         }
+    }
+}
+
+#[cfg(test)]
+mod header_render_tests {
+    #[test]
+    fn long_track_header_is_fitted_before_it_reaches_the_painter() {
+        crate::paint_tests::with_kit(super::WIDTH, vantare_domain::format::Language::Es, |kit| {
+            let labels = [
+                "AUTODROMO INTERNAZIONALE ENZO E DINO FERRARI · 4.909 KM".to_owned(),
+                "CLASIFICACIÓN · 09:21".to_owned(),
+                String::new(),
+            ];
+            let measure = |text: &str| text.chars().count() as f32 * 6.0;
+            let mut painted = Vec::new();
+            super::paint_header_text(
+                &labels,
+                kit,
+                &mut painted,
+                |_, value, _| measure(value),
+                |out, label| out.push((label.value.to_owned(), label.x, label.right)),
+            );
+            assert!(painted[0].0.ends_with('…'));
+            let right_start = painted[1].2.expect("alineación derecha") - measure(&painted[1].0);
+            assert!(
+                painted[0].1 + measure(&painted[0].0) + 8.0 <= right_start + 0.01,
+                "cabecera invade la sesión: {painted:?}"
+            );
+            assert!(painted[0].1 >= 12.0 && painted[1].2.unwrap() <= super::WIDTH - 12.0);
+            assert_eq!(
+                crate::efficiency::text::fit_measured("Imola", 0.0, measure),
+                ""
+            );
+        });
     }
 }

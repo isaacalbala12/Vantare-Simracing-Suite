@@ -197,6 +197,7 @@ pub struct Settings {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub brand_visible: Option<bool>,
     pub transparent_background: bool,
+    pub show_brake_peak: bool,
     pub gap: f32,
 }
 fn eficiencia() -> crate::look::Look {
@@ -208,6 +209,12 @@ impl Default for Settings {
     }
 }
 impl Settings {
+    /// El pico de frenada solo existe en el diseño Vantare.
+    #[must_use]
+    pub fn supports_brake_peak(&self) -> bool {
+        self.design_system == crate::look::Look::Vantare
+    }
+
     pub(crate) fn workshop_defaults(look: crate::look::Look) -> Self {
         Self {
             brand_visible: (look == crate::look::Look::Vantare).then_some(true),
@@ -230,6 +237,7 @@ impl Settings {
             accent: crate::look::Accent::Red,
             brand_visible: None,
             transparent_background: false,
+            show_brake_peak: true,
             gap: DEFAULT_GAP,
         }
     }
@@ -260,10 +268,42 @@ enum Presentation {
     Vantare(vantare::Visual),
 }
 
+/// Máximo de la última frenada; comienza de nuevo al volver a pisar.
+#[derive(Clone, Copy, Debug, Default)]
+struct BrakePeak {
+    value: Option<f64>,
+    previous: Option<f64>,
+}
+impl BrakePeak {
+    fn ingest(&mut self, brake: Option<f64>) -> bool {
+        let old = self.value;
+        match brake {
+            None => self.value = None,
+            Some(value) if value > 0.0 => {
+                self.value = Some(if self.previous.is_some_and(|last| last > 0.0) {
+                    self.value.unwrap_or(value).max(value)
+                } else {
+                    value
+                });
+            }
+            Some(_) => {}
+        }
+        self.previous = brake;
+        old != self.value
+    }
+}
+
 pub(crate) struct Widget {
     settings: Settings,
     vm: ViewModel,
     presentation: Presentation,
+    brake_peak: BrakePeak,
+    identity: Option<(
+        u64,
+        vantare_domain::SessionId,
+        Option<vantare_domain::CarId>,
+    )>,
+    limiter: bool,
 }
 
 impl Widget {
@@ -281,6 +321,9 @@ impl Widget {
         Self {
             vm: settings.project(&Snapshot::default(), prefs),
             presentation: Self::presentation(&settings),
+            brake_peak: BrakePeak::default(),
+            identity: None,
+            limiter: false,
             settings,
         }
     }
@@ -311,7 +354,26 @@ impl Widget {
     }
 
     pub(crate) fn ingest(&mut self, snapshot: &Snapshot, prefs: Preferences) -> bool {
-        replace_if_changed(&mut self.vm, self.settings.project(snapshot, prefs))
+        let vm = self.settings.project(snapshot, prefs);
+        let identity = (
+            snapshot.epoch,
+            snapshot.state.session.id,
+            snapshot.state.player.map(|p| p.car),
+        );
+        let identity_changed = self.identity != Some(identity);
+        if identity_changed {
+            self.identity = Some(identity);
+            self.brake_peak = BrakePeak::default();
+        }
+        let peak_changed = self.brake_peak.ingest(vm.brake);
+        let limiter = snapshot.state.source_state == vantare_domain::SourceState::Live
+            && snapshot
+                .state
+                .player
+                .is_some_and(|p| p.pit_limiter_active.current() == Some(&true));
+        let limiter_changed = self.limiter != limiter;
+        self.limiter = limiter;
+        replace_if_changed(&mut self.vm, vm) || peak_changed || limiter_changed || identity_changed
     }
 
     pub(crate) fn frame(&mut self, prefs: Preferences, _reduced: bool) -> (Paint, Wake) {
@@ -323,7 +385,15 @@ impl Widget {
             }
             Presentation::Vantare(visual) => {
                 let visual = visual.clone();
-                Box::new(move |window, cx| visual.paint(&vm, prefs.language, window, cx))
+                let peak = self
+                    .settings
+                    .show_brake_peak
+                    .then_some(self.brake_peak.value)
+                    .flatten();
+                let limiter = self.limiter;
+                Box::new(move |window, cx| {
+                    visual.paint(&vm, peak, limiter, prefs.language, window, cx);
+                })
             }
         };
         (paint, Wake::Idle)
@@ -339,8 +409,8 @@ impl Widget {
 impl Settings {
     #[allow(clippy::unused_self)] // Contrato común de demanda por renderer.
     pub fn demand(&self) -> vantare_ipc::Demand {
-        use vantare_ipc::Signal::{Clutch, Pedals, Powertrain};
-        crate::demand::signals(16, &[Pedals, Clutch, Powertrain])
+        use vantare_ipc::Signal::{Clutch, Pedals, PitStatus, Powertrain};
+        crate::demand::signals(16, &[Pedals, Clutch, Powertrain, PitStatus])
     }
 }
 
@@ -366,6 +436,104 @@ mod tests {
 
     use super::*;
     use crate::source;
+
+    #[test]
+    fn brake_peak_is_reset_when_source_session_or_car_changes() {
+        let prefs = Preferences::default();
+        for changed in 0..3 {
+            let mut widget = Widget::new(&Settings::default(), prefs);
+            let mut snapshot = source::fixed();
+            snapshot
+                .state
+                .player
+                .as_mut()
+                .expect("jugador")
+                .telemetry
+                .brake = vantare_domain::Quality::Reliable(0.93);
+            widget.ingest(&snapshot, prefs);
+            match changed {
+                0 => snapshot.epoch += 1,
+                1 => snapshot.state.session.id.0 += 1,
+                _ => {
+                    snapshot.state.player.as_mut().expect("jugador").car = vantare_domain::CarId(2);
+                }
+            }
+            snapshot
+                .state
+                .player
+                .as_mut()
+                .expect("jugador")
+                .telemetry
+                .brake = vantare_domain::Quality::Reliable(0.25);
+            widget.ingest(&snapshot, prefs);
+            assert_eq!(
+                widget.brake_peak.value,
+                Some(0.25),
+                "identidad nueva {changed}"
+            );
+        }
+    }
+
+    #[test]
+    fn brake_peak_tracks_one_braking_event_and_never_keeps_missing_data() {
+        let mut peak = BrakePeak::default();
+        for value in [0.42, 0.93, 0.42, 0.0] {
+            peak.ingest(Some(value));
+        }
+        assert_eq!(peak.value, Some(0.93));
+        peak.ingest(Some(0.25));
+        assert_eq!(peak.value, Some(0.25), "nueva frenada");
+        peak.ingest(None);
+        assert_eq!(peak.value, None, "sin dato no se inventa un pico");
+    }
+
+    #[test]
+    fn approved_pedals_box_stays_fixed_and_transparency_and_peak_are_saved() {
+        let prefs = Preferences::default();
+        for transparent_background in [false, true] {
+            let settings = Settings {
+                transparent_background,
+                show_brake_peak: false,
+                ..Default::default()
+            };
+            let loaded: Settings =
+                serde_json::from_str(&serde_json::to_string(&settings).expect("guardar"))
+                    .expect("cargar");
+            assert_eq!(loaded.normalized(), settings);
+            let mut widget = Widget::new(&settings, prefs);
+            let expected = widget.size();
+            let mut snapshot = source::fixed();
+            for state in [
+                vantare_domain::SourceState::Live,
+                vantare_domain::SourceState::Stale,
+                vantare_domain::SourceState::Lost,
+            ] {
+                snapshot.state.source_state = state;
+                widget.ingest(&snapshot, prefs);
+                assert_eq!(widget.size(), expected);
+            }
+        }
+    }
+
+    #[test]
+    fn limiter_requests_its_signal_and_invalidates_without_changing_the_box() {
+        let prefs = Preferences::default();
+        let settings = Settings::default();
+        assert!(settings.demand().contains(vantare_ipc::Signal::PitStatus));
+        let mut widget = Widget::new(&settings, prefs);
+        let mut snapshot = source::fixed();
+        widget.ingest(&snapshot, prefs);
+        let size = widget.size();
+        snapshot
+            .state
+            .player
+            .as_mut()
+            .expect("jugador")
+            .pit_limiter_active = vantare_domain::Quality::Reliable(true);
+        assert!(widget.ingest(&snapshot, prefs));
+        assert!(widget.limiter);
+        assert_eq!(widget.size(), size);
+    }
 
     #[test]
     fn fill_rounds_percent_before_resolving_the_track_height() {

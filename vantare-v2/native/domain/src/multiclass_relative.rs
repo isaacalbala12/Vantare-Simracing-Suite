@@ -1,5 +1,5 @@
 //! Multiclass Relative Eficiencia: clasificación filtrada y centrada en el jugador.
-//! Selección por clasificación; gaps de la señal relativa en pista.
+//! Ventana física compartida con Relative; jugador siempre en el hueco central.
 
 use crate::format::{PLACEHOLDER, Preferences};
 use crate::relative::{displayed, relative_seconds, source_status};
@@ -23,16 +23,22 @@ pub struct Content {
 impl Default for Content {
     fn default() -> Self {
         Self {
-            row_count: 5,
+            row_count: 7,
             class_mode: ClassMode::All,
-            show_class_divider: true,
+            show_class_divider: false,
         }
     }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
+#[allow(clippy::struct_excessive_bools)] // Hechos independientes de la fila: jugador, divisor y tráfico próximo.
 pub struct Row {
     pub id: CarId,
+    pub slot: usize,
+    pub class_name: String,
+    pub fast_traffic: bool,
+    pub nearby: bool,
+    pub trend: Option<(String, bool)>,
     pub place: String,
     pub class_label: String,
     pub number: String,
@@ -46,103 +52,145 @@ pub struct Row {
 pub struct ViewModel {
     pub rows: Vec<Row>,
     pub status: Option<String>,
+    pub player_class: String,
+    pub fcy: bool,
+}
+
+/// Las únicas ventanas nuevas del contrato son ±3 y ±4.
+pub fn row_count(count: usize) -> usize {
+    if count >= 9 { 9 } else { 7 }
 }
 
 pub fn project(snapshot: &Snapshot, prefs: Preferences, content: Content) -> ViewModel {
     let state = &snapshot.state;
     let missing = || ViewModel {
-        rows: Vec::new(),
         status: source_status(SourceState::Waiting, prefs),
+        ..Default::default()
     };
     if matches!(state.source_state, SourceState::Waiting | SourceState::Lost) {
         return ViewModel {
-            rows: Vec::new(),
             status: source_status(state.source_state, prefs),
+            ..Default::default()
         };
     }
     let Some(player) = state.player_car() else {
         return missing();
     };
-    let position = |car: &Car| {
-        if state.source_state == SourceState::Stale {
-            displayed(&car.position).copied()
-        } else {
-            car.position.current().copied()
-        }
-        .filter(|p| *p > 0)
-    };
-    let Some(player_position) = position(player) else {
-        return missing();
-    };
-    let player_class = class_name(player).to_uppercase();
-    let mut candidates: Vec<(&Car, u32)> = state
-        .cars
-        .iter()
-        .filter_map(|car| {
-            let position = position(car)?;
-            let same = class_name(car).to_uppercase() == player_class;
-            match content.class_mode {
-                ClassMode::Same if !same => None,
-                ClassMode::Other if same => None,
-                _ => Some((car, position)),
-            }
-        })
-        .collect();
-    candidates.sort_by_key(|(_, position)| *position);
-    let player_index = if content.class_mode == ClassMode::Other {
-        candidates
-            .iter()
-            .filter(|(_, position)| *position < player_position)
-            .count()
-    } else {
-        candidates
-            .iter()
-            .position(|(car, _)| car.id == player.id)
-            .unwrap_or(0)
-    };
-    let count = content.row_count.clamp(3, 7);
-    let start = player_index
-        .saturating_sub((count - 1) / 2)
-        .min(candidates.len().saturating_sub(count));
-    let selected: Vec<_> = candidates.into_iter().skip(start).take(count).collect();
-    let rows = selected
-        .iter()
+    let half = row_count(content.row_count) / 2;
+    let slots = crate::relative::track_window(
+        &state.cars,
+        Some(player),
+        half,
+        half,
+        content.class_mode == ClassMode::Same,
+        content.class_mode == ClassMode::Other,
+    );
+    let paces = crate::relative::class_paces(&state.cars);
+    let class_id = |car: &Car| car.class.as_ref().map(|c| c.id.0);
+    let mine = paces.get(&class_id(player));
+    let mut previous_class = None;
+    let rows = slots
+        .into_iter()
         .enumerate()
-        .map(|(index, (car, position))| {
+        .filter_map(|(slot, car)| {
+            let car = car?;
             let class = class_name(car);
             let is_player = car.id == player.id;
-            Row {
-                id: car.id,
-                place: position.to_string(),
-                class_label: class_label(class),
-                number: if car.number.is_empty() {
-                    PLACEHOLDER.into()
-                } else {
-                    car.number.clone()
-                },
-                name: if car.driver.name.is_empty() {
-                    "?".into()
-                } else {
-                    car.driver.name.clone()
-                },
-                gap: gap_text(if is_player {
-                    Some(0.0)
-                } else {
-                    relative_seconds(car)
-                }),
-                is_player,
-                divider: content.show_class_divider
-                    && index > 0
-                    && class_name(selected[index - 1].0) != class,
-            }
+            let gap = relative_seconds(car);
+            let fast_traffic = !is_player
+                && gap.is_some_and(|v| v < 0.0 && -v <= 6.0)
+                && class_id(car) != class_id(player)
+                && mine.is_some_and(|mine| {
+                    paces
+                        .get(&class_id(car))
+                        .is_some_and(|theirs| theirs < mine)
+                });
+            let divider =
+                content.show_class_divider && previous_class.is_some_and(|last| last != class);
+            previous_class = Some(class);
+            Some(project_row(
+                car,
+                slot,
+                player.id,
+                state.source_state,
+                prefs,
+                divider,
+                fast_traffic,
+            ))
         })
-        .collect::<Vec<_>>();
-    if rows.is_empty() {
-        return missing();
-    }
+        .collect();
     ViewModel {
         rows,
         status: source_status(state.source_state, prefs),
+        player_class: class_name(player).into(),
+        fcy: state.flags.current().is_some_and(|flags| {
+            flags
+                .iter()
+                .any(|f| f.kind == crate::FlagKind::Yellow && f.scope == crate::FlagScope::Session)
+        }),
+    }
+}
+
+fn project_row(
+    car: &Car,
+    slot: usize,
+    player: CarId,
+    source: SourceState,
+    prefs: Preferences,
+    divider: bool,
+    fast_traffic: bool,
+) -> Row {
+    let class = class_name(car);
+    let is_player = car.id == player;
+    let gap = relative_seconds(car);
+    let position = if source == SourceState::Stale {
+        displayed(&car.class_position)
+    } else {
+        car.class_position.current()
+    };
+    Row {
+        id: car.id,
+        slot,
+        class_name: class.to_owned(),
+        fast_traffic,
+        nearby: fast_traffic && gap.is_some_and(|v| -v <= 1.0),
+        trend: car
+            .relative_trend_s_per_lap
+            .current()
+            .copied()
+            .filter(|v| v.is_finite() && *v != 0.0)
+            .map(|value| {
+                (
+                    format!("{} {:.1}", if value < 0.0 { "▲" } else { "▼" }, value.abs()),
+                    gap.is_some_and(|gap| (gap > 0.0) == (value < 0.0)),
+                )
+            }),
+        place: position
+            .filter(|p| **p > 0)
+            .map_or_else(|| PLACEHOLDER.into(), |p| format!("P{p}")),
+        class_label: class_label(class),
+        number: if car.number.is_empty() {
+            PLACEHOLDER.into()
+        } else {
+            car.number.clone()
+        },
+        name: if is_player {
+            if prefs.language == crate::format::Language::Es {
+                "Tú"
+            } else {
+                "You"
+            }
+            .into()
+        } else {
+            crate::standings::driver_name(&car.driver.name, "initial", 24)
+        },
+        gap: gap_text(if is_player {
+            Some(0.0)
+        } else {
+            gap.map(|v| -v)
+        }),
+        is_player,
+        divider,
     }
 }
 
@@ -154,7 +202,11 @@ fn class_name(car: &Car) -> &str {
 
 fn class_label(class: &str) -> String {
     if class.to_uppercase().contains("HYPER") {
-        "HC".into()
+        "HY".into()
+    } else if class.to_uppercase().contains("LMP2") {
+        "LMP2".into()
+    } else if class.to_uppercase().contains("GT3") {
+        "GT3".into()
     } else {
         class.chars().take(3).collect::<String>().to_uppercase()
     }
@@ -199,6 +251,8 @@ mod tests {
             .map(|id| Car {
                 id: CarId(id),
                 position: Quality::Reliable(id),
+                class_position: Quality::Reliable(id.div_ceil(2)),
+                relative_s: Quality::Reliable(f64::from(player) - f64::from(id)),
                 class: Some(Class {
                     id: ClassId(id % 2),
                     name: if id % 2 == 0 { "LMP2" } else { "hypercar" }.into(),
@@ -213,193 +267,145 @@ mod tests {
     }
 
     #[test]
-    fn relative_gap_does_not_change_classification_selection() {
-        let mut snapshot = scene(3);
-        snapshot.state.source_state = crate::SourceState::Live;
+    fn physical_neighbors_are_independent_of_classification_and_keep_player_in_center() {
+        let mut snapshot = scene(5);
+        let before = project(&snapshot, Preferences::default(), Content::default());
         for car in &mut snapshot.state.cars {
-            car.relative_s = Quality::Reliable(if car.id == CarId(1) { -2.3 } else { 4.5 });
+            car.position = Quality::Reliable(100 - car.id.0);
         }
-        let vm = project(&snapshot, Preferences::default(), Content::default());
+        let after = project(&snapshot, Preferences::default(), Content::default());
         assert_eq!(
-            vm.rows.iter().map(|r| r.id.0).collect::<Vec<_>>(),
-            vec![1, 2, 3, 4, 5]
+            before.rows.iter().map(|r| r.id).collect::<Vec<_>>(),
+            after.rows.iter().map(|r| r.id).collect::<Vec<_>>()
         );
-        assert_eq!(vm.rows[0].gap, "-2.3");
-        assert_eq!(vm.rows[1].gap, "+4.5");
-        assert_eq!(vm.rows[2].gap, "0.0");
+        let player = after.rows.iter().find(|r| r.is_player).expect("jugador");
+        assert_eq!(player.slot, 3);
+        assert_eq!(player.gap, "0.0");
+        assert_eq!(
+            after.rows.iter().map(|r| r.id.0).collect::<Vec<_>>(),
+            [2, 3, 4, 5, 6, 7, 8]
+        );
     }
 
     #[test]
-    fn source_states_and_relative_quality_never_invent_gaps() {
-        for (state, status, count) in [
-            (SourceState::Waiting, Some("SIN DATOS"), 0),
-            (SourceState::Live, None, 5),
-            (SourceState::Stale, Some("DATOS ANTIGUOS"), 5),
-            (SourceState::Lost, Some("DESCONECTADO"), 0),
-        ] {
-            let mut snapshot = scene(3);
-            snapshot.state.source_state = state;
-            let vm = project(&snapshot, Preferences::default(), Content::default());
-            assert_eq!(vm.status.as_deref(), status);
-            assert_eq!(vm.rows.len(), count);
+    fn every_class_filter_and_track_edge_keeps_the_player_slot() {
+        for player in [1, 5, 10] {
+            for mode in [ClassMode::All, ClassMode::Same, ClassMode::Other] {
+                for count in [7, 9] {
+                    let vm = project(
+                        &scene(player),
+                        Preferences::default(),
+                        Content {
+                            row_count: count,
+                            class_mode: mode,
+                            ..Default::default()
+                        },
+                    );
+                    let own = vm
+                        .rows
+                        .iter()
+                        .find(|r| r.is_player)
+                        .expect("siempre jugador");
+                    assert_eq!(own.slot, count / 2);
+                    assert!(vm.rows.iter().all(|r| r.slot < count));
+                    let own_class = &own.class_name;
+                    for row in vm.rows.iter().filter(|r| !r.is_player) {
+                        match mode {
+                            ClassMode::Same => assert_eq!(&row.class_name, own_class),
+                            ClassMode::Other => assert_ne!(&row.class_name, own_class),
+                            ClassMode::All => {}
+                        }
+                        assert_eq!(row.gap.starts_with('-'), row.slot < count / 2);
+                    }
+                }
+            }
         }
-        for (quality, expected) in [
-            (Quality::Reliable(0.0), "0.0"),
-            (Quality::Estimated(4.5), "+4.5"),
-            (Quality::Stale(-2.3), "-2.3"),
-            (Quality::Reliable(f64::NAN), "—"),
-            (Quality::Reliable(f64::INFINITY), "—"),
-            (Quality::Unavailable, "—"),
+    }
+
+    #[test]
+    fn missing_zero_and_non_finite_relative_data_never_use_leader_gaps() {
+        for quality in [
+            Quality::Unavailable,
+            Quality::Reliable(0.0),
+            Quality::Reliable(f64::NAN),
+            Quality::Reliable(f64::INFINITY),
         ] {
-            let mut snapshot = scene(3);
+            let mut snapshot = scene(5);
             for car in &mut snapshot.state.cars {
                 car.relative_s = quality;
             }
-            assert_eq!(
-                project(&snapshot, Preferences::default(), Content::default()).rows[0].gap,
-                expected
-            );
-        }
-    }
-
-    #[test]
-    fn centred_selection_and_class_filters_match_product() {
-        for (player, mode, count, expected) in [
-            (1, ClassMode::All, 5, vec![1, 2, 3, 4, 5]),
-            (6, ClassMode::All, 5, vec![4, 5, 6, 7, 8]),
-            (10, ClassMode::All, 5, vec![6, 7, 8, 9, 10]),
-            (9, ClassMode::All, 6, vec![5, 6, 7, 8, 9, 10]),
-            (5, ClassMode::Same, 5, vec![1, 3, 5, 7, 9]),
-            (5, ClassMode::Other, 3, vec![4, 6, 8]),
-            (5, ClassMode::All, 99, vec![2, 3, 4, 5, 6, 7, 8]),
-            (5, ClassMode::All, 0, vec![4, 5, 6]),
-        ] {
-            let vm = project(
-                &scene(player),
-                Preferences::default(),
-                Content {
-                    row_count: count,
-                    class_mode: mode,
-                    ..Content::default()
-                },
-            );
-            assert_eq!(
-                vm.rows.iter().map(|row| row.id.0).collect::<Vec<_>>(),
-                expected
-            );
-            assert_eq!(vm.status, None);
-        }
-    }
-
-    #[test]
-    fn absent_relative_signal_never_uses_leader_gaps() {
-        let vm = project(&scene(3), Preferences::default(), Content::default());
-        for row in &vm.rows {
-            assert_eq!(row.gap, if row.is_player { "0.0" } else { PLACEHOLDER });
-            assert_eq!(row.number, PLACEHOLDER);
-            assert_eq!(row.name, "?");
-        }
-        assert!(!vm.rows[0].divider);
-        assert!(vm.rows[1..].iter().all(|row| row.divider));
-        let vm = project(
-            &scene(3),
-            Preferences::default(),
-            Content {
-                show_class_divider: false,
-                ..Content::default()
-            },
-        );
-        assert!(vm.rows.iter().all(|row| !row.divider));
-    }
-
-    #[test]
-    fn no_player_or_no_current_position_is_missing() {
-        for position in [
-            Quality::Unavailable,
-            Quality::Stale(3),
-            Quality::Reliable(0),
-        ] {
-            let mut snapshot = scene(3);
-            snapshot
-                .state
-                .cars
-                .iter_mut()
-                .find(|c| c.id == CarId(3))
-                .expect("player")
-                .position = position;
             let vm = project(&snapshot, Preferences::default(), Content::default());
-            assert!(vm.rows.is_empty());
-            assert_eq!(vm.status.as_deref(), Some("SIN DATOS"));
-        }
-        for snapshot in [Snapshot::default(), scene(99)] {
-            assert!(
-                project(&snapshot, Preferences::default(), Content::default())
-                    .rows
-                    .is_empty()
-            );
+            assert_eq!(vm.rows.len(), 1, "solo el ancla conocida");
+            assert!(vm.rows[0].is_player);
+            assert_eq!(vm.rows[0].slot, 3);
         }
     }
 
     #[test]
-    fn stale_positions_and_empty_other_class_are_labelled() {
-        let mut snapshot = scene(3);
-        snapshot.state.capabilities.positions = Capability::WithData;
+    fn source_states_and_stale_gaps_keep_their_quality_label() {
+        for (state, label, present) in [
+            (SourceState::Waiting, Some("SIN DATOS"), false),
+            (SourceState::Live, None, true),
+            (SourceState::Stale, Some("DATOS ANTIGUOS"), true),
+            (SourceState::Lost, Some("DESCONECTADO"), false),
+        ] {
+            let mut snapshot = scene(5);
+            snapshot.state.source_state = state;
+            let vm = project(&snapshot, Preferences::default(), Content::default());
+            assert_eq!(vm.status.as_deref(), label);
+            assert_eq!(vm.rows.iter().any(|r| r.is_player), present);
+        }
+        let mut snapshot = scene(5);
         snapshot.state.source_state = SourceState::Stale;
         for car in &mut snapshot.state.cars {
-            car.position = Quality::Stale(car.id.0);
-            car.relative_s = Quality::Stale(-2.3);
+            car.relative_s = Quality::Stale(f64::from(5) - f64::from(car.id.0));
         }
         let vm = project(
             &snapshot,
             Preferences {
                 language: Language::En,
-                ..Preferences::default()
+                ..Default::default()
             },
             Content::default(),
         );
-        assert_eq!(vm.rows.len(), 5);
-        assert_eq!(vm.rows[0].gap, "-2.3");
         assert_eq!(vm.status.as_deref(), Some("DATA OUT OF DATE"));
-        snapshot.state.capabilities.positions = Capability::Fresh;
-        snapshot.state.source_state = SourceState::Live;
-        snapshot.state.cars.retain(|car| car.id.0 % 2 == 1);
-        assert!(
-            project(
-                &snapshot,
-                Preferences::default(),
-                Content {
-                    class_mode: ClassMode::Other,
-                    ..Content::default()
-                }
-            )
-            .rows
-            .is_empty()
+        assert_eq!(
+            vm.rows
+                .iter()
+                .find(|r| r.id == CarId(4))
+                .expect("delante")
+                .gap,
+            "-1.0"
         );
     }
 
     #[test]
-    fn estimated_positions_are_current_and_missing_rivals_are_omitted() {
-        let mut snapshot = scene(3);
-        for car in &mut snapshot.state.cars {
-            car.position = if car.id == CarId(2) {
-                Quality::Stale(2)
-            } else {
-                Quality::Estimated(car.id.0)
-            };
-        }
+    fn missing_player_is_empty_and_missing_rank_is_a_placeholder() {
+        assert!(
+            project(&scene(99), Preferences::default(), Content::default())
+                .rows
+                .is_empty()
+        );
+        let mut snapshot = scene(5);
+        snapshot
+            .state
+            .cars
+            .iter_mut()
+            .find(|c| c.id == CarId(5))
+            .expect("jugador")
+            .class_position = Quality::Unavailable;
         let vm = project(&snapshot, Preferences::default(), Content::default());
         assert_eq!(
-            vm.rows.iter().map(|row| row.id.0).collect::<Vec<_>>(),
-            vec![1, 3, 4, 5, 6]
+            vm.rows.iter().find(|r| r.is_player).expect("jugador").place,
+            PLACEHOLDER
         );
-        assert_eq!(vm.status, None);
     }
 
     #[test]
     fn class_labels_and_gap_formats() {
         for (class, expected) in [
-            ("hypercar", "HC"),
-            ("LMP2", "LMP"),
+            ("hypercar", "HY"),
+            ("LMP2", "LMP2"),
             ("gte", "GTE"),
             ("UNKNOWN", "UNK"),
         ] {

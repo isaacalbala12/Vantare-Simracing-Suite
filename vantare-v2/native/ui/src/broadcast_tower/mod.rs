@@ -5,24 +5,21 @@ mod motion;
 
 use crate::app::{Paint, Wake};
 use crate::efficiency::preview::PaintWindow as Window;
-use crate::efficiency::{
-    self, col, paint_rect, rect,
-    text::{self, ink},
-    tokens,
+use crate::efficiency::{rect, text};
+use crate::vantare::{
+    paint::{Face, Kit, round_rect},
+    style::{Color, Style},
 };
-use gpui::{
-    App, BorderStyle, ContentMask, Corners, Edges, PathBuilder, linear_color_stop, linear_gradient,
-    point, px, quad,
-};
+use gpui::{App, ContentMask};
 use motion::{Card, Motion};
-use std::time::Instant;
+use std::{borrow::Cow, sync::Arc, time::Instant};
 use vantare_domain::{
-    FlagKind, SessionId, Snapshot,
+    SessionId, Snapshot,
     broadcast_tower::{self, Accent, Status, ViewModel},
-    format::{Language, Preferences},
+    format::Preferences,
 };
 
-const SIZE: (f32, f32) = (1920.0, 86.0);
+const SIZE: (f32, f32) = (1400.0, 56.0);
 
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(default, rename_all = "camelCase")]
@@ -37,8 +34,8 @@ impl Default for Settings {
     fn default() -> Self {
         Self {
             driver_carousel: false,
-            row_count: 5,
-            show_weather: true,
+            row_count: 11,
+            show_weather: false,
             show_sof: false,
         }
     }
@@ -51,14 +48,64 @@ impl Settings {
     #[must_use]
     pub fn normalized(&self) -> Self {
         let mut value = self.clone();
-        value.row_count = value.row_count.clamp(3, 10);
+        value.row_count = value.row_count.clamp(3, 11);
         value.show_sof = false;
         value
     }
 }
 
+struct PaintLabels {
+    lap: String,
+    intervals: Vec<Option<String>>,
+}
+impl PaintLabels {
+    fn new(vm: &ViewModel, prefs: Preferences) -> Self {
+        let timed = ["clasi", "qual", "pr"].iter().any(|prefix| {
+            vm.session
+                .get(..prefix.len())
+                .is_some_and(|value| value.eq_ignore_ascii_case(prefix))
+        });
+        let lap = if timed {
+            vm.remaining.clone()
+        } else {
+            format!(
+                "{} {}{} · {}",
+                if prefs.language == vantare_domain::format::Language::Es {
+                    "V"
+                } else {
+                    "L"
+                },
+                vm.lap,
+                vm.total_laps.map_or_else(String::new, |n| format!("/{n}")),
+                vm.remaining
+            )
+        };
+        let parse = |value: &str| {
+            if matches!(value, "LÍDER" | "LEADER") {
+                Some(0.0)
+            } else {
+                value.parse::<f32>().ok()
+            }
+        };
+        let intervals = vm
+            .rows
+            .windows(2)
+            .map(|pair| {
+                if pair[0].class != pair[1].class {
+                    return None;
+                }
+                let (a, b) = parse(&pair[0].gap).zip(parse(&pair[1].gap))?;
+                let interval = b - a;
+                (interval > 0.0 && interval < 1.0).then(|| format!("{interval:.1}"))
+            })
+            .collect();
+        Self { lap, intervals }
+    }
+}
+
 pub(crate) struct Widget {
-    vm: ViewModel,
+    vm: Arc<ViewModel>,
+    labels: Arc<PaintLabels>,
     settings: Settings,
     carousel_start: Instant,
     motion: Motion,
@@ -67,8 +114,15 @@ pub(crate) struct Widget {
 
 impl Widget {
     pub(crate) fn new(settings: &Settings, prefs: Preferences) -> Self {
+        let vm = broadcast_tower::project_rows(
+            &Snapshot::default(),
+            prefs,
+            settings.normalized().row_count,
+        );
+        let labels = Arc::new(PaintLabels::new(&vm, prefs));
         Self {
-            vm: broadcast_tower::project_rows(&Snapshot::default(), prefs, settings.row_count),
+            vm: Arc::new(vm),
+            labels,
             settings: settings.normalized(),
             carousel_start: Instant::now(),
             motion: Motion::default(),
@@ -87,7 +141,7 @@ impl Widget {
             next.weather.clear();
         }
         let boundary = (snapshot.epoch, snapshot.state.session.id);
-        let changed = self.vm != next;
+        let changed = self.vm.as_ref() != &next;
         let was_animating = self.motion.wake(Instant::now()) != Wake::Idle;
         if self.boundary == Some(boundary) {
             self.motion.ingest(&self.vm, &next, Instant::now());
@@ -96,13 +150,17 @@ impl Widget {
             self.carousel_start = Instant::now();
         }
         self.boundary = Some(boundary);
-        self.vm = next;
+        if changed {
+            self.labels = Arc::new(PaintLabels::new(&next, prefs));
+            self.vm = Arc::new(next);
+        }
         changed || (was_animating && self.motion.wake(Instant::now()) == Wake::Idle)
     }
 
     pub(crate) fn frame(&mut self, prefs: Preferences, reduced: bool) -> (Paint, Wake) {
         let now = Instant::now();
         let vm = self.vm.clone();
+        let labels = Arc::clone(&self.labels);
         let carousel = !reduced
             && self.settings.driver_carousel
             && vm.status == Status::Ready
@@ -121,7 +179,9 @@ impl Widget {
         };
         let show_weather = self.settings.show_weather;
         (
-            Box::new(move |window, cx| paint(&vm, &cards, show_weather, prefs, window, cx)),
+            Box::new(move |window, cx| {
+                paint(&vm, &labels, &cards, show_weather, prefs, window, cx);
+            }),
             if reduced {
                 Wake::Idle
             } else if carousel {
@@ -154,372 +214,279 @@ fn carousel_cards(vm: &ViewModel, seconds: f32) -> Vec<Card> {
         .collect()
 }
 
-fn label(language: Language, es: &'static str, en: &'static str) -> &'static str {
-    match language {
-        Language::Es => es,
-        Language::En => en,
-    }
+fn paint_status_text(
+    vm: &ViewModel,
+    kit: &Kit<'_>,
+    mut draw: impl FnMut(crate::vantare::paint::Label<'_>),
+) {
+    draw(crate::vantare::paint::Label {
+        value: broadcast_tower::status_text(vm.status, kit.language),
+        x: 190.0,
+        right: None,
+        top: 18.0,
+        height: 20.0,
+        face: Face::Body,
+        ink: kit.ink(Face::Body, 12.0, 0.0, kit.style.colors.muted.hsla()),
+    });
+}
+type ClassGroup<'a> = (usize, &'a str, Accent);
+fn card_geometry(vm: &ViewModel, show_weather: bool) -> (Vec<ClassGroup<'_>>, f32) {
+    let groups: Vec<_> = vm
+        .rows
+        .iter()
+        .enumerate()
+        .filter(|(i, row)| *i == 0 || vm.rows[*i - 1].class != row.class)
+        .map(|(i, row)| (i, row.class.as_str(), row.accent))
+        .collect();
+    let available =
+        SIZE.0 - 160.0 - if show_weather { 50.0 } else { 8.0 } - groups.len() as f32 * 40.0;
+    let width = (available / vm.rows.len().max(1) as f32).clamp(1.0, 118.0);
+    (groups, width)
+}
+fn card_left(slot: f32, width: f32, groups: &[ClassGroup<'_>]) -> f32 {
+    160.0 + slot * width + groups.iter().filter(|(i, _, _)| *i as f32 <= slot).count() as f32 * 40.0
 }
 
 fn paint(
     vm: &ViewModel,
+    labels: &PaintLabels,
     cards: &[Card],
     show_weather: bool,
     prefs: Preferences,
     window: &mut Window,
     cx: &mut App,
 ) {
-    let (width, height) = SIZE;
-    efficiency::paint_panel(window, width, height, 0.87);
-    window.paint_quad(quad(
-        rect(0.0, 0.0, width, height),
-        Corners::all(px(tokens::RADIUS)),
-        linear_gradient(
-            120.0,
-            linear_color_stop(col(0xffffff, 0.03), 0.0),
-            linear_color_stop(col(0xffffff, 0.0), 0.38),
-        ),
-        Edges::all(px(0.0)),
-        col(0, 0.0),
-        BorderStyle::default(),
-    ));
-    paint_flag(window, vm.flag.as_ref());
-
-    let session_ink = ink(13.0, 600.0, 0.0, col(tokens::MUTED, 1.0));
-    let lap_ink = ink(17.0, 700.0, -0.02, col(tokens::INK, 1.0));
-    let total_ink = ink(10.0, 600.0, -0.02, col(tokens::MUTED, 1.0));
-    let weather_ink = ink(13.0, 600.0, 0.0, col(tokens::MUTED, 1.0));
-    let lap = format!("{} {}", label(prefs.language, "VUELTA", "LAP"), vm.lap);
-    let total = vm
-        .total_laps
-        .map_or_else(String::new, |laps| format!("/{laps}"));
-    let lap_width = text::width(window, &lap, &lap_ink);
-    let total_width = if total.is_empty() {
-        0.0
-    } else {
-        1.0 + text::width(window, &total, &total_ink)
+    let style = Style::compiled();
+    let kit = Kit {
+        style: &style,
+        variant: &style.styles.neo,
+        accent: style.accents.red,
+        language: prefs.language,
+        width: SIZE.0,
     };
-    let lead = (lap_width + total_width).max(text::width(window, &vm.session, &session_ink)) + 29.0;
-    let weather = format!("{} {}", label(prefs.language, "PISTA", "TRACK"), vm.weather);
-    let side = if show_weather {
-        text::width(window, &weather, &weather_ink) + 29.0
-    } else {
-        0.0
-    };
-    let stream_end = width - side;
-    paint_rect(window, lead - 1.0, 0.0, 1.0, height, col(tokens::INK, 0.10));
-    paint_rect(window, stream_end, 0.0, 1.0, height, col(tokens::INK, 0.10));
-    text::draw(
+    kit.panel(window, SIZE.1);
+    round_rect(
+        window,
+        1.0,
+        1.0,
+        150.0,
+        54.0,
+        9.0,
+        Color(0xffffff, 0.04).hsla(),
+    );
+    let title = kit.ink(Face::Display, 18.0, 1.6, Color(0xfaf7f7, 1.0).hsla());
+    kit.label(
         window,
         cx,
         &vm.session,
-        14.0,
-        text::baseline(14.0, 22.0, 13.0),
-        &session_ink,
+        16.0,
+        None,
+        9.0,
+        20.0,
+        Face::Display,
+        &title,
     );
-    let lap_base = text::baseline(36.0, 22.0, 17.0);
-    text::draw(window, cx, &lap, 14.0, lap_base, &lap_ink);
-    text::draw(
+    let small = kit.ink(Face::Mono, 11.0, 0.0, style.colors.muted.hsla());
+    kit.label(
         window,
         cx,
-        &total,
-        14.0 + lap_width + 1.0,
-        lap_base,
-        &total_ink,
+        &labels.lap,
+        16.0,
+        None,
+        32.0,
+        14.0,
+        Face::Mono,
+        &small,
     );
-    if show_weather {
-        text::draw(
+    if vm.status != Status::Ready {
+        paint_status_text(vm, &kit, |label| {
+            label.paint(&kit, window, cx);
+        });
+        return;
+    }
+    let (class_groups, card_width) = card_geometry(vm, show_weather);
+    for (index, class, accent) in &class_groups {
+        let groups = class_groups.iter().filter(|(i, _, _)| i < index).count() as f32;
+        let x = 160.0 + *index as f32 * card_width + groups * 40.0;
+        let color = class_color(*accent);
+        round_rect(window, x, 17.0, 36.0, 22.0, 3.0, Color(color, 1.0).hsla());
+        let text = kit.ink(Face::Display, 11.0, 1.2, Color(0xffffff, 1.0).hsla());
+        let label = if *class == "HYP" {
+            "HY"
+        } else if *class == "LMG" {
+            "GT3"
+        } else {
+            class
+        };
+        kit.label(
             window,
             cx,
-            &weather,
-            stream_end + 15.0,
-            text::baseline(24.5, 22.0, 13.0),
-            &weather_ink,
+            label,
+            x + 5.0,
+            None,
+            17.0,
+            22.0,
+            Face::Display,
+            &text,
         );
     }
-
+    for (i, label) in labels.intervals.iter().enumerate() {
+        if let Some(label) = label {
+            let groups = class_groups.iter().filter(|(n, _, _)| *n <= i).count() as f32;
+            let x = 160.0 + i as f32 * card_width + groups * 40.0;
+            for (dx, y, w, h) in [
+                (0.0, 10.0, card_width * 2.0 - 4.0, 1.0),
+                (0.0, 45.0, card_width * 2.0 - 4.0, 1.0),
+                (0.0, 10.0, 1.0, 36.0),
+                (card_width * 2.0 - 5.0, 10.0, 1.0, 36.0),
+            ] {
+                round_rect(window, x + dx, y, w, h, 0.0, Color(0xffffff, 0.22).hsla());
+            }
+            round_rect(
+                window,
+                x + card_width - 14.0,
+                2.0,
+                28.0,
+                12.0,
+                6.0,
+                Color(0xf2eeee, 1.0).hsla(),
+            );
+            let ink = kit.ink(Face::Mono, 9.0, 0.0, Color(0x161314, 1.0).hsla());
+            kit.label(
+                window,
+                cx,
+                label,
+                x + card_width - text::width(window, label, &ink) / 2.0,
+                None,
+                1.0,
+                12.0,
+                Face::Mono,
+                &ink,
+            );
+        }
+    }
     window.with_content_mask(
         Some(ContentMask {
-            bounds: rect(lead, 0.0, stream_end - lead, height),
+            bounds: rect(156.0, 1.0, SIZE.0 - 164.0, 54.0),
         }),
         |window| {
-            if vm.status == Status::Ready && !vm.rows.is_empty() {
-                let count = vm.rows.len();
-                let player = vm.rows.iter().position(|row| row.is_player);
-                for card in cards {
-                    let (offset, card_width) =
-                        card_bounds(card.slot, count, player, stream_end - lead);
-                    let border = if card.slot >= 0.5 { 1.0 } else { 0.0 };
-                    paint_card(
-                        card,
-                        lead + offset - border,
-                        card_width + border,
-                        border,
+            for card in cards {
+                let x = card_left(card.slot, card_width, &class_groups);
+                if card.row.is_player {
+                    round_rect(
                         window,
-                        cx,
+                        x,
+                        10.0,
+                        card_width - 4.0,
+                        36.0,
+                        6.0,
+                        Color(0xe14a54, 0.28 * card.opacity).hsla(),
                     );
                 }
-            } else {
-                let status = broadcast_tower::status_text(vm.status, prefs.language);
-                let style = ink(9.0, 600.0, 0.14, col(tokens::MUTED, 1.0));
-                let x = lead + (stream_end - lead - text::width(window, status, &style)) / 2.0;
-                text::draw(
+                if card.cue != 0.0 {
+                    round_rect(
+                        window,
+                        x + 4.0,
+                        44.0,
+                        card_width - 8.0,
+                        2.0,
+                        1.0,
+                        Color(
+                            if card.cue > 0.0 { 0x4ade80 } else { 0xff7a82 },
+                            card.cue.abs(),
+                        )
+                        .hsla(),
+                    );
+                }
+                let place = card.row.place.map_or_else(|| "—".into(), |p| p.to_string());
+                let pos = kit.ink(Face::Display, 15.0, 0.0, style.colors.muted.hsla());
+                kit.label(
                     window,
                     cx,
-                    status,
-                    x,
-                    text::baseline(31.0, 9.0, 9.0),
-                    &style,
+                    &place,
+                    x + 6.0,
+                    None,
+                    18.0,
+                    20.0,
+                    Face::Display,
+                    &pos,
+                );
+                let code = driver_code(&card.row.name);
+                let name = kit.ink(
+                    Face::Display,
+                    16.0,
+                    1.2,
+                    Color(0xfaf7f7, card.opacity).hsla(),
+                );
+                let code = text::fit_borrowed(window, &code, &name, (card_width - 29.0).max(0.0));
+                kit.label(
+                    window,
+                    cx,
+                    &code,
+                    x + 25.0,
+                    None,
+                    18.0,
+                    20.0,
+                    Face::Display,
+                    &name,
+                );
+                let gap = kit.ink(Face::Mono, 10.0, 0.0, style.colors.value.hsla());
+                let gap_text = if card.row.in_pits {
+                    "BOX"
+                } else if card.row.gap == "LEADER" || card.row.gap == "LÍDER" {
+                    "Líder"
+                } else {
+                    &card.row.gap
+                };
+                let gap_text =
+                    text::fit_borrowed(window, gap_text, &gap, (card_width - 69.0).max(0.0));
+                kit.label(
+                    window,
+                    cx,
+                    &gap_text,
+                    x + 65.0,
+                    None,
+                    19.0,
+                    18.0,
+                    Face::Mono,
+                    &gap,
                 );
             }
         },
     );
-    efficiency::paint_highlighted_frame(window, width, height);
-}
-
-// Rejilla continua: conserva vecinos durante interpolación y carrusel, con el jugador 1,4×.
-fn card_bounds(slot: f32, count: usize, player: Option<usize>, width: f32) -> (f32, f32) {
-    let count = count.max(1) as f32;
-    let extra = if player.is_some() { 0.4 } else { 0.0 };
-    let unit = (width - count + 1.0) / (count + extra);
-    let edge = |slot: f32| {
-        let cycle = (slot / count).floor();
-        let local = slot - cycle * count;
-        let weight = player.map_or(0.0, |index| (local - index as f32).clamp(0.0, 1.0) * 0.4);
-        cycle * (width + 1.0) + (local + weight) * unit + local
-    };
-    let left = edge(slot);
-    (left, edge(slot + 1.0) - left - 1.0)
-}
-
-fn paint_card(card: &Card, x: f32, width: f32, border: f32, window: &mut Window, cx: &mut App) {
-    let alpha = card.opacity;
-    let color = |hex, opacity| col(hex, opacity * alpha);
-    if card.row.is_player {
-        paint_rect(
+    if show_weather {
+        kit.label(
             window,
-            x + border,
+            cx,
+            &vm.weather,
             0.0,
-            width - border,
-            SIZE.1,
-            color(0xbfc2ca, 0.23),
-        );
-        paint_rect(
-            window,
-            x + border,
-            0.0,
-            width - border,
-            1.0,
-            color(0xffffff, 0.13),
-        );
-        paint_rect(
-            window,
-            x + border,
-            SIZE.1 - 1.0,
-            width - border,
-            1.0,
-            color(0xffffff, 0.08),
+            Some(1388.0),
+            20.0,
+            16.0,
+            Face::Mono,
+            &small,
         );
     }
-    paint_rect(window, x, 0.0, border, SIZE.1, color(tokens::INK, 0.10));
-    let cue_color = if card.cue > 0.0 {
-        0x7fb686
+}
+fn driver_code(name: &str) -> Cow<'_, str> {
+    let surname = name.rsplit_once(". ").map_or(name, |(_, surname)| surname);
+    let end = surname
+        .char_indices()
+        .nth(3)
+        .map_or(surname.len(), |(byte, _)| byte);
+    let value = &surname[..end];
+    if value.chars().any(char::is_lowercase) {
+        Cow::Owned(value.to_uppercase())
     } else {
-        tokens::LOSS
-    };
-    paint_rect(
-        window,
-        x + border,
-        0.0,
-        width - border,
-        SIZE.1,
-        color(cue_color, card.cue.abs() * 0.05),
-    );
-    let place_ink = ink(15.0, 650.0, 0.0, color(tokens::MUTED, 1.0));
-    let gap_ink = ink(12.0, 650.0, 0.0, color(tokens::MUTED, 1.0));
-    let name_ink = ink(16.0, 700.0, -0.01, color(tokens::INK, 1.0));
-    let number_ink = ink(11.0, 600.0, 0.0, color(tokens::MUTED, 1.0));
-    let (badge, badge_text) = match card.row.accent {
-        Accent::Red => (0xe63946, 0xffffff),
-        Accent::Blue => (0x5b8bd6, 0xffffff),
-        Accent::Amber => (0xe2c568, 0x151612),
-        Accent::Neutral => (0x8b93a7, 0xffffff),
-    };
-    let badge_ink = ink(11.0, 700.0, 0.0, color(badge_text, 1.0));
-    let place = card
-        .row
-        .place
-        .map_or_else(|| "—".into(), |place| place.to_string());
-    let left = x + border + 12.0;
-    let identity = left + text::width(window, &place, &place_ink) + 9.0;
-    let gap_x = x + width - 12.0 - text::width(window, &card.row.gap, &gap_ink);
-    text::draw(
-        window,
-        cx,
-        &place,
-        left,
-        text::baseline((SIZE.1 - 44.0) / 2.0, 44.0, 15.0),
-        &place_ink,
-    );
-    let name = text::fit(
-        window,
-        &card.row.name,
-        &name_ink,
-        (x + width - 6.0 - identity).max(0.0),
-    );
-    let has_class = !card.row.class.is_empty() && card.row.class != "—";
-    let has_number = !card.row.number.is_empty() && card.row.number != "—";
-    let name_top = (SIZE.1 - 44.0) / 2.0;
-    text::draw(
-        window,
-        cx,
-        &name,
-        identity,
-        text::baseline(name_top, 22.0, 16.0),
-        &name_ink,
-    );
-    let sub_top = name_top + 22.0;
-    let mut number_x = identity;
-    if has_class {
-        let class = text::fit(
-            window,
-            &card.row.class,
-            &badge_ink,
-            (gap_x - identity - 14.0).max(0.0),
-        );
-        let badge_width = text::width(window, &class, &badge_ink) + 8.0;
-        window.paint_quad(quad(
-            rect(identity, sub_top, badge_width, 18.0),
-            Corners::all(px(3.0)),
-            color(badge, 1.0),
-            Edges::all(px(0.0)),
-            col(0, 0.0),
-            BorderStyle::default(),
-        ));
-        text::draw(
-            window,
-            cx,
-            &class,
-            identity + 4.0,
-            text::baseline(sub_top, 18.0, 11.0),
-            &badge_ink,
-        );
-        number_x += badge_width + 6.0;
-    }
-    if has_number {
-        let number = text::fit(
-            window,
-            &format!("#{}", card.row.number),
-            &number_ink,
-            (gap_x - number_x - 6.0).max(0.0),
-        );
-        text::draw(
-            window,
-            cx,
-            &number,
-            number_x,
-            text::baseline(sub_top, 22.0, 11.0),
-            &number_ink,
-        );
-    }
-    text::draw(
-        window,
-        cx,
-        &card.row.gap,
-        gap_x,
-        text::baseline(sub_top, 22.0, 12.0),
-        &gap_ink,
-    );
-}
-
-// El kit no tiene todavía bandas diagonales ni colores de bandera; quedan locales.
-fn paint_flag(window: &mut Window, flag: Option<&FlagKind>) {
-    let rgb = match flag {
-        Some(FlagKind::Green) => 0x29c36f,
-        Some(FlagKind::Yellow) => 0xffd03d,
-        Some(FlagKind::Blue) => 0x4391ff,
-        Some(FlagKind::Red) => 0xef303e,
-        Some(FlagKind::White) => 0xffffff,
-        Some(FlagKind::Black) => 0x0c0c0e,
-        Some(FlagKind::Checkered) => 0xd1d1d6,
-        _ => 0xb1b4bc,
-    };
-    let angle = 131.0_f32.to_radians();
-    let (nx, ny) = (angle.sin(), -angle.cos());
-    let extent = nx * 130.0 + ny * SIZE.1;
-    for (start, end, alpha) in [(0.37, 0.54, 0.28), (0.62, 0.79, 0.17)] {
-        let band = |poly: Vec<(f32, f32)>| {
-            clip(
-                &clip(&poly, nx, ny, start * extent),
-                -nx,
-                -ny,
-                -end * extent,
-            )
-        };
-        if matches!(flag, Some(FlagKind::Checkered)) {
-            for y in 0..12 {
-                for x in 0..22 {
-                    let (x0, y0) = (x as f32 * 6.0, y as f32 * 6.0);
-                    let poly = band(vec![
-                        (x0, y0),
-                        ((x0 + 6.0).min(130.0), y0),
-                        ((x0 + 6.0).min(130.0), (y0 + 6.0).min(SIZE.1)),
-                        (x0, (y0 + 6.0).min(SIZE.1)),
-                    ]);
-                    polygon(
-                        window,
-                        &poly,
-                        if (x + y) % 2 == 0 { 0xd1d1d6 } else { 0x191a1d },
-                        0.5,
-                    );
-                }
-            }
-        } else {
-            let poly = band(vec![
-                (0.0, 0.0),
-                (130.0, 0.0),
-                (130.0, SIZE.1),
-                (0.0, SIZE.1),
-            ]);
-            if matches!(flag, Some(FlagKind::Black)) {
-                let outline: Vec<_> = poly.iter().map(|(x, y)| (x + 1.0, *y)).collect();
-                polygon(window, &outline, 0xa4a4aa, alpha);
-            }
-            polygon(window, &poly, rgb, alpha);
-        }
+        Cow::Borrowed(value)
     }
 }
-
-fn clip(poly: &[(f32, f32)], nx: f32, ny: f32, d: f32) -> Vec<(f32, f32)> {
-    let mut out = Vec::new();
-    for (i, a) in poly.iter().enumerate() {
-        let b = poly[(i + 1) % poly.len()];
-        let (da, db) = (nx * a.0 + ny * a.1 - d, nx * b.0 + ny * b.1 - d);
-        if da >= 0.0 {
-            out.push(*a);
-        }
-        if (da >= 0.0) != (db >= 0.0) {
-            let t = da / (da - db);
-            out.push((a.0 + (b.0 - a.0) * t, a.1 + (b.1 - a.1) * t));
-        }
-    }
-    out
-}
-
-fn polygon(window: &mut Window, poly: &[(f32, f32)], rgb: u32, alpha: f32) {
-    if poly.len() < 3 {
-        return;
-    }
-    let (ox, oy) = text::origin();
-    let pt = |p: (f32, f32)| point(px(p.0 + ox), px(p.1 + oy));
-    let mut path = PathBuilder::fill();
-    path.move_to(pt(poly[0]));
-    for p in &poly[1..] {
-        path.line_to(pt(*p));
-    }
-    path.close();
-    if let Ok(path) = path.build() {
-        window.paint_path(path, col(rgb, alpha));
+fn class_color(accent: Accent) -> u32 {
+    match accent {
+        Accent::Red => 0xe14a54,
+        Accent::Blue => 0x4f8ef7,
+        Accent::Amber => 0x22c55e,
+        Accent::Neutral => 0x8e8587,
     }
 }
 
@@ -551,9 +518,50 @@ impl Settings {
 }
 
 #[cfg(test)]
+fn card_bounds(slot: f32, count: usize, player: Option<usize>, width: f32) -> (f32, f32) {
+    let count = count.max(1) as f32;
+    let extra = if player.is_some() { 0.4 } else { 0.0 };
+    let unit = (width - count + 1.0) / (count + extra);
+    let edge = |slot: f32| {
+        let cycle = (slot / count).floor();
+        let local = slot - cycle * count;
+        let weight = player.map_or(0.0, |index| (local - index as f32).clamp(0.0, 1.0) * 0.4);
+        cycle * (width + 1.0) + (local + weight) * unit + local
+    };
+    let left = edge(slot);
+    (left, edge(slot + 1.0) - left - 1.0)
+}
+
+#[cfg(test)]
 mod tests {
     use super::*;
     use crate::source;
+    use vantare_domain::FlagKind;
+
+    #[test]
+    fn approved_strip_has_eleven_cars_and_keeps_its_frame_when_disconnected() {
+        let photos = crate::workshop::snapshots_from_json(include_str!(
+            "../../fixtures/broadcast-tower-design-system.sequence.json"
+        ))
+        .expect("demo");
+        let mut widget = Widget::new(&Settings::default(), Preferences::default());
+        widget.ingest(&photos[0], Preferences::default());
+        assert_eq!(widget.vm.rows.len(), 11);
+        assert_eq!(widget.size(), (1400.0, 56.0));
+        let mut qualifying = photos[0].clone();
+        qualifying.state.session.kind =
+            vantare_domain::Quality::Reliable(vantare_domain::SessionKind::Qualifying);
+        qualifying.state.session.remaining_s = vantare_domain::Quality::Reliable(522.0);
+        widget.ingest(&qualifying, Preferences::default());
+        assert_eq!(widget.vm.rows[0].gap, "3:27.046");
+        assert_eq!(widget.vm.rows[1].gap, "+0.265");
+        assert!(widget.vm.remaining.ends_with("8:42"));
+        assert_eq!(driver_code("A. PIER GUIDI"), "PIE");
+        let mut lost = photos[0].clone();
+        lost.state.source_state = vantare_domain::SourceState::Lost;
+        widget.ingest(&lost, Preferences::default());
+        assert_eq!(widget.size(), (1400.0, 56.0));
+    }
 
     #[test]
     fn weighted_cards_fill_the_stream_without_overlap_during_motion_and_carousel() {
@@ -580,9 +588,10 @@ mod tests {
     #[test]
     fn configured_cards_weather_and_carousel_follow_product_options() {
         let prefs = Preferences::default();
-        let snapshot =
-            vantare_ipc::snapshot_from_fixture_json(include_str!("../../fixtures/standings.snapshot.json"))
-                .expect("escena");
+        let snapshot = vantare_ipc::snapshot_from_fixture_json(include_str!(
+            "../../fixtures/standings.snapshot.json"
+        ))
+        .expect("escena");
         for count in [3, 5, 10] {
             let mut widget = Widget::new(
                 &Settings {
@@ -611,7 +620,13 @@ mod tests {
 
     #[test]
     fn sequence_only_and_invisible_rows_do_not_repaint() {
-        let mut widget = Widget::new(&Settings::default(), Preferences::default());
+        let mut widget = Widget::new(
+            &Settings {
+                row_count: 5,
+                ..Settings::default()
+            },
+            Preferences::default(),
+        );
         let mut snapshot = source::synthetic(0);
         assert!(widget.ingest(&snapshot, Preferences::default()));
         snapshot.sequence += 1;
@@ -709,9 +724,79 @@ mod tests {
         );
         let mut widget = Widget::new(&Settings::default(), prefs);
         widget.ingest(&snapshot, prefs);
-        assert_eq!(widget.size(), (1920.0, 86.0));
+        assert_eq!(widget.size(), (1400.0, 56.0));
         assert_eq!(widget.frame(prefs, false).1, Wake::Idle);
         #[cfg(feature = "parity-capture")]
         assert!(!widget.animating());
+    }
+}
+
+#[cfg(test)]
+mod render_contract_tests {
+    use super::*;
+    use vantare_domain::format::Language;
+    #[test]
+    fn every_supported_card_is_inside_the_paint_mask() {
+        let prefs = Preferences::default();
+        let mut widget = Widget::new(
+            &Settings {
+                row_count: 20,
+                ..Settings::default()
+            },
+            prefs,
+        );
+        widget.ingest(&crate::source::fixed(), prefs);
+        for weather in [false, true] {
+            for distinct_classes in [false, true] {
+                let mut vm = widget.vm.as_ref().clone();
+                if distinct_classes {
+                    for (i, row) in vm.rows.iter_mut().enumerate() {
+                        row.class = format!("C{i}");
+                    }
+                }
+                let (groups, width) = card_geometry(&vm, weather);
+                let right = SIZE.0 - if weather { 50.0 } else { 8.0 };
+                for slot in 0..vm.rows.len() {
+                    let x = card_left(slot as f32, width, &groups);
+                    assert!(
+                        x >= 156.0 && x + width <= right + 0.01,
+                        "tarjeta {slot} recortada: {x}+{width}>{right}"
+                    );
+                }
+                assert_eq!(
+                    vm.rows.len(),
+                    11,
+                    "todas las tarjetas admitidas se han comprobado"
+                );
+            }
+        }
+    }
+    #[test]
+    fn empty_tower_paints_the_localized_reason() {
+        for (language, status, expected) in [
+            (Language::En, Status::Disconnected, "DISCONNECTED"),
+            (Language::En, Status::Missing, "NO DATA"),
+            (Language::Es, Status::Stale, "DATOS ANTIGUOS"),
+        ] {
+            let mut vm = broadcast_tower::project(&Snapshot::default(), Preferences::default());
+            vm.status = status;
+            crate::paint_tests::with_kit(SIZE.0, language, |kit| {
+                let painted = crate::paint_tests::observe(|draw| paint_status_text(&vm, kit, draw));
+                assert_eq!(painted[0].value, expected);
+            });
+        }
+    }
+}
+
+#[cfg(test)]
+mod prepared_text_tests {
+    #[test]
+    fn productive_uppercase_driver_code_is_borrowed_not_allocated() {
+        assert!(matches!(
+            super::driver_code("A. PIER GUIDI"),
+            std::borrow::Cow::Borrowed("PIE")
+        ));
+        assert_eq!(super::driver_code("A. B. SMITH"), "SMI");
+        assert_eq!(super::driver_code("É. Müller"), "MÜL");
     }
 }

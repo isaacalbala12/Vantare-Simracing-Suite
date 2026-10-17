@@ -1,38 +1,5 @@
 // Una línea por widget; la macro solo genera módulos y despacho de enums.
 // Cada módulo define `Widget::{new, size, ingest, frame, animating}`.
-// Una unidad Rust se representa como objeto vacío en el enum con tag interno.
-#[derive(Clone, Default, serde::Serialize, serde::Deserialize)]
-pub(crate) struct EmptySettings {}
-
-macro_rules! empty_settings {
-    () => {
-        #[derive(Clone, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-        #[serde(
-            rename_all = "camelCase",
-            from = "crate::EmptySettings",
-            into = "crate::EmptySettings"
-        )]
-        pub struct Settings;
-
-        impl From<crate::EmptySettings> for Settings {
-            fn from(_: crate::EmptySettings) -> Self {
-                Self
-            }
-        }
-        impl From<Settings> for crate::EmptySettings {
-            fn from(_: Settings) -> Self {
-                Self {}
-            }
-        }
-        impl Settings {
-            #[must_use]
-            pub fn normalized(&self) -> Self {
-                self.clone()
-            }
-        }
-    };
-}
-
 macro_rules! widgets {
     ($($kind:ident => $module:ident: $name:literal),+ $(,)?) => {
         $(pub mod $module;)+
@@ -42,6 +9,8 @@ macro_rules! widgets {
 
         impl Kind {
             pub const ALL: &'static [Self] = &[$(Self::$kind),+];
+            pub const CATALOG:&'static[Self]=&[Self::Standings,Self::Relative,Self::Delta,Self::Pedals,Self::MulticlassRelative,Self::Radar,Self::InputTelemetry,Self::DeltaTrace,Self::PedalsTelemetry,Self::TrackMap,Self::TrackWeather,Self::RacingFlags,Self::FastestLap,Self::HeadToHead,Self::BroadcastTower,Self::CarDamageVisual,Self::FuelStrategy,Self::SessionAlerts];
+
 
             /// Nombre de producto; los identificadores de persistencia no cambian.
             pub fn label(self) -> &'static str {

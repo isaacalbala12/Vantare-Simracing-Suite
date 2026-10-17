@@ -21,6 +21,8 @@
 )]
 
 mod motion_policy;
+#[cfg(test)]
+mod paint_tests;
 pub use motion_policy::MotionPolicy;
 
 pub mod analytics;

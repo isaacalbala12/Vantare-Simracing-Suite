@@ -1,159 +1,284 @@
-//! Renderer Eficiencia: cabecera de 36 px y filas de 29 px en un panel de 470 px.
-//! Sin animaciones propias en MulticlassRelativeFunctional.tsx/tokens.css.
+//! Relative multiclase aprobado: ventana física centrada y filas de 24 px.
 
+use crate::app::{Paint, Wake, replace_if_changed};
 use crate::efficiency::preview::PaintWindow as Window;
-use gpui::{App, BorderStyle, Corners, Edges, linear_color_stop, linear_gradient, px, quad};
+use crate::efficiency::text;
+use crate::vantare::paint::{Face, Kit, round_rect};
+use crate::vantare::style::{Color, Style};
+use gpui::App;
 use vantare_domain::{
     Snapshot,
     format::Preferences,
     multiclass_relative::{self, ClassMode, Content, ViewModel},
 };
 
-use crate::app::{Paint, Wake, replace_if_changed};
-use crate::efficiency::{
-    col, paint_frame, paint_panel, paint_rect, rect,
-    text::{self, ink},
-    tokens,
-};
-
-const SIZE: (f32, f32) = (470.0, 181.0);
-// Fallback explícito del ViewModel v2 productivo: classColor no es telemetría.
-const CLASS_COLOR: u32 = 0x8b93a7;
-
-fn paint_background(size: (f32, f32), window: &mut Window) {
-    let (width, height) = size;
-    let transparent = col(0x000000, 0.0);
-    paint_panel(window, width, height, 0.87);
-    // Misma aproximación del degradado 120° que Standings. El kit aún no
-    // comparte este brillo (el resto del CSS suma menos de 1 % de blanco).
-    window.paint_quad(quad(
-        rect(0.0, 0.0, width, height),
-        Corners::all(px(tokens::RADIUS)),
-        linear_gradient(
-            120.0,
-            linear_color_stop(col(0xffffff, 0.03), 0.0),
-            linear_color_stop(col(0xffffff, 0.0), 0.38),
-        ),
-        Edges::all(px(0.0)),
-        transparent,
-        BorderStyle::default(),
-    ));
-}
+const SIZE: (f32, f32) = (440.0, 245.0);
 
 fn paint(vm: &ViewModel, size: (f32, f32), prefs: Preferences, window: &mut Window, cx: &mut App) {
-    let (width, height) = size;
-    let transparent = col(0x000000, 0.0);
-    paint_background(size, window);
-    let header = ink(14.0, 650.0, 0.0, col(tokens::INK, 1.0));
-    let label = match prefs.language {
-        vantare_domain::format::Language::Es => "RELATIVE MULTICLASE",
-        vantare_domain::format::Language::En => "MULTICLASS RELATIVE",
+    let style = Style::compiled();
+    let kit = Kit {
+        style: &style,
+        variant: &style.styles.neo,
+        accent: style.accents.red,
+        language: prefs.language,
+        width: size.0,
     };
-    text::draw(
+    kit.panel(window, size.1);
+    let count = ((size.1 - 77.0) / 24.0).round() as usize;
+    let muted = kit.ink(Face::Body, 11.0, 0.3, style.colors.muted.hsla());
+    kit.label(
         window,
         cx,
-        label,
-        6.0,
-        text::baseline(0.0, 36.0, 14.0),
-        &header,
+        if kit.es() {
+            "RELATIVE MULTICLASE"
+        } else {
+            "MULTICLASS RELATIVE"
+        },
+        13.0,
+        None,
+        11.0,
+        18.0,
+        Face::Body,
+        &muted,
     );
-    paint_rect(window, 1.0, 35.0, width - 2.0, 1.0, col(tokens::INK, 0.10));
-    let main = ink(14.0, 650.0, 0.0, col(tokens::INK, 1.0));
-    let number = ink(11.0, 600.0, 0.0, col(tokens::MUTED, 1.0));
-    let badge = ink(11.0, 700.0, 0.0, col(0xffffff, 1.0));
-    // El número configurado de filas cambia la altura; conserva el mismo pitch.
-    let row_height = ((height - 36.0) / vm.rows.len().max(1) as f32).min(29.0);
-    let mut top = 36.0;
-    for (index, row) in vm.rows.iter().enumerate() {
-        window.paint_quad(quad(
-            rect(12.0, top, 458.0, row_height),
-            Corners::all(px(4.0)),
-            if row.is_player {
-                col(0xbfc2ca, 0.23)
+    let badge = format!(
+        "{} {} · ±{}",
+        if kit.es() { "Tú en" } else { "You in" },
+        vm.player_class,
+        count / 2
+    );
+    kit.label(
+        window,
+        cx,
+        &badge.to_uppercase(),
+        0.0,
+        Some(size.0 - 13.0),
+        11.0,
+        18.0,
+        Face::Body,
+        &muted,
+    );
+    for slot in 0..count {
+        let y = 33.0 + slot as f32 * 24.0;
+        let Some(row) = vm.rows.iter().find(|r| r.slot == slot) else {
+            kit.skeleton(window, y, slot);
+            continue;
+        };
+        if row.is_player {
+            kit.highlight(window, y, style.accents.red, 1.0);
+        }
+        if row.divider {
+            round_rect(
+                window,
+                13.0,
+                y,
+                size.0 - 26.0,
+                1.0,
+                0.0,
+                style.colors.line.hsla(),
+            );
+        }
+        let class = style.class(&row.class_name);
+        round_rect(window, 13.0, y + 4.0, 38.0, 16.0, 3.0, class.dot.hsla());
+        let class_ink = kit.ink(
+            Face::Display,
+            11.0,
+            1.0,
+            if row.class_label == "GT3" {
+                Color(0x06210f, 1.0).hsla()
             } else {
-                transparent
+                Color(0xffffff, 1.0).hsla()
             },
-            Edges::all(px(0.0)),
-            col(tokens::INK, 0.10),
-            BorderStyle::default(),
-        ));
-        let content_top = top + (row_height - 18.0) / 2.0;
-        let base = text::baseline(top, row_height, 14.0);
-        text::draw(window, cx, &row.place, 20.0, base, &main);
-        window.paint_quad(quad(
-            rect(49.0, content_top, 40.0, 18.0),
-            Corners::all(px(3.0)),
-            col(CLASS_COLOR, 1.0),
-            Edges::all(px(0.0)),
-            transparent,
-            BorderStyle::default(),
-        ));
-        let badge_x = 49.0 + (40.0 - text::width(window, &row.class_label, &badge)) / 2.0;
-        text::draw(
+        );
+        let width = text::width(window, &row.class_label, &class_ink);
+        kit.label(
             window,
             cx,
             &row.class_label,
-            badge_x,
-            text::baseline(content_top, 18.0, 11.0),
-            &badge,
+            13.0 + (38.0 - width) / 2.0,
+            None,
+            y + 4.0,
+            16.0,
+            Face::Display,
+            &class_ink,
         );
-        text::draw(
+        let pos = kit.ink(Face::Display, 14.0, 0.0, style.colors.muted.hsla());
+        kit.label(
             window,
             cx,
-            &row.number,
-            95.0,
-            text::baseline(top, row_height, 11.0),
-            &number,
-        );
-        let name = text::fit(window, &row.name, &main, 252.0);
-        text::draw(window, cx, &name, 121.0, base, &main);
-        let gap_x = 464.0 - text::width(window, &row.gap, &main);
-        text::draw(window, cx, &row.gap, gap_x, base, &main);
-        paint_rect(
-            window,
-            12.0,
-            top + row_height - 1.0,
-            458.0,
-            1.0,
-            col(
-                tokens::INK,
-                if vm.rows.get(index + 1).is_some_and(|next| next.divider) {
-                    0.20
-                } else {
-                    0.10
-                },
-            ),
-        );
-        top += row_height;
-    }
-    if let Some(status) = &vm.status {
-        let status_ink = ink(12.0, 700.0, 0.0, col(0xe2c568, 1.0));
-        text::draw(
-            window,
-            cx,
-            status,
+            &row.place,
+            61.0,
+            None,
+            y,
             24.0,
-            text::baseline(top + 10.0, 24.0, 12.0),
-            &status_ink,
+            Face::Display,
+            &pos,
         );
+        let number = if row.number == "—" {
+            row.number.clone()
+        } else {
+            format!("#{}", row.number)
+        };
+        round_rect(
+            window,
+            93.0,
+            y + 4.0,
+            34.0,
+            16.0,
+            3.0,
+            Color(0xffffff, 0.06).hsla(),
+        );
+        let mono = kit.ink(Face::Mono, 11.0, 0.0, Color(0xb0a7a9, 1.0).hsla());
+        kit.label(
+            window,
+            cx,
+            &number,
+            97.0,
+            None,
+            y + 4.0,
+            16.0,
+            Face::Mono,
+            &mono,
+        );
+        let right = size.0 - 13.0;
+        let gap = kit.ink(
+            Face::Mono,
+            12.0,
+            0.0,
+            if vm.fcy {
+                style.colors.frozen.hsla()
+            } else if row.is_player {
+                style.colors.text.hsla()
+            } else {
+                style.colors.value.hsla()
+            },
+        );
+        kit.label(
+            window,
+            cx,
+            &row.gap,
+            0.0,
+            Some(right),
+            y,
+            24.0,
+            Face::Mono,
+            &gap,
+        );
+        let mut edge = right - 56.0;
+        if !vm.fcy && row.fast_traffic {
+            let nearby = row.nearby;
+            let value = if nearby {
+                if kit.es() { "▲ encima" } else { "▲ near" }
+            } else if kit.es() {
+                "▲ cerca"
+            } else {
+                "▲ closing"
+            };
+            let ink = kit.ink(
+                Face::Mono,
+                11.0,
+                0.0,
+                if nearby {
+                    Color(0xffffff, 1.0).hsla()
+                } else {
+                    Color(0xff8a8a, 1.0).hsla()
+                },
+            );
+            let width = text::width(window, value, &ink);
+            if nearby {
+                round_rect(
+                    window,
+                    edge - width - 10.0,
+                    y + 4.0,
+                    width + 10.0,
+                    16.0,
+                    3.0,
+                    Color(0xf25a5a, 0.75).hsla(),
+                );
+            }
+            kit.label(
+                window,
+                cx,
+                value,
+                0.0,
+                Some(edge - if nearby { 5.0 } else { 0.0 }),
+                y,
+                24.0,
+                Face::Mono,
+                &ink,
+            );
+            edge -= width + 20.0;
+        } else if !vm.fcy
+            && let Some((trend, good)) = &row.trend
+        {
+            let ink = kit.ink(
+                Face::Mono,
+                11.0,
+                0.0,
+                if *good {
+                    style.colors.gain.hsla()
+                } else {
+                    style.colors.loss.hsla()
+                },
+            );
+            kit.label(
+                window,
+                cx,
+                trend,
+                0.0,
+                Some(edge),
+                y,
+                24.0,
+                Face::Mono,
+                &ink,
+            );
+            edge -= 58.0;
+        }
+        let ink = kit.ink(Face::Body, 13.0, 0.0, style.colors.text.hsla());
+        let name = text::fit(window, &row.name, &ink, (edge - 137.0).max(0.0));
+        kit.label(window, cx, &name, 137.0, None, y, 24.0, Face::Body, &ink);
     }
-    paint_frame(window, width, height);
-    window.paint_quad(quad(
-        rect(0.0, 0.0, width, 6.0),
-        Corners {
-            top_left: px(tokens::RADIUS),
-            top_right: px(tokens::RADIUS),
-            bottom_left: px(0.0),
-            bottom_right: px(0.0),
-        },
-        transparent,
-        Edges {
-            top: px(1.0),
-            ..Edges::all(px(0.0))
-        },
-        col(0xffffff, 0.136),
-        BorderStyle::default(),
-    ));
+    let foot = 39.0 + count as f32 * 24.0;
+    round_rect(
+        window,
+        13.0,
+        foot,
+        size.0 - 26.0,
+        1.0,
+        0.0,
+        style.colors.line.hsla(),
+    );
+    let text = vm.status.clone().unwrap_or_else(|| {
+        if vm.fcy {
+            if kit.es() {
+                "Gaps congelados · no adelantar"
+            } else {
+                "Frozen gaps · no overtaking"
+            }
+            .into()
+        } else {
+            let fast = vm.rows.iter().filter(|r| r.fast_traffic).count();
+            format!(
+                "▲ {fast} {}",
+                if kit.es() {
+                    "coches más rápidos a menos de 6 s"
+                } else {
+                    "faster cars within 6 s"
+                }
+            )
+        }
+    });
+    kit.label(
+        window,
+        cx,
+        &text,
+        13.0,
+        None,
+        foot + 7.0,
+        20.0,
+        Face::Body,
+        &kit.ink(Face::Body, 11.0, 0.0, style.colors.muted.hsla()),
+    );
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -166,9 +291,9 @@ pub struct Settings {
 impl Default for Settings {
     fn default() -> Self {
         Self {
-            row_count: 5,
+            row_count: 7,
             class_mode: "all".into(),
-            show_class_divider: true,
+            show_class_divider: false,
         }
     }
 }
@@ -177,7 +302,7 @@ impl Settings {
     #[must_use]
     pub fn normalized(&self) -> Self {
         let mut value = self.clone();
-        value.row_count = value.row_count.clamp(3, 7);
+        value.row_count = multiclass_relative::row_count(value.row_count);
         if !["all", "same", "other"].contains(&value.class_mode.as_str()) {
             value.class_mode = "all".into();
         }
@@ -195,7 +320,7 @@ impl Settings {
         }
     }
     fn size(&self) -> (f32, f32) {
-        (SIZE.0, SIZE.1 + (self.row_count as f32 - 5.0) * 29.0)
+        (SIZE.0, SIZE.1 + (self.row_count as f32 - 7.0) * 24.0)
     }
 }
 
@@ -247,8 +372,8 @@ impl Widget {
 impl Settings {
     #[allow(clippy::unused_self)] // Contrato común de demanda por renderer.
     pub fn demand(&self) -> vantare_ipc::Demand {
-        use vantare_ipc::Signal::{PitStatus, Positions, Relative};
-        crate::demand::signals(33, &[Positions, Relative, PitStatus])
+        use vantare_ipc::Signal::{Flags, LapTimes, PitStatus, Positions, Relative};
+        crate::demand::signals(33, &[Positions, Relative, PitStatus, LapTimes, Flags])
     }
 }
 
@@ -258,53 +383,54 @@ mod tests {
     use crate::source;
 
     #[test]
-    fn configured_rows_keep_the_same_pitch_and_fit_the_panel() {
-        for count in 3..=7 {
+    fn approved_rows_keep_the_same_pitch_and_box_with_missing_neighbors() {
+        for count in [7, 9] {
             let settings = Settings {
                 row_count: count,
-                ..Settings::default()
+                ..Default::default()
             };
-            let (width, height) = settings.size();
-            assert_eq!(width, 470.0);
-            assert_eq!(height, 36.0 + count as f32 * 29.0);
+            let size = settings.size();
+            assert_eq!(size, (440.0, 77.0 + count as f32 * 24.0));
+            let prefs = Preferences::default();
+            let mut widget = Widget::new(&settings, prefs);
+            for snapshot in [source::fixed(), Snapshot::default()] {
+                widget.ingest(&snapshot, prefs);
+                assert_eq!(widget.size(), size);
+            }
         }
     }
 
     #[test]
-    fn configured_class_rows_and_dividers_project_independently() {
-        let snapshot = vantare_ipc::snapshot_from_fixture_json(include_str!(
-            "../../fixtures/multiclass-relative.snapshot.json"
-        ))
-        .expect("escena");
+    fn class_settings_are_saved_and_filters_always_preserve_the_player() {
+        let snapshot = source::fixed();
         let prefs = Preferences::default();
         for mode in ["all", "same", "other"] {
-            for count in [3, 5, 7] {
-                for divider in [false, true] {
-                    let settings = Settings {
-                        row_count: count,
-                        class_mode: mode.into(),
-                        show_class_divider: divider,
-                    };
-                    let mut widget = Widget::new(&settings, prefs);
-                    widget.ingest(&snapshot, prefs);
-                    assert_eq!(
-                        widget.vm,
-                        multiclass_relative::project(&snapshot, prefs, settings.content())
-                    );
-                    assert_eq!(
-                        widget.vm.rows.len(),
-                        count.min(if mode == "same" { 7 } else { 13 })
-                    );
-                    if mode == "same" {
-                        assert!(widget.vm.rows.iter().all(|r| r.class_label == "HC"));
-                    }
-                    if mode == "other" {
-                        assert!(widget.vm.rows.iter().all(|r| r.class_label != "HC"));
-                    }
-                    if !divider {
-                        assert!(widget.vm.rows.iter().all(|r| !r.divider));
-                    }
-                }
+            for count in [7, 9] {
+                let settings = Settings {
+                    row_count: count,
+                    class_mode: mode.into(),
+                    show_class_divider: true,
+                };
+                let saved: Settings =
+                    serde_json::from_str(&serde_json::to_string(&settings).expect("guardar"))
+                        .expect("cargar");
+                assert_eq!(saved.normalized(), settings);
+                let mut widget = Widget::new(&settings, prefs);
+                widget.ingest(&snapshot, prefs);
+                assert_eq!(
+                    widget.vm,
+                    multiclass_relative::project(&snapshot, prefs, settings.content())
+                );
+                assert_eq!(
+                    widget
+                        .vm
+                        .rows
+                        .iter()
+                        .find(|r| r.is_player)
+                        .expect("jugador")
+                        .slot,
+                    count / 2
+                );
             }
         }
     }
@@ -321,21 +447,24 @@ mod tests {
         let vm =
             multiclass_relative::project(&snapshot, Preferences::default(), Content::default());
         let expected = [
-            ("1", "HC", "André Lotterer", "0.0"),
-            ("2", "LMP", "Ben Hanley", "+4.5"),
-            ("3", "GTE", "Kévin Estre", "+9.0"),
-            ("4", "HC", "Antonio Giovinazzi", "+13.5"),
-            ("5", "LMP", "Filipe Albuquerque", "+18.0"),
+            (4, "P2", "HY", "A. Giovinazzi", "-13.5"),
+            (3, "P1", "GTE", "K. Estre", "-9.0"),
+            (2, "P1", "LMP2", "B. Hanley", "-4.5"),
+            (1, "P1", "HY", "Tú", "0.0"),
+            (20, "P7", "LMP2", "N. Pino", "+4.5"),
+            (19, "P7", "HY", "M. Jensen", "+9.0"),
+            (18, "P6", "GTE", "M. Engel", "+13.5"),
         ];
         assert_eq!(vm.rows.len(), expected.len());
-        for (row, (place, class, name, gap)) in vm.rows.iter().zip(expected) {
+        for (row, (id, place, class, name, gap)) in vm.rows.iter().zip(expected) {
+            assert_eq!(row.id.0, id);
             assert_eq!(
                 (&*row.place, &*row.class_label, &*row.name, &*row.gap),
                 (place, class, name, gap)
             );
             assert_eq!(row.number, "—");
         }
-        assert!(vm.rows[0].is_player);
+        assert!(vm.rows[3].is_player);
         assert_eq!(vm.status, None);
     }
 
@@ -343,7 +472,11 @@ mod tests {
     fn snapshot_metadata_and_unrendered_signals_do_not_repaint() {
         let prefs = Preferences::default();
         let mut widget = Widget::new(&Settings::default(), prefs);
-        let mut snapshot = source::synthetic(0);
+        let mut snapshot = crate::workshop::snapshots_from_json(include_str!(
+            "../../fixtures/multiclass-relative-design-system.sequence.json"
+        ))
+        .expect("escena aprobada")[0]
+            .clone();
         assert!(widget.ingest(&snapshot, prefs));
         assert!(!widget.ingest(&snapshot, prefs));
         snapshot.sequence += 1;
@@ -367,7 +500,26 @@ mod tests {
             .expect("coche del jugador")
             .driver
             .name = "Piloto nuevo".into();
-        assert!(widget.ingest(&snapshot, prefs));
+        assert!(
+            !widget.ingest(&snapshot, prefs),
+            "nombre propio oculto tras Tú"
+        );
+        let rival = widget
+            .vm
+            .rows
+            .iter()
+            .find(|r| !r.is_player)
+            .expect("rival visible")
+            .id;
+        snapshot
+            .state
+            .cars
+            .iter_mut()
+            .find(|c| c.id == rival)
+            .expect("rival")
+            .driver
+            .name = "Ana Otro".into();
+        assert!(widget.ingest(&snapshot, prefs), "cambia el nombre visible");
         assert!(matches!(widget.frame(prefs, false).1, Wake::Idle));
     }
 }

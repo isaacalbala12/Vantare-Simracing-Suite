@@ -1,192 +1,251 @@
-//! H2H Eficiencia (388 × 158). El productivo no tiene
+//! Cara a cara (780 × 72). El productivo no tiene
 //! animaciones ni avisos temporales: `Wake::Idle`, sin un reloj adicional.
 //! La dirección configurada selecciona el rival en la proyección pura.
 //! La escena por defecto conserva al líder mirando delante, SIN RIVAL; 20 coches.
 
+use crate::app::{Paint, Wake, replace_if_changed};
 use crate::efficiency::preview::PaintWindow as Window;
-use gpui::{App, BorderStyle, Corners, Edges, linear_color_stop, linear_gradient, px, quad};
+use crate::efficiency::text;
+use crate::vantare::{
+    paint::{Face, Kit, round_rect},
+    style::{Color, Style},
+};
+use gpui::App;
 use vantare_domain::{
     Snapshot,
     format::Preferences,
     head_to_head::{self, Target, ViewModel},
 };
+pub const SIZE: (f32, f32) = (780.0, 72.0);
 
-use crate::app::{Paint, Wake, replace_if_changed};
-use crate::efficiency::text::{self, ink};
-use crate::efficiency::{col, paint_frame, paint_panel, paint_rect, rect, tokens};
-
-pub const SIZE: (f32, f32) = (388.0, 158.0);
-
-pub fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
-    paint_content(vm, true, window, cx);
+fn difference_color(value: &str, style: &Style) -> Color {
+    let value = value.strip_prefix('−').map_or_else(
+        || value.parse::<f64>().ok(),
+        |v| v.parse::<f64>().ok().map(|v| -v),
+    );
+    match value.filter(|v| v.is_finite()) {
+        Some(v) if v < 0.0 => style.colors.gain,
+        Some(v) if v > 0.0 => style.colors.loss,
+        _ => style.colors.muted,
+    }
 }
-
-fn paint_content(vm: &ViewModel, show_sectors: bool, window: &mut Window, cx: &mut App) {
-    let (width, height) = SIZE;
-    paint_panel(window, width, height, 0.87);
-    // Igual que Standings: el segundo brillo es < 1 % y queda pendiente para
-    // el kit junto con el marco superior al 24 % (segundo consumidor real).
-    window.paint_quad(quad(
-        rect(0.0, 0.0, width, height),
-        Corners::all(px(tokens::RADIUS)),
-        linear_gradient(
-            120.0,
-            linear_color_stop(col(0xffffff, 0.03), 0.0),
-            linear_color_stop(col(0xffffff, 0.0), 0.38),
+fn paint_comparison(
+    value: &str,
+    x: f32,
+    top: f32,
+    big: bool,
+    kit: &Kit<'_>,
+    mut draw: impl FnMut(crate::vantare::paint::Label<'_>),
+) {
+    let value = if value.is_empty() {
+        vantare_domain::format::PLACEHOLDER
+    } else {
+        value
+    };
+    let (face, size, tracking, height) = if big {
+        (Face::Display, 22.0, 0.5, 22.0)
+    } else {
+        (Face::Mono, 12.0, 0.0, 16.0)
+    };
+    draw(crate::vantare::paint::Label {
+        value,
+        x,
+        right: None,
+        top,
+        height,
+        face,
+        ink: kit.ink(
+            face,
+            size,
+            tracking,
+            difference_color(value, kit.style).hsla(),
         ),
-        Edges::all(px(0.0)),
-        col(0x000000, 0.0),
-        BorderStyle::default(),
-    ));
-
-    let header = ink(11.0, 600.0, 0.08, col(tokens::MUTED, 1.0));
-    if vm.rows.is_empty() {
-        text::draw(
-            window,
-            cx,
-            &vm.header,
-            6.0,
-            text::baseline(0.0, 18.0, 11.0),
-            &header,
-        );
-        let status = ink(14.0, 700.0, 0.0, col(0xe2c568, 1.0));
-        text::draw(
+    });
+}
+pub fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
+    paint_content(vm, true, Preferences::default(), window, cx);
+}
+fn paint_content(
+    vm: &ViewModel,
+    show_sectors: bool,
+    prefs: Preferences,
+    window: &mut Window,
+    cx: &mut App,
+) {
+    let style = Style::compiled();
+    let kit = Kit {
+        style: &style,
+        variant: &style.styles.neo,
+        accent: style.accents.red,
+        language: prefs.language,
+        width: SIZE.0,
+    };
+    kit.panel(window, SIZE.1);
+    let Some(duel) = &vm.duel else {
+        let ink = kit.ink(Face::Display, 13.0, 1.4, style.colors.muted.hsla());
+        kit.label(
             window,
             cx,
             &vm.no_rival,
-            6.0,
-            text::baseline(18.0, height - 18.0, 14.0),
-            &status,
+            330.0,
+            None,
+            26.0,
+            20.0,
+            Face::Display,
+            &ink,
         );
-    }
-    let player_index = vm.rows.iter().position(|row| row.is_player).unwrap_or(0);
-    for (index, row) in vm.rows.iter().enumerate() {
-        let (y, row_height) = row_bounds(row.is_player, index < player_index);
+        return;
+    };
+    for (i, (row, x)) in [(&duel.left, 8.0), (&duel.right, 392.0)]
+        .into_iter()
+        .enumerate()
+    {
         if row.is_player {
-            paint_rect(window, 1.0, y, width - 2.0, row_height, col(0xbfc2ca, 0.23));
-        }
-        let line_top = y + if row.is_player { 7.0 } else { 0.0 };
-        let class_name = row.class_name.to_uppercase();
-        let player_columns = [
-            (&row.place, 6.0, 22.0, false),
-            (&row.name, 34.0, 270.0, false),
-        ];
-        let rival_columns = [
-            (&row.place, 6.0, 22.0, false),
-            (&row.name, 34.0, 154.0, false),
-            (&class_name, 194.0, 78.0, false),
-            (&row.label, 278.0, 46.0, false),
-            (&row.gap, 330.0, 52.0, true),
-        ];
-        let columns = if row.is_player {
-            &player_columns[..]
-        } else {
-            &rival_columns[..]
-        };
-        for &(value, left, cell_width, right) in columns {
-            let style = ink(
-                14.0,
-                650.0,
-                0.0,
-                col(
-                    if right && row.selected {
-                        tokens::LOSS
-                    } else {
-                        tokens::INK
-                    },
-                    1.0,
-                ),
-            );
-            let value = text::fit(window, value, &style, cell_width);
-            let x = if right {
-                left + cell_width - text::width(window, &value, &style)
-            } else {
-                left
-            };
-            text::draw(
+            round_rect(
                 window,
-                cx,
-                &value,
                 x,
-                text::baseline(line_top, 24.0, 14.0),
-                &style,
+                6.0,
+                200.0,
+                60.0,
+                6.0,
+                Color(0xe14a54, 0.18).hsla(),
             );
         }
-        if row.is_player {
-            let secondary = ink(14.0, 600.0, 0.0, col(tokens::MUTED, 1.0));
-            let label = text::fit(
-                window,
-                &format!("{class_name} · {}", vm.header),
-                &secondary,
-                width - 40.0,
-            );
-            text::draw(
-                window,
-                cx,
-                &label,
-                34.0,
-                text::baseline(y + 31.0, 24.0, 14.0),
-                &secondary,
-            );
-        }
-        if !row.is_player && show_sectors {
-            paint_timing(row, y + 24.0, window, cx);
-        }
-        paint_rect(
-            window,
-            1.0,
-            y + row_height - 1.0,
-            width - 2.0,
-            1.0,
-            col(tokens::INK, 0.10),
+        let label = format!(
+            "P{}  {}  #{}",
+            row.place,
+            if row.is_player {
+                if kit.es() { "Tú" } else { "You" }
+            } else {
+                &row.name
+            },
+            row.number
         );
-    }
-    paint_frame(window, width, height);
-    // CSS ::after: blanco 24 % arriba sobre el mismo panel redondeado.
-    window.paint_quad(quad(
-        rect(0.0, 0.0, width, 6.0),
-        Corners {
-            top_left: px(tokens::RADIUS),
-            top_right: px(tokens::RADIUS),
-            bottom_left: px(0.0),
-            bottom_right: px(0.0),
-        },
-        col(0x000000, 0.0),
-        Edges {
-            top: px(1.0),
-            ..Edges::all(px(0.0))
-        },
-        col(0xffffff, 0.136),
-        BorderStyle::default(),
-    ));
-}
-
-fn paint_timing(row: &head_to_head::Row, y: f32, window: &mut Window, cx: &mut App) {
-    let style = ink(14.0, 600.0, 0.0, col(tokens::MUTED, 1.0));
-    for (label, value, x) in [
-        ("S1", &row.sectors[0], 6.0),
-        ("S2", &row.sectors[1], 92.0),
-        ("S3", &row.sectors[2], 178.0),
-        ("MEJ", &row.best_lap, 264.0),
-    ] {
-        text::draw(
+        let name = kit.ink(Face::Body, 13.0, 0.0, Color(0xfaf7f7, 1.0).hsla());
+        let label = text::fit(window, &label, &name, 180.0);
+        kit.label(
             window,
             cx,
-            &format!("{label} {value}"),
-            x,
-            text::baseline(y, 24.0, 14.0),
-            &style,
+            &label,
+            x + 10.0,
+            None,
+            18.0,
+            18.0,
+            Face::Body,
+            &name,
+        );
+        let lap = kit.ink(Face::Mono, 12.0, 0.0, style.colors.text.hsla());
+        kit.label(
+            window,
+            cx,
+            &duel.laps[i],
+            x + 62.0,
+            None,
+            40.0,
+            16.0,
+            Face::Mono,
+            &lap,
+        );
+        let small = kit.ink(Face::Body, 10.0, 0.3, style.colors.muted.hsla());
+        kit.label(
+            window,
+            cx,
+            match (duel.best_laps, kit.es()) {
+                (true, true) => "MEJOR",
+                (true, false) => "BEST",
+                (false, true) => "ÚLTIMA",
+                (false, false) => "LAST",
+            },
+            x + 10.0,
+            None,
+            40.0,
+            16.0,
+            Face::Body,
+            &small,
         );
     }
-}
-
-fn row_bounds(player: bool, ahead: bool) -> (f32, f32) {
-    if player {
-        (48.0, 62.0)
-    } else if ahead {
-        (0.0, 48.0)
-    } else {
-        (110.0, 48.0)
+    let mode = kit.ink(Face::Display, 10.0, 1.4, style.colors.muted.hsla());
+    let title = vm.header.replace("H2H · ", "VS ");
+    kit.label(
+        window,
+        cx,
+        &title,
+        265.0,
+        None,
+        6.0,
+        12.0,
+        Face::Display,
+        &mode,
+    );
+    paint_comparison(&duel.gap, 300.0, 18.0, true, &kit, |mut label| {
+        label.x -= text::width(window, label.value, &label.ink) / 2.0;
+        label.paint(&kit, window, cx);
+    });
+    let trend = kit.ink(
+        Face::Mono,
+        10.0,
+        0.0,
+        if duel.trend.is_empty() || duel.trend == vantare_domain::format::PLACEHOLDER {
+            style.colors.muted
+        } else if duel.good {
+            style.colors.gain
+        } else {
+            style.colors.loss
+        }
+        .hsla(),
+    );
+    kit.label(
+        window,
+        cx,
+        &duel.trend,
+        300.0 - text::width(window, &duel.trend, &trend) / 2.0,
+        None,
+        41.0,
+        12.0,
+        Face::Mono,
+        &trend,
+    );
+    let small = kit.ink(Face::Mono, 10.0, 0.0, style.colors.muted.hsla());
+    kit.label(
+        window,
+        cx,
+        &duel.catch,
+        300.0 - text::width(window, &duel.catch, &small) / 2.0,
+        None,
+        54.0,
+        12.0,
+        Face::Mono,
+        &small,
+    );
+    round_rect(
+        window,
+        600.0,
+        6.0,
+        1.0,
+        60.0,
+        0.0,
+        Color(0xffffff, 0.08).hsla(),
+    );
+    if show_sectors {
+        for i in 0..3 {
+            let x = 610.0 + i as f32 * 53.0;
+            kit.label(
+                window,
+                cx,
+                ["S1", "S2", "S3"][i],
+                x,
+                None,
+                15.0,
+                12.0,
+                Face::Display,
+                &mode,
+            );
+            let color = difference_color(&duel.sectors[i], &style);
+            paint_comparison(&duel.sectors[i], x, 30.0, false, &kit, |label| {
+                label.paint(&kit, window, cx);
+            });
+            round_rect(window, x, 51.0, 47.0, 3.0, 1.5, color.hsla());
+        }
     }
 }
 
@@ -252,11 +311,11 @@ impl Widget {
         )
     }
 
-    pub(crate) fn frame(&mut self, _prefs: Preferences, _reduced: bool) -> (Paint, Wake) {
+    pub(crate) fn frame(&mut self, prefs: Preferences, _reduced: bool) -> (Paint, Wake) {
         let vm = self.vm.clone();
         let show_sectors = self.show_sectors;
         (
-            Box::new(move |window, cx| paint_content(&vm, show_sectors, window, cx)),
+            Box::new(move |window, cx| paint_content(&vm, show_sectors, prefs, window, cx)),
             Wake::Idle,
         )
     }
@@ -270,8 +329,8 @@ impl Widget {
 
 impl Settings {
     pub fn demand(&self) -> vantare_ipc::Demand {
-        use vantare_ipc::Signal::{LapTimes, Positions, Relative, Sectors};
-        let mut demand = crate::demand::signals(33, &[Positions, Relative]);
+        use vantare_ipc::Signal::{LapTimes, Positions, Relative, Sectors, SessionInfo};
+        let mut demand = crate::demand::signals(33, &[Positions, Relative, LapTimes, SessionInfo]);
         if self.show_sectors {
             demand.request(LapTimes, 250);
             demand.request(Sectors, 250);
@@ -316,7 +375,10 @@ mod tests {
             ..settings
         }
         .demand();
-        assert!(!hidden.contains(Sectors) && !hidden.contains(LapTimes));
+        assert!(
+            !hidden.contains(Sectors) && hidden.contains(LapTimes),
+            "las últimas vueltas siguen visibles sin sectores"
+        );
     }
 
     #[test]
@@ -369,28 +431,30 @@ mod tests {
     }
 
     #[test]
-    fn rivals_and_player_fit_without_gaps_for_both_target_directions() {
+    fn fixed_strip_has_only_the_player_and_selected_rival_in_both_directions() {
         let mut snapshot = vantare_ipc::snapshot_from_fixture_json(include_str!(
             "../../fixtures/head-to-head.snapshot.json"
         ))
         .expect("escena");
         snapshot.state.player.as_mut().expect("jugador").car = snapshot.state.cars[1].id;
-        for target in [Target::Ahead, Target::Behind] {
-            let vm = head_to_head::project(&snapshot, Preferences::default(), target);
-            assert_eq!(vm.rows.len(), 3);
-            let player = vm
-                .rows
-                .iter()
-                .position(|row| row.is_player)
-                .expect("jugador");
-            let mut bottom = 0.0;
-            for (index, row) in vm.rows.iter().enumerate() {
-                let (top, height) = row_bounds(row.is_player, index < player);
-                assert_eq!(top, bottom);
-                assert_eq!(height, if row.is_player { 62.0 } else { 48.0 });
-                bottom = top + height;
-            }
-            assert_eq!(bottom, SIZE.1);
+        for target in ["ahead", "behind"] {
+            let mut widget = Widget::new(
+                &Settings {
+                    target: target.into(),
+                    ..Settings::default()
+                },
+                Preferences::default(),
+            );
+            widget.ingest(&snapshot, Preferences::default());
+            let duel = widget.vm.duel.as_ref().expect("pareja");
+            assert_ne!(duel.left.is_player, duel.right.is_player);
+            assert!(duel.left.selected || duel.right.selected);
+            assert_eq!(widget.size(), (780.0, 72.0));
+            let mut lost = snapshot.clone();
+            lost.state.source_state = vantare_domain::SourceState::Lost;
+            widget.ingest(&lost, Preferences::default());
+            assert!(widget.vm.duel.is_none());
+            assert_eq!(widget.size(), (780.0, 72.0));
         }
     }
 
@@ -498,5 +562,39 @@ mod tests {
         assert!(matches!(widget.frame(prefs, false).1, Wake::Idle));
         #[cfg(feature = "parity-capture")]
         assert!(!widget.animating());
+    }
+}
+
+#[cfg(test)]
+mod comparison_render_tests {
+    #[test]
+    fn race_gap_paints_loss_ahead_and_gain_behind() {
+        crate::paint_tests::with_kit(super::SIZE.0, vantare_domain::format::Language::Es, |kit| {
+            for (value, color) in [
+                ("+3.200", kit.style.colors.loss),
+                ("-3.200", kit.style.colors.gain),
+                ("−3.200", kit.style.colors.gain),
+            ] {
+                let painted = crate::paint_tests::observe(|draw| {
+                    super::paint_comparison(value, 300.0, 18.0, true, kit, draw);
+                });
+                assert_eq!(painted[0].value, value);
+                assert_eq!(painted[0].color, color.hsla());
+            }
+        });
+    }
+    #[test]
+    fn missing_gap_and_sectors_paint_a_neutral_placeholder() {
+        crate::paint_tests::with_kit(super::SIZE.0, vantare_domain::format::Language::Es, |kit| {
+            for big in [true, false] {
+                for value in ["", "—"] {
+                    let painted = crate::paint_tests::observe(|draw| {
+                        super::paint_comparison(value, 300.0, 18.0, big, kit, draw);
+                    });
+                    assert_eq!(painted[0].value, "—");
+                    assert_eq!(painted[0].color, kit.style.colors.muted.hsla());
+                }
+            }
+        });
     }
 }

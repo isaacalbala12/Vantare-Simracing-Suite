@@ -4,6 +4,31 @@ Comparación del corte `6b831395cdb013e443e6396a79615bf2ae030482`, 30/09/2026.
 La [matriz](../../../docs/analysis/2026-09-30-hub-paridad.md) distingue
 producto Wails, harnesses de demostración en WebView2 y proceso GPUI.
 
+
+## Capturas actuales · #1655
+
+Este archivo conserva el expediente histórico de #1430. El apartado
+«Reproducción» describe cómo se obtuvieron aquellos PNG: **no ejecutar ese
+protocolo hoy**, porque abría ventanas y usaba interacción de escritorio.
+La versión original exacta está archivada en retirement como texto inerte.
+
+Para capturas actuales, compilar con `parity-capture` por la cola, target propio
+según [native/README](../../README.md#capturas-sin-ocupar-la-pantalla-1655), y usar:
+
+```powershell
+./native/hub/reference/tools/capture-native.ps1 `
+  -Executable C:/targets/mi-issue/debug/vantare-hub.exe `
+  -EvidenceDirectory C:/tmp/mi-evidencia/native
+```
+
+El script prepara `--capture-batch`: una app/ventana nacida oculta fuera de
+todos los monitores, sin foco, PrintWindow e incremental. No arrancar antes un
+Hub normal ni pasar un PID. Los comparadores conservan sus umbrales históricos;
+la comprobación de #1655 usa RGBA exacto, sin tolerancia. `capture-window.ps1`
+solo lee un HWND QA que ya esté fuera de pantalla; no lo revela ni mueve y
+rechaza teclado, clics y rueda. Los requisitos antiguos de foco o tamaño que
+quepa en el escritorio no se aplican a esta ruta. El modo actual valida DPI 96.
+
 ## Referencias congeladas y evidencia
 
 El banco inicial copió 48 referencias `wails-demo/<pantalla>.png` para que el

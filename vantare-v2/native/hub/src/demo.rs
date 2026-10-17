@@ -63,6 +63,10 @@ const EXTRA_STRATEGY_CAPTURES: &[&str] = &[
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub struct DemoData {
+    #[serde(skip)]
+    pub capture_name: Option<String>,
+    #[serde(skip)]
+    pub capture_parameters: std::collections::BTreeMap<String, String>,
     pub captured_at: String,
     pub user: DemoUser,
     pub profile: DemoProfile,
@@ -310,6 +314,8 @@ pub struct DemoVersions {
 impl DemoData {
     /// Las referencias solo tienen perfil en Inicio y no tienen historial local.
     pub fn apply_capture(&mut self, capture: &CaptureState) -> Result<(), String> {
+        self.capture_name = Some(capture.name.clone());
+        self.capture_parameters = capture.parameters.clone();
         self.profile.present = capture.home_session();
         if matches!(capture.name.as_str(), "inicio-vacio" | "inicio-cargando") {
             self.launcher.profiles.clear();
@@ -441,6 +447,7 @@ const TESTING_CAPTURE_SCREENS: [&str; 3] = [
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CaptureState {
+    pub parameters: std::collections::BTreeMap<String, String>,
     pub name: String,
     pub section: Section,
     pub palette_query: Option<String>,
@@ -730,6 +737,7 @@ impl CaptureState {
         };
         let strategy_page = strategy_capture_page(name);
         Ok(Self {
+            parameters: std::collections::BTreeMap::new(),
             name: name.into(),
             section,
             palette_query,

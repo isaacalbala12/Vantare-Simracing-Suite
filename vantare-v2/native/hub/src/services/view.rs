@@ -311,7 +311,7 @@ impl Remote {
             roadmap_message: "No hay una publicación válida guardada".into(),
             roadmap_requested: false,
             roadmap_polled_at: None,
-            manual_roadmap: crate::roadmap::State::load(),
+            manual_roadmap: crate::roadmap::State::load_capture(cx),
             stale: true,
         };
         #[cfg(feature = "parity-capture")]

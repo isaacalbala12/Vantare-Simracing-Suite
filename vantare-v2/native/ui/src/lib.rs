@@ -29,6 +29,10 @@ mod app;
 mod board_contracts;
 #[cfg(feature = "parity-capture")]
 pub mod capture;
+#[cfg(feature = "parity-capture")]
+pub mod capture_batch;
+#[cfg(feature = "parity-capture")]
+pub mod capture_window;
 mod connection;
 mod demand;
 pub mod efficiency;

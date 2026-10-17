@@ -5,11 +5,8 @@ use gpui::{Context, Entity, Window};
 use std::sync::Arc;
 
 pub(crate) fn configure(editor: &Entity<PilotEditor>, window: &mut Window, cx: &mut gpui::App) {
-    let args: Vec<_> = std::env::args().collect();
-    let scene = args
-        .windows(2)
-        .find(|pair| pair[0] == "--capture")
-        .map(|pair| pair[1].as_str());
+    let scene = crate::capture::current_name(cx).map(str::to_owned);
+    let scene = scene.as_deref();
     if !matches!(
         scene,
         Some("ajustes-perfil-foto" | "ajustes-perfil-recorte")

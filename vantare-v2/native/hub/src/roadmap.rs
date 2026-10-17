@@ -19,18 +19,23 @@ pub(crate) struct State {
 }
 impl State {
     pub(crate) fn load() -> Self {
+        Self {
+            view: View::default(),
+            capture_publication: None,
+        }
+    }
+    pub(crate) fn load_capture(cx: &gpui::App) -> Self {
+        #[cfg(not(feature = "parity-capture"))]
+        let _ = cx;
         #[cfg(feature = "parity-capture")]
-        if std::env::args().any(|argument| argument == "--capture") {
+        if crate::capture::current_name(cx).is_some() {
             let view = match std::env::var("VANTARE_CAPTURE_ROADMAP_VIEW").as_deref() {
                 Ok("b") => View::Board,
                 Ok("c") => View::Season,
                 _ => View::Circuit,
             };
-            let capture_publication = std::env::args()
-                .collect::<Vec<_>>()
-                .windows(2)
-                .any(|pair| pair[0] == "--capture" && pair[1] == "roadmap-clickup-prueba")
-                .then(|| {
+            let capture_publication =
+                (crate::capture::current_name(cx) == Some("roadmap-clickup-prueba")).then(|| {
                     serde_json::from_str(include_str!(
                         "../reference/fixtures/roadmap-clickup-v2-test.json"
                     ))
@@ -41,10 +46,7 @@ impl State {
                 capture_publication,
             };
         }
-        Self {
-            view: View::default(),
-            capture_publication: None,
-        }
+        Self::load()
     }
     pub(crate) fn publication<'a>(
         &'a self,

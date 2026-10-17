@@ -222,6 +222,135 @@ completo en ambos sistemas con esos gates y el smoke IPC. Las ventanas
 Unix son de desarrollo: telemetría live LMU/ACC, overlays sobre juego/OBS, MSIX
 y paridad por píxeles contra Wails siguen siendo exclusivamente Windows.
 
+## Capturas sin ocupar la pantalla (#1655)
+
+Compilar Hub y Workshop con `parity-capture`, por la cola y con target propio.
+Solo Windows, sesión gráfica y **DPI 96 (escalado de Windows al 100 %)**.
+Es un requisito operativo: a 125 % u otro DPI la herramienta falla con el HWND
+todavía oculto; no genera una captura degradada. DPI mixto no está validado.
+Mantener el checkout de compilación y sus fixtures: estos binarios QA usan
+`CARGO_MANIFEST_DIR` y no son capturadores portátiles independientes del código.
+Los binarios con `parity-capture` usan
+el subsistema Windows para no crear una consola. En PowerShell, canalizar a
+`Out-Host` (como abajo) espera también a estos ejecutables GUI. No se necesita
+`VANTARE_CAPTURE_OFFSCREEN`: todos los modos de captura crean el HWND oculto,
+fuera de **todos** los monitores y sin activar. El backend conserva esas
+coordenadas desde `CreateWindowExW`; antes de presentar se verifica
+`GetWindowRect`. Después de cada cambio de tamaño se sincroniza el viewport
+de GPUI y se invalida el frame completo; un tamaño de pintura distinto al
+cliente se rechaza. `WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW` evita foco/barra de tareas.
+Un fallo de posición detiene el lote con la ventana oculta. No se usa el ratón,
+el teclado, el escritorio ni un vigilante que mueva ventanas después de aparecer.
+
+Un manifiesto JSON es una lista de entradas. Rutas relativas al directorio de
+trabajo; las PNG y sus recibos deben quedar fuera del repo:
+
+```json
+[
+  {"scene":"inicio-base","appearance":"vantare-dark","size":[1440,900],"output":"C:/tmp/capturas/inicio-dark.png"},
+  {"scene":"inicio-base","appearance":"vantare-light","size":[1280,800],"output":"C:/tmp/capturas/inicio-light.png"},
+  {"scene":"calendario-base","size":[1440,900],"output":"C:/tmp/capturas/calendario.png"}
+]
+```
+
+```powershell
+# Ejecutables ya compilados con parity-capture:
+& C:/targets/mi-issue/debug/vantare-hub.exe --capture-batch C:/tmp/hub.json | Out-Host
+& C:/targets/mi-issue/debug/vantare-workshop.exe --capture-batch C:/tmp/widgets.json | Out-Host
+# vantare-overlays admite el mismo manifiesto de widgets.
+```
+
+Cada proceso reutiliza **una sola ventana** para el lote entero y la cierra al
+terminar, también ante error. Al salir del lote se retiran las raíces aisladas
+`%TEMP%/vantare-hub-parity/<pid>-...` del propio proceso; nunca los datos del
+banco live-IPC ni rutas persistentes del usuario. Un error de limpieza se informa.
+Si falla escribir o renombrar un recibo, se retira su `.tmp` sin tocar el destino.
+El manifiesto del Hub admite `collapsed` y `zoom`
+(90/100/110/125), además de escena, apariencia y tamaño. Los datos QA se vuelven
+a cargar para cada entrada; la escena actual no depende de los argumentos del
+proceso inicial. `parameters` admite la clave `calendar` en las escenas
+`calendario-r6-*`: transporta su especificación a la demo, sin ejecutar comandos
+ni modificar el entorno del proceso. Las claves no admitidas fallan. El adaptador
+de #1634 ya está integrado en `hub/src/calendar/capture.rs`; no hay que aplicar
+el parche histórico `calendar-batch-1634.patch`. La variable antigua
+`VANTARE_CAPTURE_CALENDAR` se conserva como fallback para capturas sueltas.
+
+En widgets, `scene` es el archivo de fotos existente (una foto o secuencia JSON),
+`widget` es el nombre del registro y `settings`, opcional, contiene exactamente
+los ajustes productivos con su campo `kind`. `until`, opcional, es el número de
+fotos desde el principio que se alimentan antes de congelar la animación.
+Sin `settings`, se conserva el aspecto histórico de la captura individual:
+Eficiencia para Standings, Relative, Fuel, Delta y Pedals. Para comparar referencias
+Vantare, indicar `settings` con `kind` y `designSystem: "vantare"` explícitos.
+`size` fija el cliente de captura (por defecto 2304×1440); la PNG conserva el
+tamaño natural del widget. El alfa se recupera con las mismas dos pasadas
+negro/blanco, ahora con `PrintWindow` del HWND. El Hub también usa `PrintWindow`;
+GPUI no ofrece lectura de su textura en el binario normal de esta revisión.
+
+```json
+[
+  {"widget":"pedals","scene":"ui/fixtures/pedals.snapshot.json","output":"C:/tmp/capturas/pedals.png"},
+  {"widget":"standings","scene":"ui/fixtures/standings.snapshot.json","settings":{"kind":"standings","rowCount":7},"output":"C:/tmp/capturas/standings.png"}
+]
+```
+
+`--capture ESCENA --out PNG` del Hub, `--captura PNG` del Workshop y
+`--parity-capture PNG` de overlays siguen disponibles con la misma protección.
+Los comparadores `hub/reference/compare.ps1`, `capture-alpha.ps1`,
+`capture-native.ps1`, `ui/compare.ps1` y `ui/src/standings/capture-scenes.ps1`
+preparan manifiestos. Los scripts externos deben invocar el lote una vez,
+en lugar de un proceso por entrada. El mutex global y el turno `pantalla-ocupada` se comprueban dentro del proceso;
+no envolver la invocación con otro mutex del mismo nombre.
+El marcador es opcional; `VANTARE_CAPTURE_TURN_FILE` configura su ruta. Por
+compatibilidad, si falta la variable se consulta `C:/tmp/fase2/pantalla-ocupada`.
+Su contenido es el turno autorizado (`VANTARE_CAPTURE_TURN`). Un marcador ajeno
+activo impide abrir la ventana. **Caduca a los 15 minutos desde su última
+escritura** y la siguiente captura lo elimina bajo el mutex; así se recuperan
+los marcadores huérfanos tras un cierre brusco. Quien lo gestione debe adquirir
+`Global\VantareParityCapture` para escribirlo, renovarlo o borrarlo; renovar
+antes de 15 minutos si la reserva debe durar más. No se crea un marcador por
+captura: el mutex es quien serializa el trabajo real.
+`hub/src/testing/capture.ps1` solo permite copiar un HWND QA ya fuera de los
+monitores: rechaza teclas, clics y rueda; no lo activa ni lo recoloca.
+
+El banco **`ui-quality` con política IPC live sigue disponible**. Compilar el
+ejemplo con `parity-capture` y copiarlo como `vantare.exe` a una carpeta QA
+externa, con su `replies.json` de contrato. `VANTARE_CAPTURE_POLICY=ipc` conserva
+el lector real de derechos y sus cambios; el banco sin salida permanece vivo
+con una sola ventana creada oculta, fuera de los monitores y sin foco. Copiar
+ese HWND con `hub/src/testing/capture.ps1 -HubProcessId <PID> -ExpectedExecutable
+<QA/vantare.exe> -OutputPath <PNG> -Width <ancho> -Height <alto>`.
+`--control-stdin` permite cerrarlo ordenadamente por EOF, cancelando los lectores
+y servidores QA. No usa recibos ni caché. Las capturas con salida (`--capture
+... --out ...` y `--capture-batch`) exigen política congelada: quitar `ipc` o
+proporcionar un archivo de política. Su error indica usar el banco vivo cuando
+se necesitan cambios IPC. La regresión real de Windows compila el ejemplo y se
+ejecuta con:
+
+```powershell
+python native/hub/src/testing/test_live_capture.py --exe C:/targets/mi-issue/debug/examples/ui-quality.exe --out C:/tmp/qa-live-nueva
+```
+
+Usa una carpeta nueva, datos sintéticos y un solo proceso; comprueba dos
+revisiones IPC, dos PNG externas diferentes, cero ventanas en monitores/foco
+y el cierre por EOF. No abre servicios reales ni usa credenciales personales.
+
+El recibo `salida.png.capture.json` enlaza el contenido de la PNG con SHA-256 de
+sus entradas: escena/datos, ajustes, tamaño, apariencia, ejecutable, DLL y
+fixtures externos del Hub, más los controles QA heredados y el contenido de
+`VANTARE_TESTING_CAPTURE_PREVIEW` cuando se proporciona. Los archivos grandes
+se procesan en bloques de 1 MiB y se calcula SHA-256 de sus hashes concatenados.
+Recompilar después de editar código o recursos embebidos. Si entradas y PNG
+coinciden, no se abre ninguna ventana ni se reescribe el archivo; borrar/cambiar
+la PNG o su recibo provoca recaptura. No se omite un PNG dañado. El resumen del
+lote registra capturadas/omitidas, procesos de app, ventanas y tiempo.
+La escena QA heredada `calendario-beta-prueba` usa el reloj real: también entra
+en el hash, por lo que se vuelve a capturar cuando cambia. Las escenas con reloj
+de demo congelado conservan el incremental habitual.
+
+Mediciones completas, comparación de píxeles y límites de las referencias:
+[informe de #1655](../docs/analysis/1655-capturas.md).
+
 ## Compilar y probar
 
 ```powershell

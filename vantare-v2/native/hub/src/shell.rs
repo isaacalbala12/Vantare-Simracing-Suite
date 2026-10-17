@@ -40,6 +40,7 @@ pub(crate) use settings::releases::news_for_channel;
 mod shortcuts;
 mod sidebar;
 
+#[derive(Clone)]
 pub struct Options {
     pub controlled: bool,
     pub data_dir: PathBuf,
@@ -58,7 +59,7 @@ pub struct Options {
     pub capture_zoom: Option<u16>,
 }
 
-struct Hub {
+pub(crate) struct Hub {
     onboarding: Option<onboarding::State>,
     analytics: analytics::State,
     section: Section,
@@ -1070,7 +1071,14 @@ fn prepare_analysis(options: &Options) -> Result<Analysis, String> {
     let storage_exe = std::env::current_exe()
         .map_err(|error| format!("ruta del Hub: {error}"))?
         .with_file_name(format!("vantare-storage{}", std::env::consts::EXE_SUFFIX));
-    Ok(Analysis::new(recordings, storage_exe))
+    let analysis = Analysis::new(recordings, storage_exe);
+    #[cfg(feature = "parity-capture")]
+    let analysis = {
+        let mut analysis = analysis;
+        analysis.capture_scene(options.capture.as_ref().map(|c| c.name.as_str()));
+        analysis
+    };
+    Ok(analysis)
 }
 
 /// Sale al cerrar la última ventana o, en desarrollo, al cerrarse stdin.
@@ -1119,7 +1127,7 @@ fn create_engineer(engineer: Engineer, cx: &mut App) -> Entity<Engineer> {
 }
 
 /// Entradas ya cargadas y validadas antes de abrir la ventana.
-struct Loaded {
+pub(crate) struct Loaded {
     layout_preexisted: bool,
     preview_fixtures: Option<[vantare_domain::Snapshot; 5]>,
     appearance: settings::appearance::Store,
@@ -1140,8 +1148,60 @@ struct Loaded {
 }
 
 impl Hub {
+    #[cfg(feature = "parity-capture")]
+    pub(crate) fn capture_can_reuse_calendar(&self, loaded: &Loaded) -> bool {
+        self.section == Section::Calendar
+            && loaded
+                .capture
+                .as_ref()
+                .is_some_and(|capture| capture.section == Section::Calendar)
+            && self.settings.appearance.settings == loaded.appearance.settings
+            && self.settings.appearance.zoom_percent == loaded.appearance.zoom_percent
+            && serde_json::to_vec(&self.demo).ok() == serde_json::to_vec(&loaded.demo).ok()
+    }
+
+    /// Calendar scenes share all other sections. Reload the calendar's complete
+    /// fixture state, keeping the already-built Hub and its unrelated controls.
+    /// Other sections, different demo data or appearance use a fresh Hub.
+    #[cfg(feature = "parity-capture")]
+    pub(crate) fn capture_apply_calendar(
+        &mut self,
+        loaded: Loaded,
+        access: navigation::Access,
+        cx: &mut Context<Self>,
+    ) {
+        if let Some(scene) = &loaded.capture {
+            cx.set_global(crate::capture::CurrentScene(scene.clone()));
+        }
+        self.capture = loaded.capture;
+        self.demo = loaded.demo;
+        self.shell = chrome::State::new(access, self.capture.as_ref(), cx);
+        self.calendar = cx.new(|_| loaded.calendar);
+        let remote = self.remote.clone();
+        self.calendar
+            .update(cx, |calendar, _| calendar.attach_remote(remote));
+        // Existing host observers supply the default profile/context to the
+        // replacement calendar before the next frame, as on initial startup.
+        self.launcher.update(cx, |_, cx| cx.notify());
+        cx.notify();
+    }
+
+    #[cfg(feature = "parity-capture")]
+    pub(crate) fn capture_build(
+        loaded: Loaded,
+        section: Section,
+        access: navigation::Access,
+        failure: std::rc::Rc<std::cell::RefCell<Option<String>>>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Self {
+        let mut hub = Self::build(loaded, section, access, failure, window, cx);
+        hub.settings_zoom_restore(window);
+        hub
+    }
+
     #[allow(clippy::too_many_lines)] // Conecta las entidades ya existentes y sus observadores.
-    fn build(
+    pub(crate) fn build(
         loaded: Loaded,
         section: Section,
         access: navigation::Access,
@@ -1173,6 +1233,10 @@ impl Hub {
             demo,
             capture,
         } = loaded;
+        #[cfg(feature = "parity-capture")]
+        if let Some(scene) = &capture {
+            cx.set_global(crate::capture::CurrentScene(scene.clone()));
+        }
         orbit::theme::install(appearance.settings, window, cx);
         start_source_poll(cx);
         let focus = cx.focus_handle();
@@ -1403,14 +1467,7 @@ fn wire_strategy(strategy: &Entity<Strategy>, cx: &mut Context<Hub>) {
     .detach();
 }
 
-pub fn run(options: Options) -> Result<(), String> {
-    run_with_access(options, navigation::Access::default())
-}
-
-/// La integración de cuenta entrega derechos ya resueltos. Esta shell no
-/// autentica el plan; sin integración deja el acceso monetizado sin verificar.
-#[allow(clippy::too_many_lines)] // Carga validada y apertura de una única ventana.
-pub fn run_with_access(mut options: Options, access: navigation::Access) -> Result<(), String> {
+pub(crate) fn load(options: &mut Options) -> Result<Loaded, String> {
     if let (Some(demo), Some(capture)) = (&mut options.demo, &options.capture) {
         demo.apply_capture(capture)?;
     }
@@ -1443,7 +1500,7 @@ pub fn run_with_access(mut options: Options, access: navigation::Access) -> Resu
             }
         }
     };
-    let loaded = Loaded {
+    Ok(Loaded {
         layout_preexisted: options.layout.exists(),
         preview_fixtures: options
             .capture
@@ -1452,16 +1509,28 @@ pub fn run_with_access(mut options: Options, access: navigation::Access) -> Resu
             .transpose()?,
         appearance,
         appearance_error,
-        analysis: prepare_analysis(&options)?,
-        prepared: Prepared::load(&options.data_dir, options.scene)?,
-        studio: PreparedStudio::load(options.layout)?,
+        analysis: prepare_analysis(options)?,
+        prepared: Prepared::load(&options.data_dir, options.scene.clone())?,
+        studio: {
+            #[cfg(feature = "parity-capture")]
+            {
+                PreparedStudio::load_capture(
+                    options.layout.clone(),
+                    options.capture.as_ref().map(|s| s.name.as_str()),
+                )?
+            }
+            #[cfg(not(feature = "parity-capture"))]
+            {
+                PreparedStudio::load(options.layout.clone())?
+            }
+        },
         calendar: match options.demo.as_ref() {
             Some(demo) => Calendar::load_demo(&options.data_dir, demo)?,
             None => Calendar::load(&options.data_dir)?,
         },
         notifications,
         launcher,
-        engineer: Engineer::load(options.engineer),
+        engineer: Engineer::load(options.engineer.clone()),
         strategy_dir: options.data_dir.clone(),
         testing_dir: options.data_dir.clone(),
         service_pipe: options
@@ -1469,10 +1538,37 @@ pub fn run_with_access(mut options: Options, access: navigation::Access) -> Resu
             .clone()
             .map_or_else(vantare_ipc::default_pipe_name, Ok)
             .map_err(|_| "IPC no disponible")?,
-        subscriber: subscribe(options.pipe)?,
+        subscriber: subscribe(options.pipe.clone())?,
         demo: options.demo.clone(),
         capture: options.capture.clone(),
-    };
+    })
+}
+
+pub fn run(options: Options) -> Result<(), String> {
+    run_with_access(options, navigation::Access::default())
+}
+
+/// La integración de cuenta entrega derechos ya resueltos. Esta shell no
+/// autentica el plan; sin integración deja el acceso monetizado sin verificar.
+#[allow(clippy::too_many_lines)] // Carga validada y apertura de una única ventana.
+pub fn run_with_access(mut options: Options, access: navigation::Access) -> Result<(), String> {
+    #[cfg(feature = "parity-capture")]
+    if options.capture.is_some() && options.capture_output.is_some() {
+        return crate::capture::run_many(vec![options]);
+    }
+    #[cfg(not(feature = "parity-capture"))]
+    if options.capture.is_some() {
+        return Err("captura requiere parity-capture".into());
+    }
+    // The QA bank has no output: it stays alive for IPC and external PrintWindow.
+    // Hold the same process-wide capture reservation until its window closes.
+    #[cfg(feature = "parity-capture")]
+    let _capture_lock = options
+        .capture
+        .as_ref()
+        .map(|_| vantare_ui::capture_window::lock())
+        .transpose()?;
+    let loaded = load(&mut options)?;
     let stop = watch_stdin(options.controlled)?;
     let failure = std::rc::Rc::new(std::cell::RefCell::new(None));
     let result = failure.clone();
@@ -1524,9 +1620,23 @@ pub fn run_with_access(mut options: Options, access: navigation::Access) -> Resu
                 }),
                 ..Default::default()
             };
+            #[cfg(feature = "parity-capture")]
+            let window_options = if options.capture.is_some() {
+                let (width, height) = crate::capture::dimensions(&options);
+                match vantare_ui::capture_window::options(width, height) {
+                    Ok(options) => options,
+                    Err(error) => {
+                        *failure.borrow_mut() = Some(error);
+                        cx.quit();
+                        return;
+                    }
+                }
+            } else {
+                window_options
+            };
             let failure_on_quit = failure.clone();
             let initial_section = options.section;
-            if let Err(error) = cx.open_window(window_options, |window, cx| {
+            let window = cx.open_window(window_options, |window, cx| {
                 let hub = cx.new(|cx: &mut Context<Hub>| {
                     let mut hub =
                         Hub::build(loaded, initial_section, access, failure_on_quit, window, cx);
@@ -1541,10 +1651,36 @@ pub fn run_with_access(mut options: Options, access: navigation::Access) -> Resu
                     closing.update(cx, Hub::can_close).unwrap_or(true)
                 });
                 hub
-            }) {
-                *failure.borrow_mut() = Some(format!("abrir Hub: {error}"));
-                cx.quit();
-                return;
+            });
+            match window {
+                Ok(window) => {
+                    #[cfg(not(feature = "parity-capture"))]
+                    let _ = window;
+                    #[cfg(feature = "parity-capture")]
+                    if options.capture.is_some() {
+                        let (width, height) = crate::capture::dimensions(&options);
+                        // bounds_changed can update Hub's focus handlers;
+                        // borrow only the window, never its root entity here.
+                        if let Err(error) = gpui::AnyWindowHandle::from(window)
+                            .update(cx, |_, window, cx| {
+                                vantare_ui::capture_window::created(window)?;
+                                vantare_ui::capture_window::show(window, width, height, cx)?;
+                                Ok::<_, String>(())
+                            })
+                            .map_err(|error| error.to_string())
+                            .and_then(|result| result)
+                        {
+                            *failure.borrow_mut() = Some(error);
+                            cx.quit();
+                            return;
+                        }
+                    }
+                }
+                Err(error) => {
+                    *failure.borrow_mut() = Some(format!("abrir Hub: {error}"));
+                    cx.quit();
+                    return;
+                }
             }
             if options.capture.is_none()
                 && let Some(root) = std::env::var_os("VANTARE_BETA_ROOT")
@@ -1555,7 +1691,7 @@ pub fn run_with_access(mut options: Options, access: navigation::Access) -> Resu
                 return;
             }
             quit_when_done(cx, options.controlled, stop);
-            if !minimized {
+            if !minimized && options.capture.is_none() {
                 cx.activate(true);
             }
         });

@@ -3,6 +3,14 @@ use super::{Access, Command, Context, Remote, access, orbit, text};
 use crate::Section;
 use gpui::{div, linear_color_stop, linear_gradient, prelude::*, px, rgb, rgba};
 
+// File captures use the frozen profile. The no-output IPC bank keeps its real
+// account unless --demo was explicitly requested.
+#[cfg(any(feature = "parity-capture", test))]
+fn account_demo_requested(args: &[String]) -> bool {
+    let has = |flag| args.iter().any(|arg| arg == flag);
+    has("--capture-batch") || (has("--capture") && (has("--out") || has("--demo")))
+}
+
 // Solo presentación del banco: no modifica credenciales, permisos ni IPC.
 pub(super) fn account_demo() -> Option<&'static crate::demo::DemoData> {
     #[cfg(feature = "parity-capture")]
@@ -11,7 +19,7 @@ pub(super) fn account_demo() -> Option<&'static crate::demo::DemoData> {
             std::sync::OnceLock::new();
         DEMO.get_or_init(|| {
             let args: Vec<_> = std::env::args().collect();
-            if args.iter().any(|arg| arg == "--capture") && args.iter().any(|arg| arg == "--demo") {
+            if account_demo_requested(&args) {
                 crate::demo::DemoData::load().ok()
             } else {
                 None
@@ -633,6 +641,24 @@ mod tests {
     use super::super::purchase_tests::fixture;
     use super::*;
     use std::sync::mpsc;
+
+    #[test]
+    fn account_capture_preserves_live_ipc_without_output_or_demo() {
+        let requested = |args: &[&str]| {
+            account_demo_requested(&args.iter().map(|arg| (*arg).to_owned()).collect::<Vec<_>>())
+        };
+        assert!(!requested(&["--qa-root", "qa", "--capture", "cuenta-base"]));
+        assert!(requested(&["--capture", "cuenta-base", "--demo"]));
+        assert!(requested(&[
+            "--capture",
+            "cuenta-base",
+            "--out",
+            "account.png"
+        ]));
+        assert!(requested(&["--capture-batch", "manifest.json"]));
+        assert!(!requested(&["--demo"]));
+        assert!(!requested(&[]));
+    }
 
     #[test]
     fn founders_account_label_is_preserved_and_removed_when_logging_out() {

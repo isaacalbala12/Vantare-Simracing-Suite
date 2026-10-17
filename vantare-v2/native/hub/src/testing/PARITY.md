@@ -56,8 +56,10 @@ privacidad, archivos y diagnóstico se conservan.
 
 Evidencia, logs y capturas exclusivamente en `C:/tmp/vw3-sec-testing-evidence/`.
 La referencia es `wails-demo/testing-center-*.png`, copiada sin transformar.
-`capture.ps1` espera el marcador de pantalla ocupada y toma
-`Global\VantareParityCapture`, también para clicks y teclado. Por defecto 1440×900.
+Desde #1655, `capture.ps1` solo copia el HWND QA ya creado fuera de todos los
+monitores, sin foco, teclado, clics ni rueda. Rechaza una ventana visible en
+un monitor. Para varias vistas se usa `--capture-batch`; el proceso controla
+el mutex y el turno de captura. Por defecto 1440×900.
 
 No se afirma envío remoto, cuenta configurada, backend desplegado, CI,
 aceptación de paridad completa, IME físico, DPI mixto ni runtime con juego.

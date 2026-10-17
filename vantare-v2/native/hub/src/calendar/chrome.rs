@@ -297,11 +297,8 @@ pub(super) fn btn_pri(
         .gap(px(8.0))
         .px(px(if large { 18.0 } else { 14.0 }))
         .rounded(px(8.0))
-        .bg(gpui::linear_gradient(
-            180.0,
-            gpui::linear_color_stop(rgb(0xC5_2F3B), 0.0),
-            gpui::linear_color_stop(rgb(0xB9_2A35), 1.0),
-        ))
+        // `linear-gradient(var(--btn1), var(--btn2))`: claro y oscuro llevan el suyo.
+        .bg(orbit::ramp(skin.button, 180.0))
         .shadow(vec![orbit::kit_shadow(0xffff_ff30, 1.0, 0.0, 0.0, true)])
         .cursor_pointer()
         .hover(move |s| s.bg(orbit::ramp(hover, 180.0)))
@@ -339,11 +336,8 @@ pub(super) fn btn_text_pri(
         .justify_center()
         .px(px(14.0))
         .rounded(px(8.0))
-        .bg(gpui::linear_gradient(
-            180.0,
-            gpui::linear_color_stop(rgb(0xC5_2F3B), 0.0),
-            gpui::linear_color_stop(rgb(0xB9_2A35), 1.0),
-        ))
+        // `linear-gradient(var(--btn1), var(--btn2))`: claro y oscuro llevan el suyo.
+        .bg(orbit::ramp(skin.button, 180.0))
         .shadow(vec![orbit::kit_shadow(0xffff_ff30, 1.0, 0.0, 0.0, true)])
         .cursor_pointer()
         .hover(move |s| s.bg(orbit::ramp(hover, 180.0)))
@@ -434,6 +428,21 @@ pub(super) fn windows_toast(title: &str, body: &str, lead_min: u8, cx: &gpui::Ap
         )
 }
 
+/// Tamaño y estado de un botón de icono. Un tipo y no dos `bool` seguidos: así
+/// «activo» no se cuela en la casilla de «pequeño» (pasó con pantalla completa).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) struct IbState {
+    pub small: bool,
+    pub on: bool,
+}
+
+impl IbState {
+    /// Lado en píxeles: 32, o 28 en `small`.
+    pub(super) fn side(self) -> f32 {
+        if self.small { 28.0 } else { 32.0 }
+    }
+}
+
 /// Botón de icono de 32 px (28 px `small`).
 pub(super) fn ib(
     id: impl Into<gpui::ElementId>,
@@ -443,9 +452,20 @@ pub(super) fn ib(
     on: bool,
     cx: &gpui::App,
 ) -> Stateful<Div> {
+    ib_with(id, name, tip, IbState { small, on }, cx)
+}
+
+pub(super) fn ib_with(
+    id: impl Into<gpui::ElementId>,
+    name: &'static str,
+    tip: &'static str,
+    state: IbState,
+    cx: &gpui::App,
+) -> Stateful<Div> {
     let skin = skin(cx);
     let hover = skin.hover;
-    let size = if small { 28.0 } else { 32.0 };
+    let IbState { on, .. } = state;
+    let size = state.side();
     div()
         .id(id)
         .role(gpui::Role::Button)

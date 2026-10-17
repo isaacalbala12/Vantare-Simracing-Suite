@@ -1,6 +1,7 @@
 //! Mes: cuadrícula de semanas LMU (martes a lunes) con su estado y su densidad.
 use super::super::{
     Calendar, Health, Schedule,
+    alerts::Alerts,
     chrome::{self, Tone, acc, acc_bg, acct, bold_mono, cap, disp, ib, icon, pill, skin, t},
     clock, rows,
 };
@@ -253,11 +254,26 @@ fn render_with(cal: &mut Calendar, cache: &mut MonthCache, cx: &mut Context<Cale
         row = row.flex_basis(relative(0.0));
         row.style().flex_grow = Some(if row_index < 2 { 1.0 } else { 0.6 });
         let past_week = *week < current_start.date_naive();
+        let key = (cal.revision, now.timestamp().div_euclid(60));
+        let week_facts: Vec<Option<DayFacts>> = (0..7)
+            .map(|offset| {
+                let day = *week + Duration::days(offset);
+                schedule.map(|s| {
+                    let alerts = (state == State::Now).then_some(&cal.alerts);
+                    cache
+                        .facts(key, day, || day_facts(s, (zone, day), (now, alerts)))
+                        .clone()
+                })
+            })
+            .collect();
+        // Carriles de la fila entera; cada día reserva hasta el más bajo que lo cruza.
+        let bars = lanes(&week_facts);
+        let reserve = reserved(&bars, week_facts.len());
         for offset in 0..7 {
             let day = *week + Duration::days(offset);
             let is_today = day == today;
             let outside = day.month() != first_of_month.month();
-            let (a, b) = (zone.day_start(day), zone.day_start(day + Duration::days(1)));
+            let b = zone.day_start(day + Duration::days(1));
             let mut cell = div()
                 .flex_1()
                 .min_w_0()
@@ -273,14 +289,7 @@ fn render_with(cal: &mut Calendar, cache: &mut MonthCache, cx: &mut Context<Cale
                 })
                 .when(schedule.is_none(), |c| c.bg(chrome::stripe(cx)));
             let ran = cal.runs.iter().filter(|r| zone.date(r.at) == day).count();
-            let key = (cal.revision, now.timestamp().div_euclid(60));
-            let facts = schedule.map(|s| {
-                cache
-                    .facts(key, day, || {
-                        day_facts(cal, s, (a, b), now, state == State::Now)
-                    })
-                    .clone()
-            });
+            let facts = &week_facts[offset as usize];
             let alerts = facts.as_ref().map_or(0, |f| f.alerts);
             let mut head = div().flex().items_center().gap(px(4.0)).px(px(8.0));
             head = head.child(
@@ -316,10 +325,14 @@ fn render_with(cal: &mut Calendar, cache: &mut MonthCache, cx: &mut Context<Cale
                 ));
             }
             cell = cell.child(head);
-            if let Some(facts) = &facts {
-                // Reserva la línea de los eventos, que se dibuja encima de toda la fila.
-                let events = facts.event_series.len();
-                cell = cell.child(div().h(px(23.0 * events as f32)).flex_none());
+            if let Some(facts) = facts {
+                // Reserva los carriles de eventos que cruzan este día: se dibujan
+                // encima de toda la fila y no pueden pisar la densidad.
+                cell = cell.child(
+                    div()
+                        .h(px(23.0 * reserve[offset as usize] as f32))
+                        .flex_none(),
+                );
                 cell = cell.child(density(facts, b <= now, cx));
                 if !compact {
                     cell = cell.child(div().px(px(8.0)).when(b <= now, |d| d.opacity(0.55)).child(
@@ -330,15 +343,7 @@ fn render_with(cal: &mut Calendar, cache: &mut MonthCache, cx: &mut Context<Cale
             row = row.child(cell);
         }
         if let Some(schedule) = schedule {
-            let week_facts: Vec<&[usize]> = (0..7)
-                .map(|offset| {
-                    cache
-                        .days
-                        .get(&(*week + Duration::days(offset)))
-                        .map_or(&[][..], |f| f.event_series.as_slice())
-                })
-                .collect();
-            row = row.child(event_bars(schedule, &week_facts, week_w, past_week, cx));
+            row = row.child(event_bars(schedule, &bars, week_w, past_week, cx));
         }
         grid = grid.child(row);
     }
@@ -420,7 +425,7 @@ fn legend_bar(label: &str, special: bool, cx: &gpui::App) -> Div {
         .flex()
         .items_center()
         .rounded(px(5.0))
-        .when(special, |d| d.bg(rgb(0xC5_2F3B)))
+        .when(special, |d| d.bg(orbit::ramp(skin(cx).button, 180.0)))
         .when(!special, |d| {
             d.bg(acc_bg(cx))
                 .border_1()
@@ -460,10 +465,83 @@ fn day_pill(
         .child(bold_mono(count.to_string(), 10.5, color, cx))
 }
 
+/// Un tramo continuo de una serie de evento dentro de la fila (días 0..=6).
+struct Bar {
+    series: usize,
+    from: usize,
+    to: usize,
+    lane: usize,
+}
+
+/// Carriles: cada tramo ocupa el primer carril libre en sus días.
+fn lanes(week: &[Option<DayFacts>]) -> Vec<Bar> {
+    let mut indexes: Vec<usize> = week
+        .iter()
+        .flatten()
+        .flat_map(|f| f.event_series.iter().copied())
+        .collect();
+    indexes.sort_unstable();
+    indexes.dedup();
+    let mut lane_ends: Vec<usize> = vec![];
+    let mut bars = vec![];
+    for series in indexes {
+        // Días de la semana con tandas de esta serie.
+        let present: Vec<bool> = week
+            .iter()
+            .map(|day| {
+                day.as_ref()
+                    .is_some_and(|f| f.event_series.contains(&series))
+            })
+            .collect();
+        let mut offset = 0;
+        while offset < present.len() {
+            if !present[offset] {
+                offset += 1;
+                continue;
+            }
+            let from = offset;
+            while offset < present.len() && present[offset] {
+                offset += 1;
+            }
+            let lane = lane_ends
+                .iter()
+                .position(|end| *end <= from)
+                .unwrap_or_else(|| {
+                    lane_ends.push(0);
+                    lane_ends.len() - 1
+                });
+            lane_ends[lane] = offset;
+            bars.push(Bar {
+                series,
+                from,
+                to: offset - 1,
+                lane,
+            });
+        }
+    }
+    bars
+}
+
+/// Carriles que reserva cada día de una fila de `days` columnas: hasta el más
+/// bajo de las barras que lo cruzan.
+fn reserved(bars: &[Bar], days: usize) -> Vec<usize> {
+    let mut reserve = vec![0; days];
+    for bar in bars {
+        for slot in reserve
+            .iter_mut()
+            .skip(bar.from)
+            .take(bar.to + 1 - bar.from)
+        {
+            *slot = (*slot).max(bar.lane + 1);
+        }
+    }
+    reserve
+}
+
 /// Barras continuas de los eventos de la semana, encima de las siete celdas.
 fn event_bars(
     schedule: &Schedule,
-    week_facts: &[&[usize]],
+    bars: &[Bar],
     week_w: f32,
     past_week: bool,
     cx: &gpui::App,
@@ -474,39 +552,16 @@ fn event_bars(
         .left(px(week_w))
         .right_0()
         .h(px(60.0));
-    // Carriles: cada tramo ocupa el primer carril libre en sus días.
-    let mut lane_ends: Vec<usize> = vec![];
-    for (index, series) in schedule
-        .series
-        .iter()
-        .enumerate()
-        .filter(|(_, s)| !rows::is_daily(s))
+    for &Bar {
+        series,
+        from,
+        to,
+        lane,
+    } in bars
     {
-        // Días de la semana con tandas de esta serie.
-        let mut present = [false; 7];
-        for (slot, day) in present.iter_mut().zip(week_facts) {
-            *slot = day.contains(&index);
-        }
+        let series = &schedule.series[series];
         let special = series.kind() == crate::calendar::model::Kind::Special;
-        let mut offset = 0;
-        while offset < 7 {
-            if !present[offset] {
-                offset += 1;
-                continue;
-            }
-            let from = offset;
-            while offset < 7 && present[offset] {
-                offset += 1;
-            }
-            let to = offset - 1;
-            let lane = lane_ends
-                .iter()
-                .position(|end| *end <= from)
-                .unwrap_or_else(|| {
-                    lane_ends.push(0);
-                    lane_ends.len() - 1
-                });
-            lane_ends[lane] = to + 1;
+        {
             let name = if special {
                 series.name.clone()
             } else {
@@ -526,7 +581,7 @@ fn event_bars(
                     .items_center()
                     .rounded(px(5.0))
                     .when(past_week, |d| d.opacity(0.55))
-                    .when(special, |d| d.bg(rgb(0xC5_2F3B)))
+                    .when(special, |d| d.bg(orbit::ramp(skin(cx).button, 180.0)))
                     .when(!special, |d| {
                         d.bg(acc_bg(cx))
                             .border_1()
@@ -579,19 +634,28 @@ fn density(facts: &DayFacts, past_day: bool, cx: &gpui::App) -> Div {
         }))
 }
 
-/// Expande las recurrencias del día una sola vez: `(a, b)` son sus dos medianoches.
+/// Expande las recurrencias del día una sola vez, en la zona mostrada.
 fn day_facts(
-    cal: &Calendar,
     schedule: &Schedule,
-    (a, b): (DateTime<Utc>, DateTime<Utc>),
-    now: DateTime<Utc>,
-    with_alerts: bool,
+    (zone, day): (clock::Zone, NaiveDate),
+    (now, alerts): (DateTime<Utc>, Option<&Alerts>),
 ) -> DayFacts {
+    let (a, b) = (zone.day_start(day), zone.day_start(day + Duration::days(1)));
     let mut facts = DayFacts::default();
     for (index, series) in schedule.series.iter().enumerate() {
         let starts = schedule.starts(series, a, b).unwrap_or_default();
         let event = !rows::is_daily(series);
-        if event && !starts.is_empty() {
+        // La barra de un evento usa el día de carrera de cada tanda (`race_day`,
+        // la regla de Eventos y Serie): una de madrugada cuenta a la noche anterior.
+        // La ventana llega 4 h más allá de la medianoche para cubrir su cola incluso
+        // en el día de 23 h; el filtro por `race_day` decide a quién pertenece.
+        if event
+            && schedule
+                .starts(series, a, b + Duration::hours(4))
+                .unwrap_or_default()
+                .into_iter()
+                .any(|at| zone.race_day(at) == day)
+        {
             facts.event_series.push(index);
         }
         for start in &starts {
@@ -601,11 +665,11 @@ fn day_facts(
             facts.total += 1;
         }
         // Avisos de lo que queda del día; solo la semana en curso los lleva.
-        if with_alerts {
+        if let Some(alerts) = alerts {
             facts.alerts += starts
                 .iter()
                 .filter(|at| **at >= now)
-                .filter(|at| cal.alerts.cause(schedule, series, **at).is_some())
+                .filter(|at| alerts.cause(schedule, series, **at).is_some())
                 .count();
         }
     }
@@ -638,6 +702,103 @@ fn month_short(month: u32) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::calendar::model::timestamp;
+
+    #[test]
+    fn every_day_reserves_the_lanes_that_cross_it() {
+        // Serie 0 solo el día 3 (carril 0); serie 1 solo el día 0, pero el carril 0
+        // ya está ocupado hasta el 3: va al carril 1. El día 0 tiene un único evento
+        // y aun así debe reservar dos carriles, o su barra pisaría la densidad.
+        let day = |series: &[usize]| {
+            Some(DayFacts {
+                event_series: series.to_vec(),
+                ..DayFacts::default()
+            })
+        };
+        let week = [day(&[1]), None, None, day(&[0]), None, None, None];
+        let bars = lanes(&week);
+        let lane_of = |s: usize| bars.iter().find(|b| b.series == s).map(|b| b.lane);
+        assert_eq!((lane_of(0), lane_of(1)), (Some(0), Some(1)));
+        assert_eq!(reserved(&bars, 7), [2, 0, 0, 1, 0, 0, 0]);
+        // No supone siete columnas: con menos, o con más, no se sale de la fila.
+        assert_eq!(reserved(&bars, 3), [2, 0, 0]);
+        assert_eq!(reserved(&bars, 9), [2, 0, 0, 1, 0, 0, 0, 0, 0]);
+    }
+
+    #[test]
+    fn a_small_hours_session_extends_the_event_bar_only_to_the_night_before() {
+        let schedule = Schedule::parse(include_bytes!(
+            "../../../reference/fixtures/calendar-lmu-2026-10-06.json"
+        ))
+        .expect("horario");
+        let wec = schedule
+            .series
+            .iter()
+            .position(|s| s.id == "weekly-wec-weekly")
+            .expect("serie");
+        let zone = clock::Zone::Eu(3600);
+        let now = timestamp("2026-10-08T17:47:13Z").expect("fecha");
+        let facts = |day: u32| {
+            let day = NaiveDate::from_ymd_opt(2026, 10, day).expect("fecha");
+            day_facts(&schedule, (zone, day), (now, None))
+        };
+        // La última tanda de WEC Weekly sale a las 01:00 del viernes 9: su barra
+        // acaba el jueves 8, como en el diseño, y no «invade» el viernes.
+        assert!(facts(8).event_series.contains(&wec));
+        assert!(!facts(9).event_series.contains(&wec));
+        // La densidad por hora sigue siendo la del día civil.
+        assert!(facts(9).total > 0);
+    }
+
+    /// Horario de una sola serie semanal que sale un domingo a `time` UTC.
+    fn sunday_event(from: &str, until: &str, time: &str) -> Schedule {
+        let mut doc: serde_json::Value = serde_json::from_slice(include_bytes!(
+            "../../../reference/fixtures/calendar-lmu-2026-10-06.json"
+        ))
+        .expect("json");
+        let mut series = doc["series"]
+            .as_array()
+            .and_then(|all| all.iter().find(|s| s["id"] == "weekly-wec-weekly"))
+            .expect("serie")
+            .clone();
+        series["recurrence"]["days"] = serde_json::json!(["Sun"]);
+        series["recurrence"]["timesUTC"] = serde_json::json!([time]);
+        doc["series"] = serde_json::json!([series]);
+        doc["validFrom"] = serde_json::json!(from);
+        doc["validUntil"] = serde_json::json!(until);
+        Schedule::parse(doc.to_string().as_bytes()).expect("horario")
+    }
+
+    #[test]
+    fn the_event_bar_follows_race_day_on_the_25_hour_and_23_hour_days() {
+        let zone = clock::Zone::Eu(3600);
+        let now = timestamp("2026-10-20T12:00:00Z").expect("fecha");
+        let has = |schedule: &Schedule, (y, m, d): (i32, u32, u32)| {
+            let day = NaiveDate::from_ymd_opt(y, m, d).expect("fecha");
+            !day_facts(schedule, (zone, day), (now, None))
+                .event_series
+                .is_empty()
+        };
+        // Domingo 25-oct-2026 (25 h): 01:30Z son las 02:30 CET, antes de las 3:00,
+        // así que la tanda es la cola del sábado 24. «+3 h» sobre la medianoche la
+        // habría dejado en el domingo (su ventana empieza a las 02:00 locales).
+        let autumn = sunday_event("2026-10-20T00:00:00Z", "2026-10-27T00:00:00Z", "01:30");
+        assert_eq!(
+            zone.hm(timestamp("2026-10-25T01:30:00Z").expect("fecha")),
+            "02:30"
+        );
+        assert!(has(&autumn, (2026, 10, 24)));
+        assert!(!has(&autumn, (2026, 10, 25)));
+        // Domingo 29-mar-2026 (23 h): 01:30Z son las 03:30 CEST, ya del domingo.
+        // La ventana «+3 h» (que empezaba a las 04:00 locales) la mandaba al sábado.
+        let spring = sunday_event("2026-03-24T00:00:00Z", "2026-03-31T00:00:00Z", "01:30");
+        assert_eq!(
+            zone.hm(timestamp("2026-03-29T01:30:00Z").expect("fecha")),
+            "03:30"
+        );
+        assert!(has(&spring, (2026, 3, 29)));
+        assert!(!has(&spring, (2026, 3, 28)));
+    }
 
     #[test]
     fn day_facts_are_expanded_once_per_revision_and_minute() {

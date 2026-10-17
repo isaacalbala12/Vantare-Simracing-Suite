@@ -295,7 +295,8 @@ fn hero(cal: &Calendar, compact: bool, cx: &mut Context<Calendar>) -> Div {
         .flex_row()
         .items_center()
         .gap(px(if compact { 20.0 } else { 26.0 }))
-        .px(px(22.0))
+        // `.hero.compact{padding:12px 18px}`; normal 18px 22px.
+        .px(px(if compact { 18.0 } else { 22.0 }))
         .py(px(if compact { 12.0 } else { 18.0 }))
         .when(!compact, |hero_box| {
             hero_box.child(
@@ -366,19 +367,17 @@ fn hero(cal: &Calendar, compact: bool, cx: &mut Context<Calendar>) -> Div {
                                 .gap(px(10.0))
                                 .children(series.class_chips().iter().map(|c| class_chip(c, cx))),
                         )
-                        .when(!compact, |row| {
-                            row.child(div().w(px(1.0)).h(px(12.0)).bg(orbit::alpha(skin.line3)))
-                                .child(
-                                    t(
-                                        format!("Carrera {}", duration_txt(series.race_minutes())),
-                                        13.0,
-                                        400,
-                                        skin.text2,
-                                        cx,
-                                    )
-                                    .whitespace_nowrap(),
-                                )
-                        }),
+                        .child(div().w(px(1.0)).h(px(12.0)).bg(orbit::alpha(skin.line3)))
+                        .child(
+                            t(
+                                format!("Carrera {}", duration_txt(series.race_minutes())),
+                                13.0,
+                                400,
+                                skin.text2,
+                                cx,
+                            )
+                            .whitespace_nowrap(),
+                        ),
                 )
                 .when(!compact, |info| {
                     info.child(
@@ -443,26 +442,34 @@ fn hero(cal: &Calendar, compact: bool, cx: &mut Context<Calendar>) -> Div {
                         .flex()
                         .gap(px(8.0))
                         .child(
-                            btn("calendar-hero-ficha", "Ficha", false, cx)
+                            // El icono va antes del rótulo, como en el diseño.
+                            btn("calendar-hero-ficha", "", false, cx)
+                                .aria_label("Ficha")
                                 .flex_1()
                                 .child(icon("info", 15.0, skin.text1))
+                                .child(t("Ficha", 13.0, 500, skin.text1, cx))
                                 .on_click(cx.listener(move |this, _, _, cx| {
                                     this.open_ficha(ficha_id.clone(), Some(at), cx);
                                 })),
                         )
                         .child(
-                            btn(
-                                "calendar-hero-schedule",
-                                &format!("Lanzar a las {}", zone.hm(at - Duration::minutes(3))),
-                                false,
-                                cx,
-                            )
-                            .flex_1()
-                            .on_click(cx.listener(
-                                move |this, _, _, cx| {
+                            btn("calendar-hero-schedule", "", false, cx)
+                                .aria_label(format!(
+                                    "Lanzar a las {}",
+                                    zone.hm(at - Duration::minutes(3))
+                                ))
+                                .flex_1()
+                                .child(icon("clock", 15.0, skin.text1))
+                                .child(t(
+                                    format!("Lanzar a las {}", zone.hm(at - Duration::minutes(3))),
+                                    13.0,
+                                    500,
+                                    skin.text1,
+                                    cx,
+                                ))
+                                .on_click(cx.listener(move |this, _, _, cx| {
                                     this.schedule_launch(at - Duration::minutes(3), cx);
-                                },
-                            )),
+                                })),
                         ),
                 ),
         )

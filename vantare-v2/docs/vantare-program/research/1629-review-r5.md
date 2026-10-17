@@ -639,17 +639,22 @@ P3 — Cuatro valores de neumático sin identificar la rueda
 
 relative/mod.rs
 
-
+`animating()` cambia de `v.wake(m, Instant::now()) != Wake::Idle` a `== Wake::Frame`. Se descarta el estado `Wake::At(50 ms)` (el pulso de tráfico). La función está bajo `#[cfg(feature = "parity-capture")]`, así que **no afecta a producción**; pero en las capturas de paridad el widget pasa a declararse "no animando" mientras hay pulso de tráfico programado, con lo que se pueden perder fotogramas de pulso en la evidencia. Confirmar que es lo que se quiere en el arnés.
 
 ### B3-02 — PENDIENTE / anotado para ronda 2; sin cambio en esta tanda.
 
 relative/mod.rs
 
-
+`workshop_defaults` fija `class_scope = "all"` para el Look Vantare, pero `normalized()` sigue forzando `"sameClass"` cuando `content_version == 0` (`relative/mod.rs:~330`). Los widgets ya guardados conservan `sameClass`; los nuevos reciben `all`. Es coherente con "no migrar guardados", pero el resultado es que dos instancias "idénticas" se comportan distinto según cuándo se crearon. A confirmar como intención.
 
 ### B3-03 — PENDIENTE / anotado para ronda 2; sin cambio en esta tanda.
 
 relative/vantare.rs
+
+El panel se pinta con `plan.content` pero `size()` devuelve `plan.height`, una caja calculada aparte que **no depende del tablero** (solo de opciones). Con estilo `neo` (padding_y 10, header 18+4, strip 28+4, row 24, footer 6+1+6+20):
+- sin banner: `height = content + 20 px` (el panel queda 20 px por encima del fondo de la caja);
+- con la columna Tendencia activa (plantilla `standard`): `height = content + 20 + 33 = content + 53 px`;
+- con banner: coinciden.
 
 No es un dato falso, pero reserva una caja visiblemente más alta que el panel en los casos sin banner; conviene confirmar que el hueco transparente extra es aceptable para el usuario.
 
@@ -657,77 +662,79 @@ No es un dato falso, pero reserva una caja visiblemente más alta que el panel e
 
 relative/vantare.rs
 
-
+`Footer::Session` pinta textos con un guion largo colgando y sin valor detrás: `"Tanda —"` / `"Delta de vuelta lanzada —"`. Además la práctica/qualy se decide con `session.to_lowercase().starts_with("pr")`: vale para `"PRÁCTICA"` pero cualquier otra sesión que no encaje (p. ej. `"TEST"`, `"WARMUP"`, `"CLASIFICACIÓN"`) cae en "Flying lap delta". Texto estático, no hay dato que se muestre mal; es cosmético.
 
 ### B3-05 — PENDIENTE / anotado para ronda 2; sin cambio en esta tanda.
 
 relative/vantare.rs
 
-
+`approved_relative_keeps_player_slot_and_size_when_neighbors_disappear` compara `plan.height/width` contra `plan(None,…)`: es **tautológico**, porque la nueva fórmula de `height` ya no lee el tablero, así que no puede detectar el exceso de caja de B3-03. Las aserciones de huecos del jugador sí son útiles. Parte "tamaño" del test es complaciente.
 
 ### B3-06 — PENDIENTE / anotado para ronda 2; sin cambio en esta tanda.
 
 relative/vantare.rs
 
-
+`driver_max` para `Lg` con columna Número y sin Posición devuelve `r.driver_lg - (geometry.number_min_width - relative.col_position)` = `239 - (34 - 22)` = `227` hoy (correcto), pero **no está acotado** y, si `number_min_width < col_position`, sumaría ancho por encima de `driver_lg`. El código anterior (`driver_width`) hacía `clamp(driver_xs.min(max), max)`. Riesgo bajo con los valores actuales.
 
 ### B3-07 — PENDIENTE / anotado para ronda 2; sin cambio en esta tanda.
 
 vantare/paint.rs
 
-
+`label_shadow` dibuja **6 textos por etiqueta** (4 desplazados + 1 a +1 px + el real). Se usa en `track_map/mod.rs:236,247,306,334`, `pedals/vantare.rs:196` y `delta/vantare.rs:585`. Es coste por frame multiplicado por 6 en cada etiqueta; verificar en `track_map` que no se llame por coche ni por punto del trazado (revisado en su sección más abajo).
 
 ### B3-08 — PENDIENTE / anotado para ronda 2; sin cambio en esta tanda.
 
 vantare/paint.rs
 
-
+`estimate_mono` queda `#[cfg(test)]` y se elimina `estimate` (Inter) con su tabla `LATIN1`. `git grep` en HEAD confirma que no quedan llamadas de producción a `estimate`; no hay regresión.
 
 ### B3-09 — PENDIENTE / anotado para ronda 2; sin cambio en esta tanda.
 
 standings/mod.rs
 
-
+`vantare_standard_session_template` parte de `vantare_template("standard")` (que activa `position, positionsGained, driverName, vehicle, gap`), reescribe **todos** los `enabled` con `on.contains(metric_id)` y reordena por posición en `on`. Verificado que todos los `metric_id` de `on` existen en la plantilla (`bestLap`, `pit`, `vehicle`, `gap`, `currentLap` empujado), no hay duplicados (`currentLap` no estaba) y las no listadas quedan desactivadas al final por `sort_by_key` estable. `positionsGained` deja de estar activa en el preset estándar; es intencional.
 
 ### B3-09b — PENDIENTE / anotado para ronda 2; sin cambio en esta tanda.
 
 standings/mod.rs
 
-
+`driver_max` usa anchos fijos del catálogo **como literales** (900.0 / 520.0 / 343.0), no de `style.geometry`. En este mismo PR `width_expanded` del estilo pasa de 520 a 768, lo que demuestra que estas constantes pueden quedar desfasadas del estilo. Compila porque `520`/`900` son el estándar/expandido de Standings, pero es deuda frágil.
 
 ### B3-11 — PENDIENTE / anotado para ronda 2; sin cambio en esta tanda.
 
 standings/vantare.rs
 
-
+`fixed_height` reserva **exactamente** `3.0 * (separator_gap_top + separator_height + separator_gap_bottom)` cuando `Mode::Multiclass`, pero el plan real añade un separador por cada clase **presente en las filas visibles**. Con 3 clases (WEC/LMU) coincide; con 4+ clases visibles `content > height` y las últimas filas/pie se pintan fuera de la caja. Riesgo latente; la serie actual tiene 3 clases.
 
 ### B3-12 — PENDIENTE / anotado para ronda 2; sin cambio en esta tanda.
 
 standings/vantare.rs
 
-
+Fuera de clasificación, el líder de la tabla (gap de clasificación 0) devuelve **cadena vacía** en la columna «Al mejor/To best», mientras que en clasificación devuelve `"Pole"`. `gap_labels` solo sustituye esa celda por la mejor vuelta **si no hay columna Best**; con la columna Best presente (caso del preset estándar) la celda del líder queda en blanco y a opacidad plena (el atenuado de `missing` solo se aplica si `best_lap_s.is_none()`), por lo que un dato «0» se ve igual que una celda ausente.
 
 ### B3-13 — PENDIENTE / anotado para ronda 2; sin cambio en esta tanda.
 
 standings/vantare.rs
 
-
+`sector_labels` se construye para **todas** las filas en cada reconstrucción del plan, aunque solo se consume cuando `numeric_sectors()` es cierto (Sectors + Best y sin Last). Es asignación desperdiciada (`Vec<Vec<Vec<String>>>` + 3 `String` por fila) en cada ingesta que cambie el tablero.
 
 ### B3-32 — PENDIENTE / anotado para ronda 2; sin cambio en esta tanda.
 
 standings/vantare.rs
 
-
+La decisión «clasificación» se duplica inline (`board.session.to_lowercase().starts_with("clasi") || …("qual")`) en vez de reutilizar `qualifying(board)`, ya existente en el mismo fichero. Deriva doble fácil de desincronizar.
 
 ### B3-15 — PENDIENTE / anotado para ronda 2; sin cambio en esta tanda.
 
 standings/vantare.rs
 
-
+Un sector de `59.9995 s` entra por `s < 60.0` y `format!("{s:.3}")` lo redondea a `"60.000"` (sin pasar a `1:00.000`). Cosmético; el rango real es improbable pero es la clase de detalle de redondeo a vigilar.
 
 ### B3-16 — PENDIENTE / anotado para ronda 2; sin cambio en esta tanda.
 
 standings/vantare.rs
+
+`a_banner_and_pit_or_spectator_status_never_overlap_the_header` (incluye `content <= height`, útil) y `observed_opponent_laps_and_pit_status_invalidate_the_cached_plan` (comprueba `same_board` con `laps`/`in_pits`, útil) están bien. Pero `design_system_box_is_fixed_across_every_catalogue_state` compara `(plan.width, plan.height)` con el plan de `None`: como ambas fórmulas **ya no dependen del tablero**, la igualdad es tautológica y no verifica que `content <= height` en todos los estados (solo `items y < height`, que no cubre la altura del último ítem). Verificado a mano que en el caso no-multiclass `height - content` es `+30` sin banner y `0` con banner, así que no hay recorte; el test no lo demuestra.
 
 Verificado correcto: `numeric_sectors` calcula el ancho `3·col_gap + 2·cell_gap = 164 px` y el pintado coloca cada sector con la misma aritmética (`column.x + col_gap + i·(col_gap+cell_gap)`), de modo que cabecera y valor coinciden; `"1:12.118"` (8 car.) a `mono_small = 11` ≈ 54 px < 62 px de `col_gap`, no se sale. `same_board` incorpora `laps`, `in_pits`, `classification_gap(_s)` y `best_sector_times_s`, y `session` ya estaba, así que el cambio de sesión invalida la caché. El atenuado `missing` distingue coches sin vuelta. El `Plan` se recalcula solo en `ingest_shared` cuando `same_board` es falso (no por frame), así que los `Vec<String>` de `gaps`/`sector_times` no son coste por frame.
 
@@ -735,59 +742,67 @@ Verificado correcto: `numeric_sectors` calcula el ancho `3·col_gap + 2·cell_ga
 
 track_map/mod.rs
 
-
+`Widget::frame` hace `self.labels.clone()` (tres `String`) **en cada frame** para moverlas a la closure de pintado. Es asignación por frame en la ruta de render; ya se clonaba `self.vm`, así que es la misma pauta, pero un `Arc<[String;3]>` lo evitaría.
 
 ### B3-19 — PENDIENTE / anotado para ronda 2; sin cambio en esta tanda.
 
 track_map/mod.rs
 
-
+- Longitud: `format!(" · {:.3} KM", v / 1000.0)` da 1 m de precisión (p. ej. « · 5.137 KM»); `track_length_m` se filtra `is_finite && > 0` (bien).
+- Reloj fuera de carrera: `let total = *seconds as u64` trunca (no redondea) y `remaining_s` ya se filtra `is_finite && >= 0`. Cosmético.
+- En carrera, `laps` se combina con `laps_total`; sin total no inventa vueltas (cubierto por test). Correcto.
 
 ### B3-20 — PENDIENTE / anotado para ronda 2; sin cambio en esta tanda.
 
 track_map/mod.rs
 
-
+El texto vacío «PISTA SIN MAPA» ya no se centra: se pinta a `x = 22.0` fijo (antes `(WIDTH - ancho) / 2`). Regresión cosmética si el diseño exige centrado.
 
 ### B3-21 — PENDIENTE / anotado para ronda 2; sin cambio en esta tanda.
 
 track_map/mod.rs
 
-
+`geometry()` inicializa el patrón con `snapshots_from_json(...).unwrap_or_default()`: si el fixture embebido no parsea, la lista queda vacía y se devuelve `None` **sin ningún diagnóstico**, indistinguible de «no es la demo». Solo afecta a la demo.
 
 ### B3-23 — CORREGIDO: se retira la rama de reloj de longitud 4, imposible con el formateador.
 
 track_weather/mod.rs
 
-
+La rama `if clock.len() == 4 { format!("0{clock}") }` es **código muerto**: `format::clock` siempre devuelve `"MM:SS"` (5), `"H:MM:SS"` (7+) o `"—"` (1); nunca 4 caracteres. Inofensivo, pero conviene borrarlo para no sugerir un caso que no existe (el test `"CLASIFICACIÓN · 08:42"` lo confirma: el relleno ya viene del formateador).
 
 ### B3-24 — CORREGIDO: Arc del texto de sesión, sin clonar el String en frame.
 
 track_weather/mod.rs
 
-
+`frame()` clona `self.session` (un `String`) en cada frame para la closure de pintado; es asignación por frame en la ruta de render (el `vm.clone()` ya existía). Un `Arc<str>` lo evitaría.
 
 ### B3-25 — PENDIENTE / anotado para ronda 2; sin cambio en esta tanda.
 
 track_weather/mod.rs
 
-
+La rama de `Missing | Disconnected` pinta siempre «Esperando a LMU»/«Waiting for LMU» e ignora `vm.status_text`, así que **el modo horizontal no distingue** «SIN DATOS» de «DESCONECTADO» (el modo vertical sí, vía banner). Además la métrica de humedad (índice 4) se rotula «AGUA»/«WATER» en el modo vertical (~línea 700), mientras el dominio la llama «HÚMEDO»/«WET»; el dato mostrado es el de humedad, no el de lluvia. Cosmético/etiquetado.
 
 ### B3-26 — PENDIENTE / anotado para ronda 2; sin cambio en esta tanda.
 
 track_weather/mod.rs
 
-
+`wind_direction_rad` se filtra `is_finite()` y se convierte con `as f32` sin comprobar rango: un f64 finito enorme (p. ej. `1e300`) pasa el filtro, se vuelve `+inf` en f32 y `sin_cos()` daría `NaN` en las coordenadas de la flecha. El validador del dominio (parte A) también acepta `±f64::MAX`; improbable en la práctica. La rotación en sí es correcta (verificado: `heading = π/2` lleva la flecha hacia el Este).
 
 ### B3-27 — PENDIENTE / anotado para ronda 2; sin cambio en esta tanda.
 
 track_weather/mod.rs
 
-
+`test` cubre `widget.session == "CLASIFICACIÓN · 08:42"` e idempotencia, y el `SIZE`/`WIDE` de cada modo. No hay ningún test que pinte con `track_wetness` ausente (lista de 6 métricas) ni que ejercite la banda «PISTA MOJADA»; lo he verificado a mano y los índices se mantienen, pero la cobertura de la ruta mojada/secado depende de fixtures.
 
 ### B3-29 — PENDIENTE / anotado para ronda 2; sin cambio en esta tanda.
 
 bin/vantare-workshop.rs
+
+Se añaden dos mandos de QA por variable de entorno (`VANTARE_CAPTURE_UNTIL`, `VANTARE_CAPTURE_SETTINGS`) y, sin ellas, la captura pasa de `run_sequence` (ajustes Eficiencia) a `run_configured_sequence` con `Settings::default_for(widget)` y overrides de Vantare. Verificado:
+- `VANTARE_CAPTURE_UNTIL` trunca con `saturating_add(1)` (mantiene `0..=n`, no-op si n ≥ len).
+- `class_scope = "all-classes"` para Standings es el valor **válido** (el dominio normaliza cualquier otro a `"player-class"`; `standings/mod.rs` lo compara así).
+- El orden de las columnas es correcto: `apply_session_presets()` → overrides de `practice_columns`/`qualifying_columns` → `columns` (estándar), así que gana lo último.
+- `run_configured_sequence(settings, prefs, &snapshots, output)` coincide con la firma de `capture.rs:383`.
 
 Nota: `VANTARE_CAPTURE_SETTINGS` espera el **JSON etiquetado** de `vantare_ui::Settings` (enum con variante de tipo), no el objeto de ajustes suelto; un JSON por tipo daría error de parseo. Cosmético/documentación.
 
@@ -795,14 +810,15 @@ Nota: `VANTARE_CAPTURE_SETTINGS` espera el **JSON etiquetado** de `vantare_ui::S
 
 styles/vantare.json
 
-
+Los tres valores numéricos viven en la sección `delta` (no en `geometry` ni `fuel`), así que afectan solo al widget Delta, que suma `message_height.max(big_height)` (dos veces), `sector_height` y `width_expanded` para calcular la caja y el ancho expandido. Al cambiar en pareja (46→44 junto a 28→30) el layout sigue cuadrando; no hay NaN ni valor ausente y los tres son `f32` válidos. Verificar solo que el Delta (revisor aparte) representa la caja nueva.
 
 ### B3-31 — PENDIENTE / anotado para ronda 2; sin cambio en esta tanda.
 
 styles/vantare.json
 
----
+La cara de display se pide a peso 600 (`paint.rs:84`), pero la familia pasa a `"Rajdhani"` a secas. Si el sistema solo tiene estáticos (`Rajdhani` regular + `Rajdhani SemiBold` como familias separadas), el 600 puede sintetizarse o caer a 400 y cambiar el trazo de cabeceras y números grandes. La captura valida que la familia exista (`capture.rs:404`), no el peso; conviene una comprobación visual.
 
+---
 
 ## Fuente congelada para los gates de cierre
 

@@ -1,20 +1,28 @@
 # Beta nativa — instalador y actualizaciones (#1454)
 
 El orquestador publica la beta; estos scripts **no publican ni usan tokens**.
-Windows x64, NTFS, PowerShell 5.1, NSIS para construir el instalador.
-El compilador NSIS predeterminado está en `Program Files (x86)/NSIS/makensis.exe`;
-`-NsisCompiler <ruta>` permite indicar otra instalación real (no un shim roto).
-No se añaden crates. Instalador sin firma: SmartScreen puede pedir «Más información → Ejecutar de todas formas» (aceptado por Isaac).
+Windows x64, NTFS y PowerShell 5.1. Setup y Uninstall son binarios Rust/GPUI
+del crate [installer](../installer/README.md), con ZIP, bootstrap y fuentes
+embebidos. Reutilizan exclusivamente dependencias ya fijadas. No requieren
+Rust ni NSIS en el equipo del usuario. El corte 0.0.976 de #1565 mantiene NSIS;
+`-LegacyNsis` conserva también ese build como rollback explícito.
+`-NsisCompiler <ruta>` solo se usa en esa ruta legacy.
+El check Windows bloqueante ejecuta `publish-installer-tests.ps1`: selección
+GPUI por defecto sin NSIS disponible, excepciones legacy, hash del Setup y
+fallo de build sin fallback. Usa builds/firma simulados; no publica assets.
+Instalador sin firma: SmartScreen puede pedir «Más información → Ejecutar de todas formas» (aceptado por Isaac).
 
 ## Instalar y desinstalar
 
 Doble clic en **VantareSetup.exe**. Instala sin administrador en
 `%LOCALAPPDATA%/Programs/Vantare`, crea «Vantare» y
 «Desinstalar» en el menú Inicio y ofrece abrir el Hub al terminar.
-No crea acceso en el escritorio. «Aplicaciones instaladas» de Windows también
+En interactivo, Opciones propone escritorio ON y autostart OFF. `/S` no crea
+accesos opcionales nuevos ni abre Vantare; respeta preferencias ya guardadas.
+Solo se quitan accesos que pertenecen a esta raíz. «Aplicaciones instaladas» también
 permite desinstalar. Se conserva la clave técnica `VantareNativeBeta`: cambiarla
 rompería la sincronización de versión y rollback del bootstrap ya instalado.
-El nombre visible en NSIS, Inicio, Windows y la ventana del Hub es **Vantare**.
+El nombre visible en Setup, Inicio, Windows y la ventana del Hub es **Vantare**.
 Una instalación anterior conserva su `InstallLocation`, incluida la carpeta
 `Vantare Native Beta`; moverla obligaría a migrar datos y referencias sin aportar
 valor al usuario. Setup también adopta datos de esa ruta tras desinstalar.
@@ -27,12 +35,13 @@ que apuntan a esa instalación. Puede repetirse sin duplicados. Un fallo impide
 confirmar el arranque y deja actuar al rollback existente. El tag técnico,
 asset, canal y firma del feed siguen iguales para clientes anteriores.
 
-Inicio y Aplicaciones instaladas usan `uninstall-vantare.ps1`, copia durable
+Inicio y Aplicaciones instaladas usan `Uninstall.exe` propio cuando existe el
+marker validado `installer-ui.json`; se conserva `uninstall-vantare.ps1`, copia durable
 del script del paquete: llama a la desinstalación beta instalada, conserva los
 datos y retira accesos, registro y bootstrap. Así también puede desinstalarse
 una beta renombrada solo por feed, cuyo Uninstall.exe antiguo desconoce la nueva
 carpeta. La copia permanece disponible si se interrumpe la desinstalación.
-El nuevo Uninstall.exe NSIS también retira los accesos nuevos; la migración
+Uninstall.exe propio también retira los accesos nuevos; la migración
 ya retiró los antiguos propios y preservó cualquier acceso ajeno.
 Wails usa «Vantare Simracing Suite», otra carpeta y sus propios accesos.
 No se leen ni importan datos Wails durante la instalación.
@@ -56,20 +65,33 @@ activa conservada en `retained-data.json`. Desinstaladores antiguos sin esa
 referencia permiten recuperar una copia única (o copias idénticas); si quedan
 copias distintas, se rechaza sin elegir datos arbitrariamente.
 
-QA aislada: compilar NSIS con `/DTEST_INSTALLER` y ejecutar
-`VantareSetup.exe /S /D=E:\tmp\1492\installed` (el argumento `/D` va al final).
+QA aislada: `build-installer.ps1 -TestInstaller` (alias `/DTEST_INSTALLER`)
+y ejecutar `VantareSetup.exe /S "/D=C:\tmp\ola2\1591-qa\installed"`.
 Esta build exige ruta explícita y usa registro `VantareNativeBetaQA1492` y
 accesos «Vantare QA1492», separados de la instalación de Isaac.
 Solo este instalador escribe `registration-identity.txt` en la raíz y lo retira
 al desinstalar; el bootstrap lee esa identidad validada para sincronizar el
 registro tras confirmar o restaurar. Sin ese archivo usa `VantareNativeBeta`.
-No distribuir esta build. `installer-tests.ps1` prueba los dos Setup construidos
-sin abrir ventanas (primer Setup anterior, segundo nuevo); `beta-tests.ps1` requiere verificador y semilla de TEST
+No distribuir esta build. `installer-tests.ps1` conserva el ensayo de marca
+beta antigua; `-FirstBrand Current` compara NSIS actual con el propio sin
+inventar una marca anterior. `installer-qa.ps1` añade propio A→B, locks,
+repair, rollback headless, índices de todos los data, feed TEST y reinstalación.
+`beta-tests.ps1` requiere verificador y semilla de TEST
 para probar el feed firmado, nunca la clave privada productiva.
 
-El acceso de Inicio abre un host PowerShell de 64 bits oculto. NSIS usa
+`/S` y la UI comparten el motor y los códigos 0/1/2/3/4; cancelar antes de la
+transacción devuelve 5. La UI muestra extracción con bytes reales y etapas del
+motor, sin progreso ficticio. Repair solo está disponible con el mismo Setup;
+Actualizar exige uno posterior. No existe opción de borrar datos: se muestra
+`Tus datos se conservan en <raíz>/generations/<id>/data`.
+
+El acceso de Inicio abre un host PowerShell de 64 bits oculto. El legacy NSIS usa
 [Sysnative](https://learn.microsoft.com/en-us/windows/win32/winprog64/file-system-redirector)
 para evitar la redirección WOW64; el acceso guardado apunta a System32 para Explorer x64.
+Setup propio es x64 y utiliza System32 directamente. La build QA no abre el Hub
+en el SID de origen del builder: su instancia/pipe `native-beta` se comparte.
+Arranque live, Inicio/autostart y DPI físicos requieren otra cuenta/VM. Un
+snapshot/captura no acredita ese arranque ni Windows limpio.
 El host abre el supervisor nativo `vantare` (instancia `native-beta`, núcleo live
 y overlays) y el Hub conectado a él. Mantiene
 un lock de sesión único, comprueba actualizaciones al abrir y cada 6 horas

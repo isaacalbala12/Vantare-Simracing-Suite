@@ -644,10 +644,7 @@ impl CaptureState {
                     | "launcher-listo"
                     | "launcher-cancelado"
             )
-            && !matches!(
-                name,
-                "calendario-beta-archivo" | "calendario-beta-prueba" | "calendario-lmu-local"
-            )
+            && !name.starts_with("calendario-r6-")
             && name != "roadmap-clickup-prueba"
             && !matches!(name, "notificaciones-panel" | "notificaciones-vacio")
             && !matches!(name, "inicio-vacio" | "inicio-cargando" | "inicio-error")
@@ -669,10 +666,9 @@ impl CaptureState {
             | "launcher-listo"
             | "launcher-cancelado"
             | "launcher-nombres-largos" => Section::Launcher,
-            "calendario-beta-archivo"
-            | "calendario-beta-prueba"
-            | "calendario-lmu-local"
-            | "calendario-base"
+            "calendario-r6-inicio" => Section::Home,
+            name if name.starts_with("calendario-r6-") => Section::Calendar,
+            "calendario-base"
             | "calendario-dia"
             | "calendario-semana"
             | "calendario-mes"
@@ -732,16 +728,17 @@ impl CaptureState {
             section,
             palette_query,
             column_open: name != "shell-columna-colapsada" && !name.ends_with("-sin-carril"),
-            sidebar: matches!(
-                name,
-                "studio-sidebar"
-                    | "studio-error-largo"
-                    | "studio-error-largo-sin-carril"
-                    | "inicio-sidebar"
-                    | "inicio-sidebar-sin-carril"
-                    | "ajustes-apariencia-sidebar"
-                    | "ajustes-apariencia-sidebar-sin-carril"
-            )
+            sidebar: (name.starts_with("calendario-r6-")
+                || matches!(
+                    name,
+                    "studio-sidebar"
+                        | "studio-error-largo"
+                        | "studio-error-largo-sin-carril"
+                        | "inicio-sidebar"
+                        | "inicio-sidebar-sin-carril"
+                        | "ajustes-apariencia-sidebar"
+                        | "ajustes-apariencia-sidebar-sin-carril"
+                ))
             .then_some(true),
             notifications_open: matches!(
                 name,

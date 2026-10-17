@@ -15,6 +15,8 @@ use vantare_ui::{
     capture_window,
 };
 
+mod temp;
+
 pub(crate) struct CurrentScene(pub CaptureState);
 impl gpui::Global for CurrentScene {}
 
@@ -100,6 +102,17 @@ fn prepare_jobs(options: Vec<Options>) -> Result<(usize, Vec<Job>), String> {
 }
 
 pub fn run_many(options: Vec<Options>) -> Result<(), String> {
+    let mut roots = temp::Roots::new(options.iter().map(|options| options.data_dir.clone()));
+    let result = run_many_inner(options);
+    let cleanup = roots.cleanup();
+    match (result, cleanup) {
+        (Err(error), Err(cleanup)) => Err(format!("{error}; {cleanup}")),
+        (Err(error), _) | (_, Err(error)) => Err(error),
+        (Ok(()), Ok(())) => Ok(()),
+    }
+}
+
+fn run_many_inner(options: Vec<Options>) -> Result<(), String> {
     let started = Instant::now();
     let (total, jobs) = prepare_jobs(options)?;
     println!(

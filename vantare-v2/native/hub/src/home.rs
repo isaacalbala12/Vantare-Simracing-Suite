@@ -76,13 +76,6 @@ fn demo_races(
         .collect()
 }
 
-fn target<'a>(races: &'a [Race], following: &[String]) -> Option<&'a Race> {
-    races
-        .iter()
-        .find(|race| following.contains(&race.id))
-        .or_else(|| races.first())
-}
-
 // Las fuentes Inter del kit son estáticas: pedir otra vez el peso sintetiza negrita.
 fn text(
     content: impl Into<SharedString>,
@@ -259,55 +252,88 @@ fn command(cx: &gpui::App) -> Stateful<Div> {
         )
 }
 
-fn next_race(
-    race: Option<&Race>,
-    navigate: &impl Fn(Stateful<Div>, Section) -> Stateful<Div>,
-    cx: &gpui::App,
-) -> Div {
-    let mut view = div()
-        .w(px(300.0))
+/// Tarjeta «Tu próxima carrera»: la salida más cercana de tus favoritas. Los
+/// botones los añade la shell, que sabe lanzar el perfil y navegar.
+pub(crate) fn next_race(calendar: &Calendar, cx: &gpui::App) -> Option<Div> {
+    let skin = orbit::skin(cx);
+    let now = calendar.now();
+    let hero = calendar.schedule().and_then(|schedule| {
+        super::rows::hero(schedule, now, calendar.favorites(), &calendar.alerts)
+    })?;
+    let zone = calendar.zone();
+    let when = format!("{} {}", zone.day_rel(hero.at, now), zone.hm(hero.at));
+    let lead = Duration::minutes(i64::from(calendar.alerts.lead_min));
+    let card = div()
+        .w(px(380.0))
         .flex_none()
         .flex()
         .flex_col()
-        .items_center()
-        .justify_center()
-        .gap(px(8.0));
-    if let Some(race) = race {
-        view = view.child(
+        .gap(px(10.0))
+        .px(px(16.0))
+        .py(px(14.0))
+        .rounded(px(12.0))
+        .bg(super::chrome::tint(0x0012_0C0E, 0.55))
+        .border_1()
+        .border_color(orbit::alpha(skin.line2))
+        .child(
             div()
                 .flex()
                 .items_center()
                 .gap(px(8.0))
-                .child(orbit::status_dot(orbit::Tone::Success, 8.0, cx))
-                .child(orbit::eyebrow("Próximas carreras", cx)),
+                .child(super::chrome::cap(
+                    "Tu próxima carrera",
+                    super::chrome::acct(cx),
+                    cx,
+                ))
+                .child(super::chrome::tier(hero.series, cx))
+                .child(div().flex_1())
+                .when(hero.alert, |row| {
+                    row.child(super::chrome::icon(
+                        "bell-fill",
+                        12.0,
+                        super::chrome::acct(cx),
+                    ))
+                    .child(super::chrome::t(
+                        format!("aviso {}", zone.hm(hero.at - lead)),
+                        12.0,
+                        400,
+                        skin.cap,
+                        cx,
+                    ))
+                }),
+        )
+        .child(
+            div()
+                .flex()
+                .items_end()
+                .gap(px(12.0))
+                .child(
+                    div()
+                        .flex_1()
+                        .min_w_0()
+                        .child(
+                            super::chrome::disp(hero.series.name.clone(), 24.0, skin.text1, cx)
+                                .truncate(),
+                        )
+                        .child(
+                            super::chrome::t(
+                                format!("{} · {when}", hero.series.track_short()),
+                                13.0,
+                                400,
+                                skin.text3,
+                                cx,
+                            )
+                            .mt(px(4.0)),
+                        ),
+                )
+                .child(orbit::mono_text(
+                    super::clock::countdown(hero.at - now),
+                    30.0,
+                    skin.text1,
+                    cx,
+                )),
         );
-        view = view
-            .child(text(race.name.clone(), 14.0, 600, orbit::ink_2(cx), cx))
-            .child(text(
-                format!(
-                    "{} · {}",
-                    race.track,
-                    race.at.with_timezone(&Local).format("%H:%M")
-                ),
-                12.0,
-                400,
-                orbit::ink_3(cx),
-                cx,
-            ))
-            .child(navigate(
-                orbit::button("home-next", "Abrir en Calendario", cx).h(px(36.0)),
-                Section::Calendar,
-            ));
-    } else {
-        view = view.child(text(
-            "Sin salidas próximas en el calendario",
-            12.0,
-            400,
-            orbit::ink_3(cx),
-            cx,
-        ));
-    }
-    view
+    Some(card)
 }
 
 fn hero(
@@ -651,7 +677,7 @@ fn lists(
                     .min_h(px(362.0))
                     .when(compact, gpui::Styled::flex_none)
                     .child(
-                        orbit::card_header("Próximas carreras", cx).child(
+                        orbit::card_header("En tu calendario", cx).child(
                             div()
                                 .flex()
                                 .items_center()
@@ -710,9 +736,10 @@ pub fn render(
     cx: &gpui::App,
 ) -> Stateful<Div> {
     let now = calendar.demo_now.unwrap_or_else(Utc::now);
-    let starts_result = match demo {
-        Some(data) => demo_races(calendar.official_state().0, data, now),
-        None => races(calendar.official_state().0, now),
+    let starts_result = match (calendar.schedule(), demo) {
+        (Some(schedule), Some(data)) => demo_races(schedule, data, now),
+        (Some(schedule), None) => races(schedule, now),
+        (None, _) => Ok(vec![]),
     };
     let (starts, error) = match starts_result {
         Ok(starts) => (starts, None),
@@ -756,13 +783,18 @@ pub fn render(
         .ml(px(-1.0))
         .mr(px(-1.0))
         .child(hero(
-            races_visible.then(|| {
-                next_race(
-                    target(&starts, &calendar.official_state().1.series_ids),
-                    &navigate,
-                    cx,
-                )
-            }),
+            races_visible
+                .then(|| {
+                    next_race(calendar, cx).map(|card| {
+                        card.child(navigate(
+                            orbit::button("home-next", "Ver en Calendario", cx)
+                                .h(px(36.0))
+                                .mt(px(6.0)),
+                            Section::Calendar,
+                        ))
+                    })
+                })
+                .flatten(),
             access.lock(Section::Strategy).is_none(),
             salute,
             &navigate,
@@ -782,6 +814,8 @@ pub fn render(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    const SCHEDULE: &[u8] = include_bytes!("../reference/fixtures/calendar-lmu-2026-10-06.json");
 
     #[test]
     fn greeting_uses_local_hour_boundaries() {
@@ -813,9 +847,8 @@ mod tests {
     }
 
     #[test]
-    fn calendar_includes_unfollowed_series_orders_rows_and_prefers_followed_target()
-    -> Result<(), String> {
-        let schedule = Schedule::parse(super::super::SEED.as_bytes())?;
+    fn calendar_includes_unfollowed_series_and_orders_rows() -> Result<(), String> {
+        let schedule = Schedule::parse(SCHEDULE)?;
         let (from, to) = schedule.window()?;
         assert!(races(&schedule, from - Duration::seconds(1))?.is_empty());
         assert!(races(&schedule, to)?.is_empty());
@@ -830,29 +863,11 @@ mod tests {
                 .iter()
                 .all(|race| race.at >= from && race.at < from + Duration::days(1) && race.at < to)
         );
-        assert_eq!(
-            target(&starts, &[]).map(|race| race.at),
-            starts.first().map(|race| race.at)
-        );
-        let followed = &starts.last().ok_or("sin carreras")?.id;
-        let followed_race = starts
-            .iter()
-            .find(|race| &race.id == followed)
-            .ok_or("serie sin salida en 24 h")?;
-        assert_eq!(
-            target(&starts, std::slice::from_ref(followed)).map(|race| (&race.id, race.at)),
-            Some((followed, followed_race.at))
-        );
-        assert_eq!(
-            target(&starts, &["serie-desconocida".into()]).map(|race| (&race.id, race.at)),
-            starts.first().map(|race| (&race.id, race.at))
-        );
-        assert!(target(&[], &[]).is_none());
         Ok(())
     }
     #[test]
     fn four_row_limit_preserves_earliest_starts_and_window_errors() -> Result<(), String> {
-        let mut schedule = Schedule::parse(super::super::SEED.as_bytes())?;
+        let mut schedule = Schedule::parse(SCHEDULE)?;
         let (now, _) = schedule.window()?;
         let mut expanded = vec![];
         for series in &schedule.series {

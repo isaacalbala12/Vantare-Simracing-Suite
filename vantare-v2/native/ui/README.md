@@ -1,5 +1,10 @@
 # ui — overlays GPUI
 
+RacingFlags solicita `Flags` y `Cars`: conserva la identidad del jugador y
+las banderas personales sin transportar `pending_penalties` a 33 ms. Una
+regresión del DTO compara bytes con la demanda anterior (`Penalties`), y el
+test de pipe real conserva el aviso personal con sanciones no solicitadas.
+
 ## #1564 · Sesiones y columnas de Standings
 
 Las instancias guardan `showIn` (practice/qualifying/race, todas por defecto).

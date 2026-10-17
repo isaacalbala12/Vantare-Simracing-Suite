@@ -21,7 +21,7 @@ ACC conserva también su pin y recorte de posiciones previos. El verificador
 sigue exigiendo SHA-256 exacto para cada entrada, sin ampliar tolerancias.
 
 Los catálogos Go de Engineer son texto de referencia inerte; los tests Rust
-siguen comparando sus frases/voces. El seed de calendario vive en `hub/data`,
+siguen comparando sus frases/voces. El seed de calendario (fixture del test de publicación; el Hub ya no lo usa) vive en `scripts/testdata/lmu-weekly-schedule-2026-08.json`,
 su fuente textual en `scripts/testdata` y el perfil legado en `packaging/fixtures`.
 Los archivos Go necesarios para reproducir se archivan en `tools/frozen-go`.
 Los oráculos y sus pins existentes no se recalculan desde Rust.

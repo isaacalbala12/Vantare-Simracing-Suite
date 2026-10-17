@@ -703,17 +703,20 @@ impl Launcher {
         }
     }
 
+    fn default_profile(&self) -> Option<&Profile> {
+        self.store.document.profiles.iter().min_by(|a, b| {
+            b.favorite
+                .cmp(&a.favorite)
+                .then_with(|| a.name.cmp(&b.name))
+        })
+    }
+
     pub fn default_profile_id(&self) -> Option<String> {
-        self.store
-            .document
-            .profiles
-            .iter()
-            .min_by(|a, b| {
-                b.favorite
-                    .cmp(&a.favorite)
-                    .then_with(|| a.name.cmp(&b.name))
-            })
-            .map(|profile| profile.id.clone())
+        self.default_profile().map(|profile| profile.id.clone())
+    }
+
+    pub fn default_profile_name(&self) -> Option<String> {
+        self.default_profile().map(|profile| profile.name.clone())
     }
 
     fn start(&mut self, profile: Profile, cx: &mut Context<Self>) {

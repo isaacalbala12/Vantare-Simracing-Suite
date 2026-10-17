@@ -230,12 +230,18 @@ impl Cache {
         let temporary = self
             .receipt
             .with_extension(format!("json.{}.tmp", std::process::id()));
-        fs::write(
-            &temporary,
-            serde_json::to_vec(&receipt).map_err(|e| e.to_string())?,
-        )
-        .map_err(|e| e.to_string())?;
-        fs::rename(temporary, &self.receipt).map_err(|e| e.to_string())
+        let bytes = serde_json::to_vec(&receipt).map_err(|e| e.to_string())?;
+        let result =
+            fs::write(&temporary, bytes).and_then(|()| fs::rename(&temporary, &self.receipt));
+        if let Err(error) = result {
+            if let Err(cleanup) = fs::remove_file(&temporary)
+                && cleanup.kind() != std::io::ErrorKind::NotFound
+            {
+                return Err(format!("{error}; limpiar recibo temporal: {cleanup}"));
+            }
+            return Err(error.to_string());
+        }
+        Ok(())
     }
 }
 
@@ -297,6 +303,32 @@ mod tests {
         assert_eq!(requests[1].appearance.as_deref(), Some("vantare-light"));
         fs::remove_file(path).expect("limpiar");
     }
+    #[test]
+    fn capture_receipt_rename_failure_removes_temporary_and_preserves_destination() {
+        let root =
+            std::env::temp_dir().join(format!("capture-receipt-error-{}", std::process::id()));
+        fs::create_dir_all(&root).expect("temporal");
+        let output = root.join("scene.png");
+        fs::write(&output, b"png").expect("PNG");
+        let cache = Cache::new(output.clone(), b"scene", "binary").expect("cache");
+        fs::create_dir(&cache.receipt).expect("bloquear reemplazo");
+        let blocker = cache.receipt.join("keep");
+        fs::write(&blocker, b"keep").expect("destino existente");
+        assert!(cache.commit().is_err());
+        assert!(
+            !cache
+                .receipt
+                .with_extension(format!("json.{}.tmp", std::process::id()))
+                .exists()
+        );
+        assert_eq!(fs::read(&blocker).expect("destino intacto"), b"keep");
+        assert_eq!(fs::read(output).expect("PNG intacta"), b"png");
+        fs::remove_file(blocker).expect("limpiar prueba");
+        fs::remove_dir(cache.receipt).expect("limpiar bloqueo");
+        fs::remove_file(root.join("scene.png")).expect("limpiar PNG");
+        fs::remove_dir(root).expect("limpiar temporal");
+    }
+
     #[test]
     fn incremental_requires_input_hash_and_intact_output() {
         let root = std::env::temp_dir().join(format!("capture-cache-test-{}", std::process::id()));

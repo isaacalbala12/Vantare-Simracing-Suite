@@ -95,6 +95,7 @@ impl Hub {
         self.workshop.update(cx, |workshop, _| workshop.persist())
     }
 
+    #[allow(clippy::too_many_lines)] // Un paso por fuente; el calendario añade el estado en pista.
     fn poll_source(&mut self, cx: &mut Context<Self>) {
         self.poll_privacy(cx);
         self.poll_usage(cx, false);
@@ -149,6 +150,11 @@ impl Hub {
             let observed = Some(crate::lifecycle::is_live(&snapshot));
             let changed = self.previous_source != observed;
             self.previous_source = observed;
+            if changed {
+                let in_track = observed == Some(true);
+                self.calendar
+                    .update(cx, |calendar, _| calendar.set_in_track(in_track));
+            }
             if self.section == Section::Home || changed {
                 cx.notify();
             }
@@ -486,7 +492,11 @@ impl Hub {
                 self.testing
                     .update(cx, |testing, cx| testing.page_header(self.shell.adapt, cx)),
             ),
-            Section::Calendar if self.shell.access.beta_lock(self.section).is_none() => {
+            // La página de una serie lleva su propia cabecera, sin la general.
+            Section::Calendar
+                if self.shell.access.beta_lock(self.section).is_none()
+                    && !self.calendar.read(cx).on_series_page() =>
+            {
                 Some(self.calendar.update(cx, |calendar, cx| {
                     calendar.page_header(self.shell.adapt, cx)
                 }))
@@ -746,10 +756,17 @@ impl Render for Hub {
                 .into_any_element();
         }
         let viewport = window.viewport_size();
+        // El contrato visual del calendario contrae la barra por debajo de 1400 px.
+        let sidebar = match &self.capture {
+            Some(capture) if capture.name.starts_with("calendario-r6-") => {
+                Some(f32::from(viewport.width) >= 1400.0)
+            }
+            _ => self.shell.sidebar_pref,
+        };
         let mut adapt = orbit::Adapt::new(
             f32::from(viewport.width),
             f32::from(viewport.height),
-            self.shell.sidebar_pref,
+            sidebar,
             self.shell.column_open,
         );
         self.general_preferences().density.apply(&mut adapt);
@@ -763,7 +780,9 @@ impl Render for Hub {
             .update(cx, |view, cx| view.set_adapt(adapt, cx));
         self.remote.update(cx, |view, cx| view.set_adapt(adapt, cx));
         self.refresh_query(cx);
-        if presentation(self.section) == Presentation::Fullscreen {
+        if presentation(self.section) == Presentation::Fullscreen
+            || (self.section == Section::Calendar && self.calendar.read(cx).full_screen())
+        {
             return self.render_fullscreen(window, cx);
         }
         let skin = orbit::skin(cx).clone();
@@ -956,6 +975,9 @@ fn wire_sections(
             this.notify_system("vantare.launcher", "Launcher", &message, cx);
         }
         this.settings.launcher_running = running;
+        let name = launcher.read(cx).default_profile_name();
+        this.calendar
+            .update(cx, |calendar, _| calendar.set_profile(name));
         // La columna de contexto del Launcher vive en el shell: repinta con él.
         cx.notify();
     })
@@ -968,6 +990,34 @@ fn wire_sections(
         }
         // Seguimiento y reloj también repintan el carril del calendario.
         cx.notify();
+    })
+    .detach();
+    cx.subscribe(calendar, {
+        let launcher = launcher.clone();
+        move |_, _, event: &crate::calendar::Event, cx| match event {
+            crate::calendar::Event::Alert {
+                series_id,
+                title,
+                body,
+            } => {
+                // El usuario activó el canal en Avisos: no depende del ajuste general.
+                if cfg!(windows) {
+                    cx.show_system_notification(gpui::SystemNotification {
+                        tag: format!("vantare.calendar.{series_id}").into(),
+                        title: title.clone().into(),
+                        body: body.clone().into(),
+                        actions: vec![],
+                    });
+                }
+            }
+            crate::calendar::Event::Launch { .. } => {
+                launcher.update(cx, |launcher, cx| {
+                    if let Some(id) = launcher.default_profile_id() {
+                        launcher.launch_id(&id, cx);
+                    }
+                });
+            }
+        }
     })
     .detach();
     cx.observe(notifications, |this, center, cx| {

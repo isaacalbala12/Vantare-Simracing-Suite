@@ -313,3 +313,47 @@ con cero foco/cruces. La pasada anterior `aa2fa3465` pasó5/5checks,
 Nextest1863/1863 (19skips) y lifecycle; la CI del ajuste final se verifica
 por separado en issue/PR. Evidencia `account-*.log` y
 `account-final-results.json` dentro de `round2-sync/`.
+
+## Sincronización con instalador, telemetría y calendario de nightly
+
+Se incorpora `origin/nightly@2a580c458` mediante merge, sin rebase ni
+force-push. Se conserva el nuevo instalador, telemetría y calendario. El único
+conflicto está en `calendar.rs`: se adopta el módulo de nightly completo y
+se conecta el adaptador previsto de `calendar/capture.rs` a los parámetros
+de cada entrada. La variable antigua queda como fallback. Prueba de dos entradas
+con distinta vista/zona/estado sin mutación del entorno compartido. README
+documenta el adaptador ya integrado; el parche se conserva como referencia histórica.
+
+H1/H2/H3/H4 y la creación oculta/no activable permanecen. Esta sincronización
+no repite las290imágenes ni sus mediciones; las cifras anteriores siguen ligadas
+a sus fuentes congeladas. Se vuelve a ejecutar la prueba focal con
+`parity-capture` por la cola, un job y MIN_GB=0, y los gates generales de la
+CI Windows en el SHA nuevo. Sin arranque GUI ni capturas visibles del instalador.
+462huellas retenidas PASS tras el merge; se conserva la actualización de pin
+del calendario que trae nightly. Diferencias de whitespace en la fixture HTML
+de RaceControl provienen de nightly y no se limpian como parte de esta entrega.
+Evidencia nueva: `C:/VantareServer/evidence/1655/round2-nightly/`; resultado
+final y SHA/checks verificados en issue/PR. Sin merge del PR ni release.
+
+Cierre N1/N2/N3/N6 tras la review R2: el calendario de nightly conserva su API
+nueva; no reaparecen `from_capture_name` ni el selector VIEW eliminado.
+Un manifiesto de dos escenas r6 cambia los parámetros que no se serializan
+en DemoData y verifica distintas vistas/zonas/estado incluso con igualdad de
+la clave de reutilización. N2 usa una guarda de las raíces CLI del PID propio:
+limpia al salir del lote y por error, valida el destino resuelto, preserva
+rutas ajenas y comunica fallos. N3 retira el recibo temporal ante fallo de
+escritura/rename; una prueba bloquea el destino real y exige conservarlo intacto.
+
+Formato, build Hub/ejemplo y **44/44 focales PASS** (816 excluidos por filtro).
+Lote real de `calendario-r6-mes` y `calendario-r6-serie`: **24,563 s**,
+1app/1HWND, 833334píxeles distintos; incremental **0,114 s**, 1app/0HWND,
+mtimes intactos y cero raíces QA restantes. Cero foco/cruces de monitor.
+Banco live-IPC actual PASS:1app/1HWND, políticas1→2, dos PNG distintas,
+huérfano retirado y EOF0. Sin ventanas visibles.
+482directorios antiguos retirados de TEMP, ahora0. El borrado recursivo fue
+rechazado por política automática; se movieron de forma reversible a
+`round2-nightly/temporales-retirados/`, sin seguir enlaces ni tocar procesos
+activos. Se conserva el inventario en `temp-cleanup.json`.
+Los gates generales del nuevo SHA se verifican en CI Windows y sus resultados
+finales se registran/releen en issue/PR. La prueba IPC fuerte sigue siendo
+una regresión manual documentada de Windows (N4), ejecutada en esta entrega.

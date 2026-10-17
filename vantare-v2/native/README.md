@@ -3,7 +3,7 @@
 Los ejemplos Cargo muestran el comando interior: ejecutarlo siempre por la
 cola de `AGENTS.md`: `native/scripts/compilar.ps1` desde `vantare-v2/`. Usar target aislado y `-j 2` (o `CARGO_BUILD_JOBS` de la máquina, ver «Workers»).
 
-El workspace tiene 13 crates; `default-members` excluye storage y admin.
+El workspace tiene 14 crates; `default-members` excluye storage, admin e installer.
 
 | Crate | Contiene |
 | --- | --- |
@@ -20,6 +20,7 @@ El workspace tiene 13 crates; `default-members` excluye storage y admin.
 | `build-support` | Recurso Win32 compartido; icono en `native/assets/icon.ico`. |
 | `strategy` | Documento JSON y solver; miembro del mismo workspace. |
 | `admin` | Herramienta privada del owner, fuera del instalador público. |
+| `installer` | Setup/Uninstall Rust y GPUI con payload embebido; el motor de generaciones sigue en packaging. |
 
 `packaging/` contiene scripts de distribución; versión y contratos viven en ipc,
 el recurso Win32 vive en build-support. No es un crate.
@@ -29,6 +30,7 @@ el recurso Win32 vive en build-support. No es un crate.
 ```text
 runtime → domain, ipc      ipc → domain, profiling      ui → domain, ipc
 engineer → domain, ipc, runtime (flujos neutrales y cierre; sin adaptadores)
+installer → build-support (build); GPUI fijado, sin runtime/domain/ipc
 ```
 
 `domain` no depende de nada del workspace; `domain` y `ui` **nunca** dependen de
@@ -184,7 +186,7 @@ retiró: ver `docs/analysis/fase0-medicion-2026-09-29.md`.
 
 La base Unix (#1437) permite compilar y probar en Linux y macOS el workspace
 completo:
-los 13 crates listados arriba, incluido `strategy` en el mismo workspace. IPC usa los mismos DTO,
+los 14 crates listados arriba, incluido `strategy` en el mismo workspace. IPC usa los mismos DTO,
 cursores, límites y nonce que Windows, mediante sockets de dominio Unix 0600 en
 un directorio 0700 por UID dentro de `$XDG_RUNTIME_DIR` o del temporal (`/tmp`
 en macOS, para no superar el límite de longitud del socket). Verifica UID, PID e
@@ -259,15 +261,19 @@ trabajo; las PNG y sus recibos deben quedar fuera del repo:
 ```
 
 Cada proceso reutiliza **una sola ventana** para el lote entero y la cierra al
-terminar, también ante error. El manifiesto del Hub admite `collapsed` y `zoom`
+terminar, también ante error. Al salir del lote se retiran las raíces aisladas
+`%TEMP%/vantare-hub-parity/<pid>-...` del propio proceso; nunca los datos del
+banco live-IPC ni rutas persistentes del usuario. Un error de limpieza se informa.
+Si falla escribir o renombrar un recibo, se retira su `.tmp` sin tocar el destino.
+El manifiesto del Hub admite `collapsed` y `zoom`
 (90/100/110/125), además de escena, apariencia y tamaño. Los datos QA se vuelven
 a cargar para cada entrada; la escena actual no depende de los argumentos del
-proceso inicial. `parameters` admite la clave `calendar` en las escenas `calendario-r6-*` de la
-rama del calendario: transporta su especificación a la demo, sin ejecutar
-comandos ni modificar el entorno del proceso. Las claves no admitidas fallan. Al integrar #1634, aplicar desde la raíz Git
-`git apply vantare-v2/native/hub/reference/tools/calendar-batch-1634.patch`: conecta
-su selector QA con los datos de cada entrada y conserva la variable antigua.
-El parche está separado porque ese módulo aún no existe en esta base de nightly.
+proceso inicial. `parameters` admite la clave `calendar` en las escenas
+`calendario-r6-*`: transporta su especificación a la demo, sin ejecutar comandos
+ni modificar el entorno del proceso. Las claves no admitidas fallan. El adaptador
+de #1634 ya está integrado en `hub/src/calendar/capture.rs`; no hay que aplicar
+el parche histórico `calendar-batch-1634.patch`. La variable antigua
+`VANTARE_CAPTURE_CALENDAR` se conserva como fallback para capturas sueltas.
 
 En widgets, `scene` es el archivo de fotos existente (una foto o secuencia JSON),
 `widget` es el nombre del registro y `settings`, opcional, contiene exactamente

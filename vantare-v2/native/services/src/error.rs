@@ -38,6 +38,8 @@ pub enum Error {
     AccountChangeIncomplete,
     DeletionUnavailable,
     RateLimited,
+    MailVerificationRequired,
+    MailErasurePending,
 }
 
 impl fmt::Display for Error {
@@ -75,6 +77,8 @@ impl fmt::Display for Error {
             Self::AccountConflict=>"esta cuenta está protegida o ha cambiado de estado",
             Self::AccountChangeIncomplete=>"el cambio quedó incompleto; consulta la cuenta antes de volver a confirmarlo",
             Self::DeletionUnavailable=>"el borrado todavía no está disponible",
+            Self::MailVerificationRequired => "Verifica tu correo principal antes de guardar el permiso de novedades y ofertas",
+            Self::MailErasurePending => "El borrado anterior de correos sigue pendiente; espera y vuelve a intentarlo",
             Self::RateLimited=>"espera un minuto antes de volver a intentarlo",
         })
     }

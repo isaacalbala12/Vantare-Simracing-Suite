@@ -225,6 +225,44 @@ impl Editor {
     pub fn add(&mut self, kind: Kind) -> Result<(), String> {
         self.add_at(kind, (20.0, 20.0))
     }
+    /// Un solo guardado y paso de historial para el kit del primer arranque.
+    pub(crate) fn onboarding(
+        &mut self,
+        kinds: &[Kind],
+        level: vantare_ui::performance::Level,
+    ) -> Result<(), String> {
+        self.change(|layout| {
+            for item in &mut layout.instances {
+                item.visible = kinds.contains(&item.settings.kind());
+            }
+            for kind in kinds {
+                if !layout
+                    .instances
+                    .iter()
+                    .any(|item| item.settings.kind() == *kind)
+                {
+                    let id = (1..=256)
+                        .map(|n| format!("widget-{n}"))
+                        .find(|id| layout.instances.iter().all(|item| item.id != *id))
+                        .ok_or("identidad agotada")?;
+                    let (x, y) = crate::onboarding::position(*kind);
+                    layout.instances.push(Instance {
+                        id,
+                        x,
+                        y,
+                        visible: true,
+                        opacity: 1.0,
+                        off_track: vantare_ui::layout::OffTrack::default(),
+                        geometry: vantare_ui::geometry::Geometry::default(),
+                        show_in: vantare_ui::session::ShowIn::default(),
+                        settings: Self::new_settings(*kind),
+                    });
+                }
+            }
+            layout.performance.level = level;
+            Ok(())
+        })
+    }
     /// Un solo paso de historial: Deshacer retira el widget, no solo su posición.
     pub fn add_at(&mut self, kind: Kind, (x, y): (f32, f32)) -> Result<(), String> {
         let id = self.next_id()?;
@@ -355,6 +393,55 @@ pub(crate) mod tests {
         editor.undo().expect("deshacer");
         assert!(editor.layout().instances.is_empty());
         assert_eq!(editor.selected, None);
+    }
+    #[test]
+    fn onboarding_persists_one_kit_and_level_without_duplicate_widgets() {
+        let file = File::new();
+        let mut editor = Editor::open(file.path.clone()).expect("editor");
+        editor
+            .add_at(Kind::Pedals, (300.0, 400.0))
+            .expect("existing widget");
+        let kit = crate::onboarding::Choices::default().kit();
+        editor
+            .onboarding(&kit, vantare_ui::performance::Level::Economy)
+            .expect("configure");
+        let reopened = Editor::open(file.path.clone()).expect("restart");
+        assert_eq!(
+            reopened.layout().performance.level,
+            vantare_ui::performance::Level::Economy
+        );
+        let active: Vec<_> = reopened
+            .layout()
+            .instances
+            .iter()
+            .filter(|i| i.visible)
+            .map(|i| i.settings.kind())
+            .collect();
+        // Pedals ahora pertenece al kit Gratis: se reutiliza en su posición y
+        // orden anteriores; los otros tres se añaden sin duplicarlo.
+        assert_eq!(
+            active,
+            [Kind::Pedals, Kind::Standings, Kind::Relative, Kind::Delta]
+        );
+        assert_eq!(
+            reopened.layout().instances[0].x.to_bits(),
+            300.0_f32.to_bits()
+        );
+        let count = reopened.layout().instances.len();
+        editor
+            .onboarding(&kit, vantare_ui::performance::Level::Economy)
+            .expect("retry");
+        assert_eq!(editor.layout().instances.len(), count);
+        editor.undo().expect("one undo");
+        assert_eq!(editor.layout().instances.len(), 1);
+        assert!(editor.layout().instances[0].visible);
+        std::fs::write(&file.path, b"external").expect("external edit");
+        assert!(
+            editor
+                .onboarding(&kit, vantare_ui::performance::Level::Minimum)
+                .is_err()
+        );
+        assert_eq!(std::fs::read(&file.path).expect("preserved"), b"external");
     }
     #[test]
     fn shared_document_roundtrip_and_undo_redo_are_durable() {

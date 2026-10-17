@@ -125,6 +125,7 @@ impl Privacy {
         if !self.usage || !self.usage_decided {
             for name in [
                 "anonymous-id",
+                "usage-opt-in-v1",
                 "installation-observed-v1",
                 "account-observed-v1",
                 "commercial-license-observed-v1",
@@ -435,6 +436,8 @@ pub fn configured() -> bool {
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(tag = "event", content = "properties", deny_unknown_fields)]
 pub enum Usage {
+    #[serde(rename = "usage_opt_in")]
+    UsageOptIn {},
     #[serde(rename = "app_started")]
     AppStarted { version: String, channel: String },
     #[serde(rename = "live_session_started")]
@@ -499,7 +502,8 @@ impl Usage {
                 WIDGET_TYPES.contains(&widget_type.as_str()) && (1..=60).contains(duration_seconds)
             }
             Self::FeatureUsed { feature } => FEATURES.contains(&feature.as_str()),
-            Self::InstallationObserved {}
+            Self::UsageOptIn {}
+            | Self::InstallationObserved {}
             | Self::AccountSignedIn {}
             | Self::CommercialLicenseObserved {} => true,
         }
@@ -583,6 +587,7 @@ fn enqueue_once_authorized(root: &Path, event: &Usage, generation: u64) -> Resul
         return Ok(());
     }
     let marker = match event {
+        Usage::UsageOptIn {} => "usage-opt-in-v1",
         Usage::InstallationObserved {} => "installation-observed-v1",
         Usage::AccountSignedIn {} => "account-observed-v1",
         Usage::CommercialLicenseObserved {} => "commercial-license-observed-v1",
@@ -594,7 +599,9 @@ fn enqueue_once_authorized(root: &Path, event: &Usage, generation: u64) -> Resul
     // Services puede confirmar cuenta/licencia antes de que el Hub se abra.
     // Reservar la primera observación bajo el mismo lock conserva el orden.
     let installation = root.join("installation-observed-v1");
-    if !matches!(event, Usage::InstallationObserved {}) && !installation.exists() {
+    if !matches!(event, Usage::InstallationObserved {} | Usage::UsageOptIn {})
+        && !installation.exists()
+    {
         queue_usage(root, &Usage::InstallationObserved {}, generation)?;
         File::create(installation)
             .and_then(|file| file.sync_all())

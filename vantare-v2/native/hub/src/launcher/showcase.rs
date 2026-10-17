@@ -845,7 +845,7 @@ impl Launcher {
                                 Discovery {
                                     apps: this.discovered.apps.clone(),
                                     steam_executable: this.discovered.steam_executable.clone(),
-                                    warnings: vec![],
+                                    ..Discovery::default()
                                 },
                                 selected,
                                 cx,
@@ -1988,7 +1988,7 @@ mod tests {
         let discovery = Discovery {
             apps: vec![],
             steam_executable: None,
-            warnings: vec![],
+            ..Discovery::default()
         };
         assert!(
             launch_block_reason(&profile, &[], &discovery, true)

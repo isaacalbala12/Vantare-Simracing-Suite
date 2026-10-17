@@ -2,9 +2,9 @@
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use std::io::{self, Read, Write};
 
-// v11 combines #1631 AccountEmail and #1661 Founders; v12 adds Calendar.fallback
-// (#1634): Reply is deny_unknown_fields, so a v11 Hub must not talk to it. Reject older peers.
-pub const VERSION: u32 = 12;
+// v13 combines verified MailConsent, Calendar.fallback, AccountEmail and Founders.
+// Both merged branches used v12 for different contracts; reject v12 and older peers.
+pub const VERSION: u32 = 13;
 #[path = "services_protocol/pilot_document.rs"]
 pub mod pilot_document;
 #[path = "services_protocol/report_document.rs"]
@@ -22,6 +22,11 @@ pub const MAX_TRIAGE_FRAME: usize = 4 * 1024 * 1024;
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "command", deny_unknown_fields)]
 pub enum Command {
+    MailConsentGet,
+    MailConsentSet {
+        consent: bool,
+        source: MailSource,
+    },
     PilotLoad,
     PilotSave {
         profile: pilot_document::PilotProfile,
@@ -96,6 +101,13 @@ pub enum Command {
     Shutdown,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum MailSource {
+    Onboarding,
+    Settings,
+}
+
 /// Solo credenciales introducidas por el usuario; nunca tokens del proveedor.
 /// Debug redactado porque Command puede aparecer en diagnósticos.
 #[derive(Clone, Serialize, Deserialize)]
@@ -162,6 +174,11 @@ pub struct Request {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "result", deny_unknown_fields)]
 pub enum Reply {
+    MailConsent {
+        consent: bool,
+        locale: Option<String>,
+        revision: u64,
+    },
     Pilot {
         state: pilot_document::PilotState,
         message: String,

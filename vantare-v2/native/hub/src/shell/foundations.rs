@@ -1702,10 +1702,26 @@ mod thumbnail_host_tests {
 #[cfg(test)]
 mod catalog_tests {
     use super::*;
+    struct Catalog {
+        previews: Previews,
+        layout: vantare_ui::layout::Layout,
+        access: super::super::navigation::Access,
+    }
+    impl gpui::Render for Catalog {
+        fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+            self.previews
+                .layout_thumbnail(&self.layout, Some(self.access), 500.0, 200.0, cx)
+        }
+    }
     #[test]
+    #[allow(clippy::too_many_lines)] // Tres cambios de catálogo sobre el mismo documento renderizado.
     fn home_catalog_changes_without_editing_the_retained_document() {
         gpui_platform::headless().run(|cx| {
-            cx.set_global(orbit::theme::Theme::default());
+            let mut test = gpui::HeadlessAppContext::with_asset_source(
+                gpui_platform::current_platform(true).text_system(),
+                std::sync::Arc::new(crate::shell::assets::Icons),
+            );
+            test.update(|cx| cx.set_global(orbit::theme::Theme::default()));
             let mut layout = vantare_ui::layout::Layout::default();
             for kind in [Kind::Standings, Kind::Radar] {
                 layout.instances.push(vantare_ui::layout::Instance {
@@ -1721,7 +1737,15 @@ mod catalog_tests {
                 });
             }
             let original = layout.clone();
-            let previews = Previews::new(&Snapshot::default(), layout.preferences, None, cx);
+            let window = test
+                .open_window(gpui::size(px(500.0), px(200.0)), |_, cx| {
+                    cx.new(|cx| Catalog {
+                        previews: Previews::new(&Snapshot::default(), layout.preferences, None, cx),
+                        layout,
+                        access: super::super::navigation::Access::default(),
+                    })
+                })
+                .expect("ventana del arnés");
             for catalog in [
                 vantare_ipc::control::CatalogAccess::LaunchV1,
                 vantare_ipc::control::CatalogAccess::Pro,
@@ -1732,15 +1756,39 @@ mod catalog_tests {
                     catalog,
                     ..Default::default()
                 };
-                let _stage = previews.layout_thumbnail(&layout, Some(access), 500.0, 200.0, cx);
-                let primary = previews.primary.borrow();
-                let primary = primary.as_ref().expect("miniatura");
-                assert!(primary.views[0].lock.is_none());
-                assert_eq!(primary.views[1].lock, access.widget_lock(Kind::Radar));
-                assert_eq!(primary.layout, original);
+                window
+                    .update(&mut test, |view, _, cx| {
+                        view.access = access;
+                        cx.notify();
+                    })
+                    .expect("cambiar catálogo");
+                // El render delimita y libera el arena de elementos, como en
+                // producto. Construir Divs con entidades fuera de draw deja
+                // referencias vivas en el arena TLS hasta que termine el hilo.
+                test.update_window(window.into(), |_, window, cx| {
+                    window.draw(cx).clear(cx);
+                })
+                .expect("render");
+                window
+                    .update(&mut test, |view, _, _| {
+                        let primary = view.previews.primary.borrow();
+                        let primary = primary.as_ref().expect("miniatura");
+                        assert!(primary.views[0].lock.is_none());
+                        assert_eq!(primary.views[1].lock, access.widget_lock(Kind::Radar));
+                        assert_eq!(primary.layout, original);
+                        assert_eq!(view.layout, original);
+                    })
+                    .expect("derechos y documento conservados");
             }
-            previews.ingest(&Snapshot::default(), cx);
-            assert_eq!(layout, original);
+            window
+                .update(&mut test, |view, _, cx| {
+                    view.previews.ingest(&Snapshot::default(), cx);
+                    assert_eq!(view.layout, original);
+                })
+                .expect("nueva foto");
+            test.update_window(window.into(), |_, window, _| window.remove_window())
+                .expect("cerrar");
+            drop(test);
             crate::quit_headless_test(cx);
         });
     }

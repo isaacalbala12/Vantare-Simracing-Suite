@@ -1,6 +1,6 @@
 ## #1631 · Login propio
 
-El protocolo services v11 combina Founders y AccountEmail y respuestas Email sin tokens.
+El protocolo services v13 combina marketing verificado, Founders y AccountEmail y respuestas Email sin tokens.
 R2 mantiene el canje pendiente en memoria y hace un solo intento por AccountPoll,
 con reloj inyectado, intervalo de Clerk/slow_down y ventana de 30 s. Cancel y
 Logout pueden interrumpir los intervalos sin sleeps. La sesión FAPI se cierra
@@ -29,7 +29,7 @@ QA y Windows pendientes del orquestador. Telemetría 25/25 y lifecycle macOS
 # Servicios nativos — ISA-1430
 
 **#1661 / VANTA-83:** Founders añade el plan perpetuo para contenido presente y
-futuro. Corte actual services v11 / control v5 / fotos v11; recompilar el conjunto.
+futuro. Corte actual services v13 / control v5 / fotos v11; recompilar el conjunto.
 Incluye Nightly vitalicio junto al derecho Founders; no concede roles. [Contrato](../../docs/billing/founders-1661.md).
 
 **Corte combinado #1610/#1594:** protocolo services v9 (DTO v10/derechos v4

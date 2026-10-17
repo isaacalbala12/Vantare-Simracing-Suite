@@ -26,6 +26,12 @@ pub fn consent(cx: &App, privacy: Privacy) {
         recorder.consent(privacy);
     }
 }
+/// La salida sin guardar prevalece sobre el archivo antiguo en esta sesión.
+pub fn suspend_until_consent(cx: &App) {
+    if let Some(recorder) = recorder(cx) {
+        recorder.suspend_until_consent();
+    }
+}
 pub fn record(cx: &App, event: &Usage) {
     if let Some(recorder) = recorder(cx) {
         recorder.record(event);

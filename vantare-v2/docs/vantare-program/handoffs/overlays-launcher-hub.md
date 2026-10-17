@@ -237,6 +237,151 @@ Hitos #1607: PNG `c40a90d9` (2234.920 → 115.473 µs/carga repetida; RED/GREEN)
 2026-10-13 · GitHub #1561 · Codex. Merge de nightly con #1579 y #1580 conservados junto con PR-4/PR-6; estado y diario en issue/buzón.
 2026-10-13 · GitHub #1566 · Claude (Opus 5.5): §1, §4, §6 y §8 por Pedales Vantare; merge de nightly con #1578 y #1579 conservados.
 
+2026-10-14 · #1628 / VANTA-51 · Ronda 2, encargo directo Codex CLI; sin Plane, Notion, subagentes, PR ni merge. Base asignada b9ec75ed conservada. Código 7bd4dc00 (hito anterior 7b0a2769): detector local de CPU/núcleos físicos, RAM y primer adaptador DXGI de hardware; Automático inicial/recomendado = Equilibrado, o Ahorro con ≤4 núcleos o <8 GiB. Se guarda la elección junto al nivel resuelto, sin medición en carrera. ACC solo se detecta por los manifests instalados de las bibliotecas Steam existentes; fuera del catálogo Launcher. Pro Plus/Launch abren la web de precios; los proveedores siguen AccountBegin y no se duplican #1631/#1633.
+
+QA Windows real: LMU+ACC encontrados; Ryzen 7 3700X, 8 núcleos, RX 7800 XT y 32 GB; Máximo→Automático/Equilibrado, guardado y reapertura sin asistente, uso/fallos apagados. Gate workspace 1763/1763 (12 skips), repetición final Hub/Launcher/services 679/679 (4 skips), lifecycle 18/18, fmt/check/Clippy e integridad 456 PASS. Siete capturas 1600×900 en C:/tmp/onboarding/nativo/r2; diferencias >20 por píxel, media sin máscaras 18,69 % r1→9,68 % r2. Quedan rasterización/glow/espaciado de GPUI y previews productivas distintas de las miniaturas HTML; textos honestos de privacidad/local y regla Automático explicados en el informe. Publicación autorizada: solo push de vantareapp/isa-1628-onboarding; HEAD final, prueba remota, logs y límites en C:/tmp/buzon/1628.md y C:/tmp/onboarding/nativo/r2/informe.md. Sin CI remota acreditada, promoción, release ni servicios comerciales reales; revisión e integración corresponden al orquestador.
+
+
+### VANTA-51 / #1628 · Integración del consentimiento · 16-oct-2026
+
+PR #1637, rama `vantareapp/isa-1628-onboarding`, worktree
+`C:/VantareServer/wt/isa-1628-onboarding`. Merge de nightly `bcaa0e3f2`
+en `a2f9b8ee6`, publicado sin conflictos; sin promoción de canal.
+Marketing se conecta por servicios con OAuth actual a `native-mail-consent`
+según `supabase/functions/native-admin/CONSENT.md`: consulta remota, elección
+única de novedades/ofertas, locale es, fuentes onboarding/settings, ACK antes
+de cambiar proyección o completar el paso. Uso y fallos siguen separados y
+locales. 401 pasa por revocación del núcleo y cierra sesión; errores de correo
+no confirman permisos ni reenvían decisiones automáticamente. Servicios v11.
+Founders se presenta según el núcleo; Saltar lleva al aviso de fallos antes
+del resumen. Los fallos siguen encendidos con aviso y pueden apagarse.
+
+Review DeepSeek de `C:/VantareServer/evidence/ds-rev1637`: arreglos P2/P3
+conservados con tests de navegación, planes, textos y salida privada.
+P1 de widgets completos sigue abierto: depende de #1641 (no fusionado).
+#1675 también OPEN; cero capturas/ventanas en este encargo.
+Validación del código `cec0bed8d` / seguimiento `24d3d33c9`:
+- CI Windows verde en `24d3d33c9`: fmt/check/clippy del workspace PASS;
+  Nextest suite+corpus 1886/1886 PASS (19 omitidos por configuración existente),
+  lifecycle 18/18,456 huellas PASS. Run38914287454, job117018176509.
+- Los otros cuatro checks de ese SHA pasan: promoción, calidad, PostgreSQL/E2E
+  de marketing y GitGuardian. Sin cambios SQL/Edge de este worker.
+- Windows local fmt/check/clippy PASS. Nextest inicial paró en446 PASS/1 FAIL
+  por C:lleno (StorageFull112). Log conservado; reintento cancelado aún en
+  cola al comprobar la CI completa verde, evitando repetir trabajo ya validado.
+  No se retiraron archivos: limpieza propia directa bloqueada por revisión
+  automática; cargo clean alternativo cancelado en cola al recuperar espacio.
+- Mac fmt/check/clippy PASS; consentimiento4/4 y regresiones onboarding11/11
+  PASS; suite amplia702 PASS/52 FAIL/5 omitidos:50 GPUI conocidos en #1653 y
+  2 smoke sin binario storage en ese target. Sin filtrar ni debilitar tests.
+  Telemetría32/32,lifecycle11/11,456 huellas PASS. Worktree/target retirados.
+
+PR #1637 fuera de borrador por encargo de Isaac. VANTA-51 pasa a Por revisar;
+el cierre final solo actualiza este handoff, y su SHA/CI se verifica en #1628.
+P1 de DeepSeek sigue abierto hasta widgets completos de #1641. #1675 OPEN:
+sin capturas ni ventanas; QA visual pendiente del modo lote integrado en nightly.
+Evidencia `C:/VantareServer/evidence/1628-integration-20261016`.
+No hay merge a nightly ni release. Revisión/integración corresponden al
+orquestador. T3 rechazó watch_pull_request porque este hilo es un worker:
+la vigilancia final de CI corresponde al padre, avisado en buzón.
+
+
+### VANTA-51 / #1637 · Reanudación y merge de nightly · 16–17-oct-2026
+
+Reanudado desde `1278bc9e3`, limpio, en el mismo worktree. Encargo del
+orquestador: resolver DIRTY con merge, sin rebase ni force-push.
+Base incorporada `32c3f3a14`: login propio #1635 y correcciones Polar #1681/#1683.
+Cinco conflictos resueltos conservando MailConsent y AccountEmail, la pantalla
+Cuenta extraída a services/view/account.rs, Founders y los cambios comerciales.
+Servicios pasa a v12 para rechazar los peers v11 sin marketing; se conserva
+Debug redactado de las credenciales y se prueba el rechazo de v11 en el host.
+Retirada solo la copia de account_plan_label que ya vive en account.rs.
+Al iniciar o finalizar el login nativo de email se retira la proyección de
+marketing anterior y se consulta la propia de la nueva sesión, con regresión.
+Los gates y el estado verificado de cada SHA de este merge viven en #1628 y
+PR #1637 (CI Windows); no se extrapolan los checks de la entrega anterior. No hay promoción a nightly ni release.
+P1 widgets completos #1641 y capturas #1675 quedan fuera de este arreglo del merge.
+
+Durante la CI avanzó nightly a 1a8ddee33 (#1684): se incorpora también con merge,
+sin conflictos; conserva la retirada de triage y el reinicio del login si falla
+el guardado tras el canje. Se repiten los checks sobre el HEAD resultante.
+
+### VANTA-51 / #1637 · Correcciones de la review DeepSeek R1 · 17-oct-2026
+
+Encargo explícito del orquestador tras NO APTO en `4c317d5ad`; misma rama y
+worktree. Se corrige el restablecimiento de privacidad: State recibe el valor
+cargado de settings.privacy y solo propone defaults si cada permiso sigue sin
+decidir. Regresión de cerrar/reabrir/Terminar para fallos rechazados y uso
+aceptado, con privacy.json y flujo real de Hub. El resumen incluye fallos y
+correo confirmado por el servidor además de uso.
+
+Se mantiene el premarcado de fallos con aviso decidido por Isaac (15-oct,
+reiterado por el orquestador el 17-oct). La pregunta independiente de Ajustes
+es recuperación para instalaciones sin decisión ni asistente: conserva
+Aceptar/No gracias. Ambas rutas respetan la decisión guardada; la diferencia
+queda explicada en native/hub/README.md, no se convierte un permiso sin decidir
+en una autorización de envío antes de guardar la pantalla que lo muestra.
+
+Enter solo avanza con foco en la página. Los controles conservan la activación
+nativa de GPUI al soltar Enter/Espacio, sin captura raíz ni handlers duplicados.
+TestPlatform dentro de gpui_platform::headless prueba foco y eventos reales,
+sin ventanas del sistema ni capturas. Se habilita test-support únicamente en
+la dependencia de desarrollo GPUI ya fijada; Cargo.lock incorpora sus 11
+paquetes transitivos de test (incluido proptest fijado por GPUI), sin actualizar
+las versiones de producto existentes. Es necesario para el arnés de teclado
+pedido: el backend Windows headless normal no abre ventanas sin DirectX.
+
+Marketing ya no activa el error de guardado local ni la salida sin guardar.
+El kit inicial sustituye Banderas por Pedals y solo incluye widgets Gratis.
+Email y Pro sin sesión abren el login propio de #1635 dentro del asistente;
+Google/Discord conservan el navegador. La salida privada notifica al grabador
+y suspende la grabación en memoria hasta la siguiente decisión guardada, para
+que releer el archivo antiguo no reactive uso. No se inventa una generación:
+una aceptación posterior vuelve a funcionar sin reiniciar. Regresión del
+grabador cubre la cola, la lectura antigua y la aceptación posterior.
+
+P3 documentados, sin modificar en esta ronda por encargo: precios de tarjetas
+incrustados (Pro 3,99/5,99 EUR, Plus 6,99/9,99 EUR, Launch 30 EUR) y fecha
+«HASTA EL 26 NOV» sin caducidad automática; marketing no tiene plazo/cancelación
+a nivel de asistente mientras pending siga activo (HTTP tiene timeout de 8 s;
+no garantiza plazo si el peer no responde). Atrás/Escape permiten retroceder.
+Locale de correos permanece es y los PNG incrustados conservan su tamaño.
+Widgets completos tras #1641 y QA visual tras #1675 siguen como pendientes previos.
+El estado verificado de esta ronda, gates y SHA final constan en #1628 y PR
+#1637. La siguiente acción del orquestador es la ronda 2 de DeepSeek cuando la
+CI del HEAD final esté verde; no hay merge a nightly ni release del worker.
+Nightly avanzó durante los gates a a3fea01f9 (#1679, pulido de telemetría):
+también incorporado por merge sin conflictos. La regresión de documento ahora
+comprueba reutilizar Pedals ya existente, conservando su orden y posición al
+añadir los otros tres widgets Gratis; no se reordena el layout del usuario.
+El arnés activa también el detector de fugas de GPUI. La prueba previa de catálogo
+creaba miniaturas con entidades fuera de draw y retenía sus handles en el arena
+TLS hasta salir del hilo: se adapta a una ventana de TestPlatform y libera su
+arena después de cada render. Conserva las aserciones de los tres cambios de
+catálogo, bloqueo de widgets, documento intacto e ingestión de la siguiente foto.
+No se desactiva el detector ni se omite la prueba.
+La regresión real de teclado detectó además que tab_stop(true) no crea foco en
+esta revisión GPUI: los controles ahora usan tab_index(0), dentro del tab_group
+del asistente. Se conserva el recorrido del test y se añade la aserción de que
+Tab abandona el foco de la página antes de enviar Enter/Espacio. El ciclo P1
+cerrar/reabrir/Terminar, error de marketing, salida privada y catálogo ya pasan
+en la CI 0c49bdd35; la nueva CI comprobará también el foco corregido.
+Nightly volvió a avanzar a 2a580c458 (#1640, calendario). Se conservan su modelo,
+UI y Calendar.fallback, resolviendo solo el comentario de versión y el rechazo
+del host: ambas ramas habían usado services v12 con contratos distintos. El
+corte combinado es services v13 y la regresión del host rechaza también v12.
+Las guías actuales exigen recompilar Hub, supervisor y servicios juntos.
+En 374e9d24e pasan también las regresiones nuevas de foco/teclado y privacidad.
+El detector encontró el mismo patrón de arena TLS en la prueba previa de
+resolución de Studio: preview_stage se construía fuera de draw. Se mueve a una
+ventana de TestPlatform conservando las cuatro resoluciones, sus tamaños,
+anclajes, posiciones y documento; solo cambia el ciclo de vida del test.
+
+La siguiente CI detectó el mismo ciclo de vida en las dos pruebas previas de
+marco de selección. Sus aserciones de opacidad, borde y tamaños para todos los
+widgets/factores/zoom se ejecutan dentro de draw con arena liberada; no se
+omiten combinaciones. Se incorpora además nightly 9c19b2993 (#1660), Avisos de
+sesión, mediante merge sin conflictos. SHA y gates finales se verifican en #1637.
 #1629 continuación Mac: Historial de delta 760×192 (alto efectivo del HTML), traza por distancia, vuelta anterior y sectores disponibles; Hub reconstruye las muestras hasta el cursor. Banco local `hub/examples/widget-workshop.rs`, sin servicios reales ni derechos de producto. Evidencia `~/evidence/1629/delta-trace/`. Pendiente revisión global, sin push.
 
 #1629 Mac: Telemetría de pedales pasa de 300×112 a tira 380×64, barras horizontales, volante y ángulo medido. 7 tests PASS; captura Hub en `~/evidence/1629/pedals-telemetry/`. ABS sigue ausente por falta de señal; sin dependencias nuevas.
@@ -383,3 +528,62 @@ Durante la publicación de `c9442667d`, nightly avanza a `9c19b2993`
 conservando su feed/registro/widget; el escritor de avisos ya excluye
 `capture.is_some()`. N1/N2/N3/N6 y H1–H4 no se sobrescriben. La CI del SHA
 resultante sustituye a la ejecución de c944 cancelada por estar desactualizada.
+
+VANTA-51 incorpora nightly c9a832d70 (#1675): conserva el cargador reutilizable
+y la visibilidad del Hub para el lote, junto con layout_preexisted y el estado
+del asistente. Handoff de ambas entregas preservado. Se habilita QA del asistente
+solo con capture-batch seguro; resultados y SHA final en #1637.
+
+VANTA-51 / ronda 2: f2b95ce3f obtiene CI verde en run38988768325 intento 2:
+fmt/check/Clippy -D warnings, Nextest 2004/2004 (19 skips), lifecycle Engineer
+5/5 y resto sin fallos; 462 huellas PASS. Intento 1: assert lap intermitente
+del lifecycle Engineer ya descrito en #1638; log conservado, test aislado 1/1
+y repetición completa verde sin modificarlo. Capturas #1675: 7/7 PNG 1600x900,
+un proceso/una ventana fuera de monitores, focus=false, proceso cerrado.
+La verificación final descubre nightly 8ef018cef (#1685, rutas MSIX); merge
+sin conflictos. El PR/issue registran su nuevo SHA y CI, sin extrapolar verdes.
+
+El lote detecta que las dos filas nuevas acercaban las acciones del resumen
+al pie. Se reduce únicamente su espaciado vertical (12→9), conservando ocho
+filas y todos los controles; se repite la vista final con capture-batch.
+
+VANTA-51: CI38991369838 verde en 1e137dc00 (2006/2006,19skips, lifecycle
+Engineer5/5 y resto sin fallos,462huellas). Durante su ejecución nightly integra
+04521bf3d (#1641): se incorpora ahora con merge conservando widgets y regresiones
+de Studio/onboarding. Se preservan ambos handoffs; la dependencia de widgets
+completos queda integrada en esta rama. SHA/CI y capturas finales en #1637.
+
+### VANTA-51 / #1628 · Corrección review R2 · 17-oct-2026
+
+Informe: C:/VantareServer/evidence/rev-1637/INFORME-R2.md. Misma rama y PR1637;
+Plane En curso. Merge normal de nightly24f729157 (#1686), sin conflictos.
+Terminar guarda privacidad y llega al resumen aunque marketing falle o siga
+pendiente. «Sin confirmar» y aviso separado remiten a Ajustes › Privacidad;
+no hay reintento automático, ni permiso inventado. Un ACK posterior sí actualiza
+el resumen. Regresión de salida completa para403/409/pending, en lugar de fijar
+el bloqueo en step5. Los apagados/sin confirmar usan raya neutra, no check verde.
+Enter se atiende al soltar: el control activado consume su clic; si no lo consume,
+el evento avanza. Regresión adicional de foco en control pasivo.
+La salida privada solo suspende el grabador de este proceso. No escribe otro
+archivo cuando el guardado falla: al reiniciar se relee privacy.json y puede
+reactivarse un permiso anterior. Debe guardarse en Ajustes para hacerlo durable.
+Pendientes P3: precios/fecha incrustados, locale es, tamaño de PNG, duplicación de
+onboarding::free respecto del catálogo y coste del arnés. La petición de correo
+no tiene cancelación propia; ya no bloquea el asistente mientras sigue pendiente.
+Dependencia de test-support: aprobación de Isaac pendiente; se conserva según
+el encargo si es necesaria para probar eventos reales sin HWND. Prueba alternativa
+del headless normal de Windows y evidencia de gates/capturas en PR1637.
+
+### VANTA-51 / #1628 · Delta tras review R3 APTO · 17-oct-2026
+
+Sin merge del PR hasta la decisión de Isaac sobre test-support (VANTA-120).
+P3-1: Ajustes reintenta la intención mail.desired y muestra Reintentar guardar;
+solo alterna el ACK si no queda intención. Test del handler real inspecciona
+MailConsentSet/Settings, conserva ACK y comprueba pending/error limpio; después
+del ACK, un test de proyección verifica que vuelve a alternar normalmente.
+P3-2: resumen con estado explícito por fila, sin heurística sobre cadenas;
+regresión de plan no confirmado/bloqueado y permisos, neutros.
+Comprobación independiente: grafo normal/build/features Windows sin
+GPUI/test-support ni proptest; grafo con dev los incluye. Solo se verifica el
+grafo de producción, no se afirma inspección de binario release. Evidencia en
+C:/VantareServer/evidence/1628-review-r3-delta-20261017; SHA/CI finales en PR1637.

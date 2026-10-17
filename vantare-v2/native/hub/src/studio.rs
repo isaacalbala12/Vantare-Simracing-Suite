@@ -614,6 +614,21 @@ impl Studio {
     pub(crate) fn performance(&self) -> &vantare_ui::performance::Preferences {
         &self.editor.layout().performance
     }
+    pub(crate) fn finish_onboarding(
+        &mut self,
+        kinds: &[Kind],
+        level: vantare_ui::performance::Level,
+        show: bool,
+        cx: &mut Context<Self>,
+    ) -> Result<(), String> {
+        self.editor.onboarding(kinds, level)?;
+        self.rebuild(cx);
+        if show {
+            self.editor.show_on_track()?;
+        }
+        cx.notify();
+        Ok(())
+    }
     pub(crate) fn set_performance_level(
         &mut self,
         level: vantare_ui::performance::Level,

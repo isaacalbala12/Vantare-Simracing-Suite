@@ -27,6 +27,13 @@ impl Density {
 #[serde(default, deny_unknown_fields)]
 #[allow(clippy::struct_excessive_bools)]
 pub(in crate::shell) struct Preferences {
+    pub onboarding_completed: bool,
+    // Retirados del asistente (#1628): general.json anteriores aún los traen,
+    // así que se toleran al leer pero ya no se escriben ni se usan.
+    #[serde(skip_serializing)]
+    pub onboarding_simulators: [bool; 2],
+    #[serde(skip_serializing)]
+    pub onboarding_automatic: bool,
     pub density: Density,
     pub startup: bool,
     pub minimized: bool,
@@ -37,6 +44,10 @@ pub(in crate::shell) struct Preferences {
 impl Default for Preferences {
     fn default() -> Self {
         Self {
+            // Los JSON anteriores al onboarding pertenecen a instalaciones existentes.
+            onboarding_completed: true,
+            onboarding_simulators: [true, false],
+            onboarding_automatic: false,
             density: Density::Balanced,
             startup: false,
             minimized: false,
@@ -59,12 +70,15 @@ impl Store {
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => None,
             Err(error) => return Err(format!("leer ajustes generales: {error}")),
         };
-        let value = observed
+        let mut value = observed
             .as_deref()
             .map_or(Ok(Preferences::default()), |bytes| {
                 serde_json::from_slice(bytes)
                     .map_err(|error| format!("leer ajustes generales: {error}"))
             })?;
+        if observed.is_none() {
+            value.onboarding_completed = false;
+        }
         Ok(Self {
             value,
             path,
@@ -77,6 +91,13 @@ impl Store {
         self.value = value;
         self.observed = Some(bytes);
         Ok(())
+    }
+    pub fn onboarding_needed(&mut self, layout_preexisted: bool) -> bool {
+        if self.observed.is_none() && layout_preexisted {
+            // Un layout anterior acredita una instalación existente, aunque nunca guardara General.
+            self.value.onboarding_completed = true;
+        }
+        !self.value.onboarding_completed
     }
 }
 
@@ -192,6 +213,80 @@ pub(super) fn wire(state: &super::State, cx: &mut gpui::Context<super::Hub>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn existing_layout_without_general_skips_onboarding_but_interrupted_setup_resumes() {
+        let root = std::env::temp_dir().join(format!(
+            "vantare-onboarding-migration-{}",
+            std::process::id()
+        ));
+        std::fs::create_dir_all(&root).expect("root");
+        let mut legacy = Store::load(&root).expect("legacy without General");
+        assert!(!legacy.onboarding_needed(true));
+        legacy.save(legacy.value).expect("later settings edit");
+        assert!(
+            !Store::load(&root)
+                .expect("legacy restart")
+                .onboarding_needed(true)
+        );
+        std::fs::remove_file(root.join("general.json")).expect("new installation case");
+        let mut fresh = Store::load(&root).expect("fresh");
+        assert!(fresh.onboarding_needed(false));
+        fresh
+            .save(fresh.value)
+            .expect("persist pending before opening wizard");
+        assert!(
+            Store::load(&root)
+                .expect("interrupted wizard")
+                .onboarding_needed(true)
+        );
+        std::fs::remove_dir_all(root).expect("cleanup");
+    }
+    #[test]
+    fn onboarding_runs_only_on_new_installations_and_completion_survives_restart() {
+        let root =
+            std::env::temp_dir().join(format!("vantare-onboarding-general-{}", std::process::id()));
+        std::fs::create_dir_all(&root).expect("root");
+        let mut store = Store::load(&root).expect("new installation");
+        assert!(!store.value.onboarding_completed);
+        let mut next = store.value;
+        next.onboarding_completed = true;
+        store.save(next).expect("completed");
+        assert!(
+            Store::load(&root)
+                .expect("restart")
+                .value
+                .onboarding_completed
+        );
+        std::fs::write(root.join("general.json"), b"{}").expect("legacy");
+        assert!(
+            Store::load(&root)
+                .expect("existing installation")
+                .value
+                .onboarding_completed
+        );
+        std::fs::remove_dir_all(root).expect("cleanup");
+    }
+    #[test]
+    fn retired_onboarding_choices_still_load_but_are_never_written() {
+        let root =
+            std::env::temp_dir().join(format!("vantare-onboarding-retired-{}", std::process::id()));
+        std::fs::create_dir_all(&root).expect("root");
+        // Una instalación previa conserva sus campos retirados al reabrir.
+        std::fs::write(
+            root.join("general.json"),
+            br#"{"onboarding_completed":true,"onboarding_simulators":[false,true],"onboarding_automatic":true}"#,
+        )
+        .expect("legacy choices");
+        let mut store = Store::load(&root).expect("legacy installation");
+        assert!(store.value.onboarding_completed);
+        store.save(store.value).expect("rewrite");
+        let saved = String::from_utf8(std::fs::read(root.join("general.json")).expect("read"))
+            .expect("utf8");
+        assert!(saved.contains("\"onboarding_completed\":true"));
+        assert!(!saved.contains("onboarding_simulators"));
+        assert!(!saved.contains("onboarding_automatic"));
+        std::fs::remove_dir_all(root).expect("cleanup");
+    }
     #[test]
     fn density_changes_spacing_and_never_overrides_small_window_limits() {
         let base = crate::orbit::Adapt::new(1920.0, 1080.0, None, true);

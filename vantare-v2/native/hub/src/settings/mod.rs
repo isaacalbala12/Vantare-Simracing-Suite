@@ -12,14 +12,14 @@ use vantare_domain::format::{Language, Preferences, Units};
 pub(super) mod appearance;
 pub(in crate::shell) mod general;
 mod pilot;
-mod privacy;
+pub(in crate::shell) mod privacy;
 pub(crate) mod releases;
 #[cfg(test)]
 mod tests;
 mod text_rendering;
 mod updates;
 mod view;
-mod windows;
+pub(in crate::shell) mod windows;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 enum Page {
@@ -121,7 +121,7 @@ impl Page {
 }
 
 pub(super) struct State {
-    general: Result<general::Store, String>,
+    pub(in crate::shell) general: Result<general::Store, String>,
     general_focus: [FocusHandle; 7],
     global_hotkeys_focus: FocusHandle,
     zoom_focus: [FocusHandle; 3],
@@ -129,7 +129,7 @@ pub(super) struct State {
     custom_performance_focus: FocusHandle,
     performance_focus: [FocusHandle; 5],
     pub(in crate::shell) launcher_running: bool,
-    privacy: Result<privacy::Store, String>,
+    pub(in crate::shell) privacy: Result<privacy::Store, String>,
     privacy_focus: [FocusHandle; 2],
     privacy_policy_focus: FocusHandle,
     consent_focus: [FocusHandle; 4],
@@ -664,6 +664,10 @@ impl Hub {
     fn select_settings_page(&mut self, page: Page, cx: &mut Context<Self>) {
         if page == Page::Account && self.settings.pilot_saved.is_none() {
             self.settings.pilot_load = pilot::Load::New;
+        }
+        if page == Page::Privacy {
+            self.remote
+                .update(cx, super::super::services::view::Remote::refresh_mail);
         }
         self.settings.page = page;
         self.settings.panel_scroll = gpui::ScrollHandle::new();

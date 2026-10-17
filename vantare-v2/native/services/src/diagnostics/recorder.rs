@@ -24,11 +24,12 @@ struct Observation {
 struct Pending {
     privacy: Option<Privacy>,
     queue: VecDeque<Observation>,
+    suspended: bool,
 }
 impl Pending {
     fn generation(&self) -> Option<u64> {
         self.privacy
-            .filter(|value| value.usage && value.usage_decided)
+            .filter(|value| !self.suspended && value.usage && value.usage_decided)
             .map(|value| value.generation)
     }
     fn consent(&mut self, privacy: Privacy) {
@@ -140,6 +141,16 @@ impl Recorder {
     pub fn consent(&self, privacy: Privacy) {
         if let Ok(mut state) = self.pending.lock() {
             state.consent(privacy);
+            state.suspended = false;
+        }
+        self.wake.notify_one();
+    }
+    /// Salida privada tras un guardado fallido. Las lecturas del archivo viejo
+    /// no reanudan la grabación; una decisión guardada por la UI sí lo permite.
+    pub fn suspend_until_consent(&self) {
+        if let Ok(mut state) = self.pending.lock() {
+            state.suspended = true;
+            state.queue.clear();
         }
         self.wake.notify_one();
     }
@@ -192,6 +203,44 @@ mod tests {
     use super::*;
     use crate::diagnostics::{consent_tests::choice, tests::root};
     use std::sync::mpsc;
+
+    #[test]
+    fn unsaved_private_exit_survives_disk_refresh_and_can_accept_again() {
+        let root = root();
+        let saved = choice(&root, true);
+        let recorder = Recorder {
+            pending: Arc::new(Mutex::new(Pending::default())),
+            wake: Arc::new(Condvar::new()),
+            stopped: Arc::new(AtomicBool::new(false)),
+            thread: None,
+        };
+        let event = Usage::PageUsage {
+            page: "home".into(),
+            duration_seconds: 1,
+        };
+        recorder.consent(saved);
+        recorder.record(&event);
+        assert_eq!(recorder.pending.lock().expect("queue").queue.len(), 1);
+        recorder.suspend_until_consent();
+        // Mismo camino de publicación del worker, que sigue viendo el sí en disco.
+        recorder
+            .pending
+            .lock()
+            .expect("disk refresh")
+            .consent(Privacy::load(&root).expect("saved"));
+        recorder.record(&event);
+        recorder.record_in_generation(&event, saved.generation, false);
+        assert_eq!(recorder.generation(), None);
+        assert!(recorder.pending.lock().expect("queue").queue.is_empty());
+        // Aceptar explícitamente después de la salida privada no necesita reiniciar.
+        recorder.consent(saved);
+        recorder.record(&event);
+        assert_eq!(recorder.generation(), Some(saved.generation));
+        assert_eq!(recorder.pending.lock().expect("queue").queue.len(), 1);
+        drop(recorder);
+        assert_eq!(Privacy::load(&root).expect("sin escrituras"), saved);
+        std::fs::remove_dir_all(root).expect("cleanup");
+    }
 
     #[test]
     fn isa1609_a_loaded_permission_cannot_overwrite_completed_revocation() {

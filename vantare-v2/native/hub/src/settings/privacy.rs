@@ -9,6 +9,10 @@ mod cleanup;
 // El Hub aún muestra la interfaz en español; el idioma de widgets es independiente.
 const PRIVACY_POLICY_URL: &str = "https://vantare.app/privacidad";
 
+/// Qué se envía y qué no en un informe de fallos. Una sola redacción para el
+/// aviso del primer arranque y el paso de privacidad del asistente (#1628).
+pub(in crate::shell) const CRASH_REPORT_WHAT: &str = "la versión de la app, el sistema operativo, el código del fallo y direcciones numéricas de la pila. Sin mensajes, rutas, nombre de usuario ni identificador personal.";
+
 fn resolve_root(data: &Path, default_hub: &Path, shared: PathBuf) -> PathBuf {
     if data == default_hub {
         shared
@@ -35,7 +39,7 @@ pub(super) fn policy_link(id: &'static str, focus: &FocusHandle, cx: &gpui::App)
         })
 }
 
-pub(super) struct Store {
+pub(in crate::shell) struct Store {
     pub value: Privacy,
     path: PathBuf,
     observed: Option<Vec<u8>>,
@@ -134,6 +138,10 @@ impl Drop for Store {
 
 impl super::Hub {
     pub(in crate::shell) fn poll_privacy(&mut self, cx: &mut gpui::Context<Self>) {
+        if self.settings.page == super::Page::Privacy {
+            self.remote
+                .update(cx, crate::services::view::Remote::poll_mail);
+        }
         if let Ok(store) = &mut self.settings.privacy
             && let Some(result) = store.poll()
         {
@@ -181,9 +189,16 @@ impl super::Hub {
                 next.crashes = accept;
                 next.crashes_decided = true;
             }
+            let usage_activated = next.usage && !store.value.usage;
             self.settings.status = store.save(next).err();
             if self.settings.status.is_none() {
                 vantare_ui::analytics::consent(cx, store.value);
+                if usage_activated {
+                    vantare_ui::analytics::record_once(
+                        cx,
+                        &vantare_services::diagnostics::Usage::UsageOptIn {},
+                    );
+                }
                 self.analytics
                     .consent(vantare_ui::analytics::generation(cx));
                 self.focus.focus(window, cx);
@@ -238,9 +253,11 @@ impl super::Hub {
             "¿Quieres enviar informes de fallos para ayudarnos a corregir errores?"
         };
         let description = if asking_usage {
-            "Solo si marcas la casilla, enviaremos a PostHog (Unión Europea) páginas, funciones, tipos de widgets y tiempo de uso, además de instalación, sesión de cuenta y licencia observadas. Con un identificador aleatorio de instalación; sin nombres, contenido, rutas ni datos de pilotos."
+            "Solo si marcas la casilla, enviaremos a PostHog (Unión Europea) páginas, funciones, tipos de widgets y tiempo de uso, además de instalación, sesión de cuenta y licencia observadas. Con un identificador aleatorio de instalación; sin nombres, contenido, rutas ni datos de pilotos.".to_owned()
         } else {
-            "Solo si aceptas, Vantare enviará a PostHog (Unión Europea) la versión de la app, el sistema operativo, el código del fallo y direcciones numéricas de la pila. Sin mensajes, rutas, nombre de usuario ni identificador personal."
+            format!(
+                "Solo si aceptas, Vantare enviará a PostHog (Unión Europea) {CRASH_REPORT_WHAT}"
+            )
         };
         let body = orbit::card_body().gap(px(16.0))
             .child(orbit::text(question, 16.0, 600, orbit::skin(cx).text1, cx))
@@ -293,6 +310,65 @@ impl super::Hub {
             )
     }
 
+    pub(super) fn settings_marketing(&self, cx: &mut Context<Self>) -> Div {
+        let mail = &self.remote.read(cx).mail;
+        let message = mail.error.clone().unwrap_or_else(|| {
+            if mail.pending {
+                "Guardando permiso de correos…".into()
+            } else if mail.consent.is_none() {
+                "Inicia sesión para consultar y cambiar el permiso de correos.".into()
+            } else {
+                "Novedades y ofertas para tu correo principal verificado. Es opcional.".into()
+            }
+        });
+        div()
+            .flex()
+            .flex_col()
+            .gap(px(12.0))
+            .p(px(20.0))
+            .child(orbit::text(message, 13.0, 400, orbit::skin(cx).text2, cx))
+            .child(
+                orbit::button("settings-mail-consent", mail.settings_action().0, cx)
+                    .on_click(cx.listener(|hub, _, _, cx| hub.settings_marketing_toggle(cx)))
+                    .on_key_down(cx.listener(|hub, event: &gpui::KeyDownEvent, _, cx| {
+                        if matches!(event.keystroke.key.as_str(), "space" | "enter") {
+                            hub.settings_marketing_toggle(cx);
+                            cx.stop_propagation();
+                        }
+                    })),
+            )
+            .child(
+                orbit::button("settings-mail-refresh", "Consultar permiso de correos", cx)
+                    .on_click(cx.listener(|hub, _, _, cx| {
+                        hub.remote
+                            .update(cx, crate::services::view::Remote::refresh_mail);
+                    }))
+                    .on_key_down(cx.listener(|hub, event: &gpui::KeyDownEvent, _, cx| {
+                        if matches!(event.keystroke.key.as_str(), "space" | "enter") {
+                            hub.remote
+                                .update(cx, crate::services::view::Remote::refresh_mail);
+                            cx.stop_propagation();
+                        }
+                    })),
+            )
+    }
+    pub(super) fn settings_marketing_toggle(&mut self, cx: &mut gpui::Context<Self>) {
+        use crate::services::protocol::{Command, MailSource};
+        let remote = self.remote.read(cx);
+        if remote.mail.pending {
+            return;
+        }
+        let consent = remote.mail.settings_action().1;
+        self.remote.update(cx, |remote, cx| {
+            remote.mail_command(
+                Command::MailConsentSet {
+                    consent,
+                    source: MailSource::Settings,
+                },
+                cx,
+            );
+        });
+    }
     pub(super) fn settings_privacy_toggle(&mut self, usage: bool, cx: &mut gpui::Context<Self>) {
         if let Ok(store) = &mut self.settings.privacy {
             let mut next = store.value;
@@ -306,6 +382,12 @@ impl super::Hub {
             self.settings.status = store.save(next).err();
             if self.settings.status.is_none() {
                 vantare_ui::analytics::consent(cx, store.value);
+                if usage && store.value.usage {
+                    vantare_ui::analytics::record_once(
+                        cx,
+                        &vantare_services::diagnostics::Usage::UsageOptIn {},
+                    );
+                }
                 self.analytics
                     .consent(vantare_ui::analytics::generation(cx));
             }
@@ -317,6 +399,54 @@ impl super::Hub {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn settings_retry_sends_the_pending_intent_instead_of_inverting_an_old_ack() {
+        crate::shell::onboarding::interaction_tests::with_hub(|hub, cx| {
+            let file = crate::document::tests::File::new();
+            for (ack, desired, expected) in [
+                (Some(true), Some(true), true),
+                (Some(false), Some(false), false),
+                (Some(true), Some(false), false),
+                (Some(false), Some(true), true),
+                (Some(true), None, false),
+                (Some(false), None, true),
+                (None, None, true),
+            ] {
+                let (send, requests) = std::sync::mpsc::sync_channel(8);
+                hub.remote = cx.new(|cx| {
+                    crate::services::view::purchase_tests::fixture(
+                        cx,
+                        send,
+                        file.path.parent().expect("raíz"),
+                    )
+                });
+                hub.remote.update(cx, |remote, _| {
+                    remote.mail.consent = ack;
+                    remote.mail.desired = desired;
+                    remote.mail.error = desired.map(|_| "guardado rechazado".into());
+                    if desired.is_some() {
+                        assert_eq!(
+                            remote.mail.settings_action().0,
+                            "Reintentar guardar el permiso de correos"
+                        );
+                    }
+                });
+                hub.settings_marketing_toggle(cx);
+                assert!(matches!(requests.try_recv().expect("petición de Ajustes"),
+                    crate::services::protocol::Command::MailConsentSet {
+                        consent, source: crate::services::protocol::MailSource::Settings,
+                    } if consent == expected));
+                let mail = &hub.remote.read(cx).mail;
+                assert_eq!(
+                    mail.consent, ack,
+                    "sin ACK nuevo el estado confirmado no cambia"
+                );
+                assert_eq!(mail.desired, Some(expected));
+                assert!(mail.error.is_none(), "el reintento limpia el error previo");
+                assert!(mail.pending);
+            }
+        });
+    }
     #[test]
     fn isolated_settings_never_load_or_discard_the_installed_privacy_queue() {
         let default_hub = Path::new("C:/fixture/VantareNative/hub");

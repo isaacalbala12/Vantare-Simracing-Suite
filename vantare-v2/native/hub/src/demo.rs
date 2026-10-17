@@ -8,6 +8,13 @@ const DATA: &str = include_str!("../reference/fixtures/demo-data.json");
 const SCREENS: &str = include_str!("../reference/tools/demo-states.json");
 const STRATEGY_REVIEW: &str = include_str!("../reference/fixtures/strategy-review-demo.json");
 const QUALITY_CAPTURES: &[&str] = &[
+    "onboarding-0",
+    "onboarding-1",
+    "onboarding-2",
+    "onboarding-3",
+    "onboarding-4",
+    "onboarding-5",
+    "onboarding-6",
     "ajustes-perfil",
     "ajustes-perfil-foto",
     "ajustes-perfil-recorte",
@@ -653,9 +660,17 @@ impl CaptureState {
             return Err(format!("pantalla Wails desconocida: {name}"));
         }
         let section = match name {
-            "shell-notificaciones-abiertas" | "notificaciones-panel" | "notificaciones-vacio" => {
-                Section::Home
-            }
+            "onboarding-0"
+            | "onboarding-1"
+            | "onboarding-2"
+            | "onboarding-3"
+            | "onboarding-4"
+            | "onboarding-5"
+            | "onboarding-6"
+            | "shell-notificaciones-abiertas"
+            | "notificaciones-panel"
+            | "notificaciones-vacio"
+            | "calendario-r6-inicio" => Section::Home,
             "launcher-base"
             | "launcher-nuevo-perfil"
             | "launcher-reposo"
@@ -666,7 +681,6 @@ impl CaptureState {
             | "launcher-listo"
             | "launcher-cancelado"
             | "launcher-nombres-largos" => Section::Launcher,
-            "calendario-r6-inicio" => Section::Home,
             name if name.starts_with("calendario-r6-") => Section::Calendar,
             "calendario-base"
             | "calendario-dia"

@@ -143,6 +143,7 @@ pub(crate) fn fixture(
     let recovery = crate::testing::recovery::Recovery::load(data);
     let editor = crate::testing::Editor::new(crate::testing::empty_fields(), cx);
     let mut remote = Remote {
+        mail: mail::State::default(),
         founders_language: founders::Language::default(),
         pilot: pilot::Projection::default(),
         adapt: orbit::Adapt::default(),

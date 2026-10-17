@@ -42,6 +42,48 @@ const WIDGETS: &[(&str, &[u8])] = widgets![
     "track-map",
     "track-weather",
 ];
+const ONBOARDING: &[(&str, &[u8])] = &[
+    (
+        "onboarding/track.svg",
+        include_bytes!("../../assets/onboarding/track.svg"),
+    ),
+    (
+        "onboarding/panel.svg",
+        include_bytes!("../../assets/onboarding/panel.svg"),
+    ),
+    (
+        "onboarding/backdrop.svg",
+        include_bytes!("../../assets/onboarding/backdrop.svg"),
+    ),
+    (
+        "onboarding/discord.svg",
+        include_bytes!("../../assets/onboarding/discord.svg"),
+    ),
+    (
+        "onboarding/google.svg",
+        include_bytes!("../../assets/onboarding/google.svg"),
+    ),
+    (
+        "onboarding/email.svg",
+        include_bytes!("../../assets/onboarding/email.svg"),
+    ),
+    (
+        "onboarding/helmet.svg",
+        include_bytes!("../../assets/onboarding/helmet.svg"),
+    ),
+    (
+        "onboarding/pro.png",
+        include_bytes!("../../assets/onboarding/pro.png"),
+    ),
+    (
+        "onboarding/plus.png",
+        include_bytes!("../../assets/onboarding/plus.png"),
+    ),
+    (
+        "onboarding/launch.png",
+        include_bytes!("../../assets/onboarding/launch.png"),
+    ),
+];
 
 const ASSETS: &[(&str, &[u8])] = &[
     (
@@ -375,6 +417,7 @@ impl AssetSource for Icons {
         Ok(ASSETS
             .iter()
             .chain(WIDGETS)
+            .chain(ONBOARDING)
             .find(|(name, _)| *name == path)
             .map(|(_, data)| Cow::Borrowed(*data)))
     }
@@ -382,6 +425,7 @@ impl AssetSource for Icons {
         Ok(ASSETS
             .iter()
             .chain(WIDGETS)
+            .chain(ONBOARDING)
             .filter(|(name, _)| name.starts_with(path))
             .map(|(name, _)| (*name).into())
             .collect())

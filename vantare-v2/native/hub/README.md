@@ -3,7 +3,7 @@
 R2 añade recuperación del formulario tras caducidad/reinicio y cola llena,
 «Volver» durante red y autorización pendiente mediante AccountPoll. El servicio
 conserva el mismo grant, respeta el intervalo de Clerk y cede entre consultas;
-la ventana de reintento es de 30 s. El corte combinado de login y Founders usa services **v11**.
+la ventana de reintento es de 30 s. El corte combinado de login y Founders usa services **v13**.
 Pasos y límites de cancelación: [login propio](../../docs/auth/login-propio.md).
 El modo `parity-capture`, con `VANTARE_CAPTURE_EMAIL=code|expired|password|queue|waiting|consent|pending`,
 pinta los componentes reales con datos ficticios y bloquea los comandos remotos.
@@ -19,13 +19,84 @@ El acceso ofrece email con código o contraseña, alta y recuperación en Orbit.
 Los inputs no se guardan; la contraseña se dibuja oculta y no permite copiar.
 Tras verificación hay una aprobación explícita de acceso a identidad/perfil.
 Google/Discord siguen abriendo la página alojada de Clerk en el navegador.
-Entonces el protocolo services era v9; ahora Hub, supervisor y servicios se actualizan juntos a v11 (login propio y Founders).
+Entonces el protocolo services era v9; ahora Hub, supervisor y servicios se actualizan juntos a v13 (marketing verificado, login propio y Founders).
 Build y Clippy de Hub/services/ipc/runtime PASS; Nextest compatible 1072/1072
 PASS. 49 tests GPUI quedan pendientes por AppKit/hilo principal; cuatro mediciones
 se omiten por defecto. QA visual/interacción, Windows y Clerk development real
 quedan al orquestador. La contraseña tampoco se expone en accesibilidad.
 
 # Hub nativo (ISA-1430)
+
+## #1628 · Primer arranque
+
+El asistente GPUI guarda el kit en el layout y las decisiones de uso/fallos en
+privacy.json. Fallos llega encendido con el aviso de datos y cómo apagarlo;
+«Saltar» siempre pasa por ese aviso. Marketing es un permiso separado, apagado
+para cuentas sin decisión: servicios usa OAuth actual → `native-mail-consent`;
+solo su ACK cambia el interruptor y permite continuar como guardado. En error
+hay reintento explícito o entrada sin guardar. Ajustes › Privacidad consulta el
+permiso remoto al abrir y permite cambiarlo con `source:settings`. No se guarda
+marketing en disco ni se infiere del permiso de uso. UI española: `locale:es`.
+Servicios v13 exige recompilar Hub y supervisor juntos.
+Automático es la opción inicial/recomendada: resuelve Equilibrado, o Ahorro si
+el PC tiene ≤4 núcleos físicos o menos de 8 GiB de RAM. La lectura local de
+CPU (registro/topología Windows), RAM (GlobalMemoryStatusEx) y GPU (primer
+adaptador DXGI de hardware) ocurre una vez al abrir el asistente; no se envía.
+Un dato no disponible se muestra como tal y no se inventa. No hay medición en
+carrera ni ajuste continuo: se guarda la cadencia resuelta y la elección
+Automático en general.json. Los cinco niveles manuales siguen disponibles.
+
+LMU usa el discovery del Launcher. ACC solo se marca para el onboarding a
+partir del manifest instalado en las bibliotecas Steam; no entra en el Launcher.
+Email abre el formulario nativo de #1635 dentro del asistente; Google y Discord
+conservan AccountBegin en navegador. Pro sin sesión abre el mismo formulario
+de email antes de comprar. Pro conserva
+la compra existente; Pro Plus y Launch Edition abren https://vantare.app/#precios
+sin crear un checkout ni requerir sesión. Los cuatro widgets Gratis se
+forman el kit inicial de carreras online: Standings, Relative, Delta y Pedals.
+Los otros estilos identifican sus widgets Pro, sin modificar derechos comerciales.
+
+Privacidad: al reabrir se leen las decisiones de `settings.privacy`/privacy.json.
+Solo si fallos sigue sin decidir, el asistente propone activarlo con aviso
+(decisión de Isaac del 15-oct, reiterada en la review del 17-oct). Uso siempre
+parte apagado si no hay decisión. Terminar confirma lo mostrado; el resumen
+incluye uso, fallos y el permiso de correos confirmado por el servidor.
+Marketing es opcional: Terminar no espera su ACK ni reintenta un rechazo. Sin
+confirmación muestra «Sin confirmar» y explica cómo reintentarlo en Ajustes ›
+Privacidad. Un ACK posterior actualiza el resumen; nunca se inventa un permiso.
+La pregunta independiente de Ajustes es una recuperación para instalaciones
+sin decisión y sin asistente: conserva «Aceptar / No, gracias», sin activar
+fallos antes de esa respuesta. Una decisión guardada prevalece en ambas rutas.
+Los errores remotos de marketing no habilitan «Entrar sin guardar»: esa salida
+solo corresponde a un error local de privacidad, revoca también el grabador
+en memoria y no intenta escribir otra vez el archivo que falló. La suspensión
+solo dura ese proceso: al reiniciar se vuelve a leer privacy.json y un permiso
+anterior puede reactivar el grabador. No se presenta como decisión persistida;
+para cambiarla de forma duradera hay que guardar en Ajustes cuando sea posible.
+
+Teclado: GPUI activa el control al soltar Enter/Espacio y ese control consume
+el evento. Un Enter sin consumir avanza, también si el foco está en un control
+pasivo. El formulario de email conserva Enter para sus propias acciones.
+Los tests usan gpui_platform::headless y TestPlatform con foco/eventos reales,
+sin renderer, ventanas del sistema ni capturas; `test-support` solo se habilita
+en la dependencia de desarrollo de la revisión GPUI ya fijada. Su aprobación
+queda pendiente de Isaac: introduce 11 transitivas de test, incluido el fork
+git de proptest fijado por GPUI. HeadlessAppContext/TestPlatform está bajo
+test-support; el headless normal de Windows carece de DirectX y de drop helper
+y no permite crear una ventana para dibujar/recorrer foco y enviar eventos.
+La prueba alternativa y el resultado se registran en #1637; no se reemplazan
+los eventos de teclado por llamadas directas al controlador.
+
+R3: el botón de correos de Ajustes reintenta `mail.desired` mientras no haya
+ACK, aunque el último permiso confirmado fuera otro. Solo sin intención pendiente
+alterna el ACK; el texto muestra «Reintentar guardar el permiso de correos».
+Los iconos del resumen reciben confirmación/activación explícita, nunca infieren
+un estado del texto: planes sin confirmar o bloqueados y permisos apagados son
+neutros. Verificación de producción: `cargo tree -p vantare-hub --target
+x86_64-pc-windows-msvc --offline --locked -e normal,build,features` no incluye
+`gpui/test-support` ni proptest; al añadir `dev` sí aparecen. Es evidencia del
+grafo de compilación, no una inspección de un binario release. La dependencia
+permanece pendiente de aprobación de Isaac en VANTA-120: no fusionar antes.
 
 ## #1564 · Widgets por sesión
 

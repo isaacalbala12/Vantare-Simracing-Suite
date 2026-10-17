@@ -104,6 +104,9 @@ impl Form {
     }
 }
 impl Remote {
+    pub(crate) fn email_open(&self) -> bool {
+        self.email.is_some()
+    }
     /// La acción no cabe en la cola del refresco automático; Logout tiene prioridad.
     pub(super) fn background_discard_message(
         queued: Option<&Command>,
@@ -187,7 +190,7 @@ impl Remote {
             form.message = message.into();
         }
     }
-    pub(super) fn select_email(&mut self, mode: EmailMode, cx: &mut Context<Self>) {
+    pub(crate) fn select_email(&mut self, mode: EmailMode, cx: &mut Context<Self>) {
         if self.working() {
             return;
         }
@@ -372,7 +375,7 @@ impl Remote {
         }
         panel
     }
-    pub(super) fn email_view(&self, cx: &mut Context<Self>) -> gpui::Div {
+    pub(crate) fn email_view(&self, cx: &mut Context<Self>) -> gpui::Div {
         let Some(form) = &self.email else {
             return div();
         };

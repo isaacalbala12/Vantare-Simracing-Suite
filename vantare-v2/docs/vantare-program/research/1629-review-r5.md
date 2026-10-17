@@ -808,6 +808,12 @@ styles/vantare.json
 
 Correcciones `ae8a002df`, merge `db44554535231b2c1a327c01da808d8dfbb55791`,
 base nightly `2a580c458d34680cf061627059a06fbe98242aaf`. Árbol nativo
-`9fb8ef5aa8390904a91d9c58f2f8412b16eb1e4c`: permite comprobar que el cierre
+`ebd0efd7bcd92700dbe225dabebb9e030294d375`: permite comprobar que el cierre
 documental no altera la fuente sometida a CI. El estado de ejecución y el SHA
 remoto vigentes se consultan en el PR, no en los verdes históricos R4.
+
+CI de f04a035a6: fmt y check PASS; Clippy detecta nueve expresiones finales de
+bloque sin punto y coma (una productiva y ocho de tests). Se añaden los nueve
+`;` sin cambiar comportamiento ni aserciones. Nextest/lifecycle no se alcanzaron
+en ese intento. Log conservado en `ci-first-failed.log`; gates repetidos sobre
+el SHA corregido. El árbol nativo anterior 9fb8ef5a queda como histórico.

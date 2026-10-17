@@ -1272,7 +1272,7 @@ mod tests {
         let labels = Labels::new(Some(&board), &options, &Style::compiled(), Language::Es);
         crate::paint_tests::with_kit(768.0, Language::Es, |kit| {
             let painted = crate::paint_tests::observe(|draw| {
-                paint_sector_values(&board, &labels, kit, 0.0, draw)
+                paint_sector_values(&board, &labels, kit, 0.0, draw);
             });
             assert_eq!(painted[1].value, "−0.096");
             assert_eq!(painted[2].value, PLACEHOLDER);
@@ -1281,7 +1281,7 @@ mod tests {
         let labels = Labels::new(Some(&board), &options, &Style::compiled(), Language::Es);
         crate::paint_tests::with_kit(768.0, Language::Es, |kit| {
             let painted = crate::paint_tests::observe(|draw| {
-                paint_sector_values(&board, &labels, kit, 0.0, draw)
+                paint_sector_values(&board, &labels, kit, 0.0, draw);
             });
             assert!(
                 !painted.iter().any(|label| label.value == "−0.096"),

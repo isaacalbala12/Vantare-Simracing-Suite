@@ -876,7 +876,7 @@ mod caption_render_tests {
             ] {
                 let vm = settings.project(&photo, Preferences::default());
                 let painted = crate::paint_tests::observe(|draw| {
-                    paint_caption(&vm, "AMARILLA", true, false, false, kit, draw)
+                    paint_caption(&vm, "AMARILLA", true, false, false, kit, draw);
                 });
                 assert_eq!(painted[0].value, "AMARILLA");
                 assert_eq!(painted[0].color, expected.hsla());
@@ -900,7 +900,7 @@ mod caption_render_tests {
         crate::paint_tests::with_kit(SIZE.0, Language::Es, |kit| {
             for (heading, value) in [(true, "AMARILLA"), (false, "Con precaución")] {
                 let painted = crate::paint_tests::observe(|draw| {
-                    paint_caption(&vm, value, heading, false, false, kit, draw)
+                    paint_caption(&vm, value, heading, false, false, kit, draw);
                 });
                 assert_eq!(painted[0].value, value);
                 assert_eq!(painted[0].color, Color(0x123abc, 1.0).hsla());

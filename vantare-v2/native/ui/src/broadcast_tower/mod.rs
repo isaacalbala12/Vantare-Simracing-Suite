@@ -180,7 +180,7 @@ impl Widget {
         let show_weather = self.settings.show_weather;
         (
             Box::new(move |window, cx| {
-                paint(&vm, &labels, &cards, show_weather, prefs, window, cx)
+                paint(&vm, &labels, &cards, show_weather, prefs, window, cx);
             }),
             if reduced {
                 Wake::Idle

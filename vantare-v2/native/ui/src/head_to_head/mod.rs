@@ -576,7 +576,7 @@ mod comparison_render_tests {
                 ("−3.200", kit.style.colors.gain),
             ] {
                 let painted = crate::paint_tests::observe(|draw| {
-                    super::paint_comparison(value, 300.0, 18.0, true, kit, draw)
+                    super::paint_comparison(value, 300.0, 18.0, true, kit, draw);
                 });
                 assert_eq!(painted[0].value, value);
                 assert_eq!(painted[0].color, color.hsla());
@@ -589,7 +589,7 @@ mod comparison_render_tests {
             for big in [true, false] {
                 for value in ["", "—"] {
                     let painted = crate::paint_tests::observe(|draw| {
-                        super::paint_comparison(value, 300.0, 18.0, big, kit, draw)
+                        super::paint_comparison(value, 300.0, 18.0, big, kit, draw);
                     });
                     assert_eq!(painted[0].value, "—");
                     assert_eq!(painted[0].color, kit.style.colors.muted.hsla());

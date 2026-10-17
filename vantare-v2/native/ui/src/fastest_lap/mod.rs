@@ -877,7 +877,7 @@ mod record_render_tests {
         crate::paint_tests::with_kit(SIZE.0, Language::Es, |kit| {
             let mut painted = Vec::new();
             paint_sector_chips(Some(own_detail), kit, |_, color, label| {
-                painted.push((label.value.to_owned(), color))
+                painted.push((label.value.to_owned(), color));
             });
             assert_eq!(painted.len(), 3);
             assert!(

@@ -2351,7 +2351,7 @@ mod class_text_render_tests {
                         kit.style.colors.value.hsla(),
                         kit,
                         draw,
-                    )
+                    );
                 });
                 assert_eq!(painted[0].value, expected);
             }

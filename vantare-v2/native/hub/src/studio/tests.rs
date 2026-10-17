@@ -404,7 +404,7 @@ fn assert_canvas_elements(assertions: fn(&mut Studio, &mut Context<Studio>)) {
             div()
         }
     }
-    gpui_platform::headless().run(|cx| {
+    gpui_platform::headless().run(move |cx| {
         let file = crate::document::tests::File::new();
         let mut test = gpui::HeadlessAppContext::with_asset_source(
             gpui_platform::current_platform(true).text_system(),

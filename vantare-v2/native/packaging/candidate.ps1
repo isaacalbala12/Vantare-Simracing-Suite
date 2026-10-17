@@ -295,6 +295,12 @@ function Get-NativeShortcutFolder([string]$Name) {
 
 function Write-NativeShortcutWarning([string]$Message) { Write-Warning $Message }
 
+function Get-NativeProgramsFolder {
+    $programs=Get-NativeShortcutFolder 'Programs'
+    if([string]::IsNullOrWhiteSpace($programs)){throw [InvalidOperationException]::new('Windows no proporciona la carpeta Programs del usuario; no se modifican los accesos.')}
+    $programs
+}
+
 function Sync-NativeOptionalShortcuts([string]$Directory,[string]$Folder,$Ui,[bool]$Remove=$false) {
     if($null -eq $Ui){return}
     $targets=@(
@@ -333,7 +339,7 @@ function Invoke-NativeRegistrationTransaction([string]$Key,[string]$Folder,[stri
         }
     }
     $links=@{}; $paths=@()
-    $programs=Get-NativeShortcutFolder 'Programs'
+    $programs=Get-NativeProgramsFolder
     foreach($name in @('Vantare.lnk','Desinstalar.lnk')){$paths+=Join-Path (Join-Path $programs $Folder) $name}
     foreach($name in @('Vantare Native Beta.lnk','Desinstalar.lnk')){$paths+=Join-Path (Join-Path $programs $Legacy) $name}
     # Optional shortcuts run last, after every mandatory write, and cannot throw.
@@ -402,7 +408,7 @@ function Sync-NativeRegistration([string]$Directory, [string]$Version, $Previous
         $uninstallTarget=Join-Path $directory 'Uninstall.exe'
         $uninstallArgs='/D="'+$directory+'"'
     }
-    $programs = [Environment]::GetFolderPath('Programs')
+    $programs = Get-NativeProgramsFolder
     $target = Join-Path $programs $folder
     $shell = New-Object -ComObject WScript.Shell
     foreach ($name in @('Vantare.lnk', 'Desinstalar.lnk')) {
@@ -488,7 +494,7 @@ function Uninstall-NativeRegistration([string]$Directory,[bool]$DeferUninstaller
         & (Join-Path $env:WINDIR 'System32/WindowsPowerShell/v1.0/powershell.exe') -NoProfile -ExecutionPolicy Bypass -File (Join-Path $directory 'beta.ps1') -Operation Uninstall -Root $directory
         if ($LASTEXITCODE) { throw 'Cierra Vantare antes de desinstalar. Tus datos se conservan.' }
     }
-    $target = Join-Path ([Environment]::GetFolderPath('Programs')) $folder
+    $target = Join-Path (Get-NativeProgramsFolder) $folder
     $shell = New-Object -ComObject WScript.Shell
     foreach ($name in @('Vantare.lnk', 'Desinstalar.lnk')) {
         $path = Join-Path $target $name

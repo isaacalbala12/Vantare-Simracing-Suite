@@ -1,4 +1,4 @@
-﻿#requires -Version 5.1
+#requires -Version 5.1
 [CmdletBinding()]
 param([Parameter(Mandatory)][string]$RequestFile)
 Set-StrictMode -Version Latest
@@ -81,23 +81,24 @@ try {
     Send-InstallerProgress 'prepare' 0 0 0 ($request.operation -ceq 'Install')
     switch ($request.operation) {
         'Install' {
-            $marker=Join-Path $root 'installer-cleanup.json'
-            if(Test-Path -LiteralPath $marker){
-                # Cleanup can stop after deleting EXE but before deleting marker.
-                # Recover only that orphan, never a pending/renewed installation.
-                if((Test-Path -LiteralPath (Join-Path $root 'Uninstall.exe')) -or
-                   (Test-Path -LiteralPath (Join-Path $root 'state.json')) -or $null -ne $registration){Throw-BetaInstallError 2 'Espera a que termine la limpieza del desinstalador anterior.'}
-                $null=Open-NativeRoot $root
-                $identityFile=Join-Path $root 'registration-identity.txt'
-                if((Test-Path -LiteralPath $identityFile) -and [IO.File]::ReadAllText($identityFile).Trim() -cne $identity){throw 'La identidad de desinstalación no coincide.'}
-                if((Get-Item -LiteralPath $marker).Length -gt 1024){throw 'Marker de limpieza inválido.'}
-                $cleanup=[IO.File]::ReadAllText($marker)|ConvertFrom-Json
-                if($cleanup.schema -ne 1 -or $cleanup.sha256 -cnotmatch '^[a-f0-9]{64}$'){throw 'Marker de limpieza inválido.'}
-                Remove-Item -LiteralPath $marker
-            }
             if ($request.mode -ceq 'repair' -and $current -cne $request.version) { Throw-BetaInstallError 3 'Reparar exige el Setup de la misma versión.' }
             Send-InstallerProgress 'verify' 40 0 0 $true
-            Install-Beta $root (Join-Path $PSScriptRoot 'package.zip') $request.packageSha -Finalize {
+            Install-Beta $root (Join-Path $PSScriptRoot 'package.zip') $request.packageSha -Prepare {
+                $marker=Join-Path $root 'installer-cleanup.json'
+                if(Test-Path -LiteralPath $marker){
+                    # Cleanup can stop after deleting EXE but before deleting marker.
+                    # Recover only that orphan, never a pending/renewed installation.
+                    if((Test-Path -LiteralPath (Join-Path $root 'Uninstall.exe')) -or
+                       (Test-Path -LiteralPath (Join-Path $root 'state.json')) -or (Test-Path -LiteralPath $key)){Throw-BetaInstallError 2 'Espera a que termine la limpieza del desinstalador anterior.'}
+                    $null=Open-NativeRoot $root
+                    $identityFile=Join-Path $root 'registration-identity.txt'
+                    if((Test-Path -LiteralPath $identityFile) -and [IO.File]::ReadAllText($identityFile).Trim() -cne $identity){throw 'La identidad de desinstalación no coincide.'}
+                    if((Get-Item -LiteralPath $marker).Length -gt 1024){throw 'Marker de limpieza inválido.'}
+                    $cleanup=[IO.File]::ReadAllText($marker)|ConvertFrom-Json
+                    if($cleanup.schema -ne 1 -or $cleanup.sha256 -cnotmatch '^[a-f0-9]{64}$'){throw 'Marker de limpieza inválido.'}
+                    Remove-Item -LiteralPath $marker
+                }
+            } -Finalize {
                 Send-InstallerProgress 'shortcuts' 84
                 Invoke-NativeRegistrationTransaction $key $folder $legacy {
                     if ($request.qa) { [IO.File]::WriteAllText((Join-Path $root 'registration-identity.txt'), $identity) }
@@ -118,28 +119,32 @@ try {
                 if(-not (Test-Path -LiteralPath (Join-Path $root 'installer-cleanup.json'))){throw 'La instalación no está registrada.'}
             }
             Send-InstallerProgress 'copy' 12
-            if(Test-Path -LiteralPath (Join-Path $root 'state.json')){Uninstall-Beta $root | Out-Null}
-            Send-InstallerProgress 'shortcuts' 72
-            Uninstall-NativeRegistration $root $true $identity $folder
+            Uninstall-Beta $root -Finalize {
+                Send-InstallerProgress 'shortcuts' 72
+                Uninstall-NativeRegistration $root $true $identity $folder
+            } | Out-Null
             Send-InstallerProgress 'register' 88
         }
         'Cleanup' {
             try{$parent=[Diagnostics.Process]::GetProcessById([int]$request.processId)}catch [ArgumentException]{$parent=$null}
             if($null -ne $parent){try{if(-not $parent.WaitForExit(30000)){throw 'El desinstalador no terminó; limpieza conservada.'}}finally{$parent.Dispose()}}
             $root=Assert-NativePath $root
-            if((Test-Path -LiteralPath (Join-Path $root 'state.json')) -or (Test-Path -LiteralPath $key)){throw 'La instalación se ha renovado; se conserva el desinstalador.'}
-            $marker=Join-Path $root 'installer-cleanup.json'
-            if((Get-Item -LiteralPath $marker).Length -gt 1024){throw 'Marker de limpieza inválido.'}
-            $cleanup=[IO.File]::ReadAllText($marker)|ConvertFrom-Json
-            if($cleanup.schema -ne 1 -or $cleanup.sha256 -cnotmatch '^[a-f0-9]{64}$'){throw 'Marker de limpieza inválido.'}
-            $exe=Join-Path $root 'Uninstall.exe'
-            if(Test-Path -LiteralPath $exe){if((Get-NativeHash $exe) -cne $cleanup.sha256){throw 'El desinstalador cambió; se conserva.'}; Remove-Item -LiteralPath $exe}
-            Remove-Item -LiteralPath $marker
-            $temporary=Assert-NativePath $PSScriptRoot
-            $tempPrefix=[IO.Path]::GetFullPath($env:TEMP)+[IO.Path]::DirectorySeparatorChar
-            if(-not $temporary.StartsWith($tempPrefix,[StringComparison]::OrdinalIgnoreCase) -or [IO.Path]::GetFileName($temporary) -cnotmatch '^VantareSetup-[0-9]+-[0-9]+-[0-9]+$'){throw 'Limpieza temporal fuera de su raíz.'}
-            Assert-NativeTree $temporary
-            Remove-Item -LiteralPath $temporary -Recurse -Force
+            $session=[IO.File]::Open((Join-Path $root 'beta-session.lock'),[IO.FileMode]::OpenOrCreate,[IO.FileAccess]::ReadWrite,[IO.FileShare]::None)
+            try {
+                if((Test-Path -LiteralPath (Join-Path $root 'state.json')) -or (Test-Path -LiteralPath $key)){throw 'La instalación se ha renovado; se conserva el desinstalador.'}
+                $marker=Join-Path $root 'installer-cleanup.json'
+                if((Get-Item -LiteralPath $marker).Length -gt 1024){throw 'Marker de limpieza inválido.'}
+                $cleanup=[IO.File]::ReadAllText($marker)|ConvertFrom-Json
+                if($cleanup.schema -ne 1 -or $cleanup.sha256 -cnotmatch '^[a-f0-9]{64}$'){throw 'Marker de limpieza inválido.'}
+                $exe=Join-Path $root 'Uninstall.exe'
+                if(Test-Path -LiteralPath $exe){if((Get-NativeHash $exe) -cne $cleanup.sha256){throw 'El desinstalador cambió; se conserva.'}; Remove-Item -LiteralPath $exe}
+                Remove-Item -LiteralPath $marker
+                $temporary=Assert-NativePath $PSScriptRoot
+                $tempPrefix=[IO.Path]::GetFullPath($env:TEMP)+[IO.Path]::DirectorySeparatorChar
+                if(-not $temporary.StartsWith($tempPrefix,[StringComparison]::OrdinalIgnoreCase) -or [IO.Path]::GetFileName($temporary) -cnotmatch '^VantareSetup-[0-9]+-[0-9]+-[0-9]+$'){throw 'Limpieza temporal fuera de su raíz.'}
+                Assert-NativeTree $temporary
+                Remove-Item -LiteralPath $temporary -Recurse -Force
+            } finally {$session.Dispose()}
         }
         default { throw 'Operación del instalador no permitida.' }
     }

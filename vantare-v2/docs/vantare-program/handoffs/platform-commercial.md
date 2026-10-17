@@ -1,3 +1,19 @@
+## #1694 y propuesta #1697 · Entrega a revisión (2026-10-17 08:57:27 UTC)
+
+Verificación final 2026-10-17 08:57:27 UTC : PR #1696 READY, OPEN y MERGEABLE en e2fafdecbe4365acb86faf19915b4478f70df598. Cinco checks SUCCESS, incluidos los dos requeridos: Validate promotion path y Validate Vantare blocking gates. Run https://github.com/isaacalbala12/Vantare-Simracing-Suite/actions/runs/39018399770 . Sin merge por el worker; listo para review del orquestador. Hub-ready sigue NO acreditado (DirectX0x8007000E en desktop privado), sin firma/publicación.
+
+PR #1698 sigue DRAFT y MERGEABLE en e8cf16e6a5011b7deff0412313adc7d56f06e52a, también cinco checks SUCCESS (run39018263649). Estos checks existentes NO prueban el job propuesto ni hub-ready en hosted; la propuesta permanece omitida mientras draft y depende de #1694 integrado. No se cambia a ready.
+
+## Ampliación autorizada tras review #1693 (17-oct, VANTA-105)
+
+#1694 / PR #1696 sigue primero. Después, en este mismo PR de seguimiento de los puntos 2–4:
+
+- CRT-P2-1: revisar native/packaging/msix/build.ps1:50, que aún compila sin target explícito/crt-static/guarda de imports. Alinearlo con candidate.ps1 o documentar explícitamente que MSIX no se usa en este lanzamiento; hoy es ruta local experimental, sin envío a Store.
+- CRT-P3: añadir una regresión que recorra el builder con cargo satisfactorio y artefactos/metadata válidos, hasta la guarda real de imports. Debe detectar un EXE dinámico dentro del builder; el mock que siempre devuelve17 no cubre ese paso.
+- CRT-P3: reutilizar la guarda de imports en Setup y Uninstall, además de la cabecera PE, con prueba que detecte un binario de entrada dinámico.
+
+Referencia: C:/VantareServer/evidence/rev-1693/INFORME.md (review APTO). Este encargo no añade los demás P3 de la review ni cambios de toolchain. #1693 ya integrado en nightly64dc28446 por el orquestador. Al retomar, actualizar la base mediante merge sin rebase/force-push y preservar el WIP propio de esta rama. No se ejecutan aún estos cambios: primero #1694 y la propuesta draft de QA Windows #1698.
+
 ## #1690 / VANTA-105 · Startup ausente y finalización de Setup (17/10/2026)
 
 Hallazgo bloqueante de la QA local RC1 #1688; el orquestador confirma que
@@ -3545,3 +3561,32 @@ SHA, push y checks en la issue/buzon. Sin autorizacion de produccion.
 
 2026-10-13 · GitHub #1565 · Claude. Feed en seco, CI privada y QA aislada;
 PR a nightly sin merge ni release.
+## #1695 / VANTA-105 · Seguimiento de la review de #1691 (17-oct-2026)
+
+Rama/worktree propios `vantareapp/isa-1695-installer-transaccion`, isa-1695,
+desde nightly `7396f65d0` con #1691 fusionado por el orquestador. CRT cerrado
+en PR #1693 ready `f30ec08ef`, cinco checks SUCCESS (run39012555323), sin merge
+por el worker. Su payload real f68e4a3db conserva su propia procedencia.
+
+P2-1 acreditado con Setup/Uninstall Release nuevos desde nightly: builder
+421,44s, SHA Setup `bec8d3bb4394543169561cad07965987615e13914b6bdd00cd075dc80289e913`.
+App reutilizada f68e4a3db sin cambios Rust, bootstrap nuevo; manifest conserva
+SHA de la app y PROCEDENCIA.json distingue ambos componentes. No se presenta
+como build completa nueva del payload. Solo QA local, sin configuración beta.
+Evidencia `C:/VantareServer/evidence/rc1/seguimiento-1691/INFORME.md`.
+
+Tres usuarios estándar/escritorios privados: limpio OFF sin crear Startup;
+limpio OFF→reinstalar ON con Startup ausente antes de ON (preferencia guardada,
+Setup /S real, no GUI/limpio ON); NSIS público0.0.975→Setup nuevo OFF. Instalar,
+reinstalar/actualizar y desinstalar exit0, bootstrap nuevo, datos conservados.
+ON crea su carpeta/acceso, OFF conserva Startup ausente. Actor solo prepara
+Programs, nunca Startup/Desktop. Cuentas/perfiles SID1021/1022/1023 retirados.
+La QA RC1 histórica con Startup creada y Setup anterior NO acredita el arreglo.
+
+P2-3/P2-2/P3 autorizados en PR separado: restauración por fichero con log/error
+original, enumeración segura, lock hasta finalización/marker y durante Cleanup,
+recuperación de Setup bajo lock, Programs vacío y ON+GetFolderPath vacío.
+Suite shell añadida al workflow. Regresiones ampliadas en curso; no se afirman
+CI verde ni PR ready hasta comprobar el HEAD final. Sin Rust/dependencias nuevos.
+Windows limpio/login/pagos pendientes; Hub bloqueado por #1694. Sin ventanas
+en sesión principal, firma/publicación ni merge por el worker.

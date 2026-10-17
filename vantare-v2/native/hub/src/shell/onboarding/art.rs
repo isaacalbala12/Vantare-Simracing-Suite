@@ -635,6 +635,7 @@ impl Hub {
                                 cx,
                             ))
                             .on_click(cx.listener(move |hub, _, _, cx| {
+                                cx.stop_propagation();
                                 hub.onboarding_plan(
                                     (image == "pro").then_some(
                                         crate::services::protocol::BillingProduct::ProMonthly,
@@ -694,6 +695,7 @@ impl Hub {
                     .cursor_pointer()
                     .tab_index(0)
                     .on_click(cx.listener(|hub, _, _, cx| {
+                        cx.stop_propagation();
                         hub.onboarding_plan(
                             Some(crate::services::protocol::BillingProduct::LaunchLifetime),
                             cx,

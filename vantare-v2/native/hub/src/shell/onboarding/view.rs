@@ -3,6 +3,14 @@ use crate::{onboarding as model, orbit};
 use gpui::{Context, Div, SharedString, Stateful, Window, div, prelude::*, px, rgb};
 use vantare_ui::performance::Level;
 
+fn summary_status(value: &str) -> (&'static str, u32) {
+    if value.starts_with("Apagados") || value == "Sin confirmar" {
+        ("—", 0x008b_8285)
+    } else {
+        ("✓", 0x0022_c55e)
+    }
+}
+
 pub(super) fn text(
     value: impl Into<SharedString>,
     size: f32,
@@ -277,6 +285,7 @@ impl Hub {
                     .child(
                         button("onboarding-open", "Abrir mi overlay", true, s, cx).on_click(
                             cx.listener(|hub, _, window, cx| {
+                                cx.stop_propagation();
                                 hub.onboarding_finish(true, window, cx);
                             }),
                         ),
@@ -284,6 +293,7 @@ impl Hub {
                     .child(
                         button("onboarding-edit", "Editar en Overlays Studio", false, s, cx)
                             .on_click(cx.listener(|hub, _, window, cx| {
+                                cx.stop_propagation();
                                 hub.onboarding_finish(false, window, cx);
                             })),
                     ),
@@ -308,6 +318,7 @@ impl Hub {
                         cx,
                     )
                     .on_click(cx.listener(|hub, _, window, cx| {
+                        cx.stop_propagation();
                         hub.onboarding_enter_private(window, cx);
                     })),
                 );
@@ -346,6 +357,7 @@ impl Hub {
                     .opacity(if step == 0 { 0.0 } else { 1.0 })
                     .tab_stop(step > 0)
                     .on_click(cx.listener(|hub, _, _, cx| {
+                        cx.stop_propagation();
                         hub.onboarding_back(cx);
                     })),
             )
@@ -398,9 +410,10 @@ impl Hub {
                     })
                     .tab_stop(step < 6 && can)
                     .when(step < 6, |ready| {
-                        ready.on_click(
-                            cx.listener(|hub, _, window, cx| hub.onboarding_next(window, cx)),
-                        )
+                        ready.on_click(cx.listener(|hub, _, window, cx| {
+                            cx.stop_propagation();
+                            hub.onboarding_next(window, cx);
+                        }))
                     }),
             );
         div()
@@ -427,14 +440,7 @@ impl Hub {
                     cx.stop_propagation();
                 }
             }))
-            // Enter on the page advances; focused controls keep GPUI's own
-            // Enter/Space click, including text inputs in the email form.
-            .on_key_down(cx.listener(|hub, event: &gpui::KeyDownEvent, window, cx| {
-                if event.keystroke.key == "enter" && hub.focus.is_focused(window) {
-                    hub.onboarding_next(window, cx);
-                    cx.stop_propagation();
-                }
-            }))
+            .on_key_up(cx.listener(Hub::onboarding_key_up))
             .on_mouse_move(
                 cx.listener(move |hub, event: &gpui::MouseMoveEvent, _, cx| {
                     if let Some(state) = &mut hub.onboarding {
@@ -504,6 +510,7 @@ impl Hub {
                             .opacity(if step >= 5 { 0.0 } else { 1.0 })
                             .tab_stop(step < 5)
                             .on_click(cx.listener(|hub, _, _, cx| {
+                                cx.stop_propagation();
                                 hub.onboarding_skip(cx);
                             })),
                     ),
@@ -663,6 +670,7 @@ impl Hub {
                     )
                     .child(check(on, s, cx))
                     .on_click(cx.listener(move |hub, _, _, cx| {
+                        cx.stop_propagation();
                         if let Some(state) = &mut hub.onboarding {
                             state.simulators_touched = true;
                             state.choices.simulators[index] = !state.choices.simulators[index];
@@ -703,6 +711,7 @@ impl Hub {
                         .w(px(294.0 * s))
                         .h(px(136.0 * s))
                         .on_click(cx.listener(move |hub, _, _, cx| {
+                            cx.stop_propagation();
                             if let Some(state) = &mut hub.onboarding {
                                 state.choices.styles[i] = !state.choices.styles[i];
                                 state.say(state.choices.style_reaction(i));
@@ -752,12 +761,21 @@ impl Hub {
                         .child(div().flex_1())
                         .child(text("→", 16.0 * s, 400, orbit::ink_3(cx), cx))
                         .on_click(cx.listener(move |hub, _, _, cx| {
+                            cx.stop_propagation();
                             hub.onboarding_account_login(i, cx);
                         })),
                 );
             }
             if !state.capture {
-                column = column.child(self.remote.update(cx, |remote, cx| remote.email_view(cx)));
+                column = column.child(
+                    div()
+                        .on_key_up(|event, _, cx| {
+                            if event.keystroke.key == "enter" {
+                                cx.stop_propagation();
+                            }
+                        })
+                        .child(self.remote.update(cx, |remote, cx| remote.email_view(cx))),
+                );
                 column = column.child(text(
                     self.remote.read(cx).onboarding_session().1.to_owned(),
                     12.0 * s,
@@ -797,6 +815,7 @@ impl Hub {
                         gpui::transparent_black()
                     })
                     .on_click(cx.listener(move |hub, _, _, cx| {
+                        cx.stop_propagation();
                         if let Some(state) = &mut hub.onboarding {
                             state.choices.automatic = false;
                             state.choices.level = level;
@@ -905,6 +924,7 @@ impl Hub {
                     )
                     .child(check(state.choices.automatic, s, cx))
                     .on_click(cx.listener(|hub, _, _, cx| {
+                        cx.stop_propagation();
                         if let Some(state) = &mut hub.onboarding {
                             state.choices.select_automatic(&state.equipment);
                             state.say(model::SAY[4]);
@@ -943,7 +963,10 @@ impl Hub {
             s,
             cx,
         )
-        .on_click(cx.listener(|hub, _, _, cx| hub.onboarding_toggle_crashes(cx)));
+        .on_click(cx.listener(|hub, _, _, cx| {
+            cx.stop_propagation();
+            hub.onboarding_toggle_crashes(cx);
+        }));
         let usage = onboarding_switch(
             "onboarding-usage",
             "Enviar datos de uso anónimos",
@@ -952,7 +975,10 @@ impl Hub {
             s,
             cx,
         )
-        .on_click(cx.listener(|hub, _, _, cx| hub.onboarding_toggle_usage(cx)));
+        .on_click(cx.listener(|hub, _, _, cx| {
+            cx.stop_propagation();
+            hub.onboarding_toggle_usage(cx);
+        }));
         div()
             .flex()
             .flex_col()
@@ -974,7 +1000,10 @@ impl Hub {
                     s,
                     cx,
                 )
-                .on_click(cx.listener(|hub, _, _, cx| hub.onboarding_toggle_marketing(cx))),
+                .on_click(cx.listener(|hub, _, _, cx| {
+                    cx.stop_propagation();
+                    hub.onboarding_toggle_marketing(cx);
+                })),
             )
             .child(text(mail_notice, 12.5 * s, 400, orbit::ink_3(cx), cx))
     }
@@ -1037,7 +1066,9 @@ impl Hub {
                     ),
                     (
                         "Correos",
-                        if state.signed {
+                        if state.marketing_unconfirmed {
+                            "Sin confirmar"
+                        } else if state.signed {
                             match self.remote.read(cx).mail.consent {
                                 Some(true) => "Activados",
                                 Some(false) => "Apagados",
@@ -1051,6 +1082,7 @@ impl Hub {
                 ]
                 .into_iter()
                 .map(|(label, value)| {
+                    let (icon, color) = summary_status(&value);
                     div()
                         .flex()
                         .items_center()
@@ -1061,8 +1093,20 @@ impl Hub {
                         .border_color(rgb(0x0029_2325))
                         .child(text(label, 14.0 * s, 400, orbit::ink_3(cx), cx).w(px(135.0 * s)))
                         .child(text(value, 14.0 * s, 600, orbit::ink(cx), cx).flex_1())
-                        .child(text("✓", 16.0 * s, 600, 0x0022_c55e, cx))
+                        .child(text(icon, 16.0 * s, 600, color, cx))
                 }),
             )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::summary_status;
+    #[test]
+    fn disabled_and_unconfirmed_permissions_use_a_neutral_status() {
+        for value in ["Apagados", "Apagados · sin cuenta", "Sin confirmar"] {
+            assert_eq!(summary_status(value), ("—", 0x008b_8285));
+        }
+        assert_eq!(summary_status("Activados"), ("✓", 0x0022_c55e));
     }
 }

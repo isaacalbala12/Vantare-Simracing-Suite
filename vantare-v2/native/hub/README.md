@@ -61,18 +61,31 @@ Solo si fallos sigue sin decidir, el asistente propone activarlo con aviso
 (decisión de Isaac del 15-oct, reiterada en la review del 17-oct). Uso siempre
 parte apagado si no hay decisión. Terminar confirma lo mostrado; el resumen
 incluye uso, fallos y el permiso de correos confirmado por el servidor.
+Marketing es opcional: Terminar no espera su ACK ni reintenta un rechazo. Sin
+confirmación muestra «Sin confirmar» y explica cómo reintentarlo en Ajustes ›
+Privacidad. Un ACK posterior actualiza el resumen; nunca se inventa un permiso.
 La pregunta independiente de Ajustes es una recuperación para instalaciones
 sin decisión y sin asistente: conserva «Aceptar / No, gracias», sin activar
 fallos antes de esa respuesta. Una decisión guardada prevalece en ambas rutas.
 Los errores remotos de marketing no habilitan «Entrar sin guardar»: esa salida
 solo corresponde a un error local de privacidad, revoca también el grabador
-en memoria y no intenta escribir otra vez el archivo que falló.
+en memoria y no intenta escribir otra vez el archivo que falló. La suspensión
+solo dura ese proceso: al reiniciar se vuelve a leer privacy.json y un permiso
+anterior puede reactivar el grabador. No se presenta como decisión persistida;
+para cambiarla de forma duradera hay que guardar en Ajustes cuando sea posible.
 
-Teclado: Enter con foco en la página avanza; en un control enfocado GPUI
-activa su clic al soltar Enter/Espacio. No se captura Enter antes del control.
+Teclado: GPUI activa el control al soltar Enter/Espacio y ese control consume
+el evento. Un Enter sin consumir avanza, también si el foco está en un control
+pasivo. El formulario de email conserva Enter para sus propias acciones.
 Los tests usan gpui_platform::headless y TestPlatform con foco/eventos reales,
 sin renderer, ventanas del sistema ni capturas; `test-support` solo se habilita
-en la dependencia de desarrollo de la revisión GPUI ya fijada.
+en la dependencia de desarrollo de la revisión GPUI ya fijada. Su aprobación
+queda pendiente de Isaac: introduce 11 transitivas de test, incluido el fork
+git de proptest fijado por GPUI. HeadlessAppContext/TestPlatform está bajo
+test-support; el headless normal de Windows carece de DirectX y de drop helper
+y no permite crear una ventana para dibujar/recorrer foco y enviar eventos.
+La prueba alternativa y el resultado se registran en #1637; no se reemplazan
+los eventos de teclado por llamadas directas al controlador.
 
 ## #1564 · Widgets por sesión
 

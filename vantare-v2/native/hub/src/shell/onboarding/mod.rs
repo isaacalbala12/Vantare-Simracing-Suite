@@ -33,7 +33,7 @@ pub(super) struct State {
     pub pointer: (f32, f32),
     pub error: Option<String>,
     pub consent_error: bool,
-    pub marketing_continue: bool,
+    pub marketing_unconfirmed: bool,
     pub capture: bool,
     pub signed: bool,
     pub system_reduced: bool,
@@ -117,7 +117,7 @@ impl State {
             pointer: (0.0, 0.0),
             error: artwork_error,
             consent_error: false,
-            marketing_continue: false,
+            marketing_unconfirmed: false,
             capture,
             signed: false,
             system_reduced: crate::shell::settings::windows::reduced_motion(),
@@ -130,11 +130,13 @@ impl State {
         self.spoken = Instant::now();
     }
     pub fn page(&mut self, step: usize) {
-        self.marketing_continue = false;
         self.step = step.min(6);
         self.say(SAY[self.step]);
         if self.step == 1 && !self.found[0] && !self.capture {
             self.say("Marca los simuladores que usas en tu PC.");
+        }
+        if self.step == 6 && self.marketing_unconfirmed {
+            self.say(MARKETING_UNCONFIRMED);
         }
         if self.step == 5 {
             // Al volver atrás el bocadillo sigue al interruptor, no al valor inicial.
@@ -142,6 +144,9 @@ impl State {
         }
     }
 }
+const MARKETING_UNCONFIRMED: &str =
+    "Correos sin confirmar. Puedes terminar y reintentarlo en Ajustes › Privacidad.";
+
 /// Los valores nuevos solo se proponen cuando aún no hay una decisión guardada.
 fn choices_from_privacy(privacy: Option<Privacy>) -> Choices {
     let mut choices = Choices::default();
@@ -298,8 +303,8 @@ impl Hub {
             Motion::Blocked => {}
             Motion::Exit(show) => self.onboarding_finish(show, window, cx),
             Motion::Page(next) => {
-                if step == 5 && !self.onboarding_marketing(cx) {
-                    return;
+                if step == 5 {
+                    self.onboarding_marketing(cx);
                 }
                 if step == 5 && !self.onboarding_consent(usage, crashes, cx) {
                     // El error queda visible: el usuario puede reintentar o entrar sin guardar.
@@ -311,6 +316,19 @@ impl Hub {
                 }
                 cx.notify();
             }
+        }
+    }
+    // Los controles consumen su clic de teclado al soltar Enter; solo el
+    // evento que llega sin consumir hasta la página sirve de atajo Continuar.
+    fn onboarding_key_up(
+        &mut self,
+        event: &gpui::KeyUpEvent,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if event.keystroke.key == "enter" && !event.keystroke.modifiers.modified() {
+            self.onboarding_next(window, cx);
+            cx.stop_propagation();
         }
     }
     /// Atrás retrocede un paso; en el primer paso el control oculto no navega.
@@ -358,41 +376,33 @@ impl Hub {
         }
         success
     }
-    fn onboarding_marketing(&mut self, cx: &mut Context<Self>) -> bool {
+    /// El correo es opcional: enviar una vez no impide terminar ni inventa un ACK.
+    fn onboarding_marketing(&mut self, cx: &mut Context<Self>) {
         use crate::services::protocol::{Command, MailSource};
         if self
             .onboarding
             .as_ref()
             .is_none_or(|s| s.capture || !s.signed)
         {
-            return true;
+            return;
         }
-        let remote = self.remote.read(cx);
-        if let Some(error) = remote.mail.error.clone()
-            && let Some(state) = &mut self.onboarding
-        {
-            state.error = Some(error);
+        let mail = &self.remote.read(cx).mail;
+        let submit = !mail.pending && !mail.onboarding_saved && mail.error.is_none();
+        let consent = mail.desired.or(mail.consent).unwrap_or(false);
+        if submit {
+            self.remote.update(cx, |remote, cx| {
+                remote.mail_command(
+                    Command::MailConsentSet {
+                        consent,
+                        source: MailSource::Onboarding,
+                    },
+                    cx,
+                );
+            });
         }
-        if remote.mail.pending {
-            return false;
-        }
-        if remote.mail.onboarding_saved {
-            return true;
-        }
-        let consent = remote.mail.desired.or(remote.mail.consent).unwrap_or(false);
         if let Some(state) = &mut self.onboarding {
-            state.marketing_continue = true;
+            state.marketing_unconfirmed = !self.remote.read(cx).mail.onboarding_saved;
         }
-        self.remote.update(cx, |remote, cx| {
-            remote.mail_command(
-                Command::MailConsentSet {
-                    consent,
-                    source: MailSource::Onboarding,
-                },
-                cx,
-            );
-        });
-        false
     }
     fn onboarding_toggle_marketing(&mut self, cx: &mut Context<Self>) {
         use crate::services::protocol::{Command, MailSource};
@@ -527,35 +537,18 @@ impl Hub {
         cx.notify();
     }
     fn complete_onboarding_marketing(&mut self, cx: &mut Context<Self>) {
-        let Some(state) = &self.onboarding else {
+        let Some(state) = &mut self.onboarding else {
             return;
         };
-        if state.step != 5 || !state.marketing_continue {
+        if state.step != 6 || !state.marketing_unconfirmed {
             return;
         }
         let mail = &self.remote.read(cx).mail;
-        if mail.pending {
-            return;
+        if !mail.pending && mail.onboarding_saved && mail.error.is_none() {
+            state.marketing_unconfirmed = false;
+            state.say(SAY[6]);
+            cx.notify();
         }
-        let error = mail.error.clone();
-        let confirmed = mail.onboarding_saved;
-        let usage = state.choices.usage;
-        let crashes = state.choices.crashes;
-        if let Some(state) = &mut self.onboarding {
-            state.marketing_continue = false;
-            if let Some(error) = error {
-                state.error = Some(error);
-                cx.notify();
-                return;
-            }
-        }
-        if confirmed
-            && self.onboarding_consent(usage, crashes, cx)
-            && let Some(state) = &mut self.onboarding
-        {
-            state.page(6);
-        }
-        cx.notify();
     }
     pub(super) fn poll_onboarding(&mut self, cx: &mut Context<Self>) {
         if self.onboarding.as_ref().is_some_and(|s| !s.capture) {

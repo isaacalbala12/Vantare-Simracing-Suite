@@ -552,3 +552,24 @@ Engineer5/5 y resto sin fallos,462huellas). Durante su ejecución nightly integr
 04521bf3d (#1641): se incorpora ahora con merge conservando widgets y regresiones
 de Studio/onboarding. Se preservan ambos handoffs; la dependencia de widgets
 completos queda integrada en esta rama. SHA/CI y capturas finales en #1637.
+
+### VANTA-51 / #1628 · Corrección review R2 · 17-oct-2026
+
+Informe: C:/VantareServer/evidence/rev-1637/INFORME-R2.md. Misma rama y PR1637;
+Plane En curso. Merge normal de nightly24f729157 (#1686), sin conflictos.
+Terminar guarda privacidad y llega al resumen aunque marketing falle o siga
+pendiente. «Sin confirmar» y aviso separado remiten a Ajustes › Privacidad;
+no hay reintento automático, ni permiso inventado. Un ACK posterior sí actualiza
+el resumen. Regresión de salida completa para403/409/pending, en lugar de fijar
+el bloqueo en step5. Los apagados/sin confirmar usan raya neutra, no check verde.
+Enter se atiende al soltar: el control activado consume su clic; si no lo consume,
+el evento avanza. Regresión adicional de foco en control pasivo.
+La salida privada solo suspende el grabador de este proceso. No escribe otro
+archivo cuando el guardado falla: al reiniciar se relee privacy.json y puede
+reactivarse un permiso anterior. Debe guardarse en Ajustes para hacerlo durable.
+Pendientes P3: precios/fecha incrustados, locale es, tamaño de PNG, duplicación de
+onboarding::free respecto del catálogo y coste del arnés. La petición de correo
+no tiene cancelación propia; ya no bloquea el asistente mientras sigue pendiente.
+Dependencia de test-support: aprobación de Isaac pendiente; se conserva según
+el encargo si es necesaria para probar eventos reales sin HWND. Prueba alternativa
+del headless normal de Windows y evidencia de gates/capturas en PR1637.

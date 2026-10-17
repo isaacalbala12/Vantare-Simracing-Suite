@@ -76,14 +76,14 @@ fn open(root: &Path, cx: &mut HeadlessAppContext) -> WindowHandle<Hub> {
     .expect("ventana de TestPlatform")
 }
 
-fn draw(window: WindowHandle<Hub>, cx: &mut HeadlessAppContext) {
+fn draw(window: impl Into<gpui::AnyWindowHandle>, cx: &mut HeadlessAppContext) {
     cx.update_window(window.into(), |_, window, cx| {
         window.draw(cx).clear(cx);
     })
     .expect("pintar árbol sin renderer");
 }
 
-fn key(window: WindowHandle<Hub>, stroke: &str, cx: &mut HeadlessAppContext) {
+fn key(window: impl Into<gpui::AnyWindowHandle>, stroke: &str, cx: &mut HeadlessAppContext) {
     cx.update_window(window.into(), |_, window, cx| {
         let keystroke = gpui::Keystroke::parse(stroke).expect("tecla");
         window.dispatch_event(
@@ -289,32 +289,141 @@ fn private_exit_revokes_memory_without_overwriting_the_unwritable_file() {
 }
 
 #[test]
-fn marketing_errors_never_offer_the_unsaved_privacy_exit() {
+#[allow(clippy::too_many_lines)] // Tres salidas completas: 403, 409 y respuesta pendiente.
+fn persistent_marketing_errors_allow_finishing_with_unconfirmed_mail() {
     gpui_platform::headless().run(|app| {
-        let root = Root::new();
+        let roots = [Root::new(), Root::new(), Root::new()];
         let mut cx = context();
-        let window = open(&root.0, &mut cx);
-        window
-            .update(&mut cx, |hub, _, cx| {
-                let state = hub.onboarding.as_mut().expect("asistente");
-                state.page(5);
-                state.signed = true;
-                state.marketing_continue = true;
-                hub.remote.update(cx, |remote, _| {
-                    remote.mail.error = Some("Correo sin verificar".into());
-                    remote.mail.pending = false;
-                });
-                hub.complete_onboarding_marketing(cx);
-                let state = hub.onboarding.as_ref().expect("se conserva el asistente");
-                assert!(state.error.is_some());
-                assert!(!state.consent_error);
-                assert!(!private_exit_available(state.step, state.consent_error));
-                assert_eq!(state.step, 5);
-            })
-            .expect("error remoto independiente");
-        cx.update_window(window.into(), |_, window, _| window.remove_window())
-            .expect("cerrar");
+        for (index, (error, pending)) in [
+            ("403 verified_email_required", false),
+            ("409 MailErasurePending", false),
+            ("409 MailErasurePending", true),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            let root = &roots[index];
+            let window = open(&root.0, &mut cx);
+            page(window, 5, 0, &mut cx);
+            window
+                .update(&mut cx, |hub, _, cx| {
+                    hub.onboarding.as_mut().expect("asistente").signed = true;
+                    hub.remote.update(cx, |remote, _| {
+                        // Un ACK antiguo no confirma una elección que acaba de fallar.
+                        remote.mail.consent = Some(true);
+                        remote.mail.onboarding_saved = false;
+                        remote.mail.pending = pending;
+                        remote.mail.error = (!pending).then(|| error.into());
+                    });
+                })
+                .expect("rechazo persistente");
+            key(window, "enter", &mut cx); // Terminar por el teclado real.
+            window
+                .update(&mut cx, |hub, _, cx| {
+                    if pending {
+                        // Respuesta fallida a la petición iniciada por Terminar.
+                        hub.remote.update(cx, |remote, _| {
+                            remote.mail.error = Some(error.into());
+                            remote.mail.pending = false;
+                        });
+                        hub.complete_onboarding_marketing(cx);
+                    }
+                    let state = hub.onboarding.as_ref().expect("resumen alcanzado");
+                    assert_eq!(state.step, 6);
+                    assert!(state.marketing_unconfirmed);
+                    assert_eq!(state.text, MARKETING_UNCONFIRMED);
+                    assert!(state.error.is_none(), "no es un error de privacidad");
+                    assert!(!state.consent_error);
+                    assert!(!private_exit_available(state.step, state.consent_error));
+                    let mail = &hub.remote.read(cx).mail;
+                    assert_eq!(mail.consent, Some(true), "no inventar un ACK distinto");
+                    assert!(!mail.onboarding_saved);
+                    let privacy = Privacy::load(&root.0).expect("privacidad guardada");
+                    assert!(!privacy.usage && privacy.crashes);
+                    assert!(privacy.usage_decided && privacy.crashes_decided);
+                    // Volver y terminar tampoco reabre el bucle del rechazo persistente.
+                    hub.onboarding_back(cx);
+                })
+                .expect("error opcional permite el resumen");
+            page(window, 5, 0, &mut cx);
+            key(window, "enter", &mut cx);
+            window
+                .update(&mut cx, |hub, window, cx| {
+                    assert_eq!(hub.onboarding.as_ref().expect("resumen").step, 6);
+                    hub.onboarding_finish(false, window, cx);
+                    assert!(hub.onboarding.is_none(), "se sale del asistente");
+                    assert!(
+                        hub.settings
+                            .general
+                            .as_ref()
+                            .expect("ajustes")
+                            .value
+                            .onboarding_completed
+                    );
+                })
+                .expect("configuración completada sin permiso de correo");
+            cx.update_window(window.into(), |_, window, _| window.remove_window())
+                .expect("cerrar");
+        }
         drop(cx);
         crate::quit_headless_test(app);
     });
 }
+
+#[test]
+fn enter_on_a_passive_focused_control_bubbles_to_continue() {
+    struct Passive {
+        hub: gpui::Entity<Hub>,
+        focus: gpui::FocusHandle,
+    }
+    impl gpui::Render for Passive {
+        fn render(
+            &mut self,
+            _: &mut Window,
+            cx: &mut gpui::Context<Self>,
+        ) -> impl gpui::IntoElement {
+            gpui::div()
+                .on_key_up(cx.listener(|this, event, window, cx| {
+                    this.hub
+                        .update(cx, |hub, cx| hub.onboarding_key_up(event, window, cx));
+                }))
+                .child(
+                    gpui::div()
+                        .id("passive")
+                        .track_focus(&self.focus)
+                        .tab_index(0)
+                        .size_full(),
+                )
+        }
+    }
+    gpui_platform::headless().run(|app| {
+        let root = Root::new();
+        let mut cx = context();
+        let original = open(&root.0, &mut cx);
+        let hub = original.root(&mut cx).expect("hub");
+        let probe = cx
+            .open_window(size(px(800.0), px(600.0)), |_, cx| {
+                cx.new(|cx| Passive {
+                    hub: hub.clone(),
+                    focus: cx.focus_handle(),
+                })
+            })
+            .expect("control pasivo");
+        draw(probe, &mut cx);
+        probe
+            .update(&mut cx, |this, window, cx| this.focus.focus(window, cx))
+            .expect("enfocar control");
+        key(probe, "enter", &mut cx);
+        hub.update(&mut cx, |hub, _| {
+            assert_eq!(hub.onboarding.as_ref().expect("avanzó").step, 1);
+        });
+        cx.update_window(probe.into(), |_, window, _| window.remove_window())
+            .expect("cerrar control");
+        cx.update_window(original.into(), |_, window, _| window.remove_window())
+            .expect("cerrar Hub");
+        drop(hub);
+        drop(cx);
+        crate::quit_headless_test(app);
+    });
+}
+

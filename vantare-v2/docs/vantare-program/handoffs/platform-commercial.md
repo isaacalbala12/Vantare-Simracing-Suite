@@ -1,3 +1,34 @@
+## #1688 · VANTA-105 · QA local e inventario de compilación (17-oct-2026)
+
+El orquestador autoriza mecánica sin servicios remotos al no existir config beta
+local. candidate.ps1 admite ConfigFile ausente y Services soporta «servicio no
+configurado»; se retiran las variables remotas, sin inventar claves ni usar
+producción. Login/pagos no probados. No es candidata pública ni firma/release.
+
+Checkout aislado de entrada `5e5c4d1854988604664c518c68beb31a27d2704c`
+(origin/nightly), `C:/VantareServer/wt/isa-1688-rc1-build`, ahora rama
+`vantareapp/isa-1688-candidata-rc1-buildfix`. Primer build Release completo
+PASS en 28m14s, pero el empaquetado falla cerrado por inventario desfasado:
+`vantare-grabar-lmu-completo` y `vantare-verificar-lmu` están en metadata.
+Runtime/README los declara QA privada excluida del instalador.
+
+Corrección mínima: lista cerrada separada de bins privados de compilación;
+Get-NativeBins y el inventario público permanecen intactos (beta 10 EXE).
+No se ignoran bins desconocidos, ausentes ni duplicados. Regresión
+build-inventory-tests.ps1: 10 PASS en PS5.1, enganchada al check Windows
+bloqueante; canales45 PASS. Sin Rust modificado ni dependencias nuevas.
+Se conserva el fallo real en `build-local-inventory-red.log` y el delta exacto.
+No se crea ZIP manual ni se desactiva el gate.
+
+Evidencia viva `C:/VantareServer/evidence/rc1/INFORME.md`; fuente/artefactos
+finales y hashes se completan tras repetir el packager sobre este arreglo limpio.
+Control NSIS0.0.975: instala exit0, versión/registro y desinstalación exit0,
+archivo fixture con hash idéntico PASS. Sandbox ausente; usuario temporal con
+perfil/SID propios y desktop privado, sin SwitchDesktop. No es Windows limpio.
+Pendientes: Setup local 0.0.979, QA limpia/reinstalación y 0.0.975→nuevo Setup,
+conservación exacta de datos, limpieza de cuentas/targets propios y revisión.
+Sin config beta real, firma, publicación, merge ni ventanas en sesión Isaac.
+
 ## #1631 / VANTA-70 · Seguimiento P3 de login (#1684)
 
 Encargo tras fusionar #1635 en nightly `95abdcc6e`. Rama nueva

@@ -573,3 +573,17 @@ no tiene cancelación propia; ya no bloquea el asistente mientras sigue pendient
 Dependencia de test-support: aprobación de Isaac pendiente; se conserva según
 el encargo si es necesaria para probar eventos reales sin HWND. Prueba alternativa
 del headless normal de Windows y evidencia de gates/capturas en PR1637.
+
+### VANTA-51 / #1628 · Delta tras review R3 APTO · 17-oct-2026
+
+Sin merge del PR hasta la decisión de Isaac sobre test-support (VANTA-120).
+P3-1: Ajustes reintenta la intención mail.desired y muestra Reintentar guardar;
+solo alterna el ACK si no queda intención. Test del handler real inspecciona
+MailConsentSet/Settings, conserva ACK y comprueba pending/error limpio; después
+del ACK, un test de proyección verifica que vuelve a alternar normalmente.
+P3-2: resumen con estado explícito por fila, sin heurística sobre cadenas;
+regresión de plan no confirmado/bloqueado y permisos, neutros.
+Comprobación independiente: grafo normal/build/features Windows sin
+GPUI/test-support ni proptest; grafo con dev los incluye. Solo se verifica el
+grafo de producción, no se afirma inspección de binario release. Evidencia en
+C:/VantareServer/evidence/1628-review-r3-delta-20261017; SHA/CI finales en PR1637.

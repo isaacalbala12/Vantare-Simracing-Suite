@@ -1,7 +1,7 @@
 //! Primer arranque GPUI. Cuenta, layout y privacidad conservan sus propietarios.
 mod art;
 #[cfg(test)]
-mod interaction_tests;
+pub(in crate::shell) mod interaction_tests;
 mod view;
 use super::{Hub, navigation::Access};
 use crate::onboarding::{Choices, Equipment, SAY, crash_say, usage_say};

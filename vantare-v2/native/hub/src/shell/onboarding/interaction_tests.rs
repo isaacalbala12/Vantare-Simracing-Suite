@@ -426,3 +426,19 @@ fn enter_on_a_passive_focused_control_bubbles_to_continue() {
         crate::quit_headless_test(app);
     });
 }
+
+/// Reutiliza el Hub aislado para comprobar handlers de Ajustes con su Remote real.
+pub(in crate::shell) fn with_hub(test: impl FnOnce(&mut Hub, &mut gpui::Context<Hub>) + 'static) {
+    gpui_platform::headless().run(move |app| {
+        let root = Root::new();
+        let mut cx = context();
+        let window = open(&root.0, &mut cx);
+        window
+            .update(&mut cx, |hub, _, cx| test(hub, cx))
+            .expect("comprobar Hub");
+        cx.update_window(window.into(), |_, window, _| window.remove_window())
+            .expect("cerrar Hub");
+        drop(cx);
+        crate::quit_headless_test(app);
+    });
+}

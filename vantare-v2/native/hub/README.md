@@ -87,6 +87,17 @@ y no permite crear una ventana para dibujar/recorrer foco y enviar eventos.
 La prueba alternativa y el resultado se registran en #1637; no se reemplazan
 los eventos de teclado por llamadas directas al controlador.
 
+R3: el botón de correos de Ajustes reintenta `mail.desired` mientras no haya
+ACK, aunque el último permiso confirmado fuera otro. Solo sin intención pendiente
+alterna el ACK; el texto muestra «Reintentar guardar el permiso de correos».
+Los iconos del resumen reciben confirmación/activación explícita, nunca infieren
+un estado del texto: planes sin confirmar o bloqueados y permisos apagados son
+neutros. Verificación de producción: `cargo tree -p vantare-hub --target
+x86_64-pc-windows-msvc --offline --locked -e normal,build,features` no incluye
+`gpui/test-support` ni proptest; al añadir `dev` sí aparecen. Es evidencia del
+grafo de compilación, no una inspección de un binario release. La dependencia
+permanece pendiente de aprobación de Isaac en VANTA-120: no fusionar antes.
+
 ## #1564 · Widgets por sesión
 
 Standings → Contenido abre Práctica / Qualy / Carrera, con columnas y formatos

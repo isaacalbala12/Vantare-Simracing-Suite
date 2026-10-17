@@ -12,6 +12,16 @@ pub(crate) struct State {
     pub desired: Option<bool>,
 }
 impl State {
+    /// Reintentar conserva la intención; solo un ACK permite volver a alternarla.
+    pub(crate) fn settings_action(&self) -> (&'static str, bool) {
+        if let Some(desired) = self.desired {
+            ("Reintentar guardar el permiso de correos", desired)
+        } else if self.consent == Some(true) {
+            ("Desactivar novedades y ofertas", false)
+        } else {
+            ("Activar novedades y ofertas", true)
+        }
+    }
     pub(super) fn dispatched(&mut self, command: &Command) {
         match command {
             Command::MailConsentGet => {
@@ -101,6 +111,29 @@ impl Remote {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn acknowledged_retry_returns_to_toggling_the_confirmed_permission() {
+        let mut state = State {
+            consent: Some(true),
+            desired: Some(true),
+            ..State::default()
+        };
+        assert!(state.settings_action().1);
+        state.dispatched(&Command::MailConsentSet {
+            consent: true,
+            source: MailSource::Settings,
+        });
+        state.complete(&Reply::MailConsent {
+            consent: true,
+            locale: None,
+            revision: 2,
+        });
+        assert_eq!(state.desired, None);
+        assert_eq!(
+            state.settings_action(),
+            ("Desactivar novedades y ofertas", false)
+        );
+    }
     #[test]
     fn native_email_login_does_not_inherit_the_previous_accounts_marketing_choice() {
         for action in [

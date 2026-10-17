@@ -328,24 +328,14 @@ impl super::Hub {
             .p(px(20.0))
             .child(orbit::text(message, 13.0, 400, orbit::skin(cx).text2, cx))
             .child(
-                orbit::button(
-                    "settings-mail-consent",
-                    if mail.consent == Some(true) {
-                        "Desactivar novedades y ofertas"
-                    } else {
-                        "Activar novedades y ofertas"
-                    },
-                    cx,
-                )
-                .on_click(cx.listener(|hub, _, _, cx| hub.settings_marketing_toggle(cx)))
-                .on_key_down(cx.listener(
-                    |hub, event: &gpui::KeyDownEvent, _, cx| {
+                orbit::button("settings-mail-consent", mail.settings_action().0, cx)
+                    .on_click(cx.listener(|hub, _, _, cx| hub.settings_marketing_toggle(cx)))
+                    .on_key_down(cx.listener(|hub, event: &gpui::KeyDownEvent, _, cx| {
                         if matches!(event.keystroke.key.as_str(), "space" | "enter") {
                             hub.settings_marketing_toggle(cx);
                             cx.stop_propagation();
                         }
-                    },
-                )),
+                    })),
             )
             .child(
                 orbit::button("settings-mail-refresh", "Consultar permiso de correos", cx)
@@ -368,7 +358,7 @@ impl super::Hub {
         if remote.mail.pending {
             return;
         }
-        let consent = !remote.mail.consent.unwrap_or(false);
+        let consent = remote.mail.settings_action().1;
         self.remote.update(cx, |remote, cx| {
             remote.mail_command(
                 Command::MailConsentSet {
@@ -409,6 +399,54 @@ impl super::Hub {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn settings_retry_sends_the_pending_intent_instead_of_inverting_an_old_ack() {
+        crate::shell::onboarding::interaction_tests::with_hub(|hub, cx| {
+            let file = crate::document::tests::File::new();
+            for (ack, desired, expected) in [
+                (Some(true), Some(true), true),
+                (Some(false), Some(false), false),
+                (Some(true), Some(false), false),
+                (Some(false), Some(true), true),
+                (Some(true), None, false),
+                (Some(false), None, true),
+                (None, None, true),
+            ] {
+                let (send, requests) = std::sync::mpsc::sync_channel(8);
+                hub.remote = cx.new(|cx| {
+                    crate::services::view::purchase_tests::fixture(
+                        cx,
+                        send,
+                        file.path.parent().expect("raíz"),
+                    )
+                });
+                hub.remote.update(cx, |remote, _| {
+                    remote.mail.consent = ack;
+                    remote.mail.desired = desired;
+                    remote.mail.error = desired.map(|_| "guardado rechazado".into());
+                    if desired.is_some() {
+                        assert_eq!(
+                            remote.mail.settings_action().0,
+                            "Reintentar guardar el permiso de correos"
+                        );
+                    }
+                });
+                hub.settings_marketing_toggle(cx);
+                assert!(matches!(requests.try_recv().expect("petición de Ajustes"),
+                    crate::services::protocol::Command::MailConsentSet {
+                        consent, source: crate::services::protocol::MailSource::Settings,
+                    } if consent == expected));
+                let mail = &hub.remote.read(cx).mail;
+                assert_eq!(
+                    mail.consent, ack,
+                    "sin ACK nuevo el estado confirmado no cambia"
+                );
+                assert_eq!(mail.desired, Some(expected));
+                assert!(mail.error.is_none(), "el reintento limpia el error previo");
+                assert!(mail.pending);
+            }
+        });
+    }
     #[test]
     fn isolated_settings_never_load_or_discard_the_installed_privacy_queue() {
         let default_hub = Path::new("C:/fixture/VantareNative/hub");

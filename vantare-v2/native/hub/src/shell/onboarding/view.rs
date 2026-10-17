@@ -3,12 +3,18 @@ use crate::{onboarding as model, orbit};
 use gpui::{Context, Div, SharedString, Stateful, Window, div, prelude::*, px, rgb};
 use vantare_ui::performance::Level;
 
-fn summary_status(value: &str) -> (&'static str, u32) {
-    if value.starts_with("Apagados") || value == "Sin confirmar" {
-        ("—", 0x008b_8285)
-    } else {
+fn summary_status(confirmed: bool) -> (&'static str, u32) {
+    if confirmed {
         ("✓", 0x0022_c55e)
+    } else {
+        ("—", 0x008b_8285)
     }
+}
+fn summary_plan(signed: bool, access: super::Access) -> (String, bool) {
+    (
+        plan_label(signed, access),
+        !signed || confirmed_plan(access).is_some(),
+    )
 }
 
 pub(super) fn text(
@@ -1010,6 +1016,11 @@ impl Hub {
     fn onboarding_summary(&self, s: f32, cx: &gpui::App) -> Div {
         let state = self.onboarding.as_ref().expect("visible");
         let choices = &state.choices;
+        let (plan, plan_confirmed) =
+            summary_plan(state.signed, self.remote.read(cx).navigation_access());
+        let mail_confirmed = state.signed
+            && !state.marketing_unconfirmed
+            && self.remote.read(cx).mail.consent == Some(true);
         let sims = ["Le Mans Ultimate", "ACC"]
             .into_iter()
             .zip(choices.simulators)
@@ -1030,13 +1041,10 @@ impl Hub {
             .overflow_hidden()
             .children(
                 [
-                    ("Simuladores", sims),
-                    ("Estilo", styles),
-                    ("Widgets", choices.widgets_summary()),
-                    (
-                        "Plan",
-                        plan_label(state.signed, self.remote.read(cx).navigation_access()),
-                    ),
+                    ("Simuladores", sims, true),
+                    ("Estilo", styles, true),
+                    ("Widgets", choices.widgets_summary(), true),
+                    ("Plan", plan, plan_confirmed),
                     (
                         "Rendimiento",
                         if choices.automatic {
@@ -1045,6 +1053,7 @@ impl Hub {
                             choices.level.label()
                         }
                         .into(),
+                        true,
                     ),
                     (
                         "Datos de uso",
@@ -1054,6 +1063,7 @@ impl Hub {
                             "Apagados"
                         }
                         .into(),
+                        choices.usage,
                     ),
                     (
                         "Informes de fallos",
@@ -1063,6 +1073,7 @@ impl Hub {
                             "Apagados"
                         }
                         .into(),
+                        choices.crashes,
                     ),
                     (
                         "Correos",
@@ -1078,11 +1089,12 @@ impl Hub {
                             "Apagados · sin cuenta"
                         }
                         .into(),
+                        mail_confirmed,
                     ),
                 ]
                 .into_iter()
-                .map(|(label, value)| {
-                    let (icon, color) = summary_status(&value);
+                .map(|(label, value, confirmed)| {
+                    let (icon, color) = summary_status(confirmed);
                     div()
                         .flex()
                         .items_center()
@@ -1101,12 +1113,40 @@ impl Hub {
 
 #[cfg(test)]
 mod tests {
-    use super::summary_status;
+    use super::{summary_plan, summary_status};
+    use crate::shell::navigation::Access;
     #[test]
-    fn disabled_and_unconfirmed_permissions_use_a_neutral_status() {
-        for value in ["Apagados", "Apagados · sin cuenta", "Sin confirmar"] {
-            assert_eq!(summary_status(value), ("—", 0x008b_8285));
-        }
-        assert_eq!(summary_status("Activados"), ("✓", 0x0022_c55e));
+    fn summary_icons_follow_confirmation_instead_of_display_text() {
+        let unknown = Access::default();
+        let (label, confirmed) = summary_plan(true, unknown);
+        assert_eq!(label, "Cuenta conectada · plan sin confirmar");
+        assert!(!confirmed);
+        assert_eq!(summary_status(confirmed), ("—", 0x008b_8285));
+        assert!(
+            !summary_plan(
+                true,
+                Access {
+                    blocked: true,
+                    ..unknown
+                }
+            )
+            .1
+        );
+        assert!(
+            summary_plan(false, unknown).1,
+            "sin cuenta sí se conoce el plan Gratis"
+        );
+        assert!(
+            summary_plan(
+                true,
+                Access {
+                    verified: true,
+                    ..unknown
+                }
+            )
+            .1
+        );
+        assert_eq!(summary_status(false), ("—", 0x008b_8285));
+        assert_eq!(summary_status(true), ("✓", 0x0022_c55e));
     }
 }

@@ -1,3 +1,38 @@
+## #1695 / VANTA-105 · Seguimiento activo desde nightly95c08834b
+
+El orquestador confirma #1696 integrado en nightly95c08834b y ordena retomar
+este PR separado. Rama vantareapp/isa-1695-installer-transaccion, worktree propio
+isa-1695. WIP propio preservado en commit5c6121d61; merge949b4f5c7 de nightly,
+sin rebase/force-push. Conflictos documentales conservan ambos expedientes.
+#1698 sigue DRAFT e8cf16e6a hasta revisión con Isaac; no se toca su workflow.
+Target1694-hub queda exclusivamente a cargo del orquestador, no se toca.
+
+Rollback beta intenta cada archivo y registra fallos, conservando el error
+original. Estado primero; limpieza conserva generaciones referenciadas o todas
+si falla comprobar estado/enumeración. Snapshot inicial no legible aborta antes
+de activar. Desinstalación mantiene beta-session.lock hasta registro y marker;
+Cleanup lo adquiere para retirar EXE/marker, y Setup recupera huérfanos bajo lock.
+Programs vacío falla con diagnóstico antes de Join-Path; ON con carpeta vacía
+advierte sin abortar. Suite shell añadida al workflow Windows bloqueante.
+
+MSIX se documenta fuera de RC1/beta26-oct, sin habilitar Store ni cambiar su
+builder experimental. Setup/Uninstall usan la misma guarda real de imports
+que el payload, incluida cabecera PE. CRT24 PASS: build/metadata satisfactorios
+llegan a la guarda dentro del builder, rechazan PE dinámico antes de copiarlo;
+builder de Setup real rechaza cada entrada dinámica y acepta ambas estáticas.
+Compilación sustituida por PE C inertes, sin ejecutar esos binarios.
+
+Primera campaña PS5.1 privada PASS: registro65, shell23; SID1029/perfil retirados.
+Campaña final PASS: registro66 (incluye lock del driver real) y shell23; SID1030/perfil retirados, DACL restaurada. CRT24 e inventario14 finales PASS.
+AST/YAML/diff/462 huellas PASS. No Rust/Cargo/toolchain alterados: gates Rust
+los verificará la CI existente; las regresiones locales son scripts/procesos,
+registro/COM/NTFS y PE reales. PR y CI aún pendientes, no declarar terminados.
+P2-1 real ya PASS con Setup nuevo de nightly7396, SHA bec8d3bb4394543169561cad07965987615e13914b6bdd00cd075dc80289e913;
+OFF limpio, reinstalación ON y NSIS0.0.975→OFF, sin crear Startup en el actor.
+Esta build histórica no contiene P2/P3 nuevos; no se mezclan sus resultados.
+Informe C:/VantareServer/evidence/rc1/seguimiento-1691/INFORME.md.
+Sin configuración beta: login/pagos sin probar. Sin firma/publicación/merge.
+
 ## #1694 y propuesta #1697 · Entrega a revisión (2026-10-17 08:57:27 UTC)
 
 Verificación final 2026-10-17 08:57:27 UTC : PR #1696 READY, OPEN y MERGEABLE en e2fafdecbe4365acb86faf19915b4478f70df598. Cinco checks SUCCESS, incluidos los dos requeridos: Validate promotion path y Validate Vantare blocking gates. Run https://github.com/isaacalbala12/Vantare-Simracing-Suite/actions/runs/39018399770 . Sin merge por el worker; listo para review del orquestador. Hub-ready sigue NO acreditado (DirectX0x8007000E en desktop privado), sin firma/publicación.

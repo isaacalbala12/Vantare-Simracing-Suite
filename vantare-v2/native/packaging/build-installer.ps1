@@ -51,9 +51,10 @@ try {
     & cargo @uninstallArgs
     if($LASTEXITCODE){throw 'Falló build del desinstalador.'}
     $target=Join-Path ([IO.Path]::GetFullPath($env:CARGO_TARGET_DIR)) 'x86_64-pc-windows-msvc'
+    $dumpbin=Get-NativeDumpbin
     $uninstaller=Join-Path $output 'Uninstall.exe'
     Copy-Item -LiteralPath (Join-Path $target ($BuildProfile.ToLowerInvariant()+'/vantare-uninstall.exe')) -Destination $uninstaller
-    Assert-NativePe $uninstaller
+    Assert-NativeStaticCrt $uninstaller $dumpbin
     $env:VANTARE_INSTALLER_ARCHIVE=$archive
     $env:VANTARE_INSTALLER_UNINSTALLER=$uninstaller
     $env:VANTARE_INSTALLER_SHA256=Get-NativeHash $archive
@@ -63,7 +64,7 @@ try {
     $setup=Join-Path $output 'VantareSetup.exe'
     Copy-Item -LiteralPath (Join-Path $target ($BuildProfile.ToLowerInvariant()+'/vantare-setup.exe')) -Destination $setup
     foreach($exe in @($setup,$uninstaller)){
-        Assert-NativePe $exe
+        Assert-NativeStaticCrt $exe $dumpbin
         $metadata=[Diagnostics.FileVersionInfo]::GetVersionInfo($exe)
         if($metadata.ProductName -cne 'Vantare' -or $metadata.ProductVersion -cne $Version){throw 'Metadatos PE del instalador incorrectos.'}
         [IO.File]::WriteAllText("$exe.sha256", "$(Get-NativeHash $exe)  $([IO.Path]::GetFileName($exe))`n",[Text.UTF8Encoding]::new($false))

@@ -13,8 +13,10 @@ function Get-NativeShortcutFolder([string]$Name){
     $script:resolvedFolders+=,$Name
     if($script:rejectFolders){throw 'Folder resolution must not occur for OFF'}
     if($Name -ceq $script:emptyFolder){return ''}
+    if($script:driverFolders -and $Name -ceq 'Programs'){return [Environment]::GetFolderPath('Programs')}
     Join-Path $testRoot $Name
 }
+$script:driverFolders=$false
 $script:rejectFolders=$true
 $script:emptyFolder=''
 $script:resolvedFolders=@()
@@ -199,6 +201,7 @@ Assert-Registration $true 'uninstall releases lock only after finalization'
 
 # Full driver boundary with inert payload: successful silent install followed by
 # a real sharing violation in mandatory registration after the new state is active.
+$script:driverFolders=$true # Parent cleanup must resolve the same Programs as the real child.
 $driverRoot=Join-Path 'C:/tmp/ola2/1591-qa' ('1690-driver-'+[guid]::NewGuid().ToString('N'))
 $engine=Join-Path ([IO.Path]::GetTempPath()) ('VantareSetup-1695-'+$PID+'-'+[DateTime]::UtcNow.Ticks);[IO.Directory]::CreateDirectory($engine)|Out-Null
 foreach($name in @('candidate.ps1','beta.ps1','installer-driver.ps1')){Copy-Item (Join-Path $PSScriptRoot $name) $engine}
@@ -266,8 +269,29 @@ try {
     $requestValue=[IO.File]::ReadAllText($request)|ConvertFrom-Json
     $requestValue.autostart=$true;Write-BetaJson $request $requestValue
     Assert-Registration ((Run-RegistrationDriver) -eq 0 -and $script:driverError.Length -gt 0) 'real driver ON warning is logged with valid JSON progress and success'
+    # Wrap only the real registration boundary in this child fixture. Observe
+    # FileShare.None both before registration removal and after marker creation.
+    $proof=Join-Path $testRoot 'driver-uninstall-lock.json'
+    $lockProbe=@'
+$registrationImplementation=${function:Uninstall-NativeRegistration}
+function Uninstall-NativeRegistration {
+    param([string]$Directory,[bool]$DeferUninstaller,[string]$KnownIdentity,[string]$KnownFolder)
+    foreach($phase in @('before','after')){
+        if($phase -ceq 'after'){& $registrationImplementation @PSBoundParameters}
+        $held=$null;$blocked=$false
+        try{$held=[IO.File]::Open((Join-Path $Directory 'beta-session.lock'),'Open','ReadWrite','None')}catch [IO.IOException]{$blocked=$true}finally{if($held){$held.Dispose()}}
+        if(-not $blocked){throw 'Registration finalization escaped the session lock'}
+    }
+    if(-not(Test-Path (Join-Path $Directory 'installer-cleanup.json'))){throw 'Cleanup marker was not written under lock'}
+    [IO.File]::WriteAllText('__PROOF__','{"before":true,"after_marker":true}')
+}
+'@
+    $lockProbe=$lockProbe.Replace('__PROOF__',$proof.Replace("'","''"))
+    [IO.File]::WriteAllText($driverPath,[IO.File]::ReadAllText($driverPath).Replace('# stdout is exclusively',($lockProbe+"`n# stdout is exclusively")))
     $requestValue.operation='Uninstall';$requestValue.uninstall=$true;Write-BetaJson $request $requestValue
     Assert-Registration ((Run-RegistrationDriver) -eq 0 -and -not(Test-Path $qaKey) -and (Test-Path (Join-Path $driverRoot 'installer-cleanup.json'))) 'real driver uninstalls and writes hash-bound marker before releasing lock'
+    $lockResult=Get-Content $proof -Raw|ConvertFrom-Json
+    Assert-Registration ($lockResult.before -and $lockResult.after_marker) 'actual driver holds lock across registration removal and cleanup marker creation'
     $requestValue.operation='Cleanup';$requestValue|Add-Member -NotePropertyName processId -NotePropertyValue 2147483647
     Write-BetaJson $request $requestValue
     $session=[IO.File]::Open((Join-Path $driverRoot 'beta-session.lock'),'Open','ReadWrite','None')

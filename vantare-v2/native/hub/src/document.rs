@@ -107,7 +107,16 @@ impl Editor {
         !self.redo.is_empty()
     }
     pub fn duplicate(&mut self) -> Result<(), String> {
-        let mut item = self.selected().cloned().ok_or("selecciona una instancia")?;
+        let selected = self.selected().ok_or("selecciona una instancia")?;
+        let selected = match &selected.settings {
+            Settings::SessionAlerts(s) => s
+                .companion_for
+                .as_ref()
+                .and_then(|id| self.layout().instances.iter().find(|i| &i.id == id))
+                .unwrap_or(selected),
+            _ => selected,
+        };
+        let mut item = selected.clone();
         let frequency = self.layout().performance.widgets.get(&item.id).copied();
         let id = self.next_id()?;
         item.id.clone_from(&id);
@@ -164,6 +173,7 @@ impl Editor {
         let previous = self.layout().clone();
         let mut next = previous.clone();
         edit(&mut next)?;
+        crate::session_alerts::synchronize(&mut next, &previous);
         // La API común normaliza documentos externos; una entrada interactiva no finita es un error.
         if next.instances.iter().any(|item| {
             !item.x.is_finite()
@@ -275,7 +285,14 @@ impl Editor {
         Ok(())
     }
     pub fn remove(&mut self) -> Result<(), String> {
-        let id = self.selected.clone().ok_or("selecciona una instancia")?;
+        let selected = self.selected().ok_or("selecciona una instancia")?;
+        let id = match &selected.settings {
+            Settings::SessionAlerts(s) => s
+                .companion_for
+                .clone()
+                .unwrap_or_else(|| selected.id.clone()),
+            _ => selected.id.clone(),
+        };
         self.change(|layout| {
             layout.instances.retain(|item| item.id != id);
             layout.performance.widgets.remove(&id);

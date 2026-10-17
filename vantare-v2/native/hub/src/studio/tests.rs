@@ -748,10 +748,16 @@ fn canvas_resolution_changes_preview_and_anchors_without_moving_widgets() {
 }
 #[test]
 fn general_examples_remain_explicit_design_samples_for_every_widget() {
-    for (_, snapshot) in example_snapshots().expect("ejemplos") {
+    for (kind, snapshot) in example_snapshots().expect("ejemplos") {
+        let expected = if kind == Kind::SessionAlerts {
+            vantare_domain::SessionKind::Practice
+        } else {
+            vantare_domain::SessionKind::Race
+        };
         assert_eq!(
             snapshot.state.session.kind.current(),
-            Some(&vantare_domain::SessionKind::Race)
+            Some(&expected),
+            "{kind:?}"
         );
     }
 }
@@ -1313,7 +1319,7 @@ fn unverified_or_blocked_access_never_sells_pro() {
     assert_eq!(lock_badge("Incluida en Pro"), "Pro");
     assert_eq!(
         locked_note(Some(launch)),
-        "Tu acceso de lanzamiento incluye 4 widgets. Pro desbloquea los 14 restantes."
+        "Tu acceso de lanzamiento incluye 4 widgets. Pro desbloquea los 15 restantes."
     );
     let free = Access {
         verified: true,
@@ -1322,7 +1328,7 @@ fn unverified_or_blocked_access_never_sells_pro() {
     };
     assert_eq!(
         locked_note(Some(free)),
-        "Tu plan Gratis incluye 4 widgets. Pro desbloquea los 14 restantes."
+        "Tu plan Gratis incluye 4 widgets. Pro desbloquea los 15 restantes."
     );
 }
 #[test]

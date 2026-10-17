@@ -369,6 +369,10 @@ impl Studio {
         self.access
     }
 
+    pub(crate) fn layout_path(&self) -> &std::path::Path {
+        self.editor.layout_path()
+    }
+
     pub(crate) fn home_layout(&self) -> &vantare_ui::layout::Layout {
         self.editor.layout()
     }

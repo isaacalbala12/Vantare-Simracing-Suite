@@ -278,7 +278,7 @@ impl Calendar {
                         block
                             .flex()
                             .items_baseline()
-                            .gap(px(10.0))
+                            .gap(px(14.0))
                             .child(chrome::disp("Calendario LMU", 24.0, skin.text1, cx).flex_none())
                             .child(
                                 div().flex_1().min_w_0().child(
@@ -845,9 +845,18 @@ fn fullscreen(cal: &mut Calendar, cx: &mut Context<Calendar>) -> impl IntoElemen
 }
 
 /// Botón de pantalla completa común a Día, Semana y Mes.
+/// El botón de pantalla completa mide siempre 32 px y se tiñe al estar activo.
+pub(super) fn full_button_state(full: bool) -> chrome::IbState {
+    chrome::IbState {
+        small: false,
+        on: full,
+    }
+}
+
 pub(super) fn full_button(cal: &Calendar, cx: &mut Context<Calendar>) -> gpui::Stateful<Div> {
     let on = cal.ui.full;
-    ib(
+    let skin = chrome::skin(cx);
+    chrome::ib_with(
         "calendar-full-toggle",
         if on { "shrink" } else { "expand" },
         if on {
@@ -855,10 +864,16 @@ pub(super) fn full_button(cal: &Calendar, cx: &mut Context<Calendar>) -> gpui::S
         } else {
             "Pantalla completa"
         },
-        on,
-        false,
+        full_button_state(on),
         cx,
     )
+    // `.fullb`: borde b2, y línea de acento al estar activo.
+    .border_1()
+    .border_color(if on {
+        chrome::acc_line(cx)
+    } else {
+        orbit::alpha(skin.line2)
+    })
     .on_click(cx.listener(|this, _, _, cx| {
         this.ui.full = !this.ui.full;
         cx.notify();
@@ -941,4 +956,29 @@ pub(super) fn fav_seg(
                 cx.notify();
             })),
         )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_full_screen_button_is_active_and_keeps_its_32_px_when_full() {
+        let on = full_button_state(true);
+        assert!(on.on, "se tiñe a pantalla completa");
+        assert!(!on.small, "y no se encoge");
+        assert_eq!(on.side(), 32.0);
+        // Apagado: mismo tamaño, sin teñir.
+        let off = full_button_state(false);
+        assert_eq!((off.on, off.small, off.side()), (false, false, 32.0));
+        // Los botones pequeños siguen midiendo 28.
+        assert_eq!(
+            chrome::IbState {
+                small: true,
+                on: false
+            }
+            .side(),
+            28.0
+        );
+    }
 }

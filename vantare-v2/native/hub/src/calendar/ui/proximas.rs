@@ -294,8 +294,9 @@ fn hero(cal: &Calendar, compact: bool, cx: &mut Context<Calendar>) -> Div {
         .flex()
         .flex_row()
         .items_center()
-        .gap(px(if compact { 14.0 } else { 26.0 }))
-        .px(px(22.0))
+        .gap(px(if compact { 20.0 } else { 26.0 }))
+        // `.hero.compact{padding:12px 18px}`; normal 18px 22px.
+        .px(px(if compact { 18.0 } else { 22.0 }))
         .py(px(if compact { 12.0 } else { 18.0 }))
         .when(!compact, |hero_box| {
             hero_box.child(
@@ -348,7 +349,7 @@ fn hero(cal: &Calendar, compact: bool, cx: &mut Context<Calendar>) -> Div {
                     div()
                         .flex()
                         .items_center()
-                        .gap(px(if compact { 7.0 } else { 10.0 }))
+                        .gap(px(10.0))
                         .mt(px(if compact { 6.0 } else { 8.0 }))
                         .flex_wrap()
                         .child(

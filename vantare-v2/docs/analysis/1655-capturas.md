@@ -357,3 +357,12 @@ activos. Se conserva el inventario en `temp-cleanup.json`.
 Los gates generales del nuevo SHA se verifican en CI Windows y sus resultados
 finales se registran/releen en issue/PR. La prueba IPC fuerte sigue siendo
 una regresión manual documentada de Windows (N4), ejecutada en esta entrega.
+
+### Avance adicional de nightly
+
+Se integra también `9c19b2993` (#1660, Avisos de sesión), sin conflictos ni
+reescritura de historia. Sus cambios se conservan; el escritor de avisos se
+inhibe en captura. Se repite la compilación/prueba focal con el registro nuevo
+y se comprueban los gates de CI en el nuevo HEAD. Resultados anteriores de
+esta sección corresponden al código de `c9442667d`; las lecturas finales de
+SHA/checks se registran en issue/PR y `round2-nightly/`.

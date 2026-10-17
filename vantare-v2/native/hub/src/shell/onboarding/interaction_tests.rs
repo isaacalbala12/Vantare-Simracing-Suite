@@ -426,4 +426,3 @@ fn enter_on_a_passive_focused_control_bubbles_to_continue() {
         crate::quit_headless_test(app);
     });
 }
-

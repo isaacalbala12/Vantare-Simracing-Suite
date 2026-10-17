@@ -104,7 +104,7 @@ GitHub Issues y Project Vantare; #1561/area:plataforma, In Progress, sin milesto
 
 ## 3. Estado real y canal
 
-17/10/2026 · #1629/VANTA-8 · R5: respuesta a DeepSeek A/B1/B2/B3, sin P1. Correcciones de todos los P2 publicadas (`ae8a002df`, merge `db4455453`) y regresiones del texto/color/geometría que usa el pintor (no solo ViewModel), sin ventanas ni nuevas dependencias de tests. Check workspace/all-targets PASS; regresiones dirigidas 21/21 PASS. Contraprueba temporal: 21 FAIL/2 PASS al reintroducir defectos, fuentes restauradas por SHA256 y test de grupos reforzado para que las sugerencias no tapen un omitido. Se documentan los 99 P3, con los arreglos baratos de caché y los límites pendientes, en [respuesta R5](../research/1629-review-r5.md). Se incorpora nightly2a580 y después 9c19b2993 por merge (instalador #1600, telemetría #1679, calendario #1640 y Avisos #1660), resolviendo Banderas con Cars/Flags/Positions/SessionInfo sin Penalties. Fotos v11, Services v12 y derechos v5. Se validan gates/CI del SHA publicado (cola local ocupada); los verdes R4d son históricos y no certifican esta ronda. Estado, SHA remoto y resultados de cierre vigentes en [#1629](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1629) y [PR #1641](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1641); evidencia `C:/VantareServer/evidence/1629-r5/progress.json`. Árbol nativo congelado `203e0bdd52c5bee7257a1b3222c063e40a711e35` tras corregir nueve puntos y coma exigidos por Clippy; primer intento CI f04a pasó fmt/check y no alcanzó Nextest/lifecycle, log conservado. #1675 sigue OPEN: recaptura 17 × 4 y variantes pendiente, ninguna ventana. El catálogo conserva también Avisos de sesión integrado en nightly: ALL19, visibles18 (cuatro gratis/catorce Pro), legado Daños detallados oculto. Sin merge del PR, promoción, release ni despliegue.
+17/10/2026 · #1629/VANTA-8 · R5: respuesta a DeepSeek A/B1/B2/B3, sin P1. Correcciones de todos los P2 publicadas (`ae8a002df`, merge `db4455453`) y regresiones del texto/color/geometría que usa el pintor (no solo ViewModel), sin ventanas ni nuevas dependencias de tests. Check workspace/all-targets PASS; regresiones dirigidas 21/21 PASS. Contraprueba temporal: 21 FAIL/2 PASS al reintroducir defectos, fuentes restauradas por SHA256 y test de grupos reforzado para que las sugerencias no tapen un omitido. Se documentan los 99 P3, con los arreglos baratos de caché y los límites pendientes, en [respuesta R5](../research/1629-review-r5.md). Se incorpora nightly2a580 y después 9c19b2993 por merge (instalador #1600, telemetría #1679, calendario #1640 y Avisos #1660), resolviendo Banderas con Cars/Flags/Positions/SessionInfo sin Penalties. Fotos v11, Services v12 y derechos v5. Se validan gates/CI del SHA publicado (cola local ocupada); los verdes R4d son históricos y no certifican esta ronda. Estado, SHA remoto y resultados de cierre vigentes en [#1629](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1629) y [PR #1641](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1641); evidencia `C:/VantareServer/evidence/1629-r5/progress.json`. Árbol nativo congelado `c118c104dcafbf522209e6d01ef76fc8336fd1fe` tras corregir nueve puntos y coma exigidos por Clippy; primer intento CI f04a pasó fmt/check y no alcanzó Nextest/lifecycle, log conservado. #1675 está integrada mediante nightly c9a832d70: se conserva el banco oficial, se retira open_capture antiguo y se mantiene la guarda de fuentes antes de crear el HWND. No se ejecutan capturas en la respuesta P2; recaptura 17 × 4 y variantes pendiente con el lote oficial. Check opcional parity-capture no obtenido por cola ocupada, sin saltar la cola. El catálogo conserva también Avisos de sesión integrado en nightly: ALL19, visibles18 (cuatro gratis/catorce Pro), legado Daños detallados oculto. Sin merge del PR, promoción, release ni despliegue.
 
 17/10/2026 · #1629/VANTA-8 · Se incorpora también nightly `1a8ddee33` (#1684, reinicio del login tras fallo de guardado), por merge sin conflictos y sin cambios propios a widgets/login. Nuevo corte pendiente de CI Windows; SHA/checks/estado vigentes en #1629 y PR #1641, evidencia `C:/VantareServer/evidence/1629-r4/refresh-1a8d/`. El corte cd641 con nightly32c3 pasó CI 5/5 en intento2 (1926/1926 y lifecycle completos); intento1 Engineer recovery perdió derechos y cerró stream sin ACK, preservado y seguido en #1654, sin debilitar pruebas. Su verde no se extrapola al nuevo Services. #1675 OPEN, cero ventanas/capturas; aceptación visual y física pendientes. Sin merge del PR, promoción, release ni despliegue.
 
@@ -232,3 +232,130 @@ Hitos #1607: PNG `c40a90d9` (2234.920 → 115.473 µs/carga repetida; RED/GREEN)
 #1629 Mac: Daños unifica Coche/Cifras 200×272; catálogo nuevo 17 entradas, ID numérico legado conservado para compatibilidad. Vista y tecla F1–F12 persistidas en Studio, ninguna por defecto; test de flanco de pulsación PASS. Windows consulta solo la tecla elegida y modificadores, con tarea cancelada al cerrar; validar en Windows. Snapshot solo aporta carrocería/suspensión agregadas: no se fabrican zonas, suspensión por rueda, pinchazo ni reparación. Capturas Hub de las dos vistas en `~/evidence/1629/car-damage-visual/`.
 
 #1629 Mac: Fuel y stint conserva el Board y los medidores/filas del diseño Vantare; marco fijo por formato (230×128, 300×204, 460×440), suficiente para todas las líneas de los ocho estados de ejemplo. 15 pruebas PASS, incluida la regresión de geometría; captura Hub y comparación en `~/evidence/1629/fuel-strategy/`. La altura reserva los estados con avisos/servicio.
+
+### #1655 / VANTA-82
+
+2026-10-17 · R2 terminada por Codex gpt-6.1-sol, sin subagentes.
+Rama `vantareapp/isa-1655-capturas`, PR #1675 OPEN fuera de draft a nightly.
+Se integra `origin/nightly@32c3f3a14` mediante `1ba27cf51`, sin rebase ni
+force-push. Conflicto del split de Cuenta resuelto en `view/account.rs`,
+conservando el soporte de lote y el nuevo login. `fe4d7f6b0` añade su selector
+EMAIL a la clave incremental, con regresión sin mutación del entorno.
+
+H1: ui-quality sin salida mantiene IPC vivo y no usa caché; crea el mismo HWND
+oculto/no activable fuera de todos los monitores y cierra por EOF. AnyWindowHandle
+sincroniza tamaño sin prestar Hub. H2: el error de capturas a archivo con política
+viva remite al banco IPC. H3: README exige DPI 96 / escalado 100 %. H4: marcador
+configurable, caducidad y limpieza a 15 minutos bajo el mutex compartido.
+El origen físico se conserva desde CreateWindowExW, sin SetWindowPlacement;
+GetWindowRect antes de mostrar, NOACTIVATE/TOOLWINDOW, sin variable ni vigilante.
+
+Validación tras el merge, código `fe4d7f6b0`: fmt, build Hub/ejemplo y Nextest
+**41/41 focales PASS** (790 excluidos por filtro, sin ejecutar aquí toda la suite).
+Banco real IPC/PrintWindow: **PASS**, 1 proceso/1 HWND, políticas1→2, dos PNG
+1440×900 distintas, huérfano eliminado, EOF0 y cero incidencias de foco/monitor.
+Rectángulo real **(-3488,0,-2048,900)**, no (184,-4).
+Lote de Cuenta/Studio: **32,438 s**, una app/una ventana; incremental
+**0,139 s**, una app/cero ventanas y mtimes intactos. Política IPC con salida
+rechazada antes de abrir HWND. Calidad/462 pins y sintaxis Python PASS.
+Compilaciones seriales, cola MIN_GB=0 y target1655; reintento sin sccache tras
+una espera inicial de fmt terminada con -1, antes de ejecutar Cargo.
+Los gates generales check/Clippy/Nextest/lifecycle se delegan a la **CI Windows
+requerida**, autorizada por el orquestador. Su SHA y resultado vigente se verifican
+y registran en issue/PR; no se equipara esta prueba focal con esos gates.
+
+Resultados previos R2: Clippy producto workspace/all-targets -D warnings,
+Nextest Hub/UI793/793 (10 skips), lifecycle13 y 34 focales PASS.
+Perfil captura806/808 (dos fallos Track Map previos), Clippy captura18 avisos
+previos de Análisis/Calendario, sin ocultar ni rebajar. No se repite aquí todo ese
+perfil opcional. Telemetría local no repetida: el diff propio no cambia
+runtime/domain/ipc/testdata; las modificaciones de esos crates proceden de nightly.
+Skips anteriores: bancos manuales/opt-in. Sin dependencias nuevas.
+
+Medidas completas conservadas: calendario54 PNG **1682,88→345,04 s**,
+incremental4,05 s, procesos/HWND54/54→1/1→1/0; widgets236 PNG
+**958,50→250,57 s**, incremental3,61 s, 236/236→1/1→1/0.
+Antes = invocaciones individuales seguras, nunca el capturador visible.
+290 ventanas individuales auditadas, cero foco/cruces; carga compartida.
+Resize1280→1440→1280: cero píxeles distintos. Paridad individual/lote:
+calendario23/54 exactas (23 máximo1, ocho controles con viewport antiguo);
+widgets126/236 exactas (resto máximo2). Diferencias con referencias antiguas
+explicadas, goldens intactos; aceptación visual pendiente.
+Adaptador #1634 `calendar-batch-1634.patch` validado sobre97a0d7674;
+ya integrado al sincronizar nightly2a580c458 (véase el cierre siguiente). Otros DPI no soportados/plataformas sin validar.
+
+[Informe completo](../../analysis/1655-capturas.md).
+Evidencia `C:/VantareServer/evidence/1655/round2-sync/`, R2 previa en
+`round2/` y medidas originales en `1655/`; intentos fallidos conservados.
+Plane VANTA-82 y Project Vantare se actualizan al cerrar la verificación de CI;
+su lectura final vive en la issue junto con HEAD/remoto/checks.
+Siguiente: revisión del orquestador y aceptación visual histórica.
+Sin merge del PR a nightly, promoción ni release.
+
+Verificación final: `f9c301668` obtuvo **5/5 checks verdes**, incluidos fmt,
+check, Clippy -D warnings, Nextest workspace **1862/1862** (19 skips) y lifecycle.
+SQL/E2E Marketing se omite en ese job por falta de Docker, sin cambios propios
+en Marketing. Telemetría excluida por el clasificador (diff propio fuera de
+runtime/domain/ipc/testdata). Mientras corría CI, nightly recibió #1684:
+se incorpora también **1a8ddee33** con merge normal sin conflictos. Solo cambia
+el guardado de login en services y su regresión/documentación; Hub/UI/vendor
+de capturas permanecen iguales al código validado. La CI del nuevo SHA se
+verifica otra vez en la issue antes de cerrar; sin modificar gates ni fixtures.
+
+Cierre H1 de Cuenta: el banco `--capture` sin salida ni `--demo` conserva
+también el perfil/módulos recibidos por IPC; no se sobrepone el perfil congelado.
+Capturas con `--out`, lote y demo explícita mantienen sus fixtures. Regresión
+con argumentos inyectados (sin tocar el entorno): banco, archivo, lote,
+demo explícita y modo normal. **42/42 focales PASS** tras el ajuste
+(`round2-sync/account-final-results.json`). GPUI/ventanas y su auditoría real
+anterior no cambian. El SHA intermedio `aa2fa3465` obtuvo5/5checks verdes,
+Nextest1863/1863 (19skips), Clippy/fmt/check/lifecycle; la CI del último ajuste
+se registra en la issue/PR al terminar, sin reutilizar ese verde para otro SHA.
+
+Sincronización posterior solicitada por el orquestador: merge de
+`origin/nightly@2a580c458` (instalador #1600, telemetría #1679 y calendario
+#1640), sin rebase ni force-push. El único conflicto, `calendar.rs`, se resuelve
+con el módulo completo de nightly; no se restaura el calendario antiguo.
+Se integra el adaptador previsto en `calendar/capture.rs`: cada entrada usa
+`parameters.calendar`, con la variable antigua como fallback. Regresión sin
+mutar el entorno para dos entradas con distinta vista, zona y estado.
+README ya indica que el parche está aplicado, no hay que ejecutarlo otra vez.
+
+H1: banco sin salida conserva IPC y perfil reales, sin caché ni foco; archivo
+sigue usando el lote. H2: error de política congelada conservado. H3: DPI96/100%
+operativo conservado. H4: ruta configurable y lease15min/limpieza conservados.
+Las guardias de nacimiento oculto, CreateWindowExW, GetWindowRect y NOACTIVATE
+no cambian. Los SHA/resultados anteriores corresponden a sus fuentes explícitas.
+Nueva validación serial por cola (MIN_GB=0,1job), sin abrir ventanas visibles;
+los gates generales se verifican de nuevo en CI Windows en el nuevo SHA.
+Resultados finales/SHA/checks/Plane se releen y registran en issue/PR.
+Evidencia de esta sincronización: `C:/VantareServer/evidence/1655/round2-nightly/`.
+
+Cierre N1/N2/N3/N6 tras la review R2: el calendario de nightly conserva su API
+nueva; no reaparecen `from_capture_name` ni el selector VIEW eliminado.
+Un manifiesto de dos escenas r6 cambia los parámetros que no se serializan
+en DemoData y verifica distintas vistas/zonas/estado incluso con igualdad de
+la clave de reutilización. N2 usa una guarda de las raíces CLI del PID propio:
+limpia al salir del lote y por error, valida el destino resuelto, preserva
+rutas ajenas y comunica fallos. N3 retira el recibo temporal ante fallo de
+escritura/rename; una prueba bloquea el destino real y exige conservarlo intacto.
+
+Formato, build Hub/ejemplo y **44/44 focales PASS** (816 excluidos por filtro).
+Lote real de `calendario-r6-mes` y `calendario-r6-serie`: **24,563 s**,
+1app/1HWND, 833334píxeles distintos; incremental **0,114 s**, 1app/0HWND,
+mtimes intactos y cero raíces QA restantes. Cero foco/cruces de monitor.
+Banco live-IPC actual PASS:1app/1HWND, políticas1→2, dos PNG distintas,
+huérfano retirado y EOF0. Sin ventanas visibles.
+482directorios antiguos retirados de TEMP, ahora0. El borrado recursivo fue
+rechazado por política automática; se movieron de forma reversible a
+`round2-nightly/temporales-retirados/`, sin seguir enlaces ni tocar procesos
+activos. Se conserva el inventario en `temp-cleanup.json`.
+Los gates generales del nuevo SHA se verifican en CI Windows y sus resultados
+finales se registran/releen en issue/PR. La prueba IPC fuerte sigue siendo
+una regresión manual documentada de Windows (N4), ejecutada en esta entrega.
+
+Durante la publicación de `c9442667d`, nightly avanza a `9c19b2993`
+(Avisos de sesión #1660). Se incorpora también con merge normal sin conflictos,
+conservando su feed/registro/widget; el escritor de avisos ya excluye
+`capture.is_some()`. N1/N2/N3/N6 y H1–H4 no se sobrescriben. La CI del SHA
+resultante sustituye a la ejecución de c944 cancelada por estar desactualizada.

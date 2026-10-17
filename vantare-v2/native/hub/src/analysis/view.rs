@@ -183,20 +183,6 @@ impl DemoModel {
 }
 
 #[cfg(feature = "parity-capture")]
-fn telemetry_demo_capture() -> bool {
-    // El harness congeló demo y trazas con la misma escena; no se inventa un desplazamiento.
-    let mut args = std::env::args();
-    while let Some(arg) = args.next() {
-        if arg == "--capture" {
-            return args.next().is_some_and(|name| {
-                matches!(name.as_str(), "telemetria-demo" | "telemetria-trazas")
-            });
-        }
-    }
-    false
-}
-
-#[cfg(feature = "parity-capture")]
 fn load_demo_session() -> Result<DemoTelemetrySession, String> {
     let data = DemoData::load()?;
     if !data.telemetry.synthetic {
@@ -394,8 +380,14 @@ impl Analysis {
             job: None,
             reference: TelemetryReference::Best,
             #[cfg(feature = "parity-capture")]
-            demo: telemetry_demo_capture().then(load_demo_session),
+            demo: None,
         }
+    }
+
+    #[cfg(feature = "parity-capture")]
+    pub(crate) fn capture_scene(&mut self, name: Option<&str>) {
+        self.demo =
+            matches!(name, Some("telemetria-demo" | "telemetria-trazas")).then(load_demo_session);
     }
 
     fn begin(&mut self) -> Cancel {
@@ -986,7 +978,7 @@ fn demo_tone(delta: f64, cx: &gpui::App) -> u32 {
 
 #[cfg(feature = "parity-capture")]
 #[allow(clippy::cast_possible_truncation)]
-fn demo_track_map(model: &DemoModel, scale: f64, cx: &gpui::App) -> gpui::Div {
+fn demo_track_map(model: &DemoModel, scale: f64, _cx: &gpui::App) -> gpui::Div {
     use crate::orbit::typography as text;
     let track = model.track.clone();
     let min_x = track.iter().map(|p| p.0).fold(f64::INFINITY, f64::min) - 34.0;

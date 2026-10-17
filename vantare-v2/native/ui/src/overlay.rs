@@ -21,14 +21,6 @@ pub(crate) mod ffi {
         pub right: i32,
         pub bottom: i32,
     }
-    #[cfg(feature = "parity-capture")]
-    #[repr(C)]
-    #[derive(Clone, Copy, Default)]
-    pub struct Point {
-        pub x: i32,
-        pub y: i32,
-    }
-
     #[link(name = "user32")]
     unsafe extern "system" {
         pub fn GetWindowLongPtrW(hwnd: Hwnd, index: i32) -> isize;
@@ -44,8 +36,6 @@ pub(crate) mod ffi {
             flags: u32,
         ) -> i32;
         pub fn GetClientRect(hwnd: Hwnd, rect: *mut Rect) -> i32;
-        #[cfg(feature = "parity-capture")]
-        pub fn ClientToScreen(hwnd: Hwnd, point: *mut Point) -> i32;
     }
     #[link(name = "dwmapi")]
     unsafe extern "system" {

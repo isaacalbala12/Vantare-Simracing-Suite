@@ -64,8 +64,9 @@ para la llegada. Se conserva íntegra la regresión de pipe que omite sanciones.
 Fotos live v11, Services v12 por calendario y derechos v5; sin relajar el pipe.
 Sin rebase ni force-push. Cola local ocupada después de las regresiones:
 gates finales autorizados en CI Windows, sin compilaciones locales duplicadas.
-La paridad visual 17 × 4 y variantes sigue pendiente de #1675: ninguna ventana ni
-captura nueva. Las imágenes R3 son históricas y no certifican este HEAD.
+La paridad visual 17 × 4 y variantes sigue pendiente: ninguna ventana ni
+captura nueva en esta respuesta P2. #1675 está integrada en el último merge;
+la siguiente recaptura debe usar su lote oficial, con DPI96/100 %. Las imágenes R3 son históricas y no certifican este HEAD.
 No se integra el PR, promociona, publica release ni despliega.
 
 ## Todos los P3 de los cuatro informes
@@ -823,8 +824,8 @@ La cara de display se pide a peso 600 (`paint.rs:84`), pero la familia pasa a `"
 ## Fuente congelada para los gates de cierre
 
 Correcciones `ae8a002df`, merge `db44554535231b2c1a327c01da808d8dfbb55791`,
-base de cierre nightly `9c19b2993` (#1660, Avisos de sesión). Árbol nativo
-`203e0bdd52c5bee7257a1b3222c063e40a711e35`: permite comprobar que el cierre
+base de cierre nightly `c9a832d70f3d6bdaaa9152fc9a0a64f182949495` (#1675). Árbol nativo
+`c118c104dcafbf522209e6d01ef76fc8336fd1fe`: permite comprobar que el cierre
 documental no altera la fuente sometida a CI. El estado de ejecución y el SHA
 remoto vigentes se consultan en el PR, no en los verdes históricos R4.
 
@@ -845,3 +846,16 @@ subpaneles de Avisos de nightly; no se rediseña ese widget en #1629. La tabla
 visual de 17 sigue correspondiendo al alcance original de diseño de este PR.
 No hubo CI de 7a32023ae mientras el PR estuvo en conflicto; no se presenta ese
 SHA como validado. Los gates completos se ejecutan sobre el nuevo merge.
+
+Tercer avance de nightly: c9a832d70 integra #1675 mientras se cierra el verde
+9496769ca (2030/2030,19skips,lifecycle18,456pins; log ci-949-success.log). Se
+incorpora por merge normal, con dos conflictos resueltos: handoff conserva ambos
+históricos y capture.rs adopta íntegro el banco oficial de lote, manteniendo la
+validación previa de familias tipográficas. Se retira app::open_capture antiguo,
+ya sin consumidores. El modo individual también pasa por el lote oficial; no
+se mezcla el posicionamiento previo con el nuevo nacimiento oculto/NOACTIVATE.
+No se ejecuta la app. Intento de check workspace/all-targets con parity-capture
+por cola MIN_GB=0/jobs2: no obtiene slot y se cancela solo la espera propia.
+Ese check opcional queda omitido por cola ocupada, no se presenta como PASS.
+El gate requerido de producto se vuelve a verificar en CI Windows sobre el nuevo
+SHA. No se extrapola el verde de949 al cambio de vendor/banco.

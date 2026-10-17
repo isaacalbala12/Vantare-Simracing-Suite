@@ -1,5 +1,6 @@
 //! Banco explícito de UI: shell productiva y protocolo IPC real contra replies
 //! de contrato locales. No se distribuye ni abre servicios, red o credenciales.
+#![cfg_attr(windows, windows_subsystem = "windows")]
 use std::{fs, io::Write, path::PathBuf, sync::Arc, time::Duration};
 use vantare_hub::{
     demo::{CaptureState, DemoData},
@@ -287,7 +288,7 @@ fn main() -> Result<(), String> {
     let rights_stop = stop.clone();
     let rights = std::thread::spawn(move || serve_rights(&rights_root, &rights_name, rights_stop));
     let options = Options {
-        controlled: false,
+        controlled: args.iter().any(|arg| arg == "--control-stdin"),
         data_dir: root.clone(),
         scene: None,
         layout: root.join("layout.json"),

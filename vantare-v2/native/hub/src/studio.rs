@@ -439,7 +439,7 @@ impl Studio {
             }
         });
         #[cfg(feature = "parity-capture")]
-        let demo_profile = if studio_demo_capture() {
+        let demo_profile = if studio_demo_capture(cx) {
             match crate::demo::DemoData::load() {
                 Ok(demo) => Some(demo.profile),
                 Err(error) => {
@@ -504,14 +504,14 @@ impl Studio {
         };
         Self::watch_track_showing(cx);
         #[cfg(feature = "parity-capture")]
-        match capture_name().as_deref() {
+        match capture_name(cx).as_deref() {
             Some("studio-error-largo" | "studio-error-largo-sin-carril") => studio.status = Err("No se pudo guardar el documento de QA: otra aplicación modificó el archivo en una ruta extensa. Recarga el diseño para revisar los cambios antes de reintentar. ".repeat(3)),
             Some("studio-manual") => studio.zoom_step = 3,
             Some("studio-en-vivo") => studio.example = false,
             _ => {}
         }
         #[cfg(feature = "parity-capture")]
-        if let Some(session) = capture_session() {
+        if let Some(session) = capture_session(cx) {
             studio.session_tab = session;
         }
         studio.rebuild(cx);

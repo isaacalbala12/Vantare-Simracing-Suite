@@ -24,7 +24,12 @@ fn at(y: i32, mo: u32, d: u32, h: u32, mi: u32, s: u32) -> DateTime<Utc> {
 }
 
 pub(super) fn apply(calendar: &mut Calendar, demo: &DemoData) -> Result<(), String> {
-    let Ok(spec) = std::env::var("VANTARE_CAPTURE_CALENDAR") else {
+    let spec = demo
+        .capture_parameters
+        .get("calendar")
+        .cloned()
+        .or_else(|| std::env::var("VANTARE_CAPTURE_CALENDAR").ok());
+    let Some(spec) = spec else {
         calendar.official = Some(Schedule::parse(&demo.calendar_json()?)?);
         let now = calendar.now();
         calendar.rebuild(now);
@@ -198,4 +203,54 @@ pub(super) fn apply(calendar: &mut Calendar, demo: &DemoData) -> Result<(), Stri
         _ => None,
     };
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn calendar_capture_batch_parameters_apply_per_entry() {
+        let root =
+            std::env::temp_dir().join(format!("vantare-calendar-batch-{}", std::process::id()));
+        std::fs::create_dir_all(&root).expect("directorio QA");
+        let manifest = root.join("batch.json");
+        std::fs::write(&manifest, serde_json::to_vec(&serde_json::json!([
+            {"scene": "calendario-r6-mes", "output": root.join("month.png"),
+             "parameters": {"calendar": "state=nofav;view=mes;utc=1"}},
+            {"scene": "calendario-r6-serie", "output": root.join("series.png"),
+             "parameters": {"calendar": "state=ok;view=serie;serie=beginner-lmgt3-fixed;full=1"}}
+        ])).expect("JSON")).expect("manifiesto");
+        let requests = vantare_ui::capture_batch::read(&manifest).expect("lote");
+        let demos = requests
+            .into_iter()
+            .map(|request| {
+                let mut state = crate::demo::CaptureState::parse(&request.scene).expect("escena");
+                state.parameters = request.parameters;
+                let mut demo = DemoData::load().expect("demo");
+                demo.apply_capture(&state).expect("datos de escena");
+                demo
+            })
+            .collect::<Vec<_>>();
+        // Exactly the equality used by capture_can_reuse_calendar: skipped QA
+        // fields differ, so the replacement calendar must consume this entry.
+        assert_eq!(
+            serde_json::to_vec(&demos[0]).expect("demo1"),
+            serde_json::to_vec(&demos[1]).expect("demo2")
+        );
+        let demo = &demos[0];
+        let month = Calendar::load_demo(&root, demo).expect("primera entrada");
+        assert_eq!(month.ui.view, View::Calendario);
+        assert_eq!(month.ui.span, Span::Mes);
+        assert!(month.prefs.utc);
+        assert!(month.following.series_ids.is_empty());
+
+        let demo = &demos[1];
+        let series = Calendar::load_demo(&root, demo).expect("segunda entrada");
+        assert_eq!(series.ui.view, View::Serie);
+        assert!(series.ui.full);
+        assert!(!series.prefs.utc);
+        assert_eq!(series.ui.serie.as_deref(), Some("beginner-lmgt3-fixed"));
+        std::fs::remove_dir_all(root).expect("limpiar QA");
+    }
 }

@@ -379,7 +379,7 @@ impl Studio {
             let mut overlay = Overlay::configured(&item.settings, self.preferences());
             overlay.set_frame_size(item.geometry.size);
             #[cfg(feature = "parity-capture")]
-            let content_scale = if studio_demo_capture() {
+            let content_scale = if studio_demo_capture(cx) {
                 demo_content_scale(item.settings.kind(), overlay.wanted_size().0)
             } else {
                 1.0

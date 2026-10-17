@@ -30,14 +30,11 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'la compilación falló' }
     $targetDir = if ($env:CARGO_TARGET_DIR) { $env:CARGO_TARGET_DIR } else { Join-Path (Get-Location) 'target' }
     $exe = Join-Path $targetDir 'debug/vantare-workshop.exe'
-    # Captura del escritorio real: varios workers en paralelo solaparían sus
-    # ventanas, así que solo captura uno a la vez en toda la máquina.
-    $mutex = [System.Threading.Mutex]::new($false, 'Global\VantareParityCapture')
-    [void]$mutex.WaitOne()
-    try {
-        & $exe --widget $Widget --escena $Scene --captura $candidate
-        if ($LASTEXITCODE -ne 0) { throw 'la captura falló' }
-    } finally { $mutex.ReleaseMutex(); $mutex.Dispose() }
+    $manifest = Join-Path $Out 'capture-batch.json'
+    ConvertTo-Json -InputObject @(@{widget=$Widget; scene=$Scene; output=$candidate}) -Depth 20 | Set-Content -LiteralPath $manifest -Encoding utf8
+    & $exe --capture-batch $manifest | Out-Host
+    if ($LASTEXITCODE -ne 0) { throw 'la captura falló' }
+
 } finally { Pop-Location }
 python $Diff $candidate $Reference --threshold $Threshold --max-percent $MaxPercent --out (Join-Path $Out "$Widget.diff.png")
 exit $LASTEXITCODE

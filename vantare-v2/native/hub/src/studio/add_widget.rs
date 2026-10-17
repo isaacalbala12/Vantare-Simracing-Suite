@@ -563,7 +563,7 @@ impl Studio {
     /// Escenas QA del catálogo; solo `parity-capture`.
     #[cfg(feature = "parity-capture")]
     pub(super) fn apply_catalog_capture(&mut self, cx: &mut Context<Self>) {
-        let query = match capture_name().as_deref() {
+        let query = match capture_name(cx).as_deref() {
             Some("studio-catalogo-busqueda") => "combustible",
             Some("studio-catalogo-sin-resultados") => "neumáticos",
             Some("studio-anadido") => {
@@ -579,7 +579,7 @@ impl Studio {
     pub(super) fn show_toast(&mut self, toast: Toast, cx: &mut Context<Self>) {
         self.toast = Some(toast);
         #[cfg(feature = "parity-capture")]
-        if capture_name().is_some() {
+        if capture_name(cx).is_some() {
             cx.notify();
             return; // La captura fija el aviso; el temporizador lo quitaría antes.
         }

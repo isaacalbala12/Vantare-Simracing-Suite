@@ -1,3 +1,7 @@
+#![cfg_attr(
+    all(windows, feature = "parity-capture"),
+    windows_subsystem = "windows"
+)]
 //! Proceso de overlays. Uso:
 //! `vantare-overlays [1|4|22] [--fuente local|pipe[:<nombre>]]` abre ese número
 //! de widgets (campaña de medición), todos en una ventana por monitor, con los
@@ -99,6 +103,12 @@ fn main() -> ExitCode {
     let start_hidden = args.first().is_some_and(|arg| arg == "--start-hidden");
     if start_hidden {
         args.remove(0);
+    }
+    #[cfg(feature = "parity-capture")]
+    if let [flag, path] = std::env::args().skip(1).collect::<Vec<_>>().as_slice()
+        && flag == "--capture-batch"
+    {
+        return vantare_ui::capture::run_batch(std::path::Path::new(path));
     }
     #[cfg(feature = "parity-capture")]
     if let [flag, path] = args.as_slice()

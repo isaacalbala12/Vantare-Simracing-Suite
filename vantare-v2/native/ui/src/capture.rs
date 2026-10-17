@@ -2,12 +2,11 @@
 //! `parity-capture`, no entra en el binario de producto).
 //!
 //! GPUI en Windows no lee la textura de la ventana. Se pinta el mismo estado
-//! sobre un fondo opaco negro y luego blanco, se copia su HWND con `PrintWindow`
-//! fuera de todos los monitores y se resuelve el alfa: `a = 1 - (Cw - Cb)/255`,
+//! sobre un fondo opaco negro y luego blanco, se copia el propio HWND por
+//! `PrintWindow` fuera de los monitores y se resuelve el alfa: `a = 1 - (Cw - Cb)/255`,
 //! `F = Cb/a`. Compárese con `parity/reference/standings-44.png` mediante
 //! `parity/diff.py`.
 
-use std::cell::Cell;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use std::rc::Rc;
@@ -87,27 +86,19 @@ fn read_dib(
     }
 }
 
-/// Copia BGRA de la esquina superior izquierda (`w` x `h` px) de la región
-/// cliente del HWND, incluso fuera de pantalla; nunca lee el escritorio.
-fn capture_client(hwnd: Hwnd, w: i32, h: i32) -> Result<(u32, u32, Vec<u8>), String> {
+/// Copia BGRA del HWND, recortando su área cliente. Nunca lee el escritorio.
+pub fn capture_client(hwnd: Hwnd, w: i32, h: i32) -> Result<(u32, u32, Vec<u8>), String> {
     use gdi::{
         BitmapInfoHeader, CreateCompatibleBitmap, CreateCompatibleDC, GetDC, GetDIBits,
-        SelectObject,
+        PrintWindow, SelectObject,
     };
-    const PW_CLIENTONLY: u32 = 1;
-    const PW_RENDERFULLCONTENT: u32 = 2;
     let bytes = pixel_bytes(w, h)?;
     let mut pixels = Vec::new();
     pixels
         .try_reserve_exact(bytes)
         .map_err(|e| format!("reservar captura BGRA: {e}"))?;
     pixels.resize(bytes, 0);
-    let mut origin = ffi::Point::default();
-    // SAFETY: `hwnd` es un HWND vivo de este proceso; el puntero es de un local
-    // que vive durante la llamada.
-    if unsafe { ffi::ClientToScreen(hwnd, &raw mut origin) } == 0 {
-        return Err("ClientToScreen no pudo localizar el área cliente".into());
-    }
+    crate::capture_window::verify(hwnd)?;
     let mut info = BitmapInfoHeader {
         size: std::mem::size_of::<BitmapInfoHeader>() as u32,
         width: w,
@@ -143,8 +134,8 @@ fn capture_client(hwnd: Hwnd, w: i32, h: i32) -> Result<(u32, u32, Vec<u8>), Str
         if !valid_object(previous) {
             return Err("SelectObject no pudo seleccionar el bitmap".into());
         }
-        if gdi::PrintWindow(hwnd, resources.memory, PW_CLIENTONLY | PW_RENDERFULLCONTENT) == 0 {
-            return Err("PrintWindow no pudo copiar el área cliente".into());
+        if PrintWindow(hwnd, resources.memory, 3) == 0 {
+            return Err("PrintWindow no pudo copiar el HWND".into());
         }
         read_dib(
             h,
@@ -233,7 +224,7 @@ fn solve_alpha(black: &[u8], white: &[u8]) -> Vec<u8> {
     out
 }
 
-fn write_png(path: &Path, width: u32, height: u32, rgba: &[u8]) -> Result<(), String> {
+pub fn write_png(path: &Path, width: u32, height: u32, rgba: &[u8]) -> Result<(), String> {
     let file = std::fs::File::create(path).map_err(|e| format!("crear {}: {e}", path.display()))?;
     let mut encoder = png::Encoder::new(std::io::BufWriter::new(file), width, height);
     encoder.set_color(png::ColorType::Rgba);
@@ -299,28 +290,6 @@ async fn pass(
 
 async fn capture(mut cx: AsyncApp, view: Entity<Overlay>, path: PathBuf) -> Result<(), String> {
     let hwnd = settled(&mut cx, &view).await?;
-    let offscreen = cx.update(|cx| {
-        let mut origin = ffi::Point::default();
-        let mut bounds = ffi::Rect::default();
-        // SAFETY: HWND vivo; ambos punteros son locales válidos.
-        if unsafe { ffi::ClientToScreen(hwnd, &raw mut origin) } == 0
-            || unsafe { ffi::GetClientRect(hwnd, &raw mut bounds) } == 0
-        {
-            return false;
-        }
-        cx.displays().iter().all(|display| {
-            let monitor = display.bounds();
-            let left = f32::from(monitor.origin.x);
-            let top = f32::from(monitor.origin.y);
-            origin.x as f32 + (bounds.right - bounds.left) as f32 <= left
-                || origin.x as f32 >= left + f32::from(monitor.size.width)
-                || origin.y as f32 + (bounds.bottom - bounds.top) as f32 <= top
-                || origin.y as f32 >= top + f32::from(monitor.size.height)
-        })
-    });
-    if !offscreen {
-        return Err("el HWND de captura debe estar fuera de todos los monitores".into());
-    }
     let (w, h) = view.read_with(&cx, |v, _| v.wanted_size());
     let mut client = ffi::Rect::default();
     // SAFETY: HWND vivo y puntero a un Rect local válido durante la llamada.
@@ -366,16 +335,7 @@ pub fn run_widget(kind: Kind, snapshot: Snapshot, path: PathBuf) -> ExitCode {
 
 /// Alimenta todas las fotos en orden antes de esperar el fin de las animaciones.
 pub fn run_sequence(kind: Kind, snapshots: &[Snapshot], path: PathBuf) -> ExitCode {
-    let settings = match kind {
-        Kind::Standings => crate::Settings::Standings(crate::standings::Settings::eficiencia()),
-        Kind::Relative => crate::Settings::Relative(crate::relative::Settings::eficiencia()),
-        Kind::FuelStrategy => {
-            crate::Settings::FuelStrategy(crate::fuel_strategy::Settings::eficiencia())
-        }
-        Kind::Delta => crate::Settings::Delta(crate::delta::Settings::eficiencia()),
-        Kind::Pedals => crate::Settings::Pedals(crate::pedals::Settings::eficiencia()),
-        _ => crate::Settings::default_for(kind),
-    };
+    let settings = default_settings(kind);
     run_configured_sequence(settings, Preferences::default(), snapshots, path)
 }
 
@@ -390,14 +350,204 @@ pub fn run_configured_sequence(
         eprintln!("la escena no contiene fotos");
         return ExitCode::FAILURE;
     }
-    let snapshots = snapshots.to_vec();
-    let failure = Rc::new(Cell::new(false));
+    let request = crate::capture_batch::Request {
+        scene: "in-memory".into(),
+        output: path,
+        appearance: None,
+        size: None,
+        collapsed: false,
+        zoom: None,
+        widget: Some(settings.kind().name().into()),
+        settings: Some(settings.clone()),
+        until: None,
+        parameters: std::collections::BTreeMap::new(),
+    };
+    let encoded = match snapshots
+        .iter()
+        .map(vantare_ipc::snapshot_to_json)
+        .collect::<Result<Vec<_>, _>>()
+    {
+        Ok(frames) => frames.join("\n"),
+        Err(error) => {
+            eprintln!("{error}");
+            return ExitCode::FAILURE;
+        }
+    };
+    let result = (|| {
+        let common = crate::capture_batch::inputs_hash(&[])?;
+        let cache = crate::capture_batch::Cache::new(
+            request.output.clone(),
+            &[
+                serde_json::to_vec(&request).map_err(|e| e.to_string())?,
+                encoded.into_bytes(),
+                format!("{prefs:?}").into_bytes(),
+            ]
+            .concat(),
+            &common,
+        )?;
+        if cache.fresh() {
+            println!("capture-skip {}", request.output.display());
+            return Ok(());
+        }
+        run_jobs(vec![Job {
+            settings,
+            prefs,
+            snapshots: snapshots.to_vec(),
+            request,
+            cache,
+        }])
+    })();
+    exit(result)
+}
+
+struct Job {
+    settings: crate::Settings,
+    prefs: Preferences,
+    snapshots: Vec<Snapshot>,
+    request: crate::capture_batch::Request,
+    cache: crate::capture_batch::Cache,
+}
+
+fn exit(result: Result<(), String>) -> ExitCode {
+    match result {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(error) => {
+            eprintln!("captura: {error}");
+            ExitCode::FAILURE
+        }
+    }
+}
+
+/// Una sola aplicación y un solo HWND para todas las entradas del manifiesto.
+pub fn run_batch(path: &Path) -> ExitCode {
+    let started = std::time::Instant::now();
+    exit((|| {
+        let requests = crate::capture_batch::read(path)?;
+        let total = requests.len();
+        let common = crate::capture_batch::inputs_hash(&[])?;
+        let mut jobs = Vec::new();
+        for request in requests {
+            if request.appearance.is_some()
+                || request.collapsed
+                || request.zoom.is_some()
+                || !request.parameters.is_empty()
+            {
+                return Err(
+                    "Workshop usa settings para su apariencia; collapsed/zoom son del Hub".into(),
+                );
+            }
+            let kind: Kind = request
+                .widget
+                .as_deref()
+                .ok_or("falta widget")?
+                .parse()
+                .map_err(|()| "widget desconocido".to_owned())?;
+            let settings = request
+                .settings
+                .clone()
+                .unwrap_or_else(|| default_settings(kind));
+            if settings.kind() != kind {
+                return Err("settings no corresponde al widget".into());
+            }
+            let bytes = std::fs::read(&request.scene).map_err(|e| e.to_string())?;
+            let cache = crate::capture_batch::Cache::new(
+                request.output.clone(),
+                &[
+                    serde_json::to_vec(&request).map_err(|e| e.to_string())?,
+                    bytes.clone(),
+                ]
+                .concat(),
+                &common,
+            )?;
+            if cache.fresh() {
+                println!("capture-skip {}", request.output.display());
+                continue;
+            }
+            let scene = String::from_utf8(bytes).map_err(|e| e.to_string())?;
+            let mut snapshots = crate::workshop::snapshots_from_json(&scene)?;
+            if let Some(until) = request.until {
+                if until == 0 || until > snapshots.len() {
+                    return Err("until fuera de la secuencia".into());
+                }
+                snapshots.truncate(until);
+            }
+            jobs.push(Job {
+                settings,
+                prefs: Preferences::default(),
+                snapshots,
+                request,
+                cache,
+            });
+        }
+        let captured = jobs.len();
+        run_jobs(jobs)?;
+        println!(
+            "capture-batch total={total} captured={captured} skipped={} app_processes=1 windows={} elapsed_ms={}",
+            total - captured,
+            usize::from(captured > 0),
+            started.elapsed().as_millis()
+        );
+        Ok(())
+    })())
+}
+
+fn default_settings(kind: Kind) -> crate::Settings {
+    match kind {
+        Kind::Standings => crate::Settings::Standings(crate::standings::Settings::eficiencia()),
+        Kind::Relative => crate::Settings::Relative(crate::relative::Settings::eficiencia()),
+        Kind::FuelStrategy => {
+            crate::Settings::FuelStrategy(crate::fuel_strategy::Settings::eficiencia())
+        }
+        Kind::Delta => crate::Settings::Delta(crate::delta::Settings::eficiencia()),
+        Kind::Pedals => crate::Settings::Pedals(crate::pedals::Settings::eficiencia()),
+        _ => crate::Settings::default_for(kind),
+    }
+}
+
+struct CaptureRoot {
+    view: Entity<Overlay>,
+}
+impl gpui::Render for CaptureRoot {
+    fn render(
+        &mut self,
+        _: &mut gpui::Window,
+        cx: &mut gpui::Context<Self>,
+    ) -> impl gpui::IntoElement {
+        use gpui::{div, prelude::*, px};
+        let (w, h) = self.view.read(cx).frame_size();
+        div().size_full().child(
+            div()
+                .absolute()
+                .left(px(0.0))
+                .top(px(0.0))
+                .w(px(w))
+                .h(px(h))
+                .child(
+                    self.view
+                        .clone()
+                        .cached(gpui::StyleRefinement::default().w(px(w)).h(px(h))),
+                ),
+        )
+    }
+}
+
+fn run_jobs(jobs: Vec<Job>) -> Result<(), String> {
+    if jobs.is_empty() {
+        return Ok(());
+    }
+    let _lock = crate::capture_window::lock()?;
+    let mut options = crate::capture_window::options(2304, 1440)?;
+    options.window_background = gpui::WindowBackgroundAppearance::Transparent;
+    let failure = Rc::new(std::cell::RefCell::new(None));
     let flag = failure.clone();
     gpui_platform::application().run(move |cx: &mut App| {
         if !app::init(cx) {
-            flag.set(true);
+            *flag.borrow_mut() = Some("inicializar UI".into());
+            cx.quit();
             return;
         }
+        // Mantener la guarda de paridad de #1629 antes de crear el HWND:
+        // no aceptar silenciosamente una sustitución de las fuentes aprobadas.
         let names = cx.text_system().all_font_names();
         let style = crate::vantare::style::Style::compiled();
         let families = [
@@ -415,40 +565,63 @@ pub fn run_configured_sequence(
             .iter()
             .all(|name| names.iter().any(|registered| registered.as_str() == *name))
         {
-            eprintln!("faltan fuentes del diseño; se rechaza la captura con sustitución");
-            flag.set(true);
+            *flag.borrow_mut() =
+                Some("faltan fuentes del diseño; se rechaza la captura con sustitución".into());
             cx.quit();
             return;
         }
-        let view = cx.new(|_| Overlay::configured(&settings, prefs));
-        view.update(cx, |v, cx| {
-            *v = Overlay::configured(&settings, prefs);
-            for snapshot in &snapshots {
-                v.ingest(snapshot, cx);
+        let view = cx.new(|_| Overlay::new(jobs[0].settings.kind(), jobs[0].prefs));
+        let window = match cx.open_window(options, |_, cx| {
+            cx.new(|_| CaptureRoot { view: view.clone() })
+        }) {
+            Ok(window) => window,
+            Err(error) => {
+                *flag.borrow_mut() = Some(error.to_string());
+                cx.quit();
+                return;
             }
-            v.freeze_for_capture();
-        });
-        if let Err(error) = app::open_capture(cx, view.clone()) {
-            eprintln!("{error}");
-            flag.set(true);
+        };
+        if let Err(error) = window
+            .update(cx, |_, window, _| crate::capture_window::created(window))
+            .map_err(|e| e.to_string())
+            .and_then(|result| result)
+        {
+            *flag.borrow_mut() = Some(error);
             cx.quit();
             return;
         }
         cx.spawn(async move |cx| {
-            let result = capture(cx.clone(), view, path).await;
-            if let Err(error) = &result {
-                eprintln!("{error}");
-                flag.set(true);
+            let result = async {
+                for job in jobs {
+                    view.update(cx, |v, cx| {
+                        *v = Overlay::configured(&job.settings, job.prefs);
+                        for snapshot in &job.snapshots {
+                            v.ingest(snapshot, cx);
+                        }
+                        v.freeze_for_capture();
+                        cx.notify();
+                    });
+                    let [width, height] = job.request.size.unwrap_or([2304, 1440]);
+                    window
+                        .update(cx, |_, window, cx| {
+                            crate::capture_window::show(window, width as i32, height as i32, cx)
+                        })
+                        .map_err(|e| e.to_string())??;
+                    capture(cx.clone(), view.clone(), job.request.output).await?;
+                    job.cache.commit()?;
+                }
+                Ok::<(), String>(())
+            }
+            .await;
+            if let Err(error) = result {
+                *flag.borrow_mut() = Some(error);
             }
             cx.update(|cx| cx.quit());
         })
         .detach();
     });
-    if failure.get() {
-        ExitCode::FAILURE
-    } else {
-        ExitCode::SUCCESS
-    }
+    let result = failure.borrow_mut().take();
+    result.map_or(Ok(()), Err)
 }
 
 #[cfg(test)]
@@ -462,8 +635,7 @@ mod tests {
             assert!(super::pixel_bytes(w, h).is_err());
             assert!(super::capture_client(0, w, h).is_err());
         }
-        let error = super::capture_client(0, 1, 1).expect_err("HWND nulo");
-        assert!(error.contains("ClientToScreen"));
+        assert!(super::capture_client(0, 1, 1).is_err());
     }
 
     #[test]

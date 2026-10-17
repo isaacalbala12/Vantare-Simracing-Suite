@@ -312,11 +312,33 @@
     },
     "native/hub/reference/README.md": {
       "source": "native/hub/reference/README.md",
-      "sha256": "c11064554c51e5da863d6c3e44872576ccbe44c1d15aed212680f9391637cd25"
+      "sha256": "ae8252830afb38cb66e006ccbe9e7201f4f56811856331ff39a1537d3c900c3c",
+      "source_sha256": "c11064554c51e5da863d6c3e44872576ccbe44c1d15aed212680f9391637cd25",
+      "revisions": [
+        {
+          "commit": "65e4809d17f6c83640258d7a44689a52653ed477",
+          "issues": [
+            "#1655"
+          ],
+          "archived_original": "native/retirement/legacy-evidence/hub-capture-before-1655/README.md.txt"
+        }
+      ]
     },
     "native/hub/reference/compare.ps1": {
       "source": "native/hub/reference/compare.ps1",
-      "sha256": "4e827e1e97ee45bf144f7f1ccb8970f9e02969c2fc01d024d64e56d328f6c84a"
+      "sha256": "711dbb78538ba846ecdd176df3461b12ea77e3ea43faeac225df7cc90b2e3165",
+      "source_sha256": "4e827e1e97ee45bf144f7f1ccb8970f9e02969c2fc01d024d64e56d328f6c84a",
+      "revisions": [
+        {
+          "commit": "c3966a11682b0a03f2f93bdfde33658f13fd8782",
+          "issues": [
+            "#1655"
+          ],
+          "previous_sha256": "4e827e1e97ee45bf144f7f1ccb8970f9e02969c2fc01d024d64e56d328f6c84a",
+          "source_archive": "native/retirement/legacy-evidence/hub-capture-before-1655/compare.ps1.txt",
+          "reason": "Authorized capture-tool update: hidden HWND from creation, one process/window per batch, incremental PNGs. Original executable script bytes are retained as inert .txt evidence with their unchanged original hashes."
+        }
+      ]
     },
     "native/hub/reference/fixtures/calendar-lmu-2026-10-06.json": {
       "source": "native/hub/reference/fixtures/calendar-lmu-2026-10-06.json",
@@ -368,7 +390,19 @@
     },
     "native/hub/reference/tools/capture-alpha.ps1": {
       "source": "native/hub/reference/tools/capture-alpha.ps1",
-      "sha256": "2b944d4a64a7375aca01e85983f650f8879c5c599a9bb80eaec999187350028e"
+      "sha256": "35bf077d14540f386706b3fdec0e5b5f8eb91fd27a25055f8971603f2c538f9e",
+      "source_sha256": "2b944d4a64a7375aca01e85983f650f8879c5c599a9bb80eaec999187350028e",
+      "revisions": [
+        {
+          "commit": "c3966a11682b0a03f2f93bdfde33658f13fd8782",
+          "issues": [
+            "#1655"
+          ],
+          "previous_sha256": "2b944d4a64a7375aca01e85983f650f8879c5c599a9bb80eaec999187350028e",
+          "source_archive": "native/retirement/legacy-evidence/hub-capture-before-1655/capture-alpha.ps1.txt",
+          "reason": "Authorized capture-tool update: hidden HWND from creation, one process/window per batch, incremental PNGs. Original executable script bytes are retained as inert .txt evidence with their unchanged original hashes."
+        }
+      ]
     },
     "native/hub/reference/tools/capture-bitmap-tests.ps1": {
       "source": "native/hub/reference/tools/capture-bitmap-tests.ps1",
@@ -384,15 +418,51 @@
     },
     "native/hub/reference/tools/capture-native.ps1": {
       "source": "native/hub/reference/tools/capture-native.ps1",
-      "sha256": "ad7258df285e4e25e9ba06e73cf3528f2cba7ad746529eae42ae3076063dc6f8"
+      "sha256": "3fba641d4482e63bb7739a704a479436d07e7f4afaff2dd07465dc182fbaaf7f",
+      "source_sha256": "ad7258df285e4e25e9ba06e73cf3528f2cba7ad746529eae42ae3076063dc6f8",
+      "revisions": [
+        {
+          "commit": "c3966a11682b0a03f2f93bdfde33658f13fd8782",
+          "issues": [
+            "#1655"
+          ],
+          "previous_sha256": "ad7258df285e4e25e9ba06e73cf3528f2cba7ad746529eae42ae3076063dc6f8",
+          "source_archive": "native/retirement/legacy-evidence/hub-capture-before-1655/capture-native.ps1.txt",
+          "reason": "Authorized capture-tool update: hidden HWND from creation, one process/window per batch, incremental PNGs. Original executable script bytes are retained as inert .txt evidence with their unchanged original hashes."
+        }
+      ]
     },
     "native/hub/reference/tools/capture-process.ps1": {
       "source": "native/hub/reference/tools/capture-process.ps1",
-      "sha256": "322f0a8e6c895465331f84af0d9211219328a5536acbf54762f5186b0731a481"
+      "sha256": "c377f7fe095a65ca80666cc6e26644c7ff5bc599640672bac78a9124b3b8b637",
+      "source_sha256": "322f0a8e6c895465331f84af0d9211219328a5536acbf54762f5186b0731a481",
+      "revisions": [
+        {
+          "commit": "c3966a11682b0a03f2f93bdfde33658f13fd8782",
+          "issues": [
+            "#1655"
+          ],
+          "previous_sha256": "322f0a8e6c895465331f84af0d9211219328a5536acbf54762f5186b0731a481",
+          "source_archive": "native/retirement/legacy-evidence/hub-capture-before-1655/capture-process.ps1.txt",
+          "reason": "Authorized capture-tool update: hidden HWND from creation, one process/window per batch, incremental PNGs. Original executable script bytes are retained as inert .txt evidence with their unchanged original hashes."
+        }
+      ]
     },
     "native/hub/reference/tools/capture-window.ps1": {
       "source": "native/hub/reference/tools/capture-window.ps1",
-      "sha256": "d8e0f8c9de46fe74134c22a492f17146bbd779d27a7e49c3c826d151be2bfc8f"
+      "sha256": "6edc6e47d422212d31b4a676af00d66958b789b5766116d72127ec445df357d2",
+      "source_sha256": "d8e0f8c9de46fe74134c22a492f17146bbd779d27a7e49c3c826d151be2bfc8f",
+      "revisions": [
+        {
+          "commit": "c3966a11682b0a03f2f93bdfde33658f13fd8782",
+          "issues": [
+            "#1655"
+          ],
+          "previous_sha256": "d8e0f8c9de46fe74134c22a492f17146bbd779d27a7e49c3c826d151be2bfc8f",
+          "source_archive": "native/retirement/legacy-evidence/hub-capture-before-1655/capture-window.ps1.txt",
+          "reason": "Authorized capture-tool update: hidden HWND from creation, one process/window per batch, incremental PNGs. Original executable script bytes are retained as inert .txt evidence with their unchanged original hashes."
+        }
+      ]
     },
     "native/hub/reference/tools/demo-states.json": {
       "source": "native/hub/reference/tools/demo-states.json",
@@ -2903,6 +2973,30 @@
     "native/retirement/legacy-evidence/docs/telemetry-core/evidence/isa-893/capture-wails-v2.mjs.txt": {
       "source": "docs/telemetry-core/evidence/isa-893/capture-wails-v2.mjs",
       "sha256": "5967ef6d815ceedc4b30aee07568e2f3ca31227b964b89f1162d0b9003c968f5"
+    },
+    "native/retirement/legacy-evidence/hub-capture-before-1655/compare.ps1.txt": {
+      "source": "native/hub/reference/compare.ps1",
+      "sha256": "4e827e1e97ee45bf144f7f1ccb8970f9e02969c2fc01d024d64e56d328f6c84a"
+    },
+    "native/retirement/legacy-evidence/hub-capture-before-1655/capture-alpha.ps1.txt": {
+      "source": "native/hub/reference/tools/capture-alpha.ps1",
+      "sha256": "2b944d4a64a7375aca01e85983f650f8879c5c599a9bb80eaec999187350028e"
+    },
+    "native/retirement/legacy-evidence/hub-capture-before-1655/capture-native.ps1.txt": {
+      "source": "native/hub/reference/tools/capture-native.ps1",
+      "sha256": "ad7258df285e4e25e9ba06e73cf3528f2cba7ad746529eae42ae3076063dc6f8"
+    },
+    "native/retirement/legacy-evidence/hub-capture-before-1655/capture-process.ps1.txt": {
+      "source": "native/hub/reference/tools/capture-process.ps1",
+      "sha256": "322f0a8e6c895465331f84af0d9211219328a5536acbf54762f5186b0731a481"
+    },
+    "native/retirement/legacy-evidence/hub-capture-before-1655/capture-window.ps1.txt": {
+      "source": "native/hub/reference/tools/capture-window.ps1",
+      "sha256": "d8e0f8c9de46fe74134c22a492f17146bbd779d27a7e49c3c826d151be2bfc8f"
+    },
+    "native/retirement/legacy-evidence/hub-capture-before-1655/README.md.txt": {
+      "source": "native/hub/reference/README.md",
+      "sha256": "c11064554c51e5da863d6c3e44872576ccbe44c1d15aed212680f9391637cd25"
     }
   }
 }

@@ -653,11 +653,17 @@ impl CaptureState {
             return Err(format!("pantalla Wails desconocida: {name}"));
         }
         let section = match name {
-            "onboarding-0" | "onboarding-1" | "onboarding-2" | "onboarding-3" | "onboarding-4"
-            | "onboarding-5" | "onboarding-6" => Section::Home,
-            "shell-notificaciones-abiertas" | "notificaciones-panel" | "notificaciones-vacio" => {
-                Section::Home
-            }
+            "onboarding-0"
+            | "onboarding-1"
+            | "onboarding-2"
+            | "onboarding-3"
+            | "onboarding-4"
+            | "onboarding-5"
+            | "onboarding-6"
+            | "shell-notificaciones-abiertas"
+            | "notificaciones-panel"
+            | "notificaciones-vacio"
+            | "calendario-r6-inicio" => Section::Home,
             "launcher-base"
             | "launcher-nuevo-perfil"
             | "launcher-reposo"
@@ -668,7 +674,6 @@ impl CaptureState {
             | "launcher-listo"
             | "launcher-cancelado"
             | "launcher-nombres-largos" => Section::Launcher,
-            "calendario-r6-inicio" => Section::Home,
             name if name.starts_with("calendario-r6-") => Section::Calendar,
             "calendario-base"
             | "calendario-dia"

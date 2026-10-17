@@ -312,3 +312,9 @@ El detector encontró el mismo patrón de arena TLS en la prueba previa de
 resolución de Studio: preview_stage se construía fuera de draw. Se mueve a una
 ventana de TestPlatform conservando las cuatro resoluciones, sus tamaños,
 anclajes, posiciones y documento; solo cambia el ciclo de vida del test.
+
+La siguiente CI detectó el mismo ciclo de vida en las dos pruebas previas de
+marco de selección. Sus aserciones de opacidad, borde y tamaños para todos los
+widgets/factores/zoom se ejecutan dentro de draw con arena liberada; no se
+omiten combinaciones. Se incorpora además nightly 9c19b2993 (#1660), Avisos de
+sesión, mediante merge sin conflictos. SHA y gates finales se verifican en #1637.

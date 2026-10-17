@@ -2,6 +2,21 @@
 
 [Histórico previo por SHA](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/8c6e83f977c8d2245a04266cdaaf896ed8c1b131/vantare-v2/docs/vantare-program/handoffs/overlays-launcher-hub.md). El diario y avances están en las issues; este documento conserva el estado actual.
 
+## Seguimiento MSIX de #1660 · VANTA-74 · 2026-10-17
+
+#1660 integrado en nightly `9c19b2993` por el orquestador. Rama nueva
+`vantareapp/isa-1653-avisos-msix`, base origin/nightly `c9a832d7`.
+La regresión separa beta, probe MSIX y arranque sin overrides. MSIX comprueba
+rutas completas sin contaminar con flags y fija que el overlay numérico no
+recibe el layout ni consume el feed del probe. Defaults compara escritor y
+lector por separado con el destino literal esperado bajo la raíz de datos.
+Documento ajustado: el smoke MSIX no acredita paridad del calendario.
+Mac: formato y cuatro pruebas PASS. RED/GREEN confirmado: el separador viejo
+falla en la ruta MSIX y cambiar la ruta compartida falla en defaults aunque
+escritor/lector coincidan; cambios temporales restaurados. Sin cambios de
+producto, empaquetado, protocolo ni dependencias. Gates workspace por CI Windows;
+SHA/PR definitivos en issue/buzón. Sin abrir/capturar ventanas ni LMU físico.
+
 ## Integración del calendario #1640 en #1660 · 2026-10-17
 
 Merge de origin/nightly `2a580c458` sobre la rama de #1660, sin rebase ni

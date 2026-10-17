@@ -54,7 +54,13 @@ con todas las tarjetas colocadas, sin sugerencias que oculten una omisión.
 Logs locales: regressions-first.log, mutation-red.log y mutate.py. Ningún cambio
 temporal se publica. Resultados finales, SHA y CI se añaden al cerrar la tanda. Evidencia de esta ronda:
 `C:/VantareServer/evidence/1629-r5/`. Se conservan los intentos que fallan.
-Se incorpora nightly mediante merge tras las correcciones; sin rebase ni force-push.
+Se incorpora nightly `2a580c458` mediante merge tras las correcciones: instalador
+#1600, telemetría #1679 y calendario #1640. Un conflicto en la demanda de Banderas:
+se conservan Cars/Flags de #1679 sin Penalties, además de Positions/SessionInfo
+para la llegada. Se conserva íntegra la regresión de pipe que omite sanciones.
+Fotos live v11, Services v12 por calendario y derechos v5; sin relajar el pipe.
+Sin rebase ni force-push. Cola local ocupada después de las regresiones:
+gates finales autorizados en CI Windows, sin compilaciones locales duplicadas.
 La paridad visual 17 × 4 y variantes sigue pendiente de #1675: ninguna ventana ni
 captura nueva. Las imágenes R3 son históricas y no certifican este HEAD.
 No se integra el PR, promociona, publica release ni despliega.

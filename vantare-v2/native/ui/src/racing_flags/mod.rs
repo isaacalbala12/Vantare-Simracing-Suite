@@ -651,8 +651,9 @@ impl Settings {
     #[allow(clippy::unused_self)] // Contrato común de demanda por renderer.
     pub fn demand(&self) -> vantare_ipc::Demand {
         // Identidad personal, posición de llegada y contexto de sesión.
-        use vantare_ipc::Signal::{Flags, Penalties, Positions, SessionInfo};
-        crate::demand::signals(33, &[Flags, Penalties, Positions, SessionInfo])
+        // Cars conserva jugador/IDs sin pedir sanciones numéricas ni inputs.
+        use vantare_ipc::Signal::{Cars, Flags, Positions, SessionInfo};
+        crate::demand::signals(33, &[Cars, Flags, Positions, SessionInfo])
     }
 }
 

@@ -81,6 +81,7 @@ fn imola_recorded_clocks_recover_without_waiting_for_a_two_second_clear_run() {
     for column in [1, 2] {
         let mut gate = Gate::default();
         let mut previous = None;
+        let mut last_advance = None;
         let mut was_stale = false;
         let (mut freezes, mut recoveries) = (0, 0);
         for row in trace["samples"].as_array().unwrap() {
@@ -89,15 +90,20 @@ fn imola_recorded_clocks_recover_without_waiting_for_a_two_second_clear_run() {
             let advanced = previous != Some(source);
             let stale = gate.observe(at, Some(source));
             if was_stale && advanced {
-                assert!(
-                    !stale,
-                    "un dato nuevo del productor debe ser actual en {at:?}"
-                );
-                recoveries += 1;
+                let confirmed = last_advance.is_some_and(|last: Duration| {
+                    at.saturating_sub(last) < super::gate::STALL_LIMIT
+                });
+                assert_eq!(!stale, confirmed, "dos avances cercanos en {at:?}");
+                recoveries += u32::from(!stale);
+            } else if was_stale {
+                assert!(stale, "una lectura repetida no recupera en {at:?}");
             }
             freezes += u32::from(stale && !was_stale);
             was_stale = stale;
             previous = Some(source);
+            if advanced {
+                last_advance = Some(at);
+            }
         }
         assert!(freezes >= 4, "se conservan los huecos reales >500 ms");
         assert!(

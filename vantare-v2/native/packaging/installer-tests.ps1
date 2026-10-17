@@ -2,7 +2,8 @@
 param(
     [Parameter(Mandatory)][string]$Version010Directory,
     [Parameter(Mandatory)][string]$Version011Directory,
-    [Parameter(Mandatory)][string]$EvidenceDirectory
+    [Parameter(Mandatory)][string]$EvidenceDirectory,
+    [ValidateSet('LegacyBeta','Current')][string]$FirstBrand = 'LegacyBeta'
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -44,8 +45,13 @@ function Fail-SetupBoot {
 Invoke-Setup $Version010Directory
 $initial = (Read-SetupState).active.generation
 $oldVersion = (Get-ItemProperty -LiteralPath $key).DisplayVersion
-Assert-Setup ((Get-ItemProperty -LiteralPath $key).DisplayName -ceq 'Vantare Native Beta') 'instalador anterior usa nombre beta real'
-Assert-Setup (Test-Path -LiteralPath $legacyShortcut) 'instalador anterior crea acceso beta'
+if ($FirstBrand -ceq 'LegacyBeta') {
+    Assert-Setup ((Get-ItemProperty -LiteralPath $key).DisplayName -ceq 'Vantare Native Beta') 'instalador anterior usa nombre beta real'
+    Assert-Setup (Test-Path -LiteralPath $legacyShortcut) 'instalador anterior crea acceso beta'
+} else {
+    Assert-Setup ((Get-ItemProperty -LiteralPath $key).DisplayName -ceq 'Vantare') 'baseline NSIS actual conserva su nombre real'
+    Assert-Setup (Test-Path -LiteralPath $shortcut) 'baseline NSIS actual crea acceso Vantare'
+}
 [IO.File]::WriteAllText((Get-SetupData), '{"profile":"setup QA","layout":[1,2],"account":"fake"}')
 $hash = Get-NativeHash (Get-SetupData)
 $session = [IO.File]::Open((Join-Path $root 'beta-session.lock'), 'Open', 'ReadWrite', 'None')

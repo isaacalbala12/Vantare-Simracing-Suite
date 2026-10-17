@@ -151,6 +151,46 @@ const ASSETS: &[(&str, &[u8])] = &[
         include_bytes!("../../assets/pit/search.svg"),
     ),
     (
+        "icons/star-line.svg",
+        include_bytes!("../../assets/pit/star-line.svg"),
+    ),
+    (
+        "icons/bell-fill.svg",
+        include_bytes!("../../assets/pit/bell-fill.svg"),
+    ),
+    (
+        "icons/chevron-left.svg",
+        include_bytes!("../../assets/pit/chevron-left.svg"),
+    ),
+    (
+        "icons/expand.svg",
+        include_bytes!("../../assets/pit/expand.svg"),
+    ),
+    (
+        "icons/shrink.svg",
+        include_bytes!("../../assets/pit/shrink.svg"),
+    ),
+    (
+        "icons/info.svg",
+        include_bytes!("../../assets/pit/info.svg"),
+    ),
+    (
+        "icons/wifi-off.svg",
+        include_bytes!("../../assets/pit/wifi-off.svg"),
+    ),
+    (
+        "icons/copy.svg",
+        include_bytes!("../../assets/pit/copy.svg"),
+    ),
+    (
+        "icons/sliders.svg",
+        include_bytes!("../../assets/pit/sliders.svg"),
+    ),
+    (
+        "icons/warn.svg",
+        include_bytes!("../../assets/pit/warn.svg"),
+    ),
+    (
         "icons/star.svg",
         include_bytes!("../../assets/pit/star.svg"),
     ),

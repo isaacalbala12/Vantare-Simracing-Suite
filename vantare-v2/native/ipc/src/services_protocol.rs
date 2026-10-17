@@ -2,8 +2,9 @@
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use std::io::{self, Read, Write};
 
-// v11 combines #1631 AccountEmail and #1661 Founders; reject older services peers.
-pub const VERSION: u32 = 11;
+// v11 combines #1631 AccountEmail and #1661 Founders; v12 adds Calendar.fallback
+// (#1634): Reply is deny_unknown_fields, so a v11 Hub must not talk to it. Reject older peers.
+pub const VERSION: u32 = 12;
 #[path = "services_protocol/pilot_document.rs"]
 pub mod pilot_document;
 #[path = "services_protocol/report_document.rs"]
@@ -190,6 +191,10 @@ pub enum Reply {
     },
     Calendar {
         schedule: Option<String>,
+        /// Respaldo de `RaceControl` con el mismo contrato. `Reply` rechaza campos
+        /// desconocidos: añadirlo exigió subir `VERSION` a 12.
+        #[serde(default)]
+        fallback: Option<String>,
     },
     Testing {
         data: testing_document::Participation,
@@ -380,6 +385,23 @@ mod tests {
             read::<Reply>(&mut frame.as_slice()).expect("read"),
             Reply::ReportPreview { .. }
         ));
+    }
+    #[test]
+    fn calendar_reply_gained_a_field_so_the_version_moved_past_11() {
+        // Un Hub v11 rechaza el campo nuevo (`deny_unknown_fields`): por eso el
+        // guardián de versión tiene que cortar antes de leer la respuesta.
+        const { assert!(VERSION >= 12) };
+        let with_field = r#"{"result":"Calendar","schedule":null,"fallback":"{}"}"#;
+        assert!(serde_json::from_str::<Reply>(with_field).is_ok());
+        // Un servicio anterior que no lo envía sigue entendiéndose.
+        let without = r#"{"result":"Calendar","schedule":null}"#;
+        assert!(matches!(
+            serde_json::from_str::<Reply>(without),
+            Ok(Reply::Calendar { fallback: None, .. })
+        ));
+        // Y los campos desconocidos siguen rechazándose.
+        let unknown = r#"{"result":"Calendar","schedule":null,"otro":1}"#;
+        assert!(serde_json::from_str::<Reply>(unknown).is_err());
     }
     #[test]
     fn protocol_rejects_oversized_truncated_and_unknown_commands() {

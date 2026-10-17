@@ -38,6 +38,25 @@ $script:NativeBins = @(Get-NativeBins $Channel)
 # se instalo el paquete. Se enumeran aqui para que entren tambien en el
 # manifiesto y en la verificacion de reinstalacion.
 $script:NativeFixtures = @(
+    # Secuencias aprobadas que Workshop abre por nombre, incluida la inicial.
+    'bin/fixtures/broadcast-tower-design-system.sequence.json'
+    'bin/fixtures/car-damage-visual-design-system.sequence.json'
+    'bin/fixtures/delta-design-system.sequence.json'
+    'bin/fixtures/delta-trace-design-system.sequence.json'
+    'bin/fixtures/fastest-lap-design-system.sequence.json'
+    'bin/fixtures/fuel-strategy-design-system.sequence.json'
+    'bin/fixtures/head-to-head-design-system.sequence.json'
+    'bin/fixtures/input-telemetry-design-system.sequence.json'
+    'bin/fixtures/multiclass-relative-design-system.sequence.json'
+    'bin/fixtures/pedals-design-system.sequence.json'
+    'bin/fixtures/pedals-telemetry-design-system.sequence.json'
+    'bin/fixtures/racing-flags-design-system.sequence.json'
+    'bin/fixtures/radar-design-system.sequence.json'
+    'bin/fixtures/relative-design-system.sequence.json'
+    'bin/fixtures/standings-design-system.sequence.json'
+    'bin/fixtures/track-map-design-system.sequence.json'
+    'bin/fixtures/track-weather-design-system.sequence.json'
+    'bin/fixtures/session-alerts.snapshot.json'
     'bin/fixtures/broadcast-tower-crossing.scene.json'
     'bin/fixtures/broadcast-tower-default.scene.json'
     'bin/fixtures/broadcast-tower-exit-reentry.scene.json'

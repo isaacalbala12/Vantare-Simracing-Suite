@@ -1,3 +1,32 @@
+## #1694 / VANTA-105 · Recursos de arranque (17-oct-2026)
+
+Prioridad del orquestador sobre #1695. Rama propia
+`vantareapp/isa-1694-recursos-arranque`, worktree isa-1694, desde nightly
+`7396f65d0` con #1691. #1693 ready f30ec08ef, cinco checks verdes; review/merge
+reservados al orquestador. WIP #1695 preservado, sin mezclar con esta entrega.
+
+Hub prepara Workshop incluso desde Home: la escena inicial aprobada faltaba
+en el ZIP. Inventario cerrado añade las 17 secuencias aprobadas y el snapshot
+Session Alerts, sin glob. Release deja de buscar el checkout; Debug conserva
+su fallback. Se mantiene Workshop como entidad de la shell; diferirlo o hacerlo
+opcional sería un cambio mayor que completar sus recursos públicos versionados.
+Auditoría sistemática de lecturas runtime frente a recursos embebidos en
+`native/packaging/startup-resources.md`; no se copian configuraciones del usuario.
+
+Inventario14, AST/diff/462 huellas PASS. Regresión nueva para Release instalado
+en SID estándar/escritorio privado y CWD vacío: sin escena inicial, sin fixtures
+y paquete completo hasta hub-ready/PID real y cierre exit0. Compilación, gates
+Rust y arranque real pendientes; no se afirman aprobados antes de ejecutarlos.
+Evidencia `C:/VantareServer/evidence/rc1/hub-1694/`. Sin firma/publicación/merge.
+
+P2-1 de #1695 ya acreditado con Setup nuevo de nightly7396f65d0, SHA
+bec8d3bb4394543169561cad07965987615e13914b6bdd00cd075dc80289e913. Tres usuarios
+sin Startup: OFF limpio, reinstalación ON (preferencia guardada) y NSIS0.0.975
+→nuevo OFF; actor nunca crea Startup/Desktop, datos conservados y SID/perfiles
+retirados. Informe seguimiento-1691/INFORME.md. La QA histórica de RC1 no acredita
+el arreglo. P2/P3 locales de #1695 aún sin cierre de regresiones/PR: acceso QA
+preexistente en el perfil de pruebas; se preserva para retomar en usuario aislado.
+
 ## #1690 / VANTA-105 · Startup ausente y finalización de Setup (17/10/2026)
 
 Hallazgo bloqueante de la QA local RC1 #1688; el orquestador confirma que

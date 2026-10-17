@@ -28,4 +28,16 @@ foreach ($invalid in @(
     try { Assert-NativeBuildInventory $invalid.bins } catch { $rejected = $true }
     Assert-Inventory $rejected $invalid.name
 }
+# These are runtime requirements, independent of the packaging list. The Hub
+# opens the Standings sequence on fresh startup and selects alerts by snapshot.
+$members=@(Get-NativeMembers 'beta')
+foreach($required in @('standings-design-system.sequence.json','session-alerts.snapshot.json')){
+    Assert-Inventory (('bin/fixtures/'+$required) -cin $members) "Recurso runtime obligatorio incluido: $required"
+}
+Assert-Inventory (@($script:NativeFixtures|Sort-Object -Unique).Count -eq $script:NativeFixtures.Count -and -not @($script:NativeFixtures|Where-Object {$_ -match '[*?]'}).Count) 'Inventario de recursos cerrado, único y sin glob'
+$fixtureRoot=Join-Path (Split-Path $PSScriptRoot) 'ui/fixtures'
+foreach($member in $script:NativeFixtures){
+    if(-not (Test-Path -LiteralPath (Join-Path $fixtureRoot $member.Substring('bin/fixtures/'.Length)) -PathType Leaf)){throw "Recurso enumerado ausente: $member"}
+}
+Assert-Inventory $true 'Todos los recursos enumerados existen en la fuente'
 "$passed checks PASS"

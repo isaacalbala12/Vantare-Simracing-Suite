@@ -273,22 +273,32 @@ impl Calendar {
                 div()
                     .flex_1()
                     .min_w(px(160.0))
-                    .child(
-                        chrome::disp(
-                            "Calendario LMU",
-                            if compact { 24.0 } else { 28.0 },
-                            skin.text1,
-                            cx,
-                        )
-                        .truncate(),
-                    )
-                    .when(adapt.show_optional(), |block| {
-                        block.child(
-                            t(self.subtitle(), 13.0, 400, skin.text3, cx)
-                                .mt(px(6.0))
-                                .whitespace_nowrap()
-                                .truncate(),
-                        )
+                    // Compacta: título y subtítulo en una línea (`.collapsed .ph`).
+                    .when(compact, |block| {
+                        block
+                            .flex()
+                            .items_baseline()
+                            .gap(px(10.0))
+                            .child(chrome::disp("Calendario LMU", 24.0, skin.text1, cx).flex_none())
+                            .child(
+                                div().flex_1().min_w_0().child(
+                                    t(self.subtitle(), 13.0, 400, skin.text3, cx)
+                                        .whitespace_nowrap()
+                                        .truncate(),
+                                ),
+                            )
+                    })
+                    .when(!compact, |block| {
+                        block
+                            .child(chrome::disp("Calendario LMU", 28.0, skin.text1, cx).truncate())
+                            .when(adapt.show_optional(), |block| {
+                                block.child(
+                                    t(self.subtitle(), 13.0, 400, skin.text3, cx)
+                                        .mt(px(6.0))
+                                        .whitespace_nowrap()
+                                        .truncate(),
+                                )
+                            })
                     }),
             )
             .when(has, |header| {
@@ -845,7 +855,7 @@ pub(super) fn full_button(cal: &Calendar, cx: &mut Context<Calendar>) -> gpui::S
         } else {
             "Pantalla completa"
         },
-        false,
+        on,
         false,
         cx,
     )

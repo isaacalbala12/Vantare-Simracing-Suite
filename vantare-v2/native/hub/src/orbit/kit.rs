@@ -564,6 +564,8 @@ fn circuit_key(name: Option<&str>) -> Option<&'static str> {
         ("americas", "cota"),
         ("losail", "losail"),
         ("lusail", "losail"),
+        ("qatar", "losail"),
+        ("silverstone", "silverstone"),
         ("paul ricard", "paulricard"),
         ("barcelona", "barcelona"),
         ("catalunya", "barcelona"),
@@ -583,6 +585,12 @@ fn circuit_key(name: Option<&str>) -> Option<&'static str> {
 /// jamás dibuja posición de coche/meta sin un contrato de posición de sesión.
 pub fn circuit(name: Option<&str>, cx: &gpui::App) -> Div {
     circuit_ink(name, false, cx)
+}
+/// Si hay trazado decorativo para ese circuito (Sebring y Road Atlanta no lo tienen).
+pub fn has_circuit(name: Option<&str>) -> bool {
+    circuit_key(name)
+        .and_then(|key| circuit_tracks().get(key))
+        .is_some()
 }
 /// Circuito decorativo de portada, sin sesión ni marcadores.
 pub fn cover_circuit(cx: &gpui::App) -> Div {

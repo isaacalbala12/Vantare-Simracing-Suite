@@ -90,8 +90,8 @@ mod tests {
         assert!(validate(&request, &request.nonce, 1).is_ok());
         assert_eq!(validate(&request, "other-peer", 1), Err(Error::Protocol));
         assert_eq!(validate(&request, &request.nonce, 2), Err(Error::Protocol));
-        // v11 has AccountEmail but no verified mail consent; reject either older contract.
-        for version in [9, 10, 11, protocol::VERSION + 1] {
+        // Either v12 contract lacks verified MailConsent or Calendar.fallback.
+        for version in [9, 10, 11, 12, protocol::VERSION + 1] {
             request.version = version;
             assert_eq!(validate(&request, &request.nonce, 1), Err(Error::Version));
         }

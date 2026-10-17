@@ -801,6 +801,7 @@ impl Hub {
         launch: gpui::AnyElement,
         studio: gpui::AnyElement,
         favorite: Div,
+        card_from: f32,
         cx: &mut Context<Self>,
     ) -> Div {
         let empty = state == HomeState::Empty;
@@ -949,7 +950,7 @@ impl Hub {
                             .child(studio),
                     ),
             )
-            .when(adapt.width > 1600.0 && adapt.show_optional(), |hero| {
+            .when(adapt.width > card_from && adapt.show_optional(), |hero| {
                 hero.child(favorite.relative())
             })
     }
@@ -1060,6 +1061,7 @@ impl Hub {
             .and_then(|index| self.launcher.read(cx).saved_profiles().get(index))
             .map(|profile| profile.id.clone());
         let enabled = launching.is_none() && selected.is_some();
+        let selected_next = selected.clone();
         let quick_launch = orbit::play_button("home-quick-launch", "", 36.0, false, cx)
             .size(px(36.0))
             .rounded(px(8.0))
@@ -1193,6 +1195,59 @@ impl Hub {
                 .children((0..4).map(|_| orbit::skeleton(1.0, 18.0, cx))),
             _ => favorite,
         };
+        // Con calendario y una favorita que sale pronto, la tarjeta del hero es la próxima carrera.
+        let race_card = (state == HomeState::Session)
+            .then(|| {
+                self.shell
+                    .access
+                    .visible(Section::Calendar)
+                    .then(|| crate::calendar::home::next_race(self.calendar.read(cx), cx))
+                    .flatten()
+            })
+            .flatten();
+        let (favorite, card_from) = match race_card {
+            Some(card) => (
+                card.w(px(if adapt.show_secondary() { 380.0 } else { 320.0 }))
+                    .child(
+                        div()
+                            .flex()
+                            .gap(px(8.0))
+                            .child(
+                                orbit::play_button(
+                                    "home-next-launch",
+                                    &format!("Lanzar «{profile_name}»"),
+                                    28.0,
+                                    false,
+                                    cx,
+                                )
+                                .flex_1()
+                                .h(px(28.0))
+                                .tab_stop(enabled)
+                                .when(!enabled, |button| {
+                                    orbit::disabled(button, "Selecciona un perfil disponible")
+                                })
+                                .on_click(cx.listener(
+                                    move |hub, _, _, cx| {
+                                        if hub.launcher.read(cx).launch_progress().is_none()
+                                            && let Some(id) = &selected_next
+                                        {
+                                            hub.launch_profile(id, cx);
+                                        }
+                                    },
+                                )),
+                            )
+                            .child(
+                                orbit::button("home-next", "Ver en Calendario", cx)
+                                    .h(px(28.0))
+                                    .on_click(cx.listener(|hub, _, _, cx| {
+                                        hub.navigate(Section::Calendar, cx);
+                                    })),
+                            ),
+                    ),
+                1400.0,
+            ),
+            None => (favorite, 1600.0),
+        };
         let hero = self.home_hero(
             adapt,
             state,
@@ -1200,6 +1255,7 @@ impl Hub {
             launch.into_any_element(),
             studio.into_any_element(),
             favorite,
+            card_from,
             cx,
         );
         if state == HomeState::Loading {

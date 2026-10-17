@@ -25,6 +25,8 @@ pub mod license_remote;
 pub mod pilot;
 #[cfg(any(windows, unix))]
 pub mod process;
+#[cfg(feature = "network")]
+pub mod racecontrol;
 pub use vantare_ipc::product;
 pub use vantare_ipc::services_protocol as protocol;
 #[cfg(feature = "network")]

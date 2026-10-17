@@ -1,0 +1,120 @@
+{
+  "version": 1,
+  "timezone": "UTC",
+  "validFrom": "2026-10-06T00:00:00Z",
+  "validUntil": "2026-10-13T00:00:00Z",
+  "updated": "2026-10-08T17:47:13Z",
+  "sourceNotes": [
+    "RaceControl (respaldo)"
+  ],
+  "series": [
+    {
+      "id": "intermediate-prototype-fixed",
+      "name": "Prototype Fixed",
+      "tier": "intermediate",
+      "eventKind": "daily",
+      "format": "solo",
+      "licenseLabel": "Silver SR",
+      "track": "Silverstone 2025",
+      "vehicleClass": "",
+      "classes": [],
+      "raceDurationMin": 33,
+      "eventDurationMin": 44,
+      "sessions": [
+        {
+          "name": "practice",
+          "durationMin": 3,
+          "estimated": true
+        },
+        {
+          "name": "qualifying",
+          "durationMin": 8,
+          "estimated": true
+        },
+        {
+          "name": "race",
+          "durationMin": 33,
+          "estimated": true
+        }
+      ],
+      "source": "racecontrol",
+      "startOffsetMinute": 5,
+      "recurrence": {
+        "kind": "interval",
+        "intervalMinutes": 20
+      }
+    },
+    {
+      "id": "advanced-wec-xperience",
+      "name": "WEC-Xperience",
+      "tier": "advanced",
+      "eventKind": "daily",
+      "format": "solo",
+      "licenseLabel": "Gold SR",
+      "track": "Road Atlanta",
+      "vehicleClass": "",
+      "classes": [],
+      "raceDurationMin": 63,
+      "eventDurationMin": 74,
+      "sessions": [
+        {
+          "name": "practice",
+          "durationMin": 3,
+          "estimated": true
+        },
+        {
+          "name": "qualifying",
+          "durationMin": 8,
+          "estimated": true
+        },
+        {
+          "name": "race",
+          "durationMin": 63,
+          "estimated": true
+        }
+      ],
+      "source": "racecontrol",
+      "startOffsetMinute": 10,
+      "recurrence": {
+        "kind": "interval",
+        "intervalMinutes": 30
+      }
+    },
+    {
+      "id": "beginner-caterham-cup",
+      "name": "Caterham Cup",
+      "tier": "beginner",
+      "eventKind": "daily",
+      "format": "solo",
+      "licenseLabel": "Bronze SR",
+      "track": "Teretonga Park",
+      "vehicleClass": "",
+      "classes": [],
+      "raceDurationMin": 23,
+      "eventDurationMin": 34,
+      "sessions": [
+        {
+          "name": "practice",
+          "durationMin": 3,
+          "estimated": true
+        },
+        {
+          "name": "qualifying",
+          "durationMin": 8,
+          "estimated": true
+        },
+        {
+          "name": "race",
+          "durationMin": 23,
+          "estimated": true
+        }
+      ],
+      "source": "racecontrol",
+      "startOffsetMinute": 0,
+      "recurrence": {
+        "kind": "interval",
+        "intervalMinutes": 90
+      }
+    }
+  ]
+}

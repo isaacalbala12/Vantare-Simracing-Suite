@@ -210,3 +210,8 @@ del asistente. Se conserva el recorrido del test y se añade la aserción de que
 Tab abandona el foco de la página antes de enviar Enter/Espacio. El ciclo P1
 cerrar/reabrir/Terminar, error de marketing, salida privada y catálogo ya pasan
 en la CI 0c49bdd35; la nueva CI comprobará también el foco corregido.
+Nightly volvió a avanzar a 2a580c458 (#1640, calendario). Se conservan su modelo,
+UI y Calendar.fallback, resolviendo solo el comentario de versión y el rechazo
+del host: ambas ramas habían usado services v12 con contratos distintos. El
+corte combinado es services v13 y la regresión del host rechaza también v12.
+Las guías actuales exigen recompilar Hub, supervisor y servicios juntos.

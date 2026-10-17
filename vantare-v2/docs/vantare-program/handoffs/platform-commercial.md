@@ -1,3 +1,30 @@
+## #1692 / VANTA-105 · CRT de distribución (17-oct-2026)
+
+Encargo posterior a #1690, cuyo PR #1691 quedó ready con cinco checks verdes
+en `a99f560c1` (run39007794185), sin merge por el worker. #1692 usa rama/worktree
+propios `vantareapp/isa-1692-crt-estatico`, isa-1692, base nightly `329520c20`.
+La inspección nueva de RC1 confirma vcruntime140 en diez EXE; Storage añade
+msvcp140 y vcruntime140_1. Inventario exacto y SHA en
+`C:/VantareServer/evidence/rc1/crt/imports-rc1-rechecked.json`. No se incluye
+redistribuible. Setup/Uninstall sí eran estáticos; el payload no lo era.
+
+Propuesta acotada al builder: target Windows explícito, crt-static solo para
+distribución y flags del llamador restaurados. DuckDB bundled conserva su
+contrato y cc1.5.1 elige /MT; no se cambian toolchain/lock, configuración global,
+dependencias ni DuckDB precompilado de desarrollo. Guarda dumpbin sobre cada
+EXE distribuido, antes de ejecutar/copiar; imports normales y diferidos.
+17 pruebas locales de PE reales inertes y fallos de Cargo PASS. La build
+Release completa, imports finales y pruebas de Storage están pendientes;
+no se presentan fixtures como artefactos de producto. CI debe repetir la suite.
+
+El servidor ya tiene las tres DLL (14.51.36247.0), por lo que no se acredita
+su ausencia como causa del Hub sin marker. Se conserva el log fallido y se
+investigará con códigos de salida sin abrir ventanas en el escritorio principal.
+UCRT es parte del Windows objetivo, diferente del redistribuible VC Runtime.
+Referencias: Rust Reference linkage, docs de cc1.5.1 y Microsoft Universal CRT,
+en `evidence/rc1/crt/INFORME-PRELIMINAR.md`. Configuración beta ausente: build
+QA local sin servicios, no candidata publicable. Sin firma/publicación/merge.
+
 ## #1688 · VANTA-105 · Entrega local de mecánica (17-oct-2026)
 
 **QA local condicional PASS; NO candidata beta publicable.** El orquestador

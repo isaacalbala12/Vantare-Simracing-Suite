@@ -1,3 +1,39 @@
+## #1690 / VANTA-105 · Startup ausente y finalización de Setup (17/10/2026)
+
+Hallazgo bloqueante de la QA local RC1 #1688; el orquestador confirma que
+continúa bajo VANTA-105. Rama `vantareapp/isa-1690-startup-ausente`, worktree
+propio isa-1690, base `origin/nightly@5e5c4d1854988604664c518c68beb31a27d2704c`.
+PR separado a nightly; SHA/checks y enlace se verifican en #1690 al subirlo.
+No incorpora el arreglo de inventario #1689 (ya ready con CI verde sobre
+`f5c1548bedfd536a75cb8d075111b837c629a10b`). Sin merge ni publicación.
+
+Desktop/Startup OFF no consultan carpetas ni COM. ON usa la ruta configurada
+por Windows y crea la carpeta ausente; si no se puede, avisa y conserva lo
+ajeno sin abortar. Apagar una opción antes activa retira solo el acceso propio
+anterior; desinstalar no exige carpetas de opciones que nunca se activaron.
+Setup finaliza el registro bajo beta-session.lock. Ante excepción posterior a
+copiar/activar, restaura valores/tipos del registro, bytes de accesos y
+metadatos/bootstrap y estado anterior; elimina solo la generación nueva.
+Los datos originales y los datos conservados tras desinstalar se preservan.
+No añade recuperación durable ante corte de energía ni puede garantizar
+restauración si Windows impide también escribir los datos anteriores.
+
+Regresiones PS 5.1 `installer-registration-tests.ps1`, llamadas por
+`installer-tests.ps1` y por el gate Windows requerido: resolver que rechaza
+consultas OFF, carpetas ausentes/bloqueadas, COM real y PE inertes no ejecutados.
+Fallos reales de compartición después de activar/escribir para instalación
+nueva, actualización y adopción de datos; driver real instala en silencio y
+falla después al registrar una reparación con el bootstrap bloqueado, dejando
+exactamente el estado anterior y sin marker de arranque pendiente.
+Registro/driver: 41 PASS; shell existente: 23 PASS; quality: 462 huellas PASS;
+AST y diff PASS. Los avisos del driver van al log, dejando stdout solo para
+eventos JSON. Los accesos opcionales se sincronizan tras la última escritura
+obligatoria: ni su resolución ni su copia de seguridad pueden abortar Setup.
+No cambia Rust/dependencias ni auth; no compila Rust localmente: la CI requerida
+ejecuta sus gates. No se abren Hub ni UI en la sesión principal, no se crean
+cuentas ni targets. Configuración beta, Hub, login, pagos y Windows limpio
+conservan los límites del informe RC1; no se reconstruye una candidata pública.
+
 ## #1631 / VANTA-70 · Seguimiento P3 de login (#1684)
 
 Encargo tras fusionar #1635 en nightly `95abdcc6e`. Rama nueva

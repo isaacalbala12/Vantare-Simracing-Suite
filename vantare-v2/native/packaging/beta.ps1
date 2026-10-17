@@ -264,56 +264,86 @@ function Activate-BetaPackage([string]$Directory, [string]$Zip, [string]$Hash, [
     Set-BetaStatus $Directory 'applied' 'Instalación aplicada; comprobando el arranque' $Version $Notes
 }
 
-function Install-Beta([string]$Directory, [string]$Zip, [string]$Hash) {
+function Install-Beta([string]$Directory, [string]$Zip, [string]$Hash, [scriptblock]$Finalize=$null) {
     $directory = Open-NativeRoot $Directory -Initialize
     try { $session = [IO.File]::Open((Join-Path $directory 'beta-session.lock'), [IO.FileMode]::OpenOrCreate, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None) }
     catch { Throw-BetaInstallError 2 'Cierra Vantare para continuar. Si estás en carrera, espera a terminar.' }
     try {
-        # Validar el paquete completo antes de seleccionar datos o cambiar el estado.
-        $probe = Join-Path $directory ('staging/setup-' + [guid]::NewGuid().ToString('N'))
-        try { $incoming = Expand-NativePackage $Zip $Hash $probe 'beta' }
-        finally { if (Test-Path -LiteralPath $probe) { Remove-Item -LiteralPath $probe -Recurse -Force } }
-        $version = Read-BetaVersion $incoming.version
-        $retained = Join-Path $directory 'retained-data.json'
-        if (Test-Path -LiteralPath (Join-Path $directory 'state.json')) {
-            $state = Read-NativeState $directory $false
-            $current = Read-NativeManifest (Join-Path $directory "generations/$($state.active.generation)") 'beta' $false
-            if ($version -lt (Read-BetaVersion $current.version)) { Throw-BetaInstallError 3 'Ya tienes una versión más reciente de Vantare. Este instalador es anterior; descarga el más reciente.' }
-            Write-NativeProgress 'copy' 54
-            Activate-BetaPackage $directory $Zip $Hash $incoming.version '' ($version -eq (Read-BetaVersion $current.version))
-        } else {
-            $source = ''
-            if (Test-Path -LiteralPath $retained) {
-                $saved = [IO.File]::ReadAllText($retained) | ConvertFrom-Json
-                if ($saved.schema -ne 1 -or $saved.generation -cnotmatch '^[a-f0-9]{32}$') { throw 'No se reconoce la referencia a tus datos conservados; no se han modificado.' }
-                if ($version -lt (Read-BetaVersion $saved.version)) { Throw-BetaInstallError 3 'Tus datos pertenecen a una versión más reciente. Descarga el instalador más reciente.' }
-                $source = Join-Path $directory "generations/$($saved.generation)/data"
-                if (-not (Test-Path -LiteralPath $source -PathType Container)) { throw 'No se encuentran tus datos conservados; no se han modificado.' }
-            } elseif (Test-Path -LiteralPath (Join-Path $directory 'generations')) {
-                # Desinstaladores anteriores no guardaban la referencia activa.
-                # Una sola carpeta con datos es inequívoca; nunca elegir entre perfiles diferentes.
-                $sources = @(Get-ChildItem -LiteralPath (Join-Path $directory 'generations') -Directory | Where-Object {
-                    $_.Name -cmatch '^[a-f0-9]{32}$' -and (Test-Path -LiteralPath (Join-Path $_.FullName 'data') -PathType Container)
-                })
-                if ($sources.Count) {
-                    $source = Join-Path $sources[0].FullName 'data'
-                    $index = Get-NativeDataIndex $source
-                    foreach ($other in $sources) {
-                        if ((Get-NativeDataIndex (Join-Path $other.FullName 'data')) -cne $index) { throw 'Hay varias copias antiguas diferentes de tus datos y no se puede identificar la activa. Se conservan todas; necesitas recuperar la instalación anterior.' }
+        # Setup finalizes registration under the same session lock as activation.
+        # Keep exact metadata/bootstrap bytes; existing generations/data are immutable.
+        $before=@{}; $beforeHash=@{}; $generations=@()
+        $metadata=@('state.json','candidate.ps1','beta.ps1','retained-data.json','boot-pending.json','update-status.json','registration-identity.txt','Uninstall.exe','uninstall-vantare.ps1','installer-ui.json','installer-notices.txt')
+        if($null -ne $Finalize){
+            foreach($file in Get-ChildItem -LiteralPath $directory -File -Force){
+                if($file.Name -in $metadata){$before[$file.Name]=[IO.File]::ReadAllBytes($file.FullName);$beforeHash[$file.Name]=Get-NativeHash $file.FullName}
+            }
+            $generations=@(Get-ChildItem -LiteralPath (Join-Path $directory 'generations') -Directory -ErrorAction SilentlyContinue|ForEach-Object Name)
+        }
+        try {
+            # Validar el paquete completo antes de seleccionar datos o cambiar el estado.
+            $probe = Join-Path $directory ('staging/setup-' + [guid]::NewGuid().ToString('N'))
+            try { $incoming = Expand-NativePackage $Zip $Hash $probe 'beta' }
+            finally { if (Test-Path -LiteralPath $probe) { Remove-Item -LiteralPath $probe -Recurse -Force } }
+            $version = Read-BetaVersion $incoming.version
+            $retained = Join-Path $directory 'retained-data.json'
+            if (Test-Path -LiteralPath (Join-Path $directory 'state.json')) {
+                $state = Read-NativeState $directory $false
+                $current = Read-NativeManifest (Join-Path $directory "generations/$($state.active.generation)") 'beta' $false
+                if ($version -lt (Read-BetaVersion $current.version)) { Throw-BetaInstallError 3 'Ya tienes una versión más reciente de Vantare. Este instalador es anterior; descarga el más reciente.' }
+                Write-NativeProgress 'copy' 54
+                Activate-BetaPackage $directory $Zip $Hash $incoming.version '' ($version -eq (Read-BetaVersion $current.version))
+            } else {
+                $source = ''
+                if (Test-Path -LiteralPath $retained) {
+                    $saved = [IO.File]::ReadAllText($retained) | ConvertFrom-Json
+                    if ($saved.schema -ne 1 -or $saved.generation -cnotmatch '^[a-f0-9]{32}$') { throw 'No se reconoce la referencia a tus datos conservados; no se han modificado.' }
+                    if ($version -lt (Read-BetaVersion $saved.version)) { Throw-BetaInstallError 3 'Tus datos pertenecen a una versión más reciente. Descarga el instalador más reciente.' }
+                    $source = Join-Path $directory "generations/$($saved.generation)/data"
+                    if (-not (Test-Path -LiteralPath $source -PathType Container)) { throw 'No se encuentran tus datos conservados; no se han modificado.' }
+                } elseif (Test-Path -LiteralPath (Join-Path $directory 'generations')) {
+                    # Desinstaladores anteriores no guardaban la referencia activa.
+                    # Una sola carpeta con datos es inequívoca; nunca elegir entre perfiles diferentes.
+                    $sources = @(Get-ChildItem -LiteralPath (Join-Path $directory 'generations') -Directory | Where-Object {
+                        $_.Name -cmatch '^[a-f0-9]{32}$' -and (Test-Path -LiteralPath (Join-Path $_.FullName 'data') -PathType Container)
+                    })
+                    if ($sources.Count) {
+                        $source = Join-Path $sources[0].FullName 'data'
+                        $index = Get-NativeDataIndex $source
+                        foreach ($other in $sources) {
+                            if ((Get-NativeDataIndex (Join-Path $other.FullName 'data')) -cne $index) { throw 'Hay varias copias antiguas diferentes de tus datos y no se puede identificar la activa. Se conservan todas; necesitas recuperar la instalación anterior.' }
+                        }
+                    }
+                }
+                $handles = @{}
+                try {
+                    if (Test-Path -LiteralPath (Join-Path $directory 'generations')) { $handles = Open-NativeBinaryGuard $directory }
+                    Write-NativeProgress 'copy' 54
+                    $null = Install-NativeCandidate $directory $Zip $Hash 'beta' $source
+                } finally { foreach ($handle in $handles.Values) { $handle.Dispose() } }
+            }
+            # Setup explícito renueva el bootstrap; el feed conserva el instalado.
+            Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'candidate.ps1') -Destination (Join-Path $directory 'candidate.ps1') -Force
+            Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'beta.ps1') -Destination (Join-Path $directory 'beta.ps1') -Force
+            if (Test-Path -LiteralPath $retained) { Remove-Item -LiteralPath $retained }
+            if($null -ne $Finalize){& $Finalize}
+        } catch {
+            if($null -ne $Finalize){
+                foreach($file in Get-ChildItem -LiteralPath $directory -File -Force){
+                    if($file.Name -in $metadata -and -not $before.ContainsKey($file.Name)){Remove-Item -LiteralPath $file.FullName}
+                }
+                foreach($name in $before.Keys){
+                    $path=Join-Path $directory $name
+                    if(-not (Test-Path -LiteralPath $path) -or (Get-NativeHash $path) -cne $beforeHash[$name]){[IO.File]::WriteAllBytes($path,$before[$name])}
+                }
+                foreach($generation in Get-ChildItem -LiteralPath (Join-Path $directory 'generations') -Directory -ErrorAction SilentlyContinue){
+                    if($generation.Name -cnotin $generations -and $generation.Name -cmatch '^[a-f0-9]{32}$'){
+                        Assert-NativeTree $generation.FullName
+                        Remove-Item -LiteralPath $generation.FullName -Recurse -Force
                     }
                 }
             }
-            $handles = @{}
-            try {
-                if (Test-Path -LiteralPath (Join-Path $directory 'generations')) { $handles = Open-NativeBinaryGuard $directory }
-                Write-NativeProgress 'copy' 54
-                $null = Install-NativeCandidate $directory $Zip $Hash 'beta' $source
-            } finally { foreach ($handle in $handles.Values) { $handle.Dispose() } }
+            throw
         }
-        # Setup explícito renueva el bootstrap; el feed conserva el instalado.
-        Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'candidate.ps1') -Destination (Join-Path $directory 'candidate.ps1') -Force
-        Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'beta.ps1') -Destination (Join-Path $directory 'beta.ps1') -Force
-        if (Test-Path -LiteralPath $retained) { Remove-Item -LiteralPath $retained }
     } finally { $session.Dispose() }
 }
 

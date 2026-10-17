@@ -7,6 +7,7 @@ param(
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+& (Join-Path $PSScriptRoot 'installer-registration-tests.ps1')
 . (Join-Path $PSScriptRoot 'beta.ps1')
 $root = Join-Path (Assert-NativePath $EvidenceDirectory) ('setup-' + [guid]::NewGuid().ToString('N'))
 $key = 'HKCU:/Software/Microsoft/Windows/CurrentVersion/Uninstall/VantareNativeBetaQA1492'

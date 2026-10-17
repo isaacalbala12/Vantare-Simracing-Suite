@@ -1,6 +1,8 @@
 ## #1697 / VANTA-105 · Propuesta de QA hosted del Hub (17-oct-2026)
 
-Encargo del orquestador: PR draft separado desde nightly64dc28446. Nuevo
+Encargo del orquestador: PR draft #1698 separado desde nightly64dc28446.
+Código a2ac7f6e9 subido; CI existente pendiente. Mantener draft para revisión.
+El job se limita a la rama de esta propuesta, sin builds en otros PR. Nuevo
 workflow opcional solo PR a nightly, job omitido mientras draft; no modifica
 workflows existentes ni checks requeridos. Depende de #1694 / PR #1696.
 Compila payload/Setup Release nuevos sin configuración remota, instala en VM

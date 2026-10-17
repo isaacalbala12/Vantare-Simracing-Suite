@@ -1635,7 +1635,7 @@ pub fn run_with_access(mut options: Options, access: navigation::Access) -> Resu
                     }
                 }
                 Err(error) => {
-                    *failure.borrow_mut() = Some(format!("abrir Hub: {error}"));
+                    *failure.borrow_mut() = Some(format!("abrir Hub: {error:#}"));
                     cx.quit();
                     return;
                 }

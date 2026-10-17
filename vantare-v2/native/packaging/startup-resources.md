@@ -12,6 +12,7 @@ del servidor, sin leer configuraciones privadas ni archivos .env.
 | Hub `shell::load` → `workshop::Prepared::load` | Abre siempre `standings-design-system.sequence.json`, incluso desde Home. Faltaba en el ZIP. Se incluye explícitamente. |
 | Hub `Workshop::select_widget` | Busca `<kind>-design-system.sequence.json` o `<kind>.snapshot.json` en el catálogo instalado. Se enumeran las 17 secuencias aprobadas y el snapshot de Session Alerts que faltaba; los demás snapshots ya estaban. Sin glob de fixtures. |
 | Hub `scene::fixtures_root` | Prefiere `bin/fixtures`. Release deja de buscar el checkout de compilación; Debug mantiene ese recurso de desarrollo. |
+| Backend GPUI Windows | Release embebe los shaders compilados (`shaders_bytes.rs` generado por build.rs); solo Debug compila HLSL desde el checkout. No hay HLSL suelto obligatorio para Release. |
 | Hub Studio, demos, Orbit y UI | Las escenas de `studio/catalog`, `studio/scenes`, `studio/examples`, `demo`, tokens y recursos de marca/fuentes se embeben con `include_str!`/`include_bytes!` o el proveedor de assets. No necesitan copias runtime de esas fuentes. Las lecturas `ui/app.rs` desde fixtures están bajo `cfg(test)`. |
 | `vantare-workshop` independiente | Usa `ui::workshop` y su catálogo del checkout; es herramienta de desarrollo, excluida de beta. No es el Workshop integrado del Hub. |
 | `vantare-overlays` | Lee layout del usuario si existe y descubre `vantare-core.exe` junto al EXE. El layout ausente usa valores iniciales; no carga las escenas del checkout para el modo normal de IPC. |

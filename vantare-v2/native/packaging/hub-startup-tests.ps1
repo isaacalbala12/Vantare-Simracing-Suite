@@ -49,7 +49,8 @@ function Probe-Hub([string]$Case,[bool]$ExpectedReady){
             if(Test-Path -LiteralPath $ready){
                 $marker=Get-Item -LiteralPath $ready
                 if($marker.LastWriteTimeUtc -ge $started -and [IO.File]::ReadAllText($ready).Trim() -ceq [string]$process.Id){
-                    $observed=$true;$window=$process.MainWindowHandle.ToInt64();break
+                    $observed=$true;$process.Refresh();$window=$process.MainWindowHandle.ToInt64()
+                    if(-not $ExpectedReady -or $window -ne 0){break}
                 }
             }
             if($process.HasExited){break}

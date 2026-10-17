@@ -266,6 +266,20 @@ que el paquete cargue en este PC no certifica redistribución ni equipo limpio.
 
 # Candidato offline — fase 7 (ISA-1432)
 
+#1692: el builder de distribución compila con CRT estático y target explícito
+`x86_64-pc-windows-msvc`, igual que Setup/Uninstall. Se limita a esa invocación:
+no cambia el toolchain ni la configuración Cargo del desarrollo y restaura los
+flags previos incluso si Cargo falla. Los EXE salen de `<target>/x86_64-pc-windows-msvc/<perfil>`.
+DuckDB sigue siendo bundled (sin DUCKDB_LIB_DIR), y `cc` recibe crt-static para
+usar /MT en su C++. Antes de ejecutar --version o copiar cada EXE, dumpbin
+/DEPENDENTS revisa imports normales y diferidos: VC Runtime, MSVC C++ y UCRT
+dinámicos se rechazan. El inspector usa los Build Tools MSVC ya requeridos;
+no requiere Python ni incorpora un redistribuible. La UCRT dinámica es parte
+de Windows 10/11, pero esta guarda exige que el CRT del paquete sea estático.
+`build-crt-tests.ps1` prueba PE /MT, /MD, delay imports, fallos del inspector y
+restauración de flags en el builder. Las DLL del sistema y Windows limpio se
+verifican por separado: pasar el gate CRT no acredita GPU, Hub ni servicios remotos.
+
 Windows x64, PowerShell 5.1/.NET y volumen local con reemplazo atómico (NTFS).
 No requiere Python, NSIS, crates nuevas ni permisos de administrador.
 **Candidato técnico sin firma; Wails sigue siendo el producto distribuido.**

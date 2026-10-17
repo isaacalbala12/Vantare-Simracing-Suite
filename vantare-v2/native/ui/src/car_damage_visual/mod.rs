@@ -24,8 +24,67 @@ fn tone(value: Option<f64>) -> Color {
     )
 }
 fn percentage(value: Option<f64>) -> String {
-    value.map_or_else(|| "—".into(), |v| format!("{:.0}%", v * 100.0))
+    vantare_domain::format::percent(value.map(|v| (v * 100.0).round() / 100.0))
 }
+fn paint_number_text(
+    vm: &ViewModel,
+    kit: &Kit<'_>,
+    mut draw: impl FnMut(crate::vantare::paint::Label<'_>),
+) {
+    for (i, label) in [
+        "Aero",
+        if kit.es() { "Carrocería" } else { "Body" },
+        if kit.es() {
+            "Suspensión"
+        } else {
+            "Suspension"
+        },
+        if kit.es() { "Neumáticos" } else { "Tyres" },
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        if i == 0 && !vm.show_aero {
+            continue;
+        }
+        let slot = i - usize::from(!vm.show_aero);
+        let y = 62.0 + slot as f32 * 43.0;
+        draw(crate::vantare::paint::Label {
+            value: label,
+            x: 12.0,
+            right: None,
+            top: y,
+            height: 18.0,
+            face: Face::Body,
+            ink: kit.ink(Face::Body, 11.0, 0.3, kit.style.colors.muted.hsla()),
+        });
+        if i < 3 {
+            draw(crate::vantare::paint::Label {
+                value: &vm.percentages[i],
+                x: 0.0,
+                right: Some(188.0),
+                top: y + 12.0,
+                height: 24.0,
+                face: Face::Display,
+                ink: kit.ink(Face::Display, 22.0, 0.0, tone(vm.integrity[i]).hsla()),
+            });
+        } else {
+            for j in 0..4 {
+                let value = percentage(vm.tyres[j].map(|v| 1.0 - v));
+                draw(crate::vantare::paint::Label {
+                    value: &value,
+                    x: 16.0 + j as f32 * 43.0,
+                    right: None,
+                    top: y + 18.0,
+                    height: 16.0,
+                    face: Face::Mono,
+                    ink: kit.ink(Face::Mono, 10.0, 0.0, tone(vm.tyres[j]).hsla()),
+                });
+            }
+        }
+    }
+}
+
 fn paint(
     vm: &ViewModel,
     numbers: bool,
@@ -130,61 +189,20 @@ fn paint(
         );
     }
     if numbers {
-        for (i, label) in [
-            "Aero",
-            if kit.es() { "Carrocería" } else { "Body" },
-            if kit.es() {
-                "Suspensión"
-            } else {
-                "Suspension"
-            },
-            if kit.es() { "Neumáticos" } else { "Tyres" },
-        ]
-        .into_iter()
-        .enumerate()
-        {
-            let y = 62.0 + i as f32 * 43.0;
+        for slot in 0..(4 - usize::from(!vm.show_aero)) {
             round_rect(
                 window,
                 12.0,
-                y + 39.0,
+                62.0 + slot as f32 * 43.0 + 39.0,
                 176.0,
                 1.0,
                 0.0,
                 Color(0xffffff, 0.06).hsla(),
             );
-            kit.label(window, cx, label, 12.0, None, y, 18.0, Face::Body, &muted);
-            if i < 3 {
-                let ink = kit.ink(Face::Display, 22.0, 0.0, tone(vm.integrity[i]).hsla());
-                kit.label(
-                    window,
-                    cx,
-                    &percentage(vm.integrity[i]),
-                    0.0,
-                    Some(188.0),
-                    y + 12.0,
-                    24.0,
-                    Face::Display,
-                    &ink,
-                );
-            } else {
-                for j in 0..4 {
-                    let x = 16.0 + j as f32 * 43.0;
-                    let ink = kit.ink(Face::Mono, 10.0, 0.0, tone(vm.tyres[j]).hsla());
-                    kit.label(
-                        window,
-                        cx,
-                        &percentage(vm.tyres[j]),
-                        x,
-                        None,
-                        y + 18.0,
-                        16.0,
-                        Face::Mono,
-                        &ink,
-                    );
-                }
-            }
         }
+        paint_number_text(vm, &kit, |label| {
+            label.paint(&kit, window, cx);
+        });
     } else {
         let (ox, oy) = text::origin();
         // SVG aprobado: viewBox 120×180 ajustado al cuerpo de la tarjeta.
@@ -542,5 +560,47 @@ mod tests {
         assert!(matches!(widget.frame(prefs, false).1, Wake::Idle));
         #[cfg(feature = "parity-capture")]
         assert!(!widget.animating());
+    }
+}
+
+#[cfg(test)]
+mod numbers_render_tests {
+    use super::*;
+    fn photo() -> Snapshot {
+        use vantare_domain::{Capability, Quality::Reliable, SourceState};
+        let mut photo = crate::source::fixed();
+        photo.state.source_state = SourceState::Live;
+        photo.state.capabilities.damage = Capability::Fresh;
+        let p = photo.state.player.as_mut().expect("jugador");
+        p.damage.aero = Reliable(0.2);
+        p.damage.body = Reliable(0.7);
+        p.damage.suspension = Reliable(0.9);
+        p.damage.tyre_wear = [Reliable(0.98); 4];
+        photo
+    }
+    #[test]
+    fn numbers_paint_damage_loss_not_remaining_integrity() {
+        let vm = Settings::default().project(&photo(), Preferences::default());
+        crate::paint_tests::with_kit(SIZE.0, vantare_domain::format::Language::Es, |kit| {
+            let painted = crate::paint_tests::observe(|draw| paint_number_text(&vm, kit, draw));
+            let text: Vec<_> = painted.iter().map(|label| label.value.as_str()).collect();
+            assert!(text.contains(&"80%") && text.contains(&"30%") && text.contains(&"10%"));
+            assert_eq!(text.iter().filter(|v| **v == "2%").count(), 4);
+            assert!(!text.contains(&"98%"));
+        });
+    }
+    #[test]
+    fn show_aero_false_removes_the_painted_row_and_compacts_the_rest() {
+        let vm = Settings {
+            show_aero: false,
+            ..Settings::default()
+        }
+        .project(&photo(), Preferences::default());
+        crate::paint_tests::with_kit(SIZE.0, vantare_domain::format::Language::Es, |kit| {
+            let painted = crate::paint_tests::observe(|draw| paint_number_text(&vm, kit, draw));
+            assert!(!painted.iter().any(|label| label.value == "Aero"));
+            assert_eq!(painted[0].value, "Carrocería");
+            assert_eq!(painted[0].top, 62.0);
+        });
     }
 }

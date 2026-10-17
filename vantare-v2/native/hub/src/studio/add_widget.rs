@@ -1406,8 +1406,25 @@ mod tests {
 
     #[test]
     fn catalog_lists_every_registered_widget_once() {
-        assert_eq!(ORDER.len(), Kind::CATALOG.len());
-        assert!(Kind::CATALOG.iter().all(|kind| ORDER.contains(kind)));
+        let expected: Vec<_> = Kind::ALL
+            .iter()
+            .copied()
+            .filter(|kind| *kind != Kind::CarDamageNumbers)
+            .collect();
+        assert_eq!(ORDER.len(), expected.len());
+        assert_eq!(Kind::CATALOG.len(), expected.len());
+        for kind in expected {
+            assert_eq!(
+                ORDER.iter().filter(|entry| **entry == kind).count(),
+                1,
+                "{kind:?} en catálogo pintado"
+            );
+            assert_eq!(
+                Kind::CATALOG.iter().filter(|entry| **entry == kind).count(),
+                1,
+                "{kind:?} en registro visible"
+            );
+        }
     }
 
     #[test]

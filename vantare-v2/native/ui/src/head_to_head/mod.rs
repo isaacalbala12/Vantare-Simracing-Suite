@@ -17,6 +17,51 @@ use vantare_domain::{
     head_to_head::{self, Target, ViewModel},
 };
 pub const SIZE: (f32, f32) = (780.0, 72.0);
+
+fn difference_color(value: &str, style: &Style) -> Color {
+    let value = value.strip_prefix('−').map_or_else(
+        || value.parse::<f64>().ok(),
+        |v| v.parse::<f64>().ok().map(|v| -v),
+    );
+    match value.filter(|v| v.is_finite()) {
+        Some(v) if v < 0.0 => style.colors.gain,
+        Some(v) if v > 0.0 => style.colors.loss,
+        _ => style.colors.muted,
+    }
+}
+fn paint_comparison(
+    value: &str,
+    x: f32,
+    top: f32,
+    big: bool,
+    kit: &Kit<'_>,
+    mut draw: impl FnMut(crate::vantare::paint::Label<'_>),
+) {
+    let value = if value.is_empty() {
+        vantare_domain::format::PLACEHOLDER
+    } else {
+        value
+    };
+    let (face, size, tracking, height) = if big {
+        (Face::Display, 22.0, 0.5, 22.0)
+    } else {
+        (Face::Mono, 12.0, 0.0, 16.0)
+    };
+    draw(crate::vantare::paint::Label {
+        value,
+        x,
+        right: None,
+        top,
+        height,
+        face,
+        ink: kit.ink(
+            face,
+            size,
+            tracking,
+            difference_color(value, kit.style).hsla(),
+        ),
+    });
+}
 pub fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
     paint_content(vm, true, Preferences::default(), window, cx);
 }
@@ -132,36 +177,22 @@ fn paint_content(
         Face::Display,
         &mode,
     );
-    let gap = kit.ink(
-        Face::Display,
-        22.0,
-        0.5,
-        Color(
-            if (duel.best_laps && !duel.good) || (!duel.best_laps && duel.gap.starts_with('-')) {
-                0xff7a82
-            } else {
-                0x4ade80
-            },
-            1.0,
-        )
-        .hsla(),
-    );
-    kit.label(
-        window,
-        cx,
-        &duel.gap,
-        300.0 - text::width(window, &duel.gap, &gap) / 2.0,
-        None,
-        18.0,
-        22.0,
-        Face::Display,
-        &gap,
-    );
+    paint_comparison(&duel.gap, 300.0, 18.0, true, &kit, |mut label| {
+        label.x -= text::width(window, label.value, &label.ink) / 2.0;
+        label.paint(&kit, window, cx);
+    });
     let trend = kit.ink(
         Face::Mono,
         10.0,
         0.0,
-        Color(if duel.good { 0x4ade80 } else { 0xff7a82 }, 1.0).hsla(),
+        if duel.trend.is_empty() || duel.trend == vantare_domain::format::PLACEHOLDER {
+            style.colors.muted
+        } else if duel.good {
+            style.colors.gain
+        } else {
+            style.colors.loss
+        }
+        .hsla(),
     );
     kit.label(
         window,
@@ -201,7 +232,7 @@ fn paint_content(
             kit.label(
                 window,
                 cx,
-                &format!("S{}", i + 1),
+                ["S1", "S2", "S3"][i],
                 x,
                 None,
                 15.0,
@@ -209,24 +240,11 @@ fn paint_content(
                 Face::Display,
                 &mode,
             );
-            let color = if duel.sectors[i].starts_with('-') {
-                0x4ade80
-            } else {
-                0xff7a82
-            };
-            let ink = kit.ink(Face::Mono, 12.0, 0.0, Color(color, 1.0).hsla());
-            kit.label(
-                window,
-                cx,
-                &duel.sectors[i],
-                x,
-                None,
-                30.0,
-                16.0,
-                Face::Mono,
-                &ink,
-            );
-            round_rect(window, x, 51.0, 47.0, 3.0, 1.5, Color(color, 1.0).hsla());
+            let color = difference_color(&duel.sectors[i], &style);
+            paint_comparison(&duel.sectors[i], x, 30.0, false, &kit, |label| {
+                label.paint(&kit, window, cx);
+            });
+            round_rect(window, x, 51.0, 47.0, 3.0, 1.5, color.hsla());
         }
     }
 }
@@ -544,5 +562,39 @@ mod tests {
         assert!(matches!(widget.frame(prefs, false).1, Wake::Idle));
         #[cfg(feature = "parity-capture")]
         assert!(!widget.animating());
+    }
+}
+
+#[cfg(test)]
+mod comparison_render_tests {
+    #[test]
+    fn race_gap_paints_loss_ahead_and_gain_behind() {
+        crate::paint_tests::with_kit(super::SIZE.0, vantare_domain::format::Language::Es, |kit| {
+            for (value, color) in [
+                ("+3.200", kit.style.colors.loss),
+                ("-3.200", kit.style.colors.gain),
+                ("−3.200", kit.style.colors.gain),
+            ] {
+                let painted = crate::paint_tests::observe(|draw| {
+                    super::paint_comparison(value, 300.0, 18.0, true, kit, draw)
+                });
+                assert_eq!(painted[0].value, value);
+                assert_eq!(painted[0].color, color.hsla());
+            }
+        });
+    }
+    #[test]
+    fn missing_gap_and_sectors_paint_a_neutral_placeholder() {
+        crate::paint_tests::with_kit(super::SIZE.0, vantare_domain::format::Language::Es, |kit| {
+            for big in [true, false] {
+                for value in ["", "—"] {
+                    let painted = crate::paint_tests::observe(|draw| {
+                        super::paint_comparison(value, 300.0, 18.0, big, kit, draw)
+                    });
+                    assert_eq!(painted[0].value, "—");
+                    assert_eq!(painted[0].color, kit.style.colors.muted.hsla());
+                }
+            }
+        });
     }
 }

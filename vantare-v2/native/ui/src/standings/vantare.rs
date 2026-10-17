@@ -865,6 +865,28 @@ impl State {
 // Pintado
 // ---------------------------------------------------------------------------
 
+fn paint_gap_text(
+    class: Option<&str>,
+    fallback: &str,
+    right: f32,
+    y: f32,
+    height: f32,
+    color: gpui::Hsla,
+    kit: &Kit<'_>,
+    mut draw: impl FnMut(crate::vantare::paint::Label<'_>),
+) {
+    let leader = class.map(|class| format!("1º {}", if class == "LMGT3" { "GT3" } else { class }));
+    draw(crate::vantare::paint::Label {
+        value: leader.as_deref().unwrap_or(fallback),
+        x: 0.0,
+        right: Some(right),
+        top: y,
+        height,
+        face: Face::Mono,
+        ink: kit.ink(Face::Mono, kit.style.fonts.mono, 0.0, color),
+    });
+}
+
 struct Painter<'a> {
     kit: Kit<'a>,
     options: &'a Options,
@@ -1408,13 +1430,19 @@ impl Painter<'_> {
                         && is_leader(row)
                         && self.options.mode == Mode::AllClasses
                         && shown_group(board) != Some(gi))
-                    .then(|| format!("1º {}", group.short.trim_start_matches("LM")));
-                    let text =
-                        class_leader
-                            .as_deref()
-                            .unwrap_or(if is_gap { gap } else { &row.interval });
-                    let ink = self.ink(Face::Mono, f.mono, 0.0, color.hsla());
-                    self.label(window, cx, text, 0.0, Some(right), y, h, Face::Mono, &ink);
+                    .then_some(group.short.as_str());
+                    paint_gap_text(
+                        class_leader,
+                        if is_gap { gap } else { &row.interval },
+                        right,
+                        y,
+                        h,
+                        color.hsla(),
+                        &self.kit,
+                        |label| {
+                            label.paint(&self.kit, window, cx);
+                        },
+                    );
                 }
             }
         }
@@ -2303,5 +2331,30 @@ mod tests {
         style.geometry.row_height = 30.0;
         state.set_style(Arc::new(style));
         assert!(state.size().1 > before.1);
+    }
+}
+
+#[cfg(test)]
+mod class_text_render_tests {
+    #[test]
+    fn class_leader_text_preserves_lmp2_and_only_abbreviates_lmgt3() {
+        crate::paint_tests::with_kit(520.0, vantare_domain::format::Language::Es, |kit| {
+            for (class, expected) in [("LMP2", "1º LMP2"), ("LMGT3", "1º GT3"), ("LMH", "1º LMH")]
+            {
+                let painted = crate::paint_tests::observe(|draw| {
+                    super::paint_gap_text(
+                        Some(class),
+                        "—",
+                        508.0,
+                        0.0,
+                        24.0,
+                        kit.style.colors.value.hsla(),
+                        kit,
+                        draw,
+                    )
+                });
+                assert_eq!(painted[0].value, expected);
+            }
+        });
     }
 }

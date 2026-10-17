@@ -12,7 +12,7 @@ use crate::vantare::{
 };
 use gpui::{App, ContentMask};
 use motion::{Card, Motion};
-use std::time::Instant;
+use std::{borrow::Cow, sync::Arc, time::Instant};
 use vantare_domain::{
     SessionId, Snapshot,
     broadcast_tower::{self, Accent, Status, ViewModel},
@@ -48,14 +48,64 @@ impl Settings {
     #[must_use]
     pub fn normalized(&self) -> Self {
         let mut value = self.clone();
-        value.row_count = value.row_count.clamp(3, 20);
+        value.row_count = value.row_count.clamp(3, 11);
         value.show_sof = false;
         value
     }
 }
 
+struct PaintLabels {
+    lap: String,
+    intervals: Vec<Option<String>>,
+}
+impl PaintLabels {
+    fn new(vm: &ViewModel, prefs: Preferences) -> Self {
+        let timed = ["clasi", "qual", "pr"].iter().any(|prefix| {
+            vm.session
+                .get(..prefix.len())
+                .is_some_and(|value| value.eq_ignore_ascii_case(prefix))
+        });
+        let lap = if timed {
+            vm.remaining.clone()
+        } else {
+            format!(
+                "{} {}{} · {}",
+                if prefs.language == vantare_domain::format::Language::Es {
+                    "V"
+                } else {
+                    "L"
+                },
+                vm.lap,
+                vm.total_laps.map_or_else(String::new, |n| format!("/{n}")),
+                vm.remaining
+            )
+        };
+        let parse = |value: &str| {
+            if matches!(value, "LÍDER" | "LEADER") {
+                Some(0.0)
+            } else {
+                value.parse::<f32>().ok()
+            }
+        };
+        let intervals = vm
+            .rows
+            .windows(2)
+            .map(|pair| {
+                if pair[0].class != pair[1].class {
+                    return None;
+                }
+                let (a, b) = parse(&pair[0].gap).zip(parse(&pair[1].gap))?;
+                let interval = b - a;
+                (interval > 0.0 && interval < 1.0).then(|| format!("{interval:.1}"))
+            })
+            .collect();
+        Self { lap, intervals }
+    }
+}
+
 pub(crate) struct Widget {
-    vm: ViewModel,
+    vm: Arc<ViewModel>,
+    labels: Arc<PaintLabels>,
     settings: Settings,
     carousel_start: Instant,
     motion: Motion,
@@ -64,8 +114,15 @@ pub(crate) struct Widget {
 
 impl Widget {
     pub(crate) fn new(settings: &Settings, prefs: Preferences) -> Self {
+        let vm = broadcast_tower::project_rows(
+            &Snapshot::default(),
+            prefs,
+            settings.normalized().row_count,
+        );
+        let labels = Arc::new(PaintLabels::new(&vm, prefs));
         Self {
-            vm: broadcast_tower::project_rows(&Snapshot::default(), prefs, settings.row_count),
+            vm: Arc::new(vm),
+            labels,
             settings: settings.normalized(),
             carousel_start: Instant::now(),
             motion: Motion::default(),
@@ -84,7 +141,7 @@ impl Widget {
             next.weather.clear();
         }
         let boundary = (snapshot.epoch, snapshot.state.session.id);
-        let changed = self.vm != next;
+        let changed = self.vm.as_ref() != &next;
         let was_animating = self.motion.wake(Instant::now()) != Wake::Idle;
         if self.boundary == Some(boundary) {
             self.motion.ingest(&self.vm, &next, Instant::now());
@@ -93,13 +150,17 @@ impl Widget {
             self.carousel_start = Instant::now();
         }
         self.boundary = Some(boundary);
-        self.vm = next;
+        if changed {
+            self.labels = Arc::new(PaintLabels::new(&next, prefs));
+            self.vm = Arc::new(next);
+        }
         changed || (was_animating && self.motion.wake(Instant::now()) == Wake::Idle)
     }
 
     pub(crate) fn frame(&mut self, prefs: Preferences, reduced: bool) -> (Paint, Wake) {
         let now = Instant::now();
         let vm = self.vm.clone();
+        let labels = Arc::clone(&self.labels);
         let carousel = !reduced
             && self.settings.driver_carousel
             && vm.status == Status::Ready
@@ -118,7 +179,9 @@ impl Widget {
         };
         let show_weather = self.settings.show_weather;
         (
-            Box::new(move |window, cx| paint(&vm, &cards, show_weather, prefs, window, cx)),
+            Box::new(move |window, cx| {
+                paint(&vm, &labels, &cards, show_weather, prefs, window, cx)
+            }),
             if reduced {
                 Wake::Idle
             } else if carousel {
@@ -151,8 +214,42 @@ fn carousel_cards(vm: &ViewModel, seconds: f32) -> Vec<Card> {
         .collect()
 }
 
+fn paint_status_text(
+    vm: &ViewModel,
+    kit: &Kit<'_>,
+    mut draw: impl FnMut(crate::vantare::paint::Label<'_>),
+) {
+    draw(crate::vantare::paint::Label {
+        value: broadcast_tower::status_text(vm.status, kit.language),
+        x: 190.0,
+        right: None,
+        top: 18.0,
+        height: 20.0,
+        face: Face::Body,
+        ink: kit.ink(Face::Body, 12.0, 0.0, kit.style.colors.muted.hsla()),
+    });
+}
+type ClassGroup<'a> = (usize, &'a str, Accent);
+fn card_geometry(vm: &ViewModel, show_weather: bool) -> (Vec<ClassGroup<'_>>, f32) {
+    let groups: Vec<_> = vm
+        .rows
+        .iter()
+        .enumerate()
+        .filter(|(i, row)| *i == 0 || vm.rows[*i - 1].class != row.class)
+        .map(|(i, row)| (i, row.class.as_str(), row.accent))
+        .collect();
+    let available =
+        SIZE.0 - 160.0 - if show_weather { 50.0 } else { 8.0 } - groups.len() as f32 * 40.0;
+    let width = (available / vm.rows.len().max(1) as f32).clamp(1.0, 118.0);
+    (groups, width)
+}
+fn card_left(slot: f32, width: f32, groups: &[ClassGroup<'_>]) -> f32 {
+    160.0 + slot * width + groups.iter().filter(|(i, _, _)| *i as f32 <= slot).count() as f32 * 40.0
+}
+
 fn paint(
     vm: &ViewModel,
+    labels: &PaintLabels,
     cards: &[Card],
     show_weather: bool,
     prefs: Preferences,
@@ -190,54 +287,33 @@ fn paint(
         &title,
     );
     let small = kit.ink(Face::Mono, 11.0, 0.0, style.colors.muted.hsla());
-    let timed = vm.session.to_lowercase().starts_with("clasi")
-        || vm.session.to_lowercase().starts_with("qual")
-        || vm.session.to_lowercase().starts_with("pr");
-    let lap = if timed {
-        vm.remaining.clone()
-    } else {
-        format!(
-            "V {}{} · {}",
-            vm.lap,
-            vm.total_laps.map_or_else(String::new, |n| format!("/{n}")),
-            vm.remaining
-        )
-    };
-    kit.label(window, cx, &lap, 16.0, None, 32.0, 14.0, Face::Mono, &small);
+    kit.label(
+        window,
+        cx,
+        &labels.lap,
+        16.0,
+        None,
+        32.0,
+        14.0,
+        Face::Mono,
+        &small,
+    );
     if vm.status != Status::Ready {
-        let muted = kit.ink(Face::Body, 12.0, 0.0, style.colors.muted.hsla());
-        kit.label(
-            window,
-            cx,
-            "Esperando a LMU · la torre aparece al empezar la sesión",
-            190.0,
-            None,
-            18.0,
-            20.0,
-            Face::Body,
-            &muted,
-        );
+        paint_status_text(vm, &kit, |label| {
+            label.paint(&kit, window, cx);
+        });
         return;
     }
-    let class_groups: Vec<_> = vm
-        .rows
-        .iter()
-        .enumerate()
-        .filter(|(i, row)| *i == 0 || vm.rows[*i - 1].class != row.class)
-        .map(|(i, row)| (i, row.class.clone(), row.accent))
-        .collect();
-    let available =
-        SIZE.0 - 160.0 - if show_weather { 50.0 } else { 8.0 } - class_groups.len() as f32 * 40.0;
-    let card_width = (available / vm.rows.len().max(1) as f32).clamp(75.0, 118.0);
+    let (class_groups, card_width) = card_geometry(vm, show_weather);
     for (index, class, accent) in &class_groups {
         let groups = class_groups.iter().filter(|(i, _, _)| i < index).count() as f32;
         let x = 160.0 + *index as f32 * card_width + groups * 40.0;
         let color = class_color(*accent);
         round_rect(window, x, 17.0, 36.0, 22.0, 3.0, Color(color, 1.0).hsla());
         let text = kit.ink(Face::Display, 11.0, 1.2, Color(0xffffff, 1.0).hsla());
-        let label = if class == "HYP" {
+        let label = if *class == "HYP" {
             "HY"
-        } else if class == "LMG" {
+        } else if *class == "LMG" {
             "GT3"
         } else {
             class
@@ -254,52 +330,39 @@ fn paint(
             &text,
         );
     }
-    for (i, pair) in vm.rows.windows(2).enumerate() {
-        let parse = |value: &str| {
-            if value == "LÍDER" || value == "LEADER" {
-                Some(0.0)
-            } else {
-                value.parse::<f32>().ok()
+    for (i, label) in labels.intervals.iter().enumerate() {
+        if let Some(label) = label {
+            let groups = class_groups.iter().filter(|(n, _, _)| *n <= i).count() as f32;
+            let x = 160.0 + i as f32 * card_width + groups * 40.0;
+            for (dx, y, w, h) in [
+                (0.0, 10.0, card_width * 2.0 - 4.0, 1.0),
+                (0.0, 45.0, card_width * 2.0 - 4.0, 1.0),
+                (0.0, 10.0, 1.0, 36.0),
+                (card_width * 2.0 - 5.0, 10.0, 1.0, 36.0),
+            ] {
+                round_rect(window, x + dx, y, w, h, 0.0, Color(0xffffff, 0.22).hsla());
             }
-        };
-        if pair[0].class == pair[1].class
-            && let Some((a, b)) = parse(&pair[0].gap).zip(parse(&pair[1].gap))
-        {
-            let interval = b - a;
-            if interval > 0.0 && interval < 1.0 {
-                let groups = class_groups.iter().filter(|(n, _, _)| *n <= i).count() as f32;
-                let x = 160.0 + i as f32 * card_width + groups * 40.0;
-                for (dx, y, w, h) in [
-                    (0.0, 10.0, card_width * 2.0 - 4.0, 1.0),
-                    (0.0, 45.0, card_width * 2.0 - 4.0, 1.0),
-                    (0.0, 10.0, 1.0, 36.0),
-                    (card_width * 2.0 - 5.0, 10.0, 1.0, 36.0),
-                ] {
-                    round_rect(window, x + dx, y, w, h, 0.0, Color(0xffffff, 0.22).hsla());
-                }
-                round_rect(
-                    window,
-                    x + card_width - 14.0,
-                    2.0,
-                    28.0,
-                    12.0,
-                    6.0,
-                    Color(0xf2eeee, 1.0).hsla(),
-                );
-                let ink = kit.ink(Face::Mono, 9.0, 0.0, Color(0x161314, 1.0).hsla());
-                let label = format!("{interval:.1}");
-                kit.label(
-                    window,
-                    cx,
-                    &label,
-                    x + card_width - text::width(window, &label, &ink) / 2.0,
-                    None,
-                    1.0,
-                    12.0,
-                    Face::Mono,
-                    &ink,
-                );
-            }
+            round_rect(
+                window,
+                x + card_width - 14.0,
+                2.0,
+                28.0,
+                12.0,
+                6.0,
+                Color(0xf2eeee, 1.0).hsla(),
+            );
+            let ink = kit.ink(Face::Mono, 9.0, 0.0, Color(0x161314, 1.0).hsla());
+            kit.label(
+                window,
+                cx,
+                label,
+                x + card_width - text::width(window, label, &ink) / 2.0,
+                None,
+                1.0,
+                12.0,
+                Face::Mono,
+                &ink,
+            );
         }
     }
     window.with_content_mask(
@@ -308,11 +371,7 @@ fn paint(
         }),
         |window| {
             for card in cards {
-                let groups = class_groups
-                    .iter()
-                    .filter(|(i, _, _)| *i as f32 <= card.slot)
-                    .count() as f32;
-                let x = 160.0 + card.slot * card_width + groups * 40.0;
+                let x = card_left(card.slot, card_width, &class_groups);
                 if card.row.is_player {
                     round_rect(
                         window,
@@ -359,6 +418,7 @@ fn paint(
                     1.2,
                     Color(0xfaf7f7, card.opacity).hsla(),
                 );
+                let code = text::fit_borrowed(window, &code, &name, (card_width - 29.0).max(0.0));
                 kit.label(
                     window,
                     cx,
@@ -378,10 +438,12 @@ fn paint(
                 } else {
                     &card.row.gap
                 };
+                let gap_text =
+                    text::fit_borrowed(window, gap_text, &gap, (card_width - 69.0).max(0.0));
                 kit.label(
                     window,
                     cx,
-                    gap_text,
+                    &gap_text,
                     x + 65.0,
                     None,
                     19.0,
@@ -406,9 +468,18 @@ fn paint(
         );
     }
 }
-fn driver_code(name: &str) -> String {
-    let surname = name.split_once(". ").map_or(name, |(_, surname)| surname);
-    surname.chars().take(3).collect::<String>().to_uppercase()
+fn driver_code(name: &str) -> Cow<'_, str> {
+    let surname = name.rsplit_once(". ").map_or(name, |(_, surname)| surname);
+    let end = surname
+        .char_indices()
+        .nth(3)
+        .map_or(surname.len(), |(byte, _)| byte);
+    let value = &surname[..end];
+    if value.chars().any(char::is_lowercase) {
+        Cow::Owned(value.to_uppercase())
+    } else {
+        Cow::Borrowed(value)
+    }
 }
 fn class_color(accent: Accent) -> u32 {
     match accent {
@@ -517,9 +588,10 @@ mod tests {
     #[test]
     fn configured_cards_weather_and_carousel_follow_product_options() {
         let prefs = Preferences::default();
-        let snapshot =
-            vantare_ipc::snapshot_from_fixture_json(include_str!("../../fixtures/standings.snapshot.json"))
-                .expect("escena");
+        let snapshot = vantare_ipc::snapshot_from_fixture_json(include_str!(
+            "../../fixtures/standings.snapshot.json"
+        ))
+        .expect("escena");
         for count in [3, 5, 10] {
             let mut widget = Widget::new(
                 &Settings {
@@ -656,5 +728,75 @@ mod tests {
         assert_eq!(widget.frame(prefs, false).1, Wake::Idle);
         #[cfg(feature = "parity-capture")]
         assert!(!widget.animating());
+    }
+}
+
+#[cfg(test)]
+mod render_contract_tests {
+    use super::*;
+    use vantare_domain::format::Language;
+    #[test]
+    fn every_supported_card_is_inside_the_paint_mask() {
+        let prefs = Preferences::default();
+        let mut widget = Widget::new(
+            &Settings {
+                row_count: 20,
+                ..Settings::default()
+            },
+            prefs,
+        );
+        widget.ingest(&crate::source::fixed(), prefs);
+        for weather in [false, true] {
+            for distinct_classes in [false, true] {
+                let mut vm = widget.vm.as_ref().clone();
+                if distinct_classes {
+                    for (i, row) in vm.rows.iter_mut().enumerate() {
+                        row.class = format!("C{i}");
+                    }
+                }
+                let (groups, width) = card_geometry(&vm, weather);
+                let right = SIZE.0 - if weather { 50.0 } else { 8.0 };
+                for slot in 0..vm.rows.len() {
+                    let x = card_left(slot as f32, width, &groups);
+                    assert!(
+                        x >= 156.0 && x + width <= right + 0.01,
+                        "tarjeta {slot} recortada: {x}+{width}>{right}"
+                    );
+                }
+                assert_eq!(
+                    vm.rows.len(),
+                    11,
+                    "todas las tarjetas admitidas se han comprobado"
+                );
+            }
+        }
+    }
+    #[test]
+    fn empty_tower_paints_the_localized_reason() {
+        for (language, status, expected) in [
+            (Language::En, Status::Disconnected, "DISCONNECTED"),
+            (Language::En, Status::Missing, "NO DATA"),
+            (Language::Es, Status::Stale, "DATOS ANTIGUOS"),
+        ] {
+            let mut vm = broadcast_tower::project(&Snapshot::default(), Preferences::default());
+            vm.status = status;
+            crate::paint_tests::with_kit(SIZE.0, language, |kit| {
+                let painted = crate::paint_tests::observe(|draw| paint_status_text(&vm, kit, draw));
+                assert_eq!(painted[0].value, expected);
+            });
+        }
+    }
+}
+
+#[cfg(test)]
+mod prepared_text_tests {
+    #[test]
+    fn productive_uppercase_driver_code_is_borrowed_not_allocated() {
+        assert!(matches!(
+            super::driver_code("A. PIER GUIDI"),
+            std::borrow::Cow::Borrowed("PIE")
+        ));
+        assert_eq!(super::driver_code("A. B. SMITH"), "SMI");
+        assert_eq!(super::driver_code("É. Müller"), "MÜL");
     }
 }

@@ -107,36 +107,9 @@ impl Visual {
             kit.panel(window, height);
         }
         let c = &self.style.colors;
-        let top = if limiter {
-            self.status(
-                &kit,
-                if language == Language::Es {
-                    "LIMITADOR"
-                } else {
-                    "LIMITER"
-                },
-                20.0,
-                11.0,
-                window,
-                cx,
-            )
-        } else if [vm.clutch, vm.brake, vm.throttle]
-            .iter()
-            .any(Option::is_some)
-        {
-            vm.status_text.map_or(0.0, |status| {
-                self.status(
-                    &kit,
-                    status,
-                    self.style.geometry.banner_height,
-                    self.style.fonts.banner,
-                    window,
-                    cx,
-                )
-            })
-        } else {
-            0.0
-        };
+        let top = paint_status_band(vm, limiter, &kit, |status, height, size| {
+            self.status(&kit, status, height, size, window, cx);
+        });
         let value_top = top + VALUE_TOP;
         let track_top = value_top + VALUE_H + 6.0;
         let track_h = height - track_top - PAD_BOTTOM;
@@ -274,6 +247,62 @@ impl Visual {
             &ink,
         );
         h
+    }
+}
+
+/// La banda ocupa espacio aunque ninguno de los pedales tenga datos.
+fn paint_status_band(
+    vm: &ViewModel,
+    limiter: bool,
+    kit: &Kit<'_>,
+    mut draw: impl FnMut(&str, f32, f32),
+) -> f32 {
+    let band = if limiter {
+        Some((if kit.es() { "LIMITADOR" } else { "LIMITER" }, 20.0, 11.0))
+    } else {
+        vm.status_text.map(|status| {
+            (
+                status,
+                kit.style.geometry.banner_height,
+                kit.style.fonts.banner,
+            )
+        })
+    };
+    if let Some((status, height, size)) = band {
+        draw(status, height, size);
+        height
+    } else {
+        0.0
+    }
+}
+
+#[cfg(test)]
+mod status_render_tests {
+    use super::*;
+    #[test]
+    fn waiting_and_lost_paint_the_status_without_any_pedal_values() {
+        use vantare_domain::{Snapshot, SourceState, format::Preferences};
+        for (state, language, expected) in [
+            (SourceState::Waiting, Language::Es, "DESCONECTADO"),
+            (SourceState::Lost, Language::Es, "DESCONECTADO"),
+            (SourceState::Waiting, Language::En, "DISCONNECTED"),
+            (SourceState::Lost, Language::En, "DISCONNECTED"),
+        ] {
+            let mut snapshot = Snapshot::default();
+            snapshot.state.source_state = state;
+            let prefs = Preferences {
+                language,
+                ..Preferences::default()
+            };
+            let vm = vantare_domain::pedals::project(&snapshot, prefs);
+            crate::paint_tests::with_kit(96.0, language, |kit| {
+                let mut painted = Vec::new();
+                let height =
+                    paint_status_band(&vm, false, kit, |text, _, _| painted.push(text.to_owned()));
+                assert_eq!(painted, [expected]);
+                assert!(height > 0.0, "la banda reserva espacio sobre las barras");
+            });
+        }
     }
 }
 

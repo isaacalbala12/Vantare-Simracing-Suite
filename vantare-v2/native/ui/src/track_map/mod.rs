@@ -5,6 +5,7 @@ mod scene;
 
 use crate::efficiency::preview::PaintWindow as Window;
 use gpui::{App, Hsla, PathBuilder, Pixels, Point, point, px};
+use std::sync::Arc;
 use vantare_domain::format::Preferences;
 use vantare_domain::{Snapshot, track_map};
 
@@ -70,14 +71,14 @@ impl Settings {
 pub(crate) struct Widget {
     settings: Settings,
     vm: track_map::ViewModel,
-    labels: [String; 3],
+    labels: Arc<[String; 3]>,
 }
 
 impl Widget {
     pub(crate) fn new(settings: &Settings, prefs: Preferences) -> Self {
         let settings = settings.normalized();
         Self {
-            labels: labels(&Snapshot::default(), prefs),
+            labels: Arc::new(labels(&Snapshot::default(), prefs)),
             settings: settings.clone(),
             vm: settings.project(&Snapshot::default(), prefs, None),
         }
@@ -90,7 +91,7 @@ impl Widget {
     pub(crate) fn ingest(&mut self, snapshot: &Snapshot, prefs: Preferences) -> bool {
         let geometry = scene::geometry(snapshot);
         let next = self.settings.project(snapshot, prefs, geometry.as_ref());
-        let changed = replace_if_changed(&mut self.labels, labels(snapshot, prefs));
+        let changed = replace_if_changed(Arc::make_mut(&mut self.labels), labels(snapshot, prefs));
         replace_if_changed(&mut self.vm, next) || changed
     }
 
@@ -202,15 +203,45 @@ fn labels(snapshot: &Snapshot, prefs: Preferences) -> [String; 3] {
     } else {
         car.and_then(|c| c.laps.current())
             .zip(snapshot.state.session.laps_total.current())
-            .map_or_else(|| session.to_owned(), |(a, b)| {
-                format!("{session} · {} {a}/{b}", if es { "V" } else { "L" })
-            })
+            .map_or_else(
+                || session.to_owned(),
+                |(a, b)| format!("{session} · {} {a}/{b}", if es { "V" } else { "L" }),
+            )
     };
     let player = car.and_then(|c| c.position.current()).map_or_else(
         || if es { "Tú" } else { "You" }.into(),
         |v| format!("{} P{v}", if es { "Tú" } else { "You" }),
     );
     [format!("{}{length}", name.to_uppercase()), lap, player]
+}
+
+fn paint_header_text<C>(
+    labels: &[String; 3],
+    kit: &Kit<'_>,
+    context: &mut C,
+    mut measure: impl FnMut(&mut C, &str, &text::TextInk<'_>) -> f32,
+    mut draw: impl FnMut(&mut C, crate::vantare::paint::Label<'_>),
+) {
+    let ink = kit.ink(Face::Body, 10.0, 0.3, kit.style.colors.muted.hsla());
+    let available = (WIDTH - 24.0 - 8.0 - measure(context, &labels[1], &ink)).max(0.0);
+    let track = text::fit_measured(&labels[0], available, |value| measure(context, value, &ink));
+    for (value, x, right) in [
+        (track.as_str(), 12.0, None),
+        (labels[1].as_str(), 0.0, Some(308.0)),
+    ] {
+        draw(
+            context,
+            crate::vantare::paint::Label {
+                value,
+                x,
+                right,
+                top: 10.0,
+                height: 18.0,
+                face: Face::Body,
+                ink,
+            },
+        );
+    }
 }
 
 fn paint(
@@ -232,28 +263,24 @@ fn paint(
     if !transparent {
         kit.panel(window, SIZE.1);
     }
-    let header = kit.ink(Face::Body, 10.0, 0.3, style.colors.muted.hsla());
-    kit.label_shadow(
-        window,
-        cx,
-        &labels[0],
-        12.0,
-        None,
-        10.0,
-        18.0,
-        Face::Body,
-        &header,
-    );
-    kit.label_shadow(
-        window,
-        cx,
-        &labels[1],
-        0.0,
-        Some(308.0),
-        10.0,
-        18.0,
-        Face::Body,
-        &header,
+    paint_header_text(
+        labels,
+        &kit,
+        &mut (&mut *window, &mut *cx),
+        |context, value, ink| text::width(context.0, value, ink),
+        |context, label| {
+            kit.label_shadow(
+                context.0,
+                context.1,
+                label.value,
+                label.x,
+                label.right,
+                label.top,
+                label.height,
+                label.face,
+                &label.ink,
+            );
+        },
     );
     if let Some(first) = vm.outline.first() {
         for (stroke, color) in [
@@ -498,8 +525,10 @@ mod tests {
     }
 
     fn reference_snapshot() -> Snapshot {
-        vantare_ipc::snapshot_from_fixture_json(include_str!("../../fixtures/track-map.snapshot.json"))
-            .expect("fixture DTO v4 reconstruida del frame congelado")
+        vantare_ipc::snapshot_from_fixture_json(include_str!(
+            "../../fixtures/track-map.snapshot.json"
+        ))
+        .expect("fixture DTO v4 reconstruida del frame congelado")
     }
 
     #[cfg(feature = "parity-capture")]
@@ -569,5 +598,39 @@ mod tests {
             assert_eq!(widget.frame(Preferences::default(), false).1, Wake::Idle);
             assert!(!widget.animating());
         }
+    }
+}
+
+#[cfg(test)]
+mod header_render_tests {
+    #[test]
+    fn long_track_header_is_fitted_before_it_reaches_the_painter() {
+        crate::paint_tests::with_kit(super::WIDTH, vantare_domain::format::Language::Es, |kit| {
+            let labels = [
+                "AUTODROMO INTERNAZIONALE ENZO E DINO FERRARI · 4.909 KM".to_owned(),
+                "CLASIFICACIÓN · 09:21".to_owned(),
+                String::new(),
+            ];
+            let measure = |text: &str| text.chars().count() as f32 * 6.0;
+            let mut painted = Vec::new();
+            super::paint_header_text(
+                &labels,
+                kit,
+                &mut painted,
+                |_, value, _| measure(value),
+                |out, label| out.push((label.value.to_owned(), label.x, label.right)),
+            );
+            assert!(painted[0].0.ends_with('…'));
+            let right_start = painted[1].2.expect("alineación derecha") - measure(&painted[1].0);
+            assert!(
+                painted[0].1 + measure(&painted[0].0) + 8.0 <= right_start + 0.01,
+                "cabecera invade la sesión: {painted:?}"
+            );
+            assert!(painted[0].1 >= 12.0 && painted[1].2.unwrap() <= super::WIDTH - 12.0);
+            assert_eq!(
+                crate::efficiency::text::fit_measured("Imola", 0.0, measure),
+                ""
+            );
+        });
     }
 }

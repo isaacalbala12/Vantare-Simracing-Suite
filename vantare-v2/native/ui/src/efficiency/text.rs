@@ -179,17 +179,37 @@ pub fn width(window: &Window, text: &str, ink: &TextInk<'_>) -> f32 {
 
 /// Recorta con `…` hasta que el texto quepa en `max` px (text-overflow).
 pub fn fit(window: &Window, text: &str, ink: &TextInk<'_>, max: f32) -> String {
-    if width(window, text, ink) <= max + 0.01 {
+    fit_measured(text, max, |value| width(window, value, ink))
+}
+
+/// El rótulo ya preparado no se copia en cada frame cuando cabe entero.
+pub(crate) fn fit_borrowed<'a>(
+    window: &Window,
+    value: &'a str,
+    ink: &TextInk<'_>,
+    max: f32,
+) -> Cow<'a, str> {
+    if width(window, value, ink) <= max + 0.01 {
+        Cow::Borrowed(value)
+    } else {
+        Cow::Owned(fit(window, value, ink, max))
+    }
+}
+
+/// Mismo ajuste con la medida proporcionada por la fuente; permite verificar
+/// las órdenes de texto sin un sistema de ventanas.
+pub(crate) fn fit_measured(text: &str, max: f32, mut measure: impl FnMut(&str) -> f32) -> String {
+    if measure(text) <= max + 0.01 {
         return text.to_string();
     }
     let chars: Vec<char> = text.chars().collect();
     for keep in (0..chars.len()).rev() {
         let candidate: String = chars[..keep].iter().collect::<String>() + "…";
-        if width(window, &candidate, ink) <= max + 0.01 {
+        if measure(&candidate) <= max + 0.01 {
             return candidate;
         }
     }
-    "…".to_string()
+    String::new()
 }
 
 pub fn origin() -> (f32, f32) {

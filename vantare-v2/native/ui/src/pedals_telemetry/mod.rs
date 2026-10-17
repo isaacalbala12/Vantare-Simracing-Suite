@@ -264,6 +264,9 @@ fn paint(
         width: SIZE.0,
     };
     kit.panel(window, SIZE.1);
+    paint_status_text(vm, &kit, |label| {
+        label.paint(&kit, window, cx);
+    });
     let color = if vm.status == Status::Stale {
         Color(0x6e6668, 1.0)
     } else {
@@ -375,6 +378,63 @@ fn paint(
         Face::Mono,
         &muted,
     );
+}
+
+fn paint_status_text(
+    vm: &ViewModel,
+    kit: &Kit<'_>,
+    mut draw: impl FnMut(crate::vantare::paint::Label<'_>),
+) {
+    if !vm.status_text.is_empty() {
+        draw(crate::vantare::paint::Label {
+            value: vm.status_text,
+            x: 8.0,
+            right: None,
+            top: 0.0,
+            height: 10.0,
+            face: Face::Body,
+            ink: kit.ink(Face::Body, 9.0, 0.0, kit.style.colors.loss.hsla()),
+        });
+    }
+}
+
+#[cfg(test)]
+mod status_render_tests {
+    #[test]
+    fn every_absence_reason_reaches_the_painted_status() {
+        use vantare_domain::{
+            Snapshot, SourceState,
+            format::{Language, Preferences},
+        };
+        for (source, language, expected) in [
+            (SourceState::Waiting, Language::Es, "DESCONECTADO"),
+            (SourceState::Lost, Language::En, "DISCONNECTED"),
+            (SourceState::Stale, Language::En, "DATA OUT OF DATE"),
+            (SourceState::Live, Language::Es, "SIN DATOS"),
+        ] {
+            let mut snapshot = Snapshot::default();
+            snapshot.state.source_state = source;
+            let vm = vantare_domain::pedals_telemetry::project(
+                &snapshot,
+                Preferences {
+                    language,
+                    ..Preferences::default()
+                },
+            );
+            crate::paint_tests::with_kit(super::SIZE.0, language, |kit| {
+                let painted =
+                    crate::paint_tests::observe(|draw| super::paint_status_text(&vm, kit, draw));
+                assert_eq!(
+                    painted
+                        .iter()
+                        .map(|label| label.value.as_str())
+                        .collect::<Vec<_>>(),
+                    [expected]
+                );
+                assert_eq!((painted[0].x, painted[0].top), (8.0, 0.0));
+            });
+        }
+    }
 }
 
 impl Settings {

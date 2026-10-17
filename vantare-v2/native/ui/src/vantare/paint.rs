@@ -25,6 +25,35 @@ pub(crate) enum Face {
     Mono,
 }
 
+/// Una orden de texto del pintor. Se entrega inmediatamente a GPUI; las pruebas
+/// pueden observar la misma orden sin crear una ventana ni rasterizar otra UI.
+#[derive(Clone, Copy)]
+pub(crate) struct Label<'a> {
+    pub value: &'a str,
+    pub x: f32,
+    pub right: Option<f32>,
+    pub top: f32,
+    pub height: f32,
+    pub face: Face,
+    pub ink: text::TextInk<'a>,
+}
+
+impl Label<'_> {
+    pub(crate) fn paint(self, kit: &Kit<'_>, window: &mut Window, cx: &mut App) -> f32 {
+        kit.label(
+            window,
+            cx,
+            self.value,
+            self.x,
+            self.right,
+            self.top,
+            self.height,
+            self.face,
+            &self.ink,
+        )
+    }
+}
+
 pub(crate) fn transparent() -> Hsla {
     gpui::transparent_black()
 }

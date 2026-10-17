@@ -150,7 +150,6 @@ fn paint(
         ));
     }
     if settings.show_phrases || !vm.available {
-        let message = phrase(vm, kit.es());
         round_rect(
             window,
             1.0,
@@ -160,33 +159,55 @@ fn paint(
             0.0,
             Color(0x110f10, 0.92).hsla(),
         );
-        let ink = kit.ink(
-            Face::Display,
-            11.0,
-            1.4,
-            if vm.overlap_left || vm.overlap_right {
-                Color(0xff8a8a, 1.0).hsla()
-            } else {
-                style.colors.muted.hsla()
-            },
-        );
-        let label = crate::efficiency::text::fit(window, &message.to_uppercase(), &ink, 202.0);
-        let width = crate::efficiency::text::width(window, &label, &ink);
-        kit.label(
-            window,
-            cx,
-            &label,
-            (SIZE.0 - width) / 2.0,
-            None,
-            197.0,
-            16.0,
-            Face::Display,
-            &ink,
-        );
+        paint_phrase(vm, &kit, |label| {
+            let value = crate::efficiency::text::fit(window, label.value, &label.ink, 202.0);
+            let fitted = crate::vantare::paint::Label {
+                value: &value,
+                x: label.x - crate::efficiency::text::width(window, &value, &label.ink) / 2.0,
+                ..label
+            };
+            fitted.paint(&kit, window, cx);
+        });
     }
 }
 
+fn paint_phrase(
+    vm: &ViewModel,
+    kit: &Kit<'_>,
+    mut draw: impl FnMut(crate::vantare::paint::Label<'_>),
+) {
+    let value = phrase(vm, kit.es()).to_uppercase();
+    let color = if vm.overlap_left || vm.overlap_right {
+        Color(0xff8a8a, 1.0)
+    } else {
+        kit.style.colors.muted
+    };
+    draw(crate::vantare::paint::Label {
+        value: &value,
+        x: SIZE.0 / 2.0,
+        right: None,
+        top: 197.0,
+        height: 16.0,
+        face: Face::Display,
+        ink: kit.ink(Face::Display, 11.0, 1.4, color.hsla()),
+    });
+}
+
 fn phrase(vm: &ViewModel, es: bool) -> String {
+    if !vm.available {
+        use vantare_domain::Capability;
+        return match (vm.capability, es) {
+            (Capability::Unsupported, true) => "Sin posición espacial",
+            (Capability::Unsupported, false) => "Spatial position unavailable",
+            (Capability::Supported, true) => "Esperando posición espacial",
+            (Capability::Supported, false) => "Waiting for spatial position",
+            (Capability::WithData, true) => "Datos espaciales antiguos",
+            (Capability::WithData, false) => "Spatial data out of date",
+            (Capability::Fresh, true) => "Esperando posición propia",
+            (Capability::Fresh, false) => "Waiting for player position",
+        }
+        .into();
+    }
     if vm.available && !vm.overlap_left && !vm.overlap_right {
         let closing = vm
             .cars
@@ -466,5 +487,45 @@ mod tests {
         assert!(widget.ingest(&source::synthetic(0), Preferences::default()));
         assert!(!widget.ingest(&source::synthetic(0), Preferences::default()));
         assert!(widget.ingest(&source::synthetic(300), Preferences::default()));
+    }
+}
+
+#[cfg(test)]
+mod capability_render_tests {
+    #[test]
+    fn unavailable_radar_paints_the_spatial_reason_in_both_languages() {
+        use vantare_domain::{Capability, Snapshot, format::Language};
+        for (capability, es, en) in [
+            (
+                Capability::Unsupported,
+                "SIN POSICIÓN ESPACIAL",
+                "SPATIAL POSITION UNAVAILABLE",
+            ),
+            (
+                Capability::Supported,
+                "ESPERANDO POSICIÓN ESPACIAL",
+                "WAITING FOR SPATIAL POSITION",
+            ),
+            (
+                Capability::WithData,
+                "DATOS ESPACIALES ANTIGUOS",
+                "SPATIAL DATA OUT OF DATE",
+            ),
+            (
+                Capability::Fresh,
+                "ESPERANDO POSICIÓN PROPIA",
+                "WAITING FOR PLAYER POSITION",
+            ),
+        ] {
+            let mut vm = vantare_domain::radar::project(&Snapshot::default());
+            vm.capability = capability;
+            for (language, expected) in [(Language::Es, es), (Language::En, en)] {
+                crate::paint_tests::with_kit(super::SIZE.0, language, |kit| {
+                    let painted =
+                        crate::paint_tests::observe(|draw| super::paint_phrase(&vm, kit, draw));
+                    assert_eq!(painted[0].value, expected);
+                });
+            }
+        }
     }
 }

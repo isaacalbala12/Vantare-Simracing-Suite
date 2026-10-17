@@ -6,6 +6,7 @@ use crate::vantare::{
     style::{Color, Style},
 };
 use gpui::{App, PathBuilder, point, px};
+use std::sync::Arc;
 use vantare_domain::{
     Snapshot,
     delta_trace::{Sample, Trace, ViewModel},
@@ -16,6 +17,51 @@ mod lap;
 
 pub const SIZE: (f32, f32) = (760.0, 192.0);
 const GRAPH_HEIGHT: f32 = 120.0;
+
+fn paint_heading(
+    details: &Details,
+    kit: &Kit<'_>,
+    mut draw: impl FnMut(crate::vantare::paint::Label<'_>),
+) {
+    let ink = kit.ink(Face::Body, 11.0, 0.3, kit.style.colors.muted.hsla());
+    for (value, x, right) in [
+        (&details.header, 12.0, None),
+        (&details.position, 0.0, Some(748.0)),
+    ] {
+        draw(crate::vantare::paint::Label {
+            value,
+            x,
+            right,
+            top: 10.0,
+            height: 18.0,
+            face: Face::Body,
+            ink,
+        });
+    }
+}
+fn paint_sector_text(
+    details: &Details,
+    i: usize,
+    kit: &Kit<'_>,
+    mut draw: impl FnMut(crate::vantare::paint::Label<'_>),
+) {
+    let x = 12.0 + i as f32 * 247.3;
+    let ink = kit.ink(Face::Mono, 9.0, 0.0, kit.style.colors.muted.hsla());
+    for (value, left, right) in [
+        (["S1", "S2", "S3"][i], x, None),
+        (details.sector_text[i].as_str(), 0.0, Some(x + 241.3)),
+    ] {
+        draw(crate::vantare::paint::Label {
+            value,
+            x: left,
+            right,
+            top: 166.0,
+            height: 14.0,
+            face: Face::Mono,
+            ink,
+        });
+    }
+}
 
 fn paint(
     vm: &ViewModel,
@@ -35,29 +81,10 @@ fn paint(
         width: SIZE.0,
     };
     kit.panel(window, SIZE.1);
+    paint_heading(details, &kit, |label| {
+        label.paint(&kit, window, cx);
+    });
     let muted = kit.ink(Face::Body, 11.0, 0.3, style.colors.muted.hsla());
-    kit.label(
-        window,
-        cx,
-        &details.header,
-        12.0,
-        None,
-        10.0,
-        18.0,
-        Face::Body,
-        &muted,
-    );
-    kit.label(
-        window,
-        cx,
-        &details.position,
-        0.0,
-        Some(748.0),
-        10.0,
-        18.0,
-        Face::Body,
-        &muted,
-    );
     for fraction in [0.25, 0.5, 0.75] {
         round_rect(
             window,
@@ -162,29 +189,9 @@ fn paint(
         let delta = details.sectors[i];
         let color = delta.map_or(0x3a3335, |v| if v < 0.0 { 0x22c55e } else { 0xf25a5a });
         round_rect(window, x, 158.0, 241.3, 4.0, 2.0, Color(color, 1.0).hsla());
-        kit.label(
-            window,
-            cx,
-            &format!("S{}", i + 1),
-            x,
-            None,
-            166.0,
-            14.0,
-            Face::Mono,
-            &tick,
-        );
-        let value = delta.map_or_else(|| "—".into(), |v| format!("{v:+.3}"));
-        kit.label(
-            window,
-            cx,
-            &value,
-            0.0,
-            Some(x + 241.3),
-            166.0,
-            14.0,
-            Face::Mono,
-            &tick,
-        );
+        paint_sector_text(details, i, &kit, |label| {
+            label.paint(&kit, window, cx);
+        });
     }
     if let Some(status) = vm.status_text {
         kit.label(
@@ -386,6 +393,7 @@ struct Details {
     header: String,
     position: String,
     sectors: [Option<f64>; 3],
+    sector_text: [String; 3],
 }
 impl Details {
     fn from(snapshot: &Snapshot, prefs: Preferences, board: &vantare_domain::delta::Board) -> Self {
@@ -403,8 +411,16 @@ impl Details {
         let progress = car
             .and_then(|c| c.lap_distance_m.current())
             .zip(snapshot.state.session.track_length_m.current())
-            .filter(|(_, l)| **l > 0.0)
+            .filter(|(d, l)| d.is_finite() && l.is_finite() && **l > 0.0 && **d >= 0.0 && d <= l)
             .map(|(d, l)| d / l * 100.0);
+        let sectors = std::array::from_fn(|i| {
+            car.filter(|_| board.reference != vantare_domain::delta::Reference::Leader)
+                .and_then(|c| c.current_sectors_s.get(i).zip(c.best_sectors_s.get(i)))
+                .and_then(|(a, b)| a.current().zip(b.current()))
+                .filter(|(a, b)| a.is_finite() && b.is_finite() && **a > 0.0 && **b > 0.0)
+                .map(|(a, b)| a - b)
+                .filter(|v| v.is_finite())
+        });
         Self {
             invalid: snapshot
                 .state
@@ -425,12 +441,9 @@ impl Details {
                         lap + 1
                     )
                 }),
-            sectors: std::array::from_fn(|i| {
-                car.filter(|_| board.reference != vantare_domain::delta::Reference::Leader)
-                    .and_then(|c| c.current_sectors_s.get(i).zip(c.best_sectors_s.get(i)))
-                    .and_then(|(a, b)| a.current().zip(b.current()))
-                    .map(|(a, b)| a - b)
-            }),
+            sectors,
+            sector_text: sectors
+                .map(|delta| delta.map_or_else(|| "—".into(), |v| format!("{v:+.3}"))),
         }
     }
 }
@@ -439,8 +452,8 @@ pub(crate) struct Widget {
     settings: Settings,
     vm: ViewModel,
     trace: Trace,
-    history: lap::History,
-    details: Details,
+    history: Arc<lap::History>,
+    details: Arc<Details>,
     paint_samples: Option<std::sync::Arc<Vec<Sample>>>,
 }
 
@@ -451,12 +464,12 @@ impl Widget {
             settings: settings.clone(),
             vm: vantare_domain::delta_trace::project(&Snapshot::default(), prefs),
             trace: Trace::default(),
-            history: lap::History::default(),
-            details: Details::from(
+            history: Arc::default(),
+            details: Arc::new(Details::from(
                 &Snapshot::default(),
                 prefs,
                 &vantare_domain::delta::project(&Snapshot::default(), prefs),
-            ),
+            )),
             paint_samples: None,
         }
     }
@@ -478,9 +491,11 @@ impl Widget {
         {
             board.delta = vantare_domain::Quality::Unavailable;
         }
-        let details_changed =
-            replace_if_changed(&mut self.details, Details::from(snapshot, prefs, &board));
-        let lap_changed = self.history.push_with_board(snapshot, &board);
+        let details_changed = replace_if_changed(
+            Arc::make_mut(&mut self.details),
+            Details::from(snapshot, prefs, &board),
+        );
+        let lap_changed = Arc::make_mut(&mut self.history).push_with_board(snapshot, &board);
         let changed = self.trace.push_with_board(
             snapshot,
             std::time::Duration::from_secs_f64(self.settings.window_seconds),
@@ -525,6 +540,8 @@ impl Widget {
 
 #[cfg(test)]
 mod performance_tests;
+#[cfg(test)]
+mod render_tests;
 
 impl Settings {
     #[allow(clippy::unused_self)] // Contrato común de demanda por renderer.

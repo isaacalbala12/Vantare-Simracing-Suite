@@ -540,6 +540,40 @@ impl State {
 // Pintado
 // ---------------------------------------------------------------------------
 
+fn paint_sector_values(
+    board: &Board,
+    labels: &Labels,
+    kit: &Kit<'_>,
+    y: f32,
+    mut draw: impl FnMut(crate::vantare::paint::Label<'_>),
+) {
+    let pad = kit.variant.padding_x;
+    let cell = (kit.width - 2.0 * pad - 6.0 * (board.sectors.len().max(1) - 1) as f32)
+        / board.sectors.len().max(1) as f32;
+    for (index, sector) in board.sectors.iter().enumerate() {
+        let value = match sector {
+            Sector::Pending => PLACEHOLDER,
+            Sector::Done(_, _) | Sector::Live(_) => labels.sectors[index].1.as_str(),
+        };
+        let c = &kit.style.colors;
+        let color = match sector {
+            Sector::Done(SectorTone::SessionBest, _) => c.purple,
+            Sector::Done(SectorTone::PersonalBest, _) => c.gain,
+            Sector::Done(SectorTone::Slower, _) => c.yellow,
+            _ => c.muted,
+        };
+        draw(crate::vantare::paint::Label {
+            value,
+            x: 0.0,
+            right: Some(pad + index as f32 * (cell + 6.0) + cell),
+            top: y + 6.0 + kit.style.delta.sector_bar + 3.0,
+            height: 14.0,
+            face: Face::Mono,
+            ink: kit.ink(Face::Mono, 10.0, 0.0, color.hsla()),
+        });
+    }
+}
+
 struct Painter<'a> {
     labels: &'a Labels,
     kit: Kit<'a>,
@@ -1077,29 +1111,12 @@ impl Painter<'_> {
                 SectorTone::PersonalBest => c.green,
                 SectorTone::Slower => c.yellow,
             };
-            let (fill, label, value, value_color) = match sector {
-                Sector::Done(tone, _) => (
-                    Some((1.0, tone_color(*tone))),
-                    self.labels.sectors[index].0.as_str(),
-                    self.labels.sectors[index].1.as_str(),
-                    match tone {
-                        SectorTone::SessionBest => c.purple.hsla(),
-                        SectorTone::PersonalBest => c.gain.hsla(),
-                        SectorTone::Slower => c.yellow.hsla(),
-                    },
-                ),
-                Sector::Live(fraction) => (
-                    fraction.map(|f| (f as f32, if gain { c.green } else { d.fill_loss })),
-                    self.labels.sectors[index].0.as_str(),
-                    "",
-                    c.muted.hsla(),
-                ),
-                Sector::Pending => (
-                    None,
-                    self.labels.sectors[index].0.as_str(),
-                    PLACEHOLDER,
-                    c.muted.hsla(),
-                ),
+            let fill = match sector {
+                Sector::Done(tone, _) => Some((1.0, tone_color(*tone))),
+                Sector::Live(fraction) => {
+                    fraction.map(|f| (f as f32, if gain { c.green } else { d.fill_loss }))
+                }
+                Sector::Pending => None,
             };
             if let Some((fraction, color)) = fill {
                 round_rect(
@@ -1116,7 +1133,7 @@ impl Painter<'_> {
             self.label(
                 window,
                 cx,
-                label,
+                &self.labels.sectors[index].0,
                 x,
                 None,
                 label_top,
@@ -1124,19 +1141,26 @@ impl Painter<'_> {
                 Face::Mono,
                 &small,
             );
-            let ink = self.ink(Face::Mono, 10.0, 0.0, value_color);
+        }
+        paint_sector_values(board, self.labels, &self.kit, y, |label| {
+            let ink = self.ink(
+                label.face,
+                label.ink.size,
+                label.ink.tracking,
+                label.ink.color,
+            );
             self.label(
                 window,
                 cx,
-                value,
-                0.0,
-                Some(x + cell),
-                label_top,
-                14.0,
-                Face::Mono,
+                label.value,
+                label.x,
+                label.right,
+                label.top,
+                label.height,
+                label.face,
                 &ink,
             );
-        }
+        });
     }
 }
 
@@ -1150,7 +1174,9 @@ mod tests {
             .as_array()
             .expect("fases")
             .iter()
-            .map(|f| vantare_ipc::snapshot_from_fixture_json(&f["snapshot"].to_string()).expect("foto"))
+            .map(|f| {
+                vantare_ipc::snapshot_from_fixture_json(&f["snapshot"].to_string()).expect("foto")
+            })
             .collect()
     }
 
@@ -1244,13 +1270,24 @@ mod tests {
             Sector::Pending,
         ];
         let labels = Labels::new(Some(&board), &options, &Style::compiled(), Language::Es);
-        assert_eq!(labels.sectors[1].1, "−0.096");
+        crate::paint_tests::with_kit(768.0, Language::Es, |kit| {
+            let painted = crate::paint_tests::observe(|draw| {
+                paint_sector_values(&board, &labels, kit, 0.0, draw)
+            });
+            assert_eq!(painted[1].value, "−0.096");
+            assert_eq!(painted[2].value, PLACEHOLDER);
+        });
         board.sectors[0] = Sector::Done(vantare_domain::delta::SectorTone::PersonalBest, None);
         let labels = Labels::new(Some(&board), &options, &Style::compiled(), Language::Es);
-        assert!(
-            labels.sectors[1].1.is_empty(),
-            "sin delta cerrado no se inventa el sector en curso"
-        );
+        crate::paint_tests::with_kit(768.0, Language::Es, |kit| {
+            let painted = crate::paint_tests::observe(|draw| {
+                paint_sector_values(&board, &labels, kit, 0.0, draw)
+            });
+            assert!(
+                !painted.iter().any(|label| label.value == "−0.096"),
+                "sin delta cerrado no se pinta el sector en curso"
+            );
+        });
     }
 
     #[test]

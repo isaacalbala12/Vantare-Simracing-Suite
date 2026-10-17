@@ -671,7 +671,11 @@ fn expanded(board: &Board, w: &Words, out: &mut Vec<Line>) {
             right: if right.is_empty() {
                 String::new()
             } else {
-                format!("{} {}", w.pick("MEDIA", "AVG"), right.join(" · "))
+                format!(
+                    "{} {}",
+                    w.pick("MEDIA 3 VUELTAS", "LAST 3 AVG"),
+                    right.join(" · ")
+                )
             },
         });
         out.push(Line::Spark);
@@ -796,50 +800,34 @@ fn session_lines(
     let w = Words { es };
     content.truncate(1);
     let qualifying = session == crate::session::Session::Qualifying;
-    let last = board.history.last().and_then(|entry| entry.consumed);
-    let rows = if qualifying {
-        [
-            (
-                w.pick("En depósito", "In tank"),
-                litres(board.fuel.level, 1),
-                Tone::Hi,
-            ),
-            (
-                w.pick("Por vuelta", "Per lap"),
-                litres(board.fuel.per_lap, 2),
-                Tone::Plain,
-            ),
-            (
-                w.pick("Da para", "Range"),
-                w.laps(board.fuel.laps),
-                Tone::Plain,
-            ),
-            ("Plan", PLACEHOLDER.into(), Tone::Plain),
-        ]
-    } else {
-        [
-            (
-                w.pick("En depósito", "In tank"),
-                litres(board.fuel.level, 1),
-                Tone::Hi,
-            ),
-            (
-                w.pick("Media tanda", "Run average"),
-                litres(board.fuel.per_lap, 2),
-                Tone::Plain,
-            ),
-            (
-                w.pick("Última vuelta", "Last lap"),
-                litres(last, 2),
-                Tone::Green,
-            ),
-            (
-                w.pick("Stint completo", "Full stint"),
-                PLACEHOLDER.into(),
-                Tone::Plain,
-            ),
-        ]
+    let tank = limiting(board);
+    let (level_key, level, average) = match board.limit {
+        Resource::Fuel => (
+            w.pick("En depósito", "In tank"),
+            litres(tank.level, 1),
+            litres(tank.per_lap, 2),
+        ),
+        Resource::Energy => (
+            w.pick("Energía virtual", "Virtual energy"),
+            percent(tank.level, 1),
+            percent(tank.per_lap, 2),
+        ),
     };
+    let (plan_key, plan_value, plan_tone) = plan_text(board, &w);
+    let rows = [
+        (level_key, level, Tone::Hi),
+        (
+            w.pick("Media últimas 3 v", "Last 3 laps avg"),
+            average,
+            Tone::Plain,
+        ),
+        (
+            w.pick("Restan", "Laps left"),
+            w.laps(board.laps_left),
+            Tone::Plain,
+        ),
+        (plan_key, plan_value, plan_tone),
+    ];
     for (i, (key, value, tone)) in rows.into_iter().enumerate() {
         content.push(Line::Row {
             key: key.into(),
@@ -1341,6 +1329,40 @@ impl State {
 // Pintado
 // ---------------------------------------------------------------------------
 
+fn paint_row_text(
+    kit: &Kit<'_>,
+    y: f32,
+    key: &str,
+    value: &str,
+    color: gpui::Hsla,
+    mut draw: impl FnMut(crate::vantare::paint::Label<'_>),
+) {
+    let height = kit.style.geometry.row_height;
+    draw(crate::vantare::paint::Label {
+        value: key,
+        x: kit.variant.padding_x,
+        right: None,
+        top: y,
+        height,
+        face: Face::Body,
+        ink: kit.ink(
+            Face::Body,
+            kit.style.fuel.row_label,
+            0.0,
+            kit.style.colors.text.hsla(),
+        ),
+    });
+    draw(crate::vantare::paint::Label {
+        value,
+        x: 0.0,
+        right: Some(kit.width - kit.variant.padding_x),
+        top: y,
+        height,
+        face: Face::Mono,
+        ink: kit.ink(Face::Mono, kit.style.fonts.mono, 0.0, color),
+    });
+}
+
 struct Painter<'a> {
     kit: Kit<'a>,
     options: &'a Options,
@@ -1721,9 +1743,6 @@ impl Painter<'_> {
         tone: Tone,
         me: bool,
     ) {
-        let c = &self.style.colors;
-        let h = self.style.geometry.row_height;
-        let (pad, w) = (self.variant.padding_x, self.width);
         if me {
             let own = if self.variant.player_white > 0.0 {
                 crate::vantare::paint::WHITE
@@ -1732,20 +1751,9 @@ impl Painter<'_> {
             };
             self.highlight(window, y, own, 1.0);
         }
-        let key_ink = self.ink(Face::Body, self.style.fuel.row_label, 0.0, c.text.hsla());
-        self.label(window, cx, key, pad, None, y, h, Face::Body, &key_ink);
-        let ink = self.ink(Face::Mono, self.style.fonts.mono, 0.0, self.tone(tone));
-        self.label(
-            window,
-            cx,
-            value,
-            0.0,
-            Some(w - pad),
-            y,
-            h,
-            Face::Mono,
-            &ink,
-        );
+        paint_row_text(&self.kit, y, key, value, self.tone(tone), |label| {
+            label.paint(&self.kit, window, cx);
+        });
     }
 
     fn tiles(
@@ -2014,7 +2022,9 @@ mod tests {
             .as_array()
             .expect("fases")
             .iter()
-            .map(|f| vantare_ipc::snapshot_from_fixture_json(&f["snapshot"].to_string()).expect("foto"))
+            .map(|f| {
+                vantare_ipc::snapshot_from_fixture_json(&f["snapshot"].to_string()).expect("foto")
+            })
             .collect()
     }
 
@@ -2190,6 +2200,134 @@ mod tests {
                 let en = lines(Some(&board), &options(size), false);
                 assert_eq!(es.len(), en.len());
             }
+        }
+    }
+}
+
+#[cfg(test)]
+mod resource_render_tests {
+    use super::*;
+    #[test]
+    fn practice_and_qualifying_paint_the_limiting_resource() {
+        for session in [
+            crate::session::Session::Practice,
+            crate::session::Session::Qualifying,
+        ] {
+            for resource in [Resource::Fuel, Resource::Energy] {
+                let mut board = State::project(&crate::source::fixed());
+                board.source_state = SourceState::Live;
+                board.player_present = true;
+                board.status = None;
+                board.banner = None;
+                board.service = None;
+                board.fcy = None;
+                board.fuel = Tank {
+                    level: Some(80.0),
+                    capacity: Some(100.0),
+                    per_lap: Some(2.0),
+                    laps: Some(40.0),
+                };
+                board.energy = Some(Tank {
+                    level: Some(0.5),
+                    capacity: Some(1.0),
+                    per_lap: Some(0.1),
+                    laps: Some(5.0),
+                });
+                board.limit = resource;
+                board.laps_left = Some(if resource == Resource::Fuel {
+                    40.0
+                } else {
+                    5.0
+                });
+                board.plan = Plan::Stop(10);
+                let mut visual = Visual::new(Options {
+                    size: Size::Standard,
+                    look: crate::look::Tone::Neo,
+                    accent: Accent::Red,
+                    brand: false,
+                });
+                let mut motion = Movement::new(Instant::now());
+                visual.ingest_shared(Arc::new(board), &mut motion);
+                visual.set_session(Some(session));
+                for language in [Language::Es, Language::En] {
+                    visual.presentation(language);
+                    crate::paint_tests::with_kit(300.0, language, |kit| {
+                        let painted = crate::paint_tests::observe(|draw| {
+                            for line in visual.lines.iter() {
+                                if let Line::Row { key, value, .. } = line {
+                                    paint_row_text(
+                                        kit,
+                                        0.0,
+                                        key,
+                                        value,
+                                        kit.style.colors.value.hsla(),
+                                        &mut *draw,
+                                    );
+                                }
+                            }
+                        });
+                        let values: Vec<_> =
+                            painted.iter().map(|label| label.value.as_str()).collect();
+                        let es = language == Language::Es;
+                        if resource == Resource::Energy {
+                            assert!(values.contains(&if es {
+                                "Energía virtual"
+                            } else {
+                                "Virtual energy"
+                            }));
+                            assert!(values.contains(&"50.0 %") && values.contains(&"10.00 %"));
+                            assert!(values.contains(&if es { "5.0 v" } else { "5.0 laps" }));
+                            assert!(
+                                !values.iter().any(|value| value.ends_with(" L")),
+                                "energía no se rotula en litros: {values:?}"
+                            );
+                        } else {
+                            assert!(values.contains(&"80.0 L") && values.contains(&"2.00 L"));
+                        }
+                    });
+                }
+            }
+        }
+    }
+    #[test]
+    fn session_average_paints_the_three_measured_lap_window() {
+        let board = State::project(&crate::source::fixed());
+        for (language, session, expected) in [
+            (
+                Language::Es,
+                crate::session::Session::Practice,
+                "Media últimas 3 v",
+            ),
+            (
+                Language::En,
+                crate::session::Session::Qualifying,
+                "Last 3 laps avg",
+            ),
+        ] {
+            let mut lines = Vec::new();
+            session_lines(&board, session, language == Language::Es, &mut lines);
+            crate::paint_tests::with_kit(300.0, language, |kit| {
+                let painted = crate::paint_tests::observe(|draw| {
+                    for line in &lines {
+                        if let Line::Row { key, value, .. } = line {
+                            paint_row_text(
+                                kit,
+                                0.0,
+                                key,
+                                value,
+                                kit.style.colors.value.hsla(),
+                                &mut *draw,
+                            );
+                        }
+                    }
+                });
+                assert!(painted.iter().any(|label| label.value == expected));
+                assert!(
+                    !painted
+                        .iter()
+                        .any(|label| label.value == "Media tanda" || label.value == "Run average")
+                );
+            });
         }
     }
 }

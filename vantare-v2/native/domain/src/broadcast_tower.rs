@@ -49,7 +49,8 @@ pub fn project(snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
     project_rows(snapshot, prefs, 5)
 }
 
-/// Cantidad productiva de tarjetas, acotada entre tres y diez.
+/// Cantidad proyectada de tarjetas, acotada entre tres y veinte.
+/// El pintor puede imponer un límite menor según el espacio disponible.
 pub fn project_rows(snapshot: &Snapshot, prefs: Preferences, row_count: usize) -> ViewModel {
     let state = &snapshot.state;
     let available = !matches!(state.source_state, SourceState::Waiting | SourceState::Lost);

@@ -72,9 +72,11 @@ pub(crate) struct Widget {
     records: Records,
     notice: Option<Notice>,
     preview: bool,
-    detail: Vec<Detail>,
+    detail: std::sync::Arc<Vec<Detail>>,
     improvement: Option<f64>,
     personal_improvement: Option<f64>,
+    improvement_label: std::sync::Arc<str>,
+    personal_improvement_label: std::sync::Arc<str>,
 }
 
 impl Widget {
@@ -86,9 +88,11 @@ impl Widget {
             records: Records::default(),
             notice: None,
             preview: false,
-            detail: Vec::new(),
+            detail: std::sync::Arc::default(),
             improvement: None,
             personal_improvement: None,
+            improvement_label: std::sync::Arc::from("—"),
+            personal_improvement_label: std::sync::Arc::from("—"),
         }
     }
 
@@ -98,6 +102,7 @@ impl Widget {
     }
 
     pub(crate) fn ingest(&mut self, snapshot: &Snapshot, prefs: Preferences) -> bool {
+        let old_improvement = (self.improvement, self.personal_improvement);
         let preview_changed = crate::app::replace_if_changed(&mut self.preview, is_demo(snapshot));
         let next = self.settings.project(snapshot, prefs);
         if self.vm.scope != next.scope {
@@ -124,8 +129,22 @@ impl Widget {
         {
             self.personal_improvement = Some((new as f64 - old as f64) / 1000.0);
         }
-        let detail_changed =
-            crate::app::replace_if_changed(&mut self.detail, details(snapshot, &next));
+        if old_improvement.0 != self.improvement {
+            self.improvement_label = self
+                .improvement
+                .map_or_else(|| "—".into(), |v| format!("{v:.3}"))
+                .into();
+        }
+        if old_improvement.1 != self.personal_improvement {
+            self.personal_improvement_label = self
+                .personal_improvement
+                .map_or_else(|| "—".into(), |v| format!("{v:.3}"))
+                .into();
+        }
+        let detail_changed = crate::app::replace_if_changed(
+            std::sync::Arc::make_mut(&mut self.detail),
+            details(snapshot, &next, prefs),
+        );
 
         let labels_changed = detail_changed
             || self.vm.class_label != next.class_label
@@ -167,8 +186,8 @@ impl Widget {
 
     pub(crate) fn frame(&mut self, prefs: Preferences, reduced: bool) -> (Paint, Wake) {
         let details = self.detail.clone();
-        let class_improvement = self.improvement;
-        let personal_improvement = self.personal_improvement;
+        let class_improvement = std::sync::Arc::clone(&self.improvement_label);
+        let personal_improvement = std::sync::Arc::clone(&self.personal_improvement_label);
         if cfg!(feature = "parity-capture") || self.preview {
             // El harness productivo previsualiza el récord sin crear un aviso live.
             let vm = self.vm.clone();
@@ -199,7 +218,7 @@ impl Widget {
                             kind,
                             timing,
                             details.iter().find(|d| d.id == timing.car),
-                            improvement,
+                            &improvement,
                             1.0,
                             0.0,
                             prefs,
@@ -240,7 +259,7 @@ impl Widget {
                         kind,
                         &timing,
                         details.iter().find(|d| d.id == timing.car),
-                        improvement,
+                        &improvement,
                         alpha,
                         offset,
                         prefs,
@@ -311,12 +330,15 @@ fn ease_out(x: f32) -> f32 {
 #[derive(Clone, PartialEq)]
 struct Detail {
     id: vantare_domain::CarId,
+    timing: Timing,
     subtitle: String,
+    time: String,
+    lap: String,
     sectors: [Option<bool>; 3],
     session: Option<crate::session::Session>,
     clock: String,
 }
-fn details(snapshot: &Snapshot, vm: &ViewModel) -> Vec<Detail> {
+fn details(snapshot: &Snapshot, vm: &ViewModel, prefs: Preferences) -> Vec<Detail> {
     snapshot
         .state
         .cars
@@ -325,39 +347,69 @@ fn details(snapshot: &Snapshot, vm: &ViewModel) -> Vec<Detail> {
             vm.candidate.as_ref().is_some_and(|t| t.car == c.id)
                 || vm.personal.as_ref().is_some_and(|t| t.car == c.id)
         })
-        .map(|car| Detail {
-            session: crate::session::Session::of(&snapshot.state.session.kind),
-            clock: if snapshot.state.session.kind.current()
-                == Some(&vantare_domain::SessionKind::Qualifying)
-            {
-                let clock = vantare_domain::format::clock(
-                    snapshot.state.session.remaining_s.current().copied(),
-                );
-                if clock.len() == 4 {
-                    format!("0{clock}")
-                } else {
-                    clock
-                }
+        .map(|car| {
+            let timing = vm
+                .candidate
+                .as_ref()
+                .filter(|timing| timing.car == car.id)
+                .or_else(|| vm.personal.as_ref().filter(|timing| timing.car == car.id))
+                .expect("el filtro anterior exige un aviso de este coche");
+            let session = crate::session::Session::of(&snapshot.state.session.kind);
+            let clock = if session == Some(crate::session::Session::Qualifying) {
+                vantare_domain::format::clock(snapshot.state.session.remaining_s.current().copied())
             } else {
                 String::new()
-            },
-            id: car.id,
-            subtitle: format!("{} #{}", car.vehicle.as_str(), car.number),
-            sectors: std::array::from_fn(|i| {
-                let value = car.last_sectors_s.get(i)?.current()?;
-                if car.last_lap_s.current() != car.best_lap_s.current() {
-                    return None;
-                }
-                Some(
+            };
+            let lap = if !clock.is_empty() && clock != "—" {
+                clock.clone()
+            } else {
+                timing.laps.map_or_else(
+                    || "—".into(),
+                    |n| {
+                        format!(
+                            "{} {n}",
+                            if prefs.language == vantare_domain::format::Language::Es {
+                                "V"
+                            } else {
+                                "L"
+                            }
+                        )
+                    },
+                )
+            };
+            Detail {
+                timing: timing.clone(),
+                session,
+                clock,
+                lap,
+                time: timing.text(),
+                id: car.id,
+                subtitle: format!(
+                    "{} · {} #{}",
+                    timing.driver,
+                    car.vehicle.as_str(),
+                    car.number
+                ),
+                sectors: std::array::from_fn(|i| {
+                    let value = car
+                        .last_sectors_s
+                        .get(i)?
+                        .current()
+                        .filter(|v| v.is_finite() && **v > 0.0)?;
+                    if car.last_lap_s.current() != car.best_lap_s.current() {
+                        return None;
+                    }
                     snapshot
                         .state
                         .cars
                         .iter()
                         .filter(|c| c.class == car.class)
                         .filter_map(|c| c.best_sectors_s.get(i)?.current())
-                        .all(|v| value <= v),
-                )
-            }),
+                        .filter(|v| v.is_finite() && **v > 0.0)
+                        .min_by(|a, b| a.total_cmp(b))
+                        .map(|best| value <= best)
+                }),
+            }
         })
         .collect()
 }
@@ -377,19 +429,50 @@ fn is_demo(snapshot: &Snapshot) -> bool {
         == Some(snapshot)
 }
 
+fn paint_sector_chips(
+    detail: Option<&Detail>,
+    kit: &Kit<'_>,
+    mut draw: impl FnMut(f32, Color, crate::vantare::paint::Label<'_>),
+) {
+    for i in 0..3 {
+        let x = 371.0 + i as f32 * 33.0;
+        let color = detail
+            .and_then(|d| d.sectors[i])
+            .map_or(Color(0xffffff, 0.08), |record| {
+                Color(if record { 0xb26bff } else { 0x22c55e }, 1.0)
+            });
+        draw(
+            x,
+            color,
+            crate::vantare::paint::Label {
+                value: ["S1", "S2", "S3"][i],
+                x: x + 8.0,
+                right: None,
+                top: 55.0,
+                height: 16.0,
+                face: Face::Display,
+                ink: kit.ink(Face::Display, 10.0, 1.0, kit.style.colors.text.hsla()),
+            },
+        );
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 fn paint(
     vm: &ViewModel,
     kind: Kind,
     timing: &Timing,
     detail: Option<&Detail>,
-    improvement: Option<f64>,
+    improvement: &str,
     alpha: f32,
     _offset: f32,
     prefs: Preferences,
     window: &mut Window,
     cx: &mut App,
 ) {
+    // Un aviso retenido puede sobrevivir al candidato actual. Sus textos
+    // preparados solo valen para la misma vuelta, no solo para el mismo coche.
+    let detail = detail.filter(|detail| &detail.timing == timing);
     let style = Style::compiled();
     let mut variant = style.styles.neo.clone();
     variant.top.1 *= alpha;
@@ -451,7 +534,7 @@ fn paint(
     );
     if let Some(class) = &vm.active_class {
         let ink = kit.ink(Face::Display, 10.0, 0.0, Color(0xffffff, alpha).hsla());
-        let class = text::fit(window, class, &ink, 92.0);
+        let class = text::fit_borrowed(window, class, &ink, 92.0);
         let width = text::width(window, &class, &ink) + 12.0;
         let x = 16.0 + text::width(window, title, &heading) + 8.0;
         round_rect(
@@ -476,10 +559,14 @@ fn paint(
         );
     }
     let time = kit.ink(Face::Display, 40.0, 0.5, Color(0xfaf7f7, alpha).hsla());
+    let time_text = detail.map_or_else(
+        || std::borrow::Cow::Owned(timing.text()),
+        |detail| std::borrow::Cow::Borrowed(detail.time.as_str()),
+    );
     kit.label(
         window,
         cx,
-        &timing.text(),
+        &time_text,
         16.0,
         None,
         30.0,
@@ -489,11 +576,8 @@ fn paint(
     );
     if vm.show_driver {
         let ink = kit.ink(Face::Body, 12.0, 0.0, Color(0xc9c0c2, alpha).hsla());
-        let subtitle = detail.map_or_else(
-            || timing.driver.clone(),
-            |d| format!("{} · {}", timing.driver, d.subtitle),
-        );
-        let driver = text::fit(window, &subtitle, &ink, 320.0);
+        let subtitle = detail.map_or(timing.driver.as_str(), |detail| detail.subtitle.as_str());
+        let driver = text::fit_borrowed(window, subtitle, &ink, 320.0);
         kit.label(
             window,
             cx,
@@ -526,7 +610,7 @@ fn paint(
     kit.label(
         window,
         cx,
-        &improvement.map_or_else(|| "—".into(), |v| format!("{v:.3}")),
+        improvement,
         0.0,
         Some(464.0),
         12.0,
@@ -534,43 +618,18 @@ fn paint(
         Face::Display,
         &value,
     );
-    for i in 0..3 {
-        let x = 371.0 + i as f32 * 33.0;
-        round_rect(
-            window,
-            x,
-            55.0,
-            30.0,
-            16.0,
-            3.0,
-            detail
-                .and_then(|d| d.sectors[i])
-                .map_or(Color(0xffffff, 0.08), |record| {
-                    Color(if record { 0xb26bff } else { 0x22c55e }, 1.0)
-                })
-                .hsla(),
-        );
-        let ink = kit.ink(Face::Display, 10.0, 1.0, style.colors.text.hsla());
-        kit.label(
-            window,
-            cx,
-            &format!("S{}", i + 1),
-            x + 8.0,
-            None,
-            55.0,
-            16.0,
-            Face::Display,
-            &ink,
-        );
-    }
-    let lap = detail.filter(|d| !d.clock.is_empty()).map_or_else(
+    paint_sector_chips(detail, &kit, |x, color, label| {
+        round_rect(window, x, 55.0, 30.0, 16.0, 3.0, color.hsla());
+        label.paint(&kit, window, cx);
+    });
+    let lap = detail.map_or_else(
         || {
-            timing.laps.map_or_else(
+            std::borrow::Cow::Owned(timing.laps.map_or_else(
                 || "—".into(),
                 |v| format!("{} {v}", if kit.es() { "V" } else { "L" }),
-            )
+            ))
         },
-        |d| d.clock.clone(),
+        |detail| std::borrow::Cow::Borrowed(detail.lap.as_str()),
     );
     kit.label(
         window,
@@ -669,8 +728,10 @@ mod tests {
     use super::*;
 
     fn reference_scene() -> Snapshot {
-        vantare_ipc::snapshot_from_fixture_json(include_str!("../../fixtures/fastest-lap.snapshot.json"))
-            .expect("escena DTO v3 válida")
+        vantare_ipc::snapshot_from_fixture_json(include_str!(
+            "../../fixtures/fastest-lap.snapshot.json"
+        ))
+        .expect("escena DTO v3 válida")
     }
 
     #[test]
@@ -785,5 +846,64 @@ mod tests {
                 (0, Wake::Frame) | (1, Wake::At(_)) | (2, Wake::Idle)
             ));
         }
+    }
+}
+
+#[cfg(test)]
+mod record_render_tests {
+    use super::*;
+    #[test]
+    fn missing_class_sector_references_never_paint_a_record_chip() {
+        use vantare_domain::{Quality, SourceState, format::Language};
+        let prefs = Preferences::default();
+        let mut photo = crate::source::fixed();
+        photo.state.source_state = SourceState::Live;
+        let own = photo.state.player.expect("jugador").car;
+        for car in &mut photo.state.cars {
+            car.best_sectors_s = vec![Quality::Unavailable; 3];
+        }
+        let car = photo
+            .state
+            .cars
+            .iter_mut()
+            .find(|c| c.id == own)
+            .expect("coche");
+        car.last_lap_s = Quality::Reliable(90.0);
+        car.best_lap_s = Quality::Reliable(90.0);
+        car.last_sectors_s = vec![Quality::Reliable(30.0); 3];
+        let vm = vantare_domain::fastest_lap::project(&photo, prefs);
+        let detail = details(&photo, &vm, prefs);
+        let own_detail = detail.iter().find(|d| d.id == own).expect("detalle propio");
+        crate::paint_tests::with_kit(SIZE.0, Language::Es, |kit| {
+            let mut painted = Vec::new();
+            paint_sector_chips(Some(own_detail), kit, |_, color, label| {
+                painted.push((label.value.to_owned(), color))
+            });
+            assert_eq!(painted.len(), 3);
+            assert!(
+                painted
+                    .iter()
+                    .all(|(_, color)| *color == Color(0xffffff, 0.08)),
+                "sin una referencia no se afirma récord: {painted:?}"
+            );
+        });
+        photo
+            .state
+            .cars
+            .iter_mut()
+            .find(|c| c.id == own)
+            .expect("coche")
+            .best_sectors_s = vec![Quality::Reliable(31.0); 3];
+        let detail = details(&photo, &vm, prefs);
+        let own_detail = detail.iter().find(|d| d.id == own).expect("detalle propio");
+        crate::paint_tests::with_kit(SIZE.0, Language::Es, |kit| {
+            let mut painted = Vec::new();
+            paint_sector_chips(Some(own_detail), kit, |_, color, _| painted.push(color));
+            assert_eq!(
+                painted,
+                [Color(0xb26bff, 1.0); 3],
+                "referencia real superada, ficha morada"
+            );
+        });
     }
 }

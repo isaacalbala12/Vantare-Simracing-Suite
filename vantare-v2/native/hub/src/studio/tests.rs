@@ -704,18 +704,38 @@ fn catalog_groups_locked_widgets_under_pro_and_keeps_plan_widgets_addable() {
             catalog,
             ..Access::default()
         });
-        let shown = groups("", None, |kind| widget_lock(access, kind).is_some(), &[]);
-        let total: usize = shown.iter().map(|group| group.kinds.len()).sum();
-        assert_eq!(total, Kind::CATALOG.len(), "cada widget aparece una vez");
-        for group in &shown {
-            for &kind in &group.kinds {
+        // Con todo colocado desaparecen las sugerencias: también debe seguir
+        // completo el catálogo base que se pinta al buscar/filtrar.
+        for placed in [&[][..], Kind::ALL] {
+            let shown = groups("", None, |kind| widget_lock(access, kind).is_some(), placed);
+            let total: usize = shown.iter().map(|group| group.kinds.len()).sum();
+            let expected: Vec<_> = Kind::ALL
+                .iter()
+                .copied()
+                .filter(|kind| *kind != Kind::CarDamageNumbers)
+                .collect();
+            assert_eq!(total, expected.len(), "cada widget aparece una vez");
+            for kind in expected {
                 assert_eq!(
-                    group.kind == GroupKind::Locked,
-                    !catalog.allows_widget(kind.name()),
-                    "{kind:?} en {catalog:?}"
+                    shown
+                        .iter()
+                        .flat_map(|group| &group.kinds)
+                        .filter(|entry| **entry == kind)
+                        .count(),
+                    1,
+                    "{kind:?} debe aparecer en el catálogo mostrado"
                 );
-                if group.kind == GroupKind::Locked {
-                    assert_eq!(widget_lock(access, kind), Some("Incluida en Pro"));
+            }
+            for group in &shown {
+                for &kind in &group.kinds {
+                    assert_eq!(
+                        group.kind == GroupKind::Locked,
+                        !catalog.allows_widget(kind.name()),
+                        "{kind:?} en {catalog:?}"
+                    );
+                    if group.kind == GroupKind::Locked {
+                        assert_eq!(widget_lock(access, kind), Some("Incluida en Pro"));
+                    }
                 }
             }
         }

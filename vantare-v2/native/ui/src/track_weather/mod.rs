@@ -62,7 +62,7 @@ impl Settings {
 pub(crate) struct Widget {
     vertical: bool,
     vm: ViewModel,
-    session: String,
+    session: std::sync::Arc<String>,
     wind_heading: Option<f32>,
 }
 
@@ -71,7 +71,7 @@ impl Widget {
         Self {
             vertical: settings.vertical,
             vm: track_weather::project(&Snapshot::default(), prefs),
-            session: String::new(),
+            session: std::sync::Arc::default(),
             wind_heading: None,
         }
     }
@@ -92,17 +92,12 @@ impl Widget {
                     let clock = vantare_domain::format::clock(
                         snapshot.state.session.remaining_s.current().copied(),
                     );
-                    let clock = if clock.len() == 4 {
-                        format!("0{clock}")
-                    } else {
-                        clock
-                    };
                     format!("{name} · {clock}")
                 } else {
                     name
                 }
             });
-        let changed = replace_if_changed(&mut self.session, label);
+        let changed = replace_if_changed(std::sync::Arc::make_mut(&mut self.session), label);
         let heading = snapshot
             .state
             .session
@@ -796,7 +791,7 @@ mod tests {
         timed.state.session.kind = Quality::Reliable(vantare_domain::SessionKind::Qualifying);
         timed.state.session.remaining_s = Quality::Reliable(522.0);
         assert!(widget.ingest(&timed, prefs));
-        assert_eq!(widget.session, "CLASIFICACIÓN · 08:42");
+        assert_eq!(widget.session.as_str(), "CLASIFICACIÓN · 08:42");
         assert!(!widget.ingest(&timed, prefs));
         let vertical = Widget::new(
             &Settings {

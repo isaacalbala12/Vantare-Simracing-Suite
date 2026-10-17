@@ -34,6 +34,43 @@ struct SessionText {
     kind: Option<crate::session::Session>,
     finish: Option<(u32, String)>,
 }
+fn paint_caption(
+    vm: &ViewModel,
+    value: &str,
+    heading: bool,
+    sectors: bool,
+    quiet: bool,
+    kit: &Kit<'_>,
+    mut draw: impl FnMut(crate::vantare::paint::Label<'_>),
+) {
+    let (face, size, tracking, top, height) = if heading {
+        (
+            Face::Display,
+            if quiet { 16.0 } else { 20.0 },
+            1.4,
+            if sectors { 11.0 } else { 21.0 },
+            22.0,
+        )
+    } else {
+        (
+            Face::Body,
+            12.0,
+            0.0,
+            if sectors { 37.0 } else { 48.0 },
+            16.0,
+        )
+    };
+    draw(crate::vantare::paint::Label {
+        value,
+        x: 76.0,
+        right: None,
+        top,
+        height,
+        face,
+        ink: kit.ink(face, size, tracking, Color(vm.text_color, 1.0).hsla()),
+    });
+}
+
 fn paint_content(
     vm: &ViewModel,
     _pulse: f32,
@@ -325,7 +362,7 @@ fn paint_content(
         Face::Display,
         if quiet { 16.0 } else { 20.0 },
         1.4,
-        Color(if quiet { 0xc9c0c2 } else { 0xfaf7f7 }, 1.0).hsla(),
+        Color(vm.text_color, 1.0).hsla(),
     );
     let title = if !waiting
         && session.kind == Some(crate::session::Session::Qualifying)
@@ -361,18 +398,10 @@ fn paint_content(
         title.to_owned()
     };
     let title = text::fit(window, &title, &heading, 250.0);
-    kit.label(
-        window,
-        cx,
-        &title,
-        76.0,
-        None,
-        if sectors { 11.0 } else { 21.0 },
-        22.0,
-        Face::Display,
-        &heading,
-    );
-    let body = kit.ink(Face::Body, 12.0, 0.0, style.colors.text.hsla());
+    paint_caption(vm, &title, true, sectors, quiet, &kit, |label| {
+        label.paint(&kit, window, cx);
+    });
+    let body = kit.ink(Face::Body, 12.0, 0.0, Color(vm.text_color, 1.0).hsla());
     let finish = if vm.flag == Some(FlagKind::Checkered) && vm.penalty.is_none() && !waiting {
         if session.kind == Some(crate::session::Session::Qualifying) {
             Some(
@@ -400,17 +429,9 @@ fn paint_content(
         None
     };
     let message = text::fit(window, finish.as_deref().unwrap_or(message), &body, 250.0);
-    kit.label(
-        window,
-        cx,
-        &message,
-        76.0,
-        None,
-        if sectors { 37.0 } else { 48.0 },
-        16.0,
-        Face::Body,
-        &body,
-    );
+    paint_caption(vm, &message, false, sectors, quiet, &kit, |label| {
+        label.paint(&kit, window, cx);
+    });
     if sectors {
         for i in 0..3 {
             let active = vm
@@ -486,7 +507,7 @@ pub struct Settings {
 impl Default for Settings {
     fn default() -> Self {
         Self {
-            text_color: "#000000".into(),
+            text_color: format!("#{:06x}", Style::compiled().colors.text.0),
             show_sector_flags: true,
             hide_when_green: false,
         }
@@ -518,7 +539,7 @@ impl Settings {
             }
         } else {
             Self {
-                text_color: "#000000".into(),
+                text_color: Self::default().text_color,
                 ..self.clone()
             }
         }
@@ -751,9 +772,12 @@ mod tests {
             scope: vantare_domain::FlagScope::Session,
         }]);
         assert_eq!(
-            Settings::default()
-                .project(&snapshot, Preferences::default())
-                .text_color,
+            Settings {
+                text_color: "#000000".into(),
+                ..Settings::default()
+            }
+            .project(&snapshot, Preferences::default())
+            .text_color,
             0xffffff
         );
         assert_eq!(
@@ -827,5 +851,59 @@ mod tests {
                 ..Preferences::default()
             }
         ));
+    }
+}
+
+#[cfg(test)]
+mod caption_render_tests {
+    use super::*;
+    #[test]
+    fn new_caption_is_light_and_explicit_saved_black_is_preserved() {
+        use vantare_domain::{Flag, FlagScope, Quality, SourceState, format::Language};
+        let mut photo = Snapshot::default();
+        photo.state.source_state = SourceState::Live;
+        photo.state.flags = Quality::Reliable(vec![Flag {
+            kind: FlagKind::Yellow,
+            scope: FlagScope::Session,
+        }]);
+        let saved: Settings =
+            serde_json::from_str(r##"{"textColor":"#000000"}"##).expect("ajuste guardado");
+        crate::paint_tests::with_kit(SIZE.0, Language::Es, |kit| {
+            for (settings, expected) in [
+                (Settings::default(), kit.style.colors.text),
+                (saved.normalized(), Color(0x000000, 1.0)),
+            ] {
+                let vm = settings.project(&photo, Preferences::default());
+                let painted = crate::paint_tests::observe(|draw| {
+                    paint_caption(&vm, "AMARILLA", true, false, false, kit, draw)
+                });
+                assert_eq!(painted[0].value, "AMARILLA");
+                assert_eq!(painted[0].color, expected.hsla());
+            }
+        });
+    }
+    #[test]
+    fn configured_color_is_used_in_both_painted_captions() {
+        use vantare_domain::{Flag, FlagScope, Quality, SourceState, format::Language};
+        let mut photo = Snapshot::default();
+        photo.state.source_state = SourceState::Live;
+        photo.state.flags = Quality::Reliable(vec![Flag {
+            kind: FlagKind::Yellow,
+            scope: FlagScope::Session,
+        }]);
+        let vm = Settings {
+            text_color: "#123abc".into(),
+            ..Settings::default()
+        }
+        .project(&photo, Preferences::default());
+        crate::paint_tests::with_kit(SIZE.0, Language::Es, |kit| {
+            for (heading, value) in [(true, "AMARILLA"), (false, "Con precaución")] {
+                let painted = crate::paint_tests::observe(|draw| {
+                    paint_caption(&vm, value, heading, false, false, kit, draw)
+                });
+                assert_eq!(painted[0].value, value);
+                assert_eq!(painted[0].color, Color(0x123abc, 1.0).hsla());
+            }
+        });
     }
 }

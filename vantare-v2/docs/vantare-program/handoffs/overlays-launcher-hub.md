@@ -215,3 +215,8 @@ UI y Calendar.fallback, resolviendo solo el comentario de versión y el rechazo
 del host: ambas ramas habían usado services v12 con contratos distintos. El
 corte combinado es services v13 y la regresión del host rechaza también v12.
 Las guías actuales exigen recompilar Hub, supervisor y servicios juntos.
+En 374e9d24e pasan también las regresiones nuevas de foco/teclado y privacidad.
+El detector encontró el mismo patrón de arena TLS en la prueba previa de
+resolución de Studio: preview_stage se construía fuera de draw. Se mueve a una
+ventana de TestPlatform conservando las cuatro resoluciones, sus tamaños,
+anclajes, posiciones y documento; solo cambia el ciclo de vida del test.

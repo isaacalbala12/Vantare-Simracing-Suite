@@ -640,21 +640,11 @@ fn selection_caption_stays_inside_canvas_at_ultrawide_fit_without_moving_frame()
 }
 #[test]
 fn canvas_resolution_changes_preview_and_anchors_without_moving_widgets() {
-    gpui_platform::headless().run(|cx| {
-        cx.set_global(orbit::theme::Theme::default());
-        let file = crate::document::tests::File::new();
-        let studio = cx.new(|cx| Studio::new(prepared_widget(file.path.clone()), cx));
-        studio.update(cx, |studio, cx| {
-            let instances = studio.editor.layout().instances.clone();
-            studio.measure_canvas(
-                (850.0, 500.0),
-                fitted_scale(850.0, 500.0, studio.canvas_resolution()).expect("fit"),
-                cx,
-            );
-            for resolution in &CANVAS_PRESETS[..4] {
-                studio.set_canvas_resolution(Some(*resolution), cx);
-                assert_eq!(studio.canvas_resolution(), *resolution);
-                assert_eq!(studio.editor.layout().instances, instances);
+    struct Preview(Entity<Studio>);
+    impl gpui::Render for Preview {
+        fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+            self.0.update(cx, |studio, cx| {
+                let resolution = studio.canvas_resolution();
                 let mut stage = studio.preview_stage(cx);
                 assert_eq!(
                     stage.style().size.width,
@@ -664,19 +654,67 @@ fn canvas_resolution_changes_preview_and_anchors_without_moving_widgets() {
                     stage.style().size.height,
                     Some(px(resolution.height * studio.preview_scale()).into())
                 );
-                let anchored = studio
-                    .anchored_position((400.0, 200.0), 2, 2)
-                    .expect("anclar");
-                assert_eq!(
-                    anchored,
-                    (
-                        studio.monitor.0 + resolution.width - 400.0,
-                        studio.monitor.1 + resolution.height - 200.0
-                    )
-                );
-                assert_eq!(studio.frames[0].1.read(cx).item, instances[0]);
-            }
-        });
+                stage
+            })
+        }
+    }
+    gpui_platform::headless().run(|cx| {
+        let file = crate::document::tests::File::new();
+        let mut test = gpui::HeadlessAppContext::with_asset_source(
+            gpui_platform::current_platform(true).text_system(),
+            std::sync::Arc::new(crate::shell::assets::Icons),
+        );
+        test.update(|cx| cx.set_global(orbit::theme::Theme::default()));
+        let window = test
+            .open_window(gpui::size(px(850.0), px(500.0)), |_, cx| {
+                cx.new(|cx| {
+                    Preview(cx.new(|cx| Studio::new(prepared_widget(file.path.clone()), cx)))
+                })
+            })
+            .expect("ventana del arnés");
+        let instances = window
+            .update(&mut test, |view, _, cx| {
+                view.0.update(cx, |studio, cx| {
+                    studio.measure_canvas(
+                        (850.0, 500.0),
+                        fitted_scale(850.0, 500.0, studio.canvas_resolution()).expect("fit"),
+                        cx,
+                    );
+                    studio.editor.layout().instances.clone()
+                })
+            })
+            .expect("medir lienzo");
+        for resolution in &CANVAS_PRESETS[..4] {
+            window
+                .update(&mut test, |view, _, cx| {
+                    view.0.update(cx, |studio, cx| {
+                        studio.set_canvas_resolution(Some(*resolution), cx);
+                        assert_eq!(studio.canvas_resolution(), *resolution);
+                        assert_eq!(studio.editor.layout().instances, instances);
+                        let anchored = studio
+                            .anchored_position((400.0, 200.0), 2, 2)
+                            .expect("anclar");
+                        assert_eq!(
+                            anchored,
+                            (
+                                studio.monitor.0 + resolution.width - 400.0,
+                                studio.monitor.1 + resolution.height - 200.0,
+                            )
+                        );
+                        assert_eq!(studio.frames[0].1.read(cx).item, instances[0]);
+                    });
+                    cx.notify();
+                })
+                .expect("resolución, anclajes y documento");
+            // Crear y liberar los elementos con entidades dentro de su arena de draw.
+            test.update_window(window.into(), |_, window, cx| {
+                window.draw(cx).clear(cx);
+            })
+            .expect("renderizar el lienzo");
+        }
+        test.update_window(window.into(), |_, window, _| window.remove_window())
+            .expect("cerrar");
+        drop(test);
         crate::quit_headless_test(cx);
     });
 }

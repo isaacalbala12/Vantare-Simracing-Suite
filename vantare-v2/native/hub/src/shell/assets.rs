@@ -28,6 +28,7 @@ const WIDGETS: &[(&str, &[u8])] = widgets![
     "broadcast-tower",
     "head-to-head",
     "fastest-lap",
+    "session-alerts",
     "racing-flags",
     "delta",
     "delta-trace",

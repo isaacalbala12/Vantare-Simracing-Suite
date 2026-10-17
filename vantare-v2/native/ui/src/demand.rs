@@ -33,6 +33,13 @@ mod tests {
     use super::*;
     use crate::{Kind, Settings};
 
+    const LIVE_EXTRA_SETTINGS: &[&str] = &[
+        r#"{"kind":"standings","classScope":"all-classes","classificationMode":"multiclass","columns":[{"metricId":"position"},{"metricId":"carNumber"},{"metricId":"driverName"},{"metricId":"class"},{"metricId":"gap"},{"metricId":"interval"},{"metricId":"currentLap"},{"metricId":"lastLap"},{"metricId":"bestLap"},{"metricId":"pit"}]}"#,
+        r#"{"kind":"standings","footerFirst":"totalLaps","footerSecond":"track"}"#,
+        r#"{"kind":"relative","classScope":"sameClass","columns":[{"metricId":"position"},{"metricId":"class"},{"metricId":"carNumber"},{"metricId":"driverName"},{"metricId":"gap"},{"metricId":"bestLap"},{"metricId":"lastLap"}],"footerSlots":["ambient","track","wind","rain","wetness","time","lap","position","lastLap"]}"#,
+        r#"{"kind":"head-to-head","target":"behind"}"#,
+    ];
+
     #[test]
     fn a_flags_only_layout_receives_the_players_personal_flag_over_the_real_pipe() {
         use std::{
@@ -228,12 +235,7 @@ mod tests {
 
         if real_scene.is_some() {
             // Opciones reales del inspector; los datos de las fotos no se modifican.
-            for json in [
-                r#"{"kind":"standings","classScope":"all-classes","classificationMode":"multiclass","columns":[{"metricId":"position"},{"metricId":"carNumber"},{"metricId":"driverName"},{"metricId":"class"},{"metricId":"gap"},{"metricId":"interval"},{"metricId":"currentLap"},{"metricId":"lastLap"},{"metricId":"bestLap"},{"metricId":"pit"}]}"#,
-                r#"{"kind":"standings","footerFirst":"totalLaps","footerSecond":"track"}"#,
-                r#"{"kind":"relative","classScope":"sameClass","columns":[{"metricId":"position"},{"metricId":"class"},{"metricId":"carNumber"},{"metricId":"driverName"},{"metricId":"gap"},{"metricId":"bestLap"},{"metricId":"lastLap"}],"footerSlots":["ambient","track","wind","rain","wetness","time","lap","position","lastLap"]}"#,
-                r#"{"kind":"head-to-head","target":"behind"}"#,
-            ] {
+            for json in LIVE_EXTRA_SETTINGS {
                 configurations.push(serde_json::from_str(json).expect("opciones del inspector"));
             }
         }

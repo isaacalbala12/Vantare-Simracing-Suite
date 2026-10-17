@@ -20,13 +20,14 @@ pub(super) const CATEGORIES: [(Option<Category>, &str); 5] = [
 ];
 
 /// Orden del catálogo: por categoría y, dentro de ella, de lo general a lo concreto.
-pub(super) const ORDER: [Kind; 17] = [
+pub(super) const ORDER: [Kind; 18] = [
     Kind::Standings,
     Kind::Relative,
     Kind::MulticlassRelative,
     Kind::BroadcastTower,
     Kind::HeadToHead,
     Kind::FastestLap,
+    Kind::SessionAlerts,
     Kind::RacingFlags,
     Kind::Delta,
     Kind::DeltaTrace,
@@ -80,6 +81,11 @@ pub(super) fn about(kind: Kind) -> (&'static str, Category, &'static str) {
             "Tú contra un rival, vuelta a vuelta",
             Race,
             "rival duelo comparar tiempos",
+        ),
+        Kind::SessionAlerts => (
+            "Cuenta atrás y cambios de sesión LMU; carreras marcadas del calendario",
+            Race,
+            "avisos sesión calendario cuenta atrás formación salida lmu",
         ),
         Kind::FastestLap => (
             "Mejor vuelta de la sesión y la tuya",

@@ -1325,8 +1325,8 @@ mod tests {
                 );
             }
         }
-        // 43 demostraciones React + ocho escenas Vantare r10b (#1497).
-        assert_eq!(count, 51);
+        // 43 demostraciones React + ocho escenas Vantare r10b + Avisos de sesión (#1653).
+        assert_eq!(count, 52);
         let default = Scene::new(&initial).expect("Standings default");
         assert_eq!(
             default.snapshots[0].state.cars[0].last_lap_s.current(),

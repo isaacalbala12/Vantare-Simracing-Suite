@@ -2,6 +2,98 @@
 
 [Histórico previo por SHA](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/8c6e83f977c8d2245a04266cdaaf896ed8c1b131/vantare-v2/docs/vantare-program/handoffs/overlays-launcher-hub.md). El diario y avances están en las issues; este documento conserva el estado actual.
 
+## Integración del calendario #1640 en #1660 · 2026-10-17
+
+Merge de origin/nightly `2a580c458` sobre la rama de #1660, sin rebase ni
+force-push. Resueltos los dos conflictos del calendario conservando su modelo
+nuevo, degradación con copia .invalid y protocolo services 12. El feed del
+overlay sigue la ruta compartida de IPC desde el layout real; se adapta a
+franjas/tandas y al canal En pista. Windows usa el emisor del calendario nuevo,
+sin el segundo toast del widget. Regresiones: feed, canales, caducidad,
+franjas/tandas y copia intacta tras guardar. CI/SHA definitivos en issue/PR/buzón.
+El seguimiento de tests MSIX de R2 queda en una rama aparte después del merge
+de #1660 por el orquestador. Sin ventanas, capturas, LMU físico ni release.
+
+## Review R1 #1660 · correcciones para ronda 2 · 2026-10-17
+
+Informe NO APTO de DeepSeek leído. Correcciones `c7ffd8d9`; se fusiona
+origin/nightly `de68847f7` (instalador #1600) sin conflictos ni rebase.
+La CI de `6ca18326` pasa 1927/1927, lifecycle 5/5 y cinco checks;
+durante esa ejecución entra el pulido #1679 en `a3fea01f`. Se fusiona
+también sin conflictos, conservando su corrección de recuperación LMU y
+los catálogos/regresiones R1; CI del HEAD final en issue/PR/buzón.
+Ruta de agenda compartida desde el layout
+real de Studio/overlay mediante `ipc::session_alerts::calendar_path`, con
+regresión para argumentos beta/MSIX. El supervisor live deriva catálogo desde
+`widgets!` (origen de `Kind::ALL`) y variantes desde `LIVE_EXTRA_SETTINGS`;
+valida multiplicidades, no fija 18/22. Offline contrasta el catálogo exportado
+con el fuente independiente, rechazando también binarios antiguos coherentes.
+Tests del supervisor usan una expectativa explícita independiente.
+
+Frescura/opción se validan antes de consumir el fin. Pausa/garaje/hueco de reloj
+ocultan la sesión y conservan umbrales/sonido; nueva identidad sí reinicia.
+Agenda lejana despierta en el umbral en vez de 1 Hz; la demanda retira
+Positions/LapTimes hasta demostrar la fuente de fin real.
+P3-3/P3-5/P3-6 y límites se documentan en `native/ui/session-alerts.md`:
+etiqueta de umbral al entrar tarde, E/S periódica existente, audio físico y
+blanco limitado a prácticas/qualy. Las listas Python de notas/timing permanecen.
+La CI anterior solo acredita 39c8720f; SHA/checks de esta ronda en issue/PR/buzón.
+Sin capturas/ventanas, LMU físico, merge a nightly ni release.
+
+## Reanudación #1653 · catálogo de cobertura · 2026-10-16
+
+El primer HEAD actualizado pasa CI Windows: 1911/1911 Nextest (19 omitidos),
+lifecycle 5/5, formato/check/Clippy y cinco checks SUCCESS (run 38973145705).
+Mientras corría, nightly avanzó a `1a8ddee33` (#1684); se fusiona también,
+sin rebase ni force-push. La conclusión del HEAD definitivo se registra al
+cerrar en #1660/#1653 y el buzón, no se extrapola el verde del SHA anterior.
+
+Se fusiona origin/nightly `32c3f3a14` mediante `725cce28`, sin conflictos,
+rebase ni force-push. El evaluador offline deja de fijar 18 widgets:
+el consumidor Rust exporta el catálogo de `Kind::ALL`, y Python valida
+nombres y cantidad contra él, rechazando faltantes, extras y duplicados.
+El resumen usa esa cantidad; informes antiguos sin catálogo exigen recompilar.
+Se conserva el límite de cobertura: evaluar proyecciones no certifica señales
+reales de formación/salida. CI y SHA de esta fase se verifican al cerrar en
+#1660/#1653 y el buzón; el verde anterior no acredita este nuevo HEAD.
+
+## Continuación #1653 / VANTA-74 · v11 · 2026-10-16
+
+[PR #1660](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1660)
+a nightly, rama `vantareapp/isa-1653-avisos-sesion`; merge limpio `ff9bc31f`
+de origin/nightly `bcaa0e3f`, que incluye #1664.
+GitHub Project Vantare / area:overlays-runtime, sin milestone.
+Estado Plane y SHA final publicados se verifican al cerrar en la issue y buzón.
+Worker Mac por SSH, target propio; gates uno a uno con VANTARE_CARGO_MIN_GB=0.
+[Contrato v11](../../telemetria/session-alerts-contract.md) y
+[consumo del widget](../../../native/ui/session-alerts.md).
+
+Se conecta SessionTiming actual: fin programado como «FIN PREVISTO»,
+sin afirmar carrera ni fin real al llegar a cero. Sesiones consecutivas
+reinician la cuenta sin blanco inferido. Blanco solo con finished_at_s
+confirmado reciente; fases explícitas y metros estimados (≈) solo juntos;
+próxima sesión solo con tipo, instante anunciado y reloj actual del mismo ID.
+El calendario UTC sigue independiente. Amarillo sólido FCY / rojo final /
+blanco terminado y mini configurable del diseño aprobado se conservan.
+
+LMU aún NO demuestra inicio/fin reales, fase formación/salida ni próxima sesión:
+se ocultan sin inventar datos. Sí publica fin programado, distancia estimada
+a salida/meta fuera de boxes e identidad de sesiones consecutivas.
+Se corrige el fallo de CI Windows de Sound::stop (función asociada).
+Código `722c2bf0fcc9d9eee8c50392efe65f8254db5943`, publicado en GitHub.
+PR fuera de draft, autorización del orquestador. Fmt/check/Clippy workspace
+PASS; feature/contrato 23/23; lifecycle Mac 10/10 (Engineer cero aplicables);
+telemetría 32/32 PASS. Nextest workspace: 1692 ejecutados, 1642 PASS y 50 FAIL
+por «Mac platform not created on main thread», 12 omitidos por la configuración
+vigente. No se filtran ni modifican esas pruebas; la CI Windows del SHA final
+se verifica en #1660/#1653 y el buzón, sin extrapolar los resultados Mac.
+Sin LMU ni ventanas/capturas de app.
+
+Primera entrega conservada: código e1dd1747, docs a4385ed4; evidencia histórica
+en ~/orq/1653-evidence/informe.md. Nueva evidencia con prefijo v11 en el mismo
+directorio. El orquestador autorizó push y sacar #1660 de draft; no autorizó
+merge a nightly, promoción ni release.
+
 ## 1. Resultado
 
 Hub/Studio GPUI editan el layout único y los widgets del registro. Launcher gobierna procesos mediante el motor propio. Standings tiene columnas/formatos por Práctica, Qualy y Carrera; todos los widgets filtran por sesión. Pedales conserva separación ajustable y gana Look Vantare en columnas (#1566, integrada en nightly); el botón de pista alterna mostrar/dejar de mostrar mediante la solicitud compartida.
@@ -12,7 +104,7 @@ GitHub Issues y Project Vantare; #1561/area:plataforma, In Progress, sin milesto
 
 ## 3. Estado real y canal
 
-17/10/2026 · #1629/VANTA-8 · R5: respuesta a DeepSeek A/B1/B2/B3, sin P1. Correcciones de todos los P2 publicadas (`ae8a002df`, merge `db4455453`) y regresiones del texto/color/geometría que usa el pintor (no solo ViewModel), sin ventanas ni nuevas dependencias de tests. Check workspace/all-targets PASS; regresiones dirigidas 21/21 PASS. Contraprueba temporal: 21 FAIL/2 PASS al reintroducir defectos, fuentes restauradas por SHA256 y test de grupos reforzado para que las sugerencias no tapen un omitido. Se documentan los 99 P3, con los arreglos baratos de caché y los límites pendientes, en [respuesta R5](../research/1629-review-r5.md). Se incorpora nightly2a580 por merge (instalador #1600, telemetría #1679 y calendario #1640), resolviendo Banderas con Cars/Flags/Positions/SessionInfo sin Penalties. Fotos v11, Services v12 y derechos v5. Se validan gates/CI del SHA publicado (cola local ocupada); los verdes R4d son históricos y no certifican esta ronda. Estado, SHA remoto y resultados de cierre vigentes en [#1629](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1629) y [PR #1641](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1641); evidencia `C:/VantareServer/evidence/1629-r5/progress.json`. Árbol nativo congelado `ebd0efd7bcd92700dbe225dabebb9e030294d375` tras corregir nueve puntos y coma exigidos por Clippy; primer intento CI f04a pasó fmt/check y no alcanzó Nextest/lifecycle, log conservado. #1675 sigue OPEN: recaptura 17 × 4 y variantes pendiente, ninguna ventana. Sin merge del PR, promoción, release ni despliegue.
+17/10/2026 · #1629/VANTA-8 · R5: respuesta a DeepSeek A/B1/B2/B3, sin P1. Correcciones de todos los P2 publicadas (`ae8a002df`, merge `db4455453`) y regresiones del texto/color/geometría que usa el pintor (no solo ViewModel), sin ventanas ni nuevas dependencias de tests. Check workspace/all-targets PASS; regresiones dirigidas 21/21 PASS. Contraprueba temporal: 21 FAIL/2 PASS al reintroducir defectos, fuentes restauradas por SHA256 y test de grupos reforzado para que las sugerencias no tapen un omitido. Se documentan los 99 P3, con los arreglos baratos de caché y los límites pendientes, en [respuesta R5](../research/1629-review-r5.md). Se incorpora nightly2a580 y después 9c19b2993 por merge (instalador #1600, telemetría #1679, calendario #1640 y Avisos #1660), resolviendo Banderas con Cars/Flags/Positions/SessionInfo sin Penalties. Fotos v11, Services v12 y derechos v5. Se validan gates/CI del SHA publicado (cola local ocupada); los verdes R4d son históricos y no certifican esta ronda. Estado, SHA remoto y resultados de cierre vigentes en [#1629](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1629) y [PR #1641](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1641); evidencia `C:/VantareServer/evidence/1629-r5/progress.json`. Árbol nativo congelado `203e0bdd52c5bee7257a1b3222c063e40a711e35` tras corregir nueve puntos y coma exigidos por Clippy; primer intento CI f04a pasó fmt/check y no alcanzó Nextest/lifecycle, log conservado. #1675 sigue OPEN: recaptura 17 × 4 y variantes pendiente, ninguna ventana. El catálogo conserva también Avisos de sesión integrado en nightly: ALL19, visibles18 (cuatro gratis/catorce Pro), legado Daños detallados oculto. Sin merge del PR, promoción, release ni despliegue.
 
 17/10/2026 · #1629/VANTA-8 · Se incorpora también nightly `1a8ddee33` (#1684, reinicio del login tras fallo de guardado), por merge sin conflictos y sin cambios propios a widgets/login. Nuevo corte pendiente de CI Windows; SHA/checks/estado vigentes en #1629 y PR #1641, evidencia `C:/VantareServer/evidence/1629-r4/refresh-1a8d/`. El corte cd641 con nightly32c3 pasó CI 5/5 en intento2 (1926/1926 y lifecycle completos); intento1 Engineer recovery perdió derechos y cerró stream sin ACK, preservado y seguido en #1654, sin debilitar pruebas. Su verde no se extrapola al nuevo Services. #1675 OPEN, cero ventanas/capturas; aceptación visual y física pendientes. Sin merge del PR, promoción, release ni despliegue.
 

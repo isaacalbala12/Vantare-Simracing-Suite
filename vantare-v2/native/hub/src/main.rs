@@ -620,6 +620,76 @@ mod tests {
     }
 
     #[test]
+    fn calendar_writer_and_reader_share_packaged_layout_paths() {
+        let beta = include_str!("../../packaging/beta.ps1")
+            .lines()
+            .find(|line| line.trim_start().starts_with("$hubArgs ="))
+            .expect("argumentos reales de Start-BetaHub");
+        let beta_path = |flag| {
+            beta.split_once(flag)
+                .expect("flag beta")
+                .1
+                .split_once("(Join-Path $generation '")
+                .expect("ruta beta")
+                .1
+                .split_once('\'')
+                .expect("fin ruta beta")
+                .0
+        };
+        let msix = include_str!("../../packaging/msix/verify.ps1")
+            .lines()
+            .find(|line| line.trim_start().starts_with("$hubArguments ="))
+            .expect("argumentos reales de activación MSIX");
+        let msix_path = |flag| {
+            msix.split_once(flag)
+                .expect("flag MSIX")
+                .1
+                .split_once("$data + '")
+                .expect("ruta MSIX")
+                .1
+                .split_once('\'')
+                .expect("fin ruta MSIX")
+                .0
+                .trim_start_matches('/')
+        };
+        let root = std::env::temp_dir().join("vantare-calendar-package-contract");
+        // Destinos esperados independientes de los scripts y del helper compartido.
+        for (data, layout, expected) in [
+            (
+                beta_path("--data-dir"),
+                beta_path("--layout"),
+                "data/Vantare/native/calendar-alerts.json",
+            ),
+            (
+                msix_path("--data-dir"),
+                msix_path("--layout"),
+                "calendar-alerts.json",
+            ),
+        ] {
+            let options = parse(&[
+                "--data-dir".into(),
+                root.join(data).to_string_lossy().into_owned(),
+                "--layout".into(),
+                root.join(layout).to_string_lossy().into_owned(),
+            ])
+            .expect("argumentos del paquete");
+            let writer = vantare_hub::calendar::Calendar::alert_path(&options.layout);
+            let reader = vantare_ui::session_alerts::calendar::path_for_layout(&options.layout);
+            assert_eq!(writer, root.join(expected));
+            assert_eq!(reader, writer);
+            assert_ne!(writer.parent(), Some(options.data_dir.as_path()));
+        }
+        let defaults = parse(&[]).expect("paquete sin overrides");
+        let writer = vantare_hub::calendar::Calendar::alert_path(&defaults.layout);
+        assert_eq!(
+            writer,
+            vantare_ui::session_alerts::calendar::path_for_layout(
+                &vantare_ui::layout::default_path().expect("layout del overlay")
+            )
+        );
+    }
+
+    #[test]
     fn data_paths_share_the_platform_directory() {
         let root = vantare_ui::paths::default_data_dir().expect("directorio de datos");
         assert_eq!(

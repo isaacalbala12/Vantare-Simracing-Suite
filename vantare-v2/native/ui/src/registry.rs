@@ -9,7 +9,7 @@ macro_rules! widgets {
 
         impl Kind {
             pub const ALL: &'static [Self] = &[$(Self::$kind),+];
-            pub const CATALOG:&'static[Self]=&[Self::Standings,Self::Relative,Self::Delta,Self::Pedals,Self::MulticlassRelative,Self::Radar,Self::InputTelemetry,Self::DeltaTrace,Self::PedalsTelemetry,Self::TrackMap,Self::TrackWeather,Self::RacingFlags,Self::FastestLap,Self::HeadToHead,Self::BroadcastTower,Self::CarDamageVisual,Self::FuelStrategy];
+            pub const CATALOG:&'static[Self]=&[Self::Standings,Self::Relative,Self::Delta,Self::Pedals,Self::MulticlassRelative,Self::Radar,Self::InputTelemetry,Self::DeltaTrace,Self::PedalsTelemetry,Self::TrackMap,Self::TrackWeather,Self::RacingFlags,Self::FastestLap,Self::HeadToHead,Self::BroadcastTower,Self::CarDamageVisual,Self::FuelStrategy,Self::SessionAlerts];
 
 
             /// Nombre de producto; los identificadores de persistencia no cambian.
@@ -33,6 +33,7 @@ macro_rules! widgets {
                     Self::Relative => "Relative",
                     Self::RacingFlags => "Banderas",
                     Self::FastestLap => "Vuelta rápida",
+                    Self::SessionAlerts => "Avisos de sesión",
                 }
             }
 
@@ -123,4 +124,5 @@ widgets! {
     Relative => relative: "relative",
     RacingFlags => racing_flags: "racing-flags",
     FastestLap => fastest_lap: "fastest-lap",
+    SessionAlerts => session_alerts: "session-alerts",
 }

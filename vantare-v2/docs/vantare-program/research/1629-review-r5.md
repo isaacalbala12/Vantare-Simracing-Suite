@@ -807,8 +807,8 @@ styles/vantare.json
 ## Fuente congelada para los gates de cierre
 
 Correcciones `ae8a002df`, merge `db44554535231b2c1a327c01da808d8dfbb55791`,
-base nightly `2a580c458d34680cf061627059a06fbe98242aaf`. Árbol nativo
-`ebd0efd7bcd92700dbe225dabebb9e030294d375`: permite comprobar que el cierre
+base de cierre nightly `9c19b2993` (#1660, Avisos de sesión). Árbol nativo
+`203e0bdd52c5bee7257a1b3222c063e40a711e35`: permite comprobar que el cierre
 documental no altera la fuente sometida a CI. El estado de ejecución y el SHA
 remoto vigentes se consultan en el PR, no en los verdes históricos R4.
 
@@ -817,3 +817,15 @@ bloque sin punto y coma (una productiva y ocho de tests). Se añaden los nueve
 `;` sin cambiar comportamiento ni aserciones. Nextest/lifecycle no se alcanzaron
 en ese intento. Log conservado en `ci-first-failed.log`; gates repetidos sobre
 el SHA corregido. El árbol nativo anterior 9fb8ef5a queda como histórico.
+
+Nightly avanzó durante CI con #1660 (`9c19b2993`): segundo merge, sin rebase ni
+force-push. Cuatro conflictos resueltos preservando ambos cambios: inspector
+Coche/Cifras y referencia de Trace junto a Avisos, ambos README y el catálogo.
+ALL tiene ahora 19 tipos compatibles: 18 visibles y CarDamageNumbers retirado.
+CATALOG/ORDER incluyen SessionAlerts; las guardas comparan con ALL menos el
+retirado y los grupos se comprueban también sin sugerencias. El texto de acceso
+muestra cuatro gratis y catorce Pro. Se conserva el ejemplo Practice y los
+subpaneles de Avisos de nightly; no se rediseña ese widget en #1629. La tabla
+visual de 17 sigue correspondiendo al alcance original de diseño de este PR.
+No hubo CI de 7a32023ae mientras el PR estuvo en conflicto; no se presenta ese
+SHA como validado. Los gates completos se ejecutan sobre el nuevo merge.

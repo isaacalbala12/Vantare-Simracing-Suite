@@ -677,3 +677,7 @@ carrocerías ni tiempo hasta colisión. Las demandas Spatial y Velocity entregan
 El pipe sigue siendo DTO v11 estricto. Las escenas históricas se leen solo por
 los lectores guardados/fixtures; sus archivos originales no se migran. En esta
 fase no se abre ni captura la app mientras #1675 no esté integrado en nightly.
+
+## Avisos de sesión (#1653)
+
+Widget Pro LMU, ronda 4 v2: [contrato, mini, calendario y límites de señales](session-alerts.md).

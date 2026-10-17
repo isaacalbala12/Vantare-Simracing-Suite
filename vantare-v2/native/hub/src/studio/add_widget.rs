@@ -20,7 +20,7 @@ pub(super) const CATEGORIES: [(Option<Category>, &str); 5] = [
 ];
 
 /// Orden del catálogo: por categoría y, dentro de ella, de lo general a lo concreto.
-pub(super) const ORDER: [Kind; 19] = [
+pub(super) const ORDER: [Kind; 18] = [
     Kind::Standings,
     Kind::Relative,
     Kind::MulticlassRelative,
@@ -36,7 +36,6 @@ pub(super) const ORDER: [Kind; 19] = [
     Kind::InputTelemetry,
     Kind::Radar,
     Kind::CarDamageVisual,
-    Kind::CarDamageNumbers,
     Kind::FuelStrategy,
     Kind::TrackMap,
     Kind::TrackWeather,
@@ -1413,8 +1412,25 @@ mod tests {
 
     #[test]
     fn catalog_lists_every_registered_widget_once() {
-        assert_eq!(ORDER.len(), Kind::ALL.len());
-        assert!(Kind::ALL.iter().all(|kind| ORDER.contains(kind)));
+        let expected: Vec<_> = Kind::ALL
+            .iter()
+            .copied()
+            .filter(|kind| *kind != Kind::CarDamageNumbers)
+            .collect();
+        assert_eq!(ORDER.len(), expected.len());
+        assert_eq!(Kind::CATALOG.len(), expected.len());
+        for kind in expected {
+            assert_eq!(
+                ORDER.iter().filter(|entry| **entry == kind).count(),
+                1,
+                "{kind:?} en catálogo pintado"
+            );
+            assert_eq!(
+                Kind::CATALOG.iter().filter(|entry| **entry == kind).count(),
+                1,
+                "{kind:?} en registro visible"
+            );
+        }
     }
 
     #[test]
@@ -1443,14 +1459,7 @@ mod tests {
         // Con categoría no hay sugeridos; solo los suyos.
         let car = groups("", Some(Category::Car), |_| false, &[]);
         assert_eq!(car.len(), 1);
-        assert_eq!(
-            car[0].kinds,
-            [
-                Kind::CarDamageVisual,
-                Kind::CarDamageNumbers,
-                Kind::FuelStrategy
-            ]
-        );
+        assert_eq!(car[0].kinds, [Kind::CarDamageVisual, Kind::FuelStrategy]);
     }
 
     #[test]

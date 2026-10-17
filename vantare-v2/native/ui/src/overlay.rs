@@ -133,3 +133,26 @@ pub fn hwnd_of(_window: &Window) -> Option<Hwnd> {
 }
 #[cfg(unix)]
 pub fn apply(_hwnd: Hwnd, _origin: (i32, i32)) {}
+
+/// Estado global de una tecla elegida por el usuario (F1–F12); no registra un atajo por defecto.
+#[cfg(windows)]
+pub(crate) fn function_key_down(key: &str) -> bool {
+    #[link(name = "user32")]
+    unsafe extern "system" {
+        fn GetAsyncKeyState(key: i32) -> i16;
+    }
+    let Some(n) = key
+        .strip_prefix('f')
+        .and_then(|s| s.parse::<i32>().ok())
+        .filter(|n| (1..=12).contains(n))
+    else {
+        return false;
+    };
+    // SAFETY: user32 solo consulta códigos virtuales constantes; no recibe punteros.
+    unsafe {
+        [0x10, 0x11, 0x12, 0x5b, 0x5c]
+            .into_iter()
+            .all(|k| GetAsyncKeyState(k) >= 0)
+            && GetAsyncKeyState(0x70 + n - 1) < 0
+    }
+}

@@ -275,6 +275,12 @@ pub fn fields(settings: &Settings) -> Vec<Field> {
                     set!(Delta.reference string),
                 ),
             ];
+            rows.push(boolean(
+                "Fondo transparente",
+                Tab::Appearance,
+                value.transparent_background,
+                set!(Delta.transparent_background),
+            ));
             if value.size != "pill" {
                 rows.push(boolean(
                     "Barra de diferencia",
@@ -300,28 +306,39 @@ pub fn fields(settings: &Settings) -> Vec<Field> {
             &[("Instrumento", "instrument"), ("Cápsula", "capsule")],
             set!(Delta.template_id string),
         )],
-        Settings::Pedals(value) => vec![
-            number(
-                "Separación entre barras",
-                f64::from(value.gap),
-                f64::from(vantare_ui::pedals::GAP_MIN),
-                f64::from(vantare_ui::pedals::GAP_MAX),
-                1.0,
-                set!(Pedals.gap as f32),
-            ),
-            boolean(
-                "Fondo transparente",
-                Tab::Appearance,
-                value.transparent_background,
-                set!(Pedals.transparent_background),
-            ),
-        ],
+        Settings::Pedals(value) => {
+            let mut rows = vec![
+                number(
+                    "Separación entre barras",
+                    f64::from(value.gap),
+                    f64::from(vantare_ui::pedals::GAP_MIN),
+                    f64::from(vantare_ui::pedals::GAP_MAX),
+                    1.0,
+                    set!(Pedals.gap as f32),
+                ),
+                boolean(
+                    "Fondo transparente",
+                    Tab::Appearance,
+                    value.transparent_background,
+                    set!(Pedals.transparent_background),
+                ),
+            ];
+            if value.supports_brake_peak() {
+                rows.push(boolean(
+                    "Pico de frenada",
+                    Tab::Content,
+                    value.show_brake_peak,
+                    set!(Pedals.show_brake_peak),
+                ));
+            }
+            rows
+        }
         Settings::BroadcastTower(value) => vec![
             number(
                 "Filas",
                 value.row_count as f64,
                 3.0,
-                10.0,
+                11.0,
                 1.0,
                 set!(BroadcastTower.row_count as usize),
             ),
@@ -344,21 +361,65 @@ pub fn fields(settings: &Settings) -> Vec<Field> {
             value.show_tyres,
             set!(CarDamageNumbers.show_tyres),
         )],
-        Settings::CarDamageVisual(value) => vec![boolean(
-            "Aerodinámica",
-            Tab::Content,
-            value.show_aero,
-            set!(CarDamageVisual.show_aero),
-        )],
-        Settings::DeltaTrace(value) => vec![number(
-            "Ventana (segundos)",
-            value.window_seconds,
-            1.0,
-            8.0,
-            1.0,
-            set!(DeltaTrace.window_seconds),
-        )],
+        Settings::CarDamageVisual(value) => vec![
+            choice(
+                "Vista",
+                Tab::Content,
+                &value.view,
+                &[("Coche", "car"), ("Cifras", "numbers")],
+                set!(CarDamageVisual.view string),
+            ),
+            choice(
+                "Atajo de vista",
+                Tab::Behavior,
+                &value.toggle_key,
+                &[
+                    ("Sin tecla", ""),
+                    ("F1", "f1"),
+                    ("F2", "f2"),
+                    ("F3", "f3"),
+                    ("F4", "f4"),
+                    ("F5", "f5"),
+                    ("F6", "f6"),
+                    ("F7", "f7"),
+                    ("F8", "f8"),
+                    ("F9", "f9"),
+                    ("F10", "f10"),
+                    ("F11", "f11"),
+                    ("F12", "f12"),
+                ],
+                set!(CarDamageVisual.toggle_key string),
+            ),
+            boolean(
+                "Aerodinámica",
+                Tab::Content,
+                value.show_aero,
+                set!(CarDamageVisual.show_aero),
+            ),
+        ],
+        Settings::DeltaTrace(value) => vec![
+            choice(
+                "Referencia",
+                Tab::Content,
+                &value.reference,
+                &[
+                    ("Tu mejor", "best"),
+                    ("Óptima", "optimal"),
+                    ("Líder de clase", "leader"),
+                ],
+                set!(DeltaTrace.reference string),
+            ),
+            number(
+                "Ventana (segundos)",
+                value.window_seconds,
+                1.0,
+                8.0,
+                1.0,
+                set!(DeltaTrace.window_seconds),
+            ),
+        ],
         Settings::SessionAlerts(value) => session_alerts::fields(value),
+
         Settings::FastestLap(value) => vec![
             boolean(
                 "Vuelta personal",
@@ -426,13 +487,19 @@ pub fn fields(settings: &Settings) -> Vec<Field> {
                 set!(InputTelemetry.show_clutch),
             ),
         ],
+        Settings::TrackMap(value) => vec![boolean(
+            "Transparente",
+            Tab::Appearance,
+            value.transparent,
+            set!(TrackMap.transparent),
+        )],
         Settings::MulticlassRelative(value) => vec![
             number(
                 "Filas",
                 value.row_count as f64,
-                3.0,
                 7.0,
-                1.0,
+                9.0,
+                2.0,
                 set!(MulticlassRelative.row_count as usize),
             ),
             choice(
@@ -469,6 +536,12 @@ pub fn fields(settings: &Settings) -> Vec<Field> {
             ));
             rows
         }
+        Settings::Radar(value) => vec![boolean(
+            "Frases del radar",
+            Tab::Appearance,
+            value.show_phrases,
+            set!(Radar.show_phrases),
+        )],
         Settings::RacingFlags(value) => vec![
             boolean(
                 "Banderas por sector",
@@ -501,7 +574,12 @@ pub fn fields(settings: &Settings) -> Vec<Field> {
                 set!(Relative.range_behind as usize),
             ),
         ],
-        _ => vec![],
+        Settings::TrackWeather(value) => vec![boolean(
+            "Columna vertical",
+            Tab::Appearance,
+            value.vertical,
+            set!(TrackWeather.vertical),
+        )],
     };
     if let Some(look) = settings.look() {
         let options: Vec<_> = vantare_ui::look::Look::ALL
@@ -1018,7 +1096,7 @@ mod tests {
         };
         assert_eq!(value.header_first, "rain");
         assert_eq!(value.footer_slots, Some(vec!["rain".into()]));
-        assert!(fields(&Settings::default_for(Kind::TrackWeather)).is_empty());
+        assert_eq!(fields(&Settings::default_for(Kind::TrackWeather)).len(), 1);
         assert_eq!(pending(&Settings::default_for(Kind::TrackWeather)).len(), 4);
         assert!(
             pending(&settings)

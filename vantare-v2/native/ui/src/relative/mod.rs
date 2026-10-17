@@ -146,6 +146,7 @@ impl Settings {
         match look {
             crate::look::Look::Vantare => {
                 s.columns = Some(vantare_template("standard"));
+                s.class_scope = "all".into();
                 s.brand_visible = Some(true);
             }
             crate::look::Look::Eficiencia => {
@@ -434,7 +435,8 @@ impl Widget {
             Presentation::Vantare {
                 visual: v,
                 motion: m,
-            } => v.wake(m, Instant::now()) != Wake::Idle,
+                // El pulso de tráfico dura mientras haya un coche rápido: no es movimiento por asentar.
+            } => v.wake(m, Instant::now()) == Wake::Frame,
         }
     }
 }

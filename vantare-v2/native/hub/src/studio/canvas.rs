@@ -695,6 +695,25 @@ impl Studio {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        let damage_shortcut = !event.is_held
+            && self.editor.selected().is_some_and(|item| {
+                matches!(&item.settings, Settings::CarDamageVisual(settings)
+                if settings.key_matches(&event.keystroke))
+            });
+        if damage_shortcut {
+            self.edit(
+                |editor| {
+                    editor.edit_selected(|item| {
+                        if let Settings::CarDamageVisual(settings) = &mut item.settings {
+                            settings.toggle_view();
+                        }
+                    })
+                },
+                cx,
+            );
+            cx.stop_propagation();
+            return;
+        }
         let key = &event.keystroke;
         let plain = !key.modifiers.control && !key.modifiers.alt && !key.modifiers.platform;
         if key.key == "escape" && (self.drag.is_some() || self.held_nudge.is_some()) {

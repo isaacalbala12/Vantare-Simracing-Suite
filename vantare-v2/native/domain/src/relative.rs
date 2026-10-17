@@ -317,14 +317,16 @@ fn track_window_configured(
         ahead_count,
         behind_count,
         same_class,
+        false,
     )
 }
-fn track_window<'a>(
+pub(crate) fn track_window<'a>(
     cars: &'a [Car],
     anchor: Option<&'a Car>,
     ahead_count: usize,
     behind_count: usize,
     same_class: bool,
+    other_class: bool,
 ) -> Vec<Option<&'a Car>> {
     let ahead_count = ahead_count.min(8);
     let behind_count = behind_count.min(8);
@@ -340,6 +342,11 @@ fn track_window<'a>(
             .filter_map(|car| {
                 if same_class
                     && car.class.as_ref().map(|c| c.id) != anchor.class.as_ref().map(|c| c.id)
+                {
+                    return None;
+                }
+                if other_class
+                    && car.class.as_ref().map(|c| c.id) == anchor.class.as_ref().map(|c| c.id)
                 {
                     return None;
                 }
@@ -582,7 +589,7 @@ fn window_rows(
     let mut slots = player.map_or_else(
         || vec![None; ahead + behind + 1],
         |me| {
-            track_window(cars, Some(me), ahead, behind, same_class)
+            track_window(cars, Some(me), ahead, behind, same_class, false)
                 .into_iter()
                 .enumerate()
                 .map(|(index, car)| {
@@ -603,7 +610,7 @@ fn window_rows(
     slots
 }
 
-fn class_paces(cars: &[Car]) -> std::collections::BTreeMap<Option<u32>, f64> {
+pub(crate) fn class_paces(cars: &[Car]) -> std::collections::BTreeMap<Option<u32>, f64> {
     let mut class_pace = std::collections::BTreeMap::<Option<u32>, f64>::new();
     for car in cars {
         if let Some(lap) = car

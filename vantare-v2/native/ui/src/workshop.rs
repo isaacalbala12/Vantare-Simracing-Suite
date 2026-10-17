@@ -393,6 +393,10 @@ pub(crate) fn default_columns(kind: Kind) -> Vec<crate::standings::options::Colu
 }
 
 fn default_path(kind: Kind) -> PathBuf {
+    let approved = Path::new(FIXTURES).join(format!("{}-design-system.sequence.json", kind.name()));
+    if approved.is_file() {
+        return approved;
+    }
     let demo = Path::new(FIXTURES).join(format!("{}-default.scene.json", kind.name()));
     if demo.is_file() {
         return demo;
@@ -1292,7 +1296,9 @@ mod tests {
 
     #[test]
     fn react_scenes_validate_and_keep_keyframes_names_pits_and_best_laps() {
-        let initial = std::fs::canonicalize(default_path(Kind::Standings)).expect("fixture");
+        let initial =
+            std::fs::canonicalize(Path::new(FIXTURES).join("standings-default.scene.json"))
+                .expect("fixture histórica");
         let catalog = scenes(&initial).expect("catálogo");
         let mut count = 0;
         for path in &catalog {

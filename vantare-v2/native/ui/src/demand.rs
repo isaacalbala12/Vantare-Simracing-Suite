@@ -226,6 +226,13 @@ mod tests {
             .copied()
             .map(Settings::default_for)
             .collect();
+        for reference in ["best", "optimal", "leader"] {
+            configurations.push(Settings::DeltaTrace(crate::delta_trace::Settings {
+                reference: reference.into(),
+                ..crate::delta_trace::Settings::default()
+            }));
+        }
+
         if real_scene.is_some() {
             // Opciones reales del inspector; los datos de las fotos no se modifican.
             for json in LIVE_EXTRA_SETTINGS {

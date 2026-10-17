@@ -136,6 +136,8 @@ pub struct Row {
     pub last_lap_column: Option<String>,
     pub best_lap_column: Option<String>,
     pub classification_gap: String,
+    /// Diferencia con la mejor vuelta sin redondear, solo fuera de carrera.
+    pub classification_gap_s: Option<f64>,
     pub classification_interval: String,
     pub id: CarId,
     pub position: String,
@@ -147,6 +149,7 @@ pub struct Row {
     pub compound: Option<TyreCompound>,
     pub pit: Pit,
     pub sectors: Vec<Mark>,
+    pub best_sector_times_s: Vec<Option<f64>>,
     pub last_lap: String,
     pub best_lap: String,
     pub best_mark: Mark,
@@ -671,6 +674,29 @@ struct RowContext<'a> {
     class: std::sync::Arc<str>,
     previous: Option<&'a Board>,
 }
+fn classified_interval(
+    car: &Car,
+    class_gaps: bool,
+    classified: bool,
+    prefs: Preferences,
+) -> String {
+    if classified {
+        format::gap(
+            (if class_gaps {
+                car.gap_class_ahead
+            } else {
+                car.gap_ahead
+            })
+            .current()
+            .copied(),
+            false,
+            prefs,
+        )
+    } else {
+        String::new()
+    }
+}
+
 fn row(
     car: &Car,
     class_best: Option<f64>,
@@ -737,21 +763,19 @@ fn row(
                 prefs,
             )
         },
-        classification_interval: if classified {
-            format::gap(
-                (if content.class_gaps {
-                    car.gap_class_ahead
+        best_sector_times_s: car.best_sectors_s.iter().map(positive).collect(),
+        classification_gap_s: if classified && kind.is_some_and(SessionKind::ranks_by_best_lap) {
+            positive(&car.best_lap_s)
+                .zip(if content.class_gaps {
+                    class_best
                 } else {
-                    car.gap_ahead
+                    session_best
                 })
-                .current()
-                .copied(),
-                false,
-                prefs,
-            )
+                .map(|(lap, best)| lap - best)
         } else {
-            String::new()
+            None
         },
+        classification_interval: classified_interval(car, content.class_gaps, classified, prefs),
         id: car.id,
         position: car
             .position
@@ -1800,6 +1824,16 @@ mod classification_tests {
         assert!(vm.gap_to_best_lap);
         assert_eq!(vm.rows()[0].classification_gap, "LÍDER");
         assert_eq!(vm.rows()[1].classification_gap, "+0.80s");
+        assert_eq!(vm.rows()[0].classification_gap_s, Some(0.0));
+        assert!(
+            (vm.rows()[1]
+                .classification_gap_s
+                .expect("diferencia medida")
+                - 0.8)
+                .abs()
+                < 1e-9
+        );
+        assert_eq!(vm.rows()[2].classification_gap_s, None);
         assert_eq!(vm.rows()[2].classification_gap, PLACEHOLDER);
         assert_eq!(vm.laps_remaining, PLACEHOLDER, "solo se muestra en carrera");
     }

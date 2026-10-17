@@ -28,3 +28,11 @@ pub struct Flag {
     pub kind: FlagKind,
     pub scope: FlagScope,
 }
+
+/// Tipo neutral de sanción. El contador de sanciones nunca determina su tipo.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PenaltyKind {
+    DriveThrough,
+    StopGo,
+    Disqualified,
+}

@@ -101,3 +101,7 @@ su test de decodificación/proyección y ajusta el mínimo del borde amarillo a
 la opacidad .48 del CSS; consultar el SHA de entrega con `git log -1`.
 No hay prueba física de LMU/OBS ni medición de rendimiento de este widget.
 Sin push, PR, merge, promoción ni release.
+
+## Diseño aprobado #1629 y unión #1638
+
+Caja fija 340×88. `domain::PenaltyKind` separa DriveThrough, StopGo y Disqualified; `domain::racing_flags::project_with_penalty` recibe el tipo observado y lo conserva aparte de `flag`. El contador pending_penalties no determina su tipo. Negra de sesión o del jugador significa descalificación. #1638 debe aportar el tipo medido al Snapshot y pasar su calidad vigente a esa proyección. Este porte no modifica runtime, services ni DTO live. Las fotos exactas de la secuencia design-system usan la lista explícita del archivo .penalties.json para demostrar las placas en Workshop; nunca se reutilizan en origen live. No hay todavía segundos de SG ni vueltas para cumplir la sanción.

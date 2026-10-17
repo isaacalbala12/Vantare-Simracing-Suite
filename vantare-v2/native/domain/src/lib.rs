@@ -35,7 +35,7 @@ pub mod track_weather;
 
 pub use adapter::{Adapter, AdapterError, Observation};
 pub use capability::{Capabilities, Capability};
-pub use flag::{Flag, FlagKind, FlagScope};
+pub use flag::{Flag, FlagKind, FlagScope, PenaltyKind};
 pub use model::{
     Car, CarId, Class, ClassId, Damage, Driver, DriverId, DriverRating, DrivingSituation, Fuel,
     Gap, Origin, PitService, Player, Pose, Session, SessionId, SessionKind, SessionState, Snapshot,

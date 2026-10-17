@@ -8,10 +8,7 @@ use gpui::{
 };
 use serde::{Deserialize, Serialize};
 use vantare_domain::format::{Language, Preferences};
-use vantare_ui::{
-    Kind, Overlay, Settings as WidgetSettings,
-    standings::{model::PIT_RAIL_WIDTH, options::ColumnSetting},
-};
+use vantare_ui::{Kind, Overlay, Settings as WidgetSettings, standings::model::PIT_RAIL_WIDTH};
 
 use crate::{
     comparison::{self, Comparison},
@@ -23,6 +20,8 @@ use crate::{
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct Selection {
+    #[serde(default)]
+    settings: Option<WidgetSettings>,
     version: u32,
     widget: String,
     scene: PathBuf,
@@ -50,6 +49,7 @@ enum Mode {
 }
 
 pub struct Workshop {
+    widget_settings: Option<WidgetSettings>,
     pub scene: Scene,
     kind: Kind,
     scenes: Vec<PathBuf>,
@@ -139,28 +139,27 @@ fn restarts_renderer(previous: (u64, u64), next: (u64, u64)) -> bool {
 fn workshop_overlay(kind: Kind, prefs: Preferences) -> Overlay {
     let mut settings = WidgetSettings::default_for(kind);
     if let WidgetSettings::Standings(standings) = &mut settings {
-        let column = |id: &str, metric_id: &str, width_preset: &str| ColumnSetting {
-            id: id.into(),
-            metric_id: metric_id.into(),
-            width_preset: width_preset.into(),
-            ..ColumnSetting::default()
-        };
-        // El golden Wails muestra siete filas y esta misma selección de columnas.
-        standings.row_count = 7;
+        standings.row_count = 8;
+        standings.apply_session_presets();
+        standings.practice_columns =
+            Some(vantare_ui::standings::vantare_standard_session_template(
+                vantare_ui::session::Session::Practice,
+            ));
+        standings.qualifying_columns =
+            Some(vantare_ui::standings::vantare_standard_session_template(
+                vantare_ui::session::Session::Qualifying,
+            ));
         standings.class_scope = "all-classes".into();
-        standings.classification_mode = "normal".into();
-        standings.columns = Some(vec![
-            column("position", "position", "sm"),
-            column("driverName", "driverName", "lg"),
-            column("gap", "gap", "md"),
-            column("lastLap", "lastLap", "lg"),
-            column("pit", "pit", "auto"),
-        ]);
+        standings.columns = Some(vantare_ui::standings::vantare_template("standard"));
+    }
+    if let WidgetSettings::Relative(relative) = &mut settings {
+        relative.class_scope = "all".into();
     }
     Overlay::configured(&settings, prefs)
 }
 
 pub struct Prepared {
+    widget_settings: Option<WidgetSettings>,
     scene: Scene,
     kind: Kind,
     scenes: Vec<PathBuf>,
@@ -194,7 +193,7 @@ impl Prepared {
             let root = fixtures
                 .as_ref()
                 .ok_or("no hay catálogo de escenas instalado; use --escena")?;
-            Scene::open(root.join("standings.snapshot.json"))
+            Scene::open(root.join("standings-design-system.sequence.json"))
         };
         let mut scene = if let Some(explicit) = initial {
             // La escena explícita conserva sus errores y no usa el cursor guardado.
@@ -229,6 +228,10 @@ impl Prepared {
             .position(|p| *p == scene.path)
             .ok_or("escena no está en catálogo")?;
         Ok(Self {
+            widget_settings: selection
+                .as_ref()
+                .and_then(|s| s.settings.clone())
+                .filter(|s| s.kind() == kind),
             scene,
             kind,
             scenes,
@@ -252,7 +255,7 @@ impl Workshop {
             (0, usize::from(self.prefs.language == Language::En)),
             (
                 1,
-                Kind::ALL
+                Kind::CATALOG
                     .iter()
                     .position(|kind| *kind == self.kind)
                     .unwrap_or(0),
@@ -280,11 +283,11 @@ impl Workshop {
             self.sync_controls(cx);
             return;
         }
-        let widgets = Kind::ALL
+        let widgets = Kind::CATALOG
             .iter()
             .map(|kind| orbit::OptionItem::new(widget_label(*kind)))
             .collect();
-        let widget = Kind::ALL
+        let widget = Kind::CATALOG
             .iter()
             .position(|kind| *kind == self.kind)
             .unwrap_or(0);
@@ -300,7 +303,7 @@ impl Workshop {
             ("Widget", widgets, widget),
             (
                 "Sistema de diseño",
-                vec![orbit::OptionItem::new("Eficiencia")],
+                vec![orbit::OptionItem::new("Vantare")],
                 0,
             ),
             (
@@ -342,8 +345,7 @@ impl Workshop {
                         this.rebuild(cx);
                     }
                     1 => {
-                        this.kind = Kind::ALL[event.0];
-                        this.rebuild(cx);
+                        this.select_widget(Kind::CATALOG[event.0], cx);
                         if let Err(error) = this.persist() {
                             this.status = error;
                             this.tools_open = true;
@@ -378,8 +380,8 @@ impl Workshop {
         };
         let mut panel = div().flex().flex_col().px(px(22.0)).pt(px(38.0)).pb(px(30.0))
             .child(orbit::tracked_text("VANTARE / WORKSHOP", 8.0, 600, 0x00aa_aab0, 1.6, cx))
-            .child(orbit::tracked_text("Eficiencia.", 28.0, 600, 0x00f5_f5f5, -1.96, cx).mt(px(18.0)))
-            .child(orbit::text(format!("{} · Sistema Eficiencia", widget_label(self.kind)), 11.0, 400, 0x00a5_a5ab, cx).mt(px(4.0)))
+            .child(orbit::tracked_text("Vantare.", 28.0, 600, 0x00f5_f5f5, -1.96, cx).mt(px(18.0)))
+            .child(orbit::text(format!("{} · Sistema Vantare", widget_label(self.kind)), 11.0, 400, 0x00a5_a5ab, cx).mt(px(4.0)))
             .child(study_section("Idioma del widget", cx)
                 .child(choice(0, "Idioma"))
                 .child(study_note("Demostración local. El idioma de esta vista se restablece al abrir el Workshop.", cx)))
@@ -479,6 +481,7 @@ impl Workshop {
     }
     pub fn new(prepared: Prepared, cx: &mut Context<Self>) -> Self {
         let Prepared {
+            widget_settings,
             scene,
             kind,
             scenes,
@@ -490,8 +493,13 @@ impl Workshop {
             background,
         } = prepared;
         let overlay = cx.new(|cx| {
-            let mut overlay = workshop_overlay(kind, prefs);
-            overlay.ingest(scene.snapshot(), cx);
+            let mut overlay = widget_settings.as_ref().map_or_else(
+                || workshop_overlay(kind, prefs),
+                |s| Overlay::configured(&s.normalized(), prefs),
+            );
+            for photo in scene.observed() {
+                overlay.ingest(photo, cx);
+            }
             overlay
         });
         let stamp = stamp(&scene.path);
@@ -499,6 +507,7 @@ impl Workshop {
         let mut reference_cache = comparison::Reference::default();
         let reference = reference_cache.load(&comparison::reference(kind));
         Self {
+            widget_settings,
             scene,
             kind,
             scenes,
@@ -529,6 +538,7 @@ impl Workshop {
 
     pub fn persist(&mut self) -> Result<(), String> {
         let selection = Selection {
+            settings: self.widget_settings.clone(),
             version: 1,
             widget: self.kind.name().into(),
             scene: self.scene.path.clone(),
@@ -551,8 +561,13 @@ impl Workshop {
     fn rebuild(&mut self, cx: &mut Context<Self>) {
         self.rendered_photo = (self.scene.snapshot().epoch, self.scene.snapshot().sequence);
         self.overlay = cx.new(|cx| {
-            let mut overlay = workshop_overlay(self.kind, self.prefs);
-            overlay.ingest(self.scene.snapshot(), cx);
+            let mut overlay = self.widget_settings.as_ref().map_or_else(
+                || workshop_overlay(self.kind, self.prefs),
+                |s| Overlay::configured(&s.normalized(), self.prefs),
+            );
+            for photo in self.scene.observed() {
+                overlay.ingest(photo, cx);
+            }
             overlay
         });
         self.reference = self.reference_cache.load(&comparison::reference(self.kind));
@@ -616,14 +631,30 @@ impl Workshop {
         cx.notify();
     }
 
+    fn select_widget(&mut self, kind: Kind, cx: &mut Context<Self>) {
+        self.widget_settings = None;
+        self.kind = kind;
+        let approved = format!("{}-design-system.sequence.json", kind.name());
+        let fallback = format!("{}.snapshot.json", kind.name());
+        let scene = [approved, fallback].iter().find_map(|name| {
+            self.scenes
+                .iter()
+                .position(|path| path.file_name().is_some_and(|file| file == name.as_str()))
+        });
+        if let Some(index) = scene {
+            self.select_scene(index, cx);
+        } else {
+            self.rebuild(cx);
+        }
+    }
+
     fn widget(&mut self, forward: bool, cx: &mut Context<Self>) {
-        let index = Kind::ALL
+        let index = Kind::CATALOG
             .iter()
             .position(|kind| *kind == self.kind)
             .unwrap_or(0);
-        let step = if forward { 1 } else { Kind::ALL.len() - 1 };
-        self.kind = Kind::ALL[(index + step) % Kind::ALL.len()];
-        self.rebuild(cx);
+        let step = if forward { 1 } else { Kind::CATALOG.len() - 1 };
+        self.select_widget(Kind::CATALOG[(index + step) % Kind::CATALOG.len()], cx);
         if let Err(error) = self.persist() {
             self.status = error;
         }
@@ -1370,6 +1401,7 @@ mod tests {
         )
         .expect("escena de test");
         let selection = Selection {
+            settings: None,
             version: 1,
             widget: Kind::Pedals.name().into(),
             scene: scene.clone(),
@@ -1410,7 +1442,7 @@ mod tests {
                 .path
                 .file_name()
                 .and_then(|n| n.to_str()),
-            Some("standings.snapshot.json")
+            Some("standings-design-system.sequence.json")
         );
         assert!(
             Prepared::load(&dir, Some(scene.clone())).is_ok(),
@@ -1435,6 +1467,7 @@ mod tests {
             bad_scene,
         ] {
             let selection = Selection {
+                settings: None,
                 version: 1,
                 widget: "standings".into(),
                 scene,
@@ -1453,7 +1486,7 @@ mod tests {
                     .path
                     .file_name()
                     .and_then(|n| n.to_str()),
-                Some("standings.snapshot.json")
+                Some("standings-design-system.sequence.json")
             );
         }
         for invalid in ["{", "{\"version\":999}"] {
@@ -1477,7 +1510,7 @@ mod tests {
                 .path
                 .file_name()
                 .and_then(|name| name.to_str()),
-            Some("standings.snapshot.json")
+            Some("standings-design-system.sequence.json")
         );
 
         std::fs::remove_dir(dir).expect("limpiar");

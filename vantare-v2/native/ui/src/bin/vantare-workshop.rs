@@ -230,7 +230,59 @@ fn main() -> ExitCode {
             output,
         } => {
             return match load_scene(Some(scene)) {
-                Ok(snapshots) => vantare_ui::capture::run_sequence(widget, &snapshots, output),
+                Ok(mut snapshots) => {
+                    // QA de paridad: VANTARE_CAPTURE_UNTIL=<n> corta la escena en
+                    // la foto n y VANTARE_CAPTURE_SETTINGS=<json> usa los ajustes
+                    // que ofrece el Workshop (por defecto, los del registro).
+                    if let Some(until) = std::env::var("VANTARE_CAPTURE_UNTIL")
+                        .ok()
+                        .and_then(|v| v.parse::<usize>().ok())
+                    {
+                        snapshots.truncate(until.saturating_add(1));
+                    }
+                    let settings = if let Ok(json) = std::env::var("VANTARE_CAPTURE_SETTINGS") {
+                        serde_json::from_str::<vantare_ui::Settings>(&json)
+                            .map(|s| s.normalized())
+                            .map_err(|e| e.to_string())
+                    } else {
+                        // Los mismos ajustes de partida que el Workshop del Hub.
+                        let mut settings = vantare_ui::Settings::default_for(widget);
+                        match &mut settings {
+                            vantare_ui::Settings::Standings(standings) => {
+                                standings.row_count = 8;
+                                standings.apply_session_presets();
+                                standings.practice_columns =
+                                    Some(vantare_ui::standings::vantare_standard_session_template(
+                                        vantare_ui::session::Session::Practice,
+                                    ));
+                                standings.qualifying_columns =
+                                    Some(vantare_ui::standings::vantare_standard_session_template(
+                                        vantare_ui::session::Session::Qualifying,
+                                    ));
+                                standings.class_scope = "all-classes".into();
+                                standings.columns =
+                                    Some(vantare_ui::standings::vantare_template("standard"));
+                            }
+                            vantare_ui::Settings::Relative(relative) => {
+                                relative.class_scope = "all".into();
+                            }
+                            _ => {}
+                        }
+                        Ok(settings)
+                    };
+                    match settings {
+                        Ok(settings) => vantare_ui::capture::run_configured_sequence(
+                            settings,
+                            Preferences::default(),
+                            &snapshots,
+                            output,
+                        ),
+                        Err(error) => {
+                            eprintln!("vantare-workshop: ajustes de captura: {error}");
+                            ExitCode::FAILURE
+                        }
+                    }
+                }
                 Err(error) => {
                     eprintln!("vantare-workshop: {error}");
                     ExitCode::FAILURE

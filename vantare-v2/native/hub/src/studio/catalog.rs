@@ -173,6 +173,10 @@ pub(super) fn example_snapshots() -> Result<Vec<(Kind, Snapshot)>, String> {
             include_str!("../../../ui/fixtures/racing-flags.snapshot.json"),
         ),
         (
+            Kind::SessionAlerts,
+            include_str!("../../../ui/fixtures/session-alerts.snapshot.json"),
+        ),
+        (
             Kind::FastestLap,
             include_str!("../../../ui/fixtures/fastest-lap.snapshot.json"),
         ),

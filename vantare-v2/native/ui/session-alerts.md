@@ -1,0 +1,165 @@
+# Avisos de sesión · ISA-1653 / VANTA-74
+
+Widget Pro LMU del registro `widgets!`: `session-alerts`. Diseño aprobado:
+Mac `~/orq/vanta-74-r4/`, ronda 4 v2. Panel 480 × 88, franja FCY amarilla
+sólida, final rojo de Fuel y terminado blanco; título de Banderas,
+número y mini de Delta. Los cuatro paneles usan las primitivas `Kit`.
+Neo reutiliza íntegro el token compilado; Carmín/Limpio/Transparente toman
+los valores de las variantes del kit CSS aprobado, sin alterar otros widgets.
+Texto en Transparente con sombra; solo fundido lineal de 150 ms.
+
+## Comportamiento
+
+- Por defecto 5 y 1 minutos; hasta cinco umbrales de 1–60 minutos (0 quita
+  un campo en el inspector). El minuto es rojo, otros umbrales amarillos.
+- Un aviso dura 8 s, ajustable 4–15. Un evento más prioritario acorta el
+  actual a un mínimo total de 2 s. Orden: formación/salida, último minuto,
+  terminado, calendario, otros umbrales; FIFO dentro de la misma prioridad.
+- Un umbral de la cola ya vencido se descarta. Reconexión o pérdida de datos
+  no se interpreta como fin de sesión. Primer snapshot establece la base;
+  tampoco recuperar avisos de umbrales anteriores al más próximo.
+- El blanco de prácticas/qualy exige un finished_at_s confirmado y reciente,
+  dentro de la misma identidad; se deduplica por identidad e instante. Al conectar
+  tarde se establece la base sin recuperar avisos antiguos. La posición de clase
+  y mejor vuelta se usan solo si son actuales. Cambiar de ID/tipo, SessionState,
+  cero segundos o fin programado NO demuestra fin real.
+- La mini aparece después del aviso; hasta tres cuentas, próxima primero,
+  amarillo → rojo al entrar en el último minuto. YA dura 1,5 s para calendario
+  e inicios anunciados; el fin programado se oculta al llegar a cero. Tipos y tamaño
+  S/M/L configurables. La salida muestra SALIDA y metros solo con señal verificada.
+- Sonido Windows activado de fábrica, volumen 70 %, un WAV de 125 ms por entrada
+  (distinto por color), sin hilos; opcional pitido a cero. El widget retiene
+  el búfer asíncrono hasta stop/Drop. Studio/Workshop permanecen silenciosos.
+  La reproducción real de audio Windows queda para su validación física.
+
+La mini es una instancia del MISMO Kind con `companionFor` apuntando al aviso.
+El alta crea ambas en un paso de historial; la mini arranca arriba a la derecha
+(y=92) y se arrastra/ancla con los controles comunes. Comparten ajustes,
+opacidad, visibilidad y sesiones; posición/tamaño independientes. Duplicar o
+borrar cualquiera opera sobre el conjunto. No hay otro catálogo ni renderer.
+La geometría del lienzo conserva los dos recuadros en layouts v1; ningún cambio
+del protocolo Core. Los lectores antiguos rechazan el Kind desconocido.
+
+## Contrato v11 · #1664 / #1638
+
+El widget consume `SessionInfo`, `SessionClock`, posiciones y vueltas del mismo
+Snapshot, sin runtime en UI/domain.
+[Contrato neutral y evidencia](../../docs/telemetria/session-alerts-contract.md).
+Recompilar junto al Core v11; los lectores guardados de v7–v10 siguen disponibles.
+
+- `scheduled_end_s - elapsed_s`, ambos actuales, permite avisar del **fin previsto**
+  de prácticas/qualy. Se pinta «FIN PREVISTO», nunca «terminada» ni «empieza la carrera».
+  No se toma `remaining_s` genérico como inicio de la siguiente sesión. Si falta
+  reloj, vence su frescura o se llega a cero, se oculta sin YA, pitido a cero
+  ni aviso blanco. Puede seguir una vuelta después del fin programado.
+- `next_kind` + `next_starts_at_s` + `elapsed_s` actuales permiten calcular
+  una cuenta de la próxima sesión explícita. Sin uno de ellos no se inventa.
+  Esos tres relojes pertenecen a (epoch, session.id); no se comparan con UTC.
+- `finished_at_s` reciente permite blanco con resultado actual; una sesión
+  consecutiva (incluida Practice1→Practice2) reinicia umbrales, sin inferir fin.
+  `started_at_s` se conserva como hecho del contrato; no genera bandera verde.
+- `start_phase.current()`: Formation→Formation, Countdown→Start,
+  Racing→Racing; Grid/Preparing no se interpretan como formación. Sin fase actual
+  se retiran los avisos de fase y sus metros.
+- Solo Countdown actual permite `distance_to_start_line_m.current()`. Si es
+  Estimated se conserva el significado y se muestra «≈620 m». No es distancia
+  a casilla de parrilla ni a una línea de activación distinta de salida/meta.
+
+**Estado LMU demostrado en nightly:** fin programado, distancia estimada a
+salida/meta (ausente en boxes) e identidad de sesiones consecutivas.
+Inicio/fin reales, fase formación/salida y próxima sesión siguen ausentes.
+Por eso el contador real actual es «fin previsto»; formación/salida, blanco de
+fin confirmado y próxima carrera del juego permanecen ocultos hasta tener fuente.
+Las entradas positivas sintéticas prueban el consumo v11, no acreditan LMU real.
+
+## Calendario nightly · #1640 integrado
+
+El productor usa las franjas y tandas de `Calendar.alerts` del calendario
+integrado en nightly `2a580c458`. Expande únicamente salidas marcadas del horario
+vigente durante los próximos 61 minutos, incluso sin servidor/juego.
+Respeta el canal «En pista»; las franjas se callan si ya estás en pista,
+igual que en el calendario. Las tandas explícitas siguen disponibles.
+Semana caducada, canal apagado y demo publican una agenda vacía.
+
+Interfaz local en `ipc::session_alerts`: documento calendar-alerts.json v1
+junto al layout, `updatedAtMs` y eventos {id, label, startsAtMs}. id identifica
+una salida concreta: serie:timestamp. El Hub escribe atómicamente cada segundo;
+el host de overlays lee como máximo 64 KiB cada 500 ms. Máximo 256 salidas;
+agenda sin latido de 10 s se retira. Sin cuenta ni secretos.
+Cancelar la marca elimina aviso/cola/mini; no se recuperan salidas pasadas.
+
+El archivo de preferencias privado del calendario también se llama
+calendar-alerts.json, pero vive en `--data-dir` del Hub; no es el feed del
+layout. Si es inválido, el calendario conserva una copia .invalid y arranca
+sin avisos, con explicación al usuario. El siguiente guardado no borra la copia.
+
+Las notificaciones Windows las emite el calendario integrado, con su canal
+Windows y antelación propios. Se retira el segundo emisor del widget para
+evitar duplicados y respetar ese canal. El widget conserva sus umbrales 5/1
+configurables y consume la agenda mientras el overlay esté abierto.
+Hub/services mantienen el protocolo 12 de nightly; Core/overlays siguen DTO v11.
+
+## Verificación
+
+`ui/fixtures/session-alerts-default.scene.json` es demostración sintética.
+Los tests puros cubren cola, prioridad, frescura, cambios de sesión, mini y YA;
+los tests del documento cubren enlace, edición, movimiento, duplicado, borrado
+y undo; los de layout fijan 480 × 88, escala mini, paneles y fade.
+Los gates y fallos del entorno están en el buzón/evidencia de la entrega.
+
+No se ha abierto ni capturado la app. Capturas de paridad y QA física pendientes
+de #1655 (herramienta sin ventanas visibles). Con ella comparar con las PNG
+r4 v2 a 1920×1080 / 2560×1440; validar los cuatro estilos, mini, dos recuadros,
+posición bajo Delta, sonidos y toasts en Windows. Después probar LMU real.
+
+Evidencia histórica de la primera entrega (Mac): código e1dd1747; fmt/check/Clippy workspace
+PASS; 17/17 pruebas de la feature, lifecycle 10/10, telemetría 25/25 y 456 huellas
+PASS. Nextest completo: 989 PASS / 51 FAIL / 8 omitidos; 50 fallos por hilo
+principal de GPUI macOS y uno de socket IPC que pasa al repetirlo. El gate
+global no queda verde; requiere comprobar las pruebas GPUI en Windows.
+Logs y diagnóstico: `~/orq/1653-evidence/`; estado/HEAD final en la issue y buzón.
+
+
+Fase v11 (16-oct): merge de origin/nightly bcaa0e3f (#1664) en ff9bc31f.
+CI Windows anterior fallaba en Sound::stop por unused_self; stop es ahora función
+asociada. Gates de esta fase se ejecutan secuencialmente, con
+VANTARE_CARGO_MIN_GB=0 (entorno equivalente en el Mac). Fmt/check/Clippy PASS,
+23/23 pruebas de feature, lifecycle Mac 10/10 y telemetría 32/32 PASS.
+Workspace Mac: 1642 PASS / 50 FAIL por hilo principal GPUI / 12 omitidos.
+La CI Windows y el SHA final se verifican en PR #1660, issue #1653 y
+~/orq/1653.buzon.md; no se extrapola el gate Mac a Windows.
+
+## Correcciones de review R1 (#1660)
+
+La ruta se resuelve con `ipc::session_alerts::calendar_path(layout)`: el Hub usa
+el layout real de Studio y el lector el layout abierto del overlay, nunca el
+directorio privado `--data-dir` del Hub. La regresión fija las plantillas de
+argumentos de beta.ps1/MSIX y verifica escritor/lector con rutas esperadas
+independientes. El smoke MSIX numérico no acredita calendario en pista.
+
+Pausar/ir al garaje o perder el reloj oculta los avisos/mini de sesión y conserva
+los umbrales ya emitidos de esa identidad, sin repetir pitidos al volver.
+Un cambio de epoch/id/tipo sí reinicia la memoria. Un fin retrasado o desactivado
+no se marca consumido antes de las guardas; sigue exigiendo frescura de 1,5 s
+y no se recuperan finales viejos. La primera conexión solo establece la base.
+
+Sin aviso/mini, una carrera lejana programa un único despertar en el próximo
+umbral: no genera ticks a 1 Hz mientras no hay nada que pintar.
+La demanda queda en SessionInfo/SessionClock. Hasta demostrar fin real LMU,
+no se solicitan Positions/LapTimes ni se proyectan puesto/mejor vuelta para esa
+rama. Cuando se añada la fuente habrá que habilitar conjuntamente demanda y
+proyección; los campos opcionales del motor puro se conservan para ese contrato.
+
+Pendientes explícitos de review (no corregidos aquí):
+- P3-3: «Aviso · 5 min» identifica el umbral, aunque se entre a 4:00; el contador
+  muestra el resto real. Pendiente decidir otra etiqueta con Isaac.
+- P3-5: se mantiene la publicación atómica cada segundo y lectura de hasta
+  64 KiB cada 500 ms, incluso sin widget. Optimización de E/S pendiente de medir;
+  no se afirma que estos timers o el coste de E/S hayan desaparecido. winmm
+  permanece como frontera existente; audio/toasts físicos siguen sin validar.
+- P3-6: blanco de fin confirmado solo para prácticas/qualy, conforme al alcance;
+  no se añade aviso de fin de carrera. Inicio/fin reales, formación y próxima
+  sesión continúan sin fuente LMU demostrada y permanecen ocultos.
+- Las listas Python de notas por widget y los siete campos de timing son contratos
+  explícitos y se mantienen. Solo el catálogo y la cantidad de comprobaciones
+  derivan del fuente; no se afirma ausencia general de listas o números fijos.

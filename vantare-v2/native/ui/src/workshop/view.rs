@@ -249,6 +249,7 @@ fn widget_label(kind: Kind) -> &'static str {
         Kind::Pedals => "Pedals",
         Kind::PedalsTelemetry => "Pedales avanzados",
         Kind::FastestLap => "Vuelta rápida",
+        Kind::SessionAlerts => "Avisos de sesión",
         Kind::RacingFlags => "Racing Flags",
         Kind::Radar => "Radar de proximidad",
         Kind::BroadcastTower => "Horizontal Standings",

@@ -24,6 +24,7 @@ use std::{
 pub mod alerts;
 mod chrome;
 pub mod clock;
+mod feed;
 mod history;
 pub mod ics;
 pub mod model;

@@ -34,10 +34,25 @@ class SessionGuardTests(unittest.TestCase):
             self.assertFalse(SCRIPT["grid_status"](changed)["ready"])
 
     def test_success_requires_all_widgets_variants_and_a_real_passing_test(self):
-        names = sorted(SCRIPT["WIDGETS"])
-        lines = [f"{name}: demanda y proyección por pipe preservadas" for name in names + names[:4]]
+        # Expectativa independiente del supervisor/binario: catálogo aprobado y
+        # las cuatro variantes reales del inspector. No leer SCRIPT["WIDGETS"].
+        names = sorted("standings relative multiclass-relative delta delta-trace fuel-strategy "
+                       "radar input-telemetry pedals pedals-telemetry track-map track-weather "
+                       "racing-flags fastest-lap head-to-head broadcast-tower "
+                       "car-damage-numbers car-damage-visual session-alerts".split())
+        variants = ["standings", "standings", "relative", "head-to-head"]
+        lines = [f"{name}: demanda y proyección por pipe preservadas" for name in names + variants]
         complete = "\n".join(lines) + "\ntest result: ok. 1 passed; 0 failed; 0 ignored"
         self.assertTrue(SCRIPT["result_from_log"](complete, 0)["passed"])
+        result = SCRIPT["result_from_log"](complete, 0)
+        self.assertEqual(result["expected_widgets"], 19)
+        self.assertEqual(result["expected_checks"], 23)
+        old_binary = complete.replace("session-alerts: demanda y proyección por pipe preservadas\n", "")
+        self.assertFalse(SCRIPT["result_from_log"](old_binary, 0)["passed"])
+        # Mismo total y conjunto, pero faltan variantes reales del inspector.
+        wrong_variants = complete.rsplit("head-to-head:", 1)
+        self.assertFalse(SCRIPT["result_from_log"]("standings:".join(wrong_variants), 0)["passed"])
+
         self.assertFalse(SCRIPT["result_from_log"](complete, 101)["passed"])
         self.assertFalse(SCRIPT["result_from_log"](complete.replace("1 passed", "0 passed"), 0)["passed"])
         missing = "\n".join(lines[1:]) + "\ntest result: ok. 1 passed; 0 failed"

@@ -120,3 +120,5 @@ fn quit_headless_test(cx: &mut gpui::App) {
     })
     .detach();
 }
+
+mod session_alerts;

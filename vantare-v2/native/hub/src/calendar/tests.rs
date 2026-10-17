@@ -362,3 +362,133 @@ fn an_unreadable_following_file_degrades_and_a_copy_is_kept() {
     }
     let _ = std::fs::remove_dir_all(dir);
 }
+
+#[test]
+fn overlay_feed_uses_calendar_slots_channels_and_current_publication() {
+    let (mut calendar, dir) = calendar("overlay-feed");
+    calendar
+        .apply_publication(Some(OFFICIAL), None, now())
+        .expect("publica");
+    assert!(
+        calendar
+            .alert_feed(now())
+            .expect("sin avisos")
+            .events
+            .is_empty()
+    );
+    let start = at("2026-10-08T18:00:00Z");
+    calendar
+        .alerts
+        .toggle_slot("weekly-wec-weekly", start)
+        .expect("tanda");
+    let feed = calendar.alert_feed(now()).expect("agenda");
+    assert_eq!(feed.events.len(), 1);
+    assert_eq!(
+        feed.events[0].id,
+        format!("weekly-wec-weekly:{}", start.timestamp())
+    );
+    assert_eq!(
+        feed.events[0].starts_at_ms,
+        u64::try_from(start.timestamp_millis()).expect("hora")
+    );
+    calendar.in_track = true;
+    assert_eq!(
+        calendar
+            .alert_feed(now())
+            .expect("tanda en pista")
+            .events
+            .len(),
+        1
+    );
+    calendar.alerts.channels.windows = false;
+    assert_eq!(
+        calendar
+            .alert_feed(now())
+            .expect("canales independientes")
+            .events
+            .len(),
+        1
+    );
+    calendar.alerts.channels.in_track = false;
+    assert!(
+        calendar
+            .alert_feed(now())
+            .expect("canal apagado")
+            .events
+            .is_empty()
+    );
+    calendar.alerts.channels.in_track = true;
+    calendar.demo_now = Some(now());
+    assert!(calendar.alert_feed(now()).expect("demo").events.is_empty());
+    calendar.demo_now = None;
+    assert!(
+        calendar
+            .alert_feed(now() + Duration::days(8))
+            .expect("caducado")
+            .events
+            .is_empty()
+    );
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
+fn overlay_feed_obeys_bands_and_suppresses_them_in_track() {
+    let (mut calendar, dir) = calendar("overlay-band");
+    calendar
+        .apply_publication(Some(OFFICIAL), None, now())
+        .expect("publica");
+    calendar
+        .alerts
+        .set_band(
+            "beginner-lmgt3-fixed",
+            Some(alerts::Band {
+                series_id: "beginner-lmgt3-fixed".into(),
+                from: 0,
+                to: 1440,
+                days: alerts::Days::All,
+                mode: alerts::Mode::Each,
+            }),
+        )
+        .expect("franja");
+    assert!(
+        !calendar
+            .alert_feed(now())
+            .expect("franja")
+            .events
+            .is_empty()
+    );
+    calendar.in_track = true;
+    assert!(
+        calendar
+            .alert_feed(now())
+            .expect("en pista")
+            .events
+            .is_empty()
+    );
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
+fn invalid_alert_preferences_are_copied_before_the_next_save() {
+    let dir = dir("invalid-alert-copy");
+    let original = b"avisos anteriores ilegibles";
+    std::fs::write(dir.join("calendar-alerts.json"), original).expect("original");
+    let mut calendar = Calendar::load(&dir).expect("abre degradado");
+    assert_eq!(calendar.alerts, Alerts::default());
+    assert_eq!(
+        std::fs::read(dir.join("calendar-alerts.json.invalid")).expect("copia"),
+        original
+    );
+    calendar
+        .edit_alerts(|alerts| {
+            alerts.auto_launch = true;
+            Ok(())
+        })
+        .expect("guarda");
+    assert_eq!(
+        std::fs::read(dir.join("calendar-alerts.json.invalid")).expect("copia intacta"),
+        original
+    );
+    assert!(Calendar::load(&dir).expect("recarga").alerts.auto_launch);
+    let _ = std::fs::remove_dir_all(dir);
+}

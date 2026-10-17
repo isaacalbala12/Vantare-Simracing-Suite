@@ -107,6 +107,7 @@ fn page(window: WindowHandle<Hub>, step: usize, tabs: usize, cx: &mut HeadlessAp
         .update(cx, |hub, window, cx| {
             hub.onboarding.as_mut().expect("asistente").page(step);
             hub.focus.focus(window, cx);
+            cx.notify();
         })
         .expect("paso");
     draw(window, cx);

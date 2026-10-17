@@ -172,3 +172,130 @@ Hitos #1607: PNG `c40a90d9` (2234.920 → 115.473 µs/carga repetida; RED/GREEN)
 2026-10-13 · GitHub #1569 · Claude (Opus 5.5): merge de nightly@707514e2 (#1581 integrada); §3, §7, §8 y §9.
 2026-10-13 · GitHub #1561 · Codex. Merge de nightly con #1579 y #1580 conservados junto con PR-4/PR-6; estado y diario en issue/buzón.
 2026-10-13 · GitHub #1566 · Claude (Opus 5.5): §1, §4, §6 y §8 por Pedales Vantare; merge de nightly con #1578 y #1579 conservados.
+
+### #1655 / VANTA-82
+
+2026-10-17 · R2 terminada por Codex gpt-6.1-sol, sin subagentes.
+Rama `vantareapp/isa-1655-capturas`, PR #1675 OPEN fuera de draft a nightly.
+Se integra `origin/nightly@32c3f3a14` mediante `1ba27cf51`, sin rebase ni
+force-push. Conflicto del split de Cuenta resuelto en `view/account.rs`,
+conservando el soporte de lote y el nuevo login. `fe4d7f6b0` añade su selector
+EMAIL a la clave incremental, con regresión sin mutación del entorno.
+
+H1: ui-quality sin salida mantiene IPC vivo y no usa caché; crea el mismo HWND
+oculto/no activable fuera de todos los monitores y cierra por EOF. AnyWindowHandle
+sincroniza tamaño sin prestar Hub. H2: el error de capturas a archivo con política
+viva remite al banco IPC. H3: README exige DPI 96 / escalado 100 %. H4: marcador
+configurable, caducidad y limpieza a 15 minutos bajo el mutex compartido.
+El origen físico se conserva desde CreateWindowExW, sin SetWindowPlacement;
+GetWindowRect antes de mostrar, NOACTIVATE/TOOLWINDOW, sin variable ni vigilante.
+
+Validación tras el merge, código `fe4d7f6b0`: fmt, build Hub/ejemplo y Nextest
+**41/41 focales PASS** (790 excluidos por filtro, sin ejecutar aquí toda la suite).
+Banco real IPC/PrintWindow: **PASS**, 1 proceso/1 HWND, políticas1→2, dos PNG
+1440×900 distintas, huérfano eliminado, EOF0 y cero incidencias de foco/monitor.
+Rectángulo real **(-3488,0,-2048,900)**, no (184,-4).
+Lote de Cuenta/Studio: **32,438 s**, una app/una ventana; incremental
+**0,139 s**, una app/cero ventanas y mtimes intactos. Política IPC con salida
+rechazada antes de abrir HWND. Calidad/462 pins y sintaxis Python PASS.
+Compilaciones seriales, cola MIN_GB=0 y target1655; reintento sin sccache tras
+una espera inicial de fmt terminada con -1, antes de ejecutar Cargo.
+Los gates generales check/Clippy/Nextest/lifecycle se delegan a la **CI Windows
+requerida**, autorizada por el orquestador. Su SHA y resultado vigente se verifican
+y registran en issue/PR; no se equipara esta prueba focal con esos gates.
+
+Resultados previos R2: Clippy producto workspace/all-targets -D warnings,
+Nextest Hub/UI793/793 (10 skips), lifecycle13 y 34 focales PASS.
+Perfil captura806/808 (dos fallos Track Map previos), Clippy captura18 avisos
+previos de Análisis/Calendario, sin ocultar ni rebajar. No se repite aquí todo ese
+perfil opcional. Telemetría local no repetida: el diff propio no cambia
+runtime/domain/ipc/testdata; las modificaciones de esos crates proceden de nightly.
+Skips anteriores: bancos manuales/opt-in. Sin dependencias nuevas.
+
+Medidas completas conservadas: calendario54 PNG **1682,88→345,04 s**,
+incremental4,05 s, procesos/HWND54/54→1/1→1/0; widgets236 PNG
+**958,50→250,57 s**, incremental3,61 s, 236/236→1/1→1/0.
+Antes = invocaciones individuales seguras, nunca el capturador visible.
+290 ventanas individuales auditadas, cero foco/cruces; carga compartida.
+Resize1280→1440→1280: cero píxeles distintos. Paridad individual/lote:
+calendario23/54 exactas (23 máximo1, ocho controles con viewport antiguo);
+widgets126/236 exactas (resto máximo2). Diferencias con referencias antiguas
+explicadas, goldens intactos; aceptación visual pendiente.
+Adaptador #1634 `calendar-batch-1634.patch` validado sobre97a0d7674;
+ya integrado al sincronizar nightly2a580c458 (véase el cierre siguiente). Otros DPI no soportados/plataformas sin validar.
+
+[Informe completo](../../analysis/1655-capturas.md).
+Evidencia `C:/VantareServer/evidence/1655/round2-sync/`, R2 previa en
+`round2/` y medidas originales en `1655/`; intentos fallidos conservados.
+Plane VANTA-82 y Project Vantare se actualizan al cerrar la verificación de CI;
+su lectura final vive en la issue junto con HEAD/remoto/checks.
+Siguiente: revisión del orquestador y aceptación visual histórica.
+Sin merge del PR a nightly, promoción ni release.
+
+Verificación final: `f9c301668` obtuvo **5/5 checks verdes**, incluidos fmt,
+check, Clippy -D warnings, Nextest workspace **1862/1862** (19 skips) y lifecycle.
+SQL/E2E Marketing se omite en ese job por falta de Docker, sin cambios propios
+en Marketing. Telemetría excluida por el clasificador (diff propio fuera de
+runtime/domain/ipc/testdata). Mientras corría CI, nightly recibió #1684:
+se incorpora también **1a8ddee33** con merge normal sin conflictos. Solo cambia
+el guardado de login en services y su regresión/documentación; Hub/UI/vendor
+de capturas permanecen iguales al código validado. La CI del nuevo SHA se
+verifica otra vez en la issue antes de cerrar; sin modificar gates ni fixtures.
+
+Cierre H1 de Cuenta: el banco `--capture` sin salida ni `--demo` conserva
+también el perfil/módulos recibidos por IPC; no se sobrepone el perfil congelado.
+Capturas con `--out`, lote y demo explícita mantienen sus fixtures. Regresión
+con argumentos inyectados (sin tocar el entorno): banco, archivo, lote,
+demo explícita y modo normal. **42/42 focales PASS** tras el ajuste
+(`round2-sync/account-final-results.json`). GPUI/ventanas y su auditoría real
+anterior no cambian. El SHA intermedio `aa2fa3465` obtuvo5/5checks verdes,
+Nextest1863/1863 (19skips), Clippy/fmt/check/lifecycle; la CI del último ajuste
+se registra en la issue/PR al terminar, sin reutilizar ese verde para otro SHA.
+
+Sincronización posterior solicitada por el orquestador: merge de
+`origin/nightly@2a580c458` (instalador #1600, telemetría #1679 y calendario
+#1640), sin rebase ni force-push. El único conflicto, `calendar.rs`, se resuelve
+con el módulo completo de nightly; no se restaura el calendario antiguo.
+Se integra el adaptador previsto en `calendar/capture.rs`: cada entrada usa
+`parameters.calendar`, con la variable antigua como fallback. Regresión sin
+mutar el entorno para dos entradas con distinta vista, zona y estado.
+README ya indica que el parche está aplicado, no hay que ejecutarlo otra vez.
+
+H1: banco sin salida conserva IPC y perfil reales, sin caché ni foco; archivo
+sigue usando el lote. H2: error de política congelada conservado. H3: DPI96/100%
+operativo conservado. H4: ruta configurable y lease15min/limpieza conservados.
+Las guardias de nacimiento oculto, CreateWindowExW, GetWindowRect y NOACTIVATE
+no cambian. Los SHA/resultados anteriores corresponden a sus fuentes explícitas.
+Nueva validación serial por cola (MIN_GB=0,1job), sin abrir ventanas visibles;
+los gates generales se verifican de nuevo en CI Windows en el nuevo SHA.
+Resultados finales/SHA/checks/Plane se releen y registran en issue/PR.
+Evidencia de esta sincronización: `C:/VantareServer/evidence/1655/round2-nightly/`.
+
+Cierre N1/N2/N3/N6 tras la review R2: el calendario de nightly conserva su API
+nueva; no reaparecen `from_capture_name` ni el selector VIEW eliminado.
+Un manifiesto de dos escenas r6 cambia los parámetros que no se serializan
+en DemoData y verifica distintas vistas/zonas/estado incluso con igualdad de
+la clave de reutilización. N2 usa una guarda de las raíces CLI del PID propio:
+limpia al salir del lote y por error, valida el destino resuelto, preserva
+rutas ajenas y comunica fallos. N3 retira el recibo temporal ante fallo de
+escritura/rename; una prueba bloquea el destino real y exige conservarlo intacto.
+
+Formato, build Hub/ejemplo y **44/44 focales PASS** (816 excluidos por filtro).
+Lote real de `calendario-r6-mes` y `calendario-r6-serie`: **24,563 s**,
+1app/1HWND, 833334píxeles distintos; incremental **0,114 s**, 1app/0HWND,
+mtimes intactos y cero raíces QA restantes. Cero foco/cruces de monitor.
+Banco live-IPC actual PASS:1app/1HWND, políticas1→2, dos PNG distintas,
+huérfano retirado y EOF0. Sin ventanas visibles.
+482directorios antiguos retirados de TEMP, ahora0. El borrado recursivo fue
+rechazado por política automática; se movieron de forma reversible a
+`round2-nightly/temporales-retirados/`, sin seguir enlaces ni tocar procesos
+activos. Se conserva el inventario en `temp-cleanup.json`.
+Los gates generales del nuevo SHA se verifican en CI Windows y sus resultados
+finales se registran/releen en issue/PR. La prueba IPC fuerte sigue siendo
+una regresión manual documentada de Windows (N4), ejecutada en esta entrega.
+
+Durante la publicación de `c9442667d`, nightly avanza a `9c19b2993`
+(Avisos de sesión #1660). Se incorpora también con merge normal sin conflictos,
+conservando su feed/registro/widget; el escritor de avisos ya excluye
+`capture.is_some()`. N1/N2/N3/N6 y H1–H4 no se sobrescriben. La CI del SHA
+resultante sustituye a la ejecución de c944 cancelada por estar desactualizada.

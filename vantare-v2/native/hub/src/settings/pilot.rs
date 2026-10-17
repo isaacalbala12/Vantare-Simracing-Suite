@@ -286,9 +286,25 @@ mod tests {
                 gpui::WindowAppearance::Dark,
                 cx,
             );
+            // This QA window never shows; also keep its creation bounds away
+            // from every monitor so the tests obey the capture screen policy.
+            let left = cx
+                .displays()
+                .iter()
+                .map(|display| f32::from(display.bounds().origin.x))
+                .reduce(f32::min)
+                .expect("monitor de la sesión QA")
+                - 2048.0
+                - 640.0;
             let _window = cx
                 .open_window(
                     gpui::WindowOptions {
+                        window_bounds: Some(gpui::WindowBounds::Windowed(gpui::Bounds::new(
+                            gpui::point(gpui::px(left), gpui::px(0.0)),
+                            gpui::size(gpui::px(640.0), gpui::px(480.0)),
+                        ))),
+                        kind: gpui::WindowKind::PopUp,
+                        focus: false,
                         show: false,
                         ..Default::default()
                     },

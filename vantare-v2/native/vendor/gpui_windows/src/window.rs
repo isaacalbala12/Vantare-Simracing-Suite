@@ -517,7 +517,6 @@ impl WindowsWindow {
         if !disable_direct_composition {
             dwexstyle |= WS_EX_NOREDIRECTIONBITMAP;
         }
-
         let hinstance = get_module_handle();
         let display = if let Some(display_id) = params.display_id {
             WindowsDisplay::new(display_id)
@@ -526,6 +525,20 @@ impl WindowsWindow {
         }
         .or_else(WindowsDisplay::primary_monitor)
         .context("failed to find any monitor")?;
+        let initial = params.bounds.to_device_pixels(display.scale_factor());
+        // Only hidden popups explicitly placed left of the entire virtual
+        // desktop bypass placement. Onscreen hidden windows keep their normal
+        // deferred-show behavior. The capture owner enumerates the monitors
+        // and verifies the actual HWND before presenting it.
+        let hidden_popup = params.kind == WindowKind::PopUp
+            && !params.show
+            && !params.focus
+            && initial.origin.x.0.saturating_add(initial.size.width.0)
+                < unsafe { GetSystemMetrics(SM_XVIRTUALSCREEN) };
+        if hidden_popup {
+            dwexstyle |= WS_EX_NOACTIVATE;
+            dwexstyle &= !WS_EX_TOPMOST;
+        }
         let appearance = system_appearance().unwrap_or_default();
         let mut context = WindowCreateContext {
             inner: None,
@@ -556,10 +569,26 @@ impl WindowsWindow {
                 WINDOW_CLASS_NAME,
                 &window_name,
                 dwstyle,
-                CW_USEDEFAULT,
-                CW_USEDEFAULT,
-                CW_USEDEFAULT,
-                CW_USEDEFAULT,
+                if hidden_popup {
+                    initial.origin.x.0
+                } else {
+                    CW_USEDEFAULT
+                },
+                if hidden_popup {
+                    initial.origin.y.0
+                } else {
+                    CW_USEDEFAULT
+                },
+                if hidden_popup {
+                    initial.size.width.0
+                } else {
+                    CW_USEDEFAULT
+                },
+                if hidden_popup {
+                    initial.size.height.0
+                } else {
+                    CW_USEDEFAULT
+                },
                 parent_hwnd,
                 None,
                 Some(hinstance.into()),
@@ -577,6 +606,12 @@ impl WindowsWindow {
         set_non_rude_hwnd(hwnd, true);
         configure_dwm_dark_mode(hwnd, appearance);
         this.state.border_offset.update(hwnd)?;
+        if hidden_popup {
+            // SetWindowPlacement clamps offscreen rectangles to a monitor.
+            // Keep this HWND hidden at its creation coordinates; its owner
+            // verifies GetWindowRect before showing it with SWP_NOACTIVATE.
+            return Ok(Self(this));
+        }
         let placement =
             retrieve_window_placement(hwnd, display, params.bounds, &this.state.border_offset)?;
         if params.show {

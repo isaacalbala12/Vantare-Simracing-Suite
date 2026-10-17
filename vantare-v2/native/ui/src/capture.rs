@@ -2,18 +2,17 @@
 //! `parity-capture`, no entra en el binario de producto).
 //!
 //! GPUI en Windows no lee la textura de la ventana. Se pinta el mismo estado
-//! sobre un fondo opaco negro y luego blanco, se copia el área cliente por GDI
-//! (lo que compone DWM) y se resuelve el alfa: `a = 1 - (Cw - Cb)/255`,
+//! sobre un fondo opaco negro y luego blanco, se copia el propio HWND por
+//! `PrintWindow` fuera de los monitores y se resuelve el alfa: `a = 1 - (Cw - Cb)/255`,
 //! `F = Cb/a`. Compárese con `parity/reference/standings-44.png` mediante
 //! `parity/diff.py`.
 
-use std::cell::Cell;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use std::rc::Rc;
 use std::time::Duration;
 
-use gpui::{App, AsyncApp, Entity};
+use gpui::{App, AppContext, AsyncApp, Entity};
 use vantare_domain::Snapshot;
 use vantare_domain::format::Preferences;
 
@@ -50,23 +49,13 @@ mod gdi {
         pub fn GetDC(hwnd: Hwnd) -> *mut c_void;
         pub fn ReleaseDC(hwnd: Hwnd, dc: *mut c_void) -> i32;
         pub fn GetDpiForWindow(hwnd: Hwnd) -> u32;
+        pub fn PrintWindow(hwnd: Hwnd, dc: *mut c_void, flags: u32) -> i32;
     }
     #[link(name = "gdi32")]
     unsafe extern "system" {
         pub fn CreateCompatibleDC(dc: *mut c_void) -> *mut c_void;
         pub fn CreateCompatibleBitmap(dc: *mut c_void, w: i32, h: i32) -> *mut c_void;
         pub fn SelectObject(dc: *mut c_void, object: *mut c_void) -> *mut c_void;
-        pub fn BitBlt(
-            dst: *mut c_void,
-            x: i32,
-            y: i32,
-            w: i32,
-            h: i32,
-            src: *mut c_void,
-            sx: i32,
-            sy: i32,
-            rop: u32,
-        ) -> i32;
         pub fn GetDIBits(
             dc: *mut c_void,
             bitmap: *mut c_void,
@@ -97,28 +86,19 @@ fn read_dib(
     }
 }
 
-/// Copia BGRA de la esquina superior izquierda (`w` x `h` px) de la región
-/// cliente tal como la compone DWM en pantalla: el widget está en (0, 0) de una
-/// ventana del tamaño del monitor.
-fn capture_client(hwnd: Hwnd, w: i32, h: i32) -> Result<(u32, u32, Vec<u8>), String> {
+/// Copia BGRA del HWND, recortando su área cliente. Nunca lee el escritorio.
+pub fn capture_client(hwnd: Hwnd, w: i32, h: i32) -> Result<(u32, u32, Vec<u8>), String> {
     use gdi::{
-        BitBlt, BitmapInfoHeader, CreateCompatibleBitmap, CreateCompatibleDC, GetDC, GetDIBits,
-        SelectObject,
+        BitmapInfoHeader, CreateCompatibleBitmap, CreateCompatibleDC, GetDC, GetDIBits,
+        PrintWindow, SelectObject,
     };
-    const SRCCOPY: u32 = 0x00CC_0020;
-    const CAPTUREBLT: u32 = 0x4000_0000;
     let bytes = pixel_bytes(w, h)?;
     let mut pixels = Vec::new();
     pixels
         .try_reserve_exact(bytes)
         .map_err(|e| format!("reservar captura BGRA: {e}"))?;
     pixels.resize(bytes, 0);
-    let mut origin = ffi::Point::default();
-    // SAFETY: `hwnd` es un HWND vivo de este proceso; el puntero es de un local
-    // que vive durante la llamada.
-    if unsafe { ffi::ClientToScreen(hwnd, &raw mut origin) } == 0 {
-        return Err("ClientToScreen no pudo localizar el área cliente".into());
-    }
+    crate::capture_window::verify(hwnd)?;
     let mut info = BitmapInfoHeader {
         size: std::mem::size_of::<BitmapInfoHeader>() as u32,
         width: w,
@@ -137,9 +117,10 @@ fn capture_client(hwnd: Hwnd, w: i32, h: i32) -> Result<(u32, u32, Vec<u8>), Str
     // todos los recursos incluso en las salidas de error. `pixels` dispone de
     // w*h*4 bytes comprobados para el DIB de 32 bpp, con filas alineadas a DWORD.
     unsafe {
-        resources.screen = GetDC(0);
+        resources.screen = GetDC(hwnd);
+        resources.hwnd = hwnd;
         if resources.screen.is_null() {
-            return Err("GetDC no pudo obtener el escritorio".into());
+            return Err("GetDC no pudo obtener el HWND".into());
         }
         resources.memory = CreateCompatibleDC(resources.screen);
         if resources.memory.is_null() {
@@ -153,19 +134,8 @@ fn capture_client(hwnd: Hwnd, w: i32, h: i32) -> Result<(u32, u32, Vec<u8>), Str
         if !valid_object(previous) {
             return Err("SelectObject no pudo seleccionar el bitmap".into());
         }
-        if BitBlt(
-            resources.memory,
-            0,
-            0,
-            w,
-            h,
-            resources.screen,
-            origin.x,
-            origin.y,
-            SRCCOPY | CAPTUREBLT,
-        ) == 0
-        {
-            return Err("BitBlt no pudo copiar el área cliente".into());
+        if PrintWindow(hwnd, resources.memory, 3) == 0 {
+            return Err("PrintWindow no pudo copiar el HWND".into());
         }
         read_dib(
             h,
@@ -203,6 +173,7 @@ fn valid_object(object: *mut std::ffi::c_void) -> bool {
 
 #[derive(Default)]
 struct GdiResources {
+    hwnd: Hwnd,
     screen: *mut std::ffi::c_void,
     memory: *mut std::ffi::c_void,
     bitmap: *mut std::ffi::c_void,
@@ -221,7 +192,7 @@ impl Drop for GdiResources {
                 gdi::DeleteObject(self.bitmap);
             }
             if !self.screen.is_null() {
-                gdi::ReleaseDC(0, self.screen);
+                gdi::ReleaseDC(self.hwnd, self.screen);
             }
         }
     }
@@ -253,7 +224,7 @@ fn solve_alpha(black: &[u8], white: &[u8]) -> Vec<u8> {
     out
 }
 
-fn write_png(path: &Path, width: u32, height: u32, rgba: &[u8]) -> Result<(), String> {
+pub fn write_png(path: &Path, width: u32, height: u32, rgba: &[u8]) -> Result<(), String> {
     let file = std::fs::File::create(path).map_err(|e| format!("crear {}: {e}", path.display()))?;
     let mut encoder = png::Encoder::new(std::io::BufWriter::new(file), width, height);
     encoder.set_color(png::ColorType::Rgba);
@@ -364,16 +335,7 @@ pub fn run_widget(kind: Kind, snapshot: Snapshot, path: PathBuf) -> ExitCode {
 
 /// Alimenta todas las fotos en orden antes de esperar el fin de las animaciones.
 pub fn run_sequence(kind: Kind, snapshots: &[Snapshot], path: PathBuf) -> ExitCode {
-    let settings = match kind {
-        Kind::Standings => crate::Settings::Standings(crate::standings::Settings::eficiencia()),
-        Kind::Relative => crate::Settings::Relative(crate::relative::Settings::eficiencia()),
-        Kind::FuelStrategy => {
-            crate::Settings::FuelStrategy(crate::fuel_strategy::Settings::eficiencia())
-        }
-        Kind::Delta => crate::Settings::Delta(crate::delta::Settings::eficiencia()),
-        Kind::Pedals => crate::Settings::Pedals(crate::pedals::Settings::eficiencia()),
-        _ => crate::Settings::default_for(kind),
-    };
+    let settings = default_settings(kind);
     run_configured_sequence(settings, Preferences::default(), snapshots, path)
 }
 
@@ -384,49 +346,258 @@ pub fn run_configured_sequence(
     snapshots: &[Snapshot],
     path: PathBuf,
 ) -> ExitCode {
-    let kind = settings.kind();
     if snapshots.is_empty() {
         eprintln!("la escena no contiene fotos");
         return ExitCode::FAILURE;
     }
-    let snapshots = snapshots.to_vec();
-    let failure = Rc::new(Cell::new(false));
+    let request = crate::capture_batch::Request {
+        scene: "in-memory".into(),
+        output: path,
+        appearance: None,
+        size: None,
+        collapsed: false,
+        zoom: None,
+        widget: Some(settings.kind().name().into()),
+        settings: Some(settings.clone()),
+        until: None,
+        parameters: std::collections::BTreeMap::new(),
+    };
+    let encoded = match snapshots
+        .iter()
+        .map(vantare_ipc::snapshot_to_json)
+        .collect::<Result<Vec<_>, _>>()
+    {
+        Ok(frames) => frames.join("\n"),
+        Err(error) => {
+            eprintln!("{error}");
+            return ExitCode::FAILURE;
+        }
+    };
+    let result = (|| {
+        let common = crate::capture_batch::inputs_hash(&[])?;
+        let cache = crate::capture_batch::Cache::new(
+            request.output.clone(),
+            &[
+                serde_json::to_vec(&request).map_err(|e| e.to_string())?,
+                encoded.into_bytes(),
+                format!("{prefs:?}").into_bytes(),
+            ]
+            .concat(),
+            &common,
+        )?;
+        if cache.fresh() {
+            println!("capture-skip {}", request.output.display());
+            return Ok(());
+        }
+        run_jobs(vec![Job {
+            settings,
+            prefs,
+            snapshots: snapshots.to_vec(),
+            request,
+            cache,
+        }])
+    })();
+    exit(result)
+}
+
+struct Job {
+    settings: crate::Settings,
+    prefs: Preferences,
+    snapshots: Vec<Snapshot>,
+    request: crate::capture_batch::Request,
+    cache: crate::capture_batch::Cache,
+}
+
+fn exit(result: Result<(), String>) -> ExitCode {
+    match result {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(error) => {
+            eprintln!("captura: {error}");
+            ExitCode::FAILURE
+        }
+    }
+}
+
+/// Una sola aplicación y un solo HWND para todas las entradas del manifiesto.
+pub fn run_batch(path: &Path) -> ExitCode {
+    let started = std::time::Instant::now();
+    exit((|| {
+        let requests = crate::capture_batch::read(path)?;
+        let total = requests.len();
+        let common = crate::capture_batch::inputs_hash(&[])?;
+        let mut jobs = Vec::new();
+        for request in requests {
+            if request.appearance.is_some()
+                || request.collapsed
+                || request.zoom.is_some()
+                || !request.parameters.is_empty()
+            {
+                return Err(
+                    "Workshop usa settings para su apariencia; collapsed/zoom son del Hub".into(),
+                );
+            }
+            let kind: Kind = request
+                .widget
+                .as_deref()
+                .ok_or("falta widget")?
+                .parse()
+                .map_err(|()| "widget desconocido".to_owned())?;
+            let settings = request
+                .settings
+                .clone()
+                .unwrap_or_else(|| default_settings(kind));
+            if settings.kind() != kind {
+                return Err("settings no corresponde al widget".into());
+            }
+            let bytes = std::fs::read(&request.scene).map_err(|e| e.to_string())?;
+            let cache = crate::capture_batch::Cache::new(
+                request.output.clone(),
+                &[
+                    serde_json::to_vec(&request).map_err(|e| e.to_string())?,
+                    bytes.clone(),
+                ]
+                .concat(),
+                &common,
+            )?;
+            if cache.fresh() {
+                println!("capture-skip {}", request.output.display());
+                continue;
+            }
+            let scene = String::from_utf8(bytes).map_err(|e| e.to_string())?;
+            let mut snapshots = crate::workshop::snapshots_from_json(&scene)?;
+            if let Some(until) = request.until {
+                if until == 0 || until > snapshots.len() {
+                    return Err("until fuera de la secuencia".into());
+                }
+                snapshots.truncate(until);
+            }
+            jobs.push(Job {
+                settings,
+                prefs: Preferences::default(),
+                snapshots,
+                request,
+                cache,
+            });
+        }
+        let captured = jobs.len();
+        run_jobs(jobs)?;
+        println!(
+            "capture-batch total={total} captured={captured} skipped={} app_processes=1 windows={} elapsed_ms={}",
+            total - captured,
+            usize::from(captured > 0),
+            started.elapsed().as_millis()
+        );
+        Ok(())
+    })())
+}
+
+fn default_settings(kind: Kind) -> crate::Settings {
+    match kind {
+        Kind::Standings => crate::Settings::Standings(crate::standings::Settings::eficiencia()),
+        Kind::Relative => crate::Settings::Relative(crate::relative::Settings::eficiencia()),
+        Kind::FuelStrategy => {
+            crate::Settings::FuelStrategy(crate::fuel_strategy::Settings::eficiencia())
+        }
+        Kind::Delta => crate::Settings::Delta(crate::delta::Settings::eficiencia()),
+        Kind::Pedals => crate::Settings::Pedals(crate::pedals::Settings::eficiencia()),
+        _ => crate::Settings::default_for(kind),
+    }
+}
+
+struct CaptureRoot {
+    view: Entity<Overlay>,
+}
+impl gpui::Render for CaptureRoot {
+    fn render(
+        &mut self,
+        _: &mut gpui::Window,
+        cx: &mut gpui::Context<Self>,
+    ) -> impl gpui::IntoElement {
+        use gpui::{div, prelude::*, px};
+        let (w, h) = self.view.read(cx).frame_size();
+        div().size_full().child(
+            div()
+                .absolute()
+                .left(px(0.0))
+                .top(px(0.0))
+                .w(px(w))
+                .h(px(h))
+                .child(
+                    self.view
+                        .clone()
+                        .cached(gpui::StyleRefinement::default().w(px(w)).h(px(h))),
+                ),
+        )
+    }
+}
+
+fn run_jobs(jobs: Vec<Job>) -> Result<(), String> {
+    if jobs.is_empty() {
+        return Ok(());
+    }
+    let _lock = crate::capture_window::lock()?;
+    let mut options = crate::capture_window::options(2304, 1440)?;
+    options.window_background = gpui::WindowBackgroundAppearance::Transparent;
+    let failure = Rc::new(std::cell::RefCell::new(None));
     let flag = failure.clone();
     gpui_platform::application().run(move |cx: &mut App| {
         if !app::init(cx) {
-            flag.set(true);
-            return;
-        }
-        // El widget en la esquina del monitor principal: se captura solo su rectángulo.
-        let placed = [(kind, (0.0, 0.0))];
-        let Some(view) = app::open_screens(cx, &placed, prefs).pop() else {
-            eprintln!("no se pudo abrir la ventana");
-            flag.set(true);
+            *flag.borrow_mut() = Some("inicializar UI".into());
             cx.quit();
             return;
-        };
-        view.update(cx, |v, cx| {
-            *v = Overlay::configured(&settings, prefs);
-            for snapshot in &snapshots {
-                v.ingest(snapshot, cx);
+        }
+        let view = cx.new(|_| Overlay::new(jobs[0].settings.kind(), jobs[0].prefs));
+        let window = match cx.open_window(options, |_, cx| {
+            cx.new(|_| CaptureRoot { view: view.clone() })
+        }) {
+            Ok(window) => window,
+            Err(error) => {
+                *flag.borrow_mut() = Some(error.to_string());
+                cx.quit();
+                return;
             }
-            v.freeze_for_capture();
-        });
+        };
+        if let Err(error) = window
+            .update(cx, |_, window, _| crate::capture_window::created(window))
+            .map_err(|e| e.to_string())
+            .and_then(|result| result)
+        {
+            *flag.borrow_mut() = Some(error);
+            cx.quit();
+            return;
+        }
         cx.spawn(async move |cx| {
-            let result = capture(cx.clone(), view, path).await;
-            if let Err(error) = &result {
-                eprintln!("{error}");
-                flag.set(true);
+            let result = async {
+                for job in jobs {
+                    view.update(cx, |v, cx| {
+                        *v = Overlay::configured(&job.settings, job.prefs);
+                        for snapshot in &job.snapshots {
+                            v.ingest(snapshot, cx);
+                        }
+                        v.freeze_for_capture();
+                        cx.notify();
+                    });
+                    let [width, height] = job.request.size.unwrap_or([2304, 1440]);
+                    window
+                        .update(cx, |_, window, cx| {
+                            crate::capture_window::show(window, width as i32, height as i32, cx)
+                        })
+                        .map_err(|e| e.to_string())??;
+                    capture(cx.clone(), view.clone(), job.request.output).await?;
+                    job.cache.commit()?;
+                }
+                Ok::<(), String>(())
+            }
+            .await;
+            if let Err(error) = result {
+                *flag.borrow_mut() = Some(error);
             }
             cx.update(|cx| cx.quit());
         })
         .detach();
     });
-    if failure.get() {
-        ExitCode::FAILURE
-    } else {
-        ExitCode::SUCCESS
-    }
+    let result = failure.borrow_mut().take();
+    result.map_or(Ok(()), Err)
 }
 
 #[cfg(test)]
@@ -440,8 +611,7 @@ mod tests {
             assert!(super::pixel_bytes(w, h).is_err());
             assert!(super::capture_client(0, w, h).is_err());
         }
-        let error = super::capture_client(0, 1, 1).expect_err("HWND nulo");
-        assert!(error.contains("ClientToScreen"));
+        assert!(super::capture_client(0, 1, 1).is_err());
     }
 
     #[test]

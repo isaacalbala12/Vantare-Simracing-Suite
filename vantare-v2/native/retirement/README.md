@@ -37,3 +37,18 @@ goldens siguen intactos. Otras cinco fixtures UI no fijadas migran la misma
 etiqueta. El verificador mantiene la exigencia SHA-256 exacta de los 456 archivos.
 
 #1559 regenera `native/assets/icon.ico` con el logo con fondo en todos los tamaños: `source_sha256` conserva el pin anterior y `sha256` fija el ICO nuevo.
+
+#1655 actualiza los cinco scripts activos de captura del Hub por encargo de
+Isaac: comparador, alfa, capturador nativo, proceso y ventana. Las versiones
+anteriores permanecen byte a byte en `legacy-evidence/hub-capture-before-1655/`
+como `.txt` inertes; sus cinco hashes originales siguen fijados y se verifican.
+Las entradas activas conservan `source_sha256` y añaden revisión al commit
+`c3966a116`, issue y ruta del original. Con esos cinco originales archivados
+se pasó de 456 a 461 archivos exactos. No ejecutar los scripts históricos:
+activaban ventanas o capturaban
+el escritorio. Las referencias PNG y los corpus conservan sus pins.
+
+El README de referencias también conserva su original exacto como
+`legacy-evidence/hub-capture-before-1655/README.md.txt`; el documento activo señala el protocolo
+visible como histórico y remite al lote seguro. Su revisión es `65e4809d1`.
+El verificador comprueba 462 archivos exactos; se conserva el pin original.

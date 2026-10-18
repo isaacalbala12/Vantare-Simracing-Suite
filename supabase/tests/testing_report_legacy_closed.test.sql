@@ -8,7 +8,9 @@ insert into public.account_identities(issuer,subject,account_id)
  values('https://closed-1709.clerk.invalid','user_ccccccccccccccccccccccccccc','17090000-0000-4000-8000-000000000090');
 insert into public.testing_center_memberships(user_id,actor_id,role)
  values('17090000-0000-4000-8000-000000000090','tester-1709-closed','tester');
-select set_config('request.jwt.claims','{"iss":"https://closed-1709.clerk.invalid","sub":"user_ccccccccccccccccccccccccccc","role":"authenticated","sid":"fixture","azp":"https://app.invalid"}',true);
+-- B03/B01 require Clerk session ids matching ^sess_[a-zA-Z0-9_]+$.
+-- An invalid sid would make current_account() NULL even with every barrier.
+select set_config('request.jwt.claims','{"iss":"https://closed-1709.clerk.invalid","sub":"user_ccccccccccccccccccccccccccc","role":"authenticated","sid":"sess_fixture","azp":"https://app.invalid"}',true);
 
 select is((select count(*)::integer from pg_proc p join pg_namespace n on n.oid=p.pronamespace
  where n.nspname='public' and p.proname in ('testing_center_submit_report',

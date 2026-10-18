@@ -1,3 +1,11 @@
+## 2026-10-19 - #1709 / VANTA-96: sid valido en fixture de cierre
+
+- Run39177500314 llega a testing_report_legacy_closed.test.sql: una de 17 aserciones falla, current_account() NULL en vez del UUID propio. Las suites admin y rich-admission anteriores ya pasan en el RED.
+- Causa confirmada en contrato B03/B01: sid="fixture" incumple ^sess_[a-zA-Z0-9_]+$. Cambiado solo a "sess_fixture"; se conserva la asercion de identidad ligada y todos los negativos ACL.
+- No depende del modo sin barreras. No se cambia el selector --before-private-write-barriers, su grep esperado, orden de suites, grants, funciones SQL ni migraciones.
+- Pendiente CI real del nuevo HEAD: RED debe alcanzar y detectar barreras privadas ausentes; catalogo completo debe pasar LF/CRLF. #1710 sigue draft hasta toda la CI verde.
+- Rama conserva nightly bf7e21c61 (#1712). Produccion en reconstruccion paralela no se toca; sin deploy, secretos, importacion de claves, merge ni release.
+
 ## 2026-10-19 - #1709 / VANTA-96: adaptar fixture admin al cierre
 
 - Run39176062419 fallo en el RED control antes de llegar al control esperado: native_admin.test.sql:70 creaba informe como authenticated via RPC legacy ya cerrada.

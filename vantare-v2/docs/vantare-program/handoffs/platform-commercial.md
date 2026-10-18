@@ -15,6 +15,11 @@ enqueue/pull/ACK/reintento tras borrado, sin excluir sus descendientes.
 Sin cambios de ACL/FK, borrado de historiales ni parche del guard común.
 Se añaden ocho carreras reales, regresión de UPDATE/reasignación/historial y
 las suites existentes de renovaciones e incidencias para los escritores reales.
+Ensayo completo PASS en run39175662567, implementación6872cfc48: LF y CRLF
+exit0; 94 migraciones, 23 suites/758 pgTAP, 131 rutas/778 comprobaciones de
+carreras, JWT/PostgREST y Ed25519. Artefactos descargados y bytes de las 94
+fuentes comprobados en ambos formatos. Ocho tablas protegidas; única raíz sin
+FK no protegida: el deber web, con regresión de su ciclo después del borrado.
 PR #1712 a nightly: workflow comercial LF/CRLF y CI consultables en
 https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1712.
 Siguiente paso: revisión del orquestador tras validar el ensayo; sin producción,

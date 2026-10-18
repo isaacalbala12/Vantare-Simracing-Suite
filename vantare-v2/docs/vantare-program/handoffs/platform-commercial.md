@@ -3874,3 +3874,35 @@ Suite shell añadida al workflow. Regresiones ampliadas en curso; no se afirman
 CI verde ni PR ready hasta comprobar el HEAD final. Sin Rust/dependencias nuevos.
 Windows limpio/login/pagos pendientes; Hub bloqueado por #1694. Sin ventanas
 en sesión principal, firma/publicación ni merge por el worker.
+
+## VANTA-96 / #1713 · Reconstrucción autorizada: parada antes del borrado (19-oct-2026)
+
+Isaac autoriza A/B/C/D y confirma datos de prueba. El orquestador aclara B:
+importar la privada ES256 de #1708 y rotar, sin revocar legacy/anteriores;
+comprobar anon legacy, RPC pública y service_role, y volver a la activa previa
+si falla. SHA operativo fijado bf7e21c619cd350fed883e555dc400173cae9873,
+94 migraciones; rama aislada vantareapp/isa-1713-reconstruccion-produccion.
+
+Copia completa protegida PASS: pg_dump PostgreSQL 17.11 contra servidor 17.6,
+pg_restore --list (1010 entradas) y lectura de todos los bloques, más roles sin
+contraseñas. No se ha restaurado esa copia en un servidor desechable. Conteos
+idénticos a la autorización: 8 cuentas, 8 perfiles, 3 clientes, 3 suscripciones;
+pedidos/reembolsos vacíos. Roadmap y calendario exportados en privado. Storage
+sin buckets. Clerk y Brevo autentican; remitente activo, aplicación OAuth pública.
+Clerk requiere User-Agent explícito en estas consultas; un 403 inicial quedó
+resuelto por diagnóstico de solo lectura, sin cambiar credenciales.
+
+**Parada obligatoria:** Cloudflare rechaza la credencial con HTTP 400 y códigos
+6003/6111 (formato de Authorization). Corregir el archivo protegido por el canal
+privado, sin pegar valores en trackers/chat. También queda por identificar el
+receptor Owner aprobado, ausente del inventario y del archivo de configuración;
+no inventar una URL ni un ACK. Pregunta enviada al orquestador.
+
+Producción **sin modificaciones**: no limpieza, migraciones, secretos nuevos,
+rotación, despliegues, cuentas nuevas, ofertas, scheduler o publicación web.
+No se afirma que las banderas productivas estén verificadas. No hay cambios que
+revertir. La reversión prevista de claves con IDs previas y peticiones API exactas
+está en C:/VantareServer/evidence/supabase-reconstruccion/EJECUCION.md, junto al
+hash, alcance de la copia, manifiesto y registro de los pasos. No hay PASS E2E
+productivo. Próximo paso: resolver credencial/receptor; repetir inventario y copia
+si cambió el estado antes de iniciar la ventana destructiva.

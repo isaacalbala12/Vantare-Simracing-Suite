@@ -177,3 +177,15 @@ incorporar mediante merge el workflow de #1702 cuando llegue a nightly y ejecuta
 alli el arnes PostgreSQL/PostgREST real. Los 79 tests Deno y el generador TEST
 locales ya pasan, pero no sustituyen ese gate. No marcar el PR listo antes
 del ensayo y de la CI verde sobre el HEAD definitivo.
+
+### Correccion de review P2-1 / P3 (19-oct-2026)
+
+La RPC legacy `testing_center_submit_report` conserva EXECUTE authenticated en
+`20260802180000_testing_center_codex_control.sql:87` y su wrapper SECURITY DEFINER
+llama al cuerpo que exige membership activa/canal tester. B03 sustituye auth.uid
+por current_account; no revoca ese grant. Por eso una fixture B01 valida con
+membership tester **espera 200**, no una denegacion por admission Edge. El test
+opcional y el arnes --b01 verifican envio, fila propia, aislamiento y denegacion
+tras tombstone. Esta expectativa deriva de SQL; su ejecucion real sigue pendiente.
+La aplicacion usa `testing-report-submit`; la existencia de la RPC legacy merece
+seguimiento separado en #1709, sin corregir permisos fuera de este encargo ES256.

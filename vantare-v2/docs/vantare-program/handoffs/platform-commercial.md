@@ -28,6 +28,17 @@ force-push. El Mac de Isaac esta dormido; no es requisito despertarlo. Arnes
 compatibilidad de sus opciones con el workflow al incorporarlo. La matriz
 comercial general se conserva y tiene seguimiento #1702.
 
+Review de seguridad C:/VantareServer/evidence/rev-1708/INFORME.md: APTO en
+codigo sobre e24272eae, sin P1; no autoriza activacion ni ready. Correcciones
+P2-1/P3 del mismo encargo: la RPC legacy testing_center_submit_report mantiene
+EXECUTE authenticated + SECURITY DEFINER + membership tester. El test vuelve
+a esperar 200 con justificacion SQL, comprueba reporte propio/aislamiento y el
+arnes HTTP incluye envio y rechazo tras tombstone. Confirmacion real pendiente;
+posible salto de admision legacy separado como investigacion #1709, sin cambiar
+permisos del producto. README sin comandos antiguos de secretos/deploy y con
+JWKS publico ES256; los dos documentos de contrato ya describen ES256/kid.
+Deno repetido 79 PASS / 2 omitidos, lint/fmt TS, Python compile y huellas462 PASS.
+
 Mantener #1708 draft hasta arnes real y CI verde sobre el HEAD definitivo;
 entonces marcar listo, actualizar issue/handoff/Plane y avisar al orquestador.
 T3 no permite watch desde subagente: el seguimiento persistente corresponde al

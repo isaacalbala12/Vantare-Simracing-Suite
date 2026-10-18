@@ -698,8 +698,13 @@ esa base antes del push. El HEAD/PR/checks finales están en issue/buzón.
 ### Decisiones por defecto autorizadas
 
 Registradas como DUDA en `C:/tmp/buzon/1608.md`; sin esperar respuestas.
-Firmante HS256 dedicado `NATIVE_DATA_JWT_SECRET`, sin fallback Auth; issuer
-`<SUPABASE_URL>/native-data/v1`, audiencia `vantare-native-data`.
+Actualizacion #1704 / VANTA-96: firmante **ES256 con kid** desde
+`NATIVE_DATA_ES256_PRIVATE_JWK`; consumidores Edge con
+`NATIVE_DATA_ES256_PUBLIC_JWK`, sin privada. Sustituye la decision HS256
+anterior; sin fallback Auth ni NATIVE_DATA_JWT_SECRET. Conserva issuer
+`<SUPABASE_URL>/native-data/v1`, audiencia `vantare-native-data`,
+role authenticated, UUID interno/procedencia Clerk y TTL ≤300 s y ≤OAuth.
+Importacion/reversion y autoridad de proyecto: [runbook ES256](../runbooks/native-data-es256.md).
 El registry se crea vacío, sin habilitar instancias o confianza del gateway.
 La configuración de claves/confianza en Supabase gestionado requiere revisión
 y autorización propias: PostgREST loopback no demuestra ese gateway.

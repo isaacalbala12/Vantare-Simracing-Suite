@@ -1,5 +1,5 @@
 """Disposable loopback PostgreSQL only. macOS/Linux; never accepts a DSN."""
-import argparse, os, pathlib, socket, subprocess, tempfile, json, time, urllib.request, urllib.error
+import argparse, os, pathlib, socket, subprocess, tempfile, json, time, urllib.request, urllib.error, urllib.parse
 from commercial_tombstone_race import run_tombstone_race
 from commercial_write_race import run_write_races
 from commercial_lock_order import run_lock_order
@@ -281,6 +281,33 @@ $$;
        return json.load(r)
      assert profiles(tokens['valid'])==[{'id':account}], 'own RLS profile missing'
      assert profiles(tokens['other'])==[], 'signed mismatching UUID read profile'
+     # The legacy tester RPC retains authenticated EXECUTE + SECURITY DEFINER.
+     # A valid B01 binding and active tester membership therefore permit it;
+     # this is distinct from the newer testing_report_submit Edge admission.
+     if not args.baseline and not args.before_b01:
+      run('psql',*conn,'-c',f"insert into public.testing_center_memberships(user_id,actor_id,role) values('{account}','fixture:b01-1704','tester')")
+      legacy_payload={'p_contract_version':'testing-center.v1','p_channel':'testers',
+       'p_action_text':'Open Hub','p_expected_text':'Hub appears','p_observed_text':'Hub hangs',
+       'p_context_text':None,'p_app_version':'0.1.0','p_os_family':'windows','p_os_version':'11',
+       'p_module':'hub','p_include_diagnostic':False,'p_include_logs':False,
+       'p_diagnostic_payload':None,'p_diagnostic_digest':None,'p_idempotency_key':'b01-legacy-fixture-1704'}
+      def legacy_submit(token):
+       req=urllib.request.Request(f'http://127.0.0.1:{http_port}/rpc/testing_center_submit_report',
+        data=json.dumps(legacy_payload).encode(),headers={'Content-Type':'application/json','Authorization':'Bearer '+token})
+       try:
+        with urllib.request.urlopen(req,timeout=30) as r: return r.status,json.load(r)
+       except urllib.error.HTTPError as e: return e.code,None
+      code,reports=legacy_submit(tokens['valid'])
+      assert code==200 and isinstance(reports,list) and len(reports)==1, f'legacy tester RPC expected 200, got {code}'
+      assert reports[0]['report_state']=='submitted' and reports[0]['idempotent'] is False, 'legacy report not submitted'
+      report_path='/testing_center_reports?report_id=eq.'+urllib.parse.quote(reports[0]['report_id'],safe='')
+      def legacy_rows(token):
+       req=urllib.request.Request(f'http://127.0.0.1:{http_port}'+report_path,headers={'Authorization':'Bearer '+token})
+       with urllib.request.urlopen(req,timeout=5) as r: return json.load(r)
+      assert len(legacy_rows(tokens['valid']))==1, 'own legacy report missing'
+      assert legacy_rows(tokens['other'])==[], 'legacy report leaked across identity'
+      assert legacy_submit(tokens['other'])[0] in (401,403), 'mismatched legacy submit not denied'
+      (OUT/'legacy-report-jwt-results.log').write_text('ES256 legacy tester RPC 200; submitted own row 1; mismatched identity read 0 and submit denied\n')
      # Anonymous may receive 401/403 or an empty RLS result; never private data.
      try: assert profiles(None)==[], 'anonymous read profile'
      except urllib.error.HTTPError as e: assert e.code in (401,403)
@@ -313,6 +340,11 @@ $$;
       with (OUT/'pilot-jwt-results.log').open('a') as result_log: result_log.write('same signed native JWT after deletion: denied '+str(code)+'\n')
      code=reset(tokens['valid']); assert code>=400,'previous bearer survived deletion'
      assert profiles(tokens['valid'])==[], 'previous bearer read profile after deletion'
+     if not args.baseline and not args.before_b01:
+      assert legacy_rows(tokens['valid'])==[], 'previous bearer read legacy report after tombstone'
+      assert legacy_submit(tokens['valid'])[0] in (401,403), 'previous bearer submitted legacy report after tombstone'
+      with (OUT/'legacy-report-jwt-results.log').open('a') as result_log:
+       result_log.write('same ES256 token after tombstone: legacy read 0; legacy submit denied\n')
      results.append('previous bearer after tombstone: denied '+str(code))
      with (OUT/'jwt-results.log').open('a') as result_log: result_log.write('\n'.join(results)+'\n')
      print('PostgREST real signed bridge JWT: own reset + '+str(len(results))+' denials PASS',flush=True)

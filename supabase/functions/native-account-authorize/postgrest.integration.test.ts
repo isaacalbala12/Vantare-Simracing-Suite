@@ -95,7 +95,10 @@ Deno.test({
       role.status === 200 && await role.json() === "tester",
       "signed token not accepted by RPC",
     );
-    // The retired direct report route must not bypass Edge admission.
+    // Existing SQL contract: 20260802180000 grants authenticated EXECUTE on a
+    // SECURITY DEFINER wrapper; 20260802150000 permits a seeded active tester.
+    // B03 changes its identity lookup to current_account(), not its grants.
+    // Do not claim this legacy route is closed by the separate Edge admission.
     const direct = await call("rpc/testing_center_submit_report", token, {
       p_contract_version: "testing-center.v1",
       p_channel: "testers",
@@ -113,8 +116,20 @@ Deno.test({
       p_diagnostic_digest: null,
       p_idempotency_key: `integration-${crypto.randomUUID()}`,
     });
-    assert(direct.status >= 400, "direct report bypassed Edge admission");
-    await direct.body?.cancel();
+    assert(
+      direct.status === 200,
+      `legacy tester RPC returned ${direct.status}`,
+    );
+    const reports = await direct.json();
+    assert(reports.length === 1 && typeof reports[0].report_id === "string");
+    const reportPath = `testing_center_reports?report_id=eq.${
+      encodeURIComponent(reports[0].report_id)
+    }`;
+    const ownReport = await call(reportPath, token);
+    assert(
+      ownReport.status === 200 && (await ownReport.json()).length === 1,
+      "legacy report not visible to its reporter",
+    );
     const reset = await call("rpc/reset_active_device", token, {
       device_fingerprint: "b".repeat(64),
     });
@@ -130,6 +145,11 @@ Deno.test({
       now.getTime() / 1000 + 300,
       { privateJwk: testPrivateJwk, supabaseUrl: "http://127.0.0.1:54321" },
       { issuer: config.issuer, subject },
+    );
+    const hiddenReport = await call(reportPath, otherToken.token);
+    assert(
+      hiddenReport.status === 200 && (await hiddenReport.json()).length === 0,
+      "legacy report exposed to mismatched identity",
     );
     const hidden = await call("profiles?select=id", otherToken.token);
     assert(

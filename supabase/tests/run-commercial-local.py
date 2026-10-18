@@ -226,7 +226,7 @@ $$;
    run_storage_owners(BIN,conn,ENV,run,OUT)
    raise SystemExit(0)
   if args.writers:
-   run_write_races(BIN,conn,ENV,run,OUT)
+   run_write_races(BIN,conn,ENV,run,OUT,fixture_conn=admin_conn() if args.docker else None)
    raise SystemExit(0)
   if not args.baseline:
    run_tombstone_race(BIN,conn,ENV,run,OUT/'concurrency-results.log')
@@ -371,7 +371,7 @@ $$;
    if 'not ok ' in result or '# Looks like' in result: raise RuntimeError(result)
    print(name+' PASS',flush=True)
   if not args.baseline:
-   run_write_races(BIN,conn,ENV,run,OUT)
+   run_write_races(BIN,conn,ENV,run,OUT,fixture_conn=admin_conn() if args.docker else None)
  finally:
   if args.docker:
    (OUT/'postgres.log').write_text(docker('logs',container))

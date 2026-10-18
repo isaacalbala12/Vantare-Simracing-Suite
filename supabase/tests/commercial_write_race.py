@@ -10,7 +10,7 @@ from commercial_tombstone_race import read_marker
 from commercial_write_cases import CASES, SETUP, INDIRECT_SETUP
 
 
-def run_write_races(bin_path, conn, env, run, out):
+def run_write_races(bin_path, conn, env, run, out, fixture_conn=None):
     logs, failures = [], []
     coverage = {}
     quiet = [*conn, '-q']
@@ -21,6 +21,11 @@ def run_write_races(bin_path, conn, env, run, out):
 
     def sql(statement):
         return run('psql', *quiet, '-c', statement).strip()
+
+    def fixture_sql(statement):
+        # Only install/remove observation triggers as fixture administrator.
+        # Actual controls, writers and deletion transactions keep conn's role.
+        return run('psql', *(fixture_conn or quiet), '-c', statement).strip()
 
     def check(ok, name):
         logs.append(('PASS ' if ok else 'FAIL ') + name)
@@ -39,7 +44,7 @@ select jsonb_pretty(jsonb_agg(x)) from (
     (out / 'inventory.json').write_text(inventory + '\n')
     # Observe actual successful live writes, without replacing guards or RPCs.
     # Each control transaction owns its temporary trace; it rolls back the write.
-    sql("""
+    fixture_sql("""
 create function public.fixture_trace_write() returns trigger language plpgsql security definer
 set search_path='' as $$ begin
  if to_regclass('pg_temp.write_trace') is not null then
@@ -318,7 +323,7 @@ where issuer='{issuer}' and subject='{subject}' and name='cleanup-slot'; commit;
         (out / 'write-races.log').write_text('\n'.join(logs) + '\n')
     if failures:
         raise AssertionError('\n'.join(failures))
-    sql("""do $$ declare r record; begin
+    fixture_sql("""do $$ declare r record; begin
  for r in select tgrelid from pg_trigger where tgname='zz_fixture_trace'
  loop execute format('drop trigger zz_fixture_trace on %s',r.tgrelid::regclass); end loop;
 end $$; drop function public.fixture_trace_write();

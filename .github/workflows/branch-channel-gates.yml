@@ -256,12 +256,22 @@ jobs:
           # with the hosted PostgreSQL binaries; no package download or new image.
           docker run --rm --network none --entrypoint sh \
             public.ecr.aws/supabase/postgres:17.6.1.165 \
-            -c 'cd "$(pg_config --sharedir)/extension"; tar -cf - pgtap.control pgtap--*.sql' \
+            -c 'cd "$(pg_config --sharedir)/extension"; tar -chf - pgtap.control pgtap--*.sql' \
             > "$RUNNER_TEMP/pgtap-scripts.tar"
           mkdir "$RUNNER_TEMP/pgtap-scripts"
           tar -xf "$RUNNER_TEMP/pgtap-scripts.tar" -C "$RUNNER_TEMP/pgtap-scripts"
           sudo cp "$RUNNER_TEMP"/pgtap-scripts/* "$extension_dir/"
           "$pg_bin/postgres" --version
+          mkdir -p "$RUNNER_TEMP/commercial-races"
+          if python3 supabase/tests/run-commercial-local.py \
+            --pg-bin "$pg_bin" --before-private-write-barriers \
+            --output "$RUNNER_TEMP/commercial-races/red" \
+            > "$RUNNER_TEMP/commercial-races/red.log" 2>&1; then
+            echo '::error::Missing private guards unexpectedly passed'
+            exit 1
+          fi
+          grep -Eq '^not ok [0-9]+ - all eleven later account-owned tables have the full write barrier' \
+            "$RUNNER_TEMP/commercial-races/red.log"
           for newline in lf crlf; do
             python3 supabase/tests/run-commercial-local.py \
               --pg-bin "$pg_bin" --migration-newlines "$newline" \

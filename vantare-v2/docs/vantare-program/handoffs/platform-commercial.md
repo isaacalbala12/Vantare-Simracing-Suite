@@ -19,7 +19,9 @@ Por encargo adicional, workflow NUEVO `supabase-commercial-gates.yml` para PR
 a nightly con cambios supabase/**: imagen Supabase17 fijada, PostgREST, Deno,
 control RED y arnés completo LF/CRLF con HTTP. Los workflows existentes y checks
 requeridos quedan intactos. El Mac está dormido; ensayo en runner hospedado.
-Pendiente CI general del HEAD final y revisión del orquestador, sin merge.
+CI del HEAD final y revisión se consultan en
+https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1705.
+Siguiente paso: revisión del orquestador; no hay merge ni promoción de canal.
 Evidencia externa en `C:/VantareServer/evidence/supabase-write-races/`.
 Sin producción, secretos, proveedores, merge, release ni cambios nativos.
 

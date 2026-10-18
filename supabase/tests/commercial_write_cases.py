@@ -200,6 +200,16 @@ CASES += [
  ('promotion-transfer', "insert into private.report_promotion_transfers(account_id,environment,subscription_id,product_id,next_subscription_id,next_product_id,observed_at,cleanup_after) values('{a}','sandbox','{case}','{case}','next','next',now(),now())"),
 ]
 
+# #1711: direct account UUIDs without a FK still own retained commercial rows.
+CASES += [
+ ('creator-attribution', "insert into private.creator_checkout_attributions values('sandbox','{a}','{attempt}','{new_id}','FIXTURE','{new_id}',now())"),
+ ('creator-renewal', "insert into private.creator_renewal_operations(environment,subscription_id,account_id,creator_id,first_order_id,product_id,checkout_key,creator_discount_id) values('sandbox','{case}','{a}','{new_id}','{case}','{new_id}','pro_monthly','{new_id}')"),
+ ('creator-revocation', "insert into private.creator_subscription_revocations values('sandbox','{case}','{a}','subscription_revoked',now())"),
+ ('creator-terms', "insert into private.report_creator_terms(environment,subscription_id,account_id,duration_months) values('sandbox','{case}','{a}',6)"),
+ ('report-renewal-candidate', "insert into private.report_renewal_candidates values('sandbox','{case}','{a}','{new_id}',100,now()+interval '1 month')"),
+ ('payment-incident', "insert into private.billing_payment_incidents(environment,account_id,resource_id,reason) values('sandbox','{a}','{case}','fixture')"),
+]
+
 # R9: Edge admission must preserve live writes and reject a racing tombstone.
 CASES += [
  ('testing-admitted-classic', "set local role service_role; select public.testing_report_submit_admitted('{a}','{new_id}','master','Fixture','Private body',true)"),

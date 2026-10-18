@@ -36,7 +36,10 @@ def run_write_races(bin_path, conn, env, run, out, fixture_conn=None):
 select jsonb_pretty(jsonb_agg(x)) from (
  select n.nspname||'.'||c.relname as relation,
    exists(select 1 from pg_trigger t where t.tgrelid=c.oid and t.tgname='a_account_write_barrier'
-     and t.tgenabled='O') as protected
+     and t.tgenabled='O') as protected,
+   exists(select 1 from pg_attribute a where a.attrelid=c.oid and a.attname='account_id'
+     and a.attnum>0 and not a.attisdropped and not exists(select 1 from pg_constraint fk
+       where fk.conrelid=c.oid and fk.contype='f' and a.attnum=any(fk.conkey))) as account_id_without_fk
  from pg_class c join pg_namespace n on n.oid=c.relnamespace
  where n.nspname in ('public','private','storage','pilot_private') and c.relkind='r'
  order by 1) x;
@@ -210,14 +213,19 @@ select count(*)=0 from private.mail_deliveries where email='{case}@example.inval
                     if proc is not None and proc.poll() is None:
                         proc.kill()
                         proc.wait(timeout=10)
-        # Independent catalog closure: a new FK-bound table cannot silently
-        # escape the migration or the valid-write/concurrency inventory.
-        missing = sql("""
-with recursive expected(rel) as (
+        # Account columns are roots even without a FK. Traverse their children
+        # too; neither a new bare UUID ledger nor its descendants may escape.
+        catalog_sql = """
+with recursive roots(rel) as (
  select unnest(array['public.profiles'::regclass,'public.operational_access_audit',
  'public.operational_legacy_grant_retirements','storage.buckets','storage.objects','storage.s3_multipart_uploads','private.testing_report_attempts',
  'public.billing_webhook_inbox','public.testing_center_idempotency','public.testing_center_audit',
  'public.admin_audit_log']::regclass[])::oid
+ union select t.oid from pg_class t join pg_namespace n on n.oid=t.relnamespace
+ join pg_attribute a on a.attrelid=t.oid
+ where n.nspname in ('public','private','storage','pilot_private') and t.relkind in ('r','p')
+ and a.attname='account_id' and a.attnum>0 and not a.attisdropped), expected(rel) as (
+ select rel from roots
  union select c.conrelid from expected e join pg_constraint c on c.confrelid=e.rel
  join pg_class t on t.oid=c.conrelid join pg_namespace n on n.oid=t.relnamespace
  where c.contype='f' and n.nspname in ('public','private','storage','pilot_private')
@@ -229,8 +237,25 @@ select coalesce(string_agg(rel::regclass::text,','),'') from expected
  where rel<>'private.mail_contact_erasures'::regclass and not exists(
  select 1 from pg_trigger t where t.tgrelid=rel and t.tgname='a_account_write_barrier'
  and t.tgenabled='O' and (t.tgtype & 31)=31);
+"""
+        missing = sql(catalog_sql)
+        check(not missing, 'catalog: every explicit/account_id root and FK descendant has INSERT/UPDATE/DELETE barrier: ' + missing)
+        probe = sql("""begin;
+create table private.fixture_bare_account(id uuid primary key,account_id uuid);
+create table private.fixture_bare_child(parent_id uuid references private.fixture_bare_account(id));
+""" + catalog_sql + 'rollback;')
+        check(set(probe.split(',')) == {'private.fixture_bare_account','private.fixture_bare_child'},
+            'catalog regression: discovers a new account_id without FK and its FK descendant')
+        bare_missing = sql("""
+select coalesce(string_agg(t.oid::regclass::text,','),'') from pg_class t
+join pg_namespace n on n.oid=t.relnamespace join pg_attribute a on a.attrelid=t.oid
+left join pg_trigger g on g.tgrelid=t.oid and g.tgname='a_account_write_barrier'
+where n.nspname in ('public','private','storage','pilot_private') and t.relkind in ('r','p')
+and a.attname='account_id' and a.attnum>0 and not a.attisdropped
+and t.oid<>'private.mail_contact_erasures'::regclass
+and (g.oid is null or position(format('$1->>%L',a.attname) in encode(g.tgargs,'escape'))=0);
 """)
-        check(not missing, 'catalog: every UUID root and FK descendant has INSERT/UPDATE/DELETE barrier: ' + missing)
+        check(not bare_missing, 'catalog: compiled guard includes every account_id column: ' + bare_missing)
         links_missing = sql("""
 select coalesce(string_agg(c.conname,','),'') from pg_constraint c
 join pg_trigger parent on parent.tgrelid=c.confrelid and parent.tgname='a_account_write_barrier'

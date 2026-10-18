@@ -1,3 +1,29 @@
+## #1704 / VANTA-96 - Bridge B01 ES256 (19-oct-2026)
+
+Encargo explicito del orquestador: opcion (b), sin tocar produccion. Base
+`origin/nightly` 999d5950745f73be0e38a1763422f53b515c6866, worktree propio
+`C:/VantareServer/wt/b01-es256`, rama solicitada `vantareapp/isa-b01-es256`.
+Issue #1704, area:plataforma, Project Vantare, milestone Plataforma testers.
+
+Authorize firma ES256/kid desde NATIVE_DATA_ES256_PRIVATE_JWK; report-submit
+verifica solo la publica NATIVE_DATA_ES256_PUBLIC_JWK. Sin fallback HS256.
+Claims B01/TTL, Rust y SQL/RLS conservados. Generador PowerShell con archivo
+privado CreateNew y ACL protegida/modo0600; publica JWK separada. Claves TEST
+locales, sin privada en stdout ni sobrescritura. Runbook native-data-es256.md
+explica importacion (requiere privada), autoridad de proyecto y reversion.
+
+Deno enfocado 79 PASS / 2 integraciones omitidas; type-check y lint del cambio,
+generador protegido Windows y huellas462 PASS. Suite global Deno: 17 errores
+de tipos ajenos, reproducidos tambien en nightly base. Arnes local actualizado
+con JWKS publico ES256 efimero y gate --b01; pendiente ejecucion Unix real.
+La matriz comercial general sigue separada en #1702, sin debilitarla.
+
+Pendientes al redactar: el gate de ramas rechaza el nombre pedido sin numero;
+se solicita renombrar a vantareapp/isa-1704-b01-es256. Mac SSH no accesible;
+cuenta actual sin WSL. Sigue implementacion/revision/PR y CI, no entrega verde.
+No merge, promocion, release, importacion/rotacion, deploy ni cambios Supabase.
+La confianza gestionada exige autorizacion posterior y prueba real de Isaac.
+
 ## VANTA-96 / #1701 · Ensayo de reconstrucción Supabase (18-oct-2026)
 
 Isaac confirma que producción no contiene usuarios/compras reales y dispone de

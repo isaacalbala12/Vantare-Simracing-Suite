@@ -1,25 +1,26 @@
-# #1608 B01 · contrato vigente preparado solo en local
+# #1704 / VANTA-96 - B01 ES256 preparado, sin activar
 
-El bridge firma HS256 con **NATIVE_DATA_JWT_SECRET dedicado**; se retira el
-fallback a SUPABASE_JWT_SECRET. Issuer `<SUPABASE_URL>/native-data/v1`, audiencia
-`vantare-native-data`, role authenticated, sub UUID interno y proveniencia Clerk
-verificada. TTL <=300 s y <=OAuth. `private.current_account()` compara issuer,
-subject y UUID exactos, registry habilitado, tiempo vigente y tombstone; RPC,
-RLS y consumidor `testing-report-submit` comparten ese contrato. El cliente
-Rust trata el bearer como opaco: no cambia protocolo ni persistencia.
+El bridge firma **ES256 con kid** desde `NATIVE_DATA_ES256_PRIVATE_JWK`.
+`testing-report-submit` verifica con `NATIVE_DATA_ES256_PUBLIC_JWK`, sin privada.
+No hay fallback a HS256, NATIVE_DATA_JWT_SECRET ni SUPABASE_JWT_SECRET.
+Se conservan issuer `<SUPABASE_URL>/native-data/v1`, audiencia
+`vantare-native-data`, role authenticated, sub UUID interno, procedencia Clerk
+verificada y TTL <=300 s y <=OAuth. SQL/RLS y el bearer opaco de Rust no cambian.
 
-Registry vacío por defecto: configurar la confianza del firmante/gateway y las
-instancias Clerk es una activación separada, no autorizada aquí. No compartir
-la clave de Supabase Auth ni aceptar los JWT legacy como identidades Clerk.
-La configuración de un proyecto gestionado debe revisarse antes de desplegar;
-este gate verifica PostgREST local, no el gateway gestionado ni Clerk real.
+Generador protegido, pruebas, importacion autorizada, limites y reversion:
+[runbook ES256](../../../vantare-v2/docs/runbooks/native-data-es256.md).
 
-Gate obligatorio: `supabase/tests/run-commercial-local.py` bajo WSL, con
-`--pg-bin`, `--output`, `--postgrest-bin` y `--deno-bin` instalados. Solo crea
-PostgreSQL desechable y PostgREST en loopback; no acepta DSN ni credenciales.
-El handler authorize real firma una fixture OAuth verificada inyectada; prueba
-reset propio, RLS, firma alterada, otro UUID/issuer/audiencia, legacy, TTL>300,
-caducado/futuro y bearer previo al tombstone. Logs sin JWTs ni material real.
+La confianza gestionada y el registro Clerk Production siguen siendo una
+activacion separada pendiente de Isaac. Los tests prueban PostgREST local
+con publica ES256; no certifican gateway/Storage gestionado ni login real.
+Importar una clave le da autoridad de proyecto: dedicada no limita los roles
+que podria emitir quien posea la privada. No compartir claves de licencia/Clerk.
+
+## Contrato B01 HS256 de #1608, sustituido por #1704
+
+El antiguo secreto dedicado HS256 y el procedimiento legacy siguiente se
+conservan como referencia historica. No se utilizan en el codigo activo ni
+constituyen instrucciones de despliegue para este corte.
 
 ## Procedimiento #1452 histórico, supersedido por B01
 

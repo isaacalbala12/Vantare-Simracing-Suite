@@ -232,7 +232,7 @@ with recursive roots(rel) as (
  -- Approval is historical metadata, not ownership of the broadcast/recipients.
  and not(c.conrelid='private.mail_campaigns'::regclass and c.conname='mail_campaigns_approved_by_fkey'))
 select coalesce(string_agg(rel::regclass::text,','),'') from expected
- -- These duties are created AFTER tombstone; cleanup/ACK must remain possible.
+ -- These duties must still complete AFTER tombstone: cleanup enqueue or ACK.
  -- Closed ACL and actual post-erasure lifecycles have separate SQL regressions.
  where rel not in ('private.mail_contact_erasures'::regclass,'private.web_purchase_erasure_events'::regclass,
   'private.founders_subscription_transitions'::regclass) and not exists(

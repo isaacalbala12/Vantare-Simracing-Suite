@@ -29,8 +29,8 @@ insert into private.report_renewal_candidates values('sandbox','account-id','171
 insert into private.billing_payment_incidents(environment,account_id,resource_id,reason)
  values('sandbox','17110000-0000-4000-8000-000000000001','account-id','fixture');
 insert into private.lifetime_order_admissions values('sandbox','account-id','17110000-0000-4000-8000-000000000001','founders','fixture',now());
-insert into private.founders_subscription_transitions(environment,subscription_id,account_id,founders_order_id,policy,state)
- values('sandbox','account-id','17110000-0000-4000-8000-000000000001','account-id','end_period','pending');
+insert into private.founders_subscription_transitions(environment,subscription_id,account_id,founders_order_id,policy,state,last_reactivation_at)
+ values('sandbox','account-id','17110000-0000-4000-8000-000000000001','account-id','end_period','pending','2026-10-27T12:00:00Z');
 select throws_ok(format('update %s set account_id=%L where account_id=%L',relation,
  '17110000-0000-4000-8000-000000000002','17110000-0000-4000-8000-000000000001'),
  '28000',null,relation::text||': live owner cannot be reassigned') from ledgers;
@@ -47,7 +47,6 @@ select is(pg_temp.retained(relation),1::bigint,relation::text||': history surviv
 
 -- Preserve the real in-flight cancellation ACK contract: closed RPC, matching
 -- remote revision, metadata-only completion after deletion; never new work.
-update private.founders_subscription_transitions set last_reactivation_at='2026-10-27T12:00:00Z' where subscription_id='account-id';
 select lives_ok($$select public.billing_complete_founders_transition('sandbox','account-id')$$,
  'stale cancellation ACK is harmless after erasure');
 select is((select state from private.founders_subscription_transitions where subscription_id='account-id'),'pending',

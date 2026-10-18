@@ -11,7 +11,10 @@ de creador, plazos/candidatos de informes e incidencias de pago. Sin excepciones
 nuevas, cambios de ACL/FK, borrado de historiales ni parche del guard común.
 Se añaden seis carreras reales, regresión de UPDATE/reasignación/historial y
 las suites existentes de renovaciones e incidencias para los escritores reales.
-Pendiente workflow comercial LF/CRLF y CI del PR. Sin producción ni B01.
+PR #1712 a nightly: workflow comercial LF/CRLF y CI consultables en
+https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1712.
+Siguiente paso: revisión del orquestador tras validar el ensayo; sin producción,
+B01, merge ni promoción de canal. Evidencia: evidence/supabase-p2-account-id.
 
 ## VANTA-96 / #1702 · Cierre de carreras comerciales (19-oct-2026)
 

@@ -132,6 +132,7 @@ $$;
    if args.before_pilot_identity and 'pilot_identity' in m.name: continue
    # RED controls omit the dependent adapters as well as their missing guards.
    legacy = args.baseline or args.before_write_barrier
+   if legacy and 'isa_1711_account_id_write_barriers' in m.name: continue
    if (legacy or args.before_private_write_barriers or args.before_deleted_authorizer or args.before_posthog_consent_clear) and 'isa_1702_private_write_barriers' in m.name: continue
    if legacy and m.name.startswith(('2026101416','2026101509')) and 'isa_1608_' in m.name: continue
    if args.before_storage_multipart and 'managed_storage_abort' in m.name: continue

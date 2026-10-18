@@ -10,7 +10,7 @@ from commercial_tombstone_race import read_marker
 from commercial_write_cases import CASES, SETUP, INDIRECT_SETUP
 
 
-def run_write_races(bin_path, conn, env, run, out):
+def run_write_races(bin_path, conn, env, run, out, fixture_conn=None):
     logs, failures = [], []
     coverage = {}
     quiet = [*conn, '-q']
@@ -21,6 +21,11 @@ def run_write_races(bin_path, conn, env, run, out):
 
     def sql(statement):
         return run('psql', *quiet, '-c', statement).strip()
+
+    def fixture_sql(statement):
+        # Only install/remove observation triggers as fixture administrator.
+        # Actual controls, writers and deletion transactions keep conn's role.
+        return run('psql', *(fixture_conn or quiet), '-c', statement).strip()
 
     def check(ok, name):
         logs.append(('PASS ' if ok else 'FAIL ') + name)
@@ -39,7 +44,7 @@ select jsonb_pretty(jsonb_agg(x)) from (
     (out / 'inventory.json').write_text(inventory + '\n')
     # Observe actual successful live writes, without replacing guards or RPCs.
     # Each control transaction owns its temporary trace; it rolls back the write.
-    sql("""
+    fixture_sql("""
 create function public.fixture_trace_write() returns trigger language plpgsql security definer
 set search_path='' as $$ begin
  if to_regclass('pg_temp.write_trace') is not null then
@@ -82,14 +87,26 @@ end $$;
             if name in ('checkout-complete', 'checkout-uncertain'):
                 sql("select * from public.claim_billing_checkout_attempt('{a}','{attempt}',"
                     "'pro_monthly','sandbox','fixture')".format(**values))
+            if name == 'checkout-complete':
+                sql("select public.billing_begin_checkout_request('{a}','{attempt}','{new_id}')".format(**values))
             if name == 'inbox-checkout':
-                sql("select * from public.claim_billing_checkout_attempt('{a}','{attempt}','pro_monthly','sandbox','fixture'); select public.complete_billing_checkout_attempt('{a}','{attempt}','checkout-{case}','https://checkout.invalid/fixture')".format(**values))
+                sql("select * from public.claim_billing_checkout_attempt('{a}','{attempt}','pro_monthly','sandbox','fixture'); select public.billing_begin_checkout_request('{a}','{attempt}','{new_id}')".format(**values))
+                assert sql("select public.complete_billing_checkout_attempt('{a}','{attempt}','checkout-{case}','https://checkout.invalid/fixture')".format(**values)) == 't', 'checkout fixture must complete the current dispatch protocol'
+                assert sql("select count(*) from public.billing_checkout_bindings where user_id='{a}' and provider_checkout_id='checkout-{case}'".format(**values)) == '1', 'checkout race must have durable ownership before deletion'
             if name == 'inbox-subscription':
                 sql("insert into public.billing_subscriptions(user_id,provider,provider_subscription_id,status,environment) values('{a}','polar','subscription-{case}','active','sandbox')".format(**values))
             if name == 'inbox-nested-customer':
                 sql("insert into private.clerk_deleted_objects(issuer,subject,bucket_id,name) values('{issuer}','{subject}','testing-center-evidence','cleanup-slot')".format(**values))
             if name == 'storage-multipart-part':
                 sql("insert into storage.s3_multipart_uploads(id,upload_signature,bucket_id,key,version,owner_id) values('{case}','fixture','testing-center-evidence','{case}','fixture','{a}')".format(**values))
+            if name in ('promotion-change','promotion-transfer'):
+                sql("insert into private.report_promotion_catalog values('sandbox','{case}','pro',599,399,'launch','three','six'); insert into private.report_promotions(account_id,environment,subscription_id,original_subscription_id,product_id,subscribed_at,current_started_at,first_renewal,observed_at) values('{a}','sandbox','{case}','{case}','{case}',now(),now(),now(),now())".format(**values))
+            if name == 'report-promotion':
+                sql("insert into private.report_promotion_catalog values('sandbox','{case}','pro',599,399,'launch','three','six')".format(**values))
+            if name == 'admin-payout':
+                sql("insert into private.admin_creators(creator_id,environment,name,email,code) values('{new_id}','sandbox','Fixture','creator@example.invalid',upper('QA'||substr('{h}',1,12)))".format(**values))
+            if name == 'mail-delivery':
+                sql("insert into private.mail_contacts(email,account_id,erasure_account,locale,evidence) values('{case}@example.invalid','{a}','{a}','en','fixture'); insert into private.mail_campaigns(id,environment) values('{new_id}','sandbox')".format(**values))
             # The actual write must be valid while live, before testing its race.
             claims = {'iss': values['issuer'], 'sub': values['subject'], 'role': 'authenticated',
                 'sid': 'sess_fixture', 'azp': 'https://app.invalid'}
@@ -105,6 +122,8 @@ end $$;
                 live = sql('begin; create temp table write_trace(relation text); ' + command +
                     " reset role; set constraints all immediate; select 'TRACE:'||coalesce(jsonb_agg(distinct relation),'[]')::text from write_trace; rollback;")
                 coverage[name] = json.loads(live.split('TRACE:')[-1])
+                if name == 'checkout-complete':
+                    assert 'public.billing_checkout_bindings' in coverage[name], 'positive completion must persist its binding, not silently return false'
             except RuntimeError as error:
                 logs.append('FIXTURE ERROR ' + name + ': ' + str(error))
                 raise
@@ -161,8 +180,11 @@ end $$;
                 # Every other route must reject with the typed tombstone error.
                 safe_success = name in ('grant', 'entitlement', 'operational', 'followup')
                 tombstone_receipt = b'|account_deleted|t' in stdout
+                # This descendant's contact is intentionally erased. After the
+                # observed UUID conflict/retry, its missing FK parent is 23503.
+                missing_erased_parent = name == 'mail-delivery' and sqlstate(stderr.decode()) == '23503'
                 check((write_exit == 0 and (safe_success or tombstone_receipt)) or
-                    (write_exit != 0 and sqlstate(stderr.decode()) == '28000'),
+                    (write_exit != 0 and (sqlstate(stderr.decode()) == '28000' or missing_erased_parent)),
                     name + ': tombstone rejection or safe revoked/no-row result')
                 state = sql("""
 select email is null and display_name is null from public.profiles where id='{a}';
@@ -177,8 +199,10 @@ select count(*)=0 from public.testing_answers where account_id='{a}';
 select count(*)=0 from storage.objects where owner_id='{a}' or name='v1/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/{batch}/{evidence}';
 select count(*)=0 from public.testing_center_report_payloads where report_id='report-{case}' and action_text<>'Deleted';
 select count(*)=0 from public.billing_webhook_inbox where provider_event_id='new-{case}';
+select count(*)=0 from private.mail_contacts where account_id='{a}' or erasure_account='{a}';
+select count(*)=0 from private.mail_deliveries where email='{case}@example.invalid';
 """.format(**values)).splitlines()
-                check(state == ['t'] * 12, name + ': no restored PII/device/access/content/object')
+                check(state == ['t'] * 14, name + ': no restored PII/device/access/content/object')
                 retry = sql(deletion)
                 check(retry == 'unchanged', name + ': duplicate deletion remains idempotent')
             finally:
@@ -196,8 +220,13 @@ with recursive expected(rel) as (
  'public.admin_audit_log']::regclass[])::oid
  union select c.conrelid from expected e join pg_constraint c on c.confrelid=e.rel
  join pg_class t on t.oid=c.conrelid join pg_namespace n on n.oid=t.relnamespace
- where c.contype='f' and n.nspname in ('public','private','storage','pilot_private'))
-select coalesce(string_agg(rel::regclass::text,','),'') from expected where not exists(
+ where c.contype='f' and n.nspname in ('public','private','storage','pilot_private')
+ -- Approval is historical metadata, not ownership of the broadcast/recipients.
+ and not(c.conrelid='private.mail_campaigns'::regclass and c.conname='mail_campaigns_approved_by_fkey'))
+select coalesce(string_agg(rel::regclass::text,','),'') from expected
+ -- The cleanup queue is created AFTER tombstone and must retry/expire/ACK.
+ -- Its closed ACL and actual post-erasure lifecycle are separate SQL regressions.
+ where rel<>'private.mail_contact_erasures'::regclass and not exists(
  select 1 from pg_trigger t where t.tgrelid=rel and t.tgname='a_account_write_barrier'
  and t.tgenabled='O' and (t.tgtype & 31)=31);
 """)
@@ -206,7 +235,9 @@ select coalesce(string_agg(rel::regclass::text,','),'') from expected where not 
 select coalesce(string_agg(c.conname,','),'') from pg_constraint c
 join pg_trigger parent on parent.tgrelid=c.confrelid and parent.tgname='a_account_write_barrier'
 left join pg_trigger child on child.tgrelid=c.conrelid and child.tgname='a_account_write_barrier'
-where c.contype='f' and (child.oid is null or exists(
+where c.contype='f' and c.conrelid<>'private.mail_contact_erasures'::regclass
+and not(c.conrelid='private.mail_campaigns'::regclass and c.conname='mail_campaigns_approved_by_fkey')
+and (child.oid is null or exists(
  select 1 from unnest(c.conkey) k join pg_attribute a on a.attrelid=c.conrelid and a.attnum=k
  where position(format('$1->>%L',a.attname) in encode(child.tgargs,'escape'))=0));
 """)
@@ -292,7 +323,7 @@ where issuer='{issuer}' and subject='{subject}' and name='cleanup-slot'; commit;
         (out / 'write-races.log').write_text('\n'.join(logs) + '\n')
     if failures:
         raise AssertionError('\n'.join(failures))
-    sql("""do $$ declare r record; begin
+    fixture_sql("""do $$ declare r record; begin
  for r in select tgrelid from pg_trigger where tgname='zz_fixture_trace'
  loop execute format('drop trigger zz_fixture_trace on %s',r.tgrelid::regclass); end loop;
 end $$; drop function public.fixture_trace_write();

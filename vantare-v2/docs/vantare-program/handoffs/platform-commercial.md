@@ -1,3 +1,11 @@
+## 2026-10-19 - #1704 / VANTA-96: integrar workflow real de #1702
+
+- Orquestador ordena merge origin/nightly 39a788238 en #1708 antes de #1710, sin rebase ni force-push.
+- Se conservan ambos handoffs al resolver el unico conflicto documental; arnes combinado mantiene ES256/JWKS y las carreras/fixtures de #1702.
+- Se admiten --docker y --migration-newlines en el modo aislado --b01; no se permiten controles historicos en ese modo.
+- Siguiente gate: CI completa del merge, con PostgreSQL/PostgREST real LF y CRLF, legacy tester 200, aislamiento y tombstone. No declarar PASS antes del resultado.
+- #1708 sigue draft hasta todos los checks verdes. No hay merge a nightly, produccion, importacion de clave, deploy ni release.
+
 ## #1704 / VANTA-96 - Bridge B01 ES256 (19-oct-2026)
 
 Encargo explicito del orquestador: opcion (b), sin tocar produccion. Base
@@ -45,6 +53,32 @@ T3 no permite watch desde subagente: el seguimiento persistente corresponde al
 padre. VANTA-96 sigue En curso. Sin merge a nightly, promocion, release,
 importacion/rotacion, deploy ni cambios productivos. Confianza gestionada aun
 requiere autorizacion explicita y prueba real de Isaac.
+## VANTA-96 / #1702 · Cierre de carreras comerciales (19-oct-2026)
+
+Encargo del orquestador desde nightly999d59507 (#1703 integrado). Rama propia
+`vantareapp/isa-1702-write-races`. Baseline reproducido: 633 PASS/9 FAIL.
+Diagnóstico: las tres aserciones inbox-checkout usan una fixture sin dispatch
+v2; cuatro tablas admin tienen guard pero no ruta en la matriz; once tablas
+privadas posteriores necesitan guard y dos relaciones son excepciones legítimas
+(cola de borrado tras tombstone y aprobador histórico de campañas).
+
+PR #1705 a nightly: migración nueva, quince rutas reales y regresión SQL de continuidad
+de campaña/borrado/ACL/transferencia de dirección; fuentes LF/CRLF explícitas.
+Detalle por aserción y tabla en `docs/billing/write-races-1702.md`. No se elimina
+el gate. Ensayo completo LF/CRLF exit0, run39172498786, implementación d47ecf94b:
+93 migraciones, PostgreSQL17.6, 20 suites/588 pgTAP, 123 rutas/728 checks por
+formato, borrado concurrente 4 escenarios/40 checks, JWT/PostgREST y Ed25519.
+Control RED detecta 0/11 barreras sin la migración. Artefactos descargados;
+bytes LF/CRLF comprobados para las 93 fuentes de cada formato.
+Por encargo adicional, workflow NUEVO `supabase-commercial-gates.yml` para PR
+a nightly con cambios supabase/**: imagen Supabase17 fijada, PostgREST, Deno,
+control RED y arnés completo LF/CRLF con HTTP. Los workflows existentes y checks
+requeridos quedan intactos. El Mac está dormido; ensayo en runner hospedado.
+CI del HEAD final y revisión se consultan en
+https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1705.
+Siguiente paso: revisión del orquestador; no hay merge ni promoción de canal.
+Evidencia externa en `C:/VantareServer/evidence/supabase-write-races/`.
+Sin producción, secretos, proveedores, merge, release ni cambios nativos.
 
 ## VANTA-96 / #1701 · Ensayo de reconstrucción Supabase (18-oct-2026)
 

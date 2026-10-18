@@ -7,7 +7,10 @@ from commercial_admin_lock_order import run_admin_lock_order
 from commercial_storage_race import run_storage_owners, run_storage_multipart, run_storage_buckets
 parser=argparse.ArgumentParser()
 parser.add_argument('--pg-bin', required=True)
+parser.add_argument('--docker', action='store_true', help='Own disposable Supabase PostgreSQL container; pg-bin supplies clients only')
 parser.add_argument('--output', required=True)
+parser.add_argument('--migration-newlines', choices=['lf','crlf'], default='lf')
+parser.add_argument('--before-private-write-barriers', action='store_true', help='RED: omit only the #1702 private-table guards')
 parser.add_argument('--baseline', action='store_true')
 parser.add_argument('--b01', action='store_true', help='Only real bridge JWT/RLS/Pilot/license/tombstone checks after all migrations; no unrelated writer matrix')
 parser.add_argument('--before-b01', action='store_true')
@@ -40,7 +43,7 @@ args=parser.parse_args()
 if args.b01 and (not args.postgrest_bin or not args.deno_bin):
  parser.error('--b01 requires --postgrest-bin and --deno-bin')
 if args.b01:
- b01_options={'b01','pg_bin','output','postgrest_bin','deno_bin','signer_module','storage_schema'}
+ b01_options={'b01','pg_bin','output','postgrest_bin','deno_bin','signer_module','storage_schema','docker','migration_newlines'}
  if any(value for name,value in vars(args).items() if name not in b01_options):
   parser.error('--b01 cannot be combined with historical controls or another test mode')
 ROOT=pathlib.Path(__file__).resolve().parents[2]
@@ -55,10 +58,42 @@ with socket.socket() as probe:
  probe.bind(('127.0.0.1',0)); port=probe.getsockname()[1]
 with tempfile.TemporaryDirectory(prefix='vantare-commercial-') as tmp:
  data=pathlib.Path(tmp)/'data'
- run('initdb','-D',data,'-U','postgres','--auth-local=trust','--auth-host=trust','--encoding=UTF8','--no-locale')
- run('pg_ctl','-D',data,'-l',OUT/'postgres.log','-o',f'-h 127.0.0.1 -p {port} -k {tmp}','-w','start')
- conn=['-X','-h','127.0.0.1','-p',str(port),'-U','postgres','-d','postgres','-v','ON_ERROR_STOP=1','-v','VERBOSITY=verbose','-At']
+ container='vantare-commercial-'+os.urandom(6).hex()
+ database='commercial' if args.docker else 'postgres'
+ def docker(*parameters):
+  r=subprocess.run(['docker',*parameters],env=ENV,capture_output=True,text=True,timeout=60)
+  if r.returncode: raise RuntimeError(r.stderr+r.stdout)
+  return r.stdout
+ if args.docker:
+  # No caller-provided DSN/container: only this invocation's fresh local server.
+  # The image keeps password auth for TCP even with socket trust. These are
+  # public fixture credentials, generated for no external database or service.
+  try:
+   docker('run','--rm','-d','--name',container,'-e','POSTGRES_HOST_AUTH_METHOD=trust',
+    '-p',f'127.0.0.1:{port}:5432','public.ecr.aws/supabase/postgres:17.6.1.165')
+   for attempt in range(120):
+    if 'PostgreSQL init process complete' in docker('logs',container):
+     ready=subprocess.run(['docker','exec',container,'pg_isready','-U','postgres'],capture_output=True)
+     if ready.returncode==0: break
+    time.sleep(.2) # Actual server readiness, not a timed test race.
+   else: raise RuntimeError('disposable PostgreSQL startup timed out')
+   docker('exec',container,'createdb','-U','postgres','--template=template0',database)
+   docker('exec',container,'psql','-U','supabase_admin','-d',database,'-v','ON_ERROR_STOP=1','-c',
+    "alter role postgres password 'commercial-local-fixture'; alter role supabase_admin password 'commercial-local-fixture';")
+   ENV['PGPASSWORD']='commercial-local-fixture'
+  except BaseException:
+   docker('rm','-f',container)
+   raise
+ else:
+  run('initdb','-D',data,'-U','postgres','--auth-local=trust','--auth-host=trust','--encoding=UTF8','--no-locale')
+  run('pg_ctl','-D',data,'-l',OUT/'postgres.log','-o',f'-h 127.0.0.1 -p {port} -k {tmp}','-w','start')
+ conn=['-X','-h','127.0.0.1','-p',str(port),'-U','postgres','-d',database,'-v','ON_ERROR_STOP=1','-v','VERBOSITY=verbose','-At']
+ def admin_conn():
+  result=conn.copy()
+  if args.docker: result[result.index('-U')+1]='supabase_admin'
+  return result
  try:
+  (OUT/'server-version.log').write_text(run('psql',*conn,'-c','select version()'))
   runner=(ROOT/'supabase/tests/run-supabase-hardening-postgres.ps1').read_text()
   bootstrap=runner.split("Write-Utf8NoBom $bootstrap @'",1)[1].split("'@",1)[0]
   if args.writers or args.concurrency or args.storage_owners or args.storage_multipart or args.lock_order or args.admin_lock_order or args.storage_buckets:
@@ -83,10 +118,18 @@ create or replace function auth.uid() returns uuid language sql stable as $$
 $$;
 """
   (OUT/'bootstrap.sql').write_text(bootstrap)
-  run('psql',*conn,'-c',"alter database postgres set timezone='UTC'")
+  run('psql',*conn,'-c',f"alter database {database} set timezone='UTC'")
   if args.storage_schema:
    run('psql',*conn,'-f',pathlib.Path(args.storage_schema).resolve())
   run('psql',*conn,'-f',OUT/'bootstrap.sql')
+  if args.docker:
+   # The image's postgres role is NOSUPERUSER. Reuse the existing disposable
+   # hardening harness helper for dblink workers; its EXECUTE ACL is postgres
+   # only. This never changes a product role or deployed function.
+   helper=runner.split("Write-Utf8NoBom $dblinkHelper @'",1)[1].split("'@",1)[0]
+   (OUT/'dblink-helper.sql').write_text('create extension if not exists dblink with schema extensions;\n'+helper)
+   run('psql',*admin_conn(),'-f',OUT/'dblink-helper.sql')
+   conn+=['-v','dblink_unrestricted=1','-v','dblink_password=commercial-local-fixture']
   if args.storage_schema:
    run('psql',*conn,'-c',"create role supabase_storage_admin noinherit bypassrls; grant usage on schema storage to supabase_storage_admin; grant all on all tables in schema storage to supabase_storage_admin;")
   for m in sorted((ROOT/'supabase/migrations').glob('*.sql')):
@@ -96,6 +139,7 @@ $$;
    if args.before_pilot_identity and 'pilot_identity' in m.name: continue
    # RED controls omit the dependent adapters as well as their missing guards.
    legacy = args.baseline or args.before_write_barrier
+   if (legacy or args.before_private_write_barriers or args.before_deleted_authorizer or args.before_posthog_consent_clear) and 'isa_1702_private_write_barriers' in m.name: continue
    if legacy and m.name.startswith(('2026101416','2026101509')) and 'isa_1608_' in m.name: continue
    if args.before_storage_multipart and 'managed_storage_abort' in m.name: continue
    if (args.before_admin_deleted_reads or args.before_admin_lock_order or args.before_lock_order) and 'admin_deleted_reads' in m.name: continue
@@ -126,7 +170,12 @@ $$;
     assert pattern in definition
     run('psql',*conn,'-c',definition.replace(pattern,replacement))
     before=run('psql',*conn,'-c',"select pg_get_functiondef('private.storage_owner_accounts(jsonb)'::regprocedure),pg_get_functiondef('public.apply_clerk_user_event(text,text,text,text,text,timestamptz,text)'::regprocedure)")
-   try: result=run('psql',*conn,'-f',m)
+   # Exercise exactly the chosen on-disk newline format, including function bodies.
+   migration_source=OUT/'migration-sources'/m.name
+   migration_source.parent.mkdir(exist_ok=True)
+   source=m.read_text(encoding='utf-8')
+   migration_source.write_bytes(source.replace('\n','\r\n').encode('utf-8') if args.migration_newlines=='crlf' else source.encode('utf-8'))
+   try: result=run('psql',*(admin_conn() if args.docker and 'visual_roadmap_clickup' in m.name else conn),'-f',migration_source)
    except Exception as e:
     (OUT/(m.name+'.log')).write_text(str(e))
     if pilot_patch and 'P0001' in str(e) and 'pilot_cutover_'+args.pilot_patch_drift+'_changed' in str(e):
@@ -184,14 +233,14 @@ $$;
    run_storage_owners(BIN,conn,ENV,run,OUT)
    raise SystemExit(0)
   if args.writers:
-   run_write_races(BIN,conn,ENV,run,OUT)
+   run_write_races(BIN,conn,ENV,run,OUT,fixture_conn=admin_conn() if args.docker else None)
    raise SystemExit(0)
   if not args.baseline:
    run_tombstone_race(BIN,conn,ENV,run,OUT/'concurrency-results.log')
   if args.concurrency:
    raise SystemExit(0)
   if args.postgrest_bin:
-   run('psql',*conn,'-c',"create role bridge_fixture login noinherit; grant anon,authenticated,service_role to bridge_fixture;")
+   run('psql',*admin_conn(),'-c',"create role bridge_fixture login noinherit password 'commercial-local-fixture'; grant anon,authenticated,service_role to bridge_fixture;")
    if not args.baseline:
     run('psql',*conn,'-c',"insert into private.clerk_issuers(issuer,authorized_parties,enabled) values('https://fixture.clerk.invalid',array['https://app.invalid'],true)")
    else:
@@ -224,7 +273,7 @@ $$;
 
    with socket.socket() as probe:
     probe.bind(('127.0.0.1',0)); http_port=probe.getsockname()[1]
-   env=ENV|{'PGRST_DB_URI':f'postgres://bridge_fixture@127.0.0.1:{port}/postgres',
+   env=ENV|{'PGRST_DB_URI':f'postgres://bridge_fixture:commercial-local-fixture@127.0.0.1:{port}/{database}',
      'PGRST_DB_SCHEMAS':'public','PGRST_DB_ANON_ROLE':'anon','PGRST_SERVER_HOST':'127.0.0.1','PGRST_SERVER_PORT':str(http_port),
      'GHCRTS':'-N2', 'PGRST_DB_POOL':'2', 'PGRST_JWT_SECRET':json.dumps(jwt_keys),
      'PGRST_JWT_AUD':'authenticated' if args.before_b01 or args.baseline else 'vantare-native-data'}
@@ -360,13 +409,21 @@ $$;
    'canonical_device_claim.test.sql','native_admin.test.sql','visual_roadmap_clickup.test.sql']
   for optional in ['commercial_tombstone.test.sql','commercial_data_boundary.test.sql','commercial_refunds.test.sql','commercial_admin_deleted.test.sql','commercial_storage_probe.test.sql','commercial_pilot_deletion.test.sql','testing_followup_F1IP.test.sql','commercial_testing_identity.test.sql','commercial_posthog_consent.test.sql']:
    if (ROOT/'supabase/tests'/optional).exists(): suites.append(optional)
+  if not (args.baseline or args.before_deleted_authorizer or args.before_posthog_consent_clear): suites.append('commercial_private_writes.test.sql')
   for name in suites:
-   try: result=run('psql',*conn,'-f',ROOT/'supabase/tests'/name)
+   # This existing suite deliberately SET ROLEs to the isolated publisher,
+   # whose membership is not granted to managed postgres by the product.
+   test_conn=admin_conn() if args.docker and name=='visual_roadmap_clickup.test.sql' else conn
+   try: result=run('psql',*test_conn,'-f',ROOT/'supabase/tests'/name)
    except Exception as e:
     (OUT/(name+'.log')).write_text(str(e)); raise
    (OUT/(name+'.log')).write_text(result)
    if 'not ok ' in result or '# Looks like' in result: raise RuntimeError(result)
    print(name+' PASS',flush=True)
   if not args.baseline:
-   run_write_races(BIN,conn,ENV,run,OUT)
- finally: run('pg_ctl','-D',data,'-m','fast','-w','stop')
+   run_write_races(BIN,conn,ENV,run,OUT,fixture_conn=admin_conn() if args.docker else None)
+ finally:
+  if args.docker:
+   (OUT/'postgres.log').write_text(docker('logs',container))
+   docker('rm','-f',container)
+  else: run('pg_ctl','-D',data,'-m','fast','-w','stop')

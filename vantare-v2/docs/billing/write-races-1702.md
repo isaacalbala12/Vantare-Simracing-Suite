@@ -73,7 +73,12 @@ python3 supabase/tests/run-commercial-local.py --docker \
 # Repetir con --migration-newlines crlf y otra carpeta de salida.
 ```
 
-Resultados finales y comandos reproducibles en
-`C:/VantareServer/evidence/supabase-write-races/`. Estado inicial: baseline
-reproducido con 633 PASS / 9 FAIL. La evidencia final debe acreditar exit 0
-en LF y CRLF; no se da por terminado con una prueba estática o CI parcial.
+Ensayo completo acreditado en [run39172498786](https://github.com/isaacalbala12/Vantare-Simracing-Suite/actions/runs/39172498786),
+HEAD de implementación `d47ecf94b`: exit 0 en LF y CRLF. Cada formato aplica
+93 migraciones desde cero en PostgreSQL 17.6; 20 suites/588 aserciones pgTAP,
+123 rutas/728 comprobaciones de carreras, cuatro escenarios/40 comprobaciones
+de borrado concurrente y HTTP real (JWT nativo, nueve rechazos, Pilot y emisión
+Ed25519). Control RED: sin la migración, 0 de las 11 barreras y fallo esperado.
+Se descargaron los artefactos y comprobaron los bytes de las 93 fuentes en
+ambos formatos. Evidencia en `C:/VantareServer/evidence/supabase-write-races/`.
+Baseline: 633 PASS / 9 FAIL. No se despliega la migración al entregar el PR.

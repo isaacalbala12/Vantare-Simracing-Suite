@@ -1,4 +1,4 @@
-## VANTA-96 / #1702 · Cierre de carreras comerciales (19-oct-2026, en curso)
+## VANTA-96 / #1702 · Cierre de carreras comerciales (19-oct-2026)
 
 Encargo del orquestador desde nightly999d59507 (#1703 integrado). Rama propia
 `vantareapp/isa-1702-write-races`. Baseline reproducido: 633 PASS/9 FAIL.
@@ -7,14 +7,19 @@ v2; cuatro tablas admin tienen guard pero no ruta en la matriz; once tablas
 privadas posteriores necesitan guard y dos relaciones son excepciones legítimas
 (cola de borrado tras tombstone y aprobador histórico de campañas).
 
-Preparados: migración nueva, quince rutas reales y regresión SQL de continuidad
+PR #1705 a nightly: migración nueva, quince rutas reales y regresión SQL de continuidad
 de campaña/borrado/ACL/transferencia de dirección; fuentes LF/CRLF explícitas.
 Detalle por aserción y tabla en `docs/billing/write-races-1702.md`. No se elimina
-el gate. Ensayo sin HTTP LF/CRLF: 123 rutas/728 checks por formato, run39171419287.
+el gate. Ensayo completo LF/CRLF exit0, run39172498786, implementación d47ecf94b:
+93 migraciones, PostgreSQL17.6, 20 suites/588 pgTAP, 123 rutas/728 checks por
+formato, borrado concurrente 4 escenarios/40 checks, JWT/PostgREST y Ed25519.
+Control RED detecta 0/11 barreras sin la migración. Artefactos descargados;
+bytes LF/CRLF comprobados para las 93 fuentes de cada formato.
 Por encargo adicional, workflow NUEVO `supabase-commercial-gates.yml` para PR
 a nightly con cambios supabase/**: imagen Supabase17 fijada, PostgREST, Deno,
 control RED y arnés completo LF/CRLF con HTTP. Los workflows existentes y checks
-requeridos quedan intactos. El Mac está dormido; pruebas finales en CI en curso.
+requeridos quedan intactos. El Mac está dormido; ensayo en runner hospedado.
+Pendiente CI general del HEAD final y revisión del orquestador, sin merge.
 Evidencia externa en `C:/VantareServer/evidence/supabase-write-races/`.
 Sin producción, secretos, proveedores, merge, release ni cambios nativos.
 

@@ -1,3 +1,35 @@
+## VANTA-96 / #1701 · Ensayo de reconstrucción Supabase (18-oct-2026)
+
+Isaac confirma que producción no contiene usuarios/compras reales y dispone de
+copia diaria. El inventario agregado por Management API read-only encuentra 8
+cuentas Auth, 8 perfiles, 3 clientes y 3 suscripciones; pedidos/refunds/inbox vacíos.
+También hay 2 asignaciones operativas, 2 calendarios y 68 publicaciones roadmap.
+Son datos que requieren backup y decisión de conservación/regeneración; el conteo
+no identifica cuentas ni demuestra por sí solo su naturaleza de prueba.
+
+Desde nightly `bf5dc5b6295c0a6d491f8ee53e9552f07d798c48`, las 92 migraciones
+se aplican en Docker Supabase PG17.6.1.165. Se corrige un fallo limpio CRLF en
+`20261015091000_isa_1608_admin_deleted_reads.sql`: la declaración de la variable
+de bloqueo ya no depende de LF. Regresión real: original CRLF exit1; corregida
+85 pgTAP PASS. Ensayo LF final: 434 pgTAP y E2E de correo con PostgreSQL real y
+proveedores dobles PASS. Arneses comerciales completan 92 migraciones y 574
+pgTAP, pero el gate posterior de carreras termina con 633 PASS / 9 FAIL;
+seguimiento separado #1702, sin debilitarlo. No declarar producción lista.
+
+Limpieza/reaplicación local: conserva 8 Auth sintéticas, aplica otras 92 y recupera
+DDL/owners/ACL equivalentes; el generador canónico cambia el orden de operandos
+UNION de las barreras, documentado en comparador. `db reset --linked` descartado:
+trunca Auth y borra policies globalmente. Plan externo limita la limpieza a app,
+retira por API los dos buckets de app tras guardar bytes y preserva internos.
+
+Entrega: `C:/VantareServer/evidence/supabase-reconstruccion/INFORME.md` y `PLAN.md`,
+inventario sin filas/PII/valores secretos, logs y SQL propuesto con guardas. B01
+lo investiga otro worker. PR draft #1703 a nightly, registrado en el hilo; CI del
+commit de código 35f6fe138 con cinco checks SUCCESS (18-oct 21:52 UTC). Pendiente
+review del orquestador, resolución #1702, contraseña
+DB y backup restaurado, secretos de Clerk/Brevo/operación, despliegue y schedulers
+autorizados. Sin producción, merge, release, envíos, compras ni refunds reales.
+
 ## #1695 / VANTA-105 · Seguimiento activo desde nightly95c08834b
 
 El orquestador confirma #1696 integrado en nightly95c08834b y ordena retomar
@@ -3726,33 +3758,3 @@ Suite shell añadida al workflow. Regresiones ampliadas en curso; no se afirman
 CI verde ni PR ready hasta comprobar el HEAD final. Sin Rust/dependencias nuevos.
 Windows limpio/login/pagos pendientes; Hub bloqueado por #1694. Sin ventanas
 en sesión principal, firma/publicación ni merge por el worker.
-## VANTA-96 / #1701 · Ensayo de reconstrucción Supabase (18-oct-2026)
-
-Isaac confirma que producción no contiene usuarios/compras reales y dispone de
-copia diaria. El inventario agregado por Management API read-only encuentra 8
-cuentas Auth, 8 perfiles, 3 clientes y 3 suscripciones; pedidos/refunds/inbox vacíos.
-También hay 2 asignaciones operativas, 2 calendarios y 68 publicaciones roadmap.
-Son datos que requieren backup y decisión de conservación/regeneración; el conteo
-no identifica cuentas ni demuestra por sí solo su naturaleza de prueba.
-
-Desde nightly `bf5dc5b6295c0a6d491f8ee53e9552f07d798c48`, las 92 migraciones
-se aplican en Docker Supabase PG17.6.1.165. Se corrige un fallo limpio CRLF en
-`20261015091000_isa_1608_admin_deleted_reads.sql`: la declaración de la variable
-de bloqueo ya no depende de LF. Regresión real: original CRLF exit1; corregida
-85 pgTAP PASS. Ensayo LF final: 434 pgTAP y E2E de correo con PostgreSQL real y
-proveedores dobles PASS. Arneses comerciales completan 92 migraciones y 574
-pgTAP, pero el gate posterior de carreras termina con 633 PASS / 9 FAIL;
-seguimiento separado #1702, sin debilitarlo. No declarar producción lista.
-
-Limpieza/reaplicación local: conserva 8 Auth sintéticas, aplica otras 92 y recupera
-DDL/owners/ACL equivalentes; el generador canónico cambia el orden de operandos
-UNION de las barreras, documentado en comparador. `db reset --linked` descartado:
-trunca Auth y borra policies globalmente. Plan externo limita la limpieza a app,
-retira por API los dos buckets de app tras guardar bytes y preserva internos.
-
-Entrega: `C:/VantareServer/evidence/supabase-reconstruccion/INFORME.md` y `PLAN.md`,
-inventario sin filas/PII/valores secretos, logs y SQL propuesto con guardas. B01
-lo investiga otro worker. Pendiente review/PR de #1701, resolución #1702, contraseña
-DB y backup restaurado, secretos de Clerk/Brevo/operación, despliegue y schedulers
-autorizados. Sin producción, merge, release, envíos, compras ni refunds reales.
-

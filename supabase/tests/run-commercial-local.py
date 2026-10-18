@@ -59,7 +59,8 @@ with tempfile.TemporaryDirectory(prefix='vantare-commercial-') as tmp:
   return r.stdout
  if args.docker:
   # No caller-provided DSN/container: only this invocation's fresh local server.
-  # Trust is confined to a loopback-published disposable fixture, with no secrets.
+  # The image keeps password auth for TCP even with socket trust. These are
+  # public fixture credentials, generated for no external database or service.
   try:
    docker('run','--rm','-d','--name',container,'-e','POSTGRES_HOST_AUTH_METHOD=trust',
     '-p',f'127.0.0.1:{port}:5432','public.ecr.aws/supabase/postgres:17.6.1.165')
@@ -70,6 +71,9 @@ with tempfile.TemporaryDirectory(prefix='vantare-commercial-') as tmp:
     time.sleep(.2) # Actual server readiness, not a timed test race.
    else: raise RuntimeError('disposable PostgreSQL startup timed out')
    docker('exec',container,'createdb','-U','postgres','--template=template0',database)
+   docker('exec',container,'psql','-U','supabase_admin','-d',database,'-v','ON_ERROR_STOP=1','-c',
+    "alter role postgres password 'commercial-local-fixture'; alter role supabase_admin password 'commercial-local-fixture';")
+   ENV['PGPASSWORD']='commercial-local-fixture'
   except BaseException:
    docker('rm','-f',container)
    raise
@@ -221,7 +225,7 @@ $$;
   if args.concurrency:
    raise SystemExit(0)
   if args.postgrest_bin:
-   run('psql',*admin_conn(),'-c',"create role bridge_fixture login noinherit; grant anon,authenticated,service_role to bridge_fixture;")
+   run('psql',*admin_conn(),'-c',"create role bridge_fixture login noinherit password 'commercial-local-fixture'; grant anon,authenticated,service_role to bridge_fixture;")
    if not args.baseline:
     run('psql',*conn,'-c',"insert into private.clerk_issuers(issuer,authorized_parties,enabled) values('https://fixture.clerk.invalid',array['https://app.invalid'],true)")
    else:
@@ -232,7 +236,7 @@ $$;
     run('psql',*conn,'-c',"update private.clerk_issuers set native_data_issuer='http://127.0.0.1:54321/native-data/v1' where issuer='https://fixture.clerk.invalid'")
    with socket.socket() as probe:
     probe.bind(('127.0.0.1',0)); http_port=probe.getsockname()[1]
-   env=ENV|{'PGRST_DB_URI':f'postgres://bridge_fixture@127.0.0.1:{port}/{database}',
+   env=ENV|{'PGRST_DB_URI':f'postgres://bridge_fixture:commercial-local-fixture@127.0.0.1:{port}/{database}',
      'PGRST_DB_SCHEMAS':'public','PGRST_DB_ANON_ROLE':'anon','PGRST_SERVER_HOST':'127.0.0.1','PGRST_SERVER_PORT':str(http_port),
      'GHCRTS':'-N2', 'PGRST_DB_POOL':'2', 'PGRST_JWT_SECRET':'commercial-fixture-signing-material-local-only-32-bytes',
      'PGRST_JWT_AUD':'authenticated' if args.before_b01 or args.baseline else 'vantare-native-data'}

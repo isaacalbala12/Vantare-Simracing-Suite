@@ -82,6 +82,8 @@ end $$;
             if name in ('checkout-complete', 'checkout-uncertain'):
                 sql("select * from public.claim_billing_checkout_attempt('{a}','{attempt}',"
                     "'pro_monthly','sandbox','fixture')".format(**values))
+            if name == 'checkout-complete':
+                sql("select public.billing_begin_checkout_request('{a}','{attempt}','{new_id}')".format(**values))
             if name == 'inbox-checkout':
                 sql("select * from public.claim_billing_checkout_attempt('{a}','{attempt}','pro_monthly','sandbox','fixture'); select public.billing_begin_checkout_request('{a}','{attempt}','{new_id}')".format(**values))
                 assert sql("select public.complete_billing_checkout_attempt('{a}','{attempt}','checkout-{case}','https://checkout.invalid/fixture')".format(**values)) == 't', 'checkout fixture must complete the current dispatch protocol'
@@ -115,6 +117,8 @@ end $$;
                 live = sql('begin; create temp table write_trace(relation text); ' + command +
                     " reset role; set constraints all immediate; select 'TRACE:'||coalesce(jsonb_agg(distinct relation),'[]')::text from write_trace; rollback;")
                 coverage[name] = json.loads(live.split('TRACE:')[-1])
+                if name == 'checkout-complete':
+                    assert 'public.billing_checkout_bindings' in coverage[name], 'positive completion must persist its binding, not silently return false'
             except RuntimeError as error:
                 logs.append('FIXTURE ERROR ' + name + ': ' + str(error))
                 raise

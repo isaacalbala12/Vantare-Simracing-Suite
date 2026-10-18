@@ -1,0 +1,98 @@
+name: Supabase commercial gates
+
+on:
+  pull_request:
+    branches: [nightly]
+    paths:
+      - 'supabase/**'
+      - '.github/workflows/supabase-commercial-gates.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: supabase-commercial-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  commercial:
+    name: Commercial PostgreSQL LF and CRLF
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282
+        with:
+          deno-version: 2.7.13
+      - name: Prepare pinned Supabase PostgreSQL
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker info >/dev/null
+          digest=sha256:28f0e16a019e648089fc1a6d333549a55548f6019c15ae4bd7cd58b989027518
+          image=public.ecr.aws/supabase/postgres:17.6.1.165
+          for delay in 0 15 45; do
+            if [ "$delay" -gt 0 ]; then sleep "$delay"; fi
+            for registry in public.ecr.aws/supabase/postgres docker.io/supabase/postgres; do
+              source="$registry@$digest"
+              if timeout --kill-after=10s 80s docker pull "$source"; then
+                docker tag "$source" "$image"
+                exit 0
+              fi
+              echo "::warning::PostgreSQL download failed from $registry; retrying"
+            done
+          done
+          exit 1
+      - name: Install PostgreSQL clients and pinned PostgREST
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y postgresql-client libpq-dev
+          mkdir -p "$RUNNER_TEMP/postgrest"
+          archive="$RUNNER_TEMP/postgrest.tar.xz"
+          curl --fail --location --retry 3 https://github.com/PostgREST/postgrest/releases/download/v16.1/postgrest-v16.1-linux-static-x86-64.tar.xz -o "$archive"
+          echo "b986c926cf16a1c5d97954c57d3a6edd894a5da225c3f3fc0c25dc4105009dd7  $archive" | sha256sum --check
+          tar -xJf "$archive" -C "$RUNNER_TEMP/postgrest"
+          "$RUNNER_TEMP/postgrest/postgrest" --version
+      - name: Cache native bearer fixture dependencies
+        run: >-
+          deno cache --frozen --node-modules-dir=auto --config supabase/functions/deno.json
+          supabase/tests/commercial-bearers.ts supabase/tests/commercial-license.ts
+          supabase/functions/native-account-authorize/index.ts
+      - name: Verify missing-barrier RED control
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/commercial-races"
+          log="$RUNNER_TEMP/commercial-races/red.log"
+          if python3 supabase/tests/run-commercial-local.py --docker --pg-bin "$(pg_config --bindir)" --before-private-write-barriers --output "$RUNNER_TEMP/commercial-races/red" >"$log" 2>&1; then
+            cat "$log"
+            echo '::error::Missing write barriers unexpectedly passed'
+            exit 1
+          fi
+          cat "$log"
+          grep -Eq '^not ok [0-9]+ - all eleven later account-owned tables have the full write barrier' "$log"
+      - name: Run complete commercial harness in LF and CRLF
+        shell: bash
+        run: |
+          set -euo pipefail
+          for newline in lf crlf; do
+            python3 supabase/tests/run-commercial-local.py --docker \
+              --pg-bin "$(pg_config --bindir)" \
+              --postgrest-bin "$RUNNER_TEMP/postgrest/postgrest" \
+              --deno-bin "$(command -v deno)" \
+              --migration-newlines "$newline" \
+              --output "$RUNNER_TEMP/commercial-races/$newline" \
+              2>&1 | tee "$RUNNER_TEMP/commercial-races/$newline.log"
+          done
+      - name: Preserve disposable test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: supabase-commercial-${{ github.run_id }}
+          path: ${{ runner.temp }}/commercial-races
+          retention-days: 3
+          if-no-files-found: warn

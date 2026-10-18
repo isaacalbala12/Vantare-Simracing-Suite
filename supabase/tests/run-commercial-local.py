@@ -7,6 +7,7 @@ from commercial_admin_lock_order import run_admin_lock_order
 from commercial_storage_race import run_storage_owners, run_storage_multipart, run_storage_buckets
 parser=argparse.ArgumentParser()
 parser.add_argument('--pg-bin', required=True)
+parser.add_argument('--docker', action='store_true', help='Own disposable Supabase PostgreSQL container; pg-bin supplies clients only')
 parser.add_argument('--output', required=True)
 parser.add_argument('--migration-newlines', choices=['lf','crlf'], default='lf')
 parser.add_argument('--before-private-write-barriers', action='store_true', help='RED: omit only the #1702 private-table guards')
@@ -50,10 +51,38 @@ with socket.socket() as probe:
  probe.bind(('127.0.0.1',0)); port=probe.getsockname()[1]
 with tempfile.TemporaryDirectory(prefix='vantare-commercial-') as tmp:
  data=pathlib.Path(tmp)/'data'
- run('initdb','-D',data,'-U','postgres','--auth-local=trust','--auth-host=trust','--encoding=UTF8','--no-locale')
- run('pg_ctl','-D',data,'-l',OUT/'postgres.log','-o',f'-h 127.0.0.1 -p {port} -k {tmp}','-w','start')
- conn=['-X','-h','127.0.0.1','-p',str(port),'-U','postgres','-d','postgres','-v','ON_ERROR_STOP=1','-v','VERBOSITY=verbose','-At']
+ container='vantare-commercial-'+os.urandom(6).hex()
+ database='commercial' if args.docker else 'postgres'
+ def docker(*parameters):
+  r=subprocess.run(['docker',*parameters],env=ENV,capture_output=True,text=True,timeout=60)
+  if r.returncode: raise RuntimeError(r.stderr+r.stdout)
+  return r.stdout
+ if args.docker:
+  # No caller-provided DSN/container: only this invocation's fresh local server.
+  # Trust is confined to a loopback-published disposable fixture, with no secrets.
+  try:
+   docker('run','--rm','-d','--name',container,'-e','POSTGRES_HOST_AUTH_METHOD=trust',
+    '-p',f'127.0.0.1:{port}:5432','public.ecr.aws/supabase/postgres:17.6.1.165')
+   for attempt in range(120):
+    if 'PostgreSQL init process complete' in docker('logs',container):
+     ready=subprocess.run(['docker','exec',container,'pg_isready','-U','postgres'],capture_output=True)
+     if ready.returncode==0: break
+    time.sleep(.2) # Actual server readiness, not a timed test race.
+   else: raise RuntimeError('disposable PostgreSQL startup timed out')
+   docker('exec',container,'createdb','-U','postgres','--template=template0',database)
+  except BaseException:
+   docker('rm','-f',container)
+   raise
+ else:
+  run('initdb','-D',data,'-U','postgres','--auth-local=trust','--auth-host=trust','--encoding=UTF8','--no-locale')
+  run('pg_ctl','-D',data,'-l',OUT/'postgres.log','-o',f'-h 127.0.0.1 -p {port} -k {tmp}','-w','start')
+ conn=['-X','-h','127.0.0.1','-p',str(port),'-U','postgres','-d',database,'-v','ON_ERROR_STOP=1','-v','VERBOSITY=verbose','-At']
+ def admin_conn():
+  result=conn.copy()
+  if args.docker: result[result.index('-U')+1]='supabase_admin'
+  return result
  try:
+  (OUT/'server-version.log').write_text(run('psql',*conn,'-c','select version()'))
   runner=(ROOT/'supabase/tests/run-supabase-hardening-postgres.ps1').read_text()
   bootstrap=runner.split("Write-Utf8NoBom $bootstrap @'",1)[1].split("'@",1)[0]
   if args.writers or args.concurrency or args.storage_owners or args.storage_multipart or args.lock_order or args.admin_lock_order or args.storage_buckets:
@@ -78,7 +107,7 @@ create or replace function auth.uid() returns uuid language sql stable as $$
 $$;
 """
   (OUT/'bootstrap.sql').write_text(bootstrap)
-  run('psql',*conn,'-c',"alter database postgres set timezone='UTC'")
+  run('psql',*conn,'-c',f"alter database {database} set timezone='UTC'")
   if args.storage_schema:
    run('psql',*conn,'-f',pathlib.Path(args.storage_schema).resolve())
   run('psql',*conn,'-f',OUT/'bootstrap.sql')
@@ -127,7 +156,7 @@ $$;
    migration_source.parent.mkdir(exist_ok=True)
    source=m.read_text(encoding='utf-8')
    migration_source.write_bytes(source.replace('\n','\r\n').encode('utf-8') if args.migration_newlines=='crlf' else source.encode('utf-8'))
-   try: result=run('psql',*conn,'-f',migration_source)
+   try: result=run('psql',*(admin_conn() if args.docker and 'visual_roadmap_clickup' in m.name else conn),'-f',migration_source)
    except Exception as e:
     (OUT/(m.name+'.log')).write_text(str(e))
     if pilot_patch and 'P0001' in str(e) and 'pilot_cutover_'+args.pilot_patch_drift+'_changed' in str(e):
@@ -192,7 +221,7 @@ $$;
   if args.concurrency:
    raise SystemExit(0)
   if args.postgrest_bin:
-   run('psql',*conn,'-c',"create role bridge_fixture login noinherit; grant anon,authenticated,service_role to bridge_fixture;")
+   run('psql',*admin_conn(),'-c',"create role bridge_fixture login noinherit; grant anon,authenticated,service_role to bridge_fixture;")
    if not args.baseline:
     run('psql',*conn,'-c',"insert into private.clerk_issuers(issuer,authorized_parties,enabled) values('https://fixture.clerk.invalid',array['https://app.invalid'],true)")
    else:
@@ -203,7 +232,7 @@ $$;
     run('psql',*conn,'-c',"update private.clerk_issuers set native_data_issuer='http://127.0.0.1:54321/native-data/v1' where issuer='https://fixture.clerk.invalid'")
    with socket.socket() as probe:
     probe.bind(('127.0.0.1',0)); http_port=probe.getsockname()[1]
-   env=ENV|{'PGRST_DB_URI':f'postgres://bridge_fixture@127.0.0.1:{port}/postgres',
+   env=ENV|{'PGRST_DB_URI':f'postgres://bridge_fixture@127.0.0.1:{port}/{database}',
      'PGRST_DB_SCHEMAS':'public','PGRST_DB_ANON_ROLE':'anon','PGRST_SERVER_HOST':'127.0.0.1','PGRST_SERVER_PORT':str(http_port),
      'GHCRTS':'-N2', 'PGRST_DB_POOL':'2', 'PGRST_JWT_SECRET':'commercial-fixture-signing-material-local-only-32-bytes',
      'PGRST_JWT_AUD':'authenticated' if args.before_b01 or args.baseline else 'vantare-native-data'}
@@ -328,4 +357,8 @@ $$;
    print(name+' PASS',flush=True)
   if not args.baseline:
    run_write_races(BIN,conn,ENV,run,OUT)
- finally: run('pg_ctl','-D',data,'-m','fast','-w','stop')
+ finally:
+  if args.docker:
+   (OUT/'postgres.log').write_text(docker('logs',container))
+   docker('rm','-f',container)
+  else: run('pg_ctl','-D',data,'-m','fast','-w','stop')

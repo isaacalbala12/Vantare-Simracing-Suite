@@ -3,6 +3,9 @@
 Encargo del orquestador para P2-1 de la review APTO de #1705. #1705 integrado
 por el orquestador en nightly39a788238; esta rama parte de ese merge.
 Rama propia `vantareapp/isa-1711-account-id-barriers`.
+Después se integra nightly147372fa9 (#1708/B01): arnés automezclado; único
+conflicto documental resuelto conservando ambas secciones. Repetir ensayo
+sobre la unión real ES256/P2; el resultado anterior es previo a B01.
 Inventario ampliado: account_id es raíz aunque no tenga FK; también se recorren
 sus descendientes y se exige que la columna esté compilada en el guard.
 Prueba negativa en transacción con tabla nueva sin FK y descendiente nuevo.
@@ -23,8 +26,64 @@ FK no protegida: el deber web, con regresión de su ciclo después del borrado.
 PR #1712 a nightly: workflow comercial LF/CRLF y CI consultables en
 https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1712.
 Siguiente paso: revisión del orquestador tras validar el ensayo; sin producción,
-B01, merge ni promoción de canal. Evidencia: evidence/supabase-p2-account-id.
+sin cambios propios de B01, merge a nightly ni promoción de canal.
+Evidencia: evidence/supabase-p2-account-id.
 
+## 2026-10-19 - #1704 / VANTA-96: integrar workflow real de #1702
+
+- Orquestador ordena merge origin/nightly 39a788238 en #1708 antes de #1710, sin rebase ni force-push.
+- Se conservan ambos handoffs al resolver el unico conflicto documental; arnes combinado mantiene ES256/JWKS y las carreras/fixtures de #1702.
+- Se admiten --docker y --migration-newlines en el modo aislado --b01; no se permiten controles historicos en ese modo.
+- Siguiente gate: CI completa del merge, con PostgreSQL/PostgREST real LF y CRLF, legacy tester 200, aislamiento y tombstone. No declarar PASS antes del resultado.
+- #1708 sigue draft hasta todos los checks verdes. No hay merge a nightly, produccion, importacion de clave, deploy ni release.
+
+## #1704 / VANTA-96 - Bridge B01 ES256 (19-oct-2026)
+
+Encargo explicito del orquestador: opcion (b), sin tocar produccion. Base
+inicial origin/nightly 999d5950745f73be0e38a1763422f53b515c6866; worktree
+C:/VantareServer/wt/b01-es256. Rama autorizada corregida:
+vantareapp/isa-1704-b01-es256. #1706 cerrado, sustituto **PR draft #1708** a
+nightly: GitHub no permite cambiar la rama origen del PR. Sin force-push.
+Issue #1704, area:plataforma, Project Vantare, milestone Plataforma testers.
+
+Authorize firma ES256/kid desde NATIVE_DATA_ES256_PRIVATE_JWK; report-submit
+verifica solo la publica NATIVE_DATA_ES256_PUBLIC_JWK. Sin fallback HS256.
+Claims B01/TTL, Rust y SQL/RLS conservados. Generador PowerShell CreateNew con
+ACL protegida/modo0600 y publica separada. Par TEST generado -> firmador y
+verificador reales PASS; archivos TEST eliminados. Runbook native-data-es256.md
+explica importacion (requiere privada), autoridad de proyecto y reversion.
+
+Codigo probado 53102e1dafe889664494d4f1d2b19c115939ed23; handoff99f08e74f.
+Deno repetido en rama corregida: 79 PASS / 2 integraciones omitidas. Generador
+protegido Windows PASS; fmt/lint/type-check del cambio y huellas462 PASS.
+Tipos Deno globales existentes en #1707. El rechazo anterior de nombre queda
+resuelto: la politica local acepta la rama con numero. CI nueva #1708 en curso;
+no atribuirle los checks del PR cerrado aunque comparta SHA.
+
+Orquestador indica esperar al workflow PostgreSQL/PostgREST real de #1702 en
+nightly y entonces **mergear origin/nightly en esta rama**, sin cherry-pick ni
+force-push. El Mac de Isaac esta dormido; no es requisito despertarlo. Arnes
+--b01 preparado con JWKS publico ES256 efimero; todavia no ejecutado. Revisar
+compatibilidad de sus opciones con el workflow al incorporarlo. La matriz
+comercial general se conserva y tiene seguimiento #1702.
+
+Review de seguridad C:/VantareServer/evidence/rev-1708/INFORME.md: APTO en
+codigo sobre e24272eae, sin P1; no autoriza activacion ni ready. Correcciones
+P2-1/P3 del mismo encargo: la RPC legacy testing_center_submit_report mantiene
+EXECUTE authenticated + SECURITY DEFINER + membership tester. El test vuelve
+a esperar 200 con justificacion SQL, comprueba reporte propio/aislamiento y el
+arnes HTTP incluye envio y rechazo tras tombstone. Confirmacion real pendiente;
+posible salto de admision legacy separado como investigacion #1709, sin cambiar
+permisos del producto. README sin comandos antiguos de secretos/deploy y con
+JWKS publico ES256; los dos documentos de contrato ya describen ES256/kid.
+Deno repetido 79 PASS / 2 omitidos, lint/fmt TS, Python compile y huellas462 PASS.
+
+Mantener #1708 draft hasta arnes real y CI verde sobre el HEAD definitivo;
+entonces marcar listo, actualizar issue/handoff/Plane y avisar al orquestador.
+T3 no permite watch desde subagente: el seguimiento persistente corresponde al
+padre. VANTA-96 sigue En curso. Sin merge a nightly, promocion, release,
+importacion/rotacion, deploy ni cambios productivos. Confianza gestionada aun
+requiere autorizacion explicita y prueba real de Isaac.
 ## VANTA-96 / #1702 · Cierre de carreras comerciales (19-oct-2026)
 
 Encargo del orquestador desde nightly999d59507 (#1703 integrado). Rama propia

@@ -1,5 +1,7 @@
 -- ONLY a disposable loopback stack. Public fixtures, no real user or key.
 begin;
+insert into private.clerk_issuers(issuer,authorized_parties,enabled,native_data_issuer)
+values('https://clerk.example.invalid',array['https://app.invalid'],true,'http://127.0.0.1:54321/native-data/v1');
 insert into public.profiles(id) values
   ('00000000-0000-4000-8000-000000001452'),('00000000-0000-4000-8000-000000001453');
 insert into public.account_identities(issuer,subject,account_id) values

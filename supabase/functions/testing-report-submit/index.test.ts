@@ -1,4 +1,8 @@
 import {
+  testPrivateJwk,
+  testPublicJwk,
+} from "../native-account-authorize/testdata/signing.ts";
+import {
   handleTestingReportSubmit,
   ipDigest,
   requireHostedGateway,
@@ -182,27 +186,31 @@ Deno.test("salt/window rotate HMAC; canonical IPv6; no clear IP passed to store"
 
 Deno.test("bridge signature, issuer, expiry and identity are checked before accepting account", async () => {
   const now = new Date("2026-10-14T12:00:00Z");
-  const secret = "synthetic-only-signing-material-32-characters";
+  const publicJwk = testPublicJwk;
   const url = "https://fixture.supabase.co";
   const issuer = "https://clerk.fixture.invalid";
   const user = "16100000-0000-4000-8000-000000000001";
   const subject = "user_" + "A".repeat(27);
   const signed = await signDataToken(user, now, now.getTime() / 1000 + 300, {
-    secret,
+    privateJwk: testPrivateJwk,
     supabaseUrl: url,
   }, { issuer, subject });
   const req = new Request("https://example.invalid", {
     headers: { authorization: `Bearer ${signed.token}` },
   });
-  eq(await verifyBridgeAccount(req, now, { secret, url, issuer }), {
+  eq(await verifyBridgeAccount(req, now, { publicJwk, url, issuer }), {
     account: user,
     subject,
   });
   for (
     const [r, time, cfg] of [
-      [req, new Date(now.getTime() + 300000), { secret, url, issuer }],
-      [req, now, { secret: secret + "wrong", url, issuer }],
-      [req, now, { secret, url, issuer: issuer + "wrong" }],
+      [req, new Date(now.getTime() + 300000), { publicJwk, url, issuer }],
+      [req, now, {
+        publicJwk: JSON.stringify({ ...JSON.parse(publicJwk), kid: "wrong" }),
+        url,
+        issuer,
+      }],
+      [req, now, { publicJwk, url, issuer: issuer + "wrong" }],
       [
         new Request("https://example.invalid", {
           headers: {
@@ -212,7 +220,7 @@ Deno.test("bridge signature, issuer, expiry and identity are checked before acce
           },
         }),
         now,
-        { secret, url, issuer },
+        { publicJwk, url, issuer },
       ],
     ] as const
   ) {

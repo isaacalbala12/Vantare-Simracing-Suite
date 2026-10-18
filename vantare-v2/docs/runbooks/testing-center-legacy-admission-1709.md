@@ -27,9 +27,10 @@ permisos legacy. El cliente y la compatibilidad quedaron en `72e15fdd2`, antes d
 anon, authenticated y service_role en las tres firmas legacy; solo el adaptador
 servidor nuevo mantiene EXECUTE service_role. Ningún paso se ha desplegado.
 
-Pruebas iniciales: Deno 20 PASS / 1 integración omitida; Rust services 219 PASS / 2 omisiones existentes, incluidos 19 tests de informes; Clippy services --all-targets PASS.
-SQL/ACL y PostgreSQL/PostgREST reales aún pendientes del workflow #1702 en
-nightly; ES256 depende de #1708. El PR sigue draft y la issue abierta.
+Tras integrar ES256 desde nightly: Deno 85 PASS / 2 integraciones omitidas; Rust services 219 PASS / 2 omisiones existentes, incluidos 19 tests de informes; Clippy services --all-targets PASS.
+Nightly `147372fa9` (#1708 ES256 y #1702 workflow) se ha incorporado mediante
+merge `352f31620`. SQL/ACL y PostgreSQL/PostgREST reales están pendientes de CI
+del HEAD de #1710. El PR sigue draft y la issue abierta.
 
 ## Inventario de consumidores
 
@@ -189,6 +190,27 @@ compatible, el adaptador SQL y sus regresiones. La retirada de permisos va en un
 migración y commit posteriores al cliente/compatibilidad. El inventario anterior describe
 la base examinada, no el comportamiento final del nuevo cliente.
 
-El PR permanece borrador hasta integrar #1708 y el workflow real de #1702 desde
-nightly, ejecutar PostgreSQL/PostgREST y verificar la CI completa. No acredita
+El PR incorpora #1708 y el workflow real de #1702 desde nightly. Permanece
+borrador hasta ejecutar PostgreSQL/PostgREST y verificar la CI completa. No acredita
 cierre del riesgo ni autoriza reconstruir producción antes de esos gates.
+
+
+## Regresión real tras integrar #1708
+
+El arnés completo, tanto LF como CRLF, ahora prueba el corte de #1709:
+la RPC legacy devuelve 403; `commercial-report.ts` invoca el handler Edge real,
+verifica el bearer ES256/kid con su pública y resuelve su identidad contra SQL.
+Usa la admisión SQL durable y el adaptador service-only a través de PostgREST.
+Clerk externo se sustituye por la fixture del bridge ya probada en #1708; no se
+prueba un despliegue Edge alojado ni validación real de bytes Storage aquí.
+
+El envío sin captura y su reintento devuelven el mismo recibo; un lote preparado
+como ya validado por el servidor produce otro informe con evidencia. Inyectar
+cuenta en el body falla y consume admisión; un formulario moderno comparte el
+contador y el sexto intento diario se deniega. El reporte nuevo conserva RLS
+propia y queda oculto a otra identidad. Tras tombstone, el mismo bearer falla
+en la Edge y no permite leer el informe ni invocar la RPC cerrada.
+
+La expectativa 200 de #1708 queda acreditada en nightly antes de esta nueva
+migración. En #1710 se espera 403 por el cierre SQL explícito, con envío positivo
+por Edge; no se debilita la prueba a un genérico «>=400».

@@ -1,3 +1,12 @@
+## 2026-10-19 - #1709 / VANTA-96: ES256 y workflow real incorporados
+
+- #1708 fusionado por el orquestador en nightly147372fa9. Merge local 352f31620 en rama propia #1710, sin conflictos, rebase ni force-push.
+- Regresion real del corte: legacy403 tras la migracion de cierre; handler Edge real verifica ES256/kid, resuelve cuenta por SQL y usa admision/adaptador reales via PostgREST. Plain/retry/ready JPEG fixture, cuota compartida, RLS de informe nuevo y tombstone.
+- La expectativa200 de #1708 era correcta antes de la nueva migracion. Se sustituye por403 con prueba positiva por Edge; no por un >=400 sin evidencia.
+- Nuevo script commercial-report.ts solo loopback, tokens TEST por stdin; cache del workflow ampliada para sus imports. Nada de Supabase remoto.
+- Deno85 PASS / 2 integraciones omitidas; typecheck/lint TS, Python compile PASS. Rust services219 PASS / 2 omisiones previas; este merge no cambia Rust. CI real LF/CRLF y CI completa del HEAD pendientes; PR #1710 sigue draft.
+- Siguiente: corregir cualquier fallo del arnes real y entregar solo CI verde. Sin produccion, deploy, secretos reales, importacion de claves, merge a nightly ni release en este worker.
+
 ## 2026-10-19 - #1709 / VANTA-96: cierre preparado despues del cliente
 
 - PR draft #1710. Primer commit 72e15fdd2 ya subido: cliente Edge con/sin capturas + compatibilidad SQL, sin revocar permisos.

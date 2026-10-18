@@ -1,3 +1,33 @@
+## #1709 / VANTA-96 - Consumidor legacy y propuesta de admision (19-oct-2026)
+
+Encargo del orquestador separado de ES256 #1708. Rama propia
+vantareapp/isa-1709-rpc-legacy-reportes, base origin/nightly
+999d5950745f73be0e38a1763422f53b515c6866. Worktree
+C:/VantareServer/wt/isa-1709-rpc-legacy-reportes. Project Vantare,
+area:testing-center, milestone Testing Center testers.
+
+SI hay consumidor legitimo: Hub testing/editor.rs:468 -> ReportSend ->
+services/app.rs:880 -> Reports::send -> report.rs:626 llama la RPC sin capturas.
+Con capturas usa _with_evidence (:638), wrapper SQL DEFINER que llama la base.
+No es solo allowlist/test. Revocar authenticated ahora rompe el envio; cerrar
+solo la base tampoco cierra el wrapper con capturas. Web disponible a4ae91da,
+admin, Edge y scripts sin caller productivo directo hallado; limites registrados.
+Los formularios modernos/triaje usan Edge y coexisten con el formulario rico.
+
+Opcion 3 del encargo: solo inventario/propuesta, commit03627d51a, documento
+docs/runbooks/testing-center-legacy-admission-1709.md. Reusar Edge/contadores
+(5 intentos/dia y 20/semana UTC por IP/UUID), adaptar transporte Rust sin perder
+recibo/consentimiento/retry/capturas, cores privados con UUID y adaptadores
+admitidos; cerrar ambas RPC cliente al final. No JWT sintetico ni cuota por
+formato. Pruebas/orden de corte definidos; implementacion/riesgo aun pendientes.
+
+Sin migracion/ACL/Rust/dependencias/produccion tocados. Calidad462, politica de
+rama y diff-check PASS. Build/pruebas runtime omitidos por alcance documental.
+Pendientes PR/CI, workflow real #1702 y decision del orquestador antes de
+implementar. No cerrar #1709 como arreglada ni reconstruir produccion solo por
+este documento. VANTA-96 En curso. El contenido historico del handoff se
+conserva byte a byte: no se normaliza su codificacion mixta fuera de alcance.
+
 ## #1594 / PR #1602 · corregir dos gates tras merge · Mac · 14/10/2026
 
 Encargo acotado del orquestador sobre `521f13fa`, rama

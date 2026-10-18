@@ -24,7 +24,12 @@ select throws_ok($$select public.native_resolve_account('https://clerk.admin.tes
 select is(public.native_resolve_account('https://clerk.admin.test', 'user_aaaaaaaaaaaaaaaaaaaaaaaaaaa'),
   public.native_resolve_account('https://clerk.admin.test/', 'user_aaaaaaaaaaaaaaaaaaaaaaaaaaa'), 'historical resolver reuses canonical issuer');
 \endif
-select is((select count(*)::integer from public.account_identities where subject = 'user_aaaaaaaaaaaaaaaaaaaaaaaaaaa'), 1, 'no second mapping');
+-- Subjects are issuer-scoped. The full harness also creates this subject under
+-- its HTTP fixture issuer; that legitimate identity must not count as a duplicate.
+-- Include the slash variant so the historical canonicalization check stays strict.
+select is((select count(*)::integer from public.account_identities
+ where issuer in ('https://clerk.admin.test','https://clerk.admin.test/')
+ and subject = 'user_aaaaaaaaaaaaaaaaaaaaaaaaaaa'), 1, 'no second mapping');
 
 insert into public.profiles(id) values
   ('00000000-0000-4000-8000-000000001456'),

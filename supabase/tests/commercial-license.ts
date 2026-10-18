@@ -7,32 +7,9 @@ import {
 import { handleNativeLicenseRequest } from "../functions/native-license/index.ts";
 const [url, account] = Deno.args;
 if (new URL(url).hostname !== "127.0.0.1") throw new Error("loopback_only");
-const encode = (v: unknown) =>
-  btoa(JSON.stringify(v)).replace(/\+/g, "-").replace(/\//g, "_").replace(
-    /=+$/,
-    "",
-  );
-const input = encode({ alg: "HS256", typ: "JWT" }) + "." +
-  encode({
-    role: "service_role",
-    aud: "vantare-native-data",
-    exp: Math.floor(Date.now() / 1000) + 300,
-  });
-const key = await crypto.subtle.importKey(
-  "raw",
-  new TextEncoder().encode(
-    "commercial-fixture-signing-material-local-only-32-bytes",
-  ),
-  { name: "HMAC", hash: "SHA-256" },
-  false,
-  ["sign"],
-);
-const sig = new Uint8Array(
-  await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(input)),
-);
-const token = input + "." +
-  btoa(String.fromCharCode(...sig)).replace(/\+/g, "-").replace(/\//g, "_")
-    .replace(/=+$/, "");
+// Synthetic service bearer from the same ephemeral ES256 key as the harness.
+const token = await new Response(Deno.stdin.readable).text();
+if (!token || token.length > 16384) throw new Error("fixture_token_required");
 const admin = createClient(url, "fixture-only", {
   auth: { persistSession: false, autoRefreshToken: false },
   global: {

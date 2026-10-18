@@ -1,9 +1,9 @@
+import { testToken } from "./testdata/signing.ts";
 // Optional, strictly loopback integration against a disposable migrated database.
 // See README for fixture SQL. This key is public test data, never a project key.
 import { handleNativeAccountAuthorize, signDataToken } from "./index.ts";
 import { assert, config, subject, user } from "./testdata/auth.ts";
 
-const key = "local-postgrest-test-only-signing-secret-1452";
 const account = "00000000-0000-4000-8000-000000001452";
 const other = "00000000-0000-4000-8000-000000001453";
 const localUrl = Deno.env.get("LOCAL_POSTGREST_URL");
@@ -18,34 +18,21 @@ Deno.test({
         ["127.0.0.1", "localhost"].includes(new URL(localUrl).hostname),
       "integration only supports loopback",
     );
+    const fixturePath = Deno.env.get("LOCAL_POSTGREST_PRIVATE_JWK_FILE");
+    assert(
+      fixturePath,
+      "a generated TEST key file is required; configure its public JWK in PostgREST",
+    );
+    const testPrivateJwk = await Deno.readTextFile(fixturePath);
     const now = new Date();
-    const encode = (value: unknown) =>
-      btoa(JSON.stringify(value)).replace(/\+/g, "-").replace(/\//g, "_")
-        .replace(/=+$/, "");
-    const input = `${encode({ alg: "HS256", typ: "JWT" })}.${
-      encode({
+    const serviceToken = await testToken(
+      {
         role: "service_role",
         exp: Math.floor(now.getTime() / 1000) + 300,
-      })
-    }`;
-    const cryptoKey = await crypto.subtle.importKey(
-      "raw",
-      new TextEncoder().encode(key),
-      { name: "HMAC", hash: "SHA-256" },
-      false,
-      ["sign"],
+      },
+      { alg: "ES256", typ: "JWT", kid: JSON.parse(testPrivateJwk).kid },
+      testPrivateJwk,
     );
-    const sig = new Uint8Array(
-      await crypto.subtle.sign(
-        "HMAC",
-        cryptoKey,
-        new TextEncoder().encode(input),
-      ),
-    );
-    const serviceToken = `${input}.${
-      btoa(String.fromCharCode(...sig)).replace(/\+/g, "-").replace(/\//g, "_")
-        .replace(/=+$/, "")
-    }`;
     const call = (path: string, token: string | null, body?: unknown) =>
       fetch(`${localUrl}/${path}`, {
         method: body === undefined ? "GET" : "POST",
@@ -67,7 +54,10 @@ Deno.test({
       {
         config,
         now: () => now,
-        signing: { secret: key, supabaseUrl: localUrl },
+        signing: {
+          privateJwk: testPrivateJwk,
+          supabaseUrl: "http://127.0.0.1:54321",
+        },
         fetch: (url) =>
           Promise.resolve(Response.json(
             String(url).endsWith("verify")
@@ -105,7 +95,11 @@ Deno.test({
       role.status === 200 && await role.json() === "tester",
       "signed token not accepted by RPC",
     );
-    const submitted = await call("rpc/testing_center_submit_report", token, {
+    // Existing SQL contract: 20260802180000 grants authenticated EXECUTE on a
+    // SECURITY DEFINER wrapper; 20260802150000 permits a seeded active tester.
+    // B03 changes its identity lookup to current_account(), not its grants.
+    // Do not claim this legacy route is closed by the separate Edge admission.
+    const direct = await call("rpc/testing_center_submit_report", token, {
       p_contract_version: "testing-center.v1",
       p_channel: "testers",
       p_action_text: "Open Hub",
@@ -123,41 +117,51 @@ Deno.test({
       p_idempotency_key: `integration-${crypto.randomUUID()}`,
     });
     assert(
-      submitted.status === 200,
-      `report submission failed with HTTP ${submitted.status}`,
+      direct.status === 200,
+      `legacy tester RPC returned ${direct.status}`,
     );
-    const report = (await submitted.json())[0];
-    const own = await call(
-      `testing_center_reports?report_id=eq.${
-        encodeURIComponent(report.report_id)
-      }`,
-      token,
+    const reports = await direct.json();
+    assert(reports.length === 1 && typeof reports[0].report_id === "string");
+    const reportPath = `testing_center_reports?report_id=eq.${
+      encodeURIComponent(reports[0].report_id)
+    }`;
+    const ownReport = await call(reportPath, token);
+    assert(
+      ownReport.status === 200 && (await ownReport.json()).length === 1,
+      "legacy report not visible to its reporter",
     );
+    const reset = await call("rpc/reset_active_device", token, {
+      device_fingerprint: "b".repeat(64),
+    });
+    assert(reset.status === 204, "own reset failed");
+    const own = await call("profiles?select=id", token);
     assert(
       own.status === 200 && (await own.json()).length === 1,
-      "own RLS report missing",
+      "own RLS profile missing",
     );
     const otherToken = await signDataToken(
       other,
       now,
       now.getTime() / 1000 + 300,
-      { secret: key, supabaseUrl: localUrl },
+      { privateJwk: testPrivateJwk, supabaseUrl: "http://127.0.0.1:54321" },
+      { issuer: config.issuer, subject },
     );
-    const hidden = await call(
-      `testing_center_reports?report_id=eq.${
-        encodeURIComponent(report.report_id)
-      }`,
-      otherToken.token,
+    const hiddenReport = await call(reportPath, otherToken.token);
+    assert(
+      hiddenReport.status === 200 && (await hiddenReport.json()).length === 0,
+      "legacy report exposed to mismatched identity",
     );
+    const hidden = await call("profiles?select=id", otherToken.token);
     assert(
       hidden.status === 200 && (await hidden.json()).length === 0,
-      "RLS exposed another account report",
+      "RLS exposed another account profile",
     );
     const expired = await signDataToken(
       account,
       new Date(now.getTime() - 600000),
       now.getTime() / 1000 - 300,
-      { secret: key, supabaseUrl: localUrl },
+      { privateJwk: testPrivateJwk, supabaseUrl: "http://127.0.0.1:54321" },
+      { issuer: config.issuer, subject },
     );
     for (
       const bearer of [null, `${token.slice(0, -8)}tampered`, expired.token]

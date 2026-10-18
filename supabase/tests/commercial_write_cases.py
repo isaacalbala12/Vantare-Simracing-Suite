@@ -180,6 +180,26 @@ CASES += [
  ('pilot-photo-ownerless', "insert into storage.objects(bucket_id,name) values('pilot-photos','{a}/{h}.jpg')"),
 ]
 
+# #1702: valid writes for four existing admin guards and eleven later tables.
+# Financial/report history is retained; a tombstone must stop fresh writes.
+CASES += [
+ ('admin-block', "insert into private.admin_account_blocks values('{a}',false,null)"),
+ ('admin-payment', "insert into private.admin_payments(environment,payment_id,account_id,product,paid_at,amount_cents,currency,modified_at) values('sandbox','{case}','{a}','Fixture',now(),100,'eur',now())"),
+ ('admin-history', "insert into private.admin_payment_history values('sandbox','{a}')"),
+ ('admin-payout', "insert into private.admin_creator_payouts(creator_id,amount_cents,actor) values('{new_id}',100,'{a}')"),
+ ('admin-deletion-record', "insert into private.admin_account_deletions(account_id,issuer,subject,confirmation_hash) values('{a}','{issuer}','{subject}','{h}')"),
+ ('mail-contact', "insert into private.mail_contacts(email,account_id,erasure_account,locale,evidence) values('{case}@example.invalid','{a}','{a}','en','fixture')"),
+ ('mail-budget', "insert into private.mail_consent_budget values('{a}',now(),1)"),
+ ('mail-delivery', "insert into private.mail_deliveries(campaign_id,email,locale) values('{new_id}','{case}@example.invalid','en')"),
+ ('report-promotion', "insert into private.report_promotions(account_id,environment,subscription_id,original_subscription_id,product_id,subscribed_at,current_started_at,first_renewal,observed_at) values('{a}','sandbox','{case}','{case}','{case}',now(),now(),now(),now())"),
+ ('promotion-invoice', "insert into private.report_promotion_invoices(environment,order_id,account_id,subscription_id,product_id,discount_amount,billed_at,period_start,period_end) values('sandbox','{case}','{a}','{case}','{case}',0,now(),now(),now()+interval '1 month')"),
+ ('promotion-gap', "insert into private.report_promotion_invoice_gaps values('sandbox','{case}','{a}',now(),now(),null)"),
+ ('promotion-failure', "insert into private.report_promotion_failures(account_id,environment,code,first_at,last_at) values('{a}','sandbox','promotion_account_failed',now(),now())"),
+ ('promotion-launch-use', "insert into private.report_promotion_launch_uses(account_id,environment,product_id,reserved_at) values('{a}','sandbox','{case}',now())"),
+ ('promotion-change', "insert into private.report_promotion_changes(account_id,environment,subscription_id,product_id,tier) values('{a}','sandbox','{case}','{case}',0)"),
+ ('promotion-transfer', "insert into private.report_promotion_transfers(account_id,environment,subscription_id,product_id,next_subscription_id,next_product_id,observed_at,cleanup_after) values('{a}','sandbox','{case}','{case}','next','next',now(),now())"),
+]
+
 # R9: Edge admission must preserve live writes and reject a racing tombstone.
 CASES += [
  ('testing-admitted-classic', "set local role service_role; select public.testing_report_submit_admitted('{a}','{new_id}','master','Fixture','Private body',true)"),

@@ -1,3 +1,4 @@
+import { nativeDataKey } from "../_shared/native-data-key.ts";
 import { handleCorsPreflight } from "../_shared/cors.ts";
 import { isUuid, readJsonObject } from "../_shared/request.ts";
 import { jsonResponse } from "../_shared/responses.ts";
@@ -87,13 +88,13 @@ function weekStart(now: Date): string {
 export async function verifyBridgeAccount(
   request: Request,
   now: Date,
-  config: { secret: string; url: string; issuer: string },
+  config: { publicJwk: string; url: string; issuer: string },
 ): Promise<{ account: string; subject: string }> {
   const token = nativeBearer(request);
   if (
-    new TextEncoder().encode(config.secret).length < 32 || !config.url ||
-    !config.issuer
+    !config.url || !config.issuer
   ) throw new NativeError(503, "bridge_unavailable");
+  const { key, kid } = await nativeDataKey(config.publicJwk, false);
   try {
     const parts = token.split(".");
     if (parts.length !== 3) throw new Error();
@@ -103,17 +104,14 @@ export async function verifyBridgeAccount(
         (c) => c.charCodeAt(0),
       );
     const header = JSON.parse(new TextDecoder().decode(decode(parts[0])));
-    if (header.alg !== "HS256" || header.typ !== "JWT") throw new Error();
-    const key = await crypto.subtle.importKey(
-      "raw",
-      new TextEncoder().encode(config.secret),
-      { name: "HMAC", hash: "SHA-256" },
-      false,
-      ["verify"],
-    );
+    if (
+      header.alg !== "ES256" || header.typ !== "JWT" || header.kid !== kid ||
+      header.jwk !== undefined || header.jku !== undefined ||
+      header.crit !== undefined
+    ) throw new Error();
     if (
       !await crypto.subtle.verify(
-        "HMAC",
+        { name: "ECDSA", hash: "SHA-256" },
         key,
         decode(parts[2]),
         new TextEncoder().encode(`${parts[0]}.${parts[1]}`),
@@ -139,7 +137,7 @@ export async function verifyBridgeAccount(
 
 async function account(request: Request, now: Date): Promise<string> {
   const config = {
-    secret: Deno.env.get("NATIVE_DATA_JWT_SECRET") ?? "",
+    publicJwk: Deno.env.get("NATIVE_DATA_ES256_PUBLIC_JWK") ?? "",
     url: Deno.env.get("SUPABASE_URL") ?? "",
     issuer: (Deno.env.get("CLERK_ISSUER") ?? "").replace(/\/$/, ""),
   };

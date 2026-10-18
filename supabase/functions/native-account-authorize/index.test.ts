@@ -1,3 +1,4 @@
+import { testPrivateJwk, testPublicJwk } from "./testdata/signing.ts";
 import {
   type AuthorizeDeps,
   handleNativeAccountAuthorize,
@@ -16,7 +17,7 @@ import {
 } from "./testdata/auth.ts";
 
 const signing = {
-  secret: "test-only-local-signing-secret-at-least-32-bytes",
+  privateJwk: testPrivateJwk,
   supabaseUrl: "https://supabase.example.invalid",
 };
 function deps(overrides: AuthorizeDeps = {}): AuthorizeDeps {
@@ -31,7 +32,7 @@ function deps(overrides: AuthorizeDeps = {}): AuthorizeDeps {
   };
 }
 
-Deno.test("data authorization signs actual HS256, internal UUID and bounded expiry; no apikey", async () => {
+Deno.test("data authorization signs actual ES256 with kid, internal UUID and bounded expiry; no apikey", async () => {
   const response = await handleNativeAccountAuthorize(
     request({ version: 1 }),
     deps(),
@@ -55,6 +56,11 @@ Deno.test("data authorization signs actual HS256, internal UUID and bounded expi
       atob(value.replace(/-/g, "+").replace(/_/g, "/")),
       (c) => c.charCodeAt(0),
     );
+  const tokenHeader = JSON.parse(new TextDecoder().decode(decode(header)));
+  assert(
+    tokenHeader.alg === "ES256" &&
+      tokenHeader.kid === JSON.parse(testPublicJwk).kid,
+  );
   const tokenClaims = JSON.parse(new TextDecoder().decode(decode(payload)));
   assert(
     tokenClaims.sub === account && tokenClaims.role === "authenticated" &&
@@ -70,15 +76,15 @@ Deno.test("data authorization signs actual HS256, internal UUID and bounded expi
       tokenClaims.clerk_subject === subject,
   );
   const key = await crypto.subtle.importKey(
-    "raw",
-    new TextEncoder().encode(signing.secret),
-    { name: "HMAC", hash: "SHA-256" },
+    "jwk",
+    JSON.parse(testPublicJwk),
+    { name: "ECDSA", namedCurve: "P-256" },
     false,
     ["verify"],
   );
   assert(
     await crypto.subtle.verify(
-      "HMAC",
+      { name: "ECDSA", hash: "SHA-256" },
       key,
       decode(signature),
       new TextEncoder().encode(`${header}.${payload}`),
@@ -86,7 +92,7 @@ Deno.test("data authorization signs actual HS256, internal UUID and bounded expi
   );
   assert(
     !await crypto.subtle.verify(
-      "HMAC",
+      { name: "ECDSA", hash: "SHA-256" },
       key,
       decode(signature),
       new TextEncoder().encode(`${header}.${payload}tampered`),
@@ -228,7 +234,7 @@ Deno.test("received multibyte body and streaming limit are enforced", async () =
 });
 Deno.test("missing signing key or invalid resolver UUID never emits token", async () => {
   for (
-    const overrides of [{ signing: { ...signing, secret: "" } }, {
+    const overrides of [{ signing: { ...signing, privateJwk: "" } }, {
       resolve: () => Promise.resolve(subject),
     }]
   ) {

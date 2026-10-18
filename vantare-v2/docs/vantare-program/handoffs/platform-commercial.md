@@ -3875,34 +3875,39 @@ CI verde ni PR ready hasta comprobar el HEAD final. Sin Rust/dependencias nuevos
 Windows limpio/login/pagos pendientes; Hub bloqueado por #1694. Sin ventanas
 en sesión principal, firma/publicación ni merge por el worker.
 
-## VANTA-96 / #1713 · Reconstrucción autorizada: parada antes del borrado (19-oct-2026)
+## VANTA-96 / #1713 · Parada en migración gestionada 42 (19-oct-2026)
 
-Isaac autoriza A/B/C/D y confirma datos de prueba. El orquestador aclara B:
-importar la privada ES256 de #1708 y rotar, sin revocar legacy/anteriores;
-comprobar anon legacy, RPC pública y service_role, y volver a la activa previa
-si falla. SHA operativo fijado bf7e21c619cd350fed883e555dc400173cae9873,
-94 migraciones; rama aislada vantareapp/isa-1713-reconstruccion-produccion.
+SHA operativo bf7e21c619cd350fed883e555dc400173cae9873, 94 migraciones.
+Isaac autoriza reconstrucción y B01 privada ES256+rotación condicionada, sin
+revocar claves anteriores. El orquestador aclara que Cloudflare bloquea solo
+paso 12; Owner URL/secret quedan ausentes, receptor obligatorio antes de abrir
+venta. Compensación debe seguir desactivada. Ya no bloquean el trabajo Supabase.
 
-Copia completa protegida PASS: pg_dump PostgreSQL 17.11 contra servidor 17.6,
-pg_restore --list (1010 entradas) y lectura de todos los bloques, más roles sin
-contraseñas. No se ha restaurado esa copia en un servidor desechable. Conteos
-idénticos a la autorización: 8 cuentas, 8 perfiles, 3 clientes, 3 suscripciones;
-pedidos/reembolsos vacíos. Roadmap y calendario exportados en privado. Storage
-sin buckets. Clerk y Brevo autentican; remitente activo, aplicación OAuth pública.
-Clerk requiere User-Agent explícito en estas consultas; un 403 inicial quedó
-resuelto por diagnóstico de solo lectura, sin cambiar credenciales.
+Copia completa protegida PASS: pg_dump 17.11 contra servidor 17.6,
+pg_restore --list 1010 entradas y lectura íntegra PASS, roles sin contraseñas.
+No restauración en servidor desechable. Conteos revalidados idénticos a la
+autorización; roadmap 68 y calendario 2 exportados. Clerk/Brevo válidos.
 
-**Parada obligatoria:** Cloudflare rechaza la credencial con HTTP 400 y códigos
-6003/6111 (formato de Authorization). Corregir el archivo protegido por el canal
-privado, sin pegar valores en trackers/chat. También queda por identificar el
-receptor Owner aprobado, ausente del inventario y del archivo de configuración;
-no inventar una URL ni un ACK. Pregunta enviada al orquestador.
+**Producción cambió:** limpieza propia transaccional COMMIT, preservando los
+esquemas internos. 19 versiones antiguas reverted por CLI, dry-run 94/94 PASS;
+db push aplicó 41 migraciones y falló en
+20261010001000_visual_roadmap_clickup.sql (sentencia 7, ALTER ROLE con
+NOSUPERUSER/NOBYPASSRLS/NOREPLICATION), SQLSTATE 42501, permission denied to
+alter role. La cuenta gestionada no es superusuario. No saltar la sentencia,
+marcarla aplicada ni aumentar privilegios para continuar.
 
-Producción **sin modificaciones**: no limpieza, migraciones, secretos nuevos,
-rotación, despliegues, cuentas nuevas, ofertas, scheduler o publicación web.
-No se afirma que las banderas productivas estén verificadas. No hay cambios que
-revertir. La reversión prevista de claves con IDs previas y peticiones API exactas
-está en C:/VantareServer/evidence/supabase-reconstruccion/EJECUCION.md, junto al
-hash, alcance de la copia, manifiesto y registro de los pasos. No hay PASS E2E
-productivo. Próximo paso: resolver credencial/receptor; repetir inventario y copia
-si cambió el estado antes de iniciar la ventana destructiva.
+Parada obligatoria: 41 versiones registradas, prefijo exacto del canon, última
+20261010000000_testing_participation. Versión fallida ausente y su tabla nueva
+visual_roadmap_sync_approvals ausente: transacción fallida revertida. Auth conserva
+8 usuarios; hay 8 perfiles regenerados y un bucket testing-center-evidence vacío.
+Publicador temporalmente NOLOGIN, contraseña conservada. No secretos nuevos,
+rotación, funciones nuevas, ofertas, schedulers o E2E productivo. Funciones
+antiguas aún desplegadas; no declarar aplicación operativa ni abrir venta.
+
+Registro, copia/hash, inventario, estado tras fallo y reversión de claves:
+C:/VantareServer/evidence/supabase-reconstruccion/EJECUCION.md. No se ejecuta
+restore global improvisado: preserva internos y requiere TOC/ensayo del retorno
+selectivo. Siguiente: revisión del defecto gestionado y ensayo con rol equivalente,
+luego decidir reanudación desde la versión pendiente; no repetir limpieza a ciegas.
+Rama aislada vantareapp/isa-1713-reconstruccion-produccion, PR documental #1714
+a nightly, sin merge/release. Pasos 4–11 pendientes; Cloudflare 12 pendiente.

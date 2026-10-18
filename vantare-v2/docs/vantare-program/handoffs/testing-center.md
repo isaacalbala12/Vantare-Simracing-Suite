@@ -1,3 +1,12 @@
+## 2026-10-19 - #1709 / VANTA-96: cierre preparado despues del cliente
+
+- PR draft #1710. Primer commit 72e15fdd2 ya subido: cliente Edge con/sin capturas + compatibilidad SQL, sin revocar permisos.
+- Segundo paso: migracion 20261018224803 retira EXECUTE a PUBLIC/anon/authenticated/service_role en base, evidencia e inner legacy. Preparar/finalizar capturas conserva permisos; nuevo adaptador solo service_role.
+- Regresiones pgTAP de recibo/reintentos, membership/canal, lote ajeno/pendiente/listo, borrado, privacidad y ACL de las tres firmas preparadas y conectadas al arnes. NO ejecutadas aun: esperan PostgreSQL/PostgREST real de #1702.
+- Verificado local: Deno 20 PASS / 1 integracion omitida; Rust services 219 PASS / 2 omisiones existentes (incluye proceso real y 19 reportes), fmt y Clippy all-targets PASS; calidad 462 PASS. El primer fallo de Clippy (test >100 lineas) se corrigio separando comprobaciones, sin quitar cobertura.
+- Pendiente integrar #1708 y workflow #1702 desde nightly, completar prueba Edge+PostgREST y expectativas B01 con la nueva ACL, pasar CI y sacar draft. No reconstruir produccion por este estado.
+- Sin produccion, deploy, claves, secretos, dependencias nuevas, merge ni release. Evidencia C:/VantareServer/evidence/1709-rpc-legacy/.
+
 ## 2026-10-19 - #1709 / VANTA-96: implementacion aprobada, fase compatible
 
 - Orquestador aprueba continuar en PR draft #1710; prioridad despues de #1708.

@@ -140,7 +140,7 @@ $$;
     raise AssertionError('ambiguous historical issuer aliases were not rejected by B03')
    (OUT/(m.name+'.log')).write_text(result)
   if args.testing_identity:
-   for name in ['testing_followup_F1IP.test.sql','commercial_testing_identity.test.sql','commercial_posthog_consent.test.sql','testing_report_rich_admission.test.sql']:
+   for name in ['testing_followup_F1IP.test.sql','commercial_testing_identity.test.sql','commercial_posthog_consent.test.sql','testing_report_rich_admission.test.sql','testing_report_legacy_closed.test.sql']:
     result=run('psql',*conn,'-f',ROOT/'supabase/tests'/name)
     (OUT/(name+'.log')).write_text(result)
     if 'not ok ' in result or '# Looks like' in result: raise RuntimeError(result)
@@ -308,7 +308,7 @@ $$;
    'billing_reconciliation.test.sql','billing_subscription_lifecycle.test.sql',
    'billing_observability.test.sql','operational_access.test.sql','billing_order_refund_ledger.test.sql',
    'canonical_device_claim.test.sql','native_admin.test.sql','visual_roadmap_clickup.test.sql']
-  for optional in ['commercial_tombstone.test.sql','commercial_data_boundary.test.sql','commercial_refunds.test.sql','commercial_admin_deleted.test.sql','commercial_storage_probe.test.sql','commercial_pilot_deletion.test.sql','testing_followup_F1IP.test.sql','commercial_testing_identity.test.sql','commercial_posthog_consent.test.sql','testing_report_rich_admission.test.sql']:
+  for optional in ['commercial_tombstone.test.sql','commercial_data_boundary.test.sql','commercial_refunds.test.sql','commercial_admin_deleted.test.sql','commercial_storage_probe.test.sql','commercial_pilot_deletion.test.sql','testing_followup_F1IP.test.sql','commercial_testing_identity.test.sql','commercial_posthog_consent.test.sql','testing_report_rich_admission.test.sql','testing_report_legacy_closed.test.sql']:
    if (ROOT/'supabase/tests'/optional).exists(): suites.append(optional)
   for name in suites:
    try: result=run('psql',*conn,'-f',ROOT/'supabase/tests'/name)

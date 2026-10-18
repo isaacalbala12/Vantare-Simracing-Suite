@@ -22,8 +22,10 @@ La migración de compatibilidad `20261018224039_isa_1709_report_admitted.sql`
 añade un adaptador público solo para service_role y núcleos privados con UUID
 verificado. Conserva membership/canal, idempotencia, evidencia/transport size y
 la barrera de cuentas eliminadas; no fabrica claims. En esta fase no retira
-permisos legacy. El cierre va después del cambio del cliente, en otro commit y
-otra migración. Ningún paso se ha desplegado.
+permisos legacy. El cliente y la compatibilidad quedaron en `72e15fdd2`, antes del cierre
+`20261018224803_isa_1709_close_legacy_report_rpc.sql`. Este cierre revoca PUBLIC,
+anon, authenticated y service_role en las tres firmas legacy; solo el adaptador
+servidor nuevo mantiene EXECUTE service_role. Ningún paso se ha desplegado.
 
 Pruebas iniciales: Deno 20 PASS / 1 integración omitida; Rust services 219 PASS / 2 omisiones existentes, incluidos 19 tests de informes; Clippy services --all-targets PASS.
 SQL/ACL y PostgreSQL/PostgREST reales aún pendientes del workflow #1702 en
@@ -70,11 +72,12 @@ está preparado para confirmar 200 e identidad/aislamiento/tombstone, pero no se
 afirma aquí que haya sido ejecutado. El wrapper con capturas mantiene la misma
 vía al cuerpo de envío aunque se retire solo el EXECUTE directo de la base.
 
-## Propuesta mínima para aprobar e implementar
+## Solución aprobada e implementada (pendiente del gate real)
 
 **Una entrada Edge existente, un presupuesto compartido y cierre coordinado de
 las dos RPC cliente.** Sin servicio nuevo, dependencias nuevas, rediseño de UI
-ni conversión que pierda texto estructurado, diagnósticos, imágenes o recibo.
+ni conversión que pierda metadatos permitidos, imágenes o recibo. La prosa y los
+diagnósticos siguen locales conforme a F7=C.
 
 1. Extender `testing-report-submit` con una rama tipada explícita para
    `p_contract_version=testing-center.v1`, con las 15 claves cerradas de Submission
@@ -182,8 +185,8 @@ Una excepción temporal a la admisión requeriría decisión explícita distinta
 ## Entrega y estado
 
 La propuesta quedó aprobada. Esta rama contiene el transporte Rust, la Edge
-compatible, el adaptador SQL y sus regresiones. La retirada de permisos se
-prepara después del commit de compatibilidad. El inventario anterior describe
+compatible, el adaptador SQL y sus regresiones. La retirada de permisos va en una
+migración y commit posteriores al cliente/compatibilidad. El inventario anterior describe
 la base examinada, no el comportamiento final del nuevo cliente.
 
 El PR permanece borrador hasta integrar #1708 y el workflow real de #1702 desde

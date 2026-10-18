@@ -1,3 +1,37 @@
+## VANTA-96 / #1711 · account_id sin FK (19-oct-2026, en curso)
+
+Encargo del orquestador para P2-1 de la review APTO de #1705. #1705 integrado
+por el orquestador en nightly39a788238; esta rama parte de ese merge.
+Rama propia `vantareapp/isa-1711-account-id-barriers`.
+Después se integra nightly147372fa9 (#1708/B01): arnés automezclado; único
+conflicto documental resuelto conservando ambas secciones. Repetir ensayo
+sobre la unión real ES256/P2; el resultado anterior es previo a B01.
+Inventario ampliado: account_id es raíz aunque no tenga FK; también se recorren
+sus descendientes y se exige que la columna esté compilada en el guard.
+Prueba negativa en transacción con tabla nueva sin FK y descendiente nuevo.
+El primer ensayo descubre además lifetime_order_admissions,
+founders_subscription_transitions y web_purchase_erasure_events. Se amplía #1711
+con el hallazgo real: siete guards directos, incluida lifetime_order_admissions.
+founders_subscription_transitions es deber de cancelación: el ACK tardío debe
+seguir completando una orden ya enviada. Excepción exacta con prueba de ACK
+tras borrado, fencing por revisión, imposibilidad de crear trabajo nuevo y ACL.
+El stream web es deber creado después del tombstone, con ACL cerrada/pull
+acotado/ACK con prueba independiente; excepción exacta y regresión real de
+enqueue/pull/ACK/reintento tras borrado, sin excluir sus descendientes.
+Sin cambios de ACL/FK, borrado de historiales ni parche del guard común.
+Se añaden siete carreras reales, regresión de UPDATE/reasignación/historial y
+las suites existentes de renovaciones e incidencias para los escritores reales.
+Ensayo anterior PASS en run39175662567, implementación6872cfc48: LF y CRLF
+exit0; 94 migraciones, 23 suites/758 pgTAP, 131 rutas/778 comprobaciones de
+carreras, JWT/PostgREST y Ed25519. Artefactos descargados y bytes de las 94
+fuentes comprobados en ambos formatos. Ese ensayo precede al ajuste del deber
+de cancelación y a B01; evidencia definitiva del HEAD actual en PR/issue #1711.
+PR #1712 a nightly: workflow comercial LF/CRLF y CI consultables en
+https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1712.
+Siguiente paso: revisión del orquestador tras validar el ensayo; sin producción,
+sin cambios propios de B01, merge a nightly ni promoción de canal.
+Evidencia: evidence/supabase-p2-account-id.
+
 ## 2026-10-19 - #1704 / VANTA-96: integrar workflow real de #1702
 
 - Orquestador ordena merge origin/nightly 39a788238 en #1708 antes de #1710, sin rebase ni force-push.

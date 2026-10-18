@@ -139,6 +139,7 @@ $$;
    if args.before_pilot_identity and 'pilot_identity' in m.name: continue
    # RED controls omit the dependent adapters as well as their missing guards.
    legacy = args.baseline or args.before_write_barrier
+   if legacy and 'isa_1711_account_id_write_barriers' in m.name: continue
    if (legacy or args.before_private_write_barriers or args.before_deleted_authorizer or args.before_posthog_consent_clear) and 'isa_1702_private_write_barriers' in m.name: continue
    if legacy and m.name.startswith(('2026101416','2026101509')) and 'isa_1608_' in m.name: continue
    if args.before_storage_multipart and 'managed_storage_abort' in m.name: continue
@@ -410,6 +411,8 @@ $$;
   for optional in ['commercial_tombstone.test.sql','commercial_data_boundary.test.sql','commercial_refunds.test.sql','commercial_admin_deleted.test.sql','commercial_storage_probe.test.sql','commercial_pilot_deletion.test.sql','testing_followup_F1IP.test.sql','commercial_testing_identity.test.sql','commercial_posthog_consent.test.sql']:
    if (ROOT/'supabase/tests'/optional).exists(): suites.append(optional)
   if not (args.baseline or args.before_deleted_authorizer or args.before_posthog_consent_clear): suites.append('commercial_private_writes.test.sql')
+  if not (args.baseline or args.before_deleted_authorizer or args.before_posthog_consent_clear or args.before_private_write_barriers):
+   suites+=['commercial_account_id.test.sql','report_creator_renewals.test.sql','founders_review_r2.test.sql']
   for name in suites:
    # This existing suite deliberately SET ROLEs to the isolated publisher,
    # whose membership is not granted to managed postgres by the product.

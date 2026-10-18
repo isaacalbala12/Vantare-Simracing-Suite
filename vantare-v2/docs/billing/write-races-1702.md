@@ -58,6 +58,11 @@ PostgreSQL 17.6.1.165 fijada por digest, con reintentos ECR/Docker Hub.
 credenciales públicas de fixture y limpieza al salir; no acepta DSN remoto.
 Cada formato arranca de cero. Además del gate SQL y las carreras, se ensaya
 HTTP con JWT emitido por el handler nativo y PostgREST real.
+Al habilitar HTTP, `native_admin.test.sql` contaba el mismo subject de dos
+issuers como duplicado. La comprobación se limita al issuer de su fixture
+(incluida la variante con barra del test histórico): la identidad es el par
+issuer/subject. Se conserva la aserción de un único vínculo y el rechazo de
+issuer no registrado; no se cambian permisos ni resolución de cuentas.
 
 Comando después de preparar imagen, PostgREST y caché Deno como en el workflow:
 

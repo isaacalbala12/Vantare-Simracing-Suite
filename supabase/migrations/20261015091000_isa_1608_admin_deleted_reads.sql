@@ -14,7 +14,9 @@ begin
  definition:=pg_get_functiondef('public.native_admin_execute(uuid,text,text,jsonb,text)'::regprocedure);
  if position('perform private.lock_accounts_before_rows(array[p_actor,v_account]);' in definition)=0 then
    raise exception 'admin_entry_changed'; end if;
- definition:=replace(definition,E'declare\n',E'declare\n  v_lock_account uuid;\n');
+ -- pg_get_functiondef preserves CRLF from Windows checkouts in the body.
+ -- Match the declaration keyword instead of assuming a particular newline.
+ definition:=regexp_replace(definition,'\mdeclare\M',E'declare\n  v_lock_account uuid;','i');
  definition:=replace(definition,'perform private.lock_accounts_before_rows(array[p_actor,v_account]);',$prefix$
   for v_lock_account in select distinct a from unnest(array[p_actor,v_account]) a where a is not null order by a loop
     if private.lock_account_write(v_lock_account) and (v_lock_account=p_actor or

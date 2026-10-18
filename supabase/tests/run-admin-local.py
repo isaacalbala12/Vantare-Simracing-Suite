@@ -5,6 +5,8 @@ args=argparse.ArgumentParser()
 args.add_argument('--output', type=Path, required=True)
 args.add_argument('--test', action='append')
 args.add_argument('--mail-e2e', action='store_true')
+args.add_argument('--migration-newlines', choices=['lf', 'crlf'], default='lf',
+ help='Exercise migration function patches with Unix or Windows source newlines')
 opts=args.parse_args()
 root=Path(__file__).resolve().parents[2]
 out=opts.output
@@ -23,19 +25,21 @@ try:
  else: raise RuntimeError('postgres startup')
  run(['docker','exec',name,'createdb','-U','postgres','--template=template0','admin_1627'])
  # Reuse the full disposable auth/storage contract maintained by nightly.
- runner=(root/'supabase/tests/run-supabase-hardening-postgres.ps1').read_text()
+ runner=(root/'supabase/tests/run-supabase-hardening-postgres.ps1').read_text(encoding='utf-8')
  bootstrap=runner.split("Write-Utf8NoBom $bootstrap @'",1)[1].split("'@",1)[0]
  bootstrap += """
 create or replace function storage.foldername(text) returns text[] language sql immutable as $$select (string_to_array($1,'/'))[1:array_length(string_to_array($1,'/'),1)-1]$$;"""
  (out/'baseline-sql-bootstrap.log').write_text(sql(bootstrap))
  for f in sorted((root/'supabase/migrations').glob('*.sql')):
-  try: (out/('baseline-'+f.name+'.log')).write_text(sql(f.read_text(),'supabase_admin' if f.name=='20261010001000_visual_roadmap_clickup.sql' else 'postgres'))
+  source=f.read_text(encoding='utf-8')
+  if opts.migration_newlines=='crlf': source=source.replace('\n','\r\n')
+  try: (out/('baseline-'+f.name+'.log')).write_text(sql(source,'supabase_admin' if f.name=='20261010001000_visual_roadmap_clickup.sql' else 'postgres'))
   except Exception as e:
    (out/('baseline-'+f.name+'.log')).write_text(str(e)); raise
  total=0
  for test in opts.test or ['native_admin.test.sql']:
   f=root/'supabase/tests'/test
-  result=sql(f.read_text()); (out/(f.stem+'.tap')).write_text(result)
+  result=sql(f.read_text(encoding='utf-8')); (out/(f.stem+'.tap')).write_text(result)
   if re.search(r'^not ok|^# Looks like',result,re.M): raise RuntimeError('pgTAP failure: '+test)
   count=len(re.findall(r'^ok [0-9]+',result,re.M)); total+=count
   print('PASS SQL local',test,count,'pgTAP checks',flush=True)

@@ -244,6 +244,39 @@ jobs:
             --test commercial_private_writes.test.sql \
             --mail-e2e
 
+      - name: Test commercial write races with LF and CRLF
+        if: steps.docker.outputs.available == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          pg_bin="$(pg_config --bindir)"
+          test -x "$pg_bin/initdb"
+          extension_dir="$(pg_config --sharedir)/extension"
+          # pgTAP is SQL/PLpgSQL only. Reuse the already-pinned image's scripts
+          # with the hosted PostgreSQL binaries; no package download or new image.
+          docker run --rm --network none --entrypoint sh \
+            public.ecr.aws/supabase/postgres:17.6.1.165 \
+            -c 'cd "$(pg_config --sharedir)/extension"; tar -cf - pgtap.control pgtap--*.sql' \
+            > "$RUNNER_TEMP/pgtap-scripts.tar"
+          mkdir "$RUNNER_TEMP/pgtap-scripts"
+          tar -xf "$RUNNER_TEMP/pgtap-scripts.tar" -C "$RUNNER_TEMP/pgtap-scripts"
+          sudo cp "$RUNNER_TEMP"/pgtap-scripts/* "$extension_dir/"
+          "$pg_bin/postgres" --version
+          for newline in lf crlf; do
+            python3 supabase/tests/run-commercial-local.py \
+              --pg-bin "$pg_bin" --migration-newlines "$newline" \
+              --output "$RUNNER_TEMP/commercial-races/$newline"
+          done
+
+      - name: Preserve commercial race diagnostics
+        if: always() && steps.docker.outputs.available == 'true'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: commercial-races-lf-crlf
+          path: ${{ runner.temp }}/commercial-races/
+          if-no-files-found: ignore
+          retention-days: 3
+
       - name: Preserve marketing E2E failure diagnostics
         if: failure() && steps.docker.outputs.available == 'true'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02

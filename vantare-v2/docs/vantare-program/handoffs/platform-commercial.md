@@ -10,8 +10,11 @@ privadas posteriores necesitan guard y dos relaciones son excepciones legítimas
 Preparados: migración nueva, quince rutas reales y regresión SQL de continuidad
 de campaña/borrado/ACL/transferencia de dirección; fuentes LF/CRLF explícitas.
 Detalle por aserción y tabla en `docs/billing/write-races-1702.md`. No se elimina
-el gate. Pendientes pruebas completas LF/CRLF y CI: el Mac dejó de responder
-por SSH durante el trabajo; la prueba SQL se incorpora al job hospedado existente.
+el gate. Ensayo sin HTTP LF/CRLF: 123 rutas/728 checks por formato, run39171419287.
+Por encargo adicional, workflow NUEVO `supabase-commercial-gates.yml` para PR
+a nightly con cambios supabase/**: imagen Supabase17 fijada, PostgREST, Deno,
+control RED y arnés completo LF/CRLF con HTTP. Los workflows existentes y checks
+requeridos quedan intactos. El Mac está dormido; pruebas finales en CI en curso.
 Evidencia externa en `C:/VantareServer/evidence/supabase-write-races/`.
 Sin producción, secretos, proveedores, merge, release ni cambios nativos.
 

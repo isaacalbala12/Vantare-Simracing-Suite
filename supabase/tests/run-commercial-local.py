@@ -115,6 +115,14 @@ $$;
   if args.storage_schema:
    run('psql',*conn,'-f',pathlib.Path(args.storage_schema).resolve())
   run('psql',*conn,'-f',OUT/'bootstrap.sql')
+  if args.docker:
+   # The image's postgres role is NOSUPERUSER. Reuse the existing disposable
+   # hardening harness helper for dblink workers; its EXECUTE ACL is postgres
+   # only. This never changes a product role or deployed function.
+   helper=runner.split("Write-Utf8NoBom $dblinkHelper @'",1)[1].split("'@",1)[0]
+   (OUT/'dblink-helper.sql').write_text('create extension if not exists dblink with schema extensions;\n'+helper)
+   run('psql',*admin_conn(),'-f',OUT/'dblink-helper.sql')
+   conn+=['-v','dblink_unrestricted=1','-v','dblink_password=commercial-local-fixture']
   if args.storage_schema:
    run('psql',*conn,'-c',"create role supabase_storage_admin noinherit bypassrls; grant usage on schema storage to supabase_storage_admin; grant all on all tables in schema storage to supabase_storage_admin;")
   for m in sorted((ROOT/'supabase/migrations').glob('*.sql')):

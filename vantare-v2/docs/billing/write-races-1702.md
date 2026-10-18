@@ -47,7 +47,26 @@ El arnés añade `--migration-newlines lf|crlf`: escribe fuentes con esos bytes 
 de entregarlas a psql, también dentro de los cuerpos de función. La opción
 `--before-private-write-barriers` es el control RED que omite únicamente esta
 migración; el gate normal siempre la aplica. La nueva suite SQL se incorpora
-al arnés completo y al job PostgreSQL de CI, sin continue-on-error.
+al arnés completo, sin continue-on-error.
+
+El workflow independiente `.github/workflows/supabase-commercial-gates.yml` se
+ejecuta en PR a nightly con cambios en `supabase/**`. No modifica workflows
+anteriores ni checks requeridos. Instala clientes PostgreSQL, PostgREST 16.1
+(SHA256 comprobado) y Deno 2.7.13; usa el servidor de la imagen Supabase
+PostgreSQL 17.6.1.165 fijada por digest, con reintentos ECR/Docker Hub.
+`--docker` crea su propio contenedor/base, publicado solo en loopback, con
+credenciales públicas de fixture y limpieza al salir; no acepta DSN remoto.
+Cada formato arranca de cero. Además del gate SQL y las carreras, se ensaya
+HTTP con JWT emitido por el handler nativo y PostgREST real.
+
+Comando después de preparar imagen, PostgREST y caché Deno como en el workflow:
+
+```sh
+python3 supabase/tests/run-commercial-local.py --docker \
+  --pg-bin "$(pg_config --bindir)" --postgrest-bin /ruta/postgrest \
+  --deno-bin "$(command -v deno)" --migration-newlines lf --output /tmp/commercial-lf
+# Repetir con --migration-newlines crlf y otra carpeta de salida.
+```
 
 Resultados finales y comandos reproducibles en
 `C:/VantareServer/evidence/supabase-write-races/`. Estado inicial: baseline

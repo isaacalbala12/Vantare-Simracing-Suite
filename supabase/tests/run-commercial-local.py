@@ -361,7 +361,10 @@ $$;
    if (ROOT/'supabase/tests'/optional).exists(): suites.append(optional)
   if not (args.baseline or args.before_deleted_authorizer or args.before_posthog_consent_clear): suites.append('commercial_private_writes.test.sql')
   for name in suites:
-   try: result=run('psql',*conn,'-f',ROOT/'supabase/tests'/name)
+   # This existing suite deliberately SET ROLEs to the isolated publisher,
+   # whose membership is not granted to managed postgres by the product.
+   test_conn=admin_conn() if args.docker and name=='visual_roadmap_clickup.test.sql' else conn
+   try: result=run('psql',*test_conn,'-f',ROOT/'supabase/tests'/name)
    except Exception as e:
     (OUT/(name+'.log')).write_text(str(e)); raise
    (OUT/(name+'.log')).write_text(result)

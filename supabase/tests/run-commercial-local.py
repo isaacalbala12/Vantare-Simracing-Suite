@@ -61,6 +61,16 @@ with tempfile.TemporaryDirectory(prefix='vantare-commercial-') as tmp:
   bootstrap += "\nalter default privileges in schema public grant all on tables to service_role;\n"
   # Modern PostgREST sends the JSON GUC; preserve the legacy GUC for old fixtures.
   bootstrap += """
+do $$ begin create role authenticator noinherit; exception when duplicate_object then null; end $$;
+-- The minimal fixture follows the Storage version used by the probe suite.
+alter table storage.objects add column if not exists version text;
+do $fixture$ begin
+ if to_regprocedure('storage.foldername(text)') is null then
+  execute $ddl$create function storage.foldername(text) returns text[] language sql immutable as $$
+   select (string_to_array($1,'/'))[1:array_length(string_to_array($1,'/'),1)-1]
+  $$$ddl$;
+ end if;
+end $fixture$;
 create or replace function auth.uid() returns uuid language sql stable as $$
  select coalesce(nullif(current_setting('request.jwt.claim.sub',true),''),auth.jwt()->>'sub')::uuid
 $$;

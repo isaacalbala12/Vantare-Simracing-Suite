@@ -52,13 +52,15 @@ Spec completa: `docs/superpowers/specs/2026-10-02-puente-cuenta-nativa-spec.md` 
 §0–§4 conservan el texto del orquestador. Concreciones de este corte, sujetas a
 su revisión del diff completo:
 
-- Datos: JWT HS256 con `iss=<SUPABASE_URL>/auth/v1`, `aud/role=authenticated`,
-  `sub=UUID interno`, TTL ≤300 s y ≤exp OAuth. `NATIVE_DATA_JWT_SECRET` debe ser
-  exactamente la clave legacy aceptada por el proyecto; se admite
-  `SUPABASE_JWT_SECRET` si ya existe en el runtime. No se inspeccionaron claves
-  remotas. Si solo acepta asimétricas, el uso real queda bloqueado; alternativa
-  propuesta: importar una ES256 dedicada y custodiar su privada en Edge,
-  adaptar WebCrypto y probar kid/gateway/RLS con autorización propia.
+- Datos (actualizado por #1704 / VANTA-96): JWT **ES256 con kid**,
+  `iss=<SUPABASE_URL>/native-data/v1`, `aud=vantare-native-data`,
+  `role=authenticated`, `sub=UUID interno`, procedencia Clerk verificada y TTL
+  ≤300 s y ≤exp OAuth. El firmador lee `NATIVE_DATA_ES256_PRIVATE_JWK`;
+  los consumidores Edge verifican con `NATIVE_DATA_ES256_PUBLIC_JWK`, sin d.
+  No hay fallback a `NATIVE_DATA_JWT_SECRET` ni `SUPABASE_JWT_SECRET`.
+  La importacion de la clave y la prueba del gateway/Storage gestionado requieren
+  autorizacion explicita de Isaac; no estan demostradas por el ensayo local.
+  Procedimiento y limites: [runbook ES256](../../runbooks/native-data-es256.md).
 - `native-auth.ts` comparte el validador OAuth de `native-license`.
   Cliente/scopes/sujeto no autorizados son 401 en las dos funciones nuevas;
   bloqueo `banned`/`locked` se comprueba con Clerk Backend y produce 403.

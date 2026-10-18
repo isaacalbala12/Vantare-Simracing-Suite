@@ -1,3 +1,4 @@
+import { nativeDataKey } from "../_shared/native-data-key.ts";
 import {
   type NativeAuthDeps,
   nativeBearer,
@@ -11,7 +12,7 @@ import { jsonResponse } from "../_shared/responses.ts";
 
 export type AuthorizeDeps = NativeAuthDeps & {
   resolve?: typeof resolveNativeAccount;
-  signing?: { secret: string; supabaseUrl: string };
+  signing?: { privateJwk: string; supabaseUrl: string };
 };
 
 function base64url(bytes: Uint8Array): string {
@@ -21,7 +22,7 @@ function base64url(bytes: Uint8Array): string {
   ).replace(/=+$/, "");
 }
 
-// WebCrypto supplies HS256; no JWT dependency or client-supplied claims/keys.
+// WebCrypto ES256 with an operator-configured kid; no client-supplied claims/keys.
 export async function signDataToken(
   accountId: string,
   now: Date,
@@ -36,16 +37,19 @@ export async function signDataToken(
   ) throw new NativeError(503, "bridge_unavailable");
   if (
     url.origin !== signing.supabaseUrl ||
-    new TextEncoder().encode(signing.secret).length < 32 || !isUuid(accountId)
+    !isUuid(accountId)
   ) {
     throw new NativeError(503, "bridge_unavailable");
   }
+  const { key, kid } = await nativeDataKey(signing.privateJwk, true);
   const issued = Math.floor(now.getTime() / 1000);
   const expires = Math.min(issued + 300, Math.floor(oauthExpiry));
-  if (expires <= issued) throw new NativeError(401, "unauthorized");
+  if (
+    !Number.isFinite(expires) || !Number.isFinite(issued) || expires <= issued
+  ) throw new NativeError(401, "unauthorized");
   const encoder = new TextEncoder();
   const header = base64url(
-    encoder.encode(JSON.stringify({ alg: "HS256", typ: "JWT" })),
+    encoder.encode(JSON.stringify({ alg: "ES256", kid, typ: "JWT" })),
   );
   const payload = base64url(encoder.encode(JSON.stringify({
     iss: `${url.origin}/native-data/v1`,
@@ -62,15 +66,8 @@ export async function signDataToken(
     iat: issued,
     exp: expires,
   })));
-  const key = await crypto.subtle.importKey(
-    "raw",
-    encoder.encode(signing.secret),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
   const signature = await crypto.subtle.sign(
-    "HMAC",
+    { name: "ECDSA", hash: "SHA-256" },
     key,
     encoder.encode(`${header}.${payload}`),
   );
@@ -127,7 +124,7 @@ export async function handleNativeAccountAuthorize(
       identity.now,
       identity.expiration,
       deps.signing ?? {
-        secret: Deno.env.get("NATIVE_DATA_JWT_SECRET") ?? "",
+        privateJwk: Deno.env.get("NATIVE_DATA_ES256_PRIVATE_JWK") ?? "",
         supabaseUrl: Deno.env.get("SUPABASE_URL") ?? "",
       },
       identity,

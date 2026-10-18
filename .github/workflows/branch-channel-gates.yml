@@ -160,6 +160,11 @@ jobs:
             supabase/functions/_shared/testing-center-agent-observability.test.ts \
             supabase/functions/scripts/verify-deploy-surface.test.ts
 
+      - name: Test B01 ES256 bridge and report verification
+        run: |
+          deno test --config supabase/functions/deno.json --allow-env --allow-read \
+            supabase/functions/native-account-authorize supabase/functions/testing-report-submit
+
       - name: Test marketing CI capability contract
         run: |
           python .github/scripts/test_marketing_postgres_ci.py

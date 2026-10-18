@@ -1,5 +1,5 @@
 """Disposable loopback PostgreSQL only. macOS/Linux; never accepts a DSN."""
-import argparse, os, pathlib, socket, subprocess, tempfile, json, time, urllib.request, urllib.error
+import argparse, os, pathlib, socket, subprocess, tempfile, json, time, urllib.request, urllib.error, urllib.parse
 from commercial_tombstone_race import run_tombstone_race
 from commercial_write_race import run_write_races
 from commercial_lock_order import run_lock_order
@@ -12,6 +12,7 @@ parser.add_argument('--output', required=True)
 parser.add_argument('--migration-newlines', choices=['lf','crlf'], default='lf')
 parser.add_argument('--before-private-write-barriers', action='store_true', help='RED: omit only the #1702 private-table guards')
 parser.add_argument('--baseline', action='store_true')
+parser.add_argument('--b01', action='store_true', help='Only real bridge JWT/RLS/Pilot/license/tombstone checks after all migrations; no unrelated writer matrix')
 parser.add_argument('--before-b01', action='store_true')
 parser.add_argument('--postgrest-bin')
 parser.add_argument('--deno-bin')
@@ -39,6 +40,12 @@ parser.add_argument('--testing-identity', action='store_true', help='F1IP and tr
 parser.add_argument('--pilot-profile', action='store_true', help='Pilot live/deleted native-data regression after ALL migrations')
 parser.add_argument('--before-admin-deleted-reads', action='store_true', help='RED: omit r7 admin read fix')
 args=parser.parse_args()
+if args.b01 and (not args.postgrest_bin or not args.deno_bin):
+ parser.error('--b01 requires --postgrest-bin and --deno-bin')
+if args.b01:
+ b01_options={'b01','pg_bin','output','postgrest_bin','deno_bin','signer_module','storage_schema','docker','migration_newlines'}
+ if any(value for name,value in vars(args).items() if name not in b01_options):
+  parser.error('--b01 cannot be combined with historical controls or another test mode')
 ROOT=pathlib.Path(__file__).resolve().parents[2]
 OUT=pathlib.Path(args.output).resolve(); OUT.mkdir(parents=True,exist_ok=True)
 BIN=pathlib.Path(args.pg_bin).resolve()
@@ -242,11 +249,33 @@ $$;
    account=run('psql',*conn,'-c',"select public.native_resolve_account('https://fixture.clerk.invalid','user_aaaaaaaaaaaaaaaaaaaaaaaaaaa')").strip()
    if not args.before_b01 and not args.baseline:
     run('psql',*conn,'-c',"update private.clerk_issuers set native_data_issuer='http://127.0.0.1:54321/native-data/v1' where issuer='https://fixture.clerk.invalid'")
+   script=ROOT/'supabase/tests/commercial-bearers.ts'
+   config=ROOT/'supabase/functions/deno.json'
+   if args.deno_bin.endswith('.exe'):
+    def wp(p): return 'C:'+str(p)[6:]
+    script,config=wp(script),wp(config)
+   read_root=ROOT/'supabase/functions'
+   if args.deno_bin.endswith('.exe'): read_root=wp(read_root)
+   reads=str(read_root)
+   if args.signer_module: reads+=','+args.signer_module.removeprefix('file:///')
+   generator=[args.deno_bin,'run','--cached-only','--no-lock','--allow-read='+reads,'--config',str(config),str(script),account]
+   if args.signer_module: generator.append(args.signer_module)
+   tokens_result=subprocess.run(generator,env=ENV,capture_output=True,text=True,timeout=30)
+   if tokens_result.returncode: raise RuntimeError('Bearer fixture generation failed: '+tokens_result.stderr)
+   generated=json.loads(tokens_result.stdout)
+   tokens=generated['tokens']
+   # Production ES256 uses only public material in the verifier. Keep a legacy
+   # key solely for historical baseline/before-B01 RED controls.
+   jwt_keys=generated['jwks']
+   if args.baseline or args.before_b01:
+    import base64
+    jwt_keys['keys'].append({'kty':'oct','alg':'HS256','k':base64.urlsafe_b64encode(b'commercial-fixture-signing-material-local-only-32-bytes').decode().rstrip('=')})
+
    with socket.socket() as probe:
     probe.bind(('127.0.0.1',0)); http_port=probe.getsockname()[1]
    env=ENV|{'PGRST_DB_URI':f'postgres://bridge_fixture:commercial-local-fixture@127.0.0.1:{port}/{database}',
      'PGRST_DB_SCHEMAS':'public','PGRST_DB_ANON_ROLE':'anon','PGRST_SERVER_HOST':'127.0.0.1','PGRST_SERVER_PORT':str(http_port),
-     'GHCRTS':'-N2', 'PGRST_DB_POOL':'2', 'PGRST_JWT_SECRET':'commercial-fixture-signing-material-local-only-32-bytes',
+     'GHCRTS':'-N2', 'PGRST_DB_POOL':'2', 'PGRST_JWT_SECRET':json.dumps(jwt_keys),
      'PGRST_JWT_AUD':'authenticated' if args.before_b01 or args.baseline else 'vantare-native-data'}
    with (OUT/'postgrest.log').open('w') as log:
     proc=subprocess.Popen([args.postgrest_bin],env=env,stdout=log,stderr=log)
@@ -257,20 +286,6 @@ $$;
       except OSError:
        if proc.poll() is not None: raise RuntimeError('PostgREST startup failed')
        time.sleep(.1) # TCP readiness; avoids repeated OpenAPI introspection.
-     script=ROOT/'supabase/tests/commercial-bearers.ts'
-     config=ROOT/'supabase/functions/deno.json'
-     if args.deno_bin.endswith('.exe'):
-      def wp(p): return 'C:'+str(p)[6:]
-      script,config=wp(script),wp(config)
-     read_root=ROOT/'supabase/functions'
-     if args.deno_bin.endswith('.exe'): read_root=wp(read_root)
-     reads=str(read_root)
-     if args.signer_module: reads+=','+args.signer_module.removeprefix('file:///')
-     generator=[args.deno_bin,'run','--cached-only','--no-lock','--allow-read='+reads,'--config',str(config),str(script),account]
-     if args.signer_module: generator.append(args.signer_module)
-     tokens_result=subprocess.run(generator,env=ENV,capture_output=True,text=True,timeout=30)
-     if tokens_result.returncode: raise RuntimeError('Bearer fixture generation failed: '+tokens_result.stderr)
-     tokens=json.loads(tokens_result.stdout)
      if args.baseline:
       def old_profile():
        req=urllib.request.Request(f'http://127.0.0.1:{http_port}/profiles?select=id',headers={'Authorization':'Bearer '+tokens['valid']})
@@ -315,6 +330,33 @@ $$;
        return json.load(r)
      assert profiles(tokens['valid'])==[{'id':account}], 'own RLS profile missing'
      assert profiles(tokens['other'])==[], 'signed mismatching UUID read profile'
+     # The legacy tester RPC retains authenticated EXECUTE + SECURITY DEFINER.
+     # A valid B01 binding and active tester membership therefore permit it;
+     # this is distinct from the newer testing_report_submit Edge admission.
+     if not args.baseline and not args.before_b01:
+      run('psql',*conn,'-c',f"insert into public.testing_center_memberships(user_id,actor_id,role) values('{account}','fixture:b01-1704','tester')")
+      legacy_payload={'p_contract_version':'testing-center.v1','p_channel':'testers',
+       'p_action_text':'Open Hub','p_expected_text':'Hub appears','p_observed_text':'Hub hangs',
+       'p_context_text':None,'p_app_version':'0.1.0','p_os_family':'windows','p_os_version':'11',
+       'p_module':'hub','p_include_diagnostic':False,'p_include_logs':False,
+       'p_diagnostic_payload':None,'p_diagnostic_digest':None,'p_idempotency_key':'b01-legacy-fixture-1704'}
+      def legacy_submit(token):
+       req=urllib.request.Request(f'http://127.0.0.1:{http_port}/rpc/testing_center_submit_report',
+        data=json.dumps(legacy_payload).encode(),headers={'Content-Type':'application/json','Authorization':'Bearer '+token})
+       try:
+        with urllib.request.urlopen(req,timeout=30) as r: return r.status,json.load(r)
+       except urllib.error.HTTPError as e: return e.code,None
+      code,reports=legacy_submit(tokens['valid'])
+      assert code==200 and isinstance(reports,list) and len(reports)==1, f'legacy tester RPC expected 200, got {code}'
+      assert reports[0]['report_state']=='submitted' and reports[0]['idempotent'] is False, 'legacy report not submitted'
+      report_path='/testing_center_reports?report_id=eq.'+urllib.parse.quote(reports[0]['report_id'],safe='')
+      def legacy_rows(token):
+       req=urllib.request.Request(f'http://127.0.0.1:{http_port}'+report_path,headers={'Authorization':'Bearer '+token})
+       with urllib.request.urlopen(req,timeout=5) as r: return json.load(r)
+      assert len(legacy_rows(tokens['valid']))==1, 'own legacy report missing'
+      assert legacy_rows(tokens['other'])==[], 'legacy report leaked across identity'
+      assert legacy_submit(tokens['other'])[0] in (401,403), 'mismatched legacy submit not denied'
+      (OUT/'legacy-report-jwt-results.log').write_text('ES256 legacy tester RPC 200; submitted own row 1; mismatched identity read 0 and submit denied\n')
      # Anonymous may receive 401/403 or an empty RLS result; never private data.
      try: assert profiles(None)==[], 'anonymous read profile'
      except urllib.error.HTTPError as e: assert e.code in (401,403)
@@ -336,7 +378,7 @@ $$;
       run('psql',*conn,'-c',fixture)
       license_script=ROOT/'supabase/tests/commercial-license.ts'
       if args.deno_bin.endswith('.exe'): license_script=wp(license_script)
-      issued=subprocess.run([args.deno_bin,'run','--cached-only','--no-lock','--config',str(config),'--allow-net=127.0.0.1:'+str(http_port),str(license_script),f'http://127.0.0.1:{http_port}',account],env=ENV,capture_output=True,text=True,timeout=30)
+      issued=subprocess.run([args.deno_bin,'run','--cached-only','--no-lock','--no-config','--allow-net=127.0.0.1:'+str(http_port),str(license_script),f'http://127.0.0.1:{http_port}',account],env=ENV,input=generated['serviceToken'],capture_output=True,text=True,timeout=30)
       if issued.returncode: raise RuntimeError('Native SQL emission fixture failed: '+issued.stderr)
       (OUT/'native-issuance.log').write_text(issued.stdout)
       print(issued.stdout.strip(),flush=True)
@@ -347,11 +389,19 @@ $$;
       with (OUT/'pilot-jwt-results.log').open('a') as result_log: result_log.write('same signed native JWT after deletion: denied '+str(code)+'\n')
      code=reset(tokens['valid']); assert code>=400,'previous bearer survived deletion'
      assert profiles(tokens['valid'])==[], 'previous bearer read profile after deletion'
+     if not args.baseline and not args.before_b01:
+      assert legacy_rows(tokens['valid'])==[], 'previous bearer read legacy report after tombstone'
+      assert legacy_submit(tokens['valid'])[0] in (401,403), 'previous bearer submitted legacy report after tombstone'
+      with (OUT/'legacy-report-jwt-results.log').open('a') as result_log:
+       result_log.write('same ES256 token after tombstone: legacy read 0; legacy submit denied\n')
      results.append('previous bearer after tombstone: denied '+str(code))
      with (OUT/'jwt-results.log').open('a') as result_log: result_log.write('\n'.join(results)+'\n')
-     print('PostgREST real signed bridge JWT: own reset + 9 denials PASS',flush=True)
+     print('PostgREST real signed bridge JWT: own reset + '+str(len(results))+' denials PASS',flush=True)
     finally:
      proc.terminate(); proc.wait(timeout=10)
+  if args.b01:
+   print('B01 targeted gate PASS; unrelated SQL suites/write races not selected',flush=True)
+   raise SystemExit(0)
   suites=['clerk_identity_cutover_test.sql',
    'billing_webhook_inbox.test.sql','billing_commercial_projection.test.sql',
    'billing_reconciliation.test.sql','billing_subscription_lifecycle.test.sql',

@@ -11,8 +11,7 @@ begin
   'private.creator_checkout_attributions'::regclass,
   'private.creator_renewal_operations','private.creator_subscription_revocations',
   'private.report_creator_terms','private.report_renewal_candidates',
-  'private.billing_payment_incidents','private.lifetime_order_admissions',
-  'private.founders_subscription_transitions']::regclass[]
+  'private.billing_payment_incidents','private.lifetime_order_admissions']::regclass[]
  loop
   execute format('create trigger a_account_write_barrier before insert or update or delete on %s
    for each row execute function private.guard_account_write(%L,%L)',relation,
@@ -25,5 +24,10 @@ end $guards$;
 -- serialized event IDs, bounded pull and independently proven ACK unchanged.
 comment on table private.web_purchase_erasure_events is
  'Post-erasure web cleanup duty, enqueued after the identity tombstone. No direct API grants; bounded pull and proven idempotent ACK remain available after account deletion.';
+-- A cancellation sent while live can finish after erasure. The closed backend
+-- completion RPC changes only pending -> completed and updated_at, fenced by
+-- the remote revision. New transitions already require a live account/UUID lock.
+comment on table private.founders_subscription_transitions is
+ 'Retained cancellation duty. New transitions require a live account; closed revision-fenced completion may acknowledge an in-flight cancellation after erasure without restoring account data or rights.';
 -- No FK, ACL, shared-function patch, history deletion or caller bypass.
 commit;

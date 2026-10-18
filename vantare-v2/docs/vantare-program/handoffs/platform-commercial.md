@@ -11,18 +11,21 @@ sus descendientes y se exige que la columna esté compilada en el guard.
 Prueba negativa en transacción con tabla nueva sin FK y descendiente nuevo.
 El primer ensayo descubre además lifetime_order_admissions,
 founders_subscription_transitions y web_purchase_erasure_events. Se amplía #1711
-con el hallazgo real: ocho guards directos, incluidas las dos tablas Founders.
+con el hallazgo real: siete guards directos, incluida lifetime_order_admissions.
+founders_subscription_transitions es deber de cancelación: el ACK tardío debe
+seguir completando una orden ya enviada. Excepción exacta con prueba de ACK
+tras borrado, fencing por revisión, imposibilidad de crear trabajo nuevo y ACL.
 El stream web es deber creado después del tombstone, con ACL cerrada/pull
 acotado/ACK con prueba independiente; excepción exacta y regresión real de
 enqueue/pull/ACK/reintento tras borrado, sin excluir sus descendientes.
 Sin cambios de ACL/FK, borrado de historiales ni parche del guard común.
-Se añaden ocho carreras reales, regresión de UPDATE/reasignación/historial y
+Se añaden siete carreras reales, regresión de UPDATE/reasignación/historial y
 las suites existentes de renovaciones e incidencias para los escritores reales.
-Ensayo completo PASS en run39175662567, implementación6872cfc48: LF y CRLF
+Ensayo anterior PASS en run39175662567, implementación6872cfc48: LF y CRLF
 exit0; 94 migraciones, 23 suites/758 pgTAP, 131 rutas/778 comprobaciones de
 carreras, JWT/PostgREST y Ed25519. Artefactos descargados y bytes de las 94
-fuentes comprobados en ambos formatos. Ocho tablas protegidas; única raíz sin
-FK no protegida: el deber web, con regresión de su ciclo después del borrado.
+fuentes comprobados en ambos formatos. Ese ensayo precede al ajuste del deber
+de cancelación y a B01; evidencia definitiva del HEAD actual en PR/issue #1711.
 PR #1712 a nightly: workflow comercial LF/CRLF y CI consultables en
 https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1712.
 Siguiente paso: revisión del orquestador tras validar el ensayo; sin producción,

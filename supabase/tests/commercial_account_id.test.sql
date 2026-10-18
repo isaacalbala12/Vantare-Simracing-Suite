@@ -5,7 +5,7 @@ create temporary table ledgers(relation regclass);
 insert into ledgers values ('private.creator_checkout_attributions'),('private.creator_renewal_operations'),
  ('private.creator_subscription_revocations'),('private.report_creator_terms'),
  ('private.report_renewal_candidates'),('private.billing_payment_incidents'),
- ('private.lifetime_order_admissions'),('private.founders_subscription_transitions');
+ ('private.lifetime_order_admissions');
 select ok(exists(select 1 from pg_trigger where tgrelid=relation and tgname='a_account_write_barrier'
  and tgenabled='O' and (tgtype&31)=31),relation::text||': full enabled write barrier') from ledgers;
 select ok(not has_table_privilege('service_role',relation,'insert')
@@ -44,6 +44,25 @@ create function pg_temp.retained(r regclass) returns bigint language plpgsql as 
 declare n bigint; begin execute format('select count(*) from %s where account_id=%L',r,
  '17110000-0000-4000-8000-000000000001') into n; return n; end $$;
 select is(pg_temp.retained(relation),1::bigint,relation::text||': history survives account erasure') from ledgers;
+
+-- Preserve the real in-flight cancellation ACK contract: closed RPC, matching
+-- remote revision, metadata-only completion after deletion; never new work.
+update private.founders_subscription_transitions set last_reactivation_at='2026-10-27T12:00:00Z' where subscription_id='account-id';
+select lives_ok($$select public.billing_complete_founders_transition('sandbox','account-id')$$,
+ 'stale cancellation ACK is harmless after erasure');
+select is((select state from private.founders_subscription_transitions where subscription_id='account-id'),'pending',
+ 'stale revision cannot acknowledge a newer cancellation');
+select lives_ok($$select public.billing_complete_founders_transition('sandbox','account-id','2026-10-27T12:00:00Z')$$,
+ 'matching cancellation ACK remains valid after erasure');
+select is((select state from private.founders_subscription_transitions where subscription_id='account-id'),'completed',
+ 'in-flight cancellation duty completes after erasure');
+select is(public.billing_founders_subscription_transitions('sandbox',null,'17110000-0000-4000-8000-000000000001'),
+ '[]'::jsonb,'erased account cannot schedule new cancellation work');
+select is((select account_id from private.founders_subscription_transitions where subscription_id='account-id'),
+ '17110000-0000-4000-8000-000000000001'::uuid,'ACK retains original account provenance');
+select ok(not has_table_privilege('service_role','private.founders_subscription_transitions','update')
+ and not has_function_privilege('authenticated','public.billing_complete_founders_transition(text,text,timestamptz)','execute'),
+ 'cancellation exception grants neither raw writes nor client ACK');
 
 -- The web event is deliberately outside live ownership: its only writer is
 -- the canonical tombstone, and the consumer confirms an independently signed

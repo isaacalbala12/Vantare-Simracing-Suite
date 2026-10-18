@@ -168,3 +168,12 @@ El script CLI de licencia se comprueba con las bibliotecas estandar de Deno
 La configuracion de los handlers sigue aplicandose a sus pruebas. La suite Deno
 global sobre el checkout base ya presenta errores de tipos ajenos a este corte;
 no se corrigen ni se presentan como PASS aqui.
+
+### Gate CI de esta entrega
+
+El PR activo es #1708, rama `vantareapp/isa-1704-b01-es256`; sustituye el #1706
+cerrado por nombre incompatible con la politica. El orquestador ha indicado
+incorporar mediante merge el workflow de #1702 cuando llegue a nightly y ejecutar
+alli el arnes PostgreSQL/PostgREST real. Los 79 tests Deno y el generador TEST
+locales ya pasan, pero no sustituyen ese gate. No marcar el PR listo antes
+del ensayo y de la CI verde sobre el HEAD definitivo.

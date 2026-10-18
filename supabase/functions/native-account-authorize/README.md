@@ -11,8 +11,9 @@ Generador protegido, pruebas, importacion autorizada, limites y reversion:
 [runbook ES256](../../../vantare-v2/docs/runbooks/native-data-es256.md).
 
 La confianza gestionada y el registro Clerk Production siguen siendo una
-activacion separada pendiente de Isaac. Los tests prueban PostgREST local
-con publica ES256; no certifican gateway/Storage gestionado ni login real.
+activacion separada pendiente de Isaac. El arnes prepara PostgREST local
+con publica ES256; su ejecucion real y CI siguen pendientes del workflow #1702.
+No certifica gateway/Storage gestionado ni login real.
 Importar una clave le da autoridad de proyecto: dedicada no limita los roles
 que podria emitir quien posea la privada. No compartir claves de licencia/Clerk.
 

@@ -58,10 +58,18 @@ jobs:
           tar -xJf "$archive" -C "$RUNNER_TEMP/postgrest"
           "$RUNNER_TEMP/postgrest/postgrest" --version
       - name: Cache native bearer fixture dependencies
-        run: >-
-          deno cache --frozen --node-modules-dir=auto --config supabase/functions/deno.json
-          supabase/tests/commercial-bearers.ts supabase/tests/commercial-license.ts
-          supabase/functions/native-account-authorize/index.ts
+        shell: bash
+        run: |
+          set -euo pipefail
+          deno cache --frozen --node-modules-dir=auto --config supabase/functions/deno.json \
+            supabase/tests/commercial-bearers.ts supabase/tests/commercial-license.ts \
+            supabase/functions/native-account-authorize/index.ts
+          # esm.sh also loads computed dynamic imports at runtime. Warm the real
+          # synthetic handler once, with its external API doubles. Never print
+          # its JWT; the actual harness then enforces --cached-only.
+          deno run --no-lock --config supabase/functions/deno.json \
+            --allow-read=supabase/functions supabase/tests/commercial-bearers.ts \
+            17020000-0000-4000-8000-000000000001 >/dev/null
       - name: Verify missing-barrier RED control
         shell: bash
         run: |

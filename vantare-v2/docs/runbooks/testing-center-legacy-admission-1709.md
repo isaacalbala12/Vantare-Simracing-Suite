@@ -1,22 +1,33 @@
 # #1709 / VANTA-96 · Envío legacy de informes y admisión
 
-19-oct-2026. **Investigación y propuesta, no implementación ni autorización de
-producción.** Base examinada: nightly `999d5950745f73be0e38a1763422f53b515c6866`.
-La tercera vía del encargo se aplica: existe un consumidor legítimo activo.
-Revocar ahora `EXECUTE authenticated` rompería el botón de envío del Hub.
+19-oct-2026. El orquestador aprobó implementar la propuesta en el mismo PR
+#1710, después de #1708. Base de inventario: nightly
+`999d5950745f73be0e38a1763422f53b515c6866`.
 
-## Resultado y límite
+## Estado de implementación
 
-No basta con afirmar que la app usa `testing-report-submit`: hay dos flujos
-distintos coexistiendo en el mismo binario. El formulario rico del Testing Center
-usa las RPC `testing_center_*`; el formulario moderno y el triaje usan la Edge.
-El segundo flujo no ha sustituido al primero en el código vigente.
+El transporte de `Reports::send` pasa a `testing-report-submit` con y sin
+capturas. El Hub conserva `ReportSend`, preview/consentimiento, borrador,
+intento durable, reintento manual y recibo; no cambia el IPC. Las capturas
+siguen preparándose, subiendo a Storage y finalizándose antes del envío.
+`evidence_not_ready` conserva el reintento mientras se validan los bytes.
+La allowlist Rust retira las dos rutas de envío RPC.
 
-El cierre de seguridad **no está hecho**. Este documento responde al inventario
-y a la propuesta solicitados; #1709 debe seguir abierto hasta acordar el corte,
-implementarlo y superar los gates reales antes de reconstruir producción.
-No se añade una migración de revocación aislada ni se presenta un test de
-denegación como prueba de un comportamiento que aún no se ha implementado.
+La Edge acepta el envelope cerrado `testing-center.v1` después de la misma
+admisión IP/cuenta y devuelve un solo recibo validado. No acepta cuenta/IP del
+body, prosa del tester ni diagnósticos. Los formularios modernos mantienen su
+contrato. Todos consumen las mismas cuotas existentes, también los reintentos.
+
+La migración de compatibilidad `20261018224039_isa_1709_report_admitted.sql`
+añade un adaptador público solo para service_role y núcleos privados con UUID
+verificado. Conserva membership/canal, idempotencia, evidencia/transport size y
+la barrera de cuentas eliminadas; no fabrica claims. En esta fase no retira
+permisos legacy. El cierre va después del cambio del cliente, en otro commit y
+otra migración. Ningún paso se ha desplegado.
+
+Pruebas iniciales: Deno 20 PASS / 1 integración omitida; Rust services 219 PASS / 2 omisiones existentes, incluidos 19 tests de informes; Clippy services --all-targets PASS.
+SQL/ACL y PostgreSQL/PostgREST reales aún pendientes del workflow #1702 en
+nightly; ES256 depende de #1708. El PR sigue draft y la issue abierta.
 
 ## Inventario de consumidores
 
@@ -42,7 +53,7 @@ Las rutas de la tabla empiezan en `vantare-v2/` para `native/`. El código retir
 Wails/React no se usa como evidencia de un consumidor vigente. Tampoco se ha
 deducido qué versión ejecuta cada instalador real.
 
-## Por qué hoy se espera 200
+## Por qué en la base del inventario se esperaba 200
 
 `20260802180000_testing_center_codex_control.sql:87` concede EXECUTE a
 authenticated para `testing_center_submit_report` (15 argumentos). Su wrapper
@@ -147,11 +158,11 @@ el patrón servidor existente; no se trata de un proxy arbitrario de RPC/SQL.
   No retirar los tests históricos de transporte sin sustituir su protección.
 - Negativos criptográficos B01 de #1708, RLS y carreras de #1702 conservados.
   Ejecutar los gates nativos/CI adecuados porque el corte posterior sí tocará
-  Rust; esta entrega documental no acredita esas pruebas.
+  Rust; registrar resultados de esta implementación sin atribuirle pruebas omitidas.
 
 ## Orden de corte y reversión
 
-Antes de reconstruir: aprobar propuesta, implementar servidor/Rust/migración en
+Antes de reconstruir: terminar servidor/Rust/migración en
 issue/PR trazados, revisar seguridad y cerrar arnés real/CI. Coordinar con #1704
 para que su test de legado cambie de expectativa 200 a denegación **solo al
 incorporar la nueva migración**, conservando evidencia previa. La cuota debe
@@ -170,11 +181,11 @@ Una excepción temporal a la admisión requeriría decisión explícita distinta
 
 ## Entrega y estado
 
-Esta rama contiene **solo inventario/propuesta** bajo la opción 3 del encargo.
-No introduce migración, cambio Rust, permisos, dependencia ni llamadas a Supabase.
-Se registra la necesidad de decisión e implementación; no es una certificación
-de cierre del riesgo ni una autorización para reconstruir producción.
+La propuesta quedó aprobada. Esta rama contiene el transporte Rust, la Edge
+compatible, el adaptador SQL y sus regresiones. La retirada de permisos se
+prepara después del commit de compatibilidad. El inventario anterior describe
+la base examinada, no el comportamiento final del nuevo cliente.
 
-El PR permanecerá borrador mientras se incorpora el workflow real de #1702 y se
-verifica la CI aplicable. La propuesta debe revisarse antes de ampliar este
-encargo a implementación. #1708 conserva su propio alcance ES256 y sus gates.
+El PR permanece borrador hasta integrar #1708 y el workflow real de #1702 desde
+nightly, ejecutar PostgreSQL/PostgREST y verificar la CI completa. No acredita
+cierre del riesgo ni autoriza reconstruir producción antes de esos gates.

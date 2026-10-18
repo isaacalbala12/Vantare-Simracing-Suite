@@ -152,6 +152,14 @@ fn hold_draft(root: &std::path::Path) -> std::fs::File {
         .expect("hold own fixture without delete sharing")
 }
 fn assert_text_only_retry(first: &str, second: &str, preview: &Preview) {
+    for request in [first, second] {
+        assert!(request.starts_with("POST /functions/v1/testing-report-submit "));
+        let body: serde_json::Value =
+            serde_json::from_str(request.split("\r\n\r\n").nth(1).expect("body")).expect("JSON");
+        assert!(body.get("p_account").is_none());
+        assert!(body.get("p_ip").is_none());
+        assert!(body.get("p_batch_id").is_none());
+    }
     assert_eq!(
         first.split("\r\n\r\n").nth(1),
         second.split("\r\n\r\n").nth(1)
@@ -234,7 +242,7 @@ fn screenshots_upload_then_finalize_then_attach_and_retry_after_validation() {
         screenshots::Screenshot::encode(&image::DynamicImage::new_rgb8(64, 48)).expect("JPEG");
     let server = Server::start(vec![authorization(),
         (200,screenshot_batch(&image,"prepared")),(200,"{}".into()),(200,"[]".into()),
-        (400,serde_json::json!({"code":"55000","message":"testing_center_evidence_not_ready"}).to_string()),
+        (400,serde_json::json!({"error":"evidence_not_ready"}).to_string()),
         (200,screenshot_batch(&image,"ready")),
         (200,serde_json::json!([{"report_id":format!("report_{}","a".repeat(64)),"report_state":"submitted","idempotent":false,"created_at":"2026-10-03T10:00:00Z"}]).to_string())]);
     let (root, store) = crate::test_store("report-images");
@@ -304,9 +312,9 @@ fn screenshots_upload_then_finalize_then_attach_and_retry_after_validation() {
         "/rest/v1/rpc/testing_center_prepare_screenshot_batch",
         "/storage/v1/object/testing-center-evidence/v1/",
         "/rest/v1/rpc/testing_center_finalize_screenshot",
-        "/rest/v1/rpc/testing_center_submit_report_with_evidence",
+        "/functions/v1/testing-report-submit",
         "/rest/v1/rpc/testing_center_prepare_screenshot_batch",
-        "/rest/v1/rpc/testing_center_submit_report_with_evidence",
+        "/functions/v1/testing-report-submit",
     ] {
         let sent = server
             .requests
@@ -319,10 +327,87 @@ fn screenshots_upload_then_finalize_then_attach_and_retry_after_validation() {
                     .contains("authorization: bearer data-fixture")
             );
         }
+        if route == "/functions/v1/testing-report-submit" {
+            assert_batch_request(&sent, &payload["reporte"]["p_idempotency_key"]);
+        }
     }
     server.finish();
     drop(store);
     crate::cleanup_store(&root, "report-images", &[]);
+}
+
+fn assert_batch_request(sent: &str, key: &serde_json::Value) {
+    let body: serde_json::Value =
+        serde_json::from_str(sent.split("\r\n\r\n").nth(1).expect("body")).expect("JSON");
+    assert_eq!(body["p_batch_id"], "550e8400-e29b-41d4-a716-446655440001");
+    assert_eq!(&body["p_idempotency_key"], key);
+    assert!(body.get("p_account").is_none());
+}
+
+#[test]
+fn edge_quota_preserves_durable_report_for_manual_retry_and_legacy_routes_are_closed() {
+    let server = Server::start(vec![
+        authorization(),
+        (429, "{\"error\":\"rate_limited\"}".into()),
+        (200, serde_json::json!([{"report_id":format!("report_{}","c".repeat(64)),"report_state":"submitted","idempotent":false,"created_at":"2026-10-19T00:00:00Z"}]).to_string()),
+    ]);
+    let (root, store) = crate::test_store("report-edge-quota");
+    let account = account::fixture(&server.base, &store);
+    let http = Http::default();
+    let config = Config {
+        authorize: server
+            .base
+            .join("functions/v1/native-account-authorize")
+            .expect("URL"),
+        supabase: server.base.clone(),
+        anon_key: "public-fixture".into(),
+    };
+    let session = config.authorize(&http, &account, 100).expect("authorize");
+    let request = session.request(&http, &config, &account, 100);
+    for route in [
+        "rest/v1/rpc/testing_center_submit_report",
+        "rest/v1/rpc/testing_center_submit_report_with_evidence",
+    ] {
+        assert!(matches!(request.post(route, &()), Err(Error::Protocol)));
+    }
+    let draft = save_draft(&store, fields()).expect("draft");
+    let mut reports = Reports::restore(&store).expect("restore");
+    let preview = reports
+        .prepare(&request, draft.clone(), environment())
+        .expect("preview");
+    assert!(matches!(
+        reports.send(&request, &preview.id, &store),
+        Err(Error::Uncertain)
+    ));
+    assert_eq!(
+        load_draft(&store)
+            .expect("load")
+            .expect("retained")
+            .idempotency_key,
+        draft.idempotency_key
+    );
+    let mut restored = Reports::restore(&store).expect("restore");
+    let retry = restored
+        .prepare_retry(&request, "nightly")
+        .expect("manual consent");
+    restored.send(&request, &retry.id, &store).expect("receipt");
+    server
+        .requests
+        .recv_timeout(Duration::from_secs(3))
+        .expect("authorize");
+    let first = server
+        .requests
+        .recv_timeout(Duration::from_secs(3))
+        .expect("quota request");
+    let second = server
+        .requests
+        .recv_timeout(Duration::from_secs(3))
+        .expect("retry request");
+    assert_text_only_retry(&first, &second, &retry);
+    assert!(load_draft(&store).expect("load").is_none());
+    server.finish();
+    drop(store);
+    crate::cleanup_store(&root, "report-edge-quota", &[]);
 }
 
 #[test]
@@ -567,7 +652,7 @@ fn durable_manual_retry_keeps_exact_payload_and_receipt_survives_cleanup_failure
         .requests
         .recv_timeout(Duration::from_secs(3))
         .expect("first submit");
-    assert!(first.starts_with("POST /rest/v1/rpc/testing_center_submit_report "));
+    assert!(first.starts_with("POST /functions/v1/testing-report-submit "));
     assert!(matches!(
         store
             .load::<Attempt>("report-attempt")

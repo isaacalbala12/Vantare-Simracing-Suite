@@ -111,10 +111,8 @@ impl DataSession {
             path,
             "functions/v1/license-credential"
                 | "rest/v1/rpc/reset_active_device"
-                | "rest/v1/rpc/testing_center_submit_report"
                 | "rest/v1/rpc/testing_center_prepare_screenshot_batch"
                 | "rest/v1/rpc/testing_center_finalize_screenshot"
-                | "rest/v1/rpc/testing_center_submit_report_with_evidence"
                 | "rest/v1/rpc/testing_participation_current"
                 | "rest/v1/rpc/testing_participation_current_v2"
                 | "functions/v1/testing-report-submit"

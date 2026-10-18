@@ -1,3 +1,12 @@
+## 2026-10-19 - #1709 / VANTA-96: implementacion aprobada, fase compatible
+
+- Orquestador aprueba continuar en PR draft #1710; prioridad despues de #1708.
+- Services cambia ReportSend con/sin capturas a testing-report-submit; mismo consentimiento, intento durable, recibo y reintento. Hub/IPC sin cambios.
+- Edge acepta envelope rico cerrado tras la admision IP/cuenta existente. Cuenta del bearer verificado, nunca del body; misma cuota para formularios y reintentos.
+- Migracion 20261018224039 compatible: adaptador service-only y cores privados con UUID, membership y barrera de cuenta borrada. Los permisos legacy siguen vigentes hasta la fase de cierre posterior.
+- Deno 20 PASS / 1 integracion omitida; Rust reportes 19 PASS. SQL y arnes real pendientes de #1702 en nightly, ES256 de #1708. No afirmar cierre de seguridad ni CI final verde.
+- Rama vantareapp/isa-1709-rpc-legacy-reportes; sin produccion, deploy, secretos, dependencias, merge ni release. Runbook testing-center-legacy-admission-1709.md.
+
 ## #1709 / VANTA-96 - Consumidor legacy y propuesta de admision (19-oct-2026)
 
 Encargo del orquestador separado de ES256 #1708. Rama propia

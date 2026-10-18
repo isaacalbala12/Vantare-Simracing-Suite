@@ -1,3 +1,11 @@
+## 2026-10-19 - #1709 / VANTA-96: adaptar fixture admin al cierre
+
+- Run39176062419 fallo en el RED control antes de llegar al control esperado: native_admin.test.sql:70 creaba informe como authenticated via RPC legacy ya cerrada.
+- Nightly bf7e21c61 (#1712) incorporado mediante merge43af752bc, sin conflicto/rebase/force-push. Produccion reconstruida en paralelo queda fuera de este trabajo; #1710 sera migracion posterior.
+- Fixture admin actual crea el informe como service_role mediante adaptador admitido; vuelve a authenticated para mantener RLS propia/ajena y preparacion de capturas. Prueba por separado ACL legacy cerrada y membership del adaptador nuevo; no se reabre EXECUTE.
+- Runner historico conserva su recorrido pre-corte solo si el adaptador aun no existe. Suites historicas de checkpoint no se convierten en pruebas del catalogo actual.
+- Pendiente nueva CI real LF/CRLF y checks completos del HEAD. No afirmar PASS ni sacar draft antes. Sin cambios remotos Supabase, deploy, secretos ni release.
+
 ## 2026-10-19 - #1709 / VANTA-96: ES256 y workflow real incorporados
 
 - #1708 fusionado por el orquestador en nightly147372fa9. Merge local 352f31620 en rama propia #1710, sin conflictos, rebase ni force-push.

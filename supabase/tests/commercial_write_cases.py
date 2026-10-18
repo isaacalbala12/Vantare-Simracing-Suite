@@ -208,6 +208,8 @@ CASES += [
  ('creator-terms', "insert into private.report_creator_terms(environment,subscription_id,account_id,duration_months) values('sandbox','{case}','{a}',6)"),
  ('report-renewal-candidate', "insert into private.report_renewal_candidates values('sandbox','{case}','{a}','{new_id}',100,now()+interval '1 month')"),
  ('payment-incident', "insert into private.billing_payment_incidents(environment,account_id,resource_id,reason) values('sandbox','{a}','{case}','fixture')"),
+ ('lifetime-admission', "insert into private.lifetime_order_admissions values('sandbox','{case}','{a}','founders','fixture',now())"),
+ ('founders-transition', "insert into private.founders_subscription_transitions(environment,subscription_id,account_id,founders_order_id,policy,state) values('sandbox','{case}','{a}','{case}','end_period','pending')"),
 ]
 
 # R9: Edge admission must preserve live writes and reject a racing tombstone.

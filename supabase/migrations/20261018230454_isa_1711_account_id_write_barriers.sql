@@ -11,12 +11,19 @@ begin
   'private.creator_checkout_attributions'::regclass,
   'private.creator_renewal_operations','private.creator_subscription_revocations',
   'private.report_creator_terms','private.report_renewal_candidates',
-  'private.billing_payment_incidents']::regclass[]
+  'private.billing_payment_incidents','private.lifetime_order_admissions',
+  'private.founders_subscription_transitions']::regclass[]
  loop
   execute format('create trigger a_account_write_barrier before insert or update or delete on %s
    for each row execute function private.guard_account_write(%L,%L)',relation,
    'select array[($1->>''account_id'')::uuid]','select false');
  end loop;
 end $guards$;
--- No FK, ACL, shared-function patch, history deletion or post-erasure bypass.
+-- The expanded inventory also finds the web cleanup stream: its event is
+-- inserted by the canonical identity tombstone trigger AFTER deleted_at.
+-- It is a post-erasure duty, not a live-account writer. Keep its closed ACL,
+-- serialized event IDs, bounded pull and independently proven ACK unchanged.
+comment on table private.web_purchase_erasure_events is
+ 'Post-erasure web cleanup duty, enqueued after the identity tombstone. No direct API grants; bounded pull and proven idempotent ACK remain available after account deletion.';
+-- No FK, ACL, shared-function patch, history deletion or caller bypass.
 commit;

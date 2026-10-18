@@ -6,10 +6,14 @@ Rama propia `vantareapp/isa-1711-account-id-barriers`.
 Inventario ampliado: account_id es raíz aunque no tenga FK; también se recorren
 sus descendientes y se exige que la columna esté compilada en el guard.
 Prueba negativa en transacción con tabla nueva sin FK y descendiente nuevo.
-Migración nueva: seis guards directos para atribución, operación y revocación
-de creador, plazos/candidatos de informes e incidencias de pago. Sin excepciones
-nuevas, cambios de ACL/FK, borrado de historiales ni parche del guard común.
-Se añaden seis carreras reales, regresión de UPDATE/reasignación/historial y
+El primer ensayo descubre además lifetime_order_admissions,
+founders_subscription_transitions y web_purchase_erasure_events. Se amplía #1711
+con el hallazgo real: ocho guards directos, incluidas las dos tablas Founders.
+El stream web es deber creado después del tombstone, con ACL cerrada/pull
+acotado/ACK con prueba independiente; excepción exacta y regresión real de
+enqueue/pull/ACK/reintento tras borrado, sin excluir sus descendientes.
+Sin cambios de ACL/FK, borrado de historiales ni parche del guard común.
+Se añaden ocho carreras reales, regresión de UPDATE/reasignación/historial y
 las suites existentes de renovaciones e incidencias para los escritores reales.
 PR #1712 a nightly: workflow comercial LF/CRLF y CI consultables en
 https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1712.

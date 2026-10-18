@@ -232,9 +232,9 @@ with recursive roots(rel) as (
  -- Approval is historical metadata, not ownership of the broadcast/recipients.
  and not(c.conrelid='private.mail_campaigns'::regclass and c.conname='mail_campaigns_approved_by_fkey'))
 select coalesce(string_agg(rel::regclass::text,','),'') from expected
- -- The cleanup queue is created AFTER tombstone and must retry/expire/ACK.
- -- Its closed ACL and actual post-erasure lifecycle are separate SQL regressions.
- where rel<>'private.mail_contact_erasures'::regclass and not exists(
+ -- These duties are created AFTER tombstone; cleanup/ACK must remain possible.
+ -- Closed ACL and actual post-erasure lifecycles have separate SQL regressions.
+ where rel not in ('private.mail_contact_erasures'::regclass,'private.web_purchase_erasure_events'::regclass) and not exists(
  select 1 from pg_trigger t where t.tgrelid=rel and t.tgname='a_account_write_barrier'
  and t.tgenabled='O' and (t.tgtype & 31)=31);
 """
@@ -252,7 +252,7 @@ join pg_namespace n on n.oid=t.relnamespace join pg_attribute a on a.attrelid=t.
 left join pg_trigger g on g.tgrelid=t.oid and g.tgname='a_account_write_barrier'
 where n.nspname in ('public','private','storage','pilot_private') and t.relkind in ('r','p')
 and a.attname='account_id' and a.attnum>0 and not a.attisdropped
-and t.oid<>'private.mail_contact_erasures'::regclass
+and t.oid not in ('private.mail_contact_erasures'::regclass,'private.web_purchase_erasure_events'::regclass)
 and (g.oid is null or position(format('$1->>%L',a.attname) in encode(g.tgargs,'escape'))=0);
 """)
         check(not bare_missing, 'catalog: compiled guard includes every account_id column: ' + bare_missing)
@@ -260,7 +260,7 @@ and (g.oid is null or position(format('$1->>%L',a.attname) in encode(g.tgargs,'e
 select coalesce(string_agg(c.conname,','),'') from pg_constraint c
 join pg_trigger parent on parent.tgrelid=c.confrelid and parent.tgname='a_account_write_barrier'
 left join pg_trigger child on child.tgrelid=c.conrelid and child.tgname='a_account_write_barrier'
-where c.contype='f' and c.conrelid<>'private.mail_contact_erasures'::regclass
+where c.contype='f' and c.conrelid not in ('private.mail_contact_erasures'::regclass,'private.web_purchase_erasure_events'::regclass)
 and not(c.conrelid='private.mail_campaigns'::regclass and c.conname='mail_campaigns_approved_by_fkey')
 and (child.oid is null or exists(
  select 1 from unnest(c.conkey) k join pg_attribute a on a.attrelid=c.conrelid and a.attnum=k

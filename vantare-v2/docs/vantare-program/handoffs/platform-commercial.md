@@ -1,3 +1,20 @@
+## VANTA-96 / #1702 · Cierre de carreras comerciales (19-oct-2026, en curso)
+
+Encargo del orquestador desde nightly999d59507 (#1703 integrado). Rama propia
+`vantareapp/isa-1702-write-races`. Baseline reproducido: 633 PASS/9 FAIL.
+Diagnóstico: las tres aserciones inbox-checkout usan una fixture sin dispatch
+v2; cuatro tablas admin tienen guard pero no ruta en la matriz; once tablas
+privadas posteriores necesitan guard y dos relaciones son excepciones legítimas
+(cola de borrado tras tombstone y aprobador histórico de campañas).
+
+Preparados: migración nueva, quince rutas reales y regresión SQL de continuidad
+de campaña/borrado/ACL/transferencia de dirección; fuentes LF/CRLF explícitas.
+Detalle por aserción y tabla en `docs/billing/write-races-1702.md`. No se elimina
+el gate. Pendientes pruebas completas LF/CRLF y CI: el Mac dejó de responder
+por SSH durante el trabajo; la prueba SQL se incorpora al job hospedado existente.
+Evidencia externa en `C:/VantareServer/evidence/supabase-write-races/`.
+Sin producción, secretos, proveedores, merge, release ni cambios nativos.
+
 ## VANTA-96 / #1701 · Ensayo de reconstrucción Supabase (18-oct-2026)
 
 Isaac confirma que producción no contiene usuarios/compras reales y dispone de

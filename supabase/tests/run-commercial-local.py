@@ -8,6 +8,8 @@ from commercial_storage_race import run_storage_owners, run_storage_multipart, r
 parser=argparse.ArgumentParser()
 parser.add_argument('--pg-bin', required=True)
 parser.add_argument('--output', required=True)
+parser.add_argument('--migration-newlines', choices=['lf','crlf'], default='lf')
+parser.add_argument('--before-private-write-barriers', action='store_true', help='RED: omit only the #1702 private-table guards')
 parser.add_argument('--baseline', action='store_true')
 parser.add_argument('--before-b01', action='store_true')
 parser.add_argument('--postgrest-bin')
@@ -89,6 +91,7 @@ $$;
    if args.before_pilot_identity and 'pilot_identity' in m.name: continue
    # RED controls omit the dependent adapters as well as their missing guards.
    legacy = args.baseline or args.before_write_barrier
+   if (legacy or args.before_private_write_barriers or args.before_deleted_authorizer or args.before_posthog_consent_clear) and 'isa_1702_private_write_barriers' in m.name: continue
    if legacy and m.name.startswith(('2026101416','2026101509')) and 'isa_1608_' in m.name: continue
    if args.before_storage_multipart and 'managed_storage_abort' in m.name: continue
    if (args.before_admin_deleted_reads or args.before_admin_lock_order or args.before_lock_order) and 'admin_deleted_reads' in m.name: continue
@@ -119,7 +122,12 @@ $$;
     assert pattern in definition
     run('psql',*conn,'-c',definition.replace(pattern,replacement))
     before=run('psql',*conn,'-c',"select pg_get_functiondef('private.storage_owner_accounts(jsonb)'::regprocedure),pg_get_functiondef('public.apply_clerk_user_event(text,text,text,text,text,timestamptz,text)'::regprocedure)")
-   try: result=run('psql',*conn,'-f',m)
+   # Exercise exactly the chosen on-disk newline format, including function bodies.
+   migration_source=OUT/'migration-sources'/m.name
+   migration_source.parent.mkdir(exist_ok=True)
+   source=m.read_text(encoding='utf-8')
+   migration_source.write_bytes(source.replace('\n','\r\n').encode('utf-8') if args.migration_newlines=='crlf' else source.encode('utf-8'))
+   try: result=run('psql',*conn,'-f',migration_source)
    except Exception as e:
     (OUT/(m.name+'.log')).write_text(str(e))
     if pilot_patch and 'P0001' in str(e) and 'pilot_cutover_'+args.pilot_patch_drift+'_changed' in str(e):
@@ -310,6 +318,7 @@ $$;
    'canonical_device_claim.test.sql','native_admin.test.sql','visual_roadmap_clickup.test.sql']
   for optional in ['commercial_tombstone.test.sql','commercial_data_boundary.test.sql','commercial_refunds.test.sql','commercial_admin_deleted.test.sql','commercial_storage_probe.test.sql','commercial_pilot_deletion.test.sql','testing_followup_F1IP.test.sql','commercial_testing_identity.test.sql','commercial_posthog_consent.test.sql']:
    if (ROOT/'supabase/tests'/optional).exists(): suites.append(optional)
+  if not (args.baseline or args.before_deleted_authorizer or args.before_posthog_consent_clear): suites.append('commercial_private_writes.test.sql')
   for name in suites:
    try: result=run('psql',*conn,'-f',ROOT/'supabase/tests'/name)
    except Exception as e:

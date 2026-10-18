@@ -241,6 +241,7 @@ jobs:
             --test marketing_mail_consent.test.sql \
             --test marketing_mail_hardening.test.sql \
             --test native_admin_deletion_r4.test.sql \
+            --test commercial_private_writes.test.sql \
             --mail-e2e
 
       - name: Preserve marketing E2E failure diagnostics

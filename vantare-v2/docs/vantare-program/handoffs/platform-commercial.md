@@ -18,11 +18,20 @@ de tipos ajenos, reproducidos tambien en nightly base. Arnes local actualizado
 con JWKS publico ES256 efimero y gate --b01; pendiente ejecucion Unix real.
 La matriz comercial general sigue separada en #1702, sin debilitarla.
 
-Pendientes al redactar: el gate de ramas rechaza el nombre pedido sin numero;
-se solicita renombrar a vantareapp/isa-1704-b01-es256. Mac SSH no accesible;
-cuenta actual sin WSL. Sigue implementacion/revision/PR y CI, no entrega verde.
-No merge, promocion, release, importacion/rotacion, deploy ni cambios Supabase.
-La confianza gestionada exige autorizacion posterior y prueba real de Isaac.
+Codigo probado/push `53102e1dafe889664494d4f1d2b19c115939ed23`, PR draft
+#1706 a nightly. Par TEST generado en archivos protegidos tambien probado con
+el firmador y verificador Edge reales: PASS; archivos privados TEST eliminados.
+CI sobre ese SHA: calidad/marketing PostgreSQL E2E/GitGuardian PASS; promotion
+path FAIL exclusivamente por el nombre de rama sin numero; producto SKIPPED.
+No se han ejecutado los nuevos tests B01 en CI porque la politica falla antes.
+Se solicita permiso para renombrar a vantareapp/isa-1704-b01-es256, sin debilitar
+el gate. Mac offline/SSH timeout; cuenta actual sin WSL: arnes real pendiente.
+
+El hilo delegado no puede activar watch_pull_request; T3 indica que corresponde
+al padre. Orquestador: resolver nombre/host, ejecutar --b01, revisar diff y
+seguir CI de #1706. VANTA-96 sigue En curso, entrega aun no verde. Sin merge,
+promocion, release, importacion/rotacion, deploy ni cambios Supabase. Confianza
+gestionada reservada para autorizacion posterior y prueba real de Isaac.
 
 ## VANTA-96 / #1701 · Ensayo de reconstrucción Supabase (18-oct-2026)
 

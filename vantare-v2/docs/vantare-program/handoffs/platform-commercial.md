@@ -3890,9 +3890,15 @@ con apagado en fallo. Tras PASS funcional, clerk_issuers.enabled=true confirmado
 Una cuenta QA sin Owner ni derechos fabricados; Auth8, perfiles9, identidades1.
 El ensayo usó consentimiento en portal oficial con sesión de prueba; la ruta
 de login OAuth redirige a /acceso de la web antigua. No acredita instalador/login
-físico ni web nueva. Firma Ed25519 independiente PENDIENTE: la pública de
-licencia está vacía en ambos build-config protegidos; se necesita custodia original.
-No se cambia la privada existente ni se declara E2E criptográfico completo.
+físico ni web nueva. Falta de pública Ed25519 RESUELTA por nueva autorización:
+par nuevo BIL-08, kid license-prod-20261019-329f6f81, privada PKCS8 en
+backup con ACL solo operador/SYSTEM y env-file protegido. Secretos2/2 por hash.
+Build-config completado con pública raw32 y bridge; solo esas dos líneas
+cambian, ocho campos presentes y coherencia Production PASS. native-license200
+firma con kid nuevo y la pública del build-config verifica; payload alterado
+rechazado. Sin licencias reales previas según Isaac; antigua privada irrecuperable.
+Restauración futura del mismo par desde nuevo backup, no reutilizar kid con otro.
+Evidencia: ejecucion-licencia-firma-verificada.json y EJECUCION.md.
 
 Mail-cleanup cada minuto en tarea Windows Vantare-VANTA96-MailCleanup, SYSTEM,
 PT1M, IgnoreNew; argumento exclusivo --mail-only, claves Vault en memoria.
@@ -3915,8 +3921,8 @@ Owner receptor pendiente antes de abrir venta. Cloudflare paso12 pendiente
 solo del token; no publicación web/release. Registro y procedimientos de reversión:
 C:/VantareServer/evidence/supabase-reconstruccion/EJECUCION.md. Rama propia
 vantareapp/isa-1713-reconstruccion-produccion, PR documental#1714 a nightly.
-Siguiente: token Polar coincidente y pública Ed25519 de custodia; completar
-GET/diagnóstico y verificación cliente sin repetir esquema, rotación u ofertas.
+Siguiente: token Polar coincidente para GET/diagnóstico; entrega del instalador
+y login físico. Pública/licencia resueltas; no repetir esquema, rotación u ofertas.
 
 ## VANTA-96 / #1715 · Roles gestionados y preexistentes (19-oct-2026)
 

@@ -6,6 +6,7 @@ import {
 } from "../functions/testing-report-submit/index.ts";
 import { NativeError } from "../functions/_shared/native-auth.ts";
 import payload from "./fixtures/native-hub-report.json" with { type: "json" };
+import { fixtureRpc } from "./fixtures/postgrest-rpc.ts";
 
 const [base, account, mode = "live"] = Deno.args;
 const url = new URL(base);
@@ -15,20 +16,7 @@ if (url.hostname !== "127.0.0.1" || url.protocol !== "http:") {
 const input = await new Response(Deno.stdin.readable).text();
 if (input.length > 32768) throw new Error("fixture_too_large");
 const fixture = JSON.parse(input);
-async function rpc(name: string, body: Record<string, unknown>) {
-  const response = await fetch(`${base}/rpc/${name}`, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      authorization: `Bearer ${fixture.serviceToken}`,
-    },
-    body: JSON.stringify(body),
-  });
-  const data = await response.json();
-  return response.ok
-    ? { data, error: null }
-    : { data: null, error: { code: String(data.code) } };
-}
+const rpc = fixtureRpc(base, fixture.serviceToken);
 const deps: SubmitDeps = {
   salt: "synthetic-loopback-report-admission-salt-1709",
   account: async (request) => {

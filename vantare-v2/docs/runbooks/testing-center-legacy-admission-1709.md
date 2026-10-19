@@ -227,3 +227,20 @@ Las etiquetas fijas mantienen `Revisión humana pendiente` con U+00F3; la Edge
 rechaza la variante mal codificada. Prosa, diagnósticos y datos locales del tester
 siguen excluidos del contrato. No se añaden campos ni tolerancias para hacer pasar
 una fixture corrupta.
+
+
+## Transporte HTTP del arnés y RPC sin retorno
+
+La fixture define sal, identidad verificada y RPC loopback explícitamente; no
+necesita variables ni credenciales de producción. `testing_report_submit_admitted`
+retorna `void`, por lo que PostgREST devuelve 204 sin cuerpo, conforme a su
+[contrato documentado](https://docs.postgrest.org/en/v10/releases/v10.0.0.html).
+El helper de pruebas trata esa respuesta como `{data:null,error:null}` y sigue
+leyendo JSON para las respuestas que lo contienen. Un error SQL no se convierte
+en éxito. La Edge productiva usa el cliente Supabase, no este helper de pruebas.
+
+Una regresión pasa la respuesta 204 por el transporte de la fixture y el handler
+Edge: debe producir 200 del formulario simple. Otra conserva el recibo rico y
+otra mantiene el error SQL 42501. El control local con el parser anterior
+reproduce `void_write_became_503`; el arreglo no concede permisos ni cambia el
+control RED de barreras. La CI real sigue siendo el gate final.

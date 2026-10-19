@@ -1,3 +1,12 @@
+## 2026-10-19 - #1709 / VANTA-96: RPC void en transporte del arnes
+
+- Nightly440f3f9a3 (#1716) incorporado por merge0074ec237, sin conflictos/rebase/force-push.
+- Run39180038402 ya supera plain/retry/captura y llega al formulario simple. Su RPC testing_report_submit_admitted retorna void (HTTP204 sin body). El adaptador de pruebas llamaba response.json() incondicionalmente: SyntaxError -> Edge503.
+- Regresion reproducida local: quitar solo el manejo204 del adaptador produce void_write_became_503; restaurarlo da PASS. Log void-transport-RED.log. No es falta de salt ni permiso: deps.salt esta explicito y no se modifica ACL/configuracion productiva.
+- Extraido transporte loopback en supabase/tests/fixtures/postgrest-rpc.ts:204 se convierte a data:null/error:null; JSON no vacio y errores SQL conservan su tratamiento. Tests a traves del handler Edge cubren void204->200, recibo rico y error42501 preservado.
+- Deno88 PASS / 2 integraciones omitidas; TS check/lint/fmt, Python compile y calidad462 PASS. Rust220 PASS / 2 omisiones existentes sigue ultima evidencia; no se cambia Rust en este arreglo.
+- Pendiente CI completa LF/CRLF del nuevo HEAD. RED de barreras y cierre legacy intactos. Sin produccion, nuevos secretos, permisos, deploy, importacion de claves, merge a nightly ni release.
+
 ## 2026-10-19 - #1709 / VANTA-96: contrato Rust/Edge UTF-8 compartido
 
 - Run39178511016: RED ya PASS; completo falla en primer envio del script commercial-report.ts:113 con report_status_400, antes de capturas.

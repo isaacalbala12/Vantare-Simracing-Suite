@@ -3911,3 +3911,32 @@ selectivo. Siguiente: revisión del defecto gestionado y ensayo con rol equivale
 luego decidir reanudación desde la versión pendiente; no repetir limpieza a ciegas.
 Rama aislada vantareapp/isa-1713-reconstruccion-produccion, PR documental #1714
 a nightly, sin merge/release. Pasos 4–11 pendientes; Cloudflare 12 pendiente.
+
+## VANTA-96 / #1715 · Roles gestionados y preexistentes (19-oct-2026)
+
+PR #1716, rama propia vantareapp/isa-1715-roadmap-role-gestionado desde bf7e21c619.
+Las cuatro creaciones de roles en 42–94 validan pg_roles, rechazan atributos
+peligrosos y reutilizan roles seguros; solo reparan diferencias permitidas, sin
+cambiar contraseñas ni solicitar atributos privilegiados negativos redundantes.
+Se editan las versiones históricas pendientes: una migración nueva posterior no
+puede desbloquearlas. Primera parte ya aplicada (1–41) idéntica, canon 94.
+
+Comprobación productiva adicional solo lectura por Management API: de los cuatro
+roles propios, solo existe vantare_roadmap_publisher, seguro y temporalmente
+NOLOGIN. Triage/Pilot/web_purchase_erasure no existen en esa observación.
+Evidencia con fecha/query/atributos, sin contraseñas: ROLES-PRODUCCION.json en
+C:/VantareServer/evidence/supabase-roadmap-role-gestionado/.
+
+Regresiones de migración completa como postgres NOSUPERUSER: los cuatro roles
+preexistentes, nuevas creaciones, cambios permitidos, rechazo de atributos
+peligrosos, rollback y contraseñas preservadas. Triage mantiene sus ALTER ROLE
+SET; Pilot conserva el propietario restringido de su función mediante la
+concesión canónica; web conserva sus grants/COMMENT de rol. Los tres últimos
+roles también preexisten en el replay normal, no solo en pruebas que revierten.
+Los controles RED ejecutan los CREATE originales para demostrar duplicate_object.
+
+Aceptación: CI completa LF/CRLF verde en HEAD final; resultados y SHA vivos en
+#1715 y evidencia anterior. No se modifican workflows o checks requeridos.
+Producción sigue en 41/94: esta revisión solo leyó pg_roles por API, sin aplicar
+SQL, reparar historial, generar secretos, desplegar o rotar. Orquestador revisa y
+fusiona; después continúa #1713 desde la 42, sin repetir limpieza a ciegas.

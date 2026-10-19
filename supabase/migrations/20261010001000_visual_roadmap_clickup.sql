@@ -97,13 +97,32 @@ $$;
 revoke all on function public.visual_roadmap_current_v2() from public,anon,authenticated,service_role;
 grant execute on function public.visual_roadmap_current_v2() to anon,authenticated;
 
--- No password in migrations. Reuse the cluster role but reassert attributes.
-do $$ begin
-  create role vantare_roadmap_publisher;
-exception when duplicate_object then null;
-end $$;
-alter role vantare_roadmap_publisher login noinherit nosuperuser nocreatedb
-  nocreaterole noreplication nobypassrls connection limit 2;
+-- No password in migrations. Managed postgres is not a superuser: even
+-- NOSUPERUSER requires that authority. Safe negative attributes are defaults
+-- for a new role; reject an unsafe existing role instead of changing them.
+do $roadmap_role$
+declare r pg_catalog.pg_roles%rowtype;
+begin
+  select * into r from pg_catalog.pg_roles where rolname='vantare_roadmap_publisher';
+  if not found then
+    create role vantare_roadmap_publisher login noinherit connection limit 2;
+    select * into strict r from pg_catalog.pg_roles where rolname='vantare_roadmap_publisher';
+  end if;
+  if r.rolsuper or r.rolbypassrls or r.rolreplication or r.rolcreatedb or r.rolcreaterole then
+    raise exception 'unsafe_roadmap_publisher_attributes' using errcode='42501',
+      hint='Review the existing role with its administrator; migrations never demote privileged roles.';
+  end if;
+  -- A compliant pre-existing role needs no ADMIN OPTION. Change only drift,
+  -- preserving its password, and let PostgreSQL enforce administration rights.
+  begin
+    if not r.rolcanlogin then alter role vantare_roadmap_publisher login; end if;
+    if r.rolinherit then alter role vantare_roadmap_publisher noinherit; end if;
+    if r.rolconnlimit <> 2 then alter role vantare_roadmap_publisher connection limit 2; end if;
+  exception when insufficient_privilege then
+    raise exception 'roadmap_publisher_attributes_require_admin' using errcode='42501',
+      hint='The role administrator must set LOGIN, NOINHERIT and CONNECTION LIMIT 2 before retrying.';
+  end;
+end $roadmap_role$;
 grant usage on schema public to vantare_roadmap_publisher;
 -- Explicit reviewed closures, not a global revoke of PUBLIC.
 revoke execute on function public.race_schedule_my_draft() from public;

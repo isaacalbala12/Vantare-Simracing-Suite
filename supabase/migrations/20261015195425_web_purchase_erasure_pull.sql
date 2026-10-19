@@ -1,7 +1,33 @@
 -- VANTA-42 R4: least-privilege pull consumer; no destructive HTTP endpoint.
 begin;
-create role web_purchase_erasure nologin noinherit;
-grant web_purchase_erasure to authenticator;
+-- Roles survive schema rebuilds. Reuse a safe principal without touching
+-- its password or privileged attributes; only repair permitted local drift.
+do $web_purchase_erasure_role$
+declare r pg_catalog.pg_roles%rowtype;
+begin
+  select * into r from pg_catalog.pg_roles where rolname='web_purchase_erasure';
+  if not found then
+    create role web_purchase_erasure nologin noinherit;
+    select * into strict r from pg_catalog.pg_roles where rolname='web_purchase_erasure';
+  end if;
+  if r.rolsuper or r.rolbypassrls or r.rolreplication or r.rolcreatedb or r.rolcreaterole then
+    raise exception 'unsafe_web_purchase_erasure_attributes' using errcode='42501',
+      hint='Review the existing role with its administrator; migrations never demote privileged roles.';
+  end if;
+  begin
+    if r.rolcanlogin then alter role web_purchase_erasure nologin; end if;
+    if r.rolinherit then alter role web_purchase_erasure noinherit; end if;
+  exception when insufficient_privilege then
+    raise exception 'web_purchase_erasure_attributes_require_admin' using errcode='42501',
+      hint='The role administrator must repair the permitted attributes before retrying.';
+  end;
+end $web_purchase_erasure_role$;
+do $$ begin
+  if not exists(select 1 from pg_auth_members
+    where roleid='web_purchase_erasure'::regrole and member='authenticator'::regrole and set_option) then
+    grant web_purchase_erasure to authenticator;
+  end if;
+end $$;
 grant usage on schema public to web_purchase_erasure;
 create table private.web_purchase_erasure_clock (
  singleton boolean primary key default true check(singleton),
@@ -203,6 +229,12 @@ revoke all on function public.billing_operational_owner_alerts(text),public.bill
  public.billing_checkout_maintenance(text) from public,anon,authenticated,web_purchase_erasure;
 grant execute on function public.billing_operational_owner_alerts(text),public.billing_finish_operational_owner_alert(text,uuid,text,boolean),
  public.billing_checkout_maintenance(text) to service_role;
-comment on role web_purchase_erasure is
- 'Dedicated short-lived server JWT role: bounded read-only deletion/state pull, fixed consumer ACK/failure only. No account, payment, grant or raw-table write.';
+-- Role comments also survive schema cleanup and require ADMIN to change.
+do $$ begin
+  if shobj_description('web_purchase_erasure'::regrole,'pg_authid') is distinct from
+   'Dedicated short-lived server JWT role: bounded read-only deletion/state pull, fixed consumer ACK/failure only. No account, payment, grant or raw-table write.' then
+    comment on role web_purchase_erasure is
+     'Dedicated short-lived server JWT role: bounded read-only deletion/state pull, fixed consumer ACK/failure only. No account, payment, grant or raw-table write.';
+  end if;
+end $$;
 commit;

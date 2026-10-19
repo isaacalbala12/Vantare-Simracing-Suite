@@ -4,7 +4,29 @@ begin;
 create schema pilot_private;
 revoke all on schema pilot_private from public,anon;
 grant usage on schema pilot_private to authenticated;
-create role pilot_profile_writer nologin noinherit nobypassrls;
+-- NOBYPASSRLS is the default; no privileged attribute clause on managed PG.
+-- Roles survive schema rebuilds. Reuse a safe principal without touching
+-- its password or privileged attributes; only repair permitted local drift.
+do $pilot_profile_writer_role$
+declare r pg_catalog.pg_roles%rowtype;
+begin
+  select * into r from pg_catalog.pg_roles where rolname='pilot_profile_writer';
+  if not found then
+    create role pilot_profile_writer nologin noinherit;
+    select * into strict r from pg_catalog.pg_roles where rolname='pilot_profile_writer';
+  end if;
+  if r.rolsuper or r.rolbypassrls or r.rolreplication or r.rolcreatedb or r.rolcreaterole then
+    raise exception 'unsafe_pilot_profile_writer_attributes' using errcode='42501',
+      hint='Review the existing role with its administrator; migrations never demote privileged roles.';
+  end if;
+  begin
+    if r.rolcanlogin then alter role pilot_profile_writer nologin; end if;
+    if r.rolinherit then alter role pilot_profile_writer noinherit; end if;
+  exception when insufficient_privilege then
+    raise exception 'pilot_profile_writer_attributes_require_admin' using errcode='42501',
+      hint='The role administrator must repair the permitted attributes before retrying.';
+  end;
+end $pilot_profile_writer_role$;
 grant usage on schema public,auth,storage,pilot_private to pilot_profile_writer;
 grant execute on function auth.uid() to pilot_profile_writer;
 
@@ -156,7 +178,12 @@ $$;
 grant create on schema pilot_private to pilot_profile_writer;
 -- El administrador que prepara el paquete debe poder transferir ownership
 -- también sin SUPERUSER. Nunca se concede este rol a authenticated/anon.
-grant pilot_profile_writer to current_user;
+-- Existing membership survives a schema rebuild; do not re-GRANT without need.
+do $$ begin
+  if not pg_has_role(current_user,'pilot_profile_writer','SET') then
+    grant pilot_profile_writer to current_user;
+  end if;
+end $$;
 alter function pilot_private.pilot_profile_save(jsonb,text,bigint,uuid) owner to pilot_profile_writer;
 revoke create on schema pilot_private from pilot_profile_writer;
 revoke all on function pilot_private.pilot_profile_save(jsonb,text,bigint,uuid) from public,anon;

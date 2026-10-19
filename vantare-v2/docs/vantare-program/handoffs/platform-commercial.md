@@ -3875,42 +3875,42 @@ CI verde ni PR ready hasta comprobar el HEAD final. Sin Rust/dependencias nuevos
 Windows limpio/login/pagos pendientes; Hub bloqueado por #1694. Sin ventanas
 en sesión principal, firma/publicación ni merge por el worker.
 
-## VANTA-96 / #1713 · Parada en migración gestionada 42 (19-oct-2026)
+## VANTA-96 / #1713 · Esquema 94/94; parada por estado Plane (19-oct-2026)
 
-SHA operativo bf7e21c619cd350fed883e555dc400173cae9873, 94 migraciones.
-Isaac autoriza reconstrucción y B01 privada ES256+rotación condicionada, sin
-revocar claves anteriores. El orquestador aclara que Cloudflare bloquea solo
-paso 12; Owner URL/secret quedan ausentes, receptor obligatorio antes de abrir
-venta. Compensación debe seguir desactivada. Ya no bloquean el trabajo Supabase.
+#1716 fusionado por orquestador en origin/nightly
+440f3f9a3039204bd037e95239c5a2f7bacf17b5. Preflight Management solo lectura:
+postgres tiene ADMIN OPTION directo sobre el publicador, grantor supabase_admin.
+pg_roles no registra creador; no inventar esa atribución. Checkpoint completo
+protegido del estado 41, dry-run exactamente 53 pendientes PASS; push exit 0,
+historial 94/94 exacto. Sin repetir limpieza, repair, seeds ni saltar versiones.
 
-Copia completa protegida PASS: pg_dump 17.11 contra servidor 17.6,
-pg_restore --list 1010 entradas y lectura íntegra PASS, roles sin contraseñas.
-No restauración en servidor desechable. Conteos revalidados idénticos a la
-autorización; roadmap 68 y calendario 2 exportados. Clerk/Brevo válidos.
+Publicador LOGIN, contraseña conservada y conexión dedicada comprobada. El
+candidato real del publicador canónico falla «Estado Plane desconocido; revisar
+mapeo»: Plane tiene **Para Isaac**, no contemplado por STATUS. No se asigna una
+columna sin decisión del orquestador ni se debilita la guarda. Pregunta enviada.
+Para recuperar la lectura pública se restauró solo el documento aprobado de
+34 tareas del backup (contenido del 15-oct), validado por SQL canónico y publicado
+mediante RPC con el rol mínimo. Documento exacto y lector anon HTTP 200 PASS.
+No es una sincronización actualizada con Plane ni se restauraron 68 históricos.
 
-**Producción cambió:** limpieza propia transaccional COMMIT, preservando los
-esquemas internos. 19 versiones antiguas reverted por CLI, dry-run 94/94 PASS;
-db push aplicó 41 migraciones y falló en
-20261010001000_visual_roadmap_clickup.sql (sentencia 7, ALTER ROLE con
-NOSUPERUSER/NOBYPASSRLS/NOREPLICATION), SQLSTATE 42501, permission denied to
-alter role. La cuenta gestionada no es superusuario. No saltar la sentencia,
-marcarla aplicada ni aumentar privilegios para continuar.
+ES256 generada/importada standby, kid d8c05235-dc1b-4e7f-bd88-d26d95b7e880.
+No rotación ni revocaciones: activa previa y legacy intactas. Tres pruebas previas
+anon/Auth, RPC roadmap y service_role HTTP 200. Secretos internos generados y
+env-file privado preparado, no cargado. Mapa remoto requiere actualización desde
+el canónico; Polar tokens y licencia no se tocaron. Compensación comprobada OFF.
 
-Parada obligatoria: 41 versiones registradas, prefijo exacto del canon, última
-20261010000000_testing_participation. Versión fallida ausente y su tabla nueva
-visual_roadmap_sync_approvals ausente: transacción fallida revertida. Auth conserva
-8 usuarios; hay 8 perfiles regenerados y un bucket testing-center-evidence vacío.
-Publicador temporalmente NOLOGIN, contraseña conservada. No secretos nuevos,
-rotación, funciones nuevas, ofertas, schedulers o E2E productivo. Funciones
-antiguas aún desplegadas; no declarar aplicación operativa ni abrir venta.
+Parada del avance: sin funciones nuevas, Clerk TPA/registry, listas Brevo nuevas,
+ofertas aplicadas, scheduler, calendario regenerado o E2E. Ofertas generadas
+offline; API Brevo/remitente válidos. Owner URL/secret omitidos por decisión;
+receptor obligatorio antes de venta. Cloudflare 12 pendiente solo del token.
+App completa aún no acreditada, venta sigue cerrada por instrucción.
 
-Registro, copia/hash, inventario, estado tras fallo y reversión de claves:
-C:/VantareServer/evidence/supabase-reconstruccion/EJECUCION.md. No se ejecuta
-restore global improvisado: preserva internos y requiere TOC/ensayo del retorno
-selectivo. Siguiente: revisión del defecto gestionado y ensayo con rol equivalente,
-luego decidir reanudación desde la versión pendiente; no repetir limpieza a ciegas.
-Rama aislada vantareapp/isa-1713-reconstruccion-produccion, PR documental #1714
-a nightly, sin merge/release. Pasos 4–11 pendientes; Cloudflare 12 pendiente.
+Registro vivo, copias/hash, estado y reversión exacta de claves:
+C:/VantareServer/evidence/supabase-reconstruccion/EJECUCION.md. Corregir/revisar
+mapeo de Para Isaac y continuar secretos/rotación condicionada y pasos 5–11;
+no repetir esquema ni pedir otra vez A/B/C/D. Rama propia
+vantareapp/isa-1713-reconstruccion-produccion, PR documental #1714 a nightly;
+sin merge/release por el worker. El dato anterior 41/94 está superado.
 
 ## VANTA-96 / #1715 · Roles gestionados y preexistentes (19-oct-2026)
 
@@ -3937,6 +3937,6 @@ Los controles RED ejecutan los CREATE originales para demostrar duplicate_object
 
 Aceptación: CI completa LF/CRLF verde en HEAD final; resultados y SHA vivos en
 #1715 y evidencia anterior. No se modifican workflows o checks requeridos.
-Producción sigue en 41/94: esta revisión solo leyó pg_roles por API, sin aplicar
-SQL, reparar historial, generar secretos, desplegar o rotar. Orquestador revisa y
-fusiona; después continúa #1713 desde la 42, sin repetir limpieza a ciegas.
+Durante esa revisión de código solo se leyó pg_roles; no se modificó producción.
+#1716 ya fusionado por el orquestador; la ejecución posterior y su estado actual
+(94/94, parada Plane) se registran en #1713 arriba. No repetir limpieza a ciegas.

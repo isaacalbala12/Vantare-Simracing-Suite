@@ -28,13 +28,13 @@ end $$;
         if attributes is not None:
             sql(f'create role {role} {attributes}', not managed)
 
-    def exercise(name, error=None, text=source):
+    def exercise(name, error=None, text=source, actor=None):
         # Execute all the real DDL, then roll it back. Both positive and negative
         # cases must leave the same pre-migration catalogue, not partial RPCs.
         before = sql("select to_regprocedure('public.visual_roadmap_current_v2()') is null")
         probe.write_bytes((text.rsplit('commit;', 1)[0]+check+'rollback;\n').encode('utf-8'))
         try:
-            run('psql', *conn, '-f', probe)
+            run('psql', *(actor or conn), '-f', probe)
         except RuntimeError as exc:
             if error is None or '42501' not in str(exc) or error not in str(exc):
                 raise
@@ -61,13 +61,21 @@ alter role vantare_roadmap_publisher login noinherit nosuperuser nocreatedb
 """+source.split('end $roadmap_role$;', 1)[1]
     exercise('RED original ALTER ROLE rejected', '', original)
 
+    # The managed image permits postgres to change these safe attributes even
+    # without ordinary ADMIN membership. Also test the ordinary denied path
+    # using a separate, non-allowlisted role and the exact same role block.
+    limited = conn.copy()
+    limited[limited.index('-U')+1] = 'roadmap_limited_fixture'
+    sql("create role roadmap_limited_fixture login createrole password 'commercial-local-fixture'", True)
+    role_block = 'begin;\ndo $roadmap_role$'+source.split('do $roadmap_role$', 1)[1].split('end $roadmap_role$;', 1)[0]+'end $roadmap_role$;\ncommit;'
     for attributes in ('nologin noinherit connection limit 2',
                        'login inherit connection limit 2',
                        'login noinherit connection limit 3'):
         reset(attributes)
         before = sql(f"select rolcanlogin,rolinherit,rolconnlimit from pg_roles where rolname='{role}'")
-        exercise('reject drift without ADMIN: '+attributes, 'roadmap_publisher_attributes_require_admin')
+        exercise('reject unpermitted drift: '+attributes, 'roadmap_publisher_attributes_require_admin', role_block, limited)
         assert sql(f"select rolcanlogin,rolinherit,rolconnlimit from pg_roles where rolname='{role}'") == before
+        exercise('repair permitted managed drift: '+attributes)
 
     for attribute in ('superuser', 'bypassrls', 'replication', 'createdb', 'createrole'):
         reset('login noinherit connection limit 2 '+attribute)
@@ -77,6 +85,7 @@ alter role vantare_roadmap_publisher login noinherit nosuperuser nocreatedb
     exercise('repair all allowed drift with ADMIN OPTION')
     assert sql(f"select not rolcanlogin and rolinherit and rolconnlimit=-1 from pg_roles where rolname='{role}'") == 't'
     reset()
+    sql('drop role roadmap_limited_fixture', True)
     # The actual canonical pass covers creating the role. A pre-existing safe
     # role without ADMIN is also proven by the complete migration above.
     (out/'roadmap-role-regression.json').write_text(json.dumps({'actor':'postgres', 'superuser':False,

@@ -2,6 +2,72 @@
 import json
 
 
+def run_existing_role_regression(run, conn, admin, source_path, out, role, marker, limit=None):
+    """Replay the whole migration with cluster roles surviving schema cleanup."""
+    source = source_path.read_bytes().decode('utf-8')
+    assert source.rstrip().endswith('commit;')
+    probe = out/(role+'-regression.sql')
+    results = []
+
+    def sql(query, privileged=False):
+        return run('psql', *(admin if privileged else conn), '-c', query).strip()
+
+    def reset(attributes=None):
+        sql(f'drop role if exists {role}', True)
+        if attributes is not None:
+            sql(f"create role {role} {attributes} password 'commercial-local-fixture'", True)
+
+    attrs = 'nologin noinherit'+(' connection limit 2' if limit else '')
+    contract = f"rolname='{role}' and not (rolsuper or rolcreatedb or rolcreaterole or rolreplication or rolbypassrls or rolcanlogin or rolinherit)"
+    if limit:
+        contract += ' and rolconnlimit=2'
+    if role == 'vantare_triage':
+        contract += " and rolconfig @> array['default_transaction_read_only=on','statement_timeout=10s']"
+    check = f"do $$ begin if not exists(select 1 from pg_roles where {contract}) then raise exception 'role_contract_not_met'; end if; end $$;\n"
+
+    def exercise(name, error=None):
+        before = sql(marker)
+        password = sql(f"select coalesce(rolpassword,'') from pg_authid where rolname='{role}'", True)
+        settings = sql(f"select rolcanlogin,rolinherit,rolconnlimit,rolconfig from pg_roles where rolname='{role}'")
+        probe.write_bytes((source.rsplit('commit;', 1)[0]+check+'rollback;\n').encode('utf-8'))
+        try:
+            run('psql', *conn, '-f', probe)
+        except RuntimeError as exc:
+            if error is None or '42501' not in str(exc) or error not in str(exc):
+                raise
+        else:
+            assert error is None, role+' accepted '+name
+        assert sql(marker) == before, role+' left partial DDL'
+        assert sql(f"select coalesce(rolpassword,'') from pg_authid where rolname='{role}'", True) == password
+        assert sql(f"select rolcanlogin,rolinherit,rolconnlimit,rolconfig from pg_roles where rolname='{role}'") == settings
+        results.append(name)
+
+    assert sql("select current_user='postgres' and not rolsuper from pg_roles where rolname=current_user") == 't'
+    reset()
+    exercise('create missing role')
+    reset(attrs)
+    assert sql(f"select count(*) from pg_auth_members where roleid='{role}'::regrole and member='postgres'::regrole and admin_option") == '0'
+    try:
+        sql(f'create role {role} {attrs}')
+    except RuntimeError as exc:
+        assert '42710' in str(exc), 'original CREATE ROLE failed for another reason'
+    else:
+        raise AssertionError('original CREATE ROLE did not detect existing '+role)
+    results.append('RED original CREATE ROLE rejects duplicate')
+    exercise('reuse existing safe role, full migration including grants and settings')
+    reset('login inherit'+(' connection limit 3' if limit else ''))
+    exercise('repair permitted managed drift')
+    for attribute in ('superuser', 'bypassrls', 'replication', 'createdb', 'createrole'):
+        reset(attrs+' '+attribute)
+        exercise('reject dangerous '+attribute, 'unsafe_'+role+'_attributes')
+    # Leave this safe pre-existing role for the real committed migration pass.
+    # The five unsafe cases never run against external roles or a supplied DSN.
+    reset(attrs)
+    (out/(role+'-regression.json')).write_text(json.dumps({'actor':'postgres', 'superuser':False,
+        'cases':results, 'passed':len(results), 'actual_pass_reuses_existing_role':True}, indent=2)+'\n')
+    print(f'Managed existing role {role}: {len(results)} real PostgreSQL regressions PASS', flush=True)
+
+
 def run_roadmap_role_regression(run, conn, admin, source_path, out):
     role = 'vantare_roadmap_publisher'
     source = source_path.read_bytes().decode('utf-8')

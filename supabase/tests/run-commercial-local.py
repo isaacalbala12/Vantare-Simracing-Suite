@@ -5,7 +5,7 @@ from commercial_write_race import run_write_races
 from commercial_lock_order import run_lock_order
 from commercial_admin_lock_order import run_admin_lock_order
 from commercial_storage_race import run_storage_owners, run_storage_multipart, run_storage_buckets
-from commercial_roadmap_role import run_roadmap_role_regression
+from commercial_roadmap_role import run_roadmap_role_regression, run_existing_role_regression
 parser=argparse.ArgumentParser()
 parser.add_argument('--pg-bin', required=True)
 parser.add_argument('--docker', action='store_true', help='Own disposable Supabase PostgreSQL container; pg-bin supplies clients only')
@@ -179,6 +179,13 @@ $$;
    migration_source.write_bytes(source.replace('\n','\r\n').encode('utf-8') if args.migration_newlines=='crlf' else source.encode('utf-8'))
    if args.docker and 'visual_roadmap_clickup' in m.name:
     run_roadmap_role_regression(run, conn, admin_conn(), migration_source, OUT)
+   existing_roles={
+    '20261013160000_testing_contribution_triage.sql':('vantare_triage',"select to_regprocedure('private.testing_system_valid(jsonb)') is null",2),
+    '20261013225839_pilot_profile_private.sql':('pilot_profile_writer',"select to_regnamespace('pilot_private') is null",None),
+    '20261015195425_web_purchase_erasure_pull.sql':('web_purchase_erasure',"select to_regclass('private.web_purchase_erasure_clock') is null",None),
+   }
+   if args.docker and m.name in existing_roles:
+    run_existing_role_regression(run, conn, admin_conn(), migration_source, OUT, *existing_roles[m.name])
    try: result=run('psql',*conn,'-f',migration_source)
    except Exception as e:
     (OUT/(m.name+'.log')).write_text(str(e))

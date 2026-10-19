@@ -189,7 +189,29 @@ create policy testing_contributions_owner on public.testing_contributions for se
 -- Credential creation is separate. Refuse to reuse a possibly privileged role.
 -- CREATE ROLE defaults to no superuser/createdb/createrole/replication/bypassrls.
 -- Do not request privileged attribute changes from managed postgres.
-create role vantare_triage nologin noinherit connection limit 2;
+-- Roles survive schema rebuilds. Reuse a safe principal without touching
+-- its password or privileged attributes; only repair permitted local drift.
+do $vantare_triage_role$
+declare r pg_catalog.pg_roles%rowtype;
+begin
+  select * into r from pg_catalog.pg_roles where rolname='vantare_triage';
+  if not found then
+    create role vantare_triage nologin noinherit connection limit 2;
+    select * into strict r from pg_catalog.pg_roles where rolname='vantare_triage';
+  end if;
+  if r.rolsuper or r.rolbypassrls or r.rolreplication or r.rolcreatedb or r.rolcreaterole then
+    raise exception 'unsafe_vantare_triage_attributes' using errcode='42501',
+      hint='Review the existing role with its administrator; migrations never demote privileged roles.';
+  end if;
+  begin
+    if r.rolcanlogin then alter role vantare_triage nologin; end if;
+    if r.rolinherit then alter role vantare_triage noinherit; end if;
+    if r.rolconnlimit <> 2 then alter role vantare_triage connection limit 2; end if;
+  exception when insufficient_privilege then
+    raise exception 'vantare_triage_attributes_require_admin' using errcode='42501',
+      hint='The role administrator must repair the permitted attributes before retrying.';
+  end;
+end $vantare_triage_role$;
 alter role vantare_triage set default_transaction_read_only = on;
 alter role vantare_triage set statement_timeout = '10s';
 grant usage on schema public to vantare_triage;

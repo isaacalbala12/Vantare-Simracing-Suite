@@ -1,6 +1,27 @@
 -- VANTA-42 R4: least-privilege pull consumer; no destructive HTTP endpoint.
 begin;
-create role web_purchase_erasure nologin noinherit;
+-- Roles survive schema rebuilds. Reuse a safe principal without touching
+-- its password or privileged attributes; only repair permitted local drift.
+do $web_purchase_erasure_role$
+declare r pg_catalog.pg_roles%rowtype;
+begin
+  select * into r from pg_catalog.pg_roles where rolname='web_purchase_erasure';
+  if not found then
+    create role web_purchase_erasure nologin noinherit;
+    select * into strict r from pg_catalog.pg_roles where rolname='web_purchase_erasure';
+  end if;
+  if r.rolsuper or r.rolbypassrls or r.rolreplication or r.rolcreatedb or r.rolcreaterole then
+    raise exception 'unsafe_web_purchase_erasure_attributes' using errcode='42501',
+      hint='Review the existing role with its administrator; migrations never demote privileged roles.';
+  end if;
+  begin
+    if r.rolcanlogin then alter role web_purchase_erasure nologin; end if;
+    if r.rolinherit then alter role web_purchase_erasure noinherit; end if;
+  exception when insufficient_privilege then
+    raise exception 'web_purchase_erasure_attributes_require_admin' using errcode='42501',
+      hint='The role administrator must repair the permitted attributes before retrying.';
+  end;
+end $web_purchase_erasure_role$;
 grant web_purchase_erasure to authenticator;
 grant usage on schema public to web_purchase_erasure;
 create table private.web_purchase_erasure_clock (

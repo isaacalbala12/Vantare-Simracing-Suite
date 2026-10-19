@@ -3,6 +3,7 @@ import { handleCorsPreflight } from "../_shared/cors.ts";
 import { isUuid, readJsonObject } from "../_shared/request.ts";
 import { jsonResponse } from "../_shared/responses.ts";
 import { getSupabaseAdmin } from "../_shared/supabase-admin.ts";
+import { type ReportRpc, submitRichReport } from "./rich-report.ts";
 import {
   nativeBearer,
   NativeError,
@@ -155,10 +156,7 @@ export type SubmitDeps = {
   account?: (request: Request) => Promise<string>;
   admit?: (scope: string, subject: string, week: string) => Promise<boolean>;
   submit?: (account: string, body: Record<string, unknown>) => Promise<void>;
-  rpc?: (
-    name: string,
-    body: Record<string, unknown>,
-  ) => Promise<{ error: { code?: string } | null }>;
+  rpc?: ReportRpc;
 };
 
 export async function handleTestingReportSubmit(
@@ -211,6 +209,14 @@ export async function handleTestingReportSubmit(
       );
     }
     const body = parsed.value;
+    if (Object.hasOwn(body, "p_contract_version")) {
+      const receipt = await submitRichReport(
+        user,
+        body,
+        deps.rpc ?? ((name, args) => getSupabaseAdmin().rpc(name, args)),
+      );
+      return jsonResponse(receipt, 200, { "Cache-Control": "no-store" });
+    }
     const structured = Object.hasOwn(body, "p_context") ||
       Object.hasOwn(body, "p_attachments");
     if (

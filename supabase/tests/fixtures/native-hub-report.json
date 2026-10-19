@@ -1,0 +1,17 @@
+{
+  "p_contract_version": "testing-center.v1",
+  "p_channel": "testers",
+  "p_action_text": "Informe estructurado",
+  "p_expected_text": "Revisión humana pendiente",
+  "p_observed_text": "Revisión humana pendiente",
+  "p_context_text": "",
+  "p_app_version": "1.2.3",
+  "p_os_family": "windows",
+  "p_os_version": "Windows 11",
+  "p_module": "hub",
+  "p_include_diagnostic": false,
+  "p_include_logs": false,
+  "p_diagnostic_payload": null,
+  "p_diagnostic_digest": null,
+  "p_idempotency_key": "draft_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+}

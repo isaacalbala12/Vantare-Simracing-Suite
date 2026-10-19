@@ -6,6 +6,7 @@ select to_regclass('private.clerk_issuers') is not null as has_issuer_registry \
 insert into private.clerk_issuers(issuer,authorized_parties,enabled)
  values('https://clerk.admin.test',array['https://app.invalid'],true);
 \endif
+select to_regprocedure('public.testing_center_report_submit_admitted(uuid,text,text,text,text,text,text,text,text,text,text,boolean,boolean,text,text,text,uuid)') is not null as has_rich_admission \gset
 select no_plan();
 
 select ok(not has_function_privilege('authenticated', 'public.native_resolve_account(text,text)', 'EXECUTE'), 'authenticated cannot bootstrap arbitrary identities');
@@ -66,8 +67,21 @@ select set_config('request.jwt.claims','{"iss":"http://127.0.0.1:54321/auth/v1",
 select set_config('request.jwt.claims','{"iss":"https://clerk.admin.test","sub":"user_ttttttttttttttttttttttttttt","role":"authenticated","sid":"sess_fixture","azp":"https://app.invalid"}',true);
 \endif
 select is(public.testing_center_current_role(),'tester','authenticated UUID sees its own membership');
+-- The current client submits through Edge -> service adapter. Keep the old
+-- checkpoint runner valid without reopening any ACL in the current catalogue.
+\if :has_rich_admission
+reset role;
+set local role service_role;
+create temporary table submitted as select * from public.testing_center_report_submit_admitted(
+  '00000000-0000-4000-8000-000000001452','testing-center.v1','testers',
+  'Informe estructurado','Revisión humana pendiente','Revisión humana pendiente','',
+  '0.1.0','windows','11','hub',false,false,null,null,'admin-test-submit');
+reset role;
+set local role authenticated;
+\else
 create temporary table submitted as select * from public.testing_center_submit_report(
   'testing-center.v1','testers','Open Hub','Hub appears','Hub hangs',null,'0.1.0','windows','11','hub',false,false,null,null,'admin-test-submit');
+\endif
 select is((select count(*)::integer from public.testing_center_reports),1,'own report visible through RLS');
 select lives_ok($$select public.testing_center_prepare_screenshot_batch('testing-center.screenshot-evidence.v1','testers','admin-test-capture',
   '[{"position":1,"mediaType":"image/jpeg","byteSize":123,"sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","width":100,"height":100}]')$$,
@@ -77,9 +91,22 @@ select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000001453'
 select set_config('request.jwt.claims','{"iss":"https://clerk.admin.test","sub":"user_nnnnnnnnnnnnnnnnnnnnnnnnnnn","role":"authenticated","sid":"sess_fixture","azp":"https://app.invalid"}',true);
 \endif
 select is((select count(*)::integer from public.testing_center_reports),0,'another account cannot read report');
+\if :has_rich_admission
+select throws_ok($$select public.testing_center_submit_report('testing-center.v1','testers','Open Hub','Hub appears','Hub hangs',null,'0.1.0','windows','11','hub',false,false,null,null,'no-role')$$,
+  '42501',null,'authenticated cannot use the closed legacy report RPC');
+reset role;
+set local role service_role;
+select throws_ok($$select public.testing_center_report_submit_admitted(
+  '00000000-0000-4000-8000-000000001453','testing-center.v1','testers',
+  'Informe estructurado','Revisión humana pendiente','Revisión humana pendiente','',
+  '0.1.0','windows','11','hub',false,false,null,null,'no-role')$$,
+  '42501','testing_center_membership_required','server adapter rejects account without membership');
+reset role;
+\else
 select throws_ok($$select public.testing_center_submit_report('testing-center.v1','testers','Open Hub','Hub appears','Hub hangs',null,'0.1.0','windows','11','hub',false,false,null,null,'no-role')$$,
   '42501','testing_center_membership_required','login alone cannot submit');
 reset role;
+\endif
 
 select lives_ok($$select public.native_admin_execute('00000000-0000-4000-8000-000000001456','https://clerk.admin.test','list_reports',
   '{"limit":100,"status":"submitted"}','production')$$,'list actual submitted report');

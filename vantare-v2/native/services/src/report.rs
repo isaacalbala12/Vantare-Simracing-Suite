@@ -622,8 +622,10 @@ impl Reports {
 }
 fn submit_attempt(request: &DataRequest<'_>, attempt: &Attempt) -> Result<Receipt> {
     attempt.payload.validate()?;
+    // Both forms share the Edge IP/account admission before any report write.
+    // Upload/finalize retain their durable batch, retry and receipt semantics.
     let response = if attempt.images.is_empty() {
-        request.post("rest/v1/rpc/testing_center_submit_report", &attempt.payload)
+        request.post("functions/v1/testing-report-submit", &attempt.payload)
     } else {
         screenshots::upload(
             request,
@@ -634,10 +636,7 @@ fn submit_attempt(request: &DataRequest<'_>, attempt: &Attempt) -> Result<Receip
         .and_then(|batch| {
             let mut body = serde_json::to_value(&attempt.payload).map_err(|_| Error::Protocol)?;
             body["p_batch_id"] = batch.into();
-            request.post(
-                "rest/v1/rpc/testing_center_submit_report_with_evidence",
-                &body,
-            )
+            request.post("functions/v1/testing-report-submit", &body)
         })
     }
     .map_err(|error| {
@@ -652,9 +651,7 @@ fn submit_attempt(request: &DataRequest<'_>, attempt: &Attempt) -> Result<Receip
         && response
             .json::<serde_json::Value>()
             .ok()
-            .is_some_and(|body| {
-                body["code"] == "55000" && body["message"] == "testing_center_evidence_not_ready"
-            })
+            .is_some_and(|body| body["error"] == "evidence_not_ready")
     {
         return Err(Error::EvidencePending);
     }

@@ -207,13 +207,17 @@ begin
     if r.rolcanlogin then alter role vantare_triage nologin; end if;
     if r.rolinherit then alter role vantare_triage noinherit; end if;
     if r.rolconnlimit <> 2 then alter role vantare_triage connection limit 2; end if;
+    if not coalesce(r.rolconfig @> array['default_transaction_read_only=on'],false) then
+      alter role vantare_triage set default_transaction_read_only = on;
+    end if;
+    if not coalesce(r.rolconfig @> array['statement_timeout=10s'],false) then
+      alter role vantare_triage set statement_timeout = '10s';
+    end if;
   exception when insufficient_privilege then
     raise exception 'vantare_triage_attributes_require_admin' using errcode='42501',
       hint='The role administrator must repair the permitted attributes before retrying.';
   end;
 end $vantare_triage_role$;
-alter role vantare_triage set default_transaction_read_only = on;
-alter role vantare_triage set statement_timeout = '10s';
 grant usage on schema public to vantare_triage;
 grant select (id,channel,title,body,state,created_at) on public.testing_contributions to vantare_triage;
 grant select (contribution_id,app_version,app_channel,game,game_version,system,telemetry_summary,consent)

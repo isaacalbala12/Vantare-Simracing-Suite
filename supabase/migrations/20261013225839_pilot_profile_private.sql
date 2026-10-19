@@ -178,7 +178,12 @@ $$;
 grant create on schema pilot_private to pilot_profile_writer;
 -- El administrador que prepara el paquete debe poder transferir ownership
 -- también sin SUPERUSER. Nunca se concede este rol a authenticated/anon.
-grant pilot_profile_writer to current_user;
+-- Existing membership survives a schema rebuild; do not re-GRANT without need.
+do $$ begin
+  if not pg_has_role(current_user,'pilot_profile_writer','SET') then
+    grant pilot_profile_writer to current_user;
+  end if;
+end $$;
 alter function pilot_private.pilot_profile_save(jsonb,text,bigint,uuid) owner to pilot_profile_writer;
 revoke create on schema pilot_private from pilot_profile_writer;
 revoke all on function pilot_private.pilot_profile_save(jsonb,text,bigint,uuid) from public,anon;

@@ -22,7 +22,12 @@ begin
       hint='The role administrator must repair the permitted attributes before retrying.';
   end;
 end $web_purchase_erasure_role$;
-grant web_purchase_erasure to authenticator;
+do $$ begin
+  if not exists(select 1 from pg_auth_members
+    where roleid='web_purchase_erasure'::regrole and member='authenticator'::regrole and set_option) then
+    grant web_purchase_erasure to authenticator;
+  end if;
+end $$;
 grant usage on schema public to web_purchase_erasure;
 create table private.web_purchase_erasure_clock (
  singleton boolean primary key default true check(singleton),
@@ -224,6 +229,12 @@ revoke all on function public.billing_operational_owner_alerts(text),public.bill
  public.billing_checkout_maintenance(text) from public,anon,authenticated,web_purchase_erasure;
 grant execute on function public.billing_operational_owner_alerts(text),public.billing_finish_operational_owner_alert(text,uuid,text,boolean),
  public.billing_checkout_maintenance(text) to service_role;
-comment on role web_purchase_erasure is
- 'Dedicated short-lived server JWT role: bounded read-only deletion/state pull, fixed consumer ACK/failure only. No account, payment, grant or raw-table write.';
+-- Role comments also survive schema cleanup and require ADMIN to change.
+do $$ begin
+  if shobj_description('web_purchase_erasure'::regrole,'pg_authid') is distinct from
+   'Dedicated short-lived server JWT role: bounded read-only deletion/state pull, fixed consumer ACK/failure only. No account, payment, grant or raw-table write.' then
+    comment on role web_purchase_erasure is
+     'Dedicated short-lived server JWT role: bounded read-only deletion/state pull, fixed consumer ACK/failure only. No account, payment, grant or raw-table write.';
+  end if;
+end $$;
 commit;

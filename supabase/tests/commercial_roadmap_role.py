@@ -16,6 +16,16 @@ def run_existing_role_regression(run, conn, admin, source_path, out, role, marke
         sql(f'drop role if exists {role}', True)
         if attributes is not None:
             sql(f"create role {role} {attributes} password 'commercial-local-fixture'", True)
+            # Recreate the cluster-level state left by the original migration:
+            # settings/memberships/comments survive DROP SCHEMA too. Deliberately
+            # give postgres no ADMIN OPTION on these pre-existing principals.
+            if not set(attributes.split()) & {'superuser','bypassrls','replication','createdb','createrole'}:
+                if role == 'vantare_triage':
+                    sql("alter role vantare_triage set default_transaction_read_only=on; alter role vantare_triage set statement_timeout='10s'", True)
+                elif role == 'pilot_profile_writer':
+                    sql('grant pilot_profile_writer to postgres', True)
+                elif role == 'web_purchase_erasure':
+                    sql("grant web_purchase_erasure to authenticator; comment on role web_purchase_erasure is 'Dedicated short-lived server JWT role: bounded read-only deletion/state pull, fixed consumer ACK/failure only. No account, payment, grant or raw-table write.'", True)
 
     attrs = 'nologin noinherit'+(' connection limit 2' if limit else '')
     contract = f"rolname='{role}' and not (rolsuper or rolcreatedb or rolcreaterole or rolreplication or rolbypassrls or rolcanlogin or rolinherit)"

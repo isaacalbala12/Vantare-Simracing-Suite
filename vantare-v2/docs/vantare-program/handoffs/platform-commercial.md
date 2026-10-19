@@ -3875,42 +3875,41 @@ CI verde ni PR ready hasta comprobar el HEAD final. Sin Rust/dependencias nuevos
 Windows limpio/login/pagos pendientes; Hub bloqueado por #1694. Sin ventanas
 en sesión principal, firma/publicación ni merge por el worker.
 
-## VANTA-96 / #1713 · Esquema 94/94; parada por estado Plane (19-oct-2026)
+## VANTA-96 / #1713 · 94/94; parada en prueba reconcile (19-oct-2026)
 
-#1716 fusionado por orquestador en origin/nightly
-440f3f9a3039204bd037e95239c5a2f7bacf17b5. Preflight Management solo lectura:
-postgres tiene ADMIN OPTION directo sobre el publicador, grantor supabase_admin.
-pg_roles no registra creador; no inventar esa atribución. Checkpoint completo
-protegido del estado 41, dry-run exactamente 53 pendientes PASS; push exit 0,
-historial 94/94 exacto. Sin repetir limpieza, repair, seeds ni saltar versiones.
+Producción ombjshwzqgeisazijduq, canon nightly 440f3f9a3 (#1716 fusionado),
+historial 94/94 y roadmap respaldado del 15-oct público. Para Isaac se excluye
+por decisión del orquestador: arreglo separado #1717 / PR #1718, 15 tests PASS;
+no bloquea la reconstrucción ni se publica trabajo interno de Isaac.
 
-Publicador LOGIN, contraseña conservada y conexión dedicada comprobada. El
-candidato real del publicador canónico falla «Estado Plane desconocido; revisar
-mapeo»: Plane tiene **Para Isaac**, no contemplado por STATUS. No se asigna una
-columna sin decisión del orquestador ni se debilita la guarda. Pregunta enviada.
-Para recuperar la lectura pública se restauró solo el documento aprobado de
-34 tareas del backup (contenido del 15-oct), validado por SQL canónico y publicado
-mediante RPC con el rol mínimo. Documento exacto y lector anon HTTP 200 PASS.
-No es una sincronización actualizada con Plane ni se restauraron 68 históricos.
+Reanudación autorizada: ES256 nueva activa, sin revocar anteriores/legacy;
+Auth anon, roadmap anon y lectura service_role HTTP200 antes/después. Firma
+ES256 con audiencia canónica aceptada en PostgREST (preflight limit=0; no E2E).
+Secretos cargados, siete listas Brevo, 15 funciones ACTIVE/JWT correcto,
+Clerk TPA y registry DESHABILITADO, cuatro ofertas canónicas aplicadas con
+ventana 26-oct→26-nov 19:00 Madrid. Vault scheduler y ACK D1 provisionados.
 
-ES256 generada/importada standby, kid d8c05235-dc1b-4e7f-bd88-d26d95b7e880.
-No rotación ni revocaciones: activa previa y legacy intactas. Tres pruebas previas
-anon/Auth, RPC roadmap y service_role HTTP 200. Secretos internos generados y
-env-file privado preparado, no cargado. Mapa remoto requiere actualización desde
-el canónico; Polar tokens y licencia no se tocaron. Compensación comprobada OFF.
+PARADA obligatoria: prueba manual mail-cleanup HTTP200, billing-reconcile
+HTTP503 reconciliation_not_configured, antes de lease o llamada Polar. Error
+del operador en env-file: cuatro JSON quedaron con barras de escape. Confirmado
+por comparación de digest, sin mostrar valores. Otros secretos coinciden;
+Polar token/webhook y licencia preservados. Corrección de formato preparada
+pero NO aplicada en archivo protegido edge-json-correction.env; cargar solo
+esos cuatro valores, verificar digest y repetir prueba al reanudar.
 
-Parada del avance: sin funciones nuevas, Clerk TPA/registry, listas Brevo nuevas,
-ofertas aplicadas, scheduler, calendario regenerado o E2E. Ofertas generadas
-offline; API Brevo/remitente válidos. Owner URL/secret omitidos por decisión;
-receptor obligatorio antes de venta. Cloudflare 12 pendiente solo del token.
-App completa aún no acreditada, venta sigue cerrada por instrucción.
+No scheduler registrado; calendario ni E2E real Clerk/RLS/licencias aún hechos.
+Registry OFF, marketing OFF y compensación false/amount_basis NULL. Owner
+URL/secret omitidos por decisión; receptor requisito antes de venta. Venta
+cerrada por instrucción. Cloudflare paso12 pendiente solo del token, sin web.
+Alternativa scheduler servidor del plan, claves Vault en memoria: se evita
+pg_net porque sus cabeceras son legibles por roles DB según documentación
+actual del proveedor; no se instala extensión ni se relaja RLS.
 
-Registro vivo, copias/hash, estado y reversión exacta de claves:
-C:/VantareServer/evidence/supabase-reconstruccion/EJECUCION.md. Corregir/revisar
-mapeo de Para Isaac y continuar secretos/rotación condicionada y pasos 5–11;
-no repetir esquema ni pedir otra vez A/B/C/D. Rama propia
-vantareapp/isa-1713-reconstruccion-produccion, PR documental #1714 a nightly;
-sin merge/release por el worker. El dato anterior 41/94 está superado.
+Registro/copias/reversión exacta: C:/VantareServer/evidence/supabase-reconstruccion/
+EJECUCION.md. Rama propia vantareapp/isa-1713-reconstruccion-produccion,
+PR documental #1714 a nightly, sin merge/release por worker. Siguiente paso:
+revisar/cargar corrección de cuatro JSON y continuar; no repetir esquema,
+rotación, ofertas o creación de listas, ni pedir otra vez A/B/C/D.
 
 ## VANTA-96 / #1715 · Roles gestionados y preexistentes (19-oct-2026)
 
@@ -3939,4 +3938,4 @@ Aceptación: CI completa LF/CRLF verde en HEAD final; resultados y SHA vivos en
 #1715 y evidencia anterior. No se modifican workflows o checks requeridos.
 Durante esa revisión de código solo se leyó pg_roles; no se modificó producción.
 #1716 ya fusionado por el orquestador; la ejecución posterior y su estado actual
-(94/94, parada Plane) se registran en #1713 arriba. No repetir limpieza a ciegas.
+(94/94, parada de configuración) se registran en #1713 arriba. No repetir limpieza a ciegas.

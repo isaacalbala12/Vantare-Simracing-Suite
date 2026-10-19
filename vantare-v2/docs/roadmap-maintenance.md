@@ -8,7 +8,10 @@ La app/web nunca acceden a Plane ni reciben su token. No depende de GitHub públ
 
 Solo se publican tareas con modules de producto. Infraestructura y Negocio
 se excluyen, incluso con otra pertenencia; canceladas y tareas sin module se
-ocultan. No hay descripciones, comentarios, usuarios ni campos privados.
+ocultan. El estado interno «Para Isaac» también se excluye: contiene tareas
+de Isaac, no trabajo de producto, y nunca se convierte en «En marcha». Otros
+estados desconocidos siguen deteniendo la publicación hasta revisarlos.
+No hay descripciones, comentarios, usuarios ni campos privados.
 Nombre exacto, incluido el tipo: «Rework - Roadmap» no se reformatea ni traduce.
 
 | Estado Plane | Columna app/web | section |

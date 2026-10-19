@@ -28,6 +28,7 @@ Deno.test({
     const serviceToken = await testToken(
       {
         role: "service_role",
+        aud: "vantare-native-data",
         exp: Math.floor(now.getTime() / 1000) + 300,
       },
       { alg: "ES256", typ: "JWT", kid: JSON.parse(testPrivateJwk).kid },
@@ -95,10 +96,8 @@ Deno.test({
       role.status === 200 && await role.json() === "tester",
       "signed token not accepted by RPC",
     );
-    // Existing SQL contract: 20260802180000 grants authenticated EXECUTE on a
-    // SECURITY DEFINER wrapper; 20260802150000 permits a seeded active tester.
-    // B03 changes its identity lookup to current_account(), not its grants.
-    // Do not claim this legacy route is closed by the separate Edge admission.
+    // #1708 proved 200 before #1709. The new 20261018224803 migration
+    // closes this route, including the SECURITY DEFINER evidence wrapper.
     const direct = await call("rpc/testing_center_submit_report", token, {
       p_contract_version: "testing-center.v1",
       p_channel: "testers",
@@ -117,10 +116,34 @@ Deno.test({
       p_idempotency_key: `integration-${crypto.randomUUID()}`,
     });
     assert(
-      direct.status === 200,
+      direct.status === 403,
       `legacy tester RPC returned ${direct.status}`,
     );
-    const reports = await direct.json();
+    await direct.body?.cancel();
+    const admitted = await call(
+      "rpc/testing_center_report_submit_admitted",
+      serviceToken,
+      {
+        p_account: account,
+        p_contract_version: "testing-center.v1",
+        p_channel: "testers",
+        p_action_text: "Informe estructurado",
+        p_expected_text: "Revisión humana pendiente",
+        p_observed_text: "Revisión humana pendiente",
+        p_context_text: "",
+        p_app_version: "0.1.0",
+        p_os_family: "windows",
+        p_os_version: "11",
+        p_module: "hub",
+        p_include_diagnostic: false,
+        p_include_logs: false,
+        p_diagnostic_payload: null,
+        p_diagnostic_digest: null,
+        p_idempotency_key: `draft_${"d".repeat(64)}`,
+      },
+    );
+    assert(admitted.status === 200, `admitted RPC returned ${admitted.status}`);
+    const reports = await admitted.json();
     assert(reports.length === 1 && typeof reports[0].report_id === "string");
     const reportPath = `testing_center_reports?report_id=eq.${
       encodeURIComponent(reports[0].report_id)

@@ -11,6 +11,7 @@ import uuid
 STATUS = {'por hacer': 'next', 'para claude': 'now', 'en curso': 'now',
           'por revisar': 'now', 'por testear': 'now', 'entregado': 'done'}
 EXCLUDED = {'infraestructura', 'negocio'}
+INTERNAL_STATES = {'para isaac'}
 NAMESPACE = uuid.UUID('78c38d96-f693-5707-86f7-b30dde54b0ee')
 
 
@@ -157,7 +158,8 @@ def document(snapshot):
             if not memberships or any(normalized(module['name']) in EXCLUDED for module in memberships):
                 continue
             state = states[identifier(task['state'])]
-            if state.get('group') == 'cancelled' or normalized(state['name']) in ('cancelado', 'cancelada'):
+            if state.get('group') == 'cancelled' or normalized(state['name']) in (
+                    INTERNAL_STATES | {'cancelado', 'cancelada'}):
                 continue
             section = STATUS.get(normalized(state['name']))
             if section is None:

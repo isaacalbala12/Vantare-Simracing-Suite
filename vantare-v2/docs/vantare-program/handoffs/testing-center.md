@@ -1,3 +1,102 @@
+## 2026-10-19 - #1709 / VANTA-96: aislar UUID de pgTAP y Edge
+
+- Run39181530688 completa Edge y suites previas, luego falla en testing_report_rich_admission.test.sql:47 por evidence_batches PK duplicada. Edge y pgTAP reutilizaban lote17090000-...0010/evidencia...0011.
+- pgTAP ya usa BEGIN/ROLLBACK, pero ve filas confirmadas por las peticiones Edge previas. Se reserva namespace17090001-* para todas sus cuentas, lotes, evidencias, paths y referencias; Edge conserva17090000-*.
+- Ninguna limpieza ni cambio de orden: evidencia/tombstone de Edge conservados, rollback pgTAP conservado, todas las aserciones intactas. No ON CONFLICT ni bypass del fallo.
+- Pendiente CI real LF/CRLF y CI completa del nuevo HEAD. Ultima evidencia local Deno88 PASS/2 omitidas y Rust220 PASS/2 omitidas; este arreglo solo cambia literales de fixture SQL y handoff.
+- Sin produccion, permisos, migraciones, deploy, secretos, merge a nightly ni release.
+
+## 2026-10-19 - #1709 / VANTA-96: RPC void en transporte del arnes
+
+- Nightly440f3f9a3 (#1716) incorporado por merge0074ec237, sin conflictos/rebase/force-push.
+- Run39180038402 ya supera plain/retry/captura y llega al formulario simple. Su RPC testing_report_submit_admitted retorna void (HTTP204 sin body). El adaptador de pruebas llamaba response.json() incondicionalmente: SyntaxError -> Edge503.
+- Regresion reproducida local: quitar solo el manejo204 del adaptador produce void_write_became_503; restaurarlo da PASS. Log void-transport-RED.log. No es falta de salt ni permiso: deps.salt esta explicito y no se modifica ACL/configuracion productiva.
+- Extraido transporte loopback en supabase/tests/fixtures/postgrest-rpc.ts:204 se convierte a data:null/error:null; JSON no vacio y errores SQL conservan su tratamiento. Tests a traves del handler Edge cubren void204->200, recibo rico y error42501 preservado.
+- Deno88 PASS / 2 integraciones omitidas; TS check/lint/fmt, Python compile y calidad462 PASS. Rust220 PASS / 2 omisiones existentes sigue ultima evidencia; no se cambia Rust en este arreglo.
+- Pendiente CI completa LF/CRLF del nuevo HEAD. RED de barreras y cierre legacy intactos. Sin produccion, nuevos secretos, permisos, deploy, importacion de claves, merge a nightly ni release.
+
+## 2026-10-19 - #1709 / VANTA-96: contrato Rust/Edge UTF-8 compartido
+
+- Run39178511016: RED ya PASS; completo falla en primer envio del script commercial-report.ts:113 con report_status_400, antes de capturas.
+- Causa comprobada en fuente y artefactos: el script tenia mojibake por lectura/reescritura con codificacion incorrecta, mientras serializer Rust, Edge y SQL usan la o acentuada U+00F3. El error se introdujo al editar la fixture, no en el contrato productivo.
+- Se elimina la copia manual del cuerpo. Nuevo supabase/tests/fixtures/native-hub-report.json UTF-8 compartido por el arnes real y test Deno; un test Rust compara la serializacion productiva de Submission con ese mismo JSON. Deno prueba sin/con lote y rechaza explicitamente el texto mal codificado.
+- No se cambia el cliente productivo ni se amplia la Edge para aceptar etiquetas corruptas. El diagnostico del arnes incluye solo codigo publico de error, sin payloads ni tokens.
+- Verificado local: Rust services220 PASS / 2 omisiones existentes (nuevo contrato incluido), fmt y Clippy all-targets PASS; Deno85 PASS / 2 integraciones omitidas; TS check/lint/fmt y calidad462 PASS. Pendiente CI real LF/CRLF del nuevo HEAD; #1710 sigue draft.
+- Control RED, ACL, migraciones y nightly bf7e21c61 conservados. Sin produccion, deploy, claves reales, secretos, merge a nightly ni release.
+
+## 2026-10-19 - #1709 / VANTA-96: sid valido en fixture de cierre
+
+- Run39177500314 llega a testing_report_legacy_closed.test.sql: una de 17 aserciones falla, current_account() NULL en vez del UUID propio. Las suites admin y rich-admission anteriores ya pasan en el RED.
+- Causa confirmada en contrato B03/B01: sid="fixture" incumple ^sess_[a-zA-Z0-9_]+$. Cambiado solo a "sess_fixture"; se conserva la asercion de identidad ligada y todos los negativos ACL.
+- No depende del modo sin barreras. No se cambia el selector --before-private-write-barriers, su grep esperado, orden de suites, grants, funciones SQL ni migraciones.
+- Pendiente CI real del nuevo HEAD: RED debe alcanzar y detectar barreras privadas ausentes; catalogo completo debe pasar LF/CRLF. #1710 sigue draft hasta toda la CI verde.
+- Rama conserva nightly bf7e21c61 (#1712). Produccion en reconstruccion paralela no se toca; sin deploy, secretos, importacion de claves, merge ni release.
+
+## 2026-10-19 - #1709 / VANTA-96: adaptar fixture admin al cierre
+
+- Run39176062419 fallo en el RED control antes de llegar al control esperado: native_admin.test.sql:70 creaba informe como authenticated via RPC legacy ya cerrada.
+- Nightly bf7e21c61 (#1712) incorporado mediante merge43af752bc, sin conflicto/rebase/force-push. Produccion reconstruida en paralelo queda fuera de este trabajo; #1710 sera migracion posterior.
+- Fixture admin actual crea el informe como service_role mediante adaptador admitido; vuelve a authenticated para mantener RLS propia/ajena y preparacion de capturas. Prueba por separado ACL legacy cerrada y membership del adaptador nuevo; no se reabre EXECUTE.
+- Runner historico conserva su recorrido pre-corte solo si el adaptador aun no existe. Suites historicas de checkpoint no se convierten en pruebas del catalogo actual.
+- Pendiente nueva CI real LF/CRLF y checks completos del HEAD. No afirmar PASS ni sacar draft antes. Sin cambios remotos Supabase, deploy, secretos ni release.
+
+## 2026-10-19 - #1709 / VANTA-96: ES256 y workflow real incorporados
+
+- #1708 fusionado por el orquestador en nightly147372fa9. Merge local 352f31620 en rama propia #1710, sin conflictos, rebase ni force-push.
+- Regresion real del corte: legacy403 tras la migracion de cierre; handler Edge real verifica ES256/kid, resuelve cuenta por SQL y usa admision/adaptador reales via PostgREST. Plain/retry/ready JPEG fixture, cuota compartida, RLS de informe nuevo y tombstone.
+- La expectativa200 de #1708 era correcta antes de la nueva migracion. Se sustituye por403 con prueba positiva por Edge; no por un >=400 sin evidencia.
+- Nuevo script commercial-report.ts solo loopback, tokens TEST por stdin; cache del workflow ampliada para sus imports. Nada de Supabase remoto.
+- Deno85 PASS / 2 integraciones omitidas; typecheck/lint TS, Python compile PASS. Rust services219 PASS / 2 omisiones previas; este merge no cambia Rust. CI real LF/CRLF y CI completa del HEAD pendientes; PR #1710 sigue draft.
+- Siguiente: corregir cualquier fallo del arnes real y entregar solo CI verde. Sin produccion, deploy, secretos reales, importacion de claves, merge a nightly ni release en este worker.
+
+## 2026-10-19 - #1709 / VANTA-96: cierre preparado despues del cliente
+
+- PR draft #1710. Primer commit 72e15fdd2 ya subido: cliente Edge con/sin capturas + compatibilidad SQL, sin revocar permisos.
+- Segundo paso: migracion 20261018224803 retira EXECUTE a PUBLIC/anon/authenticated/service_role en base, evidencia e inner legacy. Preparar/finalizar capturas conserva permisos; nuevo adaptador solo service_role.
+- Regresiones pgTAP de recibo/reintentos, membership/canal, lote ajeno/pendiente/listo, borrado, privacidad y ACL de las tres firmas preparadas y conectadas al arnes. NO ejecutadas aun: esperan PostgreSQL/PostgREST real de #1702.
+- Verificado local: Deno 20 PASS / 1 integracion omitida; Rust services 219 PASS / 2 omisiones existentes (incluye proceso real y 19 reportes), fmt y Clippy all-targets PASS; calidad 462 PASS. El primer fallo de Clippy (test >100 lineas) se corrigio separando comprobaciones, sin quitar cobertura.
+- Pendiente integrar #1708 y workflow #1702 desde nightly, completar prueba Edge+PostgREST y expectativas B01 con la nueva ACL, pasar CI y sacar draft. No reconstruir produccion por este estado.
+- Sin produccion, deploy, claves, secretos, dependencias nuevas, merge ni release. Evidencia C:/VantareServer/evidence/1709-rpc-legacy/.
+
+## 2026-10-19 - #1709 / VANTA-96: implementacion aprobada, fase compatible
+
+- Orquestador aprueba continuar en PR draft #1710; prioridad despues de #1708.
+- Services cambia ReportSend con/sin capturas a testing-report-submit; mismo consentimiento, intento durable, recibo y reintento. Hub/IPC sin cambios.
+- Edge acepta envelope rico cerrado tras la admision IP/cuenta existente. Cuenta del bearer verificado, nunca del body; misma cuota para formularios y reintentos.
+- Migracion 20261018224039 compatible: adaptador service-only y cores privados con UUID, membership y barrera de cuenta borrada. Los permisos legacy siguen vigentes hasta la fase de cierre posterior.
+- Deno 20 PASS / 1 integracion omitida; Rust reportes 19 PASS. SQL y arnes real pendientes de #1702 en nightly, ES256 de #1708. No afirmar cierre de seguridad ni CI final verde.
+- Rama vantareapp/isa-1709-rpc-legacy-reportes; sin produccion, deploy, secretos, dependencias, merge ni release. Runbook testing-center-legacy-admission-1709.md.
+
+## #1709 / VANTA-96 - Consumidor legacy y propuesta de admision (19-oct-2026)
+
+Encargo del orquestador separado de ES256 #1708. Rama propia
+vantareapp/isa-1709-rpc-legacy-reportes, base origin/nightly
+999d5950745f73be0e38a1763422f53b515c6866. Worktree
+C:/VantareServer/wt/isa-1709-rpc-legacy-reportes. Project Vantare,
+area:testing-center, milestone Testing Center testers.
+
+SI hay consumidor legitimo: Hub testing/editor.rs:468 -> ReportSend ->
+services/app.rs:880 -> Reports::send -> report.rs:626 llama la RPC sin capturas.
+Con capturas usa _with_evidence (:638), wrapper SQL DEFINER que llama la base.
+No es solo allowlist/test. Revocar authenticated ahora rompe el envio; cerrar
+solo la base tampoco cierra el wrapper con capturas. Web disponible a4ae91da,
+admin, Edge y scripts sin caller productivo directo hallado; limites registrados.
+Los formularios modernos/triaje usan Edge y coexisten con el formulario rico.
+
+Opcion 3 del encargo: solo inventario/propuesta, commit03627d51a, documento
+docs/runbooks/testing-center-legacy-admission-1709.md. Reusar Edge/contadores
+(5 intentos/dia y 20/semana UTC por IP/UUID), adaptar transporte Rust sin perder
+recibo/consentimiento/retry/capturas, cores privados con UUID y adaptadores
+admitidos; cerrar ambas RPC cliente al final. No JWT sintetico ni cuota por
+formato. Pruebas/orden de corte definidos; implementacion/riesgo aun pendientes.
+
+Sin migracion/ACL/Rust/dependencias/produccion tocados. Calidad462, politica de
+rama y diff-check PASS. Build/pruebas runtime omitidos por alcance documental.
+Pendientes PR/CI, workflow real #1702 y decision del orquestador antes de
+implementar. No cerrar #1709 como arreglada ni reconstruir produccion solo por
+este documento. VANTA-96 En curso. El contenido historico del handoff se
+conserva byte a byte: no se normaliza su codificacion mixta fuera de alcance.
+
 ## #1594 / PR #1602 · corregir dos gates tras merge · Mac · 14/10/2026
 
 Encargo acotado del orquestador sobre `521f13fa`, rama

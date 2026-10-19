@@ -62,7 +62,7 @@ jobs:
         run: |
           set -euo pipefail
           deno cache --frozen --node-modules-dir=auto --config supabase/functions/deno.json \
-            supabase/tests/commercial-bearers.ts supabase/tests/commercial-license.ts \
+            supabase/tests/commercial-bearers.ts supabase/tests/commercial-license.ts supabase/tests/commercial-report.ts \
             supabase/functions/native-account-authorize/index.ts
           # esm.sh also loads computed dynamic imports at runtime. Warm the real
           # synthetic handler once, with its external API doubles. Never print

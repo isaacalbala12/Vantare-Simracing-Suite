@@ -3875,54 +3875,60 @@ CI verde ni PR ready hasta comprobar el HEAD final. Sin Rust/dependencias nuevos
 Windows limpio/login/pagos pendientes; Hub bloqueado por #1694. Sin ventanas
 en sesión principal, firma/publicación ni merge por el worker.
 
-## VANTA-96 / #1713 · Identidad funcional, cleanup y calendario (19-oct-2026)
+## VANTA-96 / #1713 · 96/96, roadmap activo e informes cerrados (19-oct-2026)
 
-Producción ombjshwzqgeisazijduq, canon440f3f9a3, esquema/historial94/94.
-JSON corregidos y digest4/4; consumidores offline reales PASS. ES256 activa,
-legacy anon/service_role comprobadas, 15 funciones ACTIVE/JWT correcto,
-siete listas Brevo, TPA Clerk, cuatro ofertas y Vault/ACKD1 configurados.
+Producción ombjshwzqgeisazijduq: canon actualizado incrementalmente desde440f3f9a3
+(94) hasta nightly c48b4847d5b204b6dfd89f2ce45646d1f15d7151 (96, #1710).
+Solo20261018224039/20261018224803 pendientes;94históricas idénticas. Backup
+completo protegido pre1710 con hash/TOC y dryrun2 exactas PASS. Push incremental
+--include-all (versiones anteriores a1711 ya aplicada), sin limpieza/repair/seeds
+ni cambios Vault. Historial96/96 exacto verificado.
 
-Por decisión del orquestador, reconcile se separa. E2E real OAuth PKCE nativo
-Production → bridge200 ES256/kid importado; PostgREST propio200/1fila,
-ajeno200/0filas, firma alterada401. native-license200, sujeto correcto y cero
-capacidades (cuenta Free). Registry OFF rechazó401; ensayo positivo controlado
-con apagado en fallo. Tras PASS funcional, clerk_issuers.enabled=true confirmado.
-Una cuenta QA sin Owner ni derechos fabricados; Auth8, perfiles9, identidades1.
-El ensayo usó consentimiento en portal oficial con sesión de prueba; la ruta
-de login OAuth redirige a /acceso de la web antigua. No acredita instalador/login
-físico ni web nueva. Falta de pública Ed25519 RESUELTA por nueva autorización:
-par nuevo BIL-08, kid license-prod-20261019-329f6f81, privada PKCS8 en
-backup con ACL solo operador/SYSTEM y env-file protegido. Secretos2/2 por hash.
-Build-config completado con pública raw32 y bridge; solo esas dos líneas
-cambian, ocho campos presentes y coherencia Production PASS. native-license200
-firma con kid nuevo y la pública del build-config verifica; payload alterado
-rechazado. Sin licencias reales previas según Isaac; antigua privada irrecuperable.
-Restauración futura del mismo par desde nuevo backup, no reutilizar kid con otro.
-Evidencia: ejecucion-licencia-firma-verificada.json y EJECUCION.md.
+Par Ed25519 ya estaba aplicado en la entrega anterior; no regenerado. Kid
+license-prod-20261019-329f6f81, backup PKCS8/ACL operador+SYSTEM, pública raw32
+y bridge en build-config. Ocho campos y coherencia Production PASS. Nueva
+licencia real200 tras#1710: misma clave, firma verificada con pública del build;
+payload alterado rechazado. ES256 y secretos de Polar preservados.
 
-Mail-cleanup cada minuto en tarea Windows Vantare-VANTA96-MailCleanup, SYSTEM,
-PT1M, IgnoreNew; argumento exclusivo --mail-only, claves Vault en memoria.
-Ticks automáticos HTTP200 y resultado0 PASS. Reconcile NO programado.
-Calendario: recuperada solo la publicación aprobada del backup, 12 series,
-fecha22-sep y autoría conservadas; lector HTTP200 y contenido exacto PASS.
-Roadmap respaldado15-oct público; PR#1718 excluir Para Isaac, HEAD37f12b024,
-15 tests y cinco checks CI PASS; no fusionado/publicado por worker.
+Publicador existente WSL vantare-svc/usuario roadmap fijado a
+f6c4ad49d835729272ec6b7d3c9c5e70fde46bcf (#1718). Repo limpio, pin protegido,
+unidades canónicas, primera ejecución success0 y timer enabled/active5min.
+Anon RPC200 con36tareas exactamente iguales al candidato UTF8; Para Isaac
+excluido. Backup previo de documento/env conservado. La comparación inicial
+CP1252 produjo diferencias aparentes; UTF8 confirmó igualdad sin cambiar guardas.
+No se crea escritor paralelo. #1718 ya fusionado/publicado por este procedimiento.
 
-Reconcile sigue en refunds/página1 con503. Los dos tokens Polar custodiados
-NO coinciden por digest con el secreto Edge; falta copia protegida del exacto
-para hacer el GET pedido. No se usa otro ni se cambia código. Logs API devuelve
-Table does not exist para las tablas consultadas; el anterior «sin errores SQL»
-queda corregido: la consulta no era válida. Scope mínimo oficial refunds:read,
-a revisar en el token de Edge en Polar Production; falta de scope NO demostrada.
-No saltar cursor ni programar reconcile hasta resolverlo.
+#1710 Edge: solo testing-report-submit cambió en producción; desplegada desde
+c48b4847d, ACTIVE/verify_jwt=false. Salt IP independiente CSPRNG en custodia/env-file,
+hash verificado; pública ES256 existente. QA con OAuth/bridge real y membresía
+tester temporal: envío200/recibo submitted, retry200/mismo recibo/idempotent=true.
+RPC legacy base, inner y evidencia: HTTP403/SQLSTATE42501 con el mismo
+authenticated válido. Membría temporal desactivada y estado final comprobado;
+informe de prueba/auditoría se conservan, sin Owner/derechos comerciales falsos.
+El comprobador inicial esperaba objeto; el contrato retorna array1. Se corrigió
+solo la comprobación y se reusó el intento exacto, sin borrar ni resetear cuotas.
 
-Venta cerrada por instrucción, marketing/AI/promoción false, compensación OFF;
-Owner receptor pendiente antes de abrir venta. Cloudflare paso12 pendiente
-solo del token; no publicación web/release. Registro y procedimientos de reversión:
+Se mantienen: identidad/RLS y registry Clerk habilitado,15funciones de lanzamiento
+más la Edge de informes ahora autorizada, siete listas Brevo, cuatro ofertas,
+Vault/ACKD1, cleanup servidor cada minuto (ticks200/resultado0), calendario
+respaldado12series del22-sep y licencia Free sin capacidades de pago.
+
+Lista de scopes Polar preparada en EJECUCION.md: observación orders:read,
+subscriptions:read, refunds:read, disputes:read, checkouts:read; compra/portal
+checkouts:write/customer_sessions:write; customers:read para Customer State.
+subscriptions:write solo para cambios de renovación/cupón autorizados. No se
+solicita refunds:write para arreglar lectura. Fuentes SDK oficial enlazadas y
+alternativa write que cubre GET explicada. Token configurado aún no coincide
+con los dos custodiados; no se afirma falta de scope ni se hace GET con otro.
+Reconcile sigue sin scheduler. No cambios de código ni permisos Polar.
+
+Venta cerrada por instrucción, marketing/AI/promoción false y compensación OFF.
+Receptor Owner/Cloudflare/instalador físico y ruta login web antigua pendientes;
+no publicar web/release. Cliente a compilar debe incluir#1710, porque legacy
+queda cerrado: no restaurar EXECUTE como rollback ni usar instalador anterior
+para dar por probado el nuevo transporte. Registro, backups y reversión:
 C:/VantareServer/evidence/supabase-reconstruccion/EJECUCION.md. Rama propia
 vantareapp/isa-1713-reconstruccion-produccion, PR documental#1714 a nightly.
-Siguiente: token Polar coincidente para GET/diagnóstico; entrega del instalador
-y login físico. Pública/licencia resueltas; no repetir esquema, rotación u ofertas.
 
 ## VANTA-96 / #1715 · Roles gestionados y preexistentes (19-oct-2026)
 
@@ -3951,7 +3957,7 @@ Aceptación: CI completa LF/CRLF verde en HEAD final; resultados y SHA vivos en
 #1715 y evidencia anterior. No se modifican workflows o checks requeridos.
 Durante esa revisión de código solo se leyó pg_roles; no se modificó producción.
 #1716 ya fusionado por el orquestador; la ejecución posterior y su estado actual
-(94/94, parada de configuración) se registran en #1713 arriba. No repetir limpieza a ciegas.
+(96/96 y publicador activo) se registran en #1713 arriba. No repetir limpieza a ciegas.
 
 ## VANTA-96 · #1717 · Estado interno del roadmap (19-oct-2026)
 

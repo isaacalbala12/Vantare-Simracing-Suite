@@ -40,7 +40,7 @@ if (Test-Path -LiteralPath (Join-Path $root 'state.json')) {
         if($null -ne $registration){$current=[string]$registration.DisplayVersion}
     } else {
         $state = Read-NativeState $root $false
-        $manifest = Read-NativeManifest (Join-Path $root "generations/$($state.active.generation)") 'beta' $false
+        $manifest = Read-NativeManifest (Join-Path $root "generations/$($state.active.generation)") 'beta' $false -Installed
         $current = [string]$manifest.version
     }
     $data = Join-Path $root "generations/$($state.active.generation)/data"

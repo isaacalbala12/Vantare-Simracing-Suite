@@ -41,3 +41,4 @@ foreach($member in $script:NativeFixtures){
 }
 Assert-Inventory $true 'Todos los recursos enumerados existen en la fuente'
 "$passed checks PASS"
+& (Join-Path $PSScriptRoot 'historical-inventory-tests.ps1')

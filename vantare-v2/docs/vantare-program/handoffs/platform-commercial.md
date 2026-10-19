@@ -1,3 +1,41 @@
+## VANTA-105 / #1720 · Compatibilidad de inventarios instalados (19-oct-2026)
+
+Corrección autorizada tras el fallo RC2 #1719. Rama/worktree propios
+vantareapp/isa-1720-upgrade-inventario-historico / C:/VantareServer/wt/isa-1720,
+base nightlyc48b4847d. Sin merge, promoción, firma ni publicación.
+RC2 y sus bytes no se modifican; RC3 solo tras revisión/merge del orquestador.
+
+Read-NativeManifest admite -Installed solo en consumidores de generaciones
+existentes: estado/previous, Probe de Setup, actualización, repair, rollback,
+registro, feed y archivo de perfiles. Se admite la lista beta congelada de91
+miembros para0.0.975–0.0.979, además de la actual. No cualquier subconjunto.
+Expand-NativePackage/build conservan109 obligatorios; no cambian hashes,
+sidecars, reglas de rutas/canal ni locks. ImportProfiles copia la lista del
+manifiesto validado antes de bloquear los binarios, sin exigir recursos nuevos.
+
+Fixture: manifiesto público real975, SHA4fc39c73a4660a3c859638d8078c97b30b732048f70ed72f5535d8ec12cc9219.
+ZIP público372bcd60cf168cb6187be1c481b21c835268db1dbcc3e0a0aeb17246bede7066;
+Setup públicoe0d1aafbbaf338b54709ed95c0dd6abf62ab352878dea24b770c8f7e114c61de.
+La fixture conserva sus bytes CRLF por atributo específico, sin cambiar otras
+políticas Git. Procedencia documentada en packaging/fixtures/README.md.
+La nueva suite se ejecuta desde build-inventory-tests, ya en workflow requerido;
+prueba inventarios dañados/desconocidos y rechazo del ZIP histórico entrante.
+Modo offline con PE inertes; modo local opcional con todos los ficheros975 reales.
+No ejecuta EXE de app ni acredita Hub/GPU/login.
+
+Evidencia local C:/VantareServer/evidence/1720: baseline reproduce el rechazo
+original; fmt PASS, registro66 y shell23 PASS en cuentas/escritorios privados.
+La regresión ampliada del manifiesto/upgrade/import/rollback/reinstall/uninstall
+pasa32 comprobaciones, incluidas las del payload público completo975.
+SHA final, PR y checks se registran/verifican en la issue #1720.
+Sin Rust modificado: check/Clippy/Nextest/lifecycle completos se verifican en CI.
+Los fallos iniciales de aislamiento/harness se conservan, no se ocultan.
+Sesión Codex con esfuerzo fijado por el harness; no permite seleccionar high.
+
+Siguiente paso: revisar y fusionar solo con CI requerida verde; después RC3
+y campañas reales OFF, ON y upgrade975 hasta desinstalar. El target1719-rc2
+queda a cargo del orquestador; no se toca, tampoco target1694-hub ni #1698 draft.
+
 ## VANTA-96 / #1711 · account_id sin FK (19-oct-2026, en curso)
 
 Encargo del orquestador para P2-1 de la review APTO de #1705. #1705 integrado

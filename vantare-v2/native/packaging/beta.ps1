@@ -175,7 +175,7 @@ function Stage-BetaUpdate([string]$Directory, [string]$ManifestFile = '') {
         $state = Read-NativeState $directory
         if ($state.channel -cne 'beta') { throw 'El actualizador beta no cambia de canal.' }
         $active = Join-Path $directory "generations/$($state.active.generation)"
-        $current = Read-NativeManifest $active 'beta'
+        $current = Read-NativeManifest $active 'beta' -Installed
         $verifier = Join-Path $active 'bin/vantare-services.exe'
         if ($ManifestFile) {
             $path = Assert-NativePath $ManifestFile
@@ -228,7 +228,7 @@ function Apply-BetaUpdate([string]$Directory) {
     $state = Read-NativeState $directory
     $active = Join-Path $directory "generations/$($state.active.generation)"
     $manifest = Read-BetaManifest ([IO.File]::ReadAllText($pending)) $true (Join-Path $active 'bin/vantare-services.exe')
-    $current = Read-NativeManifest $active 'beta'
+    $current = Read-NativeManifest $active 'beta' -Installed
     if ((Read-BetaVersion $manifest.version) -le (Read-BetaVersion $current.version)) {
         Remove-Item -LiteralPath $pending
         return $false
@@ -292,7 +292,7 @@ function Install-Beta([string]$Directory, [string]$Zip, [string]$Hash, [scriptbl
             $retained = Join-Path $directory 'retained-data.json'
             if (Test-Path -LiteralPath (Join-Path $directory 'state.json')) {
                 $state = Read-NativeState $directory $false
-                $current = Read-NativeManifest (Join-Path $directory "generations/$($state.active.generation)") 'beta' $false
+                $current = Read-NativeManifest (Join-Path $directory "generations/$($state.active.generation)") 'beta' $false -Installed
                 if ($version -lt (Read-BetaVersion $current.version)) { Throw-BetaInstallError 3 'Ya tienes una versión más reciente de Vantare. Este instalador es anterior; descarga el más reciente.' }
                 Write-NativeProgress 'copy' 54
                 Activate-BetaPackage $directory $Zip $Hash $incoming.version '' ($version -eq (Read-BetaVersion $current.version))
@@ -429,7 +429,7 @@ function Confirm-BetaBoot([string]$Directory, $Process, [int]$TimeoutSeconds = 4
         if (Test-Path -LiteralPath $marker) {
             $boot = [IO.File]::ReadAllText($marker) | ConvertFrom-Json
             $state = Read-NativeState $Directory
-            $active = Read-NativeManifest (Join-Path $Directory "generations/$($state.active.generation)") 'beta'
+            $active = Read-NativeManifest (Join-Path $Directory "generations/$($state.active.generation)") 'beta' -Installed
             if ($active.version -cne $boot.version) {
                 Remove-Item -LiteralPath $marker
                 return $true
@@ -456,7 +456,7 @@ function Confirm-BetaBoot([string]$Directory, $Process, [int]$TimeoutSeconds = 4
         if ($state.active.generation -cne $boot.previous -and $null -ne $state.previous -and $state.previous.generation -ceq $boot.previous) { $null = Restore-NativeCandidate $Directory }
         Remove-Item -LiteralPath $marker
         $restored = Read-NativeState $Directory
-        $version = (Read-NativeManifest (Join-Path $Directory "generations/$($restored.active.generation)") 'beta').version
+        $version = (Read-NativeManifest (Join-Path $Directory "generations/$($restored.active.generation)") 'beta' -Installed).version
         Sync-BetaRegistration $Directory $version
         if ($boot.previous) { Set-BetaStatus $Directory 'rollback' 'Falló el arranque: se restauró la versión anterior.' }
         else { Set-BetaStatus $Directory 'error' 'No se pudo abrir Vantare tras reparar. Tus datos se conservan; vuelve a ejecutar el instalador.'; throw 'No hay versión anterior íntegra que pueda restaurarse.' }

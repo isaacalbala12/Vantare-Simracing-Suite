@@ -1,0 +1,2 @@
+# Release provenance fixture: preserve its original CRLF bytes and SHA256.
+manifest-beta-0.0.975.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol

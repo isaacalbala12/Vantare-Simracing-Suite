@@ -817,11 +817,11 @@ function Import-NativeProfiles([string]$Directory, [string[]]$Files, [double[]]$
     try {
         $state = Read-NativeState $directory
         $source = Join-Path $directory "generations/$($state.active.generation)"
+        $sourceManifest = Read-NativeManifest $source $state.channel -Installed
         $handles = Open-NativeBinaryGuard $directory
         try {
             $id = [guid]::NewGuid().ToString('N')
             $generation = Join-Path $directory "generations/$id"
-            $sourceManifest = Read-NativeManifest $source $state.channel -Installed
             foreach ($member in (@($sourceManifest.files | ForEach-Object { $_.path }) + @('manifest.json'))) {
                 $from = Join-Path $source $member; $to = Join-Path $generation $member
                 [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($to)) | Out-Null

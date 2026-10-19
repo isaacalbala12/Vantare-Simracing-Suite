@@ -38,6 +38,21 @@ interrupción sincronizada, reinstalación pública y estas guardas.
 
 ## Build y QA
 
+Las generaciones beta instaladas con el inventario histórico exacto de 91
+miembros (0.0.975–0.0.979) se leen con compatibilidad explícita. El inventario
+está congelado en candidate.ps1; no admite subconjuntos arbitrarios ni cambia al
+añadir recursos futuros. ZIP/build/paquetes entrantes conservan la validación
+estricta del inventario actual de 109 miembros. Hashes, sidecars, canal y rutas
+siguen comprobándose. La importación de perfiles copia el inventario validado
+de su generación, no el de un paquete nuevo.
+
+`packaging/historical-inventory-tests.ps1` está incluido en build-inventory-tests
+y, por esa vía, en el workflow requerido. Conserva el manifiesto público real
+de 0.0.975 y su procedencia en [fixtures](../packaging/fixtures/README.md).
+`-LegacyPackage <ZIP público>` repite upgrade/rollback/reinstalar/desinstalar
+con todos los archivos reales antiguos y comprueba el digest antes de extraer.
+Estas pruebas de motor no sustituyen las campañas del Setup recompilado RC3.
+
 Desde native; envolver cada comando con `native/scripts/compilar.ps1` desde
 `vantare-v2/`, como indica el README nativo:
 

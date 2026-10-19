@@ -130,6 +130,115 @@ function Get-NativeMembers([string]$CandidateChannel) {
 }
 $script:NativeMembers = @(Get-NativeMembers $Channel)
 
+# Frozen beta inventory from public 0.0.975 (also used by pre-resources RC1
+# 0.0.979). Never derive it from the current inventory: future additions must
+# not change the contract of generations already installed.
+$script:NativeLegacyBetaMembers = @(
+    'bin/vantare.exe'
+    'bin/vantare.exe.sha256'
+    'bin/vantare-core.exe'
+    'bin/vantare-core.exe.sha256'
+    'bin/vantare-overlays.exe'
+    'bin/vantare-overlays.exe.sha256'
+    'bin/vantare-hub.exe'
+    'bin/vantare-hub.exe.sha256'
+    'bin/vantare-engineer.exe'
+    'bin/vantare-engineer.exe.sha256'
+    'bin/vantare-services.exe'
+    'bin/vantare-services.exe.sha256'
+    'bin/vantare-storage.exe'
+    'bin/vantare-storage.exe.sha256'
+    'bin/vantare-grabar-lmu.exe'
+    'bin/vantare-grabar-lmu.exe.sha256'
+    'bin/vantare-grabar-acc.exe'
+    'bin/vantare-grabar-acc.exe.sha256'
+    'bin/vantare-import-profile.exe'
+    'bin/vantare-import-profile.exe.sha256'
+    'bin/fixtures/broadcast-tower-crossing.scene.json'
+    'bin/fixtures/broadcast-tower-default.scene.json'
+    'bin/fixtures/broadcast-tower-exit-reentry.scene.json'
+    'bin/fixtures/broadcast-tower-fast-inversion.scene.json'
+    'bin/fixtures/broadcast-tower-overtake-sequence.scene.json'
+    'bin/fixtures/broadcast-tower-stable-values.scene.json'
+    'bin/fixtures/broadcast-tower.snapshot.json'
+    'bin/fixtures/car-damage-numbers-default.scene.json'
+    'bin/fixtures/car-damage-numbers.snapshot.json'
+    'bin/fixtures/car-damage-visual-default.scene.json'
+    'bin/fixtures/car-damage-visual.snapshot.json'
+    'bin/fixtures/delta-cross-zero.scene.json'
+    'bin/fixtures/delta-default.scene.json'
+    'bin/fixtures/delta-new-best.scene.json'
+    'bin/fixtures/delta-trace-default.scene.json'
+    'bin/fixtures/delta-trace.sequence.json'
+    'bin/fixtures/delta-trace.snapshot.json'
+    'bin/fixtures/delta.snapshot.json'
+    'bin/fixtures/fastest-lap-alert.scene.json'
+    'bin/fixtures/fastest-lap-default.scene.json'
+    'bin/fixtures/fastest-lap.snapshot.json'
+    'bin/fixtures/fuel-strategy-default.scene.json'
+    'bin/fixtures/fuel-strategy.snapshot.json'
+    'bin/fixtures/head-to-head-default.scene.json'
+    'bin/fixtures/head-to-head.snapshot.json'
+    'bin/fixtures/input-telemetry-default.scene.json'
+    'bin/fixtures/input-telemetry.sequence.json'
+    'bin/fixtures/input-telemetry.snapshot.json'
+    'bin/fixtures/layout.json'
+    'bin/fixtures/lmu47.snapshot.json'
+    'bin/fixtures/multiclass-relative-default.scene.json'
+    'bin/fixtures/multiclass-relative.snapshot.json'
+    'bin/fixtures/pedals-clutch.scene.json'
+    'bin/fixtures/pedals-default.scene.json'
+    'bin/fixtures/pedals-lap.scene.json'
+    'bin/fixtures/pedals-telemetry-default.scene.json'
+    'bin/fixtures/pedals-telemetry.snapshot.json'
+    'bin/fixtures/pedals.snapshot.json'
+    'bin/fixtures/racing-flags-default.scene.json'
+    'bin/fixtures/racing-flags.snapshot.json'
+    'bin/fixtures/radar-default.scene.json'
+    'bin/fixtures/radar-nearby-traffic.scene.json'
+    'bin/fixtures/radar.snapshot.json'
+    'bin/fixtures/relative-default.scene.json'
+    'bin/fixtures/relative-functional-cross-ahead.scene.json'
+    'bin/fixtures/relative-functional-cross-behind.scene.json'
+    'bin/fixtures/relative-functional-fast-reversal.scene.json'
+    'bin/fixtures/relative-functional-lap-difference.scene.json'
+    'bin/fixtures/relative-functional-sequence.scene.json'
+    'bin/fixtures/relative-functional-stable-values.scene.json'
+    'bin/fixtures/relative-functional-window-cycle.scene.json'
+    'bin/fixtures/relative.snapshot.json'
+    'bin/fixtures/standings-default.scene.json'
+    'bin/fixtures/standings-functional-battle.scene.json'
+    'bin/fixtures/standings-functional-combined.scene.json'
+    'bin/fixtures/standings-functional-personal-best.scene.json'
+    'bin/fixtures/standings-functional-pit.scene.json'
+    'bin/fixtures/standings-functional-position.scene.json'
+    'bin/fixtures/standings-functional-session-best.scene.json'
+    'bin/fixtures/standings-functional-window.scene.json'
+    'bin/fixtures/standings-legacy.snapshot.json'
+    'bin/fixtures/standings.snapshot.json'
+    'bin/fixtures/track-map-default.scene.json'
+    'bin/fixtures/track-map.snapshot.json'
+    'bin/fixtures/track-weather-default.scene.json'
+    'bin/fixtures/track-weather.snapshot.json'
+    'bin/fixtures/workshop-sources.json'
+    'candidate.ps1'
+    'README.md'
+    'licenses/OFL-Inter.txt'
+    'dependencies.json'
+)
+
+function Get-NativeInstalledMembers($Manifest) {
+    $current = @(Get-NativeMembers $Manifest.channel)
+    $paths = @($Manifest.files | ForEach-Object { $_.path })
+    if ($Manifest.channel -ceq 'beta' -and
+        $Manifest.version -cmatch '^0\.0\.(975|976|977|978|979)$' -and
+        -not @(Compare-Object $script:NativeLegacyBetaMembers $paths -CaseSensitive).Count) {
+        return $script:NativeLegacyBetaMembers
+    }
+    # Unknown subsets are never accepted, even for an old version.
+    $current
+}
+
 function Get-NativeHash([string]$Path) {
     # Streaming .NET: el host instalado no depende del autoload de Get-FileHash.
     $stream = [IO.File]::OpenRead((Assert-NativePath $Path))
@@ -231,7 +340,9 @@ function Assert-NativeStaticCrt([string]$Path,[string]$Dumpbin) {
     if($runtime.Count){throw "El binario de distribución exige CRT dinámico: $Path ($($runtime -join ', '))"}
 }
 
-function Read-NativeManifest([string]$Directory, [string]$ExpectedChannel, [bool]$VerifyFiles = $true) {
+# Installed permits only frozen, known layouts. ZIP/build validation never sets
+# it; VerifyFiles controls byte integrity independently of inventory compatibility.
+function Read-NativeManifest([string]$Directory, [string]$ExpectedChannel, [bool]$VerifyFiles = $true, [switch]$Installed) {
     $path = Join-Path $Directory 'manifest.json'
     if ((Get-Item -LiteralPath $path).Length -gt 65536) { throw 'Manifiesto demasiado grande.' }
     $manifest = [IO.File]::ReadAllText($path) | ConvertFrom-Json
@@ -244,7 +355,7 @@ function Read-NativeManifest([string]$Directory, [string]$ExpectedChannel, [bool
         $manifest.version -cnotmatch '^[0-9]+(?:\.[0-9]+){2,3}(?:-[a-z0-9][a-z0-9.-]{0,63})?$' -or
         $manifest.channel -cnotin @('nightly', 'testers', 'master', 'beta') -or
         ($ExpectedChannel -and $manifest.channel -cne $ExpectedChannel)) { throw 'Manifiesto, esquema o canal incompatible.' }
-    $members = @(Get-NativeMembers $manifest.channel)
+    $members = if ($Installed) { @(Get-NativeInstalledMembers $manifest) } else { @(Get-NativeMembers $manifest.channel) }
     foreach ($item in Get-ChildItem -LiteralPath $Directory -File -Recurse -Force) {
         $relative = $item.FullName.Substring($Directory.Length + 1).Replace('\', '/')
         if (-not $relative.StartsWith('data/') -and $relative -cnotin ($members + @('manifest.json'))) { throw 'Archivo instalado no enumerado en el manifiesto.' }
@@ -565,7 +676,7 @@ function Read-NativeState([string]$Directory, [bool]$VerifyActiveFiles = $true) 
         if ((Get-NativeHash (Join-Path $generation 'manifest.json')) -cne $reference.manifest_sha256 -or
             -not (Test-Path -LiteralPath (Join-Path $generation 'data') -PathType Container)) { throw 'Generación activa/anterior incompleta.' }
         $verify = $VerifyActiveFiles -or $reference.generation -cne $state.active.generation
-        $null = Read-NativeManifest $generation $state.channel $verify
+        $null = Read-NativeManifest $generation $state.channel $verify -Installed
     }
     if ($null -eq $state.active) { throw 'Falta generación activa.' }
     $state
@@ -662,7 +773,7 @@ function Update-NativeCandidate([string]$Directory, [string]$ZipPath, [string]$H
         $state = Read-NativeState $directory (-not $Repair)
         $previous = $state.active
         if ($Repair) {
-            try { $null = Read-NativeManifest (Join-Path $directory "generations/$($state.active.generation)") $state.channel }
+            try { $null = Read-NativeManifest (Join-Path $directory "generations/$($state.active.generation)") $state.channel -Installed }
             catch { $previous = $state.previous }
         }
         $handles = Open-NativeBinaryGuard $directory
@@ -671,7 +782,7 @@ function Update-NativeCandidate([string]$Directory, [string]$ZipPath, [string]$H
             $generation = Join-Path $directory "generations/$id"
             $incoming = Expand-NativePackage $ZipPath $Hash $generation $state.channel
             if ($Repair) {
-                $current = Read-NativeManifest (Join-Path $directory "generations/$($state.active.generation)") $state.channel $false
+                $current = Read-NativeManifest (Join-Path $directory "generations/$($state.active.generation)") $state.channel $false -Installed
                 if ($incoming.version -cne $current.version) { throw 'La reparación exige la misma versión; no se activa el paquete.' }
             }
             Copy-NativeData (Join-Path $directory "generations/$($state.active.generation)/data") (Join-Path $generation 'data')
@@ -710,7 +821,8 @@ function Import-NativeProfiles([string]$Directory, [string[]]$Files, [double[]]$
         try {
             $id = [guid]::NewGuid().ToString('N')
             $generation = Join-Path $directory "generations/$id"
-            foreach ($member in (@(Get-NativeMembers $state.channel) + @('manifest.json'))) {
+            $sourceManifest = Read-NativeManifest $source $state.channel -Installed
+            foreach ($member in (@($sourceManifest.files | ForEach-Object { $_.path }) + @('manifest.json'))) {
                 $from = Join-Path $source $member; $to = Join-Path $generation $member
                 [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($to)) | Out-Null
                 if ($member.EndsWith('.exe')) {
@@ -721,7 +833,7 @@ function Import-NativeProfiles([string]$Directory, [string[]]$Files, [double[]]$
                 } else { [IO.File]::Copy($from, $to) }
             }
             if ((Get-NativeHash (Join-Path $generation 'manifest.json')) -cne $state.active.manifest_sha256) { throw 'Manifiesto de origen cambió; no se importa.' }
-            $null = Read-NativeManifest $generation $state.channel
+            $null = Read-NativeManifest $generation $state.channel -Installed
             Copy-NativeData (Join-Path $source 'data') (Join-Path $generation 'data')
             $import = Join-Path $generation "data/legacy-profiles/$id"
             [IO.Directory]::CreateDirectory($import) | Out-Null
@@ -866,7 +978,7 @@ switch ($Operation) {
         $generation = Join-Path $Root "generations/$($state.active.generation)"
         # El Hub usa el script de su generación; Setup usa la copia idéntica raíz.
         if ((Get-NativeHash $PSCommandPath) -cne (Get-NativeHash (Join-Path $generation 'candidate.ps1'))) { throw 'El registro requiere el script de la generación activa.' }
-        $manifest = Read-NativeManifest $generation 'beta'
+        $manifest = Read-NativeManifest $generation 'beta' -Installed
         Sync-NativeRegistration $Root $manifest.version
     }
     'Build' { Build-NativeCandidate $OutputDirectory $Version $Channel $BuildProfile ([bool]$AllowDirty) }

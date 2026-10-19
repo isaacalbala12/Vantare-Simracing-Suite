@@ -3875,6 +3875,61 @@ CI verde ni PR ready hasta comprobar el HEAD final. Sin Rust/dependencias nuevos
 Windows limpio/login/pagos pendientes; Hub bloqueado por #1694. Sin ventanas
 en sesión principal, firma/publicación ni merge por el worker.
 
+## VANTA-96 / #1713 · 96/96, roadmap activo e informes cerrados (19-oct-2026)
+
+Producción ombjshwzqgeisazijduq: canon actualizado incrementalmente desde440f3f9a3
+(94) hasta nightly c48b4847d5b204b6dfd89f2ce45646d1f15d7151 (96, #1710).
+Solo20261018224039/20261018224803 pendientes;94históricas idénticas. Backup
+completo protegido pre1710 con hash/TOC y dryrun2 exactas PASS. Push incremental
+--include-all (versiones anteriores a1711 ya aplicada), sin limpieza/repair/seeds
+ni cambios Vault. Historial96/96 exacto verificado.
+
+Par Ed25519 ya estaba aplicado en la entrega anterior; no regenerado. Kid
+license-prod-20261019-329f6f81, backup PKCS8/ACL operador+SYSTEM, pública raw32
+y bridge en build-config. Ocho campos y coherencia Production PASS. Nueva
+licencia real200 tras#1710: misma clave, firma verificada con pública del build;
+payload alterado rechazado. ES256 y secretos de Polar preservados.
+
+Publicador existente WSL vantare-svc/usuario roadmap fijado a
+f6c4ad49d835729272ec6b7d3c9c5e70fde46bcf (#1718). Repo limpio, pin protegido,
+unidades canónicas, primera ejecución success0 y timer enabled/active5min.
+Anon RPC200 con36tareas exactamente iguales al candidato UTF8; Para Isaac
+excluido. Backup previo de documento/env conservado. La comparación inicial
+CP1252 produjo diferencias aparentes; UTF8 confirmó igualdad sin cambiar guardas.
+No se crea escritor paralelo. #1718 ya fusionado/publicado por este procedimiento.
+
+#1710 Edge: solo testing-report-submit cambió en producción; desplegada desde
+c48b4847d, ACTIVE/verify_jwt=false. Salt IP independiente CSPRNG en custodia/env-file,
+hash verificado; pública ES256 existente. QA con OAuth/bridge real y membresía
+tester temporal: envío200/recibo submitted, retry200/mismo recibo/idempotent=true.
+RPC legacy base, inner y evidencia: HTTP403/SQLSTATE42501 con el mismo
+authenticated válido. Membresía temporal desactivada y estado final comprobado;
+informe de prueba/auditoría se conservan, sin Owner/derechos comerciales falsos.
+El comprobador inicial esperaba objeto; el contrato retorna array1. Se corrigió
+solo la comprobación y se reusó el intento exacto, sin borrar ni resetear cuotas.
+
+Se mantienen: identidad/RLS y registry Clerk habilitado,15funciones de lanzamiento
+más la Edge de informes ahora autorizada, siete listas Brevo, cuatro ofertas,
+Vault/ACKD1, cleanup servidor cada minuto (ticks200/resultado0), calendario
+respaldado12series del22-sep y licencia Free sin capacidades de pago.
+
+Lista de scopes Polar preparada en EJECUCION.md: observación orders:read,
+subscriptions:read, refunds:read, disputes:read, checkouts:read; compra/portal
+checkouts:write/customer_sessions:write; customers:read para Customer State.
+subscriptions:write solo para cambios de renovación/cupón autorizados. No se
+solicita refunds:write para arreglar lectura. Fuentes SDK oficial enlazadas y
+alternativa write que cubre GET explicada. Token configurado aún no coincide
+con los dos custodiados; no se afirma falta de scope ni se hace GET con otro.
+Reconcile sigue sin scheduler. No cambios de código ni permisos Polar.
+
+Venta cerrada por instrucción, marketing/AI/promoción false y compensación OFF.
+Receptor Owner/Cloudflare/instalador físico y ruta login web antigua pendientes;
+no publicar web/release. Cliente a compilar debe incluir#1710, porque legacy
+queda cerrado: no restaurar EXECUTE como rollback ni usar instalador anterior
+para dar por probado el nuevo transporte. Registro, backups y reversión:
+C:/VantareServer/evidence/supabase-reconstruccion/EJECUCION.md. Rama propia
+vantareapp/isa-1713-reconstruccion-produccion, PR documental#1714 a nightly.
+
 ## VANTA-96 / #1715 · Roles gestionados y preexistentes (19-oct-2026)
 
 PR #1716, rama propia vantareapp/isa-1715-roadmap-role-gestionado desde bf7e21c619.
@@ -3900,9 +3955,9 @@ Los controles RED ejecutan los CREATE originales para demostrar duplicate_object
 
 Aceptación: CI completa LF/CRLF verde en HEAD final; resultados y SHA vivos en
 #1715 y evidencia anterior. No se modifican workflows o checks requeridos.
-Producción sigue en 41/94: esta revisión solo leyó pg_roles por API, sin aplicar
-SQL, reparar historial, generar secretos, desplegar o rotar. Orquestador revisa y
-fusiona; después continúa #1713 desde la 42, sin repetir limpieza a ciegas.
+Durante esa revisión de código solo se leyó pg_roles; no se modificó producción.
+#1716 ya fusionado por el orquestador; la ejecución posterior y su estado actual
+(96/96 y publicador activo) se registran en #1713 arriba. No repetir limpieza a ciegas.
 
 ## VANTA-96 · #1717 · Estado interno del roadmap (19-oct-2026)
 
@@ -3913,3 +3968,4 @@ publicar. Regresión offline comprueba exclusión y normalización; se conserva
 el test de estados desconocidos. Rama vantareapp/isa-1717-roadmap-estado-interno
 desde origin/nightly 440f3f9a3. El documento respaldado del 15-oct permanece
 publicado y esta entrega no bloquea la reconstrucción Supabase #1713.
+

@@ -1,3 +1,24 @@
+## Operación VANTA-96 / #1713 · #1710 aplicado en producción (19-oct-2026)
+
+El orquestador autorizó el corte incremental tras fusionar#1710 en nightly
+c48b4847d5b204b6dfd89f2ce45646d1f15d7151. Backup previo completo y legible,
+94migraciones históricas idénticas, solo las dos versiones nuevas aplicadas;
+historial final96/96. testing-report-submit desplegada desde ese SHA,
+ACTIVE/verify_jwt=false, salt IP CSPRNG protegido y JWK ES256 conservada.
+
+Cuenta QA Production con OAuth/bridge real y membresía tester temporal:
+envío rico200 con recibo submitted; reintento exacto200, mismo recibo e
+idempotent=true. Las RPC legacy base, inner y evidencia devuelven403/42501
+al mismo authenticated válido. Membresía temporal desactivada al acabar;
+se conservan informe y recibo de prueba, sin cuotas reseteadas ni Owner/pagos.
+No se prueban bytes de capturas en esta operación. No reabrir EXECUTE como
+rollback. El instalador que se compile debe contener el cliente de#1710.
+
+Esta operación supera las referencias históricas de «sin deploy» respecto
+a ese corte; no acredita QA visual/instalador físico ni publica una release.
+Evidencia y reversión en C:/VantareServer/evidence/supabase-reconstruccion/
+EJECUCION.md, ejecucion-1710-e2e.json y PR documental#1714.
+
 ## 2026-10-19 - #1709 / VANTA-96: aislar UUID de pgTAP y Edge
 
 - Run39181530688 completa Edge y suites previas, luego falla en testing_report_rich_admission.test.sql:47 por evidence_batches PK duplicada. Edge y pgTAP reutilizaban lote17090000-...0010/evidencia...0011.

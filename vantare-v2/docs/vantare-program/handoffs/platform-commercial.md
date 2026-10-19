@@ -1,3 +1,19 @@
+## VANTA-105 / #1723 · Dos P3 de review1721, separados de RC3 (19-oct-2026)
+
+Base nightly997d6da68 con #1721 integrado. Rama/worktree propios
+vantareapp/isa-1723-installer-rechazos / isa-1723; productor RC3 isa-1722 intacto.
+Read-NativeManifest usa CmdletBinding: parámetros mal escritos fallan por binding.
+Reject-History exige la causa concreta; valida mensajes exactos de los throws
+sin tipo específico, y NamedParameterNotFound para el error de binding tipado.
+Dos regresiones nuevas: -Instaled rechazado y excepción ajena que no puede hacer
+pasar un negativo. No se amplía la lista de versiones ni cambia el inventario.
+
+AST PowerShell y diff sin errores comprobados. La build RC3 tiene prioridad;
+pruebas locales de comportamiento tras ella, en serie. PR draft separado para CI;
+estado/HEAD/checks y evidencia se verifican en #1723 y evidence/1723/INFORME.md.
+No Rust/workflows/configuración/backend ni otros P3 de la review en este alcance.
+Sin merge, firma ni publicación. El orquestador retira el target de RC3.
+
 ## VANTA-105 / #1720 · Compatibilidad de inventarios instalados (19-oct-2026)
 
 Corrección autorizada tras el fallo RC2 #1719. Rama/worktree propios

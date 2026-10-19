@@ -3875,45 +3875,48 @@ CI verde ni PR ready hasta comprobar el HEAD final. Sin Rust/dependencias nuevos
 Windows limpio/login/pagos pendientes; Hub bloqueado por #1694. Sin ventanas
 en sesión principal, firma/publicación ni merge por el worker.
 
-## VANTA-96 / #1713 · 94/94; parada en prueba reconcile (19-oct-2026)
+## VANTA-96 / #1713 · Identidad funcional, cleanup y calendario (19-oct-2026)
 
-Producción ombjshwzqgeisazijduq, canon nightly 440f3f9a3 (#1716 fusionado),
-historial 94/94 y roadmap respaldado del 15-oct público. Para Isaac se excluye
-por decisión del orquestador: arreglo separado #1717 / PR #1718, 15 tests PASS;
-no bloquea la reconstrucción ni se publica trabajo interno de Isaac.
+Producción ombjshwzqgeisazijduq, canon440f3f9a3, esquema/historial94/94.
+JSON corregidos y digest4/4; consumidores offline reales PASS. ES256 activa,
+legacy anon/service_role comprobadas, 15 funciones ACTIVE/JWT correcto,
+siete listas Brevo, TPA Clerk, cuatro ofertas y Vault/ACKD1 configurados.
 
-Reanudación autorizada: ES256 nueva activa, sin revocar anteriores/legacy;
-Auth anon, roadmap anon y lectura service_role HTTP200 antes/después. Firma
-ES256 con audiencia canónica aceptada en PostgREST (preflight limit=0; no E2E).
-Secretos cargados, siete listas Brevo, 15 funciones ACTIVE/JWT correcto,
-Clerk TPA y registry DESHABILITADO, cuatro ofertas canónicas aplicadas con
-ventana 26-oct→26-nov 19:00 Madrid. Vault scheduler y ACK D1 provisionados.
+Por decisión del orquestador, reconcile se separa. E2E real OAuth PKCE nativo
+Production → bridge200 ES256/kid importado; PostgREST propio200/1fila,
+ajeno200/0filas, firma alterada401. native-license200, sujeto correcto y cero
+capacidades (cuenta Free). Registry OFF rechazó401; ensayo positivo controlado
+con apagado en fallo. Tras PASS funcional, clerk_issuers.enabled=true confirmado.
+Una cuenta QA sin Owner ni derechos fabricados; Auth8, perfiles9, identidades1.
+El ensayo usó consentimiento en portal oficial con sesión de prueba; la ruta
+de login OAuth redirige a /acceso de la web antigua. No acredita instalador/login
+físico ni web nueva. Firma Ed25519 independiente PENDIENTE: la pública de
+licencia está vacía en ambos build-config protegidos; se necesita custodia original.
+No se cambia la privada existente ni se declara E2E criptográfico completo.
 
-Corrección autorizada de los cuatro JSON aplicada por env-file protegido;
-hashes remotos 4/4 PASS. Consumidores reales offline sin red aceptan mapa Polar,
-par ES256 (firma/verificación) y listas Brevo (página vacía, cero contactos).
-Mail-cleanup HTTP200. El anterior error de serialización está resuelto.
+Mail-cleanup cada minuto en tarea Windows Vantare-VANTA96-MailCleanup, SYSTEM,
+PT1M, IgnoreNew; argumento exclusivo --mail-only, claves Vault en memoria.
+Ticks automáticos HTTP200 y resultado0 PASS. Reconcile NO programado.
+Calendario: recuperada solo la publicación aprobada del backup, 12 series,
+fecha22-sep y autoría conservadas; lector HTTP200 y contenido exacto PASS.
+Roadmap respaldado15-oct público; PR#1718 excluir Para Isaac, HEAD37f12b024,
+15 tests y cinco checks CI PASS; no fusionado/publicado por worker.
 
-NUEVA PARADA obligatoria: reconcile supera configuración/lease, procesa orders
-y subscriptions y queda en refunds página1; devuelve HTTP503
-reconciliation_unavailable y libera lease. Sin errores SQL en logs del intervalo.
-No se conoce aún la causa HTTP/shape de refunds; no atribuir a scopes/token sin
-prueba ni saltar el recurso. No hay nuevas mutaciones tras ese fallo. Diagnóstico
-y resultados en ejecucion-correccion-y-segunda-parada.json / EJECUCION.md.
+Reconcile sigue en refunds/página1 con503. Los dos tokens Polar custodiados
+NO coinciden por digest con el secreto Edge; falta copia protegida del exacto
+para hacer el GET pedido. No se usa otro ni se cambia código. Logs API devuelve
+Table does not exist para las tablas consultadas; el anterior «sin errores SQL»
+queda corregido: la consulta no era válida. Scope mínimo oficial refunds:read,
+a revisar en el token de Edge en Polar Production; falta de scope NO demostrada.
+No saltar cursor ni programar reconcile hasta resolverlo.
 
-No scheduler registrado; calendario ni E2E real Clerk/RLS/licencias aún hechos.
-Registry OFF, marketing OFF y compensación false/amount_basis NULL. Owner
-URL/secret omitidos por decisión; receptor requisito antes de venta. Venta
-cerrada por instrucción. Cloudflare paso12 pendiente solo del token, sin web.
-Alternativa scheduler servidor del plan, claves Vault en memoria: se evita
-pg_net porque sus cabeceras son legibles por roles DB según documentación
-actual del proveedor; no se instala extensión ni se relaja RLS.
-
-Registro/copias/reversión exacta: C:/VantareServer/evidence/supabase-reconstruccion/
-EJECUCION.md. Rama propia vantareapp/isa-1713-reconstruccion-produccion,
-PR documental #1714 a nightly, sin merge/release por worker. Siguiente paso:
-diagnosticar/corregir fallo de refunds y repetir reconcile; no repetir esquema,
-rotación, ofertas o creación de listas, ni pedir otra vez A/B/C/D.
+Venta cerrada por instrucción, marketing/AI/promoción false, compensación OFF;
+Owner receptor pendiente antes de abrir venta. Cloudflare paso12 pendiente
+solo del token; no publicación web/release. Registro y procedimientos de reversión:
+C:/VantareServer/evidence/supabase-reconstruccion/EJECUCION.md. Rama propia
+vantareapp/isa-1713-reconstruccion-produccion, PR documental#1714 a nightly.
+Siguiente: token Polar coincidente y pública Ed25519 de custodia; completar
+GET/diagnóstico y verificación cliente sin repetir esquema, rotación u ofertas.
 
 ## VANTA-96 / #1715 · Roles gestionados y preexistentes (19-oct-2026)
 

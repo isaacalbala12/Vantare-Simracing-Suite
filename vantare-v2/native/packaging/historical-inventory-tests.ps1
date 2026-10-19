@@ -1,4 +1,4 @@
-#requires -Version 5.1
+﻿#requires -Version 5.1
 param([string]$LegacyPackage)
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
@@ -7,21 +7,32 @@ $root=Join-Path 'C:/tmp/ola2/1591-qa' ('history-'+[guid]::NewGuid().ToString('N'
 [IO.Directory]::CreateDirectory($root)|Out-Null
 $passed=0
 function Assert-History([bool]$Value,[string]$Message){if(-not $Value){throw $Message};$script:passed++;"PASS $Message"}
-function Reject-History([scriptblock]$Action,[string]$Message){$failed=$false;try{$null=& $Action}catch{$failed=$true};Assert-History $failed $Message}
+function Reject-History([scriptblock]$Action,[string]$Message,[string]$Reason,[string]$ErrorId=''){
+    if(-not $Reason -and -not $ErrorId){throw 'A negative test must specify its rejection reason'}
+    $failure=$null;try{$null=& $Action}catch{$failure=$_}
+    if($null -eq $failure){throw "$Message : expected rejection did not occur"}
+    $reasonMatches=if($ErrorId){$failure.FullyQualifiedErrorId.Split(',')[0] -ceq $ErrorId}else{$failure.Exception.Message -ceq $Reason}
+    if(-not $reasonMatches){throw "Unexpected rejection for $Message : $($failure.FullyQualifiedErrorId) / $($failure.Exception.Message)"}
+    Assert-History $true $Message
+}
 $fixture=Join-Path $PSScriptRoot 'fixtures/manifest-beta-0.0.975.json'
 Assert-History ((Get-NativeHash $fixture) -ceq '4fc39c73a4660a3c859638d8078c97b30b732048f70ed72f5535d8ec12cc9219') 'Public 975 manifest bytes match release provenance'
 $real=Join-Path $root 'real-manifest';[IO.Directory]::CreateDirectory($real)|Out-Null
 Copy-Item $fixture (Join-Path $real 'manifest.json')
 $original=Read-NativeManifest $real 'beta' $false -Installed
 Assert-History ($original.version -ceq '0.0.975' -and @($original.files).Count -eq 91) 'Actual public manifest accepted only as installed generation'
-Reject-History {Read-NativeManifest $real 'beta' $false} 'Actual public manifest rejected as incoming inventory'
+Reject-History {Read-NativeManifest $real 'beta' $false} 'Actual public manifest rejected as incoming inventory' 'Faltan archivos obligatorios.'
+Reject-History {Read-NativeManifest $real 'beta' $false -Instaled} 'Misspelled parameter is rejected by binding' '' 'NamedParameterNotFound'
+$unexpected=$false
+try{Reject-History {throw [IO.IOException]::new('unrelated fixture failure')} 'unrelated error' 'Faltan archivos obligatorios.'}catch{$unexpected=$_.Exception.Message.StartsWith('Unexpected rejection for unrelated error')}
+Assert-History $unexpected 'Negative helper refuses an exception with an unrelated cause'
 foreach($version in @('0.0.976','0.0.977','0.0.978','0.0.979')){
     $original.version=$version;Write-BetaJson (Join-Path $real 'manifest.json') $original
     $null=Read-NativeManifest $real 'beta' $false -Installed
     Assert-History $true "Known pre-resources inventory accepted for installed $version"
 }
 $original.version='0.0.980';Write-BetaJson (Join-Path $real 'manifest.json') $original
-Reject-History {Read-NativeManifest $real 'beta' $false -Installed} 'Legacy subset is not valid for a newer version'
+Reject-History {Read-NativeManifest $real 'beta' $false -Installed} 'Legacy subset is not valid for a newer version' 'Faltan archivos obligatorios.'
 $original.version='0.0.975'
 foreach($change in @('missing','extra','duplicate','traversal','case','wrong-channel')){
     $m=Get-Content $fixture -Raw|ConvertFrom-Json
@@ -34,7 +45,8 @@ foreach($change in @('missing','extra','duplicate','traversal','case','wrong-cha
         'wrong-channel' {$m.channel='nightly'}
     }
     Write-BetaJson (Join-Path $real 'manifest.json') $m
-    Reject-History {Read-NativeManifest $real '' $false -Installed} "Unknown or malicious installed inventory rejected: $change"
+    $reason=if($change -in @('missing','wrong-channel')){'Faltan archivos obligatorios.'}else{'Lista de archivos inválida o duplicada.'}
+    Reject-History {Read-NativeManifest $real '' $false -Installed} "Unknown or malicious installed inventory rejected: $change" $reason
 }
 # Offline integration uses inert real OS PE bytes, never executed. Only the
 # inventory comes from the public manifest; synthetic hashes are recomputed.
@@ -95,10 +107,10 @@ New-HistoryPayload $old @($original.files.path) '0.0.975'
 $null=Read-NativeManifest $old 'beta' -Installed
 $tamper=Join-Path $old 'bin/vantare-core.exe'
 $bytes=[IO.File]::ReadAllBytes($tamper);[IO.File]::AppendAllText($tamper,'tampered')
-Reject-History {Read-NativeManifest $old 'beta' -Installed} 'Historical files still require exact hashes'
+Reject-History {Read-NativeManifest $old 'beta' -Installed} 'Historical files still require exact hashes' 'Integridad incorrecta: bin/vantare-core.exe'
 [IO.File]::WriteAllBytes($tamper,$bytes)
 $legacyZip=Join-Path $root 'historical-incoming.zip';New-NativeZip $old $legacyZip
-Reject-History {Expand-NativePackage $legacyZip (Get-NativeHash $legacyZip) (Join-Path $root 'rejected') 'beta'} 'Historical ZIP rejected at actual incoming extraction boundary'
+Reject-History {Expand-NativePackage $legacyZip (Get-NativeHash $legacyZip) (Join-Path $root 'rejected') 'beta'} 'Historical ZIP rejected at actual incoming extraction boundary' 'Número de miembros ZIP incorrecto.'
 Test-HistoryUpgrade $install $old
 if($LegacyPackage){
     Assert-History ((Get-NativeHash $LegacyPackage) -ceq '372bcd60cf168cb6187be1c481b21c835268db1dbcc3e0a0aeb17246bede7066') 'Public ZIP digest verified'

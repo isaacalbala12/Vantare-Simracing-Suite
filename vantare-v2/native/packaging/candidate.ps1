@@ -342,7 +342,9 @@ function Assert-NativeStaticCrt([string]$Path,[string]$Dumpbin) {
 
 # Installed permits only frozen, known layouts. ZIP/build validation never sets
 # it; VerifyFiles controls byte integrity independently of inventory compatibility.
-function Read-NativeManifest([string]$Directory, [string]$ExpectedChannel, [bool]$VerifyFiles = $true, [switch]$Installed) {
+function Read-NativeManifest {
+    [CmdletBinding()]
+    param([string]$Directory, [string]$ExpectedChannel, [bool]$VerifyFiles = $true, [switch]$Installed)
     $path = Join-Path $Directory 'manifest.json'
     if ((Get-Item -LiteralPath $path).Length -gt 65536) { throw 'Manifiesto demasiado grande.' }
     $manifest = [IO.File]::ReadAllText($path) | ConvertFrom-Json

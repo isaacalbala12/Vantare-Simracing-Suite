@@ -3874,3 +3874,17 @@ Suite shell añadida al workflow. Regresiones ampliadas en curso; no se afirman
 CI verde ni PR ready hasta comprobar el HEAD final. Sin Rust/dependencias nuevos.
 Windows limpio/login/pagos pendientes; Hub bloqueado por #1694. Sin ventanas
 en sesión principal, firma/publicación ni merge por el worker.
+
+## VANTA-96 / #1715 · Portabilidad del rol roadmap (19-oct-2026)
+
+Rama propia vantareapp/isa-1715-roadmap-role-gestionado desde bf7e21c619.
+Corrige la migración histórica 42 pendiente en producción: valida atributos,
+rechaza roles peligrosos y altera solo LOGIN/NOINHERIT/CONNECTION LIMIT que
+difieran. No requiere ADMIN para un rol ya conforme ni cambia contraseñas.
+Defaults seguros equivalentes para CREATE ROLE de triage y Pilot, revisados
+con el resto de las migraciones 43–94. No añade versiones al canon de 94.
+El arnés ejecuta roadmap como postgres NOSUPERUSER, sin excepción de admin;
+regresiones reales de roles y rollback y comprobación final de los cuatro roles.
+CI LF/CRLF pendiente; no declarar listo hasta verificar el HEAD final.
+Sin cambios productivos en este arreglo; producción continúa detenida en 41/94
+según #1713. Orquestador revisa/fusiona y después encarga reanudar desde la 42.

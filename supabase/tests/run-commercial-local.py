@@ -5,6 +5,7 @@ from commercial_write_race import run_write_races
 from commercial_lock_order import run_lock_order
 from commercial_admin_lock_order import run_admin_lock_order
 from commercial_storage_race import run_storage_owners, run_storage_multipart, run_storage_buckets
+from commercial_roadmap_role import run_roadmap_role_regression
 parser=argparse.ArgumentParser()
 parser.add_argument('--pg-bin', required=True)
 parser.add_argument('--docker', action='store_true', help='Own disposable Supabase PostgreSQL container; pg-bin supplies clients only')
@@ -176,7 +177,9 @@ $$;
    migration_source.parent.mkdir(exist_ok=True)
    source=m.read_text(encoding='utf-8')
    migration_source.write_bytes(source.replace('\n','\r\n').encode('utf-8') if args.migration_newlines=='crlf' else source.encode('utf-8'))
-   try: result=run('psql',*(admin_conn() if args.docker and 'visual_roadmap_clickup' in m.name else conn),'-f',migration_source)
+   if args.docker and 'visual_roadmap_clickup' in m.name:
+    run_roadmap_role_regression(run, conn, admin_conn(), migration_source, OUT)
+   try: result=run('psql',*conn,'-f',migration_source)
    except Exception as e:
     (OUT/(m.name+'.log')).write_text(str(e))
     if pilot_patch and 'P0001' in str(e) and 'pilot_cutover_'+args.pilot_patch_drift+'_changed' in str(e):
@@ -196,6 +199,16 @@ $$;
    if cutover and args.upgrade=='identity-conflict':
     raise AssertionError('ambiguous historical issuer aliases were not rejected by B03')
    (OUT/(m.name+'.log')).write_text(result)
+  # All four product principals must retain the same safe attributes after
+  # the full managed replay, including the later CREATE ROLE statements.
+  role_contract=run('psql',*conn,'-c',"""
+   select count(*)=4 and bool_and(not (rolsuper or rolcreatedb or rolcreaterole or rolreplication or rolbypassrls)
+    and not rolinherit and rolcanlogin=(rolname='vantare_roadmap_publisher')
+    and (rolname not in ('vantare_roadmap_publisher','vantare_triage') or rolconnlimit=2))
+   from pg_roles where rolname in ('vantare_roadmap_publisher','vantare_triage','pilot_profile_writer','web_purchase_erasure')
+  """).strip()
+  assert role_contract=='t', 'managed product role attributes changed'
+  (OUT/'managed-role-contract.log').write_text('Four product roles: safe attributes PASS\n')
   if args.testing_identity:
    for name in ['testing_followup_F1IP.test.sql','commercial_testing_identity.test.sql','commercial_posthog_consent.test.sql']:
     result=run('psql',*conn,'-f',ROOT/'supabase/tests'/name)

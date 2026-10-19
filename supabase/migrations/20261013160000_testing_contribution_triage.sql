@@ -187,7 +187,9 @@ create policy testing_contributions_owner on public.testing_contributions for se
   using (public.testing_center_current_role() = 'owner');
 
 -- Credential creation is separate. Refuse to reuse a possibly privileged role.
-create role vantare_triage nologin noinherit nosuperuser nocreatedb nocreaterole noreplication nobypassrls connection limit 2;
+-- CREATE ROLE defaults to no superuser/createdb/createrole/replication/bypassrls.
+-- Do not request privileged attribute changes from managed postgres.
+create role vantare_triage nologin noinherit connection limit 2;
 alter role vantare_triage set default_transaction_read_only = on;
 alter role vantare_triage set statement_timeout = '10s';
 grant usage on schema public to vantare_triage;

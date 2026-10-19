@@ -4,7 +4,8 @@ begin;
 create schema pilot_private;
 revoke all on schema pilot_private from public,anon;
 grant usage on schema pilot_private to authenticated;
-create role pilot_profile_writer nologin noinherit nobypassrls;
+-- NOBYPASSRLS is the default; no privileged attribute clause on managed PG.
+create role pilot_profile_writer nologin noinherit;
 grant usage on schema public,auth,storage,pilot_private to pilot_profile_writer;
 grant execute on function auth.uid() to pilot_profile_writer;
 

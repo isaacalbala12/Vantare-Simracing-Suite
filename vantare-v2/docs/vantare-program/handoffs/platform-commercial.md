@@ -3889,13 +3889,17 @@ Secretos cargados, siete listas Brevo, 15 funciones ACTIVE/JWT correcto,
 Clerk TPA y registry DESHABILITADO, cuatro ofertas canónicas aplicadas con
 ventana 26-oct→26-nov 19:00 Madrid. Vault scheduler y ACK D1 provisionados.
 
-PARADA obligatoria: prueba manual mail-cleanup HTTP200, billing-reconcile
-HTTP503 reconciliation_not_configured, antes de lease o llamada Polar. Error
-del operador en env-file: cuatro JSON quedaron con barras de escape. Confirmado
-por comparación de digest, sin mostrar valores. Otros secretos coinciden;
-Polar token/webhook y licencia preservados. Corrección de formato preparada
-pero NO aplicada en archivo protegido edge-json-correction.env; cargar solo
-esos cuatro valores, verificar digest y repetir prueba al reanudar.
+Corrección autorizada de los cuatro JSON aplicada por env-file protegido;
+hashes remotos 4/4 PASS. Consumidores reales offline sin red aceptan mapa Polar,
+par ES256 (firma/verificación) y listas Brevo (página vacía, cero contactos).
+Mail-cleanup HTTP200. El anterior error de serialización está resuelto.
+
+NUEVA PARADA obligatoria: reconcile supera configuración/lease, procesa orders
+y subscriptions y queda en refunds página1; devuelve HTTP503
+reconciliation_unavailable y libera lease. Sin errores SQL en logs del intervalo.
+No se conoce aún la causa HTTP/shape de refunds; no atribuir a scopes/token sin
+prueba ni saltar el recurso. No hay nuevas mutaciones tras ese fallo. Diagnóstico
+y resultados en ejecucion-correccion-y-segunda-parada.json / EJECUCION.md.
 
 No scheduler registrado; calendario ni E2E real Clerk/RLS/licencias aún hechos.
 Registry OFF, marketing OFF y compensación false/amount_basis NULL. Owner
@@ -3908,7 +3912,7 @@ actual del proveedor; no se instala extensión ni se relaja RLS.
 Registro/copias/reversión exacta: C:/VantareServer/evidence/supabase-reconstruccion/
 EJECUCION.md. Rama propia vantareapp/isa-1713-reconstruccion-produccion,
 PR documental #1714 a nightly, sin merge/release por worker. Siguiente paso:
-revisar/cargar corrección de cuatro JSON y continuar; no repetir esquema,
+diagnosticar/corregir fallo de refunds y repetir reconcile; no repetir esquema,
 rotación, ofertas o creación de listas, ni pedir otra vez A/B/C/D.
 
 ## VANTA-96 / #1715 · Roles gestionados y preexistentes (19-oct-2026)

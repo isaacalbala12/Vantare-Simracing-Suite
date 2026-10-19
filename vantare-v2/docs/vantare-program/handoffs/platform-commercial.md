@@ -3903,7 +3903,7 @@ c48b4847d, ACTIVE/verify_jwt=false. Salt IP independiente CSPRNG en custodia/env
 hash verificado; pública ES256 existente. QA con OAuth/bridge real y membresía
 tester temporal: envío200/recibo submitted, retry200/mismo recibo/idempotent=true.
 RPC legacy base, inner y evidencia: HTTP403/SQLSTATE42501 con el mismo
-authenticated válido. Membría temporal desactivada y estado final comprobado;
+authenticated válido. Membresía temporal desactivada y estado final comprobado;
 informe de prueba/auditoría se conservan, sin Owner/derechos comerciales falsos.
 El comprobador inicial esperaba objeto; el contrato retorna array1. Se corrigió
 solo la comprobación y se reusó el intento exacto, sin borrar ni resetear cuotas.

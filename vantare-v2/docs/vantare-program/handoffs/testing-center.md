@@ -1,3 +1,11 @@
+## 2026-10-19 - #1709 / VANTA-96: aislar UUID de pgTAP y Edge
+
+- Run39181530688 completa Edge y suites previas, luego falla en testing_report_rich_admission.test.sql:47 por evidence_batches PK duplicada. Edge y pgTAP reutilizaban lote17090000-...0010/evidencia...0011.
+- pgTAP ya usa BEGIN/ROLLBACK, pero ve filas confirmadas por las peticiones Edge previas. Se reserva namespace17090001-* para todas sus cuentas, lotes, evidencias, paths y referencias; Edge conserva17090000-*.
+- Ninguna limpieza ni cambio de orden: evidencia/tombstone de Edge conservados, rollback pgTAP conservado, todas las aserciones intactas. No ON CONFLICT ni bypass del fallo.
+- Pendiente CI real LF/CRLF y CI completa del nuevo HEAD. Ultima evidencia local Deno88 PASS/2 omitidas y Rust220 PASS/2 omitidas; este arreglo solo cambia literales de fixture SQL y handoff.
+- Sin produccion, permisos, migraciones, deploy, secretos, merge a nightly ni release.
+
 ## 2026-10-19 - #1709 / VANTA-96: RPC void en transporte del arnes
 
 - Nightly440f3f9a3 (#1716) incorporado por merge0074ec237, sin conflictos/rebase/force-push.

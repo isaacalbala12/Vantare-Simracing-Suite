@@ -67,6 +67,17 @@ class PlaneRoadmapTests(unittest.TestCase):
         self.assertNotIn('PRIVATE', json.dumps(result))
         self.assertTrue(all(x['area'] == 'Hub' and x['version'] is None and x['dueDate'] is None for x in result['items']))
 
+    def test_internal_para_isaac_never_reaches_public_document(self):
+        for name in ['Para Isaac', '  PARA   ISAAC  ']:
+            with self.subTest(state=name):
+                data = snapshot()
+                expected = document(data)
+                data['states'].append({'id': uid(999), 'name': name, 'group': 'started'})
+                data['tasks'].append(dict(data['tasks'][0], id=uid(30), sequence_id=30,
+                                          name='Isaac - Firmar documento interno', state=uid(999)))
+                self.assertEqual(document(data), expected)
+                self.assertNotIn('Firmar', json.dumps(document(data)))
+
     def test_identity_order_and_document_are_stable(self):
         data = snapshot()
         before = document(data)

@@ -3903,3 +3903,13 @@ Aceptación: CI completa LF/CRLF verde en HEAD final; resultados y SHA vivos en
 Producción sigue en 41/94: esta revisión solo leyó pg_roles por API, sin aplicar
 SQL, reparar historial, generar secretos, desplegar o rotar. Orquestador revisa y
 fusiona; después continúa #1713 desde la 42, sin repetir limpieza a ciegas.
+
+## VANTA-96 · #1717 · Estado interno del roadmap (19-oct-2026)
+
+Por decisión del orquestador, «Para Isaac» se excluye expresamente del
+roadmap público, aunque la tarea pertenezca a un module de producto. No se
+asigna a «En marcha»; otros estados desconocidos siguen abortando sin
+publicar. Regresión offline comprueba exclusión y normalización; se conserva
+el test de estados desconocidos. Rama vantareapp/isa-1717-roadmap-estado-interno
+desde origin/nightly 440f3f9a3. El documento respaldado del 15-oct permanece
+publicado y esta entrega no bloquea la reconstrucción Supabase #1713.

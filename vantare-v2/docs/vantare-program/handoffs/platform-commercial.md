@@ -3885,6 +3885,7 @@ Defaults seguros equivalentes para CREATE ROLE de triage y Pilot, revisados
 con el resto de las migraciones 43–94. No añade versiones al canon de 94.
 El arnés ejecuta roadmap como postgres NOSUPERUSER, sin excepción de admin;
 regresiones reales de roles y rollback y comprobación final de los cuatro roles.
-CI LF/CRLF pendiente; no declarar listo hasta verificar el HEAD final.
+Aceptación: CI completa LF/CRLF verde en el HEAD final; resultados y SHA
+verificables en #1715 y C:/VantareServer/evidence/supabase-roadmap-role-gestionado/.
 Sin cambios productivos en este arreglo; producción continúa detenida en 41/94
 según #1713. Orquestador revisa/fusiona y después encarga reanudar desde la 42.

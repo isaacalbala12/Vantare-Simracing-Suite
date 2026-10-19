@@ -1,3 +1,12 @@
+## 2026-10-19 - #1709 / VANTA-96: contrato Rust/Edge UTF-8 compartido
+
+- Run39178511016: RED ya PASS; completo falla en primer envio del script commercial-report.ts:113 con report_status_400, antes de capturas.
+- Causa comprobada en fuente y artefactos: el script tenia mojibake por lectura/reescritura con codificacion incorrecta, mientras serializer Rust, Edge y SQL usan la o acentuada U+00F3. El error se introdujo al editar la fixture, no en el contrato productivo.
+- Se elimina la copia manual del cuerpo. Nuevo supabase/tests/fixtures/native-hub-report.json UTF-8 compartido por el arnes real y test Deno; un test Rust compara la serializacion productiva de Submission con ese mismo JSON. Deno prueba sin/con lote y rechaza explicitamente el texto mal codificado.
+- No se cambia el cliente productivo ni se amplia la Edge para aceptar etiquetas corruptas. El diagnostico del arnes incluye solo codigo publico de error, sin payloads ni tokens.
+- Verificado local: Rust services220 PASS / 2 omisiones existentes (nuevo contrato incluido), fmt y Clippy all-targets PASS; Deno85 PASS / 2 integraciones omitidas; TS check/lint/fmt y calidad462 PASS. Pendiente CI real LF/CRLF del nuevo HEAD; #1710 sigue draft.
+- Control RED, ACL, migraciones y nightly bf7e21c61 conservados. Sin produccion, deploy, claves reales, secretos, merge a nightly ni release.
+
 ## 2026-10-19 - #1709 / VANTA-96: sid valido en fixture de cierre
 
 - Run39177500314 llega a testing_report_legacy_closed.test.sql: una de 17 aserciones falla, current_account() NULL en vez del UUID propio. Las suites admin y rich-admission anteriores ya pasan en el RED.

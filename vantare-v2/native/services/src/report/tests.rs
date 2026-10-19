@@ -1,6 +1,34 @@
 use super::*;
 
 #[test]
+fn hub_serializes_the_shared_edge_utf8_report_contract() {
+    let submission = Submission::new(
+        Draft {
+            schema_version: 1,
+            idempotency_key: format!("draft_{}", "a".repeat(64)),
+            fields: Fields {
+                module: "hub".into(),
+                ..fields()
+            },
+            screenshots: Vec::new(),
+        },
+        Environment {
+            channel: "testers".into(),
+            app_version: "1.2.3".into(),
+            os_version: "Windows 11".into(),
+            installation: None,
+        },
+    )
+    .expect("production serializer");
+    let expected: serde_json::Value = serde_json::from_str(include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../../supabase/tests/fixtures/native-hub-report.json"
+    )))
+    .expect("shared UTF-8 contract consumed by Deno and real Edge harness");
+    assert_eq!(serde_json::to_value(submission).expect("JSON"), expected);
+}
+
+#[test]
 fn f7_report_notes_are_local_and_old_text_attempts_are_rejected() {
     let mut private = fields();
     private.action_text = "OrdinaryPrivateTesterNote".into();

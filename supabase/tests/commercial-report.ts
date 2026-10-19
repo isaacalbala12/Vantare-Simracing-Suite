@@ -5,6 +5,7 @@ import {
   verifyBridgeAccount,
 } from "../functions/testing-report-submit/index.ts";
 import { NativeError } from "../functions/_shared/native-auth.ts";
+import payload from "./fixtures/native-hub-report.json" with { type: "json" };
 
 const [base, account, mode = "live"] = Deno.args;
 const url = new URL(base);
@@ -58,23 +59,6 @@ const deps: SubmitDeps = {
   },
   rpc,
 };
-const payload = {
-  p_contract_version: "testing-center.v1",
-  p_channel: "testers",
-  p_action_text: "Informe estructurado",
-  p_expected_text: "RevisiÃ³n humana pendiente",
-  p_observed_text: "RevisiÃ³n humana pendiente",
-  p_context_text: "",
-  p_app_version: "1.2.3",
-  p_os_family: "windows",
-  p_os_version: "Windows 11",
-  p_module: "hub",
-  p_include_diagnostic: false,
-  p_include_logs: false,
-  p_diagnostic_payload: null,
-  p_diagnostic_digest: null,
-  p_idempotency_key: "draft_" + "d".repeat(64),
-};
 async function submit(body: unknown, ip = "192.0.2.170") {
   return await handleTestingReportSubmit(
     new Request("http://localhost/functions/v1/testing-report-submit", {
@@ -91,7 +75,14 @@ async function submit(body: unknown, ip = "192.0.2.170") {
 }
 async function receipt(response: Response) {
   if (response.status !== 200) {
-    throw new Error(`report_status_${response.status}`);
+    const failure = await response.json();
+    const code =
+      ["invalid_request", "submit_failed", "evidence_not_ready"].includes(
+          failure.error,
+        )
+        ? failure.error
+        : "unknown";
+    throw new Error(`report_status_${response.status}_${code}`);
   }
   const rows = await response.json();
   if (

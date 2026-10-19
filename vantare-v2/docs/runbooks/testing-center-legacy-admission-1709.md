@@ -214,3 +214,16 @@ en la Edge y no permite leer el informe ni invocar la RPC cerrada.
 La expectativa 200 de #1708 queda acreditada en nightly antes de esta nueva
 migración. En #1710 se espera 403 por el cierre SQL explícito, con envío positivo
 por Edge; no se debilita la prueba a un genérico «>=400».
+
+
+## Contrato de petición Rust y Edge
+
+`supabase/tests/fixtures/native-hub-report.json` es una petición UTF-8 pública y
+sintética compartida. El test Windows de services compara la serialización real
+de `Submission::new` con ese JSON; Deno lo pasa por el handler con/sin lote y el
+arnés completo lo envía por Edge/PostgREST. Así se detectan diferencias de claves,
+valores y caracteres entre Rust y la fixture que ejecuta la integración real.
+Las etiquetas fijas mantienen `Revisión humana pendiente` con U+00F3; la Edge
+rechaza la variante mal codificada. Prosa, diagnósticos y datos locales del tester
+siguen excluidos del contrato. No se añaden campos ni tolerancias para hacer pasar
+una fixture corrupta.

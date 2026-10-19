@@ -1,4 +1,7 @@
 import { handleTestingReportSubmit, type SubmitDeps } from "./index.ts";
+import body from "../../tests/fixtures/native-hub-report.json" with {
+  type: "json",
+};
 
 function eq(actual: unknown, expected: unknown) {
   if (JSON.stringify(actual) !== JSON.stringify(expected)) {
@@ -7,23 +10,6 @@ function eq(actual: unknown, expected: unknown) {
 }
 const account = "17090000-0000-4000-8000-000000000001";
 const batch = "17090000-0000-4000-8000-000000000002";
-const body = {
-  p_contract_version: "testing-center.v1",
-  p_channel: "testers",
-  p_action_text: "Informe estructurado",
-  p_expected_text: "Revisión humana pendiente",
-  p_observed_text: "Revisión humana pendiente",
-  p_context_text: "",
-  p_app_version: "1.2.3",
-  p_os_family: "windows",
-  p_os_version: "Windows 11",
-  p_module: "hub",
-  p_include_diagnostic: false,
-  p_include_logs: false,
-  p_diagnostic_payload: null,
-  p_diagnostic_digest: null,
-  p_idempotency_key: "draft_" + "a".repeat(64),
-};
 const receipt = [{
   report_id: "report_" + "b".repeat(64),
   report_state: "submitted",
@@ -63,7 +49,7 @@ function fixture() {
   };
   return { calls, deps };
 }
-Deno.test("1709: rich report with/without batch shares admission and returns durable receipt", async () => {
+Deno.test("1709: Rust Windows UTF-8 request contract with/without batch crosses Edge admission", async () => {
   for (const payload of [body, { ...body, p_batch_id: batch }]) {
     const f = fixture();
     const response = await handleTestingReportSubmit(request(payload), f.deps);
@@ -85,6 +71,7 @@ Deno.test("1709: rich shapes reject identity spoofing, prose, diagnostics and in
       { p_batch_id: "invalid" },
       { p_action_text: "private tester prose" },
       { p_context_text: "private context" },
+      { p_expected_text: "Revisi\u00c3\u00b3n humana pendiente" },
       { p_include_diagnostic: true },
       { p_include_logs: true },
       { p_diagnostic_payload: "{}" },

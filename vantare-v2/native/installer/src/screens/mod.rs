@@ -10,6 +10,7 @@ mod welcome;
 use crate::{
     controls::{self, Kind},
     model::{Mode, Screen, error_text},
+    motion,
     style::{self, Icon},
     view::{Action, Installer},
 };
@@ -84,14 +85,20 @@ fn steps(mut frame: Div, view: &Installer) -> Div {
             std::cmp::Ordering::Equal => style::RED,
             std::cmp::Ordering::Greater => 0x23_2325,
         };
-        frame = frame.child(style::swatch(
-            x,
-            48.,
-            (398. - 12.) / 3.,
-            3.,
-            2.,
-            rgb(color).into(),
-        ));
+        let width = (398. - 12.) / 3.;
+        if i == index {
+            // The current segment fills from the left on every new screen.
+            frame = frame.child(style::swatch(x, 48., width, 3., 2., rgb(0x23_2325).into()));
+            frame = frame.child(
+                style::swatch(x, 48., width, 3., 2., rgb(color).into()).with_animation(
+                    ("segment", view.transition),
+                    style::eased(460, motion::ease_out),
+                    move |bar, t| bar.w(px(width * t)),
+                ),
+            );
+        } else {
+            frame = frame.child(style::swatch(x, 48., width, 3., 2., rgb(color).into()));
+        }
         #[allow(clippy::cast_precision_loss)]
         let lx = 280. + i as f32 * (398. / 3.);
         let label = style::body(
@@ -135,10 +142,12 @@ pub fn frame(view: &Installer, window: &Window, cx: &mut Context<Installer>) -> 
     );
     frame = steps(frame, view);
     let content = content(view, window, cx);
+    // Forward screens arrive from the right, «Volver» from the left.
+    let shift = if view.back { -14. } else { 14. };
     frame = frame.child(content.with_animation(
         ("screen", view.transition),
-        gpui::Animation::new(std::time::Duration::from_millis(200)),
-        |element, t| element.opacity(t).top(px((1. - t) * 6.)),
+        style::eased(280, motion::ease_out),
+        move |element, t| element.opacity(t).left(px((1. - t) * shift)),
     ));
     frame = frame.child(footer::render(view, window, cx));
     frame = frame.child(style::at(0., 0., 630., 36.).on_mouse_down(
@@ -189,6 +198,19 @@ fn content(view: &Installer, window: &Window, cx: &mut Context<Installer>) -> Di
         Screen::Uninstall => uninstall::render(view, window, cx),
         Screen::Uninstalled => uninstalled::render(view, window, cx),
     }
+}
+/// Fades an element in while it rises 6 px to `y`, starting `delay` into 480 ms.
+fn rise(
+    element: Div,
+    id: impl Into<gpui::ElementId>,
+    y: f32,
+    delay: f32,
+) -> gpui::AnimationElement<Div> {
+    element.with_animation(
+        id,
+        style::eased(480, move |t| motion::ease_out(motion::delayed(t, delay))),
+        move |element, t| element.opacity(t).top(px(y + (1. - t) * 6.)),
+    )
 }
 fn wrap_path(value: &str) -> String {
     value

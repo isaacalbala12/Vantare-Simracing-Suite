@@ -292,3 +292,22 @@ pub fn text_width(value: &str, font: &str, sz: f32, window: &Window) -> f32 {
             .width,
     )
 }
+
+/// Linear blend of two 0xRRGGBBAA colours, for animated states.
+pub fn mix(from: u32, to: u32, t: f32) -> gpui::Rgba {
+    let (a, b, t) = (rgba(from), rgba(to), t.clamp(0., 1.));
+    gpui::Rgba {
+        r: a.r + (b.r - a.r) * t,
+        g: a.g + (b.g - a.g) * t,
+        b: a.b + (b.b - a.b) * t,
+        a: a.a + (b.a - a.a) * t,
+    }
+}
+/// Critically damped: hover settles in ~150 ms without overshoot.
+pub const HOVER: gpui::SpringConfig = gpui::SpringConfig::new(700., 53., 1.);
+/// Slightly underdamped: the toggle knob lands with a soft settle.
+pub const KNOB: gpui::SpringConfig = gpui::SpringConfig::new(520., 38., 1.);
+/// One eased, one-shot animation; GPUI renders its end state under reduced motion.
+pub fn eased(ms: u64, curve: impl Fn(f32) -> f32 + 'static) -> gpui::Animation {
+    gpui::Animation::new(std::time::Duration::from_millis(ms)).with_easing(curve)
+}

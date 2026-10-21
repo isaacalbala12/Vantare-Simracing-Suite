@@ -1,12 +1,15 @@
 #![deny(unsafe_code)]
 //! Setup transports the package; PowerShell retains ownership of generations and data.
 pub mod args;
+#[cfg(all(windows, feature = "parity-capture"))]
+mod batch;
 #[cfg(windows)]
 mod command_line;
 #[cfg(all(windows, feature = "ui"))]
 mod controls;
 pub mod engine;
 pub mod model;
+pub mod motion;
 pub mod payload;
 #[cfg(all(windows, feature = "ui"))]
 mod screens;
@@ -36,6 +39,16 @@ pub fn entry(uninstall: bool) -> u8 {
         args.root = std::env::current_exe()
             .ok()
             .and_then(|path| path.parent().map(std::path::Path::to_path_buf));
+    }
+    #[cfg(all(windows, feature = "parity-capture"))]
+    if let Some(manifest) = &args.capture_batch {
+        return match batch::run(manifest) {
+            Ok(()) => 0,
+            Err(error) => {
+                eprintln!("{error}");
+                1
+            }
+        };
     }
     #[cfg(all(windows, feature = "ui"))]
     if !args.silent {

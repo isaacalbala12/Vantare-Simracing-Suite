@@ -1,6 +1,6 @@
 //! Uninstalled screen from the approved installer.
 use super::{
-    Context, Div, Installer, ParentElement, Styled, Window, card, heading, lead, px, style,
+    Context, Div, Installer, ParentElement, Styled, Window, card, heading, lead, px, rise, style,
     wrap_path,
 };
 pub(super) fn render(view: &Installer, window: &Window, _cx: &mut Context<Installer>) -> Div {
@@ -12,7 +12,7 @@ pub(super) fn render(view: &Installer, window: &Window, _cx: &mut Context<Instal
             "Tus datos siguen en este PC. Si vuelves a instalar, Vantare los recupera solo.",
             window,
         ))
-        .child(
+        .child(rise(
             card(280., 193., 398., 89.).child(
                 style::mono(
                     12.,
@@ -28,6 +28,9 @@ pub(super) fn render(view: &Installer, window: &Window, _cx: &mut Context<Instal
                 )
                 .line_height(px(18.)),
             ),
-        );
+            "card",
+            193.,
+            0.2,
+        ));
     content
 }

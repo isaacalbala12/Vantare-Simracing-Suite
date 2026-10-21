@@ -45,6 +45,7 @@ foreach($baseline in @('0.0.975','0.0.981','0.0.982')){
             $ui=Read-NativeInstallerUi $root;$ui.desktop=$false
             [IO.File]::WriteAllText((Join-Path $root 'installer-ui.json'),($ui|ConvertTo-Json))
         }
+        Copy-Item (Join-Path $desktop 'Vantare.lnk') (Join-Path $desktop 'Vantare Native Beta.lnk')
         Sync-NativeRegistration $root '0.0.982'
         Sync-NativeRegistration $root '0.0.982'
         foreach($path in @((Join-Path $menu 'Vantare Simracing Suite.lnk'),(Join-Path $desktop 'Vantare Simracing Suite.lnk'))){
@@ -58,6 +59,7 @@ foreach($baseline in @('0.0.975','0.0.981','0.0.982')){
         Assert-Brand ($registration.DisplayName -ceq 'Vantare Simracing Suite' -and $registration.DisplayIcon -ceq ('"'+(Join-Path $root 'Uninstall.exe')+'",0')) "$baseline uninstall entry has full name and icon"
         Assert-Brand ($registration.InstallLocation -ceq $root) "$baseline retains installation directory"
         Assert-Brand (-not(Test-Path $old) -and -not(Test-Path (Join-Path $desktop 'Vantare.lnk')) -and @(Get-ChildItem $menu -Filter '*.lnk').Count -eq 2) "$baseline repeat registration leaves no duplicates"
+        Assert-Brand (-not(Test-Path (Join-Path $desktop 'Vantare Native Beta.lnk'))) "$baseline removes legacy beta desktop alias"
         # Failed registration must restore the exact old link and remove the new.
         $current=Join-Path $menu 'Vantare Simracing Suite.lnk'
         $before=Get-NativeHash $current
@@ -67,6 +69,7 @@ foreach($baseline in @('0.0.975','0.0.981','0.0.982')){
         # Exercise old and new cleanup in the same uninstall, preserving a foreign link.
         Copy-Item $current (Join-Path $menu 'Vantare.lnk')
         Copy-Item (Join-Path $desktop 'Vantare Simracing Suite.lnk') (Join-Path $desktop 'Vantare.lnk')
+        Copy-Item (Join-Path $desktop 'Vantare Simracing Suite.lnk') (Join-Path $desktop 'Vantare Native Beta.lnk')
         [IO.Directory]::CreateDirectory($legacy)|Out-Null
         Copy-Item $current (Join-Path $legacy 'Vantare Native Beta.lnk')
         $foreign=Join-Path $menu 'Foreign.lnk';$link=$shell.CreateShortcut($foreign);$link.TargetPath="$env:WINDIR/System32/cmd.exe";$link.Save();$foreignHash=Get-NativeHash $foreign

@@ -653,15 +653,19 @@ function Sync-NativeOptionalShortcuts([string]$Directory,[string]$Folder,$Ui,[bo
             $path=Join-Path $parent ((Get-NativeShortcutName $Folder)+'.lnk')
             $exists=Test-Path -LiteralPath $path
             $owned=$exists -and (Test-NativeShortcutOwned ($shell.CreateShortcut($path)) $Directory)
-            $oldPath=Join-Path $parent ($Folder+'.lnk')
-            $oldOwned=($oldPath -ne $path) -and (Test-Path -LiteralPath $oldPath) -and (Test-NativeShortcutOwned ($shell.CreateShortcut($oldPath)) $Directory)
-            if($Remove){if($owned){Remove-Item -LiteralPath $path}; if($oldOwned){Remove-Item -LiteralPath $oldPath}; continue}
-            if($ExistingOnly -and -not $owned -and -not $oldOwned){continue}
+            $oldNames=@($Folder+'.lnk')
+            if($Folder -ceq 'Vantare'){$oldNames+='Vantare Native Beta.lnk'}
+            $oldOwnedPaths=@(foreach($name in $oldNames){
+                $oldPath=Join-Path $parent $name
+                if($oldPath -ne $path -and (Test-Path -LiteralPath $oldPath) -and (Test-NativeShortcutOwned ($shell.CreateShortcut($oldPath)) $Directory)){$oldPath}
+            })
+            if($Remove){if($owned){Remove-Item -LiteralPath $path}; foreach($oldPath in $oldOwnedPaths){Remove-Item -LiteralPath $oldPath}; continue}
+            if($ExistingOnly -and -not $owned -and -not $oldOwnedPaths.Count){continue}
             if($exists -and -not $owned){throw 'El acceso opcional pertenece a otra instalación; se conserva.'}
             [IO.Directory]::CreateDirectory($parent)|Out-Null
             $link=$shell.CreateShortcut($path)
             Set-NativeLaunchShortcut $link $Directory $LaunchTarget
-            if($oldOwned){Remove-Item -LiteralPath $oldPath}
+            foreach($oldPath in $oldOwnedPaths){Remove-Item -LiteralPath $oldPath}
         } catch { Write-NativeShortcutWarning ("No se pudo sincronizar el acceso opcional {0}: {1}" -f $target.name,$_.Exception.Message) }
     }
 }
@@ -679,7 +683,7 @@ function Invoke-NativeRegistrationTransaction([string]$Key,[string]$Folder,[stri
     $links=@{}; $paths=@()
     $programs=Get-NativeProgramsFolder
     foreach($name in @('Vantare Simracing Suite.lnk','Vantare.lnk','Desinstalar.lnk')){$paths+=Join-Path (Join-Path $programs $Folder) $name}
-    foreach($name in @('Vantare Native Beta.lnk','Desinstalar.lnk')){$paths+=Join-Path (Join-Path $programs $Legacy) $name}
+    foreach($name in @('Vantare Native Beta.lnk','Vantare.lnk','Desinstalar.lnk')){$paths+=Join-Path (Join-Path $programs $Legacy) $name}
     # Optional shortcuts run last, after every mandatory write, and cannot throw.
     # Do not resolve/read them here: even their backup can fail in a raw profile.
     foreach($path in $paths){$links[$path]=if(Test-Path -LiteralPath $path){[IO.File]::ReadAllBytes($path)}else{$null}}
@@ -777,7 +781,7 @@ function Sync-NativeRegistration([string]$Directory, [string]$Version, $Previous
     if($null -ne $installerUi){$link.IconLocation=$uninstallTarget+',0'}
     $link.Save()
     $legacy = Join-Path $programs $legacyFolder
-    foreach ($name in @('Vantare Native Beta.lnk', 'Desinstalar.lnk')) {
+    foreach ($name in @('Vantare Native Beta.lnk', 'Vantare.lnk', 'Desinstalar.lnk')) {
         $path = Join-Path $legacy $name
         if (-not (Test-Path -LiteralPath $path)) { continue }
         $link = $shell.CreateShortcut($path)

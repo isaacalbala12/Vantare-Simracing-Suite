@@ -199,9 +199,7 @@ pub fn show(window: &mut Window, width: i32, height: i32, cx: &mut App) -> Resul
         }
         return Err("el viewport GPUI no coincide con el cliente de captura".into());
     }
-    println!(
-        "capture-viewport physical={physical_width}x{physical_height} expected={width}x{height}"
-    );
+    crate::capture_output::viewport(physical_width, physical_height, width, height);
     Ok(hwnd)
 }
 
@@ -224,10 +222,7 @@ pub fn created(window: &Window) -> Result<(), String> {
         }
         return Err("el HWND no nació oculto, TOOLWINDOW y NOACTIVATE".into());
     }
-    println!(
-        "capture-created pid={} hwnd={hwnd} visible=false noactivate=true toolwindow=true",
-        std::process::id()
-    );
+    crate::capture_output::created(hwnd);
     Ok(())
 }
 
@@ -249,14 +244,7 @@ pub fn verify(hwnd: Hwnd) -> Result<(), String> {
         }
         return Err("HWND de captura dentro de un monitor: ocultado, lote detenido".into());
     }
-    println!(
-        "capture-window pid={} hwnd={hwnd} rect={},{},{},{} focus=false",
-        std::process::id(),
-        rect.left,
-        rect.top,
-        rect.right,
-        rect.bottom
-    );
+    crate::capture_output::window(hwnd, rect);
     Ok(())
 }
 

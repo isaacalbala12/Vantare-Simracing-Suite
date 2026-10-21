@@ -20,6 +20,14 @@ $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 Add-Type -AssemblyName System.IO.Compression
 
+function Get-NativeProcessLogText($OutputTask,$ErrorTask) {
+    $parts=foreach($entry in @(@('stdout',$OutputTask),@('stderr',$ErrorTask))){
+        if($entry[1].Status -eq 'RanToCompletion'){$entry[1].GetAwaiter().GetResult()}
+        else{"`n[Vantare: $($entry[0]) incompleto; lectura $($entry[1].Status)]`n"}
+    }
+    $parts -join ''
+}
+
 # Una llamada finita, tanto GUI como consola. Solo posee/mata al hijo directo,
 # no su árbol. No usar para hosts que viven hasta EOF o crean descendientes.
 function Invoke-NativeProcess {
@@ -88,16 +96,20 @@ function Invoke-NativeProcess {
                 }
                 $null=$process.WaitForExit(5000)
                 if($LogPath){
-                    $null=[Threading.Tasks.Task]::WaitAll([Threading.Tasks.Task[]]@($output,$errors),5000)
-                    $stdout=if($output.Status -eq 'RanToCompletion'){$output.GetAwaiter().GetResult()}else{''}
-                    $stderr=if($errors.Status -eq 'RanToCompletion'){$errors.GetAwaiter().GetResult()}else{''}
+                    # Una lectura fallida no impide registrar el otro flujo.
+                    try {$null=[Threading.Tasks.Task]::WaitAll([Threading.Tasks.Task[]]@($output,$errors),5000)}catch [AggregateException]{}
                     # Pipes separados: conserva cada flujo, sin prometer orden
                     # intercalado. También se escribe cuando el hijo vence plazo.
-                    [IO.File]::WriteAllText($LogPath,$stdout+$stderr,[Text.UTF8Encoding]::new($false))
+                    [IO.File]::WriteAllText($LogPath,(Get-NativeProcessLogText $output $errors),[Text.UTF8Encoding]::new($false))
                 }
             } catch {
-                if($null -eq $failure){throw}
-                $failure.Exception.Data['NativeCleanupError']=$_.Exception.Message
+                if($null -eq $failure){
+                    # El resultado ya es válido; un fallo de diagnóstico no lo
+                    # convierte en fallo del comando. El aviso sigue visible.
+                    Write-Warning "Diagnóstico de limpieza nativa: $($_.Exception.Message)" -WarningAction Continue
+                }else{
+                    $failure.Exception.Data['NativeCleanupError']=$_.Exception.Message
+                }
             } finally {
                 $process.StandardInput.Dispose()
                 $process.StandardOutput.Dispose()

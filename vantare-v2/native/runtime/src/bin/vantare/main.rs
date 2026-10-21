@@ -26,8 +26,8 @@
 mod unix;
 #[cfg(windows)]
 mod win;
-#[cfg(windows)]
 use std::io::Write;
+#[cfg(windows)]
 use vantare_launcher as launcher;
 #[cfg(windows)]
 mod beta;

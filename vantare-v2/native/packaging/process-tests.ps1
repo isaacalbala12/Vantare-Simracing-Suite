@@ -58,6 +58,19 @@ try {
     $ownedPid=[int][IO.File]::ReadAllText($marker)
     Assert-Process ($null -eq (Get-Process -Id $ownedPid -ErrorAction SilentlyContinue)) 'El timeout retiró únicamente su hijo'
     Assert-Process ([IO.File]::ReadAllText($log) -ceq 'before-timeout-outbefore-timeout-err') 'Log UTF8 conserva ambas salidas aunque vence el timeout'
+    $warnings=@()
+    $valid=Invoke-NativeProcess -Executable $GuiExecutable -Arguments @('--version') -LogPath $testRoot -WarningVariable warnings
+    Assert-Process ($valid.ExitCode -eq 0 -and $valid.Stdout.TrimEnd([char[]]"`r`n") -ceq $ExpectedVersion -and $warnings.Count -eq 1) 'Un fallo al escribir el log avisa y conserva resultado válido'
+    $complete=[Threading.Tasks.TaskCompletionSource[string]]::new()
+    $faulted=[Threading.Tasks.TaskCompletionSource[string]]::new()
+    $pending=[Threading.Tasks.TaskCompletionSource[string]]::new()
+    $complete.SetResult('retained-output')
+    $faulted.SetException([IO.IOException]::new('fixture read error'))
+    $diagnostic=Get-NativeProcessLogText $complete.Task $faulted.Task
+    Assert-Process ($diagnostic.Contains('retained-output') -and $diagnostic.Contains('stderr incompleto') -and $diagnostic.Contains('Faulted')) 'Lectura fallida marcada sin perder el flujo completo'
+    $diagnostic=Get-NativeProcessLogText $pending.Task $complete.Task
+    Assert-Process ($diagnostic.Contains('retained-output') -and $diagnostic.Contains('stdout incompleto') -and $diagnostic.Contains('WaitingForActivation')) 'Lectura pendiente marcada explícitamente en el log'
+    $pending.SetResult('completed fixture')
 } finally {
     $resolved=[IO.Path]::GetFullPath($testRoot)
     $parent=[IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd([char[]]'\/')

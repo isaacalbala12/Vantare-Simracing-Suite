@@ -3,7 +3,7 @@
   "issue": "ISA-1742",
   "type": "fix",
   "summary": "Conserva los diagnósticos de capturas agotadas y evita fallos al cerrar las salidas de comandos GUI.",
-  "technicalNotes": ["Escrituras stdout/stderr tolerantes a tuberías cerradas", "Limpieza de proceso sin sustituir el timeout original y log UTF8 conservado"],
-  "testing": ["Pipes cerrados antes de crear el proceso", "Helper PowerShell 5.1/7 con EXE GUI real, timeout y log"],
+  "technicalNotes": ["Escrituras stdout/stderr tolerantes a tuberías cerradas, incluidos capture_window, marcador de turno y Workshop", "Limpieza sin descartar un resultado válido, log UTF8 con lectura incompleta indicada", "Write incondicional mantiene compilación Unix del supervisor"],
+  "testing": ["Pipes cerrados y funciones productivas de diagnóstico de ventana sin GPU, también en CI normal", "Control negativo con println falla con exit101", "Helper PowerShell 5.1/7 con EXE GUI real, timeout, log y aviso de limpieza", "cargo check real del supervisor para x86_64-unknown-linux-gnu"],
   "knownLimitations": ["El helper termina solo su hijo directo; Job Object fuera de alcance", "No modifica RC4 ya entregada"]
 }

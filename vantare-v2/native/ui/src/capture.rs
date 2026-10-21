@@ -7,6 +7,7 @@
 //! `F = Cb/a`. Compárese con `parity/reference/standings-44.png` mediante
 //! `parity/diff.py`.
 
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use std::rc::Rc;
@@ -319,7 +320,7 @@ async fn capture(mut cx: AsyncApp, view: Entity<Overlay>, path: PathBuf) -> Resu
     let (w, h, black) = pass(&mut cx, &view, hwnd, size, 0).await?;
     let (_, _, white) = pass(&mut cx, &view, hwnd, size, 255).await?;
     write_png(&path, w, h, &solve_alpha(&black, &white))?;
-    println!("captura {} ({w}x{h} px)", path.display());
+    let _written = writeln!(std::io::stdout(), "captura {} ({w}x{h} px)", path.display());
     Ok(())
 }
 
@@ -347,7 +348,7 @@ pub fn run_configured_sequence(
     path: PathBuf,
 ) -> ExitCode {
     if snapshots.is_empty() {
-        eprintln!("la escena no contiene fotos");
+        let _written = writeln!(std::io::stderr(), "la escena no contiene fotos");
         return ExitCode::FAILURE;
     }
     let request = crate::capture_batch::Request {
@@ -369,7 +370,7 @@ pub fn run_configured_sequence(
     {
         Ok(frames) => frames.join("\n"),
         Err(error) => {
-            eprintln!("{error}");
+            let _written = writeln!(std::io::stderr(), "{error}");
             return ExitCode::FAILURE;
         }
     };
@@ -386,7 +387,11 @@ pub fn run_configured_sequence(
             &common,
         )?;
         if cache.fresh() {
-            println!("capture-skip {}", request.output.display());
+            let _written = writeln!(
+                std::io::stdout(),
+                "capture-skip {}",
+                request.output.display()
+            );
             return Ok(());
         }
         run_jobs(vec![Job {
@@ -412,7 +417,7 @@ fn exit(result: Result<(), String>) -> ExitCode {
     match result {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) => {
-            eprintln!("captura: {error}");
+            let _written = writeln!(std::io::stderr(), "captura: {error}");
             ExitCode::FAILURE
         }
     }
@@ -457,7 +462,11 @@ pub fn run_batch(path: &Path) -> ExitCode {
                 &common,
             )?;
             if cache.fresh() {
-                println!("capture-skip {}", request.output.display());
+                let _written = writeln!(
+                    std::io::stdout(),
+                    "capture-skip {}",
+                    request.output.display()
+                );
                 continue;
             }
             let scene = String::from_utf8(bytes).map_err(|e| e.to_string())?;
@@ -478,7 +487,8 @@ pub fn run_batch(path: &Path) -> ExitCode {
         }
         let captured = jobs.len();
         run_jobs(jobs)?;
-        println!(
+        let _written = writeln!(
+            std::io::stdout(),
             "capture-batch total={total} captured={captured} skipped={} app_processes=1 windows={} elapsed_ms={}",
             total - captured,
             usize::from(captured > 0),

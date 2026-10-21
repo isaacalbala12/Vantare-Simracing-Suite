@@ -1,8 +1,8 @@
 #requires -Version 5.1
 # Inert OS PE fixtures exercise the real scripts; no Hub or installer UI is opened.
-& (Join-Path $PSScriptRoot 'shortcut-branding-tests.ps1')
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
+& (Join-Path $PSScriptRoot 'shortcut-branding-tests.ps1')
 . (Join-Path $PSScriptRoot 'beta.ps1')
 $testRoot=Join-Path ([IO.Path]::GetTempPath()) ('vantare-registration-'+[guid]::NewGuid().ToString('N'))
 [IO.Directory]::CreateDirectory($testRoot)|Out-Null

@@ -122,11 +122,22 @@ Deno.test("signed alert is persisted and emailed once; lost HTTP ACK is safe", a
 });
 Deno.test("concurrent duplicate has one sender and no premature ACK", async () => {
   const f = fixture();
-  const requests = await Promise.all([signed(), signed()]);
-  const statuses = await Promise.all(
-    requests.map(async (r) => (await handleOwnerAlert(r, f.deps)).status),
-  );
-  equal(statuses.sort(), [200, 503]);
+  const entered = Promise.withResolvers<void>();
+  const release = Promise.withResolvers<void>();
+  const send = f.deps.fetch;
+  f.deps.fetch = async (input, init) => {
+    entered.resolve();
+    await release.promise;
+    return send(input, init);
+  };
+  const first = handleOwnerAlert(await signed(), f.deps);
+  try {
+    await entered.promise; // The durable lease exists; provider ACK is still pending.
+    equal((await handleOwnerAlert(await signed(), f.deps)).status, 503);
+  } finally {
+    release.resolve();
+  }
+  equal((await first).status, 200);
   equal(f.sends, 1);
 });
 Deno.test("Brevo failure remains pending; retry succeeds; duplicate errors are not ACKed", async () => {

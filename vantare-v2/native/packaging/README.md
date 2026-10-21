@@ -1,4 +1,4 @@
-# Beta nativa — instalador y actualizaciones (#1454)
+﻿# Beta nativa — instalador y actualizaciones (#1454)
 
 Seguimiento #1695: el rollback intenta restaurar cada metadato aunque otro esté
 bloqueado y registra los fallos en stderr, conservando el error original. Si no
@@ -38,14 +38,19 @@ Las herramientas CLI de grabación/importación conservan su uso en terminal;
 los procesos automáticos y las ventanas de producto usan subsistema Windows.
 
 Doble clic en **VantareSetup.exe**. Instala sin administrador en
-`%LOCALAPPDATA%/Programs/Vantare`, crea «Vantare» y
+`%LOCALAPPDATA%/Programs/Vantare`, crea «Vantare Simracing Suite» y
 «Desinstalar» en el menú Inicio y ofrece abrir el Hub al terminar.
 En interactivo, Opciones propone escritorio ON y autostart OFF. `/S` no crea
 accesos opcionales nuevos ni abre Vantare; respeta preferencias ya guardadas.
 Solo se quitan accesos que pertenecen a esta raíz. «Aplicaciones instaladas» también
 permite desinstalar. Se conserva la clave técnica `VantareNativeBeta`: cambiarla
 rompería la sincronización de versión y rollback del bootstrap ya instalado.
-El nombre visible en Setup, Inicio, Windows y la ventana del Hub es **Vantare**.
+Inicio, escritorio y Aplicaciones instaladas usan **Vantare Simracing Suite**.
+Los accesos conservan el supervisor GUI como destino y usan explícitamente el
+icono Win32 del Hub; RC3/RC4 no llevan icono en el supervisor. AppUserModelID
+estable: `Vantare.SimracingSuite`. DisplayIcon apunta a Uninstall.exe propio,
+o al Hub en instalaciones anteriores sin desinstalador GPUI. Setup y Hub
+conservan sus títulos actuales.
 Una instalación anterior conserva su `InstallLocation`, incluida la carpeta
 `Vantare Native Beta`; moverla obligaría a migrar datos y referencias sin aportar
 valor al usuario. Setup también adopta datos de esa ruta tras desinstalar.
@@ -64,9 +69,9 @@ del script del paquete: llama a la desinstalación beta instalada, conserva los
 datos y retira accesos, registro y bootstrap. Así también puede desinstalarse
 una beta renombrada solo por feed, cuyo Uninstall.exe antiguo desconoce la nueva
 carpeta. La copia permanece disponible si se interrumpe la desinstalación.
-Uninstall.exe propio también retira los accesos nuevos; la migración
+Uninstall.exe propio también retira los accesos nuevos y antiguos propios; la migración
 ya retiró los antiguos propios y preservó cualquier acceso ajeno.
-Wails usa «Vantare Simracing Suite», otra carpeta y sus propios accesos.
+Wails usa otra carpeta y sus propios accesos.
 No se leen ni importan datos Wails durante la instalación.
 
 La desinstalación exige cerrar todos los procesos de esta instalación, retira
@@ -83,7 +88,9 @@ la generación ni el marcador pendiente: el arranque conserva su rollback.
 Los códigos 2 (sesión/binarios abiertos), 3 (versión anterior) y 4 provienen de
 errores tipados, sin depender del texto mostrado.
 
-#1690: Desktop/Startup apagados no consultan sus carpetas. Si se activan,
+#1690: Desktop/Startup apagados no crean carpetas ni accesos. Register consulta
+el escritorio para migrar un acceso propio existente, incluso sin preferencias
+heredadas de NSIS; desinstalar consulta ambos destinos para retirar residuos. Si se activan,
 se usa la ruta configurada por Windows y se crea la carpeta si falta; una
 carpeta inaccesible o un acceso ajeno se conserva y produce un aviso sin
 abortar la instalación. Al apagar una opción antes activa, Setup retira
@@ -541,3 +548,9 @@ pendiente): abrir y cerrar Vantare y repetir.
 
 Runbook de firma, publicación y reinstalación:
 [repo-privado-1565.md](../../docs/repo-privado-1565.md#runbook-de-isaac-00976-en-vantare-downloads).
+
+
+#1746: `shortcut-branding-tests.ps1` (incluido en registration-tests) comprueba
+nombre, destino GUI, IconLocation, AppUserModelID, registro, repetición sin
+duplicados, restauración transaccional y limpieza antigua/nueva para las formas
+de enlaces de NSIS 0.0.975, RC3 y RC4, con COM real y carpetas aisladas.

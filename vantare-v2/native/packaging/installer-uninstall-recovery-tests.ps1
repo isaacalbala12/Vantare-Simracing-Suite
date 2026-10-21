@@ -52,5 +52,5 @@ try {
     if($null -ne $handle){$handle.Dispose()}
     if(Test-Path -LiteralPath $key){Uninstall-NativeRegistration $root $true}
     # Remove only fixed test-owned shell entries; retain all filesystem/data evidence.
-    if(Test-Path -LiteralPath $menu){foreach($name in @('Vantare.lnk','Desinstalar.lnk')){$path=Join-Path $menu $name;if(Test-Path -LiteralPath $path){Remove-Item -LiteralPath $path}};if(-not @(Get-ChildItem -LiteralPath $menu).Count){Remove-Item -LiteralPath $menu}}
+    if(Test-Path -LiteralPath $menu){foreach($name in @('Vantare Simracing Suite.lnk','Desinstalar.lnk')){$path=Join-Path $menu $name;if(Test-Path -LiteralPath $path){Remove-Item -LiteralPath $path}};if(-not @(Get-ChildItem -LiteralPath $menu).Count){Remove-Item -LiteralPath $menu}}
 }

@@ -1,5 +1,6 @@
 #requires -Version 5.1
 # Inert OS PE fixtures exercise the real scripts; no Hub or installer UI is opened.
+& (Join-Path $PSScriptRoot 'shortcut-branding-tests.ps1')
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'beta.ps1')

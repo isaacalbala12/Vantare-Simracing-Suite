@@ -1,3 +1,26 @@
+## VANTA-105 / #1746 · RC4: nombre e icono de accesos (21-oct-2026)
+
+Encargo de worker, base nightly `1b732b67d605298f3056c8ca78d692f132217e2d`,
+worktree `C:/VantareServer/wt/rc4-acceso`, rama `vantareapp/isa-1746-acceso-inicio`.
+Diagnóstico previo a editar conservado en `C:/VantareServer/evidence/rc4-acceso/`:
+los enlaces Inicio/escritorio reales apuntan al supervisor, IconLocation=",0",
+AppUserModelID vacío. Supervisor sin RT_ICON/RT_GROUP_ICON; de los diez EXE de
+RC4 solo Hub, overlays e importador llevan icono. DisplayName=Vantare y
+DisplayIcon ausente. No se cambió la instalación ni los procesos de Isaac.
+
+Arreglo en packaging: nombre Vantare Simracing Suite; icono explícito del Hub,
+conservando destino supervisor GUI, raíz, nombres EXE y datos. AppUserModelID
+estable Vantare.SimracingSuite. Registro usa nombre completo e icono Uninstall.
+Register migra enlaces propios de NSIS/RC3/RC4, incluido escritorio heredado
+sin preferencia activa; desinstalar retira nombres antiguos/nuevos propios.
+Las identidades QA conservan sus carpetas y nombres opcionales aislados.
+No se cambia código de supervisor/Hub ni Google. Sin dependencias nuevas.
+
+Regresión COM real para las tres formas históricas: 42 PASS (primera ejecución).
+Gates completos por cola, target `D:/VantareServer/targets/rc4-acceso`, jobs2,
+y campañas del instalador en preparación. PR/CI pendientes; sin merge, firma,
+release, publicación ni promoción. Esta entrega no acredita Windows limpio.
+
 ## VANTA-96 / #1713 · Configuración y ensayo pendientes (21-oct-2026)
 
 Base nightly a2e46c0d8, #1732 integrado pero NO desplegado. No hay nuevas

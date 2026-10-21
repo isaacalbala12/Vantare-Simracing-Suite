@@ -1,8 +1,12 @@
 ## VANTA-96 / #1713 · Preparación QA autorizada, deploy pendiente
 
 Isaac aprueba reactivar/preparar staging y producto sandbox Pro mensual 5,99 EUR
-sin trial; correo sintético Owner excluido. Ref rilwmlbnucbbayaulnxw, observado
-COMING_UP. Nivel objetivo productivo leído sin cambios: 97 migraciones.
+sin trial; correo sintético Owner excluido. Ref rilwmlbnucbbayaulnxw, ya
+ACTIVE_HEALTHY. Preflight solo lectura: 14 versiones, dos ajenas al canon
+(20260926153706/20260926153853), faltan 85; parar antes de aplicar SQL.
+Datos agregados: visual_roadmap=2; solo auth.schema_migrations=82 además de
+eso, resto de tablas public/private/auth vacías; cero TPA. No borrar ni
+reparar historial sin copia y plan revisado. Objetivo productivo: 97 migraciones.
 Contraseña staging ausente; backup/esquema pendientes de acceso. Claves QA
 ES256/Ed25519/reconcile generadas protegidas, firma/verificación de ambos pares
 PASS, configuración QA separada y SQL issuer enabled=false preparados offline.

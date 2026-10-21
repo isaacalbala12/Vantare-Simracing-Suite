@@ -219,7 +219,8 @@ function Complete-BetaBootstrap([string]$Directory, [int]$TimeoutMilliseconds = 
         # Pin the process handle before inspecting its image or waiting for exit.
         $null = $process.Handle
         if ($process.HasExited) { return }
-        $image = Assert-NativePath $process.MainModule.FileName
+        try { $image = Assert-NativePath $process.MainModule.FileName }
+        catch { if ($process.HasExited) { return }; throw }
         $generations = (Join-Path (Assert-NativePath $Directory) 'generations') + [IO.Path]::DirectorySeparatorChar
         $relative = if ($image.StartsWith($generations, [StringComparison]::OrdinalIgnoreCase)) { $image.Substring($generations.Length).Replace('\', '/') } else { '' }
         if ($relative -cnotmatch '^[a-f0-9]{32}/bin/vantare\.exe$') { throw 'El indicador no pertenece a esta instalación.' }

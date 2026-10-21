@@ -20,7 +20,9 @@ pub fn request(window: &gpui::Window) -> bool {
 /// de nuestra clase Win32; no acepta un HWND arbitrario de otro producto.
 #[cfg(windows)]
 pub fn finish_startup() {
-    use windows_sys::Win32::UI::WindowsAndMessaging::{GetClassNameW, PostMessageW, WM_APP};
+    use windows_sys::Win32::UI::WindowsAndMessaging::{
+        GetClassNameW, GetWindowThreadProcessId, PostMessageW, WM_APP,
+    };
     let Some(value) = std::env::var_os("VANTARE_STARTUP_WINDOW") else {
         return;
     };
@@ -32,10 +34,23 @@ pub fn finish_startup() {
         return;
     };
     let hwnd = hwnd as *mut std::ffi::c_void;
+    let Some(expected_pid) = std::env::var("VANTARE_STARTUP_PID")
+        .ok()
+        .and_then(|value| value.parse::<u32>().ok())
+        .filter(|value| *value != 0)
+    else {
+        return;
+    };
+    let mut pid = 0;
     let mut class = [0_u16; 64];
     // SAFETY: bounded writable UTF-16 buffer; Win32 validates the external HWND.
-    let count = unsafe { GetClassNameW(hwnd, class.as_mut_ptr(), 64) };
-    if count > 0 && String::from_utf16_lossy(&class[..count as usize]) == "VantareStartupIndicator"
+    let count = unsafe {
+        GetWindowThreadProcessId(hwnd, &raw mut pid);
+        GetClassNameW(hwnd, class.as_mut_ptr(), 64)
+    };
+    if pid == expected_pid
+        && count > 0
+        && String::from_utf16_lossy(&class[..count as usize]) == "VantareStartupIndicator"
     {
         // SAFETY: no pointers/data in the message; target class checked above.
         unsafe {

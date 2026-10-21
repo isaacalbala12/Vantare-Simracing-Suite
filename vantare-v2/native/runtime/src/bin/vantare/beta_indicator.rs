@@ -391,7 +391,11 @@ mod tests {
     fn timeout_and_engine_failure_close_the_indicator() {
         let mut state = Lifecycle::new();
         assert_eq!(
-            state.update(LIMIT.checked_sub(Duration::from_millis(1)).unwrap(), None, false),
+            state.update(
+                LIMIT.checked_sub(Duration::from_millis(1)).unwrap(),
+                None,
+                false
+            ),
             None
         );
         assert_eq!(state.update(LIMIT, None, false), Some(Closed::Timeout));

@@ -15,6 +15,7 @@
 //! otra: arrancar `vantare-core --replay <corpus>` y ejecutar `--guardar`, que
 //! guarda la primera foto fresca que reciba por el pipe del núcleo.
 
+use std::io::Write;
 use vantare_ipc::product;
 
 use std::path::PathBuf;
@@ -172,7 +173,8 @@ fn save(file: &PathBuf, pipe: Option<String>) -> Result<(), String> {
         best.ok_or("no llegó ninguna foto fresca por el pipe (¿vantare-core en marcha?)")?;
     let text = vantare_ipc::snapshot_to_json(&snapshot).map_err(|e| e.to_string())?;
     std::fs::write(file, text).map_err(|e| format!("escribir {}: {e}", file.display()))?;
-    println!(
+    let _written = writeln!(
+        std::io::stdout(),
         "escena guardada en {} ({} coches)",
         file.display(),
         snapshot.state.cars.len()

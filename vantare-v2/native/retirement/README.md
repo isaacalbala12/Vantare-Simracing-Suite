@@ -52,3 +52,11 @@ El README de referencias también conserva su original exacto como
 `legacy-evidence/hub-capture-before-1655/README.md.txt`; el documento activo señala el protocolo
 visible como histórico y remite al lote seguro. Su revisión es `65e4809d1`.
 El verificador comprueba 462 archivos exactos; se conserva el pin original.
+
+#1740 adapta los dos capturadores activos `compare.ps1` y `capture-alpha.ps1`
+al helper de procesos GUI. Revisión de código `d18031249f0f8929816d1f2723a934151537ac9a`.
+Sus versiones activas anteriores quedan intactas en
+`legacy-evidence/hub-capture-before-1740/` como `.txt` inertes, con sus hashes
+previos. Se mantienen `source_sha256`, originales anteriores a #1655 y todas
+las revisiones; no cambia ningún corpus, PNG ni baseline de analizadores.
+El inventario pasa a 464 archivos exactos. No ejecutar las copias históricas.

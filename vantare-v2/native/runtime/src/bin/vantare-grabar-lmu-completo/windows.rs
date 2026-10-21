@@ -3,7 +3,7 @@ use super::experiment::{Plan, next_backoff};
 use serde_json::json;
 use std::{
     fs::{self, File},
-    io::{self, Read},
+    io::{self, Read, Write},
     path::PathBuf,
     sync::{
         Arc,
@@ -277,7 +277,8 @@ fn capture(
                 output.join("estado.json"),
                 serde_json::to_vec_pretty(&status)?,
             )?;
-            println!(
+            let _written = writeln!(
+                std::io::stdout(),
                 "{} s | SHM {frames} | inestables {unstable} | REST {rests} | {} MiB",
                 start.elapsed().as_secs(),
                 status["compressed_bytes"].as_u64().unwrap_or(0) / (1 << 20),
@@ -387,7 +388,11 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
         output.join("estado.json"),
         serde_json::to_vec_pretty(&summary)?,
     )?;
-    println!("FINALIZADO: {}", output.join("sesion.lmu.gz").display());
+    let _written = writeln!(
+        std::io::stdout(),
+        "FINALIZADO: {}",
+        output.join("sesion.lmu.gz").display()
+    );
     if counts.frames == 0 {
         return Err("no se grabó LMU_Data; conserva el log para diagnóstico".into());
     }

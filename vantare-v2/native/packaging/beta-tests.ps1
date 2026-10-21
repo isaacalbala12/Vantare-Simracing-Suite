@@ -173,8 +173,8 @@ Remove-Item -LiteralPath (Join-Path $root 'boot-pending.json')
 Reject-Beta { Install-Beta $root $first $firstHash } 'versión inferior rechazada sin bajar en silencio' 3
 Assert-Beta ((Read-NativeState $root).active.generation -ceq $updated.active.generation) 'downgrade conserva versión nueva'
 foreach ($bin in (Get-NativeBins 'beta')) {
-    $text = & (Join-Path $root "generations/$($updated.active.generation)/bin/$bin.exe") --version
-    Assert-Beta ($LASTEXITCODE -eq 0 -and $text -ceq "Vantare Native $newVersion (beta)") "versión embebida: $bin"
+    $versionProbe=Invoke-NativeProcess -Executable (Join-Path $root "generations/$($updated.active.generation)/bin/$bin.exe") -Arguments @('--version')
+    Assert-Beta ($versionProbe.ExitCode -eq 0 -and $versionProbe.Stdout.TrimEnd([char[]]"`r`n") -ceq "Vantare Native $newVersion (beta)") "versión embebida: $bin"
 }
 # Datos de la generación activa distintos de anteriores: no elegir por fechas.
 $latestData = Join-Path $root "generations/$($updated.active.generation)/data/local-profile.json"

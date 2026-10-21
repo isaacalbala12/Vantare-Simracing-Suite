@@ -901,7 +901,8 @@ impl FuenteUdp {
         // del ACK nuevo: cancelaría también la suscripción recién admitida.
         self.conexion = Some(resultado.conexion);
         if avisos.registrado != Some(resultado.conexion) {
-            println!(
+            let _written = writeln!(
+                std::io::stdout(),
                 "broadcasting: registrado (conexión {}{})",
                 resultado.conexion,
                 if resultado.solo_lectura {
@@ -996,7 +997,8 @@ fn preparar_broadcasting() -> Option<FuenteUdp> {
     match config_broadcasting(&ruta) {
         Ok(Some(config)) => match FuenteUdp::nuevo(&config) {
             Ok(fuente) => {
-                println!(
+                let _written = writeln!(
+                    std::io::stdout(),
                     "broadcasting: {} (puerto UDP {}); registrando…",
                     ruta.display(),
                     config.puerto
@@ -1009,16 +1011,25 @@ fn preparar_broadcasting() -> Option<FuenteUdp> {
             }
         },
         Ok(None) => {
-            println!(
+            let _written = writeln!(
+                std::io::stdout(),
                 "broadcasting: {} no está configurado (no existe o está vacío)",
                 ruta.display()
             );
-            println!("  sigo solo con la memoria compartida. Para capturarlo también:");
-            println!(
+            let _written = writeln!(
+                std::io::stdout(),
+                "  sigo solo con la memoria compartida. Para capturarlo también:"
+            );
+            let _written = writeln!(
+                std::io::stdout(),
                 "  en ACC, activa «broadcasting» en los ajustes de la sesión y reinicia el juego,"
             );
-            println!("  o crea ese fichero con el puerto y las contraseñas:");
-            println!(
+            let _written = writeln!(
+                std::io::stdout(),
+                "  o crea ese fichero con el puerto y las contraseñas:"
+            );
+            let _written = writeln!(
+                std::io::stdout(),
                 "  {{\"updListenerPort\": 9000, \"connectionPassword\": \"clave\", \"commandPassword\": \"\"}}"
             );
             None
@@ -1111,7 +1122,10 @@ impl Grabadora {
             let Ok(pagina) = Pagina::abrir(nombre, *tamano) else {
                 continue;
             };
-            println!("memoria compartida: {nombre} conectada ({tamano} B)");
+            let _written = writeln!(
+                std::io::stdout(),
+                "memoria compartida: {nombre} conectada ({tamano} B)"
+            );
             *self.paginas.pagina(indice) = Some(pagina);
         }
         let faltan = (0..PAGINAS.len())
@@ -1122,7 +1136,8 @@ impl Grabadora {
                 .esperando
                 .is_none_or(|instante| instante.elapsed() >= Duration::from_secs(10))
         {
-            println!(
+            let _written = writeln!(
+                std::io::stdout(),
                 "memoria compartida: esperando a ACC ({faltan} página(s) sin abrir; \
                  se reintenta cada segundo)…"
             );
@@ -1199,9 +1214,11 @@ impl Grabadora {
             cambio = true;
         }
         if cambio {
-            println!(
+            let _written = writeln!(
+                std::io::stdout(),
                 "ACC: acVersion «{}» · smVersion «{}»",
-                self.ac_version, self.sm_version
+                self.ac_version,
+                self.sm_version
             );
         }
     }
@@ -1258,10 +1275,13 @@ fn imprimir_ritmo(segundos: u64, delta: &Contadores, fuente: Option<&FuenteUdp>)
             None => format!("{} ev/s, sin registro", delta.udp),
         },
     };
-    println!(
+    let _written = writeln!(
+        std::io::stdout(),
         "[{segundos:>4} s] memoria compartida {shm} ev/s \
          (physics {}, graphics {}, static {}); broadcasting {udp}",
-        delta.physics, delta.graphics, delta.estaticos
+        delta.physics,
+        delta.graphics,
+        delta.estaticos
     );
 }
 
@@ -1316,11 +1336,27 @@ fn bucle_captura(
 
 #[cfg(windows)]
 fn anunciar_inicio(dir: &Path, args: &Args) {
-    println!("vantare-grabar-acc: grabando en {}", dir.display());
-    println!("  pista «{}» · tipo «{}»", args.pista, args.tipo);
+    let _written = writeln!(
+        std::io::stdout(),
+        "vantare-grabar-acc: grabando en {}",
+        dir.display()
+    );
+    let _written = writeln!(
+        std::io::stdout(),
+        "  pista «{}» · tipo «{}»",
+        args.pista,
+        args.tipo
+    );
     match args.segundos {
-        Some(segundos) => println!("  pararé solo a los {segundos} s, o antes con Ctrl+C"),
-        None => println!("  para parar: Ctrl+C"),
+        Some(segundos) => {
+            let _written = writeln!(
+                std::io::stdout(),
+                "  pararé solo a los {segundos} s, o antes con Ctrl+C"
+            );
+        }
+        None => {
+            let _written = writeln!(std::io::stdout(), "  para parar: Ctrl+C");
+        }
     }
 }
 
@@ -1358,9 +1394,13 @@ fn cerrar_captura(
         dir.join("manifest.json"),
         serde_json::to_vec_pretty(&manifiesto(&resumen))?,
     )?;
-    println!(
+    let _written = writeln!(
+        std::io::stdout(),
         "fin: {duracion_s:.1} s · physics {} · graphics {} · static {} · udp {}",
-        contadores.physics, contadores.graphics, contadores.estaticos, contadores.udp
+        contadores.physics,
+        contadores.graphics,
+        contadores.estaticos,
+        contadores.udp
     );
     if contadores.total() == 0 {
         eprintln!("atención: no se capturó ningún evento (¿ACC estaba cerrado?)");
@@ -1382,15 +1422,19 @@ fn cerrar_captura(
         .map(|(nombre, ruta)| (*nombre, ruta.as_path()))
         .collect();
     match empaquetar(&paquete, &entradas) {
-        Ok(()) => println!("paquete: {}", paquete.display()),
+        Ok(()) => {
+            let _written = writeln!(std::io::stdout(), "paquete: {}", paquete.display());
+        }
         Err(error) => eprintln!(
             "no se pudo empaquetar ({error}); quedan los ficheros en {}",
             dir.display()
         ),
     }
-    println!(
+    let _written = writeln!(
+        std::io::stdout(),
         "manifest.json: sha256 shm.bin {} · udp.bin {}",
-        resumen.sha256_shm, resumen.sha256_udp
+        resumen.sha256_shm,
+        resumen.sha256_udp
     );
     Ok(())
 }

@@ -19,6 +19,66 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 Add-Type -AssemblyName System.IO.Compression
+
+# Una llamada finita, tanto GUI como consola. No usar para hosts que viven hasta EOF.
+function Invoke-NativeProcess {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$Executable,
+        [string[]]$Arguments=@(),
+        [AllowNull()][string]$InputText=$null,
+        [ValidateRange(1,2147483647)][int]$TimeoutMilliseconds=30000
+    )
+    $info=[Diagnostics.ProcessStartInfo]::new()
+    $info.FileName=[IO.Path]::GetFullPath($Executable)
+    $info.WorkingDirectory=$ExecutionContext.SessionState.Path.CurrentFileSystemLocation.ProviderPath
+    # argv de Windows: conservar vacíos, Unicode, comillas y backslashes finales.
+    $info.Arguments=(@($Arguments|ForEach-Object {
+        '"'+[regex]::Replace([regex]::Replace($_,'(\\*)"','$1$1\"'),'(\\+)$','$1$1')+'"'
+    }) -join ' ')
+    $info.UseShellExecute=$false
+    $info.CreateNoWindow=$true
+    $info.RedirectStandardInput=$true
+    $info.RedirectStandardOutput=$true
+    $info.RedirectStandardError=$true
+    $info.StandardOutputEncoding=[Text.UTF8Encoding]::new($false)
+    $info.StandardErrorEncoding=[Text.UTF8Encoding]::new($false)
+    $process=[Diagnostics.Process]::new()
+    $process.StartInfo=$info
+    $started=$false
+    $watch=[Diagnostics.Stopwatch]::StartNew()
+    try {
+        $started=$process.Start()
+        if(-not $started){throw 'No se pudo iniciar el proceso nativo.'}
+        # Drenar ambos pipes ANTES de escribir stdin o esperar: ninguno bloquea al otro.
+        $output=$process.StandardOutput.ReadToEndAsync()
+        $errors=$process.StandardError.ReadToEndAsync()
+        if($null -ne $InputText){
+            $bytes=[Text.Encoding]::UTF8.GetBytes($InputText)
+            $write=$process.StandardInput.BaseStream.WriteAsync($bytes,0,$bytes.Length)
+            $remaining=[Math]::Max(0,$TimeoutMilliseconds-[int]$watch.ElapsedMilliseconds)
+            if(-not $write.Wait($remaining)){throw [TimeoutException]::new('El proceso nativo agotó el plazo al recibir stdin.')}
+            $null=$write.GetAwaiter().GetResult()
+        }
+        $process.StandardInput.Close()
+        $remaining=[Math]::Max(0,$TimeoutMilliseconds-[int]$watch.ElapsedMilliseconds)
+        if(-not $process.WaitForExit($remaining)){throw [TimeoutException]::new('El proceso nativo agotó el plazo de salida.')}
+        $remaining=[Math]::Max(0,$TimeoutMilliseconds-[int]$watch.ElapsedMilliseconds)
+        if(-not [Threading.Tasks.Task]::WaitAll([Threading.Tasks.Task[]]@($output,$errors),$remaining)){
+            throw [TimeoutException]::new('El proceso nativo agotó el plazo de lectura.')
+        }
+        [pscustomobject]@{ExitCode=$process.ExitCode;Stdout=$output.GetAwaiter().GetResult();Stderr=$errors.GetAwaiter().GetResult()}
+    } finally {
+        if($started){
+            if(-not $process.HasExited){$process.Kill();$null=$process.WaitForExit(5000)}
+            $process.StandardInput.Dispose()
+            $process.StandardOutput.Dispose()
+            $process.StandardError.Dispose()
+        }
+        $process.Dispose()
+    }
+}
+
 $script:NativeBuildBins = @('vantare', 'vantare-core', 'vantare-overlays', 'vantare-hub', 'vantare-engineer', 'vantare-services', 'vantare-storage', 'vantare-workshop', 'vantare-grabar-lmu', 'vantare-grabar-acc', 'vantare-import-profile')
 # Runtime/README: estas herramientas se compilan en el workspace pero son QA privada.
 # No forman parte de Get-NativeBins ni del inventario distribuido de ningún canal.
@@ -897,8 +957,8 @@ function Import-NativeProfiles([string]$Directory, [string[]]$Files, [double[]]$
                 $converter = Join-Path $generation 'bin/vantare-import-profile.exe'
                 $converted = Join-Path $import 'native'
                 $arguments = @((Join-Path $import $records[0].name), $converted) + @($Bounds | ForEach-Object { $_.ToString('R', [Globalization.CultureInfo]::InvariantCulture) })
-                & $converter @arguments
-                if ($LASTEXITCODE) { throw 'Conversión V4 rechazada; generación anterior sigue activa.' }
+                $conversion=Invoke-NativeProcess -Executable $converter -Arguments $arguments
+                if ($conversion.ExitCode) { throw "Conversión V4 rechazada (exit $($conversion.ExitCode)); generación anterior sigue activa. $($conversion.Stderr)" }
                 Copy-Item -LiteralPath (Join-Path $converted 'layout.json') -Destination (Join-Path $generation 'data/layout.json') -Force
             }
             Invoke-NativeCheckpoint 'staged'
@@ -959,8 +1019,9 @@ function Build-NativeCandidate([string]$Destination, [string]$CandidateVersion, 
     foreach ($bin in (Get-NativeBins $CandidateChannel)) {
         $source = Join-Path $metadata.target_directory ('x86_64-pc-windows-msvc/' + $Profile.ToLowerInvariant() + "/$bin.exe")
         Assert-NativeStaticCrt $source $dumpbin
-        $embedded = & $source --version
-        if ($LASTEXITCODE -or $embedded -cne "Vantare Native $CandidateVersion ($CandidateChannel)") { throw "Versión de producto no coincide: $bin" }
+        $probe=Invoke-NativeProcess -Executable $source -Arguments @('--version')
+        $embedded=$probe.Stdout.TrimEnd([char[]]"`r`n")
+        if ($probe.ExitCode -or $embedded -cne "Vantare Native $CandidateVersion ($CandidateChannel)") { throw "Versión de producto no coincide: $bin (exit $($probe.ExitCode)). $($probe.Stderr)" }
         Copy-Item -LiteralPath $source -Destination (Join-Path $payload "bin/$bin.exe")
         [IO.File]::WriteAllText((Join-Path $payload "bin/$bin.exe.sha256"), "$(Get-NativeHash $source)  $bin.exe`n", [Text.UTF8Encoding]::new($false))
     }

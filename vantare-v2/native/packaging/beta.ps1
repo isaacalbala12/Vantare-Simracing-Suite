@@ -25,33 +25,15 @@ function Read-BetaVersion([string]$Value) {
 
 function Invoke-BetaManifestTool([string]$Executable, [string]$Json, [string]$KeyFile = '') {
     if (-not $Executable -or -not (Test-Path -LiteralPath $Executable -PathType Leaf)) { throw 'Falta el verificador de la instalación beta.' }
-    $info = New-Object Diagnostics.ProcessStartInfo
-    $info.FileName = [IO.Path]::GetFullPath($Executable)
-    $info.Arguments = '--verify-update'
+    $arguments = @('--verify-update')
     if ($KeyFile) {
         $keyPath = [IO.Path]::GetFullPath($KeyFile)
         if ($keyPath.Contains('"')) { throw 'Ruta de clave inválida.' }
-        $info.Arguments = '--sign-update "' + $keyPath + '"'
+        $arguments = @('--sign-update', $keyPath)
     }
-    $info.UseShellExecute = $false
-    $info.CreateNoWindow = $true
-    $info.RedirectStandardInput = $true
-    $info.RedirectStandardOutput = $true
-    $info.RedirectStandardError = $true
-    $info.StandardOutputEncoding = [Text.UTF8Encoding]::new($false)
-    $process = [Diagnostics.Process]::Start($info)
-    try {
-        # Sobres base64 ASCII; el firmador recibe JSON codificado como UTF-8.
-        $bytes = [Text.Encoding]::UTF8.GetBytes($Json)
-        $process.StandardInput.BaseStream.Write($bytes, 0, $bytes.Length)
-        $process.StandardInput.Close()
-        $output = $process.StandardOutput.ReadToEndAsync()
-        $errors = $process.StandardError.ReadToEndAsync()
-        if (-not $process.WaitForExit(30000)) { $process.Kill(); throw 'La firma del manifiesto excedió el tiempo permitido.' }
-        if ($process.ExitCode -ne 0) { throw 'Manifiesto rechazado: firma inválida o clave pública sin configurar.' }
-        $output.GetAwaiter().GetResult()
-        $null = $errors.GetAwaiter().GetResult()
-    } finally { $process.Dispose() }
+    $result=Invoke-NativeProcess -Executable $Executable -Arguments $arguments -InputText $Json
+    if ($result.ExitCode -ne 0) { throw 'Manifiesto rechazado: firma inválida o clave pública sin configurar.' }
+    $result.Stdout
 }
 
 function Assert-BetaPackageUrl([string]$Value, [string]$Version, [bool]$Local = $false) {
@@ -395,9 +377,8 @@ function Stop-BetaRuntime([string]$Directory) {
     $exe = Join-Path $Directory "generations/$($state.active.generation)/bin/vantare.exe"
     $owned = @(Get-Process -Name vantare -ErrorAction SilentlyContinue | Where-Object { $_.Path -eq $exe })
     if (-not $owned.Count) { return }
-    $stop = Start-Process -FilePath $exe -ArgumentList '--parar --instancia native-beta' -WindowStyle Hidden -PassThru
-    try { if (-not $stop.WaitForExit(10000) -or $stop.ExitCode -ne 0) { throw 'No se pudo solicitar el cierre del supervisor beta.' } }
-    finally { $stop.Dispose() }
+    $stop=Invoke-NativeProcess -Executable $exe -Arguments @('--parar','--instancia','native-beta') -TimeoutMilliseconds 10000
+    if ($stop.ExitCode -ne 0) { throw 'No se pudo solicitar el cierre del supervisor beta.' }
     foreach ($process in $owned) {
         try { if (-not $process.WaitForExit(10000)) { throw 'El supervisor beta sigue en uso; actualización pendiente.' } }
         finally { $process.Dispose() }

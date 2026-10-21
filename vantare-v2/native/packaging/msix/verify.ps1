@@ -10,6 +10,7 @@ param(
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot '../candidate.ps1')
 $root = (Resolve-Path -LiteralPath $ArtifactsDirectory).Path
 $evidence = Get-Content -LiteralPath (Join-Path $root 'build-evidence.json') -Raw | ConvertFrom-Json
 if ($evidence.identity -ne 'Vantare.Native.LocalTest' -or $evidence.publisher -ne 'CN=Vantare Native Local Test' -or -not $evidence.test_certificate_thumbprint) { throw 'Solo paquetes locales de prueba.' }
@@ -126,8 +127,8 @@ public static class MsixProbe {
         Wait-Probe { (Test-Path (Join-Path $virtualData 'cursor.json')) -or (Test-Path (Join-Path $data 'cursor.json')) } 'Engineer consume journal real y persiste cursor'
         $cursor = if (Test-Path (Join-Path $virtualData 'cursor.json')) { Join-Path $virtualData 'cursor.json' } else { Join-Path $data 'cursor.json' }
         $results.Add("INFO: cursor físico=$cursor; contenido=" + [IO.File]::ReadAllText($cursor))
-        $stop = Start-Process -FilePath (Join-Path $app.InstallLocation 'bin/vantare.exe') -ArgumentList ('--instancia ' + $probeId + ' --parar') -WindowStyle Hidden -PassThru
-        Assert-Probe ($stop.WaitForExit(10000) -and $stop.ExitCode -eq 0) 'Petición de cierre nativa'
+        $stop=Invoke-NativeProcess -Executable (Join-Path $app.InstallLocation 'bin/vantare.exe') -Arguments @('--instancia',$probeId,'--parar') -TimeoutMilliseconds 10000
+        Assert-Probe ($stop.ExitCode -eq 0) 'Petición de cierre nativa'
         Wait-Probe { @(Get-ProbeProcesses $app).Count -eq 0 } 'Cierre ordenado, sin procesos del paquete'
     }
     if ($UpdateDirectory) {

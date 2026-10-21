@@ -16,7 +16,15 @@ sin preferencia activa; desinstalar retira nombres antiguos/nuevos propios.
 Las identidades QA conservan sus carpetas y nombres opcionales aislados.
 No se cambia código de supervisor/Hub ni Google. Sin dependencias nuevas.
 
-Regresión COM real para las tres formas históricas: 42 PASS (primera ejecución).
+Regresión COM real para las tres formas históricas: 57 PASS en `9a63c38cc`,
+incluidos Startup ON/OFF, nombre histórico y argumentos sin `--background`.
+El orquestador confirma entrega independiente de #1745: este PR no añade el flag.
+PR posterior: Startup tendrá `--background` al final solo tras parser compatible;
+restaurará explícitamente el enlace anterior al hacer rollback, con test real,
+y valorará el nombre completo en Aplicaciones de inicio del Administrador de tareas.
+No basta confiar en Register antiguo: RC4 solo reconoce los argumentos exactos
+sin flag. Restore-NativeCandidate solo intercambia estado y Sync-BetaRegistration
+solo actualiza versión; el Hub restaurado registra después sus propios accesos.
 Gates completos por cola, target `D:/VantareServer/targets/rc4-acceso`, jobs2,
 y campañas del instalador en preparación. PR/CI pendientes; sin merge, firma,
 release, publicación ni promoción. Esta entrega no acredita Windows limpio.

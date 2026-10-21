@@ -34,6 +34,9 @@ Desde #1726, los accesos Inicio/Escritorio/Startup apuntan al supervisor GUI
 PowerShell con `CREATE_NO_WINDOW`; no depende de una consola interactiva.
 El registro del Hub renueva los destinos tras actualizar o restaurar una generación.
 Los errores de arranque quedan en `<raíz>/logs/` (bootstrap, runtime y Hub).
+Startup conserva `Vantare.lnk` y los argumentos `--beta -Root <raíz>` sin
+`--background`; el flag y su rollback a supervisores anteriores se entregarán
+después de #1745, en un cambio separado. Inicio/Escritorio usan el nombre completo.
 Las herramientas CLI de grabación/importación conservan su uso en terminal;
 los procesos automáticos y las ventanas de producto usan subsistema Windows.
 

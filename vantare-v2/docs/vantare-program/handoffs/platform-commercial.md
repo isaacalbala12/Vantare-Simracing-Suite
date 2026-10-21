@@ -1,4 +1,4 @@
-﻿## VANTA-105 / #1746 · RC4: nombre e icono de accesos (21-oct-2026)
+## VANTA-105 / #1746 · RC4: nombre e icono de accesos (21-oct-2026)
 
 Encargo de worker, base inicial nightly `1b732b67d605298f3056c8ca78d692f132217e2d`,
 worktree `C:/VantareServer/wt/rc4-acceso`, rama `vantareapp/isa-1746-acceso-inicio`.
@@ -43,8 +43,14 @@ No basta confiar en Register antiguo: RC4 solo reconoce los argumentos exactos
 sin flag. Restore-NativeCandidate solo intercambia estado y Sync-BetaRegistration
 solo actualiza versión; el Hub restaurado registra después sus propios accesos.
 Gates por cola, target `D:/VantareServer/targets/rc4-acceso`, jobs 2:
-fmt posterior a ICON1/check/Clippy PASS; Nextest/telemetría/lifecycle en curso.
-PR/CI pendientes; sin merge, firma,
+fmt posterior a ICON1/check/Clippy PASS. Nextest completo falló primero en IPC
+#1750 (892 PASS/1 FAIL) y, en la única repetición sin cambios, en HTTP LMU #1751
+(1090 PASS/1 FAIL); IPC pasó en la repetición. Ambos archivos ajenos al diff.
+Logs gate-completa.log y gate-completa-repeat.log en la evidencia. Sin arreglos
+ni más repeticiones. El orquestador autoriza abrir PR con estos fallos locales:
+la CI completa del runner dedicado en su HEAD será el gate decisivo.
+Telemetría/lifecycle siguen ejecutándose.
+PR a nightly autorizado, CI pendiente; sin merge, firma,
 release, publicación ni promoción. Esta entrega no acredita Windows limpio.
 
 ## VANTA-96 / #1713 · Configuración y ensayo pendientes (21-oct-2026)
@@ -775,7 +781,8 @@ target propio recuperó 12 GiB y el orquestador liberó más espacio. Logs
 `gates-1631-r3-*` conservados, incluido el log de CI. Ningún proceso ajeno parado.
 No se hacen capturas hasta
 #1675 en nightly. SQL/Edge no cambian frente a nightly; no se necesita un gate
-Mac propio para código de servidor idéntico. `native-mail-consent` conserva
+Mac propio para código de servidor idéntico. 
+ative-mail-consent` conserva
 OAuth y correo primario verificado: no se incorpora consentimiento al login.
 PR #1635 fuera de draft. El orquestador autoriza pasar VANTA-70 a Por revisar
 y lanzará la review; el cierre se verifica en Plane y #1631. Sin merge del PR
@@ -814,7 +821,8 @@ Plane/issue y aceptación al orquestador; CI remoto del nuevo PR pendiente.
 
 ## #1636 · VANTA-72 · Integración de compra web (16/10/2026)
 
-Entrada limpia `dd7c3a895`; incorpora `nightly@8166277cb` (#1663) en #1657.
+Entrada limpia `dd7c3a895`; incorpora 
+ightly@8166277cb` (#1663) en #1657.
 Conflicto único de handoff: se conservan ambas entregas íntegras. Código y
 migraciones de compra web sin alteraciones. Merge `382c123f7`; `d44e9612` tipa
 RequestInit en cinco dobles adicionales de Polar/compra/informes: Ubuntu24.04
@@ -890,7 +898,8 @@ configuración real, llamadas SaaS de producto, promoción, deploy o gasto.
 
 ## #1636 · VANTA-72 · Segunda sincronización nightly (16/10/2026)
 
-Entrada limpia `7d873cdcf`; merge `3159e214` de `nightly@e8aa2077c` en la rama
+Entrada limpia `7d873cdcf`; merge `3159e214` de 
+ightly@e8aa2077c` en la rama
 `vantareapp/isa-1636-correos` / PR #1657, autorizado por el orquestador.
 Solo conflicto de handoff: ambos bloques íntegros. Oferta inicial y programa por
 informes apagado de #1673, avisos #1649, cola por comprometido #1674 y filtro
@@ -919,7 +928,8 @@ despliegue, SaaS real ni gasto; pendientes de activación anteriores conservados
 ## #1636 · VANTA-72 · Sincronización con nightly (16/10/2026)
 
 PR #1657 / rama `vantareapp/isa-1636-correos`, entrada `2de604cc2`. Merge
-`8c6362f0` incorpora `nightly@9e48eb86f` autorizado por el orquestador; segundo
+`8c6362f0` incorpora 
+ightly@9e48eb86f` autorizado por el orquestador; segundo
 merge `d75fd2e3` incorpora avance `ceb999f5` de avisos/handoff durante los gates.
 No se promociona la rama ni se publica en GitHub desde el worker.
 
@@ -942,7 +952,8 @@ E2E usa adaptador RPC psql, no transporte PostgREST ni proyecto remoto.
 Windows admin/services: **fmt, check, Clippy -D warnings PASS; Nextest 224 PASS,
 2 ignorados existentes**, comandos seriales por compilar.ps1, jobs2 y tests1,
 VANTARE_CARGO_MIN_GB=0 en proceso según encargo; sin cambiar variables de máquina.
-Todo `native/` idéntico al snapshot de validación `8c6362f0` tras el segundo merge.
+Todo 
+ative/` idéntico al snapshot de validación `8c6362f0` tras el segundo merge.
 No se modifican runtime/domain/ipc/testdata frente a nightly: lifecycle/telemetría
 no se repiten en este encargo de resolución; CI de producto sigue con sus gates.
 
@@ -1016,7 +1027,8 @@ confirmación), RPC solo servidor o enlace firmado; misma cola Brevo. No permite
 borrar una cuenta por esa vía. GET muestra confirmación, POST de formulario actúa,
 POST RFC8058 de un clic conserva baja sin segunda pantalla.
 
-**P2-3, 4a8527ba:** `native-mail-consent`, OAuth + correo primario verificado en
+**P2-3, 4a8527ba:** 
+ative-mail-consent`, OAuth + correo primario verificado en
 Clerk, UUID derivado en servidor, una decisión de novedades/ofertas y evidencia
 fija. Get/set, bloqueo/tombstone y límite persistente por cuenta. #1637 no está en
 esta base: servidor listo y enganche exacto documentado en
@@ -2236,7 +2248,8 @@ Cambios de significado explícitos por el modelo nuevo (no se eliminan checks):
   Una identidad exacta ya vinculada no se puede reasignar a otro UUID (`23505`).
   Son 28 checks en lugar de 27 por el rechazo explícito adicional de la barra.
   La carrera conserva dos sesiones que compiten por la MISMA identidad exacta.
-- `native_account_data_upgrade`: el FK de validaciones continúa existiendo,
+- 
+ative_account_data_upgrade`: el FK de validaciones continúa existiendo,
   ahora hacia `profiles` tras B03; antes del corte sigue hacia `auth.users`.
 - Core: la misma promoción con SHA incoherente se rechaza por el guard previo
   de referencias (`23503`) en vez del CHECK posterior (`23514`).
@@ -2304,7 +2317,8 @@ corregidas como fallos preexistentes. Evidencia completa:
 `~/evidence/1608-r10/RESULTADOS.md` y `COMPARACION.json`.
 
 Límites: PostgreSQL/Storage local sintético; ningún servicio, secreto ni dato
-real; sin dependencias nuevas. Rust omitido: sin cambios propios en `native/`.
+real; sin dependencias nuevas. Rust omitido: sin cambios propios en 
+ative/`.
 Sin CI remota, despliegue, merge, promoción, release ni autorización de venta.
 Siguen pendientes staging gestionado e inventario real de buckets antes de vender.
 Docker lock tomado y liberado; sin servidor PG ni stack propio al terminar.
@@ -2451,7 +2465,8 @@ owner|deletion|objects|uploads`, evidencia `~/evidence/1608-r8/patch-{red,green}
 lecturas identifica la acción por el texto de la fila. No demuestra por sí
 sola la procedencia de una lectura. Hoy `admin_audit_log` no admite INSERT de
 anon/authenticated/service_role/Pilot/publicador: el único escritor de aplicación
-es `native_admin_execute`, SECURITY DEFINER con Owner vivo verificado, acciones
+es 
+ative_admin_execute`, SECURITY DEFINER con Owner vivo verificado, acciones
 cerradas y campos de auditoría construidos por el servidor; no acepta una fila
 arbitraria. Cambiar el texto en una petición tampoco permite omitir el actor
 borrado ni mutar un target borrado. Por eso no hay un bypass alcanzable por
@@ -2618,7 +2633,8 @@ R5-P1-1 sigue en preparación; solo local, sin push/merge/promoción/deploy/rele
 ## #1608 · Ronda 6 local · R5-P2-1 (14/10/2026)
 
 Inicio autorizado `0a8e794f`, rama/worktree indicados, review r5 completa.
-`native_admin_execute` toma actor+objetivo ordenados antes del primer lock de
+
+ative_admin_execute` toma actor+objetivo ordenados antes del primer lock de
 fila (incluido reporter en get/set report); helper Owner cubre native_admin_begin.
 RED exacto wrapper→borrado `40P01` → GREEN cuatro carreras actor/objetivo,
 ambos órdenes, espera advisory y `28000` para administración tras tombstone.
@@ -2912,7 +2928,8 @@ siete días solo en Pro normal, revisar checkouts/compras previos por separado.
 Continuación autorizada sobre `c532f53a7`, con los commits recibidos intactos,
 en `C:\VantareServer\wt\isa-1631`, rama `vantareapp/isa-1631-login-propio`.
 Base ya incorporada `64c493e4f`; PR borrador
-[#1635](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1635) a `nightly`.
+[#1635](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1635) a 
+ightly`.
 Se eliminan importaciones obsoletas de helpers que ya viven en
 `services/view/account.rs`, se importa `access` y el test de compra importa
 `account_module_access` y `Section` directamente. Se conservan los helpers
@@ -2950,7 +2967,8 @@ archivos R2 recibidos sin commit. Código R2 consolidado en `fb5292c5b`,
 con coautoría GPT. La entrega se publica en esa rama; el HEAD documental final
 se verifica en el PR draft
 [#1635](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1635),
-base `nightly`; Plane VANTA-70 «En curso» verificado al empezar. Issue en
+base 
+ightly`; Plane VANTA-70 «En curso» verificado al empezar. Issue en
 GitHub Project Vantare, `area:plataforma`; sin milestone comprometido.
 Al cerrar este encargo VANTA-70 pasa a «Por revisar», con resumen y enlace al PR;
 la issue y el PR registran el SHA remoto y la última verificación de estado.
@@ -2980,7 +2998,8 @@ Nightly avanzó durante los gates a `bf5eead43` (#1622). Se conservan íntegras
 sus 683 líneas nuevas de handoff y las secciones de login, sin otro merge de
 ramas ni cambios de código: comprobación de contenido a tres vías PASS.
 GitGuardian marcó seis alertas en `tools/triage/test_review_1602.py` y
-`native/services/src/triage/tests.rs`, idénticos a la base `64c493e4f` y sin
+
+ative/services/src/triage/tests.rs`, idénticos a la base `64c493e4f` y sin
 cambios R2. Solo se consultaron metadatos; clasificación pendiente del
 orquestador en [#1652](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1652).
 No se asumen falsos positivos ni se silencian checks. El CI remoto se consulta
@@ -3116,7 +3135,8 @@ ecos del token y respuestas inválidas; catálogo 38 PASS, `03-red.log` y
 `03-green.log`.
 Gates finales: suite Deno completa **581 PASS, 0 FAIL, 1 ignored** (PostgREST
 no configurado); catálogo 38 PASS. Tipos, lint (exclusión existente
-`no-import-prefix`), fmt del área, superficie deploy, planes offline
+
+o-import-prefix`), fmt del área, superficie deploy, planes offline
 sandbox/production, quality y retirada **456 huellas** PASS. Entorno vacío,
 sin permiso de red, escritura solo temporal `/tmp`; sin dependencias nuevas.
 Rust/UI/telemetría y SQL omitidos: ningún cambio en native, runtime, domain,
@@ -3132,7 +3152,8 @@ Encargo explícito tras review r3 APTA: nightly → rama de issue, con merge,
 sin rebase ni promoción. Worktree limpio `8fecf307`, fast-forward al remoto
 `812ed8ec` conservado. Merge probado `eca5155f6a51aad620e5af5d4ad51368edcaaa83`,
 padres `812ed8ec` + `origin/nightly@5b781964`, incluye #1611/#1617/#1618.
-Conflicto único `native/services/src/app.rs`: rechazo definitivo conserva
+Conflicto único 
+ative/services/src/app.rs`: rechazo definitivo conserva
 revocación/ACK y éxito conserva analytics consentido tras transferir derechos.
 Los otros 66 archivos entrantes son idénticos a nightly. Sin política nueva,
 UI nueva, dependencias o tests relajados; B01/B02/B03 permanecen No-Go comercial.
@@ -3242,7 +3263,8 @@ intacta; sin modificaciones propias de Rust/SQL ni dependencias declaradas.
 
 Gates del merge: Deno completo **577 PASS, 0 FAIL, 1 ignored** (PostgREST
 local sin configurar); check de 8 TS y JSON, lint de 8 TS con la regla
-existente `no-import-prefix` excluida, fmt de 9 archivos PASS. Integridad y
+existente 
+o-import-prefix` excluida, fmt de 9 archivos PASS. Integridad y
 retirada **456 huellas**, superficie deploy y planes offline sandbox/production
 PASS. Tests ejecutados con entorno vacío, sin permiso de red;
 `--node-modules-dir=none`, sin artefactos node_modules en el checkout.
@@ -3460,7 +3482,8 @@ La decisión de perfil local y evidencia de la entrega anterior se conservan deb
 
 Decisión recibida de Isaac el 14/10: entrega de perfil guardado en el PC y
 arreglos de Ajustes; **sync de perfil apagada y pendiente**. Un único interruptor
-`PILOT_SYNC_ENABLED = false` en `native/services/src/app/pilot.rs` corta tanto
+`PILOT_SYNC_ENABLED = false` en 
+ative/services/src/app/pilot.rs` corta tanto
 la preparación OAuth como las llamadas al puente/RPC/Storage desde los tres
 comandos de perfil. Backend y pruebas preparados, sin activar ni borrar.
 P2-1 y P3-1 de review r5 quedan inertes; deben resolverse antes de reactivar.
@@ -3555,7 +3578,8 @@ sin op_id. SQL 90 pgTAP, concurrencia real por barreras, aborto/reintento con la
 misma clave, diez postchecks y cuatro negativas de retirada PASS también sin
 SUPERUSER. Quality/456 huellas y fragmento PASS. Telemetría no repetida: no hay
 cambios en runtime/domain/IPC/testdata. Datos de pruebas aislados, target propio
-`native/target/gates`, dos jobs y plazo de 1800 s por gate.
+
+ative/target/gates`, dos jobs y plazo de 1800 s por gate.
 
 PR draft #1619 actualizada, push d9df6b17 y VANTA-9 Por revisar verificados
 14/10/2026 06:27 CEST. Cierre posterior solo handoff/changelog; HEAD final y CI en
@@ -3588,7 +3612,8 @@ Rust `c2a59c4e`: fmt/check/Clippy -D warnings PASS; Nextest 1675/1675
 456 huellas, más fragmento de changelog PASS. Telemetría y pgTAP no repetidos:
 esta ronda solo modifica servicios/Hub, sin runtime/domain/IPC/testdata ni SQL;
 la evidencia de ronda 2 se conserva como histórica. Datos de tests aislados,
-target propio `native/target/gates`, dos jobs y plazo de 1800 s por comando.
+target propio 
+ative/target/gates`, dos jobs y plazo de 1800 s por comando.
 Push `c2a59c4e` y PR draft a nightly verificados. VANTA-9 Por revisar verificado
 14/10/2026 05:48 CEST. El cierre posterior solo cambia handoff/changelog;
 HEAD final y CI constan en issue/PR y buzón. CI final pendiente de ejecución.
@@ -3871,9 +3896,11 @@ distribuibles ni prueba una firma real. La CI no publica instaladores/releases;
 la preparación manual autorizada sigue siendo `publish-beta.ps1`.
 
 Código y CI propios de esta continuación: `a18ab4379010a4d0f1fb46c50154e9a5b9368828`,
-push verificado. Gates Rust secuenciales por `native/scripts/compilar.ps1`,
+push verificado. Gates Rust secuenciales por 
+ative/scripts/compilar.ps1`,
 `VANTARE_CARGO_MIN_GB=0`, jobs 2, locked/offline y target exclusivo
-`native/target/gates`: fmt de workspace, check y Clippy (`-D warnings`, todos
+
+ative/target/gates`: fmt de workspace, check y Clippy (`-D warnings`, todos
 los targets de installer/build-support), Nextest 8/8 sin omisiones y lifecycle
 18/18 PASS. El único intento retirado antes de compilar fue una espera propia
 para reagrupar los gates en un runner secuencial; no hubo errores del compilador.

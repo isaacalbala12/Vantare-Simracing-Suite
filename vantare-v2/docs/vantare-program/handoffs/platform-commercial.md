@@ -6,13 +6,14 @@ entorno/tipo/hash, leases y ACK cercado; Brevo transaccional sin PII compradora.
 Reintentos del reconcile existente; errores no confirman ni pierden la outbox.
 Entrega al menos una vez: un fallo entre aceptación Brevo y ACK SQL puede
 repetir email fuera de la ventana idempotente del proveedor, documentado.
-19 tests Edge/superficie pasan en local; SQL/carreras y LF/CRLF pendientes CI.
+21 tests Edge/superficie pasan en local; el arnes incluye SQL, carrera real
+y ensayo LF/CRLF. Resultados definitivos de CI y SHA se verifican en #1725.
 No workflows existentes modificados, no dependencias, Rust ni producto nativo.
 No desplegar/configurar URL/secreto ni enviar email real antes de revisión.
 Pasos de activación/reversión en docs/billing/owner-alert-email.md.
 Operación Polar/Cloudflare y propuesta compra: evidencia externa EJECUCION.md,
 issue #1713; no se mezcla con esta migración. Venta/marketing/compensación OFF.
-PR/HEAD/checks definitivos se actualizan en #1725 antes de revisión.
+PR #1727 a nightly; sin merge, release ni activacion productiva.
 
 ## VANTA-105 / #1723 · Dos P3 de review1721, separados de RC3 (19-oct-2026)
 

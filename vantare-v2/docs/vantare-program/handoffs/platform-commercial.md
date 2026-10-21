@@ -11,7 +11,9 @@ custodia por nombre en docs/billing/cloudflare-inventario-20261021.md.
 
 Propuesta de ensayo pro_monthly a 0 EUR, con cuenta QA y descuento/control QA
 aprobados, en docs/billing/runbook-compra-prueba.md. No valida devolución de
-dinero a importe cero ni promete email Owner por pago correcto: el receptor
+dinero a importe cero; además el ledger rechaza net_amount=0, por lo que hoy
+no valida tampoco el E2E completo de derechos. No se debilita esa regla.
+Tampoco promete email Owner por pago correcto: el receptor
 actual avisa de incidencias. Se necesita autorizar la vía QA antes de probarla.
 Catálogo GET preparado en docs/billing/polar-lectura-pendiente.md: seis productos,
 siete precios y cuatro descuentos; token de lectura pendiente, no consultado.

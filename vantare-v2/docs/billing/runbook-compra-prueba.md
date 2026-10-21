@@ -3,7 +3,19 @@
 Propuesta para aprobación; no ejecutada. Venta pública cerrada; sin deploy,
 migración, cupón, compra, refund ni cambio de flags en este encargo.
 
-## Sesión propuesta
+## Límite comprobado antes de aprobar el ensayo
+
+El ledger actual rechaza net_amount=0 en parseOrderLedgerInput
+(supabase/functions/billing-webhook/process.ts, missing_order_net_amount).
+Por tanto la sesión gratuita propuesta abajo NO es hoy un E2E completo de
+compra/licencia. No se recomienda debilitar esta regla para facilitar QA.
+Para el circuito financiero completo, preferir sandbox con cargo simulado al
+precio EUR del producto confirmado por GET, tras autorización de reactivación.
+Alternativa: compra real de Isaac al precio confirmado y refund aprobados aparte.
+No fijar una cifra real mientras el catálogo siga inaccesible. El único importe
+cerrado de esta propuesta sin cargo es 0,00 EUR, con los límites indicados.
+
+## Sesión gratuita propuesta y sus límites
 
 - Producto: pro_monthly, producto normal del mapa canónico. No Founders ni
   launch_lifetime, sin creador ni beneficio de lanzamiento. Catálogo remoto
@@ -34,9 +46,10 @@ migración, cupón, compra, refund ni cambio de flags en este encargo.
    P3 DeepSeek en #1733, especialmente los 250 ms dentro del timeout de 8 s.
 3. El flujo actual usa allow_discount_codes=false y descuentos elegidos por el
    servidor: el cupón QA del 100 % no tiene una vía implementada y aprobada.
-   Hace falta una issue/PR breve para una selección estricta del descuento por
-   la cuenta QA autorizada, probada y sin abrir la venta pública; o un entorno
-   sandbox autorizado. No sustituir el descuento de lanzamiento, falsificar
+   No basta con crear un cupón: la compra gratuita y sus derechos exigen una
+   decisión de producto y cobertura canónica de importe cero, además de una
+   vía QA aprobada. No implementarlo solo para esta prueba. Preferir el ensayo
+   con pago simulado en sandbox autorizado. No sustituir el descuento de lanzamiento, falsificar
    metadata ni permitir discount_id arbitrario en el cliente.
 4. Isaac/orquestador aprueban el cupón concreto, la vía controlada, ejecución y
    limpieza. No se reactiva ninguno de los dos backends pausados sin decisión.
@@ -47,9 +60,11 @@ migración, cupón, compra, refund ni cambio de flags en este encargo.
    standard, descuento QA autorizado y total 0. La app recibe URL del mismo
    entorno. Registrar correlación protegida; ninguna URL/token en evidencia.
 2. Webhook: completar solo ese checkout gratuito; evento real firmado de Polar,
-   inbox durable, procesado una sola vez. Observar reentrega legítima si existe;
+   inbox durable, procesado una sola vez. Un pedido gratuito no supera hoy la
+   validación del ledger: registrar ese límite sin otorgar derechos a mano.
+   Observar reentrega legítima si existe;
    no falsificar eventos productivos ni alterar firmas/RLS.
-3. Licencia: native-license refleja Pro de esa cuenta; credencial Ed25519 verifica
+3. Licencia, cuando el escenario de pago esté soportado: native-license refleja Pro de esa cuenta; credencial Ed25519 verifica
    con la pública del instalador. Una segunda cuenta sigue sin esos derechos.
 4. Email Owner: el receptor actual es de incidencias (checkout_review, refund
    fallido, etc.), **no envía un aviso por cada pago correcto**. El sintético del

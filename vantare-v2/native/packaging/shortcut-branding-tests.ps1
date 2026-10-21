@@ -60,6 +60,20 @@ foreach($baseline in @('0.0.975','0.0.981','0.0.982')){
         Assert-Brand ($registration.InstallLocation -ceq $root) "$baseline retains installation directory"
         Assert-Brand (-not(Test-Path $old) -and -not(Test-Path (Join-Path $desktop 'Vantare.lnk')) -and @(Get-ChildItem $menu -Filter '*.lnk').Count -eq 2) "$baseline repeat registration leaves no duplicates"
         Assert-Brand (-not(Test-Path (Join-Path $desktop 'Vantare Native Beta.lnk'))) "$baseline removes legacy beta desktop alias"
+        Assert-Brand (-not(Test-Path (Join-Path $testRoot 'Startup'))) "$baseline OFF does not create Startup"
+        $ui=Read-NativeInstallerUi $root;$ui.autostart=$true
+        [IO.File]::WriteAllText((Join-Path $root 'installer-ui.json'),($ui|ConvertTo-Json))
+        Sync-NativeRegistration $root '0.0.982'
+        $startup=Join-Path $testRoot 'Startup/Vantare.lnk'
+        $startupLink=$shell.CreateShortcut($startup)
+        Assert-Brand ((Test-Path $startup) -and $startupLink.Arguments -ceq ('--beta -Root "'+$root+'"')) "$baseline ON preserves Startup filename and compatible arguments without background"
+        Assert-Brand (-not(Test-Path (Join-Path $testRoot 'Startup/Vantare Simracing Suite.lnk'))) "$baseline Startup is not renamed into a second entry"
+        $ui.autostart=$false
+        [IO.File]::WriteAllText((Join-Path $root 'installer-ui.json'),($ui|ConvertTo-Json))
+        Sync-NativeRegistration $root '0.0.982' @{desktop=$ui.desktop;autostart=$true}
+        Assert-Brand (-not(Test-Path $startup)) "$baseline disabling Startup removes own entry"
+        # Keep each baseline's initial raw-profile precondition independent.
+        Remove-Item (Split-Path $startup)
         # Failed registration must restore the exact old link and remove the new.
         $current=Join-Path $menu 'Vantare Simracing Suite.lnk'
         $before=Get-NativeHash $current

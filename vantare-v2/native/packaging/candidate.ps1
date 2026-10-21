@@ -655,7 +655,10 @@ function Sync-NativeOptionalShortcuts([string]$Directory,[string]$Folder,$Ui,[bo
             $shell=New-Object -ComObject WScript.Shell
             $parent=Get-NativeShortcutFolder $target.name
             if([string]::IsNullOrWhiteSpace($parent)){throw 'Windows no ofrece la carpeta opcional.'}
-            $path=Join-Path $parent ((Get-NativeShortcutName $Folder)+'.lnk')
+            # Startup keeps its historical filename so generation rollback can
+            # rewrite the same entry. Only visible Desktop/Start names change.
+            $shortcutName=if($target.name -ceq 'Startup'){$Folder}else{Get-NativeShortcutName $Folder}
+            $path=Join-Path $parent ($shortcutName+'.lnk')
             $exists=Test-Path -LiteralPath $path
             $owned=$exists -and (Test-NativeShortcutOwned ($shell.CreateShortcut($path)) $Directory)
             $oldNames=@($Folder+'.lnk')

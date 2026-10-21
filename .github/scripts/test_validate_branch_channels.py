@@ -68,13 +68,14 @@ class ValidateBranchChannelsTest(unittest.TestCase):
             "native/retirement/verify.py",
         ):
             self.assertIn(required, workflow)
-        # El bucle fija las cuatro coberturas: check, clippy, lifecycle y la
+        # El bucle fija las coberturas: check, clippy, captura (banco QA del
+        # instalador con parity-capture, #1735), lifecycle y la
         # suite. La suite es `completa` (suite + corpus de telemetría) cuando el
         # clasificador no descarta el corpus, y `test` (solo suite) cuando
         # ninguna ruta cambiada toca runtime, domain, ipc ni testdata
         # (#1654 ronda 12). La unión de `test` y `completa` es la de hoy.
         self.assertIn(
-            "foreach ($gate in @('check', 'clippy', $suite, 'lifecycle'))",
+            "foreach ($gate in @('check', 'clippy', 'captura', $suite, 'lifecycle'))",
             workflow,
         )
         self.assertIn(

@@ -16,18 +16,26 @@ Leídos [#1562](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/
 
 ## 3. Estado real y canal
 
-### #1750 / VANTA-105 — test IPC latest sin sleeps
+### #1750 / VANTA-105 — tests IPC latest y REST LMU
 
 Rama `vantareapp/isa-1750-test-ipc-latest`, base `nightly@3136f0acb` y worktree propio.
 Se sustituyen los dos sleeps del test de despertar/cierre por señal de espera
-bajo el mutex, ACK del valor y señal de segunda espera antes de cerrar.
+bajo el mutex, ACK del valor, señal de segunda espera y ACK de liberación al cerrar.
 La observación es exclusivamente `cfg(test)`; la lógica y prioridad de cierre
 de producción no cambian, tampoco la aserción `(true, true)`.
-Medición original/corregida de 500 repeticiones, gates y CI pendientes;
-evidencia en `C:/VantareServer/evidence/ipc-latest/`.
+Código en commits separados: IPC `018693959`, HTTP `096f3c78d`.
+[PR #1755 a nightly](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1755),
+creado en draft mientras se completaban gates. Evidencia verificable en
+`C:/VantareServer/evidence/ipc-latest/INFORME.md` y sus logs.
+Originales aislados: IPC y HTTP 500/500 PASS cada uno, retries=0; no se afirma
+reproducción espontánea. Corregidos: IPC y HTTP 500/500 PASS cada uno, retries=0.
+Control IPC original con lector retenido: FAIL101 `(false,true)`; corregido PASS,
+sin notify de put o close: FAIL101 a los 5 s. El test detecta ambos despertares.
 Otros cuatro sleeps de IPC inventariados en [la issue](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1750)
-sin corregirlos. Sin merge, publicación ni cambios a RC4; el SHA final y los
-checks se verificarán en la issue antes de entregar al orquestador.
+sin corregirlos. Sin merge, publicación ni cambios a RC4. El estado operativo,
+HEAD final, fmt/Clippy/Nextest con telemetría y los resultados de cada check CI
+se registran en esa issue: consultar el SHA exacto, no inferir CI verde de este
+registro de las repeticiones funcionales.
 
 Ampliación del mismo encargo en commit separado: el banco HTTP LMU de endpoint
 y cuerpo usa un cliente solo de test sin el deadline live de 750 ms; mantiene
@@ -36,7 +44,10 @@ y tamaño. El listener ya estaba enlazado antes del hilo; no era una carrera de
 bind. La carga puede consumir el deadline antes de que responda el servidor de
 test. Una regresión retiene la respuesta por canal más de dos deadlines, luego
 exige `[]`. `Client::new`, el transporte y el test específico de timeout de
-producción permanecen idénticos. Repeticiones/controles y gates aún pendientes.
+producción permanecen idénticos. Respuesta retenida 10/10 PASS; al usar el
+cliente live en el mismo banco, FAIL100 antes de liberar el servidor. El único
+ajuste posterior a las repeticiones fue el formato de una aserción requerido por
+fmt; se conserva ese fallo inicial y se verifica la revisión final en los gates.
 
 ### #1638 / VANTA-33 — pulido M-1…M-6 tras integración de #1664
 

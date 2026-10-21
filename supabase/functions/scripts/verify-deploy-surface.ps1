@@ -6,7 +6,7 @@ $testingPilot = @("testing-center-feedback", "testing-center-linear-webhook", "t
 $allowed = $production + $testingPilot
 $testingAutomation = @("testing-center-agent-dispatch", "testing-center-agent-callback")
 $infrastructure = @("_deprecated", "_shared", "scripts")
-$reviewCandidates = @("billing-report-promotion", "testing-report-submit", "clerk-webhook", "billing-reconcile", "mail-unsubscribe", "mail-webhook", "mail-cleanup", "native-mail-consent") # Inert: not added to $allowed or deploy wrappers.
+$reviewCandidates = @("billing-report-promotion", "testing-report-submit", "clerk-webhook", "billing-reconcile", "mail-unsubscribe", "mail-webhook", "mail-cleanup", "native-mail-consent", "owner-alert-receiver") # Inert: not added to $allowed or deploy wrappers.
 $known = $allowed + $testingAutomation + $reviewCandidates + $infrastructure
 $unexpected = Get-ChildItem -LiteralPath $functionsRoot -Directory |
   Where-Object { $_.Name -notin $known } |

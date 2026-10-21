@@ -27,7 +27,14 @@ public static class BootstrapDesktop {
     [DllImport("kernel32.dll")] public static extern bool TerminateProcess(IntPtr process,uint code);
 }
 '@
-foreach ($capable in @($false, $true)) {
+foreach ($case in @(
+    @{ Capable = $false; Background = $false },
+    @{ Capable = $true; Background = $false },
+    @{ Capable = $true; Background = $true }
+)) {
+    $capable = $case.Capable
+    $background = $case.Background
+    $expectedIndicator = $capable -and -not $background
     $root = Join-Path $evidence ([guid]::NewGuid().ToString('N'))
     $bin = Join-Path $root ('generations/' + [guid]::NewGuid().ToString('N') + '/bin')
     [IO.Directory]::CreateDirectory($bin) | Out-Null
@@ -74,7 +81,7 @@ finally{
     $script = $script.Replace('__PRODUCT_BETA__', $product)
     if ($capable) { $script = "# vantare-boot-capabilities: indicator-handshake-v1`n" + $script }
     [IO.File]::WriteAllText((Join-Path $root 'beta.ps1'), $script, [Text.UTF8Encoding]::new($true))
-    [IO.File]::WriteAllText((Join-Path $root 'expected'), $capable.ToString())
+    [IO.File]::WriteAllText((Join-Path $root 'expected'), $expectedIndicator.ToString())
     [IO.File]::WriteAllText((Join-Path $root 'event-name'), $eventName)
     $name = 'VantareBootstrap' + [guid]::NewGuid().ToString('N')
     $desktop = [BootstrapDesktop]::CreateDesktop($name, [IntPtr]::Zero, [IntPtr]::Zero, 0, 0x10000000, [IntPtr]::Zero)
@@ -86,14 +93,15 @@ finally{
     try {
         # Suspended only until its exact PID is stored; all windows remain private.
         $command = [Text.StringBuilder]::new('"' + $exe + '" --beta -Root "' + $root + '"')
+        if ($background) { $null = $command.Append(' --background') }
         if (-not [BootstrapDesktop]::CreateProcess($exe, $command, [IntPtr]::Zero, [IntPtr]::Zero, $false, 0x08000004, [IntPtr]::Zero, $root, [ref]$startup, [ref]$process)) { throw 'CreateProcess failed.' }
         [IO.File]::WriteAllText((Join-Path $root 'bootstrap-pid'), $process.pid.ToString())
         $null = [BootstrapDesktop]::ResumeThread($process.thread)
         if (-not $done.WaitOne(30000)) { throw "Capability fixture timed out: $root" }
         if ([BootstrapDesktop]::WaitForSingleObject($process.process, 10000) -ne 0) { throw 'Bootstrap did not exit.' }
         $result = [IO.File]::ReadAllText((Join-Path $root 'result.json')) | ConvertFrom-Json
-        if (-not $result.ok -or -not $result.guard -or $result.indicator -ne $capable) { throw ($result | ConvertTo-Json -Compress) }
-        Write-Output "PASS capability=$capable actual indicator and exclusive image guard"
+        if (-not $result.ok -or -not $result.guard -or $result.indicator -ne $expectedIndicator) { throw ($result | ConvertTo-Json -Compress) }
+        Write-Output "PASS capability=$capable background=$background actual indicator and exclusive image guard"
     } finally {
         if ($process.thread -ne [IntPtr]::Zero) { $null = [BootstrapDesktop]::CloseHandle($process.thread) }
         if ($process.process -ne [IntPtr]::Zero) {

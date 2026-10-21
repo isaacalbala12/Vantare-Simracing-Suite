@@ -7,7 +7,8 @@
     "Indicador Win32 sin activación ni entrada en la barra de tareas, con ICON1 existente, cierre por primer frame del Hub, salida del motor o plazo de45 segundos. Startup admite --background; los accesos antiguos siguen siendo válidos.",
     "Register se supervisa sin bloquear el hilo de UI y conserva la confirmación de arranque tras el éxito, con cancelación y límite.",
     "La validación conserva inventario, SHA, tamaños, PE y la comprobación de cada ancestro antes de cada hash; usa atributos .NET en lugar de repetir cmdlets de PowerShell.",
-    "Foco con AllowSetForegroundWindow y SetForegroundWindow propios, sin entrada sintética ni AttachThreadInput."
+    "Foco con AllowSetForegroundWindow y SetForegroundWindow propios, sin entrada sintética ni AttachThreadInput.",
+    "Antes de Apply/rollback, señal explícita al bootstrap y WaitForExit acotado; conserva el guard exclusivo y aplaza sin modificar la generación si el indicador no sale."
   ],
   "testing": [
     "Regresiones de ciclo de vida con señal/reloj inyectado y parser interactivo/background/argumentos desconocidos.",
@@ -16,6 +17,7 @@
   ],
   "knownLimitations": [
     "La aparición del indicador no significa que hayan terminado de cargar los servicios. El foco físico requiere comprobación de Isaac en la RC integrada.",
-    "La salida de PowerShell de la ruta normal queda para la medición posterior al lanzamiento#1748."
+    "La salida de PowerShell de la ruta normal queda para la medición posterior al lanzamiento#1748.",
+    "beta-tests completo, incluidos los casos nuevos Apply/rollback con bootstrap vivo, queda para RC5 por decisión del orquestador; el probe focal con proceso real sí pasa."
   ]
 }

@@ -150,7 +150,7 @@ try {
     Test-BusyBootstrap $root { Confirm-BetaBoot $root $process 0 } 'rollback'
     $bootstrap = Start-TestBootstrap $root $false
     try {
-    Assert-Beta (-not (Confirm-BetaBoot $root $process 15)) 'fallo real del Hub nuevo dispara rollback'
+        Assert-Beta (-not (Confirm-BetaBoot $root $process 15)) 'fallo real del Hub nuevo dispara rollback'
         Assert-Beta $bootstrap.Process.HasExited 'rollback espera la salida real del indicador'
     } finally { Stop-TestBootstrap $bootstrap }
     Assert-Beta ($process.HasExited -and $process.ExitCode -ne 0) 'Hub nuevo termina con error real'

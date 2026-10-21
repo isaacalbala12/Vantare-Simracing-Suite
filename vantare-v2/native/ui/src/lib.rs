@@ -33,6 +33,8 @@ mod board_contracts;
 pub mod capture;
 #[cfg(feature = "parity-capture")]
 pub mod capture_batch;
+#[cfg(any(feature = "parity-capture", all(test, windows)))]
+mod capture_output;
 #[cfg(feature = "parity-capture")]
 pub mod capture_window;
 mod connection;

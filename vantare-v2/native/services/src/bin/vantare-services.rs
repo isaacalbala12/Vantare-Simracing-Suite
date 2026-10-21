@@ -1,5 +1,6 @@
 #![cfg_attr(windows, windows_subsystem = "windows")]
 #![forbid(unsafe_code)]
+use std::io::Write;
 use vantare_ipc::product;
 
 use std::path::PathBuf;
@@ -78,7 +79,7 @@ fn run() -> vantare_services::Result<()> {
     let _diagnostics = match vantare_services::diagnostics::Worker::start() {
         Ok(worker) => worker,
         Err(error) => {
-            eprintln!("diagnóstico: {error}");
+            let _written = writeln!(std::io::stderr(), "diagnóstico: {error}");
             None
         }
     };
@@ -93,7 +94,7 @@ fn main() -> ExitCode {
     match run() {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) => {
-            eprintln!("vantare-services: {error}");
+            let _written = writeln!(std::io::stderr(), "vantare-services: {error}");
             ExitCode::FAILURE
         }
     }

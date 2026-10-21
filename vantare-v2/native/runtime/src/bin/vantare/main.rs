@@ -26,6 +26,7 @@
 mod unix;
 #[cfg(windows)]
 mod win;
+use std::io::Write;
 #[cfg(windows)]
 use vantare_launcher as launcher;
 #[cfg(windows)]
@@ -56,7 +57,7 @@ const BACKOFF_CAP: Duration = Duration::from_secs(8);
 const STABLE: Duration = Duration::from_secs(30);
 
 fn log(message: impl std::fmt::Display) {
-    eprintln!("vantare: {message}");
+    let _written = writeln!(std::io::stderr(), "vantare: {message}");
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -625,7 +626,7 @@ fn main() -> ExitCode {
     let config = match parse(&args, &bin_dir) {
         Ok(config) => config,
         Err(message) => {
-            eprintln!("vantare: {message}\n{USAGE}");
+            let _written = writeln!(std::io::stderr(), "vantare: {message}\n{USAGE}");
             return ExitCode::from(2);
         }
     };

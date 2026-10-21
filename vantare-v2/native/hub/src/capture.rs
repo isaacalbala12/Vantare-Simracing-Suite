@@ -4,6 +4,7 @@ use crate::{
     shell::{self, Hub, Options},
 };
 use gpui::{App, Context, Entity, IntoElement, Render, Window, div, prelude::*};
+use std::io::Write;
 use std::{
     cell::RefCell,
     path::PathBuf,
@@ -89,7 +90,7 @@ fn prepare_jobs(options: Vec<Options>) -> Result<(usize, Vec<Job>), String> {
         let inputs = serde_json::to_vec(&serde_json::json!({ "scene": state.name, "sidebar": state.sidebar, "column_open": state.column_open, "parameters": state.parameters, "appearance": options.capture_appearance, "size": options.capture_size, "zoom": options.capture_zoom, "live_clock": live_clock })).map_err(|e| e.to_string())?;
         let cache = Cache::new(output.clone(), &inputs, &common)?;
         if cache.fresh() {
-            println!("capture-skip {}", output.display());
+            let _written = writeln!(std::io::stdout(), "capture-skip {}", output.display());
             continue;
         }
         jobs.push(Job {
@@ -115,13 +116,15 @@ pub fn run_many(options: Vec<Options>) -> Result<(), String> {
 fn run_many_inner(options: Vec<Options>) -> Result<(), String> {
     let started = Instant::now();
     let (total, jobs) = prepare_jobs(options)?;
-    println!(
+    let _written = writeln!(
+        std::io::stdout(),
         "capture-stage prepared elapsed_ms={}",
         started.elapsed().as_millis()
     );
     let captured = jobs.len();
     if jobs.is_empty() {
-        println!(
+        let _written = writeln!(
+            std::io::stdout(),
             "capture-batch total={total} captured=0 skipped={total} app_processes=1 windows=0 elapsed_ms={}",
             started.elapsed().as_millis()
         );
@@ -131,7 +134,8 @@ fn run_many_inner(options: Vec<Options>) -> Result<(), String> {
     let mut jobs = jobs.into_iter();
     let mut first = jobs.next().ok_or("lote vacío")?;
     let loaded = shell::load(&mut first.options)?;
-    println!(
+    let _written = writeln!(
+        std::io::stdout(),
         "capture-stage loaded elapsed_ms={}",
         started.elapsed().as_millis()
     );
@@ -181,7 +185,8 @@ fn run_many_inner(options: Vec<Options>) -> Result<(), String> {
                 cx.quit();
                 return;
             }
-            println!(
+            let _written = writeln!(
+                std::io::stdout(),
                 "capture-stage window-ready elapsed_ms={}",
                 started.elapsed().as_millis()
             );
@@ -197,7 +202,8 @@ fn run_many_inner(options: Vec<Options>) -> Result<(), String> {
     if let Some(error) = failure.borrow_mut().take() {
         return Err(error);
     }
-    println!(
+    let _written = writeln!(
+        std::io::stdout(),
         "capture-batch total={total} captured={captured} skipped={} app_processes=1 windows=1 elapsed_ms={}",
         total - captured,
         started.elapsed().as_millis()
@@ -249,7 +255,7 @@ async fn capture_jobs(
         let output = job.options.capture_output.as_ref().ok_or("falta output")?;
         save_frame(cx, hwnd, (width, height), output).await?;
         job.cache.commit()?;
-        println!("capture-written {}", output.display());
+        let _written = writeln!(std::io::stdout(), "capture-written {}", output.display());
         next = jobs.next();
     }
     Ok::<(), String>(())

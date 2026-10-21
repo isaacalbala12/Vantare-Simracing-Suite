@@ -1,5 +1,6 @@
 //! Efectos Win32 del residente, en el mismo hilo que recibe `WM_HOTKEY`.
 use super::launcher::triggers::Hotkey;
+use std::io::Write;
 use std::{ffi::c_void, io, path::Path};
 use windows_sys::Win32::UI::WindowsAndMessaging::{MSG, PM_REMOVE, PeekMessageW, WM_HOTKEY};
 
@@ -66,7 +67,11 @@ pub fn register(id: i32, hotkey: Hotkey) -> io::Result<()> {
 pub fn unregister(id: i32) {
     // SAFETY: solo IDs registrados por este hilo; no afecta otras aplicaciones.
     if unsafe { UnregisterHotKey(std::ptr::null_mut(), id) } == 0 {
-        eprintln!("retirar atajo {id}: {}", io::Error::last_os_error());
+        let _written = writeln!(
+            std::io::stderr(),
+            "retirar atajo {id}: {}",
+            io::Error::last_os_error()
+        );
     }
 }
 

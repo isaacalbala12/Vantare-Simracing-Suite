@@ -91,6 +91,7 @@ fn parse(args: &[String]) -> Result<Args, String> {
     })
 }
 
+use std::io::Write;
 use vantare_ipc::product;
 
 #[cfg(any(windows, unix))]
@@ -105,13 +106,13 @@ fn main() -> std::process::ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
     match parse(&args) {
         Err(message) => {
-            eprintln!("{message}\n{USAGE}");
+            let _written = writeln!(std::io::stderr(), "{message}\n{USAGE}");
             ExitCode::from(2)
         }
         Ok(args) => match run(args) {
             Ok(()) => ExitCode::SUCCESS,
             Err(error) => {
-                eprintln!("vantare-core: {error}");
+                let _written = writeln!(std::io::stderr(), "vantare-core: {error}");
                 ExitCode::FAILURE
             }
         },

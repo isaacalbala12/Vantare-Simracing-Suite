@@ -20,17 +20,27 @@ $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 Add-Type -AssemblyName System.IO.Compression
 
-# Una llamada finita, tanto GUI como consola. No usar para hosts que viven hasta EOF.
+function Get-NativeProcessLogText($OutputTask,$ErrorTask) {
+    $parts=foreach($entry in @(@('stdout',$OutputTask),@('stderr',$ErrorTask))){
+        if($entry[1].Status -eq 'RanToCompletion'){$entry[1].GetAwaiter().GetResult()}
+        else{"`n[Vantare: $($entry[0]) incompleto; lectura $($entry[1].Status)]`n"}
+    }
+    $parts -join ''
+}
+
+# Una llamada finita, tanto GUI como consola. Solo posee/mata al hijo directo,
+# no su árbol. No usar para hosts que viven hasta EOF o crean descendientes.
 function Invoke-NativeProcess {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)][string]$Executable,
         [string[]]$Arguments=@(),
         [AllowNull()][string]$InputText=$null,
-        [ValidateRange(1,2147483647)][int]$TimeoutMilliseconds=30000
+        [ValidateRange(1,2147483647)][int]$TimeoutMilliseconds=30000,
+        [string]$LogPath
     )
     $info=[Diagnostics.ProcessStartInfo]::new()
-    $info.FileName=[IO.Path]::GetFullPath($Executable)
+    $info.FileName=$ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Executable)
     $info.WorkingDirectory=$ExecutionContext.SessionState.Path.CurrentFileSystemLocation.ProviderPath
     # argv de Windows: conservar vacíos, Unicode, comillas y backslashes finales.
     $info.Arguments=(@($Arguments|ForEach-Object {
@@ -46,6 +56,9 @@ function Invoke-NativeProcess {
     $process=[Diagnostics.Process]::new()
     $process.StartInfo=$info
     $started=$false
+    $failure=$null
+    $output=$null
+    $errors=$null
     $watch=[Diagnostics.Stopwatch]::StartNew()
     try {
         $started=$process.Start()
@@ -68,14 +81,44 @@ function Invoke-NativeProcess {
             throw [TimeoutException]::new('El proceso nativo agotó el plazo de lectura.')
         }
         [pscustomobject]@{ExitCode=$process.ExitCode;Stdout=$output.GetAwaiter().GetResult();Stderr=$errors.GetAwaiter().GetResult()}
+    } catch {
+        $failure=$_
+        throw
     } finally {
         if($started){
-            if(-not $process.HasExited){$process.Kill();$null=$process.WaitForExit(5000)}
-            $process.StandardInput.Dispose()
-            $process.StandardOutput.Dispose()
-            $process.StandardError.Dispose()
+            try {
+                try {
+                    if(-not $process.HasExited){$process.Kill()}
+                } catch {
+                    # Puede terminar entre HasExited y Kill. Otros errores se
+                    # registran sin sustituir una excepción de timeout previa.
+                    if(-not $process.HasExited){throw}
+                }
+                $null=$process.WaitForExit(5000)
+                if($LogPath){
+                    # Una lectura fallida no impide registrar el otro flujo.
+                    try {$null=[Threading.Tasks.Task]::WaitAll([Threading.Tasks.Task[]]@($output,$errors),5000)}catch [AggregateException]{}
+                    # Pipes separados: conserva cada flujo, sin prometer orden
+                    # intercalado. También se escribe cuando el hijo vence plazo.
+                    [IO.File]::WriteAllText($LogPath,(Get-NativeProcessLogText $output $errors),[Text.UTF8Encoding]::new($false))
+                }
+            } catch {
+                if($null -eq $failure){
+                    # El resultado ya es válido; un fallo de diagnóstico no lo
+                    # convierte en fallo del comando. El aviso sigue visible.
+                    Write-Warning "Diagnóstico de limpieza nativa: $($_.Exception.Message)" -WarningAction Continue
+                }else{
+                    $failure.Exception.Data['NativeCleanupError']=$_.Exception.Message
+                }
+            } finally {
+                $process.StandardInput.Dispose()
+                $process.StandardOutput.Dispose()
+                $process.StandardError.Dispose()
+                $process.Dispose()
+            }
+        }else{
+            $process.Dispose()
         }
-        $process.Dispose()
     }
 }
 

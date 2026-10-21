@@ -217,7 +217,7 @@ fn main() -> ExitCode {
         return vantare_ui::capture::run_batch(std::path::Path::new(path));
     }
     let Some(command) = parse(&args) else {
-        eprintln!("{USAGE}");
+        let _written = writeln!(std::io::stderr(), "{USAGE}");
         return ExitCode::from(2);
     };
     let result = match command {
@@ -277,13 +277,16 @@ fn main() -> ExitCode {
                             output,
                         ),
                         Err(error) => {
-                            eprintln!("vantare-workshop: ajustes de captura: {error}");
+                            let _written = writeln!(
+                                std::io::stderr(),
+                                "vantare-workshop: ajustes de captura: {error}"
+                            );
                             ExitCode::FAILURE
                         }
                     }
                 }
                 Err(error) => {
-                    eprintln!("vantare-workshop: {error}");
+                    let _written = writeln!(std::io::stderr(), "vantare-workshop: {error}");
                     ExitCode::FAILURE
                 }
             };
@@ -298,7 +301,7 @@ fn main() -> ExitCode {
     match result {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) => {
-            eprintln!("vantare-workshop: {error}");
+            let _written = writeln!(std::io::stderr(), "vantare-workshop: {error}");
             ExitCode::FAILURE
         }
     }

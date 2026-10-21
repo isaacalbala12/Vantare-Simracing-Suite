@@ -1,3 +1,19 @@
+## VANTA-96 / #1713 · Reconstrucción staging autorizada, espera de custodia
+
+El orquestador autoriza copia completa en evidence/supabase-staging, descarte
+controlado del historial divergente y reconstrucción97/97 desde el canon.
+También autoriza las cinco funciones desde SHA1b732b67d605298f3056c8ca78d692f132217e2d,
+solo tras esquema/claves/TPA; después catálogo/webhook sandbox y parada antes de
+checkout. Producción intacta. No se repite la solicitud de esas autorizaciones.
+Las dos versiones antiguas de roadmap y su ajuste de permisos están exportadas
+como sentencias originales y documentadas en INFORME.md externo antes de descarte.
+Scripts de backup verificable y reconstrucción transaccional preparados; checkout
+pinned independiente. Sin contraseña aún no se ha hecho dump, reset, migración,
+importación/rotación QA, TPA ni despliegue. Las claves QA propias sí están listas.
+Token presente sigue siendo el antiguo16-oct; webhook sandbox nuevo ausente.
+Espera de archivos en secrets, sin imprimir valores ni probar password productivo.
+Retorno técnico QA propuesto https://sandbox.polar.sh/, fuera de vantare.app.
+
 ## VANTA-96 / #1713 · Preparación QA autorizada, deploy pendiente
 
 Isaac aprueba reactivar/preparar staging y producto sandbox Pro mensual 5,99 EUR

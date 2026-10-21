@@ -8,7 +8,8 @@
     "Register se supervisa sin bloquear el hilo de UI y conserva la confirmación de arranque tras el éxito, con cancelación y límite.",
     "La validación conserva inventario, SHA, tamaños, PE y la comprobación de cada ancestro antes de cada hash; usa atributos .NET en lugar de repetir cmdlets de PowerShell.",
     "Foco con AllowSetForegroundWindow y SetForegroundWindow propios, sin entrada sintética ni AttachThreadInput.",
-    "Antes de Apply/rollback, señal explícita al bootstrap y WaitForExit acotado; conserva el guard exclusivo y aplaza sin modificar la generación si el indicador no sale."
+    "Antes de Apply/rollback, señal explícita al bootstrap y WaitForExit acotado; conserva el guard exclusivo y aplaza sin modificar la generación si el indicador no sale.",
+    "Marcador versionado en beta.ps1 raíz: si el feed conserva un script antiguo, el bootstrap sale tras crear PowerShell y degrada sin indicador para liberar Apply/rollback."
   ],
   "testing": [
     "Regresiones de ciclo de vida con señal/reloj inyectado y parser interactivo/background/argumentos desconocidos.",

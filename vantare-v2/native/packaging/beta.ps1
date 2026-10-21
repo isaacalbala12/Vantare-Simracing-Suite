@@ -1,4 +1,5 @@
-﻿#requires -Version 5.1
+﻿# vantare-boot-capabilities: indicator-handshake-v1
+#requires -Version 5.1
 [CmdletBinding()]
 param(
     [ValidateSet('Install', 'Run', 'Check', 'Apply', 'Uninstall')][string]$Operation = 'Run',

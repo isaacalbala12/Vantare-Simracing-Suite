@@ -37,6 +37,29 @@ Los errores de arranque quedan en `<raíz>/logs/` (bootstrap, runtime y Hub).
 Startup conserva `Vantare.lnk` y los argumentos `--beta -Root <raíz>` sin
 `--background`; el flag y su rollback a supervisores anteriores se entregarán
 después de #1745, en un cambio separado. Inicio/Escritorio usan el nombre completo.
+
+El indicador interactivo requiere este contrato exacto en la primera línea del
+`beta.ps1` raíz (UTF-8, BOM opcional):
+`# vantare-boot-capabilities: indicator-handshake-v1`.
+El bootstrap lee solo el encabezado antes de crear la ventana; no interpreta
+PowerShell. Sin ese marcador/versionado conocido, sale tras crear el motor PS,
+como RC4, sin indicador residente que pueda bloquear Apply o rollback.
+Setup renueva `beta.ps1`; el feed conserva la copia raíz antigua y por eso se
+degrada sin indicador hasta reinstalar con Setup. No se cambia el guard de EXE.
+Con el contrato v1, antes de Apply/rollback PS valida ventana/PID/imagen, envía
+WM_APP+106 y espera su salida hasta 10 s; si no sale, aplaza sin cambiar generación
+ni pendiente. El arranque normal cierra por señal del primer frame del Hub, salida
+del motor o plazo de 45 s. `--background` suprime el indicador y la activación.
+
+`bootstrap-capability-tests.ps1 -GuiExecutable <vantare.exe construido>
+-EvidenceDirectory <carpeta propia>` prueba los dos encabezados con el bootstrap
+real en escritorios privados, sin SwitchDesktop: con marcador aparece el indicador,
+señala/cierra y obtiene el guard; sin marcador no aparece y libera la imagen como
+RC4. Lo ejecuta `runtime/tests/windows_startup.rs` junto al probe de timeout y guard.
+La imagen construida lleva ICON1 de #1746. La campaña completa de actualizaciones
+firmadas, incluidos los casos nuevos Apply/rollback con bootstrap vivo en
+`beta-tests.ps1`, queda obligatoria para RC5 por decisión del orquestador.
+
 Las herramientas CLI de grabación/importación conservan su uso en terminal;
 los procesos automáticos y las ventanas de producto usan subsistema Windows.
 

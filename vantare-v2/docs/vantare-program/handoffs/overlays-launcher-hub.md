@@ -71,6 +71,13 @@ ReadNativeState medido2,23s →1,10s; el ensayo previo de árbol único se desca
 Foco: ASFW_ANY interactivo y SetForegroundWindow
 propio tras primer frame, sin entrada sintética ni AttachThreadInput.
 
+Compatibilidad aprobada: solo la primera línea exacta
+`# vantare-boot-capabilities: indicator-handshake-v1` del beta.ps1 raíz habilita
+el indicador (UTF8/BOM/CRLF, lectura256bytes). Setup renueva el script; feed no.
+Con raíz congelada antigua se degrada sin indicador, sale tras crearPS y libera
+la imagen como RC4, por lo que Apply/rollback conservan el guard. Tests de política
+y del bootstrap real en escritorio privado, con señal/visibilidad y guard exclusivo.
+
 Guard de imágenes intacto: antes de Apply/rollback, beta.ps1 valida HWND/clase,
 PID e imagen dentro de esta instalación, envía WM_APP+106 y espera WaitForExit10s.
 Si no sale, aborta sin tocar state/pending/boot-pending ni matar el bootstrap.

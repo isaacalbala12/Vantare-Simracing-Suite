@@ -10,7 +10,9 @@ pub(super) fn start(args: &[String]) -> io::Result<()> {
     let root = args.get(2).map(Path::new).filter(|path| path.is_absolute());
     // Validar antes de crear una ventana: errores CLI y tareas de fondo no la abren.
     let background = validate(args);
-    let indicator = if background.as_ref().is_ok_and(|background| !background) {
+    let capable = background.as_ref().is_ok_and(|background| !background)
+        && root.is_some_and(supports_indicator);
+    let indicator = if capable {
         Some(super::beta_indicator::Indicator::show())
     } else {
         None
@@ -38,6 +40,24 @@ pub(super) fn start(args: &[String]) -> io::Result<()> {
             Err(error)
         }
     }
+}
+
+const CAPABILITY: &[u8] = b"# vantare-boot-capabilities: indicator-handshake-v1";
+
+// An exact, versioned first-line contract, never a heuristic PowerShell parser.
+// Frozen root scripts delivered before this contract must release the EXE as RC4 did.
+fn supports_indicator(root: &Path) -> bool {
+    use std::io::Read;
+    let Ok(script) = std::fs::File::open(root.join("beta.ps1")) else {
+        return false;
+    };
+    let mut header = Vec::with_capacity(256);
+    if script.take(256).read_to_end(&mut header).is_err() {
+        return false;
+    }
+    let header = header.strip_prefix(b"\xef\xbb\xbf").unwrap_or(&header);
+    let first = header.split(|byte| *byte == b'\n').next().unwrap_or_default();
+    first.strip_suffix(b"\r").unwrap_or(first) == CAPABILITY
 }
 
 fn validate(args: &[String]) -> io::Result<bool> {
@@ -160,6 +180,31 @@ fn start_logged(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn indicator_requires_the_exact_versioned_header_in_the_root_script() {
+        let root = std::env::temp_dir().join(format!(
+            "vantare-bootstrap-capabilities-{}",
+            std::process::id()
+        ));
+        std::fs::create_dir_all(&root).unwrap();
+        assert!(!supports_indicator(&root));
+        for header in [
+            "param($Root)\n# vantare-boot-capabilities: indicator-handshake-v1\n",
+            "# vantare-boot-capabilities: indicator-handshake-v2\n",
+            "# vantare-boot-capabilities: indicator-handshake-v1-extra\n",
+        ] {
+            std::fs::write(root.join("beta.ps1"), header).unwrap();
+            assert!(!supports_indicator(&root));
+        }
+        for header in [
+            "# vantare-boot-capabilities: indicator-handshake-v1\nparam($Root)",
+            "\u{feff}# vantare-boot-capabilities: indicator-handshake-v1\r\nparam($Root)",
+        ] {
+            std::fs::write(root.join("beta.ps1"), header).unwrap();
+            assert!(supports_indicator(&root));
+        }
+        std::fs::remove_dir_all(root).unwrap();
+    }
     #[test]
     fn startup_shortcuts_opt_out_but_legacy_shortcuts_remain_interactive() {
         let mut args = vec!["--beta".into(), "-Root".into(), "C:/Vantare".into()];

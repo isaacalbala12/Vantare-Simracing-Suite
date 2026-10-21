@@ -142,6 +142,34 @@ fn bootstrap_signal_releases_its_image_and_timeout_preserves_the_guard() {
 }
 
 #[test]
+fn root_capability_controls_the_actual_indicator_and_releases_the_image_guard() {
+    use std::os::windows::process::CommandExt;
+    use std::process::Command;
+    let id = vantare_services::random_id().expect("test id");
+    let root = std::env::temp_dir().join(format!("vantare-bootstrap-capability-{id}"));
+    let script = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../packaging/bootstrap-capability-tests.ps1");
+    let host = std::path::PathBuf::from(std::env::var_os("WINDIR").expect("Windows"))
+        .join("System32/WindowsPowerShell/v1.0/powershell.exe");
+    let output = Command::new(host)
+        .args(["-NoProfile", "-ExecutionPolicy", "Bypass", "-File"])
+        .arg(script)
+        .arg("-GuiExecutable")
+        .arg(env!("CARGO_BIN_EXE_vantare"))
+        .arg("-EvidenceDirectory")
+        .arg(root)
+        .creation_flags(0x0800_0000)
+        .output()
+        .expect("real bootstrap on a private desktop");
+    assert!(
+        output.status.success(),
+        "{} {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+#[test]
 fn gui_bootstrap_returns_while_its_hidden_engine_finishes_independently() {
     use std::{
         process::{Command, Stdio},

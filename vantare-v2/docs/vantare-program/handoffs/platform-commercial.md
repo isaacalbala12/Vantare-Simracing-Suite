@@ -1,7 +1,8 @@
 ﻿## VANTA-105 / #1746 · RC4: nombre e icono de accesos (21-oct-2026)
 
-Encargo de worker, base nightly `1b732b67d605298f3056c8ca78d692f132217e2d`,
+Encargo de worker, base inicial nightly `1b732b67d605298f3056c8ca78d692f132217e2d`,
 worktree `C:/VantareServer/wt/rc4-acceso`, rama `vantareapp/isa-1746-acceso-inicio`.
+Rebase limpio a `3136f0acb9593f265991e7d0d5b20c324d383cf4` (#1742).
 Diagnóstico previo a editar conservado en `C:/VantareServer/evidence/rc4-acceso/`:
 los enlaces Inicio/escritorio reales apuntan al supervisor, IconLocation=",0",
 AppUserModelID vacío. Supervisor sin RT_ICON/RT_GROUP_ICON; de los diez EXE de
@@ -13,15 +14,27 @@ build-support compartido, por ampliación expresa del orquestador tras coordinar
 con #1745. IconLocation apunta al propio supervisor; solo se añade su build.rs
 y build-dependency interna, sin tocar el código de arranque. Se conservan raíz,
 nombres EXE y datos. Prueba estática del PE compara ID1 y sus siete imágenes
-con assets/icon.ico. AppUserModelID
-estable Vantare.SimracingSuite. Registro usa nombre completo e icono Uninstall.
+con assets/icon.ico. AppUserModelID estable Vantare.SimracingSuite.
+Registro usa nombre completo e icono Uninstall.
 Register migra enlaces propios de NSIS/RC3/RC4, incluido escritorio heredado
 sin preferencia activa; desinstalar retira nombres antiguos/nuevos propios.
 Las identidades QA conservan sus carpetas y nombres opcionales aislados.
-No se cambia el código de arranque del supervisor/Hub ni Google. Sin dependencias externas nuevas.
+No se cambia el código de arranque del supervisor/Hub ni Google.
+Sin dependencias externas nuevas.
 
-Regresión COM real para las tres formas históricas: 57 PASS en `9a63c38cc`,
+Regresión COM real para las tres formas históricas: 57 PASS,
 incluidos Startup ON/OFF, nombre histórico y argumentos sin `--background`.
+Tres campañas reales privadas PASS: NSIS público 0.0.975, RC3 0.0.981 y
+RC4 0.0.982 → Setup corregido; nombre, destino, icono extraíble, AppID, registro,
+sin duplicados, datos conservados y uninstall. Cuentas/perfiles estándar
+retirados, sin SwitchDesktop, abrir la app ni falsificar readiness.
+Supervisor Release/CRT estático de `b177a5ed3`, configuración pública idéntica
+a RC4 sin mostrar valores; nueve EXE de RC4 y supervisor nuevo en el paquete QA.
+Grupo ID1 y siete imágenes fuente PASS en supervisor/Setup/Uninstall; sin
+certificado. No se entrega como RC nueva. Harness final 193 PASS; registro
+68, shell 30, inventario histórico 25 y selección del instalador 13 PASS.
+Los fallos iniciales de preparación/harness permanecen en INFORME.md;
+se corrigieron /D de NSIS y hash previo a la autoeliminación, sin quitar checks.
 El orquestador confirma entrega independiente de #1745: este PR no añade el flag.
 PR posterior: Startup tendrá `--background` al final solo tras parser compatible;
 restaurará explícitamente el enlace anterior al hacer rollback, con test real,
@@ -29,8 +42,9 @@ y valorará el nombre completo en Aplicaciones de inicio del Administrador de ta
 No basta confiar en Register antiguo: RC4 solo reconoce los argumentos exactos
 sin flag. Restore-NativeCandidate solo intercambia estado y Sync-BetaRegistration
 solo actualiza versión; el Hub restaurado registra después sus propios accesos.
-Gates completos por cola, target `D:/VantareServer/targets/rc4-acceso`, jobs2,
-y campañas del instalador en preparación. PR/CI pendientes; sin merge, firma,
+Gates por cola, target `D:/VantareServer/targets/rc4-acceso`, jobs 2:
+fmt posterior a ICON1/check/Clippy PASS; Nextest/telemetría/lifecycle en curso.
+PR/CI pendientes; sin merge, firma,
 release, publicación ni promoción. Esta entrega no acredita Windows limpio.
 
 ## VANTA-96 / #1713 · Configuración y ensayo pendientes (21-oct-2026)

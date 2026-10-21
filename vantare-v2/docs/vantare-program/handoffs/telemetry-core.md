@@ -29,6 +29,15 @@ Otros cuatro sleeps de IPC inventariados en [la issue](https://github.com/isaaca
 sin corregirlos. Sin merge, publicación ni cambios a RC4; el SHA final y los
 checks se verificarán en la issue antes de entregar al orquestador.
 
+Ampliación del mismo encargo en commit separado: el banco HTTP LMU de endpoint
+y cuerpo usa un cliente solo de test sin el deadline live de 750 ms; mantiene
+proxy/redirecciones/status y todas las aserciones de endpoint, 404, cuerpo vacío
+y tamaño. El listener ya estaba enlazado antes del hilo; no era una carrera de
+bind. La carga puede consumir el deadline antes de que responda el servidor de
+test. Una regresión retiene la respuesta por canal más de dos deadlines, luego
+exige `[]`. `Client::new`, el transporte y el test específico de timeout de
+producción permanecen idénticos. Repeticiones/controles y gates aún pendientes.
+
 ### #1638 / VANTA-33 — pulido M-1…M-6 tras integración de #1664
 
 Rama `vantareapp/isa-1638-pulido`, base `nightly@bcaa0e3f2` verificada; #1664

@@ -1,4 +1,4 @@
-## VANTA-105 / #1746 · RC4: nombre e icono de accesos (21-oct-2026)
+﻿## VANTA-105 / #1746 · RC4: nombre e icono de accesos (21-oct-2026)
 
 Encargo de worker, base nightly `1b732b67d605298f3056c8ca78d692f132217e2d`,
 worktree `C:/VantareServer/wt/rc4-acceso`, rama `vantareapp/isa-1746-acceso-inicio`.
@@ -8,13 +8,17 @@ AppUserModelID vacío. Supervisor sin RT_ICON/RT_GROUP_ICON; de los diez EXE de
 RC4 solo Hub, overlays e importador llevan icono. DisplayName=Vantare y
 DisplayIcon ausente. No se cambió la instalación ni los procesos de Isaac.
 
-Arreglo en packaging: nombre Vantare Simracing Suite; icono explícito del Hub,
-conservando destino supervisor GUI, raíz, nombres EXE y datos. AppUserModelID
+Arreglo: nombre Vantare Simracing Suite; ICON1 embebido en el supervisor mediante
+build-support compartido, por ampliación expresa del orquestador tras coordinar
+con #1745. IconLocation apunta al propio supervisor; solo se añade su build.rs
+y build-dependency interna, sin tocar el código de arranque. Se conservan raíz,
+nombres EXE y datos. Prueba estática del PE compara ID1 y sus siete imágenes
+con assets/icon.ico. AppUserModelID
 estable Vantare.SimracingSuite. Registro usa nombre completo e icono Uninstall.
 Register migra enlaces propios de NSIS/RC3/RC4, incluido escritorio heredado
 sin preferencia activa; desinstalar retira nombres antiguos/nuevos propios.
 Las identidades QA conservan sus carpetas y nombres opcionales aislados.
-No se cambia código de supervisor/Hub ni Google. Sin dependencias nuevas.
+No se cambia el código de arranque del supervisor/Hub ni Google. Sin dependencias externas nuevas.
 
 Regresión COM real para las tres formas históricas: 57 PASS en `9a63c38cc`,
 incluidos Startup ON/OFF, nombre histórico y argumentos sin `--background`.

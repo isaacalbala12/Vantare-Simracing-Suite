@@ -49,8 +49,9 @@ Solo se quitan accesos que pertenecen a esta raíz. «Aplicaciones instaladas» 
 permite desinstalar. Se conserva la clave técnica `VantareNativeBeta`: cambiarla
 rompería la sincronización de versión y rollback del bootstrap ya instalado.
 Inicio, escritorio y Aplicaciones instaladas usan **Vantare Simracing Suite**.
-Los accesos conservan el supervisor GUI como destino y usan explícitamente el
-icono Win32 del Hub; RC3/RC4 no llevan icono en el supervisor. AppUserModelID
+Los accesos conservan el supervisor GUI como destino y usan explícitamente su
+icono Win32 ID1. RC3/RC4 carecían de ese recurso; runtime/build.rs lo incrusta
+solo en vantare.exe mediante el build-support compartido de Hub/UI. AppUserModelID
 estable: `Vantare.SimracingSuite`. DisplayIcon apunta a Uninstall.exe propio,
 o al Hub en instalaciones anteriores sin desinstalador GPUI. Setup y Hub
 conservan sus títulos actuales.

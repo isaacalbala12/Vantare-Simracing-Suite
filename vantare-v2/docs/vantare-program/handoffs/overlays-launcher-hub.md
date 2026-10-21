@@ -23,6 +23,21 @@ stderr GUI, carrera HasExited/Kill y log retenido ante timeout. Rama/worktree
 propios desde1b732b67d; no cambia bytes entregados. Nietos/Job Object solo nota.
 P3 restantes y límites se registran en issue1742; gates/revisión pendientes.
 
+Review de PR1743 sobre4cbd496e8: NO APTO, sin P1; faltaban las escrituras de
+capture_window y el import Write condicionado rompía Unix. Código R2
+`664b60696530f89ffcae2bc4949a3f42e2d4ab00`, misma rama/worktree1742 desde1b732b67d.
+Las funciones de salida reales de created/show/verify (más marcador caducado)
+se prueban en la suite normal Windows, sin GPU ni parity-capture. Control
+negativo println FAIL101/os232; writeln PASS. Workshop captura usa el mismo
+patrón. Supervisor Linux real cargo check PASS39.68s (target x86_64-unknown-linux-gnu).
+PS5.1/7 PASS19: resultado válido conservado ante fallo del log, aviso visible y
+lecturas incompletas marcadas. Clippy local PASS2m43s; Nextest/Lifecycle y CI R2
+pendientes: resultados exactos por HEAD en issue1742/PR1743 e informe
+`C:/VantareServer/evidence/version-gui/INFORME-1742.md`. No atribuir el verde
+histórico4cbd496e8 al código nuevo. Job Object solo nota; proveedor no-fichero
+y eprintln de bibliotecas restantes anotados. Untracked de integración ajeno
+preservado. RC4 entregada no se recompila ni modifica en este seguimiento.
+
 ## VANTA-105 / #1740 · Salida de comandos GUI y RC4 (21-oct-2026)
 
 Issue https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1740,

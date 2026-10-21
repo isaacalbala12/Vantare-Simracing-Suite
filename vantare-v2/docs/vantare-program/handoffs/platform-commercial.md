@@ -1,3 +1,19 @@
+## VANTA-96 / #1725 · Avisos Owner por email (21-oct-2026)
+
+Base nightly946d14fc5, rama propia vantareapp/isa-1725-owner-alert-email.
+Receptor HMAC/timestamp, inbox privada durable antes de email/ACK, dedupe por
+entorno/tipo/hash, leases y ACK cercado; Brevo transaccional sin PII compradora.
+Reintentos del reconcile existente; errores no confirman ni pierden la outbox.
+Entrega al menos una vez: un fallo entre aceptación Brevo y ACK SQL puede
+repetir email fuera de la ventana idempotente del proveedor, documentado.
+19 tests Edge/superficie pasan en local; SQL/carreras y LF/CRLF pendientes CI.
+No workflows existentes modificados, no dependencias, Rust ni producto nativo.
+No desplegar/configurar URL/secreto ni enviar email real antes de revisión.
+Pasos de activación/reversión en docs/billing/owner-alert-email.md.
+Operación Polar/Cloudflare y propuesta compra: evidencia externa EJECUCION.md,
+issue #1713; no se mezcla con esta migración. Venta/marketing/compensación OFF.
+PR/HEAD/checks definitivos se actualizan en #1725 antes de revisión.
+
 ## VANTA-105 / #1723 · Dos P3 de review1721, separados de RC3 (19-oct-2026)
 
 Base nightly997d6da68 con #1721 integrado. Rama/worktree propios

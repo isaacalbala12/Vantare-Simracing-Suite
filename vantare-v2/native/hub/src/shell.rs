@@ -1606,10 +1606,14 @@ pub fn run_with_access(mut options: Options, access: navigation::Access) -> Resu
             );
             let minimized = options.capture.is_none()
                 && options.demo.is_none()
+                && std::env::var_os("VANTARE_INTERACTIVE_STARTUP").is_none()
                 && settings::general::Store::load(&options.data_dir)
                     .is_ok_and(|store| store.value.minimized);
+            let activate = !minimized
+                && options.capture.is_none()
+                && std::env::var_os("VANTARE_BACKGROUND_STARTUP").is_none();
             let window_options = WindowOptions {
-                focus: !minimized,
+                focus: activate,
                 window_min_size: Some(minimum),
                 kind: if options.capture.is_some() {
                     gpui::WindowKind::PopUp
@@ -1657,8 +1661,19 @@ pub fn run_with_access(mut options: Options, access: navigation::Access) -> Resu
             });
             match window {
                 Ok(window) => {
-                    #[cfg(not(feature = "parity-capture"))]
-                    let _ = window;
+                    if activate {
+                        let _ = window.update(cx, |_, window, _| {
+                            window.on_next_frame(|window, _| {
+                                if !vantare_ui::window_activation::request(window) {
+                                    let _written = std::io::Write::write_all(
+                                        &mut std::io::stderr(),
+                                        "Hub: Windows no concedió primer plano\n".as_bytes(),
+                                    );
+                                }
+                                vantare_ui::window_activation::finish_startup();
+                            });
+                        });
+                    }
                     #[cfg(feature = "parity-capture")]
                     if options.capture.is_some() {
                         let (width, height) = crate::capture::dimensions(&options);
@@ -1687,14 +1702,41 @@ pub fn run_with_access(mut options: Options, access: navigation::Access) -> Resu
             }
             if options.capture.is_none()
                 && let Some(root) = std::env::var_os("VANTARE_BETA_ROOT")
-                && let Err(error) = crate::installation::confirm_ready(&PathBuf::from(root))
             {
-                *failure.borrow_mut() = Some(format!("confirmar arranque beta: {error}"));
-                cx.quit();
-                return;
+                let confirmation =
+                    crate::installation::BootConfirmation::start(&PathBuf::from(root));
+                let failure = failure.clone();
+                let confirmation_task = cx.spawn(async move |cx| {
+                    let result = async {
+                        let mut confirmation = confirmation?;
+                        loop {
+                            if confirmation.poll()? {
+                                return Ok::<_, String>(());
+                            }
+                            cx.background_executor()
+                                .timer(Duration::from_millis(50))
+                                .await;
+                        }
+                    }
+                    .await;
+                    if let Err(error) = result {
+                        cx.update(|cx| {
+                            *failure.borrow_mut() =
+                                Some(format!("confirmar arranque beta: {error}"));
+                            cx.quit();
+                        });
+                    }
+                });
+                let mut confirmation_task = Some(confirmation_task);
+                cx.on_app_quit(move |_| {
+                    // Cancelar la tarea deja caer el guard y recoge Register antes de salir.
+                    drop(confirmation_task.take());
+                    async {}
+                })
+                .detach();
             }
             quit_when_done(cx, options.controlled, stop);
-            if !minimized && options.capture.is_none() {
+            if activate {
                 cx.activate(true);
             }
         });

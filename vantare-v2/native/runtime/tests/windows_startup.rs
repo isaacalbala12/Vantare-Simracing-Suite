@@ -128,12 +128,20 @@ fn gui_bootstrap_returns_while_its_hidden_engine_finishes_independently() {
 Add-Type 'using System; using System.Runtime.InteropServices; public static class BootstrapConsole { [DllImport("kernel32.dll")] public static extern IntPtr GetConsoleWindow(); }'
 $console=[BootstrapConsole]::GetConsoleWindow().ToInt64()
 [Console]::Error.WriteLine('bootstrap fixture stderr')
+[IO.File]::WriteAllText((Join-Path $Root 'startup-environment'),(@{
+    window=$env:VANTARE_STARTUP_WINDOW;pid=$env:VANTARE_STARTUP_PID
+    interactive=$env:VANTARE_INTERACTIVE_STARTUP;background=$env:VANTARE_BACKGROUND_STARTUP
+} | ConvertTo-Json))
 [IO.File]::WriteAllText((Join-Path $Root 'finished'),$console.ToString())
 "#;
     std::fs::write(root.join("beta.ps1"), script).expect("fixture engine");
     let status = Command::new(env!("CARGO_BIN_EXE_vantare"))
         .args(["--beta", "-Root"])
         .arg(&root)
+        .arg("--background")
+        .env("VANTARE_STARTUP_WINDOW", "42")
+        .env("VANTARE_STARTUP_PID", "42")
+        .env("VANTARE_INTERACTIVE_STARTUP", "1")
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::null())
@@ -154,6 +162,14 @@ $console=[BootstrapConsole]::GetConsoleWindow().ToInt64()
         std::thread::sleep(Duration::from_millis(20));
     };
     assert_eq!(console, "0", "the engine must have no console window");
+    let environment: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(root.join("startup-environment")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(environment["background"], "1");
+    for field in ["window", "pid", "interactive"] {
+        assert!(environment[field].is_null(), "background inherited {field}");
+    }
     let log = std::fs::read_to_string(root.join("logs/bootstrap.log")).expect("diagnostic log");
     assert!(log.contains("bootstrap fixture stderr"));
 }
@@ -174,7 +190,8 @@ fn bootstrap_validation_and_missing_windows_host_are_logged() {
                     "--wrong-root-flag"
                 },
             ])
-            .arg(&root);
+            .arg(&root)
+            .arg("--background");
         if missing_windows {
             command.env_remove("WINDIR");
         }

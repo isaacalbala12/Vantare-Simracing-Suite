@@ -22,36 +22,176 @@ fn installed_script(executable: &Path, root: &Path) -> Result<std::path::PathBuf
     Ok(generation.join("candidate.ps1"))
 }
 
-pub(crate) fn confirm_ready(root: &Path) -> Result<(), String> {
+/// La confirmación no bloquea el hilo de UI. Posee su hijo hasta terminar;
+/// cerrar el Hub cancela el registro pendiente sin dejar un PowerShell huérfano.
+pub(crate) struct BootConfirmation {
+    child: Option<std::process::Child>,
+    root: std::path::PathBuf,
+    deadline: std::time::Instant,
+}
+
+impl BootConfirmation {
+    pub(crate) fn start(root: &Path) -> Result<Self, String> {
+        #[cfg(windows)]
+        {
+            use std::os::windows::process::CommandExt;
+            let executable = std::env::current_exe().map_err(|error| error.to_string())?;
+            let script = installed_script(&executable, root)?;
+            let windows = std::env::var_os("WINDIR").ok_or("Windows no disponible")?;
+            let mut command = std::process::Command::new(
+                Path::new(&windows).join("System32/WindowsPowerShell/v1.0/powershell.exe"),
+            );
+            command
+                .args([
+                    "-NoProfile",
+                    "-NonInteractive",
+                    "-ExecutionPolicy",
+                    "Bypass",
+                    "-File",
+                ])
+                .arg(script)
+                .args(["-Operation", "Register", "-Root"])
+                .arg(root)
+                .stdin(std::process::Stdio::null())
+                .stdout(std::process::Stdio::null())
+                .creation_flags(0x0800_0000);
+            Self::spawn(root, &mut command)
+        }
+        #[cfg(not(windows))]
+        Ok(Self {
+            child: None,
+            root: root.into(),
+            deadline: std::time::Instant::now(),
+        })
+    }
+
     #[cfg(windows)]
-    {
-        use std::os::windows::process::CommandExt;
-        // El script ya pertenece al inventario firmado/verificado del paquete.
-        // No se ejecuta la copia raíz congelada que conserva el updater antiguo.
-        let executable = std::env::current_exe().map_err(|error| error.to_string())?;
-        let script = installed_script(&executable, root)?;
-        let windows = std::env::var_os("WINDIR").ok_or("Windows no disponible")?;
-        let status = std::process::Command::new(
-            Path::new(&windows).join("System32/WindowsPowerShell/v1.0/powershell.exe"),
-        )
-        .args(["-NoProfile", "-ExecutionPolicy", "Bypass", "-File"])
-        .arg(script)
-        .args(["-Operation", "Register", "-Root"])
-        .arg(root)
-        .creation_flags(0x0800_0000) // CREATE_NO_WINDOW: sin consola al abrir el Hub.
-        .status()
-        .map_err(|error| format!("actualizar nombre instalado: {error}"))?;
-        if !status.success() {
-            return Err("no se pudo actualizar el nombre instalado de Vantare".into());
+    fn spawn(root: &Path, command: &mut std::process::Command) -> Result<Self, String> {
+        let child = command
+            .spawn()
+            .map_err(|error| format!("actualizar nombre instalado: {error}"))?;
+        Ok(Self {
+            child: Some(child),
+            root: root.into(),
+            deadline: std::time::Instant::now() + std::time::Duration::from_secs(30),
+        })
+    }
+
+    /// true solo tras Register correcto y marcador escrito; nunca anticipa readiness.
+    pub(crate) fn poll(&mut self) -> Result<bool, String> {
+        if let Some(child) = self.child.as_mut() {
+            match child.try_wait().map_err(|error| error.to_string())? {
+                Some(status) => {
+                    self.child = None;
+                    if !status.success() {
+                        return Err("no se pudo actualizar el nombre instalado de Vantare".into());
+                    }
+                }
+                None if std::time::Instant::now() >= self.deadline => {
+                    return Err("el registro de arranque agotó su plazo".into());
+                }
+                None => return Ok(false),
+            }
+        }
+        std::fs::write(self.root.join("hub-ready"), std::process::id().to_string())
+            .map_err(|error| format!("confirmar arranque: {error}"))?;
+        Ok(true)
+    }
+}
+
+impl Drop for BootConfirmation {
+    fn drop(&mut self) {
+        if let Some(mut child) = self.child.take() {
+            let _ = child.kill();
+            let _ = child.wait();
         }
     }
-    std::fs::write(root.join("hub-ready"), std::process::id().to_string())
-        .map_err(|error| format!("confirmar arranque: {error}"))
 }
 
 #[cfg(all(test, windows))]
 mod tests {
     use super::*;
+
+    fn root() -> std::path::PathBuf {
+        let root = std::env::temp_dir().join(format!("vantare-boot-{}-{}", std::process::id(), {
+            static SERIAL: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+            SERIAL.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+        }));
+        std::fs::create_dir_all(&root).expect("isolated boot root");
+        root
+    }
+
+    fn waiting(root: &Path) -> BootConfirmation {
+        use std::{
+            os::windows::process::CommandExt,
+            process::{Command, Stdio},
+        };
+        // more espera EOF en un pipe propio: sincronización explícita, sin sleeps.
+        let mut command = Command::new("cmd.exe");
+        command
+            .args(["/D", "/C", "more > nul"])
+            .stdin(Stdio::piped())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .creation_flags(0x0800_0000);
+        BootConfirmation::spawn(root, &mut command).expect("registration fixture")
+    }
+
+    #[test]
+    fn slow_registration_returns_pending_without_claiming_readiness() {
+        let root = root();
+        let mut confirmation = waiting(&root);
+        assert!(!confirmation.poll().expect("UI remains available"));
+        assert!(!root.join("hub-ready").exists());
+        drop(confirmation.child.as_mut().unwrap().stdin.take());
+        assert!(
+            confirmation
+                .child
+                .as_mut()
+                .unwrap()
+                .wait()
+                .unwrap()
+                .success()
+        );
+        assert!(confirmation.poll().expect("finished registration"));
+        assert_eq!(
+            std::fs::read_to_string(root.join("hub-ready")).unwrap(),
+            std::process::id().to_string()
+        );
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn failed_or_timed_out_registration_never_confirms_boot() {
+        use std::{
+            os::windows::process::CommandExt,
+            process::{Command, Stdio},
+        };
+        let root = root();
+        let mut command = Command::new("cmd.exe");
+        command
+            .args(["/D", "/C", "exit /B 7"])
+            .stdout(Stdio::null())
+            .creation_flags(0x0800_0000);
+        let mut confirmation = BootConfirmation::spawn(&root, &mut command).unwrap();
+        assert!(
+            !confirmation
+                .child
+                .as_mut()
+                .unwrap()
+                .wait()
+                .unwrap()
+                .success()
+        );
+        assert!(confirmation.poll().is_err());
+        assert!(!root.join("hub-ready").exists());
+        let mut confirmation = waiting(&root);
+        confirmation.deadline = std::time::Instant::now();
+        assert!(confirmation.poll().is_err());
+        drop(confirmation); // cancela y recoge el hijo todavía bloqueado.
+        assert!(!root.join("hub-ready").exists());
+        std::fs::remove_dir_all(root).unwrap();
+    }
 
     #[test]
     fn feed_uses_its_generation_and_rejects_another_installation() {

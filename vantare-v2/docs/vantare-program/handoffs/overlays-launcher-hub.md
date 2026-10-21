@@ -37,6 +37,57 @@ pendientes: resultados exactos por HEAD en issue1742/PR1743 e informe
 histórico4cbd496e8 al código nuevo. Job Object solo nota; proveedor no-fichero
 y eprintln de bibliotecas restantes anotados. Untracked de integración ajeno
 preservado. RC4 entregada no se recompila ni modifica en este seguimiento.
+## VANTA-105 / #1745 · RC4: arranque y foco (22-oct-2026, en curso)
+
+Issue https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1745,
+Project Vantare, area:plataforma, milestone23. Worker aislado en
+C:/VantareServer/wt/rc4-isaac, rama vantareapp/isa-1745-rc4-arranque-foco,
+base nightly1b732b67d. Solo arranque/foco: accesos son otro worker (rc4-acceso),
+OAuth es rc4-google y salidas CLI son PR1743. No tocar esos worktrees.
+
+Diagnóstico antes de editar, evidencia C:/VantareServer/evidence/rc4-isaac:
+Tres muestras limpias RC4 Release: visible4,76/6,67/9,25s (mediana6,67);
+readiness10,99–14,51s. La muestra central crea el procesoHub a5,72s.
+PowerShell vacío2,70–3,60s, dot-source0,57s y ReadNativeState2,23s; de este último,
+GetNativeHash1,65s y ancestros repetidos1,28s (tiempos inclusivos, no sumarlos).
+Register además espera en el hilo de UI antes de procesar mensajes. Services
+nace6,40–6,63s, después de crear Hub; la esperaIPC45s vive en su worker y no
+retiene crear la ventana. No se acredita DuckDB/red/Clerk como fase dominante.
+La cuenta estándar nueva falló DirectX0x8007000E; la medida visible usa escritorio
+privado del SID actual con IPC/datos/identidad aislados, sin SwitchDesktop.
+No es foco físico del escritorio activo ni Windows limpio. Conservar los logs.
+
+Isaac autoriza indicador Win32 inmediato, centrado en monitor del cursor,
+ICON1 propio, respaldo del Hub como recurso sin ejecutar código, fondo#08090b y «Abriendo Vantare…», sin activación/barra de tareas.
+Señal explícita del primer frame del Hub; salida del motor/plazo45s lo cierran.
+El bootstrap acepta --beta -Root <ruta> [--background]; legacy sin argumento
+sigue interactivo. El worker de accesos añade --background solo a Startup;
+La integración acordada es #1746 (recurso/nombre) → #1745 → flag --background;
+entregar todo en la misma RC. El bootstrap antiguo rechaza el cuarto argumento. Bandeja no pasa por beta.
+Se elimina la espera síncrona de Register conservando readiness tras éxito,
+cancelación del hijo y plazo; integridad mantiene cada ancestro antes de cada hash
+y usa atributos .NET en lugar de cmdlets PS. Se conservan inventario, tamaños, SHA y PE.
+ReadNativeState medido2,23s →1,10s; el ensayo previo de árbol único se descartó.
+Foco: ASFW_ANY interactivo y SetForegroundWindow
+propio tras primer frame, sin entrada sintética ni AttachThreadInput.
+
+Guard de imágenes intacto: antes de Apply/rollback, beta.ps1 valida HWND/clase,
+PID e imagen dentro de esta instalación, envía WM_APP+106 y espera WaitForExit10s.
+Si no sale, aborta sin tocar state/pending/boot-pending ni matar el bootstrap.
+Arranque normal cierra por primer frame; Apply/rollback pueden cerrar antes.
+Probe real invisible en PS5.1 PASS: señal libera imagen/guard y timeout no fuerza salida.
+El orquestador aplaza beta-tests.ps1 completo a RC5 por primera compilación bundled:
+RC5 DEBE ejecutarlo con builds QA reales de dos versiones y clave exclusiva TEST,
+incluidos los nuevos casos Apply/rollback con bootstrap vivo (sale/no sale).
+Los casos completos están escritos pero todavía no ejecutados. Host del indicador
+fuera de la generación, descartado para lanzamiento; alternativa futura en #1748.
+
+Implementación y gates todavía en curso por la cola, target propioD:/VantareServer/targets/rc4-isaac,
+jobs2. No afirmar validación final ni reducción total hasta pruebas posteriores.
+Seguimiento después del lanzamiento: #1748, medir ruta normal sin PowerShell;
+no implementación de ese cambio ahora. Sin subagentes, firma, publicación,
+merge, promoción ni cambios de backend. Siguiente: gates, prueba privada antes/después,
+PR a nightly y revisión del orquestador.
 
 ## VANTA-105 / #1740 · Salida de comandos GUI y RC4 (21-oct-2026)
 

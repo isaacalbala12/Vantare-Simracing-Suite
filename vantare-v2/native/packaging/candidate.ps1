@@ -360,9 +360,15 @@ function Assert-NativePath([string]$Path) {
     $parent = $full
     while ($parent) {
         if ([IO.Path]::GetFileName($parent) -like '.env*') { throw 'No se permiten rutas .env.' }
-        if (Test-Path -LiteralPath $parent) {
-            $item = Get-Item -LiteralPath $parent -Force
-            if ($item.Name -like '.env*' -or ($item.Attributes -band [IO.FileAttributes]::ReparsePoint)) { throw 'Ruta .env o reparse point rechazada.' }
+        # Esta ruta caliente se ejecuta para cada hash: mantener la comprobación
+        # de cada ancestro, usando .NET en vez de volver a iniciar cmdlets de PS.
+        try {
+            $attributes = [IO.File]::GetAttributes($parent)
+            if ($attributes -band [IO.FileAttributes]::ReparsePoint) { throw 'Ruta .env o reparse point rechazada.' }
+        } catch [IO.FileNotFoundException] {
+            # Se permite una ruta aún no creada; sus ancestros siguen validándose.
+        } catch [IO.DirectoryNotFoundException] {
+            # El padre tampoco existe todavía.
         }
         $parent = [IO.Path]::GetDirectoryName($parent)
     }

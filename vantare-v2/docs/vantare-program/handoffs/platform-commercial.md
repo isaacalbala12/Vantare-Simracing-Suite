@@ -1,3 +1,28 @@
+## VANTA-96 / #1713 · Polar operativo; Cloudflare pendiente (21-oct-2026)
+
+POLAR_ACCESS_TOKEN sustituido por credencial aportada mediante env-file
+protegido; digest remoto comprobado, sin imprimir valores. Reconcile manual200
+y tres ticks reales cada5min200, vuelta completa con refunds/disputes,
+failed0/quarantined0. Tarea SYSTEM Vantare-VANTA96-BillingReconcile; mail-cleanup
+conserva su tarea independiente cada minuto. Marketing/IA/promoción false y
+compensación false/amount_basisNULL verificados. Venta sigue cerrada por encargo.
+Products/discounts403 son lecturas operativas opcionales fuera del mínimo runtime;
+customers200. No se ejecuta compra ni se afirma prueba positiva checkout/portal.
+
+Cloudflare: token active pero solo ve cuenta fcfdc96badd5965ffadc761a349ae901,
+Workers asana-hoy-auth y vantare-llm-proxy. No beta/vantare.app, Pages ni zona.
+STOP sin cambios: orquestador avisado para revisar la cuenta/recurso del token.
+Sin publicar web nueva ni redesplegar código existente. Banderas Worker aún no
+verificables con ese alcance; no inferirlas de un HTTP403 de la web pública.
+
+Avisos Owner: issue #1725, PR draft #1727 a nightly, pendiente CI/revisión;
+no desplegar/configurar URL/secreto ni enviar correo real antes de aceptación.
+Propuesta de compra sin cobro documentada, no ejecutada: sandbox completo y,
+con autorización posterior, checkout Production sin pagar; este último no prueba
+order.paid. Cupón100% sería otra autorización y pedido real0, no una simulación.
+Evidencia viva C:/VantareServer/evidence/supabase-reconstruccion/EJECUCION.md.
+Sin merge, promoción, release ni efectos financieros. CI/HEAD propios en #1713.
+
 ## VANTA-96 / #1711 · account_id sin FK (19-oct-2026, en curso)
 
 Encargo del orquestador para P2-1 de la review APTO de #1705. #1705 integrado

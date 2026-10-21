@@ -7,7 +7,7 @@ use gpui::{
     AnimationExt, AnyElement, Context, IntoElement, SpringAnimation, prelude::*, px, rgb, rgba,
 };
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Kind {
     Primary,
     Ghost,
@@ -57,11 +57,11 @@ pub fn button(
             8.
         }));
     item = appearance(item, kind);
-    let hovered = enabled && view.hovered == Some(action);
+    let hovered = enabled && view.hovered == Some((action, kind));
     if enabled {
         item = item
             .on_hover(cx.listener(move |view, hovered: &bool, _, cx| {
-                view.hover(action, *hovered);
+                view.hover((action, kind), *hovered);
                 cx.notify();
             }))
             .cursor_pointer()
@@ -112,7 +112,7 @@ pub fn button(
         );
     }
     item.with_spring(
-        ("hover", action as usize),
+        ("hover", action as usize * 8 + kind as usize),
         SpringAnimation::new(style::HOVER).to(hovered),
         move |item, phase| hover(item, kind, action, phase.0),
     )
@@ -131,7 +131,8 @@ pub fn toggle(
         .find(|(a, _)| *a == action)
         .expect("fixed toggle")
         .1;
-    let hovered = view.hovered == Some(action);
+    // Toggles share no action with buttons; Ghost only completes the key.
+    let hovered = view.hovered == Some((action, Kind::Ghost));
     let (off, on_ink) = if hovered {
         (0x3535_38ff, 0xd814_1fff)
     } else {
@@ -144,7 +145,7 @@ pub fn toggle(
         .track_focus(focus)
         .focusable()
         .on_hover(cx.listener(move |view, hovered: &bool, _, cx| {
-            view.hover(action, *hovered);
+            view.hover((action, Kind::Ghost), *hovered);
             cx.notify();
         }))
         .focus_visible(|s| s.shadow(style::focus_ring(0x14_1415)))

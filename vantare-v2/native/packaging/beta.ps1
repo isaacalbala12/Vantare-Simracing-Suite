@@ -379,13 +379,15 @@ function Start-BetaHub([string]$Directory) {
     $launcher = Join-Path $generation 'data/Vantare/native/launcher.json'
     $env:VANTARE_APPEARANCE_FILE = Join-Path $generation 'data/hub/appearance.json'
     $runtimeArgs = '--instancia native-beta --launcher-file "' + $launcher + '" -- --live -- --start-hidden'
-    $runtime = Start-Process -FilePath (Join-Path $generation 'bin/vantare.exe') -ArgumentList $runtimeArgs -WindowStyle Hidden -PassThru
+    $logs = Join-Path $Directory 'logs'
+    [IO.Directory]::CreateDirectory($logs) | Out-Null
+    $runtime = Start-Process -FilePath (Join-Path $generation 'bin/vantare.exe') -ArgumentList $runtimeArgs -WindowStyle Hidden -RedirectStandardError (Join-Path $logs 'runtime.log') -PassThru
     $runtime.Dispose()
     $sid = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
     $pipe = "vantare-core-$sid-native-beta"
     $hubArgs = '--pipe "' + $pipe + '" --data-dir "' + (Join-Path $generation 'data/hub') + '" --layout "' + (Join-Path $generation 'data/Vantare/native/layout.json') + '" --engineer-settings "' + (Join-Path $generation 'data/Vantare/native/engineer.json') + '" --launcher-file "' + $launcher + '"'
     # La ventana del Hub es el arranque solicitado por el tester.
-    Start-Process -FilePath (Join-Path $generation 'bin/vantare-hub.exe') -ArgumentList $hubArgs -PassThru
+    Start-Process -FilePath (Join-Path $generation 'bin/vantare-hub.exe') -ArgumentList $hubArgs -RedirectStandardError (Join-Path $logs 'hub.log') -PassThru
 }
 
 function Stop-BetaRuntime([string]$Directory) {

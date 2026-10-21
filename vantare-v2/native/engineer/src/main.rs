@@ -1,3 +1,4 @@
+#![cfg_attr(windows, windows_subsystem = "windows")]
 #![deny(unsafe_code)]
 
 use vantare_ipc::product;

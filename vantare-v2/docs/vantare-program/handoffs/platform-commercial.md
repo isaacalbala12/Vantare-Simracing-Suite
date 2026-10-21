@@ -1,3 +1,27 @@
+## VANTA-105 / #1726 · RC3: consola, reapertura y controles (21-oct-2026)
+
+Encargo urgente de Isaac. Base origin/nightly `946d14fc5`; worktree propio
+`C:/VantareServer/wt/isa-1726`, rama `vantareapp/isa-1726-rc3-arranque`.
+Diagnóstico comunicado antes de editar: los diez PE de RC3 usan consola;
+la bandeja reabre Hub sin pipe beta ni rutas y busca un título obsoleto;
+la pantalla de acceso retorna antes del chrome con controles Win32.
+Services RC3 sí responde Status/AccountPoll/Shutdown con exit0 y permanece
+vivo36s en arranque completo sobre escritorio privado (sin SwitchDesktop).
+No se ha demostrado un fallo de DuckDB/Supabase ni se ha iniciado sesión real.
+
+Fix: entrada GUI del supervisor `--beta -Root`, motor PowerShell sin consola,
+subsistema Windows en procesos automáticos/GUI, contexto de bandeja conservado,
+controles comunes en acceso/privacidad/asistente y presupuesto total45s por
+respuesta con cancelación, descarte de respuesta tardía y reintento nuevo.
+Stderr de runtime/Services/Hub queda en logs de arranque. Sin dependencias nuevas.
+Regresiones de PE, destino de acceso, contexto y timeout con reloj inyectado.
+Check y Clippy PASS; Nextest completo/telemetría, lifecycle y QA pendientes.
+La primera suite de registro conservó accesos QA ajenos del perfil; se repite
+con usuario temporal y escritorio privado. Evidencia en
+`C:/VantareServer/evidence/rc3-bugs/INFORME.md`, seguimiento GitHub #1726.
+PR y RC4 0.0.982 pendientes. Sin merge, firma, publicación ni promoción.
+Los procesos de Isaac permanecen intactos.
+
 ## VANTA-105 / #1723 · Dos P3 de review1721, separados de RC3 (19-oct-2026)
 
 Base nightly997d6da68 con #1721 integrado. Rama/worktree propios

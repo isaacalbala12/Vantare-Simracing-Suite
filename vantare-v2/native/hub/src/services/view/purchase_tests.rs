@@ -4,6 +4,49 @@ use super::*;
 use crate::Section;
 
 #[test]
+fn a_silent_service_times_out_cancels_old_io_and_allows_a_fresh_retry() {
+    gpui_platform::headless().run(|cx| {
+        let file = crate::document::tests::File::new();
+        let (send, requests) = mpsc::sync_channel(8);
+        let remote = cx.new(|cx| fixture(cx, send, file.path.parent().expect("root")));
+        remote.update(cx, |remote, cx| {
+            remote.account.signed_in = false;
+            remote.access = access::State::from_build();
+            let event = Arc::new(Event::new().expect("cancellation"));
+            remote.cancellation = Some(event.clone());
+            let (late_reply, receive) = mpsc::sync_channel(2);
+            remote.receive = Some(receive);
+            remote.request(Command::Status, cx);
+            assert!(matches!(requests.try_recv(), Ok(Command::Status)));
+            assert!(
+                remote
+                    .poll_reply(std::time::Duration::from_secs(44), cx)
+                    .is_none()
+            );
+            let reply = remote
+                .poll_reply(super::super::client::REQUEST_TIMEOUT, cx)
+                .expect("timeout");
+            remote.complete(reply, cx);
+            assert!(event.is_set(), "cancel the real transport event");
+            assert!(!remote.busy(), "release the request controls");
+            assert!(
+                remote.home_access().1.is_some(),
+                "replace checking with an actionable error"
+            );
+            assert!(
+                late_reply.try_send(Reply::Closed).is_err(),
+                "a late reply cannot affect the retry"
+            );
+            let (send, retry) = mpsc::sync_channel(8);
+            remote.send = Some(send);
+            remote.request(Command::Status, cx);
+            assert!(matches!(retry.try_recv(), Ok(Command::Status)));
+        });
+        crate::quit_headless_test(cx);
+    });
+}
+
+#[test]
 fn pilot_dispatch_failure_releases_editor_and_can_retry() {
     gpui_platform::headless().run(|cx| {
         let file = crate::document::tests::File::new();

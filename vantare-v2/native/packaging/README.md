@@ -29,6 +29,14 @@ Instalador sin firma: SmartScreen puede pedir «Más información → Ejecutar d
 
 ## Instalar y desinstalar
 
+Desde #1726, los accesos Inicio/Escritorio/Startup apuntan al supervisor GUI
+`vantare.exe --beta -Root <raíz>` de la generación activa. Este crea el motor
+PowerShell con `CREATE_NO_WINDOW`; no depende de una consola interactiva.
+El registro del Hub renueva los destinos tras actualizar o restaurar una generación.
+Los errores de arranque quedan en `<raíz>/logs/` (bootstrap, runtime y Hub).
+Las herramientas CLI de grabación/importación conservan su uso en terminal;
+los procesos automáticos y las ventanas de producto usan subsistema Windows.
+
 Doble clic en **VantareSetup.exe**. Instala sin administrador en
 `%LOCALAPPDATA%/Programs/Vantare`, crea «Vantare» y
 «Desinstalar» en el menú Inicio y ofrece abrir el Hub al terminar.

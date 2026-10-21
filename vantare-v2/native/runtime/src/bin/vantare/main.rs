@@ -20,12 +20,16 @@
 //!   Engineer (si está habilitado), overlays y después el núcleo; a cada uno se le pide que termine y, pasado
 //!   el plazo, se le mata.
 
+#![cfg_attr(windows, windows_subsystem = "windows")]
+
 #[cfg(unix)]
 mod unix;
 #[cfg(windows)]
 mod win;
 #[cfg(windows)]
 use vantare_launcher as launcher;
+#[cfg(windows)]
+mod beta;
 #[cfg(windows)]
 mod resident;
 #[cfg(windows)]
@@ -273,10 +277,14 @@ impl Service {
     }
 
     fn spawn(&mut self) -> io::Result<()> {
-        let child = Command::new(&self.program.path)
-            .args(&self.program.args)
-            .stdin(Stdio::piped()) // su cierre es la petición de fin de los hijos sin ventana
-            .spawn()?;
+        let mut command = Command::new(&self.program.path);
+        command.args(&self.program.args).stdin(Stdio::piped());
+        #[cfg(windows)]
+        {
+            use std::os::windows::process::CommandExt;
+            command.creation_flags(0x0800_0000);
+        }
+        let child = command.spawn()?;
         #[cfg(windows)]
         let mut child = child;
         #[cfg(windows)]
@@ -600,6 +608,16 @@ fn main() -> ExitCode {
     }
     vantare_services::diagnostics::install_panic_hook("vantare");
     let args: Vec<String> = env::args().skip(1).collect();
+    #[cfg(windows)]
+    if args.first().is_some_and(|arg| arg == "--beta") {
+        return beta::start(&args).map_or_else(
+            |error| {
+                log(error);
+                ExitCode::FAILURE
+            },
+            |()| ExitCode::SUCCESS,
+        );
+    }
     let bin_dir = env::current_exe()
         .ok()
         .and_then(|exe| exe.parent().map(Path::to_path_buf))

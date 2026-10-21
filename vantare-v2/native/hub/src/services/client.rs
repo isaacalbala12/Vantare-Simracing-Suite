@@ -77,6 +77,8 @@ pub fn default_binary() -> Result<std::path::PathBuf, &'static str> {
         .ok_or("supervisor no instalado")
 }
 pub const REQUEST_POLL: Duration = Duration::from_millis(250);
+/// Presupuesto total de una respuesta, incluidos conexión, saludo y trabajo remoto.
+pub const REQUEST_TIMEOUT: Duration = Duration::from_secs(45);
 
 #[cfg(test)]
 #[path = "client_tests.rs"]

@@ -707,16 +707,14 @@ impl Remote {
             cx.notify();
         }
         cx.spawn(async move |this, cx| {
+            let mut last_reply = std::time::Instant::now();
             loop {
                 let keep = this
                     .update(cx, |this, cx| {
-                        let reply = match this.receive.as_ref().map(Receiver::try_recv) {
-                            Some(Ok(reply)) => Some(reply),
-                            Some(Err(mpsc::TryRecvError::Disconnected)) => Some(Reply::Error {
-                                message: "Conexión interrumpida".into(),
-                            }),
-                            _ => None,
-                        };
+                        let reply = this.poll_reply(last_reply.elapsed(), cx);
+                        if reply.is_some() {
+                            last_reply = std::time::Instant::now();
+                        }
                         if let Some(reply) = reply {
                             this.complete(reply, cx);
                         }
@@ -730,6 +728,48 @@ impl Remote {
             }
         })
         .detach();
+    }
+
+    fn poll_reply(
+        &mut self,
+        elapsed: std::time::Duration,
+        cx: &mut Context<Self>,
+    ) -> Option<Reply> {
+        match self.receive.as_ref().map(Receiver::try_recv) {
+            Some(Ok(reply)) => return Some(reply),
+            Some(Err(mpsc::TryRecvError::Disconnected)) => {
+                self.close_connection(cx);
+                return Some(Reply::Error {
+                    message: "Conexión interrumpida".into(),
+                });
+            }
+            _ => {}
+        }
+        if elapsed < super::client::REQUEST_TIMEOUT {
+            return None;
+        }
+        self.close_connection(cx);
+        Some(Reply::Error {
+            message: "La comprobación ha tardado demasiado. Comprueba tu conexión y pulsa Reintentar. Si continúa, cierra Vantare desde la bandeja y vuelve a abrirlo.".into(),
+        })
+    }
+
+    fn close_connection(&mut self, cx: &mut Context<Self>) {
+        if let Some(event) = self.cancellation.take() {
+            event.set();
+        }
+        self.send = None;
+        self.receive = None;
+        self.queued = None;
+        if let Some(worker) = self.worker.take() {
+            cx.background_executor()
+                .spawn(async move {
+                    if worker.join().is_err() {
+                        eprintln!("worker de servicios terminó con error");
+                    }
+                })
+                .detach();
+        }
     }
 
     fn report_draft(

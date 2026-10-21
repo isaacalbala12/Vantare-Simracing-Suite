@@ -1,4 +1,6 @@
+#![cfg_attr(windows, windows_subsystem = "windows")]
 use std::io;
+
 use vantare_ipc::product;
 
 use std::path::PathBuf;

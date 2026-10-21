@@ -439,7 +439,17 @@ function Test-NativeShortcutOwned($Link,[string]$Directory) {
      ($Link.Arguments.Contains('-File "'+(Join-Path $Directory 'beta.ps1')+'"') -or
       ($Link.Arguments.Contains('-File "'+(Join-Path $Directory 'uninstall-vantare.ps1')+'"') -and
        $Link.Arguments.Contains('-Operation UninstallInstalled')))) -or
-    ($Link.TargetPath -eq (Join-Path $Directory 'Uninstall.exe'))
+    ($Link.TargetPath -eq (Join-Path $Directory 'Uninstall.exe')) -or
+    ($Link.TargetPath.StartsWith((Join-Path $Directory 'generations') + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase) -and
+     [IO.Path]::GetFileName($Link.TargetPath) -ieq 'vantare.exe' -and $Link.Arguments -ceq ('--beta -Root "'+$Directory+'"'))
+}
+
+function Set-NativeLaunchShortcut($Link,[string]$Directory) {
+    $state=Read-NativeState $Directory
+    $Link.TargetPath=Join-Path $Directory "generations/$($state.active.generation)/bin/vantare.exe"
+    # -Root conserva el reconocimiento del acceso por generaciones anteriores al hacer rollback.
+    $Link.Arguments='--beta -Root "'+$Directory+'"'
+    $Link.Save()
 }
 
 function Get-NativeShortcutFolder([string]$Name) {
@@ -474,9 +484,7 @@ function Sync-NativeOptionalShortcuts([string]$Directory,[string]$Folder,$Ui,[bo
             if($exists -and -not $owned){throw 'El acceso opcional pertenece a otra instalación; se conserva.'}
             [IO.Directory]::CreateDirectory($parent)|Out-Null
             $link=$shell.CreateShortcut($path)
-            $link.TargetPath=Join-Path $env:WINDIR 'System32/WindowsPowerShell/v1.0/powershell.exe'
-            $link.Arguments='-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "'+(Join-Path $Directory 'beta.ps1')+'" -Root "'+$Directory+'"'
-            $link.Save()
+            Set-NativeLaunchShortcut $link $Directory
         } catch { Write-NativeShortcutWarning ("No se pudo sincronizar el acceso opcional {0}: {1}" -f $target.name,$_.Exception.Message) }
     }
 }
@@ -571,7 +579,7 @@ function Sync-NativeRegistration([string]$Directory, [string]$Version, $Previous
         $owned = if ($name -ceq 'Desinstalar.lnk') {
             $existing.TargetPath -eq (Join-Path $directory 'Uninstall.exe') -or
                 $existing.Arguments.Contains('-Root "' + $directory + '"')
-        } else { $existing.Arguments.Contains('-Root "' + $directory + '"') }
+        } else { Test-NativeShortcutOwned $existing $directory }
         if (-not $owned) { throw 'El acceso existente pertenece a otra instalación; se conserva.' }
     }
     $temp = Join-Path $directory ('.uninstall-' + [guid]::NewGuid().ToString('N') + '.tmp')
@@ -582,9 +590,7 @@ function Sync-NativeRegistration([string]$Directory, [string]$Version, $Previous
     } finally { if (Test-Path -LiteralPath $temp) { Remove-Item -LiteralPath $temp } }
     [IO.Directory]::CreateDirectory($target) | Out-Null
     $link = $shell.CreateShortcut((Join-Path $target 'Vantare.lnk'))
-    $link.TargetPath = Join-Path $env:WINDIR 'System32/WindowsPowerShell/v1.0/powershell.exe'
-    $link.Arguments = '-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "' + (Join-Path $directory 'beta.ps1') + '" -Root "' + $directory + '"'
-    $link.Save()
+    Set-NativeLaunchShortcut $link $directory
     $link = $shell.CreateShortcut((Join-Path $target 'Desinstalar.lnk'))
     $link.TargetPath = $uninstallTarget
     $link.Arguments = $uninstallArgs

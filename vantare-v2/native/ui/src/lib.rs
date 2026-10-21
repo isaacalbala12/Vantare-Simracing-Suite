@@ -49,6 +49,8 @@ pub mod pilot_flag;
 pub mod session;
 #[cfg(feature = "paint-stats")]
 pub use vantare_profiling as profiling;
+#[cfg(any(windows, test))]
+mod hub_launch;
 #[cfg(test)]
 mod replay_tests;
 mod rights;

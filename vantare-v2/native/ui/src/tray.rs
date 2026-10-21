@@ -6,6 +6,7 @@
 //! host por canal. El `WM_CLOSE` con el que el launcher cierra los overlays
 //! también llega a esta ventana y retira el icono.
 use std::cell::RefCell;
+use std::os::windows::process::CommandExt;
 
 use windows_sys::Win32::Foundation::{HWND, LPARAM, LRESULT, WPARAM};
 use windows_sys::Win32::UI::Shell::{
@@ -35,7 +36,7 @@ const MENU: [(usize, &str); 3] = [
     (QUIT, "Salir de Vantare"),
 ];
 /// Título de la ventana del Hub (`hub/src/shell.rs`): evita abrir un segundo Hub.
-const HUB_TITLE: &str = "Vantare Hub — nativo";
+const HUB_TITLE: &str = "Vantare";
 const LOGO: &[u8] = include_bytes!("../assets/vantare-mark.png");
 
 thread_local! {
@@ -196,7 +197,16 @@ fn open_hub() {
     let hub = unsafe { FindWindowW(std::ptr::null(), title.as_ptr()) };
     if hub.is_null() {
         let spawned = std::env::current_exe().and_then(|exe| {
-            std::process::Command::new(exe.with_file_name("vantare-hub.exe")).spawn()
+            let args: Vec<_> = std::env::args().skip(1).collect();
+            let mut command = std::process::Command::new(exe.with_file_name("vantare-hub.exe"));
+            command.args(crate::hub_launch::arguments(
+                &args,
+                std::env::var_os("VANTARE_NATIVE_DATA_ROOT")
+                    .map(std::path::PathBuf::from)
+                    .as_deref(),
+            ));
+            command.creation_flags(0x0800_0000 | 0x0100_0000); // Sin consola y fuera del Job de overlays.
+            command.spawn()
         });
         if let Err(error) = spawned {
             eprintln!("abrir Hub: {error}");

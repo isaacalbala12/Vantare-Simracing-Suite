@@ -745,10 +745,12 @@ impl Render for Hub {
     #[allow(clippy::too_many_lines)] // Compone el marco común en una sola raíz.
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         if self.onboarding.is_some() {
-            return self.onboarding_view(window, cx).into_any_element();
+            let content = self.onboarding_view(window, cx).into_any_element();
+            return Self::gate_frame(content, window, cx).into_any_element();
         }
         if self.privacy_question_pending() {
-            return self.privacy_question(window, cx).into_any_element();
+            let content = self.privacy_question(window, cx).into_any_element();
+            return Self::gate_frame(content, window, cx).into_any_element();
         }
         #[cfg(feature = "parity-capture")]
         let email_capture =
@@ -756,10 +758,11 @@ impl Render for Hub {
         #[cfg(not(feature = "parity-capture"))]
         let email_capture = false;
         if email_capture || (self.capture.is_none() && self.remote.read(cx).requires_access()) {
-            return self
+            let content = self
                 .remote
                 .update(cx, |remote, cx| remote.access_screen(&self.focus, cx))
                 .into_any_element();
+            return Self::gate_frame(content, window, cx).into_any_element();
         }
         let viewport = window.viewport_size();
         // El contrato visual del calendario contrae la barra por debajo de 1400 px.

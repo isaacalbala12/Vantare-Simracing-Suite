@@ -1,3 +1,31 @@
+## VANTA-96 / #1713 · Prueba sin pago rechazada; parada (21-oct-2026)
+
+Nuevo token Cloudflare correcto: vantare.app sirve beta/production en cuenta
+fa280a06265db9ce2b16ca3cdd9b7308. Preflight y copia de código/configuración hechos;
+landing actual sin rutas de compra. Cero secretos cargados: falta la fuente web
+vigente #1608/#1620 para concretar nombre/formato de credencial mínima; remotos
+solo landing y rama1514 antigua, MacSSH sin respuesta. Pedido al orquestador.
+No copiar service_role como sustituto. Sin redeploy ni publicación; hashes y
+version186d24e0-0640-4697-86a3-b4c82166c66c conservados.
+
+Prueba Production sin pago autorizada: OAuth QA existente renovado, una llamada
+a native-billing-checkout/pro_monthly, vía privada del cliente nativo sin UI
+física ni apertura pública. Edge502/polar_checkout_failed; log confirma
+Polar422, no403 de scopes. Sin ID/URL de Polar; intento conservado con resolución
+unpaid_expired. No reintentar/resetear/borrar ni dar por creada una sesión.
+Parada obligatoria, diagnóstico solo lectura: issue #1730 (Investigar).
+Falta el motivo concreto de validación; no se habilita debug ni se repite POST.
+
+Sandbox: Polar GET products/checkouts200; los dos proyectos Supabase accesibles
+no productivos están INACTIVE. No hay backend sandbox activo comprobado y no se
+reactiva ni mezcla con producción. Falta habilitar/auditar un entorno aislado,
+mapa/secretos/webhook sandbox y un cliente QA que apunte a él para E2E completo.
+
+Reconcile observación sigue activo; venta/marketing/compensación no se abren.
+Owner PR #1727 en revisión por orquestador, sin desplegar ni enviar correo.
+Evidencia detallada y parada en evidence/supabase-reconstruccion/EJECUCION.md.
+Siguiente: revisar422 y aportar contrato web antes de reanudar las escrituras.
+
 ## VANTA-96 / #1713 · Polar operativo; Cloudflare pendiente (21-oct-2026)
 
 POLAR_ACCESS_TOKEN sustituido por credencial aportada mediante env-file

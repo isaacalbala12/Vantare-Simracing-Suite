@@ -617,9 +617,7 @@ function Set-NativeLaunchShortcut($Link,[string]$Directory,[string]$LaunchTarget
         $Link.TargetPath=$LaunchTarget
         # -Root conserva el reconocimiento del acceso por generaciones anteriores al hacer rollback.
         $Link.Arguments='--beta -Root "'+$Directory+'"'
-        # RC3/RC4's supervisor has no PE icon. The Hub has the shared icon ID 1;
-        # use it explicitly while keeping the GUI supervisor as launch owner.
-        $Link.IconLocation=(Join-Path (Split-Path $LaunchTarget) 'vantare-hub.exe')+',0'
+        $Link.IconLocation=$LaunchTarget+',0'
     }else{
         # Registro inerte/incompleto: conservar la ruta de bootstrap anterior sin abortar el registro.
         $Link.TargetPath=Join-Path $env:WINDIR 'System32/WindowsPowerShell/v1.0/powershell.exe'

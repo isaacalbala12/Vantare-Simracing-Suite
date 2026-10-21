@@ -72,9 +72,9 @@ foreach($path in $links){
     $link=$shell.CreateShortcut($path)
     $appId=$explorer.NameSpace((Split-Path $path)).ParseName([IO.Path]::GetFileName($path)).ExtendedProperty('System.AppUserModel.ID')
     Require ($link.TargetPath -ieq (Join-Path $bin 'vantare.exe') -and $link.Arguments -ceq ('--beta -Root "'+$root+'"')) 'GUI supervisor/root mismatch.'
-    Require ($link.IconLocation -ieq ((Join-Path $bin 'vantare-hub.exe')+',0')) 'Explicit icon mismatch.'
+    Require ($link.IconLocation -ieq ((Join-Path $bin 'vantare.exe')+',0')) 'Explicit icon mismatch.'
     Require ($appId -ceq 'Vantare.SimracingSuite') 'AppUserModelID mismatch.'
-    Require ([ShortcutCampaignIcons]::ExtractIconEx((Join-Path $bin 'vantare-hub.exe'),-1,[IntPtr]::Zero,[IntPtr]::Zero,0) -gt 0) 'Icon resource cannot be extracted.'
+    Require ([ShortcutCampaignIcons]::ExtractIconEx((Join-Path $bin 'vantare.exe'),-1,[IntPtr]::Zero,[IntPtr]::Zero,0) -gt 0) 'Supervisor icon resource cannot be extracted.'
     Record 'shortcut' @{path=$path;target=$link.TargetPath;arguments=$link.Arguments;icon=$link.IconLocation;app_id=$appId;icon_extractable=$true}
 }
 Require (-not(Test-Path $old[0].FullName) -and -not(Test-Path (Join-Path $desktop 'Vantare.lnk'))) 'Original launch duplicate remains.'

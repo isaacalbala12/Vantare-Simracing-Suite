@@ -52,7 +52,7 @@ foreach($baseline in @('0.0.975','0.0.981','0.0.982')){
             Assert-Brand (Test-Path $path) "$baseline creates full visible shortcut name"
             $link=$shell.CreateShortcut($path)
             Assert-Brand ($link.TargetPath -eq (Join-Path $bin 'vantare.exe') -and $link.Arguments -ceq ('--beta -Root "'+$root+'"')) "$baseline preserves GUI supervisor and root"
-            Assert-Brand ($link.IconLocation -eq ((Join-Path $bin 'vantare-hub.exe')+',0')) "$baseline explicitly uses Hub icon"
+            Assert-Brand ($link.IconLocation -eq ((Join-Path $bin 'vantare.exe')+',0')) "$baseline explicitly uses supervisor icon"
             Assert-Brand ((AppId $path) -ceq 'Vantare.SimracingSuite') "$baseline persists shell AppUserModelID"
         }
         $registration=Get-ItemProperty $key

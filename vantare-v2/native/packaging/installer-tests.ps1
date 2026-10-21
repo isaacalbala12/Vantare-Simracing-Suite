@@ -13,6 +13,7 @@ $root = Join-Path (Assert-NativePath $EvidenceDirectory) ('setup-' + [guid]::New
 $key = 'HKCU:/Software/Microsoft/Windows/CurrentVersion/Uninstall/VantareNativeBetaQA1492'
 $programs = [Environment]::GetFolderPath('Programs')
 $legacyShortcut = Join-Path $programs 'Vantare Native Beta QA1492/Vantare Native Beta.lnk'
+$previousShortcut = Join-Path $programs 'Vantare QA1492/Vantare.lnk'
 $shortcut = Join-Path $programs 'Vantare QA1492/Vantare Simracing Suite.lnk'
 if (Test-Path -LiteralPath $key) { throw 'Hay otra instalación QA1492; conservarla y terminar antes de probar.' }
 $script:Passed = 0
@@ -51,7 +52,7 @@ if ($FirstBrand -ceq 'LegacyBeta') {
     Assert-Setup (Test-Path -LiteralPath $legacyShortcut) 'instalador anterior crea acceso beta'
 } else {
     Assert-Setup ((Get-ItemProperty -LiteralPath $key).DisplayName -ceq 'Vantare') 'baseline NSIS actual conserva su nombre real'
-    Assert-Setup (Test-Path -LiteralPath $shortcut) 'baseline NSIS actual crea acceso Vantare'
+    Assert-Setup (Test-Path -LiteralPath $previousShortcut) 'baseline NSIS actual crea acceso Vantare'
 }
 [IO.File]::WriteAllText((Get-SetupData), '{"profile":"setup QA","layout":[1,2],"account":"fake"}')
 $hash = Get-NativeHash (Get-SetupData)
@@ -66,6 +67,7 @@ Assert-Setup ((Read-BetaVersion $newVersion) -gt (Read-BetaVersion $oldVersion))
 Assert-Setup ((Get-ItemProperty -LiteralPath $key).DisplayName -ceq 'Vantare Simracing Suite') 'Setup migra nombre visible con la misma identidad'
 Assert-Setup ((Get-ItemProperty -LiteralPath $key).InstallLocation -ceq $root) 'Setup conserva carpeta anterior y datos'
 Assert-Setup (-not (Test-Path -LiteralPath $legacyShortcut)) 'Setup retira acceso beta duplicado'
+Assert-Setup (-not (Test-Path -LiteralPath $previousShortcut)) 'Setup retira acceso Vantare duplicado'
 Assert-Setup ((Get-NativeHash (Get-SetupData)) -ceq $hash) 'Setup nuevo conserva datos'
 Assert-Setup ([IO.File]::ReadAllText((Join-Path $root 'registration-identity.txt')) -ceq 'VantareNativeBetaQA1492') 'Setup QA declara su identidad fuera del bootstrap productivo'
 $pendingHash = Get-NativeHash (Join-Path $root 'boot-pending.json')

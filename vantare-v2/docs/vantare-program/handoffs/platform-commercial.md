@@ -1,3 +1,28 @@
+## VANTA-96 / #1713 · Configuración y ensayo pendientes (21-oct-2026)
+
+Base nightly a2e46c0d8, #1732 integrado pero NO desplegado. No hay nuevas
+migraciones, deploys, compras, refunds ni flags cambiados en este tramo.
+Cloudflare auditado por nombres: beta sirve vantare.app con ASSETS/WAITLIST_DB;
+no le falta ningún secreto obligatorio al master publicado con venta cerrada.
+Segundo Worker sin bindings/secretos ni dominio propio asociado; cero Pages.
+No se cargan claves privilegiadas de web-compra en una landing que no las usa.
+Fuentes web master d9f040ae5 y web-compra 33e27b2ff; faltantes futuros y
+custodia por nombre en docs/billing/cloudflare-inventario-20261021.md.
+
+Propuesta de ensayo pro_monthly a 0 EUR, con cuenta QA y descuento/control QA
+aprobados, en docs/billing/runbook-compra-prueba.md. No valida devolución de
+dinero a importe cero; además el ledger rechaza net_amount=0, por lo que hoy
+no valida tampoco el E2E completo de derechos. No se debilita esa regla.
+Tampoco promete email Owner por pago correcto: el receptor
+actual avisa de incidencias. Se necesita autorizar la vía QA antes de probarla.
+Catálogo GET preparado en docs/billing/polar-lectura-pendiente.md: seis productos,
+siete precios y cuatro descuentos; token de lectura pendiente, no consultado.
+Reconcile cron ya sano (última muestra 18:07:27Z HTTP200), distinto del bloqueo
+de lectura de catálogo. Marketing/venta/compensación siguen apagados.
+Tres P3 DeepSeek de #1732 añadidos a #1733, incluido el await de hasta 250 ms
+dentro del timeout de 8 s y su efecto en reject/uncertain. Diagnóstico solo se
+desplegará con autorización separada. Evidencia completa en EJECUCION.md.
+
 ## VANTA-96 / #1725 · Activación Owner en producción (21-oct-2026)
 
 Autorización expresa del orquestador tras r2 APTO y merge #1727 en nightly

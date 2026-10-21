@@ -177,6 +177,7 @@ impl State {
     }
 
     pub(super) fn observe(&mut self, reply: &Reply, account: bool) {
+        let previous_error = self.error.clone();
         // Un error de transporte no revoca la última política. navigation sigue
         // aplicando su caducidad; el resultado definitivo sí retira el acceso.
         if matches!(reply, Reply::DeviceLimit { .. } | Reply::Closed) {
@@ -253,6 +254,14 @@ impl State {
             }
             _ => {}
         }
+        if self.error.is_some() && self.error != previous_error {
+            use std::io::Write;
+            // El texto se presenta en pantalla; el log no copia datos IPC.
+            let _log = writeln!(
+                std::io::stderr(),
+                "account-access: failed; user-message-visible"
+            );
+        }
     }
 }
 
@@ -316,7 +325,13 @@ impl Remote {
     }
 
     pub(super) fn begin_access(&mut self, cx: &mut Context<Self>) {
+        use std::io::Write;
+        let _log = writeln!(std::io::stderr(), "account-access: requested");
         if self.working() {
+            let _log = writeln!(
+                std::io::stderr(),
+                "account-access: waiting-for-current-request"
+            );
             return;
         }
         self.access.error = None;

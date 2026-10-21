@@ -1,3 +1,18 @@
+## VANTA-105 / #1747 · RC4: apertura de Google (21-oct-2026)
+
+Worker aislado desde nightly `1b732b67d`, worktree `C:/VantareServer/wt/rc4-google`,
+rama `vantareapp/isa-1747-google-login`. Diagnóstico antes de editar en
+`C:/VantareServer/evidence/rc4-google/DIAGNOSTICO.md`.
+RC4 instalada en cuenta estándar/escritorio privado: IPC, configuración OIDC y
+listener OAuth funcionan; AccountBegin devuelve pending sin acreditar navegador.
+`rundll32` se daba por correcto con spawn. Perfil actual tiene HTTPS UserChoice
+MSEdgeHTM sin manejador registrado; sonda privada ShellExecuteExW devuelve1155.
+Se prepara apertura directa verificada por Windows, error claro, cancelación del
+listener y logs sin URL/credenciales. No se cambia Windows ni panel Clerk/backend.
+Isaac debe elegir navegador instalado para HTTP/HTTPS y comprobar el clic con el
+nuevo build. Las pruebas UI privadas fallan antes de pintar por DirectX0x8007000E;
+no acreditan clic físico. Regresiones/gates en curso, PR pendiente. Sin merge/release.
+
 ## VANTA-96 / #1713 · Configuración y ensayo pendientes (21-oct-2026)
 
 Base nightly a2e46c0d8, #1732 integrado pero NO desplegado. No hay nuevas

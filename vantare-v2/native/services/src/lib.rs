@@ -10,6 +10,8 @@ pub mod billing;
 #[cfg(feature = "network")]
 pub mod bridge;
 #[cfg(feature = "network")]
+mod browser;
+#[cfg(feature = "network")]
 pub mod calendar;
 #[cfg(feature = "network")]
 pub mod config;

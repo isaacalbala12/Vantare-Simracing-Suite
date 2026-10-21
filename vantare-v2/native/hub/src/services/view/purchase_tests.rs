@@ -4,6 +4,56 @@ use super::*;
 use crate::Section;
 
 #[test]
+fn browser_failure_is_visible_and_retry_sends_one_fresh_login() {
+    gpui_platform::headless().run(|cx| {
+        let file = crate::document::tests::File::new();
+        let (send, requests) = mpsc::sync_channel(8);
+        let remote = cx.new(|cx| fixture(cx, send, file.path.parent().expect("root")));
+        remote.update(cx, |remote, cx| {
+            remote.account.signed_in = false;
+            remote.access.observe(
+                &Reply::Status {
+                    account_configured: true,
+                    message: String::new(),
+                },
+                false,
+            );
+            remote.begin_access(cx);
+            assert!(matches!(requests.try_recv(), Ok(Command::AccountBegin)));
+            remote.complete(
+                Reply::Account {
+                    profile: None,
+                    signed_in: false,
+                    pending: false,
+                    expires_at: None,
+                    message: vantare_services::Error::BrowserUnavailable.to_string(),
+                    error: Some(vantare_services::Error::BrowserUnavailable.to_string()),
+                },
+                cx,
+            );
+            assert!(!remote.busy());
+            assert!(remote.requires_access());
+            assert!(
+                remote
+                    .home_access()
+                    .1
+                    .is_some_and(|error| error.contains("navegador predeterminado"))
+            );
+            assert!(!remote.access.login_requested);
+            assert!(
+                requests.try_recv().is_err(),
+                "failure never retries automatically"
+            );
+            remote.retry_access(cx);
+            assert!(matches!(requests.try_recv(), Ok(Command::AccountBegin)));
+            assert!(requests.try_recv().is_err());
+            assert!(remote.home_access().1.is_none());
+        });
+        crate::quit_headless_test(cx);
+    });
+}
+
+#[test]
 fn a_silent_service_times_out_cancels_old_io_and_allows_a_fresh_retry() {
     gpui_platform::headless().run(|cx| {
         let file = crate::document::tests::File::new();

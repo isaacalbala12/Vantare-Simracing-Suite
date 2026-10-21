@@ -45,6 +45,22 @@ foreach($path in @($qaKey,$qaStart,$qaDesktop,$qaBoot)){if(Test-Path -LiteralPat
 $registrationRoot=Join-Path $evidence ('registration-'+[guid]::NewGuid().ToString('N'))
 [IO.Directory]::CreateDirectory($registrationRoot)|Out-Null
 [IO.File]::WriteAllText((Join-Path $registrationRoot '.vantare-native'),'offline-candidate-v1')
+# Registration now targets a verified generation; materialize the real inventory
+# with inert PE fixtures before exercising the shell. No app image is executed.
+$payload=Join-Path $evidence ('payload-'+[guid]::NewGuid().ToString('N'))
+foreach($member in (Get-NativeMembers 'beta')){
+    $path=Join-Path $payload $member
+    [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($path))|Out-Null
+    if($member.EndsWith('.exe')){Copy-Item (Join-Path $env:WINDIR 'System32/cmd.exe') $path}
+    elseif($member.EndsWith('.exe.sha256')){[IO.File]::WriteAllText($path,((Get-NativeHash $path.Substring(0,$path.Length-7))+'  '+[IO.Path]::GetFileName($path.Substring(0,$path.Length-7))+"`n"))}
+    elseif($member -ceq 'candidate.ps1'){Copy-Item (Join-Path $PSScriptRoot 'candidate.ps1') $path}
+    else{[IO.File]::WriteAllText($path,'inert shell fixture')}
+}
+$files=@(Get-NativeMembers 'beta'|ForEach-Object{$p=Join-Path $payload $_;@{path=$_;size=(Get-Item $p).Length;sha256=(Get-NativeHash $p)}})
+Write-NativeJson (Join-Path $payload 'manifest.json') @{schema=1;product='vantare-native';candidate=$true;architecture='windows-x64';data_schema='opaque-v1';source_sha=('a'*40);source_dirty=$false;build_profile='Release';version='0.0.977';channel='beta';files=$files}
+$zip=Join-Path $evidence ('package-'+[guid]::NewGuid().ToString('N')+'.zip')
+New-NativeZip $payload $zip
+Install-Beta $registrationRoot $zip (Get-NativeHash $zip)
 [IO.File]::WriteAllText((Join-Path $registrationRoot 'registration-identity.txt'),'VantareNativeBetaQA1492')
 # A real OS PE serves only as an inert shortcut/cleanup fixture; never execute it.
 Copy-Item -LiteralPath (Join-Path $env:WINDIR 'System32/cmd.exe') -Destination (Join-Path $registrationRoot 'Uninstall.exe')
@@ -55,6 +71,10 @@ try {
     foreach($entry in @{InstallLocation=$registrationRoot;ShortcutFolder=$qaFolder;LegacyShortcutFolder='Vantare Native Beta QA1492'}.GetEnumerator()){Set-ItemProperty -LiteralPath $qaKey -Name $entry.Key -Value $entry.Value}
     Sync-NativeRegistration $registrationRoot '0.0.977'
     $shell=New-Object -ComObject WScript.Shell
+    $launch=$shell.CreateShortcut((Join-Path $qaStart 'Vantare.lnk'))
+    $installed=Read-NativeState $registrationRoot
+    Assert-Installer ($launch.TargetPath -eq (Join-Path $registrationRoot "generations/$($installed.active.generation)/bin/vantare.exe")) 'Inicio apunta al supervisor de la generación verificada'
+    Assert-Installer ($launch.Arguments -ceq ('--beta -Root "'+$registrationRoot+'"')) 'Inicio pasa la raíz al bootstrap GUI'
     Assert-Installer ((Get-ItemProperty -LiteralPath $qaKey).UninstallString.Contains('Uninstall.exe')) 'Register conserva desinstalador propio'
     Assert-Installer ((($shell.CreateShortcut((Join-Path $qaStart 'Desinstalar.lnk'))).TargetPath) -eq (Join-Path $registrationRoot 'Uninstall.exe')) 'Inicio usa el mismo desinstalador'
     Assert-Installer ((Test-Path -LiteralPath $qaDesktop) -and (Test-Path -LiteralPath $qaBoot)) 'Opciones crean solo accesos QA'

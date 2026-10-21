@@ -15,7 +15,9 @@ controles comunes en acceso/privacidad/asistente y presupuesto total45s por
 respuesta con cancelación, descarte de respuesta tardía y reintento nuevo.
 Stderr de runtime/Services/Hub queda en logs de arranque. Sin dependencias nuevas.
 Regresiones de PE, destino de acceso, contexto y timeout con reloj inyectado.
-Check y Clippy PASS; Nextest completo/telemetría, lifecycle y QA pendientes.
+Check y Clippy PASS; registro68 y shell25 PASS en usuarios temporales retirados.
+Nextest completo/telemetría, lifecycle y QA de ventana pendientes. La fixture
+del shell ahora materializa una generación verificada antes de registrar su acceso GUI.
 La primera suite de registro conservó accesos QA ajenos del perfil; se repite
 con usuario temporal y escritorio privado. Evidencia en
 `C:/VantareServer/evidence/rc3-bugs/INFORME.md`, seguimiento GitHub #1726.

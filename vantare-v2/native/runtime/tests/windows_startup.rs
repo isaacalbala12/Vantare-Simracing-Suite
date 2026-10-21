@@ -188,10 +188,9 @@ $console=[BootstrapConsole]::GetConsoleWindow().ToInt64()
         std::thread::sleep(Duration::from_millis(20));
     };
     assert_eq!(console, "0", "the engine must have no console window");
-    let environment: serde_json::Value = serde_json::from_str(
-        &std::fs::read_to_string(root.join("startup-environment")).unwrap(),
-    )
-    .unwrap();
+    let environment: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(root.join("startup-environment")).unwrap())
+            .unwrap();
     assert_eq!(environment["background"], "1");
     for field in ["window", "pid", "interactive"] {
         assert!(environment[field].is_null(), "background inherited {field}");

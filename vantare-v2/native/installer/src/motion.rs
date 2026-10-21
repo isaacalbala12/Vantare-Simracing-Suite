@@ -1,5 +1,6 @@
-//! Pure motion curves. The bar never shows progress the engine has not earned:
-//! between reports it creeps toward, but never reaches, the next engine milestone.
+//! Pure motion curves. Between engine reports the bar creeps over at most 80 %
+//! of the gap to the next engine milestone: it never reaches that milestone,
+//! never goes back, and the label only reads 100 once the engine reports it.
 use std::time::{Duration, Instant};
 
 /// Percentages reported by installer-driver.ps1 for install/update/repair.

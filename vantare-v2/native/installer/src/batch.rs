@@ -94,7 +94,7 @@ fn script(scene: &str, size: u64) -> Result<Vec<(u64, Step)>, String> {
 }
 
 fn inside_qa(path: &Path) -> Result<(), String> {
-    if path.starts_with(Path::new(ROOT)) {
+    if crate::args::within(path, Path::new(ROOT)) {
         Ok(())
     } else {
         Err(format!("{} fuera de la raíz QA", path.display()))

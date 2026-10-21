@@ -4,7 +4,7 @@ use std::os::windows::io::{FromRawHandle, OwnedHandle, RawHandle};
 use std::os::windows::process::CommandExt;
 use std::process::{Command, Stdio};
 
-fn closed_reader() -> Stdio {
+fn closed_reader() -> OwnedHandle {
     #[link(name = "kernel32")]
     unsafe extern "system" {
         fn CreatePipe(
@@ -29,7 +29,7 @@ fn closed_reader() -> Stdio {
         )
     };
     drop(read);
-    Stdio::from(write)
+    write
 }
 
 #[test]
@@ -38,7 +38,7 @@ fn invalid_hub_cli_preserves_exit_code_when_stderr_is_closed() {
         .arg("--invalid-option")
         .stdin(Stdio::null())
         .stdout(Stdio::null())
-        .stderr(closed_reader())
+        .stderr(Stdio::from(closed_reader()))
         .creation_flags(0x0800_0000)
         .status()
         .expect("invalid Hub CLI");
@@ -50,6 +50,19 @@ fn invalid_hub_cli_preserves_exit_code_when_stderr_is_closed() {
 fn capture_batch_completes_with_its_stdout_reader_closed() {
     const CHILD: &str = "VANTARE_TEST_CLOSED_CAPTURE_STDOUT";
     if std::env::var_os(CHILD).is_some() {
+        use std::os::windows::io::AsRawHandle;
+        #[link(name = "kernel32")]
+        unsafe extern "system" {
+            fn SetStdHandle(kind: u32, handle: RawHandle) -> i32;
+        }
+        let write = closed_reader();
+        // SAFETY: this is the isolated test child; the owned write handle stays
+        // alive until exit. Redirect after libtest's startup output so only the
+        // production capture writes, not the test harness, observe BrokenPipe.
+        assert_ne!(
+            unsafe { SetStdHandle((-11_i32).cast_unsigned(), write.as_raw_handle()) },
+            0
+        );
         // An empty prepared batch never opens GPUI/GPU, but emits the same
         // progress/completion output as a fully cached batch.
         vantare_hub::capture::run_many(Vec::new()).expect("headless batch");
@@ -63,7 +76,6 @@ fn capture_batch_completes_with_its_stdout_reader_closed() {
         ])
         .env(CHILD, "1")
         .stdin(Stdio::null())
-        .stdout(closed_reader())
         .creation_flags(0x0800_0000)
         .output()
         .expect("batch child");

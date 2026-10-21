@@ -564,6 +564,11 @@ function Get-NativeLaunchTarget([string]$Directory) {
 }
 
 function Set-NativeShortcutAppId([string]$Path) {
+    # Register also runs on Hub startup. Reuse the persisted property without
+    # compiling the interop adapter again in each new PowerShell process.
+    $shell=New-Object -ComObject Shell.Application
+    $item=$shell.NameSpace((Split-Path $Path)).ParseName([IO.Path]::GetFileName($Path))
+    if($item.ExtendedProperty('System.AppUserModel.ID') -ceq 'Vantare.SimracingSuite'){return}
     if(-not ('VantareShortcutProperties' -as [type])) {
         Add-Type -TypeDefinition @'
 using System;

@@ -150,6 +150,33 @@ Deno.test("storage failure never produces successful ACK", async () => {
   g.failFinish();
   equal((await handleOwnerAlert(await signed(), g.deps)).status, 503);
 });
+
+Deno.test("transport errors and malformed successful provider responses remain retryable", async () => {
+  const f = fixture();
+  f.deps.fetch = () => {
+    throw new Error("network timeout");
+  };
+  equal((await handleOwnerAlert(await signed(), f.deps)).status, 503);
+  f.deps.fetch = () => Promise.resolve(Response.json({}, { status: 201 }));
+  equal((await handleOwnerAlert(await signed(), f.deps)).status, 503);
+  equal(f.finishes, 2);
+});
+
+Deno.test("raw body tampering and invalid method/media type are rejected", async () => {
+  const f = fixture();
+  const request = await signed();
+  const changed = new Request(request.url, {
+    method: "POST",
+    headers: request.headers,
+    body: JSON.stringify({ ...alert, code: "changed_after_signature" }),
+  });
+  equal((await handleOwnerAlert(changed, f.deps)).status, 401);
+  equal((await handleOwnerAlert(new Request(request.url), f.deps)).status, 405);
+  const media = await signed();
+  media.headers.set("Content-Type", "text/plain");
+  equal((await handleOwnerAlert(media, f.deps)).status, 415);
+  equal(f.sends, 0);
+});
 Deno.test("invalid signature, stale/future timestamp and mismatched ID never reach storage/email", async () => {
   const f = fixture();
   for (const delta of [-301, 301]) {

@@ -1,5 +1,5 @@
 begin;
-select plan(18);
+select plan(23);
 select ok((select relrowsecurity from pg_class where oid='private.billing_owner_alert_inbox'::regclass),'private inbox has RLS');
 select ok(not has_table_privilege('anon','private.billing_owner_alert_inbox','select,insert,update,delete'),'anon cannot access inbox');
 select ok(not has_table_privilege('authenticated','private.billing_owner_alert_inbox','select,insert,update,delete'),'authenticated cannot access inbox');
@@ -18,10 +18,21 @@ select is(public.billing_owner_alert_claim('production','checkout_review',repeat
 select is(public.billing_owner_alert_claim('sandbox','checkout_refund_failed',repeat('a',64),'first_code','17250000-0000-4000-8000-000000000003')->>'state','claimed','different types sharing correlation hash are independent');
 reset role;
 select is((select count(*)::integer from private.billing_owner_alert_inbox),3,'only unique operational alerts persisted');
+select is((select attempts from private.billing_owner_alert_inbox where environment='sandbox' and alert_type='checkout_review'),2,'only actual email claims increment attempts');
+select ok((select sent_at is not null and lease_token is null from private.billing_owner_alert_inbox where environment='sandbox' and alert_type='checkout_review'),'successful ACK is durable and releases lease');
 update private.billing_owner_alert_inbox set lease_expires_at=clock_timestamp()-interval '1 second' where environment='production';
 set local role service_role;
 select ok(not public.billing_owner_alert_finish('production','checkout_review',repeat('a',64),'17250000-0000-4000-8000-000000000003',true),'expired worker cannot ACK');
 select is(public.billing_owner_alert_claim('production','checkout_review',repeat('a',64),'first_code','17250000-0000-4000-8000-000000000004')->>'state','claimed','crashed worker lease can be reclaimed');
 reset role;
+update private.billing_owner_alert_inbox set sent_at=clock_timestamp()-interval '31 days'
+ where environment='sandbox' and alert_type='checkout_review';
+update private.billing_owner_alert_inbox set received_at=clock_timestamp()-interval '31 days'
+ where environment='sandbox' and alert_type='checkout_refund_failed';
+set local role service_role;
+select is(public.billing_owner_alert_claim('production','checkout_review',repeat('b',64),'first_code','17250000-0000-4000-8000-000000000005')->>'state','claimed','normal claim performs bounded retention');
+reset role;
+select is((select count(*)::integer from private.billing_owner_alert_inbox where environment='sandbox' and alert_type='checkout_review'),0,'sent alerts older than thirty days are purged');
+select is((select count(*)::integer from private.billing_owner_alert_inbox where environment='sandbox' and alert_type='checkout_refund_failed'),1,'old pending alerts are never purged');
 select * from finish();
 rollback;

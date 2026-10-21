@@ -258,7 +258,6 @@ $$;
    run_write_races(BIN,conn,ENV,run,OUT,fixture_conn=admin_conn() if args.docker else None)
    raise SystemExit(0)
   if not args.baseline:
-   run_owner_alert_race(run,conn,OUT)
    run_tombstone_race(BIN,conn,ENV,run,OUT/'concurrency-results.log')
   if args.concurrency:
    raise SystemExit(0)
@@ -466,6 +465,7 @@ $$;
    if 'not ok ' in result or '# Looks like' in result: raise RuntimeError(result)
    print(name+' PASS',flush=True)
   if not args.baseline:
+   run_owner_alert_race(run,conn,OUT)
    if args.deno_bin:
     owner_tests=subprocess.run([args.deno_bin,'test','--cached-only','--no-lock','--allow-env',
      '--config',str(ROOT/'supabase/functions/deno.json'),str(ROOT/'supabase/functions/owner-alert-receiver/index.test.ts')],

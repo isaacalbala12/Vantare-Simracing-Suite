@@ -27,6 +27,7 @@ $results=[Collections.Generic.List[object]]::new()
 function Record($Name,$Data){$results.Add(@{name=$Name;utc=[DateTime]::UtcNow.ToString('o');data=$Data});$results|ConvertTo-Json -Depth 10|Set-Content (Join-Path $Evidence 'results.json') -Encoding UTF8}
 function Require([bool]$Condition,[string]$Message){if(-not $Condition){throw $Message}}
 function Run([string]$File,[string]$Arguments,[string]$Name){
+    $exeHash=(Get-FileHash $File).Hash
     $info=[Diagnostics.ProcessStartInfo]::new();$info.FileName=$File;$info.Arguments=$Arguments
     $info.UseShellExecute=$false;$info.CreateNoWindow=$true;$info.RedirectStandardOutput=$true;$info.RedirectStandardError=$true
     $p=[Diagnostics.Process]::Start($info)
@@ -34,7 +35,7 @@ function Run([string]$File,[string]$Arguments,[string]$Name){
         $stdout=$p.StandardOutput.ReadToEndAsync();$stderr=$p.StandardError.ReadToEndAsync()
         if(-not $p.WaitForExit(180000)){throw 'QA process exceeded deadline; retained for controller cleanup.'}
         [IO.File]::WriteAllText((Join-Path $Evidence ($Name+'.log')),($stdout.Result+$stderr.Result))
-        Record $Name @{exit=$p.ExitCode;sha256=(Get-FileHash $File).Hash}
+        Record $Name @{exit=$p.ExitCode;sha256=$exeHash}
         Require ($p.ExitCode -eq 0) "$Name exit=$($p.ExitCode)"
     }finally{$p.Dispose()}
 }

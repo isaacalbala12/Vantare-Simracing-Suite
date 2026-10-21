@@ -60,3 +60,10 @@ Sus versiones activas anteriores quedan intactas en
 previos. Se mantienen `source_sha256`, originales anteriores a #1655 y todas
 las revisiones; no cambia ningún corpus, PNG ni baseline de analizadores.
 El inventario pasa a 464 archivos exactos. No ejecutar las copias históricas.
+
+#1742 conserva el diagnóstico de los capturadores activos cuando vence su plazo.
+Revisión de código `f4ee44585a79543901ef9e5e324196624a43edab`; las versiones
+anteriores exactas de nightly1b732b67d quedan como `.txt` inertes en
+`legacy-evidence/hub-capture-before-1742/`. Se conservan hashes fuente y todas
+las revisiones anteriores. El inventario pasa a 466 archivos exactos; ningún
+corpus, PNG ni baseline de analizador cambia. No ejecutar las copias históricas.

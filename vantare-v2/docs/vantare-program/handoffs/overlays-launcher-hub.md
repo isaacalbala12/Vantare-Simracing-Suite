@@ -1,5 +1,28 @@
 # Handoff vivo — Overlays, Studio, Launcher y Hub
 
+## VANTA-105 · RC4 entregada / seguimiento #1742 (21-oct-2026)
+
+RC4 0.0.982 entregada en `C:/VantareServer/share/rc4/` con Setup, sidecar y
+LEEME. Productor limpio nightly `1b732b67d605298f3056c8ca78d692f132217e2d`,
+tras integrar #1741 por el orquestador (review DeepSeek APTO, sin P1).
+Setup70.734.848 bytes, SHA256
+`d26be6cfaf773ef4eccffb83de43bad8854bb86ff1b11bac25105a4dcd47d79d`.
+Payload/Setup Release beta por cola jobs2, configuración pública producción
+igual por hash a RC3 sin valores mostrados. Estática PASS: diez EXE, doce PE
+sin CRT dinámico, nueve campos embebidos, recursos y SHA; siete automáticos/GUI
+Windows2, tres CLI consola3, Setup/Uninstall Windows2 sin firma.
+Campañas privadas OFF/ON/upgrade público975 hasta uninstall PASS, datos por
+hash conservados y cuentas/perfiles retirados. Packaging193 PASS con RC4 real.
+Informe `C:/VantareServer/evidence/rc4/INFORME.md` y delivery.json.
+No ventanas ni cambios en instalación/procesos de Isaac; controles físicos,
+login, asistente y overlay pendientes de Isaac según LEEME. Sin publicación,
+release, firma, backend ni merge propio. Productor75 abandonado sin entrega.
+
+DESPUÉS de entregar RC4, encargo nuevo #1742: stdout de capture-batch,
+stderr GUI, carrera HasExited/Kill y log retenido ante timeout. Rama/worktree
+propios desde1b732b67d; no cambia bytes entregados. Nietos/Job Object solo nota.
+P3 restantes y límites se registran en issue1742; gates/revisión pendientes.
+
 ## VANTA-105 / #1740 · Salida de comandos GUI y RC4 (21-oct-2026)
 
 Issue https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1740,

@@ -1,5 +1,34 @@
 # Handoff vivo — Overlays, Studio, Launcher y Hub
 
+## VANTA-105 / #1740 · Salida de comandos GUI y RC4 (21-oct-2026)
+
+Issue https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1740,
+PR https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1741 a nightly.
+Base75d92a189; rama vantareapp/isa-1740-version-gui en worktree propio1740.
+Código d18031249: Process único en candidate.ps1, pipes drenados antes de
+esperar, stdin UTF8, argv/directorio conservados, timeout y exit explícitos.
+Versión y otras salidas CLI Rust no hacen panic si el lector stdout se cierra.
+Inventario completo en la issue, incluidas rutas cliente de update/repair y
+los scripts embebidos en Setup. Status es JSON de PowerShell, no un EXE GUI.
+Los hosts residentes mantienen stdin/ownership; no se usa el helper finito
+para esperar toda la vida de Hub, núcleo o supervisor.
+
+RC4 del productor75d92a189 ABANDONADA sin entrega: CargoRelease26m49s PASS,
+pero Build rechazó versión porque `$x = & exe --version` cierra stdout GUI.
+La versión real0.0.982(beta) sí responde con Process/espera explícita.
+PS5.1/7 con EXE GUI real: versión, argv, cwd, stdin, ambos pipes grandes,
+exit y timeout PASS. Check y Clippy locales PASS; resultados completos de
+Nextest/telemetría, Lifecycle y CI final se registran en #1740/PR1741 y en
+C:/VantareServer/evidence/version-gui/INFORME.md, sin inferirlos de otro SHA.
+
+Los dos capturadores activos migrados conservan copias anteriores exactas
+en retirement/legacy-evidence/hub-capture-before-1740; revisión documentada,
+464 huellas exactas. No se recalibran corpus, PNG ni baselines de analizadores.
+El orquestador revisa con DeepSeek e integra. RC4 solo desde nightly posterior;
+puede reutilizar D:/VantareServer/targets/1726-rc4. Sin entrega, firma, release,
+publicación, merge propio ni cambios backend en este arreglo. No controles
+físicos acreditados ni ventanas en escritorio de Isaac; su sesión intacta.
+
 ## VANTA-105 / #1726 · RC3: consola, reapertura y controles (21-oct-2026)
 
 Encargo urgente de Isaac. Base origin/nightly `946d14fc5`; worktree propio

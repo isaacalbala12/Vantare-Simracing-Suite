@@ -326,7 +326,7 @@
     },
     "native/hub/reference/compare.ps1": {
       "source": "native/hub/reference/compare.ps1",
-      "sha256": "711dbb78538ba846ecdd176df3461b12ea77e3ea43faeac225df7cc90b2e3165",
+      "sha256": "db03fe78a0163aa5ac216347c9b8935b928ce3646755d9d1950c25a0a61afe7c",
       "source_sha256": "4e827e1e97ee45bf144f7f1ccb8970f9e02969c2fc01d024d64e56d328f6c84a",
       "revisions": [
         {
@@ -337,6 +337,15 @@
           "previous_sha256": "4e827e1e97ee45bf144f7f1ccb8970f9e02969c2fc01d024d64e56d328f6c84a",
           "source_archive": "native/retirement/legacy-evidence/hub-capture-before-1655/compare.ps1.txt",
           "reason": "Authorized capture-tool update: hidden HWND from creation, one process/window per batch, incremental PNGs. Original executable script bytes are retained as inert .txt evidence with their unchanged original hashes."
+        },
+        {
+          "commit": "d18031249f0f8929816d1f2723a934151537ac9a",
+          "issues": [
+            "#1740"
+          ],
+          "previous_sha256": "711dbb78538ba846ecdd176df3461b12ea77e3ea43faeac225df7cc90b2e3165",
+          "source_archive": "native/retirement/legacy-evidence/hub-capture-before-1740/compare.ps1.txt",
+          "reason": "Authorized GUI command capture fix: shared Process helper drains redirected output before bounded wait. Previous active capture-tool bytes retained unchanged as inert .txt evidence; original hashes and earlier revisions preserved."
         }
       ]
     },
@@ -390,7 +399,7 @@
     },
     "native/hub/reference/tools/capture-alpha.ps1": {
       "source": "native/hub/reference/tools/capture-alpha.ps1",
-      "sha256": "35bf077d14540f386706b3fdec0e5b5f8eb91fd27a25055f8971603f2c538f9e",
+      "sha256": "3f2ccc0eb1f51b9404921a1699a6af55a46f53afb4d9540c6379ff03e448e21d",
       "source_sha256": "2b944d4a64a7375aca01e85983f650f8879c5c599a9bb80eaec999187350028e",
       "revisions": [
         {
@@ -401,6 +410,15 @@
           "previous_sha256": "2b944d4a64a7375aca01e85983f650f8879c5c599a9bb80eaec999187350028e",
           "source_archive": "native/retirement/legacy-evidence/hub-capture-before-1655/capture-alpha.ps1.txt",
           "reason": "Authorized capture-tool update: hidden HWND from creation, one process/window per batch, incremental PNGs. Original executable script bytes are retained as inert .txt evidence with their unchanged original hashes."
+        },
+        {
+          "commit": "d18031249f0f8929816d1f2723a934151537ac9a",
+          "issues": [
+            "#1740"
+          ],
+          "previous_sha256": "35bf077d14540f386706b3fdec0e5b5f8eb91fd27a25055f8971603f2c538f9e",
+          "source_archive": "native/retirement/legacy-evidence/hub-capture-before-1740/capture-alpha.ps1.txt",
+          "reason": "Authorized GUI command capture fix: shared Process helper drains redirected output before bounded wait. Previous active capture-tool bytes retained unchanged as inert .txt evidence; original hashes and earlier revisions preserved."
         }
       ]
     },
@@ -2997,6 +3015,16 @@
     "native/retirement/legacy-evidence/hub-capture-before-1655/README.md.txt": {
       "source": "native/hub/reference/README.md",
       "sha256": "c11064554c51e5da863d6c3e44872576ccbe44c1d15aed212680f9391637cd25"
+    },
+    "native/retirement/legacy-evidence/hub-capture-before-1740/compare.ps1.txt": {
+      "source": "native/hub/reference/compare.ps1",
+      "source_commit": "75d92a1899ce2dfaa7c9e4774a14b6fc16045ced",
+      "sha256": "711dbb78538ba846ecdd176df3461b12ea77e3ea43faeac225df7cc90b2e3165"
+    },
+    "native/retirement/legacy-evidence/hub-capture-before-1740/capture-alpha.ps1.txt": {
+      "source": "native/hub/reference/tools/capture-alpha.ps1",
+      "source_commit": "75d92a1899ce2dfaa7c9e4774a14b6fc16045ced",
+      "sha256": "35bf077d14540f386706b3fdec0e5b5f8eb91fd27a25055f8971603f2c538f9e"
     }
   }
 }

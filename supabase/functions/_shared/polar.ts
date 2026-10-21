@@ -4,6 +4,7 @@ import type {
   ReleaseChannel,
   TrialConfig,
 } from "./mapping.ts";
+import { polarCheckoutDiagnostic } from "./polar-checkout-diagnostic.ts";
 
 export type CreateCheckoutParams = {
   attemptId?: string;
@@ -376,7 +377,10 @@ export async function createPolarCheckoutSession(
     deps,
     async (response) => {
       if (!response.ok) {
-        console.error("polar checkout failed", { status: response.status });
+        console.error(
+          "polar checkout failed",
+          await polarCheckoutDiagnostic(response, params.productKey),
+        );
         throw new PolarClientError(
           "polar_checkout_failed",
           "Polar checkout session could not be created",

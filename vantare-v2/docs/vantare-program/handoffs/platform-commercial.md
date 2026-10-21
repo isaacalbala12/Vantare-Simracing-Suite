@@ -1,3 +1,17 @@
+## VANTA-96 / #1730 · Diagnóstico seguro de checkout (21-oct-2026)
+
+Rama propia vantareapp/isa-1730-polar-checkout-diagnostic desde nightly946d14fc5.
+Se añade log de rechazo con status, clave lógica, error/type y detail loc/type/msg,
+listas cerradas contra PII y límites de lectura/tiempo/tamaño. No se registra
+input/ctx/cuerpo/email/customer ni se devuelve el diagnóstico al cliente.
+5 regresiones nuevas, incluidas privacidad y payload real standard con/sin email.
+El arnés comercial las incorpora sin modificar workflows ni checks requeridos.
+Contrato API2026-10 revisado: products:[id] y demás campos standard admitidos;
+no se detecta campo obsoleto y no se cambia payload por una hipótesis.
+Catálogo draft/archived aún no comprobado; token de lectura pendiente.
+Sin deploy, migración, compra real, flags, merge ni publicación. Resultados
+finales de CI, SHA y PR se verifican en #1730. Runbook polar-checkout-diagnostic.md.
+
 ## VANTA-105 / #1723 · Dos P3 de review1721, separados de RC3 (19-oct-2026)
 
 Base nightly997d6da68 con #1721 integrado. Rama/worktree propios

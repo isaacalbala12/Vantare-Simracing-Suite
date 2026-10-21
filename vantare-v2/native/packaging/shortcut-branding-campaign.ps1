@@ -49,8 +49,11 @@ public static class ShortcutCampaignIcons {
 $root=Join-Path $Evidence 'installed'
 $key='HKCU:/Software/Microsoft/Windows/CurrentVersion/Uninstall/VantareNativeBeta'
 Require (-not(Test-Path $key) -and -not(Test-Path $root)) 'QA installation already exists.'
-Run (Join-Path $Evidence 'LegacySetup.exe') ('/S "/D='+$root+'"') 'baseline-install'
+# NSIS requires /D to be the final unquoted argument, including paths with spaces.
+$baselineArguments=if($BaselineVersion -ceq '0.0.975'){'/S /D='+$root}else{'/S "/D='+$root+'"'}
+Run (Join-Path $Evidence 'LegacySetup.exe') $baselineArguments 'baseline-install'
 Require ((Get-ItemProperty $key).DisplayVersion -ceq $BaselineVersion) 'Baseline version mismatch.'
+Require ([IO.Path]::GetFullPath((Get-ItemProperty $key).InstallLocation) -eq [IO.Path]::GetFullPath($root)) 'Baseline installed outside the requested QA root.'
 function Generation {$state=Get-Content (Join-Path $root 'state.json') -Raw|ConvertFrom-Json;Join-Path $root ('generations/'+$state.active.generation)}
 $beforeData=Join-Path (Generation) 'data/shortcut-upgrade.txt'
 [IO.File]::WriteAllText($beforeData,'VANTA-105 shortcut upgrade exact data')

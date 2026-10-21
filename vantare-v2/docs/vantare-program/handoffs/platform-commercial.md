@@ -1,5 +1,13 @@
 ## VANTA-96 / #1730 · Diagnóstico seguro de checkout (21-oct-2026)
 
+Actualización de PR #1732: merge de nightly21b1f8012 (#1727) sobre el HEAD
+revisado060340019. Conflictos del arnés y de este handoff resueltos conservando
+ambas suites y ambas entregas; sin cambiar la lógica de checkout. CI y HEAD
+definitivos se verifican en #1730; no se fusiona el PR ni se despliega.
+Validación local tras resolver: 80 tests Deno PASS (Polar/checkout/portal y
+Owner/reconcile), AST Python, quality y diff check PASS. Ensayo PostgreSQL
+completo LF/CRLF pendiente de la CI del nuevo HEAD.
+
 Rama propia vantareapp/isa-1730-polar-checkout-diagnostic desde nightly946d14fc5.
 Se añade log de rechazo con status, clave lógica, error/type y detail loc/type/msg,
 listas cerradas contra PII y límites de lectura/tiempo/tamaño. No se registra
@@ -11,6 +19,29 @@ no se detecta campo obsoleto y no se cambia payload por una hipótesis.
 Catálogo draft/archived aún no comprobado; token de lectura pendiente.
 Sin deploy, migración, compra real, flags, merge ni publicación. Resultados
 finales de CI, SHA y PR se verifican en #1730. Runbook polar-checkout-diagnostic.md.
+
+## VANTA-96 / #1725 · Avisos Owner por email (21-oct-2026)
+
+Base nightly946d14fc5, rama propia vantareapp/isa-1725-owner-alert-email.
+Receptor HMAC/timestamp, inbox privada durable antes de email/ACK, dedupe por
+entorno/tipo/hash, leases y ACK cercado; Brevo transaccional sin PII compradora.
+Reintentos del reconcile existente; errores no confirman ni pierden la outbox.
+Corrección de review #1727: hash de incidente con código e intento financiero
+existente, expuesto por la RPC operativa; regex de código común a emisor/SQL.
+Brevo 400 duplicate_parameter confirma el email_key ya aceptado, con finish
+durable obligatorio. Tras TTL se acepta como mucho un duplicado excepcional
+si se pierde el ACK, por decisión del orquestador para este correo interno.
+Regresiones de incidente nuevo/repetido, código numérico, ACK perdido y finish
+false; el arnés incluye SQL, carrera real y ensayo LF/CRLF. Resultados y SHA
+definitivos se verifican en #1725; P3 restantes son seguimiento del PR.
+Local: 15 tests Deno del receptor + 14 del emisor PASS; fmt, diff y quality PASS.
+SQL Owner ampliado a 27 aserciones; su resultado LF/CRLF se verifica en la CI.
+No workflows existentes modificados, no dependencias, Rust ni producto nativo.
+No desplegar/configurar URL/secreto ni enviar email real antes de revisión.
+Pasos de activación/reversión en docs/billing/owner-alert-email.md.
+Operación Polar/Cloudflare y propuesta compra: evidencia externa EJECUCION.md,
+issue #1713; no se mezcla con esta migración. Venta/marketing/compensación OFF.
+PR #1727 a nightly; sin merge, release ni activacion productiva.
 
 ## VANTA-105 / #1723 · Dos P3 de review1721, separados de RC3 (19-oct-2026)
 

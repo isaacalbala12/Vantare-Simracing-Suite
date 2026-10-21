@@ -16,6 +16,19 @@ Leídos [#1562](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/
 
 ## 3. Estado real y canal
 
+### #1750 / VANTA-105 — test IPC latest sin sleeps
+
+Rama `vantareapp/isa-1750-test-ipc-latest`, base `nightly@3136f0acb` y worktree propio.
+Se sustituyen los dos sleeps del test de despertar/cierre por señal de espera
+bajo el mutex, ACK del valor y señal de segunda espera antes de cerrar.
+La observación es exclusivamente `cfg(test)`; la lógica y prioridad de cierre
+de producción no cambian, tampoco la aserción `(true, true)`.
+Medición original/corregida de 500 repeticiones, gates y CI pendientes;
+evidencia en `C:/VantareServer/evidence/ipc-latest/`.
+Otros cuatro sleeps de IPC inventariados en [la issue](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1750)
+sin corregirlos. Sin merge, publicación ni cambios a RC4; el SHA final y los
+checks se verificarán en la issue antes de entregar al orquestador.
+
 ### #1638 / VANTA-33 — pulido M-1…M-6 tras integración de #1664
 
 Rama `vantareapp/isa-1638-pulido`, base `nightly@bcaa0e3f2` verificada; #1664

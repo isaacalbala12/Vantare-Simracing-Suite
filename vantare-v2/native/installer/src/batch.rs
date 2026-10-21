@@ -1,4 +1,4 @@
-//! QA-only capture batch: one hidden HWND outside every monitor, PrintWindow
+//! QA-only capture batch: one hidden HWND outside every monitor, `PrintWindow`
 //! frames and a scripted engine. Never opens a visible window or the engine.
 use crate::{
     args::Args,
@@ -233,14 +233,14 @@ async fn still(cx: &AsyncApp, hwnd: isize, output: &Path) -> Result<(), String> 
         let (_, _, pixels) = capture::capture_client(hwnd, WIDTH, HEIGHT)?;
         if previous.as_ref() == Some(&pixels) && pixels.chunks_exact(4).any(|p| p[..3] != [0, 0, 0])
         {
-            return write(output, rgba(pixels));
+            return write(output, &rgba(pixels));
         }
         previous = Some(pixels);
     }
     Err("el render del instalador no se estabilizó en 4,8 s".into())
 }
 
-fn write(output: &Path, pixels: Vec<u8>) -> Result<(), String> {
+fn write(output: &Path, pixels: &[u8]) -> Result<(), String> {
     if let Some(parent) = output.parent() {
         std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
     }
@@ -248,7 +248,7 @@ fn write(output: &Path, pixels: Vec<u8>) -> Result<(), String> {
         output,
         WIDTH.cast_unsigned(),
         HEIGHT.cast_unsigned(),
-        &pixels,
+        pixels,
     )
 }
 
@@ -297,7 +297,7 @@ async fn flow(
         // Encoding runs off the UI thread so the captured timing stays honest.
         writes.push(
             cx.background_executor()
-                .spawn(async move { write(&path, rgba(pixels)) }),
+                .spawn(async move { write(&path, &rgba(pixels)) }),
         );
     }
     for write in writes {

@@ -9,6 +9,7 @@ mod command_line;
 mod controls;
 pub mod engine;
 pub mod model;
+pub mod motion;
 pub mod payload;
 #[cfg(all(windows, feature = "ui"))]
 mod screens;

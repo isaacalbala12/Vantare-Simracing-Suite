@@ -1,4 +1,17 @@
-use std::{ffi::OsString, path::PathBuf};
+use std::{
+    ffi::OsString,
+    path::{Component, Path, PathBuf},
+};
+
+/// Lexical containment for QA paths: absolute, under `root` and free of `.`/`..`,
+/// so a manifest cannot climb out of the QA directory.
+pub fn within(path: &Path, root: &Path) -> bool {
+    path.is_absolute()
+        && path.starts_with(root)
+        && !path
+            .components()
+            .any(|part| matches!(part, Component::ParentDir | Component::CurDir))
+}
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Args {
@@ -12,6 +25,8 @@ pub struct Args {
     pub screen: Option<String>,
     #[cfg(feature = "parity-capture")]
     pub snapshot: Option<PathBuf>,
+    #[cfg(feature = "parity-capture")]
+    pub capture_batch: Option<PathBuf>,
 }
 
 impl Args {
@@ -77,6 +92,10 @@ impl Args {
                 #[cfg(feature = "parity-capture")]
                 _ if text.starts_with("--snapshot=") => {
                     parsed.snapshot = Some(PathBuf::from(&text[11..]));
+                }
+                #[cfg(feature = "parity-capture")]
+                _ if text.starts_with("--capture-batch=") => {
+                    parsed.capture_batch = Some(PathBuf::from(&text[16..]));
                 }
                 _ => return Err(format!("Argumento no reconocido: {text}")),
             }

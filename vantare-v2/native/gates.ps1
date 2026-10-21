@@ -1,7 +1,7 @@
 # Gates con DuckDB oficial, sin desactivar defaults ajenos a storage.
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory)][ValidateSet('check', 'clippy', 'test', 'telemetria', 'completa', 'lifecycle', 'prueba')][string]$Gate,
+    [Parameter(Mandatory)][ValidateSet('check', 'clippy', 'captura', 'test', 'telemetria', 'completa', 'lifecycle', 'prueba')][string]$Gate,
     [string]$DuckDbDirectory = $env:DUCKDB_LIB_DIR,
     [string]$BuildConfig,
     [string]$TargetDirectory = 'target/gates'
@@ -49,6 +49,9 @@ try {
         # Todo menos lifecycle en una sola invocación: para CI (#1654 ronda 7).
         'completa' { @('nextest', 'run', '--workspace', '--profile', 'ci') }
         'lifecycle' { @('test', '--workspace', '--test', 'lifecycle') }
+        # Banco de capturas QA del instalador (#1735): solo existe con parity-capture,
+        # que ningún build por defecto ni de release activa.
+        'captura' { @('clippy', '-p', 'vantare-installer', '--all-targets', '--features', 'parity-capture') }
         'prueba' { @('build', '--workspace', '--exclude', 'vantare-admin', '--bins', '--profile', 'prueba') }
     }
     # Jobs de compilación: CARGO_BUILD_JOBS de la máquina o 2 (#1465). En nextest
@@ -57,9 +60,12 @@ try {
     $jobsFlag = if ($Gate -in @('test', 'telemetria', 'completa')) { '--build-jobs' } else { '-j' }
     # --target-dir y no CARGO_TARGET_DIR: sccache mete las variables CARGO_* en su clave
     # y así comparte caché con los builds de los workers en sus targets propios.
-    $arguments += @('--target-dir', $TargetDirectory, '--locked', '--offline', $jobsFlag, $jobs, '--no-default-features')
-    if ($defaults.Count) { $arguments += @('--features', ($defaults -join ',')) }
-    if ($Gate -eq 'clippy') { $arguments += @('--', '-D', 'warnings') }
+    $arguments += @('--target-dir', $TargetDirectory, '--locked', '--offline', $jobsFlag, $jobs)
+    if ($Gate -ne 'captura') {
+        $arguments += '--no-default-features'
+        if ($defaults.Count) { $arguments += @('--features', ($defaults -join ',')) }
+    }
+    if ($Gate -in @('clippy', 'captura')) { $arguments += @('--', '-D', 'warnings') }
     & cargo @arguments
     if ($LASTEXITCODE) { throw "Gate $Gate falló (código $LASTEXITCODE)." }
     if ($Gate -eq 'prueba') {

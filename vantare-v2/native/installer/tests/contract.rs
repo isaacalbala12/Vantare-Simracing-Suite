@@ -1,6 +1,6 @@
 use std::{ffi::OsString, path::PathBuf};
 use vantare_installer::{
-    args::Args,
+    args::{Args, within},
     model::{Info, Mode, error_text, version},
 };
 
@@ -91,4 +91,20 @@ fn terminal_directory_does_not_reinterpret_switches_as_path() {
     ] {
         assert!(parse(&["/D=C:/first", tail], false).is_err(), "{tail}");
     }
+}
+
+#[test]
+fn qa_paths_cannot_climb_out_of_their_root() {
+    let root = std::env::temp_dir().join("qa-root");
+    assert!(within(&root.join("capturas/a.png"), &root));
+    assert!(!within(&root.join("../fuera.png"), &root));
+    assert!(!within(&root.join("capturas/../../fuera.png"), &root));
+    assert!(!within(
+        &root.with_file_name("qa-root-otra").join("a.png"),
+        &root
+    ));
+    assert!(!within(
+        std::path::Path::new("qa-root/a.png"),
+        std::path::Path::new("qa-root")
+    ));
 }

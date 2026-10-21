@@ -3,9 +3,11 @@ use crate::{
     style,
     view::{Action, Installer},
 };
-use gpui::{AnyElement, Context, IntoElement, prelude::*, px, rgb, rgba};
+use gpui::{
+    AnimationExt, AnyElement, Context, IntoElement, SpringAnimation, prelude::*, px, rgb, rgba,
+};
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Kind {
     Primary,
     Ghost,
@@ -54,9 +56,14 @@ pub fn button(
         } else {
             8.
         }));
-    item = appearance(item, kind, action);
+    item = appearance(item, kind);
+    let hovered = enabled && view.hovered == Some((action, kind));
     if enabled {
         item = item
+            .on_hover(cx.listener(move |view, hovered: &bool, _, cx| {
+                view.hover((action, kind), *hovered);
+                cx.notify();
+            }))
             .cursor_pointer()
             .track_focus(focus)
             .focusable()
@@ -104,7 +111,12 @@ pub fn button(
             })),
         );
     }
-    item.into_any_element()
+    item.with_spring(
+        ("hover", action as usize * 8 + kind as usize),
+        SpringAnimation::new(style::HOVER).to(hovered),
+        move |item, phase| hover(item, kind, action, phase.0),
+    )
+    .into_any_element()
 }
 pub fn toggle(
     view: &Installer,
@@ -119,14 +131,23 @@ pub fn toggle(
         .find(|(a, _)| *a == action)
         .expect("fixed toggle")
         .1;
+    // Toggles share no action with buttons; Ghost only completes the key.
+    let hovered = view.hovered == Some((action, Kind::Ghost));
+    let (off, on_ink) = if hovered {
+        (0x3535_38ff, 0xd814_1fff)
+    } else {
+        (0x2a2a_2cff, 0xc112_1fff)
+    };
     style::at(629., y, 34., 20.)
         .id(action.id())
         .rounded_full()
-        .bg(rgb(if on { 0xc1_121f } else { 0x2a_2a2c }))
         .cursor_pointer()
         .track_focus(focus)
         .focusable()
-        .hover(move |s| s.bg(rgb(if on { 0xd8_141f } else { 0x35_3538 })))
+        .on_hover(cx.listener(move |view, hovered: &bool, _, cx| {
+            view.hover((action, Kind::Ghost), *hovered);
+            cx.notify();
+        }))
         .focus_visible(|s| s.shadow(style::focus_ring(0x14_1415)))
         .on_click(cx.listener(move |view, _, window, cx| view.action(action, window, cx)))
         .on_key_down(
@@ -137,36 +158,34 @@ pub fn toggle(
                 }
             }),
         )
-        .child(style::swatch(
-            if on { 17. } else { 3. },
-            3.,
-            14.,
-            14.,
-            7.,
-            rgb(if on { 0xff_ffff } else { 0x8a_8a8a }).into(),
-        ))
+        .child(
+            style::swatch(3., 3., 14., 14., 7., rgb(0x8a_8a8a).into()).with_spring(
+                ("knob", action as usize),
+                SpringAnimation::new(style::KNOB).to(on),
+                |knob, phase| {
+                    knob.left(px(3. + 14. * phase.0)).bg(style::mix(
+                        0x8a8a_8aff,
+                        0xffff_ffff,
+                        phase.0,
+                    ))
+                },
+            ),
+        )
+        .with_spring(
+            ("track", action as usize),
+            SpringAnimation::new(style::KNOB).to(on),
+            move |track, phase| track.bg(style::mix(off, on_ink, phase.0)),
+        )
         .into_any_element()
 }
 
-fn appearance(
-    item: gpui::Stateful<gpui::Div>,
-    kind: Kind,
-    action: Action,
-) -> gpui::Stateful<gpui::Div> {
+fn appearance(item: gpui::Stateful<gpui::Div>, kind: Kind) -> gpui::Stateful<gpui::Div> {
     match kind {
         Kind::Primary => item
             .text_color(rgb(0xff_ffff))
             .bg(style::red_gradient())
             .border_1()
             .border_color(rgba(0xffff_ff1a))
-            .hover(|s| {
-                s.shadow(vec![
-                    gpui::BoxShadow::new(px(0.), px(0.), rgba(0xff3b_3b73).into())
-                        .spread_radius(px(1.)),
-                    gpui::BoxShadow::new(px(0.), px(6.), rgba(0xc112_1f66).into())
-                        .blur_radius(px(22.)),
-                ])
-            })
             .active(|s| {
                 s.bg(gpui::linear_gradient(
                     135.,
@@ -176,32 +195,57 @@ fn appearance(
                 .text_color(rgb(0xdb_dbdb))
                 .shadow(Vec::new())
             }),
-        Kind::Ghost => item
-            .border_1()
-            .border_color(rgba(0xffff_ff24))
-            .hover(|s| s.bg(rgba(0xffff_ff0d)).border_color(rgba(0xffff_ff38)))
-            .active(|s| s.bg(rgba(0xffff_ff17))),
+        Kind::Ghost => item.border_1().active(|s| s.bg(rgba(0xffff_ff17))),
         Kind::Danger => item
             .text_color(rgb(0xff_ffff))
-            .bg(rgb(0xc1_121f))
             .border_1()
             .border_color(rgba(0xffff_ff1a))
-            .hover(|s| s.bg(rgb(0xd8_141f)))
             .active(|s| s.bg(rgb(0x9b_2226))),
-        Kind::Link => item.text_color(rgba(style::MUTED)).hover(move |s| {
-            s.text_color(rgb(if action == Action::Remove {
-                style::RED
+        Kind::Link | Kind::Window => item,
+    }
+}
+
+/// Hover look blended by `h` (0 rest, 1 hovered); pressed stays instant on top.
+fn hover(
+    item: gpui::Stateful<gpui::Div>,
+    kind: Kind,
+    action: Action,
+    h: f32,
+) -> gpui::Stateful<gpui::Div> {
+    match kind {
+        Kind::Primary => item.shadow(vec![
+            gpui::BoxShadow::new(
+                px(0.),
+                px(0.),
+                style::mix(0xff3b_3b00, 0xff3b_3b73, h).into(),
+            )
+            .spread_radius(px(1.)),
+            gpui::BoxShadow::new(
+                px(0.),
+                px(6.),
+                style::mix(0xc112_1f00, 0xc112_1f66, h).into(),
+            )
+            .blur_radius(px(22.)),
+        ]),
+        Kind::Ghost => item
+            .bg(style::mix(0xffff_ff00, 0xffff_ff0d, h))
+            .border_color(style::mix(0xffff_ff24, 0xffff_ff38, h)),
+        Kind::Danger => item.bg(style::mix(0xc112_1fff, 0xd814_1fff, h)),
+        Kind::Link => item.text_color(style::mix(
+            style::MUTED,
+            if action == Action::Remove {
+                0xff3b_3bff
             } else {
-                style::TEXT
-            }))
-        }),
-        Kind::Window => item.text_color(rgba(style::FAINT)).hover(move |s| {
-            s.bg(if action == Action::Close {
-                rgb(0xc4_2b1c)
+                0xf5f5_f5ff
+            },
+            h,
+        )),
+        Kind::Window => item
+            .bg(if action == Action::Close {
+                style::mix(0xc42b_1c00, 0xc42b_1cff, h)
             } else {
-                rgba(0xffff_ff0f)
+                style::mix(0xffff_ff00, 0xffff_ff0f, h)
             })
-            .text_color(rgb(style::TEXT))
-        }),
+            .text_color(style::mix(style::FAINT, 0xf5f5_f5ff, h)),
     }
 }

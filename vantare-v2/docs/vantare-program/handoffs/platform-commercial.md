@@ -1,3 +1,28 @@
+## VANTA-96 / #1725 · Activación Owner en producción (21-oct-2026)
+
+Autorización expresa del orquestador tras r2 APTO y merge #1727 en nightly
+21b1f80129e2ba6a76ec2a8d8d4eab960f9b4056. Única migración pendiente
+20261021151230 aplicada de forma incremental, historial atómico: 97/97.
+RLS y denegación de acceso directo a inbox/RPC autenticada comprobadas.
+Desplegados owner-alert-receiver v1 y billing-reconcile v6 en ese orden;
+verify_jwt=false, autenticación HMAC/clave interna conservada.
+Variables URL/HMAC/destinatario cargadas por env-file protegido, sin valores
+ni dirección personal en documentación. Custodia secrets/owner-alert-prod.
+
+Un aviso sintético con code synthetic_test_vanta96_20261021: receptor 200,
+fila sent, attempts=1; replay 200 sin incrementar intentos. El primer Brevo
+201 se infiere del código: email_key nuevo y aceptación con messageId;
+no hay observación directa del status upstream. No se fuerza otro POST SMTP
+para provocar duplicate_parameter; su status real queda pendiente.
+Existe además un aviso operativo previo web_erasure_worker_stale: su correo
+es real, independiente del único fixture sintético. No se borra ni oculta.
+Venta, marketing y compensación siguen cerrados. Cron y estado definitivo
+se documentan en evidence/supabase-reconstruccion/EJECUCION.md y #1725.
+P3 r2/r1 abiertos en #1733; no implementados dentro de esta activación.
+Reversión: retirar BILLING_OWNER_ALERT_URL; conserva outbox/inbox y HMAC,
+sin revertir ni borrar datos. El emisor puede seguir reconciliando sin correo.
+Este PR de evidencia no hace otro despliegue ni promociona canales.
+
 ## VANTA-96 / #1730 · Diagnóstico seguro de checkout (21-oct-2026)
 
 Actualización de PR #1732: merge de nightly21b1f8012 (#1727) sobre el HEAD

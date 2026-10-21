@@ -56,8 +56,10 @@ una vez; prioriza no perder avisos. El hash permite reconocer el mismo incidente
 
 ## Activación posterior a la revisión
 
-1. Aplicar solo la migración nueva aceptada; desplegar únicamente
-   `owner-alert-receiver` con `--no-verify-jwt`.
+1. Aplicar solo la migración nueva aceptada; desplegar primero
+   `owner-alert-receiver` y después `billing-reconcile`, ambos con
+   `--no-verify-jwt` según config.toml. El receptor canónico se llama
+   `owner-alert-receiver`; no hay una función `billing-owner-alert`.
 2. Generar secreto HMAC independiente fuerte y custodiarlo en archivo protegido.
    Configurar con env-file `BILLING_OWNER_ALERT_SECRET` y
    `BILLING_OWNER_ALERT_EMAIL` con el correo del Owner.

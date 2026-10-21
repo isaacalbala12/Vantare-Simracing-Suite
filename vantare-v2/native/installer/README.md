@@ -16,6 +16,15 @@ footer solo a la derecha, Inter/Rajdhani 700/Space Mono y seis pantallas. Las
 versión y aviso de datos conservados en lugar de casilla. Recursos/fuentes y
 su procedencia están en [assets](assets/README.md).
 
+Movimiento (#1728): pantallas 280 ms ease-out con desplazamiento de 14 px (hacia
+atrás en «Volver»), segmento actual que se rellena, hover por muelle sin rebote
+(~150 ms; pulsado instantáneo) e interruptores animados. La barra sigue al valor
+real con un filtro exponencial y entre informes del motor avanza despacio hacia
+el siguiente hito de `installer-driver.ps1` sin alcanzarlo ni retroceder
+(`motion.rs`, con tests). Al terminar, la barra llega al 100 %, espera 350 ms y
+entra la insignia de éxito. «Reducir movimiento» de Windows (`MinAnimate=0`)
+deja todo estático. El sondeo posterior a instalar corre fuera del hilo de UI.
+
 `/S` no inicializa GPUI. `/D=<ruta completa>` acepta espacios/Unicode; el
 uninstaller adopta su directorio y acepta `_?=` legacy. Los códigos del motor
 se conservan; 5 significa cancelación previa a la transacción. Tras iniciarla,
@@ -73,6 +82,11 @@ ICU/DirectWrite/D3D son componentes del Windows objetivo, no descargas de Setup.
 real incluso con rutas/registro externos. `parity-capture` solo existe en builds
 de QA; carga snapshot explícito y deshabilita acciones. Su script
 `installer-visual.ps1` exige pantalla libre/mutex y no cambia DPI global.
+Sin abrir ventanas en pantalla: `vantare-setup --capture-batch=<manifiesto>`
+(misma feature) usa el HWND oculto fuera de los monitores de #1675. El manifiesto
+`{snapshot, jobs:[{scene, output, snapshot?, frames?, interval_ms?, reduce_motion?}]}`
+vive bajo `C:/tmp/ola2/1591-qa/`; `scene` es un estado fijo o un flujo
+(`install-flow`, `remove-flow`, `options-flow`) con motor simulado y `frames` PNG.
 
 Para Abrir Vantare en una build QA, el SID de ejecución debe diferir del SID de
 origen incrustado por el builder. Las pruebas headless no arrancan supervisor

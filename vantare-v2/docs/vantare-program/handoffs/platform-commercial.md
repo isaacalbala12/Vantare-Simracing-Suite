@@ -50,7 +50,8 @@ Logs gate-completa.log y gate-completa-repeat.log en la evidencia. Sin arreglos
 ni más repeticiones. El orquestador autoriza abrir PR con estos fallos locales:
 la CI completa del runner dedicado en su HEAD será el gate decisivo.
 Telemetría/lifecycle siguen ejecutándose.
-PR a nightly autorizado, CI pendiente; sin merge, firma,
+PR listo #1752 a nightly, vinculado a #1746; CI pendiente en el HEAD remoto.
+Sin merge, firma,
 release, publicación ni promoción. Esta entrega no acredita Windows limpio.
 
 ## VANTA-96 / #1713 · Configuración y ensayo pendientes (21-oct-2026)

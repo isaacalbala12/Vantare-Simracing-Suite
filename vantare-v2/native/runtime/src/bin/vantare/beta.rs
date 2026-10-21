@@ -10,14 +10,17 @@ pub(super) fn start(args: &[String]) -> io::Result<()> {
     let root = args.get(2).map(Path::new).filter(|path| path.is_absolute());
     // Validar antes de crear una ventana: errores CLI y tareas de fondo no la abren.
     let background = validate(args);
-    let capable = background.as_ref().is_ok_and(|background| !background)
-        && root.is_some_and(supports_indicator);
+    let interactive = background.as_ref().is_ok_and(|background| !background);
+    let capable = interactive && root.is_some_and(supports_indicator);
     let indicator = if capable {
         Some(super::beta_indicator::Indicator::show())
     } else {
         None
     };
     let mut log = open_log(root)?;
+    if interactive && !capable {
+        let _ = writeln!(log, "bootstrap: raíz sin contrato indicator-handshake-v1; sin indicador");
+    }
     let indicator = match indicator {
         Some(Ok(indicator)) => Some(indicator),
         Some(Err(error)) => {

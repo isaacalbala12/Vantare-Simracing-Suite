@@ -185,6 +185,9 @@ mod tests {
     use super::*;
     #[test]
     fn indicator_requires_the_exact_versioned_header_in_the_root_script() {
+        assert!(supports_indicator(
+            &Path::new(env!("CARGO_MANIFEST_DIR")).join("../packaging")
+        ));
         let root = std::env::temp_dir().join(format!(
             "vantare-bootstrap-capabilities-{}-{}",
             std::process::id(),

@@ -2,7 +2,7 @@
 use crate::{
     args::Args,
     engine::{Request, Session},
-    model::{Info, Mode, Screen},
+    model::{Info, Mode, Progress, Screen},
     work::{self, Event, Work},
 };
 use gpui::{
@@ -103,7 +103,7 @@ pub struct Installer {
 }
 
 impl Installer {
-    fn new(
+    pub(crate) fn new(
         info: Info,
         args: Args,
         capture: bool,
@@ -237,12 +237,7 @@ impl Installer {
         if self.work.is_some() {
             return;
         }
-        self.mode = mode;
-        self.show(Screen::Installing);
-        self.percent = 0;
-        self.copied_bytes = 0;
-        self.step = "prepare".into();
-        self.can_cancel = mode != Mode::Remove;
+        self.begin(mode);
         let mut request = Request::new(
             &self.args,
             if mode == Mode::Remove {
@@ -259,73 +254,90 @@ impl Installer {
         self.work = Some(Work::start(request));
         cx.notify();
     }
+    pub(crate) fn begin(&mut self, mode: Mode) {
+        self.mode = mode;
+        self.show(Screen::Installing);
+        self.percent = 0;
+        self.copied_bytes = 0;
+        self.step = "prepare".into();
+        self.can_cancel = mode != Mode::Remove;
+    }
     fn poll(&mut self, cx: &mut Context<Self>) {
         if self.work.is_none() {
             return;
         }
         let mut result = None;
+        let mut events = Vec::new();
         if let Some(work) = &self.work {
             for event in work.events.try_iter() {
                 match event {
-                    Event::Progress(p) => {
-                        if p.total > 0 {
-                            self.copied_bytes = p.done;
-                        }
-                        self.percent = p.percent;
-                        self.step = p.step;
-                        self.can_cancel = p.can_cancel;
-                    }
+                    Event::Progress(p) => events.push(p),
                     Event::Finished(outcome) => result = Some(outcome),
                 }
             }
         }
+        for event in events {
+            self.progress(event);
+        }
         if let Some(result) = result {
             self.work.take();
-            self.can_cancel = false;
-            match result {
-                Ok(0) => {
-                    self.percent = 100;
-                    self.info.installed_version = if self.mode == Mode::Remove {
-                        None
-                    } else {
-                        Some(self.info.version.clone())
-                    };
-                    self.show(if self.mode == Mode::Remove {
-                        Screen::Uninstalled
-                    } else {
-                        Screen::Done
-                    });
-                    if self.mode != Mode::Remove {
-                        let mut args = self.args.clone();
-                        args.root = Some(self.info.root.clone());
-                        if let Ok(session) = Session::new()
-                            && let Ok(info) = session.probe(&Request::new(&args, "Probe"))
-                        {
-                            self.info = info;
-                        }
+            self.finished(result, cx);
+        }
+        cx.notify();
+    }
+    pub(crate) fn progress(&mut self, p: Progress) {
+        if p.total > 0 {
+            self.copied_bytes = p.done;
+        }
+        self.percent = p.percent;
+        self.step = p.step;
+        self.can_cancel = p.can_cancel;
+    }
+    pub(crate) fn finished(&mut self, result: Result<u8, String>, cx: &mut Context<Self>) {
+        self.can_cancel = false;
+        match result {
+            Ok(0) => {
+                self.percent = 100;
+                self.info.installed_version = if self.mode == Mode::Remove {
+                    None
+                } else {
+                    Some(self.info.version.clone())
+                };
+                self.show(if self.mode == Mode::Remove {
+                    Screen::Uninstalled
+                } else {
+                    Screen::Done
+                });
+                if self.mode != Mode::Remove && !self.capture {
+                    let mut args = self.args.clone();
+                    args.root = Some(self.info.root.clone());
+                    if let Ok(session) = Session::new()
+                        && let Ok(info) = session.probe(&Request::new(&args, "Probe"))
+                    {
+                        self.info = info;
                     }
                 }
-                Ok(5) => {
-                    self.show(if self.info.installed_version.is_some() {
-                        Screen::Installed
-                    } else {
-                        Screen::Welcome
-                    });
-                    if self.close_requested {
-                        self.exit.set(5);
-                        cx.quit();
-                    }
+            }
+            Ok(5) => {
+                self.show(if self.info.installed_version.is_some() {
+                    Screen::Installed
+                } else {
+                    Screen::Welcome
+                });
+                if self.close_requested {
+                    self.exit.set(5);
+                    cx.quit();
                 }
-                Ok(code) => {
-                    self.error = code;
-                    self.diagnostic = String::new();
-                    self.show(Screen::Error);
-                }
-                Err(error) => {
-                    self.error = 1;
-                    self.diagnostic = error;
-                    self.show(Screen::Error);
-                }
+            }
+            Ok(code) => {
+                self.error = code;
+                self.diagnostic = String::new();
+                self.show(Screen::Error);
+            }
+            Err(error) => {
+                self.error = 1;
+                self.diagnostic = error;
+                self.show(Screen::Error);
             }
         }
         cx.notify();
@@ -630,7 +642,15 @@ fn poll(view: &Entity<Installer>, cx: &mut App) {
 
 #[cfg(feature = "parity-capture")]
 impl Installer {
-    fn capture_state(&mut self, state: &str) {
+    pub(crate) fn capture_toggle(&mut self, action: Action) {
+        match action {
+            Action::Options => self.options = !self.options,
+            Action::Desktop => self.info.desktop = !self.info.desktop,
+            Action::Autostart => self.info.autostart = !self.info.autostart,
+            _ => {}
+        }
+    }
+    pub(crate) fn capture_state(&mut self, state: &str) {
         self.mode = Mode::Install;
         self.screen = match state {
             "welcome" => Screen::Welcome,

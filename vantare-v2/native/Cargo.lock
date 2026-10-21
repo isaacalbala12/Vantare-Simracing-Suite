@@ -6574,6 +6574,7 @@ dependencies = [
  "serde",
  "serde_json",
  "vantare-build-support",
+ "vantare-ui",
 ]
 
 [[package]]

@@ -1,3 +1,55 @@
+## VANTA-96 / #1713 · Reconstrucción staging autorizada, espera de custodia
+
+El orquestador autoriza copia completa en evidence/supabase-staging, descarte
+controlado del historial divergente y reconstrucción97/97 desde el canon.
+También autoriza las cinco funciones desde SHA1b732b67d605298f3056c8ca78d692f132217e2d,
+solo tras esquema/claves/TPA; después catálogo/webhook sandbox y parada antes de
+checkout. Producción intacta. No se repite la solicitud de esas autorizaciones.
+Las dos versiones antiguas de roadmap y su ajuste de permisos están exportadas
+como sentencias originales y documentadas en INFORME.md externo antes de descarte.
+Scripts de backup verificable y reconstrucción transaccional preparados; checkout
+pinned independiente. Sin contraseña aún no se ha hecho dump, reset, migración,
+importación/rotación QA, TPA ni despliegue. Las claves QA propias sí están listas.
+Token presente sigue siendo el antiguo16-oct; webhook sandbox nuevo ausente.
+Espera de archivos en secrets, sin imprimir valores ni probar password productivo.
+Retorno técnico QA propuesto https://sandbox.polar.sh/, fuera de vantare.app.
+
+## VANTA-96 / #1713 · Preparación QA autorizada, deploy pendiente
+
+Isaac aprueba reactivar/preparar staging y producto sandbox Pro mensual 5,99 EUR
+sin trial; correo sintético Owner excluido. Ref rilwmlbnucbbayaulnxw, ya
+ACTIVE_HEALTHY. Preflight solo lectura: 14 versiones, dos ajenas al canon
+(20260926153706/20260926153853), faltan 85; parar antes de aplicar SQL.
+Datos agregados: visual_roadmap=2; solo auth.schema_migrations=82 además de
+eso, resto de tablas public/private/auth vacías; cero TPA. No borrar ni
+reparar historial sin copia y plan revisado. Objetivo productivo: 97 migraciones.
+Contraseña staging ausente; backup/esquema pendientes de acceso. Claves QA
+ES256/Ed25519/reconcile generadas protegidas, firma/verificación de ambos pares
+PASS, configuración QA separada y SQL issuer enabled=false preparados offline.
+TPA/importación de clave/issuer esperan preflight de staging, sin cambios en prod.
+Lista pedida antes de deploy: native-account-authorize, native-billing-checkout,
+billing-webhook, native-license, billing-reconcile; cinco verify_jwt=false desde
+SHA 1b732b67d605298f3056c8ca78d692f132217e2d. No ejecutar hasta autorización.
+STAGING-PREPARACION.md y EJECUCION.md externos guardan estado y bloqueos.
+No se lee el token/webhook sandbox mientras Isaac los prepara, ni se despliega,
+compra, devuelve o cambia flags. Producción intacta y #1732 no desplegado allí.
+
+## VANTA-96 / #1713 · Ensayo elegido: Polar sandbox (21-oct-2026)
+
+Isaac descarta la compra real con devolución. Runbook reescrito para propuesta
+Supabase vantare-staging separado (rilwmlbnucbbayaulnxw), todavía pausado según
+último inventario; reactivación/despliegue/migraciones/ensayo pendientes de
+aprobación explícita. Ninguna variable sandbox se instala en producción.
+Producto pro_monthly a 5,99 EUR/mes simulado, sin trial ni descuento; IDs del
+mapa sandbox históricos pendientes de validar. Token sandbox en custodia,
+GET de producto 403; hace falta ampliar/reemplazar sus permisos.
+Ruta app QA → webhook → ledger positivo → licencia QA → refund sandbox y
+revocación; correo Owner solo sintético opcional, no aviso por pago correcto.
+Claves ES256/Ed25519/HMAC de QA propias; configuración de app y secretos
+separados. Lista única para Isaac en docs/billing/runbook-compra-prueba.md.
+No se ha reactivado, desplegado, cobrado, hecho refund ni cambiado flags.
+#1732 sigue sin desplegar en producción; P3 DeepSeek siguen en #1733.
+
 ## VANTA-96 / #1713 · Configuración y ensayo pendientes (21-oct-2026)
 
 Base nightly a2e46c0d8, #1732 integrado pero NO desplegado. No hay nuevas

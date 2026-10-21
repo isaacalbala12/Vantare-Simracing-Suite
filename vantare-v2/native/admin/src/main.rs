@@ -1,5 +1,6 @@
 #![forbid(unsafe_code)]
 use gpui::{App, AppContext, Bounds, TitlebarOptions, WindowBounds, WindowOptions, px, size};
+use std::io::Write;
 use vantare_admin::{state::Screen, view::Admin};
 use vantare_hub::orbit;
 
@@ -30,7 +31,8 @@ fn run() -> Result<(), String> {
                 }
             }
             "--help" => {
-                println!(
+                let _written = writeln!(
+                    std::io::stdout(),
                     "vantare-admin [--demo] [--screen login|users|creators|rollout|reports|mail] [--scene normal|cargando|vacio|error|ana|owner|eva|bloquear|borrar|carlos|pablo|nuevo|informe|arreglado|rechazado|mail-editor|mail-confirm|mail-history|mail-forget|mail-cleanup] [--diagnose-owner]"
                 );
                 return Ok(());

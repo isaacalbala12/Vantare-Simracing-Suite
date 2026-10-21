@@ -8,6 +8,7 @@ $ErrorActionPreference = 'Stop'
 $repo = (& git -C $PSScriptRoot rev-parse --show-toplevel).Trim()
 if ($LASTEXITCODE -ne 0 -or -not $repo) { throw 'No se pudo localizar la raíz Git' }
 $project = Join-Path $repo 'vantare-v2'
+. (Join-Path $project 'native/packaging/candidate.ps1')
 $tool = Join-Path $project 'native\ui\diff.py'
 $manifest = Join-Path $PSScriptRoot 'tools\demo-states.json'
 $references = if ($env:VANTARE_PARITY_REFERENCE_DIR) {
@@ -135,8 +136,9 @@ if ($VerificarDeterminismo) {
 }
 $batchPath = Join-Path $evidence 'capture-batch.json'
 ConvertTo-Json -InputObject $batch -Depth 20 | Set-Content -LiteralPath $batchPath -Encoding utf8
-& $hub --capture-batch $batchPath *> (Join-Path $evidence 'capture-batch.log')
-if ($LASTEXITCODE -ne 0) { throw 'Captura en lote falló; consulta capture-batch.log' }
+$capture=Invoke-NativeProcess -Executable $hub -Arguments @('--capture-batch',$batchPath) -TimeoutMilliseconds 600000
+[IO.File]::WriteAllText((Join-Path $evidence 'capture-batch.log'),$capture.Stdout+$capture.Stderr)
+if ($capture.ExitCode -ne 0) { throw 'Captura en lote falló; consulta capture-batch.log' }
 $results = @()
 foreach ($name in $names) { $results += Compare-Screen $name }
 $sorted = @($results | Sort-Object PorcentajeDistinto -Descending)

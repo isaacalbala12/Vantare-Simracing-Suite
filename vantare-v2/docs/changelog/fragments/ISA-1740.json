@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-1740",
+  "type": "fix",
+  "summary": "La compilación y actualización conservan la salida y el resultado de las herramientas nativas sin abrir consola.",
+  "technicalNotes": [
+    "Un helper PowerShell con pipes redirigidos y plazo total sustituye las capturas directas de EXE GUI. Conserva argumentos y stdin UTF-8 y drena stdout y stderr antes de esperar.",
+    "La versión y las salidas CLI de Rust toleran que el lector de stdout se haya cerrado. La comprobación de versión sigue siendo obligatoria al empaquetar.",
+    "El helper viaja dentro de candidate.ps1, ya incluido en Setup y las generaciones; no cambia el inventario del paquete."
+  ],
+  "testing": [
+    "Regresión con EXE GUI real bajo PowerShell 5.1 y 7: versión, argumentos complejos, stdin, salidas grandes, exit y timeout sin sleeps.",
+    "Regresión Rust con lector de stdout cerrado antes de crear el proceso."
+  ],
+  "knownLimitations": [
+    "La interfaz y el acceso de producción siguen requiriendo la comprobación de Isaac con RC4."
+  ]
+}

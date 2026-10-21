@@ -565,7 +565,7 @@ fn run(args: Args) -> io::Result<()> {
 pub(super) fn run_cli() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     if args.iter().any(|arg| arg == "--help" || arg == "-h") {
-        println!("{USAGE}");
+        let _written = writeln!(std::io::stdout(), "{USAGE}");
         return;
     }
     let args = match parse(&args) {

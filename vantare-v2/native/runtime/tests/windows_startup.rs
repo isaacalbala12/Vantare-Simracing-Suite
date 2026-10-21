@@ -2,6 +2,93 @@
 #![cfg(windows)]
 
 #[test]
+fn cli_output_does_not_panic_when_the_stdout_reader_is_already_closed() {
+    use std::os::windows::io::{FromRawHandle, OwnedHandle, RawHandle};
+    use std::os::windows::process::CommandExt;
+    use std::process::{Command, Stdio};
+    #[link(name = "kernel32")]
+    unsafe extern "system" {
+        fn CreatePipe(
+            read: *mut RawHandle,
+            write: *mut RawHandle,
+            attributes: *const std::ffi::c_void,
+            size: u32,
+        ) -> i32;
+    }
+    for (binary, argument) in [
+        (env!("CARGO_BIN_EXE_vantare"), "--version"),
+        (env!("CARGO_BIN_EXE_vantare-core"), "--version"),
+        (env!("CARGO_BIN_EXE_vantare-grabar-lmu"), "--help"),
+    ] {
+        let mut read = std::ptr::null_mut();
+        let mut write = std::ptr::null_mut();
+        // SAFETY: punteros de salida válidos; atributos nulos y tamaño por defecto.
+        assert_ne!(
+            unsafe { CreatePipe(&raw mut read, &raw mut write, std::ptr::null(), 0) },
+            0
+        );
+        // SAFETY: CreatePipe acaba de entregar dos handles distintos y propios.
+        let (read, write) = unsafe {
+            (
+                OwnedHandle::from_raw_handle(read),
+                OwnedHandle::from_raw_handle(write),
+            )
+        };
+        // Cerrar ANTES de crear el hijo: el BrokenPipe no depende del scheduler.
+        drop(read);
+        let output = Command::new(binary)
+            .arg(argument)
+            .stdin(Stdio::null())
+            .stdout(Stdio::from(write))
+            .creation_flags(0x0800_0000)
+            .output()
+            .expect("CLI with a broken output pipe");
+        assert!(
+            output.status.success(),
+            "{binary} {argument}: {:?}",
+            output.stderr
+        );
+    }
+}
+
+#[test]
+fn powershell_captures_a_real_gui_executable_with_the_shared_packaging_helper() {
+    use std::os::windows::process::CommandExt;
+    use std::process::Command;
+    let script =
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../packaging/process-tests.ps1");
+    let version = format!(
+        "Vantare Native {} ({})",
+        vantare_ipc::product::VERSION,
+        vantare_ipc::product::CHANNEL
+    );
+    let windows = std::env::var_os("WINDIR").expect("Windows directory");
+    let legacy =
+        std::path::Path::new(&windows).join("System32/WindowsPowerShell/v1.0/powershell.exe");
+    for host in [legacy, std::path::PathBuf::from("pwsh.exe")] {
+        let output = Command::new(&host)
+            .args(["-NoProfile", "-ExecutionPolicy", "Bypass", "-File"])
+            .arg(&script)
+            .args([
+                "-GuiExecutable",
+                env!("CARGO_BIN_EXE_vantare"),
+                "-ExpectedVersion",
+                &version,
+            ])
+            .creation_flags(0x0800_0000)
+            .output()
+            .expect("PowerShell packaging regression");
+        assert!(
+            output.status.success(),
+            "{}: {} {}",
+            host.display(),
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+}
+
+#[test]
 fn background_entry_points_are_windows_gui_executables() {
     for binary in [
         env!("CARGO_BIN_EXE_vantare"),

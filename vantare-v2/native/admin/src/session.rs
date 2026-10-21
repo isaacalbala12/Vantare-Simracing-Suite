@@ -1,5 +1,6 @@
 //! Un hilo propietario de Account/Store: GPUI nunca bloquea en red ni PKCE.
 use crate::client::{Action, Client, Report, field};
+use std::io::Write;
 use std::{
     path::PathBuf,
     sync::mpsc,
@@ -257,7 +258,11 @@ fn now() -> Result<u64> {
 pub fn diagnose_owner(root: &std::path::Path) -> Result<()> {
     let mut session = Session::open(root)?;
     session.refresh()?;
-    println!("restore signed_in={}", session.account.identity().is_some());
+    let _written = writeln!(
+        std::io::stdout(),
+        "restore signed_in={}",
+        session.account.identity().is_some()
+    );
     diagnose_pages(&session)?;
     let issuer = BuildConfig::load()
         .native_oauth
@@ -293,7 +298,8 @@ pub fn diagnose_owner(root: &std::path::Path) -> Result<()> {
     {
         return Err(Error::Authentication);
     }
-    println!(
+    let _written = writeln!(
+        std::io::stdout(),
         "profile email_present={} name_present={}",
         profile.email.is_some(),
         profile.name.is_some()
@@ -324,7 +330,8 @@ fn diagnose_pages(session: &Session) -> Result<()> {
     )?;
     let first: Vec<crate::client::User> = field(&value, "accounts")?;
     let cursor: Option<String> = field(&value, "next_cursor")?;
-    println!(
+    let _written = writeln!(
+        std::io::stdout(),
         "list_first ms={} count={} next_cursor={}",
         started.elapsed().as_millis(),
         first.len(),
@@ -343,7 +350,8 @@ fn diagnose_pages(session: &Session) -> Result<()> {
         )?;
         let next: Vec<crate::client::User> = field(&value, "accounts")?;
         let cursor: Option<String> = field(&value, "next_cursor")?;
-        println!(
+        let _written = writeln!(
+            std::io::stdout(),
             "list_next ms={} count={} next_cursor={} repeats_first={}",
             started.elapsed().as_millis(),
             next.len(),
@@ -373,7 +381,8 @@ fn diagnose_searches(session: &Session, profile: Profile) -> Result<()> {
         if let Some(user) = found {
             self_id = Some(user.account_id.clone());
         }
-        println!(
+        let _written = writeln!(
+            std::io::stdout(),
             "search_{kind} ms={} count={} contains_owner={}",
             started.elapsed().as_millis(),
             users.len(),
@@ -387,7 +396,8 @@ fn diagnose_searches(session: &Session, profile: Profile) -> Result<()> {
                 .client
                 .call(&session.account, now()?, &Action::GetAccount { account_id })?;
         let user: crate::client::User = field(&value, "account")?;
-        println!(
+        let _written = writeln!(
+            std::io::stdout(),
             "get_account ms={} owner={} email_present={}",
             started.elapsed().as_millis(),
             user.roles.iter().any(|role| role == "owner"),
@@ -405,7 +415,8 @@ fn diagnose_searches(session: &Session, profile: Profile) -> Result<()> {
                 },
             )?;
             let users: Vec<crate::client::User> = field(&value, "accounts")?;
-            println!(
+            let _written = writeln!(
+                std::io::stdout(),
                 "search_email ms={} count={} contains_owner={}",
                 started.elapsed().as_millis(),
                 users.len(),
@@ -425,7 +436,8 @@ fn diagnose_searches(session: &Session, profile: Profile) -> Result<()> {
     ] {
         let started = Instant::now();
         let value = session.client.call(&session.account, now()?, &action)?;
-        println!(
+        let _written = writeln!(
+            std::io::stdout(),
             "{} ms={} rows={}",
             action.label(),
             started.elapsed().as_millis(),

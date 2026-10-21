@@ -127,25 +127,17 @@ Assert-True ((Get-NativeHash (Join-Path $portable "generations/$($portableState.
 
 # CLI real de todos los exe: argumentos inválidos; no abre DB, juego, UI o red.
 foreach ($bin in $script:NativeBins) {
-    $info = [Diagnostics.ProcessStartInfo]::new()
-    $info.FileName = Join-Path $active "bin/$bin.exe"
-    $info.Arguments = '--phase7-invalid-option'
+    $arguments = @('--phase7-invalid-option')
     $expectedExit = 2
     if ($bin -cin @('vantare-engineer', 'vantare-services')) { $expectedExit = 1 }
     if ($bin -ceq 'vantare-storage') {
         # Storage recibe ruta posicional; el segundo argumento invalida antes de abrirla.
-        $info.Arguments = 'unused.db --phase7-invalid-option'
+        $arguments = @('unused.db','--phase7-invalid-option')
         $expectedExit = 1
     }
-    $info.UseShellExecute = $false; $info.CreateNoWindow = $true
-    $info.RedirectStandardOutput = $true; $info.RedirectStandardError = $true
-    $process = [Diagnostics.Process]::Start($info)
-    try {
-        if (-not $process.WaitForExit(10000)) { $process.Kill(); throw "Smoke excede plazo: $bin" }
-        $stderr = $process.StandardError.ReadToEnd()
-        [IO.File]::WriteAllText((Join-Path $script:TestRoot "$bin-smoke.log"), $stderr)
-        Assert-True ($process.ExitCode -eq $expectedExit -and $stderr.Length -gt 0) "exe empaquetado carga y rechaza argumento inválido: $bin"
-    } finally { $process.Dispose() }
+    $smoke=Invoke-NativeProcess -Executable (Join-Path $active "bin/$bin.exe") -Arguments $arguments -TimeoutMilliseconds 10000
+    [IO.File]::WriteAllText((Join-Path $script:TestRoot "$bin-smoke.log"), $smoke.Stderr)
+    Assert-True ($smoke.ExitCode -eq $expectedExit -and $smoke.Stderr.Length -gt 0) "exe empaquetado carga y rechaza argumento inválido: $bin"
 }
 $lock = Open-NativeLock $install
 try { Assert-Rejected { Open-NativeLock $install } 'lock impide operaciones concurrentes' } finally { $lock.Dispose() }
@@ -325,11 +317,8 @@ try {
     Assert-True (-not $launcher.WaitForExit(500)) 'launcher nativo sigue vivo después de terminar PowerShell'
     $lock = Open-NativeLock $install; $lock.Dispose()
     Assert-Rejected { Update-NativeCandidate $install $updatedArchive $updatedHash } 'exe guard protege la carrera sin un wrapper PowerShell residente'
-    $stopInfo = [Diagnostics.ProcessStartInfo]::new()
-    $stopInfo.FileName = $launcherExe; $stopInfo.Arguments = "--parar --instancia $instance"
-    $stopInfo.UseShellExecute = $false; $stopInfo.CreateNoWindow = $true
-    $stop = [Diagnostics.Process]::Start($stopInfo)
-    try { Assert-True ($stop.WaitForExit(10000) -and $stop.ExitCode -eq 0) 'señal de cierre usa solo instancia de prueba' } finally { $stop.Dispose() }
+    $stop=Invoke-NativeProcess -Executable $launcherExe -Arguments @('--parar','--instancia',$instance) -TimeoutMilliseconds 10000
+    Assert-True ($stop.ExitCode -eq 0) 'señal de cierre usa solo instancia de prueba'
     Assert-True ($launcher.WaitForExit(10000) -and $launcher.HasExited -and $launcher.ExitCode -eq 0) 'launcher cierra sus dos hijos de replay por ciclo de vida nativo'
 } finally {
     if ($null -ne $launcher) {

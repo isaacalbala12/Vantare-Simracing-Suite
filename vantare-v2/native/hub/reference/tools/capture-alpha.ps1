@@ -11,6 +11,7 @@ $evidence = [IO.Path]::GetFullPath($EvidenceDirectory)
 $repo = (& git -C $PSScriptRoot rev-parse --show-toplevel).Trim()
 if ($LASTEXITCODE) { throw 'No se pudo localizar la raíz Git' }
 $repo = [IO.Path]::GetFullPath($repo)
+. (Join-Path $repo 'vantare-v2/native/packaging/candidate.ps1')
 if ($evidence.Equals($repo, [StringComparison]::OrdinalIgnoreCase) -or
     $evidence.StartsWith($repo + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) {
     throw 'La evidencia debe quedar fuera del repo'
@@ -31,8 +32,9 @@ foreach ($dimensions in $Size) {
 }
 $manifest = Join-Path $evidence 'capture-batch.json'
 ConvertTo-Json -InputObject $entries -Depth 20 | Set-Content -LiteralPath $manifest -Encoding utf8
-& $Executable --capture-batch $manifest *> (Join-Path $evidence 'capture-batch.log')
-if ($LASTEXITCODE) { throw "Captura en lote falló: $LASTEXITCODE" }
+$capture=Invoke-NativeProcess -Executable $Executable -Arguments @('--capture-batch',$manifest) -TimeoutMilliseconds 600000
+[IO.File]::WriteAllText((Join-Path $evidence 'capture-batch.log'),$capture.Stdout+$capture.Stderr)
+if ($capture.ExitCode) { throw "Captura en lote falló: $($capture.ExitCode)" }
 $results = @($entries | ForEach-Object {
     & "$PSScriptRoot/assert-opaque.ps1" -Path $_.output
     [pscustomobject]@{ scene=$_.scene; size=$_.size; sha256=(Get-FileHash -LiteralPath $_.output).Hash }

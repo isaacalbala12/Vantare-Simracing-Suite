@@ -1,6 +1,7 @@
 //! Presentation and owned worker lifecycle; it never writes installation state itself.
 use crate::{
     args::Args,
+    controls::Kind,
     engine::{Request, Session},
     model::{Info, Mode, Progress, Screen},
     motion::{INSTALL_MILESTONES, Meter, REMOVE_MILESTONES},
@@ -107,7 +108,8 @@ pub struct Installer {
     pub meter: Meter,
     /// The screen shown once the bar has visibly reached 100 %.
     finishing: Option<(Screen, Instant)>,
-    pub hovered: Option<Action>,
+    /// Hovered control; the kind tells apart actions shown twice («Cerrar»).
+    pub hovered: Option<(Action, Kind)>,
     /// Screen transitions slide backwards only when returning.
     pub back: bool,
 }
@@ -405,20 +407,25 @@ impl Installer {
             window.request_animation_frame();
         }
     }
-    pub(crate) fn hover(&mut self, action: Action, hovered: bool) {
+    pub(crate) fn hover(&mut self, control: (Action, Kind), hovered: bool) {
         if hovered {
-            self.hovered = Some(action);
-        } else if self.hovered == Some(action) {
+            self.hovered = Some(control);
+        } else if self.hovered == Some(control) {
             self.hovered = None;
         }
+    }
+    /// The operation already succeeded; only the success screen is pending.
+    pub fn finishing(&self) -> bool {
+        self.finishing.is_some()
     }
     fn try_close(&mut self, cx: &mut Context<Self>) -> bool {
         if self.capture {
             self.exit.set(0);
             return true;
         }
-        if self.finishing.is_some() {
-            return false;
+        // Closing during the success pause finishes it instead of being ignored.
+        if let Some((next, _)) = self.finishing.take() {
+            self.show(next);
         }
         if let Some(work) = &self.work {
             if self.can_cancel {

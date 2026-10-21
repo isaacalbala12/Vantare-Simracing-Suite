@@ -179,7 +179,7 @@ pub fn frame(view: &Installer, window: &Window, cx: &mut Context<Installer>) -> 
             44.,
             36.,
             Kind::Window,
-            view.screen != Screen::Installing || view.can_cancel,
+            view.screen != Screen::Installing || view.can_cancel || view.finishing(),
             Some(Icon::Close),
             cx,
         ))

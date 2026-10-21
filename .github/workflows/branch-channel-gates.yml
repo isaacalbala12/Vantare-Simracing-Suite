@@ -426,7 +426,8 @@ jobs:
           # toca runtime, domain, ipc ni testdata (#1654 ronda 12). La unión de
           # `test` + `completa` es la misma que hoy: «todo menos lifecycle».
           $suite = if ($env:TELEMETRIA_SCOPE -eq 'false') { 'test' } else { 'completa' }
-          foreach ($gate in @('check', 'clippy', $suite, 'lifecycle')) {
+          # `captura`: clippy del banco de capturas QA del instalador (#1735).
+          foreach ($gate in @('check', 'clippy', 'captura', $suite, 'lifecycle')) {
             ./gates.ps1 -Gate $gate
             if ($LASTEXITCODE) { throw "native $gate failed" }
           }

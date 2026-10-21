@@ -1,4 +1,17 @@
-use std::{ffi::OsString, path::PathBuf};
+use std::{
+    ffi::OsString,
+    path::{Component, Path, PathBuf},
+};
+
+/// Lexical containment for QA paths: absolute, under `root` and free of `.`/`..`,
+/// so a manifest cannot climb out of the QA directory.
+pub fn within(path: &Path, root: &Path) -> bool {
+    path.is_absolute()
+        && path.starts_with(root)
+        && !path
+            .components()
+            .any(|part| matches!(part, Component::ParentDir | Component::CurDir))
+}
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Args {

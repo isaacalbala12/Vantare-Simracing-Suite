@@ -1,3 +1,19 @@
+## VANTA-96 / #1713 · Preparación QA autorizada, deploy pendiente
+
+Isaac aprueba reactivar/preparar staging y producto sandbox Pro mensual 5,99 EUR
+sin trial; correo sintético Owner excluido. Ref rilwmlbnucbbayaulnxw, observado
+COMING_UP. Nivel objetivo productivo leído sin cambios: 97 migraciones.
+Contraseña staging ausente; backup/esquema pendientes de acceso. Claves QA
+ES256/Ed25519/reconcile generadas protegidas, firma/verificación de ambos pares
+PASS, configuración QA separada y SQL issuer enabled=false preparados offline.
+TPA/importación de clave/issuer esperan preflight de staging, sin cambios en prod.
+Lista pedida antes de deploy: native-account-authorize, native-billing-checkout,
+billing-webhook, native-license, billing-reconcile; cinco verify_jwt=false desde
+SHA 1b732b67d605298f3056c8ca78d692f132217e2d. No ejecutar hasta autorización.
+STAGING-PREPARACION.md y EJECUCION.md externos guardan estado y bloqueos.
+No se lee el token/webhook sandbox mientras Isaac los prepara, ni se despliega,
+compra, devuelve o cambia flags. Producción intacta y #1732 no desplegado allí.
+
 ## VANTA-96 / #1713 · Ensayo elegido: Polar sandbox (21-oct-2026)
 
 Isaac descarta la compra real con devolución. Runbook reescrito para propuesta

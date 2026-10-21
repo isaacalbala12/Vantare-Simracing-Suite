@@ -1,14 +1,15 @@
 # Compra E2E en Polar sandbox · VANTA-96
 
 Decisión de Isaac: ensayo íntegro en sandbox. Descartada la compra real con
-reembolso. Este documento propone preparación, despliegue y ejecución; no los
-realiza ni autoriza por sí mismo. No se cambia producción ni sus flags.
+reembolso. Isaac ya aprobó reactivar/preparar staging, producto Pro mensual 5,99 EUR sin
+trial y retorno HTTPS QA ajeno a vantare.app. El despliegue de funciones aún
+requiere lista/SHA y autorización separada del orquestador. No se cambia producción ni sus flags.
 
 ## Entorno propuesto
 
 Reactivar el proyecto Supabase existente vantare-staging
-(rilwmlbnucbbayaulnxw), previa aprobación del orquestador y de su coste de
-reactivación. Es un proyecto separado, no una rama Git del backend productivo.
+(rilwmlbnucbbayaulnxw), con reactivación aprobada por Isaac. El despliegue de funciones espera
+autorización del orquestador. Es un proyecto separado, no una rama Git del backend productivo.
 Primero inventariar esquema/datos/secretos de staging, respaldarlo y presentar
 las migraciones pendientes. No resetearlo ni borrar datos por arrastre. Si su
 estado no es compatible, parar y proponer un proyecto desechable nuevo, con
@@ -48,9 +49,10 @@ ensayo; no migrar cuentas reales a staging. Si se exige aislar también Clerk,
 preparar antes otra propuesta con instancia Development y su OAuth propio.
 
 Desplegar únicamente en staging la cadena necesaria: native-account-authorize,
-native-billing-checkout, billing-webhook, native-license, license-credential y
-billing-reconcile, con sus verify_jwt del SHA aprobado. Añadir
-owner-alert-receiver solo si se incluye el correo opcional. Revisión de superficie,
+native-billing-checkout, billing-webhook, native-license y billing-reconcile,
+con verify_jwt=false en las cinco. native-license ya emite credenciales y no
+necesita desplegar el endpoint license-credential separado. Receptor Owner
+excluido: Isaac no quiere correo sintético en este ensayo. Revisión de superficie,
 migraciones, credenciales y SHA antes de autorizar el despliegue; el diagnóstico
 #1732 puede incluirse en el bundle QA autorizado, nunca por ello en producción.
 Mantener compensación automática y marketing desactivados. No hace falta cron:
@@ -96,12 +98,8 @@ no se necesita cupón del 100 %, ni tocar la ventana de lanzamiento.
 6. Licencia: native-license/credencial QA conceden Pro a esa cuenta; firma
    Ed25519 verifica con la pública QA, segunda cuenta aislada. No distribuir
    la build QA como instalador de producción.
-7. Owner opcional: un pago correcto no produce aviso Owner con el contrato
-   actual. No añadir esa feature ni inventar un fallo. Si se quiere probar el
-   canal en este ensayo, autorizar un único aviso sintético tipo checkout_review,
-   código sandbox_e2e_test, al receptor de staging con HMAC nuevo. Reutilizar
-   Brevo y destinatario custodiados solo con aprobación del correo real; asunto
-   sandbox, fila sent y replay sin reenvío. No usar el receptor productivo.
+7. Owner: no se prueba correo sintético por decisión de Isaac. El contrato
+   vigente no emite aviso por pago correcto; no se inventa una incidencia.
 8. Refund exclusivamente sandbox: primero GET del pedido/refunds para confirmar
    saldo restante; un reembolso completo de ese pedido simulado desde el panel
    sandbox o el controlador QA (refunds:write), sin habilitar compensación.
@@ -154,8 +152,7 @@ No hay dinero real que devolver ni configuración productiva que revertir.
    archivo protegido secrets/supabase-staging-db-password; no necesitamos la
    contraseña productiva. Dar permiso de gestionar staging con el token Supabase
    actual si su acceso ya lo cubre; nuevo token solo si no tiene permisos.
-6. Aprobar el retorno HTTPS QA y, opcionalmente, un correo sintético sandbox al
-   Owner. Podemos reutilizar el retorno QA/identidad Clerk/correo/Brevo existentes
+6. Retorno HTTPS QA aprobado si no toca vantare.app; correo sintético excluido. Podemos reutilizar el retorno QA/identidad Clerk/correo/Brevo existentes
    tras validarlos: no se pide otra clave Clerk ni otra API key Brevo por defecto.
 
 Generamos nosotros los secretos internos y pares QA, el mapa validado y la
@@ -167,3 +164,18 @@ Fuentes: [sandbox Polar](https://polar.sh/docs/integrate/sandbox),
 [refunds](https://polar.sh/docs/api-reference/refunds/create),
 [revocación](https://polar.sh/docs/api-reference/subscriptions/revoke),
 [aislamiento de branches Supabase](https://supabase.com/docs/guides/deployment/branching).
+
+## Preparación y autorización pendiente de funciones
+
+SHA solicitado: 1b732b67d605298f3056c8ca78d692f132217e2d. Lista mínima:
+native-account-authorize, native-billing-checkout, billing-webhook, native-license,
+billing-reconcile, todas verify_jwt=false. No desplegadas. La importación de
+handlers compartidos no exige desplegar sus endpoints clásicos por separado.
+
+Claves ES256/Ed25519 QA y secreto reconcile generados en custodia separada;
+ambas pruebas de firma/verificación PASS. SQL issuer pendiente, enabled=false,
+native_data_issuer ligado a staging. Producción leída: nivel objetivo 97 migraciones.
+Password staging no encontrado: Database → Settings → Database password del
+proyecto staging, custodiar en secrets/supabase-staging-db-password.
+Sin ese acceso no se hace pg_dump ni se aplican migraciones. COMING_UP durante
+preflight inicial; estado y actuaciones definitivos en EJECUCION.md.

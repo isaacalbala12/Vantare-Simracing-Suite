@@ -1,5 +1,6 @@
 #![cfg_attr(windows, windows_subsystem = "windows")]
 use std::io;
+use std::io::Write;
 
 use vantare_ipc::product;
 
@@ -11,7 +12,7 @@ fn main() {
     }
     vantare_services::diagnostics::install_panic_hook("vantare-storage");
     if let Err(error) = execute() {
-        eprintln!("almacenamiento: {error}");
+        let _written = writeln!(std::io::stderr(), "almacenamiento: {error}");
         std::process::exit(1);
     }
 }

@@ -136,8 +136,7 @@ if ($VerificarDeterminismo) {
 }
 $batchPath = Join-Path $evidence 'capture-batch.json'
 ConvertTo-Json -InputObject $batch -Depth 20 | Set-Content -LiteralPath $batchPath -Encoding utf8
-$capture=Invoke-NativeProcess -Executable $hub -Arguments @('--capture-batch',$batchPath) -TimeoutMilliseconds 600000
-[IO.File]::WriteAllText((Join-Path $evidence 'capture-batch.log'),$capture.Stdout+$capture.Stderr)
+$capture=Invoke-NativeProcess -Executable $hub -Arguments @('--capture-batch',$batchPath) -TimeoutMilliseconds 600000 -LogPath (Join-Path $evidence 'capture-batch.log')
 if ($capture.ExitCode -ne 0) { throw 'Captura en lote falló; consulta capture-batch.log' }
 $results = @()
 foreach ($name in $names) { $results += Compare-Screen $name }

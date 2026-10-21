@@ -15,10 +15,17 @@ fn cli_output_does_not_panic_when_the_stdout_reader_is_already_closed() {
             size: u32,
         ) -> i32;
     }
-    for (binary, argument) in [
-        (env!("CARGO_BIN_EXE_vantare"), "--version"),
-        (env!("CARGO_BIN_EXE_vantare-core"), "--version"),
-        (env!("CARGO_BIN_EXE_vantare-grabar-lmu"), "--help"),
+    for (binary, argument, stderr, expected) in [
+        (env!("CARGO_BIN_EXE_vantare"), "--version", false, 0),
+        (env!("CARGO_BIN_EXE_vantare-core"), "--version", false, 0),
+        (env!("CARGO_BIN_EXE_vantare-grabar-lmu"), "--help", false, 0),
+        (env!("CARGO_BIN_EXE_vantare"), "--invalid-option", true, 2),
+        (
+            env!("CARGO_BIN_EXE_vantare-core"),
+            "--invalid-option",
+            true,
+            2,
+        ),
     ] {
         let mut read = std::ptr::null_mut();
         let mut write = std::ptr::null_mut();
@@ -36,15 +43,20 @@ fn cli_output_does_not_panic_when_the_stdout_reader_is_already_closed() {
         };
         // Cerrar ANTES de crear el hijo: el BrokenPipe no depende del scheduler.
         drop(read);
-        let output = Command::new(binary)
-            .arg(argument)
-            .stdin(Stdio::null())
-            .stdout(Stdio::from(write))
+        let mut command = Command::new(binary);
+        command.arg(argument).stdin(Stdio::null());
+        if stderr {
+            command.stderr(Stdio::from(write));
+        } else {
+            command.stdout(Stdio::from(write));
+        }
+        let output = command
             .creation_flags(0x0800_0000)
             .output()
             .expect("CLI with a broken output pipe");
-        assert!(
-            output.status.success(),
+        assert_eq!(
+            output.status.code(),
+            Some(expected),
             "{binary} {argument}: {:?}",
             output.stderr
         );

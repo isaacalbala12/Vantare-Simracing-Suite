@@ -7,6 +7,7 @@
 //! feature `parity-capture`, `vantare-overlays --parity-capture <png>` captura
 //! Standings con la escena fija.
 
+use std::io::Write;
 use vantare_ipc::product;
 
 use std::path::PathBuf;
@@ -114,7 +115,7 @@ fn main() -> ExitCode {
         return vantare_ui::capture::run(path.into());
     }
     let Some((windows, layout, feed)) = parse(&args) else {
-        eprintln!("{USAGE}");
+        let _written = writeln!(std::io::stderr(), "{USAGE}");
         return ExitCode::from(2);
     };
     let rights = match &feed {
@@ -132,7 +133,10 @@ fn main() -> ExitCode {
             if let Ok(feed) = result {
                 Some(feed)
             } else {
-                eprintln!("vantare-overlays: control de derechos no disponible");
+                let _written = writeln!(
+                    std::io::stderr(),
+                    "vantare-overlays: control de derechos no disponible"
+                );
                 return ExitCode::FAILURE;
             }
         }
@@ -156,7 +160,7 @@ fn main() -> ExitCode {
         return match result {
             Ok(()) => ExitCode::SUCCESS,
             Err(error) => {
-                eprintln!("vantare-overlays: {error}");
+                let _written = writeln!(std::io::stderr(), "vantare-overlays: {error}");
                 ExitCode::FAILURE
             }
         };
@@ -164,7 +168,7 @@ fn main() -> ExitCode {
     let (snapshots, connection) = match snapshot_feed(windows, feed) {
         Ok(feed) => feed,
         Err(error) => {
-            eprintln!("vantare-overlays: {error}");
+            let _written = writeln!(std::io::stderr(), "vantare-overlays: {error}");
             return ExitCode::FAILURE;
         }
     };
@@ -181,7 +185,7 @@ fn main() -> ExitCode {
             .map_or_else(vantare_ui::layout::default_path, Ok)
             .and_then(|path| vantare_ui::run_layout_with_rights(path, snapshots, rights));
         if let Err(error) = result {
-            eprintln!("vantare-overlays: {error}");
+            let _written = writeln!(std::io::stderr(), "vantare-overlays: {error}");
             return ExitCode::FAILURE;
         }
     }

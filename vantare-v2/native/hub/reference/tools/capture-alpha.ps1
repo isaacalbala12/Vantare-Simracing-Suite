@@ -32,8 +32,7 @@ foreach ($dimensions in $Size) {
 }
 $manifest = Join-Path $evidence 'capture-batch.json'
 ConvertTo-Json -InputObject $entries -Depth 20 | Set-Content -LiteralPath $manifest -Encoding utf8
-$capture=Invoke-NativeProcess -Executable $Executable -Arguments @('--capture-batch',$manifest) -TimeoutMilliseconds 600000
-[IO.File]::WriteAllText((Join-Path $evidence 'capture-batch.log'),$capture.Stdout+$capture.Stderr)
+$capture=Invoke-NativeProcess -Executable $Executable -Arguments @('--capture-batch',$manifest) -TimeoutMilliseconds 600000 -LogPath (Join-Path $evidence 'capture-batch.log')
 if ($capture.ExitCode) { throw "Captura en lote falló: $($capture.ExitCode)" }
 $results = @($entries | ForEach-Object {
     & "$PSScriptRoot/assert-opaque.ps1" -Path $_.output

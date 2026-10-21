@@ -19,7 +19,7 @@ switch($Mode){
     'Echo' {[Console]::Out.Write([Console]::In.ReadToEnd())}
     'Directory' {[Console]::Out.Write([IO.Directory]::GetCurrentDirectory())}
     'Duplex' {[Console]::Out.Write(('o'*100000));[Console]::Error.Write(('e'*100000));exit 23}
-    'Hang' {[IO.File]::WriteAllText($Marker,$PID.ToString());$event=[Threading.ManualResetEvent]::new($false);$null=$event.WaitOne()}
+    'Hang' {[Console]::Out.Write('before-timeout-out');[Console]::Error.Write('before-timeout-err');[Console]::Out.Flush();[Console]::Error.Flush();[IO.File]::WriteAllText($Marker,$PID.ToString());$event=[Threading.ManualResetEvent]::new($false);$null=$event.WaitOne()}
 }
 '@
 [IO.File]::WriteAllText($fixture,$script,[Text.UTF8Encoding]::new($true))
@@ -34,6 +34,10 @@ try {
         Assert-Process ($received[$index] -ceq $values[$index]) "argv conserva argumento $index (vacío/Unicode/comillas/backslash)"
     }
     $text='stdin α y emoji 😀'
+    Push-Location (Split-Path -Parent $GuiExecutable)
+    try {$relative=Invoke-NativeProcess -Executable ('./'+[IO.Path]::GetFileName($GuiExecutable)) -Arguments @('--version')}
+    finally {Pop-Location}
+    Assert-Process ($relative.ExitCode -eq 0 -and $relative.Stdout.TrimEnd([char[]]"`r`n") -ceq $ExpectedVersion) 'EXE relativo resuelto desde ubicación PowerShell'
     Push-Location $testRoot
     try {$directory=Invoke-NativeProcess -Executable $hostExe -Arguments @('-NoProfile','-File',$fixture,'Directory','unused')}
     finally {Pop-Location}
@@ -43,15 +47,17 @@ try {
     $result=Invoke-NativeProcess -Executable $hostExe -Arguments @('-NoProfile','-File',$fixture,'Duplex','unused')
     Assert-Process ($result.ExitCode -eq 23 -and $result.Stdout -ceq ('o'*100000) -and $result.Stderr -ceq ('e'*100000)) 'Dos pipes grandes drenados y código de salida preservado'
     $marker=Join-Path $testRoot 'owned.pid'
+    $log=Join-Path $testRoot 'capture-batch.log'
     $timedOut=$false
     # El plazo probado incluye un arranque frío de PS5.1 en CI; el hijo espera
     # un evento sin señal, no un sleep. Se verifica su muerte mediante su PID.
-    try { $null=Invoke-NativeProcess -Executable $hostExe -Arguments @('-NoProfile','-File',$fixture,'Hang',$marker) -TimeoutMilliseconds 10000 }
+    try { $null=Invoke-NativeProcess -Executable $hostExe -Arguments @('-NoProfile','-File',$fixture,'Hang',$marker) -TimeoutMilliseconds 10000 -LogPath $log }
     catch [TimeoutException] { $timedOut=$true }
     Assert-Process $timedOut 'Timeout tipado de proceso bloqueado en evento, sin sleeps'
     Assert-Process (Test-Path -LiteralPath $marker) 'El hijo alcanzó la espera antes del timeout'
     $ownedPid=[int][IO.File]::ReadAllText($marker)
     Assert-Process ($null -eq (Get-Process -Id $ownedPid -ErrorAction SilentlyContinue)) 'El timeout retiró únicamente su hijo'
+    Assert-Process ([IO.File]::ReadAllText($log) -ceq 'before-timeout-outbefore-timeout-err') 'Log UTF8 conserva ambas salidas aunque vence el timeout'
 } finally {
     $resolved=[IO.Path]::GetFullPath($testRoot)
     $parent=[IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd([char[]]'\/')

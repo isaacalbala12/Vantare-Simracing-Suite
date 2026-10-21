@@ -444,11 +444,32 @@ function Test-NativeShortcutOwned($Link,[string]$Directory) {
      [IO.Path]::GetFileName($Link.TargetPath) -ieq 'vantare.exe' -and $Link.Arguments -ceq ('--beta -Root "'+$Directory+'"'))
 }
 
-function Set-NativeLaunchShortcut($Link,[string]$Directory) {
-    $state=Read-NativeState $Directory
-    $Link.TargetPath=Join-Path $Directory "generations/$($state.active.generation)/bin/vantare.exe"
-    # -Root conserva el reconocimiento del acceso por generaciones anteriores al hacer rollback.
-    $Link.Arguments='--beta -Root "'+$Directory+'"'
+function Get-NativeLaunchTarget([string]$Directory) {
+    $path=Join-Path $Directory 'state.json'
+    if(-not (Test-Path -LiteralPath $path -PathType Leaf)){return $null}
+    if((Get-Item -LiteralPath $path).Length -gt 65536){throw 'Estado de instalación demasiado grande.'}
+    $state=[IO.File]::ReadAllText($path)|ConvertFrom-Json
+    if($state.schema -ne 1 -or $state.product -cne 'vantare-native' -or $state.channel -cne 'beta'){throw 'Estado de instalación inválido.'}
+    $active=$state.PSObject.Properties['active']
+    if($null -eq $active -or $null -eq $active.Value){return $null}
+    $generation=$active.Value.PSObject.Properties['generation']
+    if($null -eq $generation){return $null}
+    if($generation.Value -cnotmatch '^[a-f0-9]{32}$'){throw 'Referencia de generación inválida.'}
+    $target=Join-Path $Directory "generations/$($generation.Value)/bin/vantare.exe"
+    if(Test-Path -LiteralPath $target -PathType Leaf){return $target}
+    return $null
+}
+
+function Set-NativeLaunchShortcut($Link,[string]$Directory,[string]$LaunchTarget) {
+    if($LaunchTarget){
+        $Link.TargetPath=$LaunchTarget
+        # -Root conserva el reconocimiento del acceso por generaciones anteriores al hacer rollback.
+        $Link.Arguments='--beta -Root "'+$Directory+'"'
+    }else{
+        # Registro inerte/incompleto: conservar la ruta de bootstrap anterior sin abortar el registro.
+        $Link.TargetPath=Join-Path $env:WINDIR 'System32/WindowsPowerShell/v1.0/powershell.exe'
+        $Link.Arguments='-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "'+(Join-Path $Directory 'beta.ps1')+'" -Root "'+$Directory+'"'
+    }
     $Link.Save()
 }
 
@@ -464,7 +485,8 @@ function Get-NativeProgramsFolder {
     $programs
 }
 
-function Sync-NativeOptionalShortcuts([string]$Directory,[string]$Folder,$Ui,[bool]$Remove=$false) {
+function Sync-NativeOptionalShortcuts([string]$Directory,[string]$Folder,$Ui,[bool]$Remove=$false,[string]$LaunchTarget) {
+    if(-not $Remove -and -not $PSBoundParameters.ContainsKey('LaunchTarget')){$LaunchTarget=Get-NativeLaunchTarget $Directory}
     if($null -eq $Ui){return}
     $targets=@(
         @{name='DesktopDirectory'; enabled=$Ui.desktop},
@@ -484,7 +506,7 @@ function Sync-NativeOptionalShortcuts([string]$Directory,[string]$Folder,$Ui,[bo
             if($exists -and -not $owned){throw 'El acceso opcional pertenece a otra instalación; se conserva.'}
             [IO.Directory]::CreateDirectory($parent)|Out-Null
             $link=$shell.CreateShortcut($path)
-            Set-NativeLaunchShortcut $link $Directory
+            Set-NativeLaunchShortcut $link $Directory $LaunchTarget
         } catch { Write-NativeShortcutWarning ("No se pudo sincronizar el acceso opcional {0}: {1}" -f $target.name,$_.Exception.Message) }
     }
 }
@@ -529,8 +551,9 @@ function Invoke-NativeRegistrationTransaction([string]$Key,[string]$Folder,[stri
 
 # La clave estable permite que el bootstrap antiguo siga corrigiendo la versión
 # tras rollback. Solo cambia la identidad visible; nunca se trasladan datos.
-function Sync-NativeRegistration([string]$Directory, [string]$Version, $PreviousUi=$null) {
+function Sync-NativeRegistration([string]$Directory, [string]$Version, $PreviousUi=$null,[string]$LaunchTarget) {
     $directory = Assert-NativePath $Directory
+    if(-not $PSBoundParameters.ContainsKey('LaunchTarget')){$LaunchTarget=Get-NativeLaunchTarget $directory}
     $identity = 'VantareNativeBeta'
     $folder = 'Vantare'
     $legacyFolder = 'Vantare Native Beta'
@@ -548,7 +571,7 @@ function Sync-NativeRegistration([string]$Directory, [string]$Version, $Previous
         if ($null -eq $registration.PSObject.Properties['ShortcutFolder'] -or
             $null -eq $registration.PSObject.Properties['LegacyShortcutFolder']) {
             Set-ItemProperty -LiteralPath $key -Name DisplayName -Value 'Vantare'
-            Set-ItemProperty -LiteralPath $key -Name DisplayVersion -Value $Version
+            if($Version){Set-ItemProperty -LiteralPath $key -Name DisplayVersion -Value $Version}
             return
         }
         $folder = $registration.ShortcutFolder
@@ -590,7 +613,7 @@ function Sync-NativeRegistration([string]$Directory, [string]$Version, $Previous
     } finally { if (Test-Path -LiteralPath $temp) { Remove-Item -LiteralPath $temp } }
     [IO.Directory]::CreateDirectory($target) | Out-Null
     $link = $shell.CreateShortcut((Join-Path $target 'Vantare.lnk'))
-    Set-NativeLaunchShortcut $link $directory
+    Set-NativeLaunchShortcut $link $directory $LaunchTarget
     $link = $shell.CreateShortcut((Join-Path $target 'Desinstalar.lnk'))
     $link.TargetPath = $uninstallTarget
     $link.Arguments = $uninstallArgs
@@ -612,13 +635,13 @@ function Sync-NativeRegistration([string]$Directory, [string]$Version, $Previous
         Remove-Item -LiteralPath $legacy
     }
     Set-ItemProperty -LiteralPath $key -Name DisplayName -Value 'Vantare'
-    Set-ItemProperty -LiteralPath $key -Name DisplayVersion -Value $Version
+    if($Version){Set-ItemProperty -LiteralPath $key -Name DisplayVersion -Value $Version}
     Set-ItemProperty -LiteralPath $key -Name UninstallString -Value ('"' + $uninstallTarget + '" ' + $uninstallArgs)
     if($null -ne $PreviousUi -and $null -ne $installerUi){
         # Only previously enabled options are resolved when explicitly disabling them.
         Sync-NativeOptionalShortcuts $directory $folder @{desktop=($PreviousUi.desktop -and -not $installerUi.desktop);autostart=($PreviousUi.autostart -and -not $installerUi.autostart)} $true
     }
-    Sync-NativeOptionalShortcuts $directory $folder $installerUi
+    Sync-NativeOptionalShortcuts $directory $folder $installerUi -LaunchTarget $LaunchTarget
 }
 
 function Uninstall-NativeRegistration([string]$Directory,[bool]$DeferUninstaller=$false,[string]$KnownIdentity='', [string]$KnownFolder='') {
@@ -981,13 +1004,15 @@ switch ($Operation) {
     'UninstallInstalled' { Uninstall-NativeRegistration $Root }
     'Register' {
         $Root = Open-NativeRoot $Root
+        $launchTarget=Get-NativeLaunchTarget $Root
+        if(-not $launchTarget){Sync-NativeRegistration $Root '' -LaunchTarget ''; break}
         $state = Read-NativeState $Root
         if ($state.channel -cne 'beta') { throw 'El registro solo corresponde al instalador beta.' }
         $generation = Join-Path $Root "generations/$($state.active.generation)"
         # El Hub usa el script de su generación; Setup usa la copia idéntica raíz.
         if ((Get-NativeHash $PSCommandPath) -cne (Get-NativeHash (Join-Path $generation 'candidate.ps1'))) { throw 'El registro requiere el script de la generación activa.' }
-        $manifest = Read-NativeManifest $generation 'beta' -Installed
-        Sync-NativeRegistration $Root $manifest.version
+        $manifest = Read-NativeManifest $generation 'beta' $false -Installed
+        Sync-NativeRegistration $Root $manifest.version -LaunchTarget $launchTarget
     }
     'Build' { Build-NativeCandidate $OutputDirectory $Version $Channel $BuildProfile ([bool]$AllowDirty) }
     'Install' { Install-NativeCandidate $Root $Archive $ExpectedSha256 $Channel | ConvertTo-Json -Depth 5 }

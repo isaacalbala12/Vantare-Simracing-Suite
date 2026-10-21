@@ -17,7 +17,7 @@ fn background_entry_points_are_windows_gui_executables() {
 }
 
 #[test]
-fn gui_bootstrap_returns_while_its_consoleless_engine_finishes_independently() {
+fn gui_bootstrap_returns_while_its_hidden_engine_finishes_independently() {
     use std::{
         process::{Command, Stdio},
         time::{Duration, Instant},
@@ -57,4 +57,32 @@ $console=[BootstrapConsole]::GetConsoleWindow().ToInt64()
     assert_eq!(console, "0", "the engine must have no console window");
     let log = std::fs::read_to_string(root.join("logs/bootstrap.log")).expect("diagnostic log");
     assert!(log.contains("bootstrap fixture stderr"));
+}
+
+#[test]
+fn bootstrap_validation_and_missing_windows_host_are_logged() {
+    use std::process::Command;
+    for missing_windows in [false, true] {
+        let id = vantare_services::random_id().expect("test id");
+        let root = std::env::temp_dir().join(format!("vantare-bootstrap-error-{id}"));
+        let mut command = Command::new(env!("CARGO_BIN_EXE_vantare"));
+        command
+            .args([
+                "--beta",
+                if missing_windows {
+                    "-Root"
+                } else {
+                    "--wrong-root-flag"
+                },
+            ])
+            .arg(&root);
+        if missing_windows {
+            command.env_remove("WINDIR");
+        }
+        let output = command.output().expect("invalid bootstrap");
+        assert!(!output.status.success());
+        let log = std::fs::read_to_string(root.join("logs/bootstrap.log"))
+            .expect("failure logged without a console");
+        assert!(log.contains("bootstrap:"));
+    }
 }

@@ -15,14 +15,26 @@ controles comunes en acceso/privacidad/asistente y presupuesto total45s por
 respuesta con cancelación, descarte de respuesta tardía y reintento nuevo.
 Stderr de runtime/Services/Hub queda en logs de arranque. Sin dependencias nuevas.
 Regresiones de PE, destino de acceso, contexto y timeout con reloj inyectado.
-Check y Clippy PASS; registro68 y shell25 PASS en usuarios temporales retirados.
-Nextest completo/telemetría, lifecycle y QA de ventana pendientes. La fixture
-del shell ahora materializa una generación verificada antes de registrar su acceso GUI.
-La primera suite de registro conservó accesos QA ajenos del perfil; se repite
-con usuario temporal y escritorio privado. Evidencia en
-`C:/VantareServer/evidence/rc3-bugs/INFORME.md`, seguimiento GitHub #1726.
-PR y RC4 0.0.982 pendientes. Sin merge, firma, publicación ni promoción.
-Los procesos de Isaac permanecen intactos.
+PR draft https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1729.
+Review DeepSeek de7140: NO APTO. Correcciones de esa review: Register tolera
+raíz sin estado o sin generación activa (bootstrap anterior); conserva también
+la prueba con generación completa. El destino se resuelve una vez por registro,
+sin volver a verificar los bytes por cada acceso. NSIS abre el mismo .lnk GUI.
+El test llama retry_access real con respuesta IPC; Hub tiene título distinto
+al instalador; errores del bootstrap también quedan en bootstrap.log.
+Clippy actual PASS1m53, fmt PASS; shell30/30 y registro68/68 PASS en usuarios
+temporales retirados. Nextest actual2081/2081 PASS (350,5s; incluye telemetría),
+19 omitidos según perfil; Lifecycle actual PASS (Engineer5 + runtime13).
+Medición serial de sincronizar tres accesos sobre payload RC3 real, cinco
+muestras por versión: mediana3670,89ms en7140 →60,79ms actual (49,03–69,95ms).
+Mide la fase de sincronización añadida, no el arranque total ni la validación
+previa común de Register. Bytes se validan una sola vez por Register.
+QA Win32 en escritorio privado no acredita los controles físicos: Isaac los
+comprobará en RC4; la comparación RC3 devuelve regiones cliente sin chrome.
+Evidencia: C:/VantareServer/evidence/rc3-bugs/INFORME.md. Procesos de Isaac
+intactos y ninguna ventana en su escritorio. CI verde y HEAD se entregarán al
+orquestador para re-review e integración; RC4 espera su autorización posterior.
+Sin merge, firma, publicación ni promoción.
 
 ## VANTA-105 / #1723 · Dos P3 de review1721, separados de RC3 (19-oct-2026)
 

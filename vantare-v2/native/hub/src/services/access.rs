@@ -328,7 +328,7 @@ impl Remote {
         self.access.login_requested = self.busy();
     }
 
-    fn retry_access(&mut self, cx: &mut Context<Self>) {
+    pub(super) fn retry_access(&mut self, cx: &mut Context<Self>) {
         if self.access.session_checked {
             self.begin_access(cx);
         } else {

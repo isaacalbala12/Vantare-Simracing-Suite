@@ -51,6 +51,8 @@ pub mod session;
 pub use vantare_profiling as profiling;
 #[cfg(any(windows, test))]
 mod hub_launch;
+/// Título de la ventana del Hub, distinto al del instalador y desinstalador.
+pub const HUB_WINDOW_TITLE: &str = "Vantare · Hub";
 #[cfg(test)]
 mod replay_tests;
 mod rights;

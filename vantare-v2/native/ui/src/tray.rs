@@ -35,8 +35,6 @@ const MENU: [(usize, &str); 3] = [
     (HUB, "Abrir Hub"),
     (QUIT, "Salir de Vantare"),
 ];
-/// Título de la ventana del Hub (`hub/src/shell.rs`): evita abrir un segundo Hub.
-const HUB_TITLE: &str = "Vantare";
 const LOGO: &[u8] = include_bytes!("../assets/vantare-mark.png");
 
 thread_local! {
@@ -192,7 +190,7 @@ fn send(action: Action) {
 }
 
 fn open_hub() {
-    let title = wide(HUB_TITLE);
+    let title = wide(crate::HUB_WINDOW_TITLE);
     // SAFETY: título terminado en cero válido durante la llamada.
     let hub = unsafe { FindWindowW(std::ptr::null(), title.as_ptr()) };
     if hub.is_null() {

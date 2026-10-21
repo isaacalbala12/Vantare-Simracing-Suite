@@ -1618,7 +1618,7 @@ pub fn run_with_access(mut options: Options, access: navigation::Access) -> Resu
                 },
                 titlebar: Some(gpui::TitlebarOptions {
                     appears_transparent: true,
-                    title: Some("Vantare".into()),
+                    title: Some(vantare_ui::HUB_WINDOW_TITLE.into()),
                     ..Default::default()
                 }),
                 ..Default::default()

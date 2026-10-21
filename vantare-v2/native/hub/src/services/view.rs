@@ -154,6 +154,7 @@ pub struct Remote {
     founders_language: founders::Language,
     pub(crate) adapt: orbit::Adapt,
     pipe: String,
+    supervisor_image: Option<std::path::PathBuf>,
     send: Option<SyncSender<Command>>,
     receive: Option<Receiver<Reply>>,
     stop: Arc<AtomicBool>,
@@ -278,6 +279,7 @@ impl Remote {
             pilot: pilot::Projection::default(),
             adapt: orbit::Adapt::default(),
             pipe,
+            supervisor_image: default_binary().ok(),
             send: None,
             receive: None,
             stop: Arc::new(AtomicBool::new(false)),
@@ -512,6 +514,7 @@ impl Remote {
         let (send, commands) = mpsc::sync_channel(2);
         let (responses, receive) = mpsc::sync_channel(2);
         let pipe = self.pipe.clone();
+        let supervisor = self.supervisor_image.clone();
         let connection = Arc::clone(&self.connection_incompatible);
         let stop = Arc::clone(&self.stop);
         self.worker = Some(std::thread::spawn(move || {
@@ -530,8 +533,11 @@ impl Remote {
                         client = None;
                     }
                     if client.is_none() {
-                        let started =
-                            Client::start(&default_binary()?, &pipe, Arc::clone(&cancellation))?;
+                        let started = Client::start(
+                            supervisor.as_deref().ok_or("supervisor no instalado")?,
+                            &pipe,
+                            Arc::clone(&cancellation),
+                        )?;
                         if stop.load(Ordering::Acquire) {
                             return Err("servicios cancelado");
                         }

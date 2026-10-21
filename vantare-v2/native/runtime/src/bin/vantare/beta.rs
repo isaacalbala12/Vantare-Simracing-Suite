@@ -183,8 +183,9 @@ mod tests {
     #[test]
     fn indicator_requires_the_exact_versioned_header_in_the_root_script() {
         let root = std::env::temp_dir().join(format!(
-            "vantare-bootstrap-capabilities-{}",
-            std::process::id()
+            "vantare-bootstrap-capabilities-{}-{}",
+            std::process::id(),
+            vantare_services::random_id().unwrap()
         ));
         std::fs::create_dir_all(&root).unwrap();
         assert!(!supports_indicator(&root));
@@ -203,7 +204,8 @@ mod tests {
             std::fs::write(root.join("beta.ps1"), header).unwrap();
             assert!(supports_indicator(&root));
         }
-        std::fs::remove_dir_all(root).unwrap();
+        std::fs::remove_file(root.join("beta.ps1")).unwrap();
+        std::fs::remove_dir(root).unwrap();
     }
     #[test]
     fn startup_shortcuts_opt_out_but_legacy_shortcuts_remain_interactive() {

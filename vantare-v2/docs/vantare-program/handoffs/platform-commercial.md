@@ -36,6 +36,54 @@ intactos y ninguna ventana en su escritorio. CI verde y HEAD se entregarán al
 orquestador para re-review e integración; RC4 espera su autorización posterior.
 Sin merge, firma, publicación ni promoción.
 
+## VANTA-96 / #1725 · Activación Owner en producción (21-oct-2026)
+
+Autorización expresa del orquestador tras r2 APTO y merge #1727 en nightly
+21b1f80129e2ba6a76ec2a8d8d4eab960f9b4056. Única migración pendiente
+20261021151230 aplicada de forma incremental, historial atómico: 97/97.
+RLS y denegación de acceso directo a inbox/RPC autenticada comprobadas.
+Desplegados owner-alert-receiver v1 y billing-reconcile v6 en ese orden;
+verify_jwt=false, autenticación HMAC/clave interna conservada.
+Variables URL/HMAC/destinatario cargadas por env-file protegido, sin valores
+ni dirección personal en documentación. Custodia secrets/owner-alert-prod.
+
+Un aviso sintético con code synthetic_test_vanta96_20261021: receptor 200,
+fila sent, attempts=1; replay 200 sin incrementar intentos. El primer Brevo
+201 se infiere del código: email_key nuevo y aceptación con messageId;
+no hay observación directa del status upstream. No se fuerza otro POST SMTP
+para provocar duplicate_parameter; su status real queda pendiente.
+Existe además un aviso operativo previo web_erasure_worker_stale: su correo
+es real, independiente del único fixture sintético. No se borra ni oculta.
+Venta, marketing y compensación siguen cerrados. Cron y estado definitivo
+se documentan en evidence/supabase-reconstruccion/EJECUCION.md y #1725.
+P3 r2/r1 abiertos en #1733; no implementados dentro de esta activación.
+Reversión: retirar BILLING_OWNER_ALERT_URL; conserva outbox/inbox y HMAC,
+sin revertir ni borrar datos. El emisor puede seguir reconciliando sin correo.
+Este PR de evidencia no hace otro despliegue ni promociona canales.
+
+## VANTA-96 / #1725 · Avisos Owner por email (21-oct-2026)
+
+Base nightly946d14fc5, rama propia vantareapp/isa-1725-owner-alert-email.
+Receptor HMAC/timestamp, inbox privada durable antes de email/ACK, dedupe por
+entorno/tipo/hash, leases y ACK cercado; Brevo transaccional sin PII compradora.
+Reintentos del reconcile existente; errores no confirman ni pierden la outbox.
+Corrección de review #1727: hash de incidente con código e intento financiero
+existente, expuesto por la RPC operativa; regex de código común a emisor/SQL.
+Brevo 400 duplicate_parameter confirma el email_key ya aceptado, con finish
+durable obligatorio. Tras TTL se acepta como mucho un duplicado excepcional
+si se pierde el ACK, por decisión del orquestador para este correo interno.
+Regresiones de incidente nuevo/repetido, código numérico, ACK perdido y finish
+false; el arnés incluye SQL, carrera real y ensayo LF/CRLF. Resultados y SHA
+definitivos se verifican en #1725; P3 restantes son seguimiento del PR.
+Local: 15 tests Deno del receptor + 14 del emisor PASS; fmt, diff y quality PASS.
+SQL Owner ampliado a 27 aserciones; su resultado LF/CRLF se verifica en la CI.
+No workflows existentes modificados, no dependencias, Rust ni producto nativo.
+No desplegar/configurar URL/secreto ni enviar email real antes de revisión.
+Pasos de activación/reversión en docs/billing/owner-alert-email.md.
+Operación Polar/Cloudflare y propuesta compra: evidencia externa EJECUCION.md,
+issue #1713; no se mezcla con esta migración. Venta/marketing/compensación OFF.
+PR #1727 a nightly; sin merge, release ni activacion productiva.
+
 ## VANTA-105 / #1723 · Dos P3 de review1721, separados de RC3 (19-oct-2026)
 
 Base nightly997d6da68 con #1721 integrado. Rama/worktree propios

@@ -408,19 +408,32 @@ export async function deliverCheckoutOwnerAlerts(
         url.protocol !== "https:" || url.username || url.password ||
         url.search || url.hash || config.secret.length < 32
       ) throw new Error("owner_alert_not_configured");
+      const type = alert.kind ?? "checkout_refund_failed";
+      const code = alert.code ?? "polar_refund_unavailable";
+      // Refund attempts identify incidents; delivery retries must keep this ID.
+      const attempt = type === "checkout_refund_failed"
+        ? alert.attempt_count
+        : 0;
+      if (
+        typeof code !== "string" || !/^[a-z0-9_]{1,64}$/.test(code) ||
+        typeof attempt !== "number" || !Number.isSafeInteger(attempt) ||
+        attempt < 0
+      ) throw new Error("invalid_compensation_alert");
       const digest = await crypto.subtle.digest(
         "SHA-256",
-        new TextEncoder().encode(environment + ":" + orderId),
+        new TextEncoder().encode(
+          `${environment}:${orderId}:${code}:${attempt}`,
+        ),
       );
       const id = Array.from(
         new Uint8Array(digest),
         (b) => b.toString(16).padStart(2, "0"),
       ).join("");
       const body = JSON.stringify({
-        type: alert.kind ?? "checkout_refund_failed",
+        type,
         environment,
         id,
-        code: alert.code ?? "polar_refund_unavailable",
+        code,
       });
       const timestamp = String(Math.floor(now().getTime() / 1000));
       const key = await crypto.subtle.importKey(

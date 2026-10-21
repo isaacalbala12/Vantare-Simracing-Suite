@@ -27,6 +27,7 @@ const recognizedFunctions = new Set([
   "testing-report-submit",
   "clerk-webhook",
   "billing-reconcile",
+  "owner-alert-receiver", // Explicit deployment after review; no wrapper activation.
   "billing-report-promotion",
   ...productionFunctions,
   ...testingPilotFunctions,

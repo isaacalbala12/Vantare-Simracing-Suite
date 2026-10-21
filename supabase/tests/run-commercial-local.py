@@ -6,6 +6,7 @@ from commercial_lock_order import run_lock_order
 from commercial_admin_lock_order import run_admin_lock_order
 from commercial_storage_race import run_storage_owners, run_storage_multipart, run_storage_buckets
 from commercial_roadmap_role import run_roadmap_role_regression, run_existing_role_regression
+from commercial_owner_alert import run_owner_alert_race
 parser=argparse.ArgumentParser()
 parser.add_argument('--pg-bin', required=True)
 parser.add_argument('--docker', action='store_true', help='Own disposable Supabase PostgreSQL container; pg-bin supplies clients only')
@@ -443,6 +444,7 @@ $$;
    print('B01 targeted gate PASS; unrelated SQL suites/write races not selected',flush=True)
    raise SystemExit(0)
   suites=['clerk_identity_cutover_test.sql',
+   'billing_owner_alert.test.sql',
    'billing_webhook_inbox.test.sql','billing_commercial_projection.test.sql',
    'billing_reconciliation.test.sql','billing_subscription_lifecycle.test.sql',
    'billing_observability.test.sql','operational_access.test.sql','billing_order_refund_ledger.test.sql',
@@ -463,6 +465,14 @@ $$;
    if 'not ok ' in result or '# Looks like' in result: raise RuntimeError(result)
    print(name+' PASS',flush=True)
   if not args.baseline:
+   run_owner_alert_race(run,conn,OUT)
+   if args.deno_bin:
+    owner_tests=subprocess.run([args.deno_bin,'test','--cached-only','--no-lock','--allow-env',
+     '--config',str(ROOT/'supabase/functions/deno.json'),str(ROOT/'supabase/functions/owner-alert-receiver/index.test.ts')],
+     env=ENV,capture_output=True,text=True,timeout=120)
+    (OUT/'owner-alert-edge.log').write_text(owner_tests.stdout+owner_tests.stderr,encoding='utf-8')
+    if owner_tests.returncode: raise RuntimeError(owner_tests.stdout+owner_tests.stderr)
+    print('Owner alert HMAC/durable ACK/email regressions PASS',flush=True)
    run_write_races(BIN,conn,ENV,run,OUT,fixture_conn=admin_conn() if args.docker else None)
  finally:
   if args.docker:

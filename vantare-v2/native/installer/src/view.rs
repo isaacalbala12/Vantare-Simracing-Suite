@@ -2,7 +2,8 @@
 use crate::{
     args::Args,
     engine::{Request, Session},
-    model::{Info, Mode, Screen},
+    model::{Info, Mode, Progress, Screen},
+    motion::{INSTALL_MILESTONES, Meter, REMOVE_MILESTONES},
     work::{self, Event, Work},
 };
 use gpui::{
@@ -13,8 +14,11 @@ use std::{
     cell::Cell,
     path::{Path, PathBuf},
     rc::Rc,
-    time::Duration,
+    time::{Duration, Instant},
 };
+
+/// Pause on a full bar before the success screen.
+const FINISH_HOLD: Duration = Duration::from_millis(350);
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Action {
@@ -100,10 +104,16 @@ pub struct Installer {
     pub focuses: Vec<(Action, FocusHandle)>,
     pub logo: std::sync::Arc<gpui::Image>,
     pub copied_bytes: u64,
+    pub meter: Meter,
+    /// The screen shown once the bar has visibly reached 100 %.
+    finishing: Option<(Screen, Instant)>,
+    pub hovered: Option<Action>,
+    /// Screen transitions slide backwards only when returning.
+    pub back: bool,
 }
 
 impl Installer {
-    fn new(
+    pub(crate) fn new(
         info: Info,
         args: Args,
         capture: bool,
@@ -155,6 +165,10 @@ impl Installer {
                 include_bytes!("../assets/logo.svg").to_vec(),
             )),
             copied_bytes: 0,
+            meter: Meter::new(Instant::now()),
+            finishing: None,
+            hovered: None,
+            back: false,
         }
     }
     pub fn action(&mut self, action: Action, window: &mut Window, cx: &mut Context<Self>) {
@@ -214,6 +228,7 @@ impl Installer {
                     Mode::Repair
                 };
                 self.show(Screen::Installed);
+                self.back = true;
             }
             Action::Cancel => {
                 if self.can_cancel
@@ -228,7 +243,9 @@ impl Installer {
         cx.notify();
     }
     fn show(&mut self, screen: Screen) {
+        self.back = false;
         self.screen = screen;
+        self.hovered = None;
         self.transition = self.transition.wrapping_add(1);
         self.options = false;
         self.details = false;
@@ -237,12 +254,7 @@ impl Installer {
         if self.work.is_some() {
             return;
         }
-        self.mode = mode;
-        self.show(Screen::Installing);
-        self.percent = 0;
-        self.copied_bytes = 0;
-        self.step = "prepare".into();
-        self.can_cancel = mode != Mode::Remove;
+        self.begin(mode);
         let mut request = Request::new(
             &self.args,
             if mode == Mode::Remove {
@@ -259,81 +271,154 @@ impl Installer {
         self.work = Some(Work::start(request));
         cx.notify();
     }
+    pub(crate) fn begin(&mut self, mode: Mode) {
+        self.mode = mode;
+        self.show(Screen::Installing);
+        self.percent = 0;
+        self.copied_bytes = 0;
+        self.step = "prepare".into();
+        self.can_cancel = mode != Mode::Remove;
+        self.meter = Meter::new(Instant::now());
+        self.finishing = None;
+    }
     fn poll(&mut self, cx: &mut Context<Self>) {
         if self.work.is_none() {
             return;
         }
         let mut result = None;
+        let mut events = Vec::new();
         if let Some(work) = &self.work {
             for event in work.events.try_iter() {
                 match event {
-                    Event::Progress(p) => {
-                        if p.total > 0 {
-                            self.copied_bytes = p.done;
-                        }
-                        self.percent = p.percent;
-                        self.step = p.step;
-                        self.can_cancel = p.can_cancel;
-                    }
+                    Event::Progress(p) => events.push(p),
                     Event::Finished(outcome) => result = Some(outcome),
                 }
             }
         }
+        for event in events {
+            self.progress(event);
+        }
         if let Some(result) = result {
             self.work.take();
-            self.can_cancel = false;
-            match result {
-                Ok(0) => {
-                    self.percent = 100;
-                    self.info.installed_version = if self.mode == Mode::Remove {
-                        None
-                    } else {
-                        Some(self.info.version.clone())
-                    };
-                    self.show(if self.mode == Mode::Remove {
-                        Screen::Uninstalled
-                    } else {
-                        Screen::Done
-                    });
-                    if self.mode != Mode::Remove {
-                        let mut args = self.args.clone();
-                        args.root = Some(self.info.root.clone());
-                        if let Ok(session) = Session::new()
-                            && let Ok(info) = session.probe(&Request::new(&args, "Probe"))
-                        {
-                            self.info = info;
-                        }
-                    }
+            self.finished(result, cx);
+        }
+        cx.notify();
+    }
+    pub(crate) fn progress(&mut self, p: Progress) {
+        if p.total > 0 {
+            self.copied_bytes = p.done;
+        }
+        self.percent = p.percent;
+        self.meter.report(p.percent, Instant::now());
+        self.step = p.step;
+        self.can_cancel = p.can_cancel;
+    }
+    pub(crate) fn finished(&mut self, result: Result<u8, String>, cx: &mut Context<Self>) {
+        self.can_cancel = false;
+        match result {
+            Ok(0) => {
+                self.percent = 100;
+                self.meter.report(100, Instant::now());
+                self.info.installed_version = if self.mode == Mode::Remove {
+                    None
+                } else {
+                    Some(self.info.version.clone())
+                };
+                let next = if self.mode == Mode::Remove {
+                    Screen::Uninstalled
+                } else {
+                    Screen::Done
+                };
+                // Let the bar visibly reach 100 % before the success screen.
+                if cx.reduce_motion() {
+                    self.show(next);
+                } else {
+                    self.finishing = Some((next, Instant::now()));
                 }
-                Ok(5) => {
-                    self.show(if self.info.installed_version.is_some() {
-                        Screen::Installed
-                    } else {
-                        Screen::Welcome
-                    });
-                    if self.close_requested {
-                        self.exit.set(5);
-                        cx.quit();
-                    }
+                if self.mode != Mode::Remove && !self.capture {
+                    self.refresh_info(cx);
                 }
-                Ok(code) => {
-                    self.error = code;
-                    self.diagnostic = String::new();
-                    self.show(Screen::Error);
+            }
+            Ok(5) => {
+                self.show(if self.info.installed_version.is_some() {
+                    Screen::Installed
+                } else {
+                    Screen::Welcome
+                });
+                if self.close_requested {
+                    self.exit.set(5);
+                    cx.quit();
                 }
-                Err(error) => {
-                    self.error = 1;
-                    self.diagnostic = error;
-                    self.show(Screen::Error);
-                }
+            }
+            Ok(code) => {
+                self.error = code;
+                self.diagnostic = String::new();
+                self.show(Screen::Error);
+            }
+            Err(error) => {
+                self.error = 1;
+                self.diagnostic = error;
+                self.show(Screen::Error);
             }
         }
         cx.notify();
+    }
+    /// Reads the installed options again off the UI thread: the probe starts PowerShell.
+    fn refresh_info(&self, cx: &mut Context<Self>) {
+        let mut args = self.args.clone();
+        args.root = Some(self.info.root.clone());
+        let request = Request::new(&args, "Probe");
+        let task = cx
+            .background_executor()
+            .spawn(async move { Session::new().and_then(|session| session.probe(&request)) });
+        cx.spawn(async move |this, cx| {
+            if let Ok(info) = task.await {
+                let _ = this.update(cx, |this, cx| {
+                    this.info = info;
+                    cx.notify();
+                });
+            }
+        })
+        .detach();
+    }
+    /// Advances presentation-only state once per frame.
+    fn animate(&mut self, window: &mut Window, cx: &App) {
+        if self.screen != Screen::Installing {
+            return;
+        }
+        let now = Instant::now();
+        let milestones: &[u8] = if self.mode == Mode::Remove {
+            &REMOVE_MILESTONES
+        } else {
+            &INSTALL_MILESTONES
+        };
+        self.meter.tick(now, milestones, cx.reduce_motion());
+        if let Some((next, since)) = self.finishing
+            && self.meter.complete()
+            && now.duration_since(since) >= FINISH_HOLD
+        {
+            self.finishing = None;
+            self.show(next);
+            return;
+        }
+        if !cx.reduce_motion() {
+            window.request_animation_frame();
+        }
+    }
+    pub(crate) fn hover(&mut self, action: Action, hovered: bool) {
+        if hovered {
+            self.hovered = Some(action);
+        } else if self.hovered == Some(action) {
+            self.hovered = None;
+        }
     }
     fn try_close(&mut self, cx: &mut Context<Self>) -> bool {
         if self.capture {
             self.exit.set(0);
             return true;
+        }
+        if self.finishing.is_some() {
+            return false;
         }
         if let Some(work) = &self.work {
             if self.can_cancel {
@@ -476,6 +561,7 @@ impl Installer {
 
 impl Render for Installer {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        self.animate(window, cx);
         div()
             .relative()
             .w(px(720.))
@@ -630,7 +716,15 @@ fn poll(view: &Entity<Installer>, cx: &mut App) {
 
 #[cfg(feature = "parity-capture")]
 impl Installer {
-    fn capture_state(&mut self, state: &str) {
+    pub(crate) fn capture_toggle(&mut self, action: Action) {
+        match action {
+            Action::Options => self.options = !self.options,
+            Action::Desktop => self.info.desktop = !self.info.desktop,
+            Action::Autostart => self.info.autostart = !self.info.autostart,
+            _ => {}
+        }
+    }
+    pub(crate) fn capture_state(&mut self, state: &str) {
         self.mode = Mode::Install;
         self.screen = match state {
             "welcome" => Screen::Welcome,
@@ -640,6 +734,7 @@ impl Installer {
             }
             "installing" => {
                 self.percent = 40;
+                self.meter.report(40, Instant::now());
                 self.can_cancel = true;
                 self.copied_bytes = self.info.size;
                 self.step = "verify".into();

@@ -70,3 +70,5 @@ verify_jwt = false
 # #1636 R2, native OAuth + verified primary email enforced by handler.
 [functions.native-mail-consent]
 verify_jwt = false
+[functions.owner-alert-receiver]
+verify_jwt = false

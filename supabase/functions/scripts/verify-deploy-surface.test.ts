@@ -8,6 +8,7 @@ Deno.test("native account/admin are recognized without changing default commerci
     "native-account-authorize",
     "native-admin",
     "billing-report-promotion",
+    "owner-alert-receiver",
   ];
   if (
     invalidDeployableDirectories(

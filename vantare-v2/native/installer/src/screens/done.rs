@@ -1,5 +1,7 @@
 //! Done screen from the approved installer.
-use super::{Context, Div, Installer, Mode, ParentElement, Styled, Window, heading, lead, style};
+use super::{
+    Context, Div, Installer, Mode, ParentElement, Styled, Window, heading, lead, rise, style,
+};
 pub(super) fn render(view: &Installer, window: &Window, _cx: &mut Context<Installer>) -> Div {
     let mut content = style::at(0., 0., 718., 394.);
 
@@ -35,9 +37,21 @@ pub(super) fn render(view: &Installer, window: &Window, _cx: &mut Context<Instal
     {
         #[allow(clippy::cast_precision_loss)]
         let y = 199. + i as f32 * 26.;
+        #[allow(clippy::cast_precision_loss)]
+        let delay = 0.2 + i as f32 * 0.08;
         content = content
-            .child(style::body(280., y, 96., 18., label, 12., style::FAINT))
-            .child(style::mono(388., y, 290., 18., value, 11., style::MUTED).text_ellipsis());
+            .child(rise(
+                style::body(280., y, 96., 18., label, 12., style::FAINT),
+                ("label", i),
+                y,
+                delay,
+            ))
+            .child(rise(
+                style::mono(388., y, 290., 18., value, 11., style::MUTED).text_ellipsis(),
+                ("value", i),
+                y,
+                delay,
+            ));
     }
     content
 }

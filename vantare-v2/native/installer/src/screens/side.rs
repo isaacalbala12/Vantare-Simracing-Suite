@@ -1,5 +1,8 @@
 //! Branding panel: source gradient, mark and centred message.
-use super::*;
+use super::{
+    AnimationExt, AnyElement, Div, Icon, Installer, IntoElement, Mode, ParentElement, Screen,
+    Styled, linear_color_stop, linear_gradient, motion, px, rgb, rgba, style,
+};
 pub(super) fn render(view: &Installer) -> AnyElement {
     let panel = style::at(0., 0., 240., 458.)
         .border_r_1()
@@ -43,13 +46,15 @@ pub(super) fn render(view: &Installer) -> AnyElement {
     panel
         .child(big.with_animation(
             ("side", view.transition),
-            gpui::Animation::new(std::time::Duration::from_millis(200)),
-            |element, t| element.opacity(t).top(px((1. - t) * 6.)),
+            // Follows the main content by ~60 ms for a gentle stagger.
+            style::eased(340, |t| motion::ease_out(motion::delayed(t, 0.18))),
+            |element, t| element.opacity(t).top(px((1. - t) * 8.)),
         ))
         .into_any_element()
 }
 fn progress(view: &Installer) -> Div {
-    let small = match view.percent {
+    let shown = view.meter.label();
+    let small = match shown {
         100.. => 100.,
         10.. => 65.,
         _ => 33.,
@@ -65,16 +70,8 @@ fn progress(view: &Installer) -> Div {
     };
     style::at(24., 0., 191., 380.)
         .child(
-            style::mono(
-                0.,
-                182.25,
-                172.,
-                60.,
-                view.percent.to_string(),
-                54.,
-                0xf5f5_f5ff,
-            )
-            .line_height(px(54.)),
+            style::mono(0., 182.25, 172., 60., shown.to_string(), 54., 0xf5f5_f5ff)
+                .line_height(px(54.)),
         )
         .child(style::mono(small, 207.25, 40., 30., "%", 20., style::FAINT).line_height(px(20.)))
         .child(style::body(0., 246.25, 191., 40., cap, 12., style::MUTED).line_height(px(18.)))
@@ -137,23 +134,7 @@ fn claim(view: &Installer) -> Div {
     let text_top = top + if symbol.is_some() { 60. } else { 0. };
     let mut big = style::at(24., 0., 191., 380.);
     if let Some(icon) = symbol {
-        let warn = view.screen == Screen::Error;
-        big = big
-            .child(style::swatch(
-                0.,
-                top,
-                44.,
-                44.,
-                22.,
-                rgba(if warn { 0xffd7_001f } else { 0x34d3_9924 }).into(),
-            ))
-            .child(style::icon(
-                icon,
-                12.,
-                top + 12.,
-                20.,
-                rgb(if warn { 0x00ff_d700 } else { 0x0034_d399 }).into(),
-            ));
+        big = badge(big, icon, top, view.screen == Screen::Error);
     }
     big.child(
         style::display(0., text_top, 191., bright_height, bright, 27., 0xf5f5_f5ff)
@@ -173,4 +154,83 @@ fn claim(view: &Installer) -> Div {
         .line_height(px(29.16))
         .whitespace_nowrap(),
     )
+}
+
+/// Success and warning badge. Success pops with a small overshoot and a halo
+/// that fades outwards; the warning only grows in. Static under reduced motion.
+fn badge(big: Div, icon: Icon, top: f32, warn: bool) -> Div {
+    let ink = rgb(if warn { 0x00ff_d700 } else { 0x0034_d399 });
+    let disc = style::swatch(
+        0.,
+        top,
+        44.,
+        44.,
+        22.,
+        rgba(if warn { 0xffd7_001f } else { 0x34d3_9924 }).into(),
+    )
+    .with_animation(
+        "badge",
+        style::eased(
+            if warn { 300 } else { 520 },
+            if warn {
+                motion::ease_out
+            } else {
+                motion::back_out
+            },
+        ),
+        move |disc, t| {
+            let side = 44. * (0.4 + 0.6 * t);
+            let inset = (44. - side) / 2.;
+            disc.left(px(inset))
+                .top(px(top + inset))
+                .size(px(side))
+                .rounded(px(side / 2.))
+                .opacity(t.clamp(0., 1.))
+        },
+    );
+    let mark = style::at(12., top + 12., 20., 20.)
+        .child(
+            gpui::canvas(
+                |_, _, _| (),
+                move |bounds, (), window, cx| {
+                    style::paint_icon(icon, bounds, ink.into(), window, cx);
+                },
+            )
+            .size_full(),
+        )
+        .with_animation(
+            "mark",
+            style::eased(520, |t| motion::back_out(motion::delayed(t, 0.3))),
+            move |mark, t| {
+                let side = 20. * (0.5 + 0.5 * t);
+                let inset = (20. - side) / 2.;
+                mark.left(px(12. + inset))
+                    .top(px(top + 12. + inset))
+                    .size(px(side))
+                    .opacity(t.clamp(0., 1.))
+            },
+        );
+    let mut big = big;
+    if !warn {
+        // Ends transparent, so the reduced-motion end state shows no ring.
+        big = big.child(
+            style::at(0., top, 44., 44.)
+                .rounded_full()
+                .border_2()
+                .border_color(rgb(0x34_d399))
+                .with_animation(
+                    "halo",
+                    style::eased(900, |t| motion::ease_out(motion::delayed(t, 0.15))),
+                    move |ring, t| {
+                        let side = 44. + 36. * t;
+                        let inset = (44. - side) / 2.;
+                        ring.left(px(inset))
+                            .top(px(top + inset))
+                            .size(px(side))
+                            .opacity(if t <= 0. { 0. } else { 0.55 * (1. - t) })
+                    },
+                ),
+        );
+    }
+    big.child(disc).child(mark)
 }

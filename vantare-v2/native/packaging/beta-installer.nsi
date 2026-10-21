@@ -36,8 +36,9 @@ VIAddVersionKey "LegalCopyright" "Vantare 2026"
 !insertmacro MUI_LANGUAGE "Spanish"
 
 Function StartHub
-  ; NSIS es x86; Sysnative inicia el host x64 que inspecciona los procesos nativos.
-  Exec '"$WINDIR\Sysnative\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "$INSTDIR\beta.ps1" -Root "$INSTDIR"'
+  ; Register creó este acceso hacia vantare.exe --beta -Root de la generación activa.
+  SetShellVarContext current
+  ExecShell "open" "$SMPROGRAMS\${SHORTCUT_FOLDER}\Vantare.lnk"
 FunctionEnd
 
 Function .onInit

@@ -1,3 +1,4 @@
+#![cfg_attr(windows, windows_subsystem = "windows")]
 //! Núcleo de Vantare sin UI: lee un simulador (o reproduce una captura) y sirve
 //! la foto actual a los overlays por un named pipe.
 //!

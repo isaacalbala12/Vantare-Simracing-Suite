@@ -839,7 +839,7 @@ impl Hub {
     }
 
     /// Controles de ventana 46×36 (marco propio): el sistema resuelve cada zona.
-    fn window_controls(window: &Window, cx: &gpui::App) -> gpui::Div {
+    pub(super) fn window_controls(window: &Window, cx: &gpui::App) -> gpui::Div {
         let skin = orbit::skin(cx).clone();
         let control = |id: &'static str, icon: &'static str, label: &'static str, area| {
             let hover = if id == "window-close" {
@@ -888,6 +888,24 @@ impl Hub {
                 "Cerrar",
                 gpui::WindowControlArea::Close,
             ))
+    }
+
+    /// Acceso y asistente conservan las mismas zonas Win32 que la pantalla principal.
+    pub(super) fn gate_frame(
+        content: gpui::AnyElement,
+        window: &Window,
+        cx: &gpui::App,
+    ) -> gpui::Div {
+        div().size_full().relative().child(content).child(
+            div()
+                .absolute()
+                .top_0()
+                .left_0()
+                .w_full()
+                .h(px(36.0))
+                .window_control_area(gpui::WindowControlArea::Drag)
+                .child(Self::window_controls(window, cx)),
+        )
     }
 
     /// Barra superior R10.10: título, pestañas de vista, estado de LMU, barra derecha y campana.

@@ -20,32 +20,6 @@ $script:driverFolders=$false
 $script:rejectFolders=$true
 $script:emptyFolder=''
 $script:resolvedFolders=@()
-$off=@{desktop=$false;autostart=$false}
-$offWarnings=@(Sync-NativeOptionalShortcuts $testRoot 'Vantare test' $off 3>&1)
-$offWarnings+=@(Sync-NativeOptionalShortcuts $testRoot 'Vantare test' $off $true 3>&1)
-Assert-Registration ($script:resolvedFolders.Count -eq 0 -and $offWarnings.Count -eq 0 -and -not (Test-Path (Join-Path $testRoot 'Startup'))) 'OFF neither resolves nor creates absent Startup/Desktop, including uninstall'
-$script:rejectFolders=$false
-$on=@{desktop=$true;autostart=$true}
-Sync-NativeOptionalShortcuts $testRoot 'Vantare test' $on
-$startup=Join-Path $testRoot 'Startup/Vantare test.lnk'
-Assert-Registration (Test-Path -LiteralPath $startup) 'ON creates missing Startup and real shortcut'
-$shell=New-Object -ComObject WScript.Shell
-Assert-Registration (($shell.CreateShortcut($startup)).Arguments.Contains($testRoot)) 'Startup shortcut belongs to this installation'
-Sync-NativeOptionalShortcuts $testRoot 'Vantare test' $on $true
-Assert-Registration (-not (Test-Path -LiteralPath $startup)) 'uninstall removes enabled owned shortcuts'
-Remove-Item -LiteralPath (Join-Path $testRoot 'Startup')
-[IO.File]::WriteAllText((Join-Path $testRoot 'Startup'),'blocked folder')
-$warnings=@()
-$warnings=@(Sync-NativeOptionalShortcuts $testRoot 'Vantare test' @{desktop=$false;autostart=$true} 3>&1)
-Assert-Registration ($warnings.Count -gt 0 -and [IO.File]::ReadAllText((Join-Path $testRoot 'Startup')) -ceq 'blocked folder') 'unavailable ON emits warning and preserves obstacle'
-$script:emptyFolder='Startup'
-$warnings=@(Sync-NativeOptionalShortcuts $testRoot 'Vantare test' @{desktop=$false;autostart=$true} 3>&1)
-Assert-Registration ($warnings.Count -eq 1) 'ON with empty GetFolderPath warns without throwing'
-$script:emptyFolder='Programs';$called=$false;$failed=$false
-try{Invoke-NativeRegistrationTransaction 'HKCU:/unused-1695' 'Test' 'Legacy' {$called=$true}}catch{$failed=$_.Exception -is [InvalidOperationException]}
-Assert-Registration ($failed -and -not $called) 'empty Programs fails clearly before registry or Join-Path writes'
-$script:emptyFolder=''
-
 # Valid beta package with inert cmd.exe images, never executed as app binaries.
 $payload=Join-Path $testRoot 'payload'
 foreach($member in (Get-NativeMembers 'beta')){
@@ -60,6 +34,39 @@ $files=@(Get-NativeMembers 'beta'|ForEach-Object{$p=Join-Path $payload $_;@{path
 Write-NativeJson (Join-Path $payload 'manifest.json') @{schema=1;product='vantare-native';candidate=$true;architecture='windows-x64';data_schema='opaque-v1';source_sha=('a'*40);source_dirty=$false;build_profile='Release';version='0.0.979';channel='beta';files=$files}
 $zip=Join-Path $testRoot 'package.zip';New-NativeZip $payload $zip
 $hash=Get-NativeHash $zip
+$shortcutRoot=Join-Path $testRoot 'shortcut-context'
+Install-Beta $shortcutRoot $zip $hash
+$off=@{desktop=$false;autostart=$false}
+$offWarnings=@(Sync-NativeOptionalShortcuts $shortcutRoot 'Vantare test' $off 3>&1)
+$offWarnings+=@(Sync-NativeOptionalShortcuts $shortcutRoot 'Vantare test' $off $true 3>&1)
+Assert-Registration ($script:resolvedFolders.Count -eq 0 -and $offWarnings.Count -eq 0 -and -not (Test-Path (Join-Path $testRoot 'Startup'))) 'OFF neither resolves nor creates absent Startup/Desktop, including uninstall'
+$script:rejectFolders=$false
+$on=@{desktop=$true;autostart=$true}
+Sync-NativeOptionalShortcuts $shortcutRoot 'Vantare test' $on
+$startup=Join-Path $testRoot 'Startup/Vantare test.lnk'
+Assert-Registration (Test-Path -LiteralPath $startup) 'ON creates missing Startup and real shortcut'
+$shell=New-Object -ComObject WScript.Shell
+$startupLink=$shell.CreateShortcut($startup)
+Assert-Registration ($startupLink.Arguments -ceq ('--beta -Root "'+$shortcutRoot+'"')) 'Startup uses the GUI bootstrap with the installation root'
+Assert-Registration ([IO.Path]::GetFileName($startupLink.TargetPath) -ieq 'vantare.exe') 'Startup targets the GUI supervisor instead of a console host'
+$shortcutState=Read-NativeState $shortcutRoot
+Assert-Registration ($startupLink.TargetPath -eq (Join-Path $shortcutRoot "generations/$($shortcutState.active.generation)/bin/vantare.exe")) 'Startup resolves the verified active generation'
+
+Sync-NativeOptionalShortcuts $shortcutRoot 'Vantare test' $on $true
+Assert-Registration (-not (Test-Path -LiteralPath $startup)) 'uninstall removes enabled owned shortcuts'
+Remove-Item -LiteralPath (Join-Path $testRoot 'Startup')
+[IO.File]::WriteAllText((Join-Path $testRoot 'Startup'),'blocked folder')
+$warnings=@()
+$warnings=@(Sync-NativeOptionalShortcuts $shortcutRoot 'Vantare test' @{desktop=$false;autostart=$true} 3>&1)
+Assert-Registration ($warnings.Count -gt 0 -and [IO.File]::ReadAllText((Join-Path $testRoot 'Startup')) -ceq 'blocked folder') 'unavailable ON emits warning and preserves obstacle'
+$script:emptyFolder='Startup'
+$warnings=@(Sync-NativeOptionalShortcuts $shortcutRoot 'Vantare test' @{desktop=$false;autostart=$true} 3>&1)
+Assert-Registration ($warnings.Count -eq 1) 'ON with empty GetFolderPath warns without throwing'
+$script:emptyFolder='Programs';$called=$false;$failed=$false
+try{Invoke-NativeRegistrationTransaction 'HKCU:/unused-1695' 'Test' 'Legacy' {$called=$true}}catch{$failed=$_.Exception -is [InvalidOperationException]}
+Assert-Registration ($failed -and -not $called) 'empty Programs fails clearly before registry or Join-Path writes'
+$script:emptyFolder=''
+
 $testKey='HKCU:/Software/Microsoft/Windows/CurrentVersion/Uninstall/VantareRegistration'+[guid]::NewGuid().ToString('N')
 $folder='Test '+[guid]::NewGuid().ToString('N')
 try {

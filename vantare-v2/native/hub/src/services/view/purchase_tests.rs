@@ -4,6 +4,103 @@ use super::*;
 use crate::Section;
 
 #[test]
+fn a_silent_service_times_out_cancels_old_io_and_allows_a_fresh_retry() {
+    gpui_platform::headless().run(|cx| {
+        let file = crate::document::tests::File::new();
+        let (send, requests) = mpsc::sync_channel(8);
+        let remote = cx.new(|cx| fixture(cx, send, file.path.parent().expect("root")));
+        let worker = remote.update(cx, |remote, cx| {
+            remote.pipe = format!(
+                "hub-retry-{}",
+                vantare_services::random_id().expect("pipe id")
+            );
+            remote.account.signed_in = false;
+            remote.access = access::State::from_build();
+            let event = Arc::new(Event::new().expect("cancellation"));
+            remote.cancellation = Some(event.clone());
+            let (late_reply, receive) = mpsc::sync_channel(2);
+            remote.receive = Some(receive);
+            remote.request(Command::Status, cx);
+            assert!(matches!(requests.try_recv(), Ok(Command::Status)));
+            assert!(
+                remote
+                    .poll_reply(std::time::Duration::from_secs(44), cx)
+                    .is_none()
+            );
+            let reply = remote
+                .poll_reply(super::super::client::REQUEST_TIMEOUT, cx)
+                .expect("timeout");
+            remote.complete(reply, cx);
+            assert!(event.is_set(), "cancel the real transport event");
+            assert!(!remote.busy(), "release the request controls");
+            assert!(
+                remote.home_access().1.is_some(),
+                "replace checking with an actionable error"
+            );
+            assert!(
+                late_reply.try_send(Reply::Closed).is_err(),
+                "a late reply cannot affect the retry"
+            );
+            let server_stop = Arc::new(Event::new().expect("server stop"));
+            let mut listener = vantare_ipc::transport::Listener::new(
+                &format!("{}-hub-services", remote.pipe),
+                server_stop,
+                std::time::Duration::from_secs(5),
+            )
+            .expect("real retry listener");
+            let mut pipe = listener.instance().expect("retry pipe");
+            let server = std::thread::spawn(move || {
+                use super::super::protocol::{self, Request, Response, SupervisorHello};
+                pipe.accept().expect("retry connects");
+                protocol::write(
+                    &mut pipe,
+                    &SupervisorHello {
+                        version: protocol::VERSION,
+                        nonce: "1".repeat(64),
+                    },
+                )
+                .expect("hello");
+                let request: Request = protocol::read(&mut pipe).expect("retry request");
+                assert!(matches!(request.command, Command::Status));
+                protocol::write(
+                    &mut pipe,
+                    &Response {
+                        version: protocol::VERSION,
+                        sequence: request.sequence,
+                        reply: Reply::Status {
+                            account_configured: false,
+                            message: "service available".into(),
+                        },
+                    },
+                )
+                .expect("reply");
+            });
+            remote.retry_access(cx);
+            assert!(remote.busy());
+            assert!(
+                remote.home_access().1.is_none(),
+                "the real retry clears the timeout error"
+            );
+            let reply = remote
+                .receive
+                .as_ref()
+                .expect("fresh worker")
+                .recv_timeout(std::time::Duration::from_secs(3))
+                .expect("real IPC retry response");
+            assert!(matches!(reply, Reply::Status { .. }));
+            remote.complete(reply, cx);
+            assert!(!remote.busy());
+            assert!(remote.home_access().1.is_none());
+            server.join().expect("retry peer finished");
+            remote.cancel();
+            remote.worker.take().expect("actual retry worker")
+        });
+        worker.join().expect("retry worker closed");
+        crate::quit_headless_test(cx);
+    });
+}
+
+#[test]
 fn pilot_dispatch_failure_releases_editor_and_can_retry() {
     gpui_platform::headless().run(|cx| {
         let file = crate::document::tests::File::new();
@@ -148,6 +245,7 @@ pub(crate) fn fixture(
         pilot: pilot::Projection::default(),
         adapt: orbit::Adapt::default(),
         pipe: "qa-in-memory".into(),
+        supervisor_image: Some(std::env::current_exe().expect("test peer image")),
         send: Some(send),
         receive: None,
         stop: Arc::new(AtomicBool::new(false)),

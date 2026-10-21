@@ -56,7 +56,7 @@ impl Client {
             .arg(&parent)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
-            .stderr(Stdio::null());
+            .stderr(Stdio::inherit());
         #[cfg(windows)]
         {
             use std::os::windows::process::CommandExt;

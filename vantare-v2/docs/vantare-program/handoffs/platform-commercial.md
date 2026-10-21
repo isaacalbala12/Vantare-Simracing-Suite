@@ -23,6 +23,51 @@ Tres P3 DeepSeek de #1732 añadidos a #1733, incluido el await de hasta 250 ms
 dentro del timeout de 8 s y su efecto en reject/uncertain. Diagnóstico solo se
 desplegará con autorización separada. Evidencia completa en EJECUCION.md.
 
+## VANTA-105 / #1726 · RC3: consola, reapertura y controles (21-oct-2026)
+
+Encargo urgente de Isaac. Base origin/nightly `946d14fc5`; worktree propio
+`C:/VantareServer/wt/isa-1726`, rama `vantareapp/isa-1726-rc3-arranque`.
+Código revisado en r2: `073f696241f09dda9e689a70f5281cdc316a85c0`.
+Sincronizado con nightly `0b0a8c03d` en `fd08ae5568ac9aba29c4365e9b36284bb0f377cc`.
+Esta corrección posterior del handoff solo modifica documentación.
+Diagnóstico comunicado antes de editar: los diez PE de RC3 usan consola;
+la bandeja reabre Hub sin pipe beta ni rutas y busca un título obsoleto;
+la pantalla de acceso retorna antes del chrome con controles Win32.
+Services RC3 sí responde Status/AccountPoll/Shutdown con exit0 y permanece
+vivo36s en arranque completo sobre escritorio privado (sin SwitchDesktop).
+No se ha demostrado un fallo de DuckDB/Supabase ni se ha iniciado sesión real.
+
+Fix: entrada GUI del supervisor `--beta -Root`, motor PowerShell sin consola,
+subsistema Windows en procesos automáticos/GUI, contexto de bandeja conservado,
+controles comunes en acceso/privacidad/asistente y presupuesto total45s por
+respuesta con cancelación, descarte de respuesta tardía y reintento nuevo.
+Stderr de runtime/Services/Hub queda en logs de arranque. Sin dependencias nuevas.
+Regresiones de PE, destino de acceso, contexto y timeout con reloj inyectado.
+PR listo para revisión: https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1729.
+Review DeepSeek de7140: NO APTO. Correcciones de esa review: Register tolera
+raíz sin estado o sin generación activa (bootstrap anterior); conserva también
+la prueba con generación completa. El destino se resuelve una vez por registro,
+sin volver a verificar los bytes por cada acceso. NSIS abre el mismo .lnk GUI.
+El test llama retry_access real con respuesta IPC; Hub tiene título distinto
+al instalador; errores del bootstrap también quedan en bootstrap.log.
+Gates locales de `ba762444d`: Clippy PASS1m53, fmt PASS, Nextest2081/2081
+PASS (350,5s; incluye telemetría),19 omitidos según perfil; Lifecycle PASS
+(Engineer5 + runtime13). Shell30/30 y registro68/68 PASS en usuarios temporales
+retirados, con los mismos scripts del código revisado. Clippy del merge
+`073f69624` PASS49,18s. Estos resultados no acreditan la suite del HEAD final.
+Medición serial de sincronizar tres accesos sobre payload RC3 real, cinco
+muestras por versión: mediana3670,89ms en7140 →60,79ms actual (49,03–69,95ms).
+Mide la fase de sincronización añadida, no el arranque total ni la validación
+previa común de Register. Bytes se validan una sola vez por Register.
+QA Win32 en escritorio privado no acredita los controles físicos: Isaac los
+comprobará en RC4; la comparación RC3 devuelve regiones cliente sin chrome.
+Evidencia: C:/VantareServer/evidence/rc3-bugs/INFORME.md. Procesos de Isaac
+intactos y ninguna ventana en su escritorio. La CI del HEAD final está pendiente
+de terminar y de verificación por el orquestador, incluidos Nextest y Lifecycle.
+El fallo previo de owner-alert-receiver lo corrige nightly #1738/74a508222,
+incluido en la sincronización. RC4 espera integración y autorización posterior.
+Sin merge, firma, publicación ni promoción.
+
 ## VANTA-96 / #1725 · Activación Owner en producción (21-oct-2026)
 
 Autorización expresa del orquestador tras r2 APTO y merge #1727 en nightly

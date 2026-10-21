@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-1726",
+  "type": "fix",
+  "summary": "Vantare abre sin terminal y conserva la conexión de la sesión al reabrir el Hub desde la bandeja.",
+  "technicalNotes": [
+    "El acceso directo usa el supervisor GUI. Los procesos de la aplicación se crean sin consola; el cierre deliberado del supervisor sigue cerrando sus hijos.",
+    "La bandeja conserva el pipe y las rutas de la generación instalada. Las respuestas del servicio tienen un límite total de 45 segundos, cancelación y un mensaje para reintentar.",
+    "Acceso, privacidad y asistente conservan los controles para mover, minimizar, maximizar y cerrar la ventana. Los errores de arranque se guardan en logs bajo la carpeta de instalación."
+  ],
+  "testing": [
+    "Instala la candidata, abre desde Inicio y comprueba que no aparece una terminal. Cierra y reabre el Hub desde la bandeja: debe ofrecer el mismo acceso y los mismos datos.",
+    "Comprueba minimizar, maximizar, restaurar y cerrar durante el acceso y el asistente. Sin servicio disponible debe aparecer un error y permitir Reintentar."
+  ],
+  "knownLimitations": [
+    "Las pruebas sin interfaz no certifican un inicio de sesión real con una cuenta de producción; Isaac debe comprobarlo en su sesión."
+  ]
+}

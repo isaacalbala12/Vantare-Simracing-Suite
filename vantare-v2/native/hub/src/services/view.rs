@@ -154,6 +154,7 @@ pub struct Remote {
     founders_language: founders::Language,
     pub(crate) adapt: orbit::Adapt,
     pipe: String,
+    supervisor_image: Option<std::path::PathBuf>,
     send: Option<SyncSender<Command>>,
     receive: Option<Receiver<Reply>>,
     stop: Arc<AtomicBool>,
@@ -278,6 +279,7 @@ impl Remote {
             pilot: pilot::Projection::default(),
             adapt: orbit::Adapt::default(),
             pipe,
+            supervisor_image: default_binary().ok(),
             send: None,
             receive: None,
             stop: Arc::new(AtomicBool::new(false)),
@@ -512,6 +514,7 @@ impl Remote {
         let (send, commands) = mpsc::sync_channel(2);
         let (responses, receive) = mpsc::sync_channel(2);
         let pipe = self.pipe.clone();
+        let supervisor = self.supervisor_image.clone();
         let connection = Arc::clone(&self.connection_incompatible);
         let stop = Arc::clone(&self.stop);
         self.worker = Some(std::thread::spawn(move || {
@@ -530,8 +533,11 @@ impl Remote {
                         client = None;
                     }
                     if client.is_none() {
-                        let started =
-                            Client::start(&default_binary()?, &pipe, Arc::clone(&cancellation))?;
+                        let started = Client::start(
+                            supervisor.as_deref().ok_or("supervisor no instalado")?,
+                            &pipe,
+                            Arc::clone(&cancellation),
+                        )?;
                         if stop.load(Ordering::Acquire) {
                             return Err("servicios cancelado");
                         }
@@ -707,16 +713,14 @@ impl Remote {
             cx.notify();
         }
         cx.spawn(async move |this, cx| {
+            let mut last_reply = std::time::Instant::now();
             loop {
                 let keep = this
                     .update(cx, |this, cx| {
-                        let reply = match this.receive.as_ref().map(Receiver::try_recv) {
-                            Some(Ok(reply)) => Some(reply),
-                            Some(Err(mpsc::TryRecvError::Disconnected)) => Some(Reply::Error {
-                                message: "Conexión interrumpida".into(),
-                            }),
-                            _ => None,
-                        };
+                        let reply = this.poll_reply(last_reply.elapsed(), cx);
+                        if reply.is_some() {
+                            last_reply = std::time::Instant::now();
+                        }
                         if let Some(reply) = reply {
                             this.complete(reply, cx);
                         }
@@ -730,6 +734,48 @@ impl Remote {
             }
         })
         .detach();
+    }
+
+    fn poll_reply(
+        &mut self,
+        elapsed: std::time::Duration,
+        cx: &mut Context<Self>,
+    ) -> Option<Reply> {
+        match self.receive.as_ref().map(Receiver::try_recv) {
+            Some(Ok(reply)) => return Some(reply),
+            Some(Err(mpsc::TryRecvError::Disconnected)) => {
+                self.close_connection(cx);
+                return Some(Reply::Error {
+                    message: "Conexión interrumpida".into(),
+                });
+            }
+            _ => {}
+        }
+        if elapsed < super::client::REQUEST_TIMEOUT {
+            return None;
+        }
+        self.close_connection(cx);
+        Some(Reply::Error {
+            message: "La comprobación ha tardado demasiado. Comprueba tu conexión y pulsa Reintentar. Si continúa, cierra Vantare desde la bandeja y vuelve a abrirlo.".into(),
+        })
+    }
+
+    fn close_connection(&mut self, cx: &mut Context<Self>) {
+        if let Some(event) = self.cancellation.take() {
+            event.set();
+        }
+        self.send = None;
+        self.receive = None;
+        self.queued = None;
+        if let Some(worker) = self.worker.take() {
+            cx.background_executor()
+                .spawn(async move {
+                    if worker.join().is_err() {
+                        eprintln!("worker de servicios terminó con error");
+                    }
+                })
+                .detach();
+        }
     }
 
     fn report_draft(

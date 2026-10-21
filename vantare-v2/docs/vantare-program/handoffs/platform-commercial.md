@@ -1,3 +1,19 @@
+## VANTA-96 / #1713 · Ensayo elegido: Polar sandbox (21-oct-2026)
+
+Isaac descarta la compra real con devolución. Runbook reescrito para propuesta
+Supabase vantare-staging separado (rilwmlbnucbbayaulnxw), todavía pausado según
+último inventario; reactivación/despliegue/migraciones/ensayo pendientes de
+aprobación explícita. Ninguna variable sandbox se instala en producción.
+Producto pro_monthly a 5,99 EUR/mes simulado, sin trial ni descuento; IDs del
+mapa sandbox históricos pendientes de validar. Token sandbox en custodia,
+GET de producto 403; hace falta ampliar/reemplazar sus permisos.
+Ruta app QA → webhook → ledger positivo → licencia QA → refund sandbox y
+revocación; correo Owner solo sintético opcional, no aviso por pago correcto.
+Claves ES256/Ed25519/HMAC de QA propias; configuración de app y secretos
+separados. Lista única para Isaac en docs/billing/runbook-compra-prueba.md.
+No se ha reactivado, desplegado, cobrado, hecho refund ni cambiado flags.
+#1732 sigue sin desplegar en producción; P3 DeepSeek siguen en #1733.
+
 ## VANTA-96 / #1713 · Configuración y ensayo pendientes (21-oct-2026)
 
 Base nightly a2e46c0d8, #1732 integrado pero NO desplegado. No hay nuevas

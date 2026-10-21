@@ -1,3 +1,28 @@
+## VANTA-96 / #1713 · Configuración y ensayo pendientes (21-oct-2026)
+
+Base nightly a2e46c0d8, #1732 integrado pero NO desplegado. No hay nuevas
+migraciones, deploys, compras, refunds ni flags cambiados en este tramo.
+Cloudflare auditado por nombres: beta sirve vantare.app con ASSETS/WAITLIST_DB;
+no le falta ningún secreto obligatorio al master publicado con venta cerrada.
+Segundo Worker sin bindings/secretos ni dominio propio asociado; cero Pages.
+No se cargan claves privilegiadas de web-compra en una landing que no las usa.
+Fuentes web master d9f040ae5 y web-compra 33e27b2ff; faltantes futuros y
+custodia por nombre en docs/billing/cloudflare-inventario-20261021.md.
+
+Propuesta de ensayo pro_monthly a 0 EUR, con cuenta QA y descuento/control QA
+aprobados, en docs/billing/runbook-compra-prueba.md. No valida devolución de
+dinero a importe cero; además el ledger rechaza net_amount=0, por lo que hoy
+no valida tampoco el E2E completo de derechos. No se debilita esa regla.
+Tampoco promete email Owner por pago correcto: el receptor
+actual avisa de incidencias. Se necesita autorizar la vía QA antes de probarla.
+Catálogo GET preparado en docs/billing/polar-lectura-pendiente.md: seis productos,
+siete precios y cuatro descuentos; token de lectura pendiente, no consultado.
+Reconcile cron ya sano (última muestra 18:07:27Z HTTP200), distinto del bloqueo
+de lectura de catálogo. Marketing/venta/compensación siguen apagados.
+Tres P3 DeepSeek de #1732 añadidos a #1733, incluido el await de hasta 250 ms
+dentro del timeout de 8 s y su efecto en reject/uncertain. Diagnóstico solo se
+desplegará con autorización separada. Evidencia completa en EJECUCION.md.
+
 ## VANTA-105 / #1726 · RC3: consola, reapertura y controles (21-oct-2026)
 
 Encargo urgente de Isaac. Base origin/nightly `946d14fc5`; worktree propio
@@ -67,6 +92,28 @@ P3 r2/r1 abiertos en #1733; no implementados dentro de esta activación.
 Reversión: retirar BILLING_OWNER_ALERT_URL; conserva outbox/inbox y HMAC,
 sin revertir ni borrar datos. El emisor puede seguir reconciliando sin correo.
 Este PR de evidencia no hace otro despliegue ni promociona canales.
+
+## VANTA-96 / #1730 · Diagnóstico seguro de checkout (21-oct-2026)
+
+Actualización de PR #1732: merge de nightly21b1f8012 (#1727) sobre el HEAD
+revisado060340019. Conflictos del arnés y de este handoff resueltos conservando
+ambas suites y ambas entregas; sin cambiar la lógica de checkout. CI y HEAD
+definitivos se verifican en #1730; no se fusiona el PR ni se despliega.
+Validación local tras resolver: 80 tests Deno PASS (Polar/checkout/portal y
+Owner/reconcile), AST Python, quality y diff check PASS. Ensayo PostgreSQL
+completo LF/CRLF pendiente de la CI del nuevo HEAD.
+
+Rama propia vantareapp/isa-1730-polar-checkout-diagnostic desde nightly946d14fc5.
+Se añade log de rechazo con status, clave lógica, error/type y detail loc/type/msg,
+listas cerradas contra PII y límites de lectura/tiempo/tamaño. No se registra
+input/ctx/cuerpo/email/customer ni se devuelve el diagnóstico al cliente.
+5 regresiones nuevas, incluidas privacidad y payload real standard con/sin email.
+El arnés comercial las incorpora sin modificar workflows ni checks requeridos.
+Contrato API2026-10 revisado: products:[id] y demás campos standard admitidos;
+no se detecta campo obsoleto y no se cambia payload por una hipótesis.
+Catálogo draft/archived aún no comprobado; token de lectura pendiente.
+Sin deploy, migración, compra real, flags, merge ni publicación. Resultados
+finales de CI, SHA y PR se verifican en #1730. Runbook polar-checkout-diagnostic.md.
 
 ## VANTA-96 / #1725 · Avisos Owner por email (21-oct-2026)
 

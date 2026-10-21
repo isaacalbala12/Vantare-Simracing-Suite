@@ -465,6 +465,13 @@ $$;
    if 'not ok ' in result or '# Looks like' in result: raise RuntimeError(result)
    print(name+' PASS',flush=True)
   if not args.baseline:
+   if args.deno_bin:
+    diagnostic=subprocess.run([args.deno_bin,'test','--cached-only','--no-lock','--allow-env',
+     '--config',str(ROOT/'supabase/functions/deno.json'),str(ROOT/'supabase/functions/_shared/polar-checkout-diagnostic.test.ts')],
+     env=ENV,capture_output=True,text=True,timeout=60)
+    (OUT/'polar-checkout-diagnostic.log').write_text(diagnostic.stdout+diagnostic.stderr,encoding='utf-8')
+    if diagnostic.returncode: raise RuntimeError(diagnostic.stdout+diagnostic.stderr)
+    print('Polar checkout diagnostic privacy and standard payload PASS',flush=True)
    run_owner_alert_race(run,conn,OUT)
    if args.deno_bin:
     owner_tests=subprocess.run([args.deno_bin,'test','--cached-only','--no-lock','--allow-env',

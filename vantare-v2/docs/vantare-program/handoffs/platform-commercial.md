@@ -23,6 +23,28 @@ Reversión: retirar BILLING_OWNER_ALERT_URL; conserva outbox/inbox y HMAC,
 sin revertir ni borrar datos. El emisor puede seguir reconciliando sin correo.
 Este PR de evidencia no hace otro despliegue ni promociona canales.
 
+## VANTA-96 / #1730 · Diagnóstico seguro de checkout (21-oct-2026)
+
+Actualización de PR #1732: merge de nightly21b1f8012 (#1727) sobre el HEAD
+revisado060340019. Conflictos del arnés y de este handoff resueltos conservando
+ambas suites y ambas entregas; sin cambiar la lógica de checkout. CI y HEAD
+definitivos se verifican en #1730; no se fusiona el PR ni se despliega.
+Validación local tras resolver: 80 tests Deno PASS (Polar/checkout/portal y
+Owner/reconcile), AST Python, quality y diff check PASS. Ensayo PostgreSQL
+completo LF/CRLF pendiente de la CI del nuevo HEAD.
+
+Rama propia vantareapp/isa-1730-polar-checkout-diagnostic desde nightly946d14fc5.
+Se añade log de rechazo con status, clave lógica, error/type y detail loc/type/msg,
+listas cerradas contra PII y límites de lectura/tiempo/tamaño. No se registra
+input/ctx/cuerpo/email/customer ni se devuelve el diagnóstico al cliente.
+5 regresiones nuevas, incluidas privacidad y payload real standard con/sin email.
+El arnés comercial las incorpora sin modificar workflows ni checks requeridos.
+Contrato API2026-10 revisado: products:[id] y demás campos standard admitidos;
+no se detecta campo obsoleto y no se cambia payload por una hipótesis.
+Catálogo draft/archived aún no comprobado; token de lectura pendiente.
+Sin deploy, migración, compra real, flags, merge ni publicación. Resultados
+finales de CI, SHA y PR se verifican en #1730. Runbook polar-checkout-diagnostic.md.
+
 ## VANTA-96 / #1725 · Avisos Owner por email (21-oct-2026)
 
 Base nightly946d14fc5, rama propia vantareapp/isa-1725-owner-alert-email.

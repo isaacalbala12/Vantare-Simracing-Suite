@@ -1664,13 +1664,17 @@ pub fn run_with_access(mut options: Options, access: navigation::Access) -> Resu
                     if activate {
                         let _ = window.update(cx, |_, window, _| {
                             window.on_next_frame(|window, _| {
-                                if !vantare_ui::window_activation::request(window) {
-                                    let _written = std::io::Write::write_all(
-                                        &mut std::io::stderr(),
-                                        "Hub: Windows no concedió primer plano\n".as_bytes(),
-                                    );
-                                }
-                                vantare_ui::window_activation::finish_startup();
+                                // GPUI drains callbacks before draw/present. The following
+                                // frame guarantees the initial frame has been presented.
+                                window.on_next_frame(|window, _| {
+                                    if !vantare_ui::window_activation::request(window) {
+                                        let _written = std::io::Write::write_all(
+                                            &mut std::io::stderr(),
+                                            "Hub: Windows no concedió primer plano\n".as_bytes(),
+                                        );
+                                    }
+                                    vantare_ui::window_activation::finish_startup();
+                                });
                             });
                         });
                     }

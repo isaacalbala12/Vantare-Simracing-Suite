@@ -55,8 +55,11 @@ try {
     $result.indicator= -not [string]::IsNullOrEmpty($env:VANTARE_STARTUP_WINDOW)
     if($expected -ne $result.indicator){throw 'Capability and actual indicator disagree.'}
     if($expected){
-        Add-Type 'using System; using System.Runtime.InteropServices; public static class VisibleBootstrap { [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr hwnd); }'
-        if(-not [VisibleBootstrap]::IsWindowVisible([IntPtr][long]$env:VANTARE_STARTUP_WINDOW)){throw 'Indicator window is not visible.'}
+        Add-Type 'using System; using System.Runtime.InteropServices; public static class VisibleBootstrap { [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr hwnd); [DllImport("user32.dll",EntryPoint="GetWindowLongPtrW")] public static extern IntPtr Style(IntPtr hwnd,int index); }'
+        $window=[IntPtr][long]$env:VANTARE_STARTUP_WINDOW
+        if(-not [VisibleBootstrap]::IsWindowVisible($window)){throw 'Indicator window is not visible.'}
+        $result.style=[VisibleBootstrap]::Style($window,-20).ToInt64()
+        if(($result.style -band 0x08000080) -ne 0x08000080 -or ($result.style -band 0x00040000) -ne 0){throw 'Indicator must not activate or create a taskbar entry.'}
         Complete-BetaBootstrap $Root
     }else{
         # Synchronize with the exact bootstrap created by the test, never sleeps.

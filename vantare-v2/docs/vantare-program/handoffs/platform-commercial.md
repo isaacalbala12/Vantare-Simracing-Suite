@@ -49,7 +49,8 @@ fmt posterior a ICON1/check/Clippy PASS. Nextest completo falló primero en IPC
 Logs gate-completa.log y gate-completa-repeat.log en la evidencia. Sin arreglos
 ni más repeticiones. El orquestador autoriza abrir PR con estos fallos locales:
 la CI completa del runner dedicado en su HEAD será el gate decisivo.
-Telemetría/lifecycle siguen ejecutándose.
+Telemetría 33/33 PASS (1 skipped); lifecycle 18 PASS, logs y gates-final.json
+en la evidencia. No se ha repetido otra vez la suite completa.
 PR listo #1752 a nightly, vinculado a #1746; CI pendiente en el HEAD remoto.
 Sin merge, firma,
 release, publicación ni promoción. Esta entrega no acredita Windows limpio.

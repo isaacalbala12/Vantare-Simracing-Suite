@@ -6616,6 +6616,7 @@ dependencies = [
  "serde_json",
  "sha2",
  "ureq",
+ "vantare-build-support",
  "vantare-domain",
  "vantare-ipc",
  "vantare-launcher",

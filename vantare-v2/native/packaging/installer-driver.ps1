@@ -103,7 +103,7 @@ try {
                 Invoke-NativeRegistrationTransaction $key $folder $legacy {
                     if ($request.qa) { [IO.File]::WriteAllText((Join-Path $root 'registration-identity.txt'), $identity) }
                     New-Item -Path $key -Force | Out-Null
-                    foreach ($item in @{DisplayName='Vantare'; DisplayVersion=$request.version; InstallLocation=$root; UninstallString=('"'+(Join-Path $root 'Uninstall.exe')+'"')}.GetEnumerator()) { Set-ItemProperty -LiteralPath $key -Name $item.Key -Value $item.Value }
+                    foreach ($item in @{DisplayName='Vantare Simracing Suite'; DisplayVersion=$request.version; InstallLocation=$root; UninstallString=('"'+(Join-Path $root 'Uninstall.exe')+'"')}.GetEnumerator()) { Set-ItemProperty -LiteralPath $key -Name $item.Key -Value $item.Value }
                     foreach ($name in @('NoModify','NoRepair')) { New-ItemProperty -LiteralPath $key -Name $name -PropertyType DWord -Value 1 -Force | Out-Null }
                     if ($request.qa) { Set-ItemProperty -LiteralPath $key -Name ShortcutFolder -Value $folder; Set-ItemProperty -LiteralPath $key -Name LegacyShortcutFolder -Value $legacy }
                     Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'Uninstall.exe') -Destination (Join-Path $root 'Uninstall.exe') -Force

@@ -1,3 +1,60 @@
+﻿## VANTA-105 / #1746 · RC4: nombre e icono de accesos (21-oct-2026)
+
+Encargo de worker, base inicial nightly `1b732b67d605298f3056c8ca78d692f132217e2d`,
+worktree `C:/VantareServer/wt/rc4-acceso`, rama `vantareapp/isa-1746-acceso-inicio`.
+Rebase limpio a `3136f0acb9593f265991e7d0d5b20c324d383cf4` (#1742).
+Diagnóstico previo a editar conservado en `C:/VantareServer/evidence/rc4-acceso/`:
+los enlaces Inicio/escritorio reales apuntan al supervisor, IconLocation=",0",
+AppUserModelID vacío. Supervisor sin RT_ICON/RT_GROUP_ICON; de los diez EXE de
+RC4 solo Hub, overlays e importador llevan icono. DisplayName=Vantare y
+DisplayIcon ausente. No se cambió la instalación ni los procesos de Isaac.
+
+Arreglo: nombre Vantare Simracing Suite; ICON1 embebido en el supervisor mediante
+build-support compartido, por ampliación expresa del orquestador tras coordinar
+con #1745. IconLocation apunta al propio supervisor; solo se añade su build.rs
+y build-dependency interna, sin tocar el código de arranque. Se conservan raíz,
+nombres EXE y datos. Prueba estática del PE compara ID1 y sus siete imágenes
+con assets/icon.ico. AppUserModelID estable Vantare.SimracingSuite.
+Registro usa nombre completo e icono Uninstall.
+Register migra enlaces propios de NSIS/RC3/RC4, incluido escritorio heredado
+sin preferencia activa; desinstalar retira nombres antiguos/nuevos propios.
+Las identidades QA conservan sus carpetas y nombres opcionales aislados.
+No se cambia el código de arranque del supervisor/Hub ni Google.
+Sin dependencias externas nuevas.
+
+Regresión COM real para las tres formas históricas: 57 PASS,
+incluidos Startup ON/OFF, nombre histórico y argumentos sin `--background`.
+Tres campañas reales privadas PASS: NSIS público 0.0.975, RC3 0.0.981 y
+RC4 0.0.982 → Setup corregido; nombre, destino, icono extraíble, AppID, registro,
+sin duplicados, datos conservados y uninstall. Cuentas/perfiles estándar
+retirados, sin SwitchDesktop, abrir la app ni falsificar readiness.
+Supervisor Release/CRT estático de `b177a5ed3`, configuración pública idéntica
+a RC4 sin mostrar valores; nueve EXE de RC4 y supervisor nuevo en el paquete QA.
+Grupo ID1 y siete imágenes fuente PASS en supervisor/Setup/Uninstall; sin
+certificado. No se entrega como RC nueva. Harness final 193 PASS; registro
+68, shell 30, inventario histórico 25 y selección del instalador 13 PASS.
+Los fallos iniciales de preparación/harness permanecen en INFORME.md;
+se corrigieron /D de NSIS y hash previo a la autoeliminación, sin quitar checks.
+El orquestador confirma entrega independiente de #1745: este PR no añade el flag.
+PR posterior: Startup tendrá `--background` al final solo tras parser compatible;
+restaurará explícitamente el enlace anterior al hacer rollback, con test real,
+y valorará el nombre completo en Aplicaciones de inicio del Administrador de tareas.
+No basta confiar en Register antiguo: RC4 solo reconoce los argumentos exactos
+sin flag. Restore-NativeCandidate solo intercambia estado y Sync-BetaRegistration
+solo actualiza versión; el Hub restaurado registra después sus propios accesos.
+Gates por cola, target `D:/VantareServer/targets/rc4-acceso`, jobs 2:
+fmt posterior a ICON1/check/Clippy PASS. Nextest completo falló primero en IPC
+#1750 (892 PASS/1 FAIL) y, en la única repetición sin cambios, en HTTP LMU #1751
+(1090 PASS/1 FAIL); IPC pasó en la repetición. Ambos archivos ajenos al diff.
+Logs gate-completa.log y gate-completa-repeat.log en la evidencia. Sin arreglos
+ni más repeticiones. El orquestador autoriza abrir PR con estos fallos locales:
+la CI completa del runner dedicado en su HEAD será el gate decisivo.
+Telemetría 33/33 PASS (1 skipped); lifecycle 18 PASS, logs y gates-final.json
+en la evidencia. No se ha repetido otra vez la suite completa.
+PR listo #1752 a nightly, vinculado a #1746; CI pendiente en el HEAD remoto.
+Sin merge, firma,
+release, publicación ni promoción. Esta entrega no acredita Windows limpio.
+
 ## VANTA-96 / #1713 · Configuración y ensayo pendientes (21-oct-2026)
 
 Base nightly a2e46c0d8, #1732 integrado pero NO desplegado. No hay nuevas

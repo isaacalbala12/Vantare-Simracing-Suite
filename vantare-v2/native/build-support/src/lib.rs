@@ -2,6 +2,15 @@
 use std::{env, fs, path::PathBuf, process::Command};
 
 pub fn embed() -> Result<(), Box<dyn std::error::Error>> {
+    embed_for(None)
+}
+
+/// Share the icon with a single entry point in a crate that also has CLI tools.
+pub fn embed_binary(binary: &str) -> Result<(), Box<dyn std::error::Error>> {
+    embed_for(Some(binary))
+}
+
+fn embed_for(binary: Option<&str>) -> Result<(), Box<dyn std::error::Error>> {
     if !env::var("TARGET")?.ends_with("windows-msvc") {
         return Ok(());
     }
@@ -40,7 +49,11 @@ pub fn embed() -> Result<(), Box<dyn std::error::Error>> {
     if !status.success() {
         return Err(format!("compilar icono Win32: {status}").into());
     }
-    println!("cargo:rustc-link-arg-bins={}", resource.display());
+    if let Some(binary) = binary {
+        println!("cargo:rustc-link-arg-bin={binary}={}", resource.display());
+    } else {
+        println!("cargo:rustc-link-arg-bins={}", resource.display());
+    }
     Ok(())
 }
 

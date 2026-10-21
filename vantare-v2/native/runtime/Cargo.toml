@@ -49,6 +49,9 @@ harness = false
 [lints]
 workspace = true
 
+[build-dependencies]
+vantare-build-support.workspace = true
+
 [dev-dependencies]
 vantare-services = { workspace = true, features = ["network"] }
 base64 = "0.22"

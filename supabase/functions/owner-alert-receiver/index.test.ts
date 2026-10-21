@@ -61,14 +61,14 @@ function fixture() {
   let providerStatus = 201;
   let finishFails = false;
   const store: AlertStore = {
-    claim() {
+    claim(a) {
       if (state === "sent") return Promise.resolve({ state: "sent" });
       if (state === "sending") return Promise.resolve({ state: "busy" });
       state = "sending";
       return Promise.resolve({
         state: "claimed",
         email_key: "17250000-0000-4000-8000-000000000001",
-        code: alert.code,
+        code: a.code,
       });
     },
     finish(_alert, _lease, sent) {
@@ -93,7 +93,7 @@ function fixture() {
     return Response.json(
       providerStatus === 201
         ? { messageId: "fixture-message" }
-        : { code: "duplicate_parameter" },
+        : { code: "invalid_parameter" },
       { status: providerStatus },
     );
   };
@@ -140,7 +140,7 @@ Deno.test("concurrent duplicate has one sender and no premature ACK", async () =
   equal((await first).status, 200);
   equal(f.sends, 1);
 });
-Deno.test("Brevo failure remains pending; retry succeeds; duplicate errors are not ACKed", async () => {
+Deno.test("Brevo failure remains pending; retry succeeds", async () => {
   const f = fixture();
   for (const status of [400, 401, 429, 500]) {
     f.failProvider(status);
@@ -160,6 +160,84 @@ Deno.test("storage failure never produces successful ACK", async () => {
   const g = fixture();
   g.failFinish();
   equal((await handleOwnerAlert(await signed(), g.deps)).status, 503);
+});
+
+Deno.test("finish returning false never ACKs an accepted email", async () => {
+  const f = fixture();
+  const results: boolean[] = [];
+  f.deps.store.finish = (_a, _lease, sent) => {
+    results.push(sent);
+    return Promise.resolve(false);
+  };
+  equal((await handleOwnerAlert(await signed(), f.deps)).status, 503);
+  equal(results, [true]);
+  equal(f.sends, 1);
+});
+
+Deno.test("lost Brevo ACK retries the same email key and commits duplicate_parameter as sent", async () => {
+  const f = fixture();
+  const keys: string[] = [];
+  let emails = 0;
+  const finish = f.deps.store.finish;
+  f.deps.store.finish = (a, lease, sent) => {
+    equal(sent, keys.length === 2);
+    return finish(a, lease, sent);
+  };
+  f.deps.fetch = (_input, init) => {
+    keys.push(
+      JSON.parse(String((init as RequestInit)?.body)).headers.idempotencyKey,
+    );
+    if (keys.length === 1) {
+      emails++;
+      throw new Error("provider accepted but response lost");
+    }
+    equal(keys[1], keys[0]);
+    return Promise.resolve(
+      Response.json({ code: "duplicate_parameter" }, { status: 400 }),
+    );
+  };
+  equal((await handleOwnerAlert(await signed(), f.deps)).status, 503);
+  equal((await handleOwnerAlert(await signed(), f.deps)).status, 200);
+  equal((await handleOwnerAlert(await signed(), f.deps)).status, 200);
+  equal([emails, keys.length, f.finishes], [1, 2, 2]);
+});
+
+Deno.test("duplicate_parameter still needs a durable finish; other provider errors remain pending", async () => {
+  const f = fixture();
+  f.deps.fetch = () =>
+    Promise.resolve(
+      Response.json({ code: "duplicate_parameter" }, { status: 400 }),
+    );
+  f.deps.store.finish = (_a, _lease, sent) => {
+    equal(sent, true);
+    return Promise.resolve(false);
+  };
+  equal((await handleOwnerAlert(await signed(), f.deps)).status, 503);
+  for (const status of [401, 429, 500]) {
+    const g = fixture();
+    g.deps.fetch = () =>
+      Promise.resolve(
+        Response.json({ code: "duplicate_parameter" }, { status }),
+      );
+    equal((await handleOwnerAlert(await signed(), g.deps)).status, 503);
+  }
+});
+
+Deno.test("codes starting with a digit or underscore reach the email", async () => {
+  for (const code of ["429_refund_unavailable", "_refund_unavailable"]) {
+    const f = fixture();
+    const send = f.deps.fetch;
+    f.deps.fetch = (input, init) => {
+      const message = JSON.parse(String((init as RequestInit)?.body));
+      equal(message.textContent.includes(`Código: ${code}\n`), true);
+      return send(input, init);
+    };
+    equal(
+      (await handleOwnerAlert(await signed({ ...alert, code }), f.deps)).status,
+      200,
+    );
+    equal(f.sends, 1);
+  }
 });
 
 Deno.test("transport errors and malformed successful provider responses remain retryable", async () => {
@@ -246,6 +324,7 @@ Deno.test("real reconcile signer interoperates with receiver and only marks dura
         order_id: "17250000-0000-4000-8000-000000000001",
         kind: alert.type,
         code: alert.code,
+        attempt_count: 1,
       }]),
     finishAlert: (_environment: unknown, _id: unknown, delivered: boolean) => {
       deliveries.push(delivered);
@@ -261,4 +340,79 @@ Deno.test("real reconcile signer interoperates with receiver and only marks dura
   );
   equal(deliveries, [true]);
   equal(f.sends, 1);
+});
+
+Deno.test("same order sends new incidents for changed code or refund attempt, but dedupes each replay", async () => {
+  const f = fixture();
+  const rows = new Map<
+    string,
+    { emailKey: string; code: string; sent: boolean }
+  >();
+  const emails: { code: string; key: string }[] = [];
+  f.deps.store = {
+    claim(a) {
+      let row = rows.get(a.id);
+      if (!row) {
+        row = { emailKey: crypto.randomUUID(), code: a.code, sent: false };
+        rows.set(a.id, row);
+      }
+      return Promise.resolve(
+        row.sent ? { state: "sent" } : {
+          state: "claimed",
+          email_key: row.emailKey,
+          code: row.code,
+        },
+      );
+    },
+    finish(a, _lease, sent) {
+      rows.get(a.id)!.sent = sent;
+      return Promise.resolve(true);
+    },
+  };
+  f.deps.fetch = (_input, init) => {
+    const message = JSON.parse(String((init as RequestInit)?.body));
+    emails.push({
+      code: message.textContent,
+      key: message.headers.idempotencyKey,
+    });
+    return Promise.resolve(
+      Response.json({ messageId: "fixture-message" }, { status: 201 }),
+    );
+  };
+  const incident = {
+    order_id: "17250000-0000-4000-8000-000000000001",
+    kind: alert.type,
+    code: alert.code,
+    attempt_count: 1,
+  };
+  const deliveries: boolean[] = [];
+  const store = {
+    alerts: () => Promise.resolve([incident]),
+    finishAlert: (_environment: unknown, _id: unknown, delivered: boolean) => {
+      deliveries.push(delivered);
+      return Promise.resolve();
+    },
+  } as unknown as CompensationStore;
+  const deliver = () =>
+    deliverCheckoutOwnerAlerts(
+      "production",
+      store,
+      { url: "https://receiver.invalid", secret },
+      (input, init) => handleOwnerAlert(new Request(input, init), f.deps),
+      () => new Date(now),
+    );
+  await deliver();
+  await deliver();
+  equal(emails.length, 1);
+  incident.code = "429_refund_unavailable";
+  await deliver();
+  await deliver();
+  equal(emails.length, 2);
+  equal(emails[1].code.includes("Código: 429_refund_unavailable\n"), true);
+  incident.attempt_count++;
+  await deliver();
+  await deliver();
+  equal(emails.length, 3);
+  equal(new Set(emails.map((e) => e.key)).size, 3);
+  equal(deliveries, Array(6).fill(true));
 });

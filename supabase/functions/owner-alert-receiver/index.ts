@@ -148,7 +148,7 @@ export async function handleOwnerAlert(
       !TYPES.has(a.type) ||
       typeof a.id !== "string" || !/^[a-f0-9]{64}$/.test(a.id) ||
       request.headers.get("X-Vantare-Alert-Id") !== a.id ||
-      typeof a.code !== "string" || !/^[a-z][a-z0-9_]{0,63}$/.test(a.code)
+      typeof a.code !== "string" || !/^[a-z0-9_]{1,64}$/.test(a.code)
     ) return reply(400);
     const store = deps.store ?? createStore();
     const lease = crypto.randomUUID();
@@ -185,11 +185,14 @@ export async function handleOwnerAlert(
           }),
         },
       );
-      // No generic duplicate/error response is mistaken for successful delivery.
+      // Brevo confirms a previously accepted idempotencyKey with this error.
       if (response.status === 201) {
         const result = await response.json();
         accepted = typeof result.messageId === "string" &&
           result.messageId.length > 0;
+      } else if (response.status === 400) {
+        const result = await response.json();
+        accepted = result.code === "duplicate_parameter";
       } else {
         await response.body?.cancel();
       }

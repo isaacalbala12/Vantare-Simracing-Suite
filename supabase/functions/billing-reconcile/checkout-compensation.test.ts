@@ -195,7 +195,13 @@ class MemoryStore implements CompensationStore {
   }
   alerts() {
     return Promise.resolve(
-      this.alert ? [{ order_id: ORDER, code: this.errors.at(-1) }] : [],
+      this.alert
+        ? [{
+          order_id: ORDER,
+          code: this.errors.at(-1),
+          attempt_count: this.job.attempt_count,
+        }]
+        : [],
     );
   }
   finishAlert(_environment: string, _id: string, delivered: boolean) {

@@ -1,11 +1,25 @@
 -- #1725 / VANTA-96: operational alerts contain no account/customer identifiers.
 begin;
+-- Expose the existing refund attempt, not the count of email delivery retries.
+create or replace function public.billing_operational_owner_alerts(p_environment text) returns jsonb
+language sql stable security definer set search_path='' as $$
+ select coalesce(jsonb_agg(row),'[]') from (
+  select jsonb_build_object('order_id',c.order_id,'kind','checkout_refund_failed','code',c.last_error_code,
+    'attempt_count',c.attempt_count) row,c.alert_next_at due
+   from private.billing_checkout_compensations c where c.environment=p_environment and c.alert_pending and c.alert_next_at<=now()
+  union all
+  select jsonb_build_object('order_id',n.id,'kind',n.kind,'code',n.code) row,n.next_attempt_at due from private.billing_owner_notices n
+   where n.environment=p_environment and n.delivered_at is null and n.next_attempt_at<=now()
+  order by due
+  limit 5
+ ) notices
+$$;
 create table private.billing_owner_alert_inbox (
   environment text not null check (environment in ('sandbox','production')),
   alert_type text not null check (alert_type in ('checkout_refund_failed','checkout_verification_pending',
     'web_erasure_failed','web_erasure_worker_stale','checkout_review')),
   alert_id text not null check (alert_id ~ '^[0-9a-f]{64}$'),
-  code text not null check (code ~ '^[a-z][a-z0-9_]{0,63}$'),
+  code text not null check (code ~ '^[a-z0-9_]{1,64}$'),
   email_key uuid not null default gen_random_uuid(),
   received_at timestamptz not null default clock_timestamp(),
   sent_at timestamptz,

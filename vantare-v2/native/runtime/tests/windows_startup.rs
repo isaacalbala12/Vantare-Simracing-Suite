@@ -116,6 +116,32 @@ fn background_entry_points_are_windows_gui_executables() {
 }
 
 #[test]
+fn bootstrap_signal_releases_its_image_and_timeout_preserves_the_guard() {
+    use std::os::windows::process::CommandExt;
+    use std::process::Command;
+    let id = vantare_services::random_id().expect("test id");
+    let root = std::env::temp_dir().join(format!("vantare-bootstrap-signal-{id}"));
+    let script = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../packaging/bootstrap-signal-tests.ps1");
+    let host = std::path::PathBuf::from(std::env::var_os("WINDIR").expect("Windows"))
+        .join("System32/WindowsPowerShell/v1.0/powershell.exe");
+    let output = Command::new(host)
+        .args(["-NoProfile", "-ExecutionPolicy", "Bypass", "-File"])
+        .arg(script)
+        .arg("-EvidenceDirectory")
+        .arg(root)
+        .creation_flags(0x0800_0000)
+        .output()
+        .expect("real invisible bootstrap fixture");
+    assert!(
+        output.status.success(),
+        "{} {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+#[test]
 fn gui_bootstrap_returns_while_its_hidden_engine_finishes_independently() {
     use std::{
         process::{Command, Stdio},

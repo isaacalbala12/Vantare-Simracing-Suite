@@ -1,3 +1,27 @@
+## VANTA-96 / #1730 · Catálogo sin scope; listas web preparadas (21-oct-2026)
+
+Solo GET con token nuevo:6productos y4descuentos canónicos devuelven403,
+error insufficient_scope. Falta products:read/discounts:read; pedido al
+orquestador por canal protegido, sin solicitar escritura. Estados draft,
+is_archived, precios y fechas siguen desconocidos. No publicar/desarchivar ni
+repetir checkout. Inventario exacto6productos/7precios/4descuentos preparado.
+Logs de la misma ejecución:3eventos, solo status422; no detail/validation.
+El backend no guardó el cuerpo, por lo que no se recupera retroactivamente.
+SQL y reconstrucción offline PASS: intento normal pro_monthly/standard,
+sin creador, descuento de lanzamiento ni trial. Payload sin precio explícito.
+Esto no prueba tarifa remota válida ni descarta borrador. Sin bug confirmado,
+no PR especulativo; no modificar producción para obtener más diagnóstico.
+
+Corregido inventario web: origin/vantareapp/web-compra sí estaba disponible,
+SHA33e27b2ffaa5bdc9f0bdf6ec6ad13aad16041c81. masterd9f040a no consume
+secretos de compra y waitlist cerrada no necesita salt. web-compra requiere
+service_role para compra (contrato actual, no rol mínimo alternativo); JWT
+mínimo separado para D1. VANTARE_PURCHASE es de build; PURCHASE_OPEN de Worker.
+Lista completa separada en evidence/supabase-reconstruccion/CLOUDFLARE-SECRETOS.md;
+CATALOGO-1730.md y EJECUCION.md conservan diagnóstico y límites. Sin cargas,
+publicaciones, cambios de catálogo, sandbox, flags, pago ni ejecución nueva.
+Siguiente: lectura autorizada antes de decidir acciones o arreglo de backend.
+
 ## VANTA-96 / #1713 · Prueba sin pago rechazada; parada (21-oct-2026)
 
 Nuevo token Cloudflare correcto: vantare.app sirve beta/production en cuenta

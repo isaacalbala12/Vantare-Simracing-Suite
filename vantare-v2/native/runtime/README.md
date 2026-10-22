@@ -1,6 +1,9 @@
 # runtime — adquisición y núcleo
 
 Adaptadores LMU/ACC privados, validación y derivaciones centrales; publicación neutral y supervisor.
+El supervisor `vantare.exe` embebe ICON1 desde `build-support`, igual que Hub/UI;
+los accesos apuntan al propio EXE también para su icono. `tests/windows_icon.rs`
+verifica el recurso ID1 y los bytes de cada tamaño del ICO compartido sin ejecutarlo.
 
 QA #1638: `vantare-grabar-lmu-completo` graba SHM íntegro y REST descubierto en
 `.lmu.gz`; `open_replay` admite ese archivo y `vantare-verificar-lmu` produce

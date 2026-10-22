@@ -563,17 +563,68 @@ function Get-NativeLaunchTarget([string]$Directory) {
     return $null
 }
 
+function Set-NativeShortcutAppId([string]$Path) {
+    # Register also runs on Hub startup. Reuse the persisted property without
+    # compiling the interop adapter again in each new PowerShell process.
+    $shell=New-Object -ComObject Shell.Application
+    $item=$shell.NameSpace((Split-Path $Path)).ParseName([IO.Path]::GetFileName($Path))
+    if($item.ExtendedProperty('System.AppUserModel.ID') -ceq 'Vantare.SimracingSuite'){return}
+    if(-not ('VantareShortcutProperties' -as [type])) {
+        Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+public static class VantareShortcutProperties {
+    [StructLayout(LayoutKind.Sequential)] public struct Key { public Guid format; public uint id; }
+    [StructLayout(LayoutKind.Explicit, Size=24)] public struct Value {
+        [FieldOffset(0)] public ushort type;
+        [FieldOffset(8)] public IntPtr text;
+    }
+    [ComImport, Guid("886D8EEB-8CF2-4446-8D02-CDBA1DBDCF99"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    interface Store {
+        void GetCount(out uint count);
+        void GetAt(uint index, out Key key);
+        void GetValue(ref Key key, out Value value);
+        void SetValue(ref Key key, ref Value value);
+        void Commit();
+    }
+    [DllImport("shell32.dll", CharSet=CharSet.Unicode, PreserveSig=false)]
+    static extern void SHGetPropertyStoreFromParsingName(string path, IntPtr context, uint flags, ref Guid iid, out Store store);
+    public static void Set(string path, string appId) {
+        Guid iid=typeof(Store).GUID;
+        Store store;
+        SHGetPropertyStoreFromParsingName(path, IntPtr.Zero, 2, ref iid, out store);
+        Value value=new Value { type=31, text=Marshal.StringToCoTaskMemUni(appId) };
+        try {
+            Key key=new Key { format=new Guid("9F4C2855-9F79-4B39-A8D0-E1D42DE1D5F3"), id=5 };
+            store.SetValue(ref key, ref value);
+            store.Commit();
+        } finally { Marshal.FreeCoTaskMem(value.text); Marshal.ReleaseComObject(store); }
+    }
+}
+'@
+    }
+    [VantareShortcutProperties]::Set($Path, 'Vantare.SimracingSuite')
+}
+
+function Get-NativeShortcutName([string]$Folder) {
+    if($Folder -ceq 'Vantare'){return 'Vantare Simracing Suite'}
+    # Keep externally supplied QA identities isolated from the public desktop.
+    $Folder
+}
+
 function Set-NativeLaunchShortcut($Link,[string]$Directory,[string]$LaunchTarget) {
     if($LaunchTarget){
         $Link.TargetPath=$LaunchTarget
         # -Root conserva el reconocimiento del acceso por generaciones anteriores al hacer rollback.
         $Link.Arguments='--beta -Root "'+$Directory+'"'
+        $Link.IconLocation=$LaunchTarget+',0'
     }else{
         # Registro inerte/incompleto: conservar la ruta de bootstrap anterior sin abortar el registro.
         $Link.TargetPath=Join-Path $env:WINDIR 'System32/WindowsPowerShell/v1.0/powershell.exe'
         $Link.Arguments='-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "'+(Join-Path $Directory 'beta.ps1')+'" -Root "'+$Directory+'"'
     }
     $Link.Save()
+    Set-NativeShortcutAppId $Link.FullName
 }
 
 function Get-NativeShortcutFolder([string]$Name) {
@@ -588,7 +639,7 @@ function Get-NativeProgramsFolder {
     $programs
 }
 
-function Sync-NativeOptionalShortcuts([string]$Directory,[string]$Folder,$Ui,[bool]$Remove=$false,[string]$LaunchTarget) {
+function Sync-NativeOptionalShortcuts([string]$Directory,[string]$Folder,$Ui,[bool]$Remove=$false,[string]$LaunchTarget,[switch]$ExistingOnly) {
     if(-not $Remove -and -not $PSBoundParameters.ContainsKey('LaunchTarget')){$LaunchTarget=Get-NativeLaunchTarget $Directory}
     if($null -eq $Ui){return}
     $targets=@(
@@ -602,14 +653,25 @@ function Sync-NativeOptionalShortcuts([string]$Directory,[string]$Folder,$Ui,[bo
             $shell=New-Object -ComObject WScript.Shell
             $parent=Get-NativeShortcutFolder $target.name
             if([string]::IsNullOrWhiteSpace($parent)){throw 'Windows no ofrece la carpeta opcional.'}
-            $path=Join-Path $parent ($Folder+'.lnk')
+            # Startup keeps its historical filename so generation rollback can
+            # rewrite the same entry. Only visible Desktop/Start names change.
+            $shortcutName=if($target.name -ceq 'Startup'){$Folder}else{Get-NativeShortcutName $Folder}
+            $path=Join-Path $parent ($shortcutName+'.lnk')
             $exists=Test-Path -LiteralPath $path
             $owned=$exists -and (Test-NativeShortcutOwned ($shell.CreateShortcut($path)) $Directory)
-            if($Remove){if($owned){Remove-Item -LiteralPath $path}; continue}
+            $oldNames=@($Folder+'.lnk')
+            if($Folder -ceq 'Vantare'){$oldNames+='Vantare Native Beta.lnk'}
+            $oldOwnedPaths=@(foreach($name in $oldNames){
+                $oldPath=Join-Path $parent $name
+                if($oldPath -ne $path -and (Test-Path -LiteralPath $oldPath) -and (Test-NativeShortcutOwned ($shell.CreateShortcut($oldPath)) $Directory)){$oldPath}
+            })
+            if($Remove){if($owned){Remove-Item -LiteralPath $path}; foreach($oldPath in $oldOwnedPaths){Remove-Item -LiteralPath $oldPath}; continue}
+            if($ExistingOnly -and -not $owned -and -not $oldOwnedPaths.Count){continue}
             if($exists -and -not $owned){throw 'El acceso opcional pertenece a otra instalación; se conserva.'}
             [IO.Directory]::CreateDirectory($parent)|Out-Null
             $link=$shell.CreateShortcut($path)
             Set-NativeLaunchShortcut $link $Directory $LaunchTarget
+            foreach($oldPath in $oldOwnedPaths){Remove-Item -LiteralPath $oldPath}
         } catch { Write-NativeShortcutWarning ("No se pudo sincronizar el acceso opcional {0}: {1}" -f $target.name,$_.Exception.Message) }
     }
 }
@@ -626,8 +688,8 @@ function Invoke-NativeRegistrationTransaction([string]$Key,[string]$Folder,[stri
     }
     $links=@{}; $paths=@()
     $programs=Get-NativeProgramsFolder
-    foreach($name in @('Vantare.lnk','Desinstalar.lnk')){$paths+=Join-Path (Join-Path $programs $Folder) $name}
-    foreach($name in @('Vantare Native Beta.lnk','Desinstalar.lnk')){$paths+=Join-Path (Join-Path $programs $Legacy) $name}
+    foreach($name in @('Vantare Simracing Suite.lnk','Vantare.lnk','Desinstalar.lnk')){$paths+=Join-Path (Join-Path $programs $Folder) $name}
+    foreach($name in @('Vantare Native Beta.lnk','Vantare.lnk','Desinstalar.lnk')){$paths+=Join-Path (Join-Path $programs $Legacy) $name}
     # Optional shortcuts run last, after every mandatory write, and cannot throw.
     # Do not resolve/read them here: even their backup can fail in a raw profile.
     foreach($path in $paths){$links[$path]=if(Test-Path -LiteralPath $path){[IO.File]::ReadAllBytes($path)}else{$null}}
@@ -673,7 +735,7 @@ function Sync-NativeRegistration([string]$Directory, [string]$Version, $Previous
     if ($external) {
         if ($null -eq $registration.PSObject.Properties['ShortcutFolder'] -or
             $null -eq $registration.PSObject.Properties['LegacyShortcutFolder']) {
-            Set-ItemProperty -LiteralPath $key -Name DisplayName -Value 'Vantare'
+            Set-ItemProperty -LiteralPath $key -Name DisplayName -Value 'Vantare Simracing Suite'
             if($Version){Set-ItemProperty -LiteralPath $key -Name DisplayVersion -Value $Version}
             return
         }
@@ -698,7 +760,7 @@ function Sync-NativeRegistration([string]$Directory, [string]$Version, $Previous
     $programs = Get-NativeProgramsFolder
     $target = Join-Path $programs $folder
     $shell = New-Object -ComObject WScript.Shell
-    foreach ($name in @('Vantare.lnk', 'Desinstalar.lnk')) {
+    foreach ($name in @('Vantare Simracing Suite.lnk', 'Vantare.lnk', 'Desinstalar.lnk')) {
         $path = Join-Path $target $name
         if (-not (Test-Path -LiteralPath $path)) { continue }
         $existing = $shell.CreateShortcut($path)
@@ -715,14 +777,17 @@ function Sync-NativeRegistration([string]$Directory, [string]$Version, $Previous
         else { [IO.File]::Move($temp, $uninstaller) }
     } finally { if (Test-Path -LiteralPath $temp) { Remove-Item -LiteralPath $temp } }
     [IO.Directory]::CreateDirectory($target) | Out-Null
-    $link = $shell.CreateShortcut((Join-Path $target 'Vantare.lnk'))
+    $link = $shell.CreateShortcut((Join-Path $target 'Vantare Simracing Suite.lnk'))
     Set-NativeLaunchShortcut $link $directory $LaunchTarget
+    $oldLink=Join-Path $target 'Vantare.lnk'
+    if(Test-Path -LiteralPath $oldLink){Remove-Item -LiteralPath $oldLink}
     $link = $shell.CreateShortcut((Join-Path $target 'Desinstalar.lnk'))
     $link.TargetPath = $uninstallTarget
     $link.Arguments = $uninstallArgs
+    if($null -ne $installerUi){$link.IconLocation=$uninstallTarget+',0'}
     $link.Save()
     $legacy = Join-Path $programs $legacyFolder
-    foreach ($name in @('Vantare Native Beta.lnk', 'Desinstalar.lnk')) {
+    foreach ($name in @('Vantare Native Beta.lnk', 'Vantare.lnk', 'Desinstalar.lnk')) {
         $path = Join-Path $legacy $name
         if (-not (Test-Path -LiteralPath $path)) { continue }
         $link = $shell.CreateShortcut($path)
@@ -737,7 +802,9 @@ function Sync-NativeRegistration([string]$Directory, [string]$Version, $Previous
     if ((Test-Path -LiteralPath $legacy) -and -not @(Get-ChildItem -LiteralPath $legacy -Force).Count) {
         Remove-Item -LiteralPath $legacy
     }
-    Set-ItemProperty -LiteralPath $key -Name DisplayName -Value 'Vantare'
+    Set-ItemProperty -LiteralPath $key -Name DisplayName -Value 'Vantare Simracing Suite'
+    if($null -ne $installerUi){Set-ItemProperty -LiteralPath $key -Name DisplayIcon -Value ('"'+$uninstallTarget+'",0')}
+    elseif($LaunchTarget){Set-ItemProperty -LiteralPath $key -Name DisplayIcon -Value ('"'+(Join-Path (Split-Path $LaunchTarget) 'vantare-hub.exe')+'",0')}
     if($Version){Set-ItemProperty -LiteralPath $key -Name DisplayVersion -Value $Version}
     Set-ItemProperty -LiteralPath $key -Name UninstallString -Value ('"' + $uninstallTarget + '" ' + $uninstallArgs)
     if($null -ne $PreviousUi -and $null -ne $installerUi){
@@ -745,6 +812,11 @@ function Sync-NativeRegistration([string]$Directory, [string]$Version, $Previous
         Sync-NativeOptionalShortcuts $directory $folder @{desktop=($PreviousUi.desktop -and -not $installerUi.desktop);autostart=($PreviousUi.autostart -and -not $installerUi.autostart)} $true
     }
     Sync-NativeOptionalShortcuts $directory $folder $installerUi -LaunchTarget $LaunchTarget
+    # NSIS did not persist desktop preferences. Migrate an existing owned link
+    # even when /S leaves the option OFF; never create a new optional link here.
+    if($null -eq $installerUi -or -not $installerUi.desktop){
+        Sync-NativeOptionalShortcuts $directory $folder @{desktop=$true;autostart=$false} -LaunchTarget $LaunchTarget -ExistingOnly
+    }
 }
 
 function Uninstall-NativeRegistration([string]$Directory,[bool]$DeferUninstaller=$false,[string]$KnownIdentity='', [string]$KnownFolder='') {
@@ -781,13 +853,22 @@ function Uninstall-NativeRegistration([string]$Directory,[bool]$DeferUninstaller
     }
     $target = Join-Path (Get-NativeProgramsFolder) $folder
     $shell = New-Object -ComObject WScript.Shell
-    foreach ($name in @('Vantare.lnk', 'Desinstalar.lnk')) {
+    foreach ($name in @('Vantare Simracing Suite.lnk', 'Vantare.lnk', 'Desinstalar.lnk')) {
         $path = Join-Path $target $name
         if ((Test-Path -LiteralPath $path) -and (Test-NativeShortcutOwned ($shell.CreateShortcut($path)) $directory)) { Remove-Item -LiteralPath $path }
     }
     if ((Test-Path -LiteralPath $target) -and -not @(Get-ChildItem -LiteralPath $target -Force).Count) { Remove-Item -LiteralPath $target }
+    $legacyFolder=if($null -ne $registration -and ($external -or ($KnownIdentity -and $KnownIdentity -cne 'VantareNativeBeta'))){$registration.LegacyShortcutFolder}else{'Vantare Native Beta'}
+    if($legacyFolder -cnotmatch '^[A-Za-z0-9][A-Za-z0-9 -]{0,63}$'){throw 'Carpeta de accesos antigua inválida.'}
+    $legacy=Join-Path (Get-NativeProgramsFolder) $legacyFolder
+    foreach($name in @('Vantare Native Beta.lnk','Vantare.lnk','Desinstalar.lnk')){
+        $path=Join-Path $legacy $name
+        if((Test-Path -LiteralPath $path) -and (Test-NativeShortcutOwned ($shell.CreateShortcut($path)) $directory)){Remove-Item -LiteralPath $path}
+    }
+    if((Test-Path -LiteralPath $legacy) -and -not @(Get-ChildItem -LiteralPath $legacy -Force).Count){Remove-Item -LiteralPath $legacy}
     $optionalUi=if($null -ne $installerUi){$installerUi}elseif($null -ne $cleanup){@{desktop=$false;autostart=$false}}else{$null}
     Sync-NativeOptionalShortcuts $directory $folder $optionalUi $true
+    Sync-NativeOptionalShortcuts $directory $folder @{desktop=$true;autostart=$true} $true -ExistingOnly
     if($DeferUninstaller -and $null -ne $installerUi){
         if($null -ne $cleanup){if($cleanup.sha256 -cne $installerUi.sha256){throw 'La limpieza corresponde a otro desinstalador.'}}
         else{Write-NativeJson $marker @{schema=1; sha256=$installerUi.sha256}}

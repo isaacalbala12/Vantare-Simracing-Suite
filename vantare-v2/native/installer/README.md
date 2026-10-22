@@ -1,4 +1,4 @@
-# installer — Setup y Uninstall (#1591)
+﻿# installer — Setup y Uninstall (#1591)
 
 Dos binarios x64 independientes, `vantare-setup` y `vantare-uninstall`, publicados
 como `VantareSetup.exe` y `Uninstall.exe`. GPUI usa el mismo commit fijado que la
@@ -30,7 +30,7 @@ uninstaller adopta su directorio y acepta `_?=` legacy. Los códigos del motor
 se conservan; 5 significa cancelación previa a la transacción. Tras iniciarla,
 la UI espera su resultado y no mata el host ni los procesos de la app.
 
-Registro HKCU `VantareNativeBeta`, menú Inicio Vantare; QA conserva
+Registro HKCU `VantareNativeBeta`, menú Inicio Vantare, acceso «Vantare Simracing Suite»; QA conserva
 `VantareNativeBetaQA1492` y carpetas QA1492. `installer-ui.json` persiste opciones
 y valida la identidad/hash del uninstaller; Register conserva esa UI. Su
 autoeliminación sucede en un helper temporal acotado que espera al proceso,

@@ -1,5 +1,7 @@
 //! El SO debe aceptar la apertura, no basta con crear un proceso intermediario.
 use crate::{Error, Result};
+#[cfg(windows)]
+mod registered;
 
 pub(crate) fn begin(
     account: &mut crate::account::Account,
@@ -9,7 +11,7 @@ pub(crate) fn begin(
     let url = account.begin_login()?;
     let _log = writeln!(std::io::stderr(), "account-login: browser-request");
     if let Err(error) = open(&url) {
-        account.cancel_login()?;
+        account.offer_login_link(&url)?;
         return Err(error);
     }
 
@@ -89,7 +91,7 @@ fn handler_available(scheme: &str) -> bool {
     };
     // "Undecided" activa OpenWith aunque ShellExecuteEx devuelva éxito.
     // Se valida el ProgID (también apps delegadas), no una ruta .exe obligatoria.
-    let available = is_browser_association(&progid);
+    let available = is_browser_association(&progid) && registered::association_exists(&progid);
     if !available {
         let _log = writeln!(std::io::stderr(), "account-login: association-undecided");
     }
@@ -98,7 +100,7 @@ fn handler_available(scheme: &str) -> bool {
 
 #[cfg(windows)]
 #[allow(unsafe_code)]
-pub(crate) fn open(url: &url::Url) -> Result<()> {
+fn open_default(url: &url::Url) -> Result<()> {
     use std::io::Write;
     use std::os::windows::ffi::OsStrExt;
     use windows_sys::Win32::System::Com::{
@@ -162,6 +164,19 @@ pub(crate) fn open(url: &url::Url) -> Result<()> {
     result
 }
 
+#[cfg(windows)]
+pub(crate) fn open(url: &url::Url) -> Result<()> {
+    with_fallback(|| open_default(url), || registered::open(url))
+}
+
+#[cfg(windows)]
+fn with_fallback(
+    default: impl FnOnce() -> Result<()>,
+    fallback: impl FnOnce() -> Result<()>,
+) -> Result<()> {
+    default().or_else(|_| fallback())
+}
+
 #[cfg(not(windows))]
 pub(crate) fn open(url: &url::Url) -> Result<()> {
     #[cfg(target_os = "linux")]
@@ -209,36 +224,55 @@ mod tests {
             crate::random_id().expect("unique unregistered protocol")
         ))
         .expect("url");
-        assert_eq!(super::open(&url), Err(crate::Error::BrowserUnavailable));
+        assert_eq!(
+            super::open_default(&url),
+            Err(crate::Error::BrowserUnavailable)
+        );
     }
 
     #[test]
-    fn rejected_browser_releases_callback_and_an_explicit_retry_starts_fresh() {
+    fn rejected_browser_preserves_copy_link_until_expiry_or_explicit_retry() {
         use super::*;
-        let server = crate::test_http::Server::start(vec![]);
-        let (root, store) = crate::test_store("browser-failed");
-        let mut account = crate::account::fixture(&server.base, &store);
-        let mut port = 0;
-        let result = begin(&mut account, |url| {
+        fn redirect_port(url: &url::Url) -> u16 {
             let redirect = url
                 .query_pairs()
                 .find(|(key, _)| key == "redirect_uri")
                 .expect("redirect")
                 .1;
-            port = url::Url::parse(&redirect)
+            url::Url::parse(&redirect)
                 .expect("loopback")
                 .port()
-                .expect("port");
+                .expect("port")
+        }
+        let server = crate::test_http::Server::start(vec![]);
+        let (root, store) = crate::test_store("browser-failed");
+        let mut account = crate::account::fixture(&server.base, &store);
+        let mut port = 0;
+        let result = begin(&mut account, |url| {
+            port = redirect_port(url);
             assert!(std::net::TcpListener::bind(("127.0.0.1", port)).is_err());
             Err(Error::BrowserUnavailable)
         });
         assert_eq!(result, Err(Error::BrowserUnavailable));
-        assert!(!account.login_pending());
-        let listener = std::net::TcpListener::bind(("127.0.0.1", port))
-            .expect("failed attempt closed its listener");
-        drop(listener);
-        begin(&mut account, |_| Ok(())).expect("explicit retry accepted");
         assert!(account.login_pending());
+        let link = account.login_link().expect("manual OAuth link");
+        assert!(link.contains("code_challenge="));
+        assert!(!link.contains("code_verifier"));
+        assert!(std::net::TcpListener::bind(("127.0.0.1", port)).is_err());
+        begin(&mut account, |url| {
+            // Si el SO reutiliza el puerto, el nuevo bind ya acredita el cierre;
+            // en otro caso, el anterior debe quedar disponible.
+            if redirect_port(url) != port {
+                assert!(std::net::TcpListener::bind(("127.0.0.1", port)).is_ok());
+            }
+            Ok(())
+        })
+        .expect("explicit retry accepted");
+        assert!(account.login_pending());
+        assert!(
+            account.login_link().is_err(),
+            "retry retires the previous copy link"
+        );
         drop(account);
         drop(store);
         crate::cleanup_store(&root, "browser-failed", &[]);

@@ -953,6 +953,7 @@ impl Remote {
                 message,
                 ..
             } => self.roadmap_reply(publication, stale, message),
+            Reply::AccountLink { url } => self.accept_login_link(&url, cx),
             Reply::Email { .. } => self.email_reply(reply, cx),
             Reply::Account {
                 signed_in,

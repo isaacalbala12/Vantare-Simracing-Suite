@@ -1,5 +1,50 @@
 # Handoff vivo — Overlays, Studio, Launcher y Hub
 
+## VANTA-105 / #1765 · RC6 0.0.984 entregada (23-oct-2026)
+
+Entrega local `C:/VantareServer/share/rc6/`: Setup70.942.720 bytes, .sha256 y
+LEEME. Productor limpio nightly `42317274d31235d3db24a37984b2ade5bebb72a6`,
+worktree nuevo isa-1765-rc6. SHA256 Setup
+`6db70e0f77aa0805fc96c8ea253bfe6e1c066e2b5a9fc21ceecd940eb91bdb91`.
+Release beta, cola jobs2, target RC5 autorizado reutilizado1726-rc4 en D:;
+configuración pública producción igual por hash a RC3/RC5, sin valores.
+Payload5m04s, Uninstall36,41s y Setup31,13s. Sin cambios de código productivo.
+
+Estática PASS: diez EXE y doce PE sin CRT dinámico/certificado, siete GUI y
+automáticos Windows2, tres CLI consola3, Setup/Uninstall Windows2. ICON1,
+primeras líneas indicator-handshake-v1/background-v1, versiones, inventario,
+fixtures, SHA y nueve campos embebidos verificados. Dos campañas privadas PASS:
+limpio OFF y upgrade RC5 0.0.983 ON mediante Setup. Accesos completos con icono,
+sin duplicados visibles, Startup ausente OFF y --background conservado ON;
+reinstalar/desinstalar conserva datos por hash. Preferencias preparadas como
+datos validados; no acredita uso físico de los controles del instalador.
+
+Google privado NO VERIFICADO. Cuatro intentos con RC6 instalada: el Hub se
+dibuja sin override gráfico, pero el supervisor sale con «ya hay una instancia»
+y no hay servicios. Corrección de USERNAME heredado e instancia/pipe aislados
+no lo resolvieron; lanzamiento directo de los EXE instalados tampoco. Sonda
+Win32 final CreateMutexW para nombre Global nuevo: error5/acceso denegado en
+cuenta temporal. Instance::acquire interpreta ese error como instancia previa.
+No se cambiaron permisos/políticas del namespace ni código de producto.
+No hay prueba válida del botón Google, fallback-browser=GoogleChrome, spawn
+de Chrome ni navegación/OAuth. Trazas Chrome vacías. No es un fallo atribuido
+a #1763; es un bloqueo del banco con otra cuenta en esta sesión.
+
+Orquestador autorizó como máximo30min adicionales y después entrega con prueba
+directa de Isaac. Se paró al confirmar error5, dentro de ese límite. LEEME exige
+que Google abra Chrome aunque no sea predeterminado; incluye «A tu gusto»,
+vista inmediata/persistencia tras reinicio y pendientes de RC5. Seis cuentas y
+perfiles retirados, sin SwitchDesktop ni ventanas en escritorio de Isaac;
+asociación HTTPS MSEdgeHTM huérfana idéntica antes/después. Intentos y reparación
+de una carrera de cleanup PS5.1 conservados en evidencia, con limpieza verificada.
+
+Por encargo NO se repiten beta-tests/QA firmada ni suites globales: packaging
+e installer no cambian respecto a RC5. Informe y delivery/qa-summary JSON:
+`C:/VantareServer/evidence/rc6/INFORME.md`. Issue #1765, Project Vantare,
+area:plataforma, milestone23; VANTA-105 Por revisar. Handoff en rama documental
+separada para mantener limpio el productor. Sin PR/merge propio, firma,
+publicación, release, compras ni backend. Google y estética quedan para Isaac.
+
 ## VANTA-105 · RC4 entregada / seguimiento #1742 (21-oct-2026)
 
 RC4 0.0.982 entregada en `C:/VantareServer/share/rc4/` con Setup, sidecar y

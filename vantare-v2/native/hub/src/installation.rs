@@ -1,6 +1,11 @@
 //! Sincroniza el nombre visible incluso con el bootstrap del feed anterior.
 use std::path::Path;
 
+pub(crate) fn initial_window(minimized: bool, interactive: bool, background: bool) -> (bool, bool) {
+    let minimized = minimized && (!interactive || background);
+    (minimized, !minimized && !background)
+}
+
 #[cfg(windows)]
 fn installed_script(executable: &Path, root: &Path) -> Result<std::path::PathBuf, String> {
     let bin = executable.parent().ok_or("falta la carpeta bin")?;
@@ -23,11 +28,12 @@ fn installed_script(executable: &Path, root: &Path) -> Result<std::path::PathBuf
 }
 
 /// La confirmación no bloquea el hilo de UI. Posee su hijo hasta terminar;
-/// cerrar el Hub cancela el registro pendiente sin dejar un PowerShell huérfano.
+/// Un cierre voluntario espera oculto a que termine y el supervisor lo confirme.
 pub(crate) struct BootConfirmation {
     child: Option<std::process::Child>,
     root: std::path::PathBuf,
     deadline: std::time::Instant,
+    registered: bool,
 }
 
 impl BootConfirmation {
@@ -62,6 +68,7 @@ impl BootConfirmation {
             child: None,
             root: root.into(),
             deadline: std::time::Instant::now(),
+            registered: false,
         })
     }
 
@@ -74,6 +81,7 @@ impl BootConfirmation {
             child: Some(child),
             root: root.into(),
             deadline: std::time::Instant::now() + std::time::Duration::from_secs(30),
+            registered: false,
         })
     }
 
@@ -93,10 +101,39 @@ impl BootConfirmation {
                 None => return Ok(false),
             }
         }
-        std::fs::write(self.root.join("hub-ready"), std::process::id().to_string())
-            .map_err(|error| format!("confirmar arranque: {error}"))?;
+        if !self.registered {
+            std::fs::write(self.root.join("hub-ready"), std::process::id().to_string())
+                .map_err(|error| format!("confirmar arranque: {error}"))?;
+            self.registered = true;
+            self.deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+        }
+        // El motor anterior también borra este marker al aceptar hub-ready.
+        // Conservar el proceso vivo hasta ese acuse evita la carrera de cierre.
+        if self
+            .root
+            .join("boot-pending.json")
+            .try_exists()
+            .map_err(|error| error.to_string())?
+        {
+            if std::time::Instant::now() >= self.deadline {
+                return Err("el supervisor no confirmó el arranque dentro del plazo".into());
+            }
+            return Ok(false);
+        }
         Ok(true)
     }
+}
+
+/// La ventana desaparece, pero Register sigue poseído hasta confirmar o fallar.
+pub(crate) fn defer_close(
+    confirmation: &std::cell::RefCell<Option<BootConfirmation>>,
+    hide: impl FnOnce(),
+) -> bool {
+    if confirmation.borrow().is_none() {
+        return false;
+    }
+    hide();
+    true
 }
 
 impl Drop for BootConfirmation {
@@ -194,6 +231,43 @@ mod tests {
     }
 
     #[test]
+    fn closing_early_hides_but_waits_for_registration_and_the_supervisor_ack() {
+        use std::os::windows::fs::OpenOptionsExt;
+        let root = root();
+        std::fs::write(root.join("boot-pending.json"), "pending").unwrap();
+        let confirmation = std::cell::RefCell::new(Some(waiting(&root)));
+        let mut hidden = false;
+        assert!(defer_close(&confirmation, || hidden = true));
+        assert!(hidden);
+        assert!(!confirmation.borrow_mut().as_mut().unwrap().poll().unwrap());
+        assert!(!root.join("hub-ready").exists());
+        {
+            let mut value = confirmation.borrow_mut();
+            let child = value.as_mut().unwrap().child.as_mut().unwrap();
+            drop(child.stdin.take());
+            assert!(child.wait().unwrap().success());
+        }
+        assert!(!confirmation.borrow_mut().as_mut().unwrap().poll().unwrap());
+        // An exclusive handle proves further polls never rewrite readiness.
+        let marker = std::fs::OpenOptions::new()
+            .read(true)
+            .share_mode(0)
+            .open(root.join("hub-ready"))
+            .unwrap();
+        assert!(!confirmation.borrow_mut().as_mut().unwrap().poll().unwrap());
+        std::fs::remove_file(root.join("boot-pending.json")).unwrap();
+        assert!(confirmation.borrow_mut().as_mut().unwrap().poll().unwrap());
+        drop(marker);
+        confirmation.borrow_mut().take();
+        assert!(!defer_close(&confirmation, || panic!("already confirmed")));
+        assert_eq!(
+            std::fs::read_to_string(root.join("hub-ready")).unwrap(),
+            std::process::id().to_string()
+        );
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn feed_uses_its_generation_and_rejects_another_installation() {
         let root = Path::new("C:/qa/Vantare Native Beta");
         let generation = root.join("generations/0123456789abcdef0123456789abcdef");
@@ -248,6 +322,14 @@ fn hub_identity_at(root: Option<&Path>) -> Result<String, String> {
 #[cfg(test)]
 mod identity_tests {
     use super::*;
+    #[test]
+    fn background_preserves_minimized_and_never_activates_the_hub() {
+        assert_eq!(initial_window(true, false, true), (true, false));
+        assert_eq!(initial_window(true, true, true), (true, false));
+        assert_eq!(initial_window(false, false, true), (false, false));
+        assert_eq!(initial_window(true, false, false), (true, false));
+        assert_eq!(initial_window(true, true, false), (false, true));
+    }
     #[test]
     fn isolated_installation_does_not_use_the_real_run_or_toast_identity() {
         let root = std::env::temp_dir().join(format!("vantare-identity-{}", std::process::id()));

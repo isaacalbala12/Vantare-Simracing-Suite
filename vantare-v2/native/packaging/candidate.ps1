@@ -1,4 +1,5 @@
-﻿#requires -Version 5.1
+﻿# vantare-launch-capabilities: background-v1
+#requires -Version 5.1
 [CmdletBinding()]
 param(
     [ValidateSet('Build', 'Install', 'Update', 'Rollback', 'ImportProfiles', 'ImportLayout', 'Status', 'Start', 'Register', 'UninstallInstalled')][string]$Operation = 'Status',
@@ -550,7 +551,7 @@ function Test-NativeShortcutOwned($Link,[string]$Directory) {
        $Link.Arguments.Contains('-Operation UninstallInstalled')))) -or
     ($Link.TargetPath -eq (Join-Path $Directory 'Uninstall.exe')) -or
     ($Link.TargetPath.StartsWith((Join-Path $Directory 'generations') + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase) -and
-     [IO.Path]::GetFileName($Link.TargetPath) -ieq 'vantare.exe' -and $Link.Arguments -ceq ('--beta -Root "'+$Directory+'"'))
+     [IO.Path]::GetFileName($Link.TargetPath) -ieq 'vantare.exe' -and $Link.Arguments -cin @(('--beta -Root "'+$Directory+'"'),('--beta -Root "'+$Directory+'" --background')))
 }
 
 function Get-NativeLaunchTarget([string]$Directory) {
@@ -619,11 +620,29 @@ function Get-NativeShortcutName([string]$Folder) {
     $Folder
 }
 
-function Set-NativeLaunchShortcut($Link,[string]$Directory,[string]$LaunchTarget) {
+# The capability belongs to the target generation, not the frozen root script.
+function Test-NativeBackgroundTarget([string]$LaunchTarget) {
+    if(-not $LaunchTarget){return $false}
+    Test-NativeBackgroundScript (Join-Path (Split-Path (Split-Path $LaunchTarget)) 'candidate.ps1')
+}
+
+function Test-NativeBackgroundScript([string]$Script) {
+    if(-not (Test-Path -LiteralPath $Script)){return $false}
+    $stream=[IO.File]::OpenRead((Assert-NativePath $script))
+    try {
+        $buffer=New-Object byte[] 128
+        $count=$stream.Read($buffer,0,$buffer.Length)
+        $header=[Text.Encoding]::UTF8.GetString($buffer,0,$count).TrimStart([char]0xfeff).Split([char]10)[0].TrimEnd([char]13)
+        $header -ceq '# vantare-launch-capabilities: background-v1'
+    } finally {$stream.Dispose()}
+}
+
+function Set-NativeLaunchShortcut($Link,[string]$Directory,[string]$LaunchTarget,[switch]$Background) {
     if($LaunchTarget){
         $Link.TargetPath=$LaunchTarget
         # -Root conserva el reconocimiento del acceso por generaciones anteriores al hacer rollback.
         $Link.Arguments='--beta -Root "'+$Directory+'"'
+        if($Background -and (Test-NativeBackgroundTarget $LaunchTarget)){$Link.Arguments+=' --background'}
         $Link.IconLocation=$LaunchTarget+',0'
     }else{
         # Registro inerte/incompleto: conservar la ruta de bootstrap anterior sin abortar el registro.
@@ -677,10 +696,15 @@ function Sync-NativeOptionalShortcuts([string]$Directory,[string]$Folder,$Ui,[bo
             })
             if($Remove){if($owned){Remove-Item -LiteralPath $path}; foreach($oldPath in $oldOwnedPaths){Remove-Item -LiteralPath $oldPath}; continue}
             if($ExistingOnly -and -not $owned -and -not $oldOwnedPaths.Count){continue}
+            if($target.name -ceq 'Startup' -and $LaunchTarget -and -not (Test-NativeBackgroundScript (Join-Path $Directory 'candidate.ps1'))){
+                # A frozen feed bootstrap cannot repair a flagged link on rollback.
+                # Preserve its old GUI bootstrap, which resolves the active state.
+                continue
+            }
             if($exists -and -not $owned){throw 'El acceso opcional pertenece a otra instalación; se conserva.'}
             [IO.Directory]::CreateDirectory($parent)|Out-Null
             $link=$shell.CreateShortcut($path)
-            Set-NativeLaunchShortcut $link $Directory $LaunchTarget
+            Set-NativeLaunchShortcut $link $Directory $LaunchTarget -Background:($target.name -ceq 'Startup')
             foreach($oldPath in $oldOwnedPaths){Remove-Item -LiteralPath $oldPath}
         } catch { Write-NativeShortcutWarning ("No se pudo sincronizar el acceso opcional {0}: {1}" -f $target.name,$_.Exception.Message) }
     }
@@ -726,7 +750,7 @@ function Invoke-NativeRegistrationTransaction([string]$Key,[string]$Folder,[stri
 
 # La clave estable permite que el bootstrap antiguo siga corrigiendo la versión
 # tras rollback. Solo cambia la identidad visible; nunca se trasladan datos.
-function Sync-NativeRegistration([string]$Directory, [string]$Version, $PreviousUi=$null,[string]$LaunchTarget) {
+function Sync-NativeRegistration([string]$Directory, [string]$Version, $PreviousUi=$null,[string]$LaunchTarget,[switch]$StartupOnly) {
     $directory = Assert-NativePath $Directory
     if(-not $PSBoundParameters.ContainsKey('LaunchTarget')){$LaunchTarget=Get-NativeLaunchTarget $directory}
     $identity = 'VantareNativeBeta'
@@ -745,6 +769,7 @@ function Sync-NativeRegistration([string]$Directory, [string]$Version, $Previous
     if ($external) {
         if ($null -eq $registration.PSObject.Properties['ShortcutFolder'] -or
             $null -eq $registration.PSObject.Properties['LegacyShortcutFolder']) {
+            if($StartupOnly){return}
             Set-ItemProperty -LiteralPath $key -Name DisplayName -Value 'Vantare Simracing Suite'
             if($Version){Set-ItemProperty -LiteralPath $key -Name DisplayVersion -Value $Version}
             return
@@ -756,6 +781,11 @@ function Sync-NativeRegistration([string]$Directory, [string]$Version, $Previous
         if ($name -cnotmatch '^[A-Za-z0-9][A-Za-z0-9 -]{0,63}$') { throw 'Carpeta de accesos inválida.' }
     }
     if ($folder -eq $legacyFolder) { throw 'Las carpetas de accesos deben ser diferentes.' }
+    if($StartupOnly){
+        # Rollback must repair this link before an older parser is launched.
+        Sync-NativeOptionalShortcuts $directory $folder @{desktop=$false;autostart=$true} -LaunchTarget $LaunchTarget -ExistingOnly
+        return
+    }
     # El NSIS anterior no conoce la carpeta nueva. La copia durable permite
     # desinstalar por Inicio/Aplicaciones instaladas aun después de interrupciones.
     $uninstaller = Join-Path $directory 'uninstall-vantare.ps1'
@@ -1030,6 +1060,7 @@ function Restore-NativeCandidate([string]$Directory) {
             $next = [ordered]@{ schema = 1; product = 'vantare-native'; channel = $state.channel; active = $state.previous; previous = $state.active }
             Set-NativeState $directory $next
         } finally { foreach ($handle in $handles.Values) { $handle.Dispose() } }
+        Sync-NativeRegistration $directory '' -StartupOnly
         Read-NativeState $directory
     } finally { $lock.Dispose() }
 }

@@ -10,6 +10,22 @@ pub fn request(window: &gpui::Window) -> bool {
     unsafe { windows_sys::Win32::UI::WindowsAndMessaging::SetForegroundWindow(hwnd as *mut _) != 0 }
 }
 
+/// Oculta solo la ventana propia mientras termina la confirmación de arranque.
+#[cfg(windows)]
+pub fn hide(window: &gpui::Window) {
+    if let Some(hwnd) = crate::overlay::hwnd_of(window) {
+        // SAFETY: HWND propio, vivo durante la actualización GPUI.
+        unsafe {
+            windows_sys::Win32::UI::WindowsAndMessaging::ShowWindow(hwnd as *mut _, 0);
+        }
+    }
+}
+
+#[cfg(not(windows))]
+pub fn hide(window: &gpui::Window) {
+    window.minimize_window();
+}
+
 #[cfg(not(windows))]
 pub fn request(window: &gpui::Window) -> bool {
     let _ = window;
@@ -21,7 +37,7 @@ pub fn request(window: &gpui::Window) -> bool {
 #[cfg(windows)]
 pub fn finish_startup() {
     use windows_sys::Win32::UI::WindowsAndMessaging::{
-        GetClassNameW, GetWindowThreadProcessId, PostMessageW, WM_APP,
+        GetClassNameW, GetWindowThreadProcessId, PostMessageW,
     };
     let Some(value) = std::env::var_os("VANTARE_STARTUP_WINDOW") else {
         return;
@@ -50,11 +66,11 @@ pub fn finish_startup() {
     };
     if pid == expected_pid
         && count > 0
-        && String::from_utf16_lossy(&class[..count as usize]) == "VantareStartupIndicator"
+        && String::from_utf16_lossy(&class[..count as usize]) == vantare_ipc::product::STARTUP_CLASS
     {
         // SAFETY: no pointers/data in the message; target class checked above.
         unsafe {
-            PostMessageW(hwnd, WM_APP + 105, 0, 0);
+            PostMessageW(hwnd, vantare_ipc::product::STARTUP_READY, 0, 0);
         }
     }
 }

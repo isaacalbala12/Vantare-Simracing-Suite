@@ -34,9 +34,17 @@ Desde #1726, los accesos Inicio/Escritorio/Startup apuntan al supervisor GUI
 PowerShell con `CREATE_NO_WINDOW`; no depende de una consola interactiva.
 El registro del Hub renueva los destinos tras actualizar o restaurar una generación.
 Los errores de arranque quedan en `<raíz>/logs/` (bootstrap, runtime y Hub).
-Startup conserva `Vantare.lnk` y los argumentos `--beta -Root <raíz>` sin
-`--background`; el flag y su rollback a supervisores anteriores se entregarán
-después de #1745, en un cambio separado. Inicio/Escritorio usan el nombre completo.
+Startup conserva `Vantare.lnk`, apunta al supervisor GUI y añade `--background`.
+No abre indicador, no concede ASFW_ANY y respeta «Empezar minimizado».
+Inicio/Escritorio son aperturas interactivas: muestran el Hub aunque ese ajuste
+esté activo. No cambian nombres internos, rutas ni datos.
+El marcador `# vantare-launch-capabilities: background-v1` en candidate.ps1 de
+la generación permite usar el flag. Restore-NativeCandidate renueva explícitamente
+el Startup existente para la generación restaurada y retira el flag si es antigua,
+sin esperar a que se abra su Hub. Si el feed conserva candidate.ps1 raíz antiguo,
+Register conserva el Startup anterior: ese supervisor GUI resuelve la generación
+activa mediante beta.ps1 y sigue siendo compatible con rollback/desinstalación.
+Setup renueva la raíz y habilita el flag. No se introduce otro host de arranque.
 
 El indicador interactivo requiere este contrato exacto en la primera línea del
 `beta.ps1` raíz (UTF-8, BOM opcional):
@@ -47,8 +55,11 @@ como RC4, sin indicador residente que pueda bloquear Apply o rollback.
 Setup renueva `beta.ps1`; el feed conserva la copia raíz antigua y por eso se
 degrada sin indicador hasta reinstalar con Setup. No se cambia el guard de EXE.
 Con el contrato v1, antes de Apply/rollback PS valida ventana/PID/imagen, envía
-WM_APP+106 y espera su salida hasta 10 s; si no sale, aplaza sin cambiar generación
-ni pendiente. El arranque normal cierra por señal del primer frame del Hub, salida
+WM_APP+106 y espera su salida hasta 10 s. Apply aplaza si no sale. Solo rollback
+puede esperar su cierre natural, mediante el mismo handle y hasta 47 s totales
+(45 s del indicador más margen). Si tampoco sale, aborta sin cambiar generación
+ni pendiente, sin terminar procesos a la fuerza. Un HWND ya destruido no impide
+esperar la salida del proceso; el guard exclusivo se sigue obteniendo después. El arranque normal cierra por señal del primer frame del Hub, salida
 del motor o plazo de 45 s. `--background` suprime el indicador y la activación.
 
 `bootstrap-capability-tests.ps1 -GuiExecutable <vantare.exe construido>
@@ -59,6 +70,13 @@ RC4. Lo ejecuta `runtime/tests/windows_startup.rs` junto al probe de timeout y g
 La imagen construida lleva ICON1 de #1746. La campaña completa de actualizaciones
 firmadas, incluidos los casos nuevos Apply/rollback con bootstrap vivo en
 `beta-tests.ps1`, queda obligatoria para RC5 por decisión del orquestador.
+
+Si se cierra el Hub mientras Register está pendiente, se oculta la ventana y el
+proceso permanece vivo hasta el éxito y el acuse del supervisor (retirar
+boot-pending.json), con plazo. hub-ready se publica una sola vez; un cierre con
+código 0 y el PID correcto ya registrado es válido aunque gane el siguiente sondeo.
+Código 0 sin hub-ready nunca confirma una instalación. Un quit forzado recoge
+síncronamente el hijo Register antes de cancelar su tarea.
 
 Las herramientas CLI de grabación/importación conservan su uso en terminal;
 los procesos automáticos y las ventanas de producto usan subsistema Windows.

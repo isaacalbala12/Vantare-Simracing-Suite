@@ -25,6 +25,8 @@ foreach($baseline in @('0.0.975','0.0.981','0.0.982')){
     [IO.Directory]::CreateDirectory($bin)|Out-Null
     # Inert images exercise paths only; PE icon content is tested separately on RC4.
     foreach($name in @('vantare.exe','vantare-hub.exe')){Copy-Item "$env:WINDIR/System32/cmd.exe" (Join-Path $bin $name)}
+    Copy-Item (Join-Path $PSScriptRoot 'candidate.ps1') (Join-Path (Split-Path $bin) 'candidate.ps1')
+    Copy-Item (Join-Path $PSScriptRoot 'candidate.ps1') (Join-Path $root 'candidate.ps1')
     Copy-Item "$env:WINDIR/System32/cmd.exe" (Join-Path $root 'Uninstall.exe')
     Write-NativeJson (Join-Path $root 'state.json') @{schema=1;product='vantare-native';channel='beta';active=@{generation=$generation}}
     Write-NativeJson (Join-Path $root 'installer-ui.json') @{schema=1;kind='rust-gpui';uninstaller='Uninstall.exe';sha256=(Get-NativeHash (Join-Path $root 'Uninstall.exe'));desktop=$true;autostart=$false}
@@ -66,7 +68,7 @@ foreach($baseline in @('0.0.975','0.0.981','0.0.982')){
         Sync-NativeRegistration $root '0.0.982'
         $startup=Join-Path $testRoot 'Startup/Vantare.lnk'
         $startupLink=$shell.CreateShortcut($startup)
-        Assert-Brand ((Test-Path $startup) -and $startupLink.Arguments -ceq ('--beta -Root "'+$root+'"')) "$baseline ON preserves Startup filename and compatible arguments without background"
+        Assert-Brand ((Test-Path $startup) -and $startupLink.Arguments -ceq ('--beta -Root "'+$root+'" --background')) "$baseline ON preserves Startup filename and background arguments for the capable generation"
         Assert-Brand (-not(Test-Path (Join-Path $testRoot 'Startup/Vantare Simracing Suite.lnk'))) "$baseline Startup is not renamed into a second entry"
         $ui.autostart=$false
         [IO.File]::WriteAllText((Join-Path $root 'installer-ui.json'),($ui|ConvertTo-Json))

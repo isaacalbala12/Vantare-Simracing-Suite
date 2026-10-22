@@ -38,14 +38,15 @@ histórico4cbd496e8 al código nuevo. Job Object solo nota; proveedor no-fichero
 y eprintln de bibliotecas restantes anotados. Untracked de integración ajeno
 preservado. RC4 entregada no se recompila ni modifica en este seguimiento.
 
-## VANTA-105 / #1745 · RC4: arranque y foco (22-oct-2026, para revisión)
+## VANTA-105 / #1745 · RC4: arranque y foco (22-oct-2026, revisión R2 en curso)
 
 Issue https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1745,
 Project Vantare, `area:plataforma`, milestone 23. Rama
 `vantareapp/isa-1745-rc4-arranque-foco`, worktree propio
-`C:/VantareServer/wt/rc4-isaac`. Sincronizada sobre nightly `d87c2cb2b`
-(#1752, ICON1 del supervisor). Solo arranque y foco; accesos, OAuth y salida CLI
-pertenecen a otros workers. Evidencia: `C:/VantareServer/evidence/rc4-isaac/`.
+`C:/VantareServer/wt/rc4-isaac`. Rebasada sobre nightly `0a509250a`
+(#1755/#1756 integrados; ICON1 de #1752). Solo arranque y foco; el orquestador
+amplía expresamente #1758 para corregir Startup tras el P1 de la review.
+Nombres/iconos, OAuth y salida CLI siguen fuera del alcance de este worker. Evidencia: `C:/VantareServer/evidence/rc4-isaac/`.
 
 Diagnóstico previo: tres muestras RC4 Release dieron Hub visible en
 4,76 / 6,67 / 9,25 s; la muestra central crea el proceso Hub a los 5,72 s.
@@ -60,8 +61,11 @@ Cambios: indicador Win32 de 400×128, centrado en el monitor del cursor, fondo
 #08090b, ICON1 propio y respaldo del Hub mapeado solo como recurso. Texto
 «Abriendo Vantare…», sin animación, activación ni entrada en barra de tareas.
 Cierra por señal después del primer frame presentado del Hub, salida del motor
-o plazo de 45 s. Register pasa a hijo con sondeo asíncrono y cancelación al cerrar;
-`hub-ready` solo se escribe tras éxito. Validación mantiene cada ancestro antes
+o plazo de 45 s. Register es un hijo con sondeo asíncrono y plazo de 30 s.
+Un cierre temprano oculta la ventana, mantiene el hijo y espera su éxito y el
+acuse del supervisor (retirada de boot-pending, hasta 10 s adicionales) antes de
+salir. hub-ready se publica una vez. El motor acepta cierre con código 0 y PID
+registrado, nunca código 0 sin ready. Un quit forzado recoge el hijo síncronamente. Validación mantiene cada ancestro antes
 de cada hash, SHA, tamaños, PE e inventario; usa atributos .NET en lugar de
 cmdlets repetidos. Medición focal: ReadNativeState 2,23 → 1,10 s.
 Foco estándar: ASFW_ANY interactivo y SetForegroundWindow del propio Hub;
@@ -69,8 +73,14 @@ sin AttachThreadInput ni entrada sintética. Windows conserva su política de fo
 
 Parser: `--beta -Root <ruta absoluta> [--background]`; rechaza desconocidos.
 Sin flag sigue interactivo para accesos antiguos. Background y bandeja no abren
-indicador. La integración es #1752 → #1745 → flag Startup del worker de accesos,
-todo en la misma RC. El supervisor anterior rechaza ese cuarto argumento.
+indicador. Startup con --background se entrega AHORA en #1758, sin dependencia
+de un tercer PR. No concede ASFW_ANY y respeta «Empezar minimizado».
+Los accesos interactivos sí muestran el Hub aunque ese ajuste esté activo.
+El marcador background-v1 de candidate.ps1 permite usar el flag en esa generación.
+Restore-NativeCandidate renueva el enlace existente y retira el flag para un parser
+antiguo; se prueba con COM y rollback reales. Con raíz del feed congelada, Register
+conserva su antiguo Startup GUI, que selecciona la generación activa a través de
+beta.ps1. No se deja un flag que el código antiguo no sepa restaurar/desinstalar.
 
 Compatibilidad: solo el encabezado exacto y versionado
 `# vantare-boot-capabilities: indicator-handshake-v1` del beta.ps1 raíz habilita
@@ -80,8 +90,10 @@ sale tras crear PS como RC4 y no retiene su imagen durante Apply/rollback.
 
 Guard de imágenes intacto. Antes de Apply/rollback, beta.ps1 valida HWND, clase,
 PID e imagen dentro de la instalación, envía WM_APP+106 y espera WaitForExit
-hasta 10 s. Si no sale, aborta sin cambiar generación, pendiente o boot-pending,
-y sin matar procesos. Estas operaciones pueden cerrar el indicador antes del Hub.
+hasta 10 s para Apply. Solo rollback puede esperar la salida natural hasta
+47 s totales por el mismo handle (45 s del indicador más margen), incluso si la
+señal falla. Si tampoco sale, aborta con generación y markers intactos; no mata
+procesos ni debilita el guard. Un HWND destruido permite seguir esperando el proceso. Estas operaciones pueden cerrar el indicador antes del Hub.
 Probe real invisible PS 5.1 PASS: señal libera imagen y guard; timeout conserva
 proceso y guard. Pruebas del bootstrap real en escritorio privado verifican
 marcador, visibilidad y ausencia de indicador en legacy/background.
@@ -93,19 +105,24 @@ Casos escritos, aún no ejecutados completos. Host externo del indicador descart
 para el lanzamiento; alternativa futura en #1748, junto a medir una ruta normal
 sin PowerShell. No se implementa esa retirada ahora.
 
-Release, fmt, check y Clippy PASS tras integrar d87c2cb2b. Regresión focal PASS
+R1: Release, fmt, check y Clippy PASS sobre d87c2cb2b. Regresión focal PASS
 14/14 (ICON1, parser/marcador, ciclo de vida, indicador privado, guard y captura
 GUI PS 5.1/7). Packaging general repetido PASS 193/193, sin ampliar el plazo del
 timeout previo conservado. Suite completa anterior: Nextest 2099/2099,
 telemetría incluida, y lifecycle PASS; no atribuirla a la nueva base. Target propio
 `D:/VantareServer/targets/rc4-isaac`, jobs 2, por la cola.
 
-Cinco pares alternados tras «adelante» y pausa coordinada de workers, diez muestras
+R2: registro 83 + branding 81 PASS, señal/espera PASS, check y Clippy PASS;
+Nextest completo, lifecycle y packaging en curso por cola. CI anterior 5/5 PASS
+en 759894e03; no atribuir esos verdes a R2 sin publicar. Informe de review:
+C:/VantareServer/evidence/rev-1758/INFORME.md. Respuesta y logs R2 en evidence/rc4-isaac/r2.
+
+Cinco pares R1 alternados tras «adelante» y pausa coordinada de workers, diez muestras
 completas, sin compiladores detectados al inicio/durante/final. Misma generación
 conservada; resto del payload idéntico salvo supervisor, Hub, sidecars y candidate.
 Medianas (rangos), RC4 original → nuevo:
 
-| Hito | RC4 original | Nuevo |
+| Hito | RC4 original | R1 medido |
 | --- | ---: | ---: |
 | Hub visible | 4,216 s (4,179–5,084) | 3,743 s (3,631–5,137) |
 | Responde a mensajes | 9,224 s (9,072–10,561) | 4,793 s (4,682–6,212) |
@@ -122,9 +139,20 @@ ya precede al Hub; no se demuestra regresión consistente ni causa concreta de c
 Los otros cuatro pares mejoran visibilidad. La medición previa de 7,62 s usaba
 Start-Process, con 1,56 s antes del EXE; no era comparación intercalada válida.
 INFORME.md, paired-summary.json, paired-provenance.json y capturas en evidencia.
+Procedencia exacta: a0f5c9bfb con source_dirty=true; hasta 759894e03 solo cambiaron
+rustfmt de beta.rs y documentación. Las cifras son de R1, no del nuevo SHA R2.
+R2 conserva el orden del arranque interactivo normal y cambia Startup/cierre/
+rollback; no se repiten medidas según el encargo del orquestador.
 Pausa liberada al terminar; residuos propios de prueba cerrados, sin procesos ajenos.
 PR listo a nightly: https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1758.
 Issue #1745 mantiene el HEAD publicado y la CI; sin merge ni promoción.
+
+P3: procedencia, typo, contrato compartido y recogida síncrona corregidos.
+El test de cierre cubre callback de ocultación, hijo real, publicación única y acuse;
+la interacción física X/Alt+F4 y foco GPUI quedan para RC5/Isaac. El indicador
+espera primer frame presentado, no solo HWND visible (gap R1 ~1,1 s); optimizar
+ese tramo queda posterior al lanzamiento. Acceso denegado en un ancestro sigue
+fallando de forma explícita: no se vuelve a omitir esa comprobación de integridad.
 
 Las medidas usan CreateDesktop/CreateProcess sin SwitchDesktop, con datos, IPC
 e identidad aislados. No incluyen resolución shell del .lnk ni acreditan foco

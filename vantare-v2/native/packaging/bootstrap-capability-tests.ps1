@@ -1,4 +1,4 @@
-#requires -Version 5.1
+﻿#requires -Version 5.1
 param([Parameter(Mandatory)][string]$GuiExecutable, [Parameter(Mandatory)][string]$EvidenceDirectory)
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -54,6 +54,9 @@ try {
     $expected=[IO.File]::ReadAllText((Join-Path $Root 'expected')) -ceq 'True'
     $result.indicator= -not [string]::IsNullOrEmpty($env:VANTARE_STARTUP_WINDOW)
     if($expected -ne $result.indicator){throw 'Capability and actual indicator disagree.'}
+    $background=[IO.File]::ReadAllText((Join-Path $Root 'background')) -ceq 'True'
+    if(($env:VANTARE_INTERACTIVE_STARTUP -ceq '1') -eq $background){throw 'Interactive startup environment does not match background mode.'}
+    if(($env:VANTARE_BACKGROUND_STARTUP -ceq '1') -ne $background){throw 'Background startup environment was not propagated.'}
     if($expected){
         Add-Type 'using System; using System.Runtime.InteropServices; public static class VisibleBootstrap { [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr hwnd); [DllImport("user32.dll",EntryPoint="GetWindowLongPtrW")] public static extern IntPtr Style(IntPtr hwnd,int index); }'
         $window=[IntPtr][long]$env:VANTARE_STARTUP_WINDOW
@@ -85,6 +88,7 @@ finally{
     if ($capable) { $script = "# vantare-boot-capabilities: indicator-handshake-v1`n" + $script }
     [IO.File]::WriteAllText((Join-Path $root 'beta.ps1'), $script, [Text.UTF8Encoding]::new($true))
     [IO.File]::WriteAllText((Join-Path $root 'expected'), $expectedIndicator.ToString())
+    [IO.File]::WriteAllText((Join-Path $root 'background'), $background.ToString())
     [IO.File]::WriteAllText((Join-Path $root 'event-name'), $eventName)
     $name = 'VantareBootstrap' + [guid]::NewGuid().ToString('N')
     $desktop = [BootstrapDesktop]::CreateDesktop($name, [IntPtr]::Zero, [IntPtr]::Zero, 0, 0x10000000, [IntPtr]::Zero)

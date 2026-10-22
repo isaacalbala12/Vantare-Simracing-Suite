@@ -22,14 +22,14 @@ use windows_sys::Win32::{
         GWLP_USERDATA, GetClientRect, GetCursorPos, GetWindowLongPtrW, HICON, IMAGE_ICON,
         LR_SHARED, LoadImageW, MSG, MsgWaitForMultipleObjects, PM_REMOVE, PeekMessageW,
         QS_ALLINPUT, RegisterClassW, SW_SHOWNOACTIVATE, SetWindowLongPtrW, ShowWindow,
-        TranslateMessage, WM_APP, WM_PAINT, WM_PRINTCLIENT, WNDCLASSW, WS_EX_NOACTIVATE,
-        WS_EX_TOOLWINDOW, WS_POPUP,
+        TranslateMessage, WM_PAINT, WM_PRINTCLIENT, WNDCLASSW, WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW,
+        WS_POPUP,
     },
 };
 
-pub const READY: u32 = WM_APP + 105;
-pub const MAINTENANCE: u32 = WM_APP + 106;
-const CLASS: &str = "VantareStartupIndicator";
+use vantare_ipc::product::{
+    STARTUP_CLASS as CLASS, STARTUP_MAINTENANCE as MAINTENANCE, STARTUP_READY as READY,
+};
 const LIMIT: Duration = Duration::from_secs(45);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

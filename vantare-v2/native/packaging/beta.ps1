@@ -205,7 +205,8 @@ function Stage-BetaUpdate([string]$Directory, [string]$ManifestFile = '') {
 
 # The interactive bootstrap holds its generation's executable while painting.
 # Release that image before the existing exclusive binary guard; never weaken it.
-function Complete-BetaBootstrap([string]$Directory, [int]$TimeoutMilliseconds = 10000) {
+function Complete-BetaBootstrap([string]$Directory, [int]$TimeoutMilliseconds = 10000, [switch]$AllowNaturalExit,
+    [ValidateRange(1,47000)][int]$NaturalExitMilliseconds = 47000) {
     $window = $env:VANTARE_STARTUP_WINDOW
     $owner = $env:VANTARE_STARTUP_PID
     if (-not $window -and -not $owner) { return }
@@ -220,6 +221,8 @@ function Complete-BetaBootstrap([string]$Directory, [int]$TimeoutMilliseconds = 
         # Pin the process handle before inspecting its image or waiting for exit.
         $null = $process.Handle
         if ($process.HasExited) { return }
+        $wait=[Diagnostics.Stopwatch]::StartNew()
+        try {
         try { $image = Assert-NativePath $process.MainModule.FileName }
         catch { if ($process.HasExited) { return }; throw }
         $generations = (Join-Path (Assert-NativePath $Directory) 'generations') + [IO.Path]::DirectorySeparatorChar
@@ -232,6 +235,8 @@ using System.Runtime.InteropServices;
 using System.Text;
 namespace Vantare {
     public static class BootstrapWindow {
+        const string Class = "VantareStartupIndicator";
+        const uint Maintenance = 0x806a;
         [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetClassName(IntPtr hwnd, StringBuilder name, int count);
         [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr hwnd, out uint pid);
         [DllImport("user32.dll", SetLastError = true)] static extern bool PostMessage(IntPtr hwnd, uint message, UIntPtr wp, IntPtr lp);
@@ -241,15 +246,24 @@ namespace Vantare {
             var name = new StringBuilder(128);
             GetWindowThreadProcessId(hwnd, out pid);
             return pid == owner && GetClassName(hwnd, name, name.Capacity) > 0 &&
-                name.ToString() == "VantareStartupIndicator" && PostMessage(hwnd, 0x8000 + 106, UIntPtr.Zero, IntPtr.Zero);
+                name.ToString() == Class && PostMessage(hwnd, Maintenance, UIntPtr.Zero, IntPtr.Zero);
         }
     }
 }
 '@
         }
-        if (-not [Vantare.BootstrapWindow]::Close([long]$window, [uint32]$owner) -and -not $process.HasExited) { throw 'No se pudo señalar el cierre del indicador.' }
+        # A destroyed HWND can precede process exit: still wait on the pinned handle.
+        $null=[Vantare.BootstrapWindow]::Close([long]$window, [uint32]$owner)
+        } catch {
+            if(-not $AllowNaturalExit){throw}
+            [Console]::Error.WriteLine('bootstrap: señal no disponible; rollback espera la salida natural: '+$_.Exception.Message)
+        }
         if (-not $process.WaitForExit($TimeoutMilliseconds)) {
-            throw [TimeoutException]::new('El indicador sigue en uso; actualización o rollback pendientes para el siguiente arranque.')
+            $remaining=[Math]::Max(0,$NaturalExitMilliseconds-[int]$wait.ElapsedMilliseconds)
+            if($AllowNaturalExit){[Console]::Error.WriteLine('bootstrap: rollback espera el cierre natural del indicador, sin terminarlo a la fuerza.')}
+            if(-not $AllowNaturalExit -or -not $process.WaitForExit($remaining)){
+                throw [TimeoutException]::new('El indicador sigue en uso; actualización o rollback pendientes para el siguiente arranque.')
+            }
         }
     } catch {
         [Console]::Error.WriteLine("bootstrap: operación aplazada: " + $_.Exception.Message)
@@ -448,7 +462,8 @@ function Stop-BetaRuntime([string]$Directory) {
 
 function Test-BetaReady([string]$Directory, $Process) {
     $path = Join-Path $Directory 'hub-ready'
-    -not $Process.HasExited -and (Test-Path -LiteralPath $path) -and [IO.File]::ReadAllText($path) -ceq $Process.Id.ToString()
+    (Test-Path -LiteralPath $path) -and [IO.File]::ReadAllText($path) -ceq $Process.Id.ToString() -and
+        (-not $Process.HasExited -or $Process.ExitCode -eq 0)
 }
 
 function Sync-BetaRegistration([string]$Directory, [string]$Version) {
@@ -494,7 +509,7 @@ function Confirm-BetaBoot([string]$Directory, $Process, [int]$TimeoutSeconds = 4
         if (-not $Process.WaitForExit(3000)) { $Process.Kill(); $Process.WaitForExit() }
     }
     if (Test-Path -LiteralPath $marker) {
-        Complete-BetaBootstrap $Directory
+        Complete-BetaBootstrap $Directory -AllowNaturalExit
         Stop-BetaRuntime $Directory
         $boot = [IO.File]::ReadAllText($marker) | ConvertFrom-Json
         $state = Read-NativeState $Directory

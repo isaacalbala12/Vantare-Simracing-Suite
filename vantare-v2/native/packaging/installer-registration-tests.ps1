@@ -1,4 +1,4 @@
-#requires -Version 5.1
+﻿#requires -Version 5.1
 # Inert OS PE fixtures exercise the real scripts; no Hub or installer UI is opened.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
@@ -48,10 +48,59 @@ $startup=Join-Path $testRoot 'Startup/Vantare test.lnk'
 Assert-Registration (Test-Path -LiteralPath $startup) 'ON creates missing Startup and real shortcut'
 $shell=New-Object -ComObject WScript.Shell
 $startupLink=$shell.CreateShortcut($startup)
-Assert-Registration ($startupLink.Arguments -ceq ('--beta -Root "'+$shortcutRoot+'"')) 'Startup uses the GUI bootstrap with the installation root'
+Assert-Registration ($startupLink.Arguments -ceq ('--beta -Root "'+$shortcutRoot+'" --background')) 'Startup uses the GUI bootstrap with the installation root'
 Assert-Registration ([IO.Path]::GetFileName($startupLink.TargetPath) -ieq 'vantare.exe') 'Startup targets the GUI supervisor instead of a console host'
 $shortcutState=Read-NativeState $shortcutRoot
 Assert-Registration ($startupLink.TargetPath -eq (Join-Path $shortcutRoot "generations/$($shortcutState.active.generation)/bin/vantare.exe")) 'Startup resolves the verified active generation'
+
+# A real generation rollback must repair the COM link before the old Hub runs.
+$legacyPayload=Join-Path $testRoot 'legacy-payload'
+Copy-Item $payload $legacyPayload -Recurse
+$legacyScript=Join-Path $legacyPayload 'candidate.ps1'
+$scriptText=[IO.File]::ReadAllText($legacyScript)
+[IO.File]::WriteAllText($legacyScript,$scriptText.Substring($scriptText.IndexOf("`n")+1),[Text.UTF8Encoding]::new($true))
+$legacyManifestPath=Join-Path $legacyPayload 'manifest.json'
+$legacyManifest=[IO.File]::ReadAllText($legacyManifestPath)|ConvertFrom-Json
+foreach($file in $legacyManifest.files){if($file.path -ceq 'candidate.ps1'){$file.sha256=Get-NativeHash $legacyScript;$file.size=(Get-Item $legacyScript).Length}}
+[IO.File]::WriteAllText($legacyManifestPath,($legacyManifest|ConvertTo-Json -Depth 15),[Text.UTF8Encoding]::new($true))
+$legacyZip=Join-Path $testRoot 'legacy-package.zip';New-NativeZip $legacyPayload $legacyZip
+$startupRoot=Join-Path $testRoot 'startup-rollback'
+Install-Beta $startupRoot $legacyZip (Get-NativeHash $legacyZip)
+$legacyState=Read-NativeState $startupRoot
+$startupId='VantareStartup'+[guid]::NewGuid().ToString('N')
+[IO.File]::WriteAllText((Join-Path $startupRoot 'registration-identity.txt'),$startupId)
+$startupKey='HKCU:/Software/Microsoft/Windows/CurrentVersion/Uninstall/'+$startupId
+$startupPath=Join-Path $testRoot 'Startup/Startup QA.lnk'
+try {
+    New-Item $startupKey -Force|Out-Null
+    foreach($entry in @{InstallLocation=$startupRoot;ShortcutFolder='Startup QA';LegacyShortcutFolder='Startup Legacy'}.GetEnumerator()){Set-ItemProperty $startupKey $entry.Key $entry.Value}
+    Sync-NativeOptionalShortcuts $startupRoot 'Startup QA' @{desktop=$false;autostart=$true}
+    $startupPath=Join-Path $testRoot 'Startup/Startup QA.lnk'
+    $oldTarget=$shell.CreateShortcut($startupPath).TargetPath
+    Assert-Registration ($shell.CreateShortcut($startupPath).Arguments -ceq ('--beta -Root "'+$startupRoot+'"')) 'legacy Startup uses no unsupported flag'
+    Copy-Item $legacyScript (Join-Path $startupRoot 'candidate.ps1') -Force
+    $null=Update-NativeCandidate $startupRoot $zip $hash
+    Sync-NativeRegistration $startupRoot '' -StartupOnly
+    Assert-Registration ($shell.CreateShortcut($startupPath).TargetPath -ceq $oldTarget -and -not $shell.CreateShortcut($startupPath).Arguments.EndsWith(' --background')) 'frozen feed bootstrap preserves its compatible Startup across updates'
+    Copy-Item (Join-Path $PSScriptRoot 'candidate.ps1') (Join-Path $startupRoot 'candidate.ps1') -Force
+    Sync-NativeRegistration $startupRoot '' -StartupOnly
+    $newTarget=$shell.CreateShortcut($startupPath).TargetPath
+    Assert-Registration ($newTarget -ne $oldTarget -and $shell.CreateShortcut($startupPath).Arguments.EndsWith(' --background')) 'new Startup uses the capable GUI supervisor in background'
+    $restored=Restore-NativeCandidate $startupRoot
+    $link=$shell.CreateShortcut($startupPath)
+    Assert-Registration ($restored.active.generation -ceq $legacyState.active.generation -and $link.TargetPath -ceq $oldTarget -and $link.Arguments -ceq ('--beta -Root "'+$startupRoot+'"')) 'real rollback restores old target and compatible arguments without waiting for old Hub Register'
+    $null=Restore-NativeCandidate $startupRoot
+    $link=$shell.CreateShortcut($startupPath)
+    Assert-Registration ($link.TargetPath -ceq $newTarget -and $link.Arguments.EndsWith(' --background')) 'rollback to another capable generation keeps background mode'
+    Assert-Registration (@(Get-ChildItem (Join-Path $testRoot 'Startup') -Filter 'Startup QA*.lnk').Count -eq 1) 'rollback never duplicates Startup'
+    $evidence=Join-Path $testRoot 'natural-rollback'
+    [IO.Directory]::CreateDirectory($evidence)|Out-Null
+    function Assert-Beta([bool]$Condition,[string]$Message){Assert-Registration $Condition $Message}
+    function Reject-Beta([scriptblock]$Action,[string]$Message){$failed=$false;try{& $Action}catch{$failed=$true};Assert-Beta $failed $Message}
+    . (Join-Path $PSScriptRoot 'bootstrap-tests.ps1')
+    Test-RollbackNaturalExit $startupRoot
+    Assert-Registration ($shell.CreateShortcut($startupPath).TargetPath -ceq $oldTarget -and -not $shell.CreateShortcut($startupPath).Arguments.EndsWith(' --background')) 'failed Hub rollback repairs Startup before launching the restored Hub'
+} finally {if(Test-Path $startupPath){Remove-Item -LiteralPath $startupPath};if(Test-Path $startupKey){Remove-Item $startupKey}}
 
 Sync-NativeOptionalShortcuts $shortcutRoot 'Vantare test' $on $true
 Assert-Registration (-not (Test-Path -LiteralPath $startup)) 'uninstall removes enabled owned shortcuts'

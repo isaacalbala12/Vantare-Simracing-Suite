@@ -4,21 +4,23 @@
   "type": "fix",
   "summary": "Vantare muestra un indicador al abrir, mantiene la ventana disponible mientras termina de cargar y solicita el primer plano al mostrar el Hub.",
   "technicalNotes": [
-    "Indicador Win32 sin activación ni entrada en la barra de tareas, con ICON1 existente, cierre por primer frame del Hub, salida del motor o plazo de45 segundos. Startup admite --background; los accesos antiguos siguen siendo válidos.",
-    "Register se supervisa sin bloquear el hilo de UI y conserva la confirmación de arranque tras el éxito, con cancelación y límite.",
+    "Indicador Win32 sin activación ni entrada en la barra de tareas, con ICON1 existente, cierre por primer frame del Hub, salida del motor o plazo de 45 segundos. Startup usa --background y renueva su destino y argumentos compatibles en rollback.",
+    "Register se supervisa sin bloquear la UI. Un cierre temprano oculta la ventana y espera su éxito y el acuse del supervisor, con plazo; hub-ready se escribe una vez. Un quit forzado recoge el hijo de forma síncrona.",
     "La validación conserva inventario, SHA, tamaños, PE y la comprobación de cada ancestro antes de cada hash; usa atributos .NET en lugar de repetir cmdlets de PowerShell.",
-    "Foco con AllowSetForegroundWindow y SetForegroundWindow propios, sin entrada sintética ni AttachThreadInput.",
-    "Antes de Apply/rollback, señal explícita al bootstrap y WaitForExit acotado; conserva el guard exclusivo y aplaza sin modificar la generación si el indicador no sale.",
+    "Foco con AllowSetForegroundWindow y SetForegroundWindow propios, sin entrada sintética ni AttachThreadInput. Los accesos interactivos muestran el Hub aunque esté configurado Empezar minimizado; el autoarranque respeta el ajuste.",
+    "Antes de Apply/rollback, señal explícita y WaitForExit acotado, con guard exclusivo intacto. Solo rollback puede esperar el cierre natural del indicador, hasta 47 segundos totales; si sigue vivo se aplaza sin cambiar la generación.",
     "Marcador versionado en beta.ps1 raíz: si el feed conserva un script antiguo, el bootstrap sale tras crear PowerShell y degrada sin indicador para liberar Apply/rollback."
   ],
   "testing": [
     "Regresiones de ciclo de vida con señal/reloj inyectado y parser interactivo/background/argumentos desconocidos.",
     "Registro pendiente, éxito, fallo y plazo con procesos reales sincronizados mediante stdin.",
-    "Campaña privada antes/después y gates por cola documentados en la issue y el handoff."
+    "Campaña privada antes/después y gates por cola documentados en la issue y el handoff.",
+    "COM real: Startup nuevo, raíz antigua del feed y rollback real a generación antigua/capaz; Confirm-BetaBoot restaura estado y acceso tras salida natural del bootstrap.",
+    "Cierre temprano con Register real sincronizado por stdin, publicación única del marker y acuse del supervisor; salida 0 sin ready sigue rechazada."
   ],
   "knownLimitations": [
     "La aparición del indicador no significa que hayan terminado de cargar los servicios. El foco físico requiere comprobación de Isaac en la RC integrada.",
-    "La salida de PowerShell de la ruta normal queda para la medición posterior al lanzamiento#1748.",
+    "La salida de PowerShell de la ruta normal queda para la medición posterior al lanzamiento #1748.",
     "beta-tests completo, incluidos los casos nuevos Apply/rollback con bootstrap vivo, queda para RC5 por decisión del orquestador; el probe focal con proceso real sí pasa."
   ]
 }

@@ -86,6 +86,8 @@ pub(crate) struct Hub {
     previous_source: Option<bool>,
     connection_incompatible: bool,
     close_requested: bool,
+    boot_confirmation:
+        std::rc::Rc<std::cell::RefCell<Option<crate::installation::BootConfirmation>>>,
 }
 
 impl Hub {
@@ -214,6 +216,19 @@ impl Hub {
     fn can_close(&mut self, cx: &mut Context<Self>) -> bool {
         self.close_requested = true;
         if !self.launcher.update(cx, Launcher::can_close) {
+            return false;
+        }
+        if crate::installation::defer_close(&self.boot_confirmation, || {
+            // Tras liberar el préstamo de la ventana que recibió la X.
+            cx.defer(|cx| {
+                for handle in cx.windows() {
+                    let _ = handle.update(cx, |_, window, _| {
+                        vantare_ui::window_activation::hide(window);
+                        vantare_ui::window_activation::finish_startup();
+                    });
+                }
+            });
+        }) {
             return false;
         }
         match self.save(cx) {
@@ -1417,6 +1432,7 @@ impl Hub {
             previous_source: None,
             connection_incompatible: false,
             close_requested: false,
+            boot_confirmation: std::rc::Rc::default(),
         }
     }
 }
@@ -1604,14 +1620,16 @@ pub fn run_with_access(mut options: Options, access: navigation::Access) -> Resu
                 gpui::size(gpui::px(1280.0), gpui::px(720.0)),
                 |(width, height)| gpui::size(gpui::px(width as f32), gpui::px(height as f32)),
             );
+            let interactive = std::env::var_os("VANTARE_INTERACTIVE_STARTUP").is_some();
+            let background = std::env::var_os("VANTARE_BACKGROUND_STARTUP").is_some();
             let minimized = options.capture.is_none()
                 && options.demo.is_none()
-                && std::env::var_os("VANTARE_INTERACTIVE_STARTUP").is_none()
+                && (!interactive || background)
                 && settings::general::Store::load(&options.data_dir)
                     .is_ok_and(|store| store.value.minimized);
-            let activate = !minimized
-                && options.capture.is_none()
-                && std::env::var_os("VANTARE_BACKGROUND_STARTUP").is_none();
+            let (minimized, activate) =
+                crate::installation::initial_window(minimized, interactive, background);
+            let activate = activate && options.capture.is_none();
             let window_options = WindowOptions {
                 focus: activate,
                 window_min_size: Some(minimum),
@@ -1659,7 +1677,7 @@ pub fn run_with_access(mut options: Options, access: navigation::Access) -> Resu
                 });
                 hub
             });
-            match window {
+            let window = match window {
                 Ok(window) => {
                     if activate {
                         let _ = window.update(cx, |_, window, _| {
@@ -1697,43 +1715,65 @@ pub fn run_with_access(mut options: Options, access: navigation::Access) -> Resu
                             return;
                         }
                     }
+                    window
                 }
                 Err(error) => {
                     *failure.borrow_mut() = Some(format!("abrir Hub: {error:#}"));
                     cx.quit();
                     return;
                 }
-            }
+            };
             if options.capture.is_none()
                 && let Some(root) = std::env::var_os("VANTARE_BETA_ROOT")
             {
                 let confirmation =
-                    crate::installation::BootConfirmation::start(&PathBuf::from(root));
-                let failure = failure.clone();
-                let confirmation_task = cx.spawn(async move |cx| {
-                    let result = async {
-                        let mut confirmation = confirmation?;
-                        loop {
-                            if confirmation.poll()? {
-                                return Ok::<_, String>(());
-                            }
-                            cx.background_executor()
-                                .timer(Duration::from_millis(50))
-                                .await;
-                        }
-                    }
-                    .await;
-                    if let Err(error) = result {
-                        cx.update(|cx| {
+                    match crate::installation::BootConfirmation::start(&PathBuf::from(root)) {
+                        Ok(confirmation) => confirmation,
+                        Err(error) => {
                             *failure.borrow_mut() =
                                 Some(format!("confirmar arranque beta: {error}"));
                             cx.quit();
-                        });
+                            return;
+                        }
+                    };
+                let confirmation = window
+                    .update(cx, |hub, _, _| {
+                        *hub.boot_confirmation.borrow_mut() = Some(confirmation);
+                        hub.boot_confirmation.clone()
+                    })
+                    .expect("ventana recién creada");
+                let pending = confirmation.clone();
+                let failure = failure.clone();
+                let confirmation_task = cx.spawn(async move |cx| {
+                    loop {
+                        let result = pending
+                            .borrow_mut()
+                            .as_mut()
+                            .map(crate::installation::BootConfirmation::poll);
+                        match result {
+                            Some(Ok(false)) => {}
+                            Some(result) => {
+                                pending.borrow_mut().take();
+                                if let Err(error) = result {
+                                    cx.update(|cx| {
+                                        *failure.borrow_mut() =
+                                            Some(format!("confirmar arranque beta: {error}"));
+                                        cx.quit();
+                                    });
+                                }
+                                break;
+                            }
+                            None => break,
+                        }
+                        cx.background_executor()
+                            .timer(Duration::from_millis(50))
+                            .await;
                     }
                 });
                 let mut confirmation_task = Some(confirmation_task);
                 cx.on_app_quit(move |_| {
-                    // Cancelar la tarea deja caer el guard y recoge Register antes de salir.
+                    // El hijo se recoge aquí, sin esperar a cancelar el futuro.
+                    confirmation.borrow_mut().take();
                     drop(confirmation_task.take());
                     async {}
                 })

@@ -65,3 +65,48 @@ function Test-BusyBootstrap([string]$Directory, [scriptblock]$Action, [string]$L
         Assert-Beta (-not $bootstrap.Process.HasExited) "$Label no mata el bootstrap bloqueado"
     } finally { Stop-TestBootstrap $bootstrap }
 }
+
+# Valid real generations are supplied by installer-registration-tests.ps1.
+function Test-RollbackNaturalExit([string]$Directory) {
+    $before=Read-NativeState $Directory
+    Write-BetaJson (Join-Path $Directory 'boot-pending.json') @{schema=1;previous=$before.previous.generation;version='0.0.979'}
+    $bootstrap=Start-TestBootstrap $Directory $true
+    $workerScript=Join-Path $evidence 'rollback-natural-worker.ps1'
+    $script=@'
+$ErrorActionPreference='Stop'
+. '__BETA__'
+function Get-NativeShortcutFolder([string]$Name){if($Name -cne 'Startup'){throw 'Only private Startup is allowed in this fixture.'};'__STARTUP__'}
+$complete=${function:Complete-BetaBootstrap}
+function Complete-BetaBootstrap([string]$Directory,[switch]$AllowNaturalExit){
+    & $complete $Directory 50 -AllowNaturalExit:$AllowNaturalExit -NaturalExitMilliseconds 10000
+}
+$info=[Diagnostics.ProcessStartInfo]::new()
+$info.FileName=Join-Path $env:WINDIR 'System32/cmd.exe'
+$info.Arguments='/D /C exit /B 7';$info.UseShellExecute=$false;$info.CreateNoWindow=$true
+$hub=[Diagnostics.Process]::Start($info)
+try {
+    $null=$hub.WaitForExit(10000)
+    if(Confirm-BetaBoot '__ROOT__' $hub 0){throw 'Failed Hub unexpectedly confirmed.'}
+} finally {$hub.Dispose()}
+'@
+    $script=$script.Replace('__BETA__',(Join-Path $PSScriptRoot 'beta.ps1').Replace("'","''")).Replace('__ROOT__',$Directory.Replace("'","''")).Replace('__STARTUP__',(Get-NativeShortcutFolder 'Startup').Replace("'","''"))
+    [IO.File]::WriteAllText($workerScript,$script)
+    $info=[Diagnostics.ProcessStartInfo]::new()
+    $info.FileName=Join-Path $env:WINDIR 'System32/WindowsPowerShell/v1.0/powershell.exe'
+    $info.Arguments='-NoProfile -ExecutionPolicy Bypass -File "'+$workerScript+'"'
+    $info.UseShellExecute=$false;$info.CreateNoWindow=$true;$info.RedirectStandardError=$true
+    $worker=[Diagnostics.Process]::Start($info)
+    try {
+        $waiting=$worker.StandardError.ReadLineAsync()
+        Assert-Beta ($waiting.Wait(20000) -and $null -ne $waiting.Result -and -not $worker.HasExited) 'failed Hub rollback reached the natural-exit wait'
+        Assert-Beta ((Read-NativeState $Directory).active.generation -ceq $before.active.generation) 'rollback leaves generation intact while bootstrap is alive'
+        Assert-Beta (-not $bootstrap.Process.HasExited) 'rollback never forces bootstrap exit'
+        $bootstrap.Process.StandardInput.Close()
+        Assert-Beta ($worker.WaitForExit(20000) -and $worker.ExitCode -eq 0) 'actual Confirm-BetaBoot completes rollback after bootstrap natural exit'
+        Assert-Beta ((Read-NativeState $Directory).active.generation -ceq $before.previous.generation) 'actual rollback restores previous verified generation'
+        Assert-Beta (-not (Test-Path (Join-Path $Directory 'boot-pending.json'))) 'completed rollback clears boot-pending'
+    } finally {
+        Stop-TestBootstrap $bootstrap
+        $null=$worker.WaitForExit(15000);$worker.Dispose()
+    }
+}

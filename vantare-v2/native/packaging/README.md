@@ -1,4 +1,4 @@
-﻿# Beta nativa — instalador y actualizaciones (#1454)
+# Beta nativa — instalador y actualizaciones (#1454)
 
 Seguimiento #1695: el rollback intenta restaurar cada metadato aunque otro esté
 bloqueado y registra los fallos en stderr, conservando el error original. Si no
@@ -52,7 +52,9 @@ Inicio, escritorio y Aplicaciones instaladas usan **Vantare Simracing Suite**.
 Los accesos conservan el supervisor GUI como destino y usan explícitamente su
 icono Win32 ID1. RC3/RC4 carecían de ese recurso; runtime/build.rs lo incrusta
 solo en vantare.exe mediante el build-support compartido de Hub/UI. AppUserModelID
-estable: `Vantare.SimracingSuite`. DisplayIcon apunta a Uninstall.exe propio,
+estable: `Vantare.SimracingSuite`. Si Windows bloquea la propiedad AUMID, se
+registra un aviso y Register continúa con el nombre/icono guardados, retirando
+el enlace antiguo; ese metadato no impide hub-ready ni provoca rollback. DisplayIcon apunta a Uninstall.exe propio,
 o al Hub en instalaciones anteriores sin desinstalador GPUI. Setup y Hub
 conservan sus títulos actuales.
 Una instalación anterior conserva su `InstallLocation`, incluida la carpeta
@@ -558,3 +560,10 @@ Runbook de firma, publicación y reinstalación:
 nombre, destino GUI, IconLocation, AppUserModelID, registro, repetición sin
 duplicados, restauración transaccional y limpieza antigua/nueva para las formas
 de enlaces de NSIS 0.0.975, RC3 y RC4, con COM real y carpetas aisladas.
+
+Revisión #1752: el harness `tests.ps1` exige RT_GROUP_ICON ID1 en el supervisor
+extraído e instalado del paquete (LoadLibraryEx como datos, sin ejecutar código).
+La regresión de branding simula fallo de IPropertyStore en Register del Hub y
+en la transacción de Setup: aviso, un solo enlace y generación conservada.
+Rollback manual hacia generaciones anteriores: seguimiento #1753, coordinado
+con la entrega posterior de Startup/`--background`.

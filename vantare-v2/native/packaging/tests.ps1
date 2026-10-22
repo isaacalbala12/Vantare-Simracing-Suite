@@ -53,6 +53,26 @@ $install = Join-Path $script:TestRoot 'Vantare Native Beta'
 $state = Install-NativeCandidate $install $script:Package $hash $Channel
 $active = Join-Path $install "generations/$($state.active.generation)"
 Assert-True ($state.channel -ceq $Channel -and $null -eq $state.previous) 'instalación nueva sin versión anterior'
+# Inspect the installed supervisor as a data file: never execute its code.
+Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+public static class PackagedSupervisorIcon {
+    [DllImport("kernel32.dll", CharSet=CharSet.Unicode)]
+    static extern IntPtr LoadLibraryEx(string path, IntPtr file, uint flags);
+    [DllImport("kernel32.dll", CharSet=CharSet.Unicode)]
+    static extern IntPtr FindResource(IntPtr module, IntPtr name, IntPtr type);
+    [DllImport("kernel32.dll")]
+    static extern bool FreeLibrary(IntPtr module);
+    public static bool HasIconOne(string path) {
+        IntPtr module=LoadLibraryEx(path, IntPtr.Zero, 0x22);
+        if(module==IntPtr.Zero) return false;
+        try { return FindResource(module, new IntPtr(1), new IntPtr(14))!=IntPtr.Zero; }
+        finally { FreeLibrary(module); }
+    }
+}
+'@
+Assert-True ([PackagedSupervisorIcon]::HasIconOne((Join-Path $active 'bin/vantare.exe'))) 'supervisor empaquetado contiene RT_GROUP_ICON ID1'
 foreach ($bin in $script:NativeBins) {
     Assert-True ((Get-NativeHash (Join-Path $active "bin/$bin.exe")) -ceq (Get-NativeHash (Join-Path $ArtifactsDirectory "payload/bin/$bin.exe"))) "binario real instalado sin alteración: $bin"
     Assert-True ([IO.File]::ReadAllText((Join-Path $active "bin/$bin.exe.sha256")) -ceq "$(Get-NativeHash (Join-Path $active "bin/$bin.exe"))  $bin.exe`n") "sidecar de binario verificado: $bin"

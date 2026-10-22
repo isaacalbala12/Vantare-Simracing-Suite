@@ -19,7 +19,10 @@ pub(super) fn start(args: &[String]) -> io::Result<()> {
     };
     let mut log = open_log(root)?;
     if interactive && !capable {
-        let _ = writeln!(log, "bootstrap: raíz sin contrato indicator-handshake-v1; sin indicador");
+        let _ = writeln!(
+            log,
+            "bootstrap: raíz sin contrato indicator-handshake-v1; sin indicador"
+        );
     }
     let indicator = match indicator {
         Some(Ok(indicator)) => Some(indicator),
@@ -59,7 +62,10 @@ fn supports_indicator(root: &Path) -> bool {
         return false;
     }
     let header = header.strip_prefix(b"\xef\xbb\xbf").unwrap_or(&header);
-    let first = header.split(|byte| *byte == b'\n').next().unwrap_or_default();
+    let first = header
+        .split(|byte| *byte == b'\n')
+        .next()
+        .unwrap_or_default();
     first.strip_suffix(b"\r").unwrap_or(first) == CAPABILITY
 }
 

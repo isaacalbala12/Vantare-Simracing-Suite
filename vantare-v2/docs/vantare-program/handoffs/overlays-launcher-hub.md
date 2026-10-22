@@ -37,64 +37,99 @@ pendientes: resultados exactos por HEAD en issue1742/PR1743 e informe
 histórico4cbd496e8 al código nuevo. Job Object solo nota; proveedor no-fichero
 y eprintln de bibliotecas restantes anotados. Untracked de integración ajeno
 preservado. RC4 entregada no se recompila ni modifica en este seguimiento.
-## VANTA-105 / #1745 · RC4: arranque y foco (22-oct-2026, en curso)
+
+## VANTA-105 / #1745 · RC4: arranque y foco (22-oct-2026, para revisión)
 
 Issue https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1745,
-Project Vantare, area:plataforma, milestone23. Worker aislado en
-C:/VantareServer/wt/rc4-isaac, rama vantareapp/isa-1745-rc4-arranque-foco,
-base nightly1b732b67d. Solo arranque/foco: accesos son otro worker (rc4-acceso),
-OAuth es rc4-google y salidas CLI son PR1743. No tocar esos worktrees.
+Project Vantare, `area:plataforma`, milestone 23. Rama
+`vantareapp/isa-1745-rc4-arranque-foco`, worktree propio
+`C:/VantareServer/wt/rc4-isaac`. Sincronizada sobre nightly `d87c2cb2b`
+(#1752, ICON1 del supervisor). Solo arranque y foco; accesos, OAuth y salida CLI
+pertenecen a otros workers. Evidencia: `C:/VantareServer/evidence/rc4-isaac/`.
 
-Diagnóstico antes de editar, evidencia C:/VantareServer/evidence/rc4-isaac:
-Tres muestras limpias RC4 Release: visible4,76/6,67/9,25s (mediana6,67);
-readiness10,99–14,51s. La muestra central crea el procesoHub a5,72s.
-PowerShell vacío2,70–3,60s, dot-source0,57s y ReadNativeState2,23s; de este último,
-GetNativeHash1,65s y ancestros repetidos1,28s (tiempos inclusivos, no sumarlos).
-Register además espera en el hilo de UI antes de procesar mensajes. Services
-nace6,40–6,63s, después de crear Hub; la esperaIPC45s vive en su worker y no
-retiene crear la ventana. No se acredita DuckDB/red/Clerk como fase dominante.
-La cuenta estándar nueva falló DirectX0x8007000E; la medida visible usa escritorio
-privado del SID actual con IPC/datos/identidad aislados, sin SwitchDesktop.
-No es foco físico del escritorio activo ni Windows limpio. Conservar los logs.
+Diagnóstico previo: tres muestras RC4 Release dieron Hub visible en
+4,76 / 6,67 / 9,25 s; la muestra central crea el proceso Hub a los 5,72 s.
+PowerShell vacío cuesta 2,70–3,60 s, cargar scripts 0,57 s y validar estado 2,23 s.
+Los ancestros repetidos consumen 1,28 s dentro de esa validación (tiempos inclusivos,
+no sumarlos). Dominan PowerShell y validación antes de crear Hub. Register también
+bloqueaba el hilo de UI. El sondeo IPC de 45 s corre en un worker; no es una espera
+fija al abrir. Services nace cerca de la primera ventana y storage no la precede.
+Código y cronología no señalan DuckDB, red o Clerk como fase dominante; no es ETW.
 
-Isaac autoriza indicador Win32 inmediato, centrado en monitor del cursor,
-ICON1 propio, respaldo del Hub como recurso sin ejecutar código, fondo#08090b y «Abriendo Vantare…», sin activación/barra de tareas.
-Señal explícita del primer frame del Hub; salida del motor/plazo45s lo cierran.
-El bootstrap acepta --beta -Root <ruta> [--background]; legacy sin argumento
-sigue interactivo. El worker de accesos añade --background solo a Startup;
-La integración acordada es #1746 (recurso/nombre) → #1745 → flag --background;
-entregar todo en la misma RC. El bootstrap antiguo rechaza el cuarto argumento. Bandeja no pasa por beta.
-Se elimina la espera síncrona de Register conservando readiness tras éxito,
-cancelación del hijo y plazo; integridad mantiene cada ancestro antes de cada hash
-y usa atributos .NET en lugar de cmdlets PS. Se conservan inventario, tamaños, SHA y PE.
-ReadNativeState medido2,23s →1,10s; el ensayo previo de árbol único se descartó.
-Foco: ASFW_ANY interactivo y SetForegroundWindow
-propio tras primer frame, sin entrada sintética ni AttachThreadInput.
+Cambios: indicador Win32 de 400×128, centrado en el monitor del cursor, fondo
+#08090b, ICON1 propio y respaldo del Hub mapeado solo como recurso. Texto
+«Abriendo Vantare…», sin animación, activación ni entrada en barra de tareas.
+Cierra por señal después del primer frame presentado del Hub, salida del motor
+o plazo de 45 s. Register pasa a hijo con sondeo asíncrono y cancelación al cerrar;
+`hub-ready` solo se escribe tras éxito. Validación mantiene cada ancestro antes
+de cada hash, SHA, tamaños, PE e inventario; usa atributos .NET en lugar de
+cmdlets repetidos. Medición focal: ReadNativeState 2,23 → 1,10 s.
+Foco estándar: ASFW_ANY interactivo y SetForegroundWindow del propio Hub;
+sin AttachThreadInput ni entrada sintética. Windows conserva su política de foco.
 
-Compatibilidad aprobada: solo la primera línea exacta
+Parser: `--beta -Root <ruta absoluta> [--background]`; rechaza desconocidos.
+Sin flag sigue interactivo para accesos antiguos. Background y bandeja no abren
+indicador. La integración es #1752 → #1745 → flag Startup del worker de accesos,
+todo en la misma RC. El supervisor anterior rechaza ese cuarto argumento.
+
+Compatibilidad: solo el encabezado exacto y versionado
 `# vantare-boot-capabilities: indicator-handshake-v1` del beta.ps1 raíz habilita
-el indicador (UTF8/BOM/CRLF, lectura256bytes). Setup renueva el script; feed no.
-Con raíz congelada antigua se degrada sin indicador, sale tras crearPS y libera
-la imagen como RC4, por lo que Apply/rollback conservan el guard. Tests de política
-y del bootstrap real en escritorio privado, con señal/visibilidad y guard exclusivo.
+el indicador (lectura de 256 bytes, UTF-8/BOM/CRLF). Setup renueva el script;
+el feed conserva el antiguo y degrada sin indicador. En ese caso el bootstrap
+sale tras crear PS como RC4 y no retiene su imagen durante Apply/rollback.
 
-Guard de imágenes intacto: antes de Apply/rollback, beta.ps1 valida HWND/clase,
-PID e imagen dentro de esta instalación, envía WM_APP+106 y espera WaitForExit10s.
-Si no sale, aborta sin tocar state/pending/boot-pending ni matar el bootstrap.
-Arranque normal cierra por primer frame; Apply/rollback pueden cerrar antes.
-Probe real invisible en PS5.1 PASS: señal libera imagen/guard y timeout no fuerza salida.
-El orquestador aplaza beta-tests.ps1 completo a RC5 por primera compilación bundled:
-RC5 DEBE ejecutarlo con builds QA reales de dos versiones y clave exclusiva TEST,
-incluidos los nuevos casos Apply/rollback con bootstrap vivo (sale/no sale).
-Los casos completos están escritos pero todavía no ejecutados. Host del indicador
-fuera de la generación, descartado para lanzamiento; alternativa futura en #1748.
+Guard de imágenes intacto. Antes de Apply/rollback, beta.ps1 valida HWND, clase,
+PID e imagen dentro de la instalación, envía WM_APP+106 y espera WaitForExit
+hasta 10 s. Si no sale, aborta sin cambiar generación, pendiente o boot-pending,
+y sin matar procesos. Estas operaciones pueden cerrar el indicador antes del Hub.
+Probe real invisible PS 5.1 PASS: señal libera imagen y guard; timeout conserva
+proceso y guard. Pruebas del bootstrap real en escritorio privado verifican
+marcador, visibilidad y ausencia de indicador en legacy/background.
 
-Implementación y gates todavía en curso por la cola, target propioD:/VantareServer/targets/rc4-isaac,
-jobs2. No afirmar validación final ni reducción total hasta pruebas posteriores.
-Seguimiento después del lanzamiento: #1748, medir ruta normal sin PowerShell;
-no implementación de ese cambio ahora. Sin subagentes, firma, publicación,
-merge, promoción ni cambios de backend. Siguiente: gates, prueba privada antes/después,
-PR a nightly y revisión del orquestador.
+La suite completa beta-tests.ps1 queda APLAZADA A RC5 por decisión explícita del
+orquestador: dos builds QA reales y clave exclusiva TEST, incluidos los casos
+nuevos de Apply/rollback con bootstrap vivo que sale o ignora la señal.
+Casos escritos, aún no ejecutados completos. Host externo del indicador descartado
+para el lanzamiento; alternativa futura en #1748, junto a medir una ruta normal
+sin PowerShell. No se implementa esa retirada ahora.
+
+Release, fmt, check y Clippy PASS tras integrar d87c2cb2b. Regresión focal PASS
+14/14 (ICON1, parser/marcador, ciclo de vida, indicador privado, guard y captura
+GUI PS 5.1/7). Packaging general repetido PASS 193/193, sin ampliar el plazo del
+timeout previo conservado. Suite completa anterior: Nextest 2099/2099,
+telemetría incluida, y lifecycle PASS; no atribuirla a la nueva base. Target propio
+`D:/VantareServer/targets/rc4-isaac`, jobs 2, por la cola.
+
+Cinco pares alternados tras «adelante» y pausa coordinada de workers, diez muestras
+completas, sin compiladores detectados al inicio/durante/final. Misma generación
+conservada; resto del payload idéntico salvo supervisor, Hub, sidecars y candidate.
+Medianas (rangos), RC4 original → nuevo:
+
+| Hito | RC4 original | Nuevo |
+| --- | ---: | ---: |
+| Hub visible | 4,216 s (4,179–5,084) | 3,743 s (3,631–5,137) |
+| Responde a mensajes | 9,224 s (9,072–10,561) | 4,793 s (4,682–6,212) |
+| hub-ready tras Register | 9,232 s (9,082–10,572) | 8,311 s (8,117–9,583) |
+| Indicador visible | No existe | 44 ms (44–102) |
+| Indicador cerrado por primer frame | No existe | 4,871 s (4,737–6,305) |
+
+Nacimiento del supervisor normal: 3,906 → 3,365 s; Core 3,917 → 3,376 s;
+Hub 3,927 → 3,384 s; Services 4,248 → 3,787 s. No sumar medianas de fases.
+El Hub sigue por encima de 1–2 s; la respuesta inmediata autorizada es el indicador.
+Primer par más tardío en ambos: Hub visible 5,084 → 5,137 s (+53 ms), con
+supervisor normal 4,283 → 4,330 s y nacimiento Hub 4,743 → 4,758 s. La diferencia
+ya precede al Hub; no se demuestra regresión consistente ni causa concreta de caché.
+Los otros cuatro pares mejoran visibilidad. La medición previa de 7,62 s usaba
+Start-Process, con 1,56 s antes del EXE; no era comparación intercalada válida.
+INFORME.md, paired-summary.json, paired-provenance.json y capturas en evidencia.
+Pausa liberada al terminar; residuos propios de prueba cerrados, sin procesos ajenos.
+PR a nightly en preparación; issue mantiene el enlace y el HEAD publicado.
+
+Las medidas usan CreateDesktop/CreateProcess sin SwitchDesktop, con datos, IPC
+e identidad aislados. No incluyen resolución shell del .lnk ni acreditan foco
+físico. El intento de cuenta estándar falló GPU 0x8007000E y se conserva.
+No se han abierto ventanas en el escritorio de Isaac ni tocado sus procesos.
+Sin subagentes, firma, publicación, merge, promoción ni cambios de producción.
 
 ## VANTA-105 / #1740 · Salida de comandos GUI y RC4 (21-oct-2026)
 

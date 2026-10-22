@@ -93,6 +93,14 @@ mod tests {
     }
 
     fn serve_once(status: &str, body: &[u8]) -> (u16, std::thread::JoinHandle<String>) {
+        serve_once_when(status, body, || {})
+    }
+
+    fn serve_once_when(
+        status: &str,
+        body: &[u8],
+        before_response: impl FnOnce() + Send + 'static,
+    ) -> (u16, std::thread::JoinHandle<String>) {
         let listener = TcpListener::bind("127.0.0.1:0").unwrap();
         let port = listener.local_addr().unwrap().port();
         let status = status.to_owned();
@@ -100,6 +108,7 @@ mod tests {
         let handle = std::thread::spawn(move || {
             let (mut socket, _) = listener.accept().unwrap();
             let request = read_request_line(&socket);
+            before_response();
             let header = format!(
                 "HTTP/1.1 {status}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
                 body.len()
@@ -111,11 +120,27 @@ mod tests {
         (port, handle)
     }
 
+    fn response_test_client(port: u16) -> Client {
+        // Este banco comprueba endpoint/cuerpo, no velocidad del servidor de test.
+        // Conserva proxy/redirecciones/status del cliente real, sin su plazo live.
+        // a_stalled_server_hits_the_request_deadline sigue usando Client::new.
+        let config = ureq::Agent::config_builder()
+            .proxy(None)
+            .max_redirects(0)
+            .http_status_as_error(false)
+            .timeout_global(None)
+            .build();
+        Client {
+            agent: ureq::Agent::new_with_config(config),
+            port,
+        }
+    }
+
     #[test]
     fn fetches_only_the_fixed_loopback_endpoint_and_keeps_the_body_bounded() {
         let (port, server) = serve_once("200 OK", b"[]");
         assert_eq!(
-            Client::new(port).fetch(Endpoint::Standings),
+            response_test_client(port).fetch(Endpoint::Standings),
             Some(b"[]".to_vec())
         );
         assert!(
@@ -126,7 +151,10 @@ mod tests {
         );
 
         let (port, server) = serve_once("404 Not Found", b"missing");
-        assert_eq!(Client::new(port).fetch(Endpoint::SessionInfo), None);
+        assert_eq!(
+            response_test_client(port).fetch(Endpoint::SessionInfo),
+            None
+        );
         assert!(
             server
                 .join()
@@ -135,12 +163,49 @@ mod tests {
         );
 
         let (port, server) = serve_once("200 OK", &vec![b'x'; MAX_RESPONSE_BYTES + 1]);
-        assert_eq!(Client::new(port).fetch(Endpoint::Standings), None);
+        assert_eq!(response_test_client(port).fetch(Endpoint::Standings), None);
         server.join().unwrap();
 
         let (port, server) = serve_once("200 OK", b"  \n");
-        assert_eq!(Client::new(port).fetch(Endpoint::Standings), None);
+        assert_eq!(response_test_client(port).fetch(Endpoint::Standings), None);
         server.join().unwrap();
+    }
+
+    #[test]
+    fn response_validation_survives_a_server_held_past_the_live_deadline() {
+        use std::sync::mpsc::{self, RecvTimeoutError};
+
+        // Guardas contra un banco roto, independientes del plazo live comprobado.
+        const COMPLETION_LIMIT: Duration = Duration::from_secs(30);
+        let (accepted, request) = mpsc::channel();
+        let (release, hold) = mpsc::channel();
+        let (finished, response) = mpsc::channel();
+        let (port, server) = serve_once_when("200 OK", b"[]", move || {
+            accepted.send(()).unwrap();
+            hold.recv().unwrap();
+        });
+        let client = std::thread::spawn(move || {
+            finished
+                .send(response_test_client(port).fetch(Endpoint::Standings))
+                .unwrap();
+        });
+        request.recv_timeout(COMPLETION_LIMIT).unwrap(); // Petición completa.
+        // Simula un servidor desprogramado más allá del plazo live. Esta espera
+        // comprueba explícitamente el plazo; no presupone cuándo corre un hilo.
+        let while_held = response.recv_timeout(DEADLINE * 2);
+        release.send(()).unwrap();
+        assert!(matches!(while_held, Err(RecvTimeoutError::Timeout)));
+        assert_eq!(
+            response.recv_timeout(COMPLETION_LIMIT).unwrap(),
+            Some(b"[]".to_vec())
+        );
+        client.join().unwrap();
+        assert!(
+            server
+                .join()
+                .unwrap()
+                .starts_with("GET /rest/watch/standings ")
+        );
     }
 
     #[test]

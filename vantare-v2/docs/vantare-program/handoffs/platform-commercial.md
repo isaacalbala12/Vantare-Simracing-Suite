@@ -18,7 +18,9 @@ PR posterior de Startup/--background. Sin cambios Rust/Hub/IPC/LMU.
 Gates afectados (registro/shell/packaging) por la cola, target propio
 D:/VantareServer/targets/rc4-acceso, jobs2, pendientes. Primer intento anterior
 se detuvo durante espera de cola para cambiar de base; ninguna suite ejecutada.
-Sin push/PR nuevo aún, merge propio, release, firma ni publicación.
+PR draft #1756 a nightly, push autorizado para que CI del runner dedicado
+corra en paralelo con la cola local. Solo se marcará listo cuando packaging
+local y CI del HEAD final pasen. Sin merge propio, release, firma ni publicación.
 
 ﻿## VANTA-105 / #1746 · RC4: nombre e icono de accesos (21-oct-2026)
 

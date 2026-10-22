@@ -4,7 +4,8 @@ mod art;
 pub(in crate::shell) mod interaction_tests;
 mod view;
 use super::{Hub, navigation::Access};
-use crate::onboarding::{Choices, Equipment, SAY, crash_say, usage_say};
+use crate::onboarding::{Choices, DONE, Equipment, LOOK, PRIVACY, SAY, crash_say, usage_say};
+use crate::orbit::theme::{Palette, Scheme};
 use gpui::{Context, Window, prelude::*};
 use std::time::{Duration, Instant};
 use vantare_ipc::control::CatalogAccess;
@@ -49,7 +50,7 @@ impl State {
         let step = capture
             .and_then(|c| c.name.strip_prefix("onboarding-"))
             .and_then(|n| n.parse::<usize>().ok())
-            .filter(|n| *n < 7)
+            .filter(|n| *n <= DONE)
             .unwrap_or(0);
         let capture = capture.is_some();
         let equipment = if capture {
@@ -130,18 +131,28 @@ impl State {
         self.spoken = Instant::now();
     }
     pub fn page(&mut self, step: usize) {
-        self.step = step.min(6);
+        self.step = step.min(DONE);
         self.say(SAY[self.step]);
         if self.step == 1 && !self.found[0] && !self.capture {
             self.say("Marca los simuladores que usas en tu PC.");
         }
-        if self.step == 6 && self.marketing_unconfirmed {
+        if self.step == DONE && self.marketing_unconfirmed {
             self.say(MARKETING_UNCONFIRMED);
         }
-        if self.step == 5 {
+        if self.step == PRIVACY {
             // Al volver atrás el bocadillo sigue al interruptor, no al valor inicial.
             self.say(usage_say(self.choices.usage));
         }
+    }
+}
+/// Bocadillo tras elegir en el paso de aspecto.
+fn look_say(palette: Option<Palette>, scheme: Option<Scheme>) -> String {
+    match (palette, scheme) {
+        (Some(palette), _) => format!("Estilo {} aplicado.", palette.label()),
+        (None, Some(Scheme::System)) => "Modo del sistema aplicado.".into(),
+        (None, Some(Scheme::Light)) => "Modo claro aplicado.".into(),
+        (None, Some(Scheme::Dark)) => "Modo oscuro aplicado.".into(),
+        (None, None) => SAY[LOOK].into(),
     }
 }
 const MARKETING_UNCONFIRMED: &str =
@@ -163,7 +174,7 @@ fn choices_from_privacy(privacy: Option<Privacy>) -> Choices {
 /// La salida sin guardar solo se ofrece junto al error del paso de privacidad:
 /// sin consentimiento guardado, pero con la opción más privada.
 const fn private_exit_available(step: usize, consent_error: bool) -> bool {
-    consent_error && step >= 5
+    consent_error && step >= PRIVACY
 }
 /// Todo apagado y sin persistir: la decisión más privada para entrar en la app.
 const fn most_private(privacy: Privacy) -> Privacy {
@@ -234,14 +245,15 @@ enum Motion {
 /// El pie decide con esto: un control oculto no navega. Atrás no sale del
 /// primer paso, Saltar desaparece desde el paso de privacidad (el resumen se
 /// alcanza terminando) y Continuar en el resumen sale con el teclado; los
-/// botones visibles del resumen son la salida explícita.
+/// botones visibles del resumen son la salida explícita. El aspecto es
+/// opcional: Continuar y Saltar lo dejan como esté, sin escribir nada.
 const fn motion(nav: Nav, step: usize, can_advance: bool) -> Motion {
     match nav {
         Nav::Back if step == 0 => Motion::Blocked,
         Nav::Back => Motion::Page(step - 1),
-        Nav::Skip if step < 5 => Motion::Page(5),
+        Nav::Skip if step < PRIVACY => Motion::Page(PRIVACY),
         Nav::Skip => Motion::Blocked,
-        Nav::Next if step >= 6 => Motion::Exit(true),
+        Nav::Next if step >= DONE => Motion::Exit(true),
         Nav::Next if !can_advance => Motion::Blocked,
         Nav::Next => Motion::Page(step + 1),
     }
@@ -303,10 +315,10 @@ impl Hub {
             Motion::Blocked => {}
             Motion::Exit(show) => self.onboarding_finish(show, window, cx),
             Motion::Page(next) => {
-                if step == 5 {
+                if step == PRIVACY {
                     self.onboarding_marketing(cx);
                 }
-                if step == 5 && !self.onboarding_consent(usage, crashes, cx) {
+                if step == PRIVACY && !self.onboarding_consent(usage, crashes, cx) {
                     // El error queda visible: el usuario puede reintentar o entrar sin guardar.
                     cx.notify();
                     return;
@@ -349,6 +361,31 @@ impl Hub {
         };
         if let Some(state) = &mut self.onboarding {
             state.page(step);
+        }
+        cx.notify();
+    }
+    /// Aspecto del paso opcional: misma escritura y vista previa que Ajustes ›
+    /// Apariencia (`appearance.json`), sin almacenamiento propio del asistente.
+    fn onboarding_look(
+        &mut self,
+        palette: Option<Palette>,
+        scheme: Option<Scheme>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if self.onboarding.as_ref().is_none_or(|state| state.capture) {
+            return;
+        }
+        let mut wanted = self.settings.appearance.settings;
+        wanted.palette = palette.unwrap_or(wanted.palette);
+        wanted.scheme = scheme.unwrap_or(wanted.scheme);
+        self.settings_appearance_apply(wanted, window, cx);
+        let failure = (self.settings.appearance.settings != wanted)
+            .then(|| self.settings.status.clone())
+            .flatten();
+        if let Some(state) = &mut self.onboarding {
+            state.say(look_say(palette, scheme));
+            state.error = failure;
         }
         cx.notify();
     }
@@ -540,13 +577,13 @@ impl Hub {
         let Some(state) = &mut self.onboarding else {
             return;
         };
-        if state.step != 6 || !state.marketing_unconfirmed {
+        if state.step != DONE || !state.marketing_unconfirmed {
             return;
         }
         let mail = &self.remote.read(cx).mail;
         if !mail.pending && mail.onboarding_saved && mail.error.is_none() {
             state.marketing_unconfirmed = false;
-            state.say(SAY[6]);
+            state.say(SAY[DONE]);
             cx.notify();
         }
     }
@@ -687,30 +724,30 @@ mod tests {
     #[test]
     fn the_footer_only_moves_in_visible_steps() {
         assert_eq!(motion(Nav::Back, 0, true), Motion::Blocked);
-        for step in 1..=6 {
+        for step in 1..=DONE {
             assert_eq!(motion(Nav::Back, step, true), Motion::Page(step - 1));
         }
-        for step in 0..=4 {
-            assert_eq!(motion(Nav::Skip, step, true), Motion::Page(5));
+        for step in 0..PRIVACY {
+            assert_eq!(motion(Nav::Skip, step, true), Motion::Page(PRIVACY));
         }
-        for step in 5..=6 {
+        for step in PRIVACY..=DONE {
             assert_eq!(motion(Nav::Skip, step, true), Motion::Blocked);
         }
-        for step in 0..=5 {
+        for step in 0..DONE {
             assert_eq!(motion(Nav::Next, step, false), Motion::Blocked);
             assert_eq!(motion(Nav::Next, step, true), Motion::Page(step + 1));
         }
-        assert_eq!(motion(Nav::Next, 6, true), Motion::Exit(true));
+        assert_eq!(motion(Nav::Next, DONE, true), Motion::Exit(true));
     }
     #[test]
     fn the_unsaved_exit_needs_the_consent_error_at_the_privacy_step() {
-        assert!(!private_exit_available(5, false));
-        assert!(!private_exit_available(6, false));
-        for step in 0..=4 {
+        assert!(!private_exit_available(PRIVACY, false));
+        assert!(!private_exit_available(DONE, false));
+        for step in 0..PRIVACY {
             assert!(!private_exit_available(step, true));
         }
-        assert!(private_exit_available(5, true));
-        assert!(private_exit_available(6, true));
+        assert!(private_exit_available(PRIVACY, true));
+        assert!(private_exit_available(DONE, true));
     }
     #[test]
     fn most_private_turns_everything_off_without_changing_the_saved_generation() {

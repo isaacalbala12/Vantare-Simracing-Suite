@@ -3,6 +3,50 @@ use crate::{onboarding as model, orbit};
 use gpui::{Context, Div, SharedString, Stateful, Window, div, prelude::*, px, rgb};
 use vantare_ui::performance::Level;
 
+/// Colores del asistente. Vantare oscuro conserva los literales aprobados en
+/// VANTA-51; el resto de estilos los toma del tema activo, de modo que el paso
+/// de aspecto (#1762) cambia todo el asistente al momento.
+pub(super) fn paint(color: u32, cx: &gpui::App) -> u32 {
+    if approved(cx) {
+        return color;
+    }
+    let skin = orbit::skin(cx);
+    match color {
+        0x000a_0909 => skin.base,
+        0x0012_1011 | 0x0017_1516 => skin.l1,
+        0x0020_1e1f | 0x0022_1d1f => skin.l2,
+        0x0024_1e20 | 0x0029_2325 => skin.l3,
+        0x003e_3538 | 0x0051_464a => skin.el,
+        0x0019_0d0e => mix(skin.accent, skin.l1, 0.15),
+        0x00d8_0000 => skin.accent,
+        0x00f3_eeee | 0x00fa_f7f7 | 0x00ff_ffff => skin.text1,
+        0x001c_1719 => skin.on_primary,
+        0x00de_d9db => skin.text2,
+        0x00a3_9a9c | 0x008b_8285 | 0x0088_7f82 => skin.text3,
+        0x0022_c55e => skin.ok,
+        0x00ff_6b6b => skin.err,
+        other => other,
+    }
+}
+/// Tema con el que se aprobó el asistente: sus literales se pintan tal cual.
+pub(super) fn approved(cx: &gpui::App) -> bool {
+    let theme = cx.global::<orbit::theme::Theme>();
+    theme.palette == orbit::theme::Palette::Vantare && theme.scheme == orbit::theme::Scheme::Dark
+}
+/// `amount` de `top` sobre `base`, opaco.
+fn mix(top: u32, base: u32, amount: f32) -> u32 {
+    let channel = |shift: u32| {
+        let (t, b) = (
+            f32::from(((top >> shift) & 0xff) as u8),
+            f32::from(((base >> shift) & 0xff) as u8),
+        );
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)] // 0..=255.
+        let value = (b + (t - b) * amount).round() as u32;
+        value << shift
+    };
+    channel(16) | channel(8) | channel(0)
+}
+
 fn summary_status(confirmed: bool) -> (&'static str, u32) {
     if confirmed {
         ("✓", 0x0022_c55e)
@@ -39,6 +83,7 @@ fn button(
     cx: &gpui::App,
 ) -> Stateful<Div> {
     let label: SharedString = label.into();
+    let focus = paint(0x00fa_f7f7, cx);
     div()
         .id(id.into())
         .role(gpui::Role::Button)
@@ -49,8 +94,14 @@ fn button(
         .px(px(26.0 * s))
         .rounded(px(10.0 * s))
         .border_1()
-        .border_color(rgb(if light { 0x00f3_eeee } else { 0x003e_3538 }))
-        .bg(rgb(if light { 0x00f3_eeee } else { 0x0012_1011 }))
+        .border_color(rgb(paint(
+            if light { 0x00f3_eeee } else { 0x003e_3538 },
+            cx,
+        )))
+        .bg(rgb(paint(
+            if light { 0x00f3_eeee } else { 0x0012_1011 },
+            cx,
+        )))
         .flex()
         .items_center()
         .justify_center()
@@ -59,11 +110,15 @@ fn button(
                 label,
                 16.0 * s,
                 600,
-                if light { 0x001c_1719 } else { orbit::ink(cx) },
+                if light {
+                    paint(0x001c_1719, cx)
+                } else {
+                    orbit::ink(cx)
+                },
                 cx,
             ))
         })
-        .focus_visible(|style| style.border_2().border_color(rgb(0x00fa_f7f7)))
+        .focus_visible(move |style| style.border_2().border_color(rgb(focus)))
 }
 fn card(
     id: String,
@@ -74,6 +129,7 @@ fn card(
     s: f32,
     cx: &gpui::App,
 ) -> Stateful<Div> {
+    let focus = paint(0x00fa_f7f7, cx);
     div()
         .id(SharedString::from(id))
         .role(gpui::Role::Button)
@@ -84,8 +140,14 @@ fn card(
         .tab_index(0)
         .rounded(px(14.0 * s))
         .border_1()
-        .border_color(rgb(if selected { 0x00d8_0000 } else { 0x0029_2325 }))
-        .bg(rgb(if selected { 0x0019_0d0e } else { 0x0012_1011 }))
+        .border_color(rgb(paint(
+            if selected { 0x00d8_0000 } else { 0x0029_2325 },
+            cx,
+        )))
+        .bg(rgb(paint(
+            if selected { 0x0019_0d0e } else { 0x0012_1011 },
+            cx,
+        )))
         .p(px(18.0 * s))
         .flex()
         .flex_col()
@@ -93,7 +155,10 @@ fn card(
         .child(
             div()
                 .size(px(40.0 * s))
-                .bg(rgb(if selected { 0x00d8_0000 } else { 0x0024_1e20 }))
+                .bg(rgb(paint(
+                    if selected { 0x00d8_0000 } else { 0x0024_1e20 },
+                    cx,
+                )))
                 .rounded(px(10.0 * s))
                 .flex()
                 .items_center()
@@ -114,21 +179,113 @@ fn card(
                 .right(px(16.0 * s))
                 .top(px(16.0 * s)),
         )
-        .focus_visible(|style| style.border_2().border_color(rgb(0x00fa_f7f7)))
+        .focus_visible(move |style| style.border_2().border_color(rgb(focus)))
 }
 fn check(on: bool, s: f32, cx: &gpui::App) -> Div {
     div()
         .size(px(24.0 * s))
         .rounded_full()
         .border_1()
-        .border_color(rgb(if on { 0x00d8_0000 } else { 0x0051_464a }))
+        .border_color(rgb(paint(if on { 0x00d8_0000 } else { 0x0051_464a }, cx)))
         .when(on, |d| {
-            d.bg(rgb(0x00d8_0000))
+            d.bg(rgb(paint(0x00d8_0000, cx)))
                 .child(text("✓", 15.0 * s, 700, 0x00ff_ffff, cx))
         })
         .flex()
         .items_center()
         .justify_center()
+}
+/// Miniatura de un estilo con sus tokens reales: fondo, barra lateral,
+/// superficie, texto y acento del modo que se está viendo.
+fn look_swatch(tokens: &orbit::skin::Skin, s: f32) -> Div {
+    div()
+        .h(px(34.0 * s))
+        .rounded(px(8.0 * s))
+        .overflow_hidden()
+        .border_1()
+        .border_color(orbit::alpha(tokens.line2))
+        .bg(rgb(tokens.base))
+        .flex()
+        .child(div().w(px(28.0 * s)).h_full().bg(rgb(tokens.sidebar.from)))
+        .child(
+            div()
+                .flex_1()
+                .px(px(7.0 * s))
+                .flex()
+                .flex_col()
+                .justify_center()
+                .gap(px(5.0 * s))
+                .child(
+                    div()
+                        .w(px(52.0 * s))
+                        .h(px(5.0 * s))
+                        .rounded_full()
+                        .bg(rgb(tokens.text1)),
+                )
+                .child(
+                    div()
+                        .flex()
+                        .gap(px(4.0 * s))
+                        .child(
+                            div()
+                                .flex_1()
+                                .h(px(9.0 * s))
+                                .rounded(px(3.0 * s))
+                                .bg(rgb(tokens.l2)),
+                        )
+                        .child(
+                            div()
+                                .w(px(24.0 * s))
+                                .h(px(9.0 * s))
+                                .rounded(px(3.0 * s))
+                                .bg(rgb(tokens.accent)),
+                        ),
+                ),
+        )
+}
+fn look_card(
+    index: usize,
+    palette: orbit::theme::Palette,
+    selected: bool,
+    scheme: orbit::theme::Scheme,
+    s: f32,
+    cx: &gpui::App,
+) -> Stateful<Div> {
+    let focus = paint(0x00fa_f7f7, cx);
+    div()
+        .id(("onboarding-look", index))
+        .role(gpui::Role::Button)
+        .aria_label(palette.label())
+        .aria_selected(selected)
+        .cursor_pointer()
+        .tab_index(0)
+        .flex_1()
+        .min_w_0()
+        .p(px(10.0 * s))
+        .rounded(px(12.0 * s))
+        .border_1()
+        .border_color(rgb(paint(
+            if selected { 0x00d8_0000 } else { 0x0029_2325 },
+            cx,
+        )))
+        .bg(rgb(paint(
+            if selected { 0x0019_0d0e } else { 0x0012_1011 },
+            cx,
+        )))
+        .flex()
+        .flex_col()
+        .gap(px(8.0 * s))
+        .child(look_swatch(&orbit::skin::Skin::resolve(palette, scheme), s))
+        .child(
+            div()
+                .flex()
+                .items_center()
+                .justify_between()
+                .gap(px(6.0 * s))
+                .child(text(palette.label(), 14.0 * s, 600, orbit::ink(cx), cx))
+                .child(check(selected, s * 0.75, cx)),
+        )
+        .focus_visible(move |style| style.border_2().border_color(rgb(focus)))
 }
 /// Marco común de los interruptores del paso de privacidad; el manejador de
 /// cada uno lo pone el paso para que un control oculto nunca navegue solo.
@@ -150,8 +307,8 @@ fn onboarding_switch(
         .p(px(20.0 * s))
         .rounded(px(14.0 * s))
         .border_1()
-        .border_color(rgb(if on { 0x0022_c55e } else { 0x0029_2325 }))
-        .bg(rgb(0x0012_1011))
+        .border_color(rgb(paint(if on { 0x0022_c55e } else { 0x0029_2325 }, cx)))
+        .bg(rgb(paint(0x0012_1011, cx)))
         .flex()
         .items_center()
         .gap(px(18.0 * s))
@@ -167,9 +324,9 @@ fn onboarding_switch(
                 .w(px(58.0 * s))
                 .h(px(32.0 * s))
                 .rounded_full()
-                .bg(rgb(if on { 0x0022_c55e } else { 0x0022_1d1f }))
+                .bg(rgb(paint(if on { 0x0022_c55e } else { 0x0022_1d1f }, cx)))
                 .border_1()
-                .border_color(rgb(0x0051_464a))
+                .border_color(rgb(paint(0x0051_464a, cx)))
                 .child(
                     div()
                         .absolute()
@@ -177,7 +334,7 @@ fn onboarding_switch(
                         .top(px(3.0 * s))
                         .size(px(24.0 * s))
                         .rounded_full()
-                        .bg(rgb(if on { 0x00ff_ffff } else { 0x00a3_9a9c })),
+                        .bg(rgb(paint(if on { 0x00ff_ffff } else { 0x00a3_9a9c }, cx))),
                 ),
         )
 }
@@ -191,7 +348,11 @@ fn simulator_note(found: bool, s: f32, cx: &gpui::App) -> Div {
                 if found { "ENCONTRADO" } else { "NO ENCONTRADO" },
                 8.8 * s,
                 700,
-                if found { 0x0022_c55e } else { orbit::ink_3(cx) },
+                if found {
+                    paint(0x0022_c55e, cx)
+                } else {
+                    orbit::ink_3(cx)
+                },
                 cx,
             )
             .px(px(8.0 * s))
@@ -199,14 +360,14 @@ fn simulator_note(found: bool, s: f32, cx: &gpui::App) -> Div {
             .rounded(px(6.0 * s))
             .border_1()
             .border_color(if found {
-                orbit::tint(0x0022_c55e, 0.25)
+                orbit::tint(paint(0x0022_c55e, cx), 0.25)
             } else {
-                orbit::tint(0x00fa_f7f7, 0.08)
+                orbit::tint(paint(0x00fa_f7f7, cx), 0.08)
             })
             .bg(if found {
-                orbit::tint(0x0022_c55e, 0.1)
+                orbit::tint(paint(0x0022_c55e, cx), 0.1)
             } else {
-                rgb(0x0022_1d1f).into()
+                rgb(paint(0x0022_1d1f, cx)).into()
             }),
         )
         .child(text(
@@ -232,7 +393,8 @@ impl Hub {
             .min(f32::from(window.viewport_size().height) / 900.0)
             .max(0.5);
         let state = self.onboarding.as_ref().expect("onboarding visible");
-        let backdrop = state.backgrounds[1].clone();
+        // El halo carmín del fondo pertenece al tema aprobado.
+        let backdrop = state.backgrounds[1].clone().filter(|_| approved(cx));
         let step = state.step;
         let capture = state.capture;
         let error = state.error.clone();
@@ -251,15 +413,17 @@ impl Hub {
             "¿CÓMO CORRES?",
             "GUARDA TU\nCONFIGURACIÓN.",
             "SIN QUITARTE FPS.",
+            "A TU GUSTO.",
             "TÚ DECIDES.",
             "TODO LISTO.",
         ];
         let leads = [
-            "Cinco preguntas rápidas y tu overlay queda hecho a tu medida.",
+            "Seis preguntas rápidas y tu overlay queda hecho a tu medida.",
             "Hemos mirado tu PC. Marca los simuladores que usas.",
             "Elige uno o varios. Te preparamos los widgets.",
             "Entra con tu cuenta. Tu configuración se guarda en este PC.",
             "Elige la cadencia de los widgets para que el juego vaya siempre fluido.",
+            "Elige los colores del Hub. Lo ves al momento y puedes cambiarlo en Ajustes.",
             // El paso de privacidad refleja el interruptor, también al volver atrás.
             if usage_on {
                 "¿Nos ayudas a mejorar Vantare con datos de uso anónimos? Está activado."
@@ -283,7 +447,8 @@ impl Hub {
             2 => copy.child(self.onboarding_styles(s, cx)),
             3 => copy.child(self.onboarding_account(s, cx)),
             4 => copy.child(self.onboarding_performance(s, cx)),
-            5 => copy.child(self.onboarding_usage(s, cx)),
+            model::LOOK => copy.child(self.onboarding_look_choices(s, cx)),
+            model::PRIVACY => copy.child(self.onboarding_usage(s, cx)),
             _ => copy.child(self.onboarding_summary(s, cx)).child(
                 div()
                     .flex()
@@ -311,7 +476,7 @@ impl Hub {
                 .flex_col()
                 .items_start()
                 .gap(px(12.0 * s))
-                .child(text(message, 13.0 * s, 600, 0x00ff_6b6b, cx));
+                .child(text(message, 13.0 * s, 600, paint(0x00ff_6b6b, cx), cx));
             // Un error al guardar el consentimiento no puede dejar el asistente
             // sin salida: junto al aviso se entra con todo apagado, sin guardar.
             if !capture && private_exit_available(step, consent_error) {
@@ -335,7 +500,7 @@ impl Hub {
         let next = match step {
             0 => "Empezar",
             3 if !self.onboarding.as_ref().expect("visible").signed => "Ahora no",
-            5 => "Terminar",
+            model::PRIVACY => "Terminar",
             _ => "Continuar",
         };
         let can = self
@@ -344,11 +509,13 @@ impl Hub {
             .expect("visible")
             .choices
             .can_advance(step);
+        let progress: [u32; model::PRIVACY] =
+            std::array::from_fn(|i| paint(if i < step { 0x00d8_0000 } else { 0x0022_1d1f }, cx));
         let footer = div()
             .h(px(96.0 * s))
             .flex_none()
             .border_t_1()
-            .border_color(rgb(0x0024_1e20))
+            .border_color(rgb(paint(0x0024_1e20, cx)))
             .px(px(40.0 * s))
             .flex()
             .items_center()
@@ -373,21 +540,26 @@ impl Hub {
                     .flex_col()
                     .items_center()
                     .gap(px(12.0 * s))
-                    .child(div().flex().gap(px(6.0 * s)).children((0..5).map(|i| {
+                    .child(
                         div()
-                            .w(px(46.0 * s))
-                            .h(px(5.0 * s))
-                            .rounded_full()
-                            .bg(rgb(if i < step { 0x00d8_0000 } else { 0x0022_1d1f }))
-                    })))
+                            .flex()
+                            .gap(px(6.0 * s))
+                            .children(progress.map(|color| {
+                                div()
+                                    .w(px(46.0 * s))
+                                    .h(px(5.0 * s))
+                                    .rounded_full()
+                                    .bg(rgb(color))
+                            })),
+                    )
                     .child(
                         text(
                             if step == 0 {
-                                "5 PASOS · MENOS DE 1 MINUTO".into()
-                            } else if step == 6 {
+                                format!("{} PASOS · MENOS DE 1 MINUTO", model::PRIVACY)
+                            } else if step == model::DONE {
                                 "LISTO".into()
                             } else {
-                                format!("PASO {step} DE 5")
+                                format!("PASO {step} DE {}", model::PRIVACY)
                             },
                             11.0 * s,
                             600,
@@ -402,20 +574,20 @@ impl Hub {
                     .w(px(200.0 * s))
                     .gap(px(12.0 * s))
                     .child(
-                        text("Enter", 10.0 * s, 600, 0x001c_1719, cx)
+                        text("Enter", 10.0 * s, 600, paint(0x001c_1719, cx), cx)
                             .p(px(4.0 * s))
-                            .bg(rgb(0x00de_d9db))
+                            .bg(rgb(paint(0x00de_d9db, cx)))
                             .rounded(px(4.0 * s)),
                     )
-                    .opacity(if step == 6 {
+                    .opacity(if step == model::DONE {
                         0.0
                     } else if can {
                         1.0
                     } else {
                         0.45
                     })
-                    .tab_stop(step < 6 && can)
-                    .when(step < 6, |ready| {
+                    .tab_stop(step < model::DONE && can)
+                    .when(step < model::DONE, |ready| {
                         ready.on_click(cx.listener(|hub, _, window, cx| {
                             cx.stop_propagation();
                             hub.onboarding_next(window, cx);
@@ -425,7 +597,7 @@ impl Hub {
         div()
             .id("onboarding")
             .size_full()
-            .bg(rgb(0x000a_0909))
+            .bg(rgb(paint(0x000a_0909, cx)))
             .relative()
             .when_some(backdrop, |d, image| {
                 d.child(
@@ -472,7 +644,7 @@ impl Hub {
                     .items_center()
                     .gap(px(24.0 * s))
                     .border_b_1()
-                    .border_color(rgb(0x0024_1e20))
+                    .border_color(rgb(paint(0x0024_1e20, cx)))
                     .child(
                         div()
                             .flex()
@@ -481,11 +653,11 @@ impl Hub {
                             .h(px(20.0 * s))
                             .items_center()
                             .gap(px(7.0 * s))
-                            .child(orbit::icon("mark", 16.0 * s, 0x00ff_ffff))
+                            .child(orbit::icon("mark", 16.0 * s, paint(0x00ff_ffff, cx)))
                             .child(
                                 gpui::svg()
                                     .path("brand/wordmark.svg")
-                                    .text_color(rgb(0x00ff_ffff))
+                                    .text_color(rgb(paint(0x00ff_ffff, cx)))
                                     .flex_none()
                                     .w(px(90.0 * s))
                                     .h(px(16.0 * s)),
@@ -513,8 +685,8 @@ impl Hub {
                             .border_0()
                             .h(px(36.0 * s))
                             .px(px(12.0 * s))
-                            .opacity(if step >= 5 { 0.0 } else { 1.0 })
-                            .tab_stop(step < 5)
+                            .opacity(if step >= model::PRIVACY { 0.0 } else { 1.0 })
+                            .tab_stop(step < model::PRIVACY)
                             .on_click(cx.listener(|hub, _, _, cx| {
                                 cx.stop_propagation();
                                 hub.onboarding_skip(cx);
@@ -564,8 +736,11 @@ impl Hub {
             .pb(px(16.0 * s))
             .rounded(px(18.0 * s))
             .border_1()
-            .border_color(orbit::tint(0x00fa_f7f7, 0.14))
-            .bg(orbit::gradient([0x0020_1e1f, 0x0017_1516], 180.0))
+            .border_color(orbit::tint(paint(0x00fa_f7f7, cx), 0.14))
+            .bg(orbit::gradient(
+                [paint(0x0020_1e1f, cx), paint(0x0017_1516, cx)],
+                180.0,
+            ))
             .shadow(vec![gpui::BoxShadow {
                 color: orbit::tint(0x0000_0000, 0.35),
                 offset: gpui::point(px(0.0), px(24.0 * s)),
@@ -573,18 +748,21 @@ impl Hub {
                 spread_radius: px(0.0),
                 inset: false,
             }])
-            .child(art::radio_tail(s))
+            .child(art::radio_tail(
+                s,
+                paint(0x0017_1516, cx),
+                orbit::tint(paint(0x00fa_f7f7, cx), 0.14),
+            ))
             .child(
                 div()
                     .flex()
                     .items_center()
                     .gap(px(8.0 * s))
                     .line_height(px(10.0 * s))
-                    .child(div().size(px(7.0 * s)).rounded_full().bg(rgb(if writing {
-                        0x00ff_6b6b
-                    } else {
-                        0x0088_7f82
-                    })))
+                    .child(div().size(px(7.0 * s)).rounded_full().bg(rgb(paint(
+                        if writing { 0x00ff_6b6b } else { 0x0088_7f82 },
+                        cx,
+                    ))))
                     .child(orbit::tracked_text(
                         "VANTA · ASISTENTE",
                         9.6 * s,
@@ -646,8 +824,8 @@ impl Hub {
                     .py(px(16.0 * s))
                     .rounded(px(14.0 * s))
                     .border_1()
-                    .border_color(rgb(if on { 0x00d8_0000 } else { 0x0029_2325 }))
-                    .bg(rgb(0x0012_1011))
+                    .border_color(rgb(paint(if on { 0x00d8_0000 } else { 0x0029_2325 }, cx)))
+                    .bg(rgb(paint(0x0012_1011, cx)))
                     .flex()
                     .items_center()
                     .gap(px(18.0 * s))
@@ -656,7 +834,7 @@ impl Hub {
                             .size(px(64.0 * s))
                             .flex_none()
                             .rounded(px(12.0 * s))
-                            .bg(rgb(if on { 0x00f3_eeee } else { 0x0022_1d1f }))
+                            .bg(rgb(paint(if on { 0x00f3_eeee } else { 0x0022_1d1f }, cx)))
                             .flex()
                             .items_center()
                             .justify_center()
@@ -664,7 +842,11 @@ impl Hub {
                                 abbr,
                                 20.0 * s,
                                 600,
-                                if on { 0x001c_1719 } else { orbit::ink_3(cx) },
+                                if on {
+                                    paint(0x001c_1719, cx)
+                                } else {
+                                    orbit::ink_3(cx)
+                                },
                                 cx,
                             )),
                     )
@@ -726,6 +908,60 @@ impl Hub {
                         }))
                     }))
             }))
+    }
+    /// Paso opcional de aspecto: lee y escribe lo mismo que Ajustes › Apariencia.
+    fn onboarding_look_choices(&self, s: f32, cx: &mut Context<Self>) -> Div {
+        use orbit::theme::{Palette, Scheme};
+        let current = self.settings.appearance.settings;
+        // Las miniaturas siguen el modo visible; «Sistema» ya llega resuelto.
+        let shown = cx.global::<orbit::theme::Theme>().scheme;
+        let grid = div()
+            .flex()
+            .flex_col()
+            .gap(px(10.0 * s))
+            .children((0..3).map(|row| {
+                div()
+                    .flex()
+                    .gap(px(10.0 * s))
+                    .children((row * 3..row * 3 + 3).map(|index| {
+                        let palette = Palette::ALL[index];
+                        look_card(index, palette, palette == current.palette, shown, s, cx)
+                            .on_click(cx.listener(move |hub, _, window, cx| {
+                                cx.stop_propagation();
+                                hub.onboarding_look(Some(palette), None, window, cx);
+                            }))
+                    }))
+            }));
+        let schemes = div().flex().gap(px(10.0 * s)).children(
+            [
+                (Scheme::System, "Sistema"),
+                (Scheme::Light, "Claro"),
+                (Scheme::Dark, "Oscuro"),
+            ]
+            .into_iter()
+            .enumerate()
+            .map(|(index, (scheme, label))| {
+                let on = current.scheme == scheme;
+                let (border, background) = (paint(0x00d8_0000, cx), paint(0x0019_0d0e, cx));
+                button(format!("onboarding-scheme-{index}"), label, false, s, cx)
+                    .flex_1()
+                    .h(px(44.0 * s))
+                    .aria_selected(on)
+                    .when(on, |selected| {
+                        selected.border_color(rgb(border)).bg(rgb(background))
+                    })
+                    .on_click(cx.listener(move |hub, _, window, cx| {
+                        cx.stop_propagation();
+                        hub.onboarding_look(None, Some(scheme), window, cx);
+                    }))
+            }),
+        );
+        div()
+            .flex()
+            .flex_col()
+            .gap(px(14.0 * s))
+            .child(grid)
+            .child(schemes)
     }
     fn onboarding_account(&self, s: f32, cx: &mut Context<Self>) -> Div {
         let state = self.onboarding.as_ref().expect("visible");
@@ -806,8 +1042,8 @@ impl Hub {
             .h(px(52.0 * s))
             .rounded(px(10.0 * s))
             .border_1()
-            .border_color(rgb(0x0029_2325))
-            .bg(rgb(0x0012_1011));
+            .border_color(rgb(paint(0x0029_2325, cx)))
+            .bg(rgb(paint(0x0012_1011, cx)));
         for (i, level) in Level::ALL.into_iter().enumerate() {
             let selected = !state.choices.automatic && state.choices.level == level;
             levels = levels.child(
@@ -816,7 +1052,7 @@ impl Hub {
                     .px(px(2.0 * s))
                     .border_0()
                     .bg(if selected {
-                        orbit::tint(0x00d8_0000, 0.18)
+                        orbit::tint(paint(0x00d8_0000, cx), 0.18)
                     } else {
                         gpui::transparent_black()
                     })
@@ -855,8 +1091,8 @@ impl Hub {
                         .py(px(10.0 * s))
                         .rounded(px(8.0 * s))
                         .border_1()
-                        .border_color(rgb(0x0029_2325))
-                        .bg(rgb(0x0012_1011))
+                        .border_color(rgb(paint(0x0029_2325, cx)))
+                        .bg(rgb(paint(0x0012_1011, cx)))
                         .child(orbit::icon(
                             ["v-gauge", "monitor", "monitor"][i],
                             14.0 * s,
@@ -890,12 +1126,15 @@ impl Hub {
                     .p(px(20.0 * s))
                     .rounded(px(14.0 * s))
                     .border_1()
-                    .border_color(rgb(if state.choices.automatic {
-                        0x00d8_0000
-                    } else {
-                        0x0029_2325
-                    }))
-                    .bg(rgb(0x0012_1011))
+                    .border_color(rgb(paint(
+                        if state.choices.automatic {
+                            0x00d8_0000
+                        } else {
+                            0x0029_2325
+                        },
+                        cx,
+                    )))
+                    .bg(rgb(paint(0x0012_1011, cx)))
                     .flex()
                     .items_center()
                     .gap(px(18.0 * s))
@@ -903,7 +1142,7 @@ impl Hub {
                         div()
                             .size(px(42.0 * s))
                             .rounded(px(10.0 * s))
-                            .bg(rgb(0x00d8_0000))
+                            .bg(rgb(paint(0x00d8_0000, cx)))
                             .flex()
                             .items_center()
                             .justify_center()
@@ -918,7 +1157,13 @@ impl Hub {
                                     .items_center()
                                     .gap(px(10.0 * s))
                                     .child(text("Automático", 17.0 * s, 700, orbit::ink(cx), cx))
-                                    .child(text("RECOMENDADO", 10.0 * s, 700, 0x0022_c55e, cx)),
+                                    .child(text(
+                                        "RECOMENDADO",
+                                        10.0 * s,
+                                        700,
+                                        paint(0x0022_c55e, cx),
+                                        cx,
+                                    )),
                             )
                             .child(text(
                                 "Elige Equilibrado o Ahorro según los núcleos y la RAM de tu PC.",
@@ -1036,7 +1281,7 @@ impl Hub {
         div()
             .rounded(px(14.0 * s))
             .border_1()
-            .border_color(rgb(0x0029_2325))
+            .border_color(rgb(paint(0x0029_2325, cx)))
             .w(px(480.0 * s))
             .overflow_hidden()
             .children(
@@ -1102,10 +1347,10 @@ impl Hub {
                         .px(px(16.0 * s))
                         .py(px(9.0 * s))
                         .border_b_1()
-                        .border_color(rgb(0x0029_2325))
+                        .border_color(rgb(paint(0x0029_2325, cx)))
                         .child(text(label, 14.0 * s, 400, orbit::ink_3(cx), cx).w(px(135.0 * s)))
                         .child(text(value, 14.0 * s, 600, orbit::ink(cx), cx).flex_1())
-                        .child(text(icon, 16.0 * s, 600, color, cx))
+                        .child(text(icon, 16.0 * s, 600, paint(color, cx), cx))
                 }),
             )
     }

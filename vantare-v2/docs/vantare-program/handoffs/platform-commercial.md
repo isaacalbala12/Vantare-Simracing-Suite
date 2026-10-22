@@ -1,3 +1,17 @@
+## VANTA-96 / #1713 · Copia staging PASS, token sandbox sin permiso (22-oct)
+
+Archivos nuevos recibidos20:55. Contraseña staging válida; copia completa con
+Auth/Storage/historial14/roadmap2 verificada (listado y todos los bloques PASS),
+SHA2569976d9989b59b7caaef69f3b73427f2c79f1670747ee1121ef0499cd3a934776,
+en evidence/supabase-staging. Versiones ajenas documentadas antes de descarte.
+Polar GET sandbox /v1/products/?limit=100 devuelve403 insufficient_scope con
+User-Agent Vantare-QA/1.0. El primer intento Python dio Cloudflare1010, distinto
+del error actual. Revisar products:read y products:write si hay que crear.
+Parada antes de limpiar/migrar/importar/TPA/desplegar. Se conservan14 versiones;
+claves QA listas solo offline. Catálogo Pro599/descuentos/webhook aún pendientes,
+sin URL/checkout ni pago. Producción intacta. Informe externo documenta alcance
+y estado real; no reintentar con claves de producción ni debilitar validaciones.
+
 ## VANTA-96 / #1713 · Reconstrucción staging autorizada, espera de custodia
 
 El orquestador autoriza copia completa en evidence/supabase-staging, descarte

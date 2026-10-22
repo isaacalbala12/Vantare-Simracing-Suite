@@ -1,17 +1,27 @@
-## VANTA-105 / #1747 · RC4: apertura de Google (21-oct-2026)
+## VANTA-105 / #1747 · RC4: apertura de Google (22-oct-2026)
 
 Worker aislado desde nightly `1b732b67d`, worktree `C:/VantareServer/wt/rc4-google`,
-rama `vantareapp/isa-1747-google-login`. Diagnóstico antes de editar en
+rama `vantareapp/isa-1747-google-login`. Actualizada a nightly `3136f0acb`
+tras #1743. Diagnóstico antes de editar en
 `C:/VantareServer/evidence/rc4-google/DIAGNOSTICO.md`.
 RC4 instalada en cuenta estándar/escritorio privado: IPC, configuración OIDC y
 listener OAuth funcionan; AccountBegin devuelve pending sin acreditar navegador.
 `rundll32` se daba por correcto con spawn. Perfil actual tiene HTTPS UserChoice
 MSEdgeHTM sin manejador registrado; sonda privada ShellExecuteExW devuelve1155.
-Se prepara apertura directa verificada por Windows, error claro, cancelación del
+La consulta efectiva de Windows precisa HTTPS=Undecided/OpenWith: el selector
+puede ser aceptado por Shell sin abrir navegador. Se comprueba el ProgID antes
+de activar Windows; se conservan asociaciones de apps delegadas. La primera
+sonda de esquema inexistente activó OpenWith; proceso ya terminado y anteriores
+intactos. Detalle y corrección del banco en el informe externo.
+Implementada apertura directa verificada por Windows, error claro, cancelación del
 listener y logs sin URL/credenciales. No se cambia Windows ni panel Clerk/backend.
 Isaac debe elegir navegador instalado para HTTP/HTTPS y comprobar el clic con el
 nuevo build. Las pruebas UI privadas fallan antes de pintar por DirectX0x8007000E;
-no acreditan clic físico. Regresiones/gates en curso, PR pendiente. Sin merge/release.
+no acreditan clic físico. Fmt/check/Clippy PASS; Nextest completo con telemetría
+PASS2095,19 omitidas; lifecycle PASS18. Cola con jobs2 y target propio
+`D:/VantareServer/targets/rc4-google`. Calidad PASS466 huellas. Pausa de medición
+respetada y reanudación autorizada antes de lifecycle. PR en preparación para
+revisión; sin merge/release. Pendiente comprobar apertura y OAuth en nueva RC.
 
 ## VANTA-96 / #1713 · Configuración y ensayo pendientes (21-oct-2026)
 

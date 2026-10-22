@@ -20,6 +20,82 @@ pub(crate) fn begin(
     Ok(())
 }
 
+#[cfg(any(windows, test))]
+fn is_browser_association(progid: &str) -> bool {
+    !progid.trim().is_empty()
+        && !["Unknown", "Undecided", "Applications\\OpenWith.exe"]
+            .iter()
+            .any(|fallback| progid.eq_ignore_ascii_case(fallback))
+}
+
+#[cfg(windows)]
+#[allow(unsafe_code)]
+fn handler_available(scheme: &str) -> bool {
+    use std::io::Write;
+    use windows_sys::Win32::{
+        Foundation::{S_FALSE, S_OK},
+        UI::Shell::{
+            ASSOCF_INIT_IGNOREUNKNOWN, ASSOCF_IS_PROTOCOL, ASSOCF_NOFIXUPS, ASSOCF_VERIFY,
+            ASSOCSTR_PROGID, AssocQueryStringW,
+        },
+    };
+    let scheme: Vec<u16> = scheme.encode_utf16().chain(Some(0)).collect();
+    let flags = ASSOCF_IS_PROTOCOL | ASSOCF_VERIFY | ASSOCF_NOFIXUPS | ASSOCF_INIT_IGNOREUNKNOWN;
+    let mut length = 0;
+    // Solo consulta: no activa programas ni corrige el registro del usuario.
+    let status = unsafe {
+        AssocQueryStringW(
+            flags,
+            ASSOCSTR_PROGID,
+            scheme.as_ptr(),
+            windows_sys::w!("open"),
+            std::ptr::null_mut(),
+            &raw mut length,
+        )
+    };
+    if status != S_FALSE || !(2..=32768).contains(&length) {
+        let _log = writeln!(
+            std::io::stderr(),
+            "account-login: association-unavailable hresult={status}"
+        );
+        return false;
+    }
+    let Ok(capacity) = usize::try_from(length) else {
+        return false;
+    };
+    let mut association = vec![0; capacity];
+    let status = unsafe {
+        AssocQueryStringW(
+            flags,
+            ASSOCSTR_PROGID,
+            scheme.as_ptr(),
+            windows_sys::w!("open"),
+            association.as_mut_ptr(),
+            &raw mut length,
+        )
+    };
+    let Ok(length) = usize::try_from(length) else {
+        return false;
+    };
+    if status != S_OK || length < 2 || length > association.len() {
+        let _log = writeln!(
+            std::io::stderr(),
+            "account-login: association-unavailable hresult={status}"
+        );
+        return false;
+    }
+    let Ok(progid) = String::from_utf16(&association[..length - 1]) else {
+        return false;
+    };
+    // "Undecided" activa OpenWith aunque ShellExecuteEx devuelva éxito.
+    // Se valida el ProgID (también apps delegadas), no una ruta .exe obligatoria.
+    let available = is_browser_association(&progid);
+    if !available {
+        let _log = writeln!(std::io::stderr(), "account-login: association-undecided");
+    }
+    available
+}
+
 #[cfg(windows)]
 #[allow(unsafe_code)]
 pub(crate) fn open(url: &url::Url) -> Result<()> {
@@ -43,42 +119,47 @@ pub(crate) fn open(url: &url::Url) -> Result<()> {
         return Err(Error::BrowserUnavailable);
     }
 
-    let target: Vec<u16> = std::ffi::OsStr::new(url.as_str())
-        .encode_wide()
-        .chain(Some(0))
-        .collect();
-    // Sin ASYNCOK: se comprueba la aceptación del Shell desde el worker IPC.
-    // NO_UI evita un diálogo de error en lugar del mensaje accionable del Hub.
-    let mut info = SHELLEXECUTEINFOW {
-        cbSize: size,
-        fMask: SEE_MASK_FLAG_NO_UI,
-        lpVerb: windows_sys::w!("open"),
-        lpFile: target.as_ptr(),
-        nShow: SW_SHOWNORMAL,
-        ..unsafe { std::mem::zeroed() }
-    };
-    // SAFETY: estructura inicializada, cadenas terminadas y vivas durante la llamada.
-    let accepted = unsafe { ShellExecuteExW(&raw mut info) } != 0;
-    let error_code = if accepted {
-        0
-    } else {
-        std::io::Error::last_os_error()
-            .raw_os_error()
-            .unwrap_or_default()
-    };
+    let result = (|| {
+        if !handler_available(url.scheme()) {
+            return Err(Error::BrowserUnavailable);
+        }
+        let target: Vec<u16> = std::ffi::OsStr::new(url.as_str())
+            .encode_wide()
+            .chain(Some(0))
+            .collect();
+        // Sin ASYNCOK: se comprueba la aceptación del Shell desde el worker IPC.
+        // NO_UI evita un diálogo de error en lugar del mensaje accionable del Hub.
+        let mut info = SHELLEXECUTEINFOW {
+            cbSize: size,
+            fMask: SEE_MASK_FLAG_NO_UI,
+            lpVerb: windows_sys::w!("open"),
+            lpFile: target.as_ptr(),
+            nShow: SW_SHOWNORMAL,
+            ..unsafe { std::mem::zeroed() }
+        };
+        // SAFETY: estructura inicializada, cadenas terminadas y vivas durante la llamada.
+        let accepted = unsafe { ShellExecuteExW(&raw mut info) } != 0;
+        let error_code = if accepted {
+            0
+        } else {
+            std::io::Error::last_os_error()
+                .raw_os_error()
+                .unwrap_or_default()
+        };
+        if accepted {
+            Ok(())
+        } else {
+            let _log = writeln!(
+                std::io::stderr(),
+                "account-login: shell-rejected win32={error_code}"
+            );
+            Err(Error::BrowserUnavailable)
+        }
+    })();
     if com >= 0 {
         unsafe { CoUninitialize() };
     }
-
-    if accepted {
-        Ok(())
-    } else {
-        let _log = writeln!(
-            std::io::stderr(),
-            "account-login: shell-rejected win32={error_code}"
-        );
-        Err(Error::BrowserUnavailable)
-    }
+    result
 }
 
 #[cfg(not(windows))]
@@ -98,9 +179,31 @@ pub(crate) fn open(url: &url::Url) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn windows_picker_is_unavailable_but_delegated_browser_associations_remain_valid() {
+        for picker in [
+            "",
+            "Unknown",
+            "Undecided",
+            "undecided",
+            "Applications\\OpenWith.exe",
+        ] {
+            assert!(
+                !super::is_browser_association(picker),
+                "not a browser: {picker}"
+            );
+        }
+        for browser in ["MSEdgeHTM", "FirefoxURL-fixture", "AppXBrowserFixture"] {
+            assert!(
+                super::is_browser_association(browser),
+                "valid browser association: {browser}"
+            );
+        }
+    }
+
     #[cfg(windows)]
     #[test]
-    fn shell_rejection_is_an_error_without_opening_a_dialog_or_browser() {
+    fn unregistered_protocol_is_rejected_before_windows_activation() {
         let url = url::Url::parse(&format!(
             "vantare-qa-{}://unregistered",
             crate::random_id().expect("unique unregistered protocol")

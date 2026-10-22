@@ -139,7 +139,7 @@ fn interrupted_setup_reopens_saved_crash_rejection_and_usage_acceptance() {
             let first = open(&root.0, &mut cx);
             first
                 .update(&mut cx, |hub, _, cx| {
-                    hub.onboarding.as_mut().expect("asistente").page(5);
+                    hub.onboarding.as_mut().expect("asistente").page(PRIVACY);
                     if enable_usage {
                         hub.onboarding_toggle_usage(cx);
                     } else {
@@ -160,11 +160,11 @@ fn interrupted_setup_reopens_saved_crash_rejection_and_usage_acceptance() {
                     assert_eq!(choices.usage, saved.usage);
                 })
                 .expect("valores restaurados");
-            page(reopened, 5, 0, &mut cx);
+            page(reopened, PRIVACY, 0, &mut cx);
             key(reopened, "enter", &mut cx); // Terminar, sin tocar interruptores.
             reopened
                 .update(&mut cx, |hub, window, cx| {
-                    assert_eq!(hub.onboarding.as_ref().expect("resumen").step, 6);
+                    assert_eq!(hub.onboarding.as_ref().expect("resumen").step, DONE);
                     hub.onboarding_finish(false, window, cx);
                     assert!(hub.onboarding.is_none());
                 })
@@ -240,12 +240,12 @@ fn enter_and_space_activate_focused_controls_instead_of_advancing_the_page() {
                 assert!(!state.choices.automatic);
             })
             .expect("nivel manual");
-        page(window, 5, 1, &mut cx); // Saltar oculto: primer foco = fallos.
+        page(window, PRIVACY, 1, &mut cx); // Saltar oculto: primer foco = fallos.
         key(window, "enter", &mut cx);
         window
             .update(&mut cx, |hub, _, _| {
                 let state = hub.onboarding.as_ref().expect("privacidad");
-                assert_eq!(state.step, 5);
+                assert_eq!(state.step, PRIVACY);
                 assert!(!state.choices.crashes);
             })
             .expect("Enter apaga fallos sin terminar");
@@ -271,7 +271,7 @@ fn private_exit_revokes_memory_without_overwriting_the_unwritable_file() {
         window
             .update(&mut cx, |hub, window, cx| {
                 let state = hub.onboarding.as_mut().expect("asistente");
-                state.page(5);
+                state.page(PRIVACY);
                 state.consent_error = true;
                 hub.onboarding_enter_private(window, cx);
                 assert!(hub.onboarding.is_none());
@@ -304,7 +304,7 @@ fn persistent_marketing_errors_allow_finishing_with_unconfirmed_mail() {
         {
             let root = &roots[index];
             let window = open(&root.0, &mut cx);
-            page(window, 5, 0, &mut cx);
+            page(window, PRIVACY, 0, &mut cx);
             window
                 .update(&mut cx, |hub, _, cx| {
                     hub.onboarding.as_mut().expect("asistente").signed = true;
@@ -329,7 +329,7 @@ fn persistent_marketing_errors_allow_finishing_with_unconfirmed_mail() {
                         hub.complete_onboarding_marketing(cx);
                     }
                     let state = hub.onboarding.as_ref().expect("resumen alcanzado");
-                    assert_eq!(state.step, 6);
+                    assert_eq!(state.step, DONE);
                     assert!(state.marketing_unconfirmed);
                     assert_eq!(state.text, MARKETING_UNCONFIRMED);
                     assert!(state.error.is_none(), "no es un error de privacidad");
@@ -345,11 +345,11 @@ fn persistent_marketing_errors_allow_finishing_with_unconfirmed_mail() {
                     hub.onboarding_back(cx);
                 })
                 .expect("error opcional permite el resumen");
-            page(window, 5, 0, &mut cx);
+            page(window, PRIVACY, 0, &mut cx);
             key(window, "enter", &mut cx);
             window
                 .update(&mut cx, |hub, window, cx| {
-                    assert_eq!(hub.onboarding.as_ref().expect("resumen").step, 6);
+                    assert_eq!(hub.onboarding.as_ref().expect("resumen").step, DONE);
                     hub.onboarding_finish(false, window, cx);
                     assert!(hub.onboarding.is_none(), "se sale del asistente");
                     assert!(
@@ -439,6 +439,133 @@ pub(in crate::shell) fn with_hub(test: impl FnOnce(&mut Hub, &mut gpui::Context<
         cx.update_window(window.into(), |_, window, _| window.remove_window())
             .expect("cerrar Hub");
         drop(cx);
+        crate::quit_headless_test(app);
+    });
+}
+
+/// Paleta y modo guardados en `appearance.json`, el mismo archivo de Ajustes.
+fn stored_look(root: &Path) -> (Palette, Scheme) {
+    let saved = crate::shell::settings::appearance::Store::load(root.join("appearance.json"))
+        .expect("apariencia")
+        .settings;
+    (saved.palette, saved.scheme)
+}
+
+#[test]
+fn the_look_step_previews_saves_like_settings_and_survives_a_restart() {
+    gpui_platform::headless().run(|app| {
+        let root = Root::new();
+        let mut cx = context();
+        let window = open(&root.0, &mut cx);
+        // Saltar y las nueve tarjetas: Ocean es la sexta.
+        page(window, LOOK, 7, &mut cx);
+        key(window, "space", &mut cx);
+        window
+            .update(&mut cx, |hub, _, cx| {
+                assert_eq!(hub.onboarding.as_ref().expect("aspecto").step, LOOK);
+                assert_eq!(hub.settings.appearance.settings.palette, Palette::Ocean);
+                // Vista previa en vivo: el tema global ya es el elegido.
+                assert_eq!(
+                    cx.global::<crate::orbit::theme::Theme>().palette,
+                    Palette::Ocean
+                );
+                // Ajustes › Apariencia muestra la misma selección.
+                assert_eq!(hub.settings.quick_theme.read(cx).state.selected, Some(5));
+            })
+            .expect("estilo elegido con el teclado");
+        assert_eq!(stored_look(&root.0), (Palette::Ocean, Scheme::Dark));
+        // Tras las tarjetas: Sistema, Claro, Oscuro.
+        page(window, LOOK, 12, &mut cx);
+        key(window, "enter", &mut cx);
+        window
+            .update(&mut cx, |hub, _, cx| {
+                assert_eq!(hub.onboarding.as_ref().expect("aspecto").step, LOOK);
+                assert_eq!(
+                    cx.global::<crate::orbit::theme::Theme>().scheme,
+                    Scheme::Light
+                );
+            })
+            .expect("modo claro");
+        assert_eq!(stored_look(&root.0), (Palette::Ocean, Scheme::Light));
+        cx.update_window(window.into(), |_, window, _| window.remove_window())
+            .expect("cerrar");
+        let reopened = open(&root.0, &mut cx);
+        reopened
+            .update(&mut cx, |hub, _, cx| {
+                let settings = hub.settings.appearance.settings;
+                assert_eq!(
+                    (settings.palette, settings.scheme),
+                    (Palette::Ocean, Scheme::Light)
+                );
+                assert_eq!(
+                    cx.global::<crate::orbit::theme::Theme>().palette,
+                    Palette::Ocean
+                );
+                assert_eq!(hub.settings.quick_theme.read(cx).state.selected, Some(5));
+            })
+            .expect("estilo conservado al reiniciar");
+        cx.update_window(reopened.into(), |_, window, _| window.remove_window())
+            .expect("cerrar");
+        drop(cx);
+        crate::quit_headless_test(app);
+    });
+}
+
+#[test]
+fn skipping_the_look_step_keeps_vantare_or_the_previous_choice() {
+    gpui_platform::headless().run(|app| {
+        for previous in [None, Some((Palette::Iris, Scheme::Light))] {
+            let root = Root::new();
+            let path = root.0.join("appearance.json");
+            if let Some((palette, scheme)) = previous {
+                // Elección previa hecha en Ajustes › Apariencia.
+                let mut store =
+                    crate::shell::settings::appearance::Store::load(path.clone()).expect("vacío");
+                let settings = crate::orbit::theme::AppearanceSettings {
+                    palette,
+                    scheme,
+                    ..store.settings
+                };
+                store.save(settings).expect("guardar en Ajustes");
+            }
+            let before = std::fs::read(&path).ok();
+            let mut cx = context();
+            let window = open(&root.0, &mut cx);
+            // Saltar desde el primer paso pasa por encima del aspecto.
+            window
+                .update(&mut cx, |hub, _, cx| {
+                    hub.onboarding.as_mut().expect("asistente").page(1);
+                    hub.onboarding_skip(cx);
+                    assert_eq!(hub.onboarding.as_ref().expect("privacidad").step, PRIVACY);
+                })
+                .expect("saltar");
+            // Continuar en el paso de aspecto sin elegir tampoco escribe.
+            page(window, LOOK, 0, &mut cx);
+            key(window, "enter", &mut cx);
+            window
+                .update(&mut cx, |hub, window, cx| {
+                    assert_eq!(hub.onboarding.as_ref().expect("privacidad").step, PRIVACY);
+                    hub.onboarding.as_mut().expect("resumen").page(DONE);
+                    hub.onboarding_finish(false, window, cx);
+                    assert!(hub.onboarding.is_none());
+                    let expected = previous.unwrap_or((Palette::Vantare, Scheme::Dark));
+                    let settings = hub.settings.appearance.settings;
+                    assert_eq!((settings.palette, settings.scheme), expected);
+                    assert_eq!(
+                        cx.global::<crate::orbit::theme::Theme>().palette,
+                        expected.0
+                    );
+                })
+                .expect("terminar sin elegir aspecto");
+            assert_eq!(
+                std::fs::read(&path).ok(),
+                before,
+                "saltar no escribe apariencia"
+            );
+            cx.update_window(window.into(), |_, window, _| window.remove_window())
+                .expect("cerrar");
+            drop(cx);
+        }
         crate::quit_headless_test(app);
     });
 }

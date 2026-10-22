@@ -3,12 +3,19 @@ mod equipment;
 pub use equipment::Equipment;
 use vantare_ui::{Kind, performance::Level};
 
-pub const SAY: [&str; 7] = [
+/// Paso opcional del aspecto del Hub (#1762); escribe solo si el usuario elige.
+pub const LOOK: usize = 5;
+/// Paso de privacidad: guarda el consentimiento y deja de ofrecer Saltar.
+pub const PRIVACY: usize = 6;
+/// Resumen final.
+pub const DONE: usize = 7;
+pub const SAY: [&str; DONE + 1] = [
     "Soy Vanta. Te ayudo a configurar Vantare en menos de un minuto.",
     "He detectado Le Mans Ultimate en tu PC.",
     "Elige cómo corres y te propongo los widgets.",
     "Inicia sesión para conectar tu cuenta. Tu configuración se guarda en este PC.",
     "Recomiendo Automático: ajusta el rendimiento según tu PC.",
+    "Elige un estilo y lo verás al momento. Si no, sigue Vantare.",
     usage_say(false),
     "Configuración completa.",
 ];
@@ -195,7 +202,7 @@ mod tests {
     #[test]
     fn preselected_route_takes_enter_without_enabling_usage() {
         let choices = Choices::default();
-        assert!((0..7).all(|step| choices.can_advance(step)));
+        assert!((0..=DONE).all(|step| choices.can_advance(step)));
         assert!(!choices.usage);
         assert!(choices.crashes);
         assert!(choices.automatic);
@@ -244,7 +251,8 @@ mod tests {
         };
         assert!(!choices.can_advance(1));
         assert!(!choices.can_advance(2));
-        assert!(choices.can_advance(5));
+        assert!(choices.can_advance(LOOK));
+        assert!(choices.can_advance(PRIVACY));
         assert_eq!(
             choices.simulator_reaction(0),
             "Selecciona al menos un simulador."

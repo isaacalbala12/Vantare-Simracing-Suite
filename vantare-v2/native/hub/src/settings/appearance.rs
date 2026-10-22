@@ -190,7 +190,7 @@ impl Hub {
         };
         cx.notify();
     }
-    pub(super) fn settings_appearance_apply(
+    pub(in crate::shell) fn settings_appearance_apply(
         &mut self,
         settings: AppearanceSettings,
         window: &mut Window,

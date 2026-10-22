@@ -11,6 +11,9 @@ como Secret; solo AccountCopyLink la entrega al Hub para el gesto del portapapel
 No incluye tokens ni verifier. Cancelar, expirar, completar o reintentar retira
 el enlace. Hub, supervisor y services deben recompilarse juntos; peers v13
 se rechazan. No se modifica el registro, el predeterminado ni backend.
+Si un Job externo rechaza breakaway con error5, se reintenta una sola vez sin
+ese flag y se deja log sin URL. En ese caso el navegador hereda el Job y puede
+cerrarse al salir de Vantare; el intento de acceso mantiene su plazo.
 
 ## #1631 · Login propio
 

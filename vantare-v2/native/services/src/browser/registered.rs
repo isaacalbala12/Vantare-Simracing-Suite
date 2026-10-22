@@ -3,7 +3,7 @@
 use crate::{Error, Result};
 use std::{io::Write, path::PathBuf, process::Command};
 use windows_sys::Win32::{
-    Foundation::{ERROR_SUCCESS, LocalFree},
+    Foundation::{ERROR_MORE_DATA, ERROR_SUCCESS, LocalFree},
     System::Registry::{
         HKEY, HKEY_CLASSES_ROOT, HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE, KEY_READ, KEY_WOW64_32KEY,
         KEY_WOW64_64KEY, RRF_RT_REG_EXPAND_SZ, RRF_RT_REG_SZ, RegCloseKey, RegEnumKeyExW,
@@ -95,6 +95,7 @@ fn executable(command: &str) -> Option<PathBuf> {
                 "cscript.exe",
                 "rundll32.exe",
                 "explorer.exe",
+                "openwith.exe",
                 "mshta.exe",
             ]
             .contains(&name.as_str())
@@ -149,6 +150,9 @@ fn registered() -> Vec<Browser> {
                         std::ptr::null_mut(),
                     )
                 };
+                if status == ERROR_MORE_DATA {
+                    continue;
+                }
                 if status != ERROR_SUCCESS {
                     break;
                 }
@@ -187,12 +191,14 @@ fn registered() -> Vec<Browser> {
     found
 }
 
-fn launch_command(executable: &std::path::Path, url: &url::Url) -> Command {
+fn launch_command(executable: &std::path::Path, url: &url::Url, breakaway: bool) -> Command {
     use std::os::windows::process::CommandExt;
     let mut command = Command::new(executable);
     // El supervisor permite breakaway: el navegador pertenece al usuario y no
     // debe morir con el Job de Vantare. No se cambia la política de ese Job.
-    command.creation_flags(windows_sys::Win32::System::Threading::CREATE_BREAKAWAY_FROM_JOB);
+    if breakaway {
+        command.creation_flags(windows_sys::Win32::System::Threading::CREATE_BREAKAWAY_FROM_JOB);
+    }
     // Command::arg usa el quoting Win32 estándar. No raw_arg, sustitución de %1,
     // flags del registro, PATH, cmd ni ShellExecute en el fallback.
     command
@@ -224,10 +230,33 @@ fn try_registered(browsers: Vec<Browser>, mut launch: impl FnMut(&Browser) -> bo
     Err(Error::BrowserUnavailable)
 }
 
+fn spawn_with_breakaway_retry(
+    mut spawn: impl FnMut(bool) -> std::io::Result<()>,
+) -> std::io::Result<()> {
+    match spawn(true) {
+        Err(error) if error.raw_os_error() == Some(5) => {
+            let _log = writeln!(
+                std::io::stderr(),
+                "account-login: breakaway-denied; retry-with-inherited-job"
+            );
+            let result = spawn(false);
+            if result.is_ok() {
+                let _log = writeln!(std::io::stderr(), "account-login: browser-inherited-job");
+            }
+            result
+        }
+        result => result,
+    }
+}
+
 pub(super) fn open(url: &url::Url) -> Result<()> {
     try_registered(registered(), |browser| {
-        match launch_command(&browser.executable, url).spawn() {
-            Ok(_) => true,
+        match spawn_with_breakaway_retry(|breakaway| {
+            launch_command(&browser.executable, url, breakaway)
+                .spawn()
+                .map(|_| ())
+        }) {
+            Ok(()) => true,
             Err(error) => {
                 let _log = writeln!(
                     std::io::stderr(),
@@ -258,6 +287,7 @@ mod tests {
             r"chrome.exe",
             r"C:\browser.cmd",
             r#""C:\Windows\System32\cmd.exe" /c chrome"#,
+            r#""C:\Windows\System32\OpenWith.exe" "%1""#,
         ] {
             assert!(executable(invalid).is_none());
         }
@@ -299,6 +329,7 @@ mod tests {
         let command = launch_command(
             std::path::Path::new(r"C:\Program Files\Chrome\chrome.exe"),
             &url,
+            true,
         );
         let args: Vec<_> = command.get_args().collect();
         assert_eq!(args, [std::ffi::OsStr::new(url.as_str())]);
@@ -330,5 +361,28 @@ mod tests {
                 "Other"
             ]
         );
+    }
+
+    #[test]
+    fn denied_breakaway_retries_once_without_it_and_preserves_other_results() {
+        for (errors, expected) in [
+            ([Some(5), None], vec![true, false]),
+            ([Some(5), Some(5)], vec![true, false]),
+            ([Some(2), None], vec![true]),
+            ([None, None], vec![true]),
+        ] {
+            let mut attempts = Vec::new();
+            let result = spawn_with_breakaway_retry(|breakaway| {
+                let error = errors[attempts.len()];
+                attempts.push(breakaway);
+                error.map_or(Ok(()), |code| Err(std::io::Error::from_raw_os_error(code)))
+            });
+            assert_eq!(attempts, expected);
+            let last_error = errors[attempts.len() - 1];
+            assert_eq!(
+                result.err().and_then(|error| error.raw_os_error()),
+                last_error
+            );
+        }
     }
 }

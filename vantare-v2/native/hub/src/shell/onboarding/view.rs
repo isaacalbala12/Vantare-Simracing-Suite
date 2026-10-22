@@ -334,7 +334,11 @@ fn onboarding_switch(
                         .top(px(3.0 * s))
                         .size(px(24.0 * s))
                         .rounded_full()
-                        .bg(rgb(paint(if on { 0x00ff_ffff } else { 0x00a3_9a9c }, cx))),
+                        .bg(rgb(if on {
+                            0x00ff_ffff
+                        } else {
+                            paint(0x00a3_9a9c, cx)
+                        })),
                 ),
         )
 }

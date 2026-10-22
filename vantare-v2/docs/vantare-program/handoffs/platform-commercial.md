@@ -3,6 +3,8 @@
 Seguimiento aprobado de #1747: RC5 detecta HTTPS roto, pero Isaac necesita abrir
 Chrome instalado. Base nightly `cc10f38d9836f3c624ac9881630deb2321689aaa`,
 rama `vantareapp/isa-1761-google-fallback`, worktree nuevo rc5-google-fallback.
+PR listo [#1763](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1763)
+a nightly, código `9af4b515d374c3f2c7f4b7d3322381027e8f8504`; CI pendiente.
 El predeterminado válido se conserva. Ante asociación ausente/Undecided/ProgID
 no registrado o rechazo de Shell, se recorren clientes StartMenuInternet HKCU
 y HKLM64/32. Dentro de cada hive: Chrome, Edge, Firefox, Brave, Opera y resto.

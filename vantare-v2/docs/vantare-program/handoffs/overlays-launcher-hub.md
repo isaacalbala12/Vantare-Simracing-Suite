@@ -38,13 +38,13 @@ histórico4cbd496e8 al código nuevo. Job Object solo nota; proveedor no-fichero
 y eprintln de bibliotecas restantes anotados. Untracked de integración ajeno
 preservado. RC4 entregada no se recompila ni modifica en este seguimiento.
 
-## VANTA-105 / #1745 · RC4: arranque y foco (22-oct-2026, revisión R2 en curso)
+## VANTA-105 / #1745 · RC4: arranque y foco (22-oct-2026, revisión R2 entregada)
 
 Issue https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1745,
 Project Vantare, `area:plataforma`, milestone 23. Rama
 `vantareapp/isa-1745-rc4-arranque-foco`, worktree propio
-`C:/VantareServer/wt/rc4-isaac`. Rebasada sobre nightly `0a509250a`
-(#1755/#1756 integrados; ICON1 de #1752). Solo arranque y foco; el orquestador
+`C:/VantareServer/wt/rc4-isaac`. Rebasada sobre nightly `b27096dda`
+(#1755/#1756/#1757 integrados; ICON1 de #1752). Solo arranque y foco; el orquestador
 amplía expresamente #1758 para corregir Startup tras el P1 de la review.
 Nombres/iconos, OAuth y salida CLI siguen fuera del alcance de este worker. Evidencia: `C:/VantareServer/evidence/rc4-isaac/`.
 
@@ -112,8 +112,14 @@ timeout previo conservado. Suite completa anterior: Nextest 2099/2099,
 telemetría incluida, y lifecycle PASS; no atribuirla a la nueva base. Target propio
 `D:/VantareServer/targets/rc4-isaac`, jobs 2, por la cola.
 
-R2: registro 83 + branding 81 PASS, señal/espera PASS, check y Clippy PASS;
-Nextest completo, lifecycle y packaging en curso por cola. CI anterior 5/5 PASS
+R2 sobre 0a509250a: fmt/check/Clippy PASS, Nextest 2106/2106 PASS (19 omitidos),
+telemetría y lifecycle PASS. Registro 83 + branding 81 y señal/espera PASS.
+Packaging 194/194 PASS con fixture explícito RC4 + supervisor R1 con ICON1 +
+candidate.ps1 R2; no equivale a una build real R2. Se conserva el fallo previo
+al usar el paquete RC4 original sin ICON1 y la preparación sin portable.
+Rebase posterior b27096dda limpio; fmt/check/Clippy PASS, Nextest 2110/2110
+PASS (19 omitidos), telemetría y lifecycle PASS en esa base. Quality/retirement
+PASS (466 archivos). Código validado 6573192db; cambios posteriores solo documentación. CI anterior 5/5 PASS
 en 759894e03; no atribuir esos verdes a R2 sin publicar. Informe de review:
 C:/VantareServer/evidence/rev-1758/INFORME.md. Respuesta y logs R2 en evidence/rc4-isaac/r2.
 

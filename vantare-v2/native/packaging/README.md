@@ -606,5 +606,6 @@ Revisión #1752: el harness `tests.ps1` exige RT_GROUP_ICON ID1 en el supervisor
 extraído e instalado del paquete (LoadLibraryEx como datos, sin ejecutar código).
 La regresión de branding simula fallo de IPropertyStore en Register del Hub y
 en la transacción de Setup: aviso, un solo enlace y generación conservada.
-Rollback manual hacia generaciones anteriores: seguimiento #1753, coordinado
-con la entrega posterior de Startup/`--background`.
+Rollback manual de Inicio/Escritorio hacia generaciones anteriores: seguimiento
+#1753. La compatibilidad de Startup/`--background` sí se restaura en #1758,
+antes de abrir el Hub de la generación anterior.

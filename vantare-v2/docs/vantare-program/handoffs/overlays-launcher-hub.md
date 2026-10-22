@@ -1,5 +1,50 @@
 # Handoff vivo — Overlays, Studio, Launcher y Hub
 
+## VANTA-105 / #1760 · RC5 0.0.983 entregada (22-oct-2026)
+
+Entregada a las 03:30:45 UTC en `C:/VantareServer/share/rc5/`: Setup,
+sidecar SHA256 y LEEME breve para Isaac. Productor nuevo limpio de nightly
+`cc10f38d9836f3c624ac9881630deb2321689aaa`, worktree `isa-1760-rc5`;
+este handoff se actualiza en otro worktree para conservar limpio el productor.
+Setup 70.858.240 bytes, SHA256
+`bceca746c612ed26680e8b45065d431bb9d9c3f758def4727d5f9cfc07cf4bef`.
+
+Release beta sin firma, por cola jobs2, target autorizado `1726-rc4` reutilizado
+en D:. Configuración pública producción idéntica por hash a RC3, nueve campos
+sin valores mostrados. Estática PASS: diez EXE y doce PE sin CRT dinámico,
+versiones CLI/recursos de instalador, inventario/fixtures/hashes/configuración;
+siete automáticos/GUI Windows2, tres CLI consola3, Setup/Uninstall Windows2,
+doce PE sin certificado. ICON1 del supervisor y primeras líneas exactas
+indicator-handshake-v1/background-v1 verificadas en Setup y raíces instaladas.
+
+Cuatro campañas privadas reales PASS: limpio OFF, limpio ON, upgrade público
+0.0.975 OFF y RC4 0.0.982 ON mediante Setup. Inicio/Escritorio con nombre
+completo e icono extraíble; sin duplicados visibles. Startup técnico Vantare.lnk
+ausente en OFF, con --background en ON; RC4 migra desde argumentos antiguos.
+Datos por hash conservados tras uninstall. Preferencias preparadas como datos
+validados y Setup /S real, sin afirmar uso físico de su UI. Cinco cuentas y
+perfiles temporales retirados; escritorios privados sin SwitchDesktop.
+
+beta-tests COMPLETO 120 PASS + config24 PASS, dos builds QA reales Release
+0.1.0/0.1.1 y verificador con clave TEST nueva, semilla local con ACL restringida.
+Apply/rollback con bootstrap vivo que sale o ignora la señal PASS; sin semilla
+de producción. Packaging general 194/194 PASS, con plazos originales y sin
+compilación concurrente. Primer intento bajo compilación agotó Start10s y se
+conserva. También se conservan una muestra contaminada por otro compilador,
+un falso positivo del harness al contar el Startup técnico y un primer builder
+cancelado para repetirlo completo por la cola. No se cambió código productivo.
+
+Tres muestras del RC5 real: indicador mediana44,53ms (42,94–72,92), Hub visible
+3658,22ms (3645,20–4416,00); coherentes con #1758 R1 (44/3743ms). Hub WM_NULL
+4706,19ms; hub-ready8034,22ms. Cero compiladores y hashes del payload intactos;
+solo identidad/instancia del bootstrap raíz aisladas. No incluye resolver .lnk
+ni acredita foco/controles físicos. Informe y JSON/logs en
+`C:/VantareServer/evidence/rc5/INFORME.md`; issue #1760, Project Vantare,
+area:plataforma, milestone23. Isaac comprueba navegador predeterminado,
+Google/error, foco, bandeja, controles, login/Gratis/overlay según LEEME.
+Sin ventanas ni cambios en instalación/procesos de Isaac, publicación,
+release, firma Authenticode, merge ni cambios de backend. QA TEST no distribuida.
+
 ## VANTA-105 · RC4 entregada / seguimiento #1742 (21-oct-2026)
 
 RC4 0.0.982 entregada en `C:/VantareServer/share/rc4/` con Setup, sidecar y

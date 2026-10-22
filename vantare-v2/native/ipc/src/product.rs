@@ -16,3 +16,24 @@ pub fn print_version() -> bool {
         false
     }
 }
+
+/// Contrato Win32 compartido por el indicador y el Hub; PS se verifica en test.
+pub const STARTUP_CLASS: &str = "VantareStartupIndicator";
+pub const STARTUP_READY: u32 = 0x8069;
+pub const STARTUP_MAINTENANCE: u32 = 0x806a;
+
+#[cfg(test)]
+mod startup_contract_tests {
+    #[test]
+    fn root_engine_uses_the_same_indicator_identity_and_message() {
+        let script = include_str!("../../packaging/beta.ps1");
+        assert!(script.contains(&format!(
+            "const string Class = \"{}\";",
+            super::STARTUP_CLASS
+        )));
+        assert!(script.contains(&format!(
+            "const uint Maintenance = 0x{:x};",
+            super::STARTUP_MAINTENANCE
+        )));
+    }
+}

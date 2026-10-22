@@ -32,6 +32,8 @@ use vantare_launcher as launcher;
 #[cfg(windows)]
 mod beta;
 #[cfg(windows)]
+mod beta_indicator;
+#[cfg(windows)]
 mod resident;
 #[cfg(windows)]
 mod triggers_win;

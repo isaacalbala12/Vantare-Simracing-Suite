@@ -26,6 +26,7 @@ function Reject-Beta([scriptblock]$Action, [string]$Message, [int]$Code = 0) {
 }
 $evidence = Assert-NativePath $EvidenceDirectory
 [IO.Directory]::CreateDirectory($evidence) | Out-Null
+. (Join-Path $PSScriptRoot 'bootstrap-tests.ps1')
 $root = Join-Path $evidence ('roundtrip-' + [guid]::NewGuid().ToString('N'))
 $first = Join-Path $Version010Directory 'vantare-native-amd64-package.zip'
 $next = Join-Path $Version011Directory 'vantare-native-amd64-package.zip'
@@ -146,7 +147,12 @@ $info.UseShellExecute = $false; $info.CreateNoWindow = $true
 $info.RedirectStandardError = $true
 $process = [Diagnostics.Process]::Start($info)
 try {
-    Assert-Beta (-not (Confirm-BetaBoot $root $process 15)) 'fallo real del Hub nuevo dispara rollback'
+    Test-BusyBootstrap $root { Confirm-BetaBoot $root $process 0 } 'rollback'
+    $bootstrap = Start-TestBootstrap $root $false
+    try {
+        Assert-Beta (-not (Confirm-BetaBoot $root $process 15)) 'fallo real del Hub nuevo dispara rollback'
+        Assert-Beta $bootstrap.Process.HasExited 'rollback espera la salida real del indicador'
+    } finally { Stop-TestBootstrap $bootstrap }
     Assert-Beta ($process.HasExited -and $process.ExitCode -ne 0) 'Hub nuevo termina con error real'
     [IO.File]::WriteAllText((Join-Path $evidence 'failed-start.stderr.log'), $process.StandardError.ReadToEnd())
 } finally { $process.Dispose() }
@@ -273,7 +279,15 @@ try {
     Assert-Beta (-not (Test-Path (Join-Path $feedRoot 'boot-pending.json'))) 'feed ocupado no deja arranque pendiente'
     Assert-Beta (Test-Path $pending) 'feed ocupado conserva actualización pendiente'
 } finally { $busy.Dispose() }
-Assert-Beta (Apply-BetaUpdate $feedRoot) 'feed y Setup comparten activación'
+Test-BusyBootstrap $feedRoot { Apply-BetaUpdate $feedRoot } 'Apply pendiente'
+$bootstrap = Start-TestBootstrap $feedRoot $false
+try {
+    Assert-Beta (Apply-BetaUpdate $feedRoot) 'feed y Setup comparten activación'
+    Assert-Beta $bootstrap.Process.HasExited 'Apply espera la salida real del indicador'
+    $handles = Open-NativeBinaryGuard $feedRoot
+    foreach ($handle in $handles.Values) { $handle.Dispose() }
+    Assert-Beta $true 'guard exclusivo se obtiene después de la señal y la salida'
+} finally { Stop-TestBootstrap $bootstrap }
 Assert-Beta (Test-Path (Join-Path $feedRoot 'boot-pending.json')) 'feed exige confirmación durable'
 Assert-Beta (-not (Apply-BetaUpdate $feedRoot)) 'Apply repetido no crea generación'
 Assert-Beta (-not (Stage-BetaUpdate $feedRoot $feed)) 'misma versión no se ofrece de nuevo'

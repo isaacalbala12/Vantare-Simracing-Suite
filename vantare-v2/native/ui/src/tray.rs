@@ -203,6 +203,12 @@ fn open_hub() {
                     .map(std::path::PathBuf::from)
                     .as_deref(),
             ));
+            // Esta apertura procede del clic de bandeja, aunque overlays naciera en Startup.
+            command
+                .env_remove("VANTARE_BACKGROUND_STARTUP")
+                .env("VANTARE_INTERACTIVE_STARTUP", "1")
+                .env_remove("VANTARE_STARTUP_WINDOW")
+                .env_remove("VANTARE_STARTUP_PID");
             command.creation_flags(0x0800_0000 | 0x0100_0000); // Sin consola y fuera del Job de overlays.
             command.spawn()
         });

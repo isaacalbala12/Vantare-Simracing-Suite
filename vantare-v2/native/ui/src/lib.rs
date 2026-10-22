@@ -65,6 +65,7 @@ pub mod theme;
 #[cfg(windows)]
 mod tray;
 mod vantare;
+pub mod window_activation;
 pub mod workshop;
 
 include!("registry.rs");

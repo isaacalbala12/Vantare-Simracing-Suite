@@ -38,7 +38,7 @@ sha2 = "0.10"
 # manejador de Ctrl+C y cierre de ventanas. `vantare-grabar-acc` añade memoria
 # mapeada (páginas de ACC) y la carpeta Documentos del usuario. Ya en Cargo.lock.
 [target.'cfg(windows)'.dependencies]
-windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security", "Win32_System_Com", "Win32_System_Console", "Win32_System_JobObjects", "Win32_System_Memory", "Win32_System_Threading", "Win32_UI_Shell", "Win32_UI_WindowsAndMessaging"] }
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Graphics_Gdi", "Win32_System_LibraryLoader", "Win32_Security", "Win32_System_Com", "Win32_System_Console", "Win32_System_JobObjects", "Win32_System_Memory", "Win32_System_Threading", "Win32_UI_Shell", "Win32_UI_WindowsAndMessaging"] }
 
 # Escenarios de caída con procesos de verdad; el propio ejecutable de la prueba
 # hace de núcleo y overlays falsos (no hay binarios de prueba que distribuir).

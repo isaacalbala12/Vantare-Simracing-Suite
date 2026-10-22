@@ -575,6 +575,7 @@ using System;
 using System.Runtime.InteropServices;
 public static class VantareShortcutProperties {
     [StructLayout(LayoutKind.Sequential)] public struct Key { public Guid format; public uint id; }
+    // Packaging and the supervisor use Windows x64 PowerShell (Sysnative).
     [StructLayout(LayoutKind.Explicit, Size=24)] public struct Value {
         [FieldOffset(0)] public ushort type;
         [FieldOffset(8)] public IntPtr text;
@@ -624,7 +625,10 @@ function Set-NativeLaunchShortcut($Link,[string]$Directory,[string]$LaunchTarget
         $Link.Arguments='-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "'+(Join-Path $Directory 'beta.ps1')+'" -Root "'+$Directory+'"'
     }
     $Link.Save()
-    Set-NativeShortcutAppId $Link.FullName
+    # Cosmetic metadata must not abort Register/hub-ready or leave the old
+    # shortcut behind after the new name and icon have already been saved.
+    try { Set-NativeShortcutAppId $Link.FullName }
+    catch { Write-Warning ("No se pudo guardar AppUserModelID en {0}: {1}" -f $Link.FullName,$_.Exception.Message) -WarningAction Continue }
 }
 
 function Get-NativeShortcutFolder([string]$Name) {

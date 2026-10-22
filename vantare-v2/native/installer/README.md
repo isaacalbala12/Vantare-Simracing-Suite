@@ -1,4 +1,4 @@
-﻿# installer — Setup y Uninstall (#1591)
+# installer — Setup y Uninstall (#1591)
 
 Dos binarios x64 independientes, `vantare-setup` y `vantare-uninstall`, publicados
 como `VantareSetup.exe` y `Uninstall.exe`. GPUI usa el mismo commit fijado que la

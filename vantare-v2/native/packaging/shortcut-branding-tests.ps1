@@ -80,6 +80,25 @@ foreach($baseline in @('0.0.975','0.0.981','0.0.982')){
         $failed=$false
         try{Invoke-NativeRegistrationTransaction $key 'Vantare' 'Vantare Native Beta' {Remove-Item $current;throw 'transaction fixture'}}catch{$failed=$true}
         Assert-Brand ($failed -and (Get-NativeHash $current) -ceq $before) "$baseline transaction restores branded shortcut bytes"
+        # Simulate an unavailable shell property store after Save. Exercise the
+        # Hub's registration path and Setup's transaction, without starting apps.
+        $appIdWriter=${function:Set-NativeShortcutAppId}
+        try {
+            function Set-NativeShortcutAppId([string]$Path){throw [IO.IOException]::new('property store fixture')}
+            foreach($transactional in @($false,$true)){
+                Copy-Item $current (Join-Path $menu 'Vantare.lnk')
+                Remove-Item $current
+                $stateHash=Get-NativeHash (Join-Path $root 'state.json')
+                $warnings=@(if($transactional){
+                    Invoke-NativeRegistrationTransaction $key 'Vantare' 'Vantare Native Beta' {Sync-NativeRegistration $root '0.0.982'} 3>&1
+                }else{Sync-NativeRegistration $root '0.0.982' 3>&1})
+                Assert-Brand (@($warnings|Where-Object {$_ -is [Management.Automation.WarningRecord] -and $_.Message -like '*AppUserModelID*'}).Count -gt 0) "$baseline AppID failure logs warning (transaction=$transactional)"
+                Assert-Brand ((Test-Path $current) -and -not(Test-Path (Join-Path $menu 'Vantare.lnk')) -and @(Get-ChildItem $menu -Filter '*Suite.lnk').Count -eq 1) "$baseline AppID failure finishes registration with one launch link (transaction=$transactional)"
+                $link=$shell.CreateShortcut($current)
+                Assert-Brand ($link.TargetPath -eq (Join-Path $bin 'vantare.exe') -and $link.IconLocation -eq ((Join-Path $bin 'vantare.exe')+',0')) "$baseline AppID failure preserves name target and icon (transaction=$transactional)"
+                Assert-Brand ((Get-NativeHash (Join-Path $root 'state.json')) -ceq $stateHash -and (Get-ItemProperty $key).DisplayName -ceq 'Vantare Simracing Suite') "$baseline AppID failure does not roll back active generation or registration (transaction=$transactional)"
+            }
+        } finally {${function:Set-NativeShortcutAppId}=$appIdWriter}
         # Exercise old and new cleanup in the same uninstall, preserving a foreign link.
         Copy-Item $current (Join-Path $menu 'Vantare.lnk')
         Copy-Item (Join-Path $desktop 'Vantare Simracing Suite.lnk') (Join-Path $desktop 'Vantare.lnk')

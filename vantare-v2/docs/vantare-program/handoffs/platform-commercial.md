@@ -1,3 +1,29 @@
+## VANTA-105 / #1754 · Registro tolerante a fallos de AUMID (22-oct-2026)
+
+Continuación de #1746: el orquestador integró #1752 en nightly d87c2cb2b
+(HEAD5cd1d55eb con CI verde y review APTO), para desbloquear #1745.
+Esta corrección previa a RC5 va en una rama nueva desde origin/nightly
+`d87c2cb2b7debe8e4956fdf884b82ea64caa963c`:
+`vantareapp/isa-1754-aumid-registro`, worktree propio rc4-acceso.
+No se vuelve a publicar en la rama fusionada.
+
+P2-1: AUMID pasa a best-effort, warning no fatal tras guardar nombre/icono.
+Register sigue retirando el alias antiguo aunque IPropertyStore falle, tanto
+en el camino Hub como en transacción Setup. Regresión simula el fallo para
+975/RC3/RC4 y comprueba warning/enlace único/generación y registro conservados.
+P3: BOM retirados de dos README, layout PROPVARIANT x64 documentado y harness
+packaging exige RT_GROUP_ICON ID1 del supervisor instalado como datos, sin
+cargar código. Rollback manual antiguo separado en #1753, coordinado con el
+PR posterior de Startup/--background. Sin cambios Rust/Hub/IPC/LMU.
+Gates afectados (registro/shell/packaging) por la cola, target propio
+D:/VantareServer/targets/rc4-acceso, jobs2, pendientes. Primer intento anterior
+se detuvo durante espera de cola para cambiar de base; ninguna suite ejecutada.
+PR draft #1756 a nightly, push autorizado para que CI del runner dedicado
+corra en paralelo con la cola local. Solo se marcará listo cuando packaging
+local y CI del HEAD final pasen. Sin merge propio, release, firma ni publicación.
+
+﻿## VANTA-105 / #1746 · RC4: nombre e icono de accesos (21-oct-2026)
+
 ## VANTA-105 / #1747 · RC4: apertura de Google (22-oct-2026)
 
 Worker aislado desde nightly `1b732b67d`, worktree `C:/VantareServer/wt/rc4-google`,

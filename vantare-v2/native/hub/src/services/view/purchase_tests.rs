@@ -5,8 +5,14 @@ use crate::Section;
 
 #[test]
 fn browser_failure_is_visible_and_retry_sends_one_fresh_login() {
-    gpui_platform::headless().run(|cx| {
-        let file = crate::document::tests::File::new();
+    // TestPlatform mantiene el portapapeles en memoria; headless() de Windows
+    // sigue usando el portapapeles del WinSta0 real y no sirve para esta prueba.
+    let file = crate::document::tests::File::new();
+    let mut context = gpui::HeadlessAppContext::with_asset_source(
+        gpui_platform::current_platform(true).text_system(),
+        std::sync::Arc::new(crate::shell::assets::Icons),
+    );
+    context.update(|cx| {
         let (send, requests) = mpsc::sync_channel(8);
         let remote = cx.new(|cx| fixture(cx, send, file.path.parent().expect("root")));
         remote.update(cx, |remote, cx| {
@@ -20,36 +26,75 @@ fn browser_failure_is_visible_and_retry_sends_one_fresh_login() {
             );
             remote.begin_access(cx);
             assert!(matches!(requests.try_recv(), Ok(Command::AccountBegin)));
-            remote.complete(
-                Reply::Account {
-                    profile: None,
-                    signed_in: false,
-                    pending: false,
-                    expires_at: None,
-                    message: vantare_services::Error::BrowserUnavailable.to_string(),
-                    error: Some(vantare_services::Error::BrowserUnavailable.to_string()),
-                },
-                cx,
-            );
-            assert!(!remote.busy());
+            let unavailable = Reply::Account {
+                copy_link: true,
+                profile: None,
+                signed_in: false,
+                pending: true,
+                expires_at: None,
+                message: vantare_services::Error::BrowserUnavailable.to_string(),
+                error: Some(vantare_services::Error::BrowserUnavailable.to_string()),
+            };
+            remote.complete(unavailable.clone(), cx);
+            assert!(remote.busy());
             assert!(remote.requires_access());
             assert!(
                 remote
                     .home_access()
                     .1
-                    .is_some_and(|error| error.contains("navegador predeterminado"))
+                    .is_some_and(|error| error.contains("Copia el enlace"))
             );
-            assert!(!remote.access.login_requested);
+            assert!(remote.access.login_requested);
+            assert!(
+                matches!(requests.try_recv(), Ok(Command::AccountPoll)),
+                "manual link keeps polling"
+            );
+            remote.copy_access_link(cx);
             assert!(
                 requests.try_recv().is_err(),
-                "failure never retries automatically"
+                "copy is queued until poll completes"
             );
+            remote.complete(unavailable.clone(), cx);
+            assert!(matches!(requests.try_recv(), Ok(Command::AccountCopyLink)));
+            remote.complete(
+                Reply::AccountLink {
+                    url: crate::services::protocol::LoginLink(
+                        "https://issuer.invalid/authorize?state=fixture&code_challenge=fixture"
+                            .into(),
+                    ),
+                },
+                cx,
+            );
+            assert!(remote.access.manual.copied);
+            assert_eq!(
+                cx.read_from_clipboard()
+                    .and_then(|item| item.text())
+                    .as_deref(),
+                Some("https://issuer.invalid/authorize?state=fixture&code_challenge=fixture")
+            );
+            assert!(matches!(requests.try_recv(), Ok(Command::AccountPoll)));
             remote.retry_access(cx);
+            assert!(
+                requests.try_recv().is_err(),
+                "retry is queued until poll completes"
+            );
+            remote.complete(unavailable, cx);
             assert!(matches!(requests.try_recv(), Ok(Command::AccountBegin)));
             assert!(requests.try_recv().is_err());
             assert!(remote.home_access().1.is_none());
+            cx.write_to_clipboard(gpui::ClipboardItem::new_string("sentinel".into()));
+            remote.accept_login_link(
+                &crate::services::protocol::LoginLink("https://issuer.invalid/expired".into()),
+                cx,
+            );
+            assert_eq!(
+                cx.read_from_clipboard()
+                    .and_then(|item| item.text())
+                    .as_deref(),
+                Some("sentinel"),
+                "stale link after retry must never change clipboard"
+            );
         });
-        crate::quit_headless_test(cx);
     });
 }
 
@@ -337,8 +382,19 @@ pub(crate) fn fixture(
     remote.access.observe(&session_reply("QA", u64::MAX), true);
     remote
 }
+fn profile_session_reply(profile: super::super::protocol::AccountProfile) -> Reply {
+    let mut reply = session_reply("Perfil actualizado", u64::MAX);
+    if let Reply::Account {
+        profile: current, ..
+    } = &mut reply
+    {
+        *current = Some(profile);
+    }
+    reply
+}
 fn session_reply(message: &str, expires_at: u64) -> Reply {
     Reply::Account {
+        copy_link: false,
         profile: None,
         signed_in: true,
         expires_at: Some(expires_at),
@@ -435,17 +491,7 @@ fn profile_refresh_preserves_rights_and_pending_reply_but_logout_clears_photo() 
                 Ok(Command::AccountProfileRefresh)
             ));
             assert!(requests.try_recv().is_err(), "una actualización explícita");
-            remote.complete(
-                Reply::Account {
-                    signed_in: true,
-                    profile: Some(profile.clone()),
-                    expires_at: Some(u64::MAX),
-                    pending: false,
-                    message: "Perfil actualizado".into(),
-                    error: None,
-                },
-                cx,
-            );
+            remote.complete(profile_session_reply(profile.clone()), cx);
             assert_eq!(remote.profile_name(), "Élise Fixture");
             assert_eq!(orbit::initials(remote.profile_name()), "ÉF");
             assert_eq!(remote.navigation_access(), rights);
@@ -456,6 +502,7 @@ fn profile_refresh_preserves_rights_and_pending_reply_but_logout_clears_photo() 
             );
             remote.complete(
                 Reply::Account {
+                    copy_link: false,
                     signed_in: true,
                     profile: None,
                     expires_at: None,
@@ -470,6 +517,7 @@ fn profile_refresh_preserves_rights_and_pending_reply_but_logout_clears_photo() 
             assert!(matches!(requests.try_recv(), Ok(Command::AccountPoll)));
             remote.complete(
                 Reply::Account {
+                    copy_link: false,
                     signed_in: true,
                     profile: Some(profile),
                     expires_at: Some(u64::MAX),
@@ -497,6 +545,7 @@ fn profile_refresh_preserves_rights_and_pending_reply_but_logout_clears_photo() 
             assert!(matches!(requests.try_recv(), Ok(Command::Logout)));
             remote.complete(
                 Reply::Account {
+                    copy_link: false,
                     signed_in: false,
                     profile: None,
                     expires_at: None,
@@ -572,6 +621,7 @@ fn denied_policy_keeps_manual_retry_and_logout_without_granting_tools() {
                 assert!(requests.try_recv().is_err(), "un cierre de sesión");
                 remote.complete(
                     Reply::Account {
+                        copy_link: false,
                         profile: None,
                         signed_in: false,
                         expires_at: None,
@@ -669,6 +719,7 @@ fn slow_renewal_keeps_fresh_core_access_but_revocation_logout_and_missing_core_d
                 remote.access = access::State::from_build();
                 remote.access.observe(
                     &Reply::Account {
+                        copy_link: false,
                         profile: None,
                         signed_in: true,
                         expires_at: Some(u64::MAX),
@@ -893,6 +944,7 @@ fn background_errors_logout_and_receipts_never_grant_access_or_lose_the_draft() 
             while requests.try_recv().is_ok() {}
             remote.complete(
                 Reply::Account {
+                    copy_link: false,
                     profile: None,
                     signed_in: false,
                     expires_at: None,

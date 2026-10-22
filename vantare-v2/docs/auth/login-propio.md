@@ -6,8 +6,11 @@ onboarding independiente. Seguimiento `vantareapp/isa-1631-login-p3`, base
 nightly `32c3f3a14bd22e9bcedff9e21e1cb138f5cc5226` (incluye #1635).
 Sin servicios reales, secretos, cambios Supabase/Polar ni dependencias nuevas.
 
-Integración posterior en #1637: el corte actual es services **v13**, que añade
-MailConsent y Calendar.fallback al contrato de AccountEmail y Founders; el host rechaza también v11/v12.
+La integración de #1637 combina MailConsent y Calendar.fallback con AccountEmail
+y Founders. El contrato actual services **v14** (#1761) añade la copia explícita
+del enlace authorize PKCE, sin tokens ni verifier, y rechaza peers v13 o anteriores.
+La URL solo sale por IPC local tras Copiar enlace; se redacta Debug y no se añade
+a logs ni almacenamiento de Vantare. El intento conserva su plazo original3min.
 Las versiones v11 de la ronda siguiente describen su estado histórico.
 
 ## Integración con nightly — 16/10/2026

@@ -1,3 +1,46 @@
+## VANTA-105 / #1761 · RC5: navegador alternativo y copiar enlace (22-oct-2026)
+
+Seguimiento aprobado de #1747: RC5 detecta HTTPS roto, pero Isaac necesita abrir
+Chrome instalado. Base nightly `cc10f38d9836f3c624ac9881630deb2321689aaa`,
+rama `vantareapp/isa-1761-google-fallback`, worktree nuevo rc5-google-fallback.
+PR listo [#1763](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1763)
+a nightly, código inicial `9af4b515d374c3f2c7f4b7d3322381027e8f8504`.
+Review DeepSeek APTO y CI completa verde en `6589ed94924de6720c2649982572367094cfdc25`.
+Seguimiento autorizado: P2 reintenta una sola vez sin breakaway ante error5;
+log explícito, sin URL. Si funciona, el navegador hereda el Job y puede cerrarse
+con la app. P3 baratos: rechazar openwith.exe y seguir tras ERROR_MORE_DATA
+al enumerar. Resto P3 anotados en #1761; no se amplía la implementación.
+Gates nuevos solo services por cola: fmt/check/Clippy PASS; Nextest230/230 PASS,
+3 omitidos. Logs review-p2-* en evidencia rc5-google-fallback.
+CI del nuevo HEAD pendiente; orquestador integra cuando esté verde, sin otra
+ronda de review salvo cambio adicional de alcance.
+El predeterminado válido se conserva. Ante asociación ausente/Undecided/ProgID
+no registrado o rechazo de Shell, se recorren clientes StartMenuInternet HKCU
+y HKLM64/32. Dentro de cada hive: Chrome, Edge, Firefox, Brave, Opera y resto.
+Solo se ejecuta el .exe absoluto registrado con la URL como único argumento;
+sin shell, flags del registro ni cambios en Windows. Log del navegador sin URL.
+
+Si ninguno arranca, listener y enlace se conservan hasta su plazo original3min.
+Botón Copiar enlace manda AccountCopyLink, recibe LoginLink redactado y usa
+portapapeles GPUI solo por gesto explícito; sin tokens/verifier ni persistencia.
+Cancelación/caducidad/reintento retiran la copia. Protocolo services14 exige
+recompilar Hub/supervisor/services juntos; peers13 se rechazan.
+Regresiones de fallback/default, quoting, copia, reintento, cancelación y plazo.
+Procedimiento vigente del orquestador: fmt/check/Clippy/Nextest solo de ipc,
+services y hub; sin nuevas suites globales, telemetría ni lifecycle locales.
+CI GitHub es el gate completo decisivo. Target propio
+`D:/VantareServer/targets/rc5-google-fallback`, jobs2 por cola.
+Fmt/check/Clippy PASS y Nextest873/873 PASS,7 omitidos (incluye QA manual).
+Primer Nextest acotado falló en dos smokes Hub por DuckDB fuera de PATH;
+se corrigió el entorno y repitió sin alterar tests. Integrity466 PASS.
+QA privada confirma selección de Chrome; navegación completa pendiente por
+un mutex de sesión de Chrome inaccesible a la cuenta temporal (error5).
+Chrome termina código21. No se modifica el objeto. La sesión separada no
+arrancó en Task Scheduler; cuentas/perfiles/tareas propias retirados.
+Isaac/orquestador debe validar navegación en sesión independiente o candidato.
+Evidencia `C:/VantareServer/evidence/rc5-google-fallback/INFORME.md`.
+Sin backend, configuración de producción, merge, firma ni publicación.
+
 ## VANTA-105 / #1754 · Registro tolerante a fallos de AUMID (22-oct-2026)
 
 Continuación de #1746: el orquestador integró #1752 en nightly d87c2cb2b

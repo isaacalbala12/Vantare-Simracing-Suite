@@ -1,10 +1,10 @@
-//! DTO/IPC: respuestas sin tokens. Solo AccountEmail lleva credenciales de entrada redactadas.
+//! DTO/IPC: sin tokens de sesión. AccountEmail y el enlace PKCE de copia redactan Debug.
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use std::io::{self, Read, Write};
 
-// v13 combines verified MailConsent, Calendar.fallback, AccountEmail and Founders.
-// Both merged branches used v12 for different contracts; reject v12 and older peers.
-pub const VERSION: u32 = 13;
+// v14 adds explicit AccountCopyLink and redacted LoginLink for a live PKCE attempt.
+// Reject older peers: Hub and services must agree on clipboard recovery.
+pub const VERSION: u32 = 14;
 #[path = "services_protocol/pilot_document.rs"]
 pub mod pilot_document;
 #[path = "services_protocol/report_document.rs"]
@@ -40,6 +40,7 @@ pub enum Command {
         action: EmailAction,
     },
     AccountPoll,
+    AccountCopyLink,
     AccountRenew,
     AccountProfileRefresh,
     Logout,
@@ -231,7 +232,12 @@ pub enum Reply {
         message: String,
         error: Option<String>,
     },
+    AccountLink {
+        url: LoginLink,
+    },
     Account {
+        #[serde(default)]
+        copy_link: bool,
         signed_in: bool,
         #[serde(default)]
         profile: Option<AccountProfile>,
@@ -249,6 +255,16 @@ pub enum Reply {
     DeviceLimit {
         message: String,
     },
+}
+
+/// URL de un intento PKCE vivo, solo tras el gesto Copiar enlace. Nunca Debug.
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct LoginLink(pub String);
+impl std::fmt::Debug for LoginLink {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("LoginLink([redacted])")
+    }
 }
 
 /// Presentación únicamente: nunca se usa para vincular identidad ni derechos.
@@ -488,5 +504,22 @@ mod email_tests {
                 "actions without data must reject external fields"
             );
         }
+    }
+}
+
+#[cfg(test)]
+mod login_link_tests {
+    use super::*;
+    #[test]
+    fn login_link_roundtrips_but_debug_never_exposes_oauth_state() {
+        let link = Reply::AccountLink { url: LoginLink("https://issuer.invalid/authorize?state=private-fixture&code_challenge=public-fixture".into()) };
+        let debug = format!("{link:?}");
+        assert!(!debug.contains("private-fixture"));
+        assert!(!debug.contains("issuer.invalid"));
+        let json = serde_json::to_vec(&link).expect("encode");
+        let restored: Reply = serde_json::from_slice(&json).expect("decode");
+        assert!(
+            matches!(restored, Reply::AccountLink { url } if url.0.contains("state=private-fixture"))
+        );
     }
 }

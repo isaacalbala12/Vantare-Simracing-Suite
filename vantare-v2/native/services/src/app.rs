@@ -211,6 +211,7 @@ impl App {
             account.logout(self.store.as_ref().ok_or(Error::Storage)?)?;
         }
         Ok(Reply::Account {
+            copy_link: false,
             signed_in: false,
             profile: None,
             expires_at: None,
@@ -380,6 +381,7 @@ impl App {
         let account_action = matches!(
             command,
             Command::AccountBegin
+                | Command::AccountCopyLink
                 | Command::AccountPoll
                 | Command::AccountRenew
                 | Command::AccountProfileRefresh
@@ -572,6 +574,12 @@ impl App {
                 return self.license_reply(&command);
             }
             Command::Logout => return self.logout_reply(),
+            Command::AccountCopyLink => {
+                let account = self.account.as_ref().ok_or(Error::Canceled)?;
+                return Ok(Reply::AccountLink {
+                    url: crate::protocol::LoginLink(account.login_link()?.to_owned()),
+                });
+            }
             Command::AccountPoll => return self.poll_account(),
             Command::AccountRenew => {
                 self.ensure_account()?;
@@ -621,7 +629,10 @@ impl App {
 
     fn account_reply(account: &Account, error: Option<Error>) -> Reply {
         let pending = account.login_pending();
+        let copy_link = account.login_link().is_ok();
+        let error = error.or(copy_link.then_some(Error::BrowserUnavailable));
         Reply::Account {
+            copy_link,
             signed_in: account.identity().is_some(),
             profile: account.profile().cloned(),
             expires_at: account.expires_at(),
@@ -2192,4 +2203,51 @@ fn home() -> Result<PathBuf> {
         .map(PathBuf::from)
         .filter(|path| path.is_absolute())
         .ok_or(Error::Storage)
+}
+
+#[cfg(test)]
+mod copy_link_tests {
+    use super::*;
+    #[test]
+    fn copy_command_returns_only_a_live_manual_link_and_cancel_removes_the_capability() {
+        let server = crate::test_http::Server::start(vec![]);
+        let (root, store) = crate::test_store("copy-command");
+        let mut account = crate::account::fixture(&server.base, &store);
+        assert_eq!(
+            crate::browser::begin(&mut account, |_| Err(Error::BrowserUnavailable)),
+            Err(Error::BrowserUnavailable)
+        );
+        assert!(matches!(
+            App::account_reply(&account, None),
+            Reply::Account {
+                pending: true,
+                copy_link: true,
+                error: Some(_),
+                ..
+            }
+        ));
+        let mut app = App::new(BuildConfig::load(), root.clone());
+        app.account = Some(account);
+        app.store = Some(store);
+        assert!(
+            matches!(app.handle(Command::AccountCopyLink), Reply::AccountLink { url } if url.0.contains("code_challenge=") && !url.0.contains("code_verifier"))
+        );
+        app.account
+            .as_mut()
+            .expect("account")
+            .cancel_login()
+            .expect("cancel");
+        assert!(matches!(
+            app.handle(Command::AccountCopyLink),
+            Reply::Account {
+                pending: false,
+                copy_link: false,
+                error: Some(_),
+                ..
+            }
+        ));
+        drop(app);
+        server.finish();
+        crate::cleanup_store(&root, "copy-command", &[]);
+    }
 }

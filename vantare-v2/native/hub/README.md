@@ -3,7 +3,11 @@
 R2 añade recuperación del formulario tras caducidad/reinicio y cola llena,
 «Volver» durante red y autorización pendiente mediante AccountPoll. El servicio
 conserva el mismo grant, respeta el intervalo de Clerk y cede entre consultas;
-la ventana de reintento es de 30 s. El corte combinado de login y Founders usa services **v13**.
+la ventana de reintento es de 30 s. El corte combinado de login y Founders usa services **v14**.
+Desde #1761, el fallo al abrir navegador conserva el intento PKCE y ofrece
+Copiar enlace: IPC explícito, URL redactada en Debug y portapapeles GPUI.
+La URL no se añade a logs ni archivos de Vantare; solo se copia por ese gesto.
+Cancelar/reintentar/caducar retiran la copia. No se entregan tokens ni verifier.
 Pasos y límites de cancelación: [login propio](../../docs/auth/login-propio.md).
 El modo `parity-capture`, con `VANTARE_CAPTURE_EMAIL=code|expired|password|queue|waiting|consent|pending`,
 pinta los componentes reales con datos ficticios y bloquea los comandos remotos.
@@ -19,7 +23,7 @@ El acceso ofrece email con código o contraseña, alta y recuperación en Orbit.
 Los inputs no se guardan; la contraseña se dibuja oculta y no permite copiar.
 Tras verificación hay una aprobación explícita de acceso a identidad/perfil.
 Google/Discord siguen abriendo la página alojada de Clerk en el navegador.
-Entonces el protocolo services era v9; ahora Hub, supervisor y servicios se actualizan juntos a v13 (marketing verificado, login propio y Founders).
+Entonces el protocolo services era v9; ahora Hub, supervisor y servicios se actualizan juntos a v14 (marketing verificado, login propio y Founders).
 Build y Clippy de Hub/services/ipc/runtime PASS; Nextest compatible 1072/1072
 PASS. 49 tests GPUI quedan pendientes por AppKit/hilo principal; cuatro mediciones
 se omiten por defecto. QA visual/interacción, Windows y Clerk development real
@@ -37,7 +41,7 @@ solo su ACK cambia el interruptor y permite continuar como guardado. En error
 hay reintento explícito o entrada sin guardar. Ajustes › Privacidad consulta el
 permiso remoto al abrir y permite cambiarlo con `source:settings`. No se guarda
 marketing en disco ni se infiere del permiso de uso. UI española: `locale:es`.
-Servicios v13 exige recompilar Hub y supervisor juntos.
+Servicios v14 exige recompilar Hub y supervisor juntos.
 Automático es la opción inicial/recomendada: resuelve Equilibrado, o Ahorro si
 el PC tiene ≤4 núcleos físicos o menos de 8 GiB de RAM. La lectura local de
 CPU (registro/topología Windows), RAM (GlobalMemoryStatusEx) y GPU (primer

@@ -12,11 +12,23 @@ enum Transition {
     Logout,
 }
 
+#[derive(Default)]
+pub(super) struct ManualLink {
+    pub(super) available: bool,
+    pub(super) copied: bool,
+    queued: Option<ManualAction>,
+}
+enum ManualAction {
+    Copy,
+    Retry,
+}
+
 pub(super) struct State {
     configured: bool,
     session_checked: bool,
     pub(super) login_requested: bool,
     error: Option<String>,
+    pub(super) manual: ManualLink,
     policy: Option<vantare_ipc::control::Policy>,
     expires_at: Option<u64>,
     transition: Transition,
@@ -47,6 +59,7 @@ impl State {
             session_checked: false,
             login_requested: false,
             error: None,
+            manual: ManualLink::default(),
             policy: None,
             expires_at: None,
             transition: Transition::Idle,
@@ -54,6 +67,13 @@ impl State {
     }
 
     pub(super) fn requested(&mut self, command: &Command) {
+        if matches!(
+            command,
+            Command::AccountBegin | Command::Logout | Command::AccountEmail { .. }
+        ) {
+            self.error = None;
+            self.manual = ManualLink::default();
+        }
         if let Command::AccountEmail { action } = command {
             self.error = None;
             self.login_requested = false;
@@ -89,14 +109,15 @@ impl State {
     }
 
     pub(super) fn next_command(&mut self, reply: &Reply, cancel: &mut bool) -> Option<Command> {
-        let pending = matches!(
-            reply,
-            Reply::Account { pending: true, .. }
-                | Reply::Email {
-                    stage: super::super::protocol::EmailStage::Authorizing,
-                    ..
-                }
-        );
+        let pending = matches!(reply, Reply::AccountLink { .. }) && self.login_requested
+            || matches!(
+                reply,
+                Reply::Account { pending: true, .. }
+                    | Reply::Email {
+                        stage: super::super::protocol::EmailStage::Authorizing,
+                        ..
+                    }
+            );
         let check_session = matches!(
             reply,
             Reply::Status {
@@ -104,6 +125,18 @@ impl State {
                 ..
             }
         );
+        if pending && !*cancel {
+            match self.manual.queued.take() {
+                Some(ManualAction::Retry) => {
+                    self.requested(&Command::AccountBegin);
+                    return Some(Command::AccountBegin);
+                }
+                Some(ManualAction::Copy) if self.manual.available => {
+                    return Some(Command::AccountCopyLink);
+                }
+                _ => {}
+            }
+        }
         if let Some(command) = follow_up(pending, cancel, check_session) {
             self.requested(&command);
             return Some(command);
@@ -197,6 +230,7 @@ impl State {
                 self.error = None;
             }
             Reply::Account {
+                copy_link,
                 pending,
                 error,
                 signed_in,
@@ -229,6 +263,10 @@ impl State {
                     None
                 };
                 self.session_checked = true;
+                self.manual.available = *pending && *copy_link;
+                if !self.manual.available {
+                    self.manual.copied = false;
+                }
                 self.login_requested = *pending;
                 self.error = error
                     .as_ref()
@@ -245,7 +283,11 @@ impl State {
                 self.login_requested = false;
                 self.error = None;
             }
-            Reply::Closed => self.invalidate(),
+            Reply::Closed => {
+                self.manual.available = false;
+                self.manual.copied = false;
+                self.invalidate();
+            }
             Reply::Error { message } if account => {
                 self.login_requested = false;
                 // Un error genérico no confirma el fin del callback. Solo
@@ -328,6 +370,10 @@ impl Remote {
         use std::io::Write;
         let _log = writeln!(std::io::stderr(), "account-access: requested");
         if self.working() {
+            if self.access.manual.available {
+                self.access.manual.queued = Some(ManualAction::Retry);
+                cx.notify();
+            }
             let _log = writeln!(
                 std::io::stderr(),
                 "account-access: waiting-for-current-request"
@@ -341,6 +387,41 @@ impl Remote {
         // Google, Discord y email usan la misma página alojada con PKCE.
         self.request(Command::AccountBegin, cx);
         self.access.login_requested = self.busy();
+    }
+
+    pub(super) fn copy_access_link(&mut self, cx: &mut Context<Self>) {
+        if self.access.manual.available && self.access.login_requested {
+            if self.busy() {
+                self.access.manual.queued = Some(ManualAction::Copy);
+                cx.notify();
+            } else {
+                self.request(Command::AccountCopyLink, cx);
+            }
+        }
+    }
+
+    pub(super) fn accept_login_link(
+        &mut self,
+        link: &super::super::protocol::LoginLink,
+        cx: &mut Context<Self>,
+    ) {
+        use std::io::Write;
+        // Una respuesta tardía tras cancelar/expirar no modifica el portapapeles.
+        if !self.access.manual.available || !self.access.login_requested {
+            return;
+        }
+        cx.write_to_clipboard(gpui::ClipboardItem::new_string(link.0.clone()));
+        self.access.manual.copied = cx
+            .read_from_clipboard()
+            .and_then(|item| item.text())
+            .is_some_and(|text| text == link.0);
+        if !self.access.manual.copied {
+            self.access.error = Some(
+                "No se pudo copiar el enlace. Comprueba el portapapeles y vuelve a intentarlo."
+                    .into(),
+            );
+            let _log = writeln!(std::io::stderr(), "account-login: clipboard-unavailable");
+        }
     }
 
     pub(super) fn retry_access(&mut self, cx: &mut Context<Self>) {
@@ -445,8 +526,7 @@ impl Remote {
         focus: &gpui::FocusHandle,
         cx: &mut Context<Self>,
     ) -> Stateful<Div> {
-        let waiting =
-            (self.access.login_requested || self.account.pending) && self.access.error.is_none();
+        let waiting = self.access.login_requested || self.account.pending;
         let checking = !self.access.session_checked && self.access.error.is_none();
         let mut body = div()
             .flex()
@@ -515,17 +595,13 @@ impl Remote {
             body = body.child(self.access_choices(cx));
         }
         if let Some(error) = &self.access.error {
-            body = body.child(orbit::callout(error.clone(), cx)).child(
-                orbit::button("access-retry", "Reintentar", cx)
-                    .on_click(cx.listener(|this, _, _, cx| this.retry_access(cx)))
-                    .on_key_down(cx.listener(|this, event: &gpui::KeyDownEvent, _, cx| {
-                        if matches!(event.keystroke.key.as_str(), "enter" | "space") {
-                            this.retry_access(cx);
-                            cx.stop_propagation();
-                        }
-                    })),
-            );
+            body = body
+                .child(orbit::callout(error.clone(), cx))
+                .child(Self::access_retry_button(cx));
         }
+        body = body.when(self.access.manual.available, |body| {
+            body.child(self.access_copy_link(cx))
+        });
         body = body.child(
             orbit::text("made by Vantare", 10.0, 600, orbit::ink_muted(cx), cx).mt(px(24.0)),
         );
@@ -545,6 +621,41 @@ impl Remote {
             .text_color(rgb(orbit::ink(cx)))
             .font_family(crate::orbit::sans_override("Inter W400", cx))
             .child(body)
+    }
+
+    fn access_retry_button(cx: &mut Context<Self>) -> Stateful<Div> {
+        orbit::button("access-retry", "Reintentar", cx)
+            .on_click(cx.listener(|this, _, _, cx| this.retry_access(cx)))
+            .on_key_down(cx.listener(|this, event: &gpui::KeyDownEvent, _, cx| {
+                if matches!(event.keystroke.key.as_str(), "enter" | "space") {
+                    this.retry_access(cx);
+                    cx.stop_propagation();
+                }
+            }))
+    }
+
+    fn access_copy_link(&self, cx: &mut Context<Self>) -> Div {
+        let mut body = div().w_full().flex().flex_col().gap(px(8.0));
+        body = body.child(
+            orbit::button("access-copy-link", "Copiar enlace", cx)
+                .on_click(cx.listener(|this, _, _, cx| this.copy_access_link(cx)))
+                .on_key_down(cx.listener(|this, event: &gpui::KeyDownEvent, _, cx| {
+                    if matches!(event.keystroke.key.as_str(), "enter" | "space") {
+                        this.copy_access_link(cx);
+                        cx.stop_propagation();
+                    }
+                })),
+        );
+        if self.access.manual.copied {
+            body = body.child(orbit::text(
+                "Enlace copiado. Pégalo en tu navegador para continuar.",
+                12.0,
+                400,
+                orbit::ink_2(cx),
+                cx,
+            ));
+        }
+        body
     }
 
     fn access_choices(&self, cx: &mut Context<Self>) -> Div {
@@ -616,6 +727,7 @@ mod tests {
 
     fn account_reply(signed_in: bool, pending: bool, error: Option<String>) -> Reply {
         Reply::Account {
+            copy_link: false,
             profile: None,
             signed_in,
             pending,
@@ -766,6 +878,7 @@ mod tests {
     fn renewal_reloads_oauth_expiry_without_another_license_request() {
         let mut state = State::from_build();
         let expired = Reply::Account {
+            copy_link: false,
             profile: None,
             signed_in: true,
             pending: false,
@@ -829,6 +942,7 @@ mod tests {
                     session_checked: true,
                     login_requested: false,
                     error: None,
+                    manual: ManualLink::default(),
                     policy: None,
                     expires_at: None,
                     transition: Transition::Idle,
@@ -845,6 +959,7 @@ mod tests {
             session_checked: false,
             login_requested: false,
             error: None,
+            manual: ManualLink::default(),
             policy: None,
             expires_at: None,
             transition: Transition::Idle,
@@ -852,6 +967,7 @@ mod tests {
         assert!(state.required(false));
         for signed_in in [true, false] {
             let reply = Reply::Account {
+                copy_link: false,
                 profile: None,
                 signed_in,
                 pending: false,
@@ -890,6 +1006,7 @@ mod tests {
             session_checked: false,
             login_requested: true,
             error: None,
+            manual: ManualLink::default(),
             policy: None,
             expires_at: None,
             transition: Transition::Idle,
@@ -897,6 +1014,7 @@ mod tests {
         let mut cancel = false;
         for pending in [true, false] {
             let reply = Reply::Account {
+                copy_link: false,
                 profile: None,
                 signed_in: false,
                 expires_at: None,
@@ -1053,6 +1171,7 @@ mod navigation_tests {
         let mut state = State::from_build();
         state.observe(
             &Reply::Account {
+                copy_link: false,
                 profile: None,
                 signed_in: true,
                 pending: false,
@@ -1117,6 +1236,7 @@ mod navigation_tests {
         let mut state = state(true, true);
         state.observe(
             &Reply::Account {
+                copy_link: false,
                 profile: None,
                 signed_in: false,
                 pending: true,
@@ -1130,6 +1250,7 @@ mod navigation_tests {
         assert!(!state.login_requested);
         state.observe(
             &Reply::Account {
+                copy_link: false,
                 profile: None,
                 signed_in: false,
                 pending: false,
@@ -1221,6 +1342,7 @@ mod navigation_tests {
         state = self::state(true, true);
         state.observe(
             &Reply::Account {
+                copy_link: false,
                 profile: None,
                 signed_in: true,
                 pending: false,
@@ -1234,6 +1356,7 @@ mod navigation_tests {
         state = self::state(true, true);
         state.observe(
             &Reply::Account {
+                copy_link: false,
                 profile: None,
                 signed_in: false,
                 pending: false,
@@ -1250,6 +1373,7 @@ mod navigation_tests {
         let mut state = state(true, true);
         state.observe(
             &Reply::Account {
+                copy_link: false,
                 profile: None,
                 signed_in: true,
                 pending: false,
@@ -1282,6 +1406,7 @@ mod navigation_tests {
         // aparecía al repintar (p. ej. al pasar el ratón por una pestaña).
         state.observe(
             &Reply::Account {
+                copy_link: false,
                 profile: None,
                 signed_in: true,
                 pending: false,
@@ -1294,6 +1419,7 @@ mod navigation_tests {
         assert!(state.navigation(true, 1000).verified);
         state.observe(
             &Reply::Account {
+                copy_link: false,
                 profile: None,
                 signed_in: false,
                 pending: false,
@@ -1412,6 +1538,7 @@ mod native_email_tests {
             action: EmailAction::Finish {},
         });
         let reply = Reply::Account {
+            copy_link: false,
             signed_in: true,
             profile: None,
             expires_at: Some(500),

@@ -62,7 +62,7 @@ impl fmt::Display for Error {
             Self::CheckoutPromotionRecovery => "No se ha podido comprobar el pago anterior. Vuelve a intentarlo; tu primer mes se conserva. Si persiste, contacta con soporte.",
             Self::Protocol => "respuesta o protocolo inválido",
             Self::Unsupported => "plataforma no compatible",
-            Self::BrowserUnavailable => "No se pudo abrir el navegador. Comprueba que tienes un navegador predeterminado para HTTPS y vuelve a intentarlo.",
+            Self::BrowserUnavailable => "No se pudo abrir ningún navegador. Copia el enlace y pégalo en un navegador para continuar. El enlace caduca a los tres minutos de iniciar el acceso.",
             Self::Busy => "operación en curso",
             Self::Canceled => "operación cancelada",
             Self::Uncertain => "resultado sin confirmar",

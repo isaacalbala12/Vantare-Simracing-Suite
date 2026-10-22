@@ -7,6 +7,7 @@ use crate::{
     protocol::{Command, Reply},
     storage::Store,
 };
+use std::io::Write;
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 mod mail;
@@ -384,7 +385,14 @@ impl App {
                 | Command::AccountProfileRefresh
                 | Command::Logout
         );
+        let login_begin = matches!(command, Command::AccountBegin);
+        if login_begin {
+            let _log = writeln!(std::io::stderr(), "account-login: begin");
+        }
         let outcome = self.execute(command);
+        if login_begin && let Err(error) = &outcome {
+            let _log = writeln!(std::io::stderr(), "account-login: failed {error:?}");
+        }
         if let Ok(time) = now() {
             self.triage.record(time, outcome.is_err(), operation);
         }
@@ -589,14 +597,7 @@ impl App {
         let account = self.account.as_mut().ok_or(Error::Unconfigured)?;
         match command {
             Command::AccountBegin => {
-                let url = account.begin_login()?;
-                // Only an explicit IPC login action opens the external browser.
-                // `explorer.exe <url>` trata las URL largas con parámetros como rutas
-                // y abre el Explorador; el manejador de protocolo abre el navegador.
-                if let Err(error) = open_login(&url) {
-                    account.cancel_login()?;
-                    return Err(error);
-                }
+                crate::browser::begin(account, crate::browser::open)?;
             }
             _ => return Err(Error::Protocol),
         }
@@ -2191,26 +2192,4 @@ fn home() -> Result<PathBuf> {
         .map(PathBuf::from)
         .filter(|path| path.is_absolute())
         .ok_or(Error::Storage)
-}
-
-fn open_login(url: &url::Url) -> Result<()> {
-    #[cfg(windows)]
-    let mut command = {
-        let mut command = std::process::Command::new("rundll32.exe");
-        command.args(["url.dll,FileProtocolHandler", url.as_str()]);
-        command
-    };
-    #[cfg(target_os = "linux")]
-    let mut command = {
-        let mut command = std::process::Command::new("xdg-open");
-        command.arg(url.as_str());
-        command
-    };
-    #[cfg(target_os = "macos")]
-    let mut command = {
-        let mut command = std::process::Command::new("open");
-        command.arg(url.as_str());
-        command
-    };
-    command.spawn().map(|_| ()).map_err(|_| Error::Unsupported)
 }

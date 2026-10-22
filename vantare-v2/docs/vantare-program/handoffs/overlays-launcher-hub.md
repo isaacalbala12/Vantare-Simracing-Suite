@@ -123,7 +123,8 @@ Los otros cuatro pares mejoran visibilidad. La medición previa de 7,62 s usaba
 Start-Process, con 1,56 s antes del EXE; no era comparación intercalada válida.
 INFORME.md, paired-summary.json, paired-provenance.json y capturas en evidencia.
 Pausa liberada al terminar; residuos propios de prueba cerrados, sin procesos ajenos.
-PR a nightly en preparación; issue mantiene el enlace y el HEAD publicado.
+PR listo a nightly: https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1758.
+Issue #1745 mantiene el HEAD publicado y la CI; sin merge ni promoción.
 
 Las medidas usan CreateDesktop/CreateProcess sin SwitchDesktop, con datos, IPC
 e identidad aislados. No incluyen resolución shell del .lnk ni acreditan foco

@@ -20,7 +20,7 @@ Sus sentencias originales y las2 filas de roadmap están en la copia protegida.
 No se borraron esquemas internos ni se revocó ninguna clave.
 
 Cinco funciones desplegadas desde ese SHA con verify_jwt=false:
-native-account-authorize(v1), native-billing-checkout(v1), billing-webhook(v7),
+native-account-authorize(v1), native-billing-checkout(v3 tras #1766), billing-webhook(v7),
 native-license(v1), billing-reconcile(v1). No se desplegó el receptor Owner,
 Testing Center, marketing ni otros endpoints. Sin cron QA.
 
@@ -51,22 +51,24 @@ compensación no activada. No configurar avisos Owner ni enviar correo sintétic
   Secreto en custodia coincide. Evento de catálogo sintético firmado:202 y
   cuarentena missing_product_id; firma incorrecta403. Dos ensayos QA marcados;
   no inventan pedidos ni habilitan licencias de pago. Entrega desde Polar y
-  proyección de compra todavía no probadas.
+  proyección de compra todavía no validadas. Después se recibió la entrega real,
+  pero fue rechazada403 por #1767; no confundir la prueba preliminar con éxito E2E.
 - CHECKOUT_SUCCESS_URL y CHECKOUT_CANCEL_URL: https://sandbox.polar.sh/.
   Retorno técnico HTTPS que no toca vantare.app; no publica una web QA nueva.
 
-## Ejecución supervisada, después de autorizar checkout
+## Repetición del ensayo, después de corregir y desplegar #1767
 
 1. Compilar/instalar una app QA con el archivo sandbox anterior (todavía no hay
    build QA preparado). Alternativa: sesión OAuth QA controlada que llama al
-   mismo native-billing-checkout de staging; presentar esa vía antes de ejecutarla.
+   mismo native-billing-checkout de staging: esta vía ya se utilizó y está
+   autorizada, igual que el pago/refund sandbox; no pedirlos otra vez.
    RC6 publicada sigue usando producción y no sirve para esta compra sandbox.
    Login usa /acceso ya abierto; nuevo navegador puede pedir código email.
    Google sigue deshabilitado en Clerk y no es requisito del ensayo.
 2. Confirmar project ref, token/catalog sandbox y cuenta QA. Crear **un** checkout
    pro_monthly por la Edge staging, sin descuentos/trial. Comprobar host sandbox
-   y precio5,99EUR mensual antes de pagar. No existe URL de checkout hasta esa
-   creación, que este worker aún no ha realizado. Anotar los IDs solo en evidencia
+   y precio5,99EUR mensual antes de pagar. El primer checkout ya se pagó/devolvió;
+   la nueva URL solo existirá al crear el siguiente. Anotar los IDs solo en evidencia
    privada y comprobar que net_amount será positivo; no usar cupón100%.
 3. Isaac abre ese checkout y usa tarjeta de prueba4242 4242 4242 4242, fecha futura
    y CVC de prueba. Nunca tarjeta real. Comprobar pedido/subscripción sandbox y
@@ -95,8 +97,8 @@ webhook sandbox para evitar reintentos; pedir encargo de cierre antes de hacerlo
 ## Qué necesita ahora Isaac
 
 No falta token, webhook secret ni contraseña BD: los tres ya funcionan.
-Falta elegir/autorizar la creación del checkout y la vía de app QA o sesión
-controlada, y completar el pago simulado. Si se usa navegador nuevo, la cuenta
+Falta el encargo del arreglo #1767 y autorizar su SHA de despliegue en staging;
+checkout/pago/refund sandbox ya están autorizados. Si se usa navegador nuevo, la cuenta
 QA debe poder recibir el código email de Clerk. No hace falta token Production,
 correo Owner sintético ni cambiar vantare.app para el pago.
 

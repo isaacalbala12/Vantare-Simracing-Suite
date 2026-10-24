@@ -1,97 +1,105 @@
-# Propuesta de compra de prueba · VANTA-96
+# Compra E2E en Polar sandbox · VANTA-96
 
-Propuesta para aprobación; no ejecutada. Venta pública cerrada; sin deploy,
-migración, cupón, compra, refund ni cambio de flags en este encargo.
+Estado24-oct: infraestructura preparada y parada **antes de crear checkout**.
+La compra simulada y su reembolso siguen pendientes del ensayo supervisado.
+No hay compra real con devolución. No se cambian secretos ni flags de Supabase
+Production para este ensayo. La apertura de acceso/lista en la web es un encargo
+aparte autorizado expresamente el24-oct (PR web#14).
 
-## Límite comprobado antes de aprobar el ensayo
+## Entorno y preparación ya ejecutada
 
-El ledger actual rechaza net_amount=0 en parseOrderLedgerInput
-(supabase/functions/billing-webhook/process.ts, missing_order_net_amount).
-Por tanto la sesión gratuita propuesta abajo NO es hoy un E2E completo de
-compra/licencia. No se recomienda debilitar esta regla para facilitar QA.
-Para el circuito financiero completo, preferir sandbox con cargo simulado al
-precio EUR del producto confirmado por GET, tras autorización de reactivación.
-Alternativa: compra real de Isaac al precio confirmado y refund aprobados aparte.
-No fijar una cifra real mientras el catálogo siga inaccesible. El único importe
-cerrado de esta propuesta sin cargo es 0,00 EUR, con los límites indicados.
+Supabase vantare-staging: rilwmlbnucbbayaulnxw, independiente de producción.
+Copia completa de esquema/datos/Auth/Storage/historial realizada24-oct;
+pg_restore --list y lectura de todos los bloques PASS. SHA256:
+5ac0c2dfc483a4d4c485c2f93c0393b99837363b1a77aad01e02597783c14177.
+Se reconstruyeron solo objetos propios y el historial tras copia y autorización:
+97/97 migraciones del SHA1b732b67d605298f3056c8ca78d692f132217e2d.
+Las versiones ajenas20260926153706 (roadmap y RPC publicadora/lectora) y
+20260926153853 (ajuste de sus permisos) se exportaron antes de descartarlas.
+Sus sentencias originales y las2 filas de roadmap están en la copia protegida.
+No se borraron esquemas internos ni se revocó ninguna clave.
 
-## Sesión gratuita propuesta y sus límites
+Cinco funciones desplegadas desde ese SHA con verify_jwt=false:
+native-account-authorize(v1), native-billing-checkout(v1), billing-webhook(v7),
+native-license(v1), billing-reconcile(v1). No se desplegó el receptor Owner,
+Testing Center, marketing ni otros endpoints. Sin cron QA.
 
-- Producto: pro_monthly, producto normal del mapa canónico. No Founders ni
-  launch_lifetime, sin creador ni beneficio de lanzamiento. Catálogo remoto
-  pendiente de lectura: no publicar/desarchivar un producto automáticamente.
-- Cuenta: la cuenta QA existente de Clerk Production usada para el E2E nativo;
-  identificadores y correo solo en custodia. Isaac opera su sesión si prefiere
-  su cuenta, tras comprobar que no consume una oferta/campaña real.
-- Importe a cobrar propuesto: 0,00 EUR, con descuento del 100 % de un solo uso,
-  limitado a ese producto y primera factura (once), con ventana corta aprobada.
-  Verificar total=0 y que no exige pago antes de completar. No introducir tarjeta
-  ni aceptar un cargo o importe distinto. El precio nominal se anotará después
-  del GET del catálogo; ahora es desconocido y no se inventa.
-- Vía: app → native-billing-checkout → adaptador canónico. No usar un checkout
-  manual de Polar como sustituto del flujo de la app. La web actual no compra.
+Claves ES256 y Ed25519 QA independientes, HMAC reconcile QA; TPA con issuer
+https://clerk.vantare.app y native_data_issuer propio de staging. Se reutiliza
+solo identidad QA custodiada; no se cambió configuración de Clerk Production.
+Anon/service_role legacy200 antes/después de rotar ES256; bridge200 →
+PostgREST200; native-license200, firmas ES256/Ed25519 verificadas con públicas QA.
+La fila de issuer se habilitó tras aceptar PostgREST el JWT QA.
 
-## Condiciones antes de ejecutar
+Los secretos se cargaron por env-file protegido y se verificó el hash exacto
+del mapa JSON y JWK. No se copian privadas de producción. Config de compilación
+QA en secrets/sandbox-staging-20261021/build-config-sandbox.env; nunca mezclarla
+con build-config-production.env. Incluye Supabase/anon/bridge/licencia de
+staging y OAuth Clerk existente. Marketing y promoción apagados;
+compensación no activada. No configurar avisos Owner ni enviar correo sintético.
 
-1. Obtener products:read/discounts:read, resolver #1730 solo por GET y presentar
-   a Isaac los productos/precios draft/archivados que necesiten autorización.
-2. Si hace falta observar otro rechazo, proponer un despliegue separado del
-   diagnóstico #1732 (nightly a2e46c0d8 o SHA posterior revisado). **No desplegado**.
-   Propuesta mínima para revisión: native-billing-checkout (verify_jwt=false) y
-   billing-checkout (verify_jwt=true), los dos que ejecutan createPolarCheckoutSession.
-   Verificar SHA, importaciones y config.toml antes de solicitar autorización;
-   verify-deploy-surface.ps1 pasa como guardia de nombres, no analiza dependencias
-   ni autoriza endpoints. Otros consumidores de polar.ts no crean checkout y no
-   necesitan despliegue por este diagnóstico. No desplegar todo por glob.
-   P3 DeepSeek en #1733, especialmente los 250 ms dentro del timeout de 8 s.
-3. El flujo actual usa allow_discount_codes=false y descuentos elegidos por el
-   servidor: el cupón QA del 100 % no tiene una vía implementada y aprobada.
-   No basta con crear un cupón: la compra gratuita y sus derechos exigen una
-   decisión de producto y cobertura canónica de importe cero, además de una
-   vía QA aprobada. No implementarlo solo para esta prueba. Preferir el ensayo
-   con pago simulado en sandbox autorizado. No sustituir el descuento de lanzamiento, falsificar
-   metadata ni permitir discount_id arbitrario en el cliente.
-4. Isaac/orquestador aprueban el cupón concreto, la vía controlada, ejecución y
-   limpieza. No se reactiva ninguno de los dos backends pausados sin decisión.
+## Catálogo y rutas fijados
 
-## Qué se verifica, con evidencia sin datos personales
+- Polar sandbox, base https://sandbox-api.polar.sh/v1, POLAR_ENVIRONMENT=sandbox.
+- Producto existente Pro mensual,599céntimos EUR, mes, sin trial, activo/público:
+  0d0de79b-30ba-4d00-8429-c9e6cba8ca56.
+- Precio7a6d9bc3-4a83-4f16-82f7-c496f67d7d09. Clave lógica pro_monthly.
+  El mapa QA solo permite este producto, sin descuentos ni ofertas de lanzamiento.
+  El Vantare Pro histórico del mapa antiguo tiene trial7d y no se usa.
+- Webhook sandbox8c400972-672b-44b5-9dad-b0eb5e9f6b5a habilitado y dirigido a
+  https://rilwmlbnucbbayaulnxw.supabase.co/functions/v1/billing-webhook.
+  Secreto en custodia coincide. Evento de catálogo sintético firmado:202 y
+  cuarentena missing_product_id; firma incorrecta403. Dos ensayos QA marcados;
+  no inventan pedidos ni habilitan licencias de pago. Entrega desde Polar y
+  proyección de compra todavía no probadas.
+- CHECKOUT_SUCCESS_URL y CHECKOUT_CANCEL_URL: https://sandbox.polar.sh/.
+  Retorno técnico HTTPS que no toca vantare.app; no publica una web QA nueva.
 
-1. Checkout: cuenta canónica, pro_monthly y un único attemptId nuevo; selección
-   standard, descuento QA autorizado y total 0. La app recibe URL del mismo
-   entorno. Registrar correlación protegida; ninguna URL/token en evidencia.
-2. Webhook: completar solo ese checkout gratuito; evento real firmado de Polar,
-   inbox durable, procesado una sola vez. Un pedido gratuito no supera hoy la
-   validación del ledger: registrar ese límite sin otorgar derechos a mano.
-   Observar reentrega legítima si existe;
-   no falsificar eventos productivos ni alterar firmas/RLS.
-3. Licencia, cuando el escenario de pago esté soportado: native-license refleja Pro de esa cuenta; credencial Ed25519 verifica
-   con la pública del instalador. Una segunda cuenta sigue sin esos derechos.
-4. Email Owner: el receptor actual es de incidencias (checkout_review, refund
-   fallido, etc.), **no envía un aviso por cada pago correcto**. El sintético del
-   21-oct ya comprobó el canal. Si se exige correo por cada pago, hace falta otro
-   encargo de producto con regresión; no simular una incidencia en la compra ni
-   prometer que un pago correcto generará ese correo. Confirmar recepción de
-   Isaac sin publicar su dirección. Repetir sintético solo con autorización.
-5. Reembolso: con total 0 no hay dinero que devolver; marcar este tramo NO
-   VALIDADO. No llamar refunds con amount=0 ni afirmar E2E financiero completo.
-   El tramo de refund real se verificará en sandbox si Isaac autoriza reactivarlo,
-   o con una compra con cargo real y devolución aprobados aparte. El importe de
-   esa segunda prueba será el precio EUR confirmado del producto, anotado y
-   aceptado antes del pago; no existe autorización actual para cobrarlo.
+## Ejecución supervisada, después de autorizar checkout
 
-## Cierre y reversión de la prueba futura
+1. Compilar/instalar una app QA con el archivo sandbox anterior (todavía no hay
+   build QA preparado). Alternativa: sesión OAuth QA controlada que llama al
+   mismo native-billing-checkout de staging; presentar esa vía antes de ejecutarla.
+   RC6 publicada sigue usando producción y no sirve para esta compra sandbox.
+   Login usa /acceso ya abierto; nuevo navegador puede pedir código email.
+   Google sigue deshabilitado en Clerk y no es requisito del ensayo.
+2. Confirmar project ref, token/catalog sandbox y cuenta QA. Crear **un** checkout
+   pro_monthly por la Edge staging, sin descuentos/trial. Comprobar host sandbox
+   y precio5,99EUR mensual antes de pagar. No existe URL de checkout hasta esa
+   creación, que este worker aún no ha realizado. Anotar los IDs solo en evidencia
+   privada y comprobar que net_amount será positivo; no usar cupón100%.
+3. Isaac abre ese checkout y usa tarjeta de prueba4242 4242 4242 4242, fecha futura
+   y CVC de prueba. Nunca tarjeta real. Comprobar pedido/subscripción sandbox y
+   entrega firmada de Polar. Repetir entrega debe ser idempotente: un pedido en
+   ledger, sin doble derecho. Validar importe neto positivo, moneda EUR, relación
+   cuenta/producto y ausencia de cuarentena/reintentos inesperados. Comprobar RLS
+   con una segunda cuenta QA antes de dar por completo el ensayo.
+4. Solicitar native-license con el mismo dispositivo QA: credencial sandbox,
+   plan Pro y firma verificable con pública QA. Refrescar app y comprobar acceso
+   al plan. Correo Owner excluido por Isaac; emails de Polar solo llegan a miembros
+   de su organización sandbox, por lo que no afirmar envío a cualquier QA.
+5. Reembolsar únicamente el pedido sandbox y cancelar/revocar renovación sandbox;
+   verificar webhook, ledger y retirada de Pro/licencia. Conservar auditoría QA.
+   Parar si hay dominio/entorno productivo, importe cero o resultado inesperado.
 
-Tras verificar, cancelar/revocar la suscripción QA con acción aprobada y comprobar
-el webhook correspondiente, retirada de derechos según contrato y ausencia de
-renovación futura. Una cancelación al final del período no demuestra revocación
-inmediata. Retirar la excepción QA y caducar/deshabilitar el cupón aprobado;
-conservar inbox y auditoría, sin borrado masivo ni SQL manual para inventar estados.
-El pedido gratuito queda en historial como prueba; no se revierte una emisión
-borrando filas. Las credenciales offline ya emitidas conservan su límite de validez
-contractual: no prometer invalidación offline instantánea. Si hubiera cargo real,
-la devolución requiere su autorización y confirmación de Polar antes de cerrar.
+## Reversión y cierre
 
-Documentación: [Checkout y descuentos gratuitos](https://polar.sh/docs/api-reference/checkouts/get-session),
-[descuentos](https://polar.sh/docs/api-reference/discounts/create),
-[refund](https://polar.sh/docs/api-reference/refunds/create),
-[revocación](https://polar.sh/docs/api-reference/subscriptions/revoke).
+Apagar la app QA y retirar su configuración; no tocar RC6 productiva.
+Exportar evidencia antes de limpiar datos QA. El dump completo de staging permite
+restaurar su estado anterior si se decide; no restaurarlo sobre producción.
+Para revertir ES256 staging: mover3a416237-ff6e-4723-b53e-9aa534a919ed a standby
+con la API y después in_use; no revocar las otras claves. La pública Ed25519 QA
+solo corresponde a este build. Si se pausa staging, deshabilitar primero su
+webhook sandbox para evitar reintentos; pedir encargo de cierre antes de hacerlo.
+
+## Qué necesita ahora Isaac
+
+No falta token, webhook secret ni contraseña BD: los tres ya funcionan.
+Falta elegir/autorizar la creación del checkout y la vía de app QA o sesión
+controlada, y completar el pago simulado. Si se usa navegador nuevo, la cuenta
+QA debe poder recibir el código email de Clerk. No hace falta token Production,
+correo Owner sintético ni cambiar vantare.app para el pago.
+
+Fuentes: [sandbox y tarjeta de prueba](https://polar.sh/docs/integrate/sandbox),
+[claves Supabase](https://supabase.com/docs/guides/auth/signing-keys),
+[refunds](https://polar.sh/docs/api-reference/refunds/create).

@@ -8,6 +8,7 @@ from commercial_storage_race import run_storage_owners, run_storage_multipart, r
 from commercial_roadmap_role import run_roadmap_role_regression, run_existing_role_regression
 from commercial_owner_alert import run_owner_alert_race
 from commercial_checkout_terminal import run_terminal_checkout_race
+from commercial_migration_lock import run_migration_lock_regression
 parser=argparse.ArgumentParser()
 parser.add_argument('--pg-bin', required=True)
 parser.add_argument('--docker', action='store_true', help='Own disposable Supabase PostgreSQL container; pg-bin supplies clients only')
@@ -188,6 +189,8 @@ $$;
    }
    if args.docker and m.name in existing_roles:
     run_existing_role_regression(run, conn, admin_conn(), migration_source, OUT, *existing_roles[m.name])
+   if 'isa_1770_terminal_checkout_attempts' in m.name:
+    run_migration_lock_regression(run, conn, migration_source, OUT, BIN, ENV)
    try: result=run('psql',*conn,'-f',migration_source)
    except Exception as e:
     (OUT/(m.name+'.log')).write_text(str(e))

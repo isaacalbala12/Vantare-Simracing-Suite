@@ -1,3 +1,37 @@
+## VANTA-96 / #1772 · Plan de pagos en producción, pendiente de autorización (24-oct)
+
+PR https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1773 a nightly,
+rama vantareapp/isa-1772-pagos-deploy-plan, base a37d0bcacd771eb7e83dd9e558b11dbe0912fe99.
+Solo GET/SELECT en producción: 97 versiones iguales al prefijo canónico; falta
+20261024182517. Prerrequisitos y tres RPC previos correctos; 1 intento, 0 pedidos,
+0 refunds. El P2-1 de la review quedó superado por la reconstrucción.
+La 98 añade lock_timeout local 5s sin cambio lógico; regresión con dos conexiones
+exige 55P03 y ningún DDL parcial, después replay normal LF/CRLF. NOT VALID/VALIDATE
+en la misma transacción no libera antes el bloqueo; se conserva atomicidad.
+CI del HEAD se verifica en el PR y la evidencia externa antes de entregar.
+
+Hallazgo de despliegue obligatorio: Polar PROD es legacy, uses_standard_webhook_signature=false,
+format=raw, secreto whsec_ coincidente con Edge. Antes de desplegar #1769 hay que
+configurar POLAR_WEBHOOK_SECRET_FORMAT=legacy_utf8, sin rotar el secreto.
+Staging es Standard: no copiar su selector a producción. Las 17 Edge están ACTIVE;
+API publica hashes de bundle, no SHA Git. Fuentes actuales de checkout/webhook
+respaldadas por API en custodia aislada; no se desplegó ninguna.
+
+Plan completo: docs/billing/plan-despliegue-pagos-produccion-20261024.md.
+Copia nueva -> 98/historial atómicos -> checkout (#1766 + diagnóstico #1732,
+autorizar ambos) -> selector legacy -> webhook #1769 -> prueba no financiera
+firmada/ACK202, checkout QA200 SIN PAGAR y licencia de nivel real. Rollbacks de
+código detallados, sin borrar historia ni reabrir intentos. No ejecución todavía.
+Catálogo GET200 con token de lectura existente: cinco productos comercializables
+no archivados, precios activos mapeados; Launch histórico archivado/inactive.
+Cuatro descuentos con ventana26-oct18Z a26-nov18Z. Primer403 vacío del cliente HTTP
+se corrigió al identificarlo; el token backend sí carece de scopes de lectura.
+No se pide nueva credencial a Isaac. PURCHASE_OPEN ausente/cerrado en beta;
+WAITLIST_OPEN=true, marketing/IA/promoción false y compensación OFF. Publicar web
+compra y activar VANTARE_PURCHASE=open/PURCHASE_OPEN=true requieren otra aprobación.
+Evidencia: evidence/supabase-reconstruccion/pagos-prod-20261024 y EJECUCION.md.
+Producción no recibió deploy, migración, secreto, flag ni checkout de este trabajo.
+
 ## VANTA-96 / #1770 · Refund, Pro retirado y recompra verificados (24-oct)
 
 PR https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1771 a nightly,

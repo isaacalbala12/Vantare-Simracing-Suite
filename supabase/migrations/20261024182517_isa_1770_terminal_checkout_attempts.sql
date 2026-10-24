@@ -1,6 +1,9 @@
 -- #1770 / VANTA-96. Close a consumed checkout only from durable terminal proof.
 -- No provider calls, data deletion, refunds, or changes to purchase flags.
 begin;
+-- Fail atomically rather than queue an ACCESS EXCLUSIVE lock behind live work.
+-- This bounds lock acquisition, not the duration of the constraint scan.
+set local lock_timeout = '5s';
 
 alter table public.billing_checkout_attempts
  drop constraint billing_checkout_attempts_resolution_check,

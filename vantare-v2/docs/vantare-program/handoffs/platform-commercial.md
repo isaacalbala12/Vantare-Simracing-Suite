@@ -22,8 +22,11 @@ Copia nueva -> 98/historial atómicos -> checkout (#1766 + diagnóstico #1732,
 autorizar ambos) -> selector legacy -> webhook #1769 -> prueba no financiera
 firmada/ACK202, checkout QA200 SIN PAGAR y licencia de nivel real. Rollbacks de
 código detallados, sin borrar historia ni reabrir intentos. No ejecución todavía.
-Antes de abrir falta lectura products:read/discounts:read o revisión de Isaac:
-GET catálogo403 con custodia disponible. PURCHASE_OPEN ausente/cerrado en beta;
+Catálogo GET200 con token de lectura existente: cinco productos comercializables
+no archivados, precios activos mapeados; Launch histórico archivado/inactive.
+Cuatro descuentos con ventana26-oct18Z a26-nov18Z. Primer403 vacío del cliente HTTP
+se corrigió al identificarlo; el token backend sí carece de scopes de lectura.
+No se pide nueva credencial a Isaac. PURCHASE_OPEN ausente/cerrado en beta;
 WAITLIST_OPEN=true, marketing/IA/promoción false y compensación OFF. Publicar web
 compra y activar VANTARE_PURCHASE=open/PURCHASE_OPEN=true requieren otra aprobación.
 Evidencia: evidence/supabase-reconstruccion/pagos-prod-20261024 y EJECUCION.md.

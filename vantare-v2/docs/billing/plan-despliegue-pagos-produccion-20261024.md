@@ -35,11 +35,17 @@ no se usará un nightly móvil ni se desplegará toda la carpeta de funciones.
 - Marketing, IA y promoción de informes coinciden por hash con `false`.
   Compensación desactivada en ambos entornos. Worker `beta` sirve `vantare.app`;
   `PURCHASE_OPEN` está ausente (cerrado); `WAITLIST_OPEN=true` se conserva.
-- El token backend no permite GET de endpoints (403); la credencial de lectura
-  custodiada sí permite comprobar la firma. El GET de productos y descuentos de
-  planes con esa credencial devuelve 403: **no se certifican todavía estados,
-  precios ni ventanas remotos del catálogo**. Falta `products:read` y
-  `discounts:read`, o revisión equivalente por Isaac en el panel.
+- La credencial de lectura custodiada permite GET de endpoint, productos y
+  descuentos (200). El token backend sí devuelve insufficient_scope al leer
+  catálogo; no hace falta ampliarlo para este preflight. Un primer cliente HTTP
+  sin identificación recibió 403 vacío; no se interpreta como falta de scope.
+  Pro mensual/anual, Pro Plus mensual/anual y Founders no están archivados y
+  tienen precio activo incluido en el mapa: 5,99 / 59,99 / 9,99 / 99,90 / 50 EUR.
+  Launch lifetime está archivado e inactive en el mapa, como exige su retirada.
+  Pro mensual conserva además un ID histórico: no se exige que el GET actual
+  del producto devuelva todos los precios históricos del ledger.
+  Los cuatro descuentos de lanzamiento están legibles y su ventana es
+  26-oct18:00Z → 26-nov18:00Z; todavía no empieza. No se modifica el catálogo.
 
 Evidencia externa en `C:/VantareServer/evidence/supabase-reconstruccion/`:
 `pagos-prod-20261024/supabase-readonly.json`, `migration-versions.json`,
@@ -126,8 +132,8 @@ Fundamento: [ALTER TABLE](https://www.postgresql.org/docs/17/sql-altertable.html
    esperar **200**, URL de Polar correcta y cantidad/moneda esperadas; custodiar
    la URL, no pagar y dejar caducar. Si la cuenta tiene un intento abierto, usar
    su reintento idempotente o esperar expiración por código; ningún UPDATE manual.
-   Ante 422, revisar solo diagnóstico sanitizado. Sin prueba de catálogo no se
-   promete este 200. Confirmar 0 nuevos pedidos/reembolsos/grants, venta cerrada
+   Ante 422 o drift de catálogo, parar y revisar solo diagnóstico sanitizado.
+   Confirmar 0 nuevos pedidos/reembolsos/grants, venta cerrada
    y web/login/lista intactos. El E2E económico, concesión y retirada de Pro ya
    está acreditado en sandbox (#1771); este ensayo de producción no lo repite.
 
@@ -183,5 +189,5 @@ Isaac debe autorizar **el SHA técnico final, la copia+98, las dos Edge con
 diagnóstico #1732, el selector legacy_utf8 sin rotación y las pruebas sin pago**,
 incluida la reversión de código descrita si fallan. La apertura comercial,
 publicación web-compra, cambios de catálogo y cualquier compra real quedan fuera
-de esa autorización. No falta una clave nueva de webhook: sí falta acceso de
-lectura al catálogo o que Isaac certifique sus estados desde el panel.
+de esa autorización. La custodia actual basta para este despliegue técnico:
+no hace falta pedirle otro token ni una nueva clave de webhook a Isaac.

@@ -7,6 +7,7 @@ from commercial_admin_lock_order import run_admin_lock_order
 from commercial_storage_race import run_storage_owners, run_storage_multipart, run_storage_buckets
 from commercial_roadmap_role import run_roadmap_role_regression, run_existing_role_regression
 from commercial_owner_alert import run_owner_alert_race
+from commercial_checkout_terminal import run_terminal_checkout_race
 parser=argparse.ArgumentParser()
 parser.add_argument('--pg-bin', required=True)
 parser.add_argument('--docker', action='store_true', help='Own disposable Supabase PostgreSQL container; pg-bin supplies clients only')
@@ -449,7 +450,7 @@ $$;
    'billing_reconciliation.test.sql','billing_subscription_lifecycle.test.sql',
    'billing_observability.test.sql','operational_access.test.sql','billing_order_refund_ledger.test.sql',
    'canonical_device_claim.test.sql','native_admin.test.sql','visual_roadmap_clickup.test.sql']
-  for optional in ['commercial_tombstone.test.sql','commercial_data_boundary.test.sql','commercial_refunds.test.sql','commercial_admin_deleted.test.sql','commercial_storage_probe.test.sql','commercial_pilot_deletion.test.sql','testing_followup_F1IP.test.sql','commercial_testing_identity.test.sql','commercial_posthog_consent.test.sql','testing_report_rich_admission.test.sql','testing_report_legacy_closed.test.sql']:
+  for optional in ['checkout_terminal_attempts.test.sql','commercial_tombstone.test.sql','commercial_data_boundary.test.sql','commercial_refunds.test.sql','commercial_admin_deleted.test.sql','commercial_storage_probe.test.sql','commercial_pilot_deletion.test.sql','testing_followup_F1IP.test.sql','commercial_testing_identity.test.sql','commercial_posthog_consent.test.sql','testing_report_rich_admission.test.sql','testing_report_legacy_closed.test.sql']:
    if (ROOT/'supabase/tests'/optional).exists(): suites.append(optional)
   if not (args.baseline or args.before_deleted_authorizer or args.before_posthog_consent_clear): suites.append('commercial_private_writes.test.sql')
   if not (args.baseline or args.before_deleted_authorizer or args.before_posthog_consent_clear or args.before_private_write_barriers):
@@ -472,6 +473,7 @@ $$;
     (OUT/'polar-checkout-diagnostic.log').write_text(diagnostic.stdout+diagnostic.stderr,encoding='utf-8')
     if diagnostic.returncode: raise RuntimeError(diagnostic.stdout+diagnostic.stderr)
     print('Polar checkout diagnostic privacy and standard payload PASS',flush=True)
+   run_terminal_checkout_race(BIN,conn,ENV,run,OUT)
    run_owner_alert_race(run,conn,OUT)
    if args.deno_bin:
     owner_tests=subprocess.run([args.deno_bin,'test','--cached-only','--no-lock','--allow-env',

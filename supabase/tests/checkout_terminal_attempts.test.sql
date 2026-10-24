@@ -90,6 +90,30 @@ select pg_temp.full_refund(7);
 select is((select resolution from public.billing_checkout_attempts where user_id=pg_temp.test_id('770',8)),null::text,'another account remains reserved');
 select is((select count(*)::integer from public.billing_checkout_attempts where user_id=pg_temp.test_id('770',7)),1,'terminal closure never deletes attempt history');
 
+-- Provider/resource identifiers can repeat across environments; neither they
+-- nor a mismatched product may resolve another checkout's durable binding.
+select pg_temp.seed_checkout(9);
+update public.billing_orders set status='refunded',reported_refunded_amount=1000,
+ provider_product_id=pg_temp.test_id('779',2)::text where user_id=pg_temp.test_id('770',9);
+select public.billing_sync_order_access('sandbox',pg_temp.test_id('773',9)::text,'["vantare.plan.pro"]'::jsonb);
+select is(pg_temp.claim_again(9),'busy','refund of a different dispatched product cannot release the attempt');
+
+select pg_temp.seed_checkout(10);
+update public.billing_orders set status='refunded',reported_refunded_amount=1000,
+ provider_checkout_id='unbound-other-checkout' where user_id=pg_temp.test_id('770',10);
+select public.billing_sync_order_access('sandbox',pg_temp.test_id('773',10)::text,'["vantare.plan.pro"]'::jsonb);
+select is(pg_temp.claim_again(10),'busy','unbound refunded order cannot release the published checkout');
+
+select pg_temp.seed_checkout(11);
+select public.billing_record_order_snapshot('production',pg_temp.test_id('773',11)::text,pg_temp.test_id('770',11),pg_temp.test_id('779',1)::text,pg_temp.test_id('772',11)::text,'refunded',true,1000,'eur',1000,'2026-10-24T00:10Z',repeat('b',64),pg_temp.test_id('774',11)::text);
+select public.billing_sync_order_access('production',pg_temp.test_id('773',11)::text,'["vantare.plan.pro"]'::jsonb);
+select is(pg_temp.claim_again(11),'busy','same identifiers in another environment cannot release sandbox');
+
+select is((select outcome from public.billing_record_order_snapshot('sandbox',pg_temp.test_id('773',1)::text,pg_temp.test_id('770',1),pg_temp.test_id('779',1)::text,pg_temp.test_id('772',1)::text,'paid',true,1000,'eur',0,'2026-10-24T00:00Z',repeat('a',64),pg_temp.test_id('774',1)::text)),'stale_noop','late paid snapshot cannot roll back full refund');
+select public.billing_sync_order_access('sandbox',pg_temp.test_id('773',1)::text,'["vantare.plan.pro"]'::jsonb);
+select is((select resolution from public.billing_checkout_attempts where user_id=pg_temp.test_id('770',1) and attempt_id=pg_temp.test_id('771',1)),'refunded','late paid event never reopens the consumed attempt');
+select is((select count(*)::integer from public.billing_checkout_attempts where user_id=pg_temp.test_id('770',1) and resolution is null),1,'late event leaves the new reservation intact');
+
 select ok(not has_function_privilege('anon','private.close_terminal_checkout_attempts(uuid,text)','execute'),'anonymous cannot release attempts');
 select ok(not has_function_privilege('authenticated','private.close_terminal_checkout_attempts(uuid,text)','execute'),'authenticated cannot supply terminal proof');
 select ok(not has_function_privilege('service_role','private.close_terminal_checkout_attempts(uuid,text)','execute'),'helper remains private to guarded RPCs');

@@ -1,16 +1,44 @@
-## VANTA-96 / #1770 · Intento no cerrado tras refund: regresión (24-oct)
+## VANTA-96 / #1770 · Refund, Pro retirado y recompra verificados (24-oct)
 
-Encargo del orquestador: PR aparte desde nightly9e718615e, rama
-vantareapp/isa-1770-checkout-refunded. Bug real, no artefacto403: order.refunded,
-refund.updated y cancelación están procesados, ledger refunded, Pro revocado;
-solo la compensación automática escribe resolution=refunded. El flujo normal
-no cierra la reserva y bloquea toda recompra. Nueva regresión SQL antes del
-arreglo; prueba reembolso agregado/por eventos, pending/parcial/fallido,
-revocación/cancelación a fin de periodo, backfill y exclusión de reservas.
-Se preparará migración canónica y se verificará en CI LF/CRLF, sin tocar prod.
-Mantener billing-webhook staging con firma#1769 ya desplegada; no reemplazarlo
-por una rama que aún no la contiene. Ensayo anterior íntegramente devuelto,
-sin Pro; nuevo pago no iniciado. Despliegues staging del arreglo autorizados.
+PR https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1771 a nightly,
+rama vantareapp/isa-1770-checkout-refunded, base9e718615e. Bug real: el flujo
+normal no cerraba el intento; no era pérdida de eventos403 (ya procesados).
+Migración canónica20261024182517 cierra solo por binding/cuenta/entorno/producto
+válidos y reembolso íntegro (agregado o suma succeeded) o revocación efectiva.
+Resolution=refunded/revoked, URL retirada; filas/bindings conservados. Pending,
+parcial/fallido o cancelación al fin del periodo pagado no liberan la reserva.
+Se añade resolución en RPC de proyección y recuperación al siguiente claim;
+misma barrera UUID antes de filas. Helper privado, sin acceso servicio/cliente.
+
+RED previo12/24 aserciones fallan. GREEN en a27e092ff:27 pgTAP y carrera real
+entre dos claims PASS, arnés comercial completo LF/CRLF y seis checks verdes.
+Último commit añade seis negativas de producto/binding/entorno/evento viejo y
+este resultado; la CI final se registra en el PR. No cambios Rust ni workflows.
+
+Aplicación autorizada SOLO staging rilwmlbnucbbayaulnxw desde
+`a27e092ffd0fb5b1d45b08831f0a98e16cecbcd6`: copia completa reciente verificada,
+única migración pendiente y su historial en una transacción,98/98. Ningún
+UPDATE operativo manual ni nuevo deploy Edge; se conserva billing-webhookv9
+con #1769/58ce4189f y native-billing-checkoutv3 con #1766/efeb4582d.
+
+E2E sandbox COMPLETO: checkout nativo200 recupera intento histórico por código;
+pago test599c (net495+IVA104), webhook real202, pedido en ledger y licencia Pro
+200 firmada Ed25519 QA. Otro checkout con Pro activo409. Refund normal201/succeeded
+por599c; ANTES de cancelar, refund.* cierra intento como refunded y native-license
+pierde Pro, firma QA válida. Después DELETE de esa suscripción200, canceled
+inmediata sin renovación. Todas las entregas del pedido/sub/refund nuevos202.
+Nueva compra permitida200; reintento mismo UUID200/reused; UUID distinto409.
+Solo una reserva abierta; checkout final SIN PAGAR, caduca25-oct18:34:21Z.
+No Owner sintético ni reconcile ni compensación activada. No dos sesiones activas.
+
+Producción intacta, venta cerrada. Antes de abrir, requieren autorización aparte
+los arreglos de metadata#1766, firma#1769 (auditar modo del endpoint) y migración
+#1771. No merge ni release por este worker. Evidencia externa:
+RESULTADO-1770.md,1770-grant-proof.json,1770-refund-withdrawal-proof.json,
+1770-provider-delivery-proof.json,1770-repurchase-proof.json y EJECUCION.md en
+evidence/supabase-staging, también registro general. Rollback: copia completa
+previa y definiciones de tres RPC conservadas protegidas; no reabrir manualmente
+checkouts consumidos ni restaurar datos sin un procedimiento autorizado.
 
 ## VANTA-96 / #1767 · Pago sandbox devuelto; bloqueo de firma (24-oct)
 

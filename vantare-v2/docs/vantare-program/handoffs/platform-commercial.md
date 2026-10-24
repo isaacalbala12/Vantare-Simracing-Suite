@@ -1,3 +1,41 @@
+## VANTA-96 / #1767 · Pago sandbox devuelto; bloqueo de firma (24-oct)
+
+#1766 fusionado en nightly70e0da590. Autorizado y ejecutado solo el deploy de
+native-billing-checkout staging desde efeb4582d71cbdecf08ed6a771b84efe85df1ddc;
+versión3, verify_jwt=false y resto de funciones sin cambiar. Ref validado.
+Checkout nativo200, pago sandbox con tarjeta4242: succeeded, total599EURcents,
+net495 e IVA104, sin trial. La dirección sintética example.com no acepta correo;
+se usó alias QA del buzón público de soporte, solo en custodia, sin cambiar
+identidad Clerk ni enviar un correo Owner sintético.
+
+E2E NO APTO: entregas reales de Polar403 invalid_webhook_signature, inbox sin
+order.paid ni subscription.active, ledger0. Digest del secreto Edge correcto.
+Endpoint nuevo22-oct; Polar usa derivación Standard para secretos posteriores
+al08-sep. Nuestro verificador aún usa UTF8 de toda la cadena. Fixture pública
+independiente de standardwebhooks valida la firma Standard y reproduce rechazo
+del verificador actual; bytes decodificados funcionan. No hay headers reales
+capturados: la asociación causal se apoya en fecha/formato, fuente proveedor y403.
+La prueba sintética anterior solo probaba derivación legacy, no el emisor actual.
+
+Limpieza cerrada: DELETE de la única suscripción QA200, canceled inmediata sin
+renovación; refund único201/succeeded,495net+104tax=599total. En suscripciones,
+refund con revoke_benefits=true está prohibido incluso cancelada; por eso se
+cancela aparte y se usa false en el refund. Los dos400 previos no crearon refund.
+Native-license200 sin Pro, firma Ed25519 QA válida. No se afirma retirada de Pro
+porque nunca se concedió. No filas/manual grants, replay firmado artificialmente,
+reconcile, migración ni otro deploy para esquivar el fallo.
+
+Nuevo bloqueo https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1767
+(area:licencias, Project Vantare). Próximo paso del orquestador: encargar corrección
+y regresiones Standard/legacy, revisar y autorizar billing-webhook en staging;
+después reentrega desde Polar y ensayo nuevo completo Pro→refund→sin Pro.
+Producción intacta. Su checkout conserva el bug de metadata vacía: hay que desplegar
+#1766 en prod antes de abrir venta, previa autorización separada aún pendiente.
+La firma del endpoint Production requiere comprobación aparte; no se afirma su
+esquema ni se cambian allí secretos o funciones. Evidencia externa:
+evidence/supabase-staging/sandbox-payment-final.json, prove-standard-signature.ts
+y EJECUCION.md (también registro general).
+
 ## VANTA-96 / #1730 · Pago sandbox bloqueado por metadata vacía (24-oct)
 
 Encargo nuevo autoriza checkout/pago/refund solo sandbox; Production intacto.

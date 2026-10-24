@@ -1,12 +1,10 @@
 # Compra E2E en Polar sandbox · VANTA-96
 
-Estado24-oct: intento de checkout autorizado, pero la Edge falla502 por Polar422
-en metadata vacía. No hay URL ni pago; corregir #1730 antes del ensayo.
-Infraestructura preparada; pago y refund todavía sin ejecutar.
-La compra simulada y su reembolso siguen pendientes del ensayo supervisado.
-No hay compra real con devolución. No se cambian secretos ni flags de Supabase
-Production para este ensayo. La apertura de acceso/lista en la web es un encargo
-aparte autorizado expresamente el24-oct (PR web#14).
+Estado24-oct, después de #1766: checkout nativo200 y pago sandbox599céntimos
+realizados; refund íntegro succeeded y suscripción cancelada. **E2E bloqueado**:
+webhook real403 invalid_webhook_signature (#1767), ledger0 y Pro nunca concedido.
+No repetir pago hasta corregir/verificar la firma. Producción conserva el bug de
+metadata de #1766: despliegue allí pendiente de autorización antes de abrir venta.
 
 ## Entorno y preparación ya ejecutada
 
@@ -22,7 +20,7 @@ Sus sentencias originales y las2 filas de roadmap están en la copia protegida.
 No se borraron esquemas internos ni se revocó ninguna clave.
 
 Cinco funciones desplegadas desde ese SHA con verify_jwt=false:
-native-account-authorize(v1), native-billing-checkout(v1), billing-webhook(v7),
+native-account-authorize(v1), native-billing-checkout(v3 tras #1766), billing-webhook(v7),
 native-license(v1), billing-reconcile(v1). No se desplegó el receptor Owner,
 Testing Center, marketing ni otros endpoints. Sin cron QA.
 
@@ -53,22 +51,24 @@ compensación no activada. No configurar avisos Owner ni enviar correo sintétic
   Secreto en custodia coincide. Evento de catálogo sintético firmado:202 y
   cuarentena missing_product_id; firma incorrecta403. Dos ensayos QA marcados;
   no inventan pedidos ni habilitan licencias de pago. Entrega desde Polar y
-  proyección de compra todavía no probadas.
+  proyección de compra todavía no validadas. Después se recibió la entrega real,
+  pero fue rechazada403 por #1767; no confundir la prueba preliminar con éxito E2E.
 - CHECKOUT_SUCCESS_URL y CHECKOUT_CANCEL_URL: https://sandbox.polar.sh/.
   Retorno técnico HTTPS que no toca vantare.app; no publica una web QA nueva.
 
-## Ejecución supervisada, después de autorizar checkout
+## Repetición del ensayo, después de corregir y desplegar #1767
 
 1. Compilar/instalar una app QA con el archivo sandbox anterior (todavía no hay
    build QA preparado). Alternativa: sesión OAuth QA controlada que llama al
-   mismo native-billing-checkout de staging; presentar esa vía antes de ejecutarla.
+   mismo native-billing-checkout de staging: esta vía ya se utilizó y está
+   autorizada, igual que el pago/refund sandbox; no pedirlos otra vez.
    RC6 publicada sigue usando producción y no sirve para esta compra sandbox.
    Login usa /acceso ya abierto; nuevo navegador puede pedir código email.
    Google sigue deshabilitado en Clerk y no es requisito del ensayo.
 2. Confirmar project ref, token/catalog sandbox y cuenta QA. Crear **un** checkout
    pro_monthly por la Edge staging, sin descuentos/trial. Comprobar host sandbox
-   y precio5,99EUR mensual antes de pagar. No existe URL de checkout hasta esa
-   creación, que este worker aún no ha realizado. Anotar los IDs solo en evidencia
+   y precio5,99EUR mensual antes de pagar. El primer checkout ya se pagó/devolvió;
+   la nueva URL solo existirá al crear el siguiente. Anotar los IDs solo en evidencia
    privada y comprobar que net_amount será positivo; no usar cupón100%.
 3. Isaac abre ese checkout y usa tarjeta de prueba4242 4242 4242 4242, fecha futura
    y CVC de prueba. Nunca tarjeta real. Comprobar pedido/subscripción sandbox y
@@ -97,11 +97,30 @@ webhook sandbox para evitar reintentos; pedir encargo de cierre antes de hacerlo
 ## Qué necesita ahora Isaac
 
 No falta token, webhook secret ni contraseña BD: los tres ya funcionan.
-Falta elegir/autorizar la creación del checkout y la vía de app QA o sesión
-controlada, y completar el pago simulado. Si se usa navegador nuevo, la cuenta
+Falta el encargo del arreglo #1767 y autorizar su SHA de despliegue en staging;
+checkout/pago/refund sandbox ya están autorizados. Si se usa navegador nuevo, la cuenta
 QA debe poder recibir el código email de Clerk. No hace falta token Production,
 correo Owner sintético ni cambiar vantare.app para el pago.
 
 Fuentes: [sandbox y tarjeta de prueba](https://polar.sh/docs/integrate/sandbox),
 [claves Supabase](https://supabase.com/docs/guides/auth/signing-keys),
 [refunds](https://polar.sh/docs/api-reference/refunds/create).
+
+## Resultado del primer pago y condiciones para repetir
+
+La tarjeta de prueba4242,12/30,CVC123 funcionó. Alias QA del buzón público de
+soporte en custodia privada, porque el correo sintético example.com fue rechazado
+por Polar; la identidad de la app sigue siendo la cuenta QA custodiada de Clerk.
+Nunca inventar un destinatario Gmail ajeno. No hace falta acción de Isaac sobre
+la sesión ya pagada/devuelta; no usar ese checkout para comprar otra vez.
+
+El siguiente ensayo debe demostrar una entrega firmada por Polar (no solo
+nuestro helper), ledger único, licencia Pro verificable, y después refund/cancel
+y retirada. Para pedidos de suscripción, cancelar la suscripción por su vía
+propia y pedir el refund con revoke_benefits=false: true está prohibido para ese
+tipo de pedido. El importe de refund fue495net y Polar añadió104 de impuesto,
+los599céntimos totales, un único refund succeeded. No normalizar importes a mano.
+
+La reentrega de los eventos antiguos requiere el encargo del arreglo de firma;
+no se cambió el secreto ni se deshabilitó verificación para forzar este E2E.
+No conceder Pro por SQL ni usar reconcile para ocultar un webhook roto.

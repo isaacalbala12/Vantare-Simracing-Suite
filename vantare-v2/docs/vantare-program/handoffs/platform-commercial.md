@@ -1,3 +1,17 @@
+## VANTA-96 / #1770 · Intento no cerrado tras refund: regresión (24-oct)
+
+Encargo del orquestador: PR aparte desde nightly9e718615e, rama
+vantareapp/isa-1770-checkout-refunded. Bug real, no artefacto403: order.refunded,
+refund.updated y cancelación están procesados, ledger refunded, Pro revocado;
+solo la compensación automática escribe resolution=refunded. El flujo normal
+no cierra la reserva y bloquea toda recompra. Nueva regresión SQL antes del
+arreglo; prueba reembolso agregado/por eventos, pending/parcial/fallido,
+revocación/cancelación a fin de periodo, backfill y exclusión de reservas.
+Se preparará migración canónica y se verificará en CI LF/CRLF, sin tocar prod.
+Mantener billing-webhook staging con firma#1769 ya desplegada; no reemplazarlo
+por una rama que aún no la contiene. Ensayo anterior íntegramente devuelto,
+sin Pro; nuevo pago no iniciado. Despliegues staging del arreglo autorizados.
+
 ## VANTA-96 / #1767 · Pago sandbox devuelto; bloqueo de firma (24-oct)
 
 #1766 fusionado en nightly70e0da590. Autorizado y ejecutado solo el deploy de

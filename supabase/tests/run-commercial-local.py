@@ -449,7 +449,7 @@ $$;
    'billing_reconciliation.test.sql','billing_subscription_lifecycle.test.sql',
    'billing_observability.test.sql','operational_access.test.sql','billing_order_refund_ledger.test.sql',
    'canonical_device_claim.test.sql','native_admin.test.sql','visual_roadmap_clickup.test.sql']
-  for optional in ['commercial_tombstone.test.sql','commercial_data_boundary.test.sql','commercial_refunds.test.sql','commercial_admin_deleted.test.sql','commercial_storage_probe.test.sql','commercial_pilot_deletion.test.sql','testing_followup_F1IP.test.sql','commercial_testing_identity.test.sql','commercial_posthog_consent.test.sql','testing_report_rich_admission.test.sql','testing_report_legacy_closed.test.sql']:
+  for optional in ['checkout_terminal_attempts.test.sql','commercial_tombstone.test.sql','commercial_data_boundary.test.sql','commercial_refunds.test.sql','commercial_admin_deleted.test.sql','commercial_storage_probe.test.sql','commercial_pilot_deletion.test.sql','testing_followup_F1IP.test.sql','commercial_testing_identity.test.sql','commercial_posthog_consent.test.sql','testing_report_rich_admission.test.sql','testing_report_legacy_closed.test.sql']:
    if (ROOT/'supabase/tests'/optional).exists(): suites.append(optional)
   if not (args.baseline or args.before_deleted_authorizer or args.before_posthog_consent_clear): suites.append('commercial_private_writes.test.sql')
   if not (args.baseline or args.before_deleted_authorizer or args.before_posthog_consent_clear or args.before_private_write_barriers):

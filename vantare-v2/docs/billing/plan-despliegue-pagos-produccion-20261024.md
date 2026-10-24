@@ -178,6 +178,12 @@ El despliegue técnico anterior **no abre la venta**. Antes de abrir:
   CHECKOUT_SUCCESS_URL, CHECKOUT_CANCEL_URL. Verificar bindings/migraciones D1,
   rotación del JWT corto y cron según el runbook de web-compra antes de publicar.
   Los valores existentes se reutilizan, no se inventan ni se piden por chat.
+  **Pendiente para esa web:** su código lee productos y descuentos con el mismo
+  POLAR_ACCESS_TOKEN que crea checkouts. El token backend actual devuelve 403
+  insufficient_scope en esas lecturas. Isaac deberá aportar o ampliar un token
+  del Worker con `products:read`, `discounts:read` y `checkouts:write`, y conservar
+  los demás permisos exigidos por sus rutas. No se cambia ahora el token backend
+  ni se presupone que el token de lectura tenga permiso de crear checkouts.
 - Confirmar receptor Owner/email y cron sanos, instalador con URL bridge y
   públicas correctas, y build/catálogo que muestra los planes aprobados.
   Marketing e IA siguen false y compensación OFF: no son requisito de apertura

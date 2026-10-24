@@ -19,11 +19,29 @@ Un intento de suite Clerk completa encontró errores de tipos preexistentes en
 storage-abort.test.ts; la regresión de firma Clerk index.test.ts sí pasa con tipos.
 CI nueva independiente prueba firmas y billing; workflows anteriores intactos.
 
-Despliegue autorizado SOLO billing-webhook staging desde el SHA del arreglo;
-pendiente de CI y ejecución del ensayo nuevo. ACK de contrato202 (no200).
-Pago anterior599c íntegramente devuelto, suscripción cancelada y Pro nunca
-concedido (#1768, evidencia externa). Producción intacta: requiere por separado
-#1766 y auditar modo de firma antes de desplegar #1767. No abrir venta.
+PR https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1769.
+Despliegue autorizado ejecutado SOLO billing-webhook staging desde
+`58ce4189ffa60d123c2473997269c4b4cd09f71e`, versión9, verify_jwt=false.
+Ref comprobado; otras funciones, configuración de Polar y flags intactos.
+Polar reintentó automáticamente eventos reales:202/succeeded, incluidos
+subscription.active, order.refunded y refund.updated. Ledger anterior pasa0→1,
+estado refunded; grant Pro revocado. Native-license200 sin Pro y firma Ed25519 QA
+verificada; ES256 bridge también válido. Refund599c y cancelación inmediata
+siguen confirmados. No se afirma un ensayo nuevo Pro→refund completo.
+
+El checkout nuevo por la Edge devuelve409 checkout_in_progress: intento anterior
+open/resolutionNULL pese a devolución final. Primer409 transitorio attempt_conflict
+durante convergencia; después grant revocado y bloqueo estable por fila previa.
+Nuevo hallazgo https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1770,
+fuera del arreglo de firma: no borrar intentos ni forzar resolución/ledger/Pro,
+no activar compensación. Nuevo pago NO iniciado. Encargar liberación segura de
+intento reembolsado y después repetir ensayo completo. Pruebas de firma y arnés
+comercial LF/CRLF verdes en58ce4189f; CI del último HEAD documental se registra
+en el PR. Evidencia signature-fix-runtime.json, reconstructed-signature-proof.json
+y EJECUCION.md en evidence/supabase-staging (también registro general).
+
+Producción intacta: requiere por separado #1766 y auditar modo de firma antes
+de desplegar #1767. No abrir venta. No merge ni release hechos por este worker.
 
 ### Registro del ensayo anterior (superado por el encargo de corrección)
 

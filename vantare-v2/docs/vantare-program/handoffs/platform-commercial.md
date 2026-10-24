@@ -1,3 +1,33 @@
+## VANTA-96 / #1713 · Staging preparado; parada antes de checkout (24-oct)
+
+Copia completa reciente y verificada, reconstrucción97/97 y cinco funciones
+publicadas SOLO en rilwmlbnucbbayaulnxw desde el SHA autorizado
+1b732b67d605298f3056c8ca78d692f132217e2d. ES256 y Ed25519 QA propias;
+TPA/fila Clerk habilitada tras verificar ES256 → PostgREST. Identidad de la
+cuenta QA de Clerk Production reutilizada según runbook, sin cambiar Clerk.
+Bridge200, PostgREST200 y native-license200; ambas firmas verificadas.
+Producto existente sandbox599EURcents/mes, sin trial, reutilizado. Webhook
+apunta a staging y secreto coincide; recepción sintética firmada202 en
+cuarentena missing_product_id por ser evento de catálogo sin compra. Firma
+inválida403. No se afirma entrega originada desde Polar ni ledger de compra.
+No checkout, pago, reembolso ni correo Owner; no scheduler QA.
+
+Apertura web autorizada aparte en VANTA-95/96: PR web#14, código publicado
+5c7c0a5c4e990cbf299f828ec372d4fb8a4c3137 en beta, versión
+5ad9ebe3-5b28-4250-848e-99e2bfba7ea3. Lista verificada200/400/429 y fila QA
+borrada. OAuth PKCE con sesión QA custodiada completa y token/userinfo200.
+Login de nuevo navegador acepta contraseña y pide segundo factor email_code;
+Google disabled en Clerk. No se desactiva esa protección ni se habilita Google.
+Rollback web y autorización excepcional visibles en EJECUCION.md y PR web.
+
+Config QA custodiada lista en secrets/sandbox-staging-20261021/build-config-sandbox.env.
+No se ha compilado/instalado una app QA apuntada a staging ni creado URL checkout.
+Siguiente paso del orquestador: autorizar el checkout y elegir build QA o sesión
+controlada directa. No reutilizar RC6 productiva para comprar en sandbox.
+Evidencia: evidence/supabase-staging/EJECUCION.md y qa-precheckout-e2e.json;
+registro general evidence/supabase-reconstruccion/EJECUCION.md. Producción
+Supabase intacta en este tramo. La web sí se publicó por autorización específica.
+
 ## VANTA-96 / #1713 · Copia staging PASS, token sandbox sin permiso (22-oct)
 
 Archivos nuevos recibidos20:55. Contraseña staging válida; copia completa con

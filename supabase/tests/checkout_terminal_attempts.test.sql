@@ -90,5 +90,8 @@ select pg_temp.full_refund(7);
 select is((select resolution from public.billing_checkout_attempts where user_id=pg_temp.test_id('770',8)),null::text,'another account remains reserved');
 select is((select count(*)::integer from public.billing_checkout_attempts where user_id=pg_temp.test_id('770',7)),1,'terminal closure never deletes attempt history');
 
+select ok(not has_function_privilege('anon','private.close_terminal_checkout_attempts(uuid,text)','execute'),'anonymous cannot release attempts');
+select ok(not has_function_privilege('authenticated','private.close_terminal_checkout_attempts(uuid,text)','execute'),'authenticated cannot supply terminal proof');
+select ok(not has_function_privilege('service_role','private.close_terminal_checkout_attempts(uuid,text)','execute'),'helper remains private to guarded RPCs');
 select * from finish();
 rollback;

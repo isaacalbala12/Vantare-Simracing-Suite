@@ -7,6 +7,7 @@ from commercial_admin_lock_order import run_admin_lock_order
 from commercial_storage_race import run_storage_owners, run_storage_multipart, run_storage_buckets
 from commercial_roadmap_role import run_roadmap_role_regression, run_existing_role_regression
 from commercial_owner_alert import run_owner_alert_race
+from commercial_checkout_terminal import run_terminal_checkout_race
 parser=argparse.ArgumentParser()
 parser.add_argument('--pg-bin', required=True)
 parser.add_argument('--docker', action='store_true', help='Own disposable Supabase PostgreSQL container; pg-bin supplies clients only')
@@ -472,6 +473,7 @@ $$;
     (OUT/'polar-checkout-diagnostic.log').write_text(diagnostic.stdout+diagnostic.stderr,encoding='utf-8')
     if diagnostic.returncode: raise RuntimeError(diagnostic.stdout+diagnostic.stderr)
     print('Polar checkout diagnostic privacy and standard payload PASS',flush=True)
+   run_terminal_checkout_race(BIN,conn,ENV,run,OUT)
    run_owner_alert_race(run,conn,OUT)
    if args.deno_bin:
     owner_tests=subprocess.run([args.deno_bin,'test','--cached-only','--no-lock','--allow-env',

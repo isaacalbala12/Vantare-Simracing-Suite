@@ -1,7 +1,7 @@
 ## VANTA-96 / #1770 · Refund, Pro retirado y recompra verificados (24-oct)
 
 PR https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1771 a nightly,
-rama vantareapp/isa-1770-checkout-refunded, base9e718615e. Bug real: el flujo
+rama vantareapp/isa-1770-checkout-refunded, base inicial9e718615e, actualizada a nightly29336e124 (incluye#1769). Bug real: el flujo
 normal no cerraba el intento; no era pérdida de eventos403 (ya procesados).
 Migración canónica20261024182517 cierra solo por binding/cuenta/entorno/producto
 válidos y reembolso íntegro (agregado o suma succeeded) o revocación efectiva.
@@ -39,6 +39,53 @@ RESULTADO-1770.md,1770-grant-proof.json,1770-refund-withdrawal-proof.json,
 evidence/supabase-staging, también registro general. Rollback: copia completa
 previa y definiciones de tres RPC conservadas protegidas; no reabrir manualmente
 checkouts consumidos ni restaurar datos sin un procedimiento autorizado.
+
+## VANTA-96 / #1767 · Corrección de firma Polar Standard (24-oct)
+
+Rama `vantareapp/isa-1767-polar-standard-signature`, base nightly `9e718615e`.
+Standard Webhooks decodifica Base64 tras el prefijo opcional whsec_; el receptor
+usaba UTF-8 de toda la cadena. GET sandbox confirma uses_standard_webhook_signature=true
+con format=raw: Raw describe JSON, no otra firma. El emisor Polar selecciona por
+fecha de generación (corte08-sep); el SDK JS consultado todavía implementa legacy.
+Nuevo modo por defecto standard; compatibilidad explícita solo con
+POLAR_WEBHOOK_SECRET_FORMAT=legacy_utf8, nunca fallback por petición.
+HMAC se verifica mediante WebCrypto nativo, timestamp ±300s y varias firmas v1;
+configuración inválida503 antes de persistir. Clerk sigue recibiendo bytes propios.
+
+176 pruebas locales PASS: vector público fijo upstream, firma independiente,
+ambos modos sin aceptación cruzada, tolerancia/límites, handlers/ledger y Clerk.
+Payload real Polar de order.paid reconstruido offline con secreto en memoria:
+verificador antiguo rechaza y nuevo acepta, sin llamadas ni efectos externos.
+No se conservan headers originales; no presentar la reconstrucción como captura.
+Un intento de suite Clerk completa encontró errores de tipos preexistentes en
+storage-abort.test.ts; la regresión de firma Clerk index.test.ts sí pasa con tipos.
+CI nueva independiente prueba firmas y billing; workflows anteriores intactos.
+
+PR https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1769.
+Despliegue autorizado ejecutado SOLO billing-webhook staging desde
+`58ce4189ffa60d123c2473997269c4b4cd09f71e`, versión9, verify_jwt=false.
+Ref comprobado; otras funciones, configuración de Polar y flags intactos.
+Polar reintentó automáticamente eventos reales:202/succeeded, incluidos
+subscription.active, order.refunded y refund.updated. Ledger anterior pasa0→1,
+estado refunded; grant Pro revocado. Native-license200 sin Pro y firma Ed25519 QA
+verificada; ES256 bridge también válido. Refund599c y cancelación inmediata
+siguen confirmados. No se afirma un ensayo nuevo Pro→refund completo.
+
+El checkout nuevo por la Edge devuelve409 checkout_in_progress: intento anterior
+open/resolutionNULL pese a devolución final. Primer409 transitorio attempt_conflict
+durante convergencia; después grant revocado y bloqueo estable por fila previa.
+Nuevo hallazgo https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1770,
+fuera del arreglo de firma: no borrar intentos ni forzar resolución/ledger/Pro,
+no activar compensación. Nuevo pago NO iniciado. Encargar liberación segura de
+intento reembolsado y después repetir ensayo completo. Pruebas de firma y arnés
+comercial LF/CRLF verdes en58ce4189f; CI del último HEAD documental se registra
+en el PR. Evidencia signature-fix-runtime.json, reconstructed-signature-proof.json
+y EJECUCION.md en evidence/supabase-staging (también registro general).
+
+Producción intacta: requiere por separado #1766 y auditar modo de firma antes
+de desplegar #1767. No abrir venta. No merge ni release hechos por este worker.
+
+### Registro del ensayo anterior (superado por el encargo de corrección)
 
 ## VANTA-96 / #1767 · Pago sandbox devuelto; bloqueo de firma (24-oct)
 

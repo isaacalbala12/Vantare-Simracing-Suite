@@ -2,7 +2,8 @@
   "version": "5",
   "specifiers": {
     "npm:@polar-sh/sdk@*": "0.48.1",
-    "npm:standardwebhooks@*": "1.0.0"
+    "npm:standardwebhooks@*": "1.0.0",
+    "npm:standardwebhooks@1.0.0": "1.0.0"
   },
   "npm": {
     "@polar-sh/sdk@0.48.1": {

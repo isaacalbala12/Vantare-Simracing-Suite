@@ -1,3 +1,32 @@
+## VANTA-96 / #1767 · Corrección de firma Polar Standard (24-oct)
+
+Rama `vantareapp/isa-1767-polar-standard-signature`, base nightly `9e718615e`.
+Standard Webhooks decodifica Base64 tras el prefijo opcional whsec_; el receptor
+usaba UTF-8 de toda la cadena. GET sandbox confirma uses_standard_webhook_signature=true
+con format=raw: Raw describe JSON, no otra firma. El emisor Polar selecciona por
+fecha de generación (corte08-sep); el SDK JS consultado todavía implementa legacy.
+Nuevo modo por defecto standard; compatibilidad explícita solo con
+POLAR_WEBHOOK_SECRET_FORMAT=legacy_utf8, nunca fallback por petición.
+HMAC se verifica mediante WebCrypto nativo, timestamp ±300s y varias firmas v1;
+configuración inválida503 antes de persistir. Clerk sigue recibiendo bytes propios.
+
+176 pruebas locales PASS: vector público fijo upstream, firma independiente,
+ambos modos sin aceptación cruzada, tolerancia/límites, handlers/ledger y Clerk.
+Payload real Polar de order.paid reconstruido offline con secreto en memoria:
+verificador antiguo rechaza y nuevo acepta, sin llamadas ni efectos externos.
+No se conservan headers originales; no presentar la reconstrucción como captura.
+Un intento de suite Clerk completa encontró errores de tipos preexistentes en
+storage-abort.test.ts; la regresión de firma Clerk index.test.ts sí pasa con tipos.
+CI nueva independiente prueba firmas y billing; workflows anteriores intactos.
+
+Despliegue autorizado SOLO billing-webhook staging desde el SHA del arreglo;
+pendiente de CI y ejecución del ensayo nuevo. ACK de contrato202 (no200).
+Pago anterior599c íntegramente devuelto, suscripción cancelada y Pro nunca
+concedido (#1768, evidencia externa). Producción intacta: requiere por separado
+#1766 y auditar modo de firma antes de desplegar #1767. No abrir venta.
+
+### Registro del ensayo anterior (superado por el encargo de corrección)
+
 ## VANTA-96 / #1767 · Pago sandbox devuelto; bloqueo de firma (24-oct)
 
 #1766 fusionado en nightly70e0da590. Autorizado y ejecutado solo el deploy de

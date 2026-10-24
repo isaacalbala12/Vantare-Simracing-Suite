@@ -49,40 +49,44 @@ export function validateWebhookHeaderPresence(
   return missing;
 }
 
-/**
- * Polar passes the full secret string to Standard Webhooks by UTF-8 encoding
- * the entire value (including the `whsec_` prefix), not by base64-decoding
- * the suffix. See @polar-sh/sdk `validateEvent`.
+/** Standard Webhooks strings are Base64 key bytes, optionally prefixed whsec_.
+ * Polar endpoints predating its signing cutoff require an explicit legacy mode.
+ * Raw byte callers (including Clerk) already own their key derivation.
  */
-function decodeSigningSecret(secret: string): Uint8Array<ArrayBuffer> {
+export function decodeWebhookSigningSecret(
+  secret: string,
+  format = "standard",
+): Uint8Array<ArrayBuffer> {
   const trimmed = secret.trim();
-  const encoded = new TextEncoder().encode(trimmed);
-  const buffer = new ArrayBuffer(encoded.length);
-  const bytes = new Uint8Array(buffer);
-  bytes.set(encoded);
-  return bytes;
-}
-
-function parseSignatureHeader(signatureHeader: string): string[] {
-  return signatureHeader
-    .split(/\s+/)
-    .map((part) => part.trim())
-    .filter(Boolean)
-    .map((part) => {
-      const [version, value] = part.split(",", 2);
-      if (version !== "v1" || !value) return "";
-      return value;
-    })
-    .filter(Boolean);
-}
-
-function constantTimeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) {
-    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  if (format === "legacy_utf8") {
+    if (!trimmed) throw new WebhookConfigError("Empty webhook signing key");
+    return new TextEncoder().encode(trimmed);
   }
-  return diff === 0;
+  if (format !== "standard") {
+    throw new WebhookConfigError("Unsupported webhook secret format");
+  }
+  const encoded = trimmed.startsWith("whsec_") ? trimmed.slice(6) : trimmed;
+  try {
+    if (!encoded || !/^[A-Za-z0-9+/]+={0,2}$/.test(encoded)) throw new Error();
+    const bytes = Uint8Array.from(atob(encoded), (c) => c.charCodeAt(0));
+    if (!bytes.length) throw new Error();
+    return bytes;
+  } catch {
+    // Never include a signing secret in configuration errors or logs.
+    throw new WebhookConfigError("Invalid Base64 webhook signing key");
+  }
+}
+
+function parseSignatureHeader(
+  signatureHeader: string,
+): Uint8Array<ArrayBuffer>[] {
+  return signatureHeader.split(/\s+/).flatMap((part) => {
+    // SHA-256 HMAC is exactly 32 bytes / 44 padded Base64 characters.
+    const match = /^v1,([A-Za-z0-9+/]{43}=)$/.exec(part);
+    return match
+      ? [Uint8Array.from(atob(match[1]), (c) => c.charCodeAt(0))]
+      : [];
+  });
 }
 
 export async function verifyStandardWebhook(
@@ -90,6 +94,7 @@ export async function verifyStandardWebhook(
   headers: StandardWebhookHeaders,
   secret: string | Uint8Array<ArrayBuffer>,
   toleranceSeconds = DEFAULT_TOLERANCE_SECONDS,
+  nowSeconds = Math.floor(Date.now() / 1000),
 ): Promise<void> {
   const missing = validateWebhookHeaderPresence(headers);
   if (missing.length > 0) {
@@ -99,40 +104,47 @@ export async function verifyStandardWebhook(
   }
 
   const timestamp = Number(headers.timestamp);
-  if (!Number.isFinite(timestamp)) {
+  if (!/^\d+$/.test(headers.timestamp) || !Number.isSafeInteger(timestamp)) {
     throw new WebhookVerificationError("Invalid webhook timestamp");
   }
 
-  const now = Math.floor(Date.now() / 1000);
-  if (Math.abs(now - timestamp) > toleranceSeconds) {
+  if (
+    !Number.isFinite(toleranceSeconds) || toleranceSeconds < 0 ||
+    !Number.isFinite(nowSeconds)
+  ) {
+    throw new WebhookConfigError(
+      "Invalid webhook timestamp tolerance or clock",
+    );
+  }
+  if (Math.abs(nowSeconds - timestamp) > toleranceSeconds) {
     throw new WebhookVerificationError("Webhook timestamp outside tolerance");
   }
 
   const keyBytes = typeof secret === "string"
-    ? decodeSigningSecret(secret)
+    ? decodeWebhookSigningSecret(secret)
     : secret;
   const cryptoKey = await crypto.subtle.importKey(
     "raw",
     keyBytes,
     { name: "HMAC", hash: "SHA-256" },
     false,
-    ["sign"],
+    ["verify"],
   );
-
-  const signedContent = `${headers.id}.${headers.timestamp}.${rawBody}`;
-  const signatureBuffer = await crypto.subtle.sign(
-    "HMAC",
-    cryptoKey,
-    new TextEncoder().encode(signedContent),
+  const signedContent = new TextEncoder().encode(
+    `${headers.id}.${headers.timestamp}.${rawBody}`,
   );
-  const expected = btoa(
-    String.fromCharCode(...new Uint8Array(signatureBuffer)),
-  );
-
-  const provided = parseSignatureHeader(headers.signature);
-  const valid = provided.some((candidate) =>
-    constantTimeEqual(candidate, expected)
-  );
+  // Native HMAC verification performs the MAC comparison in constant time.
+  // Check every candidate; never interpret untrusted headers as a key format.
+  let valid = false;
+  for (const signature of parseSignatureHeader(headers.signature)) {
+    const matches = await crypto.subtle.verify(
+      "HMAC",
+      cryptoKey,
+      signature,
+      signedContent,
+    );
+    valid = matches || valid;
+  }
 
   if (!valid) {
     throw new WebhookVerificationError("Invalid webhook signature");
@@ -147,7 +159,7 @@ export async function signStandardWebhookForTest(
   timestamp: string,
 ): Promise<string> {
   const keyBytes = typeof secret === "string"
-    ? decodeSigningSecret(secret)
+    ? decodeWebhookSigningSecret(secret)
     : secret;
   const cryptoKey = await crypto.subtle.importKey(
     "raw",

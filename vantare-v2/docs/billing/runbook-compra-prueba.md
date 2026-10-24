@@ -1,12 +1,10 @@
 # Compra E2E en Polar sandbox · VANTA-96
 
-Estado24-oct: intento de checkout autorizado, pero la Edge falla502 por Polar422
-en metadata vacía. No hay URL ni pago; corregir #1730 antes del ensayo.
-Infraestructura preparada; pago y refund todavía sin ejecutar.
-La compra simulada y su reembolso siguen pendientes del ensayo supervisado.
-No hay compra real con devolución. No se cambian secretos ni flags de Supabase
-Production para este ensayo. La apertura de acceso/lista en la web es un encargo
-aparte autorizado expresamente el24-oct (PR web#14).
+Estado24-oct, después de #1766: checkout nativo200 y pago sandbox599céntimos
+realizados; refund íntegro succeeded y suscripción cancelada. **E2E bloqueado**:
+webhook real403 invalid_webhook_signature (#1767), ledger0 y Pro nunca concedido.
+No repetir pago hasta corregir/verificar la firma. Producción conserva el bug de
+metadata de #1766: despliegue allí pendiente de autorización antes de abrir venta.
 
 ## Entorno y preparación ya ejecutada
 
@@ -105,3 +103,22 @@ correo Owner sintético ni cambiar vantare.app para el pago.
 Fuentes: [sandbox y tarjeta de prueba](https://polar.sh/docs/integrate/sandbox),
 [claves Supabase](https://supabase.com/docs/guides/auth/signing-keys),
 [refunds](https://polar.sh/docs/api-reference/refunds/create).
+
+## Resultado del primer pago y condiciones para repetir
+
+La tarjeta de prueba4242,12/30,CVC123 funcionó. Alias QA del buzón público de
+soporte en custodia privada, porque el correo sintético example.com fue rechazado
+por Polar; la identidad de la app sigue siendo la cuenta QA custodiada de Clerk.
+Nunca inventar un destinatario Gmail ajeno. No hace falta acción de Isaac sobre
+la sesión ya pagada/devuelta; no usar ese checkout para comprar otra vez.
+
+El siguiente ensayo debe demostrar una entrega firmada por Polar (no solo
+nuestro helper), ledger único, licencia Pro verificable, y después refund/cancel
+y retirada. Para pedidos de suscripción, cancelar la suscripción por su vía
+propia y pedir el refund con revoke_benefits=false: true está prohibido para ese
+tipo de pedido. El importe de refund fue495net y Polar añadió104 de impuesto,
+los599céntimos totales, un único refund succeeded. No normalizar importes a mano.
+
+La reentrega de los eventos antiguos requiere el encargo del arreglo de firma;
+no se cambió el secreto ni se deshabilitó verificación para forzar este E2E.
+No conceder Pro por SQL ni usar reconcile para ocultar un webhook roto.

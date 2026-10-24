@@ -1,5 +1,6 @@
 import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { Webhook } from "npm:standardwebhooks@1.0.0";
 import { signStandardWebhookForTest } from "../_shared/webhook-verify.ts";
 import {
   handleWebhookRequest,
@@ -409,4 +410,54 @@ Deno.test("billing-webhook: processing failure is retryable without leaking the 
   assertEquals(signals[0].code, "webhook_processing_failed");
   assertEquals(signals[0].reasonCode, "processing_failed");
   assertEquals(JSON.stringify(signals).includes("buyer@example.com"), false);
+});
+
+Deno.test("billing-webhook: Standard default and explicit legacy mode stay isolated", async () => {
+  const body = JSON.stringify({ type: "order.paid", data: {} });
+  const id = "evt_legacy_fixture";
+  const now = new Date();
+  const signature = new Webhook(btoa(TEST_WEBHOOK_SECRET)).sign(id, now, body);
+  let processed = 0;
+  const deps = {
+    getSecret: () => TEST_WEBHOOK_SECRET,
+    getSupabase: () => fakeSupabase(),
+    processEvent: async (): Promise<ProcessResult> => {
+      processed++;
+      return { status: "duplicate" };
+    },
+  };
+  const request = () =>
+    signedWebhookRequest(body, {
+      eventId: id,
+      timestamp: String(Math.floor(now.getTime() / 1000)),
+      signature,
+    });
+  assertEquals((await handleWebhookRequest(await request(), deps)).status, 403);
+  assertEquals(processed, 0);
+  assertEquals(
+    (await handleWebhookRequest(await request(), {
+      ...deps,
+      getSecretFormat: () => "legacy_utf8",
+    })).status,
+    202,
+  );
+  assertEquals(processed, 1);
+});
+
+Deno.test("billing-webhook: invalid operator format returns 503 before persistence", async () => {
+  let persisted = false;
+  const response = await handleWebhookRequest(
+    await signedWebhookRequest({ type: "order.paid", data: {} }),
+    {
+      getSecret: () => TEST_WEBHOOK_SECRET,
+      getSecretFormat: () => "auto",
+      getSupabase: () => {
+        persisted = true;
+        return fakeSupabase();
+      },
+    },
+  );
+  assertEquals(response.status, 503);
+  assertEquals(persisted, false);
+  assertEquals((await response.json()).error, "webhook_not_configured");
 });

@@ -2,6 +2,7 @@ import { handleCorsPreflight } from "../_shared/cors.ts";
 import { errorResponse, jsonResponse } from "../_shared/responses.ts";
 import { getSupabaseAdmin } from "../_shared/supabase-admin.ts";
 import {
+  decodeWebhookSigningSecret,
   getWebhookSecret,
   readStandardWebhookHeaders,
   type StandardWebhookHeaders,
@@ -10,6 +11,7 @@ import {
   WEBHOOK_HEADER_ID,
   WEBHOOK_HEADER_SIGNATURE,
   WEBHOOK_HEADER_TIMESTAMP,
+  WebhookConfigError,
   WebhookVerificationError,
 } from "../_shared/webhook-verify.ts";
 import { parsePolarWebhookEvent, processPolarWebhookEvent } from "./process.ts";
@@ -99,6 +101,7 @@ export async function readBoundedRawBody(
 export type WebhookDeps = {
   readRawBody?: (req: Request, maxBytes: number) => Promise<RawBodyResult>;
   getSecret?: () => string | null;
+  getSecretFormat?: () => string;
   verifyWebhook?: (
     rawBody: string,
     headers: StandardWebhookHeaders,
@@ -212,11 +215,29 @@ export async function handleWebhookRequest(
   }
 
   const headers = readStandardWebhookHeaders(req);
-  const verifyWebhook = deps.verifyWebhook ?? verifyStandardWebhook;
+  const verifyWebhook = deps.verifyWebhook ??
+    ((body, headers, secret) =>
+      verifyStandardWebhook(
+        body,
+        headers,
+        decodeWebhookSigningSecret(
+          secret,
+          deps.getSecretFormat?.() ??
+            Deno.env.get("POLAR_WEBHOOK_SECRET_FORMAT") ?? "standard",
+        ),
+      ));
 
   try {
     await verifyWebhook(rawBody, headers, secret);
   } catch (error) {
+    if (error instanceof WebhookConfigError) {
+      await observe("endpoint_disabled", "critical");
+      return errorResponse(
+        "webhook_not_configured",
+        "Invalid webhook signing configuration",
+        503,
+      );
+    }
     if (error instanceof WebhookVerificationError) {
       await observe("signature_invalid", "warning", {
         providerEventId: headers.id,

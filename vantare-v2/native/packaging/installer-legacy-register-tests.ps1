@@ -77,7 +77,7 @@ try {
     if($restored.sha256 -cne (Get-NativeHash (Join-Path $ModernDirectory 'Uninstall.exe')) -or -not $restored.desktop -or $restored.autostart){throw 'Uninstaller or saved preferences were not restored'}
     $shell=New-Object -ComObject WScript.Shell
     $uninstallLink=$shell.CreateShortcut((Join-Path $menu 'Desinstalar.lnk'))
-    $mainLink=$shell.CreateShortcut((Join-Path $menu 'Vantare.lnk'))
+    $mainLink=$shell.CreateShortcut((Join-Path $menu 'Vantare Simracing Suite.lnk'))
     $desktop=Join-Path ([Environment]::GetFolderPath('DesktopDirectory')) 'Vantare QA1492.lnk'
     if($uninstallLink.TargetPath -cne (Join-Path $root 'Uninstall.exe') -or -not (Test-NativeShortcutOwned $mainLink $root) -or -not (Test-NativeShortcutOwned ($shell.CreateShortcut($desktop)) $root)){throw 'Modern setup did not restore own shortcuts'}
     if((Get-NativeDataIndex (Join-Path $active 'data')) -cne $dataHash -or (Get-NativeDataIndex $data) -cne $dataHash){throw 'Recovery changed old or restored data'}

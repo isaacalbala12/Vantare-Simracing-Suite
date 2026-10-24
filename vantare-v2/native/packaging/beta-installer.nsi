@@ -38,7 +38,7 @@ VIAddVersionKey "LegalCopyright" "Vantare 2026"
 Function StartHub
   ; Register creó este acceso hacia vantare.exe --beta -Root de la generación activa.
   SetShellVarContext current
-  ExecShell "open" "$SMPROGRAMS\${SHORTCUT_FOLDER}\Vantare.lnk"
+  ExecShell "open" "$SMPROGRAMS\${SHORTCUT_FOLDER}\Vantare Simracing Suite.lnk"
 FunctionEnd
 
 Function .onInit
@@ -112,7 +112,7 @@ retry_install:
   FileClose $1
 !endif
   WriteUninstaller "$INSTDIR\Uninstall.exe"
-  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\${IDENTITY}" "DisplayName" "Vantare"
+  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\${IDENTITY}" "DisplayName" "Vantare Simracing Suite"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\${IDENTITY}" "DisplayVersion" "${VERSION}"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\${IDENTITY}" "InstallLocation" "$INSTDIR"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\${IDENTITY}" "UninstallString" '$\"$INSTDIR\Uninstall.exe$\"'
@@ -140,6 +140,7 @@ Section "Uninstall"
     SetErrorLevel 1
     Abort
   ${EndIf}
+  Delete "$SMPROGRAMS\${SHORTCUT_FOLDER}\Vantare Simracing Suite.lnk"
   Delete "$SMPROGRAMS\${SHORTCUT_FOLDER}\Vantare.lnk"
   Delete "$SMPROGRAMS\${SHORTCUT_FOLDER}\Desinstalar.lnk"
   RMDir "$SMPROGRAMS\${SHORTCUT_FOLDER}"

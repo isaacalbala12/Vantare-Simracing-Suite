@@ -26,6 +26,7 @@ function Reject-Beta([scriptblock]$Action, [string]$Message, [int]$Code = 0) {
 }
 $evidence = Assert-NativePath $EvidenceDirectory
 [IO.Directory]::CreateDirectory($evidence) | Out-Null
+. (Join-Path $PSScriptRoot 'bootstrap-tests.ps1')
 $root = Join-Path $evidence ('roundtrip-' + [guid]::NewGuid().ToString('N'))
 $first = Join-Path $Version010Directory 'vantare-native-amd64-package.zip'
 $next = Join-Path $Version011Directory 'vantare-native-amd64-package.zip'
@@ -68,11 +69,11 @@ try {
     Set-ItemProperty -LiteralPath $testKey -Name InstallLocation -Value $root
     Sync-NativeRegistration $root $oldVersion
     Assert-Beta ((Get-ItemProperty -LiteralPath $testKey).DisplayVersion -ceq $oldVersion) 'registro usa identidad externa de su raíz'
-    Assert-Beta ((Get-ItemProperty -LiteralPath $testKey).DisplayName -ceq 'Vantare') 'misma identidad técnica migra nombre visible sin duplicados'
+    Assert-Beta ((Get-ItemProperty -LiteralPath $testKey).DisplayName -ceq 'Vantare Simracing Suite') 'misma identidad técnica migra nombre visible sin duplicados'
     Set-ItemProperty -LiteralPath $testKey -Name DisplayVersion -Value '1.2.3'
     Sync-BetaRegistration $root $oldVersion
     Assert-Beta ((Get-ItemProperty -LiteralPath $testKey).DisplayVersion -ceq $oldVersion -and
-        (Get-ItemProperty -LiteralPath $testKey).DisplayName -ceq 'Vantare') 'sincronización de rollback corrige versión sin depender de migrar accesos'
+        (Get-ItemProperty -LiteralPath $testKey).DisplayName -ceq 'Vantare Simracing Suite') 'sincronización de rollback corrige versión sin depender de migrar accesos'
     $folder = 'Vantare test ' + [guid]::NewGuid().ToString('N')
     $legacyFolder = 'Vantare legacy ' + [guid]::NewGuid().ToString('N')
     Set-ItemProperty -LiteralPath $testKey -Name ShortcutFolder -Value $folder
@@ -92,7 +93,7 @@ try {
     Sync-NativeRegistration $root $oldVersion
     Assert-Beta (-not (Test-Path -LiteralPath $legacyLink)) 'migración retira acceso beta de su instalación'
     Assert-Beta (Test-Path -LiteralPath $foreignLink) 'migración conserva acceso de otra instalación'
-    $newLink = Join-Path $programs "$folder/Vantare.lnk"
+    $newLink = Join-Path $programs "$folder/Vantare Simracing Suite.lnk"
     Assert-Beta (($shell.CreateShortcut($newLink)).Arguments.Contains('-Root "' + $root + '"')) 'nuevo acceso conserva raíz y bootstrap'
     Sync-NativeRegistration $root $oldVersion
     Assert-Beta (@(Get-ChildItem -LiteralPath (Join-Path $programs $folder)).Count -eq 2) 'migración repetida no duplica accesos'
@@ -146,7 +147,12 @@ $info.UseShellExecute = $false; $info.CreateNoWindow = $true
 $info.RedirectStandardError = $true
 $process = [Diagnostics.Process]::Start($info)
 try {
-    Assert-Beta (-not (Confirm-BetaBoot $root $process 15)) 'fallo real del Hub nuevo dispara rollback'
+    Test-BusyBootstrap $root { Confirm-BetaBoot $root $process 0 } 'rollback'
+    $bootstrap = Start-TestBootstrap $root $false
+    try {
+        Assert-Beta (-not (Confirm-BetaBoot $root $process 15)) 'fallo real del Hub nuevo dispara rollback'
+        Assert-Beta $bootstrap.Process.HasExited 'rollback espera la salida real del indicador'
+    } finally { Stop-TestBootstrap $bootstrap }
     Assert-Beta ($process.HasExited -and $process.ExitCode -ne 0) 'Hub nuevo termina con error real'
     [IO.File]::WriteAllText((Join-Path $evidence 'failed-start.stderr.log'), $process.StandardError.ReadToEnd())
 } finally { $process.Dispose() }
@@ -273,7 +279,15 @@ try {
     Assert-Beta (-not (Test-Path (Join-Path $feedRoot 'boot-pending.json'))) 'feed ocupado no deja arranque pendiente'
     Assert-Beta (Test-Path $pending) 'feed ocupado conserva actualización pendiente'
 } finally { $busy.Dispose() }
-Assert-Beta (Apply-BetaUpdate $feedRoot) 'feed y Setup comparten activación'
+Test-BusyBootstrap $feedRoot { Apply-BetaUpdate $feedRoot } 'Apply pendiente'
+$bootstrap = Start-TestBootstrap $feedRoot $false
+try {
+    Assert-Beta (Apply-BetaUpdate $feedRoot) 'feed y Setup comparten activación'
+    Assert-Beta $bootstrap.Process.HasExited 'Apply espera la salida real del indicador'
+    $handles = Open-NativeBinaryGuard $feedRoot
+    foreach ($handle in $handles.Values) { $handle.Dispose() }
+    Assert-Beta $true 'guard exclusivo se obtiene después de la señal y la salida'
+} finally { Stop-TestBootstrap $bootstrap }
 Assert-Beta (Test-Path (Join-Path $feedRoot 'boot-pending.json')) 'feed exige confirmación durable'
 Assert-Beta (-not (Apply-BetaUpdate $feedRoot)) 'Apply repetido no crea generación'
 Assert-Beta (-not (Stage-BetaUpdate $feedRoot $feed)) 'misma versión no se ofrece de nuevo'

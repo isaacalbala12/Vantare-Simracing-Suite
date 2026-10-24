@@ -15,6 +15,8 @@ struct State<T> {
     value: Option<Arc<T>>,
     generation: u64,
     closed: bool,
+    #[cfg(test)]
+    waiting: Option<std::sync::mpsc::Sender<u64>>,
 }
 
 pub(crate) struct Slot<T> {
@@ -29,6 +31,8 @@ impl<T> Slot<T> {
                 value: None,
                 generation: 0,
                 closed: false,
+                #[cfg(test)]
+                waiting: None,
             }),
             changed: Condvar::new(),
         }
@@ -69,6 +73,12 @@ impl<T> Slot<T> {
             if left.is_zero() {
                 return Wait::Timeout;
             }
+            // El test observa la espera bajo el mismo cerrojo: put/close no pueden
+            // adquirirlo hasta que Condvar lo libere atómicamente al esperar.
+            #[cfg(test)]
+            if let Some(waiting) = &state.waiting {
+                let _ = waiting.send(seen);
+            }
             state = self
                 .changed
                 .wait_timeout(state, left)
@@ -81,6 +91,7 @@ impl<T> Slot<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::mpsc;
     use std::thread;
 
     const SHORT: Duration = Duration::from_millis(20);
@@ -100,22 +111,47 @@ mod tests {
 
     #[test]
     fn put_wakes_a_waiting_reader_and_close_releases_it() {
+        // Límites de fallo, no esperas para ordenar los hilos. La espera del Slot
+        // dura más que el ACK para que un notify ausente no pase al vencerla.
+        const ACK_TIMEOUT: Duration = Duration::from_secs(5);
+        const WAIT_TIMEOUT: Duration = Duration::from_secs(30);
         let slot = Arc::new(Slot::new());
+        let (waiting, waits) = mpsc::channel();
+        let (received, receipt) = mpsc::sync_channel(0);
+        let (finished, completion) = mpsc::sync_channel(0);
+        slot.lock().waiting = Some(waiting);
         let reader = {
             let slot = Arc::clone(&slot);
             thread::spawn(move || {
-                let first = slot.wait(0, Duration::from_secs(5));
-                let closed = slot.wait(1, Duration::from_secs(5));
+                let first = slot.wait(0, WAIT_TIMEOUT);
+                received.send(()).unwrap();
+                let closed = slot.wait(1, WAIT_TIMEOUT);
+                finished.send(()).unwrap();
                 (
                     matches!(first, Wait::Value(..)),
                     matches!(closed, Wait::Closed),
                 )
             })
         };
-        thread::sleep(SHORT);
+        let wait_until_blocked = |seen| {
+            let deadline = Instant::now() + ACK_TIMEOUT;
+            loop {
+                // Una condición puede despertar espuriamente y anunciar de nuevo
+                // la generación anterior: solo cuenta la fase que esperamos.
+                let left = deadline.saturating_duration_since(Instant::now());
+                if waits.recv_timeout(left).expect("lector esperando") == seen {
+                    break;
+                }
+            }
+        };
+        wait_until_blocked(0);
         slot.put(Arc::new(1));
-        thread::sleep(SHORT);
+        receipt.recv_timeout(ACK_TIMEOUT).expect("valor recibido");
+        wait_until_blocked(1);
         slot.close();
+        completion
+            .recv_timeout(ACK_TIMEOUT)
+            .expect("lector liberado por close");
         assert_eq!(reader.join().unwrap(), (true, true));
     }
 }

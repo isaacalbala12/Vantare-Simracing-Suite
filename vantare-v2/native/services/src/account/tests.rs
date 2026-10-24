@@ -110,6 +110,29 @@ fn explicit_login_restart_releases_the_fixed_callback_port() {
 }
 
 #[test]
+fn manual_link_expires_and_cancel_closes_the_same_loopback_attempt() {
+    let server = Server::start(vec![]);
+    let (root, store) = crate::test_store("manual-link-expiry");
+    let mut account = Account::restore(oauth(&server), &store).expect("account");
+    let url = account.begin_login().expect("attempt");
+    account.offer_login_link(&url).expect("manual fallback");
+    assert_eq!(account.login_link().expect("copy"), url.as_str());
+    assert!(account.poll_login().expect("still waiting").is_none());
+    account.attempt.as_mut().expect("attempt").deadline = Instant::now();
+    assert!(matches!(account.login_link(), Err(Error::Canceled)));
+    assert!(matches!(account.poll_login(), Err(Error::Canceled)));
+    assert!(!account.login_pending());
+    let url = account.begin_login().expect("retry");
+    account.offer_login_link(&url).expect("manual fallback");
+    account.cancel_login().expect("cancel");
+    assert!(matches!(account.login_link(), Err(Error::Canceled)));
+    drop(account);
+    drop(store);
+    server.finish();
+    crate::cleanup_store(&root, "manual-link-expiry", &[]);
+}
+
+#[test]
 fn callback_waits_for_a_slow_browser_and_accepts_provider_extras() {
     let server = Server::start(vec![]);
     let (root, store) = crate::test_store("login-slow-browser");

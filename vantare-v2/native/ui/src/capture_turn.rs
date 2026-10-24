@@ -39,7 +39,7 @@ fn check(path: &Path, own: Option<&str>, now: SystemTime) -> Result<(), String> 
         .map_err(|error| format!("fecha del marcador de turno: {error}"))?;
     if now.duration_since(modified).unwrap_or_default() >= LEASE {
         fs::remove_file(path).map_err(|error| format!("limpiar marcador caducado: {error}"))?;
-        println!("capture-turn expired-marker-removed {}", path.display());
+        crate::capture_output::expired_turn(path);
         return Ok(());
     }
     if own.is_some_and(|own| !own.is_empty() && own == marker.trim()) {

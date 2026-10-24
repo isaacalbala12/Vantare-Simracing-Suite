@@ -1,6 +1,7 @@
 #![cfg_attr(windows, windows_subsystem = "windows")]
 #![forbid(unsafe_code)]
 
+use std::io::Write;
 use vantare_ipc::product;
 
 use std::path::{Path, PathBuf};
@@ -390,14 +391,17 @@ fn main() -> ExitCode {
         return match capture_batch(std::path::Path::new(path)) {
             Ok(()) => ExitCode::SUCCESS,
             Err(error) => {
-                eprintln!("vantare-hub: {error}");
+                let _written = writeln!(std::io::stderr(), "vantare-hub: {error}");
                 ExitCode::FAILURE
             }
         };
         #[cfg(not(feature = "parity-capture"))]
         {
             let _ = path;
-            eprintln!("reconstruye con --features parity-capture");
+            let _written = writeln!(
+                std::io::stderr(),
+                "reconstruye con --features parity-capture"
+            );
             return ExitCode::from(2);
         }
     }
@@ -405,7 +409,7 @@ fn main() -> ExitCode {
         return match vantare_hub::orbit::run_kit() {
             Ok(()) => ExitCode::SUCCESS,
             Err(error) => {
-                eprintln!("kit Orbit: {error}");
+                let _written = writeln!(std::io::stderr(), "kit Orbit: {error}");
                 ExitCode::FAILURE
             }
         };
@@ -413,7 +417,7 @@ fn main() -> ExitCode {
     let options = match parse(&args) {
         Ok(options) => options,
         Err(error) => {
-            eprintln!(
+            let _written = writeln!(std::io::stderr(),
                 "{error}
 uso: vantare-hub [--demo] [--workshop|--studio|--strategy|--analysis|--launcher|--engineer] [opciones locales]
      vantare-hub --capture PANTALLA --out PNG [--demo] [--size WxH] [--zoom 125] [--collapsed] [--appearance PALETA-dark|PALETA-light]
@@ -424,7 +428,7 @@ uso: vantare-hub [--demo] [--workshop|--studio|--strategy|--analysis|--launcher|
     };
     if let Some(state) = options.capture.clone() {
         let Some(output) = options.capture_output.clone() else {
-            eprintln!("vantare-hub: falta PNG de salida");
+            let _written = writeln!(std::io::stderr(), "vantare-hub: falta PNG de salida");
             return ExitCode::from(2);
         };
         #[cfg(feature = "parity-capture")]
@@ -432,7 +436,7 @@ uso: vantare-hub [--demo] [--workshop|--studio|--strategy|--analysis|--launcher|
             return match vantare_hub::capture::run(options, state, output) {
                 Ok(()) => ExitCode::SUCCESS,
                 Err(error) => {
-                    eprintln!("vantare-hub: {error}");
+                    let _written = writeln!(std::io::stderr(), "vantare-hub: {error}");
                     ExitCode::FAILURE
                 }
             };
@@ -440,14 +444,17 @@ uso: vantare-hub [--demo] [--workshop|--studio|--strategy|--analysis|--launcher|
         #[cfg(not(feature = "parity-capture"))]
         {
             let _ = (state, output);
-            eprintln!("vantare-hub: reconstruye con --features parity-capture");
+            let _written = writeln!(
+                std::io::stderr(),
+                "vantare-hub: reconstruye con --features parity-capture"
+            );
             return ExitCode::from(2);
         }
     }
     match vantare_hub::shell::run(options) {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) => {
-            eprintln!("vantare-hub: {error}");
+            let _written = writeln!(std::io::stderr(), "vantare-hub: {error}");
             ExitCode::FAILURE
         }
     }

@@ -156,6 +156,7 @@ mod tests {
             assert_eq!(state.desired, None);
             assert!(!state.requested && !state.onboarding_saved);
             state.complete(&Reply::Account {
+                copy_link: false,
                 signed_in: true,
                 profile: None,
                 expires_at: Some(1000),

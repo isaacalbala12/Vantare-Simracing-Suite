@@ -1,6 +1,7 @@
 #![cfg_attr(windows, windows_subsystem = "windows")]
 #![deny(unsafe_code)]
 
+use std::io::Write;
 use vantare_ipc::product;
 
 use std::ffi::OsString;
@@ -82,7 +83,7 @@ fn main() {
     }
     vantare_services::diagnostics::install_panic_hook("vantare-engineer");
     if let Err(error) = run() {
-        eprintln!("Engineer: {error}");
+        let _written = writeln!(std::io::stderr(), "Engineer: {error}");
         std::process::exit(1);
     }
 }
@@ -193,7 +194,8 @@ fn run_stream(
                     start.elapsed(),
                     &mut presentation,
                 )?;
-                eprintln!(
+                let _written = writeln!(
+                    std::io::stderr(),
                     "Engineer: evento={} hueco={:?} recording={:?}",
                     applied.event.is_some(),
                     applied.gap,

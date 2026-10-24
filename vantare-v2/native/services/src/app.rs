@@ -7,6 +7,7 @@ use crate::{
     protocol::{Command, Reply},
     storage::Store,
 };
+use std::io::Write;
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 mod mail;
@@ -210,6 +211,7 @@ impl App {
             account.logout(self.store.as_ref().ok_or(Error::Storage)?)?;
         }
         Ok(Reply::Account {
+            copy_link: false,
             signed_in: false,
             profile: None,
             expires_at: None,
@@ -379,12 +381,20 @@ impl App {
         let account_action = matches!(
             command,
             Command::AccountBegin
+                | Command::AccountCopyLink
                 | Command::AccountPoll
                 | Command::AccountRenew
                 | Command::AccountProfileRefresh
                 | Command::Logout
         );
+        let login_begin = matches!(command, Command::AccountBegin);
+        if login_begin {
+            let _log = writeln!(std::io::stderr(), "account-login: begin");
+        }
         let outcome = self.execute(command);
+        if login_begin && let Err(error) = &outcome {
+            let _log = writeln!(std::io::stderr(), "account-login: failed {error:?}");
+        }
         if let Ok(time) = now() {
             self.triage.record(time, outcome.is_err(), operation);
         }
@@ -564,6 +574,12 @@ impl App {
                 return self.license_reply(&command);
             }
             Command::Logout => return self.logout_reply(),
+            Command::AccountCopyLink => {
+                let account = self.account.as_ref().ok_or(Error::Canceled)?;
+                return Ok(Reply::AccountLink {
+                    url: crate::protocol::LoginLink(account.login_link()?.to_owned()),
+                });
+            }
             Command::AccountPoll => return self.poll_account(),
             Command::AccountRenew => {
                 self.ensure_account()?;
@@ -589,14 +605,7 @@ impl App {
         let account = self.account.as_mut().ok_or(Error::Unconfigured)?;
         match command {
             Command::AccountBegin => {
-                let url = account.begin_login()?;
-                // Only an explicit IPC login action opens the external browser.
-                // `explorer.exe <url>` trata las URL largas con parámetros como rutas
-                // y abre el Explorador; el manejador de protocolo abre el navegador.
-                if let Err(error) = open_login(&url) {
-                    account.cancel_login()?;
-                    return Err(error);
-                }
+                crate::browser::begin(account, crate::browser::open)?;
             }
             _ => return Err(Error::Protocol),
         }
@@ -620,7 +629,10 @@ impl App {
 
     fn account_reply(account: &Account, error: Option<Error>) -> Reply {
         let pending = account.login_pending();
+        let copy_link = account.login_link().is_ok();
+        let error = error.or(copy_link.then_some(Error::BrowserUnavailable));
         Reply::Account {
+            copy_link,
             signed_in: account.identity().is_some(),
             profile: account.profile().cloned(),
             expires_at: account.expires_at(),
@@ -2193,24 +2205,49 @@ fn home() -> Result<PathBuf> {
         .ok_or(Error::Storage)
 }
 
-fn open_login(url: &url::Url) -> Result<()> {
-    #[cfg(windows)]
-    let mut command = {
-        let mut command = std::process::Command::new("rundll32.exe");
-        command.args(["url.dll,FileProtocolHandler", url.as_str()]);
-        command
-    };
-    #[cfg(target_os = "linux")]
-    let mut command = {
-        let mut command = std::process::Command::new("xdg-open");
-        command.arg(url.as_str());
-        command
-    };
-    #[cfg(target_os = "macos")]
-    let mut command = {
-        let mut command = std::process::Command::new("open");
-        command.arg(url.as_str());
-        command
-    };
-    command.spawn().map(|_| ()).map_err(|_| Error::Unsupported)
+#[cfg(test)]
+mod copy_link_tests {
+    use super::*;
+    #[test]
+    fn copy_command_returns_only_a_live_manual_link_and_cancel_removes_the_capability() {
+        let server = crate::test_http::Server::start(vec![]);
+        let (root, store) = crate::test_store("copy-command");
+        let mut account = crate::account::fixture(&server.base, &store);
+        assert_eq!(
+            crate::browser::begin(&mut account, |_| Err(Error::BrowserUnavailable)),
+            Err(Error::BrowserUnavailable)
+        );
+        assert!(matches!(
+            App::account_reply(&account, None),
+            Reply::Account {
+                pending: true,
+                copy_link: true,
+                error: Some(_),
+                ..
+            }
+        ));
+        let mut app = App::new(BuildConfig::load(), root.clone());
+        app.account = Some(account);
+        app.store = Some(store);
+        assert!(
+            matches!(app.handle(Command::AccountCopyLink), Reply::AccountLink { url } if url.0.contains("code_challenge=") && !url.0.contains("code_verifier"))
+        );
+        app.account
+            .as_mut()
+            .expect("account")
+            .cancel_login()
+            .expect("cancel");
+        assert!(matches!(
+            app.handle(Command::AccountCopyLink),
+            Reply::Account {
+                pending: false,
+                copy_link: false,
+                error: Some(_),
+                ..
+            }
+        ));
+        drop(app);
+        server.finish();
+        crate::cleanup_store(&root, "copy-command", &[]);
+    }
 }

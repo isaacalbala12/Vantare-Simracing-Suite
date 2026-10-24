@@ -1,6 +1,23 @@
+## #1761 · Navegador alternativo y copia explícita
+
+Services v14 permite AccountCopyLink y LoginLink redactado en Debug. Si falla
+el predeterminado HTTPS, Windows busca clientes StartMenuInternet en HKCU y
+HKLM (vistas64/32): Chrome, Edge, Firefox, Brave, Opera y resto, priorizando
+la configuración por usuario. Ejecuta solo el .exe absoluto registrado con la
+URL como único argumento, usando Command::arg, sin shell ni flags del registro.
+Si ninguno arranca, conserva el mismo intento PKCE/listener durante su plazo
+original de tres minutos y devuelve copy_link=true. La URL se mantiene en memoria
+como Secret; solo AccountCopyLink la entrega al Hub para el gesto del portapapeles.
+No incluye tokens ni verifier. Cancelar, expirar, completar o reintentar retira
+el enlace. Hub, supervisor y services deben recompilarse juntos; peers v13
+se rechazan. No se modifica el registro, el predeterminado ni backend.
+Si un Job externo rechaza breakaway con error5, se reintenta una sola vez sin
+ese flag y se deja log sin URL. En ese caso el navegador hereda el Job y puede
+cerrarse al salir de Vantare; el intento de acceso mantiene su plazo.
+
 ## #1631 · Login propio
 
-El protocolo services v13 combina marketing verificado, Founders y AccountEmail y respuestas Email sin tokens.
+El protocolo services v14 combina marketing verificado, Founders y AccountEmail y respuestas Email sin tokens.
 R2 mantiene el canje pendiente en memoria y hace un solo intento por AccountPoll,
 con reloj inyectado, intervalo de Clerk/slow_down y ventana de 30 s. Cancel y
 Logout pueden interrumpir los intervalos sin sleeps. La sesión FAPI se cierra
@@ -29,7 +46,7 @@ QA y Windows pendientes del orquestador. Telemetría 25/25 y lifecycle macOS
 # Servicios nativos — ISA-1430
 
 **#1661 / VANTA-83:** Founders añade el plan perpetuo para contenido presente y
-futuro. Corte actual services v13 / control v5 / fotos v11; recompilar el conjunto.
+futuro. Corte actual services v14 / control v5 / fotos v11; recompilar el conjunto.
 Incluye Nightly vitalicio junto al derecho Founders; no concede roles. [Contrato](../../docs/billing/founders-1661.md).
 
 **Corte combinado #1610/#1594:** protocolo services v9 (DTO v10/derechos v4

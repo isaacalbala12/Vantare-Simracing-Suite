@@ -28,71 +28,161 @@ Evidencia: evidence/supabase-staging/EJECUCION.md y qa-precheckout-e2e.json;
 registro general evidence/supabase-reconstruccion/EJECUCION.md. Producción
 Supabase intacta en este tramo. La web sí se publicó por autorización específica.
 
-## VANTA-96 / #1713 · Copia staging PASS, token sandbox sin permiso (22-oct)
 
-Archivos nuevos recibidos20:55. Contraseña staging válida; copia completa con
-Auth/Storage/historial14/roadmap2 verificada (listado y todos los bloques PASS),
-SHA2569976d9989b59b7caaef69f3b73427f2c79f1670747ee1121ef0499cd3a934776,
-en evidence/supabase-staging. Versiones ajenas documentadas antes de descarte.
-Polar GET sandbox /v1/products/?limit=100 devuelve403 insufficient_scope con
-User-Agent Vantare-QA/1.0. El primer intento Python dio Cloudflare1010, distinto
-del error actual. Revisar products:read y products:write si hay que crear.
-Parada antes de limpiar/migrar/importar/TPA/desplegar. Se conservan14 versiones;
-claves QA listas solo offline. Catálogo Pro599/descuentos/webhook aún pendientes,
-sin URL/checkout ni pago. Producción intacta. Informe externo documenta alcance
-y estado real; no reintentar con claves de producción ni debilitar validaciones.
+## VANTA-105 / #1761 · RC5: navegador alternativo y copiar enlace (22-oct-2026)
 
-## VANTA-96 / #1713 · Reconstrucción staging autorizada, espera de custodia
+Seguimiento aprobado de #1747: RC5 detecta HTTPS roto, pero Isaac necesita abrir
+Chrome instalado. Base nightly `cc10f38d9836f3c624ac9881630deb2321689aaa`,
+rama `vantareapp/isa-1761-google-fallback`, worktree nuevo rc5-google-fallback.
+PR listo [#1763](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1763)
+a nightly, código inicial `9af4b515d374c3f2c7f4b7d3322381027e8f8504`.
+Review DeepSeek APTO y CI completa verde en `6589ed94924de6720c2649982572367094cfdc25`.
+Seguimiento autorizado: P2 reintenta una sola vez sin breakaway ante error5;
+log explícito, sin URL. Si funciona, el navegador hereda el Job y puede cerrarse
+con la app. P3 baratos: rechazar openwith.exe y seguir tras ERROR_MORE_DATA
+al enumerar. Resto P3 anotados en #1761; no se amplía la implementación.
+Gates nuevos solo services por cola: fmt/check/Clippy PASS; Nextest230/230 PASS,
+3 omitidos. Logs review-p2-* en evidencia rc5-google-fallback.
+CI del nuevo HEAD pendiente; orquestador integra cuando esté verde, sin otra
+ronda de review salvo cambio adicional de alcance.
+El predeterminado válido se conserva. Ante asociación ausente/Undecided/ProgID
+no registrado o rechazo de Shell, se recorren clientes StartMenuInternet HKCU
+y HKLM64/32. Dentro de cada hive: Chrome, Edge, Firefox, Brave, Opera y resto.
+Solo se ejecuta el .exe absoluto registrado con la URL como único argumento;
+sin shell, flags del registro ni cambios en Windows. Log del navegador sin URL.
 
-El orquestador autoriza copia completa en evidence/supabase-staging, descarte
-controlado del historial divergente y reconstrucción97/97 desde el canon.
-También autoriza las cinco funciones desde SHA1b732b67d605298f3056c8ca78d692f132217e2d,
-solo tras esquema/claves/TPA; después catálogo/webhook sandbox y parada antes de
-checkout. Producción intacta. No se repite la solicitud de esas autorizaciones.
-Las dos versiones antiguas de roadmap y su ajuste de permisos están exportadas
-como sentencias originales y documentadas en INFORME.md externo antes de descarte.
-Scripts de backup verificable y reconstrucción transaccional preparados; checkout
-pinned independiente. Sin contraseña aún no se ha hecho dump, reset, migración,
-importación/rotación QA, TPA ni despliegue. Las claves QA propias sí están listas.
-Token presente sigue siendo el antiguo16-oct; webhook sandbox nuevo ausente.
-Espera de archivos en secrets, sin imprimir valores ni probar password productivo.
-Retorno técnico QA propuesto https://sandbox.polar.sh/, fuera de vantare.app.
+Si ninguno arranca, listener y enlace se conservan hasta su plazo original3min.
+Botón Copiar enlace manda AccountCopyLink, recibe LoginLink redactado y usa
+portapapeles GPUI solo por gesto explícito; sin tokens/verifier ni persistencia.
+Cancelación/caducidad/reintento retiran la copia. Protocolo services14 exige
+recompilar Hub/supervisor/services juntos; peers13 se rechazan.
+Regresiones de fallback/default, quoting, copia, reintento, cancelación y plazo.
+Procedimiento vigente del orquestador: fmt/check/Clippy/Nextest solo de ipc,
+services y hub; sin nuevas suites globales, telemetría ni lifecycle locales.
+CI GitHub es el gate completo decisivo. Target propio
+`D:/VantareServer/targets/rc5-google-fallback`, jobs2 por cola.
+Fmt/check/Clippy PASS y Nextest873/873 PASS,7 omitidos (incluye QA manual).
+Primer Nextest acotado falló en dos smokes Hub por DuckDB fuera de PATH;
+se corrigió el entorno y repitió sin alterar tests. Integrity466 PASS.
+QA privada confirma selección de Chrome; navegación completa pendiente por
+un mutex de sesión de Chrome inaccesible a la cuenta temporal (error5).
+Chrome termina código21. No se modifica el objeto. La sesión separada no
+arrancó en Task Scheduler; cuentas/perfiles/tareas propias retirados.
+Isaac/orquestador debe validar navegación en sesión independiente o candidato.
+Evidencia `C:/VantareServer/evidence/rc5-google-fallback/INFORME.md`.
+Sin backend, configuración de producción, merge, firma ni publicación.
 
-## VANTA-96 / #1713 · Preparación QA autorizada, deploy pendiente
+## VANTA-105 / #1754 · Registro tolerante a fallos de AUMID (22-oct-2026)
 
-Isaac aprueba reactivar/preparar staging y producto sandbox Pro mensual 5,99 EUR
-sin trial; correo sintético Owner excluido. Ref rilwmlbnucbbayaulnxw, ya
-ACTIVE_HEALTHY. Preflight solo lectura: 14 versiones, dos ajenas al canon
-(20260926153706/20260926153853), faltan 85; parar antes de aplicar SQL.
-Datos agregados: visual_roadmap=2; solo auth.schema_migrations=82 además de
-eso, resto de tablas public/private/auth vacías; cero TPA. No borrar ni
-reparar historial sin copia y plan revisado. Objetivo productivo: 97 migraciones.
-Contraseña staging ausente; backup/esquema pendientes de acceso. Claves QA
-ES256/Ed25519/reconcile generadas protegidas, firma/verificación de ambos pares
-PASS, configuración QA separada y SQL issuer enabled=false preparados offline.
-TPA/importación de clave/issuer esperan preflight de staging, sin cambios en prod.
-Lista pedida antes de deploy: native-account-authorize, native-billing-checkout,
-billing-webhook, native-license, billing-reconcile; cinco verify_jwt=false desde
-SHA 1b732b67d605298f3056c8ca78d692f132217e2d. No ejecutar hasta autorización.
-STAGING-PREPARACION.md y EJECUCION.md externos guardan estado y bloqueos.
-No se lee el token/webhook sandbox mientras Isaac los prepara, ni se despliega,
-compra, devuelve o cambia flags. Producción intacta y #1732 no desplegado allí.
+Continuación de #1746: el orquestador integró #1752 en nightly d87c2cb2b
+(HEAD5cd1d55eb con CI verde y review APTO), para desbloquear #1745.
+Esta corrección previa a RC5 va en una rama nueva desde origin/nightly
+`d87c2cb2b7debe8e4956fdf884b82ea64caa963c`:
+`vantareapp/isa-1754-aumid-registro`, worktree propio rc4-acceso.
+No se vuelve a publicar en la rama fusionada.
 
-## VANTA-96 / #1713 · Ensayo elegido: Polar sandbox (21-oct-2026)
+P2-1: AUMID pasa a best-effort, warning no fatal tras guardar nombre/icono.
+Register sigue retirando el alias antiguo aunque IPropertyStore falle, tanto
+en el camino Hub como en transacción Setup. Regresión simula el fallo para
+975/RC3/RC4 y comprueba warning/enlace único/generación y registro conservados.
+P3: BOM retirados de dos README, layout PROPVARIANT x64 documentado y harness
+packaging exige RT_GROUP_ICON ID1 del supervisor instalado como datos, sin
+cargar código. Rollback manual antiguo separado en #1753, coordinado con el
+PR posterior de Startup/--background. Sin cambios Rust/Hub/IPC/LMU.
+Gates afectados (registro/shell/packaging) por la cola, target propio
+D:/VantareServer/targets/rc4-acceso, jobs2, pendientes. Primer intento anterior
+se detuvo durante espera de cola para cambiar de base; ninguna suite ejecutada.
+PR draft #1756 a nightly, push autorizado para que CI del runner dedicado
+corra en paralelo con la cola local. Solo se marcará listo cuando packaging
+local y CI del HEAD final pasen. Sin merge propio, release, firma ni publicación.
 
-Isaac descarta la compra real con devolución. Runbook reescrito para propuesta
-Supabase vantare-staging separado (rilwmlbnucbbayaulnxw), todavía pausado según
-último inventario; reactivación/despliegue/migraciones/ensayo pendientes de
-aprobación explícita. Ninguna variable sandbox se instala en producción.
-Producto pro_monthly a 5,99 EUR/mes simulado, sin trial ni descuento; IDs del
-mapa sandbox históricos pendientes de validar. Token sandbox en custodia,
-GET de producto 403; hace falta ampliar/reemplazar sus permisos.
-Ruta app QA → webhook → ledger positivo → licencia QA → refund sandbox y
-revocación; correo Owner solo sintético opcional, no aviso por pago correcto.
-Claves ES256/Ed25519/HMAC de QA propias; configuración de app y secretos
-separados. Lista única para Isaac en docs/billing/runbook-compra-prueba.md.
-No se ha reactivado, desplegado, cobrado, hecho refund ni cambiado flags.
-#1732 sigue sin desplegar en producción; P3 DeepSeek siguen en #1733.
+﻿## VANTA-105 / #1746 · RC4: nombre e icono de accesos (21-oct-2026)
+
+## VANTA-105 / #1747 · RC4: apertura de Google (22-oct-2026)
+
+Worker aislado desde nightly `1b732b67d`, worktree `C:/VantareServer/wt/rc4-google`,
+rama `vantareapp/isa-1747-google-login`. Gates sobre nightly `3136f0acb`;
+código verificado en `c97093f5c`. Se incorpora nightly `ae2f7d8f3` para resolver
+solo el conflicto de este handoff; CI debe validar el conjunto resultante.
+Diagnóstico antes de editar en
+`C:/VantareServer/evidence/rc4-google/DIAGNOSTICO.md`.
+RC4 instalada en cuenta estándar/escritorio privado: IPC, configuración OIDC y
+listener OAuth funcionan; AccountBegin devuelve pending sin acreditar navegador.
+`rundll32` se daba por correcto con spawn. Perfil actual tiene HTTPS UserChoice
+MSEdgeHTM sin manejador registrado; sonda privada ShellExecuteExW devuelve1155.
+La consulta efectiva de Windows precisa HTTPS=Undecided/OpenWith: el selector
+puede ser aceptado por Shell sin abrir navegador. Se comprueba el ProgID antes
+de activar Windows; se conservan asociaciones de apps delegadas. La primera
+sonda de esquema inexistente activó OpenWith; proceso ya terminado y anteriores
+intactos. Detalle y corrección del banco en el informe externo.
+Implementada apertura directa verificada por Windows, error claro, cancelación del
+listener y logs sin URL/credenciales. No se cambia Windows ni panel Clerk/backend.
+Isaac debe elegir navegador instalado para HTTP/HTTPS y comprobar el clic con el
+nuevo build. Las pruebas UI privadas fallan antes de pintar por DirectX0x8007000E;
+no acreditan clic físico. Fmt/check/Clippy PASS; Nextest completo con telemetría
+PASS2095,19 omitidas; lifecycle PASS18. Cola con jobs2 y target propio
+`D:/VantareServer/targets/rc4-google`. Calidad PASS466 huellas. Pausa de medición
+respetada y reanudación autorizada antes de lifecycle.
+PR listo https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1757 a nightly;
+CI pendiente del HEAD remoto. Sin integración a nightly ni release.
+Pendiente comprobar apertura y OAuth en nueva RC.
+
+## VANTA-105 / #1746 · RC4: nombre e icono de accesos (21-oct-2026)
+
+Encargo de worker, base inicial nightly `1b732b67d605298f3056c8ca78d692f132217e2d`,
+worktree `C:/VantareServer/wt/rc4-acceso`, rama `vantareapp/isa-1746-acceso-inicio`.
+Rebase limpio a `3136f0acb9593f265991e7d0d5b20c324d383cf4` (#1742).
+Diagnóstico previo a editar conservado en `C:/VantareServer/evidence/rc4-acceso/`:
+los enlaces Inicio/escritorio reales apuntan al supervisor, IconLocation=",0",
+AppUserModelID vacío. Supervisor sin RT_ICON/RT_GROUP_ICON; de los diez EXE de
+RC4 solo Hub, overlays e importador llevan icono. DisplayName=Vantare y
+DisplayIcon ausente. No se cambió la instalación ni los procesos de Isaac.
+
+Arreglo: nombre Vantare Simracing Suite; ICON1 embebido en el supervisor mediante
+build-support compartido, por ampliación expresa del orquestador tras coordinar
+con #1745. IconLocation apunta al propio supervisor; solo se añade su build.rs
+y build-dependency interna, sin tocar el código de arranque. Se conservan raíz,
+nombres EXE y datos. Prueba estática del PE compara ID1 y sus siete imágenes
+con assets/icon.ico. AppUserModelID estable Vantare.SimracingSuite.
+Registro usa nombre completo e icono Uninstall.
+Register migra enlaces propios de NSIS/RC3/RC4, incluido escritorio heredado
+sin preferencia activa; desinstalar retira nombres antiguos/nuevos propios.
+Las identidades QA conservan sus carpetas y nombres opcionales aislados.
+No se cambia el código de arranque del supervisor/Hub ni Google.
+Sin dependencias externas nuevas.
+
+Regresión COM real para las tres formas históricas: 57 PASS,
+incluidos Startup ON/OFF, nombre histórico y argumentos sin `--background`.
+Tres campañas reales privadas PASS: NSIS público 0.0.975, RC3 0.0.981 y
+RC4 0.0.982 → Setup corregido; nombre, destino, icono extraíble, AppID, registro,
+sin duplicados, datos conservados y uninstall. Cuentas/perfiles estándar
+retirados, sin SwitchDesktop, abrir la app ni falsificar readiness.
+Supervisor Release/CRT estático de `b177a5ed3`, configuración pública idéntica
+a RC4 sin mostrar valores; nueve EXE de RC4 y supervisor nuevo en el paquete QA.
+Grupo ID1 y siete imágenes fuente PASS en supervisor/Setup/Uninstall; sin
+certificado. No se entrega como RC nueva. Harness final 193 PASS; registro
+68, shell 30, inventario histórico 25 y selección del instalador 13 PASS.
+Los fallos iniciales de preparación/harness permanecen en INFORME.md;
+se corrigieron /D de NSIS y hash previo a la autoeliminación, sin quitar checks.
+El orquestador confirma entrega independiente de #1745: este PR no añade el flag.
+PR posterior: Startup tendrá `--background` al final solo tras parser compatible;
+restaurará explícitamente el enlace anterior al hacer rollback, con test real,
+y valorará el nombre completo en Aplicaciones de inicio del Administrador de tareas.
+No basta confiar en Register antiguo: RC4 solo reconoce los argumentos exactos
+sin flag. Restore-NativeCandidate solo intercambia estado y Sync-BetaRegistration
+solo actualiza versión; el Hub restaurado registra después sus propios accesos.
+Gates por cola, target `D:/VantareServer/targets/rc4-acceso`, jobs 2:
+fmt posterior a ICON1/check/Clippy PASS. Nextest completo falló primero en IPC
+#1750 (892 PASS/1 FAIL) y, en la única repetición sin cambios, en HTTP LMU #1751
+(1090 PASS/1 FAIL); IPC pasó en la repetición. Ambos archivos ajenos al diff.
+Logs gate-completa.log y gate-completa-repeat.log en la evidencia. Sin arreglos
+ni más repeticiones. El orquestador autoriza abrir PR con estos fallos locales:
+la CI completa del runner dedicado en su HEAD será el gate decisivo.
+Telemetría 33/33 PASS (1 skipped); lifecycle 18 PASS, logs y gates-final.json
+en la evidencia. No se ha repetido otra vez la suite completa.
+PR listo #1752 a nightly, vinculado a #1746; CI pendiente en el HEAD remoto.
+Sin merge, firma,
+release, publicación ni promoción. Esta entrega no acredita Windows limpio.
 
 ## VANTA-96 / #1713 · Configuración y ensayo pendientes (21-oct-2026)
 

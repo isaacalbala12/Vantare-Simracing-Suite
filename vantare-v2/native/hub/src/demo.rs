@@ -15,6 +15,7 @@ const QUALITY_CAPTURES: &[&str] = &[
     "onboarding-4",
     "onboarding-5",
     "onboarding-6",
+    "onboarding-7",
     "ajustes-perfil",
     "ajustes-perfil-foto",
     "ajustes-perfil-recorte",
@@ -667,6 +668,7 @@ impl CaptureState {
             | "onboarding-4"
             | "onboarding-5"
             | "onboarding-6"
+            | "onboarding-7"
             | "shell-notificaciones-abiertas"
             | "notificaciones-panel"
             | "notificaciones-vacio"

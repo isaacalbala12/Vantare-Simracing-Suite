@@ -1,4 +1,5 @@
-﻿#requires -Version 5.1
+﻿# vantare-boot-capabilities: indicator-handshake-v1
+#requires -Version 5.1
 [CmdletBinding()]
 param(
     [ValidateSet('Install', 'Run', 'Check', 'Apply', 'Uninstall')][string]$Operation = 'Run',
@@ -202,6 +203,79 @@ function Stage-BetaUpdate([string]$Directory, [string]$ManifestFile = '') {
     } finally { $lock.Dispose() }
 }
 
+# The interactive bootstrap holds its generation's executable while painting.
+# Release that image before the existing exclusive binary guard; never weaken it.
+function Complete-BetaBootstrap([string]$Directory, [int]$TimeoutMilliseconds = 10000, [switch]$AllowNaturalExit,
+    [ValidateRange(1,47000)][int]$NaturalExitMilliseconds = 47000) {
+    $window = $env:VANTARE_STARTUP_WINDOW
+    $owner = $env:VANTARE_STARTUP_PID
+    if (-not $window -and -not $owner) { return }
+    $process = $null
+    try {
+        if ($window -cnotmatch '^[1-9][0-9]*$' -or $owner -cnotmatch '^[1-9][0-9]*$') { throw 'Identidad del indicador inválida.' }
+        try { $process = [Diagnostics.Process]::GetProcessById([int]$owner) }
+        catch [ArgumentException] {
+            Remove-Item Env:VANTARE_STARTUP_WINDOW, Env:VANTARE_STARTUP_PID -ErrorAction SilentlyContinue
+            return
+        }
+        # Pin the process handle before inspecting its image or waiting for exit.
+        $null = $process.Handle
+        if ($process.HasExited) { return }
+        $wait=[Diagnostics.Stopwatch]::StartNew()
+        try {
+        try { $image = Assert-NativePath $process.MainModule.FileName }
+        catch { if ($process.HasExited) { return }; throw }
+        $generations = (Join-Path (Assert-NativePath $Directory) 'generations') + [IO.Path]::DirectorySeparatorChar
+        $relative = if ($image.StartsWith($generations, [StringComparison]::OrdinalIgnoreCase)) { $image.Substring($generations.Length).Replace('\', '/') } else { '' }
+        if ($relative -cnotmatch '^[a-f0-9]{32}/bin/vantare\.exe$') { throw 'El indicador no pertenece a esta instalación.' }
+        if (-not ('Vantare.BootstrapWindow' -as [type])) {
+            Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+using System.Text;
+namespace Vantare {
+    public static class BootstrapWindow {
+        const string Class = "VantareStartupIndicator";
+        const uint Maintenance = 0x806a;
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetClassName(IntPtr hwnd, StringBuilder name, int count);
+        [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr hwnd, out uint pid);
+        [DllImport("user32.dll", SetLastError = true)] static extern bool PostMessage(IntPtr hwnd, uint message, UIntPtr wp, IntPtr lp);
+        public static bool Close(long window, uint owner) {
+            var hwnd = new IntPtr(window);
+            uint pid;
+            var name = new StringBuilder(128);
+            GetWindowThreadProcessId(hwnd, out pid);
+            return pid == owner && GetClassName(hwnd, name, name.Capacity) > 0 &&
+                name.ToString() == Class && PostMessage(hwnd, Maintenance, UIntPtr.Zero, IntPtr.Zero);
+        }
+    }
+}
+'@
+        }
+        # A destroyed HWND can precede process exit: still wait on the pinned handle.
+        $null=[Vantare.BootstrapWindow]::Close([long]$window, [uint32]$owner)
+        } catch {
+            if(-not $AllowNaturalExit){throw}
+            [Console]::Error.WriteLine('bootstrap: señal no disponible; rollback espera la salida natural: '+$_.Exception.Message)
+        }
+        if (-not $process.WaitForExit($TimeoutMilliseconds)) {
+            $remaining=[Math]::Max(0,$NaturalExitMilliseconds-[int]$wait.ElapsedMilliseconds)
+            if($AllowNaturalExit){[Console]::Error.WriteLine('bootstrap: rollback espera el cierre natural del indicador, sin terminarlo a la fuerza.')}
+            if(-not $AllowNaturalExit -or -not $process.WaitForExit($remaining)){
+                throw [TimeoutException]::new('El indicador sigue en uso; actualización o rollback pendientes para el siguiente arranque.')
+            }
+        }
+    } catch {
+        [Console]::Error.WriteLine("bootstrap: operación aplazada: " + $_.Exception.Message)
+        throw
+    } finally {
+        if ($null -ne $process) {
+            if ($process.HasExited) { Remove-Item Env:VANTARE_STARTUP_WINDOW, Env:VANTARE_STARTUP_PID -ErrorAction SilentlyContinue }
+            $process.Dispose()
+        }
+    }
+}
+
 function Apply-BetaUpdate([string]$Directory) {
     $directory = Open-NativeRoot $Directory
     $pending = Join-Path $directory 'staging/pending.json'
@@ -216,6 +290,7 @@ function Apply-BetaUpdate([string]$Directory) {
         return $false
     }
     Assert-BetaPackage (Join-Path $directory 'staging') (Join-Path $directory "staging/$($manifest.sha256).zip") $manifest
+    Complete-BetaBootstrap $directory
     Activate-BetaPackage $directory (Join-Path $directory "staging/$($manifest.sha256).zip") $manifest.sha256 $manifest.version $manifest.notes
     Remove-Item -LiteralPath $pending
     $true
@@ -387,7 +462,8 @@ function Stop-BetaRuntime([string]$Directory) {
 
 function Test-BetaReady([string]$Directory, $Process) {
     $path = Join-Path $Directory 'hub-ready'
-    -not $Process.HasExited -and (Test-Path -LiteralPath $path) -and [IO.File]::ReadAllText($path) -ceq $Process.Id.ToString()
+    (Test-Path -LiteralPath $path) -and [IO.File]::ReadAllText($path) -ceq $Process.Id.ToString() -and
+        (-not $Process.HasExited -or $Process.ExitCode -eq 0)
 }
 
 function Sync-BetaRegistration([string]$Directory, [string]$Version) {
@@ -433,6 +509,7 @@ function Confirm-BetaBoot([string]$Directory, $Process, [int]$TimeoutSeconds = 4
         if (-not $Process.WaitForExit(3000)) { $Process.Kill(); $Process.WaitForExit() }
     }
     if (Test-Path -LiteralPath $marker) {
+        Complete-BetaBootstrap $Directory -AllowNaturalExit
         Stop-BetaRuntime $Directory
         $boot = [IO.File]::ReadAllText($marker) | ConvertFrom-Json
         $state = Read-NativeState $Directory

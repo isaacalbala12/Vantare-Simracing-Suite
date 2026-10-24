@@ -25,7 +25,7 @@ function Probe-Installer($Request,[int]$Expected=0){
 }
 $nsis=[IO.File]::ReadAllText((Join-Path $PSScriptRoot 'beta-installer.nsi'))
 $startHub=[regex]::Match($nsis,'(?s)Function StartHub\s+(.*?)FunctionEnd').Groups[1].Value
-Assert-Installer ($startHub.Contains('ExecShell "open" "$SMPROGRAMS\${SHORTCUT_FOLDER}\Vantare.lnk"') -and -not $startHub.Contains('powershell.exe')) 'Final NSIS abre el mismo acceso GUI registrado'
+Assert-Installer ($startHub.Contains('ExecShell "open" "$SMPROGRAMS\${SHORTCUT_FOLDER}\Vantare Simracing Suite.lnk"') -and -not $startHub.Contains('powershell.exe')) 'Final NSIS abre el mismo acceso GUI registrado'
 $root=Join-Path $evidence 'installed'
 $request=@{operation='Probe'; root=$root; qa=$true; silent=$true; uninstall=$false; version='0.0.977'; size=1024}
 $result=@(Probe-Installer $request)[-1]
@@ -89,7 +89,7 @@ try {
     New-NativeZip $payload $zip
     Install-Beta $registrationRoot $zip (Get-NativeHash $zip)
     Sync-NativeRegistration $registrationRoot '0.0.977'
-    $launch=$shell.CreateShortcut((Join-Path $qaStart 'Vantare.lnk'))
+    $launch=$shell.CreateShortcut((Join-Path $qaStart 'Vantare Simracing Suite.lnk'))
     $installed=Read-NativeState $registrationRoot
     Assert-Installer ($launch.TargetPath -eq (Join-Path $registrationRoot "generations/$($installed.active.generation)/bin/vantare.exe")) 'Inicio apunta al supervisor de la generación verificada'
     Assert-Installer ($launch.Arguments -ceq ('--beta -Root "'+$registrationRoot+'"')) 'Inicio pasa la raíz al bootstrap GUI'
@@ -129,7 +129,7 @@ try {
 } finally {
     if(Test-Path -LiteralPath $qaKey){Remove-Item -LiteralPath $qaKey}
     foreach($path in @($qaDesktop,$qaBoot)){if(Test-Path -LiteralPath $path){Remove-Item -LiteralPath $path}}
-    foreach($name in @('Vantare.lnk','Desinstalar.lnk')){$path=Join-Path $qaStart $name;if(Test-Path -LiteralPath $path){Remove-Item -LiteralPath $path}}
+    foreach($name in @('Vantare Simracing Suite.lnk','Desinstalar.lnk')){$path=Join-Path $qaStart $name;if(Test-Path -LiteralPath $path){Remove-Item -LiteralPath $path}}
     if((Test-Path -LiteralPath $qaStart) -and -not @(Get-ChildItem -LiteralPath $qaStart).Count){Remove-Item -LiteralPath $qaStart}
 }
 "$script:passed comprobaciones del shell PASS (registro con PE fixture, no install e2e)"

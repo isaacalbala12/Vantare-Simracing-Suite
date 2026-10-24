@@ -7,6 +7,7 @@ use launcher::{
     files,
     triggers::Hotkey,
 };
+use std::io::Write;
 use std::{
     path::PathBuf,
     sync::{
@@ -59,14 +60,19 @@ impl Resident {
                 if let Some(mut chain) = owner.chain.take()
                     && let Err(error) = chain.shutdown()
                 {
-                    eprintln!("cerrar Launcher residente: {error}");
+                    let _written =
+                        writeln!(std::io::stderr(), "cerrar Launcher residente: {error}");
                 }
                 if let Ok(mut processes) = owner.processes.lock() {
                     for profile in &owner.document.profiles {
                         if profile.effective_policy().exit == launcher::policy::Close::Started
                             && let Err(error) = processes.close_profile(&profile.id)
                         {
-                            eprintln!("cerrar aplicaciones de {}: {error}", profile.id);
+                            let _written = writeln!(
+                                std::io::stderr(),
+                                "cerrar aplicaciones de {}: {error}",
+                                profile.id
+                            );
                         }
                     }
                 }
@@ -87,7 +93,7 @@ impl Drop for Resident {
         if let Some(worker) = self.thread.take()
             && worker.join().is_err()
         {
-            eprintln!("Launcher residente terminó con panic");
+            let _written = writeln!(std::io::stderr(), "Launcher residente terminó con panic");
         }
     }
 }
@@ -384,7 +390,7 @@ impl Owner {
                 files::save(&path, &bytes, current.as_deref())
             });
         if let Err(error) = result {
-            eprintln!("estado Launcher residente: {error}");
+            let _written = writeln!(std::io::stderr(), "estado Launcher residente: {error}");
         }
     }
 }

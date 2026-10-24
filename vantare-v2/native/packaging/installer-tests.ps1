@@ -13,7 +13,8 @@ $root = Join-Path (Assert-NativePath $EvidenceDirectory) ('setup-' + [guid]::New
 $key = 'HKCU:/Software/Microsoft/Windows/CurrentVersion/Uninstall/VantareNativeBetaQA1492'
 $programs = [Environment]::GetFolderPath('Programs')
 $legacyShortcut = Join-Path $programs 'Vantare Native Beta QA1492/Vantare Native Beta.lnk'
-$shortcut = Join-Path $programs 'Vantare QA1492/Vantare.lnk'
+$previousShortcut = Join-Path $programs 'Vantare QA1492/Vantare.lnk'
+$shortcut = Join-Path $programs 'Vantare QA1492/Vantare Simracing Suite.lnk'
 if (Test-Path -LiteralPath $key) { throw 'Hay otra instalación QA1492; conservarla y terminar antes de probar.' }
 $script:Passed = 0
 function Assert-Setup([bool]$Condition, [string]$Message) {
@@ -51,7 +52,7 @@ if ($FirstBrand -ceq 'LegacyBeta') {
     Assert-Setup (Test-Path -LiteralPath $legacyShortcut) 'instalador anterior crea acceso beta'
 } else {
     Assert-Setup ((Get-ItemProperty -LiteralPath $key).DisplayName -ceq 'Vantare') 'baseline NSIS actual conserva su nombre real'
-    Assert-Setup (Test-Path -LiteralPath $shortcut) 'baseline NSIS actual crea acceso Vantare'
+    Assert-Setup (Test-Path -LiteralPath $previousShortcut) 'baseline NSIS actual crea acceso Vantare'
 }
 [IO.File]::WriteAllText((Get-SetupData), '{"profile":"setup QA","layout":[1,2],"account":"fake"}')
 $hash = Get-NativeHash (Get-SetupData)
@@ -63,9 +64,10 @@ Assert-Setup ((Read-SetupState).active.generation -ceq $initial) 'sesión/binari
 Invoke-Setup $Version011Directory
 $newVersion = (Get-ItemProperty -LiteralPath $key).DisplayVersion
 Assert-Setup ((Read-BetaVersion $newVersion) -gt (Read-BetaVersion $oldVersion)) 'registro actualizado a versión mayor'
-Assert-Setup ((Get-ItemProperty -LiteralPath $key).DisplayName -ceq 'Vantare') 'Setup migra nombre visible con la misma identidad'
+Assert-Setup ((Get-ItemProperty -LiteralPath $key).DisplayName -ceq 'Vantare Simracing Suite') 'Setup migra nombre visible con la misma identidad'
 Assert-Setup ((Get-ItemProperty -LiteralPath $key).InstallLocation -ceq $root) 'Setup conserva carpeta anterior y datos'
 Assert-Setup (-not (Test-Path -LiteralPath $legacyShortcut)) 'Setup retira acceso beta duplicado'
+Assert-Setup (-not (Test-Path -LiteralPath $previousShortcut)) 'Setup retira acceso Vantare duplicado'
 Assert-Setup ((Get-NativeHash (Get-SetupData)) -ceq $hash) 'Setup nuevo conserva datos'
 Assert-Setup ([IO.File]::ReadAllText((Join-Path $root 'registration-identity.txt')) -ceq 'VantareNativeBetaQA1492') 'Setup QA declara su identidad fuera del bootstrap productivo'
 $pendingHash = Get-NativeHash (Join-Path $root 'boot-pending.json')
@@ -82,7 +84,7 @@ Fail-SetupBoot
 Assert-Setup ((Read-SetupState).active.generation -ceq $initial) 'rollback recupera generación anterior'
 Assert-Setup ((Get-ItemProperty -LiteralPath $key).DisplayVersion -ceq $oldVersion) 'rollback corrige versión en registro'
 Assert-Setup ((Get-NativeHash (Get-SetupData)) -ceq $hash) 'rollback conserva perfil'
-Assert-Setup ((Get-ItemProperty -LiteralPath $key).DisplayName -ceq 'Vantare') 'rollback mantiene nombre único sin alterar versión anterior'
+Assert-Setup ((Get-ItemProperty -LiteralPath $key).DisplayName -ceq 'Vantare Simracing Suite') 'rollback mantiene nombre único sin alterar versión anterior'
 # Reaplicar el nombre nuevo después del rollback a la beta anterior.
 Invoke-Setup $Version011Directory
 Assert-Setup ((Read-SetupState).active.generation -cne $initial) 'Setup nuevo vuelve a activar una generación tras rollback'
@@ -107,7 +109,7 @@ Assert-Setup (-not (Test-Path -LiteralPath $key)) 'datos más recientes rechazan
 Assert-Setup ((Get-NativeHash $retainedData) -ceq $hash) 'datos conservados intactos'
 $root = Join-Path (Assert-NativePath $EvidenceDirectory) ('fresh-Vantare-' + [guid]::NewGuid().ToString('N'))
 Invoke-Setup $Version011Directory
-Assert-Setup ((Get-ItemProperty -LiteralPath $key).DisplayName -ceq 'Vantare') 'instalación limpia usa nombre final'
+Assert-Setup ((Get-ItemProperty -LiteralPath $key).DisplayName -ceq 'Vantare Simracing Suite') 'instalación limpia usa nombre final'
 Assert-Setup (Test-Path -LiteralPath $shortcut) 'instalación limpia crea acceso Vantare'
 Assert-Setup (([Diagnostics.FileVersionInfo]::GetVersionInfo((Join-Path $Version011Directory 'VantareSetup.exe'))).ProductName -ceq 'Vantare') 'metadatos reales del Setup usan Vantare'
 $fresh = (Read-SetupState).active.generation

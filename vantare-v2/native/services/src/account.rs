@@ -146,6 +146,7 @@ enum Saved {
 }
 
 struct Attempt {
+    manual_url: Option<Secret>,
     socket: TcpListener,
     state: Secret,
     verifier: Secret,
@@ -424,6 +425,7 @@ impl Account {
             ("code_challenge_method", "S256"),
         ]);
         self.attempt = Some(Attempt {
+            manual_url: None,
             socket,
             state,
             verifier,
@@ -431,6 +433,23 @@ impl Account {
             deadline: Instant::now() + Duration::from_mins(3),
         });
         Ok(url)
+    }
+
+    pub(crate) fn offer_login_link(&mut self, url: &Url) -> Result<()> {
+        self.attempt.as_mut().ok_or(Error::Canceled)?.manual_url = Some(Secret(url.to_string()));
+        Ok(())
+    }
+
+    pub(crate) fn login_link(&self) -> Result<&str> {
+        let attempt = self.attempt.as_ref().ok_or(Error::Canceled)?;
+        if Instant::now() >= attempt.deadline {
+            return Err(Error::Canceled);
+        }
+        attempt
+            .manual_url
+            .as_ref()
+            .map(Secret::expose)
+            .ok_or(Error::Canceled)
     }
 
     pub(crate) fn login_pending(&self) -> bool {

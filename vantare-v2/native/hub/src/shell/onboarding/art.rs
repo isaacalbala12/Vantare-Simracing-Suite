@@ -1,10 +1,23 @@
-use super::{
-    Hub, State,
-    view::{heading, text},
+use super::{Hub, State, view::text};
+use crate::{
+    onboarding as model,
+    orbit::{
+        self,
+        theme::{Palette, Scheme, Theme},
+    },
 };
-use crate::{onboarding as model, orbit};
-use gpui::{Context, Div, IntoElement, PathBuilder, div, prelude::*, px, rgb};
+use gpui::{Context, Div, Hsla, IntoElement, PathBuilder, div, prelude::*, px, rgb};
 use vantare_ui::{Kind, performance::Level};
+/// Titular del panel de arte, que es oscuro en todos los temas: en modo claro
+/// no hereda la tinta oscura del Hub.
+fn heading(value: impl Into<gpui::SharedString>, size: f32, cx: &gpui::App) -> Div {
+    let heading = super::view::heading(value, size, cx);
+    if cx.global::<Theme>().scheme == Scheme::Light {
+        heading.text_color(rgb(0x00fa_f7f7))
+    } else {
+        heading
+    }
+}
 // Gradiente radial y franjas del contrato, SVG local pintado por GPUI; sin HTML.
 fn panel_background(state: &State, s: f32) -> Div {
     div()
@@ -23,7 +36,38 @@ fn panel_background(state: &State, s: f32) -> Div {
         })
 }
 
-pub(super) fn radio_tail(s: f32) -> impl IntoElement {
+/// Marco del panel de arte. Vantare y Vantare clásico conservan el arte carmín;
+/// el resto usa el hero oscuro de su estilo, para que el texto blanco siga
+/// siendo legible también en modo claro.
+fn art_panel(state: &State, s: f32, cx: &gpui::App) -> Div {
+    let palette = cx.global::<Theme>().palette;
+    let carmine = matches!(palette, Palette::Vantare | Palette::Classic);
+    let hero = orbit::skin::Skin::resolve(palette, Scheme::Dark).hero;
+    div()
+        .relative()
+        .flex_1()
+        .min_w_0()
+        .h_full()
+        .rounded(px(22.0 * s))
+        .overflow_hidden()
+        .map(|panel| {
+            if carmine {
+                panel.bg(rgb(0x007a_0b15))
+            } else {
+                panel.bg(orbit::gradient([hero.from, hero.to], 118.0))
+            }
+        })
+        .shadow(vec![gpui::BoxShadow {
+            color: orbit::tint(0x0028_0008, 0.45),
+            offset: gpui::point(px(0.0), px(40.0 * s)),
+            blur_radius: px(100.0 * s),
+            spread_radius: px(0.0),
+            inset: false,
+        }])
+        .when(carmine, |panel| panel.child(panel_background(state, s)))
+}
+
+pub(super) fn radio_tail(s: f32, fill_color: u32, edge_color: Hsla) -> impl IntoElement {
     gpui::canvas(
         |_, _, _| (),
         move |bounds, (), window, _| {
@@ -37,14 +81,14 @@ pub(super) fn radio_tail(s: f32) -> impl IntoElement {
             fill.line_to(at(14.0, 7.0));
             fill.close();
             if let Ok(path) = fill.build() {
-                window.paint_path(path, rgb(0x0017_1516));
+                window.paint_path(path, rgb(fill_color));
             }
             let mut edge = PathBuilder::stroke(px(s));
             edge.move_to(at(7.0, 0.0));
             edge.line_to(at(0.0, 7.0));
             edge.line_to(at(7.0, 14.0));
             if let Ok(path) = edge.build() {
-                window.paint_path(path, orbit::tint(0x00fa_f7f7, 0.14));
+                window.paint_path(path, edge_color);
             }
         },
     )
@@ -227,22 +271,7 @@ impl Hub {
             || cx
                 .try_global::<vantare_ui::MotionPolicy>()
                 .is_some_and(|p| p.0);
-        let panel = div()
-            .relative()
-            .flex_1()
-            .min_w_0()
-            .h_full()
-            .rounded(px(22.0 * s))
-            .overflow_hidden()
-            .bg(rgb(0x007a_0b15))
-            .shadow(vec![gpui::BoxShadow {
-                color: orbit::tint(0x0028_0008, 0.45),
-                offset: gpui::point(px(0.0), px(40.0 * s)),
-                blur_radius: px(100.0 * s),
-                spread_radius: px(0.0),
-                inset: false,
-            }])
-            .child(panel_background(state, s));
+        let panel = art_panel(state, s, cx);
         let content = match step {
             0 => div()
                 .size_full()
@@ -277,7 +306,8 @@ impl Hub {
                     .bg(orbit::tint(0x0000_0000, 0.4)),
                 ),
             1 => self.onboarding_radar(s, cx),
-            2 | 6 => self.onboarding_kit(s, cx),
+            2 | model::DONE => self.onboarding_kit(s, cx),
+            model::LOOK => Self::onboarding_look_preview(s, cx),
             3 => Self::onboarding_plans(s, cx),
             4 => {
                 let automatic = state.choices.automatic;
@@ -471,7 +501,7 @@ impl Hub {
                     .justify_between()
                     .child(
                         heading(
-                            if state.step == 6 {
+                            if state.step == model::DONE {
                                 "TU OVERLAY"
                             } else {
                                 "TUS WIDGETS"
@@ -709,6 +739,190 @@ impl Hub {
                 0x00ff_ffff,
                 cx,
             ))
+    }
+    /// Vista previa del Hub con los tokens activos: cambia en cuanto se elige.
+    #[allow(clippy::too_many_lines)] // Maqueta declarativa de una ventana del Hub.
+    fn onboarding_look_preview(s: f32, cx: &gpui::App) -> Div {
+        let theme = cx.global::<Theme>();
+        let t = &theme.skin;
+        let mode = if theme.scheme == Scheme::Light {
+            "CLARO"
+        } else {
+            "OSCURO"
+        };
+        let caption = format!(
+            "VISTA PREVIA · {} · {mode}",
+            theme.palette.label().to_uppercase()
+        );
+        let nav = ["Inicio", "Overlays", "Calendario", "Estrategia", "Ajustes"]
+            .into_iter()
+            .enumerate()
+            .map(|(index, label)| {
+                let active = index == 0;
+                div()
+                    .h(px(28.0 * s))
+                    .px(px(10.0 * s))
+                    .rounded(px(t.radius.sm * s))
+                    .flex()
+                    .items_center()
+                    .when(active, |item| {
+                        item.bg(orbit::gradient([t.nav_active.from, t.nav_active.to], 90.0))
+                            .border_1()
+                            .border_color(orbit::alpha(t.nav_ring))
+                    })
+                    .child(text(
+                        label,
+                        11.5 * s,
+                        if active { 600 } else { 500 },
+                        if active { t.text1 } else { t.text3 },
+                        cx,
+                    ))
+            });
+        let sidebar = div()
+            .w(px(128.0 * s))
+            .h_full()
+            .flex_none()
+            .bg(orbit::gradient([t.sidebar.from, t.sidebar.to], 180.0))
+            .border_r_1()
+            .border_color(orbit::alpha(t.sidebar_line))
+            .p(px(10.0 * s))
+            .flex()
+            .flex_col()
+            .gap(px(4.0 * s))
+            .child(
+                div()
+                    .h(px(30.0 * s))
+                    .px(px(6.0 * s))
+                    .flex()
+                    .items_center()
+                    .child(orbit::icon("mark", 14.0 * s, t.text1)),
+            )
+            .children(nav);
+        let stat = |label: &'static str, value: &'static str, delta: &'static str, good: bool| {
+            let (ink, tint) = if good {
+                (t.ok, (t.ok_tint << 8) | 0xff)
+            } else {
+                (t.accent_bright, t.accent_tint)
+            };
+            div()
+                .flex_1()
+                .p(px(12.0 * s))
+                .rounded(px(t.radius.lg * s))
+                .bg(orbit::gradient([t.neo.from, t.neo.to], 180.0))
+                .border_1()
+                .border_color(orbit::alpha(t.line1))
+                .flex()
+                .flex_col()
+                .gap(px(6.0 * s))
+                .child(text(label, 10.5 * s, 500, t.text3, cx))
+                .child(
+                    div()
+                        .flex()
+                        .items_end()
+                        .justify_between()
+                        .child(
+                            text(value, 24.0 * s, 600, t.text1, cx)
+                                .font_family("Rajdhani")
+                                .line_height(px(24.0 * s)),
+                        )
+                        .child(
+                            text(delta, 10.5 * s, 600, ink, cx)
+                                .px(px(6.0 * s))
+                                .py(px(2.0 * s))
+                                .rounded(px(t.radius.xs * s))
+                                .bg(orbit::alpha(tint)),
+                        ),
+                )
+        };
+        let hero = div()
+            .h(px(118.0 * s))
+            .p(px(16.0 * s))
+            .rounded(px(t.radius.lg * s))
+            .overflow_hidden()
+            .bg(orbit::gradient([t.hero.from, t.hero.to], 118.0))
+            .border_1()
+            .border_color(orbit::alpha(t.hero_ring))
+            .flex()
+            .flex_col()
+            .justify_between()
+            .child(orbit::tracked_text(
+                "PRÓXIMA CARRERA",
+                9.5 * s,
+                700,
+                t.text2,
+                1.4 * s,
+                cx,
+            ))
+            .child(
+                div()
+                    .flex()
+                    .items_end()
+                    .justify_between()
+                    .child(
+                        text("LE MANS · 6 H", 30.0 * s, 600, t.text1, cx)
+                            .font_family("Rajdhani")
+                            .line_height(px(30.0 * s)),
+                    )
+                    .child(
+                        text("Abrir overlay", 11.5 * s, 600, 0x00ff_ffff, cx)
+                            .px(px(12.0 * s))
+                            .py(px(7.0 * s))
+                            .rounded(px(t.radius.sm * s))
+                            .bg(orbit::gradient([t.button.from, t.button.to], 180.0)),
+                    ),
+            );
+        let main = div()
+            .flex_1()
+            .min_w_0()
+            .p(px(16.0 * s))
+            .flex()
+            .flex_col()
+            .gap(px(12.0 * s))
+            .child(text("Inicio", 15.0 * s, 600, t.text1, cx))
+            .child(hero)
+            .child(
+                div()
+                    .flex()
+                    .gap(px(10.0 * s))
+                    .child(stat("Posición", "P3", "+2", true))
+                    .child(stat("Delta", "-0,41", "Mejor", false)),
+            );
+        div()
+            .size_full()
+            .flex()
+            .flex_col()
+            .items_center()
+            .justify_center()
+            .gap(px(24.0 * s))
+            .child(
+                div()
+                    .w(px(520.0 * s))
+                    .h(px(330.0 * s))
+                    .rounded(px(14.0 * s))
+                    .overflow_hidden()
+                    .border_1()
+                    .border_color(orbit::alpha(t.line2))
+                    .bg(orbit::gradient([t.window.from, t.window.to], 155.0))
+                    .shadow(vec![gpui::BoxShadow {
+                        color: orbit::tint(0x0000_0000, 0.45),
+                        offset: gpui::point(px(0.0), px(24.0 * s)),
+                        blur_radius: px(60.0 * s),
+                        spread_radius: px(0.0),
+                        inset: false,
+                    }])
+                    .flex()
+                    .child(sidebar)
+                    .child(main),
+            )
+            .child(
+                orbit::tracked_text(caption, 10.88 * s, 700, 0x00ff_ffff, 1.08 * s, cx)
+                    .px(px(14.0 * s))
+                    .py(px(8.0 * s))
+                    .rounded(px(6.0 * s))
+                    .border_1()
+                    .border_color(orbit::tint(0x00ff_ffff, 0.2))
+                    .bg(orbit::tint(0x0000_0000, 0.4)),
+            )
     }
     #[allow(clippy::too_many_lines)] // Lista blanca de uso y exclusiones en una tarjeta de privacidad.
     fn onboarding_feed(&self, s: f32, cx: &gpui::App) -> Div {

@@ -34,18 +34,70 @@ Desde #1726, los accesos Inicio/Escritorio/Startup apuntan al supervisor GUI
 PowerShell con `CREATE_NO_WINDOW`; no depende de una consola interactiva.
 El registro del Hub renueva los destinos tras actualizar o restaurar una generación.
 Los errores de arranque quedan en `<raíz>/logs/` (bootstrap, runtime y Hub).
+Startup conserva `Vantare.lnk`, apunta al supervisor GUI y añade `--background`.
+No abre indicador, no concede ASFW_ANY y respeta «Empezar minimizado».
+Inicio/Escritorio son aperturas interactivas: muestran el Hub aunque ese ajuste
+esté activo. No cambian nombres internos, rutas ni datos.
+El marcador `# vantare-launch-capabilities: background-v1` en candidate.ps1 de
+la generación permite usar el flag. Restore-NativeCandidate renueva explícitamente
+el Startup existente para la generación restaurada y retira el flag si es antigua,
+sin esperar a que se abra su Hub. Si el feed conserva candidate.ps1 raíz antiguo,
+Register conserva el Startup anterior: ese supervisor GUI resuelve la generación
+activa mediante beta.ps1 y sigue siendo compatible con rollback/desinstalación.
+Setup renueva la raíz y habilita el flag. No se introduce otro host de arranque.
+
+El indicador interactivo requiere este contrato exacto en la primera línea del
+`beta.ps1` raíz (UTF-8, BOM opcional):
+`# vantare-boot-capabilities: indicator-handshake-v1`.
+El bootstrap lee solo el encabezado antes de crear la ventana; no interpreta
+PowerShell. Sin ese marcador/versionado conocido, sale tras crear el motor PS,
+como RC4, sin indicador residente que pueda bloquear Apply o rollback.
+Setup renueva `beta.ps1`; el feed conserva la copia raíz antigua y por eso se
+degrada sin indicador hasta reinstalar con Setup. No se cambia el guard de EXE.
+Con el contrato v1, antes de Apply/rollback PS valida ventana/PID/imagen, envía
+WM_APP+106 y espera su salida hasta 10 s. Apply aplaza si no sale. Solo rollback
+puede esperar su cierre natural, mediante el mismo handle y hasta 47 s totales
+(45 s del indicador más margen). Si tampoco sale, aborta sin cambiar generación
+ni pendiente, sin terminar procesos a la fuerza. Un HWND ya destruido no impide
+esperar la salida del proceso; el guard exclusivo se sigue obteniendo después. El arranque normal cierra por señal del primer frame del Hub, salida
+del motor o plazo de 45 s. `--background` suprime el indicador y la activación.
+
+`bootstrap-capability-tests.ps1 -GuiExecutable <vantare.exe construido>
+-EvidenceDirectory <carpeta propia>` prueba los dos encabezados con el bootstrap
+real en escritorios privados, sin SwitchDesktop: con marcador aparece el indicador,
+señala/cierra y obtiene el guard; sin marcador no aparece y libera la imagen como
+RC4. Lo ejecuta `runtime/tests/windows_startup.rs` junto al probe de timeout y guard.
+La imagen construida lleva ICON1 de #1746. La campaña completa de actualizaciones
+firmadas, incluidos los casos nuevos Apply/rollback con bootstrap vivo en
+`beta-tests.ps1`, queda obligatoria para RC5 por decisión del orquestador.
+
+Si se cierra el Hub mientras Register está pendiente, se oculta la ventana y el
+proceso permanece vivo hasta el éxito y el acuse del supervisor (retirar
+boot-pending.json), con plazo. hub-ready se publica una sola vez; un cierre con
+código 0 y el PID correcto ya registrado es válido aunque gane el siguiente sondeo.
+Código 0 sin hub-ready nunca confirma una instalación. Un quit forzado recoge
+síncronamente el hijo Register antes de cancelar su tarea.
+
 Las herramientas CLI de grabación/importación conservan su uso en terminal;
 los procesos automáticos y las ventanas de producto usan subsistema Windows.
 
 Doble clic en **VantareSetup.exe**. Instala sin administrador en
-`%LOCALAPPDATA%/Programs/Vantare`, crea «Vantare» y
+`%LOCALAPPDATA%/Programs/Vantare`, crea «Vantare Simracing Suite» y
 «Desinstalar» en el menú Inicio y ofrece abrir el Hub al terminar.
 En interactivo, Opciones propone escritorio ON y autostart OFF. `/S` no crea
 accesos opcionales nuevos ni abre Vantare; respeta preferencias ya guardadas.
 Solo se quitan accesos que pertenecen a esta raíz. «Aplicaciones instaladas» también
 permite desinstalar. Se conserva la clave técnica `VantareNativeBeta`: cambiarla
 rompería la sincronización de versión y rollback del bootstrap ya instalado.
-El nombre visible en Setup, Inicio, Windows y la ventana del Hub es **Vantare**.
+Inicio, escritorio y Aplicaciones instaladas usan **Vantare Simracing Suite**.
+Los accesos conservan el supervisor GUI como destino y usan explícitamente su
+icono Win32 ID1. RC3/RC4 carecían de ese recurso; runtime/build.rs lo incrusta
+solo en vantare.exe mediante el build-support compartido de Hub/UI. AppUserModelID
+estable: `Vantare.SimracingSuite`. Si Windows bloquea la propiedad AUMID, se
+registra un aviso y Register continúa con el nombre/icono guardados, retirando
+el enlace antiguo; ese metadato no impide hub-ready ni provoca rollback. DisplayIcon apunta a Uninstall.exe propio,
+o al Hub en instalaciones anteriores sin desinstalador GPUI. Setup y Hub
+conservan sus títulos actuales.
 Una instalación anterior conserva su `InstallLocation`, incluida la carpeta
 `Vantare Native Beta`; moverla obligaría a migrar datos y referencias sin aportar
 valor al usuario. Setup también adopta datos de esa ruta tras desinstalar.
@@ -64,9 +116,9 @@ del script del paquete: llama a la desinstalación beta instalada, conserva los
 datos y retira accesos, registro y bootstrap. Así también puede desinstalarse
 una beta renombrada solo por feed, cuyo Uninstall.exe antiguo desconoce la nueva
 carpeta. La copia permanece disponible si se interrumpe la desinstalación.
-Uninstall.exe propio también retira los accesos nuevos; la migración
+Uninstall.exe propio también retira los accesos nuevos y antiguos propios; la migración
 ya retiró los antiguos propios y preservó cualquier acceso ajeno.
-Wails usa «Vantare Simracing Suite», otra carpeta y sus propios accesos.
+Wails usa otra carpeta y sus propios accesos.
 No se leen ni importan datos Wails durante la instalación.
 
 La desinstalación exige cerrar todos los procesos de esta instalación, retira
@@ -83,7 +135,9 @@ la generación ni el marcador pendiente: el arranque conserva su rollback.
 Los códigos 2 (sesión/binarios abiertos), 3 (versión anterior) y 4 provienen de
 errores tipados, sin depender del texto mostrado.
 
-#1690: Desktop/Startup apagados no consultan sus carpetas. Si se activan,
+#1690: Desktop/Startup apagados no crean carpetas ni accesos. Register consulta
+el escritorio para migrar un acceso propio existente, incluso sin preferencias
+heredadas de NSIS; desinstalar consulta ambos destinos para retirar residuos. Si se activan,
 se usa la ruta configurada por Windows y se crea la carpeta si falta; una
 carpeta inaccesible o un acceso ajeno se conserva y produce un aviso sin
 abortar la instalación. Al apagar una opción antes activa, Setup retira
@@ -541,3 +595,17 @@ pendiente): abrir y cerrar Vantare y repetir.
 
 Runbook de firma, publicación y reinstalación:
 [repo-privado-1565.md](../../docs/repo-privado-1565.md#runbook-de-isaac-00976-en-vantare-downloads).
+
+
+#1746: `shortcut-branding-tests.ps1` (incluido en registration-tests) comprueba
+nombre, destino GUI, IconLocation, AppUserModelID, registro, repetición sin
+duplicados, restauración transaccional y limpieza antigua/nueva para las formas
+de enlaces de NSIS 0.0.975, RC3 y RC4, con COM real y carpetas aisladas.
+
+Revisión #1752: el harness `tests.ps1` exige RT_GROUP_ICON ID1 en el supervisor
+extraído e instalado del paquete (LoadLibraryEx como datos, sin ejecutar código).
+La regresión de branding simula fallo de IPropertyStore en Register del Hub y
+en la transacción de Setup: aviso, un solo enlace y generación conservada.
+Rollback manual de Inicio/Escritorio hacia generaciones anteriores: seguimiento
+#1753. La compatibilidad de Startup/`--background` sí se restaura en #1758,
+antes de abrir el Hub de la generación anterior.

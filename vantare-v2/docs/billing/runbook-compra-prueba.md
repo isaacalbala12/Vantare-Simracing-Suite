@@ -1,6 +1,8 @@
 # Compra E2E en Polar sandbox · VANTA-96
 
-Estado24-oct: infraestructura preparada y parada **antes de crear checkout**.
+Estado24-oct: intento de checkout autorizado, pero la Edge falla502 por Polar422
+en metadata vacía. No hay URL ni pago; corregir #1730 antes del ensayo.
+Infraestructura preparada; pago y refund todavía sin ejecutar.
 La compra simulada y su reembolso siguen pendientes del ensayo supervisado.
 No hay compra real con devolución. No se cambian secretos ni flags de Supabase
 Production para este ensayo. La apertura de acceso/lista en la web es un encargo

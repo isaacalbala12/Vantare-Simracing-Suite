@@ -91,6 +91,49 @@ Deno.test("Polar checkout sends explicit no-trial and versioned capability metad
   assertEquals(metadata.channels, '["stable"]');
 });
 
+Deno.test("Polar standard checkout omits absent launch scope instead of an empty metadata value", async () => {
+  for (const launchScopeVersion of [null, ""]) {
+    await createPolarCheckoutSession(
+      { ...checkout, launchScopeVersion },
+      checkoutDeps(async (input, init) => {
+        const body = await new Request(input, init).json();
+        const metadata = body.metadata as Record<string, unknown>;
+        // Polar rejects empty metadata strings with 422/string_too_short.
+        assertEquals(Object.hasOwn(metadata, "launch_scope_version"), false);
+        assertEquals(
+          Object.values(metadata).some((value) => value === ""),
+          false,
+        );
+        assertEquals(body.products, [checkout.productId]);
+        assertEquals(body.allow_trial, false);
+        return new Response(
+          JSON.stringify({ url: "https://sandbox.polar.sh/checkout/test" }),
+          { status: 201 },
+        );
+      }),
+    );
+  }
+});
+
+Deno.test("Polar launch checkout retains its configured launch scope metadata", async () => {
+  await createPolarCheckoutSession(
+    {
+      ...checkout,
+      productKey: "launch_lifetime",
+      planSku: "launch_lifetime",
+      launchScopeVersion: "launch_v1",
+    },
+    checkoutDeps(async (input, init) => {
+      const body = await new Request(input, init).json();
+      assertEquals(body.metadata.launch_scope_version, "launch_v1");
+      return new Response(
+        JSON.stringify({ url: "https://sandbox.polar.sh/checkout/test" }),
+        { status: 201 },
+      );
+    }),
+  );
+});
+
 Deno.test("Polar checkout sends exactly seven days only when configured", async () => {
   let body: Record<string, unknown> = {};
   await createPolarCheckoutSession(

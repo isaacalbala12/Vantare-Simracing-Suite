@@ -341,7 +341,10 @@ export async function createPolarCheckoutSession(
       catalog_version: params.catalogVersion,
       capabilities: JSON.stringify(params.capabilities),
       channels: JSON.stringify(params.channels),
-      launch_scope_version: params.launchScopeVersion ?? "",
+      // Polar rejects empty metadata strings; standard plans have no launch scope.
+      ...(params.launchScopeVersion
+        ? { launch_scope_version: params.launchScopeVersion }
+        : {}),
       source: "desktop",
       app: "vantare",
       ...(params.attemptId && params.dispatchToken

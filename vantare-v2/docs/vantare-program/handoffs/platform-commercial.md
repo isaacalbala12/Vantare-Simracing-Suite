@@ -1,3 +1,26 @@
+## VANTA-96 / #1730 · Pago sandbox bloqueado por metadata vacía (24-oct)
+
+Encargo nuevo autoriza checkout/pago/refund solo sandbox; Production intacto.
+Catálogo599EURcents/mes sin trial y endpoint sandbox/secret validados por GET.
+La Edge staging native-billing-checkout devolvió502; logs seguros confirman
+Polar422 con metadata string_too_short. Se envía launch_scope_version="" para
+planes normales. Dos validaciones sandbox con products deliberadamente no UUID
+(imposible crear checkout) confirman errores con vacío y ninguno al omitirlo.
+No URL checkout ni pago ni refund. Cero pedidos. Un intento creating retenido
+con resolution=unpaid_expired y sin provider_checkout_id ni URL: rechazo
+terminal coherente, no manipularlo a mano.
+
+Arreglo mínimo en rama vantareapp/isa-1730-polar-metadata-vacia desde nightly
+c1d6c21ab: omitir launch_scope_version si falta, conservar launch_v1 válido.
+Regresión RED antes y43 tests Deno PASS después. Sin migración ni nuevo deploy.
+El despliegue staging autorizado estaba fijado a1b732b67d: siguiente paso es
+review/autorizar native-billing-checkout con el SHA nuevo, luego repetir por la
+Edge y continuar pago4242/refund/licencia. No inventar un launch scope en el mapa
+ni crear checkout por fuera de la Edge para sortear el fallo. No se afirma que
+la causa de Production sea idéntica sin una prueba autorizada allí.
+Evidencia: evidence/supabase-staging/metadata-validation-proof.json,
+metadata-fix-tests.log y EJECUCION.md (también registro general).
+
 ## VANTA-96 / #1713 · Staging preparado; parada antes de checkout (24-oct)
 
 Copia completa reciente y verificada, reconstrucción97/97 y cinco funciones

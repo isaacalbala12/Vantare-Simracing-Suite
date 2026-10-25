@@ -1,3 +1,42 @@
+## VANTA-95 / VANTA-96 · Recuperación web de login/lista (25-oct, #1774)
+
+Código web: issue15 / PR https://github.com/isaacalbala12/vantare-simracing-suite-web/pull/16,
+base master8653d11a2, rama vantareapp/isa-15-login-persistente. El merge#14 disparó
+Workers Builds c2d76b98 a las16:56Z del24-oct con npm run build sin variables:
+publicó6183e519, acceso y lista cerrados. No workflow GitHub. ETag coincide con
+la evidencia del25-oct. Caché servía un build cerrado, no era fallo PKCE.
+
+Arreglo productivo autorizado SOLO landing/login/lista: trigger master con modos
+open y override isaac-2026-10-24 explícitos en comando de build. Perfil versionado
+y custom build de Wrangler en PRweb16; el gate normal sigue rechazando open sin
+excepción. 27 tests Node +2 Python PASS. Deploy manual333c1f6c y después prueba
+REAL del trigger sobre el mismo master8653d11: buildb96e38d8 SUCCESS, versión
+b1d4e197-3fe4-4b02-8552-8f73dde126c1, deployment2c133934-f7b9-4f3b-8469-11d6eb5f3825.
+Acceso ES/EN abiertos, Clerk monta, home formulario abierto y build-report
+registra override. URLs normales verificadas; no purge necesario. WAITLIST_OPEN
+true, PURCHASE_OPEN ausente/cerrado. Sin cambios de pagos, Supabase o marketing.
+
+Lista real: cinco200, sexto429, inválido400, una fila QA guardada; solo esa fila
+borrada con parámetros y recuento0 posterior. Sin correos ni migraciones D1.
+OAuth T3 incognito con cliente/scopes exactos de RC6 y PKCE S256: authorize ->
+/acceso -> email/contraseña200 -> prepare_second_factor200. Se detiene en código
+de nuevo dispositivo: la cuenta QA custodiada usa@example.com y no tiene buzón.
+Se pidió buzón QA accesible al orquestador; NO se da consentimiento/callback/token
+ni sesión de app por verificados. RC6 instalada0.0.984 ejecutada con datos propios,
+click real abre Chrome y log browser-accepted; awaiting-callback. Procesos QA
+propios cerrados, instalación/perfil de Isaac conservados. Sin cambios Clerk.
+Google enabled=false; habilitarlo/credenciales requiere concretar el cambio antes.
+403 HTTP de accounts/oauth-consent es CF-Mitigated:challenge/Just a moment;
+navegador real obtiene200 y carga Clerk. Sin sesión/parámetros no muestra consent.
+
+Próximo paso: cuenta QA con buzón real/código para cerrar los dos E2E, incluyendo
+consentimiento, callback con code y token200. Para Isaac: intento NUEVO desdeRC6,
+no refrescar pestaña anterior (caduca3min), email y código de su buzón, aprobar
+Vantare, volver a app. Para revertir el último deploy, versión333c1f6c mantiene
+acceso abierto y conserva D1; no usar6183e519 salvo querer reproducir el cierre.
+Evidencia C:/VantareServer/evidence/login-20261025 e informe/EJECUCION general;
+registro en repo web docs/EJECUCION-20261025.md. PRweb sin merge por este worker.
+
 ## VANTA-96 / #1772 · Plan de pagos en producción, pendiente de autorización (24-oct)
 
 PR https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1773 a nightly,

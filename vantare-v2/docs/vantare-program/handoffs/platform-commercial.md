@@ -1,3 +1,42 @@
+## 26-oct · VANTA-96 / #1776 · Despliegue de pagos autorizado: parada en preflight
+
+Isaac autoriza PLAN-PAGOS-PRODUCCION.md, copia nueva,98/historial, checkout con
+#1766/#1732, selectorlegacy_utf8 y webhook#1769, verificaciones SIN PAGAR. Venta
+cerrada; login nativo asignado a otro worker y excluido de este encargo.
+SHA congelado0e0fca6c6b6c7f24843bc8e35be77e72e42d6463; árbol supabase
+fffb8729bf91f93d0fc89c240a53e97821a7a6ca idéntico al revisado4e07dcc20.
+
+**PARADA antes del paso1:** GET Management API del proyecto producción responde401.
+Archivo supabase-token con formatoPAT reconocido, sinBOM ni espacios. No se
+imprime valor. No se repite una credencial rechazada ni se busca otra identidad.
+No se ha intentado conexión a PostgreSQL: no atribuir el fallo a su contraseña.
+No se pudieron refrescar nivel de migraciones ni versiones desplegadas.
+La última inspección previa sigue siendo97/98, pero NO se presenta como actual.
+
+Pasos: copia nueva NO creada;98 NO aplicada; checkout NO desplegado; selector
+NO configurado; webhook NO desplegado; verificaciones NO iniciadas. Sin cambios
+productivos, sin compra ni cambio de flags. Carpeta de backup nueva vacía,
+ACL SYSTEM/Administrator verificada. No hace falta rollback porque no hubo
+mutaciones; las copias antiguas NO sustituyen la copia nueva exigida por el plan.
+
+Necesario: renovar token PERSONAL de la cuenta Supabase en Account > Access Tokens,
+guardarlo en C:/VantareServer/secrets/supabase-token por la vía privada habitual,
+sin pegarlo en chat. No cambiar service_role, anon ni secretos Edge. Avisar sin valor;
+al recibirlo, repetir preflight completo y copia nueva antes de continuar.
+
+Observaciones para el otro worker, SOLO snapshot25-oct: primer factor admite
+email_code/password; verificación email=email_code; MFA global no requerida y sin
+segundos factores email, pero navegador nuevo exigió código de protección de
+nuevo dispositivo (password200, prepare_second_factor200). API nativa habilitada;
+trusted_device_sign_in=false, device_attestation_mode=disabled. Google=false.
+Esto no demuestra CAPTCHA en FAPI ni un fallo de allowed origins. El403 de
+accounts/oauth-consent inspeccionado era challengeCloudflare del cliente HTTP;
+navegador200. No se tocó ni se volvió a probar el login/configuración Clerk hoy.
+
+Evidencia: pagos-prod-20261026/{00-credential-preflight.json,STOP.json}; comandos
+y scripts preparados en esa carpeta, aún sin ejecutar operaciones mutadoras.
+
+
 ## VANTA-95 / VANTA-96 · Recuperación web de login/lista (25-oct, #1774)
 
 Código web: issue15 / PR https://github.com/isaacalbala12/vantare-simracing-suite-web/pull/16,

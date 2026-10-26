@@ -744,55 +744,6 @@ fn poll(view: &Entity<Installer>, cx: &mut App) {
     .detach();
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn installer(cx: &mut gpui::TestAppContext) -> (Entity<Installer>, Rc<Cell<u8>>) {
-        let exit = Rc::new(Cell::new(1));
-        let info = Info {
-            root: "C:/tmp/ola2/1591-qa/1778".into(),
-            version: "0.0.984".into(),
-            installed_version: Some("0.0.984".into()),
-            data_path: "C:/tmp/ola2/1591-qa/1778/data".into(),
-            desktop: true,
-            autostart: false,
-            size: 1,
-            reduced_motion: true,
-        };
-        let view = cx.new(|cx| Installer::new(info, Args::default(), false, exit.clone(), cx));
-        (view, exit)
-    }
-
-    #[gpui::test]
-    fn accepted_launch_requests_close_with_success(cx: &mut gpui::TestAppContext) {
-        let (view, exit) = installer(cx);
-        view.update(cx, |view, _| {
-            view.screen = Screen::Done;
-            view.opening = true;
-            assert!(view.opened(Ok(())));
-            assert!(!view.opening);
-        });
-        assert_eq!(exit.get(), 0);
-    }
-
-    #[gpui::test]
-    fn failed_launch_keeps_setup_open_and_shows_the_error(cx: &mut gpui::TestAppContext) {
-        let (view, exit) = installer(cx);
-        view.update(cx, |view, _| {
-            view.screen = Screen::Done;
-            view.opening = true;
-            let diagnostic = "launch refused".to_owned();
-            assert!(!view.opened(Err(diagnostic.clone())));
-            assert!(!view.opening);
-            assert_eq!(view.screen, Screen::Error);
-            assert_eq!(view.diagnostic, diagnostic);
-            assert_eq!(view.error, 1);
-        });
-        assert_eq!(exit.get(), 1);
-    }
-}
-
 #[cfg(feature = "parity-capture")]
 impl Installer {
     pub(crate) fn capture_toggle(&mut self, action: Action) {
@@ -842,5 +793,54 @@ impl Installer {
             }
             _ => Screen::Error,
         };
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn installer(cx: &mut gpui::TestAppContext) -> (Entity<Installer>, Rc<Cell<u8>>) {
+        let exit = Rc::new(Cell::new(1));
+        let info = Info {
+            root: "C:/tmp/ola2/1591-qa/1778".into(),
+            version: "0.0.984".into(),
+            installed_version: Some("0.0.984".into()),
+            data_path: "C:/tmp/ola2/1591-qa/1778/data".into(),
+            desktop: true,
+            autostart: false,
+            size: 1,
+            reduced_motion: true,
+        };
+        let view = cx.new(|cx| Installer::new(info, Args::default(), false, exit.clone(), cx));
+        (view, exit)
+    }
+
+    #[gpui::test]
+    fn accepted_launch_requests_close_with_success(cx: &mut gpui::TestAppContext) {
+        let (view, exit) = installer(cx);
+        view.update(cx, |view, _| {
+            view.screen = Screen::Done;
+            view.opening = true;
+            assert!(view.opened(Ok(())));
+            assert!(!view.opening);
+        });
+        assert_eq!(exit.get(), 0);
+    }
+
+    #[gpui::test]
+    fn failed_launch_keeps_setup_open_and_shows_the_error(cx: &mut gpui::TestAppContext) {
+        let (view, exit) = installer(cx);
+        view.update(cx, |view, _| {
+            view.screen = Screen::Done;
+            view.opening = true;
+            let diagnostic = "launch refused".to_owned();
+            assert!(!view.opened(Err(diagnostic.clone())));
+            assert!(!view.opening);
+            assert_eq!(view.screen, Screen::Error);
+            assert_eq!(view.diagnostic, diagnostic);
+            assert_eq!(view.error, 1);
+        });
+        assert_eq!(exit.get(), 1);
     }
 }

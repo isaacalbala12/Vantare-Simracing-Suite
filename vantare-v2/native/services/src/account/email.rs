@@ -3,6 +3,7 @@ use super::{Account, Error, Exchange, Grant, Http, Identity, OAuth, Result, Secr
 use crate::protocol::{EmailAction, EmailMode, EmailStage, Reply};
 use serde::Deserialize;
 use serde_json::Value;
+use std::io::Write;
 
 const DEVICE_GRANT: &str = "urn:ietf:params:oauth:grant-type:device_code";
 const COOLDOWN: u64 = 30;
@@ -90,6 +91,93 @@ fn device_endpoint(http: &Http, oauth: &OAuth) -> Result<Url> {
     }
     Ok(endpoint)
 }
+
+/// Solo etiquetas cerradas: nunca rutas con IDs, cuerpos ni texto remoto libre.
+fn diagnostic(path: &str, response: &crate::http::Response) -> String {
+    let stage = match path.rsplit('/').next().unwrap_or("") {
+        "client" => "client",
+        "sign_ins" => "sign_in",
+        "sign_ups" => "sign_up",
+        "prepare_first_factor" => "prepare_first_factor",
+        "prepare_verification" => "prepare_verification",
+        "attempt_first_factor" => "attempt_first_factor",
+        "attempt_verification" => "attempt_verification",
+        "reset_password" => "reset_password",
+        "device" => "device_approval",
+        _ => "unrecognized",
+    };
+    let body = response.json::<Value>().ok();
+    let code = match body
+        .as_ref()
+        .and_then(|b| b.pointer("/errors/0/code"))
+        .and_then(Value::as_str)
+    {
+        Some(
+            code @ ("form_identifier_not_found"
+            | "form_password_incorrect"
+            | "form_code_incorrect"
+            | "form_param_format_invalid"
+            | "form_param_missing"
+            | "form_password_pwned"
+            | "form_password_length_too_short"
+            | "verification_failed"
+            | "verification_expired"
+            | "captcha_invalid"
+            | "captcha_missing_token"
+            | "strategy_for_user_invalid"
+            | "form_param_value_invalid"
+            | "native_api_disabled"
+            | "too_many_requests"),
+        ) => code,
+        None if (200..300).contains(&response.status) => "none",
+        _ => "unrecognized",
+    };
+    format!(
+        "account-email: stage={stage} status={} clerk_code={code}",
+        response.status
+    )
+}
+
+fn rejection(response: &crate::http::Response) -> Error {
+    let body = response.json::<Value>().unwrap_or(Value::Null);
+    let codes: Vec<_> = body
+        .get("errors")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(|error| error.get("code").and_then(Value::as_str))
+        .collect();
+    if codes.contains(&"form_identifier_not_found") {
+        Error::NotFound
+    } else if codes.contains(&"form_password_pwned") {
+        Error::CompromisedPassword
+    } else if codes.iter().any(|code| {
+        code.contains("captcha")
+            || code.contains("protect")
+            || code.contains("strategy")
+            || code.contains("not_allowed")
+    }) {
+        Error::Unsupported
+    } else if codes
+        .iter()
+        .any(|code| code.starts_with("form_password_") && *code != "form_password_incorrect")
+    {
+        Error::WeakPassword
+    } else if codes.iter().any(|code| {
+        matches!(
+            *code,
+            "form_password_incorrect"
+                | "form_code_incorrect"
+                | "verification_failed"
+                | "form_param_format_invalid"
+        )
+    }) {
+        Error::InvalidCredential
+    } else {
+        Error::Denied
+    }
+}
+
 impl Login {
     fn signup(&self) -> bool {
         matches!(self.mode, EmailMode::SignUpCode | EmailMode::SignUpPassword)
@@ -147,53 +235,18 @@ impl Login {
             }
             self.client = Some(Secret(token));
         }
+        let _written = writeln!(std::io::stderr(), "{}", diagnostic(path, &response));
         if response.status == 429 {
             self.blocked_until =
                 now.saturating_add(response.retry_after.unwrap_or(COOLDOWN).clamp(1, 600));
             return Err(Error::Busy);
         }
         if matches!(response.status, 400 | 422) {
-            let errors = response.json::<Value>().ok();
-            let codes = errors
-                .as_ref()
-                .and_then(|e| e.get("errors"))
-                .and_then(Value::as_array);
-            if codes.is_some_and(|errors| {
-                errors.iter().any(|error| {
-                    error.get("code").and_then(Value::as_str) == Some("form_password_pwned")
-                })
-            }) {
-                return Err(Error::CompromisedPassword);
-            }
-            if codes.is_some_and(|errors| {
-                errors.iter().any(|error| {
-                    error
-                        .get("code")
-                        .and_then(Value::as_str)
-                        .is_some_and(|code| {
-                            code.contains("captcha")
-                                || code.contains("protect")
-                                || code.contains("strategy")
-                                || code.contains("not_allowed")
-                        })
-                })
-            }) {
+            let error = rejection(&response);
+            if error == Error::Unsupported {
                 self.stage = EmailStage::HostedRequired;
-                return Err(Error::Unsupported);
             }
-            if codes.is_some_and(|errors| {
-                errors.iter().any(|error| {
-                    error
-                        .get("code")
-                        .and_then(Value::as_str)
-                        .is_some_and(|code| {
-                            code.starts_with("form_password_") && code != "form_password_incorrect"
-                        })
-                })
-            }) {
-                return Err(Error::WeakPassword);
-            }
-            return Err(Error::InvalidCredential);
+            return Err(error);
         }
         let value: Value = response.success()?.json()?;
         if self.client.is_none() {
@@ -208,7 +261,22 @@ impl Login {
             return Err(Error::Protocol);
         }
         incoming_id.clone_into(&mut self.id);
-        match string(response, "status")? {
+        let status = string(response, "status")?;
+        let state = match status {
+            "complete"
+            | "needs_first_factor"
+            | "needs_new_password"
+            | "missing_requirements"
+            | "needs_second_factor"
+            | "needs_client_trust"
+            | "needs_protect_check" => status,
+            _ => "unrecognized",
+        };
+        let _written = writeln!(
+            std::io::stderr(),
+            "account-email: stage=observe state={state}"
+        );
+        match status {
             "complete" => {
                 let session_id = id(string(response, "created_session_id")?)?;
                 let sessions = value
@@ -388,6 +456,8 @@ impl Account {
                 EmailStage::Authorizing => "Esperando la confirmación de Clerk. Puedes volver para cancelar.",
                 EmailStage::HostedRequired => "Esta cuenta necesita completar un paso en el navegador",
             }.into(), |error| match error {
+                Error::NotFound => "Esta cuenta no existe: crea una cuenta o revisa el email.".into(),
+                Error::Denied | Error::Authentication => "El servicio de acceso rechazó la petición. Reintenta o continúa en el navegador.".into(),
                 Error::InvalidCredential => "Revisa el email, la contraseña o el código. No se pudo verificar el acceso.".into(),
                 Error::Busy => "Espera antes de volver a intentarlo.".into(),
                 Error::Expired | Error::Canceled => "El código ha caducado o el acceso se reinició. Pide otro código para continuar.".into(),

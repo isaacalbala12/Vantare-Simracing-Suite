@@ -905,3 +905,222 @@ fn blocked_device_grant_does_not_repeat_the_device_authorization_call() {
     drop(store);
     crate::cleanup_store(&root, "email-device-block", &[]);
 }
+
+/// Sonda manual autorizada: solo prepara OTP para una cuenta QA existente.
+#[test]
+#[ignore = "requires explicit QA account and Clerk Production network access"]
+fn production_qa_email_code_probe() {
+    let base =
+        Url::parse(&std::env::var("VANTARE_QA_ISSUER").expect("QA issuer")).expect("issuer URL");
+    assert_eq!(base.as_str(), "https://clerk.vantare.app/");
+    let email = std::env::var("VANTARE_QA_EMAIL").expect("QA email");
+    let (root, store) = crate::test_store("production-email-probe");
+    let mut account = Account::restore(oauth(&base), &store).expect("restore");
+    let result = account.email_action(
+        &Http::default(),
+        EmailAction::Begin {
+            mode: EmailMode::SignInCode,
+            email,
+            password: String::new(),
+        },
+        100,
+    );
+    println!(
+        "production-email-probe: result={:?}",
+        result.as_ref().map(|_| ())
+    );
+    assert!(result.is_ok());
+    assert!(matches!(
+        account.email_reply(100, None),
+        Reply::Email {
+            stage: EmailStage::Code,
+            ..
+        }
+    ));
+    assert!(account.identity().is_none());
+    account.cancel_login().expect("cancel");
+    let missing = format!(
+        "vantare-qa-{}@example.com",
+        &crate::random_id().expect("QA entropy")[..12]
+    );
+    let result = account.email_action(
+        &Http::default(),
+        EmailAction::Begin {
+            mode: EmailMode::SignInCode,
+            email: missing,
+            password: String::new(),
+        },
+        101,
+    );
+    assert!(matches!(result, Err(Error::NotFound)));
+    assert!(account.identity().is_none());
+    println!("production-email-probe: unknown_account=NotFound no_identity=true");
+    account.cancel_login().expect("cancel");
+    drop(account);
+    drop(store);
+    crate::cleanup_store(&root, "production-email-probe", &[]);
+}
+
+#[test]
+fn missing_account_and_service_rejection_have_actionable_messages() {
+    for (status, code, expected, text) in [
+        (
+            422,
+            "form_identifier_not_found",
+            Error::NotFound,
+            "Esta cuenta no existe: crea una cuenta",
+        ),
+        (
+            400,
+            "unexpected_provider_error",
+            Error::Denied,
+            "El servicio de acceso",
+        ),
+        (
+            403,
+            "native_api_disabled",
+            Error::Denied,
+            "El servicio de acceso",
+        ),
+    ] {
+        let server = Server::start_native(|base| {
+            vec![
+                metadata(base),
+                (200, "{}".into()),
+                (
+                    status,
+                    json!({"errors":[{"code":code,"message":"private-provider-body@example.com"}]})
+                        .to_string(),
+                ),
+            ]
+        });
+        let (root, store) = crate::test_store("email-errors");
+        let mut account = Account::restore(oauth(&server.base), &store).expect("restore");
+        assert!(
+            matches!(account.email_action(&Http::default(), start(EmailMode::SignInCode), 100), Err(error) if error == expected)
+        );
+        assert!(
+            matches!(account.email_reply(100, Some(expected)), Reply::Email { stage: EmailStage::Form, message, .. } if message.contains(text) && !message.contains("private-provider"))
+        );
+        assert!(account.identity().is_none());
+        drop(account);
+        drop(store);
+        crate::cleanup_store(&root, "email-errors", &[]);
+        server.finish();
+    }
+}
+
+#[test]
+fn extra_device_verification_requires_browser_and_never_authenticates() {
+    for state in [
+        "needs_second_factor",
+        "needs_client_trust",
+        "needs_protect_check",
+    ] {
+        let server = Server::start_native(|base| {
+            vec![metadata(base), (200, "{}".into()), attempt(state, false)]
+        });
+        let (root, store) = crate::test_store("email-device-verification");
+        let mut account = Account::restore(oauth(&server.base), &store).expect("restore");
+        assert!(matches!(
+            account.email_action(&Http::default(), start(EmailMode::SignInCode), 100),
+            Err(Error::Unsupported)
+        ));
+        assert!(matches!(
+            account.email_reply(100, Some(Error::Unsupported)),
+            Reply::Email {
+                stage: EmailStage::HostedRequired,
+                ..
+            }
+        ));
+        assert!(account.identity().is_none());
+        drop(account);
+        drop(store);
+        crate::cleanup_store(&root, "email-device-verification", &[]);
+        server.finish();
+    }
+}
+
+#[test]
+fn email_diagnostic_excludes_remote_text_and_identifiers() {
+    for code in ["form_identifier_not_found", "private@example.com\nsecret"] {
+        let response = crate::http::Response { status: 422,
+            body: json!({"errors":[{"code":code,"message":"secret password OTP 123456","meta":{"email":"private@example.com"}}]}).to_string().into_bytes(),
+            client_token: Some(Secret::new("secret-client-token".into())), retry_after: None };
+        let line = diagnostic(
+            "v1/client/sign_ins/sia_private/prepare_first_factor",
+            &response,
+        );
+        assert!(line.contains("stage=prepare_first_factor status=422"));
+        assert!(line.contains(if code == "form_identifier_not_found" {
+            "clerk_code=form_identifier_not_found"
+        } else {
+            "clerk_code=unrecognized"
+        }));
+        for private in ["private", "secret", "123456", "@", "\n"] {
+            assert!(!line.contains(private));
+        }
+    }
+}
+
+/// Usa el ejecutable instalado con IPC y almacenamiento exclusivamente de QA.
+#[test]
+#[ignore = "requires explicit installed binary and QA account against Production"]
+fn installed_binary_qa_email_code_probe() {
+    let binary = std::path::PathBuf::from(std::env::var("VANTARE_QA_BINARY").expect("QA binary"));
+    let email = std::env::var("VANTARE_QA_EMAIL").expect("QA email");
+    let instance = format!(
+        "vantare-qa-{}",
+        &crate::random_id().expect("QA entropy")[..12]
+    );
+    let root = std::env::temp_dir().join(&instance);
+    let core = vantare_ipc::control::CoreLink {
+        pipe: vantare_ipc::control::pipe_name(&instance),
+        image: std::env::current_exe().expect("QA parent"),
+        nonce: crate::random_id().expect("QA nonce"),
+    };
+    let mut client =
+        crate::process::Client::start_managed(&binary, Some(&root), &core).expect("QA process");
+    let reply = client
+        .request(crate::protocol::Command::AccountEmail {
+            action: EmailAction::Begin {
+                mode: EmailMode::SignInCode,
+                email,
+                password: String::new(),
+            },
+        })
+        .expect("QA reply");
+    assert!(matches!(
+        reply,
+        Reply::Email {
+            stage: EmailStage::Code,
+            error: None,
+            ..
+        }
+    ));
+    println!("installed-email-probe: qa_existing=Code error=none");
+    client
+        .request(crate::protocol::Command::AccountEmail {
+            action: EmailAction::Cancel {},
+        })
+        .expect("cancel");
+    let reply = client
+        .request(crate::protocol::Command::AccountEmail {
+            action: EmailAction::Begin {
+                mode: EmailMode::SignInCode,
+                email: format!(
+                    "vantare-qa-{}@example.com",
+                    &crate::random_id().expect("QA entropy")[..12]
+                ),
+                password: String::new(),
+            },
+        })
+        .expect("QA missing reply");
+    assert!(
+        matches!(reply, Reply::Email { stage: EmailStage::Form, message, error: Some(_), .. }
+        if message == "Revisa el email, la contrase\u{00f1}a o el c\u{00f3}digo. No se pudo verificar el acceso.")
+    );
+    println!("installed-email-probe: qa_missing=original_generic_error");
+    drop(client);
+    std::fs::remove_dir_all(root).expect("QA cleanup");
+}

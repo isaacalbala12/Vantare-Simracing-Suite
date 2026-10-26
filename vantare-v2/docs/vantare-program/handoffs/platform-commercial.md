@@ -1,3 +1,34 @@
+## VANTA-105 / #1777 · Acceso nativo por email: diagnóstico RC6 (26-oct)
+
+Reproducción autorizada con cuenta QA de Production y raíz IPC nueva: el Services
+instalado 0.0.984 llega a pedir OTP; con una dirección QA inexistente reproduce
+exactamente el aviso genérico. El código Rust confirma FAPI directa en
+clerk.vantare.app: client200, sign_ins200 y prepare_first_factor200 para cuenta
+existente; sign_ins422/form_identifier_not_found para inexistente. No hay fallo
+general de email_code ni Native API en esa prueba. La cuenta de Isaac queda
+sin consultar: que no exista en Production es hipótesis, no diagnóstico suyo.
+
+Se distingue cuenta inexistente de rechazo del servicio y se añaden logs cerrados
+de etapa, status, código Clerk y estado FAPI, sin datos personales ni tokens.
+needs_second_factor/needs_client_trust/needs_protect_check conservan el paso al
+navegador; regresiones prueban que no conceden identidad. Sin cambios Clerk,
+OAuth/IPC, dependencias, Supabase o perfil de Isaac. No hay login completo QA:
+las sondas paran antes del OTP, consentimiento y canje OAuth.
+
+Rama vantareapp/isa-1777-login-nativo, base origin/nightly
+0e0fca6c6b6c7f24843bc8e35be77e72e42d6463. Gates locales acotados a Services:
+Clippy all-targets -D warnings PASS, Nextest233/233 PASS y5 skips (2 sondas
+Production manuales, ambas ejecutadas aparte2/2 PASS;3 omisiones previas).
+Fmt, diff-check y quality/466 huellas PASS. Compilación por compilar.ps1,
+target propio. Check independiente no repetido: Clippy compila todos los targets;
+lifecycle/telemetría workspace quedan para CI según brief, sin cambios de
+runtime/domain/ipc/testdata. RED previo de mapeo conservado en evidencia.
+
+Guía y límites: docs/auth/login-propio.md. Logs sanitizados e informe en
+C:/VantareServer/evidence/login-nativo/. Siguiente: revisión del PR de #1777,
+CI completa y, tras integración autorizada, compilar RC7. No merge, promoción,
+release ni configuración Clerk por el worker. SHA, PR y CI actualizados en #1777.
+
 ## VANTA-95 / VANTA-96 · Recuperación web de login/lista (25-oct, #1774)
 
 Código web: issue15 / PR https://github.com/isaacalbala12/vantare-simracing-suite-web/pull/16,

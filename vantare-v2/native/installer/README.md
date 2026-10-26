@@ -16,6 +16,15 @@ footer solo a la derecha, Inter/Rajdhani 700/Space Mono y seis pantallas. Las
 versión y aviso de datos conservados en lugar de casilla. Recursos/fuentes y
 su procedencia están en [assets](assets/README.md).
 
+Ventana (#1778): ventana normal sin bordes y de tamaño fijo, con entrada propia
+en la barra de tareas. La cabecera de 36 px y minimizar usan las zonas nativas
+`WindowControlArea` del Hub; cerrar conserva la guarda de la transacción.
+«Abrir Vantare» concede ASFW_ANY para la cadena interactiva del bootstrap y
+cierra Setup con código 0 cuando Windows acepta el lanzamiento. Si falta el
+bootstrap o falla crear el proceso, Setup conserva y muestra el error.
+El bootstrap conserva la autoridad sobre errores posteriores y vida del Hub;
+no se espera a su salida ni se modifica instalación, actualización o rollback.
+
 Movimiento (#1728): pantallas 280 ms ease-out con desplazamiento de 14 px (hacia
 atrás en «Volver»), segmento actual que se rellena, hover por muelle sin rebote
 (~150 ms; pulsado instantáneo) e interruptores animados. La barra sigue al valor

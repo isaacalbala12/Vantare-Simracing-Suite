@@ -8,6 +8,8 @@ mod command_line;
 #[cfg(all(windows, feature = "ui"))]
 mod controls;
 pub mod engine;
+#[cfg(all(windows, feature = "ui"))]
+mod foreground;
 pub mod model;
 pub mod motion;
 pub mod payload;

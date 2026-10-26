@@ -23,6 +23,10 @@ gpui_platform = { git = "https://github.com/zed-industries/zed", rev = "72d28c32
 # Solo con parity-capture; nunca entra en VantareSetup/Uninstall publicados.
 vantare-ui = { path = "../ui", optional = true }
 
+[target.'cfg(windows)'.dev-dependencies]
+# Enable the existing GPUI test harness; no new library or lockfile dependency.
+gpui = { git = "https://github.com/zed-industries/zed", rev = "72d28c32c2ba77a579e1c02f984654518552124b", features = ["test-support"] }
+
 [build-dependencies]
 vantare-build-support.workspace = true
 

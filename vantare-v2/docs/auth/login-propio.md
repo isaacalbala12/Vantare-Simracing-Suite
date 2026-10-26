@@ -374,3 +374,60 @@ y `slow_down` se contrastaron con la
 (actualizada el 13/10/2026). Esto verifica el contrato documentado, no la
 compatibilidad de una instancia real. La validación real de los cinco modos
 en macOS también sigue pendiente; los gates previos del Mac no la sustituyen.
+
+
+## VANTA-105 / #1777: diagnóstico Production de RC6 (26-oct)
+
+La reproducción autorizada usa una cuenta QA custodiada y almacenamiento local
+nuevo, nunca la cuenta de Isaac. El ejecutable activo instalado declara
+`0.0.984 (beta)`; SHA-256 de Services
+`7937fb84f58fed801abf01abe5ae0fd8cc9bc9bd8699c15312793418c9aec8d2`.
+Se arranca como hijo IPC con nombre y raíz propios, sin abrir el Hub ni modificar
+el perfil de la instalación. Se cierra el proceso propio al terminar.
+
+Resultado real, tanto con RC6 como con el flujo Rust del worktree:
+
+- Issuer/FAPI: `https://clerk.vantare.app/`, directo a Clerk, sin backend Vantare.
+- Discovery anuncia Device Grant y coincide con ese issuer.
+- `POST /v1/client?_is_native=true`: 200 y client token en Authorization.
+- `POST /v1/client/sign_ins?_is_native=true`, cuenta QA existente: 200,
+  `needs_first_factor`; ofrece password, email_code y reset_password_email_code.
+- `POST /v1/client/sign_ins/{id}/prepare_first_factor?_is_native=true`,
+  estrategia email_code: 200. RC6 devuelve la pantalla para introducir código.
+- Otra dirección QA válida, aleatoria e inexistente: el mismo sign_ins devuelve
+  422 y `form_identifier_not_found`. RC6 muestra exactamente el mensaje genérico
+  de la incidencia. El flujo corregido devuelve NotFound sin conceder identidad.
+
+Causa demostrada del mensaje engañoso: cualquier 400/422 que no fuese contraseña
+rechazada o estrategia/protección especial se convertía en InvalidCredential,
+incluida una cuenta inexistente. No hay evidencia de fallo general de email_code,
+Native API, client token, cookies, origen o issuer con la cuenta QA y RC6 probados.
+**No se certifica la causa del intento concreto de Isaac:** su cuenta no se ha
+consultado ni utilizado. Que falte en Production sigue siendo una hipótesis,
+no un hecho. No se cambió Clerk ni se recomienda desactivar sus protecciones.
+
+Device Trust afecta al acceso con contraseña; Clerk puede devolver
+needs_client_trust o, por compatibilidad, needs_second_factor. El flujo nativo
+ya los derivaba a HostedRequired; nuevas regresiones cubren ambos y
+needs_protect_check, sin conceder identidad. No implementamos un segundo factor
+ni una evasión de CAPTCHA. [Contrato oficial de Device Trust](https://clerk.com/docs/guides/protect/device-trust).
+
+El cambio distingue cuenta inexistente de rechazo del servicio. Registra en
+stderr (heredado por el supervisor) solo etapa, status HTTP y código Clerk de
+una lista cerrada; también registra el estado FAPI con etiquetas cerradas.
+Códigos desconocidos se registran como unrecognized. No escribe email, OTP,
+contraseñas, identificadores, URL dinámica, headers ni cuerpos remotos.
+
+Sondas manuales ignoradas por defecto: production_qa_email_code_probe usa
+VANTARE_QA_ISSUER (Production fijado) y VANTARE_QA_EMAIL, y solo prepara OTP;
+installed_binary_qa_email_code_probe añade VANTARE_QA_BINARY y verifica el
+comportamiento original de RC6 con una raíz IPC propia. Cargar las variables
+únicamente en memoria desde custodia QA, ejecutar los tests ignorados de
+Services por compilar.ps1 y retirar las variables al salir. No usar cuentas
+reales ni incluir los valores en comandos, logs o evidencia.
+
+Evidencia local sanitizada: C:/VantareServer/evidence/login-nativo/.
+Las sondas se detienen antes de verificar OTP: no acreditan consentimiento,
+Device Grant, callback, tokens OAuth, licencia ni login completo. Después de
+revisar e integrar el PR de #1777 será necesario compilar RC7. Este worker no
+fusiona, publica ni cambia configuración de producción.

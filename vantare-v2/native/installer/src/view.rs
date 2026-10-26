@@ -479,6 +479,7 @@ impl Installer {
             return;
         }
         self.opening = true;
+        crate::foreground::allow_interactive_launch();
         let root = self.info.root.clone();
         let task = cx
             .background_executor()
@@ -486,16 +487,30 @@ impl Installer {
         cx.spawn(async move |this, cx| {
             let outcome = task.await;
             let _ = this.update(cx, |this, cx| {
-                this.opening = false;
-                if let Err(error) = outcome {
-                    this.error = 1;
-                    this.diagnostic = error;
-                    this.show(Screen::Error);
+                if this.opened(outcome) {
+                    cx.quit();
                 }
                 cx.notify();
             });
         })
         .detach();
+    }
+    /// Close only after the OS accepted the launch. The bootstrap owns the Hub
+    /// lifetime; waiting for it to exit would keep Setup open for the whole session.
+    fn opened(&mut self, outcome: Result<(), String>) -> bool {
+        self.opening = false;
+        match outcome {
+            Ok(()) => {
+                self.exit.set(0);
+                true
+            }
+            Err(error) => {
+                self.error = 1;
+                self.diagnostic = error;
+                self.show(Screen::Error);
+                false
+            }
+        }
     }
     pub fn active_step(&self) -> usize {
         match self.step.as_str() {
@@ -561,7 +576,7 @@ impl Installer {
             Action::Open => {
                 self.screen == Screen::Done || self.screen == Screen::Error && self.error == 4
             }
-            Action::Minimize => false,
+            Action::Minimize => true,
         }
     }
 }
@@ -651,8 +666,16 @@ pub fn run(args: Args) -> Result<u8, String> {
                 cx,
             ))),
             window_min_size: Some(size(px(720.), px(460.))),
-            titlebar: None,
-            kind: gpui::WindowKind::PopUp,
+            titlebar: Some(gpui::TitlebarOptions {
+                appears_transparent: true,
+                title: Some(if args.uninstall {
+                    "Desinstalar Vantare".into()
+                } else {
+                    "Instalador de Vantare".into()
+                }),
+                ..Default::default()
+            }),
+            kind: gpui::WindowKind::Normal,
             is_resizable: false,
             is_movable: true,
             is_minimizable: true,
@@ -770,5 +793,54 @@ impl Installer {
             }
             _ => Screen::Error,
         };
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn installer(cx: &mut gpui::TestAppContext) -> (Entity<Installer>, Rc<Cell<u8>>) {
+        let exit = Rc::new(Cell::new(1));
+        let info = Info {
+            root: "C:/tmp/ola2/1591-qa/1778".into(),
+            version: "0.0.984".into(),
+            installed_version: Some("0.0.984".into()),
+            data_path: "C:/tmp/ola2/1591-qa/1778/data".into(),
+            desktop: true,
+            autostart: false,
+            size: 1,
+            reduced_motion: true,
+        };
+        let view = cx.new(|cx| Installer::new(info, Args::default(), false, exit.clone(), cx));
+        (view, exit)
+    }
+
+    #[gpui::test]
+    fn accepted_launch_requests_close_with_success(cx: &mut gpui::TestAppContext) {
+        let (view, exit) = installer(cx);
+        view.update(cx, |view, _| {
+            view.screen = Screen::Done;
+            view.opening = true;
+            assert!(view.opened(Ok(())));
+            assert!(!view.opening);
+        });
+        assert_eq!(exit.get(), 0);
+    }
+
+    #[gpui::test]
+    fn failed_launch_keeps_setup_open_and_shows_the_error(cx: &mut gpui::TestAppContext) {
+        let (view, exit) = installer(cx);
+        view.update(cx, |view, _| {
+            view.screen = Screen::Done;
+            view.opening = true;
+            let diagnostic = "launch refused".to_owned();
+            assert!(!view.opened(Err(diagnostic.clone())));
+            assert!(!view.opening);
+            assert_eq!(view.screen, Screen::Error);
+            assert_eq!(view.diagnostic, diagnostic);
+            assert_eq!(view.error, 1);
+        });
+        assert_eq!(exit.get(), 1);
     }
 }

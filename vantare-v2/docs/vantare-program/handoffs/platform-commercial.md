@@ -1,3 +1,43 @@
+## VANTA-105 / #1778 · Ventana del instalador (26-oct, para revisión)
+
+Encargo del orquestador tras RC6 0.0.984. Base nightly
+`0e0fca6c6b6c7f24843bc8e35be77e72e42d6463`, rama
+`vantareapp/isa-1778-instalador-ventana`, worktree propio
+`C:/VantareServer/wt/instalador-ventana`. Issue #1778, area:plataforma,
+Project Vantare, milestone Plataforma/CI/releases testers; entrega para Por revisar.
+
+La ventana PopUp creaba TOOLWINDOW/TOPMOST sin MINIMIZEBOX. Se cambia a Normal
+sin bordes, tamaño fijo y título de tarea. Cabecera Drag y botón Min usan las
+zonas nativas del Hub. Cerrar conserva su guarda de operación. Abrir concede
+ASFW_ANY solo desde la acción explícita y cierra con exit0 tras spawn aceptado;
+si falla muestra error y no pide salir. Se rechaza beta.ps1 ausente antes del
+spawn. No se espera la salida de PowerShell, que posee toda la sesión del Hub.
+Motor/rollback, movimiento y capturas ocultas conservan su contrato.
+
+Código/productor `308fdf32d1da25294daa7e54abb02b09e58f3b89`, PR
+https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1780 a nightly,
+subido. Fmt y Clippy -p vantare-installer --all-targets -D warnings PASS;
+Nextest 17/17 (cero omitidos), incluidas tres regresiones nuevas de éxito/fallo
+y bootstrap ausente sin procesos. Solo test-support de GPUI ya fijado en dev,
+ninguna biblioteca ni lock nuevos. Quality/retirement 466 PASS.
+
+Build parity-capture PASS y batch exit0: 115 PNG generados (tres estados y dos
+flujos de 56 frames), 1 HWND oculto rect -2768,0,-2048,460, noactivate/focus=false;
+estados y muestras normal/reducido revisados en el interruptor. Primera captura de
+26 frames no llegaba a los toggles; se amplió a 56, conservando ambos logs.
+Binario QA sin payload, snapshot explícito 0.0.984, no candidata distribuible.
+Evidencia `C:/VantareServer/evidence/isa-1778/INFORME.md`; PNG y manifiesto en
+`C:/tmp/ola2/1591-qa/1778`. No se ejecutó Hub/supervisor/motor live.
+
+Workspace/lifecycle/telemetría locales omitidos según brief focal; no se toca
+runtime/domain/ipc/testdata. La CI completa es el gate del conjunto; estado
+vigente por HEAD en issue/PR (no atribuir CI del productor al segundo commit). Foco físico, arrastre y restaurar desde barra requieren Isaac/VM.
+CI inicial del productor308fdf: 4/5 SUCCESS, captura falló por
+items_after_test_module solo con parity-capture. Corregido moviendo los tests
+al final del archivo, sin cambiar funciones ni binario de captura. Se añade
+Clippy focal con esa feature PASS; CI del nuevo HEAD pendiente.
+No merge, promoción, release ni ventanas en el escritorio de Isaac.
+
 ## VANTA-105 / #1777 · Acceso nativo por email: diagnóstico RC6 (26-oct)
 
 Reproducción autorizada con cuenta QA de Production y raíz IPC nueva: el Services

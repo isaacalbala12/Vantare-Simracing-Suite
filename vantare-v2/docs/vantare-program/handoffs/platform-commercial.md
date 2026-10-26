@@ -1,3 +1,45 @@
+## VANTA-105 / #1782 · RC7 0.0.985 (26-oct, para revisión)
+
+Encargo urgente del orquestador: reconstruir nightly limpio
+`0a4dff802c9c3d2757445014aee9d74436f3ef10`, que integra PR #1780 y #1781,
+ambos con cinco checks SUCCESS. Productor nuevo C:/VantareServer/wt/isa-1782-rc7,
+rama vantareapp/isa-1782-rc7; documentación en worktree separado rc7-handoff.
+Issue #1782, area:plataforma, Project Vantare, milestone 23; entrega Por revisar.
+
+Mismo procedimiento/configuración pública producción de RC6 por hash,
+Release beta sin firma, cola compilar.ps1 y jobs 2, target RC6 autorizado
+D:/VantareServer/targets/1726-rc4. Evidencia C:/VantareServer/evidence/rc7/.
+Sin repetir beta-tests completo ni suites Rust, por encargo de verificación
+ligera. Sin cambios de código/fixtures; lifecycle/telemetría y QA firmada omitidos.
+Sin ventanas en escritorio Isaac, firma, publicación, release, merge, promoción
+ni backend. No CI nueva; los checks de #1780/#1781 conservan su procedencia.
+
+Payload PASS 4m24s, Uninstall37,75s y Setup31,35s. Estática completa PASS:
+doce PE sin CRT dinámico/certificados; versiones985, inventario/fixtures,
+ICON1/capacidades y nueve campos públicos embebidos con dependencias compilador.
+Limpio OFF PASS, incluida reinstalación y datos preservados tras uninstall.
+Upgrade RC6 0.0.984 ON mediante Setup real PASS: --background conservado,
+datos anteriores intactos tras upgrade/uninstall, baseline por hash revalidado.
+Ambas cuentas/perfiles temporales retirados; escritorios privados sin SwitchDesktop.
+Opciones preparadas como datos validados, no pulsaciones físicas del instalador.
+Mensajes de cuenta inexistente y literales de log sanitizado comprobados en
+Services Release. No se atribuye login completo ni foco del Hub a esa estática.
+
+Capturas --capture-batch PASS:120 PNG (ocho estados y dos flujos56), un HWND
+oculto rect -2768,0,-2048,460, focus=false/noactivate=true. Build QA2m54s,
+lote7,924s, snapshot985 y feature parity-capture sin payload, desde el productor.
+Bienvenida/opciones/final revisados visualmente. No es el Setup distribuido;
+no ejecuta motor ni interacción física. PNG/manifiesto C:/tmp/ola2/1591-qa/rc7/.
+
+Entrega C:/VantareServer/share/rc7/: VantareSetup.exe, .sha256 y LEEME.txt,
+70.953.472bytes. SHA256
+`347cd716ab718d074b6c70d160755a10ac42ab758dbf05d81de5a649d5311438`.
+Copia revalidada; delivery.json e informe en C:/VantareServer/evidence/rc7/.
+LEEME pide arrastrar/minimizar/restaurar, cierre al Abrir/Hub delante, alta
+email por código y plan Gratis, y overlay. Esas tres pruebas quedan para Isaac.
+Productor sigue limpio, sin commits propios; este handoff es documental y
+aislado, sin PR ni merge. Orquestador revisa la evidencia y decide integración.
+
 ## VANTA-105 / #1778 · Ventana del instalador (26-oct, para revisión)
 
 Encargo del orquestador tras RC6 0.0.984. Base nightly

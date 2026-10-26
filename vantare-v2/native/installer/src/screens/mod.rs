@@ -150,12 +150,8 @@ pub fn frame(view: &Installer, window: &Window, cx: &mut Context<Installer>) -> 
         move |element, t| element.opacity(t).left(px((1. - t) * shift)),
     ));
     frame = frame.child(footer::render(view, window, cx));
-    frame = frame.child(style::at(0., 0., 630., 36.).on_mouse_down(
-        gpui::MouseButton::Left,
-        |_, window, _| {
-            window.start_window_move();
-        },
-    ));
+    frame = frame
+        .child(style::at(0., 0., 630., 36.).window_control_area(gpui::WindowControlArea::Drag));
     frame = frame.child(controls::button(
         view,
         Action::Minimize,

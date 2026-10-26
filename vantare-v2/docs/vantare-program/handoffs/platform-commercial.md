@@ -1,3 +1,26 @@
+## VANTA-105 / #1778 · Ventana del instalador (26-oct, en curso)
+
+Encargo del orquestador tras RC6 0.0.984. Base nightly
+`0e0fca6c6b6c7f24843bc8e35be77e72e42d6463`, rama
+`vantareapp/isa-1778-instalador-ventana`, worktree propio
+`C:/VantareServer/wt/instalador-ventana`. Issue #1778, area:plataforma,
+Project Vantare, milestone Plataforma/CI/releases testers; Plane En curso.
+
+La ventana PopUp creaba TOOLWINDOW/TOPMOST sin MINIMIZEBOX. Se cambia a Normal
+sin bordes, tamaño fijo y título de tarea. Cabecera Drag y botón Min usan las
+zonas nativas del Hub. Cerrar conserva su guarda de operación. Abrir concede
+ASFW_ANY solo desde la acción explícita y cierra con exit0 tras spawn aceptado;
+si falla muestra error y no pide salir. Se rechaza beta.ps1 ausente antes del
+spawn. No se espera la salida de PowerShell, que posee toda la sesión del Hub.
+Motor/rollback, movimiento y capturas ocultas conservan su contrato.
+
+Regresiones de éxito/fallo con GPUI TestAppContext y bootstrap ausente sin
+procesos. Se activa test-support de GPUI ya fijado solo en dev; ninguna nueva
+biblioteca/lock. Gates focales y captura batch pendientes; evidencia en
+`C:/VantareServer/evidence/isa-1778`. Sin PR/push aún. La CI completa será el gate
+del conjunto; foco físico, arrastre y restaurar desde barra requieren Isaac/VM.
+No merge, promoción, release ni ventanas en el escritorio de Isaac.
+
 ## VANTA-95 / VANTA-96 · Recuperación web de login/lista (25-oct, #1774)
 
 Código web: issue15 / PR https://github.com/isaacalbala12/vantare-simracing-suite-web/pull/16,

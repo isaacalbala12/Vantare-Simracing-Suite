@@ -56,6 +56,13 @@ impl Drop for Work {
 }
 
 pub fn open(root: PathBuf) -> Result<(), String> {
+    // CreateProcess can accept PowerShell even when its -File does not exist.
+    // Keep Setup open for that launch error instead of reporting a false success.
+    if !root.join("beta.ps1").is_file() {
+        return Err(
+            "No se encuentra el lanzador de Vantare. Vuelve a ejecutar el instalador.".into(),
+        );
+    }
     let windows = std::env::var_os("WINDIR").ok_or("Windows no está disponible")?;
     let host = PathBuf::from(windows).join("System32/WindowsPowerShell/v1.0/powershell.exe");
     if crate::QA {
@@ -113,4 +120,15 @@ pub fn cleanup(root: PathBuf) -> Result<(), String> {
         root: Some(root),
         ..Args::default()
     })
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn missing_bootstrap_is_a_launch_failure_without_starting_powershell() {
+        let root =
+            std::env::temp_dir().join(format!("vantare-missing-bootstrap-{}", std::process::id()));
+        assert!(!root.exists());
+        assert!(super::open(root).is_err());
+    }
 }

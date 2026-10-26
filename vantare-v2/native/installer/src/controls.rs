@@ -57,6 +57,15 @@ pub fn button(
             8.
         }));
     item = appearance(item, kind);
+    // Like the Hub, let Win32 handle the non-client minimize button. Closing
+    // stays a client action because an installation may still own a transaction.
+    if kind == Kind::Window && action == Action::Minimize {
+        item = item
+            .occlude()
+            .window_control_area(gpui::WindowControlArea::Min)
+            .role(gpui::Role::Button)
+            .aria_label("Minimizar");
+    }
     let hovered = enabled && view.hovered == Some((action, kind));
     if enabled {
         item = item

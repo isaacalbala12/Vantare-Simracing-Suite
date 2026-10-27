@@ -1,3 +1,39 @@
+## 27-oct · VANTA-96 / #1776 · Pagos desplegados; prueba Polar pendiente
+
+PAT renovado HTTP200. Fuente nightly0a4dff802c9c3d2757445014aee9d74436f3ef10;
+árbol supabasefffb8729bf91f93d0fc89c240a53e97821a7a6ca idéntico al revisado4e07dcc20.
+Autorización explícita de Isaac para el plan de pagos; venta cerrada.
+
+Copia completa NUEVA verificada:2.112.391bytes, SHA256
+8b54fee1d7ca2a2b7e3c9a98b6106bf0b0257061666be109c9f795cb1448708c,
+ACL SYSTEM/Administrator, pg_restore --list PASS; custodia backups/payments-prod-20261027.
+Solo98 aplicada con historial atómico, lock_timeout5s/statement_timeout30s;
+98/98 exactas, CHECK validado, ACL helper y tres parches PASS, conteos iguales.
+Solo checkout desplegado (v7→8 por secreto), bundle16bd4ba30b452fed54ed9df26f165230d23ae6badc30beb192ffb99b807a80f6;
+solo webhook(v40), bundle8879068189cc7b9085df2486d0b2f4d714854788a6cea870df1f0983a7ffb90a.
+Ambos ACTIVE/verify_jwt=false. Selectorlegacy_utf8 añadido antes del webhook;
+secreto original intacto. Configuración de secreto incrementa versiones de todas
+las Edge; otras15 conservan bundle/verify_jwt/updated_at, sin deploy de su código.
+
+Pruebas PASS: firma inválida403, QA OAuth existente renovado sin cambios Clerk,
+bridgeES256200→PostgREST200, RLS propio/otros0, native-license200 y Ed25519
+verificada con pública del instalador; ciclo cronreconcile posterior200.
+Venta cerrada; marketing/IA/promociónfalse, compensaciónoff; pedidos/refunds/grants0.
+No se toca login nativo, ni configuración Clerk, ni Cloudflare, ni compra real.
+
+PENDIENTE: sesión Polar en navegador compartido (redirige a login) o envío por
+orquestador de customer.updated sintético desde panel al endpointa03c8494-52dc-484c-bda8-26b47c542b18.
+Comprobar202/inbox/idempotencia y después checkout QA SIN PAGAR; aún no solicitado.
+No sustituir por orden financiera inventada ni firma local como si fuera proveedor.
+Ventana de ofertas ya activa27-oct: comprobar importe vigente al probar checkout.
+Rollback preparado: fuentes previas aisladas de dos Edge y tres RPC; webhook
+anterior primero, después retirar selector. No borrar historial98 ni filas;
+compensatoria/dump según PLAN-PAGOS-PRODUCCION.md. Sin rollback ejecutado.
+
+Evidencia: EJECUCION.md y pagos-prod-20261027/INFORME.md en evidencia externa.
+Draft PR1779 solo handoff, sin merge/release; actualizar estado vivo en#1776/Plane.
+
+
 ## 26-oct · VANTA-96 / #1776 · Despliegue de pagos autorizado: parada en preflight
 
 Isaac autoriza PLAN-PAGOS-PRODUCCION.md, copia nueva,98/historial, checkout con

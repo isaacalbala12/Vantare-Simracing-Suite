@@ -33,8 +33,10 @@ ni medición real de este worker. Isaac/orquestador autorizó mock ligero:
 cero errores, 58 casos ES/EN, cinco pasadas por grupo, dos niveles de contexto,
 concurrencia máxima dos. Un único proceso Python BelowNormal, sin sampler.
 Parser PowerShell PASS sin ejecutar métricas. Tooling en raíz para que el CI
-omita Rust; no cambian gates. PR draft a nightly y revisión de solo lectura
-en preparación; siguiente paso: revisión/CI, después ejecutar motores solo
+omita Rust; no cambian gates. PR draft [#1787](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1787)
+a nightly, código publicado y enlazado en T3; CI en curso al abrirlo,
+revisión de solo lectura pendiente. Plane sigue En curso porque la tarea
+comparte la investigación de motores. Siguiente paso: revisión/CI, después ejecutar motores solo
 en ventana de quietud propia confirmada. Evidencia fuera del checkout:
 `C:/VantareServer/evidence/vanta124/benchmark/`. No merge, promoción ni release.
 

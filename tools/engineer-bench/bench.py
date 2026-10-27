@@ -15,6 +15,7 @@ import threading
 import time
 import urllib.request
 import urllib.parse
+import urllib.error
 
 from cases import build_cases, messages
 
@@ -25,11 +26,13 @@ TOOL = {"type": "function", "function": {"name": "get_race_fact",
             "required": ["topic"], "additionalProperties": False}}}
 
 
-def sse(response):
+def sse(response, deadline=None):
     """Parse SSE events, including comments and multiline data; bound event size."""
     data = []
     size = 0
     while True:
+        if deadline is not None and time.perf_counter() >= deadline:
+            raise TimeoutError("SSE deadline exceeded")
         raw = response.readline(1048577)
         if len(raw) > 1048576:
             raise ValueError("SSE line exceeds 1 MiB")
@@ -116,7 +119,8 @@ def score(case, content, calls):
     except (ValueError, KeyError, TypeError):
         pass
     return {"checks": checks, "automatic_pass": all(v for v in checks.values() if v is not None),
-            "hallucination_proxy": not checks["facts"], "semantic_review": "pending",
+            "hallucination_proxy": not checks["facts"] if checks["format"] else None,
+            "semantic_review": "pending",
             "note": "Canonical baseline / structural discourse checks only. "
                     "A mismatch is not proof of a hallucination; human semantic/language review required."}
 
@@ -137,8 +141,6 @@ def request(args, case, context_chars, concurrency, iteration, barrier=None):
     if key:
         headers["Authorization"] = "Bearer " + key
     req = urllib.request.Request(args.base_url.rstrip("/") + "/chat/completions", raw, headers)
-    if barrier:
-        barrier.wait(timeout=args.timeout)
     started_utc = datetime.now(timezone.utc).isoformat()
     start = time.perf_counter()
     first, last, done, finish = None, None, False, None
@@ -146,10 +148,14 @@ def request(args, case, context_chars, concurrency, iteration, barrier=None):
     response_model, fingerprint = None, None
     error = None
     try:
+        if barrier:
+            barrier.wait(timeout=args.timeout)
+            started_utc = datetime.now(timezone.utc).isoformat()
+            start = time.perf_counter()
         with urllib.request.urlopen(req, timeout=args.timeout) as response:
             if "text/event-stream" not in response.headers.get("Content-Type", ""):
                 raise ValueError("Expected text/event-stream")
-            for event in sse(response):
+            for event in sse(response, start + args.timeout):
                 now = time.perf_counter()
                 if now - start > args.timeout:
                     raise TimeoutError("request total deadline exceeded")
@@ -201,6 +207,8 @@ def request(args, case, context_chars, concurrency, iteration, barrier=None):
         # Never persist server bodies / auth headers; retain class and safe diagnostic.
         error = {"type": type(exc).__name__, "message": str(exc)[:240]
                  if isinstance(exc, (ValueError, TimeoutError)) else "request failed; inspect server locally"}
+        if isinstance(exc, urllib.error.HTTPError):
+            error["http_status"] = exc.code
     end = time.perf_counter()
     ttft = (first - start) * 1000 if first is not None else None
     completion_tokens = usage.get("completion_tokens")
@@ -210,6 +218,7 @@ def request(args, case, context_chars, concurrency, iteration, barrier=None):
     quality = score(case, content, [calls[k] for k in sorted(calls)])
     if error:
         quality["automatic_pass"] = False
+        quality["hallucination_proxy"] = None
     return {"case_id": case["id"], "kind": case["kind"], "language": case["language"],
             "cohort": case["cohort"],
             "started_utc": started_utc, "ended_utc": datetime.now(timezone.utc).isoformat(),
@@ -300,8 +309,9 @@ def summarize(rows):
              "within_budget": sum(r["within_budget"] for r in items),
              "prompt_tokens": stats([r.get("usage", {}).get("prompt_tokens") for r in items
                                      if type(r.get("usage", {}).get("prompt_tokens")) is int]),
-             "ttft_ms": stats([r["ttft_ms"] for r in items]),
-             "total_ms": stats([r["total_ms"] for r in items]),
+             "ttft_ms": stats([r["ttft_ms"] for r in items if not r["error"]]),
+             "total_ms": stats([r["total_ms"] for r in items if not r["error"]]),
+             "failed_request_ms": stats([r["total_ms"] for r in items if r["error"]]),
              "decode_proxy": stats([r["completion_tokens_per_generation_s_proxy"] for r in items]),
              "prefill_tokens_s": stats([r.get("engine_timings", {}).get("prefill_tokens_s") for r in items]),
              "decode_tokens_s": stats([r.get("engine_timings", {}).get("decode_tokens_s") for r in items]),
@@ -332,10 +342,25 @@ def sample_metrics(url, stop, path, format_):
                      "phase": "after", **metrics_sample(url, format_)}) + "\n")
 
 
+def read_samples(path):
+    samples, failures = [], []
+    for number, line in enumerate(path.read_bytes().splitlines(), 1):
+        if not line:
+            continue
+        try:
+            sample = strict_json(line.decode("utf-8-sig"))
+            if not isinstance(sample, dict):
+                raise ValueError("sample is not an object")
+            samples.append(sample)
+        except (ValueError, UnicodeError):
+            failures.append(number)
+    return samples, failures
+
+
 def resource_summary(path, rows):
     if not path.exists():
         return {"available": False, "reason": "No resource samples file; sampler unconfigured or failed"}
-    samples = [strict_json(line) for line in path.read_text(encoding="utf-8-sig").splitlines() if line]
+    samples, malformed = read_samples(path)
     def aggregate(items):
         fields = ("process_working_set_bytes", "process_private_bytes", "process_peak_working_set_bytes",
                   "process_cpu_percent_machine", "process_cpu_percent_one_core", "system_cpu_percent")
@@ -357,6 +382,7 @@ def resource_summary(path, rows):
             datetime.fromisoformat(s["utc"]) <= datetime.fromisoformat(end) for start, end in intervals)]
         groups[f"context={context},concurrency={concurrency}"] = aggregate(points)
     return {"available": bool(samples), "all": aggregate(samples), "groups": groups,
+            "malformed_lines": malformed,
             "weights_bytes": None, "kv_cache_bytes": None,
             "note": "WDDM dedicated bytes are process/adapter usage, not weights or KV attribution. "
                     "1 Hz sampled peaks may miss short spikes; process peak working set includes earlier lifetime."}
@@ -365,7 +391,7 @@ def resource_summary(path, rows):
 def engine_metrics_summary(path, mapping, rows=None):
     if not path.exists():
         return {"available": False}
-    samples = [strict_json(line) for line in path.read_text(encoding="utf-8").splitlines() if line]
+    samples, malformed = read_samples(path)
     fields = ("weights_bytes", "kv_cache_bytes", "gpu_memory_bytes", "process_ram_bytes", "load_duration_ns")
     def aggregate(points):
         values = {name: [] for name in fields}
@@ -392,13 +418,15 @@ def engine_metrics_summary(path, mapping, rows=None):
             datetime.fromisoformat(s["utc"]) <= datetime.fromisoformat(end) for start, end in intervals)]
         groups[f"context={context},concurrency={concurrency}"] = aggregate(points)
     return {"available": True, "fields": aggregate(samples), "groups": groups,
-            "samples": len(samples), "errors": sum(s["error"] is not None for s in samples),
+            "samples": len(samples), "errors": sum(s.get("error") is not None for s in samples),
+            "malformed_lines": malformed,
             "note": "Byte/ns units required. Prometheus is preserved raw, not guessed or converted."}
 
 
 def markdown(reports):
     lines = ["# Engineer benchmark comparison", "",
-             "Mock results validate plumbing only. No model winner is inferred automatically.", "",
+             "No model winner is inferred automatically. Error counts and latency of failed requests "
+             "are separate from successful-request latency.", "",
              "TTFT is end-to-end to first visible content/tool fragment; role/reasoning chunks excluded.",
              "Token rates below are usage-based proxies, never pure prefill/decode. "
              "Use engine timing counts/durations for pure rates. Quality is an exact canonical baseline; "
@@ -415,9 +443,12 @@ def markdown(reports):
             latency = f"{ttft['median']:.1f} / {ttft['p95']:.1f}" if ttft else "unavailable"
             tokens = group.get("prompt_tokens")
             tokens = tokens["median"] if tokens else "unavailable"
+            total_p95 = f"{total['p95']:.1f}" if total else "unavailable"
             lines.append(f"| {group['case_id']} | {group['context_chars']} | {tokens} | {group['concurrency']} | "
                          f"{group['automatic_passes']} / {group['attempts']} | {group['errors']} | "
-                         f"{latency} | {total['p95']:.1f} |")
+                         f"{latency} | {total_p95} |")
+        if meta["mode"] == "mock":
+            lines += ["", "MOCK: artificial answers and token usage. Validates plumbing only."]
         lines += ["", "Resource samples: resources.jsonl; engine metrics: engine-metrics.jsonl (if configured).",
                   "Model load time, weights/KV memory and disk size are unavailable unless supplied by "
                   "engine metrics / model metadata. Request latency is not model load time.", ""]
@@ -472,6 +503,8 @@ def run(args):
     metadata["git_head"] = source_revision()
     metadata["source_sha256"] = {name: hashlib.sha256(Path(__file__).with_name(name).read_bytes()).hexdigest()
                                  for name in ("bench.py", "cases.py", "resources.ps1")}
+    metadata["corpus_sha256"] = hashlib.sha256(json.dumps(cases, sort_keys=True,
+                                                         ensure_ascii=False).encode()).hexdigest()
     if args.model_metadata:
         metadata["model_metadata"] = strict_json(Path(args.model_metadata).read_text(encoding="utf-8"))
     if args.model_path:
@@ -484,6 +517,7 @@ def run(args):
     sampler = None
     monitor = None
     rows = []
+    run_error = None
     rng = random.Random(args.seed)
     try:
         if args.metrics_url:
@@ -521,6 +555,8 @@ def run(args):
                                 rows.append(row)
                                 log.write(json.dumps(row, ensure_ascii=False) + "\n")
                         log.flush()
+    except Exception as exc:
+        run_error = {"type": type(exc).__name__, "message": "Run incomplete; inspect incremental request log"}
     finally:
         stop.set()
         if sampler:
@@ -534,6 +570,7 @@ def run(args):
                 monitor.wait(timeout=5)
             metadata["resource_sampler_exit_code"] = monitor.returncode
     metadata["ended_utc"] = datetime.now(timezone.utc).isoformat()
+    metadata["run_error"] = run_error
     report = {"metadata": metadata, "summary": summarize(rows), "requests": rows,
               "resources": resource_summary(output / "resources.jsonl", rows),
               "engine_metrics": engine_metrics_summary(output / "engine-metrics.jsonl",
@@ -542,6 +579,32 @@ def run(args):
     (output / "report.md").write_text(markdown([report]), encoding="utf-8")
     print(json.dumps({"output": str(output), "attempts": len(rows),
                       "errors": sum(bool(r["error"]) for r in rows)}))
+    if run_error:
+        raise RuntimeError("Run incomplete; partial results saved")
+
+
+def validate_comparison(reports):
+    """Reject mismatched test protocols; model/engine/quantisation may differ by design."""
+    first = reports[0]
+    fields = ("mode", "seed", "temperature", "passes", "warmups", "context_chars", "concurrency", "case")
+    expected = {key: first["metadata"].get(key) for key in fields}
+    expected_sources = first["metadata"].get("source_sha256")
+    expected_groups = {(r["case_id"], r["context_chars"], r["concurrency"], r["attempts"])
+                       for r in first["summary"]}
+    for report in reports:
+        if report["metadata"].get("run_error"):
+            raise ValueError("Cannot compare an incomplete run")
+        if {key: report["metadata"].get(key) for key in fields} != expected:
+            raise ValueError("Comparison protocols differ (mode/seed/passes/context/concurrency/filter)")
+        if report["metadata"].get("source_sha256") != expected_sources:
+            raise ValueError("Comparison benchmark source fingerprints differ")
+        if report["metadata"].get("corpus_sha256") != first["metadata"].get("corpus_sha256"):
+            raise ValueError("Comparison telemetry corpus fingerprints differ")
+        if not report["metadata"].get("model"):
+            raise ValueError("Comparison model ID is missing")
+        if {(r["case_id"], r["context_chars"], r["concurrency"], r["attempts"])
+                for r in report["summary"]} != expected_groups:
+            raise ValueError("Comparison cases/cohorts/attempts differ")
 
 
 def main(argv=None):
@@ -578,6 +641,7 @@ def main(argv=None):
         run(args)
     else:
         reports = [strict_json(Path(p).read_text(encoding="utf-8")) for p in args.reports]
+        validate_comparison(reports)
         Path(args.output).write_text(markdown(reports), encoding="utf-8")
         Path(args.output).with_suffix(".json").write_text(json.dumps(
             [{key: value for key, value in r.items() if key != "requests"} for r in reports],

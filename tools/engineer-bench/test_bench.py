@@ -1,11 +1,13 @@
 """Transport and evaluator regressions; no model/GPU, no timed performance assertions."""
 import argparse
+import copy
 import io
 import json
 import threading
 import tempfile
 from pathlib import Path
 import unittest
+from unittest.mock import patch
 
 import bench
 from cases import build_cases
@@ -84,6 +86,40 @@ class EvaluatorTests(unittest.TestCase):
         text = bench.markdown(reports)
         self.assertIn("fixture-A", text)
         self.assertIn("fixture-B", text)
+
+    def test_comparison_rejects_mixed_protocols_and_accepts_different_models(self):
+        first = {"metadata": {"model": "one", "mode": "real", "seed": 124, "passes": 5},
+                 "summary": []}
+        second = copy.deepcopy(first)
+        second["metadata"]["model"] = "two"
+        bench.validate_comparison([first, second])
+        for field, value in (("mode", "mock"), ("seed", 125), ("passes", 4), ("run_error", True)):
+            other = copy.deepcopy(second)
+            other["metadata"][field] = value
+            with self.assertRaises(ValueError):
+                bench.validate_comparison([first, other])
+
+    def test_keepalives_do_not_renew_deadline(self):
+        with patch.object(bench.time, "perf_counter", side_effect=[0, 2]):
+            with self.assertRaises(TimeoutError):
+                list(bench.sse(io.BytesIO(b': keepalive\n: keepalive\n'), deadline=1))
+
+    def test_partial_samples_do_not_discard_valid_measurements(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "metrics.jsonl"
+            path.write_text('{"data":{"kv_cache_bytes":123},"error":null}\n{"data":', encoding="utf-8")
+            summary = bench.engine_metrics_summary(path, {})
+            self.assertEqual(summary["malformed_lines"], [2])
+            self.assertEqual(summary["fields"]["kv_cache_bytes"]["max"], 123)
+
+    def test_barrier_failure_is_a_failed_request_with_no_hallucination_claim(self):
+        args = argparse.Namespace(base_url="http://127.0.0.1:1/v1", model="mock", seed=124, temperature=0, timeout=1)
+        barrier = threading.Barrier(2)
+        barrier.abort()
+        result = bench.request(args, build_cases()[0], 0, 2, 0, barrier)
+        self.assertEqual(result["error"]["type"], "BrokenBarrierError")
+        self.assertFalse(result["quality"]["automatic_pass"])
+        self.assertIsNone(result["quality"]["hallucination_proxy"])
 
     def test_real_run_requires_window_and_minimum_passes(self):
         with self.assertRaises(ValueError):

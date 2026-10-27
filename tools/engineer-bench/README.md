@@ -43,9 +43,9 @@ inputs, gold, rúbrica de longitud, idioma y presupuestos. `cases.json` en cada
 ejecución congela exactamente ese corpus. Nunca se envía el gold como respuesta
 esperada al endpoint; las cláusulas canónicas y cifras calculadas sí son inputs
 en la cohorte de composición, como requiere la frontera factual.
-Son 58 casos: 24 situaciones por dos idiomas y cinco probes aritméticos por
+Son 60 casos: 25 situaciones por dos idiomas y cinco probes aritméticos por
 dos idiomas. El smoke completo recorre dos niveles de contexto, cinco pasadas
-y dos parejas concurrentes por pasada: 600 peticiones medidas.
+y dos parejas concurrentes por pasada: 620 peticiones medidas.
 
 Vive en `tools/` de la raíz porque el clasificador CI reconoce esa ruta como
 tooling ajeno al producto nativo. Así se omiten los pasos de compilación Rust
@@ -89,7 +89,7 @@ factual literal. Su idioma, naturalidad y ausencia de implicaturas se revisan a 
 Validación automática: JSON sin claves repetidas/NaN/Infinity, claves exactas,
 tipos (un booleano no cuenta como cifra), tolerancia numérica absoluta `0.01`,
 nulls, una única tool call correcta sin texto adicional, radio canónica exacta y
-longitud máxima (32 palabras radio, 90 otras). En JSON, códigos como
+longitud máxima (32 palabras radio, incluido discurso, 90 otras). En JSON, códigos como
 `no_race_interval` son tags de máquina ingleses, no prosa: idioma = no aplicable.
 Una paráfrasis válida puede fallar el baseline exacto: el campo
 `hallucination_proxy` significa discrepancia, **no** alucinación demostrada.
@@ -172,7 +172,11 @@ python bench.py compare C:/VantareServer/evidence/vanta124/benchmark/sparks-01/r
 ```
 
 El directorio de salida debe ser nuevo; no sobrescribe resultados. El informe
-Markdown y su JSON comparativo preservan ambas configuraciones. Filtrar con
+Markdown y su JSON comparativo preservan ambas configuraciones. `compare`
+rechaza diferencias de modo, semilla, temperatura, pasadas, warmup, contextos,
+concurrencia, filtros, casos, intentos o huellas de código/corpus. Los IDs de
+modelo y la configuración de motor pueden diferir: ese es el objeto de comparar.
+No permite mezclar mock y real ni corridas incompletas. Filtrar con
 `--case ID` repetido; las parejas concurrentes siguen siendo fuel radio ES y
 estrategia EN para asegurar la carga mixta. El orden se baraja con semilla fija.
 Temperatura 0 y semilla no garantizan determinismo de todos los backends.
@@ -233,7 +237,12 @@ de modelos en una segunda ronda para controlar efectos térmicos/caché.
 - Errores HTTP, stream incompleto, JSON inválido y finish `length` no se eliminan
   del denominador ni reciben un PASS por tener un prefijo correcto. Timeout de
   diagnóstico 30 s (configurable), no deadline de producto; se comprueba por
-  evento SSE, además del timeout de socket. No hay retry oculto.
+  línea SSE (incluidos keepalives), además del timeout de socket. No hay retry oculto.
+  Errores guardan status HTTP cuando existe; barrier roto queda como request
+  fallido. Fallos globales escriben informe parcial marcado `run_error`.
+  Las latencias de éxito y de error tienen estadísticas separadas para que un
+  rechazo inmediato no mejore el p95. Las líneas truncadas de métricas se
+  enumeran en `malformed_lines` y no borran el resto del informe.
 
 Salida: `cases.json`, `requests.jsonl` incremental, warmup separado, `results.json`,
 `report.md`, muestras de recursos/motor opcionales. Guardar revisiones humanas y

@@ -974,6 +974,7 @@ impl Hub {
         let main_settings = visible.first().map(|settings| (*settings).clone());
         let template_width = (adapt.rail_width() - 32.0 - gap) / 2.0;
         let (pending, access_error) = self.remote.read(cx).home_access();
+        let access_error = access_error.map(str::to_owned);
         let mut state = home_state(
             pending,
             access_error.is_some() || self.shell.access.blocked,
@@ -1495,7 +1496,7 @@ impl Hub {
                 .gap(px(12.0))
                 .child(
                     orbit::text(
-                        "No se pudo verificar el acceso. Tus perfiles locales siguen disponibles.",
+                        access_error.as_deref().unwrap_or("No se pudo verificar el acceso. Tus perfiles locales siguen disponibles."),
                         12.0,
                         400,
                         orbit::ink_2(cx),

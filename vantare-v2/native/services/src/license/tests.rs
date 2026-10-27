@@ -648,6 +648,123 @@ fn forward_wall_clock_drift_does_not_reject_repeated_authority_observation() {
 }
 
 #[test]
+fn signed_future_issuance_is_bounded_and_never_extends_the_paid_deadline() {
+    use authority::Authority;
+    let signing = key();
+    let verifier = verifier(&signing);
+    let issued = date("2026-09-30T10:00:00Z").expect("issued");
+    let credential = v1(&signing, "2026-09-30T10:01:00Z");
+    for skew in [32, 300, 301] {
+        let (root, store) = crate::test_store("clock-skew");
+        let wall = issued - chrono::TimeDelta::seconds(skew);
+        let mut core = Authority::restore(&store).expect("core");
+        let installed = core.install(
+            verifier
+                .v1(&credential, SUBJECT, "test-device")
+                .expect("signed"),
+            wall,
+            Duration::ZERO,
+        );
+        if skew == 301 {
+            assert!(matches!(installed, Err(Error::Clock)));
+            assert!(!core.credential_current());
+        } else {
+            installed.expect("bounded skew accepted");
+            assert_eq!(
+                core.next_deadline(&["vantare.plan.pro".into()]),
+                Some(wall + chrono::TimeDelta::seconds(60))
+            );
+            core.persist(&store).expect("persist adjusted clock");
+            let mut core = Authority::restore(&store).expect("cold restore");
+            core.install(
+                verifier
+                    .v1(&credential, SUBJECT, "test-device")
+                    .expect("signed"),
+                wall + chrono::TimeDelta::seconds(1),
+                Duration::ZERO,
+            )
+            .expect("accepted skew survives restart");
+            assert_eq!(
+                core.rights(
+                    wall + chrono::TimeDelta::seconds(59),
+                    Duration::from_secs(58)
+                )
+                .expect("before real expiry")
+                .len(),
+                1
+            );
+            assert!(
+                core.rights(
+                    wall + chrono::TimeDelta::seconds(60),
+                    Duration::from_secs(59)
+                )
+                .expect("exact real expiry")
+                .is_empty()
+            );
+            assert!(
+                matches!(
+                    core.rights(
+                        wall + chrono::TimeDelta::seconds(59),
+                        Duration::from_mins(1)
+                    ),
+                    Err(Error::Clock)
+                ),
+                "rollback still rejected"
+            );
+        }
+        drop(store);
+        crate::cleanup_store(&root, "clock-skew", &[]);
+    }
+}
+
+#[test]
+#[ignore = "Manual: credencial y pública QA emitidas en staging, sin red ni secretos de firma"]
+fn staging_signed_credential_accepts_only_bounded_injected_clock_skew() {
+    let credential_file =
+        std::env::var_os("VANTARE_QA_STAGING_CREDENTIAL_FILE").expect("QA credential path");
+    let keys_file =
+        std::env::var_os("VANTARE_QA_STAGING_PUBLIC_KEYS_FILE").expect("QA public keys path");
+    let response: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(credential_file).expect("QA credential"))
+            .expect("QA response");
+    let credential: CredentialV1 =
+        serde_json::from_value(response["credential"].clone()).expect("QA envelope");
+    assert!(
+        credential.key_id.starts_with("license-qa-"),
+        "production credentials are not allowed in this probe"
+    );
+    let keys = std::fs::read_to_string(keys_file).expect("QA public registry");
+    let verifier =
+        Verifier::public_keys(keys.trim_start_matches('\u{feff}').trim()).expect("QA trust roots");
+    let issued = date(&credential.claims.issued_at).expect("signed issuance");
+    for skew in [-32, 0, 32, 300, 301] {
+        let (root, store) = crate::test_store("staging-clock-probe");
+        let mut authority = authority::Authority::restore(&store).expect("authority");
+        let proof = verifier
+            .v1(
+                &credential,
+                &credential.claims.subject,
+                &credential.claims.device_fingerprint,
+            )
+            .expect("actual staging signature and binding");
+        let result = authority.install(
+            proof,
+            issued - chrono::TimeDelta::seconds(skew),
+            Duration::ZERO,
+        );
+        if skew > 300 {
+            assert!(matches!(result, Err(Error::Clock)));
+            assert!(!authority.credential_current());
+        } else {
+            result.expect("bounded signed QA issuance accepted");
+            assert!(authority.credential_current());
+        }
+        drop(store);
+        crate::cleanup_store(&root, "staging-clock-probe", &[]);
+    }
+}
+
+#[test]
 fn founders_keeps_perpetual_nightly_after_pro_plus_expires() {
     let founder = Capability {
         key: "vantare.plan.founders".into(),

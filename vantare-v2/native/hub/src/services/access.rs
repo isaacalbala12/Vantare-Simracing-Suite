@@ -97,10 +97,33 @@ impl State {
 
     pub(super) fn renewal_acknowledged(&mut self, reply: &Reply) -> Option<Command> {
         if self.transition != Transition::Logout
+            && let Reply::Error { message } | Reply::DeviceLimit { message } = reply
+        {
+            self.transition = Transition::Idle;
+            self.error = Some(message.clone());
+            return None;
+        }
+        if self.transition != Transition::Logout
+            && let Reply::License { policy, .. } = reply
+            && (policy.error.is_some()
+                || policy.version != vantare_ipc::control::VERSION
+                || policy.revision == 0)
+        {
+            self.transition = Transition::Idle;
+            self.error = Some(
+                policy
+                    .error
+                    .clone()
+                    .unwrap_or_else(|| "No se pudo verificar la política de acceso".into()),
+            );
+            return None;
+        }
+        if self.transition != Transition::Logout
             && matches!(reply, Reply::License { policy, .. }
                 if policy.error.is_none() && policy.version == vantare_ipc::control::VERSION && policy.revision > 0)
         {
             self.transition = Transition::Idle;
+            self.error = None;
             // LicenseRenew puede haber rotado OAuth en servicios. Releer su
             // caducidad mediante IPC; AccountPoll no hace refresh ni renovación.
             return Some(Command::AccountPoll);
@@ -355,7 +378,7 @@ impl Remote {
         self.access.error = None;
         self.request(
             if self.account.signed_in {
-                Command::LicenseStatus
+                Command::LicenseRenew
             } else {
                 Command::Status
             },
@@ -829,6 +852,52 @@ mod tests {
         ));
         state.observe(&rights, false);
         assert!(state.navigation(true, 1000).verified);
+    }
+
+    #[test]
+    fn failed_renewal_accepts_the_next_fresh_core_policy_and_exposes_the_error() {
+        for reply in [
+            Reply::Error {
+                message: vantare_services::Error::Clock.to_string(),
+            },
+            Reply::DeviceLimit {
+                message: "device limit".into(),
+            },
+        ] {
+            let mut state = State::from_build();
+            state.requested(&Command::AccountBegin);
+            let account = account_reply(true, false, None);
+            state.observe(&account, true);
+            assert!(matches!(
+                state.next_command(&account, &mut false),
+                Some(Command::LicenseRenew)
+            ));
+            assert!(state.renewal_acknowledged(&reply).is_none());
+            assert!(state.error.is_some());
+            assert!(
+                !state.navigation(true, 1000).verified,
+                "an error cannot grant access"
+            );
+            state.observe_core_policy(vantare_ipc::control::Policy {
+                version: vantare_ipc::control::VERSION,
+                revision: 1,
+                checked_at_ms: 1000,
+                overlays_advanced: true,
+                ..vantare_ipc::control::Policy::default()
+            });
+            assert!(
+                state.navigation(true, 1000).verified,
+                "fresh core policy is no longer ignored after failure"
+            );
+            assert!(
+                !state.navigation(true, 4000).verified,
+                "expired policy remains denied"
+            );
+            assert!(
+                state.next_command(&account, &mut false).is_none(),
+                "failure does not loop license HTTP"
+            );
+        }
     }
 
     #[test]

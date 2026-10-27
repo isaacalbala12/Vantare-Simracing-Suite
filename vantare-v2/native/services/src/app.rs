@@ -388,10 +388,19 @@ impl App {
                 | Command::Logout
         );
         let login_begin = matches!(command, Command::AccountBegin);
+        let license_renew = matches!(command, Command::LicenseRenew);
         if login_begin {
             let _log = writeln!(std::io::stderr(), "account-login: begin");
         }
         let outcome = self.execute(command);
+        if license_renew {
+            // Error es un enum cerrado sin mensajes remotos ni datos de cuenta.
+            let result = outcome.as_ref().map(|_| ()).map_err(|error| *error);
+            let _log = writeln!(
+                std::io::stderr(),
+                "account-rights: renewal-result={result:?}"
+            );
+        }
         if login_begin && let Err(error) = &outcome {
             let _log = writeln!(std::io::stderr(), "account-login: failed {error:?}");
         }

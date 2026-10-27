@@ -78,6 +78,7 @@ pub fn renew(
             Some(anon),
         )
     })?;
+    crate::access_diagnostic::record(crate::access_diagnostic::Route::License, &response);
     if response.status == 409 {
         #[derive(Deserialize)]
         struct Rejected {
@@ -91,6 +92,7 @@ pub fn renew(
         }
     }
     let response = response.success()?;
+    response.server_now(now)?;
     if response.status != 200 {
         return Err(Error::Protocol);
     }

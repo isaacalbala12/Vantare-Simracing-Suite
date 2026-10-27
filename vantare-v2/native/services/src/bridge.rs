@@ -56,20 +56,22 @@ impl Config {
     pub fn authorize(&self, http: &Http, account: &Account, now: u64) -> Result<DataSession> {
         // OAuth solo llega a la función validante; jamás a Storage o PostgREST.
         self.authorize_target()?;
-        let response: Response = account.authorized(now, |bearer| {
-            http.post_json(
+        let (response, server_now): (Response, u64) = account.authorized(now, |bearer| {
+            let response = http.post_json(
                 &self.authorize,
                 &serde_json::json!({"version":1}),
                 Some(bearer),
                 None,
-            )?
-            .success()?
-            .json()
+            )?;
+            crate::access_diagnostic::record(crate::access_diagnostic::Route::Authorize, &response);
+            let response = response.success()?;
+            let server_now = response.server_now(now)?;
+            Ok((response.json()?, server_now))
         })?;
         if response.version != 1
             || !uuid(&response.account_id)
-            || response.expires_at <= now
-            || response.expires_at > now.saturating_add(300)
+            || response.expires_at <= server_now
+            || response.expires_at > server_now.saturating_add(300)
             || response.data_access_token.expose().is_empty()
             || response.data_access_token.expose().len() > 16 * 1024
         {
@@ -80,7 +82,9 @@ impl Config {
             generation: account.generation(),
             account_id: response.account_id,
             token: response.data_access_token,
-            expires_at: response.expires_at,
+            // now se toma antes del HTTP: restar Date conserva, o acorta por
+            // el viaje, el TTL real. No se añade tolerancia a exp del bearer.
+            expires_at: now.saturating_add(response.expires_at - server_now),
         })
     }
 }
@@ -263,6 +267,45 @@ impl DataRequest<'_> {
 mod tests {
     use super::*;
     use crate::test_http::Server;
+    #[test]
+    fn server_date_tolerates_bounded_skew_without_adding_time_to_the_data_token() {
+        for (local, expected) in [
+            (100, true),
+            (368, true),
+            (432, true),
+            (700, true),
+            (701, false),
+            (99, false),
+        ] {
+            let server = Server::start_dated(vec![(200, serde_json::json!({"version":1,"account_id":"550e8400-e29b-41d4-a716-446655440000","data_access_token":"data-fixture","expires_at":460}).to_string())], "Thu, 01 Jan 1970 00:06:40 GMT");
+            let (root, store) = crate::test_store("bridge-clock");
+            let account = crate::account::fixture(&server.base, &store);
+            let config = Config {
+                authorize: server
+                    .base
+                    .join("functions/v1/native-account-authorize")
+                    .expect("url"),
+                supabase: server.base.clone(),
+                anon_key: "public-fixture".into(),
+            };
+            let result = config.authorize(&Http::default(), &account, local);
+            if expected {
+                let session = result.expect("bounded clock skew");
+                assert!(session.valid(&account, local + 59));
+                assert!(
+                    !session.valid(&account, local + 60),
+                    "expires after actual sixty second TTL, without skew grace"
+                );
+            } else {
+                assert!(matches!(result, Err(Error::Clock)));
+            }
+            server.requests.recv().expect("one authorize");
+            server.finish();
+            drop(account);
+            drop(store);
+            crate::cleanup_store(&root, "bridge-clock", &[]);
+        }
+    }
     #[test]
     fn oauth_same_origin_only_reaches_exact_authorize_without_apikey() {
         let server = Server::start(vec![

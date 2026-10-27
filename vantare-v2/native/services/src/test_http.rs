@@ -18,16 +18,22 @@ impl Server {
     }
 
     pub fn start_with(responses: impl FnOnce(&Url) -> Vec<(u16, String)>) -> Self {
-        Self::start_with_header(responses, None)
+        Self::start_with_header(responses, None, None)
     }
 
     pub fn start_native(responses: impl FnOnce(&Url) -> Vec<(u16, String)>) -> Self {
-        Self::start_with_header(responses, Some("fixture-client-token"))
+        Self::start_with_header(responses, Some("fixture-client-token"), None)
+    }
+
+    #[cfg(windows)]
+    pub fn start_dated(responses: Vec<(u16, String)>, date: &'static str) -> Self {
+        Self::start_with_header(|_| responses, None, Some(date))
     }
 
     fn start_with_header(
         responses: impl FnOnce(&Url) -> Vec<(u16, String)>,
         client: Option<&'static str>,
+        date: Option<&'static str>,
     ) -> Self {
         let listener = TcpListener::bind("127.0.0.1:0").expect("servidor test");
         let base = Url::parse(&format!(
@@ -75,7 +81,8 @@ impl Server {
                 let authorization = client.map_or(String::new(), |token| {
                     format!("Authorization: {token}-{native_rotation}\r\n")
                 });
-                write!(socket, "HTTP/1.1 {status} Test\r\nContent-Length: {}\r\nContent-Type: application/json\r\n{authorization}Connection: close\r\n\r\n{body}", body.len()).expect("response test");
+                let date = date.map_or(String::new(), |value| format!("Date: {value}\r\n"));
+                write!(socket, "HTTP/1.1 {status} Test\r\nContent-Length: {}\r\nContent-Type: application/json\r\n{authorization}{date}Connection: close\r\n\r\n{body}", body.len()).expect("response test");
             }
         });
         Self {

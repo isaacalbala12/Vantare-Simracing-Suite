@@ -1046,7 +1046,7 @@ fn email_diagnostic_excludes_remote_text_and_identifiers() {
     for code in ["form_identifier_not_found", "private@example.com\nsecret"] {
         let response = crate::http::Response { status: 422,
             body: json!({"errors":[{"code":code,"message":"secret password OTP 123456","meta":{"email":"private@example.com"}}]}).to_string().into_bytes(),
-            client_token: Some(Secret::new("secret-client-token".into())), retry_after: None };
+            client_token: Some(Secret::new("secret-client-token".into())), retry_after: None, server_time: None };
         let line = diagnostic(
             "v1/client/sign_ins/sia_private/prepare_first_factor",
             &response,

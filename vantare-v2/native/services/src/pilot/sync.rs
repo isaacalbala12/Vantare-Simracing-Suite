@@ -146,6 +146,7 @@ mod duplicate_tests {
                 duplicate(&crate::http::Response {
                     client_token: None,
                     retry_after: None,
+                    server_time: None,
                     status,
                     body: body.as_bytes().to_vec()
                 }),

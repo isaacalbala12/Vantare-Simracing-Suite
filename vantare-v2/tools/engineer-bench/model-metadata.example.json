@@ -1,0 +1,21 @@
+{
+  "model_revision": "REPLACE_WITH_IMMUTABLE_REVISION",
+  "artifact_sha256": "REPLACE_WITH_MEASURED_SHA256",
+  "quantization": "REPLACE",
+  "engine": "REPLACE",
+  "engine_revision": "REPLACE",
+  "backend": "REPLACE_WITH_ACTUAL_BACKEND",
+  "context_size_tokens": null,
+  "batch_size": null,
+  "gpu_layers": null,
+  "threads": null,
+  "kv_type_k": null,
+  "kv_type_v": null,
+  "flash_attention": null,
+  "prefix_cache": "RECORD_ACTUAL_POLICY",
+  "load_duration_ns": null,
+  "load_measurement": "COLD_PROCESS_START_TO_READY_OR_ENGINE_REPORTED; REPLACE",
+  "weights_bytes": null,
+  "kv_cache_bytes": null,
+  "notes": "Template only. Null means unavailable, never zero. No model selection claim."
+}

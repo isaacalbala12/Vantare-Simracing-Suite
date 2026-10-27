@@ -16,6 +16,23 @@ Leídos [#1485](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/
 
 ## 3. Estado real y canal
 
+VANTA-124 / [#1786](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1786),
+2026-10-27: benchmark privado en `vantareapp/isa-1786-engineer-benchmark`, base
+`origin/nightly@5548069c3`, worktree aislado `C:/VantareServer/wt/isa-1786-benchmark`.
+[`tools/engineer-bench`](../../../tools/engineer-bench/README.md) prepara casos
+ES/EN, cliente OpenAI streaming, cinco pasadas, concurrencia radio/estrategia,
+JSON/Markdown, métricas propias opcionales y sampler Windows por PID. Usa
+sidecar LMU, golden pequeño del ACC real y REST Imola; escenarios de carrera
+añadidos se etiquetan sintéticos. Composición de hechos y probes aritméticos
+separados; discurso abierto exige review humana. No cambia producto ni ADR.
+El contrato vigente mantiene cifras/acciones/carril crítico en código;
+ADR 0010 describía cloud y ausencia de LLM local, esta issue solo investiga.
+Ventana GPU reservada al worker de inferencia: sin compilación/modelos/replay
+ni medición real de este worker. Validación funcional y PR pendientes en este
+hito; siguiente paso: mock HTTP sin modelo y revisión, luego ejecutar motores
+solo en ventana de quietud propia confirmada. Evidencia fuera del checkout:
+`C:/VantareServer/evidence/vanta124/benchmark/`. No merge, promoción ni release.
+
 Pulido posterior de VANTA-33 / #1638, rama `vantareapp/isa-1638-pulido`, base
 `nightly@bcaa0e3f2` (#1664 integrada). Lifecycle confundía `clear:true` de fuente
 stale con ingest autorizado mientras derechos seguían pendientes. La nueva

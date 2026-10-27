@@ -245,6 +245,28 @@ def stats(values):
             "mean": statistics.mean(values), "stdev": statistics.pstdev(values)}
 
 
+def source_revision():
+    """Read Git identity without starting a second process during quiet-window validation."""
+    try:
+        root = Path(__file__).resolve().parents[3]
+        git = root / ".git"
+        if git.is_file():
+            git = (root / git.read_text(encoding="utf-8").strip().removeprefix("gitdir: ")).resolve()
+        head = (git / "HEAD").read_text(encoding="utf-8").strip()
+        if not head.startswith("ref: "):
+            return head
+        ref = head.removeprefix("ref: ")
+        common = (git / (git / "commondir").read_text(encoding="utf-8").strip()).resolve() if (git / "commondir").exists() else git
+        if (common / ref).exists():
+            return (common / ref).read_text(encoding="utf-8").strip()
+        for line in (common / "packed-refs").read_text(encoding="utf-8").splitlines():
+            if line.endswith(" " + ref):
+                return line.split()[0]
+    except OSError:
+        pass
+    return None
+
+
 def summarize(rows):
     groups = {}
     for row in rows:
@@ -405,8 +427,9 @@ def run(args):
     metadata = vars(args).copy()
     metadata.update({"started_utc": datetime.now(timezone.utc).isoformat(),
                      "schema_version": 1, "python": os.sys.version, "pid": os.getpid()})
-    metadata["git_head"] = subprocess.check_output(["git", "rev-parse", "HEAD"],
-                                                   cwd=Path(__file__).parent, text=True).strip()
+    metadata["git_head"] = source_revision()
+    metadata["source_sha256"] = {name: hashlib.sha256(Path(__file__).with_name(name).read_bytes()).hexdigest()
+                                 for name in ("bench.py", "cases.py", "resources.ps1")}
     if args.model_metadata:
         metadata["model_metadata"] = strict_json(Path(args.model_metadata).read_text(encoding="utf-8"))
     if args.model_path:
@@ -479,7 +502,7 @@ def run(args):
                       "errors": sum(bool(r["error"]) for r in rows)}))
 
 
-def main():
+def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
     command = sub.add_parser("run")
@@ -506,7 +529,7 @@ def main():
     compare = sub.add_parser("compare")
     compare.add_argument("reports", nargs="+")
     compare.add_argument("--output", required=True)
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     if args.command == "run":
         if any(c < 0 for c in args.context_chars) or args.warmups < 0 or args.timeout <= 0:
             parser.error("Invalid context/warmup/timeout")

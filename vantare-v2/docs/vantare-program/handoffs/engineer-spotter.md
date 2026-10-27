@@ -29,13 +29,17 @@ El contrato vigente mantiene cifras/acciones/carril crítico en código;
 ADR 0010 describía cloud y ausencia de LLM local, esta issue solo investiga.
 Ventana GPU reservada al worker de inferencia: sin compilación/modelos/replay
 ni medición real de este worker. Isaac/orquestador autorizó mock ligero:
-`f1fb6bb21`, 12/12 unittest PASS (0,219 s) y 600/600 respuestas mock correctas,
-cero errores, 58 casos ES/EN, cinco pasadas por grupo, dos niveles de contexto,
+`1b101348d`, 16/16 unittest PASS (0,244 s) y 620/620 respuestas mock correctas,
+cero errores, 60 casos ES/EN, cinco pasadas por grupo, dos niveles de contexto,
 concurrencia máxima dos. Un único proceso Python BelowNormal, sin sampler.
 Parser PowerShell PASS sin ejecutar métricas. Tooling en raíz para que el CI
 omita Rust; no cambian gates. PR draft [#1787](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1787)
-a nightly, código publicado y enlazado en T3; CI en curso al abrirlo,
-revisión de solo lectura pendiente. Plane sigue En curso porque la tarea
+a nightly, código publicado y enlazado en T3; CI en curso al abrirlo.
+Revisión DeepSeek del snapshot inicial recibida; correcciones contrastadas:
+errores/barrier conservan informe, timeout cuenta keepalives, comparación valida
+protocolo/huellas, p95 excluye errores, métricas truncadas se enumeran; caso
+adversarial kg/L sintético y consulta sin topic resuelto. No hay segunda ronda
+delegada: tres subagentes autorizados consumidos. Plane sigue En curso porque la tarea
 comparte la investigación de motores. Siguiente paso: revisión/CI, después ejecutar motores solo
 en ventana de quietud propia confirmada. Evidencia fuera del checkout:
 `C:/VantareServer/evidence/vanta124/benchmark/`. No merge, promoción ni release.

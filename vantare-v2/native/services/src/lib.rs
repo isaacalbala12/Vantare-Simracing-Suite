@@ -2,6 +2,8 @@
 #![deny(unsafe_code)]
 
 #[cfg(feature = "network")]
+mod access_diagnostic;
+#[cfg(feature = "network")]
 pub mod account;
 #[cfg(feature = "network")]
 pub mod app;

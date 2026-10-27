@@ -648,6 +648,290 @@ fn forward_wall_clock_drift_does_not_reject_repeated_authority_observation() {
 }
 
 #[test]
+fn signed_future_issuance_is_bounded_and_never_extends_the_paid_deadline() {
+    use authority::Authority;
+    let signing = key();
+    let verifier = verifier(&signing);
+    let issued = date("2026-09-30T10:00:00Z").expect("issued");
+    let credential = v1(&signing, "2026-09-30T10:01:00Z");
+    for skew in [32, 300, 301] {
+        let (root, store) = crate::test_store("clock-skew");
+        let wall = issued - chrono::TimeDelta::seconds(skew);
+        let mut core = Authority::restore(&store).expect("core");
+        let installed = core.install(
+            verifier
+                .v1(&credential, SUBJECT, "test-device")
+                .expect("signed"),
+            wall,
+            Duration::ZERO,
+        );
+        if skew == 301 {
+            assert!(matches!(installed, Err(Error::Clock)));
+            assert!(!core.credential_current());
+        } else {
+            installed.expect("bounded skew accepted");
+            assert_eq!(
+                core.next_deadline(&["vantare.plan.pro".into()]),
+                Some(wall + chrono::TimeDelta::seconds(60))
+            );
+            core.persist(&store).expect("persist adjusted clock");
+            let mut core = Authority::restore(&store).expect("cold restore");
+            core.install(
+                verifier
+                    .v1(&credential, SUBJECT, "test-device")
+                    .expect("signed"),
+                wall + chrono::TimeDelta::seconds(1),
+                Duration::ZERO,
+            )
+            .expect("accepted skew survives restart");
+            assert_eq!(
+                core.rights(
+                    wall + chrono::TimeDelta::seconds(59),
+                    Duration::from_secs(58)
+                )
+                .expect("before real expiry")
+                .len(),
+                1
+            );
+            assert!(
+                core.rights(
+                    wall + chrono::TimeDelta::seconds(60),
+                    Duration::from_secs(59)
+                )
+                .expect("exact real expiry")
+                .is_empty()
+            );
+            assert!(
+                matches!(
+                    core.rights(
+                        wall + chrono::TimeDelta::seconds(59),
+                        Duration::from_mins(1)
+                    ),
+                    Err(Error::Clock)
+                ),
+                "rollback still rejected"
+            );
+        }
+        drop(store);
+        crate::cleanup_store(&root, "clock-skew", &[]);
+    }
+}
+
+#[test]
+#[ignore = "Manual: credencial y pública QA emitidas en staging, sin red ni secretos de firma"]
+fn staging_signed_credential_accepts_only_bounded_injected_clock_skew() {
+    let credential_file =
+        std::env::var_os("VANTARE_QA_STAGING_CREDENTIAL_FILE").expect("QA credential path");
+    let keys_file =
+        std::env::var_os("VANTARE_QA_STAGING_PUBLIC_KEYS_FILE").expect("QA public keys path");
+    let response: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(credential_file).expect("QA credential"))
+            .expect("QA response");
+    let credential: CredentialV1 =
+        serde_json::from_value(response["credential"].clone()).expect("QA envelope");
+    assert!(
+        credential.key_id.starts_with("license-qa-"),
+        "production credentials are not allowed in this probe"
+    );
+    let keys = std::fs::read_to_string(keys_file).expect("QA public registry");
+    let verifier =
+        Verifier::public_keys(keys.trim_start_matches('\u{feff}').trim()).expect("QA trust roots");
+    let issued = date(&credential.claims.issued_at).expect("signed issuance");
+    for skew in [-32, 0, 32, 300, 301] {
+        let (root, store) = crate::test_store("staging-clock-probe");
+        let mut authority = authority::Authority::restore(&store).expect("authority");
+        let proof = verifier
+            .v1(
+                &credential,
+                &credential.claims.subject,
+                &credential.claims.device_fingerprint,
+            )
+            .expect("actual staging signature and binding");
+        let result = authority.install(
+            proof,
+            issued - chrono::TimeDelta::seconds(skew),
+            Duration::ZERO,
+        );
+        if skew > 300 {
+            assert!(matches!(result, Err(Error::Clock)));
+            assert!(!authority.credential_current());
+        } else {
+            result.expect("bounded signed QA issuance accepted");
+            assert!(authority.credential_current());
+        }
+        drop(store);
+        crate::cleanup_store(&root, "staging-clock-probe", &[]);
+    }
+}
+
+#[test]
+fn out_of_range_saved_clock_is_quarantined_and_allows_a_fresh_signed_login() {
+    use authority::Authority;
+    let signing = key();
+    let verifier = verifier(&signing);
+    let credential = v1(&signing, "2026-09-30T11:00:00Z");
+    let now = date(&credential.claims.issued_at).expect("issuance");
+    for forward in [-1, 300_001, i64::MIN, i64::MAX] {
+        let (root, store) = crate::test_store("invalid-saved-clock");
+        store.save("authority", &serde_json::json!({
+            "version":1, "clock":{"last_seen":null,"latest_issued":null,"invalidated_after":null,"last_wall":null,"forward_millis":forward},
+            "game":null,"invalidated":false
+        })).expect("valid JSON with invalid clock");
+        let mut core =
+            Authority::restore(&store).expect("recover instead of blocking every startup");
+        assert!(!core.credential_current());
+        assert!(
+            core.rights(now, Duration::ZERO)
+                .expect("invalidated default")
+                .is_empty()
+        );
+        assert!(matches!(
+            store.load::<serde_json::Value>("authority"),
+            Err(Error::NotFound)
+        ));
+        assert!(
+            std::fs::read_dir(&root)
+                .expect("own test root")
+                .any(|entry| entry
+                    .expect("namespace")
+                    .path()
+                    .join("authority.corrupto")
+                    .is_file()),
+            "quarantine retains the invalid document"
+        );
+        let mut reopened = Authority::restore(&store).expect("next startup also recovers");
+        assert!(!reopened.credential_current());
+        reopened
+            .install(
+                verifier
+                    .v1(&credential, SUBJECT, "test-device")
+                    .expect("signature"),
+                now,
+                Duration::ZERO,
+            )
+            .expect("fresh login is usable");
+        assert!(reopened.credential_current());
+        drop(store);
+        crate::cleanup_store(&root, "invalid-saved-clock", &[]);
+    }
+}
+
+#[test]
+fn logout_tombstone_survives_forward_adjustment_and_cold_restore() {
+    use authority::Authority;
+    let signing = key();
+    let verifier = verifier(&signing);
+    let credential = v1(&signing, "2026-09-30T11:00:00Z");
+    let issued = date(&credential.claims.issued_at).expect("issuance");
+    let wall = issued - chrono::TimeDelta::seconds(32);
+    let (root, store) = crate::test_store("forward-tombstone");
+    let mut core = Authority::restore(&store).expect("authority");
+    core.install(
+        verifier
+            .v1(&credential, SUBJECT, "test-device")
+            .expect("signature"),
+        wall,
+        Duration::ZERO,
+    )
+    .expect("signed forward adjustment");
+    core.invalidate(wall + chrono::TimeDelta::seconds(1), Duration::from_secs(1))
+        .expect("logout");
+    core.persist(&store).expect("durable tombstone");
+    let mut restored = Authority::restore(&store).expect("restart");
+    assert!(matches!(
+        restored.install(
+            verifier
+                .v1(&credential, SUBJECT, "test-device")
+                .expect("old signature"),
+            wall + chrono::TimeDelta::seconds(2),
+            Duration::ZERO
+        ),
+        Err(Error::Denied)
+    ));
+    assert!(!restored.credential_current());
+    assert!(
+        restored
+            .rights(wall + chrono::TimeDelta::seconds(2), Duration::ZERO)
+            .expect("no rights after logout")
+            .is_empty()
+    );
+    let mut fresh = credential;
+    fresh.claims.issued_at = (issued + chrono::TimeDelta::seconds(3)).to_rfc3339();
+    fresh.signature = URL_SAFE_NO_PAD.encode(
+        signing
+            .sign(&fresh.signing_bytes().expect("fresh payload"))
+            .to_bytes(),
+    );
+    restored
+        .install(
+            verifier
+                .v1(&fresh, SUBJECT, "test-device")
+                .expect("fresh signature"),
+            wall + chrono::TimeDelta::seconds(3),
+            Duration::from_secs(1),
+        )
+        .expect("new issuance after logout may sign in");
+    assert!(restored.credential_current());
+    drop(store);
+    crate::cleanup_store(&root, "forward-tombstone", &[]);
+}
+
+#[test]
+fn successive_signed_issuances_cannot_exceed_the_accumulated_clock_limit() {
+    use authority::Authority;
+    let signing = key();
+    let verifier = verifier(&signing);
+    let credential = v1(&signing, "2026-09-30T11:00:00Z");
+    let issued = date(&credential.claims.issued_at).expect("issuance");
+    let wall = issued - chrono::TimeDelta::seconds(200);
+    for additional in [100, 101] {
+        let (root, store) = crate::test_store("accumulated-clock-limit");
+        let mut core = Authority::restore(&store).expect("authority");
+        core.install(
+            verifier
+                .v1(&credential, SUBJECT, "test-device")
+                .expect("first signature"),
+            wall,
+            Duration::ZERO,
+        )
+        .expect("first 200 seconds");
+        let previous_deadline = core
+            .next_deadline(&["vantare.plan.pro".into()])
+            .expect("paid deadline");
+        let mut next = credential.clone();
+        next.claims.issued_at = (issued + chrono::TimeDelta::seconds(additional)).to_rfc3339();
+        next.signature = URL_SAFE_NO_PAD.encode(
+            signing
+                .sign(&next.signing_bytes().expect("next payload"))
+                .to_bytes(),
+        );
+        let result = core.install(
+            verifier
+                .v1(&next, SUBJECT, "test-device")
+                .expect("second signature"),
+            wall,
+            Duration::ZERO,
+        );
+        if additional == 100 {
+            result.expect("accumulated 300 seconds accepted");
+        } else {
+            assert!(
+                matches!(result, Err(Error::Clock)),
+                "200 plus 101 must not bypass the limit"
+            );
+        }
+        assert!(
+            core.next_deadline(&["vantare.plan.pro".into()])
+                .expect("deadline remains valid")
+                <= previous_deadline,
+            "neither acceptance nor rejection extends the paid deadline"
+        );
+        drop(store);
+        crate::cleanup_store(&root, "accumulated-clock-limit", &[]);
+    }
+}
+
+#[test]
 fn founders_keeps_perpetual_nightly_after_pro_plus_expires() {
     let founder = Capability {
         key: "vantare.plan.founders".into(),

@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-1783",
+  "type": "fix",
+  "summary": "El acceso admite pequeños atrasos del reloj del PC y explica cuándo hay que sincronizar la hora de Windows.",
+  "technicalNotes": [
+    "La licencia puede adelantar su reloj de verificación hasta la fecha de emisión firmada, con un límite de cinco minutos. Los vencimientos originales se conservan.",
+    "El puente de datos calcula su vigencia desde la fecha HTTPS del servidor y rechaza diferencias superiores a cinco minutos.",
+    "Un fallo de renovación permite volver a recibir los derechos del núcleo y Reintentar solicita una renovación real. Los logs solo contienen categorías cerradas."
+  ],
+  "testing": [
+    "Con la sesión iniciada, comprobar los cuatro widgets gratuitos y Roadmap tras sincronizar la hora de Windows.",
+    "Las regresiones usan relojes inyectados para comprobar límites de 32, 300 y 301 segundos, reinicio y vencimiento exacto."
+  ],
+  "knownLimitations": [
+    "No se retrasa el reloj de autoridad ni se ignoran las invalidaciones previas. Un reloj adelantado conserva la comprobación más restrictiva de los vencimientos.",
+    "El ensayo con credencial QA firmada de staging y desplazamiento simulado no equivale a un nuevo login remoto."
+  ]
+}

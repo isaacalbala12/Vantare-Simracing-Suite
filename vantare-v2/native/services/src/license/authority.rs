@@ -11,6 +11,12 @@ pub struct Clock {
     last_seen: Option<DateTime<Utc>>,
     latest_issued: Option<DateTime<Utc>>,
     invalidated_after: Option<DateTime<Utc>>,
+    // Pared y tiempo efectivo se conservan por separado: aceptar una emisión
+    // firmada unos segundos futura no debe parecer rollback al reabrir.
+    #[serde(default)]
+    last_wall: Option<DateTime<Utc>>,
+    #[serde(default)]
+    forward_millis: i64,
 }
 
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -58,7 +64,11 @@ pub struct Authority {
 impl Authority {
     pub fn restore(store: &Store) -> Result<Self> {
         let saved = match store.load_for_restore::<Saved>("authority") {
-            Ok(Some(saved)) if saved.version == 1 => saved,
+            Ok(Some(saved))
+                if saved.version == 1 && (0..=300_000).contains(&saved.clock.forward_millis) =>
+            {
+                saved
+            }
             Ok(None) | Err(Error::NotFound) => Saved {
                 version: 1,
                 clock: Clock::default(),
@@ -95,21 +105,26 @@ impl Authority {
         // Comparar pared con pared: el reloj efectivo puede adelantarse por deriva.
         if self
             .last_wall
+            .or(self.clock.last_wall)
             .or(self.clock.last_seen)
             .is_some_and(|last| wall < last)
         {
             return Err(Error::Clock);
         }
+        let adjusted_wall = wall
+            .checked_add_signed(TimeDelta::milliseconds(self.clock.forward_millis))
+            .ok_or(Error::Clock)?;
         let now = if let Some((anchor, start)) = self.anchor {
             let elapsed = tick.checked_sub(start).ok_or(Error::Clock)?;
             let elapsed = TimeDelta::from_std(elapsed).map_err(|_| Error::Clock)?;
-            wall.max(anchor.checked_add_signed(elapsed).ok_or(Error::Clock)?)
+            adjusted_wall.max(anchor.checked_add_signed(elapsed).ok_or(Error::Clock)?)
         } else {
-            self.anchor = Some((wall, tick));
-            wall
+            self.anchor = Some((adjusted_wall, tick));
+            adjusted_wall
         };
         let now = now.max(self.clock.last_seen.unwrap_or(now));
         self.last_wall = Some(wall);
+        self.clock.last_wall = Some(wall);
         self.clock.last_seen = Some(now);
         Ok(now)
     }
@@ -128,14 +143,27 @@ impl Authority {
         {
             return Err(Error::Denied);
         }
-        // No future issuance tolerance extends paid deadlines.
-        if verified.issued_at > now
+        let ahead = verified.issued_at.signed_duration_since(now);
+        if ahead > TimeDelta::minutes(5)
             || self
                 .clock
                 .latest_issued
                 .is_some_and(|latest| verified.issued_at < latest)
         {
             return Err(Error::Clock);
+        }
+        if ahead > TimeDelta::zero() {
+            // La firma ya se comprobó. Adelantar el reloj efectivo hasta iat
+            // conserva los vencimientos firmados; nunca suma gracia a exp.
+            let forward = self
+                .clock
+                .forward_millis
+                .checked_add(ahead.num_milliseconds())
+                .filter(|offset| (0..=300_000).contains(offset))
+                .ok_or(Error::Clock)?;
+            self.clock.forward_millis = forward;
+            self.clock.last_seen = Some(verified.issued_at);
+            self.anchor = Some((verified.issued_at, tick));
         }
         self.clock.latest_issued = Some(verified.issued_at);
         if self
@@ -177,6 +205,9 @@ impl Authority {
         tick: Duration,
     ) -> Result<()> {
         let now = self.observe(now, tick)?;
+        let entered_at = entered_at
+            .checked_add_signed(TimeDelta::milliseconds(self.clock.forward_millis))
+            .ok_or(Error::Clock)?;
         if entered_at > now {
             return Err(Error::Clock);
         }
@@ -260,7 +291,11 @@ impl Authority {
     }
 
     pub fn credential_deadline(&self) -> Option<DateTime<Utc>> {
-        self.verified.as_ref()?.expires_at
+        self.local_deadline(self.verified.as_ref()?.expires_at?)
+    }
+
+    fn local_deadline(&self, deadline: DateTime<Utc>) -> Option<DateTime<Utc>> {
+        deadline.checked_sub_signed(TimeDelta::milliseconds(self.clock.forward_millis))
     }
 
     /// Deadline efectivo ya aprobado: el consumidor no inventa gracia local.
@@ -285,6 +320,7 @@ impl Authority {
                 }
             })
             .min()
+            .and_then(|deadline| self.local_deadline(deadline))
     }
     pub fn invalidate(&mut self, now: DateTime<Utc>, tick: Duration) -> Result<()> {
         self.invalidated = true;

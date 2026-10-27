@@ -54,7 +54,7 @@ impl fmt::Display for Error {
             Self::Offline => "servicio sin conexión",
             Self::InvalidCredential => "credencial firmada inválida",
             Self::Expired => "credencial vencida",
-            Self::Clock => "revalidación del reloj necesaria",
+            Self::Clock => "La hora de tu PC no es correcta: activa la sincronización automática de hora de Windows",
             Self::Storage => "almacenamiento protegido no disponible",
             Self::CheckoutRecovery => "Intento de compra ilegible. Se conserva para recuperación asistida: contacta con soporte para comprobar la compra antes de crear otro intento.",
             Self::CheckoutPromotionPending => "Espera: el pago anterior sigue en curso. Tu primer mes se conserva; vuelve a intentarlo cuando termine.",

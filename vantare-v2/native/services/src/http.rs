@@ -17,9 +17,20 @@ pub struct Response {
     pub body: Vec<u8>,
     pub(crate) client_token: Option<crate::account::Secret>,
     pub(crate) retry_after: Option<u64>,
+    pub(crate) server_time: Option<u64>,
 }
 
 impl Response {
+    /// Date procede de la respuesta TLS del endpoint configurado. Solo orienta
+    /// sesiones de datos; nunca concede derechos ni sustituye firmas.
+    pub(crate) fn server_now(&self, local: u64) -> Result<u64> {
+        let server = self.server_time.unwrap_or(local);
+        if server.abs_diff(local) > crate::license::CLOCK_SKEW_SECONDS {
+            return Err(Error::Clock);
+        }
+        Ok(server)
+    }
+
     pub fn json<T: DeserializeOwned>(&self) -> Result<T> {
         serde_json::from_slice(&self.body).map_err(|_| Error::Protocol)
     }
@@ -76,6 +87,12 @@ impl Http {
     ) -> Result<Response> {
         let mut response = response.map_err(|_| Error::Offline)?;
         let status = response.status().as_u16();
+        let server_time = response
+            .headers()
+            .get("Date")
+            .and_then(|header| header.to_str().ok())
+            .and_then(|value| chrono::DateTime::parse_from_rfc2822(value).ok())
+            .and_then(|date| u64::try_from(date.timestamp()).ok());
         let retry_after = response
             .headers()
             .get("Retry-After")
@@ -100,6 +117,7 @@ impl Http {
             body,
             client_token,
             retry_after,
+            server_time,
         })
     }
 

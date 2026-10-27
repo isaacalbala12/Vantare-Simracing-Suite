@@ -1,3 +1,73 @@
+## VANTA-105 / #1783 · Acceso y desfase del reloj (27-oct, para revisión)
+
+Revisión a550de956 APTO/sin P1 y CI verde, según informe
+C:/VantareServer/evidence/rev-1784/INFORME.md. Correcciones encargadas en el mismo
+PR: un adelanto guardado fuera de rango se aparta como otra versión inválida y
+arranca con autoridad invalidada, sin derechos, permitiendo iniciar sesión de
+nuevo. Regresión RED antes del arreglo; cubre -1/300001/i64MIN/MAX, conserva el
+documento apartado y comprueba reapertura y nueva instalación firmada.
+Se añaden también tombstone con adelanto/reinicio y tope acumulado200+100 frente
+a200+101s. El módulo de tests de bridge ya era cfg(all(test, windows)); ahora el
+consumidor fechado declara además cfg(windows) explícito, igual que su helper.
+No se afirma haber ejecutado Unix. Corrección validada: Services239/239 (6 skips),
+Clippy Services all-targets/-D warnings, runtime derechos18/18, fmt y466 huellas
+PASS. RED de restore y GREEN completos conservados en evidence/acceso-verificar/
+review-fixes. Workspace/lifecycle/corpus completos quedan para la CI del nuevo
+HEAD; no se editan runtime/domain/ipc/testdata. HEAD final en #1783;
+la CI verde anterior no se atribuye al nuevo commit. P3-1/2/4 se registran como
+seguimiento en la issue, sin cambiar su comportamiento en esta corrección.
+
+RC7 instalada0.0.985 coincide con el payload0a4dff802 y sus raíces públicas.
+La prueba QA autorizada obtuvo OAuth/userinfo200, native-license200 con el kid
+esperado y el mismo UUID/huella de la QA anterior, y authorize200. Ninguna cuenta
+de Isaac se consultó. Date HTTPS adelantaba32,037s al PC, RTT0,193s; Windows Time
+estaba Disabled/Stopped. El bridge recibía332s de vigencia y rechazaba más de300;
+Authority rechazaba toda emisión futura. No se demostró fallo de RPC Roadmap,
+RLS, ausencia de licencia de pago ni firma inválida. La firma actual Production
+no se verificó criptográficamente en aquella sonda Python (dependencia ausente).
+
+El orquestador sincronizó Windows (comunicó desfase0,2s) y encargó la comprobación
+física al reabrir. Esa aceptación no se atribuye a este worker. Desde esa orden no
+se repite Production. Dos refresh QA rotaron tokens mantenidos solo en memoria;
+las copias antiguas ya no sirven. Renovar la custodia y persistir atómicamente el
+refresh rotado queda como tarea posterior; no eludir client trust ni OTP.
+
+Diseño aprobado: Authority solo adelanta hasta iat verificado, máximo300s; conserva
+pared/adelanto en el estado protegido y traduce los deadlines publicados al reloj
+local. Nunca retrasa autoridad ni alarga vencimientos/tombstones. Bridge usa Date
+del endpoint HTTPS, diferencia máxima±300s, y TTL local conservador; sin Date usa
+la comprobación local anterior. El reloj adelantado conserva expiraciones más
+restrictivas. Fallos de renovación liberan Transition::Renewal sin conceder
+acceso: solo vuelve a aceptarse política fresca del núcleo. Reintentar renueva.
+Inicio muestra el error de hora con la instrucción de sincronización Windows.
+Logs locales cerrados de ruta/status/código y resultado enum, sin cuerpos ni PII.
+
+Worktree C:/VantareServer/wt/acceso-verificar, rama
+vantareapp/isa-1783-acceso-verificar, base origin/nightly0a4dff802.
+Issue https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1783,
+Project Vantare, area:plataforma, milestone Plataforma/CI/releases testers.
+Regresiones con relojes inyectados, firma efímera y sonda manual con credencial
+auténtica y raíz QA de staging; no confundirla con un nuevo login remoto.
+Gates locales PASS: Clippy all-targets/-D warnings Services/Hub/runtime y fmt;
+Nextest1225/1225 (17 skips,267s); lifecycle13/13; sonda staging1/1; quality y466
+huellas. El helper fechado queda cfg(windows), como los tests que lo consumen,
+para no generar dead_code Unix. Tras ese ajuste, Clippy repetido PASS y Services
+234/234 (6 skips). Check independiente cubierto por Clippy; corpus de telemetría
+y workspace completo quedan para CI: no se edita runtime/domain/ipc/testdata.
+Primer Nextest19PASS/1FAIL por Storage ausente conservado; se compiló el writer
+real con DuckDB oficial y la repetición completa pasó sin omitir el smoke.
+SHA/PR y CI del HEAD publicado se registran en la issue; no afirmar CI verde
+ni integración con estos resultados locales.
+PR listo a nightly: https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1784,
+registrado en T3. Código validado y publicado f68cdc6e51b06656294b79b26e1affedee3b629a;
+el commit posterior solo registra esta entrega. CI remota pendiente de verificación
+del HEAD final por el orquestador. Siguiente: revisión de seguridad/diff y comprobación
+física tras sincronizar, antes de cualquier integración autorizada.
+Evidencia C:/VantareServer/evidence/acceso-verificar. No dependencias, deploy,
+pagos, configuración de proveedores, merge, promoción ni release por el worker.
+Tres lecturas DeepSeek autorizadas finalizadas; ronda de diseño interrumpida sin
+informe útil. El orquestador revisa diff y seguridad antes de integrar.
+
 ## VANTA-105 / #1778 · Ventana del instalador (26-oct, para revisión)
 
 Encargo del orquestador tras RC6 0.0.984. Base nightly

@@ -3,6 +3,8 @@ import argparse
 import io
 import json
 import threading
+import tempfile
+from pathlib import Path
 import unittest
 
 import bench
@@ -15,7 +17,7 @@ class EvaluatorTests(unittest.TestCase):
         for case in build_cases():
             gold = case["gold"]
             if case["kind"] == "tool":
-                calls = [{"function": {"name": gold["name"],
+                calls = [{"id": "call1", "type": "function", "function": {"name": gold["name"],
                                        "arguments": json.dumps(gold["arguments"])}}]
                 self.assertTrue(bench.score(case, "", calls)["automatic_pass"])
                 calls[0]["function"]["name"] = "confirm_pit"
@@ -27,7 +29,7 @@ class EvaluatorTests(unittest.TestCase):
 
     def test_json_extra_keys_booleans_duplicates_nonfinite_and_wrong_numbers(self):
         case = next(c for c in build_cases() if c["id"] == "fuel-finish-es")
-        for text in ('{"required_l":true}', '{"required_l":NaN}',
+        for text in ('{"required_l":true}', '{"required_l":NaN}', '{"required_l":1e309}',
                      '{"required_l":30.8,"required_l":30.8}',
                      '{"required_l":30.8,"deficit_l":7.4,"consumption_l_per_lap":2.8,"invented":0}',
                      '{"required_l":31,"deficit_l":7.4,"consumption_l_per_lap":2.8}'):
@@ -58,6 +60,30 @@ class EvaluatorTests(unittest.TestCase):
                                        "load_duration": 100000000}])
         self.assertEqual(rates["decode_tokens_s"], 20)
         self.assertEqual(rates["load_ms"], 100)
+
+    def test_resource_attribution_and_metrics_units_without_sampling(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "resources.jsonl"
+            point = {"utc": "2026-10-27T20:00:00.5000000Z", "process_working_set_bytes": 100,
+                     "gpu_process_counters_available": True,
+                     "gpu_process_memory": [{"DedicatedUsage": 200}, {"DedicatedUsage": 300}]}
+            path.write_text(json.dumps(point) + "\n", encoding="utf-8")
+            summary = bench.resource_summary(path, [{"context_chars": 0, "concurrency": 2,
+                "started_utc": "2026-10-27T20:00:00+00:00", "ended_utc": "2026-10-27T20:00:01+00:00"}])
+            self.assertEqual(summary["groups"]["context=0,concurrency=2"]["samples"], 1)
+            self.assertEqual(summary["all"]["process_gpu_dedicated_bytes"]["max"], 500)
+            self.assertIsNone(summary["kv_cache_bytes"])
+            path.write_text(json.dumps({"data": {"memory": {"kv": 123}}, "error": None}) + "\n", encoding="utf-8")
+            engine = bench.engine_metrics_summary(path, {"kv_cache_bytes": "/memory/kv"})
+            self.assertEqual(engine["fields"]["kv_cache_bytes"]["max"], 123)
+            self.assertIsNone(engine["fields"]["weights_bytes"])
+
+    def test_comparison_keeps_both_configuration_labels(self):
+        reports = [{"metadata": {"label": label, "mode": "mock", "model": "mock", "seed": 124,
+                                  "temperature": 0}, "summary": []} for label in ("fixture-A", "fixture-B")]
+        text = bench.markdown(reports)
+        self.assertIn("fixture-A", text)
+        self.assertIn("fixture-B", text)
 
     def test_real_run_requires_window_and_minimum_passes(self):
         with self.assertRaises(ValueError):

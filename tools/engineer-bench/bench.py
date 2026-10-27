@@ -61,7 +61,13 @@ def strict_json(value):
     def constant(_):
         raise ValueError("non-finite JSON number")
 
-    return json.loads(value, object_pairs_hook=pairs, parse_constant=constant)
+    def finite(value):
+        number = float(value)
+        if not math.isfinite(number):
+            raise ValueError("non-finite JSON number")
+        return number
+
+    return json.loads(value, object_pairs_hook=pairs, parse_constant=constant, parse_float=finite)
 
 
 def same(actual, expected):
@@ -80,7 +86,9 @@ def score(case, content, calls):
     actual = None
     try:
         if case["kind"] == "tool":
-            checks["format"] = len(calls) == 1 and not content.strip()
+            checks["format"] = (len(calls) == 1 and not content.strip()
+                and calls[0].get("type") == "function" and isinstance(calls[0].get("id"), str)
+                and bool(calls[0]["id"]))
             if len(calls) == 1:
                 function = calls[0]["function"]
                 actual = {"name": function["name"],
@@ -154,6 +162,8 @@ def request(args, case, context_chars, concurrency, iteration, barrier=None):
                 if "error" in chunk:
                     raise ValueError("Engine returned a streaming error")
                 if chunk.get("usage"):
+                    if not isinstance(chunk["usage"], dict):
+                        raise ValueError("Invalid usage object")
                     usage = chunk["usage"]
                 for choice in chunk.get("choices", []):
                     if choice.get("index", 0) != 0:
@@ -169,12 +179,18 @@ def request(args, case, context_chars, concurrency, iteration, barrier=None):
                         last = now
                     content += part
                     for fragment in fragments:
+                        if not isinstance(fragment.get("index"), int) or fragment["index"] < 0:
+                            raise ValueError("Invalid tool call index")
+                        if fragment.get("type", "function") != "function":
+                            raise ValueError("Unsupported tool call type")
                         call = calls.setdefault(fragment["index"], {"id": "", "type": "function",
                             "function": {"name": "", "arguments": ""}})
                         call["id"] += fragment.get("id", "")
                         for field in ("name", "arguments"):
                             call["function"][field] += fragment.get("function", {}).get(field, "")
                     finish = choice.get("finish_reason") or finish
+                if len(content) + len(reasoning) + sum(len(c["function"]["arguments"]) for c in calls.values()) > 1048576:
+                    raise ValueError("Generation exceeds 1 MiB")
                 extra = {k: v for k, v in chunk.items() if k not in
                          {"choices", "usage", "id", "object", "created", "model", "system_fingerprint"}}
                 if extra:
@@ -189,6 +205,8 @@ def request(args, case, context_chars, concurrency, iteration, barrier=None):
     ttft = (first - start) * 1000 if first is not None else None
     completion_tokens = usage.get("completion_tokens")
     prompt_tokens = usage.get("prompt_tokens")
+    completion_tokens = completion_tokens if type(completion_tokens) is int and completion_tokens >= 0 else None
+    prompt_tokens = prompt_tokens if type(prompt_tokens) is int and prompt_tokens >= 0 else None
     quality = score(case, content, [calls[k] for k in sorted(calls)])
     if error:
         quality["automatic_pass"] = False
@@ -248,7 +266,7 @@ def stats(values):
 def source_revision():
     """Read Git identity without starting a second process during quiet-window validation."""
     try:
-        root = Path(__file__).resolve().parents[3]
+        root = Path(__file__).resolve().parents[2]
         git = root / ".git"
         if git.is_file():
             git = (root / git.read_text(encoding="utf-8").strip().removeprefix("gitdir: ")).resolve()
@@ -275,7 +293,13 @@ def summarize(rows):
     return [{"case_id": key[0], "context_chars": key[1], "concurrency": key[2],
              "attempts": len(items), "errors": sum(bool(r["error"]) for r in items),
              "automatic_passes": sum(r["quality"]["automatic_pass"] for r in items),
+             "quality_checks": {name: {"pass": sum(r["quality"]["checks"].get(name) is True for r in items),
+                 "fail": sum(r["quality"]["checks"].get(name) is False for r in items),
+                 "not_applicable_or_manual": sum(r["quality"]["checks"].get(name) is None for r in items)}
+                 for name in {name for r in items for name in r["quality"]["checks"]}},
              "within_budget": sum(r["within_budget"] for r in items),
+             "prompt_tokens": stats([r.get("usage", {}).get("prompt_tokens") for r in items
+                                     if type(r.get("usage", {}).get("prompt_tokens")) is int]),
              "ttft_ms": stats([r["ttft_ms"] for r in items]),
              "total_ms": stats([r["total_ms"] for r in items]),
              "decode_proxy": stats([r["completion_tokens_per_generation_s_proxy"] for r in items]),
@@ -304,11 +328,13 @@ def sample_metrics(url, stop, path, format_):
                          **metrics_sample(url, format_)}) + "\n")
             output.flush()
             stop.wait(1)
+        output.write(json.dumps({"utc": datetime.now(timezone.utc).isoformat(),
+                     "phase": "after", **metrics_sample(url, format_)}) + "\n")
 
 
 def resource_summary(path, rows):
     if not path.exists():
-        return {"available": False, "reason": "No Windows engine PID sampler configured"}
+        return {"available": False, "reason": "No resource samples file; sampler unconfigured or failed"}
     samples = [strict_json(line) for line in path.read_text(encoding="utf-8-sig").splitlines() if line]
     def aggregate(items):
         fields = ("process_working_set_bytes", "process_private_bytes", "process_peak_working_set_bytes",
@@ -336,27 +362,36 @@ def resource_summary(path, rows):
                     "1 Hz sampled peaks may miss short spikes; process peak working set includes earlier lifetime."}
 
 
-def engine_metrics_summary(path, mapping):
+def engine_metrics_summary(path, mapping, rows=None):
     if not path.exists():
         return {"available": False}
     samples = [strict_json(line) for line in path.read_text(encoding="utf-8").splitlines() if line]
     fields = ("weights_bytes", "kv_cache_bytes", "gpu_memory_bytes", "process_ram_bytes", "load_duration_ns")
-    values = {name: [] for name in fields}
-    for sample in samples:
-        data = sample.get("data")
-        if not isinstance(data, dict):
-            continue
-        for field in fields:
-            pointer = mapping.get(field, "/" + field)
-            value = data
-            try:
-                for part in pointer.lstrip("/").split("/"):
-                    value = value[part.replace("~1", "/").replace("~0", "~")]
-            except (TypeError, KeyError):
-                value = None
-            if isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value):
-                values[field].append(value)
-    return {"available": True, "fields": {k: stats(v) for k, v in values.items()},
+    def aggregate(points):
+        values = {name: [] for name in fields}
+        for sample in points:
+            data = sample.get("data")
+            if not isinstance(data, dict):
+                continue
+            for field in fields:
+                pointer = mapping.get(field, "/" + field)
+                value = data
+                try:
+                    for part in pointer.lstrip("/").split("/"):
+                        value = value[part.replace("~1", "/").replace("~0", "~")]
+                except (TypeError, KeyError):
+                    value = None
+                if isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value):
+                    values[field].append(value)
+        return {k: stats(v) for k, v in values.items()}
+    groups = {}
+    for context, concurrency in sorted({(r["context_chars"], r["concurrency"]) for r in rows or []}):
+        intervals = [(r["started_utc"], r["ended_utc"]) for r in rows
+                     if r["context_chars"] == context and r["concurrency"] == concurrency]
+        points = [s for s in samples if any(datetime.fromisoformat(start) <=
+            datetime.fromisoformat(s["utc"]) <= datetime.fromisoformat(end) for start, end in intervals)]
+        groups[f"context={context},concurrency={concurrency}"] = aggregate(points)
+    return {"available": True, "fields": aggregate(samples), "groups": groups,
             "samples": len(samples), "errors": sum(s["error"] is not None for s in samples),
             "note": "Byte/ns units required. Prometheus is preserved raw, not guessed or converted."}
 
@@ -372,18 +407,25 @@ def markdown(reports):
         meta = report["metadata"]
         lines += [f"## {meta['label']}", "", f"Mode: {meta['mode']}; model: {meta['model']}; "
                   f"seed: {meta['seed']}; temperature: {meta['temperature']}.", "",
-                  "| Case | Context chars | Concurrent | Pass / attempts | Errors | TTFT median / p95 ms | Total p95 ms |",
-                  "| --- | ---: | ---: | ---: | ---: | ---: | ---: |"]
+                  "| Case | Context chars | Prompt tokens median | Concurrent | Auto pass / attempts | Errors | TTFT median / p95 ms | Total p95 ms |",
+                  "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |"]
         for group in report["summary"]:
             ttft = group["ttft_ms"]
             total = group["total_ms"]
             latency = f"{ttft['median']:.1f} / {ttft['p95']:.1f}" if ttft else "unavailable"
-            lines.append(f"| {group['case_id']} | {group['context_chars']} | {group['concurrency']} | "
+            tokens = group.get("prompt_tokens")
+            tokens = tokens["median"] if tokens else "unavailable"
+            lines.append(f"| {group['case_id']} | {group['context_chars']} | {tokens} | {group['concurrency']} | "
                          f"{group['automatic_passes']} / {group['attempts']} | {group['errors']} | "
                          f"{latency} | {total['p95']:.1f} |")
         lines += ["", "Resource samples: resources.jsonl; engine metrics: engine-metrics.jsonl (if configured).",
                   "Model load time, weights/KV memory and disk size are unavailable unless supplied by "
                   "engine metrics / model metadata. Request latency is not model load time.", ""]
+        if meta.get("model_metadata"):
+            lines += ["Configuration supplied by engine worker:", "", "```json",
+                      json.dumps(meta["model_metadata"], ensure_ascii=False, indent=2), "```", ""]
+        if meta.get("model_disk_bytes") is not None:
+            lines += [f"Model artifacts logical bytes: {meta['model_disk_bytes']}.", ""]
         resources = report.get("resources", {})
         if resources.get("available"):
             for key, value in resources["all"].items():
@@ -495,7 +537,7 @@ def run(args):
     report = {"metadata": metadata, "summary": summarize(rows), "requests": rows,
               "resources": resource_summary(output / "resources.jsonl", rows),
               "engine_metrics": engine_metrics_summary(output / "engine-metrics.jsonl",
-                strict_json(Path(args.metrics_fields).read_text(encoding="utf-8")) if args.metrics_fields else {})}
+                strict_json(Path(args.metrics_fields).read_text(encoding="utf-8")) if args.metrics_fields else {}, rows)}
     (output / "results.json").write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     (output / "report.md").write_text(markdown([report]), encoding="utf-8")
     print(json.dumps({"output": str(output), "attempts": len(rows),

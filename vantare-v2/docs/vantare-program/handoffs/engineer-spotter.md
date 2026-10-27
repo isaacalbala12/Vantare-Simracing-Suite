@@ -19,7 +19,7 @@ Leídos [#1485](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/
 VANTA-124 / [#1786](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1786),
 2026-10-27: benchmark privado en `vantareapp/isa-1786-engineer-benchmark`, base
 `origin/nightly@5548069c3`, worktree aislado `C:/VantareServer/wt/isa-1786-benchmark`.
-[`tools/engineer-bench`](../../../tools/engineer-bench/README.md) prepara casos
+[`tools/engineer-bench`](../../../../tools/engineer-bench/README.md) prepara casos
 ES/EN, cliente OpenAI streaming, cinco pasadas, concurrencia radio/estrategia,
 JSON/Markdown, métricas propias opcionales y sampler Windows por PID. Usa
 sidecar LMU, golden pequeño del ACC real y REST Imola; escenarios de carrera

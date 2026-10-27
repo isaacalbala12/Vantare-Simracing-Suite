@@ -1,6 +1,6 @@
 # Benchmark privado del Ingeniero — VANTA-124 / #1786
 
-Arnés independiente, Python 3.10+ y biblioteca estándar. No importa crates,
+Arnés independiente, Python 3.11+ y biblioteca estándar. No importa crates,
 no instala motores/modelos, no lee memoria del juego ni modifica el producto.
 La comparación de Sparks 2.6 1.7B y LFM 3 1.7B queda pendiente de disponer de
 sus artefactos y endpoints exactos; los nombres son candidatos del encargo,
@@ -10,23 +10,23 @@ no identidades, tamaños, licencias o compatibilidad verificados aquí.
 
 Fuentes contrastadas en `nightly@5548069c3`:
 
-- [Engineer nativo](../../native/engineer/README.md) y `src/{radio,worker,spotter}.rs`:
+- [Engineer nativo](../../vantare-v2/native/engineer/README.md) y `src/{radio,worker,spotter}.rs`:
   proceso bajo demanda con fotos/eventos neutrales; 13 intents, texto fijo,
   JSONL `vantare.radio.v1`, clips y cuatro locales `es/en/it/pt-BR`.
   No hay HTTP/LLM, consultas del piloto o estrategia generativa en este runtime.
   La foto congelada a 500 ms se retira; el TTL de un mensaje no rejuvenece datos.
-- [Handoff vivo](../../docs/vantare-program/handoffs/engineer-spotter.md):
+- [Handoff vivo](../../vantare-v2/docs/vantare-program/handoffs/engineer-spotter.md):
   código decide intención, cifras, calidad, prioridad y acción. El LLM no
   calcula la estrategia de producto ni bloquea Spotter/banderas/alarmas.
-- [ADR 0010](../../docs/adr/0010-engineer-cloud-dialogue-and-offline-parity.md),
-  [spec §6](../../docs/specs/2026-09-19-crewchief-lmu-parity-design.md) y
-  [persona](../../docs/specs/2026-09-20-engineer-persona-native-style-design.md):
+- [ADR 0010](../../vantare-v2/docs/adr/0010-engineer-cloud-dialogue-and-offline-parity.md),
+  [spec §6](../../vantare-v2/docs/specs/2026-09-19-crewchief-lmu-parity-design.md) y
+  [persona](../../vantare-v2/docs/specs/2026-09-20-engineer-persona-native-style-design.md):
   diseño de comprensión de preguntas mediante herramientas tipadas y
   composición con `FactBundle`/`UtterancePlan`. Son diseños, no API nativa
   implementada. El ADR dice históricamente «no existe LLM local»; #1786
   autoriza investigar esa alternativa, sin cambiar la arquitectura ni activar nada.
-- [Modelo neutral](../../native/domain/README.md), [runtime](../../native/runtime/README.md),
-  [goldens](../../native/runtime/tests/golden/README.md) y [ACC](../../testdata/acc/README.md).
+- [Modelo neutral](../../vantare-v2/native/domain/README.md), [runtime](../../vantare-v2/native/runtime/README.md),
+  [goldens](../../vantare-v2/native/runtime/tests/golden/README.md) y [ACC](../../vantare-v2/testdata/acc/README.md).
   La telemetría vive en `runtime`, no hay crate `native/telemetry` en esta base.
 
 Tipos que interesa evaluar: aviso breve automático; pregunta de combustible,
@@ -148,6 +148,8 @@ Desde este directorio, validación funcional sin modelo/GPU:
 ```powershell
 python -m unittest -v test_bench.py
 python smoke.py --output C:/VantareServer/evidence/vanta124/benchmark/mock-01
+# Una sola instancia Python para ambos pasos:
+python smoke.py --unittest --output C:/VantareServer/evidence/vanta124/benchmark/mock-02
 ```
 
 El mock devuelve gold conocido y usage artificial. Sirve para probar parser,
@@ -212,7 +214,7 @@ de modelos en una segunda ronda para controlar efectos térmicos/caché.
   toda la vida del proceso. VRAM de WDDM no separa pesos/KV/driver. Solo el motor
   puede atribuir pesos/KV; si no expone esos datos, quedan pendientes.
   KV puede preasignarse: memoria estable no prueba coste cero por token.
-  `resources.groups` agrupa muestras por contexto/concurrencia; peticiones más
+  `resources.groups` y `engine_metrics.groups` agrupan muestras por contexto/concurrencia; peticiones más
   cortas que el muestreo pueden no tener muestra. Se preservan puntos crudos.
 - Carga: usar tiempo propio del motor o medición de arranque→ready del otro
   worker en `--model-metadata`; primer TTFT **no** es carga del modelo. Disco:

@@ -2,7 +2,6 @@
 import argparse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
-import threading
 
 from cases import build_cases
 

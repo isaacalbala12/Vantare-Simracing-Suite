@@ -33,16 +33,20 @@ ni medición real de este worker. Isaac/orquestador autorizó mock ligero:
 cero errores, 60 casos ES/EN, cinco pasadas por grupo, dos niveles de contexto,
 concurrencia máxima dos. Un único proceso Python BelowNormal, sin sampler.
 Parser PowerShell PASS sin ejecutar métricas. Tooling en raíz para que el CI
-omita Rust; no cambian gates. PR draft [#1787](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1787)
-a nightly, código publicado y enlazado en T3; CI en curso al abrirlo.
+omita Rust; no cambian gates. PR [#1787](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1787)
+integrado por el orquestador en `nightly@3afe1aa3080c935996029683d13061bbcff8a894`
+el 2026-10-27, tras CI verde y su revisión ligera. Merge y pertenencia a
+`origin/nightly` verificados por este worker. Entrega del arnés cerrada.
 Revisión DeepSeek del snapshot inicial recibida; correcciones contrastadas:
 errores/barrier conservan informe, timeout cuenta keepalives, comparación valida
 protocolo/huellas, p95 excluye errores, métricas truncadas se enumeran; caso
 adversarial kg/L sintético y consulta sin topic resuelto. No hay segunda ronda
 delegada: tres subagentes autorizados consumidos. Plane sigue En curso porque la tarea
-comparte la investigación de motores. Siguiente paso: revisión/CI, después ejecutar motores solo
-en ventana de quietud propia confirmada. Evidencia fuera del checkout:
-`C:/VantareServer/evidence/vanta124/benchmark/`. No merge, promoción ni release.
+comparte la investigación de motores. El orquestador ejecutará las mediciones
+reales cuando el worker de inferencia tenga un motor sirviendo, en ventana
+de quietud propia. Evidencia fuera del checkout:
+`C:/VantareServer/evidence/vanta124/benchmark/`. Sin promoción a testers/master
+ni release; el merge a nightly lo realizó el orquestador.
 
 Pulido posterior de VANTA-33 / #1638, rama `vantareapp/isa-1638-pulido`, base
 `nightly@bcaa0e3f2` (#1664 integrada). Lifecycle confundía `clear:true` de fuente
@@ -132,6 +136,10 @@ Evidencia registrada en la base: integración #1531, fmt/check/Clippy `-D warnin
 #1485: en sesión LMU autorizada, reintentar la API REST de menú de boxes, documentar endpoint/respuesta sanitizada, precondiciones, confirmación/readback y fail-closed; no inferir disponibilidad del ensayo antiguo. Si se cambia código, regresión observable y gates nativos; telemetría para runtime/domain/IPC/testdata. #1477/#1491 necesitan trabajos propios con reproducciones y límites, sin relajación de tests ni efecto de voz real desde docs.
 
 ## 10. Última actualización
+
+2026-10-27 · VANTA-124 / GitHub #1786 · Codex. Integración del arnés #1787
+en nightly `3afe1aa30` y CI verde verificados; entrega cerrada por el
+orquestador. Las mediciones reales quedan a su cargo, fuera de esta entrega.
 
 2026-10-13 · GitHub #1595 · Codex. Causa, código, prueba y gates contrastados;
 200 vueltas de recovery y tanda focal bajo carga verificadas. Runs fallidos

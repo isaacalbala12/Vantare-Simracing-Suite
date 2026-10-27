@@ -1,3 +1,43 @@
+## VANTA-105 / #1785 · Candidata RC8 0.0.986 (27-oct, para revisión)
+
+Productor/base origin/nightly `5548069c30e59eb962b0db284def06ab4961446f`, árbol limpio;
+rama vantareapp/isa-1785-rc8, worktree nuevo C:/VantareServer/wt/isa-1785-rc8.
+#1784 integrado; sus cinco checks SUCCESS verificados, no CI nueva de RC8.
+Sin cambios ni commits de producto. Release beta con DuckDB bundled y CRT
+estático, mismos nueve campos públicos de producción por hash, sin valores;
+loader restaurado y hash revalidado tras entregar. Jobs2, target RC7 autorizado
+D:/VantareServer/targets/1726-rc4. Primera compilación9m36s; incidencia de
+invocación sin cola conservada en build-unqueued/build-payload-unqueued.log.
+Generación final repetida por compilar.ps1 (incremental4,13s), Setup/Uninstall
+por cola PASS31,69s/40,91s. Sin fallos de compilador ni repetición sin sccache.
+
+Estática PASS: doce PE sin certificados ni CRT dinámico; diez EXE app con
+subsistemas correctos, versiones986, inventario109/fixtures85 y hashes,
+ICON1 y capacidades, nueve campos embebidos/dependencias compilador coincidentes.
+Novedad RC8 comprobada por procedencia/fuentes/literales Release: reloj acotado
+300s, mensaje claro de hora, pestillo recuperable y Reintentar renueva, logs
+cerrados sin cuerpos/PII. No es prueba de sesión ni renovación remota real.
+Setup real limpio OFF PASS: instalar/reinstalar/registro/accesos/icono,
+Startup ausente y datos preservados tras desinstalar. Upgrade RC7 0.0.985→986
+PASS, baseline real por hash; autoarranque ON/--background y datos conservados.
+Sin falsear readiness: upgrade pasa directamente a uninstall. Preferencias
+preparadas como datos validados, no interacción física con los interruptores.
+Dos cuentas/perfiles temporales retirados, escritorios privados sin SwitchDesktop;
+ninguna ventana en escritorio Isaac. qa-summary.json e isolation/cleanup por caso.
+
+Entrega C:/VantareServer/share/rc8/: Setup, .sha256 y LEEME, 70950400bytes.
+SHA256 `32b2f6a209255f8e6064d856ef87227c353d9d67f28fe8b1c78611a83dd65b14`, copia revalidada.
+Informe/evidencia C:/VantareServer/evidence/rc8/INFORME.md y delivery.json.
+Pendiente Isaac según LEEME: instalar encima; abrir sesión existente sin
+«Acceso sin verificar» y Gratis sin candados; abrir overlay. Sin login real/pagos.
+Beta-tests completo, suites Rust/lifecycle/telemetría, QA firmada y capturas extra
+omitidos por encargo ligero, sin código/fixtures modificados. Sin firma,
+publicación, PR propia, CI nueva, merge, promoción, release ni backend.
+Handoff documental en rama/worktree isa-1785-rc8-handoff separado del productor;
+SHA/commit/push y tracker final en issue/informe. area:plataforma, Project Vantare,
+milestone23; entrega para Por revisar, no Entregado. Orquestador revisa evidencia
+y decide integración documental; Isaac comprueba los tres pasos manuales.
+
 ## VANTA-105 / #1783 · Acceso y desfase del reloj (27-oct, para revisión)
 
 Revisión a550de956 APTO/sin P1 y CI verde, según informe

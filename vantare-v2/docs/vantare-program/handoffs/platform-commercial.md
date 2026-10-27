@@ -41,6 +41,11 @@ Primer Nextest19PASS/1FAIL por Storage ausente conservado; se compiló el writer
 real con DuckDB oficial y la repetición completa pasó sin omitir el smoke.
 SHA/PR y CI del HEAD publicado se registran en la issue; no afirmar CI verde
 ni integración con estos resultados locales.
+PR listo a nightly: https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1784,
+registrado en T3. Código validado y publicado f68cdc6e51b06656294b79b26e1affedee3b629a;
+el commit posterior solo registra esta entrega. CI remota pendiente de verificación
+del HEAD final por el orquestador. Siguiente: revisión de seguridad/diff y comprobación
+física tras sincronizar, antes de cualquier integración autorizada.
 Evidencia C:/VantareServer/evidence/acceso-verificar. No dependencias, deploy,
 pagos, configuración de proveedores, merge, promoción ni release por el worker.
 Tres lecturas DeepSeek autorizadas finalizadas; ronda de diseño interrumpida sin

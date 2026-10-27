@@ -1,5 +1,22 @@
 ## VANTA-105 / #1783 · Acceso y desfase del reloj (27-oct, para revisión)
 
+Revisión a550de956 APTO/sin P1 y CI verde, según informe
+C:/VantareServer/evidence/rev-1784/INFORME.md. Correcciones encargadas en el mismo
+PR: un adelanto guardado fuera de rango se aparta como otra versión inválida y
+arranca con autoridad invalidada, sin derechos, permitiendo iniciar sesión de
+nuevo. Regresión RED antes del arreglo; cubre -1/300001/i64MIN/MAX, conserva el
+documento apartado y comprueba reapertura y nueva instalación firmada.
+Se añaden también tombstone con adelanto/reinicio y tope acumulado200+100 frente
+a200+101s. El módulo de tests de bridge ya era cfg(all(test, windows)); ahora el
+consumidor fechado declara además cfg(windows) explícito, igual que su helper.
+No se afirma haber ejecutado Unix. Corrección validada: Services239/239 (6 skips),
+Clippy Services all-targets/-D warnings, runtime derechos18/18, fmt y466 huellas
+PASS. RED de restore y GREEN completos conservados en evidence/acceso-verificar/
+review-fixes. Workspace/lifecycle/corpus completos quedan para la CI del nuevo
+HEAD; no se editan runtime/domain/ipc/testdata. HEAD final en #1783;
+la CI verde anterior no se atribuye al nuevo commit. P3-1/2/4 se registran como
+seguimiento en la issue, sin cambiar su comportamiento en esta corrección.
+
 RC7 instalada0.0.985 coincide con el payload0a4dff802 y sus raíces públicas.
 La prueba QA autorizada obtuvo OAuth/userinfo200, native-license200 con el kid
 esperado y el mismo UUID/huella de la QA anterior, y authorize200. Ninguna cuenta

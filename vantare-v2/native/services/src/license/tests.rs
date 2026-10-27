@@ -765,6 +765,173 @@ fn staging_signed_credential_accepts_only_bounded_injected_clock_skew() {
 }
 
 #[test]
+fn out_of_range_saved_clock_is_quarantined_and_allows_a_fresh_signed_login() {
+    use authority::Authority;
+    let signing = key();
+    let verifier = verifier(&signing);
+    let credential = v1(&signing, "2026-09-30T11:00:00Z");
+    let now = date(&credential.claims.issued_at).expect("issuance");
+    for forward in [-1, 300_001, i64::MIN, i64::MAX] {
+        let (root, store) = crate::test_store("invalid-saved-clock");
+        store.save("authority", &serde_json::json!({
+            "version":1, "clock":{"last_seen":null,"latest_issued":null,"invalidated_after":null,"last_wall":null,"forward_millis":forward},
+            "game":null,"invalidated":false
+        })).expect("valid JSON with invalid clock");
+        let mut core =
+            Authority::restore(&store).expect("recover instead of blocking every startup");
+        assert!(!core.credential_current());
+        assert!(
+            core.rights(now, Duration::ZERO)
+                .expect("invalidated default")
+                .is_empty()
+        );
+        assert!(matches!(
+            store.load::<serde_json::Value>("authority"),
+            Err(Error::NotFound)
+        ));
+        assert!(
+            std::fs::read_dir(&root)
+                .expect("own test root")
+                .any(|entry| entry
+                    .expect("namespace")
+                    .path()
+                    .join("authority.corrupto")
+                    .is_file()),
+            "quarantine retains the invalid document"
+        );
+        let mut reopened = Authority::restore(&store).expect("next startup also recovers");
+        assert!(!reopened.credential_current());
+        reopened
+            .install(
+                verifier
+                    .v1(&credential, SUBJECT, "test-device")
+                    .expect("signature"),
+                now,
+                Duration::ZERO,
+            )
+            .expect("fresh login is usable");
+        assert!(reopened.credential_current());
+        drop(store);
+        crate::cleanup_store(&root, "invalid-saved-clock", &[]);
+    }
+}
+
+#[test]
+fn logout_tombstone_survives_forward_adjustment_and_cold_restore() {
+    use authority::Authority;
+    let signing = key();
+    let verifier = verifier(&signing);
+    let credential = v1(&signing, "2026-09-30T11:00:00Z");
+    let issued = date(&credential.claims.issued_at).expect("issuance");
+    let wall = issued - chrono::TimeDelta::seconds(32);
+    let (root, store) = crate::test_store("forward-tombstone");
+    let mut core = Authority::restore(&store).expect("authority");
+    core.install(
+        verifier
+            .v1(&credential, SUBJECT, "test-device")
+            .expect("signature"),
+        wall,
+        Duration::ZERO,
+    )
+    .expect("signed forward adjustment");
+    core.invalidate(wall + chrono::TimeDelta::seconds(1), Duration::from_secs(1))
+        .expect("logout");
+    core.persist(&store).expect("durable tombstone");
+    let mut restored = Authority::restore(&store).expect("restart");
+    assert!(matches!(
+        restored.install(
+            verifier
+                .v1(&credential, SUBJECT, "test-device")
+                .expect("old signature"),
+            wall + chrono::TimeDelta::seconds(2),
+            Duration::ZERO
+        ),
+        Err(Error::Denied)
+    ));
+    assert!(!restored.credential_current());
+    assert!(
+        restored
+            .rights(wall + chrono::TimeDelta::seconds(2), Duration::ZERO)
+            .expect("no rights after logout")
+            .is_empty()
+    );
+    let mut fresh = credential;
+    fresh.claims.issued_at = (issued + chrono::TimeDelta::seconds(3)).to_rfc3339();
+    fresh.signature = URL_SAFE_NO_PAD.encode(
+        signing
+            .sign(&fresh.signing_bytes().expect("fresh payload"))
+            .to_bytes(),
+    );
+    restored
+        .install(
+            verifier
+                .v1(&fresh, SUBJECT, "test-device")
+                .expect("fresh signature"),
+            wall + chrono::TimeDelta::seconds(3),
+            Duration::from_secs(1),
+        )
+        .expect("new issuance after logout may sign in");
+    assert!(restored.credential_current());
+    drop(store);
+    crate::cleanup_store(&root, "forward-tombstone", &[]);
+}
+
+#[test]
+fn successive_signed_issuances_cannot_exceed_the_accumulated_clock_limit() {
+    use authority::Authority;
+    let signing = key();
+    let verifier = verifier(&signing);
+    let credential = v1(&signing, "2026-09-30T11:00:00Z");
+    let issued = date(&credential.claims.issued_at).expect("issuance");
+    let wall = issued - chrono::TimeDelta::seconds(200);
+    for additional in [100, 101] {
+        let (root, store) = crate::test_store("accumulated-clock-limit");
+        let mut core = Authority::restore(&store).expect("authority");
+        core.install(
+            verifier
+                .v1(&credential, SUBJECT, "test-device")
+                .expect("first signature"),
+            wall,
+            Duration::ZERO,
+        )
+        .expect("first 200 seconds");
+        let previous_deadline = core
+            .next_deadline(&["vantare.plan.pro".into()])
+            .expect("paid deadline");
+        let mut next = credential.clone();
+        next.claims.issued_at = (issued + chrono::TimeDelta::seconds(additional)).to_rfc3339();
+        next.signature = URL_SAFE_NO_PAD.encode(
+            signing
+                .sign(&next.signing_bytes().expect("next payload"))
+                .to_bytes(),
+        );
+        let result = core.install(
+            verifier
+                .v1(&next, SUBJECT, "test-device")
+                .expect("second signature"),
+            wall,
+            Duration::ZERO,
+        );
+        if additional == 100 {
+            result.expect("accumulated 300 seconds accepted");
+        } else {
+            assert!(
+                matches!(result, Err(Error::Clock)),
+                "200 plus 101 must not bypass the limit"
+            );
+        }
+        assert!(
+            core.next_deadline(&["vantare.plan.pro".into()])
+                .expect("deadline remains valid")
+                <= previous_deadline,
+            "neither acceptance nor rejection extends the paid deadline"
+        );
+        drop(store);
+        crate::cleanup_store(&root, "accumulated-clock-limit", &[]);
+    }
+}
+
+#[test]
 fn founders_keeps_perpetual_nightly_after_pro_plus_expires() {
     let founder = Capability {
         key: "vantare.plan.founders".into(),

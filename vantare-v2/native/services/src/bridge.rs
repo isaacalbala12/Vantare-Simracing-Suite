@@ -268,6 +268,7 @@ mod tests {
     use super::*;
     use crate::test_http::Server;
     #[test]
+    #[cfg(windows)]
     fn server_date_tolerates_bounded_skew_without_adding_time_to_the_data_token() {
         for (local, expected) in [
             (100, true),

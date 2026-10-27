@@ -64,7 +64,11 @@ pub struct Authority {
 impl Authority {
     pub fn restore(store: &Store) -> Result<Self> {
         let saved = match store.load_for_restore::<Saved>("authority") {
-            Ok(Some(saved)) if saved.version == 1 => saved,
+            Ok(Some(saved))
+                if saved.version == 1 && (0..=300_000).contains(&saved.clock.forward_millis) =>
+            {
+                saved
+            }
             Ok(None) | Err(Error::NotFound) => Saved {
                 version: 1,
                 clock: Clock::default(),
@@ -86,9 +90,6 @@ impl Authority {
 
             Err(error) => return Err(error),
         };
-        if !(0..=300_000).contains(&saved.clock.forward_millis) {
-            return Err(Error::Clock);
-        }
         Ok(Self {
             clock: saved.clock,
             game: saved.game,

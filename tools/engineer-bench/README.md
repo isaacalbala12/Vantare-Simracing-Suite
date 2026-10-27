@@ -43,6 +43,13 @@ inputs, gold, rúbrica de longitud, idioma y presupuestos. `cases.json` en cada
 ejecución congela exactamente ese corpus. Nunca se envía el gold como respuesta
 esperada al endpoint; las cláusulas canónicas y cifras calculadas sí son inputs
 en la cohorte de composición, como requiere la frontera factual.
+Son 58 casos: 24 situaciones por dos idiomas y cinco probes aritméticos por
+dos idiomas. El smoke completo recorre dos niveles de contexto, cinco pasadas
+y dos parejas concurrentes por pasada: 600 peticiones medidas.
+
+Vive en `tools/` de la raíz porque el clasificador CI reconoce esa ruta como
+tooling ajeno al producto nativo. Así se omiten los pasos de compilación Rust
+del runner self-hosted; no se modifica la política ni se relajan gates del producto.
 
 Datos reales usados directamente:
 

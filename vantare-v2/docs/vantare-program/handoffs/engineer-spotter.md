@@ -28,9 +28,14 @@ separados; discurso abierto exige review humana. No cambia producto ni ADR.
 El contrato vigente mantiene cifras/acciones/carril crítico en código;
 ADR 0010 describía cloud y ausencia de LLM local, esta issue solo investiga.
 Ventana GPU reservada al worker de inferencia: sin compilación/modelos/replay
-ni medición real de este worker. Validación funcional y PR pendientes en este
-hito; siguiente paso: mock HTTP sin modelo y revisión, luego ejecutar motores
-solo en ventana de quietud propia confirmada. Evidencia fuera del checkout:
+ni medición real de este worker. Isaac/orquestador autorizó mock ligero:
+`f1fb6bb21`, 12/12 unittest PASS (0,219 s) y 600/600 respuestas mock correctas,
+cero errores, 58 casos ES/EN, cinco pasadas por grupo, dos niveles de contexto,
+concurrencia máxima dos. Un único proceso Python BelowNormal, sin sampler.
+Parser PowerShell PASS sin ejecutar métricas. Tooling en raíz para que el CI
+omita Rust; no cambian gates. PR draft a nightly y revisión de solo lectura
+en preparación; siguiente paso: revisión/CI, después ejecutar motores solo
+en ventana de quietud propia confirmada. Evidencia fuera del checkout:
 `C:/VantareServer/evidence/vanta124/benchmark/`. No merge, promoción ni release.
 
 Pulido posterior de VANTA-33 / #1638, rama `vantareapp/isa-1638-pulido`, base

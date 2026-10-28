@@ -1,5 +1,16 @@
 ## VANTA-105 / #1793 · RC8 no instalada por generación anterior (29-oct, en curso)
 
+Revisión profunda de #1794 aplicada: activa974 admitida con el inventario
+histórico exacto, copia explícita de la vista de state y códigos cerrados
+previous-corrupt/previous-unreadable. El fallo de arranque solo anuncia rollback
+si la activa coincide realmente con boot.previous. Regresiones por CLI Update,
+silencio de stderr para anteriores válidas y rechazo del rollback ficticio:
+164 comprobaciones históricas PASS con el ZIP975 público. Inventario durable
+apuntado en #1795; no se ejecuta hasta que instalador/licencia funcionen en PC.
+Isaac autoriza desde esta decisión compilar en el PC de juegos: se detuvo el
+Nextest aún compilando dependencias en servidor; no se lanzarán más builds allí.
+Trabajo trasladado a C:/VantareWork/isa-1793, fuera de las carpetas de Isaac.
+
 Encargo ampliado expresamente por el orquestador: conservar una anterior
 incompatible/corrupta/ausente sin bloquear la actualización de una activa válida.
 Issue https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1793,

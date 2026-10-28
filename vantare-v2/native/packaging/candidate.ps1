@@ -234,7 +234,7 @@ function Get-NativeMembers([string]$CandidateChannel) {
 }
 $script:NativeMembers = @(Get-NativeMembers $Channel)
 
-# Frozen beta inventory from public 0.0.975 (also used by pre-resources RC1
+# Frozen beta inventory from observed 0.0.974/public 0.0.975 (also used by pre-resources RC1
 # 0.0.979). Never derive it from the current inventory: future additions must
 # not change the contract of generations already installed.
 $script:NativeLegacyBetaMembers = @(
@@ -335,7 +335,7 @@ function Get-NativeInstalledMembers($Manifest) {
     $current = @(Get-NativeMembers $Manifest.channel)
     $paths = @($Manifest.files | ForEach-Object { $_.path })
     if ($Manifest.channel -ceq 'beta' -and
-        $Manifest.version -cmatch '^0\.0\.(975|976|977|978|979)$' -and
+        $Manifest.version -cmatch '^0\.0\.(974|975|976|977|978|979)$' -and
         -not @(Compare-Object $script:NativeLegacyBetaMembers $paths -CaseSensitive).Count) {
         return $script:NativeLegacyBetaMembers
     }
@@ -934,6 +934,7 @@ function Read-NativeState([string]$Directory, [bool]$VerifyActiveFiles = $true) 
     if ($state.schema -ne 1 -or $state.product -cne 'vantare-native' -or $state.channel -cnotin @('nightly', 'testers', 'master', 'beta')) { throw 'Estado de instalación inválido.' }
     if ($null -eq $state.active) { throw 'Falta generación activa.' }
     Assert-NativeGeneration $Directory $state.active $state.channel $VerifyActiveFiles
+    $view = $state.PSObject.Copy()
     if ($null -ne $state.previous) {
         try {
             # Rollback is optional, but it always requires complete byte integrity.
@@ -941,11 +942,14 @@ function Read-NativeState([string]$Directory, [bool]$VerifyActiveFiles = $true) 
         } catch {
             # Only the returned view changes. Never rewrite state or remove an old
             # generation/data while reading it. stderr keeps Setup stdout as JSON.
-            [Console]::Error.WriteLine('previous-unavailable: rollback deshabilitado; generación conservada.')
-            $state.previous = $null
+            $cause = $_.Exception.GetBaseException()
+            $code = if ($cause -is [IO.IOException] -or $cause -is [UnauthorizedAccessException] -or
+                $cause -is [System.Management.Automation.ItemNotFoundException]) { 'previous-unreadable' } else { 'previous-corrupt' }
+            [Console]::Error.WriteLine($code)
+            $view.previous = $null
         }
     }
-    $state
+    $view
 }
 
 function Set-NativeState([string]$Directory, $State) {

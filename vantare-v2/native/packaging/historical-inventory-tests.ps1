@@ -32,7 +32,7 @@ Reject-History {Read-NativeManifest $real 'beta' $false -Instaled} 'Misspelled p
 $unexpected=$false
 try{Reject-History {throw [IO.IOException]::new('unrelated fixture failure')} 'unrelated error' 'Faltan archivos obligatorios.'}catch{$unexpected=$_.Exception.Message.StartsWith('Unexpected rejection for unrelated error')}
 Assert-History $unexpected 'Negative helper refuses an exception with an unrelated cause'
-foreach($version in @('0.0.976','0.0.977','0.0.978','0.0.979')){
+foreach($version in @('0.0.974','0.0.976','0.0.977','0.0.978','0.0.979')){
     $original.version=$version;Write-BetaJson (Join-Path $real 'manifest.json') $original
     $null=Read-NativeManifest $real 'beta' $false -Installed
     Assert-History $true "Known pre-resources inventory accepted for installed $version"
@@ -109,17 +109,18 @@ function Test-HistoryUpgrade([string]$Install,[string]$Old){
 }
 # The real 975 installation still references 974. A previous generation is an
 # optional rollback target, never the authority for updating the active one.
-foreach($case in @('974','976-974','977-974','978-974','979-974','973','missing','missing-generation','corrupt','tampered','bad-reference')){
+foreach($case in @('active974','974','976-974','977-974','978-974','979-974','973','missing','missing-generation','corrupt','tampered','bad-reference')){
     $history=Open-NativeRoot (Join-Path $root ('previous-'+$case)) -Initialize
     $activeId=if($case -ceq '974'){$observedState.active.generation}else{[guid]::NewGuid().ToString('N')}
     $active=Join-Path $history ('generations/'+$activeId)
-    $activeVersion=if($case -match '^(97[6-9])-974$'){'0.0.'+$Matches[1]}else{'0.0.975'}
+    $activeVersion=if($case -ceq 'active974'){'0.0.974'}elseif($case -match '^(97[6-9])-974$'){'0.0.'+$Matches[1]}else{'0.0.975'}
     New-HistoryPayload $active @($original.files.path) $activeVersion
     [IO.Directory]::CreateDirectory((Join-Path $active 'data'))|Out-Null
     [IO.File]::WriteAllText((Join-Path $active 'data/user.bin'),'active user data')
     $priorId=if($case -ceq '974'){$observedState.previous.generation}else{[guid]::NewGuid().ToString('N')}
     $prior=Join-Path $history ('generations/'+$priorId)
-    New-HistoryPayload $prior @($original.files.path) ('0.0.'+$(if($case -ceq '973'){'973'}elseif($case.EndsWith('974')){'974'}else{'975'}))
+    $restorable=$case -in @('974','976-974','977-974','978-974','979-974')
+    New-HistoryPayload $prior @($original.files.path) ('0.0.'+$(if($case -in @('973','active974')){'973'}elseif($restorable){'974'}else{'975'}))
     [IO.Directory]::CreateDirectory((Join-Path $prior 'data'))|Out-Null
     [IO.File]::WriteAllText((Join-Path $prior 'data/user.bin'),'previous user data')
     $reference=@{generation=[IO.Path]::GetFileName($prior);manifest_sha256=(Get-NativeHash (Join-Path $prior 'manifest.json'))}
@@ -136,16 +137,32 @@ foreach($case in @('974','976-974','977-974','978-974','979-974','973','missing'
     $activeData=Get-NativeDataIndex (Join-Path $active 'data')
     $diagnostic=[IO.StringWriter]::new();$savedError=[Console]::Error
     try{[Console]::SetError($diagnostic);$read=Read-NativeState $history}finally{[Console]::SetError($savedError)}
-    Assert-History ($null -eq $read.previous -and $read.active.generation -ceq [IO.Path]::GetFileName($active)) "$case previous cannot block verified active"
-    Assert-History ($diagnostic.ToString().Contains('previous-unavailable')) "$case previous emits closed diagnostic on stderr"
+    Assert-History ($read.active.generation -ceq [IO.Path]::GetFileName($active) -and $(if($restorable){$read.previous.generation -ceq [IO.Path]::GetFileName($prior)}else{$null -eq $read.previous})) "$case previous cannot block verified active"
+    if($restorable){
+        Assert-History ($diagnostic.ToString() -ceq '') "$case valid previous emits no diagnostic"
+    }else{
+        $expected=if($case -in @('missing','missing-generation')){'previous-unreadable'}else{'previous-corrupt'}
+        Assert-History ($diagnostic.ToString().Trim() -ceq $expected) "$case previous emits exact closed diagnostic on stderr"
+    }
     Assert-History ((Get-NativeHash (Join-Path $history 'state.json')) -ceq $stateHash -and (Get-NativeDataIndex $prior) -ceq $priorIndex) "$case read preserves state and previous bytes"
-    Reject-History {Restore-NativeCandidate $history} "$case cannot be restored" 'No hay generación anterior; no se cambian datos.'
-    Assert-History ((Get-NativeHash (Join-Path $history 'state.json')) -ceq $stateHash) "$case rejected rollback preserves state"
+    if(-not $restorable){
+        Reject-History {Restore-NativeCandidate $history} "$case cannot be restored" 'No hay generación anterior; no se cambian datos.'
+        Assert-History ((Get-NativeHash (Join-Path $history 'state.json')) -ceq $stateHash) "$case rejected rollback preserves state"
+        # A nonempty boot.previous must never claim a rollback that did not run.
+        Write-BetaJson (Join-Path $history 'boot-pending.json') @{schema=1;previous=$reference.generation;version='0.0.980'}
+        $process=Start-Process -FilePath (Join-Path $env:WINDIR 'System32/cmd.exe') -ArgumentList '/D /C exit 7' -WindowStyle Hidden -PassThru
+        try{$process.WaitForExit();Reject-History {Confirm-BetaBoot $history $process 0} "$case failed boot cannot announce a fictitious rollback" 'No hay versión anterior íntegra que pueda restaurarse.'}finally{$process.Dispose()}
+        $status=Get-Content (Join-Path $history 'update-status.json') -Raw|ConvertFrom-Json
+        Assert-History ($status.state -ceq 'error' -and (Read-NativeState $history).active.generation -ceq [IO.Path]::GetFileName($active)) "$case boot reports error and preserves active"
+    }
     $request=Join-Path $history 'probe-request.json'
     Write-NativeJson $request @{operation='Probe';root=$history;qa=$true;silent=$true;uninstall=$false;version='0.0.980';size=1024}
     $probe=& powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'installer-driver.ps1') -RequestFile $request
     Assert-History ($LASTEXITCODE -eq 0 -and ($probe|ConvertFrom-Json).installed_version -ceq $activeVersion) "$case Setup probe preserves JSON protocol"
-    Install-Beta $history $zip $hash
+    if($case -in @('active974','974')){
+        $updated=& powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'candidate.ps1') -Operation Update -Root $history -Archive $zip -ExpectedSha256 $hash
+        Assert-History ($LASTEXITCODE -eq 0 -and ($updated|ConvertFrom-Json).active.generation -cne [IO.Path]::GetFileName($active)) "$case CLI Update crosses the actual process boundary"
+    }else{Install-Beta $history $zip $hash}
     $after=Read-NativeState $history
     Assert-History ($after.previous.generation -ceq [IO.Path]::GetFileName($active)) "$case upgrade retains verified active as rollback"
     Assert-History ((Get-NativeDataIndex $prior) -ceq $priorIndex -and (Get-NativeDataIndex (Join-Path $history ('generations/'+$after.active.generation+'/data'))) -ceq $activeData) "$case upgrade preserves previous and user data"

@@ -518,7 +518,7 @@ function Confirm-BetaBoot([string]$Directory, $Process, [int]$TimeoutSeconds = 4
         $restored = Read-NativeState $Directory
         $version = (Read-NativeManifest (Join-Path $Directory "generations/$($restored.active.generation)") 'beta' -Installed).version
         Sync-BetaRegistration $Directory $version
-        if ($boot.previous) { Set-BetaStatus $Directory 'rollback' 'Falló el arranque: se restauró la versión anterior.' }
+        if ($boot.previous -and $restored.active.generation -ceq $boot.previous) { Set-BetaStatus $Directory 'rollback' 'Falló el arranque: se restauró la versión anterior.' }
         else { Set-BetaStatus $Directory 'error' 'No se pudo abrir Vantare tras reparar. Tus datos se conservan; vuelve a ejecutar el instalador.'; throw 'No hay versión anterior íntegra que pueda restaurarse.' }
     }
     $false

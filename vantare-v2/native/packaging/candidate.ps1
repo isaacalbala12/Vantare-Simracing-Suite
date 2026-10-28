@@ -921,19 +921,30 @@ function Uninstall-NativeRegistration([string]$Directory,[bool]$DeferUninstaller
     }
 }
 
+function Assert-NativeGeneration([string]$Directory, $Reference, [string]$Channel, [bool]$VerifyFiles) {
+    if ($Reference.generation -cnotmatch '^[0-9a-f]{32}$' -or $Reference.manifest_sha256 -cnotmatch '^[0-9a-f]{64}$') { throw 'Referencia de generación inválida.' }
+    $generation = Join-Path $Directory "generations/$($Reference.generation)"
+    if ((Get-NativeHash (Join-Path $generation 'manifest.json')) -cne $Reference.manifest_sha256 -or
+        -not (Test-Path -LiteralPath (Join-Path $generation 'data') -PathType Container)) { throw 'Generación activa/anterior incompleta.' }
+    $null = Read-NativeManifest $generation $Channel $VerifyFiles -Installed
+}
+
 function Read-NativeState([string]$Directory, [bool]$VerifyActiveFiles = $true) {
     $state = [IO.File]::ReadAllText((Join-Path $Directory 'state.json')) | ConvertFrom-Json
     if ($state.schema -ne 1 -or $state.product -cne 'vantare-native' -or $state.channel -cnotin @('nightly', 'testers', 'master', 'beta')) { throw 'Estado de instalación inválido.' }
-    foreach ($reference in @($state.active, $state.previous)) {
-        if ($null -eq $reference) { continue }
-        if ($reference.generation -cnotmatch '^[0-9a-f]{32}$' -or $reference.manifest_sha256 -cnotmatch '^[0-9a-f]{64}$') { throw 'Referencia de generación inválida.' }
-        $generation = Join-Path $Directory "generations/$($reference.generation)"
-        if ((Get-NativeHash (Join-Path $generation 'manifest.json')) -cne $reference.manifest_sha256 -or
-            -not (Test-Path -LiteralPath (Join-Path $generation 'data') -PathType Container)) { throw 'Generación activa/anterior incompleta.' }
-        $verify = $VerifyActiveFiles -or $reference.generation -cne $state.active.generation
-        $null = Read-NativeManifest $generation $state.channel $verify -Installed
-    }
     if ($null -eq $state.active) { throw 'Falta generación activa.' }
+    Assert-NativeGeneration $Directory $state.active $state.channel $VerifyActiveFiles
+    if ($null -ne $state.previous) {
+        try {
+            # Rollback is optional, but it always requires complete byte integrity.
+            Assert-NativeGeneration $Directory $state.previous $state.channel $true
+        } catch {
+            # Only the returned view changes. Never rewrite state or remove an old
+            # generation/data while reading it. stderr keeps Setup stdout as JSON.
+            [Console]::Error.WriteLine('previous-unavailable: rollback deshabilitado; generación conservada.')
+            $state.previous = $null
+        }
+    }
     $state
 }
 

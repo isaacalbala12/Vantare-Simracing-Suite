@@ -1,3 +1,39 @@
+## VANTA-105 / #1793 · RC8 no instalada por generación anterior (29-oct, en curso)
+
+Encargo ampliado expresamente por el orquestador: conservar una anterior
+incompatible/corrupta/ausente sin bloquear la actualización de una activa válida.
+Issue https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1793,
+area:licencias, Project Vantare; sin milestone asignado. Rama aislada
+vantareapp/isa-1793-rc8-acceso, base origin/nightly91765bcd5.
+Checkout de integración y su archivo ajeno sin seguimiento intactos.
+
+PC de juegos comprobado por SSH: sin simuladores ni Vantare, Steam RunningAppID0.
+Isaac autoriza instalar y probar; confirma que no jugará esta noche.
+Setup del Escritorio es986 y coincide con RC8 del servidor:
+32b2f6a209255f8e6064d856ef87227c353d9d67f28fe8b1c78611a83dd65b14.
+Pero /S sale1 antes de transacción: «Faltan archivos obligatorios».
+State real: activa975/91 miembros, anterior974/91; la compatibilidad histórica
+solo admite975–979. Se conservan manifiesto974 y referencias de state como
+fixtures sin datos personales. El productor RC8 es5548069c3, squash de #1784;
+no falta el arreglo del reloj. El servidor ya ejecuta986, licencia pendiente.
+Escritorio conserva un acceso antiguo a Programs/Vantare Simracing Suite.
+No se han retirado programas antiguos, leído secretos ni modificado cuentas.
+
+Read-NativeState conserva validación estricta de la activa y comprueba la
+anterior con integridad completa; si falla, devuelve previous=null solo en
+memoria y registra previous-unavailable por stderr. No reescribe state ni borra
+archivos al leer. Rollback rechaza esa anterior; Update conserva la activa
+verificada como nueva anterior. No se amplía el inventario admitido.
+RED reproducido antes del arreglo. Matriz inicial137 PASS: activas975–979,
+anterior974/973, ausente/corrupta/tampered/referencia inválida, protocolo de
+sonda JSON, rollback rechazado, archivos/datos intactos y activa estricta.
+Matriz final con state observado y ZIP975 público, registro y shell en curso.
+Evidencia local C:/VantareServer/evidence/isa-1793/. Sin Rust de producto editado;
+gates completos quedan para CI. PR draft y revisión profunda pendientes.
+Siguiente: revisión del PR por el orquestador/DeepSeek, construir candidato
+privado en servidor e instalar/probar arranque/licencia real en PC de juegos.
+Sin merge, promoción, release ni despliegue de backend.
+
 ## VANTA-105 / #1783 · Acceso y desfase del reloj (27-oct, para revisión)
 
 Revisión a550de956 APTO/sin P1 y CI verde, según informe

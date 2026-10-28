@@ -1,5 +1,13 @@
 # Beta nativa — instalador y actualizaciones (#1454)
 
+Desde #1793, una generación anterior incompatible, ausente o corrupta no bloquea
+la lectura de una activa válida ni su actualización. `Read-NativeState` conserva
+el estado y los archivos en disco, registra `previous-unavailable` en stderr y
+devuelve esa referencia como no restaurable. Rollback exige una anterior íntegra;
+la actualización conserva la activa validada como su nuevo destino de rollback.
+La activa mantiene sus comprobaciones de referencia, manifiesto e inventario y,
+salvo la sonda/reparación explícitas, de integridad de cada archivo.
+
 Seguimiento #1695: el rollback intenta restaurar cada metadato aunque otro esté
 bloqueado y registra los fallos en stderr, conservando el error original. Si no
 se puede enumerar el estado anterior se aborta antes de activar; si no se puede

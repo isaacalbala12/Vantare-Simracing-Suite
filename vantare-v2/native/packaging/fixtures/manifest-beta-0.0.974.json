@@ -1,0 +1,469 @@
+{
+  "schema": 1,
+  "product": "vantare-native",
+  "candidate": true,
+  "channel": "beta",
+  "version": "0.0.974",
+  "source_sha": "00f37fef0767f009f388d0e797531481efd468d3",
+  "source_dirty": false,
+  "build_profile": "Release",
+  "architecture": "windows-x64",
+  "data_schema": "opaque-v1",
+  "files": [
+    {
+      "path": "bin/vantare.exe",
+      "size": 1989120,
+      "sha256": "ed790ff86ea50e5633452af5d54225c149df6ef41c7c768237d5fb6452a11ba6"
+    },
+    {
+      "path": "bin/vantare.exe.sha256",
+      "size": 78,
+      "sha256": "fcb1140fe0f1e7b36771fd239a25812871642368d3b5bdf2c853630a90d3739a"
+    },
+    {
+      "path": "bin/vantare-core.exe",
+      "size": 4083200,
+      "sha256": "7a2aaa42b067155cf351f6c5be4506e97809eb1c892db94289a1b9fd3c9bc322"
+    },
+    {
+      "path": "bin/vantare-core.exe.sha256",
+      "size": 83,
+      "sha256": "19da49dd3f616501f574778191e88b9bf1efb0f9618438abc2649279027ff8ba"
+    },
+    {
+      "path": "bin/vantare-overlays.exe",
+      "size": 15637504,
+      "sha256": "fd936ae1b354454d19a0956f971f4dffb3f75a831fff45d231b23af4cca4b48a"
+    },
+    {
+      "path": "bin/vantare-overlays.exe.sha256",
+      "size": 87,
+      "sha256": "cf2ec86f77a5ca6d84f26ab50caa69ff071fd7f88aa279f1b56200412da39ca2"
+    },
+    {
+      "path": "bin/vantare-hub.exe",
+      "size": 32844800,
+      "sha256": "c0ccedb9ae3a5647393083f1880a6b6464fc1771ecc1d6fead6b90fc326a4e50"
+    },
+    {
+      "path": "bin/vantare-hub.exe.sha256",
+      "size": 82,
+      "sha256": "c43a80684283d51d2fddd1d8e642932059ed69cebd8649f05cd66ae98189dffc"
+    },
+    {
+      "path": "bin/vantare-engineer.exe",
+      "size": 1557504,
+      "sha256": "d0bd5b1abb1b3d2089eea6a42f1f4e261bc86505fcd915c2009bdf6546b7e563"
+    },
+    {
+      "path": "bin/vantare-engineer.exe.sha256",
+      "size": 87,
+      "sha256": "5d8679a37fd1eb2af9784cdfe84dcef891ca4fc9c1c1ce471dee0ea3414c50ac"
+    },
+    {
+      "path": "bin/vantare-services.exe",
+      "size": 4118528,
+      "sha256": "99e72d30e5961b2f5e2798d944936a4d3ab8a4ac2f6c3cb47f2b6db0b60816ac"
+    },
+    {
+      "path": "bin/vantare-services.exe.sha256",
+      "size": 87,
+      "sha256": "b2b7bfaf53d2d28130b6346b4a13bd5f028130cd3e0ff3a084bed12ae3e26f2f"
+    },
+    {
+      "path": "bin/vantare-storage.exe",
+      "size": 28574720,
+      "sha256": "ae285a386b3aa9ef0717fa19078684438690bcc349448ea5a9571c89163b1cdf"
+    },
+    {
+      "path": "bin/vantare-storage.exe.sha256",
+      "size": 86,
+      "sha256": "0a1b1d32b577ae98a8a63ee4e0831c3ff0eeb550151185cca7dcd77ac9a646c2"
+    },
+    {
+      "path": "bin/vantare-grabar-lmu.exe",
+      "size": 2690560,
+      "sha256": "7366a0c8be2520dbc444cc1586d4e600b5f1c17117255e06cd85bb3c62f7a845"
+    },
+    {
+      "path": "bin/vantare-grabar-lmu.exe.sha256",
+      "size": 89,
+      "sha256": "f840043588442ae4140e6d3514ba8feae5d9208ac5d5b941948658c9b03872e8"
+    },
+    {
+      "path": "bin/vantare-grabar-acc.exe",
+      "size": 910336,
+      "sha256": "f957cc051b632d826bb266f0fbed635758c895ed7475ed05a88d17855918a500"
+    },
+    {
+      "path": "bin/vantare-grabar-acc.exe.sha256",
+      "size": 89,
+      "sha256": "568961b671ba47f85d0837a81f317c6af47d0692a4c30c50afb769ef585f54bb"
+    },
+    {
+      "path": "bin/vantare-import-profile.exe",
+      "size": 1738240,
+      "sha256": "8dd14c8639241ccdf5ff5d595ac7f7131cdcd9abff63088ed7fcca6d022991ce"
+    },
+    {
+      "path": "bin/vantare-import-profile.exe.sha256",
+      "size": 93,
+      "sha256": "d24b85e26285dfc31ccd8da3bfe9875efaadefc2fc63b0503163a0018a1140ae"
+    },
+    {
+      "path": "bin/fixtures/broadcast-tower-crossing.scene.json",
+      "size": 32266,
+      "sha256": "3d94257ca6f8944dae1f850878b06b2753ca8becf19a3b9810866fd2968295bb"
+    },
+    {
+      "path": "bin/fixtures/broadcast-tower-default.scene.json",
+      "size": 16155,
+      "sha256": "a5c3eafbf4905a74b40b4ded643c64f78a002eb7f077ed136f31e0fe9dda909b"
+    },
+    {
+      "path": "bin/fixtures/broadcast-tower-exit-reentry.scene.json",
+      "size": 47546,
+      "sha256": "c36359f56ad5ffeaf7db41f2c67460afd392558013630edb1a126ef44c9387ba"
+    },
+    {
+      "path": "bin/fixtures/broadcast-tower-fast-inversion.scene.json",
+      "size": 48273,
+      "sha256": "89e4877a94a5bb71e3db6a9b980f4387f8f071f919fbbeeeb6a038704a3e0a8f"
+    },
+    {
+      "path": "bin/fixtures/broadcast-tower-overtake-sequence.scene.json",
+      "size": 111589,
+      "sha256": "fafadb5df862d91569a1d05e13dcee9d2904a7db56cdba05f0b3836e7f4a26a8"
+    },
+    {
+      "path": "bin/fixtures/broadcast-tower-stable-values.scene.json",
+      "size": 48283,
+      "sha256": "1eb01484877dddd83846b4977f65f705a28f4db9fa7bac399bdea0ba6f9b64c6"
+    },
+    {
+      "path": "bin/fixtures/broadcast-tower.snapshot.json",
+      "size": 8452,
+      "sha256": "2570b4e64ec328579f2fe2d80719be2e3dd70aed4e88e1bafd21471cee8415c7"
+    },
+    {
+      "path": "bin/fixtures/car-damage-numbers-default.scene.json",
+      "size": 16161,
+      "sha256": "2eff91ced8461bb0ee734271bdc486b61bc1822dc3e43393b453c8823532ad17"
+    },
+    {
+      "path": "bin/fixtures/car-damage-numbers.snapshot.json",
+      "size": 3568,
+      "sha256": "13bc5e265f9f5135b79832352d682149a575a2121823a013ecbca0430ad13f2b"
+    },
+    {
+      "path": "bin/fixtures/car-damage-visual-default.scene.json",
+      "size": 16159,
+      "sha256": "793efe85e2b60aa9bc305366dbba8c7c2d98c142fb447720d01940051f56f9ef"
+    },
+    {
+      "path": "bin/fixtures/car-damage-visual.snapshot.json",
+      "size": 2463,
+      "sha256": "970b8ce584b39a95fe3fd199f366359a243e1d30c7b246236f42219fd2521132"
+    },
+    {
+      "path": "bin/fixtures/delta-cross-zero.scene.json",
+      "size": 80216,
+      "sha256": "3fa9b5410fb7c934451b4dd23cbd525685f781540b5bbe8d95fe02bb0cd999e0"
+    },
+    {
+      "path": "bin/fixtures/delta-default.scene.json",
+      "size": 16135,
+      "sha256": "581eb78af0715e373f79ceb29073278c70abb3e6011a296df6936a24e0fa1f69"
+    },
+    {
+      "path": "bin/fixtures/delta-new-best.scene.json",
+      "size": 48252,
+      "sha256": "7b7d1498f24ebdcc40fbed84c9edbce558675cf990cda9a95a0c694bdb2e9400"
+    },
+    {
+      "path": "bin/fixtures/delta-trace-default.scene.json",
+      "size": 16147,
+      "sha256": "e30ecd22e0a8910caa172325451cc23bf87d46b740012a1f58a27ad649d42fe3"
+    },
+    {
+      "path": "bin/fixtures/delta-trace.sequence.json",
+      "size": 240698,
+      "sha256": "73ade07dd0aa208f9e94f3bd1f361b28301c75cc9d1cdf0681088039098ca1a8"
+    },
+    {
+      "path": "bin/fixtures/delta-trace.snapshot.json",
+      "size": 3535,
+      "sha256": "36dd647f342b5117a70371b690e02a679f1526858978db7de53e38b1e165abc2"
+    },
+    {
+      "path": "bin/fixtures/delta.snapshot.json",
+      "size": 3535,
+      "sha256": "7bb66416888448dce1976a017c16ab30f1c9798343d58000c4d38ace0f32f889"
+    },
+    {
+      "path": "bin/fixtures/fastest-lap-alert.scene.json",
+      "size": 64470,
+      "sha256": "0438a1744ed6f6572e0421b73e3d1bc01c6778ad60d71aefb8965fd5e5269516"
+    },
+    {
+      "path": "bin/fixtures/fastest-lap-default.scene.json",
+      "size": 16147,
+      "sha256": "d1f38541cd6bc6e98129cbc74128f22ab5c9c52f847dcd5e7499441a03e45065"
+    },
+    {
+      "path": "bin/fixtures/fastest-lap.snapshot.json",
+      "size": 15765,
+      "sha256": "1fda18507fc1134cdafa3e771196f14b96386419e32f374a447c4f6e7811c0b1"
+    },
+    {
+      "path": "bin/fixtures/fuel-strategy-default.scene.json",
+      "size": 16151,
+      "sha256": "f02bf017486d8db556bcf415e7299f5add8837fc45894f5a530a33f217ae94de"
+    },
+    {
+      "path": "bin/fixtures/fuel-strategy.snapshot.json",
+      "size": 3527,
+      "sha256": "0143623b5af7991356967d33e661889be88eb1f8776928f96f3496abb4fa2289"
+    },
+    {
+      "path": "bin/fixtures/head-to-head-default.scene.json",
+      "size": 16149,
+      "sha256": "cd3000af9053fc6a639e3e7a7585f5de18309503f9467ce8bdeae0d0c6321374"
+    },
+    {
+      "path": "bin/fixtures/head-to-head.snapshot.json",
+      "size": 26746,
+      "sha256": "e4838110845f7e835ede4a29f04d73ddc77d9c68ca4212006aecbc0a5c204716"
+    },
+    {
+      "path": "bin/fixtures/input-telemetry-default.scene.json",
+      "size": 16155,
+      "sha256": "48bd40c2a7791ef4f053245954897514fb235ca1f69e2a674b904b73da87dae4"
+    },
+    {
+      "path": "bin/fixtures/input-telemetry.sequence.json",
+      "size": 72299,
+      "sha256": "21374d2709db61cd4eb411d3daab865dd8538db2fcf35da0d1c2bac4bcddedcc"
+    },
+    {
+      "path": "bin/fixtures/input-telemetry.snapshot.json",
+      "size": 3513,
+      "sha256": "5dcd77e454b89e0eab8a62399d09465001b30736b622d6171339566c2a67f18d"
+    },
+    {
+      "path": "bin/fixtures/layout.json",
+      "size": 838,
+      "sha256": "b097d8d979d90386bf406f5b629835b5c58d3041fa300210d450b2722922c033"
+    },
+    {
+      "path": "bin/fixtures/lmu47.snapshot.json",
+      "size": 39348,
+      "sha256": "4a7af4e5edb4ee2392e2bbbb6635c92b2f8614dd2bbe0044e6f6bb0ff46a7b6d"
+    },
+    {
+      "path": "bin/fixtures/multiclass-relative-default.scene.json",
+      "size": 16163,
+      "sha256": "91e93791c8c93f3a45143012daec80360557fba1839cd8a2b134e97bebb2aa92"
+    },
+    {
+      "path": "bin/fixtures/multiclass-relative.snapshot.json",
+      "size": 16125,
+      "sha256": "9661977f1cb5d5227d3034bfdb0849eafe979aef446b4702e605e1de2aed899f"
+    },
+    {
+      "path": "bin/fixtures/pedals-clutch.scene.json",
+      "size": 63992,
+      "sha256": "714cb198fc77fb99482ad2c935a83f280482891ba8ee75c10742ebb27db8a674"
+    },
+    {
+      "path": "bin/fixtures/pedals-default.scene.json",
+      "size": 16101,
+      "sha256": "4b59a22da9c3d44a0ebf535fa16eb9c5d0d5ac511b8616bb0019bbf478a49edb"
+    },
+    {
+      "path": "bin/fixtures/pedals-lap.scene.json",
+      "size": 111862,
+      "sha256": "ff0e07617aac16a2c488f49512d57d3a27393e152456f7d0b762cb6714a29538"
+    },
+    {
+      "path": "bin/fixtures/pedals-telemetry-default.scene.json",
+      "size": 16157,
+      "sha256": "3257c45da832b99da67a29d5da1fd28e1582d555e2d4e48e97d4007c1af4ea8d"
+    },
+    {
+      "path": "bin/fixtures/pedals-telemetry.snapshot.json",
+      "size": 3520,
+      "sha256": "a0442b041290d9ee8d04a9cde7967f72608bace81753fe0233a2170ad620616e"
+    },
+    {
+      "path": "bin/fixtures/pedals.snapshot.json",
+      "size": 15765,
+      "sha256": "8630ac1645b1b1b3ea13dfdbc708198ef18be18b940daa2a5f9444887e319428"
+    },
+    {
+      "path": "bin/fixtures/racing-flags-default.scene.json",
+      "size": 16149,
+      "sha256": "3e88d31661d495990be3dff1d222ec55e21abd5590cb35d6a6ef49add0b3a5f8"
+    },
+    {
+      "path": "bin/fixtures/racing-flags.snapshot.json",
+      "size": 1636,
+      "sha256": "2df53c770528f819991592f2183b785da935f0056de2e1c86029bed790ca140e"
+    },
+    {
+      "path": "bin/fixtures/radar-default.scene.json",
+      "size": 18162,
+      "sha256": "3346efa5645abb829e6cbe6a794d8e82bfe1cc5b2693149bceac62cfd4027a89"
+    },
+    {
+      "path": "bin/fixtures/radar-nearby-traffic.scene.json",
+      "size": 176601,
+      "sha256": "8ac938552ba8024f4a330697bce4fa2dbfdbee9e6b163f635f140c3f51209a95"
+    },
+    {
+      "path": "bin/fixtures/radar.snapshot.json",
+      "size": 17860,
+      "sha256": "c23ea17cb3f41f051451189fa3b3270328b9cc566097e3577978bcea4679d427"
+    },
+    {
+      "path": "bin/fixtures/relative-default.scene.json",
+      "size": 16105,
+      "sha256": "5177147616ae91eb1feb0bf276cd032d1106d321d03adafc08526dbe6f412a75"
+    },
+    {
+      "path": "bin/fixtures/relative-functional-cross-ahead.scene.json",
+      "size": 64322,
+      "sha256": "42681536375dfbc29f98a0f72c13ff9d2d500b4ae0c91e000cc2f9c06ffc7ef6"
+    },
+    {
+      "path": "bin/fixtures/relative-functional-cross-behind.scene.json",
+      "size": 64323,
+      "sha256": "ead34d87d2e074e972ace8c96efa4ee31c9033ae898e851053c64035bac3e0ee"
+    },
+    {
+      "path": "bin/fixtures/relative-functional-fast-reversal.scene.json",
+      "size": 64357,
+      "sha256": "156d67826329f73ecea62eb178ea4545535871db81131d0b38225cf190a1ff48"
+    },
+    {
+      "path": "bin/fixtures/relative-functional-lap-difference.scene.json",
+      "size": 32588,
+      "sha256": "a9bfe64ee41d0a02fa1176320eb92471d8b0c0ef45de9a6dc464293c4132d36f"
+    },
+    {
+      "path": "bin/fixtures/relative-functional-sequence.scene.json",
+      "size": 144618,
+      "sha256": "09171d0ba9b4e8318bee45d3876d2615c01a510783ec554ddf45b4bf924a279d"
+    },
+    {
+      "path": "bin/fixtures/relative-functional-stable-values.scene.json",
+      "size": 48383,
+      "sha256": "113fd7dd846f52fd07c5e9b035baf1bba5fd5001044a4e19f95b600f1ac7bc0d"
+    },
+    {
+      "path": "bin/fixtures/relative-functional-window-cycle.scene.json",
+      "size": 112386,
+      "sha256": "1c0b7d53f1a5af21a812f702aa2e2ce401187ababdc6f84648f61baed2763c9d"
+    },
+    {
+      "path": "bin/fixtures/relative.snapshot.json",
+      "size": 16026,
+      "sha256": "4f5138b31cd741f78afd40e6d34a4550aef2bf1c89e55b4007a68af8a1e34d8f"
+    },
+    {
+      "path": "bin/fixtures/standings-default.scene.json",
+      "size": 22949,
+      "sha256": "fc2d85dcbf19781fe3511bc62df23ffe874e132530f0175a0f6296d56fd7ade6"
+    },
+    {
+      "path": "bin/fixtures/standings-functional-battle.scene.json",
+      "size": 91584,
+      "sha256": "0381e6ceb0f8619a4402c3818e0dac53f0d2f260697fb4c8da9e2f85a269598f"
+    },
+    {
+      "path": "bin/fixtures/standings-functional-combined.scene.json",
+      "size": 274356,
+      "sha256": "93b27a596fe92403bf44be2a900be10edab90f78e720b969d1df1e7ecd5f59ac"
+    },
+    {
+      "path": "bin/fixtures/standings-functional-personal-best.scene.json",
+      "size": 68726,
+      "sha256": "86635acff7451934fe793a6ae76142f7574cc103f5cc396bc7c8904beddf52ed"
+    },
+    {
+      "path": "bin/fixtures/standings-functional-pit.scene.json",
+      "size": 91532,
+      "sha256": "1074b7a0572fa4bf563a9e4d5988c0dba199ebc86a4cb0578c678cfe1758f740"
+    },
+    {
+      "path": "bin/fixtures/standings-functional-position.scene.json",
+      "size": 68771,
+      "sha256": "6baa681603b7fb4e7ed1c334886f89555ddc1009b94d91da3d3750e71c835181"
+    },
+    {
+      "path": "bin/fixtures/standings-functional-session-best.scene.json",
+      "size": 91574,
+      "sha256": "4f23be3dd1768706577901c7ab419c5a44248e1937bd3cd13b747a9d8470df4a"
+    },
+    {
+      "path": "bin/fixtures/standings-functional-window.scene.json",
+      "size": 91713,
+      "sha256": "188b96432ce39d0105a0cfbbc2101259427bb7c99c74104d7200060f9fb8759f"
+    },
+    {
+      "path": "bin/fixtures/standings-legacy.snapshot.json",
+      "size": 29949,
+      "sha256": "4ac6dc693cc0e040b5f319f63859b60c594f18af1ad4e35039b41c76f3c9ca29"
+    },
+    {
+      "path": "bin/fixtures/standings.snapshot.json",
+      "size": 15957,
+      "sha256": "980b76f7c6e47f5dba2638e773d6a59283fe7df330dd0637b0cfd244aa43a3f9"
+    },
+    {
+      "path": "bin/fixtures/track-map-default.scene.json",
+      "size": 16143,
+      "sha256": "65660cb27d5feef6044901d11e009735577d0267d5c3cf43ac67b2b81a1084ae"
+    },
+    {
+      "path": "bin/fixtures/track-map.snapshot.json",
+      "size": 28743,
+      "sha256": "d3e7c6ab59626ab47e33708bd9913f67d34b3eca3267d3f558ee29ec39b77cfc"
+    },
+    {
+      "path": "bin/fixtures/track-weather-default.scene.json",
+      "size": 16151,
+      "sha256": "beb40857bca985757d2f637fb6e0410ddbd0f484057098a0a09b2ca3991ac34a"
+    },
+    {
+      "path": "bin/fixtures/track-weather.snapshot.json",
+      "size": 1692,
+      "sha256": "a111b1b77ad34ece680644d1df3617e5b08e0e99640e8615b3b13ac7219cd06c"
+    },
+    {
+      "path": "bin/fixtures/workshop-sources.json",
+      "size": 733,
+      "sha256": "597fef2d4df2d4e613d0a7d36df12d8fce78987e8633974c240c40e2b4e969db"
+    },
+    {
+      "path": "candidate.ps1",
+      "size": 45241,
+      "sha256": "d51cdeda251dc83ec538d1a7ce041617992d072012454f158220e7bb04b88678"
+    },
+    {
+      "path": "README.md",
+      "size": 32752,
+      "sha256": "dc6219f36c9f38ec0c67b13fdde23b922eb4e26c4b6cd3517633fe8389854cdd"
+    },
+    {
+      "path": "licenses/OFL-Inter.txt",
+      "size": 4376,
+      "sha256": "5dd548d31a85f756e01d63e00d7faf1e324103ed3e9102fcbbabf2cc2db6dd39"
+    },
+    {
+      "path": "dependencies.json",
+      "size": 78342,
+      "sha256": "318fc80ebf1ccdca1aafcf896d28374d8111a03c96d36d58893968844409f667"
+    }
+  ]
+}

@@ -21,6 +21,12 @@ $real=Join-Path $root 'real-manifest';[IO.Directory]::CreateDirectory($real)|Out
 Copy-Item $fixture (Join-Path $real 'manifest.json')
 $original=Read-NativeManifest $real 'beta' $false -Installed
 Assert-History ($original.version -ceq '0.0.975' -and @($original.files).Count -eq 91) 'Actual public manifest accepted only as installed generation'
+$previousFixture=Join-Path $PSScriptRoot 'fixtures/manifest-beta-0.0.974.json'
+Assert-History ((Get-NativeHash $previousFixture) -ceq '166fbf2c620bb5cc2dad0141d48ca3acde732598874e04cdf2495cc30f2a0845') 'Isaac previous 974 manifest matches observed state hash'
+$actualPrevious=Get-Content $previousFixture -Raw|ConvertFrom-Json
+Assert-History ($actualPrevious.version -ceq '0.0.974' -and -not @(Compare-Object @($original.files.path) @($actualPrevious.files.path) -CaseSensitive).Count) 'Observed 974 has exact 91-member public 975 inventory'
+$observedState=Get-Content (Join-Path $PSScriptRoot 'fixtures/state-beta-0.0.975-previous-0.0.974.json') -Raw|ConvertFrom-Json
+Assert-History ($observedState.active.manifest_sha256 -ceq (Get-NativeHash $fixture) -and $observedState.previous.manifest_sha256 -ceq (Get-NativeHash $previousFixture)) 'Observed state binds the exact 975 and 974 manifests'
 Reject-History {Read-NativeManifest $real 'beta' $false} 'Actual public manifest rejected as incoming inventory' 'Faltan archivos obligatorios.'
 Reject-History {Read-NativeManifest $real 'beta' $false -Instaled} 'Misspelled parameter is rejected by binding' '' 'NamedParameterNotFound'
 $unexpected=$false
@@ -100,6 +106,55 @@ function Test-HistoryUpgrade([string]$Install,[string]$Old){
     Assert-History ((Get-NativeHash $currentData) -ceq $dataHash) 'Same-version reinstall preserves data with historical state'
     Uninstall-Beta $Install
     Assert-History (-not(Test-Path (Join-Path $Install 'state.json')) -and (Get-NativeHash $currentData) -ceq $dataHash -and (Get-NativeHash $data) -ceq $dataHash) 'Uninstall removes state and retains old/new data'
+}
+# The real 975 installation still references 974. A previous generation is an
+# optional rollback target, never the authority for updating the active one.
+foreach($case in @('974','976-974','977-974','978-974','979-974','973','missing','missing-generation','corrupt','tampered','bad-reference')){
+    $history=Open-NativeRoot (Join-Path $root ('previous-'+$case)) -Initialize
+    $activeId=if($case -ceq '974'){$observedState.active.generation}else{[guid]::NewGuid().ToString('N')}
+    $active=Join-Path $history ('generations/'+$activeId)
+    $activeVersion=if($case -match '^(97[6-9])-974$'){'0.0.'+$Matches[1]}else{'0.0.975'}
+    New-HistoryPayload $active @($original.files.path) $activeVersion
+    [IO.Directory]::CreateDirectory((Join-Path $active 'data'))|Out-Null
+    [IO.File]::WriteAllText((Join-Path $active 'data/user.bin'),'active user data')
+    $priorId=if($case -ceq '974'){$observedState.previous.generation}else{[guid]::NewGuid().ToString('N')}
+    $prior=Join-Path $history ('generations/'+$priorId)
+    New-HistoryPayload $prior @($original.files.path) ('0.0.'+$(if($case -ceq '973'){'973'}elseif($case.EndsWith('974')){'974'}else{'975'}))
+    [IO.Directory]::CreateDirectory((Join-Path $prior 'data'))|Out-Null
+    [IO.File]::WriteAllText((Join-Path $prior 'data/user.bin'),'previous user data')
+    $reference=@{generation=[IO.Path]::GetFileName($prior);manifest_sha256=(Get-NativeHash (Join-Path $prior 'manifest.json'))}
+    switch($case){
+        'missing' {Remove-Item -LiteralPath (Join-Path $prior 'manifest.json')}
+        'missing-generation' {$reference.generation=[guid]::NewGuid().ToString('N')}
+        'corrupt' {[IO.File]::WriteAllText((Join-Path $prior 'manifest.json'),'{invalid')}
+        'tampered' {[IO.File]::AppendAllText((Join-Path $prior 'bin/vantare.exe'),'tampered')}
+        'bad-reference' {$reference.generation='../outside'}
+    }
+    Set-NativeState $history @{schema=1;product='vantare-native';channel='beta';active=@{generation=[IO.Path]::GetFileName($active);manifest_sha256=(Get-NativeHash (Join-Path $active 'manifest.json'))};previous=$reference}
+    $stateHash=Get-NativeHash (Join-Path $history 'state.json')
+    $priorIndex=Get-NativeDataIndex $prior
+    $activeData=Get-NativeDataIndex (Join-Path $active 'data')
+    $diagnostic=[IO.StringWriter]::new();$savedError=[Console]::Error
+    try{[Console]::SetError($diagnostic);$read=Read-NativeState $history}finally{[Console]::SetError($savedError)}
+    Assert-History ($null -eq $read.previous -and $read.active.generation -ceq [IO.Path]::GetFileName($active)) "$case previous cannot block verified active"
+    Assert-History ($diagnostic.ToString().Contains('previous-unavailable')) "$case previous emits closed diagnostic on stderr"
+    Assert-History ((Get-NativeHash (Join-Path $history 'state.json')) -ceq $stateHash -and (Get-NativeDataIndex $prior) -ceq $priorIndex) "$case read preserves state and previous bytes"
+    Reject-History {Restore-NativeCandidate $history} "$case cannot be restored" 'No hay generación anterior; no se cambian datos.'
+    Assert-History ((Get-NativeHash (Join-Path $history 'state.json')) -ceq $stateHash) "$case rejected rollback preserves state"
+    $request=Join-Path $history 'probe-request.json'
+    Write-NativeJson $request @{operation='Probe';root=$history;qa=$true;silent=$true;uninstall=$false;version='0.0.980';size=1024}
+    $probe=& powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'installer-driver.ps1') -RequestFile $request
+    Assert-History ($LASTEXITCODE -eq 0 -and ($probe|ConvertFrom-Json).installed_version -ceq $activeVersion) "$case Setup probe preserves JSON protocol"
+    Install-Beta $history $zip $hash
+    $after=Read-NativeState $history
+    Assert-History ($after.previous.generation -ceq [IO.Path]::GetFileName($active)) "$case upgrade retains verified active as rollback"
+    Assert-History ((Get-NativeDataIndex $prior) -ceq $priorIndex -and (Get-NativeDataIndex (Join-Path $history ('generations/'+$after.active.generation+'/data'))) -ceq $activeData) "$case upgrade preserves previous and user data"
+    $activeExe=Join-Path $history ('generations/'+$after.active.generation+'/bin/vantare.exe')
+    [IO.File]::AppendAllText($activeExe,'tampered')
+    Reject-History {Read-NativeState $history} "$case active byte integrity remains mandatory" 'Integridad incorrecta: bin/vantare.exe'
+    $after.active.manifest_sha256='0'*64
+    Set-NativeState $history $after
+    Reject-History {Read-NativeState $history $false} "$case active reference remains mandatory even for repair/probe" 'Generación activa/anterior incompleta.'
 }
 $install=Open-NativeRoot (Join-Path $root 'synthetic-install') -Initialize
 $old=Join-Path $install ('generations/'+[guid]::NewGuid().ToString('N'))

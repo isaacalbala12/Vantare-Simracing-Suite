@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-1793",
+  "type": "fix",
+  "summary": "El instalador puede actualizar una instalación válida aunque conserve una versión anterior que ya no se puede restaurar.",
+  "technicalNotes": [
+    "La versión activa conserva su validación estricta. Una generación anterior incompatible, ausente o corrupta se conserva intacta y se excluye del rollback.",
+    "El diagnóstico previous-unavailable se escribe en stderr para conservar el protocolo JSON del instalador."
+  ],
+  "testing": [
+    "Actualizar desde 0.0.975 con una generación anterior 0.0.974 y comprobar que los datos se conservan y arranca la versión nueva.",
+    "Regresiones de versiones históricas, referencias corruptas o ausentes, integridad activa y rechazo de rollback."
+  ],
+  "knownLimitations": [
+    "No recupera una versión activa corrupta ni convierte una generación anterior incompatible en restaurable."
+  ]
+}

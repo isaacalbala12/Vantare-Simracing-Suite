@@ -27,11 +27,36 @@ verificada como nueva anterior. No se amplía el inventario admitido.
 RED reproducido antes del arreglo. Matriz inicial137 PASS: activas975–979,
 anterior974/973, ausente/corrupta/tampered/referencia inválida, protocolo de
 sonda JSON, rollback rechazado, archivos/datos intactos y activa estricta.
-Matriz final con state observado y ZIP975 público, registro y shell en curso.
+Matriz final con state observado y ZIP975 público147 PASS, registro83 PASS y
+shell30 PASS. PR draft https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1794,
+HEAD4cb56e97f, cinco checks SUCCESS verificados. Primer CI falló por normalización
+CRLF de manifest974; .gitattributes conserva sus bytes originales, igual que975.
+Primer ensayo local con ZIP público coincidió con shell/HKCUQA1492: se conserva
+el fallo y se repitió en serie con147 PASS; no se atribuye a un fallo de producto.
 Evidencia local C:/VantareServer/evidence/isa-1793/. Sin Rust de producto editado;
-gates completos quedan para CI. PR draft y revisión profunda pendientes.
-Siguiente: revisión del PR por el orquestador/DeepSeek, construir candidato
-privado en servidor e instalar/probar arranque/licencia real en PC de juegos.
+gates completos pasaron en CI. Revisión profunda encargada al orquestador.
+Setup privado construido por cola/jobs2/target propio, Release y CRT estático:
+RC8 original con108 miembros idénticos y solo candidate.ps1 corregido; manifiesto
+source_dirty=true y procedencia separada. SHA Setup
+a59215eea0d151be2a98133f0468fa2e4e8e27e6cb433300be7b6b8b72749181.
+Instalado realmente en PC de Isaac:975→986,33 archivos de datos idénticos,
+datos de activa y anterior previas intactos y manifiesto974 idéntico. Nueva
+anterior975; Hub en sesión1, ready real y boot-pending retirado. El recolector
+PowerShell no obtuvo ExitCode; el éxito se acredita por registro/manifest,
+hashes y arranque, sin inventar exit0. Acceso de Escritorio corregido y el
+del menú Inicio apunta a la misma generación; acceso Wails antiguo apartado
+en Temp/Vantare1793/shortcut-backups, sin borrar ninguna instalación.
+
+La prueba descubrió un segundo fallo de flujo, autorizado en otro PR #1793:
+servidor986 con sesión conectada pero sin binding; segundo Comprobar acceso
+reconecta tras el timeout inactivo y obtiene licencia200/Ed25519/renovaciónOk.
+Issued_at2026-10-28T23:26:40.974Z; v1 no tieneiat/exp, capacidades0. Cuenta
+verificada, Inicio sin candados y Roadmap cargado. El PC conserva binding del
+7oct con clave histórica no presente en RC8: núcleo no disponible al abrir.
+No se borra ni altera a mano. Segundo worktree/PR de flujo y recuperación,
+prueba final sin clic y aceptación real todavía pendientes.
+Siguiente: revisión de1794 y segundo arreglo, candidato conjunto y comprobación
+final en PC de juegos. Plane sigue En curso por el conjunto de VANTA-105.
 Sin merge, promoción, release ni despliegue de backend.
 
 ## VANTA-105 / #1783 · Acceso y desfase del reloj (27-oct, para revisión)

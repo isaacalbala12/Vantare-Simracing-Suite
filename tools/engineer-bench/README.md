@@ -1,5 +1,8 @@
 # Benchmark privado del Ingeniero — VANTA-124 / #1786
 
+La campaña decisiva propuesta usa [sesiones LMU sintéticas y contexto compacto](sessions/README.md).
+Es independiente de la campaña abstracta de este documento, que queda como referencia.
+
 Arnés independiente, Python 3.11+ y biblioteca estándar. No importa crates,
 no instala motores/modelos, no lee memoria del juego ni modifica el producto.
 La comparación de Sparks 2.6 1.7B y LFM 3 1.7B queda pendiente de disponer de

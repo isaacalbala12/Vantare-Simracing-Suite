@@ -12,9 +12,11 @@ use vantare_ipc::{
     transport::{Event, Listener, Pipe},
 };
 use vantare_services::{
-    process::Client,
+    process::{Client, ConnectionError},
     protocol::{self, Command, Reply, Request, Response, SupervisorHello},
 };
+mod renewal;
+use renewal::Renewal;
 
 type Cancellation = Arc<Mutex<Option<Arc<Event>>>>;
 /// Hasta cuándo hay un inicio de sesión o renovación en curso (#1464).
@@ -39,9 +41,12 @@ fn set_signing_in(slot: &SigningIn, active: bool) {
 pub fn pipe_name(photo: &str) -> String {
     format!("{photo}-hub-services")
 }
+#[derive(Default)]
 struct State {
     client: Option<Client>,
+    renewal: Renewal,
 }
+#[derive(Clone)]
 pub struct Options {
     pub binary: PathBuf,
     pub hub: PathBuf,
@@ -67,7 +72,7 @@ impl Host {
         let stop = Arc::new(Event::new()?);
         let cancellation = Arc::new(Mutex::new(None));
         let signing = Arc::new(Mutex::new(None));
-        let state = Arc::new(Mutex::new(State { client: None }));
+        let state = Arc::new(Mutex::new(State::default()));
         let mut listener =
             Listener::new(&pipe_name(photo), Arc::clone(&stop), Duration::from_mins(5))?;
         let first = listener.instance()?;
@@ -76,7 +81,7 @@ impl Host {
             Arc::clone(&stop),
             Arc::clone(&cancellation),
             Arc::clone(&signing),
-            options.core.clone(),
+            options.clone(),
         )?;
         let server = {
             let state = Arc::clone(&state);
@@ -216,7 +221,26 @@ fn handle(
     stop: &Arc<Event>,
 ) -> Reply {
     let access = access_command(&command);
+    if matches!(command, Command::Logout | Command::AccountBegin | Command::AccountEmail { action: protocol::EmailAction::Begin { .. } }) {
+        state.renewal = Renewal::default();
+    }
     let reply = serve_command(state, options, command, cancellation, signing, stop);
+    state.renewal.observe(&reply);
+    let mut reply = reply;
+    if matches!(
+        &reply,
+        Reply::Account {
+            signed_in: true,
+            pending: false,
+            error: None,
+            ..
+        }
+    ) && let Some(Reply::Error { message } | Reply::DeviceLimit { message }) =
+        renew_if_due(state, options, cancellation, signing, stop, Instant::now())
+        && let Reply::Account { error, .. } = &mut reply
+    {
+        *error = Some(message);
+    }
     if access {
         // OAuth esperando callback o email esperando una acción conservan servicios.
         set_signing_in(
@@ -257,7 +281,15 @@ fn serve_command(
                 message: "Política vigente del núcleo".into(),
             };
         }
-        Ok(p) if p.current() => p,
+        // Recovering account/license commands must also work after expiry or a
+        // durable logout denial. They still need the authenticated core channel.
+        Ok(p)
+            if p.current()
+                || access_command(&command)
+                || matches!(command, Command::TransferRights) =>
+        {
+            p
+        }
         Err(error)
             if error.get_ref().is_some_and(
                 <dyn std::error::Error + Send + Sync>::is::<control::VersionMismatch>,
@@ -281,6 +313,23 @@ fn serve_command(
         .is_some_and(|client| !client.is_running())
     {
         state.client = None;
+    }
+    if let Some(client) = &mut state.client {
+        match client.probe() {
+            Ok(()) => {}
+            Err(ConnectionError::Disconnected(
+                io::ErrorKind::BrokenPipe
+                | io::ErrorKind::UnexpectedEof
+                | io::ErrorKind::ConnectionAborted
+                | io::ErrorKind::ConnectionReset
+                | io::ErrorKind::NotConnected
+                | io::ErrorKind::TimedOut,
+            )) => {
+                state.client = None;
+                clear_cancellation(cancellation);
+            }
+            Err(error) => return failure(error.message()),
+        }
     }
     if state.client.is_none() {
         let mut client =
@@ -306,6 +355,34 @@ fn serve_command(
         clear_cancellation(cancellation);
         failure("servicios desconectados; operación sin reintento automático")
     }
+}
+fn renew_if_due(
+    state: &mut State,
+    options: &Options,
+    cancellation: &Cancellation,
+    signing: &SigningIn,
+    stop: &Arc<Event>,
+    now: Instant,
+) -> Option<Reply> {
+    if !state.renewal.signed_in() {
+        return None;
+    }
+    let policy = control::request_cancelled(&options.core, control::Command::Read, stop).ok()?;
+    let wall = control::wall_ms().ok()?;
+    if !state.renewal.claim(&policy, wall, now) {
+        return None;
+    }
+    set_signing_in(signing, true);
+    let reply = serve_command(
+        state,
+        options,
+        Command::LicenseRenew,
+        cancellation,
+        signing,
+        stop,
+    );
+    set_signing_in(signing, false);
+    Some(reply)
 }
 fn finish(state: &mut State) {
     if let Some(mut client) = state.client.take() {
@@ -369,22 +446,31 @@ fn spawn_timer(
     stop: Arc<Event>,
     cancellation: Cancellation,
     signing: SigningIn,
-    core: CoreLink,
+    options: Options,
 ) -> io::Result<JoinHandle<()>> {
     thread::Builder::new()
         .name("services-game-exit".into())
         .spawn(move || {
             while !stop.wait(Duration::from_millis(250)) {
-                let running = state
-                    .try_lock()
-                    .map_or(true, |state| state.client.is_some());
+                let running = state.try_lock().map_or(true, |state| {
+                    state.client.is_some() || state.renewal.signed_in()
+                });
                 if !running {
                     continue;
                 }
-                let live = control::request_cancelled(&core, control::Command::Read, &stop)
+                let live = control::request_cancelled(&options.core, control::Command::Read, &stop)
                     .is_ok_and(|p| p.current() && closes_for_game(&p, signing_in(&signing)));
                 if live {
                     finish_for_game(&state, &cancellation, &signing);
+                } else if let Ok(mut state) = state.try_lock() {
+                    let _renewed = renew_if_due(
+                        &mut state,
+                        &options,
+                        &cancellation,
+                        &signing,
+                        &stop,
+                        Instant::now(),
+                    );
                 }
             }
         })

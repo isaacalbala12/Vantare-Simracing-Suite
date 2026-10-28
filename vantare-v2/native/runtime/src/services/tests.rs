@@ -8,6 +8,56 @@ use vantare_services::{
     storage::Store,
 };
 
+#[test]
+fn a_closed_idle_helper_is_replaced_before_the_first_user_request() {
+    let Fixture {
+        root,
+        photo,
+        link,
+        core,
+        services,
+    } = Fixture::with_license(false);
+    let mut hub = Session::open(&photo);
+    assert!(matches!(hub.request(Command::Status), Reply::Status { .. }));
+    let previous_pid = {
+        let mut state = services.state.lock().expect("supervisor state");
+        let client = state.client.as_mut().expect("helper");
+        let pid = client.pid();
+        // Explicit peer shutdown reproduces the closed pipe from idle expiry,
+        // without waiting five minutes or relying on process-exit timing.
+        assert!(matches!(
+            client.request(Command::Shutdown),
+            Ok(Reply::Closed)
+        ));
+        pid
+    };
+    assert!(
+        matches!(hub.request(Command::Status), Reply::Status { .. }),
+        "the first action reconnects transparently"
+    );
+    assert_ne!(
+        services
+            .state
+            .lock()
+            .expect("state")
+            .client
+            .as_ref()
+            .expect("replacement")
+            .pid(),
+        previous_pid
+    );
+    assert!(
+        !control::request(&link, control::Command::Read)
+            .expect("core")
+            .overlays_advanced,
+        "reconnection cannot grant rights"
+    );
+    drop(hub);
+    drop(services);
+    drop(core);
+    std::fs::remove_dir_all(root).expect("private fixture cleanup");
+}
+
 #[derive(serde::Serialize)]
 struct Payload<'a> {
     version: u8,
@@ -402,7 +452,7 @@ fn heartbeat_delivers_definitive_revocation_instead_of_a_transient_error() {
 
 #[test]
 fn game_exit_rechecks_access_started_after_the_live_decision() {
-    let state = Mutex::new(State { client: None });
+    let state = Mutex::new(State::default());
     let signing: SigningIn = Arc::new(Mutex::new(None));
     let event = Arc::new(Event::new().expect("event"));
     let cancellation: Cancellation = Arc::new(Mutex::new(Some(Arc::clone(&event))));
@@ -426,7 +476,7 @@ fn game_exit_rechecks_access_started_after_the_live_decision() {
 
 #[test]
 fn game_exit_does_not_cancel_an_access_request_holding_the_supervisor() {
-    let state = Mutex::new(State { client: None });
+    let state = Mutex::new(State::default());
     let signing: SigningIn = Arc::new(Mutex::new(None));
     let event = Arc::new(Event::new().expect("event"));
     let cancellation: Cancellation = Arc::new(Mutex::new(Some(Arc::clone(&event))));
@@ -443,7 +493,7 @@ fn game_exit_does_not_cancel_an_access_request_holding_the_supervisor() {
 
 #[test]
 fn game_exit_still_cancels_unprotected_io_before_waiting_for_the_supervisor() {
-    let state = Arc::new(Mutex::new(State { client: None }));
+    let state = Arc::new(Mutex::new(State::default()));
     let signing: SigningIn = Arc::new(Mutex::new(None));
     let event = Arc::new(Event::new().expect("event"));
     let cancellation: Cancellation = Arc::new(Mutex::new(Some(Arc::clone(&event))));

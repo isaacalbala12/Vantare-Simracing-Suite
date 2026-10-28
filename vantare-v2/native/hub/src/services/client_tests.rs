@@ -4,6 +4,79 @@ use std::sync::mpsc;
 use vantare_ipc::transport::Listener;
 
 #[test]
+fn first_request_after_an_idle_disconnect_reconnects_without_replaying_the_action() {
+    let name = format!("hub-idle-reconnect-{}", std::process::id());
+    let stop = Arc::new(Event::new().expect("server stop"));
+    let mut listener = Listener::new(
+        &format!("{name}-hub-services"),
+        stop,
+        Duration::from_secs(5),
+    )
+    .expect("listener");
+    let first = listener.instance().expect("first pipe");
+    let (close, closing) = mpsc::channel();
+    let (closed, disconnected) = mpsc::channel();
+    let server = std::thread::spawn(move || {
+        let mut first = first;
+        first.accept().expect("first connection");
+        control::write(
+            &mut first,
+            &SupervisorHello {
+                version: protocol::VERSION,
+                nonce: "1".repeat(64),
+            },
+        )
+        .expect("hello");
+        closing.recv().expect("explicit idle expiry");
+        drop(first);
+        closed.send(()).expect("closed acknowledgement");
+        let mut pipe = listener.instance().expect("reconnect pipe");
+        pipe.accept().expect("reconnect");
+        control::write(
+            &mut pipe,
+            &SupervisorHello {
+                version: protocol::VERSION,
+                nonce: "2".repeat(64),
+            },
+        )
+        .expect("fresh hello");
+        let request: Request = protocol::read(&mut pipe).expect("first user action");
+        assert!(matches!(request.command, Command::LicenseRenew));
+        assert_eq!(request.sequence, 1, "new connection uses a fresh sequence");
+        protocol::write(
+            &mut pipe,
+            &Response {
+                version: protocol::VERSION,
+                sequence: request.sequence,
+                reply: Reply::License {
+                    policy: control::Policy {
+                        version: control::VERSION,
+                        revision: 1,
+                        overlays_advanced: true,
+                        ..control::Policy::default()
+                    },
+                    message: String::new(),
+                },
+            },
+        )
+        .expect("verified reply");
+    });
+    let image = std::env::current_exe().expect("peer image");
+    let mut client = Client::start(&image, &name, Arc::new(Event::new().expect("client stop")))
+        .expect("initial channel");
+    close.send(()).expect("expire idle channel");
+    disconnected
+        .recv()
+        .expect("server closed before user action");
+    assert!(
+        matches!(client.request(Command::LicenseRenew), Ok(Reply::License { policy, .. }) if policy.overlays_advanced)
+    );
+    server
+        .join()
+        .expect("no five minute sleep and no duplicate action");
+}
+
+#[test]
 fn cancellation_is_available_before_an_absent_supervisor_connects() {
     let stop = Arc::new(Event::new().expect("evento"));
     stop.set();

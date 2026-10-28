@@ -1,5 +1,8 @@
 # Benchmark privado del Ingeniero — VANTA-124 / #1786
 
+La campaña decisiva propuesta usa [sesiones LMU sintéticas y contexto compacto](sessions/README.md).
+Es independiente de la campaña abstracta de este documento, que queda como referencia.
+
 ## Evaluación v2 y crudos históricos
 
 Las ejecuciones nuevas conservan `quality` (v1 estricto) y añaden `quality_v2`

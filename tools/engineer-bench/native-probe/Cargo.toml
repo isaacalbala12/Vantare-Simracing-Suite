@@ -1,0 +1,8 @@
+[package]
+name = "engineer-bench-snapshot-probe"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+vantare-ipc = { path = "../../../vantare-v2/native/ipc" }

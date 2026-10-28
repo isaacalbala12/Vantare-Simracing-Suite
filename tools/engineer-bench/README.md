@@ -1,5 +1,34 @@
 # Benchmark privado del Ingeniero — VANTA-124 / #1786
 
+## Evaluación v2 y crudos históricos
+
+Las ejecuciones nuevas conservan `quality` (v1 estricto) y añaden `quality_v2`
+y una columna separada de proyección semántica. V2 permite metadatos extra solo
+si coinciden con los inputs, repetir una misma cifra verdadera en discurso,
+fences y normalización de presentación. Nunca repara cálculos, valores falsos,
+`"null"` como cadena, truncaciones ni extras que no se puedan verificar.
+
+Los prompts nuevos declaran enums por campo y piden la frase de radio de forma
+explícita en el último usuario. Cambian protocolo/corpus: no comparar sus
+latencias o scores como si fueran las mismas peticiones históricas. V2 solo
+interpreta el antiguo pool ambiguo de tags cuando los casos congelados no
+declaran enums por campo; no relaja enums explícitos nuevos.
+
+Re-scoring **offline**, sin GPU ni endpoint y sin sobrescribir archivos:
+
+```powershell
+python tools/engineer-bench/bench.py rescore evidence/run/results.json `
+  --cases evidence/run/cases.json --output evidence/run/results-v2.json
+```
+
+Usa siempre los `cases.json` congelados de esa ejecución. El nuevo archivo
+conserva los scores v1, las respuestas y las latencias; añade hashes de fuentes
+y del evaluador. `projection_required` indica que haría falta extraer campos o
+la frase del idioma objetivo: no acredita que el modelo haya cumplido el formato
+original ni mide cuándo estaría lista esa extracción. Cambiar un `task` no se
+puede aplicar retroactivamente: su efecto exige otra ejecución. Idioma,
+naturalidad e implicaturas siguen pendientes de revisión humana.
+
 Arnés independiente, Python 3.11+ y biblioteca estándar. No importa crates,
 no instala motores/modelos, no lee memoria del juego ni modifica el producto.
 La comparación de Sparks 2.6 1.7B y LFM 3 1.7B queda pendiente de disponer de

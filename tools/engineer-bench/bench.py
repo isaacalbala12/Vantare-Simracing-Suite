@@ -18,6 +18,7 @@ import urllib.parse
 import urllib.error
 
 from cases import build_cases, messages
+from evaluator_v2 import score_v2
 
 TOOL = {"type": "function", "function": {"name": "get_race_fact",
         "description": "Read an authorised race fact; no side effects.",
@@ -219,7 +220,7 @@ def request(args, case, context_chars, concurrency, iteration, barrier=None):
     if error:
         quality["automatic_pass"] = False
         quality["hallucination_proxy"] = None
-    return {"case_id": case["id"], "kind": case["kind"], "language": case["language"],
+    row = {"case_id": case["id"], "kind": case["kind"], "language": case["language"],
             "cohort": case["cohort"],
             "started_utc": started_utc, "ended_utc": datetime.now(timezone.utc).isoformat(),
             "context_chars": context_chars, "concurrency": concurrency, "pass": iteration,
@@ -240,6 +241,8 @@ def request(args, case, context_chars, concurrency, iteration, barrier=None):
             "completion_budget_ms": case["completion_budget_ms"],
             "within_budget": not error and ttft is not None and ttft <= case["ttft_budget_ms"]
                 and (end - start) * 1000 <= case["completion_budget_ms"]}
+    row["quality_v2"] = score_v2(case, row, strict_json, same)
+    return row
 
 
 def engine_timings(extras):
@@ -302,6 +305,8 @@ def summarize(rows):
     return [{"case_id": key[0], "context_chars": key[1], "concurrency": key[2],
              "attempts": len(items), "errors": sum(bool(r["error"]) for r in items),
              "automatic_passes": sum(r["quality"]["automatic_pass"] for r in items),
+             "v2_semantic_projection_passes": sum(r.get("quality_v2", {}).get("semantic_pass", False) for r in items)
+                 if all("quality_v2" in r for r in items) else None,
              "quality_checks": {name: {"pass": sum(r["quality"]["checks"].get(name) is True for r in items),
                  "fail": sum(r["quality"]["checks"].get(name) is False for r in items),
                  "not_applicable_or_manual": sum(r["quality"]["checks"].get(name) is None for r in items)}
@@ -430,13 +435,15 @@ def markdown(reports):
              "TTFT is end-to-end to first visible content/tool fragment; role/reasoning chunks excluded.",
              "Token rates below are usage-based proxies, never pure prefill/decode. "
              "Use engine timing counts/durations for pure rates. Quality is an exact canonical baseline; "
-             "language of numeric-only JSON is not applicable. Human semantic review is pending.", ""]
+             "language of numeric-only JSON is not applicable. Human semantic review is pending.", "",
+             "V2 is a separately labelled semantic projection. It can require extracting verified answer fields; "
+             "it does not prove native instruction/schema compliance, alter measured latency, or simulate a changed prompt.", ""]
     for report in reports:
         meta = report["metadata"]
         lines += [f"## {meta['label']}", "", f"Mode: {meta['mode']}; model: {meta['model']}; "
                   f"seed: {meta['seed']}; temperature: {meta['temperature']}.", "",
-                  "| Case | Context chars | Prompt tokens median | Concurrent | Auto pass / attempts | Errors | TTFT median / p95 ms | Total p95 ms |",
-                  "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |"]
+                  "| Case | Context chars | Prompt tokens median | Concurrent | V1 strict / attempts | V2 semantic projection | Errors | TTFT median / p95 ms | Total p95 ms |",
+                  "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |"]
         for group in report["summary"]:
             ttft = group["ttft_ms"]
             total = group["total_ms"]
@@ -444,8 +451,10 @@ def markdown(reports):
             tokens = group.get("prompt_tokens")
             tokens = tokens["median"] if tokens else "unavailable"
             total_p95 = f"{total['p95']:.1f}" if total else "unavailable"
+            semantic = group.get("v2_semantic_projection_passes")
+            semantic = str(semantic) if semantic is not None else "not rescored"
             lines.append(f"| {group['case_id']} | {group['context_chars']} | {tokens} | {group['concurrency']} | "
-                         f"{group['automatic_passes']} / {group['attempts']} | {group['errors']} | "
+                         f"{group['automatic_passes']} / {group['attempts']} | {semantic} | {group['errors']} | "
                          f"{latency} | {total_p95} |")
         if meta["mode"] == "mock":
             lines += ["", "MOCK: artificial answers and token usage. Validates plumbing only."]
@@ -500,9 +509,10 @@ def run(args):
     metadata = vars(args).copy()
     metadata.update({"started_utc": datetime.now(timezone.utc).isoformat(),
                      "schema_version": 1, "python": os.sys.version, "pid": os.getpid()})
+    metadata["protocol_revision"] = "engineer-bench.v2"
     metadata["git_head"] = source_revision()
     metadata["source_sha256"] = {name: hashlib.sha256(Path(__file__).with_name(name).read_bytes()).hexdigest()
-                                 for name in ("bench.py", "cases.py", "resources.ps1")}
+                                 for name in ("bench.py", "cases.py", "resources.ps1", "evaluator_v2.py")}
     metadata["corpus_sha256"] = hashlib.sha256(json.dumps(cases, sort_keys=True,
                                                          ensure_ascii=False).encode()).hexdigest()
     if args.model_metadata:
@@ -586,7 +596,7 @@ def run(args):
 def validate_comparison(reports):
     """Reject mismatched test protocols; model/engine/quantisation may differ by design."""
     first = reports[0]
-    fields = ("mode", "seed", "temperature", "passes", "warmups", "context_chars", "concurrency", "case")
+    fields = ("mode", "seed", "temperature", "passes", "warmups", "context_chars", "concurrency", "case", "protocol_revision")
     expected = {key: first["metadata"].get(key) for key in fields}
     expected_sources = first["metadata"].get("source_sha256")
     expected_groups = {(r["case_id"], r["context_chars"], r["concurrency"], r["attempts"])
@@ -605,6 +615,29 @@ def validate_comparison(reports):
         if {(r["case_id"], r["context_chars"], r["concurrency"], r["attempts"])
                 for r in report["summary"]} != expected_groups:
             raise ValueError("Comparison cases/cohorts/attempts differ")
+
+
+def rescore_report(report_path, cases_path, output_path):
+    """Write derived evaluation only; frozen source reports and prompts stay unchanged."""
+    source, frozen, output = map(Path, (report_path, cases_path, output_path))
+    if output.resolve() in (source.resolve(), frozen.resolve()):
+        raise ValueError("Rescore output must differ from the source report and frozen cases")
+    report_bytes, case_bytes = source.read_bytes(), frozen.read_bytes()
+    report = strict_json(report_bytes)
+    cases = {case["id"]: case for case in strict_json(case_bytes)}
+    for row in report["requests"]:
+        row["quality_v2"] = score_v2(cases[row["case_id"]], row, strict_json, same)
+    report["summary"] = summarize(report["requests"])
+    report["metadata"]["offline_rescore"] = {
+        "source_report": str(source.resolve()), "source_report_sha256": hashlib.sha256(report_bytes).hexdigest(),
+        "frozen_cases_sha256": hashlib.sha256(case_bytes).hexdigest(),
+        "evaluator_sha256": hashlib.sha256(Path(__file__).with_name("evaluator_v2.py").read_bytes()).hexdigest(),
+        "source_prompt_changed": False, "latencies_remeasured": False,
+        "note": "Task/enum prompt changes require a new run; semantic projection is not counterfactual inference.",
+    }
+    with output.open("x", encoding="utf-8") as stream:
+        json.dump(report, stream, ensure_ascii=False, indent=2)
+    return report
 
 
 def main(argv=None):
@@ -634,11 +667,18 @@ def main(argv=None):
     compare = sub.add_parser("compare")
     compare.add_argument("reports", nargs="+")
     compare.add_argument("--output", required=True)
+    rescore = sub.add_parser("rescore", help="Offline v2 column over a frozen report; no endpoint calls")
+    rescore.add_argument("report")
+    rescore.add_argument("--cases", required=True, help="Frozen cases.json from that source run")
+    rescore.add_argument("--output", required=True, help="New output JSON; existing files are never overwritten")
     args = parser.parse_args(argv)
     if args.command == "run":
         if any(c < 0 for c in args.context_chars) or args.warmups < 0 or args.timeout <= 0:
             parser.error("Invalid context/warmup/timeout")
         run(args)
+    elif args.command == "rescore":
+        report = rescore_report(args.report, args.cases, args.output)
+        print(json.dumps({"output": args.output, "requests": len(report["requests"]), "offline": True}))
     else:
         reports = [strict_json(Path(p).read_text(encoding="utf-8")) for p in args.reports]
         validate_comparison(reports)

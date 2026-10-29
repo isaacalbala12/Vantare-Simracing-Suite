@@ -1,3 +1,58 @@
+## VANTA-105 / #1793 — Prueba fisica y contexto OAuth (29-oct)
+
+Instalador privado de fuentes limpias 9a857be12 (base 6634b521f), Release beta
+0.0.986, construido solo en el PC. Setup SHA256
+9dd287051360ab3ca5966860f536353c57c5ae4efd59258a46e2787960eeeebd.
+Escritorio: VantareSetup-privado-1793.exe, su .sha256 y LEEME.txt de una linea.
+Instalacion en sesion interactiva 1: 38/38 archivos identicos antes del primer
+arranque; generacion anterior 38/38 intacta. El producto aparta binding de clave
+retirada (una copia, SHA256 identico), arranca y retira boot-pending sin botones.
+La pantalla real queda en bienvenida, sin el anterior error del nucleo. No se
+ha superado aun sesion restaurada -> acceso verificado / overlays gratis libres.
+
+Causa de la sesion ausente confirmada solo con codigo y configuracion publica:
+0.0.975 (f49d71f4) y RC8 usan la MISMA derivacion
+SHA256(v1|issuer|client_id|channel|supabase). Los literales publicos del binario
+0.0.975 conservado reproducen exactamente el namespace 54f1e352... de la cuenta
+antigua. Issuer de Clerk era desarrollo (.clerk.accounts.dev), cliente OAuth y
+proyecto Supabase eran otros. RC8 5548069c3 contiene los tres valores actuales
+de produccion y deriva 1626390e...; no existe account.dpapi en este contexto.
+Es la transicion legitima dev -> produccion (#1700); no un cambio accidental de
+la formula. Los beta testers de 0.0.975 deben iniciar sesion UNA vez. Nunca se
+copian, descifran ni migran tokens entre namespaces. Evidencia reproducible:
+continuation-public-namespace-history.json y pc-public-namespace.py externos.
+
+Decision del orquestador: Isaac iniciara sesion por el flujo normal. Queda
+LEEME-PRUEBA.txt con los tres pasos y verificacion posterior de solo lectura
+preparada (nombres, hashes, logs cerrados y captura). Aceptacion final pendiente
+hasta su login y esa comprobacion. Sin release, merge ni cambios de cuenta.
+
+## VANTA-105 / #1793 — Correcciones de la segunda revision (29-oct)
+
+PR #1796: la segunda revision de 9a857be12 aprueba con cambios. El P0 y los
+hallazgos anteriores estan cerrados; este lote atiende el binding firmado que
+rechaza la autoridad, la limpieza de cuarentenas, la confirmacion de compra y
+el feedback de fondo. Un fallo de persistencia al abrir deja un propietario
+denegado pero utilizable; nunca se publica una concesion sin ACK durable.
+Se conserva la autoridad persistida (reloj/lapida) y solo una firma nueva puede
+recuperar derechos. El recorte tras un rename correcto es best-effort: puede
+superar tres copias temporalmente si Windows impide borrar una antigua.
+
+Decision de residencia: se mantiene la consulta IPC local de avisos cada 5 s
+mientras el Hub tiene sesion. Mantiene vivo el helper y anula su cierre por
+inactividad durante ese periodo; al cerrar el Hub se conserva la consulta del
+nucleo cada 30 s, sin helper residente. No se afirma residencia equivalente a
+la base. El rediseño de este canal, lectura de 30 s perpetua, aviso de un uso,
+diagnostico de huella local y E2E de spawn_timer se siguen en #1799.
+La variante de candidate valido de otra cuenta queda para triaje en #1798.
+
+Notas separadas: ISA-1793 corresponde a licencias; ISA-1794 conserva las notas
+del instalador integrado por el PR #1794 (misma issue de origen #1793).
+Build privado de aceptacion: fuentes limpias 9a857be12, base 6634b521f, autorizado
+por el orquestador aunque este lote R2 avance despues. No acredita los nuevos
+escenarios de R2: estos se verifican con regresiones y gates del nuevo commit.
+Evidencia R2: C:/VantareWork/isa-1793/evidence/r2-*. Sin compilacion en servidor.
+
 ## VANTA-105 / #1793 — Licencia, revisión profunda en curso (29-oct)
 
 PR draft #1796, rama vantareapp/isa-1793-licencia-arranque, rebasada en el PC
@@ -38,9 +93,9 @@ PASS. Lifecycle: cero fallos. Telemetría final 33/33 PASS (1 skip). Calidad,
 la suite inicial 1331/1332 señaló una expectativa antigua Storage/Corrupt, ya
 corregida sin aceptar datos ilegibles; se mantuvieron todos los rechazos.
 RED P0 automatic-no-revoke-red2.log → GREEN review-final5-regressions.log.
-CI del nuevo HEAD y segunda review siguen pendientes; no se afirma aceptación.
+CI de 9a857be12: cinco checks SUCCESS. Segunda review: APROBAR CON CAMBIOS; ver correcciones R2 arriba. La aceptacion fisica seguia pendiente en ese SHA.
 
-Evidencia C:/VantareWork/isa-1793/evidence. Siguiente: push con lease del rebase, CI, segunda revisión y candidato privado
+Evidencia C:/VantareWork/isa-1793/evidence. Estado historico del primer corte: publicado en 9a857be12, CI verde y segunda revision completada. Candidato privado
 del SHA limpio en el
 Desktop de Isaac con SHA256/LEEME; instalar y comprobar sin pulsar nada.
 Sin release, promoción, cambios administrativos de cuenta ni borrado de programas.

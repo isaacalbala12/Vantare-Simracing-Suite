@@ -928,7 +928,8 @@ impl Remote {
                 }
             }
             // La consulta periódica no pisa el resultado de una acción del usuario.
-            Reply::Error { .. } | Reply::License { .. } if background => {}
+            Reply::Error { .. } | Reply::License { .. } | Reply::LicenseFailure { .. }
+                if background => {}
             Reply::Status { message, .. } | Reply::Error { message } => {
                 if matches!(self.active, Area::Calendar) {
                     // El Calendario recibe su error sin alterar Cuenta.

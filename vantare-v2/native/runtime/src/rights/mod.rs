@@ -164,9 +164,26 @@ impl Owner {
                             }
                             Err(error) => return Err(error),
                         };
-                        owner.authority.install(verified, now, Duration::ZERO)?;
-                        owner.authority.persist(&owner.store)?;
-                        owner.binding = Some(binding);
+                        match owner.authority.install(verified, now, Duration::ZERO) {
+                            Ok(()) => {}
+                            Err(Error::Denied | Error::Clock) => {
+                                owner.quarantine_binding(
+                                    vantare_services::license::CacheIssue::AuthorityRejected,
+                                    now,
+                                )?;
+                                return Ok(owner);
+                            }
+                            Err(error) => return Err(error),
+                        }
+                        if owner.authority.persist(&owner.store).is_err() {
+                            // No durable ACK means no rights. Keep the owner available
+                            // for a fresh signed grant once storage recovers.
+                            owner.denied = true;
+                            owner.authority.leave_game();
+                            eprintln!("license-cache-authority-persist-failed");
+                        } else {
+                            owner.binding = Some(binding);
+                        }
                     }
                 }
                 _ => owner.quarantine_binding(

@@ -270,7 +270,7 @@ fn handle_with(
         state.renewal = Renewal::default();
         state.notice = None;
     }
-    if matches!(command, Command::DeviceReset) {
+    if matches!(command, Command::DeviceReset | Command::Purchase { .. }) {
         state.notice = None;
         state.renewal.user_recovery();
     }

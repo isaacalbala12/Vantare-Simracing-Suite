@@ -1,3 +1,13 @@
+## ISA-1793 — Segunda revision
+
+Al abrir, un binding firmado rechazado por reloj/lapida va a cuarentena sin
+reiniciar la autoridad persistida. Si falla persistir, el nucleo sigue vivo y
+denegado, disponible para una nueva concesion firmada. El recorte de archivos
+ya apartados es best-effort; puede superar tres copias si una esta bloqueada.
+Comprar reabre la confirmacion automatica, conservando el suelo entre intentos.
+El Hub consulta avisos cada 5 s y mantiene residente el helper mientras tiene
+sesion; la mejora de residencia y avisos se sigue en #1799.
+
 ## ISA-1793 — Renovación automática no destructiva y caché recuperable
 
 Servicios v15 distingue `LicenseRenewAutomatic`, `Probe` y `LicenseFailure`
@@ -8,7 +18,7 @@ La acción explícita y DeviceReset conservan su revocación durable.
 
 Binding y candidate se verifican antes de conceder derechos. La caché de clave
 retirada, formato antiguo, firma mala conocida o DPAPI corrupto se aparta con
-fecha y bytes intactos; se guardan como máximo tres copias por nombre. E/S real
+fecha y bytes intactos; se intenta conservar como maximo tres copias por nombre, salvo bloqueos de limpieza. E/S real
 se propaga y conserva el original. Los diagnósticos cerrados son
 `license-cache-unknown-key`, `license-cache-unsupported-format`,
 `license-cache-invalid-signature` y `license-cache-unreadable`.

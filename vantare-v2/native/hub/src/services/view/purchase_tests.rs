@@ -998,7 +998,6 @@ fn background_errors_logout_and_receipts_never_grant_access_or_lose_the_draft() 
     });
 }
 
-
 #[test]
 fn background_license_failure_preserves_the_user_message() {
     gpui_platform::headless().run(|cx| {
@@ -1008,10 +1007,13 @@ fn background_license_failure_preserves_the_user_message() {
         remote.update(cx, |remote, cx| {
             remote.message = "Resultado de la accion del usuario".into();
             remote.inflight = Inflight::Background;
-            remote.complete(Reply::LicenseFailure {
-                outcome: super::super::protocol::RenewalOutcome::Transient,
-                message: "Aviso automatico".into(),
-            }, cx);
+            remote.complete(
+                Reply::LicenseFailure {
+                    outcome: super::super::protocol::RenewalOutcome::Transient,
+                    message: "Aviso automatico".into(),
+                },
+                cx,
+            );
             assert_eq!(remote.message, "Resultado de la accion del usuario");
         });
         crate::quit_headless_test(cx);

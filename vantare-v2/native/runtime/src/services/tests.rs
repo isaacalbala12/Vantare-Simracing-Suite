@@ -727,22 +727,53 @@ fn automatic_device_limit_remains_actionable_without_consuming_it_in_a_probe() {
     std::fs::remove_dir_all(root).expect("private cleanup");
 }
 
-
 #[test]
 fn purchase_restarts_automatic_confirmation_after_a_definitive_rejection() {
     let mut state = State::default();
     state.renewal.observe(&confirmed_session());
     let now = Instant::now();
     state.renewal.attempted(now);
-    state.renewal.completed(protocol::RenewalOutcome::Definitive);
-    let policy = control::Policy { version: control::VERSION, revision: 1, checked_at_ms: 1000, ..control::Policy::default() };
-    assert!(state.renewal.claim(&policy, 1000, now + Duration::from_secs(60)).is_err());
+    state
+        .renewal
+        .completed(protocol::RenewalOutcome::Definitive);
+    let policy = control::Policy {
+        version: control::VERSION,
+        revision: 1,
+        checked_at_ms: 1000,
+        ..control::Policy::default()
+    };
+    assert!(
+        state
+            .renewal
+            .claim(&policy, 1000, now + Duration::from_mins(1))
+            .is_err()
+    );
     let signing: SigningIn = Arc::new(Mutex::new(None));
-    let reply = handle_with(&mut state, Command::Purchase { product: protocol::BillingProduct::ProMonthly }, &signing, |_, command| {
-        assert!(matches!(command, Command::Purchase { .. }));
-        Reply::Checkout { url: "https://billing.invalid/fixture".into() }
-    });
+    let reply = handle_with(
+        &mut state,
+        Command::Purchase {
+            product: protocol::BillingProduct::ProMonthly,
+        },
+        &signing,
+        |_, command| {
+            assert!(matches!(command, Command::Purchase { .. }));
+            Reply::Checkout {
+                url: "https://billing.invalid/fixture".into(),
+            }
+        },
+    );
     assert!(matches!(reply, Reply::Checkout { .. }));
-    assert!(!state.renewal.automatic_action_ready(now + Duration::from_secs(59)), "purchase preserves the hard request floor");
-    assert!(state.renewal.claim(&policy, 1000, now + Duration::from_secs(60)).is_ok(), "explicit purchase reopens automatic confirmation");
+    assert!(
+        !state
+            .renewal
+            .automatic_action_ready(now + Duration::from_secs(59)),
+        "purchase preserves the hard request floor"
+    );
+    assert!(
+        state
+            .renewal
+            .claim(&policy, 1000, now + Duration::from_mins(1))
+            .is_ok(),
+        "explicit purchase reopens automatic confirmation"
+    );
 }

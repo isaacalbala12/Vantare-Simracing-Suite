@@ -143,10 +143,12 @@ pub enum CacheIssue {
     UnsupportedFormat,
     InvalidSignature,
     Unreadable,
+    AuthorityRejected,
 }
 impl CacheIssue {
     pub fn diagnostic(self) -> &'static str {
         match self {
+            Self::AuthorityRejected => "license-cache-authority-rejected",
             Self::InvalidSignature => "license-cache-invalid-signature",
             Self::Unreadable => "license-cache-unreadable",
             Self::UnknownKey => "license-cache-unknown-key",

@@ -98,6 +98,25 @@ fn browser_failure_is_visible_and_retry_sends_one_fresh_login() {
     });
 }
 
+fn answer_local_probe(pipe: &mut vantare_ipc::transport::Pipe) {
+    use super::super::protocol::{self, Request, Response};
+    let probe: Request = protocol::read(pipe).expect("local probe");
+    assert!(matches!(probe.command, Command::LicenseStatus));
+    assert_eq!(probe.sequence, 1);
+    protocol::write(
+        pipe,
+        &Response {
+            version: protocol::VERSION,
+            sequence: probe.sequence,
+            reply: Reply::License {
+                policy: vantare_ipc::control::Policy::default(),
+                message: String::new(),
+            },
+        },
+    )
+    .expect("probe response");
+}
+
 #[test]
 fn a_silent_service_times_out_cancels_old_io_and_allows_a_fresh_retry() {
     gpui_platform::headless().run(|cx| {
@@ -155,21 +174,7 @@ fn a_silent_service_times_out_cancels_old_io_and_allows_a_fresh_retry() {
                     },
                 )
                 .expect("hello");
-                let probe: Request = protocol::read(&mut pipe).expect("local probe");
-                assert!(matches!(probe.command, Command::LicenseStatus));
-                assert_eq!(probe.sequence, 1);
-                protocol::write(
-                    &mut pipe,
-                    &Response {
-                        version: protocol::VERSION,
-                        sequence: probe.sequence,
-                        reply: Reply::License {
-                            policy: vantare_ipc::control::Policy::default(),
-                            message: String::new(),
-                        },
-                    },
-                )
-                .expect("probe response");
+                answer_local_probe(&mut pipe);
                 let request: Request = protocol::read(&mut pipe).expect("retry request");
                 assert_eq!(request.sequence, 2);
                 assert!(matches!(request.command, Command::Status));

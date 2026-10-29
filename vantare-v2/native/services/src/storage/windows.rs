@@ -235,7 +235,16 @@ fn crypt(bytes: &[u8], context: &str, decrypt: bool) -> Result<Zeroizing<Vec<u8>
         }
     };
     if ok == 0 || output.pbData.is_null() {
-        return Err(Error::Storage);
+        // File reads have already succeeded. Only DPAPI data/key errors are
+        // recoverable corruption; resource/permission failures remain IO errors.
+        let code = unsafe { GetLastError() };
+        return Err(
+            if decrypt && matches!(code, 13 | 86 | 87 | 0x8009_0005 | 0x8009_000b) {
+                Error::Corrupt
+            } else {
+                Error::Storage
+            },
+        );
     }
     // SAFETY: salida válida con cbData bytes hasta liberación.
     let data = unsafe { std::slice::from_raw_parts_mut(output.pbData, output.cbData as usize) };

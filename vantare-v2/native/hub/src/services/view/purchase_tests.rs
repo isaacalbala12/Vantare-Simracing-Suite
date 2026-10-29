@@ -98,6 +98,25 @@ fn browser_failure_is_visible_and_retry_sends_one_fresh_login() {
     });
 }
 
+fn answer_local_probe(pipe: &mut vantare_ipc::transport::Pipe) {
+    use super::super::protocol::{self, Request, Response};
+    let probe: Request = protocol::read(pipe).expect("local probe");
+    assert!(matches!(probe.command, Command::Probe));
+    assert_eq!(probe.sequence, 1);
+    protocol::write(
+        pipe,
+        &Response {
+            version: protocol::VERSION,
+            sequence: probe.sequence,
+            reply: Reply::License {
+                policy: vantare_ipc::control::Policy::default(),
+                message: String::new(),
+            },
+        },
+    )
+    .expect("probe response");
+}
+
 #[test]
 fn a_silent_service_times_out_cancels_old_io_and_allows_a_fresh_retry() {
     gpui_platform::headless().run(|cx| {
@@ -155,7 +174,9 @@ fn a_silent_service_times_out_cancels_old_io_and_allows_a_fresh_retry() {
                     },
                 )
                 .expect("hello");
+                answer_local_probe(&mut pipe);
                 let request: Request = protocol::read(&mut pipe).expect("retry request");
+                assert_eq!(request.sequence, 2);
                 assert!(matches!(request.command, Command::Status));
                 protocol::write(
                     &mut pipe,
@@ -355,6 +376,7 @@ pub(crate) fn fixture(
         email: None,
         device_limit: false,
         license_polled_at: None,
+        license_notice_polled_at: None,
         purchase_product: None,
         purchase_wait: None,
         purchase_message: None,
@@ -971,6 +993,28 @@ fn background_errors_logout_and_receipts_never_grant_access_or_lose_the_draft() 
             assert_eq!(remote.report_receipts.len(), 1);
             assert!(remote.editor.dirty);
             assert!(!remote.working());
+        });
+        crate::quit_headless_test(cx);
+    });
+}
+
+#[test]
+fn background_license_failure_preserves_the_user_message() {
+    gpui_platform::headless().run(|cx| {
+        let file = crate::document::tests::File::new();
+        let (send, _requests) = mpsc::sync_channel(8);
+        let remote = cx.new(|cx| fixture(cx, send, file.path.parent().expect("root")));
+        remote.update(cx, |remote, cx| {
+            remote.message = "Resultado de la accion del usuario".into();
+            remote.inflight = Inflight::Background;
+            remote.complete(
+                Reply::LicenseFailure {
+                    outcome: super::super::protocol::RenewalOutcome::Transient,
+                    message: "Aviso automatico".into(),
+                },
+                cx,
+            );
+            assert_eq!(remote.message, "Resultado de la accion del usuario");
         });
         crate::quit_headless_test(cx);
     });

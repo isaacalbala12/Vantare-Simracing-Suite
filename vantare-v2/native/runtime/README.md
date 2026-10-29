@@ -1,3 +1,38 @@
+## ISA-1793 — Segunda revision
+
+Al abrir, un binding firmado rechazado por reloj/lapida va a cuarentena sin
+reiniciar la autoridad persistida. Si falla persistir, el nucleo sigue vivo y
+denegado, disponible para una nueva concesion firmada. El recorte de archivos
+ya apartados es best-effort; puede superar tres copias si una esta bloqueada.
+Comprar reabre la confirmacion automatica, conservando el suelo entre intentos.
+El Hub consulta avisos cada 5 s y mantiene residente el helper mientras tiene
+sesion; la mejora de residencia y avisos se sigue en #1799.
+
+## ISA-1793 — Recuperación y renovación automática
+
+El login y la sesión restaurada contestan sin esperar una renovación HTTP.
+El temporizador pide `LicenseRenewAutomatic` con sesión confirmada y política
+autenticada fresca. Un rechazo automático nunca revoca el binding vigente:
+solo una concesión firmada nueva o una acción explícita pueden cambiarlo.
+Un resultado tipado distingue verificación, rechazo definitivo y transitorio.
+Los transitorios reintentan en 1, 2, 4, 8 y 15 minutos, con tope y reloj inyectado;
+un poll pendiente no reinicia el suelo de un minuto. Se registra un código
+cerrado por cada motivo de omisión, solo al cambiar, sin inundar el diagnóstico.
+
+La sonda `Probe` reconecta antes de enviar una acción y no consume avisos.
+La respuesta perdida de una acción devuelve error sin segundo envío.
+El límite de dispositivos conserva su variante accionable. El temporizador
+no borra la admisión de un login concurrente; sin Hub limita la consulta al
+núcleo a 30 segundos y cierra el helper tras renovar.
+
+Un binding de clave retirada, formato antiguo, firma inválida o DPAPI corrupto
+se aparta junto al original, sin derechos. Se intenta conservar solo las tres copias
+más recientes por nombre; los errores reales de E/S se propagan sin apartar.
+Se conservan reloj y lápida, y las regresiones rechazan emisiones anteriores
+tras la cuarentena. El núcleo sigue disponible para una licencia nueva válida.
+Un rechazo criptográfico o de fecha al renovar conserva el binding anterior;
+un fallo de persistencia de una concesión nueva sigue fallando en cerrado.
+
 # runtime — adquisición y núcleo
 
 Adaptadores LMU/ACC privados, validación y derivaciones centrales; publicación neutral y supervisor.

@@ -132,13 +132,25 @@ impl Store {
 
     pub fn load<T: DeserializeOwned>(&self, name: &str) -> Result<T> {
         serde_json::from_slice(&self.load_bytes(name).map_err(|error| {
-            if error == Error::TooLarge {
+            if matches!(error, Error::TooLarge | Error::Corrupt) {
                 Error::Storage
             } else {
                 error
             }
         })?)
         .map_err(|_| Error::Storage)
+    }
+
+    /// Cache migration distinguishes corrupt bytes from actual filesystem errors.
+    pub fn load_cache<T: DeserializeOwned>(&self, name: &str) -> Result<T> {
+        let bytes = self.load_bytes(name).map_err(|error| {
+            if error == Error::TooLarge {
+                Error::Corrupt
+            } else {
+                error
+            }
+        })?;
+        serde_json::from_slice(&bytes).map_err(|_| Error::Corrupt)
     }
 
     /// Recuperación de JSON inválido o excesivo; los errores de E/S se propagan.
@@ -149,6 +161,7 @@ impl Store {
                 self.quarantine(name);
                 return Ok(None);
             }
+            Err(Error::Corrupt) => return Err(Error::Storage),
             Err(error) => return Err(error),
         };
         if let Ok(value) = serde_json::from_slice(&bytes) {
@@ -196,6 +209,62 @@ impl Store {
             .root
             .join(format!("{name}-{}.corrupto", crate::random_id()?));
         fs::rename(path, aside).map_err(|_| Error::Storage)
+    }
+
+    /// Preserve an incompatible cache beside the original with an injected date.
+    /// The old bytes are never overwritten; failure to move blocks recovery.
+    pub fn quarantine_dated(&self, name: &str, at_millis: u64) -> Result<()> {
+        let path = self.path(name)?;
+        let aside = self.root.join(format!(
+            "{name}-{at_millis}-{}.corrupto",
+            crate::random_id()?
+        ));
+        if aside.try_exists().map_err(|_| Error::Storage)? {
+            return Err(Error::Storage);
+        }
+        fs::rename(path, &aside).map_err(|_| Error::Storage)?;
+        if self.trim_quarantines(name, &aside).is_err() {
+            eprintln!("license-cache-trim-incomplete");
+        }
+        Ok(())
+    }
+
+    fn trim_quarantines(&self, name: &str, newest: &Path) -> Result<()> {
+        let prefix = format!("{name}-");
+        let mut archives = Vec::new();
+        for entry in fs::read_dir(&self.root).map_err(|_| Error::Storage)? {
+            let entry = entry.map_err(|_| Error::Storage)?;
+            let file_name = entry.file_name();
+            let Some(file_name) = file_name.to_str() else {
+                continue;
+            };
+            let Some(rest) = file_name
+                .strip_prefix(&prefix)
+                .and_then(|n| n.strip_suffix(".corrupto"))
+            else {
+                continue;
+            };
+            let Some((time, id)) = rest.split_once('-') else {
+                continue;
+            };
+            let Ok(time) = time.parse::<u64>() else {
+                continue;
+            };
+            if id.len() != 64 || !id.bytes().all(|b| b.is_ascii_hexdigit()) {
+                continue;
+            }
+            let kind = entry.file_type().map_err(|_| Error::Storage)?;
+            if kind.is_file() && !kind.is_symlink() {
+                archives.push((time, entry.path()));
+            }
+        }
+        archives.sort_unstable_by(|a, b| (b.1 == newest, b).cmp(&(a.1 == newest, a)));
+        for (_, path) in archives.into_iter().skip(3) {
+            if fs::remove_file(path).is_err() {
+                eprintln!("license-cache-trim-incomplete");
+            }
+        }
+        Ok(())
     }
 
     pub fn save(&self, name: &str, value: &impl Serialize) -> Result<()> {
@@ -278,6 +347,117 @@ pub fn unprotect(bytes: &[u8], _: &str) -> Result<Zeroizing<Vec<u8>>> {
 #[cfg(all(test, windows))]
 mod tests {
     use super::*;
+
+    #[test]
+    fn quarantine_cleanup_failure_does_not_undo_a_successful_cache_move() {
+        use std::os::windows::fs::OpenOptionsExt;
+        let (root, store) = crate::test_store("quarantine-cleanup-locked");
+        for at in 1..=3 {
+            store.save("binding", &at).expect("cache");
+            store.quarantine_dated("binding", at).expect("archive");
+        }
+        let oldest = fs::read_dir(&store.root)
+            .expect("archives")
+            .flatten()
+            .find(|entry| {
+                entry
+                    .file_name()
+                    .to_string_lossy()
+                    .starts_with("binding-1-")
+            })
+            .expect("oldest")
+            .path();
+        let lock = fs::OpenOptions::new()
+            .read(true)
+            .share_mode(1)
+            .open(&oldest)
+            .expect("deny deletion");
+        store.save("binding", &4).expect("cache");
+        let before = fs::read(store.path("binding").expect("cache path")).expect("bytes");
+        store
+            .quarantine_dated("binding", 4)
+            .expect("cleanup cannot block recovery after rename");
+        assert!(!store.path("binding").expect("path").exists());
+        let newest = fs::read_dir(&store.root)
+            .expect("archives")
+            .flatten()
+            .find(|entry| {
+                entry
+                    .file_name()
+                    .to_string_lossy()
+                    .starts_with("binding-4-")
+            })
+            .expect("new archive")
+            .path();
+        assert_eq!(fs::read(newest).expect("preserved bytes"), before);
+        drop(lock);
+        store.save("binding", &5).expect("next cache");
+        store.quarantine_dated("binding", 5).expect("retry cleanup");
+        assert_eq!(
+            fs::read_dir(&store.root)
+                .expect("archives")
+                .flatten()
+                .filter(|entry| entry
+                    .path()
+                    .extension()
+                    .is_some_and(|ext| ext == "corrupto"))
+                .count(),
+            3
+        );
+        drop(store);
+        crate::cleanup_store(&root, "quarantine-cleanup-locked", &[]);
+    }
+
+    #[test]
+    fn dated_cache_quarantine_keeps_only_three_recent_archives_per_name() {
+        let (root, store) = crate::test_store("dated-cache-cap");
+        for at in 1..=5 {
+            store.save("binding", &at).expect("cache");
+            store.quarantine_dated("binding", at).expect("archive");
+        }
+        store.save("account", &42).expect("unrelated document");
+        let mut dates = Vec::new();
+        for entry in fs::read_dir(&store.root).expect("archives").flatten() {
+            let name = entry.file_name().to_string_lossy().into_owned();
+            if let Some(rest) = name.strip_prefix("binding-") {
+                dates.push(
+                    rest.split('-')
+                        .next()
+                        .expect("date")
+                        .parse::<u64>()
+                        .expect("numeric date"),
+                );
+            }
+        }
+        dates.sort_unstable();
+        assert_eq!(dates, vec![3, 4, 5]);
+        assert_eq!(
+            store.load::<u64>("account").expect("unrelated preserved"),
+            42
+        );
+        drop(store);
+        crate::cleanup_store(&root, "dated-cache-cap", &[]);
+    }
+
+    #[test]
+    fn corrupt_cache_move_failure_preserves_the_original_bytes() {
+        use std::os::windows::fs::OpenOptionsExt;
+        let (root, store) = crate::test_store("dated-cache-locked");
+        store.save("binding", &1).expect("cache");
+        let path = store.path("binding").expect("path");
+        fs::write(&path, b"bad-dpapi").expect("corruption");
+        assert_eq!(store.load_cache::<u64>("binding"), Err(Error::Corrupt));
+        let lock = OpenOptions::new()
+            .read(true)
+            .share_mode(1)
+            .open(&path)
+            .expect("deny rename");
+        assert_eq!(store.quarantine_dated("binding", 100), Err(Error::Storage));
+        drop(lock);
+        assert_eq!(fs::read(&path).expect("preserved"), b"bad-dpapi");
+        drop(store);
+        crate::cleanup_store(&root, "dated-cache-locked", &[]);
+    }
 
     #[test]
     fn metadata_quarantine_preserves_copies_and_stops_on_a_move_failure() {
@@ -406,11 +586,11 @@ mod tests {
         );
         assert!(matches!(
             unprotect(&encrypted, "test-B"),
-            Err(Error::Storage)
+            Err(Error::Corrupt)
         ));
         let mut damaged = encrypted;
         damaged[0] ^= 1;
-        assert!(unprotect(&damaged, "test-A").is_err());
+        assert!(matches!(unprotect(&damaged, "test-A"), Err(Error::Corrupt)));
     }
 
     #[test]

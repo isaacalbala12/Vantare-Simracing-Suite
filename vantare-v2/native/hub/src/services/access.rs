@@ -164,18 +164,12 @@ impl State {
             self.requested(&command);
             return Some(command);
         }
-        if let Reply::Account {
-            signed_in,
-            pending: false,
-            error,
-            ..
-        } = reply
+        if let Reply::Account { pending: false, .. } = reply
             && self.transition == Transition::Login
         {
-            self.transition = Transition::Renewal;
-            if *signed_in && error.is_none() {
-                return Some(Command::LicenseRenew);
-            }
+            // The supervisor timer renews after the session is confirmed.
+            // The Hub consumes its core feed; never start a duplicate HTTP grant.
+            self.transition = Transition::Idle;
         }
         None
     }
@@ -236,7 +230,7 @@ impl State {
         let previous_error = self.error.clone();
         // Un error de transporte no revoca la última política. navigation sigue
         // aplicando su caducidad; el resultado definitivo sí retira el acceso.
-        if matches!(reply, Reply::DeviceLimit { .. } | Reply::Closed) {
+        if matches!(reply, Reply::Closed) {
             self.policy = None;
             if self.transition == Transition::Login {
                 self.transition = Transition::Renewal;
@@ -790,7 +784,7 @@ mod tests {
             match sequence {
                 0 => assert!(next.is_none()),
                 1 => assert!(matches!(next, Some(Command::AccountPoll))),
-                _ => assert!(matches!(next, Some(Command::LicenseRenew))),
+                _ => assert!(next.is_none(), "supervisor owns license renewal"),
             }
             assert!(!state.navigation(true, 1000).verified);
         }
@@ -802,7 +796,7 @@ mod tests {
     }
 
     #[test]
-    fn one_explicit_login_renews_once_but_restore_and_poll_never_renew() {
+    fn login_and_restore_consume_core_policy_without_duplicate_license_requests() {
         let mut state = State::from_build();
         let restored = account_reply(true, false, None);
         state.observe(&restored, true);
@@ -819,10 +813,7 @@ mod tests {
             ));
         }
         state.observe(&restored, true);
-        assert!(matches!(
-            state.next_command(&restored, &mut false),
-            Some(Command::LicenseRenew)
-        ));
+        assert!(state.next_command(&restored, &mut false).is_none());
         assert!(state.next_command(&restored, &mut false).is_none());
         assert!(
             !state.navigation(true, 1000).verified,
@@ -844,14 +835,15 @@ mod tests {
         };
         state.observe(&failed, false);
         assert!(state.next_command(&failed, &mut false).is_none());
-        state.observe(&rights, false); // Un heartbeat previo no es el ACK de renovar.
-        assert!(state.policy.is_none());
-        assert!(matches!(
-            state.renewal_acknowledged(&rights),
-            Some(Command::AccountPoll)
-        ));
-        state.observe(&rights, false);
+        let Reply::License { policy, .. } = rights else {
+            unreachable!()
+        };
+        state.observe_core_policy(policy);
         assert!(state.navigation(true, 1000).verified);
+        assert!(
+            !state.navigation(true, 3000).verified,
+            "the core feed TTL still expires"
+        );
     }
 
     #[test]
@@ -868,10 +860,7 @@ mod tests {
             state.requested(&Command::AccountBegin);
             let account = account_reply(true, false, None);
             state.observe(&account, true);
-            assert!(matches!(
-                state.next_command(&account, &mut false),
-                Some(Command::LicenseRenew)
-            ));
+            assert!(state.next_command(&account, &mut false).is_none());
             assert!(state.renewal_acknowledged(&reply).is_none());
             assert!(state.error.is_some());
             assert!(
@@ -1337,7 +1326,10 @@ mod navigation_tests {
             },
             false,
         );
-        assert!(!state.navigation(true, 1500).verified);
+        assert!(
+            state.navigation(true, 1500).verified,
+            "an issuance limit cannot revoke the current signed core policy"
+        );
     }
 
     #[test]
@@ -1615,10 +1607,10 @@ mod native_email_tests {
             message: "fixture".into(),
             error: None,
         };
-        assert!(matches!(
-            state.next_command(&reply, &mut false),
-            Some(Command::LicenseRenew)
-        ));
+        assert!(
+            state.next_command(&reply, &mut false).is_none(),
+            "the supervisor renews after native login too"
+        );
         state.requested(&Command::AccountEmail {
             action: EmailAction::Cancel {},
         });

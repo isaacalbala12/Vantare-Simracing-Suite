@@ -1,3 +1,14 @@
+## ISA-1793 — Acceso sin comprobación manual
+
+El Hub confirma la sesión y consume la política fresca del núcleo. El supervisor
+renueva desde su temporizador, sin bloquear el login ni duplicar HTTP desde la
+UI. Los avisos automáticos se consultan por IPC local cada cinco segundos;
+DeviceLimit conserva su salida accionable y no revoca la política firmada.
+El primer uso de un canal inactivo reconecta mediante Probe, manteniendo
+imagen, versión, nonce y secuencia. Una respuesta perdida no repite la acción.
+Los sondeos de compra también usan el camino automático no destructivo;
+el botón Comprobar acceso sigue siendo una acción explícita.
+
 ## #1631 · Formularios de email
 
 R2 añade recuperación del formulario tras caducidad/reinicio y cola llena,

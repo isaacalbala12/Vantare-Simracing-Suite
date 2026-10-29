@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-1794",
+  "type": "fix",
+  "summary": "El instalador puede actualizar una instalación válida aunque conserve una versión anterior que ya no se puede restaurar.",
+  "technicalNotes": [
+    "La versión activa conserva su validación estricta. Una generación anterior incompatible, ausente o corrupta se conserva intacta y se excluye del rollback.",
+    "El diagnóstico previous-corrupt o previous-unreadable se escribe en stderr para conservar el protocolo JSON del instalador. El inventario histórico exacto también admite la activa 0.0.974.",
+    "Solo se anuncia rollback si la generación activa coincide con la anterior esperada. Las generaciones sin referencia se conservan.",
+    "Arreglo de instalacion integrado en nightly mediante el PR #1794, dentro de la issue #1793 / VANTA-105."
+  ],
+  "testing": [
+    "Actualizar desde 0.0.975 con una generación anterior 0.0.974 y comprobar que los datos se conservan y arranca la versión nueva.",
+    "Regresiones de versiones históricas, referencias corruptas o ausentes, integridad activa y rechazo de rollback."
+  ],
+  "knownLimitations": [
+    "No recupera una versión activa corrupta ni convierte una generación anterior incompatible en restaurable."
+  ]
+}

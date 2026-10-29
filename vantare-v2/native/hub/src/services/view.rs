@@ -172,6 +172,7 @@ pub struct Remote {
     /// la salida es liberar el activo, no reintentar a ciegas.
     device_limit: bool,
     license_polled_at: Option<std::time::Instant>,
+    license_notice_polled_at: Option<std::time::Instant>,
     purchase_product: Option<super::protocol::BillingProduct>,
     purchase_wait: Option<PurchaseWait>,
     purchase_message: Option<String>,
@@ -294,6 +295,7 @@ impl Remote {
             email: None,
             device_limit: false,
             license_polled_at: None,
+            license_notice_polled_at: None,
             purchase_product: None,
             purchase_wait: None,
             purchase_message: None,
@@ -406,6 +408,15 @@ impl Remote {
                 );
             }
         }
+        if !self.busy()
+            && self.account.signed_in
+            && self
+                .license_notice_polled_at
+                .is_none_or(|last| now.duration_since(last) >= std::time::Duration::from_secs(5))
+        {
+            self.license_notice_polled_at = Some(now);
+            self.request_with_kind(Command::LicenseStatus, Some(Inflight::Background), cx);
+        }
         if self
             .purchase_wait
             .as_ref()
@@ -427,7 +438,11 @@ impl Remote {
             if let Some(wait) = &mut self.purchase_wait {
                 wait.polled = Some(now);
             }
-            self.request_with_kind(Command::LicenseRenew, Some(Inflight::PurchaseRenew), cx);
+            self.request_with_kind(
+                Command::LicenseRenewAutomatic,
+                Some(Inflight::PurchaseRenew),
+                cx,
+            );
         }
     }
 
@@ -838,7 +853,7 @@ impl Remote {
         let access_before = self.navigation_access();
         let mut profile_changed = false;
         let mut missing_profile = false;
-        let failed = matches!(&reply, Reply::Error { .. });
+        let failed = matches!(&reply, Reply::Error { .. } | Reply::LicenseFailure { .. });
         // Una acción de email en vuelo deshabilita el formulario; un error de
         // transporte no debe dejarlo así hasta pulsar «Volver».
         let email_waiting = self.email.is_some() && self.inflight == Inflight::User;
@@ -913,7 +928,8 @@ impl Remote {
                 }
             }
             // La consulta periódica no pisa el resultado de una acción del usuario.
-            Reply::Error { .. } | Reply::License { .. } if background => {}
+            Reply::Error { .. } | Reply::License { .. } | Reply::LicenseFailure { .. }
+                if background => {}
             Reply::Status { message, .. } | Reply::Error { message } => {
                 if matches!(self.active, Area::Calendar) {
                     // El Calendario recibe su error sin alterar Cuenta.
@@ -936,6 +952,9 @@ impl Remote {
             }
             // El límite de dispositivos ya llega distinguido del
             // resto de fallos: habilita la salida concreta.
+            Reply::LicenseFailure { message, .. } => {
+                self.message = message;
+            }
             Reply::DeviceLimit { message } => {
                 self.device_limit = true;
                 if purchase_background {

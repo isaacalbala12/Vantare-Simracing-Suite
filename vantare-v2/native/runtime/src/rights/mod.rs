@@ -141,22 +141,80 @@ impl Owner {
             },
             denied: false,
         };
-        match owner.store.load::<Binding>("binding") {
-            Ok(binding) if binding.version == 1 => {
-                let verified = owner.verify(&binding.credential)?;
-                if verified.subject() != binding.subject || verified.device() != binding.device {
-                    return Err(Error::InvalidCredential);
+        match owner.store.load_cache::<serde_json::Value>("binding") {
+            Ok(document) => match serde_json::from_value::<Binding>(document) {
+                Ok(binding) if binding.version == 1 => {
+                    let trust_roots = owner.verifier.as_ref().ok_or(Error::Unconfigured)?;
+                    if let Some(issue) = trust_roots.cache_issue(&binding.credential) {
+                        owner.quarantine_binding(issue, now)?;
+                    } else {
+                        let verified = match owner.verify(&binding.credential) {
+                            Ok(verified)
+                                if verified.subject() == binding.subject
+                                    && verified.device() == binding.device =>
+                            {
+                                verified
+                            }
+                            Ok(_) | Err(Error::InvalidCredential | Error::TooLarge) => {
+                                owner.quarantine_binding(
+                                    vantare_services::license::CacheIssue::InvalidSignature,
+                                    now,
+                                )?;
+                                return Ok(owner);
+                            }
+                            Err(error) => return Err(error),
+                        };
+                        match owner.authority.install(verified, now, Duration::ZERO) {
+                            Ok(()) => {}
+                            Err(Error::Denied | Error::Clock) => {
+                                owner.quarantine_binding(
+                                    vantare_services::license::CacheIssue::AuthorityRejected,
+                                    now,
+                                )?;
+                                return Ok(owner);
+                            }
+                            Err(error) => return Err(error),
+                        }
+                        if owner.authority.persist(&owner.store).is_err() {
+                            // No durable ACK means no rights. Keep the owner available
+                            // for a fresh signed grant once storage recovers.
+                            owner.denied = true;
+                            owner.authority.leave_game();
+                            eprintln!("license-cache-authority-persist-failed");
+                        } else {
+                            owner.binding = Some(binding);
+                        }
+                    }
                 }
-                owner.authority.install(verified, now, Duration::ZERO)?;
-                owner.authority.persist(&owner.store)?;
-                owner.binding = Some(binding);
+                _ => owner.quarantine_binding(
+                    vantare_services::license::CacheIssue::UnsupportedFormat,
+                    now,
+                )?,
+            },
+            Err(Error::NotFound) => owner.authority.leave_game(),
+            Err(Error::Corrupt) => {
+                owner.quarantine_binding(vantare_services::license::CacheIssue::Unreadable, now)?;
             }
-            Err(Error::NotFound) => {}
-            _ => return Err(Error::Storage),
+            Err(error) => return Err(error),
         }
         Ok(owner)
     }
+    fn quarantine_binding(
+        &mut self,
+        issue: vantare_services::license::CacheIssue,
+        now: DateTime<Utc>,
+    ) -> Result<()> {
+        self.verifier.as_ref().ok_or(Error::Unconfigured)?;
+        let at = u64::try_from(now.timestamp_millis()).map_err(|_| Error::Clock)?;
+        self.store.quarantine_dated("binding", at)?;
+        // No cached game grace survives without a verified binding. Preserve the
+        // anti-rollback clock/tombstone; only a newly verified grant can replace it.
+        self.authority.leave_game();
+        eprintln!("{}", issue.diagnostic());
+        Ok(())
+    }
     fn verify(&self, text: &str) -> Result<vantare_services::license::Verified> {
+        let text = text.trim_start();
         let verifier = self.verifier.as_ref().ok_or(Error::Unconfigured)?;
         if text.len() > 32 * 1024 {
             return Err(Error::TooLarge);
@@ -196,7 +254,20 @@ impl Owner {
             self.binding = Some(binding);
             Ok(())
         })();
-        self.denied = result.is_err();
+        // An untrusted renewal is not revocation. Preserve the previous verified
+        // binding on cryptographic/policy rejection; storage failures still fail
+        // closed because a new in-memory grant might lack its durable ACK.
+        match result {
+            Ok(()) => self.denied = false,
+            Err(
+                Error::InvalidCredential
+                | Error::TooLarge
+                | Error::Denied
+                | Error::Clock
+                | Error::Expired,
+            ) => {}
+            Err(_) => self.denied = true,
+        }
         if self.denied {
             self.policy.overlays_advanced = false;
             self.policy.engineer = false;

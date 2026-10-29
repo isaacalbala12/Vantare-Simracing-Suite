@@ -17,6 +17,22 @@ pub struct Client {
     sequence: u64,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ConnectionError {
+    Disconnected(std::io::ErrorKind),
+    Version,
+    Sequence,
+}
+impl ConnectionError {
+    pub fn message(self) -> &'static str {
+        match self {
+            Self::Disconnected(_) => "servicios desconectado",
+            Self::Version => vantare_ipc::INCOMPATIBLE_COMPONENTS,
+            Self::Sequence => "respuesta de servicios inválida",
+        }
+    }
+}
+
 impl Client {
     pub fn start(binary: &Path) -> Result<Self, &'static str> {
         Self::start_in(binary, None)
@@ -144,7 +160,19 @@ impl Client {
     }
 
     pub fn request(&mut self, command: Command) -> Result<Reply, &'static str> {
-        self.sequence = self.sequence.checked_add(1).ok_or("revisión agotada")?;
+        self.request_once(command).map_err(ConnectionError::message)
+    }
+
+    /// Local and side-effect free: used before sending a possibly mutating action.
+    pub fn probe(&mut self) -> Result<(), ConnectionError> {
+        self.request_once(Command::Status).map(|_| ())
+    }
+
+    fn request_once(&mut self, command: Command) -> Result<Reply, ConnectionError> {
+        self.sequence = self
+            .sequence
+            .checked_add(1)
+            .ok_or(ConnectionError::Sequence)?;
         protocol::write(
             &mut self.pipe,
             &Request {
@@ -154,14 +182,14 @@ impl Client {
                 command,
             },
         )
-        .map_err(|_| "servicios desconectado")?;
-        let response: Response =
-            protocol::read(&mut self.pipe).map_err(|_| "servicios desconectado")?;
+        .map_err(|error| ConnectionError::Disconnected(error.kind()))?;
+        let response: Response = protocol::read(&mut self.pipe)
+            .map_err(|error| ConnectionError::Disconnected(error.kind()))?;
         if response.version != protocol::VERSION {
-            return Err(vantare_ipc::INCOMPATIBLE_COMPONENTS);
+            return Err(ConnectionError::Version);
         }
         if response.sequence != self.sequence {
-            return Err("respuesta de servicios inválida");
+            return Err(ConnectionError::Sequence);
         }
         Ok(response.reply)
     }

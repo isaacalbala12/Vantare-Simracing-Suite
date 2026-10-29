@@ -12,9 +12,11 @@ use vantare_ipc::{
     transport::{Event, Listener, Pipe},
 };
 use vantare_services::{
-    process::Client,
+    process::{Client, ConnectionError},
     protocol::{self, Command, Reply, Request, Response, SupervisorHello},
 };
+mod renewal;
+use renewal::Renewal;
 
 type Cancellation = Arc<Mutex<Option<Arc<Event>>>>;
 /// Hasta cuándo hay un inicio de sesión o renovación en curso (#1464).
@@ -39,9 +41,15 @@ fn set_signing_in(slot: &SigningIn, active: bool) {
 pub fn pipe_name(photo: &str) -> String {
     format!("{photo}-hub-services")
 }
+#[derive(Default)]
 struct State {
     client: Option<Client>,
+    renewal: Renewal,
+    notice: Option<Reply>,
+    connected: bool,
+    core_retry_at: Option<Instant>,
 }
+#[derive(Clone)]
 pub struct Options {
     pub binary: PathBuf,
     pub hub: PathBuf,
@@ -67,7 +75,7 @@ impl Host {
         let stop = Arc::new(Event::new()?);
         let cancellation = Arc::new(Mutex::new(None));
         let signing = Arc::new(Mutex::new(None));
-        let state = Arc::new(Mutex::new(State { client: None }));
+        let state = Arc::new(Mutex::new(State::default()));
         let mut listener =
             Listener::new(&pipe_name(photo), Arc::clone(&stop), Duration::from_mins(5))?;
         let first = listener.instance()?;
@@ -76,7 +84,7 @@ impl Host {
             Arc::clone(&stop),
             Arc::clone(&cancellation),
             Arc::clone(&signing),
-            options.core.clone(),
+            options.clone(),
         )?;
         let server = {
             let state = Arc::clone(&state);
@@ -109,6 +117,7 @@ impl Host {
                         }
                         set_signing_in(&signing, false);
                         if let Ok(mut state) = state.lock() {
+                            state.connected = false;
                             finish(&mut state);
                         }
                         clear_cancellation(&cancellation);
@@ -151,6 +160,9 @@ fn serve(
             nonce: nonce.clone(),
         },
     )?;
+    if let Ok(mut state) = state.lock() {
+        state.connected = true;
+    }
     let mut sequence: u64 = 0;
     while !stop.is_set() {
         let request: Request = protocol::read(pipe)?;
@@ -205,6 +217,7 @@ fn access_command(command: &Command) -> bool {
             | Command::AccountPoll
             | Command::AccountRenew
             | Command::LicenseRenew
+            | Command::LicenseRenewAutomatic
     )
 }
 fn handle(
@@ -215,8 +228,63 @@ fn handle(
     signing: &SigningIn,
     stop: &Arc<Event>,
 ) -> Reply {
+    if matches!(command, Command::LicenseRenewAutomatic)
+        && !state.renewal.automatic_action_ready(Instant::now())
+    {
+        let reply = serve_command(
+            state,
+            options,
+            Command::LicenseStatus,
+            cancellation,
+            signing,
+            stop,
+        );
+        // This is the admitted server request, not the concurrent game timer.
+        set_signing_in(signing, false);
+        return reply;
+    }
+    handle_with(state, command, signing, |state, command| {
+        serve_command(state, options, command, cancellation, signing, stop)
+    })
+}
+fn handle_with(
+    state: &mut State,
+    command: Command,
+    signing: &SigningIn,
+    dispatch: impl FnOnce(&mut State, Command) -> Reply,
+) -> Reply {
     let access = access_command(&command);
-    let reply = serve_command(state, options, command, cancellation, signing, stop);
+    let manual_renewal = matches!(command, Command::LicenseRenew);
+    let renewing = matches!(
+        command,
+        Command::LicenseRenew | Command::LicenseRenewAutomatic
+    );
+    if matches!(
+        command,
+        Command::Logout
+            | Command::AccountBegin
+            | Command::AccountEmail {
+                action: protocol::EmailAction::Begin { .. }
+            }
+    ) {
+        state.renewal = Renewal::default();
+        state.notice = None;
+    }
+    if matches!(command, Command::DeviceReset | Command::Purchase { .. }) {
+        state.notice = None;
+        state.renewal.user_recovery();
+    }
+    if renewing {
+        state.renewal.attempted(Instant::now());
+    }
+    if manual_renewal {
+        state.notice = None;
+    }
+    let reply = dispatch(state, command);
+    state.renewal.observe(&reply);
+    if renewing {
+        state.renewal.completed(renewal_outcome(&reply));
+    }
     if access {
         // OAuth esperando callback o email esperando una acción conservan servicios.
         set_signing_in(
@@ -251,13 +319,26 @@ fn serve_command(
     let policy = match control::request_cancelled(&options.core, control::Command::Read, stop) {
         // Heartbeat: entregar también revocación/caducidad explícitas. El Hub
         // distingue esta política definitiva de un fallo temporal del transporte.
-        Ok(policy) if matches!(command, Command::LicenseStatus) => {
+        Ok(policy) if matches!(command, Command::LicenseStatus | Command::Probe) => {
+            if matches!(command, Command::LicenseStatus)
+                && let Some(notice) = state.notice.take()
+            {
+                return notice;
+            }
             return Reply::License {
                 policy,
                 message: "Política vigente del núcleo".into(),
             };
         }
-        Ok(p) if p.current() => p,
+        // Recovering account/license commands must also work after expiry or a
+        // durable logout denial. They still need the authenticated core channel.
+        Ok(p)
+            if p.current()
+                || access_command(&command)
+                || matches!(command, Command::TransferRights) =>
+        {
+            p
+        }
         Err(error)
             if error.get_ref().is_some_and(
                 <dyn std::error::Error + Send + Sync>::is::<control::VersionMismatch>,
@@ -281,6 +362,27 @@ fn serve_command(
         .is_some_and(|client| !client.is_running())
     {
         state.client = None;
+    }
+    if let Some(client) = &mut state.client {
+        match client.probe() {
+            Ok(()) => {}
+            Err(ConnectionError::Disconnected(
+                io::ErrorKind::BrokenPipe
+                | io::ErrorKind::UnexpectedEof
+                | io::ErrorKind::ConnectionAborted
+                | io::ErrorKind::ConnectionReset
+                | io::ErrorKind::NotConnected
+                | io::ErrorKind::TimedOut,
+            )) => {
+                state.client = None;
+                clear_cancellation(cancellation);
+            }
+            Err(error) => {
+                state.client = None;
+                clear_cancellation(cancellation);
+                return failure(error.message());
+            }
+        }
     }
     if state.client.is_none() {
         let mut client =
@@ -306,6 +408,43 @@ fn serve_command(
         clear_cancellation(cancellation);
         failure("servicios desconectados; operación sin reintento automático")
     }
+}
+fn renewal_outcome(reply: &Reply) -> protocol::RenewalOutcome {
+    match reply {
+        Reply::License { policy, .. }
+            if policy.version == control::VERSION
+                && policy.revision > 0
+                && policy.error.is_none()
+                && policy.overlays_advanced =>
+        {
+            protocol::RenewalOutcome::Verified
+        }
+        Reply::LicenseFailure { outcome, .. } => *outcome,
+        Reply::DeviceLimit { .. } => protocol::RenewalOutcome::Definitive,
+        _ => protocol::RenewalOutcome::Transient,
+    }
+}
+fn run_renewal(
+    state: &mut State,
+    policy: &control::Policy,
+    wall: u64,
+    now: Instant,
+    dispatch: impl FnOnce(&mut State, Command) -> Reply,
+) -> Option<Reply> {
+    state.renewal.claim(policy, wall, now).ok()?;
+    let reply = dispatch(state, Command::LicenseRenewAutomatic);
+    let outcome = renewal_outcome(&reply);
+    state.renewal.completed(outcome);
+    eprintln!("license-auto-result={outcome:?}");
+    state.notice = match &reply {
+        Reply::DeviceLimit { .. } | Reply::LicenseFailure { .. } => Some(reply.clone()),
+        Reply::Error { message } if !policy.overlays_advanced => Some(Reply::LicenseFailure {
+            outcome,
+            message: message.clone(),
+        }),
+        _ => None,
+    };
+    Some(reply)
 }
 fn finish(state: &mut State) {
     if let Some(mut client) = state.client.take() {
@@ -369,22 +508,53 @@ fn spawn_timer(
     stop: Arc<Event>,
     cancellation: Cancellation,
     signing: SigningIn,
-    core: CoreLink,
+    options: Options,
 ) -> io::Result<JoinHandle<()>> {
     thread::Builder::new()
         .name("services-game-exit".into())
         .spawn(move || {
             while !stop.wait(Duration::from_millis(250)) {
-                let running = state
-                    .try_lock()
-                    .map_or(true, |state| state.client.is_some());
-                if !running {
+                let now = Instant::now();
+                let check = state.try_lock().is_ok_and(|state| {
+                    (state.client.is_some() || state.renewal.signed_in())
+                        && state.core_retry_at.is_none_or(|until| now >= until)
+                        && state.renewal.should_check(state.connected, now)
+                });
+                if !check {
                     continue;
                 }
-                let live = control::request_cancelled(&core, control::Command::Read, &stop)
-                    .is_ok_and(|p| p.current() && closes_for_game(&p, signing_in(&signing)));
-                if live {
+                if let Ok(mut state) = state.try_lock() {
+                    state.renewal.checked(now);
+                }
+                let policy =
+                    control::request_cancelled(&options.core, control::Command::Read, &stop);
+                let Ok(policy) = policy else {
+                    if let Ok(mut state) = state.try_lock() {
+                        state.core_retry_at = Some(now + Duration::from_secs(30));
+                    }
+                    eprintln!("license-auto-core-unavailable");
+                    continue;
+                };
+                if let Ok(mut state) = state.try_lock() {
+                    state.core_retry_at = None;
+                }
+                if policy.current() && closes_for_game(&policy, signing_in(&signing)) {
                     finish_for_game(&state, &cancellation, &signing);
+                } else if let Ok(mut state) = state.try_lock() {
+                    state.renewal.checked(now);
+                    let Ok(wall) = control::wall_ms() else {
+                        eprintln!("license-auto-wall-unavailable");
+                        continue;
+                    };
+                    let _renewed = run_renewal(&mut state, &policy, wall, now, |state, command| {
+                        // The timer never clears the admission window set by a
+                        // concurrent user request waiting for this state lock.
+                        serve_command(state, &options, command, &cancellation, &signing, &stop)
+                    });
+                    if !state.connected {
+                        finish(&mut state);
+                        clear_cancellation(&cancellation);
+                    }
                 }
             }
         })

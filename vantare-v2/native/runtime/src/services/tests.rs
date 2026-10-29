@@ -8,6 +8,56 @@ use vantare_services::{
     storage::Store,
 };
 
+#[test]
+fn a_closed_idle_helper_is_replaced_before_the_first_user_request() {
+    let Fixture {
+        root,
+        photo,
+        link,
+        core,
+        services,
+    } = Fixture::with_license(false);
+    let mut hub = Session::open(&photo);
+    assert!(matches!(hub.request(Command::Status), Reply::Status { .. }));
+    let previous_pid = {
+        let mut state = services.state.lock().expect("supervisor state");
+        let client = state.client.as_mut().expect("helper");
+        let pid = client.pid();
+        // Explicit peer shutdown reproduces the closed pipe from idle expiry,
+        // without waiting five minutes or relying on process-exit timing.
+        assert!(matches!(
+            client.request(Command::Shutdown),
+            Ok(Reply::Closed)
+        ));
+        pid
+    };
+    assert!(
+        matches!(hub.request(Command::Status), Reply::Status { .. }),
+        "the first action reconnects transparently"
+    );
+    assert_ne!(
+        services
+            .state
+            .lock()
+            .expect("state")
+            .client
+            .as_ref()
+            .expect("replacement")
+            .pid(),
+        previous_pid
+    );
+    assert!(
+        !control::request(&link, control::Command::Read)
+            .expect("core")
+            .overlays_advanced,
+        "reconnection cannot grant rights"
+    );
+    drop(hub);
+    drop(services);
+    drop(core);
+    std::fs::remove_dir_all(root).expect("private fixture cleanup");
+}
+
 #[derive(serde::Serialize)]
 struct Payload<'a> {
     version: u8,
@@ -138,9 +188,29 @@ impl Fixture {
         )
         .expect("store");
         if licensed {
-            store
-                .save("license-candidate", &candidate)
-                .expect("candidate durable");
+            // This process fixture uses an ephemeral core keyring. Seed its
+            // genuinely verified durable binding, rather than asking the helper's
+            // independently compiled production ring to accept a test candidate.
+            // Candidate verification/transfer is covered with aligned rings in
+            // services::app tests; no real production signing key is available.
+            let mut owner = crate::rights::Owner::open(
+                &root.join("core"),
+                Some(&keys),
+                Devices {
+                    legacy: "test-legacy".into(),
+                    installation: "test-installation".into(),
+                },
+                90,
+                crate::rights::wall_now(),
+            )
+            .expect("ephemeral core owner");
+            owner
+                .install(
+                    serde_json::to_string(&candidate.credential).expect("signed candidate"),
+                    crate::rights::wall_now(),
+                    Duration::ZERO,
+                )
+                .expect("real signature and durable binding");
         }
         drop(store);
         let nonce = vantare_services::random_id().expect("bootstrap");
@@ -402,7 +472,7 @@ fn heartbeat_delivers_definitive_revocation_instead_of_a_transient_error() {
 
 #[test]
 fn game_exit_rechecks_access_started_after_the_live_decision() {
-    let state = Mutex::new(State { client: None });
+    let state = Mutex::new(State::default());
     let signing: SigningIn = Arc::new(Mutex::new(None));
     let event = Arc::new(Event::new().expect("event"));
     let cancellation: Cancellation = Arc::new(Mutex::new(Some(Arc::clone(&event))));
@@ -426,7 +496,7 @@ fn game_exit_rechecks_access_started_after_the_live_decision() {
 
 #[test]
 fn game_exit_does_not_cancel_an_access_request_holding_the_supervisor() {
-    let state = Mutex::new(State { client: None });
+    let state = Mutex::new(State::default());
     let signing: SigningIn = Arc::new(Mutex::new(None));
     let event = Arc::new(Event::new().expect("event"));
     let cancellation: Cancellation = Arc::new(Mutex::new(Some(Arc::clone(&event))));
@@ -443,7 +513,7 @@ fn game_exit_does_not_cancel_an_access_request_holding_the_supervisor() {
 
 #[test]
 fn game_exit_still_cancels_unprotected_io_before_waiting_for_the_supervisor() {
-    let state = Arc::new(Mutex::new(State { client: None }));
+    let state = Arc::new(Mutex::new(State::default()));
     let signing: SigningIn = Arc::new(Mutex::new(None));
     let event = Arc::new(Event::new().expect("event"));
     let cancellation: Cancellation = Arc::new(Mutex::new(Some(Arc::clone(&event))));
@@ -457,5 +527,253 @@ fn game_exit_still_cancels_unprotected_io_before_waiting_for_the_supervisor() {
     assert!(
         cancelled,
         "unprotected remote I/O must still be interrupted"
+    );
+}
+
+fn confirmed_session() -> Reply {
+    let now = u64::try_from(crate::rights::wall_now().timestamp()).expect("fixture clock");
+    Reply::Account {
+        signed_in: true,
+        pending: false,
+        expires_at: Some(now.saturating_add(3600)),
+        error: None,
+        profile: None,
+        copy_link: false,
+        message: String::new(),
+    }
+}
+
+#[test]
+fn restored_session_dispatches_exactly_one_automatic_renewal_and_verifies_the_core_policy() {
+    let (candidate, keys) = candidate();
+    let root = std::env::temp_dir().join(format!(
+        "vt-auto-integration-{}",
+        vantare_services::random_id().expect("id")
+    ));
+    let photo = format!(
+        "vt-auto-integration-{}",
+        vantare_services::random_id().expect("pipe")
+    );
+    let image = std::env::current_exe().expect("image");
+    let nonce = vantare_services::random_id().expect("nonce");
+    let pid = std::process::id();
+    let core = host::Host::start(
+        &photo,
+        host::Options {
+            root: root.clone(),
+            keys: Some(keys),
+            devices: Devices {
+                legacy: "test-legacy".into(),
+                installation: "test-installation".into(),
+            },
+            epoch: 1,
+            nonce: Some(nonce.clone()),
+        },
+        move |peer, _| peer.pid == pid,
+    )
+    .expect("real core");
+    let link = CoreLink {
+        pipe: control::pipe_name(&photo),
+        image,
+        nonce,
+    };
+    let mut state = State::default();
+    let signing: SigningIn = Arc::new(Mutex::new(None));
+    let mut account_requests = 0;
+    let restored = handle_with(&mut state, Command::AccountPoll, &signing, |_, command| {
+        assert!(matches!(command, Command::AccountPoll));
+        account_requests += 1;
+        confirmed_session()
+    });
+    assert_eq!(account_requests, 1);
+    assert!(
+        matches!(
+            restored,
+            Reply::Account {
+                signed_in: true,
+                error: None,
+                ..
+            }
+        ),
+        "restored account is acknowledged before any license/network operation"
+    );
+
+    let before = control::request(&link, control::Command::Read).expect("missing binding");
+    assert!(!before.overlays_advanced);
+    let now = Instant::now();
+    let mut sent = 0;
+    let reply = run_renewal(
+        &mut state,
+        &before,
+        before.checked_at_ms,
+        now,
+        |_, command| {
+            assert!(matches!(command, Command::LicenseRenewAutomatic));
+            sent += 1;
+            let policy = control::request(
+                &link,
+                control::Command::Install {
+                    credential: serde_json::to_string(&candidate.credential)
+                        .expect("signed fixture"),
+                },
+            )
+            .expect("real signature verification and durable ACK");
+            Reply::License {
+                policy,
+                message: String::new(),
+            }
+        },
+    )
+    .expect("automatic dispatch after session restore");
+    assert!(matches!(reply,Reply::License {policy,..} if policy.overlays_advanced));
+    for elapsed in [59, 60, 120] {
+        let policy = control::request(&link, control::Command::Read).expect("verified core policy");
+        assert!(policy.overlays_advanced);
+        assert!(
+            run_renewal(
+                &mut state,
+                &policy,
+                policy.checked_at_ms,
+                now + Duration::from_secs(elapsed),
+                |_, _| {
+                    sent += 1;
+                    panic!("a valid unexpired license must not be issued twice");
+                }
+            )
+            .is_none()
+        );
+    }
+    assert_eq!(sent, 1);
+    drop(core);
+    std::fs::remove_dir_all(root).expect("private fixture cleanup");
+}
+
+#[test]
+fn automatic_device_limit_remains_actionable_without_consuming_it_in_a_probe() {
+    let Fixture {
+        root,
+        photo,
+        link,
+        core,
+        services,
+    } = Fixture::with_license(false);
+    let mut hub = Session::open(&photo);
+    let policy = control::request(&link, control::Command::Read).expect("core");
+    {
+        let mut state = services.state.lock().expect("state");
+        state.renewal.observe(&confirmed_session());
+        assert!(matches!(
+            run_renewal(
+                &mut state,
+                &policy,
+                policy.checked_at_ms,
+                Instant::now(),
+                |_, _| {
+                    Reply::DeviceLimit {
+                        message: "fixture limit".into(),
+                    }
+                }
+            ),
+            Some(Reply::DeviceLimit { .. })
+        ));
+    }
+    assert!(matches!(hub.request(Command::Probe), Reply::License { .. }));
+    assert!(matches!(
+        hub.request(Command::LicenseStatus),
+        Reply::DeviceLimit { .. }
+    ));
+    assert!(matches!(
+        hub.request(Command::LicenseStatus),
+        Reply::License { .. }
+    ));
+    assert!(
+        matches!(
+            hub.request(Command::LicenseRenewAutomatic),
+            Reply::License { .. }
+        ),
+        "a definitive block returns the cached policy without another issuance"
+    );
+    assert!(services.state.lock().expect("state").client.is_none());
+    {
+        let mut state = services.state.lock().expect("state");
+        state.renewal.user_recovery();
+        state.renewal.attempted(Instant::now());
+    }
+    assert!(
+        matches!(
+            hub.request(Command::LicenseRenewAutomatic),
+            Reply::License { .. }
+        ),
+        "the hard floor also covers an automatic request from the Hub"
+    );
+    assert!(services.state.lock().expect("state").client.is_none());
+    services.state.lock().expect("state").notice = Some(Reply::DeviceLimit {
+        message: "old session".into(),
+    });
+    assert!(matches!(
+        hub.request(Command::Logout),
+        Reply::Account {
+            signed_in: false,
+            ..
+        }
+    ));
+    assert!(
+        services.state.lock().expect("state").notice.is_none(),
+        "logout discards notices from the old session"
+    );
+    drop(hub);
+    drop(services);
+    drop(core);
+    std::fs::remove_dir_all(root).expect("private cleanup");
+}
+
+#[test]
+fn purchase_restarts_automatic_confirmation_after_a_definitive_rejection() {
+    let mut state = State::default();
+    state.renewal.observe(&confirmed_session());
+    let now = Instant::now();
+    state.renewal.attempted(now);
+    state
+        .renewal
+        .completed(protocol::RenewalOutcome::Definitive);
+    let policy = control::Policy {
+        version: control::VERSION,
+        revision: 1,
+        checked_at_ms: 1000,
+        ..control::Policy::default()
+    };
+    assert!(
+        state
+            .renewal
+            .claim(&policy, 1000, now + Duration::from_mins(1))
+            .is_err()
+    );
+    let signing: SigningIn = Arc::new(Mutex::new(None));
+    let reply = handle_with(
+        &mut state,
+        Command::Purchase {
+            product: protocol::BillingProduct::ProMonthly,
+        },
+        &signing,
+        |_, command| {
+            assert!(matches!(command, Command::Purchase { .. }));
+            Reply::Checkout {
+                url: "https://billing.invalid/fixture".into(),
+            }
+        },
+    );
+    assert!(matches!(reply, Reply::Checkout { .. }));
+    assert!(
+        !state
+            .renewal
+            .automatic_action_ready(now + Duration::from_secs(59)),
+        "purchase preserves the hard request floor"
+    );
+    assert!(
+        state
+            .renewal
+            .claim(&policy, 1000, now + Duration::from_mins(1))
+            .is_ok(),
+        "explicit purchase reopens automatic confirmation"
     );
 }

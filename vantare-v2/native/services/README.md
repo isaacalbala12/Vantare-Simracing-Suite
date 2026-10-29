@@ -1,3 +1,30 @@
+## ISA-1793 — Segunda revision
+
+Al abrir, un binding firmado rechazado por reloj/lapida va a cuarentena sin
+reiniciar la autoridad persistida. Si falla persistir, el nucleo sigue vivo y
+denegado, disponible para una nueva concesion firmada. El recorte de archivos
+ya apartados es best-effort; puede superar tres copias si una esta bloqueada.
+Comprar reabre la confirmacion automatica, conservando el suelo entre intentos.
+El Hub consulta avisos cada 5 s y mantiene residente el helper mientras tiene
+sesion; la mejora de residencia y avisos se sigue en #1799.
+
+## ISA-1793 — Renovación automática no destructiva y caché recuperable
+
+Servicios v15 distingue `LicenseRenewAutomatic`, `Probe` y `LicenseFailure`
+con resultado tipado. Hub, supervisor y helper deben recompilarse juntos.
+En automático no se invalida ni al refrescar OAuth ni ante 401/403/409 o una
+firma no verificable. Una clave nueva que la app no conoce pide actualizarla.
+La acción explícita y DeviceReset conservan su revocación durable.
+
+Binding y candidate se verifican antes de conceder derechos. La caché de clave
+retirada, formato antiguo, firma mala conocida o DPAPI corrupto se aparta con
+fecha y bytes intactos; se intenta conservar como maximo tres copias por nombre, salvo bloqueos de limpieza. E/S real
+se propaga y conserva el original. Los diagnósticos cerrados son
+`license-cache-unknown-key`, `license-cache-unsupported-format`,
+`license-cache-invalid-signature` y `license-cache-unreadable`.
+El candidate inválido no llega a Install ni deniega un binding vigente.
+Las sondas locales no añaden entradas redundantes al buffer de triaje.
+
 ## #1761 · Navegador alternativo y copia explícita
 
 Services v14 permite AccountCopyLink y LoginLink redactado en Debug. Si falla

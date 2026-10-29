@@ -1,3 +1,13 @@
+## ISA-1793 · Caché de licencia retirada
+
+Una caché `license-candidate` con clave desconocida o formato no compatible se
+aparta con fecha y nombre único, preservando sus bytes. La transferencia inicial
+puede confirmar una política sin derechos y continuar hacia el login/renovación;
+no intenta instalar la caché incompatible. El diagnóstico es únicamente
+`license-cache-unknown-key` o `license-cache-unsupported-format`. Nunca imprime
+la licencia, la firma, el usuario ni tokens. Una licencia nueva debe pasar la
+verificación criptográfica existente antes de guardarse o conceder derechos.
+
 ## #1761 · Navegador alternativo y copia explícita
 
 Services v14 permite AccountCopyLink y LoginLink redactado en Debug. Si falla

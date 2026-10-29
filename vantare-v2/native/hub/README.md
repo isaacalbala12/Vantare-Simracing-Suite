@@ -1,3 +1,10 @@
+## ISA-1793 · Acceso sin comprobación manual
+
+El Hub confirma la sesión y consume la política fresca del núcleo. El supervisor
+coordina la renovación; el Hub no dispara una segunda petición de licencia tras
+el login. La primera acción tras un canal inactivo reconecta mediante una sonda
+local, manteniendo la validación de imagen, protocolo, nonce y secuencia.
+
 ## #1631 · Formularios de email
 
 R2 añade recuperación del formulario tras caducidad/reinicio y cola llena,

@@ -221,11 +221,22 @@ fn handle(
     stop: &Arc<Event>,
 ) -> Reply {
     let access = access_command(&command);
-    if matches!(command, Command::Logout | Command::AccountBegin | Command::AccountEmail { action: protocol::EmailAction::Begin { .. } }) {
+    let manual_renewal = matches!(command, Command::LicenseRenew);
+    if matches!(
+        command,
+        Command::Logout
+            | Command::AccountBegin
+            | Command::AccountEmail {
+                action: protocol::EmailAction::Begin { .. }
+            }
+    ) {
         state.renewal = Renewal::default();
     }
     let reply = serve_command(state, options, command, cancellation, signing, stop);
     state.renewal.observe(&reply);
+    if manual_renewal {
+        state.renewal.completed(&reply, Instant::now());
+    }
     let mut reply = reply;
     if matches!(
         &reply,
@@ -381,6 +392,7 @@ fn renew_if_due(
         signing,
         stop,
     );
+    state.renewal.completed(&reply, Instant::now());
     set_signing_in(signing, false);
     Some(reply)
 }

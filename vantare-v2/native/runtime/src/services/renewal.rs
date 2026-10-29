@@ -10,6 +10,7 @@ const AHEAD_MS: u64 = 60_000;
 pub(super) struct Renewal {
     signed_in: bool,
     attempted_at: Option<Instant>,
+    blocked: bool,
 }
 impl Renewal {
     pub(super) fn signed_in(&self) -> bool {
@@ -27,8 +28,16 @@ impl Renewal {
             self.signed_in = *signed_in && !pending && expires_at.is_some() && error.is_none();
             if !self.signed_in {
                 self.attempted_at = None;
+                self.blocked = false;
             }
         }
+    }
+
+    pub(super) fn completed(&mut self, reply: &Reply, now: Instant) {
+        self.attempted_at = Some(now);
+        self.blocked = !matches!(reply, Reply::License { policy, .. }
+            if policy.version == control::VERSION && policy.revision > 0
+                && policy.error.is_none() && policy.overlays_advanced);
     }
 
     pub(super) fn claim(&mut self, policy: &Policy, wall_ms: u64, now: Instant) -> bool {
@@ -46,6 +55,7 @@ impl Renewal {
                 .valid_until_ms
                 .is_some_and(|end| end <= wall_ms.saturating_add(AHEAD_MS));
         if !self.signed_in
+            || self.blocked
             || !fresh
             || !due
             || (policy.live && policy.overlays_advanced)
@@ -138,17 +148,91 @@ mod tests {
     #[test]
     fn pending_failed_or_unconfirmed_account_never_starts_license_http() {
         let now = Instant::now();
-        let policy = Policy { version: control::VERSION, revision: 1, checked_at_ms: 1000, ..Policy::default() };
+        let policy = Policy {
+            version: control::VERSION,
+            revision: 1,
+            checked_at_ms: 1000,
+            ..Policy::default()
+        };
         for reply in [
-            Reply::Account { signed_in: true, pending: true, copy_link: false, expires_at: Some(900), error: None, profile: None, message: String::new() },
-            Reply::Account { signed_in: true, pending: false, copy_link: false, expires_at: None, error: None, profile: None, message: String::new() },
-            Reply::Account { signed_in: true, pending: false, copy_link: false, expires_at: Some(900), error: Some("fixture denied".into()), profile: None, message: String::new() },
+            Reply::Account {
+                signed_in: true,
+                pending: true,
+                copy_link: false,
+                expires_at: Some(900),
+                error: None,
+                profile: None,
+                message: String::new(),
+            },
+            Reply::Account {
+                signed_in: true,
+                pending: false,
+                copy_link: false,
+                expires_at: None,
+                error: None,
+                profile: None,
+                message: String::new(),
+            },
+            Reply::Account {
+                signed_in: true,
+                pending: false,
+                copy_link: false,
+                expires_at: Some(900),
+                error: Some("fixture denied".into()),
+                profile: None,
+                message: String::new(),
+            },
         ] {
             let mut renewal = Renewal::default();
             renewal.observe(&reply);
             assert!(!renewal.claim(&policy, 1000, now));
             renewal.observe(&session(true));
-            assert!(renewal.claim(&policy, 1000, now), "confirmed login triggers the supervisor without a UI renewal command");
+            assert!(
+                renewal.claim(&policy, 1000, now),
+                "confirmed login triggers the supervisor without a UI renewal command"
+            );
         }
+    }
+
+    #[test]
+    fn failed_automatic_renewal_stops_until_an_explicit_retry_or_new_login() {
+        let now = Instant::now();
+        let policy = Policy {
+            version: control::VERSION,
+            revision: 1,
+            checked_at_ms: 1000,
+            ..Policy::default()
+        };
+        let mut renewal = Renewal::default();
+        renewal.observe(&session(true));
+        assert!(renewal.claim(&policy, 1000, now));
+        renewal.completed(
+            &Reply::Error {
+                message: "offline fixture".into(),
+            },
+            now,
+        );
+        assert!(
+            !renewal.claim(&policy, 1000, now + RETRY * 10),
+            "an error never starts a background HTTP loop"
+        );
+        renewal.observe(&session(false));
+        renewal.observe(&session(true));
+        assert!(renewal.claim(&policy, 1000, now + RETRY * 10));
+        let verified = Policy {
+            overlays_advanced: true,
+            ..policy.clone()
+        };
+        renewal.completed(
+            &Reply::License {
+                policy: verified.clone(),
+                message: String::new(),
+            },
+            now + RETRY * 10,
+        );
+        assert!(
+            !renewal.claim(&verified, 1000, now + RETRY * 11),
+            "successful explicit renewal must not be duplicated after AccountPoll"
+        );
     }
 }

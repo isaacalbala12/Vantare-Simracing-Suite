@@ -90,12 +90,33 @@ impl App {
     fn transfer_rights(&mut self) -> Result<Reply> {
         let candidate = self
             .candidate_store()?
-            .load::<crate::license_remote::Candidate>("license-candidate");
+            .load::<serde_json::Value>("license-candidate");
         let policy = match candidate {
-            Ok(candidate) => self.core_command(vantare_ipc::control::Command::Install {
-                credential: serde_json::to_string(&candidate.credential)
-                    .map_err(|_| Error::InvalidCredential)?,
-            })?,
+            Ok(document) => {
+                match serde_json::from_value::<crate::license_remote::Candidate>(document) {
+                    Ok(candidate) => {
+                        let text = serde_json::to_string(&candidate.credential)
+                            .map_err(|_| Error::InvalidCredential)?;
+                        let issue = self
+                            .config
+                            .license_keys
+                            .map(crate::license::Verifier::public_keys)
+                            .transpose()?
+                            .and_then(|verifier| verifier.cache_issue(&text));
+                        if let Some(issue) = issue {
+                            self.quarantine_candidate(issue)?
+                        } else {
+                            self.core_command(vantare_ipc::control::Command::Install {
+                                credential: text,
+                            })?
+                        }
+                    }
+                    Err(_) if self.config.license_keys.is_some() => {
+                        self.quarantine_candidate(crate::license::CacheIssue::UnsupportedFormat)?
+                    }
+                    Err(_) => return Err(Error::Storage),
+                }
+            }
             Err(Error::NotFound) => self.core_command(vantare_ipc::control::Command::Read)?,
             Err(error) => return Err(error),
         };
@@ -103,6 +124,16 @@ impl App {
             policy,
             message: "Derechos verificados y guardados por el núcleo".into(),
         })
+    }
+
+    fn quarantine_candidate(
+        &mut self,
+        issue: crate::license::CacheIssue,
+    ) -> Result<vantare_ipc::control::Policy> {
+        self.candidate_store()?
+            .quarantine_dated("license-candidate", now()?.saturating_mul(1000))?;
+        eprintln!("{}", issue.diagnostic());
+        self.core_command(vantare_ipc::control::Command::Read)
     }
 
     fn revoke_local(&mut self) -> Result<()> {
@@ -1618,6 +1649,8 @@ mod tests {
 
     pub(super) enum CoreStep {
         #[cfg(windows)]
+        Read,
+        #[cfg(windows)]
         Install,
         Invalidate,
         #[cfg(windows)]
@@ -1655,7 +1688,16 @@ mod tests {
                 pipe.accept().expect("core connection");
                 let request: control::Request = control::read(&mut pipe).expect("core request");
                 assert_eq!(request.nonce, nonce);
-                if matches!(step, CoreStep::Invalidate | CoreStep::RejectInvalidate) {
+                #[cfg(windows)]
+                let read_only = matches!(step, CoreStep::Read);
+                #[cfg(not(windows))]
+                let read_only = false;
+                if read_only {
+                    assert!(
+                        matches!(request.command, control::Command::Read),
+                        "untrusted cached license never reaches Install"
+                    );
+                } else if matches!(step, CoreStep::Invalidate | CoreStep::RejectInvalidate) {
                     assert!(matches!(request.command, control::Command::Invalidate));
                 } else {
                     let control::Command::Install { credential } = request.command else {
@@ -1693,6 +1735,97 @@ mod tests {
             }
         });
         (link, core)
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn unsupported_or_retired_candidate_is_archived_before_the_initial_core_ack() {
+        use sha2::{Digest, Sha256};
+        for old_format in [false, true] {
+            let device = crate::license::installation::legacy_fingerprint().expect("fingerprint");
+            let (credential, old_keys) = crate::license_remote::tests::signed_fixture(&device);
+            // The cached signature is genuine under the old ring. The current
+            // ring deliberately retires its id, without introducing real secrets.
+            crate::license::Verifier::public_keys(old_keys)
+                .expect("old ring")
+                .v1(&credential, &credential.claims.subject, &device)
+                .expect("old signature");
+            let (_, encoded) = old_keys.split_once(':').expect("key");
+            let keys: &'static str =
+                Box::leak(format!("current-fixture:{encoded}").into_boxed_str());
+            let name = if old_format {
+                "app-old-candidate"
+            } else {
+                "app-retired-candidate"
+            };
+            let (root, store) = crate::test_store(name);
+            drop(store);
+            let config = BuildConfig {
+                supabase: None,
+                anon_key: None,
+                license_keys: Some(keys),
+                channel: Some("test"),
+                native_oauth: None,
+            };
+            let mut app = App::new(config, root.clone());
+            if old_format {
+                app.candidate_store()
+                    .expect("store")
+                    .save("license-candidate", &serde_json::json!({"legacy":true}))
+                    .expect("old fixture");
+            } else {
+                app.candidate_store()
+                    .expect("store")
+                    .save(
+                        "license-candidate",
+                        &crate::license_remote::Candidate {
+                            account_id: credential.claims.subject.clone(),
+                            device: device.clone(),
+                            credential,
+                        },
+                    )
+                    .expect("cache fixture");
+            }
+            let context = crate::license_remote::candidate_context(None, Some("test"));
+            let namespace = root.join(format!("{:x}", Sha256::digest(context.as_bytes())));
+            let original = namespace.join("license-candidate.dpapi");
+            let before = std::fs::read(&original).expect("protected bytes");
+            let (link, core) = core_fixture(device, keys, vec![CoreStep::Read, CoreStep::Read]);
+            app.attach_core(link);
+            for _ in 0..2 {
+                assert!(
+                    matches!(app.handle(Command::TransferRights), Reply::License { policy, .. } if !policy.overlays_advanced),
+                    "initial ACK remains available for recovery, without granting rights"
+                );
+            }
+            assert!(!original.exists());
+            let archived: Vec<_> = std::fs::read_dir(&namespace)
+                .expect("archive")
+                .filter_map(std::result::Result::ok)
+                .filter(|entry| {
+                    entry
+                        .file_name()
+                        .to_string_lossy()
+                        .starts_with("license-candidate-")
+                        && entry
+                            .path()
+                            .extension()
+                            .is_some_and(|extension| extension == "corrupto")
+                })
+                .collect();
+            assert_eq!(
+                archived.len(),
+                1,
+                "one dated archive; repeated transfer never overwrites it"
+            );
+            assert_eq!(
+                std::fs::read(archived[0].path()).expect("preserved bytes"),
+                before
+            );
+            core.join().expect("read-only core fixture");
+            drop(app);
+            crate::cleanup_store(&root, name, &[]);
+        }
     }
 
     #[cfg(windows)]

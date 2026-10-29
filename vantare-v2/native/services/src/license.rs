@@ -136,7 +136,55 @@ impl Verified {
 pub struct Verifier {
     keys: BTreeMap<String, VerifyingKey>,
 }
+/// Cache recovery reasons contain no credential or remote text.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CacheIssue {
+    UnknownKey,
+    UnsupportedFormat,
+}
+impl CacheIssue {
+    pub fn diagnostic(self) -> &'static str {
+        match self {
+            Self::UnknownKey => "license-cache-unknown-key",
+            Self::UnsupportedFormat => "license-cache-unsupported-format",
+        }
+    }
+}
+
 impl Verifier {
+    /// Inspect only format/key availability for a cache migration. This never
+    /// verifies or grants rights: supported entries still require full verification.
+    pub fn cache_issue(&self, text: &str) -> Option<CacheIssue> {
+        if text.len() > 32 * 1024 {
+            return Some(CacheIssue::UnsupportedFormat);
+        }
+        let key_id = if text.starts_with('{') {
+            let Ok(credential) = serde_json::from_str::<CredentialV1>(text) else {
+                return Some(CacheIssue::UnsupportedFormat);
+            };
+            if credential.version != 1 || credential.algorithm != "Ed25519" {
+                return Some(CacheIssue::UnsupportedFormat);
+            }
+            credential.key_id
+        } else {
+            let parts: Vec<_> = text.split('.').collect();
+            if parts.len() != 3 {
+                return Some(CacheIssue::UnsupportedFormat);
+            }
+            let header = URL_SAFE_NO_PAD
+                .decode(parts[0])
+                .ok()
+                .and_then(|bytes| serde_json::from_slice::<Header>(&bytes).ok());
+            let Some(header) = header else {
+                return Some(CacheIssue::UnsupportedFormat);
+            };
+            if header.alg != "Ed25519" || header.typ != "vantare-license+jwt" {
+                return Some(CacheIssue::UnsupportedFormat);
+            }
+            header.kid
+        };
+        (!self.keys.contains_key(&key_id)).then_some(CacheIssue::UnknownKey)
+    }
     /// El subject se extrae para verificarlo, pero solo adquiere autoridad
     /// después de verificar la firma y todos los claims del envelope.
     pub fn proof(&self, text: &str, legacy_device: &str, installation: &str) -> Result<Verified> {

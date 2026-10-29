@@ -198,6 +198,20 @@ impl Store {
         fs::rename(path, aside).map_err(|_| Error::Storage)
     }
 
+    /// Preserve an incompatible cache beside the original with an injected date.
+    /// The old bytes are never overwritten; failure to move blocks recovery.
+    pub fn quarantine_dated(&self, name: &str, at_millis: u64) -> Result<()> {
+        let path = self.path(name)?;
+        let aside = self.root.join(format!(
+            "{name}-{at_millis}-{}.corrupto",
+            crate::random_id()?
+        ));
+        if aside.try_exists().map_err(|_| Error::Storage)? {
+            return Err(Error::Storage);
+        }
+        fs::rename(path, aside).map_err(|_| Error::Storage)
+    }
+
     pub fn save(&self, name: &str, value: &impl Serialize) -> Result<()> {
         let path = self.path(name)?;
         let bytes = Zeroizing::new(serde_json::to_vec(value).map_err(|_| Error::Storage)?);

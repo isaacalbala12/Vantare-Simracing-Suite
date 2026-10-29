@@ -1,3 +1,22 @@
+## ISA-1793 · Recuperar el acceso al arrancar
+
+El supervisor renueva la licencia al confirmar una sesión nueva o restaurada,
+sin una acción del Hub. Usa la política autenticada del núcleo y sus fechas;
+fuera de pista vuelve a comprobar antes del vencimiento. Solo hay una operación
+en vuelo y un fallo detiene la renovación automática hasta otro login o un
+reintento explícito. Los relojes de decisión se inyectan en las regresiones.
+
+Un binding de formato antiguo o con clave retirada se conserva en una cuarentena
+fechada junto al original. El núcleo sigue abierto sin derechos y solo una firma
+nueva válida puede crear el binding activo. Se conservan el reloj y las marcas
+antirollback; no se hereda margen de carrera sin binding verificado. Una firma
+incorrecta bajo una clave conocida sigue fallando en cerrado.
+
+Los canales inactivos se comprueban con una petición local idempotente antes de
+despachar una acción. Se reconecta una sola vez tras un corte del transporte;
+no se repite una compra o envío cuya respuesta se haya perdido. El límite de
+inactividad conserva la liberación de recursos sin un keepalive HTTP.
+
 # runtime — adquisición y núcleo
 
 Adaptadores LMU/ACC privados, validación y derivaciones centrales; publicación neutral y supervisor.

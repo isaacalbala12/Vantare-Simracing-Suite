@@ -141,20 +141,47 @@ impl Owner {
             },
             denied: false,
         };
-        match owner.store.load::<Binding>("binding") {
-            Ok(binding) if binding.version == 1 => {
-                let verified = owner.verify(&binding.credential)?;
-                if verified.subject() != binding.subject || verified.device() != binding.device {
-                    return Err(Error::InvalidCredential);
+        match owner.store.load::<serde_json::Value>("binding") {
+            Ok(document) => match serde_json::from_value::<Binding>(document) {
+                Ok(binding) if binding.version == 1 => {
+                    let trust_roots = owner.verifier.as_ref().ok_or(Error::Unconfigured)?;
+                    if let Some(issue) = trust_roots.cache_issue(&binding.credential) {
+                        owner.quarantine_binding(issue, now)?;
+                    } else {
+                        let verified = owner.verify(&binding.credential)?;
+                        if verified.subject() != binding.subject
+                            || verified.device() != binding.device
+                        {
+                            return Err(Error::InvalidCredential);
+                        }
+                        owner.authority.install(verified, now, Duration::ZERO)?;
+                        owner.authority.persist(&owner.store)?;
+                        owner.binding = Some(binding);
+                    }
                 }
-                owner.authority.install(verified, now, Duration::ZERO)?;
-                owner.authority.persist(&owner.store)?;
-                owner.binding = Some(binding);
-            }
-            Err(Error::NotFound) => {}
-            _ => return Err(Error::Storage),
+                _ => owner.quarantine_binding(
+                    vantare_services::license::CacheIssue::UnsupportedFormat,
+                    now,
+                )?,
+            },
+            Err(Error::NotFound) => owner.authority.leave_game(),
+            Err(error) => return Err(error),
         }
         Ok(owner)
+    }
+    fn quarantine_binding(
+        &mut self,
+        issue: vantare_services::license::CacheIssue,
+        now: DateTime<Utc>,
+    ) -> Result<()> {
+        self.verifier.as_ref().ok_or(Error::Unconfigured)?;
+        let at = u64::try_from(now.timestamp_millis()).map_err(|_| Error::Clock)?;
+        self.store.quarantine_dated("binding", at)?;
+        // No cached game grace survives without a verified binding. Preserve the
+        // anti-rollback clock/tombstone; only a newly verified grant can replace it.
+        self.authority.leave_game();
+        eprintln!("{}", issue.diagnostic());
+        Ok(())
     }
     fn verify(&self, text: &str) -> Result<vantare_services::license::Verified> {
         let verifier = self.verifier.as_ref().ok_or(Error::Unconfigured)?;

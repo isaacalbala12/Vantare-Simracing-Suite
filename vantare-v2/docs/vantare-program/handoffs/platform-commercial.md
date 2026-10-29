@@ -1,3 +1,36 @@
+## VANTA-105 / #1793 · Renovación y caché histórica (29-oct, en curso)
+
+Segundo arreglo autorizado por el orquestador, separado del instalador #1794.
+Base origin/nightly91765bcd5, rama vantareapp/isa-1793-licencia-arranque.
+Trabajo trasladado por orden de Isaac a C:/VantareWork/isa-1793/license en el
+PC de juegos. Rust/Cargo1.95, MSVC2022 x64, Nextest, CMake, NSIS, sccache y
+DuckDB1.5.5 ya estaban instalados; no se instaló ninguna herramienta. Se detuvo
+Nextest del servidor mientras compilaba dependencias y no se lanzaron más builds.
+Primer fallo de sccache conservado; gates del PC con VANTARE_SCCACHE=0,
+target propio y jobs2. El alias stable instalado tiene exactamente Rust1.95.
+
+El supervisor pide una licencia al confirmar/restaurar sesión y antes de un
+deadline, con un solo vuelo. Un error detiene la renovación automática hasta
+otro login o reintento explícito. El Hub consume la política del núcleo sin
+duplicar HTTP. Una sonda local idempotente recupera canales inactivos antes de
+despachar acciones; no se reenvían compras/envíos con resultado incierto.
+
+Binding y candidate de clave retirada/formato antiguo se apartan con fecha,
+sin perder bytes y sin conceder derechos. El núcleo conserva reloj/tombstones
+y no hereda margen de carrera sin un binding verificado. Solo una firma nueva
+válida escribe el binding activo. Una firma inválida con clave conocida sigue
+fallando en cerrado. No se alteró manualmente la caché del PC. Diagnósticos
+cerrados sin contenido: license-cache-unknown-key/unsupported-format.
+
+Clippy de services/runtime/Hub all-targets/-D warnings PASS en el PC; fmt PASS.
+Regresiones de clave retirada auténticamente firmada, formato antiguo, candidate,
+reconexión por pipes reales y relojes inyectados. RED/GREEN y Nextest, lifecycle,
+telemetría y prueba física finales en curso; no se afirma su aceptación.
+Evidencia C:/VantareWork/isa-1793/evidence y copia de informes en servidor.
+Siguiente: PR draft/revisión profunda, candidato privado conjunto con #1794,
+entrega Desktop de Isaac con SHA256 y LEEME, instalar y verificar sin pulsar nada.
+Sin release, promoción, merge de canal ni cambios administrativos de cuenta.
+
 ## VANTA-105 / #1793 · RC8 no instalada por generación anterior (29-oct, en curso)
 
 Revisión profunda de #1794 aplicada: activa974 admitida con el inventario

@@ -62,13 +62,21 @@ fn signed_v1_device(
     capabilities: Vec<Capability>,
     fingerprint: String,
 ) -> (String, String) {
+    signed_v1_named(issued, capabilities, fingerprint, "test")
+}
+fn signed_v1_named(
+    issued: i64,
+    capabilities: Vec<Capability>,
+    fingerprint: String,
+    key_id: &str,
+) -> (String, String) {
     let mut seed = [0; 32];
     getrandom::fill(&mut seed).expect("entropía local");
     let key = SigningKey::from_bytes(&seed);
     let mut credential = CredentialV1 {
         version: 1,
         algorithm: "Ed25519".into(),
-        key_id: "test".into(),
+        key_id: key_id.into(),
         claims: ClaimsV1 {
             issuer: "vantare-license".into(),
             subject: "550e8400-e29b-41d4-a716-446655440000".into(),
@@ -80,14 +88,14 @@ fn signed_v1_device(
     };
     // Fixture ASCII en el orden del contrato V1; no expone el firmador productivo.
     let payload = format!(
-        r#"{{"version":1,"algorithm":"Ed25519","key_id":"test","claims":{}}}"#,
+        r#"{{"version":1,"algorithm":"Ed25519","key_id":"{key_id}","claims":{}}}"#,
         serde_json::to_string(&credential.claims).expect("claims")
     );
     credential.signature = URL_SAFE_NO_PAD.encode(key.sign(payload.as_bytes()).to_bytes());
     (
         serde_json::to_string(&credential).expect("credencial V1"),
         format!(
-            "test:{}",
+            "{key_id}:{}",
             URL_SAFE_NO_PAD.encode(key.verifying_key().as_bytes())
         ),
     )
@@ -1124,4 +1132,122 @@ fn unreadable_installation_preserves_only_a_supported_legacy_device() {
     assert_eq!(policy.overlays_advanced, legacy_supported);
     drop(owner);
     clean(&root);
+}
+
+#[test]
+fn cached_license_with_a_retired_key_is_preserved_and_recovers_only_after_a_fresh_signature() {
+    let root = test_root();
+    let (old, old_keys) = signed_v1_named(100, Vec::new(), devices().legacy, "retired-fixture");
+    let mut owner =
+        Owner::open(&root, Some(&old_keys), devices(), 1, wall(110)).expect("old owner");
+    owner
+        .install(old.clone(), wall(110), Duration::ZERO)
+        .expect("cache is genuinely signed by the old keyring");
+    drop(owner);
+    let namespace = std::fs::read_dir(&root)
+        .expect("namespace")
+        .next()
+        .expect("entry")
+        .expect("entry")
+        .path();
+    let binding_name = if cfg!(windows) {
+        "binding.dpapi"
+    } else {
+        "binding.json"
+    };
+    let before = std::fs::read(namespace.join(binding_name)).expect("protected old bytes");
+    let (fresh, keys) = signed_v1_named(112, Vec::new(), devices().legacy, "current-fixture");
+    let mut owner = Owner::open(&root, Some(&keys), devices(), 2, wall(111))
+        .expect("retired cache cannot block the owner");
+    assert!(owner.binding.is_none());
+    assert!(!namespace.join(binding_name).exists());
+    let archived: Vec<_> = std::fs::read_dir(&namespace)
+        .expect("archive")
+        .filter_map(std::result::Result::ok)
+        .filter(|entry| {
+            entry
+                .file_name()
+                .to_string_lossy()
+                .starts_with("binding-111000-")
+        })
+        .collect();
+    assert_eq!(archived.len(), 1);
+    assert_eq!(
+        std::fs::read(archived[0].path()).expect("preserved"),
+        before
+    );
+    assert!(
+        !owner
+            .advance(&photo(false), wall(111), Duration::ZERO)
+            .expect("denied policy")
+            .overlays_advanced
+    );
+    assert!(matches!(
+        owner.install(old, wall(112), Duration::from_secs(1)),
+        Err(Error::InvalidCredential)
+    ));
+    assert!(
+        !namespace.join(binding_name).exists(),
+        "unknown-key input cannot replace the cached file"
+    );
+    owner
+        .install(fresh, wall(112), Duration::from_secs(1))
+        .expect("fresh signature from current keyring");
+    assert!(
+        owner
+            .advance(&photo(false), wall(112), Duration::from_secs(1))
+            .expect("fresh policy")
+            .overlays_advanced
+    );
+    assert!(namespace.join(binding_name).exists());
+    assert_eq!(
+        std::fs::read(archived[0].path()).expect("archive retained"),
+        before
+    );
+    drop(owner);
+    std::fs::remove_dir_all(root).expect("fixture cleanup");
+}
+
+#[test]
+fn old_binding_format_is_quarantined_but_a_known_key_bad_signature_still_fails_closed() {
+    for unsupported in [true, false] {
+        let root = test_root();
+        let (credential, keys) = signed_v1(100, Vec::new());
+        let store = Store::open(&root, "core-rights-v1").expect("store");
+        let credential = if unsupported {
+            credential
+        } else {
+            let mut value: CredentialV1 = serde_json::from_str(&credential).expect("credential");
+            value.signature = URL_SAFE_NO_PAD.encode([0_u8; 64]);
+            serde_json::to_string(&value).expect("bad signature fixture")
+        };
+        store
+            .save(
+                "binding",
+                &Binding {
+                    version: u8::from(!unsupported),
+                    credential,
+                    subject: "550e8400-e29b-41d4-a716-446655440000".into(),
+                    device: devices().legacy,
+                },
+            )
+            .expect("binding fixture");
+        drop(store);
+        let opened = Owner::open(&root, Some(&keys), devices(), 1, wall(110));
+        if unsupported {
+            let mut owner = opened.expect("unsupported cache permits recovery");
+            assert!(
+                !owner
+                    .advance(&photo(false), wall(110), Duration::ZERO)
+                    .expect("no rights")
+                    .overlays_advanced
+            );
+        } else {
+            assert!(
+                matches!(opened, Err(Error::InvalidCredential)),
+                "bad signature under a known key is never accepted as a missing license"
+            );
+        }
+        std::fs::remove_dir_all(root).expect("fixture cleanup");
+    }
 }

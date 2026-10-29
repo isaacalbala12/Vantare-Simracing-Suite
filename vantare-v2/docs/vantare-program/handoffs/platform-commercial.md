@@ -1,3 +1,22 @@
+## VANTA-105 / #1793 — PR complementario de sincronizacion (29-oct)
+
+Mapa verificado: nightly 8ddb6eeae integra #1796 con R2 funcional de f94;
+NO incluye la sincronizacion 73bee906a ni su handoff beb96d7d8 por una carrera
+al actualizar el head del PR. El orquestador confirmo la discrepancia.
+Nueva rama vantareapp/isa-1793-licencia-tests-sync desde 8ddb6eeae:
+cherry-pick 73bee906a -> 273b8ede y beb96d7d8 -> 391a3554, sin conflictos.
+Completa #1796; no cambia comportamiento ni plazos de distribucion.
+
+Mutaciones reales en PC: replay observa [0,1] frente a [0] y falla; omitir probe
+con helper real vivo falla al recuperar la primera accion. Ambas RED por
+comportamiento, no por un timeout de asercion. Fuentes restauradas por hash.
+Gates previos: 12/12, fmt, Clippy, lifecycle y telemetria 33/33 PASS (1 skip).
+Gates scoped sobre la nueva base: fmt, Clippy all-targets -D warnings y
+12/12 regresiones PASS; los dos tests nuevos repetidos cinco veces, 10/10 PASS.
+Evidencia sync-followup1-*. El CI completo corresponde al PR complementario.
+No se incluyen los commits locales de evidencia b516/f642/d0c0.
+Pendiente aceptacion tras login normal de Isaac; sin migrar sesiones.
+
 ## VANTA-105 / #1793 — Sincronizacion de regresiones y comparacion (29-oct)
 
 Integracion detenida por el orquestador tras seis fallos en la tanda extra

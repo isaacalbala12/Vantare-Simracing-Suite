@@ -1406,3 +1406,64 @@ fn rejected_renewal_cannot_revoke_a_previously_verified_binding() {
     drop(restored);
     std::fs::remove_dir_all(root).expect("cleanup");
 }
+
+
+#[test]
+fn authority_rejected_signed_binding_is_preserved_and_a_fresh_grant_recovers() {
+    for tombstone in [false, true] {
+        let root = test_root();
+        let (old, old_keys) = signed_v1_named(100, Vec::new(), devices().legacy, "old");
+        let (latest, latest_keys) = signed_v1_named(105, Vec::new(), devices().legacy, "latest");
+        let (fresh, fresh_keys) = signed_v1_named(120, Vec::new(), devices().legacy, "fresh");
+        let keys = format!("{old_keys},{latest_keys},{fresh_keys}");
+        let mut owner = Owner::open(&root, Some(&keys), devices(), 1, wall(105)).expect("owner");
+        owner.install(latest, wall(105), Duration::ZERO).expect("latest grant");
+        if tombstone {
+            owner.invalidate(wall(110), Duration::from_secs(5)).expect("logout");
+        }
+        owner.store.save("binding", &Binding {
+            version: 1, credential: old.clone(),
+            subject: "550e8400-e29b-41d4-a716-446655440000".into(),
+            device: devices().legacy,
+        }).expect("stale but authentically signed cache");
+        let authority_before = owner.store.load::<serde_json::Value>("authority").expect("clock");
+        drop(owner);
+        let mut owner = Owner::open(&root, Some(&keys), devices(), 2, wall(111))
+            .expect("a rejected cached grant must not disable the core");
+        assert!(owner.binding.is_none());
+        assert!(!owner.advance(&photo(false), wall(111), Duration::ZERO).expect("denied policy").overlays_advanced);
+        assert_eq!(owner.store.load::<serde_json::Value>("authority").expect("preserved clock"), authority_before);
+        let rejected = owner.install(old, wall(112), Duration::from_secs(1));
+        assert!(if tombstone { matches!(rejected, Err(Error::Denied)) } else { matches!(rejected, Err(Error::Clock)) });
+        owner.install(fresh, wall(120), Duration::from_secs(9)).expect("new signed grant");
+        assert!(owner.advance(&photo(false), wall(120), Duration::from_secs(9)).expect("recovered policy").overlays_advanced);
+        drop(owner);
+        std::fs::remove_dir_all(root).expect("private fixture cleanup");
+    }
+}
+
+#[cfg(windows)]
+#[test]
+fn authority_persist_failure_at_open_denies_rights_but_keeps_install_available() {
+    use std::os::windows::fs::OpenOptionsExt;
+    let root = test_root();
+    let (current, keys) = signed_v1_named(100, Vec::new(), devices().legacy, "current");
+    let (fresh, fresh_keys) = signed_v1_named(111, Vec::new(), devices().legacy, "fresh");
+    let keys = format!("{keys},{fresh_keys}");
+    let mut owner = Owner::open(&root, Some(&keys), devices(), 1, wall(105)).expect("owner");
+    owner.install(current, wall(105), Duration::ZERO).expect("binding");
+    drop(owner);
+    let namespace = std::fs::read_dir(&root).expect("namespace").next().expect("entry").expect("path").path();
+    let path = namespace.join("authority.dpapi");
+    let before = std::fs::read(&path).expect("saved authority");
+    let lock = std::fs::OpenOptions::new().read(true).share_mode(1).open(&path).expect("block replacement, allow read");
+    let mut owner = Owner::open(&root, Some(&keys), devices(), 2, wall(110))
+        .expect("persistence failure must leave a usable denied owner");
+    assert!(!owner.advance(&photo(false), wall(110), Duration::ZERO).expect("denied").overlays_advanced);
+    assert_eq!(std::fs::read(&path).expect("original preserved"), before);
+    drop(lock);
+    owner.install(fresh, wall(111), Duration::from_secs(1)).expect("recover after storage is writable");
+    assert!(owner.advance(&photo(false), wall(111), Duration::from_secs(1)).expect("new policy").overlays_advanced);
+    drop(owner);
+    std::fs::remove_dir_all(root).expect("private cleanup");
+}

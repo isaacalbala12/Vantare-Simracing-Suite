@@ -344,6 +344,35 @@ mod tests {
     use super::*;
 
     #[test]
+    fn quarantine_cleanup_failure_does_not_undo_a_successful_cache_move() {
+        use std::os::windows::fs::OpenOptionsExt;
+        let (root, store) = crate::test_store("quarantine-cleanup-locked");
+        for at in 1..=3 {
+            store.save("binding", &at).expect("cache");
+            store.quarantine_dated("binding", at).expect("archive");
+        }
+        let oldest = fs::read_dir(&store.root).expect("archives").flatten()
+            .find(|entry| entry.file_name().to_string_lossy().starts_with("binding-1-"))
+            .expect("oldest").path();
+        let lock = fs::OpenOptions::new().read(true).share_mode(1).open(&oldest).expect("deny deletion");
+        store.save("binding", &4).expect("cache");
+        let before = fs::read(store.path("binding").expect("cache path")).expect("bytes");
+        store.quarantine_dated("binding", 4).expect("cleanup cannot block recovery after rename");
+        assert!(!store.path("binding").expect("path").exists());
+        let newest = fs::read_dir(&store.root).expect("archives").flatten()
+            .find(|entry| entry.file_name().to_string_lossy().starts_with("binding-4-"))
+            .expect("new archive").path();
+        assert_eq!(fs::read(newest).expect("preserved bytes"), before);
+        drop(lock);
+        store.save("binding", &5).expect("next cache");
+        store.quarantine_dated("binding", 5).expect("retry cleanup");
+        assert_eq!(fs::read_dir(&store.root).expect("archives").flatten()
+            .filter(|entry| entry.path().extension().is_some_and(|ext| ext == "corrupto")).count(), 3);
+        drop(store);
+        crate::cleanup_store(&root, "quarantine-cleanup-locked", &[]);
+    }
+
+    #[test]
     fn dated_cache_quarantine_keeps_only_three_recent_archives_per_name() {
         let (root, store) = crate::test_store("dated-cache-cap");
         for at in 1..=5 {

@@ -997,3 +997,23 @@ fn background_errors_logout_and_receipts_never_grant_access_or_lose_the_draft() 
         crate::quit_headless_test(cx);
     });
 }
+
+
+#[test]
+fn background_license_failure_preserves_the_user_message() {
+    gpui_platform::headless().run(|cx| {
+        let file = crate::document::tests::File::new();
+        let (send, _requests) = mpsc::sync_channel(8);
+        let remote = cx.new(|cx| fixture(cx, send, file.path.parent().expect("root")));
+        remote.update(cx, |remote, cx| {
+            remote.message = "Resultado de la accion del usuario".into();
+            remote.inflight = Inflight::Background;
+            remote.complete(Reply::LicenseFailure {
+                outcome: super::super::protocol::RenewalOutcome::Transient,
+                message: "Aviso automatico".into(),
+            }, cx);
+            assert_eq!(remote.message, "Resultado de la accion del usuario");
+        });
+        crate::quit_headless_test(cx);
+    });
+}

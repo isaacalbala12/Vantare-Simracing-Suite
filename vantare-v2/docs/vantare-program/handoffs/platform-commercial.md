@@ -32,7 +32,7 @@ No se han retirado programas antiguos, leído secretos ni modificado cuentas.
 
 Read-NativeState conserva validación estricta de la activa y comprueba la
 anterior con integridad completa; si falla, devuelve previous=null solo en
-memoria y registra previous-unavailable por stderr. No reescribe state ni borra
+memoria y registra previous-corrupt / previous-unreadable por stderr. No reescribe state ni borra
 archivos al leer. Rollback rechaza esa anterior; Update conserva la activa
 verificada como nueva anterior. No se amplía el inventario admitido.
 RED reproducido antes del arreglo. Matriz inicial137 PASS: activas975–979,

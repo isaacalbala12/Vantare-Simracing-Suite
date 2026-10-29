@@ -940,8 +940,9 @@ function Read-NativeState([string]$Directory, [bool]$VerifyActiveFiles = $true) 
             # Rollback is optional, but it always requires complete byte integrity.
             Assert-NativeGeneration $Directory $state.previous $state.channel $true
         } catch {
-            # Only the returned view changes. Never rewrite state or remove an old
-            # generation/data while reading it. stderr keeps Setup stdout as JSON.
+            # PSObject.Copy() is shallow; nested objects share the parsed state.
+            # This view disables rollback without rewriting state.json or removing
+            # a generation. stderr preserves Setup's JSON stdout.
             $cause = $_.Exception.GetBaseException()
             $code = if ($cause -is [IO.IOException] -or $cause -is [UnauthorizedAccessException] -or
                 $cause -is [System.Management.Automation.ItemNotFoundException]) { 'previous-unreadable' } else { 'previous-corrupt' }

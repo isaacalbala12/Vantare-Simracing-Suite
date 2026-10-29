@@ -8,8 +8,8 @@ devuelve esa referencia como no restaurable. Rollback exige una anterior íntegr
 la actualización conserva la activa validada como su nuevo destino de rollback.
 La activa mantiene sus comprobaciones de referencia, manifiesto e inventario y,
 salvo la sonda/reparación explícitas, de integridad de cada archivo.
-El inventario histórico exacto de 91 miembros se admite para974–979, incluida
-una activa974. Una anterior apartada de las referencias puede quedar huérfana:
+El inventario histórico exacto de 91 miembros se admite para 974–979, incluida
+una activa 974. Una anterior apartada de las referencias puede quedar huérfana:
 sus archivos/datos se conservan deliberadamente; no hay limpieza automática.
 
 Seguimiento #1695: el rollback intenta restaurar cada metadato aunque otro esté

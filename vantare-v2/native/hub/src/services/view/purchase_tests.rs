@@ -155,7 +155,23 @@ fn a_silent_service_times_out_cancels_old_io_and_allows_a_fresh_retry() {
                     },
                 )
                 .expect("hello");
+                let probe: Request = protocol::read(&mut pipe).expect("local probe");
+                assert!(matches!(probe.command, Command::LicenseStatus));
+                assert_eq!(probe.sequence, 1);
+                protocol::write(
+                    &mut pipe,
+                    &Response {
+                        version: protocol::VERSION,
+                        sequence: probe.sequence,
+                        reply: Reply::License {
+                            policy: vantare_ipc::control::Policy::default(),
+                            message: String::new(),
+                        },
+                    },
+                )
+                .expect("probe response");
                 let request: Request = protocol::read(&mut pipe).expect("retry request");
+                assert_eq!(request.sequence, 2);
                 assert!(matches!(request.command, Command::Status));
                 protocol::write(
                     &mut pipe,

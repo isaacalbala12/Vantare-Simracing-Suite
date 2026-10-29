@@ -1157,6 +1157,9 @@ fn cached_license_with_a_retired_key_is_preserved_and_recovers_only_after_a_fres
     };
     let before = std::fs::read(namespace.join(binding_name)).expect("protected old bytes");
     let (fresh, keys) = signed_v1_named(112, Vec::new(), devices().legacy, "current-fixture");
+    let (older, older_keys) =
+        signed_v1_named(99, Vec::new(), devices().legacy, "older-current-fixture");
+    let keys = format!("{keys},{older_keys}");
     let mut owner = Owner::open(&root, Some(&keys), devices(), 2, wall(111))
         .expect("retired cache cannot block the owner");
     assert!(owner.binding.is_none());
@@ -1190,6 +1193,13 @@ fn cached_license_with_a_retired_key_is_preserved_and_recovers_only_after_a_fres
         !namespace.join(binding_name).exists(),
         "unknown-key input cannot replace the cached file"
     );
+    assert!(
+        matches!(
+            owner.install(older, wall(112), Duration::from_secs(1)),
+            Err(Error::Clock)
+        ),
+        "a valid current signature older than latest_issued remains rejected after quarantine"
+    );
     owner
         .install(fresh, wall(112), Duration::from_secs(1))
         .expect("fresh signature from current keyring");
@@ -1209,7 +1219,7 @@ fn cached_license_with_a_retired_key_is_preserved_and_recovers_only_after_a_fres
 }
 
 #[test]
-fn old_binding_format_is_quarantined_but_a_known_key_bad_signature_still_fails_closed() {
+fn old_format_and_known_key_bad_signature_are_quarantined_without_rights() {
     for unsupported in [true, false] {
         let root = test_root();
         let (credential, keys) = signed_v1(100, Vec::new());
@@ -1233,21 +1243,166 @@ fn old_binding_format_is_quarantined_but_a_known_key_bad_signature_still_fails_c
             )
             .expect("binding fixture");
         drop(store);
-        let opened = Owner::open(&root, Some(&keys), devices(), 1, wall(110));
-        if unsupported {
-            let mut owner = opened.expect("unsupported cache permits recovery");
+        let mut owner = Owner::open(&root, Some(&keys), devices(), 1, wall(110))
+            .expect("unverified cache cannot block recovery");
+        assert!(
+            !owner
+                .advance(&photo(false), wall(110), Duration::ZERO)
+                .expect("no rights before a new valid signature")
+                .overlays_advanced
+        );
+        assert!(owner.binding.is_none());
+        drop(owner);
+        std::fs::remove_dir_all(root).expect("fixture cleanup");
+    }
+}
+
+#[cfg(windows)]
+#[test]
+fn unreadable_dpapi_is_preserved_but_actual_io_is_never_quarantined() {
+    use std::os::windows::fs::OpenOptionsExt;
+    for locked in [false, true] {
+        let root = test_root();
+        let (_, keys) = signed_v1(100, Vec::new());
+        let store = Store::open(&root, "core-rights-v1").expect("store");
+        store
+            .save("binding", &serde_json::json!({"old":true}))
+            .expect("fixture");
+        drop(store);
+        let namespace = std::fs::read_dir(&root)
+            .expect("namespace")
+            .next()
+            .expect("entry")
+            .expect("entry")
+            .path();
+        let file = namespace.join("binding.dpapi");
+        std::fs::write(&file, b"unreadable-dpapi-fixture").expect("corrupt fixture bytes");
+        let lock = locked.then(|| {
+            std::fs::OpenOptions::new()
+                .read(true)
+                .share_mode(0)
+                .open(&file)
+                .expect("exclusive file")
+        });
+        let result = Owner::open(&root, Some(&keys), devices(), 1, wall(110));
+        if locked {
+            assert!(
+                matches!(result, Err(Error::Storage)),
+                "real file IO errors propagate"
+            );
+            assert!(file.exists());
+        } else {
+            let mut owner = result.expect("corrupt DPAPI permits recovery");
             assert!(
                 !owner
                     .advance(&photo(false), wall(110), Duration::ZERO)
                     .expect("no rights")
                     .overlays_advanced
             );
-        } else {
-            assert!(
-                matches!(opened, Err(Error::InvalidCredential)),
-                "bad signature under a known key is never accepted as a missing license"
+            assert!(!file.exists());
+            let archived = std::fs::read_dir(&namespace)
+                .expect("archive")
+                .flatten()
+                .find(|e| e.file_name().to_string_lossy().starts_with("binding-"))
+                .expect("preserved archive");
+            assert_eq!(
+                std::fs::read(archived.path()).expect("bytes"),
+                b"unreadable-dpapi-fixture"
             );
         }
-        std::fs::remove_dir_all(root).expect("fixture cleanup");
+        drop(lock);
+        std::fs::remove_dir_all(root).expect("cleanup");
     }
+}
+
+#[test]
+fn quarantine_preserves_the_durable_logout_tombstone() {
+    let root = test_root();
+    let (old, old_keys) = signed_v1_named(100, Vec::new(), devices().legacy, "retired");
+    let mut owner = Owner::open(&root, Some(&old_keys), devices(), 1, wall(105)).expect("owner");
+    owner
+        .install(old.clone(), wall(105), Duration::ZERO)
+        .expect("old valid signature");
+    owner
+        .invalidate(wall(110), Duration::from_secs(5))
+        .expect("durable logout");
+    owner
+        .store
+        .save(
+            "binding",
+            &Binding {
+                version: 1,
+                credential: old,
+                subject: "550e8400-e29b-41d4-a716-446655440000".into(),
+                device: devices().legacy,
+            },
+        )
+        .expect("late cached credential");
+    drop(owner);
+    let (late, late_keys) = signed_v1_named(109, Vec::new(), devices().legacy, "late");
+    let (fresh, fresh_keys) = signed_v1_named(112, Vec::new(), devices().legacy, "fresh");
+    let keys = format!("{late_keys},{fresh_keys}");
+    let mut owner =
+        Owner::open(&root, Some(&keys), devices(), 2, wall(111)).expect("quarantined owner");
+    assert!(
+        matches!(
+            owner.install(late, wall(112), Duration::ZERO),
+            Err(Error::Denied)
+        ),
+        "quarantine cannot erase invalidated_after"
+    );
+    owner
+        .install(fresh, wall(112), Duration::ZERO)
+        .expect("only a newer signed grant recovers");
+    drop(owner);
+    std::fs::remove_dir_all(root).expect("cleanup");
+}
+
+#[test]
+fn rejected_renewal_cannot_revoke_a_previously_verified_binding() {
+    let root = test_root();
+    let (current, keys) = signed_v1_named(100, Vec::new(), devices().legacy, "current");
+    let (older, older_keys) = signed_v1_named(99, Vec::new(), devices().legacy, "older-current");
+    let keys = format!("{keys},{older_keys}");
+    let mut owner = Owner::open(&root, Some(&keys), devices(), 1, wall(110)).expect("owner");
+    owner
+        .install(format!(" \n{current}"), wall(110), Duration::ZERO)
+        .expect("valid binding");
+    assert!(
+        owner
+            .advance(&photo(false), wall(110), Duration::ZERO)
+            .expect("verified policy")
+            .overlays_advanced
+    );
+    assert!(matches!(
+        owner.install("unverifiable".into(), wall(111), Duration::from_secs(1)),
+        Err(Error::InvalidCredential)
+    ));
+    assert!(
+        owner
+            .advance(&photo(false), wall(111), Duration::from_secs(1))
+            .expect("valid rights preserved")
+            .overlays_advanced
+    );
+    assert!(matches!(
+        owner.install(older, wall(112), Duration::from_secs(2)),
+        Err(Error::Clock)
+    ));
+    assert!(
+        owner
+            .advance(&photo(false), wall(112), Duration::from_secs(2))
+            .expect("older issuance cannot revoke")
+            .overlays_advanced
+    );
+    drop(owner);
+    let mut restored = Owner::open(&root, Some(&keys), devices(), 2, wall(113))
+        .expect("durable binding preserved");
+    assert!(
+        restored
+            .advance(&photo(false), wall(113), Duration::ZERO)
+            .expect("restored rights")
+            .overlays_advanced
+    );
+    drop(restored);
+    std::fs::remove_dir_all(root).expect("cleanup");
 }

@@ -167,7 +167,7 @@ impl State {
         if let Reply::Account { pending: false, .. } = reply
             && self.transition == Transition::Login
         {
-            // The supervisor renews before acknowledging the confirmed session.
+            // The supervisor timer renews after the session is confirmed.
             // The Hub consumes its core feed; never start a duplicate HTTP grant.
             self.transition = Transition::Idle;
         }
@@ -230,7 +230,7 @@ impl State {
         let previous_error = self.error.clone();
         // Un error de transporte no revoca la última política. navigation sigue
         // aplicando su caducidad; el resultado definitivo sí retira el acceso.
-        if matches!(reply, Reply::DeviceLimit { .. } | Reply::Closed) {
+        if matches!(reply, Reply::Closed) {
             self.policy = None;
             if self.transition == Transition::Login {
                 self.transition = Transition::Renewal;
@@ -1326,7 +1326,10 @@ mod navigation_tests {
             },
             false,
         );
-        assert!(!state.navigation(true, 1500).verified);
+        assert!(
+            state.navigation(true, 1500).verified,
+            "an issuance limit cannot revoke the current signed core policy"
+        );
     }
 
     #[test]

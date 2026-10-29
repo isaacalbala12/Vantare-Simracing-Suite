@@ -2,17 +2,24 @@
   "schemaVersion": 1,
   "issue": "ISA-1793",
   "type": "fix",
-  "summary": "El instalador puede actualizar una instalación válida aunque conserve una versión anterior que ya no se puede restaurar.",
+  "summary": "El acceso se comprueba automáticamente al recuperar la sesión y el instalador ya permite actualizar aunque conserve una versión anterior incompatible.",
   "technicalNotes": [
     "La versión activa conserva su validación estricta. Una generación anterior incompatible, ausente o corrupta se conserva intacta y se excluye del rollback.",
     "El diagnóstico previous-corrupt o previous-unreadable se escribe en stderr para conservar el protocolo JSON del instalador. El inventario histórico exacto también admite la activa 0.0.974.",
-    "Solo se anuncia rollback si la generación activa coincide con la anterior esperada. Las generaciones sin referencia se conservan."
+    "Solo se anuncia rollback si la generación activa coincide con la anterior esperada. Las generaciones sin referencia se conservan.",
+    "La renovación automática no retira una licencia válida ante errores de red, autenticación o una clave nueva desconocida. El login responde sin esperar a esa petición; los fallos transitorios reintentan con esperas crecientes.",
+    "Binding y candidate incompatibles se apartan sin conceder derechos y conservando reloj y lápida. Se guardan hasta tres copias por nombre; los errores reales al leer o mover conservan el original.",
+    "El primer uso tras caducar el canal reconecta antes de enviar la acción. Una respuesta perdida no repite compras ni envíos. El límite de dispositivos mantiene su salida accionable."
   ],
   "testing": [
     "Actualizar desde 0.0.975 con una generación anterior 0.0.974 y comprobar que los datos se conservan y arranca la versión nueva.",
-    "Regresiones de versiones históricas, referencias corruptas o ausentes, integridad activa y rechazo de rollback."
+    "Regresiones de versiones históricas, referencias corruptas o ausentes, integridad activa y rechazo de rollback.",
+    "Arrancar con sesión guardada y caché de clave retirada: el acceso debe verificarse sin pulsar Comprobar acceso. Repetir el arranque y comprobar derechos y archivos conservados.",
+    "Sin red y con licencia vigente, conservar el acceso. Tras un error temporal, recuperar automáticamente con backoff; una clave desconocida de la respuesta pide actualizar la app.",
+    "Después de caducar el canal, la primera acción funciona. Verificar también que una respuesta perdida produce error sin segundo envío."
   ],
   "knownLimitations": [
-    "No recupera una versión activa corrupta ni convierte una generación anterior incompatible en restaurable."
+    "No recupera una versión activa corrupta ni convierte una generación anterior incompatible en restaurable.",
+    "Un rechazo definitivo necesita la acción indicada (iniciar sesión, actualizar la app o liberar un dispositivo); no se inventan derechos a partir de la caché apartada."
   ]
 }

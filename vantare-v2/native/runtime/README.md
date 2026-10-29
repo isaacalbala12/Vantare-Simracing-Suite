@@ -1,21 +1,27 @@
-## ISA-1793 · Recuperar el acceso al arrancar
+## ISA-1793 — Recuperación y renovación automática
 
-El supervisor renueva la licencia al confirmar una sesión nueva o restaurada,
-sin una acción del Hub. Usa la política autenticada del núcleo y sus fechas;
-fuera de pista vuelve a comprobar antes del vencimiento. Solo hay una operación
-en vuelo y un fallo detiene la renovación automática hasta otro login o un
-reintento explícito. Los relojes de decisión se inyectan en las regresiones.
+El login y la sesión restaurada contestan sin esperar una renovación HTTP.
+El temporizador pide `LicenseRenewAutomatic` con sesión confirmada y política
+autenticada fresca. Un rechazo automático nunca revoca el binding vigente:
+solo una concesión firmada nueva o una acción explícita pueden cambiarlo.
+Un resultado tipado distingue verificación, rechazo definitivo y transitorio.
+Los transitorios reintentan en 1, 2, 4, 8 y 15 minutos, con tope y reloj inyectado;
+un poll pendiente no reinicia el suelo de un minuto. Se registra un código
+cerrado por cada motivo de omisión, solo al cambiar, sin inundar el diagnóstico.
 
-Un binding de formato antiguo o con clave retirada se conserva en una cuarentena
-fechada junto al original. El núcleo sigue abierto sin derechos y solo una firma
-nueva válida puede crear el binding activo. Se conservan el reloj y las marcas
-antirollback; no se hereda margen de carrera sin binding verificado. Una firma
-incorrecta bajo una clave conocida sigue fallando en cerrado.
+La sonda `Probe` reconecta antes de enviar una acción y no consume avisos.
+La respuesta perdida de una acción devuelve error sin segundo envío.
+El límite de dispositivos conserva su variante accionable. El temporizador
+no borra la admisión de un login concurrente; sin Hub limita la consulta al
+núcleo a 30 segundos y cierra el helper tras renovar.
 
-Los canales inactivos se comprueban con una petición local idempotente antes de
-despachar una acción. Se reconecta una sola vez tras un corte del transporte;
-no se repite una compra o envío cuya respuesta se haya perdido. El límite de
-inactividad conserva la liberación de recursos sin un keepalive HTTP.
+Un binding de clave retirada, formato antiguo, firma inválida o DPAPI corrupto
+se aparta junto al original, sin derechos. Solo se conservan las tres copias
+más recientes por nombre; los errores reales de E/S se propagan sin apartar.
+Se conservan reloj y lápida, y las regresiones rechazan emisiones anteriores
+tras la cuarentena. El núcleo sigue disponible para una licencia nueva válida.
+Un rechazo criptográfico o de fecha al renovar conserva el binding anterior;
+un fallo de persistencia de una concesión nueva sigue fallando en cerrado.
 
 # runtime — adquisición y núcleo
 

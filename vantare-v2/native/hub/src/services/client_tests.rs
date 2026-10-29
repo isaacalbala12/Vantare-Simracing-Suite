@@ -27,7 +27,9 @@ fn first_request_after_an_idle_disconnect_reconnects_without_replaying_the_actio
             },
         )
         .expect("hello");
-        closing.recv().expect("explicit idle expiry");
+        closing
+            .recv_timeout(Duration::from_secs(3))
+            .expect("explicit idle expiry");
         drop(first);
         closed.send(()).expect("closed acknowledgement");
         let mut pipe = listener.instance().expect("reconnect pipe");
@@ -66,7 +68,7 @@ fn first_request_after_an_idle_disconnect_reconnects_without_replaying_the_actio
         .expect("initial channel");
     close.send(()).expect("expire idle channel");
     disconnected
-        .recv()
+        .recv_timeout(Duration::from_secs(3))
         .expect("server closed before user action");
     assert!(
         matches!(client.request(Command::LicenseRenew), Ok(Reply::License { policy, .. }) if policy.overlays_advanced)
@@ -222,4 +224,76 @@ fn mismatched_service_hello_and_response_are_actionable_connection_errors() {
         assert!(matches!(result, Err(vantare_ipc::INCOMPATIBLE_COMPONENTS)));
         server.join().expect("cerrar peer");
     }
+}
+
+#[test]
+fn a_lost_purchase_response_returns_an_error_without_sending_the_action_again() {
+    let name = format!(
+        "hub-lost-action-{}",
+        vantare_services::random_id().expect("pipe")
+    );
+    let server_stop = Arc::new(Event::new().expect("server stop"));
+    let mut listener = Listener::new(
+        &format!("{name}-hub-services"),
+        Arc::clone(&server_stop),
+        Duration::from_secs(3),
+    )
+    .expect("listener");
+    let first = listener.instance().expect("first");
+    let (actions, observed) = mpsc::channel();
+    let server = std::thread::spawn(move || {
+        let mut first = Some(first);
+        for sequence in 0..2 {
+            let mut pipe = first
+                .take()
+                .unwrap_or_else(|| listener.instance().expect("next"));
+            if pipe.accept().is_err() {
+                break;
+            }
+            protocol::write(
+                &mut pipe,
+                &SupervisorHello {
+                    version: protocol::VERSION,
+                    nonce: "1".repeat(64),
+                },
+            )
+            .expect("hello");
+            let probe: Request = protocol::read(&mut pipe).expect("probe");
+            assert!(matches!(probe.command, Command::Probe));
+            protocol::write(
+                &mut pipe,
+                &Response {
+                    version: protocol::VERSION,
+                    sequence: probe.sequence,
+                    reply: Reply::Status {
+                        account_configured: false,
+                        message: String::new(),
+                    },
+                },
+            )
+            .expect("probe ACK");
+            let action: Request = protocol::read(&mut pipe).expect("action");
+            assert!(matches!(action.command, Command::Purchase { .. }));
+            actions.send(sequence).expect("action observed");
+            // Deliberately lose the response after receiving the real action.
+        }
+    });
+    let image = std::env::current_exe().expect("image");
+    let mut client =
+        Client::start(&image, &name, Arc::new(Event::new().expect("cancel"))).expect("client");
+    let (sent, received) = mpsc::channel();
+    let worker = std::thread::spawn(move || {
+        sent.send(client.request(Command::Purchase {
+            product: protocol::BillingProduct::ProMonthly,
+        }))
+        .expect("result");
+    });
+    let result = received
+        .recv_timeout(Duration::from_secs(3))
+        .expect("lost response fails without waiting for a retry");
+    server_stop.set();
+    worker.join().expect("client exits");
+    server.join().expect("server exits");
+    assert!(result.is_err());
+    assert_eq!(observed.try_iter().collect::<Vec<_>>(), vec![0]);
 }

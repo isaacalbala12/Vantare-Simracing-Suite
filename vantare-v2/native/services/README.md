@@ -1,12 +1,19 @@
-## ISA-1793 · Caché de licencia retirada
+## ISA-1793 — Renovación automática no destructiva y caché recuperable
 
-Una caché `license-candidate` con clave desconocida o formato no compatible se
-aparta con fecha y nombre único, preservando sus bytes. La transferencia inicial
-puede confirmar una política sin derechos y continuar hacia el login/renovación;
-no intenta instalar la caché incompatible. El diagnóstico es únicamente
-`license-cache-unknown-key` o `license-cache-unsupported-format`. Nunca imprime
-la licencia, la firma, el usuario ni tokens. Una licencia nueva debe pasar la
-verificación criptográfica existente antes de guardarse o conceder derechos.
+Servicios v15 distingue `LicenseRenewAutomatic`, `Probe` y `LicenseFailure`
+con resultado tipado. Hub, supervisor y helper deben recompilarse juntos.
+En automático no se invalida ni al refrescar OAuth ni ante 401/403/409 o una
+firma no verificable. Una clave nueva que la app no conoce pide actualizarla.
+La acción explícita y DeviceReset conservan su revocación durable.
+
+Binding y candidate se verifican antes de conceder derechos. La caché de clave
+retirada, formato antiguo, firma mala conocida o DPAPI corrupto se aparta con
+fecha y bytes intactos; se guardan como máximo tres copias por nombre. E/S real
+se propaga y conserva el original. Los diagnósticos cerrados son
+`license-cache-unknown-key`, `license-cache-unsupported-format`,
+`license-cache-invalid-signature` y `license-cache-unreadable`.
+El candidate inválido no llega a Install ni deniega un binding vigente.
+Las sondas locales no añaden entradas redundantes al buffer de triaje.
 
 ## #1761 · Navegador alternativo y copia explícita
 

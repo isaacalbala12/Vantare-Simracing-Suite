@@ -90,7 +90,7 @@ impl App {
     fn transfer_rights(&mut self) -> Result<Reply> {
         let candidate = self
             .candidate_store()?
-            .load::<serde_json::Value>("license-candidate");
+            .load_cache::<serde_json::Value>("license-candidate");
         let policy = match candidate {
             Ok(document) => {
                 match serde_json::from_value::<crate::license_remote::Candidate>(document) {
@@ -102,7 +102,18 @@ impl App {
                             .license_keys
                             .map(crate::license::Verifier::public_keys)
                             .transpose()?
-                            .and_then(|verifier| verifier.cache_issue(&text));
+                            .and_then(|verifier| {
+                                verifier.cache_issue(&text).or_else(|| {
+                                    verifier
+                                        .v1(
+                                            &candidate.credential,
+                                            &candidate.account_id,
+                                            &candidate.device,
+                                        )
+                                        .err()
+                                        .map(|_| crate::license::CacheIssue::InvalidSignature)
+                                })
+                            });
                         if let Some(issue) = issue {
                             self.quarantine_candidate(issue)?
                         } else {
@@ -116,6 +127,9 @@ impl App {
                     }
                     Err(_) => return Err(Error::Storage),
                 }
+            }
+            Err(Error::Corrupt) => {
+                self.quarantine_candidate(crate::license::CacheIssue::Unreadable)?
             }
             Err(Error::NotFound) => self.core_command(vantare_ipc::control::Command::Read)?,
             Err(error) => return Err(error),
@@ -149,7 +163,11 @@ impl App {
                 message: "Política vigente del núcleo".into(),
             });
         }
-        if matches!(command, Command::LicenseRenew | Command::LicenseRenewAutomatic) {
+        if matches!(
+            command,
+            Command::LicenseRenew | Command::LicenseRenewAutomatic
+        ) {
+            let automatic = matches!(command, Command::LicenseRenewAutomatic);
             // Sin configuración compilada no hay red, huella ni fallback de datos.
             if self.config.supabase.is_none()
                 || self.config.anon_key.is_none_or(str::is_empty)
@@ -162,7 +180,7 @@ impl App {
             // inicia red ni se anuncia una limpieza parcial como revocación.
             self.core.as_ref().ok_or(Error::Unconfigured)?;
             let time = now()?;
-            self.ensure_oauth(time)?;
+            self.ensure_oauth_origin(time, automatic)?;
             let renewal = (|| {
                 self.candidate_store()?;
                 crate::license_remote::renew(
@@ -177,18 +195,23 @@ impl App {
             let candidate = match renewal {
                 Ok(candidate) => candidate,
                 Err(error) => {
-                    if matches!(
-                        error,
-                        Error::Authentication
-                            | Error::Denied
-                            | Error::Conflict
-                            | Error::DeviceLimit
-                            | Error::InvalidCredential
-                    ) {
+                    if !automatic
+                        && matches!(
+                            error,
+                            Error::Authentication
+                                | Error::Denied
+                                | Error::Conflict
+                                | Error::DeviceLimit
+                        )
+                    {
                         // Rechazo definitivo: ACK durable antes de limpiar la caché.
                         self.revoke_local()?;
                     }
-                    return Err(error);
+                    return Err(if error == Error::InvalidCredential {
+                        Error::Version
+                    } else {
+                        error
+                    });
                 }
             };
             let reply = self.transfer_rights()?;
@@ -274,19 +297,25 @@ impl App {
     }
 
     fn ensure_oauth(&mut self, now: u64) -> Result<()> {
+        self.ensure_oauth_origin(now, false)
+    }
+    fn ensure_oauth_origin(&mut self, now: u64, automatic: bool) -> Result<()> {
         self.ensure_account()?;
         let account = self.account.as_ref().ok_or(Error::Authentication)?;
         if account
             .expires_at()
             .is_some_and(|expires| expires <= now.saturating_add(60))
         {
-            self.refresh_oauth(now)?;
+            self.refresh_oauth_origin(now, automatic)?;
         }
         Ok(())
     }
 
     fn refresh_oauth(&mut self, now: u64) -> Result<()> {
-        // Toda entrada de refresh comparte el mismo ACK/retiro de sesión.
+        self.refresh_oauth_origin(now, false)
+    }
+    fn refresh_oauth_origin(&mut self, now: u64, automatic: bool) -> Result<()> {
+        // Explicit refresh can revoke after its durable ACK; automatic refresh preserves rights.
         self.core.as_ref().ok_or(Error::Unconfigured)?;
         let exchange = self
             .account
@@ -296,6 +325,9 @@ impl App {
         let completion = match exchange.run(&self.http, now) {
             Ok(completion) => completion,
             Err(error @ (Error::Authentication | Error::Denied)) => {
+                if automatic {
+                    return Err(error);
+                }
                 self.revoke_local()?;
                 self.data_session = None;
                 self.account
@@ -392,6 +424,48 @@ impl App {
         ))
     }
 
+    fn automatic_failure(error: Error) -> Reply {
+        if error == Error::DeviceLimit {
+            return Reply::DeviceLimit {
+                message: error.to_string(),
+            };
+        }
+        let definitive = matches!(
+            error,
+            Error::Authentication
+                | Error::Denied
+                | Error::Conflict
+                | Error::Version
+                | Error::Unconfigured
+                | Error::BridgeUnconfigured
+                | Error::Clock
+        );
+        Reply::LicenseFailure {
+            outcome: if definitive {
+                crate::protocol::RenewalOutcome::Definitive
+            } else {
+                crate::protocol::RenewalOutcome::Transient
+            },
+            message: if error == Error::Version {
+                "Actualiza la app para verificar la nueva licencia.".into()
+            } else {
+                error.to_string()
+            },
+        }
+    }
+
+    fn diagnostic_operation(command: &Command) -> &'static str {
+        match command {
+            Command::TriagePrepare { .. } => "triage-prepare",
+            Command::TriageSend { .. } => "triage-send",
+            Command::TestingRefresh
+            | Command::TestingAnswer { .. }
+            | Command::TestingContribute { .. } => "participation",
+            Command::ReportSend { .. } => "report-send",
+            _ => "request",
+        }
+    }
+
     pub fn handle(&mut self, command: Command) -> Reply {
         let report_send = matches!(
             command,
@@ -400,15 +474,7 @@ impl App {
         if let Command::AccountEmail { action } = command {
             return self.email_account(Some(action));
         }
-        let operation = match &command {
-            Command::TriagePrepare { .. } => "triage-prepare",
-            Command::TriageSend { .. } => "triage-send",
-            Command::TestingRefresh
-            | Command::TestingAnswer { .. }
-            | Command::TestingContribute { .. } => "participation",
-            Command::ReportSend { .. } => "report-send",
-            _ => "request",
-        };
+        let operation = Self::diagnostic_operation(&command);
         let account_action = matches!(
             command,
             Command::AccountBegin
@@ -419,7 +485,12 @@ impl App {
                 | Command::Logout
         );
         let login_begin = matches!(command, Command::AccountBegin);
-        let license_renew = matches!(command, Command::LicenseRenew);
+        let automatic = matches!(command, Command::LicenseRenewAutomatic);
+        let probe = matches!(command, Command::Status | Command::Probe);
+        let license_renew = matches!(
+            command,
+            Command::LicenseRenew | Command::LicenseRenewAutomatic
+        );
         if login_begin {
             let _log = writeln!(std::io::stderr(), "account-login: begin");
         }
@@ -435,8 +506,11 @@ impl App {
         if login_begin && let Err(error) = &outcome {
             let _log = writeln!(std::io::stderr(), "account-login: failed {error:?}");
         }
-        if let Ok(time) = now() {
+        if !probe && let Ok(time) = now() {
             self.triage.record(time, outcome.is_err(), operation);
+        }
+        if automatic && let Err(error) = outcome {
+            return Self::automatic_failure(error);
         }
         match outcome {
             Ok(reply) => {
@@ -548,6 +622,18 @@ impl App {
         })
     }
 
+    fn status_reply(&self) -> Reply {
+        Reply::Status {
+            account_configured: self.config.native_account_configured(),
+            message: if self.config.native_account_configured() {
+                "servicio disponible"
+            } else {
+                "servicio no configurado"
+            }
+            .into(),
+        }
+    }
+
     fn execute(&mut self, command: Command) -> Result<Reply> {
         match command {
             Command::MailConsentGet | Command::MailConsentSet { .. } => {
@@ -556,17 +642,7 @@ impl App {
             Command::PilotLoad | Command::PilotSave { .. } | Command::PilotSync => {
                 return self.pilot_reply(command);
             }
-            Command::Status => {
-                return Ok(Reply::Status {
-                    account_configured: self.config.native_account_configured(),
-                    message: if self.config.native_account_configured() {
-                        "servicio disponible"
-                    } else {
-                        "servicio no configurado"
-                    }
-                    .into(),
-                });
-            }
+            Command::Status | Command::Probe => return Ok(self.status_reply()),
             Command::AccountEmail { .. } => return Err(Error::Protocol),
             Command::Shutdown => return Ok(Reply::Closed),
             Command::DraftLoad
@@ -610,7 +686,10 @@ impl App {
             }
             Command::TransferRights => return self.transfer_rights(),
             Command::Purchase { product } => return self.purchase_reply(product),
-            Command::LicenseStatus | Command::LicenseRenew | Command::LicenseRenewAutomatic | Command::DeviceReset => {
+            Command::LicenseStatus
+            | Command::LicenseRenew
+            | Command::LicenseRenewAutomatic
+            | Command::DeviceReset => {
                 return self.license_reply(&command);
             }
             Command::Logout => return self.logout_reply(),
@@ -1741,9 +1820,10 @@ mod tests {
     #[test]
     fn unsupported_or_retired_candidate_is_archived_before_the_initial_core_ack() {
         use sha2::{Digest, Sha256};
-        for old_format in [false, true] {
+        for case in 0..3 {
+            let old_format = case == 1;
             let device = crate::license::installation::legacy_fingerprint().expect("fingerprint");
-            let (credential, old_keys) = crate::license_remote::tests::signed_fixture(&device);
+            let (mut credential, old_keys) = crate::license_remote::tests::signed_fixture(&device);
             // The cached signature is genuine under the old ring. The current
             // ring deliberately retires its id, without introducing real secrets.
             crate::license::Verifier::public_keys(old_keys)
@@ -1751,8 +1831,12 @@ mod tests {
                 .v1(&credential, &credential.claims.subject, &device)
                 .expect("old signature");
             let (_, encoded) = old_keys.split_once(':').expect("key");
-            let keys: &'static str =
-                Box::leak(format!("current-fixture:{encoded}").into_boxed_str());
+            let keys: &'static str = if case == 2 {
+                credential.signature = "invalid-signature-fixture".into();
+                old_keys
+            } else {
+                Box::leak(format!("current-fixture:{encoded}").into_boxed_str())
+            };
             let name = if old_format {
                 "app-old-candidate"
             } else {
@@ -1830,6 +1914,75 @@ mod tests {
 
     #[cfg(windows)]
     #[test]
+    fn automatic_authentication_and_conflict_failures_never_invalidate_or_delete_the_cache() {
+        use crate::protocol::RenewalOutcome;
+        let device = crate::license::installation::legacy_fingerprint().expect("device");
+        let (credential, keys) = crate::license_remote::tests::signed_fixture(&device);
+        for (oauth_failure, status) in [
+            (true, 401),
+            (false, 401),
+            (false, 403),
+            (false, 409),
+            (true, 503),
+            (false, 429),
+            (false, 503),
+        ] {
+            let mut responses = Vec::new();
+            if !oauth_failure {
+                responses.push((200,serde_json::json!({"access_token":"fixture-access","refresh_token":"fixture-refresh","token_type":"Bearer","expires_in":3600}).to_string()));
+                responses.push((200, serde_json::json!({"sub":"user_fixture"}).to_string()));
+            }
+            responses.push((status, "{}".into()));
+            let server = crate::test_http::Server::start(responses);
+            let (root, store) = crate::test_store("automatic-auth-preserve");
+            let account = crate::account::fixture(&server.base, &store);
+            let mut config = BuildConfig::load();
+            config.supabase = Some(server.base.clone());
+            config.anon_key = Some("public-test-key");
+            config.license_keys = Some(keys);
+            let mut app = App::new(config, root.clone());
+            app.account = Some(account);
+            app.store = Some(store);
+            app.candidate_store()
+                .expect("store")
+                .save(
+                    "license-candidate",
+                    &crate::license_remote::Candidate {
+                        credential: credential.clone(),
+                        account_id: credential.claims.subject.clone(),
+                        device: device.clone(),
+                    },
+                )
+                .expect("previous verified cache");
+            let (link, core) = core_fixture(device.clone(), keys, vec![CoreStep::Read]);
+            app.attach_core(link);
+            let expected = if status >= 429 {
+                RenewalOutcome::Transient
+            } else {
+                RenewalOutcome::Definitive
+            };
+            assert!(matches!(app.handle(Command::LicenseRenewAutomatic),
+                Reply::LicenseFailure {outcome,..} if outcome==expected));
+            assert!(
+                app.candidate_store()
+                    .expect("store")
+                    .load::<crate::license_remote::Candidate>("license-candidate")
+                    .is_ok()
+            );
+            assert!(app.account.as_ref().expect("account").identity().is_some());
+            assert!(matches!(
+                app.execute(Command::LicenseStatus),
+                Ok(Reply::License { .. })
+            ));
+            core.join().expect("only Read, never Invalidate");
+            server.finish();
+            drop(app);
+            crate::cleanup_store(&root, "automatic-auth-preserve", &[]);
+        }
+    }
+
+    #[cfg(windows)]
+    #[test]
     fn automatic_new_key_rejection_preserves_the_verified_binding_and_candidate() {
         let device = crate::license::installation::legacy_fingerprint().expect("device");
         let (credential, keys) = crate::license_remote::tests::signed_fixture(&device);
@@ -1843,21 +1996,46 @@ mod tests {
         let (root, store) = crate::test_store("automatic-preserves-rights");
         let account = crate::account::fixture(&server.base, &store);
         let config = BuildConfig {
-            supabase: Some(server.base.clone()), anon_key: Some("public-test-key"),
-            license_keys: Some(keys), channel: Some("test"), native_oauth: None,
+            supabase: Some(server.base.clone()),
+            anon_key: Some("public-test-key"),
+            license_keys: Some(keys),
+            channel: Some("test"),
+            native_oauth: None,
         };
         let mut app = App::new(config, root.clone());
         app.account = Some(account);
         app.store = Some(store);
-        app.candidate_store().expect("store").save("license-candidate", &crate::license_remote::Candidate {
-            account_id: credential.claims.subject.clone(), device: device.clone(), credential,
-        }).expect("valid previous cache");
+        app.candidate_store()
+            .expect("store")
+            .save(
+                "license-candidate",
+                &crate::license_remote::Candidate {
+                    account_id: credential.claims.subject.clone(),
+                    device: device.clone(),
+                    credential,
+                },
+            )
+            .expect("valid previous cache");
         let (link, core) = core_fixture(device, keys, vec![CoreStep::Install, CoreStep::Read]);
         app.attach_core(link);
-        assert!(matches!(app.execute(Command::TransferRights), Ok(Reply::License {..})));
+        assert!(matches!(
+            app.execute(Command::TransferRights),
+            Ok(Reply::License { .. })
+        ));
         assert!(app.execute(Command::LicenseRenewAutomatic).is_err());
-        assert!(matches!(app.execute(Command::LicenseStatus), Ok(Reply::License {..})), "automatic verification failure cannot revoke a valid binding");
-        assert!(app.candidate_store().expect("store").load::<crate::license_remote::Candidate>("license-candidate").is_ok());
+        assert!(
+            matches!(
+                app.execute(Command::LicenseStatus),
+                Ok(Reply::License { .. })
+            ),
+            "automatic verification failure cannot revoke a valid binding"
+        );
+        assert!(
+            app.candidate_store()
+                .expect("store")
+                .load::<crate::license_remote::Candidate>("license-candidate")
+                .is_ok()
+        );
         core.join().expect("automatic path never sends Invalidate");
         server.finish();
         drop(app);

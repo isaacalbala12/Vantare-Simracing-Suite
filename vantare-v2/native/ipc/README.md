@@ -1,3 +1,11 @@
+## ISA-1793 — Servicios v15
+
+`LicenseRenewAutomatic` separa la recuperación automática de la revocación
+explícita. `LicenseFailure` transporta un resultado cerrado definitivo o
+transitorio; `RenewalOutcome` también representa verificación. `Probe` comprueba
+el canal sin consumir avisos. No se transportan credenciales ni tokens nuevos.
+Hub, supervisor y helper se recompilan juntos; peers anteriores se rechazan.
+
 # ipc — fotos versionadas
 
 DTO explícito, transporte autenticado y demanda; la versión de foto es independiente de servicios y control.

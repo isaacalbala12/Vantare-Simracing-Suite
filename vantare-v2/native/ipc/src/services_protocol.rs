@@ -2,9 +2,9 @@
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use std::io::{self, Read, Write};
 
-// v14 adds explicit AccountCopyLink and redacted LoginLink for a live PKCE attempt.
-// Reject older peers: Hub and services must agree on clipboard recovery.
-pub const VERSION: u32 = 14;
+// v15 separates automatic renewal failures and side-effect-free channel probes.
+// Reject older peers: automatic renewal must never inherit user revocation.
+pub const VERSION: u32 = 15;
 #[path = "services_protocol/pilot_document.rs"]
 pub mod pilot_document;
 #[path = "services_protocol/report_document.rs"]
@@ -47,6 +47,7 @@ pub enum Command {
     LicenseStatus,
     LicenseRenew,
     LicenseRenewAutomatic,
+    Probe,
     Purchase {
         product: BillingProduct,
     },
@@ -173,9 +174,20 @@ pub struct Request {
     pub command: Command,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum RenewalOutcome {
+    Verified,
+    Definitive,
+    Transient,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "result", deny_unknown_fields)]
 pub enum Reply {
+    LicenseFailure {
+        outcome: RenewalOutcome,
+        message: String,
+    },
     MailConsent {
         consent: bool,
         locale: Option<String>,

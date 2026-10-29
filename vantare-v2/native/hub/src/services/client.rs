@@ -66,7 +66,7 @@ impl Client {
     pub fn request(&mut self, command: Command) -> Result<Reply, &'static str> {
         // Probe only a local, idempotent operation before dispatching effects.
         // A lost response to the actual command is never replayed blindly.
-        let probe = self.request_once(Command::LicenseStatus);
+        let probe = self.request_once(Command::Probe);
         match probe {
             Err(RequestError::Transport(
                 std::io::ErrorKind::BrokenPipe
@@ -79,7 +79,7 @@ impl Client {
                 *self = Self::start(&self.binary, &self.photo_pipe, Arc::clone(&self.stop))?;
             }
             Err(error) => return Err(error.message()),
-            Ok(reply) if matches!(command, Command::LicenseStatus) => return Ok(reply),
+            Ok(reply) if matches!(command, Command::Probe) => return Ok(reply),
             Ok(_) => {}
         }
         self.request_once(command).map_err(|error| error.message())

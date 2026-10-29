@@ -141,10 +141,14 @@ pub struct Verifier {
 pub enum CacheIssue {
     UnknownKey,
     UnsupportedFormat,
+    InvalidSignature,
+    Unreadable,
 }
 impl CacheIssue {
     pub fn diagnostic(self) -> &'static str {
         match self {
+            Self::InvalidSignature => "license-cache-invalid-signature",
+            Self::Unreadable => "license-cache-unreadable",
             Self::UnknownKey => "license-cache-unknown-key",
             Self::UnsupportedFormat => "license-cache-unsupported-format",
         }
@@ -155,6 +159,7 @@ impl Verifier {
     /// Inspect only format/key availability for a cache migration. This never
     /// verifies or grants rights: supported entries still require full verification.
     pub fn cache_issue(&self, text: &str) -> Option<CacheIssue> {
+        let text = text.trim_start();
         if text.len() > 32 * 1024 {
             return Some(CacheIssue::UnsupportedFormat);
         }

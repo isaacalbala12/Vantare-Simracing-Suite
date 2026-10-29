@@ -1,9 +1,13 @@
-## ISA-1793 · Acceso sin comprobación manual
+## ISA-1793 — Acceso sin comprobación manual
 
 El Hub confirma la sesión y consume la política fresca del núcleo. El supervisor
-coordina la renovación; el Hub no dispara una segunda petición de licencia tras
-el login. La primera acción tras un canal inactivo reconecta mediante una sonda
-local, manteniendo la validación de imagen, protocolo, nonce y secuencia.
+renueva desde su temporizador, sin bloquear el login ni duplicar HTTP desde la
+UI. Los avisos automáticos se consultan por IPC local cada cinco segundos;
+DeviceLimit conserva su salida accionable y no revoca la política firmada.
+El primer uso de un canal inactivo reconecta mediante Probe, manteniendo
+imagen, versión, nonce y secuencia. Una respuesta perdida no repite la acción.
+Los sondeos de compra también usan el camino automático no destructivo;
+el botón Comprobar acceso sigue siendo una acción explícita.
 
 ## #1631 · Formularios de email
 

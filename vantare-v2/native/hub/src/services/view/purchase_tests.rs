@@ -101,7 +101,7 @@ fn browser_failure_is_visible_and_retry_sends_one_fresh_login() {
 fn answer_local_probe(pipe: &mut vantare_ipc::transport::Pipe) {
     use super::super::protocol::{self, Request, Response};
     let probe: Request = protocol::read(pipe).expect("local probe");
-    assert!(matches!(probe.command, Command::LicenseStatus));
+    assert!(matches!(probe.command, Command::Probe));
     assert_eq!(probe.sequence, 1);
     protocol::write(
         pipe,
@@ -376,6 +376,7 @@ pub(crate) fn fixture(
         email: None,
         device_limit: false,
         license_polled_at: None,
+        license_notice_polled_at: None,
         purchase_product: None,
         purchase_wait: None,
         purchase_message: None,

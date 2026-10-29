@@ -1,35 +1,49 @@
-## VANTA-105 / #1793 · Renovación y caché histórica (29-oct, en curso)
+## VANTA-105 / #1793 — Licencia, revisión profunda en curso (29-oct)
 
-Segundo arreglo autorizado por el orquestador, separado del instalador #1794.
-Base origin/nightly91765bcd5, rama vantareapp/isa-1793-licencia-arranque.
-Trabajo trasladado por orden de Isaac a C:/VantareWork/isa-1793/license en el
-PC de juegos. Rust/Cargo1.95, MSVC2022 x64, Nextest, CMake, NSIS, sccache y
-DuckDB1.5.5 ya estaban instalados; no se instaló ninguna herramienta. Se detuvo
-Nextest del servidor mientras compilaba dependencias y no se lanzaron más builds.
-Primer fallo de sccache conservado; gates del PC con VANTARE_SCCACHE=0,
-target propio y jobs2. El alias stable instalado tiene exactamente Rust1.95.
+PR draft #1796, rama vantareapp/isa-1793-licencia-arranque, rebasada en el PC
+sobre nightly 6634b521f, que ya integra el instalador #1794. Solo se compila en
+C:/VantareWork/isa-1793, target propio, cola y jobs 2; ninguna herramienta nueva.
 
-El supervisor pide una licencia al confirmar/restaurar sesión y antes de un
-deadline, con un solo vuelo. Un error detiene la renovación automática hasta
-otro login o reintento explícito. El Hub consume la política del núcleo sin
-duplicar HTTP. Una sonda local idempotente recupera canales inactivos antes de
-despachar acciones; no se reenvían compras/envíos con resultado incierto.
+La primera review BLOQUEAR detectó una invalidación automática de una licencia
+vigente. La regresión RED reproduce el Invalidate tras la respuesta no
+verificable; registro automatic-no-revoke-red2.log. Se separó el comando
+automático, incluido el refresh OAuth y los sondeos de compra: sus errores
+conservan binding/candidate/sesión. Un rechazo de firma o fecha en el núcleo
+tampoco revoca el binding anterior; un fallo al persistir una concesión nueva
+sigue fallando en cerrado. El login responde sin esperar la red de licencia.
 
-Binding y candidate de clave retirada/formato antiguo se apartan con fecha,
-sin perder bytes y sin conceder derechos. El núcleo conserva reloj/tombstones
-y no hereda margen de carrera sin un binding verificado. Solo una firma nueva
-válida escribe el binding activo. Una firma inválida con clave conocida sigue
-fallando en cerrado. No se alteró manualmente la caché del PC. Diagnósticos
-cerrados sin contenido: license-cache-unknown-key/unsupported-format.
+El temporizador usa resultado tipado y backoff 1/2/4/8/15 minutos, reloj
+inyectado, suelo duro y diagnósticos cerrados de omisión. Sin Hub consulta el
+núcleo como máximo cada 30 s. Probe no consume avisos ni repite acciones;
+DeviceLimit conserva la salida accionable. Se libera el cliente inválido y
+la renovación no borra la admisión de un login concurrente.
 
-Clippy de services/runtime/Hub all-targets/-D warnings PASS en el PC; fmt PASS.
-Regresiones de clave retirada auténticamente firmada, formato antiguo, candidate,
-reconexión por pipes reales y relojes inyectados. RED/GREEN y Nextest, lifecycle,
-telemetría y prueba física finales en curso; no se afirma su aceptación.
-Evidencia C:/VantareWork/isa-1793/evidence y copia de informes en servidor.
-Siguiente: PR draft/revisión profunda, candidato privado conjunto con #1794,
-entrega Desktop de Isaac con SHA256 y LEEME, instalar y verificar sin pulsar nada.
-Sin release, promoción, merge de canal ni cambios administrativos de cuenta.
+Caché desconocida, antigua, con firma mala o DPAPI corrupto se aparta sin
+derechos, con tres copias por nombre. E/S real conserva el original y se
+propaga. Reloj, lápida y tolerancia de #1784 intactos; tests de emisión anterior
+tras cuarentena, respuesta perdida, política real verificada y un único disparo.
+No se han editado a mano datos ni caché del PC de Isaac.
+
+Comparación de los siete FAIL anteriores: nightly limpio 6634b521f en el PC,
+3 PASS / 4 FAIL. Los cuatro preexistentes (DirectX x2, hotkeys, indicador desde
+SSH) están en #1797, Project Vantare, area:plataforma. Los tres nuevos del PR
+eran fixtures de core efímero frente al keyring compilado del helper; se
+siembra un binding con firma auténtica del core de prueba, sin quitar aserciones.
+Gates en sesión interactiva 1 del PC: suite IPC/services/runtime/Hub
+1332/1332 PASS (17 skips); después del último ajuste de consumidor AccountPoll
+y suelo de peticiones automáticas, runtime completo 440/440 PASS (7 skips),
+regresiones 34/34 PASS, fmt y Clippy de los cuatro crates all-targets/-D warnings
+PASS. Lifecycle: cero fallos. Telemetría final 33/33 PASS (1 skip). Calidad,
+466 huellas, changelog ISA-1793 y diff PASS. Los fallos intermedios se conservan:
+la suite inicial 1331/1332 señaló una expectativa antigua Storage/Corrupt, ya
+corregida sin aceptar datos ilegibles; se mantuvieron todos los rechazos.
+RED P0 automatic-no-revoke-red2.log → GREEN review-final5-regressions.log.
+CI del nuevo HEAD y segunda review siguen pendientes; no se afirma aceptación.
+
+Evidencia C:/VantareWork/isa-1793/evidence. Siguiente: push con lease del rebase, CI, segunda revisión y candidato privado
+del SHA limpio en el
+Desktop de Isaac con SHA256/LEEME; instalar y comprobar sin pulsar nada.
+Sin release, promoción, cambios administrativos de cuenta ni borrado de programas.
 
 ## VANTA-105 / #1793 · RC8 no instalada por generación anterior (29-oct, en curso)
 

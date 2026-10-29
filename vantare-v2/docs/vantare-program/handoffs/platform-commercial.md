@@ -1,3 +1,30 @@
+## VANTA-105 / #1793 — Sincronizacion de regresiones y comparacion (29-oct)
+
+Integracion detenida por el orquestador tras seis fallos en la tanda extra
+r2-green3. Todos tenian PASS previo en r2-green2; la tanda lenta se conserva
+interrumpida, nunca se declara verde. Los dos nuevos tests dejan de usar el
+plazo del fixture como sincronizacion: compra observa el cierre real del peer
+por canal; helper observa un peer cerrado antes del handler real, con el
+proceso original vivo y su pipe autentificado abierto. Conserva cambio de PID,
+reemplazo antes de la primera accion y ausencia de derechos. La sustitucion de
+transporte solo existe con test-support, activado por dev-dependency existente;
+sin cambio en plazos, protocolo o configuracion de distribucion.
+
+Cuatro tests antiguos: dos rondas intercaladas f94 / nightly limpio 6634b521f,
+4/4 PASS en cada tanda (comparison-old-result.json). No se reprodujo la carga
+original; no demuestra que sean preexistentes y no se imputan a #1797.
+Diagnostico de solo lectura: plan Ryzen High Performance, sin suspension;
+runtime instalado casi inactivo; no evidencia de escaneo Defender del target.
+Hubo cola de disco 6-11 y rafagas de E/S de T3. Temperatura no disponible;
+causa de lentitud sin confirmar. No se cambio ninguna configuracion del PC.
+
+Gates scoped del cambio 73bee906: 12/12 regresiones, fmt y Clippy all-targets
+con -D warnings PASS. Lifecycle y telemetria locales siguen como evidencia
+extra; CI completo corresponde al nuevo push. Sin merge ni release por este worker. La evidencia documental
+adicional b5161259 se conserva en rama aparte, fuera de este arreglo.
+Aceptacion posterior al login normal de Isaac sigue pendiente; no migrar
+sesiones ni iniciar sesion en su nombre.
+
 ## VANTA-105 / #1793 — Prueba fisica y contexto OAuth (29-oct)
 
 Instalador privado de fuentes limpias 9a857be12 (base 6634b521f), Release beta

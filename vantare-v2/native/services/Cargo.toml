@@ -6,6 +6,8 @@ rust-version.workspace = true
 publish.workspace = true
 
 [features]
+# Inert in distribution; deterministic transport faults in consumer tests.
+test-support = []
 default = ["network"]
 network = ["dep:ureq", "dep:url"]
 

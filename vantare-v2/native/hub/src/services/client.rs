@@ -6,6 +6,9 @@ use vantare_ipc::{
     transport::{Event, Pipe},
 };
 
+// The transport guard is a product contract, not a test scheduling deadline.
+const RESPONSE_IO_TIMEOUT: Duration = Duration::from_secs(30);
+
 pub struct Client {
     pipe: Pipe,
     stop: Arc<Event>,
@@ -35,7 +38,7 @@ impl Client {
         let mut pipe = control::connect_ready(
             &format!("{photo_pipe}-hub-services"),
             &stop,
-            Duration::from_secs(30),
+            RESPONSE_IO_TIMEOUT,
         )
         .map_err(|_| "supervisor vantare no disponible")?;
         if !pipe.server_peer().is_ok_and(|peer| peer.is_image(binary)) {

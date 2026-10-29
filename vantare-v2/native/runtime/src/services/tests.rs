@@ -12,27 +12,85 @@ use vantare_services::{
 fn a_closed_idle_helper_is_replaced_before_the_first_user_request() {
     let Fixture {
         root,
-        photo,
+        photo: _,
         link,
         core,
         services,
     } = Fixture::with_license(false);
-    let mut hub = Session::open(&photo);
-    assert!(matches!(hub.request(Command::Status), Reply::Status { .. }));
-    let previous_pid = {
+    let options = Options {
+        binary: link
+            .image
+            .parent()
+            .expect("deps")
+            .parent()
+            .expect("debug")
+            .join("vantare-services.exe"),
+        hub: link.image.clone(),
+        core: link.clone(),
+        root: Some(root.join("services")),
+    };
+    // Exercise the real command handler and child synchronously. The old
+    // Session wrapper added a 5 s read deadline around a real helper startup;
+    // this test checks replacement, not the time the OS gives each process.
+    // Other Session tests cover the authenticated Hub/supervisor wire.
+    services.state.lock().expect("active session").connected = true;
+    let signing: SigningIn = Arc::new(Mutex::new(None));
+    let request = |command| {
+        handle(
+            &mut services.state.lock().expect("supervisor state"),
+            &options,
+            command,
+            &services.cancellation,
+            &signing,
+            &services.stop,
+        )
+    };
+    assert!(matches!(request(Command::Status), Reply::Status { .. }));
+    let closed_name = format!(
+        "closed-helper-{}",
+        vantare_services::random_id().expect("pipe")
+    );
+    let closed_stop = Arc::new(Event::new().expect("closed peer cancellation"));
+    let mut listener = vantare_ipc::transport::Listener::new(
+        &closed_name,
+        Arc::clone(&closed_stop),
+        vantare_ipc::transport::IO_TIMEOUT,
+    )
+    .expect("closed peer fixture");
+    let mut peer = listener.instance().expect("bound peer");
+    let (closed, closure) = std::sync::mpsc::channel();
+    let peer_thread = std::thread::spawn(move || {
+        peer.accept().expect("fixture connected");
+        drop(peer);
+        closed.send(()).expect("peer close signalled");
+    });
+    let disconnected = vantare_ipc::transport::connect(
+        &closed_name,
+        closed_stop,
+        vantare_ipc::transport::IO_TIMEOUT,
+    )
+    .expect("fixture client");
+    closure
+        .recv()
+        .expect("the peer is closed before the request");
+    peer_thread.join().expect("closed peer fixture finished");
+    let (previous_pid, original_pipe) = {
         let mut state = services.state.lock().expect("supervisor state");
-        let client = state.client.as_mut().expect("helper");
+        let client = state.client.as_mut().expect("real helper");
+        assert!(client.is_running());
         let pid = client.pid();
-        // Explicit peer shutdown reproduces the closed pipe from idle expiry,
-        // without waiting five minutes or relying on process-exit timing.
-        assert!(matches!(
-            client.request(Command::Shutdown),
-            Ok(Reply::Closed)
-        ));
-        pid
+        // Keep its authenticated original pipe open: the old child cannot exit
+        // merely because this fixture schedules slowly. Only its transport in
+        // supervisor state is broken. A liveness-only check must not pass.
+        let original = client.replace_transport_for_test(disconnected);
+        assert!(
+            client.is_running(),
+            "a live child still needs a channel probe"
+        );
+        (pid, original)
     };
     assert!(
-        matches!(hub.request(Command::Status), Reply::Status { .. }),
+        matches!(request(Command::Status), Reply::Status { .. }),
         "the first action reconnects transparently"
     );
     assert_ne!(
@@ -52,7 +110,7 @@ fn a_closed_idle_helper_is_replaced_before_the_first_user_request() {
             .overlays_advanced,
         "reconnection cannot grant rights"
     );
-    drop(hub);
+    drop(original_pipe);
     drop(services);
     drop(core);
     std::fs::remove_dir_all(root).expect("private fixture cleanup");

@@ -198,6 +198,13 @@ impl Client {
         Arc::clone(&self.stop)
     }
 
+    /// Keep the real child alive while a consumer test substitutes a closed
+    /// transport. Not exposed by any CLI/IPC command or distribution feature.
+    #[cfg(any(test, feature = "test-support"))]
+    pub fn replace_transport_for_test(&mut self, pipe: Pipe) -> Pipe {
+        std::mem::replace(&mut self.pipe, pipe)
+    }
+
     pub fn pid(&self) -> u32 {
         self.child.id()
     }

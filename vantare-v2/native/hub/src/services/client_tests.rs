@@ -236,11 +236,12 @@ fn a_lost_purchase_response_returns_an_error_without_sending_the_action_again() 
     let mut listener = Listener::new(
         &format!("{name}-hub-services"),
         Arc::clone(&server_stop),
-        Duration::from_secs(3),
+        RESPONSE_IO_TIMEOUT,
     )
     .expect("listener");
     let first = listener.instance().expect("first");
     let (actions, observed) = mpsc::channel();
+    let (closed, closure) = mpsc::channel();
     let server = std::thread::spawn(move || {
         let mut first = Some(first);
         for sequence in 0..2 {
@@ -275,24 +276,26 @@ fn a_lost_purchase_response_returns_an_error_without_sending_the_action_again() 
             let action: Request = protocol::read(&mut pipe).expect("action");
             assert!(matches!(action.command, Command::Purchase { .. }));
             actions.send(sequence).expect("action observed");
-            // Deliberately lose the response after receiving the real action.
+            // Publish a state transition, not a wall-clock deadline. The error
+            // must accompany a real peer close after Purchase was received.
+            drop(pipe);
+            closed.send(sequence).expect("peer close observed");
         }
     });
     let image = std::env::current_exe().expect("image");
     let mut client =
         Client::start(&image, &name, Arc::new(Event::new().expect("cancel"))).expect("client");
-    let (sent, received) = mpsc::channel();
-    let worker = std::thread::spawn(move || {
-        sent.send(client.request(Command::Purchase {
-            product: protocol::BillingProduct::ProMonthly,
-        }))
-        .expect("result");
+    // Completion is ordered by the real EOF after the peer observes Purchase.
+    // A separate recv_timeout would measure CPU scheduling, not replay safety.
+    // The real client's transport/cancellation guard remains active.
+    let result = client.request(Command::Purchase {
+        product: protocol::BillingProduct::ProMonthly,
     });
-    let result = received
-        .recv_timeout(Duration::from_secs(3))
-        .expect("lost response fails without waiting for a retry");
+    assert_eq!(
+        closure.recv().expect("peer closed after receiving action"),
+        0
+    );
     server_stop.set();
-    worker.join().expect("client exits");
     server.join().expect("server exits");
     assert!(result.is_err());
     assert_eq!(observed.try_iter().collect::<Vec<_>>(), vec![0]);

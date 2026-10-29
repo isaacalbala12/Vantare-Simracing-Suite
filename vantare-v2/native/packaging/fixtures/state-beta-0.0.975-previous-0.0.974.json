@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "product": "vantare-native",
+  "channel": "beta",
+  "active": {
+    "generation": "0376d5cecc4d469a808d893a03f7e43a",
+    "manifest_sha256": "4fc39c73a4660a3c859638d8078c97b30b732048f70ed72f5535d8ec12cc9219"
+  },
+  "previous": {
+    "generation": "8f8105ddf87a4746bc4e6051c181377a",
+    "manifest_sha256": "166fbf2c620bb5cc2dad0141d48ca3acde732598874e04cdf2495cc30f2a0845"
+  }
+}

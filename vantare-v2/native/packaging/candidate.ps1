@@ -234,7 +234,7 @@ function Get-NativeMembers([string]$CandidateChannel) {
 }
 $script:NativeMembers = @(Get-NativeMembers $Channel)
 
-# Frozen beta inventory from public 0.0.975 (also used by pre-resources RC1
+# Frozen beta inventory from observed 0.0.974/public 0.0.975 (also used by pre-resources RC1
 # 0.0.979). Never derive it from the current inventory: future additions must
 # not change the contract of generations already installed.
 $script:NativeLegacyBetaMembers = @(
@@ -335,7 +335,7 @@ function Get-NativeInstalledMembers($Manifest) {
     $current = @(Get-NativeMembers $Manifest.channel)
     $paths = @($Manifest.files | ForEach-Object { $_.path })
     if ($Manifest.channel -ceq 'beta' -and
-        $Manifest.version -cmatch '^0\.0\.(975|976|977|978|979)$' -and
+        $Manifest.version -cmatch '^0\.0\.(974|975|976|977|978|979)$' -and
         -not @(Compare-Object $script:NativeLegacyBetaMembers $paths -CaseSensitive).Count) {
         return $script:NativeLegacyBetaMembers
     }
@@ -921,20 +921,36 @@ function Uninstall-NativeRegistration([string]$Directory,[bool]$DeferUninstaller
     }
 }
 
+function Assert-NativeGeneration([string]$Directory, $Reference, [string]$Channel, [bool]$VerifyFiles) {
+    if ($Reference.generation -cnotmatch '^[0-9a-f]{32}$' -or $Reference.manifest_sha256 -cnotmatch '^[0-9a-f]{64}$') { throw 'Referencia de generación inválida.' }
+    $generation = Join-Path $Directory "generations/$($Reference.generation)"
+    if ((Get-NativeHash (Join-Path $generation 'manifest.json')) -cne $Reference.manifest_sha256 -or
+        -not (Test-Path -LiteralPath (Join-Path $generation 'data') -PathType Container)) { throw 'Generación activa/anterior incompleta.' }
+    $null = Read-NativeManifest $generation $Channel $VerifyFiles -Installed
+}
+
 function Read-NativeState([string]$Directory, [bool]$VerifyActiveFiles = $true) {
     $state = [IO.File]::ReadAllText((Join-Path $Directory 'state.json')) | ConvertFrom-Json
     if ($state.schema -ne 1 -or $state.product -cne 'vantare-native' -or $state.channel -cnotin @('nightly', 'testers', 'master', 'beta')) { throw 'Estado de instalación inválido.' }
-    foreach ($reference in @($state.active, $state.previous)) {
-        if ($null -eq $reference) { continue }
-        if ($reference.generation -cnotmatch '^[0-9a-f]{32}$' -or $reference.manifest_sha256 -cnotmatch '^[0-9a-f]{64}$') { throw 'Referencia de generación inválida.' }
-        $generation = Join-Path $Directory "generations/$($reference.generation)"
-        if ((Get-NativeHash (Join-Path $generation 'manifest.json')) -cne $reference.manifest_sha256 -or
-            -not (Test-Path -LiteralPath (Join-Path $generation 'data') -PathType Container)) { throw 'Generación activa/anterior incompleta.' }
-        $verify = $VerifyActiveFiles -or $reference.generation -cne $state.active.generation
-        $null = Read-NativeManifest $generation $state.channel $verify -Installed
-    }
     if ($null -eq $state.active) { throw 'Falta generación activa.' }
-    $state
+    Assert-NativeGeneration $Directory $state.active $state.channel $VerifyActiveFiles
+    $view = $state.PSObject.Copy()
+    if ($null -ne $state.previous) {
+        try {
+            # Rollback is optional, but it always requires complete byte integrity.
+            Assert-NativeGeneration $Directory $state.previous $state.channel $true
+        } catch {
+            # PSObject.Copy() is shallow; nested objects share the parsed state.
+            # This view disables rollback without rewriting state.json or removing
+            # a generation. stderr preserves Setup's JSON stdout.
+            $cause = $_.Exception.GetBaseException()
+            $code = if ($cause -is [IO.IOException] -or $cause -is [UnauthorizedAccessException] -or
+                $cause -is [System.Management.Automation.ItemNotFoundException]) { 'previous-unreadable' } else { 'previous-corrupt' }
+            [Console]::Error.WriteLine($code)
+            $view.previous = $null
+        }
+    }
+    $view
 }
 
 function Set-NativeState([string]$Directory, $State) {

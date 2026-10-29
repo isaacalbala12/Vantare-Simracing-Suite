@@ -1,3 +1,75 @@
+## VANTA-105 / #1793 · RC8 no instalada por generación anterior (29-oct, en curso)
+
+Revisión profunda de #1794 aplicada: activa974 admitida con el inventario
+histórico exacto, copia explícita de la vista de state y códigos cerrados
+previous-corrupt/previous-unreadable. El fallo de arranque solo anuncia rollback
+si la activa coincide realmente con boot.previous. Regresiones por CLI Update,
+silencio de stderr para anteriores válidas y rechazo del rollback ficticio:
+164 comprobaciones históricas PASS con el ZIP975 público. Inventario durable
+apuntado en #1795; no se ejecuta hasta que instalador/licencia funcionen en PC.
+Isaac autoriza desde esta decisión compilar en el PC de juegos: se detuvo el
+Nextest aún compilando dependencias en servidor; no se lanzarán más builds allí.
+Trabajo trasladado a C:/VantareWork/isa-1793, fuera de las carpetas de Isaac.
+
+Encargo ampliado expresamente por el orquestador: conservar una anterior
+incompatible/corrupta/ausente sin bloquear la actualización de una activa válida.
+Issue https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1793,
+area:licencias, Project Vantare; sin milestone asignado. Rama aislada
+vantareapp/isa-1793-rc8-acceso, base origin/nightly91765bcd5.
+Checkout de integración y su archivo ajeno sin seguimiento intactos.
+
+PC de juegos comprobado por SSH: sin simuladores ni Vantare, Steam RunningAppID0.
+Isaac autoriza instalar y probar; confirma que no jugará esta noche.
+Setup del Escritorio es986 y coincide con RC8 del servidor:
+32b2f6a209255f8e6064d856ef87227c353d9d67f28fe8b1c78611a83dd65b14.
+Pero /S sale1 antes de transacción: «Faltan archivos obligatorios».
+State real: activa975/91 miembros, anterior974/91; la compatibilidad histórica
+solo admite975–979. Se conservan manifiesto974 y referencias de state como
+fixtures sin datos personales. El productor RC8 es5548069c3, squash de #1784;
+no falta el arreglo del reloj. El servidor ya ejecuta986, licencia pendiente.
+Escritorio conserva un acceso antiguo a Programs/Vantare Simracing Suite.
+No se han retirado programas antiguos, leído secretos ni modificado cuentas.
+
+Read-NativeState conserva validación estricta de la activa y comprueba la
+anterior con integridad completa; si falla, devuelve previous=null solo en
+memoria y registra previous-corrupt / previous-unreadable por stderr. No reescribe state ni borra
+archivos al leer. Rollback rechaza esa anterior; Update conserva la activa
+verificada como nueva anterior. No se amplía el inventario admitido.
+RED reproducido antes del arreglo. Matriz inicial137 PASS: activas975–979,
+anterior974/973, ausente/corrupta/tampered/referencia inválida, protocolo de
+sonda JSON, rollback rechazado, archivos/datos intactos y activa estricta.
+Matriz final con state observado y ZIP975 público147 PASS, registro83 PASS y
+shell30 PASS. PR draft https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1794,
+HEAD4cb56e97f, cinco checks SUCCESS verificados. Primer CI falló por normalización
+CRLF de manifest974; .gitattributes conserva sus bytes originales, igual que975.
+Primer ensayo local con ZIP público coincidió con shell/HKCUQA1492: se conserva
+el fallo y se repitió en serie con147 PASS; no se atribuye a un fallo de producto.
+Evidencia local C:/VantareServer/evidence/isa-1793/. Sin Rust de producto editado;
+gates completos pasaron en CI. Revisión profunda encargada al orquestador.
+Setup privado construido por cola/jobs2/target propio, Release y CRT estático:
+RC8 original con108 miembros idénticos y solo candidate.ps1 corregido; manifiesto
+source_dirty=true y procedencia separada. SHA Setup
+a59215eea0d151be2a98133f0468fa2e4e8e27e6cb433300be7b6b8b72749181.
+Instalado realmente en PC de Isaac:975→986,33 archivos de datos idénticos,
+datos de activa y anterior previas intactos y manifiesto974 idéntico. Nueva
+anterior975; Hub en sesión1, ready real y boot-pending retirado. El recolector
+PowerShell no obtuvo ExitCode; el éxito se acredita por registro/manifest,
+hashes y arranque, sin inventar exit0. Acceso de Escritorio corregido y el
+del menú Inicio apunta a la misma generación; acceso Wails antiguo apartado
+en Temp/Vantare1793/shortcut-backups, sin borrar ninguna instalación.
+
+La prueba descubrió un segundo fallo de flujo, autorizado en otro PR #1793:
+servidor986 con sesión conectada pero sin binding; segundo Comprobar acceso
+reconecta tras el timeout inactivo y obtiene licencia200/Ed25519/renovaciónOk.
+Issued_at2026-10-28T23:26:40.974Z; v1 no tieneiat/exp, capacidades0. Cuenta
+verificada, Inicio sin candados y Roadmap cargado. El PC conserva binding del
+7oct con clave histórica no presente en RC8: núcleo no disponible al abrir.
+No se borra ni altera a mano. Segundo worktree/PR de flujo y recuperación,
+prueba final sin clic y aceptación real todavía pendientes.
+Siguiente: revisión de1794 y segundo arreglo, candidato conjunto y comprobación
+final en PC de juegos. Plane sigue En curso por el conjunto de VANTA-105.
+Sin merge, promoción, release ni despliegue de backend.
+
 ## VANTA-105 / #1783 · Acceso y desfase del reloj (27-oct, para revisión)
 
 Revisión a550de956 APTO/sin P1 y CI verde, según informe

@@ -46,6 +46,7 @@ pub enum Command {
     Logout,
     LicenseStatus,
     LicenseRenew,
+    LicenseRenewAutomatic,
     Purchase {
         product: BillingProduct,
     },

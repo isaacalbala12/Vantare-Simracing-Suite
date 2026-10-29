@@ -149,7 +149,7 @@ impl App {
                 message: "Política vigente del núcleo".into(),
             });
         }
-        if matches!(command, Command::LicenseRenew) {
+        if matches!(command, Command::LicenseRenew | Command::LicenseRenewAutomatic) {
             // Sin configuración compilada no hay red, huella ni fallback de datos.
             if self.config.supabase.is_none()
                 || self.config.anon_key.is_none_or(str::is_empty)
@@ -610,7 +610,7 @@ impl App {
             }
             Command::TransferRights => return self.transfer_rights(),
             Command::Purchase { product } => return self.purchase_reply(product),
-            Command::LicenseStatus | Command::LicenseRenew | Command::DeviceReset => {
+            Command::LicenseStatus | Command::LicenseRenew | Command::LicenseRenewAutomatic | Command::DeviceReset => {
                 return self.license_reply(&command);
             }
             Command::Logout => return self.logout_reply(),
@@ -1826,6 +1826,42 @@ mod tests {
             drop(app);
             crate::cleanup_store(&root, name, &[]);
         }
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn automatic_new_key_rejection_preserves_the_verified_binding_and_candidate() {
+        let device = crate::license::installation::legacy_fingerprint().expect("device");
+        let (credential, keys) = crate::license_remote::tests::signed_fixture(&device);
+        let mut newer = credential.clone();
+        newer.key_id = "server-newer-fixture".into();
+        let server = crate::test_http::Server::start(vec![
+            (200, serde_json::json!({"access_token":"fixture-access", "refresh_token":"fixture-refresh", "token_type":"Bearer", "expires_in":3600}).to_string()),
+            (200, serde_json::json!({"sub":"user_fixture"}).to_string()),
+            (200, serde_json::json!({"credential":newer,"online_capabilities":[]}).to_string()),
+        ]);
+        let (root, store) = crate::test_store("automatic-preserves-rights");
+        let account = crate::account::fixture(&server.base, &store);
+        let config = BuildConfig {
+            supabase: Some(server.base.clone()), anon_key: Some("public-test-key"),
+            license_keys: Some(keys), channel: Some("test"), native_oauth: None,
+        };
+        let mut app = App::new(config, root.clone());
+        app.account = Some(account);
+        app.store = Some(store);
+        app.candidate_store().expect("store").save("license-candidate", &crate::license_remote::Candidate {
+            account_id: credential.claims.subject.clone(), device: device.clone(), credential,
+        }).expect("valid previous cache");
+        let (link, core) = core_fixture(device, keys, vec![CoreStep::Install, CoreStep::Read]);
+        app.attach_core(link);
+        assert!(matches!(app.execute(Command::TransferRights), Ok(Reply::License {..})));
+        assert!(app.execute(Command::LicenseRenewAutomatic).is_err());
+        assert!(matches!(app.execute(Command::LicenseStatus), Ok(Reply::License {..})), "automatic verification failure cannot revoke a valid binding");
+        assert!(app.candidate_store().expect("store").load::<crate::license_remote::Candidate>("license-candidate").is_ok());
+        core.join().expect("automatic path never sends Invalidate");
+        server.finish();
+        drop(app);
+        crate::cleanup_store(&root, "automatic-preserves-rights", &[]);
     }
 
     #[cfg(windows)]

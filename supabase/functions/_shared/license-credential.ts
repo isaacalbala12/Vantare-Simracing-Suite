@@ -165,6 +165,12 @@ export async function handleLicenseCredentialRequest(
     );
     return await issueCredential(loaded, fingerprint, environment, deps);
   } catch (error) {
+    if (error && typeof error === "object" && "code" in error && error.code === "28000") {
+      return errorResponse("unauthorized", "Account is not active", 401);
+    }
+    if (error && typeof error === "object" && "message" in error && error.message === "account_conflict") {
+      return errorResponse("account_conflict", "Account identity is conflicting", 409);
+    }
     if (error instanceof NativeError) {
       const status = error.status === 404 ? 401 : error.status;
       return errorResponse(
@@ -431,10 +437,16 @@ export function createCredentialStore(deps: NativeAuthDeps & {
         throw new CredentialAuthError();
       }
       const claims = decoded as Record<string, unknown>;
-      const dataBearer = claims.iss === `${issuer}/native-data/v1`;
+      // The data issuer is registered in SQL and may be the Supabase origin;
+      // PostgREST/current_account already verified that registry and audience.
+      const dataBearer = claims.vantare_identity_provider === "clerk" &&
+        claims.aud === "vantare-native-data";
       const subject = dataBearer ? claims.clerk_subject : claims.sub;
       if (
-        (dataBearer ? claims.clerk_issuer !== issuer : claims.iss !== issuer) ||
+        (dataBearer
+          ? claims.clerk_issuer !== issuer || claims.sub !== accountId
+          : claims.iss !== issuer || claims.clerk_subject !== undefined ||
+            claims.clerk_issuer !== undefined) ||
         typeof subject !== "string" || !/^user_[A-Za-z0-9_]{27}$/.test(subject)
       ) throw new CredentialAuthError();
       const resolved = await (deps.resolve ?? resolveNativeAccount)(
@@ -462,6 +474,7 @@ export function isCredentialAuthFailure(status: number, error: {
   message?: string;
 }): boolean {
   return status === 401 || status === 403 ||
+    error.code === "28000" ||
     error.code === "PGRST301" || error.code === "PGRST302" ||
     error.message === "not_authenticated" ||
     error.message === "invalid_identity";

@@ -15,7 +15,7 @@ const user = {
 const fingerprint = "a".repeat(64);
 function bearer(data: boolean, overrides: Record<string, unknown> = {}) {
   const claims = data ? {
-    iss: `${config.issuer}/native-data/v1`, sub: account,
+    iss: "https://project.supabase.invalid/native-data/v1", sub: account,
     clerk_issuer: config.issuer, clerk_subject: subject,
     vantare_identity_provider: "clerk", aud: "vantare-native-data",
   } : { iss: config.issuer, sub: subject, sid: "sess_fixture" };
@@ -25,7 +25,7 @@ function bearer(data: boolean, overrides: Record<string, unknown> = {}) {
 }
 
 for (const data of [false, true]) {
-  for (const scenario of ["active", "admin-blocked", "banned", "locked", "deleted", "invalid-bearer", "mismatched-account", "clerk-outage", "clerk-missing"]) {
+  for (const scenario of ["active", "admin-blocked", "banned", "locked", "deleted", "sql-deleted", "identity-conflict", "invalid-bearer", "mismatched-account", "clerk-outage", "clerk-missing", "clerk-rate-limited"]) {
     Deno.test(`legacy ${data ? "data" : "session"} bearer: ${scenario} checked before grants/signing`, async () => {
       const calls: string[] = [];
       const token = bearer(data);
@@ -33,7 +33,9 @@ for (const data of [false, true]) {
         global: { fetch: (input) => {
           assertEquals(new URL(String(input)).pathname, "/rest/v1/rpc/claim_active_device");
           calls.push("authenticate");
-          return Promise.resolve(scenario === "invalid-bearer" || scenario === "deleted"
+          return Promise.resolve(scenario === "sql-deleted"
+            ? Response.json({ code: "28000", message: "account_deleted" }, { status: 400 })
+            : scenario === "invalid-bearer" || scenario === "deleted"
             ? Response.json({ code: "PGRST301" }, { status: 401 }) : Response.json(account));
         } },
       });
@@ -43,7 +45,9 @@ for (const data of [false, true]) {
           if (url.pathname.endsWith("/rpc/native_resolve_account")) {
             calls.push("resolve");
             assertEquals(JSON.parse(String((init as RequestInit)?.body)), { issuer: config.issuer, subject });
-            return Promise.resolve(scenario === "admin-blocked"
+            return Promise.resolve(scenario === "identity-conflict"
+              ? Response.json({ message: "account_conflict", code: "P0001" }, { status: 400 })
+              : scenario === "admin-blocked"
               ? Response.json({ message: "native_account_blocked", code: "42501" }, { status: 403 })
               : Response.json(scenario === "mismatched-account" ? "00000000-0000-4000-8000-000000000074" : account));
           }
@@ -65,7 +69,8 @@ for (const data of [false, true]) {
         store: createCredentialStore({ userClient, admin, config, fetch: (input) => {
           calls.push("clerk");
           assertEquals(String(input), `https://api.clerk.com/v1/users/${subject}`);
-          return Promise.resolve(scenario === "clerk-outage" ? new Response(null, { status: 503 })
+          return Promise.resolve(scenario === "clerk-rate-limited" ? new Response(null, { status: 429 })
+            : scenario === "clerk-outage" ? new Response(null, { status: 503 })
             : scenario === "clerk-missing" ? new Response(null, { status: 404 })
             : Response.json({ ...user, banned: scenario === "banned", locked: scenario === "locked" }));
         } }),
@@ -76,7 +81,9 @@ for (const data of [false, true]) {
         },
       });
       const expected = scenario === "active" ? 200
-        : ["invalid-bearer", "deleted", "mismatched-account", "clerk-missing"].includes(scenario) ? 401
+        : ["invalid-bearer", "deleted", "sql-deleted", "mismatched-account", "clerk-missing"].includes(scenario) ? 401
+        : scenario === "identity-conflict" ? 409
+        : scenario === "clerk-rate-limited" ? 429
         : scenario === "clerk-outage" ? 503 : 403;
       assertEquals(response.status, expected);
       if (scenario === "active") {
@@ -84,7 +91,7 @@ for (const data of [false, true]) {
       } else {
         assertEquals(calls.includes("load"), false);
         assertEquals(calls.includes("sign"), false);
-        if (["invalid-bearer", "deleted"].includes(scenario)) assertEquals(calls, ["authenticate"]);
+        if (["invalid-bearer", "deleted", "sql-deleted"].includes(scenario)) assertEquals(calls, ["authenticate"]);
         if (["admin-blocked", "mismatched-account"].includes(scenario)) assertEquals(calls, ["authenticate", "resolve"]);
         const result = await response.json();
         assertEquals("credential" in result, false);

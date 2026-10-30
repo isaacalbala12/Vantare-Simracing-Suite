@@ -541,8 +541,31 @@ mod tests {
             drop(lock);
             assert_eq!(fs::read(&path).expect("preservado"), original);
             restore().expect("JSON invÃ¡lido recuperado");
-            assert!(!path.exists());
-            assert!(store.root.join(format!("{name}.corrupto")).exists());
+            if name == "authority" {
+                assert!(
+                    path.exists(),
+                    "denied authority is persisted before recovery"
+                );
+                assert!(
+                    store
+                        .load::<bool>("authority-recovery")
+                        .expect("durable guard")
+                );
+                let archived = fs::read_dir(&store.root)
+                    .expect("archives")
+                    .map(|entry| entry.expect("archive"))
+                    .find(|entry| {
+                        entry
+                            .file_name()
+                            .to_string_lossy()
+                            .starts_with("authority-0-")
+                    })
+                    .expect("original authority preserved");
+                assert_eq!(fs::read(archived.path()).expect("archive bytes"), original);
+            } else {
+                assert!(!path.exists());
+                assert!(store.root.join(format!("{name}.corrupto")).exists());
+            }
         }
         drop(store);
         fs::remove_dir_all(root).expect("limpiar");

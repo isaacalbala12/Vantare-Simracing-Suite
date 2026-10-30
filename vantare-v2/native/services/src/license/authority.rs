@@ -107,8 +107,9 @@ impl Authority {
             Ok(_) => true,
             Err(Error::NotFound) => false,
             Err(Error::Corrupt) => {
-                store.quarantine_dated("authority-recovery", 0)?;
-                store.save("authority-recovery", &true)?;
+                // Its continued presence is the recovery guard. Moving it
+                // before replacing it would leave a crash window without a
+                // guard. A successful online persist removes it last.
                 damaged = true;
                 true
             }

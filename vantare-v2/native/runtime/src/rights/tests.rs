@@ -1846,13 +1846,66 @@ fn authority_recovery_missing_authority_or_corrupt_marker_cannot_restore_binding
             std::fs::remove_file(namespace.join("authority.dpapi"))
                 .expect("missing authority fixture");
         }
-        let mut owner = Owner::open(&root, Some(&keys), devices(), 2, wall(110))
-            .expect("recoverable without rights");
+        for epoch in [2, 3] {
+            let mut owner = Owner::open(&root, Some(&keys), devices(), epoch, wall(110))
+                .expect("recoverable without rights");
+            assert!(owner.binding.is_none());
+            assert!(matches!(
+                owner.install(old.clone(), wall(110), Duration::ZERO),
+                Err(Error::Denied)
+            ));
+            assert!(
+                owner
+                    .advance(&photo(false), wall(110), Duration::ZERO)
+                    .expect("denied but available policy")
+                    .online_recovery_required
+            );
+            if corrupt_marker {
+                assert_eq!(
+                    std::fs::read(namespace.join("authority-recovery.dpapi"))
+                        .expect("guard still present"),
+                    b"damaged marker fixture",
+                    "do not move the only recovery guard before the new authority is committed"
+                );
+            }
+        }
+        clean(&root);
+    }
+}
+
+#[test]
+fn authority_recovery_online_skew_also_bounds_the_reanchor_branch() {
+    for skew in [-301, -300, 0, 300, 301] {
+        let root = test_root();
+        let (old, old_keys) = signed_v1_named(100, vec![], devices().legacy, "old");
+        let (new, new_keys) = signed_v1_named(1000 + skew, vec![], devices().legacy, "new");
+        let keys = format!("{old_keys},{new_keys}");
+        let mut owner = Owner::open(&root, Some(&keys), devices(), 1, wall(100)).expect("owner");
+        owner
+            .install(old, wall(100), Duration::ZERO)
+            .expect("initial grant");
+        owner
+            .advance(&photo(false), wall(2000), Duration::from_secs(1))
+            .expect("future persisted");
+        drop(owner);
+        let mut owner =
+            Owner::open(&root, Some(&keys), devices(), 2, wall(1000)).expect("recovery owner");
+        assert!(owner.policy().online_recovery_required);
         assert!(owner.binding.is_none());
-        assert!(matches!(
-            owner.install(old, wall(110), Duration::ZERO),
-            Err(Error::Denied)
-        ));
+        // Every new iat is after latest_issued=100: a failed boundary test
+        // cannot be satisfied accidentally by the issuance anti-rollback check.
+        let result = owner.install_online(new, wall(1000), Duration::ZERO);
+        assert_eq!(result.is_ok(), (-300..=300).contains(&skew));
+        if result.is_ok() {
+            let policy = owner
+                .advance(&photo(false), wall(1000), Duration::ZERO)
+                .expect("reanchored");
+            assert!(policy.overlays_advanced);
+            assert!(!policy.online_recovery_required);
+        } else {
+            assert!(matches!(result, Err(Error::Clock)));
+            assert!(owner.policy().online_recovery_required);
+        }
         drop(owner);
         clean(&root);
     }

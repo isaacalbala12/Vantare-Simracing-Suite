@@ -3,9 +3,13 @@
 Worker encargado por el orquestador, rama `vantareapp/isa-1806-autoridad-reloj`,
 worktree `C:/VantareServer/wt/isa-1806`, base nightly `9adbde099`.
 Plane paraguas no se modifica. Target propio `D:/VantareServer/targets/isa-1806`.
+[PR draft #1818](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1818),
+primer commit publicado `2549f5915`; revisión y gates finales pendientes.
 
 - Autoridad DPAPI dañada: cuarentena acotada y marca durable de recuperación,
-  sin restaurar binding/gracia antiguos. E/S real sigue fallando; no hay defaults.
+  sin restaurar binding/gracia antiguos. Una marca ilegible se conserva como
+  barrera hasta la instalación online: no se mueve antes de sustituir la autoridad,
+  evitando una ventana de caída sin marca. E/S real sigue fallando; no hay defaults.
 - Control v6 distingue InstallOnline, emitido únicamente en la misma ejecución
   del helper tras renew HTTP/TLS y firma verificados. TransferRights y Candidate
   de disco siguen usando Install, sin poder reanclar reloj ni reparar autoridad.

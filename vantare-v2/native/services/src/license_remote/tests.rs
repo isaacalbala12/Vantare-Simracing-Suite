@@ -8,11 +8,15 @@ const SUBJECT: &str = "550e8400-e29b-41d4-a716-446655440000";
 const DEVICE: &str = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
 
 pub(crate) fn signed_fixture(device: &str) -> (CredentialV1, &'static str) {
+    signed_fixture_named(device, "test")
+}
+
+pub(crate) fn signed_fixture_named(device: &str, key_id: &str) -> (CredentialV1, &'static str) {
     let mut seed = [0; 32];
     getrandom::fill(&mut seed).expect("test entropy");
     let key = SigningKey::from_bytes(&seed);
     let payload = format!(
-        r#"{{"version":1,"algorithm":"Ed25519","key_id":"test","claims":{{"issuer":"vantare-license","subject":"{SUBJECT}","device_fingerprint":"{device}","issued_at":"2026-09-30T10:00:00Z","capabilities":[]}}}}"#
+        r#"{{"version":1,"algorithm":"Ed25519","key_id":"{key_id}","claims":{{"issuer":"vantare-license","subject":"{SUBJECT}","device_fingerprint":"{device}","issued_at":"2026-09-30T10:00:00Z","capabilities":[]}}}}"#
     );
     let mut credential: CredentialV1 = serde_json::from_str(&format!(
         "{},\"signature\":\"\"}}",
@@ -22,7 +26,7 @@ pub(crate) fn signed_fixture(device: &str) -> (CredentialV1, &'static str) {
     credential.signature = URL_SAFE_NO_PAD.encode(key.sign(payload.as_bytes()).to_bytes());
     let keys = Box::leak(
         format!(
-            "test:{}",
+            "{key_id}:{}",
             URL_SAFE_NO_PAD.encode(key.verifying_key().as_bytes())
         )
         .into_boxed_str(),

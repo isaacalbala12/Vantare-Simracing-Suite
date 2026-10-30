@@ -1818,6 +1818,7 @@ mod tests {
         #[cfg(windows)]
         Install,
         InstallOnline,
+        InstallOnlineCredential(String),
         VersionMismatch,
         Invalidate,
         #[cfg(windows)]
@@ -1825,6 +1826,49 @@ mod tests {
         #[cfg(windows)]
         DisconnectInstall,
         RejectInvalidate,
+    }
+
+    fn assert_install_command(
+        step: &CoreStep,
+        command: vantare_ipc::control::Command,
+        device: &str,
+        keys: &str,
+    ) {
+        use vantare_ipc::control;
+        let credential = match command {
+            control::Command::Install { credential } => {
+                assert!(
+                    !matches!(
+                        step,
+                        CoreStep::InstallOnline | CoreStep::InstallOnlineCredential(_)
+                    ),
+                    "renew must preserve online provenance"
+                );
+                credential
+            }
+            control::Command::InstallOnline { credential } => {
+                assert!(
+                    matches!(
+                        step,
+                        CoreStep::InstallOnline | CoreStep::InstallOnlineCredential(_)
+                    ),
+                    "disk candidate cannot claim online provenance"
+                );
+                credential
+            }
+            _ => panic!("signed credential required"),
+        };
+        if let CoreStep::InstallOnlineCredential(expected) = step {
+            assert_eq!(
+                &credential, expected,
+                "online install must use the exact fresh HTTP credential"
+            );
+        }
+        let proof = crate::license::Verifier::public_keys(keys)
+            .expect("keys")
+            .proof(&credential, device, "unused-v2-installation")
+            .expect("signed v1");
+        assert!(proof.grants().is_empty());
     }
 
     pub(super) fn core_fixture(
@@ -1872,28 +1916,7 @@ mod tests {
                 } else if matches!(step, CoreStep::Invalidate | CoreStep::RejectInvalidate) {
                     assert!(matches!(request.command, control::Command::Invalidate));
                 } else {
-                    let credential = match request.command {
-                        control::Command::Install { credential } => {
-                            assert!(
-                                !matches!(step, CoreStep::InstallOnline),
-                                "renew must preserve online provenance"
-                            );
-                            credential
-                        }
-                        control::Command::InstallOnline { credential } => {
-                            assert!(
-                                matches!(step, CoreStep::InstallOnline),
-                                "disk candidate cannot claim online provenance"
-                            );
-                            credential
-                        }
-                        _ => panic!("signed credential required"),
-                    };
-                    let proof = crate::license::Verifier::public_keys(keys)
-                        .expect("keys")
-                        .proof(&credential, &device, "unused-v2-installation")
-                        .expect("signed v1");
-                    assert!(proof.grants().is_empty());
+                    assert_install_command(&step, request.command, &device, keys);
                 }
                 #[cfg(windows)]
                 if matches!(step, CoreStep::DisconnectInstall) {
@@ -3028,7 +3051,12 @@ mod online_compatibility_tests {
     #[test]
     fn authority_recovery_admits_helper_without_rights_then_renews_online() {
         let device = crate::license::installation::legacy_fingerprint().expect("test fingerprint");
-        let (credential, keys) = crate::license_remote::tests::signed_fixture(&device);
+        let (cached, cached_keys) =
+            crate::license_remote::tests::signed_fixture_named(&device, "cached");
+        let (credential, fresh_keys) =
+            crate::license_remote::tests::signed_fixture_named(&device, "fresh");
+        let expected = serde_json::to_string(&credential).expect("fresh HTTP fixture");
+        let keys: &'static str = Box::leak(format!("{cached_keys},{fresh_keys}").into_boxed_str());
         let server = crate::test_http::Server::start(vec![
             (200, serde_json::json!({"access_token":"fixture-new-access","refresh_token":"fixture-new-refresh","token_type":"Bearer","expires_in":3600}).to_string()),
             (200, serde_json::json!({"sub":"user_fixture"}).to_string()),
@@ -3057,9 +3085,9 @@ mod online_compatibility_tests {
             .save(
                 "license-candidate",
                 &crate::license_remote::Candidate {
-                    account_id: credential.claims.subject.clone(),
+                    account_id: cached.claims.subject.clone(),
                     device: device.clone(),
-                    credential,
+                    credential: cached,
                 },
             )
             .expect("old disk candidate");
@@ -3069,7 +3097,7 @@ mod online_compatibility_tests {
             vec![
                 CoreStep::RejectInstall,
                 CoreStep::ReadRecovery,
-                CoreStep::InstallOnline,
+                CoreStep::InstallOnlineCredential(expected),
             ],
         );
         app.attach_core(link);

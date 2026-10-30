@@ -1,3 +1,26 @@
+## VANTA-105 / #1803 — Integrado en nightly; seguimiento P3 (31-oct)
+
+PR [#1811](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1811)
+integrado por el orquestador tras re-revisión **APPROVE**, merge verificado
+`55250c6f5658523a781aa648ece822cbc807ebd0` en `origin/nightly`
+(30-oct23:35:37 UTC). HEAD revisado tras rebase `0d4a92796`: árbol y diff
+`native/` idénticos a `85950dbf3`; ambas entradas ajenas del handoff conservadas.
+Los gates y nueve mutaciones de la entrega anterior siguen siendo su evidencia;
+este cierre solo registra documentación, sin nuevos tests de producto.
+
+Se abre una única issue de seguimiento
+[#1819](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1819),
+Project Vantare / Backlog / area:licencias, sin milestone: cuatro P3 de la
+re-revisión, sin implementación en este cierre. Incluye cierre del helper si
+falla el núcleo en automático del Hub; desconexión entre conectar y consultar
+identidad; recuperar el E2E positivo de sesión restaurada sin derechos con núcleo
+real; simplificar o justificar `recovered_renewal_transfer`. No bloquean la
+aprobación recibida ni se atribuyen a derechos concedidos indebidamente.
+
+Canal alcanzado: nightly; pendiente QA del orquestador/Isaac. Sin promoción a
+testers/master, release, instalación ni producción. TTL y gracia sin cambios;
+una caída de red durante toda la ventana no prolonga la caducidad prevista.
+
 ## VANTA-105 / #1803 — Correcciones de revisión profunda (31-oct)
 
 Revisiones DeepSeek 1/2 y 2/2 recibidas del orquestador sobre PR draft #1811,

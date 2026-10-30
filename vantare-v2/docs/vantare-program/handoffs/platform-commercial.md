@@ -1,3 +1,38 @@
+## VANTA-105 / #1782 — Diagnóstico de canales RC9 (30-oct)
+
+Diagnóstico de solo lectura sobre RC9 `160f228bb`, en worktree propio
+`C:/VantareServer/wt/isa-1782-rc9-diagnostico`, rama
+`vantareapp/isa-1782-rc9-diagnostico`. Sin abrir/reiniciar app, builds ni cambios
+de producto/instalación/datos. [Informe](../rc9-license-channel-diagnosis.md).
+
+- Veredicto limitado a los logs: **no bloquea la release, pero hay que arreglarlo**.
+  No se demuestran revocación, versiones mezcladas ni tormenta HTTP. Los fallos
+  locales pueden mostrar candados si se agota el TTL2s; no se certifica ausencia
+  de parpadeos entre capturas ni causa definitiva de BrokenPipe.
+- Ventana fija 21:07:40–21:21:50Z: 2 core-unavailable, 7 BrokenPipe, 1 Protocol,
+  1 Verified inicial y 2 HTTP200 (el segundo manual a 21:09:31). Los full.log
+  son acumulativos. No siempre hay Verified después del error. Otro Protocol
+  se añade antes de 21:22:34. QA confirma que no suspendió procesos ni reinició.
+- Services convierte timeout/EOF de su pipe de 5min en Protocol. Probe y
+  LicenseStatus los responde el supervisor sin visitar al helper: la UI puede
+  seguir activa y el helper caducar. Reconexión previa a efectos sin replay.
+  Derechos usa una RPC nueva por lectura, no un canal ocioso persistente.
+- Se propone separar cierre esperado/error, añadir fases/tiempos/peer sanitizados
+  y regresiones con almacenamiento lento. Persistencia bajo mutex es una hipótesis
+  medible, no causa demostrada. No relajar TTL, persistencia o antirollback.
+- Riesgo adicional confirmado por código: app.rs:82-88 convierte fallo de transporte
+  del núcleo en Denied; si ocurre durante transferencia de renovación automática,
+  queda Definitive/blocked y puede frenar reintentos. Propuesta: conservar el error
+  de transporte como transitorio y probar recuperación. No se observó en esta ventana.
+  Services RC9 es v15 según constante; el README v14 está desactualizado.
+- Seguimiento [#1803](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1803),
+  Project Vantare / Backlog / area:licencias, sin milestone hasta triaje; relacionado
+  #1799. #1782 continúa con QA; Plane VANTA-105 sigue En curso. El orquestador
+  debe integrar este resumen con el de QA sin sustituirlo. No se crea Plane.
+- Fuentes y regresiones leídas; sin tests/build por alcance diagnóstico y QA
+  simultánea. Sin merge, promoción, release o publicación. Pendiente revisión
+  del informe y asignación del arreglo, no implementado en esta entrega.
+
 ## VANTA-105 / #1793 — Verificacion autonoma en sapphireos (30-oct)
 
 El orquestador autoriza compilar en el servidor al estar apagado el PC de juegos

@@ -30,6 +30,7 @@ for (const data of [false, true]) {
       const calls: string[] = [];
       const token = bearer(data);
       const userClient = createClient("https://local.invalid", "fixture", {
+        auth: { autoRefreshToken: false, persistSession: false },
         global: { fetch: (input) => {
           const path = new URL(String(input)).pathname;
           if (path === "/rest/v1/rpc/claim_active_device") {
@@ -46,6 +47,7 @@ for (const data of [false, true]) {
         } },
       });
       const admin = createClient("https://local.invalid", "fixture", {
+        auth: { autoRefreshToken: false, persistSession: false },
         global: { fetch: (input, init) => {
           const url = new URL(String(input));
           if (url.pathname.endsWith("/rpc/native_resolve_account")) {
@@ -110,6 +112,7 @@ for (const data of [false, true]) {
 for (const claims of [{ iss: "https://foreign.invalid" }, { sub: account }, { clerk_subject: "user_bad" }]) {
   Deno.test(`legacy rejects incompatible identity after RPC: ${JSON.stringify(claims)}`, async () => {
     const userClient = createClient("https://local.invalid", "fixture", {
+      auth: { autoRefreshToken: false, persistSession: false },
       global: { fetch: () => Promise.resolve(Response.json({ id: account })) },
     });
     const store = createCredentialStore({ userClient, config, resolve: () => {

@@ -27,9 +27,10 @@ incidente reproducido con un usuario real.
 
 ## Resultado integrado provisional
 
-Tres P1 nuevos confirmados: autoridad DPAPI irrecuperable, sesión/metadata DPAPI
-irrecuperables y reloj adelantado que sigue bloqueando después de corregirlo.
-Se han abierto #1806, #1807 y #1808, todos con `area:licencias` y Project Vantare.
+Cuatro P1 nuevos confirmados: autoridad DPAPI irrecuperable, sesión/metadata DPAPI
+irrecuperables, reloj adelantado que sigue bloqueando después de corregirlo y
+candidate de dispositivo anterior que impide abrir el canal de recuperación.
+Se han abierto #1806, #1807, #1808 y #1810, todos con `area:licencias` y Project Vantare.
 No se ha confirmado un P0 ni una concesión nueva sin firma válida.
 
 La clase común es **denegación segura sin una vía de recuperación autenticada**.
@@ -113,6 +114,37 @@ Seguimiento: [#1808](https://github.com/isaacalbala12/Vantare-Simracing-Suite/is
   de E/S bloqueada. Verificar que el login nuevo funciona, no resucita tokens,
   no hereda derechos de otra cuenta y sobrevive a un segundo arranque.
 
+### P1 · F4 · Candidate firmado del dispositivo anterior bloquea también el login
+
+Seguimiento: [#1810](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1810),
+vinculada al mecanismo de admisión de #1798; coordinar un arreglo común.
+
+- **Código:** `native/services/src/license_remote.rs:111`,
+  `native/services/src/app.rs:90`,
+  `native/runtime/src/rights/mod.rs:217`,
+  `native/runtime/src/services.rs:383`.
+- **Escenario:** cambia MachineGuid, pero el almacén del usuario sigue siendo
+  descifrable, por ejemplo tras restaurar una imagen con las claves DPAPI.
+  El núcleo aparta el binding del dispositivo anterior. Services valida el
+  candidate contra `candidate.device`, por lo que su firma antigua pasa;
+  Install lo verifica contra la huella actual del núcleo y lo rechaza.
+  El supervisor exige TransferRights antes de admitir el helper y enviar
+  AccountBegin/AccountPoll/LicenseRenew: nunca se alcanza el código que podría
+  autenticar y pedir una licencia nueva. Cada helper vuelve a leer la misma caché.
+- **Usuario:** ni reintento ni reinicio resuelven la licencia; el dispositivo
+  incorrecto no obtiene derechos, pero tampoco existe una salida normal.
+  Una copia entre PCs que pierda las claves DPAPI daría corrupción recuperable
+  de candidate, no este escenario; aquí el documento debe seguir descifrable.
+- **Corrección propuesta:** comprobar el dispositivo actual antes de transferir
+  y apartar el candidate incompatible preservando evidencia. Admitir un canal
+  restringido de recuperación con política denegada aunque la caché no pueda
+  instalarse; no omitir firma, cuenta, reloj, lápida ni ACK durable.
+- **Tests:** firmas auténticas con dispositivo viejo/nuevo, misma cuenta,
+  cuenta distinta y candidate rechazado por reloj/lápida; ninguna concesión
+  de la caché rechazada y recuperación sin manipular archivos. Las fixtures de
+  `runtime/src/services/tests.rs:127` usan el mismo dispositivo. Es un disparador
+  adicional a #1798 y no se arregla solo reclasificando el transporte en #1803.
+
 ## Riesgos y discrepancias acotadas
 
 ### P2 · R1 · Sin plazo de credencial V1, no hay refresco periódico después del primer éxito
@@ -160,6 +192,117 @@ y secciones de los README services/Hub todavía dicen v14. Puede inducir a
 construir o diagnosticar una mezcla de binarios incorrecta; no demuestra que
 la instalación RC9 esté mezclada. Corregir referencias en una tarea documental
 acotada; #1803 ya identifica esta discrepancia. Este PR no cambia esos README.
+
+### P2 · R4 · Primer login con reloj adelantado crea una lápida futura
+
+`native/services/src/app.rs:400` invalida antes de completar el primer login o
+cambio de identidad; el flujo email hace lo mismo (`:584`). Es necesario
+preservar la revocación si existe un binding previo cuya identidad no se conoce.
+`license/authority.rs:325` fija la lápida con hora local y `:139` rechaza una
+emisión no posterior a ella.
+
+Con un PC dos segundos adelantado, el HTTP200 y la firma nueva son válidos y
+el desfase está dentro de 300 s, pero `issued_at` puede seguir detrás de la
+lápida. Install falla, la automática queda definitiva y no vuelve a intentarlo
+al pasar los dos segundos. Reintentar manualmente más tarde puede recuperar.
+Si se reinicia/cierra el helper antes, el candidate ya guardado sigue siendo
+anterior a la lápida y bloquea TransferRights: variante agravada de F4/#1810.
+
+Propuesta: alinear la frontera de revocación y la emisión nueva mediante una
+referencia autenticada y clasificación recuperable del rechazo temporal; no
+omitir Invalidate solo porque `account.identity()` sea None. Test con clocks
+cliente/servidor separados, login, HTTP200, Install rechazado y recuperación tras
+el desfase, también después de reiniciar helper. El test
+`native/services/src/license/tests.rs:820` cubre reloj atrasado, no este caso.
+
+### P2 · R5 · Pausar una sesión elimina la gracia adquirida antes de vencer
+
+`native/runtime/src/rights/host.rs:147` conserva `entered_at` para Stale, pero no
+para Paused. `rights/mod.rs:350` abandona la partida en un estado distinto de
+Stale. Al reanudar, el nuevo Game solo es elegible si la nueva entrada sigue
+antes de la expiración (`services/src/license/authority.rs:259`).
+
+Escenario: Pro vence a las 20:00; se entra a las 19:50, se pausa a las 19:59 y
+se vuelve a las 20:01. Sin pausa conservaría la gracia hasta las 21:00; con
+pausa pierde su elegibilidad. La cadena está confirmada; falta confirmar con
+producto que Paused debe conservar la sesión para derechos, como ya se hace
+para continuidad de uso. Si la pausa equivale a fin de sesión por contrato,
+este hallazgo debe retirarse, no cambiarse el código a ciegas.
+
+Propuesta: preservar entrada y gracia ya adquiridas durante Paused, sin crear
+gracia nueva ni convertirlo en Live; mantener los rechazos de replay/cambio de
+sesión. Falta un test Live→Paused→Live que cruce expiry: no hay Paused en
+`native/runtime/src/rights/tests.rs` de esta base.
+
+### P2 · R6 · E/S transitoria al abrir requiere reiniciar aunque el bloqueo desaparezca
+
+`native/runtime/src/rights/host.rs:51` intenta abrir Owner una sola vez. Si un
+handle externo bloquea la lectura de authority/binding durante ese instante,
+se conserva `owner=None`; Install e Invalidate no vuelven a abrirlo (`:266`).
+Al liberar el handle, la aplicación sigue denegada. Reiniciar puede recuperar,
+a diferencia del ciphertext corrupto de F1. La clasificación como Unconfigured
+o Denied agrava el fallo, pero arreglar solo #1803 no crea un propietario nuevo.
+
+Propuesta: distinguir configuración ausente de almacén temporalmente inaccesible
+y permitir una reapertura limitada conservadora, sin segundo escritor ni derechos
+antes de verificar/persistir. Test con handle Windows real: lectura bloqueada
+al arrancar, liberación sincronizada y recuperación posterior. El test
+`native/runtime/src/rights/tests.rs:1494` cubre fallo de persistencia con Owner
+vivo, que es otro camino. Coordinar el mecanismo con #1806.
+
+### P2 · R7 · El refresh manual puede cerrar sesión sin que el Hub lo refleje
+
+`native/services/src/app.rs:317` ante Authentication/Denied en refresh manual
+revoca y guarda SignedOut, pero LicenseRenew no es `account_action` (`:478`);
+se devuelve Reply::Error y no Reply::Account. El Hub conserva signed_in y la
+caducidad conocida (`hub/src/services/access.rs:249`, `view.rs:977`).
+
+El usuario ve sesión conectada y política denegada. Comprobar acceso repite una
+renovación sin sesión; Logout permite salir cuando el canal sigue disponible.
+No es el banner fijo de #1801 ni prueba que un token caducado deba revocar una
+licencia automáticamente.
+
+Propuesta: después de un cierre efectivo, devolver también el estado real de
+cuenta o releerlo sin efectos remotos; mantener la invalidación durable y no
+repetir la acción que perdió respuesta. Falta test integrado invalid_grant en
+LicenseRenew→SignedOut→Hub vuelve a ofrecer login.
+
+### P3 · R8 · Cuenta y navegación beta discrepan para Calendar sin rol tester
+
+`native/hub/src/services/view/account.rs:143` calcula «Incluido» con `lock`,
+pero `shell/navigation.rs:53` oculta Calendar si tester=false aunque calendar
+sea true. La fixture `account_tests.rs:75` espera todos los módulos incluidos
+con tester por defecto falso. Escenario: concesión individual de Calendar o
+Founders sin rol operativo; Cuenta lo incluye pero la barra beta lo oculta.
+
+Propuesta: usar el mismo criterio beta o explicar «solo testers» en Cuenta,
+sin conceder el rol tester por comprar un plan. Test de lista y navegación con
+la misma Policy. Analysis/Engineer/Strategy tienen además restricciones beta
+explícitas; no se presentan aquí como fallos de firma.
+
+### P2 · R9 · Una huella temporalmente ilegible se trata como firma de caché inválida
+
+`native/runtime/src/rights/mod.rs:24` convierte el error de leer MachineGuid en
+huella vacía. Owner verifica entonces el binding con esa huella y lo aparta
+como InvalidSignature (`:151`); la huella vacía se conserva durante el proceso.
+Una E/S del registro puede retirar una caché válida para uso offline. Al volver
+a leer correctamente y reiniciar, puede recuperarse; no se ha observado con
+un usuario real.
+
+Propuesta: diferenciar «identidad no disponible» de «credencial incompatible»,
+conservar bytes y permitir relectura limitada antes de decidir cuarentena.
+No acuñar una huella nueva por error. Test con identidad inyectada: lectura
+fallida, cero derechos, caché conservada, relectura correcta y recuperación.
+
+### Triage de otras propuestas del revisor runtime
+
+| Propuesta | Decisión del integrador tras leer el código |
+| --- | --- |
+| Clock/Storage del núcleo se vuelven Denied | Confirmada en la base; comparte frontera con #1803. Mantener el seguimiento existente y no afirmar que un arreglo de transporte resuelve todos los rechazos semánticos. |
+| DeviceReset revoca antes de la red | Orden intencional de seguridad: la revocación durable precede al reset remoto. No se propone invertirlo. Cubrir fallo de red y recuperación, explicando que hace falta renovar si el reset remoto no se completó. |
+| PurchaseWait confirma pago para tester/Founder ya Pro | El predicado confirma acceso al catálogo, no una orden o factura. No se acepta como «pago confirmado sin cobrar». Puede mejorar el texto si el acceso ya existía; la admisión remota de la compra debe probarse antes de afirmar doble suscripción. |
+| Launch histórico solo permite Calendar en modules | El comportamiento está fijado por tests (`rights/tests.rs:942`), mientras el contrato histórico menciona Engineer inicial. Discrepancia contractual a reconciliar con #1510; no implementar ampliación de derechos desde esta revisión. |
+| Candidate de otra cuenta sin binding | Hipótesis relevante para #1798: no hay vínculo explícito con la sesión OAuth durante TransferRights. No se presenta como P0 o concesión a otra cuenta reproducida; añadir fixture de restauración parcial y comprobar toda la secuencia. |
 
 ## Antecedentes contrastados, sin duplicar su seguimiento
 

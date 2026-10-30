@@ -12,7 +12,10 @@ el integrador contrasta código y tests antes de aceptar sus resultados.
   [#1807](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1807),
   reloj local adelantado que sigue bloqueando tras corregirlo;
   [#1808](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1808),
-  sesión/metadata OAuth DPAPI ilegible que impide login nuevo.
+  sesión/metadata OAuth DPAPI ilegible que impide login nuevo;
+  [#1810](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1810),
+  candidate firmado del dispositivo anterior que impide admitir el helper
+  incluso para iniciar sesión. Coordinar su mecanismo común con #1798.
   Todos en Project Vantare / area:licencias, sin milestone comprometido;
   no se crean tareas Plane ni se implementan arreglos.
 - El primer P1 se ha comunicado al hilo del orquestador. #1798/#1801 conservan
@@ -25,6 +28,12 @@ el integrador contrasta código y tests antes de aceptar sus resultados.
   informe; el draft no es una entrega final ni acredita CI verde. #1782 y la QA RC9 no
   se sustituyen ni cierran; Plane VANTA-105 continúa En curso. Sin merge,
   promoción, release o despliegue autorizados por esta revisión.
+- Revisor DeepSeek runtime finalizado; propuestas contrastadas contra código.
+  Añadidos escenarios de reloj/lápida al primer login, pausa que pierde gracia,
+  E/S inicial sin reapertura y cuenta desconectada que la UI sigue mostrando
+  conectada. Semántica de Paused pendiente de decisión de producto. No se acepta
+  como pago sin cobro el predicado PurchaseWait, que solo verifica catálogo.
+  Revisores de services y servidor todavía ejecutándose.
 
 ## VANTA-105 / #1782 — Diagnóstico de canales RC9 (30-oct)
 

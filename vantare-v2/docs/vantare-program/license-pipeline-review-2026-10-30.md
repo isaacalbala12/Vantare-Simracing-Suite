@@ -9,7 +9,8 @@ Revisión estática de `origin/nightly` fijado en
 a ese SHA; las rutas `native/` son relativas a `vantare-v2/` y `supabase/` a
 la raíz Git. No se han abierto, descifrado ni modificado credenciales reales,
 ni cambiado producto, instalación, reloj del equipo, backend o configuración.
-Este informe no certifica el estado desplegado de Supabase ni una release.
+Se consultó únicamente el inventario remoto de Edge Functions por metadata;
+no se certifica igualdad del bundle desplegado con este SHA ni una release.
 
 Isaac autorizó tres revisores DeepSeek V4.1 Flash de solo lectura en paralelo,
 mediante T3 `delegate_task`, proveedor `opencode`, modelo
@@ -19,22 +20,33 @@ el código y sus tests; un resultado del revisor no cuenta por sí solo como pru
 El primer arranque del revisor de servidor falló en el proveedor y se reintentó
 con el mismo modelo, sin sustituirlo.
 
+Los tres resultados terminaron y se contrastaron. T3 task IDs comparten el
+prefijo `node:delegated-task:command%3Amcp%3A221c5bec-dbb6-44aa-9efe-67a2201cecc8%3Adelegate-task%3A`:
+`vanta105-license-services-r1`, `vanta105-license-runtime-r1` y
+`vanta105-license-server-r2`. El intento `server-r1` falló antes de revisar.
+El integrador es la sesión Codex gpt-6.1-sol con esfuerzo medium heredado;
+no se atribuye el high recomendado por la skill a una sesión que no lo expone.
+
 Las prioridades expresan impacto de producto: P0, concesión crítica indebida o
 fallo general; P1, bloqueo grave o pérdida de acceso sin recuperación normal;
 P2, fallo recuperable, incoherencia o riesgo acotado; P3, precisión documental
 o cobertura adicional. «Confirmado» significa cadena estática demostrada, no
 incidente reproducido con un usuario real.
 
-## Resultado integrado provisional
+## Resultado integrado
 
-Cinco P1 nuevos confirmados: autoridad DPAPI irrecuperable, sesión/metadata DPAPI
+Ocho P1 nuevos confirmados por código: autoridad DPAPI irrecuperable, sesión/metadata DPAPI
 irrecuperables, reloj adelantado que sigue bloqueando después de corregirlo y
 candidate de dispositivo anterior que impide abrir el canal de recuperación,
-y perfil automático que puede revocar una licencia offline vigente.
-Se han abierto #1806, #1807, #1808, #1810 y #1812, todos con `area:licencias` y Project Vantare.
+y perfil automático que puede revocar una licencia offline vigente; recuperación
+técnica no consumida por el nativo; revocación que la reconciliación no aplica;
+y controles de bloqueo omitidos por la ruta legacy de emisión.
+Issues #1806, #1807, #1808, #1810, #1812, #1813, #1814 y #1815, todas con
+`area:licencias` y Project Vantare. La exposición del código de #1815 en el bundle
+remoto sigue sin verificarse: el inventario solo confirma que el endpoint existe.
 No se ha confirmado un P0 ni una concesión nueva sin firma válida.
 
-La clase común es **denegación segura sin una vía de recuperación autenticada**.
+La clase dominante en cliente es **denegación segura sin una vía de recuperación autenticada**.
 Las correcciones deben mantener firma, dispositivo, persistencia y protección
 contra replay. Borrar ficheros o reiniciar el reloj/lápida a valores por defecto
 no es una solución aceptable.
@@ -175,6 +187,87 @@ Seguimiento: [#1812](https://github.com/isaacalbala12/Vantare-Simracing-Suite/is
   401/403, 429/5xx y sincronización explícita con el temporizador. #1796 protege
   LicenseRenewAutomatic, pero no esta segunda acción automática.
 
+### P1 · F6 · La recuperación de pago activa no llega a los derechos nativos
+
+Seguimiento: [#1814](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1814).
+
+`supabase/functions/_shared/license-credential.ts:253` separa
+`subscription_recovery` en `online_capabilities`, sin firmarla como grant.
+`native/services/src/license_remote.rs:100` valida los nombres pero descarta
+esas capabilities; el núcleo recibe solo la credencial firmada. Es correcto
+que un array sin firma no conceda derechos, pero el cliente nativo no tiene en
+esta ruta un sustituto firmado para las hasta 72 h de recuperación técnica.
+
+Escenario: acaba el periodo pagado y el backend conserva solo recovery activo.
+Con red y sesión válidas, la app recibe HTTP200, pero se queda en catálogo Free
+al caducar el Pro firmado. BIL-06 y el contrato de producto definen una recuperación
+técnica por ciclo separada de paidThrough; no basta con que el backend la calcule
+si ningún consumidor nativo puede usarla. El test
+`supabase/functions/license-credential/index.test.ts:257` exige expresamente
+mantener recovery fuera del envelope. La separación criptográfica es correcta;
+la integración de recuperación nativa está ausente.
+
+Propuesta: definir un lease de recuperación autenticado, firmado y acotado por
+recovery_until y por la comprobación online que exija el contrato. No conceder
+desde `online_capabilities`, extender el paidThrough comercial, crear recuperación
+perpetua ni reiniciar sus 72 h con retries. Falta test servidor→services→núcleo de
+Pro/Plus past_due, antes/en/después de su límite, otras fuentes y revocación.
+
+### P1 · F7 · La reconciliación no aplica snapshots `status=revoked`
+
+Seguimiento: [#1813](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1813).
+
+- **Código:** `supabase/functions/billing-reconcile/worker.ts:39`,
+  `billing-webhook/process.ts:330` y `:969`,
+  `billing-webhook/subscription-lifecycle.ts:93`.
+- **Escenario:** se pierde subscription.revoked y la reparación llega como
+  snapshot del API. El worker siempre construye subscription.updated. Su lista
+  de estados admite active/canceled/past_due, pero no revoked en un updated.
+  Sale a unsupported_subscription_status y cuarentena antes del lifecycle.
+  La transición de revocación existe, pero solo se alcanza por otra entrada.
+- **Usuario/negocio:** el grant anterior puede seguir activo hasta paid_through,
+  que en un anual puede estar lejano, y una emisión nueva sigue leyéndolo.
+  No se trata de una licencia offline que aún no contactó al servidor.
+  Un refund independiente podría bloquear esa fuente por otra ruta; el escenario
+  del defecto es una revocación sin ese bloqueo alternativo.
+- **Corrección propuesta:** normalizar revoked de snapshots hacia la misma
+  transición de revocación, manteniendo identidad, versión, locks y otras fuentes.
+  No añadir uncanceled como status del API solo por existir como nombre de evento.
+- **Tests:** grant Pro/Plus con plazo futuro, webhook perdido, reconcilePage
+  status=revoked, grants/recovery revocados y nueva credencial sin esos derechos;
+  replay duplicado y fuera de orden, otra compra intacta. Worker no tiene ese
+  caso; el tipo subscription.revoked aislado no demuestra esta integración.
+
+### P1 · F8 · La ruta legacy de emisión omite controles de cuenta bloqueada
+
+Seguimiento: [#1815](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1815).
+
+- **Código:** `supabase/functions/_shared/license-credential.ts:367`,
+  `supabase/migrations/20261014094353_isa_1608_commercial_b01.sql:7`,
+  `20261014140000_isa_1608_account_write_barrier.sql:200`,
+  `20261014095203_isa_1608_commercial_b02.sql:190`.
+- **Escenario:** bearer de sesión/datos todavía válido, grant activo y bloqueo
+  administrativo. license-credential llama claim_active_device y carga grants,
+  pero private.current_account/resolve_current_account solo aplican identidad y
+  barrera de borrado; no admin_account_blocks. La vista efectiva tampoco lo
+  filtra. El set_blocked de esta base escribe el bloqueo sin revocar grants y
+  está limitado a sandbox: no se presupone que admita la acción en producción.
+  La ruta native-license usa el resolver con esa barrera y rechaza. La ruta
+  legacy tampoco consulta banned/locked de Clerk; un JWT de sesión aún vigente
+  depende de que otra barrera desplegada lo rechace.
+- **Impacto:** el código permite emitir una firma auténtica para una cuenta cuyo
+  bloqueo debería impedir nueva emisión. No demuestra firma falsa ni acceso a
+  otra cuenta. La metadata remota confirma license-credential ACTIVE v16, pero
+  no se leyó su bundle: la exposición exacta de producción debe verificarse.
+- **Corrección propuesta:** si se conserva legacy, aplicar la misma barrera
+  autorizativa antes de firmar, sin convertir OAuth en JWT de sesión. Si está
+  retirado, analizar consumidores y eliminar la superficie por entrega propia;
+  ocultar su botón o quitarlo del wrapper no retira una función ya desplegada.
+- **Tests:** cuenta activa/bloqueada/borrada con bearer válido y grants, ambas
+  rutas, admin block y banned/locked, sin cargar/firmar tras rechazo. Preservar
+  clientes compatibles y la barrera de borrado. Ningún caso se ha probado con
+  tokens de un usuario real.
+
 ## Riesgos y discrepancias acotadas
 
 ### P2 · R1 · Sin plazo de credencial V1, no hay refresco periódico después del primer éxito
@@ -198,30 +291,6 @@ Propuesta: decidir una cadencia máxima de comprobación online independiente de
 la expiración comercial, con backoff y deferencia a carrera; no inventar una
 expiración para la compra perpetua ni revocar ante fallo de red. Test con reloj
 inyectado: éxito sin deadline, cambio remoto, siguiente comprobación acotada.
-
-### P2 · R2 · La recuperación de pago online no llega a los derechos nativos
-
-`supabase/functions/_shared/license-credential.ts:253` separa
-`subscription_recovery` en `online_capabilities`, sin firmarla como grant.
-`native/services/src/license_remote.rs:100` valida los nombres pero descarta
-esas capabilities; el núcleo recibe solo la credencial firmada. Es correcto
-que un array sin firma no conceda derechos, pero el cliente nativo no tiene en
-esta ruta un sustituto firmado para las hasta 72 h de recuperación técnica.
-
-Escenario: acaba el periodo pagado y el backend conserva solo recovery activo.
-Con red y sesión válidas, la app recibe HTTP200, pero se queda en catálogo Free
-al caducar el Pro firmado. Propuesta: acordar si la recuperación aplica al nativo
-y, si aplica, entregar un lease autenticado firmado y acotado; nunca confiar en
-`online_capabilities` directamente. Falta un test servidor→services→núcleo de
-`past_due`, dentro y fuera de su límite, sin alargar `paid_through`.
-
-### P3 · R3 · La documentación sigue llamando v14 al contrato de servicios v15
-
-`native/ipc/src/services_protocol.rs:7` fija la versión vigente. `native/README.md`
-y secciones de los README services/Hub todavía dicen v14. Puede inducir a
-construir o diagnosticar una mezcla de binarios incorrecta; no demuestra que
-la instalación RC9 esté mezclada. Corregir referencias en una tarea documental
-acotada; #1803 ya identifica esta discrepancia. Este PR no cambia esos README.
 
 ### P2 · R4 · Primer login con reloj adelantado crea una lápida futura
 
@@ -296,19 +365,6 @@ Propuesta: después de un cierre efectivo, devolver también el estado real de
 cuenta o releerlo sin efectos remotos; mantener la invalidación durable y no
 repetir la acción que perdió respuesta. Falta test integrado invalid_grant en
 LicenseRenew→SignedOut→Hub vuelve a ofrecer login.
-
-### P3 · R8 · Cuenta y navegación beta discrepan para Calendar sin rol tester
-
-`native/hub/src/services/view/account.rs:143` calcula «Incluido» con `lock`,
-pero `shell/navigation.rs:53` oculta Calendar si tester=false aunque calendar
-sea true. La fixture `account_tests.rs:75` espera todos los módulos incluidos
-con tester por defecto falso. Escenario: concesión individual de Calendar o
-Founders sin rol operativo; Cuenta lo incluye pero la barra beta lo oculta.
-
-Propuesta: usar el mismo criterio beta o explicar «solo testers» en Cuenta,
-sin conceder el rol tester por comprar un plan. Test de lista y navegación con
-la misma Policy. Analysis/Engineer/Strategy tienen además restricciones beta
-explícitas; no se presentan aquí como fallos de firma.
 
 ### P2 · R9 · Una huella temporalmente ilegible se trata como firma de caché inválida
 
@@ -396,6 +452,82 @@ App con 409 account_conflict distinto del ya existente device_limit.
 | Invertir RPC DeviceReset e Invalidate | Rechazado: el orden durable protege la transferencia de dispositivo. Cubrir UX/recuperación del fallo remoto manteniendo ese orden. |
 | Botón Founders visible para propietario | P3 de presentación confirmado en `hub/src/services/view/founders.rs:130`; no demuestra doble cobro. Ocultar/deshabilitar compra ya poseída y comprobar admisión/idempotencia del servidor antes de afirmar efectos monetarios. |
 
+### P2 · R13 · Bloqueo administrativo se comunica como caída transitoria
+
+`supabase/migrations/20261015115000_native_admin_identity_r4.sql:10` produce
+42501/native_account_blocked. `native-license/index.ts:118` reconoce 28000 y
+NativeError, pero no esa excepción SQL: termina en 503/bridge_unavailable.
+El cliente lo ve Offline y reintenta. No se firma una licencia nueva por esta
+ruta; el problema es diagnóstico/recuperación y no una concesión indebida.
+
+Propuesta: mapear únicamente el código cerrado de bloqueo a rechazo accionable,
+sin filtrar detalles internos ni convertir otros 42501 en decisiones de licencia.
+Test del handler con cuenta bloqueada: respuesta correcta y cero load/sign.
+El núcleo sigue aplicando su política offline; cambiar HTTP no la revoca por sí solo.
+
+### P2 · R14 · Estados desconocidos mantienen la proyección anterior al ir a cuarentena
+
+`supabase/functions/billing-webhook/process.ts:330` filtra el estado antes de
+`subscription-lifecycle.ts:100`, cuyo fallback sí revocaría. Por eso la matriz
+histórica «desconocido→revocado» no describe este camino: un snapshot desconocido
+queda en cuarentena y conserva el grant anterior hasta su plazo. F7 cubre revoked,
+que es un estado conocido por el dominio y perdido en la adaptación.
+
+Para estados realmente desconocidos, no se propone revocar indiscriminadamente:
+acordar con producto si se conserva una proyección todavía válida o se deniega,
+qué plazo de resolución existe y cómo se avisa. Test de handler y matriz usando
+la misma política, sin confundir cuarentena con convergencia aplicada.
+
+### P3 · R3 · La documentación sigue llamando v14 al contrato de servicios v15
+
+`native/ipc/src/services_protocol.rs:7` fija la versión vigente. `native/README.md`
+y secciones de los README services/Hub todavía dicen v14. Puede inducir a
+construir o diagnosticar una mezcla de binarios incorrecta; no demuestra que
+la instalación RC9 esté mezclada. Corregir referencias en una tarea documental
+acotada; #1803 ya identifica esta discrepancia. Este PR no cambia esos README.
+
+### P3 · R8 · Cuenta y navegación beta discrepan para Calendar sin rol tester
+
+`native/hub/src/services/view/account.rs:143` calcula «Incluido» con `lock`,
+pero `shell/navigation.rs:53` oculta Calendar si tester=false aunque calendar
+sea true. La fixture `account_tests.rs:75` espera todos los módulos incluidos
+con tester por defecto falso. Escenario: concesión individual de Calendar o
+Founders sin rol operativo; Cuenta lo incluye pero la barra beta lo oculta.
+
+Propuesta: usar el mismo criterio beta o explicar «solo testers» en Cuenta,
+sin conceder el rol tester por comprar un plan. Test de lista y navegación con
+la misma Policy. Analysis/Engineer/Strategy tienen además restricciones beta
+explícitas; no se presentan aquí como fallos de firma.
+
+### P3 · R15 · Las fuentes comerciales pueden contener claves de rol operativo
+
+`supabase/functions/_shared/license-credential.ts:236` permite claves conocidas
+operational.* en la rama de grants Polar con valid_until futuro. Después se
+firman junto a operational_access_assignments. El cliente reconoce esas claves
+como roles. Esto requiere un escritor/configuración privilegiado; no es una
+escalada remota de un cliente normal ni se demuestra que el mapping actual
+las emita. Dos fuentes con el mismo rol pueden además romper orden/duplicados.
+
+Propuesta de defensa en profundidad: solo la fuente de asignaciones operativas
+puede emitir roles; rechazar claves de rol en grants comerciales con test del
+normalizador, sin cambiar permisos o confiar en metadata editable.
+
+### Triage de servidor y comprobaciones operativas pendientes
+
+| Propuesta / fuente | Contraste y acción propuesta |
+| --- | --- |
+| Founders pagado antes del cierre, webhook después (`founders_plan.sql:25`, `process.ts:592`) | El switch actual puede mandar una orden no admitida a cuarentena. El contrato `docs/billing/founders-1661.md:100` reconoce pago en vuelo y revisión manual sin refund automático. Riesgo operativo existente; no cambiar a closed_at/admisión automática sin una política aprobada. Test pago previo al cierre con entrega posterior y plan de soporte. |
+| Inbox sin drenaje automático (`billing_webhook_inbox.sql:269`, `billing-webhook/index.ts:290`) | Límite de intentos y cuarentena confirmados; no se prueba ausencia de scheduler remoto por no existir wrapper. Inventario confirma billing-reconcile ACTIVE v8. Verificar invocaciones/cadencia y alertas de pendientes; no afirmar cuarentena exactamente a 7,5 min, porque la entrega y duración de intentos también cuentan. |
+| Rate limit propio (`native-license/index.ts:81`, `native-auth.ts:47`) | No hay presupuesto en handler; cada emisión verifica token y usuario con Clerk. Gateway/límites efectivos sin verificar. Proponer presupuesto por identidad/IP y Retry-After con diseño acotado; no presentar ausencia de una tabla como DoS real demostrado ni añadir caché que retrase bloqueos sin analizarlo. |
+| Refund parcial/pendiente | B02 y contrato reciente Founders retiran esa fuente, conservando otras. Runbooks BIL antiguos dicen que un parcial no retira. Prevalece decisión reciente; corregir docs históricas/estado, sin cambiar producto ni pedir refund real. |
+| `online_capabilities` futuras (`license_remote.rs:100`) | Campo sin autoridad que hoy rechaza nombres desconocidos con Protocol. P3 de compatibilidad: ignorar nombres no usados o versionar, conservando firma y allowlist de lo que sí se concede. Test cliente antiguo/servidor adelantado. |
+| Capability desconocida en DB (`license-credential.ts:236`) | El normalizador cerrado devuelve error de cuenta y no firma. Requiere una política/versionado de emisión; no filtrar sin decidir si oculta un estado comercial corrupto. La UX de 409 se recoge en R12. |
+| Orden localeCompare (`license-credential.ts:510`) | Claves actuales ASCII fijas; no hay fallo actual demostrado. Mantener orden canónico idéntico a bytes del cliente antes de introducir nuevas claves, con test cruzado, no una escalada actual. |
+| Reset al mismo fingerprint (`20261013225830_isa_1608_canonical_device_claim.sql:32`) | Consume last_reset_at/24 h aunque no cambie equipo. P3 de UX/política: aclarar intención y probar el límite; no omitir control de frecuencia ni invertir Invalidate/RPC. |
+| HTTP legacy (`license-credential.ts:131`, `:404`) | Respuesta 400 a cuerpo excesivo, falta no-store/bearer cap y clasificación incompleta de account_deleted: P3 para alinear contrato si se conserva el endpoint; F8 decide primero su superficie de autorización. |
+| Clerk webhook, claves y entornos | Inventario confirma clerk-webhook ACTIVE v7; se descarta inferir que no está desplegado por faltar en wrapper. Bundle, ACL y programación reales no verificados. Separación de proyectos/keyring sandbox-producción y module_rollout global requieren evidencia de configuración, sin leer secretos. |
+| Disputas won/lost y Founders→suscripción | Código/comments y contrato reciente describen una decisión explícita de Isaac; no invertirla desde una revisión por intuición sobre los nombres. Si se revisa, verificar semántica del proveedor con fixtures. La transición remota pendiente de cancelar renovación sigue siendo riesgo operativo, sin cobro duplicado demostrado aquí. |
+
 ## Antecedentes contrastados, sin duplicar su seguimiento
 
 | Antecedente | Estado observado en la base / consecuencia para esta revisión |
@@ -419,10 +551,10 @@ configuración coherentes, sin consultar datos reales de una cuenta.
 | Sin cuenta | Pantalla de acceso recuperable; no conceder premium. | El gate de sesión bloquea navegación de producto. Sin binding firmado los overlays tampoco abren los cuatro gratuitos. Una caché de sesión corrupta impide login nuevo (F3). |
 | Gratis, sesión y firma válidas | Acceso verificado; Standings, Relative, Delta y Pedals; resto requiere Pro. | Credencial V1 sin grants puede verificar sesión; catálogo Free abre esos cuatro. Puede coexistir banner «pendientes» (#1801). No hay deadline global V1 (R1). |
 | Pro vigente | Widgets de pago y funciones publicadas Stable; caducidad conforme a periodo firmado. | `vantare.plan.pro` selecciona Pro y abre todos los widgets registrados. Módulos requieren su capability/rollout; la beta oculta Analysis y presenta Engineer/Strategy como próximos. |
-| Pro Plus vigente | Todo Pro más Testers/Nightly. | Firma plan.pro y capabilities de canal por separado; núcleo comparte catálogo Pro. El permiso de canal no sustituye a firma ni compra. No se verifica aquí el feed desplegado. |
+| Pro Plus vigente | Todo Pro más Testers/Nightly. | Firma plan.pro y capabilities de canal por separado; núcleo comparte catálogo Pro. El permiso de canal no sustituye a firma ni compra. Recovery activo se pierde en el cruce F6; no se verifica aquí el feed desplegado. |
 | Founders | Todo presente/futuro y Nightly; compra perpetua, sin confundir con rol Owner. | Catálogo Founders permite widgets/módulos futuros. V1 y grants perpetuos no vencen. Retirada se refleja al renovar; sin deadline no hay cadencia máxima automática (R1). |
-| Caducado | Baja a Gratis, con explicación y compra/renovación recuperable. | Al vencer Pro, catálogo baja a Free; V1 aún puede mantener sesión verificada. Existe gracia de una hora para capacidades de una carrera elegible, acotada por autoridad. Recovery online no se consume en nativo (R2). |
-| Reembolsado / downgrade | Retirar solo la fuente afectada al obtener estado nuevo; conservar otras compras. | Backend proyecta por fuente; cliente usa firma anterior hasta nueva emisión o caducidad. Perpetuas offline no se revocan retroactivamente; la comprobación online no tiene plazo máximo en R1. |
+| Caducado | Baja a Gratis, con explicación y compra/renovación recuperable. | Al vencer Pro, catálogo baja a Free; V1 aún puede mantener sesión verificada. Existe gracia de una hora para capacidades de una carrera elegible, acotada por autoridad. Recovery online no se consume en nativo (F6). |
+| Reembolsado / downgrade | Retirar solo la fuente afectada al obtener estado nuevo; conservar otras compras. | Backend proyecta por fuente; cliente usa firma anterior hasta nueva emisión o caducidad. Perpetuas offline no se revocan retroactivamente; la comprobación online no tiene plazo máximo en R1. Si falta webhook de revocación, reconcile status=revoked no converge (F7). |
 | Límite de dispositivos | Mensaje específico y sustitución autenticada; no borrar una licencia sana por fallo automático. | HTTP409 device_limit → DeviceLimit. UI ofrece Restablecer; invalida localmente antes de reset remoto, limitado a 24 h, y exige nueva credencial. Otros 409 son Conflict. |
 | Sin red, caché válida | Derechos firmados vigentes; error de red recuperable, sin revocación automática. | Owner restaura sin HTTP; overlays dependen de política fresca local, no red. Hub exige conocer sesión guardada; metadata ausente necesita discovery. Automática hace backoff; #1803 afecta clasificación IPC. |
 | Sin red, primer arranque / caché inválida | Login/verificación pendientes claros; no inventar derechos. | Sin firma no hay acceso verificado. Binding/candidate inválidos se apartan; authority/account corruptos dejan F1/F3. No se promete login inicial offline. |
@@ -434,6 +566,7 @@ configuración coherentes, sin consultar datos reales de una cuenta.
 | Cambio de cuenta | Revocar durablemente A antes de guardar B; nunca heredar sus derechos. | Login de identidad distinta invalida antes de completar. Candidate firmado de otra cuenta con binding existente queda en #1798; no se certifica aquí recuperación de ese caso. |
 | Reinstalación / segundo PC / caché antigua | Conservar datos sanos; pedir login si cambió entorno; límite de PC recuperable. | Namespace OAuth incluye issuer/client/channel/backend; no se migran tokens entre entornos. Device fingerprint y binding se validan. Upgrade no sanea authority/account corruptos; binding/candidate de clave retirada sí se apartan. |
 | Candidate válido de dispositivo anterior | Denegar esa caché y permitir nuevo login/activación. | El núcleo rechaza la huella, pero TransferRights bloquea la admisión del helper antes de poder recuperar (F4). |
+| Cuenta baneada/bloqueada | Denegar emisión nueva por todas las rutas, con mensaje apropiado; aplicar política offline aparte. | Native verifica Clerk y bloqueo administrativo (este último puede salir como 503, R13). La ruta legacy de emisión no tiene las mismas barreras en este código (F8); endpoint presente, bundle remoto no contrastado. |
 
 El catálogo de widgets está centralizado en `native/ipc/src/control.rs:64` y
 se aplica en `native/ui/src/rights.rs:9` y
@@ -485,7 +618,7 @@ firmada utilizable, también Gratis, y no equivale por sí solo a plan Pro.
 - RLS/ACL: los grants y la vista efectiva son autoridad de servidor; la vista
   revoca SELECT a anon/authenticated y solo lo concede a service_role. El cliente
   no puede concederse planes mediante DML directo según estas migraciones.
-  Esta lectura no acredita ACL, RLS, claves o funciones realmente desplegadas.
+  Esta lectura no acredita ACL, RLS, claves ni código de funciones desplegadas.
 - Rate limits: hay límites de tamaño y timeouts; los 429 de Clerk se conservan.
   No se observa presupuesto propio por cuenta/IP en `native-license`. El suelo
   de un minuto del cliente no protege el endpoint de otros clientes. El límite
@@ -519,9 +652,19 @@ el TTL para ocultarlo no está propuesto. La UI de compra espera hasta 10 min y
 exige catálogo verificado para el producto solicitado
 (`hub/src/services/view.rs:83`); no interpreta volver del navegador como pago.
 
-No se han enviado webhooks, compras, refunds ni peticiones autenticadas de
-producción. Los límites de servidor son de código versionado; no se certifica
-el despliegue remoto.
+No se han enviado webhooks, compras, refunds ni peticiones funcionales con bearer
+de usuario a producción. Solo se consultó metadata de funciones por el conector
+Supabase. Los límites de servidor son de código versionado.
+
+### Inventario remoto de solo lectura
+
+Consulta `list_edge_functions` del 30-oct, proyecto enlazado por el repo:
+native-license ACTIVE v7, license-credential ACTIVE v16, clerk-webhook ACTIVE v7
+y billing-reconcile ACTIVE v8. Confirma presencia/versión publicada del recurso,
+no igualdad de su bundle con nightly, ACL efectivas, trust registry, validez de
+secretos, scheduler ni comportamiento de cuentas. No se descargaron bundles ni
+se ejecutó SQL o un endpoint funcional con credenciales. Se descartan las
+hipótesis «no desplegado porque falta del wrapper» para Clerk y reconcile.
 
 Los tests citados se han leído. No se afirma que hayan sido ejecutados en este
 encargo. Sin cambios de producto, se omiten compilación Rust, fmt/Clippy/Nextest,
@@ -534,7 +677,8 @@ El check de calidad conserva **466/466 huellas**, sin recalibrar baselines.
 
 ## Siguiente acción
 
-El orquestador prioriza #1806/#1807/#1808/#1810/#1812, revisa el informe y asigna cada arreglo
+El orquestador prioriza #1806/#1807/#1808/#1810/#1812/#1813/#1814/#1815,
+revisa el informe y asigna cada arreglo
 con su regresión y su propia tarea; este encargo no implementa ninguno. #1803,
 #1798 y #1801 siguen con su seguimiento existente. Ningún resultado aquí autoriza
 merge, promoción, release, despliegue, gasto ni cambios administrativos de cuenta.

@@ -1,44 +1,42 @@
-## VANTA-105 / #1805 — Revisión integral de licencias (30-oct)
+## VANTA-105 / #1805 — Revisión integral de licencias (30-oct, por revisar)
 
-Revisión de solo lectura en `origin/nightly`
+Revisión final de solo lectura sobre `origin/nightly`
 `9fa66225adde60ad6e3aa55f7b4fe87930410ed4`, worktree propio
 `C:/tmp/vantare-license-integrated-review`, rama
-`vantareapp/isa-1805-license-pipeline-review`. [Informe y matriz de estados](../license-pipeline-review-2026-10-30.md).
-Isaac autoriza tres DeepSeek OpenCode en paralelo, aislados y sin editar producto;
-el integrador contrasta código y tests antes de aceptar sus resultados.
+`vantareapp/isa-1805-license-pipeline-review`. [Informe priorizado y matriz](../license-pipeline-review-2026-10-30.md),
+[PR documental #1809](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1809)
+draft a nightly, enlazada a T3. Solo dos archivos documentales; sin producto.
 
-- P1 estáticos nuevos: [#1806](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1806),
-  autoridad DPAPI ilegible sin vía para instalar licencia nueva;
-  [#1807](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1807),
-  reloj local adelantado que sigue bloqueando tras corregirlo;
-  [#1808](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1808),
-  sesión/metadata OAuth DPAPI ilegible que impide login nuevo;
-  [#1810](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1810),
-  candidate firmado del dispositivo anterior que impide admitir el helper
-  incluso para iniciar sesión; [#1812](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1812),
-  perfil automático que recorre refresh destructivo y puede revocar una licencia
-  offline vigente. Coordinar el mecanismo de candidate con #1798.
-  Todos en Project Vantare / area:licencias, sin milestone comprometido;
-  no se crean tareas Plane ni se implementan arreglos.
-- El primer P1 se ha comunicado al hilo del orquestador. #1798/#1801 conservan
-  su seguimiento; #1803 lo corrige otro worker y se coordina directamente.
-- Solo documentación. Calidad/466 huellas PASS; no builds ni tests Rust/SQL/Deno,
-  por alcance de revisión y sin cambios de producto. Sin credenciales reales,
-  compras, refunds, reloj del equipo, instalación ni backend modificados.
-- Primer commit publicado `524239fe4`; [PR documental #1809](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1809)
-  draft a nightly y enlazada a T3. Pendiente integrar revisores y revisión del
-  informe; el draft no es una entrega final ni acredita CI verde. #1782 y la QA RC9 no
-  se sustituyen ni cierran; Plane VANTA-105 continúa En curso. Sin merge,
-  promoción, release o despliegue autorizados por esta revisión.
-- Revisor DeepSeek runtime finalizado; propuestas contrastadas contra código.
-  Añadidos escenarios de reloj/lápida al primer login, pausa que pierde gracia,
-  E/S inicial sin reapertura y cuenta desconectada que la UI sigue mostrando
-  conectada. Semántica de Paused pendiente de decisión de producto. No se acepta
-  como pago sin cobro el predicado PurchaseWait, que solo verifica catálogo.
-  Services también finalizado y contrastado: confirma DPAPI/reloj/candidate,
-  añade #1812 y errores cosméticos que apagan el scheduler o avisos definitivos
-  que se descartan al recibirlos. No invertir el orden de revocación/reset ni
-  aplicar tolerancia ciega a lápidas. Revisor de servidor todavía ejecutándose.
+- Los tres DeepSeek OpenCode autorizados terminaron en worktrees aislados y
+  limpios. El integrador contrastó cada propuesta; descartó inferencias de pago
+  sin cobro y correcciones que debilitarían lápida o el orden de DeviceReset.
+  El primer arranque del revisor servidor falló en el proveedor; reintento mismo
+  modelo completado. No se atribuyen tests ni runtime reales a estas lecturas.
+- Ocho P1 de código, con issues propias Project Vantare / Backlog / area:licencias,
+  sin milestone comprometido:
+  [#1806](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1806), autoridad DPAPI irrecuperable;
+  [#1807](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1807), reloj adelantado corregido que sigue bloqueando;
+  [#1808](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1808), sesión/metadata DPAPI que impide login nuevo;
+  [#1810](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1810), candidate de dispositivo anterior que bloquea admisión;
+  [#1812](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1812), perfil automático que puede revocar licencia vigente;
+  [#1813](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1813), reconciliación que no aplica revoked;
+  [#1814](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1814), recovery activo no consumido por nativo;
+  [#1815](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1815), ruta legacy que omite barrera de bloqueo.
+- P1 comunicados al orquestador al confirmarlos. #1798/#1799/#1801 conservan
+  seguimiento; #1803 se coordina con su worker sin ampliar ese arreglo.
+  Los P2/P3 y las dudas contractuales/operativas están separados en el informe.
+- Metadata remota de solo lectura: license-credential ACTIVE v16,
+  native-license v7, clerk-webhook v7 y billing-reconcile v8. No acredita
+  igualdad de bundle con SHA, ACL, scheduler ni explotación de #1815.
+  No se leen cuentas/secretos ni se envían tokens a endpoints funcionales.
+- Checks documentales y calidad/466 huellas PASS. No compilación ni suites
+  Rust/lifecycle/telemetría/SQL/Deno por alcance de revisión sin producto.
+  CI y SHA finales se verifican en #1805/PR; no se confunden con prueba runtime.
+- Siguiente paso: revisión del orquestador y asignación separada de arreglos
+  con fixtures y gates. Sin implementación, merge, promoción, release o deploy.
+  #1782 y QA RC9 no se sustituyen ni cierran. Plane VANTA-105 es compartida
+  con esa QA; se comunica la entrega al orquestador para consolidar su resumen
+  y estado, sin sobrescribir la descripción de los demás workers.
 
 ## VANTA-105 / #1782 — Diagnóstico de canales RC9 (30-oct)
 

@@ -125,6 +125,10 @@ struct Payload<'a> {
 }
 
 fn candidate() -> (Candidate, String) {
+    candidate_valid_for(chrono::TimeDelta::minutes(10))
+}
+
+fn candidate_valid_for(validity: chrono::TimeDelta) -> (Candidate, String) {
     let mut seed = [0; 32];
     getrandom::fill(&mut seed).expect("entropía test");
     let key = SigningKey::from_bytes(&seed);
@@ -136,7 +140,7 @@ fn candidate() -> (Candidate, String) {
         issued_at: (now - chrono::TimeDelta::seconds(10)).to_rfc3339(),
         capabilities: vec![Capability {
             key: "vantare.plan.pro".into(),
-            paid_through: (now + chrono::TimeDelta::minutes(10)).to_rfc3339(),
+            paid_through: (now + validity).to_rfc3339(),
             perpetual: false,
             scope_version: String::new(),
         }],
@@ -602,8 +606,208 @@ fn confirmed_session() -> Reply {
 }
 
 #[test]
+fn urgent_live_dispatch_reaches_a_real_background_helper_and_preserves_core_rights() {
+    let Fixture {
+        root,
+        photo: _,
+        link,
+        core,
+        services,
+    } = Fixture::new();
+    let mut snapshot = vantare_domain::Snapshot::default();
+    snapshot.origin.source.kind = vantare_domain::SourceKind::Live;
+    snapshot.state.source_state = vantare_domain::SourceState::Live;
+    snapshot.state.session.id = vantare_domain::SessionId(91);
+    core.publish(Arc::new(snapshot));
+    let before = control::request(&link, control::Command::Read).expect("live core");
+    assert!(before.live && before.overlays_advanced);
+    assert!(renewal::urgent(&before, before.checked_at_ms));
+    let options = Options {
+        binary: link
+            .image
+            .parent()
+            .expect("deps")
+            .parent()
+            .expect("debug")
+            .join("vantare-services.exe"),
+        hub: link.image.clone(),
+        core: link.clone(),
+        root: Some(root.join("services")),
+    };
+    let signing: SigningIn = Arc::new(Mutex::new(None));
+    {
+        let mut state = services.state.lock().expect("supervisor");
+        let reply = serve_command(
+            &mut state,
+            &options,
+            Command::LicenseRenewAutomatic,
+            &services.cancellation,
+            &signing,
+            &services.stop,
+        );
+        assert!(
+            matches!(
+                reply,
+                Reply::LicenseFailure {
+                    outcome: protocol::RenewalOutcome::Transient,
+                    ..
+                }
+            ),
+            "fixture has no backend config; helper must answer, not be refused by the game gate"
+        );
+        assert!(state.client.is_some(), "real helper was launched on demand");
+        finish(&mut state);
+        assert!(
+            state.client.is_none(),
+            "urgent helper is reaped after the operation"
+        );
+        clear_cancellation(&services.cancellation);
+    }
+    let after = control::request(&link, control::Command::Read).expect("rights preserved");
+    assert!(after.overlays_advanced && after.catalog == before.catalog);
+    drop(services);
+    drop(core);
+    std::fs::remove_dir_all(root).expect("private fixture cleanup");
+}
+
+#[test]
+fn reissued_license_without_new_runway_preserves_failure_backoff() {
+    let now = Instant::now();
+    let wall = 10_000_000;
+    let policy = control::Policy {
+        version: control::VERSION,
+        revision: 1,
+        checked_at_ms: wall,
+        overlays_advanced: true,
+        valid_until_ms: Some(wall + 10 * 60_000),
+        ..control::Policy::default()
+    };
+    let mut state = State::default();
+    state.renewal.observe(&confirmed_session());
+    for seconds in [0, 60] {
+        assert!(
+            run_renewal(
+                &mut state,
+                &policy,
+                wall,
+                now + Duration::from_secs(seconds),
+                |_, _| Reply::License {
+                    policy: policy.clone(),
+                    message: String::new()
+                }
+            )
+            .is_some()
+        );
+    }
+    assert!(
+        run_renewal(
+            &mut state,
+            &policy,
+            wall,
+            now + Duration::from_mins(2),
+            |_, _| panic!("same near-expiry grant must not reset backoff")
+        )
+        .is_none()
+    );
+    assert!(
+        run_renewal(
+            &mut state,
+            &policy,
+            wall,
+            now + Duration::from_mins(3),
+            |_, _| Reply::License {
+                policy: policy.clone(),
+                message: String::new()
+            }
+        )
+        .is_some()
+    );
+}
+
+#[test]
+fn live_renews_once_on_urgent_window_entry_and_transport_failures_retry_without_notices() {
+    let now = Instant::now();
+    let wall = 10_000_000;
+    let mut policy = control::Policy {
+        version: control::VERSION,
+        revision: 1,
+        checked_at_ms: wall,
+        overlays_advanced: true,
+        live: true,
+        valid_until_ms: Some(wall + 120 * 60_000 + 1),
+        ..control::Policy::default()
+    };
+    let mut state = State::default();
+    state.renewal.observe(&confirmed_session());
+    assert!(
+        run_renewal(&mut state, &policy, wall, now, |_, _| panic!(
+            "no helper or network outside urgent window"
+        ))
+        .is_none()
+    );
+    policy.valid_until_ms = Some(wall + 120 * 60_000);
+    let mut requests = 0;
+    let result = run_renewal(&mut state, &policy, wall, now, |_, command| {
+        assert!(matches!(command, Command::LicenseRenewAutomatic));
+        requests += 1;
+        Reply::LicenseFailure {
+            outcome: protocol::RenewalOutcome::Transient,
+            message: String::new(),
+        }
+    });
+    assert!(result.is_some());
+    assert!(state.notice.is_none(), "do not interrupt the driver");
+    assert!(
+        run_renewal(
+            &mut state,
+            &policy,
+            wall,
+            now + Duration::from_secs(59),
+            |_, _| panic!("hard retry floor")
+        )
+        .is_none()
+    );
+    let recovered = run_renewal(
+        &mut state,
+        &policy,
+        wall,
+        now + Duration::from_mins(1),
+        |_, _| {
+            requests += 1;
+            Reply::License {
+                policy: control::Policy {
+                    valid_until_ms: Some(wall + 24 * 60 * 60_000),
+                    ..policy.clone()
+                },
+                message: String::new(),
+            }
+        },
+    )
+    .expect("transport never blocks the session");
+    assert_eq!(
+        renewal_outcome(&recovered),
+        protocol::RenewalOutcome::Verified
+    );
+    assert_eq!(requests, 2, "one attempt on entry and one scheduled retry");
+    let Reply::License { policy, .. } = recovered else {
+        unreachable!()
+    };
+    assert!(
+        run_renewal(
+            &mut state,
+            &policy,
+            wall,
+            now + Duration::from_mins(2),
+            |_, _| panic!("valid new grant is outside urgent window")
+        )
+        .is_none()
+    );
+}
+
+#[test]
 fn restored_session_dispatches_exactly_one_automatic_renewal_and_verifies_the_core_policy() {
-    let (candidate, keys) = candidate();
+    // A healthy grant outside the new early-renewal window must stay quiet.
+    let (candidate, keys) = candidate_valid_for(chrono::TimeDelta::hours(24));
     let root = std::env::temp_dir().join(format!(
         "vt-auto-integration-{}",
         vantare_services::random_id().expect("id")

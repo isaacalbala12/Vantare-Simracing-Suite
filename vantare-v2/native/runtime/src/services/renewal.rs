@@ -6,6 +6,25 @@ use vantare_ipc::{
 };
 
 const MINUTE: Duration = Duration::from_mins(1);
+// Three retries even at the 15-minute cap, plus 15 minutes for polling/I/O.
+// Never extends the signed credential or the two-second policy freshness TTL.
+const RENEW_AHEAD_MS: u64 = 60 * 60_000;
+
+pub(super) fn urgent(policy: &Policy, wall: u64) -> bool {
+    renewal_deadline(policy).is_some_and(|end| end <= wall.saturating_add(RENEW_AHEAD_MS))
+}
+
+fn renewal_deadline(policy: &Policy) -> Option<u64> {
+    policy.valid_until_ms.map(|end| {
+        if policy.live {
+            // v5 publishes the effective deadline, which can include game grace.
+            // Reserve it conservatively so renewal precedes the signed deadline.
+            end.saturating_sub(vantare_services::license::GAME_GRACE_SECONDS.unsigned_abs() * 1000)
+        } else {
+            end
+        }
+    })
+}
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum Skip {
     NoSession,
@@ -144,25 +163,34 @@ impl Renewal {
         {
             return Err(Skip::StalePolicy);
         }
-        if policy.live && policy.overlays_advanced {
+        if policy.live && policy.overlays_advanced && !urgent(policy, wall) {
             return Err(Skip::Live);
         }
-        if self
-            .last_attempt
-            .is_some_and(|last| now.saturating_duration_since(last) < self.delay())
-        {
+        if self.last_attempt.is_some_and(|last| {
+            now.saturating_duration_since(last) < self.policy_delay(policy, wall)
+        }) {
             return Err(Skip::Backoff);
         }
         let due = self.last_attempt.is_none()
             || self.failures > 0
             || !policy.overlays_advanced
-            || policy
-                .valid_until_ms
-                .is_some_and(|end| end <= wall.saturating_add(60_000));
+            || urgent(policy, wall);
         if !due {
             return Err(Skip::NotDue);
         }
         Ok(())
+    }
+
+    fn policy_delay(&self, policy: &Policy, wall: u64) -> Duration {
+        if renewal_deadline(policy)
+            .is_some_and(|end| wall < end && end <= wall.saturating_add(5 * 60_000))
+        {
+            // Short-lived/newly restored grants still get attempts near expiry.
+            // Keep the one-minute hard floor; never create a tight retry loop.
+            MINUTE
+        } else {
+            self.delay()
+        }
     }
 }
 
@@ -269,11 +297,12 @@ mod tests {
         assert_eq!(r.claim(&p, 1000, now), Ok(()));
         r.completed(RenewalOutcome::Verified);
         assert_eq!(r.claim(&p, 1000, now + MINUTE), Err(Skip::NotDue));
-        p.valid_until_ms = Some(61_001);
+        p.valid_until_ms = Some(1000 + RENEW_AHEAD_MS + 1);
         assert_eq!(r.claim(&p, 1000, now + MINUTE), Err(Skip::NotDue));
-        p.valid_until_ms = Some(61_000);
+        p.valid_until_ms = Some(1000 + RENEW_AHEAD_MS);
         assert_eq!(r.claim(&p, 1000, now + MINUTE), Ok(()));
         p.live = true;
+        p.valid_until_ms = Some(1000 + RENEW_AHEAD_MS * 2 + 1);
         assert_eq!(r.claim(&p, 1000, now + MINUTE * 2), Err(Skip::Live));
         p.live = false;
         p.checked_at_ms = 1001;
@@ -281,5 +310,77 @@ mod tests {
         r.checked(now);
         assert!(!r.should_check(false, now + Duration::from_secs(29)));
         assert!(r.should_check(false, now + Duration::from_secs(30)));
+    }
+
+    #[test]
+    fn capped_backoff_gets_three_retries_before_expiry_with_fifteen_minutes_margin() {
+        let mut r = Renewal::default();
+        r.observe(&account(false));
+        let now = Instant::now();
+        r.attempted(now);
+        r.completed(RenewalOutcome::Verified);
+        let end = 10_000_000;
+        let wall = end - RENEW_AHEAD_MS;
+        let mut p = Policy {
+            overlays_advanced: true,
+            valid_until_ms: Some(end),
+            checked_at_ms: wall,
+            ..policy()
+        };
+        // Start the test already at the worst-case backoff cap.
+        r.failures = 8;
+        for minute in [15, 30, 45] {
+            let at = wall + minute * 60_000;
+            p.checked_at_ms = at;
+            assert_eq!(
+                r.claim(
+                    &p,
+                    at,
+                    now + MINUTE * u32::try_from(minute).expect("minutes")
+                ),
+                Ok(())
+            );
+            r.completed(RenewalOutcome::Transient);
+            assert!(!r.blocked);
+        }
+        assert_eq!(end - p.checked_at_ms, 15 * 60_000);
+    }
+
+    #[test]
+    fn expired_deadline_does_not_force_one_minute_retries_forever() {
+        let now = Instant::now();
+        let mut r = Renewal::default();
+        r.observe(&account(false));
+        r.attempted(now);
+        r.failures = 8;
+        let p = Policy {
+            valid_until_ms: Some(999),
+            ..policy()
+        };
+        assert_eq!(r.claim(&p, 1000, now + MINUTE), Err(Skip::Backoff));
+        assert_eq!(r.claim(&p, 1000, now + MINUTE * 15), Ok(()));
+    }
+
+    #[test]
+    fn short_deadline_reduces_backoff_but_keeps_one_minute_floor_and_verified_recovers() {
+        let now = Instant::now();
+        let mut r = Renewal::default();
+        r.observe(&account(false));
+        r.attempted(now);
+        r.failures = 8;
+        let mut p = Policy {
+            overlays_advanced: true,
+            valid_until_ms: Some(241_000),
+            ..policy()
+        };
+        assert_eq!(
+            r.claim(&p, 1000, now + Duration::from_secs(59)),
+            Err(Skip::Backoff)
+        );
+        assert_eq!(r.claim(&p, 1000, now + MINUTE), Ok(()));
+        r.completed(RenewalOutcome::Verified);
+        p.valid_until_ms = Some(1000 + RENEW_AHEAD_MS + 1);
+        assert_eq!(r.claim(&p, 1000, now + MINUTE * 2), Err(Skip::NotDue));
+        assert!(!r.blocked);
     }
 }

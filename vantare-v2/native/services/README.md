@@ -1,3 +1,17 @@
+## ISA-1803 — Recuperación del transporte (services v15 / control v5)
+
+Timeout, EOF, peer cerrado, identidad, protocolo, versión y rechazo tienen
+categorías cerradas. Solo un rechazo explícito detiene la renovación de la
+sesión; transporte y disponibilidad local conservan el backoff y el binding.
+El helper sale correctamente al agotar cinco minutos sin recibir una trama,
+ante EOF entre tramas o si el destinatario ya cerró al responder. Una trama
+parcial sigue siendo un fallo: nunca se repite la acción cuya respuesta se perdió.
+
+Una emisión automática guarda un marcador protegido `license-transfer-pending`.
+Tras un fallo del ACK se reintenta primero la instalación local, sin otra emisión
+HTTP, incluso si el helper se reinició. Se retira tras el ACK durable, cuarentena
+o revocación; el marcador no concede derechos y no contiene identidad ni licencia.
+
 ## ISA-1793 — Segunda revision
 
 Al abrir, un binding firmado rechazado por reloj/lapida va a cuarentena sin
@@ -44,7 +58,7 @@ cerrarse al salir de Vantare; el intento de acceso mantiene su plazo.
 
 ## #1631 · Login propio
 
-El protocolo services v14 combina marketing verificado, Founders y AccountEmail y respuestas Email sin tokens.
+El protocolo services v14 combinaba marketing verificado, Founders y AccountEmail y respuestas Email sin tokens.
 R2 mantiene el canje pendiente en memoria y hace un solo intento por AccountPoll,
 con reloj inyectado, intervalo de Clerk/slow_down y ventana de 30 s. Cancel y
 Logout pueden interrumpir los intervalos sin sleeps. La sesión FAPI se cierra
@@ -73,7 +87,7 @@ QA y Windows pendientes del orquestador. Telemetría 25/25 y lifecycle macOS
 # Servicios nativos — ISA-1430
 
 **#1661 / VANTA-83:** Founders añade el plan perpetuo para contenido presente y
-futuro. Corte actual services v14 / control v5 / fotos v11; recompilar el conjunto.
+futuro. Corte actual services v15 / control v5 / fotos v11; recompilar el conjunto.
 Incluye Nightly vitalicio junto al derecho Founders; no concede roles. [Contrato](../../docs/billing/founders-1661.md).
 
 **Corte combinado #1610/#1594:** protocolo services v9 (DTO v10/derechos v4

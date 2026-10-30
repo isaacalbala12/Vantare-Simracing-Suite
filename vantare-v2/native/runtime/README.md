@@ -1,3 +1,24 @@
+## ISA-1803 — Renovación antes del vencimiento, también en carrera
+
+La renovación empieza una hora antes del plazo firmado; reintentos 1/2/4/8/15
+minutos, con suelo de un minuto en los últimos cinco minutos anteriores al plazo.
+Tras vencer vuelve a aplicarse el backoff normal. Una respuesta sin nuevo margen
+no reinicia los fallos. Con el cap de 15 minutos hay al menos tres reintentos y
+15 minutos reservados para sondeos y E/S dentro de una ventana completa, con app/sesión/núcleo activos y sin bloqueos prolongados.
+
+Isaac autorizó renovar en Live solo en esa ventana urgente: helper bajo demanda,
+prioridad Windows inferior a normal, una operación a la vez y cierre al acabar,
+sin avisos al piloto. Fuera de la ventana conserva la regla de no helper/red en
+carrera. Control v5 publica el plazo efectivo, que puede incluir la gracia de
+una hora: el cálculo reserva conservadoramente esa hora en Live (hasta dos horas
+antes del plazo efectivo). No se amplían TTL, gracia ni frescura de política2s.
+
+La v1 no tiene caducidad global desde `issued_at`: cada Pro/Plus vence en el
+`paid_through` firmado; Founders/perpetuos no vencen; concesiones operativas
+Tester14d, NightlyTester72h y Owner30d como máximo desde la emisión, recortadas
+si termina antes su asignación. Si la red falla toda la ventana, no se puede
+renovar: se conserva la fecha firmada y únicamente la gracia ya autorizada.
+
 ## ISA-1793 — Segunda revision
 
 Al abrir, un binding firmado rechazado por reloj/lapida va a cuarentena sin

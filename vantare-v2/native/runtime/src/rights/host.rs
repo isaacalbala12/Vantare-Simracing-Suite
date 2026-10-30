@@ -229,9 +229,17 @@ fn serve(
     mutator: bool,
     start: Instant,
 ) -> io::Result<()> {
+    let began = Instant::now();
+    let mut phase = "read";
     let result = (|| {
         let request: Request = control::read(pipe)?;
-        if request.version != control::VERSION || request.sequence != 1 {
+        if request.version != control::VERSION {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                control::VersionMismatch,
+            ));
+        }
+        if request.sequence != 1 {
             return Err(io::ErrorKind::InvalidData.into());
         }
         if !matches!(request.command, Command::Read)
@@ -239,13 +247,21 @@ fn serve(
         {
             return Err(io::ErrorKind::PermissionDenied.into());
         }
+        phase = "dispatch";
         respond(request, state, latest, start, |response| {
+            phase = "write";
             control::write(pipe, response)
         })
     })();
     if let Err(error) = &result {
         // Solo categoría local: nunca nonce ni contenido del peer.
-        eprintln!("vantare: canal de derechos cerrado: {:?}", error.kind());
+        eprintln!(
+            "rights-channel code={} phase={phase} elapsed_ms={} pid={} wall_ms={}",
+            control::Failure::classify(error).diagnostic(),
+            began.elapsed().as_millis(),
+            std::process::id(),
+            control::wall_ms().unwrap_or(0)
+        );
     }
     result
 }
@@ -281,10 +297,22 @@ fn respond(
         version: control::VERSION,
         sequence: request.sequence,
         policy: state.policy.clone(),
-        error: result.err().map(|e| e.to_string()),
+        error: result.err().map(|error| response_error(error).to_owned()),
     };
     drop(state);
     write(&response)
+}
+
+fn response_error(error: vantare_services::Error) -> &'static str {
+    use vantare_services::Error;
+    match error {
+        Error::Denied
+        | Error::InvalidCredential
+        | Error::Expired
+        | Error::DeviceLimit
+        | Error::Conflict => control::REJECTED,
+        _ => control::UNAVAILABLE,
+    }
 }
 
 impl Drop for Host {
@@ -356,6 +384,28 @@ fn spawn_timer(
 #[cfg(test)]
 mod response_tests {
     use super::*;
+
+    #[test]
+    fn local_persistence_failure_is_not_an_authorization_rejection() {
+        use vantare_services::Error;
+        for error in [
+            Error::Storage,
+            Error::Clock,
+            Error::Unconfigured,
+            Error::Protocol,
+        ] {
+            assert_eq!(response_error(error), control::UNAVAILABLE);
+        }
+        for error in [
+            Error::Denied,
+            Error::InvalidCredential,
+            Error::Expired,
+            Error::DeviceLimit,
+            Error::Conflict,
+        ] {
+            assert_eq!(response_error(error), control::REJECTED);
+        }
+    }
 
     #[test]
     fn paused_session_resumes_without_duplicate_usage_and_new_session_still_counts() {

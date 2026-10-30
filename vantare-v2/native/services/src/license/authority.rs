@@ -265,7 +265,9 @@ impl Authority {
                 .filter_map(|grant| {
                     let expiry = grant.expires_at?;
                     (verified.issued_at <= entered_at && entered_at < expiry)
-                        .then(|| expiry.checked_add_signed(TimeDelta::hours(1)))
+                        .then(|| {
+                            expiry.checked_add_signed(TimeDelta::seconds(super::GAME_GRACE_SECONDS))
+                        })
                         .flatten()
                         .map(|end| (grant.key.clone(), end))
                 })

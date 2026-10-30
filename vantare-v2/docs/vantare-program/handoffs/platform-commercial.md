@@ -20,7 +20,9 @@ el integrador contrasta código y tests antes de aceptar sus resultados.
 - Solo documentación. Calidad/466 huellas PASS; no builds ni tests Rust/SQL/Deno,
   por alcance de revisión y sin cambios de producto. Sin credenciales reales,
   compras, refunds, reloj del equipo, instalación ni backend modificados.
-- Pendiente integrar revisores y revisión del informe. #1782 y la QA RC9 no
+- Primer commit publicado `524239fe4`; [PR documental #1809](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1809)
+  draft a nightly y enlazada a T3. Pendiente integrar revisores y revisión del
+  informe; el draft no es una entrega final ni acredita CI verde. #1782 y la QA RC9 no
   se sustituyen ni cierran; Plane VANTA-105 continúa En curso. Sin merge,
   promoción, release o despliegue autorizados por esta revisión.
 

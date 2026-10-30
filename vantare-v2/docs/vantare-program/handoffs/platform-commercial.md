@@ -1,3 +1,29 @@
+## VANTA-105 / #1805 — Revisión integral de licencias (30-oct)
+
+Revisión de solo lectura en `origin/nightly`
+`9fa66225adde60ad6e3aa55f7b4fe87930410ed4`, worktree propio
+`C:/tmp/vantare-license-integrated-review`, rama
+`vantareapp/isa-1805-license-pipeline-review`. [Informe y matriz de estados](../license-pipeline-review-2026-10-30.md).
+Isaac autoriza tres DeepSeek OpenCode en paralelo, aislados y sin editar producto;
+el integrador contrasta código y tests antes de aceptar sus resultados.
+
+- P1 estáticos nuevos: [#1806](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1806),
+  autoridad DPAPI ilegible sin vía para instalar licencia nueva;
+  [#1807](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1807),
+  reloj local adelantado que sigue bloqueando tras corregirlo;
+  [#1808](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1808),
+  sesión/metadata OAuth DPAPI ilegible que impide login nuevo.
+  Todos en Project Vantare / area:licencias, sin milestone comprometido;
+  no se crean tareas Plane ni se implementan arreglos.
+- El primer P1 se ha comunicado al hilo del orquestador. #1798/#1801 conservan
+  su seguimiento; #1803 lo corrige otro worker y se coordina directamente.
+- Solo documentación. Calidad/466 huellas PASS; no builds ni tests Rust/SQL/Deno,
+  por alcance de revisión y sin cambios de producto. Sin credenciales reales,
+  compras, refunds, reloj del equipo, instalación ni backend modificados.
+- Pendiente integrar revisores y revisión del informe. #1782 y la QA RC9 no
+  se sustituyen ni cierran; Plane VANTA-105 continúa En curso. Sin merge,
+  promoción, release o despliegue autorizados por esta revisión.
+
 ## VANTA-105 / #1782 — Diagnóstico de canales RC9 (30-oct)
 
 Diagnóstico de solo lectura sobre RC9 `160f228bb`, en worktree propio

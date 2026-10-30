@@ -108,15 +108,29 @@ fn helper_exits_successfully_on_peer_eof_without_a_protocol_error_in_its_log() {
         .read_line(&mut nonce)
         .expect("ready signal");
     let stop = Arc::new(Event::new().expect("event"));
-    let pipe = connect(&name, stop, Duration::from_secs(2)).expect("parent pipe");
+    let mut pipe = connect(&name, stop, Duration::from_secs(2)).expect("parent pipe");
+    // Confirm peer authentication before closing: disconnecting immediately
+    // after connect can race the server's client_peer query on Windows.
+    protocol::write(
+        &mut pipe,
+        &Request {
+            version: protocol::VERSION,
+            sequence: 1,
+            nonce: nonce.trim().into(),
+            command: RequestCommand::Status,
+        },
+    )
+    .expect("authenticated request");
+    let response: protocol::Response = protocol::read(&mut pipe).expect("admission ACK");
+    assert!(matches!(response.reply, protocol::Reply::Status { .. }));
     // Child::wait_with_output closes its stdin. Hold it independently so only
     // the RPC peer EOF, rather than parent cancellation, ends this session.
     let parent_lifetime = child.stdin.take().expect("parent lifetime");
     drop(pipe); // Explicit peer EOF, no wall-clock wait for the idle deadline.
     let output = child.wait_with_output().expect("clean helper exit");
     drop(parent_lifetime);
-    assert!(output.status.success());
     let log = String::from_utf8_lossy(&output.stderr);
+    assert!(output.status.success(), "{log}");
     assert!(log.contains("services-disconnected"), "{log}");
     assert!(
         !log.contains("services-protocol-invalid") && !log.contains("services-channel "),

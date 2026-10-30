@@ -42,7 +42,7 @@ for (const data of [false, true]) {
           const url = new URL(String(input));
           if (url.pathname.endsWith("/rpc/native_resolve_account")) {
             calls.push("resolve");
-            assertEquals(JSON.parse(String(init?.body)), { issuer: config.issuer, subject });
+            assertEquals(JSON.parse(String((init as RequestInit)?.body)), { issuer: config.issuer, subject });
             return Promise.resolve(scenario === "admin-blocked"
               ? Response.json({ message: "native_account_blocked", code: "42501" }, { status: 403 })
               : Response.json(scenario === "mismatched-account" ? "00000000-0000-4000-8000-000000000074" : account));

@@ -1,3 +1,57 @@
+## VANTA-105 / #1813 y #1815 — Revocación reconciliada y barrera legacy (30-oct)
+
+[PR draft #1817](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1817)
+a nightly, registrado en T3. Rama `vantareapp/isa-1813-reconcile-bloqueos`,
+worktree `C:/VantareServer/wt/isa-1813`, base `origin/nightly 9adbde099`.
+Código y tests hasta `8a9fa6b8c`; CI final pendiente. Issues en Project Vantare /
+In Progress / area:licencias, sin milestone. Plane VANTA-105 sin modificar.
+
+- Un snapshot `subscription.updated` con `revoked` llega ahora al lifecycle
+  existente. Conserva identidad, versión remota, cuarentena por conflicto y
+  fuentes independientes. Prueba: webhook perdido, recovery cerrado, nueva
+  firma Ed25519 sin Pro, duplicados, snapshots antiguos y renovación posterior.
+- Legacy autentica el bearer de sesión/datos leyendo solo su UUID por RLS en
+  `profiles`; reutiliza `resolveNativeAccount` y `requireUnblocked` antes del
+  claim de dispositivo, lectura de grants y firma. Confirma el mismo UUID tras
+  claim. No se convierte ese JWT en OAuth ni se decide autorización con claims
+  sin verificar. El issuer de datos lo verifica el registro SQL existente.
+- Tests del store real con HTTP sintético: activo, admin block, banned/locked,
+  borrado, conflicto, otra cuenta, Clerk 404/429/503; los rechazos previos no
+  llegan al claim, grants o firma. El arnés comercial añade estas suites Deno
+  y prueba la ruta legacy con JWT firmado y PostgreSQL/PostgREST desechables.
+- Diff, AST Python y quality/466 huellas PASS. Deno/SQL/E2E se ejecutan en CI:
+  sapphireos no tiene las herramientas; el orquestador prohíbe instalarlas.
+  Primeras iteraciones detectaron un tipo RequestInit y timers de refresh en
+  clientes de test; corregidos sin omitir tipos ni detector de fugas.
+- Revisión DeepSeek r1 de solo lectura: enfoque sin bypass identificado;
+  incorporados estados de error y compatibilidad del issuer de datos. R2 del
+  diff final en curso. Sesión ejecutora Codex con esfuerzo medium heredado;
+  no se atribuye high. No se retira legacy: el nativo actual usa native-license,
+  pero falta inventario de consumidores externos para autorizar su retirada.
+- VANTA-96 / PR #1779 solo solapa este handoff; avisado antes de editar.
+  Se conserva su trabajo y no se modifica su evidencia de cobros/Polar.
+  Sin migraciones nuevas, producción, cuentas reales, secretos, despliegue,
+  merge, promoción o release. Siguiente: CI verde y revisión del orquestador.
+
+Despliegue futuro, solo tras autorización específica de Isaac y aceptación del
+SHA revisado: comprobar en el entorno autorizado la migración
+`20261015115000_native_admin_identity_r4` y la barrera B01/RLS vigentes, así como
+presencia de los nombres `CLERK_SECRET_KEY`, `CLERK_NATIVE_CLIENT_ID`,
+`CLERK_ISSUER` (sin leer sus valores). Guardar bundles previos y configuración
+de las tres funciones para rollback. Desde un checkout limpio del SHA aceptado,
+con CLI autorizada y credenciales cargadas por el procedimiento protegido,
+ejecutar el guard `supabase/functions/scripts/verify-deploy-surface.ps1` y
+desplegar únicamente `license-credential`, `billing-webhook`, `billing-reconcile`,
+en ese orden, con `supabase functions deploy <nombre> --project-ref <ref-aprobado>`.
+Conservar `verify_jwt=false` del config y autenticación propia de cada handler;
+no cambiar secretos, flags, cron, mappings ni SQL. El wrapper actual no admite
+billing-reconcile: no ampliar su allowlist ni disparar el workflow general.
+Comprobar bundles/versiones/ACK y matriz sintética activa/bloqueada/revocada
+en el entorno expresamente autorizado. No enviar compras ni replays financieros
+para verificarlo. Ante fallo, detener y pedir revisión antes de restaurar un
+bundle previo que volvería a permitir emitir a una cuenta bloqueada. Nada de
+este procedimiento se ejecuta en este encargo.
+
 ## VANTA-105 / #1805 — Revisión integral de licencias (30-oct, por revisar)
 
 Revisión final de solo lectura sobre `origin/nightly`

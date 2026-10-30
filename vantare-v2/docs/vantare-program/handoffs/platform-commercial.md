@@ -25,7 +25,16 @@ In Progress / area:licencias, sin milestone. Plane VANTA-105 sin modificar.
   clientes de test; corregidos sin omitir tipos ni detector de fugas.
 - Revisión DeepSeek r1 de solo lectura: enfoque sin bypass identificado;
   incorporados estados de error y compatibilidad del issuer de datos. R2 del
-  diff final en curso. Sesión ejecutora Codex con esfuerzo medium heredado;
+  diff final sin defectos funcionales o de seguridad bloqueantes. Se añaden
+  sus regresiones de UUID distinta devuelta por claim (401 sin grants/firma)
+  y contador del RPC de claim en el E2E real (bloqueada: cero; activa: uno).
+  CI de `961b1ec04` verificada 7/7 verde; la ampliación de tests requiere su
+  propia CI. Límites R2: sesión Clerk cubierta por dobles, data JWT por RLS
+  real; límite de bearer comprobado tras profiles; carreras con un bloqueo
+  concurrente posterior a la comprobación no se serializan en esta entrega.
+  El test de worker comprueba idempotencia de proyección; los efectos durables
+  de creador tienen sus suites existentes, no se acredita dedupe desde un mock.
+  Sesión ejecutora Codex con esfuerzo medium heredado;
   no se atribuye high. No se retira legacy: el nativo actual usa native-license,
   pero falta inventario de consumidores externos para autorizar su retirada.
 - VANTA-96 / PR #1779 solo solapa este handoff; avisado antes de editar.

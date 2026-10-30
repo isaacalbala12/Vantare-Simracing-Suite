@@ -22,11 +22,17 @@ const admin = createClient(url, "fixture-only", {
   },
 });
 const fingerprint = "b".repeat(64);
+let legacyClaims = 0;
 const legacyUserClient = createClient(url, "fixture-only", {
   auth: { persistSession: false, autoRefreshToken: false },
   global: {
     headers: { Authorization: "Bearer " + dataToken },
-    fetch: (input, init) => fetch(String(input).replace("/rest/v1/", "/"), init),
+    fetch: (input, init) => {
+      if (new URL(String(input)).pathname.endsWith("/rpc/claim_active_device")) {
+        legacyClaims++;
+      }
+      return fetch(String(input).replace("/rest/v1/", "/"), init);
+    },
   },
 });
 let legacySigns = 0, clerkReads = 0;
@@ -53,13 +59,13 @@ const legacy = await handleLicenseCredentialRequest(new Request("http://localhos
   },
 });
 if (mode === "blocked") {
-  if (legacy.status !== 403 || legacySigns !== 0 || clerkReads !== 0) {
+  if (legacy.status !== 403 || legacySigns !== 0 || clerkReads !== 0 || legacyClaims !== 0) {
     throw new Error("legacy_sql_block_not_enforced");
   }
   console.log("legacy real signed data bearer: SQL admin block denied before Clerk/claim/sign PASS");
   Deno.exit(0);
 }
-if (legacy.status !== 200 || legacySigns !== 1 || clerkReads !== 1) {
+if (legacy.status !== 200 || legacySigns !== 1 || clerkReads !== 1 || legacyClaims !== 1) {
   throw new Error("legacy_sql_active_emission_failed");
 }
 console.log("legacy real signed data bearer: own RLS profile and administrative resolver PASS");

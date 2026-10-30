@@ -1,3 +1,40 @@
+## ISA-1803 — Renovación antes del vencimiento, también en carrera
+
+La renovación empieza una hora antes del plazo firmado; reintentos 1/2/4/8/15
+minutos, con suelo de un minuto en los últimos cinco minutos anteriores al plazo.
+Tras vencer vuelve a aplicarse el backoff normal. Una respuesta sin nuevo margen
+no reinicia los fallos. Con el cap de 15 minutos hay al menos tres reintentos y
+15 minutos reservados para sondeos y E/S dentro de una ventana completa, con app/sesión/núcleo activos y sin bloqueos prolongados.
+
+Isaac autorizó renovar en Live dentro de esa ventana urgente y dos excepciones
+explícitas: recuperar acceso cuando no hay derechos activos, y confirmar una
+compra del usuario durante diez minutos después de recibir `Checkout` (igual
+que el Hub). Este origen se conserva en el supervisor, no se deduce de
+`signing_in` ni se acepta desde el JSON del peer. Son operaciones únicas, con
+helper bajo demanda, prioridad Windows inferior a normal y cierre al acabar,
+sin avisos al piloto. Si bajar prioridad falla, continúa con diagnóstico cerrado
+`services-priority-unavailable`; ese fallo no bloquea la recuperación de acceso.
+Las demás solicitudes automáticas no admiten helper/red fuera de la ventana.
+Control v5 publica el plazo efectivo, que puede incluir la gracia de
+una hora: el cálculo reserva conservadoramente esa hora en Live (hasta dos horas
+antes del plazo efectivo). No se amplían TTL, gracia ni frescura de política2s.
+
+Hub y temporizador comparten admisión/backoff y clasificación del ACK. El resultado
+se evalúa en el reloj efectivo del ACK del núcleo, sin compararlo con la hora
+capturada antes de HTTP; esto evita un falso transitorio si el reloj retrocede
+durante la petición. Los consumidores conservan su comprobación de frescura2s y
+la autoridad conserva antirollback. Restaurar una concesión de pago o perpetua con margen no
+dispara HTTP por ser el primer intento: el núcleo vuelve a verificar localmente
+firma y autoridad. Una concesión Owner de treinta días espera la ventana urgente.
+Gratis conserva un único chequeo inicial para descubrir compras externas, sin
+convertirlo en un sondeo HTTP continuo tras verificar la respuesta.
+
+La v1 no tiene caducidad global desde `issued_at`: cada Pro/Plus vence en el
+`paid_through` firmado; Founders/perpetuos no vencen; concesiones operativas
+Tester14d, NightlyTester72h y Owner30d como máximo desde la emisión, recortadas
+si termina antes su asignación. Si la red falla toda la ventana, no se puede
+renovar: se conserva la fecha firmada y únicamente la gracia ya autorizada.
+
 ## ISA-1793 — Segunda revision
 
 Al abrir, un binding firmado rechazado por reloj/lapida va a cuarentena sin

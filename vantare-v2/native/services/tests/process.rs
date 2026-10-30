@@ -89,6 +89,59 @@ fn actual_process_accepts_its_parent_and_rejects_false_peer_or_nonce() {
 }
 
 #[test]
+fn helper_exits_successfully_on_peer_eof_without_a_protocol_error_in_its_log() {
+    let id = vantare_services::random_id().expect("fixture id");
+    let name = format!("clean-helper-{}", &id[..12]);
+    let root = std::env::temp_dir().join(format!("clean-helper-{id}"));
+    let mut child = Command::new(env!("CARGO_BIN_EXE_vantare-services"))
+        .arg(&name)
+        .arg(std::process::id().to_string())
+        .arg(std::env::current_exe().expect("parent image"))
+        .arg(&root)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("helper");
+    let mut nonce = String::new();
+    BufReader::new(child.stdout.take().expect("bootstrap").take(65))
+        .read_line(&mut nonce)
+        .expect("ready signal");
+    let stop = Arc::new(Event::new().expect("event"));
+    let mut pipe = connect(&name, stop, Duration::from_secs(2)).expect("parent pipe");
+    // Confirm peer authentication before closing: disconnecting immediately
+    // after connect can race the server's client_peer query on Windows.
+    protocol::write(
+        &mut pipe,
+        &Request {
+            version: protocol::VERSION,
+            sequence: 1,
+            nonce: nonce.trim().into(),
+            command: RequestCommand::Status,
+        },
+    )
+    .expect("authenticated request");
+    let response: protocol::Response = protocol::read(&mut pipe).expect("admission ACK");
+    assert!(matches!(response.reply, protocol::Reply::Status { .. }));
+    // Child::wait_with_output closes its stdin. Hold it independently so only
+    // the RPC peer EOF, rather than parent cancellation, ends this session.
+    let parent_lifetime = child.stdin.take().expect("parent lifetime");
+    drop(pipe); // Explicit peer EOF, no wall-clock wait for the idle deadline.
+    let output = child.wait_with_output().expect("clean helper exit");
+    drop(parent_lifetime);
+    let log = String::from_utf8_lossy(&output.stderr);
+    assert!(output.status.success(), "{log}");
+    assert!(log.contains("services-disconnected"), "{log}");
+    assert!(
+        !log.contains("services-protocol-invalid") && !log.contains("services-channel "),
+        "{log}"
+    );
+    if root.exists() {
+        std::fs::remove_dir_all(root).expect("private fixture cleanup");
+    }
+}
+
+#[test]
 fn occupied_endpoint_rejects_second_child_and_keeps_owner_usable() {
     let binary = Path::new(env!("CARGO_BIN_EXE_vantare-services"));
     let core = isolated_core();

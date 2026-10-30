@@ -18,6 +18,75 @@ impl std::fmt::Display for VersionMismatch {
 }
 impl std::error::Error for VersionMismatch {}
 
+/// Closed local categories. Never retain peer text or OS paths in diagnostics.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Failure {
+    Timeout,
+    Disconnected,
+    Eof,
+    PeerGone,
+    Transport,
+    Unavailable,
+    UnknownLegacy,
+    Identity,
+    CommandNotAllowed,
+    Protocol,
+    Version,
+    Rejected,
+}
+impl Failure {
+    pub fn classify(error: &io::Error) -> Self {
+        if let Some(failure) = error
+            .get_ref()
+            .and_then(|error| error.downcast_ref::<Self>())
+        {
+            return *failure;
+        }
+        if error
+            .get_ref()
+            .is_some_and(<dyn std::error::Error + Send + Sync>::is::<VersionMismatch>)
+        {
+            return Self::Version;
+        }
+        match error.kind() {
+            io::ErrorKind::TimedOut => Self::Timeout,
+            io::ErrorKind::UnexpectedEof => Self::Eof,
+            io::ErrorKind::BrokenPipe => Self::PeerGone,
+            io::ErrorKind::ConnectionAborted
+            | io::ErrorKind::ConnectionReset
+            | io::ErrorKind::NotConnected => Self::Disconnected,
+            io::ErrorKind::PermissionDenied => Self::Identity,
+            io::ErrorKind::InvalidData => Self::Protocol,
+            _ => Self::Transport,
+        }
+    }
+    pub const fn diagnostic(self) -> &'static str {
+        match self {
+            Self::Timeout => "rights-transport-timeout",
+            Self::Disconnected => "rights-disconnected",
+            Self::Eof => "rights-eof",
+            Self::PeerGone => "rights-peer-gone",
+            Self::Transport => "rights-transport-transient",
+            Self::Unavailable => "rights-operation-unavailable",
+            Self::UnknownLegacy => "rights-legacy-unknown",
+            Self::Identity => "rights-peer-identity",
+            Self::CommandNotAllowed => "rights-command-not-allowed",
+            Self::Protocol => "rights-protocol-invalid",
+            Self::Version => "rights-version-incompatible",
+            Self::Rejected => "rights-rejected",
+        }
+    }
+}
+impl std::fmt::Display for Failure {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.diagnostic())
+    }
+}
+impl std::error::Error for Failure {}
+
+pub const REJECTED: &str = "rights-rejected";
+pub const UNAVAILABLE: &str = "rights-operation-unavailable";
+
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 // Capacidades independientes del contrato beta; no forman estados excluyentes.
@@ -185,9 +254,15 @@ pub fn request_cancelled(
     if response.sequence != 1 {
         return Err(io::ErrorKind::InvalidData.into());
     }
-    if response.error.is_some() {
+    if let Some(error) = response.error {
         // No cuerpos arbitrarios del peer en logs/errores.
-        return Err(io::Error::other("núcleo rechazó la operación de derechos"));
+        return Err(io::Error::other(if error == REJECTED {
+            Failure::Rejected
+        } else if error == UNAVAILABLE {
+            Failure::Unavailable
+        } else {
+            Failure::UnknownLegacy
+        }));
     }
     Ok(response.policy)
 }

@@ -60,6 +60,57 @@ fn request_preserves_the_nonce_and_checks_the_response_sequence() {
     }
 }
 #[test]
+fn explicit_denial_is_distinct_from_core_storage_failure_and_unknown_peer_text() {
+    for (tag, code, expected) in [
+        ("denied", control::REJECTED, control::Failure::Rejected),
+        (
+            "storage",
+            control::UNAVAILABLE,
+            control::Failure::Unavailable,
+        ),
+        (
+            "unknown",
+            "untrusted-peer-text",
+            control::Failure::UnknownLegacy,
+        ),
+    ] {
+        let link = link(tag);
+        let mut listener = Listener::new(
+            &link.pipe,
+            Arc::new(Event::new().expect("event")),
+            IO_TIMEOUT,
+        )
+        .expect("listener");
+        let mut pipe = listener.instance().expect("instance");
+        let server = thread::spawn(move || {
+            pipe.accept().expect("accept");
+            let request: Request = control::read(&mut pipe).expect("request");
+            control::write(
+                &mut pipe,
+                &Response {
+                    version: VERSION,
+                    sequence: request.sequence,
+                    policy: Policy {
+                        version: VERSION,
+                        ..Policy::default()
+                    },
+                    error: Some(code.into()),
+                },
+            )
+            .expect("response");
+        });
+        let error = control::request(&link, Command::Invalidate).expect_err("not an ACK");
+        assert_eq!(control::Failure::classify(&error), expected);
+        assert_eq!(
+            error.to_string(),
+            expected.diagnostic(),
+            "peer text is never retained"
+        );
+        server.join().expect("server");
+    }
+}
+
+#[test]
 fn wrong_server_image_is_rejected_before_sending_the_nonce() {
     let mut link = link("image");
     let mut listener = Listener::new(

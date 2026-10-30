@@ -20,6 +20,7 @@ pub struct Client {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ConnectionError {
     Disconnected(std::io::ErrorKind),
+    Protocol,
     Version,
     Sequence,
 }
@@ -27,8 +28,20 @@ impl ConnectionError {
     pub fn message(self) -> &'static str {
         match self {
             Self::Disconnected(_) => "servicios desconectado",
+            Self::Protocol | Self::Sequence => "respuesta de servicios inválida",
             Self::Version => vantare_ipc::INCOMPATIBLE_COMPONENTS,
-            Self::Sequence => "respuesta de servicios inválida",
+        }
+    }
+}
+
+impl ConnectionError {
+    pub fn diagnostic(self) -> &'static str {
+        match self {
+            Self::Disconnected(std::io::ErrorKind::TimedOut) => "services-transport-timeout",
+            Self::Disconnected(_) => "services-disconnected",
+            Self::Protocol => "services-protocol-invalid",
+            Self::Version => "services-version-incompatible",
+            Self::Sequence => "services-sequence-invalid",
         }
     }
 }
@@ -160,15 +173,16 @@ impl Client {
     }
 
     pub fn request(&mut self, command: Command) -> Result<Reply, &'static str> {
-        self.request_once(command).map_err(ConnectionError::message)
+        self.request_typed(command)
+            .map_err(ConnectionError::message)
     }
 
     /// Local and side-effect free: used before sending a possibly mutating action.
     pub fn probe(&mut self) -> Result<(), ConnectionError> {
-        self.request_once(Command::Status).map(|_| ())
+        self.request_typed(Command::Status).map(|_| ())
     }
 
-    fn request_once(&mut self, command: Command) -> Result<Reply, ConnectionError> {
+    pub fn request_typed(&mut self, command: Command) -> Result<Reply, ConnectionError> {
         self.sequence = self
             .sequence
             .checked_add(1)
@@ -183,11 +197,22 @@ impl Client {
             },
         )
         .map_err(|error| ConnectionError::Disconnected(error.kind()))?;
-        let response: Response = protocol::read(&mut self.pipe)
-            .map_err(|error| ConnectionError::Disconnected(error.kind()))?;
-        if response.version != protocol::VERSION {
+        let value: serde_json::Value = protocol::read(&mut self.pipe).map_err(|error| {
+            if error.kind() == std::io::ErrorKind::InvalidData {
+                ConnectionError::Protocol
+            } else {
+                ConnectionError::Disconnected(error.kind())
+            }
+        })?;
+        if value
+            .get("version")
+            .and_then(serde_json::Value::as_u64)
+            .is_some_and(|version| version != u64::from(protocol::VERSION))
+        {
             return Err(ConnectionError::Version);
         }
+        let response: Response =
+            serde_json::from_value(value).map_err(|_| ConnectionError::Protocol)?;
         if response.sequence != self.sequence {
             return Err(ConnectionError::Sequence);
         }
@@ -196,6 +221,40 @@ impl Client {
 
     pub fn cancellation(&self) -> Arc<Event> {
         Arc::clone(&self.stop)
+    }
+
+    /// Urgent in-game renewal runs below the driver's processes, without a UI.
+    #[allow(unsafe_code)] // Narrow Win32 boundary over the Child-owned process handle.
+    pub fn set_background(&self) -> std::io::Result<()> {
+        #[cfg(windows)]
+        {
+            use std::os::windows::io::AsRawHandle;
+            use windows_sys::Win32::System::Threading::{
+                BELOW_NORMAL_PRIORITY_CLASS, SetPriorityClass,
+            };
+            // SAFETY: Child owns a live process handle for the duration of this call.
+            if unsafe { SetPriorityClass(self.child.as_raw_handle(), BELOW_NORMAL_PRIORITY_CLASS) }
+                == 0
+            {
+                return Err(std::io::Error::last_os_error());
+            }
+        }
+        Ok(())
+    }
+
+    #[cfg(all(windows, any(test, feature = "test-support")))]
+    #[allow(unsafe_code)] // Read-only assertion over the Child-owned handle.
+    pub fn priority_class_for_test(&self) -> std::io::Result<u32> {
+        use std::os::windows::io::AsRawHandle;
+        // SAFETY: the process handle remains owned by this live Client.
+        let class = unsafe {
+            windows_sys::Win32::System::Threading::GetPriorityClass(self.child.as_raw_handle())
+        };
+        if class == 0 {
+            Err(std::io::Error::last_os_error())
+        } else {
+            Ok(class)
+        }
     }
 
     /// Keep the real child alive while a consumer test substitutes a closed

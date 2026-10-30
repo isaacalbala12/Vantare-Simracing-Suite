@@ -1,3 +1,136 @@
+## VANTA-105 / #1803 — Correcciones de revisión profunda (31-oct)
+
+Revisiones DeepSeek 1/2 y 2/2 recibidas del orquestador sobre PR draft #1811,
+HEAD publicado anterior `73a4a593b`. Hallazgos contrastados con el código:
+
+- Confirmados P1 marcador ilegible y P2 marcador huérfano. El hint ahora usa
+  `load_cache`: corrupción/formato distinto se conserva en cuarentena y equivale
+  a ausencia, sin derechos. E/S real sigue propagándose. La transferencia devuelve
+  internamente si hubo instalación; sin candidate se retira el hint y un `Read`
+  no sustituye la emisión HTTP ni se clasifica como renovación verificada.
+- Hub y temporizador usan `run_renewal` y el mismo `claim_from`/backoff. Se retiró
+  `automatic_action_ready`, que tenía un umbral diferente. El clasificador común
+  no reinicia fallos cuando el ACK no aporta margen; evalúa el reloj efectivo de
+  ese ACK, sin compararlo con el wall anterior a HTTP. No cambia la frescura2s de
+  consumidores ni el reloj antirollback de Authority.
+- Confirmado el bypass por `signing_in` en solicitudes automáticas del Hub.
+  Estas ya no abren una admisión genérica: pasan por el gate Live común antes del
+  helper. Una admisión de usuario solo exime los comandos de acceso pertinentes,
+  no los automáticos de fondo. Isaac autorizó explícitamente `Origin::Purchase`
+  durante diez minutos desde un `Checkout` de compra, y recuperación Live sin
+  derechos activos. La confirmación de compra conserva el mismo backoff y suelo.
+  El origen es estado del supervisor, no un campo aceptado desde IPC.
+- Todo helper admitido en Live intenta `BELOW_NORMAL_PRIORITY_CLASS`; un fallo
+  deja `services-priority-unavailable` y continúa, según decisión del orquestador.
+  El test del proceso real consulta `GetPriorityClass`, no supone que se aplicó.
+- Control v5 conserva compatibilidad: un error de núcleo previo pasa a
+  `UnknownLegacy` transitorio, con `rights-legacy-unknown`. `CommandNotAllowed`
+  distingue una mutación no admitida de identidad de proceso. Se corrigieron las
+  etiquetas de la regresión IPC, los códigos comprobados en logs y la rama muerta
+  de timeout en `accept` Windows; el timeout5min es de lectura entre tramas.
+- El HTTP en cada arranque de RC9 era un disparo explícito por
+  `last_attempt.is_none()`, también fijado por un test anterior. Se retiró para
+  concesiones sanas con margen. La regresión restaura una concesión Owner firmada
+  de treinta días mediante el núcleo real y observa cero despachos de renovación;
+  la firma/autoridad local se siguen verificando. No cambia TTL ni gracia.
+  Gratis conserva una comprobación inicial para descubrir compras realizadas
+  fuera del Hub, sin repetirla continuamente tras una respuesta verificada.
+- El fixture HTTP puede mantener el listener abierto y registrar una cuarta
+  petición, con parada explícita por socket. El test sin replay comprueba todas
+  las peticiones observadas. El test del cap observa los `claim` a lo largo de
+  toda la ventana, en lugar de terminar con una resta tautológica.
+
+Código final de revisión `a75c8029185e10a36c0fa5984c20347b714f033c`
+(cambio funcional `a6f58b6b6467e550c48753b0cef5e66a9bc00b04` y sincronización
+EOF posterior). Nueve mutaciones focalizadas fallan por comportamiento, sin
+fallos de compilación; fuentes restauradas y SHA-256 verificados contra ese
+código. Casos: marcador corrupto, huérfano, replay HTTP, cap16min, prioridad
+normal, bypass Live, renovación al arrancar, ACK sin margen y reloj del ACK.
+Script y reporte externos: `isa-1803-review-mutations.py`,
+`isa-1803-mutations.json`, logs `isa-1803-mutation-*.log` bajo evidencia.
+
+Gates finales en sapphireos mediante compilar.ps1, jobs2 y target exclusivo D:/VantareServer/targets/isa-1803: fmt PASS; Clippy ipc/services/runtime --all-targets -D warnings PASS; Nextest794/794 PASS (13 omisiones existentes); lifecycle13/13 PASS; telemetría33/33 PASS (1 omisión existente, corpus ACC92,4s). Calidad/retirement466huellas y diff completo PASS. Código final a75c8029185e10a36c0fa5984c20347b714f033c.
+
+Se conservó el fallo intermedio793/794: el test EOF cerraba antes de que Windows
+resolviera la identidad del peer. Ahora confirma una respuesta Status autenticada
+antes de cerrar, con sincronización explícita y sin sleeps; la repetición completa
+pasa. No se debilitó el contrato ni se cambió producción para ese fixture.
+La primera tanda Clippy/Nextest793 y las nueve mutaciones también quedan en logs.
+Calidad/retirement466huellas y revisión del diff completo PASS. No se ejecutó
+carrera física24h ni backend real. No se aumentó TTL/gracia; si la red falta toda
+la ventana, la licencia vence en la fecha prevista. Sin merge, producción,
+cambio de instalación, promoción ni release. Estado y SHA remoto final se reflejan
+en PR draft #1811 e issue #1803; pendiente re-revisión focalizada del orquestador.
+VANTA-105 es el paraguas compartido; estado verificado Por revisar al cerrar esta
+revisión, coordinado por el orquestador (sin sustituir su resumen global).
+
+El apartado siguiente conserva la evidencia de la primera entrega; sus reglas
+Live y cifras de gates quedan sustituidas por esta revisión y el README vigente.
+
+## VANTA-105 / #1803 — Recuperación del canal y renovación urgente (30-oct)
+
+Encargo explícito de Isaac: «solucionarlo completamente». Rama aislada
+`vantareapp/isa-1803-license-transport`, base `origin/nightly` `9fa66225a`,
+worktree `C:/VantareServer/wt/isa-1803`. Project Vantare / area:licencias,
+sin milestone propio comprometido; VANTA-105 es el paraguas compartido de RC9.
+
+- Los cortes locales ya no significan rechazo: timeout, EOF, peer cerrado,
+  disponibilidad local, identidad, protocolo, versión y rechazo tienen códigos
+  cerrados. Solo el rechazo explícito detiene los reintentos de la sesión.
+  El binding firmado se conserva ante fallos automáticos.
+- El helper sale normalmente tras cinco minutos sin recibir una trama, EOF
+  entre tramas o destinatario cerrado. El siguiente uso reconecta antes de
+  enviar la acción; perder una respuesta nunca reproduce esa acción.
+- Tras recibir una emisión HTTP se guarda un marcador protegido de transferencia
+  pendiente. El siguiente automático acaba primero el ACK local, incluso tras
+  reiniciar el helper, sin otra emisión HTTP. El marcador no concede derechos;
+  se retira después del ACK, al revocar o al apartar un candidate inválido.
+- Se anticipa la renovación una hora; reintentos 1/2/4/8/15min. Solo antes de
+  vencer y dentro de los últimos cinco minutos se reduce la espera a un minuto.
+  Una respuesta sin nuevo margen no reinicia el backoff. Una ventana completa
+  permite al menos tres reintentos al cap15min y reserva15min para sondeos/E/S, siempre
+  que app, sesión y núcleo sigan disponibles y sin bloqueos prolongados. No garantiza éxito de la red.
+- Isaac autorizó expresamente renovación urgente en Live: helper bajo demanda,
+  prioridad Windows inferior a normal, una operación cada vez, sin avisos al
+  piloto y cierre al terminar. Fuera de esa ventana no hay helper/red en juego.
+  Control v5 puede incluir una hora de gracia en el plazo efectivo: el cálculo
+  reserva esa hora en Live (hasta120min antes del plazo efectivo) para empezar
+  antes del vencimiento firmado. No cambia TTL, gracia ni frescura2s.
+- TTL real v1: no hay vencimiento global desde `issued_at`. Pro/Plus termina
+  en `paid_through` firmado (resto del periodo pagado, mensual o anual);
+  Founders/Launch y módulos perpetuos no vencen. Tester14d, NightlyTester72h y
+  Owner30d como máximo desde emisión, o antes si expira su asignación.
+  Fuentes: `license-credential.ts::normalizeOperationalAssignments`,
+  `normalizeEntitlements`, `license.rs::Verifier::v1` y `grants`.
+  Si la red cae durante toda la ventana, la licencia vence en su fecha prevista;
+  solo permanece la gracia de juego ya autorizada. No se prolonga desde el cliente.
+- Tres DeepSeek autorizados, solo lectura, contrastados con las fuentes. Sus
+  advertencias de worktree cambiante corresponden a este worker implementando;
+  ninguno escribió ni compiló. Regresiones inyectadas y gates completados en
+  sapphireos, por `compilar.ps1`, jobs2 y target exclusivo
+  `D:/VantareServer/targets/isa-1803`. Evidencia `C:/VantareServer/evidence/isa-1803-*`.
+  Código verificado en `dd04750a580c48a531b97a56c43a038d42cf9d63`:
+  fmt y Clippy `--all-targets -D warnings` PASS en ipc/services/runtime;
+  Nextest787/787 PASS (13 omisiones existentes) más EOF/log del helper real1/1;
+  lifecycle13/13; telemetría33/33 (1 omisión existente, corpus ACC100,4s).
+  Calidad/retirement466huellas y diff completo PASS. Los nuevos tests no usan
+  sleeps: relojes inyectados, EOF explícito, canales y espera de procesos.
+  Los fallos intermedios se conservaron: lint de closures/arms/tamaño/unidades,
+  límite Win32 unsafe acotado y expectativa antigua de ventana60s en fixture10min;
+  se corrigieron sin rebajar gates ni ampliar plazos de transporte/licencia.
+  No se repitió manualmente una carrera física24h ni se contactó al backend real.
+
+PR draft [#1811](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1811)
+a nightly con `Refs #1803`; rama publicada y registrada en T3. Gates locales
+completos; CI GitHub pendiente al abrir. Sin cambios de instalación/producción,
+merge, promoción ni release. Siguiente: revisión profunda del orquestador,
+coordinada con la auditoría integral de licencias de otro worker.
+La auditoría mantiene aparte la recuperación del candidate firmado de otra
+cuenta/dispositivo (#1798): el ACK inicial sigue siendo obligatorio para admitir
+el helper; este arreglo no resuelve esa variante. El diagnóstico de transporte
+tampoco demuestra que un fallo de persistencia real sea inocuo: conserva el
+fallo cerrado y la evidencia para investigarlo sin ampliar TTL.
+
 ## VANTA-105 / #1813 y #1815 — Revocación reconciliada y barrera legacy (30-oct)
 
 [PR draft #1817](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1817)

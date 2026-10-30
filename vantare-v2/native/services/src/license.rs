@@ -14,6 +14,8 @@ const ISSUER: &str = "vantare-license";
 const AUDIENCE: &str = "vantare-native";
 /// Máximo desfase aceptado al recibir una respuesta nueva del servidor.
 pub const CLOCK_SKEW_SECONDS: u64 = 300;
+/// Existing maximum in-game grace; renewal must not mistake it for signed TTL.
+pub const GAME_GRACE_SECONDS: i64 = 3600;
 pub const CAPABILITIES: [&str; 12] = [
     "vantare.channel.nightly",
     "vantare.channel.testers",

@@ -43,19 +43,89 @@ pub fn serve(options: &Options, mut handle: impl FnMut(Command) -> Reply) -> Res
             cancel.set();
         })
         .map_err(|_| Error::Protocol)?;
-    pipe.accept().map_err(|_| Error::Protocol)?;
+    if let Err(error) = pipe.accept() {
+        if stop.is_set() {
+            eprintln!("services-shutdown");
+            return Ok(());
+        }
+        return Err(Error::Core(vantare_ipc::control::Failure::classify(&error)));
+    }
     let peer = pipe.client_peer().map_err(|_| Error::Protocol)?;
     if peer.pid != options.parent_pid || !peer.is_image(&options.parent_image) {
         return Err(Error::Denied);
     }
-    let mut sequence = 0;
-    while !stop.is_set() {
-        let request: Request = match protocol::read(&mut pipe) {
-            Ok(request) => request,
-            Err(_) if stop.is_set() => return Ok(()),
-            Err(_) => return Err(Error::Protocol),
+    let exit = session(&mut pipe, &nonce, || stop.is_set(), &mut handle).inspect_err(|error| {
+        let code = match error {
+            Error::Version => "services-version-incompatible",
+            Error::Protocol => "services-protocol-invalid",
+            Error::Core(failure) => failure.diagnostic(),
+            _ => "services-channel-failed",
         };
-        validate(&request, &nonce, sequence)?;
+        eprintln!("services-channel {code}");
+    })?;
+    eprintln!("{}", exit.diagnostic());
+    Ok(())
+}
+
+#[derive(Debug, PartialEq, Eq)]
+enum Exit {
+    Idle,
+    Disconnected,
+    Shutdown,
+}
+impl Exit {
+    fn diagnostic(&self) -> &'static str {
+        match self {
+            Self::Idle => "services-idle",
+            Self::Disconnected => "services-disconnected",
+            Self::Shutdown => "services-shutdown",
+        }
+    }
+}
+
+/// A timeout before the first byte is inactivity; a partial frame is a failure.
+/// Injection at the Read/Write boundary permits deterministic deadline tests.
+fn session(
+    pipe: &mut (impl std::io::Read + std::io::Write),
+    nonce: &str,
+    stopped: impl Fn() -> bool,
+    mut handle: impl FnMut(Command) -> Reply,
+) -> Result<Exit> {
+    use std::io::{ErrorKind, Read};
+    let transport =
+        |error: std::io::Error| Error::Core(vantare_ipc::control::Failure::classify(&error));
+    let mut sequence = 0;
+    while !stopped() {
+        let mut first = [0];
+        match pipe.read_exact(&mut first) {
+            Ok(()) => {}
+            Err(_) if stopped() => return Ok(Exit::Shutdown),
+            Err(error) if error.kind() == ErrorKind::TimedOut => return Ok(Exit::Idle),
+            Err(error)
+                if matches!(
+                    error.kind(),
+                    ErrorKind::UnexpectedEof
+                        | ErrorKind::BrokenPipe
+                        | ErrorKind::ConnectionReset
+                        | ErrorKind::ConnectionAborted
+                ) =>
+            {
+                return Ok(Exit::Disconnected);
+            }
+            Err(error) => return Err(transport(error)),
+        }
+        let value: serde_json::Value =
+            protocol::read(&mut first.as_slice().chain(&mut *pipe)).map_err(transport)?;
+        // Check the envelope before decoding commands from another version.
+        if value
+            .get("version")
+            .and_then(serde_json::Value::as_u64)
+            .is_some_and(|version| version != u64::from(protocol::VERSION))
+        {
+            return Err(Error::Version);
+        }
+        let request: Request = serde_json::from_value(value).map_err(|_| Error::Protocol)?;
+        validate(&request, nonce, sequence)?;
         sequence = request.sequence;
         let closed = matches!(request.command, Command::Shutdown);
         let response = Response {
@@ -63,12 +133,23 @@ pub fn serve(options: &Options, mut handle: impl FnMut(Command) -> Reply) -> Res
             sequence,
             reply: handle(request.command),
         };
-        protocol::write(&mut pipe, &response).map_err(|_| Error::Protocol)?;
+        if let Err(error) = protocol::write(pipe, &response) {
+            if matches!(
+                error.kind(),
+                ErrorKind::BrokenPipe
+                    | ErrorKind::ConnectionAborted
+                    | ErrorKind::ConnectionReset
+                    | ErrorKind::NotConnected
+            ) {
+                return Ok(Exit::Disconnected);
+            }
+            return Err(transport(error));
+        }
         if closed {
-            break;
+            return Ok(Exit::Shutdown);
         }
     }
-    Ok(())
+    Ok(Exit::Shutdown)
 }
 
 #[cfg(not(any(windows, unix)))]
@@ -79,6 +160,125 @@ pub fn serve(_: &Options, _: impl FnMut(Command) -> Reply) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::io::{self, Cursor, Read, Write};
+
+    struct Wire {
+        input: Cursor<Vec<u8>>,
+        read_error: io::ErrorKind,
+        write_error: Option<io::ErrorKind>,
+    }
+    impl Read for Wire {
+        fn read(&mut self, bytes: &mut [u8]) -> io::Result<usize> {
+            if self.input.position() == self.input.get_ref().len() as u64 {
+                return Err(self.read_error.into());
+            }
+            self.input.read(bytes)
+        }
+    }
+    impl Write for Wire {
+        fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
+            self.write_error
+                .map_or(Ok(bytes.len()), |error| Err(error.into()))
+        }
+        fn flush(&mut self) -> io::Result<()> {
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn idle_deadline_and_eof_close_successfully_without_dispatch_or_error_diagnostic() {
+        for (error, expected) in [
+            (io::ErrorKind::TimedOut, Exit::Idle),
+            (io::ErrorKind::UnexpectedEof, Exit::Disconnected),
+        ] {
+            let mut wire = Wire {
+                input: Cursor::new(vec![]),
+                read_error: error,
+                write_error: None,
+            };
+            let exit = session(
+                &mut wire,
+                "fixture",
+                || false,
+                |_| panic!("idle cannot dispatch"),
+            )
+            .expect("clean close");
+            assert_eq!(exit, expected);
+            assert!(matches!(
+                exit.diagnostic(),
+                "services-idle" | "services-disconnected"
+            ));
+        }
+    }
+
+    #[test]
+    fn partial_frame_is_transient_and_response_to_closed_peer_is_clean_without_replay() {
+        let mut wire = Wire {
+            input: Cursor::new(vec![1]),
+            read_error: io::ErrorKind::TimedOut,
+            write_error: None,
+        };
+        assert_eq!(
+            session(&mut wire, "fixture", || false, |_| panic!("partial frame")),
+            Err(Error::Core(vantare_ipc::control::Failure::Timeout))
+        );
+        let mut bytes = vec![];
+        protocol::write(
+            &mut bytes,
+            &Request {
+                version: protocol::VERSION,
+                nonce: "fixture".into(),
+                sequence: 1,
+                command: Command::Status,
+            },
+        )
+        .expect("frame");
+        let mut wire = Wire {
+            input: Cursor::new(bytes),
+            read_error: io::ErrorKind::UnexpectedEof,
+            write_error: Some(io::ErrorKind::BrokenPipe),
+        };
+        let mut dispatched = 0;
+        assert_eq!(
+            session(
+                &mut wire,
+                "fixture",
+                || false,
+                |_| {
+                    dispatched += 1;
+                    Reply::Closed
+                }
+            ),
+            Ok(Exit::Disconnected)
+        );
+        assert_eq!(dispatched, 1, "lost response never replays the action");
+    }
+
+    #[test]
+    fn incompatible_envelope_is_distinct_from_unknown_command_or_malformed_frame() {
+        for (version, expected) in [
+            (protocol::VERSION - 1, Error::Version),
+            (protocol::VERSION, Error::Protocol),
+        ] {
+            let mut bytes = vec![];
+            protocol::write(&mut bytes, &serde_json::json!({"version":version,"sequence":1,"nonce":"fixture","command":{"command":"future-command"}})).expect("frame");
+            let mut wire = Wire {
+                input: Cursor::new(bytes),
+                read_error: io::ErrorKind::UnexpectedEof,
+                write_error: None,
+            };
+            assert_eq!(
+                session(
+                    &mut wire,
+                    "fixture",
+                    || false,
+                    |_| panic!("incompatible cannot dispatch")
+                ),
+                Err(expected)
+            );
+        }
+    }
+
     #[test]
     fn replay_wrong_nonce_and_version_cannot_dispatch() {
         let mut request = Request {

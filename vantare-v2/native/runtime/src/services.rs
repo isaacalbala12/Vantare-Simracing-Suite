@@ -23,6 +23,7 @@ type Cancellation = Arc<Mutex<Option<Arc<Event>>>>;
 type SigningIn = Arc<Mutex<Option<Instant>>>;
 /// Un OAuth abandonado no retiene los servicios en carrera para siempre.
 const SIGN_IN_WINDOW: Duration = Duration::from_mins(10);
+const PURCHASE_CONFIRMATION_WINDOW: Duration = Duration::from_mins(10);
 
 /// Huella mínima en carrera, salvo que cerrar deje al usuario sin acceso:
 /// sin licencia válida guardada o con un acceso a medias se sigue sirviendo.
@@ -48,6 +49,16 @@ struct State {
     notice: Option<Reply>,
     connected: bool,
     core_retry_at: Option<Instant>,
+    purchase_until: Option<Instant>,
+}
+impl State {
+    fn renewal_origin(&self, now: Instant) -> renewal::Origin {
+        if self.purchase_until.is_some_and(|until| now < until) {
+            renewal::Origin::Purchase
+        } else {
+            renewal::Origin::Automatic
+        }
+    }
 }
 #[derive(Clone)]
 pub struct Options {
@@ -175,7 +186,9 @@ fn serve(
         sequence = request.sequence;
         let closed = matches!(request.command, Command::Shutdown);
         // Protect admission before waiting for the state held by the game timer.
-        if access_command(&request.command) {
+        if access_command(&request.command)
+            && !matches!(request.command, Command::LicenseRenewAutomatic)
+        {
             set_signing_in(signing, true);
         }
         let reply = match state.lock() {
@@ -228,17 +241,40 @@ fn handle(
     signing: &SigningIn,
     stop: &Arc<Event>,
 ) -> Reply {
-    if matches!(command, Command::LicenseRenewAutomatic)
-        && !state.renewal.automatic_action_ready(Instant::now())
-    {
-        let reply = serve_command(
-            state,
-            options,
-            Command::LicenseStatus,
-            cancellation,
-            signing,
-            stop,
-        );
+    if matches!(command, Command::LicenseRenewAutomatic) {
+        let reply = match (
+            control::request_cancelled(&options.core, control::Command::Read, stop),
+            control::wall_ms(),
+        ) {
+            (Ok(policy), Ok(wall)) => {
+                // Protect only an explicitly permitted live operation from a
+                // concurrent game-exit cancellation; this does not grant entry.
+                if policy.live
+                    && renewal::live_allowed(&policy, wall, state.renewal_origin(Instant::now()))
+                {
+                    set_signing_in(signing, true);
+                }
+                let reply = run_renewal(state, &policy, wall, Instant::now(), |state, command| {
+                    serve_command(state, options, command, cancellation, signing, stop)
+                })
+                .unwrap_or_else(|| {
+                    serve_command(
+                        state,
+                        options,
+                        Command::LicenseStatus,
+                        cancellation,
+                        signing,
+                        stop,
+                    )
+                });
+                if policy.live {
+                    finish(state);
+                    clear_cancellation(cancellation);
+                }
+                reply
+            }
+            _ => failure("núcleo de derechos no disponible"),
+        };
         // This is the admitted server request, not the concurrent game timer.
         set_signing_in(signing, false);
         return reply;
@@ -255,6 +291,7 @@ fn handle_with(
 ) -> Reply {
     let access = access_command(&command);
     let manual_renewal = matches!(command, Command::LicenseRenew);
+    let purchase = matches!(command, Command::Purchase { .. });
     let renewing = matches!(
         command,
         Command::LicenseRenew | Command::LicenseRenewAutomatic
@@ -269,6 +306,7 @@ fn handle_with(
     ) {
         state.renewal = Renewal::default();
         state.notice = None;
+        state.purchase_until = None;
     }
     if matches!(command, Command::DeviceReset | Command::Purchase { .. }) {
         state.notice = None;
@@ -281,6 +319,9 @@ fn handle_with(
         state.notice = None;
     }
     let reply = dispatch(state, command);
+    if purchase && matches!(reply, Reply::Checkout { .. }) {
+        state.purchase_until = Some(Instant::now() + PURCHASE_CONFIRMATION_WINDOW);
+    }
     state.renewal.observe(&reply);
     if renewing {
         state.renewal.completed(renewal_outcome(&reply));
@@ -352,7 +393,15 @@ fn serve_command(
             return failure("núcleo de derechos no disponible");
         }
     };
-    if closes_for_game(&policy, signing_in(signing)) {
+    let automatic = matches!(command, Command::LicenseRenewAutomatic);
+    let live_renewal = policy.live
+        && automatic
+        && control::wall_ms().is_ok_and(|wall| {
+            renewal::live_allowed(&policy, wall, state.renewal_origin(Instant::now()))
+        });
+    if (policy.live && automatic && !live_renewal)
+        || (closes_for_game(&policy, access_command(&command) && signing_in(signing)) && !automatic)
+    {
         finish(state);
         return failure("servicios cerrados durante el juego");
     }
@@ -364,6 +413,7 @@ fn serve_command(
         state.client = None;
     }
     if let Some(client) = &mut state.client {
+        background_helper(client, policy.live);
         match client.probe() {
             Ok(()) => {}
             Err(ConnectionError::Disconnected(
@@ -380,6 +430,7 @@ fn serve_command(
             Err(error) => {
                 state.client = None;
                 clear_cancellation(cancellation);
+                eprintln!("{}", error.diagnostic());
                 return failure(error.message());
             }
         }
@@ -390,6 +441,7 @@ fn serve_command(
                 Ok(client) => client,
                 Err(error) => return failure(error),
             };
+        background_helper(&client, policy.live);
         if let Ok(mut slot) = cancellation.lock() {
             *slot = Some(client.cancellation());
         }
@@ -401,21 +453,37 @@ fn serve_command(
             return failure("transferencia de derechos sin confirmar");
         }
     }
-    if let Some(Ok(reply)) = state.client.as_mut().map(|client| client.request(command)) {
-        reply
-    } else {
-        state.client = None;
-        clear_cancellation(cancellation);
-        failure("servicios desconectados; operación sin reintento automático")
+    dispatch_helper(state, command, cancellation)
+}
+
+fn dispatch_helper(state: &mut State, command: Command, cancellation: &Cancellation) -> Reply {
+    match state
+        .client
+        .as_mut()
+        .map(|client| client.request_typed(command))
+    {
+        Some(Ok(reply)) => reply,
+        result => {
+            if let Some(Err(error)) = result {
+                eprintln!("{}", error.diagnostic());
+            }
+            state.client = None;
+            clear_cancellation(cancellation);
+            failure("servicios desconectados; operación sin reintento automático")
+        }
+    }
+}
+fn background_helper(client: &Client, live: bool) {
+    if live && client.set_background().is_err() {
+        eprintln!("services-priority-unavailable");
     }
 }
 fn renewal_outcome(reply: &Reply) -> protocol::RenewalOutcome {
     match reply {
         Reply::License { policy, .. }
-            if policy.version == control::VERSION
-                && policy.revision > 0
-                && policy.error.is_none()
-                && policy.overlays_advanced =>
+            if policy.overlays_advanced
+                && policy.current_at(policy.checked_at_ms)
+                && !renewal::urgent(policy, policy.checked_at_ms) =>
         {
             protocol::RenewalOutcome::Verified
         }
@@ -431,18 +499,26 @@ fn run_renewal(
     now: Instant,
     dispatch: impl FnOnce(&mut State, Command) -> Reply,
 ) -> Option<Reply> {
-    state.renewal.claim(policy, wall, now).ok()?;
+    let origin = state.renewal_origin(now);
+    state.renewal.claim_from(policy, wall, now, origin).ok()?;
     let reply = dispatch(state, Command::LicenseRenewAutomatic);
+    // Classify at the authenticated core ACK's effective clock, not the wall
+    // clock sampled before HTTP. Consumers retain their independent 2s TTL.
     let outcome = renewal_outcome(&reply);
     state.renewal.completed(outcome);
     eprintln!("license-auto-result={outcome:?}");
-    state.notice = match &reply {
-        Reply::DeviceLimit { .. } | Reply::LicenseFailure { .. } => Some(reply.clone()),
-        Reply::Error { message } if !policy.overlays_advanced => Some(Reply::LicenseFailure {
-            outcome,
-            message: message.clone(),
-        }),
-        _ => None,
+    // Automatic live renewal never interrupts the driver with a notice.
+    state.notice = if policy.live {
+        None
+    } else {
+        match &reply {
+            Reply::DeviceLimit { .. } | Reply::LicenseFailure { .. } => Some(reply.clone()),
+            Reply::Error { message } if !policy.overlays_advanced => Some(Reply::LicenseFailure {
+                outcome,
+                message: message.clone(),
+            }),
+            _ => None,
+        }
     };
     Some(reply)
 }
@@ -529,29 +605,38 @@ fn spawn_timer(
                 let policy =
                     control::request_cancelled(&options.core, control::Command::Read, &stop);
                 let Ok(policy) = policy else {
+                    let error = policy.expect_err("failed core request");
                     if let Ok(mut state) = state.try_lock() {
                         state.core_retry_at = Some(now + Duration::from_secs(30));
                     }
-                    eprintln!("license-auto-core-unavailable");
+                    eprintln!(
+                        "license-auto-core-unavailable code={}",
+                        control::Failure::classify(&error).diagnostic()
+                    );
                     continue;
                 };
                 if let Ok(mut state) = state.try_lock() {
                     state.core_retry_at = None;
                 }
-                if policy.current() && closes_for_game(&policy, signing_in(&signing)) {
+                let Ok(wall) = control::wall_ms() else {
+                    eprintln!("license-auto-wall-unavailable");
+                    continue;
+                };
+                if policy.current()
+                    && closes_for_game(&policy, signing_in(&signing))
+                    && !state.try_lock().is_ok_and(|state| {
+                        renewal::live_allowed(&policy, wall, state.renewal_origin(now))
+                    })
+                {
                     finish_for_game(&state, &cancellation, &signing);
                 } else if let Ok(mut state) = state.try_lock() {
                     state.renewal.checked(now);
-                    let Ok(wall) = control::wall_ms() else {
-                        eprintln!("license-auto-wall-unavailable");
-                        continue;
-                    };
                     let _renewed = run_renewal(&mut state, &policy, wall, now, |state, command| {
                         // The timer never clears the admission window set by a
                         // concurrent user request waiting for this state lock.
                         serve_command(state, &options, command, &cancellation, &signing, &stop)
                     });
-                    if !state.connected {
+                    if !state.connected || policy.live {
                         finish(&mut state);
                         clear_cancellation(&cancellation);
                     }

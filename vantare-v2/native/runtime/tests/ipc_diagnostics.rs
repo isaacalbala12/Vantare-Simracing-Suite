@@ -26,12 +26,13 @@ fn rejected_rights_and_services_requests_report_sanitized_local_diagnostics() {
             .expect("subproceso IPC");
         let stderr = String::from_utf8_lossy(&output.stderr);
         assert!(output.status.success(), "{stderr}");
+        assert!(stderr.contains("code=rights-protocol-invalid"), "{stderr}");
         assert!(
-            stderr.contains("canal de derechos cerrado: InvalidData"),
+            stderr.contains("code=rights-command-not-allowed"),
             "{stderr}"
         );
         assert!(
-            stderr.contains("canal de derechos cerrado: PermissionDenied"),
+            stderr.contains("code=rights-version-incompatible"),
             "{stderr}"
         );
         assert!(

@@ -1,3 +1,35 @@
+## VANTA-105 / #1808, #1812, #1814 — Sesión y perfil (31-oct, en ejecución)
+
+Worker ejecutor en `vantareapp/isa-1808-sesion-perfil-recuperacion`, base nightly
+`55250c6f5658523a781aa648ece822cbc807ebd0` (#1811). Worktree propio
+`C:/VantareServer/wt/isa-1808`; target `D:/VantareServer/targets/isa-1808`.
+No cambia estado ni resumen de Plane VANTA-105.
+
+- #1808: cuenta y metadata ilegibles pasan a cuarentena fechada, con bytes
+  conservados y tres copias salvo bloqueos de limpieza. E/S real o fallo de
+  renombrado se propagan. Logout guarda SignedOut sin descubrimiento OAuth ni
+  descifrar la sesión anterior, después del ACK durable de revocación.
+  El cambio de identidad conserva la invalidación previa al guardado nuevo.
+- #1812: toda lectura de perfil usa OAuth automático no destructivo; no decide
+  revocaciones ni logout. Se retira del test de acciones destructivas porque
+  es presentación, incluso desde un botón. Un error de perfil no apaga la
+  sesión ya confirmada del scheduler; un error no admite una sesión nueva ni
+  deshace el reset previo a Logout. No se amplía TTL ni gracia.
+- R12: account_conflict 409 se distingue de DeviceLimit; conserva los derechos
+  firmados y permite reintento automático. No se interpreta como permiso.
+- R11 sigue en #1799: el aviso recibido pero descartado requiere presentación
+  persistente separada en Hub. Se documenta sin duplicar la entrega de avisos.
+- #1814 bloqueada por contrato: license-credential.ts:276-289,583-599 excluye
+  recovery de la firma; online_capabilities contiene solo nombres, sin deadline.
+  Se pidió al orquestador decidir un lease firmado hasta recovery_until original,
+  negociación con clientes anteriores y política online/revocación/gracia.
+  No se concede desde arrays sin firma ni se inventa otra ventana de 72 h.
+
+Regresiones y gates en curso, pendientes de verificar. Evidencia externa:
+`C:/VantareServer/evidence/isa-1808/`. Siguiente: finalizar fixtures, mutaciones,
+gates services/runtime y PR draft a nightly. Sin dependencias, backend real,
+instalación, producción, merge, promoción ni release.
+
 ## VANTA-105 / #1806 y #1807 — Autoridad y reloj (31-oct, por revisar)
 
 Worker encargado por el orquestador, rama `vantareapp/isa-1806-autoridad-reloj`,

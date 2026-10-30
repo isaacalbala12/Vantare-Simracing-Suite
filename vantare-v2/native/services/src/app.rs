@@ -31,10 +31,15 @@ pub struct App {
     pilot: Option<crate::pilot::Local>,
     pilot_identity: Option<crate::account::Identity>,
     recovered_renewal_transfer: bool,
+    clock: fn() -> Result<u64>,
 }
 
 impl App {
     pub fn new(config: BuildConfig, root: PathBuf) -> Self {
+        Self::with_clock(config, root, now)
+    }
+
+    pub fn with_clock(config: BuildConfig, root: PathBuf, clock: fn() -> Result<u64>) -> Self {
         Self {
             core: None,
             license_store: None,
@@ -53,6 +58,7 @@ impl App {
             pilot: None,
             pilot_identity: None,
             recovered_renewal_transfer: false,
+            clock,
         }
     }
 
@@ -271,7 +277,7 @@ impl App {
                 // A stale hint without a usable candidate did not renew or
                 // install anything. Continue to the normal HTTP renewal.
             }
-            let time = now()?;
+            let time = (self.clock)()?;
             self.ensure_oauth_origin(time, automatic)?;
             let renewal = (|| {
                 self.candidate_store()?;
@@ -355,10 +361,20 @@ impl App {
             reports.cancel_preview();
         }
         if self.config.native_oauth.is_some() {
-            self.ensure_account()?;
-            let account = self.account.as_mut().ok_or(Error::Unconfigured)?;
-            account.end_email_session(&self.http);
-            account.logout(self.store.as_ref().ok_or(Error::Storage)?)?;
+            // Local logout must not require discovery or decrypting an old session.
+            if self.store.is_none() {
+                self.store = Some(self.open_account_store()?);
+            }
+            let store = self.store.as_ref().ok_or(Error::Storage)?;
+            let at = (self.clock)()?.saturating_mul(1000);
+            store.restore_cache::<serde_json::Value>("account", at)?;
+            store.restore_cache::<OAuth>("oauth-metadata", at)?;
+            if let Some(account) = self.account.as_mut() {
+                account.end_email_session(&self.http);
+                account.logout(store)?;
+            } else {
+                Account::clear_saved(store)?;
+            }
         }
         Ok(Reply::Account {
             copy_link: false,
@@ -440,10 +456,7 @@ impl App {
             .complete(completion, self.store.as_ref().ok_or(Error::Storage)?)
     }
 
-    fn ensure_account(&mut self) -> Result<()> {
-        if self.account.is_some() {
-            return Ok(());
-        }
+    fn open_account_store(&self) -> Result<Store> {
         let config = self
             .config
             .native_oauth
@@ -456,18 +469,35 @@ impl App {
             self.config.channel.unwrap_or("unknown"),
             self.config.supabase.as_ref().map_or("", url::Url::as_str)
         );
-        let store = Store::open(&self.root, &context)?;
-        let cached = match store.load::<OAuth>("oauth-metadata") {
-            Ok(oauth) if oauth.matches(&config.issuer, &config.client_id, &config.redirect_uri) => {
+        Store::open(&self.root, &context)
+    }
+
+    fn ensure_account(&mut self) -> Result<()> {
+        if self.account.is_some() {
+            return Ok(());
+        }
+        let config = self
+            .config
+            .native_oauth
+            .as_ref()
+            .ok_or(Error::Unconfigured)?;
+        let store = match self.store.take() {
+            Some(store) => store,
+            None => self.open_account_store()?,
+        };
+        let at = (self.clock)()?.saturating_mul(1000);
+        let cached = match store.restore_cache::<OAuth>("oauth-metadata", at)? {
+            Some(oauth)
+                if oauth.matches(&config.issuer, &config.client_id, &config.redirect_uri) =>
+            {
                 Some(oauth)
             }
-            Ok(_) => {
+            Some(_) => {
                 // Solo metadata pública incompatible; no migrar ni borrar la sesión.
-                store.quarantine_preserving("oauth-metadata")?;
+                store.quarantine_dated("oauth-metadata", at)?;
                 None
             }
-            Err(Error::NotFound) => None,
-            Err(error) => return Err(error),
+            None => None,
         };
         let oauth = if let Some(oauth) = cached {
             oauth
@@ -481,7 +511,7 @@ impl App {
             store.save("oauth-metadata", &oauth)?;
             oauth
         };
-        let account = Account::restore(oauth, &store)?;
+        let account = Account::restore_at(oauth, &store, at)?;
         self.store = Some(store);
         self.account = Some(account);
         Ok(())
@@ -496,7 +526,7 @@ impl App {
         if account.login_pending()
             && let Some(ticket) = account.poll_login()?
         {
-            let completion = ticket.run(&self.http, now()?)?;
+            let completion = ticket.run(&self.http, (self.clock)()?)?;
             let changed = account
                 .identity()
                 .is_none_or(|old| old != completion.identity());
@@ -802,8 +832,10 @@ impl App {
                 ));
             }
             Command::AccountProfileRefresh => {
-                let time = now()?;
-                self.ensure_oauth(time)?;
+                let time = (self.clock)()?;
+                // Profile reads (including the Hub's missing-cache refresh) have
+                // no authority to revoke a signed license or log the account out.
+                self.ensure_oauth_origin(time, true)?;
                 let account = self.account.as_mut().ok_or(Error::Authentication)?;
                 account.refresh_profile(
                     &self.http,
@@ -1176,6 +1208,228 @@ pub fn now() -> Result<u64> {
 mod tests {
     use super::*;
     use std::{io::Write, net::TcpStream, time::Duration};
+
+    #[cfg(windows)]
+    #[test]
+    fn profile_refresh_rejections_preserve_session_and_candidate_through_host_session() {
+        let device = crate::license::installation::legacy_fingerprint().expect("fixture device");
+        let (credential, keys) = crate::license_remote::tests::signed_fixture(&device);
+        for (status, body) in [
+            (400, r#"{"error":"invalid_grant"}"#),
+            (401, "{}"),
+            (403, "{}"),
+            (429, "{}"),
+            (503, "{}"),
+        ] {
+            let server = crate::test_http::Server::start(vec![(status, body.into())]);
+            let (root, store) = crate::test_store("profile-preserves-session");
+            let account = crate::account::fixture(&server.base, &store);
+            assert!(
+                account.profile().is_none(),
+                "restored session has no cached profile"
+            );
+            let mut app = App::with_clock(BuildConfig::load(), root.clone(), || Ok(1000));
+            app.account = Some(account);
+            app.store = Some(store);
+            app.candidate_store()
+                .expect("store")
+                .save(
+                    "license-candidate",
+                    &crate::license_remote::Candidate {
+                        credential: credential.clone(),
+                        account_id: credential.claims.subject.clone(),
+                        device: device.clone(),
+                    },
+                )
+                .expect("signed candidate");
+            let (link, core) = core_fixture(device.clone(), keys, vec![CoreStep::Read]);
+            app.attach_core(link);
+            assert!(matches!(
+                crate::host::fixture_request(&mut app, Command::AccountProfileRefresh),
+                Reply::Account {
+                    signed_in: true,
+                    profile: None,
+                    expires_at: Some(1000),
+                    error: Some(_),
+                    ..
+                }
+            ));
+            assert!(
+                app.candidate_store()
+                    .expect("store")
+                    .load::<crate::license_remote::Candidate>("license-candidate")
+                    .is_ok()
+            );
+            assert!(matches!(
+                crate::host::fixture_request(&mut app, Command::LicenseStatus),
+                Reply::License { .. }
+            ));
+            core.join().expect("only Read: never Invalidate");
+            server.finish();
+            drop(app);
+            crate::cleanup_store(&root, "profile-preserves-session", &[]);
+        }
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn corrupt_account_documents_recover_and_logout_without_discovery() {
+        for (damaged, logout_first) in [
+            ("account", true),
+            ("oauth-metadata", true),
+            ("account", false),
+            ("oauth-metadata", false),
+        ] {
+            let server = crate::test_http::Server::start_with(|base| {
+                let mut responses = if damaged == "oauth-metadata" {
+                    vec![(200, serde_json::json!({
+                "issuer":base, "authorization_endpoint":base.join("authorize").expect("url"),
+                "token_endpoint":base.join("token").expect("url"), "userinfo_endpoint":base.join("userinfo").expect("url"),
+                "code_challenge_methods_supported":["S256"]
+            }).to_string())]
+                } else {
+                    vec![]
+                };
+                responses.extend([
+                    (200, serde_json::json!({"access_token":"fixture-new-access","refresh_token":"fixture-new-refresh","token_type":"Bearer","expires_in":3600}).to_string()),
+                    (200, serde_json::json!({"sub":"user_recovered"}).to_string()),
+                ]);
+                responses
+            });
+            let context = format!("v1|{}|public-fixture|nightly|{}", server.base, server.base);
+            let (root, store) = crate::test_store(&context);
+            let account = crate::account::fixture(&server.base, &store);
+            let oauth: OAuth = serde_json::from_value(serde_json::json!({
+                "issuer":server.base, "client_id":"public-fixture", "redirect":"http://127.0.0.1:0/callback",
+                "authorization":server.base.join("authorize").expect("url"), "token":server.base.join("token").expect("url"),
+                "userinfo":server.base.join("userinfo").expect("url")
+            })).expect("metadata");
+            store
+                .save("oauth-metadata", &oauth)
+                .expect("metadata fixture");
+            let namespace = std::fs::read_dir(&root)
+                .expect("root")
+                .next()
+                .expect("namespace")
+                .expect("entry")
+                .path();
+            let path = namespace.join(format!("{damaged}.dpapi"));
+            let broken = b"fixture-unreadable-dpapi";
+            std::fs::write(&path, broken).expect("corrupt fixture only");
+            drop(account);
+            drop(store);
+            let config = || BuildConfig {
+                supabase: Some(server.base.clone()),
+                anon_key: None,
+                license_keys: None,
+                channel: Some("nightly"),
+                native_oauth: Some(crate::config::OAuthBuild {
+                    issuer: server.base.clone(),
+                    client_id: "public-fixture".into(),
+                    redirect_uri: url::Url::parse("http://127.0.0.1:0/callback").expect("url"),
+                }),
+            };
+            let mut app = App::with_clock(config(), root.clone(), || Ok(1000));
+            let mut seen = 0;
+            if !logout_first {
+                assert!(
+                    matches!(crate::host::fixture_request(&mut app, Command::AccountPoll), Reply::Account { pending: false, error: None, signed_in, .. } if signed_in == (damaged == "oauth-metadata"))
+                );
+                let account = app.account.as_mut().expect("recoverable account");
+                account
+                    .begin_login()
+                    .expect("new PKCE attempt after corruption");
+                account.cancel_login().expect("close fixture listener");
+                seen = server.requests.try_iter().count();
+            }
+            // Logout also works first, with corrupt metadata and no discovery/network.
+            let (link, core) = core_fixture(String::new(), "unused", vec![CoreStep::Invalidate]);
+            app.attach_core(link);
+            assert!(matches!(
+                crate::host::fixture_request(&mut app, Command::Logout),
+                Reply::Account {
+                    signed_in: false,
+                    error: None,
+                    ..
+                }
+            ));
+            core.join().expect("durable logout ACK");
+            assert!(
+                server.requests.try_recv().is_err(),
+                "logout never discovers OAuth"
+            );
+            let archived: Vec<_> = std::fs::read_dir(&namespace)
+                .expect("namespace")
+                .flatten()
+                .filter(|entry| {
+                    entry
+                        .file_name()
+                        .to_string_lossy()
+                        .starts_with(&format!("{damaged}-1000000-"))
+                })
+                .map(|entry| std::fs::read(entry.path()).expect("bytes"))
+                .collect();
+            assert_eq!(archived, vec![broken.to_vec()]);
+            // A fresh process can poll and start a new PKCE attempt after logout.
+            drop(app);
+            let mut app = App::with_clock(config(), root.clone(), || Ok(1000));
+            assert!(matches!(
+                crate::host::fixture_request(&mut app, Command::AccountPoll),
+                Reply::Account {
+                    signed_in: false,
+                    pending: false,
+                    error: None,
+                    ..
+                }
+            ));
+            let account = app.account.as_mut().expect("restored signed out");
+            let login = account
+                .begin_login()
+                .expect("new login without opening browser");
+            assert!(account.login_pending());
+            let (link, core) = core_fixture(String::new(), "unused", vec![CoreStep::Invalidate]);
+            app.attach_core(link);
+            let _socket = login_callback(&login);
+            assert!(matches!(
+                crate::host::fixture_request(&mut app, Command::AccountPoll),
+                Reply::Account {
+                    signed_in: true,
+                    pending: false,
+                    error: None,
+                    ..
+                }
+            ));
+            assert_eq!(
+                app.account
+                    .as_ref()
+                    .expect("new account")
+                    .identity()
+                    .expect("new identity")
+                    .subject,
+                "user_recovered"
+            );
+            core.join().expect("new identity invalidates before saving");
+            drop(app);
+            let mut app = App::with_clock(config(), root.clone(), || Ok(1000));
+            assert!(matches!(
+                crate::host::fixture_request(&mut app, Command::AccountPoll),
+                Reply::Account {
+                    signed_in: true,
+                    pending: false,
+                    error: None,
+                    ..
+                }
+            ));
+            drop(app);
+            // Metadata corruption needs exactly one discovery; intact metadata needs none.
+            assert_eq!(
+                seen + server.requests.try_iter().count(),
+                2 + usize::from(damaged == "oauth-metadata")
+            );
+            server.finish();
+            crate::cleanup_store(&root, &context, &[]);
+        }
+    }
 
     #[cfg(unix)]
     #[test]
@@ -1603,11 +1857,9 @@ mod tests {
     fn oauth_invalid_grant_revokes_before_native_license_and_drops_session() {
         let device = crate::license::installation::legacy_fingerprint().expect("fixture device");
         let (credential, keys) = crate::license_remote::tests::signed_fixture(&device);
-        for command in [
-            Command::LicenseRenew,
-            Command::AccountRenew,
-            Command::AccountProfileRefresh,
-        ] {
+        // Profile is presentation, including its automatic missing-cache refresh;
+        // its non-destructive path is covered through host::session above.
+        for command in [Command::LicenseRenew, Command::AccountRenew] {
             let server =
                 crate::test_http::Server::start(vec![(400, r#"{"error":"invalid_grant"}"#.into())]);
             let (root, store) = crate::test_store("app-invalid-grant");
@@ -1774,11 +2026,19 @@ mod tests {
     fn transient_online_license_failures_preserve_the_previous_candidate() {
         let device = crate::license::installation::legacy_fingerprint().expect("fixture device");
         let (credential, keys) = crate::license_remote::tests::signed_fixture(&device);
-        for status in [429, 503] {
+        for (status, body, expected) in [
+            (429, "{}", Error::Offline),
+            (503, "{}", Error::Offline),
+            (
+                409,
+                r#"{"error":"account_conflict"}"#,
+                Error::AccountConflict,
+            ),
+        ] {
             let server = crate::test_http::Server::start(vec![
                 (200, serde_json::json!({"access_token":"fixture-rotated", "refresh_token":"fixture-refresh", "token_type":"Bearer", "expires_in":3600}).to_string()),
                 (200, serde_json::json!({"sub":"user_fixture"}).to_string()),
-                (status, "{}".into()),
+                (status, body.into()),
             ]);
             let (root, store) = crate::test_store("app-transient-license");
             let account = crate::account::fixture(&server.base, &store);
@@ -1786,7 +2046,7 @@ mod tests {
             config.supabase = Some(server.base.clone());
             config.anon_key = Some("public-test-key");
             config.license_keys = Some(keys);
-            let mut app = App::new(config, root.clone());
+            let mut app = App::with_clock(config, root.clone(), || Ok(1000));
             app.account = Some(account);
             app.store = Some(store);
             let (link, core) = core_fixture(device.clone(), keys, vec![]);
@@ -1802,10 +2062,16 @@ mod tests {
                     },
                 )
                 .expect("previous signed candidate");
-            assert!(matches!(
-                app.execute(Command::LicenseRenew),
-                Err(Error::Offline)
-            ));
+            assert_eq!(app.execute(Command::LicenseRenew).err(), Some(expected));
+            if expected == Error::AccountConflict {
+                assert!(matches!(
+                    App::automatic_failure(expected),
+                    Reply::LicenseFailure {
+                        outcome: crate::protocol::RenewalOutcome::Transient,
+                        ..
+                    }
+                ));
+            }
             assert!(
                 app.candidate_store()
                     .expect("store")

@@ -324,7 +324,11 @@ impl Exchange {
 
 impl Account {
     pub fn restore(oauth: OAuth, store: &Store) -> Result<Self> {
-        let session = match store.load_for_restore::<Saved>("account") {
+        Self::restore_at(oauth, store, crate::app::now()?.saturating_mul(1000))
+    }
+
+    pub(crate) fn restore_at(oauth: OAuth, store: &Store, at_millis: u64) -> Result<Self> {
+        let session = match store.restore_cache::<Saved>("account", at_millis) {
             Ok(Some(Saved::SignedOut) | None) | Err(Error::NotFound) => None,
             Ok(Some(Saved::SignedIn {
                 version: 1,
@@ -335,7 +339,7 @@ impl Account {
                 Some(session)
             }
             Ok(_) => {
-                store.quarantine("account");
+                store.quarantine_dated("account", at_millis)?;
                 None
             }
             Err(error) => return Err(error),
@@ -573,6 +577,10 @@ impl Account {
         self.cancel_login()?;
         self.session = None;
         self.profile = None;
+        Self::clear_saved(store)
+    }
+
+    pub(crate) fn clear_saved(store: &Store) -> Result<()> {
         // Atomic tombstone survives a crash; no old refresh can restore the account.
         store.save("account", &Saved::SignedOut)?;
         store.remove("account-profile")

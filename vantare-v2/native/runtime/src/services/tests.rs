@@ -8,6 +8,9 @@ use vantare_services::{
     storage::Store,
 };
 
+#[path = "tests/profile.rs"]
+mod profile;
+
 #[test]
 fn a_closed_idle_helper_is_replaced_before_the_first_user_request() {
     let Fixture {

@@ -1,3 +1,21 @@
+## ISA-1808 / ISA-1812 — Recuperar cuenta y leer perfil sin revocar
+
+Cuenta y metadata OAuth usan lectura de caché: DPAPI/JSON ilegible se aparta
+con bytes intactos y fecha inyectada, hasta tres copias por documento salvo
+bloqueos de limpieza. Un fallo real de lectura o renombrado sigue siendo error.
+La metadata pública se redescubre; una cuenta ilegible empieza sin sesión.
+Logout conserva el ACK durable de revocación, pero escribe SignedOut sin
+redescubrir OAuth ni restaurar primero la sesión dañada. Una identidad nueva
+sigue invalidando derechos anteriores antes de persistirse.
+
+AccountProfileRefresh es presentación y usa siempre OAuth automático: ni un
+invalid_grant ni un 401/403 revocan la licencia, borran candidate o cierran la
+sesión. AccountRenew, Logout y rechazo explícito de licencia conservan sus
+reglas. account_conflict 409 indica inconsistencia, no revocación: se conserva
+la firma anterior y se permite reintentar; DeviceLimit sigue separado.
+No cambia formato IPC, firma, TTL ni gracia. Recovery 72 h (#1814) requiere aún
+un plazo autenticado firmado: online_capabilities no concede derechos locales.
+
 ## ISA-1803 — Recuperación del transporte (services v15 / control v5)
 
 Timeout, EOF, peer cerrado, identidad, protocolo, versión y rechazo tienen

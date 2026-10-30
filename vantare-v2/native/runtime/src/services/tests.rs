@@ -124,11 +124,7 @@ struct Payload<'a> {
     claims: &'a ClaimsV1,
 }
 
-fn candidate() -> (Candidate, String) {
-    candidate_valid_for(chrono::TimeDelta::minutes(10))
-}
-
-fn candidate_valid_for(validity: chrono::TimeDelta) -> (Candidate, String) {
+fn candidate_with_grant(validity: chrono::TimeDelta, grant: &str) -> (Candidate, String) {
     let mut seed = [0; 32];
     getrandom::fill(&mut seed).expect("entropía test");
     let key = SigningKey::from_bytes(&seed);
@@ -139,7 +135,7 @@ fn candidate_valid_for(validity: chrono::TimeDelta) -> (Candidate, String) {
         device_fingerprint: "test-legacy".into(),
         issued_at: (now - chrono::TimeDelta::seconds(10)).to_rfc3339(),
         capabilities: vec![Capability {
-            key: "vantare.plan.pro".into(),
+            key: grant.into(),
             paid_through: (now + validity).to_rfc3339(),
             perpetual: false,
             scope_version: String::new(),
@@ -218,6 +214,12 @@ impl Fixture {
         Self::with_license(true)
     }
     fn with_license(licensed: bool) -> Self {
+        Self::with_validity(licensed, chrono::TimeDelta::minutes(10))
+    }
+    fn with_validity(licensed: bool, validity: chrono::TimeDelta) -> Self {
+        Self::with_grant(licensed, validity, "vantare.plan.pro")
+    }
+    fn with_grant(licensed: bool, validity: chrono::TimeDelta, grant: &str) -> Self {
         let root = std::env::temp_dir().join(format!(
             "vt-svc-{}",
             vantare_services::random_id().expect("root")
@@ -237,7 +239,7 @@ impl Fixture {
             binary.is_file(),
             "cargo test --workspace compila el binario services para sus tests de proceso"
         );
-        let (candidate, keys) = candidate();
+        let (candidate, keys) = candidate_with_grant(validity, grant);
         let service_root = root.join("services");
         // Solo una credencial de test generada; ninguna sesión ni valores reales.
         // Comparte únicamente el namespace público compilado del helper;
@@ -606,22 +608,173 @@ fn confirmed_session() -> Reply {
 }
 
 #[test]
+fn hub_automatic_requests_obey_live_window_and_explicit_purchase_origin() {
+    let Fixture {
+        root,
+        photo,
+        link,
+        core,
+        services,
+    } = Fixture::with_validity(true, chrono::TimeDelta::hours(10));
+    let mut snapshot = vantare_domain::Snapshot::default();
+    snapshot.origin.source.kind = vantare_domain::SourceKind::Live;
+    snapshot.state.source_state = vantare_domain::SourceState::Live;
+    snapshot.state.session.id = vantare_domain::SessionId(91);
+    core.publish(Arc::new(snapshot));
+    let mut hub = Session::open(&photo);
+    {
+        let mut state = services.state.lock().expect("state");
+        state.renewal.observe(&confirmed_session());
+        state.core_retry_at = Some(Instant::now() + Duration::from_hours(1));
+        state.renewal.completed(protocol::RenewalOutcome::Transient);
+        state.renewal.attempted(
+            Instant::now()
+                .checked_sub(Duration::from_mins(15))
+                .expect("injected prior attempt"),
+        );
+    }
+    assert!(matches!(
+        hub.request(Command::LicenseRenewAutomatic),
+        Reply::License { .. }
+    ));
+    assert!(
+        services.state.lock().expect("state").client.is_none(),
+        "serve must not admit a normal automatic helper with ten hours left"
+    );
+    {
+        let signing: SigningIn = Arc::new(Mutex::new(None));
+        handle_with(
+            &mut services.state.lock().expect("state"),
+            Command::Purchase {
+                product: protocol::BillingProduct::ProMonthly,
+            },
+            &signing,
+            |_, _| Reply::Checkout {
+                url: "https://billing.invalid/fixture".into(),
+            },
+        );
+    }
+    assert!(
+        matches!(
+            hub.request(Command::LicenseRenewAutomatic),
+            Reply::LicenseFailure {
+                outcome: protocol::RenewalOutcome::Transient,
+                ..
+            }
+        ),
+        "the explicit purchase origin permits a fixture helper to answer even outside urgency"
+    );
+    assert!(
+        services.state.lock().expect("state").client.is_none(),
+        "live helper is closed after the request"
+    );
+    services.state.lock().expect("state").purchase_until = Some(Instant::now());
+    assert!(matches!(
+        hub.request(Command::LicenseRenewAutomatic),
+        Reply::License { .. }
+    ));
+    assert!(
+        services.state.lock().expect("state").client.is_none(),
+        "expired purchase window cannot admit a helper"
+    );
+    assert!(
+        control::request(&link, control::Command::Read)
+            .expect("rights")
+            .overlays_advanced
+    );
+    drop(hub);
+    drop(services);
+    drop(core);
+    std::fs::remove_dir_all(root).expect("private fixture cleanup");
+}
+
+#[test]
+fn both_renewal_paths_use_the_ack_clock_and_preserve_backoff_without_new_margin() {
+    let wall = 10_000_000;
+    let now = Instant::now();
+    let initial = control::Policy {
+        version: control::VERSION,
+        revision: 1,
+        checked_at_ms: wall,
+        overlays_advanced: false,
+        ..control::Policy::default()
+    };
+    // The wall clock moved backwards by three seconds during HTTP. The ACK
+    // is still fresh at the core's effective clock and grants a full new day.
+    let good = control::Policy {
+        overlays_advanced: true,
+        checked_at_ms: wall - 3000,
+        valid_until_ms: Some(wall + 24 * 60 * 60_000),
+        ..initial.clone()
+    };
+    let mut state = State::default();
+    state.renewal.observe(&confirmed_session());
+    assert!(
+        run_renewal(&mut state, &initial, wall, now, |_, _| Reply::License {
+            policy: good.clone(),
+            message: String::new()
+        })
+        .is_some()
+    );
+    assert_eq!(
+        state
+            .renewal
+            .claim(&good, good.checked_at_ms, now + Duration::from_mins(1)),
+        Err(renewal::Skip::NotDue),
+        "a good ACK must clear transport failures despite clock rollback"
+    );
+    let near = control::Policy {
+        valid_until_ms: Some(wall + 10 * 60_000),
+        checked_at_ms: wall,
+        ..good
+    };
+    let signing: SigningIn = Arc::new(Mutex::new(None));
+    let after = Instant::now() + Duration::from_mins(2);
+    handle_with(
+        &mut state,
+        Command::LicenseRenewAutomatic,
+        &signing,
+        |_, _| Reply::License {
+            policy: near,
+            message: String::new(),
+        },
+    );
+    let healthy = control::Policy {
+        overlays_advanced: true,
+        valid_until_ms: Some(wall + 24 * 60 * 60_000),
+        ..initial
+    };
+    assert_eq!(
+        state.renewal.claim(&healthy, wall, after),
+        Ok(()),
+        "the Hub path must retain the failure instead of reporting Verified"
+    );
+}
+
+#[test]
 fn urgent_live_dispatch_reaches_a_real_background_helper_and_preserves_core_rights() {
+    for licensed in [true, false] {
+        live_helper_priority_fixture(licensed);
+    }
+}
+
+fn live_helper_priority_fixture(licensed: bool) {
     let Fixture {
         root,
         photo: _,
         link,
         core,
         services,
-    } = Fixture::new();
+    } = Fixture::with_license(licensed);
     let mut snapshot = vantare_domain::Snapshot::default();
     snapshot.origin.source.kind = vantare_domain::SourceKind::Live;
     snapshot.state.source_state = vantare_domain::SourceState::Live;
     snapshot.state.session.id = vantare_domain::SessionId(91);
     core.publish(Arc::new(snapshot));
     let before = control::request(&link, control::Command::Read).expect("live core");
-    assert!(before.live && before.overlays_advanced);
-    assert!(renewal::urgent(&before, before.checked_at_ms));
+    assert!(before.live);
+    assert_eq!(before.overlays_advanced, licensed);
+    assert!(renewal::urgent(&before, before.checked_at_ms) || !licensed);
     let options = Options {
         binary: link
             .image
@@ -656,6 +809,16 @@ fn urgent_live_dispatch_reaches_a_real_background_helper_and_preserves_core_righ
             "fixture has no backend config; helper must answer, not be refused by the game gate"
         );
         assert!(state.client.is_some(), "real helper was launched on demand");
+        #[cfg(windows)]
+        assert_eq!(
+            state
+                .client
+                .as_ref()
+                .expect("helper")
+                .priority_class_for_test()
+                .expect("GetPriorityClass"),
+            windows_sys::Win32::System::Threading::BELOW_NORMAL_PRIORITY_CLASS
+        );
         finish(&mut state);
         assert!(
             state.client.is_none(),
@@ -664,7 +827,8 @@ fn urgent_live_dispatch_reaches_a_real_background_helper_and_preserves_core_righ
         clear_cancellation(&services.cancellation);
     }
     let after = control::request(&link, control::Command::Read).expect("rights preserved");
-    assert!(after.overlays_advanced && after.catalog == before.catalog);
+    assert_eq!(after.overlays_advanced, before.overlays_advanced);
+    assert_eq!(after.catalog, before.catalog);
     drop(services);
     drop(core);
     std::fs::remove_dir_all(root).expect("private fixture cleanup");
@@ -805,40 +969,18 @@ fn live_renews_once_on_urgent_window_entry_and_transport_failures_retry_without_
 }
 
 #[test]
-fn restored_session_dispatches_exactly_one_automatic_renewal_and_verifies_the_core_policy() {
-    // A healthy grant outside the new early-renewal window must stay quiet.
-    let (candidate, keys) = candidate_valid_for(chrono::TimeDelta::hours(24));
-    let root = std::env::temp_dir().join(format!(
-        "vt-auto-integration-{}",
-        vantare_services::random_id().expect("id")
-    ));
-    let photo = format!(
-        "vt-auto-integration-{}",
-        vantare_services::random_id().expect("pipe")
+fn restored_owner_with_thirty_days_of_margin_does_not_renew_on_each_startup() {
+    let Fixture {
+        root,
+        photo: _,
+        link,
+        core,
+        services,
+    } = Fixture::with_grant(
+        true,
+        chrono::TimeDelta::days(30),
+        "vantare.operational.owner",
     );
-    let image = std::env::current_exe().expect("image");
-    let nonce = vantare_services::random_id().expect("nonce");
-    let pid = std::process::id();
-    let core = host::Host::start(
-        &photo,
-        host::Options {
-            root: root.clone(),
-            keys: Some(keys),
-            devices: Devices {
-                legacy: "test-legacy".into(),
-                installation: "test-installation".into(),
-            },
-            epoch: 1,
-            nonce: Some(nonce.clone()),
-        },
-        move |peer, _| peer.pid == pid,
-    )
-    .expect("real core");
-    let link = CoreLink {
-        pipe: control::pipe_name(&photo),
-        image,
-        nonce,
-    };
     let mut state = State::default();
     let signing: SigningIn = Arc::new(Mutex::new(None));
     let mut account_requests = 0;
@@ -848,64 +990,36 @@ fn restored_session_dispatches_exactly_one_automatic_renewal_and_verifies_the_co
         confirmed_session()
     });
     assert_eq!(account_requests, 1);
-    assert!(
-        matches!(
-            restored,
-            Reply::Account {
-                signed_in: true,
-                error: None,
-                ..
-            }
-        ),
-        "restored account is acknowledged before any license/network operation"
-    );
-
-    let before = control::request(&link, control::Command::Read).expect("missing binding");
-    assert!(!before.overlays_advanced);
+    assert!(matches!(
+        restored,
+        Reply::Account {
+            signed_in: true,
+            error: None,
+            ..
+        }
+    ));
     let now = Instant::now();
-    let mut sent = 0;
-    let reply = run_renewal(
-        &mut state,
-        &before,
-        before.checked_at_ms,
-        now,
-        |_, command| {
-            assert!(matches!(command, Command::LicenseRenewAutomatic));
-            sent += 1;
-            let policy = control::request(
-                &link,
-                control::Command::Install {
-                    credential: serde_json::to_string(&candidate.credential)
-                        .expect("signed fixture"),
-                },
-            )
-            .expect("real signature verification and durable ACK");
-            Reply::License {
-                policy,
-                message: String::new(),
-            }
-        },
-    )
-    .expect("automatic dispatch after session restore");
-    assert!(matches!(reply,Reply::License {policy,..} if policy.overlays_advanced));
-    for elapsed in [59, 60, 120] {
-        let policy = control::request(&link, control::Command::Read).expect("verified core policy");
-        assert!(policy.overlays_advanced);
+    for seconds in [0, 59, 60, 120] {
+        let policy =
+            control::request(&link, control::Command::Read).expect("signed durable Owner binding");
+        assert!(policy.overlays_advanced && policy.tester);
+        assert!(
+            policy
+                .valid_until_ms
+                .is_some_and(|end| end > policy.checked_at_ms + 29 * 24 * 60 * 60_000)
+        );
         assert!(
             run_renewal(
                 &mut state,
                 &policy,
                 policy.checked_at_ms,
-                now + Duration::from_secs(elapsed),
-                |_, _| {
-                    sent += 1;
-                    panic!("a valid unexpired license must not be issued twice");
-                }
+                now + Duration::from_secs(seconds),
+                |_, _| panic!("Owner has days of margin: no startup HTTP")
             )
             .is_none()
         );
     }
-    assert_eq!(sent, 1);
+    drop(services);
     drop(core);
     std::fs::remove_dir_all(root).expect("private fixture cleanup");
 }
@@ -1026,9 +1140,10 @@ fn purchase_restarts_automatic_confirmation_after_a_definitive_rejection() {
     );
     assert!(matches!(reply, Reply::Checkout { .. }));
     assert!(
-        !state
+        state
             .renewal
-            .automatic_action_ready(now + Duration::from_secs(59)),
+            .claim(&policy, 1000, now + Duration::from_secs(59))
+            .is_err(),
         "purchase preserves the hard request floor"
     );
     assert!(

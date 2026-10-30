@@ -119,7 +119,7 @@ fn helper_exits_successfully_on_peer_eof_without_a_protocol_error_in_its_log() {
     let log = String::from_utf8_lossy(&output.stderr);
     assert!(log.contains("services-disconnected"), "{log}");
     assert!(
-        !log.contains("protocolo inválido") && !log.contains("BrokenPipe"),
+        !log.contains("services-protocol-invalid") && !log.contains("services-channel "),
         "{log}"
     );
     if root.exists() {

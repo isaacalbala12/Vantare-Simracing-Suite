@@ -44,8 +44,8 @@ pub fn serve(options: &Options, mut handle: impl FnMut(Command) -> Reply) -> Res
         })
         .map_err(|_| Error::Protocol)?;
     if let Err(error) = pipe.accept() {
-        if error.kind() == std::io::ErrorKind::TimedOut || stop.is_set() {
-            eprintln!("services-idle");
+        if stop.is_set() {
+            eprintln!("services-shutdown");
             return Ok(());
         }
         return Err(Error::Core(vantare_ipc::control::Failure::classify(&error)));

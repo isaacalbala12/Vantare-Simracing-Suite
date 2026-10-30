@@ -245,7 +245,10 @@ fn serve(
         if !matches!(request.command, Command::Read)
             && (!mutator || nonce.is_none_or(|n| n.is_empty() || n != request.nonce))
         {
-            return Err(io::ErrorKind::PermissionDenied.into());
+            return Err(io::Error::new(
+                io::ErrorKind::PermissionDenied,
+                control::Failure::CommandNotAllowed,
+            ));
         }
         phase = "dispatch";
         respond(request, state, latest, start, |response| {

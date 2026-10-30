@@ -27,7 +27,10 @@ fn rejected_rights_and_services_requests_report_sanitized_local_diagnostics() {
         let stderr = String::from_utf8_lossy(&output.stderr);
         assert!(output.status.success(), "{stderr}");
         assert!(stderr.contains("code=rights-protocol-invalid"), "{stderr}");
-        assert!(stderr.contains("code=rights-peer-identity"), "{stderr}");
+        assert!(
+            stderr.contains("code=rights-command-not-allowed"),
+            "{stderr}"
+        );
         assert!(
             stderr.contains("code=rights-version-incompatible"),
             "{stderr}"

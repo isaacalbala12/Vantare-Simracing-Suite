@@ -68,7 +68,11 @@ fn explicit_denial_is_distinct_from_core_storage_failure_and_unknown_peer_text()
             control::UNAVAILABLE,
             control::Failure::Unavailable,
         ),
-        ("unknown", "untrusted-peer-text", control::Failure::Protocol),
+        (
+            "unknown",
+            "untrusted-peer-text",
+            control::Failure::UnknownLegacy,
+        ),
     ] {
         let link = link(tag);
         let mut listener = Listener::new(

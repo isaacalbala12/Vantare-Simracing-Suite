@@ -10,6 +10,16 @@ const MINUTE: Duration = Duration::from_mins(1);
 // Never extends the signed credential or the two-second policy freshness TTL.
 const RENEW_AHEAD_MS: u64 = 60 * 60_000;
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum Origin {
+    Automatic,
+    Purchase,
+}
+
+pub(super) fn live_allowed(policy: &Policy, wall: u64, origin: Origin) -> bool {
+    !policy.overlays_advanced || urgent(policy, wall) || origin == Origin::Purchase
+}
+
 pub(super) fn urgent(policy: &Policy, wall: u64) -> bool {
     renewal_deadline(policy).is_some_and(|end| end <= wall.saturating_add(RENEW_AHEAD_MS))
 }
@@ -94,29 +104,6 @@ impl Renewal {
             }
         }
     }
-    pub(super) fn automatic_action_ready(&mut self, now: Instant) -> bool {
-        let reason = if !self.signed_in {
-            Some(Skip::NoSession)
-        } else if self.blocked {
-            Some(Skip::Blocked)
-        } else if self
-            .last_attempt
-            .is_some_and(|last| now.saturating_duration_since(last) < self.delay())
-        {
-            Some(Skip::Backoff)
-        } else {
-            None
-        };
-        if let Some(reason) = reason {
-            if self.last_skip != Some(reason) {
-                eprintln!("{}", reason.diagnostic());
-            }
-            self.last_skip = Some(reason);
-            false
-        } else {
-            true
-        }
-    }
     pub(super) fn user_recovery(&mut self) {
         self.blocked = false;
         self.failures = 0;
@@ -135,8 +122,18 @@ impl Renewal {
                 _ => 15,
             }
     }
+    #[cfg(test)]
     pub(super) fn claim(&mut self, policy: &Policy, wall: u64, now: Instant) -> Result<(), Skip> {
-        let result = self.reason(policy, wall, now);
+        self.claim_from(policy, wall, now, Origin::Automatic)
+    }
+    pub(super) fn claim_from(
+        &mut self,
+        policy: &Policy,
+        wall: u64,
+        now: Instant,
+        origin: Origin,
+    ) -> Result<(), Skip> {
+        let result = self.reason(policy, wall, now, origin);
         if let Err(reason) = result {
             // Closed reason on transition; avoid filling triage every timer tick.
             if self.last_skip != Some(reason) {
@@ -149,7 +146,7 @@ impl Renewal {
         }
         result
     }
-    fn reason(&self, policy: &Policy, wall: u64, now: Instant) -> Result<(), Skip> {
+    fn reason(&self, policy: &Policy, wall: u64, now: Instant, origin: Origin) -> Result<(), Skip> {
         if !self.signed_in {
             return Err(Skip::NoSession);
         }
@@ -163,7 +160,7 @@ impl Renewal {
         {
             return Err(Skip::StalePolicy);
         }
-        if policy.live && policy.overlays_advanced && !urgent(policy, wall) {
+        if policy.live && !live_allowed(policy, wall, origin) {
             return Err(Skip::Live);
         }
         if self.last_attempt.is_some_and(|last| {
@@ -171,9 +168,12 @@ impl Renewal {
         }) {
             return Err(Skip::Backoff);
         }
-        let due = self.last_attempt.is_none()
+        let due = origin == Origin::Purchase
             || self.failures > 0
             || !policy.overlays_advanced
+            // Preserve startup discovery of a purchase made outside this Hub.
+            // Paid/perpetual bindings with runway do not need this check.
+            || (self.last_attempt.is_none() && policy.catalog == control::CatalogAccess::Free)
             || urgent(policy, wall);
         if !due {
             return Err(Skip::NotDue);
@@ -230,8 +230,6 @@ mod tests {
             r.claim(&p, 1000, now + Duration::from_secs(59)),
             Err(Skip::Backoff)
         );
-        assert!(!r.automatic_action_ready(now + Duration::from_secs(59)));
-        assert!(r.automatic_action_ready(now + MINUTE));
         assert_eq!(r.claim(&p, 1000, now + MINUTE), Ok(()));
     }
     #[test]
@@ -292,9 +290,14 @@ mod tests {
         let now = Instant::now();
         let mut p = Policy {
             overlays_advanced: true,
+            catalog: control::CatalogAccess::Founders,
             ..policy()
         };
-        assert_eq!(r.claim(&p, 1000, now), Ok(()));
+        assert_eq!(
+            r.claim(&p, 1000, now),
+            Err(Skip::NotDue),
+            "a healthy restored binding does not require startup HTTP"
+        );
         r.completed(RenewalOutcome::Verified);
         assert_eq!(r.claim(&p, 1000, now + MINUTE), Err(Skip::NotDue));
         p.valid_until_ms = Some(1000 + RENEW_AHEAD_MS + 1);
@@ -310,6 +313,21 @@ mod tests {
         r.checked(now);
         assert!(!r.should_check(false, now + Duration::from_secs(29)));
         assert!(r.should_check(false, now + Duration::from_secs(30)));
+    }
+
+    #[test]
+    fn restored_free_checks_for_external_purchases_once_without_polling_forever() {
+        let now = Instant::now();
+        let p = Policy {
+            overlays_advanced: true,
+            ..policy()
+        };
+        let mut r = Renewal::default();
+        r.observe(&account(false));
+        assert_eq!(r.claim(&p, 1000, now), Ok(()));
+        r.completed(RenewalOutcome::Verified);
+        assert_eq!(r.claim(&p, 1000, now + MINUTE), Err(Skip::NotDue));
+        assert_eq!(r.claim(&p, 1000, now + MINUTE * 60), Err(Skip::NotDue));
     }
 
     #[test]
@@ -329,21 +347,32 @@ mod tests {
         };
         // Start the test already at the worst-case backoff cap.
         r.failures = 8;
-        for minute in [15, 30, 45] {
+        let mut attempts = Vec::new();
+        for minute in 0..=60 {
             let at = wall + minute * 60_000;
             p.checked_at_ms = at;
-            assert_eq!(
-                r.claim(
-                    &p,
-                    at,
-                    now + MINUTE * u32::try_from(minute).expect("minutes")
-                ),
-                Ok(())
-            );
-            r.completed(RenewalOutcome::Transient);
+            if r.claim(
+                &p,
+                at,
+                now + MINUTE * u32::try_from(minute).expect("minutes"),
+            )
+            .is_ok()
+            {
+                attempts.push(minute);
+                r.completed(RenewalOutcome::Transient);
+            }
             assert!(!r.blocked);
         }
-        assert_eq!(end - p.checked_at_ms, 15 * 60_000);
+        assert!(
+            attempts.len() >= 3,
+            "actual claims before expiry: {attempts:?}"
+        );
+        assert_eq!(
+            &attempts[..3],
+            &[15, 30, 45],
+            "cap must leave the final quarter-hour available"
+        );
+        assert!(attempts.iter().all(|minute| *minute < 60));
     }
 
     #[test]

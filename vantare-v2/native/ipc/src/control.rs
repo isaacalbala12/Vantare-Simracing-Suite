@@ -27,7 +27,9 @@ pub enum Failure {
     PeerGone,
     Transport,
     Unavailable,
+    UnknownLegacy,
     Identity,
+    CommandNotAllowed,
     Protocol,
     Version,
     Rejected,
@@ -66,7 +68,9 @@ impl Failure {
             Self::PeerGone => "rights-peer-gone",
             Self::Transport => "rights-transport-transient",
             Self::Unavailable => "rights-operation-unavailable",
+            Self::UnknownLegacy => "rights-legacy-unknown",
             Self::Identity => "rights-peer-identity",
+            Self::CommandNotAllowed => "rights-command-not-allowed",
             Self::Protocol => "rights-protocol-invalid",
             Self::Version => "rights-version-incompatible",
             Self::Rejected => "rights-rejected",
@@ -257,7 +261,7 @@ pub fn request_cancelled(
         } else if error == UNAVAILABLE {
             Failure::Unavailable
         } else {
-            Failure::Protocol
+            Failure::UnknownLegacy
         }));
     }
     Ok(response.policy)

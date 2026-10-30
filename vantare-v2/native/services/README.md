@@ -11,6 +11,13 @@ Una emisión automática guarda un marcador protegido `license-transfer-pending`
 Tras un fallo del ACK se reintenta primero la instalación local, sin otra emisión
 HTTP, incluso si el helper se reinició. Se retira tras el ACK durable, cuarentena
 o revocación; el marcador no concede derechos y no contiene identidad ni licencia.
+Un marcador ilegible o con formato distinto se conserva en cuarentena y se trata
+como ausente. Si falta el candidate, se retira el marcador huérfano: una lectura
+local no cuenta como renovación ni como instalación, y se continúa hacia HTTP.
+La espera inicial de conexión no tiene deadline en Windows: termina al cerrar el
+padre. Los cinco minutos de inactividad corresponden a la lectura entre tramas.
+Control v5 conserva su formato: errores desconocidos de un núcleo anterior son
+`rights-legacy-unknown`, transitorios y distintos de protocolo/versión/rechazo.
 
 ## ISA-1793 — Segunda revision
 

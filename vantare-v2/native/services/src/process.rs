@@ -242,6 +242,21 @@ impl Client {
         Ok(())
     }
 
+    #[cfg(all(windows, any(test, feature = "test-support")))]
+    #[allow(unsafe_code)] // Read-only assertion over the Child-owned handle.
+    pub fn priority_class_for_test(&self) -> std::io::Result<u32> {
+        use std::os::windows::io::AsRawHandle;
+        // SAFETY: the process handle remains owned by this live Client.
+        let class = unsafe {
+            windows_sys::Win32::System::Threading::GetPriorityClass(self.child.as_raw_handle())
+        };
+        if class == 0 {
+            Err(std::io::Error::last_os_error())
+        } else {
+            Ok(class)
+        }
+    }
+
     /// Keep the real child alive while a consumer test substitutes a closed
     /// transport. Not exposed by any CLI/IPC command or distribution feature.
     #[cfg(any(test, feature = "test-support"))]

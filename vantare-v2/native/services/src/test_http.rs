@@ -1,7 +1,11 @@
 //! Servidor de prueba local. Sin red real, sleep ni claves/credenciales reales.
 use std::io::{Read, Write};
-use std::net::TcpListener;
-use std::sync::mpsc::{self, Receiver};
+use std::net::{TcpListener, TcpStream};
+use std::sync::{
+    Arc,
+    atomic::{AtomicBool, Ordering},
+    mpsc::{self, Receiver},
+};
 use std::thread::JoinHandle;
 use std::time::Duration;
 use url::Url;
@@ -10,11 +14,18 @@ pub struct Server {
     pub base: Url,
     pub requests: Receiver<String>,
     thread: JoinHandle<()>,
+    stop: Option<Arc<AtomicBool>>,
 }
 
 impl Server {
     pub fn start(responses: Vec<(u16, String)>) -> Self {
         Self::start_with(|_| responses)
+    }
+
+    /// Keep accepting after the scripted responses so an accidental extra HTTP
+    /// request is observed and answered, rather than hidden by a closed listener.
+    pub fn start_observed(responses: Vec<(u16, String)>) -> Self {
+        Self::start_options(|_| responses, None, None, true)
     }
 
     pub fn start_with(responses: impl FnOnce(&Url) -> Vec<(u16, String)>) -> Self {
@@ -35,6 +46,15 @@ impl Server {
         client: Option<&'static str>,
         date: Option<&'static str>,
     ) -> Self {
+        Self::start_options(responses, client, date, false)
+    }
+
+    fn start_options(
+        responses: impl FnOnce(&Url) -> Vec<(u16, String)>,
+        client: Option<&'static str>,
+        date: Option<&'static str>,
+        observe_extra: bool,
+    ) -> Self {
         let listener = TcpListener::bind("127.0.0.1:0").expect("servidor test");
         let base = Url::parse(&format!(
             "http://{}/",
@@ -43,10 +63,24 @@ impl Server {
         .expect("URL test");
         let responses = responses(&base);
         let (tx, requests) = mpsc::channel();
+        let stop = observe_extra.then(|| Arc::new(AtomicBool::new(false)));
+        let worker_stop = stop.clone();
         let thread = std::thread::spawn(move || {
             let mut native_rotation = 0;
-            for (status, body) in responses {
+            let mut responses = responses.into_iter();
+            loop {
+                let response = responses.next();
+                if response.is_none() && !observe_extra {
+                    break;
+                }
                 let (mut socket, _) = listener.accept().expect("aceptar test");
+                if worker_stop
+                    .as_ref()
+                    .is_some_and(|stop| stop.load(Ordering::Acquire))
+                {
+                    break;
+                }
+                let (status, body) = response.unwrap_or((500, "{}".into()));
                 socket
                     .set_read_timeout(Some(Duration::from_secs(3)))
                     .expect("plazo test");
@@ -89,12 +123,47 @@ impl Server {
             base,
             requests,
             thread,
+            stop,
         }
     }
 
     pub fn finish(self) {
+        self.stop_observation();
         self.thread.join().expect("servidor termina");
     }
+
+    pub fn finish_observed(self) -> Vec<String> {
+        assert!(self.stop.is_some(), "fixture must keep its listener open");
+        self.stop_observation();
+        self.thread
+            .join()
+            .expect("observed server stops explicitly");
+        self.requests.try_iter().collect()
+    }
+
+    fn stop_observation(&self) {
+        if let Some(stop) = &self.stop {
+            stop.store(true, Ordering::Release);
+            // Wake accept explicitly, without polling or a timed sleep.
+            let _wake = TcpStream::connect(("127.0.0.1", self.base.port().expect("fixture port")))
+                .expect("wake observed listener");
+        }
+    }
+}
+
+#[test]
+fn observed_server_records_requests_beyond_its_script() {
+    let server = Server::start_observed(vec![(200, "{}".into()); 3]);
+    for status in [200, 200, 200, 500] {
+        assert_eq!(
+            crate::http::Http::default()
+                .post_json(&server.base, &serde_json::json!({}), None, None)
+                .expect("HTTP")
+                .status,
+            status
+        );
+    }
+    assert_eq!(server.finish_observed().len(), 4);
 }
 
 #[test]

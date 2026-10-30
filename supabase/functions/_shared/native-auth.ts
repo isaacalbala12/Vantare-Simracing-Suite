@@ -1,5 +1,6 @@
 import { getSupabaseAdmin } from "./supabase-admin.ts";
 import { isUuid } from "./request.ts";
+import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 export type NativeConfig = {
   secretKey: string;
@@ -174,8 +175,9 @@ export async function requireUnblocked(
 export async function resolveNativeAccount(
   issuer: string,
   subject: string,
+  admin: SupabaseClient = getSupabaseAdmin(),
 ): Promise<string> {
-  const { data, error } = await getSupabaseAdmin().rpc(
+  const { data, error } = await admin.rpc(
     "native_resolve_account",
     { issuer, subject },
   );

@@ -54,6 +54,19 @@ ROOT=pathlib.Path(__file__).resolve().parents[2]
 OUT=pathlib.Path(args.output).resolve(); OUT.mkdir(parents=True,exist_ok=True)
 BIN=pathlib.Path(args.pg_bin).resolve()
 ENV={k:v for k,v in os.environ.items() if not k.startswith(('PG','PGRST'))}
+# Run the Edge boundary tests in this CI gate too. Provider calls are fixtures;
+# Deno can fetch pinned modules, but the tests receive no runtime network access.
+if args.deno_bin and not args.baseline:
+ edge_suites=['billing-webhook/process.test.ts','billing-reconcile/worker.test.ts',
+  'license-credential/','native-license/']
+ edge=subprocess.run([args.deno_bin,'test','--frozen','--allow-env','--allow-read',
+  '--config',str(ROOT/'supabase/functions/deno.json'),
+  *[str(ROOT/'supabase/functions'/suite) for suite in edge_suites]],
+  env=ENV,capture_output=True,text=True,timeout=180)
+ (OUT/'license-reconciliation-edge.log').write_text(edge.stdout+edge.stderr,encoding='utf-8')
+ if edge.returncode: raise RuntimeError(edge.stdout+edge.stderr)
+ print(edge.stdout,flush=True)
+
 def run(prog,*args):
  r=subprocess.run([str(BIN/prog),*map(str,args)],env=ENV,capture_output=True,text=True)
  if r.returncode: raise RuntimeError(r.stderr)

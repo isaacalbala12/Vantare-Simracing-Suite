@@ -11,6 +11,112 @@ import { MemoryCommercialProjection } from "../billing-webhook/commercial-projec
 import { MemorySubscriptionLifecycleStore } from "../billing-webhook/subscription-lifecycle-store.ts";
 import { loadPolarProductMap } from "../_shared/mapping.ts";
 import { VALID_POLAR_PRODUCT_MAP_JSON } from "../_shared/test-fixtures.ts";
+import { processPolarWebhookEvent } from "../billing-webhook/process.ts";
+import { handleNativeLicenseRequest } from "../native-license/index.ts";
+import { signCredential } from "../_shared/license-credential.ts";
+
+Deno.test("lost revoked webhook converges through reconcile to signed Free; replay and old snapshots preserve newer access", async () => {
+  const accountId = "4b6d8919-1c89-492d-a0e2-364124c17878";
+  const now = new Date("2026-07-03T12:00:00Z");
+  const inbox = new MemoryWebhookInbox(() => now);
+  const projection = new MemoryCommercialProjection();
+  const lifecycle = new MemorySubscriptionLifecycleStore();
+  const withdrawals: string[] = [];
+  const supabase = {
+    from: () => ({ insert: () => Promise.resolve({ error: null }) }),
+    rpc: () => Promise.resolve({ error: null, data: null }),
+  } as unknown as SupabaseClient;
+  const processDeps = {
+    inbox, projection, lifecycle,
+    now: () => now,
+    resolveIdentity: () => Promise.resolve(accountId),
+    enforceFoundersRenewal: async () => {},
+    revokeCreatorRenewals: async (_client: SupabaseClient, _env: unknown, input: { reason: string }) => {
+      if (input.reason === "subscription_revoked") withdrawals.push(input.reason);
+    },
+    loadMap: () => loadPolarProductMap(VALID_POLAR_PRODUCT_MAP_JSON, { environment: "sandbox" }),
+  };
+  const common = {
+    id: "lost-revoked", product_id: "00000000-0000-0000-0000-000000000003",
+    current_period_end: "2027-06-30T12:00:00Z",
+  };
+  const webhook = (status: string, modified_at: string, id: string) =>
+    processPolarWebhookEvent({ type: "subscription.updated", data: { ...common, status, modified_at } }, id, { ...processDeps, supabase });
+  await webhook("active", "2026-06-30T12:00:00Z", "active");
+  await webhook("past_due", "2026-07-01T12:00:00Z", "past-due");
+  assertEquals([...projection.grants.values()].every((g) => g.status === "active"), true);
+  assertEquals([...lifecycle.recoveryGrants.values()].map((g) => g.status), ["active"]);
+
+  const revoked = { ...common, status: "revoked", modified_at: "2026-07-02T12:00:00Z" };
+  const reconcile = (item: Record<string, unknown>) => reconcilePage({
+    cursor: { resource: "subscriptions", page: 1 }, page: { items: [item], maxPage: 1 },
+    environment: "sandbox", supabase, processDeps,
+  });
+  assertEquals(await reconcile(revoked), {
+    next: { resource: "refunds", page: 1 }, failed: [], quarantined: 0, observed: 1,
+  });
+  assertEquals([...projection.grants.values()].map((g) => g.status), ["revoked"]);
+  assertEquals([...lifecycle.recoveryGrants.values()].map((g) => g.status), ["revoked"]);
+  assertEquals([...lifecycle.subscriptions.values()][0].status, "revoked");
+  await reconcile(revoked);
+  assertEquals(withdrawals.length, 1);
+  const revokedState = structuredClone([...projection.grants.entries()]);
+  // A distinct webhook ID for the same resource version must also be harmless.
+  await webhook("revoked", "2026-07-02T12:00:00Z", "late-revoked-webhook");
+  assertEquals([...projection.grants.entries()], revokedState);
+  // The cleanup hook can be retried; its existing durable implementation dedupes.
+  assertEquals(withdrawals.length, 2);
+  await reconcile({ ...common, status: "active", modified_at: "2026-07-01T13:00:00Z" });
+  assertEquals([...projection.grants.values()].map((g) => g.status), ["revoked"]);
+
+  const keys = await crypto.subtle.generateKey("Ed25519", true, ["sign", "verify"]) as CryptoKeyPair;
+  const fingerprint = "a".repeat(64), subject = `user_${"u".repeat(27)}`;
+  const issue = async () => {
+    const grants = [...projection.resources.values()].flatMap((resource) => resource.grants
+      .filter((g) => g.status === "active").map((g) => ({
+        capability: g.capability, valid_until: g.validUntil, provider: "polar",
+        environment: "sandbox", source_type: resource.resourceType, source_id: resource.resourceId,
+      })));
+    const response = await handleNativeLicenseRequest(new Request("https://local.invalid", {
+      method: "POST", headers: { Authorization: "Bearer fixture-oauth", "Content-Type": "application/json" },
+      body: JSON.stringify({ version: 1, deviceFingerprint: fingerprint }),
+    }), {
+      environment: "sandbox", now: () => now,
+      config: { issuer: "https://clerk.example.invalid", clientId: "fixture", secretKey: "fixture" },
+      fetch: (input) => Promise.resolve(Response.json(String(input).endsWith("/verify") ? {
+        object: "clerk_idp_oauth_access_token", client_id: "fixture", subject,
+        scopes: ["openid", "profile"], revoked: false, expired: false, expiration: now.getTime() / 1000 + 600,
+      } : {
+        id: subject, banned: false, locked: false, email_addresses: [], primary_email_address_id: null,
+        first_name: null, last_name: null, created_at: 1, last_sign_in_at: null,
+      })),
+      load: () => Promise.resolve({ accountId, deviceMatches: true, grants }),
+      sign: (claims) => signCredential(claims, "fixture", keys.privateKey),
+    });
+    assertEquals(response.status, 200);
+    const { credential } = await response.json();
+    const { signature, ...payload } = credential;
+    const bytes = Uint8Array.from(atob(signature.replaceAll("-", "+").replaceAll("_", "/")), (c) => c.charCodeAt(0));
+    assertEquals(await crypto.subtle.verify("Ed25519", keys.publicKey, bytes, new TextEncoder().encode(JSON.stringify(payload))), true);
+    return credential.claims.capabilities.map((g: { key: string }) => g.key);
+  };
+  assertEquals(await issue(), []);
+  await projection.apply({
+    provider: "polar", environment: "sandbox", resourceType: "order", resourceId: "independent-purchase",
+    userId: accountId, modifiedAt: "2026-06-01T00:00:00Z", snapshotHash: "fixture-order", state: "paid",
+    grants: [{ capability: "vantare.edition.launch_v1", status: "active", validUntil: null }],
+  });
+  assertEquals(await issue(), ["vantare.edition.launch_v1"]);
+
+  await webhook("active", "2026-07-03T11:00:00Z", "renewed");
+  // Older revoked observation with a new payload hash cannot withdraw a renewal.
+  await reconcile({ ...revoked, current_period_end: null });
+  assertEquals(await issue(), ["vantare.edition.launch_v1", "vantare.plan.pro"]);
+  // Equal-version conflicting observations remain quarantined, with access intact.
+  assertEquals((await reconcile({ ...revoked, modified_at: "2026-07-03T11:00:00Z" })).quarantined, 1);
+  assertEquals(await issue(), ["vantare.edition.launch_v1", "vantare.plan.pro"]);
+  assertEquals(withdrawals.length, 2);
+});
 Deno.test("reconciler traverses every page then orders/subscriptions/refunds/disputes without truncation", () => {
   assertEquals(advanceCursor({ resource: "orders", page: 1 }, 3), {
     resource: "orders",

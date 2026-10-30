@@ -51,9 +51,11 @@ sin milestone propio comprometido; VANTA-105 es el paraguas compartido de RC9.
   se corrigieron sin rebajar gates ni ampliar plazos de transporte/licencia.
   No se repitió manualmente una carrera física24h ni se contactó al backend real.
 
-Sin cambios de instalación/producción, merge, promoción ni release. Siguiente:
-PR draft a nightly con `Refs #1803` y revisión profunda del
-orquestador, coordinada con la auditoría integral de licencias de otro worker.
+PR draft [#1811](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1811)
+a nightly con `Refs #1803`; rama publicada y registrada en T3. Gates locales
+completos; CI GitHub pendiente al abrir. Sin cambios de instalación/producción,
+merge, promoción ni release. Siguiente: revisión profunda del orquestador,
+coordinada con la auditoría integral de licencias de otro worker.
 La auditoría mantiene aparte la recuperación del candidate firmado de otra
 cuenta/dispositivo (#1798): el ACK inicial sigue siendo obligatorio para admitir
 el helper; este arreglo no resuelve esa variante. El diagnóstico de transporte

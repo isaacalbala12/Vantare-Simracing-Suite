@@ -86,6 +86,22 @@ sin permisos (`:329`); overlays exige current + overlays_advanced (`native/ui/sr
 Puede, por tanto, aparecer un candado transitorio aun conservándose el binding
 válido en el núcleo. Un Verified anterior no garantiza frescura continua.
 
+Existe además un riesgo funcional confirmado por lectura, no observado en la
+ventana de logs: `native/services/src/app.rs:82-88` convierte **todo** error de
+`control::request` en `Error::Denied`. Si una renovación automática consigue la
+credencial pero falla por transporte al transferirla al núcleo (`app.rs:216`),
+`automatic_failure` clasifica Denied como Definitive (`app.rs:427-455`), y
+`Renewal::completed` pone `blocked=true` (`renewal.rs:65-75`). No revoca el binding
+anterior, pero deja de renovar automáticamente hasta una recuperación explícita
+o una renovación que cambie el resultado. Puede generar aviso de autorización
+falso y acabar en pérdida de acceso por vencimiento. Un error del sondeo inicial
+del temporizador no toma esa ruta: ambos casos deben distinguirse.
+
+La renovación automática también conserva el mutex del supervisor mientras
+realiza IPC/HTTP (`services.rs:543-558`), bloqueando solicitudes simultáneas del
+Hub (`:183`). Es un riesgo de latencia acotada, sin evidencia aquí de timeout de
+usuario; requiere prueba de contención, no una promesa de recuperación instantánea.
+
 Hay una ruta concreta que conviene medir, **no una causa demostrada**:
 `rights/host.rs:260` y `:346` usan el mismo mutex para `advance`; este llama a
 `rights/mod.rs:361` → `license/authority.rs:365-385` → `storage.rs:270-310`.
@@ -141,19 +157,28 @@ imagen anterior, pero el supervisor lo lanza desde la ruta hermana prevista.
 
 No hay rechazo explícito de versión en esta evidencia. Mezclar procesos sigue
 siendo una posibilidad general de instalación, no la explicación acreditada aquí.
-El transporte de derechos es v5 y services v14; son contratos distintos, no un
+El transporte de derechos es v5 y services **v15** (`services_protocol.rs:7`);
+el README nativo aún dice v14 y queda desactualizado en ese punto. Son contratos distintos, no un
 conflicto entre generaciones. Los chequeos de versión y secuencia son explícitos
 en control.rs:183-189 y process.rs:188-193. JSON incompatible también podría caer
 en el error genérico: no se puede excluir todo esquema distinto solo por el texto.
+En concreto, un helper v14 no puede deserializar LicenseRenewAutomatic de v15:
+la lectura falla antes de comprobar la versión numérica. No se observó ese patrón
+de renovación fallida ni hay evidencia de helper antiguo en la sesión RC9.
 
 ## Arreglo mínimo propuesto y validación pendiente
 
 1. Separar el cierre esperado del helper por timeout/EOF del error de codec,
    nonce/secuencia y versión. Mantener recuperación previa a la acción sin replay.
-2. Añadir diagnóstico local cerrado con UTC/tiempo monotónico, fase, categoría
+2. Conservar la categoría de transporte en `App::core_command`: timeout/EOF/cierre
+   local deben ser transitorios, sin convertirlos en rechazo definitivo. Mantener
+   rechazo explícito, incompatibilidad y controles de identidad como errores
+   distintos. Probar fallo durante TransferRights de renovación automática y
+   siguiente reintento exitoso, sin revocar ni repetir el efecto HTTP ya confirmado.
+3. Añadir diagnóstico local cerrado con UTC/tiempo monotónico, fase, categoría
    de error, duración y PID/rol del peer. Medir espera del mutex, avance/persistencia
    y escritura de derechos. Nunca incluir nonce, cuerpos, rutas, tokens o licencia.
-3. Regresión con reloj/sincronización explícita: helper ocioso → cierre limpio →
+4. Regresión con reloj/sincronización explícita: helper ocioso → cierre limpio →
    nueva acción recibida una sola vez; respuesta perdida a compra no se repite.
    Para derechos, almacenamiento de prueba bloqueado y liberación explícita:
    observar TTL/candados y recuperación sin HTTP adicional. Si demuestra bloqueo
@@ -164,6 +189,9 @@ TTL y reconexión sin replay; **no se han ejecutado**. Sin cambio de producto,
 build, fmt/clippy/nextest/lifecycle/telemetría se omiten por encargo diagnóstico y
 para no interferir con QA. La revisión de fuentes demuestra rutas; no sustituye
 la prueba de fallo lento ni acredita ausencia de parpadeos entre capturas.
+Se usaron dos subagentes T3 DeepSeek autorizados, ambos solo lectura y completados;
+sus hallazgos se contrastaron con el código RC9. Se corrigió el dato v14 del README
+usando la constante v15 y se verificó independientemente la ruta Denied definitiva.
 Seguimiento abierto: [#1803](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1803),
 Project Vantare / Backlog / area:licencias, sin milestone hasta triaje.
 Relacionado: #1799 cubre residencia, avisos y E2E del temporizador; este seguimiento

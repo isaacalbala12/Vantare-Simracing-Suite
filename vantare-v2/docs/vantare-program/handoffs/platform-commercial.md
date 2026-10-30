@@ -20,6 +20,11 @@ de producto/instalación/datos. [Informe](../rc9-license-channel-diagnosis.md).
 - Se propone separar cierre esperado/error, añadir fases/tiempos/peer sanitizados
   y regresiones con almacenamiento lento. Persistencia bajo mutex es una hipótesis
   medible, no causa demostrada. No relajar TTL, persistencia o antirollback.
+- Riesgo adicional confirmado por código: app.rs:82-88 convierte fallo de transporte
+  del núcleo en Denied; si ocurre durante transferencia de renovación automática,
+  queda Definitive/blocked y puede frenar reintentos. Propuesta: conservar el error
+  de transporte como transitorio y probar recuperación. No se observó en esta ventana.
+  Services RC9 es v15 según constante; el README v14 está desactualizado.
 - Seguimiento [#1803](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1803),
   Project Vantare / Backlog / area:licencias, sin milestone hasta triaje; relacionado
   #1799. #1782 continúa con QA; Plane VANTA-105 sigue En curso. El orquestador

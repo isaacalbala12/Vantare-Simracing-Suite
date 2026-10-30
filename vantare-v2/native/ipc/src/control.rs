@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use std::io::{self, Read, Write};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-pub const VERSION: u32 = 5;
+pub const VERSION: u32 = 6;
 const LIMIT: usize = 64 * 1024;
 pub const VERSION_ERROR: &str =
     "versiones IPC incompatibles: reinicia núcleo, Hub y overlays de la misma build";
@@ -107,6 +107,9 @@ pub struct Policy {
     pub tester: bool,
     pub live: bool,
     pub error: Option<String>,
+    /// Core is available without rights and requires a newly completed renewal.
+    #[serde(default)]
+    pub online_recovery_required: bool,
 }
 
 /// Corte comercial publicado, independiente del canal y del número de la build.
@@ -166,7 +169,14 @@ pub struct Bootstrap {
 #[serde(tag = "command", deny_unknown_fields)]
 pub enum Command {
     Read,
-    Install { credential: String },
+    Install {
+        credential: String,
+    },
+    /// Only the authenticated helper immediately after a verified HTTPS renewal.
+    /// Never constructed from a persisted Candidate or binding.
+    InstallOnline {
+        credential: String,
+    },
     Invalidate,
 }
 #[derive(Serialize, Deserialize)]

@@ -288,6 +288,11 @@ fn respond(
             .as_mut()
             .ok_or(vantare_services::Error::Unconfigured)
             .and_then(|owner| owner.install(credential, super::wall_now(), tick)),
+        Command::InstallOnline { credential } => state
+            .owner
+            .as_mut()
+            .ok_or(vantare_services::Error::Unconfigured)
+            .and_then(|owner| owner.install_online(credential, super::wall_now(), tick)),
         Command::Invalidate => state
             .owner
             .as_mut()
@@ -468,6 +473,9 @@ mod response_tests {
             Command::Read,
             Command::Invalidate,
             Command::Install {
+                credential: "test-only-invalid".into(),
+            },
+            Command::InstallOnline {
                 credential: "test-only-invalid".into(),
             },
         ] {

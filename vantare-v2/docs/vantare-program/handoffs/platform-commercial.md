@@ -1,3 +1,28 @@
+## VANTA-105 / #1806 y #1807 — Autoridad y reloj (30-oct, en curso)
+
+Worker encargado por el orquestador, rama `vantareapp/isa-1806-autoridad-reloj`,
+worktree `C:/VantareServer/wt/isa-1806`, base nightly `9adbde099`.
+Plane paraguas no se modifica. Target propio `D:/VantareServer/targets/isa-1806`.
+
+- Autoridad DPAPI dañada: cuarentena acotada y marca durable de recuperación,
+  sin restaurar binding/gracia antiguos. E/S real sigue fallando; no hay defaults.
+- Control v6 distingue InstallOnline, emitido únicamente en la misma ejecución
+  del helper tras renew HTTP/TLS y firma verificados. TransferRights y Candidate
+  de disco siguen usando Install, sin poder reanclar reloj ni reparar autoridad.
+- La política tipada permite admitir el helper sin derechos solo cuando el
+  núcleo exige recuperación online; un candidate denegado no bloquea esa renovación.
+- El núcleo vuelve a verificar firma/dispositivo/identidad y emisión ±300 s.
+  Recuperar el reloj pierde el máximo de pared erróneo y la gracia, conservando
+  latest_issued y lápidas sanas. Una lápida ilegible pierde su frontera, pero
+  exige renovación online; ninguna firma guardada puede abrir esa recuperación.
+- Logout durante desfase conserva la mayor frontera observada. Una emisión
+  online debe superarla; corregir el reloj no elimina una revocación sana.
+- Solape mínimo authority.rs/app.rs/rights/host.rs comunicado; pendiente rebase
+  cuando #1811 se integre, gates scoped y PR draft a nightly. Mutación verificada:
+  retirar protecciones hace fallar nueve regresiones; retirar marca durable o
+  dar procedencia online al disco hace fallar sus dos regresiones específicas.
+- No se toca instalación, licencia/sesión reales, producción, merge o release.
+
 ## VANTA-105 / #1803 — Correcciones de revisión profunda (31-oct)
 
 Revisiones DeepSeek 1/2 y 2/2 recibidas del orquestador sobre PR draft #1811,

@@ -1,3 +1,16 @@
+## #1806/#1807 — Control v6
+
+InstallOnline distingue una renovación recién verificada por el helper de un
+Install de disco. Solo el helper autenticado por imagen y nonce puede mutar;
+el núcleo vuelve a verificar la firma. Los peers de control v5 se rechazan.
+La incompatibilidad es transitoria y no invalida la licencia guardada.
+`Policy.online_recovery_required` permite admitir al helper sin derechos cuando
+el núcleo exige una renovación nueva; la señal no concede ni instala licencias.
+
+El paquete completo lleva núcleo, supervisor, helper y consumidores en una
+misma generación: `packaging/candidate.ps1` valida inventario y hashes antes
+de cambiar la referencia activa. No se distribuyen EXE sueltos para este cambio.
+
 ## ISA-1793 — Servicios v15
 
 `LicenseRenewAutomatic` separa la recuperación automática de la revocación

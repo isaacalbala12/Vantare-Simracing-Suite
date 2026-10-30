@@ -70,6 +70,21 @@ fn signed_v1_named(
     fingerprint: String,
     key_id: &str,
 ) -> (String, String) {
+    signed_v1_identity(
+        issued,
+        capabilities,
+        fingerprint,
+        key_id,
+        "550e8400-e29b-41d4-a716-446655440000",
+    )
+}
+fn signed_v1_identity(
+    issued: i64,
+    capabilities: Vec<Capability>,
+    fingerprint: String,
+    key_id: &str,
+    subject: &str,
+) -> (String, String) {
     let mut seed = [0; 32];
     getrandom::fill(&mut seed).expect("entropía local");
     let key = SigningKey::from_bytes(&seed);
@@ -79,7 +94,7 @@ fn signed_v1_named(
         key_id: key_id.into(),
         claims: ClaimsV1 {
             issuer: "vantare-license".into(),
-            subject: "550e8400-e29b-41d4-a716-446655440000".into(),
+            subject: subject.into(),
             device_fingerprint: fingerprint,
             issued_at: wall(issued).to_rfc3339(),
             capabilities,
@@ -313,10 +328,8 @@ fn missing_corrupt_or_legacy_state_cannot_restore_grace() {
             }
         }
         let opened = Owner::open(&root, Some(&keys), devices(), 2, wall(start + 100));
-        if corruption == 1 {
-            assert!(matches!(opened, Err(Error::Storage)));
-        } else {
-            let mut owner = opened.expect("binding conservado");
+        {
+            let mut owner = opened.expect("propietario recuperable sin restaurar margen");
             assert!(
                 !owner
                     .advance_observed_session(
@@ -1536,4 +1549,311 @@ fn authority_persist_failure_at_open_denies_rights_but_keeps_install_available()
     );
     drop(owner);
     std::fs::remove_dir_all(root).expect("private cleanup");
+}
+
+#[test]
+fn authority_recovery_corrupt_dpapi_requires_online_and_survives_restart() {
+    use sha2::{Digest, Sha256};
+    let root = test_root();
+    let (old, old_keys) = signed_v1_named(100, vec![], devices().legacy, "old");
+    let (fresh, fresh_keys) = signed_v1_named(120, vec![], devices().legacy, "fresh");
+    let keys = format!("{old_keys},{fresh_keys}");
+    let mut owner = Owner::open(&root, Some(&keys), devices(), 1, wall(100)).expect("owner");
+    owner
+        .install(old.clone(), wall(100), Duration::ZERO)
+        .expect("install");
+    drop(owner);
+    let namespace = root.join(format!("{:x}", Sha256::digest(b"core-rights-v1")));
+    let path = namespace.join("authority.dpapi");
+    let damaged = b"corrupt-dpapi-fixture";
+    std::fs::write(&path, damaged).expect("corrupt fixture only");
+    for epoch in [2, 3] {
+        let mut owner = Owner::open(&root, Some(&keys), devices(), epoch, wall(120))
+            .expect("recoverable owner");
+        assert!(owner.binding.is_none());
+        assert!(matches!(
+            owner.install(old.clone(), wall(120), Duration::ZERO),
+            Err(Error::Denied)
+        ));
+        assert!(
+            !owner
+                .advance(&photo(false), wall(120), Duration::ZERO)
+                .expect("denied policy")
+                .overlays_advanced
+        );
+    }
+    let archives: Vec<_> = std::fs::read_dir(&namespace)
+        .expect("archives")
+        .flatten()
+        .filter(|e| e.file_name().to_string_lossy().starts_with("authority-0-"))
+        .collect();
+    assert_eq!(archives.len(), 1);
+    assert_eq!(
+        std::fs::read(archives[0].path()).expect("evidence"),
+        damaged
+    );
+    let mut owner = Owner::open(&root, Some(&keys), devices(), 4, wall(120)).expect("owner");
+    owner
+        .install_online(fresh, wall(120), Duration::ZERO)
+        .expect("fresh authenticated issuance");
+    assert!(
+        owner
+            .advance(&photo(false), wall(120), Duration::ZERO)
+            .expect("policy")
+            .overlays_advanced
+    );
+    drop(owner);
+    let mut owner = Owner::open(&root, Some(&keys), devices(), 5, wall(121)).expect("durable ACK");
+    assert!(
+        owner
+            .advance(&photo(false), wall(121), Duration::ZERO)
+            .expect("restored policy")
+            .overlays_advanced
+    );
+    assert!(matches!(
+        owner.install(old, wall(121), Duration::ZERO),
+        Err(Error::Clock)
+    ));
+    drop(owner);
+    clean(&root);
+}
+
+#[test]
+fn authority_recovery_io_error_is_not_quarantined_or_defaulted() {
+    use sha2::{Digest, Sha256};
+    let root = test_root();
+    let (_, keys) = signed_v1_named(100, vec![], devices().legacy, "test");
+    drop(Owner::open(&root, Some(&keys), devices(), 1, wall(100)).expect("owner"));
+    let namespace = root.join(format!("{:x}", Sha256::digest(b"core-rights-v1")));
+    let path = namespace.join("authority.dpapi");
+    std::fs::create_dir(&path).expect("blocked fixture path");
+    assert!(matches!(
+        Owner::open(&root, Some(&keys), devices(), 2, wall(100)),
+        Err(Error::Storage)
+    ));
+    assert!(path.is_dir());
+    clean(&root);
+}
+
+#[test]
+fn authority_recovery_online_reanchors_but_disk_replay_and_expiry_stay_denied() {
+    for drift in [1, 86_400] {
+        let root = test_root();
+        let (old, old_keys) = signed_v1_named(100, vec![], devices().legacy, "old");
+        let (fresh, fresh_keys) = signed_v1_named(
+            120,
+            vec![Capability {
+                key: "vantare.plan.pro".into(),
+                paid_through: wall(130).to_rfc3339(),
+                perpetual: false,
+                scope_version: String::new(),
+            }],
+            devices().legacy,
+            "fresh",
+        );
+        let keys = format!("{old_keys},{fresh_keys}");
+        let mut owner = Owner::open(&root, Some(&keys), devices(), 1, wall(100)).expect("owner");
+        owner
+            .install(old.clone(), wall(100), Duration::ZERO)
+            .expect("install");
+        owner
+            .advance(&photo(false), wall(120 + drift), Duration::from_secs(1))
+            .expect("future wall persisted");
+        drop(owner);
+        let mut owner =
+            Owner::open(&root, Some(&keys), devices(), 2, wall(120)).expect("denied but available");
+        assert!(owner.binding.is_none());
+        assert!(matches!(
+            owner.install(old.clone(), wall(120), Duration::ZERO),
+            Err(Error::Clock)
+        ));
+        owner
+            .install_online(fresh.clone(), wall(120), Duration::ZERO)
+            .expect("online recovery");
+        let policy = owner
+            .advance(&photo(false), wall(120), Duration::ZERO)
+            .expect("policy");
+        assert_eq!(policy.catalog, vantare_ipc::control::CatalogAccess::Pro);
+        drop(owner);
+        let mut owner = Owner::open(&root, Some(&keys), devices(), 3, wall(130)).expect("restart");
+        assert_eq!(
+            owner
+                .advance(&photo(false), wall(130), Duration::ZERO)
+                .expect("expired")
+                .catalog,
+            vantare_ipc::control::CatalogAccess::Free
+        );
+        assert!(matches!(
+            owner.install(fresh, wall(120), Duration::ZERO),
+            Err(Error::Clock)
+        ));
+        drop(owner);
+        clean(&root);
+    }
+}
+
+#[test]
+fn authority_recovery_logout_during_correction_keeps_future_tombstone() {
+    let root = test_root();
+    let (old, old_keys) = signed_v1_named(100, vec![], devices().legacy, "old");
+    let (too_early, early_keys) = signed_v1_named(120, vec![], devices().legacy, "early");
+    let (new, new_keys) = signed_v1_named(201, vec![], devices().legacy, "new");
+    let keys = format!("{old_keys},{early_keys},{new_keys}");
+    let mut owner = Owner::open(&root, Some(&keys), devices(), 1, wall(100)).expect("owner");
+    owner
+        .install(old.clone(), wall(100), Duration::ZERO)
+        .expect("install");
+    owner
+        .advance(&photo(false), wall(200), Duration::from_secs(1))
+        .expect("future");
+    owner
+        .invalidate(wall(120), Duration::from_secs(2))
+        .expect("logout must persist during correction");
+    drop(owner);
+    let mut owner = Owner::open(&root, Some(&keys), devices(), 2, wall(120)).expect("owner");
+    assert!(matches!(
+        owner.install_online(too_early, wall(120), Duration::ZERO),
+        Err(Error::Denied)
+    ));
+    owner
+        .install_online(new, wall(201), Duration::ZERO)
+        .expect("issuance beyond tombstone");
+    assert!(matches!(
+        owner.install(old, wall(201), Duration::ZERO),
+        Err(Error::Denied)
+    ));
+    drop(owner);
+    clean(&root);
+}
+
+#[test]
+fn authority_recovery_online_checks_skew_signature_device_and_subject() {
+    for skew in [-301, -300, 0, 300, 301] {
+        let root = test_root();
+        let (credential, keys) = signed_v1(1000 + skew, vec![]);
+        let mut owner = Owner::open(&root, Some(&keys), devices(), 1, wall(1000)).expect("owner");
+        let result = owner.install_online(credential, wall(1000), Duration::ZERO);
+        assert_eq!(result.is_ok(), (-300..=300).contains(&skew));
+        if result.is_ok() {
+            assert!(
+                owner
+                    .advance(&photo(false), wall(1000), Duration::ZERO)
+                    .expect("future iat tolerance")
+                    .overlays_advanced
+            );
+        }
+        drop(owner);
+        clean(&root);
+    }
+    let root = test_root();
+    let (credential, keys) = signed_v1(1000, vec![]);
+    let mut owner = Owner::open(&root, Some(&keys), devices(), 1, wall(1000)).expect("owner");
+    let mut forged: serde_json::Value = serde_json::from_str(&credential).expect("fixture");
+    forged["claims"]["issued_at"] = serde_json::json!(wall(999).to_rfc3339());
+    assert!(matches!(
+        owner.install_online(forged.to_string(), wall(1000), Duration::ZERO),
+        Err(Error::InvalidCredential)
+    ));
+    owner
+        .install_online(credential, wall(1000), Duration::ZERO)
+        .expect("valid");
+    let (wrong, wrong_keys) = signed_v1_named(1001, vec![], "wrong-device".into(), "wrong");
+    owner.verifier = Some(Verifier::public_keys(&format!("{keys},{wrong_keys}")).expect("keys"));
+    assert!(matches!(
+        owner.install_online(wrong, wall(1001), Duration::from_secs(1)),
+        Err(Error::InvalidCredential)
+    ));
+    let (other_subject, other_keys) = signed_v1_identity(
+        1001,
+        vec![],
+        devices().legacy,
+        "other",
+        "550e8400-e29b-41d4-a716-446655440001",
+    );
+    owner.verifier = Some(Verifier::public_keys(&format!("{keys},{other_keys}")).expect("keys"));
+    assert!(
+        matches!(
+            owner.install_online(other_subject, wall(1001), Duration::from_secs(1)),
+            Err(Error::Denied)
+        ),
+        "a signed different subject still needs durable logout"
+    );
+    drop(owner);
+    clean(&root);
+}
+
+#[test]
+fn authority_recovery_marker_blocks_replay_if_repair_was_interrupted_and_caps_archives() {
+    use sha2::{Digest, Sha256};
+    let root = test_root();
+    let (old, keys) = signed_v1(100, vec![]);
+    let mut owner = Owner::open(&root, Some(&keys), devices(), 1, wall(100)).expect("owner");
+    owner
+        .install(old.clone(), wall(100), Duration::ZERO)
+        .expect("install");
+    drop(owner);
+    let namespace = root.join(format!("{:x}", Sha256::digest(b"core-rights-v1")));
+    let path = namespace.join("authority.dpapi");
+    for epoch in 2..7 {
+        std::fs::write(&path, b"damaged fixture").expect("damage fixture");
+        let mut owner =
+            Owner::open(&root, Some(&keys), devices(), epoch, wall(110)).expect("owner");
+        assert!(matches!(
+            owner.install(old.clone(), wall(110), Duration::ZERO),
+            Err(Error::Denied)
+        ));
+        // Simulate loss/failure of repaired authority after successful quarantine.
+        owner
+            .store
+            .remove("authority")
+            .expect("interrupted repair fixture");
+    }
+    let archives = std::fs::read_dir(&namespace)
+        .expect("archives")
+        .flatten()
+        .filter(|e| e.file_name().to_string_lossy().starts_with("authority-0-"))
+        .count();
+    assert_eq!(archives, 3);
+    let mut owner =
+        Owner::open(&root, Some(&keys), devices(), 7, wall(110)).expect("recovery marker survives");
+    assert!(matches!(
+        owner.install(old, wall(110), Duration::ZERO),
+        Err(Error::Denied)
+    ));
+    drop(owner);
+    clean(&root);
+}
+
+#[test]
+fn authority_recovery_missing_authority_or_corrupt_marker_cannot_restore_binding() {
+    use sha2::{Digest, Sha256};
+    for corrupt_marker in [false, true] {
+        let root = test_root();
+        let (old, keys) = signed_v1(100, vec![]);
+        let mut owner = Owner::open(&root, Some(&keys), devices(), 1, wall(100)).expect("owner");
+        owner
+            .install(old.clone(), wall(100), Duration::ZERO)
+            .expect("install");
+        drop(owner);
+        let namespace = root.join(format!("{:x}", Sha256::digest(b"core-rights-v1")));
+        if corrupt_marker {
+            std::fs::write(
+                namespace.join("authority-recovery.dpapi"),
+                b"damaged marker fixture",
+            )
+            .expect("damage marker");
+        } else {
+            std::fs::remove_file(namespace.join("authority.dpapi"))
+                .expect("missing authority fixture");
+        }
+        let mut owner = Owner::open(&root, Some(&keys), devices(), 2, wall(110))
+            .expect("recoverable without rights");
+        assert!(owner.binding.is_none());
+        assert!(matches!(
+            owner.install(old, wall(110), Duration::ZERO),
+            Err(Error::Denied)
+        ));
+        drop(owner);
+        clean(&root);
+    }
 }

@@ -48,7 +48,7 @@ El host muestra una sola vez «Componentes incompatibles. Reinstala la misma
 versión de Vantare», conserva el aviso durante los reintentos y lo retira al
 recibir una foto compatible. No es una comprobación de versión de producto:
 binarios distintos con el mismo contrato pueden interoperar.
-Servicios usa protocolo v15 (#1793, renovación automática; #1761, copia explícita del enlace PKCE; #1628, marketing verificado; #1631, login propio; #1661, Founders; #1634, Calendar.fallback; conserva #1610/#1594); derechos/control conserva v5, independiente del DTO v11. Hub y services se recompilan juntos; se rechazan peers de servicios v14 o anteriores.
+Servicios usa protocolo v15 (#1793, renovación automática; #1761, copia explícita del enlace PKCE; #1628, marketing verificado; #1631, login propio; #1661, Founders; #1634, Calendar.fallback; conserva #1610/#1594); derechos/control usa v6, independiente del DTO v11. Hub y services se recompilan juntos; se rechazan peers de servicios v14 o anteriores.
 El Hub distingue errores de versión de servicios y conserva su aviso de conexión.
 `snapshot_from_json` es estricto; `snapshot_from_saved_json` conserva escenas
 Studio/Workshop/exportaciones v7/v8/v9/v10/v11 sin reescribir originales.

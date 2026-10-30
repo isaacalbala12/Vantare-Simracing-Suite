@@ -20,7 +20,7 @@ function bearer(data: boolean, overrides: Record<string, unknown> = {}) {
     vantare_identity_provider: "clerk", aud: "vantare-native-data",
   } : { iss: config.issuer, sub: subject, sid: "sess_fixture" };
   // The signature is deliberately synthetic: the authenticated RPC is doubled.
-  // Production only decodes after PostgREST has verified the complete bearer.
+  // Production only decodes after PostgREST/RLS verified the complete bearer.
   return `e30.${btoa(JSON.stringify({ ...claims, ...overrides })).replaceAll("=", "")}.fixture`;
 }
 
@@ -31,12 +31,18 @@ for (const data of [false, true]) {
       const token = bearer(data);
       const userClient = createClient("https://local.invalid", "fixture", {
         global: { fetch: (input) => {
-          assertEquals(new URL(String(input)).pathname, "/rest/v1/rpc/claim_active_device");
+          const path = new URL(String(input)).pathname;
+          if (path === "/rest/v1/rpc/claim_active_device") {
+            calls.push("claim");
+            return Promise.resolve(Response.json(account));
+          }
+          assertEquals(path, "/rest/v1/profiles");
           calls.push("authenticate");
           return Promise.resolve(scenario === "sql-deleted"
             ? Response.json({ code: "28000", message: "account_deleted" }, { status: 400 })
-            : scenario === "invalid-bearer" || scenario === "deleted"
-            ? Response.json({ code: "PGRST301" }, { status: 401 }) : Response.json(account));
+            : scenario === "invalid-bearer"
+            ? Response.json({ code: "PGRST301" }, { status: 401 })
+            : scenario === "deleted" ? Response.json(null) : Response.json({ id: account }));
         } },
       });
       const admin = createClient("https://local.invalid", "fixture", {
@@ -87,10 +93,11 @@ for (const data of [false, true]) {
         : scenario === "clerk-outage" ? 503 : 403;
       assertEquals(response.status, expected);
       if (scenario === "active") {
-        assertEquals(calls, ["authenticate", "resolve", "clerk", "load", "load", "load", "load", "sign"]);
+        assertEquals(calls, ["authenticate", "resolve", "clerk", "claim", "load", "load", "load", "load", "sign"]);
       } else {
         assertEquals(calls.includes("load"), false);
         assertEquals(calls.includes("sign"), false);
+        assertEquals(calls.includes("claim"), false);
         if (["invalid-bearer", "deleted", "sql-deleted"].includes(scenario)) assertEquals(calls, ["authenticate"]);
         if (["admin-blocked", "mismatched-account"].includes(scenario)) assertEquals(calls, ["authenticate", "resolve"]);
         const result = await response.json();
@@ -103,7 +110,7 @@ for (const data of [false, true]) {
 for (const claims of [{ iss: "https://foreign.invalid" }, { sub: account }, { clerk_subject: "user_bad" }]) {
   Deno.test(`legacy rejects incompatible identity after RPC: ${JSON.stringify(claims)}`, async () => {
     const userClient = createClient("https://local.invalid", "fixture", {
-      global: { fetch: () => Promise.resolve(Response.json(account)) },
+      global: { fetch: () => Promise.resolve(Response.json({ id: account })) },
     });
     const store = createCredentialStore({ userClient, config, resolve: () => {
       throw new Error("incompatible identity must not resolve");

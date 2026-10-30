@@ -401,22 +401,20 @@ export function createCredentialStore(deps: NativeAuthDeps & {
           global: { headers: { Authorization: `Bearer ${token}` } },
         });
       })();
-      const { data: accountId, error: claimError, status: claimStatus } =
-        await userClient.rpc(
-          "claim_active_device",
-          {
-            device_fingerprint: fingerprint,
-          },
-        );
-      if (claimError) {
-        if (isCredentialAuthFailure(claimStatus, claimError)) {
+      // profiles_select_own authenticates via current_account without changing
+      // the device. Only the account UUID is read before the blocking checks.
+      const { data: profile, error: profileError, status: profileStatus } =
+        await userClient.from("profiles").select("id").maybeSingle();
+      if (profileError) {
+        if (isCredentialAuthFailure(profileStatus, profileError)) {
           throw new CredentialAuthError();
         }
-        throw claimError;
+        throw profileError;
       }
-      if (typeof accountId !== "string") {
-        throw new Error("Account resolution returned no identifier");
+      if (!profile || !isUuid(profile.id)) {
+        throw new CredentialAuthError();
       }
+      const accountId = profile.id;
       // PostgREST has now authenticated this exact bearer and resolved its UUID.
       // Decode only after that check, and bind the identity back to that UUID.
       // A native-data JWT is a session/data bearer, never an OAuth access token.
@@ -458,6 +456,17 @@ export function createCredentialStore(deps: NativeAuthDeps & {
         throw new CredentialAuthError();
       }
       await requireUnblocked(subject, deps);
+      const { data: claimedAccount, error: claimError, status: claimStatus } =
+        await userClient.rpc("claim_active_device", {
+          device_fingerprint: fingerprint,
+        });
+      if (claimError) {
+        if (isCredentialAuthFailure(claimStatus, claimError)) {
+          throw new CredentialAuthError();
+        }
+        throw claimError;
+      }
+      if (claimedAccount !== accountId) throw new CredentialAuthError();
       const admin = deps.admin ?? getSupabaseAdmin();
       return await loadCredentialAccount(
         admin,

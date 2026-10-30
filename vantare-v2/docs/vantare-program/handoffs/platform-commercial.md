@@ -15,7 +15,9 @@ el integrador contrasta código y tests antes de aceptar sus resultados.
   sesión/metadata OAuth DPAPI ilegible que impide login nuevo;
   [#1810](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1810),
   candidate firmado del dispositivo anterior que impide admitir el helper
-  incluso para iniciar sesión. Coordinar su mecanismo común con #1798.
+  incluso para iniciar sesión; [#1812](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1812),
+  perfil automático que recorre refresh destructivo y puede revocar una licencia
+  offline vigente. Coordinar el mecanismo de candidate con #1798.
   Todos en Project Vantare / area:licencias, sin milestone comprometido;
   no se crean tareas Plane ni se implementan arreglos.
 - El primer P1 se ha comunicado al hilo del orquestador. #1798/#1801 conservan
@@ -33,7 +35,10 @@ el integrador contrasta código y tests antes de aceptar sus resultados.
   E/S inicial sin reapertura y cuenta desconectada que la UI sigue mostrando
   conectada. Semántica de Paused pendiente de decisión de producto. No se acepta
   como pago sin cobro el predicado PurchaseWait, que solo verifica catálogo.
-  Revisores de services y servidor todavía ejecutándose.
+  Services también finalizado y contrastado: confirma DPAPI/reloj/candidate,
+  añade #1812 y errores cosméticos que apagan el scheduler o avisos definitivos
+  que se descartan al recibirlos. No invertir el orden de revocación/reset ni
+  aplicar tolerancia ciega a lápidas. Revisor de servidor todavía ejecutándose.
 
 ## VANTA-105 / #1782 — Diagnóstico de canales RC9 (30-oct)
 

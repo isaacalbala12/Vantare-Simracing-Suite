@@ -27,10 +27,11 @@ incidente reproducido con un usuario real.
 
 ## Resultado integrado provisional
 
-Cuatro P1 nuevos confirmados: autoridad DPAPI irrecuperable, sesión/metadata DPAPI
+Cinco P1 nuevos confirmados: autoridad DPAPI irrecuperable, sesión/metadata DPAPI
 irrecuperables, reloj adelantado que sigue bloqueando después de corregirlo y
-candidate de dispositivo anterior que impide abrir el canal de recuperación.
-Se han abierto #1806, #1807, #1808 y #1810, todos con `area:licencias` y Project Vantare.
+candidate de dispositivo anterior que impide abrir el canal de recuperación,
+y perfil automático que puede revocar una licencia offline vigente.
+Se han abierto #1806, #1807, #1808, #1810 y #1812, todos con `area:licencias` y Project Vantare.
 No se ha confirmado un P0 ni una concesión nueva sin firma válida.
 
 La clase común es **denegación segura sin una vía de recuperación autenticada**.
@@ -47,7 +48,7 @@ Seguimiento: [#1806](https://github.com/isaacalbala12/Vantare-Simracing-Suite/is
 - **Código:** `native/services/src/storage/windows.rs:243`,
   `native/services/src/storage.rs:157`,
   `native/services/src/license/authority.rs:66`,
-  `native/runtime/src/rights/mod.rs:143`,
+  `native/runtime/src/rights/mod.rs:128`,
   `native/runtime/src/rights/host.rs:51` y `:266`.
 - **Escenario:** se daña el ciphertext de `authority.dpapi`. DPAPI devuelve
   `Corrupt`; `load_for_restore` lo convierte en `Storage`; `Owner::open` falla.
@@ -144,6 +145,35 @@ vinculada al mecanismo de admisión de #1798; coordinar un arreglo común.
   de la caché rechazada y recuperación sin manipular archivos. Las fixtures de
   `runtime/src/services/tests.rs:127` usan el mismo dispositivo. Es un disparador
   adicional a #1798 y no se arregla solo reclasificando el transporte en #1803.
+
+### P1 · F5 · El refresco cosmético automático puede revocar la licencia offline
+
+Seguimiento: [#1812](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1812).
+
+- **Código:** `native/services/src/account/profile.rs:18`,
+  `native/hub/src/services/view.rs:988` y `:1047`,
+  `native/services/src/app.rs:711`, `:299` y `:317`.
+- **Escenario:** OAuth se restaura pero falta o no se puede leer account-profile.
+  El Hub encadena AccountProfileRefresh como Inflight::Profile, sin click.
+  Si el access token necesita refresh y Clerk devuelve invalid_grant, 401 o
+  403, services recorre `automatic=false` y ejecuta Invalidate, elimina candidate
+  y cierra la sesión. El entitlement offline puede seguir firmado y vigente.
+  La carrera con el temporizador importa: el caso se alcanza si el perfil llega
+  antes de que una renovación distinta sanee OAuth; no se presume un orden fijo.
+- **Usuario:** abrir la app puede retirar sus derechos locales por leer nombre
+  y foto, sin pedir Comprobar acceso ni cerrar sesión. La frecuencia de refresh
+  rechazado depende de Clerk/configuración y no se ha medido en producción.
+- **Corrección propuesta:** distinguir perfil automático de acción explícita,
+  o hacer no destructivas todas las lecturas de perfil respecto a licencia.
+  Una sesión rechazada no se debe presentar como válida: devolver necesidad de
+  reautenticación sin revocar la licencia ya firmada por una acción cosmética.
+  Conservar logout/cambio de identidad explícitos y no mezclar cuentas.
+- **Tests:** `native/services/src/app.rs:1508` incluye AccountProfileRefresh entre
+  comandos que revocan con invalid_grant. El Hub prueba que pide ese perfil solo;
+  falta cruzar ambas rutas con binding auténtico vigente. Exigir ausencia de
+  Invalidate, candidate conservado y política vigente hasta expiry. Incluir
+  401/403, 429/5xx y sincronización explícita con el temporizador. #1796 protege
+  LicenseRenewAutomatic, pero no esta segunda acción automática.
 
 ## Riesgos y discrepancias acotadas
 
@@ -304,6 +334,68 @@ fallida, cero derechos, caché conservada, relectura correcta y recuperación.
 | Launch histórico solo permite Calendar en modules | El comportamiento está fijado por tests (`rights/tests.rs:942`), mientras el contrato histórico menciona Engineer inicial. Discrepancia contractual a reconciliar con #1510; no implementar ampliación de derechos desde esta revisión. |
 | Candidate de otra cuenta sin binding | Hipótesis relevante para #1798: no hay vínculo explícito con la sesión OAuth durante TransferRights. No se presenta como P0 o concesión a otra cuenta reproducida; añadir fixture de restauración parcial y comprobar toda la secuencia. |
 
+### P2 · R10 · Un error cosmético de perfil desactiva la renovación automática
+
+`native/runtime/src/services/renewal.rs:43` pone signed_in=false para cualquier
+Reply::Account con error, aunque signed_in=true y expires_at estén presentes.
+`native/services/src/app.rs:711` devuelve precisamente ese reply si falla una
+lectura de perfil con Offline/Storage/5xx y la sesión sigue restaurada.
+El Hub oculta el error de Inflight::Profile (`view.rs:880`).
+
+Escenario: caché de perfil ausente y fallo transitorio del refresh o userinfo.
+No se revoca la licencia, pero `claim` pasa a NoSession y no la renueva al
+aproximarse su plazo. La UI sigue mostrando cuenta conectada; Comprobar acceso
+o una nueva lectura limpia de cuenta puede rearmar. Es distinto del rechazo
+OAuth destructivo de F5.
+
+Propuesta: conservar el estado de sesión ante errores de presentación tipados;
+no confundir `error: Some` con SignedOut. Test integrado perfil fallido con
+signed_in=true→deadline cercano→una renovación, sin nuevo login y sin ráfagas.
+Los tests de Renewal de la base usan error=None para sus replies de sesión.
+
+### P2 · R11 · El aviso definitivo automático se consume pero se descarta en el Hub
+
+`native/runtime/src/services.rs:427` guarda LicenseFailure como notice y `:322`
+lo entrega una vez en LicenseStatus. El Hub pide ese comando como Background
+(`view.rs:411`) y descarta LicenseFailure al ser de fondo (`:931`), sin campo
+alternativo de aviso en `services/access.rs`. Esto protege el mensaje del usuario,
+pero no ofrece una explicación cuando no había mensaje que proteger.
+
+Escenario: Clock, Version o Authentication frena las renovaciones; la licencia
+anterior sigue hasta su plazo y luego aparecen candados sin explicar la acción
+necesaria. DeviceLimit conserva la variante accionable de reset, pero necesita
+también contexto visible. La pérdida del notice por respuesta perdida ya se
+sigue en #1799; este caso lo descarta incluso cuando sí se recibe.
+
+Propuesta: aviso persistente separado del resultado de la acción del usuario,
+con recuperación explícita y sin repetir efectos. Test con mensaje vacío y con
+mensaje de usuario ya presente. Coordinar con #1799, sin duplicar implementación.
+
+### P2 · R12 · `account_conflict` se confunde con una revocación comercial
+
+`native/services/src/license_remote.rs:82` solo distingue device_limit en un
+409; el resto cae en Conflict (`http.rs:38`). La renovación manual puede entonces
+invalidar el binding (`app.rs:197`); la automática conserva derechos, pero queda
+definitiva. El texto «conflicto de revisión» corresponde a otra función.
+`native-license/index.ts:109` también usa account_conflict cuando el estado no
+puede emitirse de forma segura, lo que no demuestra que el derecho previo haya
+sido revocado comercialmente.
+
+Propuesta: preservar el código remoto cerrado y su semántica de inconsistencia
+de cuenta, mantener derechos firmados válidos y pedir soporte/reintento apropiado.
+No convertir un 409 genérico en permiso ni ignorar DeviceLimit. Falta un test de
+App con 409 account_conflict distinto del ya existente device_limit.
+
+### Contraste específico de las propuestas de services
+
+| Propuesta | Decisión del integrador |
+| --- | --- |
+| DPAPI irrecuperable | Confirma F1/F3, sin issues duplicadas. No se acepta reconstruir authority con Clock por defecto y aceptar cualquier firma antigua: falta autenticación de recuperación y protección de lápida/replay. |
+| Tombstone futuro y candidate rechazado | Confirma R4/F4. Mantener #1810 y #1798 coordinadas; no aceptar una tolerancia ciega de 300 s sobre la lápida, porque permitiría reusar una licencia invalidada. |
+| Refresh manual deja UI conectada | Confirma R7; se conserva prioridad P2 por recuperación escondida. |
+| Invertir RPC DeviceReset e Invalidate | Rechazado: el orden durable protege la transferencia de dispositivo. Cubrir UX/recuperación del fallo remoto manteniendo ese orden. |
+| Botón Founders visible para propietario | P3 de presentación confirmado en `hub/src/services/view/founders.rs:130`; no demuestra doble cobro. Ocultar/deshabilitar compra ya poseída y comprobar admisión/idempotencia del servidor antes de afirmar efectos monetarios. |
+
 ## Antecedentes contrastados, sin duplicar su seguimiento
 
 | Antecedente | Estado observado en la base / consecuencia para esta revisión |
@@ -335,10 +427,13 @@ configuración coherentes, sin consultar datos reales de una cuenta.
 | Sin red, caché válida | Derechos firmados vigentes; error de red recuperable, sin revocación automática. | Owner restaura sin HTTP; overlays dependen de política fresca local, no red. Hub exige conocer sesión guardada; metadata ausente necesita discovery. Automática hace backoff; #1803 afecta clasificación IPC. |
 | Sin red, primer arranque / caché inválida | Login/verificación pendientes claros; no inventar derechos. | Sin firma no hay acceso verificado. Binding/candidate inválidos se apartan; authority/account corruptos dejan F1/F3. No se promete login inicial offline. |
 | Sesión OAuth caducada | Renovar sesión, conservando licencia vigente ante fallo automático; pedir login cuando haga falta. | Automática intenta refresh y conserva binding ante rechazo, pero puede quedar bloqueada hasta acción explícita. El núcleo sigue con su firma. El Hub no usa expiración OAuth como expiración de licencia. |
+| Sesión restaurada, perfil ausente, OAuth rechazado | Pedir reautenticación sin revocar por leer nombre/foto. | El perfil se solicita automáticamente, pero usa el camino destructivo y puede invalidar una licencia vigente (F5). |
+| Sesión restaurada, perfil ausente, fallo transitorio | Conservar sesión y renovación, mostrar aviso de perfil recuperable. | Reply de perfil con error puede apagar signed_in del scheduler y detener renovaciones aunque la UI siga conectada (R10). |
 | Reloj hasta 300 s atrasado respecto a emisión | Admitir firma nueva dentro de tolerancia, sin extender derechos. | Authority adelanta referencia efectiva y traduce deadlines. El Date TLS del servidor se comprueba; sin Date el helper usa hora local. |
 | Reloj con desfase mayor / adelantado y luego corregido | Denegar de forma explicable y ofrecer sincronización más recuperación autenticada. | Desfase >300 s produce Clock. Corregir un adelanto ya persistido no basta y puede bloquear hasta alcanzar ese tiempo (F2). |
 | Cambio de cuenta | Revocar durablemente A antes de guardar B; nunca heredar sus derechos. | Login de identidad distinta invalida antes de completar. Candidate firmado de otra cuenta con binding existente queda en #1798; no se certifica aquí recuperación de ese caso. |
 | Reinstalación / segundo PC / caché antigua | Conservar datos sanos; pedir login si cambió entorno; límite de PC recuperable. | Namespace OAuth incluye issuer/client/channel/backend; no se migran tokens entre entornos. Device fingerprint y binding se validan. Upgrade no sanea authority/account corruptos; binding/candidate de clave retirada sí se apartan. |
+| Candidate válido de dispositivo anterior | Denegar esa caché y permitir nuevo login/activación. | El núcleo rechaza la huella, pero TransferRights bloquea la admisión del helper antes de poder recuperar (F4). |
 
 El catálogo de widgets está centralizado en `native/ipc/src/control.rs:64` y
 se aplica en `native/ui/src/rights.rs:9` y
@@ -439,7 +534,7 @@ El check de calidad conserva **466/466 huellas**, sin recalibrar baselines.
 
 ## Siguiente acción
 
-El orquestador prioriza #1806/#1807/#1808, revisa el informe y asigna cada arreglo
+El orquestador prioriza #1806/#1807/#1808/#1810/#1812, revisa el informe y asigna cada arreglo
 con su regresión y su propia tarea; este encargo no implementa ninguno. #1803,
 #1798 y #1801 siguen con su seguimiento existente. Ningún resultado aquí autoriza
 merge, promoción, release, despliegue, gasto ni cambios administrativos de cuenta.

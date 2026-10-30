@@ -337,6 +337,7 @@ function subscriptionStatus(event: PolarWebhookEvent): string | null {
     "canceled",
     "past_due",
     "unpaid",
+    "revoked",
   ];
   if (fromType === "created" || fromType === "updated") {
     const payloadStatus = asString(event.data.status)?.toLowerCase() ?? null;

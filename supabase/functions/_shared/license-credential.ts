@@ -8,6 +8,13 @@ import { errorResponse, jsonResponse } from "./responses.ts";
 import { getSupabaseAdmin } from "./supabase-admin.ts";
 import type { BillingEnvironment } from "./mapping.ts";
 import { requirePolarEnvironment } from "./polar.ts";
+import {
+  type NativeAuthDeps,
+  NativeError,
+  nativeConfig,
+  requireUnblocked,
+  resolveNativeAccount,
+} from "./native-auth.ts";
 
 export const CREDENTIAL_VERSION = 1;
 export const CREDENTIAL_ALGORITHM = "Ed25519";
@@ -158,6 +165,20 @@ export async function handleLicenseCredentialRequest(
     );
     return await issueCredential(loaded, fingerprint, environment, deps);
   } catch (error) {
+    if (error && typeof error === "object" && "code" in error && error.code === "28000") {
+      return errorResponse("unauthorized", "Account is not active", 401);
+    }
+    if (error && typeof error === "object" && "message" in error && error.message === "account_conflict") {
+      return errorResponse("account_conflict", "Account identity is conflicting", 409);
+    }
+    if (error instanceof NativeError) {
+      const status = error.status === 404 ? 401 : error.status;
+      return errorResponse(
+        status === 401 ? "unauthorized" : error.code,
+        "License authorization failed",
+        status,
+      );
+    }
     if (error instanceof CredentialAuthError) {
       return errorResponse("unauthorized", "Invalid or expired token", 401);
     }
@@ -364,33 +385,89 @@ async function signWithEnvironmentKey(
   return signCredential(claims, keyId, key);
 }
 
-function createCredentialStore(): CredentialStore {
+export function createCredentialStore(deps: NativeAuthDeps & {
+  userClient?: SupabaseClient;
+  admin?: SupabaseClient;
+  resolve?: typeof resolveNativeAccount;
+} = {}): CredentialStore {
   return {
     async load(token, fingerprint, environment) {
-      const url = Deno.env.get("SUPABASE_URL") ?? "";
-      const anon = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
-      if (!url || !anon) throw new Error("Supabase client is not configured");
-      const userClient = createClient(url, anon, {
-        auth: { autoRefreshToken: false, persistSession: false },
-        global: { headers: { Authorization: `Bearer ${token}` } },
-      });
-      const { data: accountId, error: claimError, status: claimStatus } =
-        await userClient.rpc(
-          "claim_active_device",
-          {
-            device_fingerprint: fingerprint,
-          },
+      const userClient = deps.userClient ?? (() => {
+        const url = Deno.env.get("SUPABASE_URL") ?? "";
+        const anon = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+        if (!url || !anon) throw new Error("Supabase client is not configured");
+        return createClient(url, anon, {
+          auth: { autoRefreshToken: false, persistSession: false },
+          global: { headers: { Authorization: `Bearer ${token}` } },
+        });
+      })();
+      // profiles_select_own authenticates via current_account without changing
+      // the device. Only the account UUID is read before the blocking checks.
+      const { data: profile, error: profileError, status: profileStatus } =
+        await userClient.from("profiles").select("id").maybeSingle();
+      if (profileError) {
+        if (isCredentialAuthFailure(profileStatus, profileError)) {
+          throw new CredentialAuthError();
+        }
+        throw profileError;
+      }
+      if (!profile || !isUuid(profile.id)) {
+        throw new CredentialAuthError();
+      }
+      const accountId = profile.id;
+      // PostgREST has now authenticated this exact bearer and resolved its UUID.
+      // Decode only after that check, and bind the identity back to that UUID.
+      // A native-data JWT is a session/data bearer, never an OAuth access token.
+      const issuer = nativeConfig(deps).issuer;
+      const parts = token.split(".");
+      if (parts.length !== 3 || token.length > 16384) {
+        throw new CredentialAuthError();
+      }
+      let decoded: unknown;
+      try {
+        decoded = JSON.parse(
+          new TextDecoder("utf-8", { fatal: true }).decode(fromBase64URL(parts[1])),
         );
+      } catch {
+        throw new CredentialAuthError();
+      }
+      if (!decoded || typeof decoded !== "object" || Array.isArray(decoded)) {
+        throw new CredentialAuthError();
+      }
+      const claims = decoded as Record<string, unknown>;
+      // The data issuer is registered in SQL and may be the Supabase origin;
+      // PostgREST/current_account already verified that registry and audience.
+      const dataBearer = claims.vantare_identity_provider === "clerk" &&
+        claims.aud === "vantare-native-data";
+      const subject = dataBearer ? claims.clerk_subject : claims.sub;
+      if (
+        (dataBearer
+          ? claims.clerk_issuer !== issuer || claims.sub !== accountId
+          : claims.iss !== issuer || claims.clerk_subject !== undefined ||
+            claims.clerk_issuer !== undefined) ||
+        typeof subject !== "string" || !/^user_[A-Za-z0-9_]{27}$/.test(subject)
+      ) throw new CredentialAuthError();
+      const resolved = await (deps.resolve ?? resolveNativeAccount)(
+        issuer,
+        subject,
+        deps.admin,
+      );
+      if (resolved !== accountId) {
+        throw new CredentialAuthError();
+      }
+      await requireUnblocked(subject, deps);
+      const { data: claimedAccount, error: claimError, status: claimStatus } =
+        await userClient.rpc("claim_active_device", {
+          device_fingerprint: fingerprint,
+        });
       if (claimError) {
         if (isCredentialAuthFailure(claimStatus, claimError)) {
           throw new CredentialAuthError();
         }
         throw claimError;
       }
-      if (typeof accountId !== "string") {
-        throw new Error("Account resolution returned no identifier");
-      }
-      const admin = getSupabaseAdmin();
+      if (claimedAccount !== accountId) throw new CredentialAuthError();
+      const admin = deps.admin ?? getSupabaseAdmin();
       return await loadCredentialAccount(
         admin,
         accountId,
@@ -406,6 +483,7 @@ export function isCredentialAuthFailure(status: number, error: {
   message?: string;
 }): boolean {
   return status === 401 || status === 403 ||
+    error.code === "28000" ||
     error.code === "PGRST301" || error.code === "PGRST302" ||
     error.message === "not_authenticated" ||
     error.message === "invalid_identity";

@@ -800,6 +800,25 @@ Deno.test("processPolarWebhookEvent: subscription.revoked revokes monthly withou
   assertEquals([...deps.projection.grants.values()][0].status, "revoked");
 });
 
+for (const type of ["subscription.created", "subscription.updated"]) {
+  Deno.test(`${type}: revoked snapshot reaches the lifecycle without a period end`, async () => {
+    const deps = processDeps(createMockSupabase());
+    const result = await processPolarWebhookEvent({
+      type,
+      data: {
+        id: "sub-revoked-snapshot",
+        product_id: PRO_MONTHLY_PRODUCT_ID,
+        external_customer_id: USER_ID,
+        status: "revoked",
+        modified_at: RESOURCE_MODIFIED_AT,
+      },
+    }, `evt-${type}-revoked-snapshot`, deps);
+    assertEquals(result.status, "processed");
+    assertEquals([...deps.projection.grants.values()].map((g) => g.status), ["revoked"]);
+    assertEquals([...deps.lifecycle.subscriptions.values()].map((s) => s.status), ["revoked"]);
+  });
+}
+
 Deno.test("processPolarWebhookEvent: aggregate and ordinary refund revoke lifetime safely", async () => {
   const mock = createMockSupabase();
   const deps = processDeps(mock);

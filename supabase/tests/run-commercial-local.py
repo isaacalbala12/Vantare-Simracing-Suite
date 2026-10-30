@@ -54,6 +54,19 @@ ROOT=pathlib.Path(__file__).resolve().parents[2]
 OUT=pathlib.Path(args.output).resolve(); OUT.mkdir(parents=True,exist_ok=True)
 BIN=pathlib.Path(args.pg_bin).resolve()
 ENV={k:v for k,v in os.environ.items() if not k.startswith(('PG','PGRST'))}
+# Run the Edge boundary tests in this CI gate too. Provider calls are fixtures;
+# Deno can fetch pinned modules, but the tests receive no runtime network access.
+if args.deno_bin and not args.baseline:
+ edge_suites=['billing-webhook/process.test.ts','billing-reconcile/worker.test.ts',
+  'license-credential/','native-license/']
+ edge=subprocess.run([args.deno_bin,'test','--frozen','--allow-env','--allow-read',
+  '--config',str(ROOT/'supabase/functions/deno.json'),
+  *[str(ROOT/'supabase/functions'/suite) for suite in edge_suites]],
+  env=ENV,capture_output=True,text=True,timeout=180)
+ (OUT/'license-reconciliation-edge.log').write_text(edge.stdout+edge.stderr,encoding='utf-8')
+ if edge.returncode: raise RuntimeError(edge.stdout+edge.stderr)
+ print(edge.stdout,flush=True)
+
 def run(prog,*args):
  r=subprocess.run([str(BIN/prog),*map(str,args)],env=ENV,capture_output=True,text=True)
  if r.returncode: raise RuntimeError(r.stderr)
@@ -422,10 +435,18 @@ $$;
       run('psql',*conn,'-c',fixture)
       license_script=ROOT/'supabase/tests/commercial-license.ts'
       if args.deno_bin.endswith('.exe'): license_script=wp(license_script)
-      issued=subprocess.run([args.deno_bin,'run','--cached-only','--no-lock','--no-config','--allow-net=127.0.0.1:'+str(http_port),str(license_script),f'http://127.0.0.1:{http_port}',account],env=ENV,input=generated['serviceToken'],capture_output=True,text=True,timeout=30)
+      license_command=[args.deno_bin,'run','--cached-only','--no-lock','--no-config','--allow-net=127.0.0.1:'+str(http_port),str(license_script),f'http://127.0.0.1:{http_port}',account]
+      license_tokens=json.dumps({'serviceToken':generated['serviceToken'],'dataToken':tokens['valid']})
+      issued=subprocess.run(license_command,env=ENV,input=license_tokens,capture_output=True,text=True,timeout=30)
       if issued.returncode: raise RuntimeError('Native SQL emission fixture failed: '+issued.stderr)
       (OUT/'native-issuance.log').write_text(issued.stdout)
       print(issued.stdout.strip(),flush=True)
+      run('psql',*conn,'-c',f"insert into private.admin_account_blocks(account_id,blocked,reason) values('{account}',true,'local fixture')")
+      blocked=subprocess.run([*license_command,'blocked'],env=ENV,input=license_tokens,capture_output=True,text=True,timeout=30)
+      if blocked.returncode: raise RuntimeError('Legacy SQL blocked fixture failed: '+blocked.stderr)
+      (OUT/'legacy-blocked-issuance.log').write_text(blocked.stdout)
+      print(blocked.stdout.strip(),flush=True)
+      run('psql',*conn,'-c',f"delete from private.admin_account_blocks where account_id='{account}'")
      run('psql',*conn,'-c',"select public.apply_clerk_user_event('jwt-delete',repeat('d',64),'https://fixture.clerk.invalid','user_aaaaaaaaaaaaaaaaaaaaaaaaaaa','user.deleted',now(),null)")
      if not args.baseline and not args.before_b01:
       code,profile=save_pilot(tokens['valid'])

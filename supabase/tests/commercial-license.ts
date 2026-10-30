@@ -3,12 +3,14 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import {
   loadCredentialAccount,
   signCredential,
+  createCredentialStore,
+  handleLicenseCredentialRequest,
 } from "../functions/_shared/license-credential.ts";
 import { handleNativeLicenseRequest } from "../functions/native-license/index.ts";
-const [url, account] = Deno.args;
+const [url, account, mode = "active"] = Deno.args;
 if (new URL(url).hostname !== "127.0.0.1") throw new Error("loopback_only");
 // Synthetic service bearer from the same ephemeral ES256 key as the harness.
-const token = await new Response(Deno.stdin.readable).text();
+const { serviceToken: token, dataToken } = JSON.parse(await new Response(Deno.stdin.readable).text());
 if (!token || token.length > 16384) throw new Error("fixture_token_required");
 const admin = createClient(url, "fixture-only", {
   auth: { persistSession: false, autoRefreshToken: false },
@@ -20,6 +22,47 @@ const admin = createClient(url, "fixture-only", {
   },
 });
 const fingerprint = "b".repeat(64);
+const legacyUserClient = createClient(url, "fixture-only", {
+  auth: { persistSession: false, autoRefreshToken: false },
+  global: {
+    headers: { Authorization: "Bearer " + dataToken },
+    fetch: (input, init) => fetch(String(input).replace("/rest/v1/", "/"), init),
+  },
+});
+let legacySigns = 0, clerkReads = 0;
+const legacy = await handleLicenseCredentialRequest(new Request("http://localhost", {
+  method: "POST", headers: { Authorization: "Bearer " + dataToken },
+  body: JSON.stringify({ deviceFingerprint: fingerprint }),
+}), {
+  environment: "sandbox",
+  store: createCredentialStore({
+    userClient: legacyUserClient, admin,
+    config: { issuer: "https://fixture.clerk.invalid", clientId: "fixture-client", secretKey: "fixture-only" },
+    fetch: () => {
+      clerkReads++;
+      return Promise.resolve(Response.json({
+        id: "user_aaaaaaaaaaaaaaaaaaaaaaaaaaa", banned: false, locked: false,
+        email_addresses: [], primary_email_address_id: null, first_name: null,
+        last_name: null, created_at: 1, last_sign_in_at: null,
+      }));
+    },
+  }),
+  sign: (claims) => {
+    legacySigns++;
+    return Promise.resolve({ version: 1, algorithm: "Ed25519", key_id: "fixture", claims, signature: "fixture" });
+  },
+});
+if (mode === "blocked") {
+  if (legacy.status !== 403 || legacySigns !== 0 || clerkReads !== 0) {
+    throw new Error("legacy_sql_block_not_enforced");
+  }
+  console.log("legacy real signed data bearer: SQL admin block denied before Clerk/claim/sign PASS");
+  Deno.exit(0);
+}
+if (legacy.status !== 200 || legacySigns !== 1 || clerkReads !== 1) {
+  throw new Error("legacy_sql_active_emission_failed");
+}
+console.log("legacy real signed data bearer: own RLS profile and administrative resolver PASS");
 const loaded = await loadCredentialAccount(
   admin,
   account,

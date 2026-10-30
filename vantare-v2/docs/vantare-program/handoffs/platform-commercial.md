@@ -61,7 +61,8 @@ carrera física24h ni backend real. No se aumentó TTL/gracia; si la red falta t
 la ventana, la licencia vence en la fecha prevista. Sin merge, producción,
 cambio de instalación, promoción ni release. Estado y SHA remoto final se reflejan
 en PR draft #1811 e issue #1803; pendiente re-revisión focalizada del orquestador.
-VANTA-105 sigue como paraguas compartido En curso, coordinado por el orquestador.
+VANTA-105 es el paraguas compartido; estado verificado Por revisar al cerrar esta
+revisión, coordinado por el orquestador (sin sustituir su resumen global).
 
 El apartado siguiente conserva la evidencia de la primera entrega; sus reglas
 Live y cifras de gates quedan sustituidas por esta revisión y el README vigente.

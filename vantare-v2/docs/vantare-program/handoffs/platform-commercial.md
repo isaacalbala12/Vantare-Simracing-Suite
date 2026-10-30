@@ -21,10 +21,20 @@ primer commit publicado `2549f5915`; revisión y gates finales pendientes.
   exige renovación online; ninguna firma guardada puede abrir esa recuperación.
 - Logout durante desfase conserva la mayor frontera observada. Una emisión
   online debe superarla; corregir el reloj no elimina una revocación sana.
-- Solape mínimo authority.rs/app.rs/rights/host.rs comunicado; pendiente rebase
-  cuando #1811 se integre, gates scoped y PR draft a nightly. Mutación verificada:
-  retirar protecciones hace fallar nueve regresiones; retirar marca durable o
-  dar procedencia online al disco hace fallar sus dos regresiones específicas.
+- Revisión DeepSeek de solo lectura: sin bloqueo en la recuperación encargada.
+  Se refuerzan las pruebas con dos firmas distintas (caché y respuesta nueva)
+  y con ±301 s en la rama que realmente reancla. #1810 conserva la admisión
+  general de candidatos antiguos/dispositivos anteriores, fuera de este corte.
+- Fmt y Clippy scoped `-D warnings` PASS; regresiones actuales **15/15 PASS**;
+  lifecycle **13/13 PASS**; Nextest scoped completo con telemetría **810/810 PASS**
+  (13 omisiones existentes). Se actualizan dos expectativas históricas que exigían
+  dejar ausente la autoridad, reforzando barrera y bytes conservados. No se cambia
+  su política de E/S.
+- Mutaciones verificadas: cuatro tandas provocan **9, 2, 3 y 1 fallos esperados**
+  al retirar protecciones. Fuente restaurada y regresiones en verde.
+- Solape mínimo authority.rs/app.rs/rights/host.rs comunicado. Pendiente rebase
+  cuando el orquestador avise de #1811 integrado y prueba del peer antiguo que
+  cierra sin respuesta; no se considera entrega para revisión final todavía.
 - No se toca instalación, licencia/sesión reales, producción, merge o release.
 
 ## VANTA-105 / #1803 — Correcciones de revisión profunda (31-oct)

@@ -3,7 +3,10 @@
 [PR draft #1817](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1817)
 a nightly, registrado en T3. Rama `vantareapp/isa-1813-reconcile-bloqueos`,
 worktree `C:/VantareServer/wt/isa-1813`, base `origin/nightly 9adbde099`.
-Código y tests hasta `8a9fa6b8c`; CI final pendiente. Issues en Project Vantare /
+Código de producto hasta `8a9fa6b8c`; tests R2 en `9fea8bdef`, CI 7/7 verde
+verificada (incluye PostgreSQL LF/CRLF y E2E). La corrección posterior de
+docs/tests de la revisión profunda requiere nueva CI: su SHA y resultado final
+se verifican en el PR #1817 antes de integrar. Issues en Project Vantare /
 In Progress / area:licencias, sin milestone. Plane VANTA-105 sin modificar.
 
 - Un snapshot `subscription.updated` con `revoked` llega ahora al lifecycle
@@ -28,8 +31,8 @@ In Progress / area:licencias, sin milestone. Plane VANTA-105 sin modificar.
   diff final sin defectos funcionales o de seguridad bloqueantes. Se añaden
   sus regresiones de UUID distinta devuelta por claim (401 sin grants/firma)
   y contador del RPC de claim en el E2E real (bloqueada: cero; activa: uno).
-  CI de `961b1ec04` verificada 7/7 verde; la ampliación de tests requiere su
-  propia CI. Límites R2: sesión Clerk cubierta por dobles, data JWT por RLS
+  CI de `961b1ec04` y `9fea8bdef` verificada 7/7 verde. Límites R2:
+  sesión Clerk cubierta por dobles, data JWT por RLS
   real; límite de bearer comprobado tras profiles; carreras con un bloqueo
   concurrente posterior a la comprobación no se serializan en esta entrega.
   El test de worker comprueba idempotencia de proyección; los efectos durables
@@ -37,6 +40,23 @@ In Progress / area:licencias, sin milestone. Plane VANTA-105 sin modificar.
   Sesión ejecutora Codex con esfuerzo medium heredado;
   no se atribuye high. No se retira legacy: el nativo actual usa native-license,
   pero falta inventario de consumidores externos para autorizar su retirada.
+- Revisión profunda del orquestador: APPROVE WITH CHANGES, sin P0/P1.
+  Edge conserva issuer estricto igual a `CLERK_ISSUER`, mientras SQL acepta
+  cualquier fila enabled del registro. Precondición: una sola fila enabled y
+  coincidencia con la configuración Edge. Una migración de dominio Clerk con
+  dos filas enabled exige adaptar también el Edge; no basta cambiar SQL.
+  Se elimina `sql-deleted`: simulaba un 28000 que SELECT profiles no produce;
+  `deleted` conserva el caso real de perfil ausente por RLS.
+  No hay consumidor actual de bearer de sesión en el nativo versionado:
+  `license_remote.rs::renew` usa OAuth hacia native-license; el bridge de
+  `bridge.rs` usa bearer de datos para su allowlist legacy. No se acredita
+  ausencia de consumidores externos a este repositorio.
+  TOCTOU explícito, igual que native-license: un bloqueo aplicado después de
+  requireUnblocked y antes de sign puede no observarse en esa emisión. No hay
+  transacción/lock común con Clerk que serialice ese intervalo.
+  Las suites añadidas al arnés comercial corren en pull_request a nightly
+  con cambios en supabase; no se ejecutan por un push aislado a otra rama ni
+  constituyen un gate automático de despliegue.
 - VANTA-96 / PR #1779 solo solapa este handoff; avisado antes de editar.
   Se conserva su trabajo y no se modifica su evidencia de cobros/Polar.
   Sin migraciones nuevas, producción, cuentas reales, secretos, despliegue,
@@ -46,7 +66,10 @@ Despliegue futuro, solo tras autorización específica de Isaac y aceptación de
 SHA revisado: comprobar en el entorno autorizado la migración
 `20261015115000_native_admin_identity_r4` y la barrera B01/RLS vigentes, así como
 presencia de los nombres `CLERK_SECRET_KEY`, `CLERK_NATIVE_CLIENT_ID`,
-`CLERK_ISSUER` (sin leer sus valores). Guardar bundles previos y configuración
+`CLERK_ISSUER` y `SUPABASE_ANON_KEY` para license-credential (sin leer valores
+secretos). Verificar una sola fila enabled en private.clerk_issuers y su
+coincidencia con CLERK_ISSUER mediante la configuración aprobada y un resultado
+sanitizado de coincidencia, sin extraer ni imprimir secretos. Guardar bundles previos y configuración
 de las tres funciones para rollback. Desde un checkout limpio del SHA aceptado,
 con CLI autorizada y credenciales cargadas por el procedimiento protegido,
 ejecutar el guard `supabase/functions/scripts/verify-deploy-surface.ps1` y
@@ -55,7 +78,10 @@ en ese orden, con `supabase functions deploy <nombre> --project-ref <ref-aprobad
 Conservar `verify_jwt=false` del config y autenticación propia de cada handler;
 no cambiar secretos, flags, cron, mappings ni SQL. El wrapper actual no admite
 billing-reconcile: no ampliar su allowlist ni disparar el workflow general.
-Comprobar bundles/versiones/ACK y matriz sintética activa/bloqueada/revocada
+Comprobar bundles/versiones/ACK y que la primera invocación posterior del cron
+billing-reconcile ejecuta la versión recién desplegada: atar el registro de la
+invocación a la versión y al ACK/digest de ese bundle, no solo a un HTTP 200.
+Comprobar la matriz sintética activa/bloqueada/revocada
 en el entorno expresamente autorizado. No enviar compras ni replays financieros
 para verificarlo. Ante fallo, detener y pedir revisión antes de restaurar un
 bundle previo que volvería a permitir emitir a una cuenta bloqueada. Nada de

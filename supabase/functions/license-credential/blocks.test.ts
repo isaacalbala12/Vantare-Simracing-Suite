@@ -25,7 +25,7 @@ function bearer(data: boolean, overrides: Record<string, unknown> = {}) {
 }
 
 for (const data of [false, true]) {
-  for (const scenario of ["active", "admin-blocked", "banned", "locked", "deleted", "sql-deleted", "identity-conflict", "invalid-bearer", "mismatched-account", "mismatched-claim", "clerk-outage", "clerk-missing", "clerk-rate-limited"]) {
+  for (const scenario of ["active", "admin-blocked", "banned", "locked", "deleted", "identity-conflict", "invalid-bearer", "mismatched-account", "mismatched-claim", "clerk-outage", "clerk-missing", "clerk-rate-limited"]) {
     Deno.test(`legacy ${data ? "data" : "session"} bearer: ${scenario} checked before grants/signing`, async () => {
       const calls: string[] = [];
       const token = bearer(data);
@@ -40,9 +40,7 @@ for (const data of [false, true]) {
           }
           assertEquals(path, "/rest/v1/profiles");
           calls.push("authenticate");
-          return Promise.resolve(scenario === "sql-deleted"
-            ? Response.json({ code: "28000", message: "account_deleted" }, { status: 400 })
-            : scenario === "invalid-bearer"
+          return Promise.resolve(scenario === "invalid-bearer"
             ? Response.json({ code: "PGRST301" }, { status: 401 })
             : scenario === "deleted" ? Response.json(null) : Response.json({ id: account }));
         } },
@@ -90,7 +88,7 @@ for (const data of [false, true]) {
         },
       });
       const expected = scenario === "active" ? 200
-        : ["invalid-bearer", "deleted", "sql-deleted", "mismatched-account", "mismatched-claim", "clerk-missing"].includes(scenario) ? 401
+        : ["invalid-bearer", "deleted", "mismatched-account", "mismatched-claim", "clerk-missing"].includes(scenario) ? 401
         : scenario === "identity-conflict" ? 409
         : scenario === "clerk-rate-limited" ? 429
         : scenario === "clerk-outage" ? 503 : 403;
@@ -102,7 +100,7 @@ for (const data of [false, true]) {
         assertEquals(calls.includes("sign"), false);
         assertEquals(calls.includes("claim"), scenario === "mismatched-claim");
         if (scenario === "mismatched-claim") assertEquals(calls, ["authenticate", "resolve", "clerk", "claim"]);
-        if (["invalid-bearer", "deleted", "sql-deleted"].includes(scenario)) assertEquals(calls, ["authenticate"]);
+        if (["invalid-bearer", "deleted"].includes(scenario)) assertEquals(calls, ["authenticate"]);
         if (["admin-blocked", "mismatched-account"].includes(scenario)) assertEquals(calls, ["authenticate", "resolve"]);
         const result = await response.json();
         assertEquals("credential" in result, false);

@@ -1,3 +1,49 @@
+## VANTA-105 / #1793 — Verificacion autonoma en sapphireos (30-oct)
+
+El orquestador autoriza compilar en el servidor al estar apagado el PC de juegos
+y aparcadas las pruebas IA. Worktree propio `isa-1793-verificacion`, rama
+`vantareapp/isa-1793-verificacion-servidor`, base limpia `fe12c9194` de nightly
+(incluye #1794/#1796/#1800). Release beta 0.0.986, cola `compilar.ps1`, dos jobs,
+target exclusivo `D:/VantareServer/targets/isa-1793-verificacion-release`.
+Paquete PASS en 27m57s; Setup SHA256
+`72f9cbf8eb64914440743c0b6b879d642f5209f0684875f49220009271d1ea2a`.
+Instalacion real `/S` sobre RC8 `5548069c3`: exit 0, 32/32 datos identicos
+antes del primer arranque y 32/32 originales conservados. Solo metadatos/hashes;
+sin leer ni descifrar contenido de licencia, cuenta, DPAPI o tokens.
+
+Primer arranque 17:31:08 UTC sin controles: native-license HTTP 200,
+renewal-result=Ok(()), license-auto-result=Verified. Inicio sin Acceso sin
+verificar ni candados gratuitos; Cuenta muestra Acceso verificado activo.
+Navegacion a Cuenta posterior al log; nunca Comprobar acceso. Capturas reales y
+logs en `C:/VantareServer/evidence/isa-1793-servidor/`, resultados en #1793.
+Banner residual de Cuenta documentado aparte en #1801 (Project Vantare,
+area:licencias, sin tarea Plane creada): derechos pendientes pese a acceso
+verificado, ya visible en RC8. Sin arreglo fuera de alcance.
+
+Reapertura tras 311,37 segundos cerrado: nuevo HTTP 200 y Verified sin controles,
+Inicio sin aviso/candados gratuitos y Cuenta verificada (reopen-*.png/log/json).
+Offline: regla temporal bloquea solo salida de vantare-services.exe; log real
+Err(Offline), Transient y backoff. Inicio y Cuenta conservan acceso verificado
+sin error falso de licencia. Regla retirada a 17:38:30 UTC, cero reglas residuales;
+reintento automatico posterior HTTP 200 y Verified sin botones. Studio muestra
+Standings, Relative, Delta y Pedales incluidos sin candado; los 14 Pro conservan
+su restriccion comercial normal. Captura restored-studio.png.
+
+Cuenta DPAPI con hash identico antes/despues del arranque offline; binding
+presente pero su hash cambia por escritura del producto. No se afirma igualdad
+del ciphertext ni se inspecciona su contenido. El codigo de TransferRights
+instala el candidate local al admitir servicios; el acceso conservado se acredita
+por UI real y logs. Metadatos, regla y restauracion registrados en offline-*.json.
+
+Matriz fisica solicitada PASS en sapphireos con sesion existente, sin login del
+worker ni Comprobar acceso. Banner #1801 sigue pendiente y se informa aparte.
+No hubo cambio de codigo; no se repiten fmt/Clippy/Nextest/lifecycle/telemetria:
+la entrega es verificacion del binario limpio, con build/empaquetado PASS y tres
+checks remotos SUCCESS de fe12c9194. Diff documental revisado con diff --check.
+Sin release, promocion, despliegue ni cambio administrativo de cuenta. La
+aceptacion anterior pendiente de login en el PC de juegos queda sustituida por
+esta prueba con la sesion existente de sapphireos; no acredita ese otro PC.
+
 ## VANTA-105 / #1793 — PR complementario de sincronizacion (29-oct)
 
 Mapa verificado: nightly 8ddb6eeae integra #1796 con R2 funcional de f94;

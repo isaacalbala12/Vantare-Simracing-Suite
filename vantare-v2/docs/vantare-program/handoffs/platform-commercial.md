@@ -14,7 +14,7 @@ fuerza ninguna escritura de estado ni descripción del paraguas.
 
 - Puerta legacy preparada como 410/no-store, con CORS; sin interpretar bearer,
   cargar cuentas o firmar. `native-license` conserva su código de producto.
-- [Inventario y procedimiento](../../../../../supabase/functions/license-credential/README.md):
+- [Inventario y procedimiento](../../../../supabase/functions/license-credential/README.md):
   nativo usa native-license; bridge solo conserva nombre permitido/test; Wails
   retirado; ningún caller web/scripts en repo. La ausencia real fuera del repo
   solo la demuestra el acta de 30 días, todavía pendiente.

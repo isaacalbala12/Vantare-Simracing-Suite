@@ -7,7 +7,7 @@ fn account(session: Session) -> Reply {
         session,
         copy_link: false,
         signed_in: session == Session::SignedIn,
-        profile: Some(Default::default()),
+        profile: Some(super::super::protocol::AccountProfile::default()),
         expires_at: None,
         pending: false,
         message: String::new(),

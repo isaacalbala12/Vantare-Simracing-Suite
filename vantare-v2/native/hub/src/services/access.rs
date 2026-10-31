@@ -461,10 +461,10 @@ impl Remote {
     }
 
     pub(super) fn begin_access(&mut self, cx: &mut Context<Self>) {
+        use std::io::Write;
         if self.canceling_access() {
             return cx.notify();
         }
-        use std::io::Write;
         let _log = writeln!(std::io::stderr(), "account-access: requested");
         if self.working() {
             if self.access.manual.available {
@@ -579,7 +579,7 @@ impl Remote {
         }
     }
 
-    fn logout_return_button(&self, cx: &mut Context<Self>) -> Stateful<Div> {
+    fn logout_return_button(cx: &mut Context<Self>) -> Stateful<Div> {
         orbit::button("access-logout-back", "Volver", cx)
             .on_click(cx.listener(|this, _, _, cx| this.return_after_logout(cx)))
             .on_key_down(cx.listener(|this, event: &gpui::KeyDownEvent, _, cx| {
@@ -748,7 +748,7 @@ impl Remote {
         }
         if vantare_ipc::control::wall_ms().is_ok_and(|now| self.access.can_return_after_logout(now))
         {
-            body = body.child(self.logout_return_button(cx));
+            body = body.child(Self::logout_return_button(cx));
         }
         body = body.when(self.access.manual.available, |body| {
             body.child(self.access_copy_link(cx))

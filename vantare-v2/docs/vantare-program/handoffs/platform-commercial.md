@@ -5,8 +5,8 @@ Worker asignado por el orquestador después de #1818. Rama
 base origin/nightly `b7776633d` (#1818 y #1821 integrados), target propio
 `D:/VantareServer/targets/isa-1810`. Plane paraguas intacto. Project Vantare /
 area:licencias, sin milestone. [PR draft #1824](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1824)
-separado a nightly; código/tests rebasados `4fe6e1701`. HEAD, CI y estado vigentes se
-consultan en el PR. Project In Review; revisión profunda del orquestador en curso.
+separado a nightly; código/tests revisados `57cce6e7b`. HEAD, CI y estado vigentes se
+consultan en el PR. Project In Review; revisión profunda atendida, pendiente revisión final del nuevo HEAD.
 
 Rebase sobre #1821: App combina automáticamente los cambios; los conflictos de
 los dos README y este handoff conservan ambas entregas. Se mantienen logout
@@ -14,6 +14,34 @@ best-effort con SignedOut obligatorio, perfil siempre Automatic sin revocar y
 account_conflict transitorio. Storage coincide byte a byte con nightly.
 El cambio pendiente del worker anterior se conserva y se actualiza aquí.
 Gates repetidos sobre esta base; la CI del nuevo HEAD se consulta en el PR.
+
+
+Revisión profunda recibida y aplicada (31-oct):
+- Si falla o queda vacía la huella del helper, no decide contra el candidate:
+  envía Install ordinario y el núcleo verifica su identidad propia. El test
+  inyecta Storage, Unsupported y huella vacía, con núcleo disponible/no disponible.
+- Si falta la huella legacy del núcleo, v1 informa indisponibilidad y conserva
+  el binding del disco; nunca concede desde una identidad vacía ni atribuye el
+  fallo local al candidate firmado. Pipes y reinicio cubren con/sin binding.
+- Un rename bloqueado del candidate registra el fallo y continúa a Read.
+  Conserva los bytes y los derechos ya verificados, sin llamar a Invalidate.
+  Al liberar el handle se reintenta la cuarentena; storage mantiene sus errores
+  para los demás documentos, incluido account/oauth-metadata de #1821.
+- El test transitorio exige Err(Unavailable). Clock de disco → Rejected y
+  Clock online → Unavailable se prueban por el Host/pipe real, con latest_issued
+  y binding conservados. Se comprueba license-cache-device-mismatch.
+- [#1825](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1825),
+  area:licencias / Project Vantare / Backlog, sin milestone: primer binding
+  offline desde un candidate de otra cuenta del mismo PC. No se implementa aquí;
+  el orquestador debe fijar antes el contrato de identidad. Relacionado con #1798.
+- Gates de esta revisión: fmt/Clippy PASS, Nextest 850/850 con telemetría
+  (13 omisiones existentes), lifecycle 13/13 PASS. Quince mutaciones detectadas
+  por comportamiento: siete iniciales (Clock también por pipe), cuatro de #1821
+  y cuatro de revisión (huella helper/núcleo, rename y diagnóstico). Restauración
+  SHA-256 exacta y focal final 16/16 PASS; diagnósticos de dispositivo y rename
+  observados en stderr. El resultado de CI del HEAD publicado se consulta en
+  #1824 junto al SHA vigente; la CI de d4e17009a es histórica.
+  Evidencia nueva D:/VantareServer/evidence/isa-1810-review.
 
 - La firma del candidate se verifica y su dispositivo se compara con la huella
   actual. Otro dispositivo se aparta antes de Install, con diagnóstico propio
@@ -33,7 +61,8 @@ Gates repetidos sobre esta base; la CI del nuevo HEAD se consulta en el PR.
   A/B, ausencia de derechos, disponibilidad de logout y rechazo online. Pruebas
   de autoridad con reloj/tick inyectados para latest_issued y lápida futura ya
   superada por la pared, conservando sus fronteras y exigiendo nueva emisión.
-- Fmt y Clippy all-targets `-D warnings` scoped services/runtime/ipc PASS.
+- Evidencia histórica del rebase anterior a esta revisión: fmt y Clippy
+  all-targets `-D warnings` scoped services/runtime/ipc PASS.
   Nextest scoped con telemetría **846/846 PASS** (13 omisiones existentes);
   lifecycle **13/13 PASS**. Siete mutaciones detectadas: dispositivo, rechazo,
   clasificación Clock, transitorio, rechazo online, procedencia desde disco y

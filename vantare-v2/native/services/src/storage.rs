@@ -248,6 +248,7 @@ impl Store {
 
     fn trim_quarantines(&self, name: &str, newest: &Path) -> Result<()> {
         let prefix = format!("{name}-");
+        let legacy = format!("{name}.corrupto");
         let mut archives = Vec::new();
         for entry in fs::read_dir(&self.root).map_err(|_| Error::Storage)? {
             let entry = entry.map_err(|_| Error::Storage)?;
@@ -255,21 +256,26 @@ impl Store {
             let Some(file_name) = file_name.to_str() else {
                 continue;
             };
-            let Some(rest) = file_name
-                .strip_prefix(&prefix)
-                .and_then(|n| n.strip_suffix(".corrupto"))
-            else {
-                continue;
+            // Older restores used a fixed name or an undated random ID. Count
+            // those owned formats as oldest, so upgrades keep the same cap.
+            let time = if file_name == legacy {
+                0
+            } else {
+                let Some(rest) = file_name
+                    .strip_prefix(&prefix)
+                    .and_then(|n| n.strip_suffix(".corrupto"))
+                else {
+                    continue;
+                };
+                let (time, id) = rest.split_once('-').unwrap_or(("0", rest));
+                let Ok(time) = time.parse::<u64>() else {
+                    continue;
+                };
+                if id.len() != 64 || !id.bytes().all(|b| b.is_ascii_hexdigit()) {
+                    continue;
+                }
+                time
             };
-            let Some((time, id)) = rest.split_once('-') else {
-                continue;
-            };
-            let Ok(time) = time.parse::<u64>() else {
-                continue;
-            };
-            if id.len() != 64 || !id.bytes().all(|b| b.is_ascii_hexdigit()) {
-                continue;
-            }
             let kind = entry.file_type().map_err(|_| Error::Storage)?;
             if kind.is_file() && !kind.is_symlink() {
                 archives.push((time, entry.path()));
@@ -371,6 +377,16 @@ mod tests {
         let (root, store) = crate::test_store("account-cache-recovery");
         for name in ["account", "oauth-metadata"] {
             let path = store.path(name).expect("fixture path");
+            fs::write(store.root.join(format!("{name}.corrupto")), b"legacy fixed")
+                .expect("legacy archive");
+            fs::write(
+                store.root.join(format!(
+                    "{name}-{}.corrupto",
+                    crate::random_id().expect("fixture id")
+                )),
+                b"legacy unique",
+            )
+            .expect("legacy unique archive");
             for at in 1..=4 {
                 fs::write(&path, [u8::try_from(at).expect("fixture byte"); 16])
                     .expect("unreadable DPAPI fixture");
@@ -384,6 +400,7 @@ mod tests {
                         .file_name()
                         .to_string_lossy()
                         .starts_with(&format!("{name}-"))
+                        || entry.file_name().to_string_lossy() == format!("{name}.corrupto")
                 })
                 .map(|entry| fs::read(entry.path()).expect("preserved bytes"))
                 .collect();

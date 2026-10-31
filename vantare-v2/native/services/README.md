@@ -2,7 +2,8 @@
 
 Cuenta y metadata OAuth usan lectura de caché: DPAPI/JSON ilegible se aparta
 con bytes intactos y fecha inyectada, hasta tres copias por documento salvo
-bloqueos de limpieza. Un fallo real de lectura o renombrado sigue siendo error.
+bloqueos de limpieza. También cuentan las copias de los dos formatos antiguos,
+que se retiran antes que las copias fechadas recientes. Un fallo real de lectura o renombrado sigue siendo error.
 La metadata pública se redescubre; una cuenta ilegible empieza sin sesión.
 Logout conserva el ACK durable de revocación, pero escribe SignedOut sin
 redescubrir OAuth ni restaurar primero la sesión dañada. Una identidad nueva

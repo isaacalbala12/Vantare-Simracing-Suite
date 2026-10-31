@@ -5,7 +5,8 @@
   "summary": "Se puede volver a iniciar sesión y cerrar sesión tras un daño en los archivos locales de cuenta.",
   "technicalNotes": [
     "La sesión o metadata ilegible se conserva en cuarentena. Los errores reales de disco siguen informándose.",
-    "Cerrar sesión ya no necesita consultar la configuración OAuth en la red."
+    "Cerrar sesión ya no necesita consultar la configuración OAuth en la red.",
+    "El límite de tres copias incluye las cuarentenas antiguas al actualizar desde versiones anteriores."
   ],
   "testing": [
     "Con fixtures aisladas, dañar cuenta o metadata: comprobar nuevo acceso, cierre de sesión y reinicio. No usar archivos reales."

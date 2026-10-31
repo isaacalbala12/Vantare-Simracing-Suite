@@ -4,40 +4,43 @@
 hacia nightly, enlazado en T3. Solo tests y documentación, sin cambiar producto.
 Base `origin/nightly` `a64df5c36b1d9435b29aa6c8fa251d97a5c1f161`; rama
 `vantareapp/isa-1827-licencias-paso0`, worktree `C:/VantareServer/wt/isa-1827`,
-target `D:/VantareServer/targets/isa-1827`. Código completo `2be5b4113a9a27710be817d2f787ae16a18cad92`;
-HEAD documental y CI vigentes en el PR y #1827. Project Vantare / area:licencias,
-sin milestone. Plane VANTA-126 pasa a Por revisar con el PR y resumen sencillo.
+target `D:/VantareServer/targets/isa-1827`. HEAD final, push y CI se verifican
+junto al SHA en el PR y #1827. Project Vantare / area:licencias / In Review,
+sin milestone. Plane VANTA-126 Por revisar, con PR y resumen sencillo verificados.
 
-- [Diseño completo versionado](../license-access-model-design.md), con índice
-  de matrices; conserva todos los párrafos del original, sin datos sensibles.
-  Las preguntas de §4.6 ya están resueltas por #1827 y el
+- [Diseño versionado](../license-access-model-design.md), sin datos sensibles,
+  con índice de matrices y enmienda autorizada del paso 6b; el resto del análisis
+  original se conserva. Las decisiones de #1827 se fijan en el
   [ADR 0102](../../adr/0102-modelo-acceso-nativo.md), aceptado por el orquestador.
-- 138 filas nuevas: núcleo 21, servicios 77 y servidor 40. Fijan el estado actual,
-  incluidas revocaciones manuales (cambian en paso 5), recovery solo online
-  (paso 1), candidate (paso 8) y diagnóstico genérico de lápida futura (paso 7).
+- 139 filas nuevas: núcleo 22, servicios 77 y servidor 40. Fijan el estado actual,
+  incluidas revocaciones manuales (paso 5), recovery solo online (paso 1),
+  candidate (paso 8) y diagnóstico genérico de lápida futura (paso 7).
   No se añade seam de producción, dependencia ni cambio de formato.
+- Revisión de solo lectura atendida: `Paused` pierde hoy la gracia y `Stale`
+  la conserva; se fijan ambas filas. El orquestador asignó la corrección al
+  **paso propio 6b — la pausa conserva la gracia**, entre el 6 y el 7, como
+  cambio justificado por la decisión 4. El 7 sigue siendo refactor puro.
+- Los tests usan servidor observado para detectar HTTP extra, ausencia tipada
+  NotFound para candidate borrado y plazo máximo recibido después del menor.
+  Se evita fijar texto de Policy.error: evento tipado y presencia actual;
+  Policy.state será el contrato tipado del paso 7. No se corrige producto aquí.
 - Reloj inyectado, firmas de fixture, Store aislado, HTTP loopback y pipe.
-  Purchase usa el mismo comando automático en servicios; no se inventa un
-  tercer origen productivo. DeviceReset se prueba también contra respuestas
-  del puente/reset remoto y éxito. Las funciones Deno son reales; sus filas
-  efectivas son fixtures, no prueba de SQL/RLS o despliegue.
-- Gates por la cola: fmt PASS; Clippy runtime/services/ipc all-targets
-  `-D warnings` PASS (cubre check); Nextest scoped con telemetría **854/854 PASS**,
-  13 skips existentes; services final tras añadir DeviceReset **272/272 PASS**,
-  seis skips existentes; lifecycle **13/13 PASS**. No se repite telemetría por
-  añadir solo tests de services tras la tanda del núcleo.
-- Deno en CI **218/218 PASS**, incluidos 40 nuevos, sobre `2be5b4113`;
-  CI restante del HEAD final se consulta en el PR. Sin Deno local.
-  Quality check y retirada **466/466 PASS**. UTF-8/enlaces locales y conservación
-  íntegra del diseño comprobados; diff completo revisado.
-- Evidencia `D:/VantareServer/evidence/isa-1827`: nextest-ci.log,
-  services-final.log, clippy-final3.log, fmt-final.log y lifecycle.log.
-  Se conservan los fallos intermedios de Clippy (longitud/tipo complejo y
-  préstamo innecesario), corregidos sin allow ni rebajar gates; el doc-markdown
-  del test nuevo se corrigió antes de la tanda final.
-- Siguiente: el orquestador revisa PR/CI y decide integración. El paso 1 va en
-  issue/PR propios; no se empieza aquí. Sin prueba de cuentas reales, ejecución
-  del Hub, instalación, producción, merge, promoción ni release.
+  Purchase usa el mismo comando automático en servicios. Las funciones Deno
+  son reales; las filas efectivas son fixtures, no prueba de SQL/RLS o despliegue.
+- Gates por la cola tras correcciones: fmt PASS; Clippy runtime/services/ipc
+  all-targets `-D warnings` PASS (cubre check); Nextest scoped con telemetría
+  **855/855 PASS**, 13 skips existentes. Lifecycle **13/13 PASS** (producto
+  ejecutable intacto). Tanda services previa **272/272 PASS**, seis skips.
+  Quality check y retirada **466/466 PASS**. UTF-8, enlaces locales y diff revisados.
+- Deno: 40 filas nuevas, CI **218/218 PASS** antes del último reordenamiento
+  de la fila de plazo máximo; nueva CI del HEAD final requerida en el PR.
+  Sin Deno local ni cambios de workflow.
+- Evidencia `D:/VantareServer/evidence/isa-1827`: review-clippy2.log,
+  review-nextest-ci.log, fmt-final.log, lifecycle.log y review-dispositions.json.
+  Se conservan fallos intermedios de Clippy, corregidos sin allow ni rebajar gates.
+- Siguiente: revisar diff/CI y decidir integración. Los pasos 1 y 6b tendrán
+  issues/PR propios; no se empiezan aquí. Sin cuentas reales, Hub físico,
+  instalación, producción, merge, promoción ni release.
 
 ## VANTA-105 / #1810 — Candidate y admisión (31-oct, por revisar)
 

@@ -63,6 +63,10 @@ silenciosa. No se baja una lápida sana ni se amplían plazos al reanclar reloj.
    y cada 24 h, sin revocación por transporte. Esto no elimina el lease firmado
    de Owner cuando existe; se conserva su vencimiento.
 4. Una pausa en la misma sesión del simulador conserva la gracia de una hora.
+   Se implementa en el **paso 6b — la pausa conserva la gracia**, entre el 6 y
+   el 7: `Paused` conservará la gracia igual que `Stale`. Es un cambio de
+   comportamiento justificado por esta decisión, asignado por el orquestador
+   durante el paso 0. Hoy `Paused` la pierde; la caracterización lo fija tal cual.
 5. Credencial v2 no planificada: se retira en el paso 11 salvo objeción de Isaac.
 
 ## Consecuencias y verificación
@@ -70,7 +74,7 @@ silenciosa. No se baja una lápida sana ni se amplían plazos al reanclar reloj.
 El paso 0 fija nightly, incluidos comportamientos que cambiarán a propósito.
 Las matrices de núcleo, servicios y normalización tienen una fila por caso;
 los pasos 4, 6 y 7 deben conservar sus decisiones de acceso. Los pasos 1, 5,
-8 y 10 justifican las diferencias en su propia entrega. El paso 2 conserva su
+6b, 8 y 10 justifican las diferencias en su propia entrega. El paso 2 conserva su
 arreglo de estados separado. Ningún paso de implementación mezcla cliente y servidor.
 
 Las fronteras delicadas son tolerancia ±300 s, latest_issued, reloj corregido,

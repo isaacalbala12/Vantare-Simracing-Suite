@@ -38,7 +38,7 @@ fn assert_remote_reset(authorize: bool, status: u16, error: Option<Error>) {
         ));
     }
     responses.push((status, "{}".into()));
-    let server = crate::test_http::Server::start(responses);
+    let server = crate::test_http::Server::start_observed(responses);
     let (root, store) = crate::test_store("reset-characterization");
     let account = crate::account::fixture(&server.base, &store);
     let config = BuildConfig {
@@ -110,8 +110,7 @@ fn assert_remote_reset(authorize: bool, status: u16, error: Option<Error>) {
                 .starts_with("POST /rest/v1/rpc/reset_active_device ")
         );
     }
-    assert!(server.requests.try_recv().is_err(), "no automatic replay");
-    server.finish();
+    assert!(server.finish_observed().is_empty(), "no automatic replay");
     drop(app);
     crate::cleanup_store(&root, "reset-characterization", &[]);
 }

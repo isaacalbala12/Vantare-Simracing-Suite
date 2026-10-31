@@ -5,6 +5,8 @@
 > manda el [ADR 0102 — Modelo de acceso nativo](../adr/0102-modelo-acceso-nativo.md).
 > Las rutas y líneas describen la base histórica indicada, no despliegues reales.
 > Implementación por pasos; este documento no cambia comportamiento de producto.
+> Enmienda del orquestador durante el paso 0 (31-oct-2026): se añade el paso 6b
+> entre el 6 y el 7 para conservar la gracia durante `Paused`; el 7 sigue puro.
 
 Rol: analista de diseño (advisor) del orquestador. Solo lectura: no se ha editado
 código, compilado, ejecutado la app ni leído secretos, `.env*` o datos reales de
@@ -434,6 +436,7 @@ se demuestran con tests de caracterización escritos **antes**, en el paso 0.
 | 4 | **`outcome()` único** y uso en los 4 sitios, conservando aún la diferencia manual/automática como columna explícita | Refactor | Base de R7/R11/R12 | Matriz del paso 0 sin diferencias |
 | 5 | **Las renovaciones no revocan**; refresh rechazado → `NeedsSignIn` | Cambio de comportamiento (decisión §4.6) | R7, resto de R12 | Matriz: la columna «revoca» solo es verdadera en Logout, cambio de identidad y DeviceReset |
 | 6 | **`Session` explícita** en `Reply::Account`; supervisor y Hub la leen | Refactor (services v16) | R10 cerrado de raíz; #1801 (el mensaje deja de adivinar derechos) | Matriz de sesión del paso 0; GPUI de acceso |
+| 6b | **La pausa conserva la gracia** | Cambio de comportamiento justificado por la decisión 4 | R5 | `Paused` en la misma sesión del simulador conserva la gracia de 1 h, igual que `Stale`; la fila del paso 0 fija la pérdida actual y lleva «cambia en paso 6b» |
 | 7 | **`Policy.state` y `Policy::denied()`** (control v7); `signed_until_ms`/`grace_until_ms`; consumidores migrados; se retiran `online_recovery_required` y las comparaciones de cadenas | Refactor + diagnóstico nuevo | #1822 F2 (motivo `ClockBehind{until}` y freno de reintentos inútiles), base de #1806 | Matriz del núcleo igual; tests de Hub y overlays por estado |
 | 8 | **Quitar candidate y TransferRights** (§4.2.1) | Simplificación con un cambio menor justificado | #1810, #1825, #1798, #1819 pt.4, parte de #1816 | Fixtures: ACK perdido → transitorio → una renovación HTTP; restos de candidate ignorados; rollback a la generación anterior |
 | 9 | **Aviso persistente**, servido sin arrancar el helper; el Hub deja de renovar durante la compra | Arreglo | #1799 pt.2/pt.5, R11 | Reloj inyectado: aviso visible tras perder una respuesta; compra confirmada solo por el Feed |
@@ -442,9 +445,9 @@ se demuestran con tests de caracterización escritos **antes**, en el paso 0.
 | 12 | *(Transversal, issue propia)* `Store`: una lectura `read → {Valor, Falta, Dañado}` y una clase declarada por documento (guarda durable, caché reconstruible o secreto de sesión), con un único `quarantine_dated` | Refactor de storage | Raíz común de #1806/#1808 y #1822 F4 | Tabla de documentos con test por clase; afecta también a roadmap, informes y pilot |
 | — | Documentación: README de services/runtime/ipc/hub con **una** sección de contrato vigente en lugar de las secciones fechadas apiladas | Doc | P3 R3 | Revisión del diff |
 
-Orden: 0 → (1, 2, 3 en paralelo, servidor) → 4 → 5 → 6 → 7 → 8 → 9 → 10.
+Orden: 0 → (1, 2, 3 en paralelo, servidor) → 4 → 5 → 6 → 6b → 7 → 8 → 9 → 10.
 11 y 12 cuando convenga. Los pasos 4, 6 y 7 no cambian comportamiento. Los
-pasos 1, 5, 8 y 10 lo cambian a propósito, con su justificación.
+pasos 1, 5, 6b, 8 y 10 lo cambian a propósito, con su justificación.
 
 Interacción con el trabajo en curso: #1824 (#1810) y #1821 (#1808/#1812) están
 en revisión. Si se integran, el paso 8 borra buena parte de #1824. Recomiendo
@@ -566,7 +569,7 @@ no son una implementación anticipada de este diseño.
 
 | Tabla | Casos | Fuente |
 | --- | ---: | --- |
-| Estado/evento → Policy (Owner y Authority reales, firma y Store aislados) | 21 | [runtime: characterization](../../native/runtime/src/rights/tests/characterization.rs) |
+| Estado/evento → Policy (Owner y Authority reales, firma y Store aislados) | 22 | [runtime: characterization](../../native/runtime/src/rights/tests/characterization.rs) |
 | Error remoto/origen → Error tipado, revocación, candidate y sesión | 34 | [services: characterization](../../native/services/src/app/tests/characterization.rs), `nightly_error_origin_effects_matrix` |
 | Error → resultado automático (incluido DeviceLimit) | 26 | mismo archivo, `nightly_automatic_failure_result_matrix` |
 | Logout/DeviceReset/TransferRights: ACK correcto/rechazado y efectos | 6 | mismo archivo, `nightly_explicit_revocation_and_transfer_matrix` |
@@ -594,6 +597,9 @@ Cobertura complementaria ya existente y conservada:
 - [candidate_tests.rs](../../native/services/src/app/candidate_tests.rs):
   dispositivo y cuenta incompatibles, rechazo de disco y procedencia online.
 
+La fila `Paused` fija hoy la pérdida de gracia; `Stale` la conserva. El
+orquestador asignó su corrección al paso propio 6b, antes del refactor puro 7,
+y la fila lleva «cambia en paso 6b». No se corrige producto en el paso 0.
 Las filas User que revocan por renovación/refresh llevan «cambia en paso 5»;
 recovery solo online lleva «cambia en paso 1»; candidate apartado lleva
 «cambia en paso 8». La lápida futura conserva hoy el diagnóstico genérico

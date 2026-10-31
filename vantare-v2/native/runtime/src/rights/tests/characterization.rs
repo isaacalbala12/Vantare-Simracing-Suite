@@ -10,6 +10,7 @@ enum Case {
     Grace,
     GraceEnd,
     Pause,
+    Stale,
     Leave,
     Rollback,
     OnlineReanchor,
@@ -50,7 +51,9 @@ fn nightly_state_event_policy_matrix() {
         (Expiry, None, true, false, Free, false, None),
         (Grace, None, true, true, Pro, false, Some(3620)),
         (GraceEnd, None, true, false, Free, false, None),
-        (Pause, None, true, true, Pro, false, Some(3620)),
+        // Paused pierde hoy la gracia: cambia en paso 6b (decisión 4 de #1827).
+        (Pause, None, true, false, Free, false, None),
+        (Stale, None, true, true, Pro, false, Some(3620)),
         (Leave, None, true, false, Free, false, None),
         (Rollback, Some(Error::Clock), false, false, Free, true, None),
         (OnlineReanchor, None, true, true, Pro, false, Some(20)),
@@ -112,6 +115,7 @@ fn nightly_state_event_policy_matrix() {
             ),
             "{case:?}: error presence"
         );
+        // El motivo tipado llegará con Policy.state (paso 7); no fijar textos.
         drop(owner);
         clean(&root);
     }
@@ -179,7 +183,7 @@ fn run_event(
                     tick = Duration::from_secs(20);
                     Ok(())
                 }
-                Grace | GraceEnd | Pause | Leave => {
+                Grace | GraceEnd | Pause | Stale | Leave => {
                     owner
                         .advance(&photo(true), wall(start + 5), Duration::from_secs(5))
                         .expect("enter before expiry");
@@ -187,6 +191,9 @@ fn run_event(
                     tick = Duration::from_secs(u64::try_from(at - start).expect("elapsed"));
                     snapshot = photo(true);
                     if matches!(case, Pause) {
+                        snapshot.state.source_state = SourceState::Paused;
+                    }
+                    if matches!(case, Stale) {
                         snapshot.state.source_state = SourceState::Stale;
                     }
                     if matches!(case, Leave) {

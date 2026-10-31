@@ -32,7 +32,7 @@ for (const [name, rows, expected] of [
   ["entorno ajeno", [{ ...grant(), environment: "sandbox" }], { ok: false }],
   ["legacy ignorado", [{ ...grant("unknown"), provider: "legacy", environment: "legacy" }], ok()],
   ["capability desconocida", [grant("unknown")], { ok: false }],
-  ["gana plazo mayor", [grant(pro, past), grant(), grant(pro, "2026-10-31T13:00:00.000Z")], ok([paid()])],
+  ["gana plazo mayor posterior", [grant(pro, past), grant(pro, "2026-10-31T13:00:00.000Z"), grant()], ok([paid()])],
   ["Founders perpetuo de order", [grant(founder, null, "order")], ok([perpetual(founder)])],
   ["Founders temporal inválido", [grant(founder, future, "order")], { ok: false }],
   ["Founders subscription inválido", [grant(founder, null)], { ok: false }],

@@ -77,7 +77,7 @@ fn assert_error_origin_effects(
     use Route::*;
     let device = crate::license::installation::legacy_fingerprint().expect("fixture device");
     let (credential, keys) = crate::license_remote::tests::signed_fixture(&device);
-    let server = crate::test_http::Server::start(vec![(status, body.into())]);
+    let server = crate::test_http::Server::start_observed(vec![(status, body.into())]);
     let (root, store) = crate::test_store("license-characterization");
     let account = crate::account::fixture(&server.base, &store);
     let config = BuildConfig {
@@ -129,16 +129,7 @@ fn assert_error_origin_effects(
         Some(error),
         "{route:?}/{origin:?}/{status}"
     );
-    let cached = app
-        .candidate_store()
-        .expect("store")
-        .load::<crate::license_remote::Candidate>("license-candidate");
-    assert_eq!(
-        cached.is_ok(),
-        candidate,
-        "{route:?}/{origin:?}/{status}: candidate"
-    );
-    if let Ok(cached) = cached {
+    if let Some(cached) = assert_candidate_presence(&mut app, candidate) {
         assert_eq!(cached.credential.signature, saved.credential.signature);
         assert_eq!(cached.account_id, saved.account_id);
         assert_eq!(cached.device, saved.device);
@@ -164,10 +155,9 @@ fn assert_error_origin_effects(
         "{request}"
     );
     assert!(
-        server.requests.try_recv().is_err(),
+        server.finish_observed().is_empty(),
         "no replay or extra request"
     );
-    server.finish();
     drop(app);
     crate::cleanup_store(&root, "license-characterization", &[]);
 }
@@ -290,14 +280,7 @@ fn nightly_explicit_revocation_and_transfer_matrix() {
             expected,
             "{name}, reject={reject}"
         );
-        assert_eq!(
-            app.candidate_store()
-                .expect("store")
-                .load::<crate::license_remote::Candidate>("license-candidate")
-                .is_ok(),
-            candidate,
-            "{name}, reject={reject}: candidate"
-        );
+        let _ = assert_candidate_presence(&mut app, candidate);
         assert_eq!(
             app.account.as_ref().expect("account").identity().is_some(),
             session,
@@ -307,5 +290,24 @@ fn nightly_explicit_revocation_and_transfer_matrix() {
         core.join().expect("ordered ACK before effects");
         drop(app);
         crate::cleanup_store(&root, "explicit-characterization", &[]);
+    }
+}
+
+fn assert_candidate_presence(
+    app: &mut App,
+    present: bool,
+) -> Option<crate::license_remote::Candidate> {
+    let cached = app
+        .candidate_store()
+        .expect("store")
+        .load::<crate::license_remote::Candidate>("license-candidate");
+    if present {
+        Some(cached.expect("candidate remains readable"))
+    } else {
+        assert!(
+            matches!(cached, Err(Error::NotFound)),
+            "candidate removed, not corrupt"
+        );
+        None
     }
 }

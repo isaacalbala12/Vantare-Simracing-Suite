@@ -1,3 +1,40 @@
+## VANTA-126 / #1827, #1815 — Paso 3: retirar emisión legacy (31-oct-2026)
+
+Rama `vantareapp/isa-1827-paso3-retirar-credential`, base nightly
+`3e6f2dce7181ac224f4a1ed6ffa38e11373c89e9`, worktree
+`C:/VantareServer/wt/isa-1827-p3`. Project Vantare / area:licencias, sin milestone.
+Plane paraguas sin cambio de estado.
+[PR draft #1830](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1830)
+a nightly, enlazado en T3; HEAD/CI final en #1827/#1815.
+CI del código `278678d8b`: 6/6 SUCCESS, incluido commercial LF/CRLF
+[run 41228259646](https://github.com/isaacalbala12/Vantare-Simracing-Suite/actions/runs/41228259646).
+Este cierre documental requiere comprobar de nuevo la CI de su propio HEAD.
+El orquestador asume los comentarios Plane; este worker no escribe allí.
+El script de base rechazó --comentario sin estado; no se forzó ninguna escritura.
+
+- Puerta legacy preparada como 410/no-store, con CORS; sin interpretar bearer,
+  cargar cuentas o firmar. `native-license` conserva su código de producto.
+- [Inventario y procedimiento](../../../../supabase/functions/license-credential/README.md):
+  nativo usa native-license; bridge solo conserva nombre permitido/test; Wails
+  retirado; ningún caller web/scripts en repo. La ausencia real fuera del repo
+  solo la demuestra el acta de 30 días, todavía pendiente.
+- Tests 410 con/sin bearer, métodos y body inválido, cero dependencias; emisión
+  nativa/firma y arnés comercial desechable conservados. Las filas de
+  caracterización pura no cambian en paso 3. Sin Deno local; gates por CI.
+- Helpers compartidos de normalización/firma/carga no se eliminan: sirven a
+  native-license y otros consumidores. No se toca cliente, esquema o dependencias.
+- Revisión DeepSeek de solo lectura: sin P0/P1. Enlace al procedimiento corregido;
+  inventario ampliado a todo el árbol, salida agregada sin rutas crudas, margen
+  de ingesta obligatorio y README nativo actualizado. El orquestador autoriza excluir SOLO
+  license-credential del default de despliegue; sigue en ValidateSet, con test.
+  Checklist exige -Functions license-credential explícito, acta y autorización
+  de Isaac. Sin cambios de workflows ni ejecución de despliegues.
+- Siguiente: review y CI del SHA. **No desplegar** sin cero uso 30 días completos
+  y autorización expresa de Isaac. Con tráfico o cobertura incompleta se conserva
+  la barrera de bloqueo de #1817. Checklist de despliegue/reversión en README/PR.
+- Sin consultas ni despliegue a producción, secretos, cuentas reales, merge,
+  promoción o release. Evidencia final por SHA en PR/issue.
+
 ## VANTA-126 / #1827 — Licencias paso 0 (31-oct, por revisar)
 
 [PR draft #1828](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1828)

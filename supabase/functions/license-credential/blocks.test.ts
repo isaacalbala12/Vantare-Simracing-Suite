@@ -26,7 +26,7 @@ function bearer(data: boolean, overrides: Record<string, unknown> = {}) {
 
 for (const data of [false, true]) {
   for (const scenario of ["active", "admin-blocked", "banned", "locked", "deleted", "identity-conflict", "invalid-bearer", "mismatched-account", "mismatched-claim", "clerk-outage", "clerk-missing", "clerk-rate-limited"]) {
-    Deno.test(`legacy ${data ? "data" : "session"} bearer: ${scenario} checked before grants/signing`, async () => {
+    Deno.test(`legacy ${data ? "data" : "session"} bearer: ${scenario} retired before authentication/grants/signing`, async () => {
       const calls: string[] = [];
       const token = bearer(data);
       const userClient = createClient("https://local.invalid", "fixture", {
@@ -87,30 +87,17 @@ for (const data of [false, true]) {
           return Promise.resolve({ version: 1, algorithm: "Ed25519", key_id: "fixture", claims, signature: "fixture" });
         },
       });
-      const expected = scenario === "active" ? 200
-        : ["invalid-bearer", "deleted", "mismatched-account", "mismatched-claim", "clerk-missing"].includes(scenario) ? 401
-        : scenario === "identity-conflict" ? 409
-        : scenario === "clerk-rate-limited" ? 429
-        : scenario === "clerk-outage" ? 503 : 403;
-      assertEquals(response.status, expected);
-      if (scenario === "active") {
-        assertEquals(calls, ["authenticate", "resolve", "clerk", "claim", "load", "load", "load", "load", "sign"]);
-      } else {
-        assertEquals(calls.includes("load"), false);
-        assertEquals(calls.includes("sign"), false);
-        assertEquals(calls.includes("claim"), scenario === "mismatched-claim");
-        if (scenario === "mismatched-claim") assertEquals(calls, ["authenticate", "resolve", "clerk", "claim"]);
-        if (["invalid-bearer", "deleted"].includes(scenario)) assertEquals(calls, ["authenticate"]);
-        if (["admin-blocked", "mismatched-account"].includes(scenario)) assertEquals(calls, ["authenticate", "resolve"]);
-        const result = await response.json();
-        assertEquals("credential" in result, false);
-      }
+      assertEquals(response.status, 410);
+      assertEquals(calls, []);
+      const result = await response.json();
+      assertEquals(result.error, "endpoint_retired");
+      assertEquals("credential" in result, false);
     });
   }
 }
 
 for (const claims of [{ iss: "https://foreign.invalid" }, { sub: account }, { clerk_subject: "user_bad" }]) {
-  Deno.test(`legacy rejects incompatible identity after RPC: ${JSON.stringify(claims)}`, async () => {
+  Deno.test(`legacy retires incompatible identity without RPC: ${JSON.stringify(claims)}`, async () => {
     const userClient = createClient("https://local.invalid", "fixture", {
       auth: { autoRefreshToken: false, persistSession: false },
       global: { fetch: () => Promise.resolve(Response.json({ id: account })) },
@@ -122,6 +109,6 @@ for (const claims of [{ iss: "https://foreign.invalid" }, { sub: account }, { cl
       method: "POST", headers: { Authorization: `Bearer ${bearer("clerk_subject" in claims, claims)}` },
       body: JSON.stringify({ deviceFingerprint: fingerprint }),
     }), { store, environment: "sandbox", sign: () => { throw new Error("must not sign"); } });
-    assertEquals(response.status, 401);
+    assertEquals(response.status, 410);
   });
 }

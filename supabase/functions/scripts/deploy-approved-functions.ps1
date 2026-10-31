@@ -3,7 +3,7 @@ param(
   [ValidatePattern('^[a-z0-9]{20}$')]
   [string]$ProjectRef,
   [ValidateSet("billing-checkout", "billing-portal", "billing-webhook", "license-credential", "native-license", "mail-unsubscribe", "mail-webhook", "mail-cleanup", "native-mail-consent")]
-  [string[]]$Functions = @("billing-checkout", "billing-portal", "billing-webhook", "license-credential")
+  [string[]]$Functions = @("billing-checkout", "billing-portal", "billing-webhook")
 )
 
 $ErrorActionPreference = "Stop"

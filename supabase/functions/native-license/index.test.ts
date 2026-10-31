@@ -123,7 +123,7 @@ async function expectError(response: Response, status: number, error: string) {
   assert(!JSON.stringify(value).includes(accountId));
 }
 
-Deno.test("native and TPA issue exactly the same signed credential and grants", async () => {
+Deno.test("native still signs credentials while the legacy endpoint returns Gone", async () => {
   const keys = await crypto.subtle.generateKey("Ed25519", true, [
     "sign",
     "verify",
@@ -185,12 +185,12 @@ Deno.test("native and TPA issue exactly the same signed credential and grants", 
     },
   );
   assert(
-    native.status === 200 && legacy.status === 200 && verifications === 1 &&
+    native.status === 200 && legacy.status === 410 && verifications === 1 &&
       loads === 1,
   );
   assert(native.headers.get("Cache-Control") === "no-store");
   const nativeBody = await native.json();
-  assert(JSON.stringify(nativeBody) === JSON.stringify(await legacy.json()));
+  assert((await legacy.json()).error === "endpoint_retired");
   assert(
     JSON.stringify(Object.keys(nativeBody).sort()) ===
       '["credential","online_capabilities"]',
@@ -784,7 +784,7 @@ Deno.test("production issuance selects its grants when sandbox rights coexist", 
   );
 });
 
-Deno.test("legacy Wails credential omits native modules from account and global rollout", async () => {
+Deno.test("legacy endpoint is Gone even with native modules and global rollout", async () => {
   const moduleState = {
     accountId,
     deviceMatches: true,
@@ -816,9 +816,9 @@ Deno.test("legacy Wails credential omits native modules from account and global 
       sign: deps().sign,
     },
   );
-  assert(response.status === 200);
+  assert(response.status === 410);
   const result = await response.json();
-  assert(result.credential.claims.capabilities.length === 0);
+  assert(result.error === "endpoint_retired" && result.credential === undefined);
 });
 
 Deno.test("cancelled on day thirteen signs seventeen remaining paid days", async () => {

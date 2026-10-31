@@ -1,8 +1,9 @@
 # native-license — acceso beta por módulos (#1451)
 
 Firma las concesiones de cuenta y los módulos activos para todos. Los módulos
-solo se incluyen en `native-license`: `license-credential` los omite para
-mantener el conjunto cerrado del verificador Go/Wails congelado. Owner, tester y
+solo se incluyen en `native-license`. En este checkout `license-credential`
+está preparado como 410 (ADR 0102 / #1827 paso 3); su despliegue exige cero uso
+30 días y autorización de Isaac, según el [procedimiento](../license-credential/README.md). Owner, tester y
 nightly_tester abren todos los módulos en el núcleo sin filas individuales. El
 cliente no acepta capacidades desconocidas. Los módulos son perpetuos, sin
 `paid_through` ni `scope_version`; la caché y el envelope conservan sus reglas.
@@ -64,9 +65,10 @@ retirarse. El envelope V2, cuando se usa, limita la vigencia incluso sin grants.
 Una caída de la consulta rollout da 503; no se firma ignorando esa tabla.
 
 La tabla tiene RLS y solo `service_role` dispone de permisos. No ejecutar estas
-operaciones hasta aplicar la migración nueva y desplegar `native-license` y
-`license-credential` con su helper revisado. El endpoint Wails antiguo
-rechazaría filas individuales de módulo si no se despliega también su filtro.
+operaciones hasta aplicar la migración nueva y desplegar `native-license`
+con su helper revisado, bajo autorización de Isaac. No desplegar la puerta
+legacy como parte de esta operación: su retirada 410 tiene el procedimiento
+condicionado e independiente enlazado arriba.
 
 Checks locales:
 `deno test --allow-env --allow-read native-license license-credential`.

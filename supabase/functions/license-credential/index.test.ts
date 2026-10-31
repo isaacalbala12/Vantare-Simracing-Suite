@@ -1,8 +1,8 @@
 import {
   CREDENTIAL_ALGORITHM,
   CREDENTIAL_ISSUER,
-  CredentialAuthError,
-  handleLicenseCredentialRequest,
+  issueCredential,
+  type CredentialDeps,
   isCredentialAuthFailure,
   normalizeGrants,
   normalizeOperationalAssignments,
@@ -91,7 +91,7 @@ Deno.test("credential request signs exact independent capabilities without PII",
     ["sign", "verify"],
   ) as CryptoKeyPair;
   const request = credentialRequest({ deviceFingerprint: fingerprint });
-  const response = await handleLicenseCredentialRequest(request, {
+  const response = await issueForFixture(request, {
     environment: "production",
     now: () => new Date("2026-08-02T12:00:00.000Z"),
     store: {
@@ -156,7 +156,7 @@ Deno.test("credential request signs exact independent capabilities without PII",
 });
 
 Deno.test("credential request rejects a different active device", async () => {
-  const response = await handleLicenseCredentialRequest(
+  const response = await issueForFixture(
     credentialRequest({ deviceFingerprint: fingerprint }),
     {
       environment: "production",
@@ -260,7 +260,7 @@ Deno.test("recovery capability is online-only and never enters the envelope", as
     true,
     ["sign", "verify"],
   ) as CryptoKeyPair;
-  const response = await handleLicenseCredentialRequest(
+  const response = await issueForFixture(
     credentialRequest({ deviceFingerprint: fingerprint }),
     {
       environment: "production",
@@ -290,13 +290,6 @@ Deno.test("recovery capability is online-only and never enters the envelope", as
   ) {
     throw new Error(`recovery leaked offline: ${JSON.stringify(body)}`);
   }
-});
-
-Deno.test("credential request rejects arbitrary identity and device fields", async () => {
-  const response = await handleLicenseCredentialRequest(
-    credentialRequest({ deviceFingerprint: fingerprint, accountId }),
-  );
-  if (response.status !== 400) throw new Error(`status=${response.status}`);
 });
 
 Deno.test("classified legacy grants are retained for audit but issue no capability", () => {
@@ -401,7 +394,7 @@ Deno.test("credential request combines commercial and operational authorities wi
     true,
     ["sign", "verify"],
   ) as CryptoKeyPair;
-  const response = await handleLicenseCredentialRequest(
+  const response = await issueForFixture(
     credentialRequest({ deviceFingerprint: fingerprint }),
     {
       environment: "production",
@@ -439,21 +432,8 @@ Deno.test("credential request combines commercial and operational authorities wi
   }
 });
 
-Deno.test("credential request requires a bearer before resolving an account", async () => {
-  const response = await handleLicenseCredentialRequest(
-    new Request("http://local", {
-      method: "POST",
-      body: JSON.stringify({ deviceFingerprint: fingerprint }),
-    }),
-  );
-  const body = await response.json();
-  if (response.status !== 401 || body.error !== "unauthorized") {
-    throw new Error(JSON.stringify(body));
-  }
-});
-
 Deno.test("credential request rejects a non-UUID account returned by the RPC", async () => {
-  const response = await handleLicenseCredentialRequest(
+  const response = await issueForFixture(
     credentialRequest({ deviceFingerprint: fingerprint }),
     {
       environment: "production",
@@ -472,22 +452,6 @@ Deno.test("credential request rejects a non-UUID account returned by the RPC", a
   }
 });
 
-Deno.test("TPA rejection stays HTTP 401 instead of becoming availability failure", async () => {
-  const response = await handleLicenseCredentialRequest(
-    credentialRequest({ deviceFingerprint: fingerprint }),
-    {
-      environment: "production",
-      store: {
-        load: () => Promise.reject(new CredentialAuthError()),
-      },
-    },
-  );
-  const body = await response.json();
-  if (response.status !== 401 || body.error !== "unauthorized") {
-    throw new Error(JSON.stringify(body));
-  }
-});
-
 Deno.test("PostgREST auth status is classified as a credential rejection", () => {
   if (!isCredentialAuthFailure(403, { code: "42501" })) {
     throw new Error("a role rejection must stay an authentication failure");
@@ -499,25 +463,7 @@ Deno.test("PostgREST auth status is classified as a credential rejection", () =>
   }
 });
 
-Deno.test("generic credential store failure stays HTTP 503", async () => {
-  const response = await handleLicenseCredentialRequest(
-    credentialRequest({ deviceFingerprint: fingerprint }),
-    {
-      environment: "production",
-      store: {
-        load: () => Promise.reject(new Error("db down")),
-      },
-    },
-  );
-  const body = await response.json();
-  if (
-    response.status !== 503 || body.error !== "credential_state_unavailable"
-  ) {
-    throw new Error(JSON.stringify(body));
-  }
-});
-
-Deno.test("license credential config delegates Clerk JWT validation to PostgREST TPA", async () => {
+Deno.test("retired endpoint remains reachable without gateway JWT verification", async () => {
   const config = await Deno.readTextFile(
     new URL("../../config.toml", import.meta.url),
   );
@@ -526,6 +472,13 @@ Deno.test("license credential config delegates Clerk JWT validation to PostgREST
       config,
     )
   ) {
-    throw new Error("license-credential must use the PostgREST TPA boundary");
+    throw new Error("gateway must allow the tombstone to return 410");
   }
 });
+
+// These are shared-issuer tests. The legacy HTTP entrypoint is tested separately
+// and never loads account state or signs, irrespective of the request body.
+async function issueForFixture(_request: Request, deps: CredentialDeps = {}) {
+  const loaded = await deps.store!.load(sessionToken, fingerprint, "production");
+  return issueCredential(loaded, fingerprint, "production", deps);
+}

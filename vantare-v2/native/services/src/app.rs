@@ -1275,6 +1275,9 @@ mod tests {
     use std::{io::Write, net::TcpStream, time::Duration};
 
     #[cfg(windows)]
+    mod characterization;
+
+    #[cfg(windows)]
     #[test]
     fn profile_refresh_rejections_preserve_session_and_candidate_through_host_session() {
         let device = crate::license::installation::legacy_fingerprint().expect("fixture device");

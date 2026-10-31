@@ -1,5 +1,45 @@
 ## VANTA-126 / #1827 — Licencias paso 4 (31-oct, por revisar)
 
+
+Revisión del orquestador: **APPROVE**, sin diferencias de comportamiento,
+comunicado en el encargo de seguimiento. Ronda R1 antes de integrar:
+
+- Rebase sobre `origin/nightly@7f4f16e98fc92fdfdae3e87c6e0e263be3f01784`,
+  que incorpora #1830. Único conflicto: este handoff. Se conservó íntegro el
+  contenido de nightly y la entrega del paso 4. Sin cambios productivos de resolución.
+- Código/tests de R1 `80c61d1b180ac4ce1d101bcc2005d9cc510e42c3`.
+  Se añaden filas License/User/InvalidCredential y License/User/Expired:
+  ambas Transient, sin revocar ni cerrar sesión. Expired no sale hoy de
+  license_remote::renew: esas filas prueban directamente Error × origen,
+  antes de la adaptación InvalidCredential → Version, sin seam productivo nuevo.
+- response_error prueba Authentication y Core(Rejected) en origen Core, con
+  ambas posiciones de la bandera de caché: ambos siguen UNAVAILABLE.
+  Observation::Reply prueba LicenseFailure (los tres resultados), DeviceLimit
+  (Definitive) y Error (Transient), todos sin efectos locales.
+- Comentarios corregidos: el Core(Rejected) de InstallOnline se trata y aparta
+  en complete_online_renewal, no viene de license_remote::renew; la resta de
+  GAME_GRACE_SECONDS reserva la gracia publicada para renovar antes del plazo
+  firmado; el retorno previo de DeviceLimit conserva la variante accionable.
+- Solo tests/comentarios en esta revisión: tokens productivos iguales al SHA
+  revisado `96b06cef5` al excluir comentarios y cfg(test). Ninguna fila anterior
+  alterada: **141 filas** contando las 139 originales más las dos nuevas.
+- Gates R1 repetidos por la cola, mismo target y dos jobs: fmt PASS; Clippy
+  services/runtime/ipc all-targets -D warnings PASS; Nextest con telemetría
+  **858/858 PASS**, 13 omisiones existentes; lifecycle **13/13 PASS**.
+  Deno **40/40 PASS** y quality/**466 huellas PASS** sobre la base rebasada.
+  Las tres mutaciones de la entrega inicial siguen documentadas; no se
+  repitieron, pues outcome no cambia su lógica. Diff completo revisado.
+- Evidencia R1: `D:/VantareServer/evidence/isa-1827-p4/review-r1/`, incluidos
+  clippy.log, nextest-ci.log, lifecycle.log, fmt.log, deno-characterization.log,
+  quality.log, production-unchanged.txt y rebase.txt.
+- Push reescrito con lease por el rebase; HEAD final/CI verde se verifican en
+  la PR y #1827 antes de entregar al orquestador. La aprobación de GitHub no
+  se infiere del encargo: el APPROVE anterior fue comunicado por el orquestador.
+  Plane sigue intacto; los comentarios los asume el orquestador.
+  Sin merge, promoción, release, instalaciones ni producción.
+
+Entrega inicial (histórico; SHAs previos al rebase y gates de la primera ronda):
+
 [PR draft #1832](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1832)
 a nightly, enlazada en T3. Código validado y publicado
 `9be73f153e8c0f2247b7de337e5522152f34b2f1`; el commit posterior solo añade este

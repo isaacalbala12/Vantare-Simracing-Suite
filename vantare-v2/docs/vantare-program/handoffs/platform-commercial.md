@@ -4,8 +4,9 @@ Worker asignado por el orquestador después de #1818. Rama
 `vantareapp/isa-1810-candidate-admision`, worktree `C:/VantareServer/wt/isa-1810`,
 base origin/nightly `be32a3125` (#1818 integrado), target propio
 `D:/VantareServer/targets/isa-1810`. Plane paraguas intacto. Project Vantare /
-area:licencias, sin milestone. PR draft separado a nightly; HEAD, CI y estado
-vigentes se consultan en el PR enlazado desde #1810.
+area:licencias, sin milestone. [PR draft #1824](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1824)
+separado a nightly; código/tests `21a60efc2`. HEAD, CI y estado vigentes se
+consultan en el PR. Project pasa a In Review al publicar esta entrega.
 
 - La firma del candidate se verifica y su dispositivo se compara con la huella
   actual. Otro dispositivo se aparta antes de Install, con diagnóstico propio
@@ -30,7 +31,7 @@ vigentes se consultan en el PR enlazado desde #1810.
   lifecycle **13/13 PASS**. Siete mutaciones detectadas: dispositivo, rechazo,
   clasificación Clock, transitorio, rechazo online, procedencia desde disco y
   marcador antes del ACK. Se restauran SHA-256 idénticos y el focal **9/9 PASS**.
-  CI completa pendiente de verificar sobre el HEAD publicado.
+  CI completa se verifica sobre el HEAD publicado y se registra en el PR/#1810.
 - #1822 mantiene el diagnóstico/reintentos de lápida futura y la repetición de
   aviso de marca corrupta. #1821 y su worktree no se editan. No hay cambios de
   backend, protocolo firmado remoto, dependencias, producción, merge o release.

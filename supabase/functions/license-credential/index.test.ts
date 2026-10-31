@@ -254,7 +254,7 @@ Deno.test("normalization rejects cross-environment and unsupported grants", () =
   }
 });
 
-Deno.test("recovery capability is online-only and never enters the envelope", async () => {
+Deno.test("ADR 0102 recovery enters the v1 signature with the original deadline", async () => {
   const keys = await crypto.subtle.generateKey(
     "Ed25519",
     true,
@@ -285,10 +285,11 @@ Deno.test("recovery capability is online-only and never enters the envelope", as
   const body = await response.json();
   if (
     response.status !== 200 ||
-    body.credential.claims.capabilities.length !== 0 ||
-    body.online_capabilities.join(",") !== "vantare.plan.pro"
+    JSON.stringify(body.credential.claims.capabilities) !==
+      JSON.stringify([{ key: "vantare.plan.pro", paid_through: "2026-08-05T12:00:00.000Z" }]) ||
+    body.online_capabilities.length !== 0
   ) {
-    throw new Error(`recovery leaked offline: ${JSON.stringify(body)}`);
+    throw new Error(`recovery signature missing or unbounded: ${JSON.stringify(body)}`);
   }
 });
 

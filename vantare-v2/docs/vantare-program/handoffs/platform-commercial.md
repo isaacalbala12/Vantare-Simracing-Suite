@@ -1,3 +1,28 @@
+## VANTA-126 / #1827, #1814 — Paso 1: recuperación firmada (31-oct-2026)
+
+Encargo del orquestador. Rama `vantareapp/isa-1827-paso1-recovery-firmada`,
+base `origin/nightly@3e6f2dce7181ac224f4a1ed6ffa38e11373c89e9`, worktree
+`C:/VantareServer/wt/isa-1827-p1`. Project Vantare / area:licencias, sin milestone.
+Plane paraguas sin cambio de estado; solo comentarios. PR/HEAD/CI vigentes en #1827/#1814.
+
+- ADR 0102: recovery firma `paid_through = valid_until` original (derivado de
+  `recovery_until`), sin cambiar el plazo comercial ni crear otras 72 h.
+  Gana el plazo mayor de cada derecho; `online_capabilities` queda vacío.
+- Caracterización: recovery vigente y past_due cambian a firma temporal;
+  límites exactos y demás filas se conservan. Tests Pro/Plus antes/en/después,
+  repetición, pago posterior y otra fuente. La exclusión de reembolso usa una
+  fixture de vista efectiva; el gate comercial conserva la prueba SQL real.
+- Fixture sintética compartida Deno/Rust `recovery-v1.json`: el emisor reproduce
+  la firma y el verificador v1 acepta los mismos bytes, conserva el plazo tras
+  replay y caduca en su frontera. Solo test Rust; cliente de producto intacto.
+- Gate servidor: Deno y `supabase-commercial-gates` por CI, sin Deno local.
+  Rust por cola y target `D:/VantareServer/targets/isa-1827-p1`; resultados finales
+  y revisión en PR/issue, por SHA. Sin dependencias ni formatos nuevos.
+- Riesgo contractual: lo firmado permite acceso offline hasta su plazo original;
+  una nueva emisión aplica pago/bloqueo. No cambia la gracia local.
+- Siguiente: revisión/CI y autorización de Isaac para cualquier despliegue.
+  Sin producción, secretos, cuentas reales, merge, promoción ni release.
+
 ## VANTA-126 / #1827 — Licencias paso 2 (31-oct, PR draft #1829)
 
 [PR draft #1829](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1829)

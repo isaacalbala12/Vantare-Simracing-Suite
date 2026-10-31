@@ -196,7 +196,9 @@ Deno.test("native still signs credentials while the legacy endpoint returns Gone
       '["credential","online_capabilities"]',
   );
   assert(nativeBody.credential.claims.subject === accountId);
-  assert(nativeBody.online_capabilities[0] === "vantare.channel.nightly");
+  assert(nativeBody.online_capabilities.length === 0);
+  assert(nativeBody.credential.claims.capabilities[0].key === "vantare.channel.nightly");
+  assert(nativeBody.credential.claims.capabilities[0].paid_through === "2026-10-03T12:00:00.000Z");
   const { signature, ...payload } = nativeBody.credential;
   const bytes = Uint8Array.from(
     atob(signature.replaceAll("-", "+").replaceAll("_", "/")),

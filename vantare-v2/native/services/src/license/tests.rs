@@ -971,3 +971,59 @@ fn founders_keeps_perpetual_nightly_after_pro_plus_expires() {
         2
     );
 }
+
+#[test]
+fn server_recovery_v1_fixture_verifies_and_expires_at_original_deadline() {
+    // Deno compares this artifact with issueCredential; no production trust root.
+    let fixture: serde_json::Value = serde_json::from_str(include_str!(
+        "../../../../../supabase/functions/license-credential/fixtures/recovery-v1.json"
+    ))
+    .expect("server fixture");
+    let credential: CredentialV1 =
+        serde_json::from_value(fixture["credential"].clone()).expect("v1 envelope");
+    let verifier = Verifier::public_keys(&format!(
+        "{}:{}",
+        credential.key_id,
+        fixture["public_key"].as_str().expect("public fixture key")
+    ))
+    .expect("fixture registry");
+    let issued = date(&credential.claims.issued_at).expect("issued");
+    let deadline = date(fixture["recovery_until"].as_str().expect("deadline")).expect("date");
+    let (root, store) = crate::test_store("server-recovery-v1");
+    let mut authority = authority::Authority::restore(&store).expect("authority");
+    let verify = || {
+        verifier
+            .v1(&credential, SUBJECT, &"a".repeat(64))
+            .expect("server signature and binding")
+    };
+    let verified = verify();
+    assert_eq!(verified.grants().len(), 2);
+    assert!(
+        verified
+            .grants()
+            .iter()
+            .all(|grant| grant.expires_at == Some(deadline))
+    );
+    authority
+        .install(verified, issued, Duration::ZERO)
+        .expect("install");
+    // Replay one day later preserves expiry; no new 72h window.
+    authority
+        .install(
+            verify(),
+            issued + chrono::TimeDelta::days(1),
+            Duration::from_secs(86400),
+        )
+        .expect("replay");
+    for seconds in [72 * 3600 - 1, 72 * 3600, 72 * 3600 + 1] {
+        let rights = authority
+            .rights(
+                issued + chrono::TimeDelta::seconds(seconds),
+                Duration::from_secs(seconds as u64),
+            )
+            .expect("rights");
+        assert_eq!(rights.len(), if seconds < 72 * 3600 { 2 } else { 0 });
+    }
+    drop(store);
+    crate::cleanup_store(&root, "server-recovery-v1", &[]);
+}

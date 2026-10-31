@@ -785,24 +785,44 @@ fn out_of_range_saved_clock_is_quarantined_and_allows_a_fresh_signed_login() {
                 .expect("invalidated default")
                 .is_empty()
         );
-        assert!(matches!(
-            store.load::<serde_json::Value>("authority"),
-            Err(Error::NotFound)
-        ));
+        let saved = store
+            .load::<serde_json::Value>("authority")
+            .expect("denied recovery state is durable before any binding");
+        assert_eq!(saved["invalidated"], true);
+        assert!(
+            store
+                .load::<bool>("authority-recovery")
+                .expect("recovery guard")
+        );
         assert!(
             std::fs::read_dir(&root)
                 .expect("own test root")
-                .any(|entry| entry
-                    .expect("namespace")
-                    .path()
-                    .join("authority.corrupto")
-                    .is_file()),
+                .any(|entry| std::fs::read_dir(entry.expect("namespace").path())
+                    .expect("namespace files")
+                    .any(|file| {
+                        let name = file.expect("file").file_name();
+                        let name = name.to_string_lossy();
+                        name.starts_with("authority-0-") && name.ends_with(".corrupto")
+                    })),
             "quarantine retains the invalid document"
         );
         let mut reopened = Authority::restore(&store).expect("next startup also recovers");
         assert!(!reopened.credential_current());
+        assert!(
+            matches!(
+                reopened.install(
+                    verifier
+                        .v1(&credential, SUBJECT, "test-device")
+                        .expect("cached signature"),
+                    now,
+                    Duration::ZERO,
+                ),
+                Err(Error::Denied)
+            ),
+            "a disk credential cannot repair the authority"
+        );
         reopened
-            .install(
+            .install_online(
                 verifier
                     .v1(&credential, SUBJECT, "test-device")
                     .expect("signature"),

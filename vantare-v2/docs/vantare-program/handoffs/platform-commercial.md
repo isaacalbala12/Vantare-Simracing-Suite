@@ -1,3 +1,79 @@
+## VANTA-105 / #1806 y #1807 — Autoridad y reloj (31-oct, por revisar)
+
+Worker encargado por el orquestador, rama `vantareapp/isa-1806-autoridad-reloj`,
+worktree `C:/VantareServer/wt/isa-1806`, base nightly `55250c6f5` tras #1811.
+Plane paraguas no se modifica. Target propio `D:/VantareServer/targets/isa-1806`.
+[PR draft #1818](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1818),
+El rebase conserva la renovación y recuperación de canales de #1811.
+Código/tests tras revisión independiente `0dd88fe36`; no integrado en nightly
+ni publicado como release. El HEAD y el resultado de CI vigentes se consultan en el PR.
+
+- Revisión profunda independiente del orquestador sobre `23bf235cf`:
+  APPROVE WITH CHANGES, sin P0/P1/P2. F1 comprueba la versión de Response antes
+  del esquema estricto de Policy; campos desconocidos de otra versión dan
+  VersionMismatch y los de la versión actual siguen siendo inválidos. La matriz
+  RPC prueba versiones anterior/actual/posterior y campos desconocidos en ambos
+  niveles. Los lectores v5 ya distribuidos necesitan actualizar el paquete para
+  obtener este diagnóstico; no se cambia su binario desde este corte.
+- F3 documenta y comprueba con debug_assert la invariante del reanclaje: emisión
+  y lápida ya verificadas, mismo wall/tick y offset válido dejan el Install final
+  sin precondiciones fallables. No se cambia la política ni se amplía tolerancia.
+- Seguimiento único [#1822](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1822),
+  area:licencias / Project Vantare / Backlog: F2 diagnóstico de lápida futura y
+  frenar reintentos HTTP inútiles; F4 evitar reescritura y diagnóstico repetidos
+  por una marca corrupta. No se implementan aquí. App y #1821 quedan intactos
+  durante estos ajustes de revisión.
+
+- Autoridad DPAPI dañada: cuarentena acotada y marca durable de recuperación,
+  sin restaurar binding/gracia antiguos. Una marca ilegible se conserva como
+  barrera hasta la instalación online: no se mueve antes de sustituir la autoridad,
+  evitando una ventana de caída sin marca. E/S real sigue fallando; no hay defaults.
+- Control v6 distingue InstallOnline, emitido únicamente en la misma ejecución
+  del helper tras renew HTTP/TLS y firma verificados. TransferRights y Candidate
+  de disco siguen usando Install, sin poder reanclar reloj ni reparar autoridad.
+- La política tipada permite admitir el helper sin derechos cuando el núcleo
+  exige recuperación por autoridad dañada o retroceso de pared. La admisión
+  general ante lápida sana, otra cuenta o dispositivo queda en #1810.
+- El núcleo vuelve a verificar firma/dispositivo/identidad y emisión ±300 s.
+  Recuperar el reloj pierde el máximo de pared erróneo y la gracia, conservando
+  latest_issued y lápidas sanas. Una lápida ilegible pierde su frontera, pero
+  exige renovación online; ninguna firma guardada puede abrir esa recuperación.
+- Logout durante desfase conserva la mayor frontera observada. Una emisión
+  online debe superarla; corregir el reloj no elimina una revocación sana.
+- Las revisiones iniciales DeepSeek no hallaron bloqueo en la recuperación encargada.
+  Se refuerzan las pruebas con dos firmas distintas (caché y respuesta nueva)
+  y con ±301 s en la rama que realmente reancla. #1810 conserva la admisión
+  general de candidatos antiguos/dispositivos anteriores, fuera de este corte.
+- Fmt y Clippy scoped all-targets `-D warnings` PASS tras el rebase;
+  lifecycle **13/13 PASS**; Nextest scoped completo con telemetría **832/832 PASS**
+  (13 omisiones existentes). Se actualizan dos expectativas históricas que exigían
+  dejar ausente la autoridad, reforzando barrera y bytes conservados. No se cambia
+  su política de E/S.
+- Se conservan los fallos tipados de #1811. Tanto una respuesta de versión
+  anterior como un peer antiguo que cierra sin responder son transitorios y
+  no invalidan. El paquete actualiza núcleo/helper/consumidores por generación.
+- Un Read sin derechos no cuenta como instalación ni renovación recuperada:
+  retira el hint huérfano y permite HTTP nuevo. Tras una renovación real, el
+  hint solo se retira después del ACK. Perder el ACK deja el hint y permite
+  reinstalar por Install ordinario sin repetir HTTP. Nunca convierte el hint
+  en InstallOnline.
+- Solape mínimo resuelto en authority.rs/app.rs/rights/host.rs. Se repiten las
+  mutaciones afectadas: **11/2/3/1/1/1 + 1/1/1 fallos esperados**, incluidos retirar el
+  hint antes del ACK y convertir el cierre de un peer viejo en rechazo.
+  Fuente restaurada byte por byte (SHA256); **16/16 focales PASS** después.
+  F1 añade una mutación: sin el lector de versión previo, la nueva regresión
+  falla Protocol frente a Version. Se restaura la fuente y pasa la suite 832.
+- R3 marcó «No aprobado» por el candidate rechazado por lápida que envenena
+  la admisión: es la variante explícita de #1810, ya presente en 55250c6f5 y
+  encargada a continuación en PR separado. Permanece como P1 abierto; no se
+  presenta esta entrega como solución a ese bloqueo. Contraevidencia en el PR.
+- Se corrige su observación baja: una marca dañada no se sustituye aunque
+  authority también esté dañada o ausente. Dos reinicios conservan sus bytes.
+  Se prueba además que la renovación online sana conserva la gracia de carrera
+  anterior sin ampliar su plazo, mientras que reanclar la descarta. Ambos
+  comportamientos y la guardia combinada están verificados con mutaciones.
+- No se toca instalación, licencia/sesión reales, producción, merge o release.
+
 ## VANTA-105 / #1803 — Correcciones de revisión profunda (31-oct)
 
 Revisiones DeepSeek 1/2 y 2/2 recibidas del orquestador sobre PR draft #1811,

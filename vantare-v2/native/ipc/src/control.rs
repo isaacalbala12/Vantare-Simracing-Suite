@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use std::io::{self, Read, Write};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-pub const VERSION: u32 = 5;
+pub const VERSION: u32 = 6;
 const LIMIT: usize = 64 * 1024;
 pub const VERSION_ERROR: &str =
     "versiones IPC incompatibles: reinicia núcleo, Hub y overlays de la misma build";
@@ -107,6 +107,9 @@ pub struct Policy {
     pub tester: bool,
     pub live: bool,
     pub error: Option<String>,
+    /// Core is available without rights and requires a newly completed renewal.
+    #[serde(default)]
+    pub online_recovery_required: bool,
 }
 
 /// Corte comercial publicado, independiente del canal y del número de la build.
@@ -166,7 +169,14 @@ pub struct Bootstrap {
 #[serde(tag = "command", deny_unknown_fields)]
 pub enum Command {
     Read,
-    Install { credential: String },
+    Install {
+        credential: String,
+    },
+    /// Only the authenticated helper immediately after a verified HTTPS renewal.
+    /// Never constructed from a persisted Candidate or binding.
+    InstallOnline {
+        credential: String,
+    },
     Invalidate,
 }
 #[derive(Serialize, Deserialize)]
@@ -196,6 +206,27 @@ pub fn wall_ms() -> io::Result<u64> {
         .ok_or_else(|| io::Error::other("reloj de derechos inválido"))
 }
 pub fn read<T: DeserializeOwned>(reader: &mut impl Read) -> io::Result<T> {
+    serde_json::from_slice(&read_frame(reader)?).map_err(|_| io::ErrorKind::InvalidData.into())
+}
+
+#[cfg(any(windows, unix))]
+fn read_response(reader: &mut impl Read) -> io::Result<Response> {
+    // Read the version before the strict Policy schema: a different generation
+    // may add fields which this reader cannot deserialize. Never accept them.
+    #[derive(Deserialize)]
+    struct Header {
+        version: u32,
+    }
+    let bytes = read_frame(reader)?;
+    let header: Header = serde_json::from_slice(&bytes).map_err(|_| io::ErrorKind::InvalidData)?;
+    if header.version != VERSION {
+        return Err(io::Error::new(io::ErrorKind::InvalidData, VersionMismatch));
+    }
+    // Parse the original bytes again so duplicate/unknown fields remain invalid.
+    serde_json::from_slice(&bytes).map_err(|_| io::ErrorKind::InvalidData.into())
+}
+
+fn read_frame(reader: &mut impl Read) -> io::Result<Vec<u8>> {
     let mut prefix = [0; 4];
     reader.read_exact(&mut prefix)?;
     let size =
@@ -205,7 +236,7 @@ pub fn read<T: DeserializeOwned>(reader: &mut impl Read) -> io::Result<T> {
     }
     let mut bytes = vec![0; size];
     reader.read_exact(&mut bytes)?;
-    serde_json::from_slice(&bytes).map_err(|_| io::ErrorKind::InvalidData.into())
+    Ok(bytes)
 }
 pub fn write(writer: &mut impl Write, value: &impl Serialize) -> io::Result<()> {
     let bytes = serde_json::to_vec(value).map_err(|_| io::ErrorKind::InvalidData)?;
@@ -247,7 +278,7 @@ pub fn request_cancelled(
             command,
         },
     )?;
-    let response: Response = read(&mut pipe)?;
+    let response = read_response(&mut pipe)?;
     if response.version != VERSION || response.policy.version != VERSION {
         return Err(io::Error::new(io::ErrorKind::InvalidData, VersionMismatch));
     }

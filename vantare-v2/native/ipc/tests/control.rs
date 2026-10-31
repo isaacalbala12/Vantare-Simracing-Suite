@@ -15,6 +15,55 @@ fn link(tag: &str) -> CoreLink {
     }
 }
 #[test]
+fn response_version_mismatch_precedes_unknown_fields_but_current_schema_stays_strict() {
+    for version in [VERSION - 1, VERSION, VERSION + 1] {
+        for policy_field in [false, true] {
+            let link = link(&format!("unknown-{version}-{policy_field}"));
+            let mut listener = Listener::new(
+                &link.pipe,
+                Arc::new(Event::new().expect("event")),
+                IO_TIMEOUT,
+            )
+            .expect("listener");
+            let server = thread::spawn(move || {
+                let mut pipe = listener.instance().expect("instance");
+                pipe.accept().expect("accept");
+                let request: Request = control::read(&mut pipe).expect("request");
+                assert!(matches!(request.command, Command::Read));
+                let mut response = serde_json::to_value(Response {
+                    version,
+                    sequence: 1,
+                    policy: Policy {
+                        version,
+                        ..Policy::default()
+                    },
+                    error: None,
+                })
+                .expect("response");
+                if policy_field {
+                    response["policy"]["unknown_capability"] = serde_json::json!(true);
+                } else {
+                    response["unknown_envelope_field"] = serde_json::json!(true);
+                }
+                control::write(&mut pipe, &response).expect("response");
+            });
+            let error = control::request(&link, Command::Read).expect_err("no rights accepted");
+            assert_eq!(
+                control::Failure::classify(&error),
+                if version == VERSION {
+                    control::Failure::Protocol
+                } else {
+                    control::Failure::Version
+                }
+            );
+            server
+                .join()
+                .expect("one Read without invalidation or replay");
+        }
+    }
+}
+
+#[test]
 fn request_preserves_the_nonce_and_checks_the_response_sequence() {
     for (tag, sequence) in [("ok", 1), ("bad-sequence", 2)] {
         let link = link(tag);

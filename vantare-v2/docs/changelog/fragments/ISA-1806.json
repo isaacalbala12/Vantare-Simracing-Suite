@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-1806",
+  "type": "fix",
+  "summary": "Una renovación normal permite recuperar el acceso tras dañarse la autoridad local o corregir un reloj adelantado.",
+  "technicalNotes": [
+    "La autoridad dañada se conserva en cuarentena, sin reutilizar derechos ni margen de carrera antiguos. La recuperación exige una renovación online recién verificada.",
+    "El reloj puede reanclarse con una emisión firmada actual; las lápidas sanas y los vencimientos firmados se conservan. Núcleo, servicios y consumidores de control v6 deben actualizarse juntos."
+  ],
+  "testing": [
+    "Con fixtures aisladas, dañar la autoridad y comprobar que no se restaura una licencia guardada; renovar y reiniciar.",
+    "Con reloj inyectado, adelantar, guardar y corregir la hora: rechazar replay offline y recuperar mediante renovación online."
+  ],
+  "knownLimitations": [
+    "Cerrar sesión con una hora futura conserva esa frontera: una emisión nueva debe superarla.",
+    "Las pruebas automatizadas usan datos temporales; no acreditan una instalación real ni un login de producción."
+  ]
+}

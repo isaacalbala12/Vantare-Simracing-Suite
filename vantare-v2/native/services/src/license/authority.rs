@@ -57,29 +57,30 @@ pub struct Authority {
     game: Option<Game>,
     confirmed_game: bool,
     invalidated: bool,
+    recovery_required: bool,
     anchor: Option<(DateTime<Utc>, Duration)>,
     last_wall: Option<DateTime<Utc>>,
 }
 
 impl Authority {
     pub fn restore(store: &Store) -> Result<Self> {
-        let saved = match store.load_for_restore::<Saved>("authority") {
-            Ok(Some(saved))
+        let mut damaged = false;
+        let saved = match store.load_cache::<Saved>("authority") {
+            Ok(saved)
                 if saved.version == 1 && (0..=300_000).contains(&saved.clock.forward_millis) =>
             {
                 saved
             }
-            Ok(None) | Err(Error::NotFound) => Saved {
-                version: 1,
-                clock: Clock::default(),
-                game: None,
-                invalidated: true,
-            },
-            // Se aparta en vez de morir en cada arranque. El defecto es el
-            // conservador: `invalidated` deja puesta la lapida anti-rollback,
-            // asi que apartar el fichero no concede nada al atacante.
-            Ok(_) => {
-                store.quarantine("authority");
+            Err(Error::NotFound) => {
+                // A binding without its authority is not a fresh installation.
+                let binding_exists = match store.load_cache::<serde_json::Value>("binding") {
+                    Ok(_) | Err(Error::Corrupt) => true,
+                    Err(Error::NotFound) => false,
+                    Err(error) => return Err(error),
+                };
+                if binding_exists {
+                    Self::ensure_recovery_marker(store)?;
+                }
                 Saved {
                     version: 1,
                     clock: Clock::default(),
@@ -87,18 +88,69 @@ impl Authority {
                     invalidated: true,
                 }
             }
-
+            Ok(_) | Err(Error::Corrupt) => {
+                // A failed repair after the rename must not look like a fresh
+                // installation on restart. The marker carries no grants/time.
+                Self::ensure_recovery_marker(store)?;
+                store.quarantine_dated("authority", 0)?;
+                damaged = true;
+                Saved {
+                    version: 1,
+                    clock: Clock::default(),
+                    game: None,
+                    invalidated: true,
+                }
+            }
             Err(error) => return Err(error),
         };
-        Ok(Self {
+        let recovery_marker = match store.load_cache::<bool>("authority-recovery") {
+            Ok(_) => true,
+            Err(Error::NotFound) => false,
+            Err(Error::Corrupt) => {
+                // Its continued presence is the recovery guard. Moving it
+                // before replacing it would leave a crash window without a
+                // guard. A successful online persist removes it last.
+                damaged = true;
+                true
+            }
+            Err(error) => return Err(error),
+        };
+        let authority = Self {
             clock: saved.clock,
-            game: saved.game,
-            invalidated: saved.invalidated,
+            game: if recovery_marker { None } else { saved.game },
+            invalidated: saved.invalidated || recovery_marker,
+            recovery_required: recovery_marker,
             verified: None,
             confirmed_game: false,
             anchor: None,
             last_wall: None,
-        })
+        };
+        if damaged {
+            // Durable before looking at any binding: a restart cannot turn the
+            // quarantined document into an ordinary first installation.
+            authority.persist(store)?;
+            eprintln!("{}", super::CacheIssue::AuthorityUnreadable.diagnostic());
+        }
+        Ok(authority)
+    }
+
+    fn ensure_recovery_marker(store: &Store) -> Result<()> {
+        // A corrupt marker is already a guard; preserve its original bytes even
+        // when the authority is also damaged or missing.
+        match store.load_cache::<bool>("authority-recovery") {
+            Ok(_) | Err(Error::Corrupt) => Ok(()),
+            Err(Error::NotFound) => store.save("authority-recovery", &true),
+            Err(error) => Err(error),
+        }
+    }
+
+    pub fn needs_online_recovery(&self, wall: DateTime<Utc>) -> bool {
+        self.recovery_required
+            || self
+                .last_wall
+                .or(self.clock.last_wall)
+                .or(self.clock.last_seen)
+                .is_some_and(|last| wall < last)
     }
 
     fn observe(&mut self, wall: DateTime<Utc>, tick: Duration) -> Result<DateTime<Utc>> {
@@ -135,6 +187,9 @@ impl Authority {
         now: DateTime<Utc>,
         tick: Duration,
     ) -> Result<()> {
+        if self.recovery_required {
+            return Err(Error::Denied);
+        }
         let now = self.observe(now, tick)?;
         if self
             .clock
@@ -177,6 +232,64 @@ impl Authority {
         self.verified = Some(verified);
         self.invalidated = false;
         Ok(())
+    }
+
+    /// Only a newly completed authenticated HTTPS renewal may call this.
+    /// Disk restore/TransferRights must always use `install`.
+    pub fn install_online(
+        &mut self,
+        verified: Verified,
+        wall: DateTime<Utc>,
+        tick: Duration,
+    ) -> Result<()> {
+        let skew = verified.issued_at.signed_duration_since(wall);
+        if skew < -TimeDelta::minutes(5)
+            || skew > TimeDelta::minutes(5)
+            || self
+                .clock
+                .latest_issued
+                .is_some_and(|latest| verified.issued_at < latest)
+        {
+            return Err(Error::Clock);
+        }
+        // A healthy tombstone is never lowered, even if logout used a wrong
+        // future wall. A new issuance must exceed that durable boundary.
+        if self
+            .clock
+            .invalidated_after
+            .is_some_and(|at| verified.issued_at <= at)
+        {
+            return Err(Error::Denied);
+        }
+        if !self.recovery_required
+            && self
+                .last_wall
+                .or(self.clock.last_wall)
+                .or(self.clock.last_seen)
+                .is_none_or(|last| wall >= last)
+        {
+            // Ordinary online renewals keep the established monotonic anchor
+            // and eligible game grace, just like an ordinary Install.
+            return self.install(verified, wall, tick);
+        }
+        let effective = wall.max(verified.issued_at);
+        let clock = Clock {
+            last_seen: Some(effective),
+            last_wall: Some(wall),
+            forward_millis: effective.signed_duration_since(wall).num_milliseconds(),
+            ..self.clock.clone()
+        };
+        // Issuance/tombstone bounds were checked above. With this same wall/tick
+        // and a valid 0..=300s offset, observe sees effective with zero elapsed;
+        // install has no remaining failing precondition after this replacement.
+        self.clock = clock;
+        self.last_wall = Some(wall);
+        self.anchor = Some((effective, tick));
+        self.leave_game();
+        self.recovery_required = false;
+        let installed = self.install(verified, wall, tick);
+        debug_assert!(installed.is_ok(), "reanchor install was fully validated");
+        installed
     }
 
     pub fn enter_game(&mut self, session: u64, now: DateTime<Utc>, tick: Duration) -> Result<()> {
@@ -328,7 +441,19 @@ impl Authority {
         self.invalidated = true;
         self.verified = None;
         self.leave_game();
-        self.clock.invalidated_after = Some(self.observe(now, tick)?);
+        // Logout must still persist a tombstone during a clock correction.
+        // Keep the largest observed boundary; never silently lower revocation.
+        let observed = self.observe(now, tick).ok();
+        let boundary = self
+            .clock
+            .last_seen
+            .into_iter()
+            .chain(self.clock.last_wall)
+            .chain(self.last_wall)
+            .chain(self.clock.invalidated_after)
+            .chain(observed)
+            .fold(now, std::cmp::max);
+        self.clock.invalidated_after = Some(boundary);
         Ok(())
     }
 
@@ -385,7 +510,11 @@ impl Authority {
                 game: self.game.clone(),
                 invalidated: self.invalidated,
             },
-        )
+        )?;
+        if !self.recovery_required {
+            store.remove("authority-recovery")?;
+        }
+        Ok(())
     }
 }
 
@@ -410,8 +539,10 @@ mod tests {
             "el defecto debe ser el CONSERVADOR: lapida anti-rollback puesta"
         );
         assert!(
-            matches!(store.load::<Saved>("authority"), Err(Error::NotFound)),
-            "el documento invalido debe quedar apartado, no ignorado"
+            store
+                .load::<bool>("authority-recovery")
+                .expect("recovery durable"),
+            "la recuperación debe sobrevivir al reinicio"
         );
         // Y el segundo arranque tampoco tropieza.
         assert!(Authority::restore(&store).is_ok());

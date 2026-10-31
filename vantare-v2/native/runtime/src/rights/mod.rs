@@ -127,6 +127,7 @@ impl Owner {
         let store = Store::open(root, "core-rights-v1")?;
         let authority = Authority::restore(&store)?;
         let trust_roots = keys.map(Verifier::public_keys).transpose()?;
+        let online_recovery_required = authority.needs_online_recovery(now);
         let mut owner = Self {
             store,
             verifier: trust_roots,
@@ -137,6 +138,7 @@ impl Owner {
             policy: Policy {
                 version: VERSION,
                 epoch,
+                online_recovery_required,
                 ..Policy::default()
             },
             denied: false,
@@ -233,6 +235,23 @@ impl Owner {
         }
     }
     pub fn install(&mut self, text: String, now: DateTime<Utc>, tick: Duration) -> Result<()> {
+        self.install_from(text, now, tick, false)
+    }
+    pub fn install_online(
+        &mut self,
+        text: String,
+        now: DateTime<Utc>,
+        tick: Duration,
+    ) -> Result<()> {
+        self.install_from(text, now, tick, true)
+    }
+    fn install_from(
+        &mut self,
+        text: String,
+        now: DateTime<Utc>,
+        tick: Duration,
+        online: bool,
+    ) -> Result<()> {
         let result = (|| {
             let verified = self.verify(&text)?;
             if self
@@ -248,7 +267,11 @@ impl Owner {
                 subject: verified.subject().into(),
                 device: verified.device().into(),
             };
-            self.authority.install(verified, now, tick)?;
+            if online {
+                self.authority.install_online(verified, now, tick)?;
+            } else {
+                self.authority.install(verified, now, tick)?;
+            }
             self.store.save("binding", &binding)?;
             self.authority.persist(&self.store)?;
             self.binding = Some(binding);
@@ -320,6 +343,7 @@ impl Owner {
         now: DateTime<Utc>,
         tick: Duration,
     ) -> Result<Policy> {
+        self.policy.online_recovery_required = self.authority.needs_online_recovery(now);
         let live = snapshot.origin.source.kind == SourceKind::Live
             && snapshot.state.source_state == SourceState::Live;
         if live {

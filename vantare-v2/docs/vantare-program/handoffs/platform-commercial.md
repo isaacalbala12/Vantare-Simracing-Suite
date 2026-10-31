@@ -2,11 +2,18 @@
 
 Worker asignado por el orquestador después de #1818. Rama
 `vantareapp/isa-1810-candidate-admision`, worktree `C:/VantareServer/wt/isa-1810`,
-base origin/nightly `be32a3125` (#1818 integrado), target propio
+base origin/nightly `b7776633d` (#1818 y #1821 integrados), target propio
 `D:/VantareServer/targets/isa-1810`. Plane paraguas intacto. Project Vantare /
 area:licencias, sin milestone. [PR draft #1824](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1824)
-separado a nightly; código/tests `21a60efc2`. HEAD, CI y estado vigentes se
-consultan en el PR. Project pasa a In Review al publicar esta entrega.
+separado a nightly; código/tests rebasados `4fe6e1701`. HEAD, CI y estado vigentes se
+consultan en el PR. Project In Review; revisión profunda del orquestador en curso.
+
+Rebase sobre #1821: App combina automáticamente los cambios; los conflictos de
+los dos README y este handoff conservan ambas entregas. Se mantienen logout
+best-effort con SignedOut obligatorio, perfil siempre Automatic sin revocar y
+account_conflict transitorio. Storage coincide byte a byte con nightly.
+El cambio pendiente del worker anterior se conserva y se actualiza aquí.
+Gates repetidos sobre esta base; la CI del nuevo HEAD se consulta en el PR.
 
 - La firma del candidate se verifica y su dispositivo se compara con la huella
   actual. Otro dispositivo se aparta antes de Install, con diagnóstico propio
@@ -27,16 +34,21 @@ consultan en el PR. Project pasa a In Review al publicar esta entrega.
   de autoridad con reloj/tick inyectados para latest_issued y lápida futura ya
   superada por la pared, conservando sus fronteras y exigiendo nueva emisión.
 - Fmt y Clippy all-targets `-D warnings` scoped services/runtime/ipc PASS.
-  Nextest scoped con telemetría **839/839 PASS** (13 omisiones existentes);
+  Nextest scoped con telemetría **846/846 PASS** (13 omisiones existentes);
   lifecycle **13/13 PASS**. Siete mutaciones detectadas: dispositivo, rechazo,
   clasificación Clock, transitorio, rechazo online, procedencia desde disco y
-  marcador antes del ACK. Se restauran SHA-256 idénticos y el focal **9/9 PASS**.
+  marcador antes del ACK. Se restauran SHA-256 idénticos y el focal final **12/12 PASS**.
+  Cuatro mutaciones adicionales comprueban logout best-effort (lectura y
+  limpieza), perfil Automatic y account_conflict transitorio de #1821.
   CI completa se verifica sobre el HEAD publicado y se registra en el PR/#1810.
+- Evidencia del rebase: `D:/VantareServer/evidence/isa-1810-rebase`. C: lleno
+  interrumpió la primera tanda del worker previo; se conservan sus logs. La
+  repetición usa evidencia y TEMP/TMP en D:, sin limpiar archivos ajenos.
+  Cargo avisó de su caché global por falta de espacio; los gates terminaron
+  con exit 0. Retirada 466/466 y quality check PASS.
 - #1822 mantiene el diagnóstico/reintentos de lápida futura y la repetición de
   aviso de marca corrupta. #1821 y su worktree no se editan. No hay cambios de
   backend, protocolo firmado remoto, dependencias, producción, merge o release.
-
-## VANTA-105 / #1806 y #1807 — Autoridad y reloj (31-oct, integrado en nightly)
 
 ## VANTA-105 / #1808, #1812, #1814 — Sesión y perfil (31-oct, listo para revisión final de #1808/#1812)
 
@@ -123,7 +135,7 @@ Siguiente: entregar al orquestador el HEAD rebasado cuando CI esté verde;
 diseño de #1814 después de RC9. #1823 conserva el seguimiento cosmético. Plane VANTA-105 permanece intacto.
 Sin backend real, instalación, producción, merge, promoción ni release.
 
-## VANTA-105 / #1806 y #1807 — Autoridad y reloj (31-oct, por revisar)
+## VANTA-105 / #1806 y #1807 — Autoridad y reloj (31-oct, integrado en nightly)
 
 Worker encargado por el orquestador, rama `vantareapp/isa-1806-autoridad-reloj`,
 worktree `C:/VantareServer/wt/isa-1806`, base nightly `55250c6f5` tras #1811.

@@ -18,10 +18,16 @@ a nightly, enlazado en T3; HEAD/CI vigentes en #1827/#1814.
   la firma y el verificador v1 acepta los mismos bytes, conserva el plazo tras
   replay y caduca en su frontera. Solo test Rust; cliente de producto intacto.
 - Gate servidor: Deno y `supabase-commercial-gates` por CI, sin Deno local.
-  Fixture Rust 1/1 PASS, fmt PASS; Clippy detectó tres avisos del test (nombres,
-  unidad temporal y cast), corregidos sin allow. Verificación final pendiente.
+  Fixture Rust 1/1 PASS; fmt --check y Clippy services --lib --tests -D warnings
+  PASS (incluye check); Nextest de licencias 21/21 PASS, 255 tests fuera del filtro.
+  Tres avisos iniciales de Clippy corregidos sin allow; fallo conservado.
+  Evidencia D:/VantareServer/evidence/isa-1827-p1 (fmt/clippy/nextest.log).
+  Telemetría/lifecycle/runtime omitidos: solo cambia un test de services; sin
+  cambios de producto nativo ni fixtures de runtime/domain/ipc/testdata.
   Rust por cola y target `D:/VantareServer/targets/isa-1827-p1`; resultados finales
   y revisión en PR/issue, por SHA. Sin dependencias ni formatos nuevos.
+  Plane --ver: En curso; --comentario sin estado falla antes de autenticar;
+  bloqueo comunicado al orquestador, sin forzar escrituras del paraguas.
 - Riesgo contractual: lo firmado permite acceso offline hasta su plazo original;
   una nueva emisión aplica pago/bloqueo. No cambia la gracia local.
 - Siguiente: revisión/CI y autorización de Isaac para cualquier despliegue.

@@ -41,7 +41,7 @@ Código/tests finales `c99379ea4`; no integrado en nightly ni publicado como rel
   reinstalar por Install ordinario sin repetir HTTP. Nunca convierte el hint
   en InstallOnline.
 - Solape mínimo resuelto en authority.rs/app.rs/rights/host.rs. Se repiten las
-  mutaciones afectadas: **10/2/3/1/1/1 + 1/1/1 fallos esperados**, incluidos retirar el
+  mutaciones afectadas: **11/2/3/1/1/1 + 1/1/1 fallos esperados**, incluidos retirar el
   hint antes del ACK y convertir el cierre de un peer viejo en rechazo.
   Fuente restaurada byte por byte (SHA256); **16/16 focales PASS** después.
 - R3 marcó «No aprobado» por el candidate rechazado por lápida que envenena

@@ -206,6 +206,27 @@ pub fn wall_ms() -> io::Result<u64> {
         .ok_or_else(|| io::Error::other("reloj de derechos inválido"))
 }
 pub fn read<T: DeserializeOwned>(reader: &mut impl Read) -> io::Result<T> {
+    serde_json::from_slice(&read_frame(reader)?).map_err(|_| io::ErrorKind::InvalidData.into())
+}
+
+#[cfg(any(windows, unix))]
+fn read_response(reader: &mut impl Read) -> io::Result<Response> {
+    // Read the version before the strict Policy schema: a different generation
+    // may add fields which this reader cannot deserialize. Never accept them.
+    #[derive(Deserialize)]
+    struct Header {
+        version: u32,
+    }
+    let bytes = read_frame(reader)?;
+    let header: Header = serde_json::from_slice(&bytes).map_err(|_| io::ErrorKind::InvalidData)?;
+    if header.version != VERSION {
+        return Err(io::Error::new(io::ErrorKind::InvalidData, VersionMismatch));
+    }
+    // Parse the original bytes again so duplicate/unknown fields remain invalid.
+    serde_json::from_slice(&bytes).map_err(|_| io::ErrorKind::InvalidData.into())
+}
+
+fn read_frame(reader: &mut impl Read) -> io::Result<Vec<u8>> {
     let mut prefix = [0; 4];
     reader.read_exact(&mut prefix)?;
     let size =
@@ -215,7 +236,7 @@ pub fn read<T: DeserializeOwned>(reader: &mut impl Read) -> io::Result<T> {
     }
     let mut bytes = vec![0; size];
     reader.read_exact(&mut bytes)?;
-    serde_json::from_slice(&bytes).map_err(|_| io::ErrorKind::InvalidData.into())
+    Ok(bytes)
 }
 pub fn write(writer: &mut impl Write, value: &impl Serialize) -> io::Result<()> {
     let bytes = serde_json::to_vec(value).map_err(|_| io::ErrorKind::InvalidData)?;
@@ -257,7 +278,7 @@ pub fn request_cancelled(
             command,
         },
     )?;
-    let response: Response = read(&mut pipe)?;
+    let response = read_response(&mut pipe)?;
     if response.version != VERSION || response.policy.version != VERSION {
         return Err(io::Error::new(io::ErrorKind::InvalidData, VersionMismatch));
     }

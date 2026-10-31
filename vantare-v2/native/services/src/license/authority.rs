@@ -279,13 +279,17 @@ impl Authority {
             forward_millis: effective.signed_duration_since(wall).num_milliseconds(),
             ..self.clock.clone()
         };
-        // Validate everything before replacing the previous clock/grant.
+        // Issuance/tombstone bounds were checked above. With this same wall/tick
+        // and a valid 0..=300s offset, observe sees effective with zero elapsed;
+        // install has no remaining failing precondition after this replacement.
         self.clock = clock;
         self.last_wall = Some(wall);
         self.anchor = Some((effective, tick));
         self.leave_game();
         self.recovery_required = false;
-        self.install(verified, wall, tick)
+        let installed = self.install(verified, wall, tick);
+        debug_assert!(installed.is_ok(), "reanchor install was fully validated");
+        installed
     }
 
     pub fn enter_game(&mut self, session: u64, now: DateTime<Utc>, tick: Duration) -> Result<()> {

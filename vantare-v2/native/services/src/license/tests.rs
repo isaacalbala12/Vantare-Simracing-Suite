@@ -996,30 +996,30 @@ fn server_recovery_v1_fixture_verifies_and_expires_at_original_deadline() {
             .v1(&credential, SUBJECT, &"a".repeat(64))
             .expect("server signature and binding")
     };
-    let verified = verify();
-    assert_eq!(verified.grants().len(), 2);
+    let proof = verify();
+    assert_eq!(proof.grants().len(), 2);
     assert!(
-        verified
+        proof
             .grants()
             .iter()
             .all(|grant| grant.expires_at == Some(deadline))
     );
     authority
-        .install(verified, issued, Duration::ZERO)
+        .install(proof, issued, Duration::ZERO)
         .expect("install");
     // Replay one day later preserves expiry; no new 72h window.
     authority
         .install(
             verify(),
             issued + chrono::TimeDelta::days(1),
-            Duration::from_secs(86400),
+            Duration::from_hours(24),
         )
         .expect("replay");
     for seconds in [72 * 3600 - 1, 72 * 3600, 72 * 3600 + 1] {
         let rights = authority
             .rights(
                 issued + chrono::TimeDelta::seconds(seconds),
-                Duration::from_secs(seconds as u64),
+                Duration::from_secs(seconds.cast_unsigned()),
             )
             .expect("rights");
         assert_eq!(rights.len(), if seconds < 72 * 3600 { 2 } else { 0 });

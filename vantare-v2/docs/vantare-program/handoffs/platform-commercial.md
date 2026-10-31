@@ -3,7 +3,9 @@
 Encargo del orquestador. Rama `vantareapp/isa-1827-paso1-recovery-firmada`,
 base `origin/nightly@3e6f2dce7181ac224f4a1ed6ffa38e11373c89e9`, worktree
 `C:/VantareServer/wt/isa-1827-p1`. Project Vantare / area:licencias, sin milestone.
-Plane paraguas sin cambio de estado; solo comentarios. PR/HEAD/CI vigentes en #1827/#1814.
+Plane paraguas sin cambio de estado; solo comentarios.
+[PR draft #1831](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1831)
+a nightly, enlazado en T3; HEAD/CI vigentes en #1827/#1814.
 
 - ADR 0102: recovery firma `paid_through = valid_until` original (derivado de
   `recovery_until`), sin cambiar el plazo comercial ni crear otras 72 h.
@@ -16,6 +18,8 @@ Plane paraguas sin cambio de estado; solo comentarios. PR/HEAD/CI vigentes en #1
   la firma y el verificador v1 acepta los mismos bytes, conserva el plazo tras
   replay y caduca en su frontera. Solo test Rust; cliente de producto intacto.
 - Gate servidor: Deno y `supabase-commercial-gates` por CI, sin Deno local.
+  Fixture Rust 1/1 PASS, fmt PASS; Clippy detectó tres avisos del test (nombres,
+  unidad temporal y cast), corregidos sin allow. Verificación final pendiente.
   Rust por cola y target `D:/VantareServer/targets/isa-1827-p1`; resultados finales
   y revisión en PR/issue, por SHA. Sin dependencias ni formatos nuevos.
 - Riesgo contractual: lo firmado permite acceso offline hasta su plazo original;

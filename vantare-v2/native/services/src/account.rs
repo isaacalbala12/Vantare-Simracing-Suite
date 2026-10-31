@@ -128,7 +128,7 @@ pub struct Identity {
     pub subject: String,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct Session {
     identity: Identity,
@@ -143,6 +143,7 @@ struct Session {
 enum Saved {
     SignedOut,
     SignedIn { version: u8, session: Session },
+    NeedsSignIn { version: u8, session: Session },
 }
 
 struct Attempt {
@@ -157,6 +158,7 @@ struct Attempt {
 pub struct Account {
     oauth: OAuth,
     session: Option<Session>,
+    needs_sign_in: bool,
     profile: Option<crate::protocol::AccountProfile>,
     attempt: Option<Attempt>,
     generation: u128,
@@ -328,6 +330,7 @@ impl Account {
     }
 
     pub(crate) fn restore_at(oauth: OAuth, store: &Store, at_millis: u64) -> Result<Self> {
+        let mut needs_sign_in = false;
         let session = match store.restore_cache::<Saved>("account", at_millis) {
             Ok(Some(Saved::SignedOut) | None) | Err(Error::NotFound) => None,
             Ok(Some(Saved::SignedIn {
@@ -336,6 +339,15 @@ impl Account {
             })) if session.identity.issuer == oauth.issuer.as_str()
                 && session.client_id == oauth.client_id =>
             {
+                Some(session)
+            }
+            Ok(Some(Saved::NeedsSignIn {
+                version: 1,
+                session,
+            })) if session.identity.issuer == oauth.issuer.as_str()
+                && session.client_id == oauth.client_id =>
+            {
+                needs_sign_in = true;
                 Some(session)
             }
             Ok(_) => {
@@ -348,12 +360,31 @@ impl Account {
         Ok(Self {
             oauth,
             session,
+            needs_sign_in,
             profile,
             attempt: None,
             generation: fresh_generation()?,
             email: None,
             email_block: 0,
         })
+    }
+
+    /// Rechazo definitivo de refresh: identidad y licencia no son un logout.
+    pub fn needs_sign_in(&self) -> bool {
+        self.needs_sign_in
+    }
+
+    pub(crate) fn require_sign_in(&mut self, store: &Store) -> Result<()> {
+        // Bloquea también en memoria si falla persistir; no reutilizar tokens rechazados.
+        self.needs_sign_in = true;
+        let session = self.session.as_ref().ok_or(Error::Authentication)?;
+        store.save(
+            "account",
+            &Saved::NeedsSignIn {
+                version: 1,
+                session: session.clone(),
+            },
+        )
     }
 
     pub fn identity(&self) -> Option<&Identity> {
@@ -388,6 +419,9 @@ impl Account {
     }
 
     pub(crate) fn bearer(&self, now: u64) -> Result<&str> {
+        if self.needs_sign_in {
+            return Err(Error::Authentication);
+        }
         let session = self.session.as_ref().ok_or(Error::Authentication)?;
         if now >= session.expires_at {
             return Err(Error::Expired);
@@ -541,6 +575,9 @@ impl Account {
     }
 
     pub fn refresh(&self) -> Result<Exchange> {
+        if self.needs_sign_in {
+            return Err(Error::Authentication);
+        }
         let session = self.session.as_ref().ok_or(Error::Authentication)?;
         Ok(Exchange {
             oauth: self.oauth.clone(),
@@ -568,6 +605,7 @@ impl Account {
         };
         self.email = None;
         self.session = Some(session);
+        self.needs_sign_in = false;
         self.profile = Some(completion.profile);
         self.generation = self.generation.checked_add(1).ok_or(Error::Protocol)?;
         Ok(())
@@ -576,6 +614,7 @@ impl Account {
     pub fn logout(&mut self, store: &Store) -> Result<()> {
         self.cancel_login()?;
         self.session = None;
+        self.needs_sign_in = false;
         self.profile = None;
         Self::clear_saved(store)
     }

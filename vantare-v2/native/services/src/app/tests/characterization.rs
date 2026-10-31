@@ -28,11 +28,11 @@ fn nightly_error_origin_effects_matrix() {
     // Purchase usa LicenseRenewAutomatic en el Hub actual, sin un tercer IPC.
     #[rustfmt::skip]
     const CASES: &[ServiceCase] = &[
-        // Cambia en paso 5: el botón manual dejará de revocar.
-        (License, User, 401, "{}", Error::Authentication, true, false, true),
-        (License, User, 403, "{}", Error::Denied, true, false, true),
-        (License, User, 409, "{}", Error::Conflict, true, false, true),
-        (License, User, 409, r#"{"error":"device_limit"}"#, Error::DeviceLimit, true, false, true),
+        // Paso 5: el botón manual conserva candidate y sesión; no revoca.
+        (License, User, 401, "{}", Error::Authentication, false, true, true),
+        (License, User, 403, "{}", Error::Denied, false, true, true),
+        (License, User, 409, "{}", Error::Conflict, false, true, true),
+        (License, User, 409, r#"{"error":"device_limit"}"#, Error::DeviceLimit, false, true, true),
         (License, User, 409, r#"{"error":"account_conflict"}"#, Error::AccountConflict, false, true, true),
         (License, User, 429, "{}", Error::Offline, false, true, true),
         (License, User, 503, "{}", Error::Offline, false, true, true),
@@ -49,11 +49,11 @@ fn nightly_error_origin_effects_matrix() {
         (License, Purchase, 409, "{}", Error::Conflict, false, true, true),
         (License, Purchase, 409, r#"{"error":"device_limit"}"#, Error::DeviceLimit, false, true, true),
         (License, Purchase, 503, "{}", Error::Offline, false, true, true),
-        // Cambia en paso 5: refresh manual no cerrará sesión ni revocará.
-        (OAuth, User, 400, r#"{"error":"invalid_grant"}"#, Error::Authentication, true, false, false),
+        // Paso 5: refresh manual pasa a NeedsSignIn conservando identidad y candidate.
+        (OAuth, User, 400, r#"{"error":"invalid_grant"}"#, Error::Authentication, false, true, true),
         (OAuth, Automatic, 400, r#"{"error":"invalid_grant"}"#, Error::Authentication, false, true, true),
         (OAuth, Purchase, 400, r#"{"error":"invalid_grant"}"#, Error::Authentication, false, true, true),
-        (OAuth, User, 403, "{}", Error::Denied, true, false, false),
+        (OAuth, User, 403, "{}", Error::Denied, false, true, true),
         (OAuth, Automatic, 403, "{}", Error::Denied, false, true, true),
         (OAuth, User, 400, r#"{"error":"invalid_request"}"#, Error::Protocol, false, true, true),
         (OAuth, User, 429, "{}", Error::Offline, false, true, true),
@@ -61,8 +61,8 @@ fn nightly_error_origin_effects_matrix() {
         (Profile, User, 401, "{}", Error::Authentication, false, true, true),
         (Profile, Automatic, 403, "{}", Error::Denied, false, true, true),
         (Profile, User, 503, "{}", Error::Offline, false, true, true),
-        (Account, User, 400, r#"{"error":"invalid_grant"}"#, Error::Authentication, true, false, false),
-        (Account, User, 403, "{}", Error::Denied, true, false, false),
+        (Account, User, 400, r#"{"error":"invalid_grant"}"#, Error::Authentication, false, true, true),
+        (Account, User, 403, "{}", Error::Denied, false, true, true),
         (Account, User, 503, "{}", Error::Offline, false, true, true),
     ];
     for case in CASES.iter().copied() {
@@ -187,7 +187,8 @@ fn nightly_manual_credential_failure_outcome_matrix() {
             Outcome {
                 renewal: RenewalOutcome::Transient,
                 revoke,
-                sign_out
+                sign_out,
+                needs_sign_in: false
             },
             "{route:?}/{origin:?}/{error:?}"
         );

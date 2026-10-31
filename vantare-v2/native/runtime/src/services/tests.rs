@@ -1157,3 +1157,42 @@ fn purchase_restarts_automatic_confirmation_after_a_definitive_rejection() {
         "explicit purchase reopens automatic confirmation"
     );
 }
+
+#[test]
+fn manual_definitive_failure_stops_automatic_renewal() {
+    let mut state = State::default();
+    state.renewal.observe(&confirmed_session());
+    let policy = control::Policy {
+        version: control::VERSION,
+        revision: 1,
+        checked_at_ms: 1000,
+        overlays_advanced: true,
+        catalog: control::CatalogAccess::Pro,
+        valid_until_ms: Some(2000),
+        ..control::Policy::default()
+    };
+    let signing: SigningIn = Arc::new(Mutex::new(None));
+    let reply = handle_with(&mut state, Command::LicenseRenew, &signing, |_, _| {
+        Reply::LicenseFailure {
+            outcome: protocol::RenewalOutcome::Definitive,
+            message: "fixture denied".into(),
+        }
+    });
+    assert!(matches!(
+        reply,
+        Reply::LicenseFailure {
+            outcome: protocol::RenewalOutcome::Definitive,
+            ..
+        }
+    ));
+    assert!(
+        run_renewal(
+            &mut state,
+            &policy,
+            1000,
+            Instant::now() + Duration::from_mins(30),
+            |_, _| { panic!("explicit rejection must stop automatic HTTP") }
+        )
+        .is_none()
+    );
+}

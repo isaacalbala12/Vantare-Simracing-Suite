@@ -3,6 +3,50 @@
 Este runbook es operacional. No contiene claves, tokens ni valores de
 producción. Ejecutarlo no autoriza un deploy.
 
+## App nativa — comprobar acceso no revoca (ADR 0102, paso 5)
+
+Este apartado corresponde a Rust/GPUI. Los apartados antiguos de reloj/legacy
+más abajo no autorizan borrar ni restablecer los documentos nativos `binding`,
+`authority`, sus guardias o el candidate para intentar recuperar acceso.
+
+**«Pulsé Comprobar acceso y sigo con Pro aunque me bloquearon».** Es el resultado
+esperado del contrato offline: el rechazo del servidor impide renovar, pero no
+anula una licencia que este PC ya verificó. Pro conserva exactamente el plazo
+firmado; al caducar baja al acceso que corresponda. Solo se mantiene la gracia
+de carrera que ya reconoce el núcleo, sin crear otra ventana por el error.
+Un permiso perpetuo no adquiere una caducidad artificial por este cambio.
+
+- Comprobar acceso y la renovación automática conservan binding, autoridad y
+  candidate ante rechazo de la emisión. El rechazo explícito se comunica como
+  definitivo y detiene la renovación automática; no provoca un reset ni logout.
+- Un rechazo de refresh OAuth pasa a **NeedsSignIn**: pide volver a entrar y
+  deja de utilizar el bearer/refresh rechazado, incluso al reiniciar el helper.
+  Conserva la identidad anterior, el perfil y los derechos firmados. No ejecuta
+  Logout ni borra la cuenta. Volver a entrar con esa identidad no es un cambio
+  de dueño; entrar con otra sí exige revocación confirmada por el núcleo.
+- El protocolo actual sigue usando los campos de Account y un mensaje de nueva
+  entrada. `signed_in=false` en NeedsSignIn pide autenticación; no afirma que
+  se haya guardado SignedOut ni que se hayan invalidado derechos. El enum de
+  sesión público se incorpora en el paso 6, no en esta entrega.
+- Solo **Cerrar sesión**, **cambiar de identidad** y **Restablecer dispositivo**
+  revocan la licencia local; requieren ACK durable antes de limpiar el candidate.
+  Son acciones expresas, nunca una reacción automática a un fallo de red.
+- Transporte, versión, almacenamiento o una respuesta incomprensible conservan
+  su clasificación transitoria y el backoff existente. No amplían el plazo firmado.
+
+Para soporte: comprobar canal/generación, si el resultado exige nueva entrada y
+el plazo firmado de la política. Pedir login cuando corresponda; no prometer
+revocación remota instantánea ni recomendar editar archivos, mover el reloj o
+borrar cachés. El bloqueo comercial seguirá impidiendo una emisión nueva.
+Un nuevo documento rechazado por el núcleo conserva sus reglas de cuarentena;
+este paso cambia la revocación por error, no la verificación de firmas.
+
+NeedsSignIn se guarda como un estado nuevo de la cuenta protegida, conservando
+los datos de sesión existentes. Una generación anterior que no entienda ese
+estado puede pedir login de nuevo al volver atrás; no cambia el formato firmado
+ni los documentos del núcleo. No se despliega ni se modifica una instalación
+por ejecutar estas pruebas o editar el runbook.
+
 ## Propiedad de las claves
 
 - `OFFLINE_LICENSE_ED25519_PRIVATE_KEY`: PKCS#8 Ed25519 codificada en base64url,

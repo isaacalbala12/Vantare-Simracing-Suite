@@ -1,10 +1,21 @@
+## #1827 — Renovaciones no destructivas (paso 5)
+
+`outcome` solo marca revocación en Logout, cambio de identidad y DeviceReset.
+Los rechazos de renovación manual/automática conservan los derechos firmados;
+la respuesta definitiva detiene el scheduler sin ampliar el plazo. Un refresh
+OAuth rechazado guarda NeedsSignIn, conserva identidad/perfil y exige nueva
+entrada sin reutilizar tokens rechazados. Un login correcto restaura SignedIn;
+la comparación de identidad sigue precediendo a guardar otra cuenta.
+El IPC mantiene su formato; el Session explícito público llega en el paso 6.
+Soporte y rollback de la cuenta: [runbook BIL-08](../../docs/billing/bil-08-offline-credential-runbook.md).
+
 ## #1827 — Clasificación de acceso (paso 4)
 
 `services::outcome::outcome` es la única tabla de clasificación para renovación,
 refresh OAuth y respuesta del núcleo, y para el resultado del ACK que consume
 el supervisor. Devuelve `RenewalOutcome` y los efectos de revocación/cierre de
 sesión; App conserva el orden de ACK durable antes de limpiar datos.
-`Origin` mantiene explícita la diferencia manual/automática hasta el paso 5.
+`Origin` conserva el contexto manual/automático; el paso 5 unifica sus efectos.
 El rechazo Clock solo al instalar caché y la ventana urgente de una hora se
 conservan. No cambia formato IPC, licencia, persistencia ni comportamiento.
 El Hub consume los resultados tipados existentes; no tiene una lista de errores.

@@ -372,7 +372,8 @@ mod tests {
         for name in ["account", "oauth-metadata"] {
             let path = store.path(name).expect("fixture path");
             for at in 1..=4 {
-                fs::write(&path, [at as u8; 16]).expect("unreadable DPAPI fixture");
+                fs::write(&path, [u8::try_from(at).expect("fixture byte"); 16])
+                    .expect("unreadable DPAPI fixture");
                 assert_eq!(store.restore_cache::<serde_json::Value>(name, at), Ok(None));
             }
             let archives: Vec<_> = fs::read_dir(&store.root)
@@ -637,7 +638,20 @@ mod tests {
                 assert_eq!(fs::read(archived.path()).expect("archive bytes"), original);
             } else {
                 assert!(!path.exists());
-                assert!(store.root.join(format!("{name}.corrupto")).exists());
+                let archives: Vec<_> = fs::read_dir(&store.root)
+                    .expect("namespace")
+                    .flatten()
+                    .filter(|entry| {
+                        let file_name = entry.file_name();
+                        let file_name = file_name.to_string_lossy();
+                        file_name == format!("{name}.corrupto")
+                            || (name == "account"
+                                && file_name.starts_with("account-")
+                                && file_name.ends_with(".corrupto"))
+                    })
+                    .map(|entry| fs::read(entry.path()).expect("preserved archive"))
+                    .collect();
+                assert_eq!(archives, vec![original]);
             }
         }
         drop(store);

@@ -1214,60 +1214,80 @@ mod tests {
     fn profile_refresh_rejections_preserve_session_and_candidate_through_host_session() {
         let device = crate::license::installation::legacy_fingerprint().expect("fixture device");
         let (credential, keys) = crate::license_remote::tests::signed_fixture(&device);
-        for (status, body) in [
-            (400, r#"{"error":"invalid_grant"}"#),
-            (401, "{}"),
-            (403, "{}"),
-            (429, "{}"),
-            (503, "{}"),
-        ] {
-            let server = crate::test_http::Server::start(vec![(status, body.into())]);
-            let (root, store) = crate::test_store("profile-preserves-session");
-            let account = crate::account::fixture(&server.base, &store);
-            assert!(
-                account.profile().is_none(),
-                "restored session has no cached profile"
-            );
-            let mut app = App::with_clock(BuildConfig::load(), root.clone(), || Ok(1000));
-            app.account = Some(account);
-            app.store = Some(store);
-            app.candidate_store()
-                .expect("store")
-                .save(
-                    "license-candidate",
-                    &crate::license_remote::Candidate {
-                        credential: credential.clone(),
-                        account_id: credential.claims.subject.clone(),
-                        device: device.clone(),
-                    },
-                )
-                .expect("signed candidate");
-            let (link, core) = core_fixture(device.clone(), keys, vec![CoreStep::Read]);
-            app.attach_core(link);
-            assert!(matches!(
-                crate::host::fixture_request(&mut app, Command::AccountProfileRefresh),
-                Reply::Account {
-                    signed_in: true,
-                    profile: None,
-                    expires_at: Some(1000),
-                    error: Some(_),
-                    ..
-                }
-            ));
-            assert!(
+        for oauth_refresh in [true, false] {
+            for (status, body) in [
+                (400, r#"{"error":"invalid_grant"}"#),
+                (401, "{}"),
+                (403, "{}"),
+                (429, "{}"),
+                (503, "{}"),
+            ] {
+                let server = crate::test_http::Server::start(vec![(status, body.into())]);
+                let (root, store) = crate::test_store("profile-preserves-session");
+                let account = crate::account::fixture(&server.base, &store);
+                assert!(
+                    account.profile().is_none(),
+                    "restored session has no cached profile"
+                );
+                let clock: fn() -> Result<u64> = if oauth_refresh {
+                    || Ok(1000)
+                } else {
+                    || Ok(100)
+                };
+                let mut app = App::with_clock(BuildConfig::load(), root.clone(), clock);
+                app.account = Some(account);
+                app.store = Some(store);
                 app.candidate_store()
                     .expect("store")
-                    .load::<crate::license_remote::Candidate>("license-candidate")
-                    .is_ok()
-            );
-            assert!(matches!(
-                crate::host::fixture_request(&mut app, Command::LicenseStatus),
-                Reply::License { .. }
-            ));
-            core.join().expect("only Read: never Invalidate");
-            server.finish();
-            drop(app);
-            crate::cleanup_store(&root, "profile-preserves-session", &[]);
+                    .save(
+                        "license-candidate",
+                        &crate::license_remote::Candidate {
+                            credential: credential.clone(),
+                            account_id: credential.claims.subject.clone(),
+                            device: device.clone(),
+                        },
+                    )
+                    .expect("signed candidate");
+                let (link, core) = core_fixture(device.clone(), keys, vec![CoreStep::Read]);
+                app.attach_core(link);
+                assert!(matches!(
+                    crate::host::fixture_request(&mut app, Command::AccountProfileRefresh),
+                    Reply::Account {
+                        signed_in: true,
+                        profile: None,
+                        expires_at: Some(1000),
+                        error: Some(_),
+                        ..
+                    }
+                ));
+                assert!(
+                    app.candidate_store()
+                        .expect("store")
+                        .load::<crate::license_remote::Candidate>("license-candidate")
+                        .is_ok()
+                );
+                assert!(matches!(
+                    crate::host::fixture_request(&mut app, Command::LicenseStatus),
+                    Reply::License { .. }
+                ));
+                core.join().expect("only Read: never Invalidate");
+                let request = server
+                    .requests
+                    .recv_timeout(Duration::from_secs(3))
+                    .expect("observed profile route");
+                assert!(request.starts_with(if oauth_refresh {
+                    "POST /token "
+                } else {
+                    "GET /userinfo "
+                }));
+                assert!(
+                    server.requests.try_recv().is_err(),
+                    "one request, no replay"
+                );
+                server.finish();
+                drop(app);
+                crate::cleanup_store(&root, "profile-preserves-session", &[]);
+            }
         }
     }
 

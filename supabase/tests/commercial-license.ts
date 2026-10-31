@@ -58,17 +58,11 @@ const legacy = await handleLicenseCredentialRequest(new Request("http://localhos
     return Promise.resolve({ version: 1, algorithm: "Ed25519", key_id: "fixture", claims, signature: "fixture" });
   },
 });
-if (mode === "blocked") {
-  if (legacy.status !== 403 || legacySigns !== 0 || clerkReads !== 0 || legacyClaims !== 0) {
-    throw new Error("legacy_sql_block_not_enforced");
-  }
-  console.log("legacy real signed data bearer: SQL admin block denied before Clerk/claim/sign PASS");
-  Deno.exit(0);
+if (legacy.status !== 410 || legacySigns !== 0 || clerkReads !== 0 || legacyClaims !== 0) {
+  throw new Error("retired_legacy_endpoint_performed_io");
 }
-if (legacy.status !== 200 || legacySigns !== 1 || clerkReads !== 1 || legacyClaims !== 1) {
-  throw new Error("legacy_sql_active_emission_failed");
-}
-console.log("legacy real signed data bearer: own RLS profile and administrative resolver PASS");
+console.log("legacy real signed data bearer: 410, zero Clerk/claim/sign PASS");
+if (mode === "blocked") Deno.exit(0);
 const loaded = await loadCredentialAccount(
   admin,
   account,

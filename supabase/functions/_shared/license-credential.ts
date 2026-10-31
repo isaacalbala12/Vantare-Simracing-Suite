@@ -3,14 +3,12 @@ import {
   type SupabaseClient,
 } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { handleCorsPreflight } from "./cors.ts";
-import { isUuid, readJsonObject } from "./request.ts";
+import { isUuid } from "./request.ts";
 import { errorResponse, jsonResponse } from "./responses.ts";
 import { getSupabaseAdmin } from "./supabase-admin.ts";
 import type { BillingEnvironment } from "./mapping.ts";
-import { requirePolarEnvironment } from "./polar.ts";
 import {
   type NativeAuthDeps,
-  NativeError,
   nativeConfig,
   requireUnblocked,
   resolveNativeAccount,
@@ -118,83 +116,18 @@ export type CredentialDeps = {
   sign?: (claims: LicenseClaims) => Promise<OfflineCredential>;
 };
 
-export async function handleLicenseCredentialRequest(
+// ADR 0102 / #1815: deployed only after zero use over 30 days and Isaac's approval.
+// Keep the dependency argument for callers/tests to prove retirement performs no I/O.
+export function handleLicenseCredentialRequest(
   request: Request,
-  deps: CredentialDeps = {},
+  _deps: CredentialDeps = {},
 ): Promise<Response> {
   const cors = handleCorsPreflight(request);
-  if (cors) return cors;
-  if (request.method !== "POST") {
-    return errorResponse("method_not_allowed", "Only POST is supported", 405);
-  }
-  const token = extractBearerToken(request);
-  if (!token) {
-    return errorResponse(
-      "unauthorized",
-      "Authorization Bearer token required",
-      401,
-    );
-  }
-  const parsed = await readJsonObject(request, 1024);
-  if (!parsed.ok) return errorResponse(parsed.code, parsed.message, 400);
-  if (Object.keys(parsed.value).some((key) => key !== "deviceFingerprint")) {
-    return errorResponse(
-      "unexpected_field",
-      "Request contains an unsupported field",
-      400,
-    );
-  }
-  const fingerprint = typeof parsed.value.deviceFingerprint === "string"
-    ? parsed.value.deviceFingerprint.trim()
-    : "";
-  if (!/^[0-9a-f]{64}$/.test(fingerprint)) {
-    return errorResponse(
-      "invalid_device",
-      "deviceFingerprint must be a SHA-256 hex value",
-      400,
-    );
-  }
-
-  let loaded;
-  try {
-    const environment = deps.environment ?? requirePolarEnvironment();
-    loaded = await (deps.store ?? createCredentialStore()).load(
-      token,
-      fingerprint,
-      environment,
-    );
-    return await issueCredential(loaded, fingerprint, environment, deps);
-  } catch (error) {
-    if (error && typeof error === "object" && "code" in error && error.code === "28000") {
-      return errorResponse("unauthorized", "Account is not active", 401);
-    }
-    if (error && typeof error === "object" && "message" in error && error.message === "account_conflict") {
-      return errorResponse("account_conflict", "Account identity is conflicting", 409);
-    }
-    if (error instanceof NativeError) {
-      const status = error.status === 404 ? 401 : error.status;
-      return errorResponse(
-        status === 401 ? "unauthorized" : error.code,
-        "License authorization failed",
-        status,
-      );
-    }
-    if (error instanceof CredentialAuthError) {
-      return errorResponse("unauthorized", "Invalid or expired token", 401);
-    }
-    return errorResponse(
-      "credential_state_unavailable",
-      "License state is temporarily unavailable",
-      503,
-    );
-  }
-}
-
-function extractBearerToken(request: Request): string | null {
-  const header = request.headers.get("Authorization");
-  if (!header?.startsWith("Bearer ")) return null;
-  const token = header.slice("Bearer ".length).trim();
-  return token || null;
+  if (cors) return Promise.resolve(cors);
+  return Promise.resolve(jsonResponse({
+    error: "endpoint_retired",
+    message: "license-credential is retired; use native-license with native OAuth",
+  }, 410, { "Cache-Control": "no-store" }));
 }
 
 export function normalizeOperationalAssignments(

@@ -40,9 +40,12 @@ Deno.test("renewal/replay keeps original recovery; longer payment wins in either
     equal(normalizeGrants(keys.map((key) => recovery(key, retry.recoveryUntil)), now, "production"),
       { ok: true, grants, onlineCapabilities: [] });
   }
-  const later = "2026-12-01T12:00:00.000Z";
-  for (const rows of [[recovery(keys[1]), paid(keys[1], later)], [paid(keys[1], later), recovery(keys[1])]]) {
-    equal(normalizeGrants(rows, start, "production"), { ok: true, grants: [{ key: keys[1], paid_through: later }], onlineCapabilities: [] });
+  for (const paidUntil of ["2026-11-01T12:00:00.000Z", "2026-12-01T12:00:00.000Z"]) {
+    const expected = paidUntil > until ? paidUntil : until;
+    for (const rows of [[recovery(keys[1]), paid(keys[1], paidUntil)], [paid(keys[1], paidUntil), recovery(keys[1])]]) {
+      equal(normalizeGrants(rows, start, "production"), { ok: true,
+        grants: [{ key: keys[1], paid_through: expected }], onlineCapabilities: [] });
+    }
   }
 });
 

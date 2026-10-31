@@ -51,8 +51,8 @@ fn nightly_state_event_policy_matrix() {
         (Expiry, None, true, false, Free, false, None),
         (Grace, None, true, true, Pro, false, Some(3620)),
         (GraceEnd, None, true, false, Free, false, None),
-        // Paused pierde hoy la gracia: cambia en paso 6b (decisión 4 de #1827).
-        (Pause, None, true, false, Free, false, None),
+        // Paso 6b (decisión 4): Paused conserva la gracia de la misma sesión.
+        (Pause, None, true, true, Pro, false, Some(3620)),
         (Stale, None, true, true, Pro, false, Some(3620)),
         (Leave, None, true, false, Free, false, None),
         (Rollback, Some(Error::Clock), false, false, Free, true, None),

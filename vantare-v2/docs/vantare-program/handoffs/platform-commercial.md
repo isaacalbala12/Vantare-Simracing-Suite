@@ -5876,3 +5876,28 @@ publicar. Regresión offline comprueba exclusión y normalización; se conserva
 el test de estados desconocidos. Rama vantareapp/isa-1717-roadmap-estado-interno
 desde origin/nightly 440f3f9a3. El documento respaldado del 15-oct permanece
 publicado y esta entrega no bloquea la reconstrucción Supabase #1713.
+
+
+<!-- isa1827-paso6b -->
+## VANTA-126 / #1827 — Paso 6b: gracia en pausa (validación en curso)
+
+Rama `vantareapp/isa-1827-paso6b-pausa`, base origin/nightly
+`127977532d30d692c9e9a53e5cd764add7907d4a`, worktree
+`C:/VantareServer/wt/isa-1827-p6b`. Target autorizado compartido secuencialmente
+`D:/VantareServer/targets/isa-1827-p6`, sin builds simultáneos con el paso 6.
+Paso 6 entregado aparte en draft #1834; este PR solo aplica la decisión 4.
+
+Owner conserva la gracia en Paused para la sesión live ya activa; Host conserva
+su hora original de entrada, sin conceder ni renovar margen. Pruebas con reloj
+inyectado: pausa larga, reanudación, salida/cambio de sesión, replay, Logout,
+caducidad de la gracia y de la credencial durante pausa, y pausa sin live previo.
+Única fila cambiada de caracterización: Paused (marcada «cambia en paso 6b»).
+Las matrices de services permanecen intactas. 17 pruebas focalizadas PASS;
+quality/466 huellas PASS; tres mutaciones (Owner Paused, Host entrada, mismo ID)
+detectadas por aserción y restauradas SHA-256. Gates finales y draft pendientes. Evidencia `D:/VantareServer/evidence/isa-1827-p6b`.
+
+Project Vantare / area:licencias / In Review, sin milestone. Plane intacto.
+Sin merge, release, instalación, producción ni datos reales. No se afirma una
+prueba física de pausa del simulador. Siguiente: gates runtime con telemetría,
+lifecycle, mutaciones de Owner/Host y draft separado; comprobar CI de ambos PR.
+<!-- /isa1827-paso6b -->

@@ -164,3 +164,14 @@ prácticas también invalida el REST anterior, aunque avance el reloj.
 Las capturas disponibles NO acreditan inicio/final real, fase de salida ni
 agenda de próxima sesión; esos campos permanecen `Unavailable`, también ACC.
 No se deducen de remaining_s, movimiento, boxes ni llegada de un coche.
+
+
+## #1827 — Gracia durante Paused (paso 6b)
+
+La pausa conserva la gracia de una hora ya reconocida para la misma sesión live,
+igual que Stale. Owner mantiene el juego activo y Host conserva su hora original
+de entrada. Paused por sí solo no inicia gracia; reanudar no cambia el plazo.
+Salir/cambiar de sesión, replay y Logout la descartan. La credencial y la gracia
+siguen caducando con el reloj durante una pausa larga. No cambia protocolo,
+firma, formato durable ni contrato de la política. La única fila modificada de
+caracterización es Paused, marcada previamente para este paso (ADR0102 decisión4).

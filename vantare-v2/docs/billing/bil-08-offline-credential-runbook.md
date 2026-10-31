@@ -16,6 +16,13 @@ firmado; al caducar baja al acceso que corresponda. Solo se mantiene la gracia
 de carrera que ya reconoce el núcleo, sin crear otra ventana por el error.
 Un permiso perpetuo no adquiere una caducidad artificial por este cambio.
 
+**Pausa del simulador (paso 6b, decisión 4 de #1827).** Pausar la misma sesión
+live conserva la gracia que ya había reconocido el núcleo, igual que una fuente
+Stale. La hora se cuenta desde el vencimiento original; no empieza de nuevo al
+reanudar. Salir/cambiar de sesión o cerrar la cuenta descarta ese margen. Tanto
+el fin de la gracia como el vencimiento de la credencial se cumplen aunque el
+simulador siga en pausa. Una pausa sin entrada live previa no crea gracia.
+
 - Comprobar acceso y la renovación automática conservan binding, autoridad y
   candidate ante rechazo de la emisión. El rechazo explícito se comunica como
   definitivo y detiene la renovación automática; no provoca un reset ni logout.

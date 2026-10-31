@@ -1,0 +1,168 @@
+//! Decisión 4 de #1827: Paused conserva el plazo absoluto de la misma sesión.
+use super::*;
+
+fn paused_owner(start: i64) -> (std::path::PathBuf, Owner) {
+    let root = test_root();
+    let (credential, keys) = signed(start + 20, start - 10);
+    let mut owner = Owner::open(&root, Some(&keys), devices(), 1, wall(start)).expect("owner");
+    owner
+        .install(credential, wall(start), Duration::ZERO)
+        .expect("install");
+    owner
+        .advance(&photo(true), wall(start + 5), Duration::from_secs(5))
+        .expect("enter live");
+    (root, owner)
+}
+
+#[test]
+fn long_pause_and_resume_keep_the_original_hour_and_expire_during_pause() {
+    let start = 1_790_900_000;
+    let (root, mut owner) = paused_owner(start);
+    let mut snapshot = photo(true);
+    // The first pause starts before paid-through and lasts well beyond it.
+    for (elapsed, state, allowed) in [
+        (10, SourceState::Paused, true),
+        (1800, SourceState::Paused, true),
+        (1801, SourceState::Live, true),
+        (2000, SourceState::Paused, true),
+        (3619, SourceState::Paused, true),
+        (3620, SourceState::Paused, false),
+        (3621, SourceState::Live, false),
+    ] {
+        snapshot.state.source_state = state;
+        let policy = owner
+            .advance(
+                &snapshot,
+                wall(start + elapsed),
+                Duration::from_secs(elapsed.cast_unsigned()),
+            )
+            .expect("injected clock");
+        assert_eq!(
+            policy.engineer, allowed,
+            "elapsed={elapsed}, state={state:?}"
+        );
+        assert!(policy.overlays_advanced, "signed credential still current");
+        assert_eq!(policy.live, state == SourceState::Live);
+        assert_eq!(
+            policy.valid_until_ms,
+            Some((start + if allowed { 3620 } else { 7220 }).cast_unsigned() * 1000)
+        );
+    }
+    drop(owner);
+    clean(&root);
+}
+
+#[test]
+fn leaving_or_changing_a_paused_session_discards_grace_without_reentry() {
+    let start = 1_790_910_000;
+    for exit in 0..4 {
+        let (root, mut owner) = paused_owner(start);
+        let mut snapshot = photo(true);
+        snapshot.state.source_state = SourceState::Paused;
+        assert!(
+            owner
+                .advance(&snapshot, wall(start + 21), Duration::from_secs(21))
+                .expect("paused grace")
+                .engineer
+        );
+        match exit {
+            0 => snapshot.state.source_state = SourceState::Waiting,
+            1 => snapshot.state.session.id.0 += 1,
+            2 => snapshot.origin.source.kind = SourceKind::Replay,
+            _ => owner
+                .invalidate(wall(start + 21), Duration::from_secs(21))
+                .expect("explicit logout"),
+        }
+        assert!(
+            !owner
+                .advance(&snapshot, wall(start + 22), Duration::from_secs(22))
+                .expect("exit")
+                .engineer
+        );
+        assert!(
+            !owner
+                .advance(&photo(true), wall(start + 23), Duration::from_secs(23))
+                .expect("resume after exit cannot renew grace")
+                .engineer
+        );
+        drop(owner);
+        clean(&root);
+    }
+}
+
+#[test]
+fn paused_without_a_previous_live_entry_does_not_create_grace() {
+    let start = 1_790_920_000;
+    let root = test_root();
+    let (credential, keys) = signed(start + 20, start - 10);
+    let mut owner = Owner::open(&root, Some(&keys), devices(), 1, wall(start)).expect("owner");
+    owner
+        .install(credential, wall(start), Duration::ZERO)
+        .expect("install");
+    let mut snapshot = photo(true);
+    snapshot.state.source_state = SourceState::Paused;
+    owner
+        .advance(&snapshot, wall(start + 5), Duration::from_secs(5))
+        .expect("pause without entry");
+    assert!(
+        !owner
+            .advance(&snapshot, wall(start + 21), Duration::from_secs(21))
+            .expect("no grace created")
+            .engineer
+    );
+    assert!(
+        !owner
+            .advance(&photo(true), wall(start + 22), Duration::from_secs(22))
+            .expect("late entry")
+            .engineer
+    );
+    drop(owner);
+    clean(&root);
+}
+
+#[test]
+fn signed_credential_expiring_during_pause_still_denies_at_its_exact_deadline() {
+    let start = 1_790_930_000;
+    let root = test_root();
+    let (credential, keys) = signed_modules(
+        start + 100,
+        start - 10,
+        vec![Capability {
+            key: "vantare.operational.owner".into(),
+            paid_through: wall(start + 20).to_rfc3339(),
+            perpetual: false,
+            scope_version: String::new(),
+        }],
+    );
+    let mut owner = Owner::open(&root, Some(&keys), devices(), 1, wall(start)).expect("owner");
+    owner
+        .install(credential, wall(start), Duration::ZERO)
+        .expect("install");
+    owner
+        .advance(&photo(true), wall(start + 5), Duration::from_secs(5))
+        .expect("live entry");
+    let mut snapshot = photo(true);
+    for (elapsed, state) in [
+        (21, SourceState::Paused),
+        (99, SourceState::Paused),
+        (100, SourceState::Paused),
+        (101, SourceState::Live),
+    ] {
+        snapshot.state.source_state = state;
+        let policy = owner
+            .advance(
+                &snapshot,
+                wall(start + elapsed),
+                Duration::from_secs(elapsed.cast_unsigned()),
+            )
+            .expect("wall and monotonic clock");
+        assert_eq!(policy.engineer, elapsed < 100);
+        assert_eq!(policy.overlays_advanced, elapsed < 100);
+        assert_eq!(
+            policy.valid_until_ms,
+            Some((start + 100).cast_unsigned() * 1000)
+        );
+    }
+    drop(owner);
+    clean(&root);
+}

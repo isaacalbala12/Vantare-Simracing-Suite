@@ -4,10 +4,12 @@
   "type": "fix",
   "summary": "Un estado de suscripción desconocido queda pendiente de revisión sin cambiar el acceso existente.",
   "technicalNotes": [
+    "Paso 6b, decisión 4: Paused conserva la gracia ya reconocida de la misma sesión live y la hora original de entrada; no inicia ni amplía el margen.",
     "Paso 2: webhook y reconciliación comparten la clasificación de estados y las reglas de plazo.",
     "El snapshot revoked sigue revocando su fuente, como en #1817. Customer State salta solo la suscripción con estado desconocido y diagnostica unsupported_subscription_status; las demás siguen renovándose."
   ],
   "testing": [
+    "Con reloj inyectado, comprobar pausa larga y reanudación sin cambiar el deadline; salida/cambio de sesión, replay y Logout descartan la gracia. La credencial y la hora de gracia caducan aun en pausa.",
     "En un entorno de pruebas autorizado, comprobar revoked, una entrega repetida y un evento anterior; los derechos de otra compra deben conservarse.",
     "Comprobar un estado desconocido: queda en cuarentena, conserva acceso y recuperación y no avanza la versión del recurso.",
     "Con dos suscripciones del mismo cliente, enviar un estado desconocido en una y una renovación válida en la otra: se conserva la primera y se actualiza la segunda. Un producto desconocido sigue bloqueando el plan completo."

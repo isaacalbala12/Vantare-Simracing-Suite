@@ -64,9 +64,13 @@ silenciosa. No se baja una lápida sana ni se amplían plazos al reanclar reloj.
    de Owner cuando existe; se conserva su vencimiento.
 4. Una pausa en la misma sesión del simulador conserva la gracia de una hora.
    Se implementa en el **paso 6b — la pausa conserva la gracia**, entre el 6 y
-   el 7: `Paused` conservará la gracia igual que `Stale`. Es un cambio de
-   comportamiento justificado por esta decisión, asignado por el orquestador
-   durante el paso 0. Hoy `Paused` la pierde; la caracterización lo fija tal cual.
+   el 7: `Paused` conserva la gracia igual que `Stale`, solo en la sesión live
+   ya observada. Es el cambio de comportamiento justificado por esta decisión.
+   Owner conserva el margen y Host la hora de entrada: pausar o reanudar no
+   crea una hora nueva. Salir/cambiar de sesión o Logout descarta la gracia;
+   la credencial y el plazo absoluto siguen caducando durante la pausa.
+   La caracterización del paso 0 fijaba su pérdida; el paso 6b cambia únicamente
+   esa fila, marcada de antemano por el orquestador.
 5. Credencial v2 no planificada: se retira en el paso 11 salvo objeción de Isaac.
 
 ## Consecuencias y verificación

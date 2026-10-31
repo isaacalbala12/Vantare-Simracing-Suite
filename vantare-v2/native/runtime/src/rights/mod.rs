@@ -350,6 +350,9 @@ impl Owner {
         self.policy.online_recovery_required = self.authority.needs_online_recovery(now);
         let live = snapshot.origin.source.kind == SourceKind::Live
             && snapshot.state.source_state == SourceState::Live;
+        let paused_same_session = snapshot.origin.source.kind == SourceKind::Live
+            && snapshot.state.source_state == SourceState::Paused
+            && self.game == Some(snapshot.state.session.id.0);
         if live {
             if self.game.is_some() && self.game != Some(snapshot.state.session.id.0) {
                 self.authority.leave_game();
@@ -376,7 +379,7 @@ impl Owner {
             }
             self.game = Some(snapshot.state.session.id.0);
         } else if snapshot.origin.source.kind == SourceKind::Replay
-            || snapshot.state.source_state != SourceState::Stale
+            || (snapshot.state.source_state != SourceState::Stale && !paused_same_session)
         {
             // Waiting inicial no es evidencia de que terminó la carrera guardada.
             // La primera sesión live confirma o descarta; replay nunca confirma.

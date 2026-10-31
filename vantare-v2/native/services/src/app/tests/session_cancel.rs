@@ -77,7 +77,8 @@ fn cancel_attempt(state: Session, attempt: Attempt) {
     assert!(account.identity() == identity.as_ref(), "identity retained");
     assert!(!account.login_pending() && !account.email_pending());
     assert!(matches!(account.login_link(), Err(Error::Canceled)));
-    assert!(account.refresh().is_err() || state == Session::SignedIn);
+    assert_eq!(account.session(), state);
+    assert_eq!(account.refresh().is_ok(), state == Session::SignedIn);
     assert_documents_retained(&mut app, &saved, &candidate);
     let reply = crate::host::fixture_request(&mut app, Command::AccountPoll);
     assert!(matches!(reply, Reply::Account { session, pending: false, .. } if session == state));
@@ -172,7 +173,10 @@ fn prepare_email_without_changing_session(
     }
     assert_eq!(app.account.as_ref().expect("account").session(), state);
     for _ in 0..if polling { 8 } else { 5 } {
-        server.requests.recv().expect("expected FAPI request");
+        server
+            .requests
+            .recv_timeout(std::time::Duration::from_secs(2))
+            .expect("expected FAPI request within fixture deadline");
     }
 }
 

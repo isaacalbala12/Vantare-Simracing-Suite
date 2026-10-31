@@ -136,3 +136,10 @@ La caracterización añade una fila AccountCancel sin revocación; las anteriore
 no cambian. También se verifica la cancelación/fallo desde los tres estados,
 la elección de proveedores, la incompatibilidad durante TransferRights y la
 lectura de Session tras renovar en el supervisor.
+
+
+Revisión de presentación del paso 6: un ACK de Logout fallido no es un cierre
+confirmado. El usuario puede reintentar Logout o abandonar ese cierre fallido
+con Volver si la sesión publicada y una política fresca del núcleo conservan
+acceso. Escape/Volver en Choose no inicia un intento; cancelar un intento en
+vuelo impide nuevos proveedores/cancelaciones hasta su respuesta.

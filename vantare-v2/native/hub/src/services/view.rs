@@ -67,6 +67,7 @@ enum Inflight {
     PurchaseSession,
     Roadmap,
     User,
+    Cancel,
 }
 impl Inflight {
     fn background(self) -> bool {
@@ -376,6 +377,7 @@ impl Remote {
         cx: &mut Context<Self>,
     ) {
         let before = self.access.navigation(now_ms);
+        let return_before = self.access.can_return_after_logout(now_ms);
         let current = policy.current_at(now_ms);
         self.access.observe_core_policy(policy);
         let access = self.access.navigation(now_ms);
@@ -388,7 +390,10 @@ impl Remote {
             self.purchase_wait = None;
             self.purchase_message = Some("Acceso solicitado verificado por el servicio.".into());
         }
-        if before != access || confirmed {
+        if before != access
+            || return_before != self.access.can_return_after_logout(now_ms)
+            || confirmed
+        {
             cx.notify();
         }
     }
@@ -485,7 +490,7 @@ impl Remote {
 
     /// Ocupado a ojos del usuario: excluye la consulta periódica de política.
     fn working(&self) -> bool {
-        self.inflight == Inflight::User
+        matches!(self.inflight, Inflight::User | Inflight::Cancel)
     }
 
     /// Pantalla de acceso o acción del usuario en vuelo (login, renovación):
@@ -610,10 +615,15 @@ impl Remote {
     }
 
     fn dispatch_with_kind(&mut self, command: Command, kind: Option<Inflight>) -> bool {
+        if matches!(command, Command::AccountCancel) {
+            self.access.requested(&command);
+        }
         let pilot_request = pilot::is_command(&command);
         self.mail.dispatched(&command);
         let inflight = kind.unwrap_or(if matches!(command, Command::LicenseStatus) {
             Inflight::Background
+        } else if matches!(command, Command::AccountCancel) {
+            Inflight::Cancel
         } else {
             Inflight::User
         });
@@ -697,6 +707,9 @@ impl Remote {
                 || matches!(self.queued, Some(Command::Logout))
                 || matches!(self.account.cancel_command, Some(Command::Logout)))
         {
+            return cx.notify();
+        }
+        if self.ignores_during_cancel(&command) {
             return cx.notify();
         }
         let email_command = matches!(command, Command::AccountEmail { .. });
@@ -1146,6 +1159,9 @@ impl Drop for Remote {
     }
 }
 
+#[cfg(test)]
+#[path = "view/access_review_tests.rs"]
+mod access_review_tests;
 #[cfg(test)]
 #[path = "view/account_tests.rs"]
 mod account_tests;

@@ -1,6 +1,6 @@
 //! Acceso alojado: el estado viene del mismo servicio que la sección Cuenta.
 use super::super::protocol::{EmailAction, EmailMode};
-use super::{Command, Remote, Reply};
+use super::{Command, Inflight, Remote, Reply};
 use crate::orbit;
 use gpui::{Context, Div, Stateful, div, prelude::*, px, rgb, rgba};
 use vantare_ipc::services_protocol::Session;
@@ -220,8 +220,23 @@ impl State {
         self.transition == Transition::Logout
     }
 
+    fn logout_failed(&self) -> bool {
+        self.logout_requested() && self.error.is_some() && !self.login_requested
+    }
+
+    pub(super) fn can_return_after_logout(&self, now_ms: u64) -> bool {
+        self.logout_failed()
+            && self.policy.as_ref().is_some_and(|policy| {
+                crate::shell::navigation::Access::from_session_policy(self.session, policy, now_ms)
+                    .verified
+            })
+    }
+
     pub(super) fn observe_core_policy(&mut self, policy: vantare_ipc::control::Policy) {
-        if self.transition == Transition::Idle && !self.login_requested && self.session_known() {
+        if (self.transition == Transition::Idle || self.logout_failed())
+            && !self.login_requested
+            && self.session_known()
+        {
             self.policy = Some(policy);
         }
     }
@@ -295,6 +310,9 @@ impl State {
                         .as_ref()
                         .map(|message| format!("No se pudo cerrar la sesión: {message}"));
                     self.login_requested = error.is_none();
+                    if error.is_some() {
+                        self.session = *session;
+                    }
                     return;
                 }
                 if self.transition == Transition::Logout {
@@ -443,6 +461,9 @@ impl Remote {
     }
 
     pub(super) fn begin_access(&mut self, cx: &mut Context<Self>) {
+        if self.canceling_access() {
+            return cx.notify();
+        }
         use std::io::Write;
         let _log = writeln!(std::io::stderr(), "account-access: requested");
         if self.working() {
@@ -501,12 +522,72 @@ impl Remote {
     }
 
     pub(super) fn retry_access(&mut self, cx: &mut Context<Self>) {
-        if self.access.session_checked {
+        if self.access.logout_requested() {
+            if !self.working() {
+                self.request(Command::Logout, cx);
+            }
+        } else if self.access.session_checked {
             self.begin_access(cx);
         } else {
             self.access.error = None;
             self.request(Command::Status, cx);
         }
+    }
+
+    pub(super) fn canceling_access(&self) -> bool {
+        self.access.transition == Transition::Cancel
+            || self.inflight == Inflight::Cancel
+            || matches!(self.account.cancel_command, Some(Command::AccountCancel))
+            || matches!(self.queued, Some(Command::AccountCancel))
+    }
+
+    pub(super) fn ignores_during_cancel(&self, command: &Command) -> bool {
+        (matches!(command, Command::AccountCancel)
+            && (self.inflight == Inflight::Cancel
+                || matches!(self.account.cancel_command, Some(Command::AccountCancel))
+                || matches!(self.queued, Some(Command::AccountCancel))))
+            || (self.canceling_access()
+                && matches!(
+                    command,
+                    Command::AccountBegin | Command::AccountEmail { .. }
+                ))
+    }
+
+    pub(super) fn access_escape(&mut self, key: &str, cx: &mut Context<Self>) -> bool {
+        if key == "escape" && self.access.transition == Transition::Choose && !self.working() {
+            self.access.transition = Transition::Idle;
+            cx.notify();
+            return true;
+        }
+        false
+    }
+
+    fn cancel_access(&mut self, cx: &mut Context<Self>) {
+        if self.canceling_access() || self.access_escape("escape", cx) {
+            return;
+        }
+        self.request(Command::AccountCancel, cx);
+    }
+
+    pub(super) fn return_after_logout(&mut self, cx: &mut Context<Self>) {
+        let can_return = vantare_ipc::control::wall_ms()
+            .is_ok_and(|now| self.access.can_return_after_logout(now));
+        if !self.working() && can_return {
+            self.access.transition = Transition::Idle;
+            self.access.error = None;
+            cx.notify();
+        }
+    }
+
+    fn logout_return_button(&self, cx: &mut Context<Self>) -> Stateful<Div> {
+        orbit::button("access-logout-back", "Volver", cx)
+            .on_click(cx.listener(|this, _, _, cx| this.return_after_logout(cx)))
+            .on_key_down(cx.listener(|this, event: &gpui::KeyDownEvent, _, cx| {
+                if matches!(event.keystroke.key.as_str(), "enter" | "space") {
+                    this.return_after_logout(cx);
+                    cx.stop_propagation();
+                }
+            }))
     }
 
     fn open_portal(&mut self, page: Portal, cx: &mut Context<Self>) {
@@ -539,7 +620,7 @@ impl Remote {
             .w_full()
             .h(px(44.0))
             .rounded(px(8.0))
-            .when(self.working(), |button| {
+            .when(self.working() || self.canceling_access(), |button| {
                 button
                     .opacity(orbit::DISABLED)
                     .tab_stop(false)
@@ -633,9 +714,13 @@ impl Remote {
             );
         if self.email.is_some() {
             body = body.child(self.email_view(cx));
-        } else if waiting || checking {
+        } else if self.canceling_access() {
+            body = body.child(orbit::text("Cancelando…", 14.0, 400, orbit::ink_2(cx), cx));
+        } else if waiting || checking || self.access.logout_requested() {
             body = body.child(orbit::text(
-                if self.access.logout_requested() {
+                if self.access.logout_failed() {
+                    "El cierre de sesión no se ha confirmado"
+                } else if self.access.logout_requested() {
                     "Cerrando sesión…"
                 } else if waiting {
                     "Continúa en tu navegador…"
@@ -659,7 +744,11 @@ impl Remote {
         if let Some(error) = &self.access.error {
             body = body
                 .child(orbit::callout(error.clone(), cx))
-                .child(Self::access_retry_button(cx));
+                .child(self.access_retry_button(cx));
+        }
+        if vantare_ipc::control::wall_ms().is_ok_and(|now| self.access.can_return_after_logout(now))
+        {
+            body = body.child(self.logout_return_button(cx));
         }
         body = body.when(self.access.manual.available, |body| {
             body.child(self.access_copy_link(cx))
@@ -667,9 +756,18 @@ impl Remote {
         body = body.child(
             orbit::text("made by Vantare", 10.0, 600, orbit::ink_muted(cx), cx).mt(px(24.0)),
         );
+        Self::access_frame(body, focus, cx)
+    }
+
+    fn access_frame(body: Div, focus: &gpui::FocusHandle, cx: &mut Context<Self>) -> Stateful<Div> {
         div()
             .id("hub-access")
             .track_focus(focus)
+            .on_key_down(cx.listener(|this, event: &gpui::KeyDownEvent, _, cx| {
+                if this.access_escape(&event.keystroke.key, cx) {
+                    cx.stop_propagation();
+                }
+            }))
             .tab_group()
             .tab_stop(false)
             .size_full()
@@ -688,24 +786,32 @@ impl Remote {
     fn access_cancel_button(&self, label: &'static str, cx: &mut Context<Self>) -> Stateful<Div> {
         orbit::button(
             "access-cancel",
-            if self.account.cancel_command.is_some() {
+            if self.canceling_access() {
                 "Cancelando…"
             } else {
                 label
             },
             cx,
         )
-        .on_click(cx.listener(|this, _, _, cx| this.request(Command::AccountCancel, cx)))
+        .when(self.canceling_access(), |button| {
+            button.tab_stop(false).opacity(orbit::DISABLED)
+        })
+        .on_click(cx.listener(|this, _, _, cx| this.cancel_access(cx)))
         .on_key_down(cx.listener(|this, event: &gpui::KeyDownEvent, _, cx| {
             if matches!(event.keystroke.key.as_str(), "enter" | "space") {
-                this.request(Command::AccountCancel, cx);
+                this.cancel_access(cx);
                 cx.stop_propagation();
             }
         }))
     }
 
-    fn access_retry_button(cx: &mut Context<Self>) -> Stateful<Div> {
-        orbit::button("access-retry", "Reintentar", cx)
+    fn access_retry_button(&self, cx: &mut Context<Self>) -> Stateful<Div> {
+        let label = if self.access.logout_failed() {
+            "Reintentar cierre de sesión"
+        } else {
+            "Reintentar"
+        };
+        orbit::button("access-retry", label, cx)
             .on_click(cx.listener(|this, _, _, cx| this.retry_access(cx)))
             .on_key_down(cx.listener(|this, event: &gpui::KeyDownEvent, _, cx| {
                 if matches!(event.keystroke.key.as_str(), "enter" | "space") {
@@ -1155,8 +1261,6 @@ mod tests {
             let reply = Reply::Account {
                 session: if pending {
                     vantare_ipc::services_protocol::Session::Pending
-                } else if false {
-                    vantare_ipc::services_protocol::Session::SignedIn
                 } else {
                     vantare_ipc::services_protocol::Session::SignedOut
                 },

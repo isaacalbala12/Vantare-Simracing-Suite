@@ -15,6 +15,12 @@ Los servicios remotos requieren SignedIn; no se reutilizan tokens rechazados.
 Los resultados de renovación fallidos releen AccountPoll, sin otro grant HTTP.
 No cambia la firma, el plazo, la gracia, el catálogo ni las reglas beta.
 
+Tras fallar el ACK de Logout, Reintentar cierre de sesión reenvía Logout. Volver
+solo permite regresar con Session conocida y política fresca del núcleo que
+conserve acceso; no confirma un cierre fallido. Choose admite Escape y Volver
+sin iniciar un intento. AccountCancel en vuelo bloquea proveedores y nuevos
+Cancel hasta su respuesta, sin sustituirlo por Logout.
+
 ## ISA-1793 — Acceso sin comprobación manual
 
 El Hub confirma la sesión y consume la política fresca del núcleo. El supervisor

@@ -158,6 +158,14 @@ fn missing_profile_oauth_rejection_requires_sign_in_but_preserves_real_binding()
             ..
         }
     ));
+    assert!(matches!(
+        handle_with(&mut state, Command::AccountPoll, &signing, |_, command| app
+            .handle(command)),
+        Reply::Account {
+            session: protocol::Session::NeedsSignIn,
+            ..
+        }
+    ));
     let requests = server.finish_observed();
     assert_eq!(requests.len(), 1, "exactly one rejected refresh, no replay");
     assert!(requests[0].starts_with("POST /token "));

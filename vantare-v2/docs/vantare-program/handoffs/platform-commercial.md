@@ -47,6 +47,21 @@ Implementado y publicado como draft; sin merge, integración ni promoción.
   vigente, comprobar páginas/aviso y reautenticación con la misma identidad.
 - Siguiente: paso 6b en otra rama/PR desde origin/nightly, sin mezclar su cambio
   de gracia. Sin merge, release, despliegue, instalación ni producción.
+
+Revisión independiente posterior (orquestador, APPROVE WITH CHANGES, sin P0/P1):
+- Fallo de ACK Logout: «Reintentar cierre de sesión» vuelve a enviar Logout;
+  «Volver» abandona ese cierre fallido solo con Session conocida y derechos
+  vigentes de un nuevo feed del núcleo. Nunca inicia login ni declara cierre.
+- Choose se cierra con Escape/Volver sin IPC ni cambio de Session. Conserva la
+  pantalla de acceso actual; no se introduce otro sistema de modales en la shell.
+- Cancelación pendiente/en vuelo: proveedores y Cancel desactivados; estado
+  Cancelando no interactivo y un solo AccountCancel, también detrás de otra
+  petición. Logout explícito mantiene prioridad.
+- Se retira la rama else-if-false del test, se acota recv con timeout de fixture
+  y se afirma Session exacta tras cancelar y tras el rechazo de refresh/perfil.
+- Focalizadas 61/61 PASS; cuatro mutaciones detectadas por aserción y restauradas
+  SHA-256. Gates completos y HEAD final pendientes. Evidencia separada:
+  `D:/VantareServer/evidence/isa-1827-p6-review`. CI la vigila el orquestador.
 <!-- /isa1827-paso6 -->
 
 ## VANTA-126 / #1827, #1814 — Paso 1: recuperación firmada (31-oct-2026)

@@ -195,7 +195,7 @@ impl Remote {
         }
     }
     pub(crate) fn select_email(&mut self, mode: EmailMode, cx: &mut Context<Self>) {
-        if self.working() {
+        if self.working() || self.canceling_access() {
             return;
         }
         self.email = Some(Form::new(mode, cx));

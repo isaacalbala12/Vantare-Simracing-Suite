@@ -93,6 +93,55 @@ El script de base rechazó --comentario sin estado; no se forzó ninguna escritu
 
 ## VANTA-126 / #1827 — Licencias paso 5 (31-oct, por revisar)
 
+### Revisión profunda R1 — cambios solicitados en el mismo PR
+
+- Orquestador: APPROVE WITH CHANGES, sin P0/P1. Esta revisión sustituye el
+  comportamiento y los resultados de la primera entrega descrita abajo.
+- DeviceReset comprueba primero OAuth y autorización de datos. NeedsSignIn
+  devuelve Authentication sin HTTP, Invalidate ni cambios de documentos. Si
+  falla autorizar datos conserva candidate; tras autorizar mantiene el ACK
+  durable antes de limpiar y pedir el reset remoto. Se ajustan las cinco filas
+  de fallo de autorización y las dos sin bridge a este orden autorizado.
+- Solo invalid_grant/401 del endpoint de token durante refresh guardan
+  NeedsSignIn. Un 403 o fallo de userinfo tras refresh válido sigue transitorio,
+  sin modificar la cuenta durable. Se eliminan el revoke no-op por error de
+  renovación y el cierre de sesión inalcanzable del refresh.
+- La tabla de caracterización añade needs_sign_in, filas OAuth 401 para los
+  tres orígenes y Purchase/403; comprueba explícitamente LicenseFailure
+  Definitive en el rechazo manual de emisión. Pruebas de Logout y cambio de
+  identidad desde NeedsSignIn conservan la barrera del ACK aceptado/rechazado.
+  AccountBegin/AccountPoll pending muestran progreso sin forzar el error viejo;
+  el supervisor vuelve a renovar al confirmar un login nuevo.
+- Soporte: hasta el paso 6, el Hub bloquea todo salvo Cuenta porque recibe
+  signed_in=false; overlays y derechos del núcleo siguen hasta su fecha.
+  Al volver a la generación anterior, account se aparta como .corrupto y exige
+  login sin perder derechos firmados. El paso 8 añade la fixture de rollback.
+  P3-6/P3-8 quedan como observaciones aceptadas de la revisión, sin ampliar
+  el alcance de producto. Detalles operativos en BIL-08.
+- **145 filas de caracterización**: 141 previas y cuatro nuevas; columna
+  needs_sign_in en las 38 filas HTTP. Auditoría de delta en
+  review-characterization-delta.json; solo cambian tres errores token/403 y
+  el orden de autorización de reset solicitado. No se debilita NotFound ni
+  la barrera de ACK; la prueba de cambio de identidad mantiene SignedIn y
+  añade NeedsSignIn con ACK aceptado y rechazado.
+- **7/7 mutaciones detectadas por aserciones**, restauradas por SHA256 antes
+  de la suite verde. Tres fijan la columna revoke; las otras prueban el
+  marcador OAuth, reset antes de validar sesión, token 403 y userinfo.
+  Parches/logs/hashes en review-mutations/.
+- Gates R1 por compilar.ps1, target propio, locked/offline y dos jobs: fmt y
+  Clippy all-targets -D warnings PASS (cubre check), Nextest perfil ci con
+  telemetría **868/868 PASS**, 13 omisiones preexistentes; lifecycle **13/13
+  PASS**, Deno **40/40 PASS**, quality **466/466 huellas PASS**. Tras reforzar
+  NotFound: fmt/Clippy y matriz de reset **1/1 PASS** repetidos. Resultados/HEAD/CI
+  finales verificados en #1833 y #1827 antes de entregar. Sin merge ni producción.
+- Evidencia R1 en D:/VantareServer/evidence/isa-1827-p5/: review-nextest-final.log,
+  review-lifecycle.log, review-clippy-current.log, review-fmt-current.log,
+  review-reset-current.log, review-deno-final.log y review-quality.log. Fallos
+  intermedios conservados: Clippy de longitud y Deno por caché/configuración;
+  Deno usa node-modules-dir=none, sin instalación local ni cambios de lock.
+
+### Primera entrega — evidencia histórica anterior a R1
+
 [PR draft #1833](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1833)
 a nightly, enlazada en T3. Código validado `440c4a6dd281bf28dbbb6de5c6992d5745fb9d4a`;
 los commits posteriores registran el handoff y ajustan un fixture portable,

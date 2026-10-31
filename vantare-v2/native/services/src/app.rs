@@ -347,10 +347,6 @@ impl App {
             let candidate = match renewal {
                 Ok(candidate) => candidate,
                 Err(error) => {
-                    self.revoke_local(outcome(Observation::Error(
-                        error,
-                        OutcomeOrigin::Renewal { automatic },
-                    )))?;
                     return Err(if error == Error::InvalidCredential {
                         Error::Version
                     } else {
@@ -377,9 +373,11 @@ impl App {
             return Err(Error::Protocol);
         }
         let device = crate::license::installation::legacy_fingerprint()?;
-        self.revoke_local(outcome(Observation::Action(Revocation::DeviceReset)))?;
         let time = (self.clock)()?;
+        self.ensure_oauth(time)?;
         self.ensure_data(time)?;
+        // No retirar derechos si la sesión no permite liberar el dispositivo.
+        self.revoke_local(outcome(Observation::Action(Revocation::DeviceReset)))?;
         self.candidate_store()?;
         let request = self
             .data_session
@@ -494,14 +492,6 @@ impl App {
                     error,
                     OutcomeOrigin::OAuth { automatic },
                 ));
-                self.revoke_local(effects)?;
-                if effects.sign_out {
-                    self.data_session = None;
-                    self.account
-                        .as_mut()
-                        .ok_or(Error::Authentication)?
-                        .logout(self.store.as_ref().ok_or(Error::Storage)?)?;
-                }
                 if effects.needs_sign_in {
                     self.data_session = None;
                     self.account
@@ -978,14 +968,14 @@ impl App {
         let copy_link = account.login_link().is_ok();
         let error = error
             .or(copy_link.then_some(Error::BrowserUnavailable))
-            .or(account.needs_sign_in().then_some(Error::Authentication));
+            .or((account.needs_sign_in() && !pending).then_some(Error::Authentication));
         Reply::Account {
             copy_link,
             signed_in: account.identity().is_some() && !account.needs_sign_in(),
             profile: account.profile().cloned(),
             expires_at: account.expires_at(),
             pending,
-            message: if account.needs_sign_in() {
+            message: if account.needs_sign_in() && !pending {
                 "Vuelve a iniciar sesión. Tus derechos firmados se conservan hasta su fecha de caducidad.".into()
             } else {
                 error.map_or_else(
@@ -1362,7 +1352,7 @@ mod tests {
                 let (link, core) = core_fixture(device.clone(), keys, vec![CoreStep::Read]);
                 app.attach_core(link);
                 let reply = crate::host::fixture_request(&mut app, Command::AccountProfileRefresh);
-                let needs_sign_in = oauth_refresh && matches!(status, 400 | 401 | 403);
+                let needs_sign_in = oauth_refresh && matches!(status, 400 | 401);
                 if let Reply::Account { message, .. } = &reply {
                     assert_eq!(
                         message,
@@ -3360,7 +3350,9 @@ mod tests {
 
     #[test]
     fn switching_identity_revokes_before_saving_and_rejection_preserves_the_old_session() {
-        for rejected in [false, true] {
+        for (rejected, needs_sign_in) in
+            [(false, false), (true, false), (false, true), (true, true)]
+        {
             let device = "identity-change-fixture".to_owned();
             let (credential, keys) = crate::license_remote::tests::signed_fixture(&device);
             let server = crate::test_http::Server::start(vec![
@@ -3369,6 +3361,9 @@ mod tests {
             ]);
             let (root, store) = crate::test_store("app-account-switch");
             let mut account = crate::account::fixture(&server.base, &store);
+            if needs_sign_in {
+                account.require_sign_in(&store).expect("NeedsSignIn");
+            }
             let login = account.begin_login().expect("login without browser");
             let params: std::collections::HashMap<_, _> = login
                 .query_pairs()
@@ -3411,7 +3406,11 @@ mod tests {
             app.attach_core(link);
             let reply = app.handle(Command::AccountPoll);
             assert!(
-                matches!(reply, Reply::Account { signed_in: true, pending: false, error, .. } if error.is_some() == rejected)
+                matches!(reply, Reply::Account { signed_in, pending: false, error, .. } if signed_in == (!needs_sign_in || !rejected) && error.is_some() == rejected)
+            );
+            assert_eq!(
+                app.account.as_ref().expect("account").needs_sign_in(),
+                needs_sign_in && rejected
             );
             let expected = if rejected {
                 "user_fixture"

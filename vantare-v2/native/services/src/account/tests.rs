@@ -363,7 +363,7 @@ fn failed_refresh_is_not_retried_and_changed_subject_cannot_replace_account() {
         .expect("exactly one refresh");
     assert!(matches!(
         account.refresh().expect("ticket").run(&Http::default(), 99),
-        Err(Error::Authentication)
+        Err(Error::Offline)
     ));
     assert_eq!(
         account.identity().expect("identity").subject,

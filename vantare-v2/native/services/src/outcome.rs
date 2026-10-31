@@ -46,8 +46,7 @@ pub fn outcome(observation: Observation<'_>) -> Outcome {
             // del candidate se hace en App::complete_online_renewal.
             let (renewal, oauth, core) = match error {
                 Error::Authentication => (true, true, false),
-                Error::Denied => (true, true, true),
-                Error::Conflict | Error::DeviceLimit => (true, false, true),
+                Error::Denied | Error::Conflict | Error::DeviceLimit => (true, false, true),
                 Error::InvalidCredential | Error::Expired => (false, false, true),
                 Error::Core(vantare_ipc::control::Failure::Rejected) => (true, false, false),
                 _ => (false, false, false),
@@ -151,8 +150,7 @@ mod tests {
                 assert!(!effects.sign_out, "{error:?}/{origin:?}");
                 assert_eq!(
                     effects.needs_sign_in,
-                    matches!(origin, Origin::OAuth { .. })
-                        && matches!(error, Error::Authentication | Error::Denied)
+                    matches!(origin, Origin::OAuth { .. }) && error == Error::Authentication
                 );
             }
         }

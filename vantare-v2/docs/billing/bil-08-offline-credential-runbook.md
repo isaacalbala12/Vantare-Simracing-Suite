@@ -19,7 +19,9 @@ Un permiso perpetuo no adquiere una caducidad artificial por este cambio.
 - Comprobar acceso y la renovación automática conservan binding, autoridad y
   candidate ante rechazo de la emisión. El rechazo explícito se comunica como
   definitivo y detiene la renovación automática; no provoca un reset ni logout.
-- Un rechazo de refresh OAuth pasa a **NeedsSignIn**: pide volver a entrar y
+- Solo `invalid_grant` o HTTP 401 del endpoint de token durante refresh pasan a
+  **NeedsSignIn**. HTTP 403 y fallos de `/userinfo` tras un refresh válido son
+  transitorios y no guardan ese estado. NeedsSignIn pide volver a entrar y
   deja de utilizar el bearer/refresh rechazado, incluso al reiniciar el helper.
   Conserva la identidad anterior, el perfil y los derechos firmados. No ejecuta
   Logout ni borra la cuenta. Volver a entrar con esa identidad no es un cambio
@@ -28,9 +30,15 @@ Un permiso perpetuo no adquiere una caducidad artificial por este cambio.
   entrada. `signed_in=false` en NeedsSignIn pide autenticación; no afirma que
   se haya guardado SignedOut ni que se hayan invalidado derechos. El enum de
   sesión público se incorpora en el paso 6, no en esta entrega.
+  **Limitación del Hub hasta el paso 6:** bloquea todas las páginas salvo Cuenta
+  porque recibe `signed_in=false`. Los overlays y los derechos del núcleo siguen
+  vigentes hasta su plazo firmado; el Hub pide iniciar sesión aunque el núcleo
+  conserve Pro. No confundir el bloqueo de navegación con una licencia revocada.
 - Solo **Cerrar sesión**, **cambiar de identidad** y **Restablecer dispositivo**
   revocan la licencia local; requieren ACK durable antes de limpiar el candidate.
   Son acciones expresas, nunca una reacción automática a un fallo de red.
+  Restablecer dispositivo exige primero una sesión OAuth y de datos utilizable:
+  en NeedsSignIn devuelve Authentication sin revocar ni liberar el dispositivo.
 - Transporte, versión, almacenamiento o una respuesta incomprensible conservan
   su clasificación transitoria y el backoff existente. No amplían el plazo firmado.
 
@@ -42,9 +50,11 @@ Un nuevo documento rechazado por el núcleo conserva sus reglas de cuarentena;
 este paso cambia la revocación por error, no la verificación de firmas.
 
 NeedsSignIn se guarda como un estado nuevo de la cuenta protegida, conservando
-los datos de sesión existentes. Una generación anterior que no entienda ese
-estado puede pedir login de nuevo al volver atrás; no cambia el formato firmado
-ni los documentos del núcleo. No se despliega ni se modifica una instalación
+los datos de sesión existentes. Al volver a la generación anterior, su lector no
+entiende ese estado: aparta `account` como `.corrupto` y pide login de nuevo.
+No pierde los derechos firmados ni cambia los documentos del núcleo. El paso 8
+añadirá la fixture de rollback entre generaciones; no se ejecuta un rollback de
+instalación en esta entrega. No se despliega ni se modifica una instalación
 por ejecutar estas pruebas o editar el runbook.
 
 ## Propiedad de las claves

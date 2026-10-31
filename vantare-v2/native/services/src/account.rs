@@ -273,6 +273,11 @@ impl Exchange {
                 _ => {}
             }
         }
+        // Solo invalid_grant/401 del token endpoint prueba un refresh rechazado.
+        // Un 403 no demuestra que la sesión protegida deba dejar de usarse.
+        if matches!(self.grant, Grant::Refresh(_)) && response.status == 403 {
+            return Err(Error::Offline);
+        }
         let tokens: Tokens = response.success()?.json()?;
         if !tokens.token_type.eq_ignore_ascii_case("bearer")
             || tokens.expires_in == 0
@@ -288,10 +293,11 @@ impl Exchange {
                 Some(tokens.access_token.expose()),
                 None,
             )?
-            .success()?
+            .success()
+            .map_err(|error| self.profile_failure(error))?
             .json()?;
         if info.sub.is_empty() || info.sub.len() > 256 {
-            return Err(Error::Authentication);
+            return Err(self.profile_failure(Error::Authentication));
         }
         let identity = Identity {
             issuer: self.oauth.issuer.to_string(),
@@ -302,7 +308,7 @@ impl Exchange {
             .as_ref()
             .is_some_and(|previous| previous != &identity)
         {
-            return Err(Error::Authentication);
+            return Err(self.profile_failure(Error::Authentication));
         }
         let refresh = match (tokens.refresh_token, &self.grant) {
             (Some(refresh), _) if !refresh.0.is_empty() && refresh.0.len() <= 16 * 1024 => refresh,
@@ -321,6 +327,15 @@ impl Exchange {
                 expires_at: now.checked_add(tokens.expires_in).ok_or(Error::Clock)?,
             },
         })
+    }
+    fn profile_failure(&self, error: Error) -> Error {
+        if matches!(self.grant, Grant::Refresh(_))
+            && matches!(error, Error::Authentication | Error::Denied)
+        {
+            Error::Offline
+        } else {
+            error
+        }
     }
 }
 

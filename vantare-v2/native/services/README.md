@@ -3,7 +3,8 @@
 `outcome` solo marca revocación en Logout, cambio de identidad y DeviceReset.
 Los rechazos de renovación manual/automática conservan los derechos firmados;
 la respuesta definitiva detiene el scheduler sin ampliar el plazo. Un refresh
-OAuth rechazado guarda NeedsSignIn, conserva identidad/perfil y exige nueva
+OAuth rechazado (`invalid_grant`/401 del endpoint de token) guarda NeedsSignIn;
+403 y fallos de userinfo tras refresh válido siguen transitorios. Conserva identidad/perfil y exige nueva
 entrada sin reutilizar tokens rechazados. Un login correcto restaura SignedIn;
 la comparación de identidad sigue precediendo a guardar otra cuenta.
 El IPC mantiene su formato; el Session explícito público llega en el paso 6.

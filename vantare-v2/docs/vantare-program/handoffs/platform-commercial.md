@@ -95,7 +95,8 @@ El script de base rechazó --comentario sin estado; no se forzó ninguna escritu
 
 [PR draft #1833](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1833)
 a nightly, enlazada en T3. Código validado `440c4a6dd281bf28dbbb6de5c6992d5745fb9d4a`;
-el commit posterior solo registra este handoff. HEAD final y CI se verifican
+los commits posteriores registran el handoff y ajustan un fixture portable,
+sin modificar producto. HEAD final y CI se verifican
 antes de entregar en la PR y #1827. Base `origin/nightly`:
 `bb7a5dbfbf13307dc3ecdb8966194fb943be75b5` (#1832 MERGED, verificado).
 Rama `vantareapp/isa-1827-paso5-sin-revocar`, worktree
@@ -129,6 +130,12 @@ Rama `vantareapp/isa-1827-paso5-sin-revocar`, worktree
   perfil ci con telemetría **863/863 PASS**, 13 omisiones existentes; lifecycle
   **13/13 PASS**. Suite services previa **275/275 PASS**, seis omisiones existentes.
   Deno **40/40 PASS**, quality y **466/466 huellas PASS**. Diff completo revisado.
+- Revisión de portabilidad: el test de refresh sin cfg(windows) deja de usar
+  CoreStep::Read (solo Windows) y exige directamente cero comandos al núcleo.
+  Tras el ajuste: Clippy all-targets, fmt y regresión específica **1/1 PASS**.
+  No cambia producto ni el número de tests; CI del nuevo HEAD prueba la suite
+  completa sobre nightly, que ya incorpora #1831. Evidencia adicional:
+  clippy-portable.log, portable-regression.log y fmt-portable.log.
 - Pruebas nuevas de persistencia/restauración, PKCE real de la misma identidad,
   candidate conservado y respuesta definitiva que detiene HTTP automático.
   La integración App/host/core real confirma **Pro → Pro tras el rechazo**, el

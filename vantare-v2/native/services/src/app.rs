@@ -1946,7 +1946,7 @@ mod tests {
         let mut app = App::new(BuildConfig::load(), root.clone());
         app.account = Some(account);
         app.store = Some(store);
-        let (link, core) = core_fixture(String::new(), "unused", vec![CoreStep::Read]);
+        let (link, core) = core_fixture(String::new(), "unused", vec![]);
         app.attach_core(link);
         app.ensure_oauth(100).expect("current token needs no HTTP");
         assert!(server.requests.try_recv().is_err());
@@ -1960,9 +1960,8 @@ mod tests {
         assert!(app.account.as_ref().expect("account").needs_sign_in());
         assert!(app.account.as_ref().expect("account").identity().is_some());
         assert_eq!(app.ensure_oauth(1000), Err(Error::Authentication));
-        app.core_command(vantare_ipc::control::Command::Read)
-            .expect("rights preserved");
-        core.join().expect("only Read, no invalidation");
+        core.join()
+            .expect("no core commands for a rejected refresh");
         server.finish();
         drop(app);
         crate::cleanup_store(&root, "app-refresh-failure", &["account"]);

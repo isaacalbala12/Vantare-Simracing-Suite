@@ -603,6 +603,8 @@ impl App {
     }
 
     fn automatic_failure(error: Error) -> Reply {
+        // La tabla marca DeviceLimit como renewal=true (definitivo). Este retorno
+        // previo conserva su variante accionable en vez de emitir LicenseFailure.
         if error == Error::DeviceLimit {
             return Reply::DeviceLimit {
                 message: error.to_string(),

@@ -31,7 +31,8 @@ pub fn outcome(observation: Observation<'_>) -> Outcome {
     let (renewal, revoke, sign_out) = match observation {
         Observation::Error(error, origin) => {
             // Columnas definitivas: renovación, OAuth, respuesta del núcleo.
-            // Core(Rejected) no revoca en manual: solo aparta el candidate.
+            // Core(Rejected) no procede de license_remote::renew; la cuarentena
+            // del candidate se hace en App::complete_online_renewal.
             let (renewal, oauth, core) = match error {
                 Error::Authentication => (true, true, false),
                 Error::Denied => (true, true, true),
@@ -92,9 +93,58 @@ pub fn renewal_urgent(policy: &Policy, wall: u64) -> bool {
 pub fn renewal_deadline(policy: &Policy) -> Option<u64> {
     policy.valid_until_ms.map(|end| {
         if policy.live {
+            // Policy publica el plazo efectivo, que puede incluir gracia de juego.
+            // Reservarla permite renovar antes del plazo firmado, sin ampliarlo.
             end.saturating_sub(crate::license::GAME_GRACE_SECONDS.unsigned_abs() * 1000)
         } else {
             end
         }
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn reply_failures_preserve_the_reported_result_without_local_effects() {
+        for renewal in [
+            RenewalOutcome::Verified,
+            RenewalOutcome::Transient,
+            RenewalOutcome::Definitive,
+        ] {
+            let reply = Reply::LicenseFailure {
+                outcome: renewal,
+                message: String::new(),
+            };
+            assert_eq!(
+                outcome(Observation::Reply(&reply)),
+                Outcome {
+                    renewal,
+                    revoke: false,
+                    sign_out: false
+                }
+            );
+        }
+        assert_eq!(
+            outcome(Observation::Reply(&Reply::DeviceLimit {
+                message: String::new()
+            })),
+            Outcome {
+                renewal: RenewalOutcome::Definitive,
+                revoke: false,
+                sign_out: false
+            }
+        );
+        assert_eq!(
+            outcome(Observation::Reply(&Reply::Error {
+                message: String::new()
+            })),
+            Outcome {
+                renewal: RenewalOutcome::Transient,
+                revoke: false,
+                sign_out: false
+            }
+        );
+    }
 }

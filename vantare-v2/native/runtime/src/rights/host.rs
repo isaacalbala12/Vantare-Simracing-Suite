@@ -426,6 +426,24 @@ mod response_tests {
     }
 
     #[test]
+    fn service_rejections_and_authentication_are_unavailable_in_core_origin() {
+        use vantare_services::Error;
+        // El rechazo del servicio no es un error de autorización del Owner.
+        // La bandera de Clock de caché tampoco debe cambiar estos dos casos.
+        for cached_clock_rejection in [false, true] {
+            for error in [
+                Error::Core(control::Failure::Rejected),
+                Error::Authentication,
+            ] {
+                assert_eq!(
+                    response_error(error, cached_clock_rejection),
+                    control::UNAVAILABLE
+                );
+            }
+        }
+    }
+
+    #[test]
     fn paused_session_resumes_without_duplicate_usage_and_new_session_still_counts() {
         let mut snapshot = Snapshot::default();
         snapshot.origin.source.simulator = "lmu";

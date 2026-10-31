@@ -683,15 +683,7 @@ impl App {
                     self.data_session = None;
                 }
                 if account_action && let Some(account) = self.account.as_ref() {
-                    let mut reply = Self::account_reply(account, Some(error));
-                    if profile_refresh
-                        && account.identity().is_some()
-                        && let Reply::Account { message, .. } = &mut reply
-                    {
-                        *message =
-                            "No se pudo actualizar el perfil; la sesión sigue abierta.".into();
-                    }
-                    reply
+                    Self::account_error_reply(account, error, profile_refresh)
                 } else if error == Error::DeviceLimit {
                     // Acción concreta y distinta de cualquier otro fallo: el
                     // texto sigue saliendo del único mapeo (`error.rs`).
@@ -892,6 +884,17 @@ impl App {
             option_env!("VANTARE_BILLING_ENVIRONMENT").ok_or(Error::Unconfigured)?,
         )?;
         Ok(Reply::Checkout { url })
+    }
+
+    fn account_error_reply(account: &Account, error: Error, profile_refresh: bool) -> Reply {
+        let mut reply = Self::account_reply(account, Some(error));
+        if profile_refresh
+            && account.identity().is_some()
+            && let Reply::Account { message, .. } = &mut reply
+        {
+            *message = "No se pudo actualizar el perfil; la sesión sigue abierta.".into();
+        }
+        reply
     }
 
     fn account_reply(account: &Account, error: Option<Error>) -> Reply {

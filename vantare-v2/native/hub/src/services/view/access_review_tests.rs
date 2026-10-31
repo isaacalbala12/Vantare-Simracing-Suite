@@ -204,7 +204,12 @@ fn cancel_transport_error_releases_controls_outside_the_account_section() {
             remote.active = Area::Calendar;
             remote.request(Command::AccountCancel, cx);
             assert!(matches!(requests.try_recv(), Ok(Command::AccountCancel)));
-            remote.complete(Reply::Error { message: "transport fixture".into() }, cx);
+            remote.complete(
+                Reply::Error {
+                    message: "transport fixture".into(),
+                },
+                cx,
+            );
             assert!(!remote.canceling_access());
             assert!(!remote.working());
             assert!(!remote.requires_access());
@@ -229,7 +234,12 @@ fn logout_transport_error_can_retry_and_return_outside_the_account_section() {
             remote.active = Area::Calendar;
             remote.request(Command::Logout, cx);
             assert!(matches!(requests.try_recv(), Ok(Command::Logout)));
-            remote.complete(Reply::Error { message: "transport fixture".into() }, cx);
+            remote.complete(
+                Reply::Error {
+                    message: "transport fixture".into(),
+                },
+                cx,
+            );
             assert!(remote.home_access().1.is_some());
             remote.retry_access(cx);
             assert!(matches!(requests.try_recv(), Ok(Command::Logout)));

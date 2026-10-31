@@ -362,7 +362,8 @@ impl State {
                 self.invalidate();
             }
             Reply::Error { message }
-                if account || matches!(self.transition, Transition::Cancel | Transition::Logout) =>
+                if account
+                    || matches!(self.transition, Transition::Cancel | Transition::Logout) =>
             {
                 self.login_requested = false;
                 if matches!(self.transition, Transition::Login | Transition::Cancel) {

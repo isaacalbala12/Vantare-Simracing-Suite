@@ -33,13 +33,18 @@ export function subscriptionSnapshotStatus(value: unknown): string | null {
   return status !== "uncanceled" && status !== "cancelled" ? status : null;
 }
 
-export function subscriptionEventStatus(type: string, value: unknown): string | null {
+export function subscriptionEventStatus(
+  type: string,
+  value: unknown,
+): string | null {
   if (type === "subscription.created" || type === "subscription.updated") {
     return subscriptionSnapshotStatus(value);
   }
   // Specific webhook types carry the state, even if the payload disagrees.
   const status = type.slice("subscription.".length);
-  return type.startsWith("subscription.") ? subscriptionLifecycleStatus(status) : null;
+  return type.startsWith("subscription.")
+    ? subscriptionLifecycleStatus(status)
+    : null;
 }
 
 export function subscriptionStatusRequiresPeriodEnd(

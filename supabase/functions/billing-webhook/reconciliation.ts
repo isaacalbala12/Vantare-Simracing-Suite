@@ -98,7 +98,10 @@ export async function buildReconciliationPlan(args: {
     }
     const status = subscriptionLifecycleStatus(subscription.status);
     if (!status) {
-      issues.push({ code: "unsupported_subscription_status", resourceId: subscription.id });
+      issues.push({
+        code: "unsupported_subscription_status",
+        resourceId: subscription.id,
+      });
       continue;
     }
     if (

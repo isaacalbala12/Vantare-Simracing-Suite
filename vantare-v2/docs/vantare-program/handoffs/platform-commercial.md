@@ -1,6 +1,7 @@
-## VANTA-126 / #1827 — Licencias paso 2 (31-oct, rama preparada)
+## VANTA-126 / #1827 — Licencias paso 2 (31-oct, PR draft #1829)
 
-Encargo del orquestador: estados de suscripción del servidor. Rama
+[PR draft #1829](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1829)
+a nightly, registrado en T3. Encargo del orquestador: estados del servidor. Rama
 `vantareapp/isa-1827-paso2-estados-suscripcion`, worktree
 `C:/VantareServer/wt/isa-1827-paso2`, base `origin/nightly`
 `3e6f2dce7181ac224f4a1ed6ffa38e11373c89e9`. Project Vantare /
@@ -27,12 +28,14 @@ area:licencias / In Review, sin milestone. Plane paraguas no se mueve.
   mediante Node 24 (sin dependencias). Quality/466 huellas y diff check PASS.
   Evidencia: `D:/VantareServer/evidence/isa-1827-paso2/compare-lifecycle.mjs`.
   Deno/PostgreSQL/PostgREST no están instalados; pruebas Edge/SQL y gate
-  `supabase-commercial-gates` pendientes de CI del PR. No se instalan herramientas.
+  `supabase-commercial-gates` pendientes de CI del HEAD final del PR. La primera
+  tanda Deno de esta rama pasó; no se extrapola a cambios posteriores. No se instalan herramientas.
   Rust/lifecycle nativo/telemetría omitidos: no hay cambios nativos.
 - Bloqueo de seguimiento: el script actual rechaza `--comentario` sin estado.
   No se modifica Plane ni el script para sortearlo; inicio registrado en #1827.
 - Siguiente: PR draft a nightly, CI del HEAD final y revisión del orquestador.
   Sin merge, release, despliegue, producción, cuentas reales ni lectura de secretos.
+  Ejecución con esfuerzo medium heredado; no se afirma high. Sin subagentes.
 
 ## VANTA-126 / #1827, #1815 — Paso 3: retirar emisión legacy (31-oct-2026)
 

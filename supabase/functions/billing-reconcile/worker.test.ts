@@ -594,6 +594,7 @@ Deno.test("reconcile subscriptions uses the lifecycle matrix; unknown snapshots 
     } else {
       assertEquals([...projection.grants.values()].map(g => g.status), [row.expectedGrant], row.id);
       assertEquals([...lifecycle.subscriptions.values()].map(s => s.status), [status], row.id);
+      assertEquals(lifecycle.cycles.size, row.expectedRecovery === "open" ? 1 : 0, row.id);
     }
     const after = structuredClone({ resources: [...projection.resources], subscriptions: [...lifecycle.subscriptions],
       recovery: [...lifecycle.recoveryGrants], cycles: [...lifecycle.cycles] });

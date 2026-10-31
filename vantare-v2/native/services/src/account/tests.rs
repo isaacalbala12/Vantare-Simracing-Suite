@@ -363,7 +363,7 @@ fn failed_refresh_is_not_retried_and_changed_subject_cannot_replace_account() {
         .expect("exactly one refresh");
     assert!(matches!(
         account.refresh().expect("ticket").run(&Http::default(), 99),
-        Err(Error::Authentication)
+        Err(Error::Offline)
     ));
     assert_eq!(
         account.identity().expect("identity").subject,
@@ -480,4 +480,63 @@ fn explicit_profile_refresh_restores_saved_photo_and_cannot_switch_identity() {
     server.finish();
     drop(store);
     crate::cleanup_store(&root, "profile-refresh", &["account"]);
+}
+
+#[test]
+fn needs_sign_in_is_durable_and_preserves_identity_until_fresh_login() {
+    let server = Server::start(vec![]);
+    let (root, store) = crate::test_store("needs-sign-in");
+    let mut account = super::fixture(&server.base, &store);
+    let config = account.oauth.clone();
+    let identity = account.identity().expect("identity").clone();
+    let expiry = account.expires_at();
+    account
+        .require_sign_in(&store)
+        .expect("durable NeedsSignIn");
+    assert!(account.needs_sign_in());
+    assert!(account.identity() == Some(&identity));
+    assert_eq!(account.expires_at(), expiry);
+    assert!(matches!(account.refresh(), Err(Error::Authentication)));
+    assert_eq!(
+        account.authorized(100, |_| Ok(())),
+        Err(Error::Authentication)
+    );
+    drop(account);
+    let mut restored = Account::restore(config.clone(), &store).expect("restore NeedsSignIn");
+    assert!(restored.needs_sign_in());
+    assert!(restored.identity() == Some(&identity));
+    assert!(matches!(restored.refresh(), Err(Error::Authentication)));
+    assert_eq!(
+        restored.authorized(100, |_| Ok(())),
+        Err(Error::Authentication)
+    );
+    let mut session = restored.session.as_ref().expect("session retained").clone();
+    session.expires_at = 2000;
+    session.access = Secret(crate::random_id().expect("fresh fixture access"));
+    session.refresh = Secret(crate::random_id().expect("fresh fixture refresh"));
+    restored
+        .complete(
+            Completion {
+                generation: restored.generation,
+                session,
+                profile: crate::protocol::AccountProfile::default(),
+            },
+            &store,
+        )
+        .expect("fresh login completion");
+    assert!(!restored.needs_sign_in());
+    assert!(restored.identity() == Some(&identity));
+    assert_eq!(restored.authorized(100, |_| Ok(())), Ok(()));
+    drop(restored);
+    let restored = Account::restore(config, &store).expect("restore fresh login");
+    assert!(!restored.needs_sign_in());
+    assert_eq!(restored.expires_at(), Some(2000));
+    assert!(
+        server.requests.try_recv().is_err(),
+        "no HTTP from a rejected session"
+    );
+    server.finish();
+    drop(restored);
+    drop(store);
+    crate::cleanup_store(&root, "needs-sign-in", &[]);
 }

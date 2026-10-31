@@ -1,7 +1,7 @@
-//! `DeviceReset` ya revocó antes de llegar a cualquiera de estas respuestas.
+//! Paso 5 R1: `DeviceReset` exige autorización antes de revocar; conserva el ACK previo al reset.
 use super::*;
 
-// falla authorize, HTTP, Error; todos eliminan candidate y conservan cuenta.
+// Falla authorize, HTTP, Error; candidate se conserva si falla authorize.
 #[rustfmt::skip]
 const CASES: &[(bool, u16, Option<Error>)] = &[
         (true, 401, Some(Error::Authentication)),
@@ -70,7 +70,11 @@ fn assert_remote_reset(authorize: bool, status: u16, error: Option<Error>) {
             },
         )
         .expect("candidate");
-    let mut steps = vec![CoreStep::Invalidate];
+    let mut steps = if authorize {
+        vec![]
+    } else {
+        vec![CoreStep::Invalidate]
+    };
     if error.is_none() {
         steps.push(CoreStep::Read);
     }
@@ -85,15 +89,10 @@ fn assert_remote_reset(authorize: bool, status: u16, error: Option<Error>) {
     if error.is_none() {
         assert!(matches!(result, Ok(Reply::License { .. })));
     }
-    assert!(matches!(
-        app.candidate_store()
-            .expect("store")
-            .load::<crate::license_remote::Candidate>("license-candidate"),
-        Err(Error::NotFound)
-    ));
+    let _ = assert_candidate_presence(&mut app, authorize);
     assert!(app.account.as_ref().expect("account").identity().is_some());
     core.join()
-        .expect("Invalidate before any network and Read only on success");
+        .expect("authorization before Invalidate; Read only on success");
     assert!(
         server
             .requests

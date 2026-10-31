@@ -97,7 +97,7 @@ fn assert_pro_expires_at_deadline(
 }
 
 #[test]
-fn missing_profile_oauth_rejection_preserves_real_binding_and_scheduled_renewal() {
+fn missing_profile_oauth_rejection_requires_sign_in_but_preserves_real_binding() {
     let server = vantare_services::test_http::Server::start_observed(vec![(
         400,
         r#"{"error":"invalid_grant"}"#.into(),
@@ -149,7 +149,7 @@ fn missing_profile_oauth_rejection_preserves_real_binding_and_scheduled_renewal(
     assert!(matches!(
         reply,
         Reply::Account {
-            signed_in: true,
+            signed_in: false,
             profile: None,
             error: Some(_),
             ..
@@ -166,33 +166,57 @@ fn missing_profile_oauth_rejection_preserves_real_binding_and_scheduled_renewal(
         after.valid_until_ms, before.valid_until_ms,
         "profile grants no new TTL"
     );
+    assert!(
+        !state.renewal.signed_in(),
+        "NeedsSignIn stops network renewal"
+    );
     let tick = Instant::now();
-    let mut attempts = 0;
     let wall = after.checked_at_ms;
-    assert!(
-        run_renewal(&mut state, &after, wall, tick, |_, command| {
-            assert!(matches!(command, Command::LicenseRenewAutomatic));
-            attempts += 1;
-            Reply::LicenseFailure {
-                outcome: protocol::RenewalOutcome::Transient,
-                message: String::new(),
-            }
-        })
-        .is_some()
-    );
-    assert!(
-        run_renewal(
-            &mut state,
-            &after,
-            wall,
-            tick + Duration::from_secs(59),
-            |_, _| panic!("retry floor")
-        )
-        .is_none()
-    );
-    assert_eq!(attempts, 1);
+    for now in [tick, tick + Duration::from_mins(30)] {
+        assert!(
+            run_renewal(&mut state, &after, wall, now, |_, _| {
+                panic!("a rejected refresh must require fresh sign-in, without HTTP retry")
+            })
+            .is_none()
+        );
+    }
+    assert_renewal_resumes(&mut state, &signing, &after, wall, tick);
     drop(app);
     drop(core);
     assert_pro_expires_at_deadline(&root, &keys, deadline);
     std::fs::remove_dir_all(root).expect("private fixtures only");
+}
+
+fn assert_renewal_resumes(
+    state: &mut State,
+    signing: &SigningIn,
+    policy: &control::Policy,
+    wall: u64,
+    tick: Instant,
+) {
+    // A completed fresh login reopens the scheduler; the services PKCE test
+    // separately proves that the same identity clears its durable marker.
+    handle_with(state, Command::AccountPoll, signing, |_, _| {
+        confirmed_session()
+    });
+    assert!(state.renewal.signed_in());
+    let mut attempts = 0;
+    assert!(matches!(
+        run_renewal(
+            state,
+            policy,
+            wall,
+            tick + Duration::from_mins(31),
+            |_, command| {
+                assert!(matches!(command, Command::LicenseRenewAutomatic));
+                attempts += 1;
+                Reply::LicenseFailure {
+                    outcome: protocol::RenewalOutcome::Transient,
+                    message: String::new(),
+                }
+            }
+        ),
+        Some(Reply::LicenseFailure { .. })
+    ));
+    assert_eq!(attempts, 1, "automatic renewal resumes after fresh sign-in");
 }

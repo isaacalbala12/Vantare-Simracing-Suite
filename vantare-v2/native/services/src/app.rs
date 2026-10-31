@@ -4,7 +4,9 @@ use crate::{
     account::{Account, OAuth},
     config::BuildConfig,
     http::Http,
-    outcome::{Observation, Origin as OutcomeOrigin, outcome},
+    outcome::{
+        Observation, Origin as OutcomeOrigin, Outcome as AccessOutcome, Revocation, outcome,
+    },
     protocol::{Command, Reply},
     storage::Store,
 };
@@ -15,6 +17,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 mod candidate_tests;
 mod mail;
 mod pilot;
+#[cfg(all(test, windows))]
+mod renewal_tests;
 
 pub struct App {
     core: Option<vantare_ipc::control::CoreLink>,
@@ -258,7 +262,10 @@ impl App {
         self.core_command(vantare_ipc::control::Command::Read)
     }
 
-    fn revoke_local(&mut self) -> Result<()> {
+    fn revoke_local(&mut self, effects: AccessOutcome) -> Result<()> {
+        if !effects.revoke {
+            return Ok(());
+        }
         self.core_command(vantare_ipc::control::Command::Invalidate)?;
         self.recovered_renewal_transfer = false;
         self.candidate_store()?.remove("license-transfer-pending")?;
@@ -312,8 +319,8 @@ impl App {
                 return Err(Error::Unconfigured);
             }
             let device = crate::license::installation::legacy_fingerprint()?;
-            // La renovación puede exigir revocación. Sin propietario no se
-            // inicia red ni se anuncia una limpieza parcial como revocación.
+            // Sin propietario no se inicia red: solo su ACK instala una licencia.
+            // Las renovaciones conservan siempre los derechos firmados anteriores.
             self.core.as_ref().ok_or(Error::Unconfigured)?;
             if automatic && (self.recovered_renewal_transfer || self.pending_renewal_transfer()?) {
                 let (reply, installed) = self.transfer_rights_observed()?;
@@ -340,15 +347,6 @@ impl App {
             let candidate = match renewal {
                 Ok(candidate) => candidate,
                 Err(error) => {
-                    if outcome(Observation::Error(
-                        error,
-                        OutcomeOrigin::Renewal { automatic },
-                    ))
-                    .revoke
-                    {
-                        // Rechazo definitivo: ACK durable antes de limpiar la caché.
-                        self.revoke_local()?;
-                    }
                     return Err(if error == Error::InvalidCredential {
                         Error::Version
                     } else {
@@ -375,9 +373,11 @@ impl App {
             return Err(Error::Protocol);
         }
         let device = crate::license::installation::legacy_fingerprint()?;
-        self.revoke_local()?;
         let time = (self.clock)()?;
+        self.ensure_oauth(time)?;
         self.ensure_data(time)?;
+        // No retirar derechos si la sesión no permite liberar el dispositivo.
+        self.revoke_local(outcome(Observation::Action(Revocation::DeviceReset)))?;
         self.candidate_store()?;
         let request = self
             .data_session
@@ -398,7 +398,7 @@ impl App {
 
     fn logout_reply(&mut self) -> Result<Reply> {
         // Invalida primero: ni limpieza local ni UI anuncian éxito antes del ACK.
-        self.revoke_local()?;
+        self.revoke_local(outcome(Observation::Action(Revocation::Logout)))?;
         self.data_session = None;
         self.triage.cancel();
         if let Some(reports) = self.reports.as_mut() {
@@ -462,6 +462,9 @@ impl App {
     fn ensure_oauth_origin(&mut self, now: u64, automatic: bool) -> Result<()> {
         self.ensure_account()?;
         let account = self.account.as_ref().ok_or(Error::Authentication)?;
+        if account.needs_sign_in() {
+            return Err(Error::Authentication);
+        }
         if account
             .expires_at()
             .is_some_and(|expires| expires <= now.saturating_add(60))
@@ -475,7 +478,7 @@ impl App {
         self.refresh_oauth_origin(now, false)
     }
     fn refresh_oauth_origin(&mut self, now: u64, automatic: bool) -> Result<()> {
-        // Explicit refresh can revoke after its durable ACK; automatic refresh preserves rights.
+        // Un refresh rechazado exige nueva entrada, sin invalidar derechos firmados.
         self.core.as_ref().ok_or(Error::Unconfigured)?;
         let exchange = self
             .account
@@ -489,15 +492,12 @@ impl App {
                     error,
                     OutcomeOrigin::OAuth { automatic },
                 ));
-                if effects.revoke {
-                    self.revoke_local()?;
-                }
-                if effects.sign_out {
+                if effects.needs_sign_in {
                     self.data_session = None;
                     self.account
                         .as_mut()
                         .ok_or(Error::Authentication)?
-                        .logout(self.store.as_ref().ok_or(Error::Storage)?)?;
+                        .require_sign_in(self.store.as_ref().ok_or(Error::Storage)?)?;
                 }
                 return Err(error);
             }
@@ -589,7 +589,7 @@ impl App {
             // Sin identidad restaurada tampoco se conoce al dueño del binding.
             // Revocar antes de persistir la nueva sesión; si falla, no sustituirla.
             if changed {
-                self.revoke_local()?;
+                self.revoke_local(outcome(Observation::Action(Revocation::IdentityChange)))?;
             }
             self.account
                 .as_mut()
@@ -621,6 +621,35 @@ impl App {
             } else {
                 error.to_string()
             },
+        }
+    }
+
+    fn renewal_failure(&self, error: Error, automatic: bool) -> Reply {
+        if !automatic
+            && let Some(account) = self
+                .account
+                .as_ref()
+                .filter(|account| account.needs_sign_in())
+        {
+            return Self::account_reply(account, Some(error));
+        }
+        let classification = outcome(Observation::Error(
+            error,
+            OutcomeOrigin::Renewal { automatic },
+        ));
+        // Sin identidad no hubo petición remota: conserva el error local tras Logout.
+        let has_identity = self.account.as_ref().and_then(Account::identity).is_some();
+        if automatic
+            || (has_identity
+                && classification.renewal == crate::protocol::RenewalOutcome::Definitive)
+        {
+            // El rechazo explícito frena el scheduler también en manual,
+            // conservando binding y candidate. El transporte sigue transitorio.
+            Self::automatic_failure(error)
+        } else {
+            Reply::Error {
+                message: error.to_string(),
+            }
         }
     }
 
@@ -680,8 +709,8 @@ impl App {
         if !probe && let Ok(time) = (self.clock)() {
             self.triage.record(time, outcome.is_err(), operation);
         }
-        if automatic && let Err(error) = outcome {
-            return Self::automatic_failure(error);
+        if license_renew && let Err(error) = outcome {
+            return self.renewal_failure(error, automatic);
         }
         match outcome {
             Ok(reply) => {
@@ -760,7 +789,7 @@ impl App {
                     .is_none_or(|old| old != completion.identity())
                 {
                     self.triage.cancel();
-                    self.revoke_local()?;
+                    self.revoke_local(outcome(Observation::Action(Revocation::IdentityChange)))?;
                 }
                 self.account
                     .as_mut()
@@ -926,6 +955,7 @@ impl App {
         let mut reply = Self::account_reply(account, Some(error));
         if profile_refresh
             && account.identity().is_some()
+            && !account.needs_sign_in()
             && let Reply::Account { message, .. } = &mut reply
         {
             *message = "No se pudo actualizar el perfil; la sesión sigue abierta.".into();
@@ -936,26 +966,32 @@ impl App {
     fn account_reply(account: &Account, error: Option<Error>) -> Reply {
         let pending = account.login_pending();
         let copy_link = account.login_link().is_ok();
-        let error = error.or(copy_link.then_some(Error::BrowserUnavailable));
+        let error = error
+            .or(copy_link.then_some(Error::BrowserUnavailable))
+            .or((account.needs_sign_in() && !pending).then_some(Error::Authentication));
         Reply::Account {
             copy_link,
-            signed_in: account.identity().is_some(),
+            signed_in: account.identity().is_some() && !account.needs_sign_in(),
             profile: account.profile().cloned(),
             expires_at: account.expires_at(),
             pending,
-            message: error.map_or_else(
-                || {
-                    if pending {
-                        "Complete el inicio de sesión en el navegador"
-                    } else if account.identity().is_some() {
-                        "Sesión Clerk protegida; derechos pendientes del núcleo"
-                    } else {
-                        "Sesión cerrada en este dispositivo"
-                    }
-                    .into()
-                },
-                |error| error.to_string(),
-            ),
+            message: if account.needs_sign_in() && !pending {
+                "Vuelve a iniciar sesión. Tus derechos firmados se conservan hasta su fecha de caducidad.".into()
+            } else {
+                error.map_or_else(
+                    || {
+                        if pending {
+                            "Complete el inicio de sesión en el navegador"
+                        } else if account.identity().is_some() {
+                            "Sesión Clerk protegida; derechos pendientes del núcleo"
+                        } else {
+                            "Sesión cerrada en este dispositivo"
+                        }
+                        .into()
+                    },
+                    |error| error.to_string(),
+                )
+            },
             error: error.map(|error| error.to_string()),
         }
     }
@@ -1316,17 +1352,26 @@ mod tests {
                 let (link, core) = core_fixture(device.clone(), keys, vec![CoreStep::Read]);
                 app.attach_core(link);
                 let reply = crate::host::fixture_request(&mut app, Command::AccountProfileRefresh);
-                assert!(matches!(&reply, Reply::Account { message, .. }
-                    if message == "No se pudo actualizar el perfil; la sesión sigue abierta."));
+                let needs_sign_in = oauth_refresh && matches!(status, 400 | 401);
+                if let Reply::Account { message, .. } = &reply {
+                    assert_eq!(
+                        message,
+                        if needs_sign_in {
+                            "Vuelve a iniciar sesión. Tus derechos firmados se conservan hasta su fecha de caducidad."
+                        } else {
+                            "No se pudo actualizar el perfil; la sesión sigue abierta."
+                        }
+                    );
+                }
                 assert!(matches!(
                     reply,
                     Reply::Account {
-                        signed_in: true,
+                        signed_in,
                         profile: None,
                         expires_at: Some(1000),
                         error: Some(_),
                         ..
-                    }
+                    } if signed_in != needs_sign_in
                 ));
                 assert!(
                     app.candidate_store()
@@ -1891,7 +1936,7 @@ mod tests {
         let mut app = App::new(BuildConfig::load(), root.clone());
         app.account = Some(account);
         app.store = Some(store);
-        let (link, core) = core_fixture(String::new(), "unused", vec![CoreStep::Invalidate]);
+        let (link, core) = core_fixture(String::new(), "unused", vec![]);
         app.attach_core(link);
         app.ensure_oauth(100).expect("current token needs no HTTP");
         assert!(server.requests.try_recv().is_err());
@@ -1902,7 +1947,11 @@ mod tests {
             .expect("refresh");
         assert!(request.starts_with("POST /token "));
         assert!(server.requests.try_recv().is_err());
-        core.join().expect("refresh rejection invalidation ACK");
+        assert!(app.account.as_ref().expect("account").needs_sign_in());
+        assert!(app.account.as_ref().expect("account").identity().is_some());
+        assert_eq!(app.ensure_oauth(1000), Err(Error::Authentication));
+        core.join()
+            .expect("no core commands for a rejected refresh");
         server.finish();
         drop(app);
         crate::cleanup_store(&root, "app-refresh-failure", &["account"]);
@@ -2051,7 +2100,7 @@ mod tests {
 
     #[cfg(windows)]
     #[test]
-    fn oauth_invalid_grant_revokes_before_native_license_and_drops_session() {
+    fn oauth_invalid_grant_requires_sign_in_without_revoking_or_dropping_identity() {
         let device = crate::license::installation::legacy_fingerprint().expect("fixture device");
         let (credential, keys) = crate::license_remote::tests::signed_fixture(&device);
         // Profile is presentation, including its automatic missing-cache refresh;
@@ -2079,19 +2128,37 @@ mod tests {
                     },
                 )
                 .expect("previous signed candidate");
-            let (link, core) = core_fixture(device.clone(), keys, vec![CoreStep::Invalidate]);
+            let (link, core) = core_fixture(device.clone(), keys, vec![CoreStep::Read]);
             app.attach_core(link);
             assert!(
-                matches!(app.execute(command), Err(Error::Authentication)),
-                "invalid_grant is a definitive OAuth rejection"
+                matches!(
+                    app.handle(command),
+                    Reply::Account {
+                        signed_in: false,
+                        pending: false,
+                        error: Some(_),
+                        ..
+                    }
+                ),
+                "manual rejection must immediately request fresh sign-in"
             );
-            assert!(matches!(
+            assert!(
                 app.candidate_store()
                     .expect("store")
-                    .load::<crate::license_remote::Candidate>("license-candidate"),
-                Err(Error::NotFound)
+                    .load::<crate::license_remote::Candidate>("license-candidate")
+                    .is_ok()
+            );
+            assert!(app.account.as_ref().expect("account").identity().is_some());
+            assert!(app.account.as_ref().expect("account").needs_sign_in());
+            assert!(matches!(
+                app.handle(Command::AccountPoll),
+                Reply::Account {
+                    signed_in: false,
+                    pending: false,
+                    error: Some(_),
+                    ..
+                }
             ));
-            assert!(app.account.as_ref().expect("account").identity().is_none());
             assert!(app.data_session.is_none());
             assert!(
                 server
@@ -2104,7 +2171,9 @@ mod tests {
                 server.requests.try_recv().is_err(),
                 "never call userinfo or native-license after rejection"
             );
-            core.join().expect("durable invalidation ACK");
+            app.execute(Command::LicenseStatus)
+                .expect("rights preserved");
+            core.join().expect("only Read, no invalidation");
             server.finish();
             drop(app);
             crate::cleanup_store(&root, "app-invalid-grant", &[]);
@@ -2170,7 +2239,7 @@ mod tests {
 
     #[cfg(windows)]
     #[test]
-    fn definitive_online_license_rejection_removes_the_previous_candidate() {
+    fn definitive_online_license_rejection_preserves_the_previous_candidate() {
         let device = crate::license::installation::legacy_fingerprint().expect("fixture device");
         let (credential, keys) = crate::license_remote::tests::signed_fixture(&device);
         for status in [401, 403, 409] {
@@ -2199,19 +2268,19 @@ mod tests {
                     },
                 )
                 .expect("previous signed candidate");
-            let (link, core) = core_fixture(device.clone(), keys, vec![CoreStep::Invalidate]);
+            let (link, core) = core_fixture(device.clone(), keys, vec![CoreStep::Read]);
             app.attach_core(link);
             assert!(app.execute(Command::LicenseRenew).is_err());
             assert!(
-                matches!(
-                    app.candidate_store()
-                        .expect("store")
-                        .load::<crate::license_remote::Candidate>("license-candidate"),
-                    Err(Error::NotFound)
-                ),
-                "online rejection retained the previous license"
+                app.candidate_store()
+                    .expect("store")
+                    .load::<crate::license_remote::Candidate>("license-candidate")
+                    .is_ok(),
+                "online rejection must retain the previous license"
             );
-            core.join().expect("revocation ACK");
+            app.execute(Command::LicenseStatus)
+                .expect("rights preserved");
+            core.join().expect("only Read, no invalidation");
             server.finish();
             drop(app);
             crate::cleanup_store(&root, "app-online-denial", &[]);
@@ -3100,7 +3169,7 @@ mod tests {
         let mut app = App::new(config, root.clone());
         app.account = Some(account);
         app.store = Some(store);
-        let (link, core) = core_fixture(device, keys, vec![CoreStep::Invalidate]);
+        let (link, core) = core_fixture(device, keys, vec![CoreStep::Read]);
         app.attach_core(link);
         let reply = app.handle(Command::LicenseRenew);
         assert_eq!(
@@ -3111,7 +3180,9 @@ mod tests {
             Error::DeviceLimit.to_string(),
             "el texto sigue saliendo del único mapeo de errores"
         );
-        core.join().expect("device limit revocation ACK");
+        app.execute(Command::LicenseStatus)
+            .expect("rights preserved");
+        core.join().expect("device limit does not invalidate");
         // El marco IPC conserva la distinción que el Hub consume.
         let mut wire = Vec::new();
         crate::protocol::write(
@@ -3279,7 +3350,9 @@ mod tests {
 
     #[test]
     fn switching_identity_revokes_before_saving_and_rejection_preserves_the_old_session() {
-        for rejected in [false, true] {
+        for (rejected, needs_sign_in) in
+            [(false, false), (true, false), (false, true), (true, true)]
+        {
             let device = "identity-change-fixture".to_owned();
             let (credential, keys) = crate::license_remote::tests::signed_fixture(&device);
             let server = crate::test_http::Server::start(vec![
@@ -3288,6 +3361,9 @@ mod tests {
             ]);
             let (root, store) = crate::test_store("app-account-switch");
             let mut account = crate::account::fixture(&server.base, &store);
+            if needs_sign_in {
+                account.require_sign_in(&store).expect("NeedsSignIn");
+            }
             let login = account.begin_login().expect("login without browser");
             let params: std::collections::HashMap<_, _> = login
                 .query_pairs()
@@ -3330,7 +3406,11 @@ mod tests {
             app.attach_core(link);
             let reply = app.handle(Command::AccountPoll);
             assert!(
-                matches!(reply, Reply::Account { signed_in: true, pending: false, error, .. } if error.is_some() == rejected)
+                matches!(reply, Reply::Account { signed_in, pending: false, error, .. } if signed_in == (!needs_sign_in || !rejected) && error.is_some() == rejected)
+            );
+            assert_eq!(
+                app.account.as_ref().expect("account").needs_sign_in(),
+                needs_sign_in && rejected
             );
             let expected = if rejected {
                 "user_fixture"

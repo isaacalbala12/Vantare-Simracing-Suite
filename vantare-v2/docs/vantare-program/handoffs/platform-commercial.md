@@ -155,6 +155,122 @@ El script de base rechazó --comentario sin estado; no se forzó ninguna escritu
 - Sin consultas ni despliegue a producción, secretos, cuentas reales, merge,
   promoción o release. Evidencia final por SHA en PR/issue.
 
+## VANTA-126 / #1827 — Licencias paso 5 (31-oct, por revisar)
+
+### Revisión profunda R1 — cambios solicitados en el mismo PR
+
+- Orquestador: APPROVE WITH CHANGES, sin P0/P1. Esta revisión sustituye el
+  comportamiento y los resultados de la primera entrega descrita abajo.
+- DeviceReset comprueba primero OAuth y autorización de datos. NeedsSignIn
+  devuelve Authentication sin HTTP, Invalidate ni cambios de documentos. Si
+  falla autorizar datos conserva candidate; tras autorizar mantiene el ACK
+  durable antes de limpiar y pedir el reset remoto. Se ajustan las cinco filas
+  de fallo de autorización y las dos sin bridge a este orden autorizado.
+- Solo invalid_grant/401 del endpoint de token durante refresh guardan
+  NeedsSignIn. Un 403 o fallo de userinfo tras refresh válido sigue transitorio,
+  sin modificar la cuenta durable. Se eliminan el revoke no-op por error de
+  renovación y el cierre de sesión inalcanzable del refresh.
+- La tabla de caracterización añade needs_sign_in, filas OAuth 401 para los
+  tres orígenes y Purchase/403; comprueba explícitamente LicenseFailure
+  Definitive en el rechazo manual de emisión. Pruebas de Logout y cambio de
+  identidad desde NeedsSignIn conservan la barrera del ACK aceptado/rechazado.
+  AccountBegin/AccountPoll pending muestran progreso sin forzar el error viejo;
+  el supervisor vuelve a renovar al confirmar un login nuevo.
+- Soporte: hasta el paso 6, el Hub bloquea todo salvo Cuenta porque recibe
+  signed_in=false; overlays y derechos del núcleo siguen hasta su fecha.
+  Al volver a la generación anterior, account se aparta como .corrupto y exige
+  login sin perder derechos firmados. El paso 8 añade la fixture de rollback.
+  P3-6/P3-8 quedan como observaciones aceptadas de la revisión, sin ampliar
+  el alcance de producto. Detalles operativos en BIL-08.
+- **145 filas de caracterización**: 141 previas y cuatro nuevas; columna
+  needs_sign_in en las 38 filas HTTP. Auditoría de delta en
+  review-characterization-delta.json; solo cambian tres errores token/403 y
+  el orden de autorización de reset solicitado. No se debilita NotFound ni
+  la barrera de ACK; la prueba de cambio de identidad mantiene SignedIn y
+  añade NeedsSignIn con ACK aceptado y rechazado.
+- **7/7 mutaciones detectadas por aserciones**, restauradas por SHA256 antes
+  de la suite verde. Tres fijan la columna revoke; las otras prueban el
+  marcador OAuth, reset antes de validar sesión, token 403 y userinfo.
+  Parches/logs/hashes en review-mutations/.
+- Gates R1 por compilar.ps1, target propio, locked/offline y dos jobs: fmt y
+  Clippy all-targets -D warnings PASS (cubre check), Nextest perfil ci con
+  telemetría **868/868 PASS**, 13 omisiones preexistentes; lifecycle **13/13
+  PASS**, Deno **40/40 PASS**, quality **466/466 huellas PASS**. Tras reforzar
+  NotFound: fmt/Clippy y matriz de reset **1/1 PASS** repetidos. Resultados/HEAD/CI
+  finales verificados en #1833 y #1827 antes de entregar. Sin merge ni producción.
+- Evidencia R1 en D:/VantareServer/evidence/isa-1827-p5/: review-nextest-final.log,
+  review-lifecycle.log, review-clippy-current.log, review-fmt-current.log,
+  review-reset-current.log, review-deno-final.log y review-quality.log. Fallos
+  intermedios conservados: Clippy de longitud y Deno por caché/configuración;
+  Deno usa node-modules-dir=none, sin instalación local ni cambios de lock.
+
+### Primera entrega — evidencia histórica anterior a R1
+
+[PR draft #1833](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1833)
+a nightly, enlazada en T3. Código validado `440c4a6dd281bf28dbbb6de5c6992d5745fb9d4a`;
+los commits posteriores registran el handoff y ajustan un fixture portable,
+sin modificar producto. HEAD final y CI se verifican
+antes de entregar en la PR y #1827. Base `origin/nightly`:
+`bb7a5dbfbf13307dc3ecdb8966194fb943be75b5` (#1832 MERGED, verificado).
+Rama `vantareapp/isa-1827-paso5-sin-revocar`, worktree
+`C:/VantareServer/wt/isa-1827-p5`, target `D:/VantareServer/targets/isa-1827-p5`.
+
+- Cambio de comportamiento autorizado por decisión 1 / ADR 0102:
+  la columna revoke solo es verdadera para Logout, cambio de identidad y
+  DeviceReset. Se conserva su ACK durable antes de limpiar el candidate.
+  Los rechazos manuales/automáticos de renovación conservan derechos firmados.
+- Refresh rechazado guarda NeedsSignIn, mantiene identidad, perfil y datos de
+  sesión protegidos, y bloquea bearer/refresh rechazados también al restaurar
+  el helper. Login con la misma identidad conserva derechos; otra identidad
+  sigue exigiendo revocación confirmada. No se guarda SignedOut por un error.
+- El IPC conserva formato/versión. En el protocolo actual, Account con
+  signed_in=false y un mensaje pide nueva entrada; no indica que se hayan
+  borrado cuenta o licencia. El Session público explícito pertenece al paso 6.
+- Un rechazo manual de emisión con identidad conservada se comunica como
+  definitivo y detiene el scheduler. El intento local tras Logout conserva
+  su error y no hace HTTP; su regresión original no se alteró. Transporte y
+  respuestas incomprensibles siguen transitorios. La verificación/cuarentena
+  del núcleo no se cambia ni se amplía ningún plazo.
+- **141 filas PASS**: se actualizan solo ocho filas manuales del paso 5
+  (License 4, OAuth 2, Account 2); las otras 133 mantienen sus valores.
+  characterization-delta.json comprueba exactamente los ocho cambios.
+- **4/4 mutaciones detectadas** por aserciones: revocar en LicenseRenew manual,
+  revocar en refresh manual, omitir revocación de acciones expresas y no entrar
+  en NeedsSignIn. Las tres primeras prueban la columna revoke con las matrices
+  observables. Source SHA256 restaurado antes de la suite final.
+- Gates por la cola, locked/offline y dos jobs: fmt PASS; Clippy
+  services/runtime/ipc all-targets -D warnings PASS (cubre check); Nextest
+  perfil ci con telemetría **863/863 PASS**, 13 omisiones existentes; lifecycle
+  **13/13 PASS**. Suite services previa **275/275 PASS**, seis omisiones existentes.
+  Deno **40/40 PASS**, quality y **466/466 huellas PASS**. Diff completo revisado.
+- Revisión de portabilidad: el test de refresh sin cfg(windows) deja de usar
+  CoreStep::Read (solo Windows) y exige directamente cero comandos al núcleo.
+  Tras el ajuste: Clippy all-targets, fmt y regresión específica **1/1 PASS**.
+  No cambia producto ni el número de tests; CI del nuevo HEAD prueba la suite
+  completa sobre nightly, que ya incorpora #1831. Evidencia adicional:
+  clippy-portable.log, portable-regression.log y fmt-portable.log.
+- Pruebas nuevas de persistencia/restauración, PKCE real de la misma identidad,
+  candidate conservado y respuesta definitiva que detiene HTTP automático.
+  La integración App/host/core real confirma **Pro → Pro tras el rechazo**, el
+  mismo plazo y **Gratis en la fecha firmada**. Se conserva esa prueba de
+  expiración al adaptar la antigua expectativa de renovación tras OAuth rechazado.
+- [Soporte y rollback](../../billing/bil-08-offline-credential-runbook.md):
+  «Comprobar acceso» puede seguir mostrando Pro tras un bloqueo remoto hasta
+  el plazo firmado. No fuerza caducidad ni amplía la firma. No se pide borrar
+  archivos. NeedsSignIn es un estado nuevo de la cuenta; una generación anterior
+  puede exigir login, sin cambiar formatos del núcleo ni datos firmados.
+- Evidencia `D:/VantareServer/evidence/isa-1827-p5/`: clippy-final-pass.log,
+  nextest-final-ci.log, lifecycle.log, fmt-final.log, services-pass.log,
+  deno-characterization.log, quality.log, characterization-delta.json,
+  mutations.json y cuatro patches/logs. Fallos intermedios conservados:
+  ajustes de Clippy y expectativas anteriores de revocación; no se añadieron
+  allow, skips ni se debilitaron las barreras de identidad/firma/plazo/Logout.
+- Project Vantare / area:licencias / In Review, sin milestone. Plane intacto:
+  los comentarios los asume el orquestador. Harness gpt-6.1-sol medium, no se
+  afirma high; sin subagentes. Pendiente CI del HEAD final y revisión del
+  orquestador antes de decidir integración. Solo fixtures/corpus, sin login
+  real ni Hub físico. Sin merge, promoción, release, instalación o producción.
+
 ## VANTA-126 / #1827 — Licencias paso 4 (31-oct, por revisar)
 
 

@@ -1827,7 +1827,12 @@ fn authority_recovery_marker_blocks_replay_if_repair_was_interrupted_and_caps_ar
 #[test]
 fn authority_recovery_missing_authority_or_corrupt_marker_cannot_restore_binding() {
     use sha2::{Digest, Sha256};
-    for corrupt_marker in [false, true] {
+    for (missing_authority, corrupt_authority, corrupt_marker) in [
+        (true, false, false),
+        (false, false, true),
+        (false, true, true),
+        (true, false, true),
+    ] {
         let root = test_root();
         let (old, keys) = signed_v1(100, vec![]);
         let mut owner = Owner::open(&root, Some(&keys), devices(), 1, wall(100)).expect("owner");
@@ -1836,15 +1841,22 @@ fn authority_recovery_missing_authority_or_corrupt_marker_cannot_restore_binding
             .expect("install");
         drop(owner);
         let namespace = root.join(format!("{:x}", Sha256::digest(b"core-rights-v1")));
+        if missing_authority {
+            std::fs::remove_file(namespace.join("authority.dpapi"))
+                .expect("missing authority fixture");
+        } else if corrupt_authority {
+            std::fs::write(
+                namespace.join("authority.dpapi"),
+                b"damaged authority fixture",
+            )
+            .expect("damage authority too");
+        }
         if corrupt_marker {
             std::fs::write(
                 namespace.join("authority-recovery.dpapi"),
                 b"damaged marker fixture",
             )
             .expect("damage marker");
-        } else {
-            std::fs::remove_file(namespace.join("authority.dpapi"))
-                .expect("missing authority fixture");
         }
         for epoch in [2, 3] {
             let mut owner = Owner::open(&root, Some(&keys), devices(), epoch, wall(110))
@@ -1906,6 +1918,58 @@ fn authority_recovery_online_skew_also_bounds_the_reanchor_branch() {
             assert!(matches!(result, Err(Error::Clock)));
             assert!(owner.policy().online_recovery_required);
         }
+        drop(owner);
+        clean(&root);
+    }
+}
+
+#[test]
+fn authority_recovery_online_keeps_healthy_game_grace_but_reanchor_discards_it() {
+    for reanchor in [false, true] {
+        let root = test_root();
+        let capability = || Capability {
+            key: "vantare.operational.owner".into(),
+            paid_through: wall(130).to_rfc3339(),
+            perpetual: false,
+            scope_version: String::new(),
+        };
+        let (old, old_keys) = signed_v1_named(100, vec![capability()], devices().legacy, "old");
+        let (new, new_keys) = signed_v1_named(120, vec![capability()], devices().legacy, "new");
+        let keys = format!("{old_keys},{new_keys}");
+        let mut owner = Owner::open(&root, Some(&keys), devices(), 1, wall(100)).expect("owner");
+        owner
+            .install(old, wall(100), Duration::ZERO)
+            .expect("install");
+        assert!(
+            owner
+                .advance(&photo(true), wall(110), Duration::from_secs(10))
+                .expect("eligible game entered before the new issuance")
+                .engineer
+        );
+        if reanchor {
+            owner
+                .advance_observed(&photo(true), wall(110), wall(200), Duration::from_secs(11))
+                .expect("future wall persisted");
+        }
+        owner
+            .install_online(new, wall(120), Duration::from_secs(20))
+            .expect("fresh online response without extending the signed deadline");
+        let after_expiry = owner
+            .advance_observed(&photo(true), wall(110), wall(131), Duration::from_secs(31))
+            .expect("same observed race after the signed expiry");
+        assert_eq!(after_expiry.engineer, !reanchor);
+        assert!(
+            !owner
+                .advance_observed(
+                    &photo(true),
+                    wall(110),
+                    wall(3730),
+                    Duration::from_secs(3630),
+                )
+                .expect("original grace deadline")
+                .engineer,
+            "online renewal never extends the original race grace"
+        );
         drop(owner);
         clean(&root);
     }

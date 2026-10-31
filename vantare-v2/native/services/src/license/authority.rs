@@ -79,7 +79,7 @@ impl Authority {
                     Err(error) => return Err(error),
                 };
                 if binding_exists {
-                    store.save("authority-recovery", &true)?;
+                    Self::ensure_recovery_marker(store)?;
                 }
                 Saved {
                     version: 1,
@@ -91,7 +91,7 @@ impl Authority {
             Ok(_) | Err(Error::Corrupt) => {
                 // A failed repair after the rename must not look like a fresh
                 // installation on restart. The marker carries no grants/time.
-                store.save("authority-recovery", &true)?;
+                Self::ensure_recovery_marker(store)?;
                 store.quarantine_dated("authority", 0)?;
                 damaged = true;
                 Saved {
@@ -132,6 +132,16 @@ impl Authority {
             eprintln!("{}", super::CacheIssue::AuthorityUnreadable.diagnostic());
         }
         Ok(authority)
+    }
+
+    fn ensure_recovery_marker(store: &Store) -> Result<()> {
+        // A corrupt marker is already a guard; preserve its original bytes even
+        // when the authority is also damaged or missing.
+        match store.load_cache::<bool>("authority-recovery") {
+            Ok(_) | Err(Error::Corrupt) => Ok(()),
+            Err(Error::NotFound) => store.save("authority-recovery", &true),
+            Err(error) => Err(error),
+        }
     }
 
     pub fn needs_online_recovery(&self, wall: DateTime<Utc>) -> bool {

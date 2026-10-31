@@ -27,7 +27,18 @@ a nightly, enlazado en T3; HEAD/CI vigentes en #1827/#1814.
   Rust por cola y target `D:/VantareServer/targets/isa-1827-p1`; resultados finales
   y revisión en PR/issue, por SHA. Sin dependencias ni formatos nuevos.
   Plane --ver: En curso; --comentario sin estado falla antes de autenticar;
-  bloqueo comunicado al orquestador, sin forzar escrituras del paraguas.
+  el orquestador asume los comentarios Plane, sin escrituras de este worker.
+- Revisión DeepSeek: sin defecto de producto/P0/P1. Su duda sobre CI se
+  resuelve con run-commercial-local.py (edge_suites incluye license-credential
+  y native-license) y el log Deno 186/186 PASS con recovery.test.ts.
+  Se refuerza la fixture: primera emisión 24 h después del fallo (quedan 48 h),
+  nueva emisión al día siguiente (quedan 24 h), mismo deadline en ambas firmas;
+  Rust comprueba nueva emisión y replay. Gate Windows/Unix añadido al test.
+  El tope original de 72 h pertenece al lifecycle/SQL, no se duplica en el
+  normalizador ni se inventan campos del cliente. Semilla pública solo de test.
+  Fixture reforzada: fmt/Clippy -D warnings y Nextest licencias 21/21 PASS;
+  logs *-strengthened.log en la misma evidencia. Deno final por CI del SHA
+  publicado en PR/issue; el gate comercial descubre ambas suites de endpoint.
 - Riesgo contractual: lo firmado permite acceso offline hasta su plazo original;
   una nueva emisión aplica pago/bloqueo. No cambia la gracia local.
 - Siguiente: revisión/CI y autorización de Isaac para cualquier despliegue.

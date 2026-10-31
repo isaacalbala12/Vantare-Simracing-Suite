@@ -215,7 +215,8 @@ export function normalizeGrants(
         return { ok: false };
       }
       // ADR 0102 / #1814: recovery is ordinary bounded v1 authority.
-      // The effective view supplies the original recovery_until; never now + 72h.
+      // Lifecycle/SQL cap the cycle once at 72h; the effective view supplies that
+      // original recovery_until. Normalization never recalculates now + 72h.
     } else if (
       row.provider !== "polar" ||
       !["order", "subscription", "benefit_grant"].includes(row.source_type)

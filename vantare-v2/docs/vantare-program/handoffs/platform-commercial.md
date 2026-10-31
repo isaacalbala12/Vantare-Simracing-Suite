@@ -91,6 +91,102 @@ El script de base rechazó --comentario sin estado; no se forzó ninguna escritu
 - Sin consultas ni despliegue a producción, secretos, cuentas reales, merge,
   promoción o release. Evidencia final por SHA en PR/issue.
 
+## VANTA-126 / #1827 — Licencias paso 4 (31-oct, por revisar)
+
+
+Revisión del orquestador: **APPROVE**, sin diferencias de comportamiento,
+comunicado en el encargo de seguimiento. Ronda R1 antes de integrar:
+
+- Primer rebase tras #1830 sobre `7f4f16e98`; durante los gates entró #1829.
+  Base final `origin/nightly@a81a2755c3f102a8a882a931a7224c474f81ae16`. Único conflicto: este handoff. Se conservó íntegro el
+  contenido de nightly y la entrega del paso 4. Sin cambios productivos de resolución.
+- Código/tests de R1 rebasado `072bdc002` (mismo contenido nativo validado
+  que `80c61d1b180ac4ce1d101bcc2005d9cc510e42c3`).
+  Se añaden filas License/User/InvalidCredential y License/User/Expired:
+  ambas Transient, sin revocar ni cerrar sesión. Expired no sale hoy de
+  license_remote::renew: esas filas prueban directamente Error × origen,
+  antes de la adaptación InvalidCredential → Version, sin seam productivo nuevo.
+- response_error prueba Authentication y Core(Rejected) en origen Core, con
+  ambas posiciones de la bandera de caché: ambos siguen UNAVAILABLE.
+  Observation::Reply prueba LicenseFailure (los tres resultados), DeviceLimit
+  (Definitive) y Error (Transient), todos sin efectos locales.
+- Comentarios corregidos: el Core(Rejected) de InstallOnline se trata y aparta
+  en complete_online_renewal, no viene de license_remote::renew; la resta de
+  GAME_GRACE_SECONDS reserva la gracia publicada para renovar antes del plazo
+  firmado; el retorno previo de DeviceLimit conserva la variante accionable.
+- Solo tests/comentarios en esta revisión: tokens productivos iguales al SHA
+  revisado `96b06cef5` al excluir comentarios y cfg(test). Ninguna fila anterior
+  alterada: **141 filas** contando las 139 originales más las dos nuevas.
+- Gates R1 repetidos por la cola, mismo target y dos jobs: fmt PASS; Clippy
+  services/runtime/ipc all-targets -D warnings PASS; Nextest con telemetría
+  **858/858 PASS**, 13 omisiones existentes; lifecycle **13/13 PASS**.
+  Deno **40/40 PASS** y quality/**466 huellas PASS** tras el primer rebase.
+  Tras entrar #1829 se verificó árbol nativo idéntico byte a byte y se repitió
+  Deno: **40/40 PASS** en a81a2755c. Los gates nativos verdes siguen cubriendo
+  exactamente el mismo código/tests; no se recompila documentación/servidor.
+  Las tres mutaciones de la entrega inicial siguen documentadas; no se
+  repitieron, pues outcome no cambia su lógica. Diff completo revisado.
+- Evidencia R1: `D:/VantareServer/evidence/isa-1827-p4/review-r1/`, incluidos
+  clippy.log, nextest-ci.log, lifecycle.log, fmt.log, deno-characterization.log,
+  quality.log, production-unchanged.txt, rebase.txt y
+  deno-characterization-base-a81.log. La entrada de paso 4 se coloca antes del
+  paso 0 histórico para no chocar con nuevos avances antepuestos al handoff.
+- Push reescrito con lease por el rebase; HEAD final/CI verde se verifican en
+  la PR y #1827 antes de entregar al orquestador. La aprobación de GitHub no
+  se infiere del encargo: el APPROVE anterior fue comunicado por el orquestador.
+  Plane sigue intacto; los comentarios los asume el orquestador.
+  Sin merge, promoción, release, instalaciones ni producción.
+
+Entrega inicial (histórico; SHAs previos al rebase y gates de la primera ronda):
+
+[PR draft #1832](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1832)
+a nightly, enlazada en T3. Código validado y publicado
+`9be73f153e8c0f2247b7de337e5522152f34b2f1`; el commit posterior solo añade este
+handoff. HEAD documental final y CI vivos se verifican en la PR y #1827.
+Base `origin/nightly` `3e6f2dce7181ac224f4a1ed6ffa38e11373c89e9`;
+rama `vantareapp/isa-1827-paso4-outcome`, worktree
+`C:/VantareServer/wt/isa-1827-p4`, target `D:/VantareServer/targets/isa-1827-p4`.
+
+- Misma respuesta y mismos efectos ante fallos; una única tabla en
+  `services::outcome::outcome` sustituye las listas de App y runtime.
+  La usan los cinco puntos: renovación manual, fallo automático, refresh OAuth,
+  respuesta del núcleo y clasificación del ACK por el supervisor.
+- Las columnas manual/automática conservan la revocación actual hasta el paso 5.
+  Se mantienen Clock solo al rechazar Install de caché, DeviceLimit, la ventana
+  urgente de una hora y el ACK durable antes de limpiar candidate/cerrar sesión.
+  El Hub ya consume resultados tipados; no necesitó cambios.
+- **139/139 filas intactas y PASS**: núcleo 22, servicios 77 y servidor 40.
+  No se editaron tests, fixtures, dependencias, IPC ni formatos persistidos.
+- **3/3 mutaciones detectadas** por las matrices existentes: Conflict pasa a
+  transitorio, se invierte revocación manual y se omite cierre OAuth.
+  Fallan por aserción observable; cambios temporales restaurados antes de la
+  suite final. Script, patches y logs se conservan fuera del repositorio.
+- Gates por la cola, locked/offline y dos jobs: fmt PASS; Clippy
+  services/runtime/ipc all-targets `-D warnings` PASS (cubre check); Nextest
+  perfil ci con telemetría **855/855 PASS**, 13 omisiones existentes;
+  lifecycle **13/13 PASS**. Quality check y **466/466 huellas PASS**.
+  Diff completo revisado. El primer fallo de Clippy/compilación (Copy y nombre
+  Origin ambiguo) queda en evidencia; corregido sin tocar tests ni añadir allow.
+- Deno 2.7.13 portátil en evidencia, hash oficial verificado, sin instalación
+  ni cambios en PATH. Las 40 filas corren sin permisos de entorno, lectura de
+  datos o red durante el test. Solo fixtures; no acredita despliegue ni SQL real.
+- Evidencia: `D:/VantareServer/evidence/isa-1827-p4/`: clippy-final.log,
+  nextest-ci.log, lifecycle.log, fmt-final.log, deno-characterization.log,
+  mutations.json, run-mutations.py y los tres patches/logs de mutación.
+  Harness real: Codex gpt-6.1-sol medium; no se afirma high. Sin subagentes.
+- Project Vantare / area:licencias / In Review, sin milestone. Plane paraguas
+  VANTA-126 conserva su estado. **Comentario bloqueado**: el script versionado
+  `plane-estado.py VANTA-126 --comentario` rechaza argumentos sin estado o
+  `--resumen`; no se usó ninguno porque el encargo solo autoriza comentarios.
+  No se modificó el script ni se escribió en Plane. El orquestador debe resolver
+  esa incompatibilidad. CI del HEAD final pendiente al publicar este handoff;
+  el estado real posterior queda en PR/issue.
+- Siguiente: revisión del orquestador y CI antes de decidir integración.
+  Verificación con matrices, HTTP/IPC de fixture y corpus; sin login real ni
+  Hub físico. No se ejecuta el paso 5. Sin instalaciones de Vantare, producción,
+  merge, promoción ni release. Acciones externas autorizadas: rama/push/PR draft
+  y actualización de seguimiento dentro del encargo.
+
 ## VANTA-126 / #1827 — Licencias paso 0 (31-oct, por revisar)
 
 [PR draft #1828](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1828)

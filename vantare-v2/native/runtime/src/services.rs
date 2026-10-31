@@ -479,18 +479,7 @@ fn background_helper(client: &Client, live: bool) {
     }
 }
 fn renewal_outcome(reply: &Reply) -> protocol::RenewalOutcome {
-    match reply {
-        Reply::License { policy, .. }
-            if policy.overlays_advanced
-                && policy.current_at(policy.checked_at_ms)
-                && !renewal::urgent(policy, policy.checked_at_ms) =>
-        {
-            protocol::RenewalOutcome::Verified
-        }
-        Reply::LicenseFailure { outcome, .. } => *outcome,
-        Reply::DeviceLimit { .. } => protocol::RenewalOutcome::Definitive,
-        _ => protocol::RenewalOutcome::Transient,
-    }
+    vantare_services::outcome::outcome(vantare_services::outcome::Observation::Reply(reply)).renewal
 }
 fn run_renewal(
     state: &mut State,

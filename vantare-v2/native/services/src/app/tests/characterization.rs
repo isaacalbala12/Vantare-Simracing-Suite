@@ -163,6 +163,38 @@ fn assert_error_origin_effects(
 }
 
 #[test]
+fn nightly_manual_credential_failure_outcome_matrix() {
+    use crate::outcome::{Observation, Origin as OutcomeOrigin, Outcome, outcome};
+    // Error × ruta/origen antes de adaptar InvalidCredential a Version en App.
+    // Expired no lo emite hoy license_remote::renew: se fija su clasificación
+    // directamente, sin añadir inyección productiva para forzar una ruta imposible.
+    const CASES: &[(Route, Origin, Error, bool, bool)] = &[
+        (
+            Route::License,
+            Origin::User,
+            Error::InvalidCredential,
+            false,
+            false,
+        ),
+        (Route::License, Origin::User, Error::Expired, false, false),
+    ];
+    for (route, origin, error, revoke, sign_out) in CASES.iter().copied() {
+        assert_eq!(
+            outcome(Observation::Error(
+                error,
+                OutcomeOrigin::Renewal { automatic: false }
+            )),
+            Outcome {
+                renewal: RenewalOutcome::Transient,
+                revoke,
+                sign_out
+            },
+            "{route:?}/{origin:?}/{error:?}"
+        );
+    }
+}
+
+#[test]
 fn nightly_automatic_failure_result_matrix() {
     use vantare_ipc::control::Failure;
     // Error → Reply actual (también para Purchase). Cambia en paso 4 solo su dueño.

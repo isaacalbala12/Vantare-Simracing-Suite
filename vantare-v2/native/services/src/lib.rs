@@ -26,6 +26,7 @@ pub mod http;
 pub mod license;
 #[cfg(feature = "network")]
 pub mod license_remote;
+pub mod outcome;
 pub mod pilot;
 #[cfg(any(windows, unix))]
 pub mod process;

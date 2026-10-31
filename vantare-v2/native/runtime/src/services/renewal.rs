@@ -8,6 +8,7 @@ use vantare_ipc::{
 const MINUTE: Duration = Duration::from_mins(1);
 // Three retries even at the 15-minute cap, plus 15 minutes for polling/I/O.
 // Never extends the signed credential or the two-second policy freshness TTL.
+#[cfg(test)]
 const RENEW_AHEAD_MS: u64 = 60 * 60_000;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -20,21 +21,8 @@ pub(super) fn live_allowed(policy: &Policy, wall: u64, origin: Origin) -> bool {
     !policy.overlays_advanced || urgent(policy, wall) || origin == Origin::Purchase
 }
 
-pub(super) fn urgent(policy: &Policy, wall: u64) -> bool {
-    renewal_deadline(policy).is_some_and(|end| end <= wall.saturating_add(RENEW_AHEAD_MS))
-}
-
-fn renewal_deadline(policy: &Policy) -> Option<u64> {
-    policy.valid_until_ms.map(|end| {
-        if policy.live {
-            // v5 publishes the effective deadline, which can include game grace.
-            // Reserve it conservatively so renewal precedes the signed deadline.
-            end.saturating_sub(vantare_services::license::GAME_GRACE_SECONDS.unsigned_abs() * 1000)
-        } else {
-            end
-        }
-    })
-}
+use vantare_services::outcome::renewal_deadline;
+pub(super) use vantare_services::outcome::renewal_urgent as urgent;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum Skip {
     NoSession,

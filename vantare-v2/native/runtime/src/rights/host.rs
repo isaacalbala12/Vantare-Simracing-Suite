@@ -320,19 +320,15 @@ pub(super) fn response_error(
     error: vantare_services::Error,
     cached_clock_rejection: bool,
 ) -> &'static str {
-    use vantare_services::Error;
-    // An explicit time-bound refusal of a cached Install is not an unavailable
-    // core. Online/after-install Clock errors remain transient: a
-    // successful install followed by a failed advance is not a rejected cache.
-    if cached_clock_rejection && error == Error::Clock {
-        return control::REJECTED;
-    }
-    match error {
-        Error::Denied
-        | Error::InvalidCredential
-        | Error::Expired
-        | Error::DeviceLimit
-        | Error::Conflict => control::REJECTED,
+    use vantare_services::outcome::{Observation, Origin, outcome};
+    let result = outcome(Observation::Error(
+        error,
+        Origin::Core {
+            cached_clock_rejection,
+        },
+    ));
+    match result.renewal {
+        vantare_services::protocol::RenewalOutcome::Definitive => control::REJECTED,
         _ => control::UNAVAILABLE,
     }
 }
@@ -426,6 +422,24 @@ mod response_tests {
             Error::Conflict,
         ] {
             assert_eq!(response_error(error, false), control::REJECTED);
+        }
+    }
+
+    #[test]
+    fn service_rejections_and_authentication_are_unavailable_in_core_origin() {
+        use vantare_services::Error;
+        // El rechazo del servicio no es un error de autorización del Owner.
+        // La bandera de Clock de caché tampoco debe cambiar estos dos casos.
+        for cached_clock_rejection in [false, true] {
+            for error in [
+                Error::Core(control::Failure::Rejected),
+                Error::Authentication,
+            ] {
+                assert_eq!(
+                    response_error(error, cached_clock_rejection),
+                    control::UNAVAILABLE
+                );
+            }
         }
     }
 

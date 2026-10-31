@@ -36,8 +36,12 @@ rama `vantareapp/isa-1827-paso4-outcome`, worktree
   mutations.json, run-mutations.py y los tres patches/logs de mutación.
   Harness real: Codex gpt-6.1-sol medium; no se afirma high. Sin subagentes.
 - Project Vantare / area:licencias / In Review, sin milestone. Plane paraguas
-  VANTA-126 conserva su estado: solo comentario de entrega. CI del HEAD final
-  pendiente al publicar este handoff; el estado real posterior queda en PR/issue.
+  VANTA-126 conserva su estado. **Comentario bloqueado**: el script versionado
+  `plane-estado.py VANTA-126 --comentario` rechaza argumentos sin estado o
+  `--resumen`; no se usó ninguno porque el encargo solo autoriza comentarios.
+  No se modificó el script ni se escribió en Plane. El orquestador debe resolver
+  esa incompatibilidad. CI del HEAD final pendiente al publicar este handoff;
+  el estado real posterior queda en PR/issue.
 - Siguiente: revisión del orquestador y CI antes de decidir integración.
   Verificación con matrices, HTTP/IPC de fixture y corpus; sin login real ni
   Hub físico. No se ejecuta el paso 5. Sin instalaciones de Vantare, producción,

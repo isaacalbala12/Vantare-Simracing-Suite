@@ -62,6 +62,7 @@ fn missing_profile_failure_preserves_real_binding_and_scheduled_renewal() {
     };
     let before = control::request(&link, control::Command::Read).expect("verified rights");
     assert!(before.overlays_advanced);
+    assert_eq!(before.catalog, control::CatalogAccess::Pro);
 
     let config = vantare_services::config::BuildConfig {
         supabase: Some(base.clone()),
@@ -113,6 +114,7 @@ fn missing_profile_failure_preserves_real_binding_and_scheduled_renewal() {
     let after =
         control::request(&link, control::Command::Read).expect("rights after profile failure");
     assert!(after.overlays_advanced);
+    assert_eq!(after.catalog, control::CatalogAccess::Pro);
     assert_eq!(
         after.valid_until_ms, before.valid_until_ms,
         "profile grants no new TTL"
@@ -155,7 +157,9 @@ fn missing_profile_failure_preserves_real_binding_and_scheduled_renewal() {
             Duration::ZERO,
         )
         .expect("injected deadline");
-    assert!(!expired.overlays_advanced);
+    // A valid v1 credential still permits the Free overlay catalog; only its
+    // expiring Pro grant must disappear. overlays_advanced is not the plan.
+    assert_eq!(expired.catalog, control::CatalogAccess::Free);
     drop(owner);
     std::fs::remove_dir_all(root).expect("private fixtures only");
 }

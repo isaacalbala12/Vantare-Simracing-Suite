@@ -3438,3 +3438,30 @@ Deno.test("O3 any later invoice partial refund withdraws only that subscription 
     reason: "refund",
   }]);
 });
+
+Deno.test("unknown subscription snapshots preserve paid access, recovery and versions on delivery and replay", async () => {
+  for (const status of ["provider_future_state", "uncanceled", "cancelled", "constructor", "__proto__"]) {
+    const deps = processDeps(createMockSupabase());
+    const common = { id: "sub-unknown-preserved", product_id: PRO_MONTHLY_PRODUCT_ID,
+      external_customer_id: USER_ID, current_period_end: "2027-07-09T12:00:00.000Z" };
+    for (const [state, modified_at] of [["active", "2026-07-07T12:00:00.000Z"], ["past_due", "2026-07-08T12:00:00.000Z"]]) {
+      await processPolarWebhookEvent({ type: "subscription.updated", data: { ...common, status: state, modified_at } }, `seed-${state}`, deps);
+    }
+    const before = structuredClone({ resources: [...deps.projection.resources], grants: [...deps.projection.grants],
+      subscriptions: [...deps.lifecycle.subscriptions], cycles: [...deps.lifecycle.cycles], recovery: [...deps.lifecycle.recoveryGrants] });
+    for (const type of ["subscription.created", "subscription.updated"]) {
+      const id = `unknown-${type}`;
+      const result = await processPolarWebhookEvent({ type, data: { ...common, status, modified_at: RESOURCE_MODIFIED_AT } }, id, deps);
+      assertEquals(result, { status: "quarantined", reason: "unsupported_subscription_status" });
+      assertEquals(deps.inbox.snapshot(id).quarantineReason, "unsupported_subscription_status");
+      assertEquals(await replayPolarWebhookInboxItem(deps.inbox.snapshot(id).id, "test-reviewer", "classification", deps), result);
+    }
+    assertEquals({ resources: [...deps.projection.resources], grants: [...deps.projection.grants],
+      subscriptions: [...deps.lifecycle.subscriptions], cycles: [...deps.lifecycle.cycles], recovery: [...deps.lifecycle.recoveryGrants] }, before);
+    // An unknown later version must not poison the resource clock.
+    const valid = await processPolarWebhookEvent({ type: "subscription.updated", data: { ...common, status: "revoked",
+      modified_at: "2026-07-08T13:00:00.000Z" } }, "known-after-unknown", deps);
+    assertEquals(valid.status, "processed");
+    assertEquals([...deps.projection.grants.values()].map(g => g.status), ["revoked"]);
+  }
+});

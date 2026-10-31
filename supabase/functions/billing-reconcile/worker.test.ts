@@ -10,7 +10,7 @@ import { MemoryOrderRefundLedger } from "../billing-webhook/order-refund-ledger.
 import { MemoryCommercialProjection } from "../billing-webhook/commercial-projection.ts";
 import { MemorySubscriptionLifecycleStore } from "../billing-webhook/subscription-lifecycle-store.ts";
 import { loadPolarProductMap } from "../_shared/mapping.ts";
-import { VALID_POLAR_PRODUCT_MAP_JSON } from "../_shared/test-fixtures.ts";
+import { FULL_SANDBOX_PRODUCT_MAP_JSON, SANDBOX_IDS, VALID_POLAR_PRODUCT_MAP_JSON } from "../_shared/test-fixtures.ts";
 import { processPolarWebhookEvent } from "../billing-webhook/process.ts";
 import { handleNativeLicenseRequest } from "../native-license/index.ts";
 import { signCredential } from "../_shared/license-credential.ts";
@@ -540,4 +540,65 @@ Deno.test("one poison observation emits an incident and does not freeze the othe
   assertEquals(incidents, ["poison"]);
   assertEquals(result.next, { resource: "orders", page: 3 });
   assertEquals(result.observed, 2);
+});
+
+Deno.test("reconcile subscriptions uses the lifecycle matrix; unknown snapshots and replay preserve access", async () => {
+  const matrix = JSON.parse(await Deno.readTextFile(new URL("../billing-webhook/testdata/lifecycle-matrix.v1.json", import.meta.url))) as {
+    observedAt: string;
+    subscriptionCases: { id: string; status: string; cancelAtPeriodEnd: boolean; periodEnd: string;
+      previousPaidThrough: string | null; expectedGrant: string; expectedRecovery: string }[];
+  };
+  for (const row of matrix.subscriptionCases) {
+    const now = new Date(matrix.observedAt);
+    const inbox = new MemoryWebhookInbox(() => now);
+    const projection = new MemoryCommercialProjection();
+    const lifecycle = new MemorySubscriptionLifecycleStore();
+    const supabase = {
+      from: () => {
+        let eventId = "";
+        const query = { select: () => query, eq: (key: string, value: string) => {
+          if (key === "provider_event_id") eventId = value;
+          return query;
+        }, maybeSingle: () => Promise.resolve({ data: { id: inbox.snapshot(eventId).id }, error: null }),
+          insert: () => Promise.resolve({ error: null }) };
+        return query;
+      },
+      rpc: () => Promise.resolve({ error: null, data: null }),
+    } as unknown as SupabaseClient;
+    const processDeps = { inbox, projection, lifecycle, now: () => now,
+      resolveIdentity: () => Promise.resolve("4b6d8919-1c89-492d-a0e2-364124c17878"),
+      enforceFoundersRenewal: async () => {}, revokeCreatorRenewals: async () => {},
+      loadMap: () => loadPolarProductMap(FULL_SANDBOX_PRODUCT_MAP_JSON,
+        { environment: "sandbox", trialAntiAbuseConfirmed: true }) };
+    const common = { id: `matrix-${row.id}`, product_id: SANDBOX_IDS.proProduct };
+    if (row.previousPaidThrough) {
+      await processPolarWebhookEvent({ type: "subscription.active", data: { ...common,
+        current_period_end: row.previousPaidThrough, modified_at: "2026-08-01T12:00:00.000Z" } },
+        `seed-${row.id}`, { ...processDeps, supabase });
+    }
+    const before = structuredClone({ resources: [...projection.resources], subscriptions: [...lifecycle.subscriptions],
+      recovery: [...lifecycle.recoveryGrants], cycles: [...lifecycle.cycles] });
+    // uncanceled names a webhook, not a snapshot status: preserve the original matrix meaning.
+    const status = row.status === "uncanceled" ? "active" : row.status;
+    const snapshot = { ...common, status, cancel_at_period_end: row.cancelAtPeriodEnd,
+      current_period_end: row.periodEnd, modified_at: matrix.observedAt };
+    const reconcile = () => reconcilePage({ cursor: { resource: "subscriptions", page: 1 },
+      page: { items: [snapshot], maxPage: 1 }, environment: "sandbox", supabase, processDeps });
+    const result = await reconcile();
+    const unknown = row.id === "unknown-fails-closed";
+    assertEquals(result.failed, [], row.id);
+    assertEquals(result.quarantined, unknown ? 1 : 0, row.id);
+    if (unknown) {
+      assertEquals({ resources: [...projection.resources], subscriptions: [...lifecycle.subscriptions],
+        recovery: [...lifecycle.recoveryGrants], cycles: [...lifecycle.cycles] }, before);
+    } else {
+      assertEquals([...projection.grants.values()].map(g => g.status), [row.expectedGrant], row.id);
+      assertEquals([...lifecycle.subscriptions.values()].map(s => s.status), [status], row.id);
+    }
+    const after = structuredClone({ resources: [...projection.resources], subscriptions: [...lifecycle.subscriptions],
+      recovery: [...lifecycle.recoveryGrants], cycles: [...lifecycle.cycles] });
+    assertEquals(await reconcile(), result, `${row.id}: replay`);
+    assertEquals({ resources: [...projection.resources], subscriptions: [...lifecycle.subscriptions],
+      recovery: [...lifecycle.recoveryGrants], cycles: [...lifecycle.cycles] }, after, row.id);
+  }
 });

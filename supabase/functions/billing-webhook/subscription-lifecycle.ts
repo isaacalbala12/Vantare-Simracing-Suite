@@ -1,5 +1,58 @@
 export const SUBSCRIPTION_RECOVERY_HOURS = 72;
 
+// One classification for webhook payloads, API snapshots and lifecycle rules.
+// uncanceled is a webhook name; cancelled is a historical lifecycle alias.
+// Neither alias is a provider snapshot status.
+type SubscriptionKind = "incomplete" | "paid" | "canceled" | "past_due" | "revoked";
+const SUBSCRIPTION_KINDS: Readonly<Record<string, SubscriptionKind>> = {
+  incomplete: "incomplete",
+  incomplete_expired: "incomplete",
+  active: "paid",
+  trialing: "paid",
+  uncanceled: "paid",
+  canceled: "canceled",
+  cancelled: "canceled",
+  past_due: "past_due",
+  unpaid: "revoked",
+  revoked: "revoked",
+};
+
+function subscriptionKind(status: string): SubscriptionKind | null {
+  return Object.hasOwn(SUBSCRIPTION_KINDS, status)
+    ? SUBSCRIPTION_KINDS[status]
+    : null;
+}
+
+export function subscriptionLifecycleStatus(value: unknown): string | null {
+  const status = typeof value === "string" ? value.trim().toLowerCase() : "";
+  return subscriptionKind(status) ? status : null;
+}
+
+export function subscriptionSnapshotStatus(value: unknown): string | null {
+  const status = subscriptionLifecycleStatus(value);
+  return status !== "uncanceled" && status !== "cancelled" ? status : null;
+}
+
+export function subscriptionEventStatus(type: string, value: unknown): string | null {
+  if (type === "subscription.created" || type === "subscription.updated") {
+    return subscriptionSnapshotStatus(value);
+  }
+  // Specific webhook types carry the state, even if the payload disagrees.
+  const status = type.slice("subscription.".length);
+  return type.startsWith("subscription.") ? subscriptionLifecycleStatus(status) : null;
+}
+
+export function subscriptionStatusRequiresPeriodEnd(
+  status: string,
+  cancelAtPeriodEnd: boolean,
+): boolean {
+  const normalized = status.trim().toLowerCase();
+  const kind = subscriptionKind(normalized);
+  return kind === "paid" || kind === "past_due" ||
+    // Preserve the historical alias behavior; provider snapshots use canceled.
+    (normalized === "canceled" && cancelAtPeriodEnd);
+}
+
 export type SubscriptionLifecycleState = {
   status: string;
   paidThrough: string | null;
@@ -39,14 +92,13 @@ export function deriveSubscriptionTransition(args: {
 }): SubscriptionTransition {
   const status = args.status.trim().toLowerCase();
   const periodEnd = canonicalTimestamp(args.currentPeriodEnd);
+  const kind = subscriptionKind(status);
 
-  if (
-    status === "incomplete" || status === "incomplete_expired"
-  ) {
+  if (kind === "incomplete") {
     return revoked(status, null, { action: "close" });
   }
 
-  if (status === "active" || status === "uncanceled" || status === "trialing") {
+  if (kind === "paid") {
     return {
       status,
       paidThrough: periodEnd,
@@ -55,7 +107,7 @@ export function deriveSubscriptionTransition(args: {
     };
   }
 
-  if (status === "canceled" || status === "cancelled") {
+  if (kind === "canceled") {
     return {
       status: "canceled",
       paidThrough: periodEnd,
@@ -66,7 +118,7 @@ export function deriveSubscriptionTransition(args: {
     };
   }
 
-  if (status === "past_due") {
+  if (kind === "past_due") {
     const paidThrough = canonicalTimestamp(args.previous?.paidThrough ?? null);
     const failureAt = canonicalTimestamp(args.remoteModifiedAt);
     if (!paidThrough || !failureAt) {
@@ -89,7 +141,7 @@ export function deriveSubscriptionTransition(args: {
     };
   }
 
-  if (status === "unpaid" || status === "revoked") {
+  if (kind === "revoked") {
     return revoked(
       status,
       canonicalTimestamp(args.previous?.paidThrough ?? periodEnd),
@@ -97,6 +149,8 @@ export function deriveSubscriptionTransition(args: {
     );
   }
 
+  // Historical pure fallback. Ingestion must quarantine unknown snapshots via
+  // subscriptionSnapshotStatus before constructing or applying a transition.
   return revoked(status || "unknown", null, { action: "close" });
 }
 

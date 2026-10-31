@@ -1298,6 +1298,82 @@ mod tests {
     }
 
     #[cfg(windows)]
+    fn seed_broken_session(
+        base: &url::Url,
+        damaged: &str,
+        broken: &[u8],
+    ) -> (PathBuf, PathBuf, String) {
+        let context = format!("v1|{base}|public-fixture|nightly|{base}");
+        let (root, store) = crate::test_store(&context);
+        let account = crate::account::fixture(base, &store);
+        let oauth: OAuth = serde_json::from_value(serde_json::json!({
+            "issuer":base, "client_id":"public-fixture", "redirect":"http://127.0.0.1:0/callback",
+            "authorization":base.join("authorize").expect("url"), "token":base.join("token").expect("url"),
+            "userinfo":base.join("userinfo").expect("url")
+        })).expect("metadata");
+        store
+            .save("oauth-metadata", &oauth)
+            .expect("metadata fixture");
+        let namespace = std::fs::read_dir(&root)
+            .expect("root")
+            .next()
+            .expect("namespace")
+            .expect("entry")
+            .path();
+        let path = namespace.join(format!("{damaged}.dpapi"));
+        std::fs::write(&path, broken).expect("corrupt fixture only");
+        drop(account);
+        drop(store);
+        (root, namespace, context)
+    }
+
+    #[cfg(windows)]
+    fn complete_fixture_login(app: &mut App) {
+        let account = app.account.as_mut().expect("restored signed out");
+        let login = account
+            .begin_login()
+            .expect("new login without opening browser");
+        assert!(account.login_pending());
+        let (link, core) = core_fixture(String::new(), "unused", vec![CoreStep::Invalidate]);
+        app.attach_core(link);
+        let _socket = login_callback(&login);
+        assert!(matches!(
+            crate::host::fixture_request(app, Command::AccountPoll),
+            Reply::Account {
+                signed_in: true,
+                pending: false,
+                error: None,
+                ..
+            }
+        ));
+        assert_eq!(
+            app.account
+                .as_ref()
+                .expect("new account")
+                .identity()
+                .expect("new identity")
+                .subject,
+            "user_recovered"
+        );
+        core.join().expect("new identity invalidates before saving");
+    }
+
+    #[cfg(windows)]
+    fn account_recovery_config(base: &url::Url) -> BuildConfig {
+        BuildConfig {
+            supabase: Some(base.clone()),
+            anon_key: None,
+            license_keys: None,
+            channel: Some("nightly"),
+            native_oauth: Some(crate::config::OAuthBuild {
+                issuer: base.clone(),
+                client_id: "public-fixture".into(),
+                redirect_uri: url::Url::parse("http://127.0.0.1:0/callback").expect("url"),
+            }),
+        }
+    }
+
+    #[cfg(windows)]
     #[test]
     fn corrupt_account_documents_recover_and_logout_without_discovery() {
         for (damaged, logout_first) in [
@@ -1322,39 +1398,9 @@ mod tests {
                 ]);
                 responses
             });
-            let context = format!("v1|{}|public-fixture|nightly|{}", server.base, server.base);
-            let (root, store) = crate::test_store(&context);
-            let account = crate::account::fixture(&server.base, &store);
-            let oauth: OAuth = serde_json::from_value(serde_json::json!({
-                "issuer":server.base, "client_id":"public-fixture", "redirect":"http://127.0.0.1:0/callback",
-                "authorization":server.base.join("authorize").expect("url"), "token":server.base.join("token").expect("url"),
-                "userinfo":server.base.join("userinfo").expect("url")
-            })).expect("metadata");
-            store
-                .save("oauth-metadata", &oauth)
-                .expect("metadata fixture");
-            let namespace = std::fs::read_dir(&root)
-                .expect("root")
-                .next()
-                .expect("namespace")
-                .expect("entry")
-                .path();
-            let path = namespace.join(format!("{damaged}.dpapi"));
             let broken = b"fixture-unreadable-dpapi";
-            std::fs::write(&path, broken).expect("corrupt fixture only");
-            drop(account);
-            drop(store);
-            let config = || BuildConfig {
-                supabase: Some(server.base.clone()),
-                anon_key: None,
-                license_keys: None,
-                channel: Some("nightly"),
-                native_oauth: Some(crate::config::OAuthBuild {
-                    issuer: server.base.clone(),
-                    client_id: "public-fixture".into(),
-                    redirect_uri: url::Url::parse("http://127.0.0.1:0/callback").expect("url"),
-                }),
-            };
+            let (root, namespace, context) = seed_broken_session(&server.base, damaged, broken);
+            let config = || account_recovery_config(&server.base);
             let mut app = App::with_clock(config(), root.clone(), || Ok(1000));
             let mut seen = 0;
             if !logout_first {
@@ -1408,33 +1454,7 @@ mod tests {
                     ..
                 }
             ));
-            let account = app.account.as_mut().expect("restored signed out");
-            let login = account
-                .begin_login()
-                .expect("new login without opening browser");
-            assert!(account.login_pending());
-            let (link, core) = core_fixture(String::new(), "unused", vec![CoreStep::Invalidate]);
-            app.attach_core(link);
-            let _socket = login_callback(&login);
-            assert!(matches!(
-                crate::host::fixture_request(&mut app, Command::AccountPoll),
-                Reply::Account {
-                    signed_in: true,
-                    pending: false,
-                    error: None,
-                    ..
-                }
-            ));
-            assert_eq!(
-                app.account
-                    .as_ref()
-                    .expect("new account")
-                    .identity()
-                    .expect("new identity")
-                    .subject,
-                "user_recovered"
-            );
-            core.join().expect("new identity invalidates before saving");
+            complete_fixture_login(&mut app);
             drop(app);
             let mut app = App::with_clock(config(), root.clone(), || Ok(1000));
             assert!(matches!(

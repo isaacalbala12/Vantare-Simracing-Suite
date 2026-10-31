@@ -50,7 +50,6 @@ fn cancel_attempt(state: Session, attempt: Attempt) {
     );
     app.account = Some(account);
     app.store = Some(store);
-    app.enable_loopback_for_test();
     let candidate = crate::license_remote::Candidate {
         account_id: credential.claims.subject.clone(),
         device: device.clone(),
@@ -62,13 +61,13 @@ fn cancel_attempt(state: Session, attempt: Attempt) {
         .expect("candidate");
     let (link, core) = core_fixture(device, keys, vec![CoreStep::Read]);
     app.attach_core(link);
-    if !matches!(attempt, Attempt::OAuth) {
-        prepare_email_without_changing_session(&mut app, state, &server, polling);
-    } else {
+    if matches!(attempt, Attempt::OAuth) {
         let account = app.account.as_mut().expect("account");
         let url = account.begin_login().expect("pending PKCE");
         account.offer_login_link(&url).expect("copy link");
         assert_eq!(account.session(), Session::Pending);
+    } else {
+        prepare_email_without_changing_session(&mut app, state, &server, polling);
     }
     let reply = crate::host::fixture_request(&mut app, Command::AccountCancel);
     assert!(

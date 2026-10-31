@@ -1,3 +1,49 @@
+## VANTA-126 / #1827 — Licencias paso 4 (31-oct, por revisar)
+
+[PR draft #1832](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1832)
+a nightly, enlazada en T3. Código validado y publicado
+`9be73f153e8c0f2247b7de337e5522152f34b2f1`; el commit posterior solo añade este
+handoff. HEAD documental final y CI vivos se verifican en la PR y #1827.
+Base `origin/nightly` `3e6f2dce7181ac224f4a1ed6ffa38e11373c89e9`;
+rama `vantareapp/isa-1827-paso4-outcome`, worktree
+`C:/VantareServer/wt/isa-1827-p4`, target `D:/VantareServer/targets/isa-1827-p4`.
+
+- Misma respuesta y mismos efectos ante fallos; una única tabla en
+  `services::outcome::outcome` sustituye las listas de App y runtime.
+  La usan los cinco puntos: renovación manual, fallo automático, refresh OAuth,
+  respuesta del núcleo y clasificación del ACK por el supervisor.
+- Las columnas manual/automática conservan la revocación actual hasta el paso 5.
+  Se mantienen Clock solo al rechazar Install de caché, DeviceLimit, la ventana
+  urgente de una hora y el ACK durable antes de limpiar candidate/cerrar sesión.
+  El Hub ya consume resultados tipados; no necesitó cambios.
+- **139/139 filas intactas y PASS**: núcleo 22, servicios 77 y servidor 40.
+  No se editaron tests, fixtures, dependencias, IPC ni formatos persistidos.
+- **3/3 mutaciones detectadas** por las matrices existentes: Conflict pasa a
+  transitorio, se invierte revocación manual y se omite cierre OAuth.
+  Fallan por aserción observable; cambios temporales restaurados antes de la
+  suite final. Script, patches y logs se conservan fuera del repositorio.
+- Gates por la cola, locked/offline y dos jobs: fmt PASS; Clippy
+  services/runtime/ipc all-targets `-D warnings` PASS (cubre check); Nextest
+  perfil ci con telemetría **855/855 PASS**, 13 omisiones existentes;
+  lifecycle **13/13 PASS**. Quality check y **466/466 huellas PASS**.
+  Diff completo revisado. El primer fallo de Clippy/compilación (Copy y nombre
+  Origin ambiguo) queda en evidencia; corregido sin tocar tests ni añadir allow.
+- Deno 2.7.13 portátil en evidencia, hash oficial verificado, sin instalación
+  ni cambios en PATH. Las 40 filas corren sin permisos de entorno, lectura de
+  datos o red durante el test. Solo fixtures; no acredita despliegue ni SQL real.
+- Evidencia: `D:/VantareServer/evidence/isa-1827-p4/`: clippy-final.log,
+  nextest-ci.log, lifecycle.log, fmt-final.log, deno-characterization.log,
+  mutations.json, run-mutations.py y los tres patches/logs de mutación.
+  Harness real: Codex gpt-6.1-sol medium; no se afirma high. Sin subagentes.
+- Project Vantare / area:licencias / In Review, sin milestone. Plane paraguas
+  VANTA-126 conserva su estado: solo comentario de entrega. CI del HEAD final
+  pendiente al publicar este handoff; el estado real posterior queda en PR/issue.
+- Siguiente: revisión del orquestador y CI antes de decidir integración.
+  Verificación con matrices, HTTP/IPC de fixture y corpus; sin login real ni
+  Hub físico. No se ejecuta el paso 5. Sin instalaciones de Vantare, producción,
+  merge, promoción ni release. Acciones externas autorizadas: rama/push/PR draft
+  y actualización de seguimiento dentro del encargo.
+
 ## VANTA-126 / #1827 — Licencias paso 2 (31-oct, PR draft #1829)
 
 [PR draft #1829](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1829)

@@ -3,7 +3,14 @@
 Rama `vantareapp/isa-1827-paso3-retirar-credential`, base nightly
 `3e6f2dce7181ac224f4a1ed6ffa38e11373c89e9`, worktree
 `C:/VantareServer/wt/isa-1827-p3`. Project Vantare / area:licencias, sin milestone.
-Plane paraguas sin cambio de estado; solo comentarios. PR/HEAD/CI en #1827/#1815.
+Plane paraguas sin cambio de estado.
+[PR draft #1830](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1830)
+a nightly, enlazado en T3; HEAD/CI final en #1827/#1815.
+CI del código `278678d8b`: 6/6 SUCCESS, incluido commercial LF/CRLF
+[run 41228259646](https://github.com/isaacalbala12/Vantare-Simracing-Suite/actions/runs/41228259646).
+Este cierre documental requiere comprobar de nuevo la CI de su propio HEAD.
+El script Plane rechaza --comentario sin estado; se comunica el bloqueo y no se
+fuerza ninguna escritura de estado ni descripción del paraguas.
 
 - Puerta legacy preparada como 410/no-store, con CORS; sin interpretar bearer,
   cargar cuentas o firmar. `native-license` conserva su código de producto.

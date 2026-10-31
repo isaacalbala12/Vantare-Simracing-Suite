@@ -383,3 +383,19 @@ Deno.test("merged marketing and report promotion stay recognized as inert PowerS
     }
   }
 });
+
+Deno.test("commercial default excludes the retired issuer; explicit selection remains supported", () => {
+  const wrapper = Deno.readTextFileSync(
+    new URL("./deploy-approved-functions.ps1", import.meta.url),
+  );
+  const defaults = wrapper.match(/\$Functions\s*=\s*@\(([^)]*)\)/)?.[1];
+  const explicit = wrapper.match(/\[ValidateSet\(([^)]*)\)\]/)?.[1];
+  if (!defaults || !explicit) throw new Error("deploy parameters were not found");
+  const names = [...defaults.matchAll(/"([^"]+)"/g)].map((match) => match[1]);
+  if (JSON.stringify(names) !== JSON.stringify(["billing-checkout", "billing-portal", "billing-webhook"])) {
+    throw new Error("commercial default must not deploy the conditional 410 tombstone");
+  }
+  if (![...explicit.matchAll(/"([^"]+)"/g)].some((match) => match[1] === "license-credential")) {
+    throw new Error("authorized explicit legacy retirement selection was removed");
+  }
+});

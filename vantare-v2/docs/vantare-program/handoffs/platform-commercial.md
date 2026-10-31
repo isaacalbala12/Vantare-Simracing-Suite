@@ -9,8 +9,8 @@ a nightly, enlazado en T3; HEAD/CI final en #1827/#1815.
 CI del código `278678d8b`: 6/6 SUCCESS, incluido commercial LF/CRLF
 [run 41228259646](https://github.com/isaacalbala12/Vantare-Simracing-Suite/actions/runs/41228259646).
 Este cierre documental requiere comprobar de nuevo la CI de su propio HEAD.
-El script Plane rechaza --comentario sin estado; se comunica el bloqueo y no se
-fuerza ninguna escritura de estado ni descripción del paraguas.
+El orquestador asume los comentarios Plane; este worker no escribe allí.
+El script de base rechazó --comentario sin estado; no se forzó ninguna escritura.
 
 - Puerta legacy preparada como 410/no-store, con CORS; sin interpretar bearer,
   cargar cuentas o firmar. `native-license` conserva su código de producto.
@@ -23,6 +23,12 @@ fuerza ninguna escritura de estado ni descripción del paraguas.
   caracterización pura no cambian en paso 3. Sin Deno local; gates por CI.
 - Helpers compartidos de normalización/firma/carga no se eliminan: sirven a
   native-license y otros consumidores. No se toca cliente, esquema o dependencias.
+- Revisión DeepSeek de solo lectura: sin P0/P1. Enlace al procedimiento corregido;
+  inventario ampliado a todo el árbol, salida agregada sin rutas crudas, margen
+  de ingesta obligatorio y README nativo actualizado. El orquestador autoriza excluir SOLO
+  license-credential del default de despliegue; sigue en ValidateSet, con test.
+  Checklist exige -Functions license-credential explícito, acta y autorización
+  de Isaac. Sin cambios de workflows ni ejecución de despliegues.
 - Siguiente: review y CI del SHA. **No desplegar** sin cero uso 30 días completos
   y autorización expresa de Isaac. Con tráfico o cobertura incompleta se conserva
   la barrera de bloqueo de #1817. Checklist de despliegue/reversión en README/PR.

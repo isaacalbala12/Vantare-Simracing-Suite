@@ -10,7 +10,7 @@ conservar la barrera de bloqueo ya integrada en nightly (#1817).
 Búsqueda reproducible desde raíz, excluyendo secretos:
 
 ```powershell
-rg -n --glob '!.env*' --glob '!*.md' 'license-credential' supabase vantare-v2 scripts .github
+rg -n --glob '!.env*' --glob '!*.md' 'license-credential' .
 rg -n 'native-license|license-credential' vantare-v2/native/services/src
 ```
 
@@ -23,14 +23,17 @@ rg -n 'native-license|license-credential' vantare-v2/native/services/src
   un test de rechazo de URLs arbitrarias; no hay caller productivo de esa ruta.
   No se edita el cliente en un paso de servidor.
 - Wails/React: retirados por #1533, sin consumidor ejecutable en el checkout.
-  `native/retirement` conserva evidencia inerte; `tools/frozen-go` (bajo
+  `vantare-v2/native/retirement` conserva evidencia inerte; `tools/frozen-go` (bajo
   vantare-v2) conserva oráculos Strategy/LMU, no un cliente de emisión activo.
   Esto no demuestra que no existan instalaciones Wails fuera del repo.
 - Web y scripts de producto versionados: ningún caller del endpoint en la
   búsqueda. Una web desplegada fuera de este repositorio no queda auditada.
 - Tooling: config.toml mantiene verify_jwt=false para llegar al 410; scripts
-  deploy-approved-functions y verify-deploy-surface siguen enumerando el
-  tombstone desplegable. No ejecutados. No borrar la Function en el Dashboard:
+  verify-deploy-surface sigue enumerando el tombstone desplegable. El wrapper
+  deploy-approved-functions lo conserva en ValidateSet para selección explícita,
+  pero lo excluye de $Functions por defecto: un despliegue comercial rutinario
+  no incluye la retirada. Cambio autorizado por el orquestador el 31-oct.
+  Scripts no ejecutados. No borrar la Function en el Dashboard:
   eso daría 404 y perdería la respuesta explícita.
 - Tests: index.test conserva normalización/emisión compartida (llama a
   issueCredential mediante fixture, ya no al HTTP retirado); retired.test
@@ -50,14 +53,19 @@ rg -n 'native-license|license-credential' vantare-v2/native/services/src
 ## Confirmación de producción: pendiente de operador autorizado
 
 1. Registrar proyecto/ref correcto, identidad de la Function, versiones y
-   ventana UTC cerrada `[T-30 días, T)`, con T cercano al despliegue. Revisar
+   ventana UTC cerrada `[T-30 días, T)`. T debe quedar detrás de una marca de
+   ingesta completa o de un margen L documentado y comprobado para las dos
+   fuentes (T <= ahora - L). Registrar L, su evidencia y el retraso máximo
+   observado con controles agregados. No asumir que el minuto actual ya está
+   ingerido; sin una cota/confirmación fiable, cero uso NO está demostrado. Revisar
    configuración de logging, retención y ausencia de sampling/gaps para los
    30 días. Si la retención disponible es menor, usar solo agregados históricos
    ya disponibles o esperar 30 días de cobertura; no contratar servicios.
 2. Usar Explorer → fuente Logs (no Database) con consultas agregadas. Nunca
    abrir detalles de una invocación, exportar eventos crudos, ni seleccionar
    headers, body, JWT, usuario, IP, query string o event_message. Consultar solo
-   fuente, día, ruta de función sin query, método, estado y contadores.
+   fuente, día, etiqueta fija del endpoint, método, estado y contadores. La
+   consulta filtra por ruta, pero nunca devuelve su texto ni sufijos del caller.
 3. En el esquema ClickHouse documentado actualmente, ejecutar la consulta de
    abajo por cada ventana UTC de como máximo 24 h, en ambos límites exactos,
    sin paginar eventos crudos. El rango explícito del explorador/API debe ser
@@ -66,7 +74,7 @@ rg -n 'native-license|license-credential' vantare-v2/native/services/src
 
 ```sql
 select source, toDate(timestamp) as day,
-  log_attributes['request.path'] as path,
+  'license-credential' as endpoint,
   log_attributes['request.method'] as method,
   log_attributes['response.status_code'] as status,
   count() as invocations
@@ -78,8 +86,8 @@ where source in ('function_edge_logs', 'edge_logs')
     or log_attributes['request.path'] = '/license-credential'
     or startsWith(log_attributes['request.path'], '/functions/v1/license-credential/')
     or startsWith(log_attributes['request.path'], '/license-credential/'))
-group by source, day, path, method, status
-order by source, day, path, method, status
+group by source, day, endpoint, method, status
+order by source, day, endpoint, method, status
 limit 1000;
 ```
 
@@ -91,15 +99,17 @@ limit 1000;
    nuevas. Comprobar que las invocaciones de función y rechazos de gateway
    quedan cubiertos, incluidos despliegues antiguos/alias del mismo endpoint.
 5. Guardar solo proyecto/ref, T, inicio/fin, versión de consulta/esquema,
-   cobertura/retención, controles y contadores por día/método/estado. Revisar
+   cobertura/retención/margen de ingesta, controles y contadores por día/método/estado. Revisar
    errores de consulta y resultados truncados: 1000 filas exige subdividir.
    Cualquier petición cuenta como uso; no deduplicar entre fuentes para
    declarar cero. Exigir 30 días contiguos acreditados y suma cero en ambas
    fuentes. Datos ausentes, retención insuficiente o control fallido = NO
    demostrado. Si hay tráfico, parar la retirada y llevarlo al orquestador.
 6. Adjuntar el acta agregada a #1815/#1827, completar review/CI del SHA y pedir
-   autorización expresa a Isaac. Repetir el tramo final hasta el despliegue;
-   si aparece uso, detenerlo. Este worker no ejecuta ninguna de estas lecturas.
+   autorización expresa a Isaac. Releer el tramo final solo después de que
+   venza L o exista una marca de ingesta completa; registrar por separado la
+   cola aún abierta. No certificarla como cero. Si aparece uso, un hueco o
+   retraso sin cerrar, detener la retirada. Este worker no ejecuta ninguna de estas lecturas.
 
 Fuentes públicas consultadas (31-oct-2026):
 [Logs](https://supabase.com/docs/guides/observability/logs),
@@ -112,6 +122,10 @@ Invocations puede incluir datos sensibles: solo agregados de metadatos.
 - [ ] Acta de cero uso 30 días, cobertura completa y review del SHA aprobado.
 - [ ] CI Deno y supabase-commercial-gates LF/CRLF verdes en ese SHA.
 - [ ] Autorización expresa de Isaac registrada; no basta merge ni este checklist.
+- [ ] Selección explícita obligatoria: `deploy-approved-functions.ps1
+  -ProjectRef <ref revisada> -Functions license-credential`, **solo** tras el
+  acta de cero uso 30 días y autorización expresa de Isaac. No usar el default
+  commercial para retirar la puerta; no ejecutado por este worker.
 - [ ] Operador prepara y revisa bundle de license-credential con su handler
   tombstone y verify_jwt=false. Desplegar solo esta Function; no native-license,
   migraciones, claves ni otras funciones, aunque compartan helpers de código.

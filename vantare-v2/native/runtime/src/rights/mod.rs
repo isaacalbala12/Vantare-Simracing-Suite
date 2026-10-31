@@ -222,6 +222,10 @@ impl Owner {
             return Err(Error::TooLarge);
         }
         if text.starts_with('{') {
+            if self.devices.legacy.is_empty() {
+                // Missing local identity is not evidence against a signed cache.
+                return Err(Error::Unconfigured);
+            }
             let credential: CredentialV1 =
                 serde_json::from_str(text).map_err(|_| Error::InvalidCredential)?;
             // El UUID procede de claims verificados, nunca de email/metadata/booleanos IPC.

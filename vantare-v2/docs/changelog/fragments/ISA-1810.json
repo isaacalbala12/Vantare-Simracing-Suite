@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-1810",
+  "type": "fix",
+  "summary": "Una caché de licencia rechazada ya no impide abrir la recuperación normal del acceso.",
+  "technicalNotes": [
+    "El candidate de otro dispositivo o rechazado por el núcleo se conserva en cuarentena; la política real del núcleo permite recuperar sin conceder esa caché ni revocar una licencia vigente.",
+    "Se conservan reloj, lápidas, expiraciones y recuperación del ACK perdido sin repetir HTTP. Un archivo guardado nunca obtiene la procedencia de una renovación online."
+  ],
+  "testing": [
+    "Con firmas y datos ficticios, comprobar dispositivo anterior/actual, cuentas A/B, reinicio y recuperación mediante una emisión nueva.",
+    "Con reloj inyectado, probar latest_issued y una lápida futura después de corregir la hora; la caché antigua se deniega y la emisión nueva debe superar la frontera."
+  ],
+  "knownLimitations": [
+    "Una lápida sana futura no se borra ni se rebaja; su diagnóstico y ritmo de reintento siguen en una tarea separada.",
+    "Las pruebas usan archivos temporales y no acreditan una instalación o un login reales."
+  ]
+}

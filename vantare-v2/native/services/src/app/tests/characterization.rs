@@ -2,6 +2,8 @@
 use super::*;
 use crate::protocol::RenewalOutcome;
 
+mod reset;
+
 #[derive(Clone, Copy, Debug)]
 enum Origin {
     User,

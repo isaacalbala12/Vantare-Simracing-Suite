@@ -1,3 +1,23 @@
+## ISA-1810 — Candidate rechazado y acceso a la recuperación
+
+Una firma válida no permite confiar en el dispositivo declarado por el propio
+candidate: se compara también con la huella actual. La caché de otro dispositivo
+va a cuarentena antes de Install, con `license-cache-device-mismatch`.
+
+Un rechazo explícito del núcleo aparta el candidate y retira su hint sin revocar
+el binding vigente. Un Read posterior permite admitir el helper con la política
+real del núcleo, tanto sin derechos como conservando los de A al rechazar B.
+Read no cuenta como instalación ni renovación. Login, logout y comprobación de
+acceso quedan disponibles sin editar archivos a mano; una nueva concesión sigue
+exigiendo firma, identidad, dispositivo, reloj, lápida y ACK durable del núcleo.
+
+E/S, transporte y ACK incierto conservan candidate/hint y no disparan otra
+emisión HTTP. Un InstallOnline recién obtenido y rechazado definitivamente se
+aparta también; la pérdida del ACK mantiene la recuperación ordinaria de #1811.
+Disco, cuarentena e hint nunca producen InstallOnline. Se conservan los bytes
+con el recorte habitual de tres archivos por nombre, best-effort si hay bloqueos.
+El diagnóstico de lápida futura y su sondeo se siguen separadamente en #1822.
+
 ## ISA-1808 / ISA-1812 — Recuperar cuenta y leer perfil sin revocar
 
 Cuenta y metadata OAuth usan lectura de caché: DPAPI/JSON ilegible se aparta

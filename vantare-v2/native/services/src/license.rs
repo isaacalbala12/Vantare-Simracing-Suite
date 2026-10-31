@@ -147,10 +147,12 @@ pub enum CacheIssue {
     Unreadable,
     AuthorityRejected,
     AuthorityUnreadable,
+    DeviceMismatch,
 }
 impl CacheIssue {
     pub fn diagnostic(self) -> &'static str {
         match self {
+            Self::DeviceMismatch => "license-cache-device-mismatch",
             Self::AuthorityUnreadable => "license-authority-unreadable",
             Self::AuthorityRejected => "license-cache-authority-rejected",
             Self::InvalidSignature => "license-cache-invalid-signature",

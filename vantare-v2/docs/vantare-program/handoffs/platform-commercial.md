@@ -1,3 +1,42 @@
+## VANTA-105 / #1810 — Candidate y admisión (31-oct, por revisar)
+
+Worker asignado por el orquestador después de #1818. Rama
+`vantareapp/isa-1810-candidate-admision`, worktree `C:/VantareServer/wt/isa-1810`,
+base origin/nightly `be32a3125` (#1818 integrado), target propio
+`D:/VantareServer/targets/isa-1810`. Plane paraguas intacto. Project Vantare /
+area:licencias, sin milestone. PR draft separado a nightly; HEAD, CI y estado
+vigentes se consultan en el PR enlazado desde #1810.
+
+- La firma del candidate se verifica y su dispositivo se compara con la huella
+  actual. Otro dispositivo se aparta antes de Install, con diagnóstico propio
+  y bytes intactos. No se modifica MachineGuid ni una instalación real.
+- Rechazo definitivo de caché: cuarentena y Read de la política actual. El
+  helper puede recuperar sin derechos o conservar los de A al rechazar B; no
+  concede B, no invalida A y no llama a HTTP durante TransferRights. Read no
+  cuenta como instalación/renovación. Cubre el mecanismo común con #1798.
+- El Clock del Install de disco se clasifica como rechazo de esa caché solo
+  cuando falla Install antes del ACK. Clock online o posterior al Install,
+  E/S y transporte siguen transitorios: conservan candidate/hint y no repiten
+  la petición HTTP cuya respuesta se perdió. No cambian autoridad ni tolerancia.
+- InstallOnline rechazado de forma definitiva se aparta también para no
+  envenenar el siguiente arranque. Solo una respuesta HTTP/TLS nueva en memoria
+  puede producir ese comando; disco, archivo apartado e hint siguen sin poder.
+- Regresiones con firmas auténticas: huella anterior/actual y reinicio, cuenta
+  A/B, ausencia de derechos, disponibilidad de logout y rechazo online. Pruebas
+  de autoridad con reloj/tick inyectados para latest_issued y lápida futura ya
+  superada por la pared, conservando sus fronteras y exigiendo nueva emisión.
+- Fmt y Clippy all-targets `-D warnings` scoped services/runtime/ipc PASS.
+  Nextest scoped con telemetría **839/839 PASS** (13 omisiones existentes);
+  lifecycle **13/13 PASS**. Siete mutaciones detectadas: dispositivo, rechazo,
+  clasificación Clock, transitorio, rechazo online, procedencia desde disco y
+  marcador antes del ACK. Se restauran SHA-256 idénticos y el focal **9/9 PASS**.
+  CI completa pendiente de verificar sobre el HEAD publicado.
+- #1822 mantiene el diagnóstico/reintentos de lápida futura y la repetición de
+  aviso de marca corrupta. #1821 y su worktree no se editan. No hay cambios de
+  backend, protocolo firmado remoto, dependencias, producción, merge o release.
+
+## VANTA-105 / #1806 y #1807 — Autoridad y reloj (31-oct, integrado en nightly)
+
 ## VANTA-105 / #1808, #1812, #1814 — Sesión y perfil (31-oct, listo para revisión final de #1808/#1812)
 
 PR draft [#1821](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1821),
@@ -90,8 +129,9 @@ worktree `C:/VantareServer/wt/isa-1806`, base nightly `55250c6f5` tras #1811.
 Plane paraguas no se modifica. Target propio `D:/VantareServer/targets/isa-1806`.
 [PR draft #1818](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1818),
 El rebase conserva la renovación y recuperación de canales de #1811.
-Código/tests tras revisión independiente `0dd88fe36`; no integrado en nightly
-ni publicado como release. El HEAD y el resultado de CI vigentes se consultan en el PR.
+Código/tests tras revisión independiente `0dd88fe36`; integrado por el orquestador
+en nightly como `be32a3125`, con CI de `508bee8d4` verde. No publicado como release.
+El HEAD y el resultado de CI vigentes se consultan en el PR.
 
 - Revisión profunda independiente del orquestador sobre `23bf235cf`:
   APPROVE WITH CHANGES, sin P0/P1/P2. F1 comprueba la versión de Response antes

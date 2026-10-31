@@ -281,6 +281,7 @@ fn respond(
         .map_err(|_| io::Error::other("derechos no disponibles"))?;
     let tick = start.elapsed();
     let force = !matches!(request.command, Command::Read);
+    let cached_install = matches!(request.command, Command::Install { .. });
     let result = match request.command {
         Command::Read => Ok(()),
         Command::Install { credential } => state
@@ -299,20 +300,33 @@ fn respond(
             .ok_or(vantare_services::Error::Unconfigured)
             .and_then(|owner| owner.invalidate(super::wall_now(), tick)),
     };
+    let cached_clock_rejection =
+        cached_install && matches!(result, Err(vantare_services::Error::Clock));
     let advanced = advance(&mut state, &latest.load(), tick, force);
     let result = if force { result.and(advanced) } else { result };
     let response = Response {
         version: control::VERSION,
         sequence: request.sequence,
         policy: state.policy.clone(),
-        error: result.err().map(|error| response_error(error).to_owned()),
+        error: result
+            .err()
+            .map(|error| response_error(error, cached_clock_rejection).to_owned()),
     };
     drop(state);
     write(&response)
 }
 
-fn response_error(error: vantare_services::Error) -> &'static str {
+pub(super) fn response_error(
+    error: vantare_services::Error,
+    cached_clock_rejection: bool,
+) -> &'static str {
     use vantare_services::Error;
+    // An explicit time-bound refusal of a cached Install is not an unavailable
+    // core. Online/after-install Clock errors remain transient: a
+    // successful install followed by a failed advance is not a rejected cache.
+    if cached_clock_rejection && error == Error::Clock {
+        return control::REJECTED;
+    }
     match error {
         Error::Denied
         | Error::InvalidCredential
@@ -402,7 +416,7 @@ mod response_tests {
             Error::Unconfigured,
             Error::Protocol,
         ] {
-            assert_eq!(response_error(error), control::UNAVAILABLE);
+            assert_eq!(response_error(error, false), control::UNAVAILABLE);
         }
         for error in [
             Error::Denied,
@@ -411,7 +425,7 @@ mod response_tests {
             Error::DeviceLimit,
             Error::Conflict,
         ] {
-            assert_eq!(response_error(error), control::REJECTED);
+            assert_eq!(response_error(error, false), control::REJECTED);
         }
     }
 

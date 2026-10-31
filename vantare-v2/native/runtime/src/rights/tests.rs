@@ -1974,3 +1974,126 @@ fn authority_recovery_online_keeps_healthy_game_grace_but_reanchor_discards_it()
         clean(&root);
     }
 }
+
+#[test]
+fn cached_clock_rejection_is_definitive_without_revoking_the_verified_binding() {
+    let root = test_root();
+    let (current, current_keys) = signed_v1_named(105, vec![], devices().legacy, "current");
+    let (older, older_keys) = signed_v1_named(100, vec![], devices().legacy, "older");
+    let (fresh, fresh_keys) = signed_v1_named(220, vec![], devices().legacy, "fresh");
+    let keys = format!("{current_keys},{older_keys},{fresh_keys}");
+    let mut owner = Owner::open(&root, Some(&keys), devices(), 1, wall(105)).expect("owner");
+    owner
+        .install(current, wall(105), Duration::ZERO)
+        .expect("A");
+    let before = owner
+        .store
+        .load::<serde_json::Value>("authority")
+        .expect("authority");
+    let error = owner
+        .install(older, wall(201), Duration::from_secs(96))
+        .expect_err("older issuance");
+    assert_eq!(error, Error::Clock);
+    assert_eq!(
+        super::host::response_error(error, true),
+        vantare_ipc::control::REJECTED
+    );
+    assert_eq!(
+        super::host::response_error(error, false),
+        vantare_ipc::control::UNAVAILABLE
+    );
+    assert_eq!(
+        owner
+            .store
+            .load::<serde_json::Value>("authority")
+            .expect("preserved"),
+        before
+    );
+    let policy = owner
+        .advance(&photo(false), wall(201), Duration::from_secs(96))
+        .expect("Read");
+    assert!(policy.overlays_advanced);
+    assert!(!policy.online_recovery_required);
+    assert_eq!(
+        owner.binding.as_ref().expect("A preserved").subject,
+        "550e8400-e29b-41d4-a716-446655440000"
+    );
+    drop(owner);
+    let mut owner = Owner::open(&root, Some(&keys), devices(), 2, wall(202)).expect("restart");
+    assert!(
+        owner
+            .advance(&photo(false), wall(202), Duration::ZERO)
+            .expect("Read")
+            .overlays_advanced
+    );
+    owner
+        .install_online(fresh, wall(220), Duration::from_secs(18))
+        .expect("new authenticated grant");
+    assert!(
+        owner
+            .advance(&photo(false), wall(220), Duration::from_secs(18))
+            .expect("recovered")
+            .overlays_advanced
+    );
+    drop(owner);
+    clean(&root);
+}
+
+#[test]
+fn future_logout_candidate_stays_rejected_after_the_wall_recovers_until_a_new_issuance() {
+    let root = test_root();
+    let (old, old_keys) = signed_v1_named(100, vec![], devices().legacy, "old");
+    let (fresh, fresh_keys) = signed_v1_named(220, vec![], devices().legacy, "fresh");
+    let keys = format!("{old_keys},{fresh_keys}");
+    let mut owner = Owner::open(&root, Some(&keys), devices(), 1, wall(100)).expect("owner");
+    owner
+        .install(old.clone(), wall(100), Duration::ZERO)
+        .expect("initial credential");
+    owner
+        .advance(&photo(false), wall(200), Duration::from_secs(1))
+        .expect("wrong future wall");
+    owner
+        .invalidate(wall(110), Duration::from_secs(2))
+        .expect("logout during correction");
+    drop(owner);
+    let mut owner =
+        Owner::open(&root, Some(&keys), devices(), 2, wall(201)).expect("wall caught up");
+    let before = owner
+        .store
+        .load::<serde_json::Value>("authority")
+        .expect("tombstone");
+    let error = owner
+        .install(old.clone(), wall(201), Duration::ZERO)
+        .expect_err("old candidate never becomes new");
+    assert_eq!(error, Error::Denied);
+    assert_eq!(
+        super::host::response_error(error, true),
+        vantare_ipc::control::REJECTED
+    );
+    assert_eq!(
+        owner
+            .store
+            .load::<serde_json::Value>("authority")
+            .expect("tombstone preserved"),
+        before
+    );
+    let denied = owner
+        .advance(&photo(false), wall(201), Duration::ZERO)
+        .expect("recovery admission Read");
+    assert!(!denied.overlays_advanced && !denied.online_recovery_required);
+    owner
+        .install_online(fresh, wall(220), Duration::from_secs(19))
+        .expect("strictly newer issuance");
+    assert!(
+        owner
+            .advance(&photo(false), wall(220), Duration::from_secs(19))
+            .expect("recovered")
+            .overlays_advanced
+    );
+    assert!(matches!(
+        owner.install(old, wall(220), Duration::from_secs(19)),
+        Err(Error::Denied)
+    ));
+    drop(owner);
+    clean(&root);
+}

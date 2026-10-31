@@ -12,11 +12,19 @@ pub(crate) fn signed_fixture(device: &str) -> (CredentialV1, &'static str) {
 }
 
 pub(crate) fn signed_fixture_named(device: &str, key_id: &str) -> (CredentialV1, &'static str) {
+    signed_fixture_identity(device, key_id, SUBJECT)
+}
+
+pub(crate) fn signed_fixture_identity(
+    device: &str,
+    key_id: &str,
+    subject: &str,
+) -> (CredentialV1, &'static str) {
     let mut seed = [0; 32];
     getrandom::fill(&mut seed).expect("test entropy");
     let key = SigningKey::from_bytes(&seed);
     let payload = format!(
-        r#"{{"version":1,"algorithm":"Ed25519","key_id":"{key_id}","claims":{{"issuer":"vantare-license","subject":"{SUBJECT}","device_fingerprint":"{device}","issued_at":"2026-09-30T10:00:00Z","capabilities":[]}}}}"#
+        r#"{{"version":1,"algorithm":"Ed25519","key_id":"{key_id}","claims":{{"issuer":"vantare-license","subject":"{subject}","device_fingerprint":"{device}","issued_at":"2026-09-30T10:00:00Z","capabilities":[]}}}}"#
     );
     let mut credential: CredentialV1 = serde_json::from_str(&format!(
         "{},\"signature\":\"\"}}",

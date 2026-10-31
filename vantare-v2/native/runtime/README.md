@@ -1,3 +1,13 @@
+## ISA-1810 — Rechazo de la caché y disponibilidad del núcleo
+
+Clock devuelve rechazo de caché solo si lo produjo el Install ordinario antes
+de confirmar la instalación. Así services puede apartar un candidate anterior
+a latest_issued y abrir la recuperación sin alterar la autoridad. Un Clock de
+InstallOnline o del avance posterior a una instalación correcta sigue siendo
+transitorio; no se confunde una instalación durable con una caché rechazada.
+No cambian el contrato control v6, la tolerancia ±300 s, expiraciones ni lápidas.
+Solo el núcleo concede derechos verificados; admitir el helper no los concede.
+
 ## ISA-1812 — Error de perfil y sesión restaurada
 
 El scheduler confirma sesión con un reply de cuenta correcto. Un error de

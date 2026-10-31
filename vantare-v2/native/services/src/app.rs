@@ -10,6 +10,8 @@ use crate::{
 use std::io::Write;
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
+#[cfg(all(test, windows))]
+mod candidate_tests;
 mod mail;
 mod pilot;
 
@@ -138,6 +140,21 @@ impl App {
                                         .map(|_| crate::license::CacheIssue::InvalidSignature)
                                 })
                             });
+                        let issue = match issue {
+                            None if self.config.license_keys.is_some() => {
+                                match crate::license::installation::legacy_fingerprint() {
+                                    Ok(device) if device != candidate.device => {
+                                        Some(crate::license::CacheIssue::DeviceMismatch)
+                                    }
+                                    Ok(_) => None,
+                                    Err(Error::Unsupported) => {
+                                        Some(crate::license::CacheIssue::UnsupportedFormat)
+                                    }
+                                    Err(error) => return Err(error),
+                                }
+                            }
+                            issue => issue,
+                        };
                         if let Some(issue) = issue {
                             self.quarantine_candidate(issue)?
                         } else {
@@ -148,6 +165,10 @@ impl App {
                                     installed = true;
                                     policy
                                 }
+                                Err(Error::Core(vantare_ipc::control::Failure::Rejected)) => self
+                                    .quarantine_candidate(
+                                    crate::license::CacheIssue::AuthorityRejected,
+                                )?,
                                 Err(error) => {
                                     let policy =
                                         self.core_command(vantare_ipc::control::Command::Read)?;
@@ -184,8 +205,10 @@ impl App {
         let message = if policy.online_recovery_required {
             "Necesitas conexión para recuperar el acceso; comprueba el acceso o inicia sesión."
                 .into()
-        } else {
+        } else if policy.overlays_advanced {
             "Derechos verificados y guardados por el núcleo".into()
+        } else {
+            "Puedes iniciar sesión o comprobar el acceso para recuperarlo.".into()
         };
         Ok((Reply::License { policy, message }, installed))
     }
@@ -240,10 +263,18 @@ impl App {
         &mut self,
         candidate: &crate::license_remote::Candidate,
     ) -> Result<Reply> {
-        let policy = self.core_command(vantare_ipc::control::Command::InstallOnline {
+        let installed = self.core_command(vantare_ipc::control::Command::InstallOnline {
             credential: serde_json::to_string(&candidate.credential)
                 .map_err(|_| Error::InvalidCredential)?,
-        })?;
+        });
+        let policy = match installed {
+            Ok(policy) => policy,
+            Err(error @ Error::Core(vantare_ipc::control::Failure::Rejected)) => {
+                self.quarantine_candidate(crate::license::CacheIssue::AuthorityRejected)?;
+                return Err(error);
+            }
+            Err(error) => return Err(error),
+        };
         self.recovered_renewal_transfer = false;
         self.candidate_store()?.remove("license-transfer-pending")?;
         Ok(Reply::License {
@@ -2246,6 +2277,7 @@ mod tests {
     pub(super) enum CoreStep {
         #[cfg(windows)]
         Read,
+        ReadLicensed,
         ReadRecovery,
         #[cfg(windows)]
         Install,
@@ -2256,6 +2288,9 @@ mod tests {
         Invalidate,
         #[cfg(windows)]
         RejectInstall,
+        RejectInstallOnline,
+        #[cfg(windows)]
+        UnavailableInstall,
         DisconnectInstallOnline,
         RejectInvalidate,
     }
@@ -2275,6 +2310,7 @@ mod tests {
                         CoreStep::InstallOnline
                             | CoreStep::InstallOnlineCredential(_)
                             | CoreStep::DisconnectInstallOnline
+                            | CoreStep::RejectInstallOnline
                     ),
                     "renew must preserve online provenance"
                 );
@@ -2287,6 +2323,7 @@ mod tests {
                         CoreStep::InstallOnline
                             | CoreStep::InstallOnlineCredential(_)
                             | CoreStep::DisconnectInstallOnline
+                            | CoreStep::RejectInstallOnline
                     ),
                     "disk candidate cannot claim online provenance"
                 );
@@ -2341,6 +2378,7 @@ mod tests {
                 let read_only = matches!(
                     step,
                     CoreStep::Read
+                        | CoreStep::ReadLicensed
                         | CoreStep::ReadRecovery
                         | CoreStep::VersionMismatch
                         | CoreStep::VersionCloses
@@ -2366,13 +2404,17 @@ mod tests {
                 if matches!(step, CoreStep::VersionCloses) {
                     continue; // Old control peers close without a typed response.
                 }
-                let rejected = match step {
-                    CoreStep::RejectInvalidate => true,
+                let error = match step {
+                    CoreStep::RejectInvalidate => Some("fixture rejection"),
                     #[cfg(windows)]
-                    CoreStep::RejectInstall => true,
-                    _ => false,
-                };
-                let error = rejected.then_some("fixture rejection".to_owned());
+                    CoreStep::RejectInstall | CoreStep::RejectInstallOnline => {
+                        Some(control::REJECTED)
+                    }
+                    #[cfg(windows)]
+                    CoreStep::UnavailableInstall => Some(control::UNAVAILABLE),
+                    _ => None,
+                }
+                .map(str::to_owned);
                 // Fixture de transporte: no acredita grants ni runtime real.
                 control::write(
                     &mut pipe,
@@ -2388,6 +2430,7 @@ mod tests {
                             revision: 1,
                             checked_at_ms: control::wall_ms().expect("clock"),
                             online_recovery_required: matches!(step, CoreStep::ReadRecovery),
+                            overlays_advanced: matches!(step, CoreStep::ReadLicensed),
                             ..control::Policy::default()
                         },
                         error,

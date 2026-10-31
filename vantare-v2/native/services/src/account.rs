@@ -583,7 +583,10 @@ impl Account {
     pub(crate) fn clear_saved(store: &Store) -> Result<()> {
         // Atomic tombstone survives a crash; no old refresh can restore the account.
         store.save("account", &Saved::SignedOut)?;
-        store.remove("account-profile")
+        if let Err(error) = store.remove("account-profile") {
+            eprintln!("account-logout: profile-cleanup={error:?}");
+        }
+        Ok(())
     }
 }
 

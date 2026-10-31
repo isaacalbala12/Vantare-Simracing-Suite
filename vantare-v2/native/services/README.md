@@ -7,7 +7,10 @@ que se retiran antes que las copias fechadas recientes. Un fallo real de lectura
 La metadata pública se redescubre; una cuenta ilegible empieza sin sesión.
 Logout conserva el ACK durable de revocación, pero escribe SignedOut sin
 redescubrir OAuth ni restaurar primero la sesión dañada. Una identidad nueva
-sigue invalidando derechos anteriores antes de persistirse.
+sigue invalidando derechos anteriores antes de persistirse. En Logout la lectura,
+cuarentena y limpieza del perfil son best-effort con diagnóstico tipado: el
+ACK durable y el guardado de SignedOut siguen siendo obligatorios. Un error
+cosmético no deja una sesión restaurable tras haber revocado sus derechos.
 
 AccountProfileRefresh es presentación y usa siempre OAuth automático: ni un
 invalid_grant ni un 401/403 revocan la licencia, borran candidate o cierran la
@@ -20,7 +23,11 @@ solo la instancia de App que el test habilita expresamente admite 127.0.0.1.
 No hay opción CLI/IPC ni variable de ejecución que lo habilite. La distribución
 mantiene HTTPS y las trust roots reales; el test integrado comprueba el guard
 por defecto antes de usar su instancia local.
-No cambia formato IPC, firma, TTL ni gracia. Recovery 72 h (#1814) requiere aún
+Los caminos de App, incluido AccountRenew, usan el reloj inyectado. Un fallo
+de perfil conserva la sesión y su texto no pide iniciar sesión de nuevo. El
+reintento de perfil en Hub queda en #1823: requiere admisión por temporizador
+y backoff propios para evitar la cadena inmediata de peticiones.
+No cambia formato IPC, firma, TTL ni gracia. Recovery 72 h (#1814), fuera de RC9, requiere aún
 un plazo autenticado firmado: online_capabilities no concede derechos locales.
 
 ## ISA-1803 — Recuperación del transporte (services v15 / control v5)

@@ -219,8 +219,9 @@ impl App {
     ) -> Result<vantare_ipc::control::Policy> {
         self.recovered_renewal_transfer = false;
         self.candidate_store()?.remove("license-transfer-pending")?;
+        let at = (self.clock)()?.saturating_mul(1000);
         self.candidate_store()?
-            .quarantine_dated("license-candidate", now()?.saturating_mul(1000))?;
+            .quarantine_dated("license-candidate", at)?;
         eprintln!("{}", issue.diagnostic());
         self.core_command(vantare_ipc::control::Command::Read)
     }
@@ -338,7 +339,7 @@ impl App {
         }
         let device = crate::license::installation::legacy_fingerprint()?;
         self.revoke_local()?;
-        let time = now()?;
+        let time = (self.clock)()?;
         self.ensure_data(time)?;
         self.candidate_store()?;
         let request = self
@@ -372,9 +373,13 @@ impl App {
                 self.store = Some(self.open_account_store()?);
             }
             let store = self.store.as_ref().ok_or(Error::Storage)?;
-            let at = (self.clock)()?.saturating_mul(1000);
-            store.restore_cache::<serde_json::Value>("account", at)?;
-            store.restore_cache::<OAuth>("oauth-metadata", at)?;
+            let at = (self.clock)().unwrap_or(0).saturating_mul(1000);
+            if let Err(error) = store.restore_cache::<serde_json::Value>("account", at) {
+                eprintln!("account-logout: account-quarantine={error:?}");
+            }
+            if let Err(error) = store.restore_cache::<OAuth>("oauth-metadata", at) {
+                eprintln!("account-logout: metadata-quarantine={error:?}");
+            }
             if let Some(account) = self.account.as_mut() {
                 account.end_email_session(&self.http);
                 account.logout(store)?;
@@ -613,6 +618,7 @@ impl App {
                 | Command::AccountProfileRefresh
                 | Command::Logout
         );
+        let profile_refresh = matches!(command, Command::AccountProfileRefresh);
         let login_begin = matches!(command, Command::AccountBegin);
         let automatic = matches!(command, Command::LicenseRenewAutomatic);
         let probe = matches!(command, Command::Status | Command::Probe);
@@ -635,7 +641,7 @@ impl App {
         if login_begin && let Err(error) = &outcome {
             let _log = writeln!(std::io::stderr(), "account-login: failed {error:?}");
         }
-        if !probe && let Ok(time) = now() {
+        if !probe && let Ok(time) = (self.clock)() {
             self.triage.record(time, outcome.is_err(), operation);
         }
         if automatic && let Err(error) = outcome {
@@ -652,7 +658,7 @@ impl App {
                         ..
                     }
                 ) && self.account.as_ref().is_some_and(|account| {
-                    now().is_ok_and(|time| account.authorized(time, |_| Ok(())).is_ok())
+                    (self.clock)().is_ok_and(|time| account.authorized(time, |_| Ok(())).is_ok())
                 }) {
                     crate::diagnostics::record_usage_once(
                         &crate::diagnostics::Usage::AccountSignedIn {},
@@ -677,7 +683,15 @@ impl App {
                     self.data_session = None;
                 }
                 if account_action && let Some(account) = self.account.as_ref() {
-                    Self::account_reply(account, Some(error))
+                    let mut reply = Self::account_reply(account, Some(error));
+                    if profile_refresh
+                        && account.identity().is_some()
+                        && let Reply::Account { message, .. } = &mut reply
+                    {
+                        *message =
+                            "No se pudo actualizar el perfil; la sesión sigue abierta.".into();
+                    }
+                    reply
                 } else if error == Error::DeviceLimit {
                     // Acción concreta y distinta de cualquier otro fallo: el
                     // texto sigue saliendo del único mapeo (`error.rs`).
@@ -700,7 +714,7 @@ impl App {
     fn email_account(&mut self, action: Option<crate::protocol::EmailAction>) -> Reply {
         let result: Result<Reply> = (|| {
             self.ensure_account()?;
-            let time = now()?;
+            let time = (self.clock)()?;
             let account = self.account.as_mut().ok_or(Error::Authentication)?;
             let ticket = match action {
                 Some(action) => account.email_action(&self.http, action, time)?,
@@ -746,7 +760,7 @@ impl App {
                     message: error.to_string(),
                     error: Some(error.to_string()),
                 },
-                |account| account.email_reply(now().unwrap_or(0), Some(error)),
+                |account| account.email_reply((self.clock)().unwrap_or(0), Some(error)),
             )
         })
     }
@@ -794,8 +808,11 @@ impl App {
             Command::CalendarRefresh => {
                 let racecontrol = url::Url::parse(crate::calendar::RACECONTROL_URL)
                     .map_err(|_| Error::Unconfigured)?;
-                let at = chrono::DateTime::from_timestamp(i64::try_from(now()?).unwrap_or(0), 0)
-                    .ok_or(Error::Clock)?;
+                let at = chrono::DateTime::from_timestamp(
+                    i64::try_from((self.clock)()?).unwrap_or(0),
+                    0,
+                )
+                .ok_or(Error::Clock)?;
                 let (schedule, fallback) =
                     crate::calendar::refresh(&self.http, &self.config, &racecontrol, at)?;
                 return Ok(Reply::Calendar { schedule, fallback });
@@ -831,7 +848,7 @@ impl App {
             Command::AccountPoll => return self.poll_account(),
             Command::AccountRenew => {
                 self.ensure_account()?;
-                self.refresh_oauth(now()?)?;
+                self.refresh_oauth((self.clock)()?)?;
                 return Ok(Self::account_reply(
                     self.account.as_ref().ok_or(Error::Authentication)?,
                     None,
@@ -863,7 +880,7 @@ impl App {
     }
 
     fn purchase_reply(&mut self, product: crate::protocol::BillingProduct) -> Result<Reply> {
-        let time = now()?;
+        let time = (self.clock)()?;
         self.ensure_oauth(time)?;
         let url = crate::billing::purchase(
             &self.http,
@@ -905,7 +922,7 @@ impl App {
     }
 
     fn testing_reply(&mut self, command: Command) -> Result<Reply> {
-        let time = now()?;
+        let time = (self.clock)()?;
         self.ensure_data(time)?;
         let request = self
             .data_session
@@ -924,7 +941,7 @@ impl App {
     }
 
     fn triage_reply(&mut self, command: Command) -> Result<Reply> {
-        let time = now()?;
+        let time = (self.clock)()?;
         self.ensure_data(time)?;
         let session = self.data_session.as_ref().ok_or(Error::Authentication)?;
         let channel = crate::report::rpc_channel(self.config.channel.ok_or(Error::Unconfigured)?);
@@ -987,7 +1004,7 @@ impl App {
                     &self.http,
                     base,
                     anon,
-                    now()?,
+                    (self.clock)()?,
                     self.roadmap_store.as_ref().ok_or(Error::Storage)?,
                 ),
                 None => Err(Error::Unconfigured),
@@ -1104,7 +1121,7 @@ impl App {
                     .unwrap_or(crate::protocol::DraftState::CleanupPending),
             });
         }
-        let now = now()?;
+        let now = (self.clock)()?;
         self.ensure_data(now)?;
         let request = self
             .data_session
@@ -1256,8 +1273,11 @@ mod tests {
                     .expect("signed candidate");
                 let (link, core) = core_fixture(device.clone(), keys, vec![CoreStep::Read]);
                 app.attach_core(link);
+                let reply = crate::host::fixture_request(&mut app, Command::AccountProfileRefresh);
+                assert!(matches!(&reply, Reply::Account { message, .. }
+                    if message == "No se pudo actualizar el perfil; la sesión sigue abierta."));
                 assert!(matches!(
-                    crate::host::fixture_request(&mut app, Command::AccountProfileRefresh),
+                    reply,
                     Reply::Account {
                         signed_in: true,
                         profile: None,
@@ -1294,6 +1314,95 @@ mod tests {
                 drop(app);
                 crate::cleanup_store(&root, "profile-preserves-session", &[]);
             }
+        }
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn account_renew_uses_injected_clock_before_http() {
+        let server = crate::test_http::Server::start_observed(vec![(
+            400,
+            r#"{"error":"invalid_grant"}"#.into(),
+        )]);
+        let (root, store) = crate::test_store("account-renew-clock");
+        let account = crate::account::fixture(&server.base, &store);
+        let mut app = App::with_clock(BuildConfig::load(), root.clone(), || Err(Error::Canceled));
+        app.account = Some(account);
+        app.store = Some(store);
+        assert_eq!(
+            app.execute(Command::AccountRenew).err(),
+            Some(Error::Canceled)
+        );
+        assert!(
+            server.requests.try_recv().is_err(),
+            "clock failure precedes HTTP"
+        );
+        drop(app);
+        assert!(server.finish_observed().is_empty());
+        crate::cleanup_store(&root, "account-renew-clock", &[]);
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn logout_tombstone_survives_locked_reads_and_cleanup_but_write_failure_is_reported() {
+        use std::os::windows::fs::OpenOptionsExt;
+        for (name, sharing, succeeds) in [
+            ("oauth-metadata", 6, true),  // deny reads without locking the tombstone
+            ("oauth-metadata", 1, true),  // deny quarantine rename
+            ("account-profile", 1, true), // deny cosmetic cleanup
+            ("account", 1, false),        // deny the required tombstone replacement
+        ] {
+            let server = crate::test_http::Server::start(vec![]);
+            let (root, namespace, context) =
+                seed_broken_session(&server.base, "oauth-metadata", b"broken fixture");
+            let store = Store::open(&root, &context).expect("fixture store");
+            let account = crate::account::fixture(&server.base, &store);
+            store
+                .save("account-profile", &serde_json::json!({}))
+                .expect("profile");
+            drop(account);
+            drop(store);
+            let locked = std::fs::OpenOptions::new()
+                .read(true)
+                .share_mode(sharing)
+                .open(namespace.join(format!("{name}.dpapi")))
+                .expect("fixture lock");
+            let mut app =
+                App::with_clock(account_recovery_config(&server.base), root.clone(), || {
+                    Ok(1000)
+                });
+            let (link, core) = core_fixture(String::new(), "unused", vec![CoreStep::Invalidate]);
+            app.attach_core(link);
+            let reply = crate::host::fixture_request(&mut app, Command::Logout);
+            assert_eq!(
+                matches!(
+                    reply,
+                    Reply::Account {
+                        signed_in: false,
+                        error: None,
+                        ..
+                    }
+                ),
+                succeeds
+            );
+            if !succeeds {
+                assert!(matches!(reply, Reply::Error { .. }));
+            }
+            core.join().expect("revocation before local writes");
+            assert!(server.requests.try_recv().is_err(), "no logout discovery");
+            drop(locked);
+            drop(app);
+            let store = Store::open(&root, &context).expect("restart fixture");
+            let saved = store
+                .load::<serde_json::Value>("account")
+                .expect("durable state");
+            assert_eq!(
+                saved["state"],
+                if succeeds { "SignedOut" } else { "SignedIn" }
+            );
+            drop(store);
+            server.finish();
+            crate::cleanup_store(&root, &context, &[]);
         }
     }
 

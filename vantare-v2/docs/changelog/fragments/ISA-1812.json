@@ -11,7 +11,7 @@
     "Simular invalid_grant, 401/403 y fallos transitorios de perfil con una licencia vigente: conservar el acceso hasta su fecha firmada."
   ],
   "knownLimitations": [
-    "La recuperación técnica de pago de 72 h (#1814) sigue pendiente de un contrato firmado del servidor.",
+    "La recuperación técnica de pago de 72 h (#1814) queda fuera de RC9 y pasa a diseño de licencias tras RC9.",
     "La presentación persistente de avisos automáticos sigue en #1799."
   ]
 }

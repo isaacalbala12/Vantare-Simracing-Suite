@@ -135,7 +135,7 @@ impl App {
                                 Ok(policy) => {
                                     installed = true;
                                     policy
-                                },
+                                }
                                 Err(error) => {
                                     let policy =
                                         self.core_command(vantare_ipc::control::Command::Read)?;
@@ -170,7 +170,8 @@ impl App {
             self.recovered_renewal_transfer = installed;
         }
         let message = if policy.online_recovery_required {
-            "Necesitas conexión para recuperar el acceso; comprueba el acceso o inicia sesión.".into()
+            "Necesitas conexión para recuperar el acceso; comprueba el acceso o inicia sesión."
+                .into()
         } else {
             "Derechos verificados y guardados por el núcleo".into()
         };
@@ -218,6 +219,24 @@ impl App {
         self.candidate_store()?.remove("license-transfer-pending")?;
         self.candidate_store()?.remove("license-candidate")?;
         Ok(())
+    }
+
+    /// Called only on the renew stack with its freshly verified HTTP response.
+    /// Disk transfer and pending hints must never call this method.
+    fn complete_online_renewal(
+        &mut self,
+        candidate: &crate::license_remote::Candidate,
+    ) -> Result<Reply> {
+        let policy = self.core_command(vantare_ipc::control::Command::InstallOnline {
+            credential: serde_json::to_string(&candidate.credential)
+                .map_err(|_| Error::InvalidCredential)?,
+        })?;
+        self.recovered_renewal_transfer = false;
+        self.candidate_store()?.remove("license-transfer-pending")?;
+        Ok(Reply::License {
+            policy,
+            message: "Derechos verificados y guardados por el núcleo".into(),
+        })
     }
 
     fn license_reply(&mut self, command: &Command) -> Result<Reply> {
@@ -291,18 +310,7 @@ impl App {
                 self.candidate_store()?
                     .save("license-transfer-pending", &true)?;
             }
-            // This provenance exists only on this stack after verified HTTPS.
-            // Do not reload Candidate: disk transfer must never gain recovery authority.
-            let policy = self.core_command(vantare_ipc::control::Command::InstallOnline {
-                credential: serde_json::to_string(&candidate.credential)
-                    .map_err(|_| Error::InvalidCredential)?,
-            })?;
-            self.recovered_renewal_transfer = false;
-            self.candidate_store()?.remove("license-transfer-pending")?;
-            let reply = Reply::License {
-                policy,
-                message: "Derechos verificados y guardados por el núcleo".into(),
-            };
+            let reply = self.complete_online_renewal(&candidate)?;
             if has_commercial_license(&candidate.credential.claims.capabilities, time) {
                 crate::diagnostics::record_usage_once(
                     &crate::diagnostics::Usage::AccountSignedIn {},
@@ -1820,11 +1828,11 @@ mod tests {
         InstallOnline,
         InstallOnlineCredential(String),
         VersionMismatch,
+        VersionCloses,
         Invalidate,
         #[cfg(windows)]
         RejectInstall,
-        #[cfg(windows)]
-        DisconnectInstall,
+        DisconnectInstallOnline,
         RejectInvalidate,
     }
 
@@ -1840,7 +1848,9 @@ mod tests {
                 assert!(
                     !matches!(
                         step,
-                        CoreStep::InstallOnline | CoreStep::InstallOnlineCredential(_)
+                        CoreStep::InstallOnline
+                            | CoreStep::InstallOnlineCredential(_)
+                            | CoreStep::DisconnectInstallOnline
                     ),
                     "renew must preserve online provenance"
                 );
@@ -1850,7 +1860,9 @@ mod tests {
                 assert!(
                     matches!(
                         step,
-                        CoreStep::InstallOnline | CoreStep::InstallOnlineCredential(_)
+                        CoreStep::InstallOnline
+                            | CoreStep::InstallOnlineCredential(_)
+                            | CoreStep::DisconnectInstallOnline
                     ),
                     "disk candidate cannot claim online provenance"
                 );
@@ -1904,10 +1916,13 @@ mod tests {
                 #[cfg(windows)]
                 let read_only = matches!(
                     step,
-                    CoreStep::Read | CoreStep::ReadRecovery | CoreStep::VersionMismatch
+                    CoreStep::Read
+                        | CoreStep::ReadRecovery
+                        | CoreStep::VersionMismatch
+                        | CoreStep::VersionCloses
                 );
                 #[cfg(not(windows))]
-                let read_only = matches!(step, CoreStep::VersionMismatch);
+                let read_only = matches!(step, CoreStep::VersionMismatch | CoreStep::VersionCloses);
                 if read_only {
                     assert!(
                         matches!(request.command, control::Command::Read),
@@ -1919,10 +1934,13 @@ mod tests {
                     assert_install_command(&step, request.command, &device, keys);
                 }
                 #[cfg(windows)]
-                if matches!(step, CoreStep::DisconnectInstall) {
+                if matches!(step, CoreStep::DisconnectInstallOnline) {
                     // Explicit close after receiving Install, without an ACK.
                     drop(pipe);
                     continue;
+                }
+                if matches!(step, CoreStep::VersionCloses) {
+                    continue; // Old control peers close without a typed response.
                 }
                 let rejected = match step {
                     CoreStep::RejectInvalidate => true,
@@ -2167,7 +2185,7 @@ mod tests {
             .save("license-transfer-pending", &true)
             .expect("orphan hint");
         let steps = if success {
-            vec![CoreStep::Read, CoreStep::Install]
+            vec![CoreStep::Read, CoreStep::InstallOnline]
         } else {
             vec![CoreStep::Read]
         };
@@ -2246,12 +2264,12 @@ mod tests {
             keys,
             if restart {
                 vec![
-                    CoreStep::DisconnectInstall,
+                    CoreStep::DisconnectInstallOnline,
                     CoreStep::Install,
                     CoreStep::Install,
                 ]
             } else {
-                vec![CoreStep::DisconnectInstall, CoreStep::Install]
+                vec![CoreStep::DisconnectInstallOnline, CoreStep::Install]
             },
         );
         app.attach_core(link);
@@ -3050,105 +3068,139 @@ mod online_compatibility_tests {
 
     #[test]
     fn authority_recovery_admits_helper_without_rights_then_renews_online() {
-        let device = crate::license::installation::legacy_fingerprint().expect("test fingerprint");
-        let (cached, cached_keys) =
-            crate::license_remote::tests::signed_fixture_named(&device, "cached");
-        let (credential, fresh_keys) =
-            crate::license_remote::tests::signed_fixture_named(&device, "fresh");
-        let expected = serde_json::to_string(&credential).expect("fresh HTTP fixture");
-        let keys: &'static str = Box::leak(format!("{cached_keys},{fresh_keys}").into_boxed_str());
-        let server = crate::test_http::Server::start(vec![
+        for pending in [false, true] {
+            let device =
+                crate::license::installation::legacy_fingerprint().expect("test fingerprint");
+            let (cached, cached_keys) =
+                crate::license_remote::tests::signed_fixture_named(&device, "cached");
+            let (credential, fresh_keys) =
+                crate::license_remote::tests::signed_fixture_named(&device, "fresh");
+            let expected = serde_json::to_string(&credential).expect("fresh HTTP fixture");
+            let keys: &'static str =
+                Box::leak(format!("{cached_keys},{fresh_keys}").into_boxed_str());
+            let server = crate::test_http::Server::start(vec![
             (200, serde_json::json!({"access_token":"fixture-new-access","refresh_token":"fixture-new-refresh","token_type":"Bearer","expires_in":3600}).to_string()),
             (200, serde_json::json!({"sub":"user_fixture"}).to_string()),
             (200, serde_json::json!({"credential":credential,"online_capabilities":[]}).to_string()),
         ]);
-        let (root, store) = crate::test_store("authority-helper-admission");
-        let account = crate::account::fixture(&server.base, &store);
-        let mut app = App::new(
-            BuildConfig {
-                supabase: Some(server.base.clone()),
-                anon_key: Some("public-test-key"),
-                license_keys: Some(keys),
-                channel: Some("test"),
-                native_oauth: Some(crate::config::OAuthBuild {
-                    issuer: server.base.clone(),
-                    client_id: "public-fixture".into(),
-                    redirect_uri: url::Url::parse("http://127.0.0.1:0/callback").expect("redirect"),
-                }),
-            },
-            root.clone(),
-        );
-        app.account = Some(account);
-        app.store = Some(store);
-        app.candidate_store()
-            .expect("store")
-            .save(
-                "license-candidate",
-                &crate::license_remote::Candidate {
-                    account_id: cached.claims.subject.clone(),
-                    device: device.clone(),
-                    credential: cached,
+            let (root, store) = crate::test_store("authority-helper-admission");
+            let account = crate::account::fixture(&server.base, &store);
+            let mut app = App::new(
+                BuildConfig {
+                    supabase: Some(server.base.clone()),
+                    anon_key: Some("public-test-key"),
+                    license_keys: Some(keys),
+                    channel: Some("test"),
+                    native_oauth: Some(crate::config::OAuthBuild {
+                        issuer: server.base.clone(),
+                        client_id: "public-fixture".into(),
+                        redirect_uri: url::Url::parse("http://127.0.0.1:0/callback")
+                            .expect("redirect"),
+                    }),
                 },
-            )
-            .expect("old disk candidate");
-        let (link, core) = core_fixture(
-            device,
-            keys,
-            vec![
-                CoreStep::RejectInstall,
-                CoreStep::ReadRecovery,
-                CoreStep::InstallOnlineCredential(expected),
-            ],
-        );
-        app.attach_core(link);
-        assert!(
-            matches!(app.execute(Command::TransferRights), Ok(Reply::License { policy, .. })
+                root.clone(),
+            );
+            app.account = Some(account);
+            app.store = Some(store);
+            app.candidate_store()
+                .expect("store")
+                .save(
+                    "license-candidate",
+                    &crate::license_remote::Candidate {
+                        account_id: cached.claims.subject.clone(),
+                        device: device.clone(),
+                        credential: cached,
+                    },
+                )
+                .expect("old disk candidate");
+            if pending {
+                app.candidate_store()
+                    .expect("store")
+                    .save("license-transfer-pending", &true)
+                    .expect("old transfer hint");
+            }
+            let (link, core) = core_fixture(
+                device,
+                keys,
+                vec![
+                    CoreStep::RejectInstall,
+                    CoreStep::ReadRecovery,
+                    CoreStep::InstallOnlineCredential(expected),
+                ],
+            );
+            app.attach_core(link);
+            assert!(
+                matches!(app.execute(Command::TransferRights), Ok(Reply::License { policy, .. })
             if policy.online_recovery_required && !policy.overlays_advanced),
-            "helper can be admitted without rights"
-        );
-        assert!(
-            server.requests.try_recv().is_err(),
-            "disk transfer never renews or claims online provenance"
-        );
-        assert!(
-            matches!(
-                app.execute(Command::LicenseRenew),
-                Ok(Reply::License { .. })
-            ),
-            "normal renewal remains reachable after denied disk transfer"
-        );
-        core.join()
-            .expect("ordinary Install then Read then newly completed InstallOnline");
-        server.finish();
-        drop(app);
-        crate::cleanup_store(&root, "authority-helper-admission", &[]);
+                "helper can be admitted without rights"
+            );
+            assert!(
+                !app.recovered_renewal_transfer,
+                "a denied disk install was not an acknowledged renewal"
+            );
+            assert!(
+                !app.pending_renewal_transfer()
+                    .expect("hint retired without granting rights")
+            );
+            assert!(
+                server.requests.try_recv().is_err(),
+                "disk transfer never renews or claims online provenance"
+            );
+            assert!(
+                matches!(
+                    app.execute(Command::LicenseRenewAutomatic),
+                    Ok(Reply::License { .. })
+                ),
+                "normal renewal remains reachable after denied disk transfer"
+            );
+            core.join()
+                .expect("ordinary Install then Read then newly completed InstallOnline");
+            server.finish();
+            drop(app);
+            crate::cleanup_store(&root, "authority-helper-admission", &[]);
+        }
     }
 
     #[test]
     fn authority_recovery_control_version_mismatch_is_transient_without_invalidation() {
-        let (link, core) = core_fixture(String::new(), "unused", vec![CoreStep::VersionMismatch]);
-        let mut app = App::new(
-            BuildConfig {
-                supabase: None,
-                anon_key: None,
-                license_keys: None,
-                channel: None,
-                native_oauth: None,
-            },
-            std::env::temp_dir(),
-        );
-        app.attach_core(link);
-        assert!(matches!(
-            app.core_command(vantare_ipc::control::Command::Read),
-            Err(Error::Offline)
-        ));
-        assert!(matches!(
-            App::automatic_failure(Error::Offline),
-            Reply::LicenseFailure {
-                outcome: crate::protocol::RenewalOutcome::Transient,
-                ..
+        for step in [CoreStep::VersionMismatch, CoreStep::VersionCloses] {
+            let closes = matches!(step, CoreStep::VersionCloses);
+            let (link, core) = core_fixture(String::new(), "unused", vec![step]);
+            let mut app = App::new(
+                BuildConfig {
+                    supabase: None,
+                    anon_key: None,
+                    license_keys: None,
+                    channel: None,
+                    native_oauth: None,
+                },
+                std::env::temp_dir(),
+            );
+            app.attach_core(link);
+            let error = app
+                .core_command(vantare_ipc::control::Command::Read)
+                .expect_err("incompatible component");
+            let Error::Core(failure) = error else {
+                panic!("closed typed core failure required")
+            };
+            if closes {
+                assert!(matches!(
+                    failure,
+                    vantare_ipc::control::Failure::Eof
+                        | vantare_ipc::control::Failure::PeerGone
+                        | vantare_ipc::control::Failure::Disconnected
+                ));
+            } else {
+                assert_eq!(failure, vantare_ipc::control::Failure::Version);
             }
-        ));
-        core.join().expect("one read, no invalidate or replay");
+            assert!(matches!(
+                App::automatic_failure(error),
+                Reply::LicenseFailure {
+                    outcome: crate::protocol::RenewalOutcome::Transient,
+                    ..
+                }
+            ));
+            core.join().expect("one read, no invalidate or replay");
+        }
     }
 }

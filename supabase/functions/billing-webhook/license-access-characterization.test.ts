@@ -1,4 +1,4 @@
-// #1827 paso 0. Solo fixtures: normalizeGrants actual, no el contrato futuro.
+// #1827 pasos 0 y 1. Fixtures del contrato vigente (ADR 0102).
 import { normalizeGrants } from "../_shared/license-credential.ts";
 import { deriveSubscriptionTransition, mergeRecoveryCycle } from "./subscription-lifecycle.ts";
 
@@ -44,7 +44,7 @@ for (const [name, rows, expected] of [
   ["Launch temporal inválido", [grant("vantare.edition.launch_v1")], { ok: false }],
   ["módulo de soporte", [grant("vantare.module.engineer", null, "support", "vantare")], ok([perpetual("vantare.module.engineer")])],
   ["módulo temporal inválido", [grant("vantare.module.engineer", future, "support", "vantare")], { ok: false }],
-  ["recovery vigente solo online; cambia en paso 1", [grant(pro, future, "subscription_recovery", "vantare")], ok([], [pro])],
+  ["recovery vigente firmado hasta el plazo original", [grant(pro, future, "subscription_recovery", "vantare")], ok([paid()])],
   ["recovery vencido", [grant(pro, past, "subscription_recovery", "vantare")], ok()],
   ["recovery frontera exacta", [grant(pro, now.toISOString(), "subscription_recovery", "vantare")], ok()],
   ["recovery sin plazo inválido", [grant(pro, null, "subscription_recovery", "vantare")], { ok: false }],
@@ -63,7 +63,7 @@ for (const [status, cancelAtPeriodEnd, commercial, recovery] of [
   ["canceled", true, true, false],
   ["cancelled", true, true, false],
   ["canceled", false, false, false],
-  ["past_due", false, false, true], // cambia en paso 1: hoy no se firma recovery.
+  ["past_due", false, false, true], // ADR 0102: recovery temporal firmado.
   ["unpaid", false, false, false],
   ["revoked", false, false, false],
   ["incomplete", false, false, false],
@@ -79,6 +79,6 @@ for (const [status, cancelAtPeriodEnd, commercial, recovery] of [
       const cycle = mergeRecoveryCycle(null, transition.recovery);
       rows.push(grant(pro, cycle.recoveryUntil, "subscription_recovery", "vantare"));
     }
-    equal(normalizeGrants(rows, now, "production"), ok(commercial ? [paid()] : [], recovery ? [pro] : []));
+    equal(normalizeGrants(rows, now, "production"), ok(commercial ? [paid()] : recovery ? [paid(pro, new Date(now.getTime() + 72 * 3600000).toISOString())] : []));
   });
 }

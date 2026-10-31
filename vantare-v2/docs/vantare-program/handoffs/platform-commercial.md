@@ -1,4 +1,63 @@
-## VANTA-126 / #1827 — Licencias paso 2 (31-oct, PR draft #1829)
+## VANTA-126 / #1827, #1814 — Paso 1: recuperación firmada (31-oct-2026)
+
+Encargo del orquestador. Rama `vantareapp/isa-1827-paso1-recovery-firmada`,
+base actual `origin/nightly@a81a2755c3f102a8a882a931a7224c474f81ae16`
+(rebases autorizados tras pasos 3 y 2; base inicial 3e6f2dce7), worktree
+`C:/VantareServer/wt/isa-1827-p1`. Project Vantare / area:licencias, sin milestone.
+Plane paraguas sin cambio de estado; solo comentarios.
+[PR draft #1831](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1831)
+a nightly, enlazado en T3; HEAD/CI vigentes en #1827/#1814.
+
+- ADR 0102: recovery firma `paid_through = valid_until` original (derivado de
+  `recovery_until`), sin cambiar el plazo comercial ni crear otras 72 h.
+  Gana el plazo mayor de cada derecho; `online_capabilities` queda vacío.
+- Caracterización: recovery vigente y past_due cambian a firma temporal;
+  límites exactos y demás filas se conservan. Tests Pro/Plus antes/en/después,
+  repetición, pago posterior y otra fuente. La exclusión de reembolso usa una
+  fixture de vista efectiva; el gate comercial conserva la prueba SQL real.
+- Fixture sintética compartida Deno/Rust `recovery-v1.json`: el emisor reproduce
+  la firma y el verificador v1 acepta los mismos bytes, conserva el plazo tras
+  replay y caduca en su frontera. Solo test Rust; cliente de producto intacto.
+- Gate servidor: Deno y `supabase-commercial-gates` por CI, sin Deno local.
+  Fixture Rust 1/1 PASS; fmt --check y Clippy services --lib --tests -D warnings
+  PASS (incluye check); Nextest de licencias 21/21 PASS, 255 tests fuera del filtro.
+  Tres avisos iniciales de Clippy corregidos sin allow; fallo conservado.
+  Evidencia D:/VantareServer/evidence/isa-1827-p1 (fmt/clippy/nextest.log).
+  Telemetría/lifecycle/runtime omitidos: solo cambia un test de services; sin
+  cambios de producto nativo ni fixtures de runtime/domain/ipc/testdata.
+  Rust por cola y target `D:/VantareServer/targets/isa-1827-p1`; resultados finales
+  y revisión en PR/issue, por SHA. Sin dependencias ni formatos nuevos.
+  Plane --ver: En curso; --comentario sin estado falla antes de autenticar;
+  el orquestador asume los comentarios Plane, sin escrituras de este worker.
+- Revisión DeepSeek: sin defecto de producto/P0/P1. Su duda sobre CI se
+  resuelve con run-commercial-local.py (edge_suites incluye license-credential
+  y native-license) y el log Deno 186/186 PASS con recovery.test.ts.
+  Se refuerza la fixture: primera emisión 24 h después del fallo (quedan 48 h),
+  nueva emisión al día siguiente (quedan 24 h), mismo deadline en ambas firmas;
+  Rust comprueba nueva emisión y replay. Gate Windows/Unix añadido al test.
+  El tope original de 72 h pertenece al lifecycle/SQL, no se duplica en el
+  normalizador ni se inventan campos del cliente. Semilla pública solo de test.
+  Fixture reforzada: fmt/Clippy -D warnings y Nextest licencias 21/21 PASS;
+  logs *-strengthened.log en la misma evidencia. Deno final por CI del SHA
+  publicado en PR/issue; el gate comercial descubre ambas suites de endpoint.
+  Rebase sobre 7f4f16e98: único conflicto documental, preserva ambos pasos;
+  handler 410, selección explícita del deploy y tests de paso 3 conservados.
+  Fmt/Clippy y Nextest 21/21 PASS repetidos sobre 7f4f16e98 (*-rebased.log).
+  D10df2207 terminó CI 7/7 SUCCESS: suite nativa 2213/2213 PASS (23 skips)
+  y servidor 195/195 PASS por LF/CRLF. Después nightly incorporó paso 2
+  (a81a2755c): segundo rebase solo con conflictos del handoff, preservando
+  los tres pasos. Se leyó el nuevo lifecycle/ADR; el plazo/recovery y el
+  fallback puro que caracterizamos no cambian. Nueva CI del HEAD requerida;
+  no se extrapola el verde de d10df2207. Rust no cambia frente a ese SHA.
+- Riesgo contractual: lo firmado permite acceso offline hasta su plazo original;
+  una nueva emisión aplica pago/bloqueo. No cambia la gracia local.
+- Siguiente: revisión/CI y autorización de Isaac para cualquier despliegue.
+  Sin producción, secretos, cuentas reales, merge, promoción ni release.
+
+## VANTA-126 / #1827 — Licencias paso 2 integrado en nightly (31-oct, #1829)
+
+Integración verificada en origin/nightly `a81a2755c3f102a8a882a931a7224c474f81ae16`;
+se conserva abajo la evidencia de entrega del worker del paso 2.
 
 [PR draft #1829](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1829)
 a nightly, registrado en T3. Encargo del orquestador: estados del servidor. Rama
@@ -54,7 +113,12 @@ area:licencias / In Review, sin milestone. Plane paraguas no se mueve.
   Sin merge, release, despliegue, producción, cuentas reales ni lectura de secretos.
   Ejecución con esfuerzo medium heredado; no se afirma high. Sin subagentes.
 
-## VANTA-126 / #1827, #1815 — Paso 3: retirar emisión legacy (31-oct-2026)
+## VANTA-126 / #1827, #1815 — Paso 3 integrado en nightly; despliegue pendiente (31-oct-2026)
+
+Integración verificada por lectura remota: PR #1830 MERGED el 31-oct a las
+18:31:32 UTC, SHA nightly `7f4f16e98fc92fdfdae3e87c6e0e263be3f01784`, por el
+orquestador. CI del HEAD `36961c366` 6/6 SUCCESS. Este worker no hizo merge;
+no acredita despliegue/producción. Se conserva abajo la evidencia de entrega.
 
 Rama `vantareapp/isa-1827-paso3-retirar-credential`, base nightly
 `3e6f2dce7181ac224f4a1ed6ffa38e11373c89e9`, worktree

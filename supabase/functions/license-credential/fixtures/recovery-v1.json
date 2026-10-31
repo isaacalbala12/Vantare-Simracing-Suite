@@ -1,0 +1,50 @@
+{
+  "public_key": "IVL40Zt5HSRFMkLhXy6rbLfP-ntqXtMAl5YOBpiB2xI",
+  "recovery_until": "2026-11-03T12:00:00.000Z",
+  "credential": {
+    "version": 1,
+    "algorithm": "Ed25519",
+    "key_id": "recovery-fixture-only",
+    "claims": {
+      "issuer": "vantare-license",
+      "subject": "550e8400-e29b-41d4-a716-446655440000",
+      "device_fingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "issued_at": "2026-11-01T12:00:00.000Z",
+      "capabilities": [
+        {
+          "key": "vantare.channel.nightly",
+          "paid_through": "2026-11-03T12:00:00.000Z"
+        },
+        {
+          "key": "vantare.plan.pro",
+          "paid_through": "2026-11-03T12:00:00.000Z"
+        }
+      ]
+    },
+    "signature": "tEAQ0IpbUZrt95GtT12NFz5TisNxK4qDjecLT7TQfsfrR5Yu3b2hz7mlLzkU1ymAxRfPWQKb5AsDBMgAKtpiAQ"
+  },
+  "online_capabilities": [],
+  "first_failure_at": "2026-10-31T12:00:00.000Z",
+  "renewed_credential": {
+    "version": 1,
+    "algorithm": "Ed25519",
+    "key_id": "recovery-fixture-only",
+    "claims": {
+      "issuer": "vantare-license",
+      "subject": "550e8400-e29b-41d4-a716-446655440000",
+      "device_fingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "issued_at": "2026-11-02T12:00:00.000Z",
+      "capabilities": [
+        {
+          "key": "vantare.channel.nightly",
+          "paid_through": "2026-11-03T12:00:00.000Z"
+        },
+        {
+          "key": "vantare.plan.pro",
+          "paid_through": "2026-11-03T12:00:00.000Z"
+        }
+      ]
+    },
+    "signature": "WAdNg_wloZCu8u5yCA4eaTo3sntD-yLa-a9F_RD26VRZzsaohb1-0vdTWXE9WcI7IBiItfSWQnVbxzvxJ4bQBw"
+  }
+}

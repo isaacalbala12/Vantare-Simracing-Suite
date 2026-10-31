@@ -181,7 +181,6 @@ export function normalizeGrants(
     string,
     { perpetual: boolean; paidThrough: Date | null }
   >();
-  const onlineCapabilities = new Set<string>();
   for (const row of rows) {
     // Legacy rows are retained for audit but are never credential authority.
     // Their explicit retirement is performed separately after a reviewed
@@ -215,12 +214,10 @@ export function normalizeGrants(
       ) {
         return { ok: false };
       }
-      const recoveryUntil = new Date(row.valid_until);
-      if (!Number.isFinite(recoveryUntil.getTime())) return { ok: false };
-      if (recoveryUntil > now) onlineCapabilities.add(row.capability);
-      continue;
-    }
-    if (
+      // ADR 0102 / #1814: recovery is ordinary bounded v1 authority.
+      // Lifecycle/SQL cap the cycle once at 72h; the effective view supplies that
+      // original recovery_until. Normalization never recalculates now + 72h.
+    } else if (
       row.provider !== "polar" ||
       !["order", "subscription", "benefit_grant"].includes(row.source_type)
     ) {
@@ -275,11 +272,11 @@ export function normalizeGrants(
       grants.push({ key, paid_through: value.paidThrough.toISOString() });
     }
   }
-  for (const grant of grants) onlineCapabilities.delete(grant.key);
   return {
     ok: true,
     grants,
-    onlineCapabilities: [...onlineCapabilities].sort(),
+    // Retain the field for installed clients; authority is only in the signature.
+    onlineCapabilities: [],
   };
 }
 

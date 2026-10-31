@@ -546,7 +546,8 @@ Deno.test("reconcile subscriptions uses the lifecycle matrix; unknown snapshots 
   const matrix = JSON.parse(await Deno.readTextFile(new URL("../billing-webhook/testdata/lifecycle-matrix.v1.json", import.meta.url))) as {
     observedAt: string;
     subscriptionCases: { id: string; status: string; cancelAtPeriodEnd: boolean; periodEnd: string;
-      previousPaidThrough: string | null; expectedGrant: string; expectedRecovery: string }[];
+      previousPaidThrough: string | null;
+      expectedSnapshot: { result: "processed" | "quarantined"; grant: string; recovery: string } }[];
   };
   for (const row of matrix.subscriptionCases) {
     const now = new Date(matrix.observedAt);
@@ -565,7 +566,15 @@ Deno.test("reconcile subscriptions uses the lifecycle matrix; unknown snapshots 
       },
       rpc: () => Promise.resolve({ error: null, data: null }),
     } as unknown as SupabaseClient;
-    const processDeps = { inbox, projection, lifecycle, now: () => now,
+    const recoveryActions: string[] = [];
+    const observedLifecycle = {
+      read: lifecycle.read.bind(lifecycle),
+      apply: (value: Parameters<typeof lifecycle.apply>[0]) => {
+        recoveryActions.push(value.transition.recovery.action);
+        return lifecycle.apply(value);
+      },
+    };
+    const processDeps = { inbox, projection, lifecycle: observedLifecycle, now: () => now,
       resolveIdentity: () => Promise.resolve("4b6d8919-1c89-492d-a0e2-364124c17878"),
       enforceFoundersRenewal: async () => {}, revokeCreatorRenewals: async () => {},
       loadMap: () => loadPolarProductMap(FULL_SANDBOX_PRODUCT_MAP_JSON,
@@ -578,27 +587,31 @@ Deno.test("reconcile subscriptions uses the lifecycle matrix; unknown snapshots 
     }
     const before = structuredClone({ resources: [...projection.resources], subscriptions: [...lifecycle.subscriptions],
       recovery: [...lifecycle.recoveryGrants], cycles: [...lifecycle.cycles] });
-    // uncanceled names a webhook, not a snapshot status: preserve the original matrix meaning.
-    const status = row.status === "uncanceled" ? "active" : row.status;
-    const snapshot = { ...common, status, cancel_at_period_end: row.cancelAtPeriodEnd,
+    recoveryActions.length = 0;
+    const snapshot = { ...common, status: row.status, cancel_at_period_end: row.cancelAtPeriodEnd,
       current_period_end: row.periodEnd, modified_at: matrix.observedAt };
     const reconcile = () => reconcilePage({ cursor: { resource: "subscriptions", page: 1 },
       page: { items: [snapshot], maxPage: 1 }, environment: "sandbox", supabase, processDeps });
     const result = await reconcile();
-    const unknown = row.id === "unknown-fails-closed";
+    const quarantined = row.expectedSnapshot.result === "quarantined";
     assertEquals(result.failed, [], row.id);
-    assertEquals(result.quarantined, unknown ? 1 : 0, row.id);
-    if (unknown) {
+    assertEquals(result.quarantined, quarantined ? 1 : 0, row.id);
+    if (quarantined) {
+      assertEquals(row.expectedSnapshot.grant, "preserved", row.id);
+      assertEquals(row.expectedSnapshot.recovery, "preserved", row.id);
+      assertEquals(recoveryActions, [], row.id);
       assertEquals({ resources: [...projection.resources], subscriptions: [...lifecycle.subscriptions],
         recovery: [...lifecycle.recoveryGrants], cycles: [...lifecycle.cycles] }, before);
     } else {
-      assertEquals([...projection.grants.values()].map(g => g.status), [row.expectedGrant], row.id);
-      assertEquals([...lifecycle.subscriptions.values()].map(s => s.status), [status], row.id);
-      assertEquals(lifecycle.cycles.size, row.expectedRecovery === "open" ? 1 : 0, row.id);
+      assertEquals([...projection.grants.values()].map(g => g.status), [row.expectedSnapshot.grant], row.id);
+      assertEquals([...lifecycle.subscriptions.values()].map(s => s.status), [row.status], row.id);
+      assertEquals(recoveryActions, [row.expectedSnapshot.recovery], row.id);
     }
     const after = structuredClone({ resources: [...projection.resources], subscriptions: [...lifecycle.subscriptions],
       recovery: [...lifecycle.recoveryGrants], cycles: [...lifecycle.cycles] });
+    recoveryActions.length = 0;
     assertEquals(await reconcile(), result, `${row.id}: replay`);
+    assertEquals(recoveryActions, [], `${row.id}: no repeated lifecycle write`);
     assertEquals({ resources: [...projection.resources], subscriptions: [...lifecycle.subscriptions],
       recovery: [...lifecycle.recoveryGrants], cycles: [...lifecycle.cycles] }, after, row.id);
   }

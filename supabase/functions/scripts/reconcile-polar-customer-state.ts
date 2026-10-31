@@ -86,6 +86,10 @@ await runReconciliationBatch({
       productMap,
       benefitCapabilities: benefitCapabilities(),
     });
+    for (const { code, resourceId } of plan.issues) {
+      // No account/customer identifiers, raw status, payload or provider errors.
+      console.warn(JSON.stringify({ code, resourceId }));
+    }
     const result = await executeReconciliation({
       plan,
       dryRun: !apply,

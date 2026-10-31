@@ -9,7 +9,7 @@ import {
 } from "./commercial-projection.ts";
 import {
   deriveSubscriptionTransition,
-  subscriptionLifecycleStatus,
+  subscriptionSnapshotStatus,
   subscriptionStatusRequiresPeriodEnd,
 } from "./subscription-lifecycle.ts";
 import type {
@@ -96,7 +96,7 @@ export async function buildReconciliationPlan(args: {
       });
       continue;
     }
-    const status = subscriptionLifecycleStatus(subscription.status);
+    const status = subscriptionSnapshotStatus(subscription.status);
     if (!status) {
       issues.push({
         code: "unsupported_subscription_status",
@@ -322,7 +322,9 @@ export async function buildReconciliationPlan(args: {
     subscriptionLifecycles,
     preservedResourceIds,
     issues,
-    safeToApply: issues.length === 0,
+    // An uninterpreted subscription is preserved independently. Other existing
+    // plan-wide barriers (including unknown products) keep their semantics.
+    safeToApply: issues.every((issue) => issue.code === "unsupported_subscription_status"),
   };
 }
 

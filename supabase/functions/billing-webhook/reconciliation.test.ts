@@ -658,26 +658,60 @@ Deno.test("batch reconciliation follows cursors and honors cancellation", async 
   );
 });
 
-Deno.test("Customer State unknown status quarantines without revoking an existing subscription", async () => {
-  const lifecycle = new MemorySubscriptionLifecycleStore();
-  const store = new MemoryReconciliationStore();
-  const plan = await buildReconciliationPlan({
-    userId: USER_ID, productMap: productMap(),
-    customerState: { customerId: "customer-unknown", externalId: USER_ID,
-      observedAt: "2026-08-02T12:00:00.000Z", grantedBenefits: [],
-      activeSubscriptions: [{ id: "subscription-unknown", productId: PRO_PRODUCT_ID,
-        status: "provider_future_state", modifiedAt: "2026-08-02T11:00:00.000Z",
-        currentPeriodEnd: "2026-09-02T11:00:00.000Z" }] },
-    localResources: [{ resourceType: "subscription", resourceId: "subscription-unknown", productId: PRO_PRODUCT_ID,
-      capabilities: ["vantare.plan.pro"], status: "active", subscriptionStatus: "active",
-      modifiedAt: "2026-08-01T10:00:00.000Z", paidThrough: "2026-09-02T11:00:00.000Z" }],
+for (const status of ["provider_future_state", "uncanceled", "cancelled"]) {
+  Deno.test(`Customer State skips ${status} but applies another subscription renewal`, async () => {
+    const lifecycle = new MemorySubscriptionLifecycleStore();
+    const store = new MemoryReconciliationStore();
+    const oldEnd = "2026-09-02T11:00:00.000Z";
+    const newEnd = "2026-10-02T11:00:00.000Z";
+    const customerState = {
+      customerId: "customer-fixture", externalId: USER_ID,
+      observedAt: "2026-08-01T12:00:00.000Z", grantedBenefits: [],
+      activeSubscriptions: ["subscription-unknown", "subscription-renewal"].map((id) => ({
+        id, productId: PRO_PRODUCT_ID, status: "active",
+        modifiedAt: "2026-08-01T11:00:00.000Z", currentPeriodEnd: oldEnd,
+      })),
+    };
+    const seed = await buildReconciliationPlan({ userId: USER_ID,
+      productMap: productMap(), customerState, localResources: [] });
+    await executeReconciliation({ plan: seed, dryRun: false, trigger: "scheduled", store, lifecycle });
+    const before = structuredClone(lifecycle.subscriptions.get("sandbox:subscription-unknown"));
+    const localResources = customerState.activeSubscriptions.map((subscription) => ({
+      resourceType: "subscription" as const, resourceId: subscription.id, productId: PRO_PRODUCT_ID,
+      capabilities: ["vantare.plan.pro"], status: "active" as const, subscriptionStatus: "active",
+      modifiedAt: subscription.modifiedAt, paidThrough: oldEnd,
+    }));
+    const nextState = { ...customerState, observedAt: "2026-08-02T12:00:00.000Z",
+      activeSubscriptions: customerState.activeSubscriptions.map((subscription) => ({
+        ...subscription, modifiedAt: "2026-08-02T11:00:00.000Z",
+        status: subscription.id === "subscription-unknown" ? status : "active",
+        currentPeriodEnd: newEnd,
+      })),
+    };
+    const plan = await buildReconciliationPlan({ userId: USER_ID,
+      productMap: productMap(), customerState: nextState, localResources });
+    assertEquals(plan.safeToApply, true);
+    assertEquals(plan.issues, [{ code: "unsupported_subscription_status", resourceId: "subscription-unknown" }]);
+    assertEquals(plan.operations.map((operation) => operation.resourceId), ["subscription-renewal"]);
+    assertEquals(plan.operations[0].grants, [{ capability: "vantare.plan.pro", status: "active", validUntil: newEnd }]);
+    assertEquals(plan.subscriptionLifecycles.map((item) => item.subscriptionId), ["subscription-renewal"]);
+    assertEquals(await executeReconciliation({ plan, dryRun: false, trigger: "scheduled", store, lifecycle }),
+      { status: "applied", changed: 1 });
+    assertEquals(lifecycle.subscriptions.get("sandbox:subscription-unknown"), before);
+    assertEquals(lifecycle.subscriptions.get("sandbox:subscription-renewal")?.paidThrough, newEnd);
+    assertEquals(await executeReconciliation({ plan, dryRun: false, trigger: "scheduled", store, lifecycle }),
+      { status: "unchanged", changed: 0 });
+    assertEquals(lifecycle.subscriptions.get("sandbox:subscription-unknown"), before);
+
+    // A genuinely unknown product still blocks the whole plan, including renewal.
+    nextState.activeSubscriptions[0].productId = "unknown-product";
+    const blocked = await buildReconciliationPlan({ userId: USER_ID,
+      productMap: productMap(), customerState: nextState, localResources });
+    assertEquals(blocked.safeToApply, false);
+    assertEquals(blocked.issues, [{ code: "unknown_product", resourceId: "subscription-unknown" }]);
+    const calls = store.calls;
+    assertEquals(await executeReconciliation({ plan: blocked, dryRun: false, trigger: "scheduled", store, lifecycle }),
+      { status: "quarantined", changed: 0 });
+    assertEquals(store.calls, calls);
   });
-  assertEquals(plan.safeToApply, false);
-  assertEquals(plan.issues, [{ code: "unsupported_subscription_status", resourceId: "subscription-unknown" }]);
-  assertEquals(plan.operations, []);
-  assertEquals(plan.subscriptionLifecycles, []);
-  assertEquals(await executeReconciliation({ plan, dryRun: false, trigger: "scheduled", store, lifecycle }),
-    { status: "quarantined", changed: 0 });
-  assertEquals(store.calls, 0);
-  assertEquals(lifecycle.subscriptions.size, 0);
-});
+}

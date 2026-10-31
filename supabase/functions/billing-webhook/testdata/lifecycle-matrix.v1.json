@@ -8,8 +8,15 @@
       "cancelAtPeriodEnd": false,
       "periodEnd": "2026-08-09T12:00:00.000Z",
       "previousPaidThrough": null,
-      "expectedGrant": "active",
-      "expectedRecovery": "close"
+      "expectedTransition": {
+        "grant": "active",
+        "recovery": "close"
+      },
+      "expectedSnapshot": {
+        "result": "processed",
+        "grant": "active",
+        "recovery": "close"
+      }
     },
     {
       "id": "active",
@@ -17,8 +24,15 @@
       "cancelAtPeriodEnd": false,
       "periodEnd": "2026-09-02T12:00:00.000Z",
       "previousPaidThrough": "2026-08-02T12:00:00.000Z",
-      "expectedGrant": "active",
-      "expectedRecovery": "close"
+      "expectedTransition": {
+        "grant": "active",
+        "recovery": "close"
+      },
+      "expectedSnapshot": {
+        "result": "processed",
+        "grant": "active",
+        "recovery": "close"
+      }
     },
     {
       "id": "renewal",
@@ -26,8 +40,15 @@
       "cancelAtPeriodEnd": false,
       "periodEnd": "2026-10-02T12:00:00.000Z",
       "previousPaidThrough": "2026-09-02T12:00:00.000Z",
-      "expectedGrant": "active",
-      "expectedRecovery": "close"
+      "expectedTransition": {
+        "grant": "active",
+        "recovery": "close"
+      },
+      "expectedSnapshot": {
+        "result": "processed",
+        "grant": "active",
+        "recovery": "close"
+      }
     },
     {
       "id": "cancel-at-period-end",
@@ -35,8 +56,15 @@
       "cancelAtPeriodEnd": true,
       "periodEnd": "2026-09-02T12:00:00.000Z",
       "previousPaidThrough": "2026-09-02T12:00:00.000Z",
-      "expectedGrant": "active",
-      "expectedRecovery": "close"
+      "expectedTransition": {
+        "grant": "active",
+        "recovery": "close"
+      },
+      "expectedSnapshot": {
+        "result": "processed",
+        "grant": "active",
+        "recovery": "close"
+      }
     },
     {
       "id": "uncancel",
@@ -44,8 +72,15 @@
       "cancelAtPeriodEnd": false,
       "periodEnd": "2026-09-02T12:00:00.000Z",
       "previousPaidThrough": "2026-09-02T12:00:00.000Z",
-      "expectedGrant": "active",
-      "expectedRecovery": "close"
+      "expectedTransition": {
+        "grant": "active",
+        "recovery": "close"
+      },
+      "expectedSnapshot": {
+        "result": "quarantined",
+        "grant": "preserved",
+        "recovery": "preserved"
+      }
     },
     {
       "id": "past-due-with-expired-paid-cycle",
@@ -53,8 +88,15 @@
       "cancelAtPeriodEnd": false,
       "periodEnd": "2026-09-02T12:00:00.000Z",
       "previousPaidThrough": "2026-08-02T11:59:59.000Z",
-      "expectedGrant": "revoked",
-      "expectedRecovery": "open"
+      "expectedTransition": {
+        "grant": "revoked",
+        "recovery": "open"
+      },
+      "expectedSnapshot": {
+        "result": "processed",
+        "grant": "revoked",
+        "recovery": "open"
+      }
     },
     {
       "id": "past-due-without-proven-cycle",
@@ -62,8 +104,15 @@
       "cancelAtPeriodEnd": false,
       "periodEnd": "2026-09-02T12:00:00.000Z",
       "previousPaidThrough": null,
-      "expectedGrant": "revoked",
-      "expectedRecovery": "none"
+      "expectedTransition": {
+        "grant": "revoked",
+        "recovery": "none"
+      },
+      "expectedSnapshot": {
+        "result": "processed",
+        "grant": "revoked",
+        "recovery": "none"
+      }
     },
     {
       "id": "unpaid",
@@ -71,8 +120,15 @@
       "cancelAtPeriodEnd": false,
       "periodEnd": "2026-09-02T12:00:00.000Z",
       "previousPaidThrough": "2026-09-02T12:00:00.000Z",
-      "expectedGrant": "revoked",
-      "expectedRecovery": "close"
+      "expectedTransition": {
+        "grant": "revoked",
+        "recovery": "close"
+      },
+      "expectedSnapshot": {
+        "result": "processed",
+        "grant": "revoked",
+        "recovery": "close"
+      }
     },
     {
       "id": "revoked",
@@ -80,17 +136,32 @@
       "cancelAtPeriodEnd": false,
       "periodEnd": "2026-09-02T12:00:00.000Z",
       "previousPaidThrough": "2026-09-02T12:00:00.000Z",
-      "expectedGrant": "revoked",
-      "expectedRecovery": "close"
+      "expectedTransition": {
+        "grant": "revoked",
+        "recovery": "close"
+      },
+      "expectedSnapshot": {
+        "result": "processed",
+        "grant": "revoked",
+        "recovery": "close"
+      }
     },
     {
-      "id": "unknown-fails-closed",
+      "id": "unknown-quarantined",
       "status": "provider_future_state",
       "cancelAtPeriodEnd": false,
       "periodEnd": "2026-09-02T12:00:00.000Z",
       "previousPaidThrough": "2026-09-02T12:00:00.000Z",
-      "expectedGrant": "revoked",
-      "expectedRecovery": "close"
+      "expectedTransition": {
+        "grant": "revoked",
+        "recovery": "close"
+      },
+      "expectedSnapshot": {
+        "result": "quarantined",
+        "grant": "preserved",
+        "recovery": "preserved"
+      }
     }
-  ]
+  ],
+  "ingestionPolicy": "ADR 0102, paso 2: unknown snapshots are quarantined per subscription, preserving grants/recovery/version; uncanceled is an event name, not a snapshot status. Pure transition expectations remain historical."
 }

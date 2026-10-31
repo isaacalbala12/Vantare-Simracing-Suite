@@ -33,6 +33,9 @@ export function subscriptionSnapshotStatus(value: unknown): string | null {
   return status !== "uncanceled" && status !== "cancelled" ? status : null;
 }
 
+// Extracts lifecycle state only. The process.ts event allowlist separately
+// decides which provider event types are supported (e.g. subscription.unpaid
+// is not admitted, although unpaid is a valid status of subscription.updated).
 export function subscriptionEventStatus(
   type: string,
   value: unknown,

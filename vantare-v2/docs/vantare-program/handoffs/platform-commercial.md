@@ -4,7 +4,7 @@
 a nightly, registrado en T3. Encargo del orquestador: estados del servidor. Rama
 `vantareapp/isa-1827-paso2-estados-suscripcion`, worktree
 `C:/VantareServer/wt/isa-1827-paso2`, base `origin/nightly`
-`3e6f2dce7181ac224f4a1ed6ffa38e11373c89e9`. Project Vantare /
+`7f4f16e98fc92fdfdae3e87c6e0e263be3f01784`. Project Vantare /
 area:licencias / In Review, sin milestone. Plane paraguas no se mueve.
 
 - Una tabla en `subscription-lifecycle.ts` clasifica los estados; webhook,
@@ -17,9 +17,21 @@ area:licencias / In Review, sin milestone. Plane paraguas no se mueve.
 - Política: desconocidos en cuarentena, sin tocar grants, recovery o versión,
   diagnóstico `unsupported_subscription_status`. Ya era la política del webhook
   y reconcile por páginas. **Cambio conservador justificado:** Customer State
-  antes preparaba revocación por el fallback; ahora declara el plan inseguro y
-  no lo aplica. Evita retirar acceso por un nuevo estado no interpretado.
-  La matriz v1 y el fallback puro histórico se conservan; ingestión los filtra.
+  antes preparaba revocación por el fallback. Tras revisión del orquestador,
+  se salta **solo esa suscripción**, sin bloquear la renovación válida de otra.
+  Las barreras globales existentes, incluido `unknown_product`, se conservan.
+  Customer State usa `subscriptionSnapshotStatus`, igual que el webhook;
+  `uncanceled`/`cancelled` se cuarentenan como snapshots. El CLI registra todas
+  las incidencias solo como código + resourceId, sin cuenta ni payload.
+- Revisión profunda APPROVE WITH CHANGES, sin P0/P1: atendidos los cinco puntos.
+  Rebase sobre #1830; conflicto del handoff resuelto conservando ambos pasos.
+  La matriz v1 declara por separado transición pura y efectos de snapshot,
+  con cuarentena/preservación explícita para unknown y uncanceled. El worker
+  recorre sus diez filas sin traducir estados y observa la acción exacta
+  `open`/`close`/`none`; réplica/cuarentena no escriben lifecycle. Justificación
+  en ADR 0102. Test mixto unknown/uncanceled/cancelled + renovación válida,
+  réplica y control de producto desconocido. Comentado el límite entre
+  extracción de estado y allowlist de tipos de evento.
 - Regresiones: matriz v1 recorrida por reconcile, réplica (incluida cuarentena),
   acceso/recovery/versiones intactos ante desconocidos; entrega creada/actualizada,
   replay manual y revocación válida anterior al estado desconocido. Se conserva
@@ -29,7 +41,8 @@ area:licencias / In Review, sin milestone. Plane paraguas no se mueve.
   mediante Node 24 (sin dependencias). Quality/466 huellas, fragmento y diff PASS.
   Evidencia: `D:/VantareServer/evidence/isa-1827-paso2/compare-lifecycle.mjs`.
   Deno/PostgreSQL/PostgREST locales ausentes: Edge/SQL por CI, sin instalar herramientas.
-  Código revisado `62d3d621b`: Deno 221/221 PASS, run 41228224277.
+  Evidencia anterior a la revisión: Deno 221/221 PASS, run 41228224277.
+  La revisión requiere CI nueva sobre el HEAD rebasado; no se reutiliza ese PASS.
   Exigir también `supabase-commercial-gates` (PostgreSQL LF/CRLF). El HEAD final,
   resultados y enlace de CI se registran y verifican en el PR y #1827;
   no se extrapola un PASS anterior a cambios posteriores.

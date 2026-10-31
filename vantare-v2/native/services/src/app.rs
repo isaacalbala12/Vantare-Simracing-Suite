@@ -4,6 +4,7 @@ use crate::{
     account::{Account, OAuth},
     config::BuildConfig,
     http::Http,
+    outcome::{Observation, Origin as OutcomeOrigin, outcome},
     protocol::{Command, Reply},
     storage::Store,
 };
@@ -339,14 +340,11 @@ impl App {
             let candidate = match renewal {
                 Ok(candidate) => candidate,
                 Err(error) => {
-                    if !automatic
-                        && matches!(
-                            error,
-                            Error::Authentication
-                                | Error::Denied
-                                | Error::Conflict
-                                | Error::DeviceLimit
-                        )
+                    if outcome(Observation::Error(
+                        error,
+                        OutcomeOrigin::Renewal { automatic },
+                    ))
+                    .revoke
                     {
                         // Rechazo definitivo: ACK durable antes de limpiar la caché.
                         self.revoke_local()?;
@@ -486,19 +484,23 @@ impl App {
             .refresh()?;
         let completion = match exchange.run(&self.http, now) {
             Ok(completion) => completion,
-            Err(error @ (Error::Authentication | Error::Denied)) => {
-                if automatic {
-                    return Err(error);
+            Err(error) => {
+                let effects = outcome(Observation::Error(
+                    error,
+                    OutcomeOrigin::OAuth { automatic },
+                ));
+                if effects.revoke {
+                    self.revoke_local()?;
                 }
-                self.revoke_local()?;
-                self.data_session = None;
-                self.account
-                    .as_mut()
-                    .ok_or(Error::Authentication)?
-                    .logout(self.store.as_ref().ok_or(Error::Storage)?)?;
+                if effects.sign_out {
+                    self.data_session = None;
+                    self.account
+                        .as_mut()
+                        .ok_or(Error::Authentication)?
+                        .logout(self.store.as_ref().ok_or(Error::Storage)?)?;
+                }
                 return Err(error);
             }
-            Err(error) => return Err(error),
         };
         self.account
             .as_mut()
@@ -606,19 +608,12 @@ impl App {
                 message: error.to_string(),
             };
         }
-        let definitive = matches!(
-            error,
-            Error::Authentication
-                | Error::Denied
-                | Error::Conflict
-                | Error::Core(vantare_ipc::control::Failure::Rejected)
-        );
         Reply::LicenseFailure {
-            outcome: if definitive {
-                crate::protocol::RenewalOutcome::Definitive
-            } else {
-                crate::protocol::RenewalOutcome::Transient
-            },
+            outcome: outcome(Observation::Error(
+                error,
+                OutcomeOrigin::Renewal { automatic: true },
+            ))
+            .renewal,
             message: if error == Error::Version {
                 "Actualiza la app para verificar la nueva licencia.".into()
             } else {

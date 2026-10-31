@@ -1,3 +1,14 @@
+## #1827 — Clasificación de acceso (paso 4)
+
+`services::outcome::outcome` es la única tabla de clasificación para renovación,
+refresh OAuth y respuesta del núcleo, y para el resultado del ACK que consume
+el supervisor. Devuelve `RenewalOutcome` y los efectos de revocación/cierre de
+sesión; App conserva el orden de ACK durable antes de limpiar datos.
+`Origin` mantiene explícita la diferencia manual/automática hasta el paso 5.
+El rechazo Clock solo al instalar caché y la ventana urgente de una hora se
+conservan. No cambia formato IPC, licencia, persistencia ni comportamiento.
+El Hub consume los resultados tipados existentes; no tiene una lista de errores.
+
 ## ISA-1810 — Candidate rechazado y acceso a la recuperación
 
 Una firma válida no permite confiar en el dispositivo declarado por el propio

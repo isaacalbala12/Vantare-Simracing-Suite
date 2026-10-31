@@ -113,3 +113,26 @@ snapshot se cuarentena; el webhook específico sigue admitido. El test del worke
 recorre las diez filas sin reescribir estados ni resultados; comprueba la acción
 exacta `open`/`close`/`none` cuando se aplica un lifecycle, y ninguna escritura
 en cuarentena o réplica. No cambia el fallback puro ni la forma de la licencia.
+
+### Paso 6 — Session y navegación del Hub
+
+El paso 6 conserva las decisiones de derechos del núcleo. Por encargo explícito
+se corrige la presentación de NeedsSignIn: el Hub deja de limitarse a Cuenta
+cuando el núcleo conserva derechos, y muestra un aviso de nueva entrada. Solo
+SignedIn permite servicios remotos/renovación; Session no concede derechos.
+La matriz de núcleo no cambia; la matriz de servicios añade la observación del
+campo publicado sin cambiar sus columnas previas. Services v16 exige actualizar
+el conjunto y rechaza generaciones mezcladas sin invalidar licencias guardadas.
+Los formatos en disco no cambian respecto al paso 5.
+
+El orquestador amplió expresamente el paso 6 para incluir `AccountCancel` en
+v16: cancela únicamente verifier PKCE, listener/poll y FAPI pendientes, sin
+escribir SignedOut ni invalidar derechos. El estado guardado se conserva:
+NeedsSignIn vuelve a NeedsSignIn, SignedIn a SignedIn y SignedOut a SignedOut.
+«Volver/Cancelar» deja de enviar Logout; «Cerrar sesión» lo conserva. El Hub no
+convierte un fallo del formulario en SignedOut y permite volver a los derechos
+que siga publicando el núcleo. Un servicio v15 no recibe Logout como sustituto.
+La caracterización añade una fila AccountCancel sin revocación; las anteriores
+no cambian. También se verifica la cancelación/fallo desde los tres estados,
+la elección de proveedores, la incompatibilidad durante TransferRights y la
+lectura de Session tras renovar en el supervisor.

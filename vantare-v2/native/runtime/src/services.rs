@@ -226,6 +226,7 @@ fn access_command(command: &Command) -> bool {
         command,
         Command::Status
             | Command::AccountBegin
+            | Command::AccountCancel
             | Command::AccountEmail { .. }
             | Command::AccountPoll
             | Command::AccountRenew
@@ -332,14 +333,16 @@ fn handle_with(
             signing,
             matches!(
                 reply,
-                Reply::Account { pending: true, .. }
-                    | Reply::Email {
-                        stage: protocol::EmailStage::Code
-                            | protocol::EmailStage::NewPassword
-                            | protocol::EmailStage::Consent
-                            | protocol::EmailStage::Authorizing,
-                        ..
-                    }
+                Reply::Account {
+                    session: protocol::Session::Pending,
+                    ..
+                } | Reply::Email {
+                    stage: protocol::EmailStage::Code
+                        | protocol::EmailStage::NewPassword
+                        | protocol::EmailStage::Consent
+                        | protocol::EmailStage::Authorizing,
+                    ..
+                }
             ),
         );
     }
@@ -446,14 +449,42 @@ fn serve_command(
             *slot = Some(client.cancellation());
         }
         // No se atiende al Hub antes del ACK durable del núcleo, incluso offline.
-        if let Ok(Reply::License { .. }) = client.request(Command::TransferRights) {
-            state.client = Some(client);
-        } else {
+        if let Err(error) = admit_transfer(&client.request_typed(Command::TransferRights)) {
             clear_cancellation(cancellation);
-            return failure("transferencia de derechos sin confirmar");
+            return failure(error);
         }
+        state.client = Some(client);
     }
-    dispatch_helper(state, command, cancellation)
+    dispatch_observing_session(state, command, |state, command| {
+        dispatch_helper(state, command, cancellation)
+    })
+}
+
+fn admit_transfer(result: &Result<Reply, ConnectionError>) -> Result<(), &'static str> {
+    match result {
+        Ok(Reply::License { .. }) => Ok(()),
+        Err(error) => Err(error.message()),
+        _ => Err("transferencia de derechos sin confirmar"),
+    }
+}
+
+fn dispatch_observing_session(
+    state: &mut State,
+    command: Command,
+    mut dispatch: impl FnMut(&mut State, Command) -> Reply,
+) -> Reply {
+    let renewing = matches!(
+        command,
+        Command::LicenseRenew | Command::LicenseRenewAutomatic
+    );
+    let reply = dispatch(state, command);
+    if renewing && !matches!(reply, Reply::Error { .. }) {
+        // Refresh may have changed Session even when renewal returns a failure.
+        // AccountPoll reads services' state; never infer it from a license error.
+        let account = dispatch(state, Command::AccountPoll);
+        state.renewal.observe(&account);
+    }
+    reply
 }
 
 fn dispatch_helper(state: &mut State, command: Command, cancellation: &Cancellation) -> Reply {

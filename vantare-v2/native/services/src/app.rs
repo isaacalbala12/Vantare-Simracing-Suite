@@ -7,7 +7,7 @@ use crate::{
     outcome::{
         Observation, Origin as OutcomeOrigin, Outcome as AccessOutcome, Revocation, outcome,
     },
-    protocol::{Command, Reply},
+    protocol::{Command, Reply, Session},
     storage::Store,
 };
 use std::io::Write;
@@ -425,6 +425,7 @@ impl App {
             }
         }
         Ok(Reply::Account {
+            session: Session::SignedOut,
             copy_link: false,
             signed_in: false,
             profile: None,
@@ -677,6 +678,7 @@ impl App {
         let account_action = matches!(
             command,
             Command::AccountBegin
+                | Command::AccountCancel
                 | Command::AccountCopyLink
                 | Command::AccountPoll
                 | Command::AccountRenew
@@ -896,6 +898,7 @@ impl App {
                 return self.license_reply(&command);
             }
             Command::Logout => return self.logout_reply(),
+            Command::AccountCancel => return self.cancel_account_attempt(),
             Command::AccountCopyLink => {
                 let account = self.account.as_ref().ok_or(Error::Canceled)?;
                 return Ok(Reply::AccountLink {
@@ -970,20 +973,21 @@ impl App {
             .or(copy_link.then_some(Error::BrowserUnavailable))
             .or((account.needs_sign_in() && !pending).then_some(Error::Authentication));
         Reply::Account {
+            session: account.session(),
             copy_link,
             signed_in: account.identity().is_some() && !account.needs_sign_in(),
             profile: account.profile().cloned(),
             expires_at: account.expires_at(),
             pending,
             message: if account.needs_sign_in() && !pending {
-                "Vuelve a iniciar sesión. Tus derechos firmados se conservan hasta su fecha de caducidad.".into()
+                "Vuelve a iniciar sesión para usar los servicios de tu cuenta.".into()
             } else {
                 error.map_or_else(
                     || {
                         if pending {
                             "Complete el inicio de sesión en el navegador"
                         } else if account.identity().is_some() {
-                            "Sesión Clerk protegida; derechos pendientes del núcleo"
+                            "Sesión iniciada en este dispositivo"
                         } else {
                             "Sesión cerrada en este dispositivo"
                         }
@@ -994,6 +998,14 @@ impl App {
             },
             error: error.map(|error| error.to_string()),
         }
+    }
+
+    fn cancel_account_attempt(&mut self) -> Result<Reply> {
+        self.ensure_account()?;
+        let account = self.account.as_mut().ok_or(Error::Authentication)?;
+        account.end_email_session(&self.http);
+        account.cancel_login()?;
+        Ok(Self::account_reply(account, None))
     }
 
     fn testing_reply(&mut self, command: Command) -> Result<Reply> {
@@ -1309,6 +1321,8 @@ mod tests {
 
     #[cfg(windows)]
     mod characterization;
+    #[cfg(windows)]
+    mod session_cancel;
 
     #[cfg(windows)]
     #[test]
@@ -1357,7 +1371,7 @@ mod tests {
                     assert_eq!(
                         message,
                         if needs_sign_in {
-                            "Vuelve a iniciar sesión. Tus derechos firmados se conservan hasta su fecha de caducidad."
+                            "Vuelve a iniciar sesión para usar los servicios de tu cuenta."
                         } else {
                             "No se pudo actualizar el perfil; la sesión sigue abierta."
                         }

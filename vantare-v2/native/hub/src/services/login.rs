@@ -112,7 +112,8 @@ impl Remote {
         queued: Option<&Command>,
         command: &Command,
     ) -> Option<&'static str> {
-        (queued.is_some() && !matches!(command, Command::Logout)).then_some("Operación en curso")
+        (queued.is_some() && !matches!(command, Command::Logout | Command::AccountCancel))
+            .then_some("Operación en curso")
     }
     #[cfg(feature = "parity-capture")]
     pub(crate) fn capture_email(&mut self, scene: &str, cx: &mut Context<Self>) {
@@ -166,7 +167,10 @@ impl Remote {
             self.clear_pilot();
             self.clear_participation(cx);
         }
-        if matches!(command, Command::Logout | Command::AccountBegin) {
+        if matches!(
+            command,
+            Command::Logout | Command::AccountBegin | Command::AccountCancel
+        ) {
             self.email = None;
         }
         if matches!(command, Command::Logout) {
@@ -196,7 +200,7 @@ impl Remote {
         }
         self.email = Some(Form::new(mode, cx));
         self.access.login_requested = false;
-        self.account.cancel_login = false;
+        self.account.cancel_command = None;
         cx.notify();
     }
     pub(super) fn email_reply(&mut self, reply: Reply, cx: &mut Context<Self>) {
@@ -265,20 +269,10 @@ impl Remote {
         self.email_action(action, cx);
     }
     fn email_cancel(&mut self, cx: &mut Context<Self>) {
-        if self.working() {
-            // Cancela la espera de red: se descarta la respuesta pendiente y
-            // el cierre de sesión posterior deja servicios sin login a medias.
-            if let Some(form) = self.email.take() {
-                form.clear_secrets(cx);
-            }
-            self.request(Command::Logout, cx);
-            cx.notify();
-            return;
-        }
         if let Some(form) = self.email.take() {
             form.clear_secrets(cx);
         }
-        self.email_action(EmailAction::Cancel {}, cx);
+        self.request(Command::AccountCancel, cx);
     }
     fn email_fields(&self, form: &Form, cx: &mut Context<Self>) -> gpui::Div {
         let stage = form.stage;
@@ -594,7 +588,7 @@ mod tests {
     }
 
     #[test]
-    fn back_during_network_wait_discards_late_reply_and_sends_logout() {
+    fn back_during_network_wait_discards_late_reply_and_cancels_the_attempt() {
         gpui_platform::headless().run(|cx| {
             let file = crate::document::tests::File::new();
             let (send, requests) = mpsc::sync_channel(8);
@@ -621,7 +615,7 @@ mod tests {
                     remote.email.is_none(),
                     "la respuesta tardía no restaura el formulario"
                 );
-                assert!(matches!(requests.try_recv(), Ok(Command::Logout)));
+                assert!(matches!(requests.try_recv(), Ok(Command::AccountCancel)));
                 assert!(!remote.navigation_access().verified);
             });
             crate::quit_headless_test(cx);

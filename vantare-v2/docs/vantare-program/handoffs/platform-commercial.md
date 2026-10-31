@@ -1,3 +1,49 @@
+<!-- isa1827-paso6 -->
+## VANTA-126 / #1827 — Paso 6: sesión explícita (worker, validación en curso)
+
+Project Vantare / area:licencias / In Review, sin milestone. Encargo del
+orquestador; Plane intacto. Base `origin/nightly@127977532d30d692c9e9a53e5cd764add7907d4a`
+con #1833 ya integrado. Rama `vantareapp/isa-1827-paso6-sesion`, worktree
+`C:/VantareServer/wt/isa-1827-p6`, target `D:/VantareServer/targets/isa-1827-p6`.
+
+- Services publica Session: SignedOut, SignedIn, NeedsSignIn y Pending. Hub y
+  supervisor la leen sin deducirla de errores, expires_at o signed_in. Solo
+  SignedIn permite renovar; publicar sesión no reinicia backoff.
+- En NeedsSignIn, el Hub mantiene las páginas permitidas por la política fresca
+  del núcleo y muestra el aviso de nueva entrada. Cuenta conserva el perfil y
+  permite Google/Discord/email y el cierre explícito de sesión. Las políticas ausentes, denegadas o
+  caducadas no dan acceso. Logout conserva su barrera previa al ACK.
+- Tras una renovación se consulta AccountPoll para observar cambios de sesión;
+  los fallos recibidos por el Hub también releen la sesión sin otro grant HTTP.
+  El mensaje de cuenta deja de afirmar que los derechos están pendientes (#1801).
+- Services v16 rechaza mezclas v15/v16 antes de interpretar Account. Errores
+  transitorios sin revocar; cuenta, binding, authority y candidate mantienen
+  sus formatos en disco. No cambia firma, plazo, catálogo, TTL ni gracia.
+- AccountCancel cancela PKCE, poll y estado OAuth/FAPI pendiente sin Logout,
+  tombstone ni invalidación. Volver/Cancelar lo usan incluso con red en vuelo;
+  los errores del formulario conservan la Session publicada por services.
+- La auditoría conserva las filas/columnas anteriores y añade la fila autorizada
+  «AccountCancel no revoca»; services añade la observación pública de Session. El núcleo sigue intacto.
+  Evidencia: `D:/VantareServer/evidence/isa-1827-p6/characterization-delta.json`.
+- Clippy all-targets de services/runtime/ipc/hub -D warnings PASS (incluye
+  check); lifecycle 13/13 PASS; quality/466 huellas PASS. Nextest ci con
+  telemetría y mutaciones pendientes. Primer intento de Nextest: faltaba el
+  binario de fixture vantare-storage; preparado con DuckDB de desarrollo ya
+  instalado, sin cambiar ni excluir la prueba. Fallo conservado en nextest-ci.log.
+- README de los cuatro crates, ADR 0102, BIL-08 y fragmento actualizados.
+  Verificación manual pendiente: en un entorno de pruebas autorizado, provocar
+  NeedsSignIn con licencia vigente, comprobar páginas y aviso, abrir el login
+  desde Cuenta y volver a la misma identidad. No se ha usado una cuenta real
+  ni una instalación; GPUI se verifica con fixtures/headless.
+- Revisión DeepSeek opencode-go/deepseek-v4.1-flash max de solo lectura completada.
+  Hallazgos tratados: cancelación sin Logout (autorizada por el orquestador),
+  fallo del formulario, proveedores, fixture v16, diagnóstico TransferRights y
+  prueba real del AccountPoll del supervisor. Un peer antiguo que cierre el pipe
+  sin responder aún puede dar error de transporte genérico, siempre transitorio. Harness ejecutor medium heredado; no se afirma high.
+- Siguiente: terminar gates/mutaciones y PR draft a nightly; después el paso 6b
+  en otra rama/PR. Sin merge, promoción, release, instalación ni producción.
+<!-- /isa1827-paso6 -->
+
 ## VANTA-126 / #1827, #1814 — Paso 1: recuperación firmada (31-oct-2026)
 
 Encargo del orquestador. Rama `vantareapp/isa-1827-paso1-recovery-firmada`,

@@ -2,20 +2,25 @@
   "schemaVersion": 1,
   "issue": "ISA-1827",
   "type": "fix",
-  "summary": "Un estado de suscripción desconocido queda pendiente de revisión sin cambiar el acceso existente.",
+  "summary": "Las suscripciones desconocidas conservan el acceso; el Hub distingue la sesión de cuenta de los derechos vigentes.",
   "technicalNotes": [
     "Paso 6b, decisión 4: Paused conserva la gracia ya reconocida de la misma sesión live y la hora original de entrada; no inicia ni amplía el margen.",
     "Paso 2: webhook y reconciliación comparten la clasificación de estados y las reglas de plazo.",
-    "El snapshot revoked sigue revocando su fuente, como en #1817. Customer State salta solo la suscripción con estado desconocido y diagnostica unsupported_subscription_status; las demás siguen renovándose."
+    "El snapshot revoked sigue revocando su fuente, como en #1817. Customer State salta solo la suscripción con estado desconocido y diagnostica unsupported_subscription_status; las demás siguen renovándose.",
+    "Paso 6: services publica Session explícita (v16); el supervisor y el Hub dejan de deducirla. Cuenta deja de anunciar derechos pendientes después de verificarlos (#1801).",
+    "Paso 6, ampliación autorizada: Volver/Cancelar usa AccountCancel sin cerrar la cuenta ni revocar derechos. Cuenta permite elegir Google, Discord o email para volver a entrar."
   ],
   "testing": [
     "Con reloj inyectado, comprobar pausa larga y reanudación sin cambiar el deadline; salida/cambio de sesión, replay y Logout descartan la gracia. La credencial y la hora de gracia caducan aun en pausa.",
     "En un entorno de pruebas autorizado, comprobar revoked, una entrega repetida y un evento anterior; los derechos de otra compra deben conservarse.",
     "Comprobar un estado desconocido: queda en cuarentena, conserva acceso y recuperación y no avanza la versión del recurso.",
-    "Con dos suscripciones del mismo cliente, enviar un estado desconocido en una y una renovación válida en la otra: se conserva la primera y se actualiza la segunda. Un producto desconocido sigue bloqueando el plan completo."
+    "Con dos suscripciones del mismo cliente, enviar un estado desconocido en una y una renovación válida en la otra: se conserva la primera y se actualiza la segunda. Un producto desconocido sigue bloqueando el plan completo.",
+    "Con una licencia de prueba vigente, provocar NeedsSignIn: aparece el aviso de volver a entrar en Cuenta y se conservan las páginas permitidas por el núcleo. Una política denegada o caducada sigue bloqueando.",
+    "En NeedsSignIn, SignedIn y SignedOut, cancelar un intento OAuth/FAPI y fallar el formulario: se conserva la cuenta y la licencia firmada. Cerrar sesión sigue revocando tras el ACK del núcleo."
   ],
   "knownLimitations": [
     "Este PR no despliega funciones. Las licencias ya firmadas conservan su plazo offline.",
-    "La función pura mantiene su fallback histórico; las rutas de ingestión filtran desconocidos antes de aplicar cambios."
+    "La función pura mantiene su fallback histórico; las rutas de ingestión filtran desconocidos antes de aplicar cambios.",
+    "Services v16 requiere actualizar el conjunto de binarios; no cambia el formato de derechos en disco ni despliega una instalación."
   ]
 }

@@ -52,7 +52,7 @@ enum Area {
 struct AccountState {
     pending: bool,
     signed_in: bool,
-    cancel_login: bool,
+    cancel_command: Option<Command>,
     profile: Option<super::protocol::AccountProfile>,
     avatar: Option<Arc<gpui::Image>>,
 }
@@ -119,6 +119,9 @@ fn next_request(
     queued: &mut Option<Command>,
     calendar_pending: bool,
 ) -> Option<Command> {
+    if matches!(queued, Some(Command::AccountCancel)) {
+        return queued.take();
+    }
     next.or_else(|| queued.take())
         .or_else(|| calendar_pending.then_some(Command::CalendarRefresh))
 }
@@ -330,7 +333,7 @@ impl Remote {
     pub(crate) fn navigation_access(&self) -> crate::shell::navigation::Access {
         vantare_ipc::control::wall_ms().map_or_else(
             |_| crate::shell::navigation::Access::default(),
-            |now| self.access.navigation(self.account.signed_in, now),
+            |now| self.access.navigation(now),
         )
     }
 
@@ -372,10 +375,10 @@ impl Remote {
         now_ms: u64,
         cx: &mut Context<Self>,
     ) {
-        let before = self.access.navigation(self.account.signed_in, now_ms);
+        let before = self.access.navigation(now_ms);
         let current = policy.current_at(now_ms);
         self.access.observe_core_policy(policy);
-        let access = self.access.navigation(self.account.signed_in, now_ms);
+        let access = self.access.navigation(now_ms);
         let confirmed = current
             && self
                 .purchase_wait
@@ -690,7 +693,13 @@ impl Remote {
         let email_command = matches!(command, Command::AccountEmail { .. });
         self.prepare_account_command(&command, cx);
         if self.inflight.background() {
-            if self.queued.is_none() || matches!(command, Command::Logout) {
+            if matches!(self.queued, Some(Command::Logout))
+                && matches!(command, Command::AccountCancel)
+            {
+                return cx.notify();
+            }
+            if self.queued.is_none() || matches!(command, Command::Logout | Command::AccountCancel)
+            {
                 self.queued = Some(command);
             } else if let Some(message) =
                 Self::background_discard_message(self.queued.as_ref(), &command)
@@ -708,8 +717,10 @@ impl Remote {
             }
             return cx.notify();
         }
-        if self.busy() && matches!(command, Command::Logout) {
-            self.account.cancel_login = true;
+        if self.busy() && matches!(command, Command::Logout | Command::AccountCancel) {
+            if !matches!(self.account.cancel_command, Some(Command::Logout)) {
+                self.account.cancel_command = Some(command);
+            }
             cx.notify();
             return;
         }
@@ -849,6 +860,14 @@ impl Remote {
 
     #[allow(clippy::too_many_lines)]
     fn complete(&mut self, reply: Reply, cx: &mut Context<Self>) {
+        // Discard the abandoned operation's reply before it can reopen login.
+        // Preserve explicit Logout priority over cancellation of an attempt.
+        if let Some(cancel) = self.account.cancel_command.take() {
+            self.inflight = Inflight::Idle;
+            self.account.pending = false;
+            self.request(cancel, cx);
+            return;
+        }
         self.mail.complete(&reply);
         let access_before = self.navigation_access();
         let mut profile_changed = false;
@@ -877,7 +896,17 @@ impl Remote {
         };
         // La renovación puede devolver una foto anterior al último heartbeat.
         // Solo Feed alimenta derechos; el reply conserva feedback y seguimiento OAuth.
-        if !matches!(&reply, Reply::License { .. }) && self.inflight != Inflight::Profile {
+        if !matches!(&reply, Reply::License { .. })
+            && (self.inflight != Inflight::Profile
+                || matches!(
+                    &reply,
+                    Reply::Account {
+                        session: super::protocol::Session::NeedsSignIn
+                            | super::protocol::Session::SignedOut,
+                        ..
+                    }
+                ))
+        {
             self.access.observe(
                 &reply,
                 !self.inflight.background() && matches!(self.active, Area::Account),
@@ -885,7 +914,7 @@ impl Remote {
         }
         let next = self
             .access
-            .next_command(&reply, &mut self.account.cancel_login)
+            .next_command(&reply, &mut self.account.cancel_command)
             .or(after_renew);
         let background = self.inflight.background();
         let roadmap_background = self.inflight == Inflight::Roadmap;
@@ -975,12 +1004,17 @@ impl Remote {
             Reply::AccountLink { url } => self.accept_login_link(&url, cx),
             Reply::Email { .. } => self.email_reply(reply, cx),
             Reply::Account {
-                signed_in,
+                session,
                 profile,
-                pending,
                 message,
                 ..
             } => {
+                let signed_in = session == super::protocol::Session::SignedIn;
+                let pending = session == super::protocol::Session::Pending;
+                let has_identity = matches!(
+                    session,
+                    super::protocol::Session::SignedIn | super::protocol::Session::NeedsSignIn
+                );
                 if signed_in && !pending {
                     self.email = None;
                 }
@@ -989,7 +1023,7 @@ impl Remote {
                         signed_in && profile.is_none() && self.account.profile.is_none();
                     // Un perfil vacío recuerda la lectura inicial, incluso si no
                     // hay foto o la red falla. No se sondea HTTP continuamente.
-                    let profile = signed_in.then(|| profile.unwrap_or_default());
+                    let profile = has_identity.then(|| profile.unwrap_or_default());
                     if self.account.profile != profile {
                         profile_changed = true;
                         self.account.profile = profile;

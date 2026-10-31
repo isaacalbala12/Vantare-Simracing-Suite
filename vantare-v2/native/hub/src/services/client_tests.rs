@@ -184,8 +184,11 @@ fn dropping_a_connection_does_not_cancel_the_owner_or_poison_reconnect() {
 }
 #[test]
 fn mismatched_service_hello_and_response_are_actionable_connection_errors() {
-    for hello_mismatch in [true, false] {
-        let name = format!("hub-version-1530-{}-{hello_mismatch}", std::process::id());
+    for (hello_mismatch, cancel) in [(true, false), (false, false), (true, true), (false, true)] {
+        let name = format!(
+            "hub-version-1530-{}-{hello_mismatch}-{cancel}",
+            std::process::id()
+        );
         let server_stop = Arc::new(Event::new().expect("evento"));
         let mut listener = Listener::new(
             &format!("{name}-hub-services"),
@@ -206,21 +209,31 @@ fn mismatched_service_hello_and_response_are_actionable_connection_errors() {
             .expect("saludo");
             if !hello_mismatch {
                 let request: Request = protocol::read(&mut pipe).expect("petición");
+                assert!(
+                    matches!(request.command, Command::Probe),
+                    "version check precedes Cancel/Logout dispatch"
+                );
                 protocol::write(
                     &mut pipe,
-                    &Response {
-                        version: protocol::VERSION - 1,
-                        sequence: request.sequence,
-                        reply: Reply::Closed,
-                    },
+                    // v15 Account has no Session. Version is checked before
+                    // decoding the new strict shape, with no fabricated state.
+                    &serde_json::json!({"version":protocol::VERSION - 1,
+                        "sequence":request.sequence,"reply":{"result":"Account",
+                        "signed_in":true,"pending":false,"expires_at":1000,
+                        "message":"old generation","error":null}}),
                 )
                 .expect("respuesta incompatible");
             }
         });
         let image = std::env::current_exe().expect("imagen");
         let stop = Arc::new(Event::new().expect("evento cliente"));
-        let result = Client::start(&image, &name, stop)
-            .and_then(|mut client| client.request(Command::Status));
+        let result = Client::start(&image, &name, stop).and_then(|mut client| {
+            client.request(if cancel {
+                Command::AccountCancel
+            } else {
+                Command::Status
+            })
+        });
         assert!(matches!(result, Err(vantare_ipc::INCOMPATIBLE_COMPONENTS)));
         server.join().expect("cerrar peer");
     }

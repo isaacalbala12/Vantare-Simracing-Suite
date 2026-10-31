@@ -99,11 +99,17 @@ impl Client {
             },
         )
         .map_err(|error| RequestError::Transport(error.kind()))?;
-        let response: Response = protocol::read(&mut self.pipe)
+        let value: serde_json::Value = protocol::read(&mut self.pipe)
             .map_err(|error| RequestError::Transport(error.kind()))?;
-        if response.version != protocol::VERSION {
+        if value
+            .get("version")
+            .and_then(serde_json::Value::as_u64)
+            .is_some_and(|version| version != u64::from(protocol::VERSION))
+        {
             return Err(RequestError::Version);
         }
+        let response: Response = serde_json::from_value(value)
+            .map_err(|_| RequestError::Transport(std::io::ErrorKind::InvalidData))?;
         if response.sequence != self.sequence {
             return Err(RequestError::Sequence);
         }

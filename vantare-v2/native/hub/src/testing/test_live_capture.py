@@ -30,13 +30,13 @@ def run(exe, out):
                   tester=False, live=False, error=None)
 
     def write_replies():
-        account = dict(result="Account", signed_in=True,
+        account = dict(result="Account", session="SignedIn", signed_in=True,
                        profile=dict(name="QA local", image_url=None, image_jpeg=None),
                        expires_at=int(time.time()) + 3600, pending=False,
                        message="QA local", error=None)
         replies = dict(fresh_policy=True, core_policy=policy,
                        Status=dict(result="Status", account_configured=True, message="QA local"),
-                       AccountPoll=account, AccountProfileRefresh=account,
+                       AccountPoll=account, AccountProfileRefresh=account, AccountCancel=account,
                        LicenseStatus=dict(result="License", policy=policy, message="QA local"))
         temporary = out / "replies.tmp"
         temporary.write_text(json.dumps(replies), encoding="utf-8")

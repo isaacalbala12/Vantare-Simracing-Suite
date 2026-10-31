@@ -4,6 +4,41 @@ use crate::protocol::RenewalOutcome;
 
 mod reset;
 
+#[test]
+fn session_publication_distinguishes_restore_refresh_rejection_pending_and_logout() {
+    use crate::protocol::Session;
+    let (root, store) = crate::test_store("session-publication");
+    let base = url::Url::parse("http://127.0.0.1:1/").expect("fixture");
+    let mut account = crate::account::fixture(&base, &store);
+    let check = |account: &Account, expected| {
+        assert!(matches!(App::account_reply(account, Some(Error::Offline)),
+            Reply::Account { session, .. } if session == expected));
+    };
+    check(&account, Session::SignedIn);
+    account.require_sign_in(&store).expect("rejected refresh");
+    check(&account, Session::NeedsSignIn);
+    let oauth = serde_json::from_value(serde_json::json!({
+        "authorization": base.join("authorize").expect("authorize"),
+        "token": base.join("token").expect("token"),
+        "userinfo": base.join("userinfo").expect("userinfo"),
+        "issuer": base, "client_id": "public-fixture",
+        "redirect": "http://127.0.0.1:0/callback"
+    }))
+    .expect("fixture OAuth");
+    let mut restored = Account::restore(oauth, &store).expect("restored");
+    check(&restored, Session::NeedsSignIn);
+    restored.begin_login().expect("pending callback");
+    check(&restored, Session::Pending);
+    restored.cancel_login().expect("cancel attempt");
+    check(&restored, Session::NeedsSignIn);
+    restored.logout(&store).expect("logout");
+    check(&restored, Session::SignedOut);
+    drop(restored);
+    drop(account);
+    drop(store);
+    crate::cleanup_store(&root, "session-publication", &[]);
+}
+
 #[derive(Clone, Copy, Debug)]
 enum Origin {
     User,
@@ -170,6 +205,11 @@ fn assert_error_origin_effects(
         needs_sign_in,
         "{route:?}/{origin:?}/{status}: NeedsSignIn"
     );
+    assert_public_session(
+        app.account.as_ref().expect("account"),
+        needs_sign_in,
+        session,
+    );
     assert_manual_failure_reply(&app, route, origin, status, error);
     assert!(matches!(
         app.execute(Command::LicenseStatus),
@@ -180,6 +220,19 @@ fn assert_error_origin_effects(
     assert_single_request(server, route);
     drop(app);
     crate::cleanup_store(&root, "license-characterization", &[]);
+}
+
+fn assert_public_session(account: &Account, needs_sign_in: bool, session: bool) {
+    // Paso 6: observamos el campo publicado, sin cambiar ninguna columna previa.
+    let expected_session = if needs_sign_in {
+        crate::protocol::Session::NeedsSignIn
+    } else if session {
+        crate::protocol::Session::SignedIn
+    } else {
+        crate::protocol::Session::SignedOut
+    };
+    assert!(matches!(App::account_reply(account, None),
+        Reply::Account { session, .. } if session == expected_session));
 }
 
 fn assert_manual_failure_reply(app: &App, route: Route, origin: Origin, status: u16, error: Error) {
@@ -306,6 +359,8 @@ fn nightly_explicit_revocation_and_transfer_matrix() {
         ("TransferRights", false, true, true, None),
         // Cambia en paso 8: candidate rechazado se aparta, sin revocar ni cerrar sesión.
         ("TransferRights", true, false, true, None),
+        // Paso 6 autorizado: AccountCancel cancela el intento, no revoca.
+        ("AccountCancel", false, true, true, None),
     ];
     for (name, reject, candidate, session, expected) in CASES.iter().copied() {
         let device = crate::license::installation::legacy_fingerprint().expect("fixture device");
@@ -347,7 +402,7 @@ fn nightly_explicit_revocation_and_transfer_matrix() {
             } else {
                 vec![CoreStep::Install]
             }
-        } else if name == "DeviceReset" {
+        } else if matches!(name, "DeviceReset" | "AccountCancel") {
             vec![]
         } else if reject {
             vec![CoreStep::RejectInvalidate]
@@ -360,6 +415,7 @@ fn nightly_explicit_revocation_and_transfer_matrix() {
         let command = match name {
             "Logout" => Command::Logout,
             "DeviceReset" => Command::DeviceReset,
+            "AccountCancel" => Command::AccountCancel,
             _ => Command::TransferRights,
         };
         assert_eq!(

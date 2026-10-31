@@ -58,8 +58,9 @@ fn restored_profile_app(
     let base = server.base.clone();
     let config = vantare_services::config::BuildConfig {
         supabase: Some(base.clone()),
-        anon_key: None,
-        license_keys: None,
+        anon_key: Some("fixture-public"),
+        // Renewal tests reject refresh before any credential verification.
+        license_keys: Some("unused-before-rejected-refresh"),
         channel: Some("nightly"),
         native_oauth: Some(vantare_services::config::OAuthBuild {
             issuer: base.clone(),
@@ -134,6 +135,7 @@ fn missing_profile_oauth_rejection_requires_sign_in_but_preserves_real_binding()
         handle_with(&mut state, Command::AccountPoll, &signing, |_, command| app
             .handle(command)),
         Reply::Account {
+            session: protocol::Session::SignedIn,
             signed_in: true,
             profile: None,
             error: None,
@@ -149,6 +151,7 @@ fn missing_profile_oauth_rejection_requires_sign_in_but_preserves_real_binding()
     assert!(matches!(
         reply,
         Reply::Account {
+            session: protocol::Session::NeedsSignIn,
             signed_in: false,
             profile: None,
             error: Some(_),
@@ -219,4 +222,109 @@ fn assert_renewal_resumes(
         Some(Reply::LicenseFailure { .. })
     ));
     assert_eq!(attempts, 1, "automatic renewal resumes after fresh sign-in");
+}
+
+#[test]
+fn renewal_dispatch_reads_session_from_the_helper_after_refresh_rejection() {
+    let server = vantare_services::test_http::Server::start_observed(vec![(
+        400,
+        r#"{"error":"invalid_grant"}"#.into(),
+    )]);
+    let root = std::env::temp_dir().join(format!(
+        "vt-renewal-session-{}",
+        vantare_services::random_id().expect("fixture")
+    ));
+    let (candidate, keys) =
+        candidate_with_grant(chrono::TimeDelta::minutes(30), "vantare.plan.pro");
+    let (core, link) = start_profile_core(&root, &candidate, &keys);
+    let before = control::request(&link, control::Command::Read).expect("Pro before refresh");
+    let mut app = restored_profile_app(root.join("services"), &server);
+    app.attach_core(link.clone());
+    app.enable_loopback_for_test();
+    let mut state = State::default();
+    state.renewal.observe(&confirmed_session());
+    let mut commands = Vec::new();
+    let reply =
+        dispatch_observing_session(&mut state, Command::LicenseRenewAutomatic, |_, command| {
+            commands.push(match command {
+                Command::LicenseRenewAutomatic => "renewal",
+                Command::AccountPoll => "account",
+                _ => panic!("unexpected supervisor command"),
+            });
+            vantare_services::host::fixture_request(&mut app, command)
+        });
+    assert!(matches!(reply, Reply::LicenseFailure { .. }));
+    assert_eq!(
+        commands,
+        ["renewal", "account"],
+        "renewal followed by exactly one AccountPoll"
+    );
+    assert!(
+        !state.renewal.signed_in(),
+        "Session NeedsSignIn must stop renewal"
+    );
+    let requests = server.finish_observed();
+    assert_eq!(
+        requests.len(),
+        1,
+        "AccountPoll does not refresh or issue a license"
+    );
+    assert!(requests[0].starts_with("POST /token "));
+    let after = control::request(&link, control::Command::Read).expect("Pro after failed refresh");
+    assert_eq!(after.catalog, control::CatalogAccess::Pro);
+    assert_eq!(after.valid_until_ms, before.valid_until_ms);
+    drop(app);
+    drop(core);
+    std::fs::remove_dir_all(root).expect("own fixtures");
+}
+
+#[test]
+fn account_cancel_preserves_real_pro_binding_in_every_account_state() {
+    for session in ["SignedIn", "NeedsSignIn", "SignedOut"] {
+        let server = vantare_services::test_http::Server::start_observed(vec![]);
+        let root = std::env::temp_dir().join(format!(
+            "vt-cancel-binding-{}",
+            vantare_services::random_id().expect("fixture")
+        ));
+        let (candidate, keys) =
+            candidate_with_grant(chrono::TimeDelta::minutes(30), "vantare.plan.pro");
+        let (core, link) = start_profile_core(&root, &candidate, &keys);
+        let before = control::request(&link, control::Command::Read).expect("Pro binding");
+        let mut app = restored_profile_app(root.join("services"), &server);
+        let base = &server.base;
+        let store = Store::open(
+            &root.join("services"),
+            &format!("v1|{base}|public-fixture|nightly|{base}"),
+        )
+        .expect("fixture store");
+        let mut saved = store
+            .load::<serde_json::Value>("account")
+            .expect("fixture account");
+        saved["state"] = serde_json::json!(session);
+        if session == "SignedOut" {
+            saved = serde_json::json!({"state":"SignedOut","version":1});
+        }
+        store.save("account", &saved).expect("seed account state");
+        drop(store);
+        app.attach_core(link.clone());
+        let reply = vantare_services::host::fixture_request(&mut app, Command::AccountCancel);
+        let expected = match session {
+            "SignedIn" => protocol::Session::SignedIn,
+            "NeedsSignIn" => protocol::Session::NeedsSignIn,
+            _ => protocol::Session::SignedOut,
+        };
+        assert!(
+            matches!(reply, Reply::Account { session, pending: false, .. } if session == expected)
+        );
+        let after = control::request(&link, control::Command::Read).expect("retained Pro");
+        assert_eq!(after.catalog, control::CatalogAccess::Pro);
+        assert_eq!(after.valid_until_ms, before.valid_until_ms);
+        assert!(
+            server.finish_observed().is_empty(),
+            "cancellation is not a refresh"
+        );
+        drop(app);
+        drop(core);
+        std::fs::remove_dir_all(root).expect("own fixtures");
+    }
 }

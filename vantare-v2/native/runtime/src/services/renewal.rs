@@ -2,7 +2,7 @@
 use std::time::{Duration, Instant};
 use vantare_ipc::{
     control::{self, Policy},
-    services_protocol::{RenewalOutcome, Reply},
+    services_protocol::{RenewalOutcome, Reply, Session},
 };
 
 const MINUTE: Duration = Duration::from_mins(1);
@@ -58,20 +58,8 @@ impl Renewal {
         self.signed_in
     }
     pub(super) fn observe(&mut self, reply: &Reply) {
-        if let Reply::Account {
-            signed_in,
-            pending,
-            expires_at,
-            error,
-            ..
-        } = reply
-        {
-            // A profile error preserves a confirmed session. An error alone
-            // cannot admit a new session or undo the reset before explicit logout.
-            self.signed_in = *signed_in
-                && !pending
-                && expires_at.is_some()
-                && (error.is_none() || self.signed_in);
+        if let Reply::Account { session, .. } = reply {
+            self.signed_in = *session == Session::SignedIn;
             // Pending polls never reset the hard floor or a definitive rejection.
         }
     }
@@ -190,8 +178,54 @@ impl Renewal {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn explicit_session_alone_controls_renewal_without_resetting_backoff() {
+        let mut renewal = Renewal::default();
+        let now = Instant::now();
+        let mut reply = account(false);
+        if let Reply::Account {
+            signed_in,
+            pending,
+            expires_at,
+            error,
+            ..
+        } = &mut reply
+        {
+            *signed_in = false;
+            *pending = true;
+            *expires_at = None;
+            *error = Some("presentation failure".into());
+        }
+        renewal.observe(&reply);
+        assert_eq!(renewal.claim(&policy(), 1000, now), Ok(()));
+        renewal.completed(RenewalOutcome::Transient);
+        for state in [Session::NeedsSignIn, Session::Pending, Session::SignedOut] {
+            if let Reply::Account { session, .. } = &mut reply {
+                *session = state;
+            }
+            renewal.observe(&reply);
+            assert_eq!(
+                renewal.claim(&policy(), 1000, now + MINUTE),
+                Err(Skip::NoSession)
+            );
+        }
+        if let Reply::Account { session, .. } = &mut reply {
+            *session = Session::SignedIn;
+        }
+        renewal.observe(&reply);
+        assert_eq!(
+            renewal.claim(&policy(), 1000, now + Duration::from_secs(59)),
+            Err(Skip::Backoff)
+        );
+        assert_eq!(renewal.claim(&policy(), 1000, now + MINUTE), Ok(()));
+    }
     fn account(pending: bool) -> Reply {
         Reply::Account {
+            session: if pending {
+                vantare_ipc::services_protocol::Session::Pending
+            } else {
+                vantare_ipc::services_protocol::Session::SignedIn
+            },
             signed_in: true,
             pending,
             expires_at: Some(900),
@@ -218,7 +252,10 @@ mod tests {
             *error = Some("servicio sin conexión".into());
         }
         renewal.observe(&reply);
-        assert_eq!(renewal.claim(&policy(), 1000, now), Err(Skip::NoSession));
+        assert!(
+            renewal.signed_in(),
+            "explicit Session survives presentation errors"
+        );
         renewal.observe(&account(false));
         renewal.observe(&reply);
         assert_eq!(renewal.claim(&policy(), 1000, now), Ok(()));
@@ -229,11 +266,13 @@ mod tests {
         );
         assert_eq!(renewal.claim(&policy(), 1000, now + MINUTE), Ok(()));
         if let Reply::Account {
+            session,
             signed_in,
             expires_at,
             ..
         } = &mut reply
         {
+            *session = Session::SignedOut;
             *signed_in = false;
             *expires_at = None;
         }

@@ -4,6 +4,225 @@ use super::*;
 use crate::Section;
 
 #[test]
+fn failed_email_and_cancel_restore_each_session_without_logout() {
+    use super::super::protocol::{EmailAction, EmailMode, EmailStage, Session};
+    gpui_platform::headless().run(|cx| {
+        for session in [Session::SignedOut, Session::SignedIn, Session::NeedsSignIn] {
+            for busy in [false, true] {
+                let file = crate::document::tests::File::new();
+                let (send, requests) = mpsc::sync_channel(8);
+                let remote = cx.new(|cx| fixture(cx, send, file.path.parent().expect("root")));
+                remote.update(cx, |remote, cx| {
+                    remote.access.observe(
+                        &Reply::Status {
+                            account_configured: true,
+                            message: String::new(),
+                        },
+                        false,
+                    );
+                    let mut account = session_reply("initial", 1);
+                    if let Reply::Account {
+                        session: current, ..
+                    } = &mut account
+                    {
+                        *current = session;
+                    }
+                    remote.complete(account.clone(), cx);
+                    let Reply::License { policy, .. } =
+                        license(vantare_ipc::control::CatalogAccess::Pro)
+                    else {
+                        unreachable!()
+                    };
+                    remote.observe_core_policy(policy.clone(), policy.checked_at_ms, cx);
+                    remote.select_email(EmailMode::SignInCode, cx);
+                    remote.request(
+                        Command::AccountEmail {
+                            action: EmailAction::Begin {
+                                mode: EmailMode::SignInCode,
+                                email: "pilot@example.invalid".into(),
+                                password: String::new(),
+                            },
+                        },
+                        cx,
+                    );
+                    assert!(matches!(
+                        requests.try_recv(),
+                        Ok(Command::AccountEmail { .. })
+                    ));
+                    if busy {
+                        remote.request(Command::AccountCancel, cx);
+                        assert!(requests.try_recv().is_err(), "wait for the abandoned reply");
+                    }
+                    remote.complete(
+                        Reply::Email {
+                            stage: EmailStage::Form,
+                            retry_after_seconds: 0,
+                            message: "failed login".into(),
+                            error: Some("fixture".into()),
+                        },
+                        cx,
+                    );
+                    if !busy {
+                        assert!(remote.requires_access(), "the failed form remains usable");
+                        assert_eq!(
+                            remote.session_notice().is_some(),
+                            session == Session::NeedsSignIn,
+                            "a failed form cannot fabricate SignedOut"
+                        );
+                        remote.request(Command::AccountCancel, cx);
+                    }
+                    assert!(matches!(requests.try_recv(), Ok(Command::AccountCancel)));
+                    assert!(remote.email.is_none());
+                    remote.complete(account, cx);
+                    remote.observe_core_policy(policy.clone(), policy.checked_at_ms, cx);
+                    assert_eq!(remote.requires_access(), session == Session::SignedOut);
+                    assert_eq!(
+                        remote.navigation_access().verified,
+                        session != Session::SignedOut
+                    );
+                    assert_eq!(
+                        remote.session_notice().is_some(),
+                        session == Session::NeedsSignIn
+                    );
+                    assert!(
+                        requests.try_recv().is_err(),
+                        "no Logout or extra HTTP command"
+                    );
+                });
+            }
+        }
+        crate::quit_headless_test(cx);
+    });
+}
+
+#[test]
+fn needs_sign_in_opens_provider_choices_and_hosted_cancel_keeps_access() {
+    use super::super::protocol::Session;
+    gpui_platform::headless().run(|cx| {
+        let file = crate::document::tests::File::new();
+        let (send, requests) = mpsc::sync_channel(8);
+        let remote = cx.new(|cx| fixture(cx, send, file.path.parent().expect("root")));
+        remote.update(cx, |remote, cx| {
+            remote.access.observe(
+                &Reply::Status {
+                    account_configured: true,
+                    message: String::new(),
+                },
+                false,
+            );
+            let mut reply = session_reply("NeedsSignIn", 1);
+            if let Reply::Account { session, .. } = &mut reply {
+                *session = Session::NeedsSignIn;
+            }
+            remote.complete(reply.clone(), cx);
+            remote.open_account_login(cx);
+            assert!(remote.requires_access());
+            assert!(remote.email.is_none(), "show Google/Discord/email choices");
+            remote.begin_access(cx); // Shared Google/Discord PKCE action.
+            assert!(matches!(requests.try_recv(), Ok(Command::AccountBegin)));
+            remote.request(Command::AccountCancel, cx);
+            let mut pending = session_reply("pending", 1);
+            if let Reply::Account { session, .. } = &mut pending {
+                *session = Session::Pending;
+            }
+            remote.complete(pending, cx);
+            assert!(matches!(requests.try_recv(), Ok(Command::AccountCancel)));
+            remote.complete(reply, cx);
+            let Reply::License { policy, .. } = license(vantare_ipc::control::CatalogAccess::Pro)
+            else {
+                unreachable!()
+            };
+            remote.observe_core_policy(policy.clone(), policy.checked_at_ms, cx);
+            assert!(!remote.requires_access());
+            assert!(remote.navigation_access().verified);
+            assert!(requests.try_recv().is_err());
+        });
+        crate::quit_headless_test(cx);
+    });
+}
+
+#[test]
+fn needs_sign_in_from_profile_keeps_hub_pages_and_shows_a_session_notice() {
+    gpui_platform::headless().run(|cx| {
+        let file = crate::document::tests::File::new();
+        let (send, requests) = mpsc::sync_channel(8);
+        let remote = cx.new(|cx| fixture(cx, send, file.path.parent().expect("root")));
+        remote.update(cx, |remote, cx| {
+            let Reply::License { policy, .. } = license(vantare_ipc::control::CatalogAccess::Pro)
+            else {
+                unreachable!()
+            };
+            remote.observe_core_policy(policy.clone(), policy.checked_at_ms, cx);
+            remote.access.observe(
+                &Reply::Status {
+                    account_configured: true,
+                    message: String::new(),
+                },
+                false,
+            );
+            remote.inflight = Inflight::Profile;
+            let mut reply = session_reply("Vuelve a iniciar sesión", 1);
+            if let Reply::Account {
+                session,
+                signed_in,
+                error,
+                ..
+            } = &mut reply
+            {
+                *session = super::super::protocol::Session::NeedsSignIn;
+                *signed_in = false;
+                *error = Some("authentication".into());
+            }
+            remote.complete(reply, cx);
+            assert!(!remote.requires_access());
+            assert!(remote.session_notice().is_some());
+            assert!(
+                remote.can_start_account_login(),
+                "Cuenta permite volver a entrar"
+            );
+            assert!(!remote.account.signed_in, "remote actions require login");
+            assert!(
+                remote.account.profile.is_some(),
+                "cached identity remains visible"
+            );
+            let access = remote.navigation_access();
+            assert!(access.verified);
+            for section in [
+                Section::Studio,
+                Section::Workshop,
+                Section::Launcher,
+                Section::Settings,
+            ] {
+                assert_eq!(access.lock(section), None);
+            }
+            assert!(requests.try_recv().is_err(), "no profile refresh loop");
+            remote.select_email(super::super::protocol::EmailMode::SignInCode, cx);
+            assert!(
+                remote.requires_access(),
+                "el gesto abre el formulario de acceso"
+            );
+            remote.complete(session_reply("Sesión iniciada", u64::MAX), cx);
+            assert!(remote.session_notice().is_none());
+            assert!(remote.account.signed_in);
+            assert!(!remote.can_start_account_login());
+            assert!(!remote.requires_access());
+            let mut needs_sign_in = session_reply("Vuelve a entrar", 1);
+            if let Reply::Account { session, .. } = &mut needs_sign_in {
+                *session = super::super::protocol::Session::NeedsSignIn;
+            }
+            remote.complete(needs_sign_in, cx);
+            remote.request(Command::Logout, cx);
+            assert!(matches!(requests.try_recv(), Ok(Command::Logout)));
+            assert!(
+                remote.requires_access(),
+                "Logout conserva el bloqueo antes del ACK"
+            );
+        });
+        crate::quit_headless_test(cx);
+    });
+}
+
+#[test]
 fn browser_failure_is_visible_and_retry_sends_one_fresh_login() {
     // TestPlatform mantiene el portapapeles en memoria; headless() de Windows
     // sigue usando el portapapeles del WinSta0 real y no sirve para esta prueba.
@@ -27,6 +246,7 @@ fn browser_failure_is_visible_and_retry_sends_one_fresh_login() {
             remote.begin_access(cx);
             assert!(matches!(requests.try_recv(), Ok(Command::AccountBegin)));
             let unavailable = Reply::Account {
+                session: vantare_ipc::services_protocol::Session::Pending,
                 copy_link: true,
                 profile: None,
                 signed_in: false,
@@ -416,6 +636,7 @@ fn profile_session_reply(profile: super::super::protocol::AccountProfile) -> Rep
 }
 fn session_reply(message: &str, expires_at: u64) -> Reply {
     Reply::Account {
+        session: vantare_ipc::services_protocol::Session::SignedIn,
         copy_link: false,
         profile: None,
         signed_in: true,
@@ -524,6 +745,7 @@ fn profile_refresh_preserves_rights_and_pending_reply_but_logout_clears_photo() 
             );
             remote.complete(
                 Reply::Account {
+                    session: vantare_ipc::services_protocol::Session::Pending,
                     copy_link: false,
                     signed_in: true,
                     profile: None,
@@ -539,6 +761,7 @@ fn profile_refresh_preserves_rights_and_pending_reply_but_logout_clears_photo() 
             assert!(matches!(requests.try_recv(), Ok(Command::AccountPoll)));
             remote.complete(
                 Reply::Account {
+                    session: vantare_ipc::services_protocol::Session::SignedIn,
                     copy_link: false,
                     signed_in: true,
                     profile: Some(profile),
@@ -567,6 +790,7 @@ fn profile_refresh_preserves_rights_and_pending_reply_but_logout_clears_photo() 
             assert!(matches!(requests.try_recv(), Ok(Command::Logout)));
             remote.complete(
                 Reply::Account {
+                    session: vantare_ipc::services_protocol::Session::SignedOut,
                     copy_link: false,
                     signed_in: false,
                     profile: None,
@@ -643,6 +867,7 @@ fn denied_policy_keeps_manual_retry_and_logout_without_granting_tools() {
                 assert!(requests.try_recv().is_err(), "un cierre de sesión");
                 remote.complete(
                     Reply::Account {
+                        session: vantare_ipc::services_protocol::Session::SignedOut,
                         copy_link: false,
                         profile: None,
                         signed_in: false,
@@ -686,7 +911,7 @@ fn slow_renewal_keeps_fresh_core_access_but_revocation_logout_and_missing_core_d
                 for now in (1000..=1000 + delay).step_by(500) {
                     policy.checked_at_ms = now;
                     remote.observe_core_policy(policy.clone(), now, cx);
-                    let access = remote.access.navigation(true, now);
+                    let access = remote.access.navigation(now);
                     assert!(remote.busy() && !remote.working());
                     assert!(access.verified);
                     assert_eq!(access.catalog, policy.catalog);
@@ -711,36 +936,34 @@ fn slow_renewal_keeps_fresh_core_access_but_revocation_logout_and_missing_core_d
                     cx,
                 );
                 assert!(
-                    remote.access.navigation(true, now).verified,
+                    remote.access.navigation(now).verified,
                     "reply tardío no pisa Feed"
                 );
                 assert!(matches!(requests.try_recv(), Ok(Command::AccountPoll)));
                 policy.error = Some("revocación definitiva QA".into());
                 remote.observe_core_policy(policy.clone(), now, cx);
-                assert!(!remote.access.navigation(true, now).verified);
+                assert!(!remote.access.navigation(now).verified);
                 policy.error = None;
                 remote.observe_core_policy(policy.clone(), now, cx);
-                assert!(remote.access.navigation(true, now).verified);
+                assert!(remote.access.navigation(now).verified);
                 remote.observe_core_policy(vantare_ipc::control::Policy::default(), now, cx);
-                assert!(
-                    !remote.access.navigation(true, now).verified,
-                    "núcleo ausente"
-                );
+                assert!(!remote.access.navigation(now).verified, "núcleo ausente");
                 remote.observe_core_policy(policy.clone(), now, cx);
                 assert!(
-                    !remote.access.navigation(true, now + 2000).verified,
+                    !remote.access.navigation(now + 2000).verified,
                     "TTL intacto"
                 );
                 remote.access.requested(&Command::Logout);
                 remote.observe_core_policy(policy, now, cx);
                 assert!(
-                    !remote.access.navigation(true, now).verified,
+                    !remote.access.navigation(now).verified,
                     "logout domina Feed"
                 );
                 // Otra sesión confirmada para el segundo caso del reloj simulado.
                 remote.access = access::State::from_build();
                 remote.access.observe(
                     &Reply::Account {
+                        session: vantare_ipc::services_protocol::Session::SignedIn,
                         copy_link: false,
                         profile: None,
                         signed_in: true,
@@ -966,6 +1189,7 @@ fn background_errors_logout_and_receipts_never_grant_access_or_lose_the_draft() 
             while requests.try_recv().is_ok() {}
             remote.complete(
                 Reply::Account {
+                    session: vantare_ipc::services_protocol::Session::SignedOut,
                     copy_link: false,
                     profile: None,
                     signed_in: false,

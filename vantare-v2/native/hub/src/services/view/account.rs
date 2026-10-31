@@ -249,7 +249,7 @@ impl Remote {
 
     fn account_identity(&self, cx: &mut Context<Self>) -> gpui::Div {
         let demo = account_demo();
-        let signed_in = self.account.signed_in;
+        let has_identity = self.access.session_known();
         let identity_actions = self.account_identity_actions(cx);
         orbit::hero_surface(cx)
             .flex_row()
@@ -300,9 +300,9 @@ impl Remote {
                         orbit::display(
                             if let Some(demo) = demo {
                                 &demo.user.full_name
-                            } else if signed_in && !self.profile_name().is_empty() {
+                            } else if has_identity && !self.profile_name().is_empty() {
                                 self.profile_name()
-                            } else if signed_in {
+                            } else if has_identity {
                                 "Cuenta conectada"
                             } else {
                                 "Sin sesión"
@@ -417,6 +417,8 @@ impl Remote {
                     "Estado",
                     if demo {
                         "Activo"
+                    } else if self.session_notice().is_some() {
+                        "Vuelve a iniciar sesión"
                     } else if signed_in {
                         "Conectada"
                     } else {

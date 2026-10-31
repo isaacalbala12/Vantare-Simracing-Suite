@@ -5876,3 +5876,43 @@ publicar. Regresión offline comprueba exclusión y normalización; se conserva
 el test de estados desconocidos. Rama vantareapp/isa-1717-roadmap-estado-interno
 desde origin/nightly 440f3f9a3. El documento respaldado del 15-oct permanece
 publicado y esta entrega no bloquea la reconstrucción Supabase #1713.
+
+
+<!-- isa1827-paso6b -->
+## VANTA-126 / #1827 — Paso 6b: gracia en pausa
+
+[PR draft #1835](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1835)
+a nightly, enlazado T3; entregar después del paso 6
+[PR draft #1834](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1834).
+Rama `vantareapp/isa-1827-paso6b-pausa`, base origin/nightly
+`127977532d30d692c9e9a53e5cd764add7907d4a`, código validado
+`f1f4cce2b9948fba80b36f150d95664ee158584a`. HEAD documental y CI vigentes
+se verifican en PR/#1827. Worktree `C:/VantareServer/wt/isa-1827-p6b`.
+Target autorizado `D:/VantareServer/targets/isa-1827-p6`, usado secuencialmente
+con el paso 6. Implementado/publicado como draft, sin merge ni integración.
+
+- Decisión 4 de ADR0102: Owner conserva gracia en Paused para la sesión live
+  ya activa; Host conserva su hora original de entrada. Pausar/reanudar no
+  concede ni amplía margen. No cambian protocolo, firma ni formato durable.
+- Reloj inyectado: pausa larga, reanudación, salida/cambio de sesión, replay,
+  Logout, fin exacto de gracia y caducidad de credencial durante pausa, y pausa
+  sin entrada live previa. Única fila cambiada: Paused, marcada «cambia en paso
+  6b». Todas las otras filas y las caracterizaciones de services están intactas.
+- Gates PASS: fmt; Clippy runtime all-targets -D warnings; Nextest ci con
+  telemetría 502/502, 7 omisiones preexistentes; lifecycle 13/13; focalizadas
+  17/17; quality/466 huellas. Tres mutaciones detectadas por aserción y
+  restauradas SHA-256 (Owner Paused, Host entrada, condición de mismo ID).
+  Todo Cargo por compilar.ps1. Evidencia `D:/VantareServer/evidence/isa-1827-p6b`.
+- Primer intento de suite: tres tests de procesos fallaron por el helper v16
+  residual del paso 6 en el target compartido. Se compiló services v15 de esta
+  base y se repitió la suite completa, sin modificar ni excluir tests. Logs
+  `nextest-ci-final.log`, `helper-v15-build.log`, `nextest-ci-matching-helper.log`.
+- ADR0102, diseño, BIL08, README runtime y changelog actualizados. Revisión
+  propia del diff completo y tres mutaciones; sin otra delegación (dos DeepSeek
+  de solo lectura ya usados en paso 6). Harness medium heredado.
+
+Project Vantare / area:licencias / In Review, sin milestone. Plane intacto.
+Sin merge, release, instalación, producción ni datos reales. No se afirma una
+prueba física de pausa del simulador. Siguiente: revisar ambos drafts y CI del
+HEAD vigente; aplicar orden 6 → 6b, sin autorizar promoción ni publicación.
+<!-- /isa1827-paso6b -->

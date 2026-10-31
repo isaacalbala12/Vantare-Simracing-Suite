@@ -146,23 +146,33 @@ impl Host {
     }
     pub fn publish(&self, snapshot: Arc<Snapshot>) {
         let previous = self.latest.load();
-        let live = is_live(&snapshot);
-        let same_session = previous.snapshot.state.session.id == snapshot.state.session.id;
-        let entered_at = if live {
-            if same_session {
-                previous.entered_at.or_else(|| Some(super::wall_now()))
-            } else {
-                Some(super::wall_now())
-            }
-        } else if snapshot.state.source_state == SourceState::Stale && same_session {
-            previous.entered_at
-        } else {
-            None
-        };
+        let entered_at = session_entry_time(&previous, &snapshot, super::wall_now());
         self.latest.store(Arc::new(Observed {
             snapshot,
             entered_at,
         }));
+    }
+}
+fn session_entry_time(
+    previous: &Observed,
+    snapshot: &Snapshot,
+    now: DateTime<Utc>,
+) -> Option<DateTime<Utc>> {
+    let same_session = previous.snapshot.state.session.id == snapshot.state.session.id;
+    if is_live(snapshot) {
+        if same_session {
+            Some(previous.entered_at.unwrap_or(now))
+        } else {
+            Some(now)
+        }
+    } else if same_session
+        && (snapshot.state.source_state == SourceState::Stale
+            || (snapshot.origin.source.kind == SourceKind::Live
+                && snapshot.state.source_state == SourceState::Paused))
+    {
+        previous.entered_at
+    } else {
+        None
     }
 }
 fn open_owner(
@@ -402,6 +412,82 @@ fn spawn_timer(
 #[cfg(test)]
 mod response_tests {
     use super::*;
+
+    #[test]
+    fn entry_time_survives_long_pause_and_resume_only_for_the_same_live_session() {
+        let start = chrono::DateTime::from_timestamp(1_790_900_000, 0).expect("fixture clock");
+        let mut snapshot = Snapshot::default();
+        snapshot.origin.source.kind = SourceKind::Live;
+        snapshot.state.session.id.0 = 47;
+        snapshot.state.source_state = SourceState::Live;
+        let mut previous = Observed {
+            snapshot: Arc::new(Snapshot::default()),
+            entered_at: None,
+        };
+        let entered = start + chrono::TimeDelta::seconds(5);
+        previous.entered_at = session_entry_time(&previous, &snapshot, entered);
+        previous.snapshot = Arc::new(snapshot.clone());
+        assert_eq!(previous.entered_at, Some(entered));
+        for (elapsed, state) in [
+            (10, SourceState::Paused),
+            (1800, SourceState::Paused),
+            (1801, SourceState::Live),
+            (2000, SourceState::Stale),
+            (4000, SourceState::Paused),
+        ] {
+            snapshot.state.source_state = state;
+            let retained = session_entry_time(
+                &previous,
+                &snapshot,
+                start + chrono::TimeDelta::seconds(elapsed),
+            );
+            assert_eq!(
+                retained,
+                Some(entered),
+                "no new entry time during pause/resume"
+            );
+            previous = Observed {
+                snapshot: Arc::new(snapshot.clone()),
+                entered_at: retained,
+            };
+        }
+        snapshot.state.session.id.0 += 1;
+        assert_eq!(
+            session_entry_time(&previous, &snapshot, start),
+            None,
+            "different paused session"
+        );
+        snapshot.state.session.id.0 -= 1;
+        snapshot.origin.source.kind = SourceKind::Replay;
+        assert_eq!(
+            session_entry_time(&previous, &snapshot, start),
+            None,
+            "replay cannot preserve a paused live entry"
+        );
+        snapshot.origin.source.kind = SourceKind::Live;
+        snapshot.state.source_state = SourceState::Waiting;
+        let ended = session_entry_time(&previous, &snapshot, start);
+        assert_eq!(ended, None);
+        previous = Observed {
+            snapshot: Arc::new(snapshot.clone()),
+            entered_at: ended,
+        };
+        snapshot.state.source_state = SourceState::Paused;
+        assert_eq!(
+            session_entry_time(&previous, &snapshot, start),
+            None,
+            "pause cannot create an entry"
+        );
+        snapshot.state.source_state = SourceState::Live;
+        assert_eq!(
+            session_entry_time(
+                &previous,
+                &snapshot,
+                start + chrono::TimeDelta::seconds(5000)
+            ),
+            Some(start + chrono::TimeDelta::seconds(5000))
+        );
+    }
 
     #[test]
     fn local_persistence_failure_is_not_an_authorization_rejection() {

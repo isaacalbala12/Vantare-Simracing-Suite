@@ -597,9 +597,11 @@ Cobertura complementaria ya existente y conservada:
 - [candidate_tests.rs](../../native/services/src/app/candidate_tests.rs):
   dispositivo y cuenta incompatibles, rechazo de disco y procedencia online.
 
-La fila `Paused` fija hoy la pérdida de gracia; `Stale` la conserva. El
-orquestador asignó su corrección al paso propio 6b, antes del refactor puro 7,
-y la fila lleva «cambia en paso 6b». No se corrige producto en el paso 0.
+La fila `Paused` del paso 0 fijaba la pérdida de gracia y llevaba «cambia en
+paso 6b». El paso 6b aplica la decisión 4: conserva el margen de la misma sesión
+live, igual que `Stale`, y Host mantiene la hora de entrada. Solo cambia esa
+fila: una pausa no inicia ni amplía la hora; salir de sesión, Logout y los
+vencimientos siguen retirando el acceso. El paso 7 conserva este resultado.
 Las filas User que revocan por renovación/refresh llevan «cambia en paso 5»;
 recovery solo online lleva «cambia en paso 1»; candidate apartado lleva
 «cambia en paso 8». La lápida futura conserva hoy el diagnóstico genérico

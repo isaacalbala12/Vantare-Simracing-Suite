@@ -24,16 +24,20 @@ area:licencias / In Review, sin milestone. Plane paraguas no se mueve.
   acceso/recovery/versiones intactos ante desconocidos; entrega creada/actualizada,
   replay manual y revocación válida anterior al estado desconocido. Se conserva
   el E2E sintético #1817 de firma, otra compra y eventos fuera de orden.
-- Local: 312 comparaciones de transición pura frente a la base y 10 filas v1 PASS
-  mediante Node 24 (sin dependencias). Quality/466 huellas y diff check PASS.
+- Local: 312 comparaciones de transición pura frente a la base, 10 filas v1,
+  133 combinaciones evento/payload y 22 decisiones de plazo sin diferencias PASS
+  mediante Node 24 (sin dependencias). Quality/466 huellas, fragmento y diff PASS.
   Evidencia: `D:/VantareServer/evidence/isa-1827-paso2/compare-lifecycle.mjs`.
-  Deno/PostgreSQL/PostgREST no están instalados; pruebas Edge/SQL y gate
-  `supabase-commercial-gates` pendientes de CI del HEAD final del PR. La primera
-  tanda Deno de esta rama pasó; no se extrapola a cambios posteriores. No se instalan herramientas.
+  Deno/PostgreSQL/PostgREST locales ausentes: Edge/SQL por CI, sin instalar herramientas.
+  Código revisado `62d3d621b`: Deno 221/221 PASS, run 41228224277.
+  Exigir también `supabase-commercial-gates` (PostgreSQL LF/CRLF). El HEAD final,
+  resultados y enlace de CI se registran y verifican en el PR y #1827;
+  no se extrapola un PASS anterior a cambios posteriores.
   Rust/lifecycle nativo/telemetría omitidos: no hay cambios nativos.
 - Bloqueo de seguimiento: el script actual rechaza `--comentario` sin estado.
   No se modifica Plane ni el script para sortearlo; inicio registrado en #1827.
-- Siguiente: PR draft a nightly, CI del HEAD final y revisión del orquestador.
+- Siguiente: revisión del orquestador del PR draft y sus checks sobre el HEAD
+  publicado; sigue siendo una rama de issue, sin canal de producto alcanzado.
   Sin merge, release, despliegue, producción, cuentas reales ni lectura de secretos.
   Ejecución con esfuerzo medium heredado; no se afirma high. Sin subagentes.
 

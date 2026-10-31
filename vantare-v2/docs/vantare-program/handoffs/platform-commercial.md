@@ -1,34 +1,73 @@
-## VANTA-105 / #1808, #1812, #1814 — Sesión y perfil (31-oct, en ejecución)
+## VANTA-105 / #1808, #1812, #1814 — Sesión y perfil (31-oct, listo para revisión final de #1808/#1812)
 
-Worker ejecutor en `vantareapp/isa-1808-sesion-perfil-recuperacion`, base nightly
-`55250c6f5658523a781aa648ece822cbc807ebd0` (#1811). Worktree propio
-`C:/VantareServer/wt/isa-1808`; target `D:/VantareServer/targets/isa-1808`.
-No cambia estado ni resumen de Plane VANTA-105.
+PR draft [#1821](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1821),
+rama `vantareapp/isa-1808-sesion-perfil-recuperacion`, código `07ba2276c`.
+Base nightly `55250c6f5658523a781aa648ece822cbc807ebd0` (#1811 integrado).
+Worktree `C:/VantareServer/wt/isa-1808`; target `D:/VantareServer/targets/isa-1808`.
+Project Vantare / area:licencias, sin milestone. Plane VANTA-105 no se modifica.
 
-- #1808: cuenta y metadata ilegibles pasan a cuarentena fechada, con bytes
-  conservados y tres copias salvo bloqueos de limpieza. E/S real o fallo de
-  renombrado se propagan. Logout guarda SignedOut sin descubrimiento OAuth ni
-  descifrar la sesión anterior, después del ACK durable de revocación.
-  El cambio de identidad conserva la invalidación previa al guardado nuevo.
-- #1812: toda lectura de perfil usa OAuth automático no destructivo; no decide
-  revocaciones ni logout. Se retira del test de acciones destructivas porque
-  es presentación, incluso desde un botón. Un error de perfil no apaga la
-  sesión ya confirmada del scheduler; un error no admite una sesión nueva ni
-  deshace el reset previo a Logout. No se amplía TTL ni gracia.
-- R12: account_conflict 409 se distingue de DeviceLimit; conserva los derechos
-  firmados y permite reintento automático. No se interpreta como permiso.
-- R11 sigue en #1799: el aviso recibido pero descartado requiere presentación
-  persistente separada en Hub. Se documenta sin duplicar la entrega de avisos.
-- #1814 bloqueada por contrato: license-credential.ts:276-289,583-599 excluye
-  recovery de la firma; online_capabilities contiene solo nombres, sin deadline.
-  Se pidió al orquestador decidir un lease firmado hasta recovery_until original,
-  negociación con clientes anteriores y política online/revocación/gracia.
-  No se concede desde arrays sin firma ni se inventa otra ventana de 72 h.
+- #1808: DPAPI/JSON ilegible de cuenta o metadata pasa a cuarentena fechada,
+  con bytes intactos y tres copias salvo bloqueos de limpieza. La E/S real o un
+  fallo de renombrado se propagan. Una cuenta ilegible empieza sin sesión; la
+  metadata pública se redescubre. Logout guarda SignedOut sin discovery ni
+  restaurar la sesión dañada, después del ACK durable de revocación. El login
+  de identidad nueva sigue invalidando derechos antes de persistirse.
+- #1812: toda lectura de perfil usa OAuth automático no destructivo, incluso
+  desde un botón. Se retira del test de comandos destructivos por ese motivo.
+  El scheduler conserva una sesión ya confirmada ante error de perfil; no
+  admite una sesión desde un error ni deshace el reset previo a Logout.
+- R12: account_conflict 409 tiene tipo propio en native-license, conserva la
+  firma y permite reintentar. DeviceLimit y rechazos explícitos siguen separados.
+  El spec del puente de datos conserva Conflict: bridge.rs sigue usando
+  Response::success; no se amplía ese otro contrato fuera de alcance.
+- R11 se documenta en [#1799](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1799#issuecomment-6536109895):
+  mostrar un aviso persistente separado en Hub queda para esa entrega.
+- #1814 sigue bloqueada: el backend excluye recovery de la firma y solo envía
+  nombres en online_capabilities, sin recovery_until. Se pidió al orquestador
+  decidir un lease firmado hasta el límite original, su negociación con clientes
+  anteriores y política online/revocación/gracia. No se concede desde arrays
+  sin firma ni se inventa otra ventana de 72 h.
 
-Regresiones y gates en curso, pendientes de verificar. Evidencia externa:
-`C:/VantareServer/evidence/isa-1808/`. Siguiente: finalizar fixtures, mutaciones,
-gates services/runtime y PR draft a nightly. Sin dependencias, backend real,
-instalación, producción, merge, promoción ni release.
+Regresiones actuales: login PKCE nuevo y reinicio tras corrupción real de DPAPI;
+E/S y rename bloqueados; cap3 y bytes conservados; perfil tanto POST /token como
+GET /userinfo con 400/401/403/429/503; scheduler con reloj inyectado y sin sleeps.
+La integración completa pasa por host::session, HTTP loopback con invalid_grant
+y núcleo/pipe/firma Pro reales: conserva Pro y el plazo original; al deadline
+inyectado el catálogo baja a Gratis. No confunde overlays_advanced con el plan.
+
+Se reutiliza test-support ya existente para compartir fixtures; no hay dependencia
+ni feature nueva. HTTP continúa rechazado por defecto incluso con ese feature;
+el test opta expresamente por loopback en una única instancia de App y comprueba
+el guard antes. No existe habilitación CLI/IPC/entorno para la app normal.
+La última tanda focal pasa 4/4. Revisión DeepSeek sobre ff56fd95d: expectativas
+antiguas de 409 y cuarentena corregidas, cobertura userinfo ampliada y cast de
+fixture sustituido por TryFrom, sin allow. Los ajustes posteriores del harness
+quedan para la revisión final del orquestador.
+
+Sobre código 07ba2276c pasan las nueve mutaciones de comportamiento y se
+verifica la restauración byte a byte de sus fuentes. Gates finales por la cola,
+target propio y jobs=2: fmt PASS; Clippy services/runtime --all-targets con
+-D warnings PASS; Nextest con telemetría 738/738 PASS, 13 omisiones existentes;
+lifecycle 13/13 PASS. Integridad retirada 466/466 y quality check PASS.
+CI sobre 07ba2276c: cinco checks verdes, incluido el gate nativo completo.
+La regresión del límite de cuarentenas antiguas dio cinco copias antes y tres
+después, con bytes recientes intactos. Diff completo revisado; sin dependencias,
+allow de lint ni cambios de baselines.
+
+Evidencia `C:/VantareServer/evidence/isa-1808/`: mutations.json (9/9),
+final-fmt.log, final-clippy.log, final-nextest-telemetry.log y
+final-lifecycle.log. Se conservan los fallos intermedios. Las regresiones nuevas
+usan reloj inyectado y sincronización, sin esperas temporizadas. Sin prueba con
+Clerk/cuentas reales por las restricciones del encargo; no se compila localmente
+Hub porque no se modifica. El resto de crates pasa por CI.
+
+#1808/#1812 pasan a In Review en Project Vantare; #1814 permanece Backlog,
+bloqueada por contrato. PR draft abierto hacia nightly, sin integrar. #1818 sigue
+abierto y origin/nightly sigue en 55250c6f5 al verificar la entrega; si se integra
+con conflicto, corresponde rebasar esta rama y repetir los gates afectados.
+Siguiente: revisión final del orquestador sobre el HEAD publicado del PR y
+decisión de contrato para #1814. Plane VANTA-105 permanece intacto.
+Sin backend real, instalación, producción, merge, promoción ni release.
 
 ## VANTA-105 / #1806 y #1807 — Autoridad y reloj (31-oct, por revisar)
 

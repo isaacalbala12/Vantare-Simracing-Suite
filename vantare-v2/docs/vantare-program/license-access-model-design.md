@@ -570,6 +570,7 @@ no son una implementación anticipada de este diseño.
 | Error remoto/origen → Error tipado, revocación, candidate y sesión | 34 | [services: characterization](../../native/services/src/app/tests/characterization.rs), `nightly_error_origin_effects_matrix` |
 | Error → resultado automático (incluido DeviceLimit) | 26 | mismo archivo, `nightly_automatic_failure_result_matrix` |
 | Logout/DeviceReset/TransferRights: ACK correcto/rechazado y efectos | 6 | mismo archivo, `nightly_explicit_revocation_and_transfer_matrix` |
+| DeviceReset: errores del puente/reset remoto y éxito | 11 | [services: reset](../../native/services/src/app/tests/characterization/reset.rs) |
 | normalizeGrants: fuentes, forma, plazo y recovery | 28 | [Deno: characterization](../../../supabase/functions/billing-webhook/license-access-characterization.test.ts) |
 | Estados de suscripción → transición y normalización de filas de fixture | 12 | mismo archivo Deno |
 

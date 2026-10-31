@@ -1,21 +1,43 @@
-## VANTA-126 / #1827 — Licencias paso 0 (31-oct, en curso)
+## VANTA-126 / #1827 — Licencias paso 0 (31-oct, por revisar)
 
-Encargo exclusivo de caracterización y documentación, sin cambiar producto.
-Base `origin/nightly` `a64df5c36b1d9435b29aa6c8fa251d97a5c1f161`, rama
+[PR draft #1828](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1828)
+hacia nightly, enlazado en T3. Solo tests y documentación, sin cambiar producto.
+Base `origin/nightly` `a64df5c36b1d9435b29aa6c8fa251d97a5c1f161`; rama
 `vantareapp/isa-1827-licencias-paso0`, worktree `C:/VantareServer/wt/isa-1827`,
-target `D:/VantareServer/targets/isa-1827`. Project Vantare / area:licencias,
-sin milestone. Plane VANTA-126 verificado En curso.
+target `D:/VantareServer/targets/isa-1827`. Código completo `2be5b4113a9a27710be817d2f787ae16a18cad92`;
+HEAD documental y CI vigentes en el PR y #1827. Project Vantare / area:licencias,
+sin milestone. Plane VANTA-126 pasa a Por revisar con el PR y resumen sencillo.
 
-- [Diseño versionado](../license-access-model-design.md), copia del análisis
-  aceptado; las preguntas de §4.6 quedan resueltas por #1827 y el
+- [Diseño completo versionado](../license-access-model-design.md), con índice
+  de matrices; conserva todos los párrafos del original, sin datos sensibles.
+  Las preguntas de §4.6 ya están resueltas por #1827 y el
   [ADR 0102](../../adr/0102-modelo-acceso-nativo.md), aceptado por el orquestador.
-- Matriz del núcleo con reloj inyectado: 21 filas, incluida tolerancia 300 s,
-  gracia/pausa, reanclaje, lápida futura, autoridad y marca dañadas.
-- Matrices de servicios y servidor en preparación. Se conserva el comportamiento
-  actual incluso donde cambiará en pasos 1/5/8; no se añade seam de producción.
-- Evidencia local `D:/VantareServer/evidence/isa-1827`. Siguiente: gates de
-  crates tocados y telemetría, Deno por CI, revisión del diff y PR draft a nightly.
-  Sin merge, release, despliegue, instalación ni datos reales.
+- 138 filas nuevas: núcleo 21, servicios 77 y servidor 40. Fijan el estado actual,
+  incluidas revocaciones manuales (cambian en paso 5), recovery solo online
+  (paso 1), candidate (paso 8) y diagnóstico genérico de lápida futura (paso 7).
+  No se añade seam de producción, dependencia ni cambio de formato.
+- Reloj inyectado, firmas de fixture, Store aislado, HTTP loopback y pipe.
+  Purchase usa el mismo comando automático en servicios; no se inventa un
+  tercer origen productivo. DeviceReset se prueba también contra respuestas
+  del puente/reset remoto y éxito. Las funciones Deno son reales; sus filas
+  efectivas son fixtures, no prueba de SQL/RLS o despliegue.
+- Gates por la cola: fmt PASS; Clippy runtime/services/ipc all-targets
+  `-D warnings` PASS (cubre check); Nextest scoped con telemetría **854/854 PASS**,
+  13 skips existentes; services final tras añadir DeviceReset **272/272 PASS**,
+  seis skips existentes; lifecycle **13/13 PASS**. No se repite telemetría por
+  añadir solo tests de services tras la tanda del núcleo.
+- Deno en CI **218/218 PASS**, incluidos 40 nuevos, sobre `2be5b4113`;
+  CI restante del HEAD final se consulta en el PR. Sin Deno local.
+  Quality check y retirada **466/466 PASS**. UTF-8/enlaces locales y conservación
+  íntegra del diseño comprobados; diff completo revisado.
+- Evidencia `D:/VantareServer/evidence/isa-1827`: nextest-ci.log,
+  services-final.log, clippy-final3.log, fmt-final.log y lifecycle.log.
+  Se conservan los fallos intermedios de Clippy (longitud/tipo complejo y
+  préstamo innecesario), corregidos sin allow ni rebajar gates; el doc-markdown
+  del test nuevo se corrigió antes de la tanda final.
+- Siguiente: el orquestador revisa PR/CI y decide integración. El paso 1 va en
+  issue/PR propios; no se empieza aquí. Sin prueba de cuentas reales, ejecución
+  del Hub, instalación, producción, merge, promoción ni release.
 
 ## VANTA-105 / #1810 — Candidate y admisión (31-oct, por revisar)
 

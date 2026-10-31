@@ -3,6 +3,8 @@
 Una firma válida no permite confiar en el dispositivo declarado por el propio
 candidate: se compara también con la huella actual. La caché de otro dispositivo
 va a cuarentena antes de Install, con `license-cache-device-mismatch`.
+Si la lectura local de la huella falla o queda vacía, el helper no decide:
+envía Install ordinario y deja verificar al núcleo. No aparta por ese fallo.
 
 Un rechazo explícito del núcleo aparta el candidate y retira su hint sin revocar
 el binding vigente. Un Read posterior permite admitir el helper con la política
@@ -16,7 +18,12 @@ emisión HTTP. Un InstallOnline recién obtenido y rechazado definitivamente se
 aparta también; la pérdida del ACK mantiene la recuperación ordinaria de #1811.
 Disco, cuarentena e hint nunca producen InstallOnline. Se conservan los bytes
 con el recorte habitual de tres archivos por nombre, best-effort si hay bloqueos.
+Si falla renombrar el candidate, registra `license-cache-quarantine-incomplete`,
+conserva sus bytes y continúa con Read; no concede esa caché ni invalida derechos.
+La API de storage conserva sus errores para los demás documentos y llamadores.
 El diagnóstico de lápida futura y su sondeo se siguen separadamente en #1822.
+El primer binding offline desde un candidate de otra cuenta del mismo PC se
+sigue en #1825; esta recuperación no establece un nuevo contrato de identidad.
 
 ## ISA-1808 / ISA-1812 — Recuperar cuenta y leer perfil sin revocar
 

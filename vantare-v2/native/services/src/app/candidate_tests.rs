@@ -99,6 +99,10 @@ fn assert_quarantined(app: &mut App, namespace: &Path, before: &[u8]) {
 
 #[test]
 fn previous_device_candidate_is_preserved_before_install_and_renewal_survives_restart() {
+    assert_eq!(
+        crate::license::CacheIssue::DeviceMismatch.diagnostic(),
+        "license-cache-device-mismatch"
+    );
     let device = crate::license::installation::legacy_fingerprint().expect("current device");
     let (old, old_keys) =
         crate::license_remote::tests::signed_fixture_named("previous-device", "old");
@@ -245,11 +249,10 @@ fn transient_cached_install_preserves_bytes_and_hint_without_replaying_http() {
         ],
     );
     app.attach_core(link);
-    match app.execute(Command::TransferRights) {
-        Err(Error::Core(vantare_ipc::control::Failure::Unavailable)) => {}
-        Ok(Reply::License { policy, .. }) => assert!(!policy.overlays_advanced),
-        other => panic!("uncertain cache must not grant rights: {other:?}"),
-    }
+    assert!(matches!(
+        app.execute(Command::TransferRights),
+        Err(Error::Core(vantare_ipc::control::Failure::Unavailable))
+    ));
     assert!(matches!(
         app.handle(Command::LicenseRenewAutomatic),
         Reply::LicenseFailure {
@@ -365,4 +368,110 @@ fn rejected_other_account_candidate_keeps_logout_reachable() {
     server.finish();
     drop(app);
     crate::cleanup_store(&root, CONTEXT, &[]);
+}
+
+#[test]
+fn helper_fingerprint_failure_defers_to_the_core_without_archiving_the_candidate() {
+    let lookups: [fn() -> crate::Result<String>; 3] = [
+        || Err(Error::Storage),
+        || Err(Error::Unsupported),
+        || Ok(String::new()),
+    ];
+    let device = crate::license::installation::legacy_fingerprint().expect("fixture device");
+    let (cached, keys) = crate::license_remote::tests::signed_fixture(&device);
+    for lookup in lookups {
+        for available in [false, true] {
+            let server = Server::start_observed(vec![]);
+            let (root, mut app) = fixture(&server, keys);
+            app.candidate_fingerprint = lookup;
+            save_candidate(&mut app, cached.clone(), true);
+            let directory = namespace(&root, &app);
+            let before = std::fs::read(directory.join("license-candidate.dpapi")).expect("fixture");
+            let steps = if available {
+                vec![CoreStep::Install]
+            } else {
+                vec![CoreStep::UnavailableInstall, CoreStep::Read]
+            };
+            let (link, core) = core_fixture(device.clone(), keys, steps);
+            app.attach_core(link);
+            let outcome = app.execute(Command::TransferRights);
+            if available {
+                assert!(matches!(outcome, Ok(Reply::License { .. })));
+            } else {
+                assert!(matches!(
+                    outcome,
+                    Err(Error::Core(vantare_ipc::control::Failure::Unavailable))
+                ));
+            }
+            assert_eq!(app.recovered_renewal_transfer, available);
+            assert_eq!(app.pending_renewal_transfer().expect("hint"), !available);
+            assert_eq!(
+                std::fs::read(directory.join("license-candidate.dpapi")).expect("preserved"),
+                before
+            );
+            assert!(archives(&directory).is_empty());
+            core.join().expect("core decides through ordinary Install");
+            assert!(server.finish_observed().is_empty());
+            drop(app);
+            crate::cleanup_store(&root, CONTEXT, &[]);
+        }
+    }
+}
+
+#[test]
+fn locked_candidate_quarantine_keeps_recovery_available_and_retries_after_unlock() {
+    use std::fs::OpenOptions;
+    use std::os::windows::fs::OpenOptionsExt;
+
+    let device = crate::license::installation::legacy_fingerprint().expect("fixture device");
+    for other_device in [false, true] {
+        let fingerprint = if other_device {
+            "previous-device"
+        } else {
+            &device
+        };
+        let (cached, keys) = crate::license_remote::tests::signed_fixture(fingerprint);
+        let server = Server::start_observed(vec![]);
+        let (root, mut app) = fixture(&server, keys);
+        save_candidate(&mut app, cached, true);
+        let directory = namespace(&root, &app);
+        let path = directory.join("license-candidate.dpapi");
+        let before = std::fs::read(&path).expect("fixture");
+        let locked = OpenOptions::new()
+            .read(true)
+            .share_mode(1)
+            .open(&path)
+            .expect("allow reads, deny rename");
+        let steps = if other_device {
+            vec![CoreStep::ReadLicensed, CoreStep::ReadLicensed]
+        } else {
+            vec![
+                CoreStep::RejectInstall,
+                CoreStep::ReadLicensed,
+                CoreStep::RejectInstall,
+                CoreStep::ReadLicensed,
+            ]
+        };
+        let (link, core) = core_fixture(device.clone(), keys, steps);
+        app.attach_core(link);
+        assert!(matches!(
+            app.execute(Command::TransferRights),
+            Ok(Reply::License { policy, .. }) if policy.overlays_advanced
+        ));
+        assert_eq!(std::fs::read(&path).expect("locked original"), before);
+        assert!(archives(&directory).is_empty());
+        assert!(!app.pending_renewal_transfer().expect("hint retired"));
+        assert!(!app.recovered_renewal_transfer);
+        drop(locked);
+        assert!(matches!(
+            app.execute(Command::TransferRights),
+            Ok(Reply::License { policy, .. }) if policy.overlays_advanced
+        ));
+        assert_quarantined(&mut app, &directory, &before);
+        core.join()
+            .expect("Read preserves existing rights, no invalidation");
+        assert!(server.finish_observed().is_empty());
+        drop(app);
+        crate::cleanup_store(&root, CONTEXT, &[]);
+    }
 }

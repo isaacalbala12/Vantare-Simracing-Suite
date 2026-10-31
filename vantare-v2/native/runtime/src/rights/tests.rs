@@ -2097,3 +2097,136 @@ fn future_logout_candidate_stays_rejected_after_the_wall_recovers_until_a_new_is
     drop(owner);
     clean(&root);
 }
+
+fn candidate_control_fixture(
+    root: &std::path::Path,
+    keys: String,
+    local_devices: Devices,
+) -> (host::Host, vantare_ipc::control::CoreLink) {
+    use vantare_ipc::control::{self, CoreLink};
+    let name = format!("candidate-{}", vantare_services::random_id().expect("pipe"));
+    let nonce = vantare_services::random_id().expect("nonce");
+    let pid = std::process::id();
+    let host = host::Host::start(
+        &name,
+        host::Options {
+            root: root.into(),
+            keys: Some(keys),
+            devices: local_devices,
+            epoch: 1,
+            nonce: Some(nonce.clone()),
+        },
+        move |peer, _| peer.pid == pid,
+    )
+    .expect("fixture host");
+    let link = CoreLink {
+        pipe: control::pipe_name(&name),
+        image: std::env::current_exe().expect("fixture image"),
+        nonce,
+    };
+    (host, link)
+}
+
+#[test]
+fn cached_clock_rejection_reaches_the_wire_but_online_clock_stays_unavailable() {
+    use vantare_ipc::control::{self, Command, Failure};
+    let root = test_root();
+    let now = wall_now();
+    let (current, current_keys) =
+        signed_v1_named(now.timestamp() + 30, vec![], devices().legacy, "current");
+    let (older, older_keys) =
+        signed_v1_named(now.timestamp() - 10, vec![], devices().legacy, "older");
+    let keys = format!("{current_keys},{older_keys}");
+    let mut owner = Owner::open(&root, Some(&keys), devices(), 1, now).expect("owner");
+    owner
+        .install(current, now, Duration::ZERO)
+        .expect("binding");
+    let authority = owner
+        .store
+        .load::<serde_json::Value>("authority")
+        .expect("authority");
+    let binding = owner
+        .store
+        .load::<serde_json::Value>("binding")
+        .expect("binding");
+    drop(owner);
+    let (host, link) = candidate_control_fixture(&root, keys.clone(), devices());
+    for (command, expected) in [
+        (
+            Command::Install {
+                credential: older.clone(),
+            },
+            Failure::Rejected,
+        ),
+        (
+            Command::InstallOnline { credential: older },
+            Failure::Unavailable,
+        ),
+    ] {
+        let error = control::request(&link, command).expect_err("older than latest_issued");
+        assert_eq!(Failure::classify(&error), expected);
+        assert!(control::request(&link, Command::Read).is_ok());
+    }
+    drop(host);
+    let store = Store::open(&root, "core-rights-v1").expect("fixture store");
+    assert_eq!(
+        store
+            .load::<serde_json::Value>("binding")
+            .expect("preserved"),
+        binding
+    );
+    let after = store
+        .load::<serde_json::Value>("authority")
+        .expect("preserved");
+    assert!(authority["clock"]["latest_issued"].is_string());
+    assert_eq!(
+        after["clock"]["latest_issued"],
+        authority["clock"]["latest_issued"]
+    );
+    drop(store);
+    clean(&root);
+}
+
+#[test]
+fn missing_core_fingerprint_is_unavailable_and_preserves_a_valid_binding() {
+    use vantare_ipc::control::{self, Command, Failure};
+    let now = wall_now();
+    let (credential, keys) = signed_v1(now.timestamp() - 1, vec![]);
+    for has_binding in [false, true] {
+        let root = test_root();
+        let mut owner = Owner::open(&root, Some(&keys), devices(), 1, now).expect("owner");
+        if has_binding {
+            owner
+                .install(credential.clone(), now, Duration::ZERO)
+                .expect("binding");
+        }
+        drop(owner);
+        let (host, link) = candidate_control_fixture(
+            &root,
+            keys.clone(),
+            Devices {
+                legacy: String::new(),
+                ..devices()
+            },
+        );
+        let error = control::request(
+            &link,
+            Command::Install {
+                credential: credential.clone(),
+            },
+        )
+        .expect_err("missing local identity");
+        assert_eq!(Failure::classify(&error), Failure::Unavailable);
+        let denied = control::request(&link, Command::Read).expect("available without rights");
+        assert!(!denied.overlays_advanced);
+        drop(host);
+        let mut restored =
+            Owner::open(&root, Some(&keys), devices(), 2, now).expect("identity restored");
+        assert_eq!(restored.binding.is_some(), has_binding);
+        restored
+            .install(credential.clone(), now, Duration::ZERO)
+            .expect("same credential remains valid");
+        drop(restored);
+        clean(&root);
+    }
+}

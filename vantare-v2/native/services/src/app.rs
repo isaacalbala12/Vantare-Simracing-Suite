@@ -34,6 +34,7 @@ pub struct App {
     pilot_identity: Option<crate::account::Identity>,
     recovered_renewal_transfer: bool,
     clock: fn() -> Result<u64>,
+    candidate_fingerprint: fn() -> Result<String>,
 }
 
 impl App {
@@ -61,6 +62,7 @@ impl App {
             pilot_identity: None,
             recovered_renewal_transfer: false,
             clock,
+            candidate_fingerprint: crate::license::installation::legacy_fingerprint,
         }
     }
 
@@ -142,15 +144,15 @@ impl App {
                             });
                         let issue = match issue {
                             None if self.config.license_keys.is_some() => {
-                                match crate::license::installation::legacy_fingerprint() {
-                                    Ok(device) if device != candidate.device => {
+                                match (self.candidate_fingerprint)() {
+                                    Ok(device)
+                                        if !device.is_empty() && device != candidate.device =>
+                                    {
                                         Some(crate::license::CacheIssue::DeviceMismatch)
                                     }
-                                    Ok(_) => None,
-                                    Err(Error::Unsupported) => {
-                                        Some(crate::license::CacheIssue::UnsupportedFormat)
-                                    }
-                                    Err(error) => return Err(error),
+                                    // A local lookup failure says nothing about the cache.
+                                    // Let the core verify its own device through Install.
+                                    Ok(_) | Err(_) => None,
                                 }
                             }
                             issue => issue,
@@ -243,8 +245,14 @@ impl App {
         self.recovered_renewal_transfer = false;
         self.candidate_store()?.remove("license-transfer-pending")?;
         let at = (self.clock)()?.saturating_mul(1000);
-        self.candidate_store()?
-            .quarantine_dated("license-candidate", at)?;
+        if let Err(error) = self
+            .candidate_store()?
+            .quarantine_dated("license-candidate", at)
+        {
+            // A rename failure cannot grant this cache or block recovery.
+            // Keep its bytes and let Read report the core's actual policy.
+            eprintln!("license-cache-quarantine-incomplete: {error:?}");
+        }
         eprintln!("{}", issue.diagnostic());
         self.core_command(vantare_ipc::control::Command::Read)
     }

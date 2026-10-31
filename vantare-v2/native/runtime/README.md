@@ -7,6 +7,8 @@ InstallOnline o del avance posterior a una instalación correcta sigue siendo
 transitorio; no se confunde una instalación durable con una caché rechazada.
 No cambian el contrato control v6, la tolerancia ±300 s, expiraciones ni lápidas.
 Solo el núcleo concede derechos verificados; admitir el helper no los concede.
+Una huella legacy local vacía produce indisponibilidad, no rechazo del candidate:
+se conserva la caché buena y el binding del disco para cuando vuelva la identidad.
 
 ## ISA-1812 — Error de perfil y sesión restaurada
 

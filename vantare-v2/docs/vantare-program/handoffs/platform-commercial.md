@@ -57,6 +57,8 @@ Revisión independiente posterior (orquestador, APPROVE WITH CHANGES, sin P0/P1)
 - Cancelación pendiente/en vuelo: proveedores y Cancel desactivados; estado
   Cancelando no interactivo y un solo AccountCancel, también detrás de otra
   petición. Logout explícito mantiene prioridad.
+- Errores de transporte de Logout/Cancel se procesan también fuera de Cuenta;
+  no dejan Cancelando atascado ni ocultan el reintento de cierre.
 - Se retira la rama else-if-false del test, se acota recv con timeout de fixture
   y se afirma Session exacta tras cancelar y tras el rechazo de refresh/perfil.
 - Focalizadas 61/61 PASS; cuatro mutaciones detectadas por aserción y restauradas

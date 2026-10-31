@@ -361,14 +361,20 @@ impl State {
                 self.manual.copied = false;
                 self.invalidate();
             }
-            Reply::Error { message } if account => {
+            Reply::Error { message }
+                if account || matches!(self.transition, Transition::Cancel | Transition::Logout) =>
+            {
                 self.login_requested = false;
                 if matches!(self.transition, Transition::Login | Transition::Cancel) {
                     self.transition = Transition::Idle;
                 }
                 // Un error genérico no confirma el fin del callback. Solo
                 // Account sin pending o un cierre definitivo consume el login.
-                self.error = Some(format!("No se pudo completar el acceso: {message}"));
+                self.error = Some(if self.logout_requested() {
+                    format!("No se pudo cerrar la sesión: {message}")
+                } else {
+                    format!("No se pudo completar el acceso: {message}")
+                });
             }
             _ => {}
         }

@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-1827",
+  "type": "fix",
+  "summary": "Un estado de suscripción desconocido queda pendiente de revisión sin cambiar el acceso existente.",
+  "technicalNotes": [
+    "Paso 2: webhook y reconciliación comparten la clasificación de estados y las reglas de plazo.",
+    "El snapshot revoked sigue revocando su fuente, como en #1817. Customer State salta solo la suscripción con estado desconocido y diagnostica unsupported_subscription_status; las demás siguen renovándose."
+  ],
+  "testing": [
+    "En un entorno de pruebas autorizado, comprobar revoked, una entrega repetida y un evento anterior; los derechos de otra compra deben conservarse.",
+    "Comprobar un estado desconocido: queda en cuarentena, conserva acceso y recuperación y no avanza la versión del recurso.",
+    "Con dos suscripciones del mismo cliente, enviar un estado desconocido en una y una renovación válida en la otra: se conserva la primera y se actualiza la segunda. Un producto desconocido sigue bloqueando el plan completo."
+  ],
+  "knownLimitations": [
+    "Este PR no despliega funciones. Las licencias ya firmadas conservan su plazo offline.",
+    "La función pura mantiene su fallback histórico; las rutas de ingestión filtran desconocidos antes de aplicar cambios."
+  ]
+}

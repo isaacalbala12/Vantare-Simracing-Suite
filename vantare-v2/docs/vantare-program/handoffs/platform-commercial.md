@@ -1,3 +1,59 @@
+## VANTA-126 / #1827 — Licencias paso 2 (31-oct, PR draft #1829)
+
+[PR draft #1829](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1829)
+a nightly, registrado en T3. Encargo del orquestador: estados del servidor. Rama
+`vantareapp/isa-1827-paso2-estados-suscripcion`, worktree
+`C:/VantareServer/wt/isa-1827-paso2`, base `origin/nightly`
+`7f4f16e98fc92fdfdae3e87c6e0e263be3f01784`. Project Vantare /
+area:licencias / In Review, sin milestone. Plane paraguas no se mueve.
+
+- Una tabla en `subscription-lifecycle.ts` clasifica los estados; webhook,
+  reconcile por páginas (a través del procesador) y Customer State la reutilizan.
+  La regla de plazo también tiene un solo dueño. Sin cambios en `_shared`,
+  `license-credential`, recuperación firmada, SQL, cliente ni dependencias.
+- Conserva #1817: `subscription.updated` con `revoked` revoca la fuente y cierra
+  recovery, con guardas de versión e idempotencia. `uncanceled` sigue siendo
+  un evento, no un estado admitido de snapshot; el alias puro `cancelled` se conserva.
+- Política: desconocidos en cuarentena, sin tocar grants, recovery o versión,
+  diagnóstico `unsupported_subscription_status`. Ya era la política del webhook
+  y reconcile por páginas. **Cambio conservador justificado:** Customer State
+  antes preparaba revocación por el fallback. Tras revisión del orquestador,
+  se salta **solo esa suscripción**, sin bloquear la renovación válida de otra.
+  Las barreras globales existentes, incluido `unknown_product`, se conservan.
+  Customer State usa `subscriptionSnapshotStatus`, igual que el webhook;
+  `uncanceled`/`cancelled` se cuarentenan como snapshots. El CLI registra todas
+  las incidencias solo como código + resourceId, sin cuenta ni payload.
+- Revisión profunda APPROVE WITH CHANGES, sin P0/P1: atendidos los cinco puntos.
+  Rebase sobre #1830; conflicto del handoff resuelto conservando ambos pasos.
+  La matriz v1 declara por separado transición pura y efectos de snapshot,
+  con cuarentena/preservación explícita para unknown y uncanceled. El worker
+  recorre sus diez filas sin traducir estados y observa la acción exacta
+  `open`/`close`/`none`; réplica/cuarentena no escriben lifecycle. Justificación
+  en ADR 0102. Test mixto unknown/uncanceled/cancelled + renovación válida,
+  réplica y control de producto desconocido. Comentado el límite entre
+  extracción de estado y allowlist de tipos de evento.
+- Regresiones: matriz v1 recorrida por reconcile, réplica (incluida cuarentena),
+  acceso/recovery/versiones intactos ante desconocidos; entrega creada/actualizada,
+  replay manual y revocación válida anterior al estado desconocido. Se conserva
+  el E2E sintético #1817 de firma, otra compra y eventos fuera de orden.
+- Local: 312 comparaciones de transición pura frente a la base, 10 filas v1,
+  133 combinaciones evento/payload y 22 decisiones de plazo sin diferencias PASS
+  mediante Node 24 (sin dependencias). Quality/466 huellas, fragmento y diff PASS.
+  Evidencia: `D:/VantareServer/evidence/isa-1827-paso2/compare-lifecycle.mjs`.
+  Deno/PostgreSQL/PostgREST locales ausentes: Edge/SQL por CI, sin instalar herramientas.
+  Evidencia anterior a la revisión: Deno 221/221 PASS, run 41228224277.
+  La revisión requiere CI nueva sobre el HEAD rebasado; no se reutiliza ese PASS.
+  Exigir también `supabase-commercial-gates` (PostgreSQL LF/CRLF). El HEAD final,
+  resultados y enlace de CI se registran y verifican en el PR y #1827;
+  no se extrapola un PASS anterior a cambios posteriores.
+  Rust/lifecycle nativo/telemetría omitidos: no hay cambios nativos.
+- Bloqueo de seguimiento: el script actual rechaza `--comentario` sin estado.
+  No se modifica Plane ni el script para sortearlo; inicio registrado en #1827.
+- Siguiente: revisión del orquestador del PR draft y sus checks sobre el HEAD
+  publicado; sigue siendo una rama de issue, sin canal de producto alcanzado.
+  Sin merge, release, despliegue, producción, cuentas reales ni lectura de secretos.
+  Ejecución con esfuerzo medium heredado; no se afirma high. Sin subagentes.
+
 ## VANTA-126 / #1827, #1815 — Paso 3: retirar emisión legacy (31-oct-2026)
 
 Rama `vantareapp/isa-1827-paso3-retirar-credential`, base nightly

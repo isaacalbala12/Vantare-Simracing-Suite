@@ -34,7 +34,11 @@ import {
   sanitizeWebhookErrorCode,
   type WebhookInbox,
 } from "./inbox.ts";
-import { deriveSubscriptionTransition } from "./subscription-lifecycle.ts";
+import {
+  deriveSubscriptionTransition,
+  subscriptionEventStatus,
+  subscriptionStatusRequiresPeriodEnd,
+} from "./subscription-lifecycle.ts";
 import {
   type SubscriptionLifecycleStore,
   SupabaseSubscriptionLifecycleStore,
@@ -325,45 +329,6 @@ async function touchCustomerIfPresent(
         nowIso,
       ),
   );
-}
-
-function subscriptionStatus(event: PolarWebhookEvent): string | null {
-  const fromType = event.type.slice("subscription.".length);
-  const knownStates = [
-    "incomplete",
-    "incomplete_expired",
-    "trialing",
-    "active",
-    "canceled",
-    "past_due",
-    "unpaid",
-    "revoked",
-  ];
-  if (fromType === "created" || fromType === "updated") {
-    const payloadStatus = asString(event.data.status)?.toLowerCase() ?? null;
-    if (payloadStatus && knownStates.includes(payloadStatus)) {
-      return payloadStatus;
-    }
-    return null;
-  }
-  return [
-      "active",
-      "canceled",
-      "uncanceled",
-      "past_due",
-      "revoked",
-    ].includes(fromType)
-    ? fromType
-    : null;
-}
-
-function subscriptionStatusRequiresPeriodEnd(
-  status: string,
-  cancelAtPeriodEnd: boolean,
-): boolean {
-  return status === "active" || status === "trialing" ||
-    status === "uncanceled" || status === "past_due" ||
-    (status === "canceled" && cancelAtPeriodEnd);
 }
 
 function grantsForConfig(
@@ -967,7 +932,7 @@ export async function applyPolarWebhookEvent(
       Number.isFinite(Date.parse(parsedPeriodEnd))
     ? new Date(parsedPeriodEnd).toISOString()
     : null;
-  const status = subscriptionStatus(event);
+  const status = subscriptionEventStatus(event.type, event.data.status);
   if (!status) {
     return { status: "ignored", reason: "unsupported_subscription_status" };
   }

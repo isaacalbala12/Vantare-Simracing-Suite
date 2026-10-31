@@ -1,7 +1,4 @@
-import {
-  assert,
-  assertEquals,
-} from "https://deno.land/std@0.224.0/assert/mod.ts";
+import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import {
   loadPolarProductMap,
   resolveCheckoutKeyByProductId,
@@ -32,8 +29,10 @@ type MatrixCase = {
   cancelAtPeriodEnd: boolean;
   periodEnd: string;
   previousPaidThrough: string | null;
-  expectedGrant: "active" | "revoked";
-  expectedRecovery: "open" | "close" | "none";
+  expectedTransition: {
+    grant: "active" | "revoked";
+    recovery: "open" | "close" | "none";
+  };
 };
 
 type LifecycleMatrix = {
@@ -64,7 +63,7 @@ function productMap() {
 Deno.test("BIL-09 lifecycle matrix: versioned subscription states fail closed", async () => {
   const matrix = await loadMatrix();
   assertEquals(matrix.schemaVersion, 1);
-  assert(matrix.subscriptionCases.length >= 9);
+  assertEquals(matrix.subscriptionCases.length, 10);
 
   for (const scenario of matrix.subscriptionCases) {
     const transition = deriveSubscriptionTransition({
@@ -79,12 +78,12 @@ Deno.test("BIL-09 lifecycle matrix: versioned subscription states fail closed", 
     });
     assertEquals(
       transition.commercialGrant.status,
-      scenario.expectedGrant,
+      scenario.expectedTransition.grant,
       `${scenario.id}: grant`,
     );
     assertEquals(
       transition.recovery.action,
-      scenario.expectedRecovery,
+      scenario.expectedTransition.recovery,
       `${scenario.id}: recovery`,
     );
   }

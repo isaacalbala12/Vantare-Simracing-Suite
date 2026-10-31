@@ -7,7 +7,11 @@ import {
   type CommercialResourceSnapshot,
   hashCommercialSnapshot,
 } from "./commercial-projection.ts";
-import { deriveSubscriptionTransition } from "./subscription-lifecycle.ts";
+import {
+  deriveSubscriptionTransition,
+  subscriptionSnapshotStatus,
+  subscriptionStatusRequiresPeriodEnd,
+} from "./subscription-lifecycle.ts";
 import type {
   SubscriptionLifecycleApply,
   SubscriptionLifecycleStore,
@@ -28,6 +32,7 @@ export type LocalCommercialResource = {
 
 export type ReconciliationIssue = {
   code:
+    | "unsupported_subscription_status"
     | "unknown_product"
     | "unknown_benefit"
     | "invalid_local_resource"
@@ -58,16 +63,6 @@ export interface ReconciliationStore {
     status: "applied" | "unchanged" | "quarantined";
     changed: number;
   }>;
-}
-
-function subscriptionStatusRequiresPeriodEnd(
-  status: string,
-  cancelAtPeriodEnd: boolean,
-): boolean {
-  const normalized = status.toLowerCase();
-  return normalized === "active" || normalized === "trialing" ||
-    normalized === "uncanceled" || normalized === "past_due" ||
-    (normalized === "canceled" && cancelAtPeriodEnd);
 }
 
 export async function buildReconciliationPlan(args: {
@@ -101,8 +96,16 @@ export async function buildReconciliationPlan(args: {
       });
       continue;
     }
+    const status = subscriptionSnapshotStatus(subscription.status);
+    if (!status) {
+      issues.push({
+        code: "unsupported_subscription_status",
+        resourceId: subscription.id,
+      });
+      continue;
+    }
     if (
-      subscription.status.toLowerCase() === "trialing" &&
+      status === "trialing" &&
       resolved.config.trial.enabled !== true
     ) {
       issues.push({
@@ -113,7 +116,7 @@ export async function buildReconciliationPlan(args: {
     }
     if (
       subscriptionStatusRequiresPeriodEnd(
-        subscription.status,
+        status,
         subscription.cancelAtPeriodEnd === true,
       ) && !subscription.currentPeriodEnd
     ) {
@@ -128,7 +131,7 @@ export async function buildReconciliationPlan(args: {
       local.resourceId === subscription.id
     );
     const transition = deriveSubscriptionTransition({
-      status: subscription.status,
+      status,
       cancelAtPeriodEnd: subscription.cancelAtPeriodEnd === true,
       currentPeriodEnd: subscription.currentPeriodEnd,
       remoteModifiedAt: subscription.modifiedAt,
@@ -319,7 +322,9 @@ export async function buildReconciliationPlan(args: {
     subscriptionLifecycles,
     preservedResourceIds,
     issues,
-    safeToApply: issues.length === 0,
+    // An uninterpreted subscription is preserved independently. Other existing
+    // plan-wide barriers (including unknown products) keep their semantics.
+    safeToApply: issues.every((issue) => issue.code === "unsupported_subscription_status"),
   };
 }
 

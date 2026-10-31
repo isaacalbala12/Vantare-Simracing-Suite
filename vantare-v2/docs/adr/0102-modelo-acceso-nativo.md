@@ -89,3 +89,23 @@ en soporte. Recuperación firmada concede como máximo la ventana contractual.
 El supervisor mantiene backoff y límites de peticiones al retirar candidate.
 La ejecución y evidencia de cada corte se registran en el
 [handoff comercial](../vantare-program/handoffs/platform-commercial.md).
+
+### Paso 2 — cuarentena por suscripción (revisión del orquestador, 31-oct-2026)
+
+Un estado de snapshot desconocido no concede ni revoca: se salta esa suscripción,
+conservando sus grants, recovery y versión, y se diagnostica
+`unsupported_subscription_status` con el identificador del recurso, sin datos de
+cuenta ni payload. Las otras suscripciones del mismo cliente siguen renovándose.
+Se mantienen las barreras globales existentes, incluido `unknown_product`.
+Customer State usa la misma clasificación de snapshot que el webhook:
+`uncanceled` es un nombre de evento y `cancelled` un alias histórico puro;
+ninguno se acepta como estado de snapshot.
+
+La matriz `lifecycle-matrix.v1.json` distingue `expectedTransition` (función pura
+histórica) de `expectedSnapshot` (efectos de ingestión). En el paso 2 la fila
+unknown pasa de la revocación hipotética del fallback a cuarentena con acceso y
+recovery conservados. La fila uncancel se envía sin traducir su estado: como
+snapshot se cuarentena; el webhook específico sigue admitido. El test del worker
+recorre las diez filas sin reescribir estados ni resultados; comprueba la acción
+exacta `open`/`close`/`none` cuando se aplica un lifecycle, y ninguna escritura
+en cuarentena o réplica. No cambia el fallback puro ni la forma de la licencia.

@@ -2,6 +2,8 @@ import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import {
   deriveSubscriptionTransition,
   isGrantActiveAt,
+  subscriptionSnapshotStatus,
+  subscriptionEventStatus,
   mergeRecoveryCycle,
   type SubscriptionLifecycleState,
 } from "./subscription-lifecycle.ts";
@@ -228,4 +230,19 @@ Deno.test("subscription lifecycle: incomplete_expired is revoked and closes reco
     validUntil: null,
   });
   assertEquals(transition.recovery, { action: "close" });
+});
+
+Deno.test("subscription classification: payload states stay distinct from event aliases", () => {
+  for (const status of ["incomplete", "incomplete_expired", "trialing", "active", "canceled", "past_due", "unpaid", "revoked"]) {
+    assertEquals(subscriptionSnapshotStatus(`  ${status.toUpperCase()} `), status);
+    assertEquals(subscriptionEventStatus("subscription.updated", status), status);
+    assertEquals(subscriptionEventStatus("subscription.created", status), status);
+  }
+  for (const status of [undefined, null, false, {}, "", "unknown", "constructor", "toString", "__proto__", "uncanceled", "cancelled"]) {
+    assertEquals(subscriptionSnapshotStatus(status), null);
+    assertEquals(subscriptionEventStatus("subscription.updated", status), null);
+  }
+  assertEquals(subscriptionEventStatus("subscription.uncanceled", "canceled"), "uncanceled");
+  assertEquals(subscriptionEventStatus("subscription.revoked", "active"), "revoked");
+  assertEquals(subscriptionEventStatus("order.paid", "active"), null);
 });

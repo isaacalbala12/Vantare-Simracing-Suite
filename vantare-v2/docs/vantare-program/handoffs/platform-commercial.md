@@ -1,3 +1,88 @@
+## VANTA-105 / #1808, #1812, #1814 — Sesión y perfil (31-oct, listo para revisión final de #1808/#1812)
+
+PR draft [#1821](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1821),
+rama `vantareapp/isa-1808-sesion-perfil-recuperacion`, código rebasado `71593191c`.
+Base nightly `be32a312584b99c23d1612cad04c523dd827a27f` (#1818 y #1811 integrados).
+Worktree `C:/VantareServer/wt/isa-1808`; target `D:/VantareServer/targets/isa-1808`.
+Project Vantare / area:licencias, sin milestone. Plane VANTA-105 no se modifica.
+
+- #1808: DPAPI/JSON ilegible de cuenta o metadata pasa a cuarentena fechada,
+  con bytes intactos y tres copias salvo bloqueos de limpieza. La E/S real o un
+  fallo de renombrado se propagan al restaurar; en Logout son best-effort con
+  diagnóstico tipado y no bloquean el tombstone SignedOut obligatorio. Una cuenta ilegible empieza sin sesión; la
+  metadata pública se redescubre. Logout guarda SignedOut sin discovery ni
+  restaurar la sesión dañada, después del ACK durable de revocación. El login
+  de identidad nueva sigue invalidando derechos antes de persistirse.
+- #1812: toda lectura de perfil usa OAuth automático no destructivo, incluso
+  desde un botón. Se retira del test de comandos destructivos por ese motivo.
+  El scheduler conserva una sesión ya confirmada ante error de perfil; no
+  admite una sesión desde un error ni deshace el reset previo a Logout.
+- R12: account_conflict 409 tiene tipo propio en native-license, conserva la
+  firma y permite reintentar. Producto acepta reintentos automáticos indefinidos
+  con backoff hasta 15 minutos; el aviso persistente va con #1799. DeviceLimit
+  y rechazos explícitos siguen separados.
+  El spec del puente de datos conserva Conflict: bridge.rs sigue usando
+  Response::success; no se amplía ese otro contrato fuera de alcance.
+- R11 se documenta en [#1799](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1799#issuecomment-6536109895):
+  mostrar un aviso persistente separado en Hub queda para esa entrega.
+- #1814 queda fuera de RC9 por decisión del orquestador y pasa a la revisión
+  de diseño de licencias tras RC9. El backend excluye recovery de la firma y
+  solo envía nombres en online_capabilities, sin recovery_until. No se concede
+  desde arrays sin firma ni se inventa otra ventana de 72 h. La representación
+  del lease, negociación y reglas online/revocación/gracia quedan para diseño.
+
+Regresiones actuales: login PKCE nuevo y reinicio tras corrupción real de DPAPI;
+E/S y rename bloqueados; cap3 y bytes conservados; perfil tanto POST /token como
+GET /userinfo con 400/401/403/429/503; scheduler con reloj inyectado y sin sleeps.
+La integración completa pasa por host::session, HTTP loopback con invalid_grant
+y núcleo/pipe/firma Pro reales: conserva Pro y el plazo original; al deadline
+inyectado el catálogo baja a Gratis. No confunde overlays_advanced con el plan.
+
+Se reutiliza test-support ya existente para compartir fixtures; no hay dependencia
+ni feature nueva. HTTP continúa rechazado por defecto incluso con ese feature;
+el test opta expresamente por loopback en una única instancia de App y comprueba
+el guard antes. No existe habilitación CLI/IPC/entorno para la app normal.
+La revisión profunda del orquestador sobre 07ba2276c fue APPROVE WITH CHANGES,
+sin P0/P1 y sin rutas automáticas de revocación o logout. Se aplica la corrección
+de logout parcial: lectura/rename/limpieza bloqueados no impiden SignedOut,
+y un bloqueo del save sí informa error (handles share_mode y Session reales).
+Se conserva la aserción de E/S de authority en storage tras el rebase.
+Todos los now() de App usan el reloj inyectado, con regresión de AccountRenew.
+Un fallo de perfil no pide iniciar sesión mientras siga autenticada. Reintentar
+perfil vacío desde Hub queda documentado en [#1823](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1823),
+Project Vantare / Backlog / area:licencias: no hay backoff de perfil reutilizable;
+quitar el default sin estado/deadline/admisión en tick crearía una cadena HTTP.
+No se toca Hub ni se amplía RC9 para introducir ese scheduler cosmético.
+
+Sobre código 71593191c pasan las trece mutaciones de comportamiento y se
+verifica la restauración byte a byte de sus fuentes. Gates finales por la cola,
+target propio y jobs=2: fmt PASS; Clippy services/runtime --all-targets con
+-D warnings PASS; Nextest con telemetría 751/751 PASS, 13 omisiones existentes;
+lifecycle 13/13 PASS. Integridad retirada 466/466 y quality check PASS.
+La CI del HEAD publicado se verifica en el PR antes de comunicar la entrega.
+La regresión del límite de cuarentenas antiguas dio cinco copias antes y tres
+después, con bytes recientes intactos. Diff completo revisado; sin dependencias,
+allow de lint ni cambios de baselines.
+
+Evidencia `C:/VantareServer/evidence/isa-1808/`: mutations.json (13/13),
+final-fmt.log, final-clippy.log, final-nextest-telemetry.log y
+final-lifecycle.log. Se conservan los fallos intermedios. Las regresiones nuevas
+usan reloj inyectado y sincronización, sin esperas temporizadas. Sin prueba con
+Clerk/cuentas reales por las restricciones del encargo; no se compila localmente
+Hub porque no se modifica. El resto de crates pasa por CI.
+
+#1808/#1812 permanecen In Review en Project Vantare; #1814 permanece Backlog,
+fuera de RC9. PR draft abierto hacia nightly, sin integrar. Rebase sobre #1818:
+App conserva InstallOnline solo tras HTTP nuevo y verificado, Install ordinario
+para caché/hint y barrera online_recovery_required; perfil Automatic y logout
+sin discovery se mantienen. Se preservan ambos handoffs. El test de storage
+conserva la nueva authority denegada/marca durable y la cuarentena fechada de
+account. La revisión profunda del orquestador sobre 07ba2276c queda atendida con los
+arreglos anteriores y el seguimiento autorizado #1823.
+Siguiente: entregar al orquestador el HEAD rebasado cuando CI esté verde;
+diseño de #1814 después de RC9. #1823 conserva el seguimiento cosmético. Plane VANTA-105 permanece intacto.
+Sin backend real, instalación, producción, merge, promoción ni release.
+
 ## VANTA-105 / #1806 y #1807 — Autoridad y reloj (31-oct, por revisar)
 
 Worker encargado por el orquestador, rama `vantareapp/isa-1806-autoridad-reloj`,

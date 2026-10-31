@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-1812",
+  "type": "fix",
+  "summary": "Un fallo al actualizar el perfil ya no cierra la sesión ni retira una licencia válida.",
+  "technicalNotes": [
+    "El perfil usa el refresco automático no destructivo y conserva el scheduler de renovación.",
+    "Una inconsistencia de cuenta 409 conserva la licencia firmada y permite reintentar."
+  ],
+  "testing": [
+    "Simular invalid_grant, 401/403 y fallos transitorios de perfil con una licencia vigente: conservar el acceso hasta su fecha firmada."
+  ],
+  "knownLimitations": [
+    "La recuperación técnica de pago de 72 h (#1814) queda fuera de RC9 y pasa a diseño de licencias tras RC9.",
+    "La presentación persistente de avisos automáticos sigue en #1799."
+  ]
+}

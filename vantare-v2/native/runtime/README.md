@@ -1,3 +1,11 @@
+## ISA-1812 — Error de perfil y sesión restaurada
+
+El scheduler confirma sesión con un reply de cuenta correcto. Un error de
+perfil conserva esa sesión ya confirmada sin reiniciar el backoff; no admite
+una sesión nueva desde un error. SignedOut explícito sigue retirando la
+admisión de renovación, y el reset previo a Logout no se deshace por un error.
+La licencia conserva su fecha firmada, con las reglas de autoridad existentes.
+
 ## ISA-1803 — Renovación antes del vencimiento, también en carrera
 
 La renovación empieza una hora antes del plazo firmado; reintentos 1/2/4/8/15

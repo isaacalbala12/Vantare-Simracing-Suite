@@ -78,7 +78,12 @@ impl Renewal {
             ..
         } = reply
         {
-            self.signed_in = *signed_in && !pending && expires_at.is_some() && error.is_none();
+            // A profile error preserves a confirmed session. An error alone
+            // cannot admit a new session or undo the reset before explicit logout.
+            self.signed_in = *signed_in
+                && !pending
+                && expires_at.is_some()
+                && (error.is_none() || self.signed_in);
             // Pending polls never reset the hard floor or a definitive rejection.
         }
     }
@@ -215,6 +220,40 @@ mod tests {
             checked_at_ms: 1000,
             ..Policy::default()
         }
+    }
+    #[test]
+    fn profile_error_keeps_session_and_renewal_admission_until_explicit_logout() {
+        let mut renewal = Renewal::default();
+        let now = Instant::now();
+        let mut reply = account(false);
+        if let Reply::Account { error, .. } = &mut reply {
+            *error = Some("servicio sin conexión".into());
+        }
+        renewal.observe(&reply);
+        assert_eq!(renewal.claim(&policy(), 1000, now), Err(Skip::NoSession));
+        renewal.observe(&account(false));
+        renewal.observe(&reply);
+        assert_eq!(renewal.claim(&policy(), 1000, now), Ok(()));
+        renewal.observe(&reply);
+        assert_eq!(
+            renewal.claim(&policy(), 1000, now + Duration::from_secs(59)),
+            Err(Skip::Backoff)
+        );
+        assert_eq!(renewal.claim(&policy(), 1000, now + MINUTE), Ok(()));
+        if let Reply::Account {
+            signed_in,
+            expires_at,
+            ..
+        } = &mut reply
+        {
+            *signed_in = false;
+            *expires_at = None;
+        }
+        renewal.observe(&reply);
+        assert_eq!(
+            renewal.claim(&policy(), 1000, now + MINUTE * 2),
+            Err(Skip::NoSession)
+        );
     }
     #[test]
     fn restored_session_claims_once_and_pending_polls_cannot_reset_the_floor() {

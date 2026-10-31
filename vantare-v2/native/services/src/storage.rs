@@ -153,6 +153,23 @@ impl Store {
         serde_json::from_slice(&bytes).map_err(|_| Error::Corrupt)
     }
 
+    /// Only known corruption is recoverable; failed reads or quarantine stay errors.
+    pub fn restore_cache<T: DeserializeOwned>(
+        &self,
+        name: &str,
+        at_millis: u64,
+    ) -> Result<Option<T>> {
+        match self.load_cache(name) {
+            Ok(value) => Ok(Some(value)),
+            Err(Error::NotFound) => Ok(None),
+            Err(Error::Corrupt) => {
+                self.quarantine_dated(name, at_millis)?;
+                Ok(None)
+            }
+            Err(error) => Err(error),
+        }
+    }
+
     /// Recuperación de JSON inválido o excesivo; los errores de E/S se propagan.
     pub fn load_for_restore<T: DeserializeOwned>(&self, name: &str) -> Result<Option<T>> {
         let bytes = match self.load_bytes(name) {
@@ -231,6 +248,7 @@ impl Store {
 
     fn trim_quarantines(&self, name: &str, newest: &Path) -> Result<()> {
         let prefix = format!("{name}-");
+        let legacy = format!("{name}.corrupto");
         let mut archives = Vec::new();
         for entry in fs::read_dir(&self.root).map_err(|_| Error::Storage)? {
             let entry = entry.map_err(|_| Error::Storage)?;
@@ -238,21 +256,26 @@ impl Store {
             let Some(file_name) = file_name.to_str() else {
                 continue;
             };
-            let Some(rest) = file_name
-                .strip_prefix(&prefix)
-                .and_then(|n| n.strip_suffix(".corrupto"))
-            else {
-                continue;
+            // Older restores used a fixed name or an undated random ID. Count
+            // those owned formats as oldest, so upgrades keep the same cap.
+            let time = if file_name == legacy {
+                0
+            } else {
+                let Some(rest) = file_name
+                    .strip_prefix(&prefix)
+                    .and_then(|n| n.strip_suffix(".corrupto"))
+                else {
+                    continue;
+                };
+                let (time, id) = rest.split_once('-').unwrap_or(("0", rest));
+                let Ok(time) = time.parse::<u64>() else {
+                    continue;
+                };
+                if id.len() != 64 || !id.bytes().all(|b| b.is_ascii_hexdigit()) {
+                    continue;
+                }
+                time
             };
-            let Some((time, id)) = rest.split_once('-') else {
-                continue;
-            };
-            let Ok(time) = time.parse::<u64>() else {
-                continue;
-            };
-            if id.len() != 64 || !id.bytes().all(|b| b.is_ascii_hexdigit()) {
-                continue;
-            }
             let kind = entry.file_type().map_err(|_| Error::Storage)?;
             if kind.is_file() && !kind.is_symlink() {
                 archives.push((time, entry.path()));
@@ -347,6 +370,74 @@ pub fn unprotect(bytes: &[u8], _: &str) -> Result<Zeroizing<Vec<u8>>> {
 #[cfg(all(test, windows))]
 mod tests {
     use super::*;
+
+    #[test]
+    fn account_cache_corruption_is_preserved_capped_and_io_still_blocks() {
+        use std::os::windows::fs::OpenOptionsExt;
+        let (root, store) = crate::test_store("account-cache-recovery");
+        for name in ["account", "oauth-metadata"] {
+            let path = store.path(name).expect("fixture path");
+            fs::write(store.root.join(format!("{name}.corrupto")), b"legacy fixed")
+                .expect("legacy archive");
+            fs::write(
+                store.root.join(format!(
+                    "{name}-{}.corrupto",
+                    crate::random_id().expect("fixture id")
+                )),
+                b"legacy unique",
+            )
+            .expect("legacy unique archive");
+            for at in 1..=4 {
+                fs::write(&path, [u8::try_from(at).expect("fixture byte"); 16])
+                    .expect("unreadable DPAPI fixture");
+                assert_eq!(store.restore_cache::<serde_json::Value>(name, at), Ok(None));
+            }
+            let archives: Vec<_> = fs::read_dir(&store.root)
+                .expect("namespace")
+                .flatten()
+                .filter(|entry| {
+                    entry
+                        .file_name()
+                        .to_string_lossy()
+                        .starts_with(&format!("{name}-"))
+                        || entry.file_name().to_string_lossy() == format!("{name}.corrupto")
+                })
+                .map(|entry| fs::read(entry.path()).expect("preserved bytes"))
+                .collect();
+            assert_eq!(archives.len(), 3);
+            for at in 2..=4 {
+                assert!(archives.contains(&vec![at; 16]));
+            }
+            fs::write(&path, b"unreadable fixture").expect("fixture");
+            // Actual access failure is not corruption and cannot move the original.
+            let locked = OpenOptions::new()
+                .read(true)
+                .share_mode(0)
+                .open(&path)
+                .expect("read lock");
+            assert_eq!(
+                store.restore_cache::<serde_json::Value>(name, 5),
+                Err(Error::Storage)
+            );
+            drop(locked);
+            assert_eq!(fs::read(&path).expect("original"), b"unreadable fixture");
+            // A failed rename also blocks recovery, preserving the original bytes.
+            let locked = OpenOptions::new()
+                .read(true)
+                .share_mode(1)
+                .open(&path)
+                .expect("rename lock");
+            assert_eq!(
+                store.restore_cache::<serde_json::Value>(name, 5),
+                Err(Error::Storage)
+            );
+            drop(locked);
+            assert_eq!(fs::read(&path).expect("original"), b"unreadable fixture");
+            assert_eq!(store.restore_cache::<serde_json::Value>(name, 5), Ok(None));
+        }
+        drop(store);
+        crate::cleanup_store(&root, "account-cache-recovery", &[]);
+    }
 
     #[test]
     fn quarantine_cleanup_failure_does_not_undo_a_successful_cache_move() {
@@ -564,7 +655,20 @@ mod tests {
                 assert_eq!(fs::read(archived.path()).expect("archive bytes"), original);
             } else {
                 assert!(!path.exists());
-                assert!(store.root.join(format!("{name}.corrupto")).exists());
+                let archives: Vec<_> = fs::read_dir(&store.root)
+                    .expect("namespace")
+                    .flatten()
+                    .filter(|entry| {
+                        let file_name = entry.file_name();
+                        let file_name = file_name.to_string_lossy();
+                        file_name == format!("{name}.corrupto")
+                            || (name == "account"
+                                && file_name.starts_with("account-")
+                                && file_name.ends_with(".corrupto"))
+                    })
+                    .map(|entry| fs::read(entry.path()).expect("preserved archive"))
+                    .collect();
+                assert_eq!(archives, vec![original]);
             }
         }
         drop(store);

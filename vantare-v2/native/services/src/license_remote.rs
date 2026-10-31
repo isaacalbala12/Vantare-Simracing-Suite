@@ -84,11 +84,12 @@ pub fn renew(
         struct Rejected {
             error: String,
         }
-        if response
-            .json::<Rejected>()
-            .is_ok_and(|rejected| rejected.error == "device_limit")
-        {
-            return Err(Error::DeviceLimit);
+        if let Ok(rejected) = response.json::<Rejected>() {
+            match rejected.error.as_str() {
+                "device_limit" => return Err(Error::DeviceLimit),
+                "account_conflict" => return Err(Error::AccountConflict),
+                _ => {}
+            }
         }
     }
     let response = response.success()?;

@@ -1,3 +1,35 @@
+## ISA-1808 / ISA-1812 — Recuperar cuenta y leer perfil sin revocar
+
+Cuenta y metadata OAuth usan lectura de caché: DPAPI/JSON ilegible se aparta
+con bytes intactos y fecha inyectada, hasta tres copias por documento salvo
+bloqueos de limpieza. También cuentan las copias de los dos formatos antiguos,
+que se retiran antes que las copias fechadas recientes. Un fallo real de lectura o renombrado sigue siendo error.
+La metadata pública se redescubre; una cuenta ilegible empieza sin sesión.
+Logout conserva el ACK durable de revocación, pero escribe SignedOut sin
+redescubrir OAuth ni restaurar primero la sesión dañada. Una identidad nueva
+sigue invalidando derechos anteriores antes de persistirse. En Logout la lectura,
+cuarentena y limpieza del perfil son best-effort con diagnóstico tipado: el
+ACK durable y el guardado de SignedOut siguen siendo obligatorios. Un error
+cosmético no deja una sesión restaurable tras haber revocado sus derechos.
+
+AccountProfileRefresh es presentación y usa siempre OAuth automático: ni un
+invalid_grant ni un 401/403 revocan la licencia, borran candidate o cierran la
+sesión. AccountRenew, Logout y rechazo explícito de licencia conservan sus
+reglas. account_conflict 409 indica inconsistencia, no revocación: se conserva
+la firma anterior y se permite reintentar; DeviceLimit sigue separado.
+El feature existente test-support permite compartir el HTTP loopback y el
+host::session de fixtures entre crates. Activarlo no abre HTTP por defecto:
+solo la instancia de App que el test habilita expresamente admite 127.0.0.1.
+No hay opción CLI/IPC ni variable de ejecución que lo habilite. La distribución
+mantiene HTTPS y las trust roots reales; el test integrado comprueba el guard
+por defecto antes de usar su instancia local.
+Los caminos de App, incluido AccountRenew, usan el reloj inyectado. Un fallo
+de perfil conserva la sesión y su texto no pide iniciar sesión de nuevo. El
+reintento de perfil en Hub queda en #1823: requiere admisión por temporizador
+y backoff propios para evitar la cadena inmediata de peticiones.
+No cambia formato IPC, firma, TTL ni gracia. Recovery 72 h (#1814), fuera de RC9, requiere aún
+un plazo autenticado firmado: online_capabilities no concede derechos locales.
+
 ## ISA-1803 — Recuperación del transporte (services v15 / control v5)
 
 Timeout, EOF, peer cerrado, identidad, protocolo, versión y rechazo tienen

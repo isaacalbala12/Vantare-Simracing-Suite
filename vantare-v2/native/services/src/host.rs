@@ -157,6 +157,56 @@ pub fn serve(_: &Options, _: impl FnMut(Command) -> Reply) -> Result<()> {
     Err(Error::Unsupported)
 }
 
+#[cfg(any(test, feature = "test-support"))]
+#[doc(hidden)]
+pub fn fixture_request(app: &mut crate::app::App, command: Command) -> Reply {
+    use std::io::{Cursor, Read, Write};
+    struct Wire {
+        input: Cursor<Vec<u8>>,
+        output: Vec<u8>,
+    }
+    impl Read for Wire {
+        fn read(&mut self, bytes: &mut [u8]) -> std::io::Result<usize> {
+            self.input.read(bytes)
+        }
+    }
+    impl Write for Wire {
+        fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+            self.output.write(bytes)
+        }
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+    let mut input = Vec::new();
+    protocol::write(
+        &mut input,
+        &Request {
+            version: protocol::VERSION,
+            sequence: 1,
+            nonce: "fixture".into(),
+            command,
+        },
+    )
+    .expect("request frame");
+    let mut wire = Wire {
+        input: Cursor::new(input),
+        output: Vec::new(),
+    };
+    assert_eq!(
+        session(
+            &mut wire,
+            "fixture",
+            || false,
+            |command| app.handle(command)
+        ),
+        Ok(Exit::Disconnected)
+    );
+    protocol::read::<Response>(&mut wire.output.as_slice())
+        .expect("response frame")
+        .reply
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

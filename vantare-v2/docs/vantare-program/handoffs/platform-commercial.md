@@ -26,8 +26,9 @@ con #1833 ya integrado. Rama `vantareapp/isa-1827-paso6-sesion`, worktree
   «AccountCancel no revoca»; services añade la observación pública de Session. El núcleo sigue intacto.
   Evidencia: `D:/VantareServer/evidence/isa-1827-p6/characterization-delta.json`.
 - Clippy all-targets de services/runtime/ipc/hub -D warnings PASS (incluye
-  check); lifecycle 13/13 PASS; quality/466 huellas PASS. Nextest ci con
-  telemetría y mutaciones pendientes. Primer intento de Nextest: faltaba el
+  check); lifecycle previo 13/13 PASS; quality/466 huellas PASS. Siete mutaciones
+  detectadas por aserción y restauradas SHA-256; mutación de prioridad Logout,
+  suite final ci con telemetría y lifecycle final pendientes. Primer intento de Nextest: faltaba el
   binario de fixture vantare-storage; preparado con DuckDB de desarrollo ya
   instalado, sin cambiar ni excluir la prueba. Fallo conservado en nextest-ci.log.
 - README de los cuatro crates, ADR 0102, BIL-08 y fragmento actualizados.
@@ -38,7 +39,10 @@ con #1833 ya integrado. Rama `vantareapp/isa-1827-paso6-sesion`, worktree
 - Revisión DeepSeek opencode-go/deepseek-v4.1-flash max de solo lectura completada.
   Hallazgos tratados: cancelación sin Logout (autorizada por el orquestador),
   fallo del formulario, proveedores, fixture v16, diagnóstico TransferRights y
-  prueba real del AccountPoll del supervisor. Un peer antiguo que cierre el pipe
+  prueba real del AccountPoll del supervisor. Segunda ronda: P1 de Cancel durante
+  Logout corregido antes de preparar estado/cola; Cancel no sustituye ni oculta
+  su ACK fallido. Prueba GPUI en cierre directo, detrás de perfil y detrás de login.
+  Sin tercera delegación (límite autorizado: dos). Un peer antiguo que cierre el pipe
   sin responder aún puede dar error de transporte genérico, siempre transitorio. Harness ejecutor medium heredado; no se afirma high.
 - Siguiente: terminar gates/mutaciones y PR draft a nightly; después el paso 6b
   en otra rama/PR. Sin merge, promoción, release, instalación ni producción.

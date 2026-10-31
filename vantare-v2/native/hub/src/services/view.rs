@@ -690,14 +690,18 @@ impl Remote {
         kind: Option<Inflight>,
         cx: &mut Context<Self>,
     ) {
+        // Cancellation only abandons login. It cannot supersede an explicit
+        // Logout or hide its durable-ACK failure, including when queued.
+        if matches!(command, Command::AccountCancel)
+            && (self.access.logout_requested()
+                || matches!(self.queued, Some(Command::Logout))
+                || matches!(self.account.cancel_command, Some(Command::Logout)))
+        {
+            return cx.notify();
+        }
         let email_command = matches!(command, Command::AccountEmail { .. });
         self.prepare_account_command(&command, cx);
         if self.inflight.background() {
-            if matches!(self.queued, Some(Command::Logout))
-                && matches!(command, Command::AccountCancel)
-            {
-                return cx.notify();
-            }
             if self.queued.is_none() || matches!(command, Command::Logout | Command::AccountCancel)
             {
                 self.queued = Some(command);

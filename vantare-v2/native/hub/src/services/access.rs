@@ -216,6 +216,10 @@ impl State {
         matches!(self.session, Session::SignedIn | Session::NeedsSignIn)
     }
 
+    pub(super) fn logout_requested(&self) -> bool {
+        self.transition == Transition::Logout
+    }
+
     pub(super) fn observe_core_policy(&mut self, policy: vantare_ipc::control::Policy) {
         if self.transition == Transition::Idle && !self.login_requested && self.session_known() {
             self.policy = Some(policy);
@@ -631,7 +635,9 @@ impl Remote {
             body = body.child(self.email_view(cx));
         } else if waiting || checking {
             body = body.child(orbit::text(
-                if waiting {
+                if self.access.logout_requested() {
+                    "Cerrando sesión…"
+                } else if waiting {
                     "Continúa en tu navegador…"
                 } else {
                     "Comprobando sesión…"
@@ -641,7 +647,7 @@ impl Remote {
                 orbit::ink_2(cx),
                 cx,
             ));
-            if waiting {
+            if waiting && !self.access.logout_requested() {
                 body = body.child(self.access_cancel_button("Cancelar", cx));
             }
         } else {

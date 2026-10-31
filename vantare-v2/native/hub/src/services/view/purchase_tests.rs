@@ -4,6 +4,69 @@ use super::*;
 use crate::Section;
 
 #[test]
+fn cancel_cannot_hide_a_failed_logout_in_flight_or_queued() {
+    gpui_platform::headless().run(|cx| {
+        // Direct Logout, queued behind profile, and queued behind login.
+        for mode in 0..3 {
+            let file = crate::document::tests::File::new();
+            let (send, requests) = mpsc::sync_channel(8);
+            let remote = cx.new(|cx| fixture(cx, send, file.path.parent().expect("root")));
+            remote.update(cx, |remote, cx| {
+                remote.access.observe(
+                    &Reply::Status {
+                        account_configured: true,
+                        message: String::new(),
+                    },
+                    false,
+                );
+                let account = session_reply("initial", 1);
+                remote.complete(account.clone(), cx);
+                match mode {
+                    1 => remote.inflight = Inflight::Profile,
+                    2 => {
+                        remote.request(Command::AccountBegin, cx);
+                        assert!(matches!(requests.try_recv(), Ok(Command::AccountBegin)));
+                    }
+                    _ => {}
+                }
+                remote.request(Command::Logout, cx);
+                remote.request(Command::AccountCancel, cx);
+                assert!(remote.access.logout_requested());
+                assert!(remote.requires_access());
+                if mode != 0 {
+                    assert!(requests.try_recv().is_err(), "wait for previous reply");
+                    remote.complete(account.clone(), cx);
+                }
+                assert!(matches!(requests.try_recv(), Ok(Command::Logout)));
+                // A second Cancel while Logout itself is in flight is ignored.
+                remote.request(Command::AccountCancel, cx);
+                assert!(remote.account.cancel_command.is_none());
+                assert!(remote.access.logout_requested());
+                let mut failed = account;
+                if let Reply::Account { error, .. } = &mut failed {
+                    *error = Some("fixture core unavailable".into());
+                }
+                remote.complete(failed, cx);
+                assert!(remote.account.signed_in, "services did not ACK logout");
+                assert!(remote.requires_access(), "logout barrier remains");
+                assert!(!remote.navigation_access().verified);
+                assert!(
+                    remote
+                        .home_access()
+                        .1
+                        .is_some_and(|error| { error.contains("No se pudo cerrar la sesión") })
+                );
+                assert!(
+                    requests.try_recv().is_err(),
+                    "no AccountCancel hides the failure"
+                );
+            });
+        }
+        crate::quit_headless_test(cx);
+    });
+}
+
+#[test]
 fn failed_email_and_cancel_restore_each_session_without_logout() {
     use super::super::protocol::{EmailAction, EmailMode, EmailStage, Session};
     gpui_platform::headless().run(|cx| {

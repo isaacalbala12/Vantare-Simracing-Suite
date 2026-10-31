@@ -3,6 +3,8 @@ use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
 use ed25519_dalek::{Signer, SigningKey};
 use vantare_services::license::{Capability, ClaimsV1, ClaimsV2};
 
+mod characterization;
+
 fn signed(expiry: i64, issued: i64) -> (String, String) {
     signed_modules(
         expiry + 7200,

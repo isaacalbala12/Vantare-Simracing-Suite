@@ -1,3 +1,22 @@
+## VANTA-126 / #1827 — Licencias paso 0 (31-oct, en curso)
+
+Encargo exclusivo de caracterización y documentación, sin cambiar producto.
+Base `origin/nightly` `a64df5c36b1d9435b29aa6c8fa251d97a5c1f161`, rama
+`vantareapp/isa-1827-licencias-paso0`, worktree `C:/VantareServer/wt/isa-1827`,
+target `D:/VantareServer/targets/isa-1827`. Project Vantare / area:licencias,
+sin milestone. Plane VANTA-126 verificado En curso.
+
+- [Diseño versionado](../license-access-model-design.md), copia del análisis
+  aceptado; las preguntas de §4.6 quedan resueltas por #1827 y el
+  [ADR 0102](../../adr/0102-modelo-acceso-nativo.md), aceptado por el orquestador.
+- Matriz del núcleo con reloj inyectado: 21 filas, incluida tolerancia 300 s,
+  gracia/pausa, reanclaje, lápida futura, autoridad y marca dañadas.
+- Matrices de servicios y servidor en preparación. Se conserva el comportamiento
+  actual incluso donde cambiará en pasos 1/5/8; no se añade seam de producción.
+- Evidencia local `D:/VantareServer/evidence/isa-1827`. Siguiente: gates de
+  crates tocados y telemetría, Deno por CI, revisión del diff y PR draft a nightly.
+  Sin merge, release, despliegue, instalación ni datos reales.
+
 ## VANTA-105 / #1810 — Candidate y admisión (31-oct, por revisar)
 
 Worker asignado por el orquestador después de #1818. Rama

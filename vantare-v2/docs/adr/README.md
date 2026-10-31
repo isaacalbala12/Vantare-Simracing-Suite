@@ -26,3 +26,4 @@ Leer el estado, las enmiendas y el ámbito de cada decisión. Un ADR propuesto n
 
 - [ADR 0099: Arquitectura Rust nativa](0099-arquitectura-rust-nativa.md) — vigente.
 - [ADR 0101: Widgets, una proyección y varios Looks](0101-widgets-looks-common-state.md) — vigente (#1531 integrado).
+- [ADR 0102: Modelo de acceso nativo](0102-modelo-acceso-nativo.md) — aceptado por el orquestador; implementación por pasos en #1827.

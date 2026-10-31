@@ -76,6 +76,12 @@ impl App {
         self.core = Some(core);
     }
 
+    /// Explicit per-instance fixture opt-in; unavailable to CLI/IPC or distribution.
+    #[cfg(feature = "test-support")]
+    pub fn enable_loopback_for_test(&mut self) {
+        self.http.enable_loopback_for_test();
+    }
+
     fn candidate_store(&mut self) -> Result<&Store> {
         if self.license_store.is_none() {
             let context = crate::license_remote::candidate_context(

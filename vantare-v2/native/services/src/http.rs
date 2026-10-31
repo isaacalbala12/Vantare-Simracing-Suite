@@ -10,6 +10,8 @@ pub const RESPONSE_LIMIT: u64 = 64 * 1024;
 
 pub struct Http {
     agent: ureq::Agent,
+    // False in ordinary builds, including builds with test-support enabled.
+    loopback_for_test: bool,
 }
 
 pub struct Response {
@@ -56,20 +58,25 @@ impl Default for Http {
                 .http_status_as_error(false)
                 .build()
                 .into(),
+            loopback_for_test: cfg!(test),
         }
     }
 }
 
 impl Http {
-    fn validate_url(url: &Url) -> Result<()> {
+    #[cfg(feature = "test-support")]
+    pub(crate) fn enable_loopback_for_test(&mut self) {
+        self.loopback_for_test = true;
+    }
+
+    fn validate_url(&self, url: &Url) -> Result<()> {
         if !url.username().is_empty() || url.password().is_some() || url.fragment().is_some() {
             return Err(Error::Unconfigured);
         }
         if url.scheme() == "https" {
             return Ok(());
         }
-        #[cfg(test)]
-        if url.scheme() == "http" && url.host_str() == Some("127.0.0.1") {
+        if self.loopback_for_test && url.scheme() == "http" && url.host_str() == Some("127.0.0.1") {
             return Ok(());
         }
         Err(Error::Unconfigured)
@@ -122,7 +129,7 @@ impl Http {
     }
 
     pub fn get(&self, url: &Url, bearer: Option<&str>, anon: Option<&str>) -> Result<Response> {
-        Self::validate_url(url)?;
+        self.validate_url(url)?;
         let mut request = self.agent.get(url.as_str());
         if let Some(token) = bearer {
             request = request.header("Authorization", format!("Bearer {token}"));
@@ -135,13 +142,13 @@ impl Http {
 
     /// Página pública sin credenciales ni cabeceras propias, con su propio tope.
     pub fn get_page(&self, url: &Url, limit: u64) -> Result<Response> {
-        Self::validate_url(url)?;
+        self.validate_url(url)?;
         Self::read_limited(self.agent.get(url.as_str()).call(), limit)
     }
 
     /// Foto pública sin credenciales: presupuesto menor que el login y sin redirects.
     pub(crate) fn profile_image(&self, url: &Url) -> Result<Response> {
-        Self::validate_url(url)?;
+        self.validate_url(url)?;
         Self::read(
             self.agent
                 .get(url.as_str())
@@ -159,7 +166,7 @@ impl Http {
         bearer: Option<&str>,
         anon: Option<&str>,
     ) -> Result<Response> {
-        Self::validate_url(url)?;
+        self.validate_url(url)?;
         let bytes = serde_json::to_vec(body).map_err(|_| Error::Protocol)?;
         if bytes.len() > REQUEST_LIMIT {
             return Err(Error::TooLarge);
@@ -178,7 +185,7 @@ impl Http {
     }
 
     pub fn post_form(&self, url: &Url, fields: &[(&str, &str)]) -> Result<Response> {
-        Self::validate_url(url)?;
+        self.validate_url(url)?;
         Self::read(
             self.agent
                 .post(url.as_str())
@@ -193,7 +200,7 @@ impl Http {
         fields: &[(&str, &str)],
         client: Option<&str>,
     ) -> Result<Response> {
-        Self::validate_url(url)?;
+        self.validate_url(url)?;
         let mut url = url.clone();
         url.query_pairs_mut().append_pair("_is_native", "true");
         let mut request = self.agent.post(url.as_str());
@@ -210,7 +217,7 @@ impl Http {
         bearer: &str,
         anon: &str,
     ) -> Result<Response> {
-        Self::validate_url(url)?;
+        self.validate_url(url)?;
         if bytes.is_empty() || bytes.len() > crate::report::screenshots::MAX_BYTES {
             return Err(Error::TooLarge);
         }

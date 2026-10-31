@@ -1,14 +1,17 @@
 use super::*;
 
 #[test]
-fn missing_profile_failure_preserves_real_binding_and_scheduled_renewal() {
-    // Cross-crate services is built without cfg(test): loopback HTTP is rejected
-    // before networking. services::app tests exercise actual invalid_grant/401/403
-    // via host::session; this fixture checks the real signed core and scheduler
-    // after a presentation failure, with no production backend or TLS bypass.
-    let mut config = vantare_services::config::BuildConfig::load();
-    config.supabase = Some("http://127.0.0.1:9/".parse().expect("fixture URL"));
-    let base = config.supabase.expect("fixture URL");
+fn missing_profile_oauth_rejection_preserves_real_binding_and_scheduled_renewal() {
+    let server = vantare_services::test_http::Server::start_observed(vec![(
+        400,
+        r#"{"error":"invalid_grant"}"#.into(),
+    )]);
+    let base = server.base.clone();
+    // Enabling test-support alone never changes the default HTTP guard.
+    assert!(matches!(
+        vantare_services::http::Http::default().get(&base, None, None),
+        Err(vantare_services::Error::Unconfigured)
+    ));
     let root = std::env::temp_dir().join(format!(
         "vt-profile-{}",
         vantare_services::random_id().expect("fixture")
@@ -83,6 +86,7 @@ fn missing_profile_failure_preserves_real_binding_and_scheduled_renewal() {
     let mut app =
         vantare_services::app::App::with_clock(config, root.join("services"), || Ok(1000));
     app.attach_core(link.clone());
+    app.enable_loopback_for_test();
     let signing: SigningIn = Arc::new(Mutex::new(None));
     let mut state = State::default();
     // Hub confirms the restored account before chaining its missing-profile read.
@@ -100,7 +104,7 @@ fn missing_profile_failure_preserves_real_binding_and_scheduled_renewal() {
         &mut state,
         Command::AccountProfileRefresh,
         &signing,
-        |_, command| app.handle(command),
+        |_, command| vantare_services::host::fixture_request(&mut app, command),
     );
     assert!(matches!(
         reply,
@@ -111,6 +115,9 @@ fn missing_profile_failure_preserves_real_binding_and_scheduled_renewal() {
             ..
         }
     ));
+    let requests = server.finish_observed();
+    assert_eq!(requests.len(), 1, "exactly one rejected refresh, no replay");
+    assert!(requests[0].starts_with("POST /token "));
     let after =
         control::request(&link, control::Command::Read).expect("rights after profile failure");
     assert!(after.overlays_advanced);

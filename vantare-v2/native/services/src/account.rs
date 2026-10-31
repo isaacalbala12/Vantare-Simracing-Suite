@@ -364,7 +364,7 @@ impl Account {
         self.profile.as_ref()
     }
 
-    /// Acción explícita tras editar en el portal; no renueva la licencia.
+    /// Perfil de presentación; App decide el origen del refresco OAuth previo.
     pub fn refresh_profile(&mut self, http: &Http, now: u64, store: &Store) -> Result<()> {
         let info: UserInfo = http
             .get(&self.oauth.userinfo, Some(self.bearer(now)?), None)?

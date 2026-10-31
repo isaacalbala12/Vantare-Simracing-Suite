@@ -13,6 +13,12 @@ invalid_grant ni un 401/403 revocan la licencia, borran candidate o cierran la
 sesión. AccountRenew, Logout y rechazo explícito de licencia conservan sus
 reglas. account_conflict 409 indica inconsistencia, no revocación: se conserva
 la firma anterior y se permite reintentar; DeviceLimit sigue separado.
+El feature existente test-support permite compartir el HTTP loopback y el
+host::session de fixtures entre crates. Activarlo no abre HTTP por defecto:
+solo la instancia de App que el test habilita expresamente admite 127.0.0.1.
+No hay opción CLI/IPC ni variable de ejecución que lo habilite. La distribución
+mantiene HTTPS y las trust roots reales; el test integrado comprueba el guard
+por defecto antes de usar su instancia local.
 No cambia formato IPC, firma, TTL ni gracia. Recovery 72 h (#1814) requiere aún
 un plazo autenticado firmado: online_capabilities no concede derechos locales.
 

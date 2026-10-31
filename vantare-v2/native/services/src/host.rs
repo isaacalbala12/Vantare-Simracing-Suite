@@ -157,8 +157,9 @@ pub fn serve(_: &Options, _: impl FnMut(Command) -> Reply) -> Result<()> {
     Err(Error::Unsupported)
 }
 
-#[cfg(test)]
-pub(crate) fn fixture_request(app: &mut crate::app::App, command: Command) -> Reply {
+#[cfg(any(test, feature = "test-support"))]
+#[doc(hidden)]
+pub fn fixture_request(app: &mut crate::app::App, command: Command) -> Reply {
     use std::io::{Cursor, Read, Write};
     struct Wire {
         input: Cursor<Vec<u8>>,

@@ -65,8 +65,9 @@ pub fn random_id() -> Result<String> {
     Ok(text)
 }
 
-#[cfg(all(test, feature = "network"))]
-mod test_http;
+#[cfg(all(any(test, feature = "test-support"), feature = "network"))]
+#[doc(hidden)]
+pub mod test_http;
 
 #[cfg(all(test, any(windows, unix)))]
 fn test_store(context: &str) -> (std::path::PathBuf, storage::Store) {

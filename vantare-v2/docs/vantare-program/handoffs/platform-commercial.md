@@ -1,51 +1,52 @@
 <!-- isa1827-paso6 -->
-## VANTA-126 / #1827 — Paso 6: sesión explícita (worker, validación en curso)
+## VANTA-126 / #1827 — Paso 6: sesión explícita y cancelación sin revocar
 
-Project Vantare / area:licencias / In Review, sin milestone. Encargo del
-orquestador; Plane intacto. Base `origin/nightly@127977532d30d692c9e9a53e5cd764add7907d4a`
-con #1833 ya integrado. Rama `vantareapp/isa-1827-paso6-sesion`, worktree
+Project Vantare / area:licencias / In Review, sin milestone. Plane intacto.
+[PR draft #1834](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1834)
+a nightly; enlazado en T3. Base `127977532d30d692c9e9a53e5cd764add7907d4a`.
+Código validado `7f76a74a3835149721135650ae7d1d9ead326008`; HEAD documental y
+CI vigentes en PR/#1827. Rama `vantareapp/isa-1827-paso6-sesion`, worktree
 `C:/VantareServer/wt/isa-1827-p6`, target `D:/VantareServer/targets/isa-1827-p6`.
+Implementado y publicado como draft; sin merge, integración ni promoción.
 
-- Services publica Session: SignedOut, SignedIn, NeedsSignIn y Pending. Hub y
-  supervisor la leen sin deducirla de errores, expires_at o signed_in. Solo
-  SignedIn permite renovar; publicar sesión no reinicia backoff.
-- En NeedsSignIn, el Hub mantiene las páginas permitidas por la política fresca
-  del núcleo y muestra el aviso de nueva entrada. Cuenta conserva el perfil y
-  permite Google/Discord/email y el cierre explícito de sesión. Las políticas ausentes, denegadas o
-  caducadas no dan acceso. Logout conserva su barrera previa al ACK.
-- Tras una renovación se consulta AccountPoll para observar cambios de sesión;
-  los fallos recibidos por el Hub también releen la sesión sin otro grant HTTP.
-  El mensaje de cuenta deja de afirmar que los derechos están pendientes (#1801).
-- Services v16 rechaza mezclas v15/v16 antes de interpretar Account. Errores
-  transitorios sin revocar; cuenta, binding, authority y candidate mantienen
-  sus formatos en disco. No cambia firma, plazo, catálogo, TTL ni gracia.
-- AccountCancel cancela PKCE, poll y estado OAuth/FAPI pendiente sin Logout,
-  tombstone ni invalidación. Volver/Cancelar lo usan incluso con red en vuelo;
-  los errores del formulario conservan la Session publicada por services.
-- La auditoría conserva las filas/columnas anteriores y añade la fila autorizada
-  «AccountCancel no revoca»; services añade la observación pública de Session. El núcleo sigue intacto.
-  Evidencia: `D:/VantareServer/evidence/isa-1827-p6/characterization-delta.json`.
-- Clippy all-targets de services/runtime/ipc/hub -D warnings PASS (incluye
-  check); lifecycle previo 13/13 PASS; quality/466 huellas PASS. Siete mutaciones
-  detectadas por aserción y restauradas SHA-256; mutación de prioridad Logout,
-  suite final ci con telemetría y lifecycle final pendientes. Primer intento de Nextest: faltaba el
-  binario de fixture vantare-storage; preparado con DuckDB de desarrollo ya
-  instalado, sin cambiar ni excluir la prueba. Fallo conservado en nextest-ci.log.
-- README de los cuatro crates, ADR 0102, BIL-08 y fragmento actualizados.
-  Verificación manual pendiente: en un entorno de pruebas autorizado, provocar
-  NeedsSignIn con licencia vigente, comprobar páginas y aviso, abrir el login
-  desde Cuenta y volver a la misma identidad. No se ha usado una cuenta real
-  ni una instalación; GPUI se verifica con fixtures/headless.
-- Revisión DeepSeek opencode-go/deepseek-v4.1-flash max de solo lectura completada.
-  Hallazgos tratados: cancelación sin Logout (autorizada por el orquestador),
-  fallo del formulario, proveedores, fixture v16, diagnóstico TransferRights y
-  prueba real del AccountPoll del supervisor. Segunda ronda: P1 de Cancel durante
-  Logout corregido antes de preparar estado/cola; Cancel no sustituye ni oculta
-  su ACK fallido. Prueba GPUI en cierre directo, detrás de perfil y detrás de login.
-  Sin tercera delegación (límite autorizado: dos). Un peer antiguo que cierre el pipe
-  sin responder aún puede dar error de transporte genérico, siempre transitorio. Harness ejecutor medium heredado; no se afirma high.
-- Siguiente: terminar gates/mutaciones y PR draft a nightly; después el paso 6b
-  en otra rama/PR. Sin merge, promoción, release, instalación ni producción.
+- Services publica Session (SignedOut, SignedIn, NeedsSignIn, Pending) en v16.
+  Hub y supervisor la leen; solo SignedIn permite renovación. Session no concede
+  derechos ni reinicia backoff. El supervisor relee AccountPoll tras renovar.
+- NeedsSignIn conserva páginas según la política fresca del núcleo, perfil y
+  aviso de nueva entrada. Cuenta ofrece Google/Discord/email y Cerrar sesión.
+  Una política ausente, denegada o caducada sigue bloqueando. El mensaje de
+  Cuenta deja de adivinar derechos (#1801).
+- AccountCancel, autorizado por el orquestador, cancela PKCE/FAPI/poll sin
+  tombstone SignedOut, Logout ni invalidación. Conserva Session y derechos desde
+  los tres estados; los errores del formulario tampoco fabrican SignedOut.
+  Logout explícito conserva su prioridad y barrera previa al ACK.
+- V15/v16 se rechazan como fallo transitorio sin revocar ni sustituir Cancel
+  por Logout. TransferRights propaga Version; un peer antiguo que cierre el
+  pipe antes de responder puede dar diagnóstico genérico de transporte.
+  No cambian formatos protegidos, firma, catálogo, TTL ni gracia.
+- Caracterización: todas las columnas previas intactas; se observa Session y
+  se añade únicamente la fila autorizada «AccountCancel no revoca». Núcleo
+  intacto. Auditoría: `characterization-delta.json` en la evidencia indicada abajo.
+- Gates finales: fmt PASS; Clippy all-targets services/runtime/ipc/hub con
+  -D warnings PASS; Nextest ci con telemetría 1445/1445 PASS, 17 omisiones
+  preexistentes; lifecycle 13/13 PASS; quality/466 huellas PASS. Ocho mutaciones
+  detectadas por aserción y restauradas SHA-256; test final de Logout verde.
+  Todo Cargo por compilar.ps1. Evidencia `D:/VantareServer/evidence/isa-1827-p6`.
+  Primer intento histórico falló por faltar el binario de fixture storage;
+  preparado con DuckDB de desarrollo existente, sin instalación ni exclusiones.
+- Dos revisiones DeepSeek opencode-go/deepseek-v4.1-flash max, solo lectura.
+  Hallazgos tratados: Cancel sin Logout, fallo del formulario, proveedores,
+  fixture v16, TransferRights, AccountPoll. Segunda ronda encontró P1: Cancel
+  podía ocultar un fallo de Logout en vuelo; corregido antes de preparar estado
+  y cola, probado con cierre directo/detrás de perfil/detrás de login y mutación.
+  Harness ejecutor medium heredado; no se afirma high ni revisión posterior
+  delegada de ese último arreglo (límite autorizado: dos agentes).
+- README de crates, ADR0102, diseño, BIL08 y changelog actualizados. Validación
+  con fixtures/headless; sin cuenta real ni captura GPUI física. Verificación
+  manual pendiente en entorno autorizado: provocar NeedsSignIn con licencia
+  vigente, comprobar páginas/aviso y reautenticación con la misma identidad.
+- Siguiente: paso 6b en otra rama/PR desde origin/nightly, sin mezclar su cambio
+  de gracia. Sin merge, release, despliegue, instalación ni producción.
 <!-- /isa1827-paso6 -->
 
 ## VANTA-126 / #1827, #1814 — Paso 1: recuperación firmada (31-oct-2026)

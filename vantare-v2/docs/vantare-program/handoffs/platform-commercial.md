@@ -1,3 +1,39 @@
+## VANTA-126 / #1827 — Licencias paso 2 (31-oct, rama preparada)
+
+Encargo del orquestador: estados de suscripción del servidor. Rama
+`vantareapp/isa-1827-paso2-estados-suscripcion`, worktree
+`C:/VantareServer/wt/isa-1827-paso2`, base `origin/nightly`
+`3e6f2dce7181ac224f4a1ed6ffa38e11373c89e9`. Project Vantare /
+area:licencias / In Review, sin milestone. Plane paraguas no se mueve.
+
+- Una tabla en `subscription-lifecycle.ts` clasifica los estados; webhook,
+  reconcile por páginas (a través del procesador) y Customer State la reutilizan.
+  La regla de plazo también tiene un solo dueño. Sin cambios en `_shared`,
+  `license-credential`, recuperación firmada, SQL, cliente ni dependencias.
+- Conserva #1817: `subscription.updated` con `revoked` revoca la fuente y cierra
+  recovery, con guardas de versión e idempotencia. `uncanceled` sigue siendo
+  un evento, no un estado admitido de snapshot; el alias puro `cancelled` se conserva.
+- Política: desconocidos en cuarentena, sin tocar grants, recovery o versión,
+  diagnóstico `unsupported_subscription_status`. Ya era la política del webhook
+  y reconcile por páginas. **Cambio conservador justificado:** Customer State
+  antes preparaba revocación por el fallback; ahora declara el plan inseguro y
+  no lo aplica. Evita retirar acceso por un nuevo estado no interpretado.
+  La matriz v1 y el fallback puro histórico se conservan; ingestión los filtra.
+- Regresiones: matriz v1 recorrida por reconcile, réplica (incluida cuarentena),
+  acceso/recovery/versiones intactos ante desconocidos; entrega creada/actualizada,
+  replay manual y revocación válida anterior al estado desconocido. Se conserva
+  el E2E sintético #1817 de firma, otra compra y eventos fuera de orden.
+- Local: 312 comparaciones de transición pura frente a la base y 10 filas v1 PASS
+  mediante Node 24 (sin dependencias). Quality/466 huellas y diff check PASS.
+  Evidencia: `D:/VantareServer/evidence/isa-1827-paso2/compare-lifecycle.mjs`.
+  Deno/PostgreSQL/PostgREST no están instalados; pruebas Edge/SQL y gate
+  `supabase-commercial-gates` pendientes de CI del PR. No se instalan herramientas.
+  Rust/lifecycle nativo/telemetría omitidos: no hay cambios nativos.
+- Bloqueo de seguimiento: el script actual rechaza `--comentario` sin estado.
+  No se modifica Plane ni el script para sortearlo; inicio registrado en #1827.
+- Siguiente: PR draft a nightly, CI del HEAD final y revisión del orquestador.
+  Sin merge, release, despliegue, producción, cuentas reales ni lectura de secretos.
+
 ## VANTA-126 / #1827, #1815 — Paso 3: retirar emisión legacy (31-oct-2026)
 
 Rama `vantareapp/isa-1827-paso3-retirar-credential`, base nightly

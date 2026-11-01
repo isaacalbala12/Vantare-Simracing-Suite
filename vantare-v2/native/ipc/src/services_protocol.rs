@@ -2,9 +2,9 @@
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use std::io::{self, Read, Write};
 
-// v15 separates automatic renewal failures and side-effect-free channel probes.
-// Reject older peers: automatic renewal must never inherit user revocation.
-pub const VERSION: u32 = 15;
+// v16 publishes Session explicitly. Mixed generations are transient failures;
+// no protocol error can invalidate the signed core policy.
+pub const VERSION: u32 = 16;
 #[path = "services_protocol/pilot_document.rs"]
 pub mod pilot_document;
 #[path = "services_protocol/report_document.rs"]
@@ -36,6 +36,8 @@ pub enum Command {
     Status,
     TransferRights,
     AccountBegin,
+    /// Cancela el intento de acceso, conservando la cuenta y los derechos.
+    AccountCancel,
     AccountEmail {
         action: EmailAction,
     },
@@ -249,6 +251,8 @@ pub enum Reply {
         url: LoginLink,
     },
     Account {
+        /// Estado publicado exclusivamente por services; no concede derechos.
+        session: Session,
         #[serde(default)]
         copy_link: bool,
         signed_in: bool,
@@ -268,6 +272,16 @@ pub enum Reply {
     DeviceLimit {
         message: String,
     },
+}
+
+/// Sesión de cuenta, independiente de la política firmada del núcleo.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Session {
+    #[default]
+    SignedOut,
+    SignedIn,
+    NeedsSignIn,
+    Pending,
 }
 
 /// URL de un intento PKCE vivo, solo tras el gesto Copiar enlace. Nunca Debug.
@@ -370,6 +384,30 @@ fn frame_limit(value: &serde_json::Value) -> usize {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn account_v16_requires_an_explicit_closed_session_state() {
+        const { assert!(VERSION >= 16) };
+        let legacy = serde_json::json!({"result":"Account","signed_in":false,
+            "pending":false,"expires_at":null,"message":"fixture","error":null});
+        assert!(serde_json::from_value::<Reply>(legacy.clone()).is_err());
+        for session in [
+            Session::SignedOut,
+            Session::SignedIn,
+            Session::NeedsSignIn,
+            Session::Pending,
+        ] {
+            let mut value = legacy.clone();
+            value["session"] = serde_json::to_value(session).expect("session");
+            let reply: Reply = serde_json::from_value(value).expect("v16 account");
+            let mut wire = Vec::new();
+            write(&mut wire, &reply).expect("write");
+            assert!(matches!(read::<Reply>(&mut wire.as_slice()).expect("read"),
+                Reply::Account { session: actual, .. } if actual == session));
+        }
+        let mut unknown = legacy;
+        unknown["session"] = serde_json::json!("FutureSession");
+        assert!(serde_json::from_value::<Reply>(unknown).is_err());
+    }
     #[test]
     fn large_escaped_triage_preview_does_not_expand_other_command_limits() {
         let packet = triage_document::Packet {

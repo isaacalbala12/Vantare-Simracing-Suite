@@ -36,6 +36,10 @@ impl Server {
         Self::start_with_header(responses, Some("fixture-client-token"), None)
     }
 
+    pub fn start_native_observed(responses: impl FnOnce(&Url) -> Vec<(u16, String)>) -> Self {
+        Self::start_options(responses, Some("fixture-client-token"), None, true)
+    }
+
     #[cfg(windows)]
     pub fn start_dated(responses: Vec<(u16, String)>, date: &'static str) -> Self {
         Self::start_with_header(|_| responses, None, Some(date))

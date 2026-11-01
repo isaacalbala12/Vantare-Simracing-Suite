@@ -881,6 +881,9 @@ impl Render for Hub {
                     )),
             )
             .child(topbar)
+            .when_some(self.remote.read(cx).session_notice(), |main, notice| {
+                main.child(orbit::callout(notice, cx))
+            })
             .child(body);
         let background = if self.section == Section::Strategy
             && self.shell.access.beta_lock(self.section).is_none()

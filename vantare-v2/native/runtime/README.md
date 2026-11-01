@@ -1,3 +1,18 @@
+## #1827 — Supervisor y sesión (paso 6, services v16)
+
+`AccountCancel` (v16) cancela solo el intento OAuth/FAPI y relee Session;
+conserva la cuenta protegida y los derechos. «Volver/Cancelar» lo usa sin
+sustituirlo por Logout. Solo «Cerrar sesión» envía Logout. En NeedsSignIn,
+Cuenta ofrece Google/Discord/email y también el cierre explícito de sesión.
+
+
+Renewal lee únicamente `Reply::Account.session`: solo SignedIn permite renovar.
+Pending, NeedsSignIn y SignedOut no admiten red automática ni reinician backoff.
+Después de renovar, se consulta AccountPoll para observar el estado de services,
+incluso si el refresh devolvió un fallo. No se deduce la sesión del error, de
+expires_at ni de la política. Los errores de versión siguen siendo transitorios
+sin invalidar derechos. Este contrato sustituye la inferencia histórica de #1812.
+
 ## ISA-1810 — Rechazo de la caché y disponibilidad del núcleo
 
 Clock devuelve rechazo de caché solo si lo produjo el Install ordinario antes

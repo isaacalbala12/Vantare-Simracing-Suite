@@ -446,7 +446,9 @@ se demuestran con tests de caracterización escritos **antes**, en el paso 0.
 | — | Documentación: README de services/runtime/ipc/hub con **una** sección de contrato vigente en lugar de las secciones fechadas apiladas | Doc | P3 R3 | Revisión del diff |
 
 Orden: 0 → (1, 2, 3 en paralelo, servidor) → 4 → 5 → 6 → 6b → 7 → 8 → 9 → 10.
-11 y 12 cuando convenga. Los pasos 4, 6 y 7 no cambian comportamiento. Los
+11 y 12 cuando convenga. Los pasos 4 y 7 son refactors puros. El paso 6
+conserva los derechos del núcleo y añade las correcciones de Hub/cancelación
+autorizadas en ADR 0102. Los
 pasos 1, 5, 6b, 8 y 10 lo cambian a propósito, con su justificación.
 
 Interacción con el trabajo en curso: #1824 (#1810) y #1821 (#1808/#1812) están
@@ -612,3 +614,14 @@ pero sus filas efectivas son fixtures: no demuestra process.ts, SQL/RLS ni un
 despliegue. Los gates SQL/comerciales existentes conservan esa responsabilidad.
 La CI `Polar webhook signatures` descubre el archivo dentro de billing-webhook;
 no se añade workflow ni se instala Deno en el servidor local.
+
+### Ampliación autorizada del paso 6 — sesión y cancelación
+
+El Hub conserva las páginas permitidas por el núcleo en NeedsSignIn y muestra
+el aviso para volver a entrar. `AccountCancel`, incluido en services v16,
+cancela un intento OAuth/FAPI sin cerrar la cuenta ni revocar. Volver/Cancelar
+lo usa; Logout se reserva a Cerrar sesión. El estado guardado se conserva,
+incluso tras un fallo del formulario, y Cuenta ofrece los mismos proveedores.
+No hay fallback a Logout ante un servicio v15: el desajuste sigue transitorio.
+La fila nueva de caracterización fija AccountCancel no revoca, con candidate
+y sesión conservados. El resto de filas de los refactors sigue intacto.

@@ -12,6 +12,18 @@ use vantare_services::{
 mod profile;
 
 #[test]
+fn incompatible_transfer_stays_transient_and_keeps_the_actionable_version_message() {
+    assert_eq!(
+        admit_transfer(&Err(ConnectionError::Version)),
+        Err(vantare_ipc::INCOMPATIBLE_COMPONENTS)
+    );
+    assert_eq!(
+        renewal_outcome(&failure(vantare_ipc::INCOMPATIBLE_COMPONENTS)),
+        protocol::RenewalOutcome::Transient
+    );
+}
+
+#[test]
 fn a_closed_idle_helper_is_replaced_before_the_first_user_request() {
     let Fixture {
         root,
@@ -600,6 +612,7 @@ fn game_exit_still_cancels_unprotected_io_before_waiting_for_the_supervisor() {
 fn confirmed_session() -> Reply {
     let now = u64::try_from(crate::rights::wall_now().timestamp()).expect("fixture clock");
     Reply::Account {
+        session: vantare_ipc::services_protocol::Session::SignedIn,
         signed_in: true,
         pending: false,
         expires_at: Some(now.saturating_add(3600)),

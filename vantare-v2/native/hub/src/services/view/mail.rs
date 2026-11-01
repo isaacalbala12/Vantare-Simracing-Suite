@@ -46,8 +46,7 @@ impl State {
         if matches!(
             reply,
             Reply::Account {
-                signed_in: false,
-                pending: false,
+                session: vantare_ipc::services_protocol::Session::SignedOut,
                 ..
             }
         ) {
@@ -57,8 +56,7 @@ impl State {
         if matches!(
             reply,
             Reply::Account {
-                signed_in: true,
-                pending: false,
+                session: vantare_ipc::services_protocol::Session::SignedIn,
                 ..
             }
         ) && self.consent.is_none()
@@ -156,6 +154,7 @@ mod tests {
             assert_eq!(state.desired, None);
             assert!(!state.requested && !state.onboarding_saved);
             state.complete(&Reply::Account {
+                session: vantare_ipc::services_protocol::Session::SignedIn,
                 copy_link: false,
                 signed_in: true,
                 profile: None,

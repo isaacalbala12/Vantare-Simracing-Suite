@@ -9,7 +9,7 @@ impl Remote {
     ) {
         if self.participation_pending == Some(self.participation_generation)
             && self.account.signed_in
-            && !self.account.cancel_login
+            && self.account.cancel_command.is_none()
         {
             self.participation = data;
             self.participation_message = "Datos confirmados por el servicio".into();
@@ -23,7 +23,7 @@ impl Remote {
     ) {
         if self.participation_pending == Some(self.participation_generation)
             && self.account.signed_in
-            && !self.account.cancel_login
+            && self.account.cancel_command.is_none()
         {
             self.triage.receive(preview);
             self.participation_message = "Revisa el contenido exacto antes de enviarlo".into();
@@ -40,7 +40,7 @@ impl Remote {
     pub(crate) fn participation_ready(&self) -> bool {
         self.account.signed_in
             && !self.account.pending
-            && !self.account.cancel_login
+            && self.account.cancel_command.is_none()
             && !self.busy()
             && self.queued.is_none()
             && !self.stop.load(std::sync::atomic::Ordering::Acquire)

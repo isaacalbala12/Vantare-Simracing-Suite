@@ -33,14 +33,19 @@ simulador siga en pausa. Una pausa sin entrada live previa no crea gracia.
   Conserva la identidad anterior, el perfil y los derechos firmados. No ejecuta
   Logout ni borra la cuenta. Volver a entrar con esa identidad no es un cambio
   de dueño; entrar con otra sí exige revocación confirmada por el núcleo.
-- El protocolo actual sigue usando los campos de Account y un mensaje de nueva
-  entrada. `signed_in=false` en NeedsSignIn pide autenticación; no afirma que
-  se haya guardado SignedOut ni que se hayan invalidado derechos. El enum de
-  sesión público se incorpora en el paso 6, no en esta entrega.
-  **Limitación del Hub hasta el paso 6:** bloquea todas las páginas salvo Cuenta
-  porque recibe `signed_in=false`. Los overlays y los derechos del núcleo siguen
-  vigentes hasta su plazo firmado; el Hub pide iniciar sesión aunque el núcleo
-  conserve Pro. No confundir el bloqueo de navegación con una licencia revocada.
+- Servicios v16 publica **Session**: SignedOut, SignedIn, NeedsSignIn o Pending.
+  En NeedsSignIn, el Hub muestra «Vuelve a iniciar sesión» y mantiene abiertas
+  las páginas que permita la política fresca del núcleo. Ya no limita todo a
+  Cuenta por `signed_in=false`. Una política ausente, denegada o caducada sigue
+  bloqueando el acceso correspondiente. Los servicios remotos exigen login.
+  El aviso no afirma que exista una licencia: solo el núcleo decide los derechos.
+  Una mezcla v15/v16 requiere actualizar el conjunto; su fallo es transitorio y
+  no revoca ni cambia los documentos firmados. No se admiten EXE sueltos.
+- **Volver/Cancelar** cancela el intento de acceso con `AccountCancel`; no cierra
+  la cuenta, no guarda SignedOut y no invalida derechos. Desde NeedsSignIn se
+  vuelve al mismo estado y a las páginas que permita el núcleo. Un fallo del
+  formulario tampoco borra la sesión anterior. Cuenta ofrece Google, Discord
+  y email para reautenticar, además de Cerrar sesión expresamente.
 - Solo **Cerrar sesión**, **cambiar de identidad** y **Restablecer dispositivo**
   revocan la licencia local; requieren ACK durable antes de limpiar el candidate.
   Son acciones expresas, nunca una reacción automática a un fallo de red.

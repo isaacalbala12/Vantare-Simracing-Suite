@@ -69,7 +69,7 @@ impl Remote {
                 );
         }
         let signed_in = self.account.signed_in;
-        let can_start = self.requires_access();
+        let can_start = self.can_start_account_login();
         div()
             .flex()
             .flex_none()
@@ -95,14 +95,7 @@ impl Remote {
             )
             .child(self.purchase_buttons(cx))
             .child(if signed_in {
-                orbit::small_button("services-sign-out", "Cerrar sesión", cx)
-                    .tab_stop(!self.working())
-                    .when(self.working(), |button| button.opacity(orbit::DISABLED))
-                    .on_click(cx.listener(|this, _, _, cx| {
-                        if !this.working() {
-                            this.request(Command::Logout, cx);
-                        }
-                    }))
+                self.account_logout_button(cx)
             } else {
                 orbit::small_button(
                     "services-login",
@@ -120,11 +113,25 @@ impl Remote {
                         .aria_description("El servicio de cuenta no está configurado")
                 })
                 .on_click(cx.listener(|this, _, _, cx| {
-                    if this.requires_access() && !this.working() {
-                        this.select_email(crate::services::protocol::EmailMode::SignInCode, cx);
+                    if this.can_start_account_login() && !this.working() {
+                        this.open_account_login(cx);
                     }
                 }))
             })
+            .when(self.session_notice().is_some(), |body| {
+                body.child(self.account_logout_button(cx))
+            })
+    }
+
+    fn account_logout_button(&self, cx: &mut Context<Self>) -> gpui::Stateful<gpui::Div> {
+        orbit::small_button("services-sign-out", "Cerrar sesión", cx)
+            .tab_stop(!self.working())
+            .when(self.working(), |button| button.opacity(orbit::DISABLED))
+            .on_click(cx.listener(|this, _, _, cx| {
+                if !this.working() {
+                    this.request(Command::Logout, cx);
+                }
+            }))
     }
 
     fn purchase_buttons(&self, cx: &mut Context<Self>) -> gpui::Div {

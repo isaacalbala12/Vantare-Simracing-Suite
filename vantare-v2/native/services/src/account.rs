@@ -389,6 +389,19 @@ impl Account {
         self.needs_sign_in
     }
 
+    pub fn session(&self) -> crate::protocol::Session {
+        use crate::protocol::Session;
+        if self.login_pending() {
+            Session::Pending
+        } else if self.needs_sign_in() {
+            Session::NeedsSignIn
+        } else if self.identity().is_some() {
+            Session::SignedIn
+        } else {
+            Session::SignedOut
+        }
+    }
+
     pub(crate) fn require_sign_in(&mut self, store: &Store) -> Result<()> {
         // Bloquea también en memoria si falla persistir; no reutilizar tokens rechazados.
         self.needs_sign_in = true;

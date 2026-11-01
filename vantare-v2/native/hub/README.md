@@ -1,3 +1,29 @@
+## #1827 — Sesión y acceso (paso 6, services v16)
+
+`AccountCancel` (v16) cancela solo el intento OAuth/FAPI y relee Session;
+conserva la cuenta protegida y los derechos. «Volver/Cancelar» lo usa sin
+sustituirlo por Logout. Solo «Cerrar sesión» envía Logout. En NeedsSignIn,
+Cuenta ofrece Google/Discord/email y también el cierre explícito de sesión.
+
+
+El Hub lee Session publicada por services, sin inferirla de expires_at, textos
+o signed_in. En NeedsSignIn muestra el aviso de volver a entrar en Cuenta;
+las páginas conservan el acceso que permita la política fresca del núcleo.
+Una política ausente, denegada o caducada no concede acceso. SignedOut y una
+solicitud explícita de Logout conservan el bloqueo previo al ACK.
+Los servicios remotos requieren SignedIn; no se reutilizan tokens rechazados.
+Los resultados de renovación fallidos releen AccountPoll, sin otro grant HTTP.
+No cambia la firma, el plazo, la gracia, el catálogo ni las reglas beta.
+
+Tras fallar el ACK de Logout, Reintentar cierre de sesión reenvía Logout. Volver
+solo permite regresar con Session conocida y política fresca del núcleo que
+conserve acceso; no confirma un cierre fallido. Choose admite Escape y Volver
+sin iniciar un intento. AccountCancel en vuelo bloquea proveedores y nuevos
+Cancel hasta su respuesta, sin sustituirlo por Logout.
+La mezcla v15/v16 puede mostrar el aviso genérico de servicios desconectados
+si el peer cierra el pipe sin respuesta; limitación de diagnóstico aceptada,
+sin revocación ni fallback de Cancel a Logout.
+
 ## ISA-1793 — Acceso sin comprobación manual
 
 El Hub confirma la sesión y consume la política fresca del núcleo. El supervisor

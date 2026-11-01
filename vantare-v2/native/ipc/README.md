@@ -1,3 +1,18 @@
+## #1827 — Servicios v16: Session explícita
+
+`AccountCancel` (v16) cancela solo el intento OAuth/FAPI y relee Session;
+conserva la cuenta protegida y los derechos. «Volver/Cancelar» lo usa sin
+sustituirlo por Logout. Solo «Cerrar sesión» envía Logout. En NeedsSignIn,
+Cuenta ofrece Google/Discord/email y también el cierre explícito de sesión.
+
+
+`Reply::Account.session` es obligatorio y cerrado: SignedOut, SignedIn,
+NeedsSignIn o Pending. Solo services publica ese hecho; Session no concede
+permisos. Hub y supervisor leen la versión antes de decodificar la respuesta
+estricta. Binarios de generaciones distintas se rechazan sin revocar la licencia;
+el paquete debe actualizarse completo. No cambian el control v6, DTO v11 ni
+los formatos guardados de cuenta o derechos.
+
 ## #1806/#1807 — Control v6
 
 InstallOnline distingue una renovación recién verificada por el helper de un

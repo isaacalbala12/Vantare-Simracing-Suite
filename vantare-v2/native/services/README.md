@@ -1,3 +1,21 @@
+## #1827 — Contrato de sesión explícita (paso 6, services v16)
+
+`AccountCancel` (v16) cancela solo el intento OAuth/FAPI y relee Session;
+conserva la cuenta protegida y los derechos. «Volver/Cancelar» lo usa sin
+sustituirlo por Logout. Solo «Cerrar sesión» envía Logout. En NeedsSignIn,
+Cuenta ofrece Google/Discord/email y también el cierre explícito de sesión.
+
+
+Account es el único dueño de `Reply::Account.session`: SignedOut, SignedIn,
+NeedsSignIn o Pending. La sesión no concede ni describe derechos; decide el
+núcleo. Un error de perfil y la caducidad del bearer no cambian por sí solos
+SignedIn. NeedsSignIn conserva identidad/perfil y exige nueva entrada.
+Los campos anteriores de Account se mantienen en este corte para presentación
+histórica; supervisor y Hub consumen Session como autoridad de sesión.
+No cambia el formato de cuenta, binding, authority ni candidate en disco.
+La generación v16 rechaza peers v15: incompatibilidad transitoria, sin revocar.
+El mensaje de sesión deja de afirmar que los derechos están pendientes (#1801).
+
 ## #1827 — Renovaciones no destructivas (paso 5)
 
 `outcome` solo marca revocación en Logout, cambio de identidad y DeviceReset.
@@ -7,7 +25,7 @@ OAuth rechazado (`invalid_grant`/401 del endpoint de token) guarda NeedsSignIn;
 403 y fallos de userinfo tras refresh válido siguen transitorios. Conserva identidad/perfil y exige nueva
 entrada sin reutilizar tokens rechazados. Un login correcto restaura SignedIn;
 la comparación de identidad sigue precediendo a guardar otra cuenta.
-El IPC mantiene su formato; el Session explícito público llega en el paso 6.
+El paso 6 publica Session por services v16; el formato protegido de cuenta no cambia.
 Soporte y rollback de la cuenta: [runbook BIL-08](../../docs/billing/bil-08-offline-credential-runbook.md).
 
 ## #1827 — Clasificación de acceso (paso 4)

@@ -18,6 +18,17 @@ pub struct Access {
 }
 
 impl Access {
+    pub fn from_session_policy(
+        session: vantare_ipc::services_protocol::Session,
+        policy: &vantare_ipc::control::Policy,
+        now_ms: u64,
+    ) -> Self {
+        use vantare_ipc::services_protocol::Session;
+        match session {
+            Session::SignedIn | Session::NeedsSignIn => Self::from_policy(policy, now_ms),
+            Session::SignedOut | Session::Pending => Self::default(),
+        }
+    }
     pub(crate) fn widget_lock(self, kind: vantare_ui::Kind) -> Option<&'static str> {
         if !self.verified || self.blocked {
             Some("Acceso sin verificar")

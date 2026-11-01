@@ -1,3 +1,95 @@
+<!-- isa1827-paso6 -->
+## VANTA-126 / #1827 — Paso 6: sesión explícita y cancelación sin revocar
+
+Project Vantare / area:licencias / In Review, sin milestone. Plane intacto.
+[PR draft #1834](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1834)
+a nightly; enlazado en T3. Base vigente tras rebase autorizado:
+`ba89582e5cd6a7a4bd99d49ee4a372d4322ed6c7` (paso 6b integrado).
+Código validado `030bdd146e8f5a852f5e468ab0ae35f090efff6c`; HEAD documental y
+CI vigentes en PR/#1827. Rama `vantareapp/isa-1827-paso6-sesion`, worktree
+`C:/VantareServer/wt/isa-1827-p6`, target `D:/VantareServer/targets/isa-1827-p6`.
+Implementado y publicado como draft; sin merge, integración ni promoción.
+
+- Services publica Session (SignedOut, SignedIn, NeedsSignIn, Pending) en v16.
+  Hub y supervisor la leen; solo SignedIn permite renovación. Session no concede
+  derechos ni reinicia backoff. El supervisor relee AccountPoll tras renovar.
+- NeedsSignIn conserva páginas según la política fresca del núcleo, perfil y
+  aviso de nueva entrada. Cuenta ofrece Google/Discord/email y Cerrar sesión.
+  Una política ausente, denegada o caducada sigue bloqueando. El mensaje de
+  Cuenta deja de adivinar derechos (#1801).
+- AccountCancel, autorizado por el orquestador, cancela PKCE/FAPI/poll sin
+  tombstone SignedOut, Logout ni invalidación. Conserva Session y derechos desde
+  los tres estados; los errores del formulario tampoco fabrican SignedOut.
+  Logout explícito conserva su prioridad y barrera previa al ACK.
+- V15/v16 se rechazan como fallo transitorio sin revocar ni sustituir Cancel
+  por Logout. TransferRights propaga Version; un peer antiguo que cierre el
+  pipe antes de responder puede dar diagnóstico genérico de transporte.
+  No cambian formatos protegidos, firma, catálogo, TTL ni gracia.
+- Caracterización: todas las columnas previas intactas; se observa Session y
+  se añade únicamente la fila autorizada «AccountCancel no revoca». Núcleo
+  intacto respecto a ba89582e5. Auditoría actual: `rebased/preservation.json`
+  en la evidencia de revisión; la auditoría previa se conserva.
+- Gates finales: fmt PASS; Clippy all-targets services/runtime/ipc/hub con
+  -D warnings PASS; Nextest ci con telemetría 1456/1456 PASS, 17 omisiones
+  preexistentes; Hub final 575/575 PASS; lifecycle 13/13 PASS; quality/466 huellas
+  PASS. Ocho mutaciones iniciales
+  detectadas por aserción y restauradas SHA-256; test final de Logout verde.
+  Todo Cargo por compilar.ps1. Evidencia `D:/VantareServer/evidence/isa-1827-p6`.
+  Primer intento histórico falló por faltar el binario de fixture storage;
+  preparado con DuckDB de desarrollo existente, sin instalación ni exclusiones.
+- Dos revisiones DeepSeek opencode-go/deepseek-v4.1-flash max, solo lectura.
+  Hallazgos tratados: Cancel sin Logout, fallo del formulario, proveedores,
+  fixture v16, TransferRights, AccountPoll. Segunda ronda encontró P1: Cancel
+  podía ocultar un fallo de Logout en vuelo; corregido antes de preparar estado
+  y cola, probado con cierre directo/detrás de perfil/detrás de login y mutación.
+  Harness ejecutor medium heredado; no se afirma high ni revisión posterior
+  delegada de ese último arreglo (límite autorizado: dos agentes).
+- README de crates, ADR0102, diseño, BIL08 y changelog actualizados. Validación
+  con fixtures/headless; sin cuenta real ni captura GPUI física. Verificación
+  manual pendiente en entorno autorizado: provocar NeedsSignIn con licencia
+  vigente, comprobar páginas/aviso y reautenticación con la misma identidad.
+- Paso 6b integrado por el orquestador en #1835; su código y ambas entradas
+  documentales se conservan tras el rebase de #1834, sin conflictos. El worker
+  no realizó merge, release, despliegue, instalación ni cambios de producción.
+
+Revisión independiente posterior (orquestador, APPROVE WITH CHANGES, sin P0/P1):
+- Fallo de ACK Logout: «Reintentar cierre de sesión» vuelve a enviar Logout;
+  «Volver» abandona ese cierre fallido solo con Session conocida y derechos
+  vigentes de un nuevo feed del núcleo. Nunca inicia login ni declara cierre.
+- Choose se cierra con Escape/Volver sin IPC ni cambio de Session. Conserva la
+  pantalla de acceso actual; no se introduce otro sistema de modales en la shell.
+- Cancelación pendiente/en vuelo: proveedores y Cancel desactivados; estado
+  Cancelando no interactivo y un solo AccountCancel, también detrás de otra
+  petición. Logout explícito mantiene prioridad.
+- Los tests de transporte recorren el área Cuenta que fija el dispatcher: Cancel
+  libera controles tras el error y Logout conserva el reintento de cierre.
+- Se retira la rama else-if-false del test, se acota recv con timeout de fixture
+  y se afirma Session exacta tras cancelar y tras el rechazo de refresh/perfil.
+- Focalizadas iniciales 61/61 PASS; suite rebasada 1456/1456 y lifecycle 13/13
+  PASS sobre a7b6489e2. Tras retirar una defensa innecesaria, Hub final 575/575
+  y Clippy PASS sobre 030bdd146;
+  runtime/services/ipc no cambian respecto a la suite completa (auditoría guardada).
+  Cinco mutaciones finales detectadas por aserción y restauradas SHA-256.
+  Código validado 030bdd146e8f5a852f5e468ab0ae35f090efff6c; HEAD documental/CI vigentes en PR/#1827. Evidencia separada:
+  `D:/VantareServer/evidence/isa-1827-p6-review`. CI la vigila el orquestador.
+
+Rebase solicitado tras integrar #1835: ambos AGENTS releídos en ba89582e5,
+idénticos a la base anterior. Rebase automático sin conflictos; auditoría de
+ADR, BIL08, changelog, handoff, diseño y README runtime conserva ambos pasos.
+`runtime/rights` es idéntico al nightly integrado; las matrices de services no
+cambian por esta revisión. La suite anterior al rebase pasó 1449/1449 y lifecycle
+13/13. Se interrumpió únicamente la validación parcial adicional del Hub para
+revalidar el conjunto completo tras el rebase, sin omitir pruebas. Gates finales
+rebasados en `D:/VantareServer/evidence/isa-1827-p6-review/rebased`.
+
+Evidencia final: fmt y Clippy all-targets -D warnings PASS, quality/466 huellas
+PASS; seis tests nuevos de revisión en Hub. Una mutación exploratoria no falló
+porque dispatch fija Cuenta: se retiró la defensa y el montaje inalcanzables.
+El log exploratorio se conserva; las cinco mutaciones finales sí fallan por
+aserción. El selector mantiene la presentación actual y cierra con Escape/Volver.
+Sin prueba física ni cuenta real. La CI del nuevo HEAD la vigila el orquestador.
+<!-- /isa1827-paso6 -->
+
 ## VANTA-126 / #1827, #1814 — Paso 1: recuperación firmada (31-oct-2026)
 
 Encargo del orquestador. Rama `vantareapp/isa-1827-paso1-recovery-firmada`,
@@ -5881,15 +5973,19 @@ publicado y esta entrega no bloquea la reconstrucción Supabase #1713.
 <!-- isa1827-paso6b -->
 ## VANTA-126 / #1827 — Paso 6b: gracia en pausa
 
-[PR draft #1835](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1835)
-a nightly, enlazado T3; entregar después del paso 6
-[PR draft #1834](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1834).
+[PR #1835](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1835)
+integrado por el orquestador en nightly
+`ba89582e5cd6a7a4bd99d49ee4a372d4322ed6c7` (CI verde, verificado en GitHub).
+El paso 6 [PR draft #1834](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1834)
+se rebasa sobre esa integración. HEAD histórico de #1835:
+`d3af888e3c9c0b06fb9ea9992c7dca10700894c4`.
 Rama `vantareapp/isa-1827-paso6b-pausa`, base origin/nightly
 `127977532d30d692c9e9a53e5cd764add7907d4a`, código validado
 `f1f4cce2b9948fba80b36f150d95664ee158584a`. HEAD documental y CI vigentes
 se verifican en PR/#1827. Worktree `C:/VantareServer/wt/isa-1827-p6b`.
 Target autorizado `D:/VantareServer/targets/isa-1827-p6`, usado secuencialmente
-con el paso 6. Implementado/publicado como draft, sin merge ni integración.
+con el paso 6. Integrado por el orquestador; el worker no realizó merge.
+Sin promoción ni release.
 
 - Decisión 4 de ADR0102: Owner conserva gracia en Paused para la sesión live
   ya activa; Host conserva su hora original de entrada. Pausar/reanudar no
@@ -5912,7 +6008,7 @@ con el paso 6. Implementado/publicado como draft, sin merge ni integración.
   de solo lectura ya usados en paso 6). Harness medium heredado.
 
 Project Vantare / area:licencias / In Review, sin milestone. Plane intacto.
-Sin merge, release, instalación, producción ni datos reales. No se afirma una
-prueba física de pausa del simulador. Siguiente: revisar ambos drafts y CI del
-HEAD vigente; aplicar orden 6 → 6b, sin autorizar promoción ni publicación.
+Sin merge del worker, release, instalación, producción ni datos reales. No se afirma una
+prueba física de pausa del simulador. Siguiente: revisar #1834 rebasado sobre
+esta integración y su CI; sin autorizar promoción ni publicación.
 <!-- /isa1827-paso6b -->

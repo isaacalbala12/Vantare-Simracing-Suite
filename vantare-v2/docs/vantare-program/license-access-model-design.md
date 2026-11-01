@@ -407,7 +407,7 @@ aparta sin perder derechos, tal como exige BIL-08.
 |---|---|---|
 | Respuesta `native-license` | Sin cambio de forma. La recuperación aparece como `paid_through` del derecho; `online_capabilities: []` | Todos los clientes v1 instalados ya entienden `paid_through`; reciben el margen sin actualizar |
 | `license-credential` | Retirado (410) | Solo afecta a clientes Wails retirados (#1533); confirmar antes |
-| Control núcleo v6 → v7 | `Policy.state`, `signed_until_ms`/`grace_until_ms` en lugar de `valid_until_ms` + `online_recovery_required`; `Install` de caché permanece hasta el paso 8 | Núcleo, servicios, Hub y overlays se instalan juntos en cada generación; una respuesta de otra generación da `VersionMismatch` antes del esquema. Si un núcleo/helper anterior cierra sin responder, queda desconexión transitoria genérica, nunca protocolo inválido ni revocación. Paso transitorio: v7 publica también los campos antiguos durante un corte si se quiere poder bisecar |
+| Control núcleo v6 → v7 | `Policy.state`, `signed_until_ms`/`grace_until_ms` en lugar de `valid_until_ms` + `online_recovery_required`; servicios deja de enviar `Install` en el paso 8; el núcleo conserva su restauración | Núcleo, servicios, Hub y overlays se instalan juntos en cada generación; una respuesta de otra generación da `VersionMismatch` antes del esquema. Si un núcleo/helper anterior cierra sin responder, queda desconexión transitoria genérica, nunca protocolo inválido ni revocación. V7 usa el modelo explícito y exige recompilar el conjunto; no publica ambos modelos |
 | Servicios v15 → v16 (paso 6) | `Reply::Account.session` y `AccountCancel` | Integrado en código; v16 no se publicó en una release |
 | Servicios v16 → v17 (paso 7) | Solo versión del sobre: transporta `Policy` control v7; Session/AccountCancel y demás payloads intactos | El saludo rechaza v16/v17 antes de decodificar Policy. Decisión del orquestador 1-nov-2026; TransferRights permanece hasta el paso 8 |
 | Servicios v17 → v18 (paso 8) | Retira TransferRights y la admisión por traspaso | Version antes de esquema, sin revocar; conjunto instalado debe coincidir |
@@ -604,9 +604,9 @@ no son una implementación anticipada de este diseño.
 | Tabla | Casos | Fuente |
 | --- | ---: | --- |
 | Estado/evento → Policy (Owner y Authority reales, firma y Store aislados) | 22 | [runtime: characterization](../../native/runtime/src/rights/tests/characterization.rs) |
-| Error remoto/origen → Error tipado, revocación, candidate y sesión | 34 | [services: characterization](../../native/services/src/app/tests/characterization.rs), `nightly_error_origin_effects_matrix` |
+| Error remoto/origen → Error tipado, revocación, candidate (no aplica en paso 8) y sesión | 34 → 38 | [services: characterization](../../native/services/src/app/tests/characterization.rs), `nightly_error_origin_effects_matrix` |
 | Error → resultado automático (incluido DeviceLimit) | 26 | mismo archivo, `nightly_automatic_failure_result_matrix` |
-| Logout/DeviceReset/TransferRights: ACK correcto/rechazado y efectos | 6 | mismo archivo, `nightly_explicit_revocation_and_transfer_matrix` |
+| Logout/DeviceReset/AccountCancel: ACK correcto/rechazado y efectos; TransferRights retirado en paso 8 | 6 → 5 | mismo archivo, `nightly_explicit_revocation_matrix` |
 | DeviceReset: errores del puente/reset remoto y éxito | 11 | [services: reset](../../native/services/src/app/tests/characterization/reset.rs) |
 | normalizeGrants: fuentes, forma, plazo y recovery | 28 | [Deno: characterization](../../../supabase/functions/billing-webhook/license-access-characterization.test.ts) |
 | Estados de suscripción → transición y normalización de filas de fixture | 12 | mismo archivo Deno |
@@ -616,7 +616,7 @@ LicenseRenewAutomatic. Purchase no tiene un tercer comando ni una nueva regla
 en servicios: el Hub actual usa el camino automático al esperar la compra.
 AccountProfileRefresh sirve presentación manual y automática con la misma regla
 no destructiva. AccountRenew, Logout y DeviceReset son actos explícitos;
-TransferRights es el traspaso local durante admisión/recuperación. No inventamos
+En la base del paso 0, TransferRights era el traspaso local durante admisión/recuperación; se elimina en el paso 8. No inventamos
 orígenes IPC para esos comandos. El error remoto se produce por HTTP loopback
 real; CoreStep comprueba el orden y la ausencia de Invalidate en el pipe.
 
@@ -628,8 +628,13 @@ Cobertura complementaria ya existente y conservada:
 - [services app.rs](../../native/services/src/app.rs): perfil a través de
   host::session tanto durante refresh OAuth como en userinfo, hint huérfano,
   ACK perdido y orden de invalidación antes de limpiar/cerrar sesión.
-- [candidate_tests.rs](../../native/services/src/app/candidate_tests.rs):
-  dispositivo y cuenta incompatibles, rechazo de disco y procedencia online.
+- [online_only_tests.rs](../../native/services/src/app/online_only_tests.rs):
+  emisión HTTP nueva sin copia, ACK perdido, retirada de restos válidos/dañados
+  sin leerlos, bytes conservados y rename bloqueado sin bloquear recuperación.
+- [runtime: online_only](../../native/runtime/src/services/tests/online_only.rs):
+  ACK durable real perdido, derechos conservados y una sola emisión al minuto.
+- [rollback entre generaciones](../../native/scripts/license-generation-rollback.ps1):
+  lectores v17/pre5 y vuelta a v18, incluida la retirada de B sin binding.
 
 La fila `Paused` del paso 0 fijaba la pérdida de gracia y llevaba «cambia en
 paso 6b». El paso 6b aplica la decisión 4: conserva el margen de la misma sesión
@@ -655,8 +660,8 @@ cancela un intento OAuth/FAPI sin cerrar la cuenta ni revocar. Volver/Cancelar
 lo usa; Logout se reserva a Cerrar sesión. El estado guardado se conserva,
 incluso tras un fallo del formulario, y Cuenta ofrece los mismos proveedores.
 No hay fallback a Logout ante un servicio v15: el desajuste sigue transitorio.
-La fila nueva de caracterización fija AccountCancel no revoca, con candidate
-y sesión conservados. El resto de filas de los refactors sigue intacto.
+La fila nueva de caracterización fija AccountCancel no revoca, con sesión conservada. En el paso 8 su columna candidate pasa a no aplicar.
+El resto de filas de los refactors sigue intacto.
 
 Enmienda de revisión paso 7: `ClockBehind.until_ms` se expresa en pared
 (lápida efectiva menos `forward_millis`), no en tiempo efectivo. Los consumidores

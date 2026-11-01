@@ -1,16 +1,21 @@
 <!-- isa1827-p8-worker -->
-## Paso 8 — en ejecución (VANTA-126, 2026-11-01)
+## Paso 8 — PR draft listo para revisión (VANTA-126, 2026-11-01)
 
-Base origin/nightly `7eae8cef177e898776cada129a9d06baab5e5d13`.
-Rama `vantareapp/isa-1827-paso8-sin-candidate`, worktree `C:/VantareServer/wt/isa-1827-p8`, target `D:/VantareServer/targets/isa-1827-p8`.
+[PR #1837](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1837), a nightly; sin integrar.
+Código validado `a41630124dad44a39494e23d06f2f3eea85099a1`; el commit posterior solo cierra documentación.
+Base `7eae8cef177e898776cada129a9d06baab5e5d13`, rama `vantareapp/isa-1827-paso8-sin-candidate`, worktree `C:/VantareServer/wt/isa-1827-p8`, target `D:/VantareServer/targets/isa-1827-p8`.
 
-- Servicios deja de guardar candidate/marcador y retira TransferRights, recovered_renewal_transfer y sus cuarentenas. Firma HTTP nueva verificada → InstallOnline; el núcleo guarda los únicos derechos.
-- Decisión del orquestador: al arrancar v18, candidate y marcador antiguos se apartan una vez con rename fechado best-effort, sin leer contenido. Si falla no bloquea ni concede; se reintenta después. Fixture de downgrade v17 sin binding obligatoria.
-- Admisión por Policy autenticada del núcleo, sin conceder acceso por arrancar el helper. Services v18; control v7/fotos v11 y formatos durables intactos.
-- Cambio autorizado: perder respuesta/ACK requiere una emisión HTTP nueva en el siguiente intento, con backoff y suelo de un minuto.
-- Fixtures en preparación/validación: ACK durable perdido + una emisión después del minuto; restos de otra cuenta/dañados apartados sin leer; rollback con lectores v17 y pre-NeedsSignIn y vuelta. Caracterización candidate pasa a no aplicar.
-- Gates, mutaciones, revisión y PR pendientes. Fallos intermedios de compilación/fixtures se conservan en `D:/VantareServer/evidence/isa-1827-p8`.
-- Project Vantare / area:licencias / In Review, sin milestone. Plane intacto. Sin dependencias nuevas, datos reales, secretos, instalaciones, producción, merge ni release. CI a cargo del orquestador, sin watch.
+- Servicios ya no guarda candidate/marcador: cada credencial HTTP verificada va a InstallOnline. Se retiran TransferRights, recovered_renewal_transfer y las rutas/tests de transferencia. Binding/authority del núcleo conservan los únicos derechos.
+- Admisión mediante Policy autenticada del núcleo y reglas del paso 7, sin conceder acceso al arrancar el helper. Servicios v18 rechaza peers v17/v16 con Version antes del esquema, sin revocación; un comando desconocido con sobre v18 sigue siendo Protocol. Control v7/fotos v11 y formatos durables intactos.
+- ACK perdido → transitorio, emisión descartada, una renovación HTTP nueva en el siguiente automático. Fixture con núcleo real: derechos durables conservados; 0/1/30/59 s sin HTTP; a 60 s exactamente una petición nueva. La comprobación manual conserva ejecución inmediata; automático mantiene suelo/backoff y tratamiento de Clerk.
+- Decisión expresa del orquestador: al arrancar v18, candidate y marcador antiguos se apartan una vez con rename fechado best-effort, sin leer su contenido. Fixtures de bytes válidos/dañados de B y rename bloqueado pasan; los errores no bloquean ni conceden, y cada archivo se intenta independientemente.
+- Cinco ciclos de rollback ejecutados con lectores reales congelados: v17 `7eae8cef1` y pre5 `bb7a5dbfb`, SignedIn/NeedsSignIn, y vuelta a v18. Pro se conserva; pre5 aparta account NeedsSignIn, como BIL-08 documenta. Caso B sin binding: v18 aparta → v17 solo Read, sin acceso → v18 sin acceso. Script reproducible: `native/scripts/license-generation-rollback.ps1`; usa únicamente fixtures sintéticas, no instalaciones.
+- Caracterización: las otras columnas de las 38 filas remotas se conservan; candidate pasa a no aplicar con justificación. Las 22 filas de Policy siguen idénticas a la base. Se eliminan las dos filas de TransferRights (matriz explícita: 5 filas).
+- Gates finales sobre a41630124: fmt PASS; clippy ipc/services/runtime/hub, todos los targets, `-D warnings` PASS; Nextest ci 1472/1472 PASS con telemetría, 17 omisiones del perfil; lifecycle separado 13/13 PASS. Siete mutaciones detectadas por aserciones, restauración SHA256 comprobada; seis pruebas focales sin mutar PASS. Calidad, 466/466 huellas de retirada, esquema de changelog y sintaxis del script PASS.
+- Toda compilación pasó por compilar.ps1. Gates finales y rollback con jobs 2; la cola redujo slots por memoria. Los primeros intentos usaron 4 por una interpretación incorrecta del valor del servidor, corregida. Se conservan fallos intermedios: el primer Nextest final pasó 1470 y falló dos smoke tests por faltar el helper storage en el target nuevo; tras compilarlo con DuckDB oficial ya disponible, la repetición completa pasó 1472. No se añadieron dependencias ni instalaciones.
+- Evidencia y comandos/logs: `D:/VantareServer/evidence/isa-1827-p8`, `final-validation.json`, `nextest-final.log`, `lifecycle-final.log`, `mutations/results.json`, `rollback-final.log` y `review-dispositions.json`. Dos revisiones DeepSeek de solo lectura; la última retirada, aislamiento y portabilidad los revisó el ejecutor, pendiente revisión del orquestador. No se afirma revisión de cada byte final por los subagentes.
+- Límites: solo se retira el namespace del backend/canal actual. Un rename bloqueado puede dejar el resto para el próximo arranque; no se promete un downgrade seguro hasta completarlo. Se apartan también candidatos A sin binding: necesitan emisión nueva. El rollback no modifica instalaciones; la comprobación física/manual queda pendiente del orquestador/Isaac en sandbox.
+- Issue #1827 abierta, Project Vantare / area:licencias / In Review, sin milestone; descripción actualizada con PR/evidencia. Plane intacto. Raíces privadas en todos los procesos de test antes de ejecutar la suite con retirada; no se inspeccionó el perfil real. Sin secretos, datos reales, producción, merge ni release. Push solo a la rama de issue; CI la vigila el orquestador, sin watch del worker. Siguiente paso: revisión del diff/CI por el orquestador.
 <!-- /isa1827-p8-worker -->
 
 <!-- isa1827-paso7 -->

@@ -9,7 +9,7 @@ conserva su suelo de un minuto antes de pedir otra emisión HTTP.
 
 Services v19 añade `LicenseStatus { policy, session, notice }` local al supervisor.
 El aviso tipado se conserva en memoria hasta un resultado de renovación verificado,
-un cierre confirmado o una sesión nueva; perder/leer la respuesta no lo consume.
+un cierre confirmado o un nuevo login confirmado; perder/leer la respuesta no lo consume.
 La sesión es la última observada de services, también NeedsSignIn; null significa
 sin observación confirmada en ese intento, nunca SignedOut implícito. No arranca
 el helper para consultarla. Hub no altera formularios/errores con esa observación

@@ -566,15 +566,21 @@ fn run_renewal(
 fn remember_notice(state: &mut State, reply: &Reply) {
     match reply {
         Reply::DeviceLimit { message } => {
-            state.notice = Some(protocol::LicenseNotice::DeviceLimit {
-                message: message.clone(),
-            });
+            state.notice = Some(vantare_services::outcome::notice_after(
+                state.notice.take(),
+                protocol::LicenseNotice::DeviceLimit {
+                    message: message.clone(),
+                },
+            ));
         }
         Reply::LicenseFailure { outcome, message } => {
-            state.notice = Some(protocol::LicenseNotice::Failure {
-                outcome: *outcome,
-                message: message.clone(),
-            });
+            state.notice = Some(vantare_services::outcome::notice_after(
+                state.notice.take(),
+                protocol::LicenseNotice::Failure {
+                    outcome: *outcome,
+                    message: message.clone(),
+                },
+            ));
         }
         Reply::License { .. } if renewal_outcome(reply) == protocol::RenewalOutcome::Verified => {
             state.notice = None;

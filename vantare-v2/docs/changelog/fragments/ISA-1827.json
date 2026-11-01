@@ -15,7 +15,7 @@
     "Revisión paso 7: avisos de frontera con fecha/hora local también en Inicio, overlays y espera de compra; frontera en pared descontando el desfase firmado. Logout disponible con núcleo autenticado aun sin acceso; consultas durante recuperación fijadas por decisión del orquestador.",
     "Paso 8: services v18 elimina candidate, marcador y TransferRights. Solo el núcleo guarda derechos; admisión por Policy autenticada. ACK perdido es transitorio y el siguiente intento pide una emisión nueva con suelo de un minuto.",
     "Decisión paso 8: apartar candidate/marcador antiguos una vez al arrancar, con rename fechado best-effort sin leer contenido. Evita reinstalarlos desde v17 tras downgrade sin binding.",
-    "Paso 9: el aviso de licencia reaparece tras perder una respuesta, sin arrancar servicios. Inicio y Cuenta lo separan del resultado del usuario. Services v19 publica sesión y aviso local; durante una compra solo renueva el supervisor y confirma el Feed fresco."
+    "Paso 9: el aviso de licencia reaparece tras perder una respuesta, sin arrancar servicios. Inicio y Cuenta lo separan del resultado del usuario. Services v19 publica sesión y aviso local; durante una compra solo renueva el supervisor y confirma el Feed fresco. Un fallo transitorio posterior conserva el rechazo definitivo o límite previo y muestra su resultado manual por separado."
   ],
   "testing": [
     "Con reloj inyectado, comprobar pausa larga y reanudación sin cambiar el deadline; salida/cambio de sesión, replay y Logout descartan la gracia. La credencial y la hora de gracia caducan aun en pausa.",

@@ -196,6 +196,13 @@ pub enum LicenseNotice {
         message: String,
     },
 }
+impl LicenseNotice {
+    pub fn message(&self) -> &str {
+        match self {
+            Self::Failure { message, .. } | Self::DeviceLimit { message } => message,
+        }
+    }
+}
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "result", deny_unknown_fields)]

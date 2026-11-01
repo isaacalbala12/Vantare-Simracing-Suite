@@ -1,5 +1,56 @@
 use super::*;
 
+#[test]
+fn transient_renewal_preserves_the_actionable_rejection_until_verified() {
+    for prior in [
+        Reply::DeviceLimit {
+            message: "limit".into(),
+        },
+        Reply::LicenseFailure {
+            outcome: protocol::RenewalOutcome::Definitive,
+            message: "account_conflict".into(),
+        },
+    ] {
+        let mut state = State::default();
+        let signing: SigningIn = Arc::new(Mutex::new(None));
+        state.renewal.observe(&confirmed_session());
+        remember_notice(&mut state, &prior);
+        let expected = expected_notice(&prior);
+        let reply = handle_with(&mut state, Command::LicenseRenew, &signing, |_, _| {
+            Reply::LicenseFailure {
+                outcome: protocol::RenewalOutcome::Transient,
+                message: "offline".into(),
+            }
+        });
+        assert!(matches!(
+            reply,
+            Reply::LicenseFailure {
+                outcome: protocol::RenewalOutcome::Transient,
+                ..
+            }
+        ));
+        assert_eq!(
+            state.notice.as_ref(),
+            Some(&expected),
+            "transport does not resolve the prior condition"
+        );
+        let policy = control::Policy {
+            version: control::VERSION,
+            revision: 1,
+            checked_at_ms: 1000,
+            state: control::AccessState::Active,
+            ..Default::default()
+        };
+        handle_with(&mut state, Command::LicenseRenew, &signing, |_, _| {
+            core_status_reply(policy)
+        });
+        assert!(
+            state.notice.is_none(),
+            "verified renewal supersedes the old rejection"
+        );
+    }
+}
+
 fn expected_notice(reply: &Reply) -> protocol::LicenseNotice {
     match reply {
         Reply::DeviceLimit { message } => protocol::LicenseNotice::DeviceLimit {
@@ -115,6 +166,17 @@ fn lost_notice_response_is_recoverable_without_helper_or_another_remote_effect()
             ),
             "a failed Logout cannot publish SignedOut"
         );
+        let mut signed_out = confirmed_session();
+        if let Reply::Account { session, .. } = &mut signed_out {
+            *session = protocol::Session::SignedOut;
+        }
+        handle_with(
+            &mut services.state.lock().expect("state"),
+            Command::Logout,
+            &signing,
+            |_, _| signed_out,
+        );
+        assert!(services.state.lock().expect("state").notice.is_none());
     }
     drop(hub);
     drop(services);

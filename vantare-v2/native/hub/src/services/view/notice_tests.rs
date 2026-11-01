@@ -6,6 +6,58 @@ use vantare_ipc::{
 };
 
 #[test]
+fn a_manual_transport_failure_preserves_the_prior_notice_and_shows_its_own_feedback() {
+    gpui_platform::headless().run(|cx| {
+        for prior in [
+            LicenseNotice::DeviceLimit {
+                message: "limit".into(),
+            },
+            LicenseNotice::Failure {
+                outcome: RenewalOutcome::Definitive,
+                message: "account_conflict".into(),
+            },
+        ] {
+            let file = crate::document::tests::File::new();
+            let (send, requests) = mpsc::sync_channel(8);
+            let remote = cx.new(|cx| fixture(cx, send, file.path.parent().expect("root")));
+            remote.update(cx, |remote, cx| {
+                remote.inflight = Inflight::Background;
+                remote.complete(
+                    Reply::LicenseStatus {
+                        policy: Policy::denied(AccessState::NoCredential),
+                        session: Some(Session::SignedIn),
+                        notice: Some(prior.clone()),
+                    },
+                    cx,
+                );
+                assert!(remote.dispatch_with_kind(Command::LicenseRenew, None));
+                assert!(matches!(requests.try_recv(), Ok(Command::LicenseRenew)));
+                remote.complete(
+                    Reply::LicenseFailure {
+                        outcome: RenewalOutcome::Transient,
+                        message: "Sin red".into(),
+                    },
+                    cx,
+                );
+                assert_eq!(remote.license_notice.as_ref(), Some(&prior));
+                assert_eq!(
+                    remote.device_limit,
+                    matches!(prior, LicenseNotice::DeviceLimit { .. })
+                );
+                assert_eq!(remote.message, "Sin red");
+                assert_eq!(remote.home_access().1.as_deref(), Some(prior.message()));
+                assert!(
+                    matches!(requests.try_recv(), Ok(Command::AccountPoll)),
+                    "manual session follow-up remains available"
+                );
+                assert!(requests.try_recv().is_err());
+            });
+        }
+        crate::quit_headless_test(cx);
+    });
+}
+
+#[test]
 fn persistent_notice_is_visible_without_overwriting_user_feedback_or_requesting_http() {
     gpui_platform::headless().run(|cx| {
         for user_message in ["", "Resultado del usuario"] {
@@ -53,8 +105,7 @@ fn persistent_notice_is_visible_without_overwriting_user_feedback_or_requesting_
                         );
                         assert!(
                             remote
-                                .license_notice
-                                .as_ref()
+                                .license_notice_message()
                                 .is_some_and(|message| !message.trim().is_empty())
                         );
                         assert!(remote.home_access().1.is_some());
@@ -72,7 +123,10 @@ fn persistent_notice_is_visible_without_overwriting_user_feedback_or_requesting_
                     },
                     cx,
                 );
-                assert_eq!(remote.license_notice.as_deref(), Some("Recupera el acceso"));
+                assert_eq!(
+                    remote.license_notice_message().as_deref(),
+                    Some("Recupera el acceso")
+                );
                 remote.inflight = Inflight::Background;
                 remote.complete(
                     Reply::LicenseStatus {

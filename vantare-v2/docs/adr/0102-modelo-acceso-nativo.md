@@ -242,7 +242,7 @@ supervisor y LicenseNotice tipado opcional. La lectura no consume el aviso ni
 arranca el helper; tampoco induce AccountPoll en el Hub. Rechazo definitivo,
 account_conflict y límite de dispositivos sobreviven a respuesta perdida,
 reconexión y consultas repetidas. Un éxito de renovación, cierre confirmado o
-sesión nueva lo releva; un error de transporte no lo borra. Es memoria del
+login confirmado lo releva; un error de transporte no lo borra. Es memoria del
 supervisor, sin un almacén durable nuevo. Policy conserva su diagnóstico propio.
 El Hub mantiene el aviso separado del resultado de la acción del usuario.
 Durante la compra no emite renovaciones: el supervisor es el único scheduler,
@@ -256,5 +256,17 @@ protocolo si hace falta, siempre con Version antes del esquema, nunca revocació
 La sesión local es opcional: null significa no observada durante el intento;
 no fabrica SignedOut tras un error genérico de Logout. El Hub aplica una
 observación estable solo en Idle, sin alterar login/cancel/logout ni sus errores.
-NeedsSignIn sigue leyendo los avisos locales. Cancelar login no los releva;
+NeedsSignIn sigue leyendo los avisos locales. Cancelar un intento conservando la sesión no los releva;
 login confirmado por OAuth o email y DeviceReset confirmado sí lo hacen.
+
+Una lectura AccountPoll que solo restaura SignedIn desde un estado desconocido
+no demuestra un login nuevo: conserva el aviso hasta renovación verificada o
+login OAuth/email confirmado. La prueba de Cancel fija SignedIn conservado;
+no afirma el montaje sintético de aviso activo con SignedOut. El seguimiento
+del scheduler después de Logout fallido + Volver queda en #1827 para decisión
+del orquestador, sin añadirlo a este paso de presentación.
+
+El paso 9 conserva un rechazo definitivo o límite de dispositivos ante un
+fallo transitorio posterior: el transporte no demuestra su resolución. El
+resultado manual de red se muestra aparte; una verificación, un reset o un
+nuevo login confirmado siguen relevando el aviso según las reglas anteriores.

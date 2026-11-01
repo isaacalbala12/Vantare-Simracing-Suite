@@ -1,17 +1,38 @@
 <!-- isa1827-p9-worker -->
-## Paso 9 — en ejecución (VANTA-126, 2026-11-01)
+## Paso 9 — regresión adicional de transporte en validación (VANTA-126, 2026-11-01)
 
-#1827, Project Vantare / area:licencias / In Review, sin milestone.
-Base origin/nightly 0a0060d4d2de68d128fa5f435518de9086770dcd; rama vantareapp/isa-1827-paso9-aviso;
-worktree C:/VantareServer/wt/isa-1827-p9; target D:/VantareServer/targets/isa-1827-p9.
-Aviso conservado por el supervisor, consulta local sin helper, presentación separada del resultado
-del usuario. Compra: Hub no renueva, confirma solo Feed fresco. Pruebas, gates y mutaciones en curso.
-Services v19 publica LicenseStatus local con sesión observada y aviso tipado, sin iniciar el helper.
-V18/v19 da Version antes del esquema, sin revocación. Control v7/fotos v11 y formatos durables intactos.
-Sin dependencias nuevas ni cambios de acceso firmado.
-Paso 10 pendiente de integrar el 9. Plane intacto; sin instalaciones, producción,
-datos reales, secretos, merge ni release.
+#1827 / Project Vantare / area:licencias / In Review, sin milestone. Plane intacto.
+Código revisado ab4195adbe2ad1e9dd98b905f80e8517ead05109, con corrección adicional
+de transporte aún sin commit; sin push ni PR todavía.
+Base origin/nightly 0a0060d4d2de68d128fa5f435518de9086770dcd (paso 8 integrado).
+Rama vantareapp/isa-1827-paso9-aviso; worktree C:/VantareServer/wt/isa-1827-p9;
+target D:/VantareServer/targets/isa-1827-p9; evidencia D:/VantareServer/evidence/isa-1827-p9.
+
+- El aviso vuelve tras perder una respuesta o reconectar; leerlo no arranca servicios ni HTTP.
+  Inicio y Cuenta lo muestran separado del resultado del usuario. Un transporte fallido no borra ni sustituye un rechazo definitivo o límite previo.
+  Corrección adicional revisada por el ejecutor, después de R2; dos regresiones nuevas.
+- Durante la compra el Hub solo observa el Feed fresco. El supervisor conserva la ventana de diez
+  minutos, backoff y suelo de un minuto. Leer avisos tampoco dispara AccountPoll.
+- Services v19 lleva aviso tipado y sesión opcional: desconocida no fabrica SignedOut. NeedsSignIn
+  sigue leyendo avisos. Una consulta de fondo no cambia el error o formulario de login/Logout.
+  Login OAuth/email y DeviceReset confirmado relevan el aviso; Cancel con sesión conservada no.
+  V18/v19 da Version antes del esquema, sin revocar. Control v7/fotos v11 y formatos durables intactos.
+- Gates previos sobre ab4195 (se repetirán sobre la corrección): Clippy cuatro crates/all-targets -D warnings PASS (cubre check);
+  Nextest ci con telemetría 1478/1478 PASS, 17 omisiones del perfil; lifecycle13/13 PASS;
+  nueve focales PASS y repetidas con rust-lld PASS; calidad/466 huellas PASS. Fmt check y mutaciones pendientes.
+  Las matrices de caracterización, rights, Cargo.toml y Cargo.lock tienen los mismos blobs que la base.
+- Dos revisiones de lectura DeepSeek, max solicitado; R1 corregida y R2 sin P0/P1/P2. P3 en seguimiento:
+  tras Logout fallido + Volver el scheduler necesita otra observación Account (ya ocurría en la base);
+  una restauración por poll no demuestra login nuevo y conserva el aviso; Cancel con aviso + SignedOut
+  no se afirma cubierto. No se incorpora otro flujo fuera del paso 9. Código revisado fijado en ab4195adb.
+- Toda compilación por compilar.ps1, jobs 2 y target privado. La suite completa usa link.exe:
+  --manifest desde la raíz no cargaba la optimización rust-lld del workspace. Los focales y mutaciones
+  cargan ahora ese ajuste explícito. Se conservan fallos intermedios de fixtures/lint/compilación; no se excluyeron tests.
+- Sin dependencias nuevas, instalaciones, producción, datos reales, secretos, merge ni release.
+  Aviso remoto en memoria del supervisor, sin nueva persistencia; Policy conserva su diagnóstico.
+  Verificación manual física pendiente en sandbox autorizado. Paso 10 espera integrar el 9 por solapar ficheros.
 <!-- /isa1827-p9-worker -->
+
 
 <!-- isa1827-p8-worker -->
 ## Paso 8 — PR draft listo para revisión (VANTA-126, 2026-11-01)

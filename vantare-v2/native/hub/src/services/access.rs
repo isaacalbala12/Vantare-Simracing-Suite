@@ -441,7 +441,7 @@ impl Remote {
             .access
             .error
             .clone()
-            .or_else(|| self.license_notice.clone())
+            .or_else(|| self.license_notice_message())
             .or_else(|| {
                 self.access
                     .policy

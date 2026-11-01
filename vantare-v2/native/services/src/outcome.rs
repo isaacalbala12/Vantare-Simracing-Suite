@@ -1,6 +1,29 @@
 //! Clasificación de acceso compartida; ADR 0102, pasos 4 y 5.
 use crate::{Error, protocol::RenewalOutcome};
-use vantare_ipc::{control::Policy, services_protocol::Reply};
+use vantare_ipc::{
+    control::Policy,
+    services_protocol::{LicenseNotice, Reply},
+};
+
+/// Transport cannot disprove an existing actionable rejection.
+pub fn notice_after(current: Option<LicenseNotice>, next: LicenseNotice) -> LicenseNotice {
+    match (current, next) {
+        (
+            Some(
+                previous @ (LicenseNotice::DeviceLimit { .. }
+                | LicenseNotice::Failure {
+                    outcome: RenewalOutcome::Definitive,
+                    ..
+                }),
+            ),
+            LicenseNotice::Failure {
+                outcome: RenewalOutcome::Transient,
+                ..
+            },
+        ) => previous,
+        (_, next) => next,
+    }
+}
 
 /// Aviso del estado, con frontera en hora local de pared para todas las vistas.
 pub fn policy_message(policy: &Policy) -> Option<String> {

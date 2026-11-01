@@ -169,7 +169,7 @@ pub struct Remote {
     /// El servicio distinguió un límite de dispositivos (`Reply::DeviceLimit`):
     /// la salida es liberar el activo, no reintentar a ciegas.
     device_limit: bool,
-    license_notice: Option<String>,
+    license_notice: Option<super::protocol::LicenseNotice>,
     license_polled_at: Option<std::time::Instant>,
     license_notice_polled_at: Option<std::time::Instant>,
     purchase_product: Option<super::protocol::BillingProduct>,
@@ -364,6 +364,23 @@ impl Remote {
                         .with_fallback(move || div().child(initials.clone()).into_any_element()),
                 )
             })
+    }
+
+    fn license_notice_message(&self) -> Option<String> {
+        self.license_notice
+            .as_ref()
+            .map(|notice| license_notice_text(notice.message()))
+    }
+
+    fn remember_license_notice(&mut self, next: super::protocol::LicenseNotice) {
+        self.license_notice = Some(vantare_services::outcome::notice_after(
+            self.license_notice.take(),
+            next,
+        ));
+        self.device_limit = matches!(
+            self.license_notice,
+            Some(super::protocol::LicenseNotice::DeviceLimit { .. })
+        );
     }
 
     fn clean_session(&mut self, session: super::protocol::Session, cx: &mut Context<Self>) {
@@ -905,12 +922,7 @@ impl Remote {
             Reply::LicenseStatus {
                 session, notice, ..
             } => {
-                self.license_notice = notice.as_ref().map(|notice| match notice {
-                    super::protocol::LicenseNotice::Failure { message, .. }
-                    | super::protocol::LicenseNotice::DeviceLimit { message } => {
-                        license_notice_text(message)
-                    }
-                });
+                self.license_notice = notice.clone();
                 self.device_limit = matches!(
                     notice,
                     Some(super::protocol::LicenseNotice::DeviceLimit { .. })
@@ -926,9 +938,16 @@ impl Remote {
                     self.account.signed_in = signed_in;
                 }
             }
-            Reply::LicenseFailure { message, .. } | Reply::DeviceLimit { message } => {
-                self.license_notice = Some(license_notice_text(message));
-                self.device_limit = matches!(reply, Reply::DeviceLimit { .. });
+            Reply::LicenseFailure { outcome, message } => {
+                self.remember_license_notice(super::protocol::LicenseNotice::Failure {
+                    outcome: *outcome,
+                    message: message.clone(),
+                });
+            }
+            Reply::DeviceLimit { message } => {
+                self.remember_license_notice(super::protocol::LicenseNotice::DeviceLimit {
+                    message: message.clone(),
+                });
             }
             Reply::License { policy, .. }
                 if resetting

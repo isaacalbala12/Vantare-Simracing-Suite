@@ -4,7 +4,10 @@ Paso 1c añade registration-boot-tests: Register falla, Register bloqueado hasta
 el plazo real de 30 segundos, fallo del registro durante Confirm y entorno
 WINDIR ausente. En los cuatro
 casos la app de prueba sigue abierta, el supervisor confirma, no hay rollback,
-el aviso conserva versión/notas y todos los datos quedan idénticos (29 checks).
+el aviso se conserva en registration-status.json y los datos quedan idénticos.
+Además Run-BetaHub real ejecuta el primer Stage con ZIP/feed TEST: fallo rápido y
+fallo liberado después de ready. Ambos conservan aviso y ready/mensaje separados;
+el PID del Register bloqueado deja de existir tras su plazo.
 `-BootProbe` es obligatorio: CI construye el ejemplo boot-confirmation-matrix del
 Hub y el arnés lo copia a una generación sintética. Usa el módulo de confirmación
 de producto; reemplaza solo el comando Register por un fallo/barrera controlados.
@@ -88,11 +91,12 @@ carpetas QA se conservan como evidencia.
 
 Confirm usa PID y salida de un proceso real inerte. Timeout usa presupuesto cero
 y un hijo propio esperando stdin: el motor ejerce su cierre/plazo real de 3 s,
-sin esperas añadidas para sincronizar. Nunca se llama a Run ni Start del producto.
+sin esperas añadidas para sincronizar. Las 88 filas no llaman a Run ni Start; el hook de 1c sí ejecuta Run-BetaHub y
+Start-BetaHub reales con Hub/runtime inertes y guardas QA.
 
 ## Reproducir y revisar cambios
 
-Desde `vantare-v2/`, construir `matrix-verifier` con `compilar.ps1`, target propio
+Desde `vantare-v2/`, construir `matrix-verifier` y `boot-confirmation-matrix` con `compilar.ps1`, target propio
 y jobs autorizados; descargar el ZIP del tag `native-beta-v0.0.975` del repositorio
 de código (no Downloads). El arnés exige su SHA-256 público fijado antes de extraer.
 
@@ -100,7 +104,8 @@ de código (no Downloads). El arnés exige su SHA-256 público fijado antes de e
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File native/packaging/installation-matrix-tests.ps1 `
   -Root D:/VantareServer/qa/isa-1840/run-nuevo `
   -LegacyPackage D:/VantareServer/qa/isa-1840/vantare-native-amd64-package.zip `
-  -TestVerifier D:/VantareServer/targets/isa-1840/debug/examples/matrix-verifier.exe
+  -TestVerifier D:/VantareServer/targets/isa-1840/debug/examples/matrix-verifier.exe `
+  -BootProbe D:/VantareServer/targets/isa-1840/debug/examples/boot-confirmation-matrix.exe
 ```
 
 `-Record` escribe un candidato **solo en QA**, nunca sobrescribe el baseline.

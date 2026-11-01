@@ -1,3 +1,7 @@
+> Revisión final sobre e747d4a9e (1b integrado), PASS. La sección inicial conserva
+> resultados del diseño anterior al documento separado; los gates vigentes están
+> en «Revisión posterior a 1b» y al final de este documento.
+
 # Paso 1c · evidencia (1-nov-2026)
 
 VANTA-127 / #1840. Base final nightly 5bf636ef0; sin merge/release. El orquestador
@@ -50,3 +54,51 @@ estado de generaciones, enlaces ni registro en las filas originales.
 
 Rebase final a 5bf636ef0 sin cambios en los bytes probados de producto/driver/
 hooks de matriz. Clippy final all-targets -D warnings y fmt PASS en esa base.
+
+## Revisión posterior a 1b
+
+Decisión del orquestador: registration-status.json solo lo escribe el Hub para
+el resultado de Register. Ajustes muestra el aviso aparte. No hay lectura,
+modificación ni escritura de update-status.json por este camino. Confirm emite
+ACK antes de DisplayVersion; su mantenimiento fallido avisa en el log y continúa,
+sin escribir un segundo estado de registro desde el supervisor.
+
+El riesgo aceptado queda en README de packaging: hub-ready significa ventana
+creada y proceso vivo; un fallo posterior mientras Register está pendiente no
+provoca rollback. El bootstrap congelado 0.0.975 conserva Sync-BetaRegistration
+sin try/catch: limitación preexistente, no corregida en este paso.
+
+Se añade Run-BetaHub/Start-BetaHub/Stage reales, con feed TEST y runtime/Hub
+inertes, guardas y registro/shell/TEMP inyectados: fallo rápido de Register y
+fallo liberado cuando el primer Stage ya ha escrito ready. Se comparan bytes del
+actualizador, aviso separado, datos, estado y procesos. Después de comprobar el
+primer Stage se permite cerrar la app y el supervisor termina su flujo normal.
+El PID del hijo bloqueado se comprueba ausente tras timeout y Drop.
+
+matrix-1c-rebase-01 pasó 88+22+24+14+12+54+29 antes de esta revisión. La copia es
+anterior al cambio de documento y se conserva con esa procedencia. Las primeras
+órdenes de gates omitieron cargo y luego manifest-path; las dos esperas propias
+incorrectas se cancelaron antes de compilar. Se relanzó con manifest explícito,
+por la misma cola y target; nunca se saltó el límite ni se paró trabajo ajeno.
+
+Gates finales de revisión PASS:
+- matrix-1c-review-01: 88/88 +22 biblioteca +24 contexto +14 seguridad histórica
+  +12 snapshots +54 inventario +42 arranque/registro. Cuatro scripts del gate
+  iguales byte a byte a producto/driver/main; los 88 resultados iguales al baseline.
+- boot-1c-review-01: los 42 checks repetidos con el helper final que exige también
+  TEMP/TMP/LOCALAPPDATA QA antes de escribir. Candidate/beta/helper coinciden en bytes.
+  El hook del recorrido completo solo carecía de esa comprobación previa adicional;
+  ambos ejecutaron exactamente el mismo producto y los seis casos de arranque.
+- Hub all-targets Nextest ci: 599/599, cuatro omisiones previas, cuatro lentos,
+  216,000 s. Incluye lector de Ajustes, timeout/Drop y recogida real del PID.
+- Clippy Hub all-targets -D warnings, fmt, build del ejemplo, parseo PS, YAML,
+  fragmento, calidad/468 huellas, diff y límite ajeno del handoff PASS.
+- Clippy intermedio rechazó unwrap en helper de PID (no anotado como test);
+  se sustituyó por expect con contexto, sin omitir tests ni cambiar lints.
+
+Único delta de las 88 filas respecto a nightly: SHA beta raíz en 52 filas.
+Beta SHA256: 336ef053cf73dab70103fe51ab3118e259b4c36bd04adeaef120956748e24c4d.
+Candidate conserva los bytes exactos de 1b. Sin nueva dependencia ni cambio propio
+de runtime/domain/ipc/testdata; telemetría y lifecycle de runtime omitidos por ámbito.
+QA física en otra cuenta/VM pendiente. Sin Setup/Uninstall EXE, instalación real,
+CI watch, merge, release, Downloads ni cambio Plane por este worker.

@@ -228,34 +228,51 @@ orquestador. Cinco PR separados, sin merge/release del worker.
   Windows CI PASS. 1a integrado en f8ccb1689, #1846, código 40e575f6e: inventario
   propio, catálogo validado, snapshot de paquete y carpetas no vacías. Local 88+54
   y 156 históricos PASS. P3-4 previous-unreadable de #1795 fuera de este encargo.
-- 1b listo tras revisión en [#1847](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1847),
+- 1b integrado por el orquestador en nightly e747d4a9e, [#1847](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1847),
   HEAD 79a3e03d9, base f8ccb1689. Root/Library y contexto QA explícitos; capturadores
   activos adaptados y originales archivados, 468 pins; todos los scripts visibles
   en snapshots. Local 88+22+24+14+12+54, histórico14+156, contrato8+8, Clippy/fmt
-  y calidad PASS. CI/merge del orquestador; no se declara integrado aquí.
+  y calidad PASS. Integración confirmada por el orquestador.
   Suites QA1492 todavía sin remapeo en [#1848](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1848),
   area:plataforma / Project Vantare, fuera de 1b por decisión expresa.
-- 1c listo para revisión, rama vantareapp/isa-1840-1c-register, worktree
-  D:/VantareServer/worktrees/isa-1840-1c, base 5bf636ef0. [PR draft #1850](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1850), enlazado T3; código b2eb2c4f4, HEAD documental en #1840/PR.
-  Hub-ready antes de Register; hijo poseído y acotado30s, fallo/creación/timeout
-  son avisos después del ACK, sin cierre ni rollback. WINDIR ausente también
-  avisa. Confirm publica su ACK antes del mantenimiento de registro; su fallo
-  tampoco aborta. Conserva versión/notas y ready de otra actualización.
-  Error al guardar aviso va a stderr y no cierra la app.
-- Matriz final 1c en matrix-1c-final-01: **88/88 +54 inventario +29 arranque** PASS.
-  Producto/driver/hook coinciden en bytes y los 88 resultados coinciden con
-  baseline; solo SHA beta raíz en 52 filas. Sin rollback ni cambios de datos
-  en las cuatro incidencias de registro, incluido ACK antes de mantenimiento.
-- Evidencia y fallos iniciales de arnés/compilación en
-  [evidencia 1c](../../../native/packaging/matrix/evidence-1840-1c.md).
-  Hub completo 596/596, cuatro omisiones previas, sobre cd9282ccc; tras el ajuste
-  final y rebase 1a, 29/29 focales de instalación/arquitectura. Clippy final sobre 5bf636ef0 all-targets
-  -D warnings y build del ejemplo por cola, target D:/VantareServer/targets/isa-1840,
-  jobs2. Sin cambios propios en runtime/domain/ipc/testdata, telemetría omitida.
-  La demostración usa el módulo real del Hub y Confirm de producto, sin ventana
-  física; no acredita VM/cuenta independiente.
-- 1d en preparación, worktree/branch propios; sin PR todavía. El interruptor usa
-  Startup del instalador y retirada de Run, con proceso poseído y UI disponible.
+- 1c revisión aplicada y lista, rama vantareapp/isa-1840-1c-register, worktree
+  D:/VantareServer/worktrees/isa-1840-1c, base e747d4a9e. [PR draft #1850](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1850).
+  Rebase conserva Root/Library y QA de 1b. Decisión posterior del orquestador:
+  resultado de Register en registration-status.json, escrito por Hub y mostrado
+  aparte en Ajustes. No lee/modifica update-status; Stage conserva ready/error
+  y su notificación. Éxito limpia el aviso previo; fallo de guardar solo va al log.
+  Confirm publica ACK antes de Sync-BetaRegistration; su fallo avisa en log.
+  Riesgo aceptado y bootstrap 975 sin try/catch documentados en README packaging.
+- Gates anteriores 1c: Hub596/596 +29 focales; matrix-1c-rebase-01 pasa
+  88+22+24+14+12+54+29, con diseño anterior a documento separado. No es evidencia
+  de la revisión actual. Se añade Run-BetaHub/Stage real en ambos órdenes,
+  ready concurrente, lectura de Ajustes y comprobación de PID recogido.
+  Gates finales: matrix-1c-review-01 88+22+24+14+12+54+42 PASS;
+  boot-1c-review-01 42/42 con helper final y entornos QA exigidos, PASS.
+  Hub all-targets599/599, cuatro skips previos/cuatro lentos,216,000s;
+  Clippy all-targets-Dwarnings/fmt/build/PS/YAML/fragmento/calidad468 PASS.
+  Cuatro scripts/capturas88 coinciden con copia QA/baseline; solo SHA beta52 filas.
+  Código/HEAD finales en #1840/PR. Cola/target propios, sin aflojar lints ni tests.
+  [Evidencia y fallos iniciales](../../../native/packaging/matrix/evidence-1840-1c.md).
+  Sin ventana física ni cambios propios de runtime/domain/ipc/testdata;
+  telemetría omitida por ámbito. CI y merge del orquestador.
+- 1d listo para revisión, rama vantareapp/isa-1840-1d-run, worktree
+  D:/VantareServer/worktrees/isa-1840-1d, base 5bf636ef0. PR draft [#1851](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1851),
+  código 5cb6fc7e0; HEAD publicado final en #1840.
+  Hub usa SetStartup de la generación instalada; hijo poseído y acotado30s,
+  espera asíncrona con tarea en Store. GPUI comparte installer-ui.autostart sin
+  reescribir data; preferencias antiguas se guardan/restauran conservando otras
+  modificaciones. CLI valida script activo, estado, hashes, registro y opciones.
+  Activa/desactiva el acceso Startup del instalador y retira Run de esa identidad.
+  Uninstall también lo retira, incluso recuperación validada con registro ausente.
+  Valores/accesos ajenos se conservan; rollback de bytes/opciones ante fallo.
+- Gates 1d: matriz88/88 +54 inventario +13 Startup PASS; arnés final Startup14
+  añade fallo de opciones, sin cambiar producto; hook final Probe+54+14 PASS.
+  Hub586/586, cuatro omisiones,
+  sobre f8ccb1689; Clippy/fmt finales sobre 5bf636ef0 PASS. Evidencia y fallos en
+  [evidencia1d](../../../native/packaging/matrix/evidence-1840-1d.md).
+  Pruebas con driver/CLI reales, root con espacios y HKCU/shell/entornos inyectados;
+  sin Setup/Uninstall EXE ni ventana física, datos/carpetas vacías intactos.
 - Incidente descartado1b y comprobaciones sin daño observable del orquestador
   en su evidencia. Fixture C:/tmp y caché Python ignorada conservadas porque la
   herramienta rechazó borrar con «blocked by policy»; no se intentó otra vía.
@@ -264,7 +281,10 @@ orquestador. Cinco PR separados, sin merge/release del worker.
 Sin instalación real, datos de usuario, Setup/Hub físicos, Downloads, promoción,
 merge ni release por el worker. Primeras capturas0 con TEMP heredado descartadas,
 sin afirmar auditoría global. QA física en otra cuenta/VM pendiente; RC9 intacto.
-Siguiente: entregar 1c y 1d con matriz y revisión/CI del orquestador.
+Siguiente: CI/integración de 1c por el orquestador; después rebase/revisión de 1d.
+Revisión 1d pendiente: migrar Run válida a opción/Startup, serializar Register con
+SetStartup, retirar Run solo tras Uninstall correcto y como aviso si falla,
+validar comando propio, progreso en UI y pruebas de carga/migración del Hub.
 Última actualización: 1-nov-2026, ejecutor de #1840.
 <!-- isa1827-p10-worker -->
 ## VANTA-126 / #1827 — Paso 10 listo para revisión (2026-11-01)

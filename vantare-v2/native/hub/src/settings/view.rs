@@ -1202,7 +1202,16 @@ impl Hub {
         let current = beta
             .as_ref()
             .is_some_and(|status| status.state == "current" && status.version == version);
+        let registration = if self.demo.is_none() && self.capture.is_none() {
+            super::updates::registration_warning()
+        } else {
+            None
+        };
         stack().h_full()
+            .when_some(registration, |surface, message| {
+                surface.child(section_surface("Registro de Windows", None,
+                    section_body().child(orbit::callout(message, cx)), 12.0, cx))
+            })
             .when_some(beta.filter(|status| status.state != "current"), |surface, status| {
                 surface.child(
                     self.settings_beta_notice(status, cx),

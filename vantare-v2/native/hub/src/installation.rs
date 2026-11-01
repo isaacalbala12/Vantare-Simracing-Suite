@@ -131,8 +131,7 @@ impl BootConfirmation {
                 self.warning = Some(warning);
             }
         }
-        // Confirm writes update-status before removing boot-pending. Publish a
-        // registration warning only after that ACK so old bootstraps cannot erase it.
+        // ACK still bounds real boot confirmation; registration owns a separate file.
         if self
             .root
             .join("boot-pending.json")
@@ -147,40 +146,22 @@ impl BootConfirmation {
         if self.child.is_some() {
             return Ok(false);
         }
-        if let Some(warning) = self.warning.take()
-            && let Err(error) = write_registration_warning(&self.root, &warning)
-        {
-            // A status file error must not turn cosmetic maintenance into rollback.
-            eprintln!("{warning}; no se pudo guardar el aviso: {error}");
+        if let Err(error) = write_registration_status(&self.root, self.warning.as_deref()) {
+            // Maintenance cannot invalidate readiness, even when its status cannot be saved.
+            eprintln!("No se pudo guardar el estado del registro: {error}");
         }
         Ok(true)
     }
 }
 
-fn write_registration_warning(root: &Path, warning: &str) -> std::io::Result<()> {
-    use std::io::{Read, Write};
-    let path = root.join("update-status.json");
-    let saved = std::fs::File::open(&path).ok().and_then(|file| {
-        let mut bytes = Vec::new();
-        file.take(65537).read_to_end(&mut bytes).ok()?;
-        (bytes.len() <= 65536).then_some(())?;
-        serde_json::from_slice::<serde_json::Value>(&bytes).ok()
-    });
-    let string = |name: &str| {
-        saved
-            .as_ref()
-            .and_then(|value| value[name].as_str())
-            .unwrap_or("")
-            .to_owned()
-    };
-    // Do not hide an update the user staged while registration was running.
-    let state = if string("state") == "ready" {
-        "ready"
-    } else {
-        "warning"
-    };
-    let status = serde_json::json!({"schema":1,"state":state,"message":warning,
-        "version":string("version"),"notes":string("notes")});
+fn write_registration_status(root: &Path, warning: Option<&str>) -> std::io::Result<()> {
+    use std::io::Write;
+    let path = root.join("registration-status.json");
+    // This writer never reads or modifies update-status.json. In particular a
+    // Stage running concurrently keeps its ready/error and update notification.
+    let status = serde_json::json!({"schema":1,
+        "state":if warning.is_some() {"warning"} else {"current"},
+        "message":warning.unwrap_or("")});
     let temporary = root.join(format!("registration-{}.tmp", std::process::id()));
     let mut file = std::fs::OpenOptions::new()
         .write(true)
@@ -246,6 +227,24 @@ mod tests {
         BootConfirmation::spawn(root, &mut command).expect("registration fixture")
     }
 
+    fn process_running(pid: u32) -> bool {
+        use std::os::windows::process::CommandExt;
+        std::process::Command::new("powershell.exe")
+            .args(["-NoProfile", "-NonInteractive", "-Command",
+                &format!("if(Get-Process -Id {pid} -ErrorAction SilentlyContinue){{exit 0}}else{{exit 1}}")])
+            .creation_flags(0x0800_0000).status().expect("query owned child PID").success()
+    }
+
+    #[test]
+    fn dropping_confirmation_reaps_the_blocked_registration_child() {
+        let root = root();
+        let confirmation = waiting(&root);
+        let pid = confirmation.child.as_ref().unwrap().id();
+        drop(confirmation);
+        assert!(!process_running(pid));
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
     #[test]
     fn slow_registration_claims_readiness_before_finishing() {
         let root = root();
@@ -294,16 +293,19 @@ mod tests {
         );
         assert!(confirmation.poll().expect("registration is cosmetic"));
         assert!(
-            std::fs::read_to_string(root.join("update-status.json"))
+            std::fs::read_to_string(root.join("registration-status.json"))
                 .unwrap()
                 .contains("warning")
         );
         assert!(root.join("hub-ready").exists());
         let mut confirmation = waiting(&root);
+        let pid = confirmation.child.as_ref().unwrap().id();
         confirmation.registration_deadline = std::time::Instant::now();
         assert!(confirmation.poll().expect("registration is cosmetic"));
+        assert!(confirmation.child.is_none());
+        assert!(!process_running(pid));
         assert!(
-            std::fs::read_to_string(root.join("update-status.json"))
+            std::fs::read_to_string(root.join("registration-status.json"))
                 .unwrap()
                 .contains("warning")
         );
@@ -377,7 +379,7 @@ mod tests {
             BootConfirmation::spawn(&root, &mut Command::new(root.join("missing.exe"))).unwrap();
         assert!(confirmation.poll().unwrap());
         assert!(
-            std::fs::read_to_string(root.join("update-status.json"))
+            std::fs::read_to_string(root.join("registration-status.json"))
                 .unwrap()
                 .contains("warning")
         );
@@ -385,32 +387,34 @@ mod tests {
     }
 
     #[test]
-    fn registration_warning_waits_for_ack_and_preserves_update_metadata() {
+    fn registration_document_waits_for_ack_and_never_modifies_update_status() {
         let root = root();
         std::fs::write(root.join("boot-pending.json"), "pending").unwrap();
         let mut confirmation = waiting(&root);
         confirmation.registration_deadline = std::time::Instant::now();
         assert!(!confirmation.poll().unwrap());
-        assert!(!root.join("update-status.json").exists());
-        std::fs::write(root.join("update-status.json"),
-            r#"{"schema":1,"state":"current","message":"confirmed","version":"0.0.989","notes":"release notes"}"#).unwrap();
+        assert!(!root.join("registration-status.json").exists());
+        let ready = br#"{"schema":1,"state":"ready","message":"update","version":"0.0.990","notes":"next release"}"#;
+        std::fs::write(root.join("update-status.json"), ready).unwrap();
         std::fs::remove_file(root.join("boot-pending.json")).unwrap();
         assert!(confirmation.poll().unwrap());
+        assert_eq!(
+            std::fs::read(root.join("update-status.json")).unwrap(),
+            ready
+        );
         let status: serde_json::Value =
-            serde_json::from_slice(&std::fs::read(root.join("update-status.json")).unwrap())
+            serde_json::from_slice(&std::fs::read(root.join("registration-status.json")).unwrap())
                 .unwrap();
         assert_eq!(status["state"], "warning");
-        assert_eq!(status["version"], "0.0.989");
-        assert_eq!(status["notes"], "release notes");
-        std::fs::write(root.join("update-status.json"),
-            r#"{"schema":1,"state":"ready","message":"update","version":"0.0.990","notes":"next release"}"#).unwrap();
-        write_registration_warning(&root, "registration warning").unwrap();
+        write_registration_status(&root, None).unwrap();
         let status: serde_json::Value =
-            serde_json::from_slice(&std::fs::read(root.join("update-status.json")).unwrap())
+            serde_json::from_slice(&std::fs::read(root.join("registration-status.json")).unwrap())
                 .unwrap();
-        assert_eq!(status["state"], "ready");
-        assert_eq!(status["version"], "0.0.990");
-        assert_eq!(status["notes"], "next release");
+        assert_eq!(status["state"], "current");
+        assert_eq!(
+            std::fs::read(root.join("update-status.json")).unwrap(),
+            ready
+        );
         std::fs::remove_dir_all(root).unwrap();
     }
 

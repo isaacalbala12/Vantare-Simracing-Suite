@@ -500,7 +500,7 @@ function Confirm-BetaBoot([string]$Directory, $Process, [int]$TimeoutSeconds = 4
             # ACK is durable before cosmetic registry I/O, including slow writes.
             Remove-Item -LiteralPath $marker
             try { Sync-BetaRegistration $Directory $boot.version }
-            catch { Set-BetaStatus $Directory 'warning' ('No se pudo actualizar el registro de Vantare: '+$_.Exception.Message) $boot.version $saved.notes }
+            catch { Write-Warning ('No se pudo actualizar DisplayVersion: '+$_.Exception.Message) -WarningAction Continue }
         }
         return $true
     }
@@ -614,7 +614,7 @@ function Uninstall-Beta([string]$Directory, [scriptblock]$Finalize=$null) {
             }
         }
         Remove-Item -LiteralPath (Join-Path $directory 'state.json')
-        foreach ($name in @('boot-pending.json', 'hub-ready', 'update-status.json', 'staging/pending.json')) {
+        foreach ($name in @('boot-pending.json', 'hub-ready', 'update-status.json', 'registration-status.json', 'staging/pending.json')) {
             $path = Join-Path $directory $name
             if (Test-Path -LiteralPath $path) { Remove-Item -LiteralPath $path }
         }

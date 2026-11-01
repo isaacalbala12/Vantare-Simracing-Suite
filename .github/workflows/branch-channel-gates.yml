@@ -432,6 +432,36 @@ jobs:
             if ($LASTEXITCODE) { throw "native $gate failed" }
           }
 
+      - name: Characterize Windows installation operations
+        if: needs.policy.outputs.native != 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CARGO_BUILD_JOBS: '4'
+        run: |
+          $env:CARGO_TARGET_DIR = Join-Path (Get-Location) 'native/target/gates'
+          pwsh -NoProfile -File native/scripts/compilar.ps1 cargo build --manifest-path native/Cargo.toml -p vantare-services --example matrix-verifier --locked --offline -j 4
+          if ($LASTEXITCODE) { throw 'matrix TEST verifier build failed' }
+          $legacy = Join-Path $env:RUNNER_TEMP 'matrix-legacy'
+          New-Item -ItemType Directory -Path $legacy -Force | Out-Null
+          gh release download native-beta-v0.0.975 --repo $env:GITHUB_REPOSITORY --pattern vantare-native-amd64-package.zip --dir $legacy
+          if ($LASTEXITCODE) { throw 'pinned historical package unavailable' }
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File native/packaging/matrix/guard-tests.ps1 -Root "$env:RUNNER_TEMP/installation-matrix-guard"
+          if ($LASTEXITCODE) { throw 'installation matrix isolation failed' }
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File native/packaging/installation-matrix-tests.ps1 -Root "$env:RUNNER_TEMP/installation-matrix" -LegacyPackage "$legacy/vantare-native-amd64-package.zip" -TestVerifier "$env:CARGO_TARGET_DIR/debug/examples/matrix-verifier.exe"
+          if ($LASTEXITCODE) { throw 'installation matrix regression' }
+
+      - name: Preserve installation matrix snapshots
+        if: always() && needs.policy.outputs.native != 'false'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: installation-matrix-windows
+          path: |
+            ${{ runner.temp }}/installation-matrix/**/snapshot.json
+            ${{ runner.temp }}/installation-matrix/**/stdout.log
+            ${{ runner.temp }}/installation-matrix/**/stderr.log
+            ${{ runner.temp }}/installation-matrix/results.json
+          if-no-files-found: ignore
+
       - name: Verify retained fixtures and references
         if: needs.policy.outputs.native != 'false'
         run: python native/retirement/verify.py

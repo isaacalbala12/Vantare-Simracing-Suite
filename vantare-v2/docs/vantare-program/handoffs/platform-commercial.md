@@ -46,6 +46,52 @@ conservan la evidencia de sus ramas; no describen el estado de integración actu
   abrir la rama B desde origin/nightly actualizado; B/C/D/E siguen pendientes.
 <!-- /isa1827-simplificar-worker -->
 
+## Instalador · VANTA-127 / #1840
+
+Autoridad: [#1840](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1840),
+`area:plataforma`, GitHub Project Vantare. Encargo del orquestador: paso 0 y
+1a–1d, cinco PR draft separados a nightly, sin merge ni release. La candidata
+RC9 0.0.988 queda fuera; los arreglos son para la candidata siguiente.
+
+Paso 0 listo para revisión: [PR draft #1842](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1842),
+enlazado en T3, a nightly. Código validado `e35077c01` más BOM QA `9dcdede7a`; HEAD documental vigente
+en PR/#1840. Rama `vantareapp/isa-1840-paso0-matriz`, base
+`origin/nightly@6fbbfaa6ad96d187877043786fc999a369d268b3`; worktree
+`D:/VantareServer/worktrees/isa-1840-paso0`. Matriz Windows de ocho fixtures por
+once operaciones, con ZIP 975 público de SHA fijado y verificador Ed25519 TEST
+que no entra en el producto. Target propio `D:/VantareServer/targets/isa-1840`.
+Evidencia y raíces aisladas en `D:/VantareServer/qa/isa-1840/`.
+
+Gates locales: matriz en modo comparación **88/88 PASS**, 121 comprobaciones de
+datos preexistentes; dos capturas previas **88/88** con las 88 instantáneas
+idénticas. Guarda: cinco rutas ajenas y dos reparse rechazados, raíz válida
+aceptada, llamada sin raíz sin escrituras. Baseline alterado detectado y
+restauración exacta comprobada. Build/Clippy del ejemplo `-D warnings`, fmt,
+parseo PS, YAML, 62 tests de canales/clasificación y 466 huellas PASS.
+La copia QA del driver conserva el BOM UTF-8 necesario en PowerShell 5.1;
+tras ajustar esa codificación, las 15 filas de driver focales pasan sin cambiar
+ninguna instantánea del baseline. Los scripts de producto permanecen intactos.
+Rebase tras #1841: única resolución en este handoff, conservando íntegra la
+entrada de licencias. Matriz, fixtures, baseline, workflow y verificador tienen
+blobs idénticos a `dc2286551`; la evidencia de comportamiento se conserva.
+No se compila ni ejecuta UI/producto para este corte de tests.
+
+Límites: archivos reales de 975, pero sin ejecutar NSIS ni Hub; las RC usan PE
+inertes y verificador TEST. No acredita otra cuenta, Windows limpio ni un sandbox
+general. Las capturas iniciales con TEMP heredado se descartaron; las válidas
+fijan TEMP/TMP antes de crear cada hijo. No se afirma auditoría global de los
+temporales de esas capturas iniciales.
+
+Siguiente acción: revisión/CI del orquestador y aceptación del paso 0; después
+1a–1d en sus propias ramas desde nightly. 1a ya tiene worktree aislado
+`D:/VantareServer/worktrees/isa-1840-1a`, rama `vantareapp/isa-1840-1a-inventario`,
+base `056ec9d94`, todavía sin PR ni entrega. El seguimiento P3-4 de #1795 sobre
+previous-unreadable no forma parte del inventario encargado en 1a.
+Plane sigue En curso; sus siguientes estados y CI los gestiona el orquestador.
+Sin instalaciones reales, datos de usuario, registro de producto, Downloads,
+secretos, nuevas dependencias ni acciones de publicación. Última actualización:
+2026-11-01, worker ejecutor de #1840.
+
 <!-- isa1827-p10-worker -->
 ## VANTA-126 / #1827 — Paso 10 listo para revisión (2026-11-01)
 

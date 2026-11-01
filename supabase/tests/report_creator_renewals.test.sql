@@ -40,7 +40,26 @@ create temporary table only_report as select public.report_promotion_prepare('15
 select is(public.report_promotion_renewal_prepare((select (op->>'id')::uuid from only_report),200,11,'2026-11-01')->>'discount_id','15936611-0000-4000-8000-000000000023','only reports Plus: fixed 300 cents, no creator operation needed');
 select is((select savings_cents from private.report_renewal_candidates where subscription_id='report-only'),300,'late attribution will see the already-published reports candidate');
 select ok(public.report_promotion_claim((select (op->>'id')::uuid from only_report),'15936611-0000-4000-8000-000000000025','2026-11-01'),'ordinary report-only lease acquired');
+-- The report API accepts p_now, but the creator entrypoint uses wall time.
+-- Inject that clock only for this assertion pair, inside the disposable test
+-- transaction. Otherwise this lease expires on 2026-11-01 00:01 UTC in CI.
+savepoint report_only_clock;
+create function pg_temp.report_only_now() returns timestamptz language sql as $$
+ select '2026-11-01 00:00:59+00'::timestamptz
+$$;
+do $$ begin
+ execute replace(pg_get_functiondef('public.billing_creator_renewal_prepare(text,uuid,text,text,text,uuid,text,uuid,integer)'::regprocedure),
+  'clock_timestamp()', 'pg_temp.report_only_now()');
+end $$;
 select is(public.billing_creator_renewal_prepare('sandbox','15936611-0000-4000-8000-000000000020',null,'report-only','report-only-initial','15936611-0000-4000-8000-000000000021','pro_plus_monthly',null,200)->>'busy','true','late creator initialization waits for report-only lease before touching subscription');
+select ok(not exists(select 1 from private.creator_renewal_operations where subscription_id='report-only'),'live report-only lease prevents creator initialization');
+create or replace function pg_temp.report_only_now() returns timestamptz language sql as $$
+ select '2026-11-01 00:01:00+00'::timestamptz
+$$;
+select is(public.billing_creator_renewal_prepare('sandbox','15936611-0000-4000-8000-000000000020',null,'report-only','report-only-initial','15936611-0000-4000-8000-000000000021','pro_plus_monthly',null,200),null::jsonb,'expired report-only lease no longer reports busy at its exact deadline');
+-- Restore the unmodified creator entrypoint before the remaining integration tests.
+rollback to report_only_clock;
+release report_only_clock;
 select ok(public.report_promotion_ack((select (op->>'id')::uuid from only_report),'15936611-0000-4000-8000-000000000025','2026-11-01'),'ordinary report-only ACK');
 delete from private.report_renewal_candidates where subscription_id='report-only';
 -- Fixtures use real #1661 attribution/paid-order API. No forged event metadata.

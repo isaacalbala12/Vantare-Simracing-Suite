@@ -5,7 +5,7 @@ param(
     [ValidateSet('Shortcut','beta.ps1','candidate.ps1','registration-identity.txt','uninstall-vantare.ps1','installer-ui.json','installer-notices.txt')][string]$Boundary='Shortcut'
 )
 $ErrorActionPreference='Stop'
-. (Join-Path $PSScriptRoot 'beta.ps1')
+. (Join-Path $PSScriptRoot 'beta.ps1') -Library -Root $PSScriptRoot
 $evidence=Assert-NativePath $EvidenceDirectory
 if(-not $evidence.StartsWith([IO.Path]::GetFullPath('C:/tmp/ola2/1591-qa/'),[StringComparison]::OrdinalIgnoreCase) -or (Test-Path -LiteralPath $evidence)){throw 'Use fresh isolated evidence.'}
 $key='HKCU:/Software/Microsoft/Windows/CurrentVersion/Uninstall/VantareNativeBetaQA1492'
@@ -20,7 +20,7 @@ $data=Join-Path $root ('generations/'+$state.active.generation+'/data')
 [IO.File]::WriteAllText((Join-Path $data 'profile.json'),'TEST ONLY preserved data')
 $index=Get-NativeDataIndex $data
 $request=Join-Path $evidence 'request.json'
-Write-BetaJson $request @{operation='Uninstall';root=$root;qa=$true;uninstall=$true;silent=$true;version='0.0.978';size=0}
+Write-BetaJson $request @{operation='Uninstall';root=$root;qa=$true;qaIdentity='VantareNativeBetaQA1492';qaShortcutFolder='Vantare QA1492';qaLegacyShortcutFolder='Vantare Native Beta QA1492';qaPrefix='C:/tmp/ola2/1591-qa';uninstall=$true;silent=$true;version='0.0.978';size=0}
 function Run-Uninstall([int]$Expected){
     $info=[Diagnostics.ProcessStartInfo]::new();$info.FileName=Join-Path $env:WINDIR 'System32/WindowsPowerShell/v1.0/powershell.exe'
     $info.Arguments='-NoProfile -ExecutionPolicy Bypass -File "'+(Join-Path $PSScriptRoot 'installer-driver.ps1')+'" -RequestFile "'+$request+'"'

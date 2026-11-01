@@ -10,6 +10,15 @@ los escribe en un temporal exclusivo y ejecuta el motor PS 5.1 x64 oculto;
 hashes, rollback y datos. Ambos scripts raíz se renuevan solo con Setup. El
 payload público excluye ambos binarios del instalador y el admin privado.
 
+El motor se carga con `-Library -Root` explícitos. Probe descubre una instalación;
+las operaciones posteriores deben enviar raíz. La build pública omite identidad,
+carpetas y prefijo QA del protocolo. `test-installer` exige las cuatro variables
+`VANTARE_INSTALLER_QA_IDENTITY`, `VANTARE_INSTALLER_QA_SHORTCUT_FOLDER`,
+`VANTARE_INSTALLER_QA_LEGACY_SHORTCUT_FOLDER` y `VANTARE_INSTALLER_QA_PREFIX`;
+el builder las recibe mediante sus parámetros QaIdentity/QaShortcutFolder/
+QaLegacyShortcutFolder/QaPrefix. El driver rechaza una petición TEST incompleta
+o dirigida fuera del prefijo, a la identidad pública o a una instalación de usuario.
+
 La UI copia la ventana #E de `instalador-r3.html`: 720x460 lógicos, marca 240,
 footer solo a la derecha, Inter/Rajdhani 700/Space Mono y seis pantallas. Las
 únicas variaciones aprobadas son valores reales, tarjetas habilitadas según
@@ -80,9 +89,11 @@ Desde native; envolver cada comando con `native/scripts/compilar.ps1` desde
 
 ```powershell
 powershell -NoProfile -File packaging/candidate.ps1 -Operation Build `
-  -Channel beta -Version 0.0.977 -OutputDirectory C:/tmp/ola2/1591-qa/build-a
+  -Root D:/VantareServer/qa/build-context -Channel beta -Version 0.0.977 -OutputDirectory D:/VantareServer/qa/build-a
 powershell -NoProfile -File packaging/build-installer.ps1 -Version 0.0.977 `
-  -OutputDirectory C:/tmp/ola2/1591-qa/build-a -TestInstaller
+  -OutputDirectory D:/VantareServer/qa/build-a -TestInstaller `
+  -QaIdentity VantareNativeQA1840 -QaShortcutFolder 'Vantare QA1840' `
+  -QaLegacyShortcutFolder 'Vantare Legacy QA1840' -QaPrefix D:/VantareServer/qa/
 ```
 
 El builder exige ZIP/version/bootstrap idénticos y construye primero Uninstall,
@@ -91,7 +102,7 @@ la UI, pero instalar falla explícitamente por payload ausente.
 Los EXE del builder enlazan CRT estático del toolchain: no requieren instalar
 VC Redist para abrir Setup. La lista de imports se comprueba en la evidencia;
 ICU/DirectWrite/D3D son componentes del Windows objetivo, no descargas de Setup.
-`test-installer` exige raíz bajo `C:/tmp/ola2/1591-qa/`; protege la instalación
+`test-installer` exige raíz bajo el prefijo inyectado por el builder; protege la instalación
 real incluso con rutas/registro externos. `parity-capture` solo existe en builds
 de QA; carga snapshot explícito y deshabilita acciones. Su script
 `installer-visual.ps1` exige pantalla libre/mutex y no cambia DPI global.

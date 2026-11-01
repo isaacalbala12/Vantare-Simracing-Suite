@@ -2,18 +2,20 @@
 #requires -Version 5.1
 [CmdletBinding()]
 param(
-    [ValidateSet('Install', 'Run', 'Check', 'Apply', 'Uninstall')][string]$Operation = 'Run',
-    [string]$Root = (Join-Path $env:LOCALAPPDATA 'Programs/Vantare'),
-    [string]$Archive,
-    [string]$ExpectedSha256,
-    [string]$LocalManifest,
-    [switch]$NoLaunch
+    [Alias('Operation')][ValidateSet('Install', 'Run', 'Check', 'Apply', 'Uninstall')][string]$BetaCommand = 'Run',
+    [Alias('Root')][string]$BetaRoot,
+    [Alias('Archive')][string]$BetaArchive,
+    [Alias('ExpectedSha256')][string]$BetaPackageHash,
+    [Alias('LocalManifest')][string]$BetaManifestFile,
+    [Alias('NoLaunch')][switch]$BetaNoLaunch,
+    [Alias('Library')][switch]$BetaLibrary
 )
+if ([string]::IsNullOrWhiteSpace($BetaRoot)) { throw 'NATIVE_ROOT_REQUIRED' }
+if ($MyInvocation.InvocationName -eq '.' -and -not $BetaLibrary) { throw 'NATIVE_LIBRARY_MODE_REQUIRED' }
+if ($BetaLibrary -and $MyInvocation.InvocationName -ne '.') { throw 'NATIVE_LIBRARY_REQUIRES_DOT_SOURCE' }
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
-$betaOperation = $Operation
-. (Join-Path $PSScriptRoot 'candidate.ps1') -Root $Root -Archive $Archive -ExpectedSha256 $ExpectedSha256 -Channel beta
-$Operation = $betaOperation
+. (Join-Path $PSScriptRoot 'candidate.ps1') -Library -Root $BetaRoot -Channel beta
 # #1565: repo publico de descargas; cero releases hasta version integrada/verificada.
 $script:BetaRepository = 'isaacalbala12/Vantare-Downloads'
 
@@ -618,19 +620,19 @@ function Uninstall-Beta([string]$Directory, [scriptblock]$Finalize=$null) {
     } finally { if($null -ne $lock){$lock.Dispose()}; $session.Dispose() }
 }
 
-if ($MyInvocation.InvocationName -eq '.') { return }
-switch ($Operation) {
+if ($BetaLibrary) { return }
+switch ($BetaCommand) {
     'Install' {
-        try { Install-Beta $Root $Archive $ExpectedSha256 }
+        try { Install-Beta $BetaRoot $BetaArchive $BetaPackageHash }
         catch {
             Write-Error $_ -ErrorAction Continue
             if ($_.Exception.Data.Contains('InstallExitCode')) { exit ([int]$_.Exception.Data['InstallExitCode']) }
             exit 1
         }
-        if (-not $NoLaunch) { Run-BetaHub $Root }
+        if (-not $BetaNoLaunch) { Run-BetaHub $BetaRoot }
     }
-    'Check' { Stage-BetaUpdate $Root $LocalManifest }
-    'Apply' { Apply-BetaUpdate $Root }
-    'Run' { Run-BetaHub $Root $LocalManifest }
-    'Uninstall' { Uninstall-Beta $Root }
+    'Check' { Stage-BetaUpdate $BetaRoot $BetaManifestFile }
+    'Apply' { Apply-BetaUpdate $BetaRoot }
+    'Run' { Run-BetaHub $BetaRoot $BetaManifestFile }
+    'Uninstall' { Uninstall-Beta $BetaRoot }
 }

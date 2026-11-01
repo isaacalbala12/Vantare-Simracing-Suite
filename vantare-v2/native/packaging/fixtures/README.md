@@ -41,3 +41,8 @@ in the required workflow). It reads the actual manifest and uses inert OS PE
 fixtures for mutation/upgrade/rollback/reinstall/uninstall checks. Optional
 `-LegacyPackage <public ZIP>` repeats the sequence with all real 0.0.975 files;
 it verifies the release digest first. No app binary is executed or GUI opened.
+
+Both entrypoints require explicit Root, RegistryRoot and ShellRoot; missing
+context fails before writes. The workflow calls `matrix/run-historical-tests.ps1`
+with a fresh QA root. It copies the harness and product scripts, maps HKCU to a
+unique test key and injects shell folders in the parent and driver child.

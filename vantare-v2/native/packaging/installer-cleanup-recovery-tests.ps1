@@ -6,7 +6,7 @@ param(
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
-. (Join-Path $PSScriptRoot 'beta.ps1')
+. (Join-Path $PSScriptRoot 'beta.ps1') -Library -Root $PSScriptRoot
 $evidence=Assert-NativePath $EvidenceDirectory
 if(-not $evidence.StartsWith([IO.Path]::GetFullPath('C:/tmp/ola2/1591-qa/'),[StringComparison]::OrdinalIgnoreCase) -or (Test-Path -LiteralPath $evidence)){throw 'Use fresh isolated evidence.'}
 $key='HKCU:/Software/Microsoft/Windows/CurrentVersion/Uninstall/VantareNativeBetaQA1492'
@@ -45,7 +45,7 @@ try {
     [IO.File]::WriteAllText((Join-Path $data 'layout.json'),'TEST ONLY preserved layout')
     $index=Get-NativeDataIndex $data
     $requestFile=Join-Path $evidence 'uninstall.json'
-    Write-BetaJson $requestFile @{operation='Uninstall';root=$root;qa=$true;uninstall=$true;silent=$true;version='0.0.978';size=0}
+    Write-BetaJson $requestFile @{operation='Uninstall';root=$root;qa=$true;qaIdentity='VantareNativeBetaQA1492';qaShortcutFolder='Vantare QA1492';qaLegacyShortcutFolder='Vantare Native Beta QA1492';qaPrefix='C:/tmp/ola2/1591-qa';uninstall=$true;silent=$true;version='0.0.978';size=0}
     $helper=Start-CleanupHost (Join-Path $PSScriptRoot 'installer-driver.ps1') $requestFile
     $out=$helper.StandardOutput.ReadToEndAsync();$err=$helper.StandardError.ReadToEndAsync()
     if(-not $helper.WaitForExit(60000) -or $helper.ExitCode){throw 'Deferred uninstall fixture failed'}
@@ -59,7 +59,7 @@ try {
     foreach($name in @('candidate.ps1','beta.ps1','installer-driver.ps1')){Copy-Item -LiteralPath (Join-Path $PSScriptRoot $name) -Destination (Join-Path $cleanTemp $name)}
     $driver=Join-Path $cleanTemp 'installer-driver.ps1'
     $cleanRequest=Join-Path $cleanTemp 'request.json'
-    Write-BetaJson $cleanRequest @{operation='Cleanup';root=$root;qa=$true;uninstall=$true;silent=$true;version='0.0.978';size=0;processId=2147483647}
+    Write-BetaJson $cleanRequest @{operation='Cleanup';root=$root;qa=$true;qaIdentity='VantareNativeBetaQA1492';qaShortcutFolder='Vantare QA1492';qaLegacyShortcutFolder='Vantare Native Beta QA1492';qaPrefix='C:/tmp/ola2/1591-qa';uninstall=$true;silent=$true;version='0.0.978';size=0;processId=2147483647}
     $signal=Join-Path $cleanTemp 'at-boundary'
     if($Boundary -ceq 'Handle'){
         $handle=[IO.File]::Open($marker,[IO.FileMode]::Open,[IO.FileAccess]::Read,[IO.FileShare]::Read)

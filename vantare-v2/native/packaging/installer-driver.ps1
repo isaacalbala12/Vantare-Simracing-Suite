@@ -1,17 +1,38 @@
 ﻿#requires -Version 5.1
 [CmdletBinding()]
 param([Parameter(Mandatory)][string]$RequestFile)
+if ($MyInvocation.InvocationName -eq '.') { throw 'INSTALLER_DRIVER_NOT_A_LIBRARY' }
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
-. (Join-Path $PSScriptRoot 'beta.ps1')
+. (Join-Path $PSScriptRoot 'beta.ps1') -Library -Root $PSScriptRoot
 # stdout is exclusively the bounded JSON progress protocol; warnings go to log.
 function Write-NativeShortcutWarning([string]$Message) { [Console]::Error.WriteLine($Message) }
 if ((Get-Item -LiteralPath $RequestFile).Length -gt 65536) { throw 'Petición demasiado grande.' }
 $request = [IO.File]::ReadAllText((Assert-NativePath $RequestFile)) | ConvertFrom-Json
-$identity = if ($request.qa) { 'VantareNativeBetaQA1492' } else { 'VantareNativeBeta' }
-$folder = if ($request.qa) { 'Vantare QA1492' } else { 'Vantare' }
-$legacy = if ($request.qa) { 'Vantare Native Beta QA1492' } else { 'Vantare Native Beta' }
+$identity = 'VantareNativeBeta'
+$folder = 'Vantare'
+$legacy = 'Vantare Native Beta'
+if ($request.qa -isnot [bool]) { throw 'Flag QA inválido.' }
+$explicitRoot = -not [string]::IsNullOrWhiteSpace([string]$request.root)
+# Probe discovers the user's installation. Every mutating request must carry
+# the root returned by that probe; library import never selects an installation.
+if ($request.operation -cne 'Probe' -and -not $explicitRoot) { throw 'NATIVE_ROOT_REQUIRED' }
+if ($request.qa) {
+    foreach ($field in @('qaIdentity','qaShortcutFolder','qaLegacyShortcutFolder','qaPrefix')) {
+        $property=$request.PSObject.Properties[$field]
+        if ($null -eq $property -or $property.Value -isnot [string] -or [string]::IsNullOrWhiteSpace($property.Value)) { throw 'Petición QA incompleta.' }
+    }
+    $identity=$request.qaIdentity;$folder=$request.qaShortcutFolder;$legacy=$request.qaLegacyShortcutFolder
+    if ($identity -cnotmatch '^[A-Za-z0-9]{1,64}$' -or $identity -ieq 'VantareNativeBeta') { throw 'Identidad QA inválida.' }
+    foreach ($name in @($folder,$legacy)) {
+        if ($name -cnotmatch '^[A-Za-z0-9][A-Za-z0-9 -]{0,63}$' -or $name -iin @('Vantare','Vantare Native Beta')) { throw 'Carpeta QA inválida.' }
+    }
+    if ($folder -ieq $legacy) { throw 'Carpetas QA repetidas.' }
+    if ($request.qaPrefix -cnotmatch '^[A-Za-z]:[\\/]' -or $request.qaPrefix -match '(^|[\\/])\.\.([\\/]|$)') { throw 'Prefijo QA inválido.' }
+    $prefix=(Assert-NativePath $request.qaPrefix).TrimEnd('\','/')+[IO.Path]::DirectorySeparatorChar
+    if (-not $explicitRoot) { throw 'QA necesita /D=<raíz aislada>.' }
+}
 $key = "HKCU:/Software/Microsoft/Windows/CurrentVersion/Uninstall/$identity"
 $registration = Get-ItemProperty -LiteralPath $key -ErrorAction SilentlyContinue
 $root = $request.root
@@ -20,14 +41,17 @@ if($request.uninstall -and $null -ne $registration -and $root -and
 if ($request.qa -and -not $root) { throw 'QA necesita /D=<raíz aislada>.' }
 if (-not $root) { $root = Join-Path $env:LOCALAPPDATA 'Programs/Vantare' }
 if ($null -ne $registration) { $root = $registration.InstallLocation }
-elseif (-not $request.qa -and -not $request.uninstall) {
+elseif (-not $explicitRoot -and -not $request.qa -and -not $request.uninstall) {
     $old = Join-Path $env:LOCALAPPDATA 'Programs/Vantare Native Beta'
     if ((Test-Path -LiteralPath (Join-Path $old 'state.json')) -or (Test-Path -LiteralPath (Join-Path $old 'retained-data.json'))) { $root = $old }
 }
 $root = Assert-NativePath $root
 if ($request.qa) {
-    $prefix = [IO.Path]::GetFullPath('C:/tmp/ola2/1591-qa/')
     if (-not $root.StartsWith($prefix, [StringComparison]::OrdinalIgnoreCase)) { throw 'QA fuera de su raíz aislada.' }
+    foreach ($realRoot in @((Join-Path $env:LOCALAPPDATA 'Programs/Vantare'),(Join-Path $env:LOCALAPPDATA 'Programs/Vantare Native Beta'))) {
+        $realRoot=[IO.Path]::GetFullPath($realRoot).TrimEnd('\','/')
+        if ($root -ieq $realRoot -or $root.StartsWith($realRoot+'\',[StringComparison]::OrdinalIgnoreCase) -or $realRoot.StartsWith($root.TrimEnd('\','/')+'\',[StringComparison]::OrdinalIgnoreCase)) { throw 'QA no puede usar la instalación del usuario.' }
+    }
 }
 if (Test-Path -LiteralPath $root) { Assert-NativeTree $root }
 $current = $null

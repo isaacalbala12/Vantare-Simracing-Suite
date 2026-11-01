@@ -6,7 +6,7 @@ param(
     [switch]$ProbeOnly
 )
 $ErrorActionPreference='Stop'
-. (Join-Path $PSScriptRoot 'beta.ps1')
+. (Join-Path $PSScriptRoot 'beta.ps1') -Library -Root $PSScriptRoot
 $evidence=Assert-NativePath $EvidenceDirectory
 if(-not $evidence.StartsWith([IO.Path]::GetFullPath('C:/tmp/ola2/1591-qa/'),[StringComparison]::OrdinalIgnoreCase) -or (Test-Path -LiteralPath $evidence)){throw 'Use fresh isolated evidence.'}
 $key='HKCU:/Software/Microsoft/Windows/CurrentVersion/Uninstall/VantareNativeBetaQA1492'
@@ -35,7 +35,7 @@ try {
     if(-not $rejected){throw 'Installed uninstaller verification was weakened'}
     Write-Output "PASS ${Damage}: installed uninstaller remains strictly rejected"
     $request=Join-Path $evidence 'probe.json'
-    Write-BetaJson $request @{operation='Probe';root=$root;qa=$true;uninstall=$false;silent=$true;version=$version;size=0}
+    Write-BetaJson $request @{operation='Probe';root=$root;qa=$true;qaIdentity='VantareNativeBetaQA1492';qaShortcutFolder='Vantare QA1492';qaLegacyShortcutFolder='Vantare Native Beta QA1492';qaPrefix='C:/tmp/ola2/1591-qa';uninstall=$false;silent=$true;version=$version;size=0}
     & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'installer-driver.ps1') -RequestFile $request > (Join-Path $evidence 'probe-result.json') 2>(Join-Path $evidence 'probe-error.log')
     if($LASTEXITCODE){throw "${Damage}: same-version Setup cannot probe repair of its own uninstaller"}
     $probe=Get-Content -LiteralPath (Join-Path $evidence 'probe-result.json') -Raw|ConvertFrom-Json
@@ -45,7 +45,7 @@ try {
         $before=Get-NativeHash (Join-Path $root 'state.json')
         $wrong=Join-Path $evidence 'wrong-version.json'
         $other=if($version -ceq '0.0.977'){'0.0.976'}else{'0.0.977'}
-        Write-BetaJson $wrong @{operation='Install';root=$root;qa=$true;uninstall=$false;silent=$true;mode='repair';version=$other;size=0}
+        Write-BetaJson $wrong @{operation='Install';root=$root;qa=$true;qaIdentity='VantareNativeBetaQA1492';qaShortcutFolder='Vantare QA1492';qaLegacyShortcutFolder='Vantare Native Beta QA1492';qaPrefix='C:/tmp/ola2/1591-qa';uninstall=$false;silent=$true;mode='repair';version=$other;size=0}
         $info=[Diagnostics.ProcessStartInfo]::new();$info.FileName=Join-Path $env:WINDIR 'System32/WindowsPowerShell/v1.0/powershell.exe'
         $info.Arguments='-NoProfile -ExecutionPolicy Bypass -File "'+(Join-Path $PSScriptRoot 'installer-driver.ps1')+'" -RequestFile "'+$wrong+'"'
         $info.UseShellExecute=$false;$info.CreateNoWindow=$true;$info.RedirectStandardError=$true;$info.RedirectStandardOutput=$true

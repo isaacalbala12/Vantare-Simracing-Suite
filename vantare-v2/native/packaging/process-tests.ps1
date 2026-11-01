@@ -1,6 +1,6 @@
 ﻿#requires -Version 5.1
 param([Parameter(Mandatory)][string]$GuiExecutable,[Parameter(Mandatory)][string]$ExpectedVersion)
-. (Join-Path $PSScriptRoot 'candidate.ps1')
+. (Join-Path $PSScriptRoot 'candidate.ps1') -Library -Root $PSScriptRoot
 function Assert-Process([bool]$Condition,[string]$Message){if(-not $Condition){throw $Message};"PASS $Message"}
 $image=[IO.File]::ReadAllBytes($GuiExecutable)
 $pe=[BitConverter]::ToInt32($image,60)

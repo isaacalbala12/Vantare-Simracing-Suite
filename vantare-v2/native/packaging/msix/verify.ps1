@@ -10,7 +10,7 @@ param(
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
-. (Join-Path $PSScriptRoot '../candidate.ps1')
+. (Join-Path $PSScriptRoot '../candidate.ps1') -Library -Root $PSScriptRoot
 $root = (Resolve-Path -LiteralPath $ArtifactsDirectory).Path
 $evidence = Get-Content -LiteralPath (Join-Path $root 'build-evidence.json') -Raw | ConvertFrom-Json
 if ($evidence.identity -ne 'Vantare.Native.LocalTest' -or $evidence.publisher -ne 'CN=Vantare Native Local Test' -or -not $evidence.test_certificate_thumbprint) { throw 'Solo paquetes locales de prueba.' }

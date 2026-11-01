@@ -2,7 +2,7 @@
 param([Parameter(Mandatory=$true)][string]$TestVerifier, [Parameter(Mandatory=$true)][string]$SigningKeyFile,
       [string]$EvidenceDirectory='C:/tmp/1472-arreglos-r2-evidence')
 $ErrorActionPreference='Stop'
-. "$PSScriptRoot/beta.ps1"
+. "$PSScriptRoot/beta.ps1" -Library -Root $PSScriptRoot
 $script:feedRoot=Join-Path $EvidenceDirectory ('feed-'+[guid]::NewGuid().ToString('N'))
 [IO.Directory]::CreateDirectory($script:feedRoot)|Out-Null
 $payload=@{schema=1;product='vantare-native';channel='beta';version='0.1.1';url="https://github.com/$script:BetaRepository/releases/download/native-beta-v0.1.1/vantare-native-amd64-package.zip";sha256=('a'*64);notes='Actualización válida — prueba local'}|ConvertTo-Json

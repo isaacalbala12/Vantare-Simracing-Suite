@@ -1,7 +1,10 @@
 #requires -Version 5.1
+param([string]$Root,[string]$RegistryRoot,[string]$ShellRoot,[string]$LegacyPackage)
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
-. (Join-Path $PSScriptRoot 'candidate.ps1')
+. (Join-Path $PSScriptRoot 'matrix/historical-context.ps1')
+$historyContext=Assert-HistoricalContext $Root $RegistryRoot $ShellRoot
+. (Join-Path $PSScriptRoot 'candidate.ps1') -Library -Root $historyContext.Root
 $passed = 0
 function Assert-Inventory([bool]$Condition, [string]$Message) {
     if (-not $Condition) { throw $Message }
@@ -41,4 +44,4 @@ foreach($member in $script:NativeFixtures){
 }
 Assert-Inventory $true 'Todos los recursos enumerados existen en la fuente'
 "$passed checks PASS"
-& (Join-Path $PSScriptRoot 'historical-inventory-tests.ps1')
+& (Join-Path $PSScriptRoot 'historical-inventory-tests.ps1') -Root $Root -RegistryRoot $RegistryRoot -ShellRoot $ShellRoot -LegacyPackage $LegacyPackage

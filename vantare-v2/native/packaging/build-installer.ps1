@@ -5,17 +5,27 @@ param(
     [Parameter(Mandatory)][string]$OutputDirectory,
     [ValidateSet('Debug','Release')][string]$BuildProfile = 'Release',
     [switch]$TestInstaller,
+    [string]$QaIdentity='VantareNativeBetaQA1492',
+    [string]$QaShortcutFolder='Vantare QA1492',
+    [string]$QaLegacyShortcutFolder='Vantare Native Beta QA1492',
+    [string]$QaPrefix='C:/tmp/ola2/1591-qa',
     [Parameter(ValueFromRemainingArguments)][string[]]$Defines = @()
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $installerVersion=$Version; $installerOutput=$OutputDirectory; $installerProfile=$BuildProfile
-. (Join-Path $PSScriptRoot 'candidate.ps1')
+. (Join-Path $PSScriptRoot 'candidate.ps1') -Library -Root $installerOutput
 $Version=$installerVersion; $OutputDirectory=$installerOutput; $BuildProfile=$installerProfile
 foreach ($define in $Defines) { if ($define -ceq '/DTEST_INSTALLER') { $TestInstaller=$true } else { throw 'Define de instalador desconocido.' } }
 if ($Version -cnotmatch '^(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]{0,4})$' -or @($Version.Split('.') | Where-Object { [int]$_ -gt 65535 }).Count) { throw 'Versión inválida.' }
 $output=Assert-NativePath $OutputDirectory
-if ($TestInstaller -and -not $output.StartsWith([IO.Path]::GetFullPath('C:/tmp/ola2/1591-qa/'),[StringComparison]::OrdinalIgnoreCase)) { throw 'Build QA fuera de la raíz aislada.' }
+if ($TestInstaller) {
+    $qaBuildPrefix=(Assert-NativePath $QaPrefix).TrimEnd('\','/')+[IO.Path]::DirectorySeparatorChar
+    if (-not $output.StartsWith($qaBuildPrefix,[StringComparison]::OrdinalIgnoreCase)) { throw 'Build QA fuera de la raíz aislada.' }
+    if ($QaIdentity -cnotmatch '^[A-Za-z0-9]{1,64}$' -or $QaIdentity -ieq 'VantareNativeBeta') { throw 'Identidad QA inválida.' }
+    foreach($name in @($QaShortcutFolder,$QaLegacyShortcutFolder)) { if($name -cnotmatch '^[A-Za-z0-9][A-Za-z0-9 -]{0,63}$' -or $name -iin @('Vantare','Vantare Native Beta')){throw 'Carpeta QA inválida.'} }
+    if($QaShortcutFolder -ieq $QaLegacyShortcutFolder){throw 'Carpetas QA repetidas.'}
+}
 $archive=Join-Path $output 'vantare-native-amd64-package.zip'
 $checked=Join-Path $output ('.installer-check-'+[guid]::NewGuid().ToString('N'))
 try {
@@ -30,7 +40,7 @@ try {
 if ($null -ne (Get-Item -LiteralPath (Join-Path $output 'VantareSetup.exe') -ErrorAction SilentlyContinue)) { throw 'No sobrescribir un Setup existente.' }
 $native=Split-Path $PSScriptRoot
 $saved=@{}
-$names=@('VANTARE_VERSION','VANTARE_INSTALLER_ARCHIVE','VANTARE_INSTALLER_UNINSTALLER','VANTARE_INSTALLER_SHA256','VANTARE_INSTALLER_QA_OWNER_SID','CARGO_ENCODED_RUSTFLAGS','CARGO_TARGET_DIR')
+$names=@('VANTARE_VERSION','VANTARE_INSTALLER_ARCHIVE','VANTARE_INSTALLER_UNINSTALLER','VANTARE_INSTALLER_SHA256','VANTARE_INSTALLER_QA_OWNER_SID','VANTARE_INSTALLER_QA_IDENTITY','VANTARE_INSTALLER_QA_SHORTCUT_FOLDER','VANTARE_INSTALLER_QA_LEGACY_SHORTCUT_FOLDER','VANTARE_INSTALLER_QA_PREFIX','CARGO_ENCODED_RUSTFLAGS','CARGO_TARGET_DIR')
 foreach($name in $names){$saved[$name]=[Environment]::GetEnvironmentVariable($name,'Process')}
 Push-Location $native
 try {
@@ -43,6 +53,14 @@ try {
     else{$env:CARGO_ENCODED_RUSTFLAGS=$staticFlags}
     if($TestInstaller){$env:VANTARE_INSTALLER_QA_OWNER_SID=[Security.Principal.WindowsIdentity]::GetCurrent().User.Value}
     else{Remove-Item Env:VANTARE_INSTALLER_QA_OWNER_SID -ErrorAction SilentlyContinue}
+    if($TestInstaller){
+        $env:VANTARE_INSTALLER_QA_IDENTITY=$QaIdentity
+        $env:VANTARE_INSTALLER_QA_SHORTCUT_FOLDER=$QaShortcutFolder
+        $env:VANTARE_INSTALLER_QA_LEGACY_SHORTCUT_FOLDER=$QaLegacyShortcutFolder
+        $env:VANTARE_INSTALLER_QA_PREFIX=$qaBuildPrefix
+    }else{
+        foreach($name in @('VANTARE_INSTALLER_QA_IDENTITY','VANTARE_INSTALLER_QA_SHORTCUT_FOLDER','VANTARE_INSTALLER_QA_LEGACY_SHORTCUT_FOLDER','VANTARE_INSTALLER_QA_PREFIX')){Remove-Item ('Env:'+$name) -ErrorAction SilentlyContinue}
+    }
     $features=if($TestInstaller){'test-installer'}else{''}
     $base=@('build','-p','vantare-installer','--target','x86_64-pc-windows-msvc','--locked','--offline','-j','2')
     if($BuildProfile -ceq 'Release'){$base+='--release'}

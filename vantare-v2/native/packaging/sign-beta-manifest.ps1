@@ -8,7 +8,7 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 if (-not $SigningKeyFile) { throw 'Indica la ruta privada mediante -SigningKeyFile o VANTARE_UPDATE_SIGNING_KEY_FILE.' }
-. (Join-Path $PSScriptRoot 'beta.ps1')
+. (Join-Path $PSScriptRoot 'beta.ps1') -Library -Root $PSScriptRoot
 if ((Get-Item -LiteralPath $Manifest).Length -gt 32768) { throw 'Manifiesto demasiado grande.' }
 $json = Invoke-BetaManifestTool $ServicesExecutable ([IO.File]::ReadAllText($Manifest)) $SigningKeyFile
 $null = Read-BetaManifest $json $false $ServicesExecutable

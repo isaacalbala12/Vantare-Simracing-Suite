@@ -74,7 +74,7 @@ function Test-RollbackNaturalExit([string]$Directory) {
     $workerScript=Join-Path $evidence 'rollback-natural-worker.ps1'
     $script=@'
 $ErrorActionPreference='Stop'
-. '__BETA__'
+. '__BETA__' -Library -Root $PSScriptRoot
 function Get-NativeShortcutFolder([string]$Name){if($Name -cne 'Startup'){throw 'Only private Startup is allowed in this fixture.'};'__STARTUP__'}
 $complete=${function:Complete-BetaBootstrap}
 function Complete-BetaBootstrap([string]$Directory,[switch]$AllowNaturalExit){

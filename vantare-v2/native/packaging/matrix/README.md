@@ -1,5 +1,18 @@
 # Caracterización del motor de instalación · VANTA-127 / #1840
 
+Paso 1b añade `library-mode-tests.ps1` y `driver-context-tests.ps1` al mismo gate.
+Demuestran carga sin raíz rechazada sin escribir, modo biblioteca explícito,
+variables del llamador intactas, rechazo de contexto TEST incompleto/ajeno y
+registro/Startup únicamente con identidad y carpetas inyectadas. También prueban
+que una raíz explícita no se sustituye por descubrimiento legado, mientras Probe
+sin raíz conserva ese descubrimiento. Todo el registro se remapea a una clave
+única de pruebas; los procesos reciben TEMP/TMP y LOCALAPPDATA de QA.
+
+`history-safety-tests.ps1` añade 14 rechazos sin escritura en los puntos de
+entrada de inventario/histórico. El workflow usa `run-historical-tests.ps1` para
+la ejecución válida con contexto completo y copia QA. El
+[incidente de perímetro descartado](evidence-1840-1b.md) queda documentado.
+
 Paso 0 de §4.5 del diseño del instalador. Se ejecuta en el gate Windows requerido,
 con PowerShell 5.1, sin cambios en los scripts del producto. Ocho fixtures (los
 siete grupos del diseño, separando la desinstalada con y sin marcador) por once

@@ -27,7 +27,7 @@ $nsis=[IO.File]::ReadAllText((Join-Path $PSScriptRoot 'beta-installer.nsi'))
 $startHub=[regex]::Match($nsis,'(?s)Function StartHub\s+(.*?)FunctionEnd').Groups[1].Value
 Assert-Installer ($startHub.Contains('ExecShell "open" "$SMPROGRAMS\${SHORTCUT_FOLDER}\Vantare Simracing Suite.lnk"') -and -not $startHub.Contains('powershell.exe')) 'Final NSIS abre el mismo acceso GUI registrado'
 $root=Join-Path $evidence 'installed'
-$request=@{operation='Probe'; root=$root; qa=$true; silent=$true; uninstall=$false; version='0.0.977'; size=1024}
+$request=@{operation='Probe'; root=$root; qa=$true;qaIdentity='VantareNativeBetaQA1492';qaShortcutFolder='Vantare QA1492';qaLegacyShortcutFolder='Vantare Native Beta QA1492';qaPrefix='C:/tmp/ola2/1591-qa'; silent=$true; uninstall=$false; version='0.0.977'; size=1024}
 $result=@(Probe-Installer $request)[-1]
 Assert-Installer ($result.root -ceq $root) 'Probe mantiene raíz QA explícita'
 Assert-Installer (-not $result.desktop -and -not $result.autostart) 'Silent no añade escritorio ni autostart'
@@ -38,7 +38,7 @@ Assert-Installer ($result.desktop -and -not $result.autostart) 'Interactivo usa 
 $request.root=$null; $null=Probe-Installer $request 1
 $request.root=Join-Path $env:LOCALAPPDATA 'Programs/Vantare'; $null=Probe-Installer $request 1
 $request.root=Join-Path $env:LOCALAPPDATA 'Programs/Vantare Native Beta'; $null=Probe-Installer $request 1
-. (Join-Path $PSScriptRoot 'beta.ps1')
+. (Join-Path $PSScriptRoot 'beta.ps1') -Library -Root $PSScriptRoot
 $qaKey='HKCU:/Software/Microsoft/Windows/CurrentVersion/Uninstall/VantareNativeBetaQA1492'
 $qaFolder='Vantare QA1492'
 $qaStart=Join-Path ([Environment]::GetFolderPath('Programs')) $qaFolder
@@ -118,7 +118,7 @@ try {
     [IO.Directory]::CreateDirectory($cleanTemp)|Out-Null
     foreach($file in @('candidate.ps1','beta.ps1','installer-driver.ps1')){Copy-Item -LiteralPath (Join-Path $PSScriptRoot $file) -Destination (Join-Path $cleanTemp $file)}
     $cleanRequest=Join-Path $cleanTemp 'request.json'
-    [IO.File]::WriteAllText($cleanRequest,(@{operation='Cleanup';root=$registrationRoot;qa=$true;silent=$true;uninstall=$true;version='0.0.978';size=0;processId=2147483647}|ConvertTo-Json))
+    [IO.File]::WriteAllText($cleanRequest,(@{operation='Cleanup';root=$registrationRoot;qa=$true;qaIdentity='VantareNativeBetaQA1492';qaShortcutFolder='Vantare QA1492';qaLegacyShortcutFolder='Vantare Native Beta QA1492';qaPrefix='C:/tmp/ola2/1591-qa';silent=$true;uninstall=$true;version='0.0.978';size=0;processId=2147483647}|ConvertTo-Json))
     & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $cleanTemp 'installer-driver.ps1') -RequestFile $cleanRequest | Out-Null
     Assert-Installer ($LASTEXITCODE -eq 0 -and -not (Test-Path -LiteralPath (Join-Path $registrationRoot 'Uninstall.exe'))) 'Helper elimina solo el exe esperado'
     Assert-Installer (-not (Test-Path -LiteralPath $cleanTemp) -and (Get-NativeHash (Join-Path $data 'profile.json')) -ceq $dataHash) 'Helper limpia su temporal y preserva datos'

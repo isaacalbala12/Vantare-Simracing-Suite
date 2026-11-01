@@ -1,5 +1,22 @@
 # Beta nativa — instalador y actualizaciones (#1454)
 
+`candidate.ps1` y `beta.ps1` exigen `-Root` incluso para Build. Cargarlos como
+biblioteca requiere `. <script> -Library -Root <contexto explícito>`; no ejecuta
+operaciones ni selecciona una instalación. La carga sin raíz falla antes de
+inicializar tipos o escribir. Los parámetros internos tienen nombres propios
+para conservar Root/Operation/Channel/Version/Archive del llamador.
+El driver exige raíz en todas las operaciones que escriben; Probe conserva el
+descubrimiento de la instalación para la UI. Las peticiones TEST aportan
+identidad, carpetas y prefijo QA explícitos, sin constantes QA en producto.
+
+Las pruebas históricas también exigen Root, RegistryRoot y ShellRoot explícitos;
+rechazan contexto incompleto antes de escribir. Para ejecutar inventario de build
+y el histórico, usar `matrix/run-historical-tests.ps1 -Root <QA nueva>` (más
+`-LegacyPackage <ZIP975>` opcional). Este arnés copia scripts y fixtures a QA,
+inyecta registro/shell y fija los entornos antes de crear el proceso. No invocar
+directamente build-inventory-tests/historical-inventory-tests sin ese contexto.
+El [incidente y la evidencia de 1b](matrix/evidence-1840-1b.md) describen el motivo.
+
 Desde #1793, una generación anterior incompatible, ausente o corrupta no bloquea
 la lectura de una activa válida ni su actualización. `Read-NativeState` conserva
 el estado y los archivos en disco, registra `previous-corrupt` o
@@ -381,7 +398,7 @@ No requiere Python, NSIS, crates nuevas ni permisos de administrador.
 Desde la raíz `vantare-v2`, con checkout limpio y dependencias Cargo cacheadas:
 
 ```powershell
-& native/packaging/candidate.ps1 -Operation Build -Version 0.0.0-local `
+& native/packaging/candidate.ps1 -Operation Build -Root D:/VantareServer/qa/build-context -Version 0.0.0-local `
   -Channel nightly -BuildProfile Debug -OutputDirectory C:/tmp/isa-1454-evidence/phase7-build
 ```
 

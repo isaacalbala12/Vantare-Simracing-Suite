@@ -6,7 +6,7 @@ param(
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
-. (Join-Path $PSScriptRoot 'candidate.ps1') -Channel $Channel
+. (Join-Path $PSScriptRoot 'candidate.ps1') -Channel $Channel -Library -Root $PSScriptRoot
 $script:Passed = 0
 
 function Assert-True([bool]$Condition, [string]$Message) {
@@ -191,7 +191,7 @@ $childScript = Join-Path $script:TestRoot 'interrupted-update.ps1'
 [IO.File]::WriteAllText($childScript, @'
 param($ScriptFile, $InstallRoot, $ZipPath, $Hash, $StopAt, $ReadyEvent)
 $ErrorActionPreference = 'Stop'
-. $ScriptFile
+. $ScriptFile -Library -Root $PSScriptRoot
 function Invoke-NativeCheckpoint([string]$Point) {
     if ($Point -ceq $StopAt) {
         $ready = [Threading.EventWaitHandle]::OpenExisting($ReadyEvent)

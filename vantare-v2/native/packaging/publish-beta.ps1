@@ -18,7 +18,7 @@ $publishProfile = $BuildProfile
 $publishAllowDirty = $AllowDirty
 $publishOutput = $OutputDirectory
 $publishConfigFile = $ConfigFile
-. (Join-Path $PSScriptRoot 'beta.ps1')
+. (Join-Path $PSScriptRoot 'beta.ps1') -Library -Root $PSScriptRoot
 . (Join-Path $PSScriptRoot 'build-config.ps1')
 $Version = $publishVersion
 $BuildProfile = $publishProfile

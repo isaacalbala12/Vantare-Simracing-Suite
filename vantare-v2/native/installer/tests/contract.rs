@@ -9,6 +9,32 @@ fn parse(values: &[&str], uninstall: bool) -> Result<Args, String> {
 }
 
 #[test]
+fn qa_identity_is_present_only_in_the_explicit_test_build_protocol() {
+    let request = vantare_installer::engine::Request::new(&Args::default(), "Probe");
+    let value = serde_json::to_value(request).expect("request wire protocol");
+    assert_eq!(value["qa"], vantare_installer::QA);
+    for (field, expected) in [
+        ("qaIdentity", env!("VANTARE_INSTALLER_QA_IDENTITY")),
+        (
+            "qaShortcutFolder",
+            env!("VANTARE_INSTALLER_QA_SHORTCUT_FOLDER"),
+        ),
+        (
+            "qaLegacyShortcutFolder",
+            env!("VANTARE_INSTALLER_QA_LEGACY_SHORTCUT_FOLDER"),
+        ),
+        ("qaPrefix", env!("VANTARE_INSTALLER_QA_PREFIX")),
+    ] {
+        if vantare_installer::QA {
+            assert!(!expected.is_empty());
+            assert_eq!(value[field], expected);
+        } else {
+            assert!(value.get(field).is_none(), "public request leaked {field}");
+        }
+    }
+}
+
+#[test]
 fn silent_and_unicode_roots_preserve_the_entire_path() {
     let args = parse(&["/S", "/D=C:\\tmp\\QA instalación con espacios"], false).expect("arguments");
     assert!(args.silent);

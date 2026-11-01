@@ -14,7 +14,10 @@
   Rollback restaura la función antes del resto de la suite; producto intacto.
 - `git diff --check` PASS. Sin psql/Deno locales ni instalaciones; validación
   SQL delegada al workflow existente Supabase commercial gates, LF y CRLF.
-  PR/HEAD/resultado definitivo se registran en #1844 tras ejecutar CI.
+  [PR draft #1845](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1845)
+  a nightly, enlazado en T3. Código `8570aa6ac`; HEAD documental y CI vigentes
+  se registran en #1844. T3 rechaza watch desde el worker delegado: la vigilancia
+  corresponde al hilo del orquestador.
 - Plane intacto por encargo. Sin producción, secretos, merge ni release.
   Siguiente: CI y revisión del orquestador para integrar a nightly.
 

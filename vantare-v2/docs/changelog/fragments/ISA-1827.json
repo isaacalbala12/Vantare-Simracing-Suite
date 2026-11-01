@@ -25,7 +25,7 @@
     "En NeedsSignIn, SignedIn y SignedOut, cancelar un intento OAuth/FAPI y fallar el formulario: se conserva la cuenta y la licencia firmada. Cerrar sesión sigue revocando tras el ACK del núcleo.",
     "Tras fallar el cierre, Reintentar cierre de sesión repite Logout; Volver exige derechos actuales. Abrir la elección de acceso y pulsar Escape no inicia login. Cancelar repetidamente no encola otra cancelación.",
     "Con fixtures y reloj inyectado, verificar la frontera futura antes/en/después, acceso Gratis tras vencer Pro, gracia en pausa, rechazo de generaciones mezcladas y recuperación firmada sin margen nuevo. No cambiar el reloj del equipo.",
-    "Fixtures: ACK durable perdido, reemisión HTTP única tras un minuto, restos de otra cuenta/ilegibles ignorados, rollback de datos con lectores v17 y pre-NeedsSignIn y vuelta. Desajuste v17/v18 da Version sin revocar.",
+    "Fixtures: ACK durable perdido, reemisión HTTP única tras un minuto, restos de otra cuenta/ilegibles apartados sin leer, rollback de datos con lectores v17 y pre-NeedsSignIn y vuelta. Desajuste v17/v18 da Version sin revocar.",
     "B firmado del mismo PC sin binding: v18 aparta ambos restos, v17 solo lee política sin acceso y la vuelta a v18 sigue sin acceso. Rename bloqueado conserva bytes y no bloquea recuperación; siguiente arranque reintenta."
   ],
   "knownLimitations": [

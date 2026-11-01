@@ -411,7 +411,7 @@ aparta sin perder derechos, tal como exige BIL-08.
 | Servicios v15 → v16 (paso 6) | `Reply::Account.session` y `AccountCancel` | Integrado en código; v16 no se publicó en una release |
 | Servicios v16 → v17 (paso 7) | Solo versión del sobre: transporta `Policy` control v7; Session/AccountCancel y demás payloads intactos | El saludo rechaza v16/v17 antes de decodificar Policy. Decisión del orquestador 1-nov-2026; TransferRights permanece hasta el paso 8 |
 | Servicios v17 → v18 (paso 8) | Retira TransferRights y la admisión por traspaso | Version antes de esquema, sin revocar; conjunto instalado debe coincidir |
-| Datos en disco | `binding`/`authority`/`authority-recovery` **sin cambio de formato** | Una generación nueva lee lo de la anterior. `license-candidate`/`-pending` sobrantes: se ignoran (o se apartan una vez con `quarantine_dated`). No hace falta migración de datos |
+| Datos en disco | `binding`/`authority`/`authority-recovery` **sin cambio de formato** | Una generación nueva lee lo de la anterior. `license-candidate`/`-pending` del backend/canal actual: se apartan una vez al arrancar con `quarantine_dated`, best-effort sin leer contenido. No hace falta migración de datos |
 | Generación anterior leyendo datos de la nueva (rollback del instalador) | La anterior encuentra `binding`/`authority` válidos y sin candidate | Funciona: sin candidate, la generación anterior hace `Read` (`app.rs:198`) y, si toca, renueva por HTTP |
 
 ### 4.4 Cómo encaja #1814 (recuperación firmada)
@@ -468,7 +468,7 @@ se demuestran con tests de caracterización escritos **antes**, en el paso 0.
 | 6 | **`Session` explícita** en `Reply::Account`; supervisor y Hub la leen | Refactor (services v16) | R10 cerrado de raíz; #1801 (el mensaje deja de adivinar derechos) | Matriz de sesión del paso 0; GPUI de acceso |
 | 6b | **La pausa conserva la gracia** | Cambio de comportamiento justificado por la decisión 4 | R5 | `Paused` en la misma sesión del simulador conserva la gracia de 1 h, igual que `Stale`; la fila del paso 0 fija la pérdida actual y lleva «cambia en paso 6b» |
 | 7 | **`Policy.state` y `Policy::denied()`** (control v7); `signed_until_ms`/`grace_until_ms`; consumidores migrados; se retiran `online_recovery_required` y las comparaciones de cadenas | Refactor + diagnóstico nuevo | #1822 F2 (motivo `ClockBehind{until}` y freno de reintentos inútiles), base de #1806 | Matriz del núcleo igual; tests de Hub y overlays por estado |
-| 8 | **Quitar candidate y TransferRights** (§4.2.1) | Simplificación con un cambio menor justificado | #1810, #1825, #1798, #1819 pt.4, parte de #1816 | Fixtures: ACK perdido → transitorio → una renovación HTTP; restos de candidate ignorados; rollback a la generación anterior |
+| 8 | **Quitar candidate y TransferRights** (§4.2.1) | Simplificación con un cambio menor justificado | #1810, #1825, #1798, #1819 pt.4, parte de #1816 | Fixtures: ACK perdido → transitorio → una renovación HTTP; restos de candidate apartados sin leer; rollback a la generación anterior |
 | 9 | **Aviso persistente**, servido sin arrancar el helper; el Hub deja de renovar durante la compra | Arreglo | #1799 pt.2/pt.5, R11 | Reloj inyectado: aviso visible tras perder una respuesta; compra confirmada solo por el Feed |
 | 10 | **Cadencia máxima de comprobación** (24 h sin plazo firmado) | Cambio de comportamiento (decisión §4.6) | R1; criterio claro para #1826 | Reloj inyectado: éxito sin plazo → siguiente comprobación a las 24 h, sin ráfagas |
 | 11 | *(Opcional)* Mover `Authority`, `catalog` y `Verifier` a `runtime::rights`; retirar v2 si no está planificado | Movimiento mecánico | Claridad de dueño | Mismos tests, otro crate; test de arquitectura `domain`/`ui` intacto |
@@ -669,7 +669,7 @@ Actualización de caracterización paso 8: las columnas candidate son `None`
 (no aplican: servicios no tiene almacén de derechos). Las dos filas TransferRights
 se retiran porque el comando no existe. Las decisiones de Error/origen, sesión,
 revocación, DeviceReset y las 22 filas del núcleo siguen verificadas; los tests
-de cuarentena/recuperación de candidate se sustituyen por restos ignorados,
+de cuarentena/recuperación de candidate se sustituyen por restos apartados sin leer,
 ACK perdido con reemisión única y rollback de generaciones.
 
 El suelo de un minuto y la reemisión tras ACK perdido pertenecen al supervisor
@@ -682,3 +682,10 @@ binding → arranque v18 aparta candidate/marcador → v17 solo Read, sin acceso
 ni Install → vuelta a v18 sin acceso. Si el sistema impide el rename, los bytes
 se conservan y v18 los ignora; no se promete sanear un downgrade mientras siga
 el bloqueo. No se accede a instalaciones reales para probarlo.
+
+La retirada afecta al namespace del backend/canal de esa build, respetando el
+particionado existente. No recorre datos de otros canales/backends. Se apartan
+por igual los restos de A y B: sin binding del núcleo no hay derechos guardados
+que conservar; se pide una emisión nueva. Con binding, el rollback conserva su
+firma y autoridad. Un archivo aparecido después del arranque se ignora hasta
+el siguiente arranque, sin convertirse en fuente de derechos.

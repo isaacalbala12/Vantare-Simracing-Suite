@@ -52,13 +52,13 @@ Ninguno de estos ritmos amplía lo firmado ni la gracia.
   Conserva la identidad anterior, el perfil y los derechos firmados. No ejecuta
   Logout ni borra la cuenta. Volver a entrar con esa identidad no es un cambio
   de dueño; entrar con otra sí exige revocación confirmada por el núcleo.
-- Servicios v17 conserva **Session**, introducida en el paso 6: SignedOut, SignedIn, NeedsSignIn o Pending.
+- Servicios v18 conserva **Session**, introducida en el paso 6: SignedOut, SignedIn, NeedsSignIn o Pending.
   En NeedsSignIn, el Hub muestra «Vuelve a iniciar sesión» y mantiene abiertas
   las páginas que permita la política fresca del núcleo. Ya no limita todo a
   Cuenta por `signed_in=false`. Una política ausente, denegada o caducada sigue
   bloqueando el acceso correspondiente. Los servicios remotos exigen login.
   El aviso no afirma que exista una licencia: solo el núcleo decide los derechos.
-  Una mezcla de generaciones (control v7 / services v17) requiere actualizar el conjunto; su fallo es transitorio y
+  Una mezcla de generaciones (control v7 / services v18) requiere actualizar el conjunto; su fallo es transitorio y
   no revoca ni cambia los documentos firmados. No se admiten EXE sueltos.
 - **Volver/Cancelar** cancela el intento de acceso con `AccountCancel`; no cierra
   la cuenta, no guarda SignedOut y no invalida derechos. Desde NeedsSignIn se

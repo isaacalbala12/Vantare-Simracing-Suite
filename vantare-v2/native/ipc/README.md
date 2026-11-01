@@ -2,7 +2,8 @@
 
 Services v18 elimina TransferRights; control v7 y fotos v11 no cambian.
 El saludo v17/v18 se rechaza como Version antes del comando retirado o de Policy,
-sin Protocol ni revocación. InstallOnline transporta solo la respuesta HTTP nueva;
+sin revocación. Una trama que declare v18 y aún envíe TransferRights es
+entrada malformada (Protocol). InstallOnline transporta solo la respuesta HTTP nueva;
 Install de control se conserva para restauración del núcleo. El conjunto instalado
 debe coincidir. Binding/authority/guardias y los plazos conservan su formato.
 

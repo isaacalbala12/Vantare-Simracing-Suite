@@ -8,7 +8,7 @@ El workspace tiene 14 crates; `default-members` excluye storage, admin e install
 | Crate | Contiene |
 | --- | --- |
 | `domain` | Modelo neutral, Adapter, proyecciones/ViewModels y formato; puro, sin I/O ni GPUI. |
-| `ipc` | Fotos DTO v10, demanda, transporte, derechos/control v7, contratos Engineer/Services y versión de producto. |
+| `ipc` | Fotos DTO v11, demanda, transporte, derechos/control v7, contratos Engineer/Services y versión de producto. |
 | `runtime` | Adapters LMU/ACC privados, núcleo, flujos y supervisor `vantare`. |
 | `engineer` | Eventos, radio, spotter y voz local bajo demanda. |
 | `storage` | Propietario único de series DuckDB (`SeriesChunk`, contrato independiente del DTO de fotos). |

@@ -1095,8 +1095,12 @@ fn retire_legacy_license_files(config: &BuildConfig, root: &Path, clock: fn() ->
         config.channel.unwrap_or("unknown")
     );
     let namespace = root.join(format!("{:x}", Sha256::digest(context.as_bytes())));
+    #[cfg(windows)]
+    let extension = "dpapi";
+    #[cfg(not(windows))]
+    let extension = "json";
     let present = ["license-candidate", "license-transfer-pending"].map(|name| {
-        let exists = namespace.join(format!("{name}.dpapi")).try_exists();
+        let exists = namespace.join(format!("{name}.{extension}")).try_exists();
         if exists.is_err() {
             eprintln!("license-retirement-incomplete");
         }
@@ -2129,7 +2133,7 @@ mod tests {
 
     #[cfg(windows)]
     #[test]
-    fn definitive_online_license_rejection_preserves_the_previous_candidate() {
+    fn definitive_online_license_rejection_never_invalidates_or_uses_late_legacy_files() {
         let device = crate::license::installation::legacy_fingerprint().expect("fixture device");
         let (credential, keys) = crate::license_remote::tests::signed_fixture(&device);
         for status in [401, 403, 409] {
@@ -2179,7 +2183,7 @@ mod tests {
 
     #[cfg(windows)]
     #[test]
-    fn transient_online_license_failures_preserve_the_previous_candidate() {
+    fn transient_online_license_failures_never_invalidate_or_use_late_legacy_files() {
         let device = crate::license::installation::legacy_fingerprint().expect("fixture device");
         let (credential, keys) = crate::license_remote::tests::signed_fixture(&device);
         for (status, body, expected) in [
@@ -2521,7 +2525,7 @@ mod tests {
 
     #[cfg(windows)]
     #[test]
-    fn automatic_new_key_rejection_preserves_the_verified_binding_and_candidate() {
+    fn automatic_new_key_rejection_never_invalidates_or_uses_late_legacy_files() {
         let device = crate::license::installation::legacy_fingerprint().expect("device");
         let (credential, keys) = crate::license_remote::tests::signed_fixture(&device);
         let mut newer = credential.clone();
@@ -2740,7 +2744,7 @@ mod tests {
     }
 
     #[test]
-    fn detached_identity_switch_requires_ack_then_managed_retry_retires_candidate() {
+    fn detached_identity_switch_requires_ack_and_ignores_late_legacy_files() {
         identity_switch_without_core(true);
     }
 

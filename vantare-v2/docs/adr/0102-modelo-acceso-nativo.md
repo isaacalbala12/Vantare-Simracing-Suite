@@ -221,3 +221,12 @@ Sin cambios durables de binding/authority/guardias. La fixture de generaciones
 comprueba new → v17 → new y new → corte anterior a NeedsSignIn → new con datos
 sintéticos. El lector pre5 aparta account/NeedsSignIn y pide login; los derechos
 siguen válidos. V17/v18 se rechazan por Version, sin Protocol ni revocación.
+
+La retirada usa el namespace actual de backend/canal y la extensión de Store
+(.dpapi en Windows, .json en Unix); no recorre otros perfiles o canales. Los
+restos de la misma cuenta también se apartan: sin binding no hay derechos del
+núcleo que perder. Si falla el rename, v18 sigue ignorándolos; el saneamiento
+del downgrade solo queda garantizado al haberlos apartado.
+Una trama que declare services v18 con TransferRights es entrada malformada
+(Protocol); el peer v17/v18 incompatible se clasifica Version antes del esquema.
+Ninguno de estos errores revoca por sí solo.

@@ -10,7 +10,7 @@ enum Attempt {
 }
 
 #[test]
-fn cancel_and_failed_login_preserve_every_account_state_and_candidate() {
+fn cancel_and_failed_login_preserve_account_state_and_ignore_late_legacy_files() {
     for state in [Session::SignedOut, Session::SignedIn, Session::NeedsSignIn] {
         for attempt in [Attempt::OAuth, Attempt::EmailCode, Attempt::EmailPoll] {
             cancel_attempt(state, attempt);

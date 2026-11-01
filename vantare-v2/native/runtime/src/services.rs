@@ -654,7 +654,8 @@ impl Drop for Host {
     fn drop(&mut self) {
         self.stop.set();
         // Si está libre, coordina el cierre del helper. Si hay E/S
-        // remota en vuelo, cancelación y cleanup conservan el intento durable.
+        // remota en vuelo, cancelación y cleanup conservan los derechos del núcleo. La respuesta
+        // HTTP sin ACK se descarta y la renovación posterior solicita otra.
         if let Ok(mut state) = self.state.try_lock() {
             finish(&mut state);
         } else {

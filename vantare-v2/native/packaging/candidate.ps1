@@ -234,113 +234,36 @@ function Get-NativeMembers([string]$CandidateChannel) {
 }
 $script:NativeMembers = @(Get-NativeMembers $Channel)
 
-# Frozen beta inventory from observed 0.0.974/public 0.0.975 (also used by pre-resources RC1
-# 0.0.979). Never derive it from the current inventory: future additions must
-# not change the contract of generations already installed.
-$script:NativeLegacyBetaMembers = @(
-    'bin/vantare.exe'
-    'bin/vantare.exe.sha256'
-    'bin/vantare-core.exe'
-    'bin/vantare-core.exe.sha256'
-    'bin/vantare-overlays.exe'
-    'bin/vantare-overlays.exe.sha256'
-    'bin/vantare-hub.exe'
-    'bin/vantare-hub.exe.sha256'
-    'bin/vantare-engineer.exe'
-    'bin/vantare-engineer.exe.sha256'
-    'bin/vantare-services.exe'
-    'bin/vantare-services.exe.sha256'
-    'bin/vantare-storage.exe'
-    'bin/vantare-storage.exe.sha256'
-    'bin/vantare-grabar-lmu.exe'
-    'bin/vantare-grabar-lmu.exe.sha256'
-    'bin/vantare-grabar-acc.exe'
-    'bin/vantare-grabar-acc.exe.sha256'
-    'bin/vantare-import-profile.exe'
-    'bin/vantare-import-profile.exe.sha256'
-    'bin/fixtures/broadcast-tower-crossing.scene.json'
-    'bin/fixtures/broadcast-tower-default.scene.json'
-    'bin/fixtures/broadcast-tower-exit-reentry.scene.json'
-    'bin/fixtures/broadcast-tower-fast-inversion.scene.json'
-    'bin/fixtures/broadcast-tower-overtake-sequence.scene.json'
-    'bin/fixtures/broadcast-tower-stable-values.scene.json'
-    'bin/fixtures/broadcast-tower.snapshot.json'
-    'bin/fixtures/car-damage-numbers-default.scene.json'
-    'bin/fixtures/car-damage-numbers.snapshot.json'
-    'bin/fixtures/car-damage-visual-default.scene.json'
-    'bin/fixtures/car-damage-visual.snapshot.json'
-    'bin/fixtures/delta-cross-zero.scene.json'
-    'bin/fixtures/delta-default.scene.json'
-    'bin/fixtures/delta-new-best.scene.json'
-    'bin/fixtures/delta-trace-default.scene.json'
-    'bin/fixtures/delta-trace.sequence.json'
-    'bin/fixtures/delta-trace.snapshot.json'
-    'bin/fixtures/delta.snapshot.json'
-    'bin/fixtures/fastest-lap-alert.scene.json'
-    'bin/fixtures/fastest-lap-default.scene.json'
-    'bin/fixtures/fastest-lap.snapshot.json'
-    'bin/fixtures/fuel-strategy-default.scene.json'
-    'bin/fixtures/fuel-strategy.snapshot.json'
-    'bin/fixtures/head-to-head-default.scene.json'
-    'bin/fixtures/head-to-head.snapshot.json'
-    'bin/fixtures/input-telemetry-default.scene.json'
-    'bin/fixtures/input-telemetry.sequence.json'
-    'bin/fixtures/input-telemetry.snapshot.json'
-    'bin/fixtures/layout.json'
-    'bin/fixtures/lmu47.snapshot.json'
-    'bin/fixtures/multiclass-relative-default.scene.json'
-    'bin/fixtures/multiclass-relative.snapshot.json'
-    'bin/fixtures/pedals-clutch.scene.json'
-    'bin/fixtures/pedals-default.scene.json'
-    'bin/fixtures/pedals-lap.scene.json'
-    'bin/fixtures/pedals-telemetry-default.scene.json'
-    'bin/fixtures/pedals-telemetry.snapshot.json'
-    'bin/fixtures/pedals.snapshot.json'
-    'bin/fixtures/racing-flags-default.scene.json'
-    'bin/fixtures/racing-flags.snapshot.json'
-    'bin/fixtures/radar-default.scene.json'
-    'bin/fixtures/radar-nearby-traffic.scene.json'
-    'bin/fixtures/radar.snapshot.json'
-    'bin/fixtures/relative-default.scene.json'
-    'bin/fixtures/relative-functional-cross-ahead.scene.json'
-    'bin/fixtures/relative-functional-cross-behind.scene.json'
-    'bin/fixtures/relative-functional-fast-reversal.scene.json'
-    'bin/fixtures/relative-functional-lap-difference.scene.json'
-    'bin/fixtures/relative-functional-sequence.scene.json'
-    'bin/fixtures/relative-functional-stable-values.scene.json'
-    'bin/fixtures/relative-functional-window-cycle.scene.json'
-    'bin/fixtures/relative.snapshot.json'
-    'bin/fixtures/standings-default.scene.json'
-    'bin/fixtures/standings-functional-battle.scene.json'
-    'bin/fixtures/standings-functional-combined.scene.json'
-    'bin/fixtures/standings-functional-personal-best.scene.json'
-    'bin/fixtures/standings-functional-pit.scene.json'
-    'bin/fixtures/standings-functional-position.scene.json'
-    'bin/fixtures/standings-functional-session-best.scene.json'
-    'bin/fixtures/standings-functional-window.scene.json'
-    'bin/fixtures/standings-legacy.snapshot.json'
-    'bin/fixtures/standings.snapshot.json'
-    'bin/fixtures/track-map-default.scene.json'
-    'bin/fixtures/track-map.snapshot.json'
-    'bin/fixtures/track-weather-default.scene.json'
-    'bin/fixtures/track-weather.snapshot.json'
-    'bin/fixtures/workshop-sources.json'
-    'candidate.ps1'
-    'README.md'
-    'licenses/OFL-Inter.txt'
-    'dependencies.json'
-)
-
-function Get-NativeInstalledMembers($Manifest) {
-    $current = @(Get-NativeMembers $Manifest.channel)
-    $paths = @($Manifest.files | ForEach-Object { $_.path })
-    if ($Manifest.channel -ceq 'beta' -and
-        $Manifest.version -cmatch '^0\.0\.(974|975|976|977|978|979)$' -and
-        -not @(Compare-Object $script:NativeLegacyBetaMembers $paths -CaseSensitive).Count) {
-        return $script:NativeLegacyBetaMembers
+# Only approved paths retired from incoming packages belong here. Keep these
+# names when removing/renaming a resource; never replace this with a version list.
+$script:NativeRetiredMembers = @()
+function Get-NativeKnownMembers([string]$CandidateChannel) {
+    $current=@(Get-NativeMembers $CandidateChannel)
+    $seen=@{}
+    foreach($member in $current){$seen[$member]=$true}
+    foreach($member in $script:NativeRetiredMembers){
+        # These names also reach uninstall's Remove-Item: validate the catalogue
+        # itself, not just manifests which happen to contain a retired member.
+        if($member -isnot [string] -or $member -cnotmatch '^[A-Za-z0-9_-]+(?:[.][A-Za-z0-9_-]+)*(?:/[A-Za-z0-9_-]+(?:[.][A-Za-z0-9_-]+)*)*$' -or
+           $member -match '(^|/)data(/|$)' -or $seen.ContainsKey($member)){
+            throw 'Catálogo de rutas retiradas inválido o duplicado.'
+        }
+        $seen[$member]=$true
     }
-    # Unknown subsets are never accepted, even for an old version.
-    $current
+    $current + $script:NativeRetiredMembers
+}
+
+# Installed generations own their inventory. state.json binds their manifest
+# by SHA-256; only paths in this engine's closed public universe are allowed.
+# Incoming ZIPs still require the complete current Get-NativeMembers inventory.
+function Get-NativeInstalledMembers($Manifest) {
+    $universe = @(Get-NativeKnownMembers $Manifest.channel)
+    $paths = @($Manifest.files | ForEach-Object { $_.path })
+    if (-not $paths.Count) { throw 'Inventario instalado vacío.' }
+    foreach ($path in $paths) {
+        if ($path -isnot [string] -or $path -cnotin $universe) { throw 'Lista de archivos inválida o duplicada.' }
+    }
+    $paths
 }
 
 function Get-NativeHash([string]$Path) {
@@ -450,11 +373,12 @@ function Assert-NativeStaticCrt([string]$Path,[string]$Dumpbin) {
     if($runtime.Count){throw "El binario de distribución exige CRT dinámico: $Path ($($runtime -join ', '))"}
 }
 
-# Installed permits only frozen, known layouts. ZIP/build validation never sets
+# Installed uses its own manifest within the known universe. ZIP/build never sets
 # it; VerifyFiles controls byte integrity independently of inventory compatibility.
 function Read-NativeManifest {
     [CmdletBinding()]
     param([string]$Directory, [string]$ExpectedChannel, [bool]$VerifyFiles = $true, [switch]$Installed)
+    if ($Installed) { Assert-NativeTree $Directory }
     $path = Join-Path $Directory 'manifest.json'
     if ((Get-Item -LiteralPath $path).Length -gt 65536) { throw 'Manifiesto demasiado grande.' }
     $manifest = [IO.File]::ReadAllText($path) | ConvertFrom-Json
@@ -486,6 +410,9 @@ function Read-NativeManifest {
             if ($sidecar -cne "$($file.sha256)  $($actual.Name)`n") { throw "Sidecar incorrecto: $($file.path)" }
         }
     }
+    # For Installed this is only a structural count of its own manifest. The
+    # authority is state.json's manifest SHA plus the rejection of unlisted disk
+    # files above; the count alone does not bind an installed inventory.
     if ($seen.Count -ne $members.Count) { throw 'Faltan archivos obligatorios.' }
     $manifest
 }

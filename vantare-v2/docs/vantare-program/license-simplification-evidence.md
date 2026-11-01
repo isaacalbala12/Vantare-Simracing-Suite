@@ -81,8 +81,17 @@ y `isa-1827-s-mutations-a-r2` (lápida completa y fecha perpetua).
 La primera suite detectó dos expectativas de sobre v2 aún presentes en el test
 auxiliar de pausa; se corrigieron a `None` después de la gracia, como exige v1.
 La siguiente suite pasó **1040/1040 con telemetría**, 13 omisiones previas;
-la validación final posterior a mutaciones queda en `isa-1827-s-final-a-*`.
+la suite final posterior a mutaciones repite **1040/1040 PASS**, 13 omisiones,
+un lento de ACC, 126,962 s. Fmt y Clippy de services/runtime/engineer,
+todos los targets con `-D warnings`, también PASS. Los comandos/resultados
+finales quedan en `isa-1827-s-final-a-gates.json` y sus logs `isa-1827-s-final-a-*`.
+Lifecycle final: runtime **13/13 PASS** y Engineer **5/5 PASS**. Código validado
+`3463ac0c595d5750b3af6c83a2d57e8c68ea9ba3`; los commits posteriores solo documentan.
+PR draft [#1841](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1841),
+a nightly, enlazado en T3, sin integrar. CI a cargo del orquestador.
 Los lints iniciales (import y detalles de tests) también se conservan en logs.
+La invocación inicial de fmt desde vantare-v2 sin manifest no encontró Cargo.toml;
+se corrigió con `--manifest-path native/Cargo.toml`.
 
 Una lectura DeepSeek de la base inventarió las conversiones v2; no revisó cada
 byte final ni ejecutó gates. El ejecutor contrastó el mapa, el diff y los tests.

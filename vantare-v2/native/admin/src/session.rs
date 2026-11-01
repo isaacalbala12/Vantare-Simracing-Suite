@@ -136,7 +136,7 @@ impl Session {
         );
         let store = Store::open(root, &context)?;
         let http = Http::default();
-        let oauth = load_oauth(&store, &http, oauth_config)?;
+        let oauth = load_oauth(&store, &http, oauth_config, now()?.saturating_mul(1000))?;
         Ok(Self {
             account: Account::restore(oauth, &store)?,
             store,
@@ -217,6 +217,7 @@ fn load_oauth(
     store: &Store,
     http: &Http,
     oauth_config: vantare_services::config::OAuthBuild,
+    at_millis: u64,
 ) -> Result<OAuth> {
     let cached = match store
         .read::<OAuth>("oauth-metadata")
@@ -232,7 +233,7 @@ fn load_oauth(
             Some(oauth)
         }
         Ok(_) => {
-            store.quarantine_dated("oauth-metadata", 0)?;
+            store.quarantine_dated("oauth-metadata", at_millis)?;
             None
         }
         Err(Error::NotFound) => None,
@@ -514,7 +515,7 @@ mod tests {
         // HTTP is rejected by the services dependency: reaching discovery is observable
         // without network or build-time credentials.
         assert!(matches!(
-            load_oauth(&store, &Http::default(), config()),
+            load_oauth(&store, &Http::default(), config(), 1_700_000_000_123),
             Err(Error::Unconfigured)
         ));
         assert!(matches!(
@@ -533,6 +534,13 @@ mod tests {
             })
             .collect::<Vec<_>>();
         assert_eq!(aside.len(), 1);
+        assert!(
+            aside[0]
+                .file_name()
+                .expect("name")
+                .to_string_lossy()
+                .starts_with("oauth-metadata-1700000000123-")
+        );
         for (path, bytes) in before {
             if path
                 .file_name()
@@ -546,7 +554,7 @@ mod tests {
             }
         }
         assert!(matches!(
-            load_oauth(&store, &Http::default(), config()),
+            load_oauth(&store, &Http::default(), config(), 1_700_000_000_123),
             Err(Error::Unconfigured)
         ));
         drop(store);

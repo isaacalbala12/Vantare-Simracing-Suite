@@ -1,3 +1,37 @@
+<!-- isa1827-simplificar-d0 -->
+## VANTA-126 / #1827 — D0 listo para revisión
+
+C (#1849) integrado por el orquestador en nightly@5bf636ef0d6bb0b121593d9a532bbcbabdd8da35.
+Base D0 en ese SHA; rama vantareapp/isa-1827-simplificar-d0, mismo worktree y
+target D:/VantareServer/targets/isa-1827-s. Solo P3 fecha real y runbook.
+- Los dueños pasan milisegundos reales a los cinco restores; Store no lee reloj.
+  Pruebas de fecha de archivo y retención, con F4 y caracterización intactos.
+- Runbook: perder Attempt incierto por DPAPI y editar el borrador cambia clave
+  y puede duplicar un informe aceptado; conservar borrador/imágenes y comprobar.
+- D1a autorizado: decodificado único, soporte de fixtures, ramas y cuatro README;
+  renombrar/reforzar el test recovery que sobreafirma refund. D1b Session Hub
+  en PR propio y microplan, <600 diff producción; E tras D1b.
+- D6/D7 y T1-T3 NO autorizados por ahora: RC9 0.0.988/services v15 aún no
+  publicada puede salir con candidate y Pilot; downgrade plausible. Reevaluar
+  tras una release posterior. D5/protocolo y D3/gracia descartados por riesgo.
+- Fmt y Clippy cinco crates all-targets -D warnings PASS; Nextest ci 1175/1175
+  con telemetría PASS (13 omisiones previas); lifecycle runtime 13/13 y
+  Engineer 5/5 PASS. Focales 6/6. Cinco mutaciones de fecha cero detectadas
+  por aserción; 241 fuentes restaurados SHA-256, suite final tras restauración.
+- Producción cinco crates 115127 -> 115143 (+16); cuatro 109277 ->109292 (+15).
+  Pruebas/soporte Rust +39 netas, documentación separada; D0 no es ahorro.
+  Arquitectura y tres caracterizaciones con los mismos blobs de la base.
+  Sin Plane, instalaciones, datos reales, secretos, merge ni release.
+- Rebase sobre origin/nightly@e747d4a9e920121d1fc8a391dfab6945c6315fa3
+  tras #1847. Los 627 fuentes Rust/manifiestos fuera de installer conservan
+  sus blobs del árbol validado 92c6b0510; todas las líneas de las entradas
+  anteriores del handoff se preservan. Calidad posterior al rebase: 468 huellas PASS.
+- windows_startup posterior al rebase 7/7 PASS, con empaquetador de #1847.
+- PR draft [#1853](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1853), target nightly.
+  Código validado antes del rebase 10ec2c9f9; equivalente rebasado d1fe025fb83ad595e1c70703a633fd0cb2cc76f2.
+  HEAD documental vigente en el PR. CI/revisión a cargo del orquestador.
+<!-- /isa1827-simplificar-d0 -->
+
 <!-- isa1827-simplificar-c -->
 ## VANTA-126 / #1827 — corte C listo para revisión
 

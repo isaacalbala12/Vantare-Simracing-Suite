@@ -189,7 +189,7 @@ fn core_policy_keeps_exact_hour_only_for_existing_game_survives_restart_and_logo
     let verifier = verifier(&signing);
     let credential = v1(&signing, "2026-09-30T11:00:00Z");
     let (root, store) = test_store("core-policy");
-    let mut core = Authority::restore(&store).expect("core");
+    let mut core = Authority::restore(&store, 1_700_000_000_123).expect("core");
     core.install(
         verifier
             .v1(&credential, SUBJECT, "test-device")
@@ -216,7 +216,7 @@ fn core_policy_keeps_exact_hour_only_for_existing_game_survives_restart_and_logo
         1
     );
     core.persist(&store).expect("persist");
-    let mut restarted = Authority::restore(&store).expect("restart");
+    let mut restarted = Authority::restore(&store, 1_700_000_000_123).expect("restart");
     restarted
         .install(
             verifier
@@ -271,7 +271,7 @@ fn core_policy_keeps_exact_hour_only_for_existing_game_survives_restart_and_logo
         )
         .expect("logout");
     restarted.persist(&store).expect("tombstone");
-    let mut logged_out = Authority::restore(&store).expect("restart");
+    let mut logged_out = Authority::restore(&store, 1_700_000_000_123).expect("restart");
     assert!(matches!(
         logged_out.install(
             verifier
@@ -294,7 +294,7 @@ fn no_offline_grace_outside_game_or_for_already_expired_game_entry() {
     let verifier = verifier(&signing);
     let credential = v1(&signing, "2026-09-30T11:00:00Z");
     let (root, store) = test_store("no-grace");
-    let mut core = Authority::restore(&store).expect("core");
+    let mut core = Authority::restore(&store, 1_700_000_000_123).expect("core");
     core.install(
         verifier
             .v1(&credential, SUBJECT, "test-device")
@@ -338,7 +338,7 @@ fn recycled_local_session_id_cannot_confirm_grace_after_restart() {
             vantare_services::random_id().expect("test entropy")
         ));
     let store = vantare_services::storage::Store::open(&root, "recycled-session").expect("store");
-    let mut core = Authority::restore(&store).expect("core");
+    let mut core = Authority::restore(&store, 1_700_000_000_123).expect("core");
     let proof = || {
         verifier
             .v1(&credential, SUBJECT, "test-device")
@@ -351,7 +351,7 @@ fn recycled_local_session_id_cannot_confirm_grace_after_restart() {
     core.enter_game(7, entered, Duration::ZERO).expect("enter");
     core.rights_and_persist(resumed, Duration::from_hours(1), &store)
         .expect("persist");
-    let mut restarted = Authority::restore(&store).expect("restart");
+    let mut restarted = Authority::restore(&store, 1_700_000_000_123).expect("restart");
     restarted
         .install(proof(), resumed, Duration::ZERO)
         .expect("binding");
@@ -416,7 +416,7 @@ fn cached_paid_period_survives_seventeen_offline_days_until_exact_deadline() {
     let cancelled = date("2026-09-30T10:00:00Z").expect("día 13");
     let credential = v1(&signing, "2026-10-17T10:00:00Z");
     let (root, store) = test_store("offline-paid-period");
-    let mut authority = Authority::restore(&store).expect("autoridad");
+    let mut authority = Authority::restore(&store, 1_700_000_000_123).expect("autoridad");
     authority
         .install(
             verifier
@@ -429,7 +429,7 @@ fn cached_paid_period_survives_seventeen_offline_days_until_exact_deadline() {
     authority.persist(&store).expect("guardar");
     drop(authority);
     // Restauración local sin proveedor HTTP: el pago no depende de renovar OAuth.
-    let mut authority = Authority::restore(&store).expect("restaurar");
+    let mut authority = Authority::restore(&store, 1_700_000_000_123).expect("restaurar");
     authority
         .install(
             verifier
@@ -471,7 +471,7 @@ fn forward_wall_clock_drift_does_not_reject_repeated_authority_observation() {
     let verifier = verifier(&signing);
     let credential = v1(&signing, "2026-09-30T11:00:00Z");
     let start = date("2026-09-30T10:30:00Z").expect("date");
-    let mut core = Authority::restore(&store).expect("core");
+    let mut core = Authority::restore(&store, 1_700_000_000_123).expect("core");
     core.install(
         verifier
             .v1(&credential, SUBJECT, "test-device")
@@ -520,7 +520,7 @@ fn forward_wall_clock_drift_does_not_reject_repeated_authority_observation() {
         .is_empty()
     );
     core.persist(&store).expect("persist");
-    let mut restored = Authority::restore(&store).expect("restore");
+    let mut restored = Authority::restore(&store, 1_700_000_000_123).expect("restore");
     assert!(
         matches!(
             restored.install(
@@ -548,7 +548,7 @@ fn signed_future_issuance_is_bounded_and_never_extends_the_paid_deadline() {
     for skew in [32, 300, 301] {
         let (root, store) = test_store("clock-skew");
         let wall = issued - chrono::TimeDelta::seconds(skew);
-        let mut core = Authority::restore(&store).expect("core");
+        let mut core = Authority::restore(&store, 1_700_000_000_123).expect("core");
         let installed = core.install(
             verifier
                 .v1(&credential, SUBJECT, "test-device")
@@ -566,7 +566,7 @@ fn signed_future_issuance_is_bounded_and_never_extends_the_paid_deadline() {
                 Some(wall + chrono::TimeDelta::seconds(60))
             );
             core.persist(&store).expect("persist adjusted clock");
-            let mut core = Authority::restore(&store).expect("cold restore");
+            let mut core = Authority::restore(&store, 1_700_000_000_123).expect("cold restore");
             core.install(
                 verifier
                     .v1(&credential, SUBJECT, "test-device")
@@ -630,7 +630,8 @@ fn staging_signed_credential_accepts_only_bounded_injected_clock_skew() {
     let issued = date(&credential.claims.issued_at).expect("signed issuance");
     for skew in [-32, 0, 32, 300, 301] {
         let (root, store) = test_store("staging-clock-probe");
-        let mut authority = authority::Authority::restore(&store).expect("authority");
+        let mut authority =
+            authority::Authority::restore(&store, 1_700_000_000_123).expect("authority");
         let proof = verifier
             .v1(
                 &credential,
@@ -668,8 +669,8 @@ fn out_of_range_saved_clock_is_quarantined_and_allows_a_fresh_signed_login() {
             "version":1, "clock":{"last_seen":null,"latest_issued":null,"invalidated_after":null,"last_wall":null,"forward_millis":forward},
             "game":null,"invalidated":false
         })).expect("valid JSON with invalid clock");
-        let mut core =
-            Authority::restore(&store).expect("recover instead of blocking every startup");
+        let mut core = Authority::restore(&store, 1_700_000_000_123)
+            .expect("recover instead of blocking every startup");
         assert!(!core.credential_current());
         assert!(
             core.rights(now, Duration::ZERO)
@@ -693,11 +694,12 @@ fn out_of_range_saved_clock_is_quarantined_and_allows_a_fresh_signed_login() {
                     .any(|file| {
                         let name = file.expect("file").file_name();
                         let name = name.to_string_lossy();
-                        name.starts_with("authority-0-") && name.ends_with(".corrupto")
+                        name.starts_with("authority-1700000000123-") && name.ends_with(".corrupto")
                     })),
             "quarantine retains the invalid document"
         );
-        let mut reopened = Authority::restore(&store).expect("next startup also recovers");
+        let mut reopened =
+            Authority::restore(&store, 1_700_000_000_123).expect("next startup also recovers");
         assert!(!reopened.credential_current());
         assert!(
             matches!(
@@ -736,7 +738,7 @@ fn logout_tombstone_survives_forward_adjustment_and_cold_restore() {
     let issued = date(&credential.claims.issued_at).expect("issuance");
     let wall = issued - chrono::TimeDelta::seconds(32);
     let (root, store) = test_store("forward-tombstone");
-    let mut core = Authority::restore(&store).expect("authority");
+    let mut core = Authority::restore(&store, 1_700_000_000_123).expect("authority");
     core.install(
         verifier
             .v1(&credential, SUBJECT, "test-device")
@@ -748,7 +750,7 @@ fn logout_tombstone_survives_forward_adjustment_and_cold_restore() {
     core.invalidate(wall + chrono::TimeDelta::seconds(1), Duration::from_secs(1))
         .expect("logout");
     core.persist(&store).expect("durable tombstone");
-    let mut restored = Authority::restore(&store).expect("restart");
+    let mut restored = Authority::restore(&store, 1_700_000_000_123).expect("restart");
     assert!(matches!(
         restored.install(
             verifier
@@ -797,7 +799,7 @@ fn successive_signed_issuances_cannot_exceed_the_accumulated_clock_limit() {
     let wall = issued - chrono::TimeDelta::seconds(200);
     for additional in [100, 101] {
         let (root, store) = test_store("accumulated-clock-limit");
-        let mut core = Authority::restore(&store).expect("authority");
+        let mut core = Authority::restore(&store, 1_700_000_000_123).expect("authority");
         core.install(
             verifier
                 .v1(&credential, SUBJECT, "test-device")
@@ -879,7 +881,8 @@ fn server_recovery_v1_fixture_verifies_and_expires_at_original_deadline() {
     let issued = date(&credential.claims.issued_at).expect("issued");
     let deadline = date(fixture["recovery_until"].as_str().expect("deadline")).expect("date");
     let (root, store) = test_store("server-recovery-v1");
-    let mut authority = authority::Authority::restore(&store).expect("authority");
+    let mut authority =
+        authority::Authority::restore(&store, 1_700_000_000_123).expect("authority");
     let verify = || {
         verifier
             .v1(&credential, SUBJECT, &"a".repeat(64))

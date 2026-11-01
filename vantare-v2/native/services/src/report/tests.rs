@@ -78,7 +78,7 @@ fn f7_legacy_confirmed_receipt_is_kept_but_pending_prose_is_quarantined() {
     store
         .save("report-attempt", &attempt)
         .expect("legacy receipt");
-    let restored = Reports::restore(&store).expect("restore");
+    let restored = Reports::restore(&store, 1_700_000_000_123).expect("restore");
     assert_eq!(
         restored
             .receipt()
@@ -91,7 +91,7 @@ fn f7_legacy_confirmed_receipt_is_kept_but_pending_prose_is_quarantined() {
         .save("report-attempt", &attempt)
         .expect("legacy pending");
     assert!(
-        Reports::restore(&store)
+        Reports::restore(&store, 1_700_000_000_123)
             .expect("restore pending")
             .attempt
             .is_none()
@@ -153,7 +153,7 @@ fn isa1548_three_full_size_jpegs_persist_images_and_durable_attempt() {
         store
             .save("report-attempt", &attempt)
             .expect("durable attempt with attachments");
-        let reports = Reports::restore(&store).expect("restore without HTTP");
+        let reports = Reports::restore(&store, 1_700_000_000_123).expect("restore without HTTP");
         assert_eq!(
             reports
                 .attempt
@@ -210,7 +210,7 @@ fn persist_inflight(store: &Store) {
 }
 
 fn assert_durable_receipt(store: &Store, report_id: &str) {
-    let persisted = Reports::restore(store).expect("durable receipt");
+    let persisted = Reports::restore(store, 1_700_000_000_123).expect("durable receipt");
     assert!(
         persisted
             .receipt()
@@ -292,7 +292,7 @@ fn screenshots_upload_then_finalize_then_attach_and_retry_after_validation() {
         .save("report-images", &vec![image.clone()])
         .expect("protected images");
     store.save("report-draft", &draft).expect("draft");
-    let mut reports = Reports::restore(&store).expect("restore");
+    let mut reports = Reports::restore(&store, 1_700_000_000_123).expect("restore");
     let installation = installation_context(&root, "beta").expect("installation ID");
     assert_eq!(
         installation_context(&root, "beta").expect("stable ID"),
@@ -324,7 +324,7 @@ fn screenshots_upload_then_finalize_then_attach_and_retry_after_validation() {
         Err(Error::EvidencePending)
     ));
     assert!(load_draft(&store).expect("draft retained").is_some());
-    let mut restored = Reports::restore(&store).expect("restart");
+    let mut restored = Reports::restore(&store, 1_700_000_000_123).expect("restart");
     let retry = restored
         .prepare_retry(&request, rpc_channel("beta"))
         .expect("retry");
@@ -399,7 +399,7 @@ fn edge_quota_preserves_durable_report_for_manual_retry_and_legacy_routes_are_cl
         assert!(matches!(request.post(route, &()), Err(Error::Protocol)));
     }
     let draft = save_draft(&store, fields()).expect("draft");
-    let mut reports = Reports::restore(&store).expect("restore");
+    let mut reports = Reports::restore(&store, 1_700_000_000_123).expect("restore");
     let preview = reports
         .prepare(&request, draft.clone(), environment())
         .expect("preview");
@@ -414,7 +414,7 @@ fn edge_quota_preserves_durable_report_for_manual_retry_and_legacy_routes_are_cl
             .idempotency_key,
         draft.idempotency_key
     );
-    let mut restored = Reports::restore(&store).expect("restore");
+    let mut restored = Reports::restore(&store, 1_700_000_000_123).expect("restore");
     let retry = restored
         .prepare_retry(&request, "nightly")
         .expect("manual consent");
@@ -461,7 +461,7 @@ fn missing_tester_preserves_draft_and_submission() {
     let session = config.authorize(&http, &account, 100).expect("authorize");
     let request = session.request(&http, &config, &account, 100);
     let draft = save_draft(&store, fields()).expect("draft");
-    let mut reports = Reports::restore(&store).expect("restore");
+    let mut reports = Reports::restore(&store, 1_700_000_000_123).expect("restore");
     let preview = reports
         .prepare(&request, draft.clone(), environment())
         .expect("preview");
@@ -481,7 +481,7 @@ fn missing_tester_preserves_draft_and_submission() {
         draft.idempotency_key
     );
     assert!(
-        Reports::restore(&store)
+        Reports::restore(&store, 1_700_000_000_123)
             .expect("restart")
             .prepare_retry(&request, "nightly")
             .is_ok()
@@ -525,7 +525,7 @@ fn screenshot_upload_rejection_retains_draft_without_attaching_report() {
         .save("report-images", &vec![image.clone()])
         .expect("images");
     store.save("report-draft", &draft).expect("draft");
-    let mut reports = Reports::restore(&store).expect("restore");
+    let mut reports = Reports::restore(&store, 1_700_000_000_123).expect("restore");
     let preview = reports
         .prepare_with_images(&request, draft, environment(), vec![image])
         .expect("preview");
@@ -574,7 +574,7 @@ fn unauthorized_submission_preserves_draft_and_exact_retry() {
     let session = config.authorize(&http, &account, 100).expect("bridge");
     let request = session.request(&http, &config, &account, 100);
     let draft = save_draft(&store, fields()).expect("draft");
-    let mut reports = Reports::restore(&store).expect("restore");
+    let mut reports = Reports::restore(&store, 1_700_000_000_123).expect("restore");
     let preview = reports
         .prepare(&request, draft.clone(), environment())
         .expect("preview");
@@ -589,7 +589,7 @@ fn unauthorized_submission_preserves_draft_and_exact_retry() {
             .idempotency_key,
         draft.idempotency_key
     );
-    let mut restored = Reports::restore(&store).expect("restart");
+    let mut restored = Reports::restore(&store, 1_700_000_000_123).expect("restart");
     let retry = restored.prepare_retry(&request, "nightly").expect("retry");
     assert_eq!(preview.payload, retry.payload);
     assert!(matches!(
@@ -609,7 +609,7 @@ fn unauthorized_submission_preserves_draft_and_exact_retry() {
         restored.send(&request, &retry.id, &store),
         Err(Error::Uncertain)
     ));
-    let pending = Reports::restore(&store).expect("offline attempt durable");
+    let pending = Reports::restore(&store, 1_700_000_000_123).expect("offline attempt durable");
     assert!(matches!(
         pending.attempt.as_ref().expect("attempt").phase,
         Phase::Uncertain
@@ -657,7 +657,7 @@ fn durable_manual_retry_keeps_exact_payload_and_receipt_survives_cleanup_failure
             .idempotency_key,
         draft.idempotency_key
     );
-    let mut reports = Reports::restore(&store).expect("restore");
+    let mut reports = Reports::restore(&store, 1_700_000_000_123).expect("restore");
     reports
         .prepare(&request, draft.clone(), environment())
         .expect("preview");
@@ -690,7 +690,7 @@ fn durable_manual_retry_keeps_exact_payload_and_receipt_survives_cleanup_failure
     ));
     persist_inflight(&store);
     drop(reports);
-    let mut restored = Reports::restore(&store).expect("restart");
+    let mut restored = Reports::restore(&store, 1_700_000_000_123).expect("restart");
     assert!(server.requests.try_recv().is_err()); // restore does not submit.
     assert!(matches!(
         restored.send(&request, &preview.id, &store),
@@ -755,7 +755,7 @@ fn confirmed_retry_preserves_a_later_draft_and_does_not_resubmit() {
         .expect("bridge request");
     let request = session.request(&http, &config, &account, 100);
     let first_draft = save_draft(&store, fields()).expect("first draft");
-    let mut reports = Reports::restore(&store).expect("reports");
+    let mut reports = Reports::restore(&store, 1_700_000_000_123).expect("reports");
     let preview = reports
         .prepare(&request, first_draft.clone(), environment())
         .expect("preview");
@@ -784,7 +784,7 @@ fn confirmed_retry_preserves_a_later_draft_and_does_not_resubmit() {
         .recv_timeout(Duration::from_secs(3))
         .expect("retry submit");
     assert_text_only_retry(&first, &second, &retry);
-    let mut restored = Reports::restore(&store).expect("restore");
+    let mut restored = Reports::restore(&store, 1_700_000_000_123).expect("restore");
     assert_eq!(
         restored.draft_state(&store).expect("draft state"),
         DraftState::Preserved
@@ -833,7 +833,7 @@ fn edits_rotate_idempotency_and_consent_never_survives_logout_or_restored_accoun
         save_draft(&store, edited).expect("edited").idempotency_key,
         draft.idempotency_key
     );
-    let mut reports = Reports::restore(&store).expect("reports");
+    let mut reports = Reports::restore(&store, 1_700_000_000_123).expect("reports");
     let preview = reports
         .prepare(
             &session.request(&http, &config, &account, 100),
@@ -896,7 +896,7 @@ fn editing_after_preview_cancels_send_before_any_http_mutation() {
     let session = config.authorize(&http, &account, 100).expect("bridge");
     let request = session.request(&http, &config, &account, 100);
     let draft = save_draft(&store, fields()).expect("draft");
-    let mut reports = Reports::restore(&store).expect("reports");
+    let mut reports = Reports::restore(&store, 1_700_000_000_123).expect("reports");
     let preview = reports
         .prepare(&request, draft, environment())
         .expect("preview");

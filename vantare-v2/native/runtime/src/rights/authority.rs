@@ -1,9 +1,10 @@
 //! Se instancia SOLO en el núcleo. Entrada de juego procede del núcleo, no IPC Hub.
-use super::Verified;
-use crate::{Error, Result, storage::Store};
+use super::verifier::{CacheIssue, Verified};
 use chrono::{DateTime, TimeDelta, Utc};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
+use vantare_services::{Error, Result, storage::Store};
+const GAME_GRACE_SECONDS: i64 = 3600;
 
 #[derive(Clone, Default, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -129,7 +130,7 @@ impl Authority {
             // Durable before looking at any binding: a restart cannot turn the
             // quarantined document into an ordinary first installation.
             authority.persist(store)?;
-            eprintln!("{}", super::CacheIssue::AuthorityUnreadable.diagnostic());
+            eprintln!("{}", CacheIssue::AuthorityUnreadable.diagnostic());
         }
         Ok(authority)
     }
@@ -421,9 +422,7 @@ impl Authority {
                 .filter_map(|grant| {
                     let expiry = grant.expires_at?;
                     (verified.issued_at <= entered_at && entered_at < expiry)
-                        .then(|| {
-                            expiry.checked_add_signed(TimeDelta::seconds(super::GAME_GRACE_SECONDS))
-                        })
+                        .then(|| expiry.checked_add_signed(TimeDelta::seconds(GAME_GRACE_SECONDS)))
                         .flatten()
                         .map(|end| (grant.key.clone(), end))
                 })
@@ -556,12 +555,53 @@ impl Authority {
 mod tests {
     use super::*;
 
+    #[cfg(windows)]
+    #[test]
+    fn blocked_authority_keeps_its_bytes_and_invalid_json_is_quarantined_after_unlock() {
+        use sha2::{Digest, Sha256};
+        use std::{fs, fs::OpenOptions, os::windows::fs::OpenOptionsExt};
+        let (root, store) = super::super::test_store("authority-io");
+        let namespace = root.join(format!("{:x}", Sha256::digest(b"authority-io")));
+        let path = namespace.join("authority.dpapi");
+        store
+            .save("authority", &serde_json::json!({}))
+            .expect("invalid schema");
+        let original = fs::read(&path).expect("bytes");
+        let lock = OpenOptions::new()
+            .read(true)
+            .share_mode(0)
+            .open(&path)
+            .expect("exclusive fixture");
+        assert!(matches!(Authority::restore(&store), Err(Error::Storage)));
+        assert!(matches!(
+            store.load::<bool>("authority-recovery"),
+            Err(Error::NotFound)
+        ));
+        drop(lock);
+        assert_eq!(fs::read(&path).expect("unchanged"), original);
+        let authority = Authority::restore(&store).expect("recover invalid schema");
+        assert!(authority.invalidated && authority.recovery_required);
+        let archived = fs::read_dir(namespace)
+            .expect("files")
+            .flatten()
+            .find(|entry| {
+                entry
+                    .file_name()
+                    .to_string_lossy()
+                    .starts_with("authority-0-")
+            })
+            .expect("archive");
+        assert_eq!(fs::read(archived.path()).expect("preserved"), original);
+        drop(store);
+        super::super::cleanup_store(&root, "authority-io", &[]);
+    }
+
     /// Un documento ilegible apartaba la autoridad para SIEMPRE: cada arranque
     /// devolvia `Err` y la unica salida era que alguien borrase el fichero a
     /// mano. Ahora se aparta y se arranca con el defecto.
     #[test]
     fn a_corrupt_authority_is_quarantined_and_the_service_still_starts() {
-        let (_root, store) = crate::test_store("authority-quarantine");
+        let (_root, store) = super::super::test_store("authority-quarantine");
         // Version distinta de 1: JSON valido con contenido que la puerta rechaza.
         store
             .save("authority", &serde_json::json!({"version": 2}))

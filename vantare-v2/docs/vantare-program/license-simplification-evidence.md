@@ -108,3 +108,73 @@ automática como NeedsSignIn sin bloquear ni revocar derechos. B debe preservar
 los resultados tipados actuales de rechazo del núcleo y services no usará
 claims sin ACK verificado para presentación o decisiones. Cada corte tiene
 su PR y gates propios. No se modifica Plane ni se integra/publica desde el worker.
+
+
+## Corte B — un solo dueño de verificación
+
+Base `6fbbfaa6ad96d187877043786fc999a369d268b3`, integración de A (#1841)
+confirmada por el orquestador. Rama `vantareapp/isa-1827-simplificar-owner`.
+Authority, catálogo, verificador y sus pruebas se trasladan a runtime::rights.
+Owner/host siguen limitados a Windows; los módulos puros conservan pruebas en
+Unix. Base64/Ed25519 pasan de dependencias de test a producción en runtime,
+con las mismas versiones ya fijadas: Cargo.lock no cambia. Services conserva
+los tipos v1 y Store; no hay dependencia services→runtime.
+
+La renovación HTTP deja de verificar dos veces. Services no guarda ni utiliza
+claims recibidos para presentación o decisiones antes del ACK durable. La
+categoría cerrada rights-credential-invalid conserva Error::Version/Transient
+para firma/subject/device; lápida sigue Rejected y iat futuro Unavailable/Clock.
+No cambia el sobre control v7 ni el disco. Una copia congelada del lector v7
+anterior consume el error nuevo como UnknownLegacy; la matriz existente fija
+su resultado Transient. Cinco casos recorren HTTP→services→núcleo real y
+comprueban mensajes literales anteriores, forma manual/automática, aviso y
+reintento. No se sustituyen las matrices por esas pruebas.
+
+P3 de A: comentario v2/Installation retirado de Store; tres inventarios del
+diseño marcados como superados por decisión 5; bloque suelto eliminado. El test
+de identidad usa ahora huella real y v1 firmado, con un core-installation-v1
+corrupto que permanece intacto y no afecta a la instalación. La prueba de E/S
+bloqueada de Authority se mueve a su dueño, conservando los bytes y la prueba
+de recuperación tras desbloqueo. El JSON recovery-v1 se mueve sin cambiar su
+contenido a runtime/testdata; Rust y Deno siguen compartiendo una sola fixture.
+Deno no está instalado en este entorno: no se afirma ejecutar su prueba.
+
+Medición, con el mismo comando anterior cambiando --ref por `6fbbfaa6a`:
+
+| Crate | Antes | Después | Diferencia |
+|---|---:|---:|---:|
+| services | 11.161 | 10.374 | −787 |
+| runtime | 18.370 | 19.141 | +771 |
+| ipc | 6.316 | 6.322 | +6 |
+| hub | 73.482 | 73.482 | 0 |
+| Total | 109.329 | 109.319 | −10 |
+
+Perímetro fijo recorrido/Store: 14.867 → 14.858 (−9); services 6.635 → 5.848,
+runtime 1.870 → 2.642, ipc 1.258 → 1.264, hub 5.104 igual. La línea restante
+es el cfg de rights en lib.rs, fuera de ese perímetro. Los JSON completos por
+fichero son isa-1827-s-base-b.json e isa-1827-s-after-b.json. Los movimientos no
+se presentan como reducción; B retira una ejecución duplicada por renovación.
+El contador ahora tolera un fichero rastreado eliminado en el árbol sin commit.
+
+La primera suite pasó 1136/1138. Dos fixtures requerían ajuste al recorrido
+HTTP→núcleo: la lápida conserva LicenseFailure manual y una clave desconocida
+ahora debe llegar al núcleo, que responde con la categoría nueva. Las dos
+pruebas pasan después del ajuste; se conservan los logs inicial y focalizado.
+La matriz de núcleo, las matrices de services y el test de arquitectura
+domain/ui tienen los mismos blobs que la base.
+
+Gates finales después de restaurar las mutaciones: fmt y Clippy de services,
+runtime, ipc y Engineer (todos los targets, -D warnings) PASS. Nextest ci
+services/runtime/ipc/Engineer/domain **1138/1138 con telemetría PASS**,
+13 omisiones previas. Summary [ 137.308s] 1138 tests run: 1138 passed (1 slow), 13 skipped. Lifecycle runtime 13/13 y
+Engineer 5/5 PASS. Calidad conserva las 466 huellas. Todas las restricciones
+del esquema del fragmento ISA-1827 se comprueban con stdlib; jsonschema no está
+instalado. Los comandos y códigos quedan en isa-1827-s-final-b-gates.json.
+
+Las tres mutaciones (firma omitida, error inválido convertido en definitivo,
+traducción Error::Version perdida) fallan por aserción. Se restauran 223 fuentes
+Rust de services/runtime/ipc/Engineer por SHA-256. Tras Clippy, la prueba nueva
+se divide en preparación y aserción manual sin relajar expectativas, y las tres
+mutaciones vuelven a detectarse: logs en isa-1827-s-mutations-b y -b-r2.
+Se conserva también el lint too_many_lines que motivó esa división.
+C/D/E quedan pendientes de sus PRs y de la integración de B.

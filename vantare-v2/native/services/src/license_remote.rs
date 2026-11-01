@@ -1,10 +1,6 @@
 use crate::{
-    Error, Result,
-    account::Account,
-    bridge::DataRequest,
-    config::BuildConfig,
-    http::Http,
-    license::{CredentialV1, Verifier},
+    Error, Result, account::Account, bridge::DataRequest, config::BuildConfig, http::Http,
+    license::CredentialV1,
 };
 use serde::{Deserialize, Serialize};
 
@@ -41,7 +37,10 @@ pub fn renew(
         .anon_key
         .filter(|key| !key.is_empty())
         .ok_or(Error::Unconfigured)?;
-    let verifier = Verifier::public_keys(config.license_keys.ok_or(Error::Unconfigured)?)?;
+    config
+        .license_keys
+        .filter(|keys| !keys.is_empty())
+        .ok_or(Error::Unconfigured)?;
     if device.len() != 64
         || !device
             .bytes()
@@ -87,11 +86,8 @@ pub fn renew(
     {
         return Err(Error::Protocol);
     }
-    // El servidor resuelve (issuer, sub OAuth) al UUID interno. Ese UUID solo
-    // adquiere autoridad tras verificar la firma y todos los claims v1.
-    let subject = &response.credential.claims.subject;
-    verifier.v1(&response.credential, subject, device)?;
-    Ok(response.credential) // Only fresh signed facts; never saved by services.
+    // Sin inspección de claims: el núcleo verifica antes del ACK durable.
+    Ok(response.credential) // Fresh bytes only; never saved or trusted by services.
 }
 
 pub fn reset_device(request: &DataRequest<'_>, device: &str) -> Result<()> {

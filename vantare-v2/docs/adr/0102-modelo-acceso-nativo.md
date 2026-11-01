@@ -210,8 +210,9 @@ aun con política denegada o caducada; su ACK durable sigue siendo obligatorio.
 
 ### Paso 8 — licencia solo en el núcleo
 
-Services v18 retira TransferRights y el almacén candidate/marcador. Mantiene
-la verificación de la respuesta HTTP nueva y la entrega por InstallOnline;
+Services v18 retira TransferRights y el almacén candidate/marcador. El corte B
+del paso 11 reemplaza su verificación de la respuesta HTTP por entrega fresca
+a InstallOnline y verificación única en runtime::rights;
 control v7 conserva Install solo por compatibilidad; services ya no lo emite ni debe conectarlo a credenciales de disco.
 La admisión usa Read autenticado y helper_command_allowed sobre Policy.state;
 arrancar servicios no es una concesión. No cambia el catálogo ni sus permisos.
@@ -295,3 +296,21 @@ automático; compra, login confirmado, recuperación y acción manual conservan
 sus excepciones y el suelo existente. Con plazo firmado se conserva su cadencia.
 Reiniciar el helper o reconectar el Hub no reinicia Renewal ni su backoff.
 Un supervisor nuevo comprueba una vez por diseño: no hay persistencia nueva.
+
+
+### Paso 11 — dueño único de autoridad y verificación (corte B)
+
+Authority, catálogo y Verifier pertenecen a runtime::rights. Services conserva
+los tipos de transporte v1 y el Store, sin dependencia hacia runtime. Una
+respuesta HTTP nueva sigue siendo no confiable hasta el ACK durable del núcleo;
+services no guarda ni consulta sus claims para mostrar o decidir antes del ACK.
+
+Firma, subject o device inválidos usan la categoría cerrada
+`rights-credential-invalid` en el mismo sobre control v7. El lector actual la
+reconoce como Failure::InvalidCredential y services la convierte en Error::Version
+(Transient, mensaje anterior, sin bloqueo del scheduler ni aviso definitivo).
+Un lector v7 anterior conserva UnknownLegacy/Transient. REJECTED queda para
+lápida/denegación/caducidad; iat futuro mantiene UNAVAILABLE/Clock. No cambian
+los formatos en disco, permisos ni estructura serializada. Las matrices de
+caracterización siguen intactas y las cinco familias de rechazo recorren HTTP,
+services y núcleo real.

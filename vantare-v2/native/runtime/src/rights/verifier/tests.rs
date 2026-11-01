@@ -1,7 +1,11 @@
 use super::*;
+use crate::rights::{authority, cleanup_store, test_store};
 use ed25519_dalek::{Signer, SigningKey};
 #[cfg(any(windows, unix))]
 use std::time::Duration;
+use vantare_services::license::ClaimsV1;
+#[cfg(unix)]
+use vantare_services::license::installation;
 
 const SUBJECT: &str = "550e8400-e29b-41d4-a716-446655440000";
 
@@ -184,7 +188,7 @@ fn core_policy_keeps_exact_hour_only_for_existing_game_survives_restart_and_logo
     let signing = key();
     let verifier = verifier(&signing);
     let credential = v1(&signing, "2026-09-30T11:00:00Z");
-    let (root, store) = crate::test_store("core-policy");
+    let (root, store) = test_store("core-policy");
     let mut core = Authority::restore(&store).expect("core");
     core.install(
         verifier
@@ -279,7 +283,7 @@ fn core_policy_keeps_exact_hour_only_for_existing_game_survives_restart_and_logo
         Err(Error::Denied)
     ));
     drop(store);
-    crate::cleanup_store(&root, "core-policy", &["authority"]);
+    cleanup_store(&root, "core-policy", &["authority"]);
 }
 
 #[cfg(any(windows, unix))]
@@ -289,7 +293,7 @@ fn no_offline_grace_outside_game_or_for_already_expired_game_entry() {
     let signing = key();
     let verifier = verifier(&signing);
     let credential = v1(&signing, "2026-09-30T11:00:00Z");
-    let (root, store) = crate::test_store("no-grace");
+    let (root, store) = test_store("no-grace");
     let mut core = Authority::restore(&store).expect("core");
     core.install(
         verifier
@@ -317,7 +321,7 @@ fn no_offline_grace_outside_game_or_for_already_expired_game_entry() {
     );
     core.persist(&store).expect("persist");
     drop(store);
-    crate::cleanup_store(&root, "no-grace", &["authority"]);
+    cleanup_store(&root, "no-grace", &["authority"]);
 }
 
 #[cfg(any(windows, unix))]
@@ -331,9 +335,9 @@ fn recycled_local_session_id_cannot_confirm_grace_after_restart() {
         .map_or_else(std::env::temp_dir, std::path::PathBuf::from)
         .join(format!(
             "vantare-session-test-{}",
-            crate::random_id().expect("test entropy")
+            vantare_services::random_id().expect("test entropy")
         ));
-    let store = crate::storage::Store::open(&root, "recycled-session").expect("store");
+    let store = vantare_services::storage::Store::open(&root, "recycled-session").expect("store");
     let mut core = Authority::restore(&store).expect("core");
     let proof = || {
         verifier
@@ -361,7 +365,7 @@ fn recycled_local_session_id_cannot_confirm_grace_after_restart() {
             .is_empty()
     );
     drop(store);
-    crate::cleanup_store(&root, "recycled-session", &["authority"]);
+    cleanup_store(&root, "recycled-session", &["authority"]);
 }
 
 #[cfg(unix)]
@@ -411,7 +415,7 @@ fn cached_paid_period_survives_seventeen_offline_days_until_exact_deadline() {
     let verifier = verifier(&signing);
     let cancelled = date("2026-09-30T10:00:00Z").expect("día 13");
     let credential = v1(&signing, "2026-10-17T10:00:00Z");
-    let (root, store) = crate::test_store("offline-paid-period");
+    let (root, store) = test_store("offline-paid-period");
     let mut authority = Authority::restore(&store).expect("autoridad");
     authority
         .install(
@@ -456,13 +460,13 @@ fn cached_paid_period_survives_seventeen_offline_days_until_exact_deadline() {
     }
     drop(authority);
     drop(store);
-    crate::cleanup_store(&root, "offline-paid-period", &["authority"]);
+    cleanup_store(&root, "offline-paid-period", &["authority"]);
 }
 
 #[test]
 fn forward_wall_clock_drift_does_not_reject_repeated_authority_observation() {
     use authority::Authority;
-    let (root, store) = crate::test_store("clock-drift");
+    let (root, store) = test_store("clock-drift");
     let signing = key();
     let verifier = verifier(&signing);
     let credential = v1(&signing, "2026-09-30T11:00:00Z");
@@ -531,7 +535,7 @@ fn forward_wall_clock_drift_does_not_reject_repeated_authority_observation() {
         "cold restart preserves rollback protection"
     );
     drop(store);
-    crate::cleanup_store(&root, "clock-drift", &["authority"]);
+    cleanup_store(&root, "clock-drift", &["authority"]);
 }
 
 #[test]
@@ -542,7 +546,7 @@ fn signed_future_issuance_is_bounded_and_never_extends_the_paid_deadline() {
     let issued = date("2026-09-30T10:00:00Z").expect("issued");
     let credential = v1(&signing, "2026-09-30T10:01:00Z");
     for skew in [32, 300, 301] {
-        let (root, store) = crate::test_store("clock-skew");
+        let (root, store) = test_store("clock-skew");
         let wall = issued - chrono::TimeDelta::seconds(skew);
         let mut core = Authority::restore(&store).expect("core");
         let installed = core.install(
@@ -600,7 +604,7 @@ fn signed_future_issuance_is_bounded_and_never_extends_the_paid_deadline() {
             );
         }
         drop(store);
-        crate::cleanup_store(&root, "clock-skew", &[]);
+        cleanup_store(&root, "clock-skew", &[]);
     }
 }
 
@@ -625,7 +629,7 @@ fn staging_signed_credential_accepts_only_bounded_injected_clock_skew() {
         Verifier::public_keys(keys.trim_start_matches('\u{feff}').trim()).expect("QA trust roots");
     let issued = date(&credential.claims.issued_at).expect("signed issuance");
     for skew in [-32, 0, 32, 300, 301] {
-        let (root, store) = crate::test_store("staging-clock-probe");
+        let (root, store) = test_store("staging-clock-probe");
         let mut authority = authority::Authority::restore(&store).expect("authority");
         let proof = verifier
             .v1(
@@ -647,7 +651,7 @@ fn staging_signed_credential_accepts_only_bounded_injected_clock_skew() {
             assert!(authority.credential_current());
         }
         drop(store);
-        crate::cleanup_store(&root, "staging-clock-probe", &[]);
+        cleanup_store(&root, "staging-clock-probe", &[]);
     }
 }
 
@@ -659,7 +663,7 @@ fn out_of_range_saved_clock_is_quarantined_and_allows_a_fresh_signed_login() {
     let credential = v1(&signing, "2026-09-30T11:00:00Z");
     let now = date(&credential.claims.issued_at).expect("issuance");
     for forward in [-1, 300_001, i64::MIN, i64::MAX] {
-        let (root, store) = crate::test_store("invalid-saved-clock");
+        let (root, store) = test_store("invalid-saved-clock");
         store.save("authority", &serde_json::json!({
             "version":1, "clock":{"last_seen":null,"latest_issued":null,"invalidated_after":null,"last_wall":null,"forward_millis":forward},
             "game":null,"invalidated":false
@@ -719,7 +723,7 @@ fn out_of_range_saved_clock_is_quarantined_and_allows_a_fresh_signed_login() {
             .expect("fresh login is usable");
         assert!(reopened.credential_current());
         drop(store);
-        crate::cleanup_store(&root, "invalid-saved-clock", &[]);
+        cleanup_store(&root, "invalid-saved-clock", &[]);
     }
 }
 
@@ -731,7 +735,7 @@ fn logout_tombstone_survives_forward_adjustment_and_cold_restore() {
     let credential = v1(&signing, "2026-09-30T11:00:00Z");
     let issued = date(&credential.claims.issued_at).expect("issuance");
     let wall = issued - chrono::TimeDelta::seconds(32);
-    let (root, store) = crate::test_store("forward-tombstone");
+    let (root, store) = test_store("forward-tombstone");
     let mut core = Authority::restore(&store).expect("authority");
     core.install(
         verifier
@@ -780,7 +784,7 @@ fn logout_tombstone_survives_forward_adjustment_and_cold_restore() {
         .expect("new issuance after logout may sign in");
     assert!(restored.credential_current());
     drop(store);
-    crate::cleanup_store(&root, "forward-tombstone", &[]);
+    cleanup_store(&root, "forward-tombstone", &[]);
 }
 
 #[test]
@@ -792,7 +796,7 @@ fn successive_signed_issuances_cannot_exceed_the_accumulated_clock_limit() {
     let issued = date(&credential.claims.issued_at).expect("issuance");
     let wall = issued - chrono::TimeDelta::seconds(200);
     for additional in [100, 101] {
-        let (root, store) = crate::test_store("accumulated-clock-limit");
+        let (root, store) = test_store("accumulated-clock-limit");
         let mut core = Authority::restore(&store).expect("authority");
         core.install(
             verifier
@@ -834,7 +838,7 @@ fn successive_signed_issuances_cannot_exceed_the_accumulated_clock_limit() {
             "neither acceptance nor rejection extends the paid deadline"
         );
         drop(store);
-        crate::cleanup_store(&root, "accumulated-clock-limit", &[]);
+        cleanup_store(&root, "accumulated-clock-limit", &[]);
     }
 }
 
@@ -861,10 +865,9 @@ fn founders_keeps_perpetual_nightly_after_pro_plus_expires() {
 #[cfg(any(windows, unix))]
 fn server_recovery_v1_fixture_verifies_and_expires_at_original_deadline() {
     // Deno compares this artifact with issueCredential; no production trust root.
-    let fixture: serde_json::Value = serde_json::from_str(include_str!(
-        "../../../../../supabase/functions/license-credential/fixtures/recovery-v1.json"
-    ))
-    .expect("server fixture");
+    let fixture: serde_json::Value =
+        serde_json::from_str(include_str!("../../../testdata/license/recovery-v1.json"))
+            .expect("server fixture");
     let credential: CredentialV1 =
         serde_json::from_value(fixture["credential"].clone()).expect("v1 envelope");
     let verifier = Verifier::public_keys(&format!(
@@ -875,7 +878,7 @@ fn server_recovery_v1_fixture_verifies_and_expires_at_original_deadline() {
     .expect("fixture registry");
     let issued = date(&credential.claims.issued_at).expect("issued");
     let deadline = date(fixture["recovery_until"].as_str().expect("deadline")).expect("date");
-    let (root, store) = crate::test_store("server-recovery-v1");
+    let (root, store) = test_store("server-recovery-v1");
     let mut authority = authority::Authority::restore(&store).expect("authority");
     let verify = || {
         verifier
@@ -938,5 +941,5 @@ fn server_recovery_v1_fixture_verifies_and_expires_at_original_deadline() {
         assert_eq!(rights.len(), if seconds < remaining { 2 } else { 0 });
     }
     drop(store);
-    crate::cleanup_store(&root, "server-recovery-v1", &[]);
+    cleanup_store(&root, "server-recovery-v1", &[]);
 }

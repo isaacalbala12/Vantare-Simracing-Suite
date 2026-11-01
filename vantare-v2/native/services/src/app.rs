@@ -94,7 +94,11 @@ impl App {
             .map_err(|error| {
                 let failure = vantare_ipc::control::Failure::classify(&error);
                 eprintln!("services-core {}", failure.diagnostic());
-                Error::Core(failure)
+                if failure == vantare_ipc::control::Failure::InvalidCredential {
+                    Error::Version
+                } else {
+                    Error::Core(failure)
+                }
             })
     }
 
@@ -116,7 +120,7 @@ impl App {
         Ok(())
     }
 
-    /// Called only on the renew stack with its freshly verified HTTP response.
+    /// Called only on the renew stack with its fresh, untrusted HTTP response.
     /// No license response or retry hint is persisted by services.
     fn complete_online_renewal(
         &mut self,
@@ -2257,6 +2261,7 @@ mod tests {
         VersionCloses,
         Invalidate,
         RejectInstallOnline,
+        RejectInvalidCredential(String),
         DisconnectInstallOnline,
         RejectInvalidate,
     }
@@ -2265,7 +2270,7 @@ mod tests {
         step: &CoreStep,
         command: vantare_ipc::control::Command,
         device: &str,
-        keys: &str,
+        _keys: &str,
     ) {
         use vantare_ipc::control;
         let credential = match command {
@@ -2277,6 +2282,7 @@ mod tests {
                             | CoreStep::InstallOnlineCredential(_)
                             | CoreStep::DisconnectInstallOnline
                             | CoreStep::RejectInstallOnline
+                            | CoreStep::RejectInvalidCredential(_)
                     ),
                     "renew must preserve online provenance"
                 );
@@ -2290,6 +2296,7 @@ mod tests {
                             | CoreStep::InstallOnlineCredential(_)
                             | CoreStep::DisconnectInstallOnline
                             | CoreStep::RejectInstallOnline
+                            | CoreStep::RejectInvalidCredential(_)
                     ),
                     "disk candidate cannot claim online provenance"
                 );
@@ -2297,21 +2304,20 @@ mod tests {
             }
             _ => panic!("signed credential required"),
         };
-        if let CoreStep::InstallOnlineCredential(expected) = step {
+        if let CoreStep::InstallOnlineCredential(expected)
+        | CoreStep::RejectInvalidCredential(expected) = step
+        {
             assert_eq!(
                 &credential, expected,
                 "online install must use the exact fresh HTTP credential"
             );
         }
-        let proof = crate::license::Verifier::public_keys(keys)
-            .expect("keys")
-            .v1(
-                &serde_json::from_str::<crate::license::CredentialV1>(&credential).expect("v1"),
-                "550e8400-e29b-41d4-a716-446655440000",
-                device,
-            )
-            .expect("signed v1");
-        assert!(proof.grants().is_empty());
+        // This transport fixture checks the payload, not cryptographic authority.
+        // Signature/binding rejection is covered through the real runtime Owner.
+        let credential: crate::license::CredentialV1 =
+            serde_json::from_str(&credential).expect("v1");
+        assert_eq!(credential.claims.device_fingerprint, device);
+        assert!(credential.claims.capabilities.is_empty());
     }
 
     pub(super) fn core_fixture(
@@ -2379,6 +2385,7 @@ mod tests {
                     CoreStep::RejectInvalidate => Some("fixture rejection"),
                     #[cfg(windows)]
                     CoreStep::RejectInstallOnline => Some(control::REJECTED),
+                    CoreStep::RejectInvalidCredential(_) => Some(control::INVALID_CREDENTIAL),
                     _ => None,
                 }
                 .map(str::to_owned);
@@ -2534,6 +2541,7 @@ mod tests {
         let (credential, keys) = crate::license_remote::tests::signed_fixture(&device);
         let mut newer = credential.clone();
         newer.key_id = "server-newer-fixture".into();
+        let fresh = serde_json::to_string(&newer).expect("fresh HTTP credential");
         let server = crate::test_http::Server::start(vec![
             (200, serde_json::json!({"access_token":"fixture-access", "refresh_token":"fixture-refresh", "token_type":"Bearer", "expires_in":3600}).to_string()),
             (200, serde_json::json!({"sub":"user_fixture"}).to_string()),
@@ -2562,9 +2570,16 @@ mod tests {
                 },
             )
             .expect("valid previous cache");
-        let (link, core) = core_fixture(device, keys, vec![CoreStep::Read]);
+        let (link, core) = core_fixture(
+            device,
+            keys,
+            vec![CoreStep::RejectInvalidCredential(fresh), CoreStep::Read],
+        );
         app.attach_core(link);
-        assert!(app.execute(Command::LicenseRenewAutomatic).is_err());
+        assert_eq!(
+            app.execute(Command::LicenseRenewAutomatic).err(),
+            Some(Error::Version)
+        );
         assert!(
             matches!(
                 app.execute(Command::LicenseStatus),

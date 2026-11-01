@@ -25,6 +25,10 @@ El workspace tiene 14 crates; `default-members` excluye storage, admin e install
 `packaging/` contiene scripts de distribución; versión y contratos viven en ipc,
 el recurso Win32 vive en build-support. No es un crate.
 
+En el recorrido de licencias, `runtime::rights` reúne Authority, catálogo y el
+único verificador de acceso (ADR 0102, paso 11). Services conserva transporte v1
+y persistencia genérica; no verifica ni usa claims antes del ACK del núcleo.
+
 ## Dependencias permitidas
 
 ```text

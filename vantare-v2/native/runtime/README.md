@@ -6,6 +6,13 @@ perpetuos no tienen un vencimiento de sobre. Una firma v1 sin grants conserva
 Gratis sin plazo firmado. La prueba diaria usa Founders v1 real, sin alterar
 Policy. Se conservan los formatos y las guardas de binding/authority.
 
+Corte B del paso 11: `rights::verifier`, `rights::authority` y `rights::catalog`
+son sus únicos dueños. Las pruebas puras siguen disponibles fuera de Windows;
+Owner/host continúan en Windows. Services transporta bytes HTTP nuevos y solo
+usa claims después del ACK del núcleo. Credencial inválida tiene categoría propia
+en control v7, sin cambiar el sobre: services conserva Version/Transient;
+iat conserva Unavailable/Clock y lápida/denegación/caducidad conservan Rejected.
+
 Sin `signed_until_ms`, el supervisor comprueba al arrancar y cada 24 horas
 monotónicas desde una renovación verificada, para cualquier catálogo (incluidos
 Gratis, Founders y Owner sin fecha). No se duplica el chequeo inicial de Gratis.

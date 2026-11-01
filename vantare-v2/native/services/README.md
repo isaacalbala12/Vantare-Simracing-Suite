@@ -9,8 +9,11 @@ helper y Hub no tienen otro temporizador. Live, ClockBehind y backoff siguen
 regidos por [el contrato del supervisor](../runtime/README.md).
 
 Services v19 conserva la retirada de TransferRights, Candidate y su marcador. `renew` devuelve
-CredentialV1 recién verificada en memoria y App la entrega por InstallOnline;
-solo el ACK durable confirma la instalación. Al arrancar aparta candidate y marcador históricos con rename fechado, sin leer
+CredentialV1 recién recibida en memoria y App la entrega por InstallOnline;
+desde el corte B, solo runtime::rights verifica la firma y sus claims. Services
+no los usa antes del ACK durable que confirma la instalación. Firma/subject/device
+inválidos se traducen a Version/Transient, conservando mensaje y reintentos.
+Al arrancar aparta candidate y marcador históricos con rename fechado, sin leer
 su contenido. Es best-effort: un bloqueo se diagnostica, nunca concede ni bloquea
 la recuperación; se reintenta al siguiente arranque si quedaron restos.
 Si se pierde el ACK o desaparece el núcleo, el resultado es transitorio y la
@@ -260,8 +263,9 @@ Máximo dos jobs, una compilación a la vez. Logs y target standalone histórico
 están fuera del repo, en `C:/tmp/servicios-evidence/`; no recuperar el stash previo.
 No hay dependencias async/DB/bus nuevas: se reutilizan transporte Win32/ACL,
 ureq/TLS del lock, formatos/entropía mínimos y Ed25519/DPAPI de los cortes previos.
-La biblioteca de verificación se consume con `default-features = false`; IPC es
-común, HTTP/URL opcionales. Las pruebas de runtime habilitan network solo como
+Runtime consume los tipos v1 y Store de services con `default-features = false`;
+el verificador y Authority viven en runtime::rights. IPC es común, HTTP/URL
+opcionales. Las pruebas de runtime habilitan network solo como
 dev-dependency. Cargo unifica features en una compilación conjunta: ese grafo
 no se presenta como prueba de ausencia de TLS en el artefacto completo.
 

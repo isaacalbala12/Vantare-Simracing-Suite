@@ -14,6 +14,8 @@ mod notices;
 mod online_only;
 #[path = "tests/profile.rs"]
 mod profile;
+#[path = "tests/verification.rs"]
+mod verification;
 
 #[test]
 fn recovery_observations_admit_queries_and_denied_policies_allow_seat_recovery() {

@@ -360,6 +360,9 @@ pub(super) fn response_error(
     cached_clock_rejection: bool,
 ) -> &'static str {
     use vantare_services::outcome::{Observation, Origin, outcome};
+    if error == vantare_services::Error::InvalidCredential {
+        return control::INVALID_CREDENTIAL;
+    }
     let result = outcome(Observation::Error(
         error,
         Origin::Core {
@@ -531,13 +534,16 @@ mod response_tests {
         }
         for error in [
             Error::Denied,
-            Error::InvalidCredential,
             Error::Expired,
             Error::DeviceLimit,
             Error::Conflict,
         ] {
             assert_eq!(response_error(error, false), control::REJECTED);
         }
+        assert_eq!(
+            response_error(Error::InvalidCredential, false),
+            control::INVALID_CREDENTIAL
+        );
     }
 
     #[test]

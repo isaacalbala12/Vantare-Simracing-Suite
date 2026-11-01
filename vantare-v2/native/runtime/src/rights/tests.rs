@@ -3,7 +3,9 @@ use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
 use ed25519_dalek::{Signer, SigningKey};
 use vantare_services::license::{Capability, ClaimsV1};
 
+#[path = "tests/characterization.rs"]
 mod characterization;
+#[path = "tests/pause.rs"]
 mod pause;
 
 #[test]
@@ -1042,70 +1044,68 @@ fn founders_alone_enables_all_modules_offline_until_revoked() {
 fn launch_v1_signed_credentials_keep_the_cutoff_offline_and_at_pro_expiry() {
     use vantare_ipc::control::CatalogAccess;
     let start = 1_790_800_000;
-    {
-        let mut grants: Vec<_> = [
-            "vantare.edition.launch_v1",
-            "vantare.module.calendar",
-            "vantare.module.engineer",
-            "vantare.module.strategy",
-            "vantare.operational.tester",
-            "vantare.plan.pro",
-        ]
-        .into_iter()
-        .flat_map(|key| beta_grants(Some(key), start))
-        .collect();
-        grants.sort_by(|a, b| a.key.cmp(&b.key));
-        let (credential, keys) = signed_v1(start - 1, grants);
-        let root = test_root();
-        let mut owner = Owner::open(&root, Some(&keys), devices(), 1, wall(start)).expect("abrir");
-        owner
-            .install(credential, wall(start), Duration::ZERO)
-            .expect("firma existente");
-        let pro = owner
-            .advance(&Snapshot::default(), wall(start), Duration::ZERO)
-            .expect("Pro");
-        assert_eq!(pro.catalog, CatalogAccess::Pro);
-        export_capture_policy(Some("vantare.plan.pro"), &pro);
-        assert!(pro.engineer && pro.strategy);
-        assert_eq!(
-            pro.effective_until_ms(),
-            Some(u64::try_from(start + 3).expect("fecha") * 1000)
-        );
-        drop(owner);
-        let mut owner =
-            Owner::open(&root, Some(&keys), devices(), 2, wall(start + 3)).expect("offline");
-        let launch = owner
-            .advance(&Snapshot::default(), wall(start + 3), Duration::ZERO)
-            .expect("LE");
-        assert!(launch.state.permits_access() && launch.tester && launch.calendar);
-        assert_eq!(launch.catalog, CatalogAccess::LaunchV1);
-        export_capture_policy(Some("vantare.edition.launch_v1"), &launch);
-        assert!(launch.catalog.allows_widget("relative"));
-        assert!(!launch.catalog.allows_widget("radar"));
-        assert!(!launch.engineer && !launch.strategy);
-        let without_tester = owner
-            .advance(
-                &Snapshot::default(),
-                wall(start + 10),
-                Duration::from_secs(7),
-            )
-            .expect("tester vencido");
-        assert!(!without_tester.tester);
-        assert_eq!(without_tester.catalog, CatalogAccess::LaunchV1);
-        owner
-            .invalidate(wall(start + 11), Duration::from_secs(8))
-            .expect("revocar");
-        let revoked = owner
-            .advance(
-                &Snapshot::default(),
-                wall(start + 11),
-                Duration::from_secs(8),
-            )
-            .expect("revocada");
-        assert!(!revoked.state.permits_access());
-        drop(owner);
-        clean(&root);
-    }
+    let mut grants: Vec<_> = [
+        "vantare.edition.launch_v1",
+        "vantare.module.calendar",
+        "vantare.module.engineer",
+        "vantare.module.strategy",
+        "vantare.operational.tester",
+        "vantare.plan.pro",
+    ]
+    .into_iter()
+    .flat_map(|key| beta_grants(Some(key), start))
+    .collect();
+    grants.sort_by(|a, b| a.key.cmp(&b.key));
+    let (credential, keys) = signed_v1(start - 1, grants);
+    let root = test_root();
+    let mut owner = Owner::open(&root, Some(&keys), devices(), 1, wall(start)).expect("abrir");
+    owner
+        .install(credential, wall(start), Duration::ZERO)
+        .expect("firma existente");
+    let pro = owner
+        .advance(&Snapshot::default(), wall(start), Duration::ZERO)
+        .expect("Pro");
+    assert_eq!(pro.catalog, CatalogAccess::Pro);
+    export_capture_policy(Some("vantare.plan.pro"), &pro);
+    assert!(pro.engineer && pro.strategy);
+    assert_eq!(
+        pro.effective_until_ms(),
+        Some(u64::try_from(start + 3).expect("fecha") * 1000)
+    );
+    drop(owner);
+    let mut owner =
+        Owner::open(&root, Some(&keys), devices(), 2, wall(start + 3)).expect("offline");
+    let launch = owner
+        .advance(&Snapshot::default(), wall(start + 3), Duration::ZERO)
+        .expect("LE");
+    assert!(launch.state.permits_access() && launch.tester && launch.calendar);
+    assert_eq!(launch.catalog, CatalogAccess::LaunchV1);
+    export_capture_policy(Some("vantare.edition.launch_v1"), &launch);
+    assert!(launch.catalog.allows_widget("relative"));
+    assert!(!launch.catalog.allows_widget("radar"));
+    assert!(!launch.engineer && !launch.strategy);
+    let without_tester = owner
+        .advance(
+            &Snapshot::default(),
+            wall(start + 10),
+            Duration::from_secs(7),
+        )
+        .expect("tester vencido");
+    assert!(!without_tester.tester);
+    assert_eq!(without_tester.catalog, CatalogAccess::LaunchV1);
+    owner
+        .invalidate(wall(start + 11), Duration::from_secs(8))
+        .expect("revocar");
+    let revoked = owner
+        .advance(
+            &Snapshot::default(),
+            wall(start + 11),
+            Duration::from_secs(8),
+        )
+        .expect("revocada");
+    assert!(!revoked.state.permits_access());
+    drop(owner);
+    clean(&root);
 }
 
 fn export_capture_policy(capability: Option<&str>, policy: &Policy) {
@@ -1170,10 +1170,40 @@ fn cached_credential_keeps_overlays_and_modules_during_unreachable_server_hours(
 }
 
 #[test]
-fn local_legacy_device_needs_no_installation_key_or_store() {
+fn local_legacy_device_is_unchanged_by_a_corrupt_retired_installation_store() {
+    use sha2::{Digest, Sha256};
     let expected =
-        vantare_services::license::installation::legacy_fingerprint().unwrap_or_default();
-    assert_eq!(local_devices().legacy, expected);
+        vantare_services::license::installation::legacy_fingerprint().expect("Windows fingerprint");
+    let root = test_root();
+    let context = "core-installation-v1";
+    let store = Store::open(&root, context).expect("retired namespace");
+    drop(store);
+    let path = root
+        .join(format!("{:x}", Sha256::digest(context.as_bytes())))
+        .join("installation.dpapi");
+    let damaged = b"corrupt retired installation fixture";
+    std::fs::write(&path, damaged).expect("private corrupt fixture");
+    let local = local_devices();
+    assert_eq!(local.legacy, expected);
+    let (credential, keys) = signed_v1_device(100, vec![], local.legacy.clone());
+    let mut owner =
+        Owner::open(&root.join("rights"), Some(&keys), local, 1, wall(110)).expect("owner");
+    owner
+        .install(credential, wall(110), Duration::ZERO)
+        .expect("v1 independent of retired store");
+    assert!(
+        owner
+            .advance(&Snapshot::default(), wall(110), Duration::ZERO)
+            .expect("v1")
+            .state
+            .permits_access()
+    );
+    assert_eq!(
+        std::fs::read(path).expect("retired bytes preserved"),
+        damaged
+    );
+    drop(owner);
+    clean(&root);
 }
 
 #[test]

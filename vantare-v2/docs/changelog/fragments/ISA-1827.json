@@ -5,6 +5,7 @@
   "summary": "Las licencias sin fecha firmada se comprueban al arrancar y cada 24 horas; se conservan los avisos y el acceso offline.",
   "technicalNotes": [
     "Paso 11, corte A: se retiran el formato JWS/v2 no planificado, su clave Installation y el vencimiento de sobre. Solo queda Ed25519 v1; los grants temporales y las guardas conservan su formato. La comprobación diaria se prueba con Founders v1 firmado.",
+    "Paso 11, corte B: Authority, catálogo y Verifier pasan a runtime::rights. Services entrega la respuesta HTTP fresca sin confiar en sus claims hasta el ACK durable. La categoría cerrada rights-credential-invalid conserva Error::Version/Transient; control v7 y disco no cambian.",
     "Paso 6b, decisión 4: Paused conserva la gracia ya reconocida de la misma sesión live y la hora original de entrada; no inicia ni amplía el margen.",
     "Paso 2: webhook y reconciliación comparten la clasificación de estados y las reglas de plazo.",
     "El snapshot revoked sigue revocando su fuente, como en #1817. Customer State salta solo la suscripción con estado desconocido y diagnostica unsupported_subscription_status; las demás siguen renovándose.",

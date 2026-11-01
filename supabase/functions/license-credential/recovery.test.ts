@@ -1,7 +1,7 @@
 // ADR 0102 / #1814: recovery uses the existing v1 temporal authority.
 import { issueCredential, normalizeGrants, signCredential } from "../_shared/license-credential.ts";
 import { deriveSubscriptionTransition, mergeRecoveryCycle } from "../billing-webhook/subscription-lifecycle.ts";
-import fixture from "./fixtures/recovery-v1.json" with { type: "json" };
+import fixture from "../../../vantare-v2/native/runtime/testdata/license/recovery-v1.json" with { type: "json" };
 
 function equal(actual: unknown, expected: unknown) {
   if (JSON.stringify(actual) !== JSON.stringify(expected)) throw new Error(JSON.stringify({ actual, expected }));

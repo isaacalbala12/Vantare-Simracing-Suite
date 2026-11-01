@@ -27,6 +27,9 @@ target D:/VantareServer/targets/isa-1827-s. Solo P3 fecha real y runbook.
   sus blobs del árbol validado 92c6b0510; todas las líneas de las entradas
   anteriores del handoff se preservan. Calidad posterior al rebase: 468 huellas PASS.
 - windows_startup posterior al rebase 7/7 PASS, con empaquetador de #1847.
+- PR draft [#1853](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1853), target nightly.
+  Código validado antes del rebase 10ec2c9f9; equivalente rebasado d1fe025fb83ad595e1c70703a633fd0cb2cc76f2.
+  HEAD documental vigente en el PR. CI/revisión a cargo del orquestador.
 <!-- /isa1827-simplificar-d0 -->
 
 <!-- isa1827-simplificar-c -->

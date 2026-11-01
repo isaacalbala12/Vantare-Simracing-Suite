@@ -386,7 +386,7 @@ el perímetro habitual de cuatro crates.
 Cuatro crates: 109277 -> 109292 (+15). Recorrido con Gestión: 15286 -> 15302
 (+16). Es propagación de fecha/corrección P3, no ahorro de simplificación.
 Pruebas/soporte Rust: +39 líneas físicas netas, separadas de las productivas.
-Documentación .md afectada: 7820 -> 7968 (+148) líneas; pruebas/soporte afectadas: 7713 -> 7752 (+39).
+Documentación .md afectada: 7820 -> 7972 (+152) líneas; pruebas/soporte afectadas: 7713 -> 7752 (+39).
 La separación de Rust se obtiene del delta físico de .rs menos el delta del
 contador productivo; documentación .md aparte, fragmento JSON aparte. Los
 cambios de tests de llamadas/formatting no se presentan como nuevos casos.
@@ -416,3 +416,4 @@ La base del PR/medición final es e747d4a9e; la base inicial 5bf636ef0 queda
 como historia. El contador productivo conserva exactamente los mismos valores.
 windows_startup posterior al rebase: Nextest ci 7/7 PASS,
 log isa-1827-s-d0-rebased-startup.log (por compilar.ps1, mismo target).
+PR draft: https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1853, target nightly; HEAD documental vigente en el PR.

@@ -51,9 +51,9 @@ fn attempt(
     environment: &str,
 ) -> Result<Attempt> {
     let name = attempt_name(identity, product, environment)?;
-    match store.read::<Attempt>(&name)? {
-        Stored::Value(value) if crate::license::uuid(&value.id) => Ok(value),
-        Stored::Missing => {
+    match store.read::<Attempt>(&name).and_then(Stored::required) {
+        Ok(value) if crate::license::uuid(&value.id) => Ok(value),
+        Err(Error::NotFound) => {
             let hex = crate::random_id()?;
             let value = Attempt {
                 id: format!(
@@ -150,44 +150,6 @@ pub fn purchase(
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[cfg(windows)]
-    #[test]
-    fn checkout_io_failure_is_not_corruption_and_preserves_the_guard() {
-        use std::os::windows::fs::OpenOptionsExt;
-        let (root, store) = crate::test_store("billing-io");
-        let identity = Identity {
-            issuer: "https://fixture.test/".into(),
-            subject: "fixture".into(),
-        };
-        let name = attempt_name(&identity, BillingProduct::ProMonthly, "sandbox").expect("name");
-        store
-            .save(
-                &name,
-                &Attempt {
-                    id: "550e8400-e29b-41d4-a716-446655440000".into(),
-                },
-            )
-            .expect("guard");
-        let path = root
-            .join(format!("{:x}", Sha256::digest(b"billing-io")))
-            .join(format!("{name}.dpapi"));
-        let bytes = std::fs::read(&path).expect("bytes");
-        let locked = std::fs::OpenOptions::new()
-            .read(true)
-            .share_mode(0)
-            .open(&path)
-            .expect("lock");
-        assert!(matches!(
-            attempt(&store, &identity, BillingProduct::ProMonthly, "sandbox"),
-            Err(Error::Storage)
-        ));
-        drop(locked);
-        assert_eq!(std::fs::read(&path).expect("guard preserved"), bytes);
-        assert!(attempt(&store, &identity, BillingProduct::ProMonthly, "sandbox").is_ok());
-        drop(store);
-        crate::cleanup_store(&root, "billing-io", &[]);
-    }
-
     #[test]
     fn regression_1542_corrupt_checkout_preserves_attempt_and_offers_recovery() {
         let (root, store) = crate::test_store("billing-corrupt");

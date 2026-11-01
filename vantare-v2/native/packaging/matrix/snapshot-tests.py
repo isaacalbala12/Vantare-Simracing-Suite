@@ -53,4 +53,19 @@ for relative in ("candidate.ps1", "generations/$generation0/candidate.ps1",
     checks += 1
 assert observed[0]["beta.ps1"] == observed[1]["beta.ps1"]
 checks += 1
+line_endings = []
+for content in (b"script\n", b"script\r\n"):
+    for version in ("v987", "v988", "v989"):
+        (assets / version / "candidate.ps1").write_bytes(content)
+    for path in paths:
+        path.write_bytes(content)
+    (install / "beta.ps1").write_bytes(content)
+    files = snapshot(case, assets)["files"]
+    for relative in ("candidate.ps1", "beta.ps1"):
+        assert files[relative] == hashlib.sha256(content).hexdigest(), relative
+        checks += 1
+    line_endings.append(files)
+for relative in ("candidate.ps1", "beta.ps1"):
+    assert line_endings[0][relative] != line_endings[1][relative], relative
+    checks += 1
 print(f"{checks} raw-script snapshot checks PASS")

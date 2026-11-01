@@ -11,6 +11,7 @@ $ErrorActionPreference='Stop'
 $qaMatrixRoot=Assert-MatrixRoot $Root
 if (Test-Path -LiteralPath $qaMatrixRoot) { throw 'MATRIX_NEEDS_FRESH_ROOT' }
 if (-not $LegacyPackage -or -not $TestVerifier -or -not $BootProbe) { throw 'MATRIX_FIXTURES_REQUIRED' }
+Assert-MatrixSourceBytes $PSScriptRoot
 $script:Packaging=$PSScriptRoot
 $qaImportCallerRoot=$Root
 . (Join-Path $PSScriptRoot 'beta.ps1') -Library -Root $qaMatrixRoot

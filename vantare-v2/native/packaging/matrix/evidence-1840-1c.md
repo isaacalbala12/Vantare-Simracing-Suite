@@ -102,3 +102,43 @@ Candidate conserva los bytes exactos de 1b. Sin nueva dependencia ni cambio prop
 de runtime/domain/ipc/testdata; telemetría y lifecycle de runtime omitidos por ámbito.
 QA física en otra cuenta/VM pendiente. Sin Setup/Uninstall EXE, instalación real,
 CI watch, merge, release, Downloads ni cambio Plane por este worker.
+
+## Corrección del fallo CI 41330660086
+
+El artefacto installation-matrix-windows se descargó bajo
+D:/VantareServer/qa/isa-1840/ci-41330660086. La comparación recursiva de clean-install
+con matrix-1c-review-01 encontró UNA diferencia: files/beta.ps1.
+
+- Local anterior: CRLF (640 terminadores), SHA336ef053cf73dab70103fe51ab3118e259b4c36bd04adeaef120956748e24c4d.
+- Blob Git y CI: LF, SHA4e12d69d3889413c76751b08eed56f89c2388a1df240f4aa051a9b3a6e7f83b0.
+- `.gitattributes` exige LF. El editor Python había dejado CRLF en el working tree;
+  git add normalizó el blob sin modificar aquella copia de trabajo. Los 88 locales
+  anteriores no acreditaban los bytes versionados y se sustituyen por el gate nuevo.
+- Candidate y driver eran ya idénticos a sus blobs Git. Sin diferencias de rutas,
+  hora, WINDIR, orden, datos, estado, registro o accesos en clean-install.
+- Baseline corregido desde las capturas con SOLO el SHA beta versionado: el digest
+  clean-install coincide exactamente con el snapshot CI, 8e27a5271dacfa30eca7d3a52c74fde6eddd2372e40e3c60190c8d66419b58ac.
+
+La matriz ahora rechaza CRLF en los tres scripts actuales antes de cargar producto
+o crear raíz. Guard tests prueba LF y los tres rechazos, más llamada real al main
+sin escrituras. Snapshot sigue comparando bytes exactos; nuevos tests distinguen
+LF/CRLF en candidate y beta incluso si coinciden con la fixture fuente. No se cambian
+normalización, invariantes ni archivos congelados. El rebase sobre nightly7ebf46c08
+conserva Root/Library y el resto de handoffs. Gates finales sobre 7ebf46c08:
+- matrix-1c-ci-fix-01: 88/88 +22 biblioteca +24 contexto +14 seguridad histórica
+  +18 snapshots +54 inventario +42 arranque/registro PASS, con beta LF del blob Git.
+- guard-1c-ci-fix-01: 7 rechazos raíz/reparse, raíz válida/sentinel/no Root y
+  5 comprobaciones nuevas de bytes fuente PASS.
+- fmt/Clippy Hub all-targets -D warnings PASS; Nextest focal arranque/lector de
+  registro/arquitectura 32/32 PASS, 6,155 s; 571 excluidos por filtro explícito.
+  El Hub completo599/599 corresponde al pase anterior sobre e747d4a9e: no se
+  repite porque esta corrección no cambia código Rust propio.
+- PS parse, fragmento, calidad468, diff y límite ajeno del handoff PASS.
+- Los 88 resultados coinciden con baseline. Nueve scripts/harness coinciden en
+  bytes con la copia QA; clean-install local y CI coinciden byte a byte.
+  Prueba conservada en ci-41330660086-comparison.json. Sin cambio de producto
+  versionado desde ed0b794e4: solo baseline/guardas/tests/documentación.
+
+Sin cambio en invariantes ni normalización. Datos/estado/registro/accesos se
+conservan como antes. Sin instalación real, merge/release, CI watch ni cambio Plane.
+CI queda a cargo del orquestador; 1d sigue pendiente de integrar primero 1c.

@@ -94,6 +94,20 @@ y un hijo propio esperando stdin: el motor ejerce su cierre/plazo real de 3 s,
 sin esperas añadidas para sincronizar. Las 88 filas no llaman a Run ni Start; el hook de 1c sí ejecuta Run-BetaHub y
 Start-BetaHub reales con Hub/runtime inertes y guardas QA.
 
+## Bytes del checkout y CI
+
+La matriz exige LF en los tres scripts actuales (candidate, beta y driver), como
+marca `.gitattributes`. Rechaza CRLF antes de cargar producto o crear su raíz.
+No convierte bytes al comparar: snapshot conserva el SHA real de los scripts,
+incluido un cambio de finales de línea. Guard tests cubre LF, los tres rechazos
+y la entrada completa sin escrituras; snapshot tests demuestra LF/CRLF distintos.
+Los scripts congelados del ZIP histórico conservan sus bytes originales.
+
+El fallo CI de #1850/run41330660086 fue un baseline creado desde una copia local
+CRLF de beta.ps1, mientras Git/CI usan LF. El snapshot de clean-install solo difiere
+en ese SHA; la corrección conserva todas las demás observaciones y criterios.
+Normalizar el archivo de trabajo a la política del repo, no el snapshot.
+
 ## Reproducir y revisar cambios
 
 Desde `vantare-v2/`, construir `matrix-verifier` y `boot-confirmation-matrix` con `compilar.ps1`, target propio

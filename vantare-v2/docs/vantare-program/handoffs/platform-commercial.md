@@ -236,7 +236,7 @@ orquestador. Cinco PR separados, sin merge/release del worker.
   Suites QA1492 todavía sin remapeo en [#1848](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1848),
   area:plataforma / Project Vantare, fuera de 1b por decisión expresa.
 - 1c revisión aplicada y lista, rama vantareapp/isa-1840-1c-register, worktree
-  D:/VantareServer/worktrees/isa-1840-1c, base e747d4a9e. [PR draft #1850](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1850).
+  D:/VantareServer/worktrees/isa-1840-1c, base 7ebf46c08. [PR draft #1850](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1850).
   Rebase conserva Root/Library y QA de 1b. Decisión posterior del orquestador:
   resultado de Register en registration-status.json, escrito por Hub y mostrado
   aparte en Ajustes. No lee/modifica update-status; Stage conserva ready/error
@@ -252,7 +252,17 @@ orquestador. Cinco PR separados, sin merge/release del worker.
   Hub all-targets599/599, cuatro skips previos/cuatro lentos,216,000s;
   Clippy all-targets-Dwarnings/fmt/build/PS/YAML/fragmento/calidad468 PASS.
   Cuatro scripts/capturas88 coinciden con copia QA/baseline; solo SHA beta52 filas.
-  Código de revisión fe49f2925; HEAD publicado final en #1840/PR.
+  CI run41330660086 falló clean-install por un baseline generado con beta CRLF
+  local, aunque Git/CI usan LF. La única diferencia era ese SHA; el baseline
+  corregido coincide exactamente con el snapshot CI. Ahora la matriz rechaza
+  CRLF en candidate/beta/driver antes de cargar producto o escribir; snapshot
+  conserva bytes exactos y sus tests prueban LF/CRLF diferentes (18 checks).
+  Gates finales sobre 7ebf46c08: matriz88+22+24+14+18+54+42 PASS,
+  guardas7+5, fmt/Clippy y focales Rust32/32 PASS. Hub599/599 es el pase anterior
+  e747d4a9e; no se repite, sin cambio Rust propio. Nueve scripts/harness y88
+  resultados iguales a copia QA/baseline; clean-install local==CI byte a byte.
+  Los 88 anteriores con CRLF no acreditaban el blob Git: se sustituyen por
+  matrix-1c-ci-fix-01. HEAD final de corrección en #1840/PR.
   Cola/target propios, sin aflojar lints ni tests.
   [Evidencia y fallos iniciales](../../../native/packaging/matrix/evidence-1840-1c.md).
   Sin ventana física ni cambios propios de runtime/domain/ipc/testdata;

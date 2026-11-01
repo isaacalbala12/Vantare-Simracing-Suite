@@ -1,9 +1,9 @@
 <!-- isa1827-simplificar-d1a -->
-## VANTA-126 / #1827 — D1a en ejecución
+## VANTA-126 / #1827 — D1a listo para revisión
 
-Base origin/nightly@e747d4a9e920121d1fc8a391dfab6945c6315fa3. D0 listo en
-[#1853](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1853), HEAD
-4e730b2f1a093f132e58aac9016377f3d8fe24df; aún fuera de esta base al empezar.
+Base actual origin/nightly@7ebf46c08933fd5ec4ba714b7d9eb4b950c3c9cd,
+con D0 [#1853](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1853)
+integrado. Rebase desde la base inicial e747d4a9e; entradas previas conservadas.
 Rama vantareapp/isa-1827-simplificar-d1a; mismo worktree/target isa-1827-s.
 - Decode de credencial guardada reutilizado antes de la misma verificación;
   conserva orden de rechazos, disponibilidad local y diagnósticos. Store Value ->
@@ -23,10 +23,21 @@ Rama vantareapp/isa-1827-simplificar-d1a; mismo worktree/target isa-1827-s.
   fuentes congeladas rastreadas intactas en dos worktrees propios.
 - Rotura inicial del probe desde A 6fbbfaa6a (campo requerido antiguo retirado);
   C 5bf636ef0 añadió Read/read inexistente en esos SHA. Se documentan ambas,
-  sin retirar lectores ni fixtures. Reproducción compilada de los errores en curso.
+  sin retirar lectores ni fixtures. Reproducción compilada: paso 8 compila,
+  A E0063; C además E0603/E0599. Copias temporales restauradas byte a byte.
 - Clippy seis crates all-targets -D warnings PASS; tres ajustes iniciales de lint/
-  caller preservados en logs. Gates completos/mutaciones y medidas finales pendientes.
-  Producción provisional 115127 ->115083 (-44); pruebas/docs se cuentan aparte.
+  caller preservados en logs. Cuatro mutaciones detectadas por aserción,
+  no por errores de compilación; 405 fuentes Rust restauradas SHA-256.
+  Fmt/Clippy seis crates PASS; Nextest ci 1761/1761 con telemetría PASS
+  (17 omisiones previas). Lifecycle runtime 13/13 y Engineer 5/5 PASS.
+  Rollback final nueva→v17/pre5→nueva PASS; hashes reales verificados.
+  Primera suite: 1759/1761 por auxiliar storage ausente; construido con DuckDB
+  oficial en subtarget aislado, sin cambiar pruebas; repetición completa PASS.
+  Producción 115143 ->115099 (-44);
+  incluye movimiento de wrappers; pruebas/docs/tooling se cuentan aparte.
+- Pruebas/soporte Rust +81; tooling +19; TypeScript solo renombre (0 netas).
+  Documentación se mide aparte del ahorro de producción. Calidad 468 huellas PASS.
+  Cuatro blobs de caracterización/arquitectura intactos; Deno no instalado.
 - D6/D7/T1-T3 siguen aplazados por RC9. D1b y E pendientes; D5/D3 descartados.
   Sin Plane, datos reales, secretos, instalaciones, merge ni release.
 <!-- /isa1827-simplificar-d1a -->

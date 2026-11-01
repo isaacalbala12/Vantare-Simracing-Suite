@@ -1,48 +1,48 @@
 <!-- isa1827-p9-worker -->
-## Paso 9 — revisión del orquestador en validación (VANTA-126, 2026-11-01)
-
-Revisión APPROVE WITH CHANGES en curso sobre el mismo PR: Transient deja de crear
-aviso persistente; login confirmado deja una comprobación única pendiente con suelo;
-la prueba de compra ejecuta seis lecturas reales; fixtures QA adoptan LicenseStatus v19.
-Gates y mutaciones de esta revisión pendientes; los resultados inferiores son previos.
+## Paso 9 — revisión del orquestador aplicada, PR draft #1838 (VANTA-126, 2026-11-01)
 
 [PR #1838](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1838), a nightly; sin integrar.
-Código validado 17ef2d1cddadc66430687f2bb1854906ecfdb27f; HEAD documental vigente en PR/#1827.
-Base origin/nightly 0a0060d4d2de68d128fa5f435518de9086770dcd, confirmada de nuevo al cerrar.
+Código vigente validado fdbeb7aa496a2ebdfba1afb298ff79906083e821; HEAD documental en PR/#1827.
+Fuentes Rust idénticas al pin de mutaciones 983735f97785b11958193a268baf1de0625f1a6f;
+el commit posterior solo corrige el fixture Python QA. Base origin/nightly 0a0060d4d2de68d128fa5f435518de9086770dcd.
 Rama vantareapp/isa-1827-paso9-aviso; worktree C:/VantareServer/wt/isa-1827-p9;
 target D:/VantareServer/targets/isa-1827-p9; evidencia D:/VantareServer/evidence/isa-1827-p9.
 
-- El aviso vuelve tras perder una respuesta o reconectar; leerlo no arranca helper ni HTTP.
-  Inicio y Cuenta lo separan del resultado manual. Un fallo transitorio posterior conserva el
-  rechazo definitivo/account_conflict o límite previo, hasta una recuperación confirmada.
-- Durante compra el Hub no renueva y confirma solo por Feed fresco. El supervisor conserva
-  su ventana de diez minutos, backoff y suelo de un minuto. Leer avisos no dispara AccountPoll.
-- Services v19 lleva aviso tipado y sesión opcional: desconocida no fabrica SignedOut; NeedsSignIn
-  sigue leyendo avisos. El fondo no altera error/formulario de login/Logout. Login OAuth/email y
-  DeviceReset confirmados relevan el aviso; Cancel con sesión conservada no. Desajuste v18/v19 da
-  Version antes del esquema, sin revocar. Control v7/fotos v11 y formatos durables intactos.
-- Gates finales sobre 17ef2d1c PASS: fmt check; Clippy cuatro crates/all-targets -D warnings;
-  Nextest ci con telemetría 1480/1480 (17 omisiones del perfil, 5 lentos, 321.425s); lifecycle13/13;
-  ocho focales de avisos/compra; diez mutaciones detectadas por aserciones, 613 fuentes restauradas
-  por SHA256. Calidad/466 huellas y fragmento de changelog PASS. Matrices y Cargo conservan los
-  mismos blobs que la base. El commit posterior solo cierra documentación y referencias.
-- Toda compilación mediante compilar.ps1, jobs2, target privado y linker rust-lld explícito.
-  --manifest desde raíz no cargaba ese ajuste del workspace: los gates anteriores usaban link.exe.
-  Helpers y storage recompilados; DuckDB de desarrollo ya disponible, sin descarga ni instalación.
-  Logs/comandos: retention-validation.json, nextest-retention.log, lifecycle-retention.log,
-  mutations-retention/results.json, final-validation.json y delivery.md. Se conservan los fallos
-  intermedios de fixtures/lint/metadatos y separación de casos; no se excluyeron tests.
-- Dos revisiones DeepSeek de lectura; R1 corregida, R2 sin P0/P1/P2 sobre ab4195ad. La corrección
-  posterior de transporte fue revisada por el ejecutor; no se afirma revisión externa de cada byte.
-  P3 en #1827: tras Logout fallido+Volver el scheduler necesita otra observación Account (preexistente);
-  restaurar sesión por poll no demuestra login nuevo y conserva aviso; Cancel con aviso+SignedOut
-  sintético no se afirma cubierto. Revisión final del diff/CI a cargo del orquestador, sin watch del worker.
-- Issue #1827 abierta, Project Vantare / area:licencias / In Review, sin milestone; descripción
-  actualizada con PR/evidencia. Push solo a rama de issue. Plane intacto. Sin dependencias nuevas,
+- Revisión P2: Transient no crea un aviso persistente ni AccessError en Active/Grace, también en Live.
+  Definitive/account_conflict/DeviceLimit siguen retenidos; el transporte no resuelve el rechazo previo.
+  Recuperación se presenta desde Policy y el feedback manual permanece separado del aviso.
+- Revisión P3: login OAuth/email confirmado deja una comprobación única pendiente para volver a
+  detectar un rechazo vigente; conserva frescura, restricciones Live y suelo de un minuto. Un poll
+  posterior no la rearma. Regresión con Pro y treinta días de margen, éxito y rechazo, sin ráfagas.
+- Compra: prueba con sesión conocida y seis lecturas LicenseStatus locales reales; solo Feed fresco
+  confirma. Hub no renueva; supervisor conserva diez minutos, backoff y suelo. Respuesta perdida y
+  reconexión no consumen aviso ni arrancan helper; NeedsSignIn sigue leyéndolo sin AccountPoll.
+- Fixtures v19: Probe local, LicenseStatus con sesión/aviso y checked_at actualizado en ambos replies.
+  QA captura Cuenta porque Ingeniero es una página futura independiente de derechos. QA Windows
+  PASS: aviso visible y retirado, dos revisiones Policy y lecturas de aviso, dos PNG distintas, una sola
+  ventana fuera de monitores/sin foco y EOF código0. Capturas inspeccionadas por el ejecutor.
+- Gates habituales PASS sobre código vigente: fmt; Clippy cuatro crates/all-targets -D warnings;
+  Nextest ci con telemetría 1483/1483, 17 omisiones del perfil, 5 lentos, 326.440s; lifecycle13/13;
+  doce focales; nueve mutaciones detectadas por aserciones y 613 fuentes restauradas por SHA256.
+  Calidad/466 huellas, sintaxis Python y fragmento válidos. Matrices y Cargo conservan blobs de la base.
+- Comprobación adicional Clippy parity-capture FAIL: 16 avisos en Analysis, archivo idéntico a la base
+  (blob b9dea8e50a12629e64ab7ecd0b1e20f57c071893). Ya seguido en #1648, abierto/area:ui/Backlog.
+  No se amplía alcance ni se añaden allows. El ejemplo compila con su feature y la QA real pasa.
+- Toda compilación por compilar.ps1, jobs2, target privado y rust-lld explícito. Suite final con TEMP/TMP
+  privado corto: revision-test-environment-short.json. Se conservan dos suites previas 1482/1483:
+  conflicto en fixture Strategy basado en PID, y ruta TEMP demasiado larga para PowerShell clásico.
+  También se conservan el comando sin feature, lint corregido y captura fallida que detectó el fixture
+  desajustado. Sin exclusiones ni cambios en esos tests de Strategy/bootstrap. Logs revision-*,
+  mutations-review/results.json, revision-qa-live-2/result.json y final-validation.json contienen evidencia.
+- Dos revisiones DeepSeek previas; la revisión posterior del orquestador se aplica aquí por el ejecutor,
+  sin otra delegación. P3 previo: Logout fallido+Volver sigue necesitando una observación Account;
+  restaurar sesión por poll no prueba login nuevo; Cancel con aviso+SignedOut sintético no se afirma cubierto.
+- Issue #1827 abierta, Project Vantare / area:licencias / In Review, sin milestone. Push solo a rama de
+  issue; CI a cargo del orquestador, sin watch. Plane intacto. Services v19: desajuste Version antes del
+  esquema, sin revocar; control v7/fotos v11/formatos durables intactos. Sin dependencias nuevas,
   secretos, datos reales, producción, instalaciones, merge ni release. Aviso remoto en memoria del
-  supervisor, sin nueva persistencia durable; Policy conserva su diagnóstico. Verificación física/manual
-  pendiente en sandbox autorizado. Paso 10 espera integrar el 9 por compartir archivos; #1826 se
-  aclarará con ese cambio, sin afirmar entrega anticipada.
+  supervisor, sin almacén durable nuevo. Servicios de prueba físicos pendientes en sandbox autorizado.
+  Paso 10 no iniciado: espera integrar el 9; #1826 se aclarará con ese cambio.
 <!-- /isa1827-p9-worker -->
 
 

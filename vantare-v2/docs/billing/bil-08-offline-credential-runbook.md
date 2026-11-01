@@ -91,7 +91,10 @@ por ejecutar estas pruebas o editar el runbook.
 ## Paso 8 — sin copia de licencia en servicios
 
 Services v18 no guarda candidate ni marcador y no ejecuta TransferRights al
-abrir o cerrar. Los restos se ignoran, sin concederlos ni bloquear recuperación.
+abrir o cerrar. Al arrancar aparta los restos con rename fechado, sin leer su contenido.
+Es best-effort: un archivo bloqueado no concede ni impide recuperar y se vuelve
+a intentar al siguiente arranque. Una vez apartado, v17 tampoco lo encuentra
+al hacer downgrade sin binding.
 El núcleo admite las consultas y recuperación según su Policy autenticada;
 solo su ACK durable de InstallOnline confirma una credencial HTTP nueva.
 ACK perdido o núcleo ausente después de recibirla es un fallo transitorio:

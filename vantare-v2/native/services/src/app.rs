@@ -11,7 +11,7 @@ use crate::{
     storage::Store,
 };
 use std::io::Write;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 mod mail;
 #[cfg(all(test, windows))]
@@ -45,6 +45,7 @@ impl App {
     }
 
     pub fn with_clock(config: BuildConfig, root: PathBuf, clock: fn() -> Result<u64>) -> Self {
+        retire_legacy_license_files(&config, &root, clock);
         Self {
             core: None,
             config,
@@ -1081,6 +1082,41 @@ impl App {
     }
 }
 
+// One-way retirement, not a license cache: inspect names only, never decrypt or install.
+// Missing files do not create a Store. Busy/rename/clock failures cannot block startup.
+fn retire_legacy_license_files(config: &BuildConfig, root: &Path, clock: fn() -> Result<u64>) {
+    use sha2::{Digest, Sha256};
+    let context = format!(
+        "license-v1|{}|{}",
+        config
+            .supabase
+            .as_ref()
+            .map_or("unconfigured", url::Url::as_str),
+        config.channel.unwrap_or("unknown")
+    );
+    let namespace = root.join(format!("{:x}", Sha256::digest(context.as_bytes())));
+    let present = ["license-candidate", "license-transfer-pending"].map(|name| {
+        let exists = namespace.join(format!("{name}.dpapi")).try_exists();
+        if exists.is_err() {
+            eprintln!("license-retirement-incomplete");
+        }
+        (name, exists.unwrap_or(false))
+    });
+    if !present.iter().any(|(_, exists)| *exists) {
+        return;
+    }
+    let Ok(store) = Store::open(root, &context) else {
+        eprintln!("license-retirement-incomplete");
+        return;
+    };
+    let at = clock().unwrap_or_default().saturating_mul(1000);
+    for (name, exists) in present {
+        if exists && store.quarantine_dated(name, at).is_err() {
+            eprintln!("license-retirement-incomplete");
+        }
+    }
+}
+
 fn has_commercial_license(capabilities: &[crate::license::Capability], now: u64) -> bool {
     capabilities
         .iter()
@@ -1094,7 +1130,7 @@ fn has_commercial_license(capabilities: &[crate::license::Capability], now: u64)
 
 #[cfg(test)]
 impl App {
-    // Synthetic historical documents only; product never opens this Store.
+    // Fixture accessor; production only retires names and never loads license content.
     fn legacy_store(&self) -> Result<Store> {
         Store::open(
             &self.root,

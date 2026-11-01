@@ -9,7 +9,8 @@ HTTP en el siguiente intento, respetando backoff y suelo de un minuto.
 
 Contrato y rollback de datos: [ADR0102](../../docs/adr/0102-modelo-acceso-nativo.md).
 Las secciones fechadas inferiores son históricas; este contrato sustituye sus
-reglas de candidate/marcador y transferencia. Rollback sintético con lectores
+reglas de candidate/marcador y transferencia. La retirada de archivos antiguos
+es un paso de arranque, sin copia ni reintento durable de credenciales. Rollback sintético con lectores
 v17 y pre-NeedsSignIn, sin cambios de instalación: `native/scripts/license-generation-rollback.ps1`.
 
 ## #1827 — Policy.state / control v7 (paso 7)

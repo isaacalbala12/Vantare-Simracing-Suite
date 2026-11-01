@@ -211,8 +211,10 @@ arrancar servicios no es una concesión. No cambia el catálogo ni sus permisos.
 
 El ACK perdido o núcleo ausente al terminar HTTP es transitorio: se descarta
 la respuesta en servicios y la próxima renovación pide una emisión nueva,
-respetando backoff, suelo de un minuto y rate limit. Los restos históricos se
-ignoran por completo, sin abrir su Store, sin deserializar ni reproducirlos.
+respetando backoff, suelo de un minuto y rate limit. Decisión del orquestador 1-nov: los restos históricos se apartan al arrancar
+con quarantine_dated, sin leer, descifrar, deserializar ni reproducir su contenido.
+El rename es best-effort e independiente por documento: no bloquea ni concede;
+si falla, se diagnostica y se reintenta en otro arranque.
 Así desaparece el primer binding de otra cuenta desde candidate (#1825).
 
 Sin cambios durables de binding/authority/guardias. La fixture de generaciones

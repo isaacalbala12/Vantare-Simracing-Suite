@@ -37,39 +37,16 @@ fn main() {
         "fixture:{}",
         URL_SAFE_NO_PAD.encode(key.verifying_key().as_bytes())
     );
+    let device =
+        vantare_services::license::installation::legacy_fingerprint().expect("fixture machine");
     let devices = Devices {
-        legacy: "fixture-device".into(),
+        legacy: device.clone(),
         installation: "fixture-installation".into(),
     };
     let mut owner = Owner::open(&root.join("rights"), Some(&keys), devices, 11, now)
         .expect("generation opens durable data");
     if args[1] == "write" {
-        let claims = ClaimsV1 {
-            issuer: "vantare-license".into(),
-            subject: "550e8400-e29b-41d4-a716-446655440000".into(),
-            device_fingerprint: "fixture-device".into(),
-            issued_at: "2026-11-01T03:59:00Z".into(),
-            capabilities: vec![Capability {
-                key: "vantare.plan.pro".into(),
-                paid_through: "2026-12-01T04:00:00Z".into(),
-                perpetual: false,
-                scope_version: String::new(),
-            }],
-        };
-        let payload = serde_json::to_vec(&Payload {
-            version: 1,
-            algorithm: "Ed25519",
-            key_id: "fixture",
-            claims: &claims,
-        })
-        .expect("canonical fixture");
-        let credential = CredentialV1 {
-            version: 1,
-            algorithm: "Ed25519".into(),
-            key_id: "fixture".into(),
-            claims,
-            signature: URL_SAFE_NO_PAD.encode(key.sign(&payload).to_bytes()),
-        };
+        let credential = signed_for("550e8400-e29b-41d4-a716-446655440000", &device);
         owner
             .install_online(
                 serde_json::to_string(&credential).expect("credential"),
@@ -78,16 +55,23 @@ fn main() {
             )
             .expect("durable online installation");
     } else {
-        assert_eq!(args[1], "read");
+        assert!(matches!(args[1].as_str(), "read" | "write-empty"));
     }
     let policy = owner
         .advance(&vantare_domain::Snapshot::default(), now, Duration::ZERO)
         .expect("policy");
     assert_eq!(
         policy.catalog,
-        vantare_ipc::control::CatalogAccess::Pro,
+        if args[3] == "empty" {
+            vantare_ipc::control::CatalogAccess::Free
+        } else {
+            vantare_ipc::control::CatalogAccess::Pro
+        },
         "rights survive across generations"
     );
+    if args[1] == "write-empty" {
+        retire_old_b_fixture(&root, &keys, &device);
+    }
     let store =
         Store::open(&root.join("account"), "rollback-fixture-account-v1").expect("account store");
     let oauth: OAuth = serde_json::from_value(serde_json::json!({"issuer":"http://127.0.0.1:1/", "client_id":"fixture",
@@ -100,7 +84,7 @@ fn main() {
         Account::restore(oauth, &store).expect("generation restores or archives unknown account");
     assert_eq!(
         account.identity().is_some(),
-        args[3] != "absent",
+        args[3] != "absent" && args[3] != "empty",
         "expected session compatibility"
     );
     assert_eq!(
@@ -151,6 +135,7 @@ fn assert_previous_services_reader(
     )
     .expect("listener");
     let mut pipe = listener.instance().expect("instance");
+    let expected = policy.catalog;
     let reader = std::thread::spawn(move || {
         pipe.accept().expect("old helper connection");
         let request: control::Request = control::read(&mut pipe).expect("read request");
@@ -183,7 +168,67 @@ fn assert_previous_services_reader(
     );
     app.attach_core(link);
     assert!(
-        matches!(app.handle(command), Reply::License { policy, .. } if policy.catalog == control::CatalogAccess::Pro)
+        matches!(app.handle(command), Reply::License { policy, .. } if policy.catalog == expected)
     );
     reader.join().expect("actual previous App: only Read");
+}
+
+fn signed_for(subject: &str, device: &str) -> CredentialV1 {
+    let key = SigningKey::from_bytes(&[43; 32]);
+    let claims = ClaimsV1 {
+        issuer: "vantare-license".into(),
+        subject: subject.into(),
+        device_fingerprint: device.into(),
+        issued_at: "2026-11-01T03:59:00Z".into(),
+        capabilities: vec![Capability {
+            key: "vantare.plan.pro".into(),
+            paid_through: "2026-12-01T04:00:00Z".into(),
+            perpetual: false,
+            scope_version: String::new(),
+        }],
+    };
+    let payload = serde_json::to_vec(&Payload {
+        version: 1,
+        algorithm: "Ed25519",
+        key_id: "fixture",
+        claims: &claims,
+    })
+    .expect("canonical fixture");
+    CredentialV1 {
+        version: 1,
+        algorithm: "Ed25519".into(),
+        key_id: "fixture".into(),
+        claims,
+        signature: URL_SAFE_NO_PAD.encode(key.sign(&payload).to_bytes()),
+    }
+}
+fn retire_old_b_fixture(root: &std::path::Path, keys: &str, device: &str) {
+    use vantare_services::{Error, app::App, config::BuildConfig};
+    let service_root = root.join("services");
+    let context = "license-v1|unconfigured|fixture";
+    let store = Store::open(&service_root, context).expect("old namespace");
+    let credential = signed_for("550e8400-e29b-41d4-a716-446655440001", device);
+    store.save("license-candidate", &serde_json::json!({"account_id":credential.claims.subject,"device":device,"credential":credential})).expect("old signed B, same PC");
+    store
+        .save("license-transfer-pending", &true)
+        .expect("old marker");
+    drop(store);
+    drop(App::with_clock(
+        BuildConfig {
+            supabase: None,
+            anon_key: None,
+            license_keys: Some(Box::leak(keys.to_owned().into_boxed_str())),
+            channel: Some("fixture"),
+            native_oauth: None,
+        },
+        service_root.clone(),
+        || Ok(100),
+    ));
+    let store = Store::open(&service_root, context).expect("retired namespace");
+    for name in ["license-candidate", "license-transfer-pending"] {
+        assert!(
+            matches!(store.load::<serde_json::Value>(name), Err(Error::NotFound)),
+            "v18 must retire old B before downgrade"
+        );
+    }
 }

@@ -2,15 +2,17 @@
 
 Services v18 retira TransferRights, Candidate y su marcador. `renew` devuelve
 CredentialV1 recién verificada en memoria y App la entrega por InstallOnline;
-solo el ACK durable confirma la instalación. No abre el namespace histórico:
-restos válidos, dañados o bloqueados se ignoran, también si pertenecen a otra cuenta.
+solo el ACK durable confirma la instalación. Al arrancar aparta candidate y marcador históricos con rename fechado, sin leer
+su contenido. Es best-effort: un bloqueo se diagnostica, nunca concede ni bloquea
+la recuperación; se reintenta al siguiente arranque si quedaron restos.
 Si se pierde el ACK o desaparece el núcleo, el resultado es transitorio y la
 siguiente renovación pide una emisión nueva, con backoff y suelo de un minuto.
 Binding/authority/guardias del núcleo no cambian. Solo los actos explícitos revocan.
 
 Contrato y rollback de datos: [ADR0102](../../docs/adr/0102-modelo-acceso-nativo.md).
 Las secciones fechadas inferiores son históricas; este contrato sustituye sus
-reglas de candidate/marcador y transferencia. Rollback sintético con lectores
+reglas de candidate/marcador y transferencia. La retirada de archivos antiguos
+es un paso de arranque, sin copia ni reintento durable de credenciales. Rollback sintético con lectores
 v17 y pre-NeedsSignIn, sin cambios de instalación: `native/scripts/license-generation-rollback.ps1`.
 
 ## #1827 — Policy.state / control v7 (paso 7)

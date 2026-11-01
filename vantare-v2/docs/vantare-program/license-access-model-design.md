@@ -380,8 +380,10 @@ por el alcance aprobado; no elimina el verificador compartido con el núcleo.
 Devuelve CredentialV1 en memoria y la entrega a InstallOnline, sin persistir.
 Desaparecen el namespace de licencia de servicios, Candidate productivo,
 TransferRights, recovered_renewal_transfer y las rutas de cuarentena del candidate.
-Los restos de generaciones anteriores se ignoran sin abrir su Store; una cuenta
-B en esos archivos no puede convertirse en primer binding de la sesión A.
+Decisión del orquestador 1-nov: al arrancar v18 se apartan ambos archivos con
+quarantine_dated, sin leer su contenido. El rename fechado es best-effort: ni
+bloquea recuperación ni concede, y se reintenta en otro arranque si falló. Así
+un downgrade a v17 sin binding no vuelve a encontrar el candidate B histórico.
 
 El supervisor lee Policy autenticada antes de admitir al helper, usando las
 mismas reglas de Policy.state del paso 7; no exige instalación previa y no
@@ -674,3 +676,9 @@ El suelo de un minuto y la reemisión tras ACK perdido pertenecen al supervisor
 automático. El botón manual conserva el contrato previo de forzar comprobación
 ahora (§1); no se añade un bloqueo manual en este paso. Clerk sigue respondiendo
 429 como transitorio. Quitar este gesto o limitarlo sería otro cambio de producto.
+
+Fixture obligatoria añadida por esa decisión: B firmado para el mismo PC y sin
+binding → arranque v18 aparta candidate/marcador → v17 solo Read, sin acceso
+ni Install → vuelta a v18 sin acceso. Si el sistema impide el rename, los bytes
+se conservan y v18 los ignora; no se promete sanear un downgrade mientras siga
+el bloqueo. No se accede a instalaciones reales para probarlo.

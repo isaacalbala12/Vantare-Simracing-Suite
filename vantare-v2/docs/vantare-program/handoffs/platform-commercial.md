@@ -5,6 +5,7 @@ Base origin/nightly `7eae8cef177e898776cada129a9d06baab5e5d13`.
 Rama `vantareapp/isa-1827-paso8-sin-candidate`, worktree `C:/VantareServer/wt/isa-1827-p8`, target `D:/VantareServer/targets/isa-1827-p8`.
 
 - Servicios deja de guardar candidate/marcador y retira TransferRights, recovered_renewal_transfer y sus cuarentenas. Firma HTTP nueva verificada → InstallOnline; el núcleo guarda los únicos derechos.
+- Decisión del orquestador: al arrancar v18, candidate y marcador antiguos se apartan una vez con rename fechado best-effort, sin leer contenido. Si falla no bloquea ni concede; se reintenta después. Fixture de downgrade v17 sin binding obligatoria.
 - Admisión por Policy autenticada del núcleo, sin conceder acceso por arrancar el helper. Services v18; control v7/fotos v11 y formatos durables intactos.
 - Cambio autorizado: perder respuesta/ACK requiere una emisión HTTP nueva en el siguiente intento, con backoff y suelo de un minuto.
 - Fixtures en preparación/validación: ACK durable perdido + una emisión después del minuto; restos de otra cuenta/dañados ignorados; rollback con lectores v17 y pre-NeedsSignIn y vuelta. Caracterización candidate pasa a no aplicar.

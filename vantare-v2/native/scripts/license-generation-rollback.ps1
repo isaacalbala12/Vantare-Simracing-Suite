@@ -56,3 +56,18 @@ foreach ($old in @('v17','pre5')) {
         Write-Output "PASS new -> $old -> new / $state"
     }
 }
+
+# Mandatory upgrade/downgrade regression: old B on the same PC, no binding.
+$emptyRoot = Join-Path $EvidenceDirectory "fixture-retired-B-$([guid]::NewGuid().ToString('N'))"
+New-Item -ItemType Directory -Path $emptyRoot | Out-Null
+[IO.File]::WriteAllText((Join-Path $emptyRoot 'license-fixture-owned'), 'isa1827-p8')
+& $generations[0].Binary write-empty $emptyRoot empty
+if ($LASTEXITCODE -ne 0) { throw 'v18 did not retire old B' }
+$previous = $generations | Where-Object Name -eq 'v17'
+& $previous.Binary read $emptyRoot empty
+if ($LASTEXITCODE -ne 0) { throw 'v17 attempted a disk install without binding' }
+& $generations[0].Binary read $emptyRoot empty
+if ($LASTEXITCODE -ne 0) { throw 'Return to v18 unexpectedly granted rights' }
+$archives = @(Get-ChildItem -LiteralPath (Join-Path $emptyRoot 'services') -Recurse -File | Where-Object { $_.Name -like 'license-candidate-*.corrupto' -or $_.Name -like 'license-transfer-pending-*.corrupto' })
+if ($archives.Count -ne 2) { throw 'Both retired documents must remain archived' }
+Write-Output 'PASS v18 retires B -> v17 without binding only Read/no access -> v18 no access'

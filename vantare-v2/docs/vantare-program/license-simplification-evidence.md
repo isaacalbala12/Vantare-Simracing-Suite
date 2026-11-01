@@ -178,3 +178,7 @@ se divide en preparación y aserción manual sin relajar expectativas, y las tre
 mutaciones vuelven a detectarse: logs en isa-1827-s-mutations-b y -b-r2.
 Se conserva también el lint too_many_lines que motivó esa división.
 C/D/E quedan pendientes de sus PRs y de la integración de B.
+
+PR draft [#1843](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1843), enlazado en T3, a nightly y sin integrar.
+Código validado `910edc04311b845ee21b0408a307e412a10ffafd`; los commits posteriores solo documentan.
+CI/revisión del orquestador. C comienza tras integrar B en nightly.

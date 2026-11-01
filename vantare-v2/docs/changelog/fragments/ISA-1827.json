@@ -4,6 +4,7 @@
   "type": "fix",
   "summary": "Las licencias sin fecha firmada se comprueban al arrancar y cada 24 horas; se conservan los avisos y el acceso offline.",
   "technicalNotes": [
+    "D1b: el Hub conserva una identidad confirmada y la fase del intento en access::State; vistas de Cuenta, compra y Pilot derivan su estado del mismo dueño. Un callback Account tardío descartado durante Logout ya no modifica perfil ni identidad; Pending conserva la identidad anterior y solo Feed confirma derechos.",
     "D1a: credencial de caché decodificada una vez, wrappers solo de fixtures fuera de producto y ramas repetidas retiradas. README de services/runtime/hub/ipc consolidados en contrato vigente. Se conserva rollback real: el probe común adapta únicamente el campo installation de los dos lectores congelados y comprueba ausencia física de candidate/pending.",
     "Corte D0: fecha real inyectada en las cuarentenas de perfil, roadmap, informes, autoridad y Gestión; sin cambiar derechos ni formatos activos. Runbook explica posible duplicado tras perder un intento incierto por daño DPAPI y editar el borrador.",
     "Paso 12, corte C: Store tiene una lectura Value/Missing/Damaged, clase por documento y un quarantine_dated. Conserva formatos y guardas durables; Pilot e informes no se vacían en silencio. F4 evita reescribir autoridad sana por marcador corrupto. En commit aparte, las cachés roadmap/perfil/report-attempt con DPAPI dañado se apartan y reconstruyen sin tocar la sesión sana.",

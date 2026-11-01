@@ -1,3 +1,30 @@
+<!-- isa1827-simplificar-d1b -->
+## VANTA-126 / #1827 — D1b en ejecución
+
+Base origin/nightly@843913d24949128e676e99dab233b60dca2c26c0; D1a en PR
+[#1854](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1854),
+HEAD d623960854dcdb443f2479ab98c257dea3c83316, pendiente de integración.
+Rama vantareapp/isa-1827-simplificar-session, worktree/target isa-1827-s.
+- Microplan aprobado: access::State posee identidad confirmada y fase del intento;
+  Pending conserva identidad anterior. AccountState solo perfil/avatar/cancel_command.
+  Un reductor de Reply acepta Session; vistas leen getters. Feed decide derechos.
+- Corrección autorizada: Account tardío descartado durante Logout tampoco cambia
+  perfil ni identidad confirmada. Prueba explícita con SignedOut/SignedIn/NeedsSignIn.
+- Matriz: Logout fallido+Volver y política fresca/vieja/revocada, Cancel, callback
+  tardío, Pending, NeedsSignIn, perfil en background y compra solo por Feed.
+  Mutaciones previstas: aceptar callback, perder identidad en Pending, ACK como derechos.
+- Primer Clippy detectó tres llamadas de errores de dispatch al método anterior;
+  ajustadas al mismo reductor. Clippy all-targets -D warnings PASS y matriz
+  focal/arquitectura Hub 95/95 PASS. La conversión de fixtures queda cfg(test).
+  Tres mutaciones compiladas detectadas por aserción; 406 fuentes Rust
+  restauradas SHA-256. Gates finales pendientes. Producción 115232 ->115290
+  (+58), recorrido 15302 ->15360 (+58); este corte no adelgaza producción.
+  El coste hace explícita la identidad conservada y su fase en un dueño;
+  tests/soporte +103 y documentación se cuentan aparte. Todo el diff Rust,
+  incluyendo tests, suma 369 líneas: por debajo del límite productivo de 600.
+- E (401 automático → NeedsSignIn) sigue después. Sin Plane ni CI watch.
+<!-- /isa1827-simplificar-d1b -->
+
 <!-- isa1827-simplificar-d1a -->
 ## VANTA-126 / #1827 — D1a listo para revisión
 

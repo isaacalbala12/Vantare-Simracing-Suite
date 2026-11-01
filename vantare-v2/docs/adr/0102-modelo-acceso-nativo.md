@@ -381,3 +381,21 @@ permisos, decisiones y formatos no cambian. D6/D7/lectores antiguos se conservan
 por la posible RC9 y su downgrade. El probe de rollback compila la misma lógica
 contra v17/pre5 con un único campo installation vacío adaptado a sus tipos; no
 se reintroduce v2 ni se modifica el código de los lectores congelados.
+
+### D1b — dueño de la sesión observada por el Hub
+
+`access::State` posee la identidad confirmada y la fase del intento. Pending
+conserva la identidad previa y distingue la espera visible de una confirmación;
+un sondeo pendiente pasivo no retira acceso ya confirmado. AccountState conserva
+solo perfil, avatar y cancel_command. Las vistas derivan autenticación/espera
+del dueño, y un reductor acepta las observaciones de Reply; un perfil SignedIn
+es presentación, sin reiniciar la fase del acceso ni reemplazar el Feed.
+Solo el Feed fresco del núcleo alimenta derechos y confirma una compra.
+
+Cambio autorizado: un Account tardío descartado durante Logout tampoco modifica
+perfil ni identidad confirmada de Cuenta. Antes la proyección duplicada podía
+actualizarlos aunque el acceso siguiera bloqueado. Una respuesta de fallo del
+Logout con Session confirmada sigue siendo distinta de ese callback: conserva
+la salida Reintentar/Volver con la misma exigencia de una nueva Policy fresca.
+No cambia IPC, disco, permisos ni decisiones del núcleo. La matriz cubre las
+identidades SignedOut/SignedIn/NeedsSignIn, Pending, Cancel, errores, perfil y compra.

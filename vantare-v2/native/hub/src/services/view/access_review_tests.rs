@@ -257,3 +257,67 @@ fn logout_transport_error_can_retry_and_return_to_the_hub() {
         crate::quit_headless_test(cx);
     });
 }
+
+#[test]
+fn late_account_during_logout_preserves_confirmed_identity_and_profile() {
+    gpui_platform::headless().run(|cx| {
+        for previous in [Session::SignedOut, Session::SignedIn, Session::NeedsSignIn] {
+            let file = crate::document::tests::File::new();
+            let (send, requests) = mpsc::sync_channel(8);
+            let remote = cx.new(|cx| fixture(cx, send, file.path.parent().expect("root")));
+            remote.update(cx, |remote, cx| {
+                configured(remote, previous, cx);
+                let original = super::super::protocol::AccountProfile {
+                    name: "confirmed fixture".into(),
+                    ..Default::default()
+                };
+                remote.account.profile = Some(original.clone());
+                remote.request(Command::Logout, cx);
+                assert!(matches!(requests.try_recv(), Ok(Command::Logout)));
+                let mut late = account(Session::SignedIn);
+                if let Reply::Account { profile, .. } = &mut late {
+                    *profile = Some(super::super::protocol::AccountProfile {
+                        name: "discarded callback".into(),
+                        ..Default::default()
+                    });
+                }
+                remote.complete(late, cx);
+                assert_eq!(remote.access.signed_in(), previous == Session::SignedIn);
+                assert_eq!(remote.account.profile.as_ref(), Some(&original));
+                assert!(remote.access.logout_requested());
+                assert!(remote.requires_access());
+                assert!(!remote.navigation_access().verified);
+                assert!(
+                    requests.try_recv().is_err(),
+                    "no follow-up for the callback"
+                );
+            });
+        }
+        crate::quit_headless_test(cx);
+    });
+}
+
+#[test]
+fn pending_preserves_confirmed_identity_but_requires_the_attempt_to_settle() {
+    gpui_platform::headless().run(|cx| {
+        for previous in [Session::SignedOut, Session::SignedIn, Session::NeedsSignIn] {
+            let file = crate::document::tests::File::new();
+            let (send, requests) = mpsc::sync_channel(8);
+            let remote = cx.new(|cx| fixture(cx, send, file.path.parent().expect("root")));
+            remote.update(cx, |remote, cx| {
+                configured(remote, previous, cx);
+                let original = remote.account.profile.clone();
+                remote.request(Command::AccountBegin, cx);
+                assert!(matches!(requests.try_recv(), Ok(Command::AccountBegin)));
+                remote.complete(account(Session::Pending), cx);
+                assert_eq!(remote.access.signed_in(), previous == Session::SignedIn);
+                assert_eq!(remote.account.profile, original);
+                assert!(remote.access.pending());
+                assert!(remote.requires_access());
+                assert!(!remote.navigation_access().verified);
+                assert!(matches!(requests.try_recv(), Ok(Command::AccountPoll)));
+            });
+        }
+        crate::quit_headless_test(cx);
+    });
+}

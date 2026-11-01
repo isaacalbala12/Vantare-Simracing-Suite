@@ -225,7 +225,7 @@ impl Remote {
         })
     }
     fn profile_actions(&self, cx: &mut Context<Self>) -> gpui::Div {
-        let signed_in = self.account.signed_in && account_demo().is_none();
+        let signed_in = self.access.signed_in() && account_demo().is_none();
         div().flex().gap(px(6.0)).when(signed_in, |body| {
             body.when_some(access::profile_portal(), |body, url| {
                 body.child(
@@ -240,7 +240,7 @@ impl Remote {
                         orbit::disabled(button, "Operación en curso")
                     })
                     .on_click(cx.listener(|this, _, _, cx| {
-                        if !this.working() && this.account.signed_in {
+                        if !this.working() && this.access.signed_in() {
                             this.request(Command::AccountProfileRefresh, cx);
                         }
                     })),
@@ -409,7 +409,7 @@ impl Remote {
     }
     fn account_session(&self, cx: &gpui::App) -> gpui::Div {
         let demo = account_demo().is_some();
-        let signed_in = self.account.signed_in;
+        let signed_in = self.access.signed_in();
         account_surface(
             "Estado de la cuenta",
             "Tu sesión",

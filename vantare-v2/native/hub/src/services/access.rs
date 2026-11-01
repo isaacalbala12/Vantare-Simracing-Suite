@@ -1,6 +1,6 @@
 //! Acceso alojado: el estado viene del mismo servicio que la sección Cuenta.
 use super::super::protocol::{EmailAction, EmailMode};
-use super::{Command, Inflight, Remote, Reply};
+use super::{Command, Inflight, Remote, Reply, access_session::SessionState};
 use crate::orbit;
 use gpui::{Context, Div, Stateful, div, prelude::*, px, rgb, rgba};
 use vantare_ipc::services_protocol::Session;
@@ -33,7 +33,7 @@ pub(super) struct State {
     error: Option<String>,
     pub(super) manual: ManualLink,
     policy: Option<vantare_ipc::control::Policy>,
-    session: Session,
+    session: SessionState,
     transition: Transition,
 }
 
@@ -68,7 +68,7 @@ impl State {
             error: None,
             manual: ManualLink::default(),
             policy: None,
-            session: Session::SignedOut,
+            session: SessionState::Confirmed(Session::SignedOut),
             transition: Transition::Idle,
         }
     }
@@ -203,7 +203,10 @@ impl State {
     /// Identidad confirmada por services, aunque necesite nueva autenticación.
     /// Solo la política fresca del núcleo decide los derechos locales.
     pub(super) fn session_known(&self) -> bool {
-        matches!(self.session, Session::SignedIn | Session::NeedsSignIn)
+        matches!(
+            self.session.current(),
+            Session::SignedIn | Session::NeedsSignIn
+        )
     }
 
     /// A cached background observation is not a login/cancel/logout reply.
@@ -215,7 +218,7 @@ impl State {
         if session == Session::SignedOut {
             self.invalidate();
         }
-        self.session = session;
+        self.session.observe(session, false);
         self.session_checked = true;
         Some(session)
     }
@@ -231,8 +234,12 @@ impl State {
     pub(super) fn can_return_after_logout(&self, now_ms: u64) -> bool {
         self.logout_failed()
             && self.policy.as_ref().is_some_and(|policy| {
-                crate::shell::navigation::Access::from_session_policy(self.session, policy, now_ms)
-                    .verified
+                crate::shell::navigation::Access::from_session_policy(
+                    self.session.current(),
+                    policy,
+                    now_ms,
+                )
+                .verified
             })
     }
 
@@ -253,7 +260,7 @@ impl State {
         let Some(policy) = &self.policy else {
             return Access::default();
         };
-        Access::from_session_policy(self.session, policy, now_ms)
+        Access::from_session_policy(self.session.current(), policy, now_ms)
     }
 
     pub(super) fn policy_denial(&self, now_ms: u64) -> Option<String> {
@@ -283,7 +290,8 @@ impl State {
                 ))
     }
 
-    pub(super) fn observe(&mut self, reply: &Reply, account: bool) {
+    pub(super) fn reduce(&mut self, reply: &Reply, account: bool, profile: bool) -> bool {
+        let mut accepted = false;
         let previous_error = self.error.clone();
         // Un error de transporte no revoca la última política. navigation sigue
         // aplicando su caducidad; el resultado definitivo sí retira el acceso.
@@ -317,10 +325,14 @@ impl State {
                         .map(|message| format!("No se pudo cerrar la sesión: {message}"));
                     self.login_requested = error.is_none();
                     if error.is_some() {
-                        self.session = *session;
+                        self.session.observe(*session, false);
                     }
-                    return;
+                    return error.is_some();
                 }
+                if profile && *session == Session::SignedIn {
+                    return true;
+                }
+                accepted = true;
                 if self.transition == Transition::Logout {
                     self.transition = Transition::Renewal;
                 }
@@ -329,14 +341,15 @@ impl State {
                 }
                 // Un sondeo pendiente no sustituye una sesión ya confirmada.
                 if pending && self.session_known() && self.transition == Transition::Idle {
-                    return;
+                    self.session.observe(*session, true);
+                    return true;
                 }
                 // Releer una sesión que sigue igual no retira la política vigente:
                 // hacerlo dejaba el candado visible hasta la siguiente lectura.
                 if !matches!(session, Session::SignedIn | Session::NeedsSignIn) {
                     self.invalidate();
                 }
-                self.session = *session;
+                self.session.observe(*session, false);
                 self.session_checked = true;
                 self.manual.available = pending && *copy_link;
                 if !self.manual.available {
@@ -351,12 +364,8 @@ impl State {
                         .map(|message| format!("No se pudo completar el acceso: {message}"))
                 };
             }
-            Reply::License { policy, .. }
-                if self.transition == Transition::Idle
-                    && !self.login_requested
-                    && self.session_known() =>
-            {
-                self.policy = Some(policy.clone());
+            Reply::LicenseStatus { session, .. } => {
+                accepted = self.observe_cached_session(*session).is_some();
             }
             Reply::Email { .. } => {
                 self.login_requested = false;
@@ -389,6 +398,35 @@ impl State {
                 std::io::stderr(),
                 "account-access: failed; user-message-visible"
             );
+        }
+        accepted
+    }
+
+    pub(super) fn signed_in(&self) -> bool {
+        self.session.identity() == Session::SignedIn
+    }
+    pub(super) fn pending(&self) -> bool {
+        self.session.pending()
+    }
+    pub(super) fn finish_reply(&mut self) {
+        self.session.finish_reply();
+    }
+
+    #[cfg(test)]
+    pub(super) fn fixture_session(&mut self, session: Session) {
+        self.session.observe(session, session == Session::Pending);
+    }
+
+    #[cfg(test)]
+    pub(super) fn observe(&mut self, reply: &Reply, account: bool) {
+        // Existing state fixtures inject a fresh core policy, like Feed in Remote.
+        if let Reply::License { policy, .. } = reply {
+            if self.transition == Transition::Idle && !self.login_requested && self.session_known()
+            {
+                self.observe_core_policy(policy.clone());
+            }
+        } else {
+            let _ = self.reduce(reply, account, false);
         }
     }
 }
@@ -425,7 +463,7 @@ impl Remote {
     /// Estado de lectura de acceso para Inicio. Los heartbeats no activan esqueletos.
     pub(crate) fn home_access(&self) -> (bool, Option<String>) {
         let pending = self.access.configured && !self.access.session_checked
-            || self.account.signed_in
+            || self.access.signed_in()
                 && self.access.session_known()
                 && self.access.policy.is_none()
                 && self.busy();
@@ -445,7 +483,7 @@ impl Remote {
     pub(crate) fn retry_home_access(&mut self, cx: &mut Context<Self>) {
         self.access.error = None;
         self.request(
-            if self.account.signed_in {
+            if self.access.signed_in() {
                 Command::LicenseRenew
             } else {
                 Command::Status
@@ -454,7 +492,7 @@ impl Remote {
         );
     }
     pub(crate) fn session_notice(&self) -> Option<&'static str> {
-        (self.access.session == Session::NeedsSignIn)
+        (self.access.session.current() == Session::NeedsSignIn)
             .then_some("Vuelve a iniciar sesión en Cuenta para usar los servicios de tu cuenta.")
     }
 
@@ -463,7 +501,7 @@ impl Remote {
     }
 
     pub(super) fn can_start_account_login(&self) -> bool {
-        self.access.configured && self.access.session != Session::SignedIn
+        self.access.configured && self.access.session.current() != Session::SignedIn
     }
 
     pub(super) fn open_account_login(&mut self, cx: &mut Context<Self>) {
@@ -698,7 +736,7 @@ impl Remote {
         focus: &gpui::FocusHandle,
         cx: &mut Context<Self>,
     ) -> Stateful<Div> {
-        let waiting = self.access.login_requested || self.account.pending;
+        let waiting = self.access.login_requested || self.access.pending();
         let checking = !self.access.session_checked && self.access.error.is_none();
         let mut body = div()
             .flex()
@@ -1210,11 +1248,12 @@ mod tests {
                     error: None,
                     manual: ManualLink::default(),
                     policy: None,
-                    session: if signed_in {
+                    session: (if signed_in {
                         Session::SignedIn
                     } else {
                         Session::SignedOut
-                    },
+                    })
+                    .into(),
                     transition: Transition::Idle,
                 };
                 assert_eq!(state.required(), configured && !signed_in);
@@ -1231,7 +1270,7 @@ mod tests {
             error: None,
             manual: ManualLink::default(),
             policy: None,
-            session: Session::SignedOut,
+            session: (Session::SignedOut).into(),
             transition: Transition::Idle,
         };
         assert!(state.required());
@@ -1283,7 +1322,7 @@ mod tests {
             error: None,
             manual: ManualLink::default(),
             policy: None,
-            session: Session::SignedOut,
+            session: (Session::SignedOut).into(),
             transition: Transition::Idle,
         };
         let mut cancel = None;

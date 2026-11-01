@@ -85,12 +85,13 @@ impl Remote {
         self.poll_mail(cx);
     }
     pub(crate) fn poll_mail(&mut self, cx: &mut gpui::Context<Self>) {
-        if self.account.signed_in && !self.mail.requested && !self.busy() && self.queued.is_none() {
+        if self.access.signed_in() && !self.mail.requested && !self.busy() && self.queued.is_none()
+        {
             self.mail_command(Command::MailConsentGet, cx);
         }
     }
     pub(crate) fn mail_command(&mut self, command: Command, cx: &mut gpui::Context<Self>) {
-        if !self.account.signed_in || self.busy() || self.queued.is_some() {
+        if !self.access.signed_in() || self.busy() || self.queued.is_some() {
             self.mail.error = Some(
                 "Inicia sesión o espera a que termine la operación y vuelve a intentarlo.".into(),
             );

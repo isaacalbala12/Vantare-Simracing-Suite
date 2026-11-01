@@ -329,7 +329,7 @@ conservan la evidencia de sus ramas; no describen el estado de integración actu
 - Checks: diff y enlaces locales del ADR PASS; calidad/retirada 468/468 PASS.
   Sin crates tocados: fmt/Clippy/Nextest, matriz y telemetría/lifecycle omitidos
   por entrega documental. Ningún script de producto ejecutado.
-- PR draft y HEAD publicados se registran en #1840 y en el PR; revisión/CI del
+- PR draft [#1857](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1857), código documental 1e7e4080e; HEAD vigente en #1840/PR. Revisión/CI del
   orquestador. Sin Plane, instalación real, secretos, Downloads, merge ni release.
 
 

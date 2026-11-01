@@ -1,5 +1,10 @@
 <!-- isa1827-p9-worker -->
-## Paso 9 — PR draft listo para revisión (VANTA-126, 2026-11-01)
+## Paso 9 — revisión del orquestador en validación (VANTA-126, 2026-11-01)
+
+Revisión APPROVE WITH CHANGES en curso sobre el mismo PR: Transient deja de crear
+aviso persistente; login confirmado deja una comprobación única pendiente con suelo;
+la prueba de compra ejecuta seis lecturas reales; fixtures QA adoptan LicenseStatus v19.
+Gates y mutaciones de esta revisión pendientes; los resultados inferiores son previos.
 
 [PR #1838](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1838), a nightly; sin integrar.
 Código validado 17ef2d1cddadc66430687f2bb1854906ecfdb27f; HEAD documental vigente en PR/#1827.

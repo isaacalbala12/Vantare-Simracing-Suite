@@ -267,3 +267,12 @@ El paso 9 conserva un rechazo definitivo o límite de dispositivos ante un
 fallo transitorio posterior: el transporte no demuestra su resolución. El
 resultado manual de red se muestra aparte; una verificación, un reset o un
 nuevo login confirmado siguen relevando el aviso según las reglas anteriores.
+
+Decisión del orquestador tras revisión de #1838: un resultado Transient no se
+persiste como aviso ni se presenta como error de acceso. Con Active/Grace,
+incluso en Live, solo aporta diagnóstico y backoff; la recuperación se presenta
+mediante el estado de Policy. Los rechazos Definitive, account_conflict y
+DeviceLimit siguen retenidos mientras apliquen: transporte no los resuelve.
+Un login OAuth/email confirmado releva el aviso y deja una comprobación única
+pendiente para detectar si el rechazo continúa, respetando frescura, restricciones
+Live y suelo de un minuto. Un poll que restaura sesión o Cancel no la rearma.

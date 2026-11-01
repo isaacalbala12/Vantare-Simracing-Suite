@@ -6,22 +6,14 @@ use vantare_ipc::{
 };
 
 /// Transport cannot disprove an existing actionable rejection.
-pub fn notice_after(current: Option<LicenseNotice>, next: LicenseNotice) -> LicenseNotice {
-    match (current, next) {
-        (
-            Some(
-                previous @ (LicenseNotice::DeviceLimit { .. }
-                | LicenseNotice::Failure {
-                    outcome: RenewalOutcome::Definitive,
-                    ..
-                }),
-            ),
-            LicenseNotice::Failure {
-                outcome: RenewalOutcome::Transient,
-                ..
-            },
-        ) => previous,
-        (_, next) => next,
+pub fn notice_after(current: Option<LicenseNotice>, next: LicenseNotice) -> Option<LicenseNotice> {
+    match next {
+        LicenseNotice::DeviceLimit { .. }
+        | LicenseNotice::Failure {
+            outcome: RenewalOutcome::Definitive,
+            ..
+        } => Some(next),
+        LicenseNotice::Failure { .. } => current,
     }
 }
 

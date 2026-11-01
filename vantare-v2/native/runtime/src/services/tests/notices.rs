@@ -1,6 +1,143 @@
 use super::*;
 
 #[test]
+fn transient_in_active_grace_or_live_never_creates_an_access_notice() {
+    let now = Instant::now();
+    for access in [control::AccessState::Active, control::AccessState::Grace] {
+        for live in [false, true] {
+            for reply in [
+                Reply::LicenseFailure {
+                    outcome: protocol::RenewalOutcome::Transient,
+                    message: "offline".into(),
+                },
+                failure("transport"),
+            ] {
+                let mut state = State::default();
+                state.renewal.observe(&confirmed_session());
+                let policy = control::Policy {
+                    version: control::VERSION,
+                    revision: 1,
+                    checked_at_ms: 1000,
+                    state: access,
+                    live,
+                    signed_until_ms: Some(61_000),
+                    grace_until_ms: Some(61_000),
+                    ..Default::default()
+                };
+                assert!(
+                    run_renewal(&mut state, &policy, 1000, now, |_, command| {
+                        assert!(matches!(command, Command::LicenseRenewAutomatic));
+                        reply
+                    })
+                    .is_some()
+                );
+                assert!(
+                    state.notice.is_none(),
+                    "transport never becomes an access notice"
+                );
+                assert!(state.renewal.signed_in());
+                assert!(
+                    run_renewal(
+                        &mut state,
+                        &policy,
+                        1000,
+                        now + Duration::from_secs(59),
+                        |_, _| { panic!("no retry burst") }
+                    )
+                    .is_none()
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn confirmed_login_rechecks_once_and_redetects_a_rejection_with_the_retry_floor() {
+    for email in [false, true] {
+        for rejected in [false, true] {
+            let mut state = State::default();
+            let signing: SigningIn = Arc::new(Mutex::new(None));
+            state.renewal.observe(&pending_account(
+                &mut State::default(),
+                Command::AccountBegin,
+            ));
+            let now = Instant::now();
+            state.renewal.attempted(now);
+            state
+                .renewal
+                .completed(protocol::RenewalOutcome::Definitive);
+            remember_notice(
+                &mut state,
+                &Reply::DeviceLimit {
+                    message: "limit".into(),
+                },
+            );
+            let login = if email {
+                Command::AccountEmail {
+                    action: protocol::EmailAction::Finish {},
+                }
+            } else {
+                Command::AccountPoll
+            };
+            handle_with(&mut state, login, &signing, |_, _| confirmed_session());
+            assert!(state.notice.is_none());
+            let policy = control::Policy {
+                version: control::VERSION,
+                revision: 1,
+                checked_at_ms: 1000,
+                state: control::AccessState::Active,
+                catalog: control::CatalogAccess::Pro,
+                signed_until_ms: Some(30 * 24 * 60 * 60_000),
+                ..Default::default()
+            };
+            assert!(
+                run_renewal(
+                    &mut state,
+                    &policy,
+                    1000,
+                    now + Duration::from_secs(59),
+                    |_, _| { panic!("confirmed login preserves the automatic floor") }
+                )
+                .is_none()
+            );
+            let mut calls = 0;
+            assert!(
+                run_renewal(
+                    &mut state,
+                    &policy,
+                    1000,
+                    now + Duration::from_mins(1),
+                    |_, _| {
+                        calls += 1;
+                        if rejected {
+                            Reply::LicenseFailure {
+                                outcome: protocol::RenewalOutcome::Definitive,
+                                message: "account_conflict".into(),
+                            }
+                        } else {
+                            core_status_reply(policy.clone())
+                        }
+                    }
+                )
+                .is_some()
+            );
+            assert_eq!(calls, 1);
+            assert_eq!(
+                state.notice.is_some(),
+                rejected,
+                "a still-applicable rejection returns"
+            );
+            handle_with(&mut state, Command::AccountPoll, &signing, |_, _| {
+                confirmed_session()
+            });
+            assert!(run_renewal(&mut state, &policy, 1000, now + Duration::from_mins(2), |_, _| {
+                panic!("a successful check or definitive rejection consumes the login check; polls cannot rearm it")
+            }).is_none());
+        }
+    }
+}
+
+#[test]
 fn transient_renewal_preserves_the_actionable_rejection_until_verified() {
     for prior in [
         Reply::DeviceLimit {
@@ -102,7 +239,7 @@ fn lost_notice_response_is_recoverable_without_helper_or_another_remote_effect()
             message: "account_conflict".into(),
         },
         Reply::LicenseFailure {
-            outcome: protocol::RenewalOutcome::Transient,
+            outcome: protocol::RenewalOutcome::Definitive,
             message: "recovery".into(),
         },
     ] {

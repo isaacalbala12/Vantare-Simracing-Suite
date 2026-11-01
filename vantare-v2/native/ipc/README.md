@@ -1,7 +1,7 @@
 ## Contrato vigente de licencias — paso 9 (#1827)
 
 Services v19 conserva la retirada de TransferRights; control v7 y fotos v11 no cambian.
-El saludo v18/v19 se rechaza como Version antes del comando retirado o de Policy,
+El saludo rechaza v18 y anteriores como Version antes del comando retirado o de Policy,
 sin revocación. Una trama que declare v19 y aún envíe TransferRights es
 entrada malformada (Protocol). InstallOnline transporta solo la respuesta HTTP nueva;
 Install de control se conserva solo por compatibilidad v7; services ya no lo emite ni debe conectarlo a credenciales de disco. El conjunto instalado
@@ -11,6 +11,8 @@ debe coincidir. Binding/authority/guardias y los plazos conservan su formato.
 Services v19 añade `LicenseStatus { policy, session, notice }` local al supervisor.
 El aviso tipado se conserva en memoria hasta un resultado de renovación verificado,
 un cierre confirmado o un nuevo login confirmado; perder/leer la respuesta no lo consume.
+Transient no crea avisos persistentes; la recuperación se presenta desde Policy.
+Login confirmado deja una comprobación única pendiente, con suelo y restricciones Live.
 La sesión es la última observada de services, también NeedsSignIn; null significa
 sin observación confirmada en ese intento, nunca SignedOut implícito. No arranca
 el helper para consultarla. Hub no altera formularios/errores con esa observación

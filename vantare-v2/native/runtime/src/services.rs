@@ -334,7 +334,9 @@ fn handle_with(
             error: None,
             ..
         }
-    ) || (confirming_login
+    ) {
+        state.notice = None;
+    } else if confirming_login
         && matches!(
             &reply,
             Reply::Account {
@@ -342,9 +344,10 @@ fn handle_with(
                 error: None,
                 ..
             }
-        ))
+        )
     {
         state.notice = None;
+        state.renewal.confirmed_login();
     }
     if renewing {
         state.renewal.completed(renewal_outcome(&reply));
@@ -550,15 +553,6 @@ fn run_renewal(
     state.renewal.completed(outcome);
     eprintln!("license-auto-result={outcome:?}");
     remember_notice(state, &reply);
-    if state.notice.is_none()
-        && !policy.state.permits_access()
-        && let Reply::Error { message } = &reply
-    {
-        state.notice = Some(protocol::LicenseNotice::Failure {
-            outcome,
-            message: message.clone(),
-        });
-    }
     Some(reply)
 }
 // Reading or losing a response never consumes the last actionable result.
@@ -566,21 +560,21 @@ fn run_renewal(
 fn remember_notice(state: &mut State, reply: &Reply) {
     match reply {
         Reply::DeviceLimit { message } => {
-            state.notice = Some(vantare_services::outcome::notice_after(
+            state.notice = vantare_services::outcome::notice_after(
                 state.notice.take(),
                 protocol::LicenseNotice::DeviceLimit {
                     message: message.clone(),
                 },
-            ));
+            );
         }
         Reply::LicenseFailure { outcome, message } => {
-            state.notice = Some(vantare_services::outcome::notice_after(
+            state.notice = vantare_services::outcome::notice_after(
                 state.notice.take(),
                 protocol::LicenseNotice::Failure {
                     outcome: *outcome,
                     message: message.clone(),
                 },
-            ));
+            );
         }
         Reply::License { .. } if renewal_outcome(reply) == protocol::RenewalOutcome::Verified => {
             state.notice = None;

@@ -6,6 +6,66 @@ use vantare_ipc::{
 };
 
 #[test]
+fn transient_with_active_or_grace_policy_never_paints_an_access_error_even_in_live() {
+    gpui_platform::headless().run(|cx| {
+        for state in [AccessState::Active, AccessState::Grace] {
+            for live in [false, true] {
+                let file = crate::document::tests::File::new();
+                let (send, requests) = mpsc::sync_channel(8);
+                let remote = cx.new(|cx| fixture(cx, send, file.path.parent().expect("root")));
+                remote.update(cx, |remote, cx| {
+                    remote.message = "Resultado manual".into();
+                    let policy = Policy {
+                        version: vantare_ipc::control::VERSION,
+                        revision: 1,
+                        checked_at_ms: 1000,
+                        state,
+                        live,
+                        ..Policy::default()
+                    };
+                    remote
+                        .access
+                        .observe_cached_session(Some(Session::SignedIn));
+                    remote.account.signed_in = true;
+                    remote.observe_core_policy(policy.clone(), 1000, cx);
+                    for reply in [
+                        Reply::LicenseFailure {
+                            outcome: RenewalOutcome::Transient,
+                            message: "offline".into(),
+                        },
+                        Reply::LicenseStatus {
+                            policy: policy.clone(),
+                            session: Some(Session::SignedIn),
+                            notice: None,
+                        },
+                        Reply::LicenseStatus {
+                            policy,
+                            session: Some(Session::SignedIn),
+                            notice: Some(LicenseNotice::Failure {
+                                outcome: RenewalOutcome::Transient,
+                                message: "offline".into(),
+                            }),
+                        },
+                    ] {
+                        remote.inflight = Inflight::Background;
+                        remote.complete(reply, cx);
+                        assert!(remote.license_notice.is_none());
+                        assert!(
+                            remote.home_access().1.is_none(),
+                            "no AccessError banner for transport"
+                        );
+                        assert!(!remote.device_limit);
+                        assert_eq!(remote.message, "Resultado manual");
+                        assert!(requests.try_recv().is_err());
+                    }
+                });
+            }
+        }
+        crate::quit_headless_test(cx);
+    });
+}
+
+#[test]
 fn a_manual_transport_failure_preserves_the_prior_notice_and_shows_its_own_feedback() {
     gpui_platform::headless().run(|cx| {
         for prior in [
@@ -75,11 +135,11 @@ fn persistent_notice_is_visible_without_overwriting_user_feedback_or_requesting_
                         message: "Límite de dispositivos".into(),
                     },
                     Reply::LicenseFailure {
-                        outcome: RenewalOutcome::Transient,
+                        outcome: RenewalOutcome::Definitive,
                         message: String::new(),
                     },
                     Reply::LicenseFailure {
-                        outcome: RenewalOutcome::Transient,
+                        outcome: RenewalOutcome::Definitive,
                         message: "Recupera el acceso".into(),
                     },
                 ] {
@@ -276,6 +336,9 @@ fn purchase_wait_uses_only_policy_feed_and_never_dispatches_renewal() {
         remote.update(cx, |remote, cx| {
             let now = std::time::Instant::now();
             remote.account.signed_in = true;
+            remote
+                .access
+                .observe_cached_session(Some(Session::SignedIn));
             remote.purchase_wait = Some(PurchaseWait {
                 product: BillingProduct::ProMonthly,
                 started: now,
@@ -300,6 +363,7 @@ fn purchase_wait_uses_only_policy_feed_and_never_dispatches_renewal() {
                 remote.purchase_wait.is_some(),
                 "a services reply cannot confirm purchase"
             );
+            let mut reads = 0;
             for seconds in [0, 1, 5, 30, 59, 60, 120, 599] {
                 remote.refresh_license_at(
                     now + std::time::Duration::from_secs(seconds),
@@ -307,14 +371,16 @@ fn purchase_wait_uses_only_policy_feed_and_never_dispatches_renewal() {
                     cx,
                 );
                 if let Ok(command) = requests.try_recv() {
+                    reads += 1;
                     assert!(
                         matches!(command, Command::LicenseStatus),
                         "only local notice reads"
                     );
                     remote.complete(
-                        Reply::License {
+                        Reply::LicenseStatus {
                             policy: policy.clone(),
-                            message: String::new(),
+                            session: Some(Session::SignedIn),
+                            notice: None,
                         },
                         cx,
                     );
@@ -322,6 +388,7 @@ fn purchase_wait_uses_only_policy_feed_and_never_dispatches_renewal() {
                 assert!(requests.try_recv().is_err());
                 assert!(remote.purchase_wait.is_some());
             }
+            assert_eq!(reads, 6, "all due local notice reads actually execute");
             remote.observe_core_policy(policy.clone(), 3000, cx);
             assert!(remote.purchase_wait.is_some(), "stale feed cannot confirm");
             remote.observe_core_policy(policy, 1000, cx);

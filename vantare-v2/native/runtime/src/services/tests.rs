@@ -998,7 +998,7 @@ fn reissued_license_without_new_runway_is_successful_and_keeps_the_floor() {
 }
 
 #[test]
-fn live_renews_once_on_urgent_window_entry_and_retains_failures_for_after_the_game() {
+fn live_renews_once_on_urgent_window_entry_without_a_transport_access_error() {
     let now = Instant::now();
     let wall = 10_000_000;
     let mut policy = control::Policy {
@@ -1030,8 +1030,8 @@ fn live_renews_once_on_urgent_window_entry_and_retains_failures_for_after_the_ga
     });
     assert!(result.is_some());
     assert!(
-        state.notice.is_some(),
-        "retain the result for after the game"
+        state.notice.is_none(),
+        "transport is not a persistent access error"
     );
     assert!(
         run_renewal(

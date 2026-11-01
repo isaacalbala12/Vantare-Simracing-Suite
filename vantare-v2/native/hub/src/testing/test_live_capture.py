@@ -37,7 +37,8 @@ def run(exe, out):
         replies = dict(fresh_policy=True, core_policy=policy,
                        Status=dict(result="Status", account_configured=True, message="QA local"),
                        AccountPoll=account, AccountProfileRefresh=account, AccountCancel=account,
-                       LicenseStatus=dict(result="License", policy=policy, message="QA local"))
+                       LicenseStatus=dict(result="LicenseStatus", policy=policy,
+                                          session="SignedIn", notice=None))
         temporary = out / "replies.tmp"
         temporary.write_text(json.dumps(replies), encoding="utf-8")
         temporary.replace(out / "replies.json")

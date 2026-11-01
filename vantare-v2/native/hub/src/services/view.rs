@@ -373,10 +373,8 @@ impl Remote {
     }
 
     fn remember_license_notice(&mut self, next: super::protocol::LicenseNotice) {
-        self.license_notice = Some(vantare_services::outcome::notice_after(
-            self.license_notice.take(),
-            next,
-        ));
+        self.license_notice =
+            vantare_services::outcome::notice_after(self.license_notice.take(), next);
         self.device_limit = matches!(
             self.license_notice,
             Some(super::protocol::LicenseNotice::DeviceLimit { .. })
@@ -922,7 +920,9 @@ impl Remote {
             Reply::LicenseStatus {
                 session, notice, ..
             } => {
-                self.license_notice = notice.clone();
+                self.license_notice = notice
+                    .clone()
+                    .and_then(|notice| vantare_services::outcome::notice_after(None, notice));
                 self.device_limit = matches!(
                     notice,
                     Some(super::protocol::LicenseNotice::DeviceLimit { .. })

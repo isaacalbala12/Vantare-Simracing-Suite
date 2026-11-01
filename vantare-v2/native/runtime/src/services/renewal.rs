@@ -55,6 +55,7 @@ pub(super) struct Renewal {
     blocked: bool,
     last_skip: Option<Skip>,
     last_check: Option<Instant>,
+    login_due: bool,
 }
 impl Renewal {
     pub(super) fn signed_in(&self) -> bool {
@@ -98,6 +99,10 @@ impl Renewal {
         self.failures = 0;
         // Preserve last_attempt: a user action cannot create an automatic burst.
     }
+    pub(super) fn confirmed_login(&mut self) {
+        self.user_recovery();
+        self.login_due = true;
+    }
     pub(super) fn attempted(&mut self, now: Instant) {
         self.last_attempt = Some(now);
     }
@@ -132,6 +137,7 @@ impl Renewal {
         } else {
             self.last_skip = None;
             self.last_attempt = Some(now);
+            self.login_due = false;
         }
         result
     }
@@ -162,6 +168,7 @@ impl Renewal {
             return Err(Skip::Backoff);
         }
         let due = origin == Origin::Purchase
+            || self.login_due
             || self.failures > 0
             || !policy.state.permits_access()
             // Preserve startup discovery of a purchase made outside this Hub.

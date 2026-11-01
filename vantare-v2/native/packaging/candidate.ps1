@@ -15,7 +15,7 @@ param(
     [Alias('ProfileFiles')][string[]]$NativeProfileFiles = @(),
     [Alias('MonitorBounds')][double[]]$NativeBounds = @(),
     [Alias('Library')][switch]$NativeLibrary,
-    [Alias('Startup')][ValidateSet('On','Off')][string]$NativeStartup
+    [Alias('Startup')][ValidateSet('On','Off')][string]$NativeStartup = 'Off'
 )
 
 if ([string]::IsNullOrWhiteSpace($NativeRoot)) { throw 'NATIVE_ROOT_REQUIRED' }
@@ -730,7 +730,7 @@ function Sync-NativeRegistration([string]$Directory, [string]$Version, $Previous
             Sync-NativeOptionalShortcuts $directory $folder @{desktop=$false;autostart=$true} $true
         }
         if(-not $suppressStartup -and ($null -eq $preference -or $preference)){
-            Sync-NativeOptionalShortcuts $directory $folder @{desktop=$false;autostart=$true} -LaunchTarget $startupTarget -ExistingOnly
+            Sync-NativeOptionalShortcuts $directory $folder @{desktop=$false;autostart=$true} -LaunchTarget $LaunchTarget -ExistingOnly
         }
         return
     }
@@ -809,6 +809,16 @@ function Sync-NativeRegistration([string]$Directory, [string]$Version, $Previous
     if($null -ne $optionalUi){
         Sync-NativeOptionalShortcuts $directory $folder @{desktop=$optionalUi.desktop;autostart=$false} -LaunchTarget $LaunchTarget
         Sync-NativeOptionalShortcuts $directory $folder @{desktop=$false;autostart=$optionalUi.autostart} -LaunchTarget $startupTarget
+        if($null -ne $legacyRun -and -not $suppressStartup -and $optionalUi.autostart){
+            $startupFolder=Get-NativeShortcutFolder 'Startup'
+            $startupLink=if($startupFolder){Join-Path $startupFolder ($folder+'.lnk')}else{''}
+            if(-not $startupLink -or -not(Test-Path -LiteralPath $startupLink) -or -not(Test-NativeShortcutOwned ((New-Object -ComObject WScript.Shell).CreateShortcut($startupLink)) $directory)){
+                # Optional shortcut failures are normally warnings. Migration must
+                # keep the old route and fail visibly if ON has no owned link.
+                New-ItemProperty -LiteralPath $legacyRun.key -Name $legacyRun.name -Value $legacyRun.command -PropertyType String -Force|Out-Null
+                throw 'No se creó el acceso Startup; se ha conservado el inicio Run. Vuelve a intentarlo.'
+            }
+        }
     }
     # NSIS did not persist desktop preferences. Migrate an existing owned link
     # even when /S leaves the option OFF; never create a new optional link here.
@@ -872,10 +882,12 @@ function Read-NativeStartupPreference([string]$Directory){
     if($null -ne $ui){return [bool]$ui.autostart}
     $path=Join-Path $Directory 'startup-options.json'
     if(-not(Test-Path -LiteralPath $path)){return $null}
-    if((Get-Item -LiteralPath $path).Length -gt 1024){throw 'Preferencia de inicio demasiado grande.'}
-    $option=[IO.File]::ReadAllText($path)|ConvertFrom-Json
-    if(@(Compare-Object @('schema','autostart') @($option.PSObject.Properties.Name) -CaseSensitive).Count -or $option.schema -ne 1 -or $option.autostart -isnot [bool]){throw 'Preferencia de inicio inválida.'}
-    [bool]$option.autostart
+    try{
+        if((Get-Item -LiteralPath $path).Length -gt 1024){return $null}
+        $option=[IO.File]::ReadAllText($path)|ConvertFrom-Json
+        if(@(Compare-Object @('schema','autostart') @($option.PSObject.Properties.Name) -CaseSensitive).Count -or $option.schema -ne 1 -or $option.autostart -isnot [bool]){return $null}
+        [bool]$option.autostart
+    }catch{return $null} # Damaged legacy preferences cannot prevent Probe/Setup.
 }
 
 function Write-NativeInstallerOptions([string]$Directory,[byte[]]$Bytes,[ValidateSet('installer-ui.json','startup-options.json')][string]$Name='installer-ui.json'){
@@ -1338,7 +1350,7 @@ function Build-NativeCandidate([string]$Destination, [string]$CandidateVersion, 
 if ($NativeLibrary) { return }
 switch ($NativeCommand) {
     'SetStartup' {
-        if(-not $NativeStartup){throw 'Indique Startup On u Off.'}
+        if(-not $PSBoundParameters.ContainsKey('NativeStartup')){throw 'Indique Startup On u Off.'}
         $NativeRoot=Open-NativeRoot $NativeRoot
         $state=Read-NativeState $NativeRoot
         $generation=Join-Path $NativeRoot "generations/$($state.active.generation)"

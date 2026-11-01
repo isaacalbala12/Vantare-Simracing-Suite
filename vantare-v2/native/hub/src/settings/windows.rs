@@ -27,6 +27,8 @@ pub(in crate::shell) fn reduced_motion() -> bool {
 pub(super) struct StartupChange {
     child: std::process::Child,
     deadline: std::time::Instant,
+    diagnostic: std::fs::File,
+    diagnostic_path: std::path::PathBuf,
 }
 impl StartupChange {
     pub(super) fn start(enabled: bool) -> Result<Self, String> {
@@ -57,13 +59,12 @@ impl StartupChange {
                 ])
                 .arg(script)
                 .args(["-Operation", "SetStartup", "-Root"])
-                .arg(root)
+                .arg(&root)
                 .args(["-Startup", if enabled { "On" } else { "Off" }])
                 .stdin(Stdio::null())
                 .stdout(Stdio::null())
-                .stderr(Stdio::inherit())
                 .creation_flags(0x0800_0000);
-            Self::spawn(&mut command)
+            Self::spawn(&mut command, &root)
         }
         #[cfg(not(windows))]
         {
@@ -72,23 +73,64 @@ impl StartupChange {
         }
     }
     #[cfg(any(windows, test))]
-    fn spawn(command: &mut std::process::Command) -> Result<Self, String> {
+    fn spawn(command: &mut std::process::Command, root: &std::path::Path) -> Result<Self, String> {
+        // A file avoids a full stderr pipe blocking the child. Own and remove it
+        // with the process; only a bounded diagnostic is shown after failure.
+        let nonce = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_err(|error| error.to_string())?
+            .as_nanos();
+        let diagnostic_path = root.join(format!(
+            "startup-command-{}-{nonce}.log",
+            std::process::id()
+        ));
+        let diagnostic = std::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create_new(true)
+            .open(&diagnostic_path)
+            .map_err(|error| format!("Inicio con Windows: {error}. Vuelve a intentarlo."))?;
+        let stderr = match diagnostic.try_clone() {
+            Ok(stderr) => stderr,
+            Err(error) => {
+                drop(diagnostic);
+                let _ = std::fs::remove_file(&diagnostic_path);
+                return Err(format!("Inicio con Windows: {error}. Vuelve a intentarlo."));
+            }
+        };
+        command.stderr(stderr);
+        let child = match command.spawn() {
+            Ok(child) => child,
+            Err(error) => {
+                drop(diagnostic);
+                let _ = std::fs::remove_file(&diagnostic_path);
+                return Err(format!("Inicio con Windows: {error}. Vuelve a intentarlo."));
+            }
+        };
         Ok(Self {
-            child: command
-                .spawn()
-                .map_err(|error| format!("Inicio con Windows: {error}"))?,
+            child,
             deadline: std::time::Instant::now() + std::time::Duration::from_secs(30),
+            diagnostic,
+            diagnostic_path,
         })
+    }
+    fn failure(&mut self) -> String {
+        use std::io::{Read, Seek, SeekFrom};
+        let mut bytes = Vec::new();
+        let _ = self.diagnostic.seek(SeekFrom::Start(0));
+        let _ = (&mut self.diagnostic).take(4096).read_to_end(&mut bytes);
+        let detail = String::from_utf8_lossy(&bytes);
+        format!(
+            "No se pudo cambiar el inicio con Windows. {} Vuelve a intentarlo.",
+            detail.trim()
+        )
     }
     fn poll(&mut self) -> Result<bool, String> {
         match self.child.try_wait().map_err(|error| error.to_string())? {
             Some(status) if status.success() => Ok(true),
-            Some(_) => Err(
-                "No se pudo cambiar el acceso de inicio con Windows; consulta el log del Hub"
-                    .into(),
-            ),
+            Some(_) => Err(self.failure()),
             None if std::time::Instant::now() >= self.deadline => {
-                Err("El cambio de inicio con Windows agotó su plazo".into())
+                Err("El cambio de inicio con Windows agotó su plazo. Vuelve a intentarlo.".into())
             }
             None => Ok(false),
         }
@@ -107,6 +149,7 @@ impl Drop for StartupChange {
     fn drop(&mut self) {
         let _ = self.child.kill();
         let _ = self.child.wait();
+        let _ = std::fs::remove_file(&self.diagnostic_path);
     }
 }
 
@@ -159,22 +202,53 @@ mod tests {
             os::windows::process::CommandExt,
             process::{Command, Stdio},
         };
+        let root =
+            std::env::temp_dir().join(format!("vantare-startup-child-{}", std::process::id()));
+        std::fs::create_dir_all(&root).unwrap();
         let mut command = Command::new("cmd.exe");
         command
-            .args(["/D", "/C", "exit /B 7"])
+            .args([
+                "/D",
+                "/C",
+                "echo Synthetic operation lock contention 1>&2 & exit /B 7",
+            ])
             .creation_flags(0x0800_0000);
-        let mut change = StartupChange::spawn(&mut command).unwrap();
+        let mut change = StartupChange::spawn(&mut command, &root).unwrap();
         change.child.wait().unwrap();
-        assert!(change.poll().is_err());
+        let error = change.poll().unwrap_err();
+        assert!(
+            error.contains("Synthetic operation lock contention")
+                && error.contains("Vuelve a intentarlo")
+        );
+        drop(change);
+        drop(command);
+        let mut command = Command::new("powershell.exe");
+        command
+            .args([
+                "-NoProfile",
+                "-NonInteractive",
+                "-Command",
+                "[Console]::Error.Write(('x'*100000));exit 7",
+            ])
+            .creation_flags(0x0800_0000);
+        let mut change = StartupChange::spawn(&mut command, &root).unwrap();
+        change.child.wait().unwrap();
+        let error = change.poll().unwrap_err();
+        assert!(error.contains("Vuelve a intentarlo") && error.len() < 4200);
+        drop(change);
+        drop(command);
         let mut command = Command::new("cmd.exe");
         command
             .args(["/D", "/C", "more > nul"])
             .stdin(Stdio::piped())
             .creation_flags(0x0800_0000);
-        let mut change = StartupChange::spawn(&mut command).unwrap();
+        let mut change = StartupChange::spawn(&mut command, &root).unwrap();
         assert!(!change.poll().unwrap());
         change.deadline = std::time::Instant::now();
         assert!(change.poll().is_err());
         drop(change); // Owns cancellation and reaps the blocked child.
+        drop(command);
+        assert_eq!(std::fs::read_dir(&root).unwrap().count(), 0);
+        std::fs::remove_dir(root).unwrap();
     }
 }

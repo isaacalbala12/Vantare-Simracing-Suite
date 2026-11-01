@@ -105,6 +105,7 @@ function Open-NativeLock([string]$Path){
 $script:FixtureOptional=${function:Sync-NativeOptionalShortcuts}
 function Sync-NativeOptionalShortcuts([string]$Directory,[string]$Folder,$Ui,[bool]$Remove=$false,[string]$LaunchTarget,[switch]$ExistingOnly){
     if($null -ne $Ui -and $Ui.autostart -and -not $Remove -and $null -ne (Get-NativeLegacyRun $Directory)){throw 'DUPLICATE_STARTUP_ATTEMPT'}
+    if($null -ne $Ui -and $Ui.autostart -and -not $Remove -and (Test-Path -LiteralPath (Join-Path $Directory 'fail-startup-migration'))){return}
     & $script:FixtureOptional @PSBoundParameters
 }
 '@
@@ -161,6 +162,17 @@ function Sync-NativeOptionalShortcuts([string]$Directory,[string]$Folder,$Ui,[bo
     $result=Invoke-Startup Off
     $uiPath=Join-Path $install 'installer-ui.json';$savedUi=[IO.File]::ReadAllBytes($uiPath)
     Remove-Item -LiteralPath $uiPath
+    Set-ItemProperty -LiteralPath $run -Name 'VantareNative.Hub' -Value $legacyCommand
+    $missingStartup=Join-Path $install 'fail-startup-migration';[IO.File]::WriteAllText($missingStartup,'simulate swallowed shortcut failure')
+    $result=Invoke-Startup On Register
+    Assert-Startup ($result.ExitCode -ne 0 -and $result.Stderr.Contains('se ha conservado el inicio Run') -and -not(Test-Path -LiteralPath $link) -and (Get-ItemProperty -LiteralPath $run).'VantareNative.Hub' -ceq $legacyCommand) 'Missing Startup after migration restores the valid Run and reports failure for the visible registration warning'
+    Remove-Item -LiteralPath $missingStartup
+    $foreign=(New-Object -ComObject WScript.Shell).CreateShortcut($link);$foreign.TargetPath="$env:WINDIR/System32/cmd.exe";$foreign.Save()
+    $foreignHash=Get-NativeHash $link
+    $result=Invoke-Startup On Register
+    Assert-Startup ($result.ExitCode -ne 0 -and (Get-NativeHash $link) -ceq $foreignHash -and (Get-ItemProperty -LiteralPath $run).'VantareNative.Hub' -ceq $legacyCommand) 'Foreign Startup during migration is preserved while the valid Run is restored'
+    Remove-Item -LiteralPath $link
+    Remove-Item -LiteralPath (Join-Path $install 'startup-options.json')
     $rootBootstrap=Join-Path $install 'candidate.ps1';$rootBootstrapBytes=[IO.File]::ReadAllBytes($rootBootstrap)
     [IO.File]::WriteAllText($rootBootstrap,([IO.File]::ReadAllText($rootBootstrap).Replace('# vantare-launch-capabilities: background-v1','# frozen bootstrap without background capability')),[Text.UTF8Encoding]::new($true))
     Set-ItemProperty -LiteralPath $run -Name 'VantareNative.Hub' -Value $legacyCommand
@@ -246,10 +258,11 @@ function Sync-NativeOptionalShortcuts([string]$Directory,[string]$Folder,$Ui,[bo
     $result=Invoke-StartupDriver $request
     Assert-Startup ($result.ExitCode -eq 0 -and (Read-NativeInstallerUi $setupRoot).autostart -and (Test-Path -LiteralPath $link) -and $null -eq (Get-ItemProperty -LiteralPath $run).PSObject.Properties['VantareNative.Hub']) 'Setup adopts a valid old Run when no preference existed and never leaves two starts'
     Confirm-StartupFixture $setupRoot
+    Remove-Item -LiteralPath $link
     Set-ItemProperty -LiteralPath $run -Name 'VantareNative.Hub' -Value $setupCommand
     $request.mode='repair'
     $result=Invoke-StartupDriver $request
-    Assert-Startup ($result.ExitCode -eq 0 -and (Read-NativeInstallerUi $setupRoot).autostart -and $null -eq (Get-ItemProperty -LiteralPath $run).PSObject.Properties['VantareNative.Hub']) 'Setup preserves an existing ON preference while retiring legacy Run'
+    Assert-Startup ($result.ExitCode -eq 0 -and (Read-NativeInstallerUi $setupRoot).autostart -and (Test-Path -LiteralPath $link) -and $null -eq (Get-ItemProperty -LiteralPath $run).PSObject.Properties['VantareNative.Hub']) 'Setup repair recreates the missing Startup link and preserves ON while retiring legacy Run'
     Confirm-StartupFixture $setupRoot
     Write-NativeStartupPreference $setupRoot $false
     Set-ItemProperty -LiteralPath $run -Name 'VantareNative.Hub' -Value $setupCommand
@@ -277,6 +290,22 @@ function Sync-NativeOptionalShortcuts([string]$Directory,[string]$Folder,$Ui,[bo
     $request.operation='Uninstall';$request.uninstall=$true
     $result=Invoke-StartupDriver $request
     Assert-Startup ($result.ExitCode -eq 0 -and -not(Test-Path -LiteralPath (Join-Path $foreignRoot 'state.json')) -and (Get-ItemProperty -LiteralPath $run).'VantareNative.Hub' -ceq 'foreign-app-using-our-name') 'Uninstall preserves a foreign command reusing the Run name'
+    $badIndex=0
+    foreach($badPreference in @('{invalid',('{"schema":1,"autostart":true}'+(' '*1100)),'{"schema":1,"autostart":"true"}')){
+        $badIndex++;$badRoot=Join-Path $qaStartupRoot ('damaged-option-'+$badIndex)
+        $null=Open-NativeRoot $badRoot -Initialize
+        [IO.File]::WriteAllText((Join-Path $badRoot 'startup-options.json'),$badPreference)
+        Set-ItemProperty -LiteralPath $run -Name 'VantareNative.Hub' -Value (Legacy-StartupCommand $badRoot)
+        $request.root=$badRoot;$request.operation='Probe';$request.uninstall=$false;$request.mode='auto'
+        $result=Invoke-StartupDriver $request
+        Assert-Startup ($result.ExitCode -eq 0 -and -not($result.Stdout|ConvertFrom-Json).autostart -and $null -eq (Read-NativeStartupPreference $badRoot)) "Damaged legacy option $badIndex is no preference and Probe stays usable"
+        $request.operation='Install'
+        $result=Invoke-StartupDriver $request
+        Assert-Startup ($result.ExitCode -eq 0 -and (Read-NativeInstallerUi $badRoot).autostart -and (Test-Path -LiteralPath $link) -and $null -eq (Get-ItemProperty -LiteralPath $run).PSObject.Properties['VantareNative.Hub']) "Setup recovers damaged legacy option $badIndex and migrates the valid Run"
+        $request.operation='Uninstall';$request.uninstall=$true
+        $result=Invoke-StartupDriver $request
+        Assert-Startup ($result.ExitCode -eq 0 -and -not(Test-Path -LiteralPath $link)) "Recovered damaged option $badIndex uninstalls normally"
+    }
     Write-NativeJson (Join-Path $qaStartupRoot 'result.json') @{checks=$passed;run_removed=$true;startup_removed=$true;data_unchanged=(((Get-NativeDataIndex $data) -ceq $dataBefore) -and ((Get-NativeDataIndex $setupData) -ceq $setupDataBefore))}
 }finally{
     Remove-PSDrive HKCU

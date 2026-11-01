@@ -1,12 +1,17 @@
 # Caracterización del motor de instalación · VANTA-127 / #1840
 
-Paso 1d añade startup-tests: Setup del driver con autostart desactivado, comando
-SetStartup usado por el Hub, apagado/encendido y desinstalación del driver. Exige
-no dejar valor Run ni enlace Startup y conservar otros valores y todos los datos,
-incluidas carpetas vacías. También prueba acceso ajeno, rollback de bytes al fallar
-guardar opciones y recuperación con registro ya retirado/marker ligado por hash.
-Registro y carpetas están inyectados en padre, driver y CLI de la generación.
-No se ejecutan Setup/Uninstall EXE ni se abre una ventana del Hub.
+Paso 1d añade startup-tests: comando del Hub y driver de Setup/Uninstall,
+Run propia/ajena con el mismo nombre, migración Run→opción/Startup con preferencia
+ON/OFF o sin ella y bootstrap raíz congelado. Dos barreras deterministas prueban
+Register antes/después de adquirir .operation.lock y el interruptor concurrente.
+Un Uninstall fallido conserva Run; un fallo al borrarla avisa sin abortar.
+Se verifican bytes de opciones/enlace, datos y carpetas vacías, y recuperación
+sin registro con marker ligado por hash. Registro/carpetas/entornos se inyectan;
+no hay Setup/Uninstall EXE ni ventana física de producto. Las reparaciones de la
+fixture se confirman con Confirm real y un proceso inerte antes de repetirlas.
+El baseline conserva hashes crudos LF y añade el fichero vacío .operation.lock
+creado por Register en 26 capturas preparadas; los demás cambios son hashes de
+candidate/beta en 240 copias, sin cambios de estado/datos/registro/accesos.
 
 Paso 1c añade registration-boot-tests: Register falla, Register bloqueado hasta
 el plazo real de 30 segundos, fallo del registro durante Confirm y entorno

@@ -276,82 +276,59 @@ conservan la evidencia de sus ramas; no describen el estado de integración actu
 ## Instalador · VANTA-127 / #1840
 
 [#1840](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1840),
-area:plataforma, Project Vantare. Plane En curso; siguientes estados/CI del
-orquestador. Cinco PR separados, sin merge/release del worker.
+area:plataforma, GitHub Project Vantare. Plane En curso; estados/CI del orquestador.
+Sin merge/release del worker.
 
-- 0 integrado en nightly 216f9bda7, #1842; el orquestador confirmó caracterización
-  Windows CI PASS. 1a integrado en f8ccb1689, #1846, código 40e575f6e: inventario
-  propio, catálogo validado, snapshot de paquete y carpetas no vacías. Local 88+54
-  y 156 históricos PASS. P3-4 previous-unreadable de #1795 fuera de este encargo.
-- 1b integrado por el orquestador en nightly e747d4a9e, [#1847](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1847),
-  HEAD 79a3e03d9, base f8ccb1689. Root/Library y contexto QA explícitos; capturadores
-  activos adaptados y originales archivados, 468 pins; todos los scripts visibles
-  en snapshots. Local 88+22+24+14+12+54, histórico14+156, contrato8+8, Clippy/fmt
-  y calidad PASS. Integración confirmada por el orquestador.
-  Suites QA1492 todavía sin remapeo en [#1848](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1848),
-  area:plataforma / Project Vantare, fuera de 1b por decisión expresa.
-- 1c revisión aplicada y lista, rama vantareapp/isa-1840-1c-register, worktree
-  D:/VantareServer/worktrees/isa-1840-1c, base 7ebf46c08. [PR draft #1850](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1850).
-  Rebase conserva Root/Library y QA de 1b. Decisión posterior del orquestador:
-  resultado de Register en registration-status.json, escrito por Hub y mostrado
-  aparte en Ajustes. No lee/modifica update-status; Stage conserva ready/error
-  y su notificación. Éxito limpia el aviso previo; fallo de guardar solo va al log.
-  Confirm publica ACK antes de Sync-BetaRegistration; su fallo avisa en log.
-  Riesgo aceptado y bootstrap 975 sin try/catch documentados en README packaging.
-- Gates anteriores 1c: Hub596/596 +29 focales; matrix-1c-rebase-01 pasa
-  88+22+24+14+12+54+29, con diseño anterior a documento separado. No es evidencia
-  de la revisión actual. Se añade Run-BetaHub/Stage real en ambos órdenes,
-  ready concurrente, lectura de Ajustes y comprobación de PID recogido.
-  Gates finales: matrix-1c-review-01 88+22+24+14+12+54+42 PASS;
-  boot-1c-review-01 42/42 con helper final y entornos QA exigidos, PASS.
-  Hub all-targets599/599, cuatro skips previos/cuatro lentos,216,000s;
-  Clippy all-targets-Dwarnings/fmt/build/PS/YAML/fragmento/calidad468 PASS.
-  Cuatro scripts/capturas88 coinciden con copia QA/baseline; solo SHA beta52 filas.
-  CI run41330660086 falló clean-install por un baseline generado con beta CRLF
-  local, aunque Git/CI usan LF. La única diferencia era ese SHA; el baseline
-  corregido coincide exactamente con el snapshot CI. Ahora la matriz rechaza
-  CRLF en candidate/beta/driver antes de cargar producto o escribir; snapshot
-  conserva bytes exactos y sus tests prueban LF/CRLF diferentes (18 checks).
-  Gates finales sobre 7ebf46c08: matriz88+22+24+14+18+54+42 PASS,
-  guardas7+5, fmt/Clippy y focales Rust32/32 PASS. Hub599/599 es el pase anterior
-  e747d4a9e; no se repite, sin cambio Rust propio. Nueve scripts/harness y88
-  resultados iguales a copia QA/baseline; clean-install local==CI byte a byte.
-  Los 88 anteriores con CRLF no acreditaban el blob Git: se sustituyen por
-  matrix-1c-ci-fix-01. Código de corrección cececa164; HEAD final en #1840/PR.
-  Cola/target propios, sin aflojar lints ni tests.
-  [Evidencia y fallos iniciales](../../../native/packaging/matrix/evidence-1840-1c.md).
-  Sin ventana física ni cambios propios de runtime/domain/ipc/testdata;
-  telemetría omitida por ámbito. CI y merge del orquestador.
-- 1d listo para revisión, rama vantareapp/isa-1840-1d-run, worktree
-  D:/VantareServer/worktrees/isa-1840-1d, base 5bf636ef0. PR draft [#1851](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1851),
-  código 5cb6fc7e0; HEAD publicado final en #1840.
-  Hub usa SetStartup de la generación instalada; hijo poseído y acotado30s,
-  espera asíncrona con tarea en Store. GPUI comparte installer-ui.autostart sin
-  reescribir data; preferencias antiguas se guardan/restauran conservando otras
-  modificaciones. CLI valida script activo, estado, hashes, registro y opciones.
-  Activa/desactiva el acceso Startup del instalador y retira Run de esa identidad.
-  Uninstall también lo retira, incluso recuperación validada con registro ausente.
-  Valores/accesos ajenos se conservan; rollback de bytes/opciones ante fallo.
-- Gates 1d: matriz88/88 +54 inventario +13 Startup PASS; arnés final Startup14
-  añade fallo de opciones, sin cambiar producto; hook final Probe+54+14 PASS.
-  Hub586/586, cuatro omisiones,
-  sobre f8ccb1689; Clippy/fmt finales sobre 5bf636ef0 PASS. Evidencia y fallos en
-  [evidencia1d](../../../native/packaging/matrix/evidence-1840-1d.md).
-  Pruebas con driver/CLI reales, root con espacios y HKCU/shell/entornos inyectados;
-  sin Setup/Uninstall EXE ni ventana física, datos/carpetas vacías intactos.
-- Incidente descartado1b y comprobaciones sin daño observable del orquestador
-  en su evidencia. Fixture C:/tmp y caché Python ignorada conservadas porque la
-  herramienta rechazó borrar con «blocked by policy»; no se intentó otra vía.
-  Nuevas pruebas no escriben bytecode; histórico/driver usan contexto inyectado.
+- 0 integrado en 216f9bda7 ([#1842](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1842)),
+  CI Characterize Windows PASS confirmado. 1a integrado en f8ccb1689
+  ([#1846](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1846)),
+  inventario propio/catalogo retirado validado, snapshot de 109 rutas de 0.0.987, carpetas
+  ajenas conservadas. Local 88+54 y 156 históricos PASS; previous-unreadable fuera.
+- 1b integrado en e747d4a9e ([#1847](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1847)):
+  Root/Library y contexto QA explícitos, capturadores activos corregidos,468 huellas,
+  scripts visibles en snapshots. Suites QA1492 sin remapeo siguen aparte en
+  [#1848](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1848),
+  area:plataforma/Project Vantare; no se ejecutan aquí.
+- 1c integrado en 843913d24 ([#1850](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1850)),
+  CI 5/5 verde confirmado por el orquestador. Ready antes de Register; hijo poseído,
+  plazo de 30 s, aviso en registration-status.json mostrado aparte en Ajustes, sin
+  tocar el estado/mensaje del actualizador. Riesgo de readiness temprano y límite
+  del bootstrap 975 documentados. El fallo CI por beta CRLF local frente a blob LF
+  se corrigió con guardas y baseline de bytes versionados; CI confirmó el pase.
+- 1d en revisión aplicada sobre843913d24, rama vantareapp/isa-1840-1d-run, worktree
+  D:/VantareServer/worktrees/isa-1840-1d; [PR draft #1851](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1851).
+  Root/Library de 1b y estado de registro separado de 1c conservados. HEAD final en
+  #1840/PR. SetStartup usa acceso del instalador, hijo poseído/plazo de 30 s y progreso;
+  solo bloquea su interruptor, no descarta cambios de otros controles.
+- Run migra solo si apunta al beta.ps1/Hub de esta raíz: adopta ON si falta opción
+  y respeta ON/OFF existentes. GPUI guarda installer-ui; legacy startup-options.json
+  (schema1/autostart), ambos en raíz. Store carga/proyecta y adopta la migración
+  posterior sin reescribir General/data. El bootstrap congelado conserva ruta PS.
+- Register/SetStartup/Setup comparten .operation.lock. Dos barreras comprueban
+  antes/después del lock; Register no resucita OFF ni intercala escrituras.
+  Run se retira antes de crear Startup, sin dos arranques. Comandos ajenos con el
+  mismo nombre se conservan. Rollback solo repara accesos que ya existían.
+- Uninstall retira Run al terminar programa/registro/accesos/metadatos. El hijo
+  beta nuevo permite defer-run-v1/KeepLegacyRun para el finalizador exterior;
+  no se pasa a bootstraps congelados sin capacidad. Fallo anterior o del finalizador
+  conserva Run para reintento. Borrado Run denegado avisa y termina sin falso cierre.
+  Recuperación sin registro conserva validación marker/hash/identidad/carpeta.
+- Gates finales en curso: matrix-1d-review-03 e histórico history-1d-review-01.
+  Focal startup-1d-review-05:35/35 PASS; Hub completo 602/602, cuatro lentos/cuatro omisiones,
+  238,445 s PASS. Clippy/fmt PASS. Baseline previsto: 52 filas por 240 hashes de
+  scripts y 26 .operation.lock vacíos; invariantes y normalización intactos.
+  [Evidencia1d](../../../native/packaging/matrix/evidence-1840-1d.md) conserva ensayos
+  previos y correcciones de fixture, sin contarlos como gates finales.
+- Incidente 1b descartado y comprobaciones del orquestador sin daño observable en
+  su evidencia. Fixture C:/tmp y caché Python ignorada siguen conservadas por
+  rechazo automático «blocked by policy» al borrar; no se intentó otra vía.
 
-Sin instalación real, datos de usuario, Setup/Hub físicos, Downloads, promoción,
-merge ni release por el worker. Primeras capturas0 con TEMP heredado descartadas,
-sin afirmar auditoría global. QA física en otra cuenta/VM pendiente; RC9 intacto.
-Siguiente: CI/integración de 1c por el orquestador; después rebase/revisión de 1d.
-Revisión 1d pendiente: migrar Run válida a opción/Startup, serializar Register con
-SetStartup, retirar Run solo tras Uninstall correcto y como aviso si falla,
-validar comando propio, progreso en UI y pruebas de carga/migración del Hub.
-Última actualización: 1-nov-2026, ejecutor de #1840.
+Toda QA nueva bajo D:/VantareServer/qa, guardada y con HKCU/folders/entornos
+inyectados, sin instalación real ni Setup/Uninstall EXE. QA física en cuenta/VM
+aparte pendiente. Sin cambios propios runtime/domain/ipc/testdata; telemetría y
+lifecycle runtime omitidos por ámbito. Siguiente: terminar gates/push de 1d,
+revisión/CI e integración a cargo del orquestador; después continúa el plan #1840.
+Actualizado el 1-nov-2026, ejecutor.
 <!-- isa1827-p10-worker -->
 ## VANTA-126 / #1827 — Paso 10 listo para revisión (2026-11-01)
 

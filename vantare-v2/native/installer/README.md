@@ -54,6 +54,14 @@ y valida la identidad/hash del uninstaller; Register conserva esa UI. Su
 autoeliminación sucede en un helper temporal acotado que espera al proceso,
 valida hash/raíz y conserva datos y cualquier instalación renovada.
 
+#1840/1d: el Hub y Setup comparten el enlace Startup. La Run antigua solo se
+migra si su comando pertenece a esta raíz: sin preferencia se adopta true, con
+preferencia se respeta. Register y el interruptor comparten .operation.lock.
+GPUI persiste autostart en installer-ui.json; la compatibilidad antigua usa
+startup-options.json en la raíz (schema1/autostart), siempre sin escribir data.
+Desinstalar retira la Run válida después de retirar programa; si Windows niega
+borrarla avisa y termina. Una Run ajena con el mismo nombre se conserva.
+
 Si Cleanup se interrumpe después de retirar Uninstall.exe y queda su marker,
 el Setup público puede reinstalar sin limpieza manual. Solo retira ese marker
 si faltan EXE/state/registro, reconoce la raíz nativa y valida identidad

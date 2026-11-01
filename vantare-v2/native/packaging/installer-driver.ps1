@@ -84,6 +84,7 @@ if (Test-Path -LiteralPath $optionsFile) {
     $options = Read-NativeInstallerUi $root ([bool]$request.uninstall)
     $desktop = [bool]$options.desktop; $autostart = [bool]$options.autostart
 }
+if($null -eq $options){$startupPreference=Read-NativeStartupPreference $root;if($null -ne $startupPreference){$autostart=[bool]$startupPreference}}
 if ($request.operation -ceq 'Probe') {
     $motion=Get-ItemProperty -LiteralPath 'HKCU:/Control Panel/Desktop/WindowMetrics' -Name MinAnimate -ErrorAction SilentlyContinue
     [ordered]@{ root=$root; version=$request.version; installed_version=$current; data_path=$data; desktop=$desktop; autostart=$autostart; size=$request.size; reduced_motion=($null -ne $motion -and $motion.MinAnimate -ceq '0') } | ConvertTo-Json -Compress
@@ -125,18 +126,25 @@ try {
                 }
             } -Finalize {
                 Send-InstallerProgress 'shortcuts' 84
+                $registrationLock=Open-NativeLock $root
+                try{
                 Invoke-NativeRegistrationTransaction $key $folder $legacy {
                     if ($request.qa) { [IO.File]::WriteAllText((Join-Path $root 'registration-identity.txt'), $identity) }
                     New-Item -Path $key -Force | Out-Null
                     foreach ($item in @{DisplayName='Vantare Simracing Suite'; DisplayVersion=$request.version; InstallLocation=$root; UninstallString=('"'+(Join-Path $root 'Uninstall.exe')+'"')}.GetEnumerator()) { Set-ItemProperty -LiteralPath $key -Name $item.Key -Value $item.Value }
                     foreach ($name in @('NoModify','NoRepair')) { New-ItemProperty -LiteralPath $key -Name $name -PropertyType DWord -Value 1 -Force | Out-Null }
                     if ($request.qa) { Set-ItemProperty -LiteralPath $key -Name ShortcutFolder -Value $folder; Set-ItemProperty -LiteralPath $key -Name LegacyShortcutFolder -Value $legacy }
+                    $previousPreference=if($null -ne $options){[bool]$options.autostart}else{Read-NativeStartupPreference $root}
+                    $legacyRun=Get-NativeLegacyRun $root $identity
+                    $installAutostart=[bool]$request.autostart
+                    if($null -ne $legacyRun){$installAutostart=if($null -ne $previousPreference){[bool]$previousPreference}else{$true}}
                     Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'Uninstall.exe') -Destination (Join-Path $root 'Uninstall.exe') -Force
                     Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'installer-notices.txt') -Destination (Join-Path $root 'installer-notices.txt') -Force
-                    Write-BetaJson $optionsFile @{schema=1; kind='rust-gpui'; uninstaller='Uninstall.exe'; sha256=(Get-NativeHash (Join-Path $root 'Uninstall.exe')); desktop=[bool]$request.desktop; autostart=[bool]$request.autostart}
+                    Write-BetaJson $optionsFile @{schema=1; kind='rust-gpui'; uninstaller='Uninstall.exe'; sha256=(Get-NativeHash (Join-Path $root 'Uninstall.exe')); desktop=[bool]$request.desktop; autostart=$installAutostart}
                     Send-InstallerProgress 'register' 93
-                    Sync-NativeRegistration $root $request.version $options
+                    Sync-NativeRegistration $root $request.version $options -LockHeld
                 }
+                }finally{$registrationLock.Dispose()}
             } | Out-Null
         }
         'Uninstall' {

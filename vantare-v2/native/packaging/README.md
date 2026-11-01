@@ -1,14 +1,25 @@
 # Beta nativa — instalador y actualizaciones (#1454)
 
-Paso 1d de #1840: SetStartup On/Off usa el mismo acceso Startup del instalador
-y actualiza autostart en installer-ui.json cuando existe. Valida estado, hashes,
-identidad y ubicación registrada; la CLI exige el script de la generación activa.
-Rechaza accesos ajenos y restaura sus bytes/opciones si falla la escritura.
-Activarlo retira el valor Run antiguo de esa identidad. Desinstalar también lo
-retira; una recuperación sin registro exige el marker de limpieza ligado por hash
-y la identidad/carpeta explícitas del instalador. Otros valores Run se conservan.
-La matriz demuestra instalar, activar desde el comando del Hub y desinstalar sin
-Run ni Startup, incluyendo recuperación parcial y datos/carpetas vacías intactos.
+Paso 1d de #1840: SetStartup comparte el acceso Startup del instalador y guarda
+la opción fuera de data/. Usa installer-ui.json cuando existe; las instalaciones
+antiguas guardan startup-options.json con {schema:1,autostart:bool}, sin inventar
+un desinstalador GPUI. Installer UI prevalece; desinstalar retira ambos metadatos.
+
+Register y Setup migran solo una Run cuyo comando sea el beta.ps1 de esta raíz
+(con host/Root exactos) o un vantare-hub.exe bajo ella. Si no había preferencia,
+adoptan true; si ya había una, la respetan al retirar Run. Se retira Run antes
+de crear Startup para evitar dos arranques. Una Run ajena que reutilice el nombre
+se conserva. Un bootstrap raíz congelado conserva una ruta Startup PowerShell
+compatible. Rollback solo repara accesos existentes, no adopta una Run nueva.
+
+Sync-NativeRegistration y SetStartup usan .operation.lock. Setup mantiene el
+mismo lock durante opciones/registro; rollback declara el lock que ya posee.
+Register lee la preferencia dentro de esa sección y no resucita un acceso que
+el usuario acabó de apagar. El fallo de borrar Run no crea otro acceso y avisa.
+Uninstall la retira solo tras terminar programa, registro, accesos y metadatos;
+si Windows niega borrar Run, avisa y completa el resto sin falso «Cierra Vantare».
+La recuperación sin registro exige el marker de limpieza ligado por hash y la
+identidad/carpeta explícitas del instalador. Se conservan valores/accesos ajenos.
 
 Paso 1c de #1840: el Hub escribe hub-ready antes de Register. Un fallo o lentitud
 se guarda en registration-status.json, propiedad del Hub; Ajustes muestra el aviso

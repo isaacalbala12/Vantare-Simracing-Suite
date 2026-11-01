@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "issue": "ISA-1840",
   "type": "fix",
-  "summary": "El inicio con Windows del Hub comparte el acceso del instalador y se retira al desinstalar.",
+  "summary": "El inicio con Windows comparte Startup con el instalador y migra la Run antigua sin duplicar arranques.",
   "technicalNotes": [
     "Paso 1a: el inventario instalado sale de su propio manifiesto, ligado por SHA-256 al estado; se retira la lista histórica congelada de 91 archivos.",
     "Los paquetes entrantes siguen exigiendo el inventario completo actual. Se conservan los controles de rutas conocidas, canal, archivos no enumerados, hashes, sidecars y puntos de reanálisis.",
@@ -16,8 +16,10 @@
     "Una petición sin qa se rechaza con causa explícita antes de buscar instalación. Las suites QA1492 no remapeadas se siguen aparte en #1848.",
     "Paso 1c: el Hub publica hub-ready antes de crear Register. Un fallo, fallo de creación o plazo de 30 segundos deja aviso en registration-status.json, sin cerrar la app ni provocar rollback.",
     "El ACK precede al mantenimiento DisplayVersion. Ajustes muestra el registro aparte; el documento del actualizador y su notificación no reciben mensajes de Register. Si no se guarda el aviso, se registra sin abortar.",
-    "Paso 1d: el Hub usa SetStartup del script de la generación instalada, con raíz explícita, proceso poseído y espera asíncrona. GPUI comparte autostart con el instalador sin reescribir data.",
-    "Activar Startup y desinstalar retiran el valor Run legado de la identidad instalada; se conservan otros valores y accesos ajenos. Una recuperación sin registro exige el marker de limpieza ligado por hash."
+    "Paso 1d: el Hub usa SetStartup del script de la generación instalada, con raíz explícita, proceso poseído y espera asíncrona. GPUI y legacy persisten la opción en la raíz, sin reescribir General/data.",
+    "Activar Startup y desinstalar retiran el valor Run legado de la identidad instalada; se conservan otros valores y accesos ajenos. Una recuperación sin registro exige el marker de limpieza ligado por hash.",
+    "La migración valida el comando de Run y respeta una preferencia existente. Register y el interruptor comparten el lock; una Run ajena con el mismo nombre se conserva.",
+    "Run solo se retira tras desinstalar correctamente; si Windows niega borrarla, se avisa y termina el resto. Mientras cambia inicio el Hub muestra progreso y solo bloquea ese interruptor."
   ],
   "testing": [
     "En QA aislada, pasar de una instalación de 109 archivos a una de 110, retirar un recurso en la siguiente, restaurar la anterior y desinstalar: todos los datos y las carpetas vacías de las tres generaciones se conservan.",
@@ -25,7 +27,8 @@
     "Cargar ambos scripts sin raíz o sin modo biblioteca debe fallar sin escribir. Comprobar variables del llamador intactas y rechazos de contexto QA ajeno.",
     "Repetir matriz de instalación y el histórico con el arnés aislado; rechazar los puntos de entrada históricos sin raíz, registro o shell.",
     "En matriz QA aislada, provocar fallo, bloqueo de Register y fallo del registro durante Confirm; comprobar app abierta, ACK confirmado, sin rollback y datos intactos. Repetir con WINDIR ausente, Run-BetaHub/Stage reales, ready concurrente y comprobación del hijo bloqueado recogido.",
-    "Instalar con autostart apagado, activar/desactivar desde el comando del Hub y desinstalar: sin Run/Startup, otros valores y todos los datos intactos. Probar enlace ajeno, fallo de opciones con restauración exacta y reanudación sin registro."
+    "Instalar con autostart apagado, activar/desactivar desde el comando del Hub y desinstalar: sin Run/Startup, otros valores y todos los datos intactos. Probar enlace ajeno, fallo de opciones con restauración exacta y reanudación sin registro.",
+    "En QA aislada, probar migración con ON/OFF o sin preferencia, bootstrap congelado, comandos ajenos, dos carreras con Register, desinstalación fallida y borrado Run denegado. Datos y carpetas vacías deben quedar intactos."
   ],
   "knownLimitations": [
     "Este cambio no renueva el bootstrap que ya quedó instalado en la raíz; los cambios de ese bootstrap siguen requiriendo Setup.",

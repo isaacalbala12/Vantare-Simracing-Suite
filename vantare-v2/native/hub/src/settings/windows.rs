@@ -110,13 +110,21 @@ impl Drop for StartupChange {
     }
 }
 
-/// Installer options are authoritative for GPUI installs; legacy installs keep
-/// their existing general preference until Setup creates these options.
+/// Installer UI wins; legacy migrations persist a small root preference.
 pub(super) fn installed_startup() -> Option<bool> {
-    let root = std::env::var_os("VANTARE_BETA_ROOT")?;
-    let bytes =
-        crate::files::read(&std::path::Path::new(&root).join("installer-ui.json"), 4096).ok()?;
-    startup_option(&bytes)
+    installed_startup_at(std::path::Path::new(&std::env::var_os(
+        "VANTARE_BETA_ROOT",
+    )?))
+}
+pub(super) fn installed_startup_at(root: &std::path::Path) -> Option<bool> {
+    let ui = root.join("installer-ui.json");
+    if ui.try_exists().ok()? {
+        return startup_option(&crate::files::read(&ui, 4096).ok()?);
+    }
+    let bytes = crate::files::read(&root.join("startup-options.json"), 1024).ok()?;
+    let option: serde_json::Value = serde_json::from_slice(&bytes).ok()?;
+    (option.as_object()?.len() == 2 && option["schema"] == 1).then_some(())?;
+    option["autostart"].as_bool()
 }
 fn startup_option(bytes: &[u8]) -> Option<bool> {
     let options: serde_json::Value = serde_json::from_slice(bytes).ok()?;

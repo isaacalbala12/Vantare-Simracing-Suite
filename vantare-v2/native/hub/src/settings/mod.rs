@@ -627,6 +627,7 @@ impl Hub {
             return;
         }
         self.settings.beta_checked = Instant::now();
+        self.refresh_startup_preference(cx);
         // This panel also reads registration-status, independently of updater changes.
         // Refresh only the visible panel at the existing bounded two-second cadence.
         if self.settings.page == Page::Updates {

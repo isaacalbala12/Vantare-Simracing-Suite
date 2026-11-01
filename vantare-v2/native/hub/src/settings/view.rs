@@ -573,7 +573,10 @@ impl Hub {
             ][index],
             label,
             on,
-            self.settings.general.is_ok(),
+            self.settings
+                .general
+                .as_ref()
+                .is_ok_and(|store| toggle.enabled(store.startup_pending())),
             cx,
         )
         .track_focus(&self.settings.general_focus[index])
@@ -614,6 +617,17 @@ impl Hub {
             if index == 0 && !cfg!(windows) {
                 continue;
             }
+            let help = if index == 0
+                && self
+                    .settings
+                    .general
+                    .as_ref()
+                    .is_ok_and(super::general::Store::startup_pending)
+            {
+                super::general::STARTUP_PROGRESS
+            } else {
+                help
+            };
             start = start.child(section_row(
                 label,
                 help,

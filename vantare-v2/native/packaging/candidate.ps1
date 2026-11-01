@@ -592,7 +592,7 @@ function Get-NativeShortcutFolder([string]$Name) {
     [Environment]::GetFolderPath([Environment+SpecialFolder]$Name, [Environment+SpecialFolderOption]::DoNotVerify)
 }
 
-function Write-NativeShortcutWarning([string]$Message) { Write-Warning $Message }
+function Write-NativeShortcutWarning([string]$Message) { Write-Warning $Message -WarningAction Continue }
 
 function Get-NativeProgramsFolder {
     $programs=Get-NativeShortcutFolder 'Programs'
@@ -682,8 +682,11 @@ function Invoke-NativeRegistrationTransaction([string]$Key,[string]$Folder,[stri
 
 # La clave estable permite que el bootstrap antiguo siga corrigiendo la versión
 # tras rollback. Solo cambia la identidad visible; nunca se trasladan datos.
-function Sync-NativeRegistration([string]$Directory, [string]$Version, $PreviousUi=$null,[string]$LaunchTarget,[switch]$StartupOnly) {
+function Sync-NativeRegistration([string]$Directory, [string]$Version, $PreviousUi=$null,[string]$LaunchTarget,[switch]$StartupOnly,[switch]$LockHeld) {
     $directory = Assert-NativePath $Directory
+    $registrationLock=$null
+    if(-not $LockHeld){$registrationLock=Open-NativeLock $directory}
+    try{
     if(-not $PSBoundParameters.ContainsKey('LaunchTarget')){$LaunchTarget=Get-NativeLaunchTarget $directory}
     $identity = 'VantareNativeBeta'
     $folder = 'Vantare'
@@ -713,9 +716,22 @@ function Sync-NativeRegistration([string]$Directory, [string]$Version, $Previous
         if ($name -cnotmatch '^[A-Za-z0-9][A-Za-z0-9 -]{0,63}$') { throw 'Carpeta de accesos inválida.' }
     }
     if ($folder -eq $legacyFolder) { throw 'Las carpetas de accesos deben ser diferentes.' }
+    $preference=Read-NativeStartupPreference $directory
+    # Rollback repairs an existing shortcut; Register/Setup own Run migration.
+    $legacyRun=if($StartupOnly){$null}else{Get-NativeLegacyRun $directory $identity}
+    $startupTarget=if(Test-NativeBackgroundScript (Join-Path $directory 'candidate.ps1')){$LaunchTarget}else{''}
+    $suppressStartup=$false
+    if($null -ne $legacyRun){
+        if($null -eq $preference){$preference=$true;Write-NativeStartupPreference $directory $true}
+    }
     if($StartupOnly){
-        # Rollback must repair this link before an older parser is launched.
-        Sync-NativeOptionalShortcuts $directory $folder @{desktop=$false;autostart=$true} -LaunchTarget $LaunchTarget -ExistingOnly
+        $suppressStartup=$null -ne $legacyRun -and -not(Remove-NativeLegacyRun $directory $identity)
+        if($suppressStartup -or ($null -ne $preference -and -not $preference)){
+            Sync-NativeOptionalShortcuts $directory $folder @{desktop=$false;autostart=$true} $true
+        }
+        if(-not $suppressStartup -and ($null -eq $preference -or $preference)){
+            Sync-NativeOptionalShortcuts $directory $folder @{desktop=$false;autostart=$true} -LaunchTarget $startupTarget -ExistingOnly
+        }
         return
     }
     # El NSIS anterior no conoce la carpeta nueva. La copia durable permite
@@ -779,40 +795,103 @@ function Sync-NativeRegistration([string]$Directory, [string]$Version, $Previous
     elseif($LaunchTarget){Set-ItemProperty -LiteralPath $key -Name DisplayIcon -Value ('"'+(Join-Path (Split-Path $LaunchTarget) 'vantare-hub.exe')+'",0')}
     if($Version){Set-ItemProperty -LiteralPath $key -Name DisplayVersion -Value $Version}
     Set-ItemProperty -LiteralPath $key -Name UninstallString -Value ('"' + $uninstallTarget + '" ' + $uninstallArgs)
+    # Mandatory writes have succeeded. Retire Run before creating Startup.
+    $suppressStartup=$null -ne $legacyRun -and -not(Remove-NativeLegacyRun $directory $identity)
+    if($suppressStartup -or ($null -ne $preference -and -not $preference)){
+        Sync-NativeOptionalShortcuts $directory $folder @{desktop=$false;autostart=$true} $true
+    }
     if($null -ne $PreviousUi -and $null -ne $installerUi){
         # Only previously enabled options are resolved when explicitly disabling them.
         Sync-NativeOptionalShortcuts $directory $folder @{desktop=($PreviousUi.desktop -and -not $installerUi.desktop);autostart=($PreviousUi.autostart -and -not $installerUi.autostart)} $true
     }
-    Sync-NativeOptionalShortcuts $directory $folder $installerUi -LaunchTarget $LaunchTarget
+    $optionalUi=if($null -ne $installerUi){@{desktop=$installerUi.desktop;autostart=$installerUi.autostart}}elseif($null -ne $preference){@{desktop=$false;autostart=$preference}}else{$null}
+    if($suppressStartup -and $null -ne $optionalUi){$optionalUi.autostart=$false}
+    if($null -ne $optionalUi){
+        Sync-NativeOptionalShortcuts $directory $folder @{desktop=$optionalUi.desktop;autostart=$false} -LaunchTarget $LaunchTarget
+        Sync-NativeOptionalShortcuts $directory $folder @{desktop=$false;autostart=$optionalUi.autostart} -LaunchTarget $startupTarget
+    }
     # NSIS did not persist desktop preferences. Migrate an existing owned link
     # even when /S leaves the option OFF; never create a new optional link here.
     if($null -eq $installerUi -or -not $installerUi.desktop){
         Sync-NativeOptionalShortcuts $directory $folder @{desktop=$true;autostart=$false} -LaunchTarget $LaunchTarget -ExistingOnly
     }
+    }finally{if($null -ne $registrationLock){$registrationLock.Dispose()}}
 }
 
-function Remove-NativeLegacyRun([string]$Directory,[string]$Identity='',[switch]$ConfirmedCleanup) {
+# Validate the exact legacy commands emitted by earlier Hubs. Never remove a
+# foreign value merely because it reuses our registry value name.
+function Test-NativeLegacyRunCommand([string]$Directory,[string]$Command) {
+    try {
+        $directory=Assert-NativePath $Directory
+        if($Command -match '^"([^"\r\n]+)" -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "([^"\r\n]+)" -Root "([^"\r\n]+)"$'){
+            return (Assert-NativePath $Matches[1]) -eq (Assert-NativePath (Join-Path $env:WINDIR 'System32/WindowsPowerShell/v1.0/powershell.exe')) -and
+                (Assert-NativePath $Matches[2]) -eq (Assert-NativePath (Join-Path $directory 'beta.ps1')) -and (Assert-NativePath $Matches[3]) -eq $directory
+        }
+        if($Command -match '^"([^"\r\n]+)"$'){
+            $exe=Assert-NativePath $Matches[1]
+            $prefix=$directory+[IO.Path]::DirectorySeparatorChar
+            if(-not $exe.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){return $false}
+            $relative=$exe.Substring($prefix.Length).Replace('\','/')
+            return $relative -imatch '^(generations/[a-f0-9]{32}/)?bin/vantare-hub\.exe$'
+        }
+    }catch{return $false}
+    return $false
+}
+
+function Get-NativeLegacyRun([string]$Directory,[string]$Identity='',[switch]$ConfirmedCleanup){
     if(-not $Identity){
         $marker=Join-Path $Directory 'registration-identity.txt'
         $Identity=if(Test-Path -LiteralPath $marker){[IO.File]::ReadAllText($marker).Trim()}else{'VantareNativeBeta'}
     }
     if($Identity -cnotmatch '^[A-Za-z0-9]{1,64}$'){throw 'Identidad de registro inválida.'}
     $registration=Get-ItemProperty -LiteralPath ('HKCU:/Software/Microsoft/Windows/CurrentVersion/Uninstall/'+$Identity) -ErrorAction SilentlyContinue
-    if($null -eq $registration -and -not $ConfirmedCleanup){return}
+    if($null -eq $registration -and -not $ConfirmedCleanup){return $null}
     if($null -ne $registration -and (Assert-NativePath $registration.InstallLocation) -ne (Assert-NativePath $Directory)){throw 'El registro pertenece a otra instalación.'}
     $name=if($Identity -ceq 'VantareNativeBeta'){'VantareNative.Hub'}else{$Identity+'.Hub'}
     $key='HKCU:/Software/Microsoft/Windows/CurrentVersion/Run'
     $run=Get-ItemProperty -LiteralPath $key -ErrorAction SilentlyContinue
-    if($null -ne $run -and $null -ne $run.PSObject.Properties[$name]){Remove-ItemProperty -LiteralPath $key -Name $name}
+    if($null -eq $run -or $null -eq $run.PSObject.Properties[$name]){return $null}
+    $command=$run.PSObject.Properties[$name].Value
+    if($command -isnot [string] -or -not(Test-NativeLegacyRunCommand $Directory $command)){return $null}
+    @{key=$key;name=$name;command=$command;identity=$Identity}
 }
 
-function Write-NativeInstallerOptions([string]$Directory,[byte[]]$Bytes){
-    $path=Join-Path $Directory 'installer-ui.json'
+function Remove-NativeLegacyRun([string]$Directory,[string]$Identity='',[switch]$ConfirmedCleanup) {
+    try{
+        $run=Get-NativeLegacyRun $Directory $Identity -ConfirmedCleanup:$ConfirmedCleanup
+        if($null -ne $run){Remove-ItemProperty -LiteralPath $run.key -Name $run.name -ErrorAction Stop}
+        return $true
+    }catch{
+        Write-NativeShortcutWarning ('No se pudo retirar el inicio Run de Vantare: '+$_.Exception.Message)
+        return $false
+    }
+}
+
+function Read-NativeStartupPreference([string]$Directory){
+    $ui=Read-NativeInstallerUi $Directory
+    if($null -ne $ui){return [bool]$ui.autostart}
+    $path=Join-Path $Directory 'startup-options.json'
+    if(-not(Test-Path -LiteralPath $path)){return $null}
+    if((Get-Item -LiteralPath $path).Length -gt 1024){throw 'Preferencia de inicio demasiado grande.'}
+    $option=[IO.File]::ReadAllText($path)|ConvertFrom-Json
+    if(@(Compare-Object @('schema','autostart') @($option.PSObject.Properties.Name) -CaseSensitive).Count -or $option.schema -ne 1 -or $option.autostart -isnot [bool]){throw 'Preferencia de inicio inválida.'}
+    [bool]$option.autostart
+}
+
+function Write-NativeInstallerOptions([string]$Directory,[byte[]]$Bytes,[ValidateSet('installer-ui.json','startup-options.json')][string]$Name='installer-ui.json'){
+    $path=Join-Path $Directory $Name
     $temp=Join-Path $Directory ('startup-'+[guid]::NewGuid().ToString('N')+'.tmp')
     try{
         [IO.File]::WriteAllBytes($temp,$Bytes)
-        [IO.File]::Replace($temp,$path,[System.Management.Automation.Language.NullString]::Value)
+        if(Test-Path -LiteralPath $path){[IO.File]::Replace($temp,$path,[System.Management.Automation.Language.NullString]::Value)}else{[IO.File]::Move($temp,$path)}
     }finally{if(Test-Path -LiteralPath $temp){Remove-Item -LiteralPath $temp}}
+}
+
+function Write-NativeStartupPreference([string]$Directory,[bool]$Enabled){
+    $ui=Read-NativeInstallerUi $Directory
+    if($null -ne $ui){$ui.autostart=$Enabled;$name='installer-ui.json';$option=$ui}
+    else{$name='startup-options.json';$option=@{schema=1;autostart=$Enabled}}
+    Write-NativeInstallerOptions $Directory ([Text.UTF8Encoding]::new($false).GetBytes(($option|ConvertTo-Json -Depth 5))) $name
 }
 
 function Set-NativeStartup([string]$Directory,[bool]$Enabled){
@@ -829,7 +908,9 @@ function Set-NativeStartup([string]$Directory,[bool]$Enabled){
         $folder=if($identity -ceq 'VantareNativeBeta'){'Vantare'}else{$registration.ShortcutFolder}
         if($folder -cnotmatch '^[A-Za-z0-9][A-Za-z0-9 -]{0,63}$'){throw 'Carpeta de accesos inválida.'}
         $ui=Read-NativeInstallerUi $directory
-        $uiBytes=if($null -ne $ui){[IO.File]::ReadAllBytes((Join-Path $directory 'installer-ui.json'))}else{$null}
+        $optionsName=if($null -ne $ui){'installer-ui.json'}else{'startup-options.json'}
+        $optionsPath=Join-Path $directory $optionsName
+        $uiBytes=if(Test-Path -LiteralPath $optionsPath){[IO.File]::ReadAllBytes($optionsPath)}else{$null}
         $parent=Get-NativeShortcutFolder 'Startup'
         if([string]::IsNullOrWhiteSpace($parent)){throw 'Windows no ofrece la carpeta Startup.'}
         $path=Join-Path $parent ($folder+'.lnk')
@@ -838,20 +919,24 @@ function Set-NativeStartup([string]$Directory,[bool]$Enabled){
         if($existed -and -not(Test-NativeShortcutOwned ($shell.CreateShortcut($path)) $directory)){throw 'El acceso Startup pertenece a otra instalación; se conserva.'}
         $linkBytes=if($existed){[IO.File]::ReadAllBytes($path)}else{$null}
         $launchTarget=if(Test-NativeBackgroundScript (Join-Path $directory 'candidate.ps1')){Get-NativeLaunchTarget $directory}else{''}
+        $legacyRun=Get-NativeLegacyRun $directory $identity
+        $runRemoved=$false
         try{
+            if($null -ne $legacyRun){
+                if(-not(Remove-NativeLegacyRun $directory $identity)){throw 'No se pudo retirar Run; no se crea otro inicio.'}
+                $runRemoved=$true
+            }
             Sync-NativeOptionalShortcuts $directory $folder @{desktop=$false;autostart=$true} (-not $Enabled) -LaunchTarget $launchTarget
             if((Test-Path -LiteralPath $path) -ne $Enabled -or ($Enabled -and -not(Test-NativeShortcutOwned ($shell.CreateShortcut($path)) $directory))){throw 'No se pudo cambiar el acceso Startup.'}
-            if($null -ne $ui){
-                $ui.autostart=$Enabled
-                Write-NativeInstallerOptions $directory ([Text.UTF8Encoding]::new($false).GetBytes(($ui|ConvertTo-Json -Depth 5)))
-            }
-            Remove-NativeLegacyRun $directory $identity
+            Write-NativeStartupPreference $directory $Enabled
         }catch{
             $failure=$_
             try{
                 if($null -ne $linkBytes){[IO.File]::WriteAllBytes($path,$linkBytes)}
                 elseif((Test-Path -LiteralPath $path) -and (Test-NativeShortcutOwned ($shell.CreateShortcut($path)) $directory)){Remove-Item -LiteralPath $path}
-                if($null -ne $uiBytes){Write-NativeInstallerOptions $directory $uiBytes}
+                if($null -ne $uiBytes){Write-NativeInstallerOptions $directory $uiBytes $optionsName}
+                elseif(Test-Path -LiteralPath $optionsPath){Remove-Item -LiteralPath $optionsPath}
+                if($runRemoved -and $null -eq $linkBytes){New-ItemProperty -LiteralPath $legacyRun.key -Name $legacyRun.name -Value $legacyRun.command -PropertyType String -Force|Out-Null}
             }catch{Write-Warning ('No se pudo restaurar el inicio con Windows: '+$_.Exception.Message)}
             throw $failure
         }
@@ -886,11 +971,14 @@ function Uninstall-NativeRegistration([string]$Directory,[bool]$DeferUninstaller
     }
     if ($folder -cnotmatch '^[A-Za-z0-9][A-Za-z0-9 -]{0,63}$') { throw 'Carpeta de accesos inválida.' }
     $installerUi=Read-NativeInstallerUi $directory
-    # Missing registration is accepted only by the hash-bound cleanup recovery
-    # validated above, with the installer's explicit identity and folder.
-    Remove-NativeLegacyRun $directory $identity -ConfirmedCleanup:($null -eq $registration)
     if (Test-Path -LiteralPath (Join-Path $directory 'state.json')) {
-        & (Join-Path $env:WINDIR 'System32/WindowsPowerShell/v1.0/powershell.exe') -NoProfile -ExecutionPolicy Bypass -File (Join-Path $directory 'beta.ps1') -Operation Uninstall -Root $directory
+        $betaScript=Join-Path $directory 'beta.ps1'
+        $deferRun=@()
+        # New beta can defer cleanup to this outer finalizer. Frozen bootstraps
+        # predate Run cleanup and keep their original CLI unchanged.
+        $header=[IO.File]::ReadAllText($betaScript)
+        if($header.Contains('# vantare-uninstall-capabilities: defer-run-v1')){$deferRun=@('-KeepLegacyRun')}
+        & (Join-Path $env:WINDIR 'System32/WindowsPowerShell/v1.0/powershell.exe') -NoProfile -ExecutionPolicy Bypass -File $betaScript -Operation Uninstall -Root $directory @deferRun
         if ($LASTEXITCODE) { throw 'Cierra Vantare antes de desinstalar. Tus datos se conservan.' }
     }
     $target = Join-Path (Get-NativeProgramsFolder) $folder
@@ -916,11 +1004,15 @@ function Uninstall-NativeRegistration([string]$Directory,[bool]$DeferUninstaller
         else{Write-NativeJson $marker @{schema=1; sha256=$installerUi.sha256}}
     }
     if($null -ne $registration){Remove-Item -LiteralPath $key}
-    foreach ($name in @('beta.ps1', 'candidate.ps1', 'registration-identity.txt', 'Uninstall.exe', 'uninstall-vantare.ps1','installer-ui.json','installer-notices.txt')) {
+    foreach ($name in @('beta.ps1', 'candidate.ps1', 'registration-identity.txt', 'Uninstall.exe', 'uninstall-vantare.ps1','installer-ui.json','startup-options.json','installer-notices.txt')) {
         if($name -ceq 'Uninstall.exe' -and $DeferUninstaller){continue}
         $path = Join-Path $directory $name
         if (Test-Path -LiteralPath $path) { Remove-Item -LiteralPath $path }
     }
+    # Registration/shortcuts/owned metadata have all been finalized. The identity
+    # and root were validated above; re-read the command before removing Run.
+    $null=Remove-NativeLegacyRun $directory $identity -ConfirmedCleanup
+
 }
 
 function Assert-NativeGeneration([string]$Directory, $Reference, [string]$Channel, [bool]$VerifyFiles) {
@@ -1078,7 +1170,7 @@ function Restore-NativeCandidate([string]$Directory) {
             $next = [ordered]@{ schema = 1; product = 'vantare-native'; channel = $state.channel; active = $state.previous; previous = $state.active }
             Set-NativeState $directory $next
         } finally { foreach ($handle in $handles.Values) { $handle.Dispose() } }
-        Sync-NativeRegistration $directory '' -StartupOnly
+        Sync-NativeRegistration $directory '' -StartupOnly -LockHeld
         Read-NativeState $directory
     } finally { $lock.Dispose() }
 }
@@ -1251,7 +1343,7 @@ switch ($NativeCommand) {
         $state=Read-NativeState $NativeRoot
         $generation=Join-Path $NativeRoot "generations/$($state.active.generation)"
         if((Get-NativeHash $PSCommandPath) -cne (Get-NativeHash (Join-Path $generation 'candidate.ps1'))){throw 'El inicio requiere el script de la generación activa.'}
-        Set-NativeStartup $NativeRoot ($NativeStartup -ceq 'On')
+        Set-NativeStartup $NativeRoot ($NativeStartup -ieq 'On')
     }
     'UninstallInstalled' { Uninstall-NativeRegistration $NativeRoot }
     'Register' {

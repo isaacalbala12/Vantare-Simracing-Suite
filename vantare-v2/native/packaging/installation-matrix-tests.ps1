@@ -165,7 +165,7 @@ try {
         $startup=Invoke-NativeProcess -Executable "$env:WINDIR/System32/WindowsPowerShell/v1.0/powershell.exe" -Arguments @(
             '-NoProfile','-ExecutionPolicy','Bypass','-File',(Join-Path $PSScriptRoot 'matrix/startup-tests.ps1'),
             '-Root',(Join-Path $qaMatrixRoot 'startup'),'-TestVerifier',$TestVerifier
-        ) -TimeoutMilliseconds 120000 -LogPath (Join-Path $qaMatrixRoot 'startup.log')
+        ) -TimeoutMilliseconds 240000 -LogPath (Join-Path $qaMatrixRoot 'startup.log')
         if($startup.ExitCode -ne 0){throw ('MATRIX_STARTUP_FAILED: '+$startup.Stderr)}
         $startup.Stdout
     }finally{$env:TEMP=$savedStartupTemp;$env:TMP=$savedStartupTmp;$env:LOCALAPPDATA=$savedStartupLocal}

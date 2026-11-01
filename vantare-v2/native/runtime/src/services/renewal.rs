@@ -278,10 +278,7 @@ mod tests {
                 Err(Skip::Backoff)
             );
             assert_eq!(r.claim(&p, 1000, end), Ok(()));
-            assert!(
-                p.state.permits_access(),
-                "transport cannot revoke the policy"
-            );
+            assert!(!r.blocked, "transport cannot stop automatic retries");
             now = end;
         }
         r.completed(RenewalOutcome::Verified, now);
@@ -616,6 +613,8 @@ mod tests {
         );
         r.completed(RenewalOutcome::Verified, now);
         assert_eq!(r.claim(&p, 1000, now + MINUTE), Err(Skip::NotDue));
+        p.signed_until_ms = Some(1000 + 30 * 86_400_000);
+        assert_eq!(r.claim(&p, 1000, now + DAY), Err(Skip::NotDue));
         p.signed_until_ms = Some(1000 + RENEW_AHEAD_MS + 1);
         assert_eq!(r.claim(&p, 1000, now + MINUTE), Err(Skip::NotDue));
         p.signed_until_ms = Some(1000 + RENEW_AHEAD_MS);
@@ -632,7 +631,7 @@ mod tests {
     }
 
     #[test]
-    fn restored_free_checks_for_external_purchases_once_without_polling_forever() {
+    fn restored_free_uses_shared_startup_and_daily_discovery() {
         let now = Instant::now();
         let p = Policy {
             state: vantare_ipc::control::AccessState::Active,
@@ -644,6 +643,7 @@ mod tests {
         r.completed(RenewalOutcome::Verified, now);
         assert_eq!(r.claim(&p, 1000, now + MINUTE), Err(Skip::NotDue));
         assert_eq!(r.claim(&p, 1000, now + MINUTE * 60), Err(Skip::NotDue));
+        assert_eq!(r.claim(&p, 1000, now + DAY), Ok(()));
     }
 
     #[test]

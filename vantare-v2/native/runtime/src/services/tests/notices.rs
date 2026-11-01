@@ -1,6 +1,50 @@
 use super::*;
 
 #[test]
+fn slow_no_deadline_success_anchors_the_full_day_at_dispatch_completion() {
+    let mut state = State::default();
+    state.renewal.observe(&confirmed_session());
+    let now = Instant::now();
+    let completed = now + Duration::from_mins(2);
+    let policy = control::Policy {
+        version: control::VERSION,
+        revision: 1,
+        checked_at_ms: 1000,
+        state: control::AccessState::Active,
+        ..control::Policy::default()
+    };
+    let reply = || Reply::License {
+        policy: policy.clone(),
+        message: String::new(),
+    };
+    assert!(
+        run_renewal_with_clock(&mut state, &policy, 1000, now, |_, _| reply(), || completed)
+            .is_some()
+    );
+    for early in [
+        now + Duration::from_hours(24),
+        completed + Duration::from_mins(1439),
+    ] {
+        assert!(
+            run_renewal(&mut state, &policy, 1000, early, |_, _| panic!(
+                "too early after slow success"
+            ))
+            .is_none()
+        );
+    }
+    assert!(
+        run_renewal(
+            &mut state,
+            &policy,
+            1000,
+            completed + Duration::from_hours(24),
+            |_, _| reply()
+        )
+        .is_some()
+    );
+}
+
+#[test]
 fn helper_restart_and_hub_reconnect_preserve_no_deadline_backoff_and_daily_check() {
     let Fixture {
         root,
@@ -11,24 +55,18 @@ fn helper_restart_and_hub_reconnect_preserve_no_deadline_backoff_and_daily_check
     } = Fixture::new();
     let mut hub = Session::open(&photo);
     let now = Instant::now();
+    let retained = protocol::LicenseNotice::DeviceLimit {
+        message: "fixture limit".into(),
+    };
     {
         let mut state = services.state.lock().expect("state");
         state.core_retry_at = Some(now + Duration::from_hours(72));
         state.renewal.observe(&confirmed_session());
+        state.notice = Some(retained.clone());
     }
     assert!(matches!(hub.request(Command::Status), Reply::Status { .. }));
     let mut policy = control::request(&link, control::Command::Read).expect("core");
     policy.signed_until_ms = None;
-    let result = |outcome| match outcome {
-        protocol::RenewalOutcome::Verified => Reply::License {
-            policy: policy.clone(),
-            message: String::new(),
-        },
-        _ => Reply::LicenseFailure {
-            outcome,
-            message: "fixture offline".into(),
-        },
-    };
     let mut attempts = 0;
     for (minute, outcome) in [
         (0, protocol::RenewalOutcome::Transient),
@@ -46,7 +84,7 @@ fn helper_restart_and_hub_reconnect_preserve_no_deadline_backoff_and_daily_check
                 |_, command| {
                     assert!(matches!(command, Command::LicenseRenewAutomatic));
                     attempts += 1;
-                    result(outcome)
+                    cadence_reply(&policy, outcome)
                 },
                 || now + Duration::from_mins(minute),
             );
@@ -57,7 +95,7 @@ fn helper_restart_and_hub_reconnect_preserve_no_deadline_backoff_and_daily_check
         hub = Session::open(&photo);
         assert!(matches!(
             hub.request(Command::LicenseStatus),
-            Reply::LicenseStatus { .. }
+            Reply::LicenseStatus { notice, .. } if notice == (outcome != protocol::RenewalOutcome::Verified).then(|| retained.clone())
         ));
         assert!(services.state.lock().expect("state").client.is_none());
         assert!(matches!(hub.request(Command::Status), Reply::Status { .. }));
@@ -90,7 +128,7 @@ fn helper_restart_and_hub_reconnect_preserve_no_deadline_backoff_and_daily_check
                 now + Duration::from_mins(7) + Duration::from_hours(24),
                 |_, _| {
                     attempts += 1;
-                    result(protocol::RenewalOutcome::Verified)
+                    cadence_reply(&policy, protocol::RenewalOutcome::Verified)
                 }
             )
             .is_some()
@@ -517,5 +555,58 @@ fn notice_is_retained_until_confirmed_login_reset_or_verified_renewal() {
     assert!(
         state.notice.is_none(),
         "confirmed reset supersedes the notice"
+    );
+}
+
+fn cadence_reply(policy: &control::Policy, outcome: protocol::RenewalOutcome) -> Reply {
+    match outcome {
+        protocol::RenewalOutcome::Verified => Reply::License {
+            policy: policy.clone(),
+            message: String::new(),
+        },
+        _ => Reply::LicenseFailure {
+            outcome,
+            message: "fixture offline".into(),
+        },
+    }
+}
+
+#[test]
+fn manual_verified_no_deadline_reply_delays_the_next_automatic_check() {
+    let mut state = State::default();
+    state.renewal.observe(&confirmed_session());
+    let policy = control::Policy {
+        version: control::VERSION,
+        revision: 1,
+        checked_at_ms: 1000,
+        state: control::AccessState::Active,
+        ..control::Policy::default()
+    };
+    let signing: SigningIn = Arc::new(Mutex::new(None));
+    let before = Instant::now();
+    handle_with(&mut state, Command::LicenseRenew, &signing, |_, _| {
+        cadence_reply(&policy, protocol::RenewalOutcome::Verified)
+    });
+    let after = Instant::now();
+    // Bound completion between two clock observations, without sleeps or races.
+    assert!(
+        run_renewal(
+            &mut state,
+            &policy,
+            1000,
+            before + Duration::from_mins(1439),
+            |_, _| panic!("manual success already checked")
+        )
+        .is_none()
+    );
+    assert!(
+        run_renewal(
+            &mut state,
+            &policy,
+            1000,
+            after + Duration::from_hours(24),
+            |_, _| cadence_reply(&policy, protocol::RenewalOutcome::Verified)
+        )
+        .is_some()
     );
 }

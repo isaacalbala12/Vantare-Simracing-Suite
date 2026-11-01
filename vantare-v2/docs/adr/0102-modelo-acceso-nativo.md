@@ -73,6 +73,13 @@ silenciosa. No se baja una lápida sana ni se amplían plazos al reanclar reloj.
    esa fila, marcada de antemano por el orquestador.
 5. Credencial v2 no planificada: se retira en el paso 11 salvo objeción de Isaac.
 
+El corte A del paso 11 ejecuta la decisión 5: solo queda Ed25519 v1, sin JWS,
+clave Installation ni vencimiento de sobre. No se borran archivos históricos.
+`signed_until_ms` procede exclusivamente de los grants v1 que afectan a la
+política; sin fecha firmada se aplica arranque/24 h. Gratis tras vencer un grant
+temporal puede seguir sin plazo, igual que las credenciales v1 ya existentes.
+Las matrices de caracterización y los formatos de binding/authority no cambian.
+
 ## Consecuencias y verificación
 
 El paso 0 fija nightly, incluidos comportamientos que cambiarán a propósito.

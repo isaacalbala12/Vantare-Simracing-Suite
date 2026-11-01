@@ -1,3 +1,28 @@
+<!-- isa1827-simplificar-worker -->
+## VANTA-126 / #1827 — simplificación A–E en ejecución (1-nov-2026)
+
+Base `origin/nightly@056ec9d9487353a24b017c11eed287b57f3cf149`: pasos 0–10,
+incluido 6b, integrados por el orquestador. Las entregas históricas inferiores
+conservan la evidencia de sus ramas; no describen el estado de integración actual.
+
+- Encargo autorizado: A retira v2; B reúne Authority/catalog/Verifier en
+  runtime::rights; C unifica Store; D simplifica código y README; E convierte
+  Authentication de emisión automática en NeedsSignIn, conservando la firma.
+- A en `vantareapp/isa-1827-simplificar-rights`, worktree
+  `C:/VantareServer/wt/isa-1827-simplificar`. Target privado
+  `D:/VantareServer/targets/isa-1827-s`. Sin PR todavía; gates en curso.
+- Retirados JWS, clave Installation y vencimiento de sobre. Fixture diaria
+  Founders v1 real, sin modificar Policy a mano. Matrices de caracterización
+  intactas; pruebas exclusivas de v2 sustituidas/retiradas con justificación en
+  [la evidencia de simplificación](../license-simplification-evidence.md).
+- Contador físico reproducible por fichero/crate y perímetro fijo del recorrido.
+  Cifras finales, mutaciones y gates pendientes antes de entregar A.
+- B autorizado a retirar la firma duplicada de services conservando el resultado
+  tipado del núcleo; ningún claim sin ACK podrá usarse para decidir o mostrar.
+- CI la vigila el orquestador. Plane intacto. Sin merge, release, instalaciones,
+  producción, datos reales ni secretos. Harness medium heredado; no se afirma high.
+<!-- /isa1827-simplificar-worker -->
+
 <!-- isa1827-p10-worker -->
 ## VANTA-126 / #1827 — Paso 10 listo para revisión (2026-11-01)
 

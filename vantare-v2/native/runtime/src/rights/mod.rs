@@ -21,25 +21,14 @@ pub fn wall_now() -> DateTime<Utc> {
     std::time::SystemTime::now().into()
 }
 
-fn local_devices(root: &Path) -> Devices {
-    // Cada identidad falla por separado: v1 no depende del archivo de v2.
-    let legacy =
-        vantare_services::license::installation::legacy_fingerprint().unwrap_or_else(|error| {
-            eprintln!("núcleo: identidad legacy no disponible: {error}");
-            String::new()
-        });
-    let installation = (|| -> Result<String> {
-        let installation_root = root.parent().ok_or(Error::Storage)?;
-        let store = Store::open(installation_root, "core-installation-v1")?;
-        Ok(vantare_services::license::installation::Installation::load_or_create(&store)?.key_id())
-    })()
-    .unwrap_or_else(|error| {
-        eprintln!("núcleo: identidad de instalación no disponible: {error}");
-        String::new()
-    });
+fn local_devices() -> Devices {
     Devices {
-        legacy,
-        installation,
+        legacy: vantare_services::license::installation::legacy_fingerprint().unwrap_or_else(
+            |error| {
+                eprintln!("núcleo: identidad legacy no disponible: {error}");
+                String::new()
+            },
+        ),
     }
 }
 
@@ -61,10 +50,9 @@ pub fn production(
     let keys = option_env!("VANTARE_LICENSE_PUBLIC_KEYS").filter(|keys| !keys.is_empty());
     let mut devices = Devices {
         legacy: String::new(),
-        installation: String::new(),
     };
     if keys.is_some() {
-        devices = local_devices(&root);
+        devices = local_devices();
     }
     let image = std::env::current_exe()?;
     let helper = image.with_file_name("vantare-services.exe");
@@ -104,7 +92,6 @@ struct Binding {
 
 pub struct Devices {
     pub legacy: String,
-    pub installation: String,
 }
 pub struct Owner {
     store: Store,
@@ -221,23 +208,20 @@ impl Owner {
         if text.len() > 32 * 1024 {
             return Err(Error::TooLarge);
         }
-        if text.starts_with('{') {
-            if self.devices.legacy.is_empty() {
-                // Missing local identity is not evidence against a signed cache.
-                return Err(Error::Unconfigured);
-            }
-            let credential: CredentialV1 =
-                serde_json::from_str(text).map_err(|_| Error::InvalidCredential)?;
-            // El UUID procede de claims verificados, nunca de email/metadata/booleanos IPC.
-            verifier.v1(
-                &credential,
-                &credential.claims.subject,
-                &self.devices.legacy,
-            )
-        } else {
-            verifier.proof(text, &self.devices.legacy, &self.devices.installation)
+        if self.devices.legacy.is_empty() {
+            // Missing local identity is not evidence against a signed cache.
+            return Err(Error::Unconfigured);
         }
+        let credential: CredentialV1 =
+            serde_json::from_str(text).map_err(|_| Error::InvalidCredential)?;
+        // El UUID procede de claims verificados, nunca de email/metadata/booleanos IPC.
+        verifier.v1(
+            &credential,
+            &credential.claims.subject,
+            &self.devices.legacy,
+        )
     }
+
     pub fn install(&mut self, text: String, now: DateTime<Utc>, tick: Duration) -> Result<()> {
         self.install_from(text, now, tick, false)
     }
@@ -450,17 +434,11 @@ impl Owner {
         let effective_until_ms = self
             .authority
             .next_deadline(&decision_rights)
-            .into_iter()
-            .chain(self.authority.credential_deadline())
-            .min()
             .map(|end| u64::try_from(end.timestamp_millis()).map_err(|_| Error::Clock))
             .transpose()?;
         self.policy.signed_until_ms = self
             .authority
             .signed_deadline(&decision_rights)
-            .into_iter()
-            .chain(self.authority.credential_deadline())
-            .min()
             .map(|end| u64::try_from(end.timestamp_millis()).map_err(|_| Error::Clock))
             .transpose()?;
         debug_assert!(

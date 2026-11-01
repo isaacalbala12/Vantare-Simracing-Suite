@@ -1,14 +1,95 @@
 use super::*;
 use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
 use ed25519_dalek::{Signer, SigningKey};
-use vantare_services::license::{Capability, ClaimsV1, ClaimsV2};
+use vantare_services::license::{Capability, ClaimsV1};
 
 mod characterization;
 mod pause;
 
+#[test]
+fn retired_v2_is_rejected_online_and_quarantined_on_restore_without_losing_v1() {
+    let root = test_root();
+    let (credential, keys) = signed_v1(100, vec![]);
+    let key = SigningKey::from_bytes(&[7; 32]);
+    let keys = format!(
+        "{keys},retired:{}",
+        URL_SAFE_NO_PAD.encode(key.verifying_key().as_bytes())
+    );
+    let mut owner = Owner::open(&root, Some(&keys), devices(), 1, wall(110)).expect("owner");
+    owner
+        .install(credential.clone(), wall(110), Duration::ZERO)
+        .expect("v1");
+    // A correctly signed retired JWS still cannot enter the current verifier.
+    let header =
+        URL_SAFE_NO_PAD.encode(br#"{"alg":"Ed25519","kid":"retired","typ":"vantare-license+jwt"}"#);
+    let claims = URL_SAFE_NO_PAD.encode(
+        serde_json::to_vec(&serde_json::json!({
+            "version":2,"iss":"vantare-license","aud":"vantare-native",
+            "sub":"550e8400-e29b-41d4-a716-446655440000",
+            "device_key_id":"retired-installation","iat":100,"exp":1000,"capabilities":[]
+        }))
+        .expect("claims"),
+    );
+    let payload = format!("{header}.{claims}");
+    let retired = format!(
+        "{payload}.{}",
+        URL_SAFE_NO_PAD.encode(key.sign(payload.as_bytes()).to_bytes())
+    );
+    for text in [
+        retired.clone(),
+        credential.replace("\"version\":1", "\"version\":2"),
+    ] {
+        assert_eq!(
+            owner.install_online(text, wall(110), Duration::ZERO),
+            Err(Error::InvalidCredential)
+        );
+        assert!(
+            owner
+                .advance(&Snapshot::default(), wall(110), Duration::ZERO)
+                .expect("v1 preserved")
+                .state
+                .permits_access()
+        );
+    }
+    owner
+        .store
+        .save(
+            "binding",
+            &Binding {
+                version: 1,
+                credential: retired,
+                subject: "550e8400-e29b-41d4-a716-446655440000".into(),
+                device: devices().legacy,
+            },
+        )
+        .expect("retired cache");
+    drop(owner);
+    let mut restored = Owner::open(&root, Some(&keys), devices(), 2, wall(110)).expect("restore");
+    assert!(restored.binding.is_none());
+    assert!(
+        !restored
+            .advance(&Snapshot::default(), wall(110), Duration::ZERO)
+            .expect("denied")
+            .state
+            .permits_access()
+    );
+    // Quarantine does not alter authority: the original v1 can still be restored.
+    restored
+        .install(credential, wall(110), Duration::ZERO)
+        .expect("v1 after quarantine");
+    assert!(
+        restored
+            .advance(&Snapshot::default(), wall(110), Duration::ZERO)
+            .expect("v1")
+            .state
+            .permits_access()
+    );
+    drop(restored);
+    clean(&root);
+}
+
 fn signed(expiry: i64, issued: i64) -> (String, String) {
-    signed_modules(
-        expiry + 7200,
+    signed_v1(
         issued,
         vec![Capability {
             key: "vantare.operational.owner".into(),
@@ -18,42 +99,9 @@ fn signed(expiry: i64, issued: i64) -> (String, String) {
         }],
     )
 }
-fn signed_modules(expiry: i64, issued: i64, capabilities: Vec<Capability>) -> (String, String) {
-    let mut seed = [0; 32];
-    getrandom::fill(&mut seed).expect("entropía local");
-    let key = SigningKey::from_bytes(&seed);
-    let claims = ClaimsV2 {
-        version: 2,
-        iss: "vantare-license".into(),
-        aud: "vantare-native".into(),
-        sub: "550e8400-e29b-41d4-a716-446655440000".into(),
-        device_key_id: "test-installation".into(),
-        iat: u64::try_from(issued).expect("iat"),
-        exp: u64::try_from(expiry).expect("exp"),
-        capabilities,
-    };
-    let header = URL_SAFE_NO_PAD.encode(
-        serde_json::to_vec(
-            &serde_json::json!({"alg":"Ed25519","kid":"test","typ":"vantare-license+jwt"}),
-        )
-        .expect("header"),
-    );
-    let body = URL_SAFE_NO_PAD.encode(serde_json::to_vec(&claims).expect("claims"));
-    let payload = format!("{header}.{body}");
-    let credential = format!(
-        "{payload}.{}",
-        URL_SAFE_NO_PAD.encode(key.sign(payload.as_bytes()).to_bytes())
-    );
-    let keys = format!(
-        "test:{}",
-        URL_SAFE_NO_PAD.encode(key.verifying_key().as_bytes())
-    );
-    (credential, keys)
-}
 fn devices() -> Devices {
     Devices {
         legacy: "test-legacy".into(),
-        installation: "test-installation".into(),
     }
 }
 
@@ -638,7 +686,6 @@ fn no_other_grace_invalid_signature_wrong_binding_and_clock_rollback_deny() {
         &root,
         Some(&keys),
         Devices {
-            installation: "wrong-installation".into(),
             legacy: "wrong-legacy".into(),
         },
         1,
@@ -804,7 +851,7 @@ fn fetch_credential(credential: &str) -> String {
 
 #[test]
 #[allow(clippy::too_many_lines)] // Matriz única de credenciales firmadas y sus capacidades independientes.
-fn beta_signed_credential_matrix_and_exact_empty_envelope_expiry() {
+fn v1_signed_credential_matrix_and_perpetual_empty_license() {
     let start = 1_790_800_000;
     for (capability, expected) in [
         (None, [false; 4]),
@@ -819,7 +866,7 @@ fn beta_signed_credential_matrix_and_exact_empty_envelope_expiry() {
         (Some("vantare.edition.launch_v1"), [false; 4]),
     ] {
         let grants = beta_grants(capability, start);
-        let (credential, keys) = signed_modules(start + 10, start - 1, grants);
+        let (credential, keys) = signed_v1(start - 1, grants);
         let root = test_root();
         let mut owner = Owner::open(&root, Some(&keys), devices(), 1, wall(start)).expect("abrir");
         let anonymous = owner
@@ -854,18 +901,15 @@ fn beta_signed_credential_matrix_and_exact_empty_envelope_expiry() {
         );
         assert_eq!(
             policy.effective_until_ms(),
-            Some(
-                u64::try_from(
-                    start
-                        + if capability == Some("vantare.plan.pro") {
-                            3
-                        } else {
-                            10
-                        }
-                )
-                .expect("fecha")
-                    * 1000
-            )
+            match capability {
+                Some("vantare.plan.pro") => Some((start + 3).cast_unsigned() * 1000),
+                Some(
+                    "vantare.operational.owner"
+                    | "vantare.operational.tester"
+                    | "vantare.operational.nightly_tester",
+                ) => Some((start + 10).cast_unsigned() * 1000),
+                _ => None,
+            }
         );
         export_capture_policy(capability, &policy);
         // Caché válida tras restaurar, sin consulta de red ni derechos inventados.
@@ -886,7 +930,7 @@ fn beta_signed_credential_matrix_and_exact_empty_envelope_expiry() {
                 Duration::from_secs(9),
             )
             .expect("caducidad exacta");
-        assert!(!expired.state.permits_access());
+        assert!(expired.state.permits_access(), "v1 has no envelope expiry");
         assert_eq!(
             [
                 expired.engineer,
@@ -894,7 +938,11 @@ fn beta_signed_credential_matrix_and_exact_empty_envelope_expiry() {
                 expired.analysis,
                 expired.calendar
             ],
-            [false; 4]
+            if capability.is_some_and(|key| key.starts_with("vantare.module.")) {
+                expected
+            } else {
+                [false; 4]
+            }
         );
         assert!(
             owner
@@ -914,7 +962,13 @@ fn beta_signed_credential_matrix_and_exact_empty_envelope_expiry() {
                 error.analysis,
                 error.calendar
             ],
-            [false; 5]
+            [
+                true,
+                expired.engineer,
+                expired.strategy,
+                expired.analysis,
+                expired.calendar,
+            ]
         );
         drop(owner);
         clean(&root);
@@ -988,7 +1042,7 @@ fn founders_alone_enables_all_modules_offline_until_revoked() {
 fn launch_v1_signed_credentials_keep_the_cutoff_offline_and_at_pro_expiry() {
     use vantare_ipc::control::CatalogAccess;
     let start = 1_790_800_000;
-    for legacy in [true, false] {
+    {
         let mut grants: Vec<_> = [
             "vantare.edition.launch_v1",
             "vantare.module.calendar",
@@ -1001,11 +1055,7 @@ fn launch_v1_signed_credentials_keep_the_cutoff_offline_and_at_pro_expiry() {
         .flat_map(|key| beta_grants(Some(key), start))
         .collect();
         grants.sort_by(|a, b| a.key.cmp(&b.key));
-        let (credential, keys) = if legacy {
-            signed_v1(start - 1, grants)
-        } else {
-            signed_modules(start + 100, start - 1, grants)
-        };
+        let (credential, keys) = signed_v1(start - 1, grants);
         let root = test_root();
         let mut owner = Owner::open(&root, Some(&keys), devices(), 1, wall(start)).expect("abrir");
         owner
@@ -1091,18 +1141,9 @@ fn cached_credential_keeps_overlays_and_modules_during_unreachable_server_hours(
             .is_err(),
         "servidor inalcanzable"
     );
-    for (capability, legacy) in [
-        (None, true),
-        (Some("vantare.module.strategy"), true),
-        (None, false),
-        (Some("vantare.module.strategy"), false),
-    ] {
+    for capability in [None, Some("vantare.module.strategy")] {
         let grants = beta_grants(capability, start);
-        let (credential, keys) = if legacy {
-            signed_v1(start - 1, grants)
-        } else {
-            signed_modules(start + 3 * 86400, start - 1, grants)
-        };
+        let (credential, keys) = signed_v1(start - 1, grants);
         let root = test_root();
         let mut owner = Owner::open(&root, Some(&keys), devices(), 1, wall(start)).expect("abrir");
         owner
@@ -1119,9 +1160,8 @@ fn cached_credential_keeps_overlays_and_modules_during_unreachable_server_hours(
                     Duration::from_secs(u64::try_from(seconds).expect("duración")),
                 )
                 .expect("sin red");
-            let active = legacy || seconds < 3 * 86400;
-            assert_eq!(policy.state.permits_access(), active);
-            assert_eq!(policy.strategy, capability.is_some() && active);
+            assert!(policy.state.permits_access());
+            assert_eq!(policy.strategy, capability.is_some());
             assert!(!policy.engineer && !policy.analysis && !policy.calendar);
         }
         drop(owner);
@@ -1130,66 +1170,10 @@ fn cached_credential_keeps_overlays_and_modules_during_unreachable_server_hours(
 }
 
 #[test]
-fn unreadable_installation_preserves_only_a_supported_legacy_device() {
-    let root = test_root();
-    let installation = root.join("rights");
-    let expected = match vantare_services::license::installation::legacy_fingerprint() {
-        Ok(device) => device,
-        Err(Error::Unsupported) => String::new(),
-        Err(error) => panic!("unexpected legacy identity error: {error}"),
-    };
-    let healthy = local_devices(&installation);
-    assert_eq!(healthy.legacy, expected);
-    assert!(!healthy.installation.is_empty());
-    // Invalid saved schema and an unreadable DPAPI blob exercise both failure paths.
-    let store = Store::open(&root, "core-installation-v1").expect("store");
-    store
-        .save(
-            "installation",
-            &serde_json::json!({"version":999,"seed":[]}),
-        )
-        .expect("bad schema");
-    drop(store);
-    let malformed = local_devices(&installation);
-    let file = std::fs::read_dir(&root)
-        .expect("root")
-        .flatten()
-        .find(|entry| entry.path().is_dir())
-        .expect("store directory")
-        .path()
-        .join(if cfg!(windows) {
-            "installation.dpapi"
-        } else {
-            "installation.json"
-        });
-    std::fs::write(file, b"not a DPAPI blob").expect("corrupt bytes");
-    let unreadable = local_devices(&installation);
-    assert_eq!(malformed.legacy, expected);
-    assert_eq!(unreadable.legacy, expected);
-    assert!(malformed.installation.is_empty() && unreadable.installation.is_empty());
-    let start = 1_790_770_000;
-    let legacy_supported = !expected.is_empty();
-    let (credential, keys) = signed_v1_device(start - 1, beta_grants(None, start), expected);
-    let mut owner = Owner::open(
-        &root.join("rights"),
-        Some(&keys),
-        unreadable,
-        1,
-        wall(start),
-    )
-    .expect("owner");
-    let installed = owner.install(credential, wall(start), Duration::ZERO);
-    if legacy_supported {
-        installed.expect("legacy license");
-    } else {
-        assert!(matches!(installed, Err(Error::InvalidCredential)));
-    }
-    let policy = owner
-        .advance(&Snapshot::default(), wall(start), Duration::ZERO)
-        .expect("policy");
-    assert_eq!(policy.state.permits_access(), legacy_supported);
-    drop(owner);
-    clean(&root);
+fn local_legacy_device_needs_no_installation_key_or_store() {
+    let expected =
+        vantare_services::license::installation::legacy_fingerprint().unwrap_or_default();
+    assert_eq!(local_devices().legacy, expected);
 }
 
 #[test]
@@ -2397,7 +2381,6 @@ fn missing_core_fingerprint_is_unavailable_and_preserves_a_valid_binding() {
             keys.clone(),
             Devices {
                 legacy: String::new(),
-                ..devices()
             },
         );
         let error = control::request(

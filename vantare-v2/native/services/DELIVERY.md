@@ -37,7 +37,7 @@ El supervisor arranca el auxiliar solo al recibir una acción, exige transferenc
 local confirmada antes de atenderla y cierra/recolecta el hijo al entrar en live,
 EOF/cierre o shutdown. El hijo hereda el Job Object del supervisor.
 
-El núcleo verifica los bytes firmados con la biblioteca común v1/JWS, mantiene
+El núcleo verifica los bytes firmados con la biblioteca común v1, mantiene
 binding/reloj y tombstones protegidos, y publica política sin secretos/PII.
 Pipes con ACL SID, rechazo remoto, primera instancia, pin de imagen/PID, nonce
 privado, versiones/secuencias, marcos acotados y cancelación; no HTTP de los
@@ -143,7 +143,8 @@ Corte 6, tras fijar la configuración pública con Isaac:
 5. Medir CPU/RSS/latencia de cierre; completar MSIX firmado y CI solo cuando
    el orquestador los autorice. No gasto ni acción sobre usuarios ajenos.
 
-JWS v2/enrollment es destino probado localmente, no endpoint/backend desplegado.
+JWS v2/enrollment fue un destino probado localmente, sin endpoint/backend;
+ADR 0102, decisión 5, lo retira junto con la clave de instalación en el paso 11.
 Sync de perfiles/layouts no se implementa; estimación del plan ~29 GiB/mes
 para 1.000 usuarios/100 KiB/10 lecturas diarias, pendiente corpus/frecuencia/cuotas;
 sin Realtime, sync continua ni gasto. Otros límites: un intento pendiente por

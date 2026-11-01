@@ -2305,7 +2305,11 @@ mod tests {
         }
         let proof = crate::license::Verifier::public_keys(keys)
             .expect("keys")
-            .proof(&credential, device, "unused-v2-installation")
+            .v1(
+                &serde_json::from_str::<crate::license::CredentialV1>(&credential).expect("v1"),
+                "550e8400-e29b-41d4-a716-446655440000",
+                device,
+            )
             .expect("signed v1");
         assert!(proof.grants().is_empty());
     }

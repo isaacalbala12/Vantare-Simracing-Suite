@@ -186,8 +186,8 @@ entrar al juego caduca durante esa sesión, una hora desde vencimiento antes de
 suspender funciones protegidas. Fuera de ello, sin gracia offline; salir del
 juego elimina margen, reconectar/reiniciar no lo renueva. Firma inválida, logout,
 revocación y rollback no obtienen margen. Clerk y UUID interno se vinculan en
-servidor, no por email ni claims editables. JWS Ed25519/clave de instalación son
-destino, v1 compatible es transición.
+servidor, no por email ni claims editables. El destino JWS/clave de instalación
+queda retirado por ADR 0102, decisión 5; se conserva Ed25519 v1.
 
 ### 8. Reutilización de ISA-1403
 

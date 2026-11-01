@@ -11,7 +11,6 @@ pub mod catalog;
 pub mod installation;
 
 const ISSUER: &str = "vantare-license";
-const AUDIENCE: &str = "vantare-native";
 /// Máximo desfase aceptado al recibir una respuesta nueva del servidor.
 pub const CLOCK_SKEW_SECONDS: u64 = 300;
 /// Existing maximum in-game grace; renewal must not mistake it for signed TTL.
@@ -89,33 +88,10 @@ impl CredentialV1 {
     }
 }
 
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-struct Header {
-    alg: String,
-    kid: String,
-    typ: String,
-}
-
-/// Destination contract to agree/deploy server-side; not an existing endpoint.
-#[derive(Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct ClaimsV2 {
-    pub version: u8,
-    pub iss: String,
-    pub aud: String,
-    pub sub: String,
-    pub device_key_id: String,
-    pub iat: u64,
-    pub exp: u64,
-    pub capabilities: Vec<Capability>,
-}
-
 pub struct Verified {
     subject: String,
     device: String,
     issued_at: DateTime<Utc>,
-    expires_at: Option<DateTime<Utc>>,
     grants: Vec<Grant>,
 }
 #[derive(Clone)]
@@ -169,53 +145,14 @@ impl Verifier {
         if text.len() > 32 * 1024 {
             return Some(CacheIssue::UnsupportedFormat);
         }
-        let key_id = if text.starts_with('{') {
-            let Ok(credential) = serde_json::from_str::<CredentialV1>(text) else {
-                return Some(CacheIssue::UnsupportedFormat);
-            };
-            if credential.version != 1 || credential.algorithm != "Ed25519" {
-                return Some(CacheIssue::UnsupportedFormat);
-            }
-            credential.key_id
-        } else {
-            let parts: Vec<_> = text.split('.').collect();
-            if parts.len() != 3 {
-                return Some(CacheIssue::UnsupportedFormat);
-            }
-            let header = URL_SAFE_NO_PAD
-                .decode(parts[0])
-                .ok()
-                .and_then(|bytes| serde_json::from_slice::<Header>(&bytes).ok());
-            let Some(header) = header else {
-                return Some(CacheIssue::UnsupportedFormat);
-            };
-            if header.alg != "Ed25519" || header.typ != "vantare-license+jwt" {
-                return Some(CacheIssue::UnsupportedFormat);
-            }
-            header.kid
+        let Ok(credential) = serde_json::from_str::<CredentialV1>(text) else {
+            return Some(CacheIssue::UnsupportedFormat);
         };
+        if credential.version != 1 || credential.algorithm != "Ed25519" {
+            return Some(CacheIssue::UnsupportedFormat);
+        }
+        let key_id = credential.key_id;
         (!self.keys.contains_key(&key_id)).then_some(CacheIssue::UnknownKey)
-    }
-    /// El subject se extrae para verificarlo, pero solo adquiere autoridad
-    /// después de verificar la firma y todos los claims del envelope.
-    pub fn proof(&self, text: &str, legacy_device: &str, installation: &str) -> Result<Verified> {
-        if text.len() > 64 * 1024 {
-            return Err(Error::TooLarge);
-        }
-        if text.trim_start().starts_with('{') {
-            let credential: CredentialV1 =
-                serde_json::from_str(text).map_err(|_| Error::InvalidCredential)?;
-            self.v1(&credential, &credential.claims.subject, legacy_device)
-        } else {
-            let body = text.split('.').nth(1).ok_or(Error::InvalidCredential)?;
-            let claims: ClaimsV2 = serde_json::from_slice(
-                &URL_SAFE_NO_PAD
-                    .decode(body)
-                    .map_err(|_| Error::InvalidCredential)?,
-            )
-            .map_err(|_| Error::InvalidCredential)?;
-            self.jws(text, &claims.sub, installation)
-        }
     }
     pub fn public_keys(text: &str) -> Result<Self> {
         let mut keys = BTreeMap::new();
@@ -270,58 +207,7 @@ impl Verifier {
             subject: subject.into(),
             device: device.into(),
             issued_at: date(&claims.issued_at)?,
-            expires_at: None,
-            grants: grants(&claims.capabilities, None)?,
-        })
-    }
-
-    pub fn jws(&self, compact: &str, subject: &str, installation_key: &str) -> Result<Verified> {
-        if compact.len() > 64 * 1024 {
-            return Err(Error::TooLarge);
-        }
-        let parts: Vec<_> = compact.split('.').collect();
-        if parts.len() != 3 {
-            return Err(Error::InvalidCredential);
-        }
-        let header: Header = serde_json::from_slice(
-            &URL_SAFE_NO_PAD
-                .decode(parts[0])
-                .map_err(|_| Error::InvalidCredential)?,
-        )
-        .map_err(|_| Error::InvalidCredential)?;
-        if header.alg != "Ed25519" || header.typ != "vantare-license+jwt" {
-            return Err(Error::InvalidCredential);
-        }
-        self.signature(
-            &header.kid,
-            format!("{}.{}", parts[0], parts[1]).as_bytes(),
-            parts[2],
-        )?;
-        let claims: ClaimsV2 = serde_json::from_slice(
-            &URL_SAFE_NO_PAD
-                .decode(parts[1])
-                .map_err(|_| Error::InvalidCredential)?,
-        )
-        .map_err(|_| Error::InvalidCredential)?;
-        if claims.version != 2
-            || claims.iss != ISSUER
-            || claims.aud != AUDIENCE
-            || !uuid(subject)
-            || claims.sub != subject
-            || installation_key.is_empty()
-            || claims.device_key_id != installation_key
-            || claims.exp <= claims.iat
-        {
-            return Err(Error::InvalidCredential);
-        }
-        let issued_at = timestamp(claims.iat)?;
-        let expires_at = timestamp(claims.exp)?;
-        Ok(Verified {
-            subject: subject.into(),
-            device: installation_key.into(),
-            issued_at,
-            expires_at: Some(expires_at),
-            grants: grants(&claims.capabilities, Some(expires_at))?,
+            grants: grants(&claims.capabilities)?,
         })
     }
 }
@@ -336,20 +222,13 @@ pub fn uuid(value: &str) -> bool {
             }
         })
 }
-fn timestamp(value: u64) -> Result<DateTime<Utc>> {
-    DateTime::from_timestamp(
-        i64::try_from(value).map_err(|_| Error::InvalidCredential)?,
-        0,
-    )
-    .ok_or(Error::InvalidCredential)
-}
 fn date(value: &str) -> Result<DateTime<Utc>> {
     DateTime::parse_from_rfc3339(value)
         .map(|value| value.with_timezone(&Utc))
         .map_err(|_| Error::InvalidCredential)
 }
 
-fn grants(capabilities: &[Capability], envelope: Option<DateTime<Utc>>) -> Result<Vec<Grant>> {
+fn grants(capabilities: &[Capability]) -> Result<Vec<Grant>> {
     let mut previous = "";
     let mut roles = 0;
     let mut grants = Vec::new();
@@ -394,7 +273,7 @@ fn grants(capabilities: &[Capability], envelope: Option<DateTime<Utc>>) -> Resul
             {
                 return Err(Error::InvalidCredential);
             }
-            envelope
+            None
         } else {
             if capability.key == "vantare.edition.launch_v1"
                 || capability.key == "vantare.plan.founders"
@@ -404,7 +283,7 @@ fn grants(capabilities: &[Capability], envelope: Option<DateTime<Utc>>) -> Resul
                 return Err(Error::InvalidCredential);
             }
             let paid = date(&capability.paid_through)?;
-            Some(envelope.map_or(paid, |envelope| envelope.min(paid)))
+            Some(paid)
         };
         grants.push(Grant {
             key: capability.key.clone(),

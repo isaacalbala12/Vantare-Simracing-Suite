@@ -217,8 +217,13 @@ fn advance(
     }
     state.session = session;
     if let Some(owner) = &mut state.owner {
-        let result =
-            owner.advance_observed(&seen.snapshot, seen.entered_at.unwrap_or(now), now, tick);
+        let result = owner.advance_observed_session(
+            &seen.snapshot,
+            None,
+            seen.entered_at.unwrap_or(now),
+            now,
+            tick,
+        );
         state.policy = owner.policy();
         if let Err(error) = result {
             state.policy = Policy {

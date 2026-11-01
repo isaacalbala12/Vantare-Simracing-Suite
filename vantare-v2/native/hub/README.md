@@ -1,3 +1,5 @@
+# Hub nativo (ISA-1430)
+
 ## Arranque instalado — #1840, paso 1c
 
 Arranque instalado (#1840, paso 1c): una vez creada la ventana, el Hub publica
@@ -9,121 +11,51 @@ de actualización conservan su propio mensaje y estado. Un fallo al guardar el
 resultado se registra en stderr sin invalidar readiness. El riesgo aceptado de
 esta señal temprana y el bootstrap congelado 975 constan en packaging/README.md.
 
-## Contrato vigente de licencias — paso 10 (#1827)
+## Contrato vigente de acceso y cuenta
 
-La cadencia del supervisor sin plazo firmado es arranque/24 h desde éxito;
-helper y Hub no tienen otro temporizador. Live, ClockBehind y backoff siguen
-regidos por [el contrato del supervisor](../runtime/README.md).
+El Hub consume services v19, control v7 y fotos v11, actualizados como conjunto.
+[ADR 0102](../../docs/adr/0102-modelo-acceso-nativo.md) y
+[contrato IPC](../ipc/README.md#contrato-vigente-de-acceso) fijan versiones/permisos;
+la evidencia histórica queda en Git/handoff. No se admite mezcla de generaciones.
 
-El Hub usa services v19, sin TransferRights. El saludo rechaza v18 y anteriores como
-Version antes de Policy y no envía acciones de revocación. El helper se admite
-por lectura autenticada del núcleo; abrirlo no concede derechos. Las páginas y
-widgets siguen leyendo Policy.state. ACK perdido es transitorio: el supervisor
-conserva su suelo de un minuto antes de pedir otra emisión HTTP.
+Solo el Feed autenticado fresco del núcleo concede catálogo, módulos y navegación.
+Policy.state, Session y TTL se comprueban; Policy.error y mensajes no conceden.
+Una política ausente, denegada o caducada no permite entrar. ClockBehind muestra
+la frontera pendiente en hora local al comprobar manualmente. Comprar se confirma
+solo por Feed; el Hub no renueva durante la espera. El scheduler y la ventana de
+compra pertenecen al [supervisor](../runtime/README.md#contrato-vigente-de-licencias-y-supervisor).
 
+Services publica SignedIn, SignedOut, NeedsSignIn o Pending. NeedsSignIn conserva
+las páginas que permita el núcleo, ofrece entrar desde Cuenta y exige SignedIn
+para servicios remotos. Error de perfil o bearer vencido no revoca por sí solo.
+Logout bloquea antes del ACK; si falla, Reintentar repite Logout y Volver exige
+Session conocida y nueva Policy fresca con acceso. Un callback tardío no deshace
+Logout. AccountCancel abandona el intento, conserva cuenta/derechos y bloquea
+proveedores y otros Cancel hasta responder. Choose admite Escape/Volver sin IPC.
 
-Services v19 añade `LicenseStatus { policy, session, notice }` local al supervisor.
-El aviso tipado se conserva en memoria hasta un resultado de renovación verificado,
-un cierre confirmado o un nuevo login confirmado; perder/leer la respuesta no lo consume.
-Transient no crea avisos persistentes; la recuperación se presenta desde Policy.
-Login confirmado deja una comprobación única pendiente, con suelo y restricciones Live.
-La sesión es la última observada de services, también NeedsSignIn; null significa
-sin observación confirmada en ese intento, nunca SignedOut implícito. No arranca
-el helper para consultarla. Hub no altera formularios/errores con esa observación
-y sigue consultando avisos en NeedsSignIn. Los derechos del Hub y la compra solo se confirman
-por el Feed fresco; el Hub ya no solicita renovaciones durante la espera de compra.
-Solo el supervisor conserva esa ventana y su suelo/backoff. Inicio y Cuenta muestran
-el aviso separado del resultado del usuario. Reiniciar el supervisor pierde su aviso
-remoto en memoria; Policy sigue siendo la autoridad y conserva su diagnóstico.
-V18/v19 se rechazan como Version antes del esquema, sin revocar; control v7 y fotos v11 intactos.
+LicenseStatus consulta cada 5s Session/aviso del supervisor sin arrancar helper;
+null no implica cierre de sesión. No altera formularios ni errores del usuario.
+Inicio y Cuenta separan el aviso automático del resultado manual. Un definitivo o
+DeviceLimit sigue visible hasta Verified, cierre o login confirmados; respuesta
+perdida/lectura no lo consume, Transient no lo retira. NeedsSignIn sigue consultando.
+Reinicio del supervisor pierde el aviso remoto; Policy conserva su diagnóstico.
+Renovación fallida relee AccountPoll para observar Session, sin otro grant HTTP.
+Probe reconecta manteniendo imagen, versión, nonce y secuencia; no se repite una
+acción cuya respuesta se perdió. ACK perdido es transitorio y respeta el suelo.
 
-Contrato y rollback de datos: [ADR0102](../../docs/adr/0102-modelo-acceso-nativo.md).
-Las secciones fechadas inferiores son históricas; este contrato sustituye sus
-reglas de candidate/marcador y transferencia. La retirada de archivos antiguos
-es un paso de arranque, sin copia ni reintento durable de credenciales. Rollback sintético con lectores
-v17 y pre-NeedsSignIn, sin cambios de instalación: `native/scripts/license-generation-rollback.ps1`.
+El acceso ofrece código/contraseña, alta y recuperación mediante FAPI en Orbit,
+sin guardar inputs. La contraseña no permite copiar ni se expone en accesibilidad.
+Tras verificar se pide aprobación explícita de identidad/perfil; Clerk impone
+intervalos y una ventana de autorización de 30s. Google/Discord usan PKCE alojado.
+Si no abre el navegador, Copiar enlace es un gesto IPC explícito; URL redactada
+en Debug, sin logs/archivos, tokens ni verifier. Cancelar/reintentar/caducar retira
+la copia. [Flujo y límites](../../docs/auth/login-propio.md).
 
-## #1827 — Acceso por Policy.state (paso 7)
+parity-capture con VANTARE_CAPTURE_EMAIL=code|expired|password|queue|waiting|consent|pending
+pinta componentes reales con datos ficticios y bloquea comandos remotos; no
+acredita autenticación Clerk. Gates, capturas y limitaciones por plataforma se
+registran en el handoff, no como contratos por fecha en este README.
 
-Navegación, acceso y mensajes leen el estado explícito del núcleo; Policy.error
-no concede ni bloquea páginas. Catálogo, módulos, Session y frescura mantienen
-sus reglas. ClockBehind explica la frontera pendiente y su fecha al comprobar
-manualmente. Services v17 valida la generación control v7 anidada antes del
-esquema; el desajuste es transitorio, sin revocar. Recompilar el conjunto.
-[Contrato](../../docs/adr/0102-modelo-acceso-nativo.md).
-
-Services v17 versiona la Policy v7 anidada; Session/AccountCancel permanecen
-intactos. V16 del paso 6 nunca se publicó en release.
-
-## #1827 — Sesión y acceso (paso 6, services v16)
-
-`AccountCancel` (v16) cancela solo el intento OAuth/FAPI y relee Session;
-conserva la cuenta protegida y los derechos. «Volver/Cancelar» lo usa sin
-sustituirlo por Logout. Solo «Cerrar sesión» envía Logout. En NeedsSignIn,
-Cuenta ofrece Google/Discord/email y también el cierre explícito de sesión.
-
-
-El Hub lee Session publicada por services, sin inferirla de expires_at, textos
-o signed_in. En NeedsSignIn muestra el aviso de volver a entrar en Cuenta;
-las páginas conservan el acceso que permita la política fresca del núcleo.
-Una política ausente, denegada o caducada no concede acceso. SignedOut y una
-solicitud explícita de Logout conservan el bloqueo previo al ACK.
-Los servicios remotos requieren SignedIn; no se reutilizan tokens rechazados.
-Los resultados de renovación fallidos releen AccountPoll, sin otro grant HTTP.
-No cambia la firma, el plazo, la gracia, el catálogo ni las reglas beta.
-
-Tras fallar el ACK de Logout, Reintentar cierre de sesión reenvía Logout. Volver
-solo permite regresar con Session conocida y política fresca del núcleo que
-conserve acceso; no confirma un cierre fallido. Choose admite Escape y Volver
-sin iniciar un intento. AccountCancel en vuelo bloquea proveedores y nuevos
-Cancel hasta su respuesta, sin sustituirlo por Logout.
-La mezcla v15/v16 puede mostrar el aviso genérico de servicios desconectados
-si el peer cierra el pipe sin respuesta; limitación de diagnóstico aceptada,
-sin revocación ni fallback de Cancel a Logout.
-
-## ISA-1793 — Acceso sin comprobación manual
-
-El Hub confirma la sesión y consume la política fresca del núcleo. El supervisor
-renueva desde su temporizador, sin bloquear el login ni duplicar HTTP desde la
-UI. Los avisos automáticos se consultan por IPC local cada cinco segundos;
-DeviceLimit conserva su salida accionable y no revoca la política firmada.
-El primer uso de un canal inactivo reconecta mediante Probe, manteniendo
-imagen, versión, nonce y secuencia. Una respuesta perdida no repite la acción.
-Desde el paso 9, solo el supervisor comprueba la compra por el camino automático
-no destructivo; el botón Comprobar acceso sigue siendo una acción explícita.
-
-## #1631 · Formularios de email
-
-R2 añade recuperación del formulario tras caducidad/reinicio y cola llena,
-«Volver» durante red y autorización pendiente mediante AccountPoll. El servicio
-conserva el mismo grant, respeta el intervalo de Clerk y cede entre consultas;
-la ventana de reintento es de 30 s. El corte combinado de login y Founders usa services **v14**.
-Desde #1761, el fallo al abrir navegador conserva el intento PKCE y ofrece
-Copiar enlace: IPC explícito, URL redactada en Debug y portapapeles GPUI.
-La URL no se añade a logs ni archivos de Vantare; solo se copia por ese gesto.
-Cancelar/reintentar/caducar retiran la copia. No se entregan tokens ni verifier.
-Pasos y límites de cancelación: [login propio](../../docs/auth/login-propio.md).
-El modo `parity-capture`, con `VANTARE_CAPTURE_EMAIL=code|expired|password|queue|waiting|consent|pending`,
-pinta los componentes reales con datos ficticios y bloquea los comandos remotos.
-No demuestra autenticación contra Clerk.
-Windows R2 (15/10): fmt/check/Clippy de producto PASS, Nextest de los cuatro
-crates 1131/1131 PASS (ocho omisiones existentes), lifecycle 13/13 y telemetría
-25/25 PASS; siete capturas GPUI revisadas. El Clippy opcional de capturas
-conserva 21 avisos previos, separados en #1648. Clerk development sigue pendiente.
-
-Evidencia previa macOS (14/10/2026):
-
-El acceso ofrece email con código o contraseña, alta y recuperación en Orbit.
-Los inputs no se guardan; la contraseña se dibuja oculta y no permite copiar.
-Tras verificación hay una aprobación explícita de acceso a identidad/perfil.
-Google/Discord siguen abriendo la página alojada de Clerk en el navegador.
-Entonces el protocolo services era v9; ahora Hub, supervisor y servicios se actualizan juntos a v14 (marketing verificado, login propio y Founders).
-Build y Clippy de Hub/services/ipc/runtime PASS; Nextest compatible 1072/1072
-PASS. 49 tests GPUI quedan pendientes por AppKit/hilo principal; cuatro mediciones
-se omiten por defecto. QA visual/interacción, Windows y Clerk development real
-quedan al orquestador. La contraseña tampoco se expone en accesibilidad.
-
-# Hub nativo (ISA-1430)
 
 ## #1628 · Primer arranque
 

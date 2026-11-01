@@ -24,9 +24,6 @@ impl Verified {
     pub fn device(&self) -> &str {
         &self.device
     }
-    pub fn grants(&self) -> &[Grant] {
-        &self.grants
-    }
 }
 
 pub struct Verifier {
@@ -56,21 +53,21 @@ impl CacheIssue {
 }
 
 impl Verifier {
-    /// Inspect only format/key availability for a cache migration. This never
-    /// verifies or grants rights: supported entries still require full verification.
-    pub fn cache_issue(&self, text: &str) -> Option<CacheIssue> {
+    /// Decode once for cache diagnostics. The result is untrusted until v1 verifies it.
+    pub fn decode_cached(&self, text: &str) -> std::result::Result<CredentialV1, CacheIssue> {
         let text = text.trim_start();
         if text.len() > 32 * 1024 {
-            return Some(CacheIssue::UnsupportedFormat);
+            return Err(CacheIssue::UnsupportedFormat);
         }
-        let Ok(credential) = serde_json::from_str::<CredentialV1>(text) else {
-            return Some(CacheIssue::UnsupportedFormat);
-        };
+        let credential: CredentialV1 =
+            serde_json::from_str(text).map_err(|_| CacheIssue::UnsupportedFormat)?;
         if credential.version != 1 || credential.algorithm != "Ed25519" {
-            return Some(CacheIssue::UnsupportedFormat);
+            return Err(CacheIssue::UnsupportedFormat);
         }
-        let key_id = credential.key_id;
-        (!self.keys.contains_key(&key_id)).then_some(CacheIssue::UnknownKey)
+        if !self.keys.contains_key(&credential.key_id) {
+            return Err(CacheIssue::UnknownKey);
+        }
+        Ok(credential)
     }
     pub fn public_keys(text: &str) -> Result<Self> {
         let mut keys = BTreeMap::new();

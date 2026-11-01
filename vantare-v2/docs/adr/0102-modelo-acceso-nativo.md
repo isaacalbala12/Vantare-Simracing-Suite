@@ -366,3 +366,18 @@ sin signo solo si necesita apartar una autoridad dañada; no añade una validaci
 de reloj al restore sano. Renombrado, retención de tres, F4 y E/S siguen iguales.
 El runbook advierte que perder un intento incierto por DPAPI y editar el borrador
 puede producir otra clave y duplicar un informe ya aceptado.
+
+### D1a — misma decisión con una decodificación de credencial
+
+El dueño reutiliza CredentialV1 decodificada al clasificar la caché; la firma y
+claims siguen verificándose por el mismo Verifier antes de instalar. Conserva
+UnknownKey/UnsupportedFormat/InvalidSignature y la precedencia de Unconfigured,
+TooLarge y huella ausente. No se confía en claims en services antes del ACK.
+Store sigue leyendo Value antes de Binding para distinguir schema incompatible
+(UnsupportedFormat) de daño de bytes/DPAPI (Unreadable), sin cambiar persistencia.
+Los wrappers de conveniencia pasan a soporte de test; Host conserva None como
+identidad del avance, exactamente como antes, sin ampliar gracia. Protocolos,
+permisos, decisiones y formatos no cambian. D6/D7/lectores antiguos se conservan
+por la posible RC9 y su downgrade. El probe de rollback compila la misma lógica
+contra v17/pre5 con un único campo installation vacío adaptado a sus tipos; no
+se reintroduce v2 ni se modifica el código de los lectores congelados.

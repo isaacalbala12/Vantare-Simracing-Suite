@@ -1,6 +1,8 @@
 //! Autoridad y verificación puras; el Owner/host Windows es el único escritor.
 pub mod authority;
 pub mod catalog;
+#[cfg(test)]
+mod fixtures;
 #[cfg(windows)]
 pub mod host;
 #[cfg(windows)]

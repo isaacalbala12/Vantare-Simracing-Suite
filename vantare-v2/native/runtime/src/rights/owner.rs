@@ -132,38 +132,40 @@ impl Owner {
             Stored::Value(document) => match serde_json::from_value::<Binding>(document) {
                 Ok(binding) if binding.version == 1 => {
                     let trust_roots = owner.verifier.as_ref().ok_or(Error::Unconfigured)?;
-                    if let Some(issue) = trust_roots.cache_issue(&binding.credential) {
-                        owner.quarantine_binding(issue, now)?;
-                    } else {
-                        let verified = match owner.verify(&binding.credential) {
-                            Ok(verified)
-                                if verified.subject() == binding.subject
-                                    && verified.device() == binding.device =>
+                    match trust_roots.decode_cached(&binding.credential) {
+                        Err(issue) => owner.quarantine_binding(issue, now)?,
+                        Ok(credential) => {
+                            let verified = match owner.verify(&binding.credential, Some(credential))
                             {
-                                verified
+                                Ok(verified)
+                                    if verified.subject() == binding.subject
+                                        && verified.device() == binding.device =>
+                                {
+                                    verified
+                                }
+                                Ok(_) | Err(Error::InvalidCredential | Error::TooLarge) => {
+                                    owner.quarantine_binding(CacheIssue::InvalidSignature, now)?;
+                                    return Ok(owner);
+                                }
+                                Err(error) => return Err(error),
+                            };
+                            match owner.authority.install(verified, now, Duration::ZERO) {
+                                Ok(()) => {}
+                                Err(Error::Denied | Error::Clock) => {
+                                    owner.quarantine_binding(CacheIssue::AuthorityRejected, now)?;
+                                    return Ok(owner);
+                                }
+                                Err(error) => return Err(error),
                             }
-                            Ok(_) | Err(Error::InvalidCredential | Error::TooLarge) => {
-                                owner.quarantine_binding(CacheIssue::InvalidSignature, now)?;
-                                return Ok(owner);
+                            if owner.authority.persist(&owner.store).is_err() {
+                                // No durable ACK means no rights. Keep the owner available
+                                // for a fresh signed grant once storage recovers.
+                                owner.denial = Some(AccessState::Unavailable);
+                                owner.authority.leave_game();
+                                eprintln!("license-cache-authority-persist-failed");
+                            } else {
+                                owner.binding = Some(binding);
                             }
-                            Err(error) => return Err(error),
-                        };
-                        match owner.authority.install(verified, now, Duration::ZERO) {
-                            Ok(()) => {}
-                            Err(Error::Denied | Error::Clock) => {
-                                owner.quarantine_binding(CacheIssue::AuthorityRejected, now)?;
-                                return Ok(owner);
-                            }
-                            Err(error) => return Err(error),
-                        }
-                        if owner.authority.persist(&owner.store).is_err() {
-                            // No durable ACK means no rights. Keep the owner available
-                            // for a fresh signed grant once storage recovers.
-                            owner.denial = Some(AccessState::Unavailable);
-                            owner.authority.leave_game();
-                            eprintln!("license-cache-authority-persist-failed");
-                        } else {
-                            owner.binding = Some(binding);
                         }
                     }
                 }
@@ -186,7 +188,8 @@ impl Owner {
         eprintln!("{}", issue.diagnostic());
         Ok(())
     }
-    fn verify(&self, text: &str) -> Result<Verified> {
+    // Cache diagnostics already decoded this value; fresh HTTP is decoded here.
+    fn verify(&self, text: &str, decoded: Option<CredentialV1>) -> Result<Verified> {
         let text = text.trim_start();
         let verifier = self.verifier.as_ref().ok_or(Error::Unconfigured)?;
         if text.len() > 32 * 1024 {
@@ -196,8 +199,10 @@ impl Owner {
             // Missing local identity is not evidence against a signed cache.
             return Err(Error::Unconfigured);
         }
-        let credential: CredentialV1 =
-            serde_json::from_str(text).map_err(|_| Error::InvalidCredential)?;
+        let credential = decoded.map_or_else(
+            || serde_json::from_str(text).map_err(|_| Error::InvalidCredential),
+            Ok,
+        )?;
         // El UUID procede de claims verificados, nunca de email/metadata/booleanos IPC.
         verifier.v1(
             &credential,
@@ -225,7 +230,7 @@ impl Owner {
         online: bool,
     ) -> Result<()> {
         let result = (|| {
-            let verified = self.verify(&text)?;
+            let verified = self.verify(&text, None)?;
             if self
                 .binding
                 .as_ref()
@@ -277,24 +282,6 @@ impl Owner {
         self.store.remove("binding")?;
         Ok(())
     }
-    pub fn advance(
-        &mut self,
-        snapshot: &Snapshot,
-        now: DateTime<Utc>,
-        tick: Duration,
-    ) -> Result<Policy> {
-        self.advance_observed(snapshot, now, now, tick)
-    }
-    pub fn advance_observed(
-        &mut self,
-        snapshot: &Snapshot,
-        entered_at: DateTime<Utc>,
-        now: DateTime<Utc>,
-        tick: Duration,
-    ) -> Result<Policy> {
-        self.advance_observed_session(snapshot, None, entered_at, now, tick)
-    }
-
     /// `started` debe proceder del adaptador y sobrevivir al reinicio del núcleo.
     /// Hub/IPC no pueden proporcionarlo. Ausencia nunca confirma gracia guardada.
     pub fn advance_observed_session(

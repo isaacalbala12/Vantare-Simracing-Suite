@@ -1,3 +1,58 @@
+<!-- isa1827-simplificar-d1a -->
+## VANTA-126 / #1827 — D1a listo para revisión
+
+Base actual origin/nightly@843913d24949128e676e99dab233b60dca2c26c0,
+con D0 (#1853) y arranque instalado (#1850) integrados. Rebases desde e747d4a9e
+y 7ebf46c08; todas las entradas previas del handoff conservadas.
+Rama vantareapp/isa-1827-simplificar-d1a; mismo worktree/target isa-1827-s.
+- Decode de credencial guardada reutilizado antes de la misma verificación;
+  conserva orden de rechazos, disponibilidad local y diagnósticos. Store Value ->
+  Binding conserva la distinción de schema ilegible/DPAPI; no se cambia formato.
+- Wrappers de fixtures pasan a módulo cfg(test), declarado como movimiento.
+  Host también usaba advance_observed: se expande al mismo avance completo con
+  None, sin introducir identidad o gracia nueva. El ejemplo usa la API común.
+- Dispatch AccountBegin queda en un brazo; ACK de renovación reúne guardias
+  preservando Logout. Cuatro README tienen contrato vigente sin pilas de versiones;
+  se conservan límites/gates/privacidad. El test recovery renombra su pretensión:
+  solo comprueba entrada ya filtrada, no la exclusión SQL por refund.
+- Adaptador de rollback autorizado por el orquestador dentro de D1a: únicamente
+  installation:String::new() en las copias de v17/pre5, con hashes de fuente,
+  fragmento, script y copia. El probe usa API común y ausencia física NotFound.
+  Tres generaciones PASS: SignedIn/NeedsSignIn y vuelta; B retirado antes del
+  downgrade sin binding. Hashes verifican diferencia byte a byte solo del campo;
+  fuentes congeladas rastreadas intactas en dos worktrees propios.
+- Rotura inicial del probe desde A 6fbbfaa6a (campo requerido antiguo retirado);
+  C 5bf636ef0 añadió Read/read inexistente en esos SHA. Se documentan ambas,
+  sin retirar lectores ni fixtures. Reproducción compilada: paso 8 compila,
+  A E0063; C además E0603/E0599. Copias temporales restauradas byte a byte.
+- Clippy seis crates all-targets -D warnings PASS; tres ajustes iniciales de lint/
+  caller preservados en logs. Cuatro mutaciones detectadas por aserción,
+  no por errores de compilación; 405 fuentes Rust restauradas SHA-256.
+  Fmt/Clippy seis crates PASS; Nextest ci 1761/1761 con telemetría PASS
+  (17 omisiones previas). Lifecycle runtime 13/13 y Engineer 5/5 PASS.
+  Rollback final nueva→v17/pre5→nueva PASS; hashes reales verificados.
+  Primera suite: 1759/1761 por auxiliar storage ausente; construido con DuckDB
+  oficial en subtarget aislado, sin cambiar pruebas; repetición completa PASS.
+  Producción 115232 ->115188 (-44) sobre la nueva base;
+  incluye movimiento de wrappers; pruebas/docs/tooling se cuentan aparte.
+- Pruebas/soporte Rust +81; tooling +19; TypeScript solo renombre (0 netas).
+  Documentación se mide aparte del ahorro de producción. Calidad 468 huellas PASS.
+  Cuatro blobs de caracterización/arquitectura intactos; Deno no instalado.
+- D6/D7/T1-T3 siguen aplazados por RC9. D1b y E pendientes; D5/D3 descartados.
+  Sin Plane, datos reales, secretos, instalaciones, merge ni release.
+- PR draft [#1854](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1854), target nightly.
+  Código validado 9cbbd1f089f4767f5d2ea9e8b74fcba1614e19ea; HEAD documental vigente en PR.
+  Rebase tras #1850: diez blobs Rust de D1a idénticos al código validado;
+  Fmt/Clippy y Nextest Hub 590/590 PASS (4 omisiones) tras el rebase.
+  Solo cinco fuentes Hub de #1850 cambian frente al árbol validado;
+  manifiestos y fuentes de services/runtime/ipc intactos.
+  CI y revisión a cargo del orquestador.
+- Revisión P3: INTEGRATION/DELIVERY nombran el avance real con None; README
+  recuperan diagnósticos cerrados, runbook BIL-08, account_conflict 409 y privacidad
+  MailConsent. El probe documenta su copia deliberada del namespace; solo comentarios,
+  ningún token Rust ejecutable cambia. Sin cambios de producto.
+<!-- /isa1827-simplificar-d1a -->
+
 <!-- isa1827-simplificar-d0 -->
 ## VANTA-126 / #1827 — D0 listo para revisión
 

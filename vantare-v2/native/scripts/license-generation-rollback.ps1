@@ -1,4 +1,4 @@
-# Synthetic fixture only. Builds the same probe against three source generations.
+# Synthetic fixture only. Same probe; only old Devices gets its unused installation field.
 [CmdletBinding()]
 param(
     [Parameter(Mandatory)][string]$PreviousWorktree,
@@ -11,6 +11,15 @@ $jobs = if ($env:CARGO_BUILD_JOBS) { $env:CARGO_BUILD_JOBS } else { '2' }
 Set-StrictMode -Version Latest
 $currentRoot = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
 $source = Join-Path $currentRoot 'native/runtime/examples/license_generation_fixture.rs'
+$sourceText = [IO.File]::ReadAllText($source)
+$sourceHash = (Get-FileHash -LiteralPath $source -Algorithm SHA256).Hash
+$deviceField = 'legacy: device.clone(),'
+$adapter = "`n        installation: String::new(),"
+$adapterHash = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($adapter)))
+$scriptHash = (Get-FileHash -LiteralPath $PSCommandPath -Algorithm SHA256).Hash
+if ([regex]::Matches($sourceText, [regex]::Escape($deviceField)).Count -ne 1) { throw 'Expected one Devices initializer' }
+$probeRecords = @()
+
 $generations = @(
     @{ Name='new'; Root=$currentRoot; Sha=$null },
     @{ Name='v17'; Root=(Join-Path $PreviousWorktree 'vantare-v2'); Sha='7eae8cef177e898776cada129a9d06baab5e5d13' },
@@ -26,10 +35,20 @@ foreach ($generation in $generations) {
             if ($head -ne $expected) { throw "Wrong generation $($generation.Name): $head" }
             $destination = Join-Path $generation.Root 'native/runtime/examples/license_generation_fixture.rs'
             New-Item -ItemType Directory -Force -Path (Split-Path $destination) | Out-Null
+            $probeText = $sourceText.Replace($deviceField, $deviceField + $adapter)
+            if ($probeText.Replace($adapter, '') -cne $sourceText) { throw 'Adapter changed more than installation' }
+            $expectedHash = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($probeText)))
             if (Test-Path -LiteralPath $destination) {
-                if ((Get-FileHash -LiteralPath $source).Hash -ne (Get-FileHash -LiteralPath $destination).Hash) { throw "Different probe already exists: $destination" }
-            } else { Copy-Item -LiteralPath $source -Destination $destination }
+                if ($expectedHash -ne (Get-FileHash -LiteralPath $destination -Algorithm SHA256).Hash) { throw "Different probe already exists: $destination" }
+            } else { [IO.File]::WriteAllText($destination, $probeText, [Text.UTF8Encoding]::new($false)) }
+        } else { $destination = $source }
+        $probeRecords += [ordered]@{
+            generation = $generation.Name; source_commit = (git rev-parse HEAD)
+            source_sha256 = $sourceHash; adapter_sha256 = $adapterHash; script_sha256 = $scriptHash
+            compiled_probe_sha256 = (Get-FileHash -LiteralPath $destination -Algorithm SHA256).Hash
+            installation_added = [bool]$generation.Sha
         }
+        $probeRecords | ConvertTo-Json -Depth 4 | Set-Content -Encoding utf8 (Join-Path $EvidenceDirectory 'probe-hashes.json')
         $target = if ($generation.Name -eq 'new') { $TargetDirectory } else { Join-Path $TargetDirectory "rollback-$($generation.Name)" }
         & pwsh -NoProfile -File native/scripts/compilar.ps1 cargo build --manifest-path native/Cargo.toml --target-dir $target -p vantare-runtime --example license_generation_fixture --locked --offline -j $jobs
         if ($LASTEXITCODE -ne 0) { throw "Build failed: $($generation.Name)" }

@@ -1,223 +1,91 @@
-## Contrato vigente de Store — paso 12 (#1827)
+# Servicios nativos
 
-`Store::read` devuelve Value, Missing o Damaged, sin reparar ni convertir E/S
-en corrupción. Los nombres activos, contextos, extensiones, structs y límites de datos
-no cambian. La clase de cada documento se declara una vez en `document_class`
-(storage.rs): guarda durable, caché reconstruible o secreto de sesión.
+## Contrato vigente de acceso, cuenta y Store
 
-- Guardas: binding, authority/authority-recovery, Pilot, borrador e imágenes de
-  informe y buy-*. El dueño decide la recuperación conservadora; no se reemplazan
-  por datos vacíos. Borrador e imágenes permanecen juntos. El núcleo conserva su
-  reparación con marcador durable previo; solo la emisión online verificada
-  puede levantarlo. Los restos retirados de licencia nunca se reproducen.
-- Cachés: metadata OAuth, perfil, roadmap y report-attempt. `Read::recover`
-  comparte la validación y la recuperación cuando el dueño la solicita;
-  rechaza su uso en guardas. DPAPI dañado de perfil/roadmap/report-attempt se
-  aparta y permite reconstruir, igual que su JSON inválido (cambio autorizado).
-  La metadata OAuth de Gestión conserva su lectura estricta anterior.
-- Secreto de sesión: account conserva su recuperación a sesión ausente ante
-  daño conocido. El recargado tras login es estricto. Una caché de perfil dañada
-  no modifica la sesión válida ni los derechos firmados del núcleo.
+El contrato de producto y compatibilidad es [ADR 0102](../../docs/adr/0102-modelo-acceso-nativo.md).
+Las entregas anteriores están en Git y en el [handoff](../../docs/vantare-program/handoffs/platform-commercial.md).
 
-El único apartado es `quarantine_dated`: rename sin borrar ni sobrescribir una
-copia anterior, tope tres por documento, incluidos nombres antiguos. Las copias
-aparte usan el formato fechado común. Los dueños inyectan su fecha real en
-milisegundos al restaurar perfil, roadmap, report-attempt, autoridad y metadata
-OAuth de Gestión; Store no obtiene su propio reloj. La fecha de cuarentena
-no modifica el reloj firmado ni concede derechos. Un rename
-fallido es error y conserva el original; limpiar archivos antiguos es best-effort
-tras el rename, con diagnóstico si falla. No hay migración de datos. `fixture`
-solo inspecciona fixtures en builds test/test-support y no forma parte del
-producto. Los cuatro lectores y los dos apartados alternativos se retiran.
+### Dueños y licencias
 
-## Contrato vigente de licencias — paso 10 (#1827)
+`runtime::rights` posee Authority, catálogo y el único verificador Ed25519 v1.
+Services realiza red y persistencia de cuenta; recibe una credencial HTTP fresca
+y la entrega a InstallOnline sin guardar ni consultar sus claims hasta el ACK
+durable. No existen Candidate, TransferRights, JWS/v2 ni clave Installation
+productivos. Los restos candidate/pending del namespace backend/canal se apartan
+al arrancar, sin leerlos; rename best-effort, diagnóstico y reintento al reiniciar.
+Se conserva la protección de downgrade a generaciones anteriores (RC9 incluida):
+`native/scripts/license-generation-rollback.ps1` usa solo fixtures aisladas.
 
-Paso 11, corte A: el único formato de credencial es Ed25519 v1. Se retiran
-JWS/v2, su clave Installation y el vencimiento de sobre. La huella v1 y los
-formatos de binding/authority no cambian. No se borran archivos históricos.
+Firma/subject/device inválidos del núcleo son Version/Transient en services;
+lápida/denegación/caducidad conservan Rejected e iat conserva Unavailable/Clock.
+`account_conflict` HTTP 409 es una inconsistencia, no una revocación.
+`outcome()` es la tabla única de resultados y efectos. Solo Logout, cambio de
+identidad y DeviceReset revocan; exigen ACK antes de limpiar o confirmar.
+Una renovación rechazada no borra la firma vigente ni amplía su plazo. ACK
+perdido olvida esa emisión y pide otra por HTTP cuando toque; nunca repite la acción.
+`online_capabilities` no concede acceso. Cadencia, Live y backoff son del
+[supervisor](../runtime/README.md#contrato-vigente-de-licencias-y-supervisor).
 
-La cadencia del supervisor sin plazo firmado es arranque/24 h desde éxito;
-helper y Hub no tienen otro temporizador. Live, ClockBehind y backoff siguen
-regidos por [el contrato del supervisor](../runtime/README.md).
+El inventario cerrado de diagnósticos de caché es `license-cache-unknown-key`,
+`license-cache-unsupported-format`, `license-cache-invalid-signature` y
+`license-cache-unreadable`. No conceden derechos ni contienen la credencial.
+La operación de claves y recuperación sigue el [runbook BIL-08](../../docs/billing/bil-08-offline-credential-runbook.md).
 
-Services v19 conserva la retirada de TransferRights, Candidate y su marcador. `renew` devuelve
-CredentialV1 recién recibida en memoria y App la entrega por InstallOnline;
-desde el corte B, solo runtime::rights verifica la firma y sus claims. Services
-no los usa antes del ACK durable que confirma la instalación. Firma/subject/device
-inválidos se traducen a Version/Transient, conservando mensaje y reintentos.
-Al arrancar aparta candidate y marcador históricos con rename fechado, sin leer
-su contenido. Es best-effort: un bloqueo se diagnostica, nunca concede ni bloquea
-la recuperación; se reintenta al siguiente arranque si quedaron restos.
-Si se pierde el ACK o desaparece el núcleo, el resultado es transitorio y la
-siguiente renovación pide una emisión nueva, con backoff y suelo de un minuto.
-Binding/authority/guardias del núcleo no cambian. Solo los actos explícitos revocan.
+### Cuenta y avisos
 
+Account publica SignedOut, SignedIn, NeedsSignIn o Pending. Identidad/sesión y
+licencia son hechos separados. `invalid_grant`/401 del token OAuth guarda
+NeedsSignIn sin reutilizar tokens rechazados; conserva identidad/perfil.
+403 y fallo de userinfo tras refresh válido siguen transitorios. Otra identidad
+exige invalidar antes de guardar su sesión. Un error de perfil no revoca derechos.
+AccountProfileRefresh es presentación y usa el origen OAuth automático.
+AccountCancel cancela solo el intento PKCE/FAPI y relee Session; Logout es explícito.
 
-Services v19 añade `LicenseStatus { policy, session, notice }` local al supervisor.
-El aviso tipado se conserva en memoria hasta un resultado de renovación verificado,
-un cierre confirmado o un nuevo login confirmado; perder/leer la respuesta no lo consume.
-Transient no crea avisos persistentes; la recuperación se presenta desde Policy.
-Login confirmado deja una comprobación única pendiente, con suelo y restricciones Live.
-La sesión es la última observada de services, también NeedsSignIn; null significa
-sin observación confirmada en ese intento, nunca SignedOut implícito. No arranca
-el helper para consultarla. Hub no altera formularios/errores con esa observación
-y sigue consultando avisos en NeedsSignIn. Los derechos del Hub y la compra solo se confirman
-por el Feed fresco; el Hub ya no solicita renovaciones durante la espera de compra.
-Solo el supervisor conserva esa ventana y su suelo/backoff. Inicio y Cuenta muestran
-el aviso separado del resultado del usuario. Reiniciar el supervisor pierde su aviso
-remoto en memoria; Policy sigue siendo la autoridad y conserva su diagnóstico.
-V18/v19 se rechazan como Version antes del esquema, sin revocar; control v7 y fotos v11 intactos.
+El supervisor sirve LicenseStatus con Policy, última Session observada y aviso
+sin arrancar el helper. null es ausencia de observación, nunca SignedOut implícito.
+El aviso definitivo/DeviceLimit vive en memoria hasta Verified, cierre confirmado
+o login confirmado; leer/perder una respuesta no lo consume. Transient no lo crea
+ni retira uno anterior. Policy conserva su propio diagnóstico tras un reinicio.
+El Hub usa el Feed fresco para derechos y compra; Inicio/Cuenta muestran el aviso
+separado del resultado manual. [Contrato IPC vigente](../ipc/README.md#contrato-vigente-de-acceso).
 
-Contrato y rollback de datos: [ADR0102](../../docs/adr/0102-modelo-acceso-nativo.md).
-Las secciones fechadas inferiores son históricas; este contrato sustituye sus
-reglas de candidate/marcador y transferencia. La retirada de archivos antiguos
-es un paso de arranque, sin copia ni reintento durable de credenciales. Rollback sintético con lectores
-v17 y pre-NeedsSignIn, sin cambios de instalación: `native/scripts/license-generation-rollback.ps1`.
+### Persistencia y recuperación
 
-## #1827 — Policy.state / control v7 (paso 7)
+Store tiene una lectura sin efectos `read -> Value/Missing/Damaged`; E/S sigue
+siendo error. `document_class` declara la clase de cada documento:
 
-Services lee los estados del núcleo y usa Policy::denied para políticas conservadoras.
-ClockBehind conserva la frontera de seguridad y la comprobación manual explica
-su fecha; no pide conexión como solución suficiente. Un 200 verificado sigue
-siendo Verified aunque no cambie el plazo firmado. Policy.error queda solo como
-observación diagnóstica histórica, sin autoridad. Candidate/TransferRights se
-conservan hasta el paso 8. [Contrato](../../docs/adr/0102-modelo-acceso-nativo.md).
+- Guardas durables: binding, authority/authority-recovery, Pilot, borrador e imágenes,
+  buy-* y los restos de licencia retirados. El dueño decide; no se reinician en
+  silencio. Borrador e imágenes permanecen juntos para recuperación asistida.
+- Cachés reconstruibles: metadata OAuth, perfil, roadmap y report-attempt.
+  `recover` valida y aparta; DPAPI/JSON dañado de las tres últimas permite
+  reconstruir sin tocar la sesión sana. Gestión mantiene metadata estricta.
+- Secreto de sesión: account dañado se aparta y queda sin sesión; el recargado
+  tras login es estricto. `required` mantiene las lecturas estrictas y recover
+  rechaza guardas.
 
-Services v17 versiona la Policy v7 anidada; Session/AccountCancel permanecen
-intactos. V16 del paso 6 nunca se publicó en release.
+El único `quarantine_dated` renombra sin borrar ni sobrescribir otra copia;
+conserva tres por documento, contando formatos antiguos. Los dueños pasan la fecha real en milisegundos al restaurar perfil, roadmap,
+report-attempt, autoridad y metadata OAuth de Gestión. Store no obtiene un reloj;
+la fecha de cuarentena no modifica el reloj firmado ni concede derechos. Rename fallido conserva el original y es error;
+la limpieza posterior es best-effort con diagnóstico. Formatos activos, contextos,
+DPAPI, límites, ACL y exclusión permanecen iguales. Los métodos fixture son solo
+soporte de pruebas. En el núcleo F4 conserva la barrera y bytes del marcador
+ilegible sin reescribir una autoridad sana ni repetir su diagnóstico.
 
-## #1827 — Contrato de sesión explícita (paso 6, services v16)
+Logout guarda SignedOut sin discovery ni lectura previa de la sesión dañada,
+siempre después del ACK de revocación. Limpieza cosmética de perfil es best-effort;
+el ACK y el guardado SignedOut son obligatorios. E/S no autoriza sobrescribir.
+Un buy-* ilegible ofrece recuperación asistida y reutiliza su clave al reintentar:
+[checkout](../../docs/billing/native-checkout-recovery.md). Pérdida de un intento
+incierto de informe y edición posterior pueden duplicarlo con otra clave:
+[recuperación del borrador](../../docs/runbooks/testing-center-report-draft.md).
+El helper de loopback exige opt-in por instancia en test-support; no hay opción
+CLI/IPC/entorno equivalente. Distribución conserva HTTPS y raíces reales.
 
-`AccountCancel` (v16) cancela solo el intento OAuth/FAPI y relee Session;
-conserva la cuenta protegida y los derechos. «Volver/Cancelar» lo usa sin
-sustituirlo por Logout. Solo «Cerrar sesión» envía Logout. En NeedsSignIn,
-Cuenta ofrece Google/Discord/email y también el cierre explícito de sesión.
+### Navegador alternativo y copia explícita
 
-
-Account es el único dueño de `Reply::Account.session`: SignedOut, SignedIn,
-NeedsSignIn o Pending. La sesión no concede ni describe derechos; decide el
-núcleo. Un error de perfil y la caducidad del bearer no cambian por sí solos
-SignedIn. NeedsSignIn conserva identidad/perfil y exige nueva entrada.
-Los campos anteriores de Account se mantienen en este corte para presentación
-histórica; supervisor y Hub consumen Session como autoridad de sesión.
-No cambia el formato de cuenta, binding, authority ni candidate en disco.
-La generación v16 rechaza peers v15: incompatibilidad transitoria, sin revocar.
-El mensaje de sesión deja de afirmar que los derechos están pendientes (#1801).
-
-## #1827 — Renovaciones no destructivas (paso 5)
-
-`outcome` solo marca revocación en Logout, cambio de identidad y DeviceReset.
-Los rechazos de renovación manual/automática conservan los derechos firmados;
-la respuesta definitiva detiene el scheduler sin ampliar el plazo. Un refresh
-OAuth rechazado (`invalid_grant`/401 del endpoint de token) guarda NeedsSignIn;
-403 y fallos de userinfo tras refresh válido siguen transitorios. Conserva identidad/perfil y exige nueva
-entrada sin reutilizar tokens rechazados. Un login correcto restaura SignedIn;
-la comparación de identidad sigue precediendo a guardar otra cuenta.
-El paso 6 publica Session por services v16; el formato protegido de cuenta no cambia.
-Soporte y rollback de la cuenta: [runbook BIL-08](../../docs/billing/bil-08-offline-credential-runbook.md).
-
-## #1827 — Clasificación de acceso (paso 4)
-
-`services::outcome::outcome` es la única tabla de clasificación para renovación,
-refresh OAuth y respuesta del núcleo, y para el resultado del ACK que consume
-el supervisor. Devuelve `RenewalOutcome` y los efectos de revocación/cierre de
-sesión; App conserva el orden de ACK durable antes de limpiar datos.
-`Origin` conserva el contexto manual/automático; el paso 5 unifica sus efectos.
-El rechazo Clock solo al instalar caché y la ventana urgente de una hora se
-conservan. No cambia formato IPC, licencia, persistencia ni comportamiento.
-El Hub consume los resultados tipados existentes; no tiene una lista de errores.
-
-## Histórico ISA-1810 — sustituido por el paso 8
-
-La validación y cuarentena del candidate, el hint y el reintento de transferencia
-se retiraron. Services v18 aparta ambos restos al arrancar sin leerlos y solo
-envía InstallOnline desde una respuesta HTTP nueva. La admisión por Policy deja
-accesible la recuperación; DeviceReset requiere además una sesión utilizable.
-El núcleo conserva sus validaciones y el ACK durable antes de confirmar derechos.
-
-## ISA-1808 / ISA-1812 — Recuperar cuenta y leer perfil sin revocar
-
-Cuenta y metadata OAuth usan lectura de caché: DPAPI/JSON ilegible se aparta
-con bytes intactos y fecha inyectada, hasta tres copias por documento salvo
-bloqueos de limpieza. También cuentan las copias de los dos formatos antiguos,
-que se retiran antes que las copias fechadas recientes. Un fallo real de lectura o renombrado sigue siendo error.
-La metadata pública se redescubre; una cuenta ilegible empieza sin sesión.
-Logout conserva el ACK durable de revocación, pero escribe SignedOut sin
-redescubrir OAuth ni restaurar primero la sesión dañada. Una identidad nueva
-sigue invalidando derechos anteriores antes de persistirse. En Logout la lectura,
-cuarentena y limpieza del perfil son best-effort con diagnóstico tipado: el
-ACK durable y el guardado de SignedOut siguen siendo obligatorios. Un error
-cosmético no deja una sesión restaurable tras haber revocado sus derechos.
-
-AccountProfileRefresh es presentación y usa siempre OAuth automático: ni un
-invalid_grant ni un 401/403 revocan la licencia, borran candidate o cierran la
-sesión. AccountRenew, Logout y rechazo explícito de licencia conservan sus
-reglas. account_conflict 409 indica inconsistencia, no revocación: se conserva
-la firma anterior y se permite reintentar; DeviceLimit sigue separado.
-El feature existente test-support permite compartir el HTTP loopback y el
-host::session de fixtures entre crates. Activarlo no abre HTTP por defecto:
-solo la instancia de App que el test habilita expresamente admite 127.0.0.1.
-No hay opción CLI/IPC ni variable de ejecución que lo habilite. La distribución
-mantiene HTTPS y las trust roots reales; el test integrado comprueba el guard
-por defecto antes de usar su instancia local.
-Los caminos de App, incluido AccountRenew, usan el reloj inyectado. Un fallo
-de perfil conserva la sesión y su texto no pide iniciar sesión de nuevo. El
-reintento de perfil en Hub queda en #1823: requiere admisión por temporizador
-y backoff propios para evitar la cadena inmediata de peticiones.
-No cambia formato IPC, firma, TTL ni gracia. Recovery 72 h (#1814), fuera de RC9, requiere aún
-un plazo autenticado firmado: online_capabilities no concede derechos locales.
-
-## ISA-1803 — Recuperación del transporte (services v15 / control v5)
-
-Timeout, EOF, peer cerrado, identidad, protocolo, versión y rechazo tienen
-categorías cerradas. Solo un rechazo explícito detiene la renovación de la
-sesión; transporte y disponibilidad local conservan el backoff y el binding.
-El helper sale correctamente al agotar cinco minutos sin recibir una trama,
-ante EOF entre tramas o si el destinatario ya cerró al responder. Una trama
-parcial sigue siendo un fallo: nunca se repite la acción cuya respuesta se perdió.
-
-Una emisión automática guarda un marcador protegido `license-transfer-pending`.
-Tras un fallo del ACK se reintenta primero la instalación local, sin otra emisión
-HTTP, incluso si el helper se reinició. Se retira tras el ACK durable, cuarentena
-o revocación; el marcador no concede derechos y no contiene identidad ni licencia.
-Un marcador ilegible o con formato distinto se conserva en cuarentena y se trata
-como ausente. Si falta el candidate, se retira el marcador huérfano: una lectura
-local no cuenta como renovación ni como instalación, y se continúa hacia HTTP.
-La espera inicial de conexión no tiene deadline en Windows: termina al cerrar el
-padre. Los cinco minutos de inactividad corresponden a la lectura entre tramas.
-Control v5 conserva su formato: errores desconocidos de un núcleo anterior son
-`rights-legacy-unknown`, transitorios y distintos de protocolo/versión/rechazo.
-
-## ISA-1793 — Segunda revision
-
-Al abrir, un binding firmado rechazado por reloj/lapida va a cuarentena sin
-reiniciar la autoridad persistida. Si falla persistir, el nucleo sigue vivo y
-denegado, disponible para una nueva concesion firmada. El recorte de archivos
-ya apartados es best-effort; puede superar tres copias si una esta bloqueada.
-Comprar reabre la confirmacion automatica, conservando el suelo entre intentos.
-El Hub consulta avisos cada 5 s y mantiene residente el helper mientras tiene
-sesion; la mejora de residencia y avisos se sigue en #1799.
-
-## ISA-1793 — Renovación automática no destructiva y caché recuperable
-
-Servicios v15 distingue `LicenseRenewAutomatic`, `Probe` y `LicenseFailure`
-con resultado tipado. Hub, supervisor y helper deben recompilarse juntos.
-En automático no se invalida ni al refrescar OAuth ni ante 401/403/409 o una
-firma no verificable. Una clave nueva que la app no conoce pide actualizarla.
-La acción explícita y DeviceReset conservan su revocación durable.
-
-Binding y candidate se verifican antes de conceder derechos. La caché de clave
-retirada, formato antiguo, firma mala conocida o DPAPI corrupto se aparta con
-fecha y bytes intactos; se intenta conservar como maximo tres copias por nombre, salvo bloqueos de limpieza. E/S real
-se propaga y conserva el original. Los diagnósticos cerrados son
-`license-cache-unknown-key`, `license-cache-unsupported-format`,
-`license-cache-invalid-signature` y `license-cache-unreadable`.
-El candidate inválido no llega a Install ni deniega un binding vigente.
-Las sondas locales no añaden entradas redundantes al buffer de triaje.
-
-## #1761 · Navegador alternativo y copia explícita
-
-Services v14 permite AccountCopyLink y LoginLink redactado en Debug. Si falla
+AccountCopyLink entrega LoginLink redactado en Debug. Si falla
 el predeterminado HTTPS, Windows busca clientes StartMenuInternet en HKCU y
 HKLM (vistas64/32): Chrome, Edge, Firefox, Brave, Opera y resto, priorizando
 la configuración por usuario. Ejecuta solo el .exe absoluto registrado con la
@@ -226,16 +94,14 @@ Si ninguno arranca, conserva el mismo intento PKCE/listener durante su plazo
 original de tres minutos y devuelve copy_link=true. La URL se mantiene en memoria
 como Secret; solo AccountCopyLink la entrega al Hub para el gesto del portapapeles.
 No incluye tokens ni verifier. Cancelar, expirar, completar o reintentar retira
-el enlace. Hub, supervisor y services deben recompilarse juntos; peers v13
-se rechazan. No se modifica el registro, el predeterminado ni backend.
+el enlace. El conjunto de binarios usa la generación vigente. No se modifica el registro, el predeterminado ni backend.
 Si un Job externo rechaza breakaway con error5, se reintenta una sola vez sin
 ese flag y se deja log sin URL. En ese caso el navegador hereda el Job y puede
 cerrarse al salir de Vantare; el intento de acceso mantiene su plazo.
 
-## #1631 · Login propio
+### Email y Device Grant
 
-El protocolo services v14 combinaba marketing verificado, Founders y AccountEmail y respuestas Email sin tokens.
-R2 mantiene el canje pendiente en memoria y hace un solo intento por AccountPoll,
+El canje mantiene el canje pendiente en memoria y hace un solo intento por AccountPoll,
 con reloj inyectado, intervalo de Clerk/slow_down y ventana de 30 s. Cancel y
 Logout pueden interrumpir los intervalos sin sleeps. La sesión FAPI se cierra
 al canjear, cancelar o cerrar sesión (mejor esfuerzo); al agotar el plazo se
@@ -249,50 +115,38 @@ La sesión FAPI es temporal; la aprobación explícita de Device Grant obtiene l
 misma sesión OAuth v1 guardada por Account.complete. Supabase/Polar no cambian.
 Google/Discord mantienen authorize alojado + PKCE + callback loopback.
 Requisitos de desarrollo, seguridad y límites: [login propio](../../docs/auth/login-propio.md).
-Windows R2 (15/10): fmt/check/Clippy de producto PASS, Nextest services/ipc/runtime/hub
-1131/1131 PASS (ocho omisiones existentes), lifecycle 13/13 y telemetría 25/25
-PASS; siete capturas revisadas. HTTP local con reloj inyectado, sin Clerk real.
-Evidencia previa macOS (14/10/2026):
-Cargo directo con target propio y dos jobs autorizado en este Mac. Build y
-Clippy --all-targets/-D warnings PASS; Nextest compatible 1072/1072 PASS.
-Los 49 tests GPUI de AppKit requieren otro harness/Windows; cuatro mediciones
-permanecen ignoradas por defecto. No acredita login real: Native API/Device Grant,
-QA y Windows pendientes del orquestador. Telemetría 25/25 y lifecycle macOS
-10/10 PASS. Evidencia y resultados en el handoff.
-
-# Servicios nativos — ISA-1430
+## Desarrollo y otros servicios
 
 **#1661 / VANTA-83:** Founders añade el plan perpetuo para contenido presente y
-futuro. Corte actual services v15 / control v5 / fotos v11; recompilar el conjunto.
+futuro. Generaciones services v19 / control v7 / fotos v11; recompilar el conjunto.
 Incluye Nightly vitalicio junto al derecho Founders; no concede roles. [Contrato](../../docs/billing/founders-1661.md).
 
-**Corte combinado #1610/#1594:** protocolo services v9 (DTO v10/derechos v4
-independientes); recompilar Hub/services juntos. F7=C: campos escritos locales,
+Testing Center comparte el protocolo de servicios vigente; recompilar el conjunto. F7=C: campos escritos locales,
 etiquetas SQL fijas y salida estructurada por catálogo; no se envía prosa del tester.
 Rutas cerradas: current_v2, envío consentido por Edge `testing-report-submit`,
 crédito y acuse por fecha. La RPC directa no está permitida. Historial sin cuerpo
 privado; arreglado requiere versión válida. No hay cliente Plane ni referencia PostHog productiva.
-SQL y dependencias #1602/#1609 siguen sujetos a revisión e integración:
-[contrato vigente](../../docs/runbooks/testing-report-followup.md).
+Alcance SQL y dependencias #1602/#1609: [contrato vigente](../../docs/runbooks/testing-report-followup.md).
 
 `vantare-services` es miembro de `native/`: un workspace, `Cargo.lock`, edición
 y lints compartidas. Proceso de usuario bajo demanda, sin GPUI/simuladores.
 El supervisor `vantare` posee el auxiliar; el Hub solo manda comandos IPC.
 El núcleo verifica y persiste la credencial y publica derechos a los consumidores.
-Cuenta Clerk y datos Supabase tienen contratos distintos; el puente privado
-permanece inactivo hasta acordar configuración/backend con Isaac.
+Cuenta Clerk y datos Supabase tienen contratos distintos; el puente requiere
+configuración/backend públicos fijados y acordados con Isaac.
+
+Los gates se ejecutan desde `vantare-v2/` por la cola, con target propio,
+locked/offline y dos jobs. Configuración completa: [native/README.md](../README.md).
 
 ```powershell
-cd native
-cargo fmt --check
-cargo clippy --workspace --all-targets -j 2 -- -D warnings
-cargo nextest run --workspace --build-jobs 2 -j 2
-$env:RUST_TEST_THREADS = '2'
-cargo test --workspace --test lifecycle -j 2
+pwsh -NoProfile -File native/scripts/compilar.ps1 cargo fmt --manifest-path native/Cargo.toml --all -- --check
+pwsh -NoProfile -File native/scripts/compilar.ps1 cargo clippy --manifest-path native/Cargo.toml --target-dir D:/VantareServer/targets/mi-rama -p vantare-services --all-targets --locked --offline -j 2 -- -D warnings
+pwsh -NoProfile -File native/scripts/compilar.ps1 cargo nextest run --manifest-path native/Cargo.toml --target-dir D:/VantareServer/targets/mi-rama -p vantare-services --profile ci --locked --offline --build-jobs 2
 ```
 
-Máximo dos jobs, una compilación a la vez. Logs y target standalone histórico
-están fuera del repo, en `C:/tmp/servicios-evidence/`; no recuperar el stash previo.
+Cambios de runtime/domain/ipc/testdata incluyen telemetría y lifecycle de runtime;
+las dependencias o crates tocados añaden sus propios gates. El target standalone
+antiguo de C:/tmp no se reutiliza. No recuperar el stash anterior.
 No hay dependencias async/DB/bus nuevas: se reutilizan transporte Win32/ACL,
 ureq/TLS del lock, formatos/entropía mínimos y Ed25519/DPAPI de los cortes previos.
 Runtime consume los tipos v1 y Store de services con `default-features = false`;
@@ -301,7 +155,7 @@ opcionales. Las pruebas de runtime habilitan network solo como
 dev-dependency. Cargo unifica features en una compilación conjunta: ese grafo
 no se presenta como prueba de ausencia de TLS en el artefacto completo.
 
-IPC v3 distingue en `ReportReceipt` un borrador limpiado, otro posterior
+`ReportReceipt` distingue un borrador limpiado, otro posterior
 conservado y una limpieza pendiente. Confirmar un reintento solo retira el
 borrador con su misma idempotency key; un error de lectura conserva el archivo.
 Hub, supervisor y auxiliar comparten el contrato y deben compilarse juntos.
@@ -323,8 +177,7 @@ Commits/gates/evidencia y alcance real: [DELIVERY.md](DELIVERY.md).
 Roadmap: última publicación válida; Testing Center: texto, borrador DPAPI,
 preview/consentimiento efímero, intento durable manual y recibo. Sin autoenvío.
 Tests: HTTP loopback, claves generadas, procesos/pipes y DPAPI de fixtures;
-ningún secreto ni credencial real, `.env*` ni backend real. El corte 6 queda
-pendiente de Isaac; sync de perfiles/layouts no se implementa aquí.
+ningún secreto ni credencial real, `.env*` ni backend real. El alcance de sincronización se consulta en INTEGRATION.md.
 
 ### Desarrollo Unix — #1437
 
@@ -348,10 +201,10 @@ JWS/v2 y su clave de instalación quedan retirados por ADR 0102, decisión 5.
 Habilitar licencias Unix requiere otra decisión y una migración autenticada;
 no hay un enrollment ni backend v2 planificado.
 
-### Recuperación local de cuenta y compra — #1542
+### Recuperación local y compra
 
 Si cambia solo el redirect OAuth, la metadata incompatible se aparta en una
-copia `.corrupto` única y se redescubre con la configuración compilada. Un
+cuarentena fechada del contrato de Store y se redescubre con la configuración compilada. Un
 fallo al moverla detiene la operación; la sesión y las credenciales no cambian.
 Los errores de lectura no se convierten en permiso para sobrescribir datos.
 

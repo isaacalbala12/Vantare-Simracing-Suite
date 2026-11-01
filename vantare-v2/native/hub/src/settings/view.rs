@@ -1175,8 +1175,13 @@ impl Hub {
     }
 
     fn settings_updates(&self, cx: &mut Context<Self>) -> Div {
-        let version = crate::version_label().to_owned();
-        let channel = match crate::product::CHANNEL {
+        let identity = self
+            .settings
+            .update
+            .presentation(crate::version_label(), crate::product::CHANNEL);
+        let (version, installed_channel) = identity.unwrap_or(("…", ""));
+        let version = version.to_owned();
+        let channel = match installed_channel {
             "master" | "stable" => Some("Estable"),
             "testers" => Some("Testers"),
             "nightly" => Some("Nightly"),
@@ -1213,7 +1218,7 @@ impl Hub {
         } else {
             beta
         };
-        let current = beta
+        let current = identity.is_some() && beta
             .as_ref()
             .is_some_and(|status| status.state == "current" && status.version == version);
         let registration = if self.demo.is_none() && self.capture.is_none() {
@@ -1250,7 +1255,11 @@ impl Hub {
         status: super::updates::BetaStatus,
         cx: &mut Context<Self>,
     ) -> Div {
-        let ready = status.ready_for(crate::version_label());
+        let installed = self
+            .settings
+            .update
+            .presentation(crate::version_label(), crate::product::CHANNEL);
+        let ready = installed.is_some_and(|(version, _)| status.ready_for(version));
         section_body()
             .flex_row()
             .flex_wrap()

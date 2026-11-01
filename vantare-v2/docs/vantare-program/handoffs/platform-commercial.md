@@ -146,10 +146,10 @@ area:plataforma, GitHub Project Vantare. Plane En curso; estados y CI del orques
   Inventario propio y catálogo retirado validado; snapshot de paquete 0.0.987 de
   evidencia RC9, 109 rutas con SHA. Desinstalar tolera carpetas no vacías y conserva
   archivos ajenos. Gates locales finales 88+54 y 156 históricos PASS.
-- **1b en revisión**, [PR draft #1847](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1847),
+- **1b listo tras revisión**, [PR draft #1847](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1847),
   enlazado T3. Rama vantareapp/isa-1840-1b-sin-raiz, worktree
   D:/VantareServer/worktrees/isa-1840-1b, rebase pedido sobre nightly f8ccb1689.
-  HEAD final y gates posteriores al rebase se fijarán en #1840/PR.
+  Código de revisión 0cb7e90b2; HEAD documental final en #1840/PR.
   Root y Library obligatorios, sin operaciones al cargar y sin clobber del
   llamador. Driver exige raíz al escribir; Probe conserva descubrimiento UI.
   La build TEST inyecta identidad, carpetas y prefijo QA; pública los omite.
@@ -158,6 +158,14 @@ area:plataforma, GitHub Project Vantare. Plane En curso; estados y CI del orques
   el procedimiento ya usado en #1655/#1740/#1742. No cambian PNG/corpus/baselines.
   Invocaciones documentadas, qa ausente rechazado con causa propia y scripts
   instalados con SHA real en la matriz; no se ocultan como fixtures.
+- Gates finales de 1b tras rebase PASS: matriz **88/88**, biblioteca **22**,
+  contexto driver **24**, rechazos históricos **14**, scripts visibles **12**,
+  inventario/retirada **54**; histórico aislado **14+156** con ZIP975 real.
+  Fmt, Clippy instalador todos los targets -D warnings, contrato público/TEST
+  **8/8 cada uno**, parseo PS y calidad/**468** huellas. Los tres scripts y
+  helpers coinciden en bytes con matrix-1b-review-01; sus 88 resultados coinciden
+  con baseline. Solo varían hashes de scripts en 52 filas, con 188 copias de
+  candidate ahora visibles. Evidencia también history-1b-rebase-01.
 - Suites que aún usan QA1492 en HKCU/carpetas del perfil quedan fuera del arreglo,
   por decisión expresa: [seguimiento #1848](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1848),
   area:plataforma, Project Vantare. No se crea Plane ni se ejecutan esas suites
@@ -175,7 +183,7 @@ area:plataforma, GitHub Project Vantare. Plane En curso; estados y CI del orques
 Sin instalación real, Setup/Hub físicos, Downloads, merge ni release por el
 worker. Las primeras capturas de0 con TEMP heredado se descartaron, sin auditoría
 global prometida. QA física en otra cuenta/VM pendiente. RC9 publicado no cambia.
-Siguiente: finalizar gates/revisión de 1b sobre 1a integrado, después 1c/1d.
+Siguiente: CI/revisión del orquestador de 1b, después PR de 1c/1d.
 Última actualización: 1-nov-2026, ejecutor de #1840.
 <!-- isa1827-p10-worker -->
 ## VANTA-126 / #1827 — Paso 10 listo para revisión (2026-11-01)

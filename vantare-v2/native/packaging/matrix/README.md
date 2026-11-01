@@ -102,9 +102,10 @@ Paso 1a: el mismo gate ejecuta `inventory-growth-tests.ps1`. Simula inventarios
 109→110→109 (retirada explícita de una ruta conocida), actualización y rollback;
 conserva datos y carpetas vacías de tres generaciones al desinstalar. Los
 rechazos exigen su causa esperada. El catálogo de rutas retiradas está vacío en
-producto y no amplía paquetes entrantes. El único cambio esperado en las 88
-instantáneas es el hash de beta.ps1 raíz (52 filas) por el cleanup actualizado;
-los datos, códigos, estado, registro y enlaces quedan iguales.
+producto y no amplía paquetes entrantes. En 1a el cambio de las 88 instantáneas
+era el hash de beta.ps1 raíz (52 filas) por el cleanup actualizado. Desde 1b
+también se fijan los bytes de candidate y su copia de desinstalación; los datos,
+códigos, estado, registro y enlaces quedan iguales.
 
 Revisión de 1a: 54 comprobaciones. El catálogo retirado se valida antes de usarlo
 en lectura o borrado: rutas relativas canónicas, sin data/, unidades/UNC/traversal,

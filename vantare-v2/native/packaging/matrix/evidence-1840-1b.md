@@ -35,6 +35,10 @@ histórico con valores implícitos. La semántica de producto no se sustituye.
 
 ## Verificación válida
 
+Las capturas siguientes describen la primera entrega, antes de integrar 1a y
+de la revisión que hace visibles también los bytes de candidate. La repetición
+final sobre f8ccb1689 se registra al final de este documento.
+
 - `matrix-1b-01`: 88/88 filas contra baseline; 22 comprobaciones de carga y 22
   de contexto del driver. Datos existentes intactos; único delta esperado de
   instantáneas: hash de beta.ps1 raíz en 52 filas.
@@ -88,3 +92,16 @@ un rechazo por su causa correcta, sin crear instalación. Contexto del driver:
 24/24 PASS. Las suites que aún usan la identidad QA1492 y carpetas del perfil
 quedan fuera de 1b por decisión expresa, en el seguimiento #1848 (plataforma,
 Project Vantare); no se han ejecutado aquí ni se crea tarea Plane nueva.
+
+Histórico repetido tras el rebase: history-1b-rebase-01, 14+156 PASS, ZIP975 real.
+El contador baja de 164 a 156 porque hereda las pruebas de inventario propio de
+1a; no se retiran comprobaciones de aislamiento. Originales preservados: 468
+huellas exactas PASS, con las dos migraciones activas documentadas.
+
+Gates finales del rebase (matrix-1b-review-01): 88/88 contra baseline y todos
+los hooks 22 biblioteca +24 contexto +14 seguridad histórica +12 snapshots +54
+inventario PASS. Se compararon bytes de producto/helpers con el worktree y los
+88 objetos de resultado con el baseline, sin diferencias. Fmt y Clippy instalador
+all-targets -D warnings, contrato público/TEST 8+8, parseo y 468 huellas PASS.
+No cambian runtime/domain/ipc/testdata ni lifecycle del instalador; telemetría
+omitida. Los gates generales CI los observa el orquestador.

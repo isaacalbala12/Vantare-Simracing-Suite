@@ -11,12 +11,17 @@ y opacidad solo se previsualiza el valor: el tema se aplica al soltar.
 General guarda `general.json` con escritura atómica, límite de tamaño y detección
  de cambios externos. Densidad, inicio con Windows, arranque minimizado, avisos
  de actualización, avisos del Launcher y toasts son preferencias reales.
-El valor Run `HKCU/Software/Microsoft/Windows/CurrentVersion/Run/VantareNative.Hub`
-solo cambia tras activar o desactivar la opción desde el Hub normal. Una beta
-instalada usa su `beta.ps1` estable, que selecciona la generación vigente; un
-build de desarrollo usa su propio ejecutable. No se cambia el Run del Launcher.
-Si falla el guardado se intenta restituir el estado anterior de inicio y se
-muestra cualquier fallo. La prueba de registro utiliza una clave QA aislada.
+Inicio con Windows usa el acceso Startup del instalador, no crea valores Run.
+SetStartup guarda installer-ui.json o startup-options.json de instalaciones
+antiguas, ambos en la raíz. Store carga/proyecta esa opción y adopta una migración
+posterior de Register sin reescribir general.json. Durante el comando muestra
+progreso y desactiva solo ese interruptor; otros ajustes se siguen guardando.
+Fallo del comando conserva la opción anterior y muestra el diagnóstico real del
+script (hasta 4096 B), invitando a reintentar. El stderr se recoge en un temporal
+propio bajo la raíz instalada para evitar bloquear un pipe lleno; se elimina al
+recoger el hijo, también al cancelar o vencer el plazo. La matriz
+comprueba Run válida/ajena, migración, carrera con Register y desinstalación con
+registro/carpetas/entornos inyectados en QA.
 
 El Hub mantiene español. Se ha retirado el selector de idioma incompleto: el
 idioma de los widgets sigue siendo independiente y se guarda en el layout.
@@ -71,13 +76,14 @@ Privacidad usa `<raíz>/Vantare/native` en arranque normal. Una raíz relativa
 falla sin recurrir a datos del usuario. La captura usa su `--data-dir` aislado.
 
 Verificación manual: usar datos QA propios; cambiar General y reabrir. Con
-una beta instalada autorizada, activar/desactivar inicio y consultar únicamente
-el valor Run del Hub; comprobar minimización en el siguiente arranque. Activar
+una instalación en QA, activar/desactivar inicio y comprobar el enlace Startup
+y la preferencia de raíz; la Run propia debe desaparecer y la ajena conservarse.
+Comprobar minimización en el siguiente arranque. Activar
 toasts y enviar prueba, después desactivarlos. Probar Ctrl L/K/B/Alt B y el
 historial de Studio. Cambiar nivel y frecuencia, reabrir y deshacer/rehacer;
 modificar externamente el layout debe bloquear la siguiente escritura. Preparar,
 filtrar y copiar Diagnóstico; no reiniciar ni actualizar la instalación real en
-QA. Los tests de registro trabajan solo sobre `VantareNativeTests/Settings-*`.
+QA. Los tests nuevos de Startup usan un hive UUID y carpetas inyectadas del arnés.
 
 Continuación Mac: `/Users/isaacalbala/evidence/fb-ajustes/informe.md`,
 `evidencia.md`, `checks.json`, logs y capturas PNG. Tarea

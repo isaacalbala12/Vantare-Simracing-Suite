@@ -1,4 +1,4 @@
-//! Frontera Win32 acotada al valor Run del Hub del usuario actual.
+//! Preferencias de Windows: movimiento y acceso Startup del instalador.
 #![allow(unsafe_code)]
 /// Consulta de solo lectura de «Efectos de animación» de Windows.
 pub(in crate::shell) fn reduced_motion() -> bool {
@@ -23,218 +23,232 @@ pub(in crate::shell) fn reduced_motion() -> bool {
         false
     }
 }
-#[cfg(windows)]
-mod win {
-    use std::{ffi::c_void, io};
-    #[link(name = "advapi32")]
-    // SAFETY: firmas del SDK; todas las cadenas/buffers se mantienen durante la llamada.
-    unsafe extern "system" {
-        fn RegCreateKeyExW(
-            root: *mut c_void,
-            key: *const u16,
-            reserved: u32,
-            class: *mut u16,
-            options: u32,
-            access: u32,
-            security: *mut c_void,
-            result: *mut *mut c_void,
-            disposition: *mut u32,
-        ) -> i32;
-        fn RegOpenKeyExW(
-            root: *mut c_void,
-            key: *const u16,
-            options: u32,
-            access: u32,
-            result: *mut *mut c_void,
-        ) -> i32;
-        fn RegSetValueExW(
-            key: *mut c_void,
-            name: *const u16,
-            reserved: u32,
-            kind: u32,
-            data: *const u8,
-            size: u32,
-        ) -> i32;
-        fn RegDeleteValueW(key: *mut c_void, name: *const u16) -> i32;
-        fn RegCloseKey(key: *mut c_void) -> i32;
-    }
-
-    fn wide(text: &str) -> io::Result<Vec<u16>> {
-        if text.contains('\0') {
-            return Err(io::Error::other("NUL en registro"));
+/// Owns the bounded installer command while the UI stays responsive.
+pub(super) struct StartupChange {
+    child: std::process::Child,
+    deadline: std::time::Instant,
+    diagnostic: std::fs::File,
+    diagnostic_path: std::path::PathBuf,
+}
+impl StartupChange {
+    pub(super) fn start(enabled: bool) -> Result<Self, String> {
+        #[cfg(windows)]
+        {
+            use std::{
+                os::windows::process::CommandExt,
+                path::PathBuf,
+                process::{Command, Stdio},
+            };
+            let root = PathBuf::from(
+                std::env::var_os("VANTARE_BETA_ROOT")
+                    .ok_or("Instala Vantare con Setup para iniciar con Windows")?,
+            );
+            let executable = std::env::current_exe().map_err(|error| error.to_string())?;
+            let script = crate::installation::installed_script(&executable, &root)?;
+            let windows = std::env::var_os("WINDIR").ok_or("Windows no disponible")?;
+            let mut command = Command::new(
+                PathBuf::from(windows).join("System32/WindowsPowerShell/v1.0/powershell.exe"),
+            );
+            command
+                .args([
+                    "-NoProfile",
+                    "-NonInteractive",
+                    "-ExecutionPolicy",
+                    "Bypass",
+                    "-File",
+                ])
+                .arg(script)
+                .args(["-Operation", "SetStartup", "-Root"])
+                .arg(&root)
+                .args(["-Startup", if enabled { "On" } else { "Off" }])
+                .stdin(Stdio::null())
+                .stdout(Stdio::null())
+                .creation_flags(0x0800_0000);
+            Self::spawn(&mut command, &root)
         }
-        Ok(text.encode_utf16().chain(Some(0)).collect())
+        #[cfg(not(windows))]
+        {
+            let _ = enabled;
+            Err("Inicio automático disponible solo en Windows".into())
+        }
     }
-
-    pub(super) fn sync_run(key_path: &str, name: &str, command: Option<&str>) -> io::Result<()> {
-        let path = wide(key_path)?;
-        let name = wide(name)?;
-        let data = command.map(wide).transpose()?;
-        let mut key = std::ptr::null_mut();
-        let hkcu = -2_147_483_647_isize as *mut c_void;
-        // SAFETY: HKCU del SDK; strings terminadas en NUL, salida HKEY válida, sin clases/ACL propias.
-        let opened = unsafe {
-            if command.is_some() {
-                RegCreateKeyExW(
-                    hkcu,
-                    path.as_ptr(),
-                    0,
-                    std::ptr::null_mut(),
-                    0,
-                    2,
-                    std::ptr::null_mut(),
-                    &raw mut key,
-                    std::ptr::null_mut(),
-                )
-            } else {
-                RegOpenKeyExW(hkcu, path.as_ptr(), 0, 2, &raw mut key)
+    #[cfg(any(windows, test))]
+    fn spawn(command: &mut std::process::Command, root: &std::path::Path) -> Result<Self, String> {
+        // A file avoids a full stderr pipe blocking the child. Own and remove it
+        // with the process; only a bounded diagnostic is shown after failure.
+        let nonce = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_err(|error| error.to_string())?
+            .as_nanos();
+        let diagnostic_path = root.join(format!(
+            "startup-command-{}-{nonce}.log",
+            std::process::id()
+        ));
+        let diagnostic = std::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create_new(true)
+            .open(&diagnostic_path)
+            .map_err(|error| format!("Inicio con Windows: {error}. Vuelve a intentarlo."))?;
+        let stderr = match diagnostic.try_clone() {
+            Ok(stderr) => stderr,
+            Err(error) => {
+                drop(diagnostic);
+                let _ = std::fs::remove_file(&diagnostic_path);
+                return Err(format!("Inicio con Windows: {error}. Vuelve a intentarlo."));
             }
         };
-        if opened == 2 && command.is_none() {
-            return Ok(());
-        }
-        if opened != 0 {
-            return Err(io::Error::from_raw_os_error(opened));
-        }
-        // SAFETY: HKEY recién abierto; buffer REG_SZ UTF-16 incluido NUL y tamaño acotado.
-        let result = unsafe {
-            if let Some(data) = data {
-                RegSetValueExW(
-                    key,
-                    name.as_ptr(),
-                    0,
-                    1,
-                    data.as_ptr().cast(),
-                    u32::try_from(data.len() * 2)
-                        .map_err(|_| io::Error::other("Run demasiado largo"))?,
-                )
-            } else {
-                RegDeleteValueW(key, name.as_ptr())
+        command.stderr(stderr);
+        let child = match command.spawn() {
+            Ok(child) => child,
+            Err(error) => {
+                drop(diagnostic);
+                let _ = std::fs::remove_file(&diagnostic_path);
+                return Err(format!("Inicio con Windows: {error}. Vuelve a intentarlo."));
             }
         };
-        // SAFETY: cerrar exactamente el HKEY propio, después de usarlo.
-        let closed = unsafe { RegCloseKey(key) };
-        if result != 0 && !(result == 2 && command.is_none()) {
-            return Err(io::Error::from_raw_os_error(result));
+        Ok(Self {
+            child,
+            deadline: std::time::Instant::now() + std::time::Duration::from_secs(30),
+            diagnostic,
+            diagnostic_path,
+        })
+    }
+    fn failure(&mut self) -> String {
+        use std::io::{Read, Seek, SeekFrom};
+        let mut bytes = Vec::new();
+        let _ = self.diagnostic.seek(SeekFrom::Start(0));
+        let _ = (&mut self.diagnostic).take(4096).read_to_end(&mut bytes);
+        let detail = String::from_utf8_lossy(&bytes);
+        format!(
+            "No se pudo cambiar el inicio con Windows. {} Vuelve a intentarlo.",
+            detail.trim()
+        )
+    }
+    fn poll(&mut self) -> Result<bool, String> {
+        match self.child.try_wait().map_err(|error| error.to_string())? {
+            Some(status) if status.success() => Ok(true),
+            Some(_) => Err(self.failure()),
+            None if std::time::Instant::now() >= self.deadline => {
+                Err("El cambio de inicio con Windows agotó su plazo. Vuelve a intentarlo.".into())
+            }
+            None => Ok(false),
         }
-        if closed != 0 {
-            return Err(io::Error::from_raw_os_error(closed));
+    }
+    pub(super) async fn complete(
+        mut self,
+        executor: gpui::BackgroundExecutor,
+    ) -> Result<(), String> {
+        while !self.poll()? {
+            executor.timer(std::time::Duration::from_millis(50)).await;
         }
         Ok(())
     }
 }
-
-pub(super) fn startup(enabled: bool) -> Result<(), String> {
-    #[cfg(windows)]
-    {
-        let command = if !enabled {
-            None
-        } else if let Some(root) = std::env::var_os("VANTARE_BETA_ROOT") {
-            let root = std::path::PathBuf::from(root);
-            let script = root.join("beta.ps1");
-            if !script.is_file() {
-                return Err("No se encontró el arranque instalado de Vantare".into());
-            }
-            let system = std::env::var_os("SystemRoot").ok_or("Windows sin SystemRoot")?;
-            let executable = std::path::PathBuf::from(system)
-                .join("System32/WindowsPowerShell/v1.0/powershell.exe");
-            Some(installed_command(&executable, &root)?)
-        } else {
-            Some(quote(
-                &std::env::current_exe().map_err(|error| error.to_string())?,
-            )?)
-        };
-        win::sync_run(
-            r"Software\Microsoft\Windows\CurrentVersion\Run",
-            &crate::installation::hub_identity()?,
-            command.as_deref(),
-        )
-        .map_err(|error| format!("Inicio con Windows: {error}"))
-    }
-    #[cfg(not(windows))]
-    {
-        let _ = enabled;
-        Err("Inicio automático disponible solo en Windows".into())
+impl Drop for StartupChange {
+    fn drop(&mut self) {
+        let _ = self.child.kill();
+        let _ = self.child.wait();
+        let _ = std::fs::remove_file(&self.diagnostic_path);
     }
 }
 
-#[cfg(any(windows, test))]
-fn installed_command(
-    executable: &std::path::Path,
-    root: &std::path::Path,
-) -> Result<String, String> {
-    Ok(format!(
-        "{} -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File {} -Root {}",
-        quote(executable)?,
-        quote(&root.join("beta.ps1"))?,
-        quote(root)?
-    ))
+/// Installer UI wins; legacy migrations persist a small root preference.
+pub(super) fn installed_startup() -> Option<bool> {
+    installed_startup_at(std::path::Path::new(&std::env::var_os(
+        "VANTARE_BETA_ROOT",
+    )?))
 }
-
-#[cfg(any(windows, test))]
-fn quote(path: &std::path::Path) -> Result<String, String> {
-    let value = path.to_str().ok_or("Ruta de inicio inválida")?;
-    if value.contains(['"', '\0']) || value.ends_with('\\') {
-        return Err("Ruta de inicio inválida".into());
+pub(super) fn installed_startup_at(root: &std::path::Path) -> Option<bool> {
+    let ui = root.join("installer-ui.json");
+    if ui.try_exists().ok()? {
+        return startup_option(&crate::files::read(&ui, 4096).ok()?);
     }
-    Ok(format!("\"{value}\""))
+    let bytes = crate::files::read(&root.join("startup-options.json"), 1024).ok()?;
+    let option: serde_json::Value = serde_json::from_slice(&bytes).ok()?;
+    (option.as_object()?.len() == 2 && option["schema"] == 1).then_some(())?;
+    option["autostart"].as_bool()
+}
+fn startup_option(bytes: &[u8]) -> Option<bool> {
+    let options: serde_json::Value = serde_json::from_slice(bytes).ok()?;
+    (options["schema"] == 1 && options["kind"] == "rust-gpui").then_some(())?;
+    options["autostart"].as_bool()
 }
 #[cfg(test)]
 mod tests {
     use super::*;
     #[test]
-    fn startup_quotes_unicode_and_rejects_command_injection() {
-        assert_eq!(
-            quote(std::path::Path::new("C:/Aplicación Vantare/hub.exe")).expect("ruta"),
-            "\"C:/Aplicación Vantare/hub.exe\""
-        );
-        assert!(quote(std::path::Path::new("C:/hub\".exe")).is_err());
-        assert!(quote(std::path::Path::new("C:/hub\0.exe")).is_err());
-        assert!(quote(std::path::Path::new("C:\\Vantare\\")).is_err());
-        assert_eq!(
-            installed_command(
-                std::path::Path::new("C:/Windows/powershell.exe"),
-                std::path::Path::new("C:/Aplicación Vantare")
-            )
-            .expect("arranque estable")
-            .replace('\\', "/"),
-            "\"C:/Windows/powershell.exe\" -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File \"C:/Aplicación Vantare/beta.ps1\" -Root \"C:/Aplicación Vantare\""
-        );
+    fn installer_options_keep_setup_and_hub_startup_preferences_in_sync() {
+        for enabled in [false, true] {
+            let value = serde_json::json!({"schema":1,"kind":"rust-gpui","autostart":enabled});
+            assert_eq!(
+                startup_option(&serde_json::to_vec(&value).unwrap()),
+                Some(enabled)
+            );
+        }
+        for bytes in [
+            b"{}".as_slice(),
+            br#"{"schema":1,"kind":"rust-gpui","autostart":"true"}"#,
+            br#"{"schema":2,"kind":"rust-gpui","autostart":true}"#,
+            b"invalid",
+        ] {
+            assert_eq!(startup_option(bytes), None);
+        }
     }
     #[cfg(windows)]
     #[test]
-    fn run_value_is_created_and_removed_in_an_isolated_user_key() {
-        let name = format!(
-            "Software\\VantareNativeTests\\Settings-{}",
-            std::process::id()
-        );
-        let query = format!("HKCU\\{name}");
-        win::sync_run(&name, "HubQA", Some("\"C:/Aplicación Vantare/hub.exe\""))
-            .expect("activar QA");
+    fn startup_command_failure_timeout_and_drop_never_claim_success() {
+        use std::{
+            os::windows::process::CommandExt,
+            process::{Command, Stdio},
+        };
+        let root =
+            std::env::temp_dir().join(format!("vantare-startup-child-{}", std::process::id()));
+        std::fs::create_dir_all(&root).unwrap();
+        let mut command = Command::new("cmd.exe");
+        command
+            .args([
+                "/D",
+                "/C",
+                "echo Synthetic operation lock contention 1>&2 & exit /B 7",
+            ])
+            .creation_flags(0x0800_0000);
+        let mut change = StartupChange::spawn(&mut command, &root).unwrap();
+        change.child.wait().unwrap();
+        let error = change.poll().unwrap_err();
         assert!(
-            std::process::Command::new("reg.exe")
-                .args(["query", &query, "/v", "HubQA"])
-                .output()
-                .expect("consultar QA")
-                .status
-                .success()
+            error.contains("Synthetic operation lock contention")
+                && error.contains("Vuelve a intentarlo")
         );
-        win::sync_run(&name, "HubQA", None).expect("desactivar QA");
-        assert!(
-            !std::process::Command::new("reg.exe")
-                .args(["query", &query, "/v", "HubQA"])
-                .output()
-                .expect("consultar ausencia")
-                .status
-                .success()
-        );
-        assert!(
-            std::process::Command::new("reg.exe")
-                .args(["delete", &query, "/f"])
-                .output()
-                .expect("limpiar QA")
-                .status
-                .success()
-        );
+        drop(change);
+        drop(command);
+        let mut command = Command::new("powershell.exe");
+        command
+            .args([
+                "-NoProfile",
+                "-NonInteractive",
+                "-Command",
+                "[Console]::Error.Write(('x'*100000));exit 7",
+            ])
+            .creation_flags(0x0800_0000);
+        let mut change = StartupChange::spawn(&mut command, &root).unwrap();
+        change.child.wait().unwrap();
+        let error = change.poll().unwrap_err();
+        assert!(error.contains("Vuelve a intentarlo") && error.len() < 4200);
+        drop(change);
+        drop(command);
+        let mut command = Command::new("cmd.exe");
+        command
+            .args(["/D", "/C", "more > nul"])
+            .stdin(Stdio::piped())
+            .creation_flags(0x0800_0000);
+        let mut change = StartupChange::spawn(&mut command, &root).unwrap();
+        assert!(!change.poll().unwrap());
+        change.deadline = std::time::Instant::now();
+        assert!(change.poll().is_err());
+        drop(change); // Owns cancellation and reaps the blocked child.
+        drop(command);
+        assert_eq!(std::fs::read_dir(&root).unwrap().count(), 0);
+        std::fs::remove_dir(root).unwrap();
     }
 }

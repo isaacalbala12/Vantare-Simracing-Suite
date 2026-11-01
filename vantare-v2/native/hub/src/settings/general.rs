@@ -1,6 +1,7 @@
 //! Preferencias del Hub, independientes del idioma y unidades de los widgets.
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
+pub(super) const STARTUP_PROGRESS: &str = "Cambiando el inicio con Windows…";
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -59,11 +60,15 @@ impl Default for Preferences {
 }
 pub(in crate::shell) struct Store {
     pub value: Preferences,
+    startup_task: Option<gpui::Task<()>>,
     path: PathBuf,
     observed: Option<Vec<u8>>,
 }
 impl Store {
     pub fn load(root: &Path) -> Result<Self, String> {
+        Self::load_with_startup(root, super::windows::installed_startup())
+    }
+    fn load_with_startup(root: &Path, startup: Option<bool>) -> Result<Self, String> {
         let path = root.join("general.json");
         let observed = match std::fs::metadata(&path) {
             Ok(_) => Some(crate::files::read(&path, 4096)?),
@@ -79,11 +84,28 @@ impl Store {
         if observed.is_none() {
             value.onboarding_completed = false;
         }
+        if let Some(enabled) = startup {
+            value.startup = enabled;
+        }
         Ok(Self {
             value,
+            startup_task: None,
             path,
             observed,
         })
+    }
+    pub(super) fn startup_pending(&self) -> bool {
+        self.startup_task.is_some()
+    }
+    fn refresh_startup(&mut self, startup: Option<bool>) -> bool {
+        if let Some(enabled) = startup
+            && !self.startup_pending()
+            && self.value.startup != enabled
+        {
+            self.value.startup = enabled;
+            return true;
+        }
+        false
     }
     pub fn save(&mut self, value: Preferences) -> Result<(), String> {
         let bytes = serde_json::to_vec(&value).map_err(|error| error.to_string())?;
@@ -110,6 +132,12 @@ pub(super) enum Toggle {
     Toasts,
 }
 
+impl Toggle {
+    pub(super) fn enabled(self, startup_pending: bool) -> bool {
+        !matches!(self, Self::Startup) || !startup_pending
+    }
+}
+
 impl super::Hub {
     pub(in crate::shell) fn general_preferences(&self) -> Preferences {
         self.settings
@@ -128,6 +156,14 @@ impl super::Hub {
         if self.settings.general.is_err() {
             return;
         }
+        if self
+            .settings
+            .general
+            .as_ref()
+            .is_ok_and(|store| !toggle.enabled(store.startup_pending()))
+        {
+            return;
+        }
         let old = self.general_preferences();
         let mut next = old;
         match toggle {
@@ -144,20 +180,51 @@ impl super::Hub {
                 cx.notify();
                 return;
             }
-            if let Err(error) = super::windows::startup(next.startup) {
-                self.settings.status = Some(error);
-                cx.notify();
-                return;
+            let change = match super::windows::StartupChange::start(next.startup) {
+                Ok(change) => change,
+                Err(error) => {
+                    self.settings.status = Some(error);
+                    cx.notify();
+                    return;
+                }
+            };
+            self.settings.status = Some(STARTUP_PROGRESS.into());
+            let executor = cx.background_executor().clone();
+            let task = cx.spawn(async move |this, cx| {
+                let result = change.complete(executor).await;
+                let _ = this.update(cx, |this, cx| {
+                    match result {
+                        Ok(()) => {
+                            // The installer committed the root preference. Never
+                            // write data/general.json for Startup, including legacy installs.
+                            if let Ok(store) = &mut this.settings.general {
+                                store.value.startup = next.startup;
+                            }
+                            if this.settings.status.as_deref() == Some(STARTUP_PROGRESS) {
+                                this.settings.status = None;
+                            }
+                        }
+                        Err(error) => this.settings.status = Some(error),
+                    }
+                    if let Ok(store) = &mut this.settings.general {
+                        store.startup_task.take();
+                    }
+                    cx.notify();
+                });
+            });
+            if let Ok(store) = &mut self.settings.general {
+                store.startup_task = Some(task);
             }
+            cx.notify();
+            return;
         }
         self.save_general(next, cx);
-        if self.settings.status.is_some()
-            && matches!(toggle, Toggle::Startup)
-            && let Err(error) = super::windows::startup(old.startup)
+    }
+    pub(super) fn refresh_startup_preference(&mut self, cx: &mut gpui::Context<Self>) {
+        if let Ok(store) = &mut self.settings.general
+            && store.refresh_startup(super::windows::installed_startup())
         {
-            self.settings.status = Some(format!(
-                "No se guardaron los ajustes ni se pudo restaurar el inicio: {error}"
-            ));
+            cx.notify();
         }
     }
     pub(in crate::shell) fn notify_system(
@@ -213,6 +280,67 @@ pub(super) fn wire(state: &super::State, cx: &mut gpui::Context<super::Hub>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn gpui_load_projects_startup_without_rewriting_or_creating_general() {
+        let root =
+            std::env::temp_dir().join(format!("vantare-startup-load-{}", std::process::id()));
+        std::fs::create_dir_all(&root).unwrap();
+        let path = root.join("general.json");
+        let bytes = br#"{ "startup": false, "density": "compact" }"#;
+        std::fs::write(&path, bytes).unwrap();
+        let store = Store::load_with_startup(&root, Some(true)).unwrap();
+        assert!(store.value.startup);
+        assert_eq!(store.value.density, Density::Compact);
+        assert_eq!(std::fs::read(&path).unwrap(), bytes);
+        std::fs::remove_file(&path).unwrap();
+        let store = Store::load_with_startup(&root, Some(true)).unwrap();
+        assert!(store.value.startup);
+        assert!(!path.exists());
+        std::fs::remove_dir_all(root).unwrap();
+    }
+    #[test]
+    fn installer_run_migration_is_adopted_after_load_without_rewriting_general() {
+        let root =
+            std::env::temp_dir().join(format!("vantare-startup-migrate-{}", std::process::id()));
+        let data = root.join("data");
+        std::fs::create_dir_all(&data).unwrap();
+        let bytes = br#"{"startup":false,"updates":false}"#;
+        std::fs::write(data.join("general.json"), bytes).unwrap();
+        let mut store = Store::load_with_startup(&data, None).unwrap();
+        assert!(!store.value.startup);
+        std::fs::write(
+            root.join("startup-options.json"),
+            br#"{"schema":1,"autostart":true}"#,
+        )
+        .unwrap();
+        let migrated = super::super::windows::installed_startup_at(&root);
+        assert!(store.refresh_startup(migrated));
+        assert!(store.value.startup);
+        assert!(!store.value.updates);
+        std::fs::write(
+            root.join("installer-ui.json"),
+            br#"{"schema":1,"kind":"rust-gpui","autostart":false}"#,
+        )
+        .unwrap();
+        assert!(store.refresh_startup(super::super::windows::installed_startup_at(&root)));
+        assert!(!store.value.startup);
+        assert_eq!(std::fs::read(data.join("general.json")).unwrap(), bytes);
+        std::fs::remove_dir_all(root).unwrap();
+    }
+    #[test]
+    fn pending_startup_disables_only_its_own_control() {
+        for toggle in [
+            Toggle::Minimized,
+            Toggle::Updates,
+            Toggle::Launcher,
+            Toggle::Toasts,
+        ] {
+            assert!(toggle.enabled(true));
+            assert!(toggle.enabled(false));
+        }
+        assert!(!Toggle::Startup.enabled(true));
+        assert!(Toggle::Startup.enabled(false));
+    }
     #[test]
     fn existing_layout_without_general_skips_onboarding_but_interrupted_setup_resumes() {
         let root = std::env::temp_dir().join(format!(

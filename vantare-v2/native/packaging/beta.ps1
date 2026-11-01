@@ -1,4 +1,5 @@
 ﻿# vantare-boot-capabilities: indicator-handshake-v1
+# vantare-uninstall-capabilities: defer-run-v1
 #requires -Version 5.1
 [CmdletBinding()]
 param(
@@ -8,7 +9,8 @@ param(
     [Alias('ExpectedSha256')][string]$BetaPackageHash,
     [Alias('LocalManifest')][string]$BetaManifestFile,
     [Alias('NoLaunch')][switch]$BetaNoLaunch,
-    [Alias('Library')][switch]$BetaLibrary
+    [Alias('Library')][switch]$BetaLibrary,
+    [Alias('KeepLegacyRun')][switch]$BetaKeepLegacyRun
 )
 if ([string]::IsNullOrWhiteSpace($BetaRoot)) { throw 'NATIVE_ROOT_REQUIRED' }
 if ($MyInvocation.InvocationName -eq '.' -and -not $BetaLibrary) { throw 'NATIVE_LIBRARY_MODE_REQUIRED' }
@@ -564,7 +566,7 @@ function Run-BetaHub([string]$Directory, [string]$ManifestFile = '') {
     } finally { $session.Dispose() }
 }
 
-function Uninstall-Beta([string]$Directory, [scriptblock]$Finalize=$null) {
+function Uninstall-Beta([string]$Directory, [scriptblock]$Finalize=$null,[switch]$KeepLegacyRun) {
     $directory = Open-NativeRoot $Directory
     $session = [IO.File]::Open((Join-Path $directory 'beta-session.lock'), [IO.FileMode]::OpenOrCreate, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
     $lock = $null
@@ -581,6 +583,8 @@ function Uninstall-Beta([string]$Directory, [scriptblock]$Finalize=$null) {
         $handles = Open-NativeBinaryGuard $directory
         foreach ($handle in $handles.Values) { $handle.Dispose() }
         $knownMembers=@(Get-NativeKnownMembers $state.channel)
+        $legacyRunBefore=$null
+        try{$legacyRunBefore=Get-NativeLegacyRun $directory}catch{Write-NativeShortcutWarning ('No se pudo comprobar Run: '+$_.Exception.Message)}
         $retained = Join-Path $directory 'retained-data.json'
         if (-not (Test-Path -LiteralPath $retained)) {
             $manifest = [IO.File]::ReadAllText((Join-Path $directory "generations/$($state.active.generation)/manifest.json")) | ConvertFrom-Json
@@ -614,11 +618,12 @@ function Uninstall-Beta([string]$Directory, [scriptblock]$Finalize=$null) {
             }
         }
         Remove-Item -LiteralPath (Join-Path $directory 'state.json')
-        foreach ($name in @('boot-pending.json', 'hub-ready', 'update-status.json', 'registration-status.json', 'staging/pending.json')) {
+        foreach ($name in @('boot-pending.json', 'hub-ready', 'update-status.json', 'registration-status.json', 'startup-options.json', 'staging/pending.json')) {
             $path = Join-Path $directory $name
             if (Test-Path -LiteralPath $path) { Remove-Item -LiteralPath $path }
         }
         if($null -ne $Finalize){& $Finalize}
+        if(-not $KeepLegacyRun -and $null -ne $legacyRunBefore){$null=Remove-NativeLegacyRun $directory $legacyRunBefore.identity -ConfirmedCleanup}
     } finally { if($null -ne $lock){$lock.Dispose()}; $session.Dispose() }
 }
 
@@ -636,5 +641,5 @@ switch ($BetaCommand) {
     'Check' { Stage-BetaUpdate $BetaRoot $BetaManifestFile }
     'Apply' { Apply-BetaUpdate $BetaRoot }
     'Run' { Run-BetaHub $BetaRoot $BetaManifestFile }
-    'Uninstall' { Uninstall-Beta $BetaRoot }
+    'Uninstall' { Uninstall-Beta $BetaRoot -KeepLegacyRun:$BetaKeepLegacyRun }
 }

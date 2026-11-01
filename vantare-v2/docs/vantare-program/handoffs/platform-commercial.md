@@ -314,82 +314,66 @@ conservan la evidencia de sus ramas; no describen el estado de integración actu
 ## Instalador · VANTA-127 / #1840
 
 [#1840](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1840),
-area:plataforma, Project Vantare. Plane En curso; siguientes estados/CI del
-orquestador. Cinco PR separados, sin merge/release del worker.
+area:plataforma, Project Vantare. Plane En curso; estados/CI del orquestador.
+Sin merge/release del worker.
 
-- 0 integrado en nightly 216f9bda7, #1842; el orquestador confirmó caracterización
-  Windows CI PASS. 1a integrado en f8ccb1689, #1846, código 40e575f6e: inventario
-  propio, catálogo validado, snapshot de paquete y carpetas no vacías. Local 88+54
-  y 156 históricos PASS. P3-4 previous-unreadable de #1795 fuera de este encargo.
-- 1b integrado por el orquestador en nightly e747d4a9e, [#1847](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1847),
-  HEAD 79a3e03d9, base f8ccb1689. Root/Library y contexto QA explícitos; capturadores
-  activos adaptados y originales archivados, 468 pins; todos los scripts visibles
-  en snapshots. Local 88+22+24+14+12+54, histórico14+156, contrato8+8, Clippy/fmt
-  y calidad PASS. Integración confirmada por el orquestador.
-  Suites QA1492 todavía sin remapeo en [#1848](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1848),
-  area:plataforma / Project Vantare, fuera de 1b por decisión expresa.
-- 1c revisión aplicada y lista, rama vantareapp/isa-1840-1c-register, worktree
-  D:/VantareServer/worktrees/isa-1840-1c, base 7ebf46c08. [PR draft #1850](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1850).
-  Rebase conserva Root/Library y QA de 1b. Decisión posterior del orquestador:
-  resultado de Register en registration-status.json, escrito por Hub y mostrado
-  aparte en Ajustes. No lee/modifica update-status; Stage conserva ready/error
-  y su notificación. Éxito limpia el aviso previo; fallo de guardar solo va al log.
-  Confirm publica ACK antes de Sync-BetaRegistration; su fallo avisa en log.
-  Riesgo aceptado y bootstrap 975 sin try/catch documentados en README packaging.
-- Gates anteriores 1c: Hub596/596 +29 focales; matrix-1c-rebase-01 pasa
-  88+22+24+14+12+54+29, con diseño anterior a documento separado. No es evidencia
-  de la revisión actual. Se añade Run-BetaHub/Stage real en ambos órdenes,
-  ready concurrente, lectura de Ajustes y comprobación de PID recogido.
-  Gates finales: matrix-1c-review-01 88+22+24+14+12+54+42 PASS;
-  boot-1c-review-01 42/42 con helper final y entornos QA exigidos, PASS.
-  Hub all-targets599/599, cuatro skips previos/cuatro lentos,216,000s;
-  Clippy all-targets-Dwarnings/fmt/build/PS/YAML/fragmento/calidad468 PASS.
-  Cuatro scripts/capturas88 coinciden con copia QA/baseline; solo SHA beta52 filas.
-  CI run41330660086 falló clean-install por un baseline generado con beta CRLF
-  local, aunque Git/CI usan LF. La única diferencia era ese SHA; el baseline
-  corregido coincide exactamente con el snapshot CI. Ahora la matriz rechaza
-  CRLF en candidate/beta/driver antes de cargar producto o escribir; snapshot
-  conserva bytes exactos y sus tests prueban LF/CRLF diferentes (18 checks).
-  Gates finales sobre 7ebf46c08: matriz88+22+24+14+18+54+42 PASS,
-  guardas7+5, fmt/Clippy y focales Rust32/32 PASS. Hub599/599 es el pase anterior
-  e747d4a9e; no se repite, sin cambio Rust propio. Nueve scripts/harness y88
-  resultados iguales a copia QA/baseline; clean-install local==CI byte a byte.
-  Los 88 anteriores con CRLF no acreditaban el blob Git: se sustituyen por
-  matrix-1c-ci-fix-01. Código de corrección cececa164; HEAD final en #1840/PR.
-  Cola/target propios, sin aflojar lints ni tests.
-  [Evidencia y fallos iniciales](../../../native/packaging/matrix/evidence-1840-1c.md).
-  Sin ventana física ni cambios propios de runtime/domain/ipc/testdata;
-  telemetría omitida por ámbito. CI y merge del orquestador.
-- 1d listo para revisión, rama vantareapp/isa-1840-1d-run, worktree
-  D:/VantareServer/worktrees/isa-1840-1d, base 5bf636ef0. PR draft [#1851](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1851),
-  código 5cb6fc7e0; HEAD publicado final en #1840.
-  Hub usa SetStartup de la generación instalada; hijo poseído y acotado30s,
-  espera asíncrona con tarea en Store. GPUI comparte installer-ui.autostart sin
-  reescribir data; preferencias antiguas se guardan/restauran conservando otras
-  modificaciones. CLI valida script activo, estado, hashes, registro y opciones.
-  Activa/desactiva el acceso Startup del instalador y retira Run de esa identidad.
-  Uninstall también lo retira, incluso recuperación validada con registro ausente.
-  Valores/accesos ajenos se conservan; rollback de bytes/opciones ante fallo.
-- Gates 1d: matriz88/88 +54 inventario +13 Startup PASS; arnés final Startup14
-  añade fallo de opciones, sin cambiar producto; hook final Probe+54+14 PASS.
-  Hub586/586, cuatro omisiones,
-  sobre f8ccb1689; Clippy/fmt finales sobre 5bf636ef0 PASS. Evidencia y fallos en
-  [evidencia1d](../../../native/packaging/matrix/evidence-1840-1d.md).
-  Pruebas con driver/CLI reales, root con espacios y HKCU/shell/entornos inyectados;
-  sin Setup/Uninstall EXE ni ventana física, datos/carpetas vacías intactos.
-- Incidente descartado1b y comprobaciones sin daño observable del orquestador
-  en su evidencia. Fixture C:/tmp y caché Python ignorada conservadas porque la
-  herramienta rechazó borrar con «blocked by policy»; no se intentó otra vía.
-  Nuevas pruebas no escriben bytecode; histórico/driver usan contexto inyectado.
+- 0/#1842 integrado en216f9bda7, Characterize Windows PASS confirmado. 1a/#1846
+  integrado en f8ccb1689: inventario instalado desde su manifest ligado por SHA,
+  catálogo retirado validado y snapshot109 rutas de0.0.987 de evidencia RC9;
+  carpetas ajenas y datos conservados. previous-unreadable sigue fuera.
+- 1b/#1847 integrado en e747d4a9e: Root/Library explícitos, contextos QA inyectados,
+  capturadores corregidos y hashes de ambos scripts visibles en snapshots.
+  [#1848](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1848)
+  mantiene el remapeo pendiente de suites fuente QA1492; no se ejecutan contra
+  carpetas/registro de cuentas reales en este encargo.
+- 1c/#1850 integrado en843913d24, CI5/5 verde confirmado por el orquestador.
+  Ready antes de Register, hijo poseído/plazo30s, aviso separado en
+  registration-status.json y ACK antes del mantenimiento. update-status sigue
+  solo para el actualizador. Riesgo de readiness temprano/bootstrap975 documentado;
+  guardas LF y baseline de blobs corrigieron el anterior fallo CI por CRLF local.
+- 1d listo para revisión en [PR draft #1851](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1851),
+  rama vantareapp/isa-1840-1d-run, base eb9aa1d45, worktree D:/VantareServer/worktrees/isa-1840-1d.
+  Código/test f93bcded7; HEAD publicado en #1840/PR. Root/Library y registro separado
+  de1b/1c conservados, igual que todo el handoff ajeno de #1854.
+- Run propia migra a Startup, adoptando ON sin preferencia o respetando ON/OFF.
+  Register/Setup/SetStartup comparten .operation.lock. La migración comprueba el
+  enlace real y restaura Run si no se creó; falla Register para su aviso visible.
+  Valor/enlace ajeno preservado. StartupOnly conserva el GUI del bootstrap congelado;
+  el fallback PowerShell se usa cuando una migración necesita crear el enlace.
+- GPUI guarda installer-ui; legacy startup-options.json, ambos en raíz. Un documento
+  legacy corrupto, mal tipado o mayor de1024B se considera ausente y no rompe Probe/Setup.
+  El Hub muestra el diagnóstico del script (hasta4096B), invita a reintentar y recoge
+  hijo/temporal. Progreso y bloqueo solo del interruptor Startup; otros cambios conservados.
+- CI41346941363 falló por NativeStartup vacío con ValidateSet al hacer GetNewClosure.
+  Reproducido con d855662c7; corregido con default válido Off, manteniendo Startup
+  explícito y validación On/Off. El hook CRT original y regresión de biblioteca pasan.
+- Gates finales PASS: matrix-1d-r3-02:88/88 +25 biblioteca +24 contexto +14 seguridad
+  histórica +18 snapshots +54 inventario +42 arranque +48 Startup. Hook final48
+  repetido con JSON válido mayor de1024B, sin cambiar producto ni las88 capturas.
+  Todos los hooks runner-hooks-r3-04: Python7, feed/origen y8 rechazos, publisher13,
+  histórico14+156, CRT24, branding81/registro83 y shell30. Copias QA con HKCU UUID,
+  carpetas y entornos inyectados, sin relajar aserciones; CRT conserva producto original.
+- Hub all-targets602/602 (4 lentos/4 omisiones previas),224,006s; Clippy all-targets
+  -D warnings/fmt PASS. Guard7+5, PS6, fragmento JSON, calidad/retirada468 y diff PASS.
+  Comparación con88 capturas anteriores: solo188 hashes de candidate en52 filas;
+  estado/datos/registro/accesos iguales. Veinte scripts iguales a sus copias QA
+  (Startup contra su hook final), blobs LF iguales a los bytes ejecutados.
+- Uninstall retira Run tras terminar también el finalizador exterior; su fallo conserva
+  Run y la denegación de borrado solo avisa, sin romper stdout JSON ni dar falso cierre.
+  Límite aceptado: Run denegada puede apuntar al beta.ps1 ya borrado al iniciar sesión.
+  [#1856](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1856), area:plataforma/Project Vantare,
+  sigue aviso UI de Uninstall, lock completo del finalizador y proyección al guardar General.
+- [Evidencia1d](../../../native/packaging/matrix/evidence-1840-1d.md) conserva ensayos,
+  fallos intermedios y correcciones. Incidente1b descartado como gate; orquestador
+  comprobó ausencia de daño observable. Fixture C:/tmp y caché ignorada siguen
+  conservadas tras rechazo automático «blocked by policy» al borrar, sin otra vía.
 
-Sin instalación real, datos de usuario, Setup/Hub físicos, Downloads, promoción,
-merge ni release por el worker. Primeras capturas0 con TEMP heredado descartadas,
-sin afirmar auditoría global. QA física en otra cuenta/VM pendiente; RC9 intacto.
-Siguiente: CI/integración de 1c por el orquestador; después rebase/revisión de 1d.
-Revisión 1d pendiente: migrar Run válida a opción/Startup, serializar Register con
-SetStartup, retirar Run solo tras Uninstall correcto y como aviso si falla,
-validar comando propio, progreso en UI y pruebas de carga/migración del Hub.
-Última actualización: 1-nov-2026, ejecutor de #1840.
+QA nueva bajo D:/VantareServer/qa, guardada y copiada, sin instalación real ni
+Setup/Uninstall EXE. QA física en cuenta/VM separada pendiente. Sin cambios propios
+runtime/domain/ipc/testdata: telemetría/lifecycle runtime omitidos por ámbito.
+Plane intacto. Siguiente: CI/revisión/integración de1d por el orquestador; después
+continúa el plan #1840. Actualizado el1-nov-2026, ejecutor.
+
 <!-- isa1827-p10-worker -->
 ## VANTA-126 / #1827 — Paso 10 listo para revisión (2026-11-01)
 

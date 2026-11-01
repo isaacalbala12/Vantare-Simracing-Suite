@@ -1,5 +1,23 @@
 # Caracterización del motor de instalación · VANTA-127 / #1840
 
+Paso 1d añade startup-tests: comando del Hub y driver de Setup/Uninstall,
+Run propia/ajena con el mismo nombre, migración Run→opción/Startup con preferencia
+ON/OFF o sin ella y bootstrap raíz congelado. Dos barreras deterministas prueban
+Register antes/después de adquirir .operation.lock y el interruptor concurrente.
+Un Uninstall fallido conserva Run; un fallo al borrarla avisa sin abortar.
+Se verifican bytes de opciones/enlace, datos y carpetas vacías, y recuperación
+sin registro con marker ligado por hash. Registro/carpetas/entornos se inyectan;
+no hay Setup/Uninstall EXE ni ventana física de producto. Las reparaciones de la
+fixture se confirman con Confirm real y un proceso inerte antes de repetirlas.
+También se fuerza una creación de Startup que retorna sin enlace, una colisión
+con enlace ajeno y una reparación cuyo enlace se ha borrado. Run se restaura ante
+la migración fallida, y preferencias legacy corruptas, mal tipadas o mayores de
+1024B no rompen Probe/Setup. El test de biblioteca crea un GetNewClosure real bajo
+PS5 y SetStartup sin argumento sigue fallando antes de escribir.
+El baseline conserva hashes crudos LF y añade el fichero vacío .operation.lock
+creado por Register en 26 capturas preparadas; los demás cambios son hashes de
+candidate/beta en 240 copias, sin cambios de estado/datos/registro/accesos.
+
 Paso 1c añade registration-boot-tests: Register falla, Register bloqueado hasta
 el plazo real de 30 segundos, fallo del registro durante Confirm y entorno
 WINDIR ausente. En los cuatro

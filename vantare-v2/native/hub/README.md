@@ -1,5 +1,18 @@
 # Hub nativo (ISA-1430)
 
+## Iniciar con Windows — #1840, paso 1d
+
+El interruptor usa SetStartup de la generación instalada y comparte el acceso
+Startup del instalador. El hijo se posee y espera de forma asíncrona, con plazo
+30 s. Solo este interruptor se desactiva mientras trabaja y muestra progreso;
+los demás siguen funcionando. El resultado cambia solo su preferencia en memoria.
+
+La preferencia vive en installer-ui.json para GPUI. Las instalaciones antiguas
+usan startup-options.json (schema1/autostart) en la raíz; no se escribe general.json
+para cambiar inicio. El Hub adopta después de cargar una migración que Register
+termine en segundo plano. Installer UI tiene prioridad sobre el documento antiguo.
+Sin contexto instalado se solicita instalar con Setup.
+
 ## Arranque instalado — #1840, paso 1c
 
 Arranque instalado (#1840, paso 1c): una vez creada la ventana, el Hub publica

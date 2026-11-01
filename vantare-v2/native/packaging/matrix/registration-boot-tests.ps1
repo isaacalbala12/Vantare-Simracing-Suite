@@ -95,8 +95,12 @@ __RESULT__
                 Wait-BootFile (Join-Path $install 'staging/pending.json') $process
                 $deadline=[DateTime]::UtcNow.AddSeconds(40)
                 do{
-                    $status=Get-Content -LiteralPath (Join-Path $install 'update-status.json') -Raw|ConvertFrom-Json
-                    if($status.state -ceq 'ready' -and $status.version -ceq '0.0.989'){break}
+                    $status=$null
+                    # The supervisor may still hold the writer while Stage commits.
+                    # Retry only sharing/I/O failures within the existing deadline.
+                    try{$status=Get-Content -LiteralPath (Join-Path $install 'update-status.json') -Raw|ConvertFrom-Json}
+                    catch [IO.IOException] {}
+                    if($null -ne $status -and $status.state -ceq 'ready' -and $status.version -ceq '0.0.989'){break}
                     if($process.WaitForExit(20) -or [DateTime]::UtcNow -ge $deadline){throw 'BOOT_STAGE_NOT_READY'}
                 }while($true)
                 $readyHash=Get-NativeHash (Join-Path $install 'update-status.json')

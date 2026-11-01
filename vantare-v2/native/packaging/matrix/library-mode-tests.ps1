@@ -33,7 +33,11 @@ foreach($name in @('candidate.ps1','beta.ps1')){
         . $Source -Library -Root $Directory
         Assert-Library ($Root -ceq 'root-sentinel' -and $Operation -ceq 'operation-sentinel' -and $Channel -ceq 'channel-sentinel' -and $Version -ceq 'version-sentinel' -and $Archive -ceq 'archive-sentinel') "$Name preserves all caller sentinels"
         Assert-Library (@(Get-NativeMembers 'beta').Count -gt 0) "$Name exports usable library functions"
-        foreach($arguments in @(@(),@('-Library','-Root',$Directory))){
+        $closure={$Directory}.GetNewClosure()
+        Assert-Library ((& $closure) -ceq $Directory) "$Name library variables can be captured by PS5 GetNewClosure"
+        $modes=@(@(),@('-Library','-Root',$Directory))
+        if($Name -ceq 'candidate.ps1'){$modes+=,@('-Operation','SetStartup','-Root',$Directory)}
+        foreach($arguments in $modes){
             $info=[Diagnostics.ProcessStartInfo]::new()
             $info.FileName="$env:WINDIR/System32/WindowsPowerShell/v1.0/powershell.exe"
             $quotedArguments=@($arguments | ForEach-Object {'"'+$_.Replace('"','\"')+'"'})
@@ -44,7 +48,7 @@ foreach($name in @('candidate.ps1','beta.ps1')){
             try{
                 $out=$child.StandardOutput.ReadToEndAsync();$err=$child.StandardError.ReadToEndAsync()
                 if(-not $child.WaitForExit(30000)){$child.Kill();$child.WaitForExit();throw 'Library guard process timeout'}
-                $expected=if($arguments.Count){'NATIVE_LIBRARY_REQUIRES_DOT_SOURCE'}else{'NATIVE_ROOT_REQUIRED'}
+                $expected=if('SetStartup' -cin $arguments){'Indique Startup On u Off.'}elseif($arguments.Count){'NATIVE_LIBRARY_REQUIRES_DOT_SOURCE'}else{'NATIVE_ROOT_REQUIRED'}
                 Assert-Library ($child.ExitCode -ne 0 -and $err.Result.Contains($expected)) "$Name CLI rejects unsafe mode $expected"
             }finally{$child.Dispose()}
         }

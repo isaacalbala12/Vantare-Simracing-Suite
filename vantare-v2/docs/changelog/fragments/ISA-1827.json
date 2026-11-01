@@ -31,6 +31,6 @@
   "knownLimitations": [
     "Este PR no despliega funciones. Las licencias ya firmadas conservan su plazo offline.",
     "La función pura mantiene su fallback histórico; las rutas de ingestión filtran desconocidos antes de aplicar cambios.",
-    "Services v17 y control v7 requieren actualizar el conjunto de binarios; no cambia el formato de derechos en disco ni despliega una instalación."
+    "Services v18 y control v7 requieren actualizar el conjunto de binarios; no cambia el formato de derechos en disco ni despliega una instalación."
   ]
 }

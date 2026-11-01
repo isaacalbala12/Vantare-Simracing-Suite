@@ -232,6 +232,7 @@ fn access_command(command: &Command) -> bool {
             | Command::AccountRenew
             | Command::LicenseRenew
             | Command::LicenseRenewAutomatic
+            | Command::DeviceReset
     )
 }
 fn handle(

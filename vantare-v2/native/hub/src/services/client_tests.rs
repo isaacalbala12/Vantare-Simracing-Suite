@@ -4,7 +4,7 @@ use std::sync::mpsc;
 use vantare_ipc::transport::Listener;
 
 #[test]
-fn v17_v18_hello_mismatch_stops_before_policy_or_any_revocation_command() {
+fn hello_mismatch_checks_current_client_and_simulated_legacy_version_guards() {
     assert_eq!(protocol::VERSION, 18, "step-8 envelope contract");
     for (reader, writer) in [(18, 17), (17, 18), (18, 16), (16, 18)] {
         let name = format!("hub-hello-{reader}-{writer}-{}", std::process::id());
@@ -39,8 +39,8 @@ fn v17_v18_hello_mismatch_stops_before_policy_or_any_revocation_command() {
         let result = if reader == protocol::VERSION {
             Client::start(&image, &name, Arc::new(Event::new().expect("client event"))).map(|_| ())
         } else {
-            // Frozen v16/v17 handshake from the previous clients: inspect the same
-            // hello shape/version before nonce, requests or nested Policy.
+            // Simulated legacy version guard, not execution of an old client.
+            // Only the current-reader rows above execute Client::start.
             let stop = Arc::new(Event::new().expect("legacy event"));
             let mut pipe = control::connect_ready(
                 &format!("{name}-hub-services"),

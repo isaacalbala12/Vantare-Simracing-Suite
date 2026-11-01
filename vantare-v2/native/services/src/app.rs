@@ -3192,7 +3192,7 @@ mod online_compatibility_tests {
     }
 
     #[test]
-    fn authority_recovery_admits_helper_without_rights_then_renews_online() {
+    fn recovery_status_ignores_late_legacy_files_and_renewal_installs_only_fresh_http() {
         for pending in [false, true] {
             let device =
                 crate::license::installation::legacy_fingerprint().expect("test fingerprint");
@@ -3264,10 +3264,10 @@ mod online_compatibility_tests {
                     app.execute(Command::LicenseRenewAutomatic),
                     Ok(Reply::License { .. })
                 ),
-                "normal renewal remains reachable after denied disk transfer"
+                "normal renewal remains reachable after recovery status"
             );
             core.join()
-                .expect("ordinary Install then Read then newly completed InstallOnline");
+                .expect("Read recovery then newly completed InstallOnline; no disk Install");
             server.finish();
             drop(app);
             crate::cleanup_store(&root, "authority-helper-admission", &[]);

@@ -14,7 +14,7 @@ mod online_only;
 mod profile;
 
 #[test]
-fn recovery_observations_admit_queries_and_logout_always_reaches_the_helper() {
+fn recovery_observations_admit_queries_and_denied_policies_allow_seat_recovery() {
     use control::AccessState;
     let wall = control::wall_ms().expect("wall");
     for state in [
@@ -39,9 +39,20 @@ fn recovery_observations_admit_queries_and_logout_always_reaches_the_helper() {
         AccessState::Revoked,
         AccessState::Unavailable,
     ] {
-        let policy = control::Policy::denied(state);
+        let policy = control::Policy {
+            revision: 1,
+            checked_at_ms: wall,
+            signed_until_ms: (state == AccessState::Expired).then_some(wall - 2_000),
+            grace_until_ms: (state == AccessState::Expired).then_some(wall - 1_000),
+            ..control::Policy::denied(state)
+        };
         assert!(helper_command_allowed(&policy, &Command::Logout));
         assert!(!helper_command_allowed(&policy, &Command::DraftLoad));
+        if matches!(state, AccessState::Expired | AccessState::Revoked) {
+            assert!(!policy.current(), "fixture must deny ordinary admission");
+            assert!(helper_command_allowed(&policy, &Command::LicenseRenew));
+            assert!(helper_command_allowed(&policy, &Command::DeviceReset));
+        }
     }
 }
 

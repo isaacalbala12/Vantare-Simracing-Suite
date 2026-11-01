@@ -205,9 +205,12 @@ aun con política denegada o caducada; su ACK durable sigue siendo obligatorio.
 
 Services v18 retira TransferRights y el almacén candidate/marcador. Mantiene
 la verificación de la respuesta HTTP nueva y la entrega por InstallOnline;
-control v7 conserva su formato, incluido Install para restauración del núcleo.
+control v7 conserva Install solo por compatibilidad; services ya no lo emite ni debe conectarlo a credenciales de disco.
 La admisión usa Read autenticado y helper_command_allowed sobre Policy.state;
 arrancar servicios no es una concesión. No cambia el catálogo ni sus permisos.
+DeviceReset se admite como recuperación también con Expired/Revoked, igual que
+LicenseRenew. Servicios exige una sesión utilizable antes de revocar o liberar
+el asiento; NeedsSignIn sigue devolviendo Authentication sin HTTP ni revocación.
 
 El ACK perdido o núcleo ausente al terminar HTTP es transitorio: se descarta
 la respuesta en servicios y la próxima renovación pide una emisión nueva,

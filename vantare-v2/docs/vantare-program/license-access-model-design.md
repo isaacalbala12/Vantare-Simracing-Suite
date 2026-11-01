@@ -604,7 +604,7 @@ no son una implementación anticipada de este diseño.
 | Tabla | Casos | Fuente |
 | --- | ---: | --- |
 | Estado/evento → Policy (Owner y Authority reales, firma y Store aislados) | 22 | [runtime: characterization](../../native/runtime/src/rights/tests/characterization.rs) |
-| Error remoto/origen → Error tipado, revocación, candidate (no aplica en paso 8) y sesión | 34 → 38 | [services: characterization](../../native/services/src/app/tests/characterization.rs), `nightly_error_origin_effects_matrix` |
+| Error remoto/origen → Error tipado, revocación, candidate (columna retirada en paso 8) y sesión | 34 → 38 | [services: characterization](../../native/services/src/app/tests/characterization.rs), `nightly_error_origin_effects_matrix` |
 | Error → resultado automático (incluido DeviceLimit) | 26 | mismo archivo, `nightly_automatic_failure_result_matrix` |
 | Logout/DeviceReset/AccountCancel: ACK correcto/rechazado y efectos; TransferRights retirado en paso 8 | 6 → 5 | mismo archivo, `nightly_explicit_revocation_matrix` |
 | DeviceReset: errores del puente/reset remoto y éxito | 11 | [services: reset](../../native/services/src/app/tests/characterization/reset.rs) |
@@ -660,7 +660,7 @@ cancela un intento OAuth/FAPI sin cerrar la cuenta ni revocar. Volver/Cancelar
 lo usa; Logout se reserva a Cerrar sesión. El estado guardado se conserva,
 incluso tras un fallo del formulario, y Cuenta ofrece los mismos proveedores.
 No hay fallback a Logout ante un servicio v15: el desajuste sigue transitorio.
-La fila nueva de caracterización fija AccountCancel no revoca, con sesión conservada. En el paso 8 su columna candidate pasa a no aplicar.
+La fila nueva de caracterización fija AccountCancel no revoca, con sesión conservada. En el paso 8 se retira su columna candidate porque ya no hay almacén de licencias en servicios.
 El resto de filas de los refactors sigue intacto.
 
 Enmienda de revisión paso 7: `ClockBehind.until_ms` se expresa en pared

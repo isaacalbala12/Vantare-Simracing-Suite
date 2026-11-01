@@ -4,7 +4,7 @@ Services v18 elimina TransferRights; control v7 y fotos v11 no cambian.
 El saludo v17/v18 se rechaza como Version antes del comando retirado o de Policy,
 sin revocación. Una trama que declare v18 y aún envíe TransferRights es
 entrada malformada (Protocol). InstallOnline transporta solo la respuesta HTTP nueva;
-Install de control se conserva para restauración del núcleo. El conjunto instalado
+Install de control se conserva solo por compatibilidad v7; services ya no lo emite ni debe conectarlo a credenciales de disco. El conjunto instalado
 debe coincidir. Binding/authority/guardias y los plazos conservan su formato.
 
 Contrato y rollback de datos: [ADR0102](../../docs/adr/0102-modelo-acceso-nativo.md).
@@ -24,7 +24,7 @@ Policy.error es solo diagnóstico histórico y Policy::denied centraliza la dene
 La versión se inspecciona antes del esquema estricto de Command/Policy, también
 para Policy anidada en services v17. Desajuste transitorio, sin revocar; lectores
 antiguos pueden dar error genérico. Actualizar siempre el conjunto de binarios.
-Install sigue hasta el paso 8. [Contrato](../../docs/adr/0102-modelo-acceso-nativo.md).
+Install se conserva solo por compatibilidad v7; services ya no lo emite. [Contrato](../../docs/adr/0102-modelo-acceso-nativo.md).
 Las secciones v5/v6 de abajo son contexto histórico sustituido por este contrato.
 
 Services v17 versiona la Policy v7 anidada; Session/AccountCancel permanecen

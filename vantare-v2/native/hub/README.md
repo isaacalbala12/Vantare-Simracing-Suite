@@ -1,6 +1,6 @@
 ## Contrato vigente de licencias — paso 8 (#1827)
 
-El Hub usa services v18, sin TransferRights. El saludo rechaza v17/v18 como
+El Hub usa services v18, sin TransferRights. El saludo rechaza v17 y anteriores como
 Version antes de Policy y no envía acciones de revocación. El helper se admite
 por lectura autenticada del núcleo; abrirlo no concede derechos. Las páginas y
 widgets siguen leyendo Policy.state. ACK perdido es transitorio: el supervisor

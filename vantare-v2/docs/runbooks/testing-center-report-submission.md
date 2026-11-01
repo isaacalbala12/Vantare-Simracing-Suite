@@ -1,5 +1,9 @@
 # Testing Center — envío de reportes v1
 
+La ruta nativa mantiene la idempotencia por clave. Para un envío incierto cuyo
+intento DPAPI se haya dañado, consulta [recuperación conservadora del borrador](testing-center-report-draft.md#contrato-nativo-vigente-envío-incierto-y-daño-de-dpapi-1827-d0):
+editar y reenviar puede generar otra clave y duplicar un informe aceptado.
+
 Estado: TAU-04A / ISA-218 implementado en rama de issue, sin UI, bridge Wails,
 GitHub, Codex, Discord, migración remota ni deploy.
 

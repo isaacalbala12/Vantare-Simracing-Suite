@@ -1,5 +1,22 @@
 # Testing Center — draft local y bridge Wails
 
+## Contrato nativo vigente: envío incierto y daño de DPAPI (#1827 D0)
+
+La ruta nativa usa los documentos protegidos `report-draft`, `report-images`
+y `report-attempt` de Store. El texto Wails inferior es histórico.
+
+Si el servidor aceptó un informe y se perdió la respuesta, el intento queda
+incierto. Si después se daña DPAPI de `report-attempt`, su cuarentena permite
+reconstruir la caché, pero ya no se conoce el resultado del envío anterior.
+Editar el borrador genera otra clave idempotente: reenviarlo puede crear un
+segundo informe. La idempotencia protege la misma clave, no dos claves distintas.
+
+Conserva borrador e imágenes. Antes de editar y reenviar un resultado incierto,
+comprueba si existe el recibo o el informe en el listado; si no puedes comprobarlo,
+pide revisión al responsable. No borres guardas ni asumas que no se envió por
+haber perdido la respuesta o el intento local. Reconstruir la caché no envía
+nada automáticamente y este corte no cambia esa política.
+
 Estado: TAU-04B / ISA-219 implementado en rama de issue, sin UI, red, Supabase
 remoto, GitHub, Codex, Discord, deploy ni promoción.
 

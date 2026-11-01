@@ -21,8 +21,10 @@ no cambian. La clase de cada documento se declara una vez en `document_class`
 
 El único apartado es `quarantine_dated`: rename sin borrar ni sobrescribir una
 copia anterior, tope tres por documento, incluidos nombres antiguos. Las copias
-aparte usan el formato fechado común; los restores sin reloj inyectado pasan
-0 (fecha desconocida), sin inventar una pared firmada. Un rename
+aparte usan el formato fechado común. Los dueños inyectan su fecha real en
+milisegundos al restaurar perfil, roadmap, report-attempt, autoridad y metadata
+OAuth de Gestión; Store no obtiene su propio reloj. La fecha de cuarentena
+no modifica el reloj firmado ni concede derechos. Un rename
 fallido es error y conserva el original; limpiar archivos antiguos es best-effort
 tras el rename, con diagnóstico si falla. No hay migración de datos. `fixture`
 solo inspecciona fixtures en builds test/test-support y no forma parte del

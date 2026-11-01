@@ -333,3 +333,75 @@ porque usa el empaquetador actualizado por #1846.
 windows_startup posterior al rebase: Nextest ci 7/7 PASS (log
 isa-1827-s-c-rebased-startup.log), por compilar.ps1 y target propio.
 PR draft: https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1849, target nightly; F4 implementado, pendiente de revision/integracion.
+
+## Corte D0 — fecha real de cuarentena y soporte del informe incierto
+
+Base origin/nightly@5bf636ef0d6bb0b121593d9a532bbcbabdd8da35, C (#1849)
+integrado. Rama vantareapp/isa-1827-simplificar-d0. Se atienden solo los dos P3
+de C autorizados; D1a/D1b/E siguen separados. D6/D7 y T1-T3 quedan aplazados:
+RC9 0.0.988/services v15 puede publicarse y su downgrade sigue siendo plausible.
+D5/protocolo y D3/gracia se descartan por riesgo.
+
+Los restores de perfil, roadmap, report-attempt, Authority y metadata OAuth de
+Gestión reciben la fecha de su dueño. Account propaga su at_millis; App usa su
+clock inyectado, Owner usa la pared recibida y Gestión pasa su reloj de frontera.
+Store no lee el reloj. Authority convierte i64 a u64 solo al apartar un documento
+dañado, igual que binding: no añade rechazo de pared al restore sano. La fecha
+solo nombra/ordena copias; no interviene en firmas, lápida, gracia o derechos.
+No cambian formatos activos, cifrado, permisos ni la política de cada clase.
+
+Se extienden los tests existentes para afirmar la fecha exacta (1700000000123)
+en las tres cachés y Gestión; Owner exige 120000/110000 desde su reloj inyectado.
+Cambian las expectativas authority-0 anteriores porque esa es la corrección
+solicitada. Los oráculos de acceso/efectos y arquitectura conservan sus cuatro
+blobs. F4/bytes en dos reinicios, E/S, rename y retención siguen protegidos.
+Focales 6/6 PASS, incluida retención de tres con copias históricas. No se añaden
+casos complacientes que reflejen solo la nueva firma de métodos.
+
+Runbook: perder la respuesta tras aceptar el servidor, dañar DPAPI del intento
+y editar el borrador puede rotar la clave y crear otro informe. Se documenta
+conservar borrador/imágenes y comprobar recibo/listado o pedir revisión antes
+de editar/reenviar; no se cambia automáticamente el flujo de informes. La nota
+vive una vez en report-draft y report-submission enlaza a ella. La sección Wails
+inferior del primero se identifica como histórica.
+
+### Medición separada
+
+Desde raíz, mismo contador que A-C:
+`python vantare-v2/native/scripts/license-production-lines.py --include-admin`.
+Base guardada antes de editar en isa-1827-s-base-d-with-admin.json; final en
+isa-1827-s-after-d0-with-admin.json. Para repetir la base usar --ref
+5bf636ef0d6bb0b121593d9a532bbcbabdd8da35. Omitir --include-admin para comparar
+el perímetro habitual de cuatro crates.
+
+| Crate | Antes | Después | Cambio |
+|---|---:|---:|---:|
+| services | 10361 | 10373 | +12 |
+| runtime | 19112 | 19115 | +3 |
+| hub | 73482 | 73482 | 0 |
+| ipc | 6322 | 6322 | 0 |
+| admin | 5850 | 5851 | +1 |
+| Cinco crates | 115127 | 115143 | +16 |
+
+Cuatro crates: 109277 -> 109292 (+15). Recorrido con Gestión: 15286 -> 15302
+(+16). Es propagación de fecha/corrección P3, no ahorro de simplificación.
+Pruebas/soporte Rust: +39 líneas físicas netas, separadas de las productivas.
+Documentación .md afectada: 7831 -> 7963 (+132) líneas; pruebas/soporte afectadas: 7713 -> 7752 (+39).
+La separación de Rust se obtiene del delta físico de .rs menos el delta del
+contador productivo; documentación .md aparte, fragmento JSON aparte. Los
+cambios de tests de llamadas/formatting no se presentan como nuevos casos.
+
+Gates finales tras restauración de fuentes: fmt PASS, Clippy services/runtime/
+ipc/engineer/admin all-targets -D warnings PASS; Nextest ci de esos cinco y
+ domain 1175/1175 con telemetría PASS (13 omisiones previas). Lifecycle runtime
+13/13 y Engineer 5/5 PASS. Cinco mutaciones detectan por aserción el retorno
+a fecha cero en cada dueño; los 241 fuentes se restauran por SHA-256. El primer
+runner terminó tras dos casos por buscar LF en report.rs CRLF; se reanudan los
+tres restantes conservando ambos resultados, sin cambios de producto.
+Logs/comandos: isa-1827-s-final-d0-gates.json, -final-d0-*, -mutations-d0,
+-d0-focused.log, -d0-quality.log y -d0-characterization.json.
+
+Compilación siempre por compilar.ps1 y target D:/VantareServer/targets/isa-1827-s,
+jobs 2, locked/offline. Calidad 466 huellas PASS. Harness heredado medium;
+sin nuevas delegaciones, UI física, instalación ni ejecución Deno/PostgreSQL
+(no cambia servidor). Sin Plane, producción, datos reales, secretos, merge/release.

@@ -4,6 +4,7 @@
   "type": "fix",
   "summary": "Las licencias sin fecha firmada se comprueban al arrancar y cada 24 horas; se conservan los avisos y el acceso offline.",
   "technicalNotes": [
+    "Corte D0: fecha real inyectada en las cuarentenas de perfil, roadmap, informes, autoridad y Gestión; sin cambiar derechos ni formatos activos. Runbook explica posible duplicado tras perder un intento incierto por daño DPAPI y editar el borrador.",
     "Paso 12, corte C: Store tiene una lectura Value/Missing/Damaged, clase por documento y un quarantine_dated. Conserva formatos y guardas durables; Pilot e informes no se vacían en silencio. F4 evita reescribir autoridad sana por marcador corrupto. En commit aparte, las cachés roadmap/perfil/report-attempt con DPAPI dañado se apartan y reconstruyen sin tocar la sesión sana.",
     "Paso 11, corte A: se retiran el formato JWS/v2 no planificado, su clave Installation y el vencimiento de sobre. Solo queda Ed25519 v1; los grants temporales y las guardas conservan su formato. La comprobación diaria se prueba con Founders v1 firmado.",
     "Paso 11, corte B: Authority, catálogo y Verifier pasan a runtime::rights. Services entrega la respuesta HTTP fresca sin confiar en sus claims hasta el ACK durable. La categoría cerrada rights-credential-invalid conserva Error::Version/Transient; control v7 y disco no cambian.",

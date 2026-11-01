@@ -355,3 +355,14 @@ otra vez license-authority-unreadable. Dos reinicios conservan exactamente los b
 ambos documentos. La reparación de autoridad dañada sigue guardando primero el
 marcador, luego apartando y persistiendo autoridad denegada; ninguna frontera
 sana baja y ninguna credencial antigua recupera acceso.
+
+### Revisión de paso 12 — fecha de cuarentena (D0)
+
+Perfil, roadmap, report-attempt, autoridad y metadata OAuth de Gestión reciben
+la fecha real de su dueño al restaurar. Store no consulta el reloj. Son
+milisegundos usados solo para nombrar/ordenar las copias, sin cambiar formatos
+activos ni la autoridad del reloj firmado. El núcleo convierte su pared a fecha
+sin signo solo si necesita apartar una autoridad dañada; no añade una validación
+de reloj al restore sano. Renombrado, retención de tres, F4 y E/S siguen iguales.
+El runbook advierte que perder un intento incierto por DPAPI y editar el borrador
+puede producir otra clave y duplicar un informe ya aceptado.

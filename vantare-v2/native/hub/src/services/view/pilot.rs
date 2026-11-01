@@ -33,11 +33,6 @@ impl Remote {
         self.pilot.message.clear();
         self.pilot.generation = self.pilot.generation.wrapping_add(1);
     }
-    pub(super) fn clear_pilot_if_session_changed(&mut self, signed_in: bool) {
-        if self.account.signed_in != signed_in {
-            self.clear_pilot();
-        }
-    }
     pub(super) fn accept_pilot(
         &mut self,
         state: PilotState,

@@ -26,7 +26,9 @@ fn transient_with_active_or_grace_policy_never_paints_an_access_error_even_in_li
                     remote
                         .access
                         .observe_cached_session(Some(Session::SignedIn));
-                    remote.account.signed_in = true;
+                    remote
+                        .access
+                        .fixture_session(super::super::protocol::Session::SignedIn);
                     remote.observe_core_policy(policy.clone(), 1000, cx);
                     for reply in [
                         Reply::LicenseFailure {
@@ -223,7 +225,7 @@ fn needs_sign_in_reads_local_notices_and_confirmed_reset_clears_the_limit() {
                 },
                 cx,
             );
-            assert!(!remote.account.signed_in);
+            assert!(!remote.access.signed_in());
             assert!(remote.session_notice().is_some());
             assert!(remote.license_notice.is_some());
             assert!(requests.try_recv().is_err());
@@ -335,7 +337,9 @@ fn purchase_wait_uses_only_policy_feed_and_never_dispatches_renewal() {
         let remote = cx.new(|cx| fixture(cx, send, file.path.parent().expect("root")));
         remote.update(cx, |remote, cx| {
             let now = std::time::Instant::now();
-            remote.account.signed_in = true;
+            remote
+                .access
+                .fixture_session(super::super::protocol::Session::SignedIn);
             remote
                 .access
                 .observe_cached_session(Some(Session::SignedIn));

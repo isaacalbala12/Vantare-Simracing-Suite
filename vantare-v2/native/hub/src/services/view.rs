@@ -30,6 +30,7 @@ fn text(
 
 #[path = "access.rs"]
 mod access;
+mod access_session;
 #[path = "view/account.rs"]
 mod account;
 mod founders;
@@ -58,8 +59,6 @@ enum Area {
 
 #[derive(Default)]
 struct AccountState {
-    pending: bool,
-    signed_in: bool,
     cancel_command: Option<Command>,
     profile: Option<super::protocol::AccountProfile>,
     avatar: Option<Arc<gpui::Image>>,
@@ -381,7 +380,12 @@ impl Remote {
         );
     }
 
-    fn clean_session(&mut self, session: super::protocol::Session, cx: &mut Context<Self>) {
+    fn clean_session(
+        &mut self,
+        session: super::protocol::Session,
+        signed_in_before: bool,
+        cx: &mut Context<Self>,
+    ) {
         let signed_in = session == super::protocol::Session::SignedIn;
         if !signed_in {
             self.purchase_wait = None;
@@ -396,7 +400,9 @@ impl Remote {
             self.license_notice = None;
             self.device_limit = false;
         }
-        self.clear_pilot_if_session_changed(signed_in);
+        if signed_in_before != signed_in {
+            self.clear_pilot();
+        }
     }
 
     fn observe_core_policy(
@@ -669,11 +675,12 @@ impl Remote {
         }
         if !self.start() {
             self.failed_pilot_dispatch(pilot_request);
-            self.access.observe(
+            self.access.reduce(
                 &Reply::Error {
                     message: self.message.clone(),
                 },
                 matches!(self.active, Area::Account),
+                false,
             );
             return false;
         }
@@ -687,11 +694,12 @@ impl Remote {
         } else {
             self.message = "Operación en curso".into();
             self.failed_pilot_dispatch(pilot_request);
-            self.access.observe(
+            self.access.reduce(
                 &Reply::Error {
                     message: self.message.clone(),
                 },
                 matches!(self.active, Area::Account),
+                false,
             );
             false
         }
@@ -730,11 +738,12 @@ impl Remote {
                 Self::background_discard_message(self.queued.as_ref(), &command)
             {
                 self.message = message.into();
-                self.access.observe(
+                self.access.reduce(
                     &Reply::Error {
                         message: self.message.clone(),
                     },
                     matches!(self.active, Area::Account),
+                    false,
                 );
                 if matches!(command, Command::AccountEmail { .. }) {
                     self.email_discarded(message, cx);
@@ -885,11 +894,11 @@ impl Remote {
 
     #[allow(clippy::too_many_lines)]
     fn complete(&mut self, reply: Reply, cx: &mut Context<Self>) {
+        self.access.finish_reply();
         // Discard the abandoned operation's reply before it can reopen login.
         // Preserve explicit Logout priority over cancellation of an attempt.
         if let Some(cancel) = self.account.cancel_command.take() {
             self.inflight = Inflight::Idle;
-            self.account.pending = false;
             self.request(cancel, cx);
             return;
         }
@@ -915,11 +924,9 @@ impl Remote {
         let notice_before = self.license_notice.clone();
         let device_limit_before = self.device_limit;
         let session_notice_before = self.session_notice();
-        let signed_in_before = self.account.signed_in;
+        let signed_in_before = self.access.signed_in();
         match &reply {
-            Reply::LicenseStatus {
-                session, notice, ..
-            } => {
+            Reply::LicenseStatus { notice, .. } => {
                 self.license_notice = notice
                     .clone()
                     .and_then(|notice| vantare_services::outcome::notice_after(None, notice));
@@ -927,16 +934,6 @@ impl Remote {
                     notice,
                     Some(super::protocol::LicenseNotice::DeviceLimit { .. })
                 );
-                if let Some(session) = self.access.observe_cached_session(*session) {
-                    let signed_in = session == super::protocol::Session::SignedIn;
-                    if self.account.signed_in != signed_in
-                        || (session == super::protocol::Session::SignedOut
-                            && self.account.profile.is_some())
-                    {
-                        self.clean_session(session, cx);
-                    }
-                    self.account.signed_in = signed_in;
-                }
             }
             Reply::LicenseFailure { outcome, message } => {
                 self.remember_license_notice(super::protocol::LicenseNotice::Failure {
@@ -967,21 +964,21 @@ impl Remote {
         };
         // La renovación puede devolver una foto anterior al último heartbeat.
         // Solo Feed alimenta derechos; el reply conserva feedback y seguimiento OAuth.
-        if !matches!(&reply, Reply::License { .. } | Reply::LicenseStatus { .. })
-            && (self.inflight != Inflight::Profile
-                || matches!(
-                    &reply,
-                    Reply::Account {
-                        session: super::protocol::Session::NeedsSignIn
-                            | super::protocol::Session::SignedOut,
-                        ..
-                    }
-                ))
+        let accepted_account = self.access.reduce(
+            &reply,
+            !self.inflight.background() && matches!(self.active, Area::Account),
+            self.inflight == Inflight::Profile,
+        );
+        if let Reply::LicenseStatus {
+            session: Some(session),
+            ..
+        } = &reply
+            && accepted_account
+            && (signed_in_before != self.access.signed_in()
+                || (*session == super::protocol::Session::SignedOut
+                    && self.account.profile.is_some()))
         {
-            self.access.observe(
-                &reply,
-                !self.inflight.background() && matches!(self.active, Area::Account),
-            );
+            self.clean_session(*session, signed_in_before, cx);
         }
         let next = if notice_read {
             None // A cached notice must not start the helper via AccountPoll.
@@ -993,7 +990,6 @@ impl Remote {
         let background = self.inflight.background();
         let roadmap_background = self.inflight == Inflight::Roadmap;
         self.inflight = Inflight::Idle;
-        self.account.pending = false;
         let purchase_message_before = self.purchase_message.clone();
         let quiet = background;
         if roadmap_background && let Reply::Error { message } = &reply {
@@ -1074,10 +1070,10 @@ impl Remote {
                     session,
                     super::protocol::Session::SignedIn | super::protocol::Session::NeedsSignIn
                 );
-                if signed_in && !pending {
+                if accepted_account && signed_in && !pending {
                     self.email = None;
                 }
-                if !pending {
+                if accepted_account && !pending {
                     missing_profile =
                         signed_in && profile.is_none() && self.account.profile.is_none();
                     // Un perfil vacío recuerda la lectura inicial, incluso si no
@@ -1097,10 +1093,8 @@ impl Remote {
                                 Arc::new(gpui::Image::from_bytes(gpui::ImageFormat::Jpeg, bytes))
                             });
                     }
-                    self.clean_session(session, cx);
-                    self.account.signed_in = signed_in;
+                    self.clean_session(session, signed_in_before, cx);
                 }
-                self.account.pending = pending;
                 if !background {
                     self.message = message;
                 }
@@ -1141,7 +1135,7 @@ impl Remote {
             || notice_before != self.license_notice
             || device_limit_before != self.device_limit
             || session_notice_before != self.session_notice()
-            || signed_in_before != self.account.signed_in;
+            || signed_in_before != self.access.signed_in();
         if let Some(command) = next {
             self.access.login_requested =
                 matches!(command, Command::Logout) || self.access.login_requested;

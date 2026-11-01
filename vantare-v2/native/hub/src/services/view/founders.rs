@@ -68,7 +68,7 @@ impl Remote {
                         .aria_description("Datos de demostración; acciones deshabilitadas"),
                 );
         }
-        let signed_in = self.account.signed_in;
+        let signed_in = self.access.signed_in();
         let can_start = self.can_start_account_login();
         div()
             .flex()
@@ -99,7 +99,7 @@ impl Remote {
             } else {
                 orbit::small_button(
                     "services-login",
-                    if self.account.pending {
+                    if self.access.pending() {
                         "Esperando…"
                     } else {
                         "Iniciar sesión"
@@ -135,7 +135,7 @@ impl Remote {
     }
 
     fn purchase_buttons(&self, cx: &mut Context<Self>) -> gpui::Div {
-        let signed_in = self.account.signed_in;
+        let signed_in = self.access.signed_in();
         div().flex().flex_col().gap(px(6.0)).children(
             [
                 crate::services::protocol::BillingProduct::ProMonthly,
@@ -160,7 +160,7 @@ impl Remote {
                     orbit::disabled,
                 )
                 .on_click(cx.listener(move |this, _, _, cx| {
-                    if this.account.signed_in && !this.working() {
+                    if this.access.signed_in() && !this.working() {
                         this.request(Command::Purchase { product }, cx);
                     }
                 }))

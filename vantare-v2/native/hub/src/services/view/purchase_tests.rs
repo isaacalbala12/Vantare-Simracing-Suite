@@ -47,7 +47,7 @@ fn cancel_cannot_hide_a_failed_logout_in_flight_or_queued() {
                     *error = Some("fixture core unavailable".into());
                 }
                 remote.complete(failed, cx);
-                assert!(remote.account.signed_in, "services did not ACK logout");
+                assert!(remote.access.signed_in(), "services did not ACK logout");
                 assert!(remote.requires_access(), "logout barrier remains");
                 assert!(!remote.navigation_access().verified);
                 assert!(
@@ -243,7 +243,7 @@ fn needs_sign_in_from_profile_keeps_hub_pages_and_shows_a_session_notice() {
                 remote.can_start_account_login(),
                 "Cuenta permite volver a entrar"
             );
-            assert!(!remote.account.signed_in, "remote actions require login");
+            assert!(!remote.access.signed_in(), "remote actions require login");
             assert!(
                 remote.account.profile.is_some(),
                 "cached identity remains visible"
@@ -266,7 +266,7 @@ fn needs_sign_in_from_profile_keeps_hub_pages_and_shows_a_session_notice() {
             );
             remote.complete(session_reply("Sesión iniciada", u64::MAX), cx);
             assert!(remote.session_notice().is_none());
-            assert!(remote.account.signed_in);
+            assert!(remote.access.signed_in());
             assert!(!remote.can_start_account_login());
             assert!(!remote.requires_access());
             let mut needs_sign_in = session_reply("Vuelve a entrar", 1);
@@ -298,7 +298,9 @@ fn browser_failure_is_visible_and_retry_sends_one_fresh_login() {
         let (send, requests) = mpsc::sync_channel(8);
         let remote = cx.new(|cx| fixture(cx, send, file.path.parent().expect("root")));
         remote.update(cx, |remote, cx| {
-            remote.account.signed_in = false;
+            remote
+                .access
+                .fixture_session(super::super::protocol::Session::SignedOut);
             remote.access.observe(
                 &Reply::Status {
                     account_configured: true,
@@ -413,7 +415,9 @@ fn a_silent_service_times_out_cancels_old_io_and_allows_a_fresh_retry() {
                 "hub-retry-{}",
                 vantare_services::random_id().expect("pipe id")
             );
-            remote.account.signed_in = false;
+            remote
+                .access
+                .fixture_session(super::super::protocol::Session::SignedOut);
             remote.access = access::State::from_build();
             let event = Arc::new(Event::new().expect("cancellation"));
             remote.cancellation = Some(event.clone());
@@ -573,7 +577,9 @@ fn participation_can_retry_after_background_busy_or_failed_ipc_dispatch() {
         let (send, requests) = mpsc::sync_channel(8);
         let remote = cx.new(|cx| fixture(cx, send, file.path.parent().expect("root")));
         remote.update(cx, |remote, cx| {
-            remote.account.signed_in = true;
+            remote
+                .access
+                .fixture_session(super::super::protocol::Session::SignedIn);
             remote.inflight = Inflight::Background;
             remote.queued = Some(Command::DraftLoad);
             remote.participation_request(Command::TestingRefresh, cx);
@@ -582,11 +588,13 @@ fn participation_can_retry_after_background_busy_or_failed_ipc_dispatch() {
             assert!(requests.try_recv().is_err());
             remote.inflight = Inflight::Idle;
             remote.queued = None;
-            remote.account.pending = true;
+            remote
+                .access
+                .fixture_session(super::super::protocol::Session::Pending);
             remote.participation_request(Command::TestingRefresh, cx);
             assert!(remote.participation_pending.is_none());
             assert!(requests.try_recv().is_err());
-            remote.account.pending = false;
+            remote.access.finish_reply();
             drop(requests);
             remote.participation_request(Command::TestingRefresh, cx);
             assert!(remote.participation_pending.is_none());
@@ -685,7 +693,9 @@ pub(crate) fn fixture(
         manual_roadmap: crate::roadmap::State::load(),
         stale: true,
     };
-    remote.account.signed_in = true;
+    remote
+        .access
+        .fixture_session(super::super::protocol::Session::SignedIn);
     remote.account.profile = Some(super::super::protocol::AccountProfile::default());
     remote.access.observe(&session_reply("QA", u64::MAX), true);
     remote
@@ -899,7 +909,7 @@ fn denied_policy_keeps_manual_retry_and_logout_without_granting_tools() {
                 remote.observe_core_policy(policy, now, cx);
                 let access = remote.navigation_access();
                 assert_eq!(access.beta_lock(Section::Account), None);
-                assert!(remote.account.signed_in && !remote.working());
+                assert!(remote.access.signed_in() && !remote.working());
                 assert!(!access.verified);
                 assert!(
                     account_module_access(access, false)
@@ -947,7 +957,7 @@ fn denied_policy_keeps_manual_retry_and_logout_without_granting_tools() {
                     },
                     cx,
                 );
-                assert!(!remote.account.signed_in);
+                assert!(!remote.access.signed_in());
                 assert!(!remote.navigation_access().verified);
                 assert!(requests.try_recv().is_err());
                 remote.cancel();

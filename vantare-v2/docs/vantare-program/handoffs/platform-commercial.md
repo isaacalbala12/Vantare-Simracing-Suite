@@ -1,3 +1,41 @@
+<!-- isa1827-simplificar-d1b -->
+## VANTA-126 / #1827 — D1b listo para revisión
+
+Base actual origin/nightly@eb9aa1d456c5ef9fdb321bf316f450dc832e6da1, con D1a
+[#1854](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1854) integrado.
+Rebase desde 843913d24; entradas anteriores del handoff conservadas completas.
+Rama vantareapp/isa-1827-simplificar-session, worktree/target isa-1827-s.
+- Microplan aprobado: access::State posee identidad confirmada y fase del intento;
+  Pending conserva identidad anterior. AccountState solo perfil/avatar/cancel_command.
+  Un reductor de Reply acepta Session; vistas leen getters. Feed decide derechos.
+- Corrección autorizada: Account tardío descartado durante Logout tampoco cambia
+  perfil ni identidad confirmada. Prueba explícita con SignedOut/SignedIn/NeedsSignIn.
+- Matriz: Logout fallido+Volver y política fresca/vieja/revocada, Cancel, callback
+  tardío, Pending, NeedsSignIn, perfil en background y compra solo por Feed.
+  Mutaciones previstas: aceptar callback, perder identidad en Pending, ACK como derechos.
+- Primer Clippy detectó tres llamadas de errores de dispatch al método anterior;
+  ajustadas al mismo reductor. Clippy all-targets -D warnings PASS y matriz
+  focal/arquitectura Hub 95/95 PASS. La conversión de fixtures queda cfg(test).
+  Tres mutaciones compiladas detectadas por aserción; 406 fuentes Rust
+  restauradas SHA-256. Antes del rebase: fmt/Clippy PASS; Nextest ci 1767/1767
+  con telemetría PASS (17 omisiones); lifecycle runtime13/13 + Engineer5/5 PASS.
+  Producción rebasada 115188 ->115246 (+58), recorrido 15258 ->15316 (+58);
+  este corte no adelgaza producción.
+  El coste hace explícita la identidad conservada y su fase en un dueño;
+  tests/soporte +103 y documentación se cuentan aparte. Todo el diff Rust,
+  incluyendo tests, suma 369 líneas: por debajo del límite productivo de 600.
+- Patch-id Rust idéntico tras rebase (2aa5b817eee619caf0914a348663161d26ace2e9);
+  solo access.rs gana los cambios upstream de ACK y sus aserciones. Gates
+  posteriores al rebase PASS: fmt/Clippy, matriz Hub/domain96/96,
+  caracterización7/7 sin cambios y lifecycle runtime13/13 + Engineer5/5.
+  Código inicial validado 491346c17; rebasado16280bb0e.
+- Seguimiento F4 de #1822 actualizado a cerrado tras C (#1849) integrado;
+  el estado global de esa issue queda al orquestador.
+- E (401 automático → NeedsSignIn) sigue después. Sin Plane ni CI watch.
+- PR draft [#1855](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1855), target nightly.
+  HEAD documental vigente en PR; CI y revisión a cargo del orquestador.
+<!-- /isa1827-simplificar-d1b -->
+
 <!-- isa1827-simplificar-d1a -->
 ## VANTA-126 / #1827 — D1a listo para revisión
 

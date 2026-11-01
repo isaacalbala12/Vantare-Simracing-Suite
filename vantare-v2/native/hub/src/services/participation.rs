@@ -8,7 +8,7 @@ impl Remote {
         data: crate::services::protocol::testing_document::Participation,
     ) {
         if self.participation_pending == Some(self.participation_generation)
-            && self.account.signed_in
+            && self.access.signed_in()
             && self.account.cancel_command.is_none()
         {
             self.participation = data;
@@ -22,7 +22,7 @@ impl Remote {
         preview: crate::services::protocol::triage_document::Preview,
     ) {
         if self.participation_pending == Some(self.participation_generation)
-            && self.account.signed_in
+            && self.access.signed_in()
             && self.account.cancel_command.is_none()
         {
             self.triage.receive(preview);
@@ -38,8 +38,8 @@ impl Remote {
         self.triage.clear(cx);
     }
     pub(crate) fn participation_ready(&self) -> bool {
-        self.account.signed_in
-            && !self.account.pending
+        self.access.signed_in()
+            && !self.access.pending()
             && self.account.cancel_command.is_none()
             && !self.busy()
             && self.queued.is_none()

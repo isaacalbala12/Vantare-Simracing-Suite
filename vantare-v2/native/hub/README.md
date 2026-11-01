@@ -25,6 +25,11 @@ la frontera pendiente en hora local al comprobar manualmente. Comprar se confirm
 solo por Feed; el Hub no renueva durante la espera. El scheduler y la ventana de
 compra pertenecen al [supervisor](../runtime/README.md#contrato-vigente-de-licencias-y-supervisor).
 
+`access::State` posee la identidad confirmada y la fase del intento. Cuenta solo
+conserva perfil, avatar y orden de cancelación. Pending mantiene la identidad
+anterior; un callback Account descartado durante Logout no modifica perfil ni
+identidad.
+
 Services publica SignedIn, SignedOut, NeedsSignIn o Pending. NeedsSignIn conserva
 las páginas que permita el núcleo, ofrece entrar desde Cuenta y exige SignedIn
 para servicios remotos. Error de perfil o bearer vencido no revoca por sí solo.

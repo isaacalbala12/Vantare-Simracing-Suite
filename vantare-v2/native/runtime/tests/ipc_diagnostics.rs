@@ -87,10 +87,19 @@ fn exercise_rejected_requests() {
             },
         )
         .expect("petición inválida");
-        assert!(
-            control::read::<control::Response>(&mut pipe).is_err(),
-            "rechazo sin conceder derechos"
-        );
+        let response = control::read::<control::Response>(&mut pipe);
+        if version == control::VERSION {
+            assert!(
+                response.is_err(),
+                "secuencia/nonce inválidos no reciben ACK"
+            );
+        } else {
+            let response = response.expect("sobre explícito de incompatibilidad");
+            assert_eq!(response.version, control::VERSION);
+            assert_eq!(response.policy.state, control::AccessState::UpdateRequired);
+            assert!(!response.policy.state.permits_access());
+            assert!(!response.policy.engineer && !response.policy.tester);
+        }
     }
     drop(rights); // Espera a los workers antes de comprobar stderr.
 

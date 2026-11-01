@@ -153,6 +153,47 @@ impl Authority {
                 .is_some_and(|last| wall < last)
     }
 
+    /// Diagnostics only: never alters the durable clock or tombstone.
+    pub fn recovery_state(&self, wall: DateTime<Utc>) -> Option<vantare_ipc::control::AccessState> {
+        use vantare_ipc::control::AccessState;
+        // A current proof may already exceed this boundary within the allowed
+        // signed skew. Its mere presence in the durable clock is not revocation.
+        if let Some(boundary) = self
+            .clock
+            .invalidated_after
+            .filter(|at| !self.credential_current() && wall < *at)
+        {
+            return Some(AccessState::ClockBehind {
+                until_ms: u64::try_from(boundary.timestamp_millis()).unwrap_or(u64::MAX),
+            });
+        }
+        self.needs_online_recovery(wall)
+            .then_some(AccessState::RecoveryRequired)
+    }
+
+    /// Original signed deadline of the rights currently published, in wall units.
+    pub fn signed_deadline(&self, rights: &[String]) -> Option<DateTime<Utc>> {
+        self.verified
+            .as_ref()?
+            .grants
+            .iter()
+            .filter(|grant| rights.contains(&grant.key))
+            .filter_map(|grant| grant.expires_at)
+            .min()
+            .and_then(|end| self.local_deadline(end))
+    }
+
+    pub fn in_grace(&self, rights: &[String]) -> bool {
+        self.verified.as_ref().is_some_and(|verified| {
+            verified.grants.iter().any(|grant| {
+                rights.contains(&grant.key)
+                    && grant
+                        .expires_at
+                        .is_some_and(|end| self.clock.last_seen.is_some_and(|now| now >= end))
+            })
+        })
+    }
+
     fn observe(&mut self, wall: DateTime<Utc>, tick: Duration) -> Result<DateTime<Utc>> {
         // Comparar pared con pared: el reloj efectivo puede adelantarse por deriva.
         if self

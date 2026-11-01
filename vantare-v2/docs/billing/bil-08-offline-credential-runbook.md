@@ -23,6 +23,26 @@ reanudar. Salir/cambiar de sesión o cerrar la cuenta descarta ese margen. Tanto
 el fin de la gracia como el vencimiento de la credencial se cumplen aunque el
 simulador siga en pausa. Una pausa sin entrada live previa no crea gracia.
 
+**Estado explícito y reloj (paso 7).** Control v7 y services v17 distinguen la
+licencia de la sesión. Active puede ser Gratis si ya venció Pro; Expired significa
+que venció la credencial completa. La fecha `signed_until_ms` es la próxima
+frontera firmada de la política o credencial, no necesariamente la fecha comercial
+de la suscripción. La gracia se publica aparte y no se reinicia.
+
+Si aparece **ClockBehind / frontera de seguridad pendiente**, comprueba que la
+fecha real del sistema sea correcta. El mensaje manual indica la fecha guardada:
+tener conexión todavía no garantiza recuperar antes de esa frontera. Las
+comprobaciones automáticas esperan y la vía manual sigue disponible. Una firma
+nueva que supere la frontera puede aceptarse dentro de la tolerancia existente;
+no se retira ese acceso por conservar una lápida sana. Nunca adelantar el reloj
+para saltarla ni borrar/rebajar binding, authority o sus guardias.
+
+Una renovación 200 verificada que conserva la misma fecha ya no cuenta como fallo
+de transporte. La comprobación ordinaria espera quince minutos en la ventana
+urgente; mantiene un minuto en los últimos cinco minutos firmados. Confirmar una
+compra mantiene su suelo de un minuto dentro de su ventana de diez minutos.
+Ninguno de estos ritmos amplía lo firmado ni la gracia.
+
 - Comprobar acceso y la renovación automática conservan binding, autoridad y
   candidate ante rechazo de la emisión. El rechazo explícito se comunica como
   definitivo y detiene la renovación automática; no provoca un reset ni logout.
@@ -33,13 +53,13 @@ simulador siga en pausa. Una pausa sin entrada live previa no crea gracia.
   Conserva la identidad anterior, el perfil y los derechos firmados. No ejecuta
   Logout ni borra la cuenta. Volver a entrar con esa identidad no es un cambio
   de dueño; entrar con otra sí exige revocación confirmada por el núcleo.
-- Servicios v16 publica **Session**: SignedOut, SignedIn, NeedsSignIn o Pending.
+- Servicios v17 conserva **Session**, introducida en el paso 6: SignedOut, SignedIn, NeedsSignIn o Pending.
   En NeedsSignIn, el Hub muestra «Vuelve a iniciar sesión» y mantiene abiertas
   las páginas que permita la política fresca del núcleo. Ya no limita todo a
   Cuenta por `signed_in=false`. Una política ausente, denegada o caducada sigue
   bloqueando el acceso correspondiente. Los servicios remotos exigen login.
   El aviso no afirma que exista una licencia: solo el núcleo decide los derechos.
-  Una mezcla v15/v16 requiere actualizar el conjunto; su fallo es transitorio y
+  Una mezcla de generaciones (control v7 / services v17) requiere actualizar el conjunto; su fallo es transitorio y
   no revoca ni cambia los documentos firmados. No se admiten EXE sueltos.
 - **Volver/Cancelar** cancela el intento de acceso con `AccountCancel`; no cierra
   la cuenta, no guarda SignedOut y no invalida derechos. Desde NeedsSignIn se

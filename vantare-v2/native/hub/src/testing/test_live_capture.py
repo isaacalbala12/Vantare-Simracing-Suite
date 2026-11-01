@@ -24,8 +24,8 @@ def run(exe, out):
     out.mkdir(parents=True, exist_ok=False)
     host = out / "vantare.exe"
     shutil.copy2(exe, host)
-    policy = dict(version=5, epoch=1, revision=1, checked_at_ms=0,
-                  valid_until_ms=None, overlays_advanced=False, catalog="free",
+    policy = dict(version=7, epoch=1, revision=1, checked_at_ms=0,
+                  state={"kind": "no_credential"}, signed_until_ms=None, grace_until_ms=None, catalog="free",
                   engineer=False, strategy=False, analysis=False, calendar=False,
                   tester=False, live=False, error=None)
 
@@ -181,7 +181,7 @@ def run(exe, out):
 
             first = capture("free.png")
             policy.update(revision=2, catalog="pro", engineer=True, strategy=True,
-                          analysis=True, calendar=True, tester=True, overlays_advanced=True)
+                          analysis=True, calendar=True, tester=True, state={"kind": "active"})
             write_replies()
             until(lambda: read_revision(2))
             second = capture("pro.png")

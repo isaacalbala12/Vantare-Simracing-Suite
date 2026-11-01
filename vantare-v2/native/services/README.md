@@ -1,3 +1,15 @@
+## #1827 — Policy.state / control v7 (paso 7)
+
+Services lee los estados del núcleo y usa Policy::denied para políticas conservadoras.
+ClockBehind conserva la frontera de seguridad y la comprobación manual explica
+su fecha; no pide conexión como solución suficiente. Un 200 verificado sigue
+siendo Verified aunque no cambie el plazo firmado. Policy.error queda solo como
+observación diagnóstica histórica, sin autoridad. Candidate/TransferRights se
+conservan hasta el paso 8. [Contrato](../../docs/adr/0102-modelo-acceso-nativo.md).
+
+Services v17 versiona la Policy v7 anidada; Session/AccountCancel permanecen
+intactos. V16 del paso 6 nunca se publicó en release.
+
 ## #1827 — Contrato de sesión explícita (paso 6, services v16)
 
 `AccountCancel` (v16) cancela solo el intento OAuth/FAPI y relee Session;

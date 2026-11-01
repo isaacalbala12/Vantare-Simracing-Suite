@@ -28,7 +28,7 @@ const PURCHASE_CONFIRMATION_WINDOW: Duration = Duration::from_mins(10);
 /// Huella mínima en carrera, salvo que cerrar deje al usuario sin acceso:
 /// sin licencia válida guardada o con un acceso a medias se sigue sirviendo.
 fn closes_for_game(policy: &control::Policy, signing_in: bool) -> bool {
-    policy.live && policy.overlays_advanced && !signing_in
+    policy.live && policy.state.permits_access() && !signing_in
 }
 fn signing_in(slot: &SigningIn) -> bool {
     slot.lock()
@@ -533,10 +533,12 @@ fn run_renewal(
     } else {
         match &reply {
             Reply::DeviceLimit { .. } | Reply::LicenseFailure { .. } => Some(reply.clone()),
-            Reply::Error { message } if !policy.overlays_advanced => Some(Reply::LicenseFailure {
-                outcome,
-                message: message.clone(),
-            }),
+            Reply::Error { message } if !policy.state.permits_access() => {
+                Some(Reply::LicenseFailure {
+                    outcome,
+                    message: message.clone(),
+                })
+            }
             _ => None,
         }
     };

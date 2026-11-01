@@ -180,9 +180,9 @@ fn restart_preserves_same_absolute_deadline_even_across_two_restarts_and_local_i
                 Duration::ZERO,
             )
             .expect("misma sesión estable");
-        assert!(policy.engineer && policy.overlays_advanced);
+        assert!(policy.engineer && policy.state.permits_access());
         assert_eq!(
-            policy.valid_until_ms,
+            policy.effective_until_ms(),
             Some(u64::try_from(end).expect("deadline") * 1000)
         );
         if now == end - 1 {
@@ -195,7 +195,7 @@ fn restart_preserves_same_absolute_deadline_even_across_two_restarts_and_local_i
                     Duration::from_secs(1),
                 )
                 .expect("fin exacto");
-            assert!(!policy.engineer && policy.overlays_advanced);
+            assert!(!policy.engineer && policy.state.permits_access());
         }
     }
     clean(&root);
@@ -239,7 +239,7 @@ fn first_live_mismatch_or_missing_identity_discards_saved_grace_permanently() {
             )
             .expect("primera sesión no coincide");
         assert!(
-            !policy.engineer && policy.overlays_advanced,
+            !policy.engineer && policy.state.permits_access(),
             "caso {change}"
         );
         drop(owner);
@@ -294,7 +294,7 @@ fn restart_at_expired_deadline_or_with_clock_rollback_cannot_restore_grace() {
             "neither rollback nor deadline can restore grace"
         );
         if elapsed == 24 {
-            assert!(!policy.overlays_advanced, "rollback grants no rights");
+            assert!(!policy.state.permits_access(), "rollback grants no rights");
         }
         drop(owner);
         clean(&root);
@@ -468,9 +468,9 @@ fn exact_hour_live_only_never_resets_on_reconnect_or_recycled_session_after_rest
     let p = owner
         .advance(&photo(true), wall(start + 5), Duration::from_secs(5))
         .expect("entrar");
-    assert!(p.engineer && p.overlays_advanced);
+    assert!(p.engineer && p.state.permits_access());
     assert_eq!(
-        p.valid_until_ms,
+        p.effective_until_ms(),
         Some(u64::try_from(expiry + 3600).expect("deadline") * 1000)
     );
     assert!(
@@ -654,6 +654,34 @@ fn no_other_grace_invalid_signature_wrong_binding_and_clock_rollback_deny() {
     clean(&root);
 }
 
+fn assert_other_control_generations_do_not_mutate_rights(link: &vantare_ipc::control::CoreLink) {
+    use vantare_ipc::{
+        control,
+        transport::{Event, IO_TIMEOUT},
+    };
+    for version in [control::VERSION - 1, control::VERSION + 1] {
+        let stop = std::sync::Arc::new(Event::new().expect("event"));
+        let mut pipe = control::connect_ready(&link.pipe, &stop, IO_TIMEOUT).expect("real host");
+        // Image is authenticated by Host before serve. No nonce/command is
+        // trusted at this point: the response contains only a denied policy.
+        control::write(
+            &mut pipe,
+            &serde_json::json!({"version":version,"sequence":1,
+            "nonce":"not-authorized","command":{"command":"future-mutation"}}),
+        )
+        .expect("request");
+        let response: control::Response =
+            control::read(&mut pipe).expect("explicit version envelope");
+        assert_eq!(response.version, control::VERSION);
+        assert_eq!(response.policy.state, control::AccessState::UpdateRequired);
+        assert!(!response.policy.state.permits_access());
+        drop(pipe);
+        let unchanged =
+            control::request(link, control::Command::Read).expect("same host remains available");
+        assert!(unchanged.engineer && unchanged.state.permits_access());
+    }
+}
+
 #[test]
 fn signed_http_fixture_reaches_core_pipe_then_both_consumers_without_network_authority() {
     use vantare_ipc::control::{self, CoreLink};
@@ -687,7 +715,8 @@ fn signed_http_fixture_reaches_core_pipe_then_both_consumers_without_network_aut
     };
     let installed =
         control::request(&link, control::Command::Install { credential }).expect("ACK durable");
-    assert!(installed.engineer && installed.overlays_advanced);
+    assert!(installed.engineer && installed.state.permits_access());
+    assert_other_control_generations_do_not_mutate_rights(&link);
     for _ in 0..2 {
         // Lectura que usan overlays y Engineer: sin nonce ni credencial.
         let p = control::request(
@@ -699,7 +728,7 @@ fn signed_http_fixture_reaches_core_pipe_then_both_consumers_without_network_aut
         )
         .expect("política");
         assert_eq!(p.epoch, 47);
-        assert!(p.current() && p.engineer && p.overlays_advanced);
+        assert!(p.current() && p.engineer && p.state.permits_access());
     }
     assert!(
         control::request(
@@ -722,7 +751,7 @@ fn signed_http_fixture_reaches_core_pipe_then_both_consumers_without_network_aut
         .is_err()
     );
     let revoked = control::request(&link, control::Command::Invalidate).expect("ACK revocación");
-    assert!(!revoked.engineer && !revoked.overlays_advanced);
+    assert!(!revoked.engineer && !revoked.state.permits_access());
     drop(host);
     let mut restored =
         Owner::open(&root, None, devices(), 48, super::wall_now()).expect("tombstone sin binding");
@@ -796,14 +825,14 @@ fn beta_signed_credential_matrix_and_exact_empty_envelope_expiry() {
         let anonymous = owner
             .advance(&Snapshot::default(), wall(start), Duration::ZERO)
             .expect("sin sesión");
-        assert!(!anonymous.overlays_advanced);
+        assert!(!anonymous.state.permits_access());
         owner
             .install(credential.clone(), wall(start), Duration::ZERO)
             .expect("instalar");
         let policy = owner
             .advance(&Snapshot::default(), wall(start), Duration::ZERO)
             .expect("vigente");
-        assert!(policy.overlays_advanced, "{capability:?}");
+        assert!(policy.state.permits_access(), "{capability:?}");
         assert_eq!(
             policy.tester,
             capability.is_some_and(|key| matches!(
@@ -824,7 +853,7 @@ fn beta_signed_credential_matrix_and_exact_empty_envelope_expiry() {
             expected
         );
         assert_eq!(
-            policy.valid_until_ms,
+            policy.effective_until_ms(),
             Some(
                 u64::try_from(
                     start
@@ -847,7 +876,8 @@ fn beta_signed_credential_matrix_and_exact_empty_envelope_expiry() {
             owner
                 .advance(&Snapshot::default(), wall(start + 1), Duration::ZERO)
                 .expect("caché vigente")
-                .overlays_advanced
+                .state
+                .permits_access()
         );
         let expired = owner
             .advance(
@@ -856,7 +886,7 @@ fn beta_signed_credential_matrix_and_exact_empty_envelope_expiry() {
                 Duration::from_secs(9),
             )
             .expect("caducidad exacta");
-        assert!(!expired.overlays_advanced);
+        assert!(!expired.state.permits_access());
         assert_eq!(
             [
                 expired.engineer,
@@ -878,7 +908,7 @@ fn beta_signed_credential_matrix_and_exact_empty_envelope_expiry() {
         let error = owner.policy();
         assert_eq!(
             [
-                error.overlays_advanced,
+                error.state.permits_access(),
                 error.engineer,
                 error.strategy,
                 error.analysis,
@@ -988,7 +1018,7 @@ fn launch_v1_signed_credentials_keep_the_cutoff_offline_and_at_pro_expiry() {
         export_capture_policy(Some("vantare.plan.pro"), &pro);
         assert!(pro.engineer && pro.strategy);
         assert_eq!(
-            pro.valid_until_ms,
+            pro.effective_until_ms(),
             Some(u64::try_from(start + 3).expect("fecha") * 1000)
         );
         drop(owner);
@@ -997,7 +1027,7 @@ fn launch_v1_signed_credentials_keep_the_cutoff_offline_and_at_pro_expiry() {
         let launch = owner
             .advance(&Snapshot::default(), wall(start + 3), Duration::ZERO)
             .expect("LE");
-        assert!(launch.overlays_advanced && launch.tester && launch.calendar);
+        assert!(launch.state.permits_access() && launch.tester && launch.calendar);
         assert_eq!(launch.catalog, CatalogAccess::LaunchV1);
         export_capture_policy(Some("vantare.edition.launch_v1"), &launch);
         assert!(launch.catalog.allows_widget("relative"));
@@ -1022,7 +1052,7 @@ fn launch_v1_signed_credentials_keep_the_cutoff_offline_and_at_pro_expiry() {
                 Duration::from_secs(8),
             )
             .expect("revocada");
-        assert!(!revoked.overlays_advanced);
+        assert!(!revoked.state.permits_access());
         drop(owner);
         clean(&root);
     }
@@ -1090,7 +1120,7 @@ fn cached_credential_keeps_overlays_and_modules_during_unreachable_server_hours(
                 )
                 .expect("sin red");
             let active = legacy || seconds < 3 * 86400;
-            assert_eq!(policy.overlays_advanced, active);
+            assert_eq!(policy.state.permits_access(), active);
             assert_eq!(policy.strategy, capability.is_some() && active);
             assert!(!policy.engineer && !policy.analysis && !policy.calendar);
         }
@@ -1157,7 +1187,7 @@ fn unreadable_installation_preserves_only_a_supported_legacy_device() {
     let policy = owner
         .advance(&Snapshot::default(), wall(start), Duration::ZERO)
         .expect("policy");
-    assert_eq!(policy.overlays_advanced, legacy_supported);
+    assert_eq!(policy.state.permits_access(), legacy_supported);
     drop(owner);
     clean(&root);
 }
@@ -1211,7 +1241,8 @@ fn cached_license_with_a_retired_key_is_preserved_and_recovers_only_after_a_fres
         !owner
             .advance(&photo(false), wall(111), Duration::ZERO)
             .expect("denied policy")
-            .overlays_advanced
+            .state
+            .permits_access()
     );
     assert!(matches!(
         owner.install(old, wall(112), Duration::from_secs(1)),
@@ -1235,7 +1266,8 @@ fn cached_license_with_a_retired_key_is_preserved_and_recovers_only_after_a_fres
         owner
             .advance(&photo(false), wall(112), Duration::from_secs(1))
             .expect("fresh policy")
-            .overlays_advanced
+            .state
+            .permits_access()
     );
     assert!(namespace.join(binding_name).exists());
     assert_eq!(
@@ -1277,7 +1309,8 @@ fn old_format_and_known_key_bad_signature_are_quarantined_without_rights() {
             !owner
                 .advance(&photo(false), wall(110), Duration::ZERO)
                 .expect("no rights before a new valid signature")
-                .overlays_advanced
+                .state
+                .permits_access()
         );
         assert!(owner.binding.is_none());
         drop(owner);
@@ -1325,7 +1358,8 @@ fn unreadable_dpapi_is_preserved_but_actual_io_is_never_quarantined() {
                 !owner
                     .advance(&photo(false), wall(110), Duration::ZERO)
                     .expect("no rights")
-                    .overlays_advanced
+                    .state
+                    .permits_access()
             );
             assert!(!file.exists());
             let archived = std::fs::read_dir(&namespace)
@@ -1400,7 +1434,8 @@ fn rejected_renewal_cannot_revoke_a_previously_verified_binding() {
         owner
             .advance(&photo(false), wall(110), Duration::ZERO)
             .expect("verified policy")
-            .overlays_advanced
+            .state
+            .permits_access()
     );
     assert!(matches!(
         owner.install("unverifiable".into(), wall(111), Duration::from_secs(1)),
@@ -1410,7 +1445,8 @@ fn rejected_renewal_cannot_revoke_a_previously_verified_binding() {
         owner
             .advance(&photo(false), wall(111), Duration::from_secs(1))
             .expect("valid rights preserved")
-            .overlays_advanced
+            .state
+            .permits_access()
     );
     assert!(matches!(
         owner.install(older, wall(112), Duration::from_secs(2)),
@@ -1420,7 +1456,8 @@ fn rejected_renewal_cannot_revoke_a_previously_verified_binding() {
         owner
             .advance(&photo(false), wall(112), Duration::from_secs(2))
             .expect("older issuance cannot revoke")
-            .overlays_advanced
+            .state
+            .permits_access()
     );
     drop(owner);
     let mut restored = Owner::open(&root, Some(&keys), devices(), 2, wall(113))
@@ -1429,7 +1466,8 @@ fn rejected_renewal_cannot_revoke_a_previously_verified_binding() {
         restored
             .advance(&photo(false), wall(113), Duration::ZERO)
             .expect("restored rights")
-            .overlays_advanced
+            .state
+            .permits_access()
     );
     drop(restored);
     std::fs::remove_dir_all(root).expect("cleanup");
@@ -1476,7 +1514,8 @@ fn authority_rejected_signed_binding_is_preserved_and_a_fresh_grant_recovers() {
             !owner
                 .advance(&photo(false), wall(111), Duration::ZERO)
                 .expect("denied policy")
-                .overlays_advanced
+                .state
+                .permits_access()
         );
         assert_eq!(
             owner
@@ -1498,7 +1537,8 @@ fn authority_rejected_signed_binding_is_preserved_and_a_fresh_grant_recovers() {
             owner
                 .advance(&photo(false), wall(120), Duration::from_secs(9))
                 .expect("recovered policy")
-                .overlays_advanced
+                .state
+                .permits_access()
         );
         drop(owner);
         std::fs::remove_dir_all(root).expect("private fixture cleanup");
@@ -1537,7 +1577,13 @@ fn authority_persist_failure_at_open_denies_rights_but_keeps_install_available()
         !owner
             .advance(&photo(false), wall(110), Duration::ZERO)
             .expect("denied")
-            .overlays_advanced
+            .state
+            .permits_access()
+    );
+    assert_eq!(
+        owner.policy().state,
+        vantare_ipc::control::AccessState::Unavailable,
+        "a failed durable write is not an explicit revocation"
     );
     assert_eq!(std::fs::read(&path).expect("original preserved"), before);
     drop(lock);
@@ -1548,7 +1594,8 @@ fn authority_persist_failure_at_open_denies_rights_but_keeps_install_available()
         owner
             .advance(&photo(false), wall(111), Duration::from_secs(1))
             .expect("new policy")
-            .overlays_advanced
+            .state
+            .permits_access()
     );
     drop(owner);
     std::fs::remove_dir_all(root).expect("private cleanup");
@@ -1582,7 +1629,8 @@ fn authority_recovery_corrupt_dpapi_requires_online_and_survives_restart() {
             !owner
                 .advance(&photo(false), wall(120), Duration::ZERO)
                 .expect("denied policy")
-                .overlays_advanced
+                .state
+                .permits_access()
         );
     }
     let archives: Vec<_> = std::fs::read_dir(&namespace)
@@ -1603,7 +1651,8 @@ fn authority_recovery_corrupt_dpapi_requires_online_and_survives_restart() {
         owner
             .advance(&photo(false), wall(120), Duration::ZERO)
             .expect("policy")
-            .overlays_advanced
+            .state
+            .permits_access()
     );
     drop(owner);
     let mut owner = Owner::open(&root, Some(&keys), devices(), 5, wall(121)).expect("durable ACK");
@@ -1611,7 +1660,8 @@ fn authority_recovery_corrupt_dpapi_requires_online_and_survives_restart() {
         owner
             .advance(&photo(false), wall(121), Duration::ZERO)
             .expect("restored policy")
-            .overlays_advanced
+            .state
+            .permits_access()
     );
     assert!(matches!(
         owner.install(old, wall(121), Duration::ZERO),
@@ -1696,6 +1746,80 @@ fn authority_recovery_online_reanchors_but_disk_replay_and_expiry_stay_denied() 
 }
 
 #[test]
+fn a_new_signature_beyond_a_future_tombstone_recovers_within_allowed_skew() {
+    let root = test_root();
+    let rights = || {
+        vec![Capability {
+            key: "vantare.operational.owner".into(),
+            paid_through: wall(300).to_rfc3339(),
+            perpetual: false,
+            scope_version: String::new(),
+        }]
+    };
+    let (old, old_keys) = signed_v1_named(100, rights(), devices().legacy, "old");
+    let (new, new_keys) = signed_v1_named(201, rights(), devices().legacy, "new");
+    let (equal, equal_keys) = signed_v1_named(200, rights(), devices().legacy, "equal");
+    let keys = format!("{old_keys},{new_keys},{equal_keys}");
+    let mut owner = Owner::open(&root, Some(&keys), devices(), 1, wall(100)).expect("owner");
+    owner
+        .install(old, wall(100), Duration::ZERO)
+        .expect("old binding");
+    owner
+        .advance(&photo(false), wall(200), Duration::from_secs(1))
+        .expect("observe future");
+    owner
+        .invalidate(wall(120), Duration::from_secs(2))
+        .expect("future tombstone");
+    assert!(matches!(
+        owner.authority.recovery_state(wall(120)),
+        Some(vantare_ipc::control::AccessState::ClockBehind { until_ms: 200_000 })
+    ));
+    // A verified fresh iat can exceed the boundary while wall is still behind
+    // it within the existing +300s tolerance. Waiting must not revoke that grant.
+    owner
+        .install_online(new, wall(120), Duration::from_secs(2))
+        .expect("fresh signed proof beyond boundary");
+    let policy = owner
+        .advance(&photo(false), wall(120), Duration::from_secs(2))
+        .expect("recovered policy");
+    assert_eq!(policy.state, vantare_ipc::control::AccessState::Active);
+    assert!(policy.engineer);
+    let saved = owner
+        .store
+        .load::<serde_json::Value>("authority")
+        .expect("durable clock");
+    assert_eq!(
+        saved["clock"]["invalidated_after"],
+        serde_json::json!(wall(200))
+    );
+    assert_eq!(
+        owner.install_online(equal, wall(120), Duration::from_secs(2)),
+        Err(Error::Clock)
+    );
+    assert_eq!(
+        owner.policy().state,
+        vantare_ipc::control::AccessState::Active
+    );
+    owner
+        .store
+        .remove("binding")
+        .expect("isolated lost binding");
+    drop(owner);
+    let mut owner =
+        Owner::open(&root, Some(&keys), devices(), 2, wall(120)).expect("restore without proof");
+    let missing = owner
+        .advance(&photo(false), wall(120), Duration::ZERO)
+        .expect("diagnostic without proof");
+    assert_eq!(
+        missing.state,
+        vantare_ipc::control::AccessState::ClockBehind { until_ms: 200_000 }
+    );
+    assert!(!missing.state.permits_access());
+    drop(owner);
+    clean(&root);
+}
+
+#[test]
 fn authority_recovery_logout_during_correction_keeps_future_tombstone() {
     let root = test_root();
     let (old, old_keys) = signed_v1_named(100, vec![], devices().legacy, "old");
@@ -1718,6 +1842,22 @@ fn authority_recovery_logout_during_correction_keeps_future_tombstone() {
         owner.install_online(too_early, wall(120), Duration::ZERO),
         Err(Error::Denied)
     ));
+    let blocked = owner
+        .advance(&photo(false), wall(120), Duration::ZERO)
+        .expect("diagnostic only");
+    assert_eq!(
+        blocked.state,
+        vantare_ipc::control::AccessState::ClockBehind { until_ms: 200_000 }
+    );
+    assert!(!blocked.state.permits_access());
+    assert!(
+        blocked
+            .state
+            .message()
+            .expect("explanation")
+            .contains("frontera")
+    );
+
     owner
         .install_online(new, wall(201), Duration::ZERO)
         .expect("issuance beyond tombstone");
@@ -1742,7 +1882,8 @@ fn authority_recovery_online_checks_skew_signature_device_and_subject() {
                 owner
                     .advance(&photo(false), wall(1000), Duration::ZERO)
                     .expect("future iat tolerance")
-                    .overlays_advanced
+                    .state
+                    .permits_access()
             );
         }
         drop(owner);
@@ -1873,7 +2014,8 @@ fn authority_recovery_missing_authority_or_corrupt_marker_cannot_restore_binding
                 owner
                     .advance(&photo(false), wall(110), Duration::ZERO)
                     .expect("denied but available policy")
-                    .online_recovery_required
+                    .state
+                    .needs_recovery()
             );
             if corrupt_marker {
                 assert_eq!(
@@ -1905,7 +2047,7 @@ fn authority_recovery_online_skew_also_bounds_the_reanchor_branch() {
         drop(owner);
         let mut owner =
             Owner::open(&root, Some(&keys), devices(), 2, wall(1000)).expect("recovery owner");
-        assert!(owner.policy().online_recovery_required);
+        assert!(owner.policy().state.needs_recovery());
         assert!(owner.binding.is_none());
         // Every new iat is after latest_issued=100: a failed boundary test
         // cannot be satisfied accidentally by the issuance anti-rollback check.
@@ -1915,11 +2057,11 @@ fn authority_recovery_online_skew_also_bounds_the_reanchor_branch() {
             let policy = owner
                 .advance(&photo(false), wall(1000), Duration::ZERO)
                 .expect("reanchored");
-            assert!(policy.overlays_advanced);
-            assert!(!policy.online_recovery_required);
+            assert!(policy.state.permits_access());
+            assert!(!policy.state.needs_recovery());
         } else {
             assert!(matches!(result, Err(Error::Clock)));
-            assert!(owner.policy().online_recovery_required);
+            assert!(owner.policy().state.needs_recovery());
         }
         drop(owner);
         clean(&root);
@@ -2015,8 +2157,8 @@ fn cached_clock_rejection_is_definitive_without_revoking_the_verified_binding() 
     let policy = owner
         .advance(&photo(false), wall(201), Duration::from_secs(96))
         .expect("Read");
-    assert!(policy.overlays_advanced);
-    assert!(!policy.online_recovery_required);
+    assert!(policy.state.permits_access());
+    assert!(!policy.state.needs_recovery());
     assert_eq!(
         owner.binding.as_ref().expect("A preserved").subject,
         "550e8400-e29b-41d4-a716-446655440000"
@@ -2027,7 +2169,8 @@ fn cached_clock_rejection_is_definitive_without_revoking_the_verified_binding() 
         owner
             .advance(&photo(false), wall(202), Duration::ZERO)
             .expect("Read")
-            .overlays_advanced
+            .state
+            .permits_access()
     );
     owner
         .install_online(fresh, wall(220), Duration::from_secs(18))
@@ -2036,7 +2179,8 @@ fn cached_clock_rejection_is_definitive_without_revoking_the_verified_binding() 
         owner
             .advance(&photo(false), wall(220), Duration::from_secs(18))
             .expect("recovered")
-            .overlays_advanced
+            .state
+            .permits_access()
     );
     drop(owner);
     clean(&root);
@@ -2083,7 +2227,7 @@ fn future_logout_candidate_stays_rejected_after_the_wall_recovers_until_a_new_is
     let denied = owner
         .advance(&photo(false), wall(201), Duration::ZERO)
         .expect("recovery admission Read");
-    assert!(!denied.overlays_advanced && !denied.online_recovery_required);
+    assert!(!denied.state.permits_access() && !denied.state.needs_recovery());
     owner
         .install_online(fresh, wall(220), Duration::from_secs(19))
         .expect("strictly newer issuance");
@@ -2091,7 +2235,8 @@ fn future_logout_candidate_stays_rejected_after_the_wall_recovers_until_a_new_is
         owner
             .advance(&photo(false), wall(220), Duration::from_secs(19))
             .expect("recovered")
-            .overlays_advanced
+            .state
+            .permits_access()
     );
     assert!(matches!(
         owner.install(old, wall(220), Duration::from_secs(19)),
@@ -2221,7 +2366,7 @@ fn missing_core_fingerprint_is_unavailable_and_preserves_a_valid_binding() {
         .expect_err("missing local identity");
         assert_eq!(Failure::classify(&error), Failure::Unavailable);
         let denied = control::request(&link, Command::Read).expect("available without rights");
-        assert!(!denied.overlays_advanced);
+        assert!(!denied.state.permits_access());
         drop(host);
         let mut restored =
             Owner::open(&root, Some(&keys), devices(), 2, now).expect("identity restored");

@@ -9,7 +9,9 @@
     "El snapshot revoked sigue revocando su fuente, como en #1817. Customer State salta solo la suscripción con estado desconocido y diagnostica unsupported_subscription_status; las demás siguen renovándose.",
     "Paso 6: services publica Session explícita (v16); el supervisor y el Hub dejan de deducirla. Cuenta deja de anunciar derechos pendientes después de verificarlos (#1801).",
     "Paso 6, ampliación autorizada: Volver/Cancelar usa AccountCancel sin cerrar la cuenta ni revocar derechos. Cuenta permite elegir Google, Discord o email para volver a entrar.",
-    "Revisión paso 6: reintento correcto de Logout fallido y Volver según derechos frescos; Escape en Choose y bloqueo de proveedores/cancelaciones duplicadas durante AccountCancel."
+    "Revisión paso 6: reintento correcto de Logout fallido y Volver según derechos frescos; Escape en Choose y bloqueo de proveedores/cancelaciones duplicadas durante AccountCancel.",
+    "Paso 7: el núcleo publica el estado explícito y separa vencimiento firmado y gracia. Una frontera futura de seguridad muestra su fecha y detiene comprobaciones automáticas inútiles; una renovación correcta sin plazo nuevo deja de acumular fallos de transporte.",
+    "Paso 7: control v7 y sobre services v17, autorizado por el orquestador. El saludo v16/v17 falla por versión antes de leer Policy; Session/AccountCancel siguen iguales. V16 no se publicó en release."
   ],
   "testing": [
     "Con reloj inyectado, comprobar pausa larga y reanudación sin cambiar el deadline; salida/cambio de sesión, replay y Logout descartan la gracia. La credencial y la hora de gracia caducan aun en pausa.",
@@ -18,11 +20,12 @@
     "Con dos suscripciones del mismo cliente, enviar un estado desconocido en una y una renovación válida en la otra: se conserva la primera y se actualiza la segunda. Un producto desconocido sigue bloqueando el plan completo.",
     "Con una licencia de prueba vigente, provocar NeedsSignIn: aparece el aviso de volver a entrar en Cuenta y se conservan las páginas permitidas por el núcleo. Una política denegada o caducada sigue bloqueando.",
     "En NeedsSignIn, SignedIn y SignedOut, cancelar un intento OAuth/FAPI y fallar el formulario: se conserva la cuenta y la licencia firmada. Cerrar sesión sigue revocando tras el ACK del núcleo.",
-    "Tras fallar el cierre, Reintentar cierre de sesión repite Logout; Volver exige derechos actuales. Abrir la elección de acceso y pulsar Escape no inicia login. Cancelar repetidamente no encola otra cancelación."
+    "Tras fallar el cierre, Reintentar cierre de sesión repite Logout; Volver exige derechos actuales. Abrir la elección de acceso y pulsar Escape no inicia login. Cancelar repetidamente no encola otra cancelación.",
+    "Con fixtures y reloj inyectado, verificar la frontera futura antes/en/después, acceso Gratis tras vencer Pro, gracia en pausa, rechazo de generaciones mezcladas y recuperación firmada sin margen nuevo. No cambiar el reloj del equipo."
   ],
   "knownLimitations": [
     "Este PR no despliega funciones. Las licencias ya firmadas conservan su plazo offline.",
     "La función pura mantiene su fallback histórico; las rutas de ingestión filtran desconocidos antes de aplicar cambios.",
-    "Services v16 requiere actualizar el conjunto de binarios; no cambia el formato de derechos en disco ni despliega una instalación."
+    "Services v17 y control v7 requieren actualizar el conjunto de binarios; no cambia el formato de derechos en disco ni despliega una instalación."
   ]
 }

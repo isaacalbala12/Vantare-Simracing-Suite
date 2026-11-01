@@ -98,7 +98,7 @@ fn device_reset_in_needs_sign_in_preserves_every_local_document_without_http() {
         candidate_before
     );
     assert!(
-        matches!(fixture.app.handle(Command::LicenseStatus), Reply::License { policy, .. } if policy.overlays_advanced)
+        matches!(fixture.app.handle(Command::LicenseStatus), Reply::License { policy, .. } if policy.state.permits_access())
     );
     fixture.finish();
     assert!(
@@ -315,7 +315,7 @@ fn manual_denial_is_definitive_and_preserves_cached_rights() {
             before
         );
         assert!(
-            matches!(app.execute(Command::LicenseStatus), Ok(Reply::License { policy, .. }) if policy.overlays_advanced)
+            matches!(app.execute(Command::LicenseStatus), Ok(Reply::License { policy, .. }) if policy.state.permits_access())
         );
         core.join().expect("only Read, no Invalidate or Install");
         let request = server.requests.recv().expect("HTTP observed");
@@ -394,7 +394,7 @@ fn fresh_login_with_same_identity_clears_needs_sign_in_without_revocation() {
         serde_json::to_vec(&candidate).expect("fixture bytes")
     );
     assert!(
-        matches!(app.execute(Command::LicenseStatus), Ok(Reply::License { policy, .. }) if policy.overlays_advanced)
+        matches!(app.execute(Command::LicenseStatus), Ok(Reply::License { policy, .. }) if policy.state.permits_access())
     );
     core.join()
         .expect("same identity: only Read, no Invalidate");

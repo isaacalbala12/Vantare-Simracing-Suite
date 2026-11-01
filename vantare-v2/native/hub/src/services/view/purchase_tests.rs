@@ -392,7 +392,9 @@ fn answer_local_probe(pipe: &mut vantare_ipc::transport::Pipe) {
             version: protocol::VERSION,
             sequence: probe.sequence,
             reply: Reply::License {
-                policy: vantare_ipc::control::Policy::default(),
+                policy: vantare_ipc::control::Policy::denied(
+                    vantare_ipc::control::AccessState::NoCredential,
+                ),
                 message: String::new(),
             },
         },
@@ -716,7 +718,7 @@ fn license(catalog: vantare_ipc::control::CatalogAccess) -> Reply {
             version: vantare_ipc::control::VERSION,
             revision: 1,
             checked_at_ms: vantare_ipc::control::wall_ms().expect("reloj"),
-            overlays_advanced: true,
+            state: vantare_ipc::control::AccessState::Active,
             catalog,
             ..Default::default()
         },
@@ -886,8 +888,8 @@ fn denied_policy_keeps_manual_retry_and_logout_without_granting_tools() {
                 };
                 let now = policy.checked_at_ms;
                 match denial {
-                    "revoked" => policy.error = Some("revocada".into()),
-                    "expired" => policy.valid_until_ms = Some(now),
+                    "revoked" => policy.state = vantare_ipc::control::AccessState::Revoked,
+                    "expired" => policy.signed_until_ms = Some(now),
                     _ => policy = vantare_ipc::control::Policy::default(),
                 }
                 remote.observe_core_policy(policy, now, cx);
@@ -964,7 +966,7 @@ fn slow_renewal_keeps_fresh_core_access_but_revocation_logout_and_missing_core_d
                     epoch: 1,
                     revision: 1,
                     checked_at_ms: 1000,
-                    overlays_advanced: true,
+                    state: vantare_ipc::control::AccessState::Active,
                     catalog: vantare_ipc::control::CatalogAccess::Pro,
                     calendar: true,
                     tester: true,
@@ -1003,10 +1005,10 @@ fn slow_renewal_keeps_fresh_core_access_but_revocation_logout_and_missing_core_d
                     "reply tardío no pisa Feed"
                 );
                 assert!(matches!(requests.try_recv(), Ok(Command::AccountPoll)));
-                policy.error = Some("revocación definitiva QA".into());
+                policy.state = vantare_ipc::control::AccessState::Revoked;
                 remote.observe_core_policy(policy.clone(), now, cx);
                 assert!(!remote.access.navigation(now).verified);
-                policy.error = None;
+                policy.state = vantare_ipc::control::AccessState::Active;
                 remote.observe_core_policy(policy.clone(), now, cx);
                 assert!(remote.access.navigation(now).verified);
                 remote.observe_core_policy(vantare_ipc::control::Policy::default(), now, cx);

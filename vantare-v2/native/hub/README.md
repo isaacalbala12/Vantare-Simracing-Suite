@@ -1,3 +1,15 @@
+## #1827 — Acceso por Policy.state (paso 7)
+
+Navegación, acceso y mensajes leen el estado explícito del núcleo; Policy.error
+no concede ni bloquea páginas. Catálogo, módulos, Session y frescura mantienen
+sus reglas. ClockBehind explica la frontera pendiente y su fecha al comprobar
+manualmente. Services v17 valida la generación control v7 anidada antes del
+esquema; el desajuste es transitorio, sin revocar. Recompilar el conjunto.
+[Contrato](../../docs/adr/0102-modelo-acceso-nativo.md).
+
+Services v17 versiona la Policy v7 anidada; Session/AccountCancel permanecen
+intactos. V16 del paso 6 nunca se publicó en release.
+
 ## #1827 — Sesión y acceso (paso 6, services v16)
 
 `AccountCancel` (v16) cancela solo el intento OAuth/FAPI y relee Session;

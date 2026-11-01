@@ -179,7 +179,8 @@ impl App {
                                 Err(error) => {
                                     let policy =
                                         self.core_command(vantare_ipc::control::Command::Read)?;
-                                    if !policy.online_recovery_required || policy.overlays_advanced
+                                    if !policy.state.needs_recovery()
+                                        || policy.state.permits_access()
                                     {
                                         return Err(error);
                                     }
@@ -209,15 +210,29 @@ impl App {
             self.candidate_store()?.remove("license-transfer-pending")?;
             self.recovered_renewal_transfer = installed;
         }
-        let message = if policy.online_recovery_required {
-            "Necesitas conexión para recuperar el acceso; comprueba el acceso o inicia sesión."
-                .into()
-        } else if policy.overlays_advanced {
+        let message = Self::policy_message(&policy);
+        Ok((Reply::License { policy, message }, installed))
+    }
+
+    fn policy_message(policy: &vantare_ipc::control::Policy) -> String {
+        if let Some(message) = policy.state.message() {
+            if let vantare_ipc::control::AccessState::ClockBehind { until_ms } = policy.state {
+                let until = chrono::DateTime::from_timestamp_millis(
+                    i64::try_from(until_ms).unwrap_or(i64::MAX),
+                )
+                .map_or_else(
+                    || "fuera del rango de fechas".into(),
+                    |date| date.to_rfc3339(),
+                );
+                format!("{message} Frontera guardada: {until}.")
+            } else {
+                message.into()
+            }
+        } else if policy.state.permits_access() {
             "Derechos verificados y guardados por el núcleo".into()
         } else {
             "Puedes iniciar sesión o comprobar el acceso para recuperarlo.".into()
-        };
-        Ok((Reply::License { policy, message }, installed))
+        }
     }
 
     fn pending_renewal_transfer(&mut self) -> Result<bool> {
@@ -286,7 +301,15 @@ impl App {
         let policy = match installed {
             Ok(policy) => policy,
             Err(error @ Error::Core(vantare_ipc::control::Failure::Rejected)) => {
-                self.quarantine_candidate(crate::license::CacheIssue::AuthorityRejected)?;
+                let policy =
+                    self.quarantine_candidate(crate::license::CacheIssue::AuthorityRejected)?;
+                if matches!(
+                    policy.state,
+                    vantare_ipc::control::AccessState::ClockBehind { .. }
+                ) {
+                    let message = Self::policy_message(&policy);
+                    return Ok(Reply::License { policy, message });
+                }
                 return Err(error);
             }
             Err(error) => return Err(error),
@@ -301,10 +324,9 @@ impl App {
 
     fn license_reply(&mut self, command: &Command) -> Result<Reply> {
         if matches!(command, Command::LicenseStatus) {
-            return Ok(Reply::License {
-                policy: self.core_command(vantare_ipc::control::Command::Read)?,
-                message: "Política vigente del núcleo".into(),
-            });
+            let policy = self.core_command(vantare_ipc::control::Command::Read)?;
+            let message = Self::policy_message(&policy);
+            return Ok(Reply::License { policy, message });
         }
         if matches!(
             command,
@@ -2370,6 +2392,7 @@ mod tests {
         Read,
         ReadLicensed,
         ReadRecovery,
+        ReadClockBehind,
         #[cfg(windows)]
         Install,
         InstallOnline,
@@ -2471,6 +2494,7 @@ mod tests {
                     CoreStep::Read
                         | CoreStep::ReadLicensed
                         | CoreStep::ReadRecovery
+                        | CoreStep::ReadClockBehind
                         | CoreStep::VersionMismatch
                         | CoreStep::VersionCloses
                 );
@@ -2520,8 +2544,15 @@ mod tests {
                             version: control::VERSION,
                             revision: 1,
                             checked_at_ms: control::wall_ms().expect("clock"),
-                            online_recovery_required: matches!(step, CoreStep::ReadRecovery),
-                            overlays_advanced: matches!(step, CoreStep::ReadLicensed),
+                            state: if matches!(step, CoreStep::ReadClockBehind) {
+                                vantare_ipc::control::AccessState::ClockBehind { until_ms: 200_000 }
+                            } else if matches!(step, CoreStep::ReadRecovery) {
+                                vantare_ipc::control::AccessState::RecoveryRequired
+                            } else if matches!(step, CoreStep::ReadLicensed) {
+                                vantare_ipc::control::AccessState::Active
+                            } else {
+                                vantare_ipc::control::AccessState::NoCredential
+                            },
                             ..control::Policy::default()
                         },
                         error,
@@ -2595,7 +2626,7 @@ mod tests {
             app.attach_core(link);
             for _ in 0..2 {
                 assert!(
-                    matches!(app.handle(Command::TransferRights), Reply::License { policy, .. } if !policy.overlays_advanced),
+                    matches!(app.handle(Command::TransferRights), Reply::License { policy, .. } if !policy.state.permits_access()),
                     "initial ACK remains available for recovery, without granting rights"
                 );
             }
@@ -2668,7 +2699,7 @@ mod tests {
             );
             app.attach_core(link);
             assert!(
-                matches!(app.handle(Command::TransferRights), Reply::License { policy, .. } if !policy.overlays_advanced),
+                matches!(app.handle(Command::TransferRights), Reply::License { policy, .. } if !policy.state.permits_access()),
                 "bad hint cannot block admission or grant rights"
             );
             assert!(
@@ -3636,6 +3667,55 @@ mod online_compatibility_tests {
     use super::*;
 
     #[test]
+    fn manual_online_rejection_explains_the_future_boundary_without_claiming_access() {
+        let device = crate::license::installation::legacy_fingerprint().expect("fixture device");
+        let (credential, keys) = crate::license_remote::tests::signed_fixture(&device);
+        let (root, store) = crate::test_store("clock-behind-message");
+        drop(store);
+        let mut app = App::with_clock(
+            BuildConfig {
+                supabase: None,
+                anon_key: None,
+                license_keys: Some(keys),
+                channel: Some("test"),
+                native_oauth: None,
+            },
+            root.clone(),
+            || Ok(100),
+        );
+        let candidate = crate::license_remote::Candidate {
+            account_id: credential.claims.subject.clone(),
+            device: device.clone(),
+            credential,
+        };
+        app.candidate_store()
+            .expect("isolated store")
+            .save("license-candidate", &candidate)
+            .expect("cache");
+        let (link, core) = core_fixture(
+            device,
+            keys,
+            vec![CoreStep::RejectInstallOnline, CoreStep::ReadClockBehind],
+        );
+        app.attach_core(link);
+        let Reply::License { policy, message } =
+            app.complete_online_renewal(&candidate).expect("diagnosis")
+        else {
+            panic!("typed core state required");
+        };
+        assert_eq!(
+            policy.state,
+            vantare_ipc::control::AccessState::ClockBehind { until_ms: 200_000 }
+        );
+        assert!(!policy.state.permits_access());
+        assert!(message.contains("frontera") && message.contains("1970-01-01T00:03:20"));
+        assert!(!message.starts_with("Necesitas conexión"));
+        core.join().expect("all core requests observed");
+        drop(app);
+        std::fs::remove_dir_all(root).expect("isolated fixture cleanup");
+    }
+
+    #[test]
     fn authority_recovery_admits_helper_without_rights_then_renews_online() {
         for pending in [false, true] {
             let device =
@@ -3700,7 +3780,7 @@ mod online_compatibility_tests {
             app.attach_core(link);
             assert!(
                 matches!(app.execute(Command::TransferRights), Ok(Reply::License { policy, .. })
-            if policy.online_recovery_required && !policy.overlays_advanced),
+            if policy.state.needs_recovery() && !policy.state.permits_access()),
                 "helper can be admitted without rights"
             );
             assert!(

@@ -15,6 +15,89 @@ fn link(tag: &str) -> CoreLink {
     }
 }
 #[test]
+fn a_legacy_core_closing_without_a_response_is_transient_and_not_a_protocol_rejection() {
+    let link = link("legacy-closes-v7");
+    let stop = Arc::new(Event::new().expect("event"));
+    let mut listener = Listener::new(&link.pipe, stop, IO_TIMEOUT).expect("legacy listener");
+    let mut pipe = listener.instance().expect("pipe");
+    let server = thread::spawn(move || {
+        pipe.accept().expect("connect");
+        let request: Request = control::read(&mut pipe).expect("legacy Read envelope");
+        assert_eq!(request.version, VERSION);
+        assert!(matches!(request.command, Command::Read));
+        // Frozen v6 behavior: reject the version before dispatch, without reply.
+        assert_ne!(request.version, 6);
+    });
+    let error =
+        control::request(&link, Command::Read).expect_err("old core closed before dispatch");
+    assert!(matches!(
+        control::Failure::classify(&error),
+        control::Failure::Eof | control::Failure::PeerGone | control::Failure::Disconnected
+    ));
+    server
+        .join()
+        .expect("no mutation command sent to legacy core");
+}
+
+#[test]
+fn a_real_feed_delivers_explicit_denials_instead_of_absence_of_policy() {
+    use control::AccessState;
+    for (index, state) in [
+        AccessState::Revoked,
+        AccessState::Expired,
+        AccessState::Unavailable,
+        AccessState::Unconfigured,
+        AccessState::RecoveryRequired,
+        AccessState::ClockBehind { until_ms: u64::MAX },
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let photo = format!("typed-denied-feed-{}-{index}", std::process::id());
+        let stop = Arc::new(Event::new().expect("server event"));
+        let mut listener =
+            Listener::new(&control::pipe_name(&photo), stop, IO_TIMEOUT).expect("listener");
+        let mut pipe = listener.instance().expect("pipe");
+        let server = thread::spawn(move || {
+            pipe.accept().expect("feed connected");
+            let request: Request = control::read(&mut pipe).expect("read request");
+            assert!(matches!(request.command, Command::Read));
+            let checked_at_ms = control::wall_ms().expect("clock");
+            control::write(
+                &mut pipe,
+                &Response {
+                    version: VERSION,
+                    sequence: request.sequence,
+                    policy: Policy {
+                        epoch: 1,
+                        revision: 1,
+                        checked_at_ms,
+                        signed_until_ms: (state == AccessState::Expired)
+                            .then_some(checked_at_ms - 1),
+                        ..Policy::denied(state)
+                    },
+                    error: None,
+                },
+            )
+            .expect("denied observation");
+        });
+        let feed = control::Feed::connect(&photo, std::env::current_exe().expect("peer image"))
+            .expect("feed");
+        // Ready is signalled after the observation is stored, not after a sleep.
+        assert!(feed.wait_initial(Duration::from_secs(10)));
+        let policy = feed.policy();
+        assert_eq!(
+            policy.state, state,
+            "the denial must not become NoCredential"
+        );
+        assert!(!policy.state.permits_access());
+        assert!(!policy.engineer && !policy.tester);
+        drop(feed);
+        server.join().expect("fixture closed after its single Read");
+    }
+}
+
+#[test]
 fn response_version_mismatch_precedes_unknown_fields_but_current_schema_stays_strict() {
     for version in [VERSION - 1, VERSION, VERSION + 1] {
         for policy_field in [false, true] {
@@ -245,11 +328,11 @@ fn distinct_process_contract_versions_fail_explicitly_and_the_feed_shows_the_err
             assert!(feed.wait_initial(Duration::from_secs(10)));
             let policy = feed.policy();
             assert!(
-                policy.error.is_some(),
+                policy.state == control::AccessState::UpdateRequired,
                 "el error de versión debe llegar a la UI"
             );
             assert!(!policy.current());
-            assert!(!policy.tester && !policy.overlays_advanced);
+            assert!(!policy.tester && !policy.state.permits_access());
         } else {
             let error = control::request(&link, Command::Read).expect_err("versiones distintas");
             assert_eq!(error.kind(), io::ErrorKind::InvalidData);

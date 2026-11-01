@@ -676,7 +676,7 @@ mod tests {
                         revision: 1,
                         checked_at_ms: now,
                         catalog: vantare_ipc::control::CatalogAccess::Founders,
-                        overlays_advanced: true,
+                        state: vantare_ipc::control::AccessState::Active,
                         ..Default::default()
                     },
                     now,

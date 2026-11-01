@@ -18,7 +18,7 @@ pub(super) enum Origin {
 }
 
 pub(super) fn live_allowed(policy: &Policy, wall: u64, origin: Origin) -> bool {
-    !policy.overlays_advanced || urgent(policy, wall) || origin == Origin::Purchase
+    !policy.state.permits_access() || urgent(policy, wall) || origin == Origin::Purchase
 }
 
 use vantare_services::outcome::renewal_deadline;
@@ -31,6 +31,7 @@ pub(super) enum Skip {
     NotDue,
     Live,
     Backoff,
+    ClockBehind,
 }
 impl Skip {
     fn diagnostic(self) -> &'static str {
@@ -41,6 +42,7 @@ impl Skip {
             Self::NotDue => "license-auto-not-due",
             Self::Live => "license-auto-live",
             Self::Backoff => "license-auto-backoff",
+            Self::ClockBehind => "license-auto-clock-behind",
         }
     }
 }
@@ -49,6 +51,7 @@ pub(super) struct Renewal {
     signed_in: bool,
     last_attempt: Option<Instant>,
     failures: u8,
+    last_verified: bool,
     blocked: bool,
     last_skip: Option<Skip>,
     last_check: Option<Instant>,
@@ -73,6 +76,7 @@ impl Renewal {
         self.last_check = Some(now);
     }
     pub(super) fn completed(&mut self, result: RenewalOutcome) {
+        self.last_verified = result == RenewalOutcome::Verified;
         match result {
             RenewalOutcome::Verified => {
                 self.failures = 0;
@@ -86,6 +90,7 @@ impl Renewal {
         }
     }
     pub(super) fn user_recovery(&mut self) {
+        self.last_verified = false;
         self.blocked = false;
         self.failures = 0;
         // Preserve last_attempt: a user action cannot create an automatic burst.
@@ -141,17 +146,21 @@ impl Renewal {
         {
             return Err(Skip::StalePolicy);
         }
+        if matches!(policy.state, control::AccessState::ClockBehind { until_ms } if wall <= until_ms)
+        {
+            return Err(Skip::ClockBehind);
+        }
         if policy.live && !live_allowed(policy, wall, origin) {
             return Err(Skip::Live);
         }
         if self.last_attempt.is_some_and(|last| {
-            now.saturating_duration_since(last) < self.policy_delay(policy, wall)
+            now.saturating_duration_since(last) < self.policy_delay(policy, wall, origin)
         }) {
             return Err(Skip::Backoff);
         }
         let due = origin == Origin::Purchase
             || self.failures > 0
-            || !policy.overlays_advanced
+            || !policy.state.permits_access()
             // Preserve startup discovery of a purchase made outside this Hub.
             // Paid/perpetual bindings with runway do not need this check.
             || (self.last_attempt.is_none() && policy.catalog == control::CatalogAccess::Free)
@@ -162,13 +171,21 @@ impl Renewal {
         Ok(())
     }
 
-    fn policy_delay(&self, policy: &Policy, wall: u64) -> Duration {
+    fn policy_delay(&self, policy: &Policy, wall: u64, origin: Origin) -> Duration {
         if renewal_deadline(policy)
             .is_some_and(|end| wall < end && end <= wall.saturating_add(5 * 60_000))
         {
             // Short-lived/newly restored grants still get attempts near expiry.
             // Keep the one-minute hard floor; never create a tight retry loop.
             MINUTE
+        } else if origin != Origin::Purchase
+            && self.last_verified
+            && policy.state.permits_access()
+            && urgent(policy, wall)
+        {
+            // A valid 200 without new runway is not a transport failure. Poll
+            // calmly at the existing cap; near expiry the one-minute floor wins.
+            MINUTE * 15
         } else {
             self.delay()
         }
@@ -178,6 +195,99 @@ impl Renewal {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn explicit_purchase_reopens_confirmation_after_a_success_without_new_runway() {
+        let mut renewal = Renewal::default();
+        renewal.observe(&account(false));
+        let now = Instant::now();
+        let p = Policy {
+            state: control::AccessState::Active,
+            signed_until_ms: Some(3_601_000),
+            ..policy()
+        };
+        renewal.attempted(now);
+        renewal.completed(RenewalOutcome::Verified);
+        assert_eq!(
+            renewal.claim_from(&p, 1000, now + MINUTE, Origin::Automatic),
+            Err(Skip::Backoff)
+        );
+        renewal.user_recovery();
+        assert_eq!(
+            renewal.claim_from(&p, 1000, now + Duration::from_secs(59), Origin::Purchase),
+            Err(Skip::Backoff)
+        );
+        assert_eq!(
+            renewal.claim_from(&p, 1000, now + MINUTE, Origin::Purchase),
+            Ok(())
+        );
+        for minute in [2, 3, 4] {
+            renewal.completed(RenewalOutcome::Verified);
+            assert_eq!(
+                renewal.claim_from(&p, 1000, now + MINUTE * minute, Origin::Purchase),
+                Ok(()),
+                "a verified unchanged grant must not outlive the purchase window"
+            );
+            assert_eq!(renewal.failures, 0);
+        }
+    }
+
+    #[test]
+    fn future_tombstone_suppresses_every_automatic_origin_until_the_boundary() {
+        let mut renewal = Renewal::default();
+        renewal.observe(&account(false));
+        let now = Instant::now();
+        let mut p = Policy {
+            state: control::AccessState::ClockBehind { until_ms: 10_000 },
+            ..policy()
+        };
+        for wall in [1000, 5000, 10_000] {
+            p.checked_at_ms = wall;
+            for origin in [Origin::Automatic, Origin::Purchase] {
+                assert_eq!(
+                    renewal.claim_from(&p, wall, now, origin),
+                    Err(Skip::ClockBehind)
+                );
+            }
+        }
+        assert!(renewal.last_attempt.is_none(), "no HTTP attempt reserved");
+        p.checked_at_ms = 10_001;
+        assert_eq!(renewal.claim(&p, 10_001, now), Ok(()));
+        assert!(!p.state.permits_access(), "waiting does not grant rights");
+    }
+
+    #[test]
+    fn successful_short_recovery_keeps_failures_at_zero_and_the_hard_floor() {
+        let mut renewal = Renewal::default();
+        renewal.observe(&account(false));
+        let mut now = Instant::now();
+        let mut p = Policy {
+            state: control::AccessState::Active,
+            signed_until_ms: Some(3_601_000),
+            ..policy()
+        };
+        for minute in [0, 15, 30, 45] {
+            let wall = 1000 + minute * 60_000;
+            p.checked_at_ms = wall;
+            assert_eq!(renewal.claim(&p, wall, now), Ok(()));
+            let reply = Reply::License {
+                policy: p.clone(),
+                message: String::new(),
+            };
+            renewal.completed(
+                vantare_services::outcome::outcome(vantare_services::outcome::Observation::Reply(
+                    &reply,
+                ))
+                .renewal,
+            );
+            assert_eq!(renewal.failures, 0);
+            assert_eq!(
+                renewal.claim(&p, wall, now + Duration::from_secs(59)),
+                Err(Skip::Backoff)
+            );
+            now += MINUTE * 15;
+        }
+    }
+
     #[test]
     fn explicit_session_alone_controls_renewal_without_resetting_backoff() {
         let mut renewal = Renewal::default();
@@ -355,7 +465,7 @@ mod tests {
         r.observe(&account(false));
         let now = Instant::now();
         let mut p = Policy {
-            overlays_advanced: true,
+            state: vantare_ipc::control::AccessState::Active,
             catalog: control::CatalogAccess::Founders,
             ..policy()
         };
@@ -366,12 +476,12 @@ mod tests {
         );
         r.completed(RenewalOutcome::Verified);
         assert_eq!(r.claim(&p, 1000, now + MINUTE), Err(Skip::NotDue));
-        p.valid_until_ms = Some(1000 + RENEW_AHEAD_MS + 1);
+        p.signed_until_ms = Some(1000 + RENEW_AHEAD_MS + 1);
         assert_eq!(r.claim(&p, 1000, now + MINUTE), Err(Skip::NotDue));
-        p.valid_until_ms = Some(1000 + RENEW_AHEAD_MS);
+        p.signed_until_ms = Some(1000 + RENEW_AHEAD_MS);
         assert_eq!(r.claim(&p, 1000, now + MINUTE), Ok(()));
         p.live = true;
-        p.valid_until_ms = Some(1000 + RENEW_AHEAD_MS * 2 + 1);
+        p.signed_until_ms = Some(1000 + RENEW_AHEAD_MS * 2 + 1);
         assert_eq!(r.claim(&p, 1000, now + MINUTE * 2), Err(Skip::Live));
         p.live = false;
         p.checked_at_ms = 1001;
@@ -385,7 +495,7 @@ mod tests {
     fn restored_free_checks_for_external_purchases_once_without_polling_forever() {
         let now = Instant::now();
         let p = Policy {
-            overlays_advanced: true,
+            state: vantare_ipc::control::AccessState::Active,
             ..policy()
         };
         let mut r = Renewal::default();
@@ -406,8 +516,8 @@ mod tests {
         let end = 10_000_000;
         let wall = end - RENEW_AHEAD_MS;
         let mut p = Policy {
-            overlays_advanced: true,
-            valid_until_ms: Some(end),
+            state: vantare_ipc::control::AccessState::Active,
+            signed_until_ms: Some(end),
             checked_at_ms: wall,
             ..policy()
         };
@@ -449,7 +559,7 @@ mod tests {
         r.attempted(now);
         r.failures = 8;
         let p = Policy {
-            valid_until_ms: Some(999),
+            signed_until_ms: Some(999),
             ..policy()
         };
         assert_eq!(r.claim(&p, 1000, now + MINUTE), Err(Skip::Backoff));
@@ -464,8 +574,8 @@ mod tests {
         r.attempted(now);
         r.failures = 8;
         let mut p = Policy {
-            overlays_advanced: true,
-            valid_until_ms: Some(241_000),
+            state: vantare_ipc::control::AccessState::Active,
+            signed_until_ms: Some(241_000),
             ..policy()
         };
         assert_eq!(
@@ -474,7 +584,7 @@ mod tests {
         );
         assert_eq!(r.claim(&p, 1000, now + MINUTE), Ok(()));
         r.completed(RenewalOutcome::Verified);
-        p.valid_until_ms = Some(1000 + RENEW_AHEAD_MS + 1);
+        p.signed_until_ms = Some(1000 + RENEW_AHEAD_MS + 1);
         assert_eq!(r.claim(&p, 1000, now + MINUTE * 2), Err(Skip::NotDue));
         assert!(!r.blocked);
     }

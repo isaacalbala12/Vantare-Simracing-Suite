@@ -1,3 +1,50 @@
+<!-- isa1827-paso7 -->
+## VANTA-126 / #1827 — Paso 7: Policy.state listo para revisión
+
+Project Vantare / area:licencias / In Review, sin milestone. Plane intacto.
+Base origin/nightly `44f0d6a5ed97854c046b7ece6e88ed628ab2957c` (pasos 6/6b integrados).
+Rama `vantareapp/isa-1827-paso7-policy-state`; worktree `C:/VantareServer/wt/isa-1827-p7`;
+target `D:/VantareServer/targets/isa-1827-p7`; evidencia `D:/VantareServer/evidence/isa-1827-p7`.
+
+- Estado explícito control v7, Policy::denied y plazos firmados/gracia separados.
+  Decisión del orquestador 1-nov: sobre services v17 para rechazar Hub v16 desde
+  el saludo como Version antes de Policy; Session/AccountCancel intactos.
+  V16 nunca se publicó en release. Runtime, services, Hub y overlays leen estado;
+  se retiran overlays_advanced, online_recovery_required e inferencias de Policy.error.
+- F2 #1822: ClockBehind con fecha y freno de HTTP automático futuro, incluida
+  confirmación de compra; vía manual disponible. Frontera durable intacta.
+- P3 #1831: 200 verificado sin margen nuevo no es Transient. Comprobación ordinaria
+  cada 15 minutos en ventana urgente, suelo de un minuto en los últimos cinco
+  minutos firmados. Compra conserva su suelo de un minuto en la ventana de diez,
+  también tras un 200 sin margen nuevo.
+- Feed transporta denegaciones frescas con su TTL original; no las confunde con
+  ausencia. NoCredential conserva la presentación anterior, sin bloqueo falso.
+- Una firma nueva posterior a lápida futura, dentro de la tolerancia existente,
+  puede recuperar antes de alcanzarla la pared. No se retira ese acceso y la
+  frontera durable sigue intacta; al perder binding vuelve la espera.
+- Las 22 filas de acceso conservan todos sus valores y las caracterizaciones de
+  services están intactas. Solo se añade observación tipada; diagnóstico F2 justificado.
+  Métodos de aceptación/revocación/persistencia y formatos durables intactos.
+- Gates locales: fmt PASS; Clippy all-targets ipc/services/runtime/hub/ui con
+  -D warnings PASS (cubre check); Nextest ci con telemetría 1864/1864 PASS,
+  23 omisiones preexistentes; lifecycle 13/13 PASS. Quality y 466 huellas PASS.
+- Cuatro mutaciones detectadas por aserción: overlays, services, renovación y Hub.
+  Restauración SHA-256 de los 31 fuentes comprobada antes/después de la suite.
+  Fallos intermedios conservados. Todo Cargo por compilar.ps1 y target propio.
+- Dos revisiones DeepSeek de solo lectura. Hallazgos tratados: NoCredential,
+  gracia, entrega de denegaciones por Feed, cadencia y confirmación de compra,
+  saludo y prueba nueva sobre lápida futura. Últimos ajustes revisados por el
+  ejecutor; no se afirma revisión delegada de cada byte final. Harness medium heredado.
+- README de cinco crates, ADR0102, diseño §4.3, BIL08 y changelog actualizados.
+  Diff completo revisado. PR draft preparado; enlace y SHA en el siguiente registro.
+- Validación con fixtures/headless, sin cuenta real ni simulador físico. Manual
+  posterior en entorno autorizado: aviso ClockBehind con fecha y mezcla de binarios.
+  Un peer antiguo que cierre sin responder puede dar desconexión transitoria
+  genérica; no Protocol ni revocación. Paso 8 y F4 #1822 fuera de alcance.
+- Sin dependencias nuevas, secretos, cambios de instalación/producción, merge,
+  promoción o release. Siguiente: revisión del PR y CI por el orquestador; worker sin watch.
+<!-- /isa1827-paso7 -->
+
 <!-- isa1827-paso6 -->
 ## VANTA-126 / #1827 — Paso 6: sesión explícita y cancelación sin revocar
 

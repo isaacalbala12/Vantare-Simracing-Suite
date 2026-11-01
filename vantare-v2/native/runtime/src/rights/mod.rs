@@ -3,7 +3,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::{path::Path, time::Duration};
 use vantare_domain::{SessionKind, Snapshot, SourceKind, SourceState, UNKNOWN_SIMULATOR};
-use vantare_ipc::control::{Policy, VERSION};
+use vantare_ipc::control::{AccessState, Policy, VERSION};
 use vantare_services::{
     Error, Result,
     license::{
@@ -114,7 +114,7 @@ pub struct Owner {
     binding: Option<Binding>,
     game: Option<u64>,
     policy: Policy,
-    denied: bool,
+    denial: Option<AccessState>,
 }
 impl Owner {
     pub fn open(
@@ -127,7 +127,7 @@ impl Owner {
         let store = Store::open(root, "core-rights-v1")?;
         let authority = Authority::restore(&store)?;
         let trust_roots = keys.map(Verifier::public_keys).transpose()?;
-        let online_recovery_required = authority.needs_online_recovery(now);
+        let state = authority.recovery_state(now).unwrap_or_default();
         let mut owner = Self {
             store,
             verifier: trust_roots,
@@ -138,10 +138,10 @@ impl Owner {
             policy: Policy {
                 version: VERSION,
                 epoch,
-                online_recovery_required,
+                state,
                 ..Policy::default()
             },
-            denied: false,
+            denial: None,
         };
         match owner.store.load_cache::<serde_json::Value>("binding") {
             Ok(document) => match serde_json::from_value::<Binding>(document) {
@@ -180,7 +180,7 @@ impl Owner {
                         if owner.authority.persist(&owner.store).is_err() {
                             // No durable ACK means no rights. Keep the owner available
                             // for a fresh signed grant once storage recovers.
-                            owner.denied = true;
+                            owner.denial = Some(AccessState::Unavailable);
                             owner.authority.leave_game();
                             eprintln!("license-cache-authority-persist-failed");
                         } else {
@@ -285,7 +285,7 @@ impl Owner {
         // binding on cryptographic/policy rejection; storage failures still fail
         // closed because a new in-memory grant might lack its durable ACK.
         match result {
-            Ok(()) => self.denied = false,
+            Ok(()) => self.denial = None,
             Err(
                 Error::InvalidCredential
                 | Error::TooLarge
@@ -293,26 +293,16 @@ impl Owner {
                 | Error::Clock
                 | Error::Expired,
             ) => {}
-            Err(_) => self.denied = true,
+            Err(_) => self.denial = Some(AccessState::Unavailable),
         }
-        if self.denied {
-            self.policy.overlays_advanced = false;
-            self.policy.engineer = false;
-            self.policy.strategy = false;
-            self.policy.analysis = false;
-            self.policy.calendar = false;
-            self.policy.tester = false;
+        if let Some(reason) = self.denial {
+            self.deny(reason);
         }
         result
     }
     pub fn invalidate(&mut self, now: DateTime<Utc>, tick: Duration) -> Result<()> {
-        self.denied = true;
-        self.policy.overlays_advanced = false;
-        self.policy.engineer = false;
-        self.policy.strategy = false;
-        self.policy.analysis = false;
-        self.policy.calendar = false;
-        self.policy.tester = false;
+        self.denial = Some(AccessState::Revoked);
+        self.deny(AccessState::Revoked);
         self.authority.invalidate(now, tick)?;
         self.authority.persist(&self.store)?; // ACK solo después de tombstone durable.
         self.binding = None;
@@ -347,7 +337,6 @@ impl Owner {
         now: DateTime<Utc>,
         tick: Duration,
     ) -> Result<Policy> {
-        self.policy.online_recovery_required = self.authority.needs_online_recovery(now);
         let live = snapshot.origin.source.kind == SourceKind::Live
             && snapshot.state.source_state == SourceState::Live;
         let paused_same_session = snapshot.origin.source.kind == SourceKind::Live
@@ -357,7 +346,7 @@ impl Owner {
             if self.game.is_some() && self.game != Some(snapshot.state.session.id.0) {
                 self.authority.leave_game();
             }
-            if self.binding.is_some() && !self.denied {
+            if self.binding.is_some() && self.denial.is_none() {
                 let entered = self.authority.enter_game_identified(
                     snapshot.state.session.id.0,
                     session_identity(snapshot, started),
@@ -366,13 +355,12 @@ impl Owner {
                     tick,
                 );
                 if let Err(error) = entered {
-                    self.denied = true;
-                    self.policy.overlays_advanced = false;
-                    self.policy.engineer = false;
-                    self.policy.strategy = false;
-                    self.policy.analysis = false;
-                    self.policy.calendar = false;
-                    self.policy.tester = false;
+                    let reason = self
+                        .authority
+                        .recovery_state(now)
+                        .unwrap_or(AccessState::Unavailable);
+                    self.denial = Some(reason);
+                    self.deny(reason);
                     self.policy.error = Some(error.to_string());
                     return Err(error);
                 }
@@ -388,13 +376,17 @@ impl Owner {
             }
             self.game = None;
         }
-        let result = if self.binding.is_some() && !self.denied {
+        self.publish_policy(live, now, tick)
+    }
+
+    fn publish_policy(&mut self, live: bool, now: DateTime<Utc>, tick: Duration) -> Result<Policy> {
+        let result = if self.binding.is_some() && self.denial.is_none() {
             self.authority.rights_and_persist(now, tick, &self.store)
         } else {
             Ok(Vec::new()) // Sin binding no hay reloj de derechos que avanzar.
         };
         let rights = result.as_ref().cloned().unwrap_or_default();
-        let valid = result.is_ok() && !self.denied && self.authority.credential_current();
+        let valid = result.is_ok() && self.denial.is_none() && self.authority.credential_current();
         let operational = rights
             .iter()
             .any(|right| right.starts_with("vantare.operational."));
@@ -406,10 +398,31 @@ impl Owner {
                     || catalog == vantare_ipc::control::CatalogAccess::Founders
                     || rights.iter().any(|right| right == key))
         };
+        let decision_rights: Vec<_> = rights
+            .iter()
+            .filter(|key| affects_policy(key))
+            .cloned()
+            .collect();
         self.policy.revision = self.policy.revision.checked_add(1).ok_or(Error::Protocol)?;
         self.policy.checked_at_ms =
             u64::try_from(now.timestamp_millis()).map_err(|_| Error::Clock)?;
-        self.policy.overlays_advanced = valid;
+        self.policy.state = if let Some(recovery) = self.authority.recovery_state(now) {
+            recovery
+        } else if self.verifier.is_none() {
+            AccessState::Unconfigured
+        } else if result.is_err() {
+            AccessState::Unavailable
+        } else if let Some(reason) = self.denial {
+            reason
+        } else if self.binding.is_none() {
+            AccessState::NoCredential
+        } else if !valid {
+            AccessState::Expired
+        } else if self.authority.in_grace(&decision_rights) {
+            AccessState::Grace
+        } else {
+            AccessState::Active
+        };
         self.policy.catalog = catalog;
         self.policy.engineer = module("vantare.module.engineer");
         self.policy.strategy = module("vantare.module.strategy");
@@ -428,17 +441,13 @@ impl Owner {
         self.policy.error = result.as_ref().err().map(ToString::to_string).or_else(|| {
             if self.verifier.is_none() {
                 Some(Error::Unconfigured.to_string())
-            } else if self.denied {
+            } else if self.denial.is_some() {
                 Some(Error::Denied.to_string())
             } else {
                 None
             }
         });
-        let decision_rights: Vec<_> = rights
-            .into_iter()
-            .filter(|key| affects_policy(key))
-            .collect();
-        self.policy.valid_until_ms = self
+        let effective_until_ms = self
             .authority
             .next_deadline(&decision_rights)
             .into_iter()
@@ -446,8 +455,34 @@ impl Owner {
             .min()
             .map(|end| u64::try_from(end.timestamp_millis()).map_err(|_| Error::Clock))
             .transpose()?;
+        self.policy.signed_until_ms = self
+            .authority
+            .signed_deadline(&decision_rights)
+            .into_iter()
+            .chain(self.authority.credential_deadline())
+            .min()
+            .map(|end| u64::try_from(end.timestamp_millis()).map_err(|_| Error::Clock))
+            .transpose()?;
+        debug_assert!(
+            self.policy
+                .signed_until_ms
+                .zip(effective_until_ms)
+                .is_none_or(|(signed, effective)| signed <= effective)
+        );
+        self.policy.grace_until_ms = (effective_until_ms != self.policy.signed_until_ms)
+            .then_some(effective_until_ms)
+            .flatten();
         result?;
         Ok(self.policy.clone())
+    }
+    fn deny(&mut self, state: AccessState) {
+        self.policy = Policy {
+            epoch: self.policy.epoch,
+            revision: self.policy.revision,
+            checked_at_ms: self.policy.checked_at_ms,
+            live: self.policy.live,
+            ..Policy::denied(state)
+        };
     }
     pub fn policy(&self) -> Policy {
         self.policy.clone()

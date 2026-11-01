@@ -205,3 +205,10 @@ Salir/cambiar de sesión, replay y Logout la descartan. La credencial y la graci
 siguen caducando con el reloj durante una pausa larga. No cambia protocolo,
 firma, formato durable ni contrato de la política. La única fila modificada de
 caracterización es Paused, marcada previamente para este paso (ADR0102 decisión4).
+
+Revisión del paso 7: ClockBehind.until_ms está en tiempo de pared (lápida
+efectiva menos forward_millis), con aviso de fecha/hora local. El estado local
+del supervisor usa el mismo aviso si omite renovar. NoCredential/RecoveryRequired/
+ClockBehind frescos admiten consultas al helper; Logout sigue disponible con
+canal del núcleo autenticado, incluso ante denegación o caducidad. Sin conceder
+derechos ni saltar el ACK durable; ADR0102.

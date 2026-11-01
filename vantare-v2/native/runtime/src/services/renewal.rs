@@ -196,6 +196,18 @@ impl Renewal {
 mod tests {
     use super::*;
     #[test]
+    fn wall_boundary_does_not_wait_for_the_server_ahead_effective_tombstone() {
+        let mut renewal = Renewal::default();
+        renewal.observe(&account(false));
+        let policy = Policy {
+            checked_at_ms: 111_000,
+            state: control::AccessState::ClockBehind { until_ms: 110_000 },
+            ..policy()
+        };
+        // Effective tombstone210 minus signed forward100 is wall110.
+        assert_eq!(renewal.claim(&policy, 111_000, Instant::now()), Ok(()));
+    }
+    #[test]
     fn explicit_purchase_reopens_confirmation_after_a_success_without_new_runway() {
         let mut renewal = Renewal::default();
         renewal.observe(&account(false));

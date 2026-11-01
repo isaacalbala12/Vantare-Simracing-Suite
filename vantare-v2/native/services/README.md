@@ -449,3 +449,10 @@ No necesita sesión Clerk, puente de cuenta ni permisos de publicación.
 lo valida con `Schedule::parse` y conserva su caché local ante un fallo.
 Se mantienen los límites HTTP/IPC, timeout y cierre de services durante Live.
 Compilar Hub, supervisor y services juntos; no mezclar binarios anteriores.
+
+Revisión del paso 7: ClockBehind.until_ms está en tiempo de pared (lápida
+efectiva menos forward_millis), con aviso de fecha/hora local. El estado local
+del supervisor usa el mismo aviso si omite renovar. NoCredential/RecoveryRequired/
+ClockBehind frescos admiten consultas al helper; Logout sigue disponible con
+canal del núcleo autenticado, incluso ante denegación o caducidad. Sin conceder
+derechos ni saltar el ACK durable; ADR0102.

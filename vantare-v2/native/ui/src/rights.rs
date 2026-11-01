@@ -18,20 +18,20 @@ pub(crate) fn denied(kind: Kind, cx: &App) -> bool {
     cx.try_global::<Access>()
         .is_some_and(|access| !allowed(kind, &access.0.policy()))
 }
-fn message(policy: &Policy) -> &'static str {
-    if let Some(message) = policy.state.message() {
+fn message(policy: &Policy) -> String {
+    if let Some(message) = vantare_services::outcome::policy_message(policy) {
         message
     } else if policy.current() && policy.state.permits_access() {
-        "Incluida en Pro"
+        "Incluida en Pro".into()
     } else {
-        "Inicia sesión en Vantare para ver tus overlays"
+        "Inicia sesión en Vantare para ver tus overlays".into()
     }
 }
-pub(crate) fn notice(cx: &App) -> &'static str {
-    cx.try_global::<Access>()
-        .map_or("Inicia sesión en Vantare para ver tus overlays", |access| {
-            message(&access.0.policy())
-        })
+pub(crate) fn notice(cx: &App) -> String {
+    cx.try_global::<Access>().map_or_else(
+        || "Inicia sesión en Vantare para ver tus overlays".into(),
+        |access| message(&access.0.policy()),
+    )
 }
 pub(crate) fn install(feed: Option<Feed>, cx: &mut App) {
     let Some(feed) = feed else { return };
@@ -62,6 +62,23 @@ pub(crate) fn install(feed: Option<Feed>, cx: &mut App) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn clock_behind_overlay_notice_contains_the_local_date_and_time() {
+        let policy = Policy::denied(vantare_ipc::control::AccessState::ClockBehind {
+            until_ms: 1_900_000_000_000,
+        });
+        let text = message(&policy);
+        assert!(text.contains("hora local") && text.contains("/2030"));
+        assert!(!text.contains("fecha indicada"));
+        assert_ne!(
+            text,
+            message(&Policy::denied(
+                vantare_ipc::control::AccessState::ClockBehind {
+                    until_ms: 1_900_086_400_000
+                }
+            ))
+        );
+    }
     #[test]
     fn every_overlay_reads_the_explicit_state_without_display_error_inference() {
         use vantare_ipc::control::{AccessState, CatalogAccess, VERSION};
@@ -96,7 +113,7 @@ mod tests {
                     "{state:?}/{kind:?}"
                 );
             }
-            if let Some(expected) = state.message() {
+            if let Some(expected) = vantare_services::outcome::policy_message(&policy) {
                 assert_eq!(message(&policy), expected);
             }
         }

@@ -122,25 +122,15 @@ impl State {
             return None;
         }
         if self.transition != Transition::Logout
-            && let Reply::License { policy, message } = reply
+            && let Reply::License { policy, .. } = reply
             && (policy.state.requires_attention()
                 || policy.version != vantare_ipc::control::VERSION
                 || policy.revision == 0)
         {
             self.transition = Transition::Idle;
             self.error = Some(
-                if matches!(
-                    policy.state,
-                    vantare_ipc::control::AccessState::ClockBehind { .. }
-                ) {
-                    message.clone()
-                } else {
-                    policy
-                        .state
-                        .message()
-                        .unwrap_or("No se pudo verificar la política de acceso")
-                        .into()
-                },
+                vantare_services::outcome::policy_message(policy)
+                    .unwrap_or_else(|| "No se pudo verificar la política de acceso".into()),
             );
             return None;
         }
@@ -260,14 +250,16 @@ impl State {
         Access::from_session_policy(self.session, policy, now_ms)
     }
 
-    pub(super) fn policy_denial(&self, now_ms: u64) -> Option<&'static str> {
+    pub(super) fn policy_denial(&self, now_ms: u64) -> Option<String> {
         match self.policy.as_ref() {
-            Some(policy) if policy.state.requires_attention() => policy.state.message(),
+            Some(policy) if policy.state.requires_attention() => {
+                vantare_services::outcome::policy_message(policy)
+            }
             Some(policy) if policy.revision > 0 && !policy.current_at(now_ms) => {
-                Some("Política caducada")
+                Some("Política caducada".into())
             }
             Some(policy) if policy.current_at(now_ms) => None,
-            _ => Some("Sin política vigente"),
+            _ => Some("Sin política vigente".into()),
         }
     }
 
@@ -425,17 +417,17 @@ pub(super) fn profile_portal() -> Option<String> {
 
 impl Remote {
     /// Estado de lectura de acceso para Inicio. Los heartbeats no activan esqueletos.
-    pub(crate) fn home_access(&self) -> (bool, Option<&str>) {
+    pub(crate) fn home_access(&self) -> (bool, Option<String>) {
         let pending = self.access.configured && !self.access.session_checked
             || self.account.signed_in
                 && self.access.session_known()
                 && self.access.policy.is_none()
                 && self.busy();
-        let error = self.access.error.as_deref().or_else(|| {
+        let error = self.access.error.clone().or_else(|| {
             self.access
                 .policy
                 .as_ref()
-                .and_then(|policy| policy.state.message())
+                .and_then(vantare_services::outcome::policy_message)
         });
         (pending, error)
     }
@@ -1359,7 +1351,13 @@ mod navigation_tests {
             message: message.into(),
         };
         assert!(state.renewal_acknowledged(&reply).is_none());
-        assert_eq!(state.error.as_deref(), Some(message));
+        assert_eq!(
+            state.error,
+            vantare_services::outcome::policy_message(match &reply {
+                Reply::License { policy, .. } => policy,
+                _ => unreachable!(),
+            })
+        );
         state.observe_core_policy(match reply {
             Reply::License { policy, .. } => policy,
             _ => unreachable!(),
@@ -1373,10 +1371,14 @@ mod navigation_tests {
         let mut revoked = fresh.clone();
         revoked.state = vantare_ipc::control::AccessState::Revoked;
         let mut expired = fresh.clone();
-        expired.signed_until_ms = Some(1500);
+        expired.state = vantare_ipc::control::AccessState::Expired;
         for (policy, now, reason) in [
             (revoked, 1500, "Acceso bloqueado"),
-            (expired, 1500, "Política caducada"),
+            (
+                expired,
+                1500,
+                "La credencial ha caducado; comprueba el acceso.",
+            ),
             (fresh.clone(), 3000, "Política caducada"),
             (Policy::default(), 1500, "Sin política vigente"),
         ] {
@@ -1389,7 +1391,7 @@ mod navigation_tests {
                 "la sesión confirmada no se convierte en login"
             );
             assert!(!access.verified);
-            assert_eq!(session.policy_denial(now), Some(reason));
+            assert_eq!(session.policy_denial(now).as_deref(), Some(reason));
             for origin in [Section::Account, Section::Studio] {
                 let mut current = origin;
                 assert_eq!(access.beta_lock(Section::Account), None, "composición");

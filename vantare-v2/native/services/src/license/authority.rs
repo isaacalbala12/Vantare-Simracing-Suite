@@ -161,6 +161,8 @@ impl Authority {
         if let Some(boundary) = self
             .clock
             .invalidated_after
+            // The tombstone is effective time; Policy and supervisor use wall.
+            .and_then(|at| self.local_deadline(at))
             .filter(|at| !self.credential_current() && wall < *at)
         {
             return Some(AccessState::ClockBehind {

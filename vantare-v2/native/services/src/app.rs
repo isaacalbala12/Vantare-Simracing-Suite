@@ -215,19 +215,8 @@ impl App {
     }
 
     fn policy_message(policy: &vantare_ipc::control::Policy) -> String {
-        if let Some(message) = policy.state.message() {
-            if let vantare_ipc::control::AccessState::ClockBehind { until_ms } = policy.state {
-                let until = chrono::DateTime::from_timestamp_millis(
-                    i64::try_from(until_ms).unwrap_or(i64::MAX),
-                )
-                .map_or_else(
-                    || "fuera del rango de fechas".into(),
-                    |date| date.to_rfc3339(),
-                );
-                format!("{message} Frontera guardada: {until}.")
-            } else {
-                message.into()
-            }
+        if let Some(message) = crate::outcome::policy_message(policy) {
+            message
         } else if policy.state.permits_access() {
             "Derechos verificados y guardados por el núcleo".into()
         } else {
@@ -3708,7 +3697,11 @@ mod online_compatibility_tests {
             vantare_ipc::control::AccessState::ClockBehind { until_ms: 200_000 }
         );
         assert!(!policy.state.permits_access());
-        assert!(message.contains("frontera") && message.contains("1970-01-01T00:03:20"));
+        assert_eq!(
+            message,
+            crate::outcome::policy_message(&policy).expect("dated state")
+        );
+        assert!(message.contains("hora local"));
         assert!(!message.starts_with("Necesitas conexión"));
         core.join().expect("all core requests observed");
         drop(app);

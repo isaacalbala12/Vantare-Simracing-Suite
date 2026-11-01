@@ -627,7 +627,7 @@ impl Render for Screen {
                 |root| {
                     root.child(license_notice(
                         (16.0, 16.0),
-                        vantare_ipc::INCOMPATIBLE_COMPONENTS,
+                        vantare_ipc::INCOMPATIBLE_COMPONENTS.into(),
                     ))
                 },
             )
@@ -635,7 +635,7 @@ impl Render for Screen {
 }
 
 /// Pastilla Orbit/Eficiencia: panel oscuro, punto de acento y texto pequeño.
-fn license_notice(at: (f32, f32), message: &'static str) -> gpui::Div {
+fn license_notice(at: (f32, f32), message: String) -> gpui::Div {
     use crate::efficiency::tokens;
     div()
         .absolute()

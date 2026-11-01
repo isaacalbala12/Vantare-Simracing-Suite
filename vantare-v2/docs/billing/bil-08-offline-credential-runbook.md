@@ -186,3 +186,8 @@ que el emisor y el cliente vuelvan a estar alineados.
 
 Guardar en Notion solo resultados sanitizados, SHA, entorno y conteos. Nunca
 incluir JWT, fingerprint completo, clave privada, credenciales o PII.
+
+Revisión del paso 7: el aviso de frontera también aparece con fecha/hora local
+en Inicio y overlays. Descuenta el desfase firmado reconocido para no esperar
+dos veces. Cerrar sesión sigue disponible con el núcleo conectado aun sin
+licencia o durante recuperación; conserva la confirmación durable antes de limpiar.

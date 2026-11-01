@@ -1,4 +1,42 @@
 <!-- isa1827-paso7 -->
+## VANTA-126 / #1827 — Paso 7, revisión profunda R1 lista para revisión
+
+Mismo [PR draft #1836](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1836),
+a nightly; sin integrar. El orquestador vigila la CI. Plane intacto.
+
+- P3-1/P3-2: aviso compartido con fecha, hora y zona local en Home, Cuenta,
+  overlays, helper y respuesta local del supervisor. Un automático omitido en
+  compra muestra el motivo ClockBehind, sin copiar el texto genérico del reply.
+- P3-3: until_ms está en pared, restando forward_millis de la lápida efectiva.
+  Guarda durable y aceptación intactas. Regresión +100 s: lápida210 → pared110,
+  firma iat211 aceptada en pared111 sin espera adicional. Sin prueba vigente,
+  solo vuelve ClockBehind si esa frontera de pared sigue pendiente.
+- P3-4, decisión expresa: helper_command_allowed admite consultas ordinarias
+  con NoCredential/RecoveryRequired/ClockBehind frescos; no concede derechos.
+  Logout tiene admisión explícita incluso ante política denegada o caducada,
+  con canal del núcleo autenticado y manteniendo el ACK durable.
+- P3-5: Expired real en fixtures de Hub; matriz de todos los estados en Home y
+  navegación, sin herramientas desde estados denegados. El aviso no usa el
+  motivo antiguo de TTL para fingir la caducidad de credencial.
+- Misma matriz de acceso (22 filas), caracterizaciones services y publicación
+  de permisos intactas. Sin paquetes nuevos ni cambios de lock: se activa clock
+  del chrono existente para convertir a hora local, ya empleado en el workspace.
+- Gates R1 PASS: fmt; Clippy all-targets cinco crates -D warnings (cubre check);
+  Nextest ci 1870/1870 con telemetría, 23 omisiones preexistentes; lifecycle13/13;
+  quality/466 huellas, schema changelog, sintaxis QA y diff. Regresiones15/15.
+- Ocho mutaciones detectadas por aserciones: cuatro consumidores, fecha local,
+  frontera efectiva usada como pared, Logout retirado de admisión y mensaje
+  genérico durante espera. Restauración SHA256 de 34 fuentes/config comprobada
+  antes/después de la suite final. Binarios de fixture reconstruidos; fallos
+  intermedios conservados. Todo Cargo por compilar.ps1, target propio, locked/offline.
+  Evidencia R1: D:/VantareServer/evidence/isa-1827-p7/review-r1.
+- Diff R1 completo revisado. Pendiente revisión y CI del orquestador; sin watch.
+  La evidencia inferior corresponde a la entrega inicial, anterior a esta revisión.
+- Sin nuevos subagentes, secretos, cuentas reales, instalación, producción,
+  merge, promoción o release. Fixtures/headless; manual físico pendiente.
+
+### Entrega inicial — evidencia histórica anterior a R1
+
 ## VANTA-126 / #1827 — Paso 7: Policy.state listo para revisión
 
 Project Vantare / area:licencias / In Review, sin milestone. Plane intacto.

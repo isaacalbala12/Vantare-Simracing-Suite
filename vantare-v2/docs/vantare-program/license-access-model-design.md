@@ -628,3 +628,10 @@ incluso tras un fallo del formulario, y Cuenta ofrece los mismos proveedores.
 No hay fallback a Logout ante un servicio v15: el desajuste sigue transitorio.
 La fila nueva de caracterización fija AccountCancel no revoca, con candidate
 y sesión conservados. El resto de filas de los refactors sigue intacto.
+
+Enmienda de revisión paso 7: `ClockBehind.until_ms` se expresa en pared
+(lápida efectiva menos `forward_millis`), no en tiempo efectivo. Los consumidores
+formatean fecha/hora local; la espera automática compara unidades iguales. Las
+consultas al helper con NoCredential/RecoveryRequired/ClockBehind frescos y
+Logout incluso con política denegada son decisiones expresas del orquestador,
+sin autoridad para conceder acceso y conservando el ACK durable (ADR0102).

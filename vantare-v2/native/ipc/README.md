@@ -87,3 +87,10 @@ campos a `Unavailable`; no cambian los archivos originales. Los tests y la
 geometría demo usan ese lector de fixtures, nunca el pipe productivo.
 Contrato, relojes, límites y conexión con #1653:
 [`session-alerts-contract.md`](../../docs/telemetria/session-alerts-contract.md).
+
+Revisión del paso 7: ClockBehind.until_ms está en tiempo de pared (lápida
+efectiva menos forward_millis), con aviso de fecha/hora local. El estado local
+del supervisor usa el mismo aviso si omite renovar. NoCredential/RecoveryRequired/
+ClockBehind frescos admiten consultas al helper; Logout sigue disponible con
+canal del núcleo autenticado, incluso ante denegación o caducidad. Sin conceder
+derechos ni saltar el ACK durable; ADR0102.

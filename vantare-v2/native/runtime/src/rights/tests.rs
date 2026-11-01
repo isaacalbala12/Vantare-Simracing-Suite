@@ -1812,9 +1812,52 @@ fn a_new_signature_beyond_a_future_tombstone_recovers_within_allowed_skew() {
         .expect("diagnostic without proof");
     assert_eq!(
         missing.state,
-        vantare_ipc::control::AccessState::ClockBehind { until_ms: 200_000 }
+        vantare_ipc::control::AccessState::NoCredential
     );
     assert!(!missing.state.permits_access());
+    drop(owner);
+    clean(&root);
+}
+
+#[test]
+fn server_ahead_tombstone_is_published_in_wall_time_and_recovers_without_extra_wait() {
+    let root = test_root();
+    let (old, old_keys) = signed_v1_named(200, vec![], devices().legacy, "old");
+    let (new, new_keys) = signed_v1_named(211, vec![], devices().legacy, "new");
+    let keys = format!("{old_keys},{new_keys}");
+    let mut owner = Owner::open(&root, Some(&keys), devices(), 1, wall(100)).expect("owner");
+    owner
+        .install(old, wall(100), Duration::ZERO)
+        .expect("+100s signed skew");
+    owner
+        .invalidate(wall(110), Duration::from_secs(10))
+        .expect("effective tombstone210");
+    let waiting = owner
+        .advance(&photo(false), wall(105), Duration::from_secs(10))
+        .expect("waiting");
+    assert_eq!(
+        waiting.state,
+        AccessState::ClockBehind { until_ms: 110_000 }
+    );
+    assert!(!waiting.state.permits_access());
+    let ready = owner
+        .advance(&photo(false), wall(111), Duration::from_secs(11))
+        .expect("wall past boundary");
+    assert!(!matches!(ready.state, AccessState::ClockBehind { .. }));
+    owner
+        .install_online(new, wall(111), Duration::from_secs(11))
+        .expect("iat211 acceptable now");
+    let recovered = owner
+        .advance(&photo(false), wall(111), Duration::from_secs(11))
+        .expect("recovered");
+    assert_eq!(recovered.state, AccessState::Active);
+    assert_eq!(
+        owner
+            .store
+            .load::<serde_json::Value>("authority")
+            .expect("saved")["clock"]["invalidated_after"],
+        serde_json::json!(wall(210))
+    );
     drop(owner);
     clean(&root);
 }

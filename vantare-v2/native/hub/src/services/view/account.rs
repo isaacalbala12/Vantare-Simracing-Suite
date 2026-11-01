@@ -178,12 +178,13 @@ impl Remote {
     fn account_badges(&self, cx: &gpui::App) -> gpui::Div {
         let access = self.account_access();
         let verified = access.verified && !access.blocked;
+        let label = if verified {
+            "Acceso verificado · activo".to_owned()
+        } else {
+            self.account_access_label()
+        };
         div().mt(px(8.0)).flex().child(orbit::pill(
-            if verified {
-                "Acceso verificado · activo"
-            } else {
-                self.account_access_label()
-            },
+            &label,
             if verified {
                 orbit::Tone::Success
             } else {
@@ -192,17 +193,17 @@ impl Remote {
             cx,
         ))
     }
-    fn account_access_label(&self) -> &'static str {
+    fn account_access_label(&self) -> String {
         if self.account_access().verified
             && self.account_access().catalog == vantare_ipc::control::CatalogAccess::Founders
         {
-            self.founders_language.copy().owned
+            self.founders_language.copy().owned.into()
         } else if account_demo().is_some() {
-            account_plan_label(self.account_access().verified)
+            account_plan_label(self.account_access().verified).into()
         } else {
             self.access
                 .policy_denial(vantare_ipc::control::wall_ms().unwrap_or(u64::MAX))
-                .unwrap_or_else(|| account_plan_label(self.account_access().verified))
+                .unwrap_or_else(|| account_plan_label(self.account_access().verified).into())
         }
     }
     fn purchase_status(&self, cx: &mut Context<Self>) -> gpui::Div {
@@ -523,7 +524,7 @@ impl Remote {
         let access = orbit::neo_card(cx).p(px(16.0)).flex_1().min_w_0()
             .child(text("Acceso beta", 16.0, 600, orbit::ink(cx), cx))
             .child(text("Acceso gratuito durante la beta para testers. La sesión valida tu acceso; no muestra ni copia claves privadas.", 13.0, 400, orbit::ink_2(cx), cx))
-            .child(orbit::pill(self.account_access_label(), orbit::Tone::Neutral, cx).self_start())
+            .child(orbit::pill(&self.account_access_label(), orbit::Tone::Neutral, cx).self_start())
             .child(self.founders_details(cx));
         let contribution = orbit::neo_card(cx)
             .p(px(16.0))

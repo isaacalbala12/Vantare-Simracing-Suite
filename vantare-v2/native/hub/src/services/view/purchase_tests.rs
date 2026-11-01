@@ -889,7 +889,7 @@ fn denied_policy_keeps_manual_retry_and_logout_without_granting_tools() {
                 let now = policy.checked_at_ms;
                 match denial {
                     "revoked" => policy.state = vantare_ipc::control::AccessState::Revoked,
-                    "expired" => policy.signed_until_ms = Some(now),
+                    "expired" => policy.state = vantare_ipc::control::AccessState::Expired,
                     _ => policy = vantare_ipc::control::Policy::default(),
                 }
                 remote.observe_core_policy(policy, now, cx);
@@ -947,6 +947,65 @@ fn denied_policy_keeps_manual_retry_and_logout_without_granting_tools() {
                 assert!(!remote.navigation_access().verified);
                 assert!(requests.try_recv().is_err());
                 remote.cancel();
+            });
+        }
+        crate::quit_headless_test(cx);
+    });
+}
+
+#[test]
+fn every_explicit_state_reaches_home_and_denied_states_never_grant_tools() {
+    use vantare_ipc::control::AccessState;
+    gpui_platform::headless().run(|cx| {
+        let file = crate::document::tests::File::new();
+        let (send, _requests) = mpsc::sync_channel(8);
+        let remote = cx.new(|cx| fixture(cx, send, file.path.parent().expect("root")));
+        for state in [
+            AccessState::Active,
+            AccessState::Grace,
+            AccessState::NoCredential,
+            AccessState::Expired,
+            AccessState::Revoked,
+            AccessState::Unavailable,
+            AccessState::Unconfigured,
+            AccessState::UpdateRequired,
+            AccessState::RecoveryRequired,
+            AccessState::ClockBehind {
+                until_ms: 1_900_000_000_000,
+            },
+        ] {
+            remote.update(cx, |remote, cx| {
+                let Reply::License { mut policy, .. } =
+                    license(vantare_ipc::control::CatalogAccess::Pro)
+                else {
+                    unreachable!()
+                };
+                policy.state = state;
+                let expected = vantare_services::outcome::policy_message(&policy);
+                let now = policy.checked_at_ms;
+                remote.observe_core_policy(policy.clone(), now, cx);
+                assert_eq!(remote.home_access().1, expected, "{state:?}");
+                assert_eq!(
+                    remote.navigation_access().verified,
+                    state.permits_access(),
+                    "{state:?}"
+                );
+                if !state.permits_access() {
+                    assert!(
+                        account_module_access(remote.navigation_access(), false)
+                            .iter()
+                            .all(|v| !v)
+                    );
+                }
+                if matches!(state, AccessState::ClockBehind { .. }) {
+                    let error = remote.home_access().1.expect("dated home message");
+                    assert!(error.contains("hora local") && error.contains("/2030"));
+                    remote.access.renewal_acknowledged(&Reply::License {
+                        policy,
+                        message: "Política vigente del núcleo".into(),
+                    });
+                    assert_eq!(remote.home_access().1.as_deref(), Some(error.as_str()));
+                }
             });
         }
         crate::quit_headless_test(cx);

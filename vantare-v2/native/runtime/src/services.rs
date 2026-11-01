@@ -348,6 +348,20 @@ fn handle_with(
     }
     reply
 }
+fn core_status_reply(policy: control::Policy) -> Reply {
+    let message = vantare_services::outcome::policy_message(&policy)
+        .unwrap_or_else(|| "Política vigente del núcleo".into());
+    Reply::License { policy, message }
+}
+
+// An authenticated core observation is enough for Logout and recovery commands.
+// Fresh NoCredential/RecoveryRequired/ClockBehind observations also admit ordinary
+// queries: no rights are granted by starting the helper. Logout always remains usable.
+fn helper_command_allowed(policy: &control::Policy, command: &Command) -> bool {
+    matches!(command, Command::Logout | Command::TransferRights)
+        || access_command(command)
+        || policy.current()
+}
 fn serve_command(
     state: &mut State,
     options: &Options,
@@ -369,20 +383,11 @@ fn serve_command(
             {
                 return notice;
             }
-            return Reply::License {
-                policy,
-                message: "Política vigente del núcleo".into(),
-            };
+            return core_status_reply(policy);
         }
         // Recovering account/license commands must also work after expiry or a
         // durable logout denial. They still need the authenticated core channel.
-        Ok(p)
-            if p.current()
-                || access_command(&command)
-                || matches!(command, Command::TransferRights) =>
-        {
-            p
-        }
+        Ok(p) if helper_command_allowed(&p, &command) => p,
         Err(error)
             if error.get_ref().is_some_and(
                 <dyn std::error::Error + Send + Sync>::is::<control::VersionMismatch>,

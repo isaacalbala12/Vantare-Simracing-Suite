@@ -12,6 +12,69 @@ use vantare_services::{
 mod profile;
 
 #[test]
+fn recovery_observations_admit_queries_and_logout_always_reaches_the_helper() {
+    use control::AccessState;
+    let wall = control::wall_ms().expect("wall");
+    for state in [
+        AccessState::NoCredential,
+        AccessState::RecoveryRequired,
+        AccessState::ClockBehind {
+            until_ms: wall + 10_000,
+        },
+    ] {
+        let policy = control::Policy {
+            revision: 1,
+            checked_at_ms: wall,
+            ..control::Policy::denied(state)
+        };
+        assert!(!state.permits_access());
+        // DraftLoad is an ordinary, non-access query.
+        assert!(helper_command_allowed(&policy, &Command::DraftLoad));
+        assert!(helper_command_allowed(&policy, &Command::Logout));
+    }
+    for state in [
+        AccessState::Expired,
+        AccessState::Revoked,
+        AccessState::Unavailable,
+    ] {
+        let policy = control::Policy::denied(state);
+        assert!(helper_command_allowed(&policy, &Command::Logout));
+        assert!(!helper_command_allowed(&policy, &Command::DraftLoad));
+    }
+}
+
+#[test]
+fn skipped_clock_behind_purchase_reports_the_dated_state_without_helper_or_http() {
+    let mut state = State::default();
+    state.renewal.observe(&confirmed_session());
+    let now = Instant::now();
+    state.purchase_until = Some(now + Duration::from_mins(10));
+    let policy = control::Policy {
+        revision: 1,
+        checked_at_ms: 1000,
+        ..control::Policy::denied(control::AccessState::ClockBehind { until_ms: 10_000 })
+    };
+    let reply = run_renewal(&mut state, &policy, 1000, now, |_, _| {
+        panic!("no helper/HTTP while waiting")
+    })
+    .unwrap_or_else(|| core_status_reply(policy.clone()));
+    let Reply::License {
+        policy: observed,
+        message,
+    } = reply
+    else {
+        panic!("status");
+    };
+    assert_eq!(observed, policy);
+    assert_eq!(
+        Some(message.clone()),
+        vantare_services::outcome::policy_message(&policy)
+    );
+    assert!(message.contains("hora local"));
+    assert!(!message.contains("Política vigente"));
+}
+
+#[test]
 fn future_boundary_never_dispatches_an_automatic_http_attempt() {
     let now = Instant::now();
     for purchase in [false, true] {

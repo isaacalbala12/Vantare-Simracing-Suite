@@ -149,7 +149,7 @@ impl AccessState {
                 "Necesitas conexión para recuperar el acceso; comprueba el acceso o inicia sesión.",
             ),
             Self::ClockBehind { .. } => Some(
-                "El reloj está detrás de la frontera de seguridad guardada. Corrige la fecha y espera hasta la fecha indicada; una conexión nueva todavía no puede recuperar el acceso.",
+                "El reloj está detrás de la frontera de seguridad guardada. Comprueba la fecha del equipo; puede ser necesario esperar antes de recuperar el acceso.",
             ),
             Self::Revoked => Some("Acceso bloqueado"),
             Self::Unavailable => Some("No se pudo verificar la política de acceso"),

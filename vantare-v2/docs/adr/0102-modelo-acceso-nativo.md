@@ -184,3 +184,19 @@ Una firma nueva que supera una lápida futura dentro de la tolerancia ya existen
 puede recuperar el acceso antes de que la pared alcance la lápida; ClockBehind
 solo se publica mientras no haya una credencial vigente verificada. La frontera
 saludable se conserva aun después de aceptar esa firma.
+
+### Revisión del paso 7 — diagnóstico y disponibilidad del helper
+
+ClockBehind.until_ms se publica en tiempo de pared: se resta forward_millis de
+la lápida efectiva sin modificar la guarda durable. El supervisor compara pared
+con pared; no espera de nuevo el desfase servidor-adelante ya reconocido (≤300 s).
+Home, Cuenta, overlays y el estado local del supervisor presentan la frontera con
+fecha, hora y zona local legibles. Un automático omitido durante compra muestra
+el estado con fecha, incluso cuando no arrancó el helper; el texto genérico de
+LicenseStatus no sustituye el motivo.
+
+Decisión del orquestador: una observación autenticada fresca de NoCredential,
+RecoveryRequired o ClockBehind permite las consultas ordinarias al helper,
+además de los comandos de recuperación. Arrancarlo no concede derechos.
+Logout se admite siempre que el canal del núcleo responda de forma autenticada,
+aun con política denegada o caducada; su ACK durable sigue siendo obligatorio.

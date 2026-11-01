@@ -11,7 +11,8 @@
     "Paso 6, ampliación autorizada: Volver/Cancelar usa AccountCancel sin cerrar la cuenta ni revocar derechos. Cuenta permite elegir Google, Discord o email para volver a entrar.",
     "Revisión paso 6: reintento correcto de Logout fallido y Volver según derechos frescos; Escape en Choose y bloqueo de proveedores/cancelaciones duplicadas durante AccountCancel.",
     "Paso 7: el núcleo publica el estado explícito y separa vencimiento firmado y gracia. Una frontera futura de seguridad muestra su fecha y detiene comprobaciones automáticas inútiles; una renovación correcta sin plazo nuevo deja de acumular fallos de transporte.",
-    "Paso 7: control v7 y sobre services v17, autorizado por el orquestador. El saludo v16/v17 falla por versión antes de leer Policy; Session/AccountCancel siguen iguales. V16 no se publicó en release."
+    "Paso 7: control v7 y sobre services v17, autorizado por el orquestador. El saludo v16/v17 falla por versión antes de leer Policy; Session/AccountCancel siguen iguales. V16 no se publicó en release.",
+    "Revisión paso 7: avisos de frontera con fecha/hora local también en Inicio, overlays y espera de compra; frontera en pared descontando el desfase firmado. Logout disponible con núcleo autenticado aun sin acceso; consultas durante recuperación fijadas por decisión del orquestador."
   ],
   "testing": [
     "Con reloj inyectado, comprobar pausa larga y reanudación sin cambiar el deadline; salida/cambio de sesión, replay y Logout descartan la gracia. La credencial y la hora de gracia caducan aun en pausa.",

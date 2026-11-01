@@ -429,3 +429,10 @@ Ajustes → General ofrece Ocultar fuera de pista (opt-in). Studio → En pista
 ofrece heredar / siempre visible / ocultar por instancia. Se guardan en el único
 layout mediante el Editor existente, con conflictos y Deshacer/Rehacer. Studio
 no aplica ocultación a sus previews. Ver [contrato](../runtime/README.md).
+
+Revisión del paso 7: ClockBehind.until_ms está en tiempo de pared (lápida
+efectiva menos forward_millis), con aviso de fecha/hora local. El estado local
+del supervisor usa el mismo aviso si omite renovar. NoCredential/RecoveryRequired/
+ClockBehind frescos admiten consultas al helper; Logout sigue disponible con
+canal del núcleo autenticado, incluso ante denegación o caducidad. Sin conceder
+derechos ni saltar el ACK durable; ADR0102.

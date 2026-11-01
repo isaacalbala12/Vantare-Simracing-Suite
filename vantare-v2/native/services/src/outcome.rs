@@ -2,6 +2,27 @@
 use crate::{Error, protocol::RenewalOutcome};
 use vantare_ipc::{control::Policy, services_protocol::Reply};
 
+/// Aviso del estado, con frontera en hora local de pared para todas las vistas.
+pub fn policy_message(policy: &Policy) -> Option<String> {
+    let message = policy.state.message()?;
+    if let vantare_ipc::control::AccessState::ClockBehind { until_ms } = policy.state {
+        let until = i64::try_from(until_ms)
+            .ok()
+            .and_then(chrono::DateTime::from_timestamp_millis)
+            .map(|date| {
+                date.with_timezone(&chrono::Local)
+                    .format("%d/%m/%Y %H:%M:%S %:z")
+                    .to_string()
+            });
+        Some(match until {
+            Some(until) => format!("{message} Frontera guardada (hora local): {until}."),
+            None => format!("{message} La frontera guardada está fuera del rango de fechas."),
+        })
+    } else {
+        Some(message.into())
+    }
+}
+
 /// Se conserva el origen para diagnóstico; ninguna renovación revoca.
 #[derive(Clone, Copy, Debug)]
 pub enum Origin {

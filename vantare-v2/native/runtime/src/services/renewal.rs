@@ -232,7 +232,7 @@ mod tests {
             let completed = now + MINUTE * 2;
             r.completed(RenewalOutcome::Verified, completed);
             for day in 1..=3 {
-                let end = completed + DAY * day;
+                let end = completed + Duration::from_hours(24) * day;
                 p.checked_at_ms = 1000 + u64::from(day) * 86_400_000;
                 let wall = p.checked_at_ms;
                 for before in [MINUTE, Duration::from_millis(1)] {
@@ -286,7 +286,7 @@ mod tests {
             r.claim(&p, 1000, now + Duration::from_mins(1439)),
             Err(Skip::NotDue)
         );
-        assert_eq!(r.claim(&p, 1000, now + DAY), Ok(()));
+        assert_eq!(r.claim(&p, 1000, now + Duration::from_hours(24)), Ok(()));
     }
 
     #[test]
@@ -305,17 +305,29 @@ mod tests {
         assert_eq!(r.claim(&p, 1000, now), Ok(()));
         r.completed(RenewalOutcome::Verified, now);
         p.live = true;
-        assert_eq!(r.claim(&p, 1000, now + DAY), Err(Skip::Live));
+        assert_eq!(
+            r.claim(&p, 1000, now + Duration::from_hours(24)),
+            Err(Skip::Live)
+        );
         p.live = false;
         p.state = control::AccessState::ClockBehind { until_ms: 1000 };
-        assert_eq!(r.claim(&p, 1000, now + DAY), Err(Skip::ClockBehind));
+        assert_eq!(
+            r.claim(&p, 1000, now + Duration::from_hours(24)),
+            Err(Skip::ClockBehind)
+        );
         p.state = control::AccessState::Active;
         p.checked_at_ms = 0;
-        assert_eq!(r.claim(&p, 2000, now + DAY), Err(Skip::StalePolicy));
+        assert_eq!(
+            r.claim(&p, 2000, now + Duration::from_hours(24)),
+            Err(Skip::StalePolicy)
+        );
         p.checked_at_ms = 1000;
-        assert_eq!(r.claim(&p, 1000, now + DAY), Ok(()));
-        r.completed(RenewalOutcome::Definitive, now + DAY);
-        assert_eq!(r.claim(&p, 1000, now + DAY * 2), Err(Skip::Blocked));
+        assert_eq!(r.claim(&p, 1000, now + Duration::from_hours(24)), Ok(()));
+        r.completed(RenewalOutcome::Definitive, now + Duration::from_hours(24));
+        assert_eq!(
+            r.claim(&p, 1000, now + Duration::from_hours(24) * 2),
+            Err(Skip::Blocked)
+        );
     }
 
     #[test]
@@ -614,7 +626,10 @@ mod tests {
         r.completed(RenewalOutcome::Verified, now);
         assert_eq!(r.claim(&p, 1000, now + MINUTE), Err(Skip::NotDue));
         p.signed_until_ms = Some(1000 + 30 * 86_400_000);
-        assert_eq!(r.claim(&p, 1000, now + DAY), Err(Skip::NotDue));
+        assert_eq!(
+            r.claim(&p, 1000, now + Duration::from_hours(24)),
+            Err(Skip::NotDue)
+        );
         p.signed_until_ms = Some(1000 + RENEW_AHEAD_MS + 1);
         assert_eq!(r.claim(&p, 1000, now + MINUTE), Err(Skip::NotDue));
         p.signed_until_ms = Some(1000 + RENEW_AHEAD_MS);
@@ -643,7 +658,7 @@ mod tests {
         r.completed(RenewalOutcome::Verified, now);
         assert_eq!(r.claim(&p, 1000, now + MINUTE), Err(Skip::NotDue));
         assert_eq!(r.claim(&p, 1000, now + MINUTE * 60), Err(Skip::NotDue));
-        assert_eq!(r.claim(&p, 1000, now + DAY), Ok(()));
+        assert_eq!(r.claim(&p, 1000, now + Duration::from_hours(24)), Ok(()));
     }
 
     #[test]

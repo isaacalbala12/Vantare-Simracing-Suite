@@ -1,3 +1,69 @@
+<!-- isa1827-simplificar-b -->
+## VANTA-126 / #1827 — corte B listo para revisión (1-nov-2026)
+
+A (#1841) integrado por el orquestador en `nightly@6fbbfaa6ad96d187877043786fc999a369d268b3`;
+la sección A inferior conserva la entrega de su rama. Base original B en ese SHA.
+Rebasado sobre `origin/nightly@0a241fc2e927cf925166c86c072b1d43d30044d4`
+tras #1842 y #1845, conservando íntegros sus ficheros y todas las entradas del handoff.
+Rama `vantareapp/isa-1827-simplificar-owner`, mismo worktree aislado
+`C:/VantareServer/wt/isa-1827-simplificar` y target privado `D:/VantareServer/targets/isa-1827-s`.
+
+- Authority, catálogo, verificador y sus pruebas pasan a runtime::rights.
+  Owner/host siguen limitados a Windows; verificación/autoridad y sus pruebas
+  puras siguen compilándose en Unix. Las dependencias base64/Ed25519 ya
+  presentes pasan de dev a producción en runtime, sin paquetes ni versiones nuevos.
+- Services transporta la respuesta HTTP nueva sin verificarla, guardarla ni
+  usar sus claims antes del ACK durable. Firma/subject/device inválidos llegan
+  como Failure::InvalidCredential y se traducen a Error::Version (Transient),
+  conservando el mensaje; iat mantiene Unavailable/Clock y lápida Rejected.
+  Contrato control v7 sin cambio de estructura o permisos. Lector v7 anterior
+  congelado prueba UnknownLegacy; la matriz de servicios conserva Transient.
+- Seis casos HTTP→services→núcleo real prueban resultado manual/automático,
+  aviso, ausencia de copia, binding anterior y reintento del scheduler. Caracterizaciones
+  de acceso y efectos permanecen sin cambios.
+- P3 de A: comentario v2 de Store retirado; inventario/opción v2 del diseño
+  marcados como superados; bloque suelto eliminado; test de Installation ahora
+  usa huella v1 real, instala v1 y conserva intacto un resto corrupto aislado.
+- La fixture recovery v1 es única, dentro de native/runtime/testdata; Deno y
+  Rust consumen el mismo JSON, sin include_str fuera del workspace Cargo.
+  La prueba de E/S de Authority se traslada a su dueño; no se elimina cobertura.
+- Medición final: cuatro crates **109.329 → 109.321 (−8)**, incluidos
+  movimientos; services −785, runtime +771, ipc +6, hub igual. El propósito
+  principal de B es retirar una verificación por renovación, además del cambio de dueño.
+  Fmt y Clippy de cuatro crates PASS; Nextest ci 1138/1138 con telemetría
+  PASS (13 omisiones previas); lifecycle runtime 13/13 y Engineer 5/5 PASS.
+  Seis mutaciones Rust y una Python detectadas por aserción tras los P3;
+  223 fuentes Rust restaurados por SHA-256. Calidad: 466 huellas PASS.
+  Deno no instalado; no se afirma ejecutar su prueba. Logs/mediciones en
+  D:/VantareServer/evidence/isa-1827-s-review-b-* y -mutations-b-review.
+- No se modifica Plane, producción, instalaciones ni datos reales. Sin merge/
+  release. C/D/E conservan las decisiones autorizadas y siguen pendientes.
+
+[PR draft #1843](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1843) a nightly, enlazado en T3, sin integrar.
+Código revisado y validado `17bef84a6b6480e68115066ae65ed03935e44673`; HEAD documental vigente en el PR.
+CI/revisión a cargo del orquestador; el worker no vigila CI.
+Siguiente corte C desde nightly después de la integración de B.
+
+Revisión profunda APPROVE WITH CHANGES, sin P0–P2: los cuatro P3 atendidos.
+La analítica queda solo tras ACK correcto, sin observar claims en Rejected→Read;
+la regresión comprueba cero observaciones en rechazo y ambas con ACK. Los seis
+casos distinguen subject mal formado y UUID válido de otra cuenta (Denied/
+REJECTED/Definitive), manteniendo binding anterior. El lector v7 congelado se
+comprueba por SHA-256. El contador falla con ruta explícita si falta un fuente
+rastreado: registrar borrado o restaurarlo; prueba Python PASS.
+IPC añade sha2 solo en dev-dependencies; mismos paquetes/versiones. El ADR
+explicita actualización conjunta y mezcla nuevo-services/viejo-núcleo no soportada.
+Commercial PostgreSQL test 14 quedó corregido en nightly por #1845; este worker
+no modifica ese harness. El rebase solo resolvió este handoff; el código de B
+es idéntico al HEAD revisado 4483a78ed. Después se actualizan exclusivamente
+las notas propias del handoff y la evidencia.
+Prueba de integridad: isa-1827-s-rebase-integrity.json; conteos repetidos sobre
+la nueva base, sin cambios. Fmt y Clippy all-targets -D warnings posteriores al rebase PASS.
+Nextest 1138/1138 con telemetría, lifecycle y mutaciones anteriores corresponden
+al mismo código de licencias; no se repiten tras una resolución solo documental.
+Integración y CI a cargo del orquestador; C/D/E siguen pendientes.
+<!-- /isa1827-simplificar-b -->
+
 ## VANTA-126 / #1844 — reloj del test comercial 14 (2026-11-01)
 
 - [Issue #1844](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1844),

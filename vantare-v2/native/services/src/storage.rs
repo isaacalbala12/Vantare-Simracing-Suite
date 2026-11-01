@@ -196,16 +196,6 @@ impl Store {
     /// a que alguien borre el fichero a mano. Renombrarlo conserva la evidencia
     /// para diagnostico y permite seguir con el valor por defecto.
     ///
-    /// Es a proposito que NO se use con `installation`, pero el motivo verificado
-    /// NO es que regale un dispositivo limpio: en la configuracion desplegada
-    /// borrar ese fichero no da nada -no hay re-enrolamiento, el servidor rechaza
-    /// cualquier campo extra, `devices.user_id` es UNIQUE y gana el primer
-    /// dispositivo, y `binding`/`authority` viven en OTRO almacen-. El motivo real
-    /// es que aqui el unico camino a una identidad nueva es ENOENT: 14 formas
-    /// de corrupcion devuelven `Err` y ninguna acuna identidad. El nucleo carga
-    /// `legacy` y `installation` por separado para conservar el camino v1 si
-    /// falla v2. La recuperacion de v2 sigue pendiente de un reenrolamiento
-    /// autenticado en el servidor; cuarentena sola no permite volver a vincular.
     /// Tampoco se usa con el recargado posterior al login, que no es un `restore`.
     pub fn quarantine(&self, name: &str) {
         let Ok(path) = self.path(name) else {
@@ -607,7 +597,7 @@ mod tests {
             "redirect":"http://127.0.0.1:0/callback", "authorization":"https://fixture.test/authorize",
             "token":"https://fixture.test/token", "userinfo":"https://fixture.test/userinfo"
         })).expect("OAuth de test");
-        for name in ["account", "authority", "report-attempt", "roadmap"] {
+        for name in ["account", "report-attempt", "roadmap"] {
             store
                 .save(name, &serde_json::json!({}))
                 .expect("documento invÃ¡lido protegido");
@@ -615,7 +605,6 @@ mod tests {
             let original = fs::read(&path).expect("bytes protegidos");
             let restore = || match name {
                 "account" => crate::account::Account::restore(oauth.clone(), &store).map(|_| ()),
-                "authority" => crate::license::authority::Authority::restore(&store).map(|_| ()),
                 "report-attempt" => crate::report::Reports::restore(&store).map(|_| ()),
                 _ => crate::roadmap::Roadmap::restore(&store).map(|_| ()),
             };
@@ -632,44 +621,21 @@ mod tests {
             drop(lock);
             assert_eq!(fs::read(&path).expect("preservado"), original);
             restore().expect("JSON invÃ¡lido recuperado");
-            if name == "authority" {
-                assert!(
-                    path.exists(),
-                    "denied authority is persisted before recovery"
-                );
-                assert!(
-                    store
-                        .load::<bool>("authority-recovery")
-                        .expect("durable guard")
-                );
-                let archived = fs::read_dir(&store.root)
-                    .expect("archives")
-                    .map(|entry| entry.expect("archive"))
-                    .find(|entry| {
-                        entry
-                            .file_name()
-                            .to_string_lossy()
-                            .starts_with("authority-0-")
-                    })
-                    .expect("original authority preserved");
-                assert_eq!(fs::read(archived.path()).expect("archive bytes"), original);
-            } else {
-                assert!(!path.exists());
-                let archives: Vec<_> = fs::read_dir(&store.root)
-                    .expect("namespace")
-                    .flatten()
-                    .filter(|entry| {
-                        let file_name = entry.file_name();
-                        let file_name = file_name.to_string_lossy();
-                        file_name == format!("{name}.corrupto")
-                            || (name == "account"
-                                && file_name.starts_with("account-")
-                                && file_name.ends_with(".corrupto"))
-                    })
-                    .map(|entry| fs::read(entry.path()).expect("preserved archive"))
-                    .collect();
-                assert_eq!(archives, vec![original]);
-            }
+            assert!(!path.exists());
+            let archives: Vec<_> = fs::read_dir(&store.root)
+                .expect("namespace")
+                .flatten()
+                .filter(|entry| {
+                    let file_name = entry.file_name();
+                    let file_name = file_name.to_string_lossy();
+                    file_name == format!("{name}.corrupto")
+                        || (name == "account"
+                            && file_name.starts_with("account-")
+                            && file_name.ends_with(".corrupto"))
+                })
+                .map(|entry| fs::read(entry.path()).expect("preserved archive"))
+                .collect();
+            assert_eq!(archives, vec![original]);
         }
         drop(store);
         fs::remove_dir_all(root).expect("limpiar");

@@ -8,7 +8,6 @@ pub mod flows;
 pub mod lmu_recording;
 #[cfg(feature = "paint-stats")]
 pub use vantare_profiling as profiling;
-#[cfg(windows)]
 pub mod rights;
 pub mod service;
 #[cfg(windows)]

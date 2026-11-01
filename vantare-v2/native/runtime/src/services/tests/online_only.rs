@@ -146,7 +146,7 @@ fn lossy_proxy(real: CoreLink) -> (CoreLink, std::thread::JoinHandle<()>) {
     (proxy_link, proxy)
 }
 
-fn seed_account(app_root: &std::path::Path, server: &Server) {
+pub(super) fn seed_account(app_root: &std::path::Path, server: &Server) {
     let base = &server.base;
     let context = format!("v1|{base}|fixture|test|{base}");
     let store = Store::open(app_root, &context).expect("account fixture");
@@ -157,7 +157,11 @@ fn seed_account(app_root: &std::path::Path, server: &Server) {
     drop(store);
 }
 
-fn start_core(root: &std::path::Path, keys: &str, device: &str) -> (host::Host, CoreLink) {
+pub(super) fn start_core(
+    root: &std::path::Path,
+    keys: &str,
+    device: &str,
+) -> (host::Host, CoreLink) {
     let photo = format!("p8-{}", vantare_services::random_id().expect("pipe"));
     let nonce = vantare_services::random_id().expect("nonce");
     let pid = std::process::id();
@@ -183,7 +187,7 @@ fn start_core(root: &std::path::Path, keys: &str, device: &str) -> (host::Host, 
     (core, real)
 }
 
-fn assert_no_license_copy(app_root: &std::path::Path, base: &str) {
+pub(super) fn assert_no_license_copy(app_root: &std::path::Path, base: &str) {
     let legacy_context = format!("license-v1|{base}|test");
     let legacy = Store::open(app_root, &legacy_context).expect("old namespace");
     for name in ["license-candidate", "license-transfer-pending"] {

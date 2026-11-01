@@ -1,5 +1,12 @@
 ## Contrato vigente de licencias — paso 9 (#1827)
 
+Corte B del paso 11: control v7 distingue `rights-credential-invalid` como
+`Failure::InvalidCredential`; services lo traduce a Version/Transient, sin aviso
+definitivo ni bloqueo. REJECTED conserva lápida/denegación/caducidad; iat mantiene
+UNAVAILABLE/Clock. El sobre, la Policy y los permisos no cambian. El lector v7
+anterior congelado conserva UnknownLegacy ante la etiqueta nueva, transitorio
+según la matriz de servicios. Solo runtime::rights verifica la credencial.
+
 Services v19 conserva la retirada de TransferRights; control v7 y fotos v11 no cambian.
 El saludo rechaza v18 y anteriores como Version antes del comando retirado o de Policy,
 sin revocación. Una trama que declare v19 y aún envíe TransferRights es

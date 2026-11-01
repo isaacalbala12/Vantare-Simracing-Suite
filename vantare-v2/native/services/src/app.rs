@@ -94,7 +94,11 @@ impl App {
             .map_err(|error| {
                 let failure = vantare_ipc::control::Failure::classify(&error);
                 eprintln!("services-core {}", failure.diagnostic());
-                Error::Core(failure)
+                if failure == vantare_ipc::control::Failure::InvalidCredential {
+                    Error::Version
+                } else {
+                    Error::Core(failure)
+                }
             })
     }
 
@@ -116,11 +120,12 @@ impl App {
         Ok(())
     }
 
-    /// Called only on the renew stack with its freshly verified HTTP response.
+    /// Called only on the renew stack with its fresh, untrusted HTTP response.
     /// No license response or retry hint is persisted by services.
     fn complete_online_renewal(
         &mut self,
         credential: &crate::license::CredentialV1,
+        time: u64,
     ) -> Result<Reply> {
         let installed = self.core_command(vantare_ipc::control::Command::InstallOnline {
             credential: serde_json::to_string(credential).map_err(|_| Error::InvalidCredential)?,
@@ -140,6 +145,13 @@ impl App {
             }
             Err(error) => return Err(error),
         };
+
+        if has_commercial_license(&credential.claims.capabilities, time) {
+            crate::diagnostics::record_usage_once(&crate::diagnostics::Usage::AccountSignedIn {});
+            crate::diagnostics::record_usage_once(
+                &crate::diagnostics::Usage::CommercialLicenseObserved {},
+            );
+        }
         Ok(Reply::License {
             policy,
             message: "Derechos verificados y guardados por el núcleo".into(),
@@ -187,15 +199,7 @@ impl App {
                     });
                 }
             };
-            let reply = self.complete_online_renewal(&credential)?;
-            if has_commercial_license(&credential.claims.capabilities, time) {
-                crate::diagnostics::record_usage_once(
-                    &crate::diagnostics::Usage::AccountSignedIn {},
-                );
-                crate::diagnostics::record_usage_once(
-                    &crate::diagnostics::Usage::CommercialLicenseObserved {},
-                );
-            }
+            let reply = self.complete_online_renewal(&credential, time)?;
             return Ok(reply);
         }
         if !matches!(command, Command::DeviceReset) {
@@ -2256,7 +2260,8 @@ mod tests {
         VersionMismatch,
         VersionCloses,
         Invalidate,
-        RejectInstallOnline,
+        RejectInvalidCredential(String),
+        RejectInstallOnlineCredential(String),
         DisconnectInstallOnline,
         RejectInvalidate,
     }
@@ -2265,7 +2270,7 @@ mod tests {
         step: &CoreStep,
         command: vantare_ipc::control::Command,
         device: &str,
-        keys: &str,
+        _keys: &str,
     ) {
         use vantare_ipc::control;
         let credential = match command {
@@ -2276,7 +2281,8 @@ mod tests {
                         CoreStep::InstallOnline
                             | CoreStep::InstallOnlineCredential(_)
                             | CoreStep::DisconnectInstallOnline
-                            | CoreStep::RejectInstallOnline
+                            | CoreStep::RejectInvalidCredential(_)
+                            | CoreStep::RejectInstallOnlineCredential(_)
                     ),
                     "renew must preserve online provenance"
                 );
@@ -2289,7 +2295,8 @@ mod tests {
                         CoreStep::InstallOnline
                             | CoreStep::InstallOnlineCredential(_)
                             | CoreStep::DisconnectInstallOnline
-                            | CoreStep::RejectInstallOnline
+                            | CoreStep::RejectInvalidCredential(_)
+                            | CoreStep::RejectInstallOnlineCredential(_)
                     ),
                     "disk candidate cannot claim online provenance"
                 );
@@ -2297,21 +2304,26 @@ mod tests {
             }
             _ => panic!("signed credential required"),
         };
-        if let CoreStep::InstallOnlineCredential(expected) = step {
+        if let CoreStep::InstallOnlineCredential(expected)
+        | CoreStep::RejectInvalidCredential(expected)
+        | CoreStep::RejectInstallOnlineCredential(expected) = step
+        {
             assert_eq!(
                 &credential, expected,
                 "online install must use the exact fresh HTTP credential"
             );
         }
-        let proof = crate::license::Verifier::public_keys(keys)
-            .expect("keys")
-            .v1(
-                &serde_json::from_str::<crate::license::CredentialV1>(&credential).expect("v1"),
-                "550e8400-e29b-41d4-a716-446655440000",
-                device,
-            )
-            .expect("signed v1");
-        assert!(proof.grants().is_empty());
+        // This transport fixture checks the payload, not cryptographic authority.
+        // Signature/binding rejection is covered through the real runtime Owner.
+        let credential: crate::license::CredentialV1 =
+            serde_json::from_str(&credential).expect("v1");
+        assert_eq!(credential.claims.device_fingerprint, device);
+        if !matches!(
+            step,
+            CoreStep::InstallOnlineCredential(_) | CoreStep::RejectInstallOnlineCredential(_)
+        ) {
+            assert!(credential.claims.capabilities.is_empty());
+        }
     }
 
     pub(super) fn core_fixture(
@@ -2378,7 +2390,8 @@ mod tests {
                 let error = match step {
                     CoreStep::RejectInvalidate => Some("fixture rejection"),
                     #[cfg(windows)]
-                    CoreStep::RejectInstallOnline => Some(control::REJECTED),
+                    CoreStep::RejectInstallOnlineCredential(_) => Some(control::REJECTED),
+                    CoreStep::RejectInvalidCredential(_) => Some(control::INVALID_CREDENTIAL),
                     _ => None,
                 }
                 .map(str::to_owned);
@@ -2534,6 +2547,7 @@ mod tests {
         let (credential, keys) = crate::license_remote::tests::signed_fixture(&device);
         let mut newer = credential.clone();
         newer.key_id = "server-newer-fixture".into();
+        let fresh = serde_json::to_string(&newer).expect("fresh HTTP credential");
         let server = crate::test_http::Server::start(vec![
             (200, serde_json::json!({"access_token":"fixture-access", "refresh_token":"fixture-refresh", "token_type":"Bearer", "expires_in":3600}).to_string()),
             (200, serde_json::json!({"sub":"user_fixture"}).to_string()),
@@ -2562,9 +2576,16 @@ mod tests {
                 },
             )
             .expect("valid previous cache");
-        let (link, core) = core_fixture(device, keys, vec![CoreStep::Read]);
+        let (link, core) = core_fixture(
+            device,
+            keys,
+            vec![CoreStep::RejectInvalidCredential(fresh), CoreStep::Read],
+        );
         app.attach_core(link);
-        assert!(app.execute(Command::LicenseRenewAutomatic).is_err());
+        assert_eq!(
+            app.execute(Command::LicenseRenewAutomatic).err(),
+            Some(Error::Version)
+        );
         assert!(
             matches!(
                 app.execute(Command::LicenseStatus),
@@ -3144,7 +3165,15 @@ mod online_compatibility_tests {
     #[test]
     fn manual_online_rejection_explains_the_future_boundary_without_claiming_access() {
         let device = crate::license::installation::legacy_fingerprint().expect("fixture device");
-        let (credential, keys) = crate::license_remote::tests::signed_fixture(&device);
+        let (mut credential, keys) = crate::license_remote::tests::signed_fixture(&device);
+        credential.claims.capabilities = vec![crate::license::Capability {
+            key: "vantare.plan.pro".into(),
+            paid_through: "2030-01-01T00:00:00Z".into(),
+            perpetual: false,
+            scope_version: String::new(),
+        }];
+        crate::diagnostics::USAGE_ONCE_CAPTURE
+            .with(|events| *events.borrow_mut() = Some(Vec::new()));
         let (root, store) = crate::test_store("clock-behind-message");
         drop(store);
         let mut app = App::with_clock(
@@ -3168,13 +3197,18 @@ mod online_compatibility_tests {
             .save("license-candidate", &candidate)
             .expect("cache");
         let (link, core) = core_fixture(
-            device,
+            device.clone(),
             keys,
-            vec![CoreStep::RejectInstallOnline, CoreStep::ReadClockBehind],
+            vec![
+                CoreStep::RejectInstallOnlineCredential(
+                    serde_json::to_string(&candidate.credential).expect("fresh"),
+                ),
+                CoreStep::ReadClockBehind,
+            ],
         );
         app.attach_core(link);
         let Reply::License { policy, message } = app
-            .complete_online_renewal(&candidate.credential)
+            .complete_online_renewal(&candidate.credential, 100)
             .expect("diagnosis")
         else {
             panic!("typed core state required");
@@ -3190,9 +3224,47 @@ mod online_compatibility_tests {
         );
         assert!(message.contains("hora local"));
         assert!(!message.starts_with("Necesitas conexión"));
+        crate::diagnostics::USAGE_ONCE_CAPTURE.with(|events| {
+            assert!(
+                events.borrow_mut().take().expect("capture").is_empty(),
+                "rejected claims cannot produce usage"
+            );
+        });
         core.join().expect("all core requests observed");
+        assert_verified_commercial_observation(&mut app, &candidate.credential, device, keys);
         drop(app);
         std::fs::remove_dir_all(root).expect("isolated fixture cleanup");
+    }
+
+    fn assert_verified_commercial_observation(
+        app: &mut App,
+        credential: &crate::license::CredentialV1,
+        device: String,
+        keys: &'static str,
+    ) {
+        let (link, core) = core_fixture(
+            device,
+            keys,
+            vec![CoreStep::InstallOnlineCredential(
+                serde_json::to_string(credential).expect("fresh"),
+            )],
+        );
+        app.attach_core(link);
+        crate::diagnostics::USAGE_ONCE_CAPTURE
+            .with(|events| *events.borrow_mut() = Some(Vec::new()));
+        app.complete_online_renewal(credential, 100)
+            .expect("durable ACK");
+        crate::diagnostics::USAGE_ONCE_CAPTURE.with(|events| {
+            let events = events.borrow_mut().take().expect("capture");
+            assert!(matches!(
+                events.as_slice(),
+                [
+                    crate::diagnostics::Usage::AccountSignedIn {},
+                    crate::diagnostics::Usage::CommercialLicenseObserved {}
+                ]
+            ));
+        });
+        core.join().expect("verified install observed");
     }
 
     #[test]

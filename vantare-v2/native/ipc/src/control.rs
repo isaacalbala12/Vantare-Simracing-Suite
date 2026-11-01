@@ -32,6 +32,7 @@ pub enum Failure {
     CommandNotAllowed,
     Protocol,
     Version,
+    InvalidCredential,
     Rejected,
 }
 impl Failure {
@@ -73,6 +74,7 @@ impl Failure {
             Self::CommandNotAllowed => "rights-command-not-allowed",
             Self::Protocol => "rights-protocol-invalid",
             Self::Version => "rights-version-incompatible",
+            Self::InvalidCredential => INVALID_CREDENTIAL,
             Self::Rejected => "rights-rejected",
         }
     }
@@ -86,6 +88,7 @@ impl std::error::Error for Failure {}
 
 pub const REJECTED: &str = "rights-rejected";
 pub const UNAVAILABLE: &str = "rights-operation-unavailable";
+pub const INVALID_CREDENTIAL: &str = "rights-credential-invalid";
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -389,6 +392,8 @@ pub fn request_cancelled(
         // No cuerpos arbitrarios del peer en logs/errores.
         return Err(io::Error::other(if error == REJECTED {
             Failure::Rejected
+        } else if error == INVALID_CREDENTIAL {
+            Failure::InvalidCredential
         } else if error == UNAVAILABLE {
             Failure::Unavailable
         } else {
@@ -877,5 +882,115 @@ mod tests {
         p.version += 1;
         assert!(!p.current_at(10_000));
         assert!(read::<Request>(&mut u32::MAX.to_le_bytes().as_slice()).is_err());
+    }
+}
+
+#[cfg(all(test, any(windows, unix)))]
+mod legacy_v7_reader {
+    use super::*;
+    // request_cancelled frozen verbatim from 6fbbfaa6a; body SHA-256: 1256475e24eb2992c53a990c13f4383ccd04ec6a5c7d9e2b479d9e5e69022d4d
+    pub fn request_cancelled(
+        link: &CoreLink,
+        command: Command,
+        stop: &std::sync::Arc<crate::transport::Event>,
+    ) -> io::Result<Policy> {
+        use crate::transport::IO_TIMEOUT;
+        let mut pipe = connect_ready(&link.pipe, stop, IO_TIMEOUT)?;
+        if !pipe.server_peer()?.is_image(&link.image) {
+            return Err(io::ErrorKind::PermissionDenied.into());
+        }
+        write(
+            &mut pipe,
+            &Request {
+                version: VERSION,
+                sequence: 1,
+                nonce: link.nonce.clone(),
+                command,
+            },
+        )?;
+        let response = read_response(&mut pipe)?;
+        if response.version != VERSION || response.policy.version != VERSION {
+            return Err(io::Error::new(io::ErrorKind::InvalidData, VersionMismatch));
+        }
+        if response.sequence != 1 {
+            return Err(io::ErrorKind::InvalidData.into());
+        }
+        if let Some(error) = response.error {
+            // No cuerpos arbitrarios del peer en logs/errores.
+            return Err(io::Error::other(if error == REJECTED {
+                Failure::Rejected
+            } else if error == UNAVAILABLE {
+                Failure::Unavailable
+            } else {
+                Failure::UnknownLegacy
+            }));
+        }
+        Ok(response.policy)
+    }
+
+    #[test]
+    fn previous_v7_reader_treats_the_new_credential_error_as_unknown_legacy() {
+        use crate::transport::{Event, IO_TIMEOUT, Listener};
+        use sha2::{Digest, Sha256};
+        let source = include_str!("control.rs").replace("\r\n", "\n");
+        let module = source
+            .split_once("mod legacy_v7_reader {")
+            .expect("frozen module")
+            .1;
+        let start = module
+            .find("    pub fn request_cancelled(")
+            .expect("frozen function");
+        let end = module[start..]
+            .find("\n\n    #[test]")
+            .expect("end of frozen function")
+            + start;
+        let frozen = module[start..end]
+            .lines()
+            .map(|line| line.strip_prefix("    ").unwrap_or(line))
+            .collect::<Vec<_>>()
+            .join("\n");
+        assert_eq!(
+            format!("{:x}", Sha256::digest(frozen.as_bytes())),
+            "1256475e24eb2992c53a990c13f4383ccd04ec6a5c7d9e2b479d9e5e69022d4d",
+            "v7 reader must stay frozen"
+        );
+
+        let link = CoreLink {
+            pipe: format!("legacy-v7-invalid-{}", std::process::id()),
+            image: std::env::current_exe().expect("image"),
+            nonce: "fixture-nonce".into(),
+        };
+        let stop = std::sync::Arc::new(Event::new().expect("event"));
+        let mut listener =
+            Listener::new(&link.pipe, std::sync::Arc::clone(&stop), IO_TIMEOUT).expect("listener");
+        let mut pipe = listener.instance().expect("instance");
+        let server = std::thread::spawn(move || {
+            pipe.accept().expect("connect");
+            let request: Request = read(&mut pipe).expect("request");
+            assert!(matches!(request.command, Command::InstallOnline { .. }));
+            write(
+                &mut pipe,
+                &Response {
+                    version: VERSION,
+                    sequence: request.sequence,
+                    policy: Policy {
+                        version: VERSION,
+                        ..Policy::default()
+                    },
+                    error: Some(INVALID_CREDENTIAL.into()),
+                },
+            )
+            .expect("new error in unchanged envelope");
+        });
+        let error = request_cancelled(
+            &link,
+            Command::InstallOnline {
+                credential: "{}".into(),
+            },
+            &stop,
+        )
+        .expect_err("old reader preserves unknown error");
+        assert_eq!(Failure::classify(&error), Failure::UnknownLegacy);
+        server.join().expect("server");
     }
 }

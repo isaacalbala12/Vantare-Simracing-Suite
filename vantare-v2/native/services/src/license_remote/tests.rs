@@ -83,13 +83,8 @@ fn native_license_uses_oauth_and_signed_uuid_without_a_data_bridge() {
     assert_eq!(candidate.claims.subject, SUBJECT);
     assert_ne!(account.identity().expect("OAuth identity").subject, SUBJECT);
     assert!(
-        Verifier::public_keys(keys)
-            .expect("keys")
-            .v1(&candidate, SUBJECT, DEVICE)
-            .expect("verify")
-            .grants()
-            .is_empty(),
-        "online capabilities cannot grant local rights"
+        candidate.claims.capabilities.is_empty(),
+        "online capabilities are not copied into the credential"
     );
     let request = server
         .requests
@@ -167,17 +162,12 @@ fn native_license_maps_remote_errors_without_retry_or_saving_a_candidate() {
 }
 
 #[test]
-fn native_license_rejects_bad_envelopes_signed_bindings_and_unconfigured_builds() {
+fn native_license_rejects_bad_transport_envelopes_and_unconfigured_builds() {
     let (credential, keys) = signed_fixture(DEVICE);
-    let mut tampered = credential.clone();
-    tampered.claims.subject = "550e8400-e29b-41d4-a716-446655440001".into();
-    let wrong_device = "f".repeat(64);
     let cases = [
         (200, "{}".into(), Error::Protocol, DEVICE),
         (200, serde_json::json!({"credential":credential,"online_capabilities":["unknown"]}).to_string(), Error::Protocol, DEVICE),
         (200, serde_json::json!({"credential":credential,"online_capabilities":[],"token":"unexpected"}).to_string(), Error::Protocol, DEVICE),
-        (200, serde_json::json!({"credential":tampered,"online_capabilities":[]}).to_string(), Error::InvalidCredential, DEVICE),
-        (200, serde_json::json!({"credential":credential,"online_capabilities":[]}).to_string(), Error::InvalidCredential, &wrong_device),
         (201, "{}".into(), Error::Protocol, DEVICE),
     ];
     let server = Server::start(

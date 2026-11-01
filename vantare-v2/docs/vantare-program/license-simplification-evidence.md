@@ -108,3 +108,135 @@ automática como NeedsSignIn sin bloquear ni revocar derechos. B debe preservar
 los resultados tipados actuales de rechazo del núcleo y services no usará
 claims sin ACK verificado para presentación o decisiones. Cada corte tiene
 su PR y gates propios. No se modifica Plane ni se integra/publica desde el worker.
+
+
+## Corte B — un solo dueño de verificación
+
+Base `6fbbfaa6ad96d187877043786fc999a369d268b3`, integración de A (#1841)
+confirmada por el orquestador. Rama `vantareapp/isa-1827-simplificar-owner`.
+Authority, catálogo, verificador y sus pruebas se trasladan a runtime::rights.
+Owner/host siguen limitados a Windows; los módulos puros conservan pruebas en
+Unix. Base64/Ed25519 pasan de dependencias de test a producción en runtime,
+con las mismas versiones ya fijadas. Tras revisión, IPC añade sha2 solo como
+dependencia de test para verificar el lector congelado; el lock registra esa
+arista sin añadir paquetes ni versiones. Services conserva
+los tipos v1 y Store; no hay dependencia services→runtime.
+
+La renovación HTTP deja de verificar dos veces. Services no guarda ni utiliza
+claims recibidos para presentación o decisiones antes del ACK durable. La
+categoría cerrada rights-credential-invalid conserva Error::Version/Transient
+para firma/subject/device; lápida sigue Rejected y iat futuro Unavailable/Clock.
+No cambia el sobre control v7 ni el disco. Una copia congelada del lector v7
+anterior consume el error nuevo como UnknownLegacy; la matriz existente fija
+su resultado Transient. Seis casos recorren HTTP→services→núcleo real y
+comprueban mensajes literales anteriores, forma manual/automática, aviso y
+reintento. No se sustituyen las matrices por esas pruebas.
+
+P3 de A: comentario v2/Installation retirado de Store; tres inventarios del
+diseño marcados como superados por decisión 5; bloque suelto eliminado. El test
+de identidad usa ahora huella real y v1 firmado, con un core-installation-v1
+corrupto que permanece intacto y no afecta a la instalación. La prueba de E/S
+bloqueada de Authority se mueve a su dueño, conservando los bytes y la prueba
+de recuperación tras desbloqueo. El JSON recovery-v1 se mueve sin cambiar su
+contenido a runtime/testdata; Rust y Deno siguen compartiendo una sola fixture.
+Deno no está instalado en este entorno: no se afirma ejecutar su prueba.
+
+Medición, con el mismo comando anterior cambiando --ref por `6fbbfaa6a`:
+
+| Crate | Antes | Después | Diferencia |
+|---|---:|---:|---:|
+| services | 11.161 | 10.376 | −785 |
+| runtime | 18.370 | 19.141 | +771 |
+| ipc | 6.316 | 6.322 | +6 |
+| hub | 73.482 | 73.482 | 0 |
+| Total | 109.329 | 109.321 | −8 |
+
+Perímetro fijo recorrido/Store: 14.867 → 14.858 (−9); services 6.635 → 5.848,
+runtime 1.870 → 2.642, ipc 1.258 → 1.264, hub 5.104 igual. Fuera del perímetro
+se retira una línea cfg en lib.rs y se añaden dos separadores en diagnostics.rs
+para la captura exclusiva de test: diferencia neta +1, total −8. Frente al HEAD
+03d08d776 anterior a los P3: 109.319 → 109.321 (+2); el perímetro
+recorrido/Store permanece en 14.858. Los JSON completos por
+fichero son isa-1827-s-base-b.json e isa-1827-s-after-b-review.json (tras los P3). Los movimientos no
+se presentan como reducción; B retira una ejecución duplicada por renovación.
+El contador falla explícitamente si falta un fuente rastreado: exige registrar
+el borrado o restaurarlo, con la ruta en el error. Un test de stdlib comprueba
+que una desaparición no reduce el conteo en silencio.
+
+La primera suite pasó 1136/1138. Dos fixtures requerían ajuste al recorrido
+HTTP→núcleo: la lápida conserva LicenseFailure manual y una clave desconocida
+ahora debe llegar al núcleo, que responde con la categoría nueva. Las dos
+pruebas pasan después del ajuste; se conservan los logs inicial y focalizado.
+La matriz de núcleo, las matrices de services y el test de arquitectura
+domain/ui tienen los mismos blobs que la base.
+
+Gates finales después de restaurar las mutaciones: fmt y Clippy de services,
+runtime, ipc y Engineer (todos los targets, -D warnings) PASS. Nextest ci
+services/runtime/ipc/Engineer/domain **1138/1138 con telemetría PASS**,
+13 omisiones previas. Summary [ 137.308s] 1138 tests run: 1138 passed (1 slow), 13 skipped. Lifecycle runtime 13/13 y
+Engineer 5/5 PASS. Calidad conserva las 466 huellas. Todas las restricciones
+del esquema del fragmento ISA-1827 se comprueban con stdlib; jsonschema no está
+instalado. Los comandos y códigos quedan en isa-1827-s-final-b-gates.json.
+
+Las tres mutaciones (firma omitida, error inválido convertido en definitivo,
+traducción Error::Version perdida) fallan por aserción. Se restauran 223 fuentes
+Rust de services/runtime/ipc/Engineer por SHA-256. Tras Clippy, la prueba nueva
+se divide en preparación y aserción manual sin relajar expectativas, y las tres
+mutaciones vuelven a detectarse: logs en isa-1827-s-mutations-b y -b-r2.
+Se conserva también el lint too_many_lines que motivó esa división.
+C/D/E quedan pendientes de sus PRs y de la integración de B.
+
+PR draft [#1843](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1843), enlazado en T3, a nightly y sin integrar.
+Validación inicial de B: `910edc04311b845ee21b0408a307e412a10ffafd`; la revisión P3 posterior tiene sus gates arriba.
+CI/revisión del orquestador. C comienza tras integrar B en nightly.
+
+
+Revisión profunda de #1843 (sin P0–P2): los seis casos distinguen subject mal
+formado (InvalidCredential/Version/Transient) de UUID válido de otra cuenta
+(Denied/REJECTED/Definitive con binding anterior intacto). La analítica comercial
+se ejecuta solo tras ACK correcto: el fallback Rejected→Read(ClockBehind) no
+observa claims rechazados. La regresión captura cero observaciones en ese caso
+y ambas observaciones al recibir ACK. El test del lector v7 verifica el SHA-256
+de la función congelada, normalizando CRLF y solo la indentación exterior.
+Servicios/núcleo se actualizan juntos; nuevo-services/viejo-núcleo no se soporta.
+La comprobación del lector anterior no amplía ese soporte.
+Gates finales posteriores a los P3 y a restaurar las mutaciones: fmt y Clippy
+services/runtime/ipc/Engineer all-targets -D warnings PASS. Nextest ci con
+telemetría: **1138/1138 PASS**, 13 omisiones previas (Summary [ 131.035s] 1138 tests run: 1138 passed (1 slow), 13 skipped).
+Lifecycle runtime 13/13 y Engineer 5/5 PASS. La prueba Python del contador pasa.
+Se detectan seis mutaciones Rust (las tres originales, analítica tras rechazo,
+cambio de cuenta y deriva del lector congelado), más omisión de fichero en
+Python. Los 223 fuentes Rust y el contador se restauran por SHA-256.
+Los cuatro blobs de arquitectura/caracterización siguen intactos. Logs y
+comandos: isa-1827-s-review-b-gates.json, isa-1827-s-review-b-*,
+isa-1827-s-mutations-b-review y isa-1827-s-b-review-focused.log.
+La primera compilación de la revisión señaló un import tras sentencias; la
+siguiente, el lifetime static de un helper de test. Corregidos, sin relajar lints.
+El caso de fixture sin uso se sustituye por rechazo con bytes exactos.
+Commercial PostgreSQL (test 14) es un fallo ajeno, confirmado por el orquestador;
+lo investiga otro worker. No se modifica ni investiga ese harness aquí.
+
+Código de los cuatro P3 validado: `17bef84a6b6480e68115066ae65ed03935e44673`.
+Los commits posteriores solo actualizan documentación.
+
+
+## Rebase de B tras #1842 y #1845
+
+Base actual `0a241fc2e927cf925166c86c072b1d43d30044d4`. El único conflicto
+estaba en el handoff: se conservan completas sus entradas de nightly y el bloque
+B previo. Al terminar el rebase, los demás ficheros de B tienen los mismos blobs que
+`4483a78ed2b9a28a42db6c35964db3cf37c154b1`. Después solo se añaden notas
+a este documento y al handoff. Todos los ficheros añadidos o
+modificados por #1842/#1845 permanecen idénticos a nightly. El ejemplo nuevo
+matrix-verifier es de firma de fixtures del instalador, independiente del
+verificador de licencias trasladado. El test comercial 14 ya está corregido
+por #1845; no se modifica desde este PR.
+
+Integridad y range-diff revisados; certificado externo
+isa-1827-s-rebase-integrity.json. Medición repetida con --ref 0a241fc2e y árbol
+actual: 109.329 → 109.321 (−8), recorrido/Store 14.867 → 14.858 (−9).
+JSON por fichero: isa-1827-s-base-b-rebased.json y -after-b-rebased.json.
+Fmt y Clippy all-targets -D warnings posteriores al rebase PASS
+(logs isa-1827-s-rebase-fmt.log y -clippy.log); Nextest 1138/1138 con telemetría,
+lifecycle 13/13 + 5/5 y siete mutaciones conservan validez sobre el mismo código
+de licencias (src/tests idénticos). No se repiten por una resolución documental. CI a cargo del orquestador.

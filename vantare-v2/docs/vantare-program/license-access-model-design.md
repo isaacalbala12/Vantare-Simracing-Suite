@@ -228,7 +228,7 @@ entre procesos. Los agrupo por **qué** deciden:
 | `services/<sha(v1\|issuer\|client\|canal\|backend)>` | `account`, `oauth-metadata`, `account-profile`, borradores de compra | services | Sí |
 | `services/<sha(license-v1\|backend\|canal)>` | `license-candidate`, `license-transfer-pending` | services | **No** (copia de la credencial + marcador de reintento) |
 | `rights/<canal>/<sha(core-rights-v1)>` | `binding`, `authority`, `authority-recovery` | núcleo | Sí |
-| `rights/<sha(core-installation-v1)>` | `installation` (semilla Ed25519 v2) | núcleo | **No hoy**: ningún servidor emite v2 (`license.rs:100` «Destination contract… not an existing endpoint»); `proof`/`jws` (`license.rs:203-221`, `:280-328`) solo se usan desde el núcleo (`rights/mod.rs:238`) y en tests |
+| `rights/<sha(core-installation-v1)>` | `installation` (semilla Ed25519 v2 histórica) | retirado | **Inventario superado por ADR 0102, decisión 5**: el corte A del paso 11 retiró JWS/v2 y la clave; los restos quedan inertes, sin leer ni borrar |
 
 El `Store` (un escritor, bloqueo exclusivo, ACL privada, DPAPI con contexto) es
 un buen patrón y es el mismo para roadmap, informes y pilot. Pero ofrece **cuatro
@@ -367,16 +367,15 @@ enum UserAction { SignIn, ResetDevice, UpdateApp, FixClock, Support }
 9. **`online_capabilities`** como contenido: el servidor siempre envía `[]`
    (el campo se mantiene por compatibilidad con clientes instalados, que lo
    exigen por `deny_unknown_fields`).
-10. **Opcional, si v2 no está planificado:** `ClaimsV2`/`jws`/`proof`,
-    `Installation` y el almacén `core-installation-v1`
-    (`license.rs:100-112`, `:203-221`, `:280-328`; `installation.rs:38-88`;
-    `rights/mod.rs:31-39`). Si v2 sí está planificado, se conserva fuera del
-    camino de arranque y se documenta en el ADR.
+10. **Ejecutado en el corte A del paso 11:** ADR 0102, decisión 5, superó
+    esta opción y retiró `ClaimsV2`/`jws`/`proof`, `Installation` y el uso de
+    `core-installation-v1`. Los restos no se leen ni se borran; no afectan a v1.
 
 ### 4.2.1 Paso 8 — contrato ejecutado
 
-Servicios conserva la comprobación de firma/claims de la emisión HTTP nueva
-por el alcance aprobado; no elimina el verificador compartido con el núcleo.
+En el paso 8, servicios conservó la comprobación de firma/claims de la emisión
+HTTP nueva. El corte B del paso 11 la retira: solo runtime::rights verifica,
+manteniendo el resultado tipado mediante el error específico de credencial inválida.
 Devuelve CredentialV1 en memoria y la entrega a InstallOnline, sin persistir.
 Desaparecen el namespace de licencia de servicios, Candidate productivo,
 TransferRights, recovered_renewal_transfer y las rutas de cuarentena del candidate.
@@ -503,8 +502,9 @@ en lugar de pararlos.
 4. **Gracia en pausa (R5):** ¿una pausa conserva la gracia de la carrera?
    Recomiendo que sí mientras sea la misma sesión del simulador; si producto
    dice que no, se retira R5.
-5. *(Menor)* ¿Sigue planificada la credencial v2 (JWS + clave de instalación)?
-   Si no, paso 11 la retira.
+5. **Decisión confirmada y ejecutada:** ADR 0102, decisión 5, retiró v2/JWS y
+   su clave de instalación en el corte A del paso 11; esta pregunta histórica
+   queda superada. El único formato de acceso vigente es Ed25519 v1.
 
 ### 4.7 Riesgos
 

@@ -563,8 +563,25 @@ pub fn record_usage(event: &Usage) {
     }
 }
 
+#[cfg(test)]
+thread_local! {
+    pub(crate) static USAGE_ONCE_CAPTURE: std::cell::RefCell<Option<Vec<Usage>>> = const { std::cell::RefCell::new(None) };
+}
+
 /// Una observación consentida por instalación; nunca un recibo monetario.
 pub fn record_usage_once(event: &Usage) {
+    #[cfg(test)]
+    if USAGE_ONCE_CAPTURE.with(|capture| {
+        if let Some(events) = capture.borrow_mut().as_mut() {
+            events.push(event.clone());
+            true
+        } else {
+            false
+        }
+    }) {
+        return;
+    }
+
     if !configured() {
         return;
     }

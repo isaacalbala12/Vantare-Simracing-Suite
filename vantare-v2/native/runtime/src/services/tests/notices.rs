@@ -1,6 +1,109 @@
 use super::*;
 
 #[test]
+fn helper_restart_and_hub_reconnect_preserve_no_deadline_backoff_and_daily_check() {
+    let Fixture {
+        root,
+        photo,
+        link,
+        core,
+        services,
+    } = Fixture::new();
+    let mut hub = Session::open(&photo);
+    let now = Instant::now();
+    {
+        let mut state = services.state.lock().expect("state");
+        state.core_retry_at = Some(now + Duration::from_hours(72));
+        state.renewal.observe(&confirmed_session());
+    }
+    assert!(matches!(hub.request(Command::Status), Reply::Status { .. }));
+    let mut policy = control::request(&link, control::Command::Read).expect("core");
+    policy.signed_until_ms = None;
+    let result = |outcome| match outcome {
+        protocol::RenewalOutcome::Verified => Reply::License {
+            policy: policy.clone(),
+            message: String::new(),
+        },
+        _ => Reply::LicenseFailure {
+            outcome,
+            message: "fixture offline".into(),
+        },
+    };
+    let mut attempts = 0;
+    for (minute, outcome) in [
+        (0, protocol::RenewalOutcome::Transient),
+        (1, protocol::RenewalOutcome::Transient),
+        (3, protocol::RenewalOutcome::Transient),
+        (7, protocol::RenewalOutcome::Verified),
+    ] {
+        {
+            let mut state = services.state.lock().expect("state");
+            let reply = run_renewal_with_clock(
+                &mut state,
+                &policy,
+                policy.checked_at_ms,
+                now + Duration::from_mins(minute),
+                |_, command| {
+                    assert!(matches!(command, Command::LicenseRenewAutomatic));
+                    attempts += 1;
+                    result(outcome)
+                },
+                || now + Duration::from_mins(minute),
+            );
+            assert!(reply.is_some());
+        }
+        assert!(matches!(hub.request(Command::Shutdown), Reply::Closed));
+        drop(hub);
+        hub = Session::open(&photo);
+        assert!(matches!(
+            hub.request(Command::LicenseStatus),
+            Reply::LicenseStatus { .. }
+        ));
+        assert!(services.state.lock().expect("state").client.is_none());
+        assert!(matches!(hub.request(Command::Status), Reply::Status { .. }));
+        let mut state = services.state.lock().expect("state");
+        assert!(state.client.is_some(), "helper reopened");
+        let offset = if minute == 7 {
+            Duration::from_mins(1439)
+        } else {
+            Duration::from_secs(59)
+        };
+        assert!(
+            run_renewal(
+                &mut state,
+                &policy,
+                policy.checked_at_ms,
+                now + Duration::from_mins(minute) + offset,
+                |_, _| panic!("no burst after reconnect/restart")
+            )
+            .is_none()
+        );
+    }
+    assert_eq!(attempts, 4);
+    {
+        let mut state = services.state.lock().expect("state");
+        assert!(
+            run_renewal(
+                &mut state,
+                &policy,
+                policy.checked_at_ms,
+                now + Duration::from_mins(7) + Duration::from_hours(24),
+                |_, _| {
+                    attempts += 1;
+                    result(protocol::RenewalOutcome::Verified)
+                }
+            )
+            .is_some()
+        );
+    }
+    assert_eq!(attempts, 5);
+    drop(hub);
+    drop(services);
+    drop(core);
+    std::fs::remove_dir_all(root).expect("private fixture cleanup");
+}
+
+#[test]
 fn transient_in_active_grace_or_live_never_creates_an_access_notice() {
     let now = Instant::now();
     for access in [control::AccessState::Active, control::AccessState::Grace] {
@@ -65,7 +168,7 @@ fn confirmed_login_rechecks_once_and_redetects_a_rejection_with_the_retry_floor(
             state.renewal.attempted(now);
             state
                 .renewal
-                .completed(protocol::RenewalOutcome::Definitive);
+                .completed(protocol::RenewalOutcome::Definitive, now);
             remember_notice(
                 &mut state,
                 &Reply::DeviceLimit {

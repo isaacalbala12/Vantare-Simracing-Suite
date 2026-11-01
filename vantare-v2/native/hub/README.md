@@ -1,4 +1,8 @@
-## Contrato vigente de licencias — paso 9 (#1827)
+## Contrato vigente de licencias — paso 10 (#1827)
+
+La cadencia del supervisor sin plazo firmado es arranque/24 h desde éxito;
+helper y Hub no tienen otro temporizador. Live, ClockBehind y backoff siguen
+regidos por [el contrato del supervisor](../runtime/README.md).
 
 El Hub usa services v19, sin TransferRights. El saludo rechaza v18 y anteriores como
 Version antes de Policy y no envía acciones de revocación. El helper se admite

@@ -1,3 +1,16 @@
+<!-- isa1827-p10-worker -->
+## VANTA-126 / #1827 — Paso 10 en ejecución (2026-11-01)
+
+Base origin/nightly `dac51663eff12cd6e550670cbdd27c7b9c3cbb1d`, con paso 9 integrado (#1838).
+Rama `vantareapp/isa-1827-paso10-cadencia`, worktree `C:/VantareServer/wt/isa-1827-p10`;
+target `D:/VantareServer/targets/isa-1827-p10`, evidencia `D:/VantareServer/evidence/isa-1827-p10`.
+Arranque/24 h desde éxito sin signed_until, backoff y frenos existentes.
+Decisión confirmada del orquestador: reinicios de helper/reconexiones conservan
+Renewal; nuevo supervisor comprueba una vez, sin persistencia nueva. Gates,
+mutaciones y revisión de lectura en curso; aún sin PR. Plane intacto, sin
+merge/release, producción, instalaciones, secretos ni datos reales.
+<!-- /isa1827-p10-worker -->
+
 <!-- isa1827-p9-worker -->
 ## Paso 9 — revisión del orquestador aplicada, PR draft #1838 (VANTA-126, 2026-11-01)
 

@@ -1,4 +1,14 @@
-## Contrato vigente de licencias — paso 9 (#1827)
+## Contrato vigente de licencias — paso 10 (#1827)
+
+Sin `signed_until_ms`, el supervisor comprueba al arrancar y cada 24 horas
+monotónicas desde una renovación verificada, para cualquier catálogo (incluidos
+Gratis, Founders y Owner sin fecha). No se duplica el chequeo inicial de Gratis.
+Transporte conserva derechos y aplica 1/2/4/8/15 minutos; un éxito reinicia las
+24 horas. Live fuera de la ventana urgente y ClockBehind siguen frenando el
+automático; compra, login confirmado, recuperación y acción manual conservan
+sus excepciones y el suelo existente. Con plazo firmado se conserva su cadencia.
+Reiniciar el helper o reconectar el Hub no reinicia Renewal ni su backoff.
+Un supervisor nuevo comprueba una vez por diseño: no hay persistencia nueva.
 
 La admisión del helper ya no instala una copia de disco: usa Read autenticado
 y helper_command_allowed sobre Policy.state. Las consultas necesitan política
@@ -104,11 +114,11 @@ Hub y temporizador comparten admisión/backoff y clasificación del ACK. El resu
 se evalúa en el reloj efectivo del ACK del núcleo, sin compararlo con la hora
 capturada antes de HTTP; esto evita un falso transitorio si el reloj retrocede
 durante la petición. Los consumidores conservan su comprobación de frescura2s y
-la autoridad conserva antirollback. Restaurar una concesión de pago o perpetua con margen no
+la autoridad conserva antirollback. Restaurar una concesión con plazo firmado y margen no
 dispara HTTP por ser el primer intento: el núcleo vuelve a verificar localmente
 firma y autoridad. Una concesión Owner de treinta días espera la ventana urgente.
-Gratis conserva un único chequeo inicial para descubrir compras externas, sin
-convertirlo en un sondeo HTTP continuo tras verificar la respuesta.
+Gratis comparte el chequeo inicial/24 h del contrato vigente cuando no hay plazo
+firmado. Con plazo firmado conserva el chequeo inicial y la ventana urgente.
 
 La v1 no tiene caducidad global desde `issued_at`: cada Pro/Plus vence en el
 `paid_through` firmado; Founders/perpetuos no vencen; concesiones operativas

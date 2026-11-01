@@ -1,4 +1,8 @@
-## Contrato vigente de licencias — paso 9 (#1827)
+## Contrato vigente de licencias — paso 10 (#1827)
+
+La cadencia del supervisor sin plazo firmado es arranque/24 h desde éxito;
+helper y Hub no tienen otro temporizador. Live, ClockBehind y backoff siguen
+regidos por [el contrato del supervisor](../runtime/README.md).
 
 Services v19 conserva la retirada de TransferRights, Candidate y su marcador. `renew` devuelve
 CredentialV1 recién verificada en memoria y App la entrega por InstallOnline;

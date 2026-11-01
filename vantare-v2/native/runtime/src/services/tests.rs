@@ -734,7 +734,9 @@ fn hub_automatic_requests_obey_live_window_and_explicit_purchase_origin() {
         let mut state = services.state.lock().expect("state");
         state.renewal.observe(&confirmed_session());
         state.core_retry_at = Some(Instant::now() + Duration::from_hours(1));
-        state.renewal.completed(protocol::RenewalOutcome::Transient);
+        state
+            .renewal
+            .completed(protocol::RenewalOutcome::Transient, Instant::now());
         state.renewal.attempted(
             Instant::now()
                 .checked_sub(Duration::from_mins(15))
@@ -1235,7 +1237,7 @@ fn purchase_restarts_automatic_confirmation_after_a_definitive_rejection() {
     state.renewal.attempted(now);
     state
         .renewal
-        .completed(protocol::RenewalOutcome::Definitive);
+        .completed(protocol::RenewalOutcome::Definitive, now);
     let policy = control::Policy {
         version: control::VERSION,
         revision: 1,

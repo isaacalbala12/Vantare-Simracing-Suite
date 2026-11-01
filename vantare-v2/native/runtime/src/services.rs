@@ -350,7 +350,9 @@ fn handle_with(
         state.renewal.confirmed_login();
     }
     if renewing {
-        state.renewal.completed(renewal_outcome(&reply));
+        state
+            .renewal
+            .completed(renewal_outcome(&reply), Instant::now());
     }
     if manual_renewal || reset {
         remember_notice(state, &reply);
@@ -544,13 +546,23 @@ fn run_renewal(
     now: Instant,
     dispatch: impl FnOnce(&mut State, Command) -> Reply,
 ) -> Option<Reply> {
+    run_renewal_with_clock(state, policy, wall, now, dispatch, Instant::now)
+}
+fn run_renewal_with_clock(
+    state: &mut State,
+    policy: &control::Policy,
+    wall: u64,
+    now: Instant,
+    dispatch: impl FnOnce(&mut State, Command) -> Reply,
+    completed_at: impl FnOnce() -> Instant,
+) -> Option<Reply> {
     let origin = state.renewal_origin(now);
     state.renewal.claim_from(policy, wall, now, origin).ok()?;
     let reply = dispatch(state, Command::LicenseRenewAutomatic);
     // Classify at the authenticated core ACK's effective clock, not the wall
     // clock sampled before HTTP. Consumers retain their independent 2s TTL.
     let outcome = renewal_outcome(&reply);
-    state.renewal.completed(outcome);
+    state.renewal.completed(outcome, completed_at());
     eprintln!("license-auto-result={outcome:?}");
     remember_notice(state, &reply);
     Some(reply)

@@ -1,3 +1,33 @@
+## Contrato vigente de Store — paso 12 (#1827)
+
+`Store::read` devuelve Value, Missing o Damaged, sin reparar ni convertir E/S
+en corrupción. Los nombres activos, contextos, extensiones, structs y límites de datos
+no cambian. La clase de cada documento se declara una vez en `document_class`
+(storage.rs): guarda durable, caché reconstruible o secreto de sesión.
+
+- Guardas: binding, authority/authority-recovery, Pilot, borrador e imágenes de
+  informe y buy-*. El dueño decide la recuperación conservadora; no se reemplazan
+  por datos vacíos. Borrador e imágenes permanecen juntos. El núcleo conserva su
+  reparación con marcador durable previo; solo la emisión online verificada
+  puede levantarlo. Los restos retirados de licencia nunca se reproducen.
+- Cachés: metadata OAuth, perfil, roadmap y report-attempt. `Read::recover`
+  comparte la validación y la recuperación cuando el dueño la solicita;
+  rechaza su uso en guardas. DPAPI dañado de perfil/roadmap/report-attempt se
+  aparta y permite reconstruir, igual que su JSON inválido (cambio autorizado).
+  La metadata OAuth de Gestión conserva su lectura estricta anterior.
+- Secreto de sesión: account conserva su recuperación a sesión ausente ante
+  daño conocido. El recargado tras login es estricto. Una caché de perfil dañada
+  no modifica la sesión válida ni los derechos firmados del núcleo.
+
+El único apartado es `quarantine_dated`: rename sin borrar ni sobrescribir una
+copia anterior, tope tres por documento, incluidos nombres antiguos. Las copias
+aparte usan el formato fechado común; los restores sin reloj inyectado pasan
+0 (fecha desconocida), sin inventar una pared firmada. Un rename
+fallido es error y conserva el original; limpiar archivos antiguos es best-effort
+tras el rename, con diagnóstico si falla. No hay migración de datos. `fixture`
+solo inspecciona fixtures en builds test/test-support y no forma parte del
+producto. Los cuatro lectores y los dos apartados alternativos se retiran.
+
 ## Contrato vigente de licencias — paso 10 (#1827)
 
 Paso 11, corte A: el único formato de credencial es Ed25519 v1. Se retiran

@@ -240,3 +240,85 @@ Fmt y Clippy all-targets -D warnings posteriores al rebase PASS
 (logs isa-1827-s-rebase-fmt.log y -clippy.log); Nextest 1138/1138 con telemetría,
 lifecycle 13/13 + 5/5 y siete mutaciones conservan validez sobre el mismo código
 de licencias (src/tests idénticos). No se repiten por una resolución documental. CI a cargo del orquestador.
+
+
+## Corte C — Store tipado y clases por documento
+
+Base `cd9282ccca01bd2522c3e53481c25f360df85c66`, B integrado. Rama
+vantareapp/isa-1827-simplificar-store. Una lectura sin efectos devuelve
+Value/Missing/Damaged; E/S sigue siendo error. Class declara la política de
+cada documento. required mantiene la lectura estricta; recover valida y solo
+permite reconstrucción de cachés/secretos de sesión. El núcleo conserva su
+reparación explícita de autoridad, con marcador durable previo al apartado.
+No cambian nombres activos, contextos, ACL, DPAPI, tamaños ni structs guardados.
+
+Se retiran load/load_cache/restore_cache/load_for_restore y
+quarantine/quarantine_preserving. El único quarantine_dated no borra primero
+copias anteriores, conserva originales si falla el rename y recorta a tres
+(después del rename, limpieza best-effort con diagnóstico). Las copias aparte
+normalizan su nombre al formato fechado existente; restores sin reloj pasan
+0 como fecha desconocida, sin convertirla en pared firmada. Las guardas de
+Pilot, compra y borrador/imágenes conservan su política; no se recuperan como
+perfiles o informes vacíos. Gestión mantiene su política estricta de metadata.
+
+F4 (#1822): se distingue daño de autoridad y de marcador. El segundo conserva
+su presencia como barrera sin reescribir una autoridad sana ni entrar otra vez
+en el bloque de diagnóstico. La prueba existente compara los bytes de ambos
+documentos tras dos reinicios y sigue negando replay. El primer commit unifica
+Store/F4; el segundo cambia expresamente DPAPI dañado de roadmap, perfil y
+report-attempt a cuarentena + reconstrucción. La prueba reconstruye los tres,
+comprueba una sola copia apartada y mantiene los bytes de la sesión válida.
+El helper fixture es exclusivo de test/test-support: inspecciona valores vía
+read.required y evita alterar los oráculos de las fixtures existentes.
+
+La suite focal del primer hito pasa 18/18; la de cachés/guardas pasa 22/22.
+Se detectan seis mutaciones por aserción: reescritura F4, E/S como daño, guarda
+recuperada como caché, DPAPI que vuelve a bloquear cachés, rename ignorado y
+cuatro copias. Los 241 fuentes Rust se restauran por SHA-256 en cada caso.
+Arquitectura domain/ui y tres caracterizaciones tienen los mismos blobs que
+la base (isa-1827-s-characterization-c.json). No se cambia una fila de licencia.
+
+La primera suite completa pasó 1175/1176 con telemetría. El único fallo era una
+expectativa de billing que protege su presentación CheckoutRecovery ante una
+lectura bloqueada. Se conserva esa política del dueño, manteniendo E/S distinta
+de daño en read: sin HTTP, sin otro UUID y sin descartar la guarda. La expectativa
+original no se cambia. Se retira la prueba nueva redundante y se repite la
+mutación de E/S sobre la versión final; los seis puntos mutados y sus pruebas
+permanecen iguales. Logs iniciales preservados en isa-1827-s-c-initial-full-*.
+Los primeros lints (imports, préstamos y tamaño de una fixture al migrarla)
+también se conservan; fixture se mueve a su módulo exclusivo de pruebas.
+
+Medición: los cuatro crates siguen teniendo el mismo perímetro del contador.
+Para incluir el consumidor Gestión se añade --include-admin, sin cambiar los
+valores por defecto ni el algoritmo. Comandos desde raíz Git:
+
+```powershell
+python vantare-v2/native/scripts/license-production-lines.py --ref cd9282ccca01bd2522c3e53481c25f360df85c66
+python vantare-v2/native/scripts/license-production-lines.py
+python vantare-v2/native/scripts/license-production-lines.py --ref cd9282ccca01bd2522c3e53481c25f360df85c66 --include-admin
+python vantare-v2/native/scripts/license-production-lines.py --include-admin
+```
+
+| Crate | Antes | Después | Cambio |
+|---|---:|---:|---:|
+| services | 10376 | 10361 | -15 |
+| runtime | 19141 | 19112 | -29 |
+| hub | 73482 | 73482 | +0 |
+| ipc | 6322 | 6322 | +0 |
+| admin | 5846 | 5850 | +4 |
+| Total cinco | 115167 | 115127 | -40 |
+
+Cuatro crates habituales: 109321 → 109277 (−44); recorrido/Store 14858 → 14814 (−44). Con admin/session.rs: 15326 → 15286 (−40); ese fichero 468 → 472. JSON completos en isa-1827-s-base-c.json/-after-c.json y -with-admin.json.
+
+La reducción neta es limitada; el objetivo general de adelgazamiento sigue
+pendiente para D. No se atribuyen tests, documentos ni movimientos a reducción
+productiva. D/E conservan su alcance. Sin cambios en instalaciones, producción,
+secretos, Plane, merge ni release. CI y revisión a cargo del orquestador.
+Gates finales después de restaurar fuentes: fmt PASS; Clippy services/runtime/
+ipc/engineer/admin all-targets -D warnings PASS. Nextest ci de los cinco más
+domain **1175/1175 con telemetría PASS**, 13 omisiones previas. Summary [ 139.553s] 1175 tests run: 1175 passed (1 slow), 13 skipped.
+Lifecycle runtime 13/13 y Engineer 5/5 PASS. Calidad conserva 466 huellas;
+prueba stdlib del contador PASS, --include-admin verificado contra los JSON.
+Comandos/logs: isa-1827-s-final-c-gates.json y -final-c-*, -mutations-c y
+-mutations-c-r2. Los 241 fuentes actuales coinciden con la restauración final.
+No se ejecuta UI física ni instalación; Deno/PostgreSQL no cambian en este PR.

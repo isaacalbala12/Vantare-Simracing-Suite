@@ -1,3 +1,9 @@
+Store del núcleo usa la lectura tipada descrita en [services](../services/README.md).
+Binding, autoridad y marcador son guardas. Una marca ilegible conserva su barrera
+y sus bytes; si la autoridad ya es sana no se vuelve a escribir ni a diagnosticar
+por esa marca (F4). La prueba compara autoridad/marca tras dos reinicios. La
+recuperación online verificada, límites de reloj y ACK durable siguen iguales.
+
 ## Contrato vigente de licencias — paso 10 (#1827)
 
 Paso 11, corte A: solo se acepta credencial Ed25519 v1. JWS/v2 y su clave de

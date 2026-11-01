@@ -23,6 +23,7 @@ LICENSE = {
     "runtime": ("rights", "services"),
     "hub": ("home", "services", "shell/navigation"),
     "ipc": ("control", "services_protocol"),
+    "admin": ("session",),
 }
 
 
@@ -105,14 +106,16 @@ def production(source):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--ref")
+    parser.add_argument("--include-admin", action="store_true", help="also measure the Store consumer in Gestión")
     args = parser.parse_args()
+    crates = (*CRATES, "admin") if args.include_admin else CRATES
     paths = (git("ls-tree", "-r", "--name-only", args.ref) if args.ref
              else git("ls-files")).splitlines()
     sources = {}
     excluded = set()
     for path in paths:
         parts = Path(path).parts
-        if (not path.startswith(PREFIX) or len(parts) < 5 or parts[2] not in CRATES
+        if (not path.startswith(PREFIX) or len(parts) < 5 or parts[2] not in crates
                 or parts[3] != "src" or not path.endswith(".rs")):
             continue
         if any(p in ("tests", "testdata", "fixtures") or p.endswith("_tests.rs")

@@ -150,3 +150,9 @@ R3: Correos avisa de borrados fallidos en Brevo, con recibos UUID, motivo,
 intentos y HTTP; sin dirección. Ocho fallos/24 h retiran el correo temporal de
 la cola, manteniendo la obligación para revisión manual en MAIL.md. La escena
 `mail-cleanup` incluye un fallo 401 de ejemplo.
+
+
+Persistencia compartida (paso 12, #1827): [contrato de Store](../services/README.md).
+Gestión consume read tipado; mantiene su lectura estricta de metadata OAuth y
+aparta metadata de otro emisor/redirect con quarantine_dated, sin borrar copias
+previas y con tope tres. E/S y rename fallido siguen siendo errores.

@@ -1,5 +1,5 @@
 <!-- isa1827-simplificar-c -->
-## VANTA-126 / #1827 — corte C en ejecución
+## VANTA-126 / #1827 — corte C listo para revisión
 
 Base `origin/nightly@cd9282ccca01bd2522c3e53481c25f360df85c66`; B (#1843)
 integrado por el orquestador, que confirmó CI 6/6. Rama
@@ -15,16 +15,29 @@ integrado por el orquestador, que confirmó CI 6/6. Rama
   autoridad sana ni repite su diagnóstico. Prueba byte a byte en dos reinicios.
 - Primer hito: Clippy cuatro crates all-targets -D warnings PASS y 18/18
   focales de Store/F4/caracterización PASS. Los gates completos y mutaciones
-  se ejecutarán al terminar el corte. Retirados los cuatro lectores antiguos;
+  finales: fmt/Clippy cinco crates PASS; Nextest ci 1175/1175 con telemetría
+  PASS (13 omisiones previas); lifecycle runtime 13/13 y Engineer 5/5 PASS. Retirados los cuatro lectores antiguos;
   el puente temporal se elimina en el segundo commit.
 - Segundo commit: DPAPI dañado de roadmap/perfil/report-attempt pasa de
   bloqueo a cuarentena + reconstrucción. Focales 22/22 PASS; sesión idéntica,
   cuarentena una vez, reconstrucción válida y durables conservados.
 - Medición base repetible: isa-1827-s-base-c.json; 109.321 líneas de producción
-  y 14.858 del recorrido/Store. Medición final pendiente; no se presenta el
+  y 14.858 del recorrido/Store. Final: cuatro crates 109321 → 109277 (−44), recorrido 14858 → 14814
+  (−44); con Gestión, 115167 → 115127 (−40). La reducción es limitada y el
+  objetivo general sigue pendiente para D; no se presenta el
   traslado de helpers exclusivos de fixture como simplificación productiva.
 - D/E siguen pendientes. Plane intacto; sin merge/release, instalaciones,
   producción, datos reales ni secretos. CI a cargo del orquestador.
+
+- Seis mutaciones por aserción y repetición de E/S tras conservar la presentación
+  original de billing; 241 fuentes Rust restaurados SHA-256. Arquitectura y
+  tres caracterizaciones idénticas a la base. Primera suite 1175/1176: se
+  conservó el test original y se corrigió la política de billing (CheckoutRecovery
+  ante lectura bloqueada, sin HTTP y mismo UUID), sin confundir E/S con daño
+  en read. Logs iniciales conservados.
+- Contador con --include-admin opcional, valores por defecto intactos; prueba
+  stdlib PASS y JSON por crate/fichero en D:/VantareServer/evidence/isa-1827-s-*.
+  F4 de #1822 implementado; revisión/integración pendiente.
 <!-- /isa1827-simplificar-c -->
 
 <!-- isa1827-simplificar-b -->

@@ -1,9 +1,8 @@
 <!-- isa1827-simplificar-e -->
-## VANTA-126 / #1827 — E en ejecución
+## VANTA-126 / #1827 — E listo para revisión
 
-Base origin/nightly@eb9aa1d456c5ef9fdb321bf316f450dc832e6da1; D1b listo en
-[#1855](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1855),
-HEAD65dbef30c6fd1afde3d85e2201b2dfb2994fac36, fuera de esta base al empezar.
+Base actual origin/nightly@87bfa52e9ed321ab752e7a5a3e989f460839b297; D1b (#1855) integrado.
+Rebase desde eb9aa1d456c5ef9fdb321bf316f450dc832e6da1, preservando todas las entradas del handoff.
 Rama vantareapp/isa-1827-simplificar-auto401, mismo worktree/target isa-1827-s.
 - Decisión autorizada: Authentication de licencia automática es problema de sesión,
   Transient y NeedsSignIn durable; conserva identidad/perfil y binding firmado.
@@ -18,9 +17,22 @@ Rama vantareapp/isa-1827-simplificar-auto401, mismo worktree/target isa-1827-s.
   derechos y muestra iniciar sesión; sin identidad no empieza HTTP ni inventa sesión.
 - Fmt y Clippy all-targets de services/runtime/Hub -D warnings PASS.
   Focales14/14 PASS. Tres mutaciones compiladas detectadas por aserción;
-  407 fuentes Rust restauradas SHA-256. Gates finales en ejecución.
-- Medición provisional: producción115188→115193 (+5), recorrido15258→15263 (+5);
+  407 fuentes Rust restauradas SHA-256. Código1b78cbd7a: Nextest ci1768/1768
+  con telemetría (17 omitidos), lifecycle runtime13+Engineer5 PASS.
+  Rebase7405d526c: Rust patch-id042f51a73e7f0b0a1c7fedab975ed69bdeb058c0
+  idéntico; siete blobs propios intactos y notice_tests incorpora solo D1b.
+  Fmt/Clippy posteriores PASS; Hub/domain/arquitectura762/762 PASS
+  (4 omisiones). Focales services/runtime13/13 y lifecycle runtime13/13 +
+  Engineer5/5 posteriores PASS. Calidad468 PASS sobre ambas bases.
+- Medición reproducible: producción115246→115251 (+5), recorrido15316→15321 (+5);
   pruebas/soporte y documentación se cuentan aparte. E es corrección autorizada.
+- Suma de deltas de PR: A−210, B−8, C−44, D0+16, D1a−44, D1b+58, E+5:
+  −227 líneas de producción, sin cambios ajenos de nightly ni tests/docs.
+  No alcanza la estimación inicial de1300–1700. D6/D7/T1-T3 siguen aplazados
+  por RC9; D3/D5 no autorizados. Cortes autorizados entregados para revisión.
+- Evidencia completa en D:/VantareServer/evidence/isa-1827-s-final-e-gates.json,
+  isa-1827-s-rebase-e-gates.json y isa-1827-s-mutations-e/results.json.
+  Código probado7405d526c; canal de entrega PR draft, sin merge/release.
   Sin Plane ni watch de CI; D6/D7/T1-T3 siguen aplazados por RC9.
 <!-- /isa1827-simplificar-e -->
 

@@ -354,6 +354,27 @@ conservan la evidencia de sus ramas; no describen el estado de integración actu
 
 ## Instalador · VANTA-127 / #1840
 
+### Paso 2 · ADR 0103 listo para revisión (1-nov-2026)
+
+- Base nightly 5cc23113afae7cfa44429f225f0aeb5f770c061c, con 0–1d integrados.
+  Rama vantareapp/isa-1840-paso2-adr, worktree aislado isa-1840-paso2.
+- ADR 0103 fija raíz estable, motor por generación, state v1, versión canónica,
+  proyecciones Windows, LegacyRunner y su retirada, datos conservados y retención
+  solo de binarios. hub-ready = ventana creada; un presupuesto de cierre del supervisor.
+- Diseño original completo versionado como evidencia histórica; rutas locales del
+  analista sustituidas por marcadores. No se presentan sus estimaciones como medidas.
+- P3 acotado autorizado: fuente única Rust para Probe/Hub con perfiles actuales;
+  adaptadores PS documentados hasta p4–7. No se afirma 5→1 global antes de p7.
+  sha2 se adelanta a p3; zip/windows siguen p4. Solo aristas installer/hub del
+  lock pueden cambiar en p3, sin paquetes/versiones/checksums nuevos.
+- Revisión auxiliar incorporada: p5 conserva destinos hasta p6; p7 conserva LegacyRunner mientras haya motor1; precisa señales/plazo, Options, datos sin marcador, límites y lock.
+- Checks: diff y enlaces locales del ADR PASS; calidad/retirada 468/468 PASS.
+  Sin crates tocados: fmt/Clippy/Nextest, matriz y telemetría/lifecycle omitidos
+  por entrega documental. Ningún script de producto ejecutado.
+- PR draft [#1857](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1857), código documental 1e7e4080e; HEAD vigente en #1840/PR. Revisión/CI del
+  orquestador. Sin Plane, instalación real, secretos, Downloads, merge ni release.
+
+
 [#1840](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1840),
 area:plataforma, Project Vantare. Plane En curso; estados/CI del orquestador.
 Sin merge/release del worker.
@@ -372,7 +393,7 @@ Sin merge/release del worker.
   registration-status.json y ACK antes del mantenimiento. update-status sigue
   solo para el actualizador. Riesgo de readiness temprano/bootstrap975 documentado;
   guardas LF y baseline de blobs corrigieron el anterior fallo CI por CRLF local.
-- 1d listo para revisión en [PR draft #1851](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1851),
+- 1d integrado en nightly 5cc23113a por [PR #1851](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1851),
   rama vantareapp/isa-1840-1d-run, base eb9aa1d45, worktree D:/VantareServer/worktrees/isa-1840-1d.
   Código/test f93bcded7; HEAD publicado en #1840/PR. Root/Library y registro separado
   de1b/1c conservados, igual que todo el handoff ajeno de #1854.

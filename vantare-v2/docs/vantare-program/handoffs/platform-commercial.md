@@ -45,6 +45,7 @@ conservan la evidencia de sus ramas; no describen el estado de integración actu
   Manual físico en sandbox pendiente. Siguiente: revisar A e integrarlo antes de
   abrir la rama B desde origin/nightly actualizado; B/C/D/E siguen pendientes.
 <!-- /isa1827-simplificar-worker -->
+
 ## Instalador · VANTA-127 / #1840
 
 Autoridad: [#1840](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1840),
@@ -53,9 +54,9 @@ Autoridad: [#1840](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issu
 RC9 0.0.988 queda fuera; los arreglos son para la candidata siguiente.
 
 Paso 0 listo para revisión: [PR draft #1842](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1842),
-enlazado en T3, a nightly. Código validado `ef0ba731a`; HEAD documental vigente
+enlazado en T3, a nightly. Código validado `e35077c01` más BOM QA `9dcdede7a`; HEAD documental vigente
 en PR/#1840. Rama `vantareapp/isa-1840-paso0-matriz`, base
-`origin/nightly@056ec9d9487353a24b017c11eed287b57f3cf149`; worktree
+`origin/nightly@6fbbfaa6ad96d187877043786fc999a369d268b3`; worktree
 `D:/VantareServer/worktrees/isa-1840-paso0`. Matriz Windows de ocho fixtures por
 once operaciones, con ZIP 975 público de SHA fijado y verificador Ed25519 TEST
 que no entra en el producto. Target propio `D:/VantareServer/targets/isa-1840`.
@@ -70,6 +71,9 @@ parseo PS, YAML, 62 tests de canales/clasificación y 466 huellas PASS.
 La copia QA del driver conserva el BOM UTF-8 necesario en PowerShell 5.1;
 tras ajustar esa codificación, las 15 filas de driver focales pasan sin cambiar
 ninguna instantánea del baseline. Los scripts de producto permanecen intactos.
+Rebase tras #1841: única resolución en este handoff, conservando íntegra la
+entrada de licencias. Matriz, fixtures, baseline, workflow y verificador tienen
+blobs idénticos a `dc2286551`; la evidencia de comportamiento se conserva.
 No se compila ni ejecuta UI/producto para este corte de tests.
 
 Límites: archivos reales de 975, pero sin ejecutar NSIS ni Hub; las RC usan PE

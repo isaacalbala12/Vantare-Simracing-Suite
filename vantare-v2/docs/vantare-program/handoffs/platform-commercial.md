@@ -45,6 +45,26 @@ conservan la evidencia de sus ramas; no describen el estado de integración actu
   Manual físico en sandbox pendiente. Siguiente: revisar A e integrarlo antes de
   abrir la rama B desde origin/nightly actualizado; B/C/D/E siguen pendientes.
 <!-- /isa1827-simplificar-worker -->
+## Instalador · VANTA-127 / #1840
+
+Autoridad: [#1840](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1840),
+`area:plataforma`, GitHub Project Vantare. Encargo del orquestador: paso 0 y
+1a–1d, cinco PR draft separados a nightly, sin merge ni release. La candidata
+RC9 0.0.988 queda fuera; los arreglos son para la candidata siguiente.
+
+Paso 0 en construcción: rama `vantareapp/isa-1840-paso0-matriz`, base
+`origin/nightly@056ec9d9487353a24b017c11eed287b57f3cf149`; worktree
+`D:/VantareServer/worktrees/isa-1840-paso0`. Matriz Windows de ocho fixtures por
+once operaciones, con ZIP 975 público de SHA fijado y verificador Ed25519 TEST
+que no entra en el producto. Target propio `D:/VantareServer/targets/isa-1840`.
+Evidencia y raíces aisladas en `D:/VantareServer/qa/isa-1840/`.
+
+Pendiente: terminar y repetir el baseline completo, revisar diff/gates y abrir
+PR draft del paso 0 antes de los arreglos. No hay entrega ni integración todavía.
+Plane está En curso; sus siguientes estados y CI los gestiona el orquestador.
+Sin instalaciones reales, datos de usuario, registro de producto, Downloads,
+secretos, nuevas dependencias ni acciones de publicación. Última actualización:
+2026-11-01, worker ejecutor de #1840.
 
 <!-- isa1827-p10-worker -->
 ## VANTA-126 / #1827 — Paso 10 listo para revisión (2026-11-01)

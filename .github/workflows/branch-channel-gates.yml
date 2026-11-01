@@ -328,7 +328,7 @@ jobs:
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
           powershell.exe -NoProfile -ExecutionPolicy Bypass -File native/packaging/publish-installer-tests.ps1
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
-          powershell.exe -NoProfile -ExecutionPolicy Bypass -File native/packaging/build-inventory-tests.ps1
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File native/packaging/matrix/run-historical-tests.ps1 -Root "$env:RUNNER_TEMP/historical-inventory"
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
           powershell.exe -NoProfile -ExecutionPolicy Bypass -File native/packaging/build-crt-tests.ps1
           if ($LASTEXITCODE) { exit $LASTEXITCODE }

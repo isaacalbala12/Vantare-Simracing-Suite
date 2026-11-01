@@ -326,7 +326,7 @@
     },
     "native/hub/reference/compare.ps1": {
       "source": "native/hub/reference/compare.ps1",
-      "sha256": "ff90a92e5cf23f370b745e6d63491d8d3c41d552009e39526f3da8be02cfaff7",
+      "sha256": "a23afb80598ca646c10db98cee9830343af01af1662571cb39a2c8915ae73348",
       "source_sha256": "4e827e1e97ee45bf144f7f1ccb8970f9e02969c2fc01d024d64e56d328f6c84a",
       "revisions": [
         {
@@ -355,6 +355,15 @@
           "previous_sha256": "db03fe78a0163aa5ac216347c9b8935b928ce3646755d9d1950c25a0a61afe7c",
           "source_archive": "native/retirement/legacy-evidence/hub-capture-before-1742/compare.ps1.txt",
           "reason": "Authorized post-RC4 robustness fix: retain capture stdout/stderr log on timeout via shared helper. Previous active bytes retained unchanged as inert .txt; all source hashes and prior revisions preserved."
+        },
+        {
+          "commit": "0cb7e90b2b3af47a710659e7f8951b950d46ae33",
+          "issues": [
+            "#1840"
+          ],
+          "previous_sha256": "ff90a92e5cf23f370b745e6d63491d8d3c41d552009e39526f3da8be02cfaff7",
+          "source_archive": "native/retirement/legacy-evidence/hub-capture-before-1840/compare.ps1.txt",
+          "reason": "Orchestrator-authorized #1847 review: active capture tools load candidate with explicit Library and Root. Previous active bytes retained unchanged as inert .txt; source pins, prior revisions, corpora and visual baselines preserved."
         }
       ]
     },
@@ -408,7 +417,7 @@
     },
     "native/hub/reference/tools/capture-alpha.ps1": {
       "source": "native/hub/reference/tools/capture-alpha.ps1",
-      "sha256": "63033433af053ac4522a9f267eae604d6f3726ad2caa2b5a02915faafa43a86a",
+      "sha256": "11bc601b1845cb7c42c890c0668d6bc2c1929ed922ccdf33cffb24b9dfc2c42d",
       "source_sha256": "2b944d4a64a7375aca01e85983f650f8879c5c599a9bb80eaec999187350028e",
       "revisions": [
         {
@@ -437,6 +446,15 @@
           "previous_sha256": "3f2ccc0eb1f51b9404921a1699a6af55a46f53afb4d9540c6379ff03e448e21d",
           "source_archive": "native/retirement/legacy-evidence/hub-capture-before-1742/capture-alpha.ps1.txt",
           "reason": "Authorized post-RC4 robustness fix: retain capture stdout/stderr log on timeout via shared helper. Previous active bytes retained unchanged as inert .txt; all source hashes and prior revisions preserved."
+        },
+        {
+          "commit": "0cb7e90b2b3af47a710659e7f8951b950d46ae33",
+          "issues": [
+            "#1840"
+          ],
+          "previous_sha256": "63033433af053ac4522a9f267eae604d6f3726ad2caa2b5a02915faafa43a86a",
+          "source_archive": "native/retirement/legacy-evidence/hub-capture-before-1840/capture-alpha.ps1.txt",
+          "reason": "Orchestrator-authorized #1847 review: active capture tools load candidate with explicit Library and Root. Previous active bytes retained unchanged as inert .txt; source pins, prior revisions, corpora and visual baselines preserved."
         }
       ]
     },
@@ -3053,6 +3071,16 @@
       "source": "native/hub/reference/tools/capture-alpha.ps1",
       "source_commit": "1b732b67d605298f3056c8ca78d692f132217e2d",
       "sha256": "3f2ccc0eb1f51b9404921a1699a6af55a46f53afb4d9540c6379ff03e448e21d"
+    },
+    "native/retirement/legacy-evidence/hub-capture-before-1840/compare.ps1.txt": {
+      "source": "native/hub/reference/compare.ps1",
+      "source_commit": "04c06df2c96753140643db631b004f8189a14d5c",
+      "sha256": "ff90a92e5cf23f370b745e6d63491d8d3c41d552009e39526f3da8be02cfaff7"
+    },
+    "native/retirement/legacy-evidence/hub-capture-before-1840/capture-alpha.ps1.txt": {
+      "source": "native/hub/reference/tools/capture-alpha.ps1",
+      "source_commit": "04c06df2c96753140643db631b004f8189a14d5c",
+      "sha256": "63033433af053ac4522a9f267eae604d6f3726ad2caa2b5a02915faafa43a86a"
     }
   }
 }

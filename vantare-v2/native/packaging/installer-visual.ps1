@@ -7,7 +7,7 @@ param(
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
-. (Join-Path $PSScriptRoot 'candidate.ps1')
+. (Join-Path $PSScriptRoot 'candidate.ps1') -Library -Root $PSScriptRoot
 $exe=Assert-NativePath $Executable
 $snapshot=Assert-NativePath $Snapshot
 $evidence=Assert-NativePath $EvidenceDirectory

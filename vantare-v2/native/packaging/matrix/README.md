@@ -1,5 +1,18 @@
 # Caracterización del motor de instalación · VANTA-127 / #1840
 
+Paso 1b añade `library-mode-tests.ps1` y `driver-context-tests.ps1` al mismo gate.
+Demuestran carga sin raíz rechazada sin escribir, modo biblioteca explícito,
+variables del llamador intactas, rechazo de contexto TEST incompleto/ajeno y
+registro/Startup únicamente con identidad y carpetas inyectadas. También prueban
+que una raíz explícita no se sustituye por descubrimiento legado, mientras Probe
+sin raíz conserva ese descubrimiento. Todo el registro se remapea a una clave
+única de pruebas; los procesos reciben TEMP/TMP y LOCALAPPDATA de QA.
+
+`history-safety-tests.ps1` añade 14 rechazos sin escritura en los puntos de
+entrada de inventario/histórico. El workflow usa `run-historical-tests.ps1` para
+la ejecución válida con contexto completo y copia QA. El
+[incidente de perímetro descartado](evidence-1840-1b.md) queda documentado.
+
 Paso 0 de §4.5 del diseño del instalador. Se ejecuta en el gate Windows requerido,
 con PowerShell 5.1, sin cambios en los scripts del producto. Ocho fixtures (los
 siete grupos del diseño, separando la desinstalada con y sin marcador) por once
@@ -22,6 +35,12 @@ artefacto para inspeccionar cualquier diferencia.
 
 Se normalizan solamente raíz QA, identificadores nuevos, PID de readiness,
 SHA de los manifiestos y bytes identificados exactamente como fixtures de origen.
+Los archivos .ps1 siempre conservan su SHA real, aunque coincidan con la fixture:
+candidate raíz, por generación y copia de desinstalación quedan visibles, además
+de beta. Se normaliza la identidad en metadatos JSON de fixtures, pero sus bytes
+de código se comparan explícitamente. snapshot-tests.py cambia a la vez fixture
+y script instalado y exige hashes diferentes (12 checks); no basta mutar solo
+la copia instalada, que la normalización anterior ya detectaba.
 Los hashes de datos y de archivos ajenos a esas fixtures se conservan. Los enlaces
 se observan mediante COM porque sus bytes internos incluyen metadatos de Windows.
 El verificador es un **ejemplo exclusivo de tests** con semilla TEST pública fija;
@@ -83,9 +102,10 @@ Paso 1a: el mismo gate ejecuta `inventory-growth-tests.ps1`. Simula inventarios
 109→110→109 (retirada explícita de una ruta conocida), actualización y rollback;
 conserva datos y carpetas vacías de tres generaciones al desinstalar. Los
 rechazos exigen su causa esperada. El catálogo de rutas retiradas está vacío en
-producto y no amplía paquetes entrantes. El único cambio esperado en las 88
-instantáneas es el hash de beta.ps1 raíz (52 filas) por el cleanup actualizado;
-los datos, códigos, estado, registro y enlaces quedan iguales.
+producto y no amplía paquetes entrantes. En 1a el cambio de las 88 instantáneas
+era el hash de beta.ps1 raíz (52 filas) por el cleanup actualizado. Desde 1b
+también se fijan los bytes de candidate y su copia de desinstalación; los datos,
+códigos, estado, registro y enlaces quedan iguales.
 
 Revisión de 1a: 54 comprobaciones. El catálogo retirado se valida antes de usarlo
 en lectura o borrado: rutas relativas canónicas, sin data/, unidades/UNC/traversal,

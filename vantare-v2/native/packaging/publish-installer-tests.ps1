@@ -7,6 +7,7 @@ $root = Join-Path ([IO.Path]::GetTempPath()) ('vantare-publisher-' + [guid]::New
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'publish-beta.ps1') -Destination $root
 $utf8 = [Text.UTF8Encoding]::new($false)
 [IO.File]::WriteAllText((Join-Path $root 'beta.ps1'), @'
+param([switch]$Library,[Alias('Root')][string]$StubRoot)
 $script:BetaRepository = 'fixture/downloads'
 function Read-BetaVersion($Version) { $Version }
 function Assert-NativePath($Path) { [IO.Path]::GetFullPath($Path) }

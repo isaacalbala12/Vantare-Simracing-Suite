@@ -1,7 +1,7 @@
 param([Parameter(Mandatory)][string]$EvidenceDirectory)
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
-. (Join-Path $PSScriptRoot 'candidate.ps1')
+. (Join-Path $PSScriptRoot 'candidate.ps1') -Library -Root $PSScriptRoot
 $directory = [IO.Path]::GetFullPath($EvidenceDirectory)
 $previous = [Environment]::GetEnvironmentVariable('DUCKDB_LIB_DIR', 'Process')
 try {

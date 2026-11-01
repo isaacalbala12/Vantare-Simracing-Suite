@@ -27,8 +27,11 @@ distribuyen sus recursos públicos, pequeños y versionados. No se inventa una
 escena ni se presenta una demo como telemetría real. Un paquete sin sus recursos
 obligatorios debe fallar en su validación, sin ocultarse con el checkout.
 
-`build-inventory-tests.ps1` comprueba recursos obligatorios, fuente existente,
-unicidad e inventario sin glob en CI. `hub-startup-tests.ps1` comprueba el
+`matrix/run-historical-tests.ps1 -Root <QA nueva>` comprueba recursos obligatorios,
+fuente existente, unicidad e inventario sin glob en CI. Su copia de
+`build-inventory-tests.ps1` recibe Root, RegistryRoot (clave de pruebas existente)
+y ShellRoot explícitos, más TEMP/TMP/LOCALAPPDATA de QA. Invocarlo directamente
+sin esos parámetros falla antes de escribir. `hub-startup-tests.ps1` comprueba el
 Release real instalado desde un CWD vacío, bajo un SID estándar esperado y
 un escritorio privado no seleccionado. Ejecuta dos casos negativos (sin escena
 inicial y sin directorio de fixtures) y el paquete completo. Los negativos

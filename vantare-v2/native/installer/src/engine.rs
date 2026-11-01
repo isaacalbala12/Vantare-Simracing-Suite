@@ -25,6 +25,14 @@ pub struct Request {
     pub operation: String,
     pub root: Option<PathBuf>,
     pub qa: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub qa_identity: Option<&'static str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub qa_shortcut_folder: Option<&'static str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub qa_legacy_shortcut_folder: Option<&'static str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub qa_prefix: Option<&'static str>,
     pub silent: bool,
     pub uninstall: bool,
     pub version: String,
@@ -43,6 +51,11 @@ impl Request {
             operation: operation.into(),
             root: args.root.clone(),
             qa: QA,
+            qa_identity: QA.then_some(env!("VANTARE_INSTALLER_QA_IDENTITY")),
+            qa_shortcut_folder: QA.then_some(env!("VANTARE_INSTALLER_QA_SHORTCUT_FOLDER")),
+            qa_legacy_shortcut_folder: QA
+                .then_some(env!("VANTARE_INSTALLER_QA_LEGACY_SHORTCUT_FOLDER")),
+            qa_prefix: QA.then_some(env!("VANTARE_INSTALLER_QA_PREFIX")),
             silent: args.silent,
             uninstall: args.uninstall,
             version: VERSION.into(),

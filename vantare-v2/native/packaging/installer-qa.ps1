@@ -9,7 +9,7 @@ param(
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
-. (Join-Path $PSScriptRoot 'beta.ps1')
+. (Join-Path $PSScriptRoot 'beta.ps1') -Library -Root $PSScriptRoot
 $evidence=Assert-NativePath $EvidenceDirectory
 $prefix=[IO.Path]::GetFullPath('C:/tmp/ola2/1591-qa/')
 foreach($path in @($evidence,$VersionADirectory,$VersionBDirectory,$TestVerifier,$SigningKeyFile)){
@@ -46,7 +46,7 @@ function Cancel-BeforeCopy {
     $archive=Join-Path $VersionBDirectory 'vantare-native-amd64-package.zip'
     Copy-Item -LiteralPath $archive -Destination (Join-Path $hostDirectory 'package.zip')
     $request=Join-Path $hostDirectory 'request.json'
-    Write-BetaJson $request @{operation='Install';root=$root;qa=$true;silent=$true;uninstall=$false;version=$versionB;packageSha=(Get-NativeHash $archive);size=(Get-Item -LiteralPath $archive).Length;mode='auto';desktop=$false;autostart=$false}
+    Write-BetaJson $request @{operation='Install';root=$root;qa=$true;qaIdentity='VantareNativeBetaQA1492';qaShortcutFolder='Vantare QA1492';qaLegacyShortcutFolder='Vantare Native Beta QA1492';qaPrefix='C:/tmp/ola2/1591-qa';silent=$true;uninstall=$false;version=$versionB;packageSha=(Get-NativeHash $archive);size=(Get-Item -LiteralPath $archive).Length;mode='auto';desktop=$false;autostart=$false}
     $before=Get-NativeHash (Join-Path $root 'state.json');$dataBefore=All-Data
     $info=[Diagnostics.ProcessStartInfo]::new();$info.FileName=Join-Path $env:WINDIR 'System32/WindowsPowerShell/v1.0/powershell.exe'
     $info.Arguments='-NoProfile -ExecutionPolicy Bypass -File "'+(Join-Path $hostDirectory 'installer-driver.ps1')+'" -RequestFile "'+$request+'"'
@@ -66,7 +66,7 @@ function State {Read-NativeState $root}
 function Data {Join-Path $root ('generations/'+(State).active.generation+'/data')}
 function Snapshot([string]$Name,[string]$SnapshotRoot){
     $request=Join-Path $evidence ($Name+'-request.json')
-    Write-BetaJson $request @{operation='Probe';root=$SnapshotRoot;qa=$true;silent=$false;uninstall=$false;version=$versionB;size=(Get-Item -LiteralPath (Join-Path $VersionBDirectory 'vantare-native-amd64-package.zip')).Length}
+    Write-BetaJson $request @{operation='Probe';root=$SnapshotRoot;qa=$true;qaIdentity='VantareNativeBetaQA1492';qaShortcutFolder='Vantare QA1492';qaLegacyShortcutFolder='Vantare Native Beta QA1492';qaPrefix='C:/tmp/ola2/1591-qa';silent=$false;uninstall=$false;version=$versionB;size=(Get-Item -LiteralPath (Join-Path $VersionBDirectory 'vantare-native-amd64-package.zip')).Length}
     $info=& (Join-Path $env:WINDIR 'System32/WindowsPowerShell/v1.0/powershell.exe') -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'installer-driver.ps1') -RequestFile $request
     if($LASTEXITCODE){throw 'Probe de captura falló.'}
     $null=$info|ConvertFrom-Json

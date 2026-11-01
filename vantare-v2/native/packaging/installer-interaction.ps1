@@ -8,7 +8,7 @@ param(
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
-. (Join-Path $PSScriptRoot 'beta.ps1')
+. (Join-Path $PSScriptRoot 'beta.ps1') -Library -Root $PSScriptRoot
 $prefix=[IO.Path]::GetFullPath('C:/tmp/ola2/1591-qa/')
 foreach($path in @($VersionADirectory,$VersionBDirectory,$ReferenceDirectory,$EvidenceDirectory)){
     if(-not (Assert-NativePath $path).StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)){throw 'Interacción fuera de QA.'}

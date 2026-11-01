@@ -2,7 +2,7 @@
 param([Parameter(Mandatory)][string]$GuiExecutable, [Parameter(Mandatory)][string]$EvidenceDirectory)
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
-. (Join-Path $PSScriptRoot 'beta.ps1')
+. (Join-Path $PSScriptRoot 'beta.ps1') -Library -Root $PSScriptRoot
 $evidence = Assert-NativePath $EvidenceDirectory
 [IO.Directory]::CreateDirectory($evidence) | Out-Null
 Add-Type @'
@@ -50,7 +50,7 @@ param([string]$Root)
 $ErrorActionPreference='Stop'
 $result=@{ok=$false;indicator=$false;guard=$false}
 try {
-    . '__PRODUCT_BETA__' -Root $Root
+    . '__PRODUCT_BETA__' -Root $Root -Library
     $expected=[IO.File]::ReadAllText((Join-Path $Root 'expected')) -ceq 'True'
     $result.indicator= -not [string]::IsNullOrEmpty($env:VANTARE_STARTUP_WINDOW)
     if($expected -ne $result.indicator){throw 'Capability and actual indicator disagree.'}

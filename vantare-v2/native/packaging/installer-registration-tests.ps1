@@ -3,7 +3,7 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
 & (Join-Path $PSScriptRoot 'shortcut-branding-tests.ps1')
-. (Join-Path $PSScriptRoot 'beta.ps1')
+. (Join-Path $PSScriptRoot 'beta.ps1') -Library -Root $PSScriptRoot
 $testRoot=Join-Path ([IO.Path]::GetTempPath()) ('vantare-registration-'+[guid]::NewGuid().ToString('N'))
 [IO.Directory]::CreateDirectory($testRoot)|Out-Null
 $passed=0
@@ -235,7 +235,7 @@ $install=Join-Path $testRoot 'uninstall-lock';Install-Beta $install $zip $hash
 $probe=Join-Path $testRoot 'competing-install.ps1'
 [IO.File]::WriteAllText($probe,@'
 param($Beta,$TargetRoot,$Zip,$Hash,$Result)
-$ErrorActionPreference='Stop';. $Beta
+$ErrorActionPreference='Stop';. $Beta -Library -Root $TargetRoot
 try{Install-Beta $TargetRoot $Zip $Hash;@{installed=$true}|ConvertTo-Json|Set-Content $Result}
 catch{@{installed=$false;install_exit=$_.Exception.Data['InstallExitCode'];message=$_.Exception.Message}|ConvertTo-Json|Set-Content $Result}
 '@)
@@ -266,7 +266,7 @@ Copy-Item $zip (Join-Path $engine 'package.zip')
 Copy-Item (Join-Path $env:WINDIR 'System32/cmd.exe') (Join-Path $engine 'Uninstall.exe')
 [IO.File]::WriteAllText((Join-Path $engine 'installer-notices.txt'),'inert fixture')
 $request=Join-Path $engine 'request.json'
-Write-NativeJson $request @{operation='Install';root=$driverRoot;qa=$true;silent=$true;uninstall=$false;version='0.0.979';size=1;mode='auto';packageSha=$hash;desktop=$false;autostart=$false}
+Write-NativeJson $request @{operation='Install';root=$driverRoot;qa=$true;qaIdentity='VantareNativeBetaQA1492';qaShortcutFolder='Vantare QA1492';qaLegacyShortcutFolder='Vantare Native Beta QA1492';qaPrefix='C:/tmp/ola2/1591-qa';silent=$true;uninstall=$false;version='0.0.979';size=1;mode='auto';packageSha=$hash;desktop=$false;autostart=$false}
 $qaKey='HKCU:/Software/Microsoft/Windows/CurrentVersion/Uninstall/VantareNativeBetaQA1492'
 if(Test-Path $qaKey){throw 'Existing QA registration preserved; cannot run driver fixture'}
 function Run-RegistrationDriver {

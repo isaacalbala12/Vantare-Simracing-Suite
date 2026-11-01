@@ -2,20 +2,24 @@
 #requires -Version 5.1
 [CmdletBinding()]
 param(
-    [ValidateSet('Build', 'Install', 'Update', 'Rollback', 'ImportProfiles', 'ImportLayout', 'Status', 'Start', 'Register', 'UninstallInstalled')][string]$Operation = 'Status',
-    [string]$Root = $PSScriptRoot,
-    [string]$Archive,
-    [string]$ExpectedSha256,
-    [ValidateSet('nightly', 'testers', 'master', 'beta')][string]$Channel = 'nightly',
-    [string]$Version = '0.0.0-local',
-    [ValidateSet('Debug', 'Release')][string]$BuildProfile = 'Release',
-    [string]$OutputDirectory,
-    [switch]$AllowDirty,
-    [string[]]$ApplicationArgs = @(),
-    [string[]]$ProfileFiles = @(),
-    [double[]]$MonitorBounds = @()
+    [Alias('Operation')][ValidateSet('Build', 'Install', 'Update', 'Rollback', 'ImportProfiles', 'ImportLayout', 'Status', 'Start', 'Register', 'UninstallInstalled')][string]$NativeCommand = 'Status',
+    [Alias('Root')][string]$NativeRoot,
+    [Alias('Archive')][string]$NativeArchive,
+    [Alias('ExpectedSha256')][string]$NativePackageHash,
+    [Alias('Channel')][ValidateSet('nightly', 'testers', 'master', 'beta')][string]$NativeChannel = 'nightly',
+    [Alias('Version')][string]$NativeVersion = '0.0.0-local',
+    [Alias('BuildProfile')][ValidateSet('Debug', 'Release')][string]$NativeBuildProfile = 'Release',
+    [Alias('OutputDirectory')][string]$NativeOutput,
+    [Alias('AllowDirty')][switch]$NativeAllowDirty,
+    [Alias('ApplicationArgs')][string[]]$NativeLaunchArgs = @(),
+    [Alias('ProfileFiles')][string[]]$NativeProfileFiles = @(),
+    [Alias('MonitorBounds')][double[]]$NativeBounds = @(),
+    [Alias('Library')][switch]$NativeLibrary
 )
 
+if ([string]::IsNullOrWhiteSpace($NativeRoot)) { throw 'NATIVE_ROOT_REQUIRED' }
+if ($MyInvocation.InvocationName -eq '.' -and -not $NativeLibrary) { throw 'NATIVE_LIBRARY_MODE_REQUIRED' }
+if ($NativeLibrary -and $MyInvocation.InvocationName -ne '.') { throw 'NATIVE_LIBRARY_REQUIRES_DOT_SOURCE' }
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.IO.Compression.FileSystem
@@ -136,7 +140,7 @@ function Get-NativeBins([string]$CandidateChannel) {
     # Workshop sigue compilándose para desarrollo/paridad, pero no se distribuye en beta.
     @($script:NativeBuildBins | Where-Object { $CandidateChannel -cne 'beta' -or $_ -cne 'vantare-workshop' })
 }
-$script:NativeBins = @(Get-NativeBins $Channel)
+$script:NativeBins = @(Get-NativeBins $NativeChannel)
 # El Hub resuelve su catalogo de escenas en runtime: si los fixtures no viajan
 # junto al ejecutable, `vantare-hub.exe` no abre ventana en un equipo donde solo
 # se instalo el paquete. Se enumeran aqui para que entren tambien en el
@@ -232,7 +236,7 @@ $script:NativeFixtures = @(
 function Get-NativeMembers([string]$CandidateChannel) {
     @((Get-NativeBins $CandidateChannel) | ForEach-Object { "bin/$_.exe"; "bin/$_.exe.sha256" }) + $script:NativeFixtures + @('candidate.ps1', 'README.md', 'licenses/OFL-Inter.txt', 'dependencies.json')
 }
-$script:NativeMembers = @(Get-NativeMembers $Channel)
+$script:NativeMembers = @(Get-NativeMembers $NativeChannel)
 
 # Only approved paths retired from incoming packages belong here. Keep these
 # names when removing/renaming a resource; never replace this with a version list.
@@ -1168,49 +1172,49 @@ function Build-NativeCandidate([string]$Destination, [string]$CandidateVersion, 
     [pscustomobject]@{ package = $package; sha256 = $hash; portable = $portable; installer = $installer; source_sha = $sourceSha; source_dirty = $dirty; build_profile = $Profile }
 }
 
-if ($MyInvocation.InvocationName -eq '.') { return }
-switch ($Operation) {
-    'UninstallInstalled' { Uninstall-NativeRegistration $Root }
+if ($NativeLibrary) { return }
+switch ($NativeCommand) {
+    'UninstallInstalled' { Uninstall-NativeRegistration $NativeRoot }
     'Register' {
-        $Root = Open-NativeRoot $Root
-        $launchTarget=Get-NativeLaunchTarget $Root
-        if(-not $launchTarget){Sync-NativeRegistration $Root '' -LaunchTarget ''; break}
-        $state = Read-NativeState $Root
+        $NativeRoot = Open-NativeRoot $NativeRoot
+        $launchTarget=Get-NativeLaunchTarget $NativeRoot
+        if(-not $launchTarget){Sync-NativeRegistration $NativeRoot '' -LaunchTarget ''; break}
+        $state = Read-NativeState $NativeRoot
         if ($state.channel -cne 'beta') { throw 'El registro solo corresponde al instalador beta.' }
-        $generation = Join-Path $Root "generations/$($state.active.generation)"
+        $generation = Join-Path $NativeRoot "generations/$($state.active.generation)"
         # El Hub usa el script de su generación; Setup usa la copia idéntica raíz.
         if ((Get-NativeHash $PSCommandPath) -cne (Get-NativeHash (Join-Path $generation 'candidate.ps1'))) { throw 'El registro requiere el script de la generación activa.' }
         $manifest = Read-NativeManifest $generation 'beta' $false -Installed
-        Sync-NativeRegistration $Root $manifest.version -LaunchTarget $launchTarget
+        Sync-NativeRegistration $NativeRoot $manifest.version -LaunchTarget $launchTarget
     }
-    'Build' { Build-NativeCandidate $OutputDirectory $Version $Channel $BuildProfile ([bool]$AllowDirty) }
-    'Install' { Install-NativeCandidate $Root $Archive $ExpectedSha256 $Channel | ConvertTo-Json -Depth 5 }
-    'Update' { Update-NativeCandidate $Root $Archive $ExpectedSha256 | ConvertTo-Json -Depth 5 }
-    'Rollback' { Restore-NativeCandidate $Root | ConvertTo-Json -Depth 5 }
-    'ImportProfiles' { Import-NativeProfiles $Root $ProfileFiles | ConvertTo-Json -Depth 5 }
+    'Build' { Build-NativeCandidate $NativeOutput $NativeVersion $NativeChannel $NativeBuildProfile ([bool]$NativeAllowDirty) }
+    'Install' { Install-NativeCandidate $NativeRoot $NativeArchive $NativePackageHash $NativeChannel | ConvertTo-Json -Depth 5 }
+    'Update' { Update-NativeCandidate $NativeRoot $NativeArchive $NativePackageHash | ConvertTo-Json -Depth 5 }
+    'Rollback' { Restore-NativeCandidate $NativeRoot | ConvertTo-Json -Depth 5 }
+    'ImportProfiles' { Import-NativeProfiles $NativeRoot $NativeProfileFiles | ConvertTo-Json -Depth 5 }
     'ImportLayout' {
-        if ($MonitorBounds.Count -ne 4) { throw 'Indique MonitorBounds x,y,width,height.' }
-        Import-NativeProfiles $Root $ProfileFiles $MonitorBounds | ConvertTo-Json -Depth 5
+        if ($NativeBounds.Count -ne 4) { throw 'Indique MonitorBounds x,y,width,height.' }
+        Import-NativeProfiles $NativeRoot $NativeProfileFiles $NativeBounds | ConvertTo-Json -Depth 5
     }
     'Status' {
-        $Root = Open-NativeRoot $Root; $lock = Open-NativeLock $Root
-        try { Read-NativeState $Root | ConvertTo-Json -Depth 5 } finally { $lock.Dispose() }
+        $NativeRoot = Open-NativeRoot $NativeRoot; $lock = Open-NativeLock $NativeRoot
+        try { Read-NativeState $NativeRoot | ConvertTo-Json -Depth 5 } finally { $lock.Dispose() }
     }
     'Start' {
-        if (-not $ApplicationArgs.Count) { throw 'Indique argumentos explícitos del launcher (live/replay); no hay fuente de datos implícita.' }
-        $Root = Open-NativeRoot $Root; $lock = Open-NativeLock $Root
+        if (-not $NativeLaunchArgs.Count) { throw 'Indique argumentos explícitos del launcher (live/replay); no hay fuente de datos implícita.' }
+        $NativeRoot = Open-NativeRoot $NativeRoot; $lock = Open-NativeLock $NativeRoot
         try {
-            $state = Read-NativeState $Root
-            $exe = Join-Path $Root "generations/$($state.active.generation)/bin/vantare.exe"
-            $layout = Join-Path $Root "generations/$($state.active.generation)/data/layout.json"
+            $state = Read-NativeState $NativeRoot
+            $exe = Join-Path $NativeRoot "generations/$($state.active.generation)/bin/vantare.exe"
+            $layout = Join-Path $NativeRoot "generations/$($state.active.generation)/data/layout.json"
             # Sin grupo explícito de overlays, usar el layout de esta generación.
             # Nunca sobreescribir un grupo de argumentos elegido por el usuario.
-            if ((Test-Path -LiteralPath $layout) -and @($ApplicationArgs | Where-Object { $_ -ceq '--' }).Count -eq 1) {
-                $ApplicationArgs += @('--', '--layout', $layout)
+            if ((Test-Path -LiteralPath $layout) -and @($NativeLaunchArgs | Where-Object { $_ -ceq '--' }).Count -eq 1) {
+                $NativeLaunchArgs += @('--', '--layout', $layout)
             }
             # Quoting de argv de Windows: duplicar backslashes ante comillas y
             # al final. El launcher recibe argv y PowerShell termina tras crearlo.
-            $quoted = @($ApplicationArgs | ForEach-Object {
+            $quoted = @($NativeLaunchArgs | ForEach-Object {
                 '"' + [regex]::Replace([regex]::Replace($_, '(\\*)"', '$1$1\"'), '(\\+)$', '$1$1') + '"'
             }) -join ' '
             $info = [Diagnostics.ProcessStartInfo]::new()

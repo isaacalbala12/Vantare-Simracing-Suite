@@ -1,10 +1,35 @@
 ﻿#requires -Version 5.1
-param([string]$LegacyPackage)
+param([string]$LegacyPackage,[string]$Root,[string]$RegistryRoot,[string]$ShellRoot)
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
-. (Join-Path $PSScriptRoot 'beta.ps1')
-$root=Join-Path 'C:/tmp/ola2/1591-qa' ('history-'+[guid]::NewGuid().ToString('N'))
+. (Join-Path $PSScriptRoot 'matrix/historical-context.ps1')
+$historyContext=Assert-HistoricalContext $Root $RegistryRoot $ShellRoot
+. (Join-Path $PSScriptRoot 'beta.ps1') -Library -Root $historyContext.Root
+Set-HistoricalBoundary $historyContext
+if((Get-PSDrive HKCU).Root -cne $historyContext.Registry){throw 'HISTORY_REGISTRY_NOT_INJECTED'}
+foreach($folder in @('Programs','Startup','DesktopDirectory')){
+    if((Get-NativeShortcutFolder $folder) -cne (Join-Path $historyContext.Shell $folder)){throw 'HISTORY_SHELL_NOT_INJECTED'}
+}
+$root=$historyContext.Root
 [IO.Directory]::CreateDirectory($root)|Out-Null
+$driverDirectory=Join-Path $root 'driver'
+[IO.Directory]::CreateDirectory($driverDirectory)|Out-Null
+foreach($name in @('candidate.ps1','beta.ps1')){Copy-Item -LiteralPath (Join-Path $PSScriptRoot $name) -Destination $driverDirectory}
+$driver=[IO.File]::ReadAllText((Join-Path $PSScriptRoot 'installer-driver.ps1'))
+$driverImport=". (Join-Path `$PSScriptRoot 'beta.ps1') -Library -Root `$PSScriptRoot"
+$boundary=@'
+Remove-PSDrive HKCU
+New-PSDrive HKCU Registry '__REGISTRY__' -Scope Global|Out-Null
+. (Join-Path $PSScriptRoot 'beta.ps1') -Library -Root $PSScriptRoot
+function Get-NativeShortcutFolder([string]$Name){
+    if($Name -cnotin @('Programs','Startup','DesktopDirectory')){throw 'HISTORY_FOLDER_REJECTED'}
+    Join-Path '__SHELL__' $Name
+}
+'@
+$boundary=$boundary.Replace('__REGISTRY__',$historyContext.Registry).Replace('__SHELL__',$historyContext.Shell.Replace("'","''"))
+if(-not $driver.Contains($driverImport)){throw 'HISTORY_DRIVER_IMPORT_CHANGED'}
+$historyDriver=Join-Path $driverDirectory 'installer-driver.ps1'
+[IO.File]::WriteAllText($historyDriver,$driver.Replace($driverImport,$boundary),[Text.UTF8Encoding]::new($true))
 $passed=0
 function Assert-History([bool]$Value,[string]$Message){if(-not $Value){throw $Message};$script:passed++;"PASS $Message"}
 function Reject-History([scriptblock]$Action,[string]$Message,[string]$Reason,[string]$ErrorId=''){
@@ -89,8 +114,8 @@ function Test-HistoryUpgrade([string]$Install,[string]$Old){
     Set-NativeState $Install @{schema=1;product='vantare-native';channel='beta';active=@{generation=$id;manifest_sha256=(Get-NativeHash (Join-Path $Old 'manifest.json'))};previous=$null}
     $null=Read-NativeState $Install
     $request=Join-Path $Install 'probe-request.json'
-    Write-NativeJson $request @{operation='Probe';root=$Install;qa=$true;silent=$true;uninstall=$false;version='0.0.980';size=1024}
-    $probe=& powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'installer-driver.ps1') -RequestFile $request
+    Write-NativeJson $request @{operation='Probe';root=$Install;qa=$true;qaIdentity='VantareNativeBetaQA1492';qaShortcutFolder='Vantare QA1492';qaLegacyShortcutFolder='Vantare Native Beta QA1492';qaPrefix=$root;silent=$true;uninstall=$false;version='0.0.980';size=1024}
+    $probe=& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $historyDriver -RequestFile $request
     Assert-History ($LASTEXITCODE -eq 0 -and ($probe|ConvertFrom-Json).installed_version -ceq '0.0.975') 'Real Setup probe accepts installed historical inventory'
     $profile=Join-Path $Install 'profile.json';[IO.File]::WriteAllText($profile,'{"widgets":[]}')
     $imported=Import-NativeProfiles $Install @($profile)
@@ -163,8 +188,8 @@ foreach($case in @('active974','974','976-974','977-974','978-974','979-974','97
         Assert-History ($status.state -ceq 'error' -and (Read-NativeState $history).active.generation -ceq [IO.Path]::GetFileName($active)) "$case boot reports error and preserves active"
     }
     $request=Join-Path $history 'probe-request.json'
-    Write-NativeJson $request @{operation='Probe';root=$history;qa=$true;silent=$true;uninstall=$false;version='0.0.980';size=1024}
-    $probe=& powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'installer-driver.ps1') -RequestFile $request
+    Write-NativeJson $request @{operation='Probe';root=$history;qa=$true;qaIdentity='VantareNativeBetaQA1492';qaShortcutFolder='Vantare QA1492';qaLegacyShortcutFolder='Vantare Native Beta QA1492';qaPrefix=$root;silent=$true;uninstall=$false;version='0.0.980';size=1024}
+    $probe=& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $historyDriver -RequestFile $request
     Assert-History ($LASTEXITCODE -eq 0 -and ($probe|ConvertFrom-Json).installed_version -ceq $activeVersion) "$case Setup probe preserves JSON protocol"
     if($case -in @('active974','974')){
         $updated=& powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'candidate.ps1') -Operation Update -Root $history -Archive $zip -ExpectedSha256 $hash

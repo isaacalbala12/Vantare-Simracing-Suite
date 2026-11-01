@@ -12,8 +12,9 @@ $qaMatrixRoot=Assert-MatrixRoot $Root
 if (Test-Path -LiteralPath $qaMatrixRoot) { throw 'MATRIX_NEEDS_FRESH_ROOT' }
 if (-not $LegacyPackage -or -not $TestVerifier) { throw 'MATRIX_FIXTURES_REQUIRED' }
 $script:Packaging=$PSScriptRoot
-. (Join-Path $PSScriptRoot 'beta.ps1') -Root $qaMatrixRoot
-if ($Root -cne $qaMatrixRoot) { throw 'MATRIX_IMPORT_ROOT_CHANGED' }
+$qaImportCallerRoot=$Root
+. (Join-Path $PSScriptRoot 'beta.ps1') -Library -Root $qaMatrixRoot
+if ($Root -cne $qaImportCallerRoot) { throw 'MATRIX_IMPORT_ROOT_CHANGED' }
 $null=Assert-MatrixRoot $Root
 if ((Get-NativeHash $LegacyPackage) -cne '372bcd60cf168cb6187be1c481b21c835268db1dbcc3e0a0aeb17246bede7066') { throw 'MATRIX_LEGACY_DIGEST' }
 [IO.Directory]::CreateDirectory($qaMatrixRoot) | Out-Null
@@ -45,6 +46,33 @@ $expected=if(Test-Path -LiteralPath $baseline){Get-Content -LiteralPath $baselin
 if (-not $Record -and $null -eq $expected) { throw 'MATRIX_BASELINE_REQUIRED' }
 $rows=[ordered]@{}
 try {
+    $savedLibraryTemp=$env:TEMP;$savedLibraryTmp=$env:TMP;$savedLibraryLocal=$env:LOCALAPPDATA
+    try {
+        $env:TEMP=$qaMatrixRoot;$env:TMP=$qaMatrixRoot;$env:LOCALAPPDATA=Join-Path $qaMatrixRoot 'LocalAppData'
+        $library=Invoke-NativeProcess -Executable "$env:WINDIR/System32/WindowsPowerShell/v1.0/powershell.exe" -Arguments @(
+            '-NoProfile','-ExecutionPolicy','Bypass','-File',(Join-Path $PSScriptRoot 'matrix/library-mode-tests.ps1'),
+            '-Root',(Join-Path $qaMatrixRoot 'library-mode')
+        ) -TimeoutMilliseconds 120000 -LogPath (Join-Path $qaMatrixRoot 'library-mode.log')
+        if($library.ExitCode -ne 0){throw ('MATRIX_LIBRARY_MODE_FAILED: '+$library.Stderr)}
+        $library.Stdout
+        $context=Invoke-NativeProcess -Executable "$env:WINDIR/System32/WindowsPowerShell/v1.0/powershell.exe" -Arguments @(
+            '-NoProfile','-ExecutionPolicy','Bypass','-File',(Join-Path $PSScriptRoot 'matrix/driver-context-tests.ps1'),
+            '-Root',(Join-Path $qaMatrixRoot 'driver-context'),'-TestVerifier',$TestVerifier
+        ) -TimeoutMilliseconds 120000 -LogPath (Join-Path $qaMatrixRoot 'driver-context.log')
+        if($context.ExitCode -ne 0){throw ('MATRIX_DRIVER_CONTEXT_FAILED: '+$context.Stderr)}
+        $context.Stdout
+        $historySafety=Invoke-NativeProcess -Executable "$env:WINDIR/System32/WindowsPowerShell/v1.0/powershell.exe" -Arguments @(
+            '-NoProfile','-ExecutionPolicy','Bypass','-File',(Join-Path $PSScriptRoot 'matrix/history-safety-tests.ps1'),
+            '-Root',(Join-Path $qaMatrixRoot 'history-safety')
+        ) -TimeoutMilliseconds 120000 -LogPath (Join-Path $qaMatrixRoot 'history-safety.log')
+        if($historySafety.ExitCode -ne 0){throw ('MATRIX_HISTORY_SAFETY_FAILED: '+$historySafety.Stderr)}
+        $historySafety.Stdout
+        $snapshot=Invoke-NativeProcess -Executable (Get-Command python).Source -Arguments @(
+            (Join-Path $PSScriptRoot 'matrix/snapshot-tests.py'),'--root',(Join-Path $qaMatrixRoot 'snapshot-tests')
+        ) -TimeoutMilliseconds 30000 -LogPath (Join-Path $qaMatrixRoot 'snapshot-tests.log')
+        if($snapshot.ExitCode -ne 0){throw ('MATRIX_SNAPSHOT_TEST_FAILED: '+$snapshot.Stderr)}
+        $snapshot.Stdout
+    } finally { $env:TEMP=$savedLibraryTemp;$env:TMP=$savedLibraryTmp;$env:LOCALAPPDATA=$savedLibraryLocal }
     foreach ($case in $Cases) {
         foreach ($operation in $Operations) {
             $name=$case+'-'+$operation.ToLowerInvariant()

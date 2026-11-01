@@ -1,6 +1,6 @@
 ﻿# Contrato de origen; no simula ni sustituye el verificador de firma.
 $ErrorActionPreference='Stop'
-. "$PSScriptRoot/beta.ps1"
+. "$PSScriptRoot/beta.ps1" -Library -Root $PSScriptRoot
 $version='0.1.1'
 $url="https://github.com/isaacalbala12/Vantare-Downloads/releases/download/native-beta-v$version/vantare-native-amd64-package.zip"
 Assert-BetaPackageUrl $url $version

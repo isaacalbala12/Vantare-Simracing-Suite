@@ -2,7 +2,7 @@
 param([Parameter(Mandatory)][string]$InstalledRoot,[Parameter(Mandatory)][string]$EvidenceDirectory,[Parameter(Mandatory)][string]$ExpectedSid)
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
-. (Join-Path $PSScriptRoot 'candidate.ps1')
+. (Join-Path $PSScriptRoot 'candidate.ps1') -Library -Root $PSScriptRoot
 # Never open GPUI on the interactive user's desktop. The external QA runner
 # creates a standard disposable user and an unselected private desktop.
 Add-Type @'

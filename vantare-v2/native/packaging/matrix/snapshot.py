@@ -65,6 +65,10 @@ def snapshot(root, assets):
                 for member in value["files"]:
                     if member["sha256"].startswith("$fixture:"):
                         member["size"] = "$fixture-size"
+        elif file.suffix.lower() == ".ps1":
+            # Installed code is observable even when it matches the source fixture.
+            # Keep JSON fixture identities normalized, but pin all script bytes.
+            value = digest(file)
         else:
             value = normalize(digest(file))
         files[normalize(rel)] = value

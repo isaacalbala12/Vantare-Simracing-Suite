@@ -1,7 +1,7 @@
 ﻿#requires -Version 5.1
 param([string]$EvidenceDirectory = 'C:/tmp/1472-arreglos-r2-evidence')
 $ErrorActionPreference = 'Stop'
-. "$PSScriptRoot/beta.ps1"
+. "$PSScriptRoot/beta.ps1" -Library -Root $PSScriptRoot
 $evidence = Join-Path $EvidenceDirectory ('uninstall-' + [guid]::NewGuid().ToString('N'))
 [IO.Directory]::CreateDirectory($evidence) | Out-Null
 function New-FixturePackage([string]$Label,[bool]$Fixtures){

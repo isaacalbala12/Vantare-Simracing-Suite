@@ -12,9 +12,10 @@ $qaRequestedOperation=$Operation
 if ($RegistryRoot -cnotmatch '^HKEY_CURRENT_USER\\Software\\VantareInstallerMatrix\\[a-f0-9]{32}\\[a-z0-9-]+$') { throw 'MATRIX_REGISTRY_REJECTED' }
 Remove-PSDrive HKCU
 New-PSDrive -Name HKCU -PSProvider Registry -Root $RegistryRoot -Scope Global | Out-Null
-. (Join-Path $script:Packaging 'beta.ps1') -Root $qaInstallRoot
+$qaImportCallerRoot=$Root
+. (Join-Path $script:Packaging 'beta.ps1') -Library -Root $qaInstallRoot
 $Operation=$qaRequestedOperation
-if ($Root -cne $qaInstallRoot) { throw 'MATRIX_IMPORT_ROOT_CHANGED' }
+if ($Root -cne $qaImportCallerRoot) { throw 'MATRIX_IMPORT_ROOT_CHANGED' }
 $null=Assert-MatrixRoot $Root
 . (Join-Path $PSScriptRoot 'fixtures.ps1')
 function Get-NativeShortcutFolder([string]$Name) {
@@ -55,9 +56,9 @@ try {
             # Inject only OS folder resolution and explicit library root in a TEST
             # copy. The driver's operations/transactions remain byte-for-byte.
             $driver=Get-Content -LiteralPath (Join-Path $script:Packaging 'installer-driver.ps1') -Raw
-            $import=". (Join-Path `$PSScriptRoot 'beta.ps1')"
+            $import=". (Join-Path `$PSScriptRoot 'beta.ps1') -Library -Root `$PSScriptRoot"
             if (-not $driver.Contains($import)) { throw 'MATRIX_DRIVER_IMPORT_CHANGED' }
-            $injection=$import+' -Root $qaInstallRoot'+"`n"+'$script:MatrixNativePath=${function:Assert-NativePath}'+"`n"+${function:Get-NativeShortcutFolder}.ToString().Insert(0,'function Get-NativeShortcutFolder {')+"`n}"+
+            $injection=". (Join-Path `$PSScriptRoot 'beta.ps1') -Library -Root `$qaInstallRoot"+"`n"+'$script:MatrixNativePath=${function:Assert-NativePath}'+"`n"+${function:Get-NativeShortcutFolder}.ToString().Insert(0,'function Get-NativeShortcutFolder {')+"`n}"+
                 "`n"+${function:Assert-NativePath}.ToString().Insert(0,'function Assert-NativePath {')+"`n}"
             $driver=$driver.Replace($import,$injection)
             $driverPath=Join-Path $engine 'installer-driver.ps1'

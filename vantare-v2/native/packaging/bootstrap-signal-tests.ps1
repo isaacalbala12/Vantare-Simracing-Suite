@@ -2,7 +2,7 @@
 param([Parameter(Mandatory)][string]$EvidenceDirectory)
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
-. (Join-Path $PSScriptRoot 'beta.ps1')
+. (Join-Path $PSScriptRoot 'beta.ps1') -Library -Root $PSScriptRoot
 $evidence = Assert-NativePath $EvidenceDirectory
 [IO.Directory]::CreateDirectory($evidence) | Out-Null
 function Assert-Beta([bool]$Condition, [string]$Message) {
@@ -34,7 +34,7 @@ foreach($lostWindow in @($false,$true)){
     $workerScript=Join-Path $evidence ('natural-'+$lostWindow+'.ps1')
     $product=(Join-Path $PSScriptRoot 'beta.ps1').Replace("'","''")
     $directory=$root.Replace("'","''")
-    [IO.File]::WriteAllText($workerScript,(". '$product'`n"+"Complete-BetaBootstrap '$directory' 50 -AllowNaturalExit -NaturalExitMilliseconds 10000`n"))
+    [IO.File]::WriteAllText($workerScript,(". '$product' -Library -Root '$directory'`n"+"Complete-BetaBootstrap '$directory' 50 -AllowNaturalExit -NaturalExitMilliseconds 10000`n"))
     $info=[Diagnostics.ProcessStartInfo]::new()
     $info.FileName=Join-Path $env:WINDIR 'System32/WindowsPowerShell/v1.0/powershell.exe'
     $info.Arguments='-NoProfile -ExecutionPolicy Bypass -File "'+$workerScript+'"'

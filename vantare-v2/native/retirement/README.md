@@ -67,3 +67,12 @@ anteriores exactas de nightly1b732b67d quedan como `.txt` inertes en
 `legacy-evidence/hub-capture-before-1742/`. Se conservan hashes fuente y todas
 las revisiones anteriores. El inventario pasa a 466 archivos exactos; ningún
 corpus, PNG ni baseline de analizador cambia. No ejecutar las copias históricas.
+
+#1840, revisión obligatoria de #1847 por el orquestador, adapta la carga de
+candidate en los dos capturadores activos compare/capture-alpha a Library/Root
+explícitos. Código `0cb7e90b2b3af47a710659e7f8951b950d46ae33`. Sus versiones
+anteriores exactas quedan en `legacy-evidence/hub-capture-before-1840/` como
+.txt inertes; se conservan source_sha256, pins anteriores y todas las revisiones.
+Solo cambian los dos pins activos y se añaden los dos originales archivados:
+468 archivos exactos, sin recalibrar corpus, PNG ni baselines de analizadores.
+No se ejecutan capturas físicas para esta adaptación de importación.

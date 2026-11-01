@@ -2,7 +2,7 @@
 param([string]$EvidenceDirectory=(Join-Path ([IO.Path]::GetTempPath()) ('vantare-crt-'+[guid]::NewGuid().ToString('N'))))
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
-. (Join-Path $PSScriptRoot 'candidate.ps1')
+. (Join-Path $PSScriptRoot 'candidate.ps1') -Library -Root $PSScriptRoot
 $evidence=[IO.Path]::GetFullPath($EvidenceDirectory)
 if(Test-Path $evidence){throw 'Use a fresh CRT fixture directory'}
 [IO.Directory]::CreateDirectory($evidence)|Out-Null

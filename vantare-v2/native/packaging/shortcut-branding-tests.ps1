@@ -3,7 +3,7 @@
 # No process, installer window or public shortcut is opened.
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
-. (Join-Path $PSScriptRoot 'candidate.ps1')
+. (Join-Path $PSScriptRoot 'candidate.ps1') -Library -Root $PSScriptRoot
 $testRoot=Join-Path ([IO.Path]::GetTempPath()) ('vantare-shortcut-branding-'+[guid]::NewGuid().ToString('N'))
 [IO.Directory]::CreateDirectory($testRoot)|Out-Null
 function Get-NativeShortcutFolder([string]$Name){Join-Path $testRoot $Name}

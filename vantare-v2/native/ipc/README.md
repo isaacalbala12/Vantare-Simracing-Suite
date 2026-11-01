@@ -1,3 +1,16 @@
+## Contrato vigente de licencias — paso 8 (#1827)
+
+Services v18 elimina TransferRights; control v7 y fotos v11 no cambian.
+El saludo v17/v18 se rechaza como Version antes del comando retirado o de Policy,
+sin Protocol ni revocación. InstallOnline transporta solo la respuesta HTTP nueva;
+Install de control se conserva para restauración del núcleo. El conjunto instalado
+debe coincidir. Binding/authority/guardias y los plazos conservan su formato.
+
+Contrato y rollback de datos: [ADR0102](../../docs/adr/0102-modelo-acceso-nativo.md).
+Las secciones fechadas inferiores son históricas; este contrato sustituye sus
+reglas de candidate/marcador y transferencia. Rollback sintético con lectores
+v17 y pre-NeedsSignIn, sin cambios de instalación: `native/scripts/license-generation-rollback.ps1`.
+
 ## #1827 — Contrato vigente de control v7 (paso 7)
 
 Policy.state sustituye overlays_advanced/online_recovery_required. Active y Grace

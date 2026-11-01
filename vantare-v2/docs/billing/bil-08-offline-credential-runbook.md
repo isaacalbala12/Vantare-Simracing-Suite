@@ -43,8 +43,7 @@ urgente; mantiene un minuto en los últimos cinco minutos firmados. Confirmar un
 compra mantiene su suelo de un minuto dentro de su ventana de diez minutos.
 Ninguno de estos ritmos amplía lo firmado ni la gracia.
 
-- Comprobar acceso y la renovación automática conservan binding, autoridad y
-  candidate ante rechazo de la emisión. El rechazo explícito se comunica como
+- Comprobar acceso y la renovación automática conservan binding y autoridad ante rechazo de la emisión. El rechazo explícito se comunica como
   definitivo y detiene la renovación automática; no provoca un reset ni logout.
 - Solo `invalid_grant` o HTTP 401 del endpoint de token durante refresh pasan a
   **NeedsSignIn**. HTTP 403 y fallos de `/userinfo` tras un refresh válido son
@@ -67,7 +66,7 @@ Ninguno de estos ritmos amplía lo firmado ni la gracia.
   formulario tampoco borra la sesión anterior. Cuenta ofrece Google, Discord
   y email para reautenticar, además de Cerrar sesión expresamente.
 - Solo **Cerrar sesión**, **cambiar de identidad** y **Restablecer dispositivo**
-  revocan la licencia local; requieren ACK durable antes de limpiar el candidate.
+  revocan la licencia local; requieren ACK durable antes de anunciar éxito.
   Son acciones expresas, nunca una reacción automática a un fallo de red.
   Restablecer dispositivo exige primero una sesión OAuth y de datos utilizable:
   en NeedsSignIn devuelve Authentication sin revocar ni liberar el dispositivo.
@@ -78,16 +77,31 @@ Para soporte: comprobar canal/generación, si el resultado exige nueva entrada y
 el plazo firmado de la política. Pedir login cuando corresponda; no prometer
 revocación remota instantánea ni recomendar editar archivos, mover el reloj o
 borrar cachés. El bloqueo comercial seguirá impidiendo una emisión nueva.
-Un nuevo documento rechazado por el núcleo conserva sus reglas de cuarentena;
-este paso cambia la revocación por error, no la verificación de firmas.
+Un nuevo documento rechazado no se guarda en servicios; el núcleo conserva sus
+propias reglas de firma, reloj y cuarentena del binding.
 
 NeedsSignIn se guarda como un estado nuevo de la cuenta protegida, conservando
 los datos de sesión existentes. Al volver a la generación anterior, su lector no
 entiende ese estado: aparta `account` como `.corrupto` y pide login de nuevo.
 No pierde los derechos firmados ni cambia los documentos del núcleo. El paso 8
-añadirá la fixture de rollback entre generaciones; no se ejecuta un rollback de
-instalación en esta entrega. No se despliega ni se modifica una instalación
+comprueba esta compatibilidad con lectores de generaciones anteriores y fixtures
+sintéticas; no ejecuta un rollback de instalación. No se despliega ni se modifica una instalación
 por ejecutar estas pruebas o editar el runbook.
+
+## Paso 8 — sin copia de licencia en servicios
+
+Services v18 no guarda candidate ni marcador y no ejecuta TransferRights al
+abrir o cerrar. Los restos se ignoran, sin concederlos ni bloquear recuperación.
+El núcleo admite las consultas y recuperación según su Policy autenticada;
+solo su ACK durable de InstallOnline confirma una credencial HTTP nueva.
+ACK perdido o núcleo ausente después de recibirla es un fallo transitorio:
+el siguiente intento pide una sola emisión más, respetando backoff, un minuto
+mínimo y rate limit. No se amplían plazos ni se borran derechos por ese fallo.
+
+Rollback sintético reproducible: `native/scripts/license-generation-rollback.ps1`.
+V17 conserva binding/authority y cuenta; el corte anterior a NeedsSignIn aparta
+ese account y pide login, conservando derechos. Volver a v18 mantiene derechos.
+No sustituir EXE sueltos: v17/v18 se rechaza como Version, sin revocar.
 
 ## Propiedad de las claves
 

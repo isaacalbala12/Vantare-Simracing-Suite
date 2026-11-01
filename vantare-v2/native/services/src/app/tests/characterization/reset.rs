@@ -1,7 +1,7 @@
 //! Paso 5 R1: `DeviceReset` exige autorización antes de revocar; conserva el ACK previo al reset.
 use super::*;
+// Falla authorize, HTTP, Error; candidate no aplica desde paso 8.
 
-// Falla authorize, HTTP, Error; candidate se conserva si falla authorize.
 #[rustfmt::skip]
 const CASES: &[(bool, u16, Option<Error>)] = &[
         (true, 401, Some(Error::Authentication)),
@@ -59,17 +59,6 @@ fn assert_remote_reset(authorize: bool, status: u16, error: Option<Error>) {
         supabase: server.base.clone(),
         anon_key: "fixture-public".into(),
     });
-    app.candidate_store()
-        .expect("store")
-        .save(
-            "license-candidate",
-            &crate::license_remote::Candidate {
-                account_id: credential.claims.subject.clone(),
-                device: device.clone(),
-                credential,
-            },
-        )
-        .expect("candidate");
     let mut steps = if authorize {
         vec![]
     } else {
@@ -89,7 +78,7 @@ fn assert_remote_reset(authorize: bool, status: u16, error: Option<Error>) {
     if error.is_none() {
         assert!(matches!(result, Ok(Reply::License { .. })));
     }
-    let _ = assert_candidate_presence(&mut app, authorize);
+    // Candidate no aplica en paso 8: no hay copia en servicios.
     assert!(app.account.as_ref().expect("account").identity().is_some());
     core.join()
         .expect("authorization before Invalidate; Read only on success");

@@ -27,11 +27,11 @@ fn access_fixture(server: &crate::test_http::Server, steps: Vec<CoreStep>) -> Ac
     let mut app = App::with_clock(config, root.clone(), || Ok(100));
     app.account = Some(account);
     app.store = Some(store);
-    app.candidate_store()
+    app.legacy_store()
         .expect("store")
         .save(
             "license-candidate",
-            &crate::license_remote::Candidate {
+            &crate::license_remote::tests::LegacyCandidate {
                 account_id: credential.claims.subject.clone(),
                 device: device.clone(),
                 credential,
@@ -70,7 +70,7 @@ fn device_reset_in_needs_sign_in_preserves_every_local_document_without_http() {
         .expect("saved account");
     let candidate_before = fixture
         .app
-        .candidate_store()
+        .legacy_store()
         .expect("store")
         .load::<serde_json::Value>("license-candidate")
         .expect("candidate");
@@ -91,7 +91,7 @@ fn device_reset_in_needs_sign_in_preserves_every_local_document_without_http() {
     assert_eq!(
         fixture
             .app
-            .candidate_store()
+            .legacy_store()
             .expect("store")
             .load::<serde_json::Value>("license-candidate")
             .expect("candidate"),
@@ -125,14 +125,14 @@ fn logout_from_needs_sign_in_still_requires_ack_and_clears_account() {
         let account = fixture.app.account.as_ref().expect("account");
         assert_eq!(account.identity().is_some(), rejected);
         assert_eq!(account.needs_sign_in(), rejected);
-        assert_eq!(
+        assert!(
             fixture
                 .app
-                .candidate_store()
-                .expect("store")
+                .legacy_store()
+                .expect("old store")
                 .load::<serde_json::Value>("license-candidate")
                 .is_ok(),
-            rejected
+            "old files are ignored after either outcome"
         );
         let saved = fixture
             .app
@@ -171,7 +171,7 @@ fn usable_device_reset_with_rejected_ack_preserves_candidate_and_never_calls_res
     assert!(
         fixture
             .app
-            .candidate_store()
+            .legacy_store()
             .expect("store")
             .load::<serde_json::Value>("license-candidate")
             .is_ok()
@@ -279,12 +279,12 @@ fn manual_denial_is_definitive_and_preserves_cached_rights() {
         let mut app = App::with_clock(config, root.clone(), || Ok(100));
         app.account = Some(account);
         app.store = Some(store);
-        let candidate = crate::license_remote::Candidate {
+        let candidate = crate::license_remote::tests::LegacyCandidate {
             credential: credential.clone(),
             account_id: credential.claims.subject.clone(),
             device: device.clone(),
         };
-        app.candidate_store()
+        app.legacy_store()
             .expect("candidate store")
             .save("license-candidate", &candidate)
             .expect("candidate");
@@ -306,9 +306,9 @@ fn manual_denial_is_definitive_and_preserves_cached_rights() {
             "license refusal is not an OAuth refresh refusal"
         );
         let retained = app
-            .candidate_store()
+            .legacy_store()
             .expect("store")
-            .load::<crate::license_remote::Candidate>("license-candidate")
+            .load::<crate::license_remote::tests::LegacyCandidate>("license-candidate")
             .expect("candidate retained");
         assert_eq!(
             serde_json::to_vec(&retained).expect("fixture bytes"),
@@ -344,12 +344,12 @@ fn fresh_login_with_same_identity_clears_needs_sign_in_without_revocation() {
     let mut app = App::with_clock(BuildConfig::load(), root.clone(), || Ok(100));
     app.account = Some(account);
     app.store = Some(store);
-    let candidate = crate::license_remote::Candidate {
+    let candidate = crate::license_remote::tests::LegacyCandidate {
         credential: credential.clone(),
         account_id: credential.claims.subject.clone(),
         device: device.clone(),
     };
-    app.candidate_store()
+    app.legacy_store()
         .expect("store")
         .save("license-candidate", &candidate)
         .expect("candidate");
@@ -385,9 +385,9 @@ fn fresh_login_with_same_identity_clears_needs_sign_in_without_revocation() {
     ));
     assert!(!app.account.as_ref().expect("account").needs_sign_in());
     let retained = app
-        .candidate_store()
+        .legacy_store()
         .expect("store")
-        .load::<crate::license_remote::Candidate>("license-candidate")
+        .load::<crate::license_remote::tests::LegacyCandidate>("license-candidate")
         .expect("same candidate");
     assert_eq!(
         serde_json::to_vec(&retained).expect("fixture bytes"),

@@ -1,3 +1,16 @@
+## Contrato vigente de licencias — paso 8 (#1827)
+
+El Hub usa services v18, sin TransferRights. El saludo rechaza v17/v18 como
+Version antes de Policy y no envía acciones de revocación. El helper se admite
+por lectura autenticada del núcleo; abrirlo no concede derechos. Las páginas y
+widgets siguen leyendo Policy.state. ACK perdido es transitorio: el supervisor
+conserva su suelo de un minuto antes de pedir otra emisión HTTP.
+
+Contrato y rollback de datos: [ADR0102](../../docs/adr/0102-modelo-acceso-nativo.md).
+Las secciones fechadas inferiores son históricas; este contrato sustituye sus
+reglas de candidate/marcador y transferencia. Rollback sintético con lectores
+v17 y pre-NeedsSignIn, sin cambios de instalación: `native/scripts/license-generation-rollback.ps1`.
+
 ## #1827 — Acceso por Policy.state (paso 7)
 
 Navegación, acceso y mensajes leen el estado explícito del núcleo; Policy.error

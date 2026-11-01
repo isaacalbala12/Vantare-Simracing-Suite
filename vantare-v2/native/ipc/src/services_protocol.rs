@@ -2,10 +2,10 @@
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use std::io::{self, Read, Write};
 
-// v17 versions the nested control v7 Policy; Session/AccountCancel stay unchanged.
+// v18 removes TransferRights. Admission observes the core without disk replay.
 // Mixed generations are transient failures;
 // no protocol error can invalidate the signed core policy.
-pub const VERSION: u32 = 17;
+pub const VERSION: u32 = 18;
 #[path = "services_protocol/pilot_document.rs"]
 pub mod pilot_document;
 #[path = "services_protocol/report_document.rs"]
@@ -35,7 +35,6 @@ pub enum Command {
     },
     PilotSync,
     Status,
-    TransferRights,
     AccountBegin,
     /// Cancela el intento de acceso, conservando la cuenta y los derechos.
     AccountCancel,

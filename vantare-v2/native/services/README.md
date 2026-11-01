@@ -1,3 +1,18 @@
+## Contrato vigente de licencias — paso 8 (#1827)
+
+Services v18 retira TransferRights, Candidate y su marcador. `renew` devuelve
+CredentialV1 recién verificada en memoria y App la entrega por InstallOnline;
+solo el ACK durable confirma la instalación. No abre el namespace histórico:
+restos válidos, dañados o bloqueados se ignoran, también si pertenecen a otra cuenta.
+Si se pierde el ACK o desaparece el núcleo, el resultado es transitorio y la
+siguiente renovación pide una emisión nueva, con backoff y suelo de un minuto.
+Binding/authority/guardias del núcleo no cambian. Solo los actos explícitos revocan.
+
+Contrato y rollback de datos: [ADR0102](../../docs/adr/0102-modelo-acceso-nativo.md).
+Las secciones fechadas inferiores son históricas; este contrato sustituye sus
+reglas de candidate/marcador y transferencia. Rollback sintético con lectores
+v17 y pre-NeedsSignIn, sin cambios de instalación: `native/scripts/license-generation-rollback.ps1`.
+
 ## #1827 — Policy.state / control v7 (paso 7)
 
 Services lee los estados del núcleo y usa Policy::denied para políticas conservadoras.

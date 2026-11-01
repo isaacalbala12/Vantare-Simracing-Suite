@@ -348,8 +348,8 @@ enum UserAction { SignIn, ResetDevice, UpdateApp, FixClock, Support }
    en el caso raro de perder el ACK local hace una petición HTTP más, a cambio de
    eliminar la clase entera de #1810/#1825/#1798, el punto 4 de #1819 y el
    «transferencia final sin confirmar» de #1816.
-2. **Verificación en servicios**: `license_remote.rs:101-111` (validar
-   `online_capabilities` y firma) y `app.rs:128-159`. Verifica solo el núcleo.
+2. **Verificación en servicios (propuesta histórica, fuera del paso 8 aprobado)**: `license_remote.rs:101-111` (validar
+   `online_capabilities` y firma) y `app.rs:128-159`. El encargo del paso 8 conserva la firma/claims de la respuesta HTTP en servicios; §4.2.1 fija el alcance ejecutado.
 3. **Revocación en renovaciones**: `app.rs:342-353` y la rama manual de
    `refresh_oauth_origin` (`:489-500`). Un refresh rechazado pasa a
    `Session::NeedsSignIn` sin tocar la licencia (cierra R7 y lo que queda de
@@ -373,6 +373,32 @@ enum UserAction { SignIn, ResetDevice, UpdateApp, FixClock, Support }
     `rights/mod.rs:31-39`). Si v2 sí está planificado, se conserva fuera del
     camino de arranque y se documenta en el ADR.
 
+### 4.2.1 Paso 8 — contrato ejecutado
+
+Servicios conserva la comprobación de firma/claims de la emisión HTTP nueva
+por el alcance aprobado; no elimina el verificador compartido con el núcleo.
+Devuelve CredentialV1 en memoria y la entrega a InstallOnline, sin persistir.
+Desaparecen el namespace de licencia de servicios, Candidate productivo,
+TransferRights, recovered_renewal_transfer y las rutas de cuarentena del candidate.
+Los restos de generaciones anteriores se ignoran sin abrir su Store; una cuenta
+B en esos archivos no puede convertirse en primer binding de la sesión A.
+
+El supervisor lee Policy autenticada antes de admitir al helper, usando las
+mismas reglas de Policy.state del paso 7; no exige instalación previa y no
+concede acceso por admitirlo. Conserva Logout y recuperación en denegación.
+Se retira también el traspaso final al cerrar, sin cambiar el resto del lifecycle.
+ACK perdido o núcleo ausente después de HTTP: Transient, olvido de esa respuesta,
+una emisión HTTP en el próximo intento; backoff, suelo de un minuto y rechazo
+429 de Clerk se mantienen. Es el cambio de comportamiento aceptado de §4.7.
+
+Services v18 elimina el comando; control v7 y fotos v11 intactos. V17/v18 falla
+como Version antes del esquema, sin revocar. Install de control sigue siendo
+el mecanismo de restauración offline del propio núcleo y sus fixtures, nunca
+una ruta de servicios desde disco. Binding/authority/guardias no cambian.
+La fixture de rollback compila lectores v17 y anteriores a NeedsSignIn contra
+los datos nuevos y vuelve al lector nuevo; el estado de cuenta desconocido se
+aparta sin perder derechos, tal como exige BIL-08.
+
 ### 4.3 Contratos que cambian y compatibilidad
 
 | Contrato | Cambio | Compatibilidad |
@@ -382,6 +408,7 @@ enum UserAction { SignIn, ResetDevice, UpdateApp, FixClock, Support }
 | Control núcleo v6 → v7 | `Policy.state`, `signed_until_ms`/`grace_until_ms` en lugar de `valid_until_ms` + `online_recovery_required`; `Install` de caché permanece hasta el paso 8 | Núcleo, servicios, Hub y overlays se instalan juntos en cada generación; una respuesta de otra generación da `VersionMismatch` antes del esquema. Si un núcleo/helper anterior cierra sin responder, queda desconexión transitoria genérica, nunca protocolo inválido ni revocación. Paso transitorio: v7 publica también los campos antiguos durante un corte si se quiere poder bisecar |
 | Servicios v15 → v16 (paso 6) | `Reply::Account.session` y `AccountCancel` | Integrado en código; v16 no se publicó en una release |
 | Servicios v16 → v17 (paso 7) | Solo versión del sobre: transporta `Policy` control v7; Session/AccountCancel y demás payloads intactos | El saludo rechaza v16/v17 antes de decodificar Policy. Decisión del orquestador 1-nov-2026; TransferRights permanece hasta el paso 8 |
+| Servicios v17 → v18 (paso 8) | Retira TransferRights y la admisión por traspaso | Version antes de esquema, sin revocar; conjunto instalado debe coincidir |
 | Datos en disco | `binding`/`authority`/`authority-recovery` **sin cambio de formato** | Una generación nueva lee lo de la anterior. `license-candidate`/`-pending` sobrantes: se ignoran (o se apartan una vez con `quarantine_dated`). No hace falta migración de datos |
 | Generación anterior leyendo datos de la nueva (rollback del instalador) | La anterior encuentra `binding`/`authority` válidos y sin candidate | Funciona: sin candidate, la generación anterior hace `Read` (`app.rs:198`) y, si toca, renueva por HTTP |
 
@@ -635,3 +662,15 @@ formatean fecha/hora local; la espera automática compara unidades iguales. Las
 consultas al helper con NoCredential/RecoveryRequired/ClockBehind frescos y
 Logout incluso con política denegada son decisiones expresas del orquestador,
 sin autoridad para conceder acceso y conservando el ACK durable (ADR0102).
+
+Actualización de caracterización paso 8: las columnas candidate son `None`
+(no aplican: servicios no tiene almacén de derechos). Las dos filas TransferRights
+se retiran porque el comando no existe. Las decisiones de Error/origen, sesión,
+revocación, DeviceReset y las 22 filas del núcleo siguen verificadas; los tests
+de cuarentena/recuperación de candidate se sustituyen por restos ignorados,
+ACK perdido con reemisión única y rollback de generaciones.
+
+El suelo de un minuto y la reemisión tras ACK perdido pertenecen al supervisor
+automático. El botón manual conserva el contrato previo de forzar comprobación
+ahora (§1); no se añade un bloqueo manual en este paso. Clerk sigue respondiendo
+429 como transitorio. Quitar este gesto o limitarlo sería otro cambio de producto.

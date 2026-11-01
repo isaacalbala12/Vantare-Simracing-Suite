@@ -278,7 +278,7 @@ impl Authority {
     }
 
     /// Only a newly completed authenticated HTTPS renewal may call this.
-    /// Disk restore/TransferRights must always use `install`.
+    /// Disk restore must always use `install`.
     pub fn install_online(
         &mut self,
         verified: Verified,

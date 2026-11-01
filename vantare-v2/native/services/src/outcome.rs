@@ -49,7 +49,7 @@ pub enum Observation<'a> {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Outcome {
     pub renewal: RenewalOutcome,
-    /// Exige ACK durable antes de limpiar candidate o cerrar sesión.
+    /// Exige ACK durable antes de anunciar revocación o cerrar sesión.
     pub revoke: bool,
     pub sign_out: bool,
     pub needs_sign_in: bool,
@@ -63,8 +63,8 @@ pub fn outcome(observation: Observation<'_>) -> Outcome {
         Observation::Action(action) => (Transient, true, action == Revocation::Logout, false),
         Observation::Error(error, origin) => {
             // Columnas definitivas: renovación, OAuth, respuesta del núcleo.
-            // Core(Rejected) no procede de license_remote::renew; la cuarentena
-            // del candidate se hace en App::complete_online_renewal.
+            // Core(Rejected) no procede de license_remote::renew; App puede leer
+            // el estado del núcleo para explicar la frontera de seguridad.
             let (renewal, oauth, core) = match error {
                 Error::Authentication => (true, true, false),
                 Error::Denied | Error::Conflict | Error::DeviceLimit => (true, false, true),

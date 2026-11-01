@@ -1,3 +1,17 @@
+<!-- isa1827-p8-worker -->
+## Paso 8 — en ejecución (VANTA-126, 2026-11-01)
+
+Base origin/nightly `7eae8cef177e898776cada129a9d06baab5e5d13`.
+Rama `vantareapp/isa-1827-paso8-sin-candidate`, worktree `C:/VantareServer/wt/isa-1827-p8`, target `D:/VantareServer/targets/isa-1827-p8`.
+
+- Servicios deja de guardar candidate/marcador y retira TransferRights, recovered_renewal_transfer y sus cuarentenas. Firma HTTP nueva verificada → InstallOnline; el núcleo guarda los únicos derechos.
+- Admisión por Policy autenticada del núcleo, sin conceder acceso por arrancar el helper. Services v18; control v7/fotos v11 y formatos durables intactos.
+- Cambio autorizado: perder respuesta/ACK requiere una emisión HTTP nueva en el siguiente intento, con backoff y suelo de un minuto.
+- Fixtures en preparación/validación: ACK durable perdido + una emisión después del minuto; restos de otra cuenta/dañados ignorados; rollback con lectores v17 y pre-NeedsSignIn y vuelta. Caracterización candidate pasa a no aplicar.
+- Gates, mutaciones, revisión y PR pendientes. Fallos intermedios de compilación/fixtures se conservan en `D:/VantareServer/evidence/isa-1827-p8`.
+- Project Vantare / area:licencias / In Review, sin milestone. Plane intacto. Sin dependencias nuevas, datos reales, secretos, instalaciones, producción, merge ni release. CI a cargo del orquestador, sin watch.
+<!-- /isa1827-p8-worker -->
+
 <!-- isa1827-paso7 -->
 ## VANTA-126 / #1827 — Paso 7, revisión profunda R1 lista para revisión
 

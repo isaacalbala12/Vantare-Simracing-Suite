@@ -1,7 +1,6 @@
-//! #1827 paso 0: resultados y efectos actuales; no anticipar el paso 5/8.
+//! #1827: matriz base con diferencias autorizadas de pasos 5/6/8 explícitas.
 use super::*;
 use crate::protocol::RenewalOutcome;
-
 mod reset;
 
 #[test]
@@ -45,6 +44,7 @@ enum Origin {
     Automatic,
     Purchase,
 }
+
 #[derive(Clone, Copy, Debug)]
 enum Route {
     License,
@@ -52,7 +52,6 @@ enum Route {
     Profile,
     Account,
 }
-
 type ServiceCase = (
     Route,
     Origin,
@@ -60,7 +59,7 @@ type ServiceCase = (
     &'static str,
     Error,
     bool,
-    bool,
+    Option<bool>,
     bool,
     bool,
 );
@@ -69,50 +68,50 @@ type ServiceCase = (
 fn nightly_error_origin_effects_matrix() {
     use Origin::*;
     use Route::*;
-    // ruta, origen, HTTP, body, Error, revoca, conserva candidate, conserva sesión, NeedsSignIn.
+    // ruta, origen, HTTP, body, Error, revoca, candidate no aplica (paso 8: sin almacén), conserva sesión, NeedsSignIn.
     // Purchase usa LicenseRenewAutomatic en el Hub actual, sin un tercer IPC.
     #[rustfmt::skip]
     const CASES: &[ServiceCase] = &[
-        // Paso 5: el botón manual conserva candidate y sesión; no revoca.
-        (License, User, 401, "{}", Error::Authentication, false, true, true, false),
-        (License, User, 403, "{}", Error::Denied, false, true, true, false),
-        (License, User, 409, "{}", Error::Conflict, false, true, true, false),
-        (License, User, 409, r#"{"error":"device_limit"}"#, Error::DeviceLimit, false, true, true, false),
-        (License, User, 409, r#"{"error":"account_conflict"}"#, Error::AccountConflict, false, true, true, false),
-        (License, User, 429, "{}", Error::Offline, false, true, true, false),
-        (License, User, 503, "{}", Error::Offline, false, true, true, false),
-        (License, User, 200, "{}", Error::Protocol, false, true, true, false),
-        (License, Automatic, 401, "{}", Error::Authentication, false, true, true, false),
-        (License, Automatic, 403, "{}", Error::Denied, false, true, true, false),
-        (License, Automatic, 409, "{}", Error::Conflict, false, true, true, false),
-        (License, Automatic, 409, r#"{"error":"device_limit"}"#, Error::DeviceLimit, false, true, true, false),
-        (License, Automatic, 409, r#"{"error":"account_conflict"}"#, Error::AccountConflict, false, true, true, false),
-        (License, Automatic, 429, "{}", Error::Offline, false, true, true, false),
-        (License, Automatic, 503, "{}", Error::Offline, false, true, true, false),
-        (License, Purchase, 401, "{}", Error::Authentication, false, true, true, false),
-        (License, Purchase, 403, "{}", Error::Denied, false, true, true, false),
-        (License, Purchase, 409, "{}", Error::Conflict, false, true, true, false),
-        (License, Purchase, 409, r#"{"error":"device_limit"}"#, Error::DeviceLimit, false, true, true, false),
-        (License, Purchase, 503, "{}", Error::Offline, false, true, true, false),
-        // Paso 5: refresh manual pasa a NeedsSignIn conservando identidad y candidate.
-        (OAuth, User, 400, r#"{"error":"invalid_grant"}"#, Error::Authentication, false, true, true, true),
-        (OAuth, Automatic, 400, r#"{"error":"invalid_grant"}"#, Error::Authentication, false, true, true, true),
-        (OAuth, Purchase, 400, r#"{"error":"invalid_grant"}"#, Error::Authentication, false, true, true, true),
-        (OAuth, User, 401, "{}", Error::Authentication, false, true, true, true),
-        (OAuth, Automatic, 401, "{}", Error::Authentication, false, true, true, true),
-        (OAuth, Purchase, 401, "{}", Error::Authentication, false, true, true, true),
-        (OAuth, User, 403, "{}", Error::Offline, false, true, true, false),
-        (OAuth, Automatic, 403, "{}", Error::Offline, false, true, true, false),
-        (OAuth, Purchase, 403, "{}", Error::Offline, false, true, true, false),
-        (OAuth, User, 400, r#"{"error":"invalid_request"}"#, Error::Protocol, false, true, true, false),
-        (OAuth, User, 429, "{}", Error::Offline, false, true, true, false),
-        (OAuth, Automatic, 503, "{}", Error::Offline, false, true, true, false),
-        (Profile, User, 401, "{}", Error::Authentication, false, true, true, false),
-        (Profile, Automatic, 403, "{}", Error::Denied, false, true, true, false),
-        (Profile, User, 503, "{}", Error::Offline, false, true, true, false),
-        (Account, User, 400, r#"{"error":"invalid_grant"}"#, Error::Authentication, false, true, true, true),
-        (Account, User, 403, "{}", Error::Offline, false, true, true, false),
-        (Account, User, 503, "{}", Error::Offline, false, true, true, false),
+        // Paso 5 conserva sesión y no revoca; paso 8 elimina el almacén candidate.
+        (License, User, 401, "{}", Error::Authentication, false, None, true, false),
+        (License, User, 403, "{}", Error::Denied, false, None, true, false),
+        (License, User, 409, "{}", Error::Conflict, false, None, true, false),
+        (License, User, 409, r#"{"error":"device_limit"}"#, Error::DeviceLimit, false, None, true, false),
+        (License, User, 409, r#"{"error":"account_conflict"}"#, Error::AccountConflict, false, None, true, false),
+        (License, User, 429, "{}", Error::Offline, false, None, true, false),
+        (License, User, 503, "{}", Error::Offline, false, None, true, false),
+        (License, User, 200, "{}", Error::Protocol, false, None, true, false),
+        (License, Automatic, 401, "{}", Error::Authentication, false, None, true, false),
+        (License, Automatic, 403, "{}", Error::Denied, false, None, true, false),
+        (License, Automatic, 409, "{}", Error::Conflict, false, None, true, false),
+        (License, Automatic, 409, r#"{"error":"device_limit"}"#, Error::DeviceLimit, false, None, true, false),
+        (License, Automatic, 409, r#"{"error":"account_conflict"}"#, Error::AccountConflict, false, None, true, false),
+        (License, Automatic, 429, "{}", Error::Offline, false, None, true, false),
+        (License, Automatic, 503, "{}", Error::Offline, false, None, true, false),
+        (License, Purchase, 401, "{}", Error::Authentication, false, None, true, false),
+        (License, Purchase, 403, "{}", Error::Denied, false, None, true, false),
+        (License, Purchase, 409, "{}", Error::Conflict, false, None, true, false),
+        (License, Purchase, 409, r#"{"error":"device_limit"}"#, Error::DeviceLimit, false, None, true, false),
+        (License, Purchase, 503, "{}", Error::Offline, false, None, true, false),
+        // Paso 5: refresh manual pasa a NeedsSignIn conservando identidad.
+        (OAuth, User, 400, r#"{"error":"invalid_grant"}"#, Error::Authentication, false, None, true, true),
+        (OAuth, Automatic, 400, r#"{"error":"invalid_grant"}"#, Error::Authentication, false, None, true, true),
+        (OAuth, Purchase, 400, r#"{"error":"invalid_grant"}"#, Error::Authentication, false, None, true, true),
+        (OAuth, User, 401, "{}", Error::Authentication, false, None, true, true),
+        (OAuth, Automatic, 401, "{}", Error::Authentication, false, None, true, true),
+        (OAuth, Purchase, 401, "{}", Error::Authentication, false, None, true, true),
+        (OAuth, User, 403, "{}", Error::Offline, false, None, true, false),
+        (OAuth, Automatic, 403, "{}", Error::Offline, false, None, true, false),
+        (OAuth, Purchase, 403, "{}", Error::Offline, false, None, true, false),
+        (OAuth, User, 400, r#"{"error":"invalid_request"}"#, Error::Protocol, false, None, true, false),
+        (OAuth, User, 429, "{}", Error::Offline, false, None, true, false),
+        (OAuth, Automatic, 503, "{}", Error::Offline, false, None, true, false),
+        (Profile, User, 401, "{}", Error::Authentication, false, None, true, false),
+        (Profile, Automatic, 403, "{}", Error::Denied, false, None, true, false),
+        (Profile, User, 503, "{}", Error::Offline, false, None, true, false),
+        (Account, User, 400, r#"{"error":"invalid_grant"}"#, Error::Authentication, false, None, true, true),
+        (Account, User, 403, "{}", Error::Offline, false, None, true, false),
+        (Account, User, 503, "{}", Error::Offline, false, None, true, false),
     ];
     for case in CASES.iter().copied() {
         assert_error_origin_effects(case);
@@ -120,7 +119,7 @@ fn nightly_error_origin_effects_matrix() {
 }
 
 fn assert_error_origin_effects(
-    (route, origin, status, body, error, revokes, candidate, session, needs_sign_in): ServiceCase,
+    (route, origin, status, body, error, revokes, candidate_not_applicable, session, needs_sign_in): ServiceCase,
 ) {
     use crate::outcome::{Observation, Origin as AccessOrigin, outcome};
     use Origin::*;
@@ -137,7 +136,7 @@ fn assert_error_origin_effects(
         "{route:?}/{origin:?}/{status}: revoke column"
     );
     let device = crate::license::installation::legacy_fingerprint().expect("fixture device");
-    let (credential, keys) = crate::license_remote::tests::signed_fixture(&device);
+    let (_, keys) = crate::license_remote::tests::signed_fixture(&device);
     let server = crate::test_http::Server::start_observed(vec![(status, body.into())]);
     let (root, store) = crate::test_store("license-characterization");
     let account = crate::account::fixture(&server.base, &store);
@@ -157,15 +156,10 @@ fn assert_error_origin_effects(
     let mut app = App::with_clock(config, root.clone(), clock);
     app.account = Some(account);
     app.store = Some(store);
-    let saved = crate::license_remote::Candidate {
-        account_id: credential.claims.subject.clone(),
-        device: device.clone(),
-        credential,
-    };
-    app.candidate_store()
-        .expect("store")
-        .save("license-candidate", &saved)
-        .expect("candidate");
+    assert!(
+        candidate_not_applicable.is_none(),
+        "paso 8: servicios no guarda licencias"
+    );
     let mut steps = if revokes {
         vec![CoreStep::Invalidate]
     } else {
@@ -190,11 +184,6 @@ fn assert_error_origin_effects(
         Some(error),
         "{route:?}/{origin:?}/{status}"
     );
-    if let Some(cached) = assert_candidate_presence(&mut app, candidate) {
-        assert_eq!(cached.credential.signature, saved.credential.signature);
-        assert_eq!(cached.account_id, saved.account_id);
-        assert_eq!(cached.device, saved.device);
-    }
     assert_eq!(
         app.account.as_ref().expect("account").identity().is_some(),
         session,
@@ -223,7 +212,7 @@ fn assert_error_origin_effects(
 }
 
 fn assert_public_session(account: &Account, needs_sign_in: bool, session: bool) {
-    // Paso 6: observamos el campo publicado, sin cambiar ninguna columna previa.
+    // Paso 6 publica Session; paso 8 marca candidate como no aplicable.
     let expected_session = if needs_sign_in {
         crate::protocol::Session::NeedsSignIn
     } else if session {
@@ -346,25 +335,43 @@ fn nightly_automatic_failure_result_matrix() {
 }
 
 #[test]
-fn nightly_explicit_revocation_and_transfer_matrix() {
+fn nightly_explicit_revocation_matrix() {
     // comando, rechazo del núcleo, candidate restante, sesión restante, Error.
     // El guion CoreStep prueba revocación confirmada solo en Logout/DeviceReset
-    // con ACK correcto; TransferRights nunca envía Invalidate.
+    // con ACK correcto. TransferRights no aplica: eliminado en paso 8.
+    type ExplicitCase = (&'static str, bool, Option<bool>, bool, Option<Error>);
     #[rustfmt::skip]
-    const CASES: &[(&str, bool, bool, bool, Option<Error>)] = &[
-        ("Logout", false, false, false, None),
-        ("Logout", true, true, true, Some(Error::Core(vantare_ipc::control::Failure::UnknownLegacy))),
-        ("DeviceReset", false, true, true, Some(Error::BridgeUnconfigured)),
-        ("DeviceReset", true, true, true, Some(Error::BridgeUnconfigured)),
-        ("TransferRights", false, true, true, None),
-        // Cambia en paso 8: candidate rechazado se aparta, sin revocar ni cerrar sesión.
-        ("TransferRights", true, false, true, None),
+    const CASES: &[ExplicitCase] = &[
+        ("Logout", false, None, false, None),
+        (
+            "Logout",
+            true,
+            None,
+            true,
+            Some(Error::Core(vantare_ipc::control::Failure::UnknownLegacy)),
+        ),
+        (
+            "DeviceReset",
+            false,
+            None,
+            true,
+            Some(Error::BridgeUnconfigured),
+        ),
+        (
+            "DeviceReset",
+            true,
+            None,
+            true,
+            Some(Error::BridgeUnconfigured),
+        ),
+        // Paso 8: las dos filas TransferRights ya no aplican; no existe el comando.
+
         // Paso 6 autorizado: AccountCancel cancela el intento, no revoca.
-        ("AccountCancel", false, true, true, None),
+        ("AccountCancel", false, None, true, None),
     ];
-    for (name, reject, candidate, session, expected) in CASES.iter().copied() {
+    for (name, reject, candidate_not_applicable, session, expected) in CASES.iter().copied() {
         let device = crate::license::installation::legacy_fingerprint().expect("fixture device");
-        let (credential, keys) = crate::license_remote::tests::signed_fixture(&device);
+        let (_, keys) = crate::license_remote::tests::signed_fixture(&device);
         let (root, store) = crate::test_store("explicit-characterization");
         let account = crate::account::fixture(
             &url::Url::parse("http://127.0.0.1:1/").expect("fixture URL"),
@@ -384,25 +391,8 @@ fn nightly_explicit_revocation_and_transfer_matrix() {
         let mut app = App::with_clock(config, root.clone(), || Ok(100));
         app.account = Some(account);
         app.store = Some(store);
-        app.candidate_store()
-            .expect("store")
-            .save(
-                "license-candidate",
-                &crate::license_remote::Candidate {
-                    account_id: credential.claims.subject.clone(),
-                    device: device.clone(),
-                    credential,
-                },
-            )
-            .expect("candidate");
-        let transfer = name == "TransferRights";
-        let mut steps = if transfer {
-            if reject {
-                vec![CoreStep::RejectInstall, CoreStep::Read]
-            } else {
-                vec![CoreStep::Install]
-            }
-        } else if matches!(name, "DeviceReset" | "AccountCancel") {
+        assert!(candidate_not_applicable.is_none());
+        let mut steps = if matches!(name, "DeviceReset" | "AccountCancel") {
             vec![]
         } else if reject {
             vec![CoreStep::RejectInvalidate]
@@ -416,14 +406,13 @@ fn nightly_explicit_revocation_and_transfer_matrix() {
             "Logout" => Command::Logout,
             "DeviceReset" => Command::DeviceReset,
             "AccountCancel" => Command::AccountCancel,
-            _ => Command::TransferRights,
+            _ => unreachable!("explicit fixture command"),
         };
         assert_eq!(
             app.execute(command).err(),
             expected,
             "{name}, reject={reject}"
         );
-        let _ = assert_candidate_presence(&mut app, candidate);
         assert_eq!(
             app.account.as_ref().expect("account").identity().is_some(),
             session,
@@ -433,24 +422,5 @@ fn nightly_explicit_revocation_and_transfer_matrix() {
         core.join().expect("ordered ACK before effects");
         drop(app);
         crate::cleanup_store(&root, "explicit-characterization", &[]);
-    }
-}
-
-fn assert_candidate_presence(
-    app: &mut App,
-    present: bool,
-) -> Option<crate::license_remote::Candidate> {
-    let cached = app
-        .candidate_store()
-        .expect("store")
-        .load::<crate::license_remote::Candidate>("license-candidate");
-    if present {
-        Some(cached.expect("candidate remains readable"))
-    } else {
-        assert!(
-            matches!(cached, Err(Error::NotFound)),
-            "candidate removed, not corrupt"
-        );
-        None
     }
 }

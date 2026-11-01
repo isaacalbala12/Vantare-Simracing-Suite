@@ -5,7 +5,6 @@ use crate::{
     config::BuildConfig,
     http::Http,
     license::{CredentialV1, Verifier},
-    storage::Store,
 };
 use serde::{Deserialize, Serialize};
 
@@ -25,30 +24,13 @@ struct Response {
     credential: CredentialV1,
     online_capabilities: Vec<String>,
 }
-#[derive(Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct Candidate {
-    pub credential: CredentialV1,
-    pub account_id: String,
-    pub device: String,
-}
-
-pub fn candidate_context(base: Option<&str>, channel: Option<&str>) -> String {
-    format!(
-        "license-v1|{}|{}",
-        base.unwrap_or("unconfigured"),
-        channel.unwrap_or("unknown")
-    )
-}
-
 pub fn renew(
     http: &Http,
     config: &BuildConfig,
     account: &Account,
     now: u64,
     device: &str,
-    store: &Store,
-) -> Result<Candidate> {
+) -> Result<CredentialV1> {
     let endpoint = config
         .supabase
         .as_ref()
@@ -109,13 +91,7 @@ pub fn renew(
     // adquiere autoridad tras verificar la firma y todos los claims v1.
     let subject = &response.credential.claims.subject;
     verifier.v1(&response.credential, subject, device)?;
-    let candidate = Candidate {
-        account_id: subject.clone(),
-        credential: response.credential,
-        device: device.into(),
-    };
-    store.save("license-candidate", &candidate)?;
-    Ok(candidate) // Signed facts only; online_capabilities never grant local rights.
+    Ok(response.credential) // Only fresh signed facts; never saved by services.
 }
 
 pub fn reset_device(request: &DataRequest<'_>, device: &str) -> Result<()> {

@@ -200,3 +200,22 @@ RecoveryRequired o ClockBehind permite las consultas ordinarias al helper,
 además de los comandos de recuperación. Arrancarlo no concede derechos.
 Logout se admite siempre que el canal del núcleo responda de forma autenticada,
 aun con política denegada o caducada; su ACK durable sigue siendo obligatorio.
+
+### Paso 8 — licencia solo en el núcleo
+
+Services v18 retira TransferRights y el almacén candidate/marcador. Mantiene
+la verificación de la respuesta HTTP nueva y la entrega por InstallOnline;
+control v7 conserva su formato, incluido Install para restauración del núcleo.
+La admisión usa Read autenticado y helper_command_allowed sobre Policy.state;
+arrancar servicios no es una concesión. No cambia el catálogo ni sus permisos.
+
+El ACK perdido o núcleo ausente al terminar HTTP es transitorio: se descarta
+la respuesta en servicios y la próxima renovación pide una emisión nueva,
+respetando backoff, suelo de un minuto y rate limit. Los restos históricos se
+ignoran por completo, sin abrir su Store, sin deserializar ni reproducirlos.
+Así desaparece el primer binding de otra cuenta desde candidate (#1825).
+
+Sin cambios durables de binding/authority/guardias. La fixture de generaciones
+comprueba new → v17 → new y new → corte anterior a NeedsSignIn → new con datos
+sintéticos. El lector pre5 aparta account/NeedsSignIn y pide login; los derechos
+siguen válidos. V17/v18 se rechazan por Version, sin Protocol ni revocación.

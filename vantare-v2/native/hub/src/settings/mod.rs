@@ -627,6 +627,11 @@ impl Hub {
             return;
         }
         self.settings.beta_checked = Instant::now();
+        // This panel also reads registration-status, independently of updater changes.
+        // Refresh only the visible panel at the existing bounded two-second cadence.
+        if self.settings.page == Page::Updates {
+            cx.notify();
+        }
         let status = updates::beta_status();
         if status != self.settings.beta_status {
             if let Some(status) = &status

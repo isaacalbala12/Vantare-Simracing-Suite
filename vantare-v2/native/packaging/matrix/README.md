@@ -1,5 +1,19 @@
 # Caracterización del motor de instalación · VANTA-127 / #1840
 
+Paso 1c añade registration-boot-tests: Register falla, Register bloqueado hasta
+el plazo real de 30 segundos, fallo del registro durante Confirm y entorno
+WINDIR ausente. En los cuatro
+casos la app de prueba sigue abierta, el supervisor confirma, no hay rollback,
+el aviso se conserva en registration-status.json y los datos quedan idénticos.
+Además Run-BetaHub real ejecuta el primer Stage con ZIP/feed TEST: fallo rápido y
+fallo liberado después de ready. Ambos conservan aviso y ready/mensaje separados;
+el PID del Register bloqueado deja de existir tras su plazo.
+`-BootProbe` es obligatorio: CI construye el ejemplo boot-confirmation-matrix del
+Hub y el arnés lo copia a una generación sintética. Usa el módulo de confirmación
+de producto; reemplaza solo el comando Register por un fallo/barrera controlados.
+No sustituye una prueba interactiva de la ventana real. Las observaciones se
+guardan por caso y registro/carpetas se aíslan por caso dentro de la raíz QA.
+
 Paso 1b añade `library-mode-tests.ps1` y `driver-context-tests.ps1` al mismo gate.
 Demuestran carga sin raíz rechazada sin escribir, modo biblioteca explícito,
 variables del llamador intactas, rechazo de contexto TEST incompleto/ajeno y
@@ -77,11 +91,26 @@ carpetas QA se conservan como evidencia.
 
 Confirm usa PID y salida de un proceso real inerte. Timeout usa presupuesto cero
 y un hijo propio esperando stdin: el motor ejerce su cierre/plazo real de 3 s,
-sin esperas añadidas para sincronizar. Nunca se llama a Run ni Start del producto.
+sin esperas añadidas para sincronizar. Las 88 filas no llaman a Run ni Start; el hook de 1c sí ejecuta Run-BetaHub y
+Start-BetaHub reales con Hub/runtime inertes y guardas QA.
+
+## Bytes del checkout y CI
+
+La matriz exige LF en los tres scripts actuales (candidate, beta y driver), como
+marca `.gitattributes`. Rechaza CRLF antes de cargar producto o crear su raíz.
+No convierte bytes al comparar: snapshot conserva el SHA real de los scripts,
+incluido un cambio de finales de línea. Guard tests cubre LF, los tres rechazos
+y la entrada completa sin escrituras; snapshot tests demuestra LF/CRLF distintos.
+Los scripts congelados del ZIP histórico conservan sus bytes originales.
+
+El fallo CI de #1850/run41330660086 fue un baseline creado desde una copia local
+CRLF de beta.ps1, mientras Git/CI usan LF. El snapshot de clean-install solo difiere
+en ese SHA; la corrección conserva todas las demás observaciones y criterios.
+Normalizar el archivo de trabajo a la política del repo, no el snapshot.
 
 ## Reproducir y revisar cambios
 
-Desde `vantare-v2/`, construir `matrix-verifier` con `compilar.ps1`, target propio
+Desde `vantare-v2/`, construir `matrix-verifier` y `boot-confirmation-matrix` con `compilar.ps1`, target propio
 y jobs autorizados; descargar el ZIP del tag `native-beta-v0.0.975` del repositorio
 de código (no Downloads). El arnés exige su SHA-256 público fijado antes de extraer.
 
@@ -89,7 +118,8 @@ de código (no Downloads). El arnés exige su SHA-256 público fijado antes de e
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File native/packaging/installation-matrix-tests.ps1 `
   -Root D:/VantareServer/qa/isa-1840/run-nuevo `
   -LegacyPackage D:/VantareServer/qa/isa-1840/vantare-native-amd64-package.zip `
-  -TestVerifier D:/VantareServer/targets/isa-1840/debug/examples/matrix-verifier.exe
+  -TestVerifier D:/VantareServer/targets/isa-1840/debug/examples/matrix-verifier.exe `
+  -BootProbe D:/VantareServer/targets/isa-1840/debug/examples/boot-confirmation-matrix.exe
 ```
 
 `-Record` escribe un candidato **solo en QA**, nunca sobrescribe el baseline.

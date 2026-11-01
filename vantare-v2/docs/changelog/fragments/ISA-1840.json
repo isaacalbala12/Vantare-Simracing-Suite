@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "issue": "ISA-1840",
   "type": "fix",
-  "summary": "La instalación admite inventarios antiguos y exige raíces explícitas para sus scripts.",
+  "summary": "El arranque se confirma antes del registro de Windows y sus fallos quedan como avisos.",
   "technicalNotes": [
     "Paso 1a: el inventario instalado sale de su propio manifiesto, ligado por SHA-256 al estado; se retira la lista histórica congelada de 91 archivos.",
     "Los paquetes entrantes siguen exigiendo el inventario completo actual. Se conservan los controles de rutas conocidas, canal, archivos no enumerados, hashes, sidecars y puntos de reanálisis.",
@@ -13,13 +13,16 @@
     "La build TEST pasa identidad, carpetas y prefijo QA; producto público omite esos campos. Las operaciones del driver que escriben exigen raíz; Probe conserva el descubrimiento de la UI.",
     "Por decisión del orquestador tras un incidente de perímetro descartado, inventario de build e histórico exigen raíz, registro y shell explícitos; CI ejecuta una copia QA con fronteras inyectadas.",
     "Los capturadores activos cargan la biblioteca con raíz explícita; sus versiones anteriores quedan archivadas intactas. La matriz compara los bytes reales de candidate y beta instalados.",
-    "Una petición sin qa se rechaza con causa explícita antes de buscar instalación. Las suites QA1492 no remapeadas se siguen aparte en #1848."
+    "Una petición sin qa se rechaza con causa explícita antes de buscar instalación. Las suites QA1492 no remapeadas se siguen aparte en #1848.",
+    "Paso 1c: el Hub publica hub-ready antes de crear Register. Un fallo, fallo de creación o plazo de 30 segundos deja aviso en registration-status.json, sin cerrar la app ni provocar rollback.",
+    "El ACK precede al mantenimiento DisplayVersion. Ajustes muestra el registro aparte; el documento del actualizador y su notificación no reciben mensajes de Register. Si no se guarda el aviso, se registra sin abortar."
   ],
   "testing": [
     "En QA aislada, pasar de una instalación de 109 archivos a una de 110, retirar un recurso en la siguiente, restaurar la anterior y desinstalar: todos los datos y las carpetas vacías de las tres generaciones se conservan.",
     "Repetir la matriz del instalador y las pruebas históricas con el ZIP público real de 975; rechazar rutas ajenas y cambios de manifiesto o binarios.",
     "Cargar ambos scripts sin raíz o sin modo biblioteca debe fallar sin escribir. Comprobar variables del llamador intactas y rechazos de contexto QA ajeno.",
-    "Repetir matriz de instalación y el histórico con el arnés aislado; rechazar los puntos de entrada históricos sin raíz, registro o shell."
+    "Repetir matriz de instalación y el histórico con el arnés aislado; rechazar los puntos de entrada históricos sin raíz, registro o shell.",
+    "En matriz QA aislada, provocar fallo, bloqueo de Register y fallo del registro durante Confirm; comprobar app abierta, ACK confirmado, sin rollback y datos intactos. Repetir con WINDIR ausente, Run-BetaHub/Stage reales, ready concurrente y comprobación del hijo bloqueado recogido."
   ],
   "knownLimitations": [
     "Este cambio no renueva el bootstrap que ya quedó instalado en la raíz; los cambios de ese bootstrap siguen requiriendo Setup.",

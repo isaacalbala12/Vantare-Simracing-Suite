@@ -1,3 +1,14 @@
+## Arranque instalado — #1840, paso 1c
+
+Arranque instalado (#1840, paso 1c): una vez creada la ventana, el Hub publica
+hub-ready antes de crear Register. Register tiene 30 segundos y el resultado se
+guarda en registration-status.json: Ajustes lo muestra aparte del actualizador.
+No cierra el Hub ni dispara rollback. El proceso se posee, cancela y recoge al
+vencer o cerrar. No lee ni modifica update-status.json; Stage y las notificaciones
+de actualización conservan su propio mensaje y estado. Un fallo al guardar el
+resultado se registra en stderr sin invalidar readiness. El riesgo aceptado de
+esta señal temprana y el bootstrap congelado 975 constan en packaging/README.md.
+
 ## Contrato vigente de licencias — paso 10 (#1827)
 
 La cadencia del supervisor sin plazo firmado es arranque/24 h desde éxito;

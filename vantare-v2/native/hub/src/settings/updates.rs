@@ -323,3 +323,59 @@ pub(super) fn cancel_restart() -> Result<(), String> {
         Err(error) => Err(format!("cancelar reinicio beta: {error}")),
     }
 }
+
+/// Cosmetic registration is intentionally independent of the updater/toasts.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RegistrationStatus {
+    schema: u32,
+    state: String,
+    message: String,
+}
+pub(super) fn registration_warning() -> Option<String> {
+    let root = std::env::var_os("VANTARE_BETA_ROOT")?;
+    registration_warning_at(&std::path::PathBuf::from(root))
+}
+fn registration_warning_at(root: &Path) -> Option<String> {
+    let status: RegistrationStatus =
+        read(&root.join("registration-status.json"), 16 * 1024).ok()?;
+    (status.schema == 1
+        && status.state == "warning"
+        && !status.message.is_empty()
+        && status.message.len() <= 8192)
+        .then_some(status.message)
+}
+#[test]
+fn registration_warning_is_read_separately_and_never_enters_update_notifications() {
+    let root = std::env::temp_dir().join(format!(
+        "vantare-registration-settings-{}",
+        std::process::id()
+    ));
+    std::fs::create_dir_all(&root).unwrap();
+    let update = br#"{"schema":1,"state":"ready","message":"Update ready","version":"0.0.990","notes":"release"}"#;
+    std::fs::write(root.join("update-status.json"), update).unwrap();
+    let path = root.join("registration-status.json");
+    assert_eq!(registration_warning_at(&root), None);
+    for (state, expected) in [
+        ("warning", Some("registry denied".to_owned())),
+        ("current", None),
+        ("ready", None),
+    ] {
+        std::fs::write(
+            &path,
+            serde_json::json!({"schema":1,"state":state,"message":"registry denied"}).to_string(),
+        )
+        .unwrap();
+        assert_eq!(registration_warning_at(&root), expected);
+        let notification: BetaStatus = read(&root.join("update-status.json"), 64 * 1024).unwrap();
+        assert_eq!(notification.message, "Update ready");
+        assert!(notification.ready_for("0.0.989"));
+        assert_eq!(
+            std::fs::read(root.join("update-status.json")).unwrap(),
+            update
+        );
+    }
+    std::fs::write(&path, b"invalid").unwrap();
+    assert_eq!(registration_warning_at(&root), None);
+    std::fs::remove_dir_all(root).unwrap();
+}

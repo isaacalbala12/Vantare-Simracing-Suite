@@ -1,5 +1,20 @@
 # Beta nativa — instalador y actualizaciones (#1454)
 
+Paso 1c de #1840: el Hub escribe hub-ready antes de Register. Un fallo o lentitud
+se guarda en registration-status.json, propiedad del Hub; Ajustes muestra el aviso
+aparte. update-status.json pertenece solo al actualizador: Stage puede escribir
+current/ready/error sin perder el aviso ni contaminar la notificación de actualización.
+Confirm emite ACK antes de Sync-BetaRegistration; si ese mantenimiento falla, lo
+registra como aviso en stdout y continúa. Register del Hub comunica su propio resultado.
+
+Riesgo aceptado por decisión del orquestador en #1840: hub-ready significa solo
+«ventana creada y proceso vivo». No certifica el mantenimiento posterior. Si el
+proceso falla después de publicar readiness mientras Register sigue en curso,
+ese fallo ya no provoca rollback de arranque. La disponibilidad tiene prioridad
+sobre la actualización cosmética del registro. El bootstrap congelado de 0.0.975
+conserva Sync-BetaRegistration sin try/catch; su fallo sigue siendo una limitación
+preexistente de ese bootstrap, fuera de este paso.
+
 `candidate.ps1` y `beta.ps1` exigen `-Root` incluso para Build. Cargarlos como
 biblioteca requiere `. <script> -Library -Root <contexto explícito>`; no ejecuta
 operaciones ni selecciona una instalación. La carga sin raíz falla antes de

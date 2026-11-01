@@ -495,10 +495,12 @@ function Confirm-BetaBoot([string]$Directory, $Process, [int]$TimeoutSeconds = 4
                 Remove-Item -LiteralPath $marker
                 return $true
             }
-            Sync-BetaRegistration $Directory $boot.version
             $saved = [IO.File]::ReadAllText((Join-Path $Directory 'update-status.json')) | ConvertFrom-Json
             Set-BetaStatus $Directory 'current' 'Versión actualizada y arranque confirmado' $boot.version $saved.notes
+            # ACK is durable before cosmetic registry I/O, including slow writes.
             Remove-Item -LiteralPath $marker
+            try { Sync-BetaRegistration $Directory $boot.version }
+            catch { Write-Warning ('No se pudo actualizar DisplayVersion: '+$_.Exception.Message) -WarningAction Continue }
         }
         return $true
     }
@@ -612,7 +614,7 @@ function Uninstall-Beta([string]$Directory, [scriptblock]$Finalize=$null) {
             }
         }
         Remove-Item -LiteralPath (Join-Path $directory 'state.json')
-        foreach ($name in @('boot-pending.json', 'hub-ready', 'update-status.json', 'staging/pending.json')) {
+        foreach ($name in @('boot-pending.json', 'hub-ready', 'update-status.json', 'registration-status.json', 'staging/pending.json')) {
             $path = Join-Path $directory $name
             if (Test-Path -LiteralPath $path) { Remove-Item -LiteralPath $path }
         }

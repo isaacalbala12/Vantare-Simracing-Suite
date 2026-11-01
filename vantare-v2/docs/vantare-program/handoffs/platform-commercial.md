@@ -67,6 +67,9 @@ idénticas. Guarda: cinco rutas ajenas y dos reparse rechazados, raíz válida
 aceptada, llamada sin raíz sin escrituras. Baseline alterado detectado y
 restauración exacta comprobada. Build/Clippy del ejemplo `-D warnings`, fmt,
 parseo PS, YAML, 62 tests de canales/clasificación y 466 huellas PASS.
+La copia QA del driver conserva el BOM UTF-8 necesario en PowerShell 5.1;
+tras ajustar esa codificación, las 15 filas de driver focales pasan sin cambiar
+ninguna instantánea del baseline. Los scripts de producto permanecen intactos.
 No se compila ni ejecuta UI/producto para este corte de tests.
 
 Límites: archivos reales de 975, pero sin ejecutar NSIS ni Hub; las RC usan PE

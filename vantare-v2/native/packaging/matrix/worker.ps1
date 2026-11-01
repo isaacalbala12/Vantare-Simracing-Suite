@@ -61,7 +61,8 @@ try {
                 "`n"+${function:Assert-NativePath}.ToString().Insert(0,'function Assert-NativePath {')+"`n}"
             $driver=$driver.Replace($import,$injection)
             $driverPath=Join-Path $engine 'installer-driver.ps1'
-            [IO.File]::WriteAllText($driverPath,$driver)
+            # PS 5.1 needs the source BOM to preserve localized string literals.
+            [IO.File]::WriteAllText($driverPath,$driver,[Text.UTF8Encoding]::new($true))
             # Cleanup validates this exact temporary naming convention.
             $env:TEMP=$qaCaseRoot
             [Console]::SetIn([IO.StringReader]::new("continue`n"))

@@ -599,7 +599,14 @@ function Uninstall-Beta([string]$Directory, [scriptblock]$Finalize=$null) {
             } | Sort-Object -Unique | Sort-Object Length -Descending)
             foreach ($relative in $directories) {
                 $path = Join-Path $generation.FullName $relative
-                if (Test-Path -LiteralPath $path) { [IO.Directory]::Delete($path, $false) }
+                if ((Test-Path -LiteralPath $path) -and -not @(Get-ChildItem -LiteralPath $path -Force).Count) {
+                    try { [IO.Directory]::Delete($path, $false) }
+                    catch [IO.IOException] {
+                        # A foreign file may appear after enumeration. Preserve
+                        # nonempty program folders and finish uninstalling state.
+                        if(-not(Test-Path -LiteralPath $path) -or -not @(Get-ChildItem -LiteralPath $path -Force).Count){throw}
+                    }
+                }
             }
         }
         Remove-Item -LiteralPath (Join-Path $directory 'state.json')

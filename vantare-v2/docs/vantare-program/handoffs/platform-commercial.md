@@ -3,7 +3,7 @@
 
 A (#1841) integrado por el orquestador en `nightly@6fbbfaa6ad96d187877043786fc999a369d268b3`;
 la sección A inferior conserva la entrega de su rama. Base original B en ese SHA.
-Rebasado sobre `origin/nightly@0a241fc2e927cf925166c86c072b1d43d30044d4`
+Rebasado sobre `origin/nightly@cd9282ccca01bd2522c3e53481c25f360df85c66`
 tras #1842 y #1845, conservando íntegros sus ficheros y todas las entradas del handoff.
 Rama `vantareapp/isa-1827-simplificar-owner`, mismo worktree aislado
 `C:/VantareServer/wt/isa-1827-simplificar` y target privado `D:/VantareServer/targets/isa-1827-s`.
@@ -146,14 +146,14 @@ sin merge/release del worker. Plane sigue En curso; estados y CI son del orquest
   y pasó en CI. Local: 88/88, 121 hashes de datos, dos capturas idénticas, cinco
   rechazos RC9 y dos reparse, omisión de raíz sin escribir y mutación detectada.
 - **1a listo para revisión**, todavía sin integrar: rama
-  `vantareapp/isa-1840-1a-inventario`, base `origin/nightly@0a241fc2e927cf925166c86c072b1d43d30044d4`,
-  worktree `D:/VantareServer/worktrees/isa-1840-1a`; [PR draft #1846](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1846), enlazado en T3. Código validado `b33c58a51`; HEAD documental vigente en #1840/PR.
+  `vantareapp/isa-1840-1a-inventario`, base `origin/nightly@cd9282ccca01bd2522c3e53481c25f360df85c66`,
+  worktree `D:/VantareServer/worktrees/isa-1840-1a`; [PR draft #1846](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1846), enlazado en T3. Revisión aplicada; HEAD final vigente en #1840/PR, código anterior `b33c58a51`.
   La instalada usa su manifest ligado por SHA; desaparece la lista congelada91.
   El universo cerrado deriva del inventario actual y del catálogo explícito de
   rutas de programa retiradas (vacío hoy). Permite crecimiento y retirada sin
   bloquear lectura/rollback; desinstalar conoce esas rutas y conserva los datos.
   ZIP entrante mantiene inventario exacto, hash/PE/sidecar/canal/rutas.
-- Gate 1a: matriz **88/88** contra baseline revisado y **30/30** crecimiento,
+- Gate 1a: matriz **88/88** contra baseline revisado y **54/54** crecimiento,
   retirada, rollback, datos de tres generaciones (incluidas carpetas vacías),
   rutas arbitrarias, duplicados, canal, manifiesto alterado, hashes, sidecar y
   junction. El producto original reproduce el fallo de inventario antes del fix.
@@ -162,18 +162,30 @@ sin merge/release del worker. Plane sigue En curso; estados y CI son del orquest
 - Único delta en 52 snapshots: SHA de beta.ps1 raíz, cuyo cleanup usa el universo
   conocido. Los demás archivos, registro, accesos, códigos y datos coinciden.
   El gate/hook y los tres scripts de producto coinciden con los bytes probados
-  en `D:/VantareServer/qa/isa-1840/matrix-1a-03/engine`. El histórico local usa una
+  en `D:/VantareServer/qa/isa-1840/matrix-1a-review-02/engine`. El histórico local usa una
   copia de arnés reubicada a QA y HKCU inyectado; no ejecuta Setup ni el Hub.
 - Lectura DeepSeek de 1a: sin P0/P1/P2 en la revisión anterior; P3 de retirada
   cubierto con catálogo/test y cleanup, causas negativas fijadas y hook en el
   gate del repo. No se afirma otra revisión delegada de los cambios posteriores.
+- Revisión profunda del orquestador: sin P0/P1, P2-1/P2-2 y P3 atendidos.
+  Get-NativeKnownMembers valida el catálogo antes de Remove-Item; negativos de
+  ../x, data/, unidad, UNC, duplicados y ejecución de Uninstall sin borrar datos.
+  Snapshot fijo del paquete 0.0.987 de la evidencia RC9 (109 rutas), con SHA de
+  procedencia: toda ruta desaparecida exige retirada explícita. No se atribuye
+  versión 988 al manifiesto 987 conservado en esa carpeta. Carpetas no vacías se
+  conservan y se finaliza estado/registro; driver real de prueba con salida 0.
+  Asserts de lectura comprueban referencias observadas y manifiesto; el contador
+  estructural no se presenta como autoridad. data_unchanged deriva de índices.
+  Histórico repetido 156/156 en history-1a-review-01, con registro/shell inyectados.
+  Primera repetición de matriz detectó una etiqueta de versión incorrecta en el
+  nuevo snapshot de test: se corrigió la procedencia y se repitió en raíz nueva.
 - 1a solo cambia PowerShell/tests/docs; no se recompila Rust ni se repite corpus
   de telemetría. Los gates nativos generales quedan para CI del orquestador.
   El P3-4 de #1795 (previous-unreadable) queda pendiente fuera de este encargo.
-- **1b en preparación**, worktree `D:/VantareServer/worktrees/isa-1840-1b`;
+- **1b listo en PR draft #1847**, worktree `D:/VantareServer/worktrees/isa-1840-1b`;
   después 1c/1d en ramas propias desde nightly. Root explícito y biblioteca
   explícita preservan las variables del llamador; QA viene de la petición TEST.
-  Todavía sin PR/entrega de 1b–1d.
+  1b HEAD 04c06df2c; 1c/1d en preparación y sin PR todavía.
 
 Evidencia: `D:/VantareServer/qa/isa-1840/`. Guardas QA activas; TEMP/TMP,
 LOCALAPPDATA, registro y carpetas de shell inyectados. Sin datos de usuario,

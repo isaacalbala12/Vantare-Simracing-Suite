@@ -86,3 +86,12 @@ rechazos exigen su causa esperada. El catálogo de rutas retiradas está vacío 
 producto y no amplía paquetes entrantes. El único cambio esperado en las 88
 instantáneas es el hash de beta.ps1 raíz (52 filas) por el cleanup actualizado;
 los datos, códigos, estado, registro y enlaces quedan iguales.
+
+Revisión de 1a: 54 comprobaciones. El catálogo retirado se valida antes de usarlo
+en lectura o borrado: rutas relativas canónicas, sin data/, unidades/UNC/traversal,
+ni duplicados del inventario o del propio catálogo. Un snapshot fijo del paquete
+0.0.987 de la evidencia RC9 detecta rutas desaparecidas sin retirada explícita;
+el test también simula esa omisión para demostrar el rechazo. Carpetas de programa
+no vacías conservan los archivos ajenos y no impiden retirar state.json/finalizar.
+La demostración del driver exige salida correcta, registro retirado y datos
+intactos. data_unchanged se calcula de los índices realmente comparados.

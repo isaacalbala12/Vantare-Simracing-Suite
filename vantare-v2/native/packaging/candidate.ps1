@@ -238,7 +238,19 @@ $script:NativeMembers = @(Get-NativeMembers $Channel)
 # names when removing/renaming a resource; never replace this with a version list.
 $script:NativeRetiredMembers = @()
 function Get-NativeKnownMembers([string]$CandidateChannel) {
-    @(Get-NativeMembers $CandidateChannel) + $script:NativeRetiredMembers
+    $current=@(Get-NativeMembers $CandidateChannel)
+    $seen=@{}
+    foreach($member in $current){$seen[$member]=$true}
+    foreach($member in $script:NativeRetiredMembers){
+        # These names also reach uninstall's Remove-Item: validate the catalogue
+        # itself, not just manifests which happen to contain a retired member.
+        if($member -isnot [string] -or $member -cnotmatch '^[A-Za-z0-9_-]+(?:[.][A-Za-z0-9_-]+)*(?:/[A-Za-z0-9_-]+(?:[.][A-Za-z0-9_-]+)*)*$' -or
+           $member -match '(^|/)data(/|$)' -or $seen.ContainsKey($member)){
+            throw 'Catálogo de rutas retiradas inválido o duplicado.'
+        }
+        $seen[$member]=$true
+    }
+    $current + $script:NativeRetiredMembers
 }
 
 # Installed generations own their inventory. state.json binds their manifest
@@ -398,6 +410,9 @@ function Read-NativeManifest {
             if ($sidecar -cne "$($file.sha256)  $($actual.Name)`n") { throw "Sidecar incorrecto: $($file.path)" }
         }
     }
+    # For Installed this is only a structural count of its own manifest. The
+    # authority is state.json's manifest SHA plus the rejection of unlisted disk
+    # files above; the count alone does not bind an installed inventory.
     if ($seen.Count -ne $members.Count) { throw 'Faltan archivos obligatorios.' }
     $manifest
 }

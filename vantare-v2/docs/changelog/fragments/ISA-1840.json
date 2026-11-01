@@ -6,7 +6,9 @@
   "technicalNotes": [
     "Paso 1a: el inventario instalado sale de su propio manifiesto, ligado por SHA-256 al estado; se retira la lista histórica congelada de 91 archivos.",
     "Los paquetes entrantes siguen exigiendo el inventario completo actual. Se conservan los controles de rutas conocidas, canal, archivos no enumerados, hashes, sidecars y puntos de reanálisis.",
-    "Las rutas retiradas se conservan en un catálogo explícito de nombres conocidos, vacío hoy, para poder leer y restaurar versiones antiguas y retirar sus binarios sin tocar datos."
+    "Las rutas retiradas se conservan en un catálogo explícito de nombres conocidos, vacío hoy, para poder leer y restaurar versiones antiguas y retirar sus binarios sin tocar datos.",
+    "El catálogo de rutas retiradas rechaza rutas no relativas, data y duplicados antes de borrar. Un snapshot de paquete versionado exige declarar toda ruta que desaparezca.",
+    "Desinstalar conserva archivos ajenos en carpetas de programa y termina la retirada de estado y registro sin un falso aviso de aplicación abierta."
   ],
   "testing": [
     "En QA aislada, pasar de una instalación de 109 archivos a una de 110, retirar un recurso en la siguiente, restaurar la anterior y desinstalar: todos los datos y las carpetas vacías de las tres generaciones se conservan.",

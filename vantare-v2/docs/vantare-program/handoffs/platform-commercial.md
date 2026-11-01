@@ -36,7 +36,10 @@ target `D:/VantareServer/targets/isa-1827-p7`; evidencia `D:/VantareServer/evide
   saludo y prueba nueva sobre lápida futura. Últimos ajustes revisados por el
   ejecutor; no se afirma revisión delegada de cada byte final. Harness medium heredado.
 - README de cinco crates, ADR0102, diseño §4.3, BIL08 y changelog actualizados.
-  Diff completo revisado. PR draft preparado; enlace y SHA en el siguiente registro.
+  Diff completo revisado. [PR draft #1836](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1836)
+  a nightly, publicado y enlazado en T3. Código validado
+  `d045633acedfcea5aa87f32035fbb40cc88cf1d1`; HEAD documental vigente en PR/#1827.
+  Sin integración; la CI la vigila el orquestador.
 - Validación con fixtures/headless, sin cuenta real ni simulador físico. Manual
   posterior en entorno autorizado: aviso ClockBehind con fecha y mezcla de binarios.
   Un peer antiguo que cierre sin responder puede dar desconexión transitoria

@@ -262,7 +262,7 @@ orquestador. Cinco PR separados, sin merge/release del worker.
   e747d4a9e; no se repite, sin cambio Rust propio. Nueve scripts/harness y88
   resultados iguales a copia QA/baseline; clean-install local==CI byte a byte.
   Los 88 anteriores con CRLF no acreditaban el blob Git: se sustituyen por
-  matrix-1c-ci-fix-01. HEAD final de corrección en #1840/PR.
+  matrix-1c-ci-fix-01. Código de corrección cececa164; HEAD final en #1840/PR.
   Cola/target propios, sin aflojar lints ni tests.
   [Evidencia y fallos iniciales](../../../native/packaging/matrix/evidence-1840-1c.md).
   Sin ventana física ni cambios propios de runtime/domain/ipc/testdata;

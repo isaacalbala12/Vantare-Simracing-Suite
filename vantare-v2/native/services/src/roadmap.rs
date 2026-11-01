@@ -108,7 +108,7 @@ impl Roadmap {
             // Ilegible o invalido: se aparta y se sigue sin cache. Devolver
             // `Err` dejaba el roadmap muerto en cada arranque para siempre.
             Ok(_) => {
-                store.quarantine("roadmap");
+                store.quarantine_dated("roadmap", 0)?;
                 None
             }
 
@@ -209,7 +209,7 @@ mod tests {
         // ...y el documento se ha APARTADO, no ignorado: por eso el siguiente
         // arranque tampoco tropieza.
         assert!(
-            matches!(store.load::<Cached>("roadmap"), Err(Error::NotFound)),
+            matches!(store.fixture::<Cached>("roadmap"), Err(Error::NotFound)),
             "el documento invalido debe quedar apartado"
         );
         assert!(

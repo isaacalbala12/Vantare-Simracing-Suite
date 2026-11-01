@@ -1,6 +1,7 @@
 //! Intento durable manual. Restaurar jamás envía; el consentimiento es efímero.
 use crate::protocol::DraftState;
 pub use crate::protocol::report_document::{Draft, Fields, Preview, Receipt};
+use crate::storage::Read as Stored;
 use crate::{Error, Result, account::Identity, bridge::DataRequest, storage::Store};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -84,7 +85,10 @@ fn draft_valid(draft: &Draft, required: bool) -> Result<()> {
 }
 
 pub fn load_draft(store: &Store) -> Result<Option<Draft>> {
-    match store.load::<Draft>("report-draft") {
+    match store
+        .read::<Draft>("report-draft")
+        .and_then(Stored::required)
+    {
         Ok(draft) => {
             draft_valid(&draft, false).map_err(|_| Error::Storage)?;
             Ok(Some(draft))
@@ -383,7 +387,7 @@ impl Reports {
             }
             Ok(None) | Err(Error::NotFound) => None,
             Ok(_) => {
-                store.quarantine("report-attempt");
+                store.quarantine_dated("report-attempt", 0)?;
                 None
             }
             Err(error) => return Err(error),

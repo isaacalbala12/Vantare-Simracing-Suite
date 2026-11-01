@@ -32,7 +32,7 @@ fn cancel_attempt(state: Session, attempt: Attempt) {
         _ => {}
     }
     let saved = store
-        .load::<serde_json::Value>("account")
+        .fixture::<serde_json::Value>("account")
         .expect("saved account");
     let identity = account.identity().cloned();
     let device = crate::license::installation::legacy_fingerprint().expect("fixture device");
@@ -106,14 +106,14 @@ fn assert_documents_retained(
         &app.store
             .as_ref()
             .expect("store")
-            .load::<serde_json::Value>("account")
+            .fixture::<serde_json::Value>("account")
             .expect("saved account"),
         saved
     );
     let retained = app
         .legacy_store()
         .expect("candidate store")
-        .load::<crate::license_remote::tests::LegacyCandidate>("license-candidate")
+        .fixture::<crate::license_remote::tests::LegacyCandidate>("license-candidate")
         .expect("retained candidate");
     assert_eq!(
         retained.credential.signature,

@@ -208,7 +208,7 @@ fn every_email_flow_finishes_as_existing_oauth_session_and_restores() {
         );
         assert_native_requests(&server, signup, mode);
         let saved =
-            serde_json::to_string(&store.load::<Saved>("account").expect("saved OAuth")).ok();
+            serde_json::to_string(&store.fixture::<Saved>("account").expect("saved OAuth")).ok();
         // On Unix store format is plaintext; no transient credential belongs there.
         if let Some(saved) = saved {
             for secret in [
@@ -442,7 +442,7 @@ fn oauth_identity_mismatch_or_pending_response_never_persists_fapi_session() {
         assert!(ticket.run(&Http::default(), 101).is_err());
         assert!(account.identity().is_none());
         assert!(matches!(
-            store.load::<Saved>("account"),
+            store.fixture::<Saved>("account"),
             Err(Error::NotFound)
         ));
         assert_eq!(
@@ -671,7 +671,7 @@ fn pending_authorization_exhaustion_and_cancellation_leave_no_oauth_session() {
         );
         assert!(account.identity().is_none());
         assert!(matches!(
-            store.load::<Saved>("account"),
+            store.fixture::<Saved>("account"),
             Err(Error::NotFound)
         ));
         server.finish();

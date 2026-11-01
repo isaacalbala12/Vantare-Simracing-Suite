@@ -1,4 +1,5 @@
 //! Clerk OAuth nativo. Nunca se convierte un OAuth token en JWT de Supabase.
+use crate::storage::Read as Stored;
 use std::io::{Read, Write};
 use std::net::TcpListener;
 use std::time::{Duration, Instant};
@@ -345,32 +346,32 @@ impl Account {
     }
 
     pub(crate) fn restore_at(oauth: OAuth, store: &Store, at_millis: u64) -> Result<Self> {
-        let mut needs_sign_in = false;
-        let session = match store.restore_cache::<Saved>("account", at_millis) {
-            Ok(Some(Saved::SignedOut) | None) | Err(Error::NotFound) => None,
-            Ok(Some(Saved::SignedIn {
-                version: 1,
-                session,
-            })) if session.identity.issuer == oauth.issuer.as_str()
+        let saved = store
+            .read::<Saved>("account")?
+            .recover(store, "account", at_millis, |_| true)?;
+        let needs_sign_in = matches!(&saved, Some(Saved::NeedsSignIn { .. }));
+        let session = match saved {
+            Some(Saved::SignedOut) | None => None,
+            Some(
+                Saved::SignedIn {
+                    version: 1,
+                    session,
+                }
+                | Saved::NeedsSignIn {
+                    version: 1,
+                    session,
+                },
+            ) if session.identity.issuer == oauth.issuer.as_str()
                 && session.client_id == oauth.client_id =>
             {
                 Some(session)
             }
-            Ok(Some(Saved::NeedsSignIn {
-                version: 1,
-                session,
-            })) if session.identity.issuer == oauth.issuer.as_str()
-                && session.client_id == oauth.client_id =>
-            {
-                needs_sign_in = true;
-                Some(session)
-            }
-            Ok(_) => {
+            Some(_) => {
                 store.quarantine_dated("account", at_millis)?;
                 None
             }
-            Err(error) => return Err(error),
         };
+        let needs_sign_in = needs_sign_in && session.is_some();
         let profile = profile::restore(store, session.as_ref().map(|session| &session.identity));
         Ok(Self {
             oauth,
@@ -628,7 +629,8 @@ impl Account {
             },
         )?;
         // Reload only protected data after successful atomic persistence.
-        let Saved::SignedIn { session, .. } = store.load("account")? else {
+        let Saved::SignedIn { session, .. } = store.read("account").and_then(Stored::required)?
+        else {
             return Err(Error::Storage);
         };
         self.email = None;

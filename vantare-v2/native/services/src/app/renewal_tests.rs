@@ -66,13 +66,13 @@ fn device_reset_in_needs_sign_in_preserves_every_local_document_without_http() {
     fixture.require_sign_in();
     let store = fixture.app.store.as_ref().expect("store");
     let account_before = store
-        .load::<serde_json::Value>("account")
+        .fixture::<serde_json::Value>("account")
         .expect("saved account");
     let candidate_before = fixture
         .app
         .legacy_store()
         .expect("store")
-        .load::<serde_json::Value>("license-candidate")
+        .fixture::<serde_json::Value>("license-candidate")
         .expect("candidate");
     assert_eq!(
         fixture.app.execute(Command::DeviceReset).err(),
@@ -84,7 +84,7 @@ fn device_reset_in_needs_sign_in_preserves_every_local_document_without_http() {
             .store
             .as_ref()
             .expect("store")
-            .load::<serde_json::Value>("account")
+            .fixture::<serde_json::Value>("account")
             .expect("account"),
         account_before
     );
@@ -93,7 +93,7 @@ fn device_reset_in_needs_sign_in_preserves_every_local_document_without_http() {
             .app
             .legacy_store()
             .expect("store")
-            .load::<serde_json::Value>("license-candidate")
+            .fixture::<serde_json::Value>("license-candidate")
             .expect("candidate"),
         candidate_before
     );
@@ -130,7 +130,7 @@ fn logout_from_needs_sign_in_still_requires_ack_and_clears_account() {
                 .app
                 .legacy_store()
                 .expect("old store")
-                .load::<serde_json::Value>("license-candidate")
+                .fixture::<serde_json::Value>("license-candidate")
                 .is_ok(),
             "old files are ignored after either outcome"
         );
@@ -139,7 +139,7 @@ fn logout_from_needs_sign_in_still_requires_ack_and_clears_account() {
             .store
             .as_ref()
             .expect("store")
-            .load::<serde_json::Value>("account")
+            .fixture::<serde_json::Value>("account")
             .expect("durable account");
         assert_eq!(
             saved["state"],
@@ -173,7 +173,7 @@ fn usable_device_reset_with_rejected_ack_preserves_candidate_and_never_calls_res
             .app
             .legacy_store()
             .expect("store")
-            .load::<serde_json::Value>("license-candidate")
+            .fixture::<serde_json::Value>("license-candidate")
             .is_ok()
     );
     fixture.finish();
@@ -201,7 +201,7 @@ fn token_403_and_userinfo_failures_after_refresh_remain_transient_and_durable_si
                 .store
                 .as_ref()
                 .expect("store")
-                .load::<serde_json::Value>("account")
+                .fixture::<serde_json::Value>("account")
                 .expect("before");
             assert_eq!(
                 fixture.app.refresh_oauth_origin(1000, true),
@@ -221,7 +221,7 @@ fn token_403_and_userinfo_failures_after_refresh_remain_transient_and_durable_si
                     .store
                     .as_ref()
                     .expect("store")
-                    .load::<serde_json::Value>("account")
+                    .fixture::<serde_json::Value>("account")
                     .expect("after"),
                 saved
             );
@@ -308,7 +308,7 @@ fn manual_denial_is_definitive_and_preserves_cached_rights() {
         let retained = app
             .legacy_store()
             .expect("store")
-            .load::<crate::license_remote::tests::LegacyCandidate>("license-candidate")
+            .fixture::<crate::license_remote::tests::LegacyCandidate>("license-candidate")
             .expect("candidate retained");
         assert_eq!(
             serde_json::to_vec(&retained).expect("fixture bytes"),
@@ -387,7 +387,7 @@ fn fresh_login_with_same_identity_clears_needs_sign_in_without_revocation() {
     let retained = app
         .legacy_store()
         .expect("store")
-        .load::<crate::license_remote::tests::LegacyCandidate>("license-candidate")
+        .fixture::<crate::license_remote::tests::LegacyCandidate>("license-candidate")
         .expect("same candidate");
     assert_eq!(
         serde_json::to_vec(&retained).expect("fixture bytes"),

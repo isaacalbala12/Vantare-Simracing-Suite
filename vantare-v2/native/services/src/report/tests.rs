@@ -96,7 +96,7 @@ fn f7_legacy_confirmed_receipt_is_kept_but_pending_prose_is_quarantined() {
             .attempt
             .is_none()
     );
-    assert!(store.load::<Attempt>("report-attempt").is_err());
+    assert!(store.fixture::<Attempt>("report-attempt").is_err());
     drop(store);
     crate::cleanup_store(&root, "f7-legacy-receipt", &[]);
 }
@@ -201,7 +201,7 @@ fn assert_text_only_retry(first: &str, second: &str, preview: &Preview) {
 fn persist_inflight(store: &Store) {
     // Crash after POST but before receipt/status persistence leaves InFlight.
     let mut crashed = store
-        .load::<Attempt>("report-attempt")
+        .fixture::<Attempt>("report-attempt")
         .expect("crash snapshot");
     crashed.phase = Phase::InFlight;
     store
@@ -666,7 +666,7 @@ fn durable_manual_retry_keeps_exact_payload_and_receipt_survives_cleanup_failure
         Err(Error::Canceled)
     ));
     assert!(matches!(
-        store.load::<Attempt>("report-attempt"),
+        store.fixture::<Attempt>("report-attempt"),
         Err(Error::NotFound)
     ));
     let preview = reports
@@ -683,7 +683,7 @@ fn durable_manual_retry_keeps_exact_payload_and_receipt_survives_cleanup_failure
     assert!(first.starts_with("POST /functions/v1/testing-report-submit "));
     assert!(matches!(
         store
-            .load::<Attempt>("report-attempt")
+            .fixture::<Attempt>("report-attempt")
             .expect("durable")
             .phase,
         Phase::Uncertain
@@ -908,7 +908,7 @@ fn editing_after_preview_cancels_send_before_any_http_mutation() {
         Err(Error::Canceled)
     ));
     assert!(matches!(
-        store.load::<Attempt>("report-attempt"),
+        store.fixture::<Attempt>("report-attempt"),
         Err(Error::NotFound)
     ));
     server

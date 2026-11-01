@@ -428,7 +428,7 @@ fn explicit_profile_refresh_restores_saved_photo_and_cannot_switch_identity() {
     let config = account.oauth.clone();
     let identity = account.identity().expect("identity").clone();
     let saved_before =
-        serde_json::to_value(store.load::<Saved>("account").expect("sesión original"))
+        serde_json::to_value(store.fixture::<Saved>("account").expect("sesión original"))
             .expect("JSON de test");
     let expiry = account.expires_at();
     let generation = account.generation();
@@ -445,9 +445,12 @@ fn explicit_profile_refresh_restores_saved_photo_and_cannot_switch_identity() {
     assert!(account.identity() == Some(&identity));
     assert_eq!(account.expires_at(), expiry);
     assert_eq!(account.generation(), generation);
-    let saved_after =
-        serde_json::to_value(store.load::<Saved>("account").expect("sesión conservada"))
-            .expect("JSON de test");
+    let saved_after = serde_json::to_value(
+        store
+            .fixture::<Saved>("account")
+            .expect("sesión conservada"),
+    )
+    .expect("JSON de test");
     assert!(
         saved_before == saved_after,
         "actualizar perfil no escribe ni cambia tokens OAuth"
@@ -474,7 +477,7 @@ fn explicit_profile_refresh_restores_saved_photo_and_cannot_switch_identity() {
     restored.logout(&store).expect("logout");
     assert!(restored.profile().is_none());
     assert!(matches!(
-        store.load::<serde_json::Value>("account-profile"),
+        store.fixture::<serde_json::Value>("account-profile"),
         Err(Error::NotFound)
     ));
     server.finish();

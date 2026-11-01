@@ -1,3 +1,31 @@
+<!-- isa1827-simplificar-c -->
+## VANTA-126 / #1827 — corte C en ejecución
+
+Base `origin/nightly@cd9282ccca01bd2522c3e53481c25f360df85c66`; B (#1843)
+integrado por el orquestador, que confirmó CI 6/6. Rama
+`vantareapp/isa-1827-simplificar-store`, mismo worktree aislado y target
+`D:/VantareServer/targets/isa-1827-s`.
+
+- Lectura única read → Value/Missing/Damaged, sin convertir E/S en corrupción.
+  Clase declarada por documento; guardas conservadoras, cachés reconstruibles,
+  secreto de sesión. Solo las dos últimas admiten recuperación a ausencia.
+- Un único quarantine_dated, sin borrado previo destructivo, tope tres y fallo
+  de rename visible. Pilot, borrador/imágenes y compra no se vacían en silencio.
+- F4: un marcador corrupto conserva su barrera y sus bytes; no reescribe una
+  autoridad sana ni repite su diagnóstico. Prueba byte a byte en dos reinicios.
+- Primer hito: Clippy cuatro crates all-targets -D warnings PASS y 18/18
+  focales de Store/F4/caracterización PASS. Los gates completos y mutaciones
+  se ejecutarán al terminar el corte. Borrados los lectores duplicados salvo
+  el puente temporal de tres cachés que se elimina en el segundo commit.
+- Segundo commit autorizado: DPAPI dañado de roadmap/perfil/report-attempt
+  pasa de bloqueo a cuarentena + reconstrucción, con pruebas explícitas.
+- Medición base repetible: isa-1827-s-base-c.json; 109.321 líneas de producción
+  y 14.858 del recorrido/Store. Medición final pendiente; no se presenta el
+  traslado de helpers exclusivos de fixture como simplificación productiva.
+- D/E siguen pendientes. Plane intacto; sin merge/release, instalaciones,
+  producción, datos reales ni secretos. CI a cargo del orquestador.
+<!-- /isa1827-simplificar-c -->
+
 <!-- isa1827-simplificar-b -->
 ## VANTA-126 / #1827 — corte B listo para revisión (1-nov-2026)
 

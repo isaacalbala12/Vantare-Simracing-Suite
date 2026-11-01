@@ -243,10 +243,16 @@ impl App {
             }
             let store = self.store.as_ref().ok_or(Error::Storage)?;
             let at = (self.clock)().unwrap_or(0).saturating_mul(1000);
-            if let Err(error) = store.restore_cache::<serde_json::Value>("account", at) {
+            if let Err(error) = store
+                .read::<serde_json::Value>("account")
+                .and_then(|read| read.recover(store, "account", at, |_| true))
+            {
                 eprintln!("account-logout: account-quarantine={error:?}");
             }
-            if let Err(error) = store.restore_cache::<OAuth>("oauth-metadata", at) {
+            if let Err(error) = store
+                .read::<OAuth>("oauth-metadata")
+                .and_then(|read| read.recover(store, "oauth-metadata", at, |_| true))
+            {
                 eprintln!("account-logout: metadata-quarantine={error:?}");
             }
             if let Some(account) = self.account.as_mut() {
@@ -371,19 +377,12 @@ impl App {
             None => self.open_account_store()?,
         };
         let at = (self.clock)()?.saturating_mul(1000);
-        let cached = match store.restore_cache::<OAuth>("oauth-metadata", at)? {
-            Some(oauth)
-                if oauth.matches(&config.issuer, &config.client_id, &config.redirect_uri) =>
-            {
-                Some(oauth)
-            }
-            Some(_) => {
-                // Solo metadata pública incompatible; no migrar ni borrar la sesión.
-                store.quarantine_dated("oauth-metadata", at)?;
-                None
-            }
-            None => None,
-        };
+        let cached = store.read::<OAuth>("oauth-metadata")?.recover(
+            &store,
+            "oauth-metadata",
+            at,
+            |oauth| oauth.matches(&config.issuer, &config.client_id, &config.redirect_uri),
+        )?;
         let oauth = if let Some(oauth) = cached {
             oauth
         } else {
@@ -1274,7 +1273,9 @@ mod tests {
                 assert!(
                     app.legacy_store()
                         .expect("store")
-                        .load::<crate::license_remote::tests::LegacyCandidate>("license-candidate")
+                        .fixture::<crate::license_remote::tests::LegacyCandidate>(
+                            "license-candidate"
+                        )
                         .is_ok()
                 );
                 assert!(matches!(
@@ -1379,7 +1380,7 @@ mod tests {
             drop(app);
             let store = Store::open(&root, &context).expect("restart fixture");
             let saved = store
-                .load::<serde_json::Value>("account")
+                .fixture::<serde_json::Value>("account")
                 .expect("durable state");
             assert_eq!(
                 saved["state"],
@@ -1652,7 +1653,7 @@ mod tests {
             app.store
                 .as_ref()
                 .expect("store")
-                .load::<OAuth>("oauth-metadata")
+                .fixture::<OAuth>("oauth-metadata")
                 .expect("new metadata")
                 .matches(&server.base, "public-fixture", &redirect)
         );
@@ -1898,7 +1899,7 @@ mod tests {
         assert!(
             app.legacy_store()
                 .expect("store")
-                .load::<crate::license_remote::tests::LegacyCandidate>("license-candidate")
+                .fixture::<crate::license_remote::tests::LegacyCandidate>("license-candidate")
                 .is_ok(),
             "no durable revocation ACK: preserve the session for a managed retry"
         );
@@ -2043,7 +2044,7 @@ mod tests {
             assert!(
                 app.legacy_store()
                     .expect("store")
-                    .load::<crate::license_remote::tests::LegacyCandidate>("license-candidate")
+                    .fixture::<crate::license_remote::tests::LegacyCandidate>("license-candidate")
                     .is_ok()
             );
             assert!(app.account.as_ref().expect("account").identity().is_some());
@@ -2116,7 +2117,7 @@ mod tests {
             assert!(
                 app.legacy_store()
                     .expect("store")
-                    .load::<crate::license_remote::tests::LegacyCandidate>("license-candidate")
+                    .fixture::<crate::license_remote::tests::LegacyCandidate>("license-candidate")
                     .is_ok()
             );
             assert!(app.account.as_ref().expect("account").identity().is_some());
@@ -2172,7 +2173,7 @@ mod tests {
             assert!(
                 app.legacy_store()
                     .expect("store")
-                    .load::<crate::license_remote::tests::LegacyCandidate>("license-candidate")
+                    .fixture::<crate::license_remote::tests::LegacyCandidate>("license-candidate")
                     .is_ok(),
                 "online rejection must retain the previous license"
             );
@@ -2239,7 +2240,7 @@ mod tests {
             assert!(
                 app.legacy_store()
                     .expect("store")
-                    .load::<crate::license_remote::tests::LegacyCandidate>("license-candidate")
+                    .fixture::<crate::license_remote::tests::LegacyCandidate>("license-candidate")
                     .is_ok()
             );
             server.finish();
@@ -2525,7 +2526,7 @@ mod tests {
             assert!(
                 app.legacy_store()
                     .expect("store")
-                    .load::<crate::license_remote::tests::LegacyCandidate>("license-candidate")
+                    .fixture::<crate::license_remote::tests::LegacyCandidate>("license-candidate")
                     .is_ok()
             );
             assert!(app.account.as_ref().expect("account").identity().is_some());
@@ -2596,7 +2597,7 @@ mod tests {
         assert!(
             app.legacy_store()
                 .expect("store")
-                .load::<crate::license_remote::tests::LegacyCandidate>("license-candidate")
+                .fixture::<crate::license_remote::tests::LegacyCandidate>("license-candidate")
                 .is_ok()
         );
         core.join().expect("automatic path never sends Invalidate");
@@ -2671,7 +2672,7 @@ mod tests {
         assert!(matches!(
             app.legacy_store()
                 .expect("store")
-                .load::<crate::license_remote::tests::LegacyCandidate>("license-candidate"),
+                .fixture::<crate::license_remote::tests::LegacyCandidate>("license-candidate"),
             Err(Error::NotFound)
         ));
         assert!(matches!(
@@ -2808,7 +2809,7 @@ mod tests {
             account.logout(&store).expect("missing restored identity");
         }
         let saved_before = store
-            .load::<serde_json::Value>("account")
+            .fixture::<serde_json::Value>("account")
             .expect("old session");
         let device = "detached-switch-fixture";
         let (credential, keys) = crate::license_remote::tests::signed_fixture(device);
@@ -2854,7 +2855,7 @@ mod tests {
                 .store
                 .as_ref()
                 .expect("store")
-                .load::<serde_json::Value>("account")
+                .fixture::<serde_json::Value>("account")
                 .expect("durable account");
             if managed {
                 assert_eq!(
@@ -2871,7 +2872,7 @@ mod tests {
             let candidate =
                 app.legacy_store()
                     .expect("candidate store")
-                    .load::<crate::license_remote::tests::LegacyCandidate>("license-candidate");
+                    .fixture::<crate::license_remote::tests::LegacyCandidate>("license-candidate");
             assert!(
                 candidate.is_ok(),
                 "paso 8: old files are ignored after either outcome"
@@ -2970,7 +2971,7 @@ mod tests {
             assert!(
                 app.legacy_store()
                     .expect("old store")
-                    .load::<crate::license_remote::tests::LegacyCandidate>("license-candidate")
+                    .fixture::<crate::license_remote::tests::LegacyCandidate>("license-candidate")
                     .is_ok(),
                 "old file is ignored after either outcome"
             );

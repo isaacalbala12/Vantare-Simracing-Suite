@@ -677,12 +677,12 @@ fn out_of_range_saved_clock_is_quarantined_and_allows_a_fresh_signed_login() {
                 .is_empty()
         );
         let saved = store
-            .load::<serde_json::Value>("authority")
+            .fixture::<serde_json::Value>("authority")
             .expect("denied recovery state is durable before any binding");
         assert_eq!(saved["invalidated"], true);
         assert!(
             store
-                .load::<bool>("authority-recovery")
+                .fixture::<bool>("authority-recovery")
                 .expect("recovery guard")
         );
         assert!(

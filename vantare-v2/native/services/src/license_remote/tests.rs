@@ -151,7 +151,7 @@ fn native_license_maps_remote_errors_without_retry_or_saving_a_candidate() {
             .recv_timeout(Duration::from_secs(3))
             .expect("one request");
         assert!(matches!(
-            store.load::<LegacyCandidate>("license-candidate"),
+            store.fixture::<LegacyCandidate>("license-candidate"),
             Err(Error::NotFound)
         ));
     }
@@ -189,7 +189,7 @@ fn native_license_rejects_bad_transport_envelopes_and_unconfigured_builds() {
             .recv_timeout(Duration::from_secs(3))
             .expect("request");
         assert!(matches!(
-            store.load::<LegacyCandidate>("license-candidate"),
+            store.fixture::<LegacyCandidate>("license-candidate"),
             Err(Error::NotFound)
         ));
     }

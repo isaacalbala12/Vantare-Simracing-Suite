@@ -151,6 +151,10 @@ fn generated_signatures_cover_v1_binding_mutation_and_scopes() {
     assert!(verifier.v1(&mutation, SUBJECT, "test-device").is_err()); // Pro cannot be perpetual even if signed.
     mutation = credential.clone();
     mutation.key_id = "unknown".into();
+    assert!(matches!(
+        verifier.decode_cached(&serde_json::to_string(&mutation).expect("cached credential")),
+        Err(CacheIssue::UnknownKey)
+    ));
     assert!(verifier.v1(&mutation, SUBJECT, "test-device").is_err());
     let other = key();
     assert!(

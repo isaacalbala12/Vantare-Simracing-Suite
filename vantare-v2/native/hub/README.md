@@ -1,3 +1,5 @@
+# Hub nativo (ISA-1430)
+
 ## Arranque instalado — #1840, paso 1c
 
 Arranque instalado (#1840, paso 1c): una vez creada la ventana, el Hub publica
@@ -54,7 +56,6 @@ pinta componentes reales con datos ficticios y bloquea comandos remotos; no
 acredita autenticación Clerk. Gates, capturas y limitaciones por plataforma se
 registran en el handoff, no como contratos por fecha en este README.
 
-# Hub nativo (ISA-1430)
 
 ## #1628 · Primer arranque
 

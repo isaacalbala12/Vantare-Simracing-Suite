@@ -1,3 +1,36 @@
+<!-- isa1827-simplificar-d1a -->
+## VANTA-126 / #1827 — D1a en ejecución
+
+Base origin/nightly@e747d4a9e920121d1fc8a391dfab6945c6315fa3. D0 listo en
+[#1853](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1853), HEAD
+4e730b2f1a093f132e58aac9016377f3d8fe24df; aún fuera de esta base al empezar.
+Rama vantareapp/isa-1827-simplificar-d1a; mismo worktree/target isa-1827-s.
+- Decode de credencial guardada reutilizado antes de la misma verificación;
+  conserva orden de rechazos, disponibilidad local y diagnósticos. Store Value ->
+  Binding conserva la distinción de schema ilegible/DPAPI; no se cambia formato.
+- Wrappers de fixtures pasan a módulo cfg(test), declarado como movimiento.
+  Host también usaba advance_observed: se expande al mismo avance completo con
+  None, sin introducir identidad o gracia nueva. El ejemplo usa la API común.
+- Dispatch AccountBegin queda en un brazo; ACK de renovación reúne guardias
+  preservando Logout. Cuatro README tienen contrato vigente sin pilas de versiones;
+  se conservan límites/gates/privacidad. El test recovery renombra su pretensión:
+  solo comprueba entrada ya filtrada, no la exclusión SQL por refund.
+- Adaptador de rollback autorizado por el orquestador dentro de D1a: únicamente
+  installation:String::new() en las copias de v17/pre5, con hashes de fuente,
+  fragmento, script y copia. El probe usa API común y ausencia física NotFound.
+  Tres generaciones PASS: SignedIn/NeedsSignIn y vuelta; B retirado antes del
+  downgrade sin binding. Hashes verifican diferencia byte a byte solo del campo;
+  fuentes congeladas rastreadas intactas en dos worktrees propios.
+- Rotura inicial del probe desde A 6fbbfaa6a (campo requerido antiguo retirado);
+  C 5bf636ef0 añadió Read/read inexistente en esos SHA. Se documentan ambas,
+  sin retirar lectores ni fixtures. Reproducción compilada de los errores en curso.
+- Clippy seis crates all-targets -D warnings PASS; tres ajustes iniciales de lint/
+  caller preservados en logs. Gates completos/mutaciones y medidas finales pendientes.
+  Producción provisional 115127 ->115083 (-44); pruebas/docs se cuentan aparte.
+- D6/D7/T1-T3 siguen aplazados por RC9. D1b y E pendientes; D5/D3 descartados.
+  Sin Plane, datos reales, secretos, instalaciones, merge ni release.
+<!-- /isa1827-simplificar-d1a -->
+
 <!-- isa1827-simplificar-d0 -->
 ## VANTA-126 / #1827 — D0 listo para revisión
 

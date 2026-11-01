@@ -1,3 +1,5 @@
+# runtime — adquisición y núcleo
+
 ## Contrato vigente de licencias y supervisor
 
 [ADR 0102](../../docs/adr/0102-modelo-acceso-nativo.md) fija dueños y compatibilidad;
@@ -71,7 +73,6 @@ no lo consume y Transient no lo sustituye. Tras reiniciar supervisor desaparece
 el aviso remoto; el diagnóstico de Policy permanece. Hub consulta cada 5s y solo
 Feed fresco decide derechos. No hay otro bucle HTTP en Hub/helper.
 
-# runtime — adquisición y núcleo
 
 Adaptadores LMU/ACC privados, validación y derivaciones centrales; publicación neutral y supervisor.
 El supervisor `vantare.exe` embebe ICON1 desde `build-support`, igual que Hub/UI;

@@ -1,3 +1,5 @@
+# ipc — fotos versionadas
+
 ## Contrato vigente de acceso
 
 Tres versiones independientes: servicios v19, control v7 y fotos v11. Se comprueba
@@ -42,7 +44,6 @@ v17/pre-NeedsSignIn (`scripts/license-generation-rollback.ps1`). La compatibilid
 se conserva por la posible RC9; no se retiran lectores de disco ni fixtures aquí.
 Historial/versiones anteriores: Git y [evidencia](../../docs/vantare-program/license-simplification-evidence.md).
 
-# ipc — fotos versionadas
 
 DTO explícito, transporte autenticado y demanda; la versión de foto es independiente de servicios y control.
 

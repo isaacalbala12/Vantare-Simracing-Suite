@@ -1111,6 +1111,21 @@ mod tests {
             },
             message: String::new(),
         };
+        for acknowledgement in [
+            Reply::Error {
+                message: "late renewal error".into(),
+            },
+            Reply::DeviceLimit {
+                message: "late limit".into(),
+            },
+            late.clone(),
+        ] {
+            assert!(state.renewal_acknowledged(&acknowledgement).is_none());
+            assert!(
+                state.logout_requested(),
+                "a late renewal cannot cancel Logout"
+            );
+        }
         state.observe(&late, false);
         assert!(state.policy.is_none());
         let closed = account_reply(false, false, None);

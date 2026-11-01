@@ -367,7 +367,7 @@ fn missing_corrupt_or_legacy_state_cannot_restore_grace() {
             _ => {
                 let store = Store::open(&root, "core-rights-v1").expect("store");
                 let mut saved = store
-                    .load::<serde_json::Value>("authority")
+                    .fixture::<serde_json::Value>("authority")
                     .expect("estado protegido");
                 saved["game"]
                     .as_object_mut()
@@ -1518,7 +1518,7 @@ fn authority_rejected_signed_binding_is_preserved_and_a_fresh_grant_recovers() {
             .expect("stale but authentically signed cache");
         let authority_before = owner
             .store
-            .load::<serde_json::Value>("authority")
+            .fixture::<serde_json::Value>("authority")
             .expect("clock");
         drop(owner);
         let mut owner = Owner::open(&root, Some(&keys), devices(), 2, wall(111))
@@ -1534,7 +1534,7 @@ fn authority_rejected_signed_binding_is_preserved_and_a_fresh_grant_recovers() {
         assert_eq!(
             owner
                 .store
-                .load::<serde_json::Value>("authority")
+                .fixture::<serde_json::Value>("authority")
                 .expect("preserved clock"),
             authority_before
         );
@@ -1800,7 +1800,7 @@ fn a_new_signature_beyond_a_future_tombstone_recovers_within_allowed_skew() {
     assert!(policy.engineer);
     let saved = owner
         .store
-        .load::<serde_json::Value>("authority")
+        .fixture::<serde_json::Value>("authority")
         .expect("durable clock");
     assert_eq!(
         saved["clock"]["invalidated_after"],
@@ -1868,7 +1868,7 @@ fn server_ahead_tombstone_is_published_in_wall_time_and_recovers_without_extra_w
     assert_eq!(
         owner
             .store
-            .load::<serde_json::Value>("authority")
+            .fixture::<serde_json::Value>("authority")
             .expect("saved")["clock"]["invalidated_after"],
         serde_json::json!(wall(210))
     );
@@ -2059,6 +2059,9 @@ fn authority_recovery_missing_authority_or_corrupt_marker_cannot_restore_binding
             )
             .expect("damage marker");
         }
+        let healthy_authority = (!missing_authority && !corrupt_authority).then(|| {
+            std::fs::read(namespace.join("authority.dpapi")).expect("healthy authority bytes")
+        });
         for epoch in [2, 3] {
             let mut owner = Owner::open(&root, Some(&keys), devices(), epoch, wall(110))
                 .expect("recoverable without rights");
@@ -2074,6 +2077,14 @@ fn authority_recovery_missing_authority_or_corrupt_marker_cannot_restore_binding
                     .state
                     .needs_recovery()
             );
+            if let Some(bytes) = &healthy_authority {
+                assert_eq!(
+                    &std::fs::read(namespace.join("authority.dpapi"))
+                        .expect("authority after restart"),
+                    bytes,
+                    "F4: a corrupt marker must not rewrite healthy authority on either restart"
+                );
+            }
             if corrupt_marker {
                 assert_eq!(
                     std::fs::read(namespace.join("authority-recovery.dpapi"))
@@ -2190,7 +2201,7 @@ fn cached_clock_rejection_is_definitive_without_revoking_the_verified_binding() 
         .expect("A");
     let before = owner
         .store
-        .load::<serde_json::Value>("authority")
+        .fixture::<serde_json::Value>("authority")
         .expect("authority");
     let error = owner
         .install(older, wall(201), Duration::from_secs(96))
@@ -2207,7 +2218,7 @@ fn cached_clock_rejection_is_definitive_without_revoking_the_verified_binding() 
     assert_eq!(
         owner
             .store
-            .load::<serde_json::Value>("authority")
+            .fixture::<serde_json::Value>("authority")
             .expect("preserved"),
         before
     );
@@ -2264,7 +2275,7 @@ fn future_logout_candidate_stays_rejected_after_the_wall_recovers_until_a_new_is
         Owner::open(&root, Some(&keys), devices(), 2, wall(201)).expect("wall caught up");
     let before = owner
         .store
-        .load::<serde_json::Value>("authority")
+        .fixture::<serde_json::Value>("authority")
         .expect("tombstone");
     let error = owner
         .install(old.clone(), wall(201), Duration::ZERO)
@@ -2277,7 +2288,7 @@ fn future_logout_candidate_stays_rejected_after_the_wall_recovers_until_a_new_is
     assert_eq!(
         owner
             .store
-            .load::<serde_json::Value>("authority")
+            .fixture::<serde_json::Value>("authority")
             .expect("tombstone preserved"),
         before
     );
@@ -2348,11 +2359,11 @@ fn cached_clock_rejection_reaches_the_wire_but_online_clock_stays_unavailable() 
         .expect("binding");
     let authority = owner
         .store
-        .load::<serde_json::Value>("authority")
+        .fixture::<serde_json::Value>("authority")
         .expect("authority");
     let binding = owner
         .store
-        .load::<serde_json::Value>("binding")
+        .fixture::<serde_json::Value>("binding")
         .expect("binding");
     drop(owner);
     let (host, link) = candidate_control_fixture(&root, keys.clone(), devices());
@@ -2376,12 +2387,12 @@ fn cached_clock_rejection_reaches_the_wire_but_online_clock_stays_unavailable() 
     let store = Store::open(&root, "core-rights-v1").expect("fixture store");
     assert_eq!(
         store
-            .load::<serde_json::Value>("binding")
+            .fixture::<serde_json::Value>("binding")
             .expect("preserved"),
         binding
     );
     let after = store
-        .load::<serde_json::Value>("authority")
+        .fixture::<serde_json::Value>("authority")
         .expect("preserved");
     assert!(authority["clock"]["latest_issued"].is_string());
     assert_eq!(

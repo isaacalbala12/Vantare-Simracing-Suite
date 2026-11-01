@@ -326,3 +326,32 @@ los claims rechazados ni registra AccountSignedIn/CommercialLicenseObserved.
 Subject mal formado produce InvalidCredential/Version/Transient; una firma
 válida con UUID de otra cuenta frente al binding existente produce Denied en
 Owner, REJECTED en control y Definitive en services, sin sustituir el binding.
+
+
+### Paso 12 — lectura única y recuperación por documento (corte C)
+
+Store conserva formatos, contextos, ACL, exclusión, DPAPI y límites. read es una
+operación sin efectos: Value/Missing/Damaged; solo TooLarge, fallo de DPAPI o
+JSON/esquema ilegible son daño. E/S, permisos o bloqueo continúan como errores.
+La clase se declara una vez por documento. required conserva la lectura estricta;
+recover solo admite cachés/secretos de sesión, valida y aparta con el único
+quarantine_dated. Las guardas quedan bajo la política conservadora de su dueño.
+Pilot y borrador/imágenes no se reinician ni vacían en silencio; se conservan
+para recuperación asistida. read distingue E/S de daño también en buy-*; billing
+conserva su presentación CheckoutRecovery ante fallo de lectura, sin HTTP ni
+otro UUID. La separación de estados no cambia la política visible del dueño.
+
+Decisión autorizada: DPAPI dañado de roadmap, perfil y report-attempt pasa de
+bloqueo a cuarentena y reconstrucción, en commit aparte. Se preserva la sesión
+sana byte a byte, la cuarentena ocurre una vez y el dato reconstruido se acepta.
+Gestión mantiene su política estricta de metadata OAuth. Un rename fallido no
+permite continuar como si faltase el documento; el tope es tres y su limpieza
+posterior conserva el diagnóstico best-effort existente. No se elimina primero
+un archivo anterior para poder renombrar el nuevo.
+
+F4 (#1822): el marcador se lee una vez y su daño no se confunde con daño de la
+autoridad. Si esta está sana, la barrera sigue activa sin persistir ni emitir
+otra vez license-authority-unreadable. Dos reinicios conservan exactamente los bytes de
+ambos documentos. La reparación de autoridad dañada sigue guardando primero el
+marcador, luego apartando y persistiendo autoridad denegada; ninguna frontera
+sana baja y ninguna credencial antigua recupera acceso.

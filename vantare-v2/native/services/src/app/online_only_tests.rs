@@ -77,7 +77,7 @@ fn assert_no_saved_license(app: &App) {
             matches!(
                 app.legacy_store()
                     .expect("fixture store")
-                    .load::<serde_json::Value>(name),
+                    .fixture::<serde_json::Value>(name),
                 Err(Error::NotFound)
             ),
             "services never writes {name}"

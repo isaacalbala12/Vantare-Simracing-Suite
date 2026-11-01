@@ -7,6 +7,7 @@ use std::{
     thread,
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
+use vantare_services::storage::Read as Stored;
 use vantare_services::{
     Error, Result,
     account::{Account, OAuth},
@@ -217,7 +218,10 @@ fn load_oauth(
     http: &Http,
     oauth_config: vantare_services::config::OAuthBuild,
 ) -> Result<OAuth> {
-    let cached = match store.load::<OAuth>("oauth-metadata") {
+    let cached = match store
+        .read::<OAuth>("oauth-metadata")
+        .and_then(Stored::required)
+    {
         Ok(oauth)
             if oauth.matches(
                 &oauth_config.issuer,
@@ -228,7 +232,7 @@ fn load_oauth(
             Some(oauth)
         }
         Ok(_) => {
-            store.quarantine_preserving("oauth-metadata")?;
+            store.quarantine_dated("oauth-metadata", 0)?;
             None
         }
         Err(Error::NotFound) => None,
@@ -514,7 +518,9 @@ mod tests {
             Err(Error::Unconfigured)
         ));
         assert!(matches!(
-            store.load::<OAuth>("oauth-metadata"),
+            store
+                .read::<OAuth>("oauth-metadata")
+                .and_then(Stored::required),
             Err(Error::NotFound)
         ));
         let aside = std::fs::read_dir(&namespace)

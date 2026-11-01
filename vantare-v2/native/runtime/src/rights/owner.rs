@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 use std::{path::Path, time::Duration};
 use vantare_domain::{SessionKind, Snapshot, SourceKind, SourceState, UNKNOWN_SIMULATOR};
 use vantare_ipc::control::{AccessState, Policy, VERSION};
+use vantare_services::storage::Read as Stored;
 use vantare_services::{Error, Result, license::CredentialV1, storage::Store};
 #[cfg(test)]
 #[path = "tests.rs"]
@@ -127,8 +128,8 @@ impl Owner {
             },
             denial: None,
         };
-        match owner.store.load_cache::<serde_json::Value>("binding") {
-            Ok(document) => match serde_json::from_value::<Binding>(document) {
+        match owner.store.read::<serde_json::Value>("binding")? {
+            Stored::Value(document) => match serde_json::from_value::<Binding>(document) {
                 Ok(binding) if binding.version == 1 => {
                     let trust_roots = owner.verifier.as_ref().ok_or(Error::Unconfigured)?;
                     if let Some(issue) = trust_roots.cache_issue(&binding.credential) {
@@ -168,11 +169,10 @@ impl Owner {
                 }
                 _ => owner.quarantine_binding(CacheIssue::UnsupportedFormat, now)?,
             },
-            Err(Error::NotFound) => owner.authority.leave_game(),
-            Err(Error::Corrupt) => {
+            Stored::Missing => owner.authority.leave_game(),
+            Stored::Damaged => {
                 owner.quarantine_binding(CacheIssue::Unreadable, now)?;
             }
-            Err(error) => return Err(error),
         }
         Ok(owner)
     }

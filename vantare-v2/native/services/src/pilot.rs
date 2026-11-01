@@ -1,5 +1,6 @@
 //! Perfil privado local primero, almacenado con las mismas garantías que cuenta.
 pub use crate::protocol::pilot_document::{PilotPhoto, PilotProfile, PilotState};
+use crate::storage::Read as Stored;
 use crate::{Error, Result, storage::Store};
 use base64::{Engine, engine::general_purpose::STANDARD};
 use image::{ImageFormat, ImageReader, Limits, codecs::jpeg::JpegEncoder};
@@ -197,7 +198,10 @@ impl Local {
         };
         let store = Store::open(root, &context)?;
         let mut upgrade = false;
-        let saved = match store.load::<Record>("pilot-profile") {
+        let saved = match store
+            .read::<Record>("pilot-profile")
+            .and_then(Stored::required)
+        {
             Ok(Record::Current(saved)) => saved,
             Ok(Record::Previous(previous)) => {
                 upgrade = true;

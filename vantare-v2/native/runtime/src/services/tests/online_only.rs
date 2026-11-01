@@ -192,7 +192,7 @@ pub(super) fn assert_no_license_copy(app_root: &std::path::Path, base: &str) {
     let legacy = Store::open(app_root, &legacy_context).expect("old namespace");
     for name in ["license-candidate", "license-transfer-pending"] {
         assert!(matches!(
-            legacy.load::<serde_json::Value>(name),
+            legacy.fixture::<serde_json::Value>(name),
             Err(vantare_services::Error::NotFound)
         ));
     }

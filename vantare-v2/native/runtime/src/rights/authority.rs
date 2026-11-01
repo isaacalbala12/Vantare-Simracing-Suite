@@ -3,6 +3,7 @@ use super::verifier::{CacheIssue, Verified};
 use chrono::{DateTime, TimeDelta, Utc};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
+use vantare_services::storage::Read as Stored;
 use vantare_services::{Error, Result, storage::Store};
 const GAME_GRACE_SECONDS: i64 = 3600;
 
@@ -65,22 +66,28 @@ pub struct Authority {
 
 impl Authority {
     pub fn restore(store: &Store) -> Result<Self> {
+        let mut recovery_marker =
+            !matches!(store.read::<bool>("authority-recovery")?, Stored::Missing);
         let mut damaged = false;
-        let saved = match store.load_cache::<Saved>("authority") {
-            Ok(saved)
+        let saved = match store.read::<Saved>("authority")? {
+            Stored::Value(saved)
                 if saved.version == 1 && (0..=300_000).contains(&saved.clock.forward_millis) =>
             {
                 saved
             }
-            Err(Error::NotFound) => {
-                // A binding without its authority is not a fresh installation.
-                let binding_exists = match store.load_cache::<serde_json::Value>("binding") {
-                    Ok(_) | Err(Error::Corrupt) => true,
-                    Err(Error::NotFound) => false,
-                    Err(error) => return Err(error),
-                };
-                if binding_exists {
-                    Self::ensure_recovery_marker(store)?;
+            other => {
+                let missing = matches!(other, Stored::Missing);
+                if (!missing
+                    || !matches!(store.read::<serde_json::Value>("binding")?, Stored::Missing))
+                    && !recovery_marker
+                {
+                    // Durable before quarantine. A damaged marker is already a guard.
+                    store.save("authority-recovery", &true)?;
+                    recovery_marker = true;
+                }
+                if !missing {
+                    store.quarantine_dated("authority", 0)?;
+                    damaged = true;
                 }
                 Saved {
                     version: 1,
@@ -89,32 +96,6 @@ impl Authority {
                     invalidated: true,
                 }
             }
-            Ok(_) | Err(Error::Corrupt) => {
-                // A failed repair after the rename must not look like a fresh
-                // installation on restart. The marker carries no grants/time.
-                Self::ensure_recovery_marker(store)?;
-                store.quarantine_dated("authority", 0)?;
-                damaged = true;
-                Saved {
-                    version: 1,
-                    clock: Clock::default(),
-                    game: None,
-                    invalidated: true,
-                }
-            }
-            Err(error) => return Err(error),
-        };
-        let recovery_marker = match store.load_cache::<bool>("authority-recovery") {
-            Ok(_) => true,
-            Err(Error::NotFound) => false,
-            Err(Error::Corrupt) => {
-                // Its continued presence is the recovery guard. Moving it
-                // before replacing it would leave a crash window without a
-                // guard. A successful online persist removes it last.
-                damaged = true;
-                true
-            }
-            Err(error) => return Err(error),
         };
         let authority = Self {
             clock: saved.clock,
@@ -133,16 +114,6 @@ impl Authority {
             eprintln!("{}", CacheIssue::AuthorityUnreadable.diagnostic());
         }
         Ok(authority)
-    }
-
-    fn ensure_recovery_marker(store: &Store) -> Result<()> {
-        // A corrupt marker is already a guard; preserve its original bytes even
-        // when the authority is also damaged or missing.
-        match store.load_cache::<bool>("authority-recovery") {
-            Ok(_) | Err(Error::Corrupt) => Ok(()),
-            Err(Error::NotFound) => store.save("authority-recovery", &true),
-            Err(error) => Err(error),
-        }
     }
 
     pub fn needs_online_recovery(&self, wall: DateTime<Utc>) -> bool {
@@ -574,7 +545,7 @@ mod tests {
             .expect("exclusive fixture");
         assert!(matches!(Authority::restore(&store), Err(Error::Storage)));
         assert!(matches!(
-            store.load::<bool>("authority-recovery"),
+            store.fixture::<bool>("authority-recovery"),
             Err(Error::NotFound)
         ));
         drop(lock);
@@ -614,7 +585,7 @@ mod tests {
         );
         assert!(
             store
-                .load::<bool>("authority-recovery")
+                .fixture::<bool>("authority-recovery")
                 .expect("recovery durable"),
             "la recuperación debe sobrevivir al reinicio"
         );

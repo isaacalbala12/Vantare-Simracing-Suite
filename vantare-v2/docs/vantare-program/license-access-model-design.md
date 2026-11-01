@@ -231,10 +231,10 @@ entre procesos. Los agrupo por **qué** deciden:
 | `rights/<sha(core-installation-v1)>` | `installation` (semilla Ed25519 v2 histórica) | retirado | **Inventario superado por ADR 0102, decisión 5**: el corte A del paso 11 retiró JWS/v2 y la clave; los restos quedan inertes, sin leer ni borrar |
 
 El `Store` (un escritor, bloqueo exclusivo, ACL privada, DPAPI con contexto) es
-un buen patrón y es el mismo para roadmap, informes y pilot. Pero ofrece **cuatro
+un buen patrón y es el mismo para roadmap, informes y pilot. Inventario histórico, superado por el corte C del paso 12: ofrecía **cuatro
 formas de leer** (`load`, `load_cache`, `restore_cache`, `load_for_restore`,
 `storage.rs:133-191`) y **tres de apartar** (`quarantine`,
-`quarantine_preserving`, `quarantine_dated`, `:210-290`). Cada llamada elige
+`quarantine_preserving`, `quarantine_dated`, `:210-290`). Antes, cada llamada elegía
 una a mano, y esa elección decide si un fichero dañado bloquea para siempre (F1/F3)
 o se recupera. Es la causa común de #1806 y #1808.
 
@@ -471,7 +471,7 @@ se demuestran con tests de caracterización escritos **antes**, en el paso 0.
 | 9 | **Aviso persistente**, servido sin arrancar el helper; el Hub deja de renovar durante la compra | Arreglo | #1799 pt.2/pt.5, R11 | Reloj inyectado: aviso visible tras perder una respuesta; compra confirmada solo por el Feed |
 | 10 | **Cadencia máxima de comprobación** (24 h sin plazo firmado) | Cambio de comportamiento (decisión §4.6) | R1; criterio claro para #1826 | Reloj inyectado: éxito sin plazo → siguiente comprobación a las 24 h, sin ráfagas |
 | 11 | *(Opcional)* Mover `Authority`, `catalog` y `Verifier` a `runtime::rights`; retirar v2 si no está planificado | Movimiento mecánico | Claridad de dueño | Mismos tests, otro crate; test de arquitectura `domain`/`ui` intacto |
-| 12 | *(Transversal, issue propia)* `Store`: una lectura `read → {Valor, Falta, Dañado}` y una clase declarada por documento (guarda durable, caché reconstruible o secreto de sesión), con un único `quarantine_dated` | Refactor de storage | Raíz común de #1806/#1808 y #1822 F4 | Tabla de documentos con test por clase; afecta también a roadmap, informes y pilot |
+| 12 | *(Ejecutado en corte C de #1827, transversal autorizado)* `Store`: una lectura `read → {Valor, Falta, Dañado}` y una clase declarada por documento (guarda durable, caché reconstruible o secreto de sesión), con un único `quarantine_dated` | Refactor de storage | Raíz común de #1806/#1808 y #1822 F4 | Tabla de documentos con test por clase; afecta también a roadmap, informes y pilot |
 | — | Documentación: README de services/runtime/ipc/hub con **una** sección de contrato vigente en lugar de las secciones fechadas apiladas | Doc | P3 R3 | Revisión del diff |
 
 Orden: 0 → (1, 2, 3 en paralelo, servidor) → 4 → 5 → 6 → 6b → 7 → 8 → 9 → 10.
@@ -647,7 +647,8 @@ Las filas User que revocan por renovación/refresh llevan «cambia en paso 5»;
 recovery solo online lleva «cambia en paso 1»; candidate apartado lleva
 «cambia en paso 8». El paso 7 cambia el diagnóstico de lápida futura a ClockBehind con su frontera
 (#1822 F2), sin cambiar acceso ni rebajar esa frontera; la marca corrupta sigue bloqueando tras dos
-restauraciones (#1822 F4, optimización de Store posterior).
+restauraciones. El corte C del paso 12 resuelve F4: conserva bytes de marca y
+autoridad sana sin reescritura ni diagnóstico repetidos.
 El test Deno conecta las funciones puras reales de transición y normalización,
 pero sus filas efectivas son fixtures: no demuestra process.ts, SQL/RLS ni un
 despliegue. Los gates SQL/comerciales existentes conservan esa responsabilidad.

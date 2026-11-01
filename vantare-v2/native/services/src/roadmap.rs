@@ -100,20 +100,11 @@ pub struct Roadmap {
 }
 impl Roadmap {
     pub fn restore(store: &Store) -> Result<Self> {
-        let cached = match store.load_for_restore::<Cached>("roadmap") {
-            Ok(Some(cache)) if cache.version == 1 && validate(&cache.publication).is_ok() => {
-                Some(cache)
-            }
-            Ok(None) | Err(Error::NotFound) => None,
-            // Ilegible o invalido: se aparta y se sigue sin cache. Devolver
-            // `Err` dejaba el roadmap muerto en cada arranque para siempre.
-            Ok(_) => {
-                store.quarantine("roadmap");
-                None
-            }
-
-            Err(error) => return Err(error),
-        };
+        let cached = store
+            .read::<Cached>("roadmap")?
+            .recover(store, "roadmap", 0, |cache| {
+                cache.version == 1 && validate(&cache.publication).is_ok()
+            })?;
         Ok(Self { cached })
     }
     pub fn publication(&self) -> Option<&Publication> {
@@ -209,7 +200,7 @@ mod tests {
         // ...y el documento se ha APARTADO, no ignorado: por eso el siguiente
         // arranque tampoco tropieza.
         assert!(
-            matches!(store.load::<Cached>("roadmap"), Err(Error::NotFound)),
+            matches!(store.fixture::<Cached>("roadmap"), Err(Error::NotFound)),
             "el documento invalido debe quedar apartado"
         );
         assert!(

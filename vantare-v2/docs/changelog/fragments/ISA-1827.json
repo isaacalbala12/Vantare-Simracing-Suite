@@ -4,6 +4,7 @@
   "type": "fix",
   "summary": "Las licencias sin fecha firmada se comprueban al arrancar y cada 24 horas; se conservan los avisos y el acceso offline.",
   "technicalNotes": [
+    "Paso 12, corte C: Store tiene una lectura Value/Missing/Damaged, clase por documento y un quarantine_dated. Conserva formatos y guardas durables; Pilot e informes no se vacían en silencio. F4 evita reescribir autoridad sana por marcador corrupto. En commit aparte, las cachés roadmap/perfil/report-attempt con DPAPI dañado se apartan y reconstruyen sin tocar la sesión sana.",
     "Paso 11, corte A: se retiran el formato JWS/v2 no planificado, su clave Installation y el vencimiento de sobre. Solo queda Ed25519 v1; los grants temporales y las guardas conservan su formato. La comprobación diaria se prueba con Founders v1 firmado.",
     "Paso 11, corte B: Authority, catálogo y Verifier pasan a runtime::rights. Services entrega la respuesta HTTP fresca sin confiar en sus claims hasta el ACK durable. La categoría cerrada rights-credential-invalid conserva Error::Version/Transient; control v7 y disco no cambian.",
     "Paso 6b, decisión 4: Paused conserva la gracia ya reconocida de la misma sesión live y la hora original de entrada; no inicia ni amplía el margen.",
@@ -34,7 +35,8 @@
     "B firmado del mismo PC sin binding: v18 aparta ambos restos, v17 solo lee política sin acceso y la vuelta a v18 sigue sin acceso. Rename bloqueado conserva bytes y no bloquea recuperación; siguiente arranque reintenta.",
     "En sandbox, perder la respuesta de un aviso de límite/conflicto y reabrir Hub: debe seguir visible sin otro efecto remoto. Durante compra, servicios no confirma acceso; esperar al Feed fresco del núcleo.",
     "Reloj inyectado: fallo transitorio en Active/Grace dentro/fuera de Live sin banner; login OAuth/email confirma una comprobación tras el suelo y redetecta rechazo; seis lecturas locales reales durante compra. Fixture QA usa LicenseStatus v19.",
-    "Con reloj inyectado: arranque una llamada, 23 h 59 min ninguna, 24 h una; fallo offline con 1/2/4/8/15 min, Live y ClockBehind sin llamadas. Reiniciar helper/reconectar Hub conserva cadencia y aviso."
+    "Con reloj inyectado: arranque una llamada, 23 h 59 min ninguna, 24 h una; fallo offline con 1/2/4/8/15 min, Live y ClockBehind sin llamadas. Reiniciar helper/reconectar Hub conserva cadencia y aviso.",
+    "Fixtures aisladas: DPAPI dañado de las tres cachés, una cuarentena y reconstrucción; sesión byte a byte. Pilot/borrador/imágenes conservados en dos aperturas; autoridad/marcador idénticos en dos reinicios. E/S y rename fallido siguen como error; cap tres."
   ],
   "knownLimitations": [
     "Este PR no despliega funciones. Las licencias ya firmadas conservan su plazo offline.",

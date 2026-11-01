@@ -306,7 +306,7 @@ fn account_cancel_preserves_real_pro_binding_in_every_account_state() {
         )
         .expect("fixture store");
         let mut saved = store
-            .load::<serde_json::Value>("account")
+            .fixture::<serde_json::Value>("account")
             .expect("fixture account");
         saved["state"] = serde_json::json!(session);
         if session == "SignedOut" {

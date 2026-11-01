@@ -1,5 +1,6 @@
 //! JPEG locales y subida con las RPC de evidencia existentes.
 use super::{Draft, Error, Result, hex_id, load_draft};
+use crate::storage::Read as Stored;
 use crate::{bridge::DataRequest, protocol::report_document::ScreenshotPreview, storage::Store};
 use base64::{Engine, engine::general_purpose::STANDARD};
 use image::{DynamicImage, codecs::jpeg::JpegEncoder};
@@ -107,7 +108,7 @@ pub fn load(store: &Store, draft: &Draft) -> Result<Vec<Screenshot>> {
     if draft.screenshots.is_empty() {
         return Ok(Vec::new());
     }
-    let images: Vec<Screenshot> = store.load("report-images")?;
+    let images: Vec<Screenshot> = store.read("report-images").and_then(Stored::required)?;
     let selected = draft
         .screenshots
         .iter()

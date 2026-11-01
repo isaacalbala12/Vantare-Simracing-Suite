@@ -3,6 +3,7 @@ use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
 use ed25519_dalek::{Signer, SigningKey};
 use std::{path::PathBuf, time::Duration};
 use vantare_runtime::rights::{Devices, Owner};
+use vantare_services::storage::Read as Stored;
 use vantare_services::{
     account::{Account, OAuth},
     license::{Capability, ClaimsV1, CredentialV1},
@@ -226,7 +227,12 @@ fn retire_old_b_fixture(root: &std::path::Path, keys: &str, device: &str) {
     let store = Store::open(&service_root, context).expect("retired namespace");
     for name in ["license-candidate", "license-transfer-pending"] {
         assert!(
-            matches!(store.load::<serde_json::Value>(name), Err(Error::NotFound)),
+            matches!(
+                store
+                    .read::<serde_json::Value>(name)
+                    .and_then(Stored::required),
+                Err(Error::NotFound)
+            ),
             "v18 must retire old B before downgrade"
         );
     }

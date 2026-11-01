@@ -1,6 +1,6 @@
 //! Ficheros DPAPI tipados: reemplazo durable, contexto y un escritor exclusivo.
 use std::fs::{self, OpenOptions};
-use std::io::{Read, Write};
+use std::io::{Read as _, Write};
 use std::path::{Path, PathBuf};
 
 use serde::{Serialize, de::DeserializeOwned};
@@ -17,8 +17,73 @@ use crate::{Error, Result};
 #[cfg(windows)]
 mod windows;
 
+#[cfg(any(test, feature = "test-support"))]
+mod fixtures;
+
 // Tres JPEG de hasta 400 KiB, serializados y protegidos con DPAPI.
 const MAX_BLOB: u64 = 2 * 1024 * 1024;
+
+/// Recovery policy is declared once for each production document.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Class {
+    Durable,
+    Cache,
+    SessionSecret,
+}
+
+pub fn document_class(name: &str) -> Result<Class> {
+    Ok(match name {
+        "account" => Class::SessionSecret,
+        "oauth-metadata" | "account-profile" | "roadmap" | "report-attempt" => Class::Cache,
+        "binding"
+        | "authority"
+        | "authority-recovery"
+        | "report-draft"
+        | "report-images"
+        | "pilot-profile"
+        | "license-candidate"
+        | "license-transfer-pending" => Class::Durable,
+        name if name.starts_with("buy-") && name.len() == 36 => Class::Durable,
+        _ => return Err(Error::Storage),
+    })
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum Read<T> {
+    Value(T),
+    Missing,
+    Damaged,
+}
+impl<T> Read<T> {
+    /// Strict owners keep their existing recovery policy and original bytes.
+    pub fn required(self) -> Result<T> {
+        match self {
+            Self::Value(value) => Ok(value),
+            Self::Missing => Err(Error::NotFound),
+            Self::Damaged => Err(Error::Storage),
+        }
+    }
+    /// Only caches/session secrets may recover to absence; guards never do.
+    pub fn recover(
+        self,
+        store: &Store,
+        name: &str,
+        at: u64,
+        valid: impl FnOnce(&T) -> bool,
+    ) -> Result<Option<T>> {
+        if document_class(name)? == Class::Durable {
+            return Err(Error::Storage);
+        }
+        match self {
+            Self::Value(value) if valid(&value) => Ok(Some(value)),
+            Self::Missing => Ok(None),
+            _ => {
+                store.quarantine_dated(name, at)?;
+                Ok(None)
+            }
+        }
+    }
+}
 
 pub struct Store {
     root: PathBuf,
@@ -130,92 +195,14 @@ impl Store {
         unprotect(&blob, &self.context)
     }
 
-    pub fn load<T: DeserializeOwned>(&self, name: &str) -> Result<T> {
-        serde_json::from_slice(&self.load_bytes(name).map_err(|error| {
-            if matches!(error, Error::TooLarge | Error::Corrupt) {
-                Error::Storage
-            } else {
-                error
-            }
-        })?)
-        .map_err(|_| Error::Storage)
-    }
-
-    /// Cache migration distinguishes corrupt bytes from actual filesystem errors.
-    pub fn load_cache<T: DeserializeOwned>(&self, name: &str) -> Result<T> {
-        let bytes = self.load_bytes(name).map_err(|error| {
-            if error == Error::TooLarge {
-                Error::Corrupt
-            } else {
-                error
-            }
-        })?;
-        serde_json::from_slice(&bytes).map_err(|_| Error::Corrupt)
-    }
-
-    /// Only known corruption is recoverable; failed reads or quarantine stay errors.
-    pub fn restore_cache<T: DeserializeOwned>(
-        &self,
-        name: &str,
-        at_millis: u64,
-    ) -> Result<Option<T>> {
-        match self.load_cache(name) {
-            Ok(value) => Ok(Some(value)),
-            Err(Error::NotFound) => Ok(None),
-            Err(Error::Corrupt) => {
-                self.quarantine_dated(name, at_millis)?;
-                Ok(None)
-            }
+    /// One read, without recovery side effects; I/O errors never become damage.
+    pub fn read<T: DeserializeOwned>(&self, name: &str) -> Result<Read<T>> {
+        match self.load_bytes(name) {
+            Ok(bytes) => Ok(serde_json::from_slice(&bytes).map_or(Read::Damaged, Read::Value)),
+            Err(Error::NotFound) => Ok(Read::Missing),
+            Err(Error::TooLarge | Error::Corrupt) => Ok(Read::Damaged),
             Err(error) => Err(error),
         }
-    }
-
-    /// Recuperación de JSON inválido o excesivo; los errores de E/S se propagan.
-    pub fn load_for_restore<T: DeserializeOwned>(&self, name: &str) -> Result<Option<T>> {
-        let bytes = match self.load_bytes(name) {
-            Ok(bytes) => bytes,
-            Err(Error::TooLarge) => {
-                self.quarantine(name);
-                return Ok(None);
-            }
-            Err(Error::Corrupt) => return Err(Error::Storage),
-            Err(error) => return Err(error),
-        };
-        if let Ok(value) = serde_json::from_slice(&bytes) {
-            Ok(Some(value))
-        } else {
-            self.quarantine(name);
-            Ok(None)
-        }
-    }
-
-    /// Aparta un documento que no valida para que el servicio pueda arrancar.
-    ///
-    /// Todas las `restore` comparten la misma forma: si el documento no valida
-    /// devuelven `Err`, lo que deja el servicio muerto en CADA arranque y obliga
-    /// a que alguien borre el fichero a mano. Renombrarlo conserva la evidencia
-    /// para diagnostico y permite seguir con el valor por defecto.
-    ///
-    /// Tampoco se usa con el recargado posterior al login, que no es un `restore`.
-    pub fn quarantine(&self, name: &str) {
-        let Ok(path) = self.path(name) else {
-            return;
-        };
-        let aside = self.root.join(format!("{name}.corrupto"));
-        let _ = fs::remove_file(&aside);
-        if let Err(error) = fs::rename(&path, &aside) {
-            eprintln!("apartar {name} ilegible: {error}");
-        }
-    }
-
-    /// Recuperación explícita: conservar cada copia y no seguir si no se pudo apartar.
-    #[cfg(any(feature = "network", test))]
-    pub fn quarantine_preserving(&self, name: &str) -> Result<()> {
-        let path = self.path(name)?;
-        let aside = self
-            .root
-            .join(format!("{name}-{}.corrupto", crate::random_id()?));
-        fs::rename(path, aside).map_err(|_| Error::Storage)
     }
 
     /// Preserve an incompatible cache beside the original with an injected date.
@@ -362,6 +349,223 @@ mod tests {
     use super::*;
 
     #[test]
+    fn damaged_pilot_profile_never_starts_a_fresh_profile() {
+        let root =
+            std::env::temp_dir().join(format!("pilot-guard-{}", crate::random_id().expect("root")));
+        let store = Store::open(&root, "pilot-v1|local").expect("store");
+        let path = store.path("pilot-profile").expect("path");
+        fs::write(&path, b"damaged Pilot fixture").expect("damage");
+        drop(store);
+        for _ in 0..2 {
+            assert!(matches!(
+                crate::pilot::Local::open(&root, None, None),
+                Err(Error::Storage)
+            ));
+            assert_eq!(
+                fs::read(&path).expect("profile preserved"),
+                b"damaged Pilot fixture"
+            );
+        }
+        fs::remove_dir_all(root).expect("cleanup");
+    }
+
+    fn cache_present(store: &Store, name: &str, oauth: &crate::account::OAuth) -> Result<bool> {
+        match name {
+            "roadmap" => crate::roadmap::Roadmap::restore(store).map(|v| v.publication().is_some()),
+            "report-attempt" => {
+                crate::report::Reports::restore(store).map(|v| v.receipt().is_some())
+            }
+            "account-profile" => crate::account::Account::restore(oauth.clone(), store)
+                .map(|v| v.profile().is_some()),
+            _ => unreachable!("test cache"),
+        }
+    }
+
+    #[test]
+    fn damaged_dpapi_caches_recover_once_and_rebuild_without_changing_the_session() {
+        let (root, store) = crate::test_store("cache-rebuild");
+        let issuer = url::Url::parse("https://fixture.test/").expect("issuer");
+        drop(crate::account::fixture(&issuer, &store));
+        let oauth = serde_json::from_value(serde_json::json!({
+            "issuer":issuer, "client_id":"public-fixture", "redirect":"http://127.0.0.1:0/callback",
+            "authorization":"https://fixture.test/authorize", "token":"https://fixture.test/token", "userinfo":"https://fixture.test/userinfo"
+        })).expect("OAuth fixture");
+        let payload: serde_json::Value = serde_json::from_str(include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../../supabase/tests/fixtures/native-hub-report.json"
+        )))
+        .expect("shared payload");
+        let samples = [
+            (
+                "roadmap",
+                serde_json::json!({"version":1,"fetched_at":1,"publication":{"id":"550e8400-e29b-41d4-a716-446655440000","published_at":"2026-09-30T10:00:00Z","document":{"schemaVersion":1,"items":[]}}}),
+            ),
+            (
+                "account-profile",
+                serde_json::json!({"identity":{"issuer":"https://fixture.test/","subject":"user_fixture"},"profile":crate::protocol::AccountProfile {name:"cache fixture".into(),..Default::default()}}),
+            ),
+            (
+                "report-attempt",
+                serde_json::json!({"version":1,"identity":{"issuer":"https://fixture.test/","subject":"user_fixture"},"account_id":"550e8400-e29b-41d4-a716-446655440000","payload":payload,"images":[],"installation":null,"phase":{"state":"Confirmed","receipt":{"report_id":format!("report_{}","a".repeat(64)),"report_state":"submitted","idempotent":false,"created_at":"2026-10-13T00:00:00Z"}}}),
+            ),
+        ];
+        let session = fs::read(store.path("account").expect("session")).expect("session bytes");
+        for (name, valid) in samples {
+            store.save(name, &valid).expect("valid fixture");
+            assert!(
+                cache_present(&store, name, &oauth).expect("valid cache"),
+                "{name}"
+            );
+            let path = store.path(name).expect("path");
+            let damaged = b"damaged DPAPI cache fixture";
+            fs::write(&path, damaged).expect("damage");
+            for _ in 0..2 {
+                assert!(
+                    !cache_present(&store, name, &oauth).expect("recover cache"),
+                    "{name}"
+                );
+            }
+            let archives: Vec<_> = fs::read_dir(&store.root)
+                .expect("archives")
+                .flatten()
+                .filter(|v| {
+                    v.file_name()
+                        .to_string_lossy()
+                        .starts_with(&format!("{name}-"))
+                })
+                .collect();
+            assert_eq!(archives.len(), 1, "{name}: no repeated quarantine");
+            assert_eq!(
+                fs::read(archives[0].path()).expect("preserved bytes"),
+                damaged
+            );
+            store.save(name, &valid).expect("reconstruct cache");
+            assert!(
+                cache_present(&store, name, &oauth).expect("rebuilt cache"),
+                "{name}"
+            );
+            assert_eq!(
+                fs::read(store.path("account").expect("session")).expect("session bytes"),
+                session
+            );
+        }
+        drop(store);
+        crate::cleanup_store(&root, "cache-rebuild", &[]);
+    }
+
+    #[test]
+    fn damaged_draft_and_images_stay_together_for_assisted_recovery() {
+        for damaged_name in ["report-draft", "report-images"] {
+            let (root, store) = crate::test_store("durable-report");
+            let mut draft = crate::report::save_draft(
+                &store,
+                crate::report::Fields {
+                    module: "hub".into(),
+                    ..Default::default()
+                },
+            )
+            .expect("draft");
+            let image = crate::report::screenshots::Screenshot::encode(
+                &image::DynamicImage::new_rgb8(4, 4),
+            )
+            .expect("image");
+            draft.screenshots.push(image.preview.clone());
+            store
+                .save("report-draft", &draft)
+                .expect("draft with reference");
+            store.save("report-images", &vec![image]).expect("images");
+            fs::write(
+                store.path(damaged_name).expect("path"),
+                b"damaged guard fixture",
+            )
+            .expect("damage");
+            let draft_bytes = fs::read(store.path("report-draft").expect("draft")).expect("bytes");
+            let image_bytes =
+                fs::read(store.path("report-images").expect("images")).expect("bytes");
+            for _ in 0..2 {
+                let result = crate::report::load_draft(&store).and_then(|draft| {
+                    crate::report::screenshots::load(&store, &draft.ok_or(Error::Storage)?)
+                });
+                assert!(
+                    matches!(result, Err(Error::Storage)),
+                    "never recover as an empty report"
+                );
+                assert_eq!(
+                    fs::read(store.path("report-draft").expect("draft")).expect("bytes"),
+                    draft_bytes
+                );
+                assert_eq!(
+                    fs::read(store.path("report-images").expect("images")).expect("bytes"),
+                    image_bytes
+                );
+            }
+            drop(store);
+            crate::cleanup_store(&root, "durable-report", &[]);
+        }
+    }
+
+    #[test]
+    fn typed_read_preserves_damage_and_class_drives_only_recovery() {
+        use std::os::windows::fs::OpenOptionsExt;
+        let (root, store) = crate::test_store("read-classes");
+        for (name, class) in [
+            ("account", Class::SessionSecret),
+            ("oauth-metadata", Class::Cache),
+            ("account-profile", Class::Cache),
+            ("roadmap", Class::Cache),
+            ("report-attempt", Class::Cache),
+            ("report-draft", Class::Durable),
+            ("report-images", Class::Durable),
+            ("pilot-profile", Class::Durable),
+            ("authority", Class::Durable),
+            ("authority-recovery", Class::Durable),
+            ("binding", Class::Durable),
+            ("buy-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", Class::Durable),
+        ] {
+            assert_eq!(document_class(name), Ok(class));
+            assert_eq!(store.read::<bool>(name), Ok(Read::Missing));
+            store.save(name, &true).expect("value");
+            assert_eq!(store.read::<bool>(name), Ok(Read::Value(true)));
+            let path = store.path(name).expect("path");
+            fs::write(&path, b"damaged DPAPI fixture").expect("damage");
+            let locked = OpenOptions::new()
+                .read(true)
+                .share_mode(0)
+                .open(&path)
+                .expect("I/O failure");
+            assert_eq!(
+                store.read::<bool>(name),
+                Err(Error::Storage),
+                "I/O is never corruption"
+            );
+            drop(locked);
+            assert_eq!(store.read::<bool>(name), Ok(Read::Damaged));
+            assert_eq!(
+                fs::read(&path).expect("read has no repair effects"),
+                b"damaged DPAPI fixture"
+            );
+            let recovery =
+                store
+                    .read::<bool>(name)
+                    .expect("typed damage")
+                    .recover(&store, name, 9, |_| true);
+            if class == Class::Durable {
+                assert_eq!(recovery, Err(Error::Storage));
+                assert_eq!(
+                    fs::read(&path).expect("guard preserved"),
+                    b"damaged DPAPI fixture"
+                );
+            } else {
+                assert_eq!(recovery, Ok(None));
+                assert!(!path.exists());
+            }
+        }
+        assert_eq!(document_class("unknown-document"), Err(Error::Storage));
+        drop(store);
+        crate::cleanup_store(&root, "read-classes", &[]);
+    }
+
+    #[test]
     fn account_cache_corruption_is_preserved_capped_and_io_still_blocks() {
         use std::os::windows::fs::OpenOptionsExt;
         let (root, store) = crate::test_store("account-cache-recovery");
@@ -380,7 +584,12 @@ mod tests {
             for at in 1..=4 {
                 fs::write(&path, [u8::try_from(at).expect("fixture byte"); 16])
                     .expect("unreadable DPAPI fixture");
-                assert_eq!(store.restore_cache::<serde_json::Value>(name, at), Ok(None));
+                assert_eq!(
+                    store
+                        .read::<serde_json::Value>(name)
+                        .and_then(|read| read.recover(&store, name, at, |_| true)),
+                    Ok(None)
+                );
             }
             let archives: Vec<_> = fs::read_dir(&store.root)
                 .expect("namespace")
@@ -406,7 +615,9 @@ mod tests {
                 .open(&path)
                 .expect("read lock");
             assert_eq!(
-                store.restore_cache::<serde_json::Value>(name, 5),
+                store
+                    .read::<serde_json::Value>(name)
+                    .and_then(|read| read.recover(&store, name, 5, |_| true)),
                 Err(Error::Storage)
             );
             drop(locked);
@@ -418,12 +629,19 @@ mod tests {
                 .open(&path)
                 .expect("rename lock");
             assert_eq!(
-                store.restore_cache::<serde_json::Value>(name, 5),
+                store
+                    .read::<serde_json::Value>(name)
+                    .and_then(|read| read.recover(&store, name, 5, |_| true)),
                 Err(Error::Storage)
             );
             drop(locked);
             assert_eq!(fs::read(&path).expect("original"), b"unreadable fixture");
-            assert_eq!(store.restore_cache::<serde_json::Value>(name, 5), Ok(None));
+            assert_eq!(
+                store
+                    .read::<serde_json::Value>(name)
+                    .and_then(|read| read.recover(&store, name, 5, |_| true)),
+                Ok(None)
+            );
         }
         drop(store);
         crate::cleanup_store(&root, "account-cache-recovery", &[]);
@@ -513,7 +731,9 @@ mod tests {
         dates.sort_unstable();
         assert_eq!(dates, vec![3, 4, 5]);
         assert_eq!(
-            store.load::<u64>("account").expect("unrelated preserved"),
+            store
+                .fixture::<u64>("account")
+                .expect("unrelated preserved"),
             42
         );
         drop(store);
@@ -527,7 +747,7 @@ mod tests {
         store.save("binding", &1).expect("cache");
         let path = store.path("binding").expect("path");
         fs::write(&path, b"bad-dpapi").expect("corruption");
-        assert_eq!(store.load_cache::<u64>("binding"), Err(Error::Corrupt));
+        assert_eq!(store.read::<u64>("binding"), Ok(Read::Damaged));
         let lock = OpenOptions::new()
             .read(true)
             .share_mode(1)
@@ -553,19 +773,19 @@ mod tests {
             .open(&path)
             .expect("deny rename");
         assert_eq!(
-            store.quarantine_preserving("oauth-metadata"),
+            store.quarantine_dated("oauth-metadata", 0),
             Err(Error::Storage)
         );
         assert!(fs::read(&path).expect("preserved") == original);
         drop(lock);
         store
-            .quarantine_preserving("oauth-metadata")
+            .quarantine_dated("oauth-metadata", 0)
             .expect("first copy");
         store
             .save("oauth-metadata", &2)
             .expect("next metadata fixture");
         store
-            .quarantine_preserving("oauth-metadata")
+            .quarantine_dated("oauth-metadata", 0)
             .expect("second copy");
         let copies: Vec<_> = fs::read_dir(&store.root)
             .expect("namespace")
@@ -629,8 +849,7 @@ mod tests {
                     let file_name = entry.file_name();
                     let file_name = file_name.to_string_lossy();
                     file_name == format!("{name}.corrupto")
-                        || (name == "account"
-                            && file_name.starts_with("account-")
+                        || (file_name.starts_with(&format!("{name}-"))
                             && file_name.ends_with(".corrupto"))
                 })
                 .map(|entry| fs::read(entry.path()).expect("preserved archive"))
@@ -657,7 +876,7 @@ mod tests {
         drop(store);
         let store = Store::open(&data, "beta-long-path").expect("reabrir");
         assert_eq!(
-            store.load::<String>("session").expect("restaurar"),
+            store.fixture::<String>("session").expect("restaurar"),
             "updated"
         );
         drop(store);
@@ -703,16 +922,19 @@ mod tests {
         let namespace = store.root.clone();
         drop(store);
         let store = Store::open(&root, "storage-test").expect("reabrir");
-        assert_eq!(store.load::<String>("session").expect("restaurar"), value);
+        assert_eq!(
+            store.fixture::<String>("session").expect("restaurar"),
+            value
+        );
         fs::write(store.path("session").expect("ruta"), b"{\"plain\":true}")
             .expect("corrupción test");
         assert!(matches!(
-            store.load::<String>("session"),
+            store.fixture::<String>("session"),
             Err(Error::Storage)
         ));
         store.remove("session").expect("borrar");
         assert!(matches!(
-            store.load::<String>("session"),
+            store.fixture::<String>("session"),
             Err(Error::NotFound)
         ));
         assert!(store.save("../escape", &value).is_err());
@@ -751,10 +973,13 @@ mod unix_tests {
         drop(store);
 
         let store = Store::open(&root, "storage-test").expect("reabrir");
-        assert_eq!(store.load::<String>("session").expect("restaurar"), value);
+        assert_eq!(
+            store.fixture::<String>("session").expect("restaurar"),
+            value
+        );
         store.remove("session").expect("borrar");
         assert!(matches!(
-            store.load::<String>("session"),
+            store.fixture::<String>("session"),
             Err(Error::NotFound)
         ));
         drop(store);

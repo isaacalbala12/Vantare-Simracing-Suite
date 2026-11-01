@@ -1,3 +1,4 @@
+use crate::storage::Read as Stored;
 use crate::{
     Error, Result,
     account::{Account, Identity},
@@ -50,7 +51,7 @@ fn attempt(
     environment: &str,
 ) -> Result<Attempt> {
     let name = attempt_name(identity, product, environment)?;
-    match store.load::<Attempt>(&name) {
+    match store.read::<Attempt>(&name).and_then(Stored::required) {
         Ok(value) if crate::license::uuid(&value.id) => Ok(value),
         Err(Error::NotFound) => {
             let hex = crate::random_id()?;
@@ -167,7 +168,9 @@ mod tests {
                     .err()
                     .expect("blocked");
                 assert_eq!(
-                    store.load::<serde_json::Value>(&name).expect("preserved"),
+                    store
+                        .fixture::<serde_json::Value>(&name)
+                        .expect("preserved"),
                     value
                 );
                 assert!(

@@ -1,6 +1,7 @@
-//! Intento durable manual. Restaurar jamás envía; el consentimiento es efímero.
+//! Intento manual reconstruible; restaurar no envía y el consentimiento es efímero.
 use crate::protocol::DraftState;
 pub use crate::protocol::report_document::{Draft, Fields, Preview, Receipt};
+use crate::storage::Read as Stored;
 use crate::{Error, Result, account::Identity, bridge::DataRequest, storage::Store};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -84,7 +85,10 @@ fn draft_valid(draft: &Draft, required: bool) -> Result<()> {
 }
 
 pub fn load_draft(store: &Store) -> Result<Option<Draft>> {
-    match store.load::<Draft>("report-draft") {
+    match store
+        .read::<Draft>("report-draft")
+        .and_then(Stored::required)
+    {
         Ok(draft) => {
             draft_valid(&draft, false).map_err(|_| Error::Storage)?;
             Ok(Some(draft))
@@ -365,29 +369,22 @@ pub struct Reports {
 
 impl Reports {
     pub fn restore(store: &Store) -> Result<Self> {
-        let attempt = match store.load_for_restore::<Attempt>("report-attempt") {
-            Ok(Some(attempt))
-                if attempt.version == 1
+        let attempt = store.read::<Attempt>("report-attempt")?.recover(
+            store,
+            "report-attempt",
+            0,
+            |attempt| {
+                attempt.version == 1
                     && crate::license::uuid(&attempt.account_id)
-                    // An old confirmed receipt is read-only history, never a
-                    // retry. Preserve it even when its old payload had prose.
                     && (matches!(attempt.phase, Phase::Confirmed(_))
                         || attempt.payload.validate().is_ok())
                     && screenshots::validate(&attempt.images).is_ok()
                     && match &attempt.phase {
                         Phase::Confirmed(receipt) => valid_receipt(receipt).is_ok(),
                         _ => true,
-                    } =>
-            {
-                Some(attempt)
-            }
-            Ok(None) | Err(Error::NotFound) => None,
-            Ok(_) => {
-                store.quarantine("report-attempt");
-                None
-            }
-            Err(error) => return Err(error),
-        };
+                    }
+            },
+        )?;
         Ok(Self {
             attempt,
             consent: None,

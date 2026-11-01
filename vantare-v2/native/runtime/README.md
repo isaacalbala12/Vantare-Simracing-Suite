@@ -1,184 +1,75 @@
-Store del núcleo usa la lectura tipada descrita en [services](../services/README.md).
-Binding, autoridad y marcador son guardas. Una marca ilegible conserva su barrera
-y sus bytes; si la autoridad ya es sana no se vuelve a escribir ni a diagnosticar
-por esa marca (F4). La prueba compara autoridad/marca tras dos reinicios. La
-recuperación online verificada, límites de reloj y ACK durable siguen iguales.
+## Contrato vigente de licencias y supervisor
 
-## Contrato vigente de licencias — paso 10 (#1827)
+[ADR 0102](../../docs/adr/0102-modelo-acceso-nativo.md) fija dueños y compatibilidad;
+[services](../services/README.md#contrato-vigente-de-acceso-cuenta-y-store) describe cuenta/Store,
+e [ipc](../ipc/README.md#contrato-vigente-de-acceso) los sobres y permisos.
+El historial de entregas/gates vive en Git y el handoff; aquí rige este contrato.
 
-Paso 11, corte A: solo se acepta credencial Ed25519 v1. JWS/v2 y su clave de
-instalación se retiran; los derechos temporales conservan `paid_through` y los
-perpetuos no tienen un vencimiento de sobre. Una firma v1 sin grants conserva
-Gratis sin plazo firmado. La prueba diaria usa Founders v1 real, sin alterar
-Policy. Se conservan los formatos y las guardas de binding/authority.
+`rights::authority`, `catalog` y `verifier` son los dueños únicos. La verificación
+y autoridad puras se prueban también en Unix; Owner/host son Windows. Solo
+Ed25519 v1 concede derechos; JWS/v2 y su clave Installation están retirados.
+Pro/Plus vence en paid_through firmado, Founders/perpetuos carecen de sobre exp.
+Los roles temporales se acotan desde emisión: tester 14d, nightly tester 72h,
+owner 30d, o antes si termina su asignación. Una v1 sin grants conserva Gratis.
 
-Corte B del paso 11: `rights::verifier`, `rights::authority` y `rights::catalog`
-son sus únicos dueños. Las pruebas puras siguen disponibles fuera de Windows;
-Owner/host continúan en Windows. Services transporta bytes HTTP nuevos y solo
-usa claims después del ACK del núcleo. Credencial inválida tiene categoría propia
-en control v7, sin cambiar el sobre: services conserva Version/Transient;
-iat conserva Unavailable/Clock y lápida/denegación/caducidad conservan Rejected.
+Binding, autoridad y marcador son guardas: el núcleo verifica antes de conceder
+y persiste antes del ACK. Daño de binding/clave retirada/formato/firma se aparta
+sin reiniciar reloj ni lápida; E/S real se propaga. F4 conserva marcador ilegible
+como barrera, sin reescribir una autoridad sana ni repetir diagnóstico; compara
+bytes tras dos reinicios. Solo una emisión online verificada puede recuperar.
+Una huella local vacía es indisponibilidad, no evidencia contra la caché sana.
+El decode de credencial guardada se reutiliza al verificar: no se parsea dos veces.
+Los wrappers de comodidad de fixtures no forman parte del producto.
 
-Sin `signed_until_ms`, el supervisor comprueba al arrancar y cada 24 horas
-monotónicas desde una renovación verificada, para cualquier catálogo (incluidos
-Gratis, Founders y Owner sin fecha). No se duplica el chequeo inicial de Gratis.
-Transporte conserva derechos y aplica 1/2/4/8/15 minutos; un éxito reinicia las
-24 horas. Live fuera de la ventana urgente y ClockBehind siguen frenando el
-automático; compra, login confirmado, recuperación y acción manual conservan
-sus excepciones y el suelo existente. Con plazo firmado se conserva su cadencia.
-Reiniciar el helper o reconectar el Hub no reinicia Renewal ni su backoff.
-Un supervisor nuevo comprueba una vez por diseño: no hay persistencia nueva.
+Policy.state es la autoridad: Active/Grace permiten catálogo/módulos; NoCredential,
+RecoveryRequired, ClockBehind, Expired, Revoked, Unavailable, UpdateRequired y Unconfigured no
+conceden. Gratis puede seguir Active al vencer Pro. signed_until_ms y
+grace_until_ms separan firma y margen efectivo, con TTL de dos segundos.
+Policy.error es diagnóstico. ClockBehind.until_ms expresa la frontera en pared
+(lápida efectiva menos forward_millis), con fecha local para la vía manual.
+No se baja una lápida sana ni se reutiliza un candidate para recuperarla.
 
-La admisión del helper ya no instala una copia de disco: usa Read autenticado
-y helper_command_allowed sobre Policy.state. Las consultas necesitan política
-fresca; recuperación y Logout siguen disponibles con denegación, sin conceder acceso.
-No hay TransferRights al abrir/cerrar. El núcleo es el único almacén de derechos;
-InstallOnline conserva el ACK durable. ACK perdido → Transient → una emisión
-HTTP en el siguiente intento, respetando backoff y suelo de un minuto.
+Gracia: una hora solo para derechos vigentes al entrar a una sesión Live reconocida.
+Se conservan identidad estable, hora original, reloj anti-retroceso y tolerancia
+±300s. Paused y Stale de la misma carrera conservan la gracia; no la crean ni
+amplían. Salir, cambiar sesión, replay o Logout la descartan. Pausa larga sigue
+consumiendo plazo; restaurar exige confirmar la misma identidad de carrera.
 
+El único scheduler es Renewal, con pared y monotónico inyectados. Solo una Session
+SignedIn observada admite HTTP automático; Pending/NeedsSignIn/SignedOut no reinician
+backoff. Tras renovación se relee AccountPoll, incluso si refresh falló, sin inferir
+sesión de errores, expires_at ni Policy. Un login confirmado arma una comprobación.
 
-Services v19 añade `LicenseStatus { policy, session, notice }` local al supervisor.
-El aviso tipado se conserva en memoria hasta un resultado de renovación verificado,
-un cierre confirmado o un nuevo login confirmado; perder/leer la respuesta no lo consume.
-Transient no crea avisos persistentes; la recuperación se presenta desde Policy.
-Login confirmado deja una comprobación única pendiente, con suelo y restricciones Live.
-La sesión es la última observada de services, también NeedsSignIn; null significa
-sin observación confirmada en ese intento, nunca SignedOut implícito. No arranca
-el helper para consultarla. Hub no altera formularios/errores con esa observación
-y sigue consultando avisos en NeedsSignIn. Los derechos del Hub y la compra solo se confirman
-por el Feed fresco; el Hub ya no solicita renovaciones durante la espera de compra.
-Solo el supervisor conserva esa ventana y su suelo/backoff. Inicio y Cuenta muestran
-el aviso separado del resultado del usuario. Reiniciar el supervisor pierde su aviso
-remoto en memoria; Policy sigue siendo la autoridad y conserva su diagnóstico.
-V18/v19 se rechazan como Version antes del esquema, sin revocar; control v7 y fotos v11 intactos.
+- Sin plazo firmado: arranque y cada 24h monotónicas desde Verified para cualquier
+  catálogo; no hay chequeo inicial duplicado. Reiniciar helper/reconectar Hub no
+  reinicia Renewal. Reiniciar supervisor comprueba una vez; no añade persistencia.
+- Con plazo: ventana urgente de una hora. Reintentos transitorios 1/2/4/8/15min;
+  suelo 1min en los últimos cinco minutos firmados, backoff normal después.
+  Verified sin nuevo margen sigue Verified y espera 15min en ventana urgente.
+- Compra: ventana 10min con suelo 1min, mismo backoff. Solo Feed fresco confirma.
+  Live permite renovación urgente, recuperación o compra; fuera de ellas cierra
+  servicios. El helper autorizado durante carrera baja prioridad al fondo; fallo
+  deja services-priority-unavailable sin bloquear recuperación.
+- ClockBehind frena el automático hasta su frontera. Rechazo definitivo lo frena
+  hasta recuperación del usuario; transporte conserva binding y reintentos. Un
+  poll pendiente no elimina el suelo. Se registra motivo de omisión solo al cambiar.
 
-Contrato y rollback de datos: [ADR0102](../../docs/adr/0102-modelo-acceso-nativo.md).
-Las secciones fechadas inferiores son históricas; este contrato sustituye sus
-reglas de candidate/marcador y transferencia. La retirada de archivos antiguos
-es un paso de arranque, sin copia ni reintento durable de credenciales. Rollback sintético con lectores
-v17 y pre-NeedsSignIn, sin cambios de instalación: `native/scripts/license-generation-rollback.ps1`.
+La admisión usa Read autenticado del núcleo, sin transferir/installar credenciales
+de disco. Consultas requieren Policy fresca; recuperación y Logout siguen
+accesibles en denegación con canal autenticado. Abrir helper no concede derechos.
+No existe TransferRights. InstallOnline exige una respuesta HTTP nueva y ACK
+durable; perderlo olvida esa emisión y pide otra cuando toque, sin repetir acción.
+Probe reconecta antes del envío; fallo transitorio/versión no revoca derechos.
+Sin Hub, consulta núcleo como máximo cada 30s y cierra helper tras renovar.
+El timer conserva la admisión de un login concurrente. Helper termina ante EOF
+entre tramas o 5min sin trama; conexión inicial espera al padre, trama parcial falla.
 
-## #1827 — Policy.state / control v7 (paso 7)
-
-El núcleo publica Active/Grace y los motivos de denegación, con fronteras
-`signed_until_ms` y `grace_until_ms` separadas. No se deduce gracia desde Live.
-El supervisor lee el estado: ClockBehind frena HTTP automático hasta la frontera;
-un 200 verificado sin margen es Verified y espera 15 minutos en ventana urgente
-(un minuto en los últimos cinco firmados). La compra conserva sondeos con suelo
-de un minuto dentro de su ventana de diez; los fallos reales mantienen 1/2/4/8/15.
-Firma, plazos, TTL y matriz de acceso siguen iguales; la pausa conserva el paso 6b.
-[Contrato y límites de generaciones](../../docs/adr/0102-modelo-acceso-nativo.md).
-Este contrato sustituye las inferencias históricas sobre control v5/v6 de abajo.
-
-Services v17 versiona la Policy v7 anidada; Session/AccountCancel permanecen
-intactos. V16 del paso 6 nunca se publicó en release.
-
-## #1827 — Supervisor y sesión (paso 6, services v16)
-
-`AccountCancel` (v16) cancela solo el intento OAuth/FAPI y relee Session;
-conserva la cuenta protegida y los derechos. «Volver/Cancelar» lo usa sin
-sustituirlo por Logout. Solo «Cerrar sesión» envía Logout. En NeedsSignIn,
-Cuenta ofrece Google/Discord/email y también el cierre explícito de sesión.
-
-
-Renewal lee únicamente `Reply::Account.session`: solo SignedIn permite renovar.
-Pending, NeedsSignIn y SignedOut no admiten red automática ni reinician backoff.
-Después de renovar, se consulta AccountPoll para observar el estado de services,
-incluso si el refresh devolvió un fallo. No se deduce la sesión del error, de
-expires_at ni de la política. Los errores de versión siguen siendo transitorios
-sin invalidar derechos. Este contrato sustituye la inferencia histórica de #1812.
-
-## ISA-1810 — Rechazo de la caché y disponibilidad del núcleo
-
-Clock devuelve rechazo de caché solo si lo produjo el Install ordinario antes
-de confirmar la instalación. Así services puede apartar un candidate anterior
-a latest_issued y abrir la recuperación sin alterar la autoridad. Un Clock de
-InstallOnline o del avance posterior a una instalación correcta sigue siendo
-transitorio; no se confunde una instalación durable con una caché rechazada.
-No cambian el contrato control v6, la tolerancia ±300 s, expiraciones ni lápidas.
-Solo el núcleo concede derechos verificados; admitir el helper no los concede.
-Una huella legacy local vacía produce indisponibilidad, no rechazo del candidate:
-se conserva la caché buena y el binding del disco para cuando vuelva la identidad.
-
-## ISA-1812 — Error de perfil y sesión restaurada
-
-El scheduler confirma sesión con un reply de cuenta correcto. Un error de
-perfil conserva esa sesión ya confirmada sin reiniciar el backoff; no admite
-una sesión nueva desde un error. SignedOut explícito sigue retirando la
-admisión de renovación, y el reset previo a Logout no se deshace por un error.
-La licencia conserva su fecha firmada, con las reglas de autoridad existentes.
-
-## ISA-1803 — Renovación antes del vencimiento, también en carrera
-
-La renovación empieza una hora antes del plazo firmado; reintentos 1/2/4/8/15
-minutos, con suelo de un minuto en los últimos cinco minutos anteriores al plazo.
-Tras vencer vuelve a aplicarse el backoff normal. Desde el paso 7, una respuesta verificada sin margen nuevo no cuenta como fallo
-y espera a la siguiente comprobación sin ruido de transporte. Con el cap de 15 minutos hay al menos tres reintentos y
-15 minutos reservados para sondeos y E/S dentro de una ventana completa, con app/sesión/núcleo activos y sin bloqueos prolongados.
-
-Isaac autorizó renovar en Live dentro de esa ventana urgente y dos excepciones
-explícitas: recuperar acceso cuando no hay derechos activos, y confirmar una
-compra del usuario durante diez minutos después de recibir `Checkout`.
-Desde el paso 9 el Hub solo observa el Feed, sin un segundo scheduler. Este origen se conserva en el supervisor, no se deduce de
-`signing_in` ni se acepta desde el JSON del peer. Son operaciones únicas, con
-helper bajo demanda, prioridad Windows inferior a normal y cierre al acabar,
-sin avisos al piloto. Si bajar prioridad falla, continúa con diagnóstico cerrado
-`services-priority-unavailable`; ese fallo no bloquea la recuperación de acceso.
-Las demás solicitudes automáticas no admiten helper/red fuera de la ventana.
-Control v5 publica el plazo efectivo, que puede incluir la gracia de
-una hora: el cálculo reserva conservadoramente esa hora en Live (hasta dos horas
-antes del plazo efectivo). No se amplían TTL, gracia ni frescura de política2s.
-
-Hub y temporizador comparten admisión/backoff y clasificación del ACK. El resultado
-se evalúa en el reloj efectivo del ACK del núcleo, sin compararlo con la hora
-capturada antes de HTTP; esto evita un falso transitorio si el reloj retrocede
-durante la petición. Los consumidores conservan su comprobación de frescura2s y
-la autoridad conserva antirollback. Restaurar una concesión con plazo firmado y margen no
-dispara HTTP por ser el primer intento: el núcleo vuelve a verificar localmente
-firma y autoridad. Una concesión Owner de treinta días espera la ventana urgente.
-Gratis comparte el chequeo inicial/24 h del contrato vigente cuando no hay plazo
-firmado. Con plazo firmado conserva el chequeo inicial y la ventana urgente.
-
-La v1 no tiene caducidad global desde `issued_at`: cada Pro/Plus vence en el
-`paid_through` firmado; Founders/perpetuos no vencen; concesiones operativas
-Tester14d, NightlyTester72h y Owner30d como máximo desde la emisión, recortadas
-si termina antes su asignación. Si la red falla toda la ventana, no se puede
-renovar: se conserva la fecha firmada y únicamente la gracia ya autorizada.
-
-## ISA-1793 — Segunda revision
-
-Al abrir, un binding firmado rechazado por reloj/lapida va a cuarentena sin
-reiniciar la autoridad persistida. Si falla persistir, el nucleo sigue vivo y
-denegado, disponible para una nueva concesion firmada. El recorte de archivos
-ya apartados es best-effort; puede superar tres copias si una esta bloqueada.
-Comprar reabre la confirmacion automatica, conservando el suelo entre intentos.
-El Hub consulta avisos cada 5 s y mantiene residente el helper mientras tiene
-sesion; la mejora de residencia y avisos se sigue en #1799.
-
-## ISA-1793 — Recuperación y renovación automática
-
-El login y la sesión restaurada contestan sin esperar una renovación HTTP.
-El temporizador pide `LicenseRenewAutomatic` con sesión confirmada y política
-autenticada fresca. Un rechazo automático nunca revoca el binding vigente:
-solo una concesión firmada nueva o una acción explícita pueden cambiarlo.
-Un resultado tipado distingue verificación, rechazo definitivo y transitorio.
-Los transitorios reintentan en 1, 2, 4, 8 y 15 minutos, con tope y reloj inyectado;
-un poll pendiente no reinicia el suelo de un minuto. Se registra un código
-cerrado por cada motivo de omisión, solo al cambiar, sin inundar el diagnóstico.
-
-La sonda `Probe` reconecta antes de enviar una acción y no consume avisos.
-La respuesta perdida de una acción devuelve error sin segundo envío.
-El límite de dispositivos conserva su variante accionable. El temporizador
-no borra la admisión de un login concurrente; sin Hub limita la consulta al
-núcleo a 30 segundos y cierra el helper tras renovar.
-
-Un binding de clave retirada, formato antiguo, firma inválida o DPAPI corrupto
-se aparta junto al original, sin derechos. Se intenta conservar solo las tres copias
-más recientes por nombre; los errores reales de E/S se propagan sin apartar.
-Se conservan reloj y lápida, y las regresiones rechazan emisiones anteriores
-tras la cuarentena. El núcleo sigue disponible para una licencia nueva válida.
-Un rechazo criptográfico o de fecha al renovar conserva el binding anterior;
-un fallo de persistencia de una concesión nueva sigue fallando en cerrado.
+LicenseStatus local devuelve Policy, última Session observada y aviso sin arrancar
+helper. null no implica SignedOut. Aviso definitivo/DeviceLimit persiste en memoria
+hasta Verified, cierre confirmado o login confirmado; lectura/respuesta perdida
+no lo consume y Transient no lo sustituye. Tras reiniciar supervisor desaparece
+el aviso remoto; el diagnóstico de Policy permanece. Hub consulta cada 5s y solo
+Feed fresco decide derechos. No hay otro bucle HTTP en Hub/helper.
 
 # runtime — adquisición y núcleo
 
@@ -254,21 +145,3 @@ prácticas también invalida el REST anterior, aunque avance el reloj.
 Las capturas disponibles NO acreditan inicio/final real, fase de salida ni
 agenda de próxima sesión; esos campos permanecen `Unavailable`, también ACC.
 No se deducen de remaining_s, movimiento, boxes ni llegada de un coche.
-
-
-## #1827 — Gracia durante Paused (paso 6b)
-
-La pausa conserva la gracia de una hora ya reconocida para la misma sesión live,
-igual que Stale. Owner mantiene el juego activo y Host conserva su hora original
-de entrada. Paused por sí solo no inicia gracia; reanudar no cambia el plazo.
-Salir/cambiar de sesión, replay y Logout la descartan. La credencial y la gracia
-siguen caducando con el reloj durante una pausa larga. No cambia protocolo,
-firma, formato durable ni contrato de la política. La única fila modificada de
-caracterización es Paused, marcada previamente para este paso (ADR0102 decisión4).
-
-Revisión del paso 7: ClockBehind.until_ms está en tiempo de pared (lápida
-efectiva menos forward_millis), con aviso de fecha/hora local. El estado local
-del supervisor usa el mismo aviso si omite renovar. NoCredential/RecoveryRequired/
-ClockBehind frescos admiten consultas al helper; Logout sigue disponible con
-canal del núcleo autenticado, incluso ante denegación o caducidad. Sin conceder
-derechos ni saltar el ACK durable; ADR0102.

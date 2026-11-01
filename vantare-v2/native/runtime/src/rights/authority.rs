@@ -310,22 +310,6 @@ impl Authority {
         installed
     }
 
-    pub fn enter_game(&mut self, session: u64, now: DateTime<Utc>, tick: Duration) -> Result<()> {
-        self.enter_game_observed(session, now, now, tick)
-    }
-
-    /// Solo el núcleo aporta la hora de entrada observada, conservada fuera de
-    /// adquisición. Un retraso de E/S no convierte una entrada válida en vencida.
-    pub fn enter_game_observed(
-        &mut self,
-        session: u64,
-        entered_at: DateTime<Utc>,
-        now: DateTime<Utc>,
-        tick: Duration,
-    ) -> Result<()> {
-        self.enter_game_identified(session, None, entered_at, now, tick)
-    }
-
     /// Solo una identidad estable completa confirma una sesión tras restaurar.
     pub fn enter_game_identified(
         &mut self,

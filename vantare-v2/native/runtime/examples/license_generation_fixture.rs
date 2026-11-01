@@ -3,7 +3,6 @@ use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
 use ed25519_dalek::{Signer, SigningKey};
 use std::{path::PathBuf, time::Duration};
 use vantare_runtime::rights::{Devices, Owner};
-use vantare_services::storage::Read as Stored;
 use vantare_services::{
     account::{Account, OAuth},
     license::{Capability, ClaimsV1, CredentialV1},
@@ -58,7 +57,13 @@ fn main() {
         assert!(matches!(args[1].as_str(), "read" | "write-empty"));
     }
     let policy = owner
-        .advance(&vantare_domain::Snapshot::default(), now, Duration::ZERO)
+        .advance_observed_session(
+            &vantare_domain::Snapshot::default(),
+            None,
+            now,
+            now,
+            Duration::ZERO,
+        )
         .expect("policy");
     assert_eq!(
         policy.catalog,
@@ -203,7 +208,8 @@ fn signed_for(subject: &str, device: &str) -> CredentialV1 {
     }
 }
 fn retire_old_b_fixture(root: &std::path::Path, keys: &str, device: &str) {
-    use vantare_services::{Error, app::App, config::BuildConfig};
+    use sha2::{Digest, Sha256};
+    use vantare_services::{app::App, config::BuildConfig};
     let service_root = root.join("services");
     let context = "license-v1|unconfigured|fixture";
     let store = Store::open(&service_root, context).expect("old namespace");
@@ -224,14 +230,13 @@ fn retire_old_b_fixture(root: &std::path::Path, keys: &str, device: &str) {
         service_root.clone(),
         || Ok(100),
     ));
-    let store = Store::open(&service_root, context).expect("retired namespace");
+    let _store = Store::open(&service_root, context).expect("retired namespace");
+    let namespace = service_root.join(format!("{:x}", Sha256::digest(context.as_bytes())));
     for name in ["license-candidate", "license-transfer-pending"] {
         assert!(
             matches!(
-                store
-                    .read::<serde_json::Value>(name)
-                    .and_then(Stored::required),
-                Err(Error::NotFound)
+                std::fs::symlink_metadata(namespace.join(format!("{name}.dpapi"))),
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound
             ),
             "v18 must retire old B before downgrade"
         );

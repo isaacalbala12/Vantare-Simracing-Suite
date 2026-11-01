@@ -669,15 +669,13 @@ impl App {
 
     fn execute(&mut self, command: Command) -> Result<Reply> {
         match command {
-            Command::MailConsentGet | Command::MailConsentSet { .. } => {
-                return self.mail_reply(&command);
-            }
+            Command::MailConsentGet | Command::MailConsentSet { .. } => self.mail_reply(&command),
             Command::PilotLoad | Command::PilotSave { .. } | Command::PilotSync => {
-                return self.pilot_reply(command);
+                self.pilot_reply(command)
             }
-            Command::Status | Command::Probe => return Ok(self.status_reply()),
-            Command::AccountEmail { .. } => return Err(Error::Protocol),
-            Command::Shutdown => return Ok(Reply::Closed),
+            Command::Status | Command::Probe => Ok(self.status_reply()),
+            Command::AccountEmail { .. } => Err(Error::Protocol),
+            Command::Shutdown => Ok(Reply::Closed),
             Command::DraftLoad
             | Command::DraftSave { .. }
             | Command::DraftDiscard
@@ -693,7 +691,7 @@ impl App {
                 {
                     return Err(Error::BridgeUnconfigured);
                 }
-                return self.report_reply(command);
+                self.report_reply(command)
             }
             Command::CalendarRefresh => {
                 let racecontrol = url::Url::parse(crate::calendar::RACECONTROL_URL)
@@ -705,44 +703,40 @@ impl App {
                 .ok_or(Error::Clock)?;
                 let (schedule, fallback) =
                     crate::calendar::refresh(&self.http, &self.config, &racecontrol, at)?;
-                return Ok(Reply::Calendar { schedule, fallback });
+                Ok(Reply::Calendar { schedule, fallback })
             }
             Command::RoadmapCached | Command::RoadmapRefresh => {
-                return self.roadmap_reply(matches!(command, Command::RoadmapRefresh));
+                self.roadmap_reply(matches!(command, Command::RoadmapRefresh))
             }
             Command::TestingRefresh
             | Command::TestingAnswer { .. }
             | Command::TestingCredit { .. }
             | Command::TestingNoticeRead { .. }
-            | Command::TestingContribute { .. } => {
-                return self.testing_reply(command);
-            }
+            | Command::TestingContribute { .. } => self.testing_reply(command),
             Command::TriagePrepare { .. } | Command::TriageSend { .. } => {
-                return self.triage_reply(command);
+                self.triage_reply(command)
             }
-            Command::Purchase { product } => return self.purchase_reply(product),
+            Command::Purchase { product } => self.purchase_reply(product),
             Command::LicenseStatus
             | Command::LicenseRenew
             | Command::LicenseRenewAutomatic
-            | Command::DeviceReset => {
-                return self.license_reply(&command);
-            }
-            Command::Logout => return self.logout_reply(),
-            Command::AccountCancel => return self.cancel_account_attempt(),
+            | Command::DeviceReset => self.license_reply(&command),
+            Command::Logout => self.logout_reply(),
+            Command::AccountCancel => self.cancel_account_attempt(),
             Command::AccountCopyLink => {
                 let account = self.account.as_ref().ok_or(Error::Canceled)?;
-                return Ok(Reply::AccountLink {
+                Ok(Reply::AccountLink {
                     url: crate::protocol::LoginLink(account.login_link()?.to_owned()),
-                });
+                })
             }
-            Command::AccountPoll => return self.poll_account(),
+            Command::AccountPoll => self.poll_account(),
             Command::AccountRenew => {
                 self.ensure_account()?;
                 self.refresh_oauth((self.clock)()?)?;
-                return Ok(Self::account_reply(
+                Ok(Self::account_reply(
                     self.account.as_ref().ok_or(Error::Authentication)?,
                     None,
-                ));
+                ))
             }
             Command::AccountProfileRefresh => {
                 let time = (self.clock)()?;
@@ -755,18 +749,15 @@ impl App {
                     time,
                     self.store.as_ref().ok_or(Error::Storage)?,
                 )?;
-                return Ok(Self::account_reply(account, None));
+                Ok(Self::account_reply(account, None))
             }
-            Command::AccountBegin => self.ensure_account()?,
-        }
-        let account = self.account.as_mut().ok_or(Error::Unconfigured)?;
-        match command {
             Command::AccountBegin => {
+                self.ensure_account()?;
+                let account = self.account.as_mut().ok_or(Error::Unconfigured)?;
                 crate::browser::begin(account, crate::browser::open)?;
+                Ok(Self::account_reply(account, None))
             }
-            _ => return Err(Error::Protocol),
         }
-        Ok(Self::account_reply(account, None))
     }
 
     fn purchase_reply(&mut self, product: crate::protocol::BillingProduct) -> Result<Reply> {

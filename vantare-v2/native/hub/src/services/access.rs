@@ -114,35 +114,27 @@ impl State {
     }
 
     pub(super) fn renewal_acknowledged(&mut self, reply: &Reply) -> Option<Command> {
-        if self.transition != Transition::Logout
-            && let Reply::Error { message } | Reply::DeviceLimit { message } = reply
-        {
-            self.transition = Transition::Idle;
-            self.error = Some(message.clone());
+        if self.transition == Transition::Logout {
             return None;
         }
-        if self.transition != Transition::Logout
-            && let Reply::License { policy, .. } = reply
-            && (policy.state.requires_attention()
-                || policy.version != vantare_ipc::control::VERSION
-                || policy.revision == 0)
-        {
-            self.transition = Transition::Idle;
-            self.error = Some(
-                vantare_services::outcome::policy_message(policy)
-                    .unwrap_or_else(|| "No se pudo verificar la política de acceso".into()),
-            );
-            return None;
-        }
-        if self.transition != Transition::Logout
-            && matches!(reply, Reply::License { policy, .. }
-                if !policy.state.requires_attention() && policy.version == vantare_ipc::control::VERSION && policy.revision > 0)
-        {
-            self.transition = Transition::Idle;
-            self.error = None;
-            // LicenseRenew puede haber rotado OAuth en servicios. Releer su
-            // caducidad mediante IPC; AccountPoll no hace refresh ni renovación.
-            return Some(Command::AccountPoll);
+        match reply {
+            Reply::Error { message } | Reply::DeviceLimit { message } => {
+                self.transition = Transition::Idle;
+                self.error = Some(message.clone());
+            }
+            Reply::License { policy, .. } => {
+                self.transition = Transition::Idle;
+                self.error = (policy.state.requires_attention()
+                    || policy.version != vantare_ipc::control::VERSION
+                    || policy.revision == 0)
+                    .then(|| {
+                        vantare_services::outcome::policy_message(policy)
+                            .unwrap_or_else(|| "No se pudo verificar la política de acceso".into())
+                    });
+                // OAuth may have rotated; AccountPoll only observes the session.
+                return self.error.is_none().then_some(Command::AccountPoll);
+            }
+            _ => {}
         }
         None
     }

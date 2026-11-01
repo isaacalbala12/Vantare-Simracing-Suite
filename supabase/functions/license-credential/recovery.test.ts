@@ -49,7 +49,7 @@ Deno.test("renewal/replay keeps original recovery; longer payment wins in either
   }
 });
 
-Deno.test("payment closes recovery; effective refund exclusion preserves independent rights", () => {
+Deno.test("payment closes recovery; already-filtered input preserves independent rights", () => {
   const later = "2026-12-01T12:00:00.000Z";
   const transition = deriveSubscriptionTransition({ status: "active", cancelAtPeriodEnd: false,
     currentPeriodEnd: later, remoteModifiedAt: start.toISOString(), previous: { status: "past_due", paidThrough: start.toISOString() }, now: start });

@@ -1,5 +1,15 @@
 # Beta nativa — instalador y actualizaciones (#1454)
 
+Paso 3 de #1840: Setup Probe y Ajustes comparten Installation::read de
+installer::engine, sin GPUI. El driver conserva descubrimiento/registro/opciones;
+readContext=true omite su lectura de state/manifiesto, que completa Rust. La
+petición Probe antigua y las escrituras PS conservan sus adaptadores hasta
+pasos 4–7. El lector conserva los perfiles existentes: activa sin rehash de
+binarios para Probe, anterior completa y Hub informativo. La versión instalada
+procede del manifiesto de la activa; DisplayVersion solo queda como presentación
+heredada del Probe de Uninstall hasta paso 4. No cambia ninguna operación de escritura.
+La tabla de retirada y medidas reales está en [evidencia de paso 3](matrix/evidence-1840-p3.md).
+
 Paso 1d de #1840: SetStartup comparte el acceso Startup del instalador y guarda
 la opción fuera de data/. Usa installer-ui.json cuando existe; las instalaciones
 antiguas guardan startup-options.json con {schema:1,autostart:bool}, sin inventar

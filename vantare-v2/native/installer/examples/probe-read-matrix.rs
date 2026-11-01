@@ -7,6 +7,16 @@ use std::{
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<_> = std::env::args().skip(1).collect();
+    if let [flag, channel] = args.as_slice()
+        && flag == "--members"
+        && vantare_installer::engine::validation::channel(channel)
+    {
+        println!(
+            "{}",
+            serde_json::to_string(&vantare_installer::engine::known_members(channel))?
+        );
+        return Ok(());
+    }
     let uninstall = match args.as_slice() {
         [] => false,
         [flag] if flag == "--uninstall" => true,
@@ -18,6 +28,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Err("matrix context too large".into());
     }
     let info: vantare_installer::model::Info = serde_json::from_slice(&bytes)?;
+    if !info.root.is_absolute()
+        || info.root.components().any(|part| {
+            matches!(
+                part,
+                std::path::Component::ParentDir | std::path::Component::CurDir
+            )
+        })
+    {
+        return Err("matrix root rejected".into());
+    }
     // The caller also applies guard.ps1 before spawning. This adapter can only
     // read the explicitly supplied QA root, never discover a user installation.
     let root = info

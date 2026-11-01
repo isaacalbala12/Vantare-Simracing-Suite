@@ -378,6 +378,34 @@ conservan la evidencia de sus ramas; no describen el estado de integración actu
 [#1840](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1840),
 area:plataforma, Project Vantare. Plane En curso; estados/CI del orquestador.
 Sin merge/release del worker.
+### Paso 3 · motor de lectura Rust (en curso, 1-nov-2026)
+
+- Base 5cc23113a; rama vantareapp/isa-1840-paso3-engine-lectura, worktree propio
+  isa-1840-paso3; target D:/VantareServer/targets/isa-1840-p3.
+- Refactor 6eaf6fcba: Installation::read/Manifest/State y perfiles conservados;
+  Setup consume contexto sin state/manifiesto del driver y Hub comparte lector.
+  Sin features del instalador, el lector no compila host/payload/GPUI.
+- Cambio de comportamiento autorizado y separado en c7791821f: Ajustes Package
+  muestra/compara versión y canal del manifiesto; identidad binaria solo en
+  Development/Invalid. Pruebas de caso normal/discrepancia con manifiesto de disco.
+- sha2 adelantada y arista Hub→installer autorizadas. Lock: solo esas dos listas,
+  sin versiones/checksums/paquetes nuevos. PS heredado y sus perfiles continúan
+  hasta pasos 4–7: no se afirma 5→1 global ni menor código en este paso.
+- Check del lector sin defaults y Clippy final de los dos crates PASS; Nextest
+  inicial falló antes de ejecutar por LNK1180: D solo 65 MiB libres. Log conservado
+  en QA isa-1840/p3-logs/nextest-all-01.log; limpieza del servidor pedida al orquestador.
+- Guard de copia QA PASS7+5; matriz completa pendiente, sin cambiar baseline. La extensión compara
+  Probe y Uninstall heredados/Rust, catálogos de cuatro canales y pipe UTF-8.
+- Intento focal Nextest sin defaults también falló por disco (os112), sin tests.
+  Limpieza exclusiva del incremental y parada de Cargo propuesta rechazadas por
+  revisión automática: blocked by policy. No ejecutadas ni reintentadas por otra vía.
+- Sin Plane, instalación real, secretos, Downloads, merge/release ni CI watch.
+  D ya tiene espacio por limpieza externa observada; Nextest final retomado.
+  Siguiente: gates completos y PR draft separado. No se declara
+  entrega ni CI remota del paso 3.
+
+
+### Antecedentes 0–1d (evidencia histórica conservada)
 
 - 0/#1842 integrado en216f9bda7, Characterize Windows PASS confirmado. 1a/#1846
   integrado en f8ccb1689: inventario instalado desde su manifest ligado por SHA,

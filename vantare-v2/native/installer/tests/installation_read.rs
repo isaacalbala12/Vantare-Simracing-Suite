@@ -215,6 +215,11 @@ fn profiles_preserve_unknown_fields_and_version_rules() {
     .expect("state write");
     assert!(Installation::read(&fixture.0, ReadProfile::Probe).is_ok());
     assert!(Installation::read(&fixture.0, ReadProfile::Hub).is_err());
+    state.as_object_mut().expect("state object").remove("future");
+    state.as_object_mut().expect("state object").remove("previous");
+    fs::write(fixture.0.join("state.json"), state.to_string()).expect("missing previous");
+    assert!(Installation::read(&fixture.0, ReadProfile::Probe).is_err());
+    assert!(Installation::read(&fixture.0, ReadProfile::Hub).is_ok());
     for value in [
         "1.2.3",
         "0.0.975",
@@ -263,7 +268,11 @@ fn retained_and_interrupted_uninstall_keep_their_existing_presentation() {
             .join("data")
     );
     // No manifest/hash/previous is required after a partial uninstall.
-    fs::write(fixture.0.join("state.json"),serde_json::json!({"schema":1,"product":"vantare-native","channel":"beta","active":{"generation":"a".repeat(32)}}).to_string()).expect("partial");
+    let partial = include_bytes!("../fixtures/state-partial-uninstall.json");
+    fs::write(fixture.0.join("state.json"), partial).expect("partial");
+    let partial_view = Installation::read(&fixture.0, ReadProfile::Uninstall).expect("partial state");
+    assert!(partial_view.state.expect("structural state").active.manifest_sha256.is_none());
+    assert_eq!(fs::read(fixture.0.join("state.json")).expect("unchanged partial state"), partial);
     let info = vantare_installer::model::Info {
         root: fixture.0.clone(),
         version: "0.0.989".into(),
@@ -281,6 +290,12 @@ fn retained_and_interrupted_uninstall_keep_their_existing_presentation() {
         Some("0.0.988".into())
     );
     assert!(complete_probe(info, false).is_err());
+    // A real binding remains unchanged even if manifest/bin have been removed.
+    fs::write(fixture.0.join("state.json"), STATE_RC).expect("bound partial state");
+    let original: serde_json::Value = serde_json::from_slice(STATE_RC).expect("original state");
+    let partial_view = Installation::read(&fixture.0, ReadProfile::Uninstall).expect("real binding");
+    assert_eq!(partial_view.state.expect("state").active.manifest_sha256.as_deref(), original["active"]["manifest_sha256"].as_str());
+    assert_eq!(fs::read(fixture.0.join("state.json")).expect("unchanged bound state"), STATE_RC);
 }
 
 #[test]
@@ -292,4 +307,108 @@ fn hub_state_remains_bounded_while_probe_preserves_legacy_unbounded_state() {
     fs::write(fixture.0.join("state.json"), &raw).expect("large state");
     assert!(Installation::read(&fixture.0, ReadProfile::Probe).is_ok());
     assert!(Installation::read(&fixture.0, ReadProfile::Hub).is_err());
+}
+
+#[test]
+fn malformed_state_shapes_are_errors_and_never_panic_or_write() {
+    let fixture = Fixture::new();
+    for raw in [
+        b"[]".as_slice(),
+        b"null",
+        b"true",
+        b"{}",
+        b"{\"active\":null}",
+        b"{\"active\":[]}",
+    ] {
+        fixture.load(raw, RC);
+        for profile in [ReadProfile::Hub, ReadProfile::Probe, ReadProfile::Uninstall] {
+            assert!(Installation::read(&fixture.0, profile).is_err());
+            assert_eq!(
+                fs::read(fixture.0.join("state.json")).expect("unchanged"),
+                raw
+            );
+        }
+    }
+}
+
+#[test]
+fn probe_ignores_unknown_reference_fields_but_disables_malformed_previous() {
+    let fixture = Fixture::new();
+    fixture.load(STATE_RC, RC);
+    let previous = fixture.0.join("generations").join("b".repeat(32));
+    fs::create_dir_all(previous.join("data")).expect("previous data");
+    fs::write(previous.join("manifest.json"), RC).expect("previous manifest");
+    fs::write(previous.join("candidate.ps1"), b"fixture").expect("previous bytes");
+    let mut state: serde_json::Value = serde_json::from_slice(STATE_RC).expect("state");
+    state["active"]["ignored"] = true.into();
+    state["previous"] = serde_json::json!({"generation":"b".repeat(32),"manifest_sha256":format!("{:x}",Sha256::digest(RC)),"ignored":true});
+    fs::write(fixture.0.join("state.json"), state.to_string()).expect("state");
+    let view =
+        Installation::read(&fixture.0, ReadProfile::Probe).expect("unknown fields tolerated");
+    assert!(view.state.expect("state").previous.is_some());
+    assert_eq!(view.previous_warning, None);
+    state["previous"] = false.into();
+    fs::write(fixture.0.join("state.json"), state.to_string()).expect("state");
+    let view = Installation::read(&fixture.0, ReadProfile::Probe)
+        .expect("active survives malformed previous");
+    assert_eq!(view.previous_warning, Some("previous-corrupt"));
+    assert!(view.state.expect("state").previous.is_none());
+    for version in ["1.2.3-A1", "1.2.3-Ab", "1.2.3-aB"] {
+        assert!(!validation::package_version(version));
+    }
+}
+
+#[test]
+fn previous_requires_pe_x64_and_exact_sidecar_even_with_matching_hashes() {
+    for fault in ["none", "mz", "machine", "sidecar"] {
+        let fixture = Fixture::new();
+        fixture.load(STATE_RC, RC);
+        let previous = fixture.0.join("generations").join("b".repeat(32));
+        fs::create_dir_all(previous.join("bin")).expect("bin");
+        fs::create_dir(previous.join("data")).expect("data");
+        let mut pe = vec![0_u8; 70];
+        pe[..2].copy_from_slice(b"MZ");
+        pe[60..64].copy_from_slice(&64_u32.to_le_bytes());
+        pe[64..].copy_from_slice(b"PE\0\0\x64\x86");
+        if fault == "mz" {
+            pe[0] = 0;
+        }
+        if fault == "machine" {
+            pe[68] = 0;
+        }
+        let exe_hash = format!("{:x}", Sha256::digest(&pe));
+        let sidecar = if fault == "sidecar" {
+            format!("{exe_hash}  wrong.exe\n")
+        } else {
+            format!("{exe_hash}  vantare.exe\n")
+        };
+        fs::write(previous.join("bin/vantare.exe"), &pe).expect("PE");
+        fs::write(previous.join("bin/vantare.exe.sha256"), &sidecar).expect("sidecar");
+        let mut manifest: serde_json::Value = serde_json::from_slice(RC).expect("manifest");
+        manifest["files"] = serde_json::json!([
+            {"path":"bin/vantare.exe","size":pe.len(),"sha256":exe_hash},
+            {"path":"bin/vantare.exe.sha256","size":sidecar.len(),"sha256":format!("{:x}",Sha256::digest(sidecar.as_bytes()))}
+        ]);
+        let raw = serde_json::to_vec(&manifest).expect("manifest bytes");
+        fs::write(previous.join("manifest.json"), &raw).expect("manifest");
+        let mut state: serde_json::Value = serde_json::from_slice(STATE_RC).expect("state");
+        state["previous"] = serde_json::json!({"generation":"b".repeat(32),"manifest_sha256":format!("{:x}",Sha256::digest(raw))});
+        fs::write(fixture.0.join("state.json"), state.to_string()).expect("state");
+        let view =
+            Installation::read(&fixture.0, ReadProfile::Probe).expect("active remains valid");
+        assert_eq!(
+            view.state.expect("state").previous.is_some(),
+            fault == "none",
+            "{fault}"
+        );
+        assert_eq!(
+            view.previous_warning,
+            if fault == "none" {
+                None
+            } else {
+                Some("previous-corrupt")
+            },
+            "{fault}"
+        );
+    }
 }

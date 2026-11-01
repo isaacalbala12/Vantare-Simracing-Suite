@@ -5,10 +5,47 @@ como `VantareSetup.exe` y `Uninstall.exe`. GPUI usa el mismo commit fijado que l
 aplicación. No se añade ninguna dependencia externa al lock.
 
 El Setup contiene el ZIP ya validado, uninstaller y scripts de packaging. Rust
-los escribe en un temporal exclusivo y ejecuta el motor PS 5.1 x64 oculto;
-`candidate.ps1` y `beta.ps1` conservan autoridad sobre generaciones, locks,
-hashes, rollback y datos. Ambos scripts raíz se renuevan solo con Setup. El
+los escribe en un temporal exclusivo y ejecuta el motor PS 5.1 x64 oculto para
+las escrituras. `candidate.ps1` y `beta.ps1` conservan autoridad sobre cambios
+de generaciones, locks, rollback y datos. Ambos scripts raíz se renuevan solo con Setup. El
 payload público excluye ambos binarios del instalador y el admin privado.
+
+## Lectura compartida — #1840, paso 3
+
+`engine::Installation::read(root, profile)` es el único lector Rust de estado
+y manifiesto para Setup y Ajustes del Hub. `State`, `Generation` y `Manifest`
+reúnen los tipos; la versión instalada sale del manifiesto de la activa.
+No escribe instalación, registro, opciones ni datos. `complete_probe` combina
+ese resultado con el contexto del driver (raíz descubierta, opciones y movimiento).
+El driver recibe `readContext=true` y no lee state/manifest en esa ruta.
+
+| Perfil | Contrato conservado |
+| --- | --- |
+| Probe | SHA del manifiesto activo, data presente, inventario cerrado y sin archivos ajenos; no rehash de sus binarios. Anterior con hash/tamaño/PE/sidecar completos o aviso y anterior no restaurable, sin reescribir estado |
+| Hub | Informativo: schema/canal/referencias y manifiesto, sin autenticar bytes/inventario/data; anterior solo estructural. Estado cerrado 16 KiB, manifiesto 1 MiB; portátil sin state conserva soporte |
+| Uninstall | Recuperación estructural aunque se hayan retirado binarios/manifiesto. Conserva DisplayVersion del contexto como presentación heredada hasta paso 4; nunca se usa para elegir la activa |
+
+Probe conserva el límite de 64 KiB del manifiesto y el estado sin límite previo;
+no se endurecen esos contratos en este refactor. `validation` centraliza los
+perfiles existentes: packaging 3–4 componentes/sufijo, Hub con tope de 100 bytes,
+comparación Setup de tres u16 sin ceros iniciales. No son gramáticas equivalentes.
+Los adaptadores PS y sus reglas siguen hasta pasos 4–7; no se afirma 5→1 global.
+El catálogo cerrado se genera durante build desde el único catálogo PS vigente;
+la matriz compara ambos catálogos para los cuatro canales. Paso 4 migra esa fuente.
+
+`default-features=false` compila el lector sin GPUI, host, scripts embebidos ni
+recursos/payload de Setup. `transport` habilita el host; `ui` lo incluye; las
+features por defecto conservan Setup/Uninstall. Hub depende solo del lector.
+sha2 0.10.9 ya fijada se adelanta con aprobación del orquestador; el lock cambia
+solo las listas de dependencias de installer/Hub, sin paquetes/versiones/checksums.
+zip y windows directos siguen pendientes del paso 4.
+
+Fixtures y Nextest: `tests/installation_read.rs` con `fixtures/state-*.json`,
+manifiesto 975 público versionado y RC; ausencia física, corrupción, schema futuro,
+estado grande, anterior dañada y perfiles de versión. La matriz usa el ejemplo
+**solo de tests** `probe-read-matrix` para completar el mismo contexto que Setup;
+no se distribuye ni crea un puente de producto. Véase
+[evidencia](../packaging/matrix/evidence-1840-p3.md).
 
 El motor se carga con `-Library -Root` explícitos. Probe descubre una instalación;
 las operaciones posteriores deben enviar raíz. La build pública omite identidad,

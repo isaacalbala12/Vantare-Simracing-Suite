@@ -86,6 +86,18 @@ fn installed_members(out: &std::path::Path) -> Result<(), Box<dyn std::error::Er
         .join("../packaging/candidate.ps1");
     println!("cargo:rerun-if-changed={}", path.display());
     let source = fs::read_to_string(path)?;
+    let literals = |body: &str| {
+        let mut values = Vec::new();
+        for line in body.lines() {
+            let code = line.split('#').next().unwrap_or_default();
+            for (index, token) in code.split('\'').enumerate() {
+                if index % 2 == 1 {
+                    values.push(token.to_owned());
+                }
+            }
+        }
+        values
+    };
     let array = |name: &str| -> Result<Vec<String>, Box<dyn std::error::Error>> {
         let prefix = format!("$script:{name} = @(");
         let body = source
@@ -95,16 +107,7 @@ fn installed_members(out: &std::path::Path) -> Result<(), Box<dyn std::error::Er
             .split_once(')')
             .ok_or("catalogue not closed")?
             .0;
-        let mut values = Vec::new();
-        for line in body.lines() {
-            let code = line.split('#').next().ok_or("catalogue line")?;
-            for (index, token) in code.split('\'').enumerate() {
-                if index % 2 == 1 {
-                    values.push(token.to_owned());
-                }
-            }
-        }
-        Ok(values)
+        Ok(literals(body))
     };
     let mut members = Vec::new();
     for bin in array("NativeBuildBins")? {
@@ -112,16 +115,38 @@ fn installed_members(out: &std::path::Path) -> Result<(), Box<dyn std::error::Er
         members.push(format!("bin/{bin}.exe.sha256"));
     }
     members.extend(array("NativeFixtures")?);
-    members.extend(
-        [
-            "candidate.ps1",
-            "README.md",
-            "licenses/OFL-Inter.txt",
-            "dependencies.json",
-        ]
-        .map(str::to_owned),
-    );
-    members.extend(array("NativeRetiredMembers")?);
+    let function = source
+        .split_once("function Get-NativeMembers(")
+        .ok_or("member function missing")?
+        .1
+        .split_once("\n}")
+        .ok_or("member function not closed")?
+        .0;
+    let extras = function
+        .split_once("+ @(")
+        .ok_or("extra members missing")?
+        .1
+        .split_once(')')
+        .ok_or("extra members not closed")?
+        .0;
+    members.extend(literals(extras));
+    let mut seen: std::collections::HashSet<_> =
+        members.iter().map(|p| p.to_ascii_lowercase()).collect();
+    for retired in array("NativeRetiredMembers")? {
+        let valid = retired.split('/').all(|segment| {
+            !segment.eq_ignore_ascii_case("data")
+                && segment.split('.').all(|part| {
+                    !part.is_empty()
+                        && part
+                            .bytes()
+                            .all(|b| b.is_ascii_alphanumeric() || b == b'_' || b == b'-')
+                })
+        });
+        if !valid || !seen.insert(retired.to_ascii_lowercase()) {
+            return Err("invalid or duplicate retired packaging member".into());
+        }
+        members.push(retired);
+    }
     fs::write(
         out.join("installed-members.rs"),
         format!("const KNOWN_MEMBERS: &[&str] = &{members:?};\n"),

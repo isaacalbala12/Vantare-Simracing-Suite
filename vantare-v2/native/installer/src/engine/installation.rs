@@ -1,6 +1,6 @@
 use super::{
     reject_links,
-    validation::{channel, hex, package_version},
+    validation::{channel, hex, hub_version, package_version},
 };
 use serde::Deserialize;
 use serde_json::Value;
@@ -8,7 +8,7 @@ use sha2::{Digest, Sha256};
 use std::{
     collections::HashSet,
     fmt, fs,
-    io::{self, Read},
+    io::{self, Read, Seek, SeekFrom},
     path::{Path, PathBuf},
 };
 
@@ -54,11 +54,13 @@ impl From<serde_json::Error> for ReadError {
 #[serde(deny_unknown_fields)]
 pub struct Generation {
     pub generation: String,
-    pub manifest_sha256: String,
+    /// Absent only in legacy partial-uninstall reads; never invent a binding.
+    pub manifest_sha256: Option<String>,
 }
 impl Generation {
     fn valid(&self) -> bool {
-        hex(&self.generation, 32) && hex(&self.manifest_sha256, 64)
+        hex(&self.generation, 32)
+            && self.manifest_sha256.as_deref().is_some_and(|hash| hex(hash, 64))
     }
 }
 
@@ -153,8 +155,11 @@ impl Manifest {
                 && manifest.candidate
                 && manifest.architecture == "windows-x64"
                 && channel(&manifest.channel)
-                && package_version(&manifest.version)
-                && (profile != ReadProfile::Hub || manifest.version.len() <= 100),
+                && if profile == ReadProfile::Hub {
+                    hub_version(&manifest.version)
+                } else {
+                    package_version(&manifest.version)
+                },
             "Manifiesto, esquema o canal incompatible",
         )?;
         Ok(manifest)
@@ -209,23 +214,8 @@ impl Manifest {
                         && hash_file(&target)? == expected,
                     "Integridad incorrecta",
                 )?;
-                if Path::new(path)
-                    .extension()
-                    .is_some_and(|ext| ext.eq_ignore_ascii_case("exe"))
-                {
-                    let raw = bytes(&target, None, ReadProfile::Probe)?;
-                    let offset = raw
-                        .get(60..64)
-                        .and_then(|b| b.try_into().ok())
-                        .map(u32::from_le_bytes)
-                        .map(|n| n as usize);
-                    require(
-                        raw.len() >= 64
-                            && raw.starts_with(b"MZ")
-                            && offset.and_then(|n| raw.get(n..n.saturating_add(6)))
-                                == Some(b"PE\0\0\x64\x86"),
-                        "Se requiere PE Windows x64",
-                    )?;
+                if Path::new(path).extension() == Some(std::ffi::OsStr::new("exe")) {
+                    verify_pe(&target)?;
                     let sidecar = fs::read_to_string(directory.join(format!("{path}.sha256")))?;
                     let name = target
                         .file_name()
@@ -267,11 +257,41 @@ fn known_member(path: &str, channel: &str) -> bool {
             ))
 }
 
+/// Transitional closed inventory, shared with the packaging catalogue until
+/// step 4 migrates package ownership and step 7 removes product PowerShell.
+pub fn known_members(channel: &str) -> Vec<&'static str> {
+    KNOWN_MEMBERS
+        .iter()
+        .copied()
+        .filter(|path| known_member(path, channel))
+        .collect()
+}
+
 fn hash_file(path: &Path) -> Result<String, ReadError> {
     reject_links(path).map_err(|_| ReadError::Invalid("Ruta de instalación no válida"))?;
     let mut hash = Sha256::new();
     io::copy(&mut fs::File::open(path)?, &mut hash)?;
     Ok(format!("{:x}", hash.finalize()))
+}
+
+fn verify_pe(path: &Path) -> Result<(), ReadError> {
+    let mut file = fs::File::open(path)?;
+    let length = file.metadata()?.len();
+    require(length >= 64, "Binario sin cabecera MZ")?;
+    let mut header = [0; 64];
+    file.read_exact(&mut header)?;
+    require(header.starts_with(b"MZ"), "Binario sin cabecera MZ")?;
+    let offset = u64::from(u32::from_le_bytes([
+        header[60], header[61], header[62], header[63],
+    ]));
+    require(offset <= length - 6, "Cabecera PE fuera del archivo")?;
+    file.seek(SeekFrom::Start(offset))?;
+    let mut signature = [0; 6];
+    file.read_exact(&mut signature)?;
+    require(
+        signature == *b"PE\0\0\x64\x86",
+        "Se requiere PE Windows x64",
+    )
 }
 
 fn tree(root: &Path) -> Result<Vec<PathBuf>, ReadError> {
@@ -339,11 +359,16 @@ impl Installation {
         };
         let (mut state, warning) = decode_state(&raw, profile)?;
         installation.previous_warning = warning;
+        let active_valid = if profile == ReadProfile::Uninstall {
+            hex(&state.active.generation, 32)
+        } else {
+            state.active.valid()
+        };
         require(
             state.schema == 1
                 && state.product == "vantare-native"
                 && channel(&state.channel)
-                && state.active.valid()
+                && active_valid
                 && (profile != ReadProfile::Uninstall || state.channel == "beta"),
             "Estado de instalación inválido",
         )?;
@@ -391,6 +416,9 @@ fn decode_state(
         value.is_object() && value["active"].is_object(),
         "Estado de instalación inválido",
     )?;
+    if profile == ReadProfile::Probe {
+        require(value.get("previous").is_some(), "Falta referencia anterior")?;
+    }
     if let Some(map) = value.as_object_mut() {
         map.retain(|key, _| {
             ["schema", "product", "channel", "active", "previous"].contains(&key.as_str())
@@ -403,8 +431,11 @@ fn decode_state(
     }
     let previous = value["previous"].take();
     if profile == ReadProfile::Uninstall {
-        // Partial uninstall accepts a reference even after manifest/bin removal.
-        value["active"]["manifest_sha256"] = "0".repeat(64).into();
+        // The legacy structural reader ignores missing/invalid manifest hashes.
+        // Keep a real string if present; represent absence rather than fake SHA.
+        if !value["active"]["manifest_sha256"].is_string() {
+            value["active"]["manifest_sha256"] = Value::Null;
+        }
     }
     let mut state: State = serde_json::from_value(value)?;
     let mut warning = None;
@@ -438,7 +469,7 @@ fn read_generation(
     )?;
     if profile != ReadProfile::Hub {
         require(
-            format!("{:x}", Sha256::digest(&raw)) == reference.manifest_sha256
+            reference.manifest_sha256.as_ref() == Some(&format!("{:x}", Sha256::digest(&raw)))
                 && directory.join("data").is_dir(),
             "Generación activa/anterior incompleta",
         )?;

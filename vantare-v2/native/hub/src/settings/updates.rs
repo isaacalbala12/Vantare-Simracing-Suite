@@ -181,7 +181,11 @@ mod tests {
             version: "9.9.9".into(),
             notes: String::new(),
         };
-        assert!(installed.presentation("9.9.9", "master").is_some_and(|(version, _)| offer.ready_for(version)));
+        assert!(
+            installed
+                .presentation("9.9.9", "master")
+                .is_some_and(|(version, _)| offer.ready_for(version))
+        );
         let mut rollback = state.clone();
         rollback["previous"] =
             serde_json::json!({"generation":"c".repeat(32), "manifest_sha256":"d".repeat(64)});
@@ -232,12 +236,12 @@ mod tests {
     #[test]
     fn only_development_and_invalid_use_the_binary_identity() {
         for view in [LocalUpdate::Development, LocalUpdate::Invalid] {
-            assert_eq!(view.presentation("0.0.988", "beta"), Some(("0.0.988", "beta")));
+            assert_eq!(
+                view.presentation("0.0.988", "beta"),
+                Some(("0.0.988", "beta"))
+            );
         }
-        assert_eq!(
-            LocalUpdate::Unread.presentation("0.0.988", "beta"),
-            None
-        );
+        assert_eq!(LocalUpdate::Unread.presentation("0.0.988", "beta"), None);
     }
 }
 

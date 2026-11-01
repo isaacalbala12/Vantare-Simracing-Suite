@@ -17,6 +17,14 @@ $qaImportCallerRoot=$Root
 . (Join-Path $PSScriptRoot 'beta.ps1') -Library -Root $qaMatrixRoot
 if ($Root -cne $qaImportCallerRoot) { throw 'MATRIX_IMPORT_ROOT_CHANGED' }
 $null=Assert-MatrixRoot $Root
+if($ReadProbe){
+    foreach($catalogueChannel in @('beta','nightly','testers','master')){
+        $rustMembers=@((& $ReadProbe --members $catalogueChannel)|ConvertFrom-Json)
+        if($LASTEXITCODE){throw 'MATRIX_RUST_CATALOGUE_FAILED'}
+        $legacyMembers=@(Get-NativeKnownMembers $catalogueChannel)
+        if($rustMembers.Count -ne $legacyMembers.Count -or @(Compare-Object $rustMembers $legacyMembers -CaseSensitive).Count){throw ('MATRIX_RUST_CATALOGUE_CHANGED: '+$catalogueChannel)}
+    }
+}
 if ((Get-NativeHash $LegacyPackage) -cne '372bcd60cf168cb6187be1c481b21c835268db1dbcc3e0a0aeb17246bede7066') { throw 'MATRIX_LEGACY_DIGEST' }
 [IO.Directory]::CreateDirectory($qaMatrixRoot) | Out-Null
 . (Join-Path $PSScriptRoot 'matrix/fixtures.ps1')

@@ -78,9 +78,12 @@ try {
                 if($LASTEXITCODE){throw 'MATRIX_LEGACY_PROBE_FAILED'}
                 $context=& $driverPath -RequestFile $request
                 if($LASTEXITCODE){exit $LASTEXITCODE}
-                $OutputEncoding=[Text.UTF8Encoding]::new($false)
-                $actual=$context | & $ReadProbe
-                if($LASTEXITCODE){exit $LASTEXITCODE}
+                # The existing finite-process helper owns/waits the child,
+                # writes stdin as UTF-8 and drains warnings separately.
+                $readResult=Invoke-NativeProcess -Executable $ReadProbe -InputText $context -TimeoutMilliseconds 30000 -LogPath ($request+'.rust.log')
+                if($readResult.ExitCode){throw ('MATRIX_RUST_PROBE_FAILED: '+$readResult.Stderr)}
+                if($readResult.Stderr){[Console]::Error.Write($readResult.Stderr)}
+                $actual=$readResult.Stdout
                 $old=$expected|ConvertFrom-Json;$new=$actual|ConvertFrom-Json
                 if(@(Compare-Object @($old.PSObject.Properties.Name) @($new.PSObject.Properties.Name) -CaseSensitive).Count){throw 'MATRIX_PROBE_FIELDS_CHANGED'}
                 foreach($field in $old.PSObject.Properties){
@@ -96,8 +99,10 @@ try {
                 Write-NativeJson ($request+'.uninstall-context.json') $legacyRequest
                 $uninstallContext=& $driverPath -RequestFile ($request+'.uninstall-context.json')
                 if($LASTEXITCODE){throw 'MATRIX_UNINSTALL_CONTEXT_FAILED'}
-                $uninstallActual=$uninstallContext | & $ReadProbe --uninstall
-                if($LASTEXITCODE){throw 'MATRIX_UNINSTALL_READ_FAILED'}
+                $readResult=Invoke-NativeProcess -Executable $ReadProbe -Arguments @('--uninstall') -InputText $uninstallContext -TimeoutMilliseconds 30000 -LogPath ($request+'.uninstall-rust.log')
+                if($readResult.ExitCode){throw ('MATRIX_UNINSTALL_READ_FAILED: '+$readResult.Stderr)}
+                if($readResult.Stderr){[Console]::Error.Write($readResult.Stderr)}
+                $uninstallActual=$readResult.Stdout
                 $old=$uninstallExpected|ConvertFrom-Json;$new=$uninstallActual|ConvertFrom-Json
                 foreach($field in $old.PSObject.Properties){
                     if($field.Value -cne $new.PSObject.Properties[$field.Name].Value){throw ('MATRIX_UNINSTALL_PROBE_VALUE_CHANGED: '+$field.Name)}

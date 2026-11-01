@@ -11,7 +11,9 @@ pub mod validation;
 
 #[cfg(feature = "transport")]
 pub use host::{Request, Session, headless, log_path};
-pub use installation::{Generation, Installation, Manifest, ReadError, ReadProfile, State};
+pub use installation::{
+    Generation, Installation, Manifest, ReadError, ReadProfile, State, known_members,
+};
 
 pub fn reject_links(path: &std::path::Path) -> Result<(), String> {
     for ancestor in path.ancestors() {
@@ -47,8 +49,7 @@ pub fn complete_probe(
         info.installed_version = installation.installed_version().map(str::to_owned);
     }
     info.data_path = installation.data_path;
-    if let Some(warning) = installation.previous_warning {
-        eprintln!("{warning}");
-    }
+    // Session::probe historically discarded successful driver stderr. Keep
+    // warnings available on Installation without adding console output here.
     Ok(info)
 }

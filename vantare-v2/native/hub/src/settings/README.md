@@ -16,7 +16,10 @@ SetStartup guarda installer-ui.json o startup-options.json de instalaciones
 antiguas, ambos en la raíz. Store carga/proyecta esa opción y adopta una migración
 posterior de Register sin reescribir general.json. Durante el comando muestra
 progreso y desactiva solo ese interruptor; otros ajustes se siguen guardando.
-Fallo del comando conserva la opción anterior y muestra el error. La matriz
+Fallo del comando conserva la opción anterior y muestra el diagnóstico real del
+script (hasta 4096 B), invitando a reintentar. El stderr se recoge en un temporal
+propio bajo la raíz instalada para evitar bloquear un pipe lleno; se elimina al
+recoger el hijo, también al cancelar o vencer el plazo. La matriz
 comprueba Run válida/ajena, migración, carrera con Register y desinstalación con
 registro/carpetas/entornos inyectados en QA.
 

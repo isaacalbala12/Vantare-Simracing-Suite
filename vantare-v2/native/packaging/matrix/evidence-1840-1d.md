@@ -159,3 +159,83 @@ y rust-1d-final-contracts.log. Target propio/cola/jobs2, sin saltarse la espera.
 Parseo de6 scripts, fragmento JSON, calidad/retirada468 y diff PASS.
 PR draft1851/issue1840/handoff actualizados; HEAD publicado en issue/PR.
 CI/revisión/integración del orquestador. QA física pendiente; Plane intacto.
+
+
+## Re-revisión y fallo CI41346941363
+
+Base eb9aa1d45, PR1851. La CI falló en build-crt-tests/GetNewClosure porque
+NativeStartup tenía ValidateSet(On/Off) y valor inicial vacío. PS5 copia también
+los atributos al cerrar variables. En closure-1d-r3-proof se reproduce exactamente
+el error con d855662c7 y pasa con el parámetro inicial válido Off. SetStartup sigue
+exigiendo Startup explícito por PSBoundParameters; ValidateSet sigue rechazando
+valores fuera de On/Off. El gate de biblioteca comprueba el closure real y la CLI
+sin argumento, sin escrituras.
+
+Migración: comprobar enlace propio tras Sync-NativeOptionalShortcuts; si retornó
+sin crearlo, restaurar la Run y fallar Register para su aviso separado del Hub.
+Casos con fallo silencioso y enlace ajeno, sin dos arranques. Reparación borra
+antes el enlace y exige recreación. Preferencias legacy inválidas, mal tipadas o
+mayores de1024B se consideran ausentes; Probe/Setup/migración siguen disponibles.
+Installer UI conserva los controles de hash/PE. startup-1d-r3-01:48 checks PASS
+antes del último ajuste de compatibilidad, sustituido por la matriz final.
+
+El Hub captura stderr en un temporal propio de la raíz, sin pipe que pueda llenarse.
+Muestra hasta4096B del diagnóstico y pide reintentar. El hijo y el temporal se
+recogen al terminar, cancelar o vencer. Tests: causa real,100000B sin bloqueo y
+mensaje acotado, fallo/plazo, cancelación y eliminación del temporal.
+
+Todos los hooks del step Windows ejecutados en runner-hooks-r3-04: Python7,
+feed (origen exacto/modo local y8 rechazos), publisher13, histórico14+156,
+CRT24, branding81+registro83, shell30 PASS. Los scripts se copian a QA; en las
+copias registration/shell se inyectan HKCU UUID y carpetas para padre e hijos y
+se sustituyen los literales C:/tmp por el prefijo D:/QA guardado. Solo cambian esas
+fronteras del arnés, sin relajar aserciones. CRT usa los scripts de producto sin
+modificar y un Git local inerte para la identidad del builder. PE/Cargo son las
+fixtures originales del test, nunca se ejecuta Setup/Uninstall EXE ni producto real.
+TEMP/TMP/LOCALAPPDATA se fijan antes de crear hijos. Las suites fuente QA1492 siguen
+en #1848; este arnés de evidencia no las remapea permanentemente.
+
+Pases intermedios conservados, sin contarlos como final:
+- runner-hooks-r3-03: todos salvo registro pasaron; registro detectó que StartupOnly
+  había sustituido el GUI antiguo por PowerShell. Se restaura LaunchTarget en esa
+  reparación para que el resolver preserve el GUI compatible del bootstrap congelado.
+  La migración de Run mantiene su fallback PowerShell cuando necesita crear enlace.
+  El hook original pasa después, sin cambiar su aserción.
+- matrix-1d-r3-01: el test nuevo llamó una función local desde el módulo de closure
+  y falló antes de las88 filas. Ahora captura/comprueba Directory; exportar funciones
+  se comprueba por separado. No se modificó producto por este fallo del test.
+- Preparación del arnés01/02 se detuvo en asserts de las fronteras esperadas antes
+  de ejecutar suites. Se conservan; solo04 acredita todos los hooks finales.
+
+Baseline previsto desde las88 capturas anteriores: solo188 hashes de candidate
+51929ce016e2e61b68397071174f7635cea4b22680aa845b19508d259b4c4ff4 en52 filas.
+Beta y demás estado/datos/registro/accesos iguales; sin Record ni normalización nueva.
+Guard7+5 y calidad/retirada468 PASS; matriz completa y gates Rust finales en curso.
+
+Límite aceptado añadido a knownLimitations: una Run que Windows no deja borrar
+puede apuntar al beta.ps1 ya retirado y mostrar error al iniciar sesión.
+Seguimiento [#1856](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1856),
+area:plataforma/Project Vantare: aviso visible del desinstalador, lock completo de
+su finalizador y separación de la proyección al guardar otros ajustes General.
+No se implementan aquí ni se cambia Plane. Sin merge/release, secretos o Downloads.
+
+
+Cierre de re-revisión, código/test f93bcded7: todos los gates finales PASS.
+- matrix-1d-r3-02:88/88 +25 biblioteca +24 contexto +14 seguridad histórica
+  +18 snapshots +54 inventario +42 arranque +48 Startup, exit0.
+- startup-1d-r3-02:48/48 final. Solo fortalece una fixture: JSON válido con padding
+  mayor de1024B, para comprobar el límite separado de corrupción. Es el único
+  archivo de test distinto del hook de la ejecución completa; producto idéntico.
+- runner-hooks-r3-04: los siete grupos exit0, con los conteos anteriores.
+- Hub all-targets602/602,4 lentos/4 omisiones previas,224,006s; Clippy all-targets
+  -D warnings y fmt/check exit0. Target propio y cola/jobs2, sin saltarse esperas.
+- Guard7+5, parser PS6, fragmento JSON, calidad/retirada468 y diff PASS.
+- review-1d-r3-final-proof.json compara las88 capturas anteriores: solo188 hashes
+  de candidate,52 filas, ningún lock nuevo. Resultados iguales a baseline;20 scripts
+  iguales a sus copias QA (Startup contra la copia final). Handoff ajeno intacto.
+- candidate LF:51929ce016e2e61b68397071174f7635cea4b22680aa845b19508d259b4c4ff4;
+  beta/driver mantienen los SHA del cierre anterior. Blobs Git iguales al working tree.
+
+Issue/PR/handoff actualizados, seguimiento1856 enlazado. HEAD publicado en issue/PR.
+QA física pendiente; telemetría/lifecycle runtime omitidos por ámbito. Sin merge,
+release, cambios Plane, instalación real, secretos o Downloads. CI del orquestador.

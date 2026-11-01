@@ -19,7 +19,10 @@
     "Paso 1d: el Hub usa SetStartup del script de la generación instalada, con raíz explícita, proceso poseído y espera asíncrona. GPUI y legacy persisten la opción en la raíz, sin reescribir General/data.",
     "Activar Startup y desinstalar retiran el valor Run legado de la identidad instalada; se conservan otros valores y accesos ajenos. Una recuperación sin registro exige el marker de limpieza ligado por hash.",
     "La migración valida el comando de Run y respeta una preferencia existente. Register y el interruptor comparten el lock; una Run ajena con el mismo nombre se conserva.",
-    "Run solo se retira tras desinstalar correctamente; si Windows niega borrarla, se avisa y termina el resto. Mientras cambia inicio el Hub muestra progreso y solo bloquea ese interruptor."
+    "Run solo se retira tras desinstalar correctamente; si Windows niega borrarla, se avisa y termina el resto. Mientras cambia inicio el Hub muestra progreso y solo bloquea ese interruptor.",
+    "La migración verifica que exista un Startup propio: si falla, restaura la Run y Register informa del fallo. La reparación recrea un enlace ausente.",
+    "El interruptor muestra el diagnóstico del script y permite reintentar; captura acotada en un temporal propio de la raíz, eliminado con el hijo.",
+    "Una preferencia legacy corrupta o mayor de 1024 B se trata como ausente para no bloquear Probe/Setup. El parámetro Startup conserva un valor inicial válido para closures PS5 y sigue siendo obligatorio al usar SetStartup."
   ],
   "testing": [
     "En QA aislada, pasar de una instalación de 109 archivos a una de 110, retirar un recurso en la siguiente, restaurar la anterior y desinstalar: todos los datos y las carpetas vacías de las tres generaciones se conservan.",
@@ -32,6 +35,7 @@
   ],
   "knownLimitations": [
     "Este cambio no renueva el bootstrap que ya quedó instalado en la raíz; los cambios de ese bootstrap siguen requiriendo Setup.",
+    "Si Windows impide retirar la Run propia al desinstalar, queda apuntando al beta.ps1 ya eliminado y puede mostrar un error en el siguiente inicio de sesión hasta retirar ese valor.",
     "No se incluye el seguimiento de previous-unreadable de #1795 ni se publica una candidata o release.",
     "Los scripts ya instalados en la raíz se renuevan mediante Setup. No se publica una candidata con este PR."
   ]

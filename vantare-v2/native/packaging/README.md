@@ -36,6 +36,18 @@ sobre la actualización cosmética del registro. El bootstrap congelado de 0.0.9
 conserva Sync-BetaRegistration sin try/catch; su fallo sigue siendo una limitación
 preexistente de ese bootstrap, fuera de este paso.
 
+La migración comprueba que se haya creado un enlace Startup propio. Si la creación
+opcional falla, restaura la Run y Register falla para que el Hub muestre su aviso
+separado. Las preferencias legacy corruptas o de más de 1024 B se consideran ausentes;
+Probe/Setup siguen disponibles. Installer UI conserva su validación estricta.
+Startup tiene un valor inicial válido para que GetNewClosure de PowerShell 5.1
+pueda copiar sus atributos; SetStartup sigue exigiendo el argumento explícito.
+
+Límite aceptado: si Windows impide borrar Run al desinstalar, el valor puede quedar
+apuntando al beta.ps1 ya eliminado y mostrar un error al iniciar sesión, hasta su
+retirada. Avisos de la UI de Uninstall, lock del finalizador y proyección de General
+se siguen en [#1856](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1856).
+
 `candidate.ps1` y `beta.ps1` exigen `-Root` incluso para Build. Cargarlos como
 biblioteca requiere `. <script> -Library -Root <contexto explícito>`; no ejecuta
 operaciones ni selecciona una instalación. La carga sin raíz falla antes de

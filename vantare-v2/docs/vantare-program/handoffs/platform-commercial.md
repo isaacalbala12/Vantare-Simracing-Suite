@@ -1,3 +1,29 @@
+<!-- isa1827-simplificar-e -->
+## VANTA-126 / #1827 — E en ejecución
+
+Base origin/nightly@eb9aa1d456c5ef9fdb321bf316f450dc832e6da1; D1b listo en
+[#1855](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1855),
+HEAD65dbef30c6fd1afde3d85e2201b2dfb2994fac36, fuera de esta base al empezar.
+Rama vantareapp/isa-1827-simplificar-auto401, mismo worktree/target isa-1827-s.
+- Decisión autorizada: Authentication de licencia automática es problema de sesión,
+  Transient y NeedsSignIn durable; conserva identidad/perfil y binding firmado.
+  Sin nuevo rechazo definitivo, aviso ni latch Blocked. Manual conserva su resultado.
+- Se reutiliza el efecto de OAuth en un helper; sin identidad permanece SignedOut.
+  El constructor del Reply recibe la clasificación calculada: no reclasifica un
+  fallo manual con origen automático. Sin cambios de IPC/disco/permisos.
+- Caracterización: se justifican únicamente las filas License Automatic/Purchase401
+  (mismo IPC automático) y Authentication de la matriz de resultado automático.
+- Tests nuevos: HTTP401→App→núcleo real con binding byte a byte, modo manual/auto,
+  reinicio y ausencia de replay; scheduler NoSession sin Blocked; Hub conserva
+  derechos y muestra iniciar sesión; sin identidad no empieza HTTP ni inventa sesión.
+- Fmt y Clippy all-targets de services/runtime/Hub -D warnings PASS.
+  Focales14/14 PASS. Tres mutaciones compiladas detectadas por aserción;
+  407 fuentes Rust restauradas SHA-256. Gates finales en ejecución.
+- Medición provisional: producción115188→115193 (+5), recorrido15258→15263 (+5);
+  pruebas/soporte y documentación se cuentan aparte. E es corrección autorizada.
+  Sin Plane ni watch de CI; D6/D7/T1-T3 siguen aplazados por RC9.
+<!-- /isa1827-simplificar-e -->
+
 <!-- isa1827-simplificar-d1b -->
 ## VANTA-126 / #1827 — D1b listo para revisión
 

@@ -170,7 +170,7 @@ fn assert_rejection(case: Rejection) {
     std::fs::remove_dir_all(root).expect("private cleanup");
 }
 
-fn config(server: &Server, keys: String) -> BuildConfig {
+pub(super) fn config(server: &Server, keys: String) -> BuildConfig {
     BuildConfig {
         supabase: Some(server.base.clone()),
         anon_key: Some("public-test"),

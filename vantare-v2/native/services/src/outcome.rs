@@ -88,6 +88,9 @@ pub fn outcome(observation: Observation<'_>) -> Outcome {
                 _ => (false, false, false),
             };
             let (definitive, needs_sign_in) = match origin {
+                Origin::Renewal { automatic: true } if error == Error::Authentication => {
+                    (false, true)
+                }
                 Origin::Renewal { .. } => (renewal, false),
                 Origin::OAuth { .. } => (oauth, oauth),
                 Origin::Core {
@@ -197,7 +200,7 @@ mod tests {
     }
 
     #[test]
-    fn only_explicit_actions_revoke_and_oauth_rejections_require_sign_in() {
+    fn only_explicit_actions_revoke_and_authentication_rejections_require_sign_in() {
         for action in [
             Revocation::Logout,
             Revocation::IdentityChange,
@@ -233,7 +236,10 @@ mod tests {
                 assert!(!effects.sign_out, "{error:?}/{origin:?}");
                 assert_eq!(
                     effects.needs_sign_in,
-                    matches!(origin, Origin::OAuth { .. }) && error == Error::Authentication
+                    matches!(
+                        origin,
+                        Origin::OAuth { .. } | Origin::Renewal { automatic: true }
+                    ) && error == Error::Authentication
                 );
             }
         }

@@ -36,6 +36,10 @@ La operación de claves y recuperación sigue el [runbook BIL-08](../../docs/bil
 Account publica SignedOut, SignedIn, NeedsSignIn o Pending. Identidad/sesión y
 licencia son hechos separados. `invalid_grant`/401 del token OAuth guarda
 NeedsSignIn sin reutilizar tokens rechazados; conserva identidad/perfil.
+El 401 del endpoint de licencia en renovación automática aplica el mismo estado
+de sesión y devuelve Transient: conserva el binding firmado y no crea rechazo
+definitivo ni Blocked. Sin identidad permanece SignedOut. El 401 de renovación
+manual conserva su clasificación definitiva.
 403 y fallo de userinfo tras refresh válido siguen transitorios. Otra identidad
 exige invalidar antes de guardar su sesión. Un error de perfil no revoca derechos.
 AccountProfileRefresh es presentación y usa el origen OAuth automático.

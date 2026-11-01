@@ -192,6 +192,7 @@ impl App {
             let credential = match renewal {
                 Ok(credential) => credential,
                 Err(error) => {
+                    self.observe_session_error(error, OutcomeOrigin::Renewal { automatic })?;
                     return Err(if error == Error::InvalidCredential {
                         Error::Version
                     } else {
@@ -327,17 +328,7 @@ impl App {
         let completion = match exchange.run(&self.http, now) {
             Ok(completion) => completion,
             Err(error) => {
-                let effects = outcome(Observation::Error(
-                    error,
-                    OutcomeOrigin::OAuth { automatic },
-                ));
-                if effects.needs_sign_in {
-                    self.data_session = None;
-                    self.account
-                        .as_mut()
-                        .ok_or(Error::Authentication)?
-                        .require_sign_in(self.store.as_ref().ok_or(Error::Storage)?)?;
-                }
+                self.observe_session_error(error, OutcomeOrigin::OAuth { automatic })?;
                 return Err(error);
             }
         };
@@ -345,6 +336,20 @@ impl App {
             .as_mut()
             .ok_or(Error::Authentication)?
             .complete(completion, self.store.as_ref().ok_or(Error::Storage)?)
+    }
+
+    fn observe_session_error(&mut self, error: Error, origin: OutcomeOrigin) -> Result<()> {
+        if outcome(Observation::Error(error, origin)).needs_sign_in {
+            self.data_session = None;
+            if let Some(account) = self
+                .account
+                .as_mut()
+                .filter(|account| account.identity().is_some())
+            {
+                account.require_sign_in(self.store.as_ref().ok_or(Error::Storage)?)?;
+            }
+        }
+        Ok(())
     }
 
     fn open_account_store(&self) -> Result<Store> {
@@ -434,7 +439,7 @@ impl App {
         ))
     }
 
-    fn automatic_failure(error: Error) -> Reply {
+    fn license_failure(error: Error, renewal: crate::protocol::RenewalOutcome) -> Reply {
         // La tabla marca DeviceLimit como renewal=true (definitivo). Este retorno
         // previo conserva su variante accionable en vez de emitir LicenseFailure.
         if error == Error::DeviceLimit {
@@ -443,17 +448,25 @@ impl App {
             };
         }
         Reply::LicenseFailure {
-            outcome: outcome(Observation::Error(
-                error,
-                OutcomeOrigin::Renewal { automatic: true },
-            ))
-            .renewal,
+            outcome: renewal,
             message: if error == Error::Version {
                 "Actualiza la app para verificar la nueva licencia.".into()
             } else {
                 error.to_string()
             },
         }
+    }
+
+    #[cfg(test)]
+    fn automatic_failure(error: Error) -> Reply {
+        Self::license_failure(
+            error,
+            outcome(Observation::Error(
+                error,
+                OutcomeOrigin::Renewal { automatic: true },
+            ))
+            .renewal,
+        )
     }
 
     fn renewal_failure(&self, error: Error, automatic: bool) -> Reply {
@@ -477,7 +490,7 @@ impl App {
         {
             // El rechazo explícito frena el scheduler también en manual,
             // conservando el binding. El transporte sigue transitorio.
-            Self::automatic_failure(error)
+            Self::license_failure(error, classification.renewal)
         } else {
             Reply::Error {
                 message: error.to_string(),
@@ -2513,7 +2526,7 @@ mod tests {
                 .expect("previous verified cache");
             let (link, core) = core_fixture(device.clone(), keys, vec![CoreStep::Read]);
             app.attach_core(link);
-            let expected = if status >= 429 {
+            let expected = if status == 401 || status >= 429 {
                 RenewalOutcome::Transient
             } else {
                 RenewalOutcome::Definitive
@@ -2527,6 +2540,10 @@ mod tests {
                     .is_ok()
             );
             assert!(app.account.as_ref().expect("account").identity().is_some());
+            assert_eq!(
+                app.account.as_ref().expect("account").needs_sign_in(),
+                status == 401
+            );
             assert!(matches!(
                 app.execute(Command::LicenseStatus),
                 Ok(Reply::License { .. })

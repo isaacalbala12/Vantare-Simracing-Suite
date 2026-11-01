@@ -408,3 +408,70 @@ fn purchase_wait_uses_only_policy_feed_and_never_dispatches_renewal() {
         crate::quit_headless_test(cx);
     });
 }
+
+#[test]
+fn automatic_authentication_failure_requests_sign_in_without_a_license_rejection() {
+    gpui_platform::headless().run(|cx| {
+        let file = crate::document::tests::File::new();
+        let (send, requests) = mpsc::sync_channel(8);
+        let remote = cx.new(|cx| fixture(cx, send, file.path.parent().expect("root")));
+        remote.update(cx, |remote, cx| {
+            remote.access.observe(
+                &Reply::Status {
+                    account_configured: true,
+                    message: String::new(),
+                },
+                false,
+            );
+            let wall = vantare_ipc::control::wall_ms().expect("wall");
+            let policy = Policy {
+                version: vantare_ipc::control::VERSION,
+                revision: 1,
+                checked_at_ms: wall,
+                state: AccessState::Active,
+                catalog: CatalogAccess::Pro,
+                signed_until_ms: Some(wall + 60_000),
+                ..Policy::default()
+            };
+            remote.observe_core_policy(policy.clone(), wall, cx);
+            assert!(remote.access.navigation(wall).verified);
+            remote.inflight = Inflight::Background;
+            remote.complete(
+                Reply::LicenseFailure {
+                    outcome: RenewalOutcome::Transient,
+                    message: "session authentication fixture".into(),
+                },
+                cx,
+            );
+            remote.inflight = Inflight::Background;
+            remote.complete(
+                Reply::LicenseStatus {
+                    policy,
+                    session: Some(Session::NeedsSignIn),
+                    notice: None,
+                },
+                cx,
+            );
+            assert!(
+                remote.access.navigation(wall).verified,
+                "signed offline rights remain usable"
+            );
+            assert!(!remote.requires_access());
+            assert!(remote.session_notice().is_some());
+            assert!(remote.can_start_account_login());
+            assert!(
+                !remote.participation_ready(),
+                "remote account actions require new sign-in"
+            );
+            assert!(
+                remote.license_notice.is_none(),
+                "no definitive license warning"
+            );
+            assert!(
+                requests.try_recv().is_err(),
+                "cached session does not start HTTP"
+            );
+        });
+        crate::quit_headless_test(cx);
+    });
+}

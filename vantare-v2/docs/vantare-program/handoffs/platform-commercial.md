@@ -1,6 +1,9 @@
 <!-- isa1827-simplificar-e -->
 ## VANTA-126 / #1827 — E listo para revisión
 
+PR draft [#1858](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1858)
+a nightly, código probado7405d526c; HEAD de entrega en la descripción del PR.
+
 Base actual origin/nightly@87bfa52e9ed321ab752e7a5a3e989f460839b297; D1b (#1855) integrado.
 Rebase desde eb9aa1d456c5ef9fdb321bf316f450dc832e6da1, preservando todas las entradas del handoff.
 Rama vantareapp/isa-1827-simplificar-auto401, mismo worktree/target isa-1827-s.

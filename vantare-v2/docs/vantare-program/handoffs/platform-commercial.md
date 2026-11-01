@@ -32,6 +32,8 @@ Rama vantareapp/isa-1827-simplificar-session, worktree/target isa-1827-s.
 - Seguimiento F4 de #1822 actualizado a cerrado tras C (#1849) integrado;
   el estado global de esa issue queda al orquestador.
 - E (401 automático → NeedsSignIn) sigue después. Sin Plane ni CI watch.
+- PR draft [#1855](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1855), target nightly.
+  HEAD documental vigente en PR; CI y revisión a cargo del orquestador.
 <!-- /isa1827-simplificar-d1b -->
 
 <!-- isa1827-simplificar-d1a -->

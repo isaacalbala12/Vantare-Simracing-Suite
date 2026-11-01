@@ -147,7 +147,7 @@ sin merge/release del worker. Plane sigue En curso; estados y CI son del orquest
   rechazos RC9 y dos reparse, omisión de raíz sin escribir y mutación detectada.
 - **1a listo para revisión**, todavía sin integrar: rama
   `vantareapp/isa-1840-1a-inventario`, base `origin/nightly@0a241fc2e927cf925166c86c072b1d43d30044d4`,
-  worktree `D:/VantareServer/worktrees/isa-1840-1a`; HEAD/PR se fijan en #1840.
+  worktree `D:/VantareServer/worktrees/isa-1840-1a`; [PR draft #1846](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1846), enlazado en T3. Código validado `b33c58a51`; HEAD documental vigente en #1840/PR.
   La instalada usa su manifest ligado por SHA; desaparece la lista congelada91.
   El universo cerrado deriva del inventario actual y del catálogo explícito de
   rutas de programa retiradas (vacío hoy). Permite crecimiento y retirada sin

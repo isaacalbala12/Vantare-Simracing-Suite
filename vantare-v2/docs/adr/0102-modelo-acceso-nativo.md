@@ -200,3 +200,36 @@ RecoveryRequired o ClockBehind permite las consultas ordinarias al helper,
 además de los comandos de recuperación. Arrancarlo no concede derechos.
 Logout se admite siempre que el canal del núcleo responda de forma autenticada,
 aun con política denegada o caducada; su ACK durable sigue siendo obligatorio.
+
+### Paso 8 — licencia solo en el núcleo
+
+Services v18 retira TransferRights y el almacén candidate/marcador. Mantiene
+la verificación de la respuesta HTTP nueva y la entrega por InstallOnline;
+control v7 conserva Install solo por compatibilidad; services ya no lo emite ni debe conectarlo a credenciales de disco.
+La admisión usa Read autenticado y helper_command_allowed sobre Policy.state;
+arrancar servicios no es una concesión. No cambia el catálogo ni sus permisos.
+DeviceReset se admite como recuperación también con Expired/Revoked, igual que
+LicenseRenew. Servicios exige una sesión utilizable antes de revocar o liberar
+el asiento; NeedsSignIn sigue devolviendo Authentication sin HTTP ni revocación.
+
+El ACK perdido o núcleo ausente al terminar HTTP es transitorio: se descarta
+la respuesta en servicios y la próxima renovación pide una emisión nueva,
+respetando backoff, suelo de un minuto y rate limit. Decisión del orquestador 1-nov: los restos históricos se apartan al arrancar
+con quarantine_dated, sin leer, descifrar, deserializar ni reproducir su contenido.
+El rename es best-effort e independiente por documento: no bloquea ni concede;
+si falla, se diagnostica y se reintenta en otro arranque.
+Así desaparece el primer binding de otra cuenta desde candidate (#1825).
+
+Sin cambios durables de binding/authority/guardias. La fixture de generaciones
+comprueba new → v17 → new y new → corte anterior a NeedsSignIn → new con datos
+sintéticos. El lector pre5 aparta account/NeedsSignIn y pide login; los derechos
+siguen válidos. V17/v18 se rechazan por Version, sin Protocol ni revocación.
+
+La retirada usa el namespace actual de backend/canal y la extensión de Store
+(.dpapi en Windows, .json en Unix); no recorre otros perfiles o canales. Los
+restos de la misma cuenta también se apartan: sin binding no hay derechos del
+núcleo que perder. Si falla el rename, v18 sigue ignorándolos; el saneamiento
+del downgrade solo queda garantizado al haberlos apartado.
+Una trama que declare services v18 con TransferRights es entrada malformada
+(Protocol); el peer v17/v18 incompatible se clasifica Version antes del esquema.
+Ninguno de estos errores revoca por sí solo.

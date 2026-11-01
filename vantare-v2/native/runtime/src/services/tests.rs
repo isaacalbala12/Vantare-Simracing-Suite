@@ -2,17 +2,19 @@ use super::*;
 use crate::rights::{Devices, host};
 use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
 use ed25519_dalek::{Signer, SigningKey};
-use vantare_services::{
-    license::{Capability, ClaimsV1, CredentialV1},
-    license_remote::Candidate,
-    storage::Store,
-};
+use vantare_services::license::{Capability, ClaimsV1, CredentialV1};
 
+struct FixtureCredential {
+    credential: CredentialV1,
+}
+
+#[path = "tests/online_only.rs"]
+mod online_only;
 #[path = "tests/profile.rs"]
 mod profile;
 
 #[test]
-fn recovery_observations_admit_queries_and_logout_always_reaches_the_helper() {
+fn recovery_observations_admit_queries_and_denied_policies_allow_seat_recovery() {
     use control::AccessState;
     let wall = control::wall_ms().expect("wall");
     for state in [
@@ -37,9 +39,20 @@ fn recovery_observations_admit_queries_and_logout_always_reaches_the_helper() {
         AccessState::Revoked,
         AccessState::Unavailable,
     ] {
-        let policy = control::Policy::denied(state);
+        let policy = control::Policy {
+            revision: 1,
+            checked_at_ms: wall,
+            signed_until_ms: (state == AccessState::Expired).then_some(wall - 2_000),
+            grace_until_ms: (state == AccessState::Expired).then_some(wall - 1_000),
+            ..control::Policy::denied(state)
+        };
         assert!(helper_command_allowed(&policy, &Command::Logout));
         assert!(!helper_command_allowed(&policy, &Command::DraftLoad));
+        if matches!(state, AccessState::Expired | AccessState::Revoked) {
+            assert!(!policy.current(), "fixture must deny ordinary admission");
+            assert!(helper_command_allowed(&policy, &Command::LicenseRenew));
+            assert!(helper_command_allowed(&policy, &Command::DeviceReset));
+        }
     }
 }
 
@@ -99,18 +112,6 @@ fn future_boundary_never_dispatches_an_automatic_http_attempt() {
             );
         }
     }
-}
-
-#[test]
-fn incompatible_transfer_stays_transient_and_keeps_the_actionable_version_message() {
-    assert_eq!(
-        admit_transfer(&Err(ConnectionError::Version)),
-        Err(vantare_ipc::INCOMPATIBLE_COMPONENTS)
-    );
-    assert_eq!(
-        renewal_outcome(&failure(vantare_ipc::INCOMPATIBLE_COMPONENTS)),
-        protocol::RenewalOutcome::Transient
-    );
 }
 
 #[test]
@@ -230,7 +231,14 @@ struct Payload<'a> {
     claims: &'a ClaimsV1,
 }
 
-fn candidate_with_grant(validity: chrono::TimeDelta, grant: &str) -> (Candidate, String) {
+fn candidate_with_grant(validity: chrono::TimeDelta, grant: &str) -> (FixtureCredential, String) {
+    signed_grant_for_device(validity, grant, "test-legacy")
+}
+fn signed_grant_for_device(
+    validity: chrono::TimeDelta,
+    grant: &str,
+    device: &str,
+) -> (FixtureCredential, String) {
     let mut seed = [0; 32];
     getrandom::fill(&mut seed).expect("entropía test");
     let key = SigningKey::from_bytes(&seed);
@@ -238,7 +246,7 @@ fn candidate_with_grant(validity: chrono::TimeDelta, grant: &str) -> (Candidate,
     let claims = ClaimsV1 {
         issuer: "vantare-license".into(),
         subject: "550e8400-e29b-41d4-a716-446655440000".into(),
-        device_fingerprint: "test-legacy".into(),
+        device_fingerprint: device.into(),
         issued_at: (now - chrono::TimeDelta::seconds(10)).to_rfc3339(),
         capabilities: vec![Capability {
             key: grant.into(),
@@ -262,11 +270,7 @@ fn candidate_with_grant(validity: chrono::TimeDelta, grant: &str) -> (Candidate,
         signature: URL_SAFE_NO_PAD.encode(key.sign(&bytes).to_bytes()),
     };
     (
-        Candidate {
-            account_id: credential.claims.subject.clone(),
-            device: "test-legacy".into(),
-            credential,
-        },
+        FixtureCredential { credential },
         format!(
             "test:{}",
             URL_SAFE_NO_PAD.encode(key.verifying_key().as_bytes())
@@ -350,19 +354,12 @@ impl Fixture {
         // Solo una credencial de test generada; ninguna sesión ni valores reales.
         // Comparte únicamente el namespace público compilado del helper;
         // ninguna URL se solicita, ni clave/bearer del build se usa en la fixture.
-        let config = vantare_services::config::BuildConfig::load();
-        let base = config.supabase.as_ref().map(ToString::to_string);
-        let store = Store::open(
-            &service_root,
-            &vantare_services::license_remote::candidate_context(base.as_deref(), config.channel),
-        )
-        .expect("store");
         if licensed {
             // This process fixture uses an ephemeral core keyring. Seed its
             // genuinely verified durable binding, rather than asking the helper's
             // independently compiled production ring to accept a test candidate.
-            // Candidate verification/transfer is covered with aligned rings in
-            // services::app tests; no real production signing key is available.
+            // Fresh HTTP installation is covered with aligned fixture rings;
+            // this test never needs a product signing key or backend.
             let mut owner = crate::rights::Owner::open(
                 &root.join("core"),
                 Some(&keys),
@@ -382,7 +379,6 @@ impl Fixture {
                 )
                 .expect("real signature and durable binding");
         }
-        drop(store);
         let nonce = vantare_services::random_id().expect("bootstrap");
         let pid = std::process::id();
         let helper_image = binary.clone();

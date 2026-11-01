@@ -1,3 +1,20 @@
+## Contrato vigente de licencias — paso 8 (#1827)
+
+Services v18 retira TransferRights, Candidate y su marcador. `renew` devuelve
+CredentialV1 recién verificada en memoria y App la entrega por InstallOnline;
+solo el ACK durable confirma la instalación. Al arrancar aparta candidate y marcador históricos con rename fechado, sin leer
+su contenido. Es best-effort: un bloqueo se diagnostica, nunca concede ni bloquea
+la recuperación; se reintenta al siguiente arranque si quedaron restos.
+Si se pierde el ACK o desaparece el núcleo, el resultado es transitorio y la
+siguiente renovación pide una emisión nueva, con backoff y suelo de un minuto.
+Binding/authority/guardias del núcleo no cambian. Solo los actos explícitos revocan.
+
+Contrato y rollback de datos: [ADR0102](../../docs/adr/0102-modelo-acceso-nativo.md).
+Las secciones fechadas inferiores son históricas; este contrato sustituye sus
+reglas de candidate/marcador y transferencia. La retirada de archivos antiguos
+es un paso de arranque, sin copia ni reintento durable de credenciales. Rollback sintético con lectores
+v17 y pre-NeedsSignIn, sin cambios de instalación: `native/scripts/license-generation-rollback.ps1`.
+
 ## #1827 — Policy.state / control v7 (paso 7)
 
 Services lee los estados del núcleo y usa Policy::denied para políticas conservadoras.
@@ -51,32 +68,13 @@ El rechazo Clock solo al instalar caché y la ventana urgente de una hora se
 conservan. No cambia formato IPC, licencia, persistencia ni comportamiento.
 El Hub consume los resultados tipados existentes; no tiene una lista de errores.
 
-## ISA-1810 — Candidate rechazado y acceso a la recuperación
+## Histórico ISA-1810 — sustituido por el paso 8
 
-Una firma válida no permite confiar en el dispositivo declarado por el propio
-candidate: se compara también con la huella actual. La caché de otro dispositivo
-va a cuarentena antes de Install, con `license-cache-device-mismatch`.
-Si la lectura local de la huella falla o queda vacía, el helper no decide:
-envía Install ordinario y deja verificar al núcleo. No aparta por ese fallo.
-
-Un rechazo explícito del núcleo aparta el candidate y retira su hint sin revocar
-el binding vigente. Un Read posterior permite admitir el helper con la política
-real del núcleo, tanto sin derechos como conservando los de A al rechazar B.
-Read no cuenta como instalación ni renovación. Login, logout y comprobación de
-acceso quedan disponibles sin editar archivos a mano; una nueva concesión sigue
-exigiendo firma, identidad, dispositivo, reloj, lápida y ACK durable del núcleo.
-
-E/S, transporte y ACK incierto conservan candidate/hint y no disparan otra
-emisión HTTP. Un InstallOnline recién obtenido y rechazado definitivamente se
-aparta también; la pérdida del ACK mantiene la recuperación ordinaria de #1811.
-Disco, cuarentena e hint nunca producen InstallOnline. Se conservan los bytes
-con el recorte habitual de tres archivos por nombre, best-effort si hay bloqueos.
-Si falla renombrar el candidate, registra `license-cache-quarantine-incomplete`,
-conserva sus bytes y continúa con Read; no concede esa caché ni invalida derechos.
-La API de storage conserva sus errores para los demás documentos y llamadores.
-El diagnóstico de lápida futura y su sondeo se siguen separadamente en #1822.
-El primer binding offline desde un candidate de otra cuenta del mismo PC se
-sigue en #1825; esta recuperación no establece un nuevo contrato de identidad.
+La validación y cuarentena del candidate, el hint y el reintento de transferencia
+se retiraron. Services v18 aparta ambos restos al arrancar sin leerlos y solo
+envía InstallOnline desde una respuesta HTTP nueva. La admisión por Policy deja
+accesible la recuperación; DeviceReset requiere además una sesión utilizable.
+El núcleo conserva sus validaciones y el ACK durable antes de confirmar derechos.
 
 ## ISA-1808 / ISA-1812 — Recuperar cuenta y leer perfil sin revocar
 

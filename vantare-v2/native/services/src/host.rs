@@ -311,7 +311,7 @@ mod tests {
             (protocol::VERSION, Error::Protocol),
         ] {
             let mut bytes = vec![];
-            protocol::write(&mut bytes, &serde_json::json!({"version":version,"sequence":1,"nonce":"fixture","command":{"command":"future-command"}})).expect("frame");
+            protocol::write(&mut bytes, &serde_json::json!({"version":version,"sequence":1,"nonce":"fixture","command":{"command":"TransferRights"}})).expect("frame");
             let mut wire = Wire {
                 input: Cursor::new(bytes),
                 read_error: io::ErrorKind::UnexpectedEof,

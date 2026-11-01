@@ -10,7 +10,7 @@ enum Attempt {
 }
 
 #[test]
-fn cancel_and_failed_login_preserve_every_account_state_and_candidate() {
+fn cancel_and_failed_login_preserve_account_state_and_ignore_late_legacy_files() {
     for state in [Session::SignedOut, Session::SignedIn, Session::NeedsSignIn] {
         for attempt in [Attempt::OAuth, Attempt::EmailCode, Attempt::EmailPoll] {
             cancel_attempt(state, attempt);
@@ -50,12 +50,12 @@ fn cancel_attempt(state: Session, attempt: Attempt) {
     );
     app.account = Some(account);
     app.store = Some(store);
-    let candidate = crate::license_remote::Candidate {
+    let candidate = crate::license_remote::tests::LegacyCandidate {
         account_id: credential.claims.subject.clone(),
         device: device.clone(),
         credential,
     };
-    app.candidate_store()
+    app.legacy_store()
         .expect("candidate store")
         .save("license-candidate", &candidate)
         .expect("candidate");
@@ -100,7 +100,7 @@ fn cancel_attempt(state: Session, attempt: Attempt) {
 fn assert_documents_retained(
     app: &mut App,
     saved: &serde_json::Value,
-    candidate: &crate::license_remote::Candidate,
+    candidate: &crate::license_remote::tests::LegacyCandidate,
 ) {
     assert_eq!(
         &app.store
@@ -111,9 +111,9 @@ fn assert_documents_retained(
         saved
     );
     let retained = app
-        .candidate_store()
+        .legacy_store()
         .expect("candidate store")
-        .load::<crate::license_remote::Candidate>("license-candidate")
+        .load::<crate::license_remote::tests::LegacyCandidate>("license-candidate")
         .expect("retained candidate");
     assert_eq!(
         retained.credential.signature,

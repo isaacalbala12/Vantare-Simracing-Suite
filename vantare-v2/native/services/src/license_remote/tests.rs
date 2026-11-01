@@ -1,3 +1,18 @@
+// Historical disk format, used only to prove that old files have no authority.
+#[derive(serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct LegacyCandidate {
+    pub credential: crate::license::CredentialV1,
+    pub account_id: String,
+    pub device: String,
+}
+pub(crate) fn legacy_context(base: Option<&str>, channel: Option<&str>) -> String {
+    format!(
+        "license-v1|{}|{}",
+        base.unwrap_or("unconfigured"),
+        channel.unwrap_or("unknown")
+    )
+}
 use super::*;
 use crate::{account, bridge::Config, test_http::Server};
 use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
@@ -64,13 +79,13 @@ fn native_license_uses_oauth_and_signed_uuid_without_a_data_bridge() {
     let mut account = account::fixture(&server.base, &store);
     let config = config(&server.base, keys);
     let http = Http::default();
-    let candidate = renew(&http, &config, &account, 100, DEVICE, &store).expect("renew");
-    assert_eq!(candidate.account_id, SUBJECT);
+    let candidate = renew(&http, &config, &account, 100, DEVICE).expect("renew");
+    assert_eq!(candidate.claims.subject, SUBJECT);
     assert_ne!(account.identity().expect("OAuth identity").subject, SUBJECT);
     assert!(
         Verifier::public_keys(keys)
             .expect("keys")
-            .v1(&candidate.credential, SUBJECT, DEVICE)
+            .v1(&candidate, SUBJECT, DEVICE)
             .expect("verify")
             .grants()
             .is_empty(),
@@ -92,7 +107,7 @@ fn native_license_uses_oauth_and_signed_uuid_without_a_data_bridge() {
     );
     account.logout(&store).expect("logout");
     assert!(matches!(
-        renew(&http, &config, &account, 100, DEVICE, &store),
+        renew(&http, &config, &account, 100, DEVICE),
         Err(Error::Authentication)
     ));
     assert!(
@@ -134,14 +149,14 @@ fn native_license_maps_remote_errors_without_retry_or_saving_a_candidate() {
     let http = Http::default();
     for (_, _, expected) in cases {
         assert!(
-            matches!(renew(&http, &config, &account, 100, DEVICE, &store), Err(error) if error == expected)
+            matches!(renew(&http, &config, &account, 100, DEVICE), Err(error) if error == expected)
         );
         server
             .requests
             .recv_timeout(Duration::from_secs(3))
             .expect("one request");
         assert!(matches!(
-            store.load::<Candidate>("license-candidate"),
+            store.load::<LegacyCandidate>("license-candidate"),
             Err(Error::NotFound)
         ));
     }
@@ -177,14 +192,14 @@ fn native_license_rejects_bad_envelopes_signed_bindings_and_unconfigured_builds(
     let http = Http::default();
     for (_, _, expected, device) in cases {
         assert!(
-            matches!(renew(&http, &config, &account, 100, device, &store), Err(error) if error == expected)
+            matches!(renew(&http, &config, &account, 100, device), Err(error) if error == expected)
         );
         server
             .requests
             .recv_timeout(Duration::from_secs(3))
             .expect("request");
         assert!(matches!(
-            store.load::<Candidate>("license-candidate"),
+            store.load::<LegacyCandidate>("license-candidate"),
             Err(Error::NotFound)
         ));
     }
@@ -196,13 +211,13 @@ fn native_license_rejects_bad_envelopes_signed_bindings_and_unconfigured_builds(
             _ => incomplete.license_keys = None,
         }
         assert!(matches!(
-            renew(&http, &incomplete, &account, 100, DEVICE, &store),
+            renew(&http, &incomplete, &account, 100, DEVICE),
             Err(Error::Unconfigured)
         ));
     }
     for invalid in ["", "test-device", &"F".repeat(64)] {
         assert!(matches!(
-            renew(&http, &config, &account, 100, invalid, &store),
+            renew(&http, &config, &account, 100, invalid),
             Err(Error::InvalidCredential)
         ));
     }

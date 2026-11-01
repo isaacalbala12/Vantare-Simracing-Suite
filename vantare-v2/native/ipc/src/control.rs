@@ -240,6 +240,8 @@ pub struct Bootstrap {
 #[serde(tag = "command", deny_unknown_fields)]
 pub enum Command {
     Read,
+    // Retained solely for control v7 compatibility. Services no longer emits
+    // this command; do not wire it to disk credentials or legacy candidates.
     Install {
         credential: String,
     },

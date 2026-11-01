@@ -13,8 +13,8 @@ las banderas personales sin transportar `pending_penalties` a 33 ms. Una
 regresión del DTO compara bytes con la demanda anterior (`Penalties`), y el
 test de pipe real conserva el aviso personal con sanciones no solicitadas.
 
-Services v17 versiona la Policy v7 anidada; Session/AccountCancel permanecen
-intactos. V16 del paso 6 nunca se publicó en release.
+Services v18 retira TransferRights y conserva Policy v7/Session/AccountCancel.
+V17/v18 se rechaza por versión sin revocar; los overlays siguen leyendo el núcleo.
 
 ## #1564 · Sesiones y columnas de Standings
 

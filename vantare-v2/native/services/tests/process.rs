@@ -29,8 +29,9 @@ fn isolated_core() -> vantare_ipc::control::CoreLink {
 #[test]
 fn actual_process_accepts_its_parent_and_rejects_false_peer_or_nonce() {
     let binary = Path::new(env!("CARGO_BIN_EXE_vantare-services"));
-    let mut client =
-        hub_client::Client::start_managed(binary, None, &isolated_core()).expect("servicio propio");
+    let root = private_root();
+    let mut client = hub_client::Client::start_managed(binary, Some(&root), &isolated_core())
+        .expect("servicio propio");
     assert!(matches!(
         client.request(protocol::Command::Status).expect("status"),
         protocol::Reply::Status {
@@ -52,6 +53,7 @@ fn actual_process_accepts_its_parent_and_rejects_false_peer_or_nonce() {
             .arg(&name)
             .arg(parent_pid.to_string())
             .arg(parent)
+            .arg(&root)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::null())
@@ -86,6 +88,7 @@ fn actual_process_accepts_its_parent_and_rejects_false_peer_or_nonce() {
         }
         assert!(!child.wait().expect("servicio rechaza par").success());
     }
+    cleanup_private_root(&root);
 }
 
 #[test]
@@ -144,10 +147,11 @@ fn helper_exits_successfully_on_peer_eof_without_a_protocol_error_in_its_log() {
 #[test]
 fn occupied_endpoint_rejects_second_child_and_keeps_owner_usable() {
     let binary = Path::new(env!("CARGO_BIN_EXE_vantare-services"));
+    let root = private_root();
     let core = isolated_core();
     let mut owner =
-        hub_client::Client::start_managed(binary, None, &core).expect("servicio propio");
-    assert!(hub_client::Client::start_managed(binary, None, &core).is_err());
+        hub_client::Client::start_managed(binary, Some(&root), &core).expect("servicio propio");
+    assert!(hub_client::Client::start_managed(binary, Some(&root), &core).is_err());
     assert!(matches!(
         owner
             .request(RequestCommand::Status)
@@ -156,11 +160,34 @@ fn occupied_endpoint_rejects_second_child_and_keeps_owner_usable() {
     ));
     drop(owner);
     let mut replacement =
-        hub_client::Client::start_managed(binary, None, &core).expect("endpoint recuperado");
+        hub_client::Client::start_managed(binary, Some(&root), &core).expect("endpoint recuperado");
     assert!(matches!(
         replacement
             .request(RequestCommand::Status)
             .expect("nuevo dueño"),
         protocol::Reply::Status { .. }
     ));
+    drop(replacement);
+    cleanup_private_root(&root);
+}
+
+// Startup now retires legacy files: a process fixture must never inspect a real profile.
+fn private_root() -> std::path::PathBuf {
+    let root = std::env::temp_dir().join(format!(
+        "vantare-process-{}",
+        vantare_services::random_id().expect("fixture id")
+    ));
+    std::fs::create_dir(&root).expect("new private root");
+    root
+}
+fn cleanup_private_root(root: &Path) {
+    let root = root.canonicalize().expect("private root");
+    assert!(root.starts_with(std::env::temp_dir().canonicalize().expect("temp root")));
+    assert!(
+        root.file_name()
+            .expect("name")
+            .to_string_lossy()
+            .starts_with("vantare-process-")
+    );
+    std::fs::remove_dir_all(root).expect("private fixture cleanup");
 }

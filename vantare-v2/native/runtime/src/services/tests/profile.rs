@@ -1,4 +1,5 @@
 use super::*;
+use vantare_services::storage::Store;
 
 fn devices() -> Devices {
     Devices {
@@ -9,7 +10,7 @@ fn devices() -> Devices {
 
 fn start_profile_core(
     root: &std::path::Path,
-    candidate: &Candidate,
+    candidate: &FixtureCredential,
     keys: &str,
 ) -> (host::Host, CoreLink) {
     let mut owner = crate::rights::Owner::open(

@@ -232,6 +232,7 @@ fn access_command(command: &Command) -> bool {
             | Command::AccountRenew
             | Command::LicenseRenew
             | Command::LicenseRenewAutomatic
+            | Command::DeviceReset
     )
 }
 fn handle(
@@ -358,9 +359,7 @@ fn core_status_reply(policy: control::Policy) -> Reply {
 // Fresh NoCredential/RecoveryRequired/ClockBehind observations also admit ordinary
 // queries: no rights are granted by starting the helper. Logout always remains usable.
 fn helper_command_allowed(policy: &control::Policy, command: &Command) -> bool {
-    matches!(command, Command::Logout | Command::TransferRights)
-        || access_command(command)
-        || policy.current()
+    matches!(command, Command::Logout) || access_command(command) || policy.current()
 }
 fn serve_command(
     state: &mut State,
@@ -444,7 +443,7 @@ fn serve_command(
         }
     }
     if state.client.is_none() {
-        let mut client =
+        let client =
             match Client::start_managed(&options.binary, options.root.as_deref(), &options.core) {
                 Ok(client) => client,
                 Err(error) => return failure(error),
@@ -453,24 +452,13 @@ fn serve_command(
         if let Ok(mut slot) = cancellation.lock() {
             *slot = Some(client.cancellation());
         }
-        // No se atiende al Hub antes del ACK durable del núcleo, incluso offline.
-        if let Err(error) = admit_transfer(&client.request_typed(Command::TransferRights)) {
-            clear_cancellation(cancellation);
-            return failure(error);
-        }
+        // The authenticated Policy read above admits the helper. Starting it
+        // grants nothing; only InstallOnline's durable core ACK installs rights.
         state.client = Some(client);
     }
     dispatch_observing_session(state, command, |state, command| {
         dispatch_helper(state, command, cancellation)
     })
-}
-
-fn admit_transfer(result: &Result<Reply, ConnectionError>) -> Result<(), &'static str> {
-    match result {
-        Ok(Reply::License { .. }) => Ok(()),
-        Err(error) => Err(error.message()),
-        _ => Err("transferencia de derechos sin confirmar"),
-    }
 }
 
 fn dispatch_observing_session(
@@ -551,14 +539,6 @@ fn run_renewal(
 }
 fn finish(state: &mut State) {
     if let Some(mut client) = state.client.take() {
-        // Solo transferencia local. La primera ya fue confirmada antes de servir al Hub.
-        // Si se canceló E/S en vuelo, se conserva el candidate/intento durable.
-        if !matches!(
-            client.request(Command::TransferRights),
-            Ok(Reply::License { .. })
-        ) {
-            eprintln!("vantare: transferencia final sin confirmar; estado local conservado");
-        }
         let _closed = client.request(Command::Shutdown);
         drop(client); // kill/reap: jamás huérfano ni residencia en carrera.
     }
@@ -674,8 +654,9 @@ fn spawn_timer(
 impl Drop for Host {
     fn drop(&mut self) {
         self.stop.set();
-        // Si está libre, confirma transferencia antes del cierre. Si hay E/S
-        // remota en vuelo, cancelación y cleanup conservan el intento durable.
+        // Si está libre, coordina el cierre del helper. Si hay E/S
+        // remota en vuelo, cancelación y cleanup conservan los derechos del núcleo. La respuesta
+        // HTTP sin ACK se descarta y la renovación posterior solicita otra.
         if let Ok(mut state) = self.state.try_lock() {
             finish(&mut state);
         } else {

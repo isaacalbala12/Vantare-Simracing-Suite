@@ -57,7 +57,13 @@ if ($request.qa) {
 if (Test-Path -LiteralPath $root) { Assert-NativeTree $root }
 $current = $null
 $data = Join-Path $root 'generations'
-if (Test-Path -LiteralPath (Join-Path $root 'state.json')) {
+# Step 3: Rust Probe owns state/manifest reads. Legacy operations and callers
+# retain this adapter until Setup/Uninstall migrate to Rust in step 4.
+$readContextProperty=$request.PSObject.Properties['readContext']
+$rustRead=$request.operation -ceq 'Probe' -and $null -ne $readContextProperty -and $readContextProperty.Value -ceq $true
+if ($rustRead) {
+    if($request.uninstall -and $null -ne $registration){$current=[string]$registration.DisplayVersion}
+} elseif (Test-Path -LiteralPath (Join-Path $root 'state.json')) {
     if($request.uninstall){
         # Uninstall may already have removed manifest/bin members before interruption.
         $state=[IO.File]::ReadAllText((Join-Path $root 'state.json'))|ConvertFrom-Json

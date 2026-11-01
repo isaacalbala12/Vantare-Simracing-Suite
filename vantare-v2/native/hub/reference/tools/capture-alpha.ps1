@@ -11,7 +11,7 @@ $evidence = [IO.Path]::GetFullPath($EvidenceDirectory)
 $repo = (& git -C $PSScriptRoot rev-parse --show-toplevel).Trim()
 if ($LASTEXITCODE) { throw 'No se pudo localizar la raíz Git' }
 $repo = [IO.Path]::GetFullPath($repo)
-. (Join-Path $repo 'vantare-v2/native/packaging/candidate.ps1')
+. (Join-Path $repo 'vantare-v2/native/packaging/candidate.ps1') -Library -Root $PSScriptRoot
 if ($evidence.Equals($repo, [StringComparison]::OrdinalIgnoreCase) -or
     $evidence.StartsWith($repo + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) {
     throw 'La evidencia debe quedar fuera del repo'

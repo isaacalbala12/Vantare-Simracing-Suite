@@ -35,6 +35,12 @@ artefacto para inspeccionar cualquier diferencia.
 
 Se normalizan solamente raíz QA, identificadores nuevos, PID de readiness,
 SHA de los manifiestos y bytes identificados exactamente como fixtures de origen.
+Los archivos .ps1 siempre conservan su SHA real, aunque coincidan con la fixture:
+candidate raíz, por generación y copia de desinstalación quedan visibles, además
+de beta. Se normaliza la identidad en metadatos JSON de fixtures, pero sus bytes
+de código se comparan explícitamente. snapshot-tests.py cambia a la vez fixture
+y script instalado y exige hashes diferentes (12 checks); no basta mutar solo
+la copia instalada, que la normalización anterior ya detectaba.
 Los hashes de datos y de archivos ajenos a esas fixtures se conservan. Los enlaces
 se observan mediante COM porque sus bytes internos incluyen metadatos de Windows.
 El verificador es un **ejemplo exclusivo de tests** con semilla TEST pública fija;

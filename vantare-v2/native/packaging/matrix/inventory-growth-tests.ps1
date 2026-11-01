@@ -7,7 +7,7 @@ $qaGrowthRoot=Assert-MatrixRoot $Root
 if (Test-Path -LiteralPath $qaGrowthRoot) { throw 'Growth test needs a fresh root' }
 [IO.Directory]::CreateDirectory($qaGrowthRoot) | Out-Null
 $script:Packaging=Split-Path $PSScriptRoot -Parent
-. (Join-Path $script:Packaging 'beta.ps1') -Root $qaGrowthRoot
+. (Join-Path $script:Packaging 'beta.ps1') -Library -Root $qaGrowthRoot
 . (Join-Path $MatrixDirectory 'fixtures.ps1')
 function Get-NativeShortcutFolder([string]$Name){
     if($Name -cnotin @('Programs','Startup','DesktopDirectory')){throw 'Unexpected growth shell folder'}
@@ -171,10 +171,11 @@ try {
     [IO.Directory]::CreateDirectory($driverEngine)|Out-Null
     foreach($name in @('candidate.ps1','beta.ps1')){Copy-Item -LiteralPath (Join-Path $script:Packaging $name) -Destination $driverEngine}
     $driver=[IO.File]::ReadAllText((Join-Path $script:Packaging 'installer-driver.ps1'))
-    $import=". (Join-Path `$PSScriptRoot 'beta.ps1')"
+    $library=". (Join-Path `$PSScriptRoot 'beta.ps1') -Library"
+    $import=$library+' -Root $PSScriptRoot'
     $boundary="Remove-PSDrive HKCU`nNew-PSDrive HKCU Registry '"+$qaHive+"' -Scope Global|Out-Null`n"+
         ". '"+(Join-Path $MatrixDirectory 'guard.ps1')+"'`n"+'$null=Assert-MatrixRoot (([IO.File]::ReadAllText($RequestFile)|ConvertFrom-Json).root)'+"`n"+
-        $import+" -Root '"+$driverInstall+"'`n"+
+        $library+" -Root '"+$driverInstall+"'`n"+
         'function Get-NativeShortcutFolder([string]$Name){if($Name -cnotin @(''Programs'',''Startup'',''DesktopDirectory'')){throw ''Unexpected folder''};Join-Path '''+(Join-Path $qaGrowthRoot 'shell')+''' $Name}'
     if(-not $driver.Contains($import)){throw 'Growth driver import changed'}
     $driverPath=Join-Path $driverEngine 'installer-driver.ps1'

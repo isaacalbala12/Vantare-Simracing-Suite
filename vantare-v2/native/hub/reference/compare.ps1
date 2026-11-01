@@ -8,7 +8,7 @@ $ErrorActionPreference = 'Stop'
 $repo = (& git -C $PSScriptRoot rev-parse --show-toplevel).Trim()
 if ($LASTEXITCODE -ne 0 -or -not $repo) { throw 'No se pudo localizar la raíz Git' }
 $project = Join-Path $repo 'vantare-v2'
-. (Join-Path $project 'native/packaging/candidate.ps1')
+. (Join-Path $project 'native/packaging/candidate.ps1') -Library -Root $PSScriptRoot
 $tool = Join-Path $project 'native\ui\diff.py'
 $manifest = Join-Path $PSScriptRoot 'tools\demo-states.json'
 $references = if ($env:VANTARE_PARITY_REFERENCE_DIR) {

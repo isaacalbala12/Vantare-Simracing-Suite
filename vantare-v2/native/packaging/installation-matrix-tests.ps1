@@ -67,6 +67,11 @@ try {
         ) -TimeoutMilliseconds 120000 -LogPath (Join-Path $qaMatrixRoot 'history-safety.log')
         if($historySafety.ExitCode -ne 0){throw ('MATRIX_HISTORY_SAFETY_FAILED: '+$historySafety.Stderr)}
         $historySafety.Stdout
+        $snapshot=Invoke-NativeProcess -Executable (Get-Command python).Source -Arguments @(
+            (Join-Path $PSScriptRoot 'matrix/snapshot-tests.py'),'--root',(Join-Path $qaMatrixRoot 'snapshot-tests')
+        ) -TimeoutMilliseconds 30000 -LogPath (Join-Path $qaMatrixRoot 'snapshot-tests.log')
+        if($snapshot.ExitCode -ne 0){throw ('MATRIX_SNAPSHOT_TEST_FAILED: '+$snapshot.Stderr)}
+        $snapshot.Stdout
     } finally { $env:TEMP=$savedLibraryTemp;$env:TMP=$savedLibraryTmp;$env:LOCALAPPDATA=$savedLibraryLocal }
     foreach ($case in $Cases) {
         foreach ($operation in $Operations) {

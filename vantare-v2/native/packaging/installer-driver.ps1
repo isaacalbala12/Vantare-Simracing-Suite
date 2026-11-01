@@ -13,7 +13,8 @@ $request = [IO.File]::ReadAllText((Assert-NativePath $RequestFile)) | ConvertFro
 $identity = 'VantareNativeBeta'
 $folder = 'Vantare'
 $legacy = 'Vantare Native Beta'
-if ($request.qa -isnot [bool]) { throw 'Flag QA inválido.' }
+$qaProperty=$request.PSObject.Properties['qa']
+if ($null -eq $qaProperty -or $qaProperty.Value -isnot [bool]) { throw 'Flag QA inválido.' }
 $explicitRoot = -not [string]::IsNullOrWhiteSpace([string]$request.root)
 # Probe discovers the user's installation. Every mutating request must carry
 # the root returned by that probe; library import never selects an installation.

@@ -56,9 +56,35 @@ La primera copia QA para verificar el hook nuevo omitía los dos scripts del
 histórico: falló por archivo ausente, sin ejecutar esas pruebas. Se repite con
 la copia completa. Calidad detectó la modificación mecánica de dos referencias
 retiradas; se restauraron sus bytes fijados. No se cambió el manifest de huellas.
-Las referencias históricas siguen siendo inertes, no herramientas ejecutables
-compatibles con el contrato nuevo de biblioteca.
+La primera entrega trató esos dos capturadores activos como referencias inertes.
+La revisión P2 del orquestador exige adaptarlos: se conservan sus versiones
+anteriores exactas como .txt inertes y se actualizan solo los pins activos,
+siguiendo el procedimiento existente de #1655/#1740/#1742. No se ejecutan capturas.
 
 Evidencia local bajo D:/VantareServer/qa/isa-1840. No acredita ventanas físicas,
 una cuenta/VM independiente ni instalación de bytes publicados. Los gates
 generales de CI y su seguimiento corresponden al orquestador.
+
+## Revisión de #1847 y rebase sobre 1a integrado
+
+Base origin/nightly f8ccb1689, paso 1a integrado por el orquestador. Se preservan
+su catálogo validado, snapshot de 109 rutas y tolerancia a carpetas no vacías.
+Los lectores activos compare/capture-alpha usan Library/Root explícitos. Sus
+bytes anteriores se archivan y sus revisiones/pins se documentan; los corpus,
+PNG y baselines de analizadores no se regeneran. Invocaciones de inventario
+actualizadas en README y startup-resources.
+
+La matriz ahora deja visibles los hashes reales de todos los .ps1 instalados:
+188 copias de candidate/copia de desinstalación dejan de quedar como una etiqueta
+de fixture en las 88 observaciones, además de beta ya visible. El delta esperado
+sigue en 52 filas, únicamente hashes de código; estado, datos, registro y enlaces
+no cambian. snapshot-tests cambia conjuntamente fixture y script instalado y
+comprueba 12 condiciones. El primer ensayo creó una caché en el worktree; la
+limpieza fue rechazada con «blocked by policy». Se conserva ignorada por Git,
+se desactiva escritura de bytecode y se verifica que no vuelve a cambiar.
+
+qa ausente se comprueba antes de acceder a la propiedad bajo StrictMode: añade
+un rechazo por su causa correcta, sin crear instalación. Contexto del driver:
+24/24 PASS. Las suites que aún usan la identidad QA1492 y carpetas del perfil
+quedan fuera de 1b por decisión expresa, en el seguimiento #1848 (plataforma,
+Project Vantare); no se han ejecutado aquí ni se crea tarea Plane nueva.

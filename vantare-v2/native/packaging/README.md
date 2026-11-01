@@ -411,7 +411,18 @@ guardado en el manifiesto/estado, también al actualizar, importar o consultar S
 
 Las herramientas privadas `vantare-grabar-lmu-completo` y `vantare-verificar-lmu`
 se validan en el inventario de compilación, pero no se distribuyen en ningún
-canal; no amplían los diez EXE beta. Regresión: `build-inventory-tests.ps1`.
+canal; no amplían los diez EXE beta. Regresión mediante
+`matrix/run-historical-tests.ps1 -Root <QA nueva>`. Para un llamador que ya
+inyecta el entorno y crea la clave única de pruebas:
+
+```powershell
+& native/packaging/build-inventory-tests.ps1 -Root $qaRoot `
+  -RegistryRoot $qaRegistryRoot -ShellRoot $qaShellRoot
+```
+
+RegistryRoot tiene forma `HKEY_CURRENT_USER\Software\VantareInstallerMatrix\<uuid>`.
+TEMP/TMP/LOCALAPPDATA deben estar en QA antes de crear el proceso. Sin los tres
+parámetros de contexto falla sin escribir; el arnés anterior los gestiona todos.
 Para probar antes del commit, `-AllowDirty` registra `source_dirty=true`.
 El SHA de Git y los hashes de todos los archivos identifican lo construido;
 los binarios embeben `VANTARE_VERSION` y `VANTARE_BUILD_CHANNEL`, que el builder fija y restaura. Todos responden a `--version`.

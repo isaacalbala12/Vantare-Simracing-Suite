@@ -52,9 +52,10 @@ function Get-NativeShortcutFolder([string]$Name){
             Invoke-NativeProcess -Executable "$env:WINDIR/System32/WindowsPowerShell/v1.0/powershell.exe" -Arguments @('-NoProfile','-ExecutionPolicy','Bypass','-File',$driverPath,'-RequestFile',$file) -InputText "continue`n" -TimeoutMilliseconds 30000 -LogPath ($file+'.log')
         }finally{$env:TEMP=$savedTemp;$env:TMP=$savedTmp;$env:LOCALAPPDATA=$savedLocal;[Console]::InputEncoding=$savedEncoding}
     }
-    foreach($case in @('missing-field','public-identity','public-folder','relative-prefix','sibling-prefix','missing-root','real-root')){
+    foreach($case in @('missing-qa','missing-field','public-identity','public-folder','relative-prefix','sibling-prefix','missing-root','real-root')){
         $request=$template.Clone()
         $reason=switch($case){
+            'missing-qa'{$request.Remove('qa');'Flag QA inválido.'}
             'missing-field'{$request.Remove('qaIdentity');'Petición QA incompleta.'}
             'public-identity'{$request.qaIdentity='VantareNativeBeta';'Identidad QA inválida.'}
             'public-folder'{$request.qaShortcutFolder='Vantare';'Carpeta QA inválida.'}

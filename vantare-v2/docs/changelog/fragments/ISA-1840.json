@@ -11,7 +11,9 @@
     "Desinstalar conserva archivos ajenos en carpetas de programa y termina la retirada de estado y registro sin un falso aviso de aplicación abierta.",
     "Paso 1b: candidate.ps1 y beta.ps1 no eligen raíz por defecto; el modo biblioteca exige Library y Root, sin ejecutar operaciones al cargarse.",
     "La build TEST pasa identidad, carpetas y prefijo QA; producto público omite esos campos. Las operaciones del driver que escriben exigen raíz; Probe conserva el descubrimiento de la UI.",
-    "Por decisión del orquestador tras un incidente de perímetro descartado, inventario de build e histórico exigen raíz, registro y shell explícitos; CI ejecuta una copia QA con fronteras inyectadas."
+    "Por decisión del orquestador tras un incidente de perímetro descartado, inventario de build e histórico exigen raíz, registro y shell explícitos; CI ejecuta una copia QA con fronteras inyectadas.",
+    "Los capturadores activos cargan la biblioteca con raíz explícita; sus versiones anteriores quedan archivadas intactas. La matriz compara los bytes reales de candidate y beta instalados.",
+    "Una petición sin qa se rechaza con causa explícita antes de buscar instalación. Las suites QA1492 no remapeadas se siguen aparte en #1848."
   ],
   "testing": [
     "En QA aislada, pasar de una instalación de 109 archivos a una de 110, retirar un recurso en la siguiente, restaurar la anterior y desinstalar: todos los datos y las carpetas vacías de las tres generaciones se conservan.",

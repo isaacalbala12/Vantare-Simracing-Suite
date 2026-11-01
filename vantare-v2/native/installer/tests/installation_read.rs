@@ -215,8 +215,14 @@ fn profiles_preserve_unknown_fields_and_version_rules() {
     .expect("state write");
     assert!(Installation::read(&fixture.0, ReadProfile::Probe).is_ok());
     assert!(Installation::read(&fixture.0, ReadProfile::Hub).is_err());
-    state.as_object_mut().expect("state object").remove("future");
-    state.as_object_mut().expect("state object").remove("previous");
+    state
+        .as_object_mut()
+        .expect("state object")
+        .remove("future");
+    state
+        .as_object_mut()
+        .expect("state object")
+        .remove("previous");
     fs::write(fixture.0.join("state.json"), state.to_string()).expect("missing previous");
     assert!(Installation::read(&fixture.0, ReadProfile::Probe).is_err());
     assert!(Installation::read(&fixture.0, ReadProfile::Hub).is_ok());
@@ -270,9 +276,20 @@ fn retained_and_interrupted_uninstall_keep_their_existing_presentation() {
     // No manifest/hash/previous is required after a partial uninstall.
     let partial = include_bytes!("../fixtures/state-partial-uninstall.json");
     fs::write(fixture.0.join("state.json"), partial).expect("partial");
-    let partial_view = Installation::read(&fixture.0, ReadProfile::Uninstall).expect("partial state");
-    assert!(partial_view.state.expect("structural state").active.manifest_sha256.is_none());
-    assert_eq!(fs::read(fixture.0.join("state.json")).expect("unchanged partial state"), partial);
+    let partial_view =
+        Installation::read(&fixture.0, ReadProfile::Uninstall).expect("partial state");
+    assert!(
+        partial_view
+            .state
+            .expect("structural state")
+            .active
+            .manifest_sha256
+            .is_none()
+    );
+    assert_eq!(
+        fs::read(fixture.0.join("state.json")).expect("unchanged partial state"),
+        partial
+    );
     let info = vantare_installer::model::Info {
         root: fixture.0.clone(),
         version: "0.0.989".into(),
@@ -293,9 +310,21 @@ fn retained_and_interrupted_uninstall_keep_their_existing_presentation() {
     // A real binding remains unchanged even if manifest/bin have been removed.
     fs::write(fixture.0.join("state.json"), STATE_RC).expect("bound partial state");
     let original: serde_json::Value = serde_json::from_slice(STATE_RC).expect("original state");
-    let partial_view = Installation::read(&fixture.0, ReadProfile::Uninstall).expect("real binding");
-    assert_eq!(partial_view.state.expect("state").active.manifest_sha256.as_deref(), original["active"]["manifest_sha256"].as_str());
-    assert_eq!(fs::read(fixture.0.join("state.json")).expect("unchanged bound state"), STATE_RC);
+    let partial_view =
+        Installation::read(&fixture.0, ReadProfile::Uninstall).expect("real binding");
+    assert_eq!(
+        partial_view
+            .state
+            .expect("state")
+            .active
+            .manifest_sha256
+            .as_deref(),
+        original["active"]["manifest_sha256"].as_str()
+    );
+    assert_eq!(
+        fs::read(fixture.0.join("state.json")).expect("unchanged bound state"),
+        STATE_RC
+    );
 }
 
 #[test]

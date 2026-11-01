@@ -1,9 +1,9 @@
 # #1840 / VANTA-127 · paso 3, lectura Rust
 
-Estado: en curso, gates finales retomados tras recuperar espacio. Base
-`5cc23113afae7cfa44429f225f0aeb5f770c061c`, con pasos 0–1d. Paso 2 tiene
-[PR #1857](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1857)
-separado; su ADR no se presenta como integrado en esta base. Rama
+Estado: en curso, gates finales sobre nightly actualizado. Base inicial
+`5cc23113afae7cfa44429f225f0aeb5f770c061c`; rebase sin conflictos sobre
+`668d99c32`, que incluye el paso 2 integrado por el orquestador en
+[PR #1857](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1857). Rama
 `vantareapp/isa-1840-paso3-engine-lectura`; target exclusivo
 `D:/VantareServer/targets/isa-1840-p3`.
 
@@ -21,8 +21,8 @@ installer. No cambia paquetes, versiones, fuentes o checksums. El lector sin
 features no compila host, payload, scripts embebidos ni GPUI; transport/ui
 conservan Setup/Uninstall por defecto.
 
-Refactor en `6eaf6fcba`. Cambio de comportamiento autorizado separado en
-`c7791821f`: Ajustes Package proyecta versión/canal del manifiesto activo y
+Refactor en `e7deb1172`. Cambio de comportamiento autorizado separado en
+`c4b17382e`: Ajustes Package proyecta versión/canal del manifiesto activo y
 compara la oferta contra esa versión. Development/Invalid usan identidad del
 binario; Unread indica espera. El test lee un manifiesto de disco, comprueba
 caso normal y discrepancia, incluida una oferta que la identidad binaria
@@ -96,6 +96,8 @@ Downloads. La 975 usa el ZIP ya disponible en QA, con digest público fijado.
   Se repiten los gates tras conservar el SHA real/ausente de Uninstall parcial
   y el requisito previous del perfil Probe, con tests de lectura sin escritura.
 - `p3-guard-02`: PASS 7 rechazos y 5 checks de bytes sobre la copia actualizada.
+- Un intento de fmt omitió manifest-path y falló sin ejecutar rustfmt. Se
+  repitió con native/Cargo.toml explícito; no se oculta el intento.
 - Primer check se invocó sin el token cargo y falló antes del compilador.
   Repetición corregida con VANTARE_SCCACHE=0: check del lector PASS.
 - Clippy inicial señaló docs, extensión, tamaño de función y estilo del test/
@@ -112,7 +114,7 @@ sigue pendiente; un arnés no demuestra instalación interactiva de producto.
 Desde vantare-v2:
 
 ```powershell
-python native/scripts/installer-lines.py --base 5cc23113a --head <SHA-final>
+python native/scripts/installer-lines.py --base 668d99c32 --head <SHA-final>
 ```
 
 Sin head mide el árbol de trabajo. Perímetro fijo publicado en el script:
@@ -128,15 +130,15 @@ Medición de la fuente preparada, todavía con gates pendientes:
 
 | Categoría | Antes | Después | Diferencia |
 | --- | ---: | ---: | ---: |
-| Rust producción | 6258 | 6778 | +520 |
-| Rust tests/ejemplo | 469 | 966 | +497 |
-| Fixtures JSON | 0 | 5 | +5 |
+| Rust producción | 6258 | 6791 | +533 |
+| Rust tests/ejemplo | 469 | 1014 | +545 |
+| Fixtures JSON | 0 | 6 | +6 |
 | PowerShell producto | 2246 | 2252 | +6 |
 | PowerShell tests/tooling | 5787 | 5837 | +50 |
 | Rust build/tooling | 74 | 155 | +81 |
 | Python tooling | 0 | 95 | +95 |
-| CI | 469 | 470 | +1 |
-| Documentación | 8698 | 8951 | +253 |
+| CI | 469 | 471 | +2 |
+| Documentación | 8760 | 9024 | +264 |
 
 Este paso añade el lector Rust mientras conserva PS: no acredita reducción
 neta de producción. El ahorro global se medirá al retirar consumidores PS.

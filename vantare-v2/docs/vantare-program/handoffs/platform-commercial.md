@@ -378,14 +378,15 @@ conservan la evidencia de sus ramas; no describen el estado de integración actu
 [#1840](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1840),
 area:plataforma, Project Vantare. Plane En curso; estados/CI del orquestador.
 Sin merge/release del worker.
-### Paso 3 · motor de lectura Rust (en curso, 1-nov-2026)
+### Paso 3 · motor de lectura Rust (en curso, 2-nov-2026)
 
-- Base 5cc23113a; rama vantareapp/isa-1840-paso3-engine-lectura, worktree propio
+- Base inicial 5cc23113a, rebase limpio sobre nightly 668d99c32 con paso 2;
+  rama vantareapp/isa-1840-paso3-engine-lectura, worktree propio
   isa-1840-paso3; target D:/VantareServer/targets/isa-1840-p3.
-- Refactor 6eaf6fcba: Installation::read/Manifest/State y perfiles conservados;
+- Refactor e7deb1172: Installation::read/Manifest/State y perfiles conservados;
   Setup consume contexto sin state/manifiesto del driver y Hub comparte lector.
   Sin features del instalador, el lector no compila host/payload/GPUI.
-- Cambio de comportamiento autorizado y separado en c7791821f: Ajustes Package
+- Cambio de comportamiento autorizado y separado en c4b17382e: Ajustes Package
   muestra/compara versión y canal del manifiesto; identidad binaria solo en
   Development/Invalid. Pruebas de caso normal/discrepancia con manifiesto de disco.
 - sha2 adelantada y arista Hub→installer autorizadas. Lock: solo esas dos listas,

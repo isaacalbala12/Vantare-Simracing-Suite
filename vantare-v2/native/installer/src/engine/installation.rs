@@ -60,7 +60,10 @@ pub struct Generation {
 impl Generation {
     fn valid(&self) -> bool {
         hex(&self.generation, 32)
-            && self.manifest_sha256.as_deref().is_some_and(|hash| hex(hash, 64))
+            && self
+                .manifest_sha256
+                .as_deref()
+                .is_some_and(|hash| hex(hash, 64))
     }
 }
 

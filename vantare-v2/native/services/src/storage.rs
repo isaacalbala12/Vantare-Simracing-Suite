@@ -205,25 +205,6 @@ impl Store {
         }
     }
 
-    /// Recuperación de JSON inválido o excesivo; los errores de E/S se propagan.
-    pub fn load_for_restore<T: DeserializeOwned>(&self, name: &str) -> Result<Option<T>> {
-        let bytes = match self.load_bytes(name) {
-            Ok(bytes) => bytes,
-            Err(Error::TooLarge) => {
-                self.quarantine_dated(name, 0)?;
-                return Ok(None);
-            }
-            Err(Error::Corrupt) => return Err(Error::Storage),
-            Err(error) => return Err(error),
-        };
-        if let Ok(value) = serde_json::from_slice(&bytes) {
-            Ok(Some(value))
-        } else {
-            self.quarantine_dated(name, 0)?;
-            Ok(None)
-        }
-    }
-
     /// Preserve an incompatible cache beside the original with an injected date.
     /// The old bytes are never overwritten; failure to move blocks recovery.
     pub fn quarantine_dated(&self, name: &str, at_millis: u64) -> Result<()> {
@@ -368,7 +349,164 @@ mod tests {
     use super::*;
 
     #[test]
+    fn damaged_pilot_profile_never_starts_a_fresh_profile() {
+        let root =
+            std::env::temp_dir().join(format!("pilot-guard-{}", crate::random_id().expect("root")));
+        let store = Store::open(&root, "pilot-v1|local").expect("store");
+        let path = store.path("pilot-profile").expect("path");
+        fs::write(&path, b"damaged Pilot fixture").expect("damage");
+        drop(store);
+        for _ in 0..2 {
+            assert!(matches!(
+                crate::pilot::Local::open(&root, None, None),
+                Err(Error::Storage)
+            ));
+            assert_eq!(
+                fs::read(&path).expect("profile preserved"),
+                b"damaged Pilot fixture"
+            );
+        }
+        fs::remove_dir_all(root).expect("cleanup");
+    }
+
+    fn cache_present(store: &Store, name: &str, oauth: &crate::account::OAuth) -> Result<bool> {
+        match name {
+            "roadmap" => crate::roadmap::Roadmap::restore(store).map(|v| v.publication().is_some()),
+            "report-attempt" => {
+                crate::report::Reports::restore(store).map(|v| v.receipt().is_some())
+            }
+            "account-profile" => crate::account::Account::restore(oauth.clone(), store)
+                .map(|v| v.profile().is_some()),
+            _ => unreachable!("test cache"),
+        }
+    }
+
+    #[test]
+    fn damaged_dpapi_caches_recover_once_and_rebuild_without_changing_the_session() {
+        let (root, store) = crate::test_store("cache-rebuild");
+        let issuer = url::Url::parse("https://fixture.test/").expect("issuer");
+        drop(crate::account::fixture(&issuer, &store));
+        let oauth = serde_json::from_value(serde_json::json!({
+            "issuer":issuer, "client_id":"public-fixture", "redirect":"http://127.0.0.1:0/callback",
+            "authorization":"https://fixture.test/authorize", "token":"https://fixture.test/token", "userinfo":"https://fixture.test/userinfo"
+        })).expect("OAuth fixture");
+        let payload: serde_json::Value = serde_json::from_str(include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../../supabase/tests/fixtures/native-hub-report.json"
+        )))
+        .expect("shared payload");
+        let samples = [
+            (
+                "roadmap",
+                serde_json::json!({"version":1,"fetched_at":1,"publication":{"id":"550e8400-e29b-41d4-a716-446655440000","published_at":"2026-09-30T10:00:00Z","document":{"schemaVersion":1,"items":[]}}}),
+            ),
+            (
+                "account-profile",
+                serde_json::json!({"identity":{"issuer":"https://fixture.test/","subject":"user_fixture"},"profile":crate::protocol::AccountProfile {name:"cache fixture".into(),..Default::default()}}),
+            ),
+            (
+                "report-attempt",
+                serde_json::json!({"version":1,"identity":{"issuer":"https://fixture.test/","subject":"user_fixture"},"account_id":"550e8400-e29b-41d4-a716-446655440000","payload":payload,"images":[],"installation":null,"phase":{"state":"Confirmed","receipt":{"report_id":format!("report_{}","a".repeat(64)),"report_state":"submitted","idempotent":false,"created_at":"2026-10-13T00:00:00Z"}}}),
+            ),
+        ];
+        let session = fs::read(store.path("account").expect("session")).expect("session bytes");
+        for (name, valid) in samples {
+            store.save(name, &valid).expect("valid fixture");
+            assert!(
+                cache_present(&store, name, &oauth).expect("valid cache"),
+                "{name}"
+            );
+            let path = store.path(name).expect("path");
+            let damaged = b"damaged DPAPI cache fixture";
+            fs::write(&path, damaged).expect("damage");
+            for _ in 0..2 {
+                assert!(
+                    !cache_present(&store, name, &oauth).expect("recover cache"),
+                    "{name}"
+                );
+            }
+            let archives: Vec<_> = fs::read_dir(&store.root)
+                .expect("archives")
+                .flatten()
+                .filter(|v| {
+                    v.file_name()
+                        .to_string_lossy()
+                        .starts_with(&format!("{name}-"))
+                })
+                .collect();
+            assert_eq!(archives.len(), 1, "{name}: no repeated quarantine");
+            assert_eq!(
+                fs::read(archives[0].path()).expect("preserved bytes"),
+                damaged
+            );
+            store.save(name, &valid).expect("reconstruct cache");
+            assert!(
+                cache_present(&store, name, &oauth).expect("rebuilt cache"),
+                "{name}"
+            );
+            assert_eq!(
+                fs::read(store.path("account").expect("session")).expect("session bytes"),
+                session
+            );
+        }
+        drop(store);
+        crate::cleanup_store(&root, "cache-rebuild", &[]);
+    }
+
+    #[test]
+    fn damaged_draft_and_images_stay_together_for_assisted_recovery() {
+        for damaged_name in ["report-draft", "report-images"] {
+            let (root, store) = crate::test_store("durable-report");
+            let mut draft = crate::report::save_draft(
+                &store,
+                crate::report::Fields {
+                    module: "hub".into(),
+                    ..Default::default()
+                },
+            )
+            .expect("draft");
+            let image = crate::report::screenshots::Screenshot::encode(
+                &image::DynamicImage::new_rgb8(4, 4),
+            )
+            .expect("image");
+            draft.screenshots.push(image.preview.clone());
+            store
+                .save("report-draft", &draft)
+                .expect("draft with reference");
+            store.save("report-images", &vec![image]).expect("images");
+            fs::write(
+                store.path(damaged_name).expect("path"),
+                b"damaged guard fixture",
+            )
+            .expect("damage");
+            let draft_bytes = fs::read(store.path("report-draft").expect("draft")).expect("bytes");
+            let image_bytes =
+                fs::read(store.path("report-images").expect("images")).expect("bytes");
+            for _ in 0..2 {
+                let result = crate::report::load_draft(&store).and_then(|draft| {
+                    crate::report::screenshots::load(&store, &draft.ok_or(Error::Storage)?)
+                });
+                assert!(
+                    matches!(result, Err(Error::Storage)),
+                    "never recover as an empty report"
+                );
+                assert_eq!(
+                    fs::read(store.path("report-draft").expect("draft")).expect("bytes"),
+                    draft_bytes
+                );
+                assert_eq!(
+                    fs::read(store.path("report-images").expect("images")).expect("bytes"),
+                    image_bytes
+                );
+            }
+            drop(store);
+            crate::cleanup_store(&root, "durable-report", &[]);
+        }
+    }
+
+    #[test]
     fn typed_read_preserves_damage_and_class_drives_only_recovery() {
+        use std::os::windows::fs::OpenOptionsExt;
         let (root, store) = crate::test_store("read-classes");
         for (name, class) in [
             ("account", Class::SessionSecret),
@@ -382,6 +520,7 @@ mod tests {
             ("authority", Class::Durable),
             ("authority-recovery", Class::Durable),
             ("binding", Class::Durable),
+            ("buy-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", Class::Durable),
         ] {
             assert_eq!(document_class(name), Ok(class));
             assert_eq!(store.read::<bool>(name), Ok(Read::Missing));
@@ -389,6 +528,17 @@ mod tests {
             assert_eq!(store.read::<bool>(name), Ok(Read::Value(true)));
             let path = store.path(name).expect("path");
             fs::write(&path, b"damaged DPAPI fixture").expect("damage");
+            let locked = OpenOptions::new()
+                .read(true)
+                .share_mode(0)
+                .open(&path)
+                .expect("I/O failure");
+            assert_eq!(
+                store.read::<bool>(name),
+                Err(Error::Storage),
+                "I/O is never corruption"
+            );
+            drop(locked);
             assert_eq!(store.read::<bool>(name), Ok(Read::Damaged));
             assert_eq!(
                 fs::read(&path).expect("read has no repair effects"),

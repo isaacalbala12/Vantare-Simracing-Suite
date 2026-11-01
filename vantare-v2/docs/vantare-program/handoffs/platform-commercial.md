@@ -15,10 +15,11 @@ integrado por el orquestador, que confirmó CI 6/6. Rama
   autoridad sana ni repite su diagnóstico. Prueba byte a byte en dos reinicios.
 - Primer hito: Clippy cuatro crates all-targets -D warnings PASS y 18/18
   focales de Store/F4/caracterización PASS. Los gates completos y mutaciones
-  se ejecutarán al terminar el corte. Borrados los lectores duplicados salvo
-  el puente temporal de tres cachés que se elimina en el segundo commit.
-- Segundo commit autorizado: DPAPI dañado de roadmap/perfil/report-attempt
-  pasa de bloqueo a cuarentena + reconstrucción, con pruebas explícitas.
+  se ejecutarán al terminar el corte. Retirados los cuatro lectores antiguos;
+  el puente temporal se elimina en el segundo commit.
+- Segundo commit: DPAPI dañado de roadmap/perfil/report-attempt pasa de
+  bloqueo a cuarentena + reconstrucción. Focales 22/22 PASS; sesión idéntica,
+  cuarentena una vez, reconstrucción válida y durables conservados.
 - Medición base repetible: isa-1827-s-base-c.json; 109.321 líneas de producción
   y 14.858 del recorrido/Store. Medición final pendiente; no se presenta el
   traslado de helpers exclusivos de fixture como simplificación productiva.

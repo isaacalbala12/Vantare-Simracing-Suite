@@ -19,9 +19,12 @@ pub(super) fn restore(
     identity: Option<&super::Identity>,
 ) -> Option<AccountProfile> {
     let identity = identity?;
-    match store.load_for_restore::<Cached>("account-profile") {
+    match store
+        .read::<Cached>("account-profile")
+        .and_then(|read| read.recover(store, "account-profile", 0, |_| true))
+    {
         Ok(Some(saved)) if &saved.identity == identity => Some(saved.profile),
-        Ok(_) | Err(Error::NotFound) => None,
+        Ok(_) => None,
         Err(error) => {
             // Solo presentación: un fallo de caché no impide restaurar OAuth.
             eprintln!("No se pudo leer la caché de perfil: {error}");

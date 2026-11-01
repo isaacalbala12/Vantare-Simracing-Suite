@@ -1,5 +1,15 @@
 # Beta nativa — instalador y actualizaciones (#1454)
 
+Paso 1d de #1840: SetStartup On/Off usa el mismo acceso Startup del instalador
+y actualiza autostart en installer-ui.json cuando existe. Valida estado, hashes,
+identidad y ubicación registrada; la CLI exige el script de la generación activa.
+Rechaza accesos ajenos y restaura sus bytes/opciones si falla la escritura.
+Activarlo retira el valor Run antiguo de esa identidad. Desinstalar también lo
+retira; una recuperación sin registro exige el marker de limpieza ligado por hash
+y la identidad/carpeta explícitas del instalador. Otros valores Run se conservan.
+La matriz demuestra instalar, activar desde el comando del Hub y desinstalar sin
+Run ni Startup, incluyendo recuperación parcial y datos/carpetas vacías intactos.
+
 Paso 1c de #1840: el Hub escribe hub-ready antes de Register. Un fallo o lentitud
 se guarda en registration-status.json, propiedad del Hub; Ajustes muestra el aviso
 aparte. update-status.json pertenece solo al actualizador: Stage puede escribir

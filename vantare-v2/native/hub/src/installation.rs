@@ -7,7 +7,10 @@ pub(crate) fn initial_window(minimized: bool, interactive: bool, background: boo
 }
 
 #[cfg(windows)]
-fn installed_script(executable: &Path, root: &Path) -> Result<std::path::PathBuf, String> {
+pub(crate) fn installed_script(
+    executable: &Path,
+    root: &Path,
+) -> Result<std::path::PathBuf, String> {
     let bin = executable.parent().ok_or("falta la carpeta bin")?;
     let generation = bin.parent().ok_or("falta la generación")?;
     let generations = generation.parent().ok_or("faltan las generaciones")?;
@@ -436,7 +439,7 @@ mod tests {
     }
 }
 
-/// Run y toasts usan la identidad del instalador, también en QA aislada.
+/// Toasts y el valor Run legado usan la identidad del instalador, también en QA.
 pub(crate) fn hub_identity() -> Result<String, String> {
     hub_identity_at(
         std::env::var_os("VANTARE_BETA_ROOT")

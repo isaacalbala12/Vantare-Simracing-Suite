@@ -581,6 +581,7 @@ function Uninstall-Beta([string]$Directory, [scriptblock]$Finalize=$null) {
         $handles = Open-NativeBinaryGuard $directory
         foreach ($handle in $handles.Values) { $handle.Dispose() }
         $knownMembers=@(Get-NativeKnownMembers $state.channel)
+        Remove-NativeLegacyRun $directory
         $retained = Join-Path $directory 'retained-data.json'
         if (-not (Test-Path -LiteralPath $retained)) {
             $manifest = [IO.File]::ReadAllText((Join-Path $directory "generations/$($state.active.generation)/manifest.json")) | ConvertFrom-Json

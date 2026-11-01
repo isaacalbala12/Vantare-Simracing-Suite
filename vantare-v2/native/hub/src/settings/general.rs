@@ -59,6 +59,7 @@ impl Default for Preferences {
 }
 pub(in crate::shell) struct Store {
     pub value: Preferences,
+    startup_task: Option<gpui::Task<()>>,
     path: PathBuf,
     observed: Option<Vec<u8>>,
 }
@@ -79,8 +80,12 @@ impl Store {
         if observed.is_none() {
             value.onboarding_completed = false;
         }
+        if let Some(enabled) = super::windows::installed_startup() {
+            value.startup = enabled;
+        }
         Ok(Self {
             value,
+            startup_task: None,
             path,
             observed,
         })
@@ -125,7 +130,13 @@ impl super::Hub {
         cx.notify();
     }
     pub(super) fn general_toggle(&mut self, toggle: Toggle, cx: &mut gpui::Context<Self>) {
-        if self.settings.general.is_err() {
+        if self.settings.general.is_err()
+            || self
+                .settings
+                .general
+                .as_ref()
+                .is_ok_and(|store| store.startup_task.is_some())
+        {
             return;
         }
         let old = self.general_preferences();
@@ -144,21 +155,57 @@ impl super::Hub {
                 cx.notify();
                 return;
             }
-            if let Err(error) = super::windows::startup(next.startup) {
-                self.settings.status = Some(error);
-                cx.notify();
-                return;
+            let change = match super::windows::StartupChange::start(next.startup) {
+                Ok(change) => change,
+                Err(error) => {
+                    self.settings.status = Some(error);
+                    cx.notify();
+                    return;
+                }
+            };
+            let executor = cx.background_executor().clone();
+            let task = cx.spawn(async move |this, cx| {
+                let result = change.complete(executor.clone()).await;
+                let restore = this.update(cx, |this, cx| {
+                    if let Err(error) = result {
+                        this.settings.status = Some(error);
+                        return false;
+                    }
+                    let mut saved = this.general_preferences();
+                    saved.startup = next.startup;
+                    // GPUI installs persist this in installer-ui.json, already
+                    // committed by the installer command. Do not rewrite data/.
+                    if super::windows::installed_startup().is_some() {
+                        if let Ok(store) = &mut this.settings.general {store.value.startup=saved.startup;}
+                        this.settings.status = None;
+                        return false;
+                    }
+                    this.save_general(saved, cx);
+                    this.settings.status.is_some()
+                }).unwrap_or(false);
+                if restore {
+                    let result = match super::windows::StartupChange::start(old.startup) {
+                        Ok(change) => change.complete(executor).await,
+                        Err(error) => Err(error),
+                    };
+                    let _ = this.update(cx, |this, _| {
+                        if let Err(error) = result {
+                            this.settings.status = Some(format!("No se guardaron los ajustes ni se pudo restaurar el inicio: {error}"));
+                        }
+                    });
+                }
+                let _ = this.update(cx, |this, cx| {
+                    if let Ok(store) = &mut this.settings.general {store.startup_task.take();}
+                    cx.notify();
+                });
+            });
+            if let Ok(store) = &mut self.settings.general {
+                store.startup_task = Some(task);
             }
+            cx.notify();
+            return;
         }
         self.save_general(next, cx);
-        if self.settings.status.is_some()
-            && matches!(toggle, Toggle::Startup)
-            && let Err(error) = super::windows::startup(old.startup)
-        {
-            self.settings.status = Some(format!(
-                "No se guardaron los ajustes ni se pudo restaurar el inicio: {error}"
-            ));
-        }
     }
     pub(in crate::shell) fn notify_system(
         &self,

@@ -1,5 +1,13 @@
 # Caracterización del motor de instalación · VANTA-127 / #1840
 
+Paso 1d añade startup-tests: Setup del driver con autostart desactivado, comando
+SetStartup usado por el Hub, apagado/encendido y desinstalación del driver. Exige
+no dejar valor Run ni enlace Startup y conservar otros valores y todos los datos,
+incluidas carpetas vacías. También prueba acceso ajeno, rollback de bytes al fallar
+guardar opciones y recuperación con registro ya retirado/marker ligado por hash.
+Registro y carpetas están inyectados en padre, driver y CLI de la generación.
+No se ejecutan Setup/Uninstall EXE ni se abre una ventana del Hub.
+
 Paso 1c añade registration-boot-tests: Register falla, Register bloqueado hasta
 el plazo real de 30 segundos, fallo del registro durante Confirm y entorno
 WINDIR ausente. En los cuatro

@@ -1,4 +1,4 @@
-#requires -Version 5.1
+﻿#requires -Version 5.1
 [CmdletBinding()]
 param([string]$Root,[string]$LegacyPackage,[string]$TestVerifier,[string]$BootProbe,[switch]$Record,
       [ValidateSet('clean','nsis975','nsis975-incomplete974','rc-options','pending','boot','retained','retained-no-marker')]
@@ -159,6 +159,16 @@ try {
         if($boot.ExitCode -ne 0){throw ('MATRIX_REGISTRATION_BOOT_FAILED: '+$boot.Stderr)}
         $boot.Stdout
     } finally { $env:TEMP=$savedBootTemp;$env:TMP=$savedBootTmp;$env:LOCALAPPDATA=$savedBootLocal }
+    $savedStartupTemp=$env:TEMP;$savedStartupTmp=$env:TMP;$savedStartupLocal=$env:LOCALAPPDATA
+    try{
+        $env:TEMP=$qaMatrixRoot;$env:TMP=$qaMatrixRoot;$env:LOCALAPPDATA=Join-Path $qaMatrixRoot 'LocalAppData'
+        $startup=Invoke-NativeProcess -Executable "$env:WINDIR/System32/WindowsPowerShell/v1.0/powershell.exe" -Arguments @(
+            '-NoProfile','-ExecutionPolicy','Bypass','-File',(Join-Path $PSScriptRoot 'matrix/startup-tests.ps1'),
+            '-Root',(Join-Path $qaMatrixRoot 'startup'),'-TestVerifier',$TestVerifier
+        ) -TimeoutMilliseconds 120000 -LogPath (Join-Path $qaMatrixRoot 'startup.log')
+        if($startup.ExitCode -ne 0){throw ('MATRIX_STARTUP_FAILED: '+$startup.Stderr)}
+        $startup.Stdout
+    }finally{$env:TEMP=$savedStartupTemp;$env:TMP=$savedStartupTmp;$env:LOCALAPPDATA=$savedStartupLocal}
     Write-NativeJson (Join-Path $qaMatrixRoot 'results.json') $rows
     if ($Record) { Write-NativeJson (Join-Path $qaMatrixRoot 'candidate-baseline.json') $rows }
 } finally {

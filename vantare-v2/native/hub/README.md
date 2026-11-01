@@ -20,6 +20,9 @@ solo permite regresar con Session conocida y política fresca del núcleo que
 conserve acceso; no confirma un cierre fallido. Choose admite Escape y Volver
 sin iniciar un intento. AccountCancel en vuelo bloquea proveedores y nuevos
 Cancel hasta su respuesta, sin sustituirlo por Logout.
+La mezcla v15/v16 puede mostrar el aviso genérico de servicios desconectados
+si el peer cierra el pipe sin respuesta; limitación de diagnóstico aceptada,
+sin revocación ni fallback de Cancel a Logout.
 
 ## ISA-1793 — Acceso sin comprobación manual
 

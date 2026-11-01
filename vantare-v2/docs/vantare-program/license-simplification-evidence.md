@@ -215,3 +215,6 @@ siguiente, el lifetime static de un helper de test. Corregidos, sin relajar lint
 El caso de fixture sin uso se sustituye por rechazo con bytes exactos.
 Commercial PostgreSQL (test 14) es un fallo ajeno, confirmado por el orquestador;
 lo investiga otro worker. No se modifica ni investiga ese harness aquí.
+
+Código de los cuatro P3 validado: `17bef84a6b6480e68115066ae65ed03935e44673`.
+Los commits posteriores solo actualizan documentación.

@@ -38,7 +38,7 @@ Rama `vantareapp/isa-1827-simplificar-owner`, mismo worktree aislado
   release. C/D/E conservan las decisiones autorizadas y siguen pendientes.
 
 [PR draft #1843](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1843) a nightly, enlazado en T3, sin integrar.
-Código validado `910edc04311b845ee21b0408a307e412a10ffafd`; HEAD documental vigente en el PR.
+Código revisado y validado `17bef84a6b6480e68115066ae65ed03935e44673`; HEAD documental vigente en el PR.
 CI/revisión a cargo del orquestador; el worker no vigila CI.
 Siguiente corte C desde nightly después de la integración de B.
 

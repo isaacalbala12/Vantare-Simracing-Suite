@@ -2,7 +2,9 @@
 ## VANTA-126 / #1827 — corte B listo para revisión (1-nov-2026)
 
 A (#1841) integrado por el orquestador en `nightly@6fbbfaa6ad96d187877043786fc999a369d268b3`;
-la sección A inferior conserva la entrega de su rama. Base B verificada en ese SHA.
+la sección A inferior conserva la entrega de su rama. Base original B en ese SHA.
+Rebasado sobre `origin/nightly@0a241fc2e927cf925166c86c072b1d43d30044d4`
+tras #1842 y #1845, conservando íntegros sus ficheros y todas las entradas del handoff.
 Rama `vantareapp/isa-1827-simplificar-owner`, mismo worktree aislado
 `C:/VantareServer/wt/isa-1827-simplificar` y target privado `D:/VantareServer/targets/isa-1827-s`.
 
@@ -51,9 +53,15 @@ comprueba por SHA-256. El contador falla con ruta explícita si falta un fuente
 rastreado: registrar borrado o restaurarlo; prueba Python PASS.
 IPC añade sha2 solo en dev-dependencies; mismos paquetes/versiones. El ADR
 explicita actualización conjunta y mezcla nuevo-services/viejo-núcleo no soportada.
-Commercial PostgreSQL test 14 lo lleva otro worker por decisión del orquestador;
-sin investigar ni modificar ese harness. Integración a cargo del orquestador
-cuando quede arreglado en nightly; C/D/E siguen pendientes.
+Commercial PostgreSQL test 14 quedó corregido en nightly por #1845; este worker
+no modifica ese harness. El rebase solo resolvió este handoff; el código de B
+es idéntico al HEAD revisado 4483a78ed. Después se actualizan exclusivamente
+las notas propias del handoff y la evidencia.
+Prueba de integridad: isa-1827-s-rebase-integrity.json; conteos repetidos sobre
+la nueva base, sin cambios. Fmt y Clippy all-targets -D warnings posteriores al rebase PASS.
+Nextest 1138/1138 con telemetría, lifecycle y mutaciones anteriores corresponden
+al mismo código de licencias; no se repiten tras una resolución solo documental.
+Integración y CI a cargo del orquestador; C/D/E siguen pendientes.
 <!-- /isa1827-simplificar-b -->
 
 ## VANTA-126 / #1844 — reloj del test comercial 14 (2026-11-01)

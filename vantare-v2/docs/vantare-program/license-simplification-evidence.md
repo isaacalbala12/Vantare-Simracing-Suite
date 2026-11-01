@@ -218,3 +218,25 @@ lo investiga otro worker. No se modifica ni investiga ese harness aquí.
 
 Código de los cuatro P3 validado: `17bef84a6b6480e68115066ae65ed03935e44673`.
 Los commits posteriores solo actualizan documentación.
+
+
+## Rebase de B tras #1842 y #1845
+
+Base actual `0a241fc2e927cf925166c86c072b1d43d30044d4`. El único conflicto
+estaba en el handoff: se conservan completas sus entradas de nightly y el bloque
+B previo. Al terminar el rebase, los demás ficheros de B tienen los mismos blobs que
+`4483a78ed2b9a28a42db6c35964db3cf37c154b1`. Después solo se añaden notas
+a este documento y al handoff. Todos los ficheros añadidos o
+modificados por #1842/#1845 permanecen idénticos a nightly. El ejemplo nuevo
+matrix-verifier es de firma de fixtures del instalador, independiente del
+verificador de licencias trasladado. El test comercial 14 ya está corregido
+por #1845; no se modifica desde este PR.
+
+Integridad y range-diff revisados; certificado externo
+isa-1827-s-rebase-integrity.json. Medición repetida con --ref 0a241fc2e y árbol
+actual: 109.329 → 109.321 (−8), recorrido/Store 14.867 → 14.858 (−9).
+JSON por fichero: isa-1827-s-base-b-rebased.json y -after-b-rebased.json.
+Fmt y Clippy all-targets -D warnings posteriores al rebase PASS
+(logs isa-1827-s-rebase-fmt.log y -clippy.log); Nextest 1138/1138 con telemetría,
+lifecycle 13/13 + 5/5 y siete mutaciones conservan validez sobre el mismo código
+de licencias (src/tests idénticos). No se repiten por una resolución documental. CI a cargo del orquestador.

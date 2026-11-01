@@ -81,7 +81,7 @@ y sus errores. El poll adopta la preferencia creada por Register tras Store::loa
 Tests Hub prueban carga GPUI sin crear/reescribir general.json, adopción legacy,
 prioridad de installer-ui y habilitación independiente de otros controles.
 
-Gates finales en curso: matrix-1d-review-03 y rust-1d-review-01. El baseline se
+Los pases intermedios se sustituyen por el cierre registrado al final. El baseline se
 calculó a partir de las 88 capturas previas: solo candidate/beta en240 copias y
 26 nuevos .operation.lock vacíos, en52 filas. Se conserva formato y se verifica
 contra ejecución sin Record; no se cambia normalización ni invariantes.
@@ -112,3 +112,50 @@ exterior después de retirar programa: conserva Run/datos y el driver reanuda y
 termina. startup-1d-review-05:35/35 PASS con ese recorrido, bootstrap congelado,
 ambas carreras y borrado Run denegado. matrix-1d-review-02 precede a ese ajuste y
 no acredita código final. Se completa review-03 con los hashes finales LF.
+
+
+### Cierre de la revisión
+
+Nightly avanzó con #1854 durante los gates: rebase adicional sobre eb9aa1d45,
+conservando su README y todas las entradas ajenas del handoff. Producto PowerShell
+idéntico a la copia de matrix-1d-review-05; blobs Git y working tree son LF.
+Hub repetido sobre eb9aa1d45:602/602 PASS (4 lentos,4 omisiones previas),219,233s.
+Histórico final history-1d-review-03:14+156 PASS con los scripts definitivos.
+Guard final:7 rechazos/raíces y5 checks LF PASS; calidad/retirada468 PASS.
+
+matrix-1d-review-04 pasó las88 capturas y54 inventario, pero falló después en el
+hook de arranque: Get-Content encontró update-status.json aún abierto por Stage.
+No es un pase completo. El lector del test reintenta solo IOException dentro del
+plazo previo de40s; JSON inválido y las aserciones finales siguen fallando.
+El hook corregido se repite aparte en boot-1d-final-sharing-fix. No cambia producto,
+normalización ni baseline; el pase completo final es matrix-1d-review-05.
+También se comprueba que el aviso por Run denegada vaya a stderr y stdout siga
+siendo JSON válido, y que On/Off acepten las mismas mayúsculas que ValidateSet.
+
+
+matrix-1d-review-05 terminó con exit0:88/88,22 biblioteca,24 contexto,14 seguridad
+histórica,18 snapshots crudos,54 inventario,42 arranque y37 Startup PASS.
+El hook de arranque corregido pasó aparte42/42 en boot-1d-final-sharing-fix;
+solo ese lector del test difiere de la copia del recorrido completo.
+review-1d-final-proof.json comprueba20 scripts iguales a sus copias QA (ese hook
+contra su copia final),88 resultados iguales a baseline y las88 capturas anteriores:
+solo240 hashes y26 locks vacíos; todo lo demás idéntico. Handoff ajeno intacto.
+La primera ejecución del verificador auxiliar encontró un objeto JSON donde se
+esperaba un hash de texto; se limitó la sustitución a valores string y pasó.
+No afecta al arnés ni al baseline.
+
+SHA-256 de blobs LF, idénticos al working tree y a los ejecutados:
+- candidate.ps1:57febc043f80846944064ce1ba32c16a81f0c416d725d89cedd80ad08a02113a
+- beta.ps1:539b1c145a1f70e092f95fd4360fd8b638161eea605c6c187eb642c762b93f61
+- installer-driver.ps1:01fcc752f4f03d27bbb339c62305f2e473e4d2d89db473743b0f1fc7a3786d8d
+
+
+Cierre definitivo sobre eb9aa1d45 (código/test77fe445cc): todos los gates PASS.
+Hub all-targets602/602,4 lentos/4 omisiones previas,219,233s. Clippy all-targets
+-D warnings y fmt PASS. Contratos instalador público8/8 y TEST8/8 (run IDs
+f6497415-66b8-456e-84e3-0c38b6fe4187 y29e81c51-0904-4186-ae0b-fdf9fda71b7e),
+solo parsing/protocolo; no ejecutan Setup. Logs rust-1d-final-base-{nextest,clippy,fmt}.log
+y rust-1d-final-contracts.log. Target propio/cola/jobs2, sin saltarse la espera.
+Parseo de6 scripts, fragmento JSON, calidad/retirada468 y diff PASS.
+PR draft1851/issue1840/handoff actualizados; HEAD publicado en issue/PR.
+CI/revisión/integración del orquestador. QA física pendiente; Plane intacto.

@@ -295,9 +295,9 @@ Sin merge/release del worker.
   tocar el estado/mensaje del actualizador. Riesgo de readiness temprano y límite
   del bootstrap 975 documentados. El fallo CI por beta CRLF local frente a blob LF
   se corrigió con guardas y baseline de bytes versionados; CI confirmó el pase.
-- 1d en revisión aplicada sobre843913d24, rama vantareapp/isa-1840-1d-run, worktree
+- 1d listo para revisión sobre eb9aa1d45 (incluye 1c/843913d24 y #1854), rama vantareapp/isa-1840-1d-run, worktree
   D:/VantareServer/worktrees/isa-1840-1d; [PR draft #1851](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1851).
-  Root/Library de 1b y estado de registro separado de 1c conservados. HEAD final en
+  Código/test final77fe445cc; Root/Library de 1b y estado separado de 1c conservados. HEAD publicado en
   #1840/PR. SetStartup usa acceso del instalador, hijo poseído/plazo de 30 s y progreso;
   solo bloquea su interruptor, no descarta cambios de otros controles.
 - Run migra solo si apunta al beta.ps1/Hub de esta raíz: adopta ON si falta opción
@@ -313,12 +313,18 @@ Sin merge/release del worker.
   no se pasa a bootstraps congelados sin capacidad. Fallo anterior o del finalizador
   conserva Run para reintento. Borrado Run denegado avisa y termina sin falso cierre.
   Recuperación sin registro conserva validación marker/hash/identidad/carpeta.
-- Gates finales en curso: matrix-1d-review-03 e histórico history-1d-review-01.
-  Focal startup-1d-review-05:35/35 PASS; Hub completo 602/602, cuatro lentos/cuatro omisiones,
-  238,445 s PASS. Clippy/fmt PASS. Baseline previsto: 52 filas por 240 hashes de
-  scripts y 26 .operation.lock vacíos; invariantes y normalización intactos.
-  [Evidencia1d](../../../native/packaging/matrix/evidence-1840-1d.md) conserva ensayos
-  previos y correcciones de fixture, sin contarlos como gates finales.
+- Gates finales PASS: matrix-1d-review-05:88/88 +22 biblioteca +24 contexto
+  +14 seguridad histórica +18 snapshots +54 inventario +42 arranque +37 Startup.
+  Hook arranque corregido42/42 aparte; histórico final history-1d-review-03:14+156.
+  Hub completo602/602 sobre eb9aa1d45,4 lentos/4 omisiones previas,219,233s;
+  Clippy all-targets -D warnings y fmt PASS; contratos público/TEST8+8 PASS.
+  Guard7+5, sintaxis PS, fragmento JSON, calidad/retirada468 y diff PASS.
+  Baseline comprobado contra88 capturas anteriores: solo240 hashes de scripts
+  y26 locks vacíos en52 filas. Veinte scripts iguales a sus copias QA; blobs LF
+  idénticos a bytes ejecutados. Handoff ajeno intacto. Un sharing violation del
+  lector del test se corrige reintentando solo IOException dentro del plazo previo.
+  [Evidencia1d](../../../native/packaging/matrix/evidence-1840-1d.md) conserva
+  ensayos previos y sus correcciones, sin contarlos como gates finales.
 - Incidente 1b descartado y comprobaciones del orquestador sin daño observable en
   su evidencia. Fixture C:/tmp y caché Python ignorada siguen conservadas por
   rechazo automático «blocked by policy» al borrar; no se intentó otra vía.
@@ -326,8 +332,8 @@ Sin merge/release del worker.
 Toda QA nueva bajo D:/VantareServer/qa, guardada y con HKCU/folders/entornos
 inyectados, sin instalación real ni Setup/Uninstall EXE. QA física en cuenta/VM
 aparte pendiente. Sin cambios propios runtime/domain/ipc/testdata; telemetría y
-lifecycle runtime omitidos por ámbito. Siguiente: terminar gates/push de 1d,
-revisión/CI e integración a cargo del orquestador; después continúa el plan #1840.
+lifecycle runtime omitidos por ámbito. Siguiente: revisión/CI e integración de1d a cargo del orquestador;
+después continúa el plan #1840.
 Actualizado el 1-nov-2026, ejecutor.
 <!-- isa1827-p10-worker -->
 ## VANTA-126 / #1827 — Paso 10 listo para revisión (2026-11-01)

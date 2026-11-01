@@ -372,7 +372,11 @@ impl Account {
             }
         };
         let needs_sign_in = needs_sign_in && session.is_some();
-        let profile = profile::restore(store, session.as_ref().map(|session| &session.identity));
+        let profile = profile::restore(
+            store,
+            at_millis,
+            session.as_ref().map(|session| &session.identity),
+        );
         Ok(Self {
             oauth,
             session,

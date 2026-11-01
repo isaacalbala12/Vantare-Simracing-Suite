@@ -368,11 +368,11 @@ pub struct Reports {
 }
 
 impl Reports {
-    pub fn restore(store: &Store) -> Result<Self> {
+    pub fn restore(store: &Store, at_millis: u64) -> Result<Self> {
         let attempt = store.read::<Attempt>("report-attempt")?.recover(
             store,
             "report-attempt",
-            0,
+            at_millis,
             |attempt| {
                 attempt.version == 1
                     && crate::license::uuid(&attempt.account_id)

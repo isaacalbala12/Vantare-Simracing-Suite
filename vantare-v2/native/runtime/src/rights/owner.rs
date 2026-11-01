@@ -110,7 +110,7 @@ impl Owner {
         now: DateTime<Utc>,
     ) -> Result<Self> {
         let store = Store::open(root, "core-rights-v1")?;
-        let authority = Authority::restore(&store)?;
+        let authority = Authority::restore(&store, now.timestamp_millis())?;
         let trust_roots = keys.map(Verifier::public_keys).transpose()?;
         let state = authority.recovery_state(now).unwrap_or_default();
         let mut owner = Self {

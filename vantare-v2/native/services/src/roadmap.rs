@@ -99,12 +99,13 @@ pub struct Roadmap {
     cached: Option<Cached>,
 }
 impl Roadmap {
-    pub fn restore(store: &Store) -> Result<Self> {
-        let cached = store
-            .read::<Cached>("roadmap")?
-            .recover(store, "roadmap", 0, |cache| {
-                cache.version == 1 && validate(&cache.publication).is_ok()
-            })?;
+    pub fn restore(store: &Store, at_millis: u64) -> Result<Self> {
+        let cached =
+            store
+                .read::<Cached>("roadmap")?
+                .recover(store, "roadmap", at_millis, |cache| {
+                    cache.version == 1 && validate(&cache.publication).is_ok()
+                })?;
         Ok(Self { cached })
     }
     pub fn publication(&self) -> Option<&Publication> {
@@ -194,7 +195,7 @@ mod tests {
             .expect("guardar cache invalida");
 
         // Antes: Err en cada arranque. Ahora: arranca sin cache...
-        let roadmap = Roadmap::restore(&store).expect("debe arrancar");
+        let roadmap = Roadmap::restore(&store, 1_700_000_000_123).expect("debe arrancar");
         assert!(roadmap.publication().is_none());
 
         // ...y el documento se ha APARTADO, no ignorado: por eso el siguiente
@@ -204,7 +205,7 @@ mod tests {
             "el documento invalido debe quedar apartado"
         );
         assert!(
-            Roadmap::restore(&store)
+            Roadmap::restore(&store, 1_700_000_000_123)
                 .expect("segundo arranque")
                 .publication()
                 .is_none()
@@ -225,7 +226,7 @@ mod tests {
             (200, "[]".into()),
         ]);
         let (root, store) = crate::test_store("roadmap-test");
-        let mut roadmap = Roadmap::restore(&store).expect("cache");
+        let mut roadmap = Roadmap::restore(&store, 1_700_000_000_123).expect("cache");
         assert!(roadmap.publication().is_none());
         roadmap
             .refresh(
@@ -260,7 +261,9 @@ mod tests {
             assert_eq!(roadmap.fetched_at(), Some(100));
         }
         assert_eq!(
-            Roadmap::restore(&store).expect("restart").fetched_at(),
+            Roadmap::restore(&store, 1_700_000_000_123)
+                .expect("restart")
+                .fetched_at(),
             Some(100)
         );
         for _ in 0..4 {

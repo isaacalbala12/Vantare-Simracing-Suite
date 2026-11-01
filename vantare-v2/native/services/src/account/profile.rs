@@ -16,12 +16,13 @@ struct Cached {
 
 pub(super) fn restore(
     store: &crate::storage::Store,
+    at_millis: u64,
     identity: Option<&super::Identity>,
 ) -> Option<AccountProfile> {
     let identity = identity?;
     match store
         .read::<Cached>("account-profile")
-        .and_then(|read| read.recover(store, "account-profile", 0, |_| true))
+        .and_then(|read| read.recover(store, "account-profile", at_millis, |_| true))
     {
         Ok(Some(saved)) if &saved.identity == identity => Some(saved.profile),
         Ok(_) => None,
@@ -155,20 +156,24 @@ mod tests {
             issuer: "https://clerk.fixture.invalid/".into(),
             subject: "user_fixture".into(),
         };
-        assert!(restore(&store, Some(&identity)).is_none());
+        assert!(restore(&store, 1_700_000_000_123, Some(&identity)).is_none());
         let profile = AccountProfile {
             name: "Perfil guardado".into(),
             ..Default::default()
         };
         save(&store, &identity, &profile).expect("guardar");
-        assert_eq!(restore(&store, Some(&identity)), Some(profile));
+        assert_eq!(
+            restore(&store, 1_700_000_000_123, Some(&identity)),
+            Some(profile)
+        );
         assert!(
-            restore(&store, None).is_none(),
+            restore(&store, 1_700_000_000_123, None).is_none(),
             "sin sesión no muestra el perfil"
         );
         assert!(
             restore(
                 &store,
+                1_700_000_000_123,
                 Some(&super::super::Identity {
                     subject: "another_user".into(),
                     ..identity.clone()
@@ -179,6 +184,7 @@ mod tests {
         assert!(
             restore(
                 &store,
+                1_700_000_000_123,
                 Some(&super::super::Identity {
                     issuer: "https://another.invalid/".into(),
                     ..identity.clone()
@@ -190,7 +196,7 @@ mod tests {
             .save("account-profile", &serde_json::json!({"invalid":true}))
             .expect("corrupto");
         assert!(
-            restore(&store, Some(&identity)).is_none(),
+            restore(&store, 1_700_000_000_123, Some(&identity)).is_none(),
             "caché corrupta no afecta OAuth"
         );
         drop(store);

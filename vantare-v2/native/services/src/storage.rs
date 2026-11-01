@@ -371,12 +371,14 @@ mod tests {
 
     fn cache_present(store: &Store, name: &str, oauth: &crate::account::OAuth) -> Result<bool> {
         match name {
-            "roadmap" => crate::roadmap::Roadmap::restore(store).map(|v| v.publication().is_some()),
-            "report-attempt" => {
-                crate::report::Reports::restore(store).map(|v| v.receipt().is_some())
+            "roadmap" => crate::roadmap::Roadmap::restore(store, 1_700_000_000_123)
+                .map(|v| v.publication().is_some()),
+            "report-attempt" => crate::report::Reports::restore(store, 1_700_000_000_123)
+                .map(|v| v.receipt().is_some()),
+            "account-profile" => {
+                crate::account::Account::restore_at(oauth.clone(), store, 1_700_000_000_123)
+                    .map(|v| v.profile().is_some())
             }
-            "account-profile" => crate::account::Account::restore(oauth.clone(), store)
-                .map(|v| v.profile().is_some()),
             _ => unreachable!("test cache"),
         }
     }
@@ -435,6 +437,12 @@ mod tests {
                 })
                 .collect();
             assert_eq!(archives.len(), 1, "{name}: no repeated quarantine");
+            assert!(
+                archives[0]
+                    .file_name()
+                    .to_string_lossy()
+                    .starts_with(&format!("{name}-1700000000123-"))
+            );
             assert_eq!(
                 fs::read(archives[0].path()).expect("preserved bytes"),
                 damaged
@@ -825,8 +833,10 @@ mod tests {
             let original = fs::read(&path).expect("bytes protegidos");
             let restore = || match name {
                 "account" => crate::account::Account::restore(oauth.clone(), &store).map(|_| ()),
-                "report-attempt" => crate::report::Reports::restore(&store).map(|_| ()),
-                _ => crate::roadmap::Roadmap::restore(&store).map(|_| ()),
+                "report-attempt" => {
+                    crate::report::Reports::restore(&store, 1_700_000_000_123).map(|_| ())
+                }
+                _ => crate::roadmap::Roadmap::restore(&store, 1_700_000_000_123).map(|_| ()),
             };
             let lock = OpenOptions::new()
                 .read(true)

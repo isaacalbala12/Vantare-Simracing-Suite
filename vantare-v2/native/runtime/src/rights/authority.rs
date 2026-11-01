@@ -65,7 +65,7 @@ pub struct Authority {
 }
 
 impl Authority {
-    pub fn restore(store: &Store) -> Result<Self> {
+    pub fn restore(store: &Store, at_millis: i64) -> Result<Self> {
         let mut recovery_marker =
             !matches!(store.read::<bool>("authority-recovery")?, Stored::Missing);
         let mut damaged = false;
@@ -86,7 +86,10 @@ impl Authority {
                     recovery_marker = true;
                 }
                 if !missing {
-                    store.quarantine_dated("authority", 0)?;
+                    store.quarantine_dated(
+                        "authority",
+                        u64::try_from(at_millis).map_err(|_| Error::Clock)?,
+                    )?;
                     damaged = true;
                 }
                 Saved {
@@ -543,14 +546,18 @@ mod tests {
             .share_mode(0)
             .open(&path)
             .expect("exclusive fixture");
-        assert!(matches!(Authority::restore(&store), Err(Error::Storage)));
+        assert!(matches!(
+            Authority::restore(&store, 1_700_000_000_123),
+            Err(Error::Storage)
+        ));
         assert!(matches!(
             store.fixture::<bool>("authority-recovery"),
             Err(Error::NotFound)
         ));
         drop(lock);
         assert_eq!(fs::read(&path).expect("unchanged"), original);
-        let authority = Authority::restore(&store).expect("recover invalid schema");
+        let authority =
+            Authority::restore(&store, 1_700_000_000_123).expect("recover invalid schema");
         assert!(authority.invalidated && authority.recovery_required);
         let archived = fs::read_dir(namespace)
             .expect("files")
@@ -559,7 +566,7 @@ mod tests {
                 entry
                     .file_name()
                     .to_string_lossy()
-                    .starts_with("authority-0-")
+                    .starts_with("authority-1700000000123-")
             })
             .expect("archive");
         assert_eq!(fs::read(archived.path()).expect("preserved"), original);
@@ -578,7 +585,7 @@ mod tests {
             .save("authority", &serde_json::json!({"version": 2}))
             .expect("guardar documento invalido");
 
-        let authority = Authority::restore(&store).expect("debe arrancar");
+        let authority = Authority::restore(&store, 1_700_000_000_123).expect("debe arrancar");
         assert!(
             authority.invalidated,
             "el defecto debe ser el CONSERVADOR: lapida anti-rollback puesta"
@@ -590,6 +597,6 @@ mod tests {
             "la recuperación debe sobrevivir al reinicio"
         );
         // Y el segundo arranque tampoco tropieza.
-        assert!(Authority::restore(&store).is_ok());
+        assert!(Authority::restore(&store, 1_700_000_000_123).is_ok());
     }
 }

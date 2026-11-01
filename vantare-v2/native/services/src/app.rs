@@ -911,7 +911,10 @@ impl App {
                 self.config.channel.unwrap_or("unknown")
             );
             let store = Store::open(&self.root, &context)?;
-            self.roadmap = Some(crate::roadmap::Roadmap::restore(&store)?);
+            self.roadmap = Some(crate::roadmap::Roadmap::restore(
+                &store,
+                (self.clock)()?.saturating_mul(1000),
+            )?);
             self.roadmap_store = Some(store);
         }
         let roadmap = self.roadmap.as_mut().ok_or(Error::Storage)?;
@@ -1008,7 +1011,10 @@ impl App {
                 self.config.channel.unwrap_or("unknown")
             );
             let store = Store::open(&self.root, &context)?;
-            self.reports = Some(crate::report::Reports::restore(&store)?);
+            self.reports = Some(crate::report::Reports::restore(
+                &store,
+                (self.clock)()?.saturating_mul(1000),
+            )?);
             self.report_store = Some(store);
         }
         if matches!(

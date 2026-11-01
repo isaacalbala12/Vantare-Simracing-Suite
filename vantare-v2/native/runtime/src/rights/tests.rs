@@ -1650,7 +1650,11 @@ fn authority_recovery_corrupt_dpapi_requires_online_and_survives_restart() {
     let archives: Vec<_> = std::fs::read_dir(&namespace)
         .expect("archives")
         .flatten()
-        .filter(|e| e.file_name().to_string_lossy().starts_with("authority-0-"))
+        .filter(|e| {
+            e.file_name()
+                .to_string_lossy()
+                .starts_with("authority-120000-")
+        })
         .collect();
     assert_eq!(archives.len(), 1);
     assert_eq!(
@@ -2012,7 +2016,11 @@ fn authority_recovery_marker_blocks_replay_if_repair_was_interrupted_and_caps_ar
     let archives = std::fs::read_dir(&namespace)
         .expect("archives")
         .flatten()
-        .filter(|e| e.file_name().to_string_lossy().starts_with("authority-0-"))
+        .filter(|e| {
+            e.file_name()
+                .to_string_lossy()
+                .starts_with("authority-110000-")
+        })
         .count();
     assert_eq!(archives, 3);
     let mut owner =

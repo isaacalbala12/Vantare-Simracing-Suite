@@ -369,9 +369,9 @@ inferior del primero se identifica como histórica.
 
 Desde raíz, mismo contador que A-C:
 `python vantare-v2/native/scripts/license-production-lines.py --include-admin`.
-Base guardada antes de editar en isa-1827-s-base-d-with-admin.json; final en
-isa-1827-s-after-d0-with-admin.json. Para repetir la base usar --ref
-5bf636ef0d6bb0b121593d9a532bbcbabdd8da35. Omitir --include-admin para comparar
+Base inicial en isa-1827-s-base-d-with-admin.json; base del PR rebasado en
+isa-1827-s-base-d0-rebased-with-admin.json; final en -after-d0-with-admin.json.
+Para repetir la base final usar --ref e747d4a9e920121d1fc8a391dfab6945c6315fa3. Omitir --include-admin para comparar
 el perímetro habitual de cuatro crates.
 
 | Crate | Antes | Después | Cambio |
@@ -386,7 +386,7 @@ el perímetro habitual de cuatro crates.
 Cuatro crates: 109277 -> 109292 (+15). Recorrido con Gestión: 15286 -> 15302
 (+16). Es propagación de fecha/corrección P3, no ahorro de simplificación.
 Pruebas/soporte Rust: +39 líneas físicas netas, separadas de las productivas.
-Documentación .md afectada: 7831 -> 7963 (+132) líneas; pruebas/soporte afectadas: 7713 -> 7752 (+39).
+Documentación .md afectada: 7820 -> 7968 (+148) líneas; pruebas/soporte afectadas: 7713 -> 7752 (+39).
 La separación de Rust se obtiene del delta físico de .rs menos el delta del
 contador productivo; documentación .md aparte, fragmento JSON aparte. Los
 cambios de tests de llamadas/formatting no se presentan como nuevos casos.
@@ -402,6 +402,17 @@ Logs/comandos: isa-1827-s-final-d0-gates.json, -final-d0-*, -mutations-d0,
 -d0-focused.log, -d0-quality.log y -d0-characterization.json.
 
 Compilación siempre por compilar.ps1 y target D:/VantareServer/targets/isa-1827-s,
-jobs 2, locked/offline. Calidad 466 huellas PASS. Harness heredado medium;
+jobs 2, locked/offline. Calidad posterior al rebase 468 huellas PASS. Harness heredado medium;
 sin nuevas delegaciones, UI física, instalación ni ejecución Deno/PostgreSQL
 (no cambia servidor). Sin Plane, producción, datos reales, secretos, merge/release.
+
+D0 rebasado sobre origin/nightly@e747d4a9e920121d1fc8a391dfab6945c6315fa3,
+#1847. Se preservan todos los blobs Rust/manifiestos fuera de installer (627)
+frente a 92c6b0510, árbol de los gates, y todas las líneas anteriores del handoff.
+Certificado isa-1827-s-d0-rebase-integrity.json. Las matrices, mutaciones y suite
+completa conservan validez sobre el mismo código del recorrido. Se repiten
+calidad (468 huellas PASS) y windows_startup por el empaquetador actualizado.
+La base del PR/medición final es e747d4a9e; la base inicial 5bf636ef0 queda
+como historia. El contador productivo conserva exactamente los mismos valores.
+windows_startup posterior al rebase: Nextest ci 7/7 PASS,
+log isa-1827-s-d0-rebased-startup.log (por compilar.ps1, mismo target).

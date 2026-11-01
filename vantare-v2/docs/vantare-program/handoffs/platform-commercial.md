@@ -22,6 +22,11 @@ target D:/VantareServer/targets/isa-1827-s. Solo P3 fecha real y runbook.
   Pruebas/soporte Rust +39 netas, documentación separada; D0 no es ahorro.
   Arquitectura y tres caracterizaciones con los mismos blobs de la base.
   Sin Plane, instalaciones, datos reales, secretos, merge ni release.
+- Rebase sobre origin/nightly@e747d4a9e920121d1fc8a391dfab6945c6315fa3
+  tras #1847. Los 627 fuentes Rust/manifiestos fuera de installer conservan
+  sus blobs del árbol validado 92c6b0510; todas las líneas de las entradas
+  anteriores del handoff se preservan. Calidad posterior al rebase: 468 huellas PASS.
+- windows_startup posterior al rebase 7/7 PASS, con empaquetador de #1847.
 <!-- /isa1827-simplificar-d0 -->
 
 <!-- isa1827-simplificar-c -->

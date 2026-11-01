@@ -1,5 +1,16 @@
 # Caracterización del motor de instalación · VANTA-127 / #1840
 
+Paso 1c añade registration-boot-tests: Register falla, Register bloqueado hasta
+el plazo real de 30 segundos, fallo del registro durante Confirm y entorno
+WINDIR ausente. En los cuatro
+casos la app de prueba sigue abierta, el supervisor confirma, no hay rollback,
+el aviso conserva versión/notas y todos los datos quedan idénticos (29 checks).
+`-BootProbe` es obligatorio: CI construye el ejemplo boot-confirmation-matrix del
+Hub y el arnés lo copia a una generación sintética. Usa el módulo de confirmación
+de producto; reemplaza solo el comando Register por un fallo/barrera controlados.
+No sustituye una prueba interactiva de la ventana real. Las observaciones se
+guardan por caso y registro/carpetas se aíslan por caso dentro de la raíz QA.
+
 Paso 1b añade `library-mode-tests.ps1` y `driver-context-tests.ps1` al mismo gate.
 Demuestran carga sin raíz rechazada sin escribir, modo biblioteca explícito,
 variables del llamador intactas, rechazo de contexto TEST incompleto/ajeno y

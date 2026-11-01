@@ -1,6 +1,6 @@
 #requires -Version 5.1
 [CmdletBinding()]
-param([string]$Root,[string]$LegacyPackage,[string]$TestVerifier,[switch]$Record,
+param([string]$Root,[string]$LegacyPackage,[string]$TestVerifier,[string]$BootProbe,[switch]$Record,
       [ValidateSet('clean','nsis975','nsis975-incomplete974','rc-options','pending','boot','retained','retained-no-marker')]
       [string[]]$Cases=@('clean','nsis975','nsis975-incomplete974','rc-options','pending','boot','retained','retained-no-marker'),
       [ValidateSet('Probe','Install','Update','Repair','Check','Apply','Confirm','Timeout','Rollback','Uninstall','Cleanup')]
@@ -10,7 +10,7 @@ $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'matrix/guard.ps1')
 $qaMatrixRoot=Assert-MatrixRoot $Root
 if (Test-Path -LiteralPath $qaMatrixRoot) { throw 'MATRIX_NEEDS_FRESH_ROOT' }
-if (-not $LegacyPackage -or -not $TestVerifier) { throw 'MATRIX_FIXTURES_REQUIRED' }
+if (-not $LegacyPackage -or -not $TestVerifier -or -not $BootProbe) { throw 'MATRIX_FIXTURES_REQUIRED' }
 $script:Packaging=$PSScriptRoot
 $qaImportCallerRoot=$Root
 . (Join-Path $PSScriptRoot 'beta.ps1') -Library -Root $qaMatrixRoot
@@ -148,6 +148,16 @@ try {
         if($growth.ExitCode -ne 0){throw ('MATRIX_INVENTORY_GROWTH_FAILED: '+$growth.Stderr)}
         $growth.Stdout
     } finally { $env:TEMP=$savedGrowthTemp;$env:TMP=$savedGrowthTmp;$env:LOCALAPPDATA=$savedGrowthLocal }
+    $savedBootTemp=$env:TEMP;$savedBootTmp=$env:TMP;$savedBootLocal=$env:LOCALAPPDATA
+    try {
+        $env:TEMP=$qaMatrixRoot;$env:TMP=$qaMatrixRoot;$env:LOCALAPPDATA=Join-Path $qaMatrixRoot 'LocalAppData'
+        $boot=Invoke-NativeProcess -Executable "$env:WINDIR/System32/WindowsPowerShell/v1.0/powershell.exe" -Arguments @(
+            '-NoProfile','-ExecutionPolicy','Bypass','-File',(Join-Path $PSScriptRoot 'matrix/registration-boot-tests.ps1'),
+            '-Root',(Join-Path $qaMatrixRoot 'registration-boot'),'-TestVerifier',$TestVerifier,'-BootProbe',$BootProbe
+        ) -TimeoutMilliseconds 120000 -LogPath (Join-Path $qaMatrixRoot 'registration-boot.log')
+        if($boot.ExitCode -ne 0){throw ('MATRIX_REGISTRATION_BOOT_FAILED: '+$boot.Stderr)}
+        $boot.Stdout
+    } finally { $env:TEMP=$savedBootTemp;$env:TMP=$savedBootTmp;$env:LOCALAPPDATA=$savedBootLocal }
     Write-NativeJson (Join-Path $qaMatrixRoot 'results.json') $rows
     if ($Record) { Write-NativeJson (Join-Path $qaMatrixRoot 'candidate-baseline.json') $rows }
 } finally {

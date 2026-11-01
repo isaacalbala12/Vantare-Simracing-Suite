@@ -495,10 +495,12 @@ function Confirm-BetaBoot([string]$Directory, $Process, [int]$TimeoutSeconds = 4
                 Remove-Item -LiteralPath $marker
                 return $true
             }
-            Sync-BetaRegistration $Directory $boot.version
             $saved = [IO.File]::ReadAllText((Join-Path $Directory 'update-status.json')) | ConvertFrom-Json
             Set-BetaStatus $Directory 'current' 'Versión actualizada y arranque confirmado' $boot.version $saved.notes
+            # ACK is durable before cosmetic registry I/O, including slow writes.
             Remove-Item -LiteralPath $marker
+            try { Sync-BetaRegistration $Directory $boot.version }
+            catch { Set-BetaStatus $Directory 'warning' ('No se pudo actualizar el registro de Vantare: '+$_.Exception.Message) $boot.version $saved.notes }
         }
         return $true
     }

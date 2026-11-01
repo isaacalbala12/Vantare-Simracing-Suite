@@ -1,5 +1,12 @@
 # Beta nativa — instalador y actualizaciones (#1454)
 
+Paso 1c de #1840: el Hub escribe hub-ready antes de Register. Un fallo o lentitud
+del registro no impide abrir la app ni provoca rollback: se guarda como aviso en
+update-status.json después de que el bootstrap confirme el arranque. La escritura
+de DisplayVersion durante Confirm también es secundaria y su fallo deja aviso.
+`matrix/registration-boot-tests.ps1` comprueba ambos fallos y Register bloqueado
+con el código real de confirmación del Hub, sin crear una ventana física.
+
 `candidate.ps1` y `beta.ps1` exigen `-Root` incluso para Build. Cargarlos como
 biblioteca requiere `. <script> -Library -Root <contexto explícito>`; no ejecuta
 operaciones ni selecciona una instalación. La carga sin raíz falla antes de

@@ -313,6 +313,26 @@ conservan la evidencia de sus ramas; no describen el estado de integración actu
 
 ## Instalador · VANTA-127 / #1840
 
+### Paso 2 · ADR 0103 listo para revisión (1-nov-2026)
+
+- Base nightly 5cc23113afae7cfa44429f225f0aeb5f770c061c, con 0–1d integrados.
+  Rama vantareapp/isa-1840-paso2-adr, worktree aislado isa-1840-paso2.
+- ADR 0103 fija raíz estable, motor por generación, state v1, versión canónica,
+  proyecciones Windows, LegacyRunner y su retirada, datos conservados y retención
+  solo de binarios. hub-ready = ventana creada; un presupuesto de cierre del supervisor.
+- Diseño original completo versionado como evidencia histórica; rutas locales del
+  analista sustituidas por marcadores. No se presentan sus estimaciones como medidas.
+- P3 acotado autorizado: fuente única Rust para Probe/Hub con perfiles actuales;
+  adaptadores PS documentados hasta p4–7. No se afirma 5→1 global antes de p7.
+  sha2 se adelanta a p3; zip/windows siguen p4. Solo aristas installer/hub del
+  lock pueden cambiar en p3, sin paquetes/versiones/checksums nuevos.
+- Checks: diff y enlaces locales del ADR PASS; calidad/retirada 468/468 PASS.
+  Sin crates tocados: fmt/Clippy/Nextest, matriz y telemetría/lifecycle omitidos
+  por entrega documental. Ningún script de producto ejecutado.
+- PR draft y HEAD publicados se registran en #1840 y en el PR; revisión/CI del
+  orquestador. Sin Plane, instalación real, secretos, Downloads, merge ni release.
+
+
 [#1840](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1840),
 area:plataforma, Project Vantare. Plane En curso; estados/CI del orquestador.
 Sin merge/release del worker.

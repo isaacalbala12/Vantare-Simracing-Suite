@@ -33,6 +33,7 @@ No se usa la skill `vantare-core`: está desactualizada y no es fuente de verdad
 
 ## Documentos
 
+- [ADR 0103](../adr/0103-instalacion-nativa.md) y [diseño del instalador](installer-design.md): raíz estable, motor por generación y transición de #1840 / VANTA-127.
 - `product-contract.md`: alcance, experiencia, licencias, privacidad e idiomas.
 - `project-map.md`: módulos, fronteras y caminos de datos; el estado operativo vive en GitHub Issues.
 - `execution-policy.md`: flujo GitHub Issues/Git, autonomía, reviews y promoción.

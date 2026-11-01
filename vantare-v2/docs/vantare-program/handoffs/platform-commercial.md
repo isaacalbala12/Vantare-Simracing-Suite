@@ -3,6 +3,10 @@
 
 Mismo [PR draft #1836](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1836),
 a nightly; sin integrar. El orquestador vigila la CI. Plane intacto.
+Código R1 validado `a8b0d6c4f41869a390aa02602e6a1fa7bb0c12b0`;
+HEAD documental vigente en PR/#1827. Rama `vantareapp/isa-1827-paso7-policy-state`,
+base `44f0d6a5ed97854c046b7ece6e88ed628ab2957c`. Push en la rama de issue;
+ningún canal integrado por el worker.
 
 - P3-1/P3-2: aviso compartido con fecha, hora y zona local en Home, Cuenta,
   overlays, helper y respuesta local del supervisor. Un automático omitido en

@@ -194,14 +194,13 @@ fn cancel_pending_or_in_flight_blocks_providers_and_duplicate_cancel_until_ack()
 }
 
 #[test]
-fn cancel_transport_error_releases_controls_outside_the_account_section() {
+fn cancel_transport_error_releases_controls_after_the_attempt() {
     gpui_platform::headless().run(|cx| {
         let file = crate::document::tests::File::new();
         let (send, requests) = mpsc::sync_channel(8);
         let remote = cx.new(|cx| fixture(cx, send, file.path.parent().expect("root")));
         remote.update(cx, |remote, cx| {
             configured(remote, Session::NeedsSignIn, cx);
-            remote.active = Area::Calendar;
             remote.request(Command::AccountCancel, cx);
             assert!(matches!(requests.try_recv(), Ok(Command::AccountCancel)));
             remote.complete(
@@ -224,14 +223,13 @@ fn cancel_transport_error_releases_controls_outside_the_account_section() {
 }
 
 #[test]
-fn logout_transport_error_can_retry_and_return_outside_the_account_section() {
+fn logout_transport_error_can_retry_and_return_to_the_hub() {
     gpui_platform::headless().run(|cx| {
         let file = crate::document::tests::File::new();
         let (send, requests) = mpsc::sync_channel(8);
         let remote = cx.new(|cx| fixture(cx, send, file.path.parent().expect("root")));
         remote.update(cx, |remote, cx| {
             configured(remote, Session::NeedsSignIn, cx);
-            remote.active = Area::Calendar;
             remote.request(Command::Logout, cx);
             assert!(matches!(requests.try_recv(), Ok(Command::Logout)));
             remote.complete(
@@ -240,7 +238,12 @@ fn logout_transport_error_can_retry_and_return_outside_the_account_section() {
                 },
                 cx,
             );
-            assert!(remote.home_access().1.is_some());
+            assert!(
+                remote
+                    .home_access()
+                    .1
+                    .is_some_and(|error| error.contains("No se pudo cerrar la sesión"))
+            );
             remote.retry_access(cx);
             assert!(matches!(requests.try_recv(), Ok(Command::Logout)));
             failed_logout(remote, Session::NeedsSignIn, cx);

@@ -361,10 +361,7 @@ impl State {
                 self.manual.copied = false;
                 self.invalidate();
             }
-            Reply::Error { message }
-                if account
-                    || matches!(self.transition, Transition::Cancel | Transition::Logout) =>
-            {
+            Reply::Error { message } if account => {
                 self.login_requested = false;
                 if matches!(self.transition, Transition::Login | Transition::Cancel) {
                     self.transition = Transition::Idle;

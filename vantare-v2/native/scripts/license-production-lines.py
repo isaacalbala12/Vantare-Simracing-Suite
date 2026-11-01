@@ -119,7 +119,7 @@ def main():
                or p in ("tests.rs", "test.rs") for p in parts[4:]):
             continue
         if not args.ref and not (ROOT / path).exists():
-            continue  # Tracked deletion in the working tree, before git add.
+            raise FileNotFoundError(f"Tracked source missing: {path}; stage its deletion or restore it before counting")
         source = git("show", f"{args.ref}:{path}") if args.ref else (ROOT / path).read_text(encoding="utf-8-sig")
         count, modules = production(source)
         sources[path] = count

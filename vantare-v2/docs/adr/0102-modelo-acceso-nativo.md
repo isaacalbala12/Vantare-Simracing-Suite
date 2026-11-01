@@ -312,5 +312,17 @@ reconoce como Failure::InvalidCredential y services la convierte en Error::Versi
 Un lector v7 anterior conserva UnknownLegacy/Transient. REJECTED queda para
 lápida/denegación/caducidad; iat futuro mantiene UNAVAILABLE/Clock. No cambian
 los formatos en disco, permisos ni estructura serializada. Las matrices de
-caracterización siguen intactas y las cinco familias de rechazo recorren HTTP,
+caracterización siguen intactas y las seis familias de rechazo recorren HTTP,
 services y núcleo real.
+
+
+Revisión del corte B: servicios y núcleo se actualizan juntos. El launcher
+arranca el ejecutable services de la misma generación del conjunto instalado;
+la mezcla nuevo-services/viejo-núcleo no está soportada. La compatibilidad del
+lector v7 anterior solo demuestra su reacción segura ante una etiqueta nueva,
+no autoriza esa mezcla. Sin ACK correcto de InstallOnline, incluso cuando un
+Read posterior explica ClockBehind con Reply::License, servicios no consulta
+los claims rechazados ni registra AccountSignedIn/CommercialLicenseObserved.
+Subject mal formado produce InvalidCredential/Version/Transient; una firma
+válida con UUID de otra cuenta frente al binding existente produce Denied en
+Owner, REJECTED en control y Definitive en services, sin sustituir el binding.

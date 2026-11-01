@@ -931,6 +931,30 @@ mod legacy_v7_reader {
     #[test]
     fn previous_v7_reader_treats_the_new_credential_error_as_unknown_legacy() {
         use crate::transport::{Event, IO_TIMEOUT, Listener};
+        use sha2::{Digest, Sha256};
+        let source = include_str!("control.rs").replace("\r\n", "\n");
+        let module = source
+            .split_once("mod legacy_v7_reader {")
+            .expect("frozen module")
+            .1;
+        let start = module
+            .find("    pub fn request_cancelled(")
+            .expect("frozen function");
+        let end = module[start..]
+            .find("\n\n    #[test]")
+            .expect("end of frozen function")
+            + start;
+        let frozen = module[start..end]
+            .lines()
+            .map(|line| line.strip_prefix("    ").unwrap_or(line))
+            .collect::<Vec<_>>()
+            .join("\n");
+        assert_eq!(
+            format!("{:x}", Sha256::digest(frozen.as_bytes())),
+            "1256475e24eb2992c53a990c13f4383ccd04ec6a5c7d9e2b479d9e5e69022d4d",
+            "v7 reader must stay frozen"
+        );
+
         let link = CoreLink {
             pipe: format!("legacy-v7-invalid-{}", std::process::id()),
             image: std::env::current_exe().expect("image"),

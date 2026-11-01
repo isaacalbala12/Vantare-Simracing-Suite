@@ -6584,6 +6584,7 @@ dependencies = [
  "libc",
  "serde",
  "serde_json",
+ "sha2",
  "vantare-domain",
  "vantare-profiling",
  "windows-sys 0.61.2",

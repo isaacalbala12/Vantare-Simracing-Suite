@@ -25,3 +25,6 @@ windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_Secur
 # std no ofrece PID/imagen del par Unix en su API estable.
 [target."cfg(unix)".dependencies]
 libc = "0.2"
+
+[dev-dependencies]
+sha2 = "0.10"

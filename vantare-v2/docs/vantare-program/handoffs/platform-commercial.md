@@ -40,6 +40,9 @@ Rama vantareapp/isa-1827-simplificar-d1a; mismo worktree/target isa-1827-s.
   Cuatro blobs de caracterización/arquitectura intactos; Deno no instalado.
 - D6/D7/T1-T3 siguen aplazados por RC9. D1b y E pendientes; D5/D3 descartados.
   Sin Plane, datos reales, secretos, instalaciones, merge ni release.
+- PR draft [#1854](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1854), target nightly.
+  Código validado 9cbbd1f089f4767f5d2ea9e8b74fcba1614e19ea; HEAD documental vigente en PR.
+  CI y revisión a cargo del orquestador.
 <!-- /isa1827-simplificar-d1a -->
 
 <!-- isa1827-simplificar-d0 -->

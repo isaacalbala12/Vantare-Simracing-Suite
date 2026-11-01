@@ -613,7 +613,7 @@ no son una implementación anticipada de este diseño.
 
 `User` envía LicenseRenew; `Automatic` y `Purchase` envían
 LicenseRenewAutomatic. Purchase no tiene un tercer comando ni una nueva regla
-en servicios: el Hub actual usa el camino automático al esperar la compra.
+en servicios: desde el paso 9 solo el supervisor renueva durante la espera; el Hub consume Feed.
 AccountProfileRefresh sirve presentación manual y automática con la misma regla
 no destructiva. AccountRenew, Logout y DeviceReset son actos explícitos;
 En la base del paso 0, TransferRights era el traspaso local durante admisión/recuperación; se elimina en el paso 8. No inventamos
@@ -694,3 +694,9 @@ por igual los restos de A y B: sin binding del núcleo no hay derechos guardados
 que conservar; se pide una emisión nueva. Con binding, el rollback conserva su
 firma y autoridad. Un archivo aparecido después del arranque se ignora hasta
 el siguiente arranque, sin convertirse en fuente de derechos.
+
+
+Actualización paso 9: services v19 añade estado local con Session y aviso tipado
+persistente en memoria del supervisor. Leerlo o perder una respuesta no lo consume
+ni arranca el helper. Hub no renueva compras ni relee Session por HTTP al consultar
+avisos; confirma solo con Feed fresco. Matrices de acceso y efectos remotos sin cambios.

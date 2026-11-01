@@ -233,3 +233,46 @@ del downgrade solo queda garantizado al haberlos apartado.
 Una trama que declare services v18 con TransferRights es entrada malformada
 (Protocol); el peer v17/v18 incompatible se clasifica Version antes del esquema.
 Ninguno de estos errores revoca por sí solo.
+
+
+### Paso 9 — aviso persistente y compra por Feed
+
+Services v19 publica LicenseStatus local con Policy, Session observada por el
+supervisor y LicenseNotice tipado opcional. La lectura no consume el aviso ni
+arranca el helper; tampoco induce AccountPoll en el Hub. Rechazo definitivo,
+account_conflict y límite de dispositivos sobreviven a respuesta perdida,
+reconexión y consultas repetidas. Un éxito de renovación, cierre confirmado o
+login confirmado lo releva; un error de transporte no lo borra. Es memoria del
+supervisor, sin un almacén durable nuevo. Policy conserva su diagnóstico propio.
+El Hub mantiene el aviso separado del resultado de la acción del usuario.
+Durante la compra no emite renovaciones: el supervisor es el único scheduler,
+conservando diez minutos, backoff y suelo de un minuto. Solo una observación
+fresca del Feed de Policy confirma la compra; el reply de servicios no concede
+ni confirma. V18/v19 incompatible es Version antes del esquema, nunca revocación.
+Control v7, fotos v11, firma y formatos durables no cambian.
+
+Revisión paso 9: el encargo del orquestador autoriza expresamente subir el
+protocolo si hace falta, siempre con Version antes del esquema, nunca revocación.
+La sesión local es opcional: null significa no observada durante el intento;
+no fabrica SignedOut tras un error genérico de Logout. El Hub aplica una
+observación estable solo en Idle, sin alterar login/cancel/logout ni sus errores.
+NeedsSignIn sigue leyendo los avisos locales. Cancelar un intento conservando la sesión no los releva;
+login confirmado por OAuth o email y DeviceReset confirmado sí lo hacen.
+
+Una lectura AccountPoll que solo restaura SignedIn desde un estado desconocido
+no demuestra un login nuevo: conserva el aviso hasta renovación verificada o
+login OAuth/email confirmado.
+
+El paso 9 conserva un rechazo definitivo o límite de dispositivos ante un
+fallo transitorio posterior: el transporte no demuestra su resolución. El
+resultado manual de red se muestra aparte; una verificación, un reset o un
+nuevo login confirmado siguen relevando el aviso según las reglas anteriores.
+
+Decisión del orquestador tras revisión de #1838: un resultado Transient no se
+persiste como aviso ni se presenta como error de acceso. Con Active/Grace,
+incluso en Live, solo aporta diagnóstico y backoff; la recuperación se presenta
+mediante el estado de Policy. Los rechazos Definitive, account_conflict y
+DeviceLimit siguen retenidos mientras apliquen: transporte no los resuelve.
+Un login OAuth/email confirmado releva el aviso y deja una comprobación única
+pendiente para detectar si el rechazo continúa, respetando frescura, restricciones
+Live y suelo de un minuto. Un poll que restaura sesión o Cancel no la rearma.

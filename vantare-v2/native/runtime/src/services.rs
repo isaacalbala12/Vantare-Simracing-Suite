@@ -46,7 +46,7 @@ pub fn pipe_name(photo: &str) -> String {
 struct State {
     client: Option<Client>,
     renewal: Renewal,
-    notice: Option<Reply>,
+    notice: Option<protocol::LicenseNotice>,
     connected: bool,
     core_retry_at: Option<Instant>,
     purchase_until: Option<Instant>,
@@ -293,6 +293,7 @@ fn handle_with(
 ) -> Reply {
     let access = access_command(&command);
     let manual_renewal = matches!(command, Command::LicenseRenew);
+    let reset = matches!(command, Command::DeviceReset);
     let purchase = matches!(command, Command::Purchase { .. });
     let renewing = matches!(
         command,
@@ -307,26 +308,55 @@ fn handle_with(
             }
     ) {
         state.renewal = Renewal::default();
-        state.notice = None;
         state.purchase_until = None;
     }
     if matches!(command, Command::DeviceReset | Command::Purchase { .. }) {
-        state.notice = None;
         state.renewal.user_recovery();
     }
     if renewing {
         state.renewal.attempted(Instant::now());
     }
-    if manual_renewal {
-        state.notice = None;
-    }
+    let confirming_login = matches!(command, Command::AccountPoll)
+        && matches!(
+            state.renewal.session(),
+            Some(protocol::Session::Pending | protocol::Session::NeedsSignIn)
+        )
+        || matches!(&command, Command::AccountEmail { action } if !matches!(action, protocol::EmailAction::Cancel {}));
     let reply = dispatch(state, command);
     if purchase && matches!(reply, Reply::Checkout { .. }) {
         state.purchase_until = Some(Instant::now() + PURCHASE_CONFIRMATION_WINDOW);
     }
     state.renewal.observe(&reply);
+    if matches!(
+        &reply,
+        Reply::Account {
+            session: protocol::Session::SignedOut,
+            error: None,
+            ..
+        }
+    ) {
+        state.notice = None;
+    } else if confirming_login
+        && matches!(
+            &reply,
+            Reply::Account {
+                session: protocol::Session::SignedIn,
+                error: None,
+                ..
+            }
+        )
+    {
+        state.notice = None;
+        state.renewal.confirmed_login();
+    }
     if renewing {
         state.renewal.completed(renewal_outcome(&reply));
+    }
+    if manual_renewal || reset {
+        remember_notice(state, &reply);
+    }
+    if reset && matches!(reply, Reply::License { .. }) {
+        state.notice = None;
     }
     if access {
         // OAuth esperando callback o email esperando una acción conservan servicios.
@@ -377,10 +407,12 @@ fn serve_command(
         // Heartbeat: entregar también revocación/caducidad explícitas. El Hub
         // distingue esta política definitiva de un fallo temporal del transporte.
         Ok(policy) if matches!(command, Command::LicenseStatus | Command::Probe) => {
-            if matches!(command, Command::LicenseStatus)
-                && let Some(notice) = state.notice.take()
-            {
-                return notice;
+            if matches!(command, Command::LicenseStatus) {
+                return Reply::LicenseStatus {
+                    session: state.renewal.session(),
+                    notice: state.notice.clone(),
+                    policy,
+                };
             }
             return core_status_reply(policy);
         }
@@ -520,22 +552,35 @@ fn run_renewal(
     let outcome = renewal_outcome(&reply);
     state.renewal.completed(outcome);
     eprintln!("license-auto-result={outcome:?}");
-    // Automatic live renewal never interrupts the driver with a notice.
-    state.notice = if policy.live {
-        None
-    } else {
-        match &reply {
-            Reply::DeviceLimit { .. } | Reply::LicenseFailure { .. } => Some(reply.clone()),
-            Reply::Error { message } if !policy.state.permits_access() => {
-                Some(Reply::LicenseFailure {
-                    outcome,
-                    message: message.clone(),
-                })
-            }
-            _ => None,
-        }
-    };
+    remember_notice(state, &reply);
     Some(reply)
+}
+// Reading or losing a response never consumes the last actionable result.
+// A verified renewal supersedes it; transport failures cannot resolve it.
+fn remember_notice(state: &mut State, reply: &Reply) {
+    match reply {
+        Reply::DeviceLimit { message } => {
+            state.notice = vantare_services::outcome::notice_after(
+                state.notice.take(),
+                protocol::LicenseNotice::DeviceLimit {
+                    message: message.clone(),
+                },
+            );
+        }
+        Reply::LicenseFailure { outcome, message } => {
+            state.notice = vantare_services::outcome::notice_after(
+                state.notice.take(),
+                protocol::LicenseNotice::Failure {
+                    outcome: *outcome,
+                    message: message.clone(),
+                },
+            );
+        }
+        Reply::License { .. } if renewal_outcome(reply) == protocol::RenewalOutcome::Verified => {
+            state.notice = None;
+        }
+        _ => {}
+    }
 }
 fn finish(state: &mut State) {
     if let Some(mut client) = state.client.take() {

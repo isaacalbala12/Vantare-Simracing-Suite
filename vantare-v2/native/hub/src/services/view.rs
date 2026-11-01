@@ -39,6 +39,14 @@ pub(crate) mod mail;
 #[path = "view/roadmap.rs"]
 mod roadmap;
 
+fn license_notice_text(message: &str) -> String {
+    if message.trim().is_empty() {
+        "No se ha podido comprobar la licencia. Revisa Cuenta.".into()
+    } else {
+        message.to_owned()
+    }
+}
+
 enum Area {
     Account,
     Pilot,
@@ -63,28 +71,18 @@ enum Inflight {
     /// Consulta periódica de política: no bloquea ni se muestra.
     Background,
     Profile,
-    PurchaseRenew,
-    PurchaseSession,
     Roadmap,
     User,
     Cancel,
 }
 impl Inflight {
     fn background(self) -> bool {
-        matches!(
-            self,
-            Self::Background
-                | Self::Profile
-                | Self::PurchaseRenew
-                | Self::PurchaseSession
-                | Self::Roadmap
-        )
+        matches!(self, Self::Background | Self::Profile | Self::Roadmap)
     }
 }
 struct PurchaseWait {
     product: super::protocol::BillingProduct,
     started: std::time::Instant,
-    polled: Option<std::time::Instant>,
 }
 impl PurchaseWait {
     fn confirmed(&self, access: Access) -> bool {
@@ -107,10 +105,6 @@ impl PurchaseWait {
     }
     fn expired(&self, now: std::time::Instant) -> bool {
         now.duration_since(self.started) >= std::time::Duration::from_mins(10)
-    }
-    fn due(&self, now: std::time::Instant) -> bool {
-        self.polled
-            .is_none_or(|last| now.duration_since(last) >= std::time::Duration::from_secs(5))
     }
 }
 // La petición del calendario espera al heartbeat sin ocupar ni sobrescribir
@@ -175,6 +169,7 @@ pub struct Remote {
     /// El servicio distinguió un límite de dispositivos (`Reply::DeviceLimit`):
     /// la salida es liberar el activo, no reintentar a ciegas.
     device_limit: bool,
+    license_notice: Option<super::protocol::LicenseNotice>,
     license_polled_at: Option<std::time::Instant>,
     license_notice_polled_at: Option<std::time::Instant>,
     purchase_product: Option<super::protocol::BillingProduct>,
@@ -298,6 +293,7 @@ impl Remote {
             access: access::State::from_build(),
             email: None,
             device_limit: false,
+            license_notice: None,
             license_polled_at: None,
             license_notice_polled_at: None,
             purchase_product: None,
@@ -370,6 +366,39 @@ impl Remote {
             })
     }
 
+    fn license_notice_message(&self) -> Option<String> {
+        self.license_notice
+            .as_ref()
+            .map(|notice| license_notice_text(notice.message()))
+    }
+
+    fn remember_license_notice(&mut self, next: super::protocol::LicenseNotice) {
+        self.license_notice =
+            vantare_services::outcome::notice_after(self.license_notice.take(), next);
+        self.device_limit = matches!(
+            self.license_notice,
+            Some(super::protocol::LicenseNotice::DeviceLimit { .. })
+        );
+    }
+
+    fn clean_session(&mut self, session: super::protocol::Session, cx: &mut Context<Self>) {
+        let signed_in = session == super::protocol::Session::SignedIn;
+        if !signed_in {
+            self.purchase_wait = None;
+            self.purchase_product = None;
+            self.purchase_message = None;
+            self.report_receipts.clear();
+            self.clear_participation(cx);
+        }
+        if session == super::protocol::Session::SignedOut {
+            self.account.profile = None;
+            self.account.avatar = None;
+            self.license_notice = None;
+            self.device_limit = false;
+        }
+        self.clear_pilot_if_session_changed(signed_in);
+    }
+
     fn observe_core_policy(
         &mut self,
         policy: vantare_ipc::control::Policy,
@@ -402,6 +431,10 @@ impl Remote {
     pub(crate) fn refresh_license(&mut self, cx: &mut Context<Self>) {
         self.email_tick(cx);
         let now = std::time::Instant::now();
+        self.refresh_license_at(now, vantare_ipc::control::wall_ms().unwrap_or(u64::MAX), cx);
+    }
+
+    fn refresh_license_at(&mut self, now: std::time::Instant, wall: u64, cx: &mut Context<Self>) {
         if self
             .license_polled_at
             .is_none_or(|last| now.duration_since(last) >= LICENSE_POLL)
@@ -409,15 +442,11 @@ impl Remote {
             self.license_polled_at = Some(now);
             if let Some(rights) = &self.rights {
                 let policy = rights.policy();
-                self.observe_core_policy(
-                    policy,
-                    vantare_ipc::control::wall_ms().unwrap_or(u64::MAX),
-                    cx,
-                );
+                self.observe_core_policy(policy, wall, cx);
             }
         }
         if !self.busy()
-            && self.account.signed_in
+            && self.access.session_known()
             && self
                 .license_notice_polled_at
                 .is_none_or(|last| now.duration_since(last) >= std::time::Duration::from_secs(5))
@@ -435,22 +464,6 @@ impl Remote {
                 "No se han confirmado los derechos. Usa Comprobar acceso para reintentarlo.".into(),
             );
             cx.notify();
-        }
-        if !self.busy()
-            && self.account.signed_in
-            && self
-                .purchase_wait
-                .as_ref()
-                .is_some_and(|wait| wait.due(now))
-        {
-            if let Some(wait) = &mut self.purchase_wait {
-                wait.polled = Some(now);
-            }
-            self.request_with_kind(
-                Command::LicenseRenewAutomatic,
-                Some(Inflight::PurchaseRenew),
-                cx,
-            );
         }
     }
 
@@ -631,11 +644,6 @@ impl Remote {
             self.purchase_product = Some(*product);
         }
         let background = inflight.background();
-        // Otra acción de licencia del usuario releva al límite anterior; la
-        // consulta periódica de política no lo hace.
-        if matches!(command, Command::LicenseRenew | Command::DeviceReset) {
-            self.device_limit = false;
-        }
         if !background {
             self.active = match command {
                 Command::PilotLoad | Command::PilotSave { .. } | Command::PilotSync => Area::Pilot,
@@ -899,13 +907,59 @@ impl Remote {
             self.participation_message = message.clone();
             self.participation_pending = None;
         }
-        let purchase_background = matches!(
-            self.inflight,
-            Inflight::PurchaseRenew | Inflight::PurchaseSession
-        );
-        let renewing = self.inflight == Inflight::PurchaseRenew
-            || (self.inflight == Inflight::User
-                && matches!(self.active, Area::Licenses { renew: true }));
+        let notice_read = self.inflight == Inflight::Background;
+        let renewing = self.inflight == Inflight::User
+            && matches!(self.active, Area::Licenses { renew: true });
+        let resetting = self.inflight == Inflight::User
+            && matches!(self.active, Area::Licenses { renew: false });
+        let notice_before = self.license_notice.clone();
+        let device_limit_before = self.device_limit;
+        let session_notice_before = self.session_notice();
+        let signed_in_before = self.account.signed_in;
+        match &reply {
+            Reply::LicenseStatus {
+                session, notice, ..
+            } => {
+                self.license_notice = notice
+                    .clone()
+                    .and_then(|notice| vantare_services::outcome::notice_after(None, notice));
+                self.device_limit = matches!(
+                    notice,
+                    Some(super::protocol::LicenseNotice::DeviceLimit { .. })
+                );
+                if let Some(session) = self.access.observe_cached_session(*session) {
+                    let signed_in = session == super::protocol::Session::SignedIn;
+                    if self.account.signed_in != signed_in
+                        || (session == super::protocol::Session::SignedOut
+                            && self.account.profile.is_some())
+                    {
+                        self.clean_session(session, cx);
+                    }
+                    self.account.signed_in = signed_in;
+                }
+            }
+            Reply::LicenseFailure { outcome, message } => {
+                self.remember_license_notice(super::protocol::LicenseNotice::Failure {
+                    outcome: *outcome,
+                    message: message.clone(),
+                });
+            }
+            Reply::DeviceLimit { message } => {
+                self.remember_license_notice(super::protocol::LicenseNotice::DeviceLimit {
+                    message: message.clone(),
+                });
+            }
+            Reply::License { policy, .. }
+                if resetting
+                    || (renewing
+                        && policy.state.permits_access()
+                        && policy.current_at(policy.checked_at_ms)) =>
+            {
+                self.license_notice = None;
+                self.device_limit = false;
+            }
+            _ => {}
+        }
         let after_renew = if renewing {
             self.access.renewal_acknowledged(&reply)
         } else {
@@ -913,7 +967,7 @@ impl Remote {
         };
         // La renovación puede devolver una foto anterior al último heartbeat.
         // Solo Feed alimenta derechos; el reply conserva feedback y seguimiento OAuth.
-        if !matches!(&reply, Reply::License { .. })
+        if !matches!(&reply, Reply::License { .. } | Reply::LicenseStatus { .. })
             && (self.inflight != Inflight::Profile
                 || matches!(
                     &reply,
@@ -929,32 +983,22 @@ impl Remote {
                 !self.inflight.background() && matches!(self.active, Area::Account),
             );
         }
-        let next = self
-            .access
-            .next_command(&reply, &mut self.account.cancel_command)
-            .or(after_renew);
+        let next = if notice_read {
+            None // A cached notice must not start the helper via AccountPoll.
+        } else {
+            self.access
+                .next_command(&reply, &mut self.account.cancel_command)
+                .or(after_renew)
+        };
         let background = self.inflight.background();
         let roadmap_background = self.inflight == Inflight::Roadmap;
         self.inflight = Inflight::Idle;
         self.account.pending = false;
         let purchase_message_before = self.purchase_message.clone();
-        if renewing
-            && matches!(&reply, Reply::License { policy, .. } if policy.current_at(vantare_ipc::control::wall_ms().unwrap_or(u64::MAX)))
-            && self
-                .purchase_wait
-                .as_ref()
-                .is_some_and(|wait| wait.confirmed(self.navigation_access()))
-        {
-            self.purchase_wait = None;
-            self.purchase_message = Some("Acceso solicitado verificado por el servicio.".into());
-        }
         let quiet = background;
         if roadmap_background && let Reply::Error { message } = &reply {
             self.roadmap_message.clone_from(message);
             self.stale = true;
-        }
-        if background && failed && purchase_background {
-            self.purchase_message = Some("No se pudo comprobar la compra. Reintentamos durante la espera; también puedes comprobar el acceso manualmente.".into());
         }
         if !background && matches!(self.active, Area::Calendar) {
             self.calendar_reply(reply.clone(), cx);
@@ -966,7 +1010,6 @@ impl Remote {
                     self.purchase_wait = Some(PurchaseWait {
                         product,
                         started: std::time::Instant::now(),
-                        polled: None,
                     });
                     cx.open_url(&url);
                     self.purchase_message =
@@ -1003,13 +1046,12 @@ impl Remote {
             }
             Reply::DeviceLimit { message } => {
                 self.device_limit = true;
-                if purchase_background {
-                    self.purchase_message = Some(message);
-                } else if !background {
+                if !background {
                     self.message = message;
                 }
             }
-            Reply::MailConsent { .. } | Reply::Calendar { .. } => {}
+            // LicenseStatus contributes notices/session only; rights come from Feed.
+            Reply::LicenseStatus { .. } | Reply::MailConsent { .. } | Reply::Calendar { .. } => {}
             Reply::Testing { data } => self.complete_participation(data),
             Reply::TriagePreview { preview } => self.complete_triage(preview),
             Reply::Roadmap {
@@ -1055,14 +1097,7 @@ impl Remote {
                                 Arc::new(gpui::Image::from_bytes(gpui::ImageFormat::Jpeg, bytes))
                             });
                     }
-                    if !signed_in {
-                        self.purchase_wait = None;
-                        self.purchase_product = None;
-                        self.purchase_message = None;
-                        self.report_receipts.clear();
-                        self.clear_participation(cx);
-                    }
-                    self.clear_pilot_if_session_changed(signed_in);
+                    self.clean_session(session, cx);
                     self.account.signed_in = signed_in;
                 }
                 self.account.pending = pending;
@@ -1102,15 +1137,18 @@ impl Remote {
             || profile_changed
             || access_before != self.navigation_access()
             || next.is_some()
-            || purchase_message_before != self.purchase_message;
+            || purchase_message_before != self.purchase_message
+            || notice_before != self.license_notice
+            || device_limit_before != self.device_limit
+            || session_notice_before != self.session_notice()
+            || signed_in_before != self.account.signed_in;
         if let Some(command) = next {
             self.access.login_requested =
                 matches!(command, Command::Logout) || self.access.login_requested;
             let kind = if missing_profile && matches!(command, Command::AccountProfileRefresh) {
                 Some(Inflight::Profile)
             } else {
-                (purchase_background && matches!(command, Command::AccountPoll))
-                    .then_some(Inflight::PurchaseSession)
+                None
             };
             if !self.dispatch_with_kind(command, kind) && matches!(self.active, Area::Calendar) {
                 self.calendar_reply(
@@ -1165,6 +1203,9 @@ mod access_review_tests;
 #[cfg(test)]
 #[path = "view/account_tests.rs"]
 mod account_tests;
+#[cfg(test)]
+#[path = "view/notice_tests.rs"]
+mod notice_tests;
 #[cfg(test)]
 #[path = "view/purchase_tests.rs"]
 pub(crate) mod purchase_tests;

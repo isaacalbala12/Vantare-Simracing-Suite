@@ -1,11 +1,27 @@
-## Contrato vigente de licencias — paso 8 (#1827)
+## Contrato vigente de licencias — paso 9 (#1827)
 
-Services v18 elimina TransferRights; control v7 y fotos v11 no cambian.
-El saludo v17/v18 se rechaza como Version antes del comando retirado o de Policy,
-sin revocación. Una trama que declare v18 y aún envíe TransferRights es
+Services v19 conserva la retirada de TransferRights; control v7 y fotos v11 no cambian.
+El saludo rechaza v18 y anteriores como Version antes del comando retirado o de Policy,
+sin revocación. Una trama que declare v19 y aún envíe TransferRights es
 entrada malformada (Protocol). InstallOnline transporta solo la respuesta HTTP nueva;
 Install de control se conserva solo por compatibilidad v7; services ya no lo emite ni debe conectarlo a credenciales de disco. El conjunto instalado
 debe coincidir. Binding/authority/guardias y los plazos conservan su formato.
+
+
+Services v19 añade `LicenseStatus { policy, session, notice }` local al supervisor.
+El aviso tipado se conserva en memoria hasta un resultado de renovación verificado,
+un cierre confirmado o un nuevo login confirmado; perder/leer la respuesta no lo consume.
+Transient no crea avisos persistentes; la recuperación se presenta desde Policy.
+Login confirmado deja una comprobación única pendiente, con suelo y restricciones Live.
+La sesión es la última observada de services, también NeedsSignIn; null significa
+sin observación confirmada en ese intento, nunca SignedOut implícito. No arranca
+el helper para consultarla. Hub no altera formularios/errores con esa observación
+y sigue consultando avisos en NeedsSignIn. Los derechos del Hub y la compra solo se confirman
+por el Feed fresco; el Hub ya no solicita renovaciones durante la espera de compra.
+Solo el supervisor conserva esa ventana y su suelo/backoff. Inicio y Cuenta muestran
+el aviso separado del resultado del usuario. Reiniciar el supervisor pierde su aviso
+remoto en memoria; Policy sigue siendo la autoridad y conserva su diagnóstico.
+V18/v19 se rechazan como Version antes del esquema, sin revocar; control v7 y fotos v11 intactos.
 
 Contrato y rollback de datos: [ADR0102](../../docs/adr/0102-modelo-acceso-nativo.md).
 Las secciones fechadas inferiores son históricas; este contrato sustituye sus

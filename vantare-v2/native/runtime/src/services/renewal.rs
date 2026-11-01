@@ -48,21 +48,25 @@ impl Skip {
 }
 #[derive(Default)]
 pub(super) struct Renewal {
-    signed_in: bool,
+    session: Option<Session>,
     last_attempt: Option<Instant>,
     failures: u8,
     last_verified: bool,
     blocked: bool,
     last_skip: Option<Skip>,
     last_check: Option<Instant>,
+    login_due: bool,
 }
 impl Renewal {
     pub(super) fn signed_in(&self) -> bool {
-        self.signed_in
+        self.session == Some(Session::SignedIn)
+    }
+    pub(super) fn session(&self) -> Option<Session> {
+        self.session
     }
     pub(super) fn observe(&mut self, reply: &Reply) {
         if let Reply::Account { session, .. } = reply {
-            self.signed_in = *session == Session::SignedIn;
+            self.session = Some(*session);
             // Pending polls never reset the hard floor or a definitive rejection.
         }
     }
@@ -94,6 +98,10 @@ impl Renewal {
         self.blocked = false;
         self.failures = 0;
         // Preserve last_attempt: a user action cannot create an automatic burst.
+    }
+    pub(super) fn confirmed_login(&mut self) {
+        self.user_recovery();
+        self.login_due = true;
     }
     pub(super) fn attempted(&mut self, now: Instant) {
         self.last_attempt = Some(now);
@@ -129,11 +137,12 @@ impl Renewal {
         } else {
             self.last_skip = None;
             self.last_attempt = Some(now);
+            self.login_due = false;
         }
         result
     }
     fn reason(&self, policy: &Policy, wall: u64, now: Instant, origin: Origin) -> Result<(), Skip> {
-        if !self.signed_in {
+        if !self.signed_in() {
             return Err(Skip::NoSession);
         }
         if self.blocked {
@@ -159,6 +168,7 @@ impl Renewal {
             return Err(Skip::Backoff);
         }
         let due = origin == Origin::Purchase
+            || self.login_due
             || self.failures > 0
             || !policy.state.permits_access()
             // Preserve startup discovery of a purchase made outside this Hub.

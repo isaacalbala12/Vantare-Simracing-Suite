@@ -212,7 +212,8 @@ fn serve(root: &std::path::Path, name: &str, stop: Arc<Event>) -> Result<(), Str
                     .map_err(|error| format!("reply QA {key}: {error}"))?,
             };
             if script["fresh_policy"].as_bool() == Some(true)
-                && let Reply::License { policy, .. } = &mut reply
+                && let Reply::License { policy, .. } | Reply::LicenseStatus { policy, .. } =
+                    &mut reply
             {
                 policy.checked_at_ms = control::wall_ms().map_err(|error| error.to_string())?;
             }

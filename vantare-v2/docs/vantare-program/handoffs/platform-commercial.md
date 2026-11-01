@@ -1,3 +1,51 @@
+<!-- isa1827-p9-worker -->
+## Paso 9 — revisión del orquestador aplicada, PR draft #1838 (VANTA-126, 2026-11-01)
+
+[PR #1838](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1838), a nightly; sin integrar.
+Código vigente validado fdbeb7aa496a2ebdfba1afb298ff79906083e821; HEAD documental en PR/#1827.
+Fuentes Rust idénticas al pin de mutaciones 983735f97785b11958193a268baf1de0625f1a6f;
+el commit posterior solo corrige el fixture Python QA. Base origin/nightly 0a0060d4d2de68d128fa5f435518de9086770dcd.
+Rama vantareapp/isa-1827-paso9-aviso; worktree C:/VantareServer/wt/isa-1827-p9;
+target D:/VantareServer/targets/isa-1827-p9; evidencia D:/VantareServer/evidence/isa-1827-p9.
+
+- Revisión P2: Transient no crea un aviso persistente ni AccessError en Active/Grace, también en Live.
+  Definitive/account_conflict/DeviceLimit siguen retenidos; el transporte no resuelve el rechazo previo.
+  Recuperación se presenta desde Policy y el feedback manual permanece separado del aviso.
+- Revisión P3: login OAuth/email confirmado deja una comprobación única pendiente para volver a
+  detectar un rechazo vigente; conserva frescura, restricciones Live y suelo de un minuto. Un poll
+  posterior no la rearma. Regresión con Pro y treinta días de margen, éxito y rechazo, sin ráfagas.
+- Compra: prueba con sesión conocida y seis lecturas LicenseStatus locales reales; solo Feed fresco
+  confirma. Hub no renueva; supervisor conserva diez minutos, backoff y suelo. Respuesta perdida y
+  reconexión no consumen aviso ni arrancan helper; NeedsSignIn sigue leyéndolo sin AccountPoll.
+- Fixtures v19: Probe local, LicenseStatus con sesión/aviso y checked_at actualizado en ambos replies.
+  QA captura Cuenta porque Ingeniero es una página futura independiente de derechos. QA Windows
+  PASS: aviso visible y retirado, dos revisiones Policy y lecturas de aviso, dos PNG distintas, una sola
+  ventana fuera de monitores/sin foco y EOF código0. Capturas inspeccionadas por el ejecutor.
+- Gates habituales PASS sobre código vigente: fmt; Clippy cuatro crates/all-targets -D warnings;
+  Nextest ci con telemetría 1483/1483, 17 omisiones del perfil, 5 lentos, 326.440s; lifecycle13/13;
+  doce focales; nueve mutaciones detectadas por aserciones y 613 fuentes restauradas por SHA256.
+  Calidad/466 huellas, sintaxis Python y fragmento válidos. Matrices y Cargo conservan blobs de la base.
+- Comprobación adicional Clippy parity-capture FAIL: 16 avisos en Analysis, archivo idéntico a la base
+  (blob b9dea8e50a12629e64ab7ecd0b1e20f57c071893). Ya seguido en #1648, abierto/area:ui/Backlog.
+  No se amplía alcance ni se añaden allows. El ejemplo compila con su feature y la QA real pasa.
+- Toda compilación por compilar.ps1, jobs2, target privado y rust-lld explícito. Suite final con TEMP/TMP
+  privado corto: revision-test-environment-short.json. Se conservan dos suites previas 1482/1483:
+  conflicto en fixture Strategy basado en PID, y ruta TEMP demasiado larga para PowerShell clásico.
+  También se conservan el comando sin feature, lint corregido y captura fallida que detectó el fixture
+  desajustado. Sin exclusiones ni cambios en esos tests de Strategy/bootstrap. Logs revision-*,
+  mutations-review/results.json, revision-qa-live-2/result.json y final-validation.json contienen evidencia.
+- Dos revisiones DeepSeek previas; la revisión posterior del orquestador se aplica aquí por el ejecutor,
+  sin otra delegación. P3 previo: Logout fallido+Volver sigue necesitando una observación Account;
+  restaurar sesión por poll no prueba login nuevo; Cancel con aviso+SignedOut sintético no se afirma cubierto.
+- Issue #1827 abierta, Project Vantare / area:licencias / In Review, sin milestone. Push solo a rama de
+  issue; CI a cargo del orquestador, sin watch. Plane intacto. Services v19: desajuste Version antes del
+  esquema, sin revocar; control v7/fotos v11/formatos durables intactos. Sin dependencias nuevas,
+  secretos, datos reales, producción, instalaciones, merge ni release. Aviso remoto en memoria del
+  supervisor, sin almacén durable nuevo. Servicios de prueba físicos pendientes en sandbox autorizado.
+  Paso 10 no iniciado: espera integrar el 9; #1826 se aclarará con ese cambio.
+<!-- /isa1827-p9-worker -->
+
+
 <!-- isa1827-p8-worker -->
 ## Paso 8 — PR draft listo para revisión (VANTA-126, 2026-11-01)
 

@@ -35,9 +35,14 @@ def run(exe, out):
                        expires_at=int(time.time()) + 3600, pending=False,
                        message="QA local", error=None)
         replies = dict(fresh_policy=True, core_policy=policy,
+                       Probe=dict(result="License", policy=policy, message="QA local"),
                        Status=dict(result="Status", account_configured=True, message="QA local"),
                        AccountPoll=account, AccountProfileRefresh=account, AccountCancel=account,
-                       LicenseStatus=dict(result="License", policy=policy, message="QA local"))
+                       LicenseStatus=dict(result="LicenseStatus", policy=policy,
+                                          session="SignedIn", notice=(
+                                              dict(kind="Failure", outcome="Definitive",
+                                                   message="QA: rechazo pendiente de recuperación")
+                                              if policy["revision"] == 1 else None)))
         temporary = out / "replies.tmp"
         temporary.write_text(json.dumps(replies), encoding="utf-8")
         temporary.replace(out / "replies.json")
@@ -146,16 +151,24 @@ def run(exe, out):
         # Two independent reads leave time for the UI's 500 ms policy poll.
         return sum(json.loads(line)["revision"] == revision for line in lines if line.endswith("\n")) >= 2
 
+    def notice_reads():
+        path = out / "requests.jsonl"
+        if not path.exists():
+            return 0
+        lines = path.read_text().splitlines(keepends=True)
+        return sum(json.loads(line)["command"]["command"] == "LicenseStatus"
+                   for line in lines if line.endswith("\n"))
+
     try:
         env = os.environ.copy()
         env["VANTARE_CAPTURE_POLICY"] = "ipc"
         env["VANTARE_CAPTURE_TURN_FILE"] = str(marker)
         with (out / "stdout.log").open("w") as stdout, (out / "stderr.log").open("w") as stderr:
-            process = subprocess.Popen([str(host), "--qa-root", str(out), "--capture", "engineer-base",
+            process = subprocess.Popen([str(host), "--qa-root", str(out), "--capture", "cuenta-base",
                                         "--qa-size", "1440x900", "--control-stdin"],
                                        stdin=subprocess.PIPE, stdout=stdout, stderr=stderr, env=env,
                                        creationflags=subprocess.CREATE_NO_WINDOW)
-            until(lambda: len(windows) == 1 and read_revision(1))
+            until(lambda: len(windows) == 1 and read_revision(1) and notice_reads() >= 1)
             assert not marker.exists(), "el marcador configurado y caducado debe limpiarse"
             helper = Path(__file__).with_name("capture.ps1")
 
@@ -183,7 +196,7 @@ def run(exe, out):
             policy.update(revision=2, catalog="pro", engineer=True, strategy=True,
                           analysis=True, calendar=True, tester=True, state={"kind": "active"})
             write_replies()
-            until(lambda: read_revision(2))
+            until(lambda: read_revision(2) and notice_reads() >= 2)
             second = capture("pro.png")
             assert first != second, "la captura debe reflejar cambios IPC en el mismo proceso"
             process.stdin.close()
@@ -198,6 +211,7 @@ def run(exe, out):
         assert not list(out.glob("*.capture.json")), "IPC live nunca reutiliza caché"
         result = dict(result="PASS", pid=process.pid, processes=1, windows=1,
                       policy_revisions=[1, 2], external_pngs=2, eof_exit=process.returncode,
+                      notice_reads=notice_reads(), notice_recovered=True,
                       orphan_marker_removed=True,
                       violations=violations, events=events)
         (out / "result.json").write_text(json.dumps(result, indent=2))

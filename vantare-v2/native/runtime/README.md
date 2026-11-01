@@ -1,4 +1,4 @@
-## Contrato vigente de licencias — paso 8 (#1827)
+## Contrato vigente de licencias — paso 9 (#1827)
 
 La admisión del helper ya no instala una copia de disco: usa Read autenticado
 y helper_command_allowed sobre Policy.state. Las consultas necesitan política
@@ -6,6 +6,22 @@ fresca; recuperación y Logout siguen disponibles con denegación, sin conceder 
 No hay TransferRights al abrir/cerrar. El núcleo es el único almacén de derechos;
 InstallOnline conserva el ACK durable. ACK perdido → Transient → una emisión
 HTTP en el siguiente intento, respetando backoff y suelo de un minuto.
+
+
+Services v19 añade `LicenseStatus { policy, session, notice }` local al supervisor.
+El aviso tipado se conserva en memoria hasta un resultado de renovación verificado,
+un cierre confirmado o un nuevo login confirmado; perder/leer la respuesta no lo consume.
+Transient no crea avisos persistentes; la recuperación se presenta desde Policy.
+Login confirmado deja una comprobación única pendiente, con suelo y restricciones Live.
+La sesión es la última observada de services, también NeedsSignIn; null significa
+sin observación confirmada en ese intento, nunca SignedOut implícito. No arranca
+el helper para consultarla. Hub no altera formularios/errores con esa observación
+y sigue consultando avisos en NeedsSignIn. Los derechos del Hub y la compra solo se confirman
+por el Feed fresco; el Hub ya no solicita renovaciones durante la espera de compra.
+Solo el supervisor conserva esa ventana y su suelo/backoff. Inicio y Cuenta muestran
+el aviso separado del resultado del usuario. Reiniciar el supervisor pierde su aviso
+remoto en memoria; Policy sigue siendo la autoridad y conserva su diagnóstico.
+V18/v19 se rechazan como Version antes del esquema, sin revocar; control v7 y fotos v11 intactos.
 
 Contrato y rollback de datos: [ADR0102](../../docs/adr/0102-modelo-acceso-nativo.md).
 Las secciones fechadas inferiores son históricas; este contrato sustituye sus
@@ -73,8 +89,8 @@ y espera a la siguiente comprobación sin ruido de transporte. Con el cap de 15 
 
 Isaac autorizó renovar en Live dentro de esa ventana urgente y dos excepciones
 explícitas: recuperar acceso cuando no hay derechos activos, y confirmar una
-compra del usuario durante diez minutos después de recibir `Checkout` (igual
-que el Hub). Este origen se conserva en el supervisor, no se deduce de
+compra del usuario durante diez minutos después de recibir `Checkout`.
+Desde el paso 9 el Hub solo observa el Feed, sin un segundo scheduler. Este origen se conserva en el supervisor, no se deduce de
 `signing_in` ni se acepta desde el JSON del peer. Son operaciones únicas, con
 helper bajo demanda, prioridad Windows inferior a normal y cierre al acabar,
 sin avisos al piloto. Si bajar prioridad falla, continúa con diagnóstico cerrado

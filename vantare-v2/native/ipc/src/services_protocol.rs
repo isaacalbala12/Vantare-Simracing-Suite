@@ -2,10 +2,11 @@
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use std::io::{self, Read, Write};
 
-// v18 removes TransferRights. Admission observes the core without disk replay.
+// v19 publishes cached Session and persistent LicenseNotice in local LicenseStatus.
+// v18 removed TransferRights. Admission observes the core without disk replay.
 // Mixed generations are transient failures;
 // no protocol error can invalidate the signed core policy.
-pub const VERSION: u32 = 18;
+pub const VERSION: u32 = 19;
 #[path = "services_protocol/pilot_document.rs"]
 pub mod pilot_document;
 #[path = "services_protocol/report_document.rs"]
@@ -183,9 +184,35 @@ pub enum RenewalOutcome {
     Transient,
 }
 
+/// Last actionable renewal result. Reading it never repeats remote effects.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", deny_unknown_fields)]
+pub enum LicenseNotice {
+    Failure {
+        outcome: RenewalOutcome,
+        message: String,
+    },
+    DeviceLimit {
+        message: String,
+    },
+}
+impl LicenseNotice {
+    pub fn message(&self) -> &str {
+        match self {
+            Self::Failure { message, .. } | Self::DeviceLimit { message } => message,
+        }
+    }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "result", deny_unknown_fields)]
 pub enum Reply {
+    LicenseStatus {
+        policy: crate::control::Policy,
+        /// None means the supervisor has not observed the session in this attempt.
+        session: Option<Session>,
+        notice: Option<LicenseNotice>,
+    },
     LicenseFailure {
         outcome: RenewalOutcome,
         message: String,

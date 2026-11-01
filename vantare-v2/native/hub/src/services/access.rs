@@ -214,6 +214,20 @@ impl State {
         matches!(self.session, Session::SignedIn | Session::NeedsSignIn)
     }
 
+    /// A cached background observation is not a login/cancel/logout reply.
+    pub(super) fn observe_cached_session(&mut self, session: Option<Session>) -> Option<Session> {
+        if self.transition != Transition::Idle || self.login_requested {
+            return None;
+        }
+        let session = session.filter(|session| *session != Session::Pending)?;
+        if session == Session::SignedOut {
+            self.invalidate();
+        }
+        self.session = session;
+        self.session_checked = true;
+        Some(session)
+    }
+
     pub(super) fn logout_requested(&self) -> bool {
         self.transition == Transition::Logout
     }
@@ -423,12 +437,17 @@ impl Remote {
                 && self.access.session_known()
                 && self.access.policy.is_none()
                 && self.busy();
-        let error = self.access.error.clone().or_else(|| {
-            self.access
-                .policy
-                .as_ref()
-                .and_then(vantare_services::outcome::policy_message)
-        });
+        let error = self
+            .access
+            .error
+            .clone()
+            .or_else(|| self.license_notice_message())
+            .or_else(|| {
+                self.access
+                    .policy
+                    .as_ref()
+                    .and_then(vantare_services::outcome::policy_message)
+            });
         (pending, error)
     }
     pub(crate) fn retry_home_access(&mut self, cx: &mut Context<Self>) {

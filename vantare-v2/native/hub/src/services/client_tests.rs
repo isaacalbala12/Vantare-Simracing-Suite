@@ -5,8 +5,8 @@ use vantare_ipc::transport::Listener;
 
 #[test]
 fn hello_mismatch_checks_current_client_and_simulated_legacy_version_guards() {
-    assert_eq!(protocol::VERSION, 18, "step-8 envelope contract");
-    for (reader, writer) in [(18, 17), (17, 18), (18, 16), (16, 18)] {
+    assert_eq!(protocol::VERSION, 19, "step-9 envelope contract");
+    for (reader, writer) in [(19, 18), (18, 19), (19, 17), (17, 19)] {
         let name = format!("hub-hello-{reader}-{writer}-{}", std::process::id());
         let stop = Arc::new(Event::new().expect("event"));
         let mut listener = Listener::new(
@@ -69,8 +69,14 @@ fn hello_mismatch_checks_current_client_and_simulated_legacy_version_guards() {
 
 #[test]
 fn nested_policy_generation_mismatch_is_a_version_error_before_its_strict_schema() {
-    for version in [control::VERSION - 1, control::VERSION + 1] {
-        let name = format!("hub-policy-version-{}-{version}", std::process::id());
+    for (version, result_kind) in [control::VERSION - 1, control::VERSION + 1]
+        .into_iter()
+        .flat_map(|version| [(version, "License"), (version, "LicenseStatus")])
+    {
+        let name = format!(
+            "hub-policy-version-{}-{version}-{result_kind}",
+            std::process::id()
+        );
         let stop = Arc::new(Event::new().expect("event"));
         let mut listener = Listener::new(
             &format!("{name}-hub-services"),
@@ -94,7 +100,7 @@ fn nested_policy_generation_mismatch_is_a_version_error_before_its_strict_schema
             protocol::write(
                 &mut pipe,
                 &serde_json::json!({"version":protocol::VERSION,
-                "sequence":request.sequence,"reply":{"result":"License","message":"legacy",
+                "sequence":request.sequence,"reply":{"result":result_kind,"field_from_other_generation":true,
                 "policy":{"version":version,"field_from_other_generation":true}}}),
             )
             .expect("response");

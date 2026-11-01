@@ -1,6 +1,7 @@
 # #1840 / VANTA-127 · paso 3, lectura Rust
 
-Estado: en curso, gates finales sobre nightly actualizado. Base inicial
+Estado: en curso, [PR draft #1861](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1861)
+publicado y enlazado a T3; todavía no entregado. Gates finales sobre nightly actualizado. Base inicial
 `5cc23113afae7cfa44429f225f0aeb5f770c061c`; rebase sin conflictos sobre
 `668d99c32`, que incluye el paso 2 integrado por el orquestador en
 [PR #1857](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1857). Rama

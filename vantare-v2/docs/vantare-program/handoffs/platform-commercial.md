@@ -380,6 +380,8 @@ area:plataforma, Project Vantare. Plane En curso; estados/CI del orquestador.
 Sin merge/release del worker.
 ### Paso 3 · motor de lectura Rust (en curso, 2-nov-2026)
 
+- PR draft [#1861](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1861)
+  publicado y enlazado T3; pendiente de gates finales, no entregado.
 - Base inicial 5cc23113a, rebase limpio sobre nightly 668d99c32 con paso 2;
   rama vantareapp/isa-1840-paso3-engine-lectura, worktree propio
   isa-1840-paso3; target D:/VantareServer/targets/isa-1840-p3.

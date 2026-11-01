@@ -326,6 +326,7 @@ conservan la evidencia de sus ramas; no describen el estado de integración actu
   adaptadores PS documentados hasta p4–7. No se afirma 5→1 global antes de p7.
   sha2 se adelanta a p3; zip/windows siguen p4. Solo aristas installer/hub del
   lock pueden cambiar en p3, sin paquetes/versiones/checksums nuevos.
+- Revisión auxiliar incorporada: p5 conserva destinos hasta p6; p7 conserva LegacyRunner mientras haya motor1; precisa señales/plazo, Options, datos sin marcador, límites y lock.
 - Checks: diff y enlaces locales del ADR PASS; calidad/retirada 468/468 PASS.
   Sin crates tocados: fmt/Clippy/Nextest, matriz y telemetría/lifecycle omitidos
   por entrega documental. Ningún script de producto ejecutado.
@@ -351,7 +352,7 @@ Sin merge/release del worker.
   registration-status.json y ACK antes del mantenimiento. update-status sigue
   solo para el actualizador. Riesgo de readiness temprano/bootstrap975 documentado;
   guardas LF y baseline de blobs corrigieron el anterior fallo CI por CRLF local.
-- 1d listo para revisión en [PR draft #1851](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1851),
+- 1d integrado en nightly 5cc23113a por [PR #1851](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1851),
   rama vantareapp/isa-1840-1d-run, base eb9aa1d45, worktree D:/VantareServer/worktrees/isa-1840-1d.
   Código/test f93bcded7; HEAD publicado en #1840/PR. Root/Library y registro separado
   de1b/1c conservados, igual que todo el handoff ajeno de #1854.

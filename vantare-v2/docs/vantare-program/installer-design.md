@@ -6,6 +6,25 @@
 > ventana creada; MSIX queda histórico; paso 9 aparcado; dependencias del paso 4
 > aprobadas. Las cifras «después» son estimaciones para el recorrido completo.
 > Se sustituyen rutas locales del analista por marcadores reproducibles.
+
+**Notas de vigencia de la copia histórica (1-nov-2026, #1840):**
+
+- §4.5, paso 3: el alcance aceptado migra solo lecturas Rust de Probe/Hub;
+  conserva perfiles y adaptadores PS hasta pasos 4–7. No acredita 5→1 global.
+- §4.5, paso 1c: el aviso real vive en registration-status.json, separado del
+  actualizador. startup-options.json de 1d también es contrato vigente; el
+  recuento original de señales de §5 no los incluía y no es una medida actual.
+- §4.5, paso 5 conserva destinos existentes; el paso 6 cambia los accesos al
+  lanzador una vez instalado. El inventario sin PS del paso 7 se refiere al
+  producto nuevo: Setup conserva los scripts congelados necesarios para
+  LegacyRunner mientras alguna referencia sea motor 1, incluso tras ese paso.
+- La dependencia sha2 se adelanta al paso 3 por autorización del orquestador.
+  Cambian solo aristas installer/Hub del lock, sin nuevas resoluciones; la frase
+  histórica «no añaden nada al lock» no implica identidad byte a byte.
+
+El texto original que sigue se conserva completo; estas notas y ADR 0103
+resuelven sus recomendaciones superadas sin reescribir la evidencia histórica.
+
 # Recorrido del instalador — diseño (revisión general, frente P2)
 
 Rol: analista de diseño (advisor) del orquestador. Solo lectura: no se ha editado

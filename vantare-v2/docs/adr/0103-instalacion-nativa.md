@@ -53,8 +53,8 @@ una interrupción no activa una generación parcialmente preparada.
 | Ausente | Sin raíz reconocida |
 | Instalada | `state.json` válido con activa y anterior opcional |
 | Preparada | Instalada más `staging/pending.json` firmado |
-| Probando | `boot-pending.json` con nueva, anterior y plazo de confirmación |
-| Desinstalada con datos conservados | `retained-data.json`, sin `state.json` |
+| Probando | `boot-pending.json` con versión nueva y anterior; el lanzador fija el plazo de 45 s, sin añadir campos |
+| Desinstalada con datos conservados | Sin `state.json`, con `retained-data.json` o datos de una desinstalación antigua sin marcador |
 | Dañada | Validación fallida; se informa, nunca se escribe como estado persistente |
 
 `Installation::read` reúne `State`, `Manifest` y versión instalada. La autoridad
@@ -88,15 +88,18 @@ contexto; `Installation::read` reúne la lectura de estado/manifiesto en Rust.
 El perfil del Hub sigue siendo informativo, sin conceder autoridad al paquete.
 Probe conserva el perfil real: activa ligada al SHA del manifiesto sin rehash
 de binarios, anterior con verificación completa. Uninstall interrumpido conserva
-temporalmente DisplayVersion como presentación heredada si faltan binarios o
-manifiesto; ese adaptador se retira en el paso 4, sin usarlo para decidir versión
+temporalmente DisplayVersion como presentación heredada en todas las lecturas de
+Uninstall, incluidas las interrumpidas; se retira en el paso 4, sin decidir versión
 activa de una instalación completa.
 
 ### Confirmación, integración con Windows y rollback
 
-`engine::shell::sync(estado)` es una proyección idempotente: registro, Inicio,
+`engine::shell::sync(&State, &Options)` es una proyección idempotente: registro, Inicio,
 Escritorio, Startup y AUMID se reconstruyen desde el estado resultante. Los
-accesos nuevos apuntan al lanzador estable. Solo se modifican entradas propias;
+accesos nuevos apuntan al lanzador estable **a partir del paso 6**. El paso 5
+conserva los destinos actuales, incluida la compatibilidad Startup de raíces
+antiguas: nunca apunta a un lanzador aún no instalado. Options aporta identidad,
+carpeta de accesos y preferencias desktop/autostart. Solo se modifican entradas propias;
 los valores y enlaces ajenos se conservan. La preferencia Startup es única.
 
 La integración con Windows queda fuera de la confirmación de arranque.
@@ -121,6 +124,7 @@ por hijo ni termina procesos por su cuenta. Después el motor comprueba la
 guarda de binarios: con escritores vivos, Apply queda pendiente. El contrato
 de cierre supervisor → overlays se resuelve en el frente de arranque/cierre;
 el paso 6 prueba cierre fuera de carrera → salida limpia → Apply en la sesión.
+Su entrega depende de resolver el contrato de #1816 antes o junto a ese paso.
 
 Nunca se borran `generations/*/data/`, datos nativos externos ni datos Wails.
 La nueva generación copia y verifica datos; no sobrescribe los de una existente.
@@ -128,45 +132,62 @@ Desinstalar exige instalación parada, retira binarios e integración propia,
 incluida Run, y conserva la referencia a los datos activos. La retención del
 paso 8 elimina automáticamente **solo binarios de generaciones no referenciadas**;
 no borra sus `data/`. Borrar datos requeriría otra acción explícita del usuario.
+Sin marcador de datos conservados, Setup adopta una copia única o copias
+idénticas; con copias distintas rechaza la operación sin escoger arbitrariamente.
+La sesión fija `VANTARE_NATIVE_DATA_ROOT`: un proceso instalado sin esa ruta
+falla explícitamente, sin escribir por respaldo fuera de su generación. El
+respaldo a LOCALAPPDATA queda solo para desarrollo al migrar la sesión.
 
 Se conservan firma Ed25519, clave pública embebida, SHA autenticado del ZIP,
 validación de inventario/hash, rutas cerradas y rechazo de enlaces/reparse
-points. Un paquete preparado se verifica de nuevo al aplicar. No se añade
+points y `.env*`. Se conservan miembros ZIP exactos y topes actuales de tamaño
+comprimido, por miembro y total descomprimido; no se relajan al pasar a Rust.
+Un paquete preparado se verifica de nuevo al aplicar. No se añade
 red ni autoridad de actualización al lanzador.
 
 ### Compatibilidad y retirada de PowerShell
 
 `boot-pending.json`, `staging/pending.json`, `retained-data.json`,
-`update-status.json` e `installer-ui.json` conservan su forma. `manifest.json`
+`update-status.json`, `registration-status.json`, `installer-ui.json` y
+`startup-options.json` conservan su forma. El Hub escribe/lee el aviso de
+registro separado; Setup/SetStartup escriben la preferencia y el Hub la lee,
+con prioridad de installer-ui sobre startup-options. `manifest.json`
 admite `engine: 2` opcional; ausencia significa motor 1. Se mantienen feed,
-tag, asset, sobre y códigos 0–5 del Setup. Un motor antiguo debe rechazar de
+tag, asset, sobre y códigos 0–5 del Setup. Un valor de engine desconocido exige
+rechazo explícito, sin presuponer compatibilidad futura. Un motor antiguo debe rechazar de
 forma segura un paquete que no pueda validar y pedir reinstalar con Setup.
 
 La 0.0.975 pública y las RC 980–988 pasan una vez por Setup: se lee state v1,
 se conserva la anterior para rollback y se migran las formas conocidas de
 registro/accesos. Una generación motor 1 se arranca mediante **LegacyRunner**:
 `generations/<id>/bin/vantare.exe --beta -Root <raíz>`, con scripts congelados
-de la raíz. Es la única excepción temporal a retirar PowerShell del producto.
-Desaparece cuando **active y previous son de motor ≥ 2**; su prueba usa la
+de la raíz que **Setup conserva mientras alguna referencia sea motor 1**.
+Es la única excepción temporal a retirar PowerShell del producto. Se retiran
+esos scripts cuando **ninguna referencia active/previous sea motor 1**; una
+previous ausente no impide la retirada. El test de migración debe comprobar
+ambos lados de esa condición. Su prueba usa la
 975 real sin ejecutar sus binarios en la matriz. La prueba live requiere VM
 o cuenta aislada. Su Register puede volver a apuntar accesos a la generación
 antigua, limitación heredada aceptada hasta salir de LegacyRunner.
 
-El paso 7 retira PowerShell del producto nuevo, NSIS y operaciones Wails,
-incluida ImportLayout. Build se convierte en tooling del repositorio. MSIX
+El paso 7 retira PowerShell del producto nuevo, salvo la raíz LegacyRunner
+condicionada anterior, NSIS y operaciones Wails, incluidas ImportProfiles,
+ImportLayout y Start. Retira canales muertos, `_?=` y tests que leen scripts;
+reescribe README de packaging como contrato vigente. Build queda en tooling. MSIX
 se conserva como documento histórico, sin ruta de distribución activa.
 
 ## Decisiones de #1840 y secuencia de entrega
 
 Se aprueba el rediseño completo tras 0–1: 2 ADR y diseño versionado; 3 lector
-Rust; 4 escritura Setup/Uninstall; 5 shell; 6 lanzador/sesión; 7 retirada PS;
+Rust; 4 install/update/repair/uninstall de Setup, incluido descubrimiento/opciones
+para que Setup deje de lanzar PS; 5 shell; 6 lanzador/sesión; 7 retirada PS;
 8 retención. RC9 0.0.988 se publica tal como fue probada; 1a–1d corresponden
 a la siguiente candidata. Este ADR no publica ni reconstruye RC9.
 
 Para el **paso 4** están aprobadas dependencias directas de installer sobre
 `zip 6.0.0`, `windows 0.62` y `sha2`, ya fijadas en Cargo.lock. El orquestador
-autoriza adelantar **solo sha2 al paso 3**, en su versión ya fijada y sin cambiar
-el lock, para preservar el vínculo SHA del manifiesto y las validaciones de
+autoriza adelantar **solo sha2 al paso 3**, en su versión ya fijada, para
+preservar el vínculo SHA del manifiesto y las validaciones de
 Probe. zip y windows siguen en el paso 4. No se incorporan dependencias en
 este paso documental ni se autorizan otras versiones.
 Se permite actualizar únicamente las listas de dependencias de installer y Hub
@@ -186,8 +207,8 @@ HKCU y carpetas inyectados. #1848 sigue el aislamiento de suites históricas;
 de este corte. No se confunde un arnés con una instalación interactiva real.
 
 El lanzador es una pieza crítica y deliberadamente pequeña. La transición
-mantiene un LegacyRunner explícito, ensayado y con retirada definida. Los
-anclajes de la barra de tareas pueden requerir volver a anclarse una vez.
+mantiene un LegacyRunner explícito, con prueba exigida y retirada definida. Los
+anclajes pueden requerir volver a anclarse una vez; se avisará en las notas.
 Setup/Uninstall siguen sin Authenticode, conforme al riesgo ya aceptado.
 
 ## Relación con otras ADR

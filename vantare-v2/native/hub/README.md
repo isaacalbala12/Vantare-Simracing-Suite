@@ -1,10 +1,24 @@
-## Contrato vigente de licencias — paso 8 (#1827)
+## Contrato vigente de licencias — paso 9 (#1827)
 
-El Hub usa services v18, sin TransferRights. El saludo rechaza v17 y anteriores como
+El Hub usa services v19, sin TransferRights. El saludo rechaza v18 y anteriores como
 Version antes de Policy y no envía acciones de revocación. El helper se admite
 por lectura autenticada del núcleo; abrirlo no concede derechos. Las páginas y
 widgets siguen leyendo Policy.state. ACK perdido es transitorio: el supervisor
 conserva su suelo de un minuto antes de pedir otra emisión HTTP.
+
+
+Services v19 añade `LicenseStatus { policy, session, notice }` local al supervisor.
+El aviso tipado se conserva en memoria hasta un resultado de renovación verificado,
+un cierre confirmado o una sesión nueva; perder/leer la respuesta no lo consume.
+La sesión es la última observada de services, también NeedsSignIn; null significa
+sin observación confirmada en ese intento, nunca SignedOut implícito. No arranca
+el helper para consultarla. Hub no altera formularios/errores con esa observación
+y sigue consultando avisos en NeedsSignIn. Los derechos del Hub y la compra solo se confirman
+por el Feed fresco; el Hub ya no solicita renovaciones durante la espera de compra.
+Solo el supervisor conserva esa ventana y su suelo/backoff. Inicio y Cuenta muestran
+el aviso separado del resultado del usuario. Reiniciar el supervisor pierde su aviso
+remoto en memoria; Policy sigue siendo la autoridad y conserva su diagnóstico.
+V18/v19 se rechazan como Version antes del esquema, sin revocar; control v7 y fotos v11 intactos.
 
 Contrato y rollback de datos: [ADR0102](../../docs/adr/0102-modelo-acceso-nativo.md).
 Las secciones fechadas inferiores son históricas; este contrato sustituye sus
@@ -58,8 +72,8 @@ UI. Los avisos automáticos se consultan por IPC local cada cinco segundos;
 DeviceLimit conserva su salida accionable y no revoca la política firmada.
 El primer uso de un canal inactivo reconecta mediante Probe, manteniendo
 imagen, versión, nonce y secuencia. Una respuesta perdida no repite la acción.
-Los sondeos de compra también usan el camino automático no destructivo;
-el botón Comprobar acceso sigue siendo una acción explícita.
+Desde el paso 9, solo el supervisor comprueba la compra por el camino automático
+no destructivo; el botón Comprobar acceso sigue siendo una acción explícita.
 
 ## #1631 · Formularios de email
 

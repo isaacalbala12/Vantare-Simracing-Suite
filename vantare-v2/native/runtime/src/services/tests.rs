@@ -8,6 +8,8 @@ struct FixtureCredential {
     credential: CredentialV1,
 }
 
+#[path = "tests/notices.rs"]
+mod notices;
 #[path = "tests/online_only.rs"]
 mod online_only;
 #[path = "tests/profile.rs"]
@@ -588,7 +590,7 @@ fn live_cached_access_metadata_and_policy_survive_services_shutdown() {
     assert!(services.state.lock().expect("state").client.is_none());
     let policy = control::request(&link, control::Command::Read).expect("policy");
     assert!(policy.current() && policy.state.permits_access());
-    let Reply::License { policy: read, .. } = hub.request(Command::LicenseStatus) else {
+    let Reply::LicenseStatus { policy: read, .. } = hub.request(Command::LicenseStatus) else {
         panic!("cached rights must remain readable in game")
     };
     assert!(read.current() && read.state.permits_access());
@@ -619,7 +621,7 @@ fn heartbeat_delivers_definitive_revocation_instead_of_a_transient_error() {
     let mut hub = Session::open(&photo);
     assert!(matches!(hub.request(Command::Status), Reply::Status { .. }));
     assert!(
-        matches!(hub.request(Command::LicenseStatus), Reply::License { policy, .. } if policy.state.permits_access())
+        matches!(hub.request(Command::LicenseStatus), Reply::LicenseStatus { policy, .. } if policy.state.permits_access())
     );
     assert!(matches!(
         hub.request(Command::Logout),
@@ -628,7 +630,7 @@ fn heartbeat_delivers_definitive_revocation_instead_of_a_transient_error() {
             ..
         }
     ));
-    let Reply::License { policy, .. } = hub.request(Command::LicenseStatus) else {
+    let Reply::LicenseStatus { policy, .. } = hub.request(Command::LicenseStatus) else {
         panic!("el Hub necesita el resultado definitivo, no un error de transporte");
     };
     assert!(!policy.state.permits_access());
@@ -741,7 +743,7 @@ fn hub_automatic_requests_obey_live_window_and_explicit_purchase_origin() {
     }
     assert!(matches!(
         hub.request(Command::LicenseRenewAutomatic),
-        Reply::License { .. }
+        Reply::LicenseStatus { .. }
     ));
     assert!(
         services.state.lock().expect("state").client.is_none(),
@@ -777,7 +779,7 @@ fn hub_automatic_requests_obey_live_window_and_explicit_purchase_origin() {
     services.state.lock().expect("state").purchase_until = Some(Instant::now());
     assert!(matches!(
         hub.request(Command::LicenseRenewAutomatic),
-        Reply::License { .. }
+        Reply::LicenseStatus { .. }
     ));
     assert!(
         services.state.lock().expect("state").client.is_none(),
@@ -996,7 +998,7 @@ fn reissued_license_without_new_runway_is_successful_and_keeps_the_floor() {
 }
 
 #[test]
-fn live_renews_once_on_urgent_window_entry_and_transport_failures_retry_without_notices() {
+fn live_renews_once_on_urgent_window_entry_and_retains_failures_for_after_the_game() {
     let now = Instant::now();
     let wall = 10_000_000;
     let mut policy = control::Policy {
@@ -1027,7 +1029,10 @@ fn live_renews_once_on_urgent_window_entry_and_transport_failures_retry_without_
         }
     });
     assert!(result.is_some());
-    assert!(state.notice.is_none(), "do not interrupt the driver");
+    assert!(
+        state.notice.is_some(),
+        "retain the result for after the game"
+    );
     assert!(
         run_renewal(
             &mut state,
@@ -1163,16 +1168,25 @@ fn automatic_device_limit_remains_actionable_without_consuming_it_in_a_probe() {
     assert!(matches!(hub.request(Command::Probe), Reply::License { .. }));
     assert!(matches!(
         hub.request(Command::LicenseStatus),
-        Reply::DeviceLimit { .. }
+        Reply::LicenseStatus {
+            notice: Some(protocol::LicenseNotice::DeviceLimit { .. }),
+            ..
+        }
     ));
     assert!(matches!(
         hub.request(Command::LicenseStatus),
-        Reply::License { .. }
+        Reply::LicenseStatus {
+            notice: Some(protocol::LicenseNotice::DeviceLimit { .. }),
+            ..
+        }
     ));
     assert!(
         matches!(
             hub.request(Command::LicenseRenewAutomatic),
-            Reply::License { .. }
+            Reply::LicenseStatus {
+                notice: Some(protocol::LicenseNotice::DeviceLimit { .. }),
+                ..
+            }
         ),
         "a definitive block returns the cached policy without another issuance"
     );
@@ -1185,12 +1199,15 @@ fn automatic_device_limit_remains_actionable_without_consuming_it_in_a_probe() {
     assert!(
         matches!(
             hub.request(Command::LicenseRenewAutomatic),
-            Reply::License { .. }
+            Reply::LicenseStatus {
+                notice: Some(protocol::LicenseNotice::DeviceLimit { .. }),
+                ..
+            }
         ),
         "the hard floor also covers an automatic request from the Hub"
     );
     assert!(services.state.lock().expect("state").client.is_none());
-    services.state.lock().expect("state").notice = Some(Reply::DeviceLimit {
+    services.state.lock().expect("state").notice = Some(protocol::LicenseNotice::DeviceLimit {
         message: "old session".into(),
     });
     assert!(matches!(

@@ -660,6 +660,7 @@ pub(crate) fn fixture(
         access: access::State::from_build(),
         email: None,
         device_limit: false,
+        license_notice: None,
         license_polled_at: None,
         license_notice_polled_at: None,
         purchase_product: None,
@@ -724,14 +725,17 @@ fn license(catalog: vantare_ipc::control::CatalogAccess) -> Reply {
         },
     }
 }
-fn confirmed_core_license(remote: &mut Remote, cx: &mut Context<Remote>) {
-    let reply = license(vantare_ipc::control::CatalogAccess::Pro);
-    if let Reply::License { policy, .. } = &reply {
-        // La misma observación que entrega Feed, independiente del reply HTTP.
-        remote.observe_core_policy(policy.clone(), policy.checked_at_ms, cx);
+fn notice_status(catalog: vantare_ipc::control::CatalogAccess) -> Reply {
+    let Reply::License { policy, .. } = license(catalog) else {
+        unreachable!()
+    };
+    Reply::LicenseStatus {
+        policy,
+        session: Some(super::super::protocol::Session::SignedIn),
+        notice: None,
     }
-    remote.complete(reply, cx);
 }
+
 #[test]
 fn old_session_fetches_profile_once_quietly_and_offline_keeps_rights() {
     gpui_platform::headless().run(|cx| {
@@ -1012,14 +1016,15 @@ fn every_explicit_state_reaches_home_and_denied_states_never_grant_tools() {
     });
 }
 #[test]
-fn slow_renewal_keeps_fresh_core_access_but_revocation_logout_and_missing_core_deny() {
+fn slow_manual_renewal_keeps_fresh_core_access_but_revocation_logout_and_missing_core_deny() {
     gpui_platform::headless().run(|cx| {
         let file = crate::document::tests::File::new();
         let (send, requests) = mpsc::sync_channel(8);
         let remote = cx.new(|cx| fixture(cx, send, file.path.parent().expect("root")));
         remote.update(cx, |remote, cx| {
             for delay in [3500, 8000] {
-                remote.inflight = Inflight::PurchaseRenew;
+                remote.inflight = Inflight::User;
+                remote.active = Area::Licenses { renew: true };
                 let mut policy = vantare_ipc::control::Policy {
                     version: vantare_ipc::control::VERSION,
                     epoch: 1,
@@ -1036,7 +1041,7 @@ fn slow_renewal_keeps_fresh_core_access_but_revocation_logout_and_missing_core_d
                     policy.checked_at_ms = now;
                     remote.observe_core_policy(policy.clone(), now, cx);
                     let access = remote.access.navigation(now);
-                    assert!(remote.busy() && !remote.working());
+                    assert!(remote.busy() && remote.working());
                     assert!(access.verified);
                     assert_eq!(access.catalog, policy.catalog);
                     for section in [
@@ -1105,7 +1110,7 @@ fn slow_renewal_keeps_fresh_core_access_but_revocation_logout_and_missing_core_d
     });
 }
 #[test]
-fn purchase_poll_preserves_user_context_queues_actions_and_reloads_session_quietly() {
+fn notice_read_preserves_user_context_and_queues_actions_without_session_http() {
     gpui_platform::headless().run(|cx| {
         let file = crate::document::tests::File::new();
         let (send, requests) = mpsc::sync_channel(8);
@@ -1122,25 +1127,19 @@ fn purchase_poll_preserves_user_context_queues_actions_and_reloads_session_quiet
             remote.purchase_wait = Some(PurchaseWait {
                 product: BillingProduct::ProMonthly,
                 started: std::time::Instant::now(),
-                polled: None,
             });
-            assert!(
-                remote.dispatch_with_kind(Command::LicenseRenew, Some(Inflight::PurchaseRenew))
-            );
+            assert!(remote.dispatch_with_kind(Command::LicenseStatus, Some(Inflight::Background)));
             assert!(!remote.working());
             assert!(!remote.holds_hub_in_game());
             assert!(matches!(remote.active, Area::Report));
             assert!(remote.refresh_calendar(calendar.downgrade(), cx));
             remote.request(Command::ReportPrepare, cx);
-            assert!(matches!(requests.try_recv(), Ok(Command::LicenseRenew)));
+            assert!(matches!(requests.try_recv(), Ok(Command::LicenseStatus)));
             // El servicio demora su respuesta: no llega aún la acción encolada.
             assert!(requests.try_recv().is_err());
-            remote.complete(license(vantare_ipc::control::CatalogAccess::Free), cx);
-            assert!(matches!(requests.try_recv(), Ok(Command::AccountPoll)));
-            assert!(!remote.working());
+            remote.complete(notice_status(vantare_ipc::control::CatalogAccess::Free), cx);
             assert_eq!(remote.message, "Resultado de usuario");
             assert_eq!(remote.purchase_message.as_deref(), Some("Compra abierta"));
-            remote.complete(session_reply("Sesión releída", u64::MAX - 1), cx);
             assert!(matches!(requests.try_recv(), Ok(Command::ReportPrepare)));
             assert!(remote.working());
             assert_eq!(remote.message, "Resultado de usuario");
@@ -1170,10 +1169,21 @@ fn purchase_poll_preserves_user_context_queues_actions_and_reloads_session_quiet
             );
             assert_eq!(remote.roadmap_status(), "QA error de roadmap");
             assert_eq!(remote.message, "Resultado de usuario");
-            assert!(
-                remote.dispatch_with_kind(Command::LicenseRenew, Some(Inflight::PurchaseRenew))
+            assert!(remote.dispatch_with_kind(Command::LicenseStatus, Some(Inflight::Background)));
+            let Reply::LicenseStatus { policy, .. } =
+                notice_status(vantare_ipc::control::CatalogAccess::Pro)
+            else {
+                unreachable!()
+            };
+            remote.observe_core_policy(policy.clone(), policy.checked_at_ms, cx);
+            remote.complete(
+                Reply::LicenseStatus {
+                    policy,
+                    session: Some(super::super::protocol::Session::SignedIn),
+                    notice: None,
+                },
+                cx,
             );
-            confirmed_core_license(remote, cx);
             assert!(remote.purchase_wait.is_none());
             assert!(!remote.working());
             remote.complete(session_reply("QA", u64::MAX - 2), cx);
@@ -1190,24 +1200,20 @@ fn purchase_poll_preserves_user_context_queues_actions_and_reloads_session_quiet
     });
 }
 #[test]
-fn roadmap_request_queues_once_during_a_delayed_purchase_poll() {
+fn roadmap_request_queues_once_during_a_delayed_notice_read() {
     gpui_platform::headless().run(|cx| {
         let file = crate::document::tests::File::new();
         let (send, requests) = mpsc::sync_channel(8);
         let remote = cx.new(|cx| fixture(cx, send, file.path.parent().expect("root")));
         remote.update(cx, |remote, cx| {
-            assert!(
-                remote.dispatch_with_kind(Command::LicenseRenew, Some(Inflight::PurchaseRenew))
-            );
-            assert!(matches!(requests.try_recv(), Ok(Command::LicenseRenew)));
+            assert!(remote.dispatch_with_kind(Command::LicenseStatus, Some(Inflight::Background)));
+            assert!(matches!(requests.try_recv(), Ok(Command::LicenseStatus)));
             remote.ensure_roadmap(cx);
             remote.ensure_roadmap(cx);
             assert!(remote.roadmap_requested);
             assert!(!remote.working());
             assert!(requests.try_recv().is_err());
-            remote.complete(license(vantare_ipc::control::CatalogAccess::Free), cx);
-            assert!(matches!(requests.try_recv(), Ok(Command::AccountPoll)));
-            remote.complete(session_reply("QA", u64::MAX), cx);
+            remote.complete(notice_status(vantare_ipc::control::CatalogAccess::Free), cx);
             assert!(matches!(requests.try_recv(), Ok(Command::RoadmapCached)));
             assert!(requests.try_recv().is_err());
             remote.complete(
@@ -1232,10 +1238,7 @@ fn purchase_wait_is_bounded_and_requires_the_requested_verified_catalog() {
         let wait = PurchaseWait {
             product,
             started: now,
-            polled: Some(now),
         };
-        assert!(!wait.due(now + std::time::Duration::from_secs(4)));
-        assert!(wait.due(now + std::time::Duration::from_secs(5)));
         assert!(!wait.expired(now + std::time::Duration::from_secs(599)));
         assert!(wait.expired(now + std::time::Duration::from_mins(10)));
         assert!(!wait.confirmed(Access::default()));
@@ -1257,7 +1260,6 @@ fn founders_purchase_is_not_confirmed_by_an_existing_pro_subscription() {
     let wait = PurchaseWait {
         product: BillingProduct::Founders,
         started: std::time::Instant::now(),
-        polled: None,
     };
     let pro = Access {
         verified: true,
@@ -1286,11 +1288,8 @@ fn background_errors_logout_and_receipts_never_grant_access_or_lose_the_draft() 
             remote.purchase_wait = Some(PurchaseWait {
                 product: BillingProduct::LaunchLifetime,
                 started: std::time::Instant::now(),
-                polled: None,
             });
-            assert!(
-                remote.dispatch_with_kind(Command::LicenseRenew, Some(Inflight::PurchaseRenew))
-            );
+            assert!(remote.dispatch_with_kind(Command::LicenseStatus, Some(Inflight::Background)));
             remote.complete(
                 Reply::Error {
                     message: "QA red".into(),
@@ -1300,12 +1299,10 @@ fn background_errors_logout_and_receipts_never_grant_access_or_lose_the_draft() 
             assert!(!remote.navigation_access().verified);
             assert!(remote.purchase_wait.is_some());
             assert!(remote.editor.dirty);
-            assert!(
-                remote.dispatch_with_kind(Command::LicenseRenew, Some(Inflight::PurchaseRenew))
-            );
+            assert!(remote.dispatch_with_kind(Command::LicenseStatus, Some(Inflight::Background)));
             remote.request(Command::Logout, cx);
             assert!(remote.purchase_wait.is_none());
-            remote.complete(license(vantare_ipc::control::CatalogAccess::Pro), cx);
+            remote.complete(notice_status(vantare_ipc::control::CatalogAccess::Pro), cx);
             assert!(
                 !remote.navigation_access().verified,
                 "logout invalida respuesta tardía"

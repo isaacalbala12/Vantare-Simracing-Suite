@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "issue": "ISA-1827",
   "type": "fix",
-  "summary": "Las suscripciones desconocidas conservan el acceso; el Hub distingue la sesión de cuenta de los derechos vigentes.",
+  "summary": "Los avisos de licencia se conservan; la compra se confirma desde el núcleo y la sesión sigue separada del acceso.",
   "technicalNotes": [
     "Paso 6b, decisión 4: Paused conserva la gracia ya reconocida de la misma sesión live y la hora original de entrada; no inicia ni amplía el margen.",
     "Paso 2: webhook y reconciliación comparten la clasificación de estados y las reglas de plazo.",
@@ -14,7 +14,8 @@
     "Paso 7: control v7 y sobre services v17, autorizado por el orquestador. El saludo v16/v17 falla por versión antes de leer Policy; Session/AccountCancel siguen iguales. V16 no se publicó en release.",
     "Revisión paso 7: avisos de frontera con fecha/hora local también en Inicio, overlays y espera de compra; frontera en pared descontando el desfase firmado. Logout disponible con núcleo autenticado aun sin acceso; consultas durante recuperación fijadas por decisión del orquestador.",
     "Paso 8: services v18 elimina candidate, marcador y TransferRights. Solo el núcleo guarda derechos; admisión por Policy autenticada. ACK perdido es transitorio y el siguiente intento pide una emisión nueva con suelo de un minuto.",
-    "Decisión paso 8: apartar candidate/marcador antiguos una vez al arrancar, con rename fechado best-effort sin leer contenido. Evita reinstalarlos desde v17 tras downgrade sin binding."
+    "Decisión paso 8: apartar candidate/marcador antiguos una vez al arrancar, con rename fechado best-effort sin leer contenido. Evita reinstalarlos desde v17 tras downgrade sin binding.",
+    "Paso 9: el aviso de licencia reaparece tras perder una respuesta, sin arrancar servicios. Inicio y Cuenta lo separan del resultado del usuario. Services v19 publica sesión y aviso local; durante una compra solo renueva el supervisor y confirma el Feed fresco."
   ],
   "testing": [
     "Con reloj inyectado, comprobar pausa larga y reanudación sin cambiar el deadline; salida/cambio de sesión, replay y Logout descartan la gracia. La credencial y la hora de gracia caducan aun en pausa.",
@@ -26,11 +27,12 @@
     "Tras fallar el cierre, Reintentar cierre de sesión repite Logout; Volver exige derechos actuales. Abrir la elección de acceso y pulsar Escape no inicia login. Cancelar repetidamente no encola otra cancelación.",
     "Con fixtures y reloj inyectado, verificar la frontera futura antes/en/después, acceso Gratis tras vencer Pro, gracia en pausa, rechazo de generaciones mezcladas y recuperación firmada sin margen nuevo. No cambiar el reloj del equipo.",
     "Fixtures: ACK durable perdido, reemisión HTTP única tras un minuto, restos de otra cuenta/ilegibles apartados sin leer, rollback de datos con lectores v17 y pre-NeedsSignIn y vuelta. Desajuste v17/v18 da Version sin revocar.",
-    "B firmado del mismo PC sin binding: v18 aparta ambos restos, v17 solo lee política sin acceso y la vuelta a v18 sigue sin acceso. Rename bloqueado conserva bytes y no bloquea recuperación; siguiente arranque reintenta."
+    "B firmado del mismo PC sin binding: v18 aparta ambos restos, v17 solo lee política sin acceso y la vuelta a v18 sigue sin acceso. Rename bloqueado conserva bytes y no bloquea recuperación; siguiente arranque reintenta.",
+    "En sandbox, perder la respuesta de un aviso de límite/conflicto y reabrir Hub: debe seguir visible sin otro efecto remoto. Durante compra, servicios no confirma acceso; esperar al Feed fresco del núcleo."
   ],
   "knownLimitations": [
     "Este PR no despliega funciones. Las licencias ya firmadas conservan su plazo offline.",
     "La función pura mantiene su fallback histórico; las rutas de ingestión filtran desconocidos antes de aplicar cambios.",
-    "Services v18 y control v7 requieren actualizar el conjunto de binarios; no cambia el formato de derechos en disco ni despliega una instalación."
+    "Services v19 y control v7 requieren actualizar el conjunto de binarios; no cambia el formato de derechos en disco ni despliega una instalación. El aviso remoto vive en memoria del supervisor; Policy mantiene su diagnóstico al reiniciarlo."
   ]
 }

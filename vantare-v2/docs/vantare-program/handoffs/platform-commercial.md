@@ -1,3 +1,18 @@
+<!-- isa1827-p9-worker -->
+## Paso 9 — en ejecución (VANTA-126, 2026-11-01)
+
+#1827, Project Vantare / area:licencias / In Review, sin milestone.
+Base origin/nightly 0a0060d4d2de68d128fa5f435518de9086770dcd; rama vantareapp/isa-1827-paso9-aviso;
+worktree C:/VantareServer/wt/isa-1827-p9; target D:/VantareServer/targets/isa-1827-p9.
+Aviso conservado por el supervisor, consulta local sin helper, presentación separada del resultado
+del usuario. Compra: Hub no renueva, confirma solo Feed fresco. Pruebas, gates y mutaciones en curso.
+Services v19 publica LicenseStatus local con sesión observada y aviso tipado, sin iniciar el helper.
+V18/v19 da Version antes del esquema, sin revocación. Control v7/fotos v11 y formatos durables intactos.
+Sin dependencias nuevas ni cambios de acceso firmado.
+Paso 10 pendiente de integrar el 9. Plane intacto; sin instalaciones, producción,
+datos reales, secretos, merge ni release.
+<!-- /isa1827-p9-worker -->
+
 <!-- isa1827-p8-worker -->
 ## Paso 8 — PR draft listo para revisión (VANTA-126, 2026-11-01)
 

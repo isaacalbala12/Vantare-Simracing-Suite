@@ -556,6 +556,12 @@ impl Remote {
                 account_demo().is_none() && !self.message.is_empty(),
                 |page| page.child(orbit::callout(self.message.clone(), cx)),
             )
+            .when_some(
+                self.license_notice
+                    .as_ref()
+                    .filter(|notice| account_demo().is_none() && **notice != self.message),
+                |page, notice| page.child(orbit::callout(notice.clone(), cx)),
+            )
             .child(self.account_identity(cx).flex_none().w_full())
             .child(self.purchase_status(cx))
             .child(

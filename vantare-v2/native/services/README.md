@@ -1,6 +1,6 @@
-## Contrato vigente de licencias — paso 8 (#1827)
+## Contrato vigente de licencias — paso 9 (#1827)
 
-Services v18 retira TransferRights, Candidate y su marcador. `renew` devuelve
+Services v19 conserva la retirada de TransferRights, Candidate y su marcador. `renew` devuelve
 CredentialV1 recién verificada en memoria y App la entrega por InstallOnline;
 solo el ACK durable confirma la instalación. Al arrancar aparta candidate y marcador históricos con rename fechado, sin leer
 su contenido. Es best-effort: un bloqueo se diagnostica, nunca concede ni bloquea
@@ -8,6 +8,20 @@ la recuperación; se reintenta al siguiente arranque si quedaron restos.
 Si se pierde el ACK o desaparece el núcleo, el resultado es transitorio y la
 siguiente renovación pide una emisión nueva, con backoff y suelo de un minuto.
 Binding/authority/guardias del núcleo no cambian. Solo los actos explícitos revocan.
+
+
+Services v19 añade `LicenseStatus { policy, session, notice }` local al supervisor.
+El aviso tipado se conserva en memoria hasta un resultado de renovación verificado,
+un cierre confirmado o una sesión nueva; perder/leer la respuesta no lo consume.
+La sesión es la última observada de services, también NeedsSignIn; null significa
+sin observación confirmada en ese intento, nunca SignedOut implícito. No arranca
+el helper para consultarla. Hub no altera formularios/errores con esa observación
+y sigue consultando avisos en NeedsSignIn. Los derechos del Hub y la compra solo se confirman
+por el Feed fresco; el Hub ya no solicita renovaciones durante la espera de compra.
+Solo el supervisor conserva esa ventana y su suelo/backoff. Inicio y Cuenta muestran
+el aviso separado del resultado del usuario. Reiniciar el supervisor pierde su aviso
+remoto en memoria; Policy sigue siendo la autoridad y conserva su diagnóstico.
+V18/v19 se rechazan como Version antes del esquema, sin revocar; control v7 y fotos v11 intactos.
 
 Contrato y rollback de datos: [ADR0102](../../docs/adr/0102-modelo-acceso-nativo.md).
 Las secciones fechadas inferiores son históricas; este contrato sustituye sus

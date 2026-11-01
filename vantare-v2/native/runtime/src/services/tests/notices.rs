@@ -1,0 +1,219 @@
+use super::*;
+
+fn expected_notice(reply: &Reply) -> protocol::LicenseNotice {
+    match reply {
+        Reply::DeviceLimit { message } => protocol::LicenseNotice::DeviceLimit {
+            message: message.clone(),
+        },
+        Reply::LicenseFailure { outcome, message } => protocol::LicenseNotice::Failure {
+            outcome: *outcome,
+            message: message.clone(),
+        },
+        _ => unreachable!(),
+    }
+}
+
+fn lose_status_response(mut hub: Session, photo: &str) -> Session {
+    // Closing without reading loses the response. Reconnection waits until
+    // the server exits that request, without a timed sleep.
+    protocol::write(
+        &mut hub.pipe,
+        &Request {
+            version: protocol::VERSION,
+            sequence: hub.sequence + 1,
+            nonce: hub.nonce.clone(),
+            command: Command::LicenseStatus,
+        },
+    )
+    .expect("request whose response is lost");
+    drop(hub);
+    Session::open(photo)
+}
+
+#[test]
+fn lost_notice_response_is_recoverable_without_helper_or_another_remote_effect() {
+    let Fixture {
+        root,
+        photo,
+        link,
+        core,
+        services,
+    } = Fixture::with_license(false);
+    let mut hub = Session::open(&photo);
+    let mut policy = control::request(&link, control::Command::Read).expect("core");
+    let now = Instant::now();
+    for notice in [
+        Reply::DeviceLimit {
+            message: "device limit".into(),
+        },
+        Reply::LicenseFailure {
+            outcome: protocol::RenewalOutcome::Definitive,
+            message: "account_conflict".into(),
+        },
+        Reply::LicenseFailure {
+            outcome: protocol::RenewalOutcome::Transient,
+            message: "recovery".into(),
+        },
+    ] {
+        let mut state = services.state.lock().expect("state");
+        // The injected scheduler below owns this fixture's attempts.
+        state.core_retry_at = Some(now + Duration::from_hours(1));
+        state.renewal = Renewal::default();
+        state.renewal.observe(&confirmed_session());
+        let mut requests = 0;
+        run_renewal(&mut state, &policy, policy.checked_at_ms, now, |_, _| {
+            requests += 1;
+            notice.clone()
+        })
+        .expect("first attempt");
+        for second in [0, 1, 5, 30, 59] {
+            policy.checked_at_ms += 1;
+            assert!(
+                run_renewal(
+                    &mut state,
+                    &policy,
+                    policy.checked_at_ms,
+                    now + Duration::from_secs(second),
+                    |_, _| {
+                        requests += 1;
+                        panic!("no retry burst")
+                    }
+                )
+                .is_none()
+            );
+        }
+        assert_eq!(requests, 1);
+        drop(state);
+        hub = lose_status_response(hub, &photo);
+        let expected = expected_notice(&notice);
+        for _ in 0..2 {
+            let Reply::LicenseStatus {
+                notice, session, ..
+            } = hub.request(Command::LicenseStatus)
+            else {
+                panic!("status")
+            };
+            assert_eq!(notice.as_ref(), Some(&expected));
+            assert_eq!(session, Some(protocol::Session::SignedIn));
+            assert!(services.state.lock().expect("state").client.is_none());
+        }
+        let signing: SigningIn = Arc::new(Mutex::new(None));
+        handle_with(
+            &mut services.state.lock().expect("state"),
+            Command::Logout,
+            &signing,
+            |_, _| failure("lost helper"),
+        );
+        assert!(
+            matches!(
+                hub.request(Command::LicenseStatus),
+                Reply::LicenseStatus {
+                    session: None,
+                    notice: Some(_),
+                    ..
+                }
+            ),
+            "a failed Logout cannot publish SignedOut"
+        );
+    }
+    drop(hub);
+    drop(services);
+    drop(core);
+    std::fs::remove_dir_all(root).expect("private cleanup");
+}
+
+fn pending_account(_: &mut State, _: Command) -> Reply {
+    let mut reply = confirmed_session();
+    if let Reply::Account {
+        session, pending, ..
+    } = &mut reply
+    {
+        *session = protocol::Session::Pending;
+        *pending = true;
+    }
+    reply
+}
+
+#[test]
+fn notice_is_retained_until_confirmed_login_reset_or_verified_renewal() {
+    let mut state = State::default();
+    let notice = Reply::DeviceLimit {
+        message: "limit".into(),
+    };
+    let expected = expected_notice(&notice);
+    let signing: SigningIn = Arc::new(Mutex::new(None));
+    remember_notice(&mut state, &notice);
+    remember_notice(&mut state, &failure("transport"));
+    assert_eq!(state.notice.as_ref(), Some(&expected));
+    handle_with(&mut state, Command::Logout, &signing, |_, _| {
+        let mut reply = confirmed_session();
+        if let Reply::Account { error, .. } = &mut reply {
+            *error = Some("ACK perdido".into());
+        }
+        reply
+    });
+    assert_eq!(
+        state.notice.as_ref(),
+        Some(&expected),
+        "failed Logout does not resolve the notice"
+    );
+    handle_with(&mut state, Command::AccountBegin, &signing, pending_account);
+    handle_with(&mut state, Command::AccountCancel, &signing, |_, _| {
+        confirmed_session()
+    });
+    assert_eq!(
+        state.notice.as_ref(),
+        Some(&expected),
+        "cancel is not recovery"
+    );
+    handle_with(&mut state, Command::AccountBegin, &signing, pending_account);
+    handle_with(&mut state, Command::AccountPoll, &signing, |_, _| {
+        confirmed_session()
+    });
+    assert!(
+        state.notice.is_none(),
+        "confirmed OAuth login resolves the notice"
+    );
+    remember_notice(&mut state, &notice);
+    handle_with(
+        &mut state,
+        Command::AccountEmail {
+            action: protocol::EmailAction::Finish {},
+        },
+        &signing,
+        |_, _| confirmed_session(),
+    );
+    assert!(state.notice.is_none(), "email login resolves the notice");
+    remember_notice(&mut state, &notice);
+    let policy = control::Policy {
+        revision: 1,
+        checked_at_ms: 1000,
+        ..control::Policy::denied(control::AccessState::NoCredential)
+    };
+    handle_with(&mut state, Command::LicenseRenew, &signing, |_, _| {
+        core_status_reply(policy.clone())
+    });
+    assert_eq!(
+        state.notice.as_ref(),
+        Some(&expected),
+        "denied renewal cannot resolve the notice"
+    );
+    handle_with(&mut state, Command::LicenseRenew, &signing, |_, _| {
+        core_status_reply(control::Policy {
+            state: control::AccessState::Active,
+            ..policy.clone()
+        })
+    });
+    assert!(
+        state.notice.is_none(),
+        "verified renewal supersedes the notice"
+    );
+    remember_notice(&mut state, &notice);
+    handle_with(&mut state, Command::DeviceReset, &signing, |_, _| {
+        core_status_reply(policy)
+    });
+    assert!(
+        state.notice.is_none(),
+        "confirmed reset supersedes the notice"
+    );
+}

@@ -1,4 +1,4 @@
-//! #1827: matriz base con diferencias autorizadas de pasos 5/6/8 explícitas.
+//! #1827: matriz base con diferencias autorizadas de pasos 5/6/8 y corte E explícitas.
 //! Paso 8 elimina la columna candidate: no aplica porque servicios ya no guarda licencias.
 use super::*;
 use crate::protocol::RenewalOutcome;
@@ -72,14 +72,15 @@ fn nightly_error_origin_effects_matrix() {
         (License, User, 429, "{}", Error::Offline, false, true, false),
         (License, User, 503, "{}", Error::Offline, false, true, false),
         (License, User, 200, "{}", Error::Protocol, false, true, false),
-        (License, Automatic, 401, "{}", Error::Authentication, false, true, false),
+        // E autorizado: 401 automático (Purchase usa el mismo IPC) exige login, sin revocar.
+        (License, Automatic, 401, "{}", Error::Authentication, false, true, true),
         (License, Automatic, 403, "{}", Error::Denied, false, true, false),
         (License, Automatic, 409, "{}", Error::Conflict, false, true, false),
         (License, Automatic, 409, r#"{"error":"device_limit"}"#, Error::DeviceLimit, false, true, false),
         (License, Automatic, 409, r#"{"error":"account_conflict"}"#, Error::AccountConflict, false, true, false),
         (License, Automatic, 429, "{}", Error::Offline, false, true, false),
         (License, Automatic, 503, "{}", Error::Offline, false, true, false),
-        (License, Purchase, 401, "{}", Error::Authentication, false, true, false),
+        (License, Purchase, 401, "{}", Error::Authentication, false, true, true),
         (License, Purchase, 403, "{}", Error::Denied, false, true, false),
         (License, Purchase, 409, "{}", Error::Conflict, false, true, false),
         (License, Purchase, 409, r#"{"error":"device_limit"}"#, Error::DeviceLimit, false, true, false),
@@ -282,7 +283,8 @@ fn nightly_automatic_failure_result_matrix() {
     // Error → Reply actual (también para Purchase). Cambia en paso 4 solo su dueño.
     #[rustfmt::skip]
     const CASES: &[(Error, bool)] = &[
-        (Error::Authentication, true),
+        // E: problema de sesión automático, no rechazo definitivo de licencia.
+        (Error::Authentication, false),
         (Error::Denied, true),
         (Error::Conflict, true),
         (Error::Core(Failure::Rejected), true),

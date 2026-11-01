@@ -4,6 +4,7 @@
   "type": "fix",
   "summary": "Las licencias sin fecha firmada se comprueban al arrancar y cada 24 horas; se conservan los avisos y el acceso offline.",
   "technicalNotes": [
+    "E: un 401 de licencia en renovación automática pasa a Transient y NeedsSignIn durable, con derechos firmados intactos. No crea rechazo definitivo de licencia ni bloquea el scheduler por ese error. El 401 manual mantiene su clasificación; se conserva el origen al construir el Reply y se reutiliza el efecto de sesión de OAuth.",
     "D1b: el Hub conserva una identidad confirmada y la fase del intento en access::State; vistas de Cuenta, compra y Pilot derivan su estado del mismo dueño. Un callback Account tardío descartado durante Logout ya no modifica perfil ni identidad; Pending conserva la identidad anterior y solo Feed confirma derechos.",
     "D1a: credencial de caché decodificada una vez, wrappers solo de fixtures fuera de producto y ramas repetidas retiradas. README de services/runtime/hub/ipc consolidados en contrato vigente. Se conserva rollback real: el probe común adapta únicamente el campo installation de los dos lectores congelados y comprueba ausencia física de candidate/pending.",
     "Corte D0: fecha real inyectada en las cuarentenas de perfil, roadmap, informes, autoridad y Gestión; sin cambiar derechos ni formatos activos. Runbook explica posible duplicado tras perder un intento incierto por daño DPAPI y editar el borrador.",
@@ -39,7 +40,8 @@
     "En sandbox, perder la respuesta de un aviso de límite/conflicto y reabrir Hub: debe seguir visible sin otro efecto remoto. Durante compra, servicios no confirma acceso; esperar al Feed fresco del núcleo.",
     "Reloj inyectado: fallo transitorio en Active/Grace dentro/fuera de Live sin banner; login OAuth/email confirma una comprobación tras el suelo y redetecta rechazo; seis lecturas locales reales durante compra. Fixture QA usa LicenseStatus v19.",
     "Con reloj inyectado: arranque una llamada, 23 h 59 min ninguna, 24 h una; fallo offline con 1/2/4/8/15 min, Live y ClockBehind sin llamadas. Reiniciar helper/reconectar Hub conserva cadencia y aviso.",
-    "Fixtures aisladas: DPAPI dañado de las tres cachés, una cuarentena y reconstrucción; sesión byte a byte. Pilot/borrador/imágenes conservados en dos aperturas; autoridad/marcador idénticos en dos reinicios. E/S y rename fallido siguen como error; cap tres."
+    "Fixtures aisladas: DPAPI dañado de las tres cachés, una cuarentena y reconstrucción; sesión byte a byte. Pilot/borrador/imágenes conservados en dos aperturas; autoridad/marcador idénticos en dos reinicios. E/S y rename fallido siguen como error; cap tres.",
+    "E: fixture HTTP401 manual/automático con núcleo real y binding idéntico byte a byte, NeedsSignIn tras reinicio, sin refresh/replay; scheduler sin Blocked y Hub con acceso offline e inicio de sesión. SignedOut no inicia HTTP."
   ],
   "knownLimitations": [
     "Este PR no despliega funciones. Las licencias ya firmadas conservan su plazo offline.",

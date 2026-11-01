@@ -8,6 +8,8 @@ struct FixtureCredential {
     credential: CredentialV1,
 }
 
+#[path = "tests/authentication.rs"]
+mod authentication;
 #[path = "tests/notices.rs"]
 mod notices;
 #[path = "tests/online_only.rs"]

@@ -399,3 +399,20 @@ Logout con Session confirmada sigue siendo distinta de ese callback: conserva
 la salida Reintentar/Volver con la misma exigencia de una nueva Policy fresca.
 No cambia IPC, disco, permisos ni decisiones del núcleo. La matriz cubre las
 identidades SignedOut/SignedIn/NeedsSignIn, Pending, Cancel, errores, perfil y compra.
+
+
+### E — Authentication automático exige sesión, no rechaza la licencia
+
+Un Error::Authentication en LicenseRenewAutomatic se clasifica Transient y
+requiere NeedsSignIn, conservando identidad/perfil y derechos firmados. Se limpia
+la sesión de datos y persiste el marcador existente, igual que en refresh OAuth.
+Sin identidad no se inventa NeedsSignIn. No crea un aviso definitivo ni bloquea
+el scheduler por este error; este relee AccountPoll y queda NoSession hasta login.
+Los avisos anteriores siguen la política vigente de Transient, sin borrarlos.
+
+El 401 manual de licencia conserva su resultado definitivo y su sesión. El
+constructor del fallo consume la clasificación del origen real en vez de
+clasificar otra vez como automático. Token invalid_grant/401 sigue exigiendo
+login; los demás rechazos y los formatos de cuenta/credencial permanecen iguales.
+Las filas Automatic/Purchase de la caracterización usan el mismo IPC y cambian
+solo para Authentication; quedan anotadas como excepción autorizada.

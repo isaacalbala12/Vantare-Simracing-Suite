@@ -410,3 +410,28 @@ fn fresh_login_with_same_identity_clears_needs_sign_in_without_revocation() {
     drop(app);
     crate::cleanup_store(&root, "same-identity-recovery", &[]);
 }
+
+#[test]
+fn automatic_renewal_without_identity_stays_signed_out_and_never_starts_http() {
+    let server = crate::test_http::Server::start_observed(vec![]);
+    let mut fixture = access_fixture(&server, vec![]);
+    let app = &mut fixture.app;
+    app.account
+        .as_mut()
+        .expect("account")
+        .logout(app.store.as_ref().expect("store"))
+        .expect("signed out fixture");
+    assert!(matches!(
+        app.handle(Command::LicenseRenewAutomatic),
+        Reply::LicenseFailure {
+            outcome: crate::protocol::RenewalOutcome::Transient,
+            ..
+        }
+    ));
+    assert_eq!(
+        app.account.as_ref().expect("account").session(),
+        crate::protocol::Session::SignedOut
+    );
+    fixture.finish();
+    assert!(server.finish_observed().is_empty());
+}

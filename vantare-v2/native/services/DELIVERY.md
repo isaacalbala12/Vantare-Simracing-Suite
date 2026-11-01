@@ -198,7 +198,7 @@ marca; no se introduce autoridad de sesión por Hub/IPC.
 **Bloqueo y siguiente paso para Opus:** `Session` solo publica identidad local,
 tipo, circuito y relojes relativos. Los adaptadores LMU/ACC no publican una marca
 nativa persistente. `advance_observed_session` recibe una marca explícita solo
-en tests; Host continúa usando `advance_observed` sin marca. Por tanto este
+en tests; Host usa `advance_observed_session(..., None, ...)` sin marca. Por tanto este
 corte prepara la restauración segura, pero **no conserva aún el margen tras
 reiniciar el núcleo con un juego real**. Hace falta encargar al dueño de
 adaptadores/domain una señal nativa con unicidad comprobada entre carreras del

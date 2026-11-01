@@ -48,6 +48,7 @@ Historial/versiones anteriores: Git y [evidencia](../../docs/vantare-program/lic
 DTO explícito, transporte autenticado y demanda; la versión de foto es independiente de servicios y control.
 
 MailConsent confirma el endpoint native-mail-consent, nunca un flag local.
+El protocolo de MailConsent no transporta correo, identidad ni tokens.
 BillingProduct incluye Founders y CatalogAccess distingue su catálogo; ningún
 mensaje transporta tokens ni negocia permisos con una generación anterior.
 

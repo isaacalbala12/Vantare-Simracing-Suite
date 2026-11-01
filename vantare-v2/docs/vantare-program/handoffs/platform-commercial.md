@@ -47,6 +47,10 @@ Rama vantareapp/isa-1827-simplificar-d1a; mismo worktree/target isa-1827-s.
   Solo cinco fuentes Hub de #1850 cambian frente al árbol validado;
   manifiestos y fuentes de services/runtime/ipc intactos.
   CI y revisión a cargo del orquestador.
+- Revisión P3: INTEGRATION/DELIVERY nombran el avance real con None; README
+  recuperan diagnósticos cerrados, runbook BIL-08, account_conflict 409 y privacidad
+  MailConsent. El probe documenta su copia deliberada del namespace; solo comentarios,
+  ningún token Rust ejecutable cambia. Sin cambios de producto.
 <!-- /isa1827-simplificar-d1a -->
 
 <!-- isa1827-simplificar-d0 -->

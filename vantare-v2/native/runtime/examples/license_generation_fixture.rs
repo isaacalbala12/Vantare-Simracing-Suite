@@ -231,6 +231,9 @@ fn retire_old_b_fixture(root: &std::path::Path, keys: &str, device: &str) {
         || Ok(100),
     ));
     let _store = Store::open(&service_root, context).expect("retired namespace");
+    // Deliberate test-support copy of Store::open's namespace (services/storage.rs):
+    // SHA-256(context), lowercase hex. The common API of all three frozen readers
+    // exposes no path; this probe must check physical absence, not a logical read.
     let namespace = service_root.join(format!("{:x}", Sha256::digest(context.as_bytes())));
     for name in ["license-candidate", "license-transfer-pending"] {
         assert!(

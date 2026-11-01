@@ -18,12 +18,18 @@ Se conserva la protección de downgrade a generaciones anteriores (RC9 incluida)
 
 Firma/subject/device inválidos del núcleo son Version/Transient en services;
 lápida/denegación/caducidad conservan Rejected e iat conserva Unavailable/Clock.
+`account_conflict` HTTP 409 es una inconsistencia, no una revocación.
 `outcome()` es la tabla única de resultados y efectos. Solo Logout, cambio de
 identidad y DeviceReset revocan; exigen ACK antes de limpiar o confirmar.
 Una renovación rechazada no borra la firma vigente ni amplía su plazo. ACK
 perdido olvida esa emisión y pide otra por HTTP cuando toque; nunca repite la acción.
 `online_capabilities` no concede acceso. Cadencia, Live y backoff son del
 [supervisor](../runtime/README.md#contrato-vigente-de-licencias-y-supervisor).
+
+El inventario cerrado de diagnósticos de caché es `license-cache-unknown-key`,
+`license-cache-unsupported-format`, `license-cache-invalid-signature` y
+`license-cache-unreadable`. No conceden derechos ni contienen la credencial.
+La operación de claves y recuperación sigue el [runbook BIL-08](../../docs/billing/bil-08-offline-credential-runbook.md).
 
 ### Cuenta y avisos
 

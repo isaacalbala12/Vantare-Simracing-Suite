@@ -69,7 +69,8 @@ una marca de inicio estable. `domain/src/model.rs::Session` solo contiene el
 `self.epoch`. `Origin.source_time`/`Session.elapsed_s` son relojes relativos,
 no identificadores; restarlos del reloj de pared inventaría una identidad que
 cambia con pausas, carga, latencia y reinicios del simulador. Por eso
-`advance_observed`/Host siguen pasando marca ausente y **el margen frío live
+Host usa `advance_observed_session(..., None, ...)`, pasando marca ausente, y
+**el margen frío live
 todavía no se restaura en producción**. La persistencia y restauración se prueban
 con una marca explícita de fixture, sin atribuirla a un juego real. El siguiente
 worker debe aportar una marca nativa estable en el modelo y conectar Host; este

@@ -1,3 +1,54 @@
+<!-- isa1827-p10-worker -->
+## VANTA-126 / #1827 — Paso 10 listo para revisión (2026-11-01)
+
+[PR draft #1839](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1839),
+a nightly, enlazado en T3; sin integrar. Código validado `22b81cd64509fc1ea818780c4e4488144420e391`;
+HEAD documental vigente en PR/#1827. Base `dac51663eff12cd6e550670cbdd27c7b9c3cbb1d`
+(paso 9 integrado por #1838). Rama `vantareapp/isa-1827-paso10-cadencia`, worktree
+`C:/VantareServer/wt/isa-1827-p10`; target `D:/VantareServer/targets/isa-1827-p10`.
+Evidencia `D:/VantareServer/evidence/isa-1827-p10`.
+
+- Sin fecha firmada: una comprobación al arrancar y cada 24 h desde el éxito,
+  para Gratis, Founders, Owner sin fecha y cualquier catálogo. Gratis usa el mismo
+  scheduler. Con fecha firmada mantiene su ventana urgente y descubrimiento Free.
+- Transporte conserva derechos y reintenta a1/2/4/8/15min. Live/ClockBehind,
+  sesión, frescura, avisos y excepciones existentes conservan sus reglas.
+- Decisión confirmada: reiniciar helper o reconectar Hub conserva Renewal y
+  backoff. Supervisor nuevo comprueba una vez por diseño, sin persistencia nueva.
+  Criterio escrito y verificado en #1826; el rol físico de QA988 sigue pendiente.
+- Gates finales PASS: fmt; Clippy runtime/todos los targets -D warnings (incluye
+  check); Nextest ci runtime **527/527 con telemetría**, 7 omisiones previas,
+  un lento,111.121s; lifecycle **13/13**. Servicios focales50/50 antes de mutar.
+  Todo Cargo por compilar.ps1, jobs2, locked/offline, rust-lld y target privado.
+- **6/6 mutaciones por aserción**:23h, arranque omitido, Live, backoff, reset al
+  cerrar helper y reloj de finalización sustituido por intento. Restauración
+  SHA256 exacta y suite final verde sobre fuentes restaurados. La primera de23h
+  sobrevivió porque el test compartía constante: corregido a24h literales y
+  repetido; log/JSON anterior conservados. Dos fallos Clippy intermedios de
+  pruebas corregidos sin allows ni omisiones, también conservados.
+- Relojes inyectados:23h59/24h y1ms antes, tres días, respuesta lenta, éxito
+  manual, plazo firmado30d, backoff, Live y ClockBehind. Helper/IPC reales de
+  fixture se cierran/reabren con Hub reconectado: sin ráfagas, aviso retenido
+  ante Transient y relevado por Verified. Sin red remota ni cuenta real.
+- Una revisión DeepSeek de lectura sobre2a1843405, sin P0/P1/P2. Sus P3 de
+  pruebas se refuerzan en commits posteriores revisados por ejecutor; producción
+  idéntica por SHA256. La revisión llamó fallo a ACC pendiente: terminó PASS.
+  Harness Codex medium heredado; no se afirma high ni una segunda revisión.
+- Archivos: scheduler/runtime services.rs y renewal.rs, sus pruebas; ADR0102,
+  diseño §4.6, README runtime/services/hub, fragmento ISA-1827 y este handoff.
+  Calidad/466huellas y validador de fragmentos del repo PASS. Caracterizaciones
+  y contratos controlv7/servicesv19 idénticos a la base; formatos durables intactos.
+- Límite: conserva NoSession; no hay renovación antes de observar Session.
+  Supervisor sin Hub/cuenta observada no certificado. Manual físico pendiente
+  en sandbox: arranque,23h59/24h desde éxito, offline y Live, sin cambiar reloj
+  del equipo. No se modifica infraestructura para ampliar ese alcance.
+- #1827 abierta, Project Vantare/In Review/area:licencias, sin milestone;
+  #1826 abierta/Backlog. Plane intacto. Push solo a rama de issue; CI y revisión
+  a cargo del orquestador, sin watch del worker. Sin dependencias nuevas,
+  secretos, datos reales, producción, instalaciones, merge ni release.
+  Siguiente: revisar diff/evidencia y CI del PR; no se declara otro canal.
+<!-- /isa1827-p10-worker -->
+
 <!-- isa1827-p9-worker -->
 ## Paso 9 — revisión del orquestador aplicada, PR draft #1838 (VANTA-126, 2026-11-01)
 

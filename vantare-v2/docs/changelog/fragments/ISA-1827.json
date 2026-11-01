@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "issue": "ISA-1827",
   "type": "fix",
-  "summary": "Los avisos de licencia se conservan; la compra se confirma desde el núcleo y la sesión sigue separada del acceso.",
+  "summary": "Las licencias sin fecha firmada se comprueban al arrancar y cada 24 horas; se conservan los avisos y el acceso offline.",
   "technicalNotes": [
     "Paso 6b, decisión 4: Paused conserva la gracia ya reconocida de la misma sesión live y la hora original de entrada; no inicia ni amplía el margen.",
     "Paso 2: webhook y reconciliación comparten la clasificación de estados y las reglas de plazo.",
@@ -16,7 +16,8 @@
     "Paso 8: services v18 elimina candidate, marcador y TransferRights. Solo el núcleo guarda derechos; admisión por Policy autenticada. ACK perdido es transitorio y el siguiente intento pide una emisión nueva con suelo de un minuto.",
     "Decisión paso 8: apartar candidate/marcador antiguos una vez al arrancar, con rename fechado best-effort sin leer contenido. Evita reinstalarlos desde v17 tras downgrade sin binding.",
     "Paso 9: el aviso de licencia reaparece tras perder una respuesta, sin arrancar servicios. Inicio y Cuenta lo separan del resultado del usuario. Services v19 publica sesión y aviso local; durante una compra solo renueva el supervisor y confirma el Feed fresco. Un fallo transitorio posterior conserva el rechazo definitivo o límite previo y muestra su resultado manual por separado.",
-    "Revisión paso 9: Transient no crea un aviso persistente ni un error de acceso en Active/Grace o Live; el login confirmado programa una comprobación única para volver a detectar un rechazo vigente, sin ráfagas."
+    "Revisión paso 9: Transient no crea un aviso persistente ni un error de acceso en Active/Grace o Live; el login confirmado programa una comprobación única para volver a detectar un rechazo vigente, sin ráfagas.",
+    "Paso 10: licencias sin fecha firmada se comprueban una vez al arrancar y cada 24 horas desde el éxito; Gratis usa el mismo scheduler. Transporte conserva derechos y backoff; reiniciar helper o reconectar Hub no crea ráfagas. Un supervisor nuevo comprueba una vez por diseño, sin persistencia nueva."
   ],
   "testing": [
     "Con reloj inyectado, comprobar pausa larga y reanudación sin cambiar el deadline; salida/cambio de sesión, replay y Logout descartan la gracia. La credencial y la hora de gracia caducan aun en pausa.",
@@ -30,7 +31,8 @@
     "Fixtures: ACK durable perdido, reemisión HTTP única tras un minuto, restos de otra cuenta/ilegibles apartados sin leer, rollback de datos con lectores v17 y pre-NeedsSignIn y vuelta. Desajuste v17/v18 da Version sin revocar.",
     "B firmado del mismo PC sin binding: v18 aparta ambos restos, v17 solo lee política sin acceso y la vuelta a v18 sigue sin acceso. Rename bloqueado conserva bytes y no bloquea recuperación; siguiente arranque reintenta.",
     "En sandbox, perder la respuesta de un aviso de límite/conflicto y reabrir Hub: debe seguir visible sin otro efecto remoto. Durante compra, servicios no confirma acceso; esperar al Feed fresco del núcleo.",
-    "Reloj inyectado: fallo transitorio en Active/Grace dentro/fuera de Live sin banner; login OAuth/email confirma una comprobación tras el suelo y redetecta rechazo; seis lecturas locales reales durante compra. Fixture QA usa LicenseStatus v19."
+    "Reloj inyectado: fallo transitorio en Active/Grace dentro/fuera de Live sin banner; login OAuth/email confirma una comprobación tras el suelo y redetecta rechazo; seis lecturas locales reales durante compra. Fixture QA usa LicenseStatus v19.",
+    "Con reloj inyectado: arranque una llamada, 23 h 59 min ninguna, 24 h una; fallo offline con 1/2/4/8/15 min, Live y ClockBehind sin llamadas. Reiniciar helper/reconectar Hub conserva cadencia y aviso."
   ],
   "knownLimitations": [
     "Este PR no despliega funciones. Las licencias ya firmadas conservan su plazo offline.",

@@ -276,3 +276,15 @@ DeviceLimit siguen retenidos mientras apliquen: transporte no los resuelve.
 Un login OAuth/email confirmado releva el aviso y deja una comprobación única
 pendiente para detectar si el rechazo continúa, respetando frescura, restricciones
 Live y suelo de un minuto. Un poll que restaura sesión o Cancel no la rearma.
+
+### Paso 10 — comprobación diaria sin plazo firmado
+
+Sin `signed_until_ms`, el supervisor comprueba al arrancar y cada 24 horas
+monotónicas desde una renovación verificada, para cualquier catálogo (incluidos
+Gratis, Founders y Owner sin fecha). No se duplica el chequeo inicial de Gratis.
+Transporte conserva derechos y aplica 1/2/4/8/15 minutos; un éxito reinicia las
+24 horas. Live fuera de la ventana urgente y ClockBehind siguen frenando el
+automático; compra, login confirmado, recuperación y acción manual conservan
+sus excepciones y el suelo existente. Con plazo firmado se conserva su cadencia.
+Reiniciar el helper o reconectar el Hub no reinicia Renewal ni su backoff.
+Un supervisor nuevo comprueba una vez por diseño: no hay persistencia nueva.

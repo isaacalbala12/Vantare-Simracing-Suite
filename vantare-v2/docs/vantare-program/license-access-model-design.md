@@ -495,9 +495,11 @@ en lugar de pararlos.
 2. **Retirar `license-credential`** (paso 3): ¿queda algún cliente Wails en uso
    real? Si no, se retira; si sí, se le aplica la misma barrera que a
    `native-license`.
-3. **Cadencia sin plazo firmado** (paso 10): recomiendo arrancar más una vez
-   cada 24 h para Founders/Gratis/Owner. La alternativa es solo al arrancar
-   (lo de hoy).
+3. **Cadencia sin plazo firmado** (paso 10, decisión confirmada): al arrancar
+   y cada 24 h desde el éxito para cualquier credencial sin `signed_until_ms`.
+   Live/ClockBehind y excepciones existentes se conservan. Reiniciar helper o
+   reconectar Hub no reinicia el backoff; un supervisor nuevo comprueba una vez.
+   No se añade persistencia. Es el criterio de #1826, no una regresión.
 4. **Gracia en pausa (R5):** ¿una pausa conserva la gracia de la carrera?
    Recomiendo que sí mientras sea la misma sesión del simulador; si producto
    dice que no, se retira R5.

@@ -1,3 +1,23 @@
+## VANTA-126 / #1844 — reloj del test comercial 14 (2026-11-01)
+
+- [Issue #1844](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1844),
+  `area:licencias`, rama `vantareapp/isa-1844-test14`, base
+  `origin/nightly@216f9bda75d9a458ccdb80c3f8faeeeebb0cc6de`.
+- Causa: claim con `p_now=2026-11-01 00:00 UTC` crea lease hasta 00:01;
+  creator prepare lo compara con `clock_timestamp()`. Desde ese minuto devuelve
+  NULL correctamente. El run 41308529012 falló a las 13:03 UTC. Test y guard
+  proceden de `9e48eb86f`; diff desde `3e6f2dce7` hasta la base sin cambios en
+  ambos SQL, el test ni el runner. #1829/#1830/#1831 no causan este fallo.
+- Test inyecta el reloj en la definición real del entrypoint, solo dentro de
+  un savepoint de la base desechable. Conserva test 14 y prueba ausencia de
+  inicialización con lease vivo, además de caducidad exacta a los 60 segundos.
+  Rollback restaura la función antes del resto de la suite; producto intacto.
+- `git diff --check` PASS. Sin psql/Deno locales ni instalaciones; validación
+  SQL delegada al workflow existente Supabase commercial gates, LF y CRLF.
+  PR/HEAD/resultado definitivo se registran en #1844 tras ejecutar CI.
+- Plane intacto por encargo. Sin producción, secretos, merge ni release.
+  Siguiente: CI y revisión del orquestador para integrar a nightly.
+
 <!-- isa1827-simplificar-worker -->
 ## VANTA-126 / #1827 — simplificación A lista para revisión (1-nov-2026)
 

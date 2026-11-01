@@ -16,8 +16,8 @@ integrado por el orquestador, que confirmó CI 6/6. Rama
 - Primer hito: Clippy cuatro crates all-targets -D warnings PASS y 18/18
   focales de Store/F4/caracterización PASS. Los gates completos y mutaciones
   finales: fmt/Clippy cinco crates PASS; Nextest ci 1175/1175 con telemetría
-  PASS (13 omisiones previas); lifecycle runtime 13/13 y Engineer 5/5 PASS. Retirados los cuatro lectores antiguos;
-  el puente temporal se elimina en el segundo commit.
+  PASS (13 omisiones previas); lifecycle runtime 13/13 y Engineer 5/5 PASS.
+  Retirados los cuatro lectores antiguos.
 - Segundo commit: DPAPI dañado de roadmap/perfil/report-attempt pasa de
   bloqueo a cuarentena + reconstrucción. Focales 22/22 PASS; sesión idéntica,
   cuarentena una vez, reconstrucción válida y durables conservados.
@@ -38,6 +38,10 @@ integrado por el orquestador, que confirmó CI 6/6. Rama
 - Contador con --include-admin opcional, valores por defecto intactos; prueba
   stdlib PASS y JSON por crate/fichero en D:/VantareServer/evidence/isa-1827-s-*.
   F4 de #1822 implementado; revisión/integración pendiente.
+- Rebase sobre origin/nightly@f8ccb168931275708aeba05553f2046cd7c8bf61
+  tras #1846, conservando todas las entradas del handoff. Rust y manifiestos
+  son identicos al arbol validado b6c5b970f; medicion base sin cambios.
+- windows_startup posterior al rebase 7/7 PASS, con el empaquetador de #1846.
 <!-- /isa1827-simplificar-c -->
 
 <!-- isa1827-simplificar-b -->

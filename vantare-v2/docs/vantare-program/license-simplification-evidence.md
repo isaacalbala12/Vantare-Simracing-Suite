@@ -322,3 +322,13 @@ prueba stdlib del contador PASS, --include-admin verificado contra los JSON.
 Comandos/logs: isa-1827-s-final-c-gates.json y -final-c-*, -mutations-c y
 -mutations-c-r2. Los 241 fuentes actuales coinciden con la restauración final.
 No se ejecuta UI física ni instalación; Deno/PostgreSQL no cambian en este PR.
+
+Rebase C sobre origin/nightly@f8ccb168931275708aeba05553f2046cd7c8bf61
+tras #1846: todos los fuentes Rust y manifiestos conservan sus blobs frente
+a b6c5b970f (arbol de los gates). Se preserva entero el handoff de nightly;
+medicion base con --ref origin/nightly --include-admin: 115167, sin cambios.
+Certificado: isa-1827-s-rebase-c-integrity.json. La suite completa y mutaciones
+siguen validas para el mismo codigo de producto; se comprueba aparte windows_startup
+porque usa el empaquetador actualizado por #1846.
+windows_startup posterior al rebase: Nextest ci 7/7 PASS (log
+isa-1827-s-c-rebased-startup.log), por compilar.ps1 y target propio.

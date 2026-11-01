@@ -61,6 +61,7 @@ function Initialize-MatrixCase([string]$Case,[string]$Install,[string]$Assets) {
     Set-NativeState $Install @{schema=1;product='vantare-native';channel='beta';active=$active;previous=$previous}
     if ($Case -in @('retained','retained-no-marker')) {
         Uninstall-Beta $Install
+        foreach ($bootstrap in @('beta.ps1','candidate.ps1')) { Remove-Item -LiteralPath (Join-Path $Install $bootstrap) }
         if ($Case -ceq 'retained-no-marker') { Remove-Item -LiteralPath (Join-Path $Install 'retained-data.json') }
         else {
             # A stopped GPUI uninstall, ready for its deferred Cleanup helper.

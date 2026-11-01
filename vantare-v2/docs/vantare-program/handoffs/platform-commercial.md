@@ -1,36 +1,43 @@
 <!-- isa1827-p9-worker -->
-## Paso 9 — regresión adicional de transporte en validación (VANTA-126, 2026-11-01)
+## Paso 9 — PR draft listo para revisión (VANTA-126, 2026-11-01)
 
-#1827 / Project Vantare / area:licencias / In Review, sin milestone. Plane intacto.
-Código revisado ab4195adbe2ad1e9dd98b905f80e8517ead05109, con corrección adicional
-de transporte aún sin commit; sin push ni PR todavía.
-Base origin/nightly 0a0060d4d2de68d128fa5f435518de9086770dcd (paso 8 integrado).
+[PR #1838](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1838), a nightly; sin integrar.
+Código validado 17ef2d1cddadc66430687f2bb1854906ecfdb27f; HEAD documental vigente en PR/#1827.
+Base origin/nightly 0a0060d4d2de68d128fa5f435518de9086770dcd, confirmada de nuevo al cerrar.
 Rama vantareapp/isa-1827-paso9-aviso; worktree C:/VantareServer/wt/isa-1827-p9;
 target D:/VantareServer/targets/isa-1827-p9; evidencia D:/VantareServer/evidence/isa-1827-p9.
 
-- El aviso vuelve tras perder una respuesta o reconectar; leerlo no arranca servicios ni HTTP.
-  Inicio y Cuenta lo muestran separado del resultado del usuario. Un transporte fallido no borra ni sustituye un rechazo definitivo o límite previo.
-  Corrección adicional revisada por el ejecutor, después de R2; dos regresiones nuevas.
-- Durante la compra el Hub solo observa el Feed fresco. El supervisor conserva la ventana de diez
-  minutos, backoff y suelo de un minuto. Leer avisos tampoco dispara AccountPoll.
-- Services v19 lleva aviso tipado y sesión opcional: desconocida no fabrica SignedOut. NeedsSignIn
-  sigue leyendo avisos. Una consulta de fondo no cambia el error o formulario de login/Logout.
-  Login OAuth/email y DeviceReset confirmado relevan el aviso; Cancel con sesión conservada no.
-  V18/v19 da Version antes del esquema, sin revocar. Control v7/fotos v11 y formatos durables intactos.
-- Gates previos sobre ab4195 (se repetirán sobre la corrección): Clippy cuatro crates/all-targets -D warnings PASS (cubre check);
-  Nextest ci con telemetría 1478/1478 PASS, 17 omisiones del perfil; lifecycle13/13 PASS;
-  nueve focales PASS y repetidas con rust-lld PASS; calidad/466 huellas PASS. Fmt check y mutaciones pendientes.
-  Las matrices de caracterización, rights, Cargo.toml y Cargo.lock tienen los mismos blobs que la base.
-- Dos revisiones de lectura DeepSeek, max solicitado; R1 corregida y R2 sin P0/P1/P2. P3 en seguimiento:
-  tras Logout fallido + Volver el scheduler necesita otra observación Account (ya ocurría en la base);
-  una restauración por poll no demuestra login nuevo y conserva el aviso; Cancel con aviso + SignedOut
-  no se afirma cubierto. No se incorpora otro flujo fuera del paso 9. Código revisado fijado en ab4195adb.
-- Toda compilación por compilar.ps1, jobs 2 y target privado. La suite completa usa link.exe:
-  --manifest desde la raíz no cargaba la optimización rust-lld del workspace. Los focales y mutaciones
-  cargan ahora ese ajuste explícito. Se conservan fallos intermedios de fixtures/lint/compilación; no se excluyeron tests.
-- Sin dependencias nuevas, instalaciones, producción, datos reales, secretos, merge ni release.
-  Aviso remoto en memoria del supervisor, sin nueva persistencia; Policy conserva su diagnóstico.
-  Verificación manual física pendiente en sandbox autorizado. Paso 10 espera integrar el 9 por solapar ficheros.
+- El aviso vuelve tras perder una respuesta o reconectar; leerlo no arranca helper ni HTTP.
+  Inicio y Cuenta lo separan del resultado manual. Un fallo transitorio posterior conserva el
+  rechazo definitivo/account_conflict o límite previo, hasta una recuperación confirmada.
+- Durante compra el Hub no renueva y confirma solo por Feed fresco. El supervisor conserva
+  su ventana de diez minutos, backoff y suelo de un minuto. Leer avisos no dispara AccountPoll.
+- Services v19 lleva aviso tipado y sesión opcional: desconocida no fabrica SignedOut; NeedsSignIn
+  sigue leyendo avisos. El fondo no altera error/formulario de login/Logout. Login OAuth/email y
+  DeviceReset confirmados relevan el aviso; Cancel con sesión conservada no. Desajuste v18/v19 da
+  Version antes del esquema, sin revocar. Control v7/fotos v11 y formatos durables intactos.
+- Gates finales sobre 17ef2d1c PASS: fmt check; Clippy cuatro crates/all-targets -D warnings;
+  Nextest ci con telemetría 1480/1480 (17 omisiones del perfil, 5 lentos, 321.425s); lifecycle13/13;
+  ocho focales de avisos/compra; diez mutaciones detectadas por aserciones, 613 fuentes restauradas
+  por SHA256. Calidad/466 huellas y fragmento de changelog PASS. Matrices y Cargo conservan los
+  mismos blobs que la base. El commit posterior solo cierra documentación y referencias.
+- Toda compilación mediante compilar.ps1, jobs2, target privado y linker rust-lld explícito.
+  --manifest desde raíz no cargaba ese ajuste del workspace: los gates anteriores usaban link.exe.
+  Helpers y storage recompilados; DuckDB de desarrollo ya disponible, sin descarga ni instalación.
+  Logs/comandos: retention-validation.json, nextest-retention.log, lifecycle-retention.log,
+  mutations-retention/results.json, final-validation.json y delivery.md. Se conservan los fallos
+  intermedios de fixtures/lint/metadatos y separación de casos; no se excluyeron tests.
+- Dos revisiones DeepSeek de lectura; R1 corregida, R2 sin P0/P1/P2 sobre ab4195ad. La corrección
+  posterior de transporte fue revisada por el ejecutor; no se afirma revisión externa de cada byte.
+  P3 en #1827: tras Logout fallido+Volver el scheduler necesita otra observación Account (preexistente);
+  restaurar sesión por poll no demuestra login nuevo y conserva aviso; Cancel con aviso+SignedOut
+  sintético no se afirma cubierto. Revisión final del diff/CI a cargo del orquestador, sin watch del worker.
+- Issue #1827 abierta, Project Vantare / area:licencias / In Review, sin milestone; descripción
+  actualizada con PR/evidencia. Push solo a rama de issue. Plane intacto. Sin dependencias nuevas,
+  secretos, datos reales, producción, instalaciones, merge ni release. Aviso remoto en memoria del
+  supervisor, sin nueva persistencia durable; Policy conserva su diagnóstico. Verificación física/manual
+  pendiente en sandbox autorizado. Paso 10 espera integrar el 9 por compartir archivos; #1826 se
+  aclarará con ese cambio, sin afirmar entrega anticipada.
 <!-- /isa1827-p9-worker -->
 
 

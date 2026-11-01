@@ -261,10 +261,7 @@ login confirmado por OAuth o email y DeviceReset confirmado sí lo hacen.
 
 Una lectura AccountPoll que solo restaura SignedIn desde un estado desconocido
 no demuestra un login nuevo: conserva el aviso hasta renovación verificada o
-login OAuth/email confirmado. La prueba de Cancel fija SignedIn conservado;
-no afirma el montaje sintético de aviso activo con SignedOut. El seguimiento
-del scheduler después de Logout fallido + Volver queda en #1827 para decisión
-del orquestador, sin añadirlo a este paso de presentación.
+login OAuth/email confirmado.
 
 El paso 9 conserva un rechazo definitivo o límite de dispositivos ante un
 fallo transitorio posterior: el transporte no demuestra su resolución. El

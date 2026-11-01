@@ -1,3 +1,18 @@
+## #1827 — Policy.state / control v7 (paso 7)
+
+El núcleo publica Active/Grace y los motivos de denegación, con fronteras
+`signed_until_ms` y `grace_until_ms` separadas. No se deduce gracia desde Live.
+El supervisor lee el estado: ClockBehind frena HTTP automático hasta la frontera;
+un 200 verificado sin margen es Verified y espera 15 minutos en ventana urgente
+(un minuto en los últimos cinco firmados). La compra conserva sondeos con suelo
+de un minuto dentro de su ventana de diez; los fallos reales mantienen 1/2/4/8/15.
+Firma, plazos, TTL y matriz de acceso siguen iguales; la pausa conserva el paso 6b.
+[Contrato y límites de generaciones](../../docs/adr/0102-modelo-acceso-nativo.md).
+Este contrato sustituye las inferencias históricas sobre control v5/v6 de abajo.
+
+Services v17 versiona la Policy v7 anidada; Session/AccountCancel permanecen
+intactos. V16 del paso 6 nunca se publicó en release.
+
 ## #1827 — Supervisor y sesión (paso 6, services v16)
 
 `AccountCancel` (v16) cancela solo el intento OAuth/FAPI y relee Session;
@@ -37,8 +52,8 @@ La licencia conserva su fecha firmada, con las reglas de autoridad existentes.
 
 La renovación empieza una hora antes del plazo firmado; reintentos 1/2/4/8/15
 minutos, con suelo de un minuto en los últimos cinco minutos anteriores al plazo.
-Tras vencer vuelve a aplicarse el backoff normal. Una respuesta sin nuevo margen
-no reinicia los fallos. Con el cap de 15 minutos hay al menos tres reintentos y
+Tras vencer vuelve a aplicarse el backoff normal. Desde el paso 7, una respuesta verificada sin margen nuevo no cuenta como fallo
+y espera a la siguiente comprobación sin ruido de transporte. Con el cap de 15 minutos hay al menos tres reintentos y
 15 minutos reservados para sondeos y E/S dentro de una ventana completa, con app/sesión/núcleo activos y sin bloqueos prolongados.
 
 Isaac autorizó renovar en Live dentro de esa ventana urgente y dos excepciones
@@ -190,3 +205,10 @@ Salir/cambiar de sesión, replay y Logout la descartan. La credencial y la graci
 siguen caducando con el reloj durante una pausa larga. No cambia protocolo,
 firma, formato durable ni contrato de la política. La única fila modificada de
 caracterización es Paused, marcada previamente para este paso (ADR0102 decisión4).
+
+Revisión del paso 7: ClockBehind.until_ms está en tiempo de pared (lápida
+efectiva menos forward_millis), con aviso de fecha/hora local. El estado local
+del supervisor usa el mismo aviso si omite renovar. NoCredential/RecoveryRequired/
+ClockBehind frescos admiten consultas al helper; Logout sigue disponible con
+canal del núcleo autenticado, incluso ante denegación o caducidad. Sin conceder
+derechos ni saltar el ACK durable; ADR0102.

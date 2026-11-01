@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use std::io::{self, Read, Write};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-pub const VERSION: u32 = 6;
+pub const VERSION: u32 = 7;
 const LIMIT: usize = 64 * 1024;
 pub const VERSION_ERROR: &str =
     "versiones IPC incompatibles: reinicia núcleo, Hub y overlays de la misma build";
@@ -96,8 +96,9 @@ pub struct Policy {
     pub epoch: u64,
     pub revision: u64,
     pub checked_at_ms: u64,
-    pub valid_until_ms: Option<u64>,
-    pub overlays_advanced: bool,
+    pub state: AccessState,
+    pub signed_until_ms: Option<u64>,
+    pub grace_until_ms: Option<u64>,
     pub catalog: CatalogAccess,
     pub engineer: bool,
     pub strategy: bool,
@@ -106,10 +107,55 @@ pub struct Policy {
     #[serde(default)]
     pub tester: bool,
     pub live: bool,
+    /// Legacy diagnostic observation only; never used for access or scheduling.
     pub error: Option<String>,
-    /// Core is available without rights and requires a newly completed renewal.
-    #[serde(default)]
-    pub online_recovery_required: bool,
+}
+
+/// Estado del núcleo; catálogo y módulos siguen siendo capacidades independientes.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
+pub enum AccessState {
+    #[default]
+    NoCredential,
+    Unconfigured,
+    Active,
+    Grace,
+    Expired,
+    RecoveryRequired,
+    ClockBehind {
+        until_ms: u64,
+    },
+    Revoked,
+    Unavailable,
+    UpdateRequired,
+}
+impl AccessState {
+    pub const fn permits_access(self) -> bool {
+        matches!(self, Self::Active | Self::Grace)
+    }
+    /// Distinguish absence of a credential from an actionable denial.
+    pub const fn requires_attention(self) -> bool {
+        !matches!(self, Self::Active | Self::Grace | Self::NoCredential)
+    }
+    pub const fn needs_recovery(self) -> bool {
+        matches!(self, Self::RecoveryRequired | Self::ClockBehind { .. })
+    }
+    pub const fn message(self) -> Option<&'static str> {
+        match self {
+            Self::Active | Self::Grace | Self::NoCredential => None,
+            Self::Unconfigured => Some("Servicio de derechos no configurado"),
+            Self::Expired => Some("La credencial ha caducado; comprueba el acceso."),
+            Self::RecoveryRequired => Some(
+                "Necesitas conexión para recuperar el acceso; comprueba el acceso o inicia sesión.",
+            ),
+            Self::ClockBehind { .. } => Some(
+                "El reloj está detrás de la frontera de seguridad guardada. Comprueba la fecha del equipo; puede ser necesario esperar antes de recuperar el acceso.",
+            ),
+            Self::Revoked => Some("Acceso bloqueado"),
+            Self::Unavailable => Some("No se pudo verificar la política de acceso"),
+            Self::UpdateRequired => Some(VERSION_ERROR),
+        }
+    }
 }
 
 /// Corte comercial publicado, independiente del canal y del número de la build.
@@ -139,13 +185,38 @@ impl CatalogAccess {
     }
 }
 impl Policy {
-    pub fn current_at(&self, now_ms: u64) -> bool {
-        self.error.is_none()
-            && self.version == VERSION
+    /// Único constructor conservador; conserva metadatos al usar struct update.
+    pub fn denied(state: AccessState) -> Self {
+        debug_assert!(!state.permits_access());
+        Self {
+            state,
+            version: VERSION,
+            ..Self::default()
+        }
+    }
+    pub fn effective_until_ms(&self) -> Option<u64> {
+        self.grace_until_ms.or(self.signed_until_ms)
+    }
+    /// Fresh observation, including a definitive denial. It is not permission.
+    pub fn fresh_at(&self, now_ms: u64) -> bool {
+        self.version == VERSION
             && self.revision > 0
             && now_ms >= self.checked_at_ms
             && now_ms.saturating_sub(self.checked_at_ms) < 2_000
-            && self.valid_until_ms.is_none_or(|end| now_ms < end)
+    }
+    pub fn current_at(&self, now_ms: u64) -> bool {
+        self.fresh_at(now_ms)
+            && !matches!(
+                self.state,
+                AccessState::Unconfigured
+                    | AccessState::Revoked
+                    | AccessState::Unavailable
+                    | AccessState::UpdateRequired
+            )
+            && self.effective_until_ms().is_none_or(|end| now_ms < end)
+    }
+    fn observable_at(&self, now_ms: u64) -> bool {
+        self.fresh_at(now_ms) && (!self.state.permits_access() || self.current_at(now_ms))
     }
     pub fn current(&self) -> bool {
         wall_ms().is_ok_and(|now| self.current_at(now))
@@ -217,12 +288,39 @@ fn read_response(reader: &mut impl Read) -> io::Result<Response> {
     struct Header {
         version: u32,
     }
+    #[derive(Deserialize)]
+    struct PolicyEnvelope {
+        policy: PolicyHeader,
+    }
+    #[derive(Deserialize)]
+    struct PolicyHeader {
+        version: u32,
+    }
     let bytes = read_frame(reader)?;
     let header: Header = serde_json::from_slice(&bytes).map_err(|_| io::ErrorKind::InvalidData)?;
     if header.version != VERSION {
         return Err(io::Error::new(io::ErrorKind::InvalidData, VersionMismatch));
     }
+    let envelope: PolicyEnvelope =
+        serde_json::from_slice(&bytes).map_err(|_| io::ErrorKind::InvalidData)?;
+    if envelope.policy.version != VERSION {
+        return Err(io::Error::new(io::ErrorKind::InvalidData, VersionMismatch));
+    }
     // Parse the original bytes again so duplicate/unknown fields remain invalid.
+    serde_json::from_slice(&bytes).map_err(|_| io::ErrorKind::InvalidData.into())
+}
+
+/// Inspect the envelope before decoding a generation-specific command.
+pub fn read_request(reader: &mut impl Read) -> io::Result<Request> {
+    #[derive(Deserialize)]
+    struct Header {
+        version: u32,
+    }
+    let bytes = read_frame(reader)?;
+    let header: Header = serde_json::from_slice(&bytes).map_err(|_| io::ErrorKind::InvalidData)?;
+    if header.version != VERSION {
+        return Err(io::Error::new(io::ErrorKind::InvalidData, VersionMismatch));
+    }
     serde_json::from_slice(&bytes).map_err(|_| io::ErrorKind::InvalidData.into())
 }
 
@@ -336,7 +434,7 @@ fn feed_observation(
 ) -> Option<Policy> {
     match result {
         Ok(policy)
-            if policy.current_at(now_ms)
+            if policy.observable_at(now_ms)
                 && (policy.epoch > cursor.0
                     || (policy.epoch == cursor.0 && policy.revision >= cursor.1)) =>
         {
@@ -350,7 +448,7 @@ fn feed_observation(
         {
             Some(Policy {
                 version: VERSION,
-                error: Some(VersionMismatch.to_string()),
+                state: AccessState::UpdateRequired,
                 ..Policy::default()
             })
         }
@@ -368,7 +466,7 @@ fn feed_observation(
                     | io::ErrorKind::WouldBlock
             ) =>
         {
-            previous.filter(|policy| policy.current_at(now_ms))
+            previous.filter(|policy| policy.observable_at(now_ms))
         }
         _ => None,
     }
@@ -437,7 +535,10 @@ impl Feed {
             .lock()
             .ok()
             .and_then(|p| p.clone())
-            .filter(|policy| policy.error.is_some() || policy.current())
+            .filter(|policy| {
+                policy.state == AccessState::UpdateRequired
+                    || wall_ms().is_ok_and(|now| policy.observable_at(now))
+            })
             .unwrap_or_default()
     }
     /// Arranque del consumidor sin UI: espera acotada al primer resultado,
@@ -460,13 +561,155 @@ impl Drop for Feed {
 mod tests {
     use super::*;
     #[test]
+    fn feed_publishes_fresh_denials_and_retains_only_their_original_observation_ttl() {
+        let mut cursor = (1, 1);
+        for state in [
+            AccessState::Revoked,
+            AccessState::Expired,
+            AccessState::Unavailable,
+            AccessState::Unconfigured,
+            AccessState::RecoveryRequired,
+            AccessState::ClockBehind { until_ms: 9000 },
+        ] {
+            let policy = Policy {
+                version: VERSION,
+                epoch: 1,
+                revision: 2,
+                checked_at_ms: 1000,
+                state,
+                signed_until_ms: Some(999),
+                ..Policy::default()
+            };
+            assert!(!policy.current_at(1000));
+            let observed = feed_observation(Ok(policy.clone()), None, &mut cursor, 1000)
+                .expect("typed denial published");
+            assert_eq!(observed, policy);
+            assert!(!observed.state.permits_access());
+            let held = feed_observation(
+                Err(io::ErrorKind::TimedOut.into()),
+                Some(observed),
+                &mut cursor,
+                2999,
+            )
+            .expect("original TTL");
+            assert_eq!(held.checked_at_ms, 1000);
+            assert!(
+                feed_observation(
+                    Err(io::ErrorKind::TimedOut.into()),
+                    Some(held),
+                    &mut cursor,
+                    3000
+                )
+                .is_none()
+            );
+        }
+    }
+
+    #[test]
+    fn generation_headers_are_checked_before_commands_and_nested_policy_fields() {
+        for version in [VERSION - 1, VERSION, VERSION + 1] {
+            if version != VERSION {
+                let mut frame = Vec::new();
+                write(
+                    &mut frame,
+                    &serde_json::json!({"version":version,"new_envelope":true}),
+                )
+                .expect("future envelope");
+                assert_eq!(
+                    Failure::classify(
+                        &read_response(&mut frame.as_slice())
+                            .err()
+                            .expect("version before policy")
+                    ),
+                    Failure::Version
+                );
+            }
+            let mut frame = Vec::new();
+            write(
+                &mut frame,
+                &serde_json::json!({"version": version, "command": "future-command"}),
+            )
+            .expect("frame");
+            let error = read_request(&mut frame.as_slice())
+                .err()
+                .expect("incompatible or invalid request");
+            assert_eq!(
+                Failure::classify(&error),
+                if version == VERSION {
+                    Failure::Protocol
+                } else {
+                    Failure::Version
+                }
+            );
+            let mut frame = Vec::new();
+            write(
+                &mut frame,
+                &serde_json::json!({"version": VERSION, "sequence":1,
+                "policy":{"version":version,"field_from_other_generation":true},"error":null}),
+            )
+            .expect("response");
+            let error = read_response(&mut frame.as_slice())
+                .err()
+                .expect("incompatible or invalid policy");
+            assert_eq!(
+                Failure::classify(&error),
+                if version == VERSION {
+                    Failure::Protocol
+                } else {
+                    Failure::Version
+                }
+            );
+        }
+    }
+
+    #[test]
+    fn explicit_state_and_signed_grace_deadlines_are_independent_of_display_text() {
+        let base = Policy {
+            version: VERSION,
+            revision: 1,
+            checked_at_ms: 1000,
+            state: AccessState::Grace,
+            signed_until_ms: Some(900),
+            grace_until_ms: Some(2000),
+            error: Some("presentation only".into()),
+            ..Policy::default()
+        };
+        assert!(base.current_at(1999));
+        assert!(!base.current_at(2000));
+        assert!(base.state.permits_access());
+        for state in [
+            AccessState::NoCredential,
+            AccessState::Unconfigured,
+            AccessState::Expired,
+            AccessState::RecoveryRequired,
+            AccessState::ClockBehind { until_ms: 9000 },
+            AccessState::Revoked,
+            AccessState::Unavailable,
+            AccessState::UpdateRequired,
+        ] {
+            let denied = Policy::denied(state);
+            assert!(!denied.state.permits_access());
+            assert!(
+                !denied.engineer
+                    && !denied.strategy
+                    && !denied.analysis
+                    && !denied.calendar
+                    && !denied.tester
+            );
+            assert_eq!(denied.catalog, CatalogAccess::Free);
+            assert_eq!(denied.signed_until_ms, None);
+            assert_eq!(denied.grace_until_ms, None);
+        }
+    }
+
+    #[test]
     fn feed_keeps_original_ttl_during_transient_ipc_but_denies_definitive_changes() {
         let fresh = Policy {
             version: VERSION,
             epoch: 1,
             revision: 2,
             checked_at_ms: 10_000,
-            overlays_advanced: true,
+            state: AccessState::Active,
             ..Policy::default()
         };
         let mut cursor = (0, 0);
@@ -485,7 +728,7 @@ mod tests {
             assert!(feed_observation(Err(kind.into()), held, &mut cursor, 12_000).is_none());
         }
         let mut expired = fresh.clone();
-        expired.valid_until_ms = Some(10_500);
+        expired.signed_until_ms = Some(10_500);
         assert!(
             feed_observation(
                 Err(io::ErrorKind::TimedOut.into()),
@@ -497,10 +740,6 @@ mod tests {
         );
         for policy in [
             Policy::default(),
-            Policy {
-                error: Some("revocada".into()),
-                ..fresh.clone()
-            },
             Policy {
                 revision: 1,
                 ..fresh.clone()
@@ -528,12 +767,12 @@ mod tests {
             10_500,
         )
         .expect("incompatibilidad explícita");
-        assert!(mismatch.error.is_some());
+        assert_eq!(mismatch.state, AccessState::UpdateRequired);
         assert!(!mismatch.current_at(10_500));
         // Una respuesta válida sin derechos sustituye la anterior inmediatamente.
         let denied = Policy {
             revision: 3,
-            overlays_advanced: false,
+            state: AccessState::NoCredential,
             ..fresh.clone()
         };
         assert_eq!(
@@ -588,7 +827,7 @@ mod tests {
                 epoch: 1,
                 revision: 2,
                 checked_at_ms: 10_000,
-                overlays_advanced: true,
+                state: AccessState::Active,
                 catalog: CatalogAccess::Pro,
                 ..Policy::default()
             }),
@@ -624,14 +863,14 @@ mod tests {
             epoch: 1,
             revision: 1,
             checked_at_ms: 10_000,
-            valid_until_ms: Some(11_500),
-            overlays_advanced: true,
+            signed_until_ms: Some(11_500),
+            state: AccessState::Active,
             ..Policy::default()
         };
         assert!(p.current_at(11_499));
         assert!(!p.current_at(11_500));
         assert!(!p.current_at(9_999));
-        p.valid_until_ms = None;
+        p.signed_until_ms = None;
         assert!(!p.current_at(12_000));
         p.version += 1;
         assert!(!p.current_at(10_000));

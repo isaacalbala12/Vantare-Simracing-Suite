@@ -332,7 +332,7 @@ impl Service {
 }
 
 fn engineer_allowed(policy: &vantare_ipc::control::Policy) -> bool {
-    policy.current() && policy.overlays_advanced && policy.engineer
+    policy.current() && policy.state.permits_access() && policy.engineer
 }
 
 enum Outcome {
@@ -660,14 +660,14 @@ mod tests {
     }
 
     #[test]
-    fn engineer_start_requires_fresh_error_free_module_permission() {
+    fn engineer_start_requires_fresh_explicit_state_and_module_permission() {
         use vantare_ipc::control::{self, Policy};
         let now = control::wall_ms().expect("clock");
         let policy = Policy {
             version: control::VERSION,
             revision: 1,
             checked_at_ms: now,
-            overlays_advanced: true,
+            state: vantare_ipc::control::AccessState::Active,
             engineer: true,
             ..Policy::default()
         };
@@ -679,11 +679,11 @@ mod tests {
                 ..policy.clone()
             },
             Policy {
-                overlays_advanced: false,
+                state: vantare_ipc::control::AccessState::NoCredential,
                 ..policy.clone()
             },
             Policy {
-                error: Some("fixture".into()),
+                state: vantare_ipc::control::AccessState::Unavailable,
                 ..policy.clone()
             },
             Policy {
@@ -691,7 +691,7 @@ mod tests {
                 ..policy.clone()
             },
             Policy {
-                valid_until_ms: Some(now),
+                signed_until_ms: Some(now),
                 ..policy.clone()
             },
             Policy {

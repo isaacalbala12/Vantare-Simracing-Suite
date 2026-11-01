@@ -54,17 +54,11 @@ impl Host {
             options.devices,
             options.epoch,
         );
-        let failure = opened.as_ref().err().map(ToString::to_string);
-        let owner = opened.ok();
+        let policy = initial_policy(&opened, options.epoch);
         // Fallo de disco/configuración nunca impide telemetría ni concede acceso.
         let state = Arc::new(Mutex::new(State {
-            owner,
-            policy: Policy {
-                version: control::VERSION,
-                epoch: options.epoch,
-                error: failure,
-                ..Policy::default()
-            },
+            owner: opened.ok(),
+            policy,
             session: None,
         }));
         let stop = Arc::new(Event::new()?);
@@ -175,6 +169,20 @@ fn session_entry_time(
         None
     }
 }
+fn initial_policy(opened: &vantare_services::Result<Owner>, epoch: u64) -> Policy {
+    Policy {
+        epoch,
+        error: opened.as_ref().err().map(ToString::to_string),
+        ..Policy::denied(
+            if matches!(opened, Err(vantare_services::Error::Unconfigured)) {
+                control::AccessState::Unconfigured
+            } else {
+                control::AccessState::Unavailable
+            },
+        )
+    }
+}
+
 fn open_owner(
     root: &std::path::Path,
     keys: Option<&str>,
@@ -213,13 +221,17 @@ fn advance(
             owner.advance_observed(&seen.snapshot, seen.entered_at.unwrap_or(now), now, tick);
         state.policy = owner.policy();
         if let Err(error) = result {
-            state.policy.overlays_advanced = false;
-            state.policy.engineer = false;
-            state.policy.strategy = false;
-            state.policy.analysis = false;
-            state.policy.calendar = false;
-            state.policy.tester = false;
-            state.policy.error = Some(error.to_string());
+            state.policy = Policy {
+                epoch: state.policy.epoch,
+                revision: state.policy.revision,
+                live: state.policy.live,
+                error: Some(error.to_string()),
+                ..Policy::denied(if state.policy.state.needs_recovery() {
+                    state.policy.state
+                } else {
+                    control::AccessState::Unavailable
+                })
+            };
             state.policy.checked_at_ms = now_ms;
             state.policy.live = is_live(&seen.snapshot);
             return Err(error);
@@ -242,7 +254,24 @@ fn serve(
     let began = Instant::now();
     let mut phase = "read";
     let result = (|| {
-        let request: Request = control::read(pipe)?;
+        let request = match control::read_request(pipe) {
+            Ok(request) => request,
+            Err(error) if control::Failure::classify(&error) == control::Failure::Version => {
+                // v6 readers inspect the envelope version before Policy. This
+                // response also covers unknown fields/commands from future peers.
+                control::write(
+                    pipe,
+                    &Response {
+                        version: control::VERSION,
+                        sequence: 1,
+                        policy: Policy::denied(control::AccessState::UpdateRequired),
+                        error: Some(control::UNAVAILABLE.into()),
+                    },
+                )?;
+                return Err(error);
+            }
+            Err(error) => return Err(error),
+        };
         if request.version != control::VERSION {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,

@@ -1,3 +1,15 @@
+## #1827 — Policy.state / control v7 (paso 7)
+
+Services lee los estados del núcleo y usa Policy::denied para políticas conservadoras.
+ClockBehind conserva la frontera de seguridad y la comprobación manual explica
+su fecha; no pide conexión como solución suficiente. Un 200 verificado sigue
+siendo Verified aunque no cambie el plazo firmado. Policy.error queda solo como
+observación diagnóstica histórica, sin autoridad. Candidate/TransferRights se
+conservan hasta el paso 8. [Contrato](../../docs/adr/0102-modelo-acceso-nativo.md).
+
+Services v17 versiona la Policy v7 anidada; Session/AccountCancel permanecen
+intactos. V16 del paso 6 nunca se publicó en release.
+
 ## #1827 — Contrato de sesión explícita (paso 6, services v16)
 
 `AccountCancel` (v16) cancela solo el intento OAuth/FAPI y relee Session;
@@ -437,3 +449,10 @@ No necesita sesión Clerk, puente de cuenta ni permisos de publicación.
 lo valida con `Schedule::parse` y conserva su caché local ante un fallo.
 Se mantienen los límites HTTP/IPC, timeout y cierre de services durante Live.
 Compilar Hub, supervisor y services juntos; no mezclar binarios anteriores.
+
+Revisión del paso 7: ClockBehind.until_ms está en tiempo de pared (lápida
+efectiva menos forward_millis), con aviso de fecha/hora local. El estado local
+del supervisor usa el mismo aviso si omite renovar. NoCredential/RecoveryRequired/
+ClockBehind frescos admiten consultas al helper; Logout sigue disponible con
+canal del núcleo autenticado, incluso ante denegación o caducidad. Sin conceder
+derechos ni saltar el ACK durable; ADR0102.

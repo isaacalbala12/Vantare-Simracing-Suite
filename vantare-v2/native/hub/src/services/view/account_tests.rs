@@ -47,7 +47,7 @@ fn heartbeat_cadence_keeps_cached_core_policy_current_until_delivery() {
             version: vantare_ipc::control::VERSION,
             revision: 1,
             checked_at_ms: 1000,
-            overlays_advanced: true,
+            state: vantare_ipc::control::AccessState::Active,
             ..Default::default()
         };
         assert!(

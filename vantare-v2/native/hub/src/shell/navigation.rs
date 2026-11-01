@@ -40,7 +40,10 @@ impl Access {
     }
 
     pub fn from_policy(policy: &vantare_ipc::control::Policy, now_ms: u64) -> Self {
-        if policy.error.is_some() {
+        if policy.state == vantare_ipc::control::AccessState::NoCredential {
+            return Self::default();
+        }
+        if !policy.state.permits_access() {
             return Self {
                 blocked: true,
                 ..Self::default()
@@ -50,7 +53,7 @@ impl Access {
             return Self::default();
         }
         Self {
-            verified: policy.overlays_advanced,
+            verified: policy.state.permits_access(),
             catalog: policy.catalog,
             engineer: policy.engineer,
             strategy: policy.strategy,
@@ -376,13 +379,48 @@ pub fn context(section: Section) -> &'static [Section] {
 mod tests {
     use super::*;
     #[test]
+    fn navigation_reads_explicit_state_even_with_contradicting_display_text() {
+        use vantare_ipc::control::{AccessState, CatalogAccess, Policy, VERSION};
+        for state in [
+            AccessState::Active,
+            AccessState::Grace,
+            AccessState::NoCredential,
+            AccessState::Unconfigured,
+            AccessState::Expired,
+            AccessState::RecoveryRequired,
+            AccessState::ClockBehind { until_ms: 9000 },
+            AccessState::Revoked,
+            AccessState::Unavailable,
+            AccessState::UpdateRequired,
+        ] {
+            let policy = Policy {
+                version: VERSION,
+                revision: 1,
+                checked_at_ms: 1000,
+                state,
+                catalog: CatalogAccess::Pro,
+                engineer: true,
+                strategy: true,
+                analysis: true,
+                calendar: true,
+                tester: true,
+                error: state.permits_access().then(|| "presentation only".into()),
+                ..Policy::default()
+            };
+            let access = Access::from_policy(&policy, 1000);
+            assert_eq!(access.verified, state.permits_access(), "{state:?}");
+            assert_eq!(access.engineer, state.permits_access(), "{state:?}");
+        }
+    }
+
+    #[test]
     fn launch_policy_projects_locks_into_navigation_and_commands() {
         use vantare_ipc::control::{CatalogAccess, Policy};
         let policy = Policy {
             version: vantare_ipc::control::VERSION,
             revision: 1,
             checked_at_ms: 1000,
-            overlays_advanced: true,
+            state: vantare_ipc::control::AccessState::Active,
             catalog: CatalogAccess::LaunchV1,
             ..Policy::default()
         };
@@ -740,7 +778,7 @@ mod beta_tests {
                 version: vantare_ipc::control::VERSION,
                 revision: 1,
                 checked_at_ms: 10_000,
-                overlays_advanced: true,
+                state: vantare_ipc::control::AccessState::Active,
                 tester,
                 calendar,
                 engineer: true,

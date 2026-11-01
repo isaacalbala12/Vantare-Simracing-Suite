@@ -21,8 +21,8 @@ fn policy() -> vantare_ipc::control::Policy {
         version: vantare_ipc::control::VERSION,
         revision: 1,
         checked_at_ms: now,
-        valid_until_ms: Some(now + 60_000),
-        overlays_advanced: true,
+        signed_until_ms: Some(now + 60_000),
+        state: vantare_ipc::control::AccessState::Active,
         catalog: vantare_ipc::control::CatalogAccess::Pro,
         ..Default::default()
     }
@@ -92,7 +92,7 @@ fn failed_logout_back_requires_new_fresh_core_rights_and_no_revocation_ack() {
                     );
                     failed_logout(remote, session, cx);
                     match condition {
-                        1 => rights.overlays_advanced = false,
+                        1 => rights.state = vantare_ipc::control::AccessState::Revoked,
                         2 => rights.checked_at_ms = 1,
                         _ => {}
                     }

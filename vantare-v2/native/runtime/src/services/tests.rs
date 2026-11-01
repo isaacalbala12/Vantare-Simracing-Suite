@@ -12,6 +12,96 @@ use vantare_services::{
 mod profile;
 
 #[test]
+fn recovery_observations_admit_queries_and_logout_always_reaches_the_helper() {
+    use control::AccessState;
+    let wall = control::wall_ms().expect("wall");
+    for state in [
+        AccessState::NoCredential,
+        AccessState::RecoveryRequired,
+        AccessState::ClockBehind {
+            until_ms: wall + 10_000,
+        },
+    ] {
+        let policy = control::Policy {
+            revision: 1,
+            checked_at_ms: wall,
+            ..control::Policy::denied(state)
+        };
+        assert!(!state.permits_access());
+        // DraftLoad is an ordinary, non-access query.
+        assert!(helper_command_allowed(&policy, &Command::DraftLoad));
+        assert!(helper_command_allowed(&policy, &Command::Logout));
+    }
+    for state in [
+        AccessState::Expired,
+        AccessState::Revoked,
+        AccessState::Unavailable,
+    ] {
+        let policy = control::Policy::denied(state);
+        assert!(helper_command_allowed(&policy, &Command::Logout));
+        assert!(!helper_command_allowed(&policy, &Command::DraftLoad));
+    }
+}
+
+#[test]
+fn skipped_clock_behind_purchase_reports_the_dated_state_without_helper_or_http() {
+    let mut state = State::default();
+    state.renewal.observe(&confirmed_session());
+    let now = Instant::now();
+    state.purchase_until = Some(now + Duration::from_mins(10));
+    let policy = control::Policy {
+        revision: 1,
+        checked_at_ms: 1000,
+        ..control::Policy::denied(control::AccessState::ClockBehind { until_ms: 10_000 })
+    };
+    let reply = run_renewal(&mut state, &policy, 1000, now, |_, _| {
+        panic!("no helper/HTTP while waiting")
+    })
+    .unwrap_or_else(|| core_status_reply(policy.clone()));
+    let Reply::License {
+        policy: observed,
+        message,
+    } = reply
+    else {
+        panic!("status");
+    };
+    assert_eq!(observed, policy);
+    assert_eq!(
+        Some(message.clone()),
+        vantare_services::outcome::policy_message(&policy)
+    );
+    assert!(message.contains("hora local"));
+    assert!(!message.contains("Política vigente"));
+}
+
+#[test]
+fn future_boundary_never_dispatches_an_automatic_http_attempt() {
+    let now = Instant::now();
+    for purchase in [false, true] {
+        let mut state = State::default();
+        state.renewal.observe(&confirmed_session());
+        if purchase {
+            state.purchase_until = Some(now + Duration::from_mins(10));
+        }
+        for wall in [1000, 5000, 10_000] {
+            let policy = control::Policy {
+                version: control::VERSION,
+                revision: 1,
+                checked_at_ms: wall,
+                state: control::AccessState::ClockBehind { until_ms: 10_000 },
+                ..control::Policy::default()
+            };
+            assert!(
+                run_renewal(&mut state, &policy, wall, now, |_, _| panic!(
+                    "no helper or HTTP while the frontier is pending"
+                ))
+                .is_none()
+            );
+        }
+    }
+}
+
+#[test]
 fn incompatible_transfer_stays_transient_and_keeps_the_actionable_version_message() {
     assert_eq!(
         admit_transfer(&Err(ConnectionError::Version)),
@@ -122,7 +212,8 @@ fn a_closed_idle_helper_is_replaced_before_the_first_user_request() {
     assert!(
         !control::request(&link, control::Command::Read)
             .expect("core")
-            .overlays_advanced,
+            .state
+            .permits_access(),
         "reconnection cannot grant rights"
     );
     drop(original_pipe);
@@ -361,7 +452,7 @@ fn real_helper_is_on_demand_hands_off_before_game_reaps_and_never_reactivates_af
     let paid = control::request(&link, control::Command::Read).expect("policy");
     assert!(
         paid.current()
-            && paid.overlays_advanced
+            && paid.state.permits_access()
             && !paid.engineer
             && !paid.strategy
             && !paid.analysis
@@ -387,7 +478,8 @@ fn real_helper_is_on_demand_hands_off_before_game_reaps_and_never_reactivates_af
     assert!(
         control::request(&link, control::Command::Read)
             .expect("sin helper")
-            .overlays_advanced
+            .state
+            .permits_access()
     );
     snapshot.state.source_state = vantare_domain::SourceState::Waiting;
     core.publish(Arc::new(snapshot));
@@ -401,13 +493,15 @@ fn real_helper_is_on_demand_hands_off_before_game_reaps_and_never_reactivates_af
     assert!(
         !control::request(&link, control::Command::Read)
             .expect("revocado")
-            .overlays_advanced
+            .state
+            .permits_access()
     );
     assert!(matches!(hub.request(Command::Shutdown), Reply::Closed));
     assert!(
         !control::request(&link, control::Command::Read)
             .expect("sin reactivación")
-            .overlays_advanced
+            .state
+            .permits_access()
     );
     drop(hub);
     drop(services);
@@ -419,14 +513,14 @@ fn real_helper_is_on_demand_hands_off_before_game_reaps_and_never_reactivates_af
 fn game_closes_services_only_with_a_saved_license_and_no_sign_in_in_progress() {
     let licensed = control::Policy {
         live: true,
-        overlays_advanced: true,
+        state: vantare_ipc::control::AccessState::Active,
         ..control::Policy::default()
     };
     assert!(closes_for_game(&licensed, false));
     assert!(!closes_for_game(&licensed, true), "acceso a medias");
     for policy in [
         control::Policy {
-            overlays_advanced: false,
+            state: vantare_ipc::control::AccessState::NoCredential,
             ..licensed.clone()
         },
         control::Policy {
@@ -461,7 +555,7 @@ fn without_a_license_the_hub_can_still_sign_in_during_a_live_session() {
     snapshot.state.session.id = vantare_domain::SessionId(91);
     core.publish(Arc::new(snapshot));
     let policy = control::request(&link, control::Command::Read).expect("policy");
-    assert!(policy.live && !policy.overlays_advanced);
+    assert!(policy.live && !policy.state.permits_access());
     let mut hub = Session::open(&photo);
     assert!(matches!(hub.request(Command::Status), Reply::Status { .. }));
     assert!(
@@ -497,11 +591,11 @@ fn live_cached_access_metadata_and_policy_survive_services_shutdown() {
     ));
     assert!(services.state.lock().expect("state").client.is_none());
     let policy = control::request(&link, control::Command::Read).expect("policy");
-    assert!(policy.current() && policy.overlays_advanced);
+    assert!(policy.current() && policy.state.permits_access());
     let Reply::License { policy: read, .. } = hub.request(Command::LicenseStatus) else {
         panic!("cached rights must remain readable in game")
     };
-    assert!(read.current() && read.overlays_advanced);
+    assert!(read.current() && read.state.permits_access());
     assert!(
         services.state.lock().expect("state").client.is_none(),
         "policy heartbeat must not restart the helper or reinstall the candidate"
@@ -529,7 +623,7 @@ fn heartbeat_delivers_definitive_revocation_instead_of_a_transient_error() {
     let mut hub = Session::open(&photo);
     assert!(matches!(hub.request(Command::Status), Reply::Status { .. }));
     assert!(
-        matches!(hub.request(Command::LicenseStatus), Reply::License { policy, .. } if policy.overlays_advanced)
+        matches!(hub.request(Command::LicenseStatus), Reply::License { policy, .. } if policy.state.permits_access())
     );
     assert!(matches!(
         hub.request(Command::Logout),
@@ -541,7 +635,7 @@ fn heartbeat_delivers_definitive_revocation_instead_of_a_transient_error() {
     let Reply::License { policy, .. } = hub.request(Command::LicenseStatus) else {
         panic!("el Hub necesita el resultado definitivo, no un error de transporte");
     };
-    assert!(!policy.overlays_advanced);
+    assert!(!policy.state.permits_access());
     assert!(policy.error.is_some());
     drop(hub);
     drop(services);
@@ -557,7 +651,7 @@ fn game_exit_rechecks_access_started_after_the_live_decision() {
     let cancellation: Cancellation = Arc::new(Mutex::new(Some(Arc::clone(&event))));
     let policy = control::Policy {
         live: true,
-        overlays_advanced: true,
+        state: vantare_ipc::control::AccessState::Active,
         ..control::Policy::default()
     };
     assert!(closes_for_game(&policy, signing_in(&signing)));
@@ -696,7 +790,8 @@ fn hub_automatic_requests_obey_live_window_and_explicit_purchase_origin() {
     assert!(
         control::request(&link, control::Command::Read)
             .expect("rights")
-            .overlays_advanced
+            .state
+            .permits_access()
     );
     drop(hub);
     drop(services);
@@ -705,22 +800,22 @@ fn hub_automatic_requests_obey_live_window_and_explicit_purchase_origin() {
 }
 
 #[test]
-fn both_renewal_paths_use_the_ack_clock_and_preserve_backoff_without_new_margin() {
+fn both_renewal_paths_use_the_ack_clock_and_accept_verified_short_runway() {
     let wall = 10_000_000;
     let now = Instant::now();
     let initial = control::Policy {
         version: control::VERSION,
         revision: 1,
         checked_at_ms: wall,
-        overlays_advanced: false,
+        state: vantare_ipc::control::AccessState::NoCredential,
         ..control::Policy::default()
     };
     // The wall clock moved backwards by three seconds during HTTP. The ACK
     // is still fresh at the core's effective clock and grants a full new day.
     let good = control::Policy {
-        overlays_advanced: true,
+        state: vantare_ipc::control::AccessState::Active,
         checked_at_ms: wall - 3000,
-        valid_until_ms: Some(wall + 24 * 60 * 60_000),
+        signed_until_ms: Some(wall + 24 * 60 * 60_000),
         ..initial.clone()
     };
     let mut state = State::default();
@@ -740,7 +835,7 @@ fn both_renewal_paths_use_the_ack_clock_and_preserve_backoff_without_new_margin(
         "a good ACK must clear transport failures despite clock rollback"
     );
     let near = control::Policy {
-        valid_until_ms: Some(wall + 10 * 60_000),
+        signed_until_ms: Some(wall + 10 * 60_000),
         checked_at_ms: wall,
         ..good
     };
@@ -756,14 +851,14 @@ fn both_renewal_paths_use_the_ack_clock_and_preserve_backoff_without_new_margin(
         },
     );
     let healthy = control::Policy {
-        overlays_advanced: true,
-        valid_until_ms: Some(wall + 24 * 60 * 60_000),
+        state: vantare_ipc::control::AccessState::Active,
+        signed_until_ms: Some(wall + 24 * 60 * 60_000),
         ..initial
     };
     assert_eq!(
         state.renewal.claim(&healthy, wall, after),
-        Ok(()),
-        "the Hub path must retain the failure instead of reporting Verified"
+        Err(renewal::Skip::NotDue),
+        "a verified short deadline is not a transport failure"
     );
 }
 
@@ -789,7 +884,7 @@ fn live_helper_priority_fixture(licensed: bool) {
     core.publish(Arc::new(snapshot));
     let before = control::request(&link, control::Command::Read).expect("live core");
     assert!(before.live);
-    assert_eq!(before.overlays_advanced, licensed);
+    assert_eq!(before.state.permits_access(), licensed);
     assert!(renewal::urgent(&before, before.checked_at_ms) || !licensed);
     let options = Options {
         binary: link
@@ -843,7 +938,7 @@ fn live_helper_priority_fixture(licensed: bool) {
         clear_cancellation(&services.cancellation);
     }
     let after = control::request(&link, control::Command::Read).expect("rights preserved");
-    assert_eq!(after.overlays_advanced, before.overlays_advanced);
+    assert_eq!(after.state.permits_access(), before.state.permits_access());
     assert_eq!(after.catalog, before.catalog);
     drop(services);
     drop(core);
@@ -851,20 +946,20 @@ fn live_helper_priority_fixture(licensed: bool) {
 }
 
 #[test]
-fn reissued_license_without_new_runway_preserves_failure_backoff() {
+fn reissued_license_without_new_runway_is_successful_and_keeps_the_floor() {
     let now = Instant::now();
     let wall = 10_000_000;
     let policy = control::Policy {
         version: control::VERSION,
         revision: 1,
         checked_at_ms: wall,
-        overlays_advanced: true,
-        valid_until_ms: Some(wall + 10 * 60_000),
+        state: vantare_ipc::control::AccessState::Active,
+        signed_until_ms: Some(wall + 10 * 60_000),
         ..control::Policy::default()
     };
     let mut state = State::default();
     state.renewal.observe(&confirmed_session());
-    for seconds in [0, 60] {
+    for seconds in [0, 900] {
         assert!(
             run_renewal(
                 &mut state,
@@ -884,8 +979,8 @@ fn reissued_license_without_new_runway_preserves_failure_backoff() {
             &mut state,
             &policy,
             wall,
-            now + Duration::from_mins(2),
-            |_, _| panic!("same near-expiry grant must not reset backoff")
+            now + Duration::from_secs(1799),
+            |_, _| panic!("hard floor after successful renewal")
         )
         .is_none()
     );
@@ -894,7 +989,7 @@ fn reissued_license_without_new_runway_preserves_failure_backoff() {
             &mut state,
             &policy,
             wall,
-            now + Duration::from_mins(3),
+            now + Duration::from_mins(30),
             |_, _| Reply::License {
                 policy: policy.clone(),
                 message: String::new()
@@ -912,9 +1007,9 @@ fn live_renews_once_on_urgent_window_entry_and_transport_failures_retry_without_
         version: control::VERSION,
         revision: 1,
         checked_at_ms: wall,
-        overlays_advanced: true,
+        state: vantare_ipc::control::AccessState::Active,
         live: true,
-        valid_until_ms: Some(wall + 120 * 60_000 + 1),
+        signed_until_ms: Some(wall + 60 * 60_000 + 1),
         ..control::Policy::default()
     };
     let mut state = State::default();
@@ -925,7 +1020,7 @@ fn live_renews_once_on_urgent_window_entry_and_transport_failures_retry_without_
         ))
         .is_none()
     );
-    policy.valid_until_ms = Some(wall + 120 * 60_000);
+    policy.signed_until_ms = Some(wall + 60 * 60_000);
     let mut requests = 0;
     let result = run_renewal(&mut state, &policy, wall, now, |_, command| {
         assert!(matches!(command, Command::LicenseRenewAutomatic));
@@ -956,7 +1051,7 @@ fn live_renews_once_on_urgent_window_entry_and_transport_failures_retry_without_
             requests += 1;
             Reply::License {
                 policy: control::Policy {
-                    valid_until_ms: Some(wall + 24 * 60 * 60_000),
+                    signed_until_ms: Some(wall + 24 * 60 * 60_000),
                     ..policy.clone()
                 },
                 message: String::new(),
@@ -1018,10 +1113,10 @@ fn restored_owner_with_thirty_days_of_margin_does_not_renew_on_each_startup() {
     for seconds in [0, 59, 60, 120] {
         let policy =
             control::request(&link, control::Command::Read).expect("signed durable Owner binding");
-        assert!(policy.overlays_advanced && policy.tester);
+        assert!(policy.state.permits_access() && policy.tester);
         assert!(
             policy
-                .valid_until_ms
+                .signed_until_ms
                 .is_some_and(|end| end > policy.checked_at_ms + 29 * 24 * 60 * 60_000)
         );
         assert!(
@@ -1179,9 +1274,9 @@ fn manual_definitive_failure_stops_automatic_renewal() {
         version: control::VERSION,
         revision: 1,
         checked_at_ms: 1000,
-        overlays_advanced: true,
+        state: vantare_ipc::control::AccessState::Active,
         catalog: control::CatalogAccess::Pro,
-        valid_until_ms: Some(2000),
+        signed_until_ms: Some(2000),
         ..control::Policy::default()
     };
     let signing: SigningIn = Arc::new(Mutex::new(None));

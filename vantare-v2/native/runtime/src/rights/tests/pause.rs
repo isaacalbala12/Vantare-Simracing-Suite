@@ -41,10 +41,29 @@ fn long_pause_and_resume_keep_the_original_hour_and_expire_during_pause() {
             policy.engineer, allowed,
             "elapsed={elapsed}, state={state:?}"
         );
-        assert!(policy.overlays_advanced, "signed credential still current");
+        assert!(
+            policy.state.permits_access(),
+            "signed credential still current"
+        );
+        assert_eq!(
+            policy.state,
+            if allowed && elapsed >= 20 {
+                vantare_ipc::control::AccessState::Grace
+            } else {
+                vantare_ipc::control::AccessState::Active
+            }
+        );
+        assert_eq!(
+            policy.signed_until_ms,
+            Some((start + if allowed { 20 } else { 7220 }).cast_unsigned() * 1000)
+        );
+        assert_eq!(
+            policy.grace_until_ms,
+            allowed.then_some((start + 3620).cast_unsigned() * 1000)
+        );
         assert_eq!(policy.live, state == SourceState::Live);
         assert_eq!(
-            policy.valid_until_ms,
+            policy.effective_until_ms(),
             Some((start + if allowed { 3620 } else { 7220 }).cast_unsigned() * 1000)
         );
     }
@@ -157,12 +176,67 @@ fn signed_credential_expiring_during_pause_still_denies_at_its_exact_deadline() 
             )
             .expect("wall and monotonic clock");
         assert_eq!(policy.engineer, elapsed < 100);
-        assert_eq!(policy.overlays_advanced, elapsed < 100);
+        assert_eq!(policy.state.permits_access(), elapsed < 100);
         assert_eq!(
-            policy.valid_until_ms,
+            policy.state,
+            if elapsed < 100 {
+                vantare_ipc::control::AccessState::Grace
+            } else {
+                vantare_ipc::control::AccessState::Expired
+            }
+        );
+        assert_eq!(
+            policy.effective_until_ms(),
             Some((start + 100).cast_unsigned() * 1000)
         );
     }
+    drop(owner);
+    clean(&root);
+}
+
+#[test]
+fn channel_only_grace_does_not_change_the_published_catalog_state_or_deadline() {
+    let start = 1_790_940_000;
+    let root = test_root();
+    let (credential, keys) = signed_modules(
+        start + 100,
+        start - 10,
+        vec![
+            Capability {
+                key: "vantare.channel.testers".into(),
+                paid_through: wall(start + 20).to_rfc3339(),
+                perpetual: false,
+                scope_version: String::new(),
+            },
+            Capability {
+                key: "vantare.plan.founders".into(),
+                paid_through: String::new(),
+                perpetual: true,
+                scope_version: String::new(),
+            },
+        ],
+    );
+    let mut owner = Owner::open(&root, Some(&keys), devices(), 1, wall(start)).expect("owner");
+    owner
+        .install(credential, wall(start), Duration::ZERO)
+        .expect("install");
+    owner
+        .advance(&photo(true), wall(start + 5), Duration::from_secs(5))
+        .expect("enter live");
+    let policy = owner
+        .advance(&photo(true), wall(start + 21), Duration::from_secs(21))
+        .expect("channel grace");
+    assert_eq!(policy.state, vantare_ipc::control::AccessState::Active);
+    assert_eq!(
+        policy.catalog,
+        vantare_ipc::control::CatalogAccess::Founders
+    );
+    assert_eq!(
+        policy.signed_until_ms,
+        Some((start + 100).cast_unsigned() * 1000)
+    );
+    assert_eq!(policy.grace_until_ms, None);
+    assert!(policy.engineer);
     drop(owner);
     clean(&root);
 }

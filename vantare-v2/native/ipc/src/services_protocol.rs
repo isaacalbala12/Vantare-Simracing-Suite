@@ -2,9 +2,10 @@
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use std::io::{self, Read, Write};
 
-// v16 publishes Session explicitly. Mixed generations are transient failures;
+// v17 versions the nested control v7 Policy; Session/AccountCancel stay unchanged.
+// Mixed generations are transient failures;
 // no protocol error can invalidate the signed core policy.
-pub const VERSION: u32 = 16;
+pub const VERSION: u32 = 17;
 #[path = "services_protocol/pilot_document.rs"]
 pub mod pilot_document;
 #[path = "services_protocol/report_document.rs"]
@@ -339,6 +340,19 @@ pub struct Response {
     pub reply: Reply,
 }
 
+/// Inspect both installed generations before decoding the strict nested Policy.
+/// Missing/malformed versions remain protocol errors in the strict decoder.
+pub fn response_version_mismatch(value: &serde_json::Value) -> bool {
+    value
+        .get("version")
+        .and_then(serde_json::Value::as_u64)
+        .is_some_and(|version| version != u64::from(VERSION))
+        || value
+            .pointer("/reply/policy/version")
+            .and_then(serde_json::Value::as_u64)
+            .is_some_and(|version| version != u64::from(crate::control::VERSION))
+}
+
 pub fn read<T: DeserializeOwned>(reader: &mut impl Read) -> io::Result<T> {
     let mut prefix = [0_u8; 4];
     reader.read_exact(&mut prefix)?;
@@ -384,6 +398,26 @@ fn frame_limit(value: &serde_json::Value) -> usize {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn nested_control_generation_is_a_version_mismatch_before_schema_decoding() {
+        for version in [
+            crate::control::VERSION - 1,
+            crate::control::VERSION,
+            crate::control::VERSION + 1,
+        ] {
+            let value = serde_json::json!({"version": VERSION, "sequence": 1,
+                "reply": {"result":"License","policy":{"version": version,"legacy_or_future_field":true}}});
+            assert_eq!(
+                response_version_mismatch(&value),
+                version != crate::control::VERSION
+            );
+            assert!(
+                serde_json::from_value::<Response>(value).is_err(),
+                "strict schema never accepts it"
+            );
+        }
+    }
+
     #[test]
     fn account_v16_requires_an_explicit_closed_session_state() {
         const { assert!(VERSION >= 16) };

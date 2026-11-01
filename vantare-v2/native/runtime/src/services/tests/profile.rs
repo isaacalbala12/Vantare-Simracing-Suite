@@ -122,7 +122,7 @@ fn missing_profile_oauth_rejection_requires_sign_in_but_preserves_real_binding()
     .to_utc();
     let (core, link) = start_profile_core(&root, &candidate, &keys);
     let before = control::request(&link, control::Command::Read).expect("verified rights");
-    assert!(before.overlays_advanced);
+    assert!(before.state.permits_access());
     assert_eq!(before.catalog, control::CatalogAccess::Pro);
 
     let mut app = restored_profile_app(root.join("services"), &server);
@@ -171,10 +171,10 @@ fn missing_profile_oauth_rejection_requires_sign_in_but_preserves_real_binding()
     assert!(requests[0].starts_with("POST /token "));
     let after =
         control::request(&link, control::Command::Read).expect("rights after profile failure");
-    assert!(after.overlays_advanced);
+    assert!(after.state.permits_access());
     assert_eq!(after.catalog, control::CatalogAccess::Pro);
     assert_eq!(
-        after.valid_until_ms, before.valid_until_ms,
+        after.signed_until_ms, before.signed_until_ms,
         "profile grants no new TTL"
     );
     assert!(
@@ -280,7 +280,7 @@ fn renewal_dispatch_reads_session_from_the_helper_after_refresh_rejection() {
     assert!(requests[0].starts_with("POST /token "));
     let after = control::request(&link, control::Command::Read).expect("Pro after failed refresh");
     assert_eq!(after.catalog, control::CatalogAccess::Pro);
-    assert_eq!(after.valid_until_ms, before.valid_until_ms);
+    assert_eq!(after.signed_until_ms, before.signed_until_ms);
     drop(app);
     drop(core);
     std::fs::remove_dir_all(root).expect("own fixtures");
@@ -326,7 +326,7 @@ fn account_cancel_preserves_real_pro_binding_in_every_account_state() {
         );
         let after = control::request(&link, control::Command::Read).expect("retained Pro");
         assert_eq!(after.catalog, control::CatalogAccess::Pro);
-        assert_eq!(after.valid_until_ms, before.valid_until_ms);
+        assert_eq!(after.signed_until_ms, before.signed_until_ms);
         assert!(
             server.finish_observed().is_empty(),
             "cancellation is not a refresh"

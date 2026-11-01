@@ -1,9 +1,20 @@
+## #1827 — Overlays por Policy.state (paso 7)
+
+El host lee Active/Grace junto al catálogo y la frescura; los demás estados no
+conceden overlays. Los mensajes usan motivos tipados, incluido UpdateRequired y
+ClockBehind, sin comparar textos de error. Tests por todos los estados y widgets.
+Control v7 requiere actualizar el conjunto; no cambia el catálogo gratuito ni
+la gracia de la misma sesión. [Contrato](../../docs/adr/0102-modelo-acceso-nativo.md).
+
 # ui — overlays GPUI
 
 RacingFlags solicita `Flags` y `Cars`: conserva la identidad del jugador y
 las banderas personales sin transportar `pending_penalties` a 33 ms. Una
 regresión del DTO compara bytes con la demanda anterior (`Penalties`), y el
 test de pipe real conserva el aviso personal con sanciones no solicitadas.
+
+Services v17 versiona la Policy v7 anidada; Session/AccountCancel permanecen
+intactos. V16 del paso 6 nunca se publicó en release.
 
 ## #1564 · Sesiones y columnas de Standings
 
@@ -681,3 +692,10 @@ fase no se abre ni captura la app mientras #1675 no esté integrado en nightly.
 ## Avisos de sesión (#1653)
 
 Widget Pro LMU, ronda 4 v2: [contrato, mini, calendario y límites de señales](session-alerts.md).
+
+Revisión del paso 7: ClockBehind.until_ms está en tiempo de pared (lápida
+efectiva menos forward_millis), con aviso de fecha/hora local. El estado local
+del supervisor usa el mismo aviso si omite renovar. NoCredential/RecoveryRequired/
+ClockBehind frescos admiten consultas al helper; Logout sigue disponible con
+canal del núcleo autenticado, incluso ante denegación o caducidad. Sin conceder
+derechos ni saltar el ACK durable; ADR0102.

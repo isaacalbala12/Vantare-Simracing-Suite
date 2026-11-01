@@ -328,7 +328,7 @@ enum Reason { ClockBehind { until_ms }, StorageDamaged, DeviceMismatch,
 Policy { version, epoch, revision, checked_at_ms, state, catalog,
          modules…, tester, live, signed_until_ms, grace_until_ms }
 
-// ipc::services_protocol (v16)
+// ipc::services_protocol (v17; Session/AccountCancel desde v16)
 enum Session { SignedOut, Pending, Active { expires_at }, NeedsSignIn }
 enum Outcome { Verified, Retry, NeedsUser(UserAction) }
 enum UserAction { SignIn, ResetDevice, UpdateApp, FixClock, Support }
@@ -379,8 +379,9 @@ enum UserAction { SignIn, ResetDevice, UpdateApp, FixClock, Support }
 |---|---|---|
 | Respuesta `native-license` | Sin cambio de forma. La recuperación aparece como `paid_through` del derecho; `online_capabilities: []` | Todos los clientes v1 instalados ya entienden `paid_through`; reciben el margen sin actualizar |
 | `license-credential` | Retirado (410) | Solo afecta a clientes Wails retirados (#1533); confirmar antes |
-| Control núcleo v6 → v7 | `Policy.state`, `signed_until_ms`/`grace_until_ms` en lugar de `valid_until_ms` + `online_recovery_required`; se retira `Install` de caché | Núcleo, servicios, Hub y overlays se instalan juntos en cada generación; una mezcla ya da `VersionMismatch` explícito (`control.rs:213-227`). Paso transitorio: v7 publica también los campos antiguos durante un corte si se quiere poder bisecar |
-| Servicios v15 → v16 | `Reply::Account.session`; `Reply::LicenseFailure` lleva `Outcome`; se retira `TransferRights` | Mismo binario/generación que el supervisor |
+| Control núcleo v6 → v7 | `Policy.state`, `signed_until_ms`/`grace_until_ms` en lugar de `valid_until_ms` + `online_recovery_required`; `Install` de caché permanece hasta el paso 8 | Núcleo, servicios, Hub y overlays se instalan juntos en cada generación; una respuesta de otra generación da `VersionMismatch` antes del esquema. Si un núcleo/helper anterior cierra sin responder, queda desconexión transitoria genérica, nunca protocolo inválido ni revocación. Paso transitorio: v7 publica también los campos antiguos durante un corte si se quiere poder bisecar |
+| Servicios v15 → v16 (paso 6) | `Reply::Account.session` y `AccountCancel` | Integrado en código; v16 no se publicó en una release |
+| Servicios v16 → v17 (paso 7) | Solo versión del sobre: transporta `Policy` control v7; Session/AccountCancel y demás payloads intactos | El saludo rechaza v16/v17 antes de decodificar Policy. Decisión del orquestador 1-nov-2026; TransferRights permanece hasta el paso 8 |
 | Datos en disco | `binding`/`authority`/`authority-recovery` **sin cambio de formato** | Una generación nueva lee lo de la anterior. `license-candidate`/`-pending` sobrantes: se ignoran (o se apartan una vez con `quarantine_dated`). No hace falta migración de datos |
 | Generación anterior leyendo datos de la nueva (rollback del instalador) | La anterior encuentra `binding`/`authority` válidos y sin candidate | Funciona: sin candidate, la generación anterior hace `Read` (`app.rs:198`) y, si toca, renueva por HTTP |
 
@@ -488,9 +489,11 @@ en lugar de pararlos.
   contrato; hay que documentarlo en el runbook.
 - **Firmar la recuperación** da hasta 72 h offline a quien no ha pagado. Es
   exactamente el margen del contrato; no es una concesión nueva.
-- **Versiones de protocolo:** dos subidas (control v7, servicios v16). El
+- **Versiones de protocolo:** control v7 y servicios v17 en el paso 7, tras v16
+  del paso 6 (nunca publicado en release). El
   instalador ya entrega todo junto; el riesgo real es un QA que mezcle binarios,
-  y ese caso ya produce `VersionMismatch` explícito.
+  y una respuesta incompatible produce `VersionMismatch`; un peer antiguo que
+  cierre sin responder puede dar desconexión transitoria genérica, sin revocar.
 - **Tamaño del cambio:** se mitiga con pasos de uno o dos días y tests primero.
   Ningún paso mezcla servidor y cliente.
 
@@ -606,8 +609,8 @@ fila: una pausa no inicia ni amplía la hora; salir de sesión, Logout y los
 vencimientos siguen retirando el acceso. El paso 7 conserva este resultado.
 Las filas User que revocan por renovación/refresh llevan «cambia en paso 5»;
 recovery solo online lleva «cambia en paso 1»; candidate apartado lleva
-«cambia en paso 8». La lápida futura conserva hoy el diagnóstico genérico
-(#1822 F2, cambia en paso 7); la marca corrupta sigue bloqueando tras dos
+«cambia en paso 8». El paso 7 cambia el diagnóstico de lápida futura a ClockBehind con su frontera
+(#1822 F2), sin cambiar acceso ni rebajar esa frontera; la marca corrupta sigue bloqueando tras dos
 restauraciones (#1822 F4, optimización de Store posterior).
 El test Deno conecta las funciones puras reales de transición y normalización,
 pero sus filas efectivas son fixtures: no demuestra process.ts, SQL/RLS ni un
@@ -625,3 +628,10 @@ incluso tras un fallo del formulario, y Cuenta ofrece los mismos proveedores.
 No hay fallback a Logout ante un servicio v15: el desajuste sigue transitorio.
 La fila nueva de caracterización fija AccountCancel no revoca, con candidate
 y sesión conservados. El resto de filas de los refactors sigue intacto.
+
+Enmienda de revisión paso 7: `ClockBehind.until_ms` se expresa en pared
+(lápida efectiva menos `forward_millis`), no en tiempo efectivo. Los consumidores
+formatean fecha/hora local; la espera automática compara unidades iguales. Las
+consultas al helper con NoCredential/RecoveryRequired/ClockBehind frescos y
+Logout incluso con política denegada son decisiones expresas del orquestador,
+sin autoridad para conceder acceso y conservando el ACK durable (ADR0102).

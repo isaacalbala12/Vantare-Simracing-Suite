@@ -143,3 +143,60 @@ confirmado. El usuario puede reintentar Logout o abandonar ese cierre fallido
 con Volver si la sesión publicada y una política fresca del núcleo conservan
 acceso. Escape/Volver en Choose no inicia un intento; cancelar un intento en
 vuelo impide nuevos proveedores/cancelaciones hasta su respuesta.
+
+### Paso 7 — estado y diagnóstico explícitos
+
+Control v7 publica Policy.state y separa la frontera firmada de la gracia efectiva.
+Active incluye Gratis al vencer únicamente Pro; Expired deniega la credencial
+completa. Se conserva la matriz de acceso y el formato durable de Authority.
+El campo histórico error queda como observación diagnóstica sin autoridad.
+ClockBehind publica la lápida futura sin modificarla y evita HTTP automático
+inútil (#1822 F2); la comprobación manual explica la fecha pendiente.
+Una emisión 200 verificada, aunque no dé margen nuevo, es Verified: no acumula
+fallos transitorios (P3 #1831). Durante la ventana urgente ordinaria se comprueba de nuevo
+cada 15 minutos; en los últimos cinco minutos firmados se conserva el suelo de un minuto.
+La confirmación de compra conserva su sondeo con suelo de un minuto dentro de
+su ventana de diez minutos, también tras un 200 verificado sin margen nuevo.
+La incompatibilidad se detecta por versión antes del esquema estricto, también
+para Policy anidada en services v17. Los lectores anteriores pueden mostrar
+un error genérico; ningún desajuste revoca derechos guardados. Install y
+TransferRights se conservan hasta su paso 8, sin anticiparlo aquí.
+
+Decisión del orquestador (1-nov-2026): el paso 7 eleva también el sobre de services
+a v17. V16 nunca se publicó en una release. El cambio de Policy anidada requiere
+rechazar al lector v16 desde el saludo, antes del esquema; Session/AccountCancel
+y el resto del payload de services no cambian.
+
+| Plano | Generación del paso 7 | Compatibilidad |
+| --- | --- | --- |
+| Control | v7 | Policy.state y plazos separados; v6/v7 se rechazan por versión |
+| Services | v17 | Saludo v16/v17 incompatible antes de Policy; no revoca |
+| Fotos | v11 | Sin cambios |
+
+Los lectores nuevos validan también Policy.version antes de su esquema estricto.
+Un núcleo o helper anterior que cierre sin responder todavía puede dar desconexión genérica;
+no es un rechazo de derechos y nunca provoca invalidación local.
+
+El Feed transporta también denegaciones frescas (incluida Expired): frescura de
+observación no equivale a permiso. Mantiene el TTL original y nunca rejuvenece
+una política por transporte; al recibir una denegación sustituye el acceso previo.
+Una firma nueva que supera una lápida futura dentro de la tolerancia ya existente
+puede recuperar el acceso antes de que la pared alcance la lápida; ClockBehind
+solo se publica mientras no haya una credencial vigente verificada. La frontera
+saludable se conserva aun después de aceptar esa firma.
+
+### Revisión del paso 7 — diagnóstico y disponibilidad del helper
+
+ClockBehind.until_ms se publica en tiempo de pared: se resta forward_millis de
+la lápida efectiva sin modificar la guarda durable. El supervisor compara pared
+con pared; no espera de nuevo el desfase servidor-adelante ya reconocido (≤300 s).
+Home, Cuenta, overlays y el estado local del supervisor presentan la frontera con
+fecha, hora y zona local legibles. Un automático omitido durante compra muestra
+el estado con fecha, incluso cuando no arrancó el helper; el texto genérico de
+LicenseStatus no sustituye el motivo.
+
+Decisión del orquestador: una observación autenticada fresca de NoCredential,
+RecoveryRequired o ClockBehind permite las consultas ordinarias al helper,
+además de los comandos de recuperación. Arrancarlo no concede derechos.
+Logout se admite siempre que el canal del núcleo responda de forma autenticada,
+aun con política denegada o caducada; su ACK durable sigue siendo obligatorio.

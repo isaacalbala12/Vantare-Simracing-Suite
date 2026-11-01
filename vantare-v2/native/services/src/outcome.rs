@@ -2,6 +2,27 @@
 use crate::{Error, protocol::RenewalOutcome};
 use vantare_ipc::{control::Policy, services_protocol::Reply};
 
+/// Aviso del estado, con frontera en hora local de pared para todas las vistas.
+pub fn policy_message(policy: &Policy) -> Option<String> {
+    let message = policy.state.message()?;
+    if let vantare_ipc::control::AccessState::ClockBehind { until_ms } = policy.state {
+        let until = i64::try_from(until_ms)
+            .ok()
+            .and_then(chrono::DateTime::from_timestamp_millis)
+            .map(|date| {
+                date.with_timezone(&chrono::Local)
+                    .format("%d/%m/%Y %H:%M:%S %:z")
+                    .to_string()
+            });
+        Some(match until {
+            Some(until) => format!("{message} Frontera guardada (hora local): {until}."),
+            None => format!("{message} La frontera guardada está fuera del rango de fechas."),
+        })
+    } else {
+        Some(message.into())
+    }
+}
+
 /// Se conserva el origen para diagnóstico; ninguna renovación revoca.
 #[derive(Clone, Copy, Debug)]
 pub enum Origin {
@@ -71,9 +92,7 @@ pub fn outcome(observation: Observation<'_>) -> Outcome {
         Observation::Reply(reply) => {
             let renewal = match reply {
                 Reply::License { policy, .. }
-                    if policy.overlays_advanced
-                        && policy.current_at(policy.checked_at_ms)
-                        && !renewal_urgent(policy, policy.checked_at_ms) =>
+                    if policy.state.permits_access() && policy.current_at(policy.checked_at_ms) =>
                 {
                     Verified
                 }
@@ -92,26 +111,75 @@ pub fn outcome(observation: Observation<'_>) -> Outcome {
     }
 }
 
-/// Ventana existente de una hora; Policy todavía mezcla firma y gracia Live.
+/// Renovar antes del vencimiento firmado, sin sumar ni restar gracia local.
 pub fn renewal_urgent(policy: &Policy, wall: u64) -> bool {
     renewal_deadline(policy).is_some_and(|end| end <= wall.saturating_add(60 * 60_000))
 }
 
 pub fn renewal_deadline(policy: &Policy) -> Option<u64> {
-    policy.valid_until_ms.map(|end| {
-        if policy.live {
-            // Policy publica el plazo efectivo, que puede incluir gracia de juego.
-            // Reservarla permite renovar antes del plazo firmado, sin ampliarlo.
-            end.saturating_sub(crate::license::GAME_GRACE_SECONDS.unsigned_abs() * 1000)
-        } else {
-            end
-        }
-    })
+    policy.signed_until_ms
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_fresh_denied_state_is_never_a_verified_renewal() {
+        use vantare_ipc::control::{AccessState, Policy, VERSION};
+        for state in [
+            AccessState::NoCredential,
+            AccessState::RecoveryRequired,
+            AccessState::ClockBehind { until_ms: 9000 },
+            AccessState::Expired,
+            AccessState::Revoked,
+            AccessState::Unavailable,
+            AccessState::Unconfigured,
+            AccessState::UpdateRequired,
+        ] {
+            let reply = Reply::License {
+                policy: Policy {
+                    version: VERSION,
+                    revision: 1,
+                    checked_at_ms: 1000,
+                    state,
+                    ..Policy::default()
+                },
+                message: String::new(),
+            };
+            assert_eq!(
+                outcome(Observation::Reply(&reply)).renewal,
+                RenewalOutcome::Transient,
+                "{state:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn signed_recovery_without_new_runway_is_verified_not_a_transport_failure() {
+        use vantare_ipc::control::{AccessState, Policy, VERSION};
+        for state in [AccessState::Active, AccessState::Grace] {
+            let policy = Policy {
+                version: VERSION,
+                revision: 1,
+                checked_at_ms: 1000,
+                state,
+                signed_until_ms: Some(2000),
+                grace_until_ms: Some(3_602_000),
+                ..Policy::default()
+            };
+            assert!(renewal_urgent(&policy, 1000));
+            assert_eq!(renewal_deadline(&policy), Some(2000));
+            assert_eq!(
+                outcome(Observation::Reply(&Reply::License {
+                    policy,
+                    message: String::new()
+                }))
+                .renewal,
+                RenewalOutcome::Verified
+            );
+        }
+    }
 
     #[test]
     fn only_explicit_actions_revoke_and_oauth_rejections_require_sign_in() {

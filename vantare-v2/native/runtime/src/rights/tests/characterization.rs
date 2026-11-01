@@ -1,6 +1,9 @@
 //! Paso 0 de #1827: estado × evento → Policy de nightly, no el modelo futuro.
 use super::*;
-use vantare_ipc::control::CatalogAccess::{Free, Pro};
+use vantare_ipc::control::{
+    AccessState,
+    CatalogAccess::{Free, Pro},
+};
 
 #[derive(Clone, Copy, Debug)]
 enum Case {
@@ -61,7 +64,7 @@ fn nightly_state_event_policy_matrix() {
         (TombstoneEqual, Some(Error::Denied), false, false, Free, false, None),
         (TombstoneOlder, Some(Error::Denied), false, false, Free, false, None),
         (TombstoneNewer, None, true, true, Pro, false, Some(20)),
-        // #1822 F2: diagnóstico genérico; cambia en paso 7, sin bajar la lápida.
+        // Paso 7 / #1822 F2: mismo acceso, ahora ClockBehind con frontera explícita.
         (FutureTombstone, None, false, false, Free, true, None),
         (FutureTombstoneOnline, Some(Error::Denied), false, false, Free, true, None),
         (DamagedAuthority, Some(Error::Denied), false, false, Free, true, None),
@@ -85,7 +88,11 @@ fn nightly_state_event_policy_matrix() {
             observed.expect("policy read");
         }
         let policy = owner.policy();
-        assert_eq!(policy.overlays_advanced, overlays, "{case:?}: overlays");
+        assert_eq!(
+            policy.state.permits_access(),
+            overlays,
+            "{case:?}: overlays"
+        );
         assert_eq!(
             [
                 policy.engineer,
@@ -99,11 +106,12 @@ fn nightly_state_event_policy_matrix() {
         );
         assert_eq!(policy.catalog, catalog, "{case:?}: catalog");
         assert_eq!(
-            policy.online_recovery_required, recovery,
+            policy.state.needs_recovery(),
+            recovery,
             "{case:?}: recovery"
         );
         assert_eq!(
-            policy.valid_until_ms,
+            policy.effective_until_ms(),
             deadline.map(|offset| u64::try_from(start + offset).expect("deadline") * 1000),
             "{case:?}: deadline"
         );
@@ -115,7 +123,18 @@ fn nightly_state_event_policy_matrix() {
             ),
             "{case:?}: error presence"
         );
-        // El motivo tipado llegará con Policy.state (paso 7); no fijar textos.
+        // Paso 7: se añade el diagnóstico sin cambiar ninguna columna de acceso.
+        let expected = match case {
+            Missing | Ahead301 => AccessState::NoCredential,
+            Grace | Pause | Stale => AccessState::Grace,
+            Rollback | DamagedAuthority | DamagedMarker => AccessState::RecoveryRequired,
+            Invalidate | TombstoneEqual | TombstoneOlder => AccessState::Revoked,
+            FutureTombstone | FutureTombstoneOnline => AccessState::ClockBehind {
+                until_ms: (start + 1000).cast_unsigned() * 1000,
+            },
+            _ => AccessState::Active,
+        };
+        assert_eq!(policy.state, expected, "{case:?}: typed diagnostic");
         drop(owner);
         clean(&root);
     }

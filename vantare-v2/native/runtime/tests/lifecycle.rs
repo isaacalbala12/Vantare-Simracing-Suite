@@ -152,9 +152,12 @@ fn fake_rights(
                 epoch: 1,
                 revision,
                 checked_at_ms: control::wall_ms().expect("clock"),
-                overlays_advanced: true,
                 engineer: allowed,
-                error: (mode == "error").then(|| "fixture error".into()),
+                state: if mode == "error" {
+                    vantare_ipc::control::AccessState::Unavailable
+                } else {
+                    vantare_ipc::control::AccessState::Active
+                },
                 ..Policy::default()
             };
             let _response = control::write(

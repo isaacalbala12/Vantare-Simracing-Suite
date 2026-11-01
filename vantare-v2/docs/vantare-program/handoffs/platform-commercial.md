@@ -1,3 +1,95 @@
+<!-- isa1827-paso7 -->
+## VANTA-126 / #1827 — Paso 7, revisión profunda R1 lista para revisión
+
+Mismo [PR draft #1836](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1836),
+a nightly; sin integrar. El orquestador vigila la CI. Plane intacto.
+Código R1 validado `a8b0d6c4f41869a390aa02602e6a1fa7bb0c12b0`;
+HEAD documental vigente en PR/#1827. Rama `vantareapp/isa-1827-paso7-policy-state`,
+base `44f0d6a5ed97854c046b7ece6e88ed628ab2957c`. Push en la rama de issue;
+ningún canal integrado por el worker.
+
+- P3-1/P3-2: aviso compartido con fecha, hora y zona local en Home, Cuenta,
+  overlays, helper y respuesta local del supervisor. Un automático omitido en
+  compra muestra el motivo ClockBehind, sin copiar el texto genérico del reply.
+- P3-3: until_ms está en pared, restando forward_millis de la lápida efectiva.
+  Guarda durable y aceptación intactas. Regresión +100 s: lápida210 → pared110,
+  firma iat211 aceptada en pared111 sin espera adicional. Sin prueba vigente,
+  solo vuelve ClockBehind si esa frontera de pared sigue pendiente.
+- P3-4, decisión expresa: helper_command_allowed admite consultas ordinarias
+  con NoCredential/RecoveryRequired/ClockBehind frescos; no concede derechos.
+  Logout tiene admisión explícita incluso ante política denegada o caducada,
+  con canal del núcleo autenticado y manteniendo el ACK durable.
+- P3-5: Expired real en fixtures de Hub; matriz de todos los estados en Home y
+  navegación, sin herramientas desde estados denegados. El aviso no usa el
+  motivo antiguo de TTL para fingir la caducidad de credencial.
+- Misma matriz de acceso (22 filas), caracterizaciones services y publicación
+  de permisos intactas. Sin paquetes nuevos ni cambios de lock: se activa clock
+  del chrono existente para convertir a hora local, ya empleado en el workspace.
+- Gates R1 PASS: fmt; Clippy all-targets cinco crates -D warnings (cubre check);
+  Nextest ci 1870/1870 con telemetría, 23 omisiones preexistentes; lifecycle13/13;
+  quality/466 huellas, schema changelog, sintaxis QA y diff. Regresiones15/15.
+- Ocho mutaciones detectadas por aserciones: cuatro consumidores, fecha local,
+  frontera efectiva usada como pared, Logout retirado de admisión y mensaje
+  genérico durante espera. Restauración SHA256 de 34 fuentes/config comprobada
+  antes/después de la suite final. Binarios de fixture reconstruidos; fallos
+  intermedios conservados. Todo Cargo por compilar.ps1, target propio, locked/offline.
+  Evidencia R1: D:/VantareServer/evidence/isa-1827-p7/review-r1.
+- Diff R1 completo revisado. Pendiente revisión y CI del orquestador; sin watch.
+  La evidencia inferior corresponde a la entrega inicial, anterior a esta revisión.
+- Sin nuevos subagentes, secretos, cuentas reales, instalación, producción,
+  merge, promoción o release. Fixtures/headless; manual físico pendiente.
+
+### Entrega inicial — evidencia histórica anterior a R1
+
+## VANTA-126 / #1827 — Paso 7: Policy.state listo para revisión
+
+Project Vantare / area:licencias / In Review, sin milestone. Plane intacto.
+Base origin/nightly `44f0d6a5ed97854c046b7ece6e88ed628ab2957c` (pasos 6/6b integrados).
+Rama `vantareapp/isa-1827-paso7-policy-state`; worktree `C:/VantareServer/wt/isa-1827-p7`;
+target `D:/VantareServer/targets/isa-1827-p7`; evidencia `D:/VantareServer/evidence/isa-1827-p7`.
+
+- Estado explícito control v7, Policy::denied y plazos firmados/gracia separados.
+  Decisión del orquestador 1-nov: sobre services v17 para rechazar Hub v16 desde
+  el saludo como Version antes de Policy; Session/AccountCancel intactos.
+  V16 nunca se publicó en release. Runtime, services, Hub y overlays leen estado;
+  se retiran overlays_advanced, online_recovery_required e inferencias de Policy.error.
+- F2 #1822: ClockBehind con fecha y freno de HTTP automático futuro, incluida
+  confirmación de compra; vía manual disponible. Frontera durable intacta.
+- P3 #1831: 200 verificado sin margen nuevo no es Transient. Comprobación ordinaria
+  cada 15 minutos en ventana urgente, suelo de un minuto en los últimos cinco
+  minutos firmados. Compra conserva su suelo de un minuto en la ventana de diez,
+  también tras un 200 sin margen nuevo.
+- Feed transporta denegaciones frescas con su TTL original; no las confunde con
+  ausencia. NoCredential conserva la presentación anterior, sin bloqueo falso.
+- Una firma nueva posterior a lápida futura, dentro de la tolerancia existente,
+  puede recuperar antes de alcanzarla la pared. No se retira ese acceso y la
+  frontera durable sigue intacta; al perder binding vuelve la espera.
+- Las 22 filas de acceso conservan todos sus valores y las caracterizaciones de
+  services están intactas. Solo se añade observación tipada; diagnóstico F2 justificado.
+  Métodos de aceptación/revocación/persistencia y formatos durables intactos.
+- Gates locales: fmt PASS; Clippy all-targets ipc/services/runtime/hub/ui con
+  -D warnings PASS (cubre check); Nextest ci con telemetría 1864/1864 PASS,
+  23 omisiones preexistentes; lifecycle 13/13 PASS. Quality y 466 huellas PASS.
+- Cuatro mutaciones detectadas por aserción: overlays, services, renovación y Hub.
+  Restauración SHA-256 de los 31 fuentes comprobada antes/después de la suite.
+  Fallos intermedios conservados. Todo Cargo por compilar.ps1 y target propio.
+- Dos revisiones DeepSeek de solo lectura. Hallazgos tratados: NoCredential,
+  gracia, entrega de denegaciones por Feed, cadencia y confirmación de compra,
+  saludo y prueba nueva sobre lápida futura. Últimos ajustes revisados por el
+  ejecutor; no se afirma revisión delegada de cada byte final. Harness medium heredado.
+- README de cinco crates, ADR0102, diseño §4.3, BIL08 y changelog actualizados.
+  Diff completo revisado. [PR draft #1836](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1836)
+  a nightly, publicado y enlazado en T3. Código validado
+  `d045633acedfcea5aa87f32035fbb40cc88cf1d1`; HEAD documental vigente en PR/#1827.
+  Sin integración; la CI la vigila el orquestador.
+- Validación con fixtures/headless, sin cuenta real ni simulador físico. Manual
+  posterior en entorno autorizado: aviso ClockBehind con fecha y mezcla de binarios.
+  Un peer antiguo que cierre sin responder puede dar desconexión transitoria
+  genérica; no Protocol ni revocación. Paso 8 y F4 #1822 fuera de alcance.
+- Sin dependencias nuevas, secretos, cambios de instalación/producción, merge,
+  promoción o release. Siguiente: revisión del PR y CI por el orquestador; worker sin watch.
+<!-- /isa1827-paso7 -->
+
 <!-- isa1827-paso6 -->
 ## VANTA-126 / #1827 — Paso 6: sesión explícita y cancelación sin revocar
 

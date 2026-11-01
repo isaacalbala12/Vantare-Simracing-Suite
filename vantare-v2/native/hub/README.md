@@ -1,3 +1,15 @@
+## #1827 — Acceso por Policy.state (paso 7)
+
+Navegación, acceso y mensajes leen el estado explícito del núcleo; Policy.error
+no concede ni bloquea páginas. Catálogo, módulos, Session y frescura mantienen
+sus reglas. ClockBehind explica la frontera pendiente y su fecha al comprobar
+manualmente. Services v17 valida la generación control v7 anidada antes del
+esquema; el desajuste es transitorio, sin revocar. Recompilar el conjunto.
+[Contrato](../../docs/adr/0102-modelo-acceso-nativo.md).
+
+Services v17 versiona la Policy v7 anidada; Session/AccountCancel permanecen
+intactos. V16 del paso 6 nunca se publicó en release.
+
 ## #1827 — Sesión y acceso (paso 6, services v16)
 
 `AccountCancel` (v16) cancela solo el intento OAuth/FAPI y relee Session;
@@ -417,3 +429,10 @@ Ajustes → General ofrece Ocultar fuera de pista (opt-in). Studio → En pista
 ofrece heredar / siempre visible / ocultar por instancia. Se guardan en el único
 layout mediante el Editor existente, con conflictos y Deshacer/Rehacer. Studio
 no aplica ocultación a sus previews. Ver [contrato](../runtime/README.md).
+
+Revisión del paso 7: ClockBehind.until_ms está en tiempo de pared (lápida
+efectiva menos forward_millis), con aviso de fecha/hora local. El estado local
+del supervisor usa el mismo aviso si omite renovar. NoCredential/RecoveryRequired/
+ClockBehind frescos admiten consultas al helper; Logout sigue disponible con
+canal del núcleo autenticado, incluso ante denegación o caducidad. Sin conceder
+derechos ni saltar el ACK durable; ADR0102.

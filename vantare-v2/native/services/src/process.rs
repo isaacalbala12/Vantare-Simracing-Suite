@@ -204,11 +204,7 @@ impl Client {
                 ConnectionError::Disconnected(error.kind())
             }
         })?;
-        if value
-            .get("version")
-            .and_then(serde_json::Value::as_u64)
-            .is_some_and(|version| version != u64::from(protocol::VERSION))
-        {
+        if protocol::response_version_mismatch(&value) {
             return Err(ConnectionError::Version);
         }
         let response: Response =

@@ -974,7 +974,6 @@ impl Hub {
         let main_settings = visible.first().map(|settings| (*settings).clone());
         let template_width = (adapt.rail_width() - 32.0 - gap) / 2.0;
         let (pending, access_error) = self.remote.read(cx).home_access();
-        let access_error = access_error.map(str::to_owned);
         let mut state = home_state(
             pending,
             access_error.is_some() || self.shell.access.blocked,

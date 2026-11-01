@@ -392,7 +392,9 @@ fn answer_local_probe(pipe: &mut vantare_ipc::transport::Pipe) {
             version: protocol::VERSION,
             sequence: probe.sequence,
             reply: Reply::License {
-                policy: vantare_ipc::control::Policy::default(),
+                policy: vantare_ipc::control::Policy::denied(
+                    vantare_ipc::control::AccessState::NoCredential,
+                ),
                 message: String::new(),
             },
         },
@@ -716,7 +718,7 @@ fn license(catalog: vantare_ipc::control::CatalogAccess) -> Reply {
             version: vantare_ipc::control::VERSION,
             revision: 1,
             checked_at_ms: vantare_ipc::control::wall_ms().expect("reloj"),
-            overlays_advanced: true,
+            state: vantare_ipc::control::AccessState::Active,
             catalog,
             ..Default::default()
         },
@@ -886,8 +888,8 @@ fn denied_policy_keeps_manual_retry_and_logout_without_granting_tools() {
                 };
                 let now = policy.checked_at_ms;
                 match denial {
-                    "revoked" => policy.error = Some("revocada".into()),
-                    "expired" => policy.valid_until_ms = Some(now),
+                    "revoked" => policy.state = vantare_ipc::control::AccessState::Revoked,
+                    "expired" => policy.state = vantare_ipc::control::AccessState::Expired,
                     _ => policy = vantare_ipc::control::Policy::default(),
                 }
                 remote.observe_core_policy(policy, now, cx);
@@ -950,6 +952,65 @@ fn denied_policy_keeps_manual_retry_and_logout_without_granting_tools() {
         crate::quit_headless_test(cx);
     });
 }
+
+#[test]
+fn every_explicit_state_reaches_home_and_denied_states_never_grant_tools() {
+    use vantare_ipc::control::AccessState;
+    gpui_platform::headless().run(|cx| {
+        let file = crate::document::tests::File::new();
+        let (send, _requests) = mpsc::sync_channel(8);
+        let remote = cx.new(|cx| fixture(cx, send, file.path.parent().expect("root")));
+        for state in [
+            AccessState::Active,
+            AccessState::Grace,
+            AccessState::NoCredential,
+            AccessState::Expired,
+            AccessState::Revoked,
+            AccessState::Unavailable,
+            AccessState::Unconfigured,
+            AccessState::UpdateRequired,
+            AccessState::RecoveryRequired,
+            AccessState::ClockBehind {
+                until_ms: 1_900_000_000_000,
+            },
+        ] {
+            remote.update(cx, |remote, cx| {
+                let Reply::License { mut policy, .. } =
+                    license(vantare_ipc::control::CatalogAccess::Pro)
+                else {
+                    unreachable!()
+                };
+                policy.state = state;
+                let expected = vantare_services::outcome::policy_message(&policy);
+                let now = policy.checked_at_ms;
+                remote.observe_core_policy(policy.clone(), now, cx);
+                assert_eq!(remote.home_access().1, expected, "{state:?}");
+                assert_eq!(
+                    remote.navigation_access().verified,
+                    state.permits_access(),
+                    "{state:?}"
+                );
+                if !state.permits_access() {
+                    assert!(
+                        account_module_access(remote.navigation_access(), false)
+                            .iter()
+                            .all(|v| !v)
+                    );
+                }
+                if matches!(state, AccessState::ClockBehind { .. }) {
+                    let error = remote.home_access().1.expect("dated home message");
+                    assert!(error.contains("hora local") && error.contains("/2030"));
+                    remote.access.renewal_acknowledged(&Reply::License {
+                        policy,
+                        message: "Política vigente del núcleo".into(),
+                    });
+                    assert_eq!(remote.home_access().1.as_deref(), Some(error.as_str()));
+                }
+            });
+        }
+        crate::quit_headless_test(cx);
+    });
+}
 #[test]
 fn slow_renewal_keeps_fresh_core_access_but_revocation_logout_and_missing_core_deny() {
     gpui_platform::headless().run(|cx| {
@@ -964,7 +1025,7 @@ fn slow_renewal_keeps_fresh_core_access_but_revocation_logout_and_missing_core_d
                     epoch: 1,
                     revision: 1,
                     checked_at_ms: 1000,
-                    overlays_advanced: true,
+                    state: vantare_ipc::control::AccessState::Active,
                     catalog: vantare_ipc::control::CatalogAccess::Pro,
                     calendar: true,
                     tester: true,
@@ -1003,10 +1064,10 @@ fn slow_renewal_keeps_fresh_core_access_but_revocation_logout_and_missing_core_d
                     "reply tardío no pisa Feed"
                 );
                 assert!(matches!(requests.try_recv(), Ok(Command::AccountPoll)));
-                policy.error = Some("revocación definitiva QA".into());
+                policy.state = vantare_ipc::control::AccessState::Revoked;
                 remote.observe_core_policy(policy.clone(), now, cx);
                 assert!(!remote.access.navigation(now).verified);
-                policy.error = None;
+                policy.state = vantare_ipc::control::AccessState::Active;
                 remote.observe_core_policy(policy.clone(), now, cx);
                 assert!(remote.access.navigation(now).verified);
                 remote.observe_core_policy(vantare_ipc::control::Policy::default(), now, cx);

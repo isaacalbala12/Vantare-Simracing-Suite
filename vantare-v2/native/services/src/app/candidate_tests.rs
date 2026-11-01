@@ -127,7 +127,7 @@ fn previous_device_candidate_is_preserved_before_install_and_renewal_survives_re
         );
         app.attach_core(link.clone());
         assert!(
-            matches!(app.execute(Command::TransferRights), Ok(Reply::License { policy, .. }) if !policy.overlays_advanced)
+            matches!(app.execute(Command::TransferRights), Ok(Reply::License { policy, .. }) if !policy.state.permits_access())
         );
         assert_quarantined(&mut app, &directory, &before);
         assert!(
@@ -139,7 +139,7 @@ fn previous_device_candidate_is_preserved_before_install_and_renewal_survives_re
         let mut app = configured_app(root.clone(), store, &server, keys);
         app.attach_core(link);
         assert!(
-            matches!(app.execute(Command::TransferRights), Ok(Reply::License { policy, .. }) if !policy.overlays_advanced)
+            matches!(app.execute(Command::TransferRights), Ok(Reply::License { policy, .. }) if !policy.state.permits_access())
         );
         assert_quarantined(&mut app, &directory, &before);
         assert!(server.requests.try_recv().is_err());
@@ -148,7 +148,7 @@ fn previous_device_candidate_is_preserved_before_install_and_renewal_survives_re
             Ok(Reply::License { .. })
         ));
         assert!(
-            matches!(app.execute(Command::LicenseStatus), Ok(Reply::License { policy, .. }) if policy.overlays_advanced)
+            matches!(app.execute(Command::LicenseStatus), Ok(Reply::License { policy, .. }) if policy.state.permits_access())
         );
         assert_eq!(
             app.candidate_store()
@@ -203,7 +203,7 @@ fn rejected_cache_admits_the_core_policy_without_granting_it_or_revoking_account
         );
         app.attach_core(link);
         assert!(
-            matches!(app.execute(Command::TransferRights), Ok(Reply::License { policy, .. }) if policy.overlays_advanced == already_verified && !policy.online_recovery_required)
+            matches!(app.execute(Command::TransferRights), Ok(Reply::License { policy, .. }) if policy.state.permits_access() == already_verified && !policy.state.needs_recovery())
         );
         assert_quarantined(&mut app, &directory, &before);
         assert!(server.requests.try_recv().is_err());
@@ -212,7 +212,7 @@ fn rejected_cache_admits_the_core_policy_without_granting_it_or_revoking_account
             Ok(Reply::License { .. })
         ));
         assert!(
-            matches!(app.execute(Command::LicenseStatus), Ok(Reply::License { policy, .. }) if policy.overlays_advanced)
+            matches!(app.execute(Command::LicenseStatus), Ok(Reply::License { policy, .. }) if policy.state.permits_access())
         );
         let persisted = app
             .candidate_store()
@@ -319,7 +319,7 @@ fn definitively_rejected_online_candidate_does_not_poison_the_next_admission() {
     );
     app.attach_core(link);
     assert!(
-        matches!(app.execute(Command::TransferRights), Ok(Reply::License { policy, .. }) if policy.overlays_advanced)
+        matches!(app.execute(Command::TransferRights), Ok(Reply::License { policy, .. }) if policy.state.permits_access())
     );
     assert!(
         !app.recovered_renewal_transfer,
@@ -350,7 +350,7 @@ fn rejected_other_account_candidate_keeps_logout_reachable() {
     );
     app.attach_core(link);
     assert!(
-        matches!(app.execute(Command::TransferRights), Ok(Reply::License { policy, .. }) if policy.overlays_advanced)
+        matches!(app.execute(Command::TransferRights), Ok(Reply::License { policy, .. }) if policy.state.permits_access())
     );
     assert!(matches!(
         app.execute(Command::Logout),
@@ -456,7 +456,7 @@ fn locked_candidate_quarantine_keeps_recovery_available_and_retries_after_unlock
         app.attach_core(link);
         assert!(matches!(
             app.execute(Command::TransferRights),
-            Ok(Reply::License { policy, .. }) if policy.overlays_advanced
+            Ok(Reply::License { policy, .. }) if policy.state.permits_access()
         ));
         assert_eq!(std::fs::read(&path).expect("locked original"), before);
         assert!(archives(&directory).is_empty());
@@ -465,7 +465,7 @@ fn locked_candidate_quarantine_keeps_recovery_available_and_retries_after_unlock
         drop(locked);
         assert!(matches!(
             app.execute(Command::TransferRights),
-            Ok(Reply::License { policy, .. }) if policy.overlays_advanced
+            Ok(Reply::License { policy, .. }) if policy.state.permits_access()
         ));
         assert_quarantined(&mut app, &directory, &before);
         core.join()

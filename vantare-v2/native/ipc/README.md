@@ -1,4 +1,21 @@
-## #1827 — Servicios v16: Session explícita
+## #1827 — Contrato vigente de control v7 (paso 7)
+
+Policy.state sustituye overlays_advanced/online_recovery_required. Active y Grace
+permiten acceso según catálogo/módulos; los demás estados no lo conceden.
+Active incluye Gratis cuando vence Pro pero su credencial sigue válida.
+signed_until_ms y grace_until_ms separan firma y margen efectivo; TTL de dos segundos.
+Policy.error es solo diagnóstico histórico y Policy::denied centraliza la denegación.
+
+La versión se inspecciona antes del esquema estricto de Command/Policy, también
+para Policy anidada en services v17. Desajuste transitorio, sin revocar; lectores
+antiguos pueden dar error genérico. Actualizar siempre el conjunto de binarios.
+Install sigue hasta el paso 8. [Contrato](../../docs/adr/0102-modelo-acceso-nativo.md).
+Las secciones v5/v6 de abajo son contexto histórico sustituido por este contrato.
+
+Services v17 versiona la Policy v7 anidada; Session/AccountCancel permanecen
+intactos. V16 del paso 6 nunca se publicó en release.
+
+## Histórico del paso 6 — Servicios v16: Session explícita
 
 `AccountCancel` (v16) cancela solo el intento OAuth/FAPI y relee Session;
 conserva la cuenta protegida y los derechos. «Volver/Cancelar» lo usa sin
@@ -24,7 +41,7 @@ un campo desconocido de otra generación produce VersionMismatch, mientras que
 ese mismo campo con versión actual sigue siendo un error de protocolo.
 Esto no cambia lectores v5 ya distribuidos, que pueden dar el aviso genérico;
 también requieren actualizar el paquete completo para obtener el diagnóstico.
-`Policy.online_recovery_required` permite admitir al helper sin derechos cuando
+En v6, `Policy.online_recovery_required` (retirado en v7) permitía admitir al helper sin derechos cuando
 el núcleo exige una renovación nueva; la señal no concede ni instala licencias.
 
 El paquete completo lleva núcleo, supervisor, helper y consumidores en una
@@ -70,3 +87,10 @@ campos a `Unavailable`; no cambian los archivos originales. Los tests y la
 geometría demo usan ese lector de fixtures, nunca el pipe productivo.
 Contrato, relojes, límites y conexión con #1653:
 [`session-alerts-contract.md`](../../docs/telemetria/session-alerts-contract.md).
+
+Revisión del paso 7: ClockBehind.until_ms está en tiempo de pared (lápida
+efectiva menos forward_millis), con aviso de fecha/hora local. El estado local
+del supervisor usa el mismo aviso si omite renovar. NoCredential/RecoveryRequired/
+ClockBehind frescos admiten consultas al helper; Logout sigue disponible con
+canal del núcleo autenticado, incluso ante denegación o caducidad. Sin conceder
+derechos ni saltar el ACK durable; ADR0102.

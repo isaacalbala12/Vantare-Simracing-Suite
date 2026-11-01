@@ -4,6 +4,110 @@ use std::sync::mpsc;
 use vantare_ipc::transport::Listener;
 
 #[test]
+fn v16_v17_hello_mismatch_stops_before_policy_or_any_revocation_command() {
+    assert_eq!(protocol::VERSION, 17, "step-7 envelope contract");
+    for (reader, writer) in [(17, 16), (16, 17)] {
+        let name = format!("hub-hello-{reader}-{writer}-{}", std::process::id());
+        let stop = Arc::new(Event::new().expect("event"));
+        let mut listener = Listener::new(
+            &format!("{name}-hub-services"),
+            stop,
+            Duration::from_secs(5),
+        )
+        .expect("listener");
+        let mut pipe = listener.instance().expect("pipe");
+        let server = std::thread::spawn(move || {
+            pipe.accept().expect("accept");
+            control::write(
+                &mut pipe,
+                &SupervisorHello {
+                    version: writer,
+                    nonce: "1".repeat(64),
+                },
+            )
+            .expect("hello");
+            let result: std::io::Result<Request> = protocol::read(&mut pipe);
+            assert_eq!(
+                result
+                    .err()
+                    .expect("no command after incompatible hello")
+                    .kind(),
+                std::io::ErrorKind::UnexpectedEof
+            );
+        });
+        let image = std::env::current_exe().expect("image");
+        let result = if reader == protocol::VERSION {
+            Client::start(&image, &name, Arc::new(Event::new().expect("client event"))).map(|_| ())
+        } else {
+            // Frozen v16 handshake from the step-6 client: inspect the same
+            // hello shape/version before nonce, requests or nested Policy.
+            let stop = Arc::new(Event::new().expect("legacy event"));
+            let mut pipe = control::connect_ready(
+                &format!("{name}-hub-services"),
+                &stop,
+                Duration::from_secs(5),
+            )
+            .expect("legacy connection");
+            assert!(pipe.server_peer().expect("peer").is_image(&image));
+            let hello: SupervisorHello = control::read(&mut pipe).expect("legacy hello decoder");
+            if hello.version == reader {
+                Ok(())
+            } else {
+                Err(RequestError::Version.message())
+            }
+        };
+        assert_eq!(
+            result,
+            Err(RequestError::Version.message()),
+            "{reader} vs {writer}"
+        );
+        server
+            .join()
+            .expect("no Policy decoded; no Logout/Invalidate sent");
+    }
+}
+
+#[test]
+fn nested_policy_generation_mismatch_is_a_version_error_before_its_strict_schema() {
+    for version in [control::VERSION - 1, control::VERSION + 1] {
+        let name = format!("hub-policy-version-{}-{version}", std::process::id());
+        let stop = Arc::new(Event::new().expect("event"));
+        let mut listener = Listener::new(
+            &format!("{name}-hub-services"),
+            stop,
+            Duration::from_secs(5),
+        )
+        .expect("listener");
+        let mut pipe = listener.instance().expect("pipe");
+        let server = std::thread::spawn(move || {
+            pipe.accept().expect("accept");
+            control::write(
+                &mut pipe,
+                &SupervisorHello {
+                    version: protocol::VERSION,
+                    nonce: "1".repeat(64),
+                },
+            )
+            .expect("hello");
+            let request: Request = protocol::read(&mut pipe).expect("probe");
+            assert!(matches!(request.command, Command::Probe));
+            protocol::write(
+                &mut pipe,
+                &serde_json::json!({"version":protocol::VERSION,
+                "sequence":request.sequence,"reply":{"result":"License","message":"legacy",
+                "policy":{"version":version,"field_from_other_generation":true}}}),
+            )
+            .expect("response");
+        });
+        let image = std::env::current_exe().expect("image");
+        let result = Client::start(&image, &name, Arc::new(Event::new().expect("client event")))
+            .and_then(|mut client| client.request(Command::LicenseStatus));
+        assert!(matches!(result, Err(vantare_ipc::INCOMPATIBLE_COMPONENTS)));
+        server.join().expect("fixture closed");
+    }
+}
+
+#[test]
 fn first_request_after_an_idle_disconnect_reconnects_without_replaying_the_action() {
     let name = format!("hub-idle-reconnect-{}", std::process::id());
     let stop = Arc::new(Event::new().expect("server stop"));
@@ -54,7 +158,7 @@ fn first_request_after_an_idle_disconnect_reconnects_without_replaying_the_actio
                     policy: control::Policy {
                         version: control::VERSION,
                         revision: 1,
-                        overlays_advanced: true,
+                        state: vantare_ipc::control::AccessState::Active,
                         ..control::Policy::default()
                     },
                     message: String::new(),
@@ -71,7 +175,7 @@ fn first_request_after_an_idle_disconnect_reconnects_without_replaying_the_actio
         .recv_timeout(Duration::from_secs(3))
         .expect("server closed before user action");
     assert!(
-        matches!(client.request(Command::LicenseRenew), Ok(Reply::License { policy, .. }) if policy.overlays_advanced)
+        matches!(client.request(Command::LicenseRenew), Ok(Reply::License { policy, .. }) if policy.state.permits_access())
     );
     server
         .join()

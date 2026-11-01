@@ -123,22 +123,20 @@ impl State {
         }
         if self.transition != Transition::Logout
             && let Reply::License { policy, .. } = reply
-            && (policy.error.is_some()
+            && (policy.state.requires_attention()
                 || policy.version != vantare_ipc::control::VERSION
                 || policy.revision == 0)
         {
             self.transition = Transition::Idle;
             self.error = Some(
-                policy
-                    .error
-                    .clone()
+                vantare_services::outcome::policy_message(policy)
                     .unwrap_or_else(|| "No se pudo verificar la política de acceso".into()),
             );
             return None;
         }
         if self.transition != Transition::Logout
             && matches!(reply, Reply::License { policy, .. }
-                if policy.error.is_none() && policy.version == vantare_ipc::control::VERSION && policy.revision > 0)
+                if !policy.state.requires_attention() && policy.version == vantare_ipc::control::VERSION && policy.revision > 0)
         {
             self.transition = Transition::Idle;
             self.error = None;
@@ -252,14 +250,16 @@ impl State {
         Access::from_session_policy(self.session, policy, now_ms)
     }
 
-    pub(super) fn policy_denial(&self, now_ms: u64) -> Option<&'static str> {
+    pub(super) fn policy_denial(&self, now_ms: u64) -> Option<String> {
         match self.policy.as_ref() {
-            Some(policy) if policy.error.is_some() => Some("Acceso bloqueado"),
+            Some(policy) if policy.state.requires_attention() => {
+                vantare_services::outcome::policy_message(policy)
+            }
             Some(policy) if policy.revision > 0 && !policy.current_at(now_ms) => {
-                Some("Política caducada")
+                Some("Política caducada".into())
             }
             Some(policy) if policy.current_at(now_ms) => None,
-            _ => Some("Sin política vigente"),
+            _ => Some("Sin política vigente".into()),
         }
     }
 
@@ -417,17 +417,17 @@ pub(super) fn profile_portal() -> Option<String> {
 
 impl Remote {
     /// Estado de lectura de acceso para Inicio. Los heartbeats no activan esqueletos.
-    pub(crate) fn home_access(&self) -> (bool, Option<&str>) {
+    pub(crate) fn home_access(&self) -> (bool, Option<String>) {
         let pending = self.access.configured && !self.access.session_checked
             || self.account.signed_in
                 && self.access.session_known()
                 && self.access.policy.is_none()
                 && self.busy();
-        let error = self.access.error.as_deref().or_else(|| {
+        let error = self.access.error.clone().or_else(|| {
             self.access
                 .policy
                 .as_ref()
-                .and_then(|policy| policy.error.as_deref())
+                .and_then(vantare_services::outcome::policy_message)
         });
         (pending, error)
     }
@@ -1005,7 +1005,7 @@ mod tests {
                 version: vantare_ipc::control::VERSION,
                 revision: 1,
                 checked_at_ms: 1000,
-                overlays_advanced: true,
+                state: vantare_ipc::control::AccessState::Active,
                 engineer: true,
                 ..vantare_ipc::control::Policy::default()
             },
@@ -1052,7 +1052,7 @@ mod tests {
                 version: vantare_ipc::control::VERSION,
                 revision: 1,
                 checked_at_ms: 1000,
-                overlays_advanced: true,
+                state: vantare_ipc::control::AccessState::Active,
                 ..vantare_ipc::control::Policy::default()
             });
             assert!(
@@ -1094,7 +1094,7 @@ mod tests {
                 version: vantare_ipc::control::VERSION,
                 revision: 1,
                 checked_at_ms: 1000,
-                overlays_advanced: true,
+                state: vantare_ipc::control::AccessState::Active,
                 engineer: true,
                 ..vantare_ipc::control::Policy::default()
             },
@@ -1132,7 +1132,7 @@ mod tests {
                 version: vantare_ipc::control::VERSION,
                 revision: 1,
                 checked_at_ms: 2000,
-                overlays_advanced: true,
+                state: vantare_ipc::control::AccessState::Active,
                 engineer: true,
                 ..vantare_ipc::control::Policy::default()
             },
@@ -1340,15 +1340,45 @@ mod navigation_tests {
     use vantare_ipc::control::Policy;
 
     #[test]
+    fn manual_clock_boundary_message_is_preserved_without_granting_navigation() {
+        let mut state = state(true, true);
+        let message = "Frontera guardada: 2030-01-01T00:00:00Z; espera y comprueba la fecha.";
+        let reply = Reply::License {
+            policy: Policy {
+                state: vantare_ipc::control::AccessState::ClockBehind { until_ms: 9000 },
+                ..valid()
+            },
+            message: message.into(),
+        };
+        assert!(state.renewal_acknowledged(&reply).is_none());
+        assert_eq!(
+            state.error,
+            vantare_services::outcome::policy_message(match &reply {
+                Reply::License { policy, .. } => policy,
+                _ => unreachable!(),
+            })
+        );
+        state.observe_core_policy(match reply {
+            Reply::License { policy, .. } => policy,
+            _ => unreachable!(),
+        });
+        assert!(!state.navigation(1000).verified);
+    }
+
+    #[test]
     fn confirmed_session_keeps_account_recovery_when_policy_is_denied() {
         let fresh = valid();
         let mut revoked = fresh.clone();
-        revoked.error = Some("revocada".into());
+        revoked.state = vantare_ipc::control::AccessState::Revoked;
         let mut expired = fresh.clone();
-        expired.valid_until_ms = Some(1500);
+        expired.state = vantare_ipc::control::AccessState::Expired;
         for (policy, now, reason) in [
             (revoked, 1500, "Acceso bloqueado"),
-            (expired, 1500, "Política caducada"),
+            (
+                expired,
+                1500,
+                "La credencial ha caducado; comprueba el acceso.",
+            ),
             (fresh.clone(), 3000, "Política caducada"),
             (Policy::default(), 1500, "Sin política vigente"),
         ] {
@@ -1361,7 +1391,7 @@ mod navigation_tests {
                 "la sesión confirmada no se convierte en login"
             );
             assert!(!access.verified);
-            assert_eq!(session.policy_denial(now), Some(reason));
+            assert_eq!(session.policy_denial(now).as_deref(), Some(reason));
             for origin in [Section::Account, Section::Studio] {
                 let mut current = origin;
                 assert_eq!(access.beta_lock(Section::Account), None, "composición");
@@ -1445,12 +1475,12 @@ mod navigation_tests {
             "policy TTL remains unchanged"
         );
         state.observe_core_policy(Policy {
-            error: Some("denied".into()),
+            state: vantare_ipc::control::AccessState::Revoked,
             ..valid()
         });
         assert!(state.navigation(1500).blocked);
         state.observe_core_policy(Policy {
-            overlays_advanced: false,
+            state: vantare_ipc::control::AccessState::NoCredential,
             ..valid()
         });
         assert!(!state.navigation(1500).verified);
@@ -1464,7 +1494,7 @@ mod navigation_tests {
             version: vantare_ipc::control::VERSION,
             revision: 1,
             checked_at_ms: 1000,
-            overlays_advanced: true,
+            state: vantare_ipc::control::AccessState::Active,
             engineer: true,
             ..Policy::default()
         }
@@ -1491,8 +1521,12 @@ mod navigation_tests {
                     version: vantare_ipc::control::VERSION,
                     revision: 1,
                     checked_at_ms: 1000,
-                    valid_until_ms: Some(9000),
-                    overlays_advanced: overlays,
+                    signed_until_ms: Some(9000),
+                    state: if overlays {
+                        vantare_ipc::control::AccessState::Active
+                    } else {
+                        vantare_ipc::control::AccessState::NoCredential
+                    },
                     engineer,
                     ..Policy::default()
                 },
@@ -1516,7 +1550,7 @@ mod navigation_tests {
             assert_eq!(state.navigation(1500), before);
             assert!(state.session_known());
             assert!(!state.navigation(3000).verified, "no extiende el heartbeat");
-            state.policy.as_mut().expect("policy").valid_until_ms = Some(1600);
+            state.policy.as_mut().expect("policy").signed_until_ms = Some(1600);
             assert!(
                 !state.navigation(1600).verified,
                 "no extiende la credencial"
@@ -1757,11 +1791,11 @@ mod navigation_tests {
                 ..valid()
             },
             Policy {
-                valid_until_ms: Some(1000),
+                signed_until_ms: Some(1000),
                 ..valid()
             },
             Policy {
-                error: Some("revocada".into()),
+                state: vantare_ipc::control::AccessState::Revoked,
                 ..valid()
             },
             Policy::default(),

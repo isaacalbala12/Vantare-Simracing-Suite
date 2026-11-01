@@ -332,3 +332,4 @@ siguen validas para el mismo codigo de producto; se comprueba aparte windows_sta
 porque usa el empaquetador actualizado por #1846.
 windows_startup posterior al rebase: Nextest ci 7/7 PASS (log
 isa-1827-s-c-rebased-startup.log), por compilar.ps1 y target propio.
+PR draft: https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1849, target nightly; F4 implementado, pendiente de revision/integracion.

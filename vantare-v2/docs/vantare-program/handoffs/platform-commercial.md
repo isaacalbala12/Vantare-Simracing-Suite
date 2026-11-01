@@ -42,6 +42,9 @@ integrado por el orquestador, que confirmó CI 6/6. Rama
   tras #1846, conservando todas las entradas del handoff. Rust y manifiestos
   son identicos al arbol validado b6c5b970f; medicion base sin cambios.
 - windows_startup posterior al rebase 7/7 PASS, con el empaquetador de #1846.
+- PR draft [1849](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1849), target nightly.
+  Codigo validado 33c571234ff5d7d679c10b0275e2ff975147e665 antes del rebase;
+  mismo codigo en 53c1c24d2 tras el rebase. Resto de commits: documentacion.
 <!-- /isa1827-simplificar-c -->
 
 <!-- isa1827-simplificar-b -->

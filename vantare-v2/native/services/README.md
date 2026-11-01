@@ -1,5 +1,9 @@
 ## Contrato vigente de licencias — paso 10 (#1827)
 
+Paso 11, corte A: el único formato de credencial es Ed25519 v1. Se retiran
+JWS/v2, su clave Installation y el vencimiento de sobre. La huella v1 y los
+formatos de binding/authority no cambian. No se borran archivos históricos.
+
 La cadencia del supervisor sin plazo firmado es arranque/24 h desde éxito;
 helper y Hub no tienen otro temporizador. Live, ClockBehind y backoff siguen
 regidos por [el contrato del supervisor](../runtime/README.md).
@@ -301,11 +305,12 @@ El binding de licencia v1 queda expresamente deshabilitado fuera de Windows
 (#1542): `HOME|GOOS` colisiona entre máquinas y no acredita un dispositivo.
 `legacy_fingerprint`, renovación v1 y reset de dispositivo devuelven
 `Unsupported`; renovación/reset lo hacen antes de OAuth, red o revocación local.
-El núcleo rechaza v1 cuando no existe huella local. Los formatos guardados,
-la huella Windows y la clave Ed25519 de instalación (ID RFC 7638/enrollment)
-se conservan. No se migran credenciales reales ni se sustituye la huella por
-otro hash que invalidaría credenciales sin una migración. Habilitar licencias
-Unix exige enrollment/backend v2 y una migración autenticada posterior.
+El núcleo rechaza v1 cuando no existe huella local. Los formatos guardados y
+la huella Windows se conservan. No se migran credenciales reales ni se sustituye
+la huella por otro hash que invalidaría credenciales sin una migración.
+JWS/v2 y su clave de instalación quedan retirados por ADR 0102, decisión 5.
+Habilitar licencias Unix requiere otra decisión y una migración autenticada;
+no hay un enrollment ni backend v2 planificado.
 
 ### Recuperación local de cuenta y compra — #1542
 

@@ -252,8 +252,12 @@ fn signed_grant_for_device(
         issued_at: (now - chrono::TimeDelta::seconds(10)).to_rfc3339(),
         capabilities: vec![Capability {
             key: grant.into(),
-            paid_through: (now + validity).to_rfc3339(),
-            perpetual: false,
+            paid_through: if grant == "vantare.plan.founders" {
+                String::new()
+            } else {
+                (now + validity).to_rfc3339()
+            },
+            perpetual: grant == "vantare.plan.founders",
             scope_version: String::new(),
         }],
     };
@@ -367,7 +371,6 @@ impl Fixture {
                 Some(&keys),
                 Devices {
                     legacy: "test-legacy".into(),
-                    installation: "test-installation".into(),
                 },
                 90,
                 crate::rights::wall_now(),
@@ -391,7 +394,6 @@ impl Fixture {
                 keys: Some(keys),
                 devices: Devices {
                     legacy: "test-legacy".into(),
-                    installation: "test-installation".into(),
                 },
                 epoch: 91,
                 nonce: Some(nonce.clone()),

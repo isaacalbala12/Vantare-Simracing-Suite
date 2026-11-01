@@ -1,5 +1,11 @@
 ## Contrato vigente de licencias — paso 10 (#1827)
 
+Paso 11, corte A: solo se acepta credencial Ed25519 v1. JWS/v2 y su clave de
+instalación se retiran; los derechos temporales conservan `paid_through` y los
+perpetuos no tienen un vencimiento de sobre. Una firma v1 sin grants conserva
+Gratis sin plazo firmado. La prueba diaria usa Founders v1 real, sin alterar
+Policy. Se conservan los formatos y las guardas de binding/authority.
+
 Sin `signed_until_ms`, el supervisor comprueba al arrancar y cada 24 horas
 monotónicas desde una renovación verificada, para cualquier catálogo (incluidos
 Gratis, Founders y Owner sin fecha). No se duplica el chequeo inicial de Gratis.

@@ -52,7 +52,7 @@ fn helper_restart_and_hub_reconnect_preserve_no_deadline_backoff_and_daily_check
         link,
         core,
         services,
-    } = Fixture::new();
+    } = Fixture::with_grant(true, chrono::TimeDelta::zero(), "vantare.plan.founders");
     let mut hub = Session::open(&photo);
     let now = Instant::now();
     let retained = protocol::LicenseNotice::DeviceLimit {
@@ -65,8 +65,9 @@ fn helper_restart_and_hub_reconnect_preserve_no_deadline_backoff_and_daily_check
         state.notice = Some(retained.clone());
     }
     assert!(matches!(hub.request(Command::Status), Reply::Status { .. }));
-    let mut policy = control::request(&link, control::Command::Read).expect("core");
-    policy.signed_until_ms = None;
+    let policy = control::request(&link, control::Command::Read).expect("core");
+    assert_eq!(policy.catalog, control::CatalogAccess::Founders);
+    assert_eq!(policy.signed_until_ms, None, "real signed perpetual v1");
     let mut attempts = 0;
     for (minute, outcome) in [
         (0, protocol::RenewalOutcome::Transient),

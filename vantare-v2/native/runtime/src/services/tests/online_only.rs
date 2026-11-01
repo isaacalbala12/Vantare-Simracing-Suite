@@ -168,7 +168,6 @@ fn start_core(root: &std::path::Path, keys: &str, device: &str) -> (host::Host, 
             keys: Some(keys.into()),
             devices: Devices {
                 legacy: device.into(),
-                installation: "fixture-installation".into(),
             },
             epoch: 1,
             nonce: Some(nonce.clone()),

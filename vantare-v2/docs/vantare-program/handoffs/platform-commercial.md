@@ -1,3 +1,51 @@
+<!-- isa1827-simplificar-worker -->
+## VANTA-126 / #1827 — simplificación A lista para revisión (1-nov-2026)
+
+Base `origin/nightly@056ec9d9487353a24b017c11eed287b57f3cf149`: pasos 0–10,
+incluido 6b, integrados por el orquestador. Las entregas históricas inferiores
+conservan la evidencia de sus ramas; no describen el estado de integración actual.
+
+- Encargo autorizado: A retira v2; B reúne Authority/catalog/Verifier en
+  runtime::rights; C unifica Store; D simplifica código y README; E convierte
+  Authentication de emisión automática en NeedsSignIn, conservando la firma.
+- A en `vantareapp/isa-1827-simplificar-rights`, worktree
+  `C:/VantareServer/wt/isa-1827-simplificar`. Target privado
+  `D:/VantareServer/targets/isa-1827-s`. [PR draft #1841](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1841)
+  a nightly, enlazado en T3; sin integrar. Código validado
+  `3463ac0c595d5750b3af6c83a2d57e8c68ea9ba3`; HEAD documental vigente en el PR.
+- Retirados JWS, clave Installation y vencimiento de sobre. Fixture diaria
+  Founders v1 real, sin modificar Policy a mano. Matrices de caracterización
+  intactas; pruebas exclusivas de v2 sustituidas/retiradas con justificación en
+  [la evidencia de simplificación](../license-simplification-evidence.md).
+- Contador físico reproducible por fichero/crate y perímetro fijo del recorrido.
+  Producción de los cuatro crates: **109.539 → 109.329 (−210)**; perímetro del
+  recorrido: **15.077 → 14.867 (−210)**. Services −188, runtime −22; hub/ipc iguales.
+- Gates finales PASS: fmt; Clippy services/runtime/engineer, todos los targets,
+  `-D warnings`; Nextest ci con telemetría **1040/1040**, 13 omisiones previas,
+  126,962 s; lifecycle runtime **13/13**, Engineer **5/5**; calidad/466 huellas
+  y fragmento válido. Arquitectura y tres caracterizaciones con blobs idénticos.
+- Tres mutaciones detectadas por aserción; 194 fuentes Rust restaurados por
+  SHA-256 y suite final verde después. Exploración parcial de lápida superviviente
+  conservada; repetición cambiando sus dos guards detectada por la matriz intacta.
+  Logs `D:/VantareServer/evidence/isa-1827-s-*`. Fallos intermedios de lints,
+  invocación inicial de fmt y expectativa auxiliar v2 de pausa documentados.
+- Una lectura DeepSeek de la base inventarió conversiones; el ejecutor revisó
+  el diff final. Sin afirmación de revisión delegada de cada byte ni prueba física.
+  Caché v2 deja de aceptarse; restos Installation quedan inertes sin leer/borrar.
+- B autorizado a retirar la firma duplicada de services conservando el resultado
+  tipado del núcleo; ningún claim sin ACK podrá usarse para decidir o mostrar.
+- C autorizado: guardas durables mantienen la recuperación de su dueño; Pilot
+  e informes no se vacían silenciosamente, y borrador/imágenes siguen juntos.
+  E/S no se confunde con corrupción. Un único quarantine_dated conserva bytes,
+  tope 3 y fallo de rename visible. F4 evita reescribir autoridad sana por una
+  marca corrupta. En commit separado de C, DPAPI dañado de roadmap/perfil/
+  report-attempt podrá pasar a cuarentena y reconstrucción, con tests explícitos.
+- CI la vigila el orquestador. Plane intacto. Sin merge, release, instalaciones,
+  producción, datos reales ni secretos. Harness medium heredado; no se afirma high.
+  Manual físico en sandbox pendiente. Siguiente: revisar A e integrarlo antes de
+  abrir la rama B desde origin/nightly actualizado; B/C/D/E siguen pendientes.
+<!-- /isa1827-simplificar-worker -->
+
 <!-- isa1827-p10-worker -->
 ## VANTA-126 / #1827 — Paso 10 listo para revisión (2026-11-01)
 

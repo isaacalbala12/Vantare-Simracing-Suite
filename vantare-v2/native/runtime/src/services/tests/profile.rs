@@ -4,7 +4,6 @@ use vantare_services::storage::Store;
 fn devices() -> Devices {
     Devices {
         legacy: "test-legacy".into(),
-        installation: "test-installation".into(),
     }
 }
 

@@ -115,23 +115,8 @@ fn v1(key: &SigningKey, expiry: &str) -> CredentialV1 {
     );
     value
 }
-fn jws(key: &SigningKey, claims: &ClaimsV2, alg: &str) -> String {
-    let header = URL_SAFE_NO_PAD.encode(
-        serde_json::to_vec(
-            &serde_json::json!({"alg":alg,"kid":"test","typ":"vantare-license+jwt"}),
-        )
-        .expect("header"),
-    );
-    let body = URL_SAFE_NO_PAD.encode(serde_json::to_vec(claims).expect("claims"));
-    let payload = format!("{header}.{body}");
-    format!(
-        "{payload}.{}",
-        URL_SAFE_NO_PAD.encode(key.sign(payload.as_bytes()).to_bytes())
-    )
-}
-
 #[test]
-fn generated_signatures_cover_v1_binding_mutation_scopes_and_jws_algorithm_audience() {
+fn generated_signatures_cover_v1_binding_mutation_and_scopes() {
     let signing = key();
     let verifier = verifier(&signing);
     let credential = v1(&signing, "2026-09-30T11:00:00.123456789Z");
@@ -167,69 +152,6 @@ fn generated_signatures_cover_v1_binding_mutation_scopes_and_jws_algorithm_audie
     assert!(
         self::verifier(&other)
             .v1(&credential, SUBJECT, "test-device")
-            .is_err()
-    );
-    let mut claims = ClaimsV2 {
-        version: 2,
-        iss: ISSUER.into(),
-        aud: AUDIENCE.into(),
-        sub: SUBJECT.into(),
-        device_key_id: "installation-fixture".into(),
-        iat: 100,
-        exp: 200,
-        capabilities: credential.claims.capabilities.clone(),
-    };
-    assert_eq!(
-        verifier
-            .jws(
-                &jws(&signing, &claims, "Ed25519"),
-                SUBJECT,
-                "installation-fixture"
-            )
-            .expect("JWS")
-            .grants()[0]
-            .expires_at
-            .expect("envelope expiry")
-            .timestamp(),
-        200
-    );
-    assert!(
-        verifier
-            .jws(
-                &jws(&signing, &claims, "none"),
-                SUBJECT,
-                "installation-fixture"
-            )
-            .is_err()
-    );
-    assert!(
-        verifier
-            .jws(
-                &jws(&signing, &claims, "EdDSA"),
-                SUBJECT,
-                "installation-fixture"
-            )
-            .is_err()
-    );
-    claims.aud = "another-product".into();
-    assert!(
-        verifier
-            .jws(
-                &jws(&signing, &claims, "Ed25519"),
-                SUBJECT,
-                "installation-fixture"
-            )
-            .is_err()
-    );
-    claims.aud = AUDIENCE.into();
-    claims.exp = 99;
-    assert!(
-        verifier
-            .jws(
-                &jws(&signing, &claims, "Ed25519"),
-                SUBJECT,
-                "installation-fixture"
-            )
             .is_err()
     );
 }
@@ -442,41 +364,6 @@ fn recycled_local_session_id_cannot_confirm_grace_after_restart() {
     crate::cleanup_store(&root, "recycled-session", &["authority"]);
 }
 
-#[cfg(any(windows, unix))]
-#[test]
-fn installation_key_is_stable_and_signs_only_enrollment_domain() {
-    use installation::Installation;
-    let (root, store) = crate::test_store("installation-test");
-    let installation = Installation::load_or_create(&store).expect("installation");
-    let public = installation.public_key();
-    let id = installation.key_id();
-    assert_eq!(
-        Installation::load_or_create(&store)
-            .expect("reload")
-            .key_id(),
-        id
-    );
-    let mut challenge = [0; 32];
-    getrandom::fill(&mut challenge).expect("test entropy");
-    let proof = URL_SAFE_NO_PAD
-        .decode(installation.enrollment_proof(&challenge).expect("proof"))
-        .expect("base64");
-    let bytes: [u8; 32] = URL_SAFE_NO_PAD
-        .decode(public)
-        .expect("public")
-        .try_into()
-        .expect("32 bytes");
-    let mut payload = b"vantare.installation.enroll.v1\0".to_vec();
-    payload.extend_from_slice(&challenge);
-    VerifyingKey::from_bytes(&bytes)
-        .expect("public key")
-        .verify_strict(&payload, &Signature::from_slice(&proof).expect("signature"))
-        .expect("domain proof");
-    assert!(installation.enrollment_proof(b"short").is_err());
-    drop(store);
-    crate::cleanup_store(&root, "installation-test", &["installation"]);
-}
-
 #[cfg(unix)]
 #[test]
 fn unix_legacy_fingerprint_requires_a_future_migration() {
@@ -495,7 +382,7 @@ fn module_grants_are_perpetual_closed_and_scope_free() {
             perpetual: true,
             scope_version: String::new(),
         };
-        assert!(grants(std::slice::from_ref(&capability), None).is_ok());
+        assert!(grants(std::slice::from_ref(&capability)).is_ok());
         for invalid in [
             Capability {
                 perpetual: false,
@@ -510,7 +397,7 @@ fn module_grants_are_perpetual_closed_and_scope_free() {
                 ..capability.clone()
             },
         ] {
-            assert!(grants(&[invalid], None).is_err());
+            assert!(grants(&[invalid]).is_err());
         }
     }
     assert!(CAPABILITIES.windows(2).all(|keys| keys[0] < keys[1]));
@@ -963,11 +850,9 @@ fn founders_keeps_perpetual_nightly_after_pro_plus_expires() {
         key: "vantare.channel.nightly".into(),
         ..founder.clone()
     };
-    assert!(grants(std::slice::from_ref(&nightly), None).is_err());
+    assert!(grants(std::slice::from_ref(&nightly)).is_err());
     assert_eq!(
-        grants(&[nightly, founder], None)
-            .expect("Founder Nightly")
-            .len(),
+        grants(&[nightly, founder]).expect("Founder Nightly").len(),
         2
     );
 }

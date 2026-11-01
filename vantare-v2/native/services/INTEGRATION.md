@@ -22,11 +22,11 @@ histórico ajeno a este corte; no se modificó su lock ni se incorpora aquí.
   Cada cliente fija a su vez la imagen de servidor. Esperar un pipe ocupado
   solo reintenta su apertura; jamás reenvía una mutación o un POST.
 - El auxiliar entrega **bytes de la credencial firmada**, no derechos calculados.
-  El núcleo verifica v1 compatible o JWS destino con la biblioteca compartida,
-  issuer/audience/algoritmo/kid, subject y dispositivo; no admite capabilities
+  El núcleo verifica v1 con la biblioteca compartida,
+  issuer/algoritmo/kid, subject y dispositivo; no admite capabilities
   online, email, metadata Clerk ni booleanos del Hub como autoridad.
 - El núcleo mantiene binding y reloj DPAPI en un namespace separado del
-  auxiliar; instalación Ed25519 protegida y fingerprint legacy son locales.
+  auxiliar; el fingerprint v1 es local.
   Sin trust roots no abre el almacén de credenciales ni lee MachineGuid.
   Firma, disco y control viven fuera de adquisición; ésta solo publica un Arc.
   Guardar binding/reloj y revocación precede al ACK. Un error deja derechos
@@ -235,13 +235,10 @@ Validación local del wiring: `cargo fmt --check`,
 `cargo build -p vantare-hub -p vantare-services --bins -j 2` pasa sin las tres
 variables Clerk; hashes y logs quedan en la carpeta externa de evidencia.
 
-JWS v2/enrollment siguen siendo un destino no desplegado: Ed25519, kid compilado,
-issuer `vantare-license`, audience `vantare-native`, subject UUID, key ID de
-instalación RFC7638 y iat/exp; el envelope limita todos los grants. El cliente
-legacy emite/renueva v1; no se inventa endpoint v2. DPAPI/ACL no protegen frente a
+JWS v2/enrollment y la clave de instalación se retiran por ADR 0102, decisión 5;
+el único formato es Ed25519 v1. DPAPI/ACL no protegen frente a
 admin/malware del mismo SID ni rollback de una copia completa antigua del perfil.
-La prueba de posesión de instalación firma solo el dominio enrollment; fingerprint
-no es atestación. No hay fallback MachineGuid a home ni autoaceptación de claves
+El fingerprint no es atestación. No hay fallback MachineGuid a home ni autoaceptación de claves
 procedentes de JWKS remoto para derechos: los trust roots son los del build.
 
 ## Testing Center, paquete y aceptación

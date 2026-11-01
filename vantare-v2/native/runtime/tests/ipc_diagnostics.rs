@@ -55,7 +55,6 @@ fn exercise_rejected_requests() {
             keys: None, // No abrir credenciales ni almacenes reales.
             devices: Devices {
                 legacy: String::new(),
-                installation: String::new(),
             },
             epoch: 1,
             nonce: Some("expected-test-nonce".into()),

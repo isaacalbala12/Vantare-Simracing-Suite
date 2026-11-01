@@ -41,7 +41,6 @@ fn main() {
         vantare_services::license::installation::legacy_fingerprint().expect("fixture machine");
     let devices = Devices {
         legacy: device.clone(),
-        installation: "fixture-installation".into(),
     };
     let mut owner = Owner::open(&root.join("rights"), Some(&keys), devices, 11, now)
         .expect("generation opens durable data");

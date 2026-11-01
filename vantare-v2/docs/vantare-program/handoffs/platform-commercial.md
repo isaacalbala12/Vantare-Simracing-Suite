@@ -1,9 +1,9 @@
 <!-- isa1827-simplificar-d1a -->
 ## VANTA-126 / #1827 — D1a listo para revisión
 
-Base actual origin/nightly@7ebf46c08933fd5ec4ba714b7d9eb4b950c3c9cd,
-con D0 [#1853](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1853)
-integrado. Rebase desde la base inicial e747d4a9e; entradas previas conservadas.
+Base actual origin/nightly@843913d24949128e676e99dab233b60dca2c26c0,
+con D0 (#1853) y arranque instalado (#1850) integrados. Rebases desde e747d4a9e
+y 7ebf46c08; todas las entradas previas del handoff conservadas.
 Rama vantareapp/isa-1827-simplificar-d1a; mismo worktree/target isa-1827-s.
 - Decode de credencial guardada reutilizado antes de la misma verificación;
   conserva orden de rechazos, disponibilidad local y diagnósticos. Store Value ->
@@ -33,7 +33,7 @@ Rama vantareapp/isa-1827-simplificar-d1a; mismo worktree/target isa-1827-s.
   Rollback final nueva→v17/pre5→nueva PASS; hashes reales verificados.
   Primera suite: 1759/1761 por auxiliar storage ausente; construido con DuckDB
   oficial en subtarget aislado, sin cambiar pruebas; repetición completa PASS.
-  Producción 115143 ->115099 (-44);
+  Producción 115232 ->115188 (-44) sobre la nueva base;
   incluye movimiento de wrappers; pruebas/docs/tooling se cuentan aparte.
 - Pruebas/soporte Rust +81; tooling +19; TypeScript solo renombre (0 netas).
   Documentación se mide aparte del ahorro de producción. Calidad 468 huellas PASS.
@@ -42,6 +42,10 @@ Rama vantareapp/isa-1827-simplificar-d1a; mismo worktree/target isa-1827-s.
   Sin Plane, datos reales, secretos, instalaciones, merge ni release.
 - PR draft [#1854](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1854), target nightly.
   Código validado 9cbbd1f089f4767f5d2ea9e8b74fcba1614e19ea; HEAD documental vigente en PR.
+  Rebase tras #1850: diez blobs Rust de D1a idénticos al código validado;
+  Fmt/Clippy y Nextest Hub 590/590 PASS (4 omisiones) tras el rebase.
+  Solo cinco fuentes Hub de #1850 cambian frente al árbol validado;
+  manifiestos y fuentes de services/runtime/ipc intactos.
   CI y revisión a cargo del orquestador.
 <!-- /isa1827-simplificar-d1a -->
 

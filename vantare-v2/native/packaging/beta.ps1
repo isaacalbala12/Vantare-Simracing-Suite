@@ -576,6 +576,7 @@ function Uninstall-Beta([string]$Directory, [scriptblock]$Finalize=$null) {
         }
         $handles = Open-NativeBinaryGuard $directory
         foreach ($handle in $handles.Values) { $handle.Dispose() }
+        $knownMembers=@(Get-NativeKnownMembers $state.channel)
         $retained = Join-Path $directory 'retained-data.json'
         if (-not (Test-Path -LiteralPath $retained)) {
             $manifest = [IO.File]::ReadAllText((Join-Path $directory "generations/$($state.active.generation)/manifest.json")) | ConvertFrom-Json
@@ -586,13 +587,13 @@ function Uninstall-Beta([string]$Directory, [scriptblock]$Finalize=$null) {
         foreach ($generation in Get-ChildItem -LiteralPath (Join-Path $directory 'generations') -Directory) {
             if ($generation.Name -cnotmatch '^[a-f0-9]{32}$') { throw 'Generación ajena; no se desinstala.' }
             Assert-NativeTree $generation.FullName
-            foreach ($member in ($script:NativeMembers + @('manifest.json'))) {
+            foreach ($member in ($knownMembers + @('manifest.json'))) {
                 $path = Join-Path $generation.FullName $member
                 if (Test-Path -LiteralPath $path) { Remove-Item -LiteralPath $path }
                 Invoke-NativeCheckpoint 'uninstall-member'
             }
             # Solo carpetas del inventario, vacías, de hijas a padres; nunca data/.
-            $directories = @($script:NativeMembers | ForEach-Object {
+            $directories = @($knownMembers | ForEach-Object {
                 $parent = [IO.Path]::GetDirectoryName($_)
                 while ($parent) { $parent; $parent = [IO.Path]::GetDirectoryName($parent) }
             } | Sort-Object -Unique | Sort-Object Length -Descending)

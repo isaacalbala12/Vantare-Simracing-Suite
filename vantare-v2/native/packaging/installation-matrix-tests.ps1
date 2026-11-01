@@ -109,6 +109,17 @@ try {
             "PASS $name exit=$exitCode existing-data=$($row.existing_data_files)"
         }
     }
+    # #1840/1a: the same matrix gate exercises a future inventory growing by one.
+    $savedGrowthTemp=$env:TEMP;$savedGrowthTmp=$env:TMP;$savedGrowthLocal=$env:LOCALAPPDATA
+    try {
+        $env:TEMP=$qaMatrixRoot;$env:TMP=$qaMatrixRoot;$env:LOCALAPPDATA=Join-Path $qaMatrixRoot 'LocalAppData'
+        $growth=Invoke-NativeProcess -Executable "$env:WINDIR/System32/WindowsPowerShell/v1.0/powershell.exe" -Arguments @(
+            '-NoProfile','-ExecutionPolicy','Bypass','-File',(Join-Path $PSScriptRoot 'matrix/inventory-growth-tests.ps1'),
+            '-Root',(Join-Path $qaMatrixRoot 'inventory-growth'),'-TestVerifier',$TestVerifier
+        ) -TimeoutMilliseconds 120000 -LogPath (Join-Path $qaMatrixRoot 'inventory-growth.log')
+        if($growth.ExitCode -ne 0){throw ('MATRIX_INVENTORY_GROWTH_FAILED: '+$growth.Stderr)}
+        $growth.Stdout
+    } finally { $env:TEMP=$savedGrowthTemp;$env:TMP=$savedGrowthTmp;$env:LOCALAPPDATA=$savedGrowthLocal }
     Write-NativeJson (Join-Path $qaMatrixRoot 'results.json') $rows
     if ($Record) { Write-NativeJson (Join-Path $qaMatrixRoot 'candidate-baseline.json') $rows }
 } finally {

@@ -8,8 +8,16 @@ devuelve esa referencia como no restaurable. Rollback exige una anterior íntegr
 la actualización conserva la activa validada como su nuevo destino de rollback.
 La activa mantiene sus comprobaciones de referencia, manifiesto e inventario y,
 salvo la sonda/reparación explícitas, de integridad de cada archivo.
-El inventario histórico exacto de 91 miembros se admite para 974–979, incluida
-una activa 974. Una anterior apartada de las referencias puede quedar huérfana:
+El inventario instalado se toma de su propio `manifest.json`, ligado por SHA-256
+desde `state.json`, dentro del universo cerrado de rutas conocidas del motor.
+No hay lista congelada de 91 miembros ni intervalo de versiones para leerlo.
+El universo conserva las rutas retiradas explícitamente en `NativeRetiredMembers`
+(vacío hoy): al retirar o renombrar un archivo del paquete, su ruta conocida se
+mantiene ahí para leer/restaurar generaciones anteriores y retirar sus binarios.
+Una N de 109 archivos sigue siendo legible cuando N+1 añade un recurso; ZIP y
+build entrantes siguen exigiendo todo el inventario actual. Rutas arbitrarias,
+duplicados, archivos no enumerados, cambios de canal, hashes, sidecars y reparse
+se siguen rechazando. Una anterior apartada de las referencias puede quedar huérfana:
 sus archivos/datos se conservan deliberadamente; no hay limpieza automática.
 
 Seguimiento #1695: el rollback intenta restaurar cada metadato aunque otro esté

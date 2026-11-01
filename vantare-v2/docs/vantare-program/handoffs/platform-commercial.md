@@ -138,49 +138,52 @@ conservan la evidencia de sus ramas; no describen el estado de integración actu
 ## Instalador · VANTA-127 / #1840
 
 Autoridad: [#1840](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1840),
-`area:plataforma`, GitHub Project Vantare. Encargo del orquestador: paso 0 y
-1a–1d, cinco PR draft separados a nightly, sin merge ni release. La candidata
-RC9 0.0.988 queda fuera; los arreglos son para la candidata siguiente.
+area:plataforma, GitHub Project Vantare. Encargo: pasos 0 y 1a–1d en PR separados,
+sin merge/release del worker. Plane sigue En curso; estados y CI son del orquestador.
 
-Paso 0 listo para revisión: [PR draft #1842](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1842),
-enlazado en T3, a nightly. Código validado `e35077c01` más BOM QA `9dcdede7a`; HEAD documental vigente
-en PR/#1840. Rama `vantareapp/isa-1840-paso0-matriz`, base
-`origin/nightly@6fbbfaa6ad96d187877043786fc999a369d268b3`; worktree
-`D:/VantareServer/worktrees/isa-1840-paso0`. Matriz Windows de ocho fixtures por
-once operaciones, con ZIP 975 público de SHA fijado y verificador Ed25519 TEST
-que no entra en el producto. Target propio `D:/VantareServer/targets/isa-1840`.
-Evidencia y raíces aisladas en `D:/VantareServer/qa/isa-1840/`.
+- **0 integrado** por el orquestador en nightly `216f9bda7`, [#1842](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1842).
+  El orquestador confirmó que Characterize Windows installation operations corrió
+  y pasó en CI. Local: 88/88, 121 hashes de datos, dos capturas idénticas, cinco
+  rechazos RC9 y dos reparse, omisión de raíz sin escribir y mutación detectada.
+- **1a listo para revisión**, todavía sin integrar: rama
+  `vantareapp/isa-1840-1a-inventario`, base `origin/nightly@0a241fc2e927cf925166c86c072b1d43d30044d4`,
+  worktree `D:/VantareServer/worktrees/isa-1840-1a`; HEAD/PR se fijan en #1840.
+  La instalada usa su manifest ligado por SHA; desaparece la lista congelada91.
+  El universo cerrado deriva del inventario actual y del catálogo explícito de
+  rutas de programa retiradas (vacío hoy). Permite crecimiento y retirada sin
+  bloquear lectura/rollback; desinstalar conoce esas rutas y conserva los datos.
+  ZIP entrante mantiene inventario exacto, hash/PE/sidecar/canal/rutas.
+- Gate 1a: matriz **88/88** contra baseline revisado y **30/30** crecimiento,
+  retirada, rollback, datos de tres generaciones (incluidas carpetas vacías),
+  rutas arbitrarias, duplicados, canal, manifiesto alterado, hashes, sidecar y
+  junction. El producto original reproduce el fallo de inventario antes del fix.
+  Histórico **156/156**, con ZIP975 público de SHA fijado, upgrade/rollback,
+  reparación y desinstalación. Parseo PS, fragmento y 466 huellas PASS.
+- Único delta en 52 snapshots: SHA de beta.ps1 raíz, cuyo cleanup usa el universo
+  conocido. Los demás archivos, registro, accesos, códigos y datos coinciden.
+  El gate/hook y los tres scripts de producto coinciden con los bytes probados
+  en `D:/VantareServer/qa/isa-1840/matrix-1a-03/engine`. El histórico local usa una
+  copia de arnés reubicada a QA y HKCU inyectado; no ejecuta Setup ni el Hub.
+- Lectura DeepSeek de 1a: sin P0/P1/P2 en la revisión anterior; P3 de retirada
+  cubierto con catálogo/test y cleanup, causas negativas fijadas y hook en el
+  gate del repo. No se afirma otra revisión delegada de los cambios posteriores.
+- 1a solo cambia PowerShell/tests/docs; no se recompila Rust ni se repite corpus
+  de telemetría. Los gates nativos generales quedan para CI del orquestador.
+  El P3-4 de #1795 (previous-unreadable) queda pendiente fuera de este encargo.
+- **1b en preparación**, worktree `D:/VantareServer/worktrees/isa-1840-1b`;
+  después 1c/1d en ramas propias desde nightly. Root explícito y biblioteca
+  explícita preservan las variables del llamador; QA viene de la petición TEST.
+  Todavía sin PR/entrega de 1b–1d.
 
-Gates locales: matriz en modo comparación **88/88 PASS**, 121 comprobaciones de
-datos preexistentes; dos capturas previas **88/88** con las 88 instantáneas
-idénticas. Guarda: cinco rutas ajenas y dos reparse rechazados, raíz válida
-aceptada, llamada sin raíz sin escrituras. Baseline alterado detectado y
-restauración exacta comprobada. Build/Clippy del ejemplo `-D warnings`, fmt,
-parseo PS, YAML, 62 tests de canales/clasificación y 466 huellas PASS.
-La copia QA del driver conserva el BOM UTF-8 necesario en PowerShell 5.1;
-tras ajustar esa codificación, las 15 filas de driver focales pasan sin cambiar
-ninguna instantánea del baseline. Los scripts de producto permanecen intactos.
-Rebase tras #1841: única resolución en este handoff, conservando íntegra la
-entrada de licencias. Matriz, fixtures, baseline, workflow y verificador tienen
-blobs idénticos a `dc2286551`; la evidencia de comportamiento se conserva.
-No se compila ni ejecuta UI/producto para este corte de tests.
+Evidencia: `D:/VantareServer/qa/isa-1840/`. Guardas QA activas; TEMP/TMP,
+LOCALAPPDATA, registro y carpetas de shell inyectados. Sin datos de usuario,
+registro productivo, dependencias nuevas, Downloads, publicación ni instalación
+real. Las primeras capturas del paso0 con TEMP heredado se descartaron; no se
+promete auditoría global de aquellos temporales. QA física en otra cuenta/VM
+queda pendiente. RC9 0.0.988 está fuera de estos cambios.
 
-Límites: archivos reales de 975, pero sin ejecutar NSIS ni Hub; las RC usan PE
-inertes y verificador TEST. No acredita otra cuenta, Windows limpio ni un sandbox
-general. Las capturas iniciales con TEMP heredado se descartaron; las válidas
-fijan TEMP/TMP antes de crear cada hijo. No se afirma auditoría global de los
-temporales de esas capturas iniciales.
-
-Siguiente acción: revisión/CI del orquestador y aceptación del paso 0; después
-1a–1d en sus propias ramas desde nightly. 1a ya tiene worktree aislado
-`D:/VantareServer/worktrees/isa-1840-1a`, rama `vantareapp/isa-1840-1a-inventario`,
-base `056ec9d94`, todavía sin PR ni entrega. El seguimiento P3-4 de #1795 sobre
-previous-unreadable no forma parte del inventario encargado en 1a.
-Plane sigue En curso; sus siguientes estados y CI los gestiona el orquestador.
-Sin instalaciones reales, datos de usuario, registro de producto, Downloads,
-secretos, nuevas dependencias ni acciones de publicación. Última actualización:
-2026-11-01, worker ejecutor de #1840.
-
+Siguiente: revisión/CI de 1a por el orquestador; continuar 1b–1d en sus propios
+PR. Última actualización: 2026-11-01, ejecutor de #1840.
 <!-- isa1827-p10-worker -->
 ## VANTA-126 / #1827 — Paso 10 listo para revisión (2026-11-01)
 

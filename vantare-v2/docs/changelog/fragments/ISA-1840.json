@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-1840",
+  "type": "fix",
+  "summary": "La versión instalada sigue siendo legible cuando la siguiente añade archivos.",
+  "technicalNotes": [
+    "Paso 1a: el inventario instalado sale de su propio manifiesto, ligado por SHA-256 al estado; se retira la lista histórica congelada de 91 archivos.",
+    "Los paquetes entrantes siguen exigiendo el inventario completo actual. Se conservan los controles de rutas conocidas, canal, archivos no enumerados, hashes, sidecars y puntos de reanálisis.",
+    "Las rutas retiradas se conservan en un catálogo explícito de nombres conocidos, vacío hoy, para poder leer y restaurar versiones antiguas y retirar sus binarios sin tocar datos."
+  ],
+  "testing": [
+    "En QA aislada, pasar de una instalación de 109 archivos a una de 110, retirar un recurso en la siguiente, restaurar la anterior y desinstalar: todos los datos y las carpetas vacías de las tres generaciones se conservan.",
+    "Repetir la matriz del instalador y las pruebas históricas con el ZIP público real de 975; rechazar rutas ajenas y cambios de manifiesto o binarios."
+  ],
+  "knownLimitations": [
+    "Este cambio no renueva el bootstrap que ya quedó instalado en la raíz; los cambios de ese bootstrap siguen requiriendo Setup.",
+    "No se incluye el seguimiento de previous-unreadable de #1795 ni se publica una candidata o release."
+  ]
+}

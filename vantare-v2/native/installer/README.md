@@ -56,12 +56,16 @@ interrupción sincronizada, reinstalación pública y estas guardas.
 
 ## Build y QA
 
-Las generaciones beta instaladas con el inventario histórico exacto de 91
-miembros (0.0.975–0.0.979) se leen con compatibilidad explícita. El inventario
-está congelado en candidate.ps1; no admite subconjuntos arbitrarios ni cambia al
-añadir recursos futuros. ZIP/build/paquetes entrantes conservan la validación
-estricta del inventario actual de 109 miembros. Hashes, sidecars, canal y rutas
-siguen comprobándose. La importación de perfiles copia el inventario validado
+Las generaciones instaladas declaran su inventario en `manifest.json`, ligado
+por SHA-256 desde `state.json`. El lector exige rutas del universo cerrado del
+motor y rechaza archivos no enumerados y reparse points, pero no exige la lista
+de la versión entrante ni una lista histórica congelada. Así N sigue siendo
+legible cuando N+1 añade recursos. Las rutas retiradas se declaran en el catálogo
+cerrado `NativeRetiredMembers` (hoy vacío), para leer/restaurar generaciones
+anteriores y retirar sus binarios al desinstalar; no entran en el ZIP nuevo.
+ZIP/build/paquetes entrantes conservan la
+validación estricta del inventario actual de 109 miembros. Hashes, sidecars,
+canal y rutas siguen comprobándose. La importación de perfiles copia el inventario validado
 de su generación, no el de un paquete nuevo.
 
 `packaging/historical-inventory-tests.ps1` está incluido en build-inventory-tests

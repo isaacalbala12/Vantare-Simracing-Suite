@@ -5,7 +5,7 @@
                         "exit":  0
                     },
     "clean-install":  {
-                          "sha256":  "366637612c5e62c62bb854c901b69e2f788d463066dbef5d00f0f9bfa94dc214",
+                          "sha256":  "96a6bf2958463581986e0084dd8b194cbfa986f977a60b0eb732f920c419a8bc",
                           "existing_data_files":  0,
                           "exit":  0
                       },
@@ -55,47 +55,47 @@
                           "exit":  1
                       },
     "nsis975-probe":  {
-                          "sha256":  "d3025a435b26cf28dd1a70c02d246867a00ae8c69e46677ccff125f81c9d25f8",
+                          "sha256":  "da5fe0e8cd5d1341fcafcde2b664cae5610d9ba76116662e8ecccd2e0876d5c6",
                           "existing_data_files":  1,
                           "exit":  0
                       },
     "nsis975-install":  {
-                            "sha256":  "28ec4f08700780ee3d804c9088760b7edd6f72e9055044f21068c5e5925e6a99",
+                            "sha256":  "1fcfda693ce1bd5a397569424d5978719bce232c256fc30aeb20006ac99791bc",
                             "existing_data_files":  1,
                             "exit":  0
                         },
     "nsis975-update":  {
-                           "sha256":  "7595c1d4fcbfadd91d737fee4377d9533c0e2d7be10273ea235bc09aa8a6daab",
+                           "sha256":  "643fcb942bad8fbac3156cb0d461e8924ebe8c71caad73480ce078fe6089c5fd",
                            "existing_data_files":  1,
                            "exit":  0
                        },
     "nsis975-repair":  {
-                           "sha256":  "a2fea6257916cfda7071acf15133b341e717652dcfd5c8bf5cc3670d9cdde25e",
+                           "sha256":  "958c4e80bd2aa57e52422225baa4dd25154751322cd5ff3868d6180a2b39717a",
                            "existing_data_files":  1,
                            "exit":  3
                        },
     "nsis975-check":  {
-                          "sha256":  "a9fb29cfbfa3a49dff89df83138234d4955e32c2f28c5b6e2bd5c80a51a6c24d",
+                          "sha256":  "7d2186cf0f28a8504c6f6a7cfd85ccf8437e6e8275597227fa57c628f7ce6558",
                           "existing_data_files":  1,
                           "exit":  1
                       },
     "nsis975-apply":  {
-                          "sha256":  "a2fea6257916cfda7071acf15133b341e717652dcfd5c8bf5cc3670d9cdde25e",
+                          "sha256":  "958c4e80bd2aa57e52422225baa4dd25154751322cd5ff3868d6180a2b39717a",
                           "existing_data_files":  1,
                           "exit":  0
                       },
     "nsis975-confirm":  {
-                            "sha256":  "d70fe7f7366fc920e7464d4bee9a6bafeb1f43614565e0cebdb06327c5408d6c",
+                            "sha256":  "f007da1bda9b55498c68ca0f4ef94c92f1b628d866318c6a7d04dd304eb3f953",
                             "existing_data_files":  1,
                             "exit":  0
                         },
     "nsis975-timeout":  {
-                            "sha256":  "a2fea6257916cfda7071acf15133b341e717652dcfd5c8bf5cc3670d9cdde25e",
+                            "sha256":  "958c4e80bd2aa57e52422225baa4dd25154751322cd5ff3868d6180a2b39717a",
                             "existing_data_files":  1,
                             "exit":  1
                         },
     "nsis975-rollback":  {
-                             "sha256":  "a9fb29cfbfa3a49dff89df83138234d4955e32c2f28c5b6e2bd5c80a51a6c24d",
+                             "sha256":  "7d2186cf0f28a8504c6f6a7cfd85ccf8437e6e8275597227fa57c628f7ce6558",
                              "existing_data_files":  1,
                              "exit":  1
                          },
@@ -105,52 +105,52 @@
                               "exit":  0
                           },
     "nsis975-cleanup":  {
-                            "sha256":  "53c4e299b1e8575881f2f16641763de8addd0da2d47fc7cf579a7ffd3994b970",
+                            "sha256":  "d412f5812709c827daa55b88ad663a9bfabfea4ae8f46b8b91725434ed5243d2",
                             "existing_data_files":  1,
                             "exit":  1
                         },
     "nsis975-incomplete974-probe":  {
-                                        "sha256":  "92f3d83bf61aa08ea908d8111ee47a11495d9c6e3285c89ed9548b636011add0",
+                                        "sha256":  "00b8cf0ec58c68cb724564f5143a668fda88896aecac08db77a804f585614234",
                                         "existing_data_files":  2,
                                         "exit":  0
                                     },
     "nsis975-incomplete974-install":  {
-                                          "sha256":  "ab10891e96eb29d6db099887524ddb6d11ca2d63e8c10dec269e0d51d4df3830",
+                                          "sha256":  "57de9647eced298a6677ad280a23293946d8e9da073d1e1d134201962f5dab4b",
                                           "existing_data_files":  2,
                                           "exit":  0
                                       },
     "nsis975-incomplete974-update":  {
-                                         "sha256":  "4caf1a789b2b26af78ef19238cf5fcfe2e2c97b8d9ded6800c6b7450a6174b25",
+                                         "sha256":  "64268c375c9afe0b21dda35c89494320d35667cd38b11c895fc3efd4bca423b5",
                                          "existing_data_files":  2,
                                          "exit":  0
                                      },
     "nsis975-incomplete974-repair":  {
-                                         "sha256":  "e8ad7c5e256174cb1f6080545e8a76c6190c5a20cd34ec6a6a4b99b53807de43",
+                                         "sha256":  "3c0634c17307f7c0c91a70379a5275368ed6b8c9eeb8c6436c260e4266f8609a",
                                          "existing_data_files":  2,
                                          "exit":  3
                                      },
     "nsis975-incomplete974-check":  {
-                                        "sha256":  "42ffaaeda5776b90aba797b08b709b6de5961275a880a016486b40baf9e65b6c",
+                                        "sha256":  "72038b260950ffc8bc271b89fc571ec3c3e41ac55222961a3c44c559f75fd030",
                                         "existing_data_files":  2,
                                         "exit":  1
                                     },
     "nsis975-incomplete974-apply":  {
-                                        "sha256":  "e8ad7c5e256174cb1f6080545e8a76c6190c5a20cd34ec6a6a4b99b53807de43",
+                                        "sha256":  "3c0634c17307f7c0c91a70379a5275368ed6b8c9eeb8c6436c260e4266f8609a",
                                         "existing_data_files":  2,
                                         "exit":  0
                                     },
     "nsis975-incomplete974-confirm":  {
-                                          "sha256":  "681afd3562ec75f91d3221cb389a784f36af0c8cff6198c417a24701df60e60d",
+                                          "sha256":  "57cdbbc85114416af3bf4ac9d611194763d3912b88060c01361b4a8ee992204a",
                                           "existing_data_files":  2,
                                           "exit":  0
                                       },
     "nsis975-incomplete974-timeout":  {
-                                          "sha256":  "e8ad7c5e256174cb1f6080545e8a76c6190c5a20cd34ec6a6a4b99b53807de43",
+                                          "sha256":  "3c0634c17307f7c0c91a70379a5275368ed6b8c9eeb8c6436c260e4266f8609a",
                                           "existing_data_files":  2,
                                           "exit":  1
                                       },
     "nsis975-incomplete974-rollback":  {
-                                           "sha256":  "42ffaaeda5776b90aba797b08b709b6de5961275a880a016486b40baf9e65b6c",
+                                           "sha256":  "72038b260950ffc8bc271b89fc571ec3c3e41ac55222961a3c44c559f75fd030",
                                            "existing_data_files":  2,
                                            "exit":  1
                                        },
@@ -160,52 +160,52 @@
                                             "exit":  0
                                         },
     "nsis975-incomplete974-cleanup":  {
-                                          "sha256":  "7c9fb98cc93880655b1d2132536798a1ca9c38be54eee23110afbdd3bdcfa0a3",
+                                          "sha256":  "f42d8e912828fbe2e7fcdda9cc42190be08d7615259d46692837e223a15b9fc3",
                                           "existing_data_files":  2,
                                           "exit":  1
                                       },
     "rc-options-probe":  {
-                             "sha256":  "1a07e72031abd4b16b6b86fdfc7234499e685d998d5242adf51103f4c77fc346",
+                             "sha256":  "071100038c81954249f5e8830f9ef18f652638321625ade3c2b7a8d4740894f7",
                              "existing_data_files":  2,
                              "exit":  0
                          },
     "rc-options-install":  {
-                               "sha256":  "925840fffcf25dce05ce08626e930f1b046c0d1e854f00f417b5534758862a58",
+                               "sha256":  "ec371efc75d404976930a16da9978cbc7929b08959d05c65222b4f1dc632fc7d",
                                "existing_data_files":  2,
                                "exit":  0
                            },
     "rc-options-update":  {
-                              "sha256":  "f85db279220aa96618a72cc29a1d56a4d8522df10a31185a3eda3ef8ff046893",
+                              "sha256":  "f26b980398547071ae91cfab5f91ac9400646672f83336265af1815a3b943742",
                               "existing_data_files":  2,
                               "exit":  0
                           },
     "rc-options-repair":  {
-                              "sha256":  "2c944b8b83eec0c1f192daf33d700c6855b8c89aa200ff79ddf8bdd69ff2285d",
+                              "sha256":  "98ddfca7827e2ad237450c2f4423ce16af2bc1d4ae379f0ab7b2fa337afe3c5a",
                               "existing_data_files":  2,
                               "exit":  0
                           },
     "rc-options-check":  {
-                             "sha256":  "46b34c589a4739d71cf0b317e104c03a8e98f88dcc6aed0537757d15d12f9294",
+                             "sha256":  "1b06d6c111ae287e72d3cc293d9a3b3110fd29754ae99df324b4480df1ab28f1",
                              "existing_data_files":  2,
                              "exit":  0
                          },
     "rc-options-apply":  {
-                             "sha256":  "9285aafac3d98c1bb43a1cdba4724b59947a80f7b5ae230201bee966e1dce9f2",
+                             "sha256":  "7ddb6079f13d45cfe26546643d5f8a878e80c4e436dbad4951ef28be612d1aef",
                              "existing_data_files":  2,
                              "exit":  0
                          },
     "rc-options-confirm":  {
-                               "sha256":  "d109b4f688e467a473dc9cca3c93205024851e34171630594d2765259ebf45fb",
+                               "sha256":  "87e4d891189af2890efda5845792eac273f6767ccc32e62b2ae6e8f45e83035f",
                                "existing_data_files":  2,
                                "exit":  0
                            },
     "rc-options-timeout":  {
-                               "sha256":  "9285aafac3d98c1bb43a1cdba4724b59947a80f7b5ae230201bee966e1dce9f2",
+                               "sha256":  "7ddb6079f13d45cfe26546643d5f8a878e80c4e436dbad4951ef28be612d1aef",
                                "existing_data_files":  2,
                                "exit":  1
                            },
     "rc-options-rollback":  {
-                                "sha256":  "54bf18231d006a0e68799e69748ec7534f1d3278853ddc46b972339cd3be962a",
+                                "sha256":  "b6a6bff1147a8bfe48f453929805284eb4594c0b2cc37900cfcc84f044835aae",
                                 "existing_data_files":  2,
                                 "exit":  0
                             },
@@ -215,52 +215,52 @@
                                  "exit":  0
                              },
     "rc-options-cleanup":  {
-                               "sha256":  "928e3b0033c07ce7e4b084150943ae4633b40622f6ea94d105cdeb83aaef349d",
+                               "sha256":  "4a955e7c33100b384f9abedc801be4d2e772b9bf5b55f5f767decb20c02ca4e9",
                                "existing_data_files":  2,
                                "exit":  1
                            },
     "pending-probe":  {
-                          "sha256":  "eb37477e9b41fdc8d1953fa9bdcea53510dac4d05f21cffd32cc7b9871bbc62b",
+                          "sha256":  "8d19ad9d700f4310de46ee9bafb9633a6d293fcece83ecab8c2130a4d20ae3c9",
                           "existing_data_files":  2,
                           "exit":  0
                       },
     "pending-install":  {
-                            "sha256":  "22b8ae6b133d4f06b24ccb5f85fa3ba997e237261cf3f0c9135e197874a58015",
+                            "sha256":  "f27fb8b8f8a2837a559a1c1bb5618ac015effe7276110f65cb022610765616cf",
                             "existing_data_files":  2,
                             "exit":  0
                         },
     "pending-update":  {
-                           "sha256":  "71d08399709cf7edad1ce122577f69e190a6618f541178f0d5394e9d32a42c5e",
+                           "sha256":  "670a4de2aa183e6c5429b6cb5ed3baced8463ef946ab491042b21838e5531108",
                            "existing_data_files":  2,
                            "exit":  0
                        },
     "pending-repair":  {
-                           "sha256":  "24fb5f109a8178c1979683ba11b1ff0d09346240568c4ab3875fa6caec3623ef",
+                           "sha256":  "719cc60b68879217461776ad0e04be2b8a7572cbba272540d6a304efc2bdad21",
                            "existing_data_files":  2,
                            "exit":  0
                        },
     "pending-check":  {
-                          "sha256":  "46b34c589a4739d71cf0b317e104c03a8e98f88dcc6aed0537757d15d12f9294",
+                          "sha256":  "1b06d6c111ae287e72d3cc293d9a3b3110fd29754ae99df324b4480df1ab28f1",
                           "existing_data_files":  2,
                           "exit":  0
                       },
     "pending-apply":  {
-                          "sha256":  "78e6e6a97a3dd31f02fb9201bacce5f3520d12d2f4ff2451593a82428822bee9",
+                          "sha256":  "d53fc7bc0e86e47f2df81ec3e65e10d22d03c32e5cb2212c888cdf09bf740a9c",
                           "existing_data_files":  2,
                           "exit":  0
                       },
     "pending-confirm":  {
-                            "sha256":  "568b8022300a18e21c81ff37c4b81b82aa7540abdcd5007f3de74d4ebbddbced",
+                            "sha256":  "7d33a60498eeb047001701fafa3830724c633d85272ca364fd0e2fd125da13a6",
                             "existing_data_files":  2,
                             "exit":  0
                         },
     "pending-timeout":  {
-                            "sha256":  "d422c664fb55e0b9bdf7bdaf569be2ba0840175cfe8c49e712f994fab15948eb",
+                            "sha256":  "e7f419b73b18501ed3131fbf46287fe0776af7118740dfd5ddf8a90b2b409098",
                             "existing_data_files":  2,
                             "exit":  1
                         },
     "pending-rollback":  {
-                             "sha256":  "89bc80160aa5a48a31802f884e2e414af823659f920bcca207968e076487a5d3",
+                             "sha256":  "6c840bff3d9b34c8f726b67ac7943e3f23c8966cf06ee3b244732bd98835ac71",
                              "existing_data_files":  2,
                              "exit":  0
                          },
@@ -270,52 +270,52 @@
                               "exit":  0
                           },
     "pending-cleanup":  {
-                            "sha256":  "f14f09d491d19b75a83f8a46bee2eab1fa1f5913797ad3032286229776ee79d3",
+                            "sha256":  "bc694eaf647bef5923bb8cfab24cf236a5350208401c45568fecd700c322f2ea",
                             "existing_data_files":  2,
                             "exit":  1
                         },
     "boot-probe":  {
-                       "sha256":  "3d2b46d1ba462492e9d18c53990325d8a46ee2a1a90c74d0c216a2e4ce1d4b22",
+                       "sha256":  "f45d764e619d255e649b19eece69b1e0d9fdb649b801ed5a96315313dd9032f0",
                        "existing_data_files":  2,
                        "exit":  0
                    },
     "boot-install":  {
-                         "sha256":  "15139b52edd5b1c7a9c8865057e93be1b29c700844a0c85c177a0f56d3aabf5a",
+                         "sha256":  "34c7a0767d467d124029e2b406372a838df640ca4d7249cf8553b1cfb1af136a",
                          "existing_data_files":  2,
                          "exit":  4
                      },
     "boot-update":  {
-                        "sha256":  "c0437e1283634e05a58a706eb4aced0d65214a490fbc56a5a7f8a7d6e8b8bc4f",
+                        "sha256":  "9415c19afffef73e5a21b64a172beb3bfc5cc73488508f0761e3ca167e047b4c",
                         "existing_data_files":  2,
                         "exit":  0
                     },
     "boot-repair":  {
-                        "sha256":  "15139b52edd5b1c7a9c8865057e93be1b29c700844a0c85c177a0f56d3aabf5a",
+                        "sha256":  "34c7a0767d467d124029e2b406372a838df640ca4d7249cf8553b1cfb1af136a",
                         "existing_data_files":  2,
                         "exit":  4
                     },
     "boot-check":  {
-                       "sha256":  "dfd134439be67443bdcf7598f075aa965cccac02c770ce0fd6504eb900121bb5",
+                       "sha256":  "cad59b08de7e1531d38cd35dcd1b4c0758912d6da4aef1707faf5b039bc3ed8b",
                        "existing_data_files":  2,
                        "exit":  0
                    },
     "boot-apply":  {
-                       "sha256":  "7371f070f015672932d277ce094682cf7e122b2c322f7146be7c9b8bde3b5b36",
+                       "sha256":  "c7deca7ec3619fca39a3123f7e8cd6ec6341a0c24a9505be0e05b246dcef1d7b",
                        "existing_data_files":  2,
                        "exit":  0
                    },
     "boot-confirm":  {
-                         "sha256":  "d04126b6d47c35a9ef62ed05fef2e458f9705662dea8a75bd5f6cc9988a901b2",
+                         "sha256":  "2b385b5b0a45cc4174d9a63eab4aaeaf4be514e2345522165d349c1cc9ea6d47",
                          "existing_data_files":  2,
                          "exit":  0
                      },
     "boot-timeout":  {
-                         "sha256":  "b7872e5048b74effed1a1c7f3e37d8d15cecd1ff50da9c83857ab5dd09c8d724",
+                         "sha256":  "c7a8fa7980e5ccdbfa2497586be71659fdaea87c5945ad6b136c48872c961961",
                          "existing_data_files":  2,
                          "exit":  0
                      },
     "boot-rollback":  {
-                          "sha256":  "6f99723964a597ab7aa598b8443676c73153750d17843564a0e61eb538766e69",
+                          "sha256":  "4139b6f40ed37bf68f1d31d1803f8dbd8ca5af7d0e11bf221d4e025149f99343",
                           "existing_data_files":  2,
                           "exit":  0
                       },
@@ -325,7 +325,7 @@
                            "exit":  0
                        },
     "boot-cleanup":  {
-                         "sha256":  "15139b52edd5b1c7a9c8865057e93be1b29c700844a0c85c177a0f56d3aabf5a",
+                         "sha256":  "34c7a0767d467d124029e2b406372a838df640ca4d7249cf8553b1cfb1af136a",
                          "existing_data_files":  2,
                          "exit":  1
                      },
@@ -390,7 +390,7 @@
                                      "exit":  0
                                  },
     "retained-no-marker-install":  {
-                                       "sha256":  "f864ec250721da13c3feb758f0084b5b34db66858712e6d536844ce43d473848",
+                                       "sha256":  "2e2a5aef0bd215074e050c6fcbe81286231fab99a7a48fcf73a2d0759ec30e52",
                                        "existing_data_files":  1,
                                        "exit":  0
                                    },

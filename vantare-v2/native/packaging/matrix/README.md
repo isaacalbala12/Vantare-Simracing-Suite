@@ -78,3 +78,11 @@ Revisar cada código/diferencia, repetir contra otra raíz y solo después copia
 el candidato a `baseline.json` mediante un cambio revisable. Los pasos 1a–1d
 añaden su demostración y explican las diferencias intencionales. La matriz no
 sustituye la QA física en otra cuenta/VM ni las pruebas de firma del servicio.
+
+Paso 1a: el mismo gate ejecuta `inventory-growth-tests.ps1`. Simula inventarios
+109→110→109 (retirada explícita de una ruta conocida), actualización y rollback;
+conserva datos y carpetas vacías de tres generaciones al desinstalar. Los
+rechazos exigen su causa esperada. El catálogo de rutas retiradas está vacío en
+producto y no amplía paquetes entrantes. El único cambio esperado en las 88
+instantáneas es el hash de beta.ps1 raíz (52 filas) por el cleanup actualizado;
+los datos, códigos, estado, registro y enlaces quedan iguales.

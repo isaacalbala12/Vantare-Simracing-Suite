@@ -38,12 +38,18 @@ foreach($version in @('0.0.974','0.0.976','0.0.977','0.0.978','0.0.979')){
     Assert-History $true "Known pre-resources inventory accepted for installed $version"
 }
 $original.version='0.0.980';Write-BetaJson (Join-Path $real 'manifest.json') $original
-Reject-History {Read-NativeManifest $real 'beta' $false -Installed} 'Legacy subset is not valid for a newer version' 'Faltan archivos obligatorios.'
+$null=Read-NativeManifest $real 'beta' $false -Installed
+Assert-History $true 'Installed inventory belongs to its bound manifest, not a frozen version interval'
 $original.version='0.0.975'
-foreach($change in @('missing','extra','duplicate','traversal','case','wrong-channel')){
+foreach($change in @('unlisted-disk','extra','duplicate','traversal','case','wrong-channel')){
     $m=Get-Content $fixture -Raw|ConvertFrom-Json
     switch($change){
-        'missing' {$m.files=@($m.files|Select-Object -Skip 1)}
+        'unlisted-disk' {
+            $unlisted=Join-Path $real $m.files[0].path
+            [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($unlisted))|Out-Null
+            [IO.File]::WriteAllText($unlisted,'unlisted fixture')
+            $m.files=@($m.files|Select-Object -Skip 1)
+        }
         'extra' {$m.files+=@{path='extra.json';size=0;sha256=('a'*64)}}
         'duplicate' {$m.files+=@($m.files[0])}
         'traversal' {$m.files[0].path='../escape.exe'}
@@ -51,8 +57,9 @@ foreach($change in @('missing','extra','duplicate','traversal','case','wrong-cha
         'wrong-channel' {$m.channel='nightly'}
     }
     Write-BetaJson (Join-Path $real 'manifest.json') $m
-    $reason=if($change -in @('missing','wrong-channel')){'Faltan archivos obligatorios.'}else{'Lista de archivos inválida o duplicada.'}
-    Reject-History {Read-NativeManifest $real '' $false -Installed} "Unknown or malicious installed inventory rejected: $change" $reason
+    $reason=if($change -ceq 'unlisted-disk'){'Archivo instalado no enumerado en el manifiesto.'}elseif($change -ceq 'wrong-channel'){'Manifiesto, esquema o canal incompatible.'}else{'Lista de archivos inválida o duplicada.'}
+    try{Reject-History {Read-NativeManifest $real 'beta' $false -Installed} "Unknown or malicious installed inventory rejected: $change" $reason}
+    finally{if($change -ceq 'unlisted-disk'){Remove-Item -LiteralPath $unlisted}}
 }
 # Offline integration uses inert real OS PE bytes, never executed. Only the
 # inventory comes from the public manifest; synthetic hashes are recomputed.
@@ -119,7 +126,7 @@ foreach($case in @('active974','974','976-974','977-974','978-974','979-974','97
     [IO.File]::WriteAllText((Join-Path $active 'data/user.bin'),'active user data')
     $priorId=if($case -ceq '974'){$observedState.previous.generation}else{[guid]::NewGuid().ToString('N')}
     $prior=Join-Path $history ('generations/'+$priorId)
-    $restorable=$case -in @('974','976-974','977-974','978-974','979-974')
+    $restorable=$case -in @('active974','974','976-974','977-974','978-974','979-974','973')
     New-HistoryPayload $prior @($original.files.path) ('0.0.'+$(if($case -in @('973','active974')){'973'}elseif($restorable){'974'}else{'975'}))
     [IO.Directory]::CreateDirectory((Join-Path $prior 'data'))|Out-Null
     [IO.File]::WriteAllText((Join-Path $prior 'data/user.bin'),'previous user data')

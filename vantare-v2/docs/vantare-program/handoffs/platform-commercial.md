@@ -252,7 +252,8 @@ orquestador. Cinco PR separados, sin merge/release del worker.
   Hub all-targets599/599, cuatro skips previos/cuatro lentos,216,000s;
   Clippy all-targets-Dwarnings/fmt/build/PS/YAML/fragmento/calidad468 PASS.
   Cuatro scripts/capturas88 coinciden con copia QA/baseline; solo SHA beta52 filas.
-  Código/HEAD finales en #1840/PR. Cola/target propios, sin aflojar lints ni tests.
+  Código de revisión fe49f2925; HEAD publicado final en #1840/PR.
+  Cola/target propios, sin aflojar lints ni tests.
   [Evidencia y fallos iniciales](../../../native/packaging/matrix/evidence-1840-1c.md).
   Sin ventana física ni cambios propios de runtime/domain/ipc/testdata;
   telemetría omitida por ámbito. CI y merge del orquestador.

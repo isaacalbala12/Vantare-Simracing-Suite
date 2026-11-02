@@ -263,13 +263,14 @@ mod tests {
             unsafe { CoInitializeEx(None, COINIT_MULTITHREADED).ok() }.expect("own MTA");
             let owner = Apartment(true);
             let borrowed = Apartment::new().expect("reuse existing MTA");
-            let _link = create_link().expect("shell COM works in MTA");
+            let link = create_link().expect("shell COM works in MTA");
             drop(borrowed);
             let mut kind = APTTYPE::default();
             let mut qualifier = APTTYPEQUALIFIER::default();
             unsafe { CoGetApartmentType(&raw mut kind, &raw mut qualifier) }
                 .expect("caller MTA still initialized");
             assert_eq!(kind, APTTYPE_MTA);
+            drop(link);
             drop(owner);
         })
         .join()

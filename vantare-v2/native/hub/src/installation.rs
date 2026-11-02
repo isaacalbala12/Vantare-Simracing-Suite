@@ -47,6 +47,7 @@ fn open_ack_marker(root: &Path) -> std::io::Result<Option<std::fs::File>> {
     match std::fs::OpenOptions::new()
         .access_mode(0x80)
         .share_mode(7)
+        .custom_flags(0x0020_0000) // Open the marker itself, not a reparse target.
         .open(root.join("boot-pending.json"))
     {
         Ok(file) => Ok(Some(file)),
@@ -62,15 +63,16 @@ fn delete_pending(file: &std::fs::File) -> std::io::Result<bool> {
     #[repr(C)]
     #[derive(Default)]
     struct StandardInfo {
-        allocation_size: i64,
-        end_of_file: i64,
-        links: u32,
+        _allocation_size: i64,
+        _end_of_file: i64,
+        _links: u32,
         deleting: u8,
-        directory: u8,
+        _directory: u8,
     }
     #[link(name = "kernel32")]
     unsafe extern "system" {
-        fn GetFileInformationByHandleEx(
+        #[link_name = "GetFileInformationByHandleEx"]
+        fn get_file_information_by_handle_ex(
             handle: *mut std::ffi::c_void,
             class: i32,
             info: *mut std::ffi::c_void,
@@ -80,7 +82,7 @@ fn delete_pending(file: &std::fs::File) -> std::io::Result<bool> {
     let mut info = StandardInfo::default();
     // SAFETY: valid owned handle, FileStandardInfo=1 and a correctly sized SDK layout.
     if unsafe {
-        GetFileInformationByHandleEx(
+        get_file_information_by_handle_ex(
             file.as_raw_handle(),
             1,
             (&raw mut info).cast(),
@@ -293,6 +295,24 @@ mod tests {
     use super::*;
     use std::os::windows::io::{AsHandle, AsRawHandle, BorrowedHandle};
 
+    #[allow(unsafe_code)] // Reproduce PowerShell/.NET DeleteFile, not Rust's POSIX unlink.
+    fn request_classic_delete(path: &Path) {
+        use std::os::windows::ffi::OsStrExt;
+        #[link(name = "kernel32")]
+        unsafe extern "system" {
+            #[link_name = "DeleteFileW"]
+            fn delete_file(path: *const u16) -> i32;
+        }
+        let path: Vec<u16> = path.as_os_str().encode_wide().chain(Some(0)).collect();
+        // SAFETY: NUL-terminated path to our isolated fixture, valid for the call.
+        assert_ne!(
+            unsafe { delete_file(path.as_ptr()) },
+            0,
+            "{}",
+            std::io::Error::last_os_error()
+        );
+    }
+
     #[test]
     fn deleting_ack_is_retried_only_with_kernel_evidence() {
         let root = root();
@@ -307,7 +327,7 @@ mod tests {
                 .raw_os_error(),
             Some(5)
         );
-        std::fs::remove_file(&path).unwrap();
+        request_classic_delete(&path);
         assert!(delete_pending(marker.as_ref().unwrap()).unwrap());
         let error = path
             .try_exists()

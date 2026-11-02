@@ -449,12 +449,11 @@ fn remove_projection(
             warning,
         );
     }
-    if !options.restoring {
-        if let Some(ui) = options.previous
-            && !marker.try_exists()?
-        {
-            disk::write_json(&marker, &json!({"schema":1,"sha256":ui.sha256}))?;
-        }
+    if !options.restoring
+        && let Some(ui) = options.previous
+        && !marker.try_exists()?
+    {
+        disk::write_json(&marker, &json!({"schema":1,"sha256":ui.sha256}))?;
     }
     let run = legacy_run(context, root, identity)?;
     os::delete_key(&context.registry_prefix, key)?;

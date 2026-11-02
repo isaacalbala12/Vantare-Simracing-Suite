@@ -10,8 +10,11 @@ en el Hub (también si la compartida ya existe), original intacto y sin reintent
 tras interrupción; se requiere decisión nueva. Una compartida creada durante
 save gana y se carga. Subproceso QA comprueba root contra diagnostics::data_root.
 `--demo` sin directorio usa rutas temporales QA nuevas; las explícitas se respetan.
-Gates de revisión conjuntos con #1876 en cola; se conserva el fallo previo de
-Clippy por longitud de finish, corregido extrayendo el cálculo de la ruta demo.
+Revisión validada: fmt/check/Clippy Hub+Services PASS; regresiones 18/18,
+Nextest 874/874 (9 skips) y lifecycle 25/25 PASS, solo raíces QA. Código
+`ba87c081a`; evidencia `D:/VantareServer/evidence/isa-1869/paso1/review-gates`.
+Se conservan RED previo y dos fallos de Clippy por longitud de finish, resueltos
+dejando el cálculo demo en persistence_paths. #1876 sigue en la misma tanda.
 Primero bugs 1 y 2, cada uno con rama/worktree/PR draft propio a nightly.
 Caracterización 0.ii en `2fc4d46d8` (privacidad beta separada); 0.v en
 `adfbd0aba` (colisión de agenda y cambio de bytes cada segundo).
@@ -24,16 +27,16 @@ y launcher quedaron intactos. Recuperación hecha por él, no por este worker.
 Regresión P1 corregida: Store inyectado en Loaded, arnés con Store QA explícito,
 guard de data_root en test/test-support y override QA en gates con restauración.
 Se activa la feature existente de services en dev-dependencies, sin paquete nuevo.
-Revalidación completa PASS con ROOT/LOCALAPPDATA/APPDATA bajo QA: fmt,
+La entrega inicial pasó con ROOT/LOCALAPPDATA/APPDATA bajo QA: fmt,
 check/Clippy Hub+Services, regresiones 16/16, Nextest 871/871 (9 skips),
-lifecycle 25/25 y 468 huellas. Código `5514cb657`; defensa APPDATA `c6e56a48b`.
+lifecycle 25/25 y 468 huellas. La revisión actual amplía la cobertura indicada arriba.
 La prueba de entorno de gates cubre éxito y fallo simulado sin compilar.
 PR draft [#1874](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1874)
 a nightly, listo para revisión del orquestador; CI remota aún en curso al preparar
 esta actualización. No se verificó envío real de analítica ni instalación.
-Agenda: caracterización 2/2 y cinco regresiones PASS; se actualizaron las tres
-expectativas CLI del nombre del feed. La suite general encontró un plazo de 2 s
-en replay UI, sin cambios en sus fuentes; se repetirá aislado antes del resto.
+Agenda: PR draft #1876, caracterización 2/2 y 1089 pruebas PASS en la entrega
+inicial. El replay UI pasó aislado tras fallar su plazo existente de 2 s en
+paralelo, sin modificarlo. Revisión de docs, mtime/bytes y reloj lento en curso.
 
 El orquestador aprobó heartbeat de agenda cada 5 s cuando no cambian eventos,
 publicación inmediata al cambiar y TTL de 10 s intacto, con reloj inyectado.

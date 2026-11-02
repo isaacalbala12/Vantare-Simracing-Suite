@@ -1,4 +1,4 @@
-param([string]$Root, [int]$HubPid, [int]$SupervisorPid, [string]$Supervisor, [string]$Instance)
+param([string]$Root, [int]$HubPid, [int]$SupervisorPid, [string]$Supervisor, [string]$Instance, [int]$NextHubPid = 0)
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 # Ejecutar el decisor de producto, sin cargar candidate, registro, red ni Apply.
@@ -17,9 +17,13 @@ function Apply-BetaUpdate { [IO.File]::AppendAllText((Join-Path $Root 'beta-acti
 function Stage-BetaUpdate { [IO.File]::AppendAllText((Join-Path $Root 'beta-actions'), "stage`n") }
 function Set-BetaStatus { throw 'Error inesperado en Run-BetaHub de producto' }
 function Confirm-BetaBoot { $true }
+$script:hubStarts = 0
 function Start-BetaHub {
+    $script:hubStarts++
     [IO.File]::AppendAllText((Join-Path $Root 'beta-actions'), "hub`n")
-    [Diagnostics.Process]::GetProcessById($HubPid)
+    $ownedHub = if ($script:hubStarts -eq 1) { $HubPid } else { $NextHubPid }
+    if (-not $ownedHub) { throw 'Hub de prueba siguiente no preparado' }
+    [Diagnostics.Process]::GetProcessById($ownedHub)
 }
 function Stop-BetaRuntime {
     [IO.File]::AppendAllText((Join-Path $Root 'beta-actions'), "stop`n")

@@ -33,6 +33,8 @@ No se reproduce la condición que decide parar en un segundo decisor de test.
 | Primera foto Live no cierra; flanco no-Live→Live cierra Hub; marcador live conserva overlays | Tests de `hub::lifecycle` en su crate y matriz de procesos con Hub falso | Paso 4: decide sesión con política del núcleo |
 | X Hub de bandeja no para overlays; restart-request queda sin consumidor | `real_overlays_tray_hub_is_unowned_and_restart_is_unconsumed`; manejador Abrir Hub y X del Hub falso en `real_overlays_tray_open_and_quit_leave_the_hub_alive` | Paso 4: un dueño para ambos caminos |
 | El siguiente arranque beta borra restart-request antiguo | Matriz Hub, antes de cerrar cada caso | Paso 4 retira ese canal |
+| Reiniciar el Hub beta con marcador live consume restart-request, abre otro Hub y llama Apply sin parar overlays | `beta_restart_live_reopens_hub_without_stopping_real_overlays`, bucle original; Apply es inerte | Paso 4: cierre y Apply con dueño único |
+| Caer el Hub beta antes de escribir hub-exit conserva overlays y el bucle beta sale con 0 | `crashed_beta_hub_without_marker_leaves_real_overlays_running` | Paso 4: política explícita de fallo del Hub |
 | Cerrar ventana de bandeja retira icono sin `cx.quit()` | `real_overlays_tray_close_does_not_quit_gpui` | Paso 1 atiende EOF; retirada de WM_CLOSE masivo en paso 2 |
 | Abrir Hub del menú crea Hub fuera del Job; abrir otra vez lo enfoca sin duplicarlo | `real_overlays_tray_open_and_quit_leave_the_hub_alive` | Paso 4: Hub hijo de sesión |
 | Manejador «Salir» real sale con 0, cierra núcleo y deja el Hub vivo | Misma prueba, invocación QA al mismo manejador que usa el menú | Paso 4: se recoge también Hub |

@@ -57,6 +57,14 @@ pub(super) fn scenarios() -> Vec<(&'static str, fn())> {
             "normal_overlays_ignore_the_qa_handler_entry",
             normal_ignores_qa,
         ),
+        (
+            "beta_restart_live_reopens_hub_without_stopping_real_overlays",
+            beta_restart_live,
+        ),
+        (
+            "crashed_beta_hub_without_marker_leaves_real_overlays_running",
+            beta_hub_crash,
+        ),
     ]
 }
 
@@ -195,13 +203,16 @@ impl Real {
         )
     }
 
-    fn beta(&self, hub: &Launcher) -> Launcher {
+    fn beta(&self, hub: &Launcher, next: Option<&Launcher>) -> Launcher {
         let script =
             PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/lifecycle/beta-session.ps1");
+        let mut command = Command::new("pwsh");
+        command.args(["-NoProfile", "-File"]).arg(script);
+        if let Some(next) = next {
+            command.args(["-NextHubPid", &next.0.id().to_string()]);
+        }
         Launcher(
-            Command::new("pwsh")
-                .args(["-NoProfile", "-File"])
-                .arg(script)
+            command
                 .arg("-Root")
                 .arg(&self.scenario.dir)
                 .args([
@@ -297,7 +308,7 @@ fn hub_matrix() {
         let mut hub = real.hub(marker, false);
         // Un reinicio que dejó un Hub de bandeja se descarta al arrancar beta.
         fs::write(real.scenario.file("restart-request"), "1").unwrap();
-        let mut beta = real.beta(&hub);
+        let mut beta = real.beta(&hub, None);
         real.scenario
             .wait_for("bucle de producto observa Hub", LONG, || {
                 real.scenario
@@ -307,7 +318,7 @@ fn hub_matrix() {
             });
         assert!(!real.scenario.dir.join("restart-request").exists());
         if state == SourceState::Waiting {
-            let mut second = real.beta(&hub);
+            let mut second = real.beta(&hub, None);
             assert_ne!(real.scenario.exit_code(&mut second, LONG), 0);
             assert_eq!(
                 real.scenario
@@ -512,6 +523,77 @@ fn normal_ignores_qa() {
         alive(overlay),
         "el binario normal no tiene entrada de prueba"
     );
+    real.stop();
+}
+
+fn beta_restart_live() {
+    let mut real = Real::start("beta-restart-live");
+    let overlay = real.ready();
+    let mut first = real.hub("live", true);
+    let mut next = real.hub("live", false);
+    let mut beta = real.beta(&first, Some(&next));
+    real.scenario
+        .wait_for("primer Hub beta observado", LONG, || {
+            real.scenario
+                .lines("beta-actions")
+                .contains(&"stage".into())
+                .then_some(())
+        });
+    drop(first.0.stdin.take());
+    assert!(first.0.wait().unwrap().success());
+    real.scenario.wait_for(
+        "reinicio abre segundo Hub y consume su petición",
+        LONG,
+        || {
+            (real
+                .scenario
+                .lines("beta-actions")
+                .iter()
+                .filter(|line| *line == "stage")
+                .count()
+                == 2)
+                .then_some(())
+        },
+    );
+    assert!(!real.scenario.dir.join("restart-request").exists());
+    assert_eq!(real.ready(), overlay);
+    assert!(alive(overlay));
+    assert!(next.0.try_wait().unwrap().is_none());
+    let actions = real.scenario.lines("beta-actions");
+    assert_eq!(actions.iter().filter(|line| *line == "apply").count(), 2);
+    assert!(!actions.contains(&"stop".into()));
+    drop(next.0.stdin.take());
+    assert!(next.0.wait().unwrap().success());
+    assert_eq!(real.scenario.exit_code(&mut beta, LONG), 0);
+    let actions = real.scenario.lines("beta-actions");
+    assert_eq!(actions.iter().filter(|line| *line == "hub").count(), 2);
+    assert_eq!(actions.iter().filter(|line| *line == "apply").count(), 3);
+    assert!(!actions.contains(&"stop".into()));
+    // CAMBIA EN PASO 4: hoy beta intenta Apply sin parar la sesión Live.
+    // Sólo se observa la llamada: el stub nunca instala ni modifica registro.
+    assert!(alive(overlay));
+    real.stop();
+}
+
+fn beta_hub_crash() {
+    let mut real = Real::start("beta-hub-crash");
+    let overlay = real.ready();
+    let mut hub = real.hub("idle", false);
+    let mut beta = real.beta(&hub, None);
+    real.scenario
+        .wait_for("Hub beta observado antes de caer", LONG, || {
+            real.scenario
+                .lines("beta-actions")
+                .contains(&"stage".into())
+                .then_some(())
+        });
+    hub.0.kill().unwrap();
+    assert!(!hub.0.wait().unwrap().success());
+    assert!(!real.scenario.dir.join("hub-exit").exists());
+    assert_eq!(real.scenario.exit_code(&mut beta, LONG), 0);
+    assert!(!real.scenario.lines("beta-actions").contains(&"stop".into()));
+    assert!(alive(overlay));
+    // CAMBIA EN PASO 4: hoy no hay política de fallo para el Hub de beta.
     real.stop();
 }
 

@@ -43,6 +43,7 @@ fn open(root: &Path, cx: &mut HeadlessAppContext) -> WindowHandle<Hub> {
         )
         .0,
         appearance_error: None,
+        privacy: crate::shell::settings::privacy::load(root, true),
         prepared: Prepared::load(root, None).expect("escena"),
         studio: PreparedStudio::load(root.join("layout.json")).expect("layout"),
         calendar: crate::calendar::Calendar::load(root).expect("calendario"),

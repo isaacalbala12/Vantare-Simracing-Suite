@@ -1,5 +1,43 @@
 # Handoff vivo — Overlays, Studio, Launcher y Hub
 
+## VANTA-130 · #1869 · Hub, ajustes y layouts (2-nov-2026)
+
+Proyecto Vantare, `area:plataforma`; Plane En curso verificado. Base
+`origin/nightly@a5e0a9fd24ad5294df6528dd47ad63a078820e27`.
+Primero bugs 1 y 2, cada uno con rama/worktree/PR draft propio a nightly.
+Caracterización 0.ii en `2fc4d46d8` (privacidad beta separada); 0.v en
+`adfbd0aba` (colisión de agenda y cambio de bytes cada segundo).
+Privacidad: caracterización PASS y regresión RED del lector compartido antes
+del arreglo. La primera tanda llegó a 382 PASS y dos fallos de onboarding:
+el arnés headless sin demo/captura resolvía la raíz real con el cambio nuevo.
+El orquestador confirmó y eliminó los tres ficheros creados por los tests
+(privacy.json con uso aceptado y sus dos locks); no había colas y logs, rights
+y launcher quedaron intactos. Recuperación hecha por él, no por este worker.
+Regresión P1 corregida: Store inyectado en Loaded, arnés con Store QA explícito,
+guard de data_root en test/test-support y override QA en gates con restauración.
+Se activa la feature existente de services en dev-dependencies, sin paquete nuevo.
+Revalidación completa Hub/Services/lifecycle en cola; sin PR todavía.
+Agenda: caracterización 2/2 PASS tras corregir la creación de la carpeta QA;
+implementación y gates en su worktree independiente.
+
+El orquestador aprobó heartbeat de agenda cada 5 s cuando no cambian eventos,
+publicación inmediata al cambiar y TTL de 10 s intacto, con reloj inyectado.
+Mover la escritura fuera del hilo de UI queda como mejora posterior.
+Diseño concreto del paso 6 aprobado: Store v2 único en `<H>/hub-settings.json`,
+carga única, migración pura, originales intactos y versión desconocida
+conservada. Pasos 6–7 juntos, o 7 pendiente manteniendo su lector antiguo.
+Avisar al orquestador antes de tocar ui/layout, motion_policy o el host por
+VANTA-129. Los tres documentos antiguos solo se retirarán en otra tarea tras
+una release estable. Paso 10 excluido, va con #1840.
+Paso 3 autorizado solo para sustituir cálculos de ruta en rights/owner,
+bin/vantare/main, ipc/freshness, ipc/engineer_control y services/app, sin auth,
+policy ni flujo. El orquestador reserva esas líneas con VANTA-129; aún sin editar.
+
+Hallazgos independientes sin implementar: #1870 Calendario Inicio/menú,
+#1871 ImportLayout sin lector (#1840), #1872 Strategy con dos almacenes.
+Siguiente: terminar gates y entregar los PR draft de los bugs 1 y 2;
+solo raíces QA. Sin merge, promoción, release ni instalación.
+
 ## VANTA-105 · RC4 entregada / seguimiento #1742 (21-oct-2026)
 
 RC4 0.0.982 entregada en `C:/VantareServer/share/rc4/` con Setup, sidecar y

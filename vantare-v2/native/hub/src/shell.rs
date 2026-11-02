@@ -1153,6 +1153,7 @@ pub(crate) struct Loaded {
     preview_fixtures: Option<[vantare_domain::Snapshot; 5]>,
     appearance: settings::appearance::Store,
     appearance_error: Option<String>,
+    privacy: Result<settings::privacy::Store, String>,
     prepared: Prepared,
     studio: PreparedStudio,
     calendar: Calendar,
@@ -1240,6 +1241,7 @@ impl Hub {
             preview_fixtures,
             appearance,
             appearance_error,
+            privacy,
             prepared,
             studio: prepared_studio,
             calendar,
@@ -1350,7 +1352,8 @@ impl Hub {
             ),
             None => Strategy::new(strategy_dir, cx),
         });
-        let mut settings = settings::State::new(prefs, appearance, testing_dir.clone(), window, cx);
+        let mut settings =
+            settings::State::new(prefs, appearance, testing_dir.clone(), privacy, window, cx);
         // Un appearance.json ilegible abre con valores por defecto y deja el
         // motivo visible en Ajustes, en lugar de tumbar el arranque.
         settings.status = appearance_error;
@@ -1563,6 +1566,10 @@ pub(crate) fn load(options: &mut Options) -> Result<Loaded, String> {
         subscriber: subscribe(options.pipe.clone())?,
         demo: options.demo.clone(),
         capture: options.capture.clone(),
+        privacy: settings::privacy::load(
+            &options.data_dir,
+            options.demo.is_some() || options.capture.is_some(),
+        ),
     })
 }
 

@@ -72,8 +72,19 @@ controles reales. El informe tiene scroll propio y Copiar expone su inactividad
 hasta preparar contenido. Las tarjetas de canal son informativas, sin selector.
 
 Para QA aislada, `VANTARE_NATIVE_DATA_ROOT` funciona también en macOS/Linux;
-Privacidad usa `<raíz>/Vantare/native` en arranque normal. Una raíz relativa
-falla sin recurrir a datos del usuario. La captura usa su `--data-dir` aislado.
+Privacidad usa siempre `<raíz>/Vantare/native` en arranque normal, también con
+`--data-dir` explícito. Si falta allí `privacy.json`, adopta los bytes válidos
+de la copia antigua del Hub sin tocar el original. Si existen ambas, manda la
+compartida y se registra la decisión. La adopción conserva los consentimientos
+explícitos: puede hacer efectiva una aceptación que antes no llegaba al emisor;
+los síes implícitos antiguos siguen desactivados. Una raíz relativa falla sin
+recurrir a datos del usuario. Demo/captura eligen su `--data-dir` QA antes de
+cualquier lectura o limpieza de privacidad.
+La carga entrega el Store explícitamente a `Loaded`; el arnés de onboarding
+inyecta su Store QA y conserva las mismas comprobaciones de consentimiento.
+Los gates fijan también `LOCALAPPDATA` a su base QA. En tests y con la feature
+`test-support`, `diagnostics::data_root()` rechaza la ausencia del override;
+no existe fallback hacia una instalación personal.
 
 Verificación manual: usar datos QA propios; cambiar General y reabrir. Con
 una instalación en QA, activar/desactivar inicio y comprobar el enlace Startup

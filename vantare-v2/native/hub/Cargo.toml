@@ -44,6 +44,8 @@ workspace = true
 vantare-build-support.workspace = true
 
 [dev-dependencies]
+# La dependencia ya existente activa también el guard de raíz QA en los tests del Hub.
+vantare-services = { workspace = true, features = ["test-support"] }
 # El arnés con eventos de foco/teclado usa TestPlatform, sin ventanas del SO.
 gpui = { git = "https://github.com/zed-industries/zed", rev = "72d28c32c2ba77a579e1c02f984654518552124b", features = ["test-support"] }
 vantare-ipc = { workspace = true, features = ["test-support"] }

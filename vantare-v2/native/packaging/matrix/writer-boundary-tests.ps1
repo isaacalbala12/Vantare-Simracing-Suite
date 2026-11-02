@@ -83,7 +83,7 @@ try{
     try{$result=Invoke-BoundaryWriter 'Install' '0.0.989'}finally{$handle.Dispose()}
     Assert-Boundary ($result.ExitCode -ne 0) 'Locked mandatory shortcut rejects Windows finalization'
     Assert-Boundary ([Convert]::ToBase64String([IO.File]::ReadAllBytes((Join-Path $install 'state.json'))) -ceq [Convert]::ToBase64String($stateBytes)) 'Shell failure restores exact Rust state bytes'
-    Assert-Boundary ((Get-ItemProperty -LiteralPath $key).DisplayVersion -ceq '0.0.988') 'Shell transaction restores registry version'
+    Assert-Boundary ((Get-ItemProperty -LiteralPath $key).DisplayVersion -ceq '0.0.988') 'Shell resynchronization restores registry version without a byte transaction'
     Assert-Boundary ([Convert]::ToBase64String([IO.File]::ReadAllBytes($appLink)) -ceq [Convert]::ToBase64String($linkBytes)) 'Shell failure preserves owned shortcut bytes'
     Assert-Boundary ((Get-NativeDataIndex $data) -ceq $dataBefore) 'Shell failure preserves opaque data and empty folders'
     Assert-Boundary (@(Get-ChildItem -LiteralPath (Join-Path $install 'generations') -Directory).Count -eq 1) 'Failed generation is removed only after restoring its reference'

@@ -740,8 +740,11 @@ mod tests {
             },
             "Uninstall",
         );
-        let key = "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\VantareNativeBeta";
-        os::set(&context.registry_prefix, key, "Foreign", "preserve")
+        let key = format!(
+            "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\{}",
+            context::identity(&request).expect("request identity")
+        );
+        os::set(&context.registry_prefix, &key, "Foreign", "preserve")
             .expect("foreign key without location");
         assert!(
             sync(
@@ -766,7 +769,7 @@ mod tests {
             Some("preserve".into())
         );
         assert!(!root.join("installer-cleanup.json").exists());
-        os::delete_key(&context.registry_prefix, key).expect("remove owned QA fixture key");
+        os::delete_key(&context.registry_prefix, &key).expect("remove owned QA fixture key");
         sync(
             &root,
             &context,

@@ -114,7 +114,7 @@ fn check_force(cooperative: bool) {
     if cooperative {
         let log = fs::read_to_string(root.join("session.log")).expect("diagnóstico");
         assert!(!log.contains("se le mata"), "los hijos salen por EOF");
-        assert!(log.contains("worker de sesión fuera de plazo"));
+        assert!(log.contains("plazo global agotado: worker de sesión no respondió"));
     }
     check_documents_and_locks(&root);
     drop(process);

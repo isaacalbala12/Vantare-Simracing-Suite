@@ -29,9 +29,15 @@ Probe conserva el límite de 64 KiB del manifiesto y el estado sin límite previ
 no se endurecen esos contratos en este refactor. `validation` centraliza los
 perfiles existentes: packaging 3–4 componentes/sufijo, Hub con tope de 100 bytes,
 comparación Setup de tres u16 sin ceros iniciales. No son gramáticas equivalentes.
+El lector común Probe acepta los cuatro canales cerrados, como Read-NativeState.
+Solo `complete_probe` de Setup conserva ExpectedChannel=beta. La clave previous
+ausente se rechaza: con StrictMode el PS real no la trata como null. Los rechazos
+de contrato disponen de invariantes tipadas para el contraste de la matriz.
 Los adaptadores PS y sus reglas siguen hasta pasos 4–7; no se afirma 5→1 global.
 El catálogo cerrado se genera durante build desde el único catálogo PS vigente;
 la matriz compara ambos catálogos para los cuatro canales. Paso 4 migra esa fuente.
+El parseo textual de candidate.ps1 en build.rs queda como deuda transitoria de
+pasos 4/7, registrada en #1840; no es el formato futuro del catálogo Rust.
 
 `default-features=false` compila el lector sin GPUI, host, scripts embebidos ni
 recursos/payload de Setup. `transport` habilita el host; `ui` lo incluye; las

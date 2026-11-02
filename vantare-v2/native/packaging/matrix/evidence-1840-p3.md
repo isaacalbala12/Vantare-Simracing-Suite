@@ -1,6 +1,6 @@
 # #1840 / VANTA-127 · paso 3, lectura Rust
 
-Estado: listo para revisión, [PR draft #1861](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1861)
+Estado: ajustes de revisión profunda en curso, [PR draft #1861](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1861)
 publicado y enlazado a T3; gates locales completos sobre nightly actualizado. Base inicial
 `5cc23113afae7cfa44429f225f0aeb5f770c061c`; rebase sin conflictos sobre
 `668d99c32`, que incluye el paso 2 integrado por el orquestador en
@@ -215,3 +215,24 @@ No se ejecuta esa QA física con la cuenta/instalación del usuario.
 
 Sin Plane, merge, release, promoción ni vigilancia de CI. El orquestador decide
 revisión/integración y vigila los checks remotos cuando exista PR.
+
+
+## Revisión profunda del orquestador (2-nov-2026)
+
+| Punto | Decisión y resultado preparado | Verificación |
+| --- | --- | --- |
+| 1, canales | Installation::read/Probe acepta todos los canales cerrados. La restricción beta pertenece solo a complete_probe de Setup, como al driver real | Test Rust nightly/testers/master + raíz nightly en contraste PS/Rust; pendiente de gate |
+| 2, previous ausente | Revisión corregida por el orquestador: se conserva el rechazo real del PS con StrictMode; no se amplía Rust | review-parity-02.log, motivo previous-missing; test existente conservado y tipado |
+| 3, Unread | Placeholder neutro; no versión «…», pill Instalada ni cabecera de versión vacía | Early return antes de construir la presentación instalada; gates UI pendientes |
+| 4, rechazos | Variantes tipadas Rust e IDs estructurados del ErrorRecord PS se traducen a invariantes. No se compara stderr/texto formateado ni solo exit!=0; un motivo desconocido falla | Nueve fallos aislados por raíz con estado, bytes restaurados; PS9/9 en review-legacy-rejections-02.log; diferencial completo pendiente |
+| 5, diseño | Nota inicial y anotación en §4.5 precisan la excepción autorizada de Ajustes | Texto histórico conservado, anotación de vigencia explícita |
+| 6, catálogo | Parseo textual de candidate.ps1 en build.rs registrado como deuda transitoria de p4/p7 en #1840 | No se amplía ni generaliza el parser en este paso |
+
+Los resultados previos de este documento pertenecen a los HEAD indicados;
+no se presentan como gates de las correcciones de esta revisión. Nuevo bloque
+Rust único review-gates.ps1: fmt/Clippy/Nextest de Installer+Hub, build del
+adaptador y check del lector sin defaults. Después, matriz completa sin Record,
+sin cambiar baseline ni snapshot.py. El primer ensayo PS aislado usaba una
+fixture de un solo miembro; se corrigió a dos miembros para contrastar los
+contratos pedidos. Un ensayo de mutación usó Write-NativeJson (CreateNew):
+se sustituyó por escritor exclusivo de fixtures QA, con guard y restauración.

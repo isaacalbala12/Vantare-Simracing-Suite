@@ -48,6 +48,7 @@ def category(path):
                 PREFIX + "native/packaging/matrix/README.md",
                 PREFIX + "native/packaging/matrix/evidence-1840-p3.md",
                 PREFIX + "docs/vantare-program/handoffs/platform-commercial.md",
+                PREFIX + "docs/vantare-program/installer-design.md",
                 PREFIX + "docs/changelog/fragments/ISA-1840.json"}:
         return "docs"
     if path == PREFIX + "native/scripts/installer-lines.py":

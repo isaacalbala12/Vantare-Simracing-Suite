@@ -6,9 +6,18 @@ en modo Uninstall. Las ocho capturas Probe conservan el baseline; no se regraba
 ni normaliza una diferencia nueva. CI construye ese ejemplo de tests, que nunca
 viaja en el producto. Compara además el catálogo Rust/PS en los cuatro canales.
 La ejecución sin ReadProbe conserva la caracterización heredada para contraste.
-La campaña local de paso 3 usa raíz con espacios/Unicode para probar la entrada
-UTF-8 del helper finito de PS5, con stdout/stderr drenados y plazo de 30 s.
+El ensayo adicional Unicode prueba entrada UTF-8; su limitación con URI escapada
+consta en evidence-1840-p3.md. La campaña completa usa raíz ASCII, sin cambiar
+baseline ni normalizaciones. El helper finito de PS5 drena stdout/stderr y tiene 30 s.
 Los campos raíz/datos deben conservarse exactamente y el hijo queda recogido.
+
+Cada Probe con estado añade nueve fallos aislados (esquema, referencia, SHA,
+inventario, manifiesto, previous ausente, canal no beta, JSON y manifiesto ausente).
+probe-parity.ps1 exige rechazo de ambos lectores por la misma invariante:
+variantes tipadas Rust y ErrorRecord IDs del PS, sin comparar mensajes formateados.
+Un error no clasificado falla. La raíz nightly también debe ser aceptada por el
+lector común y rechazada por la política beta de Setup. Cada fallo restaura los
+bytes originales de state/manifiesto antes de obtener la captura del baseline.
 
 Paso 1d añade startup-tests: comando del Hub y driver de Setup/Uninstall,
 Run propia/ajena con el mismo nombre, migración Run→opción/Startup con preferencia

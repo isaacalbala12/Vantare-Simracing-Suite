@@ -378,7 +378,7 @@ conservan la evidencia de sus ramas; no describen el estado de integración actu
 [#1840](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1840),
 area:plataforma, Project Vantare. Plane En curso; estados/CI del orquestador.
 Sin merge/release del worker.
-### Paso 3 · motor de lectura Rust listo para revisión (2-nov-2026)
+### Paso 3 · motor de lectura Rust, revisión profunda en curso (2-nov-2026)
 
 - PR draft [#1861](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1861),
   enlazado T3. Rama vantareapp/isa-1840-paso3-engine-lectura; base inicial
@@ -406,6 +406,11 @@ Sin merge/release del worker.
 - Ensayos y fallos intermedios conservados: disco, helper storage, invocaciones,
   array PS5 y URI Unicode (una única diferencia, sin campaña completa PASS).
   Los gates finales se agruparon tras ceder la cola a VANTA-128, sin bajar límites.
+- Revisión profunda: lector común admite canales cerrados; solo Setup exige beta.
+  Decisión corregida del orquestador: previous ausente sigue rechazado como PS.
+  Unread neutro y contraste de nueve rechazos por invariantes, sin texto de error.
+  Nota de vigencia del diseño actualizada; parser build.rs marcado deuda p4/p7.
+  Gates afectados en curso; resultados anteriores no validan este nuevo HEAD.
 - Siguiente: revisión/CI/integración del orquestador y QA física en cuenta/VM.
   Encargo posterior autorizado: PR pequeño separado para test1c por handle,
   en lugar de consulta por PID; no se mezcla aquí. Sin Plane, instalación real,

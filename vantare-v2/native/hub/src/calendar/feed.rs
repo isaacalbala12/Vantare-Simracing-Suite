@@ -63,12 +63,20 @@ mod tests {
             "vantare-1869-feed-{}",
             vantare_services::random_id().expect("QA id")
         ));
+        std::fs::create_dir_all(&root).expect("QA root");
         let calendar = Calendar::load(&root).expect("QA calendar");
-        let now = "2026-11-02T12:00:00Z".parse::<DateTime<Utc>>().expect("clock");
+        let now = "2026-11-02T12:00:00Z"
+            .parse::<DateTime<Utc>>()
+            .expect("clock");
         let first = calendar.alert_feed(now).expect("feed");
-        let second = calendar.alert_feed(now + Duration::seconds(1)).expect("feed");
+        let second = calendar
+            .alert_feed(now + Duration::seconds(1))
+            .expect("feed");
         assert_eq!(first.events, second.events);
-        assert_ne!(serde_json::to_vec(&first).unwrap(), serde_json::to_vec(&second).unwrap());
+        assert_ne!(
+            serde_json::to_vec(&first).expect("first wire feed"),
+            serde_json::to_vec(&second).expect("second wire feed")
+        );
         std::fs::remove_dir_all(root).expect("QA cleanup");
     }
 
@@ -76,6 +84,9 @@ mod tests {
     fn colocated_feed_collides_with_private_alert_preferences() {
         let root = std::path::Path::new("C:/qa/1869/hub");
         // --data-dir=<root>, --layout=<root>/layout.json (README de desarrollo).
-        assert_eq!(Calendar::alert_path(&root.join("layout.json")), root.join("calendar-alerts.json"));
+        assert_eq!(
+            Calendar::alert_path(&root.join("layout.json")),
+            root.join("calendar-alerts.json")
+        );
     }
 }

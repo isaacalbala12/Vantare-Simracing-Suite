@@ -58,7 +58,7 @@ pub fn ensure(condition: bool, message: &str) -> Result<()> {
 
 pub fn path(value: &Path) -> Result<PathBuf> {
     ensure(
-        !value.as_os_str().is_empty(),
+        !value.as_os_str().to_string_lossy().trim().is_empty(),
         "Se necesita una ruta local explícita",
     )?;
     let absolute = std::path::absolute(value)?;

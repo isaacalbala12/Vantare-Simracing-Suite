@@ -27,6 +27,21 @@ fn wide(value: &OsStr) -> Result<Vec<u16>> {
 fn error(error: &windows::core::Error) -> WriteError {
     WriteError::new(1, error.to_string())
 }
+
+#[cfg(feature = "transport")]
+pub fn paths_equal(left: &Path, right: &Path) -> Result<bool> {
+    use windows::Win32::Globalization::{CSTR_EQUAL, CompareStringOrdinal};
+    let left = wide(left.as_os_str())?;
+    let right = wide(right.as_os_str())?;
+    ensure(
+        i32::try_from(left.len()).is_ok() && i32::try_from(right.len()).is_ok(),
+        "Ruta Windows demasiado larga",
+    )?;
+    let result =
+        unsafe { CompareStringOrdinal(&left[..left.len() - 1], &right[..right.len() - 1], true) };
+    ensure(result.0 != 0, "No se pudieron comparar las rutas Windows")?;
+    Ok(result == CSTR_EQUAL)
+}
 pub fn new_id() -> Result<String> {
     Ok(format!(
         "{:032x}",

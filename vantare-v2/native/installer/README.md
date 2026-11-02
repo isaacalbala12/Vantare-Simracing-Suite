@@ -23,6 +23,8 @@ y manifiesto para Setup y Ajustes del Hub. `State`, `Generation` y `Manifest`
 reúnen los tipos; la versión instalada sale del manifiesto de la activa.
 El lector no escribe instalación, registro, opciones ni datos. Desde p4,
 Context::probe reúne descubrimiento HKCU, opciones y movimiento en Rust.
+La propiedad de la raíz conserva la comparación Windows sin distinguir
+mayúsculas, incluidos Unicode y separadores; no confunde raíces vecinas.
 complete_probe/readContext se conservan solo como adaptador de contraste p3
 y oráculo heredado del driver, no los invoca Setup.
 

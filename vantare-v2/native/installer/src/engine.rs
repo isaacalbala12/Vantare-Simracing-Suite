@@ -46,7 +46,7 @@ pub fn reject_links(path: &std::path::Path) -> Result<(), String> {
     Ok(())
 }
 
-/// Legacy p3 contrast adapter. Production Setup uses Context::probe from p4;
+/// Legacy p3 contrast adapter. Production Setup uses `Context::probe` from p4;
 /// the matrix keeps this adapter until product PowerShell retires in p7.
 pub fn complete_probe(
     mut info: crate::model::Info,

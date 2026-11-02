@@ -341,6 +341,9 @@ fn uninstall_probe_uses_manifest_or_a_neutral_absence_never_a_retained_version()
 
 #[test]
 fn qa_context_cannot_fall_back_to_product_registry_or_escape_its_folders() {
+    for empty in ["", " ", "\t"] {
+        assert!(disk::path(Path::new(empty)).is_err());
+    }
     let fixture = Fixture::new();
     for bad in [
         "C:/Users/matrix/Programs/Vantare",
@@ -514,7 +517,7 @@ fn retirement_uses_the_shared_reader_and_rejects_invalid_references_before_delet
         let mut value = before.clone();
         match fault {
             "previous-missing" => {
-                value
+                let _ = value
                     .as_object_mut()
                     .expect("state object")
                     .remove("previous");
@@ -523,8 +526,12 @@ fn retirement_uses_the_shared_reader_and_rejects_invalid_references_before_delet
                 value["previous"] = value["active"].clone();
                 value["previous"]["manifest_sha256"] = json!("invalid");
             }
-            "active-hash" => value["active"]["manifest_sha256"] = json!("invalid"),
-            "channel" => value["channel"] = json!("nightly"),
+            "active-hash" => {
+                value["active"]["manifest_sha256"] = json!("invalid");
+            }
+            "channel" => {
+                value["channel"] = json!("nightly");
+            }
             _ => unreachable!(),
         }
         let bytes = serde_json::to_vec(&value).expect("invalid fixture");

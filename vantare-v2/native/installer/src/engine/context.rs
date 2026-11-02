@@ -168,7 +168,7 @@ impl Context {
             && let (Some(registered), Some(explicit)) = (&registered, explicit)
         {
             ensure(
-                disk::path(Path::new(registered))? == disk::path(explicit)?,
+                same_path(Path::new(registered), explicit)?,
                 "El desinstalador no pertenece a esta instalación",
             )?;
         }
@@ -242,6 +242,20 @@ impl Context {
                 .as_deref()
                 == Some("0"),
         })
+    }
+}
+
+// Legacy root ownership compares normalized Windows paths without case sensitivity.
+fn same_path(left: &Path, right: &Path) -> Result<bool> {
+    let left: PathBuf = disk::path(left)?.components().collect();
+    let right: PathBuf = disk::path(right)?.components().collect();
+    #[cfg(windows)]
+    {
+        super::platform::paths_equal(&left, &right)
+    }
+    #[cfg(not(windows))]
+    {
+        Ok(left == right)
     }
 }
 
@@ -359,4 +373,29 @@ fn startup_preference(root: &Path) -> Result<Option<bool>> {
         )
     };
     Ok(read().unwrap_or(None))
+}
+
+#[cfg(all(test, windows))]
+mod tests {
+    use super::same_path;
+    use std::path::Path;
+
+    #[test]
+    fn root_ownership_preserves_windows_case_and_separator_equivalence() {
+        let root = Path::new("D:/VantareServer/qa/Instalación/root");
+        assert!(
+            same_path(
+                root,
+                Path::new("d:\\VANTARESERVER\\QA\\INSTALACIÓN\\ROOT\\")
+            )
+            .expect("Windows path comparison")
+        );
+        assert!(
+            !same_path(
+                root,
+                Path::new("D:/VantareServer/qa/Instalación/root-other")
+            )
+            .expect("different root")
+        );
+    }
 }

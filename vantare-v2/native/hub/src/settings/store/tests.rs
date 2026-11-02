@@ -369,7 +369,7 @@ fn step6_oversized_sources_remain_protected_without_loss() {
         ("general.json", 4096),
         ("appearance.json", 16 * 1024),
         ("hub-zoom.json", 128),
-        (FILE, LIMIT as usize),
+        (FILE, usize::try_from(LIMIT).unwrap()),
     ] {
         let root = Root::new();
         let bytes = vec![b' '; limit + 1];

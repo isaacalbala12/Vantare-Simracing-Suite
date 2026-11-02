@@ -91,14 +91,14 @@ pub(super) fn migrate_v1(
         match kind.parse(value) {
             Ok(value) => match kind {
                 Legacy::General => {
-                    document.general = serde_json::from_value(value).expect("validated general")
+                    document.general = serde_json::from_value(value).expect("validated general");
                 }
                 Legacy::Appearance => {
                     document.appearance =
-                        super::appearance::read_settings(&value).expect("validated appearance")
+                        super::appearance::read_settings(&value).expect("validated appearance");
                 }
                 Legacy::Zoom => {
-                    document.zoom = serde_json::from_value(value).expect("validated zoom")
+                    document.zoom = serde_json::from_value(value).expect("validated zoom");
                 }
             },
             Err(_) => warnings.push(kind),

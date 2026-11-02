@@ -1388,7 +1388,7 @@ impl Hub {
             window,
             cx,
         );
-        settings.status = settings.store.warning.clone();
+        settings.status.clone_from(&settings.store.warning);
         if let Some(page) = capture.as_ref().and_then(|capture| capture.settings_page) {
             settings.select_demo_page(page);
         }

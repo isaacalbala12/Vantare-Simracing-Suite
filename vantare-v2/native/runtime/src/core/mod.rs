@@ -790,6 +790,38 @@ mod tests {
     }
 
     #[test]
+    fn freshness_retains_player_only_until_pause_silence_expires() {
+        use vantare_domain::Capability;
+        for simulator in ["lmu", "acc", "unknown"] {
+            let mut core = Core::new(1);
+            let mut live = observation(ms(0), ms(0), 0.5);
+            live.origin.source.simulator = simulator;
+            core.observe(live.clone()).expect("live");
+            let mut frozen = live.clone();
+            frozen.origin.received_at = ms(100);
+            frozen.origin.source_time = Some(ms(100));
+            frozen.state.capabilities.driver_inputs = Capability::WithData;
+            frozen.state.player.as_mut().expect("player").telemetry.throttle = Quality::Stale(0.9);
+            core.observe(frozen).expect("scoring live, player frozen");
+            assert_eq!(core.snapshot().state.player.as_ref().expect("player").telemetry.throttle, Quality::Stale(0.9));
+            let mut pause = live;
+            pause.origin.received_at = ms(200);
+            pause.state.source_state = SourceState::Paused;
+            core.observe(pause).expect("confirmed by adapter");
+            assert_eq!(core.snapshot().state.player.as_ref().expect("player").telemetry.throttle, Quality::Reliable(0.5));
+            core.tick(ms(449));
+            assert_ne!(core.snapshot().state.driving_situation, vantare_domain::DrivingSituation::Paused);
+            core.tick(ms(450));
+            assert_eq!(core.snapshot().state.driving_situation, vantare_domain::DrivingSituation::Paused);
+            core.tick(ms(699));
+            assert_eq!(core.snapshot().state.source_state, SourceState::Paused);
+            core.tick(ms(700));
+            assert_eq!(core.snapshot().state.source_state, SourceState::Stale);
+            assert_eq!(core.snapshot().state.player.as_ref().expect("player").telemetry.throttle, Quality::Stale(0.5));
+        }
+    }
+
+    #[test]
     fn unchanged_pedals_with_advancing_source_stay_fresh_beyond_pipe_timeout() {
         let mut demand = vantare_ipc::Demand::default();
         demand.request(vantare_ipc::Signal::Pedals, 5000);

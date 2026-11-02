@@ -38,6 +38,17 @@ function Invoke-BoundaryWriter([string]$Operation,[string]$Version){
 try{
     $result=Invoke-BoundaryWriter 'Install' '0.0.988'
     Assert-Boundary ($result.ExitCode -eq 0) 'Rust Setup finalizes the legacy Windows projection'
+    $motionKey='HKCU:/Control Panel/Desktop/WindowMetrics'
+    New-Item -Path $motionKey -Force|Out-Null
+    foreach($motionType in @('String','DWord')){
+        foreach($motionValue in @(0,1)){
+            New-ItemProperty -LiteralPath $motionKey -Name MinAnimate -Value $motionValue -PropertyType $motionType -Force|Out-Null
+            $legacyMotion=(Get-ItemProperty -LiteralPath $motionKey).MinAnimate -ceq '0'
+            $probe=Invoke-BoundaryWriter 'Probe' '0.0.988'
+            $actualMotion=($probe.Stdout|ConvertFrom-Json).reduced_motion
+            Assert-Boundary ($probe.ExitCode -eq 0 -and $actualMotion -eq $legacyMotion) ('MinAnimate '+$motionType+' '+$motionValue+' matches PowerShell')
+        }
+    }
     $stateBytes=[IO.File]::ReadAllBytes((Join-Path $install 'state.json'))
     $state=Read-NativeState $install
     $data=Join-Path $install ('generations/'+$state.active.generation+'/data')

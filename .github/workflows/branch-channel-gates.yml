@@ -443,7 +443,11 @@ jobs:
           if ($LASTEXITCODE) { throw 'matrix TEST verifier build failed' }
           pwsh -NoProfile -File native/scripts/compilar.ps1 cargo build --manifest-path native/Cargo.toml -p vantare-installer --no-default-features --example probe-read-matrix --locked --offline -j 4
           if ($LASTEXITCODE) { throw 'matrix read probe build failed' }
-          pwsh -NoProfile -File native/scripts/compilar.ps1 cargo build --manifest-path native/Cargo.toml -p vantare-installer --no-default-features --features transport --example installer-write-matrix --locked --offline -j 4
+          $env:VANTARE_INSTALLER_QA_IDENTITY='VantareMatrixWriter'
+          $env:VANTARE_INSTALLER_QA_SHORTCUT_FOLDER='Vantare Matrix Writer'
+          $env:VANTARE_INSTALLER_QA_LEGACY_SHORTCUT_FOLDER='Vantare Matrix Legacy'
+          $env:VANTARE_INSTALLER_QA_PREFIX="$env:RUNNER_TEMP/"
+          pwsh -NoProfile -File native/scripts/compilar.ps1 cargo build --manifest-path native/Cargo.toml -p vantare-installer --no-default-features --features transport,test-installer --example installer-write-matrix --locked --offline -j 4
           if ($LASTEXITCODE) { throw 'matrix writer build failed' }
             pwsh -NoProfile -File native/scripts/compilar.ps1 cargo build --manifest-path native/Cargo.toml -p vantare-hub --example boot-confirmation-matrix --locked --offline -j 4
             if ($LASTEXITCODE) { throw 'matrix boot confirmation fixture build failed' }

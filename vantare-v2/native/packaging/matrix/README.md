@@ -185,7 +185,7 @@ La demostración del driver exige salida correcta, registro retirado y datos
 intactos. data_unchanged se calcula de los índices realmente comparados.
 
 Paso 4: `-WriteEngine` recibe el ejemplo QA `installer-write-matrix.exe`,
-compilado con `--no-default-features --features transport`. Usa las operaciones
+compilado con `--no-default-features --features transport,test-installer`. Usa las operaciones
 Rust de producto con contexto explícito de registro y carpetas. Conserva las
 88 instantáneas y el contraste del lector; Feed/Register siguen heredados.
 `writer-boundary-tests.ps1` fuerza fallos de la finalización Windows, comprueba

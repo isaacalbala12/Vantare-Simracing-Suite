@@ -56,7 +56,7 @@ required-features = ["transport"]
 
 [[example]]
 name = "installer-write-matrix"
-required-features = ["transport"]
+required-features = ["transport", "test-installer"]
 
 [[test]]
 name = "installation_write"

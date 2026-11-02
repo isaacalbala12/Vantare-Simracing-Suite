@@ -93,6 +93,9 @@ impl Session {
         Self::with_context(Context::system().map_err(|error| error.to_string())?)
     }
     pub fn with_context(context: Context) -> Result<Self, String> {
+        if context.is_isolated() && !cfg!(feature = "test-installer") {
+            return Err("El transporte aislado requiere una build test-installer".into());
+        }
         let parent = std::env::temp_dir();
         reject_links(&parent)?;
         if context.is_isolated() {
@@ -122,6 +125,7 @@ impl Session {
                     ] {
                         session.write(name, bytes)?;
                     }
+                    #[cfg(feature = "test-installer")]
                     if session.context.is_isolated() {
                         session.write("qa-guard.ps1", payload::QA_GUARD)?;
                     }
@@ -200,14 +204,14 @@ impl Session {
         progress: &mut dyn FnMut(Progress),
     ) -> WriteResult<()> {
         self.shell_contract(operation, request, previous)?;
-        let log = fs::OpenOptions::new()
+        let mut log = fs::OpenOptions::new()
             .append(true)
             .open(&request.log_file)?;
         let mut child = self
             .command()
             .map_err(|error| WriteError::new(1, error))?
             .stdout(Stdio::piped())
-            .stderr(Stdio::from(log))
+            .stderr(Stdio::from(log.try_clone()?))
             .spawn()?;
         let stdout = child
             .stdout
@@ -215,31 +219,30 @@ impl Session {
             .ok_or_else(|| WriteError::new(1, "Falta salida de finalización"))?;
         let mut reader = BufReader::new(stdout);
         let mut bytes = Vec::new();
-        let mut invalid = false;
         loop {
             bytes.clear();
             match reader.by_ref().take(8193).read_until(b'\n', &mut bytes) {
                 Ok(0) => break,
-                Ok(count) if count <= 8192 => {
-                    if let Ok(event) = serde_json::from_slice::<Progress>(&bytes) {
-                        if event.percent <= 100 && event.done <= event.total {
-                            progress(event);
-                        } else {
-                            invalid = true;
-                        }
-                    } else {
-                        invalid = true;
+                Ok(count) if count <= 8192 => match serde_json::from_slice::<Progress>(&bytes) {
+                    Ok(event) if event.percent <= 100 && event.done <= event.total => {
+                        progress(event)
                     }
+                    _ => {
+                        let _ = log.write_all(&bytes);
+                    }
+                },
+                Ok(_) => {
+                    let _ = log.write_all(&bytes);
                 }
-                Ok(_) => invalid = true,
-                Err(_) => {
-                    invalid = true;
+                Err(error) => {
+                    let _ = writeln!(log, "Salida de finalización: {error}");
                     break;
                 }
             }
         }
         let status = child.wait()?;
-        disk::ensure(!invalid, "La finalización devolvió eventos inválidos")?;
+        // Cosmetic warnings and unrecognized output are diagnostics. The child
+        // exit status, not stdout formatting, decides whether to roll back.
         disk::ensure(
             status.success(),
             "No se pudo finalizar la integración Windows; consulta el registro",
@@ -540,4 +543,71 @@ pub fn headless(args: &Args) -> Result<u8, String> {
         })?;
     }
     Ok(code)
+}
+
+#[cfg(all(test, windows))]
+mod tests {
+    use super::{Request, Session};
+    use crate::{
+        args::Args,
+        engine::{
+            context::{Context, qa_path},
+            write_fs as disk,
+        },
+    };
+    use std::{fs, path::PathBuf};
+
+    #[test]
+    fn warning_stdout_does_not_override_the_owned_finalizer_exit_status() {
+        for code in [0, 7] {
+            let parent = if std::env::var("CI").as_deref() == Ok("true") {
+                PathBuf::from(std::env::var_os("RUNNER_TEMP").expect("CI root"))
+            } else {
+                PathBuf::from("D:/VantareServer/qa/isa-1840")
+            };
+            let id = disk::id().expect("ID");
+            let root = parent.join("p4-finalizer-tests").join(&id);
+            qa_path(&root).expect("QA guard");
+            let directory = root.join("transport");
+            fs::create_dir_all(&directory).expect("owned transport");
+            let context = Context::isolated(
+                root.join("LocalAppData"),
+                format!("Software\\VantareInstallerMatrix\\{id}"),
+                root.join("shell"),
+            )
+            .expect("isolated context");
+            // This script only emits diagnostics/progress; it never runs product
+            // shell code or touches registry. The session owns/reaps its child.
+            let session = Session {
+                directory,
+                context,
+                transferred: false,
+            };
+            let script = r#"Write-Warning 'injected cosmetic warning'
+[Console]::WriteLine('{"step":"register","percent":93,"done":0,"total":0,"can_cancel":false}')
+[Console]::WriteLine('{"step":"bad","percent":255,"done":0,"total":0,"can_cancel":false}')
+exit EXIT_CODE
+"#
+            .replace("EXIT_CODE", &code.to_string());
+            fs::write(session.directory.join("installer-shell.ps1"), script)
+                .expect("injected finalizer");
+            let mut request = Request::new(
+                &Args {
+                    root: Some(root.join("install")),
+                    ..Args::default()
+                },
+                "Cleanup",
+            );
+            request.log_file = root.join("diagnostics.log");
+            fs::write(&request.log_file, []).expect("owned log");
+            let mut events = Vec::new();
+            let result =
+                session.finalize("Cleanup", &request, None, &mut |event| events.push(event));
+            assert_eq!(result.is_ok(), code == 0);
+            assert_eq!(events.len(), 1);
+            let log = fs::read_to_string(&request.log_file).expect("diagnostics");
+            assert!(log.contains("injected cosmetic warning"));
+            assert!(log.contains("\"percent\":255"));
+        }
+    }
 }

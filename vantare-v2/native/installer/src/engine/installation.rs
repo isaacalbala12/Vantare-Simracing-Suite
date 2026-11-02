@@ -352,11 +352,11 @@ pub fn current_members(channel: &str) -> Vec<&'static str> {
         .collect()
 }
 pub fn validate_catalogue() -> Result<(), ReadError> {
-    let mut seen: HashSet<_> = CURRENT_MEMBERS
-        .iter()
-        .map(|path| path.to_ascii_lowercase())
-        .collect();
-    for path in RETIRED_MEMBERS {
+    validate_catalogue_paths(CURRENT_MEMBERS, RETIRED_MEMBERS)
+}
+fn validate_catalogue_paths(current: &[&str], retired: &[&str]) -> Result<(), ReadError> {
+    let mut seen = HashSet::new();
+    for path in current.iter().chain(retired) {
         let valid = path.split('/').all(|segment| {
             !segment.eq_ignore_ascii_case("data")
                 && segment.split('.').all(|part| {
@@ -372,6 +372,28 @@ pub fn validate_catalogue() -> Result<(), ReadError> {
         )?;
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod catalogue_tests {
+    #[test]
+    fn current_and_retired_paths_both_require_safe_unique_catalogue_members() {
+        for invalid in [
+            "data/user.json",
+            "../outside",
+            "/rooted",
+            "C:/rooted",
+            ".env",
+            "bin//a.exe",
+        ] {
+            assert!(super::validate_catalogue_paths(&[invalid], &[]).is_err());
+            assert!(super::validate_catalogue_paths(&[], &[invalid]).is_err());
+        }
+        assert!(super::validate_catalogue_paths(&["bin/a.exe", "BIN/A.EXE"], &[]).is_err());
+        assert!(super::validate_catalogue_paths(&["bin/a.exe"], &["BIN/A.EXE"]).is_err());
+        super::validate_catalogue_paths(&["bin/a.exe"], &["bin/retired.exe"])
+            .expect("valid catalogue");
+    }
 }
 
 pub(super) fn hash_file(path: &Path) -> Result<String, ReadError> {

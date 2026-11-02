@@ -34,6 +34,11 @@ if($context.registryPrefix){
         Join-Path $script:InjectedShellRoot $Name
     }
 }
+function Write-Warning {
+    [CmdletBinding()]
+    param([Parameter(Mandatory,Position=0)][string]$Message)
+    [Console]::Error.WriteLine($Message)
+}
 function Write-NativeShortcutWarning([string]$Message){[Console]::Error.WriteLine($Message)}
 function Send-InstallerProgress([string]$Step,[int]$Percent){
     [Console]::WriteLine((@{step=$Step;percent=$Percent;done=0;total=0;can_cancel=$false}|ConvertTo-Json -Compress))

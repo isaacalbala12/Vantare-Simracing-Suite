@@ -43,9 +43,16 @@ pub fn expand(
         "SHA-256 externo incorrecto",
     )?;
     input.rewind()?;
-    let mut archive = zip::ZipArchive::new(input)?;
+    let archive = zip::ZipArchive::new(input)?;
     let mut allowed = current_members(channel);
     allowed.push("manifest.json");
+    // Inspect raw records before an indexed archive can hide a duplicate or
+    // reject its count for a different reason.
+    let central = archive.central_directory_start();
+    let mut input = archive.into_inner();
+    validate_central(&mut input, central, &allowed)?;
+    input.rewind()?;
+    let mut archive = zip::ZipArchive::new(input)?;
     ensure(
         archive.len() == allowed.len(),
         "Número de miembros ZIP incorrecto",
@@ -79,11 +86,6 @@ pub fn expand(
             "Compresión ZIP no compatible",
         )?;
     }
-    let central = archive.central_directory_start();
-    let mut input = archive.into_inner();
-    validate_central(&mut input, central, &allowed)?;
-    input.rewind()?;
-    let mut archive = zip::ZipArchive::new(input)?;
     fs::create_dir_all(destination)?;
     for index in 0..archive.len() {
         let mut member = archive.by_index(index)?;
@@ -155,4 +157,53 @@ fn validate_central(input: &mut fs::File, offset: u64, allowed: &[&str]) -> Resu
         input.seek(SeekFrom::Current(i64::from(extra) + i64::from(comment)))?;
     }
     ensure(seen.len() == allowed.len(), "ZIP incompleto")
+}
+
+#[cfg(all(test, windows, feature = "transport"))]
+mod central_tests {
+    use std::{
+        fs,
+        io::{Seek, Write},
+        path::PathBuf,
+    };
+
+    #[test]
+    fn duplicate_is_rejected_by_the_raw_central_directory_validator() {
+        let parent = if std::env::var("CI").as_deref() == Ok("true") {
+            PathBuf::from(std::env::var_os("RUNNER_TEMP").expect("CI root"))
+        } else {
+            PathBuf::from("D:/VantareServer/qa/isa-1840")
+        };
+        let root = parent
+            .join("p4-central-tests")
+            .join(crate::engine::write_fs::id().expect("ID"));
+        crate::engine::context::qa_path(&root).expect("QA guard");
+        fs::create_dir_all(&root).expect("owned root");
+        let mut file = fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create_new(true)
+            .open(root.join("duplicate.central"))
+            .expect("fixture");
+        let name = b"bin/a.exe";
+        let mut header = [0_u8; 42];
+        header[24..26].copy_from_slice(
+            &u16::try_from(name.len())
+                .expect("name length")
+                .to_le_bytes(),
+        );
+        for _ in 0..2 {
+            file.write_all(b"PK\x01\x02").expect("signature");
+            file.write_all(&header).expect("header");
+            file.write_all(name).expect("name");
+        }
+        file.write_all(b"PK\x05\x06").expect("end");
+        assert!(super::validate_central(&mut file, 0, &["bin/a.exe", "bin/b.exe"]).is_err());
+        // The second name was consumed: this failed in validate_central, not
+        // in ZipArchive indexing/count validation or an incomplete catalogue.
+        assert_eq!(
+            file.stream_position().expect("cursor"),
+            u64::try_from(2 * (46 + name.len())).expect("position")
+        );
+    }
 }

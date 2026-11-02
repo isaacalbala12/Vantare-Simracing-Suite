@@ -369,7 +369,7 @@ fn activate(
         &temporary,
         &json!({"schema":1,"state":"applied","message":"Instalación aplicada; comprobando el arranque","version":version,"notes":""}),
     )?;
-    disk::replace(&temporary, &root.join("update-status.json"))
+    disk::replace_temporary(&temporary, &root.join("update-status.json"))
 }
 
 /// Shared generation update. The PS feed remains a legacy consumer until p6.

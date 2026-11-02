@@ -4,8 +4,8 @@ use super::write_fs::{Result, WriteError, ensure};
 use std::{ffi::OsStr, os::windows::ffi::OsStrExt, path::Path};
 #[cfg(feature = "transport")]
 use windows::Win32::System::Registry::{
-    HKEY, HKEY_CURRENT_USER, KEY_READ, RRF_RT_REG_EXPAND_SZ, RRF_RT_REG_SZ, RegCloseKey,
-    RegGetValueW, RegOpenKeyExW,
+    HKEY, HKEY_CURRENT_USER, KEY_READ, REG_DWORD, REG_VALUE_TYPE, RRF_RT_REG_DWORD,
+    RRF_RT_REG_EXPAND_SZ, RRF_RT_REG_SZ, RegCloseKey, RegGetValueW, RegOpenKeyExW,
 };
 use windows::{
     Win32::{
@@ -117,7 +117,12 @@ pub fn copy_new(source: &Path, target: &Path) -> Result<()> {
         .map_err(|cause| error(&cause))
 }
 #[cfg(feature = "transport")]
-pub fn registry_string(prefix: &str, key: &str, name: &str) -> Result<Option<String>> {
+pub fn registry_string(
+    prefix: &str,
+    key: &str,
+    name: &str,
+    allow_dword: bool,
+) -> Result<Option<String>> {
     let key = if prefix.is_empty() {
         key.to_owned()
     } else {
@@ -126,7 +131,10 @@ pub fn registry_string(prefix: &str, key: &str, name: &str) -> Result<Option<Str
     let key = wide(OsStr::new(&key))?;
     let name = wide(OsStr::new(name))?;
     let mut bytes = 0;
-    let flags = RRF_RT_REG_SZ | RRF_RT_REG_EXPAND_SZ;
+    let mut flags = RRF_RT_REG_SZ | RRF_RT_REG_EXPAND_SZ;
+    if allow_dword {
+        flags |= RRF_RT_REG_DWORD;
+    }
     let status = unsafe {
         RegGetValueW(
             HKEY_CURRENT_USER,
@@ -144,19 +152,29 @@ pub fn registry_string(prefix: &str, key: &str, name: &str) -> Result<Option<Str
     }
     ensure(bytes <= 65536, "Valor de registro demasiado grande")?;
     let mut buffer = vec![0_u16; (bytes as usize).div_ceil(2)];
+    let mut kind = REG_VALUE_TYPE::default();
     unsafe {
         RegGetValueW(
             HKEY_CURRENT_USER,
             PCWSTR(key.as_ptr()),
             PCWSTR(name.as_ptr()),
             flags,
-            None,
+            Some(&raw mut kind),
             Some(buffer.as_mut_ptr().cast()),
             Some(&raw mut bytes),
         )
     }
     .ok()
     .map_err(|cause| error(&cause))?;
+    if kind == REG_DWORD {
+        ensure(
+            bytes == 4 && buffer.len() >= 2,
+            "DWORD de registro inválido",
+        )?;
+        return Ok(Some(
+            (u32::from(buffer[0]) | (u32::from(buffer[1]) << 16)).to_string(),
+        ));
+    }
     let count = buffer.iter().position(|n| *n == 0).unwrap_or(buffer.len());
     Ok(Some(String::from_utf16_lossy(&buffer[..count])))
 }

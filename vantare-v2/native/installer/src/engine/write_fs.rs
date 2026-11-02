@@ -216,6 +216,14 @@ pub fn commit(
 ) -> Result<()> {
     commit_raw(root, &serde_json::to_vec_pretty(state)?, checkpoint)
 }
+/// Consume an owned temporary, including when the atomic replacement fails.
+pub fn replace_temporary(source: &Path, target: &Path) -> Result<()> {
+    let result = replace(source, target);
+    if result.is_err() {
+        let _ = remove_file(source);
+    }
+    result
+}
 pub fn commit_raw(
     root: &Path,
     bytes: &[u8],
@@ -224,7 +232,7 @@ pub fn commit_raw(
     let temporary = root.join(format!(".state-{}.tmp", id()?));
     write_new(&temporary, bytes)?;
     checkpoint("before-commit")?;
-    replace(&temporary, &root.join("state.json"))?;
+    replace_temporary(&temporary, &root.join("state.json"))?;
     checkpoint("after-commit")
 }
 pub fn remove_file(path: &Path) -> Result<()> {

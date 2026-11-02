@@ -1,7 +1,7 @@
 #![cfg(windows)]
 use serde_json::json;
 use sha2::{Digest, Sha256};
-use std::os::windows::{io::AsRawHandle, process::CommandExt};
+use std::os::windows::{fs::OpenOptionsExt, io::AsRawHandle, process::CommandExt};
 use std::{
     fs,
     io::{BufRead, BufReader, Write},
@@ -161,6 +161,14 @@ impl Fixture {
             &mut control,
             |_| {
                 if fail_finalize {
+                    fs::write(
+                        self.root.join("installer-ui.json"),
+                        b"partially replaced options",
+                    )?;
+                    fs::write(
+                        self.root.join("Uninstall.exe"),
+                        b"partially replaced uninstaller",
+                    )?;
                     Err(engine::WriteError::new(1, "injected finalizer failure"))
                 } else {
                     Ok(())
@@ -234,9 +242,22 @@ fn failed_shell_finalization_restores_exact_state_and_metadata_bytes() {
         .expect("install");
     fixture.write_data();
     let state = fs::read(fixture.root.join("state.json")).expect("state bytes");
+    let options = b"{\"desktop\":true,\"original\":\"exact bytes\"}\r\n";
+    fs::write(fixture.root.join("installer-ui.json"), options).expect("original options");
+    let uninstaller =
+        fs::read(fixture.active().join("bin/vantare.exe")).expect("inert original PE");
+    fs::write(fixture.root.join("Uninstall.exe"), &uninstaller).expect("original uninstaller");
     let data = disk::data_index(&fixture.data()).expect("data before");
     let result = fixture.install(&fixture.package("1.0.1"), Mode::Auto, true, false);
     assert!(result.is_err());
+    assert_eq!(
+        fs::read(fixture.root.join("installer-ui.json")).expect("restored options"),
+        options
+    );
+    assert_eq!(
+        fs::read(fixture.root.join("Uninstall.exe")).expect("restored uninstaller"),
+        uninstaller
+    );
     assert_eq!(
         fs::read(fixture.root.join("state.json")).expect("restored bytes"),
         state
@@ -264,6 +285,44 @@ fn cancel_at_the_last_copy_checkpoint_never_activates_a_generation() {
     assert_eq!(result.code, 5);
     assert!(!fixture.root.join("state.json").exists());
     assert!(!fixture.root.join("generations").exists());
+}
+
+#[test]
+fn failed_atomic_replacements_remove_owned_temporaries_and_preserve_targets() {
+    let fixture = Fixture::new();
+    fs::create_dir(&fixture.root).expect("owned root");
+    for name in ["state.json", "update-status.json"] {
+        let target = fixture.root.join(name);
+        fs::write(&target, b"original bytes").expect("original target");
+        let handle = fs::OpenOptions::new()
+            .read(true)
+            .share_mode(0)
+            .open(&target)
+            .expect("deny replace");
+        if name == "state.json" {
+            assert!(disk::commit_raw(&fixture.root, b"replacement", &mut |_| Ok(())).is_err());
+        } else {
+            let temporary = fixture.root.join("beta-owned.tmp");
+            disk::write_new(&temporary, b"replacement").expect("owned temporary");
+            assert!(disk::replace_temporary(&temporary, &target).is_err());
+        }
+        drop(handle);
+        assert_eq!(
+            fs::read(&target).expect("preserved target"),
+            b"original bytes"
+        );
+        assert!(
+            fs::read_dir(&fixture.root)
+                .expect("root files")
+                .all(|entry| {
+                    entry
+                        .expect("entry")
+                        .path()
+                        .extension()
+                        .is_none_or(|extension| extension != "tmp")
+                })
+        );
+    }
 }
 
 #[test]

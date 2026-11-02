@@ -139,7 +139,12 @@ impl Context {
         self.validate_context()?;
         #[cfg(windows)]
         {
-            super::platform::registry_string(&self.registry_prefix, key, name)
+            super::platform::registry_string(
+                &self.registry_prefix,
+                key,
+                name,
+                key == "Control Panel\\Desktop\\WindowMetrics" && name == "MinAnimate",
+            )
         }
         #[cfg(not(windows))]
         {
@@ -271,10 +276,14 @@ pub fn qa_path(path: &Path) -> Result<()> {
     )?;
     let path = disk::path(path)?;
     let prefix = Path::new("D:/VantareServer/qa");
-    let in_server = path != prefix && path.starts_with(prefix);
+    let in_server = below_prefix(&path, prefix);
     let in_ci = std::env::var("CI").as_deref() == Ok("true")
-        && std::env::var_os("RUNNER_TEMP").is_some_and(|prefix| path.starts_with(prefix));
+        && std::env::var_os("RUNNER_TEMP")
+            .is_some_and(|prefix| below_prefix(&path, Path::new(&prefix)));
     ensure(in_server || in_ci, "Guard QA rechazó la ruta")
+}
+fn below_prefix(path: &Path, prefix: &Path) -> bool {
+    !prefix.as_os_str().is_empty() && path != prefix && path.starts_with(prefix)
 }
 pub fn identity(request: &Request) -> Result<&str> {
     if !request.qa {
@@ -377,8 +386,24 @@ fn startup_preference(root: &Path) -> Result<Option<bool>> {
 
 #[cfg(all(test, windows))]
 mod tests {
-    use super::same_path;
+    use super::{below_prefix, same_path};
     use std::path::Path;
+
+    #[test]
+    fn empty_qa_prefix_never_accepts_any_path() {
+        for value in [
+            "",
+            "relative",
+            "D:/VantareServer/qa/test",
+            "C:/Users/fixture",
+        ] {
+            assert!(!below_prefix(Path::new(value), Path::new("")));
+        }
+        assert!(!below_prefix(
+            Path::new("D:/VantareServer/qa"),
+            Path::new("D:/VantareServer/qa")
+        ));
+    }
 
     #[test]
     fn root_ownership_preserves_windows_case_and_separator_equivalence() {

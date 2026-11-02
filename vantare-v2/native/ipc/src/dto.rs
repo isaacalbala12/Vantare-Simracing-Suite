@@ -2184,14 +2184,21 @@ mod demand_tests {
         for shift in 0..4 {
             let source = crate::codec::tests::Distinct::new(0, shift, 4).snapshot();
             let previous = SnapshotDto::from(&source);
-            for delivered in std::iter::once(Demand::default())
-                .chain(Signal::ALL.iter().map(|signal| Demand::from_mask(signal.bit())))
-            {
+            for delivered in std::iter::once(Demand::default()).chain(
+                Signal::ALL
+                    .iter()
+                    .map(|signal| Demand::from_mask(signal.bit())),
+            ) {
                 let mut partial = SnapshotDto::selected(&source, &delivered).expect("selección");
-                partial.restore(Some(&previous), &Demand::all(), &delivered)
+                partial
+                    .restore(Some(&previous), &Demand::all(), &delivered)
                     .expect("rehidratación");
-                assert_eq!(d::Snapshot::try_from(partial).expect("foto"), source,
-                    "pasada {shift}, máscara {}", delivered.mask());
+                assert_eq!(
+                    d::Snapshot::try_from(partial).expect("foto"),
+                    source,
+                    "pasada {shift}, máscara {}",
+                    delivered.mask()
+                );
             }
         }
     }

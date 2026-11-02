@@ -64,10 +64,14 @@ impl Rejection {
     }
 }
 impl From<Rejection> for ReadError {
-    fn from(reason: Rejection) -> Self { Self::Rejected(reason) }
+    fn from(reason: Rejection) -> Self {
+        Self::Rejected(reason)
+    }
 }
 impl From<&'static str> for ReadError {
-    fn from(reason: &'static str) -> Self { Self::Invalid(reason) }
+    fn from(reason: &'static str) -> Self {
+        Self::Invalid(reason)
+    }
 }
 impl fmt::Display for ReadError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -140,11 +144,7 @@ pub struct Installation {
 }
 
 fn require(valid: bool, reason: impl Into<ReadError>) -> Result<(), ReadError> {
-    if valid {
-        Ok(())
-    } else {
-        Err(reason.into())
-    }
+    if valid { Ok(()) } else { Err(reason.into()) }
 }
 
 fn bytes(path: &Path, limit: Option<u64>, profile: ReadProfile) -> Result<Vec<u8>, ReadError> {
@@ -415,7 +415,10 @@ impl Installation {
                 && (profile != ReadProfile::Uninstall || (state.channel == "beta" && active_valid)),
             Rejection::State,
         )?;
-        require(profile == ReadProfile::Uninstall || active_valid, Rejection::Reference)?;
+        require(
+            profile == ReadProfile::Uninstall || active_valid,
+            Rejection::Reference,
+        )?;
         installation.data_path = root
             .join("generations")
             .join(&state.active.generation)
@@ -519,10 +522,7 @@ fn read_generation(
         )?;
     }
     let manifest = Manifest::decode(&raw, profile)?;
-    require(
-        manifest.channel == expected,
-        Rejection::Manifest,
-    )?;
+    require(manifest.channel == expected, Rejection::Manifest)?;
     if profile != ReadProfile::Hub {
         manifest.installed(&directory, verify_files)?;
     }

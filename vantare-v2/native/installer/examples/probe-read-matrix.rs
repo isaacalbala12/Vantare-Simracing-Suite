@@ -40,7 +40,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let reason = match &error {
                     ReadError::Rejected(reason) => reason.code(),
                     ReadError::Json(_) => "json",
-                    ReadError::Io(error) if error.kind() == io::ErrorKind::NotFound => "io-not-found",
+                    ReadError::Io(error) if error.kind() == io::ErrorKind::NotFound => {
+                        "io-not-found"
+                    }
                     _ => "unclassified",
                 };
                 println!("{}", serde_json::json!({"rejected":reason}));
@@ -51,13 +53,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn read(info: vantare_installer::model::Info, uninstall: bool, reader: bool)
-    -> Result<serde_json::Value, vantare_installer::engine::ReadError> {
+fn read(
+    info: vantare_installer::model::Info,
+    uninstall: bool,
+    reader: bool,
+) -> Result<serde_json::Value, vantare_installer::engine::ReadError> {
     use vantare_installer::engine::{Installation, ReadError, ReadProfile, complete_probe};
     if reader {
         let installation = Installation::read(&info.root, ReadProfile::Probe)?;
-        return Ok(serde_json::json!({"version":installation.installed_version(),
-            "channel":installation.manifest.as_ref().map(|manifest| manifest.channel.as_str())}));
+        return Ok(
+            serde_json::json!({"version":installation.installed_version(),
+            "channel":installation.manifest.as_ref().map(|manifest| manifest.channel.as_str())}),
+        );
     }
     serde_json::to_value(complete_probe(info, uninstall)?).map_err(ReadError::Json)
 }

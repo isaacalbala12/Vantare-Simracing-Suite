@@ -4,7 +4,9 @@ use std::{
     path::{Path, PathBuf},
     sync::atomic::{AtomicU64, Ordering},
 };
-use vantare_installer::engine::{Installation, ReadError, ReadProfile, Rejection, complete_probe, validation};
+use vantare_installer::engine::{
+    Installation, ReadError, ReadProfile, Rejection, complete_probe, validation,
+};
 
 static NEXT: AtomicU64 = AtomicU64::new(0);
 struct Fixture(PathBuf);
@@ -57,18 +59,27 @@ fn common_probe_accepts_non_beta_channels_but_setup_keeps_its_beta_policy() {
         fixture.load(STATE_RC, RC);
         fixture.change_manifest(|manifest| manifest["channel"] = channel.into());
         let path = fixture.0.join("state.json");
-        let mut state: serde_json::Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+        let mut state: serde_json::Value =
+            serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
         state["channel"] = channel.into();
         fs::write(path, state.to_string()).unwrap();
         let read = Installation::read(&fixture.0, ReadProfile::Probe).expect("closed channel");
         assert_eq!(read.manifest.as_ref().unwrap().channel, channel);
         assert_eq!(read.installed_version(), Some("0.0.988"));
         let info = vantare_installer::model::Info {
-            root: fixture.0.clone(), version: "0.0.989".into(), installed_version: None,
-            data_path: PathBuf::new(), desktop: false, autostart: false, size: 1,
+            root: fixture.0.clone(),
+            version: "0.0.989".into(),
+            installed_version: None,
+            data_path: PathBuf::new(),
+            desktop: false,
+            autostart: false,
+            size: 1,
             reduced_motion: false,
         };
-        assert!(matches!(complete_probe(info, false), Err(ReadError::Rejected(Rejection::Manifest))));
+        assert!(matches!(
+            complete_probe(info, false),
+            Err(ReadError::Rejected(Rejection::Manifest))
+        ));
     }
 }
 
@@ -246,7 +257,10 @@ fn profiles_preserve_unknown_fields_and_version_rules() {
         .expect("state object")
         .remove("previous");
     fs::write(fixture.0.join("state.json"), state.to_string()).expect("missing previous");
-    assert!(matches!(Installation::read(&fixture.0, ReadProfile::Probe), Err(ReadError::Rejected(Rejection::MissingPrevious))));
+    assert!(matches!(
+        Installation::read(&fixture.0, ReadProfile::Probe),
+        Err(ReadError::Rejected(Rejection::MissingPrevious))
+    ));
     assert!(Installation::read(&fixture.0, ReadProfile::Hub).is_ok());
     for value in [
         "1.2.3",

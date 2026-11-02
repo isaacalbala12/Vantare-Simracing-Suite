@@ -1220,10 +1220,9 @@ impl Hub {
         } else {
             beta
         };
-        let current = identity.is_some()
-            && beta
-                .as_ref()
-                .is_some_and(|status| status.state == "current" && status.version == version);
+        let current = beta
+            .as_ref()
+            .is_some_and(|status| status.state == "current" && status.version == version);
         let registration = if self.demo.is_none() && self.capture.is_none() {
             super::updates::registration_warning()
         } else {

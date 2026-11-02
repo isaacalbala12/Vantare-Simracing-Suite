@@ -47,7 +47,12 @@ pub fn complete_probe(
     let installation = Installation::read(&info.root, profile)?;
     // The shared reader accepts every closed channel. Setup's legacy driver
     // additionally calls Read-NativeManifest with ExpectedChannel='beta'.
-    if !uninstall && installation.manifest.as_ref().is_some_and(|m| m.channel != "beta") {
+    if !uninstall
+        && installation
+            .manifest
+            .as_ref()
+            .is_some_and(|m| m.channel != "beta")
+    {
         return Err(Rejection::Manifest.into());
     }
     if !uninstall || installation.state.is_none() {

@@ -1,4 +1,11 @@
 # Test-only differential oracle. Compare violated invariants, never formatted stderr.
+function Write-MatrixProbeFixtureJson([string]$Path,$Value) {
+    $null=Assert-MatrixRoot $Path
+    # Product Write-NativeJson intentionally uses CreateNew. Only owned test
+    # fixtures are overwritten here, and finally restores their original bytes.
+    [IO.File]::WriteAllText($Path,($Value|ConvertTo-Json -Depth 15),[Text.UTF8Encoding]::new($false))
+}
+
 function Get-MatrixProbeRejection($Failure) {
     $id=$Failure.FullyQualifiedErrorId
     if($id -ceq 'PropertyNotFoundStrict' -and $Failure.InvocationInfo.Line -match '\$state\.previous') { return 'previous-missing' }
@@ -76,10 +83,10 @@ function Test-MatrixProbeRejections([string]$Install,[string]$Driver,[string]$Re
                 'missing-manifest' {}
             }
             if($fault -in @('inventory','manifest','channel')){
-                Write-NativeJson $manifestPath $changedManifest
+                Write-MatrixProbeFixtureJson $manifestPath $changedManifest
                 $changedState.active.manifest_sha256=Get-NativeHash $manifestPath
             }
-            Write-NativeJson $statePath $changedState
+            Write-MatrixProbeFixtureJson $statePath $changedState
             if($fault -ceq 'json'){[IO.File]::WriteAllText($statePath,'{broken')}
             if($fault -ceq 'missing-manifest'){[IO.File]::Delete($manifestPath)}
             if($fault -ceq 'channel'){

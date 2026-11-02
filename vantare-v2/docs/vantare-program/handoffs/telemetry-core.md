@@ -8,7 +8,8 @@ Es referencia histórica; la situación operativa de este archivo es la siguient
 
 ## Estado vigente
 
-VANTA-129 En curso, corte preparado para revisión. Pasos **0–3 y 5 integrados**;
+VANTA-129 **Por revisar**: [PR draft #1889](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1889)
+contra nightly, paso 9 + P3, listo para revisión final. Pasos **0–3 y 5 integrados**;
 paso **9 y P3 implementados y validados localmente**;
 pendientes **4, 6, 7, 8 y 10**. Plane es el tablero; GitHub/Project Vantare
 registra código y PRs. No tomar otros encargos desde el historial.
@@ -46,7 +47,9 @@ telemetría. Run `8a08934a-a18d-416c-99c0-4f4f207ac2a6`. Lifecycle runtime **25/
 PASS con overlays reales normal/QA. Cola liberada; quality/integridad 468/468 PASS.
 Las 3857 fotos LMU y hashes ACC de 190471 lecturas permanecen idénticos, sin
 regeneración; ACC completo 202,124 s. Sin nuevas dependencias o configuración.
-CI remota de este corte pendiente de publicación; no se le atribuye verde.
+CI remota de #1889 pendiente al entregar; no se le atribuye verde. Los commits
+posteriores a 80b735213 solo actualizan este handoff; el árbol native no cambia.
+HEAD/CI final y recuento completo se verifican también en #1868 y #1889.
 
 P3 asignados: sustituir este diario por una única situación operativa con CI real;
 asociar el comentario de alineación de lmu/frame al uso del presupuesto;

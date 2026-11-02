@@ -20,6 +20,7 @@ pub mod format;
 pub mod fuel_strategy;
 pub mod head_to_head;
 pub mod input_telemetry;
+mod lifecycle;
 mod model;
 pub mod multiclass_relative;
 pub mod pedals;
@@ -36,6 +37,7 @@ pub mod track_weather;
 pub use adapter::{Adapter, AdapterError, Observation};
 pub use capability::{Capabilities, Capability};
 pub use flag::{Flag, FlagKind, FlagScope, PenaltyKind};
+pub use lifecycle::is_live;
 pub use model::{
     Car, CarId, Class, ClassId, Damage, Driver, DriverId, DriverRating, DrivingSituation, Fuel,
     Gap, Origin, PitService, Player, Pose, Session, SessionId, SessionKind, SessionState, Snapshot,

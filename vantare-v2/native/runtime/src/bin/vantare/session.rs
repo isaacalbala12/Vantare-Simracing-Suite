@@ -206,11 +206,13 @@ impl Session {
                 }
                 let policy = self.children[index].policy;
                 self.children[index].state = ChildState::Reaped;
-                if matches!(
-                    previous,
-                    ChildState::Closing { revoked: true, .. }
-                        | ChildState::Killing { revoked: true }
-                ) {
+                if !self.stopping()
+                    && matches!(
+                        previous,
+                        ChildState::Closing { revoked: true, .. }
+                            | ChildState::Killing { revoked: true }
+                    )
+                {
                     self.revoked(index, now);
                 } else if !self.stopping() {
                     if success && policy.stop_on_success {

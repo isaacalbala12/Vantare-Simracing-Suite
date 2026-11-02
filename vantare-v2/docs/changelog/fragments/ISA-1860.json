@@ -7,7 +7,9 @@
     "El supervisor solicita sólo EOF a Engineer, overlays y diagnóstico, en ese orden. Núcleo recibe EOF tras los consumidores y workers o al comenzar su reserva min(1 s, P/2). Se retira EnumWindows/WM_CLOSE de los hijos.",
     "Un kill forzado en el cierre final es fallo del supervisor, que continúa recogiendo los demás hijos. Revocar Engineer registra su fallo de cierre sin terminar la sesión; una salida no cero al atender el cierre sólo se diagnostica.",
     "Una desconexión del Hub entre tramas ya no registra UnexpectedEof como error. Una trama truncada o inválida sigue fallando.",
-    "Windows y Unix comparten una máquina pura con reloj inyectado y un único plazo de cierre. Resident y Host se cancelan y sólo hacen join de hilos terminados; agotar el plazo registra defecto y devuelve fallo, conservando las escrituras atómicas."
+    "Windows y Unix comparten una máquina pura con reloj inyectado y un único plazo de cierre. Resident y Host se cancelan y sólo hacen join de hilos terminados; agotar el plazo registra defecto y devuelve fallo, conservando las escrituras atómicas.",
+    "Hub y derechos comparten el predicado Live de domain sin cambiar el comportamiento de pausa, grabaciones o gracia.",
+    "El cierre forzado reintenta el registro de apps propias tres veces a 20 ms y vuelve a cancelar Host antes de salir. Una salida del Engineer ya revocado durante el cierre no lo reprograma."
   ],
   "testing": [
     "Cerrar tres veces el supervisor con overlays reales y layout guardado: debe salir con 0, ejecutar el gancho de salida y no registrar se le mata.",

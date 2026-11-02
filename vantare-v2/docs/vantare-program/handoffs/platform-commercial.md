@@ -1,5 +1,5 @@
 <!-- isa1860-arranque-cierre -->
-## VANTA-128 / #1860 — pasos 0 y 1 integrados; paso 2 listo para revisión
+## VANTA-128 / #1860 — pasos 0–2 integrados; paso 3 en curso
 
 Paso 0 [#1863](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1863)
 integrado por el orquestador en nightly `aca51a15e3a6cf4aa53fc659c89011853a3da2ca`;
@@ -91,7 +91,9 @@ Plane En curso verificado; el worker no volvió a cambiar el estado.
   installation.rs, installer::engine ni Hub Ajustes/updates en el diff del paso 1.
   CI la vigila el orquestador. El worker no hizo merge, release ni promoción,
   ni tocó la instalación o el registro reales. Plane sigue En curso.
-- Paso 2 y revisión R1 listos en PR draft [#1865](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1865)
+- Paso 2 y revisión R1 integrados por el orquestador en nightly
+  `638e3e6f5d3040269dbcf01fe0355e99b7a9c8a0`, CI 5/5 verde comunicada por él.
+  HEAD entregado `816f05461e4aaa54c642b21778f5877a2f9a7b6a`. PR [#1865](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1865)
   a nightly, código probado `746631b04a7a9af0f4ed259cd89c1c62c28dcc93`.
   Rama `vantareapp/isa-1860-paso2-supervision`, worktree
   `D:/VantareServer/worktrees/isa-1860-paso2`, base `origin/nightly@27fa423c0`;
@@ -144,6 +146,14 @@ Plane En curso verificado; el worker no volvió a cambiar el estado.
   release, promoción, instalación ni registro reales. Instalador, installation.rs
   y packaging intactos; VANTA-127 continúa en paralelo. Clic físico/candidata
   pendientes de Isaac; Unix sin ejecutar; pasos 3 y siguientes fuera del PR.
+- Paso 3 encargado: predicado Live único en domain, conservando los tests y la
+  semántica de Hub/Host/Owner. Incluye P3 de #1865: reintento acotado del lock
+  de procesos en force_cleanup, no reprogramar una revocación durante Stopping
+  y última cancelación del Host antes de abandonar el worker. Rama
+  `vantareapp/isa-1860-paso3-live`, worktree
+  `D:/VantareServer/worktrees/isa-1860-paso3`, base nightly `638e3e6f5`.
+  Gates nuevos pendientes. Pasos 4–5 reservados al worker del instalador
+  (VANTA-127 pasos 6–7); no tocar installer, installation.rs ni packaging.
 <!-- /isa1860-arranque-cierre -->
 
 <!-- isa1827-simplificar-e -->

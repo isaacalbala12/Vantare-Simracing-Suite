@@ -447,3 +447,33 @@ fn duplicate_exit_cannot_spend_restart_budget_or_stop_a_reprogrammed_child() {
         assert!(!session.stopping());
     }
 }
+
+#[test]
+fn exit_after_revocation_kill_during_stop_is_reaped_without_rescheduling() {
+    for success in [false, true] {
+        let now = Instant::now();
+        let grace = Duration::from_secs(1);
+        let mut session = Session::new([Policy::permitted(2)], grace, now);
+        assert_eq!(pulse(&mut session, now, true, true), vec![Action::Spawn(0)]);
+        session.paso(Event::Started(0), now);
+        assert_eq!(
+            pulse(&mut session, now, false, true),
+            vec![Action::Close(0)]
+        );
+        let at = now + grace;
+        assert_eq!(pulse(&mut session, at, false, true), vec![Action::Kill(0)]);
+        assert_eq!(
+            session.children[0].state,
+            ChildState::Killing { revoked: true }
+        );
+        session.paso(Event::Stop(Reason::Stopped), at);
+        assert!(
+            session
+                .paso(Event::Exited { child: 0, success }, at)
+                .is_empty()
+        );
+        assert_eq!(session.children[0].state, ChildState::Reaped);
+        assert_eq!(session.phase, Phase::Finished(Reason::Stopped));
+        assert!(pulse(&mut session, at + grace, true, true).is_empty());
+    }
+}

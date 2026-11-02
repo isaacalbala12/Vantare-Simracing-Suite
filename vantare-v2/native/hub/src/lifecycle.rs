@@ -1,10 +1,6 @@
 //! Cierre por actividad de la fuente neutral; la escena Workshop no participa.
-use vantare_domain::{Snapshot, SourceKind, SourceState};
-
-pub fn is_live(snapshot: &Snapshot) -> bool {
-    snapshot.origin.source.kind == SourceKind::Live
-        && snapshot.state.source_state == SourceState::Live
-}
+use vantare_domain::Snapshot;
+pub use vantare_domain::is_live;
 
 /// La primera foto, incluso Live, establece la referencia y no cierra el Hub.
 /// Un acceso a medias o la pantalla de acceso tampoco: cerrar perdería el
@@ -16,6 +12,7 @@ pub fn should_close(previous: Option<bool>, snapshot: &Snapshot, signing_in: boo
 #[cfg(test)]
 mod tests {
     use super::*;
+    use vantare_domain::{SourceKind, SourceState};
     #[test]
     fn initial_live_and_waiting_stale_lost_or_replay_never_close() {
         for (kind, state, closes_after_non_live) in [

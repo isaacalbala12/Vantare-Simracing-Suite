@@ -51,16 +51,33 @@ impl Resident {
     /// conserva sus handles originales y aplica sólo `Close::Started`, incluso
     /// si el worker quedó bloqueado antes de llegar al cleanup normal. Sólo
     /// solicita terminar: después de P no espera a que el proceso salga.
+    /// Reintenta el registro de procesos tres veces a 20 ms antes de rendirse;
+    /// esa tolerancia acotada de 60 ms no renueva el presupuesto de sesión.
     pub fn force_cleanup(&self) -> std::io::Result<()> {
+        self.force_cleanup_with_retry(|| thread::sleep(Duration::from_millis(20)))
+    }
+
+    fn force_cleanup_with_retry(&self, mut wait: impl FnMut()) -> std::io::Result<()> {
         let profiles = self
             .close_on_exit
             .try_lock()
             .map_err(|_| std::io::Error::other("políticas Launcher ocupadas al cerrar"))?
             .clone();
-        let mut processes = self
-            .processes
-            .try_lock()
-            .map_err(|_| std::io::Error::other("procesos Launcher ocupados al cerrar"))?;
+        let mut attempts = 0;
+        let mut processes = loop {
+            match self.processes.try_lock() {
+                Ok(processes) => break processes,
+                Err(std::sync::TryLockError::WouldBlock) if attempts < 3 => {
+                    attempts += 1;
+                    wait();
+                }
+                Err(_) => {
+                    return Err(std::io::Error::other(
+                        "procesos Launcher ocupados al cerrar",
+                    ));
+                }
+            }
+        };
         let mut first = None;
         for profile in profiles {
             if let Err(error) = processes.request_close_profile(&profile) {
@@ -503,6 +520,15 @@ mod tests {
 
     #[test]
     fn forced_cleanup_closes_owned_profile_apps_even_when_the_worker_is_blocked() {
+        force_profile_cleanup(false);
+    }
+
+    #[test]
+    fn forced_cleanup_retries_a_busy_process_registry_and_closes_the_owned_app() {
+        force_profile_cleanup(true);
+    }
+
+    fn force_profile_cleanup(contended: bool) {
         use std::os::windows::{
             io::{AsHandle, AsRawHandle},
             process::CommandExt,
@@ -529,29 +555,76 @@ mod tests {
             child,
         );
         let (release, wait) = mpsc::channel();
+        let (ready, held) = mpsc::channel();
+        let (unlocked, released) = mpsc::channel();
+        let worker_processes = Arc::clone(&processes);
+        let worker = thread::spawn(move || {
+            let guard = contended.then(|| worker_processes.lock().expect("registro ocupado"));
+            ready.send(()).expect("barrera antes del cierre");
+            let _released = wait.recv();
+            drop(guard);
+            let _notified = unlocked.send(());
+        });
+        held.recv_timeout(Duration::from_secs(5))
+            .expect("worker listo");
         let mut resident = Resident {
             stop: Arc::new(AtomicBool::new(false)),
-            thread: Some(thread::spawn(move || {
-                let _released = wait.recv();
-            })),
+            thread: Some(worker),
             processes,
             close_on_exit: Arc::new(Mutex::new(vec!["rig".into()])),
         };
         let release = ReleaseWorker(release);
         resident.request_shutdown();
         assert!(!resident.poll_shutdown().expect("worker todavía bloqueado"));
-        resident
-            .force_cleanup()
-            .expect("Close::Started sin depender del worker ni del Job");
+        if contended {
+            let mut retries = 0;
+            resident
+                .force_cleanup_with_retry(|| {
+                    retries += 1;
+                    release
+                        .0
+                        .send(())
+                        .expect("liberar el registro en el primer reintento");
+                    released
+                        .recv_timeout(Duration::from_secs(5))
+                        .expect("registro libre");
+                })
+                .expect("Close::Started tras recuperar el registro");
+            assert_eq!(retries, 1, "el primer try_lock encuentra contención real");
+        } else {
+            resident
+                .force_cleanup()
+                .expect("Close::Started sin depender del worker ni del Job");
+        }
         // La espera pertenece al test, nunca al camino forzado del supervisor.
         assert_eq!(
             super::super::win::wait_any(&[observed.as_raw_handle()], Some(Duration::from_secs(5)))
                 .expect("salida de app propia"),
             Some(0)
         );
-        release.0.send(()).expect("liberar fixture");
+        if !contended {
+            release.0.send(()).expect("liberar fixture");
+        }
         // Drop normal recoge el worker liberado; no queda ningún hilo del test.
         drop(resident);
+    }
+
+    #[test]
+    fn forced_cleanup_gives_up_after_three_retries_of_a_busy_registry() {
+        let processes = Arc::new(Mutex::new(launcher::processes::Processes::default()));
+        let resident = Resident {
+            stop: Arc::new(AtomicBool::new(false)),
+            thread: None,
+            processes: Arc::clone(&processes),
+            close_on_exit: Arc::new(Mutex::new(vec!["rig".into()])),
+        };
+        let held = processes
+            .lock()
+            .expect("registro ocupado durante todo el cierre");
+        let mut retries = 0;
+        assert!(resident.force_cleanup_with_retry(|| retries += 1).is_err());
+        assert_eq!(retries, 3, "no hay espera ilimitada después de P");
+        drop(held);
     }
 
     #[test]

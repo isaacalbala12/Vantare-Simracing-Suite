@@ -7,7 +7,7 @@ use super::{
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::{path::Path, time::Duration};
-use vantare_domain::{SessionKind, Snapshot, SourceKind, SourceState, UNKNOWN_SIMULATOR};
+use vantare_domain::{SessionKind, Snapshot, SourceKind, SourceState, UNKNOWN_SIMULATOR, is_live};
 use vantare_ipc::control::{AccessState, Policy, VERSION};
 use vantare_services::storage::Read as Stored;
 use vantare_services::{Error, Result, license::CredentialV1, storage::Store};
@@ -292,8 +292,7 @@ impl Owner {
         now: DateTime<Utc>,
         tick: Duration,
     ) -> Result<Policy> {
-        let live = snapshot.origin.source.kind == SourceKind::Live
-            && snapshot.state.source_state == SourceState::Live;
+        let live = is_live(snapshot);
         let paused_same_session = snapshot.origin.source.kind == SourceKind::Live
             && snapshot.state.source_state == SourceState::Paused
             && self.game == Some(snapshot.state.session.id.0);

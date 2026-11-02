@@ -1,5 +1,5 @@
 <!-- isa1860-arranque-cierre -->
-## VANTA-128 / #1860 — paso 0 integrado; paso 1 corregido tras revisión
+## VANTA-128 / #1860 — pasos 0 y 1 integrados; paso 2 en análisis
 
 Paso 0 [#1863](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1863)
 integrado por el orquestador en nightly `aca51a15e3a6cf4aa53fc659c89011853a3da2ca`;
@@ -41,8 +41,10 @@ Plane En curso verificado; el worker no volvió a cambiar el estado.
 - El orquestador cerró la instalación real para dejar libre la sesión. El worker
   no la cerró ni la reabrió, ni tocó registro real. Sin cambios en installer::engine
   ni Hub Ajustes/updates; los demás pasos del diseño siguen pendientes.
-- Paso 1 listo en PR draft [#1864](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1864)
-  directamente a nightly. Rama `vantareapp/isa-1860-paso1-cierre-overlays`, worktree
+- Paso 1 [#1864](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1864)
+  integrado por el orquestador en nightly `27fa423c038c08020d7308e5542103074e854ba1`,
+  CI 5/5 verde comunicada por él. HEAD entregado `df151b356215e664afa7ae4e45879c429e11f82e`.
+  Rama `vantareapp/isa-1860-paso1-cierre-overlays`, worktree
   `D:/VantareServer/worktrees/isa-1860-paso1`, mismo target usado secuencialmente.
   Base `aca51a15e3a6cf4aa53fc659c89011853a3da2ca`; código probado
   `8d0c6ac4cc7a8277354c49b20ef077c4ac14009b`, HEAD de entrega en el PR.
@@ -85,10 +87,21 @@ Plane En curso verificado; el worker no volvió a cambiar el estado.
   real aceptado. Restauración SHA-256 exacta y baseline unitaria/procesos PASS.
   Evidencia: `D:/VantareServer/evidence/isa-1860-paso1/review-20261102-041053/`.
 - Clic físico y candidata instalada pendientes de Isaac; Unix sin ejecutar en
-  este host Windows. Los pasos 2 y siguientes siguen pendientes. Sin cambios en
+  este host Windows. Sin cambios en
   installation.rs, installer::engine ni Hub Ajustes/updates en el diff del paso 1.
   CI la vigila el orquestador. El worker no hizo merge, release ni promoción,
   ni tocó la instalación o el registro reales. Plane sigue En curso.
+- Paso 2 encargado por el orquestador: rama nueva
+  `vantareapp/isa-1860-paso2-supervision`, worktree
+  `D:/VantareServer/worktrees/isa-1860-paso2`, desde `origin/nightly@27fa423c0`.
+  En lectura del diseño: máquina pura con reloj inyectado, política de hijo,
+  un bucle Windows/Unix, EOF único y presupuesto absoluto que incluya residente,
+  Host y diagnóstico. Sin código de producto editado aún. Incluye los cuatro P3
+  de la re-revisión: filtrado de `--control-stdin`, doc-comments, barrera de
+  lifecycle sin escape por salida del supervisor y distinción Unix por status.code().
+  No tocar installation.rs, installer::engine ni packaging (VANTA-127 en paralelo).
+  Gates previstos en una tanda, respetando la cola. Los pasos 3 y siguientes
+  continúan pendientes; Hub de sesión, Apply e instalador no entran aquí.
 <!-- /isa1860-arranque-cierre -->
 
 <!-- isa1827-simplificar-e -->

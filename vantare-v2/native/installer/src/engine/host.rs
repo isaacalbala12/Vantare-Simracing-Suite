@@ -556,7 +556,7 @@ exit EXIT_CODE
             let log = fs::read_to_string(&request.log_file).expect("diagnostics");
             assert!(log.contains("injected cosmetic warning"));
             assert!(log.contains("\"percent\":255"));
-            fs::remove_file(root.join("install/installer-cleanup.json"))
+            fs::remove_file(root.join("installer-cleanup.json"))
                 .expect("legacy marker absent");
             fs::write(&request.log_file, []).expect("clear log");
             assert!(
@@ -564,16 +564,16 @@ exit EXIT_CODE
                     .start_cleanup(root, &request, &log_file, true)
                     .is_ok()
             );
-            assert!(root.join("install/Uninstall.exe").is_file());
+            assert!(root.join("Uninstall.exe").is_file());
             assert!(
                 fs::metadata(&request.log_file)
                     .expect("residue diagnostic")
                     .len()
                     > 0
             );
-            fs::write(root.join("install/state.json"), b"{}").expect("renewed installation");
+            fs::write(root.join("state.json"), b"{}").expect("renewed installation");
             assert!(session.cleanup_contract(root, &request).is_err());
-            assert!(root.join("install/Uninstall.exe").is_file());
+            assert!(root.join("Uninstall.exe").is_file());
         }
     }
     #[cfg(feature = "test-installer")]

@@ -14,6 +14,8 @@ foreach($name in @('candidate.ps1','beta.ps1','historical-inventory-tests.ps1','
     if((Get-FileHash (Join-Path $source $name)).Hash -cne (Get-FileHash (Join-Path $engine $name)).Hash){throw 'HISTORY_COPY_CHANGED'}
 }
 foreach($name in @('matrix','fixtures')){Copy-Item -LiteralPath (Join-Path $source $name) -Destination $engine -Recurse}
+# Frozen QA oracle only; the product never embeds or executes this driver.
+Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'legacy/installer-driver.ps1') -Destination $engine
 $ui=Join-Path $qaHarnessRoot 'ui'
 [IO.Directory]::CreateDirectory($ui)|Out-Null
 Copy-Item -LiteralPath (Join-Path (Split-Path $source -Parent) 'ui/fixtures') -Destination $ui -Recurse

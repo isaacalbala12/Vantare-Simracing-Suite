@@ -248,8 +248,8 @@ fn an_unreadable_alerts_file_does_not_stop_the_hub_from_opening() {
         assert!(
             calendar
                 .error
-                .as_deref()
-                .is_some_and(|e| e.contains("avisos")),
+                .as_ref()
+                .is_some_and(|e| e.to_string().contains("avisos")),
             "se avisa de que se empieza sin avisos"
         );
     }
@@ -285,11 +285,11 @@ fn the_missing_series_notice_follows_what_is_left_in_avisos() {
         })
         .expect("guarda");
     calendar.report_orphans();
-    let notice = calendar.error.clone().expect("cartel");
+    let notice = calendar.error.clone().expect("cartel").to_string();
     assert!(notice.contains("serie-fantasma-1") && notice.contains("serie-fantasma-2"));
     // Quitar una: el cartel sigue, pero solo con la que queda.
     calendar.update_alerts(|a| a.set_band("serie-fantasma-1", None));
-    let notice = calendar.error.clone().expect("sigue el cartel");
+    let notice = calendar.error.clone().expect("sigue el cartel").to_string();
     assert!(!notice.contains("serie-fantasma-1") && notice.contains("serie-fantasma-2"));
     // Quitar la última: el cartel desaparece.
     calendar.update_alerts(|a| a.set_band("serie-fantasma-2", None));
@@ -338,7 +338,7 @@ fn an_unreadable_following_file_degrades_and_a_copy_is_kept() {
         std::fs::write(&file, garbage).expect("escribe");
         let mut calendar = Calendar::load(&dir).expect("el Hub abre igualmente");
         assert!(calendar.favorites().is_empty());
-        let notice = calendar.error.clone().expect("se avisa");
+        let notice = calendar.error.clone().expect("se avisa").to_string();
         assert!(notice.contains("series seguidas") && notice.contains(".invalid"));
         // La copia conserva el contenido malo, sin pisar la anterior.
         let copies = std::fs::read_dir(&dir)

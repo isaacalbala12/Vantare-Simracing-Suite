@@ -657,7 +657,11 @@ fn local_store_is_atomic_conflict_aware_and_rolls_back_memory_on_failure() {
         "Nombre nuevo"
     );
     fs::write(&path, b"{").expect("simular corrupción en archivo de prueba");
-    assert!(Store::load(path.clone()).is_err());
+    assert!(Store::load(path.clone()).unwrap().warning.is_some());
+    assert_eq!(
+        fs::read(path.with_file_name("launcher.json.invalid")).unwrap(),
+        b"{"
+    );
     assert_eq!(fs::read(path).expect("preservado"), b"{");
 }
 

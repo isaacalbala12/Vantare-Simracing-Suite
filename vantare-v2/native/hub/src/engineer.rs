@@ -104,13 +104,7 @@ impl Engineer {
     pub fn status(&self) -> Option<&Status> {
         self.model.report().map(|report| &report.status)
     }
-    pub fn change(&mut self, edit: impl FnOnce(&mut Settings)) -> Result<(), String> {
-        self.change_checked(edit).map_err(String::from)
-    }
-    fn change_checked(
-        &mut self,
-        edit: impl FnOnce(&mut Settings),
-    ) -> Result<(), crate::files::Error> {
+    pub fn change(&mut self, edit: impl FnOnce(&mut Settings)) -> Result<(), crate::files::Error> {
         let mut next = self.settings().clone();
         edit(&mut next);
         self.document.save(next).map_err(Into::into)
@@ -122,7 +116,7 @@ impl Engineer {
         self.demo.is_none() && self.model.poll(self.model.now())
     }
     fn edit(&mut self, edit: impl FnOnce(&mut Settings), cx: &mut Context<Self>) {
-        self.error = self.change_checked(edit).err().map(Into::into);
+        self.error = self.change(edit).err().map(Into::into);
         cx.notify();
     }
 }

@@ -519,11 +519,11 @@ impl Remote {
     }
 
     /// Solo recuperación privada: guardar aquí no confirma el borrador remoto ni el envío.
-    pub(crate) fn persist(&mut self, cx: &Context<Self>) -> Result<(), String> {
+    pub(crate) fn persist(&mut self, cx: &Context<Self>) -> Result<(), crate::files::Error> {
         let fields = self.editor.fields(cx);
         match &mut self.recovery {
             Ok(store) => store.save(fields),
-            Err(error) if self.editor.dirty => Err(error.clone()),
+            Err(error) if self.editor.dirty => Err(error.clone().into()),
             Err(_) => Ok(()), // Un archivo inválido sin nuevas ediciones se conserva intacto.
         }
     }

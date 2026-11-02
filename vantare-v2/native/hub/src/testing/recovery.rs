@@ -104,7 +104,7 @@ impl Recovery {
         })
     }
 
-    pub(crate) fn save(&mut self, fields: Fields) -> Result<(), String> {
+    pub(crate) fn save(&mut self, fields: Fields) -> Result<(), files::Error> {
         // Al guardar se VALIDA, no se limpia: truncar en silencio lo que el
         // usuario acaba de escribir seria perder su texto sin avisar.
         if fields == self.fields {

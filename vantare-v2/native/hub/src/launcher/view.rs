@@ -232,6 +232,7 @@ impl Launcher {
     }
 
     fn build(store: Store, discovery: Option<Discovery>, cx: &mut Context<Self>) -> Self {
+        let error = store.warning.clone().map(Into::into);
         let mut view = Self {
             adapt: orbit::Adapt::default(),
             page: LauncherPage::Showcase,
@@ -266,7 +267,7 @@ impl Launcher {
             trigger: LmuTrigger::default(),
             trigger_polling: false,
             next_trigger: Instant::now(),
-            error: None,
+            error,
             status: "Sin escaneo".into(),
         };
         cx.observe(&view.query, |_, _, cx| cx.notify()).detach();
@@ -287,11 +288,14 @@ impl Launcher {
         view
     }
 
-    fn report(&mut self, result: Result<(), String>, cx: &mut Context<Self>) {
-        self.report_checked(result.map_err(Into::into), cx);
-    }
-    fn report_checked(&mut self, result: Result<(), crate::files::Error>, cx: &mut Context<Self>) {
-        self.error = result.err().map(Into::into);
+    fn report<E: Into<crate::files::Error>>(
+        &mut self,
+        result: Result<(), E>,
+        cx: &mut Context<Self>,
+    ) {
+        self.error = result
+            .err()
+            .map(|error| crate::files::Failure::from(error.into()));
         cx.notify();
     }
 
@@ -301,10 +305,10 @@ impl Launcher {
                 self.close_form(window, cx);
                 self.store = store;
                 self.trigger = LmuTrigger::default();
-                self.error = None;
+                self.error = self.store.warning.clone().map(Into::into);
                 self.scan(cx);
             }
-            Err(error) => self.report(Err(error), cx),
+            Err(error) => self.report::<String>(Err(error), cx),
         }
     }
 
@@ -321,7 +325,7 @@ impl Launcher {
         if success {
             self.status = "Guardado local confirmado".into();
         }
-        self.report_checked(result, cx);
+        self.report(result, cx);
         success
     }
 
@@ -413,7 +417,7 @@ impl Launcher {
                 ready
             }
             Err(error) => {
-                self.report(Err(error), cx);
+                self.report::<String>(Err(error), cx);
                 self.exit_cancelled = true;
                 false
             }
@@ -630,7 +634,7 @@ impl Launcher {
                             this.start(profile, cx);
                         }
                     }
-                    Err(error) => this.report(Err(error), cx),
+                    Err(error) => this.report::<String>(Err(error), cx),
                 }
             });
         })
@@ -697,8 +701,8 @@ impl Launcher {
     pub(crate) fn global_hotkey_status(&self, id: &str) -> String {
         hotkey_status_text(self.resident_status.as_ref(), id)
     }
-    pub(crate) fn global_hotkey_error(&self) -> Option<&str> {
-        self.resident_error.as_deref()
+    pub(crate) fn global_hotkey_error(&self) -> Option<String> {
+        self.resident_error.as_ref().map(ToString::to_string)
     }
     pub fn saved_profiles(&self) -> &[Profile] {
         &self.store.document.profiles
@@ -714,7 +718,7 @@ impl Launcher {
             .cloned()
         {
             Some(profile) => self.start(profile, cx),
-            None => self.report(
+            None => self.report::<String>(
                 Err("perfil inexistente; vuelve a cargar Launcher".into()),
                 cx,
             ),
@@ -739,18 +743,18 @@ impl Launcher {
 
     fn start(&mut self, profile: Profile, cx: &mut Context<Self>) {
         if self.chain.is_some() {
-            self.report(
+            self.report::<String>(
                 Err("ya hay una cadena activa; cancélala o espera".into()),
                 cx,
             );
             return;
         }
         if self.scanning {
-            self.report(Err("espera a terminar el descubrimiento".into()), cx);
+            self.report::<String>(Err("espera a terminar el descubrimiento".into()), cx);
             return;
         }
         if !presentation::launchable(&profile, &self.discovered, false) {
-            self.report(
+            self.report::<String>(
                 Err("el perfil necesita pasos con aplicaciones disponibles".into()),
                 cx,
             );
@@ -801,7 +805,7 @@ impl Launcher {
                 self.status = "Cadena en marcha".into();
                 cx.notify();
             }
-            Err(error) => self.report(Err(error), cx),
+            Err(error) => self.report::<String>(Err(error), cx),
         }
     }
 
@@ -881,7 +885,7 @@ impl Launcher {
                     }
                 }
                 Ok(None) => {}
-                Err(error) => this.report(Err(error), cx),
+                Err(error) => this.report::<String>(Err(error), cx),
             });
         })
         .detach();
@@ -895,7 +899,7 @@ impl Launcher {
         let args = match parse_args(&draft.args.read(cx).value) {
             Ok(args) => args,
             Err(error) => {
-                self.report(Err(error), cx);
+                self.report::<String>(Err(error), cx);
                 return;
             }
         };
@@ -1138,7 +1142,10 @@ mod tests {
                 });
                 std::fs::write(&path, serde_json::to_vec(&status).expect("JSON")).expect("estado");
                 launcher.poll_resident(cx);
-                assert_eq!(launcher.error.as_deref(), Some("registro denegado"));
+                assert_eq!(
+                    launcher.error.as_ref().map(ToString::to_string).as_deref(),
+                    Some("registro denegado")
+                );
                 assert_eq!(launcher.status, "Esperando decisión");
                 assert_eq!(launcher.pending_decision.as_ref().expect("decisión").id, 7);
                 launcher.pending_decision = None;

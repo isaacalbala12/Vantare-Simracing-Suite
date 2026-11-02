@@ -248,7 +248,7 @@ pub fn save(path: &Path, expected: Option<&[u8]>, bytes: &[u8]) -> io::Result<()
         },
     )
     .map_err(|error| match error {
-        crate::files::Error::TooLarge => {
+        crate::files::Error::TooLarge { .. } => {
             invalid(format!("{}: Engineer supera 64 KiB", path.display()))
         }
         error => error.into(),

@@ -215,26 +215,43 @@ fn a_missing_scene_fails_without_creating_or_overwriting_user_data() {
 }
 
 #[test]
-fn corrupt_common_layout_fails_before_window_without_replacing_it() {
+fn corrupt_common_layout_opens_with_archive_and_raw_byte_conflict_protection() {
     let path = std::env::temp_dir().join(format!(
-        "vantare-hub-layout-preflight-{}",
+        "vantare-hub-layout-recovery-{}",
         std::process::id()
     ));
-    std::fs::create_dir(&path).expect("temporal exclusivo");
+    std::fs::create_dir(&path).unwrap();
     let layout = path.join("layout.json");
-    std::fs::write(&layout, b"{").expect("layout inválido");
-    let output = Command::new(env!("CARGO_BIN_EXE_vantare-hub"))
-        .args(["--studio", "--data-dir"])
-        .arg(&path)
-        .arg("--layout")
-        .arg(&layout)
-        .output()
-        .expect("arrancar Hub");
-    assert_eq!(output.status.code(), Some(1));
-    assert_eq!(std::fs::read(&layout).expect("documento preservado"), b"{");
-    assert!(!path.join("workshop-selection.json").exists());
-    std::fs::remove_file(layout).expect("limpiar archivo propio");
-    std::fs::remove_dir(path).expect("limpiar directorio propio");
+    std::fs::write(&layout, b"{").unwrap();
+    std::fs::write(layout.with_extension("json.bak"), b"previous valid backup").unwrap();
+    let mut editor = vantare_hub::document::Editor::open(layout.clone()).expect("Hub editor opens");
+    assert!(
+        editor
+            .warning
+            .as_ref()
+            .unwrap()
+            .contains("layout.json.invalid")
+    );
+    assert_eq!(
+        std::fs::read(path.join("layout.json.invalid")).unwrap(),
+        b"{"
+    );
+    assert_eq!(std::fs::read(&layout).unwrap(), b"{");
+    let mut prefs = editor.layout().preferences;
+    prefs.units = vantare_domain::format::Units::Imperial;
+    editor
+        .set_preferences(prefs)
+        .expect("can save defaults after recovery");
+    assert!(vantare_ui::layout::Document::open(layout.clone()).is_ok());
+    assert_eq!(
+        std::fs::read(layout.with_extension("json.bak")).unwrap(),
+        b"previous valid backup"
+    );
+    assert_eq!(
+        std::fs::read(path.join("layout.json.invalid")).unwrap(),
+        b"{"
+    );
+    std::fs::remove_dir_all(path).unwrap();
 }
 
 #[cfg(windows)]

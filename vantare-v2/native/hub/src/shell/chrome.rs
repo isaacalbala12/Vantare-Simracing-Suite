@@ -170,9 +170,9 @@ impl Hub {
                 Ok(()) => self.status = Some("Borradores locales guardados".into()),
                 Err(error) => {
                     self.notifications.update(cx, |center, cx| {
-                        center.report("hub.save", error.clone(), cx);
+                        center.report("hub.save", error.to_string(), cx);
                     });
-                    self.status = Some(error);
+                    self.status = Some(error.into());
                 }
             },
             Command::ToggleColumn => self.shell.column_open = !self.shell.column_open,

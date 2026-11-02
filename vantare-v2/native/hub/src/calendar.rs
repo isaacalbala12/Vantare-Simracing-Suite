@@ -161,7 +161,7 @@ impl Doc {
         }
     }
     fn write(&mut self, data: Vec<u8>) -> Result<(), crate::files::Error> {
-        files::save_checked(&self.path, &data, self.seen.as_deref(), files::MAX_DOCUMENT)?;
+        files::save_with_limit(&self.path, &data, self.seen.as_deref(), files::MAX_DOCUMENT)?;
         self.seen = Some(data);
         Ok(())
     }

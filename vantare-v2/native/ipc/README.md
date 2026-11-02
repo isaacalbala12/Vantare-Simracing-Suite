@@ -1,5 +1,26 @@
 # ipc — fotos versionadas
 
+## Recuperación de documentos — #1869, paso 5
+
+`files::Doc<T>::open_or_quarantine` comparte la lectura acotada y la protección
+ante documentos dañados de Hub-layout, Launcher, General y Apariencia.
+Si el contenido no se puede decodificar/validar, toma el mismo lock del escritor,
+comprueba los bytes y crea una copia durable exclusiva `<documento>.invalid`.
+Si existe otra copia diferente usa `.1.invalid`, `.2.invalid`, etc.; una copia
+regular idéntica se reutiliza. Nunca sigue un enlace al comprobar esas copias.
+El original permanece intacto al arrancar. El documento en memoria usa valores
+por defecto y un aviso con el nombre de la copia; al guardar comprueba los bytes
+dañados originales con CAS. Si otro editor cambia el archivo, su edición gana.
+
+Una versión desconocida es `Unsupported`, no corrupción: no se archiva ni se
+reescribe. Un fallo de lectura, tamaño excesivo o copia fallida también permite
+mostrar valores por defecto con aviso, sin habilitar la sobrescritura del archivo
+presente. Los permisos y el contenido se pueden reparar fuera de la aplicación
+y recargar. No se leen documentos que excedan su límite para intentar repararlos.
+Esto no cambia el sondeo de los overlays: conservan el último layout válido.
+No se modifica ningún protocolo ni se mueve ninguna raíz de datos.
+
+
 ## Documentos locales — #1869, paso 4
 
 `files` comparte lectura acotada y guardado entre Launcher, layout, Engineer y
@@ -23,7 +44,11 @@ Los errores de lectura incluyen la ruta y el límite; Engineer conserva el aviso
 Ajustes, Launcher, Calendario, Strategy y Engineer mantienen ese tipo hasta el
 diagnóstico/presentación. El diagnóstico sanitizado recibe solo el kind.
 La fachada String sigue para consumidores que solo muestran el error;
-`save_checked` mantiene el tipo para quienes necesitan clasificarlo.
+`save_with_limit` devuelve el error tipado para quienes necesitan clasificarlo.
+`Busy` significa guardado en curso y nunca se clasifica como `Conflict`; no ofrece
+recargar ni descartar un borrador pendiente. `Failure` solo expone kind y Display,
+sin Deref a texto. Los fallos de crear, bloquear y reemplazar incluyen el destino;
+TooLarge incluye ruta y límite.
 
 Cambios intencionados del paso 4: `layout.show.json.bak` ya no se escribe
 (la solicitud es estado derivado); hide sigue retirando copias antiguas.

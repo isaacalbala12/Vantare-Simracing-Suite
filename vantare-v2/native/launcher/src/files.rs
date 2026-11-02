@@ -4,27 +4,17 @@ use std::fs::OpenOptions;
 use std::path::Path;
 #[cfg(test)]
 use std::{fs, path::PathBuf};
-pub use vantare_ipc::files::{Error, Failure, Kind, MAX_DOCUMENT};
+pub use vantare_ipc::files::{Doc, Error, Failure, Kind, MAX_DOCUMENT};
 
 pub fn read(path: &Path, limit: u64) -> Result<Vec<u8>, String> {
     vantare_ipc::files::read(path, limit).map_err(|error| error.to_string())
 }
 
 pub fn save(path: &Path, data: &[u8], expected: Option<&[u8]>) -> Result<(), String> {
-    save_with_limit(path, data, expected, MAX_DOCUMENT)
+    save_with_limit(path, data, expected, MAX_DOCUMENT).map_err(Into::into)
 }
 
 pub fn save_with_limit(
-    path: &Path,
-    data: &[u8],
-    expected: Option<&[u8]>,
-    limit: u64,
-) -> Result<(), String> {
-    save_checked(path, data, expected, limit).map_err(|error| error.to_string())
-}
-
-/// Mantiene el tipo de error hasta el consumidor que lo clasifica.
-pub fn save_checked(
     path: &Path,
     data: &[u8],
     expected: Option<&[u8]>,
@@ -66,13 +56,33 @@ fn sibling(path: &Path, suffix: &str) -> PathBuf {
 mod tests {
     use super::*;
     #[test]
-    fn step5_characterization_corrupt_launcher_is_preserved_and_rejected() {
-        let dir = std::env::temp_dir().join(format!("vantare-step5-launcher-{}", std::process::id()));
+    fn step5_launcher_future_version_is_protected_without_wails_adoption() {
+        let dir =
+            std::env::temp_dir().join(format!("vantare-launcher-future-{}", std::process::id()));
+        fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("launcher.json");
+        let bytes = br#"{"version":99,"futureData":"preserve"}"#;
+        fs::write(&path, bytes).unwrap();
+        let mut store = crate::Store::load_with_wails(path.clone(), None).unwrap();
+        assert!(store.warning.is_some());
+        assert!(store.replace(store.document.clone()).is_err());
+        assert_eq!(fs::read(&path).unwrap(), bytes);
+        assert!(!sibling(&path, ".invalid").exists());
+        fs::remove_dir_all(dir).unwrap();
+    }
+    #[test]
+    fn step5_corrupt_launcher_is_archived_and_can_be_saved() {
+        let dir =
+            std::env::temp_dir().join(format!("vantare-step5-launcher-{}", std::process::id()));
         fs::create_dir_all(&dir).unwrap();
         let path = dir.join("launcher.json");
         fs::write(&path, b"{").unwrap();
-        assert!(crate::Store::load(path.clone()).is_err());
-        assert_eq!(fs::read(path).unwrap(), b"{");
+        let mut store = crate::Store::load(path.clone()).unwrap();
+        assert!(store.warning.as_ref().unwrap().contains(".invalid"));
+        assert_eq!(fs::read(sibling(&path, ".invalid")).unwrap(), b"{");
+        assert_eq!(fs::read(&path).unwrap(), b"{");
+        store.replace(store.document.clone()).unwrap();
+        assert!(crate::Store::load(path).unwrap().warning.is_none());
         fs::remove_dir_all(dir).unwrap();
     }
 

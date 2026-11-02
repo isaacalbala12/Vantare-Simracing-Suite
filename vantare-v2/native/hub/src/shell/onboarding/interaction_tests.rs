@@ -35,14 +35,13 @@ fn open(root: &Path, cx: &mut HeadlessAppContext) -> WindowHandle<Hub> {
         "onboarding-test-{}",
         vantare_services::random_id().expect("id")
     );
+    let (appearance, appearance_error) =
+        crate::shell::settings::appearance::Store::load_or_default(&root.join("appearance.json"));
     let loaded = Loaded {
         layout_preexisted: root.join("layout.json").exists(),
         preview_fixtures: None,
-        appearance: crate::shell::settings::appearance::Store::load_or_default(
-            &root.join("appearance.json"),
-        )
-        .0,
-        appearance_error: None,
+        appearance,
+        appearance_error,
         privacy: crate::shell::settings::privacy::load(root, true),
         prepared: Prepared::load(root, None).expect("escena"),
         studio: PreparedStudio::load(root.join("layout.json")).expect("layout"),
@@ -568,5 +567,56 @@ fn skipping_the_look_step_keeps_vantare_or_the_previous_choice() {
             drop(cx);
         }
         crate::quit_headless_test(app);
+    });
+}
+
+#[test]
+fn step5_shell_opens_and_renders_with_four_corrupt_documents_without_rewriting_them() {
+    gpui_platform::headless().run(|app| {
+        let root = Root::new();
+        for name in [
+            "layout.json",
+            "launcher.json",
+            "general.json",
+            "appearance.json",
+        ] {
+            std::fs::write(root.0.join(name), b"{").unwrap();
+        }
+        let mut cx = context();
+        let window = open(&root.0, &mut cx);
+        draw(window, &mut cx);
+        window
+            .update(&mut cx, |hub, _, cx| {
+                assert!(
+                    hub.launcher
+                        .read(cx)
+                        .error
+                        .as_ref()
+                        .unwrap()
+                        .to_string()
+                        .contains("launcher.json.invalid")
+                );
+                let status = hub.settings.status.as_ref().unwrap();
+                assert!(status.contains("general.json.invalid"));
+                assert!(status.contains("appearance.json.invalid"));
+            })
+            .unwrap();
+        for name in [
+            "layout.json",
+            "launcher.json",
+            "general.json",
+            "appearance.json",
+        ] {
+            assert_eq!(std::fs::read(root.0.join(name)).unwrap(), b"{");
+            assert_eq!(
+                std::fs::read(root.0.join(format!("{name}.invalid"))).unwrap(),
+                b"{"
+            );
+        }
+        window
+            .update(&mut cx, |_, window, _| window.remove_window())
+            .unwrap();
+        drop(cx);
+        app.quit();
     });
 }

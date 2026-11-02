@@ -412,6 +412,7 @@ impl Document {
 }
 
 pub struct Store {
+    pub warning: Option<String>,
     pub document: Document,
     pub path: PathBuf,
     saved: Option<Vec<u8>>,
@@ -422,6 +423,7 @@ impl Store {
     pub fn in_memory(path: PathBuf, document: Document) -> Result<Self, String> {
         document.validate()?;
         Ok(Self {
+            warning: None,
             document,
             path,
             saved: None,
@@ -446,7 +448,7 @@ impl Store {
 
     pub fn load_with_wails(path: PathBuf, source: Option<&Path>) -> Result<Self, String> {
         let mut store = Self::load(path)?;
-        if store.saved.is_none() {
+        if store.saved.is_none() && store.warning.is_none() {
             let document = match source {
                 Some(source) => migration::read(source)?,
                 None => Document::fresh_install(),
@@ -460,17 +462,30 @@ impl Store {
         if path.is_absolute() && !is_local_path(&path) {
             return Err("Launcher requiere un archivo de disco local".into());
         }
-        let saved = match std::fs::metadata(&path) {
-            Ok(_) => Some(files::read(&path, files::MAX_DOCUMENT)?),
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => None,
-            Err(error) => return Err(format!("inspeccionar Launcher: {error}")),
-        };
-        let mut document = saved
-            .as_deref()
-            .map(serde_json::from_slice::<Document>)
-            .transpose()
-            .map_err(|e| format!("Launcher inválido: {e}"))?
-            .unwrap_or_default();
+        let opened = files::Doc::open_or_quarantine(
+            &path,
+            &vantare_ipc::files::Options::default(),
+            |bytes| {
+                let value: serde_json::Value = serde_json::from_slice(bytes)
+                    .map_err(|e| files::Error::InvalidInput(format!("Launcher inválido: {e}")))?;
+                if value
+                    .get("version")
+                    .and_then(serde_json::Value::as_u64)
+                    .is_some_and(|v| v != 1)
+                {
+                    return Err(vantare_ipc::files::Error::Unsupported(
+                        "versión de Launcher desconocida; original protegido".into(),
+                    ));
+                }
+                let document: Document = serde_json::from_value(value)
+                    .map_err(|e| files::Error::InvalidInput(format!("Launcher inválido: {e}")))?;
+                document.validate()?;
+                Ok(document)
+            },
+            Document::default,
+        );
+        let mut document = opened.value;
+        let saved = opened.observed;
         // Conserva el origen al editar o duplicar perfiles importados por versiones anteriores.
         if let Some(imported) = document
             .wails_import
@@ -486,6 +501,7 @@ impl Store {
         }
         document.validate()?;
         Ok(Self {
+            warning: opened.warning,
             document,
             path,
             saved,
@@ -497,7 +513,7 @@ impl Store {
         document.validate()?;
         let bytes = serde_json::to_vec_pretty(&document)
             .map_err(|e| format!("serializar Launcher: {e}"))?;
-        files::save_checked(
+        files::save_with_limit(
             &self.path,
             &bytes,
             self.saved.as_deref(),

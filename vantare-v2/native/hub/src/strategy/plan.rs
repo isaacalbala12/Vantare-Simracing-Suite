@@ -22,12 +22,12 @@ impl PlanState {
     fn from(
         outcome: Option<&SolverOutcome>,
         running: bool,
-        error: Option<&str>,
+        has_error: bool,
         edit_dirty: bool,
     ) -> Self {
         if running {
             Self::Loading
-        } else if error.is_some() {
+        } else if has_error {
             Self::Error
         } else if edit_dirty {
             Self::Editing
@@ -265,7 +265,7 @@ impl Strategy {
         let state = PlanState::from(
             self.result.as_ref(),
             self.running,
-            self.error.as_deref(),
+            self.error.is_some(),
             self.edit_dirty,
         );
         let source_open =
@@ -1480,11 +1480,11 @@ mod tests {
 
     #[test]
     fn plan_states_distinguish_idle_loading_partial_error_and_certificate() {
-        assert_eq!(PlanState::from(None, false, None, false), PlanState::Idle);
-        assert_eq!(PlanState::from(None, true, None, false), PlanState::Loading);
-        assert_eq!(PlanState::from(None, false, None, true), PlanState::Editing);
+        assert_eq!(PlanState::from(None, false, false, false), PlanState::Idle);
+        assert_eq!(PlanState::from(None, true, false, false), PlanState::Loading);
+        assert_eq!(PlanState::from(None, false, false, true), PlanState::Editing);
         assert_eq!(
-            PlanState::from(None, false, Some("failed"), false),
+            PlanState::from(None, false, true, false),
             PlanState::Error
         );
         assert_eq!(

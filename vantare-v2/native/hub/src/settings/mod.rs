@@ -298,7 +298,7 @@ impl State {
         let query = cx.new(|cx| Input::new(String::new(), "Buscar ajustes…", cx));
         cx.observe(&query, |_, _, cx| cx.notify()).detach();
         let (event_filter, event_query) = Self::diagnostic_controls(window, cx);
-        let general = general::Store::load(&data);
+        let general: Result<_, String> = Ok(general::Store::load(&data));
         let prefs = general
             .as_ref()
             .map_or_else(|_| general::Preferences::default(), |store| store.value);

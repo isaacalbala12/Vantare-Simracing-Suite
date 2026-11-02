@@ -60,39 +60,45 @@ impl Default for Preferences {
 }
 pub(in crate::shell) struct Store {
     pub value: Preferences,
+    pub warning: Option<String>,
     startup_task: Option<gpui::Task<()>>,
     path: PathBuf,
     observed: Option<Vec<u8>>,
 }
 impl Store {
-    pub fn load(root: &Path) -> Result<Self, String> {
+    pub fn load(root: &Path) -> Self {
         Self::load_with_startup(root, super::windows::installed_startup())
     }
-    fn load_with_startup(root: &Path, startup: Option<bool>) -> Result<Self, String> {
+    fn load_with_startup(root: &Path, startup: Option<bool>) -> Self {
         let path = root.join("general.json");
-        let observed = match std::fs::metadata(&path) {
-            Ok(_) => Some(crate::files::read(&path, 4096)?),
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => None,
-            Err(error) => return Err(format!("leer ajustes generales: {error}")),
-        };
-        let mut value = observed
-            .as_deref()
-            .map_or(Ok(Preferences::default()), |bytes| {
-                serde_json::from_slice(bytes)
-                    .map_err(|error| format!("leer ajustes generales: {error}"))
-            })?;
+        let opened = crate::files::Doc::open_or_quarantine(
+            &path,
+            &vantare_ipc::files::Options {
+                limit: 4096,
+                ..Default::default()
+            },
+            |bytes| {
+                serde_json::from_slice(bytes).map_err(|error| {
+                    crate::files::Error::InvalidInput(format!("leer ajustes generales: {error}"))
+                })
+            },
+            Preferences::default,
+        );
+        let observed = opened.observed;
+        let mut value = opened.value;
         if observed.is_none() {
             value.onboarding_completed = false;
         }
         if let Some(enabled) = startup {
             value.startup = enabled;
         }
-        Ok(Self {
+        Self {
+            warning: opened.warning,
             value,
             startup_task: None,
             path,
             observed,
-        })
+        }
     }
     pub(super) fn startup_pending(&self) -> bool {
         self.startup_task.is_some()
@@ -281,13 +287,21 @@ pub(super) fn wire(state: &super::State, cx: &mut gpui::Context<super::Hub>) {
 mod tests {
     use super::*;
     #[test]
-    fn step5_characterization_corrupt_general_is_preserved_and_rejected() {
-        let root = std::env::temp_dir().join(format!("vantare-step5-general-{}", std::process::id()));
+    fn step5_corrupt_general_is_archived_and_can_be_saved() {
+        let root =
+            std::env::temp_dir().join(format!("vantare-step5-general-{}", std::process::id()));
         std::fs::create_dir_all(&root).unwrap();
         let path = root.join("general.json");
         std::fs::write(&path, b"{").unwrap();
-        assert!(Store::load_with_startup(&root, None).is_err());
-        assert_eq!(std::fs::read(path).unwrap(), b"{");
+        let mut store = Store::load_with_startup(&root, None);
+        assert!(store.warning.as_ref().unwrap().contains(".invalid"));
+        assert_eq!(
+            std::fs::read(root.join("general.json.invalid")).unwrap(),
+            b"{"
+        );
+        assert_eq!(std::fs::read(&path).unwrap(), b"{");
+        store.save(store.value).unwrap();
+        assert!(Store::load_with_startup(&root, None).warning.is_none());
         std::fs::remove_dir_all(root).unwrap();
     }
     #[test]
@@ -298,12 +312,12 @@ mod tests {
         let path = root.join("general.json");
         let bytes = br#"{ "startup": false, "density": "compact" }"#;
         std::fs::write(&path, bytes).unwrap();
-        let store = Store::load_with_startup(&root, Some(true)).unwrap();
+        let store = Store::load_with_startup(&root, Some(true));
         assert!(store.value.startup);
         assert_eq!(store.value.density, Density::Compact);
         assert_eq!(std::fs::read(&path).unwrap(), bytes);
         std::fs::remove_file(&path).unwrap();
-        let store = Store::load_with_startup(&root, Some(true)).unwrap();
+        let store = Store::load_with_startup(&root, Some(true));
         assert!(store.value.startup);
         assert!(!path.exists());
         std::fs::remove_dir_all(root).unwrap();
@@ -316,7 +330,7 @@ mod tests {
         std::fs::create_dir_all(&data).unwrap();
         let bytes = br#"{"startup":false,"updates":false}"#;
         std::fs::write(data.join("general.json"), bytes).unwrap();
-        let mut store = Store::load_with_startup(&data, None).unwrap();
+        let mut store = Store::load_with_startup(&data, None);
         assert!(!store.value.startup);
         std::fs::write(
             root.join("startup-options.json"),
@@ -358,25 +372,17 @@ mod tests {
             std::process::id()
         ));
         std::fs::create_dir_all(&root).expect("root");
-        let mut legacy = Store::load(&root).expect("legacy without General");
+        let mut legacy = Store::load(&root);
         assert!(!legacy.onboarding_needed(true));
         legacy.save(legacy.value).expect("later settings edit");
-        assert!(
-            !Store::load(&root)
-                .expect("legacy restart")
-                .onboarding_needed(true)
-        );
+        assert!(!Store::load(&root).onboarding_needed(true));
         std::fs::remove_file(root.join("general.json")).expect("new installation case");
-        let mut fresh = Store::load(&root).expect("fresh");
+        let mut fresh = Store::load(&root);
         assert!(fresh.onboarding_needed(false));
         fresh
             .save(fresh.value)
             .expect("persist pending before opening wizard");
-        assert!(
-            Store::load(&root)
-                .expect("interrupted wizard")
-                .onboarding_needed(true)
-        );
+        assert!(Store::load(&root).onboarding_needed(true));
         std::fs::remove_dir_all(root).expect("cleanup");
     }
     #[test]
@@ -384,24 +390,14 @@ mod tests {
         let root =
             std::env::temp_dir().join(format!("vantare-onboarding-general-{}", std::process::id()));
         std::fs::create_dir_all(&root).expect("root");
-        let mut store = Store::load(&root).expect("new installation");
+        let mut store = Store::load(&root);
         assert!(!store.value.onboarding_completed);
         let mut next = store.value;
         next.onboarding_completed = true;
         store.save(next).expect("completed");
-        assert!(
-            Store::load(&root)
-                .expect("restart")
-                .value
-                .onboarding_completed
-        );
+        assert!(Store::load(&root).value.onboarding_completed);
         std::fs::write(root.join("general.json"), b"{}").expect("legacy");
-        assert!(
-            Store::load(&root)
-                .expect("existing installation")
-                .value
-                .onboarding_completed
-        );
+        assert!(Store::load(&root).value.onboarding_completed);
         std::fs::remove_dir_all(root).expect("cleanup");
     }
     #[test]
@@ -415,7 +411,7 @@ mod tests {
             br#"{"onboarding_completed":true,"onboarding_simulators":[false,true],"onboarding_automatic":true}"#,
         )
         .expect("legacy choices");
-        let mut store = Store::load(&root).expect("legacy installation");
+        let mut store = Store::load(&root);
         assert!(store.value.onboarding_completed);
         store.save(store.value).expect("rewrite");
         let saved = String::from_utf8(std::fs::read(root.join("general.json")).expect("read"))
@@ -449,13 +445,13 @@ mod tests {
     fn preferences_reopen_and_preserve_external_changes() {
         let root = std::env::temp_dir().join(format!("vantare-general-{}", std::process::id()));
         std::fs::create_dir_all(&root).expect("directorio");
-        let mut store = Store::load(&root).expect("abrir");
+        let mut store = Store::load(&root);
         let mut next = store.value;
         next.minimized = true;
         next.density = Density::Compact;
         next.toasts = true;
         store.save(next).expect("guardar");
-        assert_eq!(Store::load(&root).expect("reabrir").value, next);
+        assert_eq!(Store::load(&root).value, next);
         std::fs::write(root.join("general.json"), b"{}").expect("edicion externa");
         assert!(store.save(Preferences::default()).is_err());
         assert_eq!(

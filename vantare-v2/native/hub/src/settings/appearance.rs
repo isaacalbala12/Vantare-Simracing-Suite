@@ -36,6 +36,7 @@ fn read_settings(bytes: &[u8]) -> Result<AppearanceSettings, String> {
 
 pub(crate) struct Store {
     pub settings: AppearanceSettings,
+    warning: Option<String>,
     path: PathBuf,
     observed: Option<Vec<u8>>,
     pub zoom_percent: u16,
@@ -46,6 +47,7 @@ impl Store {
     fn defaults(path: &Path) -> Self {
         Self {
             settings: AppearanceSettings::default(),
+            warning: None,
             path: path.to_path_buf(),
             observed: None,
             zoom_percent: 100,
@@ -58,19 +60,39 @@ impl Store {
     /// visible en Ajustes, como los ajustes generales.
     pub fn load_or_default(path: &Path) -> (Self, Option<String>) {
         match Self::load(path.to_path_buf()) {
-            Ok(store) => (store, None),
+            Ok(store) => {
+                let warning = store.warning.clone();
+                (store, warning)
+            }
             Err(error) => (Self::defaults(path), Some(error)),
         }
     }
     pub fn load(path: PathBuf) -> Result<Self, String> {
-        let observed = match std::fs::metadata(&path) {
-            Ok(_) => Some(crate::files::read(&path, 16 * 1024)?),
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => None,
-            Err(error) => return Err(format!("inspeccionar apariencia: {error}")),
-        };
-        let mut settings: AppearanceSettings = observed
-            .as_deref()
-            .map_or_else(|| Ok(AppearanceSettings::default()), read_settings)?;
+        let opened = crate::files::Doc::open_or_quarantine(
+            &path,
+            &vantare_ipc::files::Options {
+                limit: 16 * 1024,
+                ..Default::default()
+            },
+            |bytes| {
+                let value: serde_json::Value = serde_json::from_slice(bytes).map_err(|error| {
+                    crate::files::Error::InvalidInput(format!("leer apariencia: {error}"))
+                })?;
+                if value
+                    .get("paletteVersion")
+                    .and_then(serde_json::Value::as_u64)
+                    .is_some_and(|v| v != 1)
+                {
+                    return Err(vantare_ipc::files::Error::Unsupported(
+                        "versión de paleta desconocida; original protegido".into(),
+                    ));
+                }
+                read_settings(bytes).map_err(Into::into)
+            },
+            AppearanceSettings::default,
+        );
+        let observed = opened.observed;
+        let mut settings = opened.value;
         settings.contrast = settings.contrast.clamp(80, 120);
         settings.glass_opacity = settings.glass_opacity.clamp(50, 100);
         let zoom_path = path.with_file_name("hub-zoom.json");
@@ -86,6 +108,7 @@ impl Store {
             return Err("Tamaño de interfaz no válido".into());
         }
         Ok(Self {
+            warning: opened.warning,
             settings,
             path,
             observed,
@@ -331,6 +354,20 @@ mod tests {
     use super::*;
     use crate::orbit::theme::Scheme;
     #[test]
+    fn step5_future_palette_stays_intact_and_cannot_be_overwritten() {
+        let dir = directory("future");
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("appearance.json");
+        let bytes = br#"{"paletteVersion":99,"palette":"future"}"#;
+        std::fs::write(&path, bytes).unwrap();
+        let (mut store, error) = Store::load_or_default(&path);
+        assert!(error.is_some());
+        assert!(store.save(store.settings).is_err());
+        assert_eq!(std::fs::read(&path).unwrap(), bytes);
+        assert!(!dir.join("appearance.json.invalid").exists());
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+    #[test]
     fn corrupt_appearance_falls_back_to_defaults_with_a_visible_error() {
         let dir = directory("corrupt-fallback");
         std::fs::create_dir_all(&dir).expect("directorio");
@@ -342,10 +379,14 @@ mod tests {
         // Archivo ilegible: la ventana debe abrir con valores por defecto y el
         // motivo visible en Ajustes, en lugar de propagar el error al arranque.
         std::fs::write(&path, b"{ apariencia rota").expect("fixture corrupta");
-        assert!(Store::load(path.clone()).is_err());
+        assert!(Store::load(path.clone()).unwrap().warning.is_some());
         let (mut store, error) = Store::load_or_default(&path);
-        assert!(store.save(store.settings).is_err());
         assert_eq!(std::fs::read(&path).unwrap(), b"{ apariencia rota");
+        assert_eq!(
+            std::fs::read(path.with_file_name("appearance.json.invalid")).unwrap(),
+            b"{ apariencia rota"
+        );
+        store.save(store.settings).expect("save after recovery");
         assert_eq!(store.settings, AppearanceSettings::default());
         assert_eq!(store.zoom_percent, 100);
         assert!(error.is_some(), "el error debe quedar visible en Ajustes");
@@ -599,9 +640,17 @@ mod tests {
         std::fs::create_dir_all(&dir).expect("directorio");
         let path = dir.join("appearance.json");
         std::fs::write(&path, b"no JSON").expect("corrupt");
-        assert!(Store::load(path.clone()).is_err());
-        std::fs::write(&path, vec![b' '; 16 * 1024 + 1]).expect("large");
-        assert!(Store::load(path.clone()).is_err());
+        assert!(Store::load(path.clone()).unwrap().warning.is_some());
+        assert_eq!(
+            std::fs::read(path.with_file_name("appearance.json.invalid")).unwrap(),
+            b"no JSON"
+        );
+        let oversized = vec![b' '; 16 * 1024 + 1];
+        std::fs::write(&path, &oversized).expect("large");
+        let mut protected = Store::load(path.clone()).unwrap();
+        assert!(protected.warning.is_some());
+        assert!(protected.save(protected.settings).is_err());
+        assert_eq!(std::fs::read(&path).unwrap(), oversized);
         std::fs::remove_file(&path).expect("remove fixture");
         let mut store = Store::load(path.clone()).expect("defaults");
         store

@@ -6,6 +6,9 @@ use std::{
     sync::atomic::{AtomicU64, Ordering},
 };
 
+mod doc;
+pub use doc::Doc;
+
 pub const MAX_DOCUMENT: u64 = 5 * 1024 * 1024;
 static NEXT: AtomicU64 = AtomicU64::new(0);
 
@@ -20,7 +23,7 @@ pub enum Kind {
 }
 impl Kind {
     pub const fn is_conflict(self) -> bool {
-        matches!(self, Self::Conflict | Self::Busy)
+        matches!(self, Self::Conflict)
     }
 }
 
@@ -41,12 +44,6 @@ impl Failure {
 impl std::fmt::Display for Failure {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(&self.message)
-    }
-}
-impl std::ops::Deref for Failure {
-    type Target = str;
-    fn deref(&self) -> &str {
-        &self.message
     }
 }
 impl From<String> for Failure {
@@ -75,17 +72,20 @@ pub enum Error {
     Io(io::Error),
     Conflict,
     Busy,
-    TooLarge,
+    TooLarge { path: PathBuf, limit: u64 },
     EnvironmentFile,
     Message(String),
     InvalidInput(String),
+    Unsupported(String),
     ReadTooLarge { path: PathBuf, limit: u64 },
 }
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Io(error) => write!(f, "{error}"),
-            Self::Message(message) | Self::InvalidInput(message) => f.write_str(message),
+            Self::Message(message) | Self::InvalidInput(message) | Self::Unsupported(message) => {
+                f.write_str(message)
+            }
             Self::ReadTooLarge { path, limit } => {
                 write!(f, "leer {}: supera {limit} bytes", path.display())
             }
@@ -93,7 +93,9 @@ impl std::fmt::Display for Error {
                 f.write_str("conflicto: el documento cambió; cargar antes de guardar")
             }
             Self::Busy => f.write_str("ya hay un guardado en curso"),
-            Self::TooLarge => f.write_str("documento demasiado grande"),
+            Self::TooLarge { path, limit } => {
+                write!(f, "guardar {}: supera {limit} bytes", path.display())
+            }
             Self::EnvironmentFile => f.write_str("no se admiten archivos de entorno"),
         }
     }
@@ -104,14 +106,14 @@ impl Error {
         match self {
             Self::Conflict => Kind::Conflict,
             Self::Busy => Kind::Busy,
-            Self::InvalidInput(_) | Self::TooLarge | Self::ReadTooLarge { .. } => {
+            Self::InvalidInput(_) | Self::TooLarge { .. } | Self::ReadTooLarge { .. } => {
                 Kind::InvalidInput
             }
             Self::Io(error) => error
                 .get_ref()
                 .and_then(|source| source.downcast_ref::<Self>())
                 .map_or(Kind::Local, Self::kind),
-            Self::EnvironmentFile | Self::Message(_) => Kind::Local,
+            Self::EnvironmentFile | Self::Message(_) | Self::Unsupported(_) => Kind::Local,
         }
     }
 }
@@ -140,8 +142,9 @@ impl From<Error> for io::Error {
         match error {
             Error::Io(error) => error,
             Error::Busy => Self::new(io::ErrorKind::WouldBlock, error),
+            Error::Unsupported(_) => Self::new(io::ErrorKind::Unsupported, error),
             Error::Conflict | Error::Message(_) => Self::other(error),
-            Error::TooLarge
+            Error::TooLarge { .. }
             | Error::EnvironmentFile
             | Error::InvalidInput(_)
             | Error::ReadTooLarge { .. } => Self::new(io::ErrorKind::InvalidData, error),
@@ -273,6 +276,12 @@ impl Drop for Pending {
         let _ = fs::remove_file(&self.0);
     }
 }
+fn write_context(path: &Path, action: &str, error: &io::Error) -> Error {
+    Error::Io(io::Error::new(
+        error.kind(),
+        format!("{action} {}: {error}", path.display()),
+    ))
+}
 fn persist(
     path: &Path,
     bytes: &[u8],
@@ -282,23 +291,31 @@ fn persist(
 ) -> Result<(), Error> {
     check_path(path)?;
     if bytes.len() as u64 > options.limit {
-        return Err(Error::TooLarge);
+        return Err(Error::TooLarge {
+            path: path.to_owned(),
+            limit: options.limit,
+        });
     }
     if let Some(parent) = path.parent().filter(|p| !p.as_os_str().is_empty()) {
-        fs::create_dir_all(parent)?;
+        fs::create_dir_all(parent).map_err(|e| write_context(path, "crear carpeta para", &e))?;
     }
     let base = options.sibling_base.as_deref().unwrap_or(path);
     let lock = OpenOptions::new()
         .write(true)
         .create(true)
         .truncate(false)
-        .open(sibling(base, ".lock"))?;
+        .open(sibling(base, ".lock"))
+        .map_err(|e| write_context(path, "crear bloqueo para", &e))?;
     match mode {
-        Mode::Replace => lock.lock()?,
+        Mode::Replace => lock
+            .lock()
+            .map_err(|e| write_context(path, "bloquear", &e))?,
         Mode::Observed(_) => match lock.try_lock() {
             Ok(()) => {}
             Err(fs::TryLockError::WouldBlock) => return Err(Error::Busy),
-            Err(fs::TryLockError::Error(error)) => return Err(error.into()),
+            Err(fs::TryLockError::Error(error)) => {
+                return Err(write_context(path, "bloquear", &error));
+            }
         },
     }
     compare(path, mode, options.limit)?;
@@ -324,18 +341,25 @@ fn persist(
         {
             Ok(file) => break (Pending(temporary), file),
             Err(error) if error.kind() == io::ErrorKind::AlreadyExists => {}
-            Err(error) => return Err(error.into()),
+            Err(error) => return Err(write_context(path, "crear temporal para", &error)),
         }
     };
-    file.write_all(bytes)?;
-    file.sync_all()?;
+    file.write_all(bytes)
+        .map_err(|e| write_context(path, "escribir", &e))?;
+    file.sync_all()
+        .map_err(|e| write_context(path, "sincronizar", &e))?;
     drop(file);
-    if options.backup && path.try_exists()? {
-        fs::copy(path, sibling(base, ".bak"))?;
+    if options.backup
+        && path
+            .try_exists()
+            .map_err(|e| write_context(path, "inspeccionar", &e))?
+    {
+        fs::copy(path, sibling(base, ".bak"))
+            .map_err(|e| write_context(path, "copiar respaldo de", &e))?;
     }
-    before_rename()?;
+    before_rename().map_err(|e| write_context(path, "preparar reemplazo de", &e))?;
     compare(path, mode, options.limit)?;
-    fs::rename(&pending.0, path)?;
+    fs::rename(&pending.0, path).map_err(|e| write_context(path, "reemplazar", &e))?;
     Ok(())
 }
 
@@ -353,11 +377,19 @@ mod tests {
     fn step5_write_diagnostics_include_destination_and_limit() {
         let dir = directory();
         let path = dir.join("document.json");
-        let error = save(&path, b"four", Mode::Replace, &Options {
-            limit: 3, ..Options::default()
-        }).expect_err("oversize");
+        let error = save(
+            &path,
+            b"four",
+            Mode::Replace,
+            &Options {
+                limit: 3,
+                ..Options::default()
+            },
+        )
+        .expect_err("oversize");
         assert!(error.to_string().contains(&path.display().to_string()));
-        assert!(error.to_string().contains('3'));
+        assert!(matches!(&error, Error::TooLarge { path: reported, limit: 3 } if reported == &path));
+        assert!(error.to_string().contains("supera 3 bytes"));
         fs::write(dir.join("file"), b"parent is not a directory").unwrap();
         let blocked = dir.join("file/document.json");
         let error = save(&blocked, b"x", Mode::Replace, &Options::default()).unwrap_err();
@@ -458,7 +490,7 @@ mod tests {
         };
         assert!(matches!(
             save(&path, b"four", Mode::Observed(None), &options),
-            Err(Error::TooLarge)
+            Err(Error::TooLarge { .. })
         ));
         assert!(!path.exists());
         fs::write(&path, b"four").expect("large file");

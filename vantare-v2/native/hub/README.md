@@ -1,5 +1,26 @@
 # Hub nativo (ISA-1430)
 
+## Documentos dañados — #1869, paso 5
+
+Un layout, Launcher, General o Apariencia dañados permiten abrir el Hub con
+valores por defecto y aviso de la copia `.invalid`. Studio y Launcher muestran
+ese nombre; Ajustes reúne los avisos de General y Apariencia. El original no se
+reescribe durante el arranque: la primera edición comprueba sus bytes originales.
+Una copia anterior diferente nunca se pisa. Al reparar un layout se conserva
+su `.bak` anterior durante el primer guardado; `.invalid` ya protege el dañado.
+Después se recupera la rotación normal de `.bak`. Los overlays siguen leyendo
+su último layout válido hasta que se guarde un layout reparado.
+
+Una versión desconocida, un archivo demasiado grande o una copia fallida dejan
+el archivo protegido. El Hub muestra el aviso y las ediciones no lo sobrescriben.
+La política y los límites viven en [IPC](../ipc/README.md).
+Los errores Busy no abren el panel de conflicto ni ofrecen «Recargar datos locales».
+El diagnóstico de Hub conserva el tipo de los guardados al cerrar o usar Guardar.
+Workshop.scene.error se refiere solo a lectura/decodificación de fotos; por eso
+es Local. Un fallo al guardar la selección de Workshop viaja tipado por Hub::save.
+No se interpreta el texto del estado para determinar el tipo de error.
+
+
 ## Agenda de avisos — #1869, paso 2
 
 El Hub publica `session-alerts-feed.json` junto al layout; overlays usa el mismo

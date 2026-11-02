@@ -1380,8 +1380,14 @@ impl Hub {
             ),
             None => Strategy::new(strategy_dir, cx),
         });
-        let mut settings =
-            settings::State::new(prefs, settings_store, testing_dir.clone(), privacy, window, cx);
+        let mut settings = settings::State::new(
+            prefs,
+            settings_store,
+            testing_dir.clone(),
+            privacy,
+            window,
+            cx,
+        );
         settings.status = settings.store.warning.clone();
         if let Some(page) = capture.as_ref().and_then(|capture| capture.settings_page) {
             settings.select_demo_page(page);
@@ -1390,7 +1396,9 @@ impl Hub {
         let onboarding_capture = capture
             .as_ref()
             .is_some_and(|c| c.name.starts_with("onboarding-"));
-        let first_run = demo.is_none() && capture.is_none() && !settings.store.value.general.onboarding_completed;
+        let first_run = demo.is_none()
+            && capture.is_none()
+            && !settings.store.value.general.onboarding_completed;
         let mut onboarding = (first_run || onboarding_capture).then(|| {
             onboarding::State::new(
                 capture.as_ref(),
@@ -1512,8 +1520,11 @@ pub(crate) fn load(options: &mut Options) -> Result<Loaded, String> {
     if let (Some(demo), Some(capture)) = (&mut options.demo, &options.capture) {
         demo.apply_capture(capture)?;
     }
-    let mut settings_store = settings::store::Store::load(&options.data_dir, options.layout.exists());
-    if let Some(enabled) = settings::windows::installed_startup() { settings_store.value.general.startup = enabled; }
+    let mut settings_store =
+        settings::store::Store::load(&options.data_dir, options.layout.exists());
+    if let Some(enabled) = settings::windows::installed_startup() {
+        settings_store.value.general.startup = enabled;
+    }
     if let Some(settings) = options.capture.as_ref().and(options.capture_appearance) {
         settings_store.value.appearance = settings;
     }

@@ -33,12 +33,17 @@ fn context() -> HeadlessAppContext {
 fn open(root: &Path, cx: &mut HeadlessAppContext) -> WindowHandle<Hub> {
     open_after_load(root, cx, || {})
 }
-fn open_after_load(root: &Path, cx: &mut HeadlessAppContext, after_load: impl FnOnce()) -> WindowHandle<Hub> {
+fn open_after_load(
+    root: &Path,
+    cx: &mut HeadlessAppContext,
+    after_load: impl FnOnce(),
+) -> WindowHandle<Hub> {
     let pipe = format!(
         "onboarding-test-{}",
         vantare_services::random_id().expect("id")
     );
-    let settings_store = crate::shell::settings::store::Store::load(root, root.join("layout.json").exists());
+    let settings_store =
+        crate::shell::settings::store::Store::load(root, root.join("layout.json").exists());
     let loaded = Loaded {
         preview_fixtures: None,
         settings_store,
@@ -353,10 +358,7 @@ fn persistent_marketing_errors_allow_finishing_with_unconfirmed_mail() {
                     assert_eq!(hub.onboarding.as_ref().expect("resumen").step, DONE);
                     hub.onboarding_finish(false, window, cx);
                     assert!(hub.onboarding.is_none(), "se sale del asistente");
-                    assert!(
-                        hub.settings
-                            .store.value.general.onboarding_completed
-                    );
+                    assert!(hub.settings.store.value.general.onboarding_completed);
                 })
                 .expect("configuración completada sin permiso de correo");
             cx.update_window(window.into(), |_, window, _| window.remove_window())
@@ -443,7 +445,8 @@ pub(in crate::shell) fn with_hub(test: impl FnOnce(&mut Hub, &mut gpui::Context<
 /// Paleta y modo guardados en `appearance.json`, el mismo archivo de Ajustes.
 fn stored_look(root: &Path) -> (Palette, Scheme) {
     let saved = crate::shell::settings::store::Store::load(root, true)
-        .value.appearance;
+        .value
+        .appearance;
     (saved.palette, saved.scheme)
 }
 
@@ -515,8 +518,7 @@ fn skipping_the_look_step_keeps_vantare_or_the_previous_choice() {
             let path = root.0.join("appearance.json");
             if let Some((palette, scheme)) = previous {
                 // Elección previa hecha en Ajustes › Apariencia.
-                let mut store =
-                    crate::shell::settings::store::Store::load(&root.0, false);
+                let mut store = crate::shell::settings::store::Store::load(&root.0, false);
                 let settings = crate::orbit::theme::AppearanceSettings {
                     palette,
                     scheme,
@@ -623,22 +625,43 @@ fn step6_shell_opens_and_renders_with_five_corrupt_documents_without_rewriting_t
 #[test]
 fn step6_preloaded_preferences_drive_the_window_without_loading_again() {
     gpui_platform::headless().run(|app| {
-        let root=Root::new();
-        let mut store=crate::shell::settings::store::Store::load(&root.0,false);
-        let mut general=store.value.general;general.minimized=true;store.save_general(general).unwrap();
-        store.save_appearance(crate::orbit::theme::AppearanceSettings{palette:Palette::Ocean,..store.value.appearance}).unwrap();
+        let root = Root::new();
+        let mut store = crate::shell::settings::store::Store::load(&root.0, false);
+        let mut general = store.value.general;
+        general.minimized = true;
+        store.save_general(general).unwrap();
+        store
+            .save_appearance(crate::orbit::theme::AppearanceSettings {
+                palette: Palette::Ocean,
+                ..store.value.appearance
+            })
+            .unwrap();
         store.save_zoom(110).unwrap();
-        let mut cx=context();
-        let window=open_after_load(&root.0,&mut cx,|| {std::fs::write(root.0.join("hub-settings.json"),b"external after load").unwrap();});
-        draw(window,&mut cx);
-        window.update(&mut cx,|hub,_,cx| {
-            assert!(hub.general_preferences().minimized);
-            assert_eq!(hub.settings.store.value.zoom,110);
-            assert_eq!(hub.settings.store.value.appearance.palette,Palette::Ocean);
-            assert_eq!(cx.global::<crate::orbit::theme::Theme>().palette,Palette::Ocean);
-        }).unwrap();
-        assert_eq!(std::fs::read(root.0.join("hub-settings.json")).unwrap(),b"external after load");
+        let mut cx = context();
+        let window = open_after_load(&root.0, &mut cx, || {
+            std::fs::write(root.0.join("hub-settings.json"), b"external after load").unwrap();
+        });
+        draw(window, &mut cx);
+        window
+            .update(&mut cx, |hub, _, cx| {
+                assert!(hub.general_preferences().minimized);
+                assert_eq!(hub.settings.store.value.zoom, 110);
+                assert_eq!(hub.settings.store.value.appearance.palette, Palette::Ocean);
+                assert_eq!(
+                    cx.global::<crate::orbit::theme::Theme>().palette,
+                    Palette::Ocean
+                );
+            })
+            .unwrap();
+        assert_eq!(
+            std::fs::read(root.0.join("hub-settings.json")).unwrap(),
+            b"external after load"
+        );
         assert!(!root.0.join("hub-settings.json.invalid").exists());
-        window.update(&mut cx,|_,window,_|window.remove_window()).unwrap();drop(cx);app.quit();
+        window
+            .update(&mut cx, |_, window, _| window.remove_window())
+            .unwrap();
+        drop(cx);
+        app.quit();
     });
 }

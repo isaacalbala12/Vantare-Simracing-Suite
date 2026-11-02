@@ -10,11 +10,11 @@ use std::{path::PathBuf, time::Instant};
 use vantare_domain::format::{Language, Preferences, Units};
 
 pub(super) mod appearance;
-pub(in crate::shell) mod store;
 pub(in crate::shell) mod general;
 mod pilot;
 pub(in crate::shell) mod privacy;
 pub(crate) mod releases;
+pub(in crate::shell) mod store;
 #[cfg(test)]
 mod tests;
 mod text_rendering;

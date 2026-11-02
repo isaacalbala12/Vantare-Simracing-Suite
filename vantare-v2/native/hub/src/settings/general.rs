@@ -74,7 +74,9 @@ impl super::Hub {
         cx.notify();
     }
     pub(super) fn general_toggle(&mut self, toggle: Toggle, cx: &mut gpui::Context<Self>) {
-        if !toggle.enabled(self.settings.startup_task.is_some()) { return; }
+        if !toggle.enabled(self.settings.startup_task.is_some()) {
+            return;
+        }
         let old = self.general_preferences();
         let mut next = old;
         match toggle {
@@ -128,7 +130,8 @@ impl super::Hub {
     pub(super) fn refresh_startup_preference(&mut self, cx: &mut gpui::Context<Self>) {
         if self.settings.startup_task.is_none()
             && let Some(enabled) = super::windows::installed_startup()
-            && self.settings.store.value.general.startup != enabled {
+            && self.settings.store.value.general.startup != enabled
+        {
             self.settings.store.value.general.startup = enabled;
             cx.notify();
         }

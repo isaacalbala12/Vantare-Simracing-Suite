@@ -12,11 +12,15 @@ pub(super) struct StoredAppearance {
     pub settings: AppearanceSettings,
 }
 
-pub(super) fn read_settings(value: &serde_json::Value) -> Result<AppearanceSettings, vantare_ipc::files::Error> {
+pub(super) fn read_settings(
+    value: &serde_json::Value,
+) -> Result<AppearanceSettings, vantare_ipc::files::Error> {
     vantare_ipc::files::future_version(value, "paletteVersion", 1)?;
     let legacy = value.get("paletteVersion").is_none();
-    let mut settings: AppearanceSettings = serde_json::from_value(value.clone())
-        .map_err(|error| vantare_ipc::files::Error::InvalidInput(format!("leer apariencia: {error}")))?;
+    let mut settings: AppearanceSettings =
+        serde_json::from_value(value.clone()).map_err(|error| {
+            vantare_ipc::files::Error::InvalidInput(format!("leer apariencia: {error}"))
+        })?;
     if legacy && value.get("palette").is_some() {
         settings.palette = match settings.palette {
             theme::Palette::Vantare => theme::Palette::Classic,
@@ -25,7 +29,7 @@ pub(super) fn read_settings(value: &serde_json::Value) -> Result<AppearanceSetti
         };
     }
     settings.contrast = settings.contrast.clamp(80, 120);
-    settings.glass_opacity = settings.glass_opacity.clamp(50,100);
+    settings.glass_opacity = settings.glass_opacity.clamp(50, 100);
     Ok(settings)
 }
 
@@ -109,7 +113,11 @@ impl Hub {
         self.settings.appearance_preview = [None, None];
         match self.settings.store.save_appearance(settings) {
             Ok(()) => {
-                theme::apply(self.settings.store.value.appearance, window.appearance(), cx);
+                theme::apply(
+                    self.settings.store.value.appearance,
+                    window.appearance(),
+                    cx,
+                );
                 self.settings.status = self.settings.store.mirror_warning.clone();
             }
             Err(error) => self.settings.status = Some(error),
@@ -252,14 +260,14 @@ mod tests {
     }
     #[test]
     fn zoom_steps_respect_the_window_limit() {
-        assert_eq!(zoom_step_limited(90,-1,125.0),90);
-        assert_eq!(zoom_step_limited(125,1,125.0),125);
-        assert_eq!(zoom_step_limited(100,1,125.0),110);
-        assert_eq!(zoom_step_limited(110,-1,125.0),100);
-        assert_eq!(zoom_step_limited(125,0,125.0),100);
-        assert_eq!(zoom_step_limited(110,1,112.5),110);
-        assert_eq!(zoom_step_limited(125,1,112.5),125);
-        assert_eq!(zoom_step_limited(125,-1,112.5),110);
-        assert_eq!(zoom_step_limited(90,1,90.0),90);
+        assert_eq!(zoom_step_limited(90, -1, 125.0), 90);
+        assert_eq!(zoom_step_limited(125, 1, 125.0), 125);
+        assert_eq!(zoom_step_limited(100, 1, 125.0), 110);
+        assert_eq!(zoom_step_limited(110, -1, 125.0), 100);
+        assert_eq!(zoom_step_limited(125, 0, 125.0), 100);
+        assert_eq!(zoom_step_limited(110, 1, 112.5), 110);
+        assert_eq!(zoom_step_limited(125, 1, 112.5), 125);
+        assert_eq!(zoom_step_limited(125, -1, 112.5), 110);
+        assert_eq!(zoom_step_limited(90, 1, 90.0), 90);
     }
 }

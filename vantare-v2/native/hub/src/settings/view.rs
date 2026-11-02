@@ -614,9 +614,7 @@ impl Hub {
             if index == 0 && !cfg!(windows) {
                 continue;
             }
-            let help = if index == 0
-                && self.settings.startup_task.is_some()
-            {
+            let help = if index == 0 && self.settings.startup_task.is_some() {
                 super::general::STARTUP_PROGRESS
             } else {
                 help

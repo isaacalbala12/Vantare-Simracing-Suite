@@ -702,7 +702,9 @@ impl Launcher {
         hotkey_status_text(self.resident_status.as_ref(), id)
     }
     pub(crate) fn global_hotkey_error(&self) -> Option<&str> {
-        self.resident_error.as_ref().map(crate::files::Failure::as_str)
+        self.resident_error
+            .as_ref()
+            .map(crate::files::Failure::as_str)
     }
     pub fn saved_profiles(&self) -> &[Profile] {
         &self.store.document.profiles

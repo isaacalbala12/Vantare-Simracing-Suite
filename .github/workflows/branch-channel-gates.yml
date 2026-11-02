@@ -324,6 +324,8 @@ jobs:
           python -m unittest discover -s ../tools/ci-runners -v
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
           # Windows PowerShell 5.1, el mismo host que ejecuta beta.ps1 instalado.
+          # Retired driver assertions are covered by native Installer tests and
+          # the guarded matrix below; do not run its old real-shell QA harnesses.
           powershell.exe -NoProfile -ExecutionPolicy Bypass -File native/packaging/feed-origin-tests.ps1
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
           powershell.exe -NoProfile -ExecutionPolicy Bypass -File native/packaging/publish-installer-tests.ps1
@@ -331,10 +333,6 @@ jobs:
           powershell.exe -NoProfile -ExecutionPolicy Bypass -File native/packaging/matrix/run-historical-tests.ps1 -Root "$env:RUNNER_TEMP/historical-inventory"
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
           powershell.exe -NoProfile -ExecutionPolicy Bypass -File native/packaging/build-crt-tests.ps1
-          if ($LASTEXITCODE) { exit $LASTEXITCODE }
-          powershell.exe -NoProfile -ExecutionPolicy Bypass -File native/packaging/matrix/run-legacy-installer-tests.ps1 -Root "$env:RUNNER_TEMP/legacy-installer-registration" -Suite registration
-          if ($LASTEXITCODE) { exit $LASTEXITCODE }
-          powershell.exe -NoProfile -ExecutionPolicy Bypass -File native/packaging/matrix/run-legacy-installer-tests.ps1 -Root "$env:RUNNER_TEMP/legacy-installer-shell" -Suite shell -EvidenceDirectory C:/tmp/ola2/1591-qa/ci-installer-shell
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
 
       # Caché de los artefactos de *dependencias* (rust-cache borra antes de

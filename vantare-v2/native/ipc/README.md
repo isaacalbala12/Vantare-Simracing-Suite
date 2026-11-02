@@ -71,7 +71,7 @@ geometría demo usan ese lector de fixtures, nunca el pipe productivo.
 Contrato, relojes, límites y conexión con #1653:
 [`session-alerts-contract.md`](../../docs/telemetria/session-alerts-contract.md).
 
-## #1868 · Caracterización del recorrido (paso 0)
+## #1868 · Caracterización y frontera compartida (pasos 0–1)
 
 Las fronteras actuales no son equivalentes. Los tests conservan esta tabla
 antes de consolidarlas; «reinicia» significa descartar memoria anterior:

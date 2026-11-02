@@ -8,50 +8,46 @@ Estado de la base indicada; releer la issue antes de ejecutar.
 
 ## VANTA-129 / #1868 · Recorrido telemetría → overlay (2026-11-02)
 
-Encargo aprobado: diseño externo `D:/VantareServer/evidence/revision-general/telemetria-overlay-DISENO.md`,
-pasos 0–10, PR draft por corte contra nightly, sin merge/promoción/release.
-Grupo 0–1 en curso: rama `vantareapp/isa-1868-paso0-caracterizacion`, worktree
+Grupo 0–1 preparado para revisión en [PR draft #1873](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1873)
+contra nightly. Diseño aprobado: `D:/VantareServer/evidence/revision-general/telemetria-overlay-DISENO.md`.
+Rama `vantareapp/isa-1868-paso0-caracterizacion`, worktree
 `D:/VantareServer/worktrees/isa-1868-paso0`, base `nightly@a5e0a9fd2`.
-Tests previos publicados en `01dff4c81`; [PR draft #1873](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1873) contra nightly, todavía sin entrega final.
-Solo tests de caracterización: demanda 16/250 ms con centinela de 5 s;
-fronteras de retención/situación, trackers, journal e hidratación; pausa con
-pipe real hasta la proyección compartida del host. No abre ventana GPUI.
-RED confirmado en `01dff4c81`: el pipe acepta 2 conexiones al pasar
-OnTrack→Garage, esperada 1 (Nextest `2062a9cc-37ba-4687-b242-2ff49921da5d`,
-0,301 s; RETRY=250 ms, sin medir pintado). Paso 1 preparado como bug
-prioritario: `Boundary` compartida, reinicio de cadencia con situación y
-regresión activada en `848bb1007`. GREEN focal 4/4 (Nextest
-`152fcabd-b250-4ae8-9284-f541d7e77be4`): pipe, identidades omitidas,
-frontera por señal/situación y cadencia inyectada. Tanda local: fmt/check/Clippy PASS; Nextest parcial 678 PASS y 2 FAIL
-por faltar `vantare-services.exe` (prerrequisito de tests de proceso, sin
-cambio de producto). Log `nextest-ci-before-services.log` conservado;
-CI completa PASS sobre `eaf29c878`, árbol native
-`561980c0f625bac7c5e2dfc0aa4428afff558c8a`: 2375/2375 tests (24 skips),
-33/33 de telemetría incluidos, lifecycle runtime 25/25 y Engineer 5/5.
-Run `41444548451`, job `125274576259`; log `ci-native-eaf29.log`.
-El único cambio nativo posterior es una línea del test de pausa (recibido
-avanza 100 ms), commit `0e77c9aef` en la rama; check/Clippy y tres focales por cola:
-ese test y los dos fallos anteriores con su auxiliar. No se repiten corpus
-ni lifecycle ya validados por CI; no hay cambio posterior de producción.
-Goldens intactos.
-Huellas de retirada: 468/468 PASS. CI de `848bb1007`: check PASS;
-Clippy FAIL por tres puntos y coma de closures de tests, corregidos sin
-cambiar aserciones. Log conservado en `ci-clippy-before.log` de evidencia.
-Pasos 2–10 pendientes.
+El encargo completo tiene pasos 0–10: **2–10 siguen pendientes**.
 
-Decisiones: ACC experimental con golden; lectores v7–v10 y delta por Look
-se conservan. Fuera DTO v12, capacidades en núcleo y conectar ACC.
-Coordinación VANTA-130: paths/files, session_alerts, Hub y resolvedores de
-runtime quedan para ese frente. También se reservan solo sus líneas de
-raíz/carpeta de datos en `ipc/src/{freshness,engineer_control}.rs`,
-`runtime/src/bin/vantare/main.rs`, `runtime/src/rights/owner.rs` y
-`services/src/app.rs`; frescura/500 ms siguen dentro de VANTA-129.
-Su edición de exports de `ipc/src/lib.rs`
-precede al retiro del alias del paso 4. Pasos 7–8 se aplican tras la ola P4.
-Última lectura de Plane: En curso; GitHub Project Vantare: In Progress.
-Evidencia de gates prevista: `D:/VantareServer/evidence/isa-1868-paso0`.
-El texto inferior conserva la entrega histórica; no fija la versión actual
-(las fotos live de la base de este encargo son v11).
+Paso 0, commit previo `01dff4c81`: RED con pipe real, 2 conexiones al pasar
+OnTrack→Garage, esperada 1 (0,301 s de test; RETRY=250 ms, sin medir pintado).
+Paso 1, `848bb1007`: Boundary compartida, entrega completa al cambiar
+situación; regresión activada, GREEN 4/4. Se caracterizan retención/situación,
+trackers, journal e hidratación. La pausa llega por pipe hasta la función
+común de proyección llamada desde Overlay::ingest; no abre una ventana GPUI.
+`0e77c9aef` añade recepción +100 ms durante pausa para vigilar historias.
+
+Validación: CI completa de `eaf29c878` PASS, 2375/2375 tests (24 skips),
+incluidos 33/33 de telemetría; lifecycle runtime 25/25 y Engineer 5/5.
+[Run 41444548451](https://github.com/isaacalbala12/Vantare-Simracing-Suite/actions/runs/41444548451), job 125274576259.
+Única diferencia nativa posterior: esa línea del test. Sobre `46bd15db6`,
+árbol native `fb7fbaa4c3ef66c621d52b047527e872c5f6e9cc`, check/Clippy
+locales PASS y focal final 3/3 PASS (Nextest `90301dd8-842d-46b7-9dc9-6539ec084e66`).
+Incluye los dos tests de proceso que fallaron inicialmente por faltar services;
+auxiliar construido, sin tocar aserciones. CI anterior detectó tres puntos y
+coma de closures, corregidos en `eaf29c878`. Ambos fallos y sus logs se conservan.
+Integridad/quality: 468/468 PASS; goldens/corpus sin regenerar ni modificar.
+Evidencia y contador separado de líneas: `D:/VantareServer/evidence/isa-1868-paso0`.
+Últimos HEAD/CI y estados de revisión se releen en #1868 tras publicar este hito.
+
+ACC experimental con golden, lectores v7–v10 y delta por Look se conservan.
+Fuera: DTO v12, capacidades en núcleo y conectar ACC. Sin installer/packaging/Hub.
+Coordinación VANTA-130: sus líneas de raíz/carpeta de datos en ipc/freshness,
+ipc/engineer_control, runtime/bin/vantare/main, runtime/rights/owner y
+services/app quedan reservadas; frescura/500 ms siguen en VANTA-129.
+Sus exports en ipc/lib preceden al paso 4; pasos 7–8 tras la ola P4.
+
+Siguiente: el orquestador revisa este grupo y autoriza su integración;
+continuar desde nightly actualizado en rama/worktree nuevos para el paso 2.
+Sin merge, promoción ni release. QA física, píxeles y paint-stats/latencia
+no medidos en el servidor compartido. Ejecución Sol con esfuerzo medium fijado
+por esta sesión; no se ha supuesto high. El texto inferior conserva historia,
+no fija la versión de fotos vigente (v11).
 
 ## 1. Resultado
 

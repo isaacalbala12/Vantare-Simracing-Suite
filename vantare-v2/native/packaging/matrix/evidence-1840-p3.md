@@ -23,11 +23,15 @@ features no compila host, payload, scripts embebidos ni GPUI; transport/ui
 conservan Setup/Uninstall por defecto.
 
 Refactor en `e7deb1172`. Cambio de comportamiento autorizado separado en
-`c4b17382e`: Ajustes Package proyecta versión/canal del manifiesto activo y
+`c4b17382e`, completado en `e7bae04ec`: Ajustes Package proyecta versión/canal del manifiesto activo y
 compara la oferta contra esa versión. Development/Invalid usan identidad del
 binario; Unread indica espera. El test lee un manifiesto de disco, comprueba
 caso normal y discrepancia, incluida una oferta que la identidad binaria
-hubiera ocultado. No se presenta un test añadido como ejecutado hasta el gate.
+hubiera ocultado. La revisión final localizó además el carril de Aplicación y
+la cabecera/canal de notas: ambos usan la misma proyección. Se inicia el lector
+en background tras construir Hub y al abrir Aplicación/Actualizaciones, sin
+lectura síncrona de disco en render. Gate final adicional solo de Hub en curso;
+Installer no cambia desde 8dff23006.
 
 ## Lectores y reglas reales
 
@@ -81,7 +85,10 @@ Downloads. La 975 usa el ZIP ya disponible en QA, con digest público fijado.
 - Clippy Installer/Hub all-targets `-D warnings` PASS sobre la base 668d99c32,
   fuente 8dff23006: `clippy-all-final-04.log`. Nextest de esa misma fuente:
   **635/635 PASS, 4 omitidos existentes**, `nextest-all-final-04.log` (216 s de tests).
-  El incremento de 634 a 635 corresponde a la nueva base integrada.
+  El incremento de 634 a 635 corresponde a la nueva base integrada. Son 29
+  tests Installer y 606 Hub. Tras completar el carril/notas de Ajustes se repiten
+  fmt/Clippy/Nextest de Hub en un único bloque final-07; no se presentan aún
+  esos resultados anteriores como gate de la última proyección.
 - `finish-batch.log`: PASS fmt check, árbol normal sin GPUI/host/UI y check
   de biblioteca sin defaults. Tres verificaciones agrupadas en una llamada a
   compilar.ps1 después del turno de VANTA-128. Logs individuales final-05.
@@ -112,6 +119,10 @@ Downloads. La 975 usa el ZIP ya disponible en QA, con digest público fijado.
   repitió con native/Cargo.toml explícito; no se oculta el intento.
 - Primer check se invocó sin el token cargo y falló antes del compilador.
   Repetición corregida con VANTARE_SCCACHE=0: check del lector PASS.
+- `clippy-hub-final-06.log`: constructor de Ajustes 102/100 líneas tras iniciar
+  la lectura también para Aplicación. Se separa el callback de inicialización,
+  conservando navegación y lectura en background, sin excepciones de lint.
+  Se repite el bloque completo del Hub en final-07.
 - Clippy inicial señaló docs, extensión, tamaño de función y estilo del test/
   arnés. Se corrigieron sin excepciones de lint ni retirar pruebas.
 
@@ -148,7 +159,8 @@ python native/scripts/installer-lines.py --base 668d99c32 --head <SHA-final>
 ```
 
 Sin head mide el árbol de trabajo. Perímetro fijo publicado en el script:
-fuentes installer y Ajustes, tests/fixtures/ejemplo de installer, scripts PS de
+fuentes installer y Ajustes (mod.rs, updates.rs, view.rs y view/rail.rs),
+tests/fixtures/ejemplo de installer, scripts PS de
 packaging, README/handoff/fragmento de la entrega, build.rs, workflow y contador.
 Cuenta líneas físicas (comentarios y vacías incluidos), excluye items Rust
 exclusivos de test de producción con el clasificador existente y los suma a
@@ -160,15 +172,15 @@ Medición de la fuente preparada, todavía con gates pendientes:
 
 | Categoría | Antes | Después | Diferencia |
 | --- | ---: | ---: | ---: |
-| Rust producción | 6258 | 6791 | +533 |
-| Rust tests/ejemplo | 469 | 1014 | +545 |
+| Rust producción | 7174 | 7727 | +553 |
+| Rust tests/ejemplo | 471 | 1016 | +545 |
 | Fixtures JSON | 0 | 6 | +6 |
 | PowerShell producto | 2246 | 2252 | +6 |
-| PowerShell tests/tooling | 5787 | 5837 | +50 |
+| PowerShell tests/tooling | 5787 | 5839 | +52 |
 | Rust build/tooling | 74 | 155 | +81 |
-| Python tooling | 0 | 95 | +95 |
+| Python tooling | 0 | 97 | +97 |
 | CI | 469 | 471 | +2 |
-| Documentación | 8760 | 9024 | +264 |
+| Documentación | 8760 | 9070 | +310 |
 
 Este paso añade el lector Rust mientras conserva PS: no acredita reducción
 neta de producción. El ahorro global se medirá al retirar consumidores PS.

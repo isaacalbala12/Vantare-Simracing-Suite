@@ -27,8 +27,10 @@ def git(*args):
 def category(path):
     if path.startswith(PREFIX + "native/installer/src/") and path.endswith(".rs"):
         return "rust_production"
-    if path in {PREFIX + "native/hub/src/settings/updates.rs",
-                PREFIX + "native/hub/src/settings/view.rs"}:
+    if path in {PREFIX + "native/hub/src/settings/mod.rs",
+                PREFIX + "native/hub/src/settings/updates.rs",
+                PREFIX + "native/hub/src/settings/view.rs",
+                PREFIX + "native/hub/src/settings/view/rail.rs"}:
         return "rust_production"
     if path.startswith(PREFIX + "native/installer/tests/"):
         return "rust_tests"

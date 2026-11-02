@@ -624,6 +624,28 @@ Sin merge/release del worker.
   Medidas y limitaciones actualizadas en la evidencia; siguiente: integrar por
   el orquestador tras revisar CI. Plane En curso; sin merge/release del worker.
 
+### Paso 4 integrado / preparación del paso 5 (2-nov-2026)
+
+- #1866 integrado por el orquestador en nightly
+  def6fbb0954df46340545d189830676b493c734b; CI5/5 verde confirmada por él.
+  MergeCommit remoto y origin/nightly verificados. El worker no hizo merge.
+- Paso5 asignado: engine::shell::sync idempotente, retirar FinalizeInstall,
+  FinalizeUninstall y Cleanup PowerShell y copias de deshacer; medir reducción
+  real de producción. Conservar destinos actuales hasta p6, propiedad de enlaces,
+  Run ajena, opciones y datos. QA solo bajo guard con HKCU/carpetas inyectados.
+- Rama nueva vantareapp/isa-1840-paso5-shell-sync, worktree isa-1840-paso5,
+  desde origin/nightlydef6fbb09. Sin código de producto escrito ni compilación;
+  cola disponible para VANTA-128. Plane sigue En curso, sin comentarios.
+- Decisión Cleanup antes de implementar: el script actual puede retirar su
+  temporal porque lo interpreta powershell.exe, fuera de ese árbol. Una copia
+  del propio Uninstall.exe como trabajador nativo necesitaría resolver también
+  la retirada de su imagen mapeada. DeleteFile no garantiza ese caso y el borrado
+  al reiniciar requiere administrador/HKLM. No se introduce cmd, servicio, ADS,
+  shell ni residuo silencioso. Propuesta pendiente: ensayo QA de la API documentada
+  FileDispositionInfoEx con semántica POSIX, por handle propio, antes de escoger
+  el contrato definitivo. Si no permite retirar la imagen, volver al orquestador
+  para decidir residuo temporal explícito u otra política; no ampliar por cuenta propia.
+
 ### Antecedentes 0–1d (evidencia histórica conservada)
 
 - 0/#1842 integrado en216f9bda7, Characterize Windows PASS confirmado. 1a/#1846

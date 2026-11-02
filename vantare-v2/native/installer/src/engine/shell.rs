@@ -69,6 +69,11 @@ fn background(path: &Path) -> bool {
     read().unwrap_or(false)
 }
 fn launch(root: &Path, state: Option<&State>, startup: bool) -> Result<Link> {
+    let state = if startup && !background(&root.join("candidate.ps1")) {
+        None
+    } else {
+        state
+    };
     let target = state
         .map(|state| {
             root.join("generations")
@@ -196,9 +201,6 @@ fn optional(
             return Ok(());
         }
         if existing_only && !is_owned && old.is_empty() {
-            return Ok(());
-        }
-        if kind == "Startup" && state.is_some() && !background(&root.join("candidate.ps1")) {
             return Ok(());
         }
         save(
@@ -399,7 +401,7 @@ fn remove_projection(
         }
     }
     let run = legacy_run(context, root, identity)?;
-    os::delete_key(&context.registry_prefix, &key)?;
+    os::delete_key(&context.registry_prefix, key)?;
     for name in [
         "beta.ps1",
         "candidate.ps1",
@@ -516,7 +518,7 @@ fn project_links(
     for name in ["Vantare Native Beta.lnk", "Vantare.lnk", "Desinstalar.lnk"] {
         remove_owned(&old.join(name), root)?;
     }
-    remove_empty(&old)?;
+    remove_empty(old)?;
     Ok(())
 }
 fn project_registration(
@@ -542,22 +544,17 @@ fn project_registration(
             format!("\"{}\" /D=\"{}\"", uninstaller.display(), root.display()),
         ),
     ] {
-        os::set(&context.registry_prefix, &key, name, &value)?;
+        os::set(&context.registry_prefix, key, name, &value)?;
     }
     for name in ["NoModify", "NoRepair"] {
-        os::dword(&context.registry_prefix, &key, name, 1)?;
+        os::dword(&context.registry_prefix, key, name, 1)?;
     }
     if request.qa {
         fs::write(root.join("registration-identity.txt"), identity)?;
+        os::set(&context.registry_prefix, key, "ShortcutFolder", folder_name)?;
         os::set(
             &context.registry_prefix,
-            &key,
-            "ShortcutFolder",
-            folder_name,
-        )?;
-        os::set(
-            &context.registry_prefix,
-            &key,
+            key,
             "LegacyShortcutFolder",
             legacy,
         )?;
@@ -645,6 +642,63 @@ fn project_preferences(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn startup_preserves_frozen_root_and_generation_capabilities() {
+        let parent = if std::env::var("CI").as_deref() == Ok("true") {
+            PathBuf::from(std::env::var_os("RUNNER_TEMP").expect("CI root"))
+        } else {
+            PathBuf::from("D:/VantareServer/qa/isa-1840")
+        };
+        let root = parent
+            .join("p5-startup-tests")
+            .join(disk::id().expect("ID"));
+        context::qa_path(&root).expect("QA guard");
+        let generation = "a".repeat(32);
+        let folder = root.join("generations").join(&generation);
+        fs::create_dir_all(folder.join("bin")).expect("owned generation");
+        let target = folder.join("bin/vantare.exe");
+        fs::write(&target, b"inert fixture").expect("target");
+        let state = State {
+            schema: 1,
+            product: "vantare-native".into(),
+            channel: "beta".into(),
+            active: super::super::Generation {
+                generation,
+                manifest_sha256: Some("a".repeat(64)),
+            },
+            previous: None,
+        };
+        let capability = b"# vantare-launch-capabilities: background-v1\n";
+        fs::write(folder.join("candidate.ps1"), capability).expect("generation capability");
+        fs::write(root.join("candidate.ps1"), b"# frozen legacy root\n").expect("frozen root");
+        assert!(same(
+            &launch(&root, Some(&state), true)
+                .expect("legacy Startup")
+                .target,
+            &powershell().expect("Windows")
+        ));
+        assert_eq!(
+            launch(&root, Some(&state), false)
+                .expect("Start menu")
+                .target,
+            target
+        );
+        fs::write(root.join("candidate.ps1"), capability).expect("capable root");
+        assert!(
+            launch(&root, Some(&state), true)
+                .expect("background")
+                .arguments
+                .ends_with(" --background")
+        );
+        fs::write(folder.join("candidate.ps1"), b"# frozen generation\n")
+            .expect("frozen generation");
+        assert!(
+            !launch(&root, Some(&state), true)
+                .expect("foreground legacy")
+                .arguments
+                .ends_with(" --background")
+        );
+    }
     #[test]
     fn shortcut_ownership_preserves_foreign_targets_and_accepts_legacy_forms() {
         let root = Path::new("D:/VantareServer/qa/isa-1840/ownership");

@@ -42,15 +42,7 @@ impl Editor {
                 let value: serde_json::Value = serde_json::from_slice(bytes).map_err(|error| {
                     vantare_ipc::files::Error::InvalidInput(format!("JSON de layout: {error}"))
                 })?;
-                if value
-                    .get("version")
-                    .and_then(serde_json::Value::as_u64)
-                    .is_some_and(|v| v != 1)
-                {
-                    return Err(vantare_ipc::files::Error::Unsupported(
-                        "versión de layout desconocida; original protegido".into(),
-                    ));
-                }
+                vantare_ipc::files::future_version(&value, "version", 1)?;
                 Layout::from_json(bytes).map_err(layout_file_error)
             },
             Layout::default,

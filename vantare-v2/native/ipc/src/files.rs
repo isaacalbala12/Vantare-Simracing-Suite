@@ -12,6 +12,16 @@ pub use doc::Doc;
 pub const MAX_DOCUMENT: u64 = 5 * 1024 * 1024;
 static NEXT: AtomicU64 = AtomicU64::new(0);
 
+/// Una versión numérica distinta de la conocida se conserva; no es corrupción.
+/// Ausencia permite al lector aplicar su contrato histórico de campos por defecto.
+pub fn future_version(value: &serde_json::Value, field: &str, current: u64) -> Result<(), Error> {
+    if let Some(version) = value.get(field) {
+        let Some(version) = version.as_u64() else { return Err(Error::InvalidInput(format!("{field} debe ser una versión entera"))); };
+        if version != current { return Err(Error::Unsupported(format!("{field} {version} no compatible (actual {current}); original protegido"))); }
+    }
+    Ok(())
+}
+
 /// Clasificacion estable, independiente del texto mostrado al usuario.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum Kind {
@@ -39,6 +49,9 @@ impl Failure {
     }
     pub fn kind(&self) -> Kind {
         self.kind
+    }
+    pub fn as_str(&self) -> &str {
+        &self.message
     }
 }
 impl std::fmt::Display for Failure {
@@ -366,6 +379,16 @@ fn persist(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn step6_versions_keep_unknown_documents_and_reject_invalid_tags() {
+        assert!(future_version(&serde_json::json!({}),"version",1).is_ok());
+        assert!(future_version(&serde_json::json!({"version":1}),"version",1).is_ok());
+        for version in [0,2,99] {
+            assert!(matches!(future_version(&serde_json::json!({"version":version}),"version",1),Err(Error::Unsupported(_))));
+        }
+        assert!(matches!(future_version(&serde_json::json!({"version":"1"}),"version",1),Err(Error::InvalidInput(_))));
+    }
 
     #[test]
     fn step6_cas_diagnostic_identifies_the_failed_document() {

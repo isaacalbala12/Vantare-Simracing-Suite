@@ -376,11 +376,11 @@ impl Hub {
         if self.onboarding.as_ref().is_none_or(|state| state.capture) {
             return;
         }
-        let mut wanted = self.settings.appearance.settings;
+        let mut wanted = self.settings.store.value.appearance;
         wanted.palette = palette.unwrap_or(wanted.palette);
         wanted.scheme = scheme.unwrap_or(wanted.scheme);
         self.settings_appearance_apply(wanted, window, cx);
-        let failure = (self.settings.appearance.settings != wanted)
+        let failure = (self.settings.store.value.appearance != wanted)
             .then(|| self.settings.status.clone())
             .flatten();
         if let Some(state) = &mut self.onboarding {
@@ -525,15 +525,9 @@ impl Hub {
                 studio.finish_onboarding(&choices.kit(), choices.level, show, cx)
             })
             .and_then(|()| {
-                self.settings
-                    .general
-                    .as_mut()
-                    .map_err(|e| e.clone())
-                    .and_then(|store| {
-                        let mut next = store.value;
-                        next.onboarding_completed = true;
-                        store.save(next)
-                    })
+                let mut next = self.settings.store.value.general;
+                next.onboarding_completed = true;
+                self.settings.store.save_general(next)
             });
         if let Err(error) = result {
             if let Some(state) = &mut self.onboarding {

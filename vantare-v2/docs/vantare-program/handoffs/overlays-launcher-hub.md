@@ -1,3 +1,15 @@
+## VANTA-130 · decisión vigente: solo 6; 7 aplazado a 8 (3-nov-2026)
+
+No se toca layout/motion_policy/host. Reserva liberada vía orquestador/VANTA-129.
+Añadir reducedMotion al layout v1 rompe el rollback con lectores estrictos viejos;
+7 espera una política compatible en 8. Domain Preferences queda intacto.
+Store v2 es autoridad. Solo después de guardar Apariencia por acción del usuario,
+se escribe appearance.json en formato actual como espejo temporal con CAS.
+Un fallo del espejo deja v2 guardado, aviso visible y diagnóstico.
+TODO(#1869 paso 7+8): retirar espejo y lector viejo juntos. La migración inicial
+conserva todos los originales; General/Zoom no se replican nunca.
+Las propuestas anteriores de agrupar 6+7 quedan sustituidas por esta decisión.
+
 ## VANTA-130 · grupo 6+7 iniciado (3-nov-2026)
 
 Paso 5 #1887 integrado por el orquestador en nightly

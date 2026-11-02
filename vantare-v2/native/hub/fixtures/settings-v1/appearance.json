@@ -1,0 +1,10 @@
+{
+  "paletteVersion": 1,
+  "palette": "classic",
+  "scheme": "dark",
+  "contrast": 100,
+  "glassOpacity": 80,
+  "interfaceFont": "inter",
+  "monoFont": "cascadia",
+  "reducedMotion": true
+}

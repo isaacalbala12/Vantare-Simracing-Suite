@@ -1,6 +1,5 @@
 //! Preferencias del Hub, independientes del idioma y unidades de los widgets.
 use serde::{Deserialize, Serialize};
-use std::path::{Path, PathBuf};
 pub(super) const STARTUP_PROGRESS: &str = "Cambiando el inicio con Windows…";
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -29,13 +28,8 @@ impl Density {
 #[allow(clippy::struct_excessive_bools)]
 pub(in crate::shell) struct Preferences {
     pub onboarding_completed: bool,
-    // Retirados del asistente (#1628): general.json anteriores aún los traen,
-    // así que se toleran al leer pero ya no se escriben ni se usan.
-    #[serde(skip_serializing)]
-    pub onboarding_simulators: [bool; 2],
-    #[serde(skip_serializing)]
-    pub onboarding_automatic: bool,
     pub density: Density,
+    #[serde(skip)]
     pub startup: bool,
     pub minimized: bool,
     pub updates: bool,
@@ -47,8 +41,6 @@ impl Default for Preferences {
         Self {
             // Los JSON anteriores al onboarding pertenecen a instalaciones existentes.
             onboarding_completed: true,
-            onboarding_simulators: [true, false],
-            onboarding_automatic: false,
             density: Density::Balanced,
             startup: false,
             minimized: false,
@@ -58,77 +50,6 @@ impl Default for Preferences {
         }
     }
 }
-pub(in crate::shell) struct Store {
-    pub value: Preferences,
-    pub warning: Option<String>,
-    startup_task: Option<gpui::Task<()>>,
-    path: PathBuf,
-    observed: Option<Vec<u8>>,
-}
-impl Store {
-    pub fn load(root: &Path) -> Self {
-        Self::load_with_startup(root, super::windows::installed_startup())
-    }
-    fn load_with_startup(root: &Path, startup: Option<bool>) -> Self {
-        let path = root.join("general.json");
-        let opened = crate::files::Doc::open_or_quarantine(
-            &path,
-            &vantare_ipc::files::Options {
-                limit: 4096,
-                ..Default::default()
-            },
-            |bytes| {
-                serde_json::from_slice(bytes).map_err(|error| {
-                    crate::files::Error::InvalidInput(format!("leer ajustes generales: {error}"))
-                })
-            },
-            Preferences::default,
-        );
-        let observed = opened.observed;
-        let mut value = opened.value;
-        if observed.is_none() {
-            value.onboarding_completed = false;
-        }
-        if let Some(enabled) = startup {
-            value.startup = enabled;
-        }
-        Self {
-            warning: opened.warning,
-            value,
-            startup_task: None,
-            path,
-            observed,
-        }
-    }
-    pub(super) fn startup_pending(&self) -> bool {
-        self.startup_task.is_some()
-    }
-    fn refresh_startup(&mut self, startup: Option<bool>) -> bool {
-        if let Some(enabled) = startup
-            && !self.startup_pending()
-            && self.value.startup != enabled
-        {
-            self.value.startup = enabled;
-            return true;
-        }
-        false
-    }
-    pub fn save(&mut self, value: Preferences) -> Result<(), String> {
-        let bytes = serde_json::to_vec(&value).map_err(|error| error.to_string())?;
-        crate::files::save(&self.path, &bytes, self.observed.as_deref())?;
-        self.value = value;
-        self.observed = Some(bytes);
-        Ok(())
-    }
-    pub fn onboarding_needed(&mut self, layout_preexisted: bool) -> bool {
-        if self.observed.is_none() && layout_preexisted {
-            // Un layout anterior acredita una instalación existente, aunque nunca guardara General.
-            self.value.onboarding_completed = true;
-        }
-        !self.value.onboarding_completed
-    }
-}
-
 #[derive(Clone, Copy)]
 pub(super) enum Toggle {
     Startup,
@@ -146,30 +67,14 @@ impl Toggle {
 
 impl super::Hub {
     pub(in crate::shell) fn general_preferences(&self) -> Preferences {
-        self.settings
-            .general
-            .as_ref()
-            .map_or_else(|_| Preferences::default(), |store| store.value)
+        self.settings.store.value.general
     }
     fn save_general(&mut self, next: Preferences, cx: &mut gpui::Context<Self>) {
-        self.settings.status = match &mut self.settings.general {
-            Ok(store) => store.save(next).err(),
-            Err(error) => Some(error.clone()),
-        };
+        self.settings.status = self.settings.store.save_general(next).err();
         cx.notify();
     }
     pub(super) fn general_toggle(&mut self, toggle: Toggle, cx: &mut gpui::Context<Self>) {
-        if self.settings.general.is_err() {
-            return;
-        }
-        if self
-            .settings
-            .general
-            .as_ref()
-            .is_ok_and(|store| !toggle.enabled(store.startup_pending()))
-        {
-            return;
-        }
+        if !toggle.enabled(self.settings.startup_task.is_some()) { return; }
         let old = self.general_preferences();
         let mut next = old;
         match toggle {
@@ -203,33 +108,28 @@ impl super::Hub {
                         Ok(()) => {
                             // The installer committed the root preference. Never
                             // write data/general.json for Startup, including legacy installs.
-                            if let Ok(store) = &mut this.settings.general {
-                                store.value.startup = next.startup;
-                            }
+                            this.settings.store.value.general.startup = next.startup;
                             if this.settings.status.as_deref() == Some(STARTUP_PROGRESS) {
                                 this.settings.status = None;
                             }
                         }
                         Err(error) => this.settings.status = Some(error),
                     }
-                    if let Ok(store) = &mut this.settings.general {
-                        store.startup_task.take();
-                    }
+                    this.settings.startup_task.take();
                     cx.notify();
                 });
             });
-            if let Ok(store) = &mut self.settings.general {
-                store.startup_task = Some(task);
-            }
+            self.settings.startup_task = Some(task);
             cx.notify();
             return;
         }
         self.save_general(next, cx);
     }
     pub(super) fn refresh_startup_preference(&mut self, cx: &mut gpui::Context<Self>) {
-        if let Ok(store) = &mut self.settings.general
-            && store.refresh_startup(super::windows::installed_startup())
-        {
+        if self.settings.startup_task.is_none()
+            && let Some(enabled) = super::windows::installed_startup()
+            && self.settings.store.value.general.startup != enabled {
+            self.settings.store.value.general.startup = enabled;
             cx.notify();
         }
     }
@@ -287,71 +187,6 @@ pub(super) fn wire(state: &super::State, cx: &mut gpui::Context<super::Hub>) {
 mod tests {
     use super::*;
     #[test]
-    fn step5_corrupt_general_is_archived_and_can_be_saved() {
-        let root =
-            std::env::temp_dir().join(format!("vantare-step5-general-{}", std::process::id()));
-        std::fs::create_dir_all(&root).unwrap();
-        let path = root.join("general.json");
-        std::fs::write(&path, b"{").unwrap();
-        let mut store = Store::load_with_startup(&root, None);
-        assert!(store.warning.as_ref().unwrap().contains(".invalid"));
-        assert_eq!(
-            std::fs::read(root.join("general.json.invalid")).unwrap(),
-            b"{"
-        );
-        assert_eq!(std::fs::read(&path).unwrap(), b"{");
-        store.save(store.value).unwrap();
-        assert!(Store::load_with_startup(&root, None).warning.is_none());
-        std::fs::remove_dir_all(root).unwrap();
-    }
-    #[test]
-    fn gpui_load_projects_startup_without_rewriting_or_creating_general() {
-        let root =
-            std::env::temp_dir().join(format!("vantare-startup-load-{}", std::process::id()));
-        std::fs::create_dir_all(&root).unwrap();
-        let path = root.join("general.json");
-        let bytes = br#"{ "startup": false, "density": "compact" }"#;
-        std::fs::write(&path, bytes).unwrap();
-        let store = Store::load_with_startup(&root, Some(true));
-        assert!(store.value.startup);
-        assert_eq!(store.value.density, Density::Compact);
-        assert_eq!(std::fs::read(&path).unwrap(), bytes);
-        std::fs::remove_file(&path).unwrap();
-        let store = Store::load_with_startup(&root, Some(true));
-        assert!(store.value.startup);
-        assert!(!path.exists());
-        std::fs::remove_dir_all(root).unwrap();
-    }
-    #[test]
-    fn installer_run_migration_is_adopted_after_load_without_rewriting_general() {
-        let root =
-            std::env::temp_dir().join(format!("vantare-startup-migrate-{}", std::process::id()));
-        let data = root.join("data");
-        std::fs::create_dir_all(&data).unwrap();
-        let bytes = br#"{"startup":false,"updates":false}"#;
-        std::fs::write(data.join("general.json"), bytes).unwrap();
-        let mut store = Store::load_with_startup(&data, None);
-        assert!(!store.value.startup);
-        std::fs::write(
-            root.join("startup-options.json"),
-            br#"{"schema":1,"autostart":true}"#,
-        )
-        .unwrap();
-        let migrated = super::super::windows::installed_startup_at(&root);
-        assert!(store.refresh_startup(migrated));
-        assert!(store.value.startup);
-        assert!(!store.value.updates);
-        std::fs::write(
-            root.join("installer-ui.json"),
-            br#"{"schema":1,"kind":"rust-gpui","autostart":false}"#,
-        )
-        .unwrap();
-        assert!(store.refresh_startup(super::super::windows::installed_startup_at(&root)));
-        assert!(!store.value.startup);
-        assert_eq!(std::fs::read(data.join("general.json")).unwrap(), bytes);
-        std::fs::remove_dir_all(root).unwrap();
-    }
-    #[test]
     fn pending_startup_disables_only_its_own_control() {
         for toggle in [
             Toggle::Minimized,
@@ -364,62 +199,6 @@ mod tests {
         }
         assert!(!Toggle::Startup.enabled(true));
         assert!(Toggle::Startup.enabled(false));
-    }
-    #[test]
-    fn existing_layout_without_general_skips_onboarding_but_interrupted_setup_resumes() {
-        let root = std::env::temp_dir().join(format!(
-            "vantare-onboarding-migration-{}",
-            std::process::id()
-        ));
-        std::fs::create_dir_all(&root).expect("root");
-        let mut legacy = Store::load(&root);
-        assert!(!legacy.onboarding_needed(true));
-        legacy.save(legacy.value).expect("later settings edit");
-        assert!(!Store::load(&root).onboarding_needed(true));
-        std::fs::remove_file(root.join("general.json")).expect("new installation case");
-        let mut fresh = Store::load(&root);
-        assert!(fresh.onboarding_needed(false));
-        fresh
-            .save(fresh.value)
-            .expect("persist pending before opening wizard");
-        assert!(Store::load(&root).onboarding_needed(true));
-        std::fs::remove_dir_all(root).expect("cleanup");
-    }
-    #[test]
-    fn onboarding_runs_only_on_new_installations_and_completion_survives_restart() {
-        let root =
-            std::env::temp_dir().join(format!("vantare-onboarding-general-{}", std::process::id()));
-        std::fs::create_dir_all(&root).expect("root");
-        let mut store = Store::load(&root);
-        assert!(!store.value.onboarding_completed);
-        let mut next = store.value;
-        next.onboarding_completed = true;
-        store.save(next).expect("completed");
-        assert!(Store::load(&root).value.onboarding_completed);
-        std::fs::write(root.join("general.json"), b"{}").expect("legacy");
-        assert!(Store::load(&root).value.onboarding_completed);
-        std::fs::remove_dir_all(root).expect("cleanup");
-    }
-    #[test]
-    fn retired_onboarding_choices_still_load_but_are_never_written() {
-        let root =
-            std::env::temp_dir().join(format!("vantare-onboarding-retired-{}", std::process::id()));
-        std::fs::create_dir_all(&root).expect("root");
-        // Una instalación previa conserva sus campos retirados al reabrir.
-        std::fs::write(
-            root.join("general.json"),
-            br#"{"onboarding_completed":true,"onboarding_simulators":[false,true],"onboarding_automatic":true}"#,
-        )
-        .expect("legacy choices");
-        let mut store = Store::load(&root);
-        assert!(store.value.onboarding_completed);
-        store.save(store.value).expect("rewrite");
-        let saved = String::from_utf8(std::fs::read(root.join("general.json")).expect("read"))
-            .expect("utf8");
-        assert!(saved.contains("\"onboarding_completed\":true"));
-        assert!(!saved.contains("onboarding_simulators"));
-        assert!(!saved.contains("onboarding_automatic"));
-        std::fs::remove_dir_all(root).expect("cleanup");
     }
     #[test]
     fn density_changes_spacing_and_never_overrides_small_window_limits() {
@@ -440,24 +219,5 @@ mod tests {
             density.apply(&mut small);
             assert_eq!(small.density, crate::orbit::adapt::Density::Xs);
         }
-    }
-    #[test]
-    fn preferences_reopen_and_preserve_external_changes() {
-        let root = std::env::temp_dir().join(format!("vantare-general-{}", std::process::id()));
-        std::fs::create_dir_all(&root).expect("directorio");
-        let mut store = Store::load(&root);
-        let mut next = store.value;
-        next.minimized = true;
-        next.density = Density::Compact;
-        next.toasts = true;
-        store.save(next).expect("guardar");
-        assert_eq!(Store::load(&root).value, next);
-        std::fs::write(root.join("general.json"), b"{}").expect("edicion externa");
-        assert!(store.save(Preferences::default()).is_err());
-        assert_eq!(
-            std::fs::read(root.join("general.json")).expect("leer"),
-            b"{}"
-        );
-        std::fs::remove_dir_all(root).expect("limpiar");
     }
 }

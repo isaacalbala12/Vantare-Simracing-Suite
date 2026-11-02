@@ -1181,10 +1181,8 @@ fn create_engineer(engineer: Engineer, cx: &mut App) -> Entity<Engineer> {
 
 /// Entradas ya cargadas y validadas antes de abrir la ventana.
 pub(crate) struct Loaded {
-    layout_preexisted: bool,
     preview_fixtures: Option<[vantare_domain::Snapshot; 5]>,
-    appearance: settings::appearance::Store,
-    appearance_error: Option<String>,
+    settings_store: settings::store::Store,
     privacy: Result<settings::privacy::Store, String>,
     prepared: Prepared,
     studio: PreparedStudio,
@@ -1209,8 +1207,8 @@ impl Hub {
                 .capture
                 .as_ref()
                 .is_some_and(|capture| capture.section == Section::Calendar)
-            && self.settings.appearance.settings == loaded.appearance.settings
-            && self.settings.appearance.zoom_percent == loaded.appearance.zoom_percent
+            && self.settings.store.value.appearance == loaded.settings_store.value.appearance
+            && self.settings.store.value.zoom == loaded.settings_store.value.zoom
             && serde_json::to_vec(&self.demo).ok() == serde_json::to_vec(&loaded.demo).ok()
     }
 
@@ -1269,10 +1267,8 @@ impl Hub {
             Section::Home
         };
         let Loaded {
-            layout_preexisted,
             preview_fixtures,
-            appearance,
-            appearance_error,
+            settings_store,
             privacy,
             prepared,
             studio: prepared_studio,
@@ -1292,7 +1288,7 @@ impl Hub {
         if let Some(scene) = &capture {
             cx.set_global(crate::capture::CurrentScene(scene.clone()));
         }
-        orbit::theme::install(appearance.settings, window, cx);
+        orbit::theme::install(settings_store.value.appearance, window, cx);
         start_source_poll(cx);
         let focus = cx.focus_handle();
         focus.focus(window, cx);
@@ -1385,20 +1381,8 @@ impl Hub {
             None => Strategy::new(strategy_dir, cx),
         });
         let mut settings =
-            settings::State::new(prefs, appearance, testing_dir.clone(), privacy, window, cx);
-        // Un appearance.json ilegible abre con valores por defecto y deja el
-        // motivo visible en Ajustes, en lugar de tumbar el arranque.
-        settings.status = settings
-            .general
-            .as_ref()
-            .ok()
-            .and_then(|store| store.warning.clone());
-        if let Some(error) = appearance_error {
-            settings.status = Some(match settings.status.take() {
-                Some(previous) => format!("{previous}; {error}"),
-                None => error,
-            });
-        }
+            settings::State::new(prefs, settings_store, testing_dir.clone(), privacy, window, cx);
+        settings.status = settings.store.warning.clone();
         if let Some(page) = capture.as_ref().and_then(|capture| capture.settings_page) {
             settings.select_demo_page(page);
         }
@@ -1406,18 +1390,7 @@ impl Hub {
         let onboarding_capture = capture
             .as_ref()
             .is_some_and(|c| c.name.starts_with("onboarding-"));
-        let first_run = demo.is_none()
-            && capture.is_none()
-            && settings
-                .general
-                .as_mut()
-                .is_ok_and(|store| store.onboarding_needed(layout_preexisted));
-        if first_run
-            && let Ok(store) = &mut settings.general
-            && let Err(error) = store.save(store.value)
-        {
-            settings.status = Some(error);
-        }
+        let first_run = demo.is_none() && capture.is_none() && !settings.store.value.general.onboarding_completed;
         let mut onboarding = (first_run || onboarding_capture).then(|| {
             onboarding::State::new(
                 capture.as_ref(),
@@ -1539,13 +1512,13 @@ pub(crate) fn load(options: &mut Options) -> Result<Loaded, String> {
     if let (Some(demo), Some(capture)) = (&mut options.demo, &options.capture) {
         demo.apply_capture(capture)?;
     }
-    let (mut appearance, appearance_error) =
-        settings::appearance::Store::load_or_default(&options.data_dir.join("appearance.json"));
+    let mut settings_store = settings::store::Store::load(&options.data_dir, options.layout.exists());
+    if let Some(enabled) = settings::windows::installed_startup() { settings_store.value.general.startup = enabled; }
     if let Some(settings) = options.capture.as_ref().and(options.capture_appearance) {
-        appearance.settings = settings;
+        settings_store.value.appearance = settings;
     }
     if let Some(zoom) = options.capture.as_ref().and(options.capture_zoom) {
-        appearance.zoom_percent = zoom;
+        settings_store.value.zoom = zoom;
     }
     let notifications = match options.demo.as_ref() {
         Some(demo) => crate::notifications::Center::demo(demo, demo.fixed_now()?)?,
@@ -1569,14 +1542,12 @@ pub(crate) fn load(options: &mut Options) -> Result<Loaded, String> {
         }
     };
     Ok(Loaded {
-        layout_preexisted: options.layout.exists(),
         preview_fixtures: options
             .capture
             .as_ref()
             .map(|_| foundations::capture_photos())
             .transpose()?,
-        appearance,
-        appearance_error,
+        settings_store,
         analysis: prepare_analysis(options)?,
         prepared: Prepared::load(&options.data_dir, options.scene.clone())?,
         studio: {
@@ -1678,9 +1649,7 @@ pub fn run_with_access(mut options: Options, access: navigation::Access) -> Resu
             let minimized = options.capture.is_none()
                 && options.demo.is_none()
                 && (!interactive || background)
-                && settings::general::Store::load(&options.data_dir)
-                    .value
-                    .minimized;
+                && loaded.settings_store.value.general.minimized;
             let (minimized, activate) =
                 crate::installation::initial_window(minimized, interactive, background);
             let activate = activate && options.capture.is_none();

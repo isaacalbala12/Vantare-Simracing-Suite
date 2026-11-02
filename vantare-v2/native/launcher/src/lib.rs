@@ -466,15 +466,7 @@ impl Store {
             |bytes| {
                 let value: serde_json::Value = serde_json::from_slice(bytes)
                     .map_err(|e| files::Error::InvalidInput(format!("Launcher inválido: {e}")))?;
-                if value
-                    .get("version")
-                    .and_then(serde_json::Value::as_u64)
-                    .is_some_and(|v| v != 1)
-                {
-                    return Err(vantare_ipc::files::Error::Unsupported(
-                        "versión de Launcher desconocida; original protegido".into(),
-                    ));
-                }
+                vantare_ipc::files::future_version(&value, "version", 1)?;
                 let document: Document = serde_json::from_slice(bytes)
                     .map_err(|e| files::Error::InvalidInput(format!("Launcher inválido: {e}")))?;
                 document.validate()?;

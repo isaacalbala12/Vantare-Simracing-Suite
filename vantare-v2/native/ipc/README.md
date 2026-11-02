@@ -182,3 +182,16 @@ pide prestado el DTO al único decodificador, sin clonarlo entero. Se conservan
 los tipos y atributos serde de v11, los lectores guardados y los bytes del cable.
 La compilación impide omitir o repetir un campo al construir cada DTO; los tests
 comparan las cuatro calidades con el original y ejercitan rehidratación y JSON.
+
+## Seguimiento #1869, paso 6
+
+`files::future_version` centraliza la comprobación de versión desconocida de
+Launcher, layout del Hub, Apariencia y el documento agregado. No determina la
+validez del resto del esquema. Un número desconocido se conserva como Unsupported;
+un tipo inválido es InvalidInput. Los errores CAS incluyen la ruta del documento
+y siguen clasificados como Conflict, sin comparar mensajes.
+
+Hasta el paso 8, un campo nuevo con igual version puede ser rechazado por un
+lector estricto y archivado como corrupción. Por este riesgo de rollback,
+reducedMotion NO se añade al layout en 6. Store v2 publica appearance.json como
+espejo temporal solo al guardar Apariencia por acción del usuario.

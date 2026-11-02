@@ -437,6 +437,6 @@
     "retained-no-marker-cleanup":  {
                                        "sha256":  "ea1be050950c38c661cd24fe36a3121fd91199e93a4835b87302fd970308b160",
                                        "existing_data_files":  1,
-                                       "exit":  1
+                                       "exit":  0
                                    }
 }

@@ -13,7 +13,7 @@ CI 5/5 SUCCESS verificada; [PR #1873](https://github.com/isaacalbala12/Vantare-S
 contra nightly. Diseño aprobado: `D:/VantareServer/evidence/revision-general/telemetria-overlay-DISENO.md`.
 Rama `vantareapp/isa-1868-paso0-caracterizacion`, worktree
 `D:/VantareServer/worktrees/isa-1868-paso0`, base `nightly@a5e0a9fd2`.
-El encargo completo tiene pasos 0–10: **0–1 integrados; 2 + P3 en PR #1877 para revisión; 3–10 pendientes**.
+El encargo completo tiene pasos 0–10: **0–2 integrados; paso 3 en curso; 4–10 pendientes**.
 
 Paso 0, commit previo `01dff4c81`: RED con pipe real, 2 conexiones al pasar
 OnTrack→Garage, esperada 1 (0,301 s de test; RETRY=250 ms, sin medir pintado).
@@ -58,7 +58,8 @@ versión o lock nuevo. P3 preparados con recepción por revisión y emisor de
 máscaras controladas, cancelación/cierre; pausa conserva datos lentos distintos
 del productor mientras el reloj nuevo sí llega. Altura única del banner.
 [PR draft #1877](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1877)
-listo para revisión de este corte. Código validado `c45dd614c`, base `bc239c063`.
+integrado por el orquestador en `nightly@da4c2af08c3d5f34e9634f670e9eb2dcdde0dc49`;
+CI 5/5 SUCCESS verificada. Código validado `c45dd614c`, base `bc239c063`.
 GREEN focal 2/2, run `bda8e0d8-96c3-4d29-8cf3-9042974af6ed`: 3857 fotos
 byte a byte y regresión anidada PASS. Tanda final por `compilar.ps1`, target
 privado `native/target/gates`, jobs 4: fmt/check/Clippy `-D warnings` PASS;
@@ -83,8 +84,18 @@ La revisión opcional DeepSeek no arrancó por saldo del proveedor; no se
 atribuye evidencia al subagente. Diff revisado en este worker.
 CI final y HEAD documental: consultar #1868 y #1877; no inferir checks de otro SHA.
 VANTA-130 reserva también ui/layout::default_path; no se ha editado.
-Siguiente: integrar/revisar este corte por el orquestador; paso 3 desde
-origin/nightly actualizado en rama/worktree nuevos. Se mantienen 3–10 pendientes.
+Reanudado VANTA-129 En curso para el paso 3, desde origin/nightly actualizado
+`da4c2af08`: rama `vantareapp/isa-1868-paso3-dto`, worktree
+`D:/VantareServer/worktrees/isa-1868-paso3`. Un codificador y decodificador,
+tabla señal→campos única; DTO v11 y bytes existentes intactos. Caracterización
+antes del refactor: tests de codificación completa/selectiva, ambas lecturas
+contra las cuatro calidades originales, cada parcial rehidratado sin perder
+otras calidades, y codec existente. Logs en `D:/VantareServer/evidence/isa-1868-paso3`.
+El primer fallo de CI anterior por Instant::checked_sub pertenece a #1878;
+lo corrige el orquestador aparte; no se toca aquí. Se reservan también las zonas
+de persist/show/backup de ui/layout y el escritor de ui/workshop/state (VANTA-130).
+Siguiente: ejecutar caracterización previa, consolidar DTO y gates por cola.
+Pasos 4–10 pendientes.
 Sin merge, promoción ni release. QA física, píxeles y paint-stats/latencia
 no medidos en el servidor compartido. Ejecución Sol con esfuerzo medium fijado
 por esta sesión; no se ha supuesto high. El texto inferior conserva historia,

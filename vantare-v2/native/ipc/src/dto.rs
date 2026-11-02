@@ -2113,11 +2113,14 @@ mod demand_tests {
 
     #[test]
     fn by_reference_decode_matches_owned_decode_without_cloning_the_dto() {
-        let source = crate::codec::tests::rich_snapshot(1, 1);
-        let dto = SnapshotDto::from(&source);
-        let by_ref = d::Snapshot::try_from(&dto).expect("decodificación por referencia");
-        let owned = d::Snapshot::try_from(dto).expect("decodificación por valor");
-        assert_eq!(by_ref, owned);
+        for shift in 0..4 {
+            let source = crate::codec::tests::Distinct::new(0, shift, 4).snapshot();
+            let dto = SnapshotDto::from(&source);
+            let by_ref = d::Snapshot::try_from(&dto).expect("decodificación por referencia");
+            let owned = d::Snapshot::try_from(dto).expect("decodificación por valor");
+            assert_eq!(by_ref, source, "referencia, pasada {shift}");
+            assert_eq!(owned, source, "valor, pasada {shift}");
+        }
     }
 
     #[test]
@@ -2174,6 +2177,23 @@ mod demand_tests {
             old.len(),
             lean.len()
         );
+    }
+
+    #[test]
+    fn every_signal_can_refresh_a_hydrated_photo_without_losing_other_qualities() {
+        for shift in 0..4 {
+            let source = crate::codec::tests::Distinct::new(0, shift, 4).snapshot();
+            let previous = SnapshotDto::from(&source);
+            for delivered in std::iter::once(Demand::default())
+                .chain(Signal::ALL.iter().map(|signal| Demand::from_mask(signal.bit())))
+            {
+                let mut partial = SnapshotDto::selected(&source, &delivered).expect("selección");
+                partial.restore(Some(&previous), &Demand::all(), &delivered)
+                    .expect("rehidratación");
+                assert_eq!(d::Snapshot::try_from(partial).expect("foto"), source,
+                    "pasada {shift}, máscara {}", delivered.mask());
+            }
+        }
     }
 
     #[test]

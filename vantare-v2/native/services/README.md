@@ -187,9 +187,12 @@ ningún secreto ni credencial real, `.env*` ni backend real. El alcance de sincr
 
 El auxiliar y su cliente usan `vantare-ipc` también en Linux/macOS: socket Unix
 local, mismo nonce, límites, PID e imagen del par. La sesión y demás datos del
-`Store` se guardan bajo `$XDG_CONFIG_HOME/Vantare/native/services` (Linux,
-`~/.config` si no está definido) o `~/Library/Application Support/Vantare/native/services`
-(macOS). Cada namespace queda en un directorio `0700`; los JSON y el lock son
+`Store` usan `ipc::paths::Root`: `$XDG_DATA_HOME/Vantare/native/services` (Linux,
+`~/.local/share` si está ausente o vacío), o `~/Library/Application Support/Vantare/native/services`
+(macOS); el override absoluto `VANTARE_NATIVE_DATA_ROOT` tiene prioridad.
+#1869 unifica la base de desarrollo: `XDG_CONFIG_HOME` se conserva sin lectura
+de compatibilidad ni mudanza, conforme a la decisión del orquestador.
+Cada namespace queda en un directorio `0700`; los JSON y el lock son
 `0600`, y el reemplazo es atómico. A diferencia de DPAPI, Unix no cifra esos
 JSON: los permisos protegen frente a otros usuarios, pero no frente a procesos
 del mismo usuario, administrador/root, ni acceso al disco fuera del sistema.

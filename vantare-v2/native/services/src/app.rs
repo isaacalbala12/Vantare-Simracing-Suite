@@ -3090,39 +3090,9 @@ mod tests {
 }
 
 pub fn default_root() -> Result<PathBuf> {
-    #[cfg(windows)]
-    {
-        std::env::var_os("VANTARE_NATIVE_DATA_ROOT")
-            .or_else(|| std::env::var_os("LOCALAPPDATA"))
-            .map(|path| PathBuf::from(path).join("Vantare/native/services"))
-            .ok_or(Error::Storage)
-    }
-    #[cfg(target_os = "linux")]
-    {
-        let root = match std::env::var_os("XDG_CONFIG_HOME") {
-            Some(path) if PathBuf::from(&path).is_absolute() => PathBuf::from(path),
-            Some(_) => return Err(Error::Storage),
-            None => home()?.join(".config"),
-        };
-        Ok(root.join("Vantare/native/services"))
-    }
-    #[cfg(target_os = "macos")]
-    {
-        Ok(home()?.join("Library/Application Support/Vantare/native/services"))
-    }
-    #[cfg(not(any(windows, target_os = "linux", target_os = "macos")))]
-    {
-        Err(Error::Unsupported)
-    }
-}
-
-#[cfg(any(target_os = "linux", target_os = "macos"))]
-fn home() -> Result<PathBuf> {
-    std::env::var_os("HOME")
-        .filter(|path| !path.is_empty())
-        .map(PathBuf::from)
-        .filter(|path| path.is_absolute())
-        .ok_or(Error::Storage)
+    vantare_ipc::paths::Root::from_env()
+        .map(|root| root.services())
+        .map_err(|_| Error::Storage)
 }
 
 #[cfg(test)]

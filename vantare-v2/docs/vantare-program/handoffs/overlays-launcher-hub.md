@@ -1,5 +1,47 @@
 # Handoff vivo — Overlays, Studio, Launcher y Hub
 
+## VANTA-130 · #1869 · Paso 3, resolvedor común (2-nov-2026)
+
+Proyecto Vantare / area:plataforma, Plane En curso. Rama
+`vantareapp/isa-1869-paso3-root`, worktree `D:/VantareServer/worktrees/isa-1869-paso3`,
+base inicial `bc239c063`; rebase completado sobre nightly
+`3f2c1b3b093c81bd4b81325e4646b274c56fb35d`, HEAD del código `08571b979`.
+El orquestador integró #1874 en nightly `590a710bafd10d16406db2022ea6a1fa06319004`
+y #1876 en `3f2c1b3b093c81bd4b81325e4646b274c56fb35d`; ambos PRs MERGED y
+CI 5/5 SUCCESS verificados en GitHub. Conflictos de handoff y guard de privacidad
+resueltos conservando las decisiones y el guard QA, ahora absoluto no vacío.
+Caracterización previa `0927f50ca` (tras rebase `154c8e30e`), 8/8 PASS antes del resolvedor común:
+fmt PASS, contratos de
+rutas con override absoluto beta para Hub/overlays, privacidad/servicios,
+Engineer, logs, residente y rights por canal; más tests existentes de argumentos
+beta/MSIX y fallback de UI. Para medir las dos rutas privadas se extrae solo su
+cálculo a funciones puras; auth, policy y flujo siguen intactos.
+Todas las ejecuciones usarán native/LocalAppData/AppData QA, target propio y
+compilar.ps1. Evidencia `D:/VantareServer/evidence/isa-1869/paso3`.
+El resolvedor ya se conecta a los consumidores. Mantiene los destinos Windows,
+rechaza override relativo y conserva fallback de vacío solo en producto.
+El guard QA también vive en Root con la feature test-support existente;
+Services/UI la activan en tests y Runtime la recibe del soporte de Services.
+Los fallbacks se comprueban con entorno inyectado; ya no mutan el entorno de UI.
+Primera tanda del resolvedor: fmt/check de los cinco crates PASS; Clippy detectó
+tests antes de ítems productivos. Se mueven al final, sin desactivar reglas;
+fallo conservado. Sobre la base nueva: fmt/check/Clippy de cinco crates PASS,
+regresiones de rutas 15/15 PASS. Nextest 1936 PASS (golden aislado 1/1 y resto
+1935/1935; 24 skips en el resto incluyen el golden ya ejecutado), lifecycle
+25/25 y telemetría 33/33 (1 skip) PASS. Integridad: 468 huellas PASS.
+Diff completo revisado; Linux/macOS cubiertos mediante matriz pura en Windows,
+sin afirmar ejecución nativa allí. Cola cedida; PR draft #1879 a nightly,
+listo para revisión final. Código `08571b979`, formato/evidencia `cccd08750`;
+HEAD final, líneas y CI remota en #1869. Sin merge/release propio.
+
+El orquestador confirmó base única en Linux/macOS, solo desarrollo, sin lector
+de compatibilidad XDG_CONFIG_HOME. También trasladó a VANTA-129 la reserva mínima
+de default_path() en ui/layout: solo se cambia esa función; motion_policy y host
+siguen intactos.
+Paso 10 excluido. Validación local entregada: #1874 (HEAD `1c1c6c21c`, 874+25 PASS)
+y #1876 (HEAD `fae6374f0`, 1090+25+33 PASS). Los merges los hizo el orquestador;
+este worker no ha hecho merge/release. Resúmenes e integración constan en #1869 y Plane.
+
 ## VANTA-130 · #1869 · Hub, ajustes y layouts (2-nov-2026)
 
 Proyecto Vantare, `area:plataforma`; Plane En curso verificado. Base
@@ -14,7 +56,8 @@ Revisión validada: fmt/check/Clippy Hub+Services PASS; regresiones 18/18,
 Nextest 874/874 (9 skips) y lifecycle 25/25 PASS, solo raíces QA. Código
 `ba87c081a`; evidencia `D:/VantareServer/evidence/isa-1869/paso1/review-gates`.
 Se conservan RED previo y dos fallos de Clippy por longitud de finish, resueltos
-dejando el cálculo demo en persistence_paths. #1876 sigue en la misma tanda.
+dejando el cálculo demo en persistence_paths. Ambas tandas finalizaron y sus
+integraciones figuran en el encabezado.
 Primero bugs 1 y 2, cada uno con rama/worktree/PR draft propio a nightly.
 Caracterización 0.ii en `2fc4d46d8` (privacidad beta separada); 0.v en
 `adfbd0aba` (colisión de agenda y cambio de bytes cada segundo).
@@ -31,12 +74,13 @@ La entrega inicial pasó con ROOT/LOCALAPPDATA/APPDATA bajo QA: fmt,
 check/Clippy Hub+Services, regresiones 16/16, Nextest 871/871 (9 skips),
 lifecycle 25/25 y 468 huellas. La revisión actual amplía la cobertura indicada arriba.
 La prueba de entorno de gates cubre éxito y fallo simulado sin compilar.
-PR draft [#1874](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1874)
-a nightly, listo para revisión del orquestador; CI remota aún en curso al preparar
-esta actualización. No se verificó envío real de analítica ni instalación.
-Agenda: PR draft #1876, caracterización 2/2 y 1089 pruebas PASS en la entrega
+PR [#1874](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1874)
+integrado por el orquestador en nightly `590a710ba`, CI 5/5 verde verificada.
+No se verificó envío real de analítica ni instalación.
+Agenda: PR #1876, caracterización 2/2 y 1089 pruebas PASS en la entrega
 inicial. El replay UI pasó aislado tras fallar su plazo existente de 2 s en
-paralelo, sin modificarlo. Revisión de docs, mtime/bytes y reloj lento en curso.
+paralelo, sin modificarlo. Revisión de docs, mtime/bytes y reloj lento PASS:
+1090 pruebas, 25 lifecycle y 33 telemetría; integrado en `3f2c1b3b0`, CI 5/5 verde.
 
 El orquestador aprobó heartbeat de agenda cada 5 s cuando no cambian eventos,
 publicación inmediata al cambiar y TTL de 10 s intacto, con reloj inyectado.
@@ -49,15 +93,15 @@ VANTA-129. Los tres documentos antiguos solo se retirarán en otra tarea tras
 una release estable. Paso 10 excluido, va con #1840.
 Paso 3 autorizado solo para sustituir cálculos de ruta en rights/owner,
 bin/vantare/main, ipc/freshness, ipc/engineer_control y services/app, sin auth,
-policy ni flujo. El orquestador reserva esas líneas con VANTA-129; aún sin editar.
+policy ni flujo. El orquestador reserva esas líneas con VANTA-129; estado del paso 3 arriba.
 Linux/macOS solo tienen desarrollo: el orquestador confirma base única sin
 compatibilidad con XDG_CONFIG_HOME; documentar el cambio en el paso 3.
 
 Hallazgos independientes sin implementar: #1870 Calendario Inicio/menú,
 #1871 ImportLayout sin lector (#1840), #1872 Strategy con dos almacenes.
-Siguiente: revisar #1874 y terminar los gates del paso 2; después completar
-la caracterización 0 pendiente antes de 3. Solo raíces QA. Sin merge, promoción,
-release ni instalación. Plane sigue En curso porque quedan pasos del encargo.
+Siguiente: gates del paso 3 rebasado y draft para revisión. Solo raíces QA.
+Sin merge propio, promoción a testers/master, release ni instalación.
+Plane sigue En curso porque quedan pasos del encargo.
 
 ## VANTA-105 · RC4 entregada / seguimiento #1742 (21-oct-2026)
 
@@ -922,5 +966,6 @@ Todas las tandas finales usan raíces QA para native, LocalAppData y AppData;
 evidencia en `D:/VantareServer/evidence/isa-1869/paso2`. El paso 1
 (privacidad y guard QA por el incidente del arnés, recuperado por el orquestador)
 va en su rama independiente; no se incluye silenciosamente en este PR.
-Entrega: PR draft #1876 a nightly, código `9bf9f8eb3`; SHA final en #1869. Sin merge, promoción, release,
-instalación ni operaciones de este corte sobre datos reales.
+Integrado por el orquestador en nightly `3f2c1b3b0` (#1876), CI 5/5 verde.
+Código de revisión `9fb6c8987`, HEAD entregado `fae6374f0`. Sin merge propio,
+promoción a testers/master, release, instalación ni operaciones de este corte sobre datos reales.

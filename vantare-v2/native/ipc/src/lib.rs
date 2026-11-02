@@ -22,6 +22,8 @@ pub use vantare_profiling as profiling;
 
 /// Contrato local de Engineer, independiente del worker.
 pub mod engineer_control;
+/// Cálculo común de las rutas locales; sin acceso a los documentos.
+pub mod paths;
 /// Identidad de producto compartida por todos los binarios.
 pub mod product;
 /// DTO del proceso de servicios, sin HTTP ni credenciales.

@@ -176,27 +176,14 @@ pub fn data_root() -> Result<PathBuf> {
     // cfg(test) no se propaga a dependencias: los consumidores de pruebas
     // activan test-support. Nunca recurrir a datos instalados desde esos builds.
     #[cfg(any(test, feature = "test-support"))]
-    if std::env::var_os("VANTARE_NATIVE_DATA_ROOT").is_none() {
+    if !std::env::var_os("VANTARE_NATIVE_DATA_ROOT")
+        .is_some_and(|value| PathBuf::from(value).is_absolute())
+    {
         return Err(Error::Storage);
     }
-    #[cfg(windows)]
-    let base = std::env::var_os("LOCALAPPDATA").map(PathBuf::from);
-    #[cfg(target_os = "linux")]
-    let base = std::env::var_os("XDG_DATA_HOME")
-        .map(PathBuf::from)
-        .filter(|p| p.is_absolute())
-        .or_else(|| std::env::var_os("HOME").map(|p| PathBuf::from(p).join(".local/share")));
-    #[cfg(target_os = "macos")]
-    let base =
-        std::env::var_os("HOME").map(|p| PathBuf::from(p).join("Library/Application Support"));
-    #[cfg(not(any(windows, target_os = "linux", target_os = "macos")))]
-    let base: Option<PathBuf> = None;
-    std::env::var_os("VANTARE_NATIVE_DATA_ROOT")
-        .map(PathBuf::from)
-        .or(base)
-        .filter(|p| p.is_absolute())
-        .map(|p| p.join("Vantare/native"))
-        .ok_or(Error::Storage)
+    vantare_ipc::paths::Root::from_env()
+        .map(|root| root.native())
+        .map_err(|_| Error::Storage)
 }
 
 fn read_bounded(path: &Path, limit: u64) -> Result<Vec<u8>> {

@@ -4,9 +4,9 @@ pub use vantare_launcher::*;
 pub mod view;
 
 pub fn default_path() -> Result<PathBuf, String> {
-    vantare_ui::paths::default_data_dir()
-        .map(|root| root.join("Vantare/native/launcher.json"))
-        .map_err(str::to_owned)
+    vantare_ipc::paths::Root::from_env()
+        .map(|root| root.launcher())
+        .map_err(|error| error.to_string())
 }
 
 pub fn demo_store(path: PathBuf, demo: &crate::demo::DemoData) -> Result<Store, String> {

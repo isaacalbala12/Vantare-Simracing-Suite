@@ -6,7 +6,7 @@ rust-version.workspace = true
 publish.workspace = true
 
 [features]
-# Fixture compartida solo para pruebas de consumidores; inactiva en producto.
+# Fixtures y defensa de raíz QA para pruebas de consumidores; inactivas en producto.
 test-support = []
 
 [dependencies]

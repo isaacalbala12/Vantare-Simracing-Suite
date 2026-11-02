@@ -396,12 +396,7 @@ fn start_remote_services(
 fn resident_settings(explicit: Option<PathBuf>) -> io::Result<PathBuf> {
     let path = match explicit {
         Some(path) => path,
-        None => PathBuf::from(
-            env::var_os("VANTARE_NATIVE_DATA_ROOT")
-                .or_else(|| env::var_os("LOCALAPPDATA"))
-                .ok_or_else(|| io::Error::other("LOCALAPPDATA no definido"))?,
-        )
-        .join("Vantare/native/launcher.json"),
+        None => vantare_ipc::paths::Root::from_env()?.launcher(),
     };
     let path = if path.is_absolute() {
         path
@@ -557,6 +552,19 @@ fn main() -> ExitCode {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(windows)]
+    #[test]
+    fn beta_absolute_root_characterization_for_resident_launcher() {
+        let base = PathBuf::from(
+            env::var_os("VANTARE_NATIVE_DATA_ROOT").expect("override QA obligatorio"),
+        );
+        assert!(base.is_absolute());
+        assert_eq!(
+            resident_settings(None).expect("resident launcher"),
+            base.join("Vantare/native/launcher.json")
+        );
+    }
 
     #[test]
     fn duplicate_core_pipe_is_rejected_before_wiring_consumers() {

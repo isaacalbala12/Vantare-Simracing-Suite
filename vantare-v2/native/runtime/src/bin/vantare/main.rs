@@ -837,7 +837,7 @@ mod tests {
         assert!(config.core.args.iter().any(|arg| arg == "--managed-rights"));
         assert_eq!(
             config.overlays.args,
-            args(&["--fuente", &format!("pipe:{photo}")])
+            args(&["--fuente", &format!("pipe:{photo}"), "--control-stdin"])
         );
         assert!(
             config

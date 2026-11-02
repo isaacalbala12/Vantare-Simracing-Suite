@@ -10,6 +10,8 @@ cada 5 s. Diez vueltas a 1 s pasan de diez escrituras a dos, manteniendo el TTL
 de 10 s del lector. Publicar diez veces los mismos bytes solo escribe una vez.
 El archivo antiguo se deja donde está: puede contener preferencias del usuario.
 La escritura sigue en el hilo de UI; moverla fuera queda para una mejora posterior.
+Con TTL de 10 s y heartbeat de 5 s queda un margen de unos 5 s ante un parón
+del hilo de UI; es el margen aceptado para un Hub que ya se considera colgado.
 Hub y overlays deben salir de la misma generación, sin compatibilidad del nombre viejo.
 
 ## Instalación y versión — #1840, paso 3

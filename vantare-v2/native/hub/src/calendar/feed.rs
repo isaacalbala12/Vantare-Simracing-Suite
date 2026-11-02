@@ -125,6 +125,11 @@ mod tests {
         let feed = feed(10_000);
         assert!(Calendar::publish_alert_feed(&layout, &feed).expect("first publication"));
         let path = Calendar::alert_path(&layout);
+        let bytes_before = std::fs::read(&path).expect("published bytes");
+        let mtime_before = std::fs::metadata(&path)
+            .expect("published metadata")
+            .modified()
+            .expect("mtime");
         assert_eq!(
             path.file_name().and_then(|name| name.to_str()),
             Some("session-alerts-feed.json")
@@ -140,6 +145,14 @@ mod tests {
             writes += usize::from(Calendar::publish_alert_feed(&layout, &feed).expect("unchanged"));
         }
         assert_eq!(writes, 1);
+        assert_eq!(std::fs::read(&path).expect("unchanged bytes"), bytes_before);
+        assert_eq!(
+            std::fs::metadata(&path)
+                .expect("unchanged metadata")
+                .modified()
+                .expect("mtime"),
+            mtime_before
+        );
         assert_eq!(saved(&layout), feed);
         assert_eq!(
             std::fs::read(root.join("calendar-alerts.json")).expect("private bytes"),
@@ -190,6 +203,23 @@ mod tests {
         changed.events.clear();
         assert!(Calendar::publish_alert_feed(&layout, &changed).expect("disabled alerts"));
         assert!(saved(&layout).events.is_empty());
+        std::fs::remove_dir_all(root).expect("QA cleanup");
+    }
+
+    #[test]
+    fn slow_clock_uses_elapsed_time_instead_of_counting_ticks() {
+        let root = qa();
+        let layout = root.join("layout.json");
+        let mut now = 10_000;
+        let mut writes = 0;
+        for tick in 0..=100 {
+            writes +=
+                usize::from(Calendar::publish_alert_feed(&layout, &feed(now)).expect("slow clock"));
+            assert_eq!(saved(&layout).current(now).len(), 1);
+            assert_eq!(writes, tick / 50 + 1, "tick {tick}, clock {now}");
+            now += 100;
+        }
+        assert_eq!(writes, 3, "initial publication and two 5 s heartbeats");
         std::fs::remove_dir_all(root).expect("QA cleanup");
     }
 

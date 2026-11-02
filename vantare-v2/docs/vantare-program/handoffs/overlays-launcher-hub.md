@@ -830,6 +830,12 @@ C:/VantareServer/evidence/1628-review-r3-delta-20261017; SHA/CI finales en PR163
 
 ## VANTA-130 · #1869 · Paso 2, agenda de avisos (2-nov-2026)
 
+Revisión #1876: contrato de session-alerts.md actualizado (nombre, heartbeat,
+E/S reducida); prueba de diez publicaciones comprueba bytes, mtime y lock real.
+Reloj lento a 100 ms/tick sin esperas verifica cadencia por tiempo transcurrido.
+README recoge el margen aceptado de unos 5 s ante un parón de UI. Gates de
+revisión agrupados con #1874, targets y raíces QA separados; en curso.
+
 Proyecto Vantare / area:plataforma. Rama `vantareapp/isa-1869-paso2-agenda`,
 worktree `D:/VantareServer/worktrees/isa-1869-paso2`; base nightly `a5e0a9fd2`.
 Caracterización previa: `adfbd0aba` y corrección del directorio QA `56346034e`,

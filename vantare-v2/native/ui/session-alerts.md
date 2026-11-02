@@ -81,14 +81,15 @@ Respeta el canal «En pista»; las franjas se callan si ya estás en pista,
 igual que en el calendario. Las tandas explícitas siguen disponibles.
 Semana caducada, canal apagado y demo publican una agenda vacía.
 
-Interfaz local en `ipc::session_alerts`: documento calendar-alerts.json v1
+Interfaz local en `ipc::session_alerts`: documento session-alerts-feed.json v1
 junto al layout, `updatedAtMs` y eventos {id, label, startsAtMs}. id identifica
-una salida concreta: serie:timestamp. El Hub escribe atómicamente cada segundo;
+una salida concreta: serie:timestamp. El Hub comprueba cada segundo y escribe
+atómicamente al cambiar eventos; sin cambios, publica un heartbeat cada 5 s;
 el host de overlays lee como máximo 64 KiB cada 500 ms. Máximo 256 salidas;
 agenda sin latido de 10 s se retira. Sin cuenta ni secretos.
 Cancelar la marca elimina aviso/cola/mini; no se recuperan salidas pasadas.
 
-El archivo de preferencias privado del calendario también se llama
+El archivo de preferencias privado del calendario se llama
 calendar-alerts.json, pero vive en `--data-dir` del Hub; no es el feed del
 layout. Si es inválido, el calendario conserva una copia .invalid y arranca
 sin avisos, con explicación al usuario. El siguiente guardado no borra la copia.
@@ -138,7 +139,7 @@ directorio privado `--data-dir` del Hub.
 La regresión beta extrae el layout del Hub y la raíz de datos heredada por el
 overlay desde `beta.ps1`, y compara ambos destinos con una ruta literal
 independiente. Sin overrides, Hub y overlay deben usar
-`<raíz de datos>/Vantare/native/calendar-alerts.json`; el test comprueba ese
+`<raíz de datos>/Vantare/native/session-alerts-feed.json`; el test comprueba ese
 destino esperado para cada proceso por separado.
 
 En el probe `msix/verify.ps1`, el Hub recibe `$data/hub` y
@@ -163,12 +164,13 @@ no se solicitan Positions/LapTimes ni se proyectan puesto/mejor vuelta para esa
 rama. Cuando se añada la fuente habrá que habilitar conjuntamente demanda y
 proyección; los campos opcionales del motor puro se conservan para ese contrato.
 
-Pendientes explícitos de review (no corregidos aquí):
+Seguimiento de review:
 - P3-3: «Aviso · 5 min» identifica el umbral, aunque se entre a 4:00; el contador
   muestra el resto real. Pendiente decidir otra etiqueta con Isaac.
-- P3-5: se mantiene la publicación atómica cada segundo y lectura de hasta
-  64 KiB cada 500 ms, incluso sin widget. Optimización de E/S pendiente de medir;
-  no se afirma que estos timers o el coste de E/S hayan desaparecido. winmm
+- P3-5: #1869 reduce diez ticks sin cambios de diez escrituras a dos, mediante
+  heartbeat de 5 s; los cambios de eventos se publican inmediatamente. La lectura
+  de hasta 64 KiB cada 500 ms sigue, incluso sin widget. La escritura sigue en UI
+  y su traslado queda pendiente. winmm
   permanece como frontera existente; audio/toasts físicos siguen sin validar.
 - P3-6: blanco de fin confirmado solo para prácticas/qualy, conforme al alcance;
   no se añade aviso de fin de carrera. Inicio/fin reales, formación y próxima

@@ -886,3 +886,41 @@ Comprobación independiente: grafo normal/build/features Windows sin
 GPUI/test-support ni proptest; grafo con dev los incluye. Solo se verifica el
 grafo de producción, no se afirma inspección de binario release. Evidencia en
 C:/VantareServer/evidence/1628-review-r3-delta-20261017; SHA/CI finales en PR1637.
+
+## VANTA-130 · #1869 · Paso 2, agenda de avisos (2-nov-2026)
+
+Revisión #1876: contrato de session-alerts.md actualizado (nombre, heartbeat,
+E/S reducida); prueba de diez publicaciones comprueba bytes, mtime y lock real.
+Reloj lento a 100 ms/tick sin esperas verifica cadencia por tiempo transcurrido.
+README recoge el margen aceptado de unos 5 s ante un parón de UI. Gates de
+revisión agrupados con #1874, targets y raíces QA separados: fmt/check/Clippy
+PASS; Nextest 1090 PASS (replay aislado 1/1 + resto 1089/1089, 10 skips existentes),
+lifecycle 25/25 y telemetría 33/33 (1 skip) PASS. Código de revisión `9fb6c8987`;
+evidencia `D:/VantareServer/evidence/isa-1869/paso2/review-gates`. Cola cedida.
+
+Proyecto Vantare / area:plataforma. Rama `vantareapp/isa-1869-paso2-agenda`,
+worktree `D:/VantareServer/worktrees/isa-1869-paso2`; base nightly `a5e0a9fd2`.
+Caracterización previa: `adfbd0aba` y corrección del directorio QA `56346034e`,
+2/2 PASS antes del cambio. Feed y preferencias coincidían en el nombre y el
+reloj cambiaba los bytes cada segundo aunque no cambiaran los eventos.
+
+El feed ahora se llama `session-alerts-feed.json`; Hub y overlays comparten el
+resolvedor IPC. La preferencia `calendar-alerts.json` y el archivo antiguo se
+conservan. Cambios de eventos inmediatos; sin cambios, heartbeat a 5 s. TTL 10 s
+intacto, según decisión del orquestador. Pruebas añadidas: diez publicaciones
+idénticas escriben una vez (con lock real), diez ticks de 1 s escriben dos veces,
+continuidad hasta detener el publicador, caducidad, reloj atrás y reinicio.
+La escritura sigue en UI; moverla es una mejora posterior, anotada en #1869.
+
+fmt/check/Clippy de Hub/IPC/UI PASS en tanda QA tras corregir una docstring.
+Primera entrega: Nextest 1089 PASS, 10 skips existentes; el replay golden falló en su plazo
+existente de 2 s durante la tanda paralela y pasó aislado sin cambiar el test
+(1/1), seguido del resto del conjunto (1088/1088). Fallos previos conservados
+en evidencia, incluidos los asserts CLI del nombre antiguo ya corregidos.
+Lifecycle 25/25 y telemetría 33/33 (1 skip) PASS. Calidad: 468 huellas PASS.
+Todas las tandas finales usan raíces QA para native, LocalAppData y AppData;
+evidencia en `D:/VantareServer/evidence/isa-1869/paso2`. El paso 1
+(privacidad y guard QA por el incidente del arnés, recuperado por el orquestador)
+va en su rama independiente; no se incluye silenciosamente en este PR.
+Entrega: PR draft #1876 a nightly, código `9bf9f8eb3`; SHA final en #1869. Sin merge, promoción, release,
+instalación ni operaciones de este corte sobre datos reales.

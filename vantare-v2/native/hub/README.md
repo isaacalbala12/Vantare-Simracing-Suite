@@ -1,5 +1,19 @@
 # Hub nativo (ISA-1430)
 
+## Agenda de avisos — #1869, paso 2
+
+El Hub publica `session-alerts-feed.json` junto al layout; overlays usa el mismo
+resolvedor IPC. `calendar-alerts.json` sigue siendo exclusivamente la preferencia
+privada de Calendario, incluso con `--data-dir` igual a la carpeta del layout.
+Los cambios de eventos se publican inmediatamente; sin cambios, hay heartbeat
+cada 5 s. Diez vueltas a 1 s pasan de diez escrituras a dos, manteniendo el TTL
+de 10 s del lector. Publicar diez veces los mismos bytes solo escribe una vez.
+El archivo antiguo se deja donde está: puede contener preferencias del usuario.
+La escritura sigue en el hilo de UI; moverla fuera queda para una mejora posterior.
+Con TTL de 10 s y heartbeat de 5 s queda un margen de unos 5 s ante un parón
+del hilo de UI; es el margen aceptado para un Hub que ya se considera colgado.
+Hub y overlays deben salir de la misma generación, sin compatibilidad del nombre viejo.
+
 ## Instalación y versión — #1840, paso 3
 
 Ajustes lee estado/manifiesto desde `installer::engine`, dependencia sin features

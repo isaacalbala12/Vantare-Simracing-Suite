@@ -115,6 +115,7 @@ try{
     [IO.File]::WriteAllBytes($exe,$exeBytes)
     $result=Invoke-BoundaryWriter 'Cleanup' '0.0.988'
     Assert-Boundary ($result.ExitCode -eq 0 -and -not(Test-Path -LiteralPath $exe) -and -not(Test-Path -LiteralPath $marker)) 'Authorized Cleanup removes only its uninstaller and marker'
+    Assert-Boundary (@(Get-ChildItem -LiteralPath $qaBoundaryRoot -Directory -Filter 'VantareSetup-*').Count -eq 0) 'Authorized Cleanup leaves no owned temporary directory or executable'
     Assert-Boundary ((Get-NativeDataIndex $data) -ceq $dataBefore) 'Cleanup preserves exact data and empty directories'
     Write-NativeJson (Join-Path $qaBoundaryRoot 'result.json') @{checks=$passed;data_unchanged=$true;foreign_run_preserved=$true}
 }finally{

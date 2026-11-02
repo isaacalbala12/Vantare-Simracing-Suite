@@ -32,6 +32,11 @@ try{$parent=[Diagnostics.Process]::GetProcessById([int]$contract.parentId)}catch
 if($null -ne $parent){try{if(-not $parent.WaitForExit(30000)){throw 'CLEANUP_PARENT_STILL_RUNNING'}}finally{$parent.Dispose()}}
 $session=[IO.File]::Open((Join-Path $root 'beta-session.lock'),[IO.FileMode]::OpenOrCreate,[IO.FileAccess]::ReadWrite,[IO.FileShare]::None)
 try{
+    $files=@(Get-ChildItem -LiteralPath $temporary -Force)
+    foreach($item in $files){
+        $null=Assert-CleanupPath $item.FullName
+        if($item.PSIsContainer -or $item.Name -cnotin @('installer-cleanup.ps1','installer-notices.txt','qa-guard.ps1','shell.json','package.zip','Uninstall.exe')){throw 'CLEANUP_TEMP_CONTENT_REJECTED'}
+    }
     $marker=Assert-CleanupPath (Join-Path $root 'installer-cleanup.json')
     if((Get-Item -LiteralPath $marker).Length -gt 1024){throw 'CLEANUP_MARKER_SIZE'}
     $cleanup=[IO.File]::ReadAllText($marker)|ConvertFrom-Json
@@ -42,6 +47,6 @@ try{
         Remove-Item -LiteralPath $exe
     }
     Remove-Item -LiteralPath $marker
-    foreach($item in Get-ChildItem -LiteralPath $temporary -Recurse -Force){$null=Assert-CleanupPath $item.FullName}
-    Remove-Item -LiteralPath $temporary -Recurse -Force
+    foreach($item in $files){Remove-Item -LiteralPath $item.FullName}
+    Remove-Item -LiteralPath $temporary
 }finally{$session.Dispose()}

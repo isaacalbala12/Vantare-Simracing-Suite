@@ -98,3 +98,14 @@ rehidratar: llega el reloj nuevo y se conserva la señal lenta de la nueva
 situación. Usa el codec/suscriptor reales y cierra su hilo y pipe al terminar.
 La pausa se prueba con pipe real hasta `Overlay::project_snapshot`, llamada
 desde `Overlay::ingest`; no acredita una ventana GPUI ni una sesión física.
+
+## #1868 · Conversión y reparto únicos (paso 3)
+
+`signal_fields!` en dto.rs declara una sola vez qué campos lleva cada señal.
+Genera la selección, la restauración y la presencia de datos de coche/jugador.
+Las identidades y metadatos del sobre siguen viajando siempre. La conversión
+completa usa la misma selección con toda la demanda; la lectura por valor
+pide prestado el DTO al único decodificador, sin clonarlo entero. Se conservan
+los tipos y atributos serde de v11, los lectores guardados y los bytes del cable.
+La compilación impide omitir o repetir un campo al construir cada DTO; los tests
+comparan las cuatro calidades con el original y ejercitan rehidratación y JSON.

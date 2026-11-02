@@ -94,7 +94,18 @@ otras calidades, y codec existente. Logs en `D:/VantareServer/evidence/isa-1868-
 El primer fallo de CI anterior por Instant::checked_sub pertenece a #1878;
 lo corrige el orquestador aparte; no se toca aquí. Se reservan también las zonas
 de persist/show/backup de ui/layout y el escritor de ui/workshop/state (VANTA-130).
-Siguiente: ejecutar caracterización previa, consolidar DTO y gates por cola.
+Caracterización previa 101/101 IPC PASS, cero skips, run `2831df1d-b1a5-41e5-8e9f-0675ece8d417`.
+Primero commits de tests `69c0e0664` y formato; después consolidación productiva.
+La tabla signal_fields de 88 campos genera selección, restauración y clasificación
+car_data/player_data. Un codificador; el completo pide toda la demanda. La entrada
+por valor delega al decodificador prestado; tipos y atributos serde v11 intactos.
+Se retira el test que vigilaba los tres mapas: ahora el compilador impide
+campos omitidos/repetidos. La antigua comparación de dos codificadores se
+sustituye por JSON live contra las cuatro calidades originales, para no hacer
+una comparación tautológica una vez comparten camino. Se conservan pruebas
+por ID, máscaras parciales, omisión frente a Unavailable y codec existentes.
+Siguiente: fmt/check/Clippy, suite con telemetría y lifecycle en una tanda por cola;
+si cambia un golden se detiene el corte, sin regenerarlo.
 Pasos 4–10 pendientes.
 Sin merge, promoción ni release. QA física, píxeles y paint-stats/latencia
 no medidos en el servidor compartido. Ejecución Sol con esfuerzo medium fijado

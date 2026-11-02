@@ -1,17 +1,5 @@
 # Goldens de telemetría (#1463)
 
-## #1868 · Vista estructurada del oráculo v9
-
-`telemetry_golden::oracle_view` serializa el mismo DTO productivo a valores
-JSON y retira campos completos, sin buscar comas ni recortar cadenas. Conserva
-las mismas excepciones LMU y los mismos archivos/hashes congelados. No cambia
-la cobertura: situación y siete campos v11 siguen certificados por sus tests
-específicos, no por el oráculo v9. El test de valores anidados protege esta vista.
-`preserve_order` se activa solo como feature de desarrollo de serde_json, ya
-presente y fijado en Cargo.lock; `shift_remove` conserva el orden de las claves
-restantes. No se añade ningún paquete ni se activa ese feature en un build
-normal de runtime aislado. El emisor de secuencias IPC también es solo de tests.
-
 ## Correcciones de calidad #1551 / #1552 (2026-10-10)
 
 Base de auditoría `ec743de8`. LMU scoring entrega progreso, que en práctica

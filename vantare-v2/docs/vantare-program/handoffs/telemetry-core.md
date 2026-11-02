@@ -57,7 +57,13 @@ retirada por campo. Features dev de dependencias ya existentes; ningún paquete,
 versión o lock nuevo. P3 preparados con recepción por revisión y emisor de
 máscaras controladas, cancelación/cierre; pausa conserva datos lentos distintos
 del productor mientras el reloj nuevo sí llega. Altura única del banner.
-Siguiente: GREEN focal, gates por cola y PR draft; sin regenerar goldens.
+GREEN focal 2/2, run `bda8e0d8-96c3-4d29-8cf3-9042974af6ed`: 3857 fotos
+byte a byte PASS y regresión anidada PASS. [PR draft #1877](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1877),
+gates de cuatro crates en una tanda por cola, pendientes. Quality inicial
+rechazó editar el README congelado; restaurado byte a byte, explicación movida
+a runtime/README. Integridad y quality locales 468/468 PASS; corpus intacto.
+VANTA-130 reserva también ui/layout::default_path; no se edita.
+Siguiente: terminar gates y medir líneas separadas, sin regenerar goldens.
 Sin merge, promoción ni release. QA física, píxeles y paint-stats/latencia
 no medidos en el servidor compartido. Ejecución Sol con esfuerzo medium fijado
 por esta sesión; no se ha supuesto high. El texto inferior conserva historia,

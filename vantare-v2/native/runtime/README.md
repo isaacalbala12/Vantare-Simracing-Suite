@@ -149,3 +149,13 @@ prácticas también invalida el REST anterior, aunque avance el reloj.
 Las capturas disponibles NO acreditan inicio/final real, fase de salida ni
 agenda de próxima sesión; esos campos permanecen `Unavailable`, también ACC.
 No se deducen de remaining_s, movimiento, boxes ni llegada de un coche.
+
+## Oráculo de telemetría (#1868, paso 2)
+
+La vista del DTO para el oráculo se construye con `serde_json::Value`, mediante
+`ipc::test_support::snapshot_value`. La normalización conserva las excepciones
+LMU existentes y elimina por claves los campos posteriores a v9. La feature
+`preserve_order` de la dependencia existente se activa solo para tests;
+`shift_remove` conserva el orden de los campos restantes y los bytes congelados.
+No se regeneran fixtures ni corpus. La prueba con comas y comillas en textos
+vecinos caracteriza la retirada de campos anidados sin recortar texto JSON.

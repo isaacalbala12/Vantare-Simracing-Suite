@@ -1,3 +1,22 @@
+## VANTA-130 · grupo 6+7 iniciado (3-nov-2026)
+
+Paso 5 #1887 integrado por el orquestador en nightly
+`b0e976036f09e9fb287f8072eb99bb9fa9f192f7`, DeepSeek MERGE y CI 5/5 SUCCESS
+verificadas. Rama nueva `vantareapp/isa-1869-paso6-preferencias`, worktree
+`D:/VantareServer/worktrees/isa-1869-paso6`, desde esa base exacta.
+Diseño aprobado en `D:/VantareServer/evidence/isa-1869/paso6-diseno.md`.
+Reserva de layout/motion/host trasladada a VANTA-129 mediante el orquestador.
+Caracterización previa `632fae40b` esperando cola antes de cambios de producción.
+
+Incluye P2 de zoom dañado (copia .invalid y guardar sin conflicto), Result muerto
+de General, helper future_version, contexto CAS, texto de borrador TC y hotkey
+prestado. Workshop dañado se registra aparte en #1888, no se implementa.
+Límite pendiente hasta paso 8: clave nueva con igual versión puede ser rechazada
+por un lector estricto y archivada como corrupción. Los tres originales v1 se
+conservan; retirarlos será otra tarea tras una release estable. Sin paso 10,
+installer, packaging ni datos reales. Gates por compilar.ps1 con raíces QA.
+Plane En curso; pasos 8–9 pendientes. No PR de este grupo todavía.
+
 ## VANTA-130 · paso 5 listo para revisión final (2-nov-2026)
 
 #1884 integrado por el orquestador en nightly ee74d36b64ff00a333c474d7e9518078d074ca7d,

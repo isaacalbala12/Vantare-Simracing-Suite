@@ -107,13 +107,14 @@ fn display_authenticates_metadata_and_verified_also_checks_binary_bytes() {
     let fixture = Fixture::new();
     fixture.load(STATE_RC, RC);
     // Metadata can be displayed before program files are available.
-    assert!(verified(&fixture.0).is_ok());
-    assert!(Installation::read(&fixture.0).is_err());
+    assert!(Installation::read(&fixture.0).is_ok());
+    assert!(verified(&fixture.0).is_err());
     fs::write(fixture.generation().join("candidate.ps1"), b"fixture").unwrap();
+    assert!(Installation::read(&fixture.0).is_ok());
     assert!(verified(&fixture.0).is_ok());
     fs::write(fixture.generation().join("candidate.ps1"), b"damaged").unwrap();
-    assert!(verified(&fixture.0).is_ok());
-    assert!(Installation::read(&fixture.0).is_err());
+    assert!(Installation::read(&fixture.0).is_ok());
+    assert!(verified(&fixture.0).is_err());
     let mut changed = RC.to_vec();
     changed.push(b' ');
     fs::write(fixture.generation().join("manifest.json"), changed).unwrap();
@@ -243,18 +244,22 @@ fn retained_data_and_structural_retirement_share_the_state_decoder() {
             .join("c".repeat(32))
             .join("data")
     );
-    for raw in [
-        include_bytes!("../fixtures/state-partial-uninstall.json").as_slice(),
-        STATE_RC,
-    ] {
-        fs::write(fixture.0.join("state.json"), raw).unwrap();
-        assert_eq!(
-            State::read(&fixture.0).unwrap().unwrap().active.generation,
-            "a".repeat(32)
-        );
-        assert_eq!(fs::read(fixture.0.join("state.json")).unwrap(), raw);
-        assert!(Installation::read(&fixture.0).is_err());
-    }
+    // An old state without SHA/previous is informative history, never authority
+    // to retire files. A bound state still resumes after its manifest is gone.
+    let partial = include_bytes!("../fixtures/state-partial-uninstall.json");
+    fs::write(fixture.0.join("state.json"), partial).unwrap();
+    assert!(matches!(
+        State::read(&fixture.0),
+        Err(ReadError::Rejected(Rejection::MissingPrevious))
+    ));
+    assert_eq!(fs::read(fixture.0.join("state.json")).unwrap(), partial);
+    fs::write(fixture.0.join("state.json"), STATE_RC).unwrap();
+    assert_eq!(
+        State::read(&fixture.0).unwrap().unwrap().active.generation,
+        "a".repeat(32)
+    );
+    assert_eq!(fs::read(fixture.0.join("state.json")).unwrap(), STATE_RC);
+    assert!(Installation::read(&fixture.0).is_err());
 }
 
 #[test]

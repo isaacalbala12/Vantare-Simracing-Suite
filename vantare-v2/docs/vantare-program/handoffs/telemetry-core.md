@@ -13,7 +13,7 @@ CI 5/5 SUCCESS verificada; [PR #1873](https://github.com/isaacalbala12/Vantare-S
 contra nightly. Diseño aprobado: `D:/VantareServer/evidence/revision-general/telemetria-overlay-DISENO.md`.
 Rama `vantareapp/isa-1868-paso0-caracterizacion`, worktree
 `D:/VantareServer/worktrees/isa-1868-paso0`, base `nightly@a5e0a9fd2`.
-El encargo completo tiene pasos 0–10: **0–1 integrados; 2 + P3 en PR #1877 para revisión; 3–10 pendientes**.
+El encargo completo tiene pasos 0–10: **0–2 integrados; paso 3 en PR #1882 para revisión; 4–10 pendientes**.
 
 Paso 0, commit previo `01dff4c81`: RED con pipe real, 2 conexiones al pasar
 OnTrack→Garage, esperada 1 (0,301 s de test; RETRY=250 ms, sin medir pintado).
@@ -44,7 +44,7 @@ services/app quedan reservadas; frescura/500 ms siguen en VANTA-129.
 Sus exports en ipc/lib preceden al paso 4; pasos 7–8 tras la ola P4.
 
 Reanudado VANTA-129 En curso para pasos 2–10 y P3 de revisión de #1873.
-Corte actual: paso 2 + P3, rama `vantareapp/isa-1868-paso2-oraculo-p3`,
+Grupo integrado 2 + P3, rama `vantareapp/isa-1868-paso2-oraculo-p3`,
 worktree `D:/VantareServer/worktrees/isa-1868-paso2`, base `bc239c063`.
 P3: barrera explícita en pipe; parcial tras rehidratación con señal lenta
 retenida; pausa con hidratación parcial real; altura desde constante de banner.
@@ -58,7 +58,8 @@ versión o lock nuevo. P3 preparados con recepción por revisión y emisor de
 máscaras controladas, cancelación/cierre; pausa conserva datos lentos distintos
 del productor mientras el reloj nuevo sí llega. Altura única del banner.
 [PR draft #1877](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1877)
-listo para revisión de este corte. Código validado `c45dd614c`, base `bc239c063`.
+integrado por el orquestador en `nightly@da4c2af08c3d5f34e9634f670e9eb2dcdde0dc49`;
+CI 5/5 SUCCESS verificada. Código validado `c45dd614c`, base `bc239c063`.
 GREEN focal 2/2, run `bda8e0d8-96c3-4d29-8cf3-9042974af6ed`: 3857 fotos
 byte a byte y regresión anidada PASS. Tanda final por `compilar.ps1`, target
 privado `native/target/gates`, jobs 4: fmt/check/Clippy `-D warnings` PASS;
@@ -83,8 +84,46 @@ La revisión opcional DeepSeek no arrancó por saldo del proveedor; no se
 atribuye evidencia al subagente. Diff revisado en este worker.
 CI final y HEAD documental: consultar #1868 y #1877; no inferir checks de otro SHA.
 VANTA-130 reserva también ui/layout::default_path; no se ha editado.
-Siguiente: integrar/revisar este corte por el orquestador; paso 3 desde
-origin/nightly actualizado en rama/worktree nuevos. Se mantienen 3–10 pendientes.
+Reanudado VANTA-129 En curso para el paso 3, desde origin/nightly actualizado
+`da4c2af08`: rama `vantareapp/isa-1868-paso3-dto`, worktree
+`D:/VantareServer/worktrees/isa-1868-paso3`. Un codificador y decodificador,
+tabla señal→campos única; DTO v11 y bytes existentes intactos. Caracterización
+antes del refactor: tests de codificación completa/selectiva, ambas lecturas
+contra las cuatro calidades originales, cada parcial rehidratado sin perder
+otras calidades, y codec existente. Logs en `D:/VantareServer/evidence/isa-1868-paso3`.
+El primer fallo de CI anterior por Instant::checked_sub pertenece a #1878;
+lo corrige el orquestador aparte; no se toca aquí. Se reservan también las zonas
+de persist/show/backup de ui/layout y el escritor de ui/workshop/state (VANTA-130).
+Caracterización previa 101/101 IPC PASS, cero skips, run `2831df1d-b1a5-41e5-8e9f-0675ece8d417`.
+Primero commits de tests `69c0e0664` y formato; después consolidación productiva.
+La tabla signal_fields de 88 campos genera selección, restauración y clasificación
+car_data/player_data. Un codificador; el completo pide toda la demanda. La entrada
+por valor delega al decodificador prestado; tipos y atributos serde v11 intactos.
+Se retira el test que vigilaba los tres mapas: ahora el compilador impide
+campos omitidos/repetidos. La antigua comparación de dos codificadores se
+sustituye por JSON live contra las cuatro calidades originales, para no hacer
+una comparación tautológica una vez comparten camino. Se conservan pruebas
+por ID, máscaras parciales, omisión frente a Unavailable y codec existentes.
+[PR draft #1882](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1882)
+listo para revisión del paso 3, código `f306cc601`, base `da4c2af08`.
+Gates locales en una tanda por compilar.ps1, target privado native/target/gates,
+jobs 4 y raíces QA aisladas: fmt/check/Clippy -D warnings PASS; Nextest
+`5a679bcd-7861-41d1-a1e2-9445e67758e7`, 1261/1261 PASS (14 skips preexistentes),
+incluidos 34/34 de telemetría; lifecycle runtime 25/25 PASS con overlays normal/QA.
+Cola liberada. ACC conserva sus hashes sobre 190471 lecturas; las 3857 fotos
+congeladas conservan sus bytes. Ninguna regeneración o cambio de datos/lock.
+CI del código f306cc601 5/5 SUCCESS: [run 41490639741](https://github.com/isaacalbala12/Vantare-Simracing-Suite/actions/runs/41490639741),
+job 125432756522, suite 2400/2400 PASS (24 skips), lifecycle runtime 25/25 y
+Engineer 5/5. Logs y SHA conservados. El último commit solo cierra este handoff;
+árbol native idéntico al validado. CI de ese HEAD documental: consultar #1882.
+Quality/integridad 468/468 PASS. Revisión del diff y comprobación mecánica:
+88 expresiones con la misma señal; serde/Boundary, conversores, decodificador
+prestado, enum/ALL y cadencias de demanda intactos. Sin dependencias nuevas.
+Líneas frente a da4c2af08: producción +373/−846 (neto −473), tests +39/−78;
+docs +55/−5. Evidencia y contador en D:/VantareServer/evidence/isa-1868-paso3.
+Plane Por revisar para este corte. Siguiente: revisión/integración por el
+orquestador y nuevo corte desde origin/nightly actualizado.
+Pasos 4–10 pendientes.
 Sin merge, promoción ni release. QA física, píxeles y paint-stats/latencia
 no medidos en el servidor compartido. Ejecución Sol con esfuerzo medium fijado
 por esta sesión; no se ha supuesto high. El texto inferior conserva historia,

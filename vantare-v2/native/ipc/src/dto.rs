@@ -604,139 +604,280 @@ fn usession_kind(k: SessionKindDto) -> d::SessionKind {
     }
 }
 
-fn session(s: &d::Session) -> SessionDto {
-    SessionDto {
-        id: s.id.0,
-        kind: q(&s.kind, |k| match k {
-            d::SessionKind::Practice => SessionKindDto::Practice,
-            d::SessionKind::Qualifying => SessionKindDto::Qualifying,
-            d::SessionKind::Race => SessionKindDto::Race,
-            d::SessionKind::Other(name) => SessionKindDto::Other(name.clone()),
-        }),
-        state: q(&s.state, |st| match st {
-            d::SessionState::Preparing => SessionStateDto::Preparing,
-            d::SessionState::Running => SessionStateDto::Running,
-            d::SessionState::Interrupted => SessionStateDto::Interrupted,
-            d::SessionState::Finished => SessionStateDto::Finished,
-        }),
-        elapsed_s: q(&s.elapsed_s, copied),
-        remaining_s: q(&s.remaining_s, copied),
-        track_name: q(&s.track_name, String::clone),
-        laps_remaining: q(&s.laps_remaining, copied),
-        laps_total: q(&s.laps_total, copied),
-        track_length_m: q(&s.track_length_m, copied),
-        started_at_s: q(&s.timing.started_at_s, copied),
-        finished_at_s: q(&s.timing.finished_at_s, copied),
-        scheduled_end_s: q(&s.timing.scheduled_end_s, copied),
-        start_phase: q(&s.timing.start_phase, |p| start_phase(*p)),
-        distance_to_start_line_m: q(&s.timing.distance_to_start_line_m, copied),
-        next_kind: q(&s.timing.next_kind, session_kind),
-        next_starts_at_s: q(&s.timing.next_starts_at_s, copied),
-        weather_air_temperature_k: q(&s.weather.air_temperature_k, copied),
-        weather_track_temperature_k: q(&s.weather.track_temperature_k, copied),
-        weather_wind_speed_mps: q(&s.weather.wind_speed_mps, copied),
-        weather_wind_direction_rad: q(&s.weather.wind_direction_rad, copied),
-        weather_rain: q(&s.weather.rain, copied),
-        weather_track_wetness: q(&s.weather.track_wetness, copied),
-        weather_pressure_pa: q(&s.weather.pressure_pa, copied),
-    }
+// Único reparto señal→campos. Genera codificación selectiva, restauración
+// y presencia de coches/jugador; las identidades del sobre siempre viajan.
+macro_rules! signal_fields {
+    ($apply:ident) => {
+        $apply! { state, state_selected, restore_state, StateDto, d::State, s, delivered,
+            {
+                source_state: source_state(s.source_state),
+                driving_situation: s.driving_situation.into(),
+                capabilities: capabilities(&s.capabilities),
+                session: session_selected(&s.session, delivered),
+                cars: if delivered.car_data() {
+                    s.cars.iter().map(|car| car_selected(car, delivered)).collect()
+                } else {
+                    Vec::new()
+                },
+                player: if delivered.player_data() {
+                    s.player.as_ref().map(|p| player_selected(p, delivered))
+                } else {
+                    None
+                },
+            }, {
+                Flags => {
+                    flags: q(&s.flags, |fs| fs.iter().map(flag).collect()),
+                },
+            }
+        }
+        $apply! { session, session_selected, restore_session, SessionDto, d::Session, s, delivered,
+            {
+                id: s.id.0,
+            }, {
+                SessionInfo => {
+                    kind: q(&s.kind, |k| match k {
+                        d::SessionKind::Practice => SessionKindDto::Practice,
+                        d::SessionKind::Qualifying => SessionKindDto::Qualifying,
+                        d::SessionKind::Race => SessionKindDto::Race,
+                        d::SessionKind::Other(name) => SessionKindDto::Other(name.clone()),
+                    }),
+                    state: q(&s.state, |st| match st {
+                        d::SessionState::Preparing => SessionStateDto::Preparing,
+                        d::SessionState::Running => SessionStateDto::Running,
+                        d::SessionState::Interrupted => SessionStateDto::Interrupted,
+                        d::SessionState::Finished => SessionStateDto::Finished,
+                    }),
+                    laps_total: q(&s.laps_total, copied),
+                    started_at_s: q(&s.timing.started_at_s, copied),
+                    finished_at_s: q(&s.timing.finished_at_s, copied),
+                    scheduled_end_s: q(&s.timing.scheduled_end_s, copied),
+                    start_phase: q(&s.timing.start_phase, |p| start_phase(*p)),
+                    distance_to_start_line_m: q(&s.timing.distance_to_start_line_m, copied),
+                    next_kind: q(&s.timing.next_kind, session_kind),
+                    next_starts_at_s: q(&s.timing.next_starts_at_s, copied),
+                },
+                SessionClock => {
+                    elapsed_s: q(&s.elapsed_s, copied),
+                    remaining_s: q(&s.remaining_s, copied),
+                },
+                TrackName => {
+                    track_name: q(&s.track_name, String::clone),
+                },
+                TrackLength => {
+                    track_length_m: q(&s.track_length_m, copied),
+                },
+                LapsRemaining => {
+                    laps_remaining: q(&s.laps_remaining, copied),
+                },
+                Weather => {
+                    weather_air_temperature_k: q(&s.weather.air_temperature_k, copied),
+                    weather_track_temperature_k: q(&s.weather.track_temperature_k, copied),
+                    weather_wind_speed_mps: q(&s.weather.wind_speed_mps, copied),
+                    weather_wind_direction_rad: q(&s.weather.wind_direction_rad, copied),
+                    weather_rain: q(&s.weather.rain, copied),
+                    weather_track_wetness: q(&s.weather.track_wetness, copied),
+                    weather_pressure_pa: q(&s.weather.pressure_pa, copied),
+                },
+            }
+        }
+        $apply! { car, car_selected, restore_car, CarDto, d::Car, c, delivered,
+            {
+                id: c.id.0,
+            }, {
+                Cars => {
+                    number: c.number.clone(),
+                    vehicle: c.vehicle.clone(),
+                    driver_id: c.driver.id.0,
+                    driver_name: c.driver.name.clone(),
+                    class: c.class.as_ref().map(|k| (k.id.0, k.name.clone())),
+                    driver_rating: q(&c.driver_rating, |r| match r {
+                        d::DriverRating::Bronze => DriverRatingDto::Bronze,
+                        d::DriverRating::Silver => DriverRatingDto::Silver,
+                        d::DriverRating::Gold => DriverRatingDto::Gold,
+                        d::DriverRating::Platinum => DriverRatingDto::Platinum,
+                    }),
+                    safety_rating: q(&c.safety_rating, copied),
+                },
+                Positions => {
+                    position: q(&c.position, copied),
+                    class_position: q(&c.class_position, copied),
+                    grid_position: q(&c.grid_position, copied),
+                },
+                LapCount => {
+                    laps: q(&c.laps, copied),
+                },
+                LapTimes => {
+                    last_lap_s: q(&c.last_lap_s, copied),
+                    best_lap_s: q(&c.best_lap_s, copied),
+                    estimated_lap_s: q(&c.estimated_lap_s, copied),
+                },
+                Sectors => {
+                    last_sectors_s: c.last_sectors_s.iter().map(|s| q(s, copied)).collect(),
+                    current_sector: q(&c.current_sector, copied),
+                    best_sectors_s: c.best_sectors_s.iter().map(|s| q(s, copied)).collect(),
+                    current_sectors_s: c.current_sectors_s.iter().map(|s| q(s, copied)).collect(),
+                },
+                Gaps => {
+                    gap_leader: q(&c.gap_leader, gap),
+                    gap_ahead: q(&c.gap_ahead, gap),
+                },
+                ClassGaps => {
+                    gap_class_leader: q(&c.gap_class_leader, gap),
+                    gap_class_ahead: q(&c.gap_class_ahead, gap),
+                },
+                Relative => {
+                    relative_s: q(&c.relative_s, copied),
+                    relative_laps: q(&c.relative_laps, copied),
+                    relative_trend_s_per_lap: q(&c.relative_trend_s_per_lap, copied),
+                },
+                LapProgress => {
+                    lap_distance_m: q(&c.lap_distance_m, copied),
+                    lap_elapsed_s: q(&c.lap_elapsed_s, copied),
+                },
+                PitStatus => {
+                    in_pits: q(&c.in_pits, copied),
+                    pit_stops: q(&c.pit_stops, copied),
+                    tyre_compound: q(&c.tyre_compound, |t| match t {
+                        d::TyreCompound::Soft => TyreCompoundDto::Soft,
+                        d::TyreCompound::Medium => TyreCompoundDto::Medium,
+                        d::TyreCompound::Hard => TyreCompoundDto::Hard,
+                        d::TyreCompound::Wet => TyreCompoundDto::Wet,
+                    }),
+                },
+                Spatial => {
+                    pose: q(&c.pose, |p| PoseDto {
+                        x_m: p.x_m,
+                        y_m: p.y_m,
+                        yaw_rad: p.yaw_rad,
+                    }),
+                },
+                Velocity => {
+                    velocity_mps: q(&c.velocity_mps, copied),
+                },
+                Penalties => {
+                    pending_penalties: q(&c.pending_penalties, copied),
+                },
+            }
+        }
+        $apply! { player, player_selected, restore_player, PlayerDto, d::Player, p, delivered,
+            {
+                car: p.car.0,
+            }, {
+                Pedals => {
+                    throttle: q(&p.telemetry.throttle, copied),
+                    brake: q(&p.telemetry.brake, copied),
+                },
+                Clutch => {
+                    clutch: q(&p.telemetry.clutch, copied),
+                },
+                Steering => {
+                    steering: q(&p.telemetry.steering, copied),
+                },
+                Powertrain => {
+                    gear: q(&p.telemetry.gear, copied),
+                    speed_mps: q(&p.telemetry.speed_mps, copied),
+                    engine_speed_rad_s: q(&p.telemetry.engine_speed_rad_s, copied),
+                },
+                FuelLevel => {
+                    fuel_level_l: q(&p.fuel.level_l, copied),
+                    fuel_capacity_l: q(&p.fuel.capacity_l, copied),
+                    fuel_energy: q(&p.fuel.energy, copied),
+                },
+                FuelEstimate => {
+                    fuel_per_lap_l: q(&p.fuel.per_lap_l, copied),
+                    fuel_laps_left: q(&p.fuel.laps_left, copied),
+                    fuel_history: p.fuel.history.iter().flatten().copied().collect(),
+                    fuel_energy_per_lap: q(&p.fuel.energy_per_lap, copied),
+                    fuel_lap_projection_l: q(&p.fuel.lap_projection_l, copied),
+                },
+                Delta => {
+                    delta_best_s: q(&p.delta_best_s, copied),
+                    delta_optimal_s: q(&p.delta_optimal_s, copied),
+                    delta_leader_s: q(&p.delta_leader_s, copied),
+                    lap_invalid: q(&p.lap_invalid, copied),
+                },
+                PitStatus => {
+                    pit_limiter_active: q(&p.pit_limiter_active, copied),
+                    pit_stop_stopped: q(&p.pit_stop_stopped, copied),
+                    pit_loss_s: q(&p.pit_loss_s, copied),
+                    pit_refuel_target_l: q(&p.pit_service.refuel_target_l, copied),
+                    pit_refuel_added_l: q(&p.pit_service.refuel_added_l, copied),
+                    pit_service_remaining_s: q(&p.pit_service.remaining_s, copied),
+                    pit_tyres: q(&p.pit_service.tyres, copied),
+                    stint_laps: q(&p.stint.laps, copied),
+                    stint_elapsed_s: q(&p.stint.elapsed_s, copied),
+                },
+                Damage => {
+                    damage_aero: q(&p.damage.aero, copied),
+                    damage_body: q(&p.damage.body, copied),
+                    damage_suspension: q(&p.damage.suspension, copied),
+                    damage_tyre_wear: p.damage.tyre_wear.map(|v| q(&v, copied)),
+                },
+            }
+        }
+    };
 }
 
-fn car(c: &d::Car) -> CarDto {
-    CarDto {
-        id: c.id.0,
-        number: c.number.clone(),
-        vehicle: c.vehicle.clone(),
-        driver_id: c.driver.id.0,
-        driver_name: c.driver.name.clone(),
-        class: c.class.as_ref().map(|k| (k.id.0, k.name.clone())),
-        position: q(&c.position, copied),
-        class_position: q(&c.class_position, copied),
-        laps: q(&c.laps, copied),
-        last_lap_s: q(&c.last_lap_s, copied),
-        best_lap_s: q(&c.best_lap_s, copied),
-        estimated_lap_s: q(&c.estimated_lap_s, copied),
-        last_sectors_s: c.last_sectors_s.iter().map(|s| q(s, copied)).collect(),
-        gap_leader: q(&c.gap_leader, gap),
-        gap_ahead: q(&c.gap_ahead, gap),
-        gap_class_leader: q(&c.gap_class_leader, gap),
-        gap_class_ahead: q(&c.gap_class_ahead, gap),
-        relative_s: q(&c.relative_s, copied),
-        relative_laps: q(&c.relative_laps, copied),
-        lap_distance_m: q(&c.lap_distance_m, copied),
-        lap_elapsed_s: q(&c.lap_elapsed_s, copied),
-        current_sector: q(&c.current_sector, copied),
-        in_pits: q(&c.in_pits, copied),
-        pose: q(&c.pose, |p| PoseDto {
-            x_m: p.x_m,
-            y_m: p.y_m,
-            yaw_rad: p.yaw_rad,
-        }),
-        velocity_mps: q(&c.velocity_mps, copied),
-        pending_penalties: q(&c.pending_penalties, copied),
-        grid_position: q(&c.grid_position, copied),
-        pit_stops: q(&c.pit_stops, copied),
-        tyre_compound: q(&c.tyre_compound, |t| match t {
-            d::TyreCompound::Soft => TyreCompoundDto::Soft,
-            d::TyreCompound::Medium => TyreCompoundDto::Medium,
-            d::TyreCompound::Hard => TyreCompoundDto::Hard,
-            d::TyreCompound::Wet => TyreCompoundDto::Wet,
-        }),
-        best_sectors_s: c.best_sectors_s.iter().map(|s| q(s, copied)).collect(),
-        current_sectors_s: c.current_sectors_s.iter().map(|s| q(s, copied)).collect(),
-        driver_rating: q(&c.driver_rating, |r| match r {
-            d::DriverRating::Bronze => DriverRatingDto::Bronze,
-            d::DriverRating::Silver => DriverRatingDto::Silver,
-            d::DriverRating::Gold => DriverRatingDto::Gold,
-            d::DriverRating::Platinum => DriverRatingDto::Platinum,
-        }),
-        safety_rating: q(&c.safety_rating, copied),
-        relative_trend_s_per_lap: q(&c.relative_trend_s_per_lap, copied),
-    }
+macro_rules! signal_presence {
+    (car; $($signal:ident),+) => {
+        impl crate::Signal {
+            pub(crate) fn car_data(self) -> bool {
+                matches!(self, $(Self::$signal)|+)
+            }
+        }
+    };
+    (player; $($signal:ident),+) => {
+        impl crate::Signal {
+            pub(crate) fn player_data(self) -> bool {
+                matches!(self, $(Self::$signal)|+)
+            }
+        }
+    };
+    ($other:ident; $($signal:ident),+) => {};
 }
 
-fn player(p: &d::Player) -> PlayerDto {
-    let t = &p.telemetry;
-    PlayerDto {
-        car: p.car.0,
-        throttle: q(&t.throttle, copied),
-        brake: q(&t.brake, copied),
-        clutch: q(&t.clutch, copied),
-        steering: q(&t.steering, copied),
-        gear: q(&t.gear, copied),
-        speed_mps: q(&t.speed_mps, copied),
-        engine_speed_rad_s: q(&t.engine_speed_rad_s, copied),
-        fuel_level_l: q(&p.fuel.level_l, copied),
-        fuel_capacity_l: q(&p.fuel.capacity_l, copied),
-        fuel_per_lap_l: q(&p.fuel.per_lap_l, copied),
-        fuel_laps_left: q(&p.fuel.laps_left, copied),
-        fuel_history: p.fuel.history.iter().flatten().copied().collect(),
-        delta_best_s: q(&p.delta_best_s, copied),
-        pit_limiter_active: q(&p.pit_limiter_active, copied),
-        pit_stop_stopped: q(&p.pit_stop_stopped, copied),
-        pit_loss_s: q(&p.pit_loss_s, copied),
-        fuel_energy: q(&p.fuel.energy, copied),
-        fuel_energy_per_lap: q(&p.fuel.energy_per_lap, copied),
-        fuel_lap_projection_l: q(&p.fuel.lap_projection_l, copied),
-        pit_refuel_target_l: q(&p.pit_service.refuel_target_l, copied),
-        pit_refuel_added_l: q(&p.pit_service.refuel_added_l, copied),
-        pit_service_remaining_s: q(&p.pit_service.remaining_s, copied),
-        pit_tyres: q(&p.pit_service.tyres, copied),
-        stint_laps: q(&p.stint.laps, copied),
-        stint_elapsed_s: q(&p.stint.elapsed_s, copied),
-        delta_optimal_s: q(&p.delta_optimal_s, copied),
-        delta_leader_s: q(&p.delta_leader_s, copied),
-        lap_invalid: q(&p.lap_invalid, copied),
-        damage_aero: q(&p.damage.aero, copied),
-        damage_body: q(&p.damage.body, copied),
-        damage_suspension: q(&p.damage.suspension, copied),
-        damage_tyre_wear: p.damage.tyre_wear.map(|v| q(&v, copied)),
-    }
+macro_rules! define_signal_fields {
+    ($kind:ident, $encode:ident, $restore:ident, $dto:ident, $domain:ty, $source:ident, $delivered:ident,
+        { $($identity:ident: $identity_value:expr),* $(,)? },
+        { $($signal:ident => { $($field:ident: $value:expr),+ $(,)? }),+ $(,)? }
+    ) => {
+        fn $encode($source: &$domain, $delivered: &crate::Demand) -> $dto {
+            $dto {
+                $($identity: $identity_value,)*
+                $($($field: if $delivered.contains(crate::Signal::$signal) {
+                    $value
+                } else {
+                    Default::default()
+                },)+)+
+            }
+        }
+
+        fn $restore(target: &mut $dto, previous: Option<&$dto>, requested: &crate::Demand,
+            delivered: &crate::Demand) -> Result<(), Error> {
+            let requested_mask = requested.mask();
+            let delivered_mask = delivered.mask();
+            $(if delivered_mask & crate::Signal::$signal.bit() != 0 {
+                $(if target.$field.omitted() {
+                    return Err(Error::Protocol("señal entregada marcada como no pedida"));
+                })+
+            } else {
+                $(target.$field = if requested_mask & crate::Signal::$signal.bit() != 0 {
+                    previous.map(|old| &old.$field).cloned().unwrap_or_default()
+                } else {
+                    Default::default()
+                };)+
+            })+
+            Ok(())
+        }
+        signal_presence!($kind; $($signal),+);
+    };
 }
+
+signal_fields!(define_signal_fields);
 
 impl From<&d::Snapshot> for SnapshotDto {
     fn from(s: &d::Snapshot) -> Self {
-        Self::encode(s, true, true)
+        Self::selected(s, &crate::Demand::all()).expect("todas las señales están codificadas")
     }
 }
 
@@ -749,67 +890,13 @@ impl SnapshotDto {
         Ok(dto)
     }
 
-    fn encode(s: &d::Snapshot, cars: bool, has_player: bool) -> Self {
-        SnapshotDto {
-            version: VERSION,
-            epoch: s.epoch,
-            sequence: s.sequence,
-            origin: origin(s),
-            state: StateDto {
-                source_state: source_state(s.state.source_state),
-                driving_situation: s.state.driving_situation.into(),
-                capabilities: capabilities(&s.state.capabilities),
-                session: session(&s.state.session),
-                flags: q(&s.state.flags, |fs| fs.iter().map(flag).collect()),
-                cars: if cars {
-                    s.state.cars.iter().map(car).collect()
-                } else {
-                    Vec::new()
-                },
-                player: if has_player {
-                    s.state.player.as_ref().map(player)
-                } else {
-                    None
-                },
-            },
-        }
-    }
-
     fn encode_selected(s: &d::Snapshot, delivered: &crate::Demand) -> Self {
-        use crate::Signal;
         SnapshotDto {
             version: VERSION,
             epoch: s.epoch,
             sequence: s.sequence,
             origin: origin(s),
-            state: StateDto {
-                source_state: source_state(s.state.source_state),
-                driving_situation: s.state.driving_situation.into(),
-                capabilities: capabilities(&s.state.capabilities),
-                session: session_selected(&s.state.session, delivered),
-                flags: if delivered.contains(Signal::Flags) {
-                    q(&s.state.flags, |fs| fs.iter().map(flag).collect())
-                } else {
-                    QualityDto::NotRequested
-                },
-                cars: if delivered.car_data() {
-                    s.state
-                        .cars
-                        .iter()
-                        .map(|car| car_selected(car, delivered))
-                        .collect()
-                } else {
-                    Vec::new()
-                },
-                player: if delivered.player_data() {
-                    s.state
-                        .player
-                        .as_ref()
-                        .map(|p| player_selected(p, delivered))
-                } else {
-                    None
-                },
-            },
+            state: state_selected(&s.state, delivered),
         }
     }
 }
@@ -856,278 +943,7 @@ fn capabilities(c: &d::Capabilities) -> CapabilitiesDto {
     }
 }
 
-// --- dominio → DTO selectivo -------------------------------------------------
-// `qs` solo codifica la señal pedida; el resto queda `NotRequested` y `filter`
-// lo valida. Mismo reparto señal→campos que `restore`.
-
-fn qs<T, U>(
-    quality: &d::Quality<T>,
-    signal: crate::Signal,
-    delivered: &crate::Demand,
-    f: impl FnOnce(&T) -> U,
-) -> QualityDto<U> {
-    if delivered.contains(signal) {
-        q(quality, f)
-    } else {
-        QualityDto::NotRequested
-    }
-}
-
-fn session_selected(s: &d::Session, delivered: &crate::Demand) -> SessionDto {
-    use crate::Signal;
-    SessionDto {
-        id: s.id.0,
-        kind: qs(&s.kind, Signal::SessionInfo, delivered, |k| match k {
-            d::SessionKind::Practice => SessionKindDto::Practice,
-            d::SessionKind::Qualifying => SessionKindDto::Qualifying,
-            d::SessionKind::Race => SessionKindDto::Race,
-            d::SessionKind::Other(name) => SessionKindDto::Other(name.clone()),
-        }),
-        state: qs(&s.state, Signal::SessionInfo, delivered, |st| match st {
-            d::SessionState::Preparing => SessionStateDto::Preparing,
-            d::SessionState::Running => SessionStateDto::Running,
-            d::SessionState::Interrupted => SessionStateDto::Interrupted,
-            d::SessionState::Finished => SessionStateDto::Finished,
-        }),
-        elapsed_s: qs(&s.elapsed_s, Signal::SessionClock, delivered, copied),
-        remaining_s: qs(&s.remaining_s, Signal::SessionClock, delivered, copied),
-        track_name: qs(&s.track_name, Signal::TrackName, delivered, String::clone),
-        laps_remaining: qs(&s.laps_remaining, Signal::LapsRemaining, delivered, copied),
-        laps_total: qs(&s.laps_total, Signal::SessionInfo, delivered, copied),
-        track_length_m: qs(&s.track_length_m, Signal::TrackLength, delivered, copied),
-        started_at_s: qs(
-            &s.timing.started_at_s,
-            Signal::SessionInfo,
-            delivered,
-            copied,
-        ),
-        finished_at_s: qs(
-            &s.timing.finished_at_s,
-            Signal::SessionInfo,
-            delivered,
-            copied,
-        ),
-        scheduled_end_s: qs(
-            &s.timing.scheduled_end_s,
-            Signal::SessionInfo,
-            delivered,
-            copied,
-        ),
-        start_phase: qs(&s.timing.start_phase, Signal::SessionInfo, delivered, |p| {
-            start_phase(*p)
-        }),
-        distance_to_start_line_m: qs(
-            &s.timing.distance_to_start_line_m,
-            Signal::SessionInfo,
-            delivered,
-            copied,
-        ),
-        next_kind: qs(
-            &s.timing.next_kind,
-            Signal::SessionInfo,
-            delivered,
-            session_kind,
-        ),
-        next_starts_at_s: qs(
-            &s.timing.next_starts_at_s,
-            Signal::SessionInfo,
-            delivered,
-            copied,
-        ),
-        weather_air_temperature_k: qs(
-            &s.weather.air_temperature_k,
-            Signal::Weather,
-            delivered,
-            copied,
-        ),
-        weather_track_temperature_k: qs(
-            &s.weather.track_temperature_k,
-            Signal::Weather,
-            delivered,
-            copied,
-        ),
-        weather_wind_speed_mps: qs(
-            &s.weather.wind_speed_mps,
-            Signal::Weather,
-            delivered,
-            copied,
-        ),
-        weather_wind_direction_rad: qs(
-            &s.weather.wind_direction_rad,
-            Signal::Weather,
-            delivered,
-            copied,
-        ),
-        weather_rain: qs(&s.weather.rain, Signal::Weather, delivered, copied),
-        weather_track_wetness: qs(&s.weather.track_wetness, Signal::Weather, delivered, copied),
-        weather_pressure_pa: qs(&s.weather.pressure_pa, Signal::Weather, delivered, copied),
-    }
-}
-
-fn car_selected(c: &d::Car, delivered: &crate::Demand) -> CarDto {
-    use crate::Signal;
-    CarDto {
-        id: c.id.0,
-        number: c.number.clone(),
-        vehicle: c.vehicle.clone(),
-        driver_id: c.driver.id.0,
-        driver_name: c.driver.name.clone(),
-        class: c.class.as_ref().map(|k| (k.id.0, k.name.clone())),
-        position: qs(&c.position, Signal::Positions, delivered, copied),
-        class_position: qs(&c.class_position, Signal::Positions, delivered, copied),
-        laps: qs(&c.laps, Signal::LapCount, delivered, copied),
-        last_lap_s: qs(&c.last_lap_s, Signal::LapTimes, delivered, copied),
-        best_lap_s: qs(&c.best_lap_s, Signal::LapTimes, delivered, copied),
-        estimated_lap_s: qs(&c.estimated_lap_s, Signal::LapTimes, delivered, copied),
-        last_sectors_s: if delivered.contains(Signal::Sectors) {
-            c.last_sectors_s.iter().map(|s| q(s, copied)).collect()
-        } else {
-            Vec::new()
-        },
-        gap_leader: qs(&c.gap_leader, Signal::Gaps, delivered, gap),
-        gap_ahead: qs(&c.gap_ahead, Signal::Gaps, delivered, gap),
-        gap_class_leader: qs(&c.gap_class_leader, Signal::ClassGaps, delivered, gap),
-        gap_class_ahead: qs(&c.gap_class_ahead, Signal::ClassGaps, delivered, gap),
-        relative_s: qs(&c.relative_s, Signal::Relative, delivered, copied),
-        relative_laps: qs(&c.relative_laps, Signal::Relative, delivered, copied),
-        lap_distance_m: qs(&c.lap_distance_m, Signal::LapProgress, delivered, copied),
-        lap_elapsed_s: qs(&c.lap_elapsed_s, Signal::LapProgress, delivered, copied),
-        current_sector: qs(&c.current_sector, Signal::Sectors, delivered, copied),
-        in_pits: qs(&c.in_pits, Signal::PitStatus, delivered, copied),
-        pose: qs(&c.pose, Signal::Spatial, delivered, |p| PoseDto {
-            x_m: p.x_m,
-            y_m: p.y_m,
-            yaw_rad: p.yaw_rad,
-        }),
-        velocity_mps: qs(&c.velocity_mps, Signal::Velocity, delivered, copied),
-        pending_penalties: qs(&c.pending_penalties, Signal::Penalties, delivered, copied),
-        grid_position: qs(&c.grid_position, Signal::Positions, delivered, copied),
-        pit_stops: qs(&c.pit_stops, Signal::PitStatus, delivered, copied),
-        tyre_compound: qs(
-            &c.tyre_compound,
-            Signal::PitStatus,
-            delivered,
-            |t| match t {
-                d::TyreCompound::Soft => TyreCompoundDto::Soft,
-                d::TyreCompound::Medium => TyreCompoundDto::Medium,
-                d::TyreCompound::Hard => TyreCompoundDto::Hard,
-                d::TyreCompound::Wet => TyreCompoundDto::Wet,
-            },
-        ),
-        best_sectors_s: if delivered.contains(Signal::Sectors) {
-            c.best_sectors_s.iter().map(|s| q(s, copied)).collect()
-        } else {
-            Vec::new()
-        },
-        current_sectors_s: if delivered.contains(Signal::Sectors) {
-            c.current_sectors_s.iter().map(|s| q(s, copied)).collect()
-        } else {
-            Vec::new()
-        },
-        driver_rating: qs(&c.driver_rating, Signal::Cars, delivered, |r| match r {
-            d::DriverRating::Bronze => DriverRatingDto::Bronze,
-            d::DriverRating::Silver => DriverRatingDto::Silver,
-            d::DriverRating::Gold => DriverRatingDto::Gold,
-            d::DriverRating::Platinum => DriverRatingDto::Platinum,
-        }),
-        safety_rating: qs(&c.safety_rating, Signal::Cars, delivered, copied),
-        relative_trend_s_per_lap: qs(
-            &c.relative_trend_s_per_lap,
-            Signal::Relative,
-            delivered,
-            copied,
-        ),
-    }
-}
-
-fn player_selected(p: &d::Player, delivered: &crate::Demand) -> PlayerDto {
-    use crate::Signal;
-    let t = &p.telemetry;
-    PlayerDto {
-        car: p.car.0,
-        throttle: qs(&t.throttle, Signal::Pedals, delivered, copied),
-        brake: qs(&t.brake, Signal::Pedals, delivered, copied),
-        clutch: qs(&t.clutch, Signal::Clutch, delivered, copied),
-        steering: qs(&t.steering, Signal::Steering, delivered, copied),
-        gear: qs(&t.gear, Signal::Powertrain, delivered, copied),
-        speed_mps: qs(&t.speed_mps, Signal::Powertrain, delivered, copied),
-        engine_speed_rad_s: qs(&t.engine_speed_rad_s, Signal::Powertrain, delivered, copied),
-        fuel_level_l: qs(&p.fuel.level_l, Signal::FuelLevel, delivered, copied),
-        fuel_capacity_l: qs(&p.fuel.capacity_l, Signal::FuelLevel, delivered, copied),
-        fuel_per_lap_l: qs(&p.fuel.per_lap_l, Signal::FuelEstimate, delivered, copied),
-        fuel_laps_left: qs(&p.fuel.laps_left, Signal::FuelEstimate, delivered, copied),
-        fuel_history: if delivered.contains(Signal::FuelEstimate) {
-            p.fuel.history.iter().flatten().copied().collect()
-        } else {
-            Vec::new()
-        },
-        delta_best_s: qs(&p.delta_best_s, Signal::Delta, delivered, copied),
-        pit_limiter_active: qs(&p.pit_limiter_active, Signal::PitStatus, delivered, copied),
-        pit_stop_stopped: qs(&p.pit_stop_stopped, Signal::PitStatus, delivered, copied),
-        pit_loss_s: qs(&p.pit_loss_s, Signal::PitStatus, delivered, copied),
-        fuel_energy: qs(&p.fuel.energy, Signal::FuelLevel, delivered, copied),
-        fuel_energy_per_lap: qs(
-            &p.fuel.energy_per_lap,
-            Signal::FuelEstimate,
-            delivered,
-            copied,
-        ),
-        fuel_lap_projection_l: qs(
-            &p.fuel.lap_projection_l,
-            Signal::FuelEstimate,
-            delivered,
-            copied,
-        ),
-        pit_refuel_target_l: qs(
-            &p.pit_service.refuel_target_l,
-            Signal::PitStatus,
-            delivered,
-            copied,
-        ),
-        pit_refuel_added_l: qs(
-            &p.pit_service.refuel_added_l,
-            Signal::PitStatus,
-            delivered,
-            copied,
-        ),
-        pit_service_remaining_s: qs(
-            &p.pit_service.remaining_s,
-            Signal::PitStatus,
-            delivered,
-            copied,
-        ),
-        pit_tyres: qs(&p.pit_service.tyres, Signal::PitStatus, delivered, copied),
-        stint_laps: qs(&p.stint.laps, Signal::PitStatus, delivered, copied),
-        stint_elapsed_s: qs(&p.stint.elapsed_s, Signal::PitStatus, delivered, copied),
-        delta_optimal_s: qs(&p.delta_optimal_s, Signal::Delta, delivered, copied),
-        delta_leader_s: qs(&p.delta_leader_s, Signal::Delta, delivered, copied),
-        lap_invalid: qs(&p.lap_invalid, Signal::Delta, delivered, copied),
-        damage_aero: qs(&p.damage.aero, Signal::Damage, delivered, copied),
-        damage_body: qs(&p.damage.body, Signal::Damage, delivered, copied),
-        damage_suspension: qs(&p.damage.suspension, Signal::Damage, delivered, copied),
-        damage_tyre_wear: if delivered.contains(Signal::Damage) {
-            p.damage.tyre_wear.map(|v| q(&v, copied))
-        } else {
-            [
-                QualityDto::NotRequested,
-                QualityDto::NotRequested,
-                QualityDto::NotRequested,
-                QualityDto::NotRequested,
-            ]
-        },
-    }
-}
-
 // --- DTO → dominio ---------------------------------------------------------
-
-fn uq<T, U>(quality: QualityDto<T>, f: impl FnOnce(T) -> U) -> d::Quality<U> {
-    match quality {
-        QualityDto::Reliable(v) => d::Quality::Reliable(f(v)),
-        QualityDto::Estimated(v) => d::Quality::Estimated(f(v)),
-        QualityDto::Stale(v) => d::Quality::Stale(f(v)),
-        QualityDto::Unavailable | QualityDto::NotRequested => d::Quality::Unavailable,
-    }
-}
 
 fn id<T>(v: T) -> T {
     v
@@ -1149,182 +965,7 @@ fn ugap(g: GapDto) -> d::Gap {
     }
 }
 
-fn uflag(f: FlagDto) -> d::Flag {
-    let kind = match f.kind {
-        FlagKindDto::Green => d::FlagKind::Green,
-        FlagKindDto::Yellow => d::FlagKind::Yellow,
-        FlagKindDto::Blue => d::FlagKind::Blue,
-        FlagKindDto::Red => d::FlagKind::Red,
-        FlagKindDto::White => d::FlagKind::White,
-        FlagKindDto::Black => d::FlagKind::Black,
-        FlagKindDto::Checkered => d::FlagKind::Checkered,
-        FlagKindDto::Other(name) => d::FlagKind::Other(name),
-    };
-    let scope = match f.scope {
-        FlagScopeDto::Session => d::FlagScope::Session,
-        FlagScopeDto::Sector(i) => d::FlagScope::Sector(i),
-        FlagScopeDto::Car(id) => d::FlagScope::Car(d::CarId(id)),
-    };
-    d::Flag { kind, scope }
-}
-
-fn usession(s: SessionDto) -> d::Session {
-    d::Session {
-        id: d::SessionId(s.id),
-        kind: uq(s.kind, |k| match k {
-            SessionKindDto::Practice => d::SessionKind::Practice,
-            SessionKindDto::Qualifying => d::SessionKind::Qualifying,
-            SessionKindDto::Race => d::SessionKind::Race,
-            SessionKindDto::Other(name) => d::SessionKind::Other(name),
-        }),
-        state: uq(s.state, |st| match st {
-            SessionStateDto::Preparing => d::SessionState::Preparing,
-            SessionStateDto::Running => d::SessionState::Running,
-            SessionStateDto::Interrupted => d::SessionState::Interrupted,
-            SessionStateDto::Finished => d::SessionState::Finished,
-        }),
-        elapsed_s: uq(s.elapsed_s, id),
-        remaining_s: uq(s.remaining_s, id),
-        track_name: uq(s.track_name, id),
-        laps_remaining: uq(s.laps_remaining, id),
-        laps_total: uq(s.laps_total, id),
-        track_length_m: uq(s.track_length_m, id),
-        timing: d::SessionTiming {
-            started_at_s: uq(s.started_at_s, id),
-            finished_at_s: uq(s.finished_at_s, id),
-            scheduled_end_s: uq(s.scheduled_end_s, id),
-            start_phase: uq(s.start_phase, ustart_phase),
-            distance_to_start_line_m: uq(s.distance_to_start_line_m, id),
-            next_kind: uq(s.next_kind, usession_kind),
-            next_starts_at_s: uq(s.next_starts_at_s, id),
-        },
-        weather: d::Weather {
-            air_temperature_k: uq(s.weather_air_temperature_k, id),
-            track_temperature_k: uq(s.weather_track_temperature_k, id),
-            wind_speed_mps: uq(s.weather_wind_speed_mps, id),
-            wind_direction_rad: uq(s.weather_wind_direction_rad, id),
-            rain: uq(s.weather_rain, id),
-            track_wetness: uq(s.weather_track_wetness, id),
-            pressure_pa: uq(s.weather_pressure_pa, id),
-        },
-    }
-}
-
-fn ucar(c: CarDto) -> d::Car {
-    d::Car {
-        id: d::CarId(c.id),
-        number: c.number,
-        vehicle: c.vehicle,
-        driver: d::Driver {
-            id: d::DriverId(c.driver_id),
-            name: c.driver_name,
-        },
-        class: c.class.map(|(id, name)| d::Class {
-            id: d::ClassId(id),
-            name,
-        }),
-        position: uq(c.position, id),
-        class_position: uq(c.class_position, id),
-        laps: uq(c.laps, id),
-        last_lap_s: uq(c.last_lap_s, id),
-        best_lap_s: uq(c.best_lap_s, id),
-        estimated_lap_s: uq(c.estimated_lap_s, id),
-        last_sectors_s: c.last_sectors_s.into_iter().map(|s| uq(s, id)).collect(),
-        gap_leader: uq(c.gap_leader, ugap),
-        gap_ahead: uq(c.gap_ahead, ugap),
-        gap_class_leader: uq(c.gap_class_leader, ugap),
-        gap_class_ahead: uq(c.gap_class_ahead, ugap),
-        relative_s: uq(c.relative_s, id),
-        relative_laps: uq(c.relative_laps, id),
-        lap_distance_m: uq(c.lap_distance_m, id),
-        lap_elapsed_s: uq(c.lap_elapsed_s, id),
-        current_sector: uq(c.current_sector, id),
-        in_pits: uq(c.in_pits, id),
-        pose: uq(c.pose, |p| d::Pose {
-            x_m: p.x_m,
-            y_m: p.y_m,
-            yaw_rad: p.yaw_rad,
-        }),
-        velocity_mps: uq(c.velocity_mps, id),
-        pending_penalties: uq(c.pending_penalties, id),
-        grid_position: uq(c.grid_position, id),
-        pit_stops: uq(c.pit_stops, id),
-        tyre_compound: uq(c.tyre_compound, |t| match t {
-            TyreCompoundDto::Soft => d::TyreCompound::Soft,
-            TyreCompoundDto::Medium => d::TyreCompound::Medium,
-            TyreCompoundDto::Hard => d::TyreCompound::Hard,
-            TyreCompoundDto::Wet => d::TyreCompound::Wet,
-        }),
-        best_sectors_s: c.best_sectors_s.into_iter().map(|s| uq(s, id)).collect(),
-        current_sectors_s: c.current_sectors_s.into_iter().map(|s| uq(s, id)).collect(),
-        driver_rating: uq(c.driver_rating, |r| match r {
-            DriverRatingDto::Bronze => d::DriverRating::Bronze,
-            DriverRatingDto::Silver => d::DriverRating::Silver,
-            DriverRatingDto::Gold => d::DriverRating::Gold,
-            DriverRatingDto::Platinum => d::DriverRating::Platinum,
-        }),
-        safety_rating: uq(c.safety_rating, id),
-        relative_trend_s_per_lap: uq(c.relative_trend_s_per_lap, id),
-    }
-}
-
-fn uplayer(p: PlayerDto) -> d::Player {
-    let mut history = [None; 10];
-    for (slot, value) in history.iter_mut().zip(p.fuel_history) {
-        *slot = Some(value);
-    }
-    d::Player {
-        car: d::CarId(p.car),
-        telemetry: d::Telemetry {
-            throttle: uq(p.throttle, id),
-            brake: uq(p.brake, id),
-            clutch: uq(p.clutch, id),
-            steering: uq(p.steering, id),
-            gear: uq(p.gear, id),
-            speed_mps: uq(p.speed_mps, id),
-            engine_speed_rad_s: uq(p.engine_speed_rad_s, id),
-        },
-        fuel: d::Fuel {
-            level_l: uq(p.fuel_level_l, id),
-            capacity_l: uq(p.fuel_capacity_l, id),
-            per_lap_l: uq(p.fuel_per_lap_l, id),
-            laps_left: uq(p.fuel_laps_left, id),
-            history,
-            energy: uq(p.fuel_energy, id),
-            energy_per_lap: uq(p.fuel_energy_per_lap, id),
-            lap_projection_l: uq(p.fuel_lap_projection_l, id),
-        },
-        pit_service: d::PitService {
-            refuel_target_l: uq(p.pit_refuel_target_l, id),
-            refuel_added_l: uq(p.pit_refuel_added_l, id),
-            remaining_s: uq(p.pit_service_remaining_s, id),
-            tyres: uq(p.pit_tyres, id),
-        },
-        stint: d::Stint {
-            laps: uq(p.stint_laps, id),
-            elapsed_s: uq(p.stint_elapsed_s, id),
-        },
-        delta_optimal_s: uq(p.delta_optimal_s, id),
-        delta_leader_s: uq(p.delta_leader_s, id),
-        lap_invalid: uq(p.lap_invalid, id),
-        delta_best_s: uq(p.delta_best_s, id),
-        pit_limiter_active: uq(p.pit_limiter_active, id),
-        pit_stop_stopped: uq(p.pit_stop_stopped, id),
-        pit_loss_s: uq(p.pit_loss_s, id),
-        damage: d::Damage {
-            aero: uq(p.damage_aero, id),
-            body: uq(p.damage_body, id),
-            suspension: uq(p.damage_suspension, id),
-            tyre_wear: p.damage_tyre_wear.map(|v| uq(v, id)),
-        },
-    }
-}
-
-// --- DTO → dominio por referencia -------------------------------------------
-// Variantes que piden prestado el DTO: el suscriptor con demanda conserva la
-// foto anterior y antes la clonaba entera solo para decodificarla.
-
-fn uq_ref<T: Clone, U>(quality: &QualityDto<T>, f: impl FnOnce(T) -> U) -> d::Quality<U> {
+fn uq<T: Clone, U>(quality: &QualityDto<T>, f: impl FnOnce(T) -> U) -> d::Quality<U> {
     match quality {
         QualityDto::Reliable(v) => d::Quality::Reliable(f(v.clone())),
         QualityDto::Estimated(v) => d::Quality::Estimated(f(v.clone())),
@@ -1333,7 +974,7 @@ fn uq_ref<T: Clone, U>(quality: &QualityDto<T>, f: impl FnOnce(T) -> U) -> d::Qu
     }
 }
 
-fn uflag_ref(f: &FlagDto) -> d::Flag {
+fn uflag(f: &FlagDto) -> d::Flag {
     let kind = match &f.kind {
         FlagKindDto::Green => d::FlagKind::Green,
         FlagKindDto::Yellow => d::FlagKind::Yellow,
@@ -1352,49 +993,49 @@ fn uflag_ref(f: &FlagDto) -> d::Flag {
     d::Flag { kind, scope }
 }
 
-fn usession_ref(s: &SessionDto) -> d::Session {
+fn usession(s: &SessionDto) -> d::Session {
     d::Session {
         id: d::SessionId(s.id),
-        kind: uq_ref(&s.kind, |k| match k {
+        kind: uq(&s.kind, |k| match k {
             SessionKindDto::Practice => d::SessionKind::Practice,
             SessionKindDto::Qualifying => d::SessionKind::Qualifying,
             SessionKindDto::Race => d::SessionKind::Race,
             SessionKindDto::Other(name) => d::SessionKind::Other(name),
         }),
-        state: uq_ref(&s.state, |st| match st {
+        state: uq(&s.state, |st| match st {
             SessionStateDto::Preparing => d::SessionState::Preparing,
             SessionStateDto::Running => d::SessionState::Running,
             SessionStateDto::Interrupted => d::SessionState::Interrupted,
             SessionStateDto::Finished => d::SessionState::Finished,
         }),
-        elapsed_s: uq_ref(&s.elapsed_s, id),
-        remaining_s: uq_ref(&s.remaining_s, id),
-        track_name: uq_ref(&s.track_name, id),
-        laps_remaining: uq_ref(&s.laps_remaining, id),
-        laps_total: uq_ref(&s.laps_total, id),
-        track_length_m: uq_ref(&s.track_length_m, id),
+        elapsed_s: uq(&s.elapsed_s, id),
+        remaining_s: uq(&s.remaining_s, id),
+        track_name: uq(&s.track_name, id),
+        laps_remaining: uq(&s.laps_remaining, id),
+        laps_total: uq(&s.laps_total, id),
+        track_length_m: uq(&s.track_length_m, id),
         timing: d::SessionTiming {
-            started_at_s: uq_ref(&s.started_at_s, id),
-            finished_at_s: uq_ref(&s.finished_at_s, id),
-            scheduled_end_s: uq_ref(&s.scheduled_end_s, id),
-            start_phase: uq_ref(&s.start_phase, ustart_phase),
-            distance_to_start_line_m: uq_ref(&s.distance_to_start_line_m, id),
-            next_kind: uq_ref(&s.next_kind, usession_kind),
-            next_starts_at_s: uq_ref(&s.next_starts_at_s, id),
+            started_at_s: uq(&s.started_at_s, id),
+            finished_at_s: uq(&s.finished_at_s, id),
+            scheduled_end_s: uq(&s.scheduled_end_s, id),
+            start_phase: uq(&s.start_phase, ustart_phase),
+            distance_to_start_line_m: uq(&s.distance_to_start_line_m, id),
+            next_kind: uq(&s.next_kind, usession_kind),
+            next_starts_at_s: uq(&s.next_starts_at_s, id),
         },
         weather: d::Weather {
-            air_temperature_k: uq_ref(&s.weather_air_temperature_k, id),
-            track_temperature_k: uq_ref(&s.weather_track_temperature_k, id),
-            wind_speed_mps: uq_ref(&s.weather_wind_speed_mps, id),
-            wind_direction_rad: uq_ref(&s.weather_wind_direction_rad, id),
-            rain: uq_ref(&s.weather_rain, id),
-            track_wetness: uq_ref(&s.weather_track_wetness, id),
-            pressure_pa: uq_ref(&s.weather_pressure_pa, id),
+            air_temperature_k: uq(&s.weather_air_temperature_k, id),
+            track_temperature_k: uq(&s.weather_track_temperature_k, id),
+            wind_speed_mps: uq(&s.weather_wind_speed_mps, id),
+            wind_direction_rad: uq(&s.weather_wind_direction_rad, id),
+            rain: uq(&s.weather_rain, id),
+            track_wetness: uq(&s.weather_track_wetness, id),
+            pressure_pa: uq(&s.weather_pressure_pa, id),
         },
     }
 }
 
-fn ucar_ref(c: &CarDto) -> d::Car {
+fn ucar(c: &CarDto) -> d::Car {
     d::Car {
         id: d::CarId(c.id),
         number: c.number.clone(),
@@ -1407,52 +1048,52 @@ fn ucar_ref(c: &CarDto) -> d::Car {
             id: d::ClassId(*id),
             name: name.clone(),
         }),
-        position: uq_ref(&c.position, id),
-        class_position: uq_ref(&c.class_position, id),
-        laps: uq_ref(&c.laps, id),
-        last_lap_s: uq_ref(&c.last_lap_s, id),
-        best_lap_s: uq_ref(&c.best_lap_s, id),
-        estimated_lap_s: uq_ref(&c.estimated_lap_s, id),
-        last_sectors_s: c.last_sectors_s.iter().map(|s| uq_ref(s, id)).collect(),
-        gap_leader: uq_ref(&c.gap_leader, ugap),
-        gap_ahead: uq_ref(&c.gap_ahead, ugap),
-        gap_class_leader: uq_ref(&c.gap_class_leader, ugap),
-        gap_class_ahead: uq_ref(&c.gap_class_ahead, ugap),
-        relative_s: uq_ref(&c.relative_s, id),
-        relative_laps: uq_ref(&c.relative_laps, id),
-        lap_distance_m: uq_ref(&c.lap_distance_m, id),
-        lap_elapsed_s: uq_ref(&c.lap_elapsed_s, id),
-        current_sector: uq_ref(&c.current_sector, id),
-        in_pits: uq_ref(&c.in_pits, id),
-        pose: uq_ref(&c.pose, |p| d::Pose {
+        position: uq(&c.position, id),
+        class_position: uq(&c.class_position, id),
+        laps: uq(&c.laps, id),
+        last_lap_s: uq(&c.last_lap_s, id),
+        best_lap_s: uq(&c.best_lap_s, id),
+        estimated_lap_s: uq(&c.estimated_lap_s, id),
+        last_sectors_s: c.last_sectors_s.iter().map(|s| uq(s, id)).collect(),
+        gap_leader: uq(&c.gap_leader, ugap),
+        gap_ahead: uq(&c.gap_ahead, ugap),
+        gap_class_leader: uq(&c.gap_class_leader, ugap),
+        gap_class_ahead: uq(&c.gap_class_ahead, ugap),
+        relative_s: uq(&c.relative_s, id),
+        relative_laps: uq(&c.relative_laps, id),
+        lap_distance_m: uq(&c.lap_distance_m, id),
+        lap_elapsed_s: uq(&c.lap_elapsed_s, id),
+        current_sector: uq(&c.current_sector, id),
+        in_pits: uq(&c.in_pits, id),
+        pose: uq(&c.pose, |p| d::Pose {
             x_m: p.x_m,
             y_m: p.y_m,
             yaw_rad: p.yaw_rad,
         }),
-        velocity_mps: uq_ref(&c.velocity_mps, id),
-        pending_penalties: uq_ref(&c.pending_penalties, id),
-        grid_position: uq_ref(&c.grid_position, id),
-        pit_stops: uq_ref(&c.pit_stops, id),
-        tyre_compound: uq_ref(&c.tyre_compound, |t| match t {
+        velocity_mps: uq(&c.velocity_mps, id),
+        pending_penalties: uq(&c.pending_penalties, id),
+        grid_position: uq(&c.grid_position, id),
+        pit_stops: uq(&c.pit_stops, id),
+        tyre_compound: uq(&c.tyre_compound, |t| match t {
             TyreCompoundDto::Soft => d::TyreCompound::Soft,
             TyreCompoundDto::Medium => d::TyreCompound::Medium,
             TyreCompoundDto::Hard => d::TyreCompound::Hard,
             TyreCompoundDto::Wet => d::TyreCompound::Wet,
         }),
-        best_sectors_s: c.best_sectors_s.iter().map(|s| uq_ref(s, id)).collect(),
-        current_sectors_s: c.current_sectors_s.iter().map(|s| uq_ref(s, id)).collect(),
-        driver_rating: uq_ref(&c.driver_rating, |r| match r {
+        best_sectors_s: c.best_sectors_s.iter().map(|s| uq(s, id)).collect(),
+        current_sectors_s: c.current_sectors_s.iter().map(|s| uq(s, id)).collect(),
+        driver_rating: uq(&c.driver_rating, |r| match r {
             DriverRatingDto::Bronze => d::DriverRating::Bronze,
             DriverRatingDto::Silver => d::DriverRating::Silver,
             DriverRatingDto::Gold => d::DriverRating::Gold,
             DriverRatingDto::Platinum => d::DriverRating::Platinum,
         }),
-        safety_rating: uq_ref(&c.safety_rating, id),
-        relative_trend_s_per_lap: uq_ref(&c.relative_trend_s_per_lap, id),
+        safety_rating: uq(&c.safety_rating, id),
+        relative_trend_s_per_lap: uq(&c.relative_trend_s_per_lap, id),
     }
 }
 
-fn uplayer_ref(p: &PlayerDto) -> d::Player {
+fn uplayer(p: &PlayerDto) -> d::Player {
     let mut history = [None; 10];
     for (slot, value) in history.iter_mut().zip(p.fuel_history.iter().copied()) {
         *slot = Some(value);
@@ -1460,46 +1101,46 @@ fn uplayer_ref(p: &PlayerDto) -> d::Player {
     d::Player {
         car: d::CarId(p.car),
         telemetry: d::Telemetry {
-            throttle: uq_ref(&p.throttle, id),
-            brake: uq_ref(&p.brake, id),
-            clutch: uq_ref(&p.clutch, id),
-            steering: uq_ref(&p.steering, id),
-            gear: uq_ref(&p.gear, id),
-            speed_mps: uq_ref(&p.speed_mps, id),
-            engine_speed_rad_s: uq_ref(&p.engine_speed_rad_s, id),
+            throttle: uq(&p.throttle, id),
+            brake: uq(&p.brake, id),
+            clutch: uq(&p.clutch, id),
+            steering: uq(&p.steering, id),
+            gear: uq(&p.gear, id),
+            speed_mps: uq(&p.speed_mps, id),
+            engine_speed_rad_s: uq(&p.engine_speed_rad_s, id),
         },
         fuel: d::Fuel {
-            level_l: uq_ref(&p.fuel_level_l, id),
-            capacity_l: uq_ref(&p.fuel_capacity_l, id),
-            per_lap_l: uq_ref(&p.fuel_per_lap_l, id),
-            laps_left: uq_ref(&p.fuel_laps_left, id),
+            level_l: uq(&p.fuel_level_l, id),
+            capacity_l: uq(&p.fuel_capacity_l, id),
+            per_lap_l: uq(&p.fuel_per_lap_l, id),
+            laps_left: uq(&p.fuel_laps_left, id),
             history,
-            energy: uq_ref(&p.fuel_energy, id),
-            energy_per_lap: uq_ref(&p.fuel_energy_per_lap, id),
-            lap_projection_l: uq_ref(&p.fuel_lap_projection_l, id),
+            energy: uq(&p.fuel_energy, id),
+            energy_per_lap: uq(&p.fuel_energy_per_lap, id),
+            lap_projection_l: uq(&p.fuel_lap_projection_l, id),
         },
         pit_service: d::PitService {
-            refuel_target_l: uq_ref(&p.pit_refuel_target_l, id),
-            refuel_added_l: uq_ref(&p.pit_refuel_added_l, id),
-            remaining_s: uq_ref(&p.pit_service_remaining_s, id),
-            tyres: uq_ref(&p.pit_tyres, id),
+            refuel_target_l: uq(&p.pit_refuel_target_l, id),
+            refuel_added_l: uq(&p.pit_refuel_added_l, id),
+            remaining_s: uq(&p.pit_service_remaining_s, id),
+            tyres: uq(&p.pit_tyres, id),
         },
         stint: d::Stint {
-            laps: uq_ref(&p.stint_laps, id),
-            elapsed_s: uq_ref(&p.stint_elapsed_s, id),
+            laps: uq(&p.stint_laps, id),
+            elapsed_s: uq(&p.stint_elapsed_s, id),
         },
-        delta_optimal_s: uq_ref(&p.delta_optimal_s, id),
-        delta_leader_s: uq_ref(&p.delta_leader_s, id),
-        lap_invalid: uq_ref(&p.lap_invalid, id),
-        delta_best_s: uq_ref(&p.delta_best_s, id),
-        pit_limiter_active: uq_ref(&p.pit_limiter_active, id),
-        pit_stop_stopped: uq_ref(&p.pit_stop_stopped, id),
-        pit_loss_s: uq_ref(&p.pit_loss_s, id),
+        delta_optimal_s: uq(&p.delta_optimal_s, id),
+        delta_leader_s: uq(&p.delta_leader_s, id),
+        lap_invalid: uq(&p.lap_invalid, id),
+        delta_best_s: uq(&p.delta_best_s, id),
+        pit_limiter_active: uq(&p.pit_limiter_active, id),
+        pit_stop_stopped: uq(&p.pit_stop_stopped, id),
+        pit_loss_s: uq(&p.pit_loss_s, id),
         damage: d::Damage {
-            aero: uq_ref(&p.damage_aero, id),
-            body: uq_ref(&p.damage_body, id),
-            suspension: uq_ref(&p.damage_suspension, id),
-            tyre_wear: std::array::from_fn(|i| uq_ref(&p.damage_tyre_wear[i], id)),
+            aero: uq(&p.damage_aero, id),
+            body: uq(&p.damage_body, id),
+            suspension: uq(&p.damage_suspension, id),
+            tyre_wear: std::array::from_fn(|i| uq(&p.damage_tyre_wear[i], id)),
         },
     }
 }
@@ -1508,60 +1149,7 @@ impl TryFrom<SnapshotDto> for d::Snapshot {
     type Error = Error;
 
     fn try_from(dto: SnapshotDto) -> Result<Self, Error> {
-        if dto.version != VERSION {
-            return Err(Error::Version { got: dto.version });
-        }
-        let (o, s) = (dto.origin, dto.state);
-        if s.player.as_ref().is_some_and(|p| p.fuel_history.len() > 10) {
-            return Err(Error::Protocol("más de diez vueltas de combustible"));
-        }
-        let c = s.capabilities;
-        Ok(d::Snapshot {
-            epoch: dto.epoch,
-            sequence: dto.sequence,
-            origin: d::Origin {
-                source: d::Source {
-                    simulator: d::Source::known_simulator(&o.simulator),
-                    kind: match o.kind {
-                        SourceKindDto::Live => d::SourceKind::Live,
-                        SourceKindDto::Replay => d::SourceKind::Replay,
-                    },
-                },
-                source_time: o.source_time,
-                received_at: o.received_at,
-            },
-            state: d::State {
-                driving_situation: s.driving_situation.into(),
-                source_state: match s.source_state {
-                    SourceStateDto::Waiting => d::SourceState::Waiting,
-                    SourceStateDto::Live => d::SourceState::Live,
-                    SourceStateDto::Paused => d::SourceState::Paused,
-                    SourceStateDto::Stale => d::SourceState::Stale,
-                    SourceStateDto::Lost => d::SourceState::Lost,
-                },
-                capabilities: d::Capabilities {
-                    session_clock: ucap(c.session_clock),
-                    positions: ucap(c.positions),
-                    lap_times: ucap(c.lap_times),
-                    gaps: ucap(c.gaps),
-                    pit_status: ucap(c.pit_status),
-                    flags: ucap(c.flags),
-                    spatial: ucap(c.spatial),
-                    driver_inputs: ucap(c.driver_inputs),
-                    powertrain: ucap(c.powertrain),
-                    fuel: ucap(c.fuel),
-                    delta: ucap(c.delta),
-                    sectors: ucap(c.sectors),
-                    lap_progress: ucap(c.lap_progress),
-                    weather: ucap(c.weather),
-                    damage: ucap(c.damage),
-                },
-                session: usession(s.session),
-                flags: uq(s.flags, |fs| fs.into_iter().map(uflag).collect()),
-                cars: s.cars.into_iter().map(ucar).collect(),
-                player: s.player.map(uplayer),
-            },
-        })
+        Self::try_from(&dto)
     }
 }
 
@@ -1617,10 +1205,10 @@ impl TryFrom<&SnapshotDto> for d::Snapshot {
                     weather: ucap(c.weather),
                     damage: ucap(c.damage),
                 },
-                session: usession_ref(&s.session),
-                flags: uq_ref(&s.flags, |fs| fs.iter().map(uflag_ref).collect()),
-                cars: s.cars.iter().map(ucar_ref).collect(),
-                player: s.player.as_ref().map(uplayer_ref),
+                session: usession(&s.session),
+                flags: uq(&s.flags, |fs| fs.iter().map(uflag).collect()),
+                cars: s.cars.iter().map(ucar).collect(),
+                player: s.player.as_ref().map(uplayer),
             },
         })
     }
@@ -1714,61 +1302,33 @@ impl SnapshotDto {
         requested: &crate::Demand,
         delivered: &crate::Demand,
     ) -> Result<(), Error> {
-        use crate::Signal;
-        fn retain<T: Clone + Default>(target: &mut T, old: Option<&T>, wanted: bool) {
-            *target = if wanted {
-                old.cloned().unwrap_or_default()
-            } else {
-                T::default()
-            };
-        }
-        macro_rules! fields {
-            ($target:expr, $old:expr, $wanted:expr, $sent:expr; $($signal:ident => [$($field:ident),+]),+ $(,)?) => {
-                $(if $sent & Signal::$signal.bit() != 0 {
-                    $(if $target.$field.omitted() { return Err(Error::Protocol("señal entregada marcada como no pedida")); })+
-                } else {
-                    $(retain(&mut $target.$field, $old.map(|old| &old.$field), $wanted & Signal::$signal.bit() != 0);)+
-                })+
-            };
-        }
-        let requested_mask = requested.mask();
-        let delivered_mask = delivered.mask();
         if requested.car_data() && !delivered.car_data() {
             self.state.cars = previous.map_or_else(Vec::new, |old| old.state.cars.clone());
         }
         if requested.player_data() && !delivered.player_data() {
             self.state.player = previous.and_then(|old| old.state.player.clone());
         }
-        fields!(self.state, previous.map(|old| &old.state), requested_mask, delivered_mask; Flags => [flags]);
-        fields!(self.state.session, previous.map(|old| &old.state.session), requested_mask, delivered_mask;
-            SessionInfo => [kind, state, laps_total, started_at_s, finished_at_s, scheduled_end_s, start_phase, distance_to_start_line_m, next_kind, next_starts_at_s], SessionClock => [elapsed_s, remaining_s],
-            TrackName => [track_name], TrackLength => [track_length_m], LapsRemaining => [laps_remaining],
-            Weather => [weather_air_temperature_k, weather_track_temperature_k, weather_wind_speed_mps,
-                weather_wind_direction_rad, weather_rain, weather_track_wetness, weather_pressure_pa]);
+        restore_state(
+            &mut self.state,
+            previous.map(|old| &old.state),
+            requested,
+            delivered,
+        )?;
+        restore_session(
+            &mut self.state.session,
+            previous.map(|old| &old.state.session),
+            requested,
+            delivered,
+        )?;
         for car in &mut self.state.cars {
             let old = previous.and_then(|old| old.state.cars.iter().find(|old| old.id == car.id));
-            fields!(car, old, requested_mask, delivered_mask;
-                Cars => [number, vehicle, driver_id, driver_name, class, driver_rating, safety_rating],
-                Positions => [position, class_position, grid_position], LapCount => [laps],
-                LapTimes => [last_lap_s, best_lap_s, estimated_lap_s],
-                Sectors => [last_sectors_s, current_sector, best_sectors_s, current_sectors_s],
-                Gaps => [gap_leader, gap_ahead], ClassGaps => [gap_class_leader, gap_class_ahead],
-                Relative => [relative_s, relative_laps, relative_trend_s_per_lap], LapProgress => [lap_distance_m, lap_elapsed_s],
-                PitStatus => [in_pits, pit_stops, tyre_compound], Spatial => [pose], Velocity => [velocity_mps],
-                Penalties => [pending_penalties]);
+            restore_car(car, old, requested, delivered)?;
         }
         if let Some(player) = &mut self.state.player {
             let old = previous
                 .and_then(|old| old.state.player.as_ref())
                 .filter(|old| old.car == player.car);
-            fields!(player, old, requested_mask, delivered_mask;
-                Pedals => [throttle, brake], Clutch => [clutch], Steering => [steering],
-                Powertrain => [gear, speed_mps, engine_speed_rad_s], FuelLevel => [fuel_level_l, fuel_capacity_l, fuel_energy],
-                FuelEstimate => [fuel_per_lap_l, fuel_laps_left, fuel_history, fuel_energy_per_lap, fuel_lap_projection_l],
-                Delta => [delta_best_s, delta_optimal_s, delta_leader_s, lap_invalid],
-                PitStatus => [pit_limiter_active, pit_stop_stopped, pit_loss_s, pit_refuel_target_l,
-                    pit_refuel_added_l, pit_service_remaining_s, pit_tyres, stint_laps, stint_elapsed_s],
-                Damage => [damage_aero, damage_body, damage_suspension, damage_tyre_wear]);
+            restore_player(player, old, requested, delivered)?;
         }
         Ok(())
     }
@@ -1973,72 +1533,6 @@ mod demand_tests {
             "sesión nueva no hereda valores"
         );
     }
-    /// Claves restaurables de un DTO, sin la identidad (IDs de sesión, coche y jugador).
-    fn restorable(dto: &SnapshotDto) -> std::collections::BTreeMap<String, serde_json::Value> {
-        let value = serde_json::to_value(dto).expect("JSON");
-        let state = &value["state"];
-        let mut keys = std::collections::BTreeMap::new();
-        keys.insert("flags".to_owned(), state["flags"].clone());
-        let mut add = |prefix: &str, object: &serde_json::Value, identity: &str| {
-            for (key, field) in object.as_object().expect("objeto") {
-                if key != identity {
-                    keys.insert(format!("{prefix}.{key}"), field.clone());
-                }
-            }
-        };
-        add("session", &state["session"], "id");
-        add("player", &state["player"], "car");
-        for (index, car) in state["cars"].as_array().expect("coches").iter().enumerate() {
-            add(&format!("car{index}"), car, "id");
-        }
-        keys
-    }
-
-    #[test]
-    fn every_restorable_key_belongs_to_exactly_one_signal() {
-        // Misma identidad, todos los valores distintos y ninguno Unavailable.
-        let distinct =
-            |base| SnapshotDto::from(&crate::codec::tests::Distinct::new(base, 0, 3).snapshot());
-        let (old, new) = (distinct(0), distinct(5000));
-        let (old_keys, new_keys) = (restorable(&old), restorable(&new));
-        assert_eq!(
-            old_keys.keys().collect::<Vec<_>>(),
-            new_keys.keys().collect::<Vec<_>>()
-        );
-        assert!(old_keys.len() > 140, "DTO rico: {} claves", old_keys.len());
-        for (key, value) in &old_keys {
-            assert_ne!(value, &new_keys[key], "{key} debe distinguir ambas fotos");
-        }
-        // Entregar una sola señal: sus claves llegan nuevas y el resto se
-        // restaura. Un campo que `restore` olvida conserva el valor nuevo con
-        // cualquier señal y queda con más de un dueño.
-        let mut owners = std::collections::BTreeMap::<&str, Vec<Signal>>::new();
-        for &signal in Signal::ALL {
-            let delivered = Demand::from_mask(signal.bit());
-            let mut next = new.clone();
-            next.filter(&delivered).expect("selección");
-            next.restore(Some(&old), &Demand::all(), &delivered)
-                .expect("restauración");
-            let next_keys = restorable(&next);
-            for (key, value) in &old_keys {
-                let got = next_keys.get(key);
-                if got == Some(&new_keys[key]) {
-                    owners.entry(key).or_default().push(signal);
-                } else {
-                    assert_eq!(got, Some(value), "{key} con {signal:?}");
-                }
-            }
-        }
-        for key in old_keys.keys() {
-            assert_eq!(
-                owners.get(key.as_str()).map(Vec::len),
-                Some(1),
-                "{key}: dueños {:?}",
-                owners.get(key.as_str())
-            );
-        }
-    }
-
     /// Heredar valores retenidos solo dentro del mismo ámbito: otra época,
     /// sesión, estado de fuente, jugador o parrilla entregada empieza de cero.
     #[test]
@@ -2113,11 +1607,14 @@ mod demand_tests {
 
     #[test]
     fn by_reference_decode_matches_owned_decode_without_cloning_the_dto() {
-        let source = crate::codec::tests::rich_snapshot(1, 1);
-        let dto = SnapshotDto::from(&source);
-        let by_ref = d::Snapshot::try_from(&dto).expect("decodificación por referencia");
-        let owned = d::Snapshot::try_from(dto).expect("decodificación por valor");
-        assert_eq!(by_ref, owned);
+        for shift in 0..4 {
+            let source = crate::codec::tests::Distinct::new(0, shift, 4).snapshot();
+            let dto = SnapshotDto::from(&source);
+            let by_ref = d::Snapshot::try_from(&dto).expect("decodificación por referencia");
+            let owned = d::Snapshot::try_from(dto).expect("decodificación por valor");
+            assert_eq!(by_ref, source, "referencia, pasada {shift}");
+            assert_eq!(owned, source, "valor, pasada {shift}");
+        }
     }
 
     #[test]
@@ -2177,12 +1674,36 @@ mod demand_tests {
     }
 
     #[test]
-    fn selected_with_all_signals_matches_the_full_encoding() {
-        let source = crate::codec::tests::rich_snapshot(1, 1);
-        let partial = SnapshotDto::selected(&source, &Demand::all()).expect("selección");
-        assert_eq!(
-            serde_json::to_string(&partial).expect("JSON parcial"),
-            serde_json::to_string(&SnapshotDto::from(&source)).expect("JSON completo"),
-        );
+    fn every_signal_can_refresh_a_hydrated_photo_without_losing_other_qualities() {
+        for shift in 0..4 {
+            let source = crate::codec::tests::Distinct::new(0, shift, 4).snapshot();
+            let previous = SnapshotDto::from(&source);
+            for delivered in std::iter::once(Demand::default()).chain(
+                Signal::ALL
+                    .iter()
+                    .map(|signal| Demand::from_mask(signal.bit())),
+            ) {
+                let mut partial = SnapshotDto::selected(&source, &delivered).expect("selección");
+                partial
+                    .restore(Some(&previous), &Demand::all(), &delivered)
+                    .expect("rehidratación");
+                assert_eq!(
+                    d::Snapshot::try_from(partial).expect("foto"),
+                    source,
+                    "pasada {shift}, máscara {}",
+                    delivered.mask()
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn all_delivered_signals_preserve_every_original_quality_through_json() {
+        for shift in 0..4 {
+            let source = crate::codec::tests::Distinct::new(0, shift, 4).snapshot();
+            let dto = SnapshotDto::selected(&source, &Demand::all()).expect("selección completa");
+            let json = serde_json::to_string(&dto).expect("JSON completo");
+            assert_eq!(crate::snapshot_from_json(&json).expect("foto live"), source);
+        }
     }
 }

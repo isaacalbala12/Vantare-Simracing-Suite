@@ -71,39 +71,6 @@ impl Signal {
         Self::Penalties,
     ];
 
-    fn car_data(self) -> bool {
-        matches!(
-            self,
-            Self::Cars
-                | Self::Positions
-                | Self::LapCount
-                | Self::LapTimes
-                | Self::Gaps
-                | Self::ClassGaps
-                | Self::Relative
-                | Self::PitStatus
-                | Self::Spatial
-                | Self::Velocity
-                | Self::Sectors
-                | Self::LapProgress
-                | Self::Penalties
-        )
-    }
-    fn player_data(self) -> bool {
-        matches!(
-            self,
-            Self::Pedals
-                | Self::Clutch
-                | Self::Steering
-                | Self::Powertrain
-                | Self::FuelLevel
-                | Self::FuelEstimate
-                | Self::Delta
-                | Self::PitStatus
-                | Self::Damage
-        )
-    }
-
     pub(crate) const fn bit(self) -> u64 {
         1 << (self as u8)
     }

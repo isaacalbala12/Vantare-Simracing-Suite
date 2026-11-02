@@ -620,7 +620,11 @@ impl Widget {
     }
 
     pub(crate) fn frame(&mut self, prefs: Preferences, reduced: bool) -> (Paint, Wake) {
-        let elapsed = self.yellow_since.map(|start| start.elapsed());
+        self.frame_at(prefs, reduced, Instant::now())
+    }
+
+    fn frame_at(&mut self, prefs: Preferences, reduced: bool, now: Instant) -> (Paint, Wake) {
+        let elapsed = self.yellow_since.map(|start| now.saturating_duration_since(start));
         let (pulse, wake) = if reduced {
             (0.0, Wake::Idle)
         } else {
@@ -847,8 +851,9 @@ mod tests {
             scope: FlagScope::Session,
         }]);
         assert!(widget.ingest(&snapshot, Preferences::default()));
-        widget.yellow_since = Instant::now().checked_sub(PULSE * 2);
-        let (_, wake) = widget.frame(Preferences::default(), false);
+        let started = Instant::now();
+        widget.yellow_since = Some(started);
+        let (_, wake) = widget.frame_at(Preferences::default(), false, started + PULSE * 2);
         assert!(matches!(wake, Wake::Idle));
         assert!(!widget.ingest(&snapshot, Preferences::default()));
         assert!(widget.yellow_since.is_none());

@@ -185,6 +185,10 @@ impl Widget {
     }
 
     pub(crate) fn frame(&mut self, prefs: Preferences, reduced: bool) -> (Paint, Wake) {
+        self.frame_at(prefs, reduced, Instant::now())
+    }
+
+    fn frame_at(&mut self, prefs: Preferences, reduced: bool, now: Instant) -> (Paint, Wake) {
         let details = self.detail.clone();
         let class_improvement = std::sync::Arc::clone(&self.improvement_label);
         let personal_improvement = std::sync::Arc::clone(&self.personal_improvement_label);
@@ -233,7 +237,7 @@ impl Widget {
             let Some(notice) = &self.notice else {
                 return (Box::new(|_, _| {}), Wake::Idle);
             };
-            let age = notice.started.elapsed();
+            let age = now.saturating_duration_since(notice.started);
             let lifetime = self.settings.lifetime();
             let (alpha, offset, wake) = if reduced {
                 (1.0, 0.0, Wake::At(lifetime.saturating_sub(age)))
@@ -815,9 +819,12 @@ mod tests {
         assert!(widget.ingest(&snapshot, prefs));
         assert!(!widget.ingest(&snapshot, prefs));
         assert!(matches!(widget.frame(prefs, false).1, Wake::Frame));
-        widget.notice.as_mut().expect("notice").started =
-            Instant::now().checked_sub(LIFETIME).expect("clock");
-        assert!(matches!(widget.frame(prefs, false).1, Wake::Idle));
+        let started = Instant::now();
+        widget.notice.as_mut().expect("notice").started = started;
+        assert!(matches!(
+            widget.frame_at(prefs, false, started + LIFETIME).1,
+            Wake::Idle
+        ));
         assert!(widget.notice.is_none());
         snapshot.sequence = 3;
         snapshot.state.cars[0].best_lap_s = Quality::Reliable(88.0);

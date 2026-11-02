@@ -846,12 +846,23 @@ impl FuenteUdp {
         inicio: Instant,
         avisos: &mut Avisos,
     ) -> io::Result<()> {
+        self.atender_con_reloj(salida, contadores, inicio, avisos, Instant::now)
+    }
+
+    fn atender_con_reloj(
+        &mut self,
+        salida: &mut impl Write,
+        contadores: &mut Contadores,
+        inicio: Instant,
+        avisos: &mut Avisos,
+        reloj: impl Fn() -> Instant,
+    ) -> io::Result<()> {
         for _ in 0..256 {
             match self.socket.recv_from(&mut self.bufer) {
                 Ok((leidos, peer)) if peer == self.destino => {
                     escribir_udp(salida, t_rel_ns(inicio), &self.bufer[..leidos])?;
                     contadores.udp += 1;
-                    self.ultima_senal = Instant::now();
+                    self.ultima_senal = reloj();
                     if let Some(resultado) = parsear_registro(&self.bufer[..leidos]) {
                         self.procesar(&resultado, avisos);
                     }
@@ -871,11 +882,11 @@ impl FuenteUdp {
                 Err(error) => return Err(error),
             }
         }
-        let ahora = Instant::now();
+        let ahora = reloj();
         if self.conexion.is_some() {
             // Registrado y con tráfico: nada que hacer. Solo un silencio
             // (ACC reiniciado) obliga a registrarse de nuevo.
-            if self.ultima_senal.elapsed() < SILENCIO_CONEXION {
+            if ahora.saturating_duration_since(self.ultima_senal) < SILENCIO_CONEXION {
                 return Ok(());
             }
             self.cerrar();
@@ -1537,17 +1548,16 @@ mod tests {
         let mut fuente = FuenteUdp::nuevo(&config).expect("socket vector");
         fuente.conexion = Some(42);
         let inicio = Instant::now();
-        fuente.ultima_senal = inicio
-            .checked_sub(Duration::from_secs(3))
-            .expect("reloj vector");
+        fuente.ultima_senal = inicio;
         fuente.proximo_registro = inicio;
         let mut out = Vec::new();
         fuente
-            .atender(
+            .atender_con_reloj(
                 &mut out,
                 &mut Contadores::default(),
                 inicio,
                 &mut Avisos::default(),
+                || inicio + Duration::from_secs(3),
             )
             .expect("silencio breve");
         server.set_nonblocking(true).expect("sin espera");
@@ -1560,15 +1570,13 @@ mod tests {
             io::ErrorKind::WouldBlock
         );
         server.set_nonblocking(false).expect("plazo");
-        fuente.ultima_senal = inicio
-            .checked_sub(Duration::from_secs(11))
-            .expect("reloj vector");
         fuente
-            .atender(
+            .atender_con_reloj(
                 &mut out,
                 &mut Contadores::default(),
                 inicio,
                 &mut Avisos::default(),
+                || inicio + Duration::from_secs(11),
             )
             .expect("silencio largo");
         let n = server.recv(&mut b).expect("retirar antes de renovar");

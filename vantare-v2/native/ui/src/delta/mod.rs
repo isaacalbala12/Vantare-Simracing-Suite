@@ -411,9 +411,7 @@ mod tests {
                 delta::project_reference(s, p, r)
             });
             assert_eq!(calls.get(), 1);
-            let at = Instant::now()
-                .checked_sub(std::time::Duration::from_millis(200))
-                .expect("reloj de aviso");
+            let at = Instant::now();
             match &mut widget.presentation {
                 Presentation::Eficiencia { motion: m, .. }
                 | Presentation::Vantare { motion: m, .. } => Arc::make_mut(m)

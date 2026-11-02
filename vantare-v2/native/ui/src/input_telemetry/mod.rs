@@ -128,8 +128,11 @@ impl Widget {
     }
 
     pub(crate) fn frame(&mut self, prefs: Preferences, reduced: bool) -> (Paint, Wake) {
+        self.frame_at(prefs, reduced, Instant::now())
+    }
+
+    fn frame_at(&mut self, prefs: Preferences, reduced: bool, now: Instant) -> (Paint, Wake) {
         let vm = self.vm.clone();
-        let now = Instant::now();
         let pedals = if reduced {
             self.vm.pedals
         } else {
@@ -699,9 +702,11 @@ mod tests {
         assert!(widget.moving(Instant::now()));
         snapshot.sequence += 1;
         assert!(!widget.ingest(&snapshot, prefs));
-        widget.started = Instant::now().checked_sub(TRANSITION);
-        assert!(!widget.moving(Instant::now()));
-        assert_eq!(widget.frame(prefs, false).1, Wake::Idle);
+        let started = Instant::now();
+        widget.started = Some(started);
+        let finished = started + TRANSITION;
+        assert!(!widget.moving(finished));
+        assert_eq!(widget.frame_at(prefs, false, finished).1, Wake::Idle);
         snapshot.state.player = None;
         assert!(widget.ingest(&snapshot, prefs));
         assert!(!widget.moving(Instant::now()));

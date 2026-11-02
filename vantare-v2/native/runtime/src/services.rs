@@ -44,6 +44,9 @@ pub fn pipe_name(photo: &str) -> String {
 }
 #[derive(Default)]
 struct State {
+    // Keep the real Hub pipe in scheduling tests without depending on uptime.
+    #[cfg(test)]
+    renewal_now: Option<Instant>,
     client: Option<Client>,
     renewal: Renewal,
     notice: Option<protocol::LicenseNotice>,
@@ -306,14 +309,15 @@ fn handle(
             control::wall_ms(),
         ) {
             (Ok(policy), Ok(wall)) => {
+                let now = Instant::now();
+                #[cfg(test)]
+                let now = state.renewal_now.unwrap_or(now);
                 // Protect only an explicitly permitted live operation from a
                 // concurrent game-exit cancellation; this does not grant entry.
-                if policy.live
-                    && renewal::live_allowed(&policy, wall, state.renewal_origin(Instant::now()))
-                {
+                if policy.live && renewal::live_allowed(&policy, wall, state.renewal_origin(now)) {
                     set_signing_in(signing, true);
                 }
-                let reply = run_renewal(state, &policy, wall, Instant::now(), |state, command| {
+                let reply = run_renewal(state, &policy, wall, now, |state, command| {
                     serve_command(state, options, command, cancellation, signing, stop)
                 })
                 .unwrap_or_else(|| {

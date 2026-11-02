@@ -1,3 +1,21 @@
+## VANTA-126 / #1878 — tests independientes del tiempo encendido del runner
+
+- Rama `vantareapp/isa-1878-instant-tests`, base
+  `origin/nightly@3f2c1b3b093c81bd4b81325e4646b274c56fb35d`; worktree
+  `C:/VantareServer/wt/isa-1878-instant-tests`, target propio
+  `D:/VantareServer/targets/isa-1878`.
+- Siete tests de runtime/UI usan instantes del propio test y avanzan el tiempo,
+  en vez de restar al reloj real. Se conservan las aserciones de renovación,
+  silencio ACC, fin de animaciones y conservación del reloj al cambiar Look.
+- Inyección privada de tiempo en cuatro métodos de frame y en el grabador ACC;
+  los llamadores de producto conservan `Instant::now`. La sustitución del reloj
+  del servidor de renovación existe solo con `cfg(test)` y conserva el pipe real.
+- Gates de runtime/UI en una sola tanda por `compilar.ps1`, con telemetría y
+  lifecycle. Evidencia en `D:/VantareServer/evidence/isa-1878/gates.log`;
+  resultados y PR pendientes al preparar este bloque.
+- Plane permanece **Por testear**, verificado por lectura; Isaac pidió no cambiar
+  su estado. Sin merge ni release; siguiente paso: revisar el PR draft a nightly.
+
 <!-- isa1860-arranque-cierre -->
 ## VANTA-128 / #1860 — pasos 0–2 integrados; paso 3 listo para revisión
 

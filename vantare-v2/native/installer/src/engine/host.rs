@@ -556,8 +556,7 @@ exit EXIT_CODE
             let log = fs::read_to_string(&request.log_file).expect("diagnostics");
             assert!(log.contains("injected cosmetic warning"));
             assert!(log.contains("\"percent\":255"));
-            fs::remove_file(root.join("installer-cleanup.json"))
-                .expect("legacy marker absent");
+            fs::remove_file(root.join("installer-cleanup.json")).expect("legacy marker absent");
             fs::write(&request.log_file, []).expect("clear log");
             assert!(
                 session

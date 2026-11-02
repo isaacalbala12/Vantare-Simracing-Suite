@@ -1114,7 +1114,7 @@ fn uninstall_keeps_unreferenced_binaries_with_their_path_and_reason_in_the_log()
     fixture.write_data();
     let active = fixture.active();
     let before = disk::data_index(&active.join("data")).unwrap();
-    let orphan = fixture.root.join("generations").join("d".repeat(32));
+    let orphan = disk::path(&fixture.root.join("generations").join("d".repeat(32))).unwrap();
     fs::create_dir_all(orphan.join("bin")).unwrap();
     fs::create_dir_all(orphan.join("data/empty")).unwrap();
     let executable = orphan.join("bin/orphan.exe");

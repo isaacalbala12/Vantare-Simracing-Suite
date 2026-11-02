@@ -9,7 +9,7 @@ use vantare_domain::Snapshot;
 
 use crate::Error;
 use crate::codec::{Message, Revision, negotiate, read_message};
-use crate::dto::SnapshotDto;
+use crate::dto::{Boundary, SnapshotDto};
 use crate::latest::{Slot, Wait};
 use crate::pipe::{Event, IO_TIMEOUT, Listener, Peer, Pipe};
 
@@ -243,16 +243,7 @@ fn serve(mut pipe: Pipe, shared: &Shared) -> Result<(), Error> {
                 let revision = Revision::of(&snapshot);
                 if revision.is_newer(sent) {
                     if demand.is_some() {
-                        let mut car_ids: Vec<_> =
-                            snapshot.state.cars.iter().map(|car| car.id).collect();
-                        car_ids.sort_unstable_by_key(|id| id.0);
-                        let next_boundary = (
-                            snapshot.epoch,
-                            snapshot.state.session.id,
-                            snapshot.state.player.as_ref().map(|p| p.car),
-                            snapshot.state.source_state,
-                            car_ids,
-                        );
+                        let next_boundary = Boundary::of(&snapshot);
                         let reset = boundary.as_ref() != Some(&next_boundary);
                         boundary = Some(next_boundary);
                         let delivered = cadence.due(&requested, start.elapsed(), reset);

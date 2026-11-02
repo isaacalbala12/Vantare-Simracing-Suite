@@ -37,6 +37,43 @@ fn photo(tick: u64, lap: u32, in_pits: bool) -> Observation {
     observation.origin.received_at = Duration::from_millis(tick);
     observation
 }
+
+#[test]
+fn journal_session_boundary_characterization() {
+    type Change = fn(&mut Observation);
+    let cases: [(&str, Change, bool); 6] = [
+        ("same", |_| {}, false),
+        ("session", |o| o.state.session.id.0 += 1, true),
+        (
+            "player",
+            |o| o.state.player.as_mut().unwrap().car = CarId(8),
+            false,
+        ),
+        (
+            "track",
+            |o| o.state.session.track_name = Quality::Reliable("other".into()),
+            false,
+        ),
+        ("source", |o| o.origin.source.simulator = "other", false),
+        (
+            "situation",
+            |o| o.state.driving_situation = vantare_domain::DrivingSituation::Garage,
+            false,
+        ),
+    ];
+    for (label, change, session_changed) in cases {
+        let mut core = Core::new(1);
+        core.observe(photo(1, 0, false)).unwrap();
+        let mut next = photo(2, 0, false);
+        change(&mut next);
+        core.observe(next).unwrap();
+        assert_eq!(
+            core.events().retained().iter().any(|event| matches!(event, Event::Fact(fact) if matches!(fact.kind, FactKind::SessionChanged { .. }))),
+            session_changed,
+            "{label}"
+        );
+    }
+}
 #[test]
 fn one_core_cut_generates_scoped_flags_lap_pit_and_session_phase_in_one_cursor() {
     let mut core = Core::new(1);

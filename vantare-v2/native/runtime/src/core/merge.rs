@@ -848,6 +848,49 @@ mod tests {
     }
 
     #[test]
+    fn tracker_scope_keeps_history_across_non_identity_changes() {
+        type Change = fn(&mut Observation);
+        let cases: [(&str, Change); 4] = [
+            ("track", |o| {
+                o.state.session.track_name = Quality::Reliable("other".into());
+            }),
+            ("kind", |o| {
+                o.state.session.kind = Quality::Reliable(vantare_domain::SessionKind::Race);
+            }),
+            ("source", |o| o.origin.source.simulator = "other"),
+            ("situation", |o| {
+                o.state.driving_situation = vantare_domain::DrivingSituation::Garage;
+            }),
+        ];
+        for (label, change) in cases {
+            let mut trackers = Trackers::default();
+            let mut next = observation(vec![car(1, 1)]);
+            next.state.player = Some(Player {
+                car: CarId(1),
+                fuel: Fuel {
+                    level_l: Quality::Reliable(100.0),
+                    ..Fuel::default()
+                },
+                ..Player::default()
+            });
+            for lap in 0..=2 {
+                next.state.cars[0].laps = Quality::Reliable(lap);
+                if lap == 2 {
+                    next.state.player.as_mut().unwrap().fuel.level_l = Quality::Reliable(96.0);
+                }
+                merge(None, next.clone(), 1, &mut trackers).unwrap();
+            }
+            change(&mut next);
+            let result = merge(None, next, 1, &mut trackers).unwrap();
+            assert_eq!(
+                result.state.player.unwrap().fuel.per_lap_l,
+                Quality::Estimated(4.0),
+                "{label}"
+            );
+        }
+    }
+
+    #[test]
     fn weather_and_damage_defaults_are_unavailable() {
         let mut obs = observation(vec![car(1, 1)]);
         obs.state.player = Some(Player::default());

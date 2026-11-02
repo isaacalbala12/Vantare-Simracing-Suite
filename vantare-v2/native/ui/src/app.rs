@@ -1959,6 +1959,65 @@ mod tests {
     }
 
     #[test]
+    fn paused_pipe_photos_reach_the_shared_overlay_projection_without_new_samples() {
+        use std::sync::Arc;
+        use vantare_domain::SourceState;
+        use vantare_ipc::{Demand, Publisher, Subscriber};
+
+        let name = format!("vantare-pause-overlay-{}", std::process::id());
+        let mut publisher = Publisher::new(&name, |_| true).unwrap();
+        let mut subscriber = Subscriber::connect_requested(&name, Demand::all(), |_| true).unwrap();
+        let source = publisher.demand_source();
+        let deadline = std::time::Instant::now() + Duration::from_secs(10);
+        while source.mask() != Demand::all().mask() {
+            assert!(std::time::Instant::now() < deadline, "saludo con demanda");
+            std::thread::yield_now();
+        }
+        let mut photo =
+            vantare_ipc::snapshot_from_saved_json(include_str!("../fixtures/pedals.snapshot.json"))
+                .unwrap();
+        photo.state.source_state = SourceState::Live;
+        photo.sequence = 1;
+        publisher.publish(Arc::new(photo.clone())).unwrap();
+        let live = subscriber.next(Duration::from_secs(10)).unwrap();
+        let mut overlays: Vec<_> = Kind::ALL
+            .iter()
+            .map(|&kind| {
+                let mut overlay = Overlay::new(kind, Preferences::default());
+                overlay.project_snapshot(&live);
+                let size = overlay.wanted_size();
+                (overlay, size)
+            })
+            .collect();
+
+        for sequence in 2..=3 {
+            photo.sequence = sequence;
+            photo.origin.received_at += Duration::from_millis(100);
+            photo.state.source_state = SourceState::Paused;
+            publisher.publish(Arc::new(photo.clone())).unwrap();
+            let paused = subscriber.next(Duration::from_secs(10)).unwrap();
+            assert_eq!(
+                paused.state.player, live.state.player,
+                "el pipe conserva los datos"
+            );
+            for (overlay, size) in &mut overlays {
+                // Es la función que llama Overlay::ingest; no necesita ventana
+                // ni Context GPUI para probar retención, historia y banner.
+                assert_eq!(overlay.project_snapshot(&paused), sequence == 2);
+                assert_eq!(overlay.wanted_size(), (size.0, size.1 + 22.0));
+            }
+        }
+        photo.sequence = 4;
+        photo.state.source_state = SourceState::Live;
+        publisher.publish(Arc::new(photo)).unwrap();
+        let resumed = subscriber.next(Duration::from_secs(10)).unwrap();
+        for (overlay, size) in &mut overlays {
+            assert!(overlay.project_snapshot(&resumed));
+            assert_eq!(overlay.wanted_size(), *size);
+        }
+    }
+
+    #[test]
     fn studio_and_workshop_preview_never_hide_for_any_situation_or_widget() {
         let mut snapshot = vantare_ipc::snapshot_from_fixture_json(include_str!(
             "../fixtures/pedals.snapshot.json"

@@ -70,3 +70,26 @@ campos a `Unavailable`; no cambian los archivos originales. Los tests y la
 geometría demo usan ese lector de fixtures, nunca el pipe productivo.
 Contrato, relojes, límites y conexión con #1653:
 [`session-alerts-contract.md`](../../docs/telemetria/session-alerts-contract.md).
+
+## #1868 · Caracterización y frontera compartida (pasos 0–1)
+
+Las fronteras actuales no son equivalentes. Los tests conservan esta tabla
+antes de consolidarlas; «reinicia» significa descartar memoria anterior:
+
+| Cambio | Trackers | Retención en pausa / situación | Journal SessionChanged | Hidratación IPC |
+| --- | --- | --- | --- | --- |
+| SessionId | reinicia | reinicia | sí | reinicia |
+| Coche jugador | reinicia | reinicia | no | si se entrega identidad |
+| Circuito / tipo | conserva | reinicia | no | conserva |
+| Fuente | conserva | reinicia | no | conserva |
+| Situación | conserva | conserva | no | reinicia |
+
+El orden de coches no cambia la frontera IPC; cambiar sus IDs sí, cuando se
+entregan. El test de pipe `driving_situation_changes_keep_the_demanded_pipe_connected`
+reproduce la reconexión en el commit previo de tests del paso 0. El paso 1 lo
+activa como regresión: `Boundary` compartida fuerza toda la demanda al cambiar
+de situación, también si la fuente sigue en Live. No cambia el DTO v11.
+Usa demanda de 16/250 ms y una señal centinela a 5 s para observar reconexiones
+sin inferirlas de un umbral de latencia. El test puro fija la cadencia a 16 ms.
+La pausa se prueba con pipe real hasta `Overlay::project_snapshot`, llamada
+desde `Overlay::ingest`; no acredita una ventana GPUI ni una sesión física.

@@ -365,7 +365,7 @@ impl Hub {
         cx.notify();
     }
     /// Aspecto del paso opcional: misma escritura y vista previa que Ajustes ›
-    /// Apariencia (`appearance.json`), sin almacenamiento propio del asistente.
+    /// Apariencia (`hub-settings.json`), sin almacenamiento propio del asistente.
     fn onboarding_look(
         &mut self,
         palette: Option<Palette>,
@@ -380,9 +380,7 @@ impl Hub {
         wanted.palette = palette.unwrap_or(wanted.palette);
         wanted.scheme = scheme.unwrap_or(wanted.scheme);
         self.settings_appearance_apply(wanted, window, cx);
-        let failure = (self.settings.store.value.appearance != wanted)
-            .then(|| self.settings.status.clone())
-            .flatten();
+        let failure = self.settings.status.clone();
         if let Some(state) = &mut self.onboarding {
             state.say(look_say(palette, scheme));
             state.error = failure;

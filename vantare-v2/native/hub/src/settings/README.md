@@ -27,8 +27,8 @@ el archivo externo no se pisa. Una nueva carga recoge sus bytes para reintentar.
 
 El paso 7 queda aplazado hasta el 8: un campo nuevo en layout.json con la misma
 versión rompe lectores viejos con deny_unknown_fields y puede impedir abrir el
-Hub anterior a #1887 después de un rollback. No se tocan layout/motion_policy/host
-ni domain::format::Preferences para mover reducedMotion. Su lector antiguo permanece.
+Hub anterior a #1887 después de un rollback. No se cambia el documento de layout; ui/layout solo adapta el error CAS tipado.
+motion_policy, host y domain::format::Preferences permanecen intactos. El lector antiguo continúa.
 Límite actual: añadir un campo sin subir version puede hacer que el lector
 estricto lo archive como corrupción. La política compatible se resolverá en 8.
 Workshop-selection dañado se sigue en #1888; no se implementa aquí. Paso 10 fuera.

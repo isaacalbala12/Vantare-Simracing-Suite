@@ -127,6 +127,7 @@ impl Store {
         let mut sources = Vec::new();
         let mut warnings = Vec::new();
         let mut protected = false;
+        let mut mirror_observed = None;
         for kind in [Legacy::General, Legacy::Appearance, Legacy::Zoom] {
             let source = Doc::open_or_quarantine(
                 &root.join(kind.file()),
@@ -141,6 +142,9 @@ impl Store {
                 },
                 || None,
             );
+            if kind == Legacy::Appearance {
+                mirror_observed.clone_from(&source.observed);
+            }
             protected |= source.warning.is_some() && source.observed.is_none();
             let value = if source.warning.is_some() && source.observed.is_some() {
                 Some(match kind {
@@ -161,7 +165,7 @@ impl Store {
             sources.remove(0),
             layout_preexisted,
         );
-        let mut store = Self::empty(root, value);
+        let mut store = Self::empty(root, value, mirror_observed);
         store.protected = protected;
         store.publish_migration(root, warnings)
     }
@@ -176,30 +180,16 @@ impl Store {
         self.warning = (!warnings.is_empty()).then(|| warnings.join("; "));
         self
     }
-    fn empty(root: &Path, value: Document) -> Self {
-        let mirror = root.join("appearance.json");
-        let opened = Doc::open_or_quarantine(
-            &mirror,
-            &Options {
-                limit: 16 * 1024,
-                ..Default::default()
-            },
-            |bytes| {
-                let value = serde_json::from_slice(bytes)
-                    .map_err(|error| Error::InvalidInput(format!("Apariencia: {error}")))?;
-                super::appearance::read_settings(&value)
-            },
-            AppearanceSettings::default,
-        );
+    fn empty(root: &Path, value: Document, mirror_observed: Option<Vec<u8>>) -> Self {
         Self {
             value,
-            warning: opened.warning,
+            warning: None,
             mirror_warning: None,
             path: root.join(FILE),
             observed: None,
             protected: false,
-            mirror_observed: opened.observed,
-            mirror,
+            mirror: root.join("appearance.json"),
+            mirror_observed,
         }
     }
     fn open_current(root: &Path) -> Self {
@@ -223,10 +213,23 @@ impl Store {
             },
             Document::default,
         );
-        let mut store = Self::empty(root, opened.value);
+        let mirror = Doc::open_or_quarantine(
+            &root.join("appearance.json"),
+            &Options {
+                limit: 16 * 1024,
+                ..Default::default()
+            },
+            |bytes| {
+                let value = serde_json::from_slice(bytes)
+                    .map_err(|error| Error::InvalidInput(format!("Apariencia: {error}")))?;
+                super::appearance::read_settings(&value)
+            },
+            AppearanceSettings::default,
+        );
+        let mut store = Self::empty(root, opened.value, mirror.observed);
         store.protected = opened.warning.is_some() && opened.observed.is_none();
         store.observed = opened.observed;
-        store.warning = opened.warning;
+        store.warning = opened.warning.or(mirror.warning);
         store
     }
     fn commit(&mut self, value: Document) -> Result<(), Error> {

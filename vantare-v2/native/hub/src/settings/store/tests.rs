@@ -320,7 +320,9 @@ fn step6_mirror_is_readable_by_old_appearance_and_real_overlay_reader() {
 #[test]
 fn step6_mirror_conflict_keeps_v2_and_external_bytes_and_reports_warning() {
     let root = Root::new();
+    root.write("appearance.json", APPEARANCE);
     let mut store = root.load();
+    assert_eq!(store.mirror_observed.as_deref(), Some(APPEARANCE));
     let foreign = br#"{"paletteVersion":1,"palette":"iris"}"#;
     root.write("appearance.json", foreign);
     let next = AppearanceSettings {
@@ -384,7 +386,7 @@ fn step6_oversized_sources_remain_protected_without_loss() {
 #[test]
 fn step6_concurrent_first_publication_loads_the_winner_instead_of_overwriting_it() {
     let root = Root::new();
-    let pending = Store::empty(&root.0, Document::default());
+    let pending = Store::empty(&root.0, Document::default(), None);
     let mut winner = root.load();
     winner.save_zoom(125).unwrap();
     let before = root.read(FILE);

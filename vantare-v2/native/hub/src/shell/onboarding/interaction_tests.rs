@@ -665,3 +665,46 @@ fn step6_preloaded_preferences_drive_the_window_without_loading_again() {
         app.quit();
     });
 }
+
+#[test]
+fn step6_onboarding_reports_a_failed_mirror_without_reverting_v2() {
+    gpui_platform::headless().run(|app| {
+        let root = Root::new();
+        let mut cx = context();
+        let window = open(&root.0, &mut cx);
+        let foreign = br#"{"paletteVersion":1,"palette":"iris"}"#;
+        std::fs::write(root.0.join("appearance.json"), foreign).unwrap();
+        window
+            .update(&mut cx, |hub, window, cx| {
+                hub.onboarding_look(Some(Palette::Ocean), None, window, cx);
+                assert_eq!(hub.settings.store.value.appearance.palette, Palette::Ocean);
+                assert!(
+                    hub.onboarding
+                        .as_ref()
+                        .unwrap()
+                        .error
+                        .as_ref()
+                        .unwrap()
+                        .contains("espejo")
+                );
+            })
+            .unwrap();
+        assert_eq!(
+            std::fs::read(root.0.join("appearance.json")).unwrap(),
+            foreign
+        );
+        assert_eq!(
+            crate::shell::settings::store::Store::load(&root.0, false)
+                .value
+                .appearance
+                .palette,
+            Palette::Ocean
+        );
+        draw(window, &mut cx);
+        window
+            .update(&mut cx, |_, window, _| window.remove_window())
+            .unwrap();
+        drop(cx);
+        app.quit();
+    });
+}

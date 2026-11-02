@@ -1,6 +1,7 @@
 ## VANTA-130 · decisión vigente: solo 6; 7 aplazado a 8 (3-nov-2026)
 
-No se toca layout/motion_policy/host. Reserva liberada vía orquestador/VANTA-129.
+El formato del layout queda intacto; ui/layout solo adapta el patrón del error CAS.
+Motion_policy/host intactos; su reserva se libera vía orquestador/VANTA-129.
 Añadir reducedMotion al layout v1 rompe el rollback con lectores estrictos viejos;
 7 espera una política compatible en 8. Domain Preferences queda intacto.
 Store v2 es autoridad. Solo después de guardar Apariencia por acción del usuario,

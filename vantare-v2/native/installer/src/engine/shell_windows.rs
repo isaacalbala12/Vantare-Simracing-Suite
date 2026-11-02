@@ -12,7 +12,7 @@ use windows::{
         System::{
             Com::{
                 CLSCTX_INPROC_SERVER, COINIT_APARTMENTTHREADED, CoCreateInstance, CoInitializeEx,
-                CoTaskMemFree, CoUninitialize, IPersistFile, STGM_READ,
+                CoTaskMemFree, CoUninitialize, IPersistFile, STGM_READ, STGM_READWRITE,
                 StructuredStorage::PROPVARIANT,
             },
             Registry::{
@@ -116,7 +116,7 @@ pub fn write_link(
     let persist: IPersistFile = link.cast().map_err(|cause| error(&cause))?;
     if path.try_exists()? {
         // Preserve fields outside the projection (description, hotkey, working directory).
-        unsafe { persist.Load(PCWSTR(destination.as_ptr()), STGM_READ) }
+        unsafe { persist.Load(PCWSTR(destination.as_ptr()), STGM_READWRITE) }
             .map_err(|cause| error(&cause))?;
     }
     unsafe {

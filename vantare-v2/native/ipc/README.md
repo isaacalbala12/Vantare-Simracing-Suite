@@ -1,5 +1,20 @@
 # ipc — fotos versionadas
 
+## Documentos locales — #1869, paso 4
+
+`files` comparte lectura acotada y guardado entre Launcher, layout, Engineer y
+Workshop. Rechaza componentes `.env*`, toma el lock del SO, limpia únicamente
+temporales numéricos del mismo documento, escribe y sincroniza un temporal
+exclusivo, lo cierra y renombra sin borrar primero el destino. `Observed`
+compara los bytes antes y después (`None` solo permite crear); `Replace` conserva la espera entre guardados
+de Workshop. Solo el layout pide `.bak`. Los nombres legacy de hermanos JSON
+se conservan para extensiones personalizadas. Un editor externo debe respetar
+el lock: la segunda comparación reduce la carrera, pero no puede excluirlo.
+`Error` distingue conflicto, ocupado, tamaño, entorno e I/O. La fachada
+`launcher::files` conserva su API anterior y el límite por llamada: el documento
+de Strategy del Hub admite sus archivos de migración de hasta 12 MiB.
+El repositorio de Strategy conserva su escritor propio.
+
 ## Rutas locales — #1869
 
 `paths::Root` posee el cálculo de base, native, Hub por defecto, layout,

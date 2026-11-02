@@ -18,15 +18,19 @@ Las bases de plataforma también deben ser absolutas.
 
 Desde esa base, los documentos nativos siguen en `Vantare/native`, y el Hub de
 desarrollo en `VantareNative/hub`. Los flags explícitos, incluido `--data-dir`
-de la beta, conservan prioridad. Las rutas de Windows no se mudan; el paso 10
+de la beta, conservan prioridad. Con override absoluto válido, las rutas Windows
+no se mudan. Con override vacío, rights/owner, residente, freshness, Engineer y
+Services pasan de CWD a LOCALAPPDATA; el override relativo ahora da error
+explícito en todos. El paso 10
 de raíz física única queda fuera de esta entrega.
 En Linux, Services y Engineer dejan `XDG_CONFIG_HOME`: no se copia ni se lee
 la carpeta anterior, que se conserva. Linux/macOS solo tienen desarrollo,
 según decisión del orquestador; no hay migración de datos de usuarios allí.
 
 En tests y con `ipc/test-support`, `Root::from_env()` exige override QA absoluto
-y no permite fallback. Services/UI lo activan en dev-dependencies; Runtime lo
-recibe de `services/test-support` y Hub ya usa `ipc/test-support` en sus tests.
+y no permite fallback. Services/UI lo activan en dev-dependencies; Launcher,
+Admin, Engineer y Runtime lo reciben de `services/test-support`. Hub ya usa
+`ipc/test-support` en sus tests.
 Los casos de fallback y errores se prueban con entorno/plataforma inyectados,
 sin mutar el entorno global ni acceder al disco. Cada tanda conserva los tres
 overrides QA de native/LocalAppData/AppData.

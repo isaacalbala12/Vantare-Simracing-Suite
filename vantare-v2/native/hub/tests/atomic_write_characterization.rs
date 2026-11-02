@@ -63,8 +63,10 @@ fn layout_and_presentation_backup_and_json_sibling_names_are_characterized() {
     fs::write(&path, &original).expect("seed");
     let mut first = Document::open(path.clone()).expect("first editor");
     let mut second = Document::open(path.clone()).expect("second editor");
-    let mut changed = Layout::default();
-    changed.hide_off_track = true;
+    let changed = Layout {
+        hide_off_track: true,
+        ..Layout::default()
+    };
     first.save(&changed).expect("save");
     assert_eq!(
         fs::read(path.with_extension("json.bak")).expect("legacy backup name"),
@@ -81,11 +83,9 @@ fn layout_and_presentation_backup_and_json_sibling_names_are_characterized() {
     );
     Presentation::show(&path).expect("show once");
     Presentation::show(&path).expect("show twice");
-    // Estado previo: persist creaba .bak también para la solicitud derivada.
-    assert_eq!(
-        fs::read(path.with_extension("show.json.bak")).expect("old show backup"),
-        b"1"
-    );
+    assert!(!path.with_extension("show.json.bak").exists());
+    // hide sigue retirando copias derivadas de versiones anteriores.
+    fs::write(path.with_extension("show.json.bak"), b"1").expect("legacy show backup");
     Presentation::hide(&path).expect("hide");
     assert!(!path.with_extension("show.json").exists());
     assert!(!path.with_extension("show.json.bak").exists());
@@ -109,12 +109,17 @@ fn orphan_handling_characterization_preserves_documents_when_a_pid_is_reused() {
         )
         .expect("reused PID fixture");
     }
-    // Defectos conocidos de A/L: el temporal exclusivo choca con el huérfano.
-    assert!(vantare_launcher::files::save(&launcher, b"after", Some(b"before")).is_err());
-    assert_eq!(fs::read(&launcher).expect("launcher preserved"), b"before");
+    vantare_launcher::files::save(&launcher, b"after", Some(b"before"))
+        .expect("launcher removes orphan");
+    assert_eq!(fs::read(&launcher).expect("launcher saved"), b"after");
     let mut document = Document::open(layout.clone()).expect("layout");
-    assert!(document.save(&Layout::default()).is_err());
-    assert_eq!(fs::read(&layout).expect("layout preserved"), original);
+    document
+        .save(&Layout::default())
+        .expect("layout removes orphan");
+    assert_eq!(
+        fs::read(layout.with_extension("json.bak")).expect("layout backup"),
+        original
+    );
     // E ya retira esos huérfanos con el lock tomado.
     vantare_ipc::engineer_control::save(&engineer, Some(b"before"), b"after")
         .expect("engineer removes orphan");

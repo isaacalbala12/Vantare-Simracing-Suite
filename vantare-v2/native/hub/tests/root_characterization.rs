@@ -58,6 +58,17 @@ fn common_root_dependency_rejects_missing_empty_and_relative_qa_overrides() {
             }
         }
         let output = child.output().expect("QA subprocess");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        assert!(
+            stdout.lines().any(|line| line == "running 1 test"),
+            "{mode}: {stdout}"
+        );
+        assert!(
+            stdout
+                .lines()
+                .any(|line| line.starts_with("test result: ok. 1 passed; 0 failed;")),
+            "{mode}: {stdout}"
+        );
         assert!(
             output.status.success(),
             "{mode}: {}",

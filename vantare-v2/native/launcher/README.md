@@ -6,7 +6,7 @@ Wails, procesos y disparadores. `files` conserva lectura acotada y guardado
 atómico para los consumidores anteriores del Hub. La presentación y las
 fixtures demo permanecen en `hub/src/launcher`.
 
-Depende de serde/serde_json y services sin su feature HTTP, ya presentes:
+Depende de serde/serde_json, IPC (escritor común) y services sin su feature HTTP, ya presentes:
 conserva el hash y la ruta de confianza existentes. No depende de runtime
 ni ui. Sus pruebas de comportamiento existentes se ejecutan en el crate
 y en Hub; el lifecycle del supervisor verifica los procesos reales.

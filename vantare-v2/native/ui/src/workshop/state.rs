@@ -1,9 +1,7 @@
 use crate::Settings;
 use std::{
     hash::{Hash, Hasher},
-    io::Write as _,
     path::{Path, PathBuf},
-    sync::atomic::{AtomicU64, Ordering},
 };
 
 #[derive(Clone, serde::Serialize, serde::Deserialize)]
@@ -73,64 +71,21 @@ impl Saved {
     }
 
     pub fn save(&self, path: &Path) -> Result<(), String> {
-        // Temporal único por intento con create_new: ni el otro escritor ni un
-        // resto huérfano de un PID reutilizado pueden sobrescribirlo.
-        static NEXT: AtomicU64 = AtomicU64::new(0);
         self.validate()?;
         let mut saved = self.clone();
         saved.settings = saved.settings.normalized();
         let bytes = serde_json::to_vec(&saved).map_err(|error| error.to_string())?;
-        if let Some(parent) = path.parent().filter(|p| !p.as_os_str().is_empty()) {
-            std::fs::create_dir_all(parent).map_err(|error| format!("crear ajustes: {error}"))?;
-        }
-        // Exclusión entre escritores: dos Workshop guardan en serie; el
-        // segundo espera en vez de truncar o renombrar el temporal del primero.
-        let lock = std::fs::OpenOptions::new()
-            .write(true)
-            .create(true)
-            .truncate(false)
-            .open(path.with_extension("json.lock"))
-            .map_err(|error| format!("bloquear ajustes: {error}"))?;
-        lock.lock()
-            .map_err(|error| format!("bloquear ajustes: {error}"))?;
-        let mut attempt = NEXT.fetch_add(1, Ordering::Relaxed);
-        let mut pending = loop {
-            let candidate =
-                path.with_extension(format!("json.{}.{}.tmp", std::process::id(), attempt));
-            match std::fs::OpenOptions::new()
-                .write(true)
-                .create_new(true)
-                .open(&candidate)
-            {
-                Ok(file) => {
-                    break PendingFile {
-                        path: candidate,
-                        file,
-                    };
-                }
-                Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {
-                    attempt = NEXT.fetch_add(1, Ordering::Relaxed);
-                }
-                Err(error) => return Err(format!("guardar ajustes: {error}")),
-            }
-        };
-        let failed = |error: std::io::Error| format!("guardar ajustes: {error}");
-        pending.file.write_all(&bytes).map_err(failed)?;
-        pending.file.sync_all().map_err(failed)?;
-        // rename reemplaza el destino sin borrar primero los ajustes válidos.
-        std::fs::rename(&pending.path, path).map_err(|error| format!("reemplazar ajustes: {error}"))
-    }
-}
-
-/// Temporal en curso: al salir sin renombrar no deja restos que otro
-/// escritor pueda confundir con un guardado válido.
-struct PendingFile {
-    path: PathBuf,
-    file: std::fs::File,
-}
-impl Drop for PendingFile {
-    fn drop(&mut self) {
-        let _ = std::fs::remove_file(&self.path);
+        vantare_ipc::files::save(
+            path,
+            &bytes,
+            vantare_ipc::files::Mode::Replace,
+            &vantare_ipc::files::Options {
+                limit: 65_536,
+                sibling_base: Some(path.with_extension("json")),
+                ..Default::default()
+            },
+        )
+        .map_err(|error| format!("guardar ajustes: {error}"))
     }
 }
 
@@ -138,6 +93,7 @@ impl Drop for PendingFile {
 mod tests {
     use super::*;
     use crate::Kind;
+    use std::sync::atomic::{AtomicU64, Ordering};
 
     fn sample(frame: usize, background: &str) -> Saved {
         Saved {

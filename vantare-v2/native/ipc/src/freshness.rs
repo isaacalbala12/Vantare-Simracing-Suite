@@ -6,7 +6,13 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use vantare_domain::{Capability, Snapshot, SourceState};
 
 fn log_root() -> io::Result<std::path::PathBuf> {
-    Ok(crate::paths::Root::from_env()?.logs())
+    match crate::paths::Root::from_env() {
+        Ok(root) => Ok(root.logs()),
+        Err(crate::paths::Error::MissingBase) => {
+            Ok(std::env::temp_dir().join("Vantare/native/logs"))
+        }
+        Err(error) => Err(error.into()),
+    }
 }
 
 pub fn state(snapshot: &Snapshot) -> (SourceState, Capability, Capability) {

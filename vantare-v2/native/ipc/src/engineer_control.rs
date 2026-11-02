@@ -1,10 +1,11 @@
 //! Contrato de archivos local compartido por Hub y Engineer, sin depender del
 //! worker ni del runtime. Solo `std`/`serde_json`: no introduce otro transporte.
 use serde_json::{Value, json};
-use std::fs::{self, File, OpenOptions};
-use std::io::{self, Read, Write};
+use std::fs;
+#[cfg(test)]
+use std::fs::OpenOptions;
+use std::io;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant, SystemTime};
 
 #[path = "engineer_control/status.rs"]
@@ -226,112 +227,22 @@ fn decode(bytes: &[u8]) -> io::Result<Value> {
     serde_json::from_slice(bytes).map_err(|error| invalid(error.to_string()))
 }
 pub fn read(path: &Path) -> io::Result<Option<Vec<u8>>> {
-    check_path(path)?;
-    let file = match File::open(path) {
-        Ok(file) => file,
-        Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(None),
-        Err(error) => return Err(error),
-    };
-    let mut bytes = Vec::new();
-    file.take(MAX_BYTES + 1).read_to_end(&mut bytes)?;
-    if bytes.len() as u64 > MAX_BYTES {
-        return Err(invalid("Engineer supera 64 KiB"));
-    }
-    Ok(Some(bytes))
+    crate::files::read_optional(path, MAX_BYTES).map_err(Into::into)
 }
 
-/// Lock del SO entre escritores, temporal exclusivo + fsync + rename y conflicto
-/// por bytes antes del reemplazo. Los editores externos deben respetar el lock.
+/// Conserva límites, bytes observados y nombres de hermanos legacy.
 pub fn save(path: &Path, expected: Option<&[u8]>, bytes: &[u8]) -> io::Result<()> {
-    static NEXT: AtomicU64 = AtomicU64::new(0);
-    check_path(path)?;
-    if bytes.len() as u64 > MAX_BYTES {
-        return Err(invalid("Engineer supera 64 KiB"));
-    }
-    if let Some(parent) = path.parent().filter(|p| !p.as_os_str().is_empty()) {
-        fs::create_dir_all(parent)?;
-    }
-    let lock = OpenOptions::new()
-        .write(true)
-        .create(true)
-        .truncate(false)
-        .open(path.with_extension("json.lock"))?;
-    lock.try_lock()
-        .map_err(|error| io::Error::other(format!("conflicto de escritor Engineer: {error}")))?;
-    let conflict =
-        || io::Error::other("conflicto: Engineer cambió en disco; recargar antes de guardar");
-    if read(path)?.as_deref() != expected {
-        return Err(conflict());
-    }
-    // Con el lock tomado, ningún escritor de este documento mantiene un temporal vivo.
-    // Retirar solo nombres del protocolo anterior: <documento>.json.<pid>.<contador>.tmp.
-    let base = path.with_extension("json");
-    let prefix = format!(
-        "{}.",
-        base.file_name()
-            .ok_or_else(|| invalid("ruta sin nombre"))?
-            .to_string_lossy()
-    );
-    let parent = path
-        .parent()
-        .filter(|p| !p.as_os_str().is_empty())
-        .unwrap_or(Path::new("."));
-    for entry in fs::read_dir(parent)? {
-        let entry = entry?;
-        let name = entry.file_name();
-        let name = name.to_string_lossy();
-        let Some(suffix) = name
-            .strip_prefix(&prefix)
-            .and_then(|s| s.strip_suffix(".tmp"))
-        else {
-            continue;
-        };
-        let Some((pid, sequence)) = suffix.split_once('.') else {
-            continue;
-        };
-        if pid.parse::<u32>().is_ok()
-            && sequence.parse::<u64>().is_ok()
-            && entry.file_type()?.is_file()
-        {
-            fs::remove_file(entry.path())?;
-        }
-    }
-    let temporary = path.with_extension(format!(
-        "json.{}.{}.tmp",
-        std::process::id(),
-        NEXT.fetch_add(1, Ordering::Relaxed)
-    ));
-    let mut file = OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .open(&temporary)?;
-    let result = (|| {
-        file.write_all(bytes)?;
-        file.sync_all()?;
-        drop(file);
-        if read(path)?.as_deref() != expected {
-            return Err(conflict());
-        }
-        fs::rename(&temporary, path)
-    })();
-    if result.is_err()
-        && let Err(error) = fs::remove_file(&temporary)
-    {
-        eprintln!("temporal Engineer: {error}");
-    }
-    result
-}
-
-fn check_path(path: &Path) -> io::Result<()> {
-    if path.components().any(|part| {
-        part.as_os_str()
-            .to_string_lossy()
-            .to_ascii_lowercase()
-            .starts_with(".env")
-    }) {
-        return Err(invalid("archivo de entorno no permitido"));
-    }
-    Ok(())
+    crate::files::save(
+        path,
+        bytes,
+        crate::files::Mode::Observed(expected),
+        &crate::files::Options {
+            limit: MAX_BYTES,
+            sibling_base: Some(path.with_extension("json")),
+            ..Default::default()
+        },
+    )
+    .map_err(Into::into)
 }
 
 /// Ausencia inicial usa los ajustes CLI. JSON roto/archivo retirado conserva lo

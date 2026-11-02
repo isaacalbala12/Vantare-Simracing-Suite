@@ -1,8 +1,9 @@
 //! Documento propio de UI: posiciones globales, opciones y persistencia local.
 use std::collections::HashSet;
-use std::fs::{self, File, OpenOptions};
-use std::io::{self, Read, Write};
+use std::fs::{self, OpenOptions};
+use std::io;
 use std::path::{Path, PathBuf};
+#[cfg(test)]
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::SystemTime;
 
@@ -280,18 +281,15 @@ pub fn default_path() -> Result<PathBuf, Error> {
     Ok(root.layout())
 }
 
-fn read(path: &Path) -> Result<Option<Vec<u8>>, Error> {
-    let file = match File::open(path) {
-        Ok(file) => file,
-        Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(None),
-        Err(error) => return Err(error.into()),
-    };
-    let mut bytes = Vec::new();
-    file.take(MAX_BYTES + 1).read_to_end(&mut bytes)?;
-    if bytes.len() as u64 > MAX_BYTES {
-        return Err(Error::Invalid("layout supera 1 MiB"));
+fn write_error(error: vantare_ipc::files::Error) -> Error {
+    match error {
+        vantare_ipc::files::Error::Conflict | vantare_ipc::files::Error::Busy => Error::Conflict,
+        vantare_ipc::files::Error::TooLarge => Error::Invalid("layout supera 1 MiB"),
+        error => Error::Io(error.into()),
     }
-    Ok(Some(bytes))
+}
+fn read(path: &Path) -> Result<Option<Vec<u8>>, Error> {
+    vantare_ipc::files::read_optional(path, MAX_BYTES).map_err(write_error)
 }
 
 fn modified(path: &Path) -> Option<SystemTime> {
@@ -402,7 +400,7 @@ impl Document {
         if bytes.len() as u64 > MAX_BYTES {
             return Err(Error::Invalid("layout supera 1 MiB"));
         }
-        persist(&self.path, self.bytes.as_deref(), &bytes, || Ok(()))?;
+        persist(&self.path, self.bytes.as_deref(), &bytes, true)?;
         self.bytes = Some(bytes);
         self.layout = layout;
         self.modified = modified(&self.path);
@@ -442,12 +440,7 @@ impl Presentation {
             .checked_add(1)
             .ok_or(Error::Invalid("solicitud agotada"))?;
         let bytes = serde_json::to_vec(&next).map_err(Error::Json)?;
-        persist(
-            &watcher.path,
-            watcher.observed.as_deref(),
-            &bytes,
-            || Ok(()),
-        )
+        persist(&watcher.path, watcher.observed.as_deref(), &bytes, false)
     }
     /// Deja de mostrar: retira por el mismo canal la solicitud vigente.
     /// Sin solicitud vigente no hace nada.
@@ -495,66 +488,37 @@ impl Presentation {
     }
 }
 
-// Serializa los escritores de esta API; los bytes comparados siguen siendo la
-// autoridad del conflicto. Un editor externo se detecta antes del reemplazo.
-struct PendingFile {
-    path: PathBuf,
-    file: File,
-}
-impl Drop for PendingFile {
-    fn drop(&mut self) {
-        let _ = fs::remove_file(&self.path);
+fn write_options(path: &Path, backup: bool) -> vantare_ipc::files::Options {
+    vantare_ipc::files::Options {
+        limit: MAX_BYTES,
+        backup,
+        sibling_base: Some(path.with_extension("json")),
     }
 }
-
-fn persist(
+fn persist(path: &Path, expected: Option<&[u8]>, bytes: &[u8], backup: bool) -> Result<(), Error> {
+    vantare_ipc::files::save(
+        path,
+        bytes,
+        vantare_ipc::files::Mode::Observed(expected),
+        &write_options(path, backup),
+    )
+    .map_err(write_error)
+}
+#[cfg(test)]
+fn persist_with_hook(
     path: &Path,
     expected: Option<&[u8]>,
     bytes: &[u8],
     before_rename: impl FnOnce() -> io::Result<()>,
 ) -> Result<(), Error> {
-    static NEXT: AtomicU64 = AtomicU64::new(0);
-    if let Some(parent) = path.parent().filter(|p| !p.as_os_str().is_empty()) {
-        fs::create_dir_all(parent)?;
-    }
-    let lock = OpenOptions::new()
-        .write(true)
-        .create(true)
-        .truncate(false)
-        .open(path.with_extension("json.lock"))?;
-    match lock.try_lock() {
-        Ok(()) => {}
-        Err(std::fs::TryLockError::WouldBlock) => return Err(Error::Conflict),
-        Err(std::fs::TryLockError::Error(error)) => return Err(error.into()),
-    }
-    if read(path)?.as_deref() != expected {
-        return Err(Error::Conflict);
-    }
-    let temporary = path.with_extension(format!(
-        "json.{}.{}.tmp",
-        std::process::id(),
-        NEXT.fetch_add(1, Ordering::Relaxed)
-    ));
-    let mut pending = PendingFile {
-        file: OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .open(&temporary)?,
-        path: temporary,
-    };
-    pending.file.write_all(bytes)?;
-    pending.file.sync_all()?;
-    if expected.is_some() {
-        fs::copy(path, path.with_extension("json.bak"))?;
-    }
-    before_rename()?;
-    if read(path)?.as_deref() != expected {
-        return Err(Error::Conflict);
-    }
-    // rename reemplaza el destino sin borrar primero el layout válido.
-    fs::rename(&pending.path, path)?;
-    drop(lock);
-    Ok(())
+    vantare_ipc::files::save_with_hook(
+        path,
+        bytes,
+        vantare_ipc::files::Mode::Observed(expected),
+        &write_options(path, true),
+        before_rename,
+    )
+    .map_err(write_error)
 }
 
 #[cfg(test)]
@@ -807,7 +771,7 @@ mod tests {
         let mut second = Document::open(path.clone()).expect("segundo editor");
         let changed = Layout::default();
         assert!(
-            persist(&path, Some(FIXTURE), b"nuevo", || Err(io::Error::other(
+            persist_with_hook(&path, Some(FIXTURE), b"nuevo", || Err(io::Error::other(
                 "fallo simulado"
             )))
             .is_err()
@@ -865,7 +829,7 @@ mod tests {
         let path = dir.join("layout.json");
         fs::write(&path, FIXTURE).expect("fixture");
         let injected = b"{\"version\":1,\"instances\":[]}";
-        let result = persist(&path, Some(FIXTURE), b"nuevo", || {
+        let result = persist_with_hook(&path, Some(FIXTURE), b"nuevo", || {
             fs::write(&path, injected)?;
             Ok(())
         });

@@ -25,6 +25,8 @@ def git(*args):
 
 
 def category(path, projection=False):
+    if path.startswith(PREFIX + "native/installer/tooling/") and path.endswith(".rs"):
+        return "rust_qa_tooling"
     if projection and path in {
         PREFIX + "native/hub/src/installation.rs",
         PREFIX + "native/hub/src/settings/windows.rs",

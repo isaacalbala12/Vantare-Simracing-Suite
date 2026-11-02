@@ -698,6 +698,29 @@ Sin merge/release del worker.
   Medidas y limitaciones actualizadas en la evidencia; siguiente: integrar por
   el orquestador tras revisar CI. Plane En curso; sin merge/release del worker.
 
+### Paso 5b en curso: poda antes del lanzador (2-nov-2026)
+
+Encargo del orquestador, #1840 / VANTA-127. Rama propia
+vantareapp/isa-1840-paso5b-poda, worktree D:/VantareServer/worktrees/isa-1840-paso5b,
+target exclusivo D:/VantareServer/targets/isa-1840-p5b. Base nightly83716fe93,
+con los cambios propios de #1883 incorporados como dependencia local hasta su
+integración. Punto anterior a la poda: dacce28a1b4ad1fc356dbd70e3046ffa39faac86;
+producción ampliada14194. Se retirará esa dependencia del diff al actualizar
+la base nightly antes de entregar el PR.
+
+- Dos perfiles Display/Verified, una lectura y verificación por operación,
+  inventario del manifiesto autenticado sin catálogo manual; State/versión comunes.
+- Una validación Rust del marker y una frontera Windows; se conserva la
+  comprobación independiente del script Cleanup permanente. Quitar identidad QA
+  paralela sin perder Context, HKCU/carpetas inyectados ni guard.
+- batch pasa a tooling y se mide aparte; borrar driver no ejecutado por producto.
+  Matriz por invariantes con45 rechazos por motivo, no bytes heredados de PS.
+- Techo obligatorio5b≤12800; siguientes6≤12200,7≤10080,8≤10110. Parar si no cabe.
+  windows-registry0.6.1 autorizada solo con ahorro real medido. Sin otras deps.
+- LegacyRunner se conserva hasta VM975/988 de Isaac y enmienda ADR; indicador
+  solo se retira tras medir Hub≤1,5s. Nada de paso6 ni consumidores adelantados.
+  Feed/Register/SetStartup siguen heredados. Solo QA guardada; Plane En curso.
+
 ### Paso 5 integrado / paso 5a listo en PR draft (2-nov-2026)
 
 Revisión de #1883 aplicada sobre aade963fbf5717c88716256672bd26e829ee08fb:

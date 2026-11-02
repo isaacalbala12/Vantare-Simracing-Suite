@@ -2,6 +2,7 @@
 //! Shared installation reads and in-process mutations; GPUI only presents them.
 pub mod args;
 #[cfg(all(windows, feature = "parity-capture"))]
+#[path = "../tooling/batch.rs"]
 mod batch;
 #[cfg(windows)]
 mod command_line;

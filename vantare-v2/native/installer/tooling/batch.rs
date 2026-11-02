@@ -15,7 +15,6 @@ use std::{
 };
 use vantare_ui::{capture, capture_window};
 
-const ROOT: &str = "C:/tmp/ola2/1591-qa";
 const WIDTH: i32 = 720;
 const HEIGHT: i32 = 460;
 
@@ -54,7 +53,7 @@ enum Step {
     Scene(&'static str),
 }
 
-/// Engine milestones as sent by installer-driver.ps1, on a compressed clock.
+/// Engine milestones on the capture's compressed clock.
 fn script(scene: &str, size: u64) -> Result<Vec<(u64, Step)>, String> {
     let mut steps = Vec::new();
     match scene {
@@ -94,11 +93,7 @@ fn script(scene: &str, size: u64) -> Result<Vec<(u64, Step)>, String> {
 }
 
 fn inside_qa(path: &Path) -> Result<(), String> {
-    if crate::args::within(path, Path::new(ROOT)) {
-        Ok(())
-    } else {
-        Err(format!("{} fuera de la raíz QA", path.display()))
-    }
+    crate::engine::context::qa_path(path).map_err(|error| error.to_string())
 }
 
 fn snapshot(path: &Path) -> Result<Info, String> {

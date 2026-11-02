@@ -9,6 +9,16 @@
 
 **Notas de vigencia de la copia histórica (actualizadas 2-nov-2026, #1840):**
 
+- Replanteo aprobado antes de6: paso5b de poda, perfiles Rust Display/Verified,
+  lectura/hash una vez por operación, inventario desde manifiesto autenticado,
+  sin identidad QA paralela, marcador/Windows/versión comunes, batch a tooling
+  y driver retirado. La matriz conserva invariantes y45 rechazos por motivo,
+  no la igualdad de bytes con PS. Presupuestos ampliados:5b≤12800,6≤12200,
+  7≤10080,8≤10110; se para si no cabe. windows-registry0.6.1 solo con ahorro
+  medido. LegacyRunner se conserva hasta VM975/988 de Isaac y enmienda ADR;
+  indicador hasta medir Hub≤1,5s. Las demás retiradas legacy van en6–7 y se
+  mantienen migraciones baratas de datos/preferencias. Véase enmienda ADR0103.
+
 - §4.5, pasos5/7: decisión posterior permanente. Solo Cleanup conserva un script
   mínimo PowerShell: esperar al padre, exclusión, validar raíz/temporal/marcador/SHA
   y borrar el EXE propio, marcador y temporal. No interpreta ni escribe estado,

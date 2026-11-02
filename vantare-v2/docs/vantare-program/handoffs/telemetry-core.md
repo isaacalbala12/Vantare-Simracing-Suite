@@ -20,13 +20,23 @@ RED confirmado en `01dff4c81`: el pipe acepta 2 conexiones al pasar
 OnTrack→Garage, esperada 1 (Nextest `2062a9cc-37ba-4687-b242-2ff49921da5d`,
 0,301 s; RETRY=250 ms, sin medir pintado). Paso 1 preparado como bug
 prioritario: `Boundary` compartida, reinicio de cadencia con situación y
-regresión activada. GREEN y gates aún pendientes de cola. Goldens intactos.
-Huellas de retirada: 468/468 PASS. Pasos 2–10 pendientes.
+regresión activada en `848bb1007`. GREEN focal 4/4 (Nextest
+`152fcabd-b250-4ae8-9284-f541d7e77be4`): pipe, identidades omitidas,
+frontera por señal/situación y cadencia inyectada. Tanda final de gates
+por cola pendiente; goldens intactos.
+Huellas de retirada: 468/468 PASS. CI de `848bb1007`: check PASS;
+Clippy FAIL por tres puntos y coma de closures de tests, corregidos sin
+cambiar aserciones. Log conservado en `ci-clippy-before.log` de evidencia.
+Pasos 2–10 pendientes.
 
 Decisiones: ACC experimental con golden; lectores v7–v10 y delta por Look
 se conservan. Fuera DTO v12, capacidades en núcleo y conectar ACC.
 Coordinación VANTA-130: paths/files, session_alerts, Hub y resolvedores de
-runtime quedan para ese frente. Su edición de exports de `ipc/src/lib.rs`
+runtime quedan para ese frente. También se reservan solo sus líneas de
+raíz/carpeta de datos en `ipc/src/{freshness,engineer_control}.rs`,
+`runtime/src/bin/vantare/main.rs`, `runtime/src/rights/owner.rs` y
+`services/src/app.rs`; frescura/500 ms siguen dentro de VANTA-129.
+Su edición de exports de `ipc/src/lib.rs`
 precede al retiro del alias del paso 4. Pasos 7–8 se aplican tras la ola P4.
 Última lectura de Plane: En curso; GitHub Project Vantare: In Progress.
 Evidencia de gates prevista: `D:/VantareServer/evidence/isa-1868-paso0`.

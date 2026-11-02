@@ -852,14 +852,14 @@ mod tests {
         type Change = fn(&mut Observation);
         let cases: [(&str, Change); 4] = [
             ("track", |o| {
-                o.state.session.track_name = Quality::Reliable("other".into())
+                o.state.session.track_name = Quality::Reliable("other".into());
             }),
             ("kind", |o| {
-                o.state.session.kind = Quality::Reliable(vantare_domain::SessionKind::Race)
+                o.state.session.kind = Quality::Reliable(vantare_domain::SessionKind::Race);
             }),
             ("source", |o| o.origin.source.simulator = "other"),
             ("situation", |o| {
-                o.state.driving_situation = vantare_domain::DrivingSituation::Garage
+                o.state.driving_situation = vantare_domain::DrivingSituation::Garage;
             }),
         ];
         for (label, change) in cases {

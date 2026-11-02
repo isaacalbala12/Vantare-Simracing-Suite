@@ -101,7 +101,9 @@ ni afirmación de clic físico realizado. No ejecutar `manual-tray` en CI.
 El paso 2 añade pruebas con reloj inyectado de plazo único, reserva del núcleo,
 revocación, presupuesto de reinicios y conservación del motivo original.
 `background::tests::forced_worker_exit_releases_locks_and_keeps_documents`
-arranca tres hijos que ignoran EOF y un worker bloqueado durante una escritura:
+ejecuta dos variantes con un worker bloqueado durante una escritura: tres hijos
+que ignoran EOF, y tres hijos que atienden EOF. La segunda demuestra que el
+worker por sí solo hace fallar el cierre, aunque todos los hijos salgan limpios.
 verifica fallo dentro de P más margen del arnés, recogida explícita de los hijos,
 documento anterior completo, recuperación del almacenamiento real y locks
 liberados al salir. Los archivos ancla de lock no se borran: se prueba que

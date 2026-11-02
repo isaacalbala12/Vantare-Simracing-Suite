@@ -491,7 +491,9 @@ mod tests {
             );
             thread::yield_now();
         }
-        let status = vantare_ipc::launcher::read_status(&path).expect("estado final completo");
+        let status: Status =
+            serde_json::from_slice(&fs::read(status_path(&path)).expect("documento final visible"))
+                .expect("estado final completo, sin aplicar TTL al heartbeat cero de cierre");
         assert_eq!(status.updated_ms, 0);
         assert!(resident.thread.is_none());
         drop(resident);
@@ -609,7 +611,7 @@ mod tests {
                 .expect("progreso real");
             launched |= event.status == launcher::chain::Status::Launching;
             if event.status == launcher::chain::Status::Done {
-                assert!(event.success);
+                assert!(event.success, "{}", event.message);
                 break;
             }
         }

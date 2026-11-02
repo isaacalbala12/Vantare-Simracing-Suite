@@ -17,6 +17,7 @@ use vantare_services::storage::{Read, Store};
 
 const MODE: &str = "VANTARE_TEST_P2_FORCED_WORKER";
 const ROOT: &str = "VANTARE_TEST_P2_ROOT";
+const COOPERATIVE: &str = "VANTARE_TEST_P2_COOPERATIVE";
 const OLD: &[u8] = br#"{"version":1,"updated_ms":1,"profiles":[]}"#;
 
 struct OwnedProcess(Child);
@@ -47,10 +48,16 @@ fn forced_worker_exit_releases_locks_and_keeps_documents() {
     if std::env::var_os(MODE).is_some() {
         fixture_session();
     }
+    for cooperative in [false, true] {
+        check_force(cooperative);
+    }
+}
+
+fn check_force(cooperative: bool) {
     let id = vantare_services::random_id().expect("id");
     let root = std::env::temp_dir().join(format!("vantare-p2-force-{id}"));
     fs::create_dir(&root).expect("raíz temporal propia");
-    let mut process = start_fixture(&root);
+    let mut process = start_fixture(&root, cooperative);
     let pids = until(|| {
         let log = fs::read_to_string(root.join("session.log")).ok()?;
         let pids: Vec<u32> = log
@@ -104,12 +111,17 @@ fn forced_worker_exit_releases_locks_and_keeps_documents() {
             .expect("observar PID propio")
             .success()
     }));
+    if cooperative {
+        let log = fs::read_to_string(root.join("session.log")).expect("diagnóstico");
+        assert!(!log.contains("se le mata"), "los hijos salen por EOF");
+        assert!(log.contains("worker de sesión fuera de plazo"));
+    }
     check_documents_and_locks(&root);
     drop(process);
     fs::remove_dir_all(root).expect("limpiar sólo raíz propia");
 }
 
-fn start_fixture(root: &Path) -> OwnedProcess {
+fn start_fixture(root: &Path, cooperative: bool) -> OwnedProcess {
     let mut command = Command::new(std::env::current_exe().expect("test"));
     command
         .args([
@@ -119,6 +131,7 @@ fn start_fixture(root: &Path) -> OwnedProcess {
         ])
         .env(MODE, "1")
         .env(ROOT, root)
+        .env(COOPERATIVE, if cooperative { "1" } else { "0" })
         .env("VANTARE_NATIVE_DATA_ROOT", root)
         .env("LOCALAPPDATA", root)
         .stdin(Stdio::null())
@@ -231,6 +244,10 @@ fn fixture_session() -> ! {
 #[test]
 fn stalled_child() {
     if std::env::var_os(MODE).is_none() {
+        return;
+    }
+    if std::env::var(COOPERATIVE).is_ok_and(|value| value == "1") {
+        io::copy(&mut io::stdin(), &mut io::sink()).expect("EOF del supervisor");
         return;
     }
     #[cfg(windows)]

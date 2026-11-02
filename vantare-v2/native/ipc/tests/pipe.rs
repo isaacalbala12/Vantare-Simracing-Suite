@@ -82,6 +82,7 @@ fn driving_situation_changes_keep_the_demanded_pipe_connected() {
     let mut demand = Demand::default();
     demand.request(Signal::SessionClock, 16);
     demand.request(Signal::Weather, 250);
+    demand.request(Signal::Flags, 0); // Cada revisión llega aunque no venza ninguna otra señal.
     // Centinela: mantiene una señal fuera de cadencia incluso con contención
     // del servidor. No se usa el tiempo de pared como oráculo de reconexión.
     demand.request(Signal::TrackName, 5000);
@@ -105,30 +106,69 @@ fn driving_situation_changes_keep_the_demanded_pipe_connected() {
         DrivingSituation::Replay,
     ] {
         photo.state.driving_situation = situation;
-        let deadline = Instant::now() + WAIT;
-        loop {
-            photo.sequence += 1;
-            publisher.publish(Arc::new(photo.clone())).unwrap();
-            // La espera permite que venza la señal de 16 ms sin sleeps;
-            // recibir una foto sincroniza cada transición con el consumidor.
-            let received = subscriber.next_photo(Duration::from_millis(16));
-            assert_eq!(
-                connections.load(Ordering::SeqCst),
-                1,
-                "reconexión en {situation:?}"
-            );
-            assert!(Instant::now() < deadline, "foto de {situation:?}");
-            if let Some(received) = received {
-                assert_eq!(received.snapshot.state.driving_situation, situation);
-                assert_eq!(
-                    received.snapshot.state.session.track_name,
-                    photo.state.session.track_name
-                );
-                assert_eq!(received.demand, demand);
-                break;
-            }
-        }
+        photo.sequence += 1;
+        photo.state.session.track_name =
+            Quality::Reliable(format!("rehidratada {}", photo.sequence));
+        publisher.publish(Arc::new(photo.clone())).unwrap();
+        // Barrera explícita: no se publica otra revisión hasta recibir esta.
+        let received = subscriber
+            .next_photo(WAIT)
+            .expect("revisión de la transición");
+        assert_eq!(revision(&received.snapshot), revision(&photo));
+        assert_eq!(
+            connections.load(Ordering::SeqCst),
+            1,
+            "reconexión en {situation:?}"
+        );
+        assert_eq!(received.snapshot.state.driving_situation, situation);
+        assert_eq!(
+            received.snapshot.state.session.track_name,
+            photo.state.session.track_name
+        );
+        assert_eq!(received.demand, demand);
     }
+}
+
+#[cfg(feature = "test-support")]
+#[test]
+fn a_partial_after_situation_rehydration_keeps_the_new_slow_signal() {
+    use vantare_domain::{DrivingSituation, SourceState};
+    use vantare_ipc::{Demand, Signal, test_support::ScriptedPhotos};
+    let mut requested = Demand::default();
+    requested.request(Signal::SessionClock, 16);
+    requested.request(Signal::TrackName, 250);
+    let (feed, mut subscriber) =
+        ScriptedPhotos::connect(&unique_name("partial-after-situation"), requested.clone())
+            .unwrap();
+    let mut photo = (*snapshot(1, 1)).clone();
+    photo.state.source_state = SourceState::Live;
+    photo.state.driving_situation = DrivingSituation::OnTrack;
+    feed.publish(&photo, &requested).unwrap();
+    assert_eq!(next(&mut subscriber), (1, 1));
+
+    photo.sequence = 2;
+    photo.state.driving_situation = DrivingSituation::Garage;
+    photo.state.session.track_name = Quality::Reliable("rehidratada".into());
+    feed.publish(&photo, &requested).unwrap();
+    assert_eq!(next(&mut subscriber), (1, 2));
+
+    photo.sequence = 3;
+    photo.state.session.track_name = Quality::Reliable("todavía no entregada".into());
+    photo.state.session.elapsed_s = Quality::Reliable(42.0);
+    let mut partial = Demand::default();
+    partial.request(Signal::SessionClock, 16);
+    feed.publish(&photo, &partial).unwrap();
+    let received = subscriber.next_photo(WAIT).expect("parcial aceptado");
+    assert_eq!(revision(&received.snapshot), (1, 3));
+    assert_eq!(
+        received.snapshot.state.session.elapsed_s,
+        Quality::Reliable(42.0)
+    );
+    assert_eq!(
+        received.snapshot.state.session.track_name,
+        Quality::Reliable("rehidratada".into())
+    );
+    assert_eq!(received.demand, requested);
 }
 
 #[test]

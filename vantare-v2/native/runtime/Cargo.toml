@@ -56,5 +56,9 @@ workspace = true
 vantare-build-support.workspace = true
 
 [dev-dependencies]
+vantare-ipc = { workspace = true, features = ["test-support"] }
+# Oráculo de tests: orden de claves conservado al retirar campos de la vista v9.
+# Misma dependencia y versión ya fijadas; no activa este feature en builds normales.
+serde_json = { version = "1", features = ["preserve_order"] }
 vantare-services = { workspace = true, features = ["network", "test-support"] }
 getrandom = "0.3"

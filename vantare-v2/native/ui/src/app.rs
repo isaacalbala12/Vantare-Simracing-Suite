@@ -26,6 +26,8 @@ use crate::efficiency::text;
 use crate::overlay::{self, Hwnd};
 use crate::{Kind, Settings, Widget};
 
+const PAUSE_BANNER_HEIGHT: f32 = 22.0;
+
 /// Cómo se pinta un widget en el lienzo que GPUI le da.
 pub(crate) type Paint = Box<dyn Fn(&mut PaintWindow<'_>, &mut App)>;
 
@@ -300,7 +302,15 @@ impl Overlay {
 
     pub fn wanted_size(&self) -> (f32, f32) {
         let (width, height) = self.widget.size();
-        (width, height + if self.paused { 22.0 } else { 0.0 })
+        (
+            width,
+            height
+                + if self.paused {
+                    PAUSE_BANNER_HEIGHT
+                } else {
+                    0.0
+                },
+        )
     }
 
     pub fn frame_size(&self) -> (f32, f32) {
@@ -509,9 +519,9 @@ impl Render for Overlay {
                         crate::efficiency::paint_rect(
                             &mut window,
                             0.0,
-                            size.1 - 22.0,
+                            size.1 - PAUSE_BANNER_HEIGHT,
                             size.0,
-                            22.0,
+                            PAUSE_BANNER_HEIGHT,
                             crate::efficiency::col(0x101113, 0.95),
                         );
                         text::draw(
@@ -1941,7 +1951,10 @@ mod tests {
                 overlay.project_snapshot(&paused),
                 "aviso de pausa en {kind:?}"
             );
-            assert_eq!(overlay.wanted_size(), (normal_size.0, normal_size.1 + 22.0));
+            assert_eq!(
+                overlay.wanted_size(),
+                (normal_size.0, normal_size.1 + PAUSE_BANNER_HEIGHT)
+            );
             paused.sequence += 1;
             assert!(
                 !overlay.project_snapshot(&paused),
@@ -1960,25 +1973,24 @@ mod tests {
 
     #[test]
     fn paused_pipe_photos_reach_the_shared_overlay_projection_without_new_samples() {
-        use std::sync::Arc;
         use vantare_domain::SourceState;
-        use vantare_ipc::{Demand, Publisher, Subscriber};
+        use vantare_ipc::{Demand, Signal, test_support::ScriptedPhotos};
 
         let name = format!("vantare-pause-overlay-{}", std::process::id());
-        let mut publisher = Publisher::new(&name, |_| true).unwrap();
-        let mut subscriber = Subscriber::connect_requested(&name, Demand::all(), |_| true).unwrap();
-        let source = publisher.demand_source();
-        let deadline = std::time::Instant::now() + Duration::from_secs(10);
-        while source.mask() != Demand::all().mask() {
-            assert!(std::time::Instant::now() < deadline, "saludo con demanda");
-            std::thread::yield_now();
+        let mut requested = Demand::default();
+        for &signal in Signal::ALL {
+            requested.request(signal, 5000);
         }
+        let mut partial = Demand::default();
+        partial.request(Signal::SessionClock, 0);
+        requested.request(Signal::SessionClock, 0);
+        let (feed, mut subscriber) = ScriptedPhotos::connect(&name, requested.clone()).unwrap();
         let mut photo =
             vantare_ipc::snapshot_from_saved_json(include_str!("../fixtures/pedals.snapshot.json"))
                 .unwrap();
         photo.state.source_state = SourceState::Live;
         photo.sequence = 1;
-        publisher.publish(Arc::new(photo.clone())).unwrap();
+        feed.publish(&photo, &requested).unwrap();
         let live = subscriber.next(Duration::from_secs(10)).unwrap();
         let mut overlays: Vec<_> = Kind::ALL
             .iter()
@@ -1994,22 +2006,40 @@ mod tests {
             photo.sequence = sequence;
             photo.origin.received_at += Duration::from_millis(100);
             photo.state.source_state = SourceState::Paused;
-            publisher.publish(Arc::new(photo.clone())).unwrap();
+            photo.state.session.elapsed_s = vantare_domain::Quality::Reliable(sequence as f64);
+            if sequence == 3 {
+                photo.state.player.as_mut().unwrap().telemetry.throttle =
+                    vantare_domain::Quality::Reliable(0.9876);
+                assert_ne!(
+                    photo.state.player, live.state.player,
+                    "el productor ya tiene datos nuevos"
+                );
+            }
+            feed.publish(&photo, if sequence == 2 { &requested } else { &partial })
+                .unwrap();
             let paused = subscriber.next(Duration::from_secs(10)).unwrap();
             assert_eq!(
                 paused.state.player, live.state.player,
-                "el pipe conserva los datos"
+                "el parcial retiene los datos lentos de la última hidratación completa"
+            );
+            assert_eq!(paused.sequence, sequence);
+            assert_eq!(
+                paused.state.session.elapsed_s,
+                photo.state.session.elapsed_s
             );
             for (overlay, size) in &mut overlays {
                 // Es la función que llama Overlay::ingest; no necesita ventana
                 // ni Context GPUI para probar retención, historia y banner.
                 assert_eq!(overlay.project_snapshot(&paused), sequence == 2);
-                assert_eq!(overlay.wanted_size(), (size.0, size.1 + 22.0));
+                assert_eq!(
+                    overlay.wanted_size(),
+                    (size.0, size.1 + PAUSE_BANNER_HEIGHT)
+                );
             }
         }
         photo.sequence = 4;
         photo.state.source_state = SourceState::Live;
-        publisher.publish(Arc::new(photo)).unwrap();
+        feed.publish(&photo, &requested).unwrap();
         let resumed = subscriber.next(Duration::from_secs(10)).unwrap();
         for (overlay, size) in &mut overlays {
             assert!(overlay.project_snapshot(&resumed));

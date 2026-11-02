@@ -91,5 +91,10 @@ activa como regresión: `Boundary` compartida fuerza toda la demanda al cambiar
 de situación, también si la fuente sigue en Live. No cambia el DTO v11.
 Usa demanda de 16/250 ms y una señal centinela a 5 s para observar reconexiones
 sin inferirlas de un umbral de latencia. El test puro fija la cadencia a 16 ms.
+La revisión P3 añade Flags a 0 ms como barrera: se espera la revisión exacta
+antes de publicar otra, sin sondeos de 16 ms ni fotos rezagadas. Un emisor
+`test-support` con máscaras explícitas comprueba completa→parcial después de
+rehidratar: llega el reloj nuevo y se conserva la señal lenta de la nueva
+situación. Usa el codec/suscriptor reales y cierra su hilo y pipe al terminar.
 La pausa se prueba con pipe real hasta `Overlay::project_snapshot`, llamada
 desde `Overlay::ingest`; no acredita una ventana GPUI ni una sesión física.

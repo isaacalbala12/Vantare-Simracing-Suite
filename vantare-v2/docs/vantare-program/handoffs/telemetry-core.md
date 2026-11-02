@@ -49,7 +49,15 @@ worktree `D:/VantareServer/worktrees/isa-1868-paso2`, base `bc239c063`.
 P3: barrera explícita en pipe; parcial tras rehidratación con señal lenta
 retenida; pausa con hidratación parcial real; altura desde constante de banner.
 Paso 2: vista de oráculo estructurada; mismos bytes/hashes, sin regeneración.
-Siguiente: caracterizar primero los bytes actuales y entregar PR draft a nightly.
+Caracterización previa `e3e694558`: 3857 fotos congeladas byte a byte PASS;
+regresión sintética RED por recorte de un valor next_kind anidado con coma.
+Run `208b82de-c7c6-44c2-9a6b-429f277e0a61`, log de antes conservado.
+Implementado paso 2 con DTO→Value (sin texto intermedio), claves en orden y
+retirada por campo. Features dev de dependencias ya existentes; ningún paquete,
+versión o lock nuevo. P3 preparados con recepción por revisión y emisor de
+máscaras controladas, cancelación/cierre; pausa conserva datos lentos distintos
+del productor mientras el reloj nuevo sí llega. Altura única del banner.
+Siguiente: GREEN focal, gates por cola y PR draft; sin regenerar goldens.
 Sin merge, promoción ni release. QA física, píxeles y paint-stats/latencia
 no medidos en el servidor compartido. Ejecución Sol con esfuerzo medium fijado
 por esta sesión; no se ha supuesto high. El texto inferior conserva historia,

@@ -11,7 +11,7 @@
 //! - `lmu_practice_gaps_follow_the_position`: orden/gaps de práctica LMU.
 //! - `acc_native_positions_stay_unique_during_overtakes`: orden único en adelantamientos.
 //!
-//! `legacy_dto` omite vehículo/paradas LMU, ceros REST calma/seco, situación v10
+//! `oracle_view` omite vehículo/paradas LMU, ceros REST calma/seco, situación v10
 //! y los siete campos v11. No los certifica este golden: `launch_coverage`
 //! comprueba SHM/REST, energía y tiempos; `lmu_conformance` etiquetas/paradas;
 //! `signals_tests` ceros/TTL/identidad; `ipc` codec v11 y sus calidades.
@@ -28,13 +28,23 @@ use vantare_domain::{Adapter, AdapterError, Observation};
 use vantare_runtime::adapter::{open_acc_replay, open_replay};
 use vantare_runtime::core::Core;
 
-// #1562: v10 adds situation metadata. Preserve all v9 telemetry bytes and
-// hashes without rewriting the frozen oracle. Situation has independent tests.
+// Las fixtures guardadas conservan su orden y sus valores; solo cambia la
+// versión de la vista, nunca el archivo original ni su lector productivo.
 fn legacy_fixture(text: &str) -> String {
-    text.replace("\"version\":10", "\"version\":9")
-        .replace("\"version\":11", "\"version\":9")
+    let mut view: serde_json::Value = serde_json::from_str(text).expect("fixture JSON íntegra");
+    assert!(
+        matches!(view["version"].as_u64(), Some(9..=11)),
+        "versión de fixture prevista"
+    );
+    view["version"] = serde_json::json!(9);
+    serde_json::to_string(&view).expect("vista v9 de fixture")
 }
+
 fn legacy_dto(snapshot: &vantare_domain::Snapshot) -> String {
+    serde_json::to_string(&oracle_view(snapshot)).expect("vista v9 del oráculo")
+}
+
+fn oracle_view(snapshot: &vantare_domain::Snapshot) -> serde_json::Value {
     // #1638 delivers two previously omitted, existing DTO fields. Frozen
     // oracles remain intact; launch_coverage and lmu_conformance independently
     // check those values against the original SHM/REST, not against this view.
@@ -59,28 +69,31 @@ fn legacy_dto(snapshot: &vantare_domain::Snapshot) -> String {
             }
         }
     }
-    let dto = vantare_ipc::snapshot_to_json(&snapshot).expect("DTO live vigente");
-    let start = dto.find(",\"driving_situation\":").expect("situation v10");
-    let end = start + 1 + dto[start + 1..].find(',').expect("metadata siguiente");
-    let mut old = dto;
-    // Only v11 additions are excluded from the frozen v9 oracle. Independent
-    // launch_coverage and DTO tests verify their values and quality.
+    let mut view = vantare_ipc::test_support::snapshot_value(&snapshot).expect("DTO estructurado");
+    assert_eq!(
+        view["version"], 11,
+        "revisar la vista al cambiar el DTO live"
+    );
+    view["version"] = serde_json::json!(9);
+    let state = view["state"].as_object_mut().expect("estado DTO");
+    assert!(state.shift_remove("driving_situation").is_some());
+    let session = state
+        .get_mut("session")
+        .unwrap()
+        .as_object_mut()
+        .expect("sesión DTO");
     for field in [
-        ",\"started_at_s\":",
-        ",\"finished_at_s\":",
-        ",\"scheduled_end_s\":",
-        ",\"start_phase\":",
-        ",\"distance_to_start_line_m\":",
-        ",\"next_kind\":",
-        ",\"next_starts_at_s\":",
+        "started_at_s",
+        "finished_at_s",
+        "scheduled_end_s",
+        "start_phase",
+        "distance_to_start_line_m",
+        "next_kind",
+        "next_starts_at_s",
     ] {
-        let start = old.find(field).expect("campo v11");
-        let end = start + 1 + old[start + 1..].find(',').expect("campo siguiente");
-        old.replace_range(start..end, "");
+        assert!(session.shift_remove(field).is_some(), "campo v11: {field}");
     }
-
-    old.replace_range(start..end, "");
-    legacy_fixture(&old)
+    view
 }
 
 #[test]

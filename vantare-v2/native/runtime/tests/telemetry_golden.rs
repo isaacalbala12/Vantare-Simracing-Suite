@@ -79,7 +79,7 @@ fn oracle_view(snapshot: &vantare_domain::Snapshot) -> serde_json::Value {
     assert!(state.shift_remove("driving_situation").is_some());
     let session = state
         .get_mut("session")
-        .unwrap()
+        .expect("campo sesión DTO")
         .as_object_mut()
         .expect("sesión DTO");
     for field in [

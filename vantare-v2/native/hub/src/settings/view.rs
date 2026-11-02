@@ -1205,7 +1205,7 @@ impl Hub {
                 "v-download",
                 cx,
             )))
-            .child(Self::settings_release_news(cx).px(px(20.0)).pb(px(12.0)));
+            .child(self.settings_release_news(cx).px(px(20.0)).pb(px(12.0)));
         let beta = if self.demo.is_none() {
             self.settings.beta_status.clone()
         } else {
@@ -1289,7 +1289,12 @@ impl Hub {
                 )
             })
     }
-    fn settings_release_news(cx: &gpui::App) -> Div {
+    fn settings_release_news(&self, cx: &gpui::App) -> Div {
+        let identity = self
+            .settings
+            .update
+            .presentation(crate::version_label(), crate::product::CHANNEL);
+        let (version, channel) = identity.unwrap_or(("…", ""));
         let mut body = section_body().mt(px(-0.5));
         body = body.child(
             div()
@@ -1298,11 +1303,14 @@ impl Hub {
                 .justify_between()
                 .gap(px(12.0))
                 .min_h(px(46.0))
-                .child(text(crate::version_label(), 14.0, 700, orbit::ink(cx), cx))
+                .child(text(version.to_owned(), 14.0, 700, orbit::ink(cx), cx))
                 .child(orbit::pill("Instalada", Tone::Success, cx)),
         );
 
-        match super::releases::news_for_channel(crate::product::CHANNEL) {
+        if identity.is_none() {
+            return body;
+        }
+        match super::releases::news_for_channel(channel) {
             Ok(releases) => {
                 for release in releases {
                     body = body.child(

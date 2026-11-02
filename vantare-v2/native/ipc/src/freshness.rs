@@ -5,6 +5,28 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use vantare_domain::{Capability, Snapshot, SourceState};
 
+fn log_root() -> io::Result<std::path::PathBuf> {
+    Ok(std::env::var_os("VANTARE_NATIVE_DATA_ROOT")
+        .or_else(|| std::env::var_os("LOCALAPPDATA"))
+        .map_or_else(std::env::temp_dir, std::path::PathBuf::from)
+        .join("Vantare/native/logs"))
+}
+
+#[cfg(test)]
+mod root_characterization {
+    #[test]
+    fn beta_absolute_root_keeps_freshness_logs_beside_native_documents() {
+        let base = std::path::PathBuf::from(
+            std::env::var_os("VANTARE_NATIVE_DATA_ROOT").expect("override QA obligatorio"),
+        );
+        assert!(base.is_absolute());
+        assert_eq!(
+            super::log_root().expect("log root"),
+            base.join("Vantare/native/logs")
+        );
+    }
+}
+
 pub fn state(snapshot: &Snapshot) -> (SourceState, Capability, Capability) {
     (
         snapshot.state.source_state,
@@ -53,11 +75,8 @@ pub fn log_transition(
         snapshot.origin.received_at,
     );
     eprint!("{line}");
-    let root = std::env::var_os("VANTARE_NATIVE_DATA_ROOT")
-        .or_else(|| std::env::var_os("LOCALAPPDATA"))
-        .map_or_else(std::env::temp_dir, std::path::PathBuf::from)
-        .join("Vantare/native/logs");
     let append = || -> io::Result<()> {
+        let root = log_root()?;
         fs::create_dir_all(&root)?;
         OpenOptions::new()
             .create(true)

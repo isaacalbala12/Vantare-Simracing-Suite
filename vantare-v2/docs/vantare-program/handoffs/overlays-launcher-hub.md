@@ -1,5 +1,26 @@
 # Handoff vivo — Overlays, Studio, Launcher y Hub
 
+## VANTA-130 · #1869 · Paso 3, caracterización previa (2-nov-2026)
+
+Proyecto Vantare / area:plataforma, Plane En curso. Rama
+`vantareapp/isa-1869-paso3-root`, worktree `D:/VantareServer/worktrees/isa-1869-paso3`,
+base nightly `bc239c063541e9f641aafa3b846aae53e85635cf`, actualizada antes de editar.
+Todavía no se escribe el resolvedor común. Caracterización previa 8/8 PASS:
+fmt PASS, contratos de
+rutas con override absoluto beta para Hub/overlays, privacidad/servicios,
+Engineer, logs, residente y rights por canal; más tests existentes de argumentos
+beta/MSIX y fallback de UI. Para medir las dos rutas privadas se extrae solo su
+cálculo a funciones puras; auth, policy y flujo siguen intactos.
+Todas las ejecuciones usarán native/LocalAppData/AppData QA, target propio y
+compilar.ps1. Evidencia `D:/VantareServer/evidence/isa-1869/paso3`.
+
+El orquestador confirmó base única en Linux/macOS, solo desarrollo, sin lector
+de compatibilidad XDG_CONFIG_HOME. También trasladó a VANTA-129 la reserva mínima
+de default_path() en ui/layout; aún sin tocar ese archivo, motion_policy o host.
+Paso 10 excluido. #1874 revisado (HEAD `1c1c6c21c`, 874+25 PASS) y #1876 revisado
+(HEAD `fae6374f0`, 1090+25+33 PASS) están en draft a nightly, sin merge/release
+por este worker. Handoff y resúmenes de ambas entregas constan en #1869 y Plane.
+
 ## VANTA-130 · #1869 · Hub, ajustes y layouts (2-nov-2026)
 
 Proyecto Vantare, `area:plataforma`; Plane En curso verificado. Base

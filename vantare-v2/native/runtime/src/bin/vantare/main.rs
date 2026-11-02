@@ -558,6 +558,19 @@ fn main() -> ExitCode {
 mod tests {
     use super::*;
 
+    #[cfg(windows)]
+    #[test]
+    fn beta_absolute_root_characterization_for_resident_launcher() {
+        let base = PathBuf::from(
+            env::var_os("VANTARE_NATIVE_DATA_ROOT").expect("override QA obligatorio"),
+        );
+        assert!(base.is_absolute());
+        assert_eq!(
+            resident_settings(None).expect("resident launcher"),
+            base.join("Vantare/native/launcher.json")
+        );
+    }
+
     #[test]
     fn duplicate_core_pipe_is_rejected_before_wiring_consumers() {
         for prefix in [vec![], vec!["--engineer", "cursor.json"]] {

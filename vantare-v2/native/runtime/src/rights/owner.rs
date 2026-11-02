@@ -19,6 +19,31 @@ pub fn wall_now() -> DateTime<Utc> {
     std::time::SystemTime::now().into()
 }
 
+fn rights_root(channel: &str) -> std::io::Result<std::path::PathBuf> {
+    std::env::var_os("VANTARE_NATIVE_DATA_ROOT")
+        .or_else(|| std::env::var_os("LOCALAPPDATA"))
+        .map(std::path::PathBuf::from)
+        .ok_or_else(|| std::io::Error::other("directorio de derechos no disponible"))
+        .map(|root| root.join("Vantare/native/rights").join(channel))
+}
+
+#[cfg(test)]
+mod root_characterization {
+    #[test]
+    fn beta_absolute_root_keeps_rights_separated_by_channel() {
+        let base = std::path::PathBuf::from(
+            std::env::var_os("VANTARE_NATIVE_DATA_ROOT").expect("override QA obligatorio"),
+        );
+        assert!(base.is_absolute());
+        for channel in ["nightly", "testers", "master", "unknown"] {
+            assert_eq!(
+                super::rights_root(channel).expect("rights root"),
+                base.join("Vantare/native/rights").join(channel)
+            );
+        }
+    }
+}
+
 fn local_devices() -> Devices {
     Devices {
         legacy: vantare_services::license::installation::legacy_fingerprint().unwrap_or_else(
@@ -39,12 +64,7 @@ pub fn production(
     let channel = option_env!("VANTARE_BUILD_CHANNEL")
         .filter(|channel| matches!(*channel, "nightly" | "testers" | "master" | "beta"))
         .unwrap_or("unknown");
-    let root = std::env::var_os("VANTARE_NATIVE_DATA_ROOT")
-        .or_else(|| std::env::var_os("LOCALAPPDATA"))
-        .map(std::path::PathBuf::from)
-        .ok_or_else(|| std::io::Error::other("directorio de derechos no disponible"))?
-        .join("Vantare/native/rights")
-        .join(channel);
+    let root = rights_root(channel)?;
     let keys = option_env!("VANTARE_LICENSE_PUBLIC_KEYS").filter(|keys| !keys.is_empty());
     let mut devices = Devices {
         legacy: String::new(),

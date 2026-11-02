@@ -12,7 +12,7 @@ pub mod validation;
 #[cfg(feature = "transport")]
 pub use host::{Request, Session, headless, log_path};
 pub use installation::{
-    Generation, Installation, Manifest, ReadError, ReadProfile, State, known_members,
+    Generation, Installation, Manifest, ReadError, ReadProfile, Rejection, State, known_members,
 };
 
 pub fn reject_links(path: &std::path::Path) -> Result<(), String> {
@@ -38,13 +38,18 @@ pub fn reject_links(path: &std::path::Path) -> Result<(), String> {
 pub fn complete_probe(
     mut info: crate::model::Info,
     uninstall: bool,
-) -> Result<crate::model::Info, String> {
+) -> Result<crate::model::Info, ReadError> {
     let profile = if uninstall {
         ReadProfile::Uninstall
     } else {
         ReadProfile::Probe
     };
-    let installation = Installation::read(&info.root, profile).map_err(|e| e.to_string())?;
+    let installation = Installation::read(&info.root, profile)?;
+    // The shared reader accepts every closed channel. Setup's legacy driver
+    // additionally calls Read-NativeManifest with ExpectedChannel='beta'.
+    if !uninstall && installation.manifest.as_ref().is_some_and(|m| m.channel != "beta") {
+        return Err(Rejection::Manifest.into());
+    }
     if !uninstall || installation.state.is_none() {
         info.installed_version = installation.installed_version().map(str::to_owned);
     }

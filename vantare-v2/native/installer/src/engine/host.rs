@@ -142,7 +142,7 @@ impl Session {
         }
         let info = serde_json::from_slice(&output.stdout)
             .map_err(|e| format!("Estado del instalador: {e}"))?;
-        super::complete_probe(info, request.uninstall)
+        super::complete_probe(info, request.uninstall).map_err(|error| error.to_string())
     }
 
     fn command(&self, request: &Path) -> Result<Command, String> {

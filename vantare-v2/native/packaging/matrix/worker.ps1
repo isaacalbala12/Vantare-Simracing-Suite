@@ -18,6 +18,7 @@ $Operation=$qaRequestedOperation
 if ($Root -cne $qaImportCallerRoot) { throw 'MATRIX_IMPORT_ROOT_CHANGED' }
 $null=Assert-MatrixRoot $Root
 . (Join-Path $PSScriptRoot 'fixtures.ps1')
+. (Join-Path $PSScriptRoot 'probe-parity.ps1')
 function Get-NativeShortcutFolder([string]$Name) {
     if ($Name -cnotin @('Programs','Startup','DesktopDirectory')) { throw 'MATRIX_FOLDER_REJECTED' }
     Join-Path $qaCaseRoot $Name
@@ -70,43 +71,9 @@ try {
             $env:TEMP=$qaCaseRoot
             [Console]::SetIn([IO.StringReader]::new("continue`n"))
             if($Operation -ceq 'Probe' -and $ReadProbe){
-                # Differential oracle: legacy Probe and Rust-completed context
-                # must return the same public fields on the same guarded root.
-                $legacyRequest=$requestValue.Clone();$legacyRequest.Remove('readContext')
-                Write-NativeJson ($request+'.legacy.json') $legacyRequest
-                $expected=& $driverPath -RequestFile ($request+'.legacy.json')
-                if($LASTEXITCODE){throw 'MATRIX_LEGACY_PROBE_FAILED'}
-                $context=& $driverPath -RequestFile $request
-                if($LASTEXITCODE){exit $LASTEXITCODE}
-                # The existing finite-process helper owns/waits the child,
-                # writes stdin as UTF-8 and drains warnings separately.
-                $readResult=Invoke-NativeProcess -Executable $ReadProbe -InputText $context -TimeoutMilliseconds 30000 -LogPath ($request+'.rust.log')
-                if($readResult.ExitCode){throw ('MATRIX_RUST_PROBE_FAILED: '+$readResult.Stderr)}
-                if($readResult.Stderr){[Console]::Error.Write($readResult.Stderr)}
-                $actual=$readResult.Stdout
-                $old=$expected|ConvertFrom-Json;$new=$actual|ConvertFrom-Json
-                if(@(Compare-Object @($old.PSObject.Properties.Name) @($new.PSObject.Properties.Name) -CaseSensitive).Count){throw 'MATRIX_PROBE_FIELDS_CHANGED'}
-                foreach($field in $old.PSObject.Properties){
-                    if($field.Value -cne $new.PSObject.Properties[$field.Name].Value){throw ('MATRIX_PROBE_VALUE_CHANGED: '+$field.Name)}
-                }
-                # The same root must retain interrupted-uninstall tolerance and
-                # its legacy registry version display until the step 4 writer.
-                $legacyRequest.uninstall=$true
-                Write-NativeJson ($request+'.uninstall-legacy.json') $legacyRequest
-                $uninstallExpected=& $driverPath -RequestFile ($request+'.uninstall-legacy.json')
-                if($LASTEXITCODE){throw 'MATRIX_LEGACY_UNINSTALL_PROBE_FAILED'}
-                $legacyRequest.readContext=$true
-                Write-NativeJson ($request+'.uninstall-context.json') $legacyRequest
-                $uninstallContext=& $driverPath -RequestFile ($request+'.uninstall-context.json')
-                if($LASTEXITCODE){throw 'MATRIX_UNINSTALL_CONTEXT_FAILED'}
-                $readResult=Invoke-NativeProcess -Executable $ReadProbe -Arguments @('--uninstall') -InputText $uninstallContext -TimeoutMilliseconds 30000 -LogPath ($request+'.uninstall-rust.log')
-                if($readResult.ExitCode){throw ('MATRIX_UNINSTALL_READ_FAILED: '+$readResult.Stderr)}
-                if($readResult.Stderr){[Console]::Error.Write($readResult.Stderr)}
-                $uninstallActual=$readResult.Stdout
-                $old=$uninstallExpected|ConvertFrom-Json;$new=$uninstallActual|ConvertFrom-Json
-                foreach($field in $old.PSObject.Properties){
-                    if($field.Value -cne $new.PSObject.Properties[$field.Name].Value){throw ('MATRIX_UNINSTALL_PROBE_VALUE_CHANGED: '+$field.Name)}
-                }
+                $actual=Compare-MatrixProbe $driverPath $request $ReadProbe
+                Compare-MatrixProbe $driverPath $request $ReadProbe $true | Out-Null
+                Test-MatrixProbeRejections $qaInstallRoot $driverPath $request $ReadProbe
                 $actual
             }else{& $driverPath -RequestFile $request}
             exit $LASTEXITCODE

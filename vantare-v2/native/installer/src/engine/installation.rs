@@ -28,6 +28,46 @@ pub enum ReadError {
     Io(io::Error),
     Invalid(&'static str),
     Json(serde_json::Error),
+    Rejected(Rejection),
+}
+
+/// Stable violated invariants; presentation text is not an error protocol.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Rejection {
+    State,
+    Manifest,
+    Reference,
+    Binding,
+    Inventory,
+    MissingPrevious,
+}
+impl Rejection {
+    pub fn code(self) -> &'static str {
+        match self {
+            Self::State => "state-contract",
+            Self::Manifest => "manifest-contract",
+            Self::Reference => "generation-reference",
+            Self::Binding => "generation-binding",
+            Self::Inventory => "inventory",
+            Self::MissingPrevious => "previous-missing",
+        }
+    }
+    fn message(self) -> &'static str {
+        match self {
+            Self::State => "Estado de instalación inválido",
+            Self::Manifest => "Manifiesto, esquema o canal incompatible",
+            Self::Reference => "Referencia de generación inválida",
+            Self::Binding => "Generación activa/anterior incompleta",
+            Self::Inventory => "Lista de archivos inválida o duplicada",
+            Self::MissingPrevious => "Falta referencia anterior",
+        }
+    }
+}
+impl From<Rejection> for ReadError {
+    fn from(reason: Rejection) -> Self { Self::Rejected(reason) }
+}
+impl From<&'static str> for ReadError {
+    fn from(reason: &'static str) -> Self { Self::Invalid(reason) }
 }
 impl fmt::Display for ReadError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -35,6 +75,7 @@ impl fmt::Display for ReadError {
             Self::Io(error) => error.fmt(f),
             Self::Json(error) => error.fmt(f),
             Self::Invalid(reason) => f.write_str(reason),
+            Self::Rejected(reason) => f.write_str(reason.message()),
         }
     }
 }
@@ -98,11 +139,11 @@ pub struct Installation {
     pub previous_warning: Option<&'static str>,
 }
 
-fn require(valid: bool, reason: &'static str) -> Result<(), ReadError> {
+fn require(valid: bool, reason: impl Into<ReadError>) -> Result<(), ReadError> {
     if valid {
         Ok(())
     } else {
-        Err(ReadError::Invalid(reason))
+        Err(reason.into())
     }
 }
 
@@ -163,7 +204,7 @@ impl Manifest {
                 } else {
                     package_version(&manifest.version)
                 },
-            "Manifiesto, esquema o canal incompatible",
+            Rejection::Manifest,
         )?;
         Ok(manifest)
     }
@@ -181,7 +222,7 @@ impl Manifest {
                     fields.get("build_profile").and_then(Value::as_str),
                     Some("Debug" | "Release")
                 ),
-            "Manifiesto, esquema o canal incompatible",
+            Rejection::Manifest,
         )?;
         let files = fields
             .get("files")
@@ -196,7 +237,7 @@ impl Manifest {
                 .ok_or(ReadError::Invalid("Ruta de inventario inválida"))?;
             require(
                 known_member(path, &self.channel) && members.insert(path),
-                "Lista de archivos inválida o duplicada",
+                Rejection::Inventory,
             )?;
             require(
                 file.get("sha256")
@@ -371,10 +412,10 @@ impl Installation {
             state.schema == 1
                 && state.product == "vantare-native"
                 && channel(&state.channel)
-                && active_valid
-                && (profile != ReadProfile::Uninstall || state.channel == "beta"),
-            "Estado de instalación inválido",
+                && (profile != ReadProfile::Uninstall || (state.channel == "beta" && active_valid)),
+            Rejection::State,
         )?;
+        require(profile == ReadProfile::Uninstall || active_valid, Rejection::Reference)?;
         installation.data_path = root
             .join("generations")
             .join(&state.active.generation)
@@ -417,10 +458,10 @@ fn decode_state(
     let mut value = json(raw, profile)?;
     require(
         value.is_object() && value["active"].is_object(),
-        "Estado de instalación inválido",
+        Rejection::State,
     )?;
     if profile == ReadProfile::Probe {
-        require(value.get("previous").is_some(), "Falta referencia anterior")?;
+        require(value.get("previous").is_some(), Rejection::MissingPrevious)?;
     }
     if let Some(map) = value.as_object_mut() {
         map.retain(|key, _| {
@@ -458,7 +499,7 @@ fn read_generation(
     profile: ReadProfile,
     verify_files: bool,
 ) -> Result<Manifest, ReadError> {
-    require(reference.valid(), "Referencia de generación inválida")?;
+    require(reference.valid(), Rejection::Reference)?;
     let directory = root.join("generations").join(&reference.generation);
     let path = directory.join("manifest.json");
     let raw = bytes(
@@ -474,13 +515,13 @@ fn read_generation(
         require(
             reference.manifest_sha256.as_ref() == Some(&format!("{:x}", Sha256::digest(&raw)))
                 && directory.join("data").is_dir(),
-            "Generación activa/anterior incompleta",
+            Rejection::Binding,
         )?;
     }
     let manifest = Manifest::decode(&raw, profile)?;
     require(
-        manifest.channel == expected && (profile == ReadProfile::Hub || manifest.channel == "beta"),
-        "Canal incompatible",
+        manifest.channel == expected,
+        Rejection::Manifest,
     )?;
     if profile != ReadProfile::Hub {
         manifest.installed(&directory, verify_files)?;

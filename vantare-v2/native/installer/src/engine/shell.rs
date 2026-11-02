@@ -714,6 +714,8 @@ mod tests {
         let root = parent.join("p5a-options-tests").join(&id);
         context::qa_path(&root).expect("QA guard");
         fs::create_dir_all(&root).expect("owned root");
+        fs::write(root.join(".vantare-native"), b"offline-candidate-v1")
+            .expect("recognized installation fixture");
         fs::write(root.join("Uninstall.exe"), b"owned fixture").expect("fixture");
         let previous = context::Options {
             schema: 1,

@@ -30,7 +30,9 @@ regresiones de rutas 15/15 PASS. Nextest 1936 PASS (golden aislado 1/1 y resto
 1935/1935; 24 skips en el resto incluyen el golden ya ejecutado), lifecycle
 25/25 y telemetría 33/33 (1 skip) PASS. Integridad: 468 huellas PASS.
 Diff completo revisado; Linux/macOS cubiertos mediante matriz pura en Windows,
-sin afirmar ejecución nativa allí. Cola cedida; draft a nightly en preparación.
+sin afirmar ejecución nativa allí. Cola cedida; PR draft #1879 a nightly,
+listo para revisión final. Código `08571b979`, formato/evidencia `cccd08750`;
+HEAD final, líneas y CI remota en #1869. Sin merge/release propio.
 
 El orquestador confirmó base única en Linux/macOS, solo desarrollo, sin lector
 de compatibilidad XDG_CONFIG_HOME. También trasladó a VANTA-129 la reserva mínima

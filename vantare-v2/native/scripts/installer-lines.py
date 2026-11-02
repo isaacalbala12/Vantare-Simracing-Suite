@@ -49,6 +49,8 @@ def category(path, projection=False):
         return "rust_tests"
     if path == PREFIX + "native/installer/build.rs":
         return "rust_build_tooling"
+    if path.startswith(PREFIX + "native/packaging/matrix/") and path.endswith(".ps1"):
+        return "ps_tests_and_tooling"
     if path.startswith(PREFIX + "native/packaging/") and path.endswith(".ps1"):
         return "ps_product" if path.rsplit("/", 1)[1] in {
             "candidate.ps1", "beta.ps1", "installer-driver.ps1", "installer-shell.ps1", "installer-cleanup.ps1"} else "ps_tests_and_tooling"

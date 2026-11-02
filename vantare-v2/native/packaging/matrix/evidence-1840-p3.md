@@ -1,7 +1,7 @@
 # #1840 / VANTA-127 · paso 3, lectura Rust
 
-Estado: en curso, [PR draft #1861](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1861)
-publicado y enlazado a T3; todavía no entregado. Gates finales sobre nightly actualizado. Base inicial
+Estado: listo para revisión, [PR draft #1861](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1861)
+publicado y enlazado a T3; gates locales completos sobre nightly actualizado. Base inicial
 `5cc23113afae7cfa44429f225f0aeb5f770c061c`; rebase sin conflictos sobre
 `668d99c32`, que incluye el paso 2 integrado por el orquestador en
 [PR #1857](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1857). Rama
@@ -30,8 +30,9 @@ caso normal y discrepancia, incluida una oferta que la identidad binaria
 hubiera ocultado. La revisión final localizó además el carril de Aplicación y
 la cabecera/canal de notas: ambos usan la misma proyección. Se inicia el lector
 en background tras construir Hub y al abrir Aplicación/Actualizaciones, sin
-lectura síncrona de disco en render. Gate final adicional solo de Hub en curso;
-Installer no cambia desde 8dff23006.
+lectura síncrona de disco en render. Gate final adicional de Hub PASS: fmt check, Clippy all-targets -D warnings
+y 606/606 Nextest (4 omitidos existentes), logs final-07. Installer conserva
+su fuente 8dff23006 y 29 tests PASS.
 
 ## Lectores y reglas reales
 
@@ -87,8 +88,10 @@ Downloads. La 975 usa el ZIP ya disponible en QA, con digest público fijado.
   **635/635 PASS, 4 omitidos existentes**, `nextest-all-final-04.log` (216 s de tests).
   El incremento de 634 a 635 corresponde a la nueva base integrada. Son 29
   tests Installer y 606 Hub. Tras completar el carril/notas de Ajustes se repiten
-  fmt/Clippy/Nextest de Hub en un único bloque final-07; no se presentan aún
-  esos resultados anteriores como gate de la última proyección.
+  fmt/Clippy/Nextest de Hub en un único bloque final-07: **606/606 PASS**,
+  4 omitidos, con fmt check y Clippy -D warnings PASS. Sin cambios de Rust
+  posteriores; fuentes finales de Hub en e7bae04ec. El bloque esperó 1602 s
+  en cola; no se modifican límites para adelantarlo.
 - `finish-batch.log`: PASS fmt check, árbol normal sin GPUI/host/UI y check
   de biblioteca sin defaults. Tres verificaciones agrupadas en una llamada a
   compilar.ps1 después del turno de VANTA-128. Logs individuales final-05.
@@ -145,7 +148,19 @@ en una única llamada al wrapper (check del lector 3,69 s).
   Record y sin cambiar baseline; la campaña completa repite la raíz ASCII
   habitual en matrix-p3-final-03. No se afirma cobertura Unicode completa.
 
-Pendientes: matriz completa, comparación de fuentes/QA, fragmento y medición final.
+- `matrix-final-03.log`: **88/88 PASS**, exactamente los mismos objetos de
+  results.json que baseline.json. Además 25 biblioteca +24 contexto +14 seguridad
+  histórica +18 capturas crudas +54 inventario +42 registro/arranque +48 Startup.
+  Ocho raíces × Probe/Uninstall × ocho campos coinciden (128 comparaciones),
+  y los catálogos de los cuatro canales coinciden.
+- `final-source-proof.json`: igualdad completa de resultados/baseline, tres
+  copias QA idénticas al worktree, candidate/beta/baseline/snapshot.py intactos
+  y únicamente dos aristas autorizadas del lock. Sin Record ni normalizaciones.
+
+Gates locales cerrados. Fragmento JSON y tipos válidos; diff completo revisado.
+La incidencia 1c de consulta por PID observada en VANTA-128 queda para un PR
+posterior separado, por encargo del orquestador. El test pasó en esta ejecución;
+no se presenta ese PASS como arreglo de su indeterminación.
 Telemetría/lifecycle runtime no se requieren por ámbito: sin cambios propios
 runtime/domain/ipc/testdata ni ciclo de vida. QA física en VM/cuenta separada
 sigue pendiente; un arnés no demuestra instalación interactiva de producto.
@@ -168,7 +183,7 @@ tests. Separa scripts PS de producto y tests/tooling, Rust build, Python y CI.
 No cuenta targets, binarios, fuentes generadas ni archivos de instalación.
 Los resultados por archivo permiten reproducir los totales y detectar traslados.
 
-Medición de la fuente preparada, todavía con gates pendientes:
+Medición final del perímetro publicado (líneas físicas):
 
 | Categoría | Antes | Después | Diferencia |
 | --- | ---: | ---: | ---: |
@@ -180,7 +195,7 @@ Medición de la fuente preparada, todavía con gates pendientes:
 | Rust build/tooling | 74 | 155 | +81 |
 | Python tooling | 0 | 97 | +97 |
 | CI | 469 | 471 | +2 |
-| Documentación | 8760 | 9070 | +310 |
+| Documentación | 8760 | 9088 | +328 |
 
 Este paso añade el lector Rust mientras conserva PS: no acredita reducción
 neta de producción. El ahorro global se medirá al retirar consumidores PS.

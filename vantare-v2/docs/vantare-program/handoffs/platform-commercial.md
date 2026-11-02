@@ -378,35 +378,38 @@ conservan la evidencia de sus ramas; no describen el estado de integración actu
 [#1840](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1840),
 area:plataforma, Project Vantare. Plane En curso; estados/CI del orquestador.
 Sin merge/release del worker.
-### Paso 3 · motor de lectura Rust (en curso, 2-nov-2026)
+### Paso 3 · motor de lectura Rust listo para revisión (2-nov-2026)
 
-- PR draft [#1861](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1861)
-  publicado y enlazado T3; pendiente de gates finales, no entregado.
-- Base inicial 5cc23113a, rebase limpio sobre nightly 668d99c32 con paso 2;
-  rama vantareapp/isa-1840-paso3-engine-lectura, worktree propio
+- PR draft [#1861](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1861),
+  enlazado T3. Rama vantareapp/isa-1840-paso3-engine-lectura; base inicial
+  5cc23113a, rebase limpio sobre nightly668d99c32 con paso2. Worktree propio
   isa-1840-paso3; target D:/VantareServer/targets/isa-1840-p3.
 - Refactor e7deb1172: Installation::read/Manifest/State y perfiles conservados;
-  Setup consume contexto sin state/manifiesto del driver y Hub comparte lector.
-  Sin features del instalador, el lector no compila host/payload/GPUI.
-- Cambio de comportamiento autorizado y separado en c4b17382e: Ajustes Package
-  muestra/compara versión y canal del manifiesto; identidad binaria solo en
-  Development/Invalid. Pruebas de caso normal/discrepancia con manifiesto de disco.
-- sha2 adelantada y arista Hub→installer autorizadas. Lock: solo esas dos listas,
-  sin versiones/checksums/paquetes nuevos. PS heredado y sus perfiles continúan
-  hasta pasos 4–7: no se afirma 5→1 global ni menor código en este paso.
-- Fuente 8dff23006: Clippy Installer/Hub all-targets -D warnings PASS y Nextest
-  **635/635 PASS**, 4 omisiones existentes. Logs final-04 en QA isa-1840/p3-logs.
-  Pendientes fmt check/check sin defaults, ejemplos y matriz diferencial completa.
-- Guard actual PASS7+5; candidate/beta y baseline intactos, copias QA idénticas,
-  parser PS y 468 huellas PASS. Extensión compara Probe/Uninstall y cuatro catálogos.
-- Fallos iniciales por disco, helper storage ausente e invocaciones corregidas
-  conservados en native/packaging/matrix/evidence-1840-p3.md. Limpieza/parada
-  propuesta rechazada por revisión automática; no ejecutada ni rodeada. Espacio
-  recuperado externamente; helper real construido conforme a README/DuckDB1.5.5.
-- Sin Plane, instalación real, secretos, Downloads, merge/release ni CI watch.
-  Siguiente: completar gates pendientes y entregar PR draft al orquestador.
-  QA física en cuenta/VM separada y CI remota no se acreditan aquí.
-
+  Setup recibe contexto del driver sin state/manifiesto y Hub comparte lector.
+  Sin defaults no compila GPUI/host/payload; árbol y check de biblioteca PASS.
+- Comportamiento autorizado separado c4b17382e +e7bae04ec: todo Ajustes Package
+  muestra versión/canal del manifiesto y compara ofertas con esa versión;
+  incluye carril Aplicación y notas. Development/Invalid usan identidad binaria,
+  Unread espera. Lectura inicial en background; test normal/discrepancia de disco.
+- sha2 adelantada autorizada; lock solo añade las dos listas installer/Hub,
+  sin paquetes/versiones/checksums. PS heredado hasta p4–7, sin afirmar 5→1 global.
+- Fuente Installer8dff23006: Clippy all-targets -D warnings +29 tests PASS.
+  Hub final e7bae04ec: fmt check/Clippy all-targets -D warnings +606/606 Nextest
+  PASS, 4 omisiones existentes. Logs final-04/final-05/final-07 en QA isa-1840/p3-logs.
+- Matriz matrix-p3-final-03: 88/88 idénticos al baseline +25 biblioteca +24 contexto
+  +14 seguridad +18 capturas +54 inventario +42 registro/arranque +48 Startup PASS.
+  Probe/Uninstall: 128 comparaciones; catálogos cuatro canales iguales. Guard7+5,
+  adaptador3rechazos+raíz ausente sin escritura, parser PS y calidad468 PASS.
+- Copias QA idénticas; candidate/beta/baseline/normalizador intactos. Medición
+  reproducible y tabla de lectores/reglas/retirada en matrix/evidence-1840-p3.md.
+  Este paso añade Rust conservando PS; no acredita ahorro global.
+- Ensayos y fallos intermedios conservados: disco, helper storage, invocaciones,
+  array PS5 y URI Unicode (una única diferencia, sin campaña completa PASS).
+  Los gates finales se agruparon tras ceder la cola a VANTA-128, sin bajar límites.
+- Siguiente: revisión/CI/integración del orquestador y QA física en cuenta/VM.
+  Encargo posterior autorizado: PR pequeño separado para test1c por handle,
+  en lugar de consulta por PID; no se mezcla aquí. Sin Plane, instalación real,
+  secretos, Downloads, merge/release/promoción del worker ni CI watch.
 
 ### Antecedentes 0–1d (evidencia histórica conservada)
 

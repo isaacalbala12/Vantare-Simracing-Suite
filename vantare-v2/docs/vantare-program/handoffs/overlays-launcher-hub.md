@@ -854,5 +854,5 @@ Todas las tandas finales usan raíces QA para native, LocalAppData y AppData;
 evidencia en `D:/VantareServer/evidence/isa-1869/paso2`. El paso 1
 (privacidad y guard QA por el incidente del arnés, recuperado por el orquestador)
 va en su rama independiente; no se incluye silenciosamente en este PR.
-Entrega: draft a nightly, con SHA y enlace en #1869. Sin merge, promoción, release,
+Entrega: PR draft #1876 a nightly, código `9bf9f8eb3`; SHA final en #1869. Sin merge, promoción, release,
 instalación ni operaciones de este corte sobre datos reales.

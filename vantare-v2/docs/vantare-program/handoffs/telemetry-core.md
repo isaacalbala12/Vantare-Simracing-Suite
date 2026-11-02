@@ -22,8 +22,18 @@ OnTrack→Garage, esperada 1 (Nextest `2062a9cc-37ba-4687-b242-2ff49921da5d`,
 prioritario: `Boundary` compartida, reinicio de cadencia con situación y
 regresión activada en `848bb1007`. GREEN focal 4/4 (Nextest
 `152fcabd-b250-4ae8-9284-f541d7e77be4`): pipe, identidades omitidas,
-frontera por señal/situación y cadencia inyectada. Tanda final de gates
-por cola pendiente; goldens intactos.
+frontera por señal/situación y cadencia inyectada. Tanda local: fmt/check/Clippy PASS; Nextest parcial 678 PASS y 2 FAIL
+por faltar `vantare-services.exe` (prerrequisito de tests de proceso, sin
+cambio de producto). Log `nextest-ci-before-services.log` conservado;
+CI completa PASS sobre `eaf29c878`, árbol native
+`561980c0f625bac7c5e2dfc0aa4428afff558c8a`: 2375/2375 tests (24 skips),
+33/33 de telemetría incluidos, lifecycle runtime 25/25 y Engineer 5/5.
+Run `41444548451`, job `125274576259`; log `ci-native-eaf29.log`.
+El único cambio nativo posterior es una línea del test de pausa (recibido
+avanza 100 ms), commit `0e77c9aef` en la rama; check/Clippy y tres focales por cola:
+ese test y los dos fallos anteriores con su auxiliar. No se repiten corpus
+ni lifecycle ya validados por CI; no hay cambio posterior de producción.
+Goldens intactos.
 Huellas de retirada: 468/468 PASS. CI de `848bb1007`: check PASS;
 Clippy FAIL por tres puntos y coma de closures de tests, corregidos sin
 cambiar aserciones. Log conservado en `ci-clippy-before.log` de evidencia.

@@ -39,11 +39,26 @@ fn capture_appearance(value: &str) -> Result<AppearanceSettings, String> {
 
 fn persistence_paths(
     capture_root: Option<&Path>,
+    demo: bool,
     data_dir: Option<PathBuf>,
     layout: Option<PathBuf>,
     engineer: Option<PathBuf>,
     launcher_file: Option<PathBuf>,
 ) -> Result<(PathBuf, PathBuf, PathBuf, PathBuf), String> {
+    let demo_root = if demo && capture_root.is_none() && data_dir.is_none() {
+        Some(
+            std::env::temp_dir()
+                .join("vantare-hub-demo")
+                .join(vantare_services::random_id().map_err(|error| error.to_string())?),
+        )
+    } else {
+        None
+    };
+    let data_dir = data_dir.or_else(|| demo_root.as_ref().map(|root| root.join("data")));
+    let layout = layout.or_else(|| demo_root.as_ref().map(|root| root.join("layout.json")));
+    let engineer = engineer.or_else(|| demo_root.as_ref().map(|root| root.join("engineer.json")));
+    let launcher_file =
+        launcher_file.or_else(|| demo_root.as_ref().map(|root| root.join("launcher.json")));
     let data_dir = if let Some(root) = capture_root {
         root.join("data")
     } else {
@@ -289,6 +304,7 @@ impl RawOptions {
         }
         let (data_dir, layout_path, engineer_path, launcher_path) = persistence_paths(
             capture_root.as_deref(),
+            demo_requested,
             data_dir,
             layout,
             engineer,
@@ -683,6 +699,22 @@ mod tests {
         assert!(options.capture.is_none());
         assert_eq!(options.section, Section::Home);
         assert_eq!(options.pipe.as_deref(), Some("vantare-1437-smoke"));
+    }
+
+    #[test]
+    fn demo_without_data_dir_defaults_all_documents_to_a_fresh_qa_directory() {
+        let first = parse(&["--demo".into()]).expect("QA demo");
+        let second = parse(&["--demo".into()]).expect("another QA demo");
+        assert_ne!(first.data_dir, second.data_dir);
+        let qa = first.data_dir.parent().expect("QA parent");
+        assert!(qa.starts_with(std::env::temp_dir().join("vantare-hub-demo")));
+        assert_eq!(first.layout, qa.join("layout.json"));
+        assert_eq!(first.engineer, qa.join("engineer.json"));
+        assert_eq!(first.launcher_file, qa.join("launcher.json"));
+        assert!(!qa.exists(), "argument parsing performs no writes");
+        let explicit = parse(&["--demo".into(), "--data-dir".into(), "qa-explicit".into()])
+            .expect("explicit QA directory");
+        assert_eq!(explicit.data_dir, PathBuf::from("qa-explicit"));
     }
 
     #[test]

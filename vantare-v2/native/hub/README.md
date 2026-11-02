@@ -199,6 +199,10 @@ Captura aislada con el harness existente, mutex y pantalla-ocupada:
 la pestaña y presets D7; `VANTARE_CAPTURE_INSPECTOR=behavior` enfoca En pista.
 Estas escenas son QA declarada, no telemetría ni interacción física en juego.
 
+`--demo` sin `--data-dir` usa documentos por defecto en una carpeta temporal QA
+nueva bajo `vantare-hub-demo`, incluida privacidad. Las rutas explícitas se
+respetan; el operador debe elegir raíces QA para ellas.
+
 Proceso GPUI independiente, misma revisión y kit Eficiencia que `vantare-ui`.
 No usa Wails ni importa el runtime. Consume DTO/IPC del supervisor para cuenta,
 licencias, roadmap y reportes; el supervisor posee la red y las credenciales.

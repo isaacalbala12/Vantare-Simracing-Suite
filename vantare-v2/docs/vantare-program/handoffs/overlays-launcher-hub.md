@@ -1,5 +1,64 @@
 # Handoff vivo — Overlays, Studio, Launcher y Hub
 
+## VANTA-130 · #1869 · Hub, ajustes y layouts (2-nov-2026)
+
+Proyecto Vantare, `area:plataforma`; Plane En curso verificado. Base
+`origin/nightly@a5e0a9fd24ad5294df6528dd47ad63a078820e27`.
+Revisión #1874: el test `e6e723189` reprodujo la readopción de un sí antiguo
+tras revocar y borrar la compartida. Se añade marca durable previa a la copia
+en el Hub (también si la compartida ya existe), original intacto y sin reintento
+tras interrupción; se requiere decisión nueva. Una compartida creada durante
+save gana y se carga. Subproceso QA comprueba root contra diagnostics::data_root.
+`--demo` sin directorio usa rutas temporales QA nuevas; las explícitas se respetan.
+Revisión validada: fmt/check/Clippy Hub+Services PASS; regresiones 18/18,
+Nextest 874/874 (9 skips) y lifecycle 25/25 PASS, solo raíces QA. Código
+`ba87c081a`; evidencia `D:/VantareServer/evidence/isa-1869/paso1/review-gates`.
+Se conservan RED previo y dos fallos de Clippy por longitud de finish, resueltos
+dejando el cálculo demo en persistence_paths. #1876 sigue en la misma tanda.
+Primero bugs 1 y 2, cada uno con rama/worktree/PR draft propio a nightly.
+Caracterización 0.ii en `2fc4d46d8` (privacidad beta separada); 0.v en
+`adfbd0aba` (colisión de agenda y cambio de bytes cada segundo).
+Privacidad: caracterización PASS y regresión RED del lector compartido antes
+del arreglo. La primera tanda llegó a 382 PASS y dos fallos de onboarding:
+el arnés headless sin demo/captura resolvía la raíz real con el cambio nuevo.
+El orquestador confirmó y eliminó los tres ficheros creados por los tests
+(privacy.json con uso aceptado y sus dos locks); no había colas y logs, rights
+y launcher quedaron intactos. Recuperación hecha por él, no por este worker.
+Regresión P1 corregida: Store inyectado en Loaded, arnés con Store QA explícito,
+guard de data_root en test/test-support y override QA en gates con restauración.
+Se activa la feature existente de services en dev-dependencies, sin paquete nuevo.
+La entrega inicial pasó con ROOT/LOCALAPPDATA/APPDATA bajo QA: fmt,
+check/Clippy Hub+Services, regresiones 16/16, Nextest 871/871 (9 skips),
+lifecycle 25/25 y 468 huellas. La revisión actual amplía la cobertura indicada arriba.
+La prueba de entorno de gates cubre éxito y fallo simulado sin compilar.
+PR draft [#1874](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1874)
+a nightly, listo para revisión del orquestador; CI remota aún en curso al preparar
+esta actualización. No se verificó envío real de analítica ni instalación.
+Agenda: PR draft #1876, caracterización 2/2 y 1089 pruebas PASS en la entrega
+inicial. El replay UI pasó aislado tras fallar su plazo existente de 2 s en
+paralelo, sin modificarlo. Revisión de docs, mtime/bytes y reloj lento en curso.
+
+El orquestador aprobó heartbeat de agenda cada 5 s cuando no cambian eventos,
+publicación inmediata al cambiar y TTL de 10 s intacto, con reloj inyectado.
+Mover la escritura fuera del hilo de UI queda como mejora posterior.
+Diseño concreto del paso 6 aprobado: Store v2 único en `<H>/hub-settings.json`,
+carga única, migración pura, originales intactos y versión desconocida
+conservada. Pasos 6–7 juntos, o 7 pendiente manteniendo su lector antiguo.
+Avisar al orquestador antes de tocar ui/layout, motion_policy o el host por
+VANTA-129. Los tres documentos antiguos solo se retirarán en otra tarea tras
+una release estable. Paso 10 excluido, va con #1840.
+Paso 3 autorizado solo para sustituir cálculos de ruta en rights/owner,
+bin/vantare/main, ipc/freshness, ipc/engineer_control y services/app, sin auth,
+policy ni flujo. El orquestador reserva esas líneas con VANTA-129; aún sin editar.
+Linux/macOS solo tienen desarrollo: el orquestador confirma base única sin
+compatibilidad con XDG_CONFIG_HOME; documentar el cambio en el paso 3.
+
+Hallazgos independientes sin implementar: #1870 Calendario Inicio/menú,
+#1871 ImportLayout sin lector (#1840), #1872 Strategy con dos almacenes.
+Siguiente: revisar #1874 y terminar los gates del paso 2; después completar
+la caracterización 0 pendiente antes de 3. Solo raíces QA. Sin merge, promoción,
+release ni instalación. Plane sigue En curso porque quedan pasos del encargo.
+
 ## VANTA-105 · RC4 entregada / seguimiento #1742 (21-oct-2026)
 
 RC4 0.0.982 entregada en `C:/VantareServer/share/rc4/` con Setup, sidecar y

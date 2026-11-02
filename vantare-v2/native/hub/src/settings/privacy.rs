@@ -5,6 +5,9 @@ use std::path::{Path, PathBuf};
 use vantare_services::diagnostics::{ConsentSaveError, PRIVACY_FILE, Privacy};
 #[path = "privacy_cleanup.rs"]
 mod cleanup;
+#[cfg(test)]
+#[path = "privacy_roots_tests.rs"]
+mod roots_tests;
 
 // El Hub aún muestra la interfaz en español; el idioma de widgets es independiente.
 const PRIVACY_POLICY_URL: &str = "https://vantare.app/privacidad";
@@ -13,18 +16,70 @@ const PRIVACY_POLICY_URL: &str = "https://vantare.app/privacidad";
 /// aviso del primer arranque y el paso de privacidad del asistente (#1628).
 pub(in crate::shell) const CRASH_REPORT_WHAT: &str = "la versión de la app, el sistema operativo, el código del fallo y direcciones numéricas de la pila. Sin mensajes, rutas, nombre de usuario ni identificador personal.";
 
-fn resolve_root(data: &Path, default_hub: &Path, shared: PathBuf) -> PathBuf {
-    if data == default_hub {
-        shared
-    } else {
-        data.to_path_buf()
-    }
+fn root(data: &Path) -> Result<PathBuf, String> {
+    let shared = vantare_services::diagnostics::data_root().map_err(|error| error.to_string())?;
+    adopt(data, shared)
 }
 
-pub(super) fn root(data: &Path) -> Result<PathBuf, String> {
-    let base = vantare_ui::paths::default_data_dir().map_err(str::to_owned)?;
-    let shared = vantare_services::diagnostics::data_root().map_err(|error| error.to_string())?;
-    Ok(resolve_root(data, &base.join("VantareNative/hub"), shared))
+fn adopt(data: &Path, shared: PathBuf) -> Result<PathBuf, String> {
+    if data != shared.as_path() {
+        let source = data.join(PRIVACY_FILE);
+        let destination = shared.join(PRIVACY_FILE);
+        let adopted = data.join("privacy.json.adopted");
+        if adopted.try_exists().map_err(|error| error.to_string())? {
+            return Ok(shared);
+        }
+        if source.try_exists().map_err(|error| error.to_string())? {
+            let bytes = if destination
+                .try_exists()
+                .map_err(|error| error.to_string())?
+            {
+                eprintln!("privacidad: existen dos copias; se conserva la compartida");
+                None
+            } else {
+                let bytes = crate::files::read(&source, 1024)?;
+                // Validar los mismos bytes que se adoptan, sin habilitar síes implícitos.
+                serde_json::from_slice::<Privacy>(&bytes)
+                    .map_err(|error| format!("leer privacidad anterior: {error}"))?;
+                Some(bytes)
+            };
+            // Marcar ANTES de publicar: tras caída, revocación o borrado nunca
+            // resucita un consentimiento antiguo. El original queda intacto.
+            if let Err(error) = crate::files::save(&adopted, b"adoption attempted\n", None) {
+                if adopted.try_exists().map_err(|error| error.to_string())? {
+                    return Ok(shared);
+                }
+                return Err(error);
+            }
+            if let Some(bytes) = bytes {
+                publish_adoption(&destination, &bytes)?;
+                eprintln!("privacidad: se adopta la decisión guardada por el Hub");
+            }
+        }
+    }
+    Ok(shared)
+}
+
+fn publish_adoption(destination: &Path, bytes: &[u8]) -> Result<(), String> {
+    if let Err(error) = crate::files::save(destination, bytes, None) {
+        // Una elección creada entretanto gana; Store::load la valida y carga.
+        if !destination
+            .try_exists()
+            .map_err(|error| error.to_string())?
+        {
+            return Err(error);
+        }
+    }
+    Ok(())
+}
+
+pub(in crate::shell) fn load(data: &Path, isolated: bool) -> Result<Store, String> {
+    // Demo/captura eligen su raíz QA antes de cualquier lectura o limpieza.
+    if isolated {
+        Store::load(data)
+    } else {
+        root(data).and_then(|shared| Store::load(&shared))
+    }
 }
 
 pub(super) fn policy_link(id: &'static str, focus: &FocusHandle, cx: &gpui::App) -> Stateful<Div> {
@@ -446,20 +501,6 @@ mod tests {
                 assert!(mail.pending);
             }
         });
-    }
-    #[test]
-    fn isolated_settings_never_load_or_discard_the_installed_privacy_queue() {
-        let default_hub = Path::new("C:/fixture/VantareNative/hub");
-        let shared = PathBuf::from("C:/fixture/Vantare/native");
-        let isolated = Path::new("C:/tmp/1612-privacy-qa");
-        assert_eq!(
-            resolve_root(isolated, default_hub, shared.clone()),
-            isolated
-        );
-        assert_eq!(
-            resolve_root(default_hub, default_hub, shared.clone()),
-            shared
-        );
     }
     #[test]
     fn isa1609_busy_installer_import_keeps_privacy_available() {

@@ -442,6 +442,14 @@ de bibliotecas del cargador de su sistema; esta variante se verificó en Windows
 
 ## Workers: caché y limpieza (#1465)
 
+Los gates (salvo el build `prueba`) fijan `VANTARE_NATIVE_DATA_ROOT`,
+`LOCALAPPDATA` y `APPDATA` en `<TargetDirectory>/qa-data` y restauran el entorno al acabar,
+también en fallo. En tests o con `services/test-support`, la raíz de diagnóstico
+rechaza la falta de override antes de recurrir a datos instalados (#1869, P1 QA).
+Los tests del Hub activan esa feature ya existente: `cfg(test)` no se propaga a
+dependencias. El arnés headless recibe su Store de privacidad por `Loaded`;
+construirlo sin demo/captura no autoriza resolver una raíz real.
+
 Dev/test omiten símbolos de las dependencias (`profile.dev.package."*".debug = 0`).
 Los crates propios conservan fichero y línea en sus trazas; depurar internamente
 una dependencia requiere volver a activar sus símbolos. Release no cambia.

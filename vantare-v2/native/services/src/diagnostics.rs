@@ -173,6 +173,12 @@ fn consent_lock(root: &Path) -> Result<File> {
 
 /// Igual raíz que layout.json; no depende de UI, identidad ni licencia.
 pub fn data_root() -> Result<PathBuf> {
+    // cfg(test) no se propaga a dependencias: los consumidores de pruebas
+    // activan test-support. Nunca recurrir a datos instalados desde esos builds.
+    #[cfg(any(test, feature = "test-support"))]
+    if std::env::var_os("VANTARE_NATIVE_DATA_ROOT").is_none() {
+        return Err(Error::Storage);
+    }
     #[cfg(windows)]
     let base = std::env::var_os("LOCALAPPDATA").map(PathBuf::from);
     #[cfg(target_os = "linux")]

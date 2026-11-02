@@ -280,6 +280,7 @@ impl State {
         prefs: Preferences,
         appearance: appearance::Store,
         data: PathBuf,
+        privacy: Result<privacy::Store, String>,
         window: &mut Window,
         cx: &mut Context<Hub>,
     ) -> Self {
@@ -318,7 +319,7 @@ impl State {
             update_focus: cx.focus_handle(),
             custom_performance_focus: cx.focus_handle(),
             performance_focus: std::array::from_fn(|_| cx.focus_handle()),
-            privacy: privacy::root(&data).and_then(|root| privacy::Store::load(&root)),
+            privacy,
             privacy_focus: std::array::from_fn(|_| cx.focus_handle()),
             privacy_policy_focus: cx.focus_handle(),
             consent_focus,

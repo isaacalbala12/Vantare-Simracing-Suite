@@ -1746,6 +1746,27 @@ mod demand_tests {
     use crate::{Demand, Signal};
 
     #[test]
+    fn situation_change_invalidates_hydration_between_slow_deliveries() {
+        let mut source = crate::codec::tests::rich_snapshot(1, 1);
+        let mut requested = Demand::default();
+        requested.request(Signal::SessionClock, 16);
+        requested.request(Signal::Weather, 250);
+        let mut cadence = crate::demand::Cadence::default();
+        let first = cadence.due(&requested, Duration::ZERO, true);
+        let old = SnapshotDto::selected(&source, &first).unwrap();
+        source.state.driving_situation = d::DrivingSituation::Garage;
+        let partial = cadence.due(&requested, Duration::from_millis(16), false);
+        assert!(partial.contains(Signal::SessionClock));
+        assert!(!partial.contains(Signal::Weather));
+        let next = SnapshotDto::selected(&source, &partial).unwrap();
+        assert!(!next.same_scope(&old, &partial));
+        assert!(
+            !partial.covers(&requested),
+            "el suscriptor rechaza esta primera entrega"
+        );
+    }
+
+    #[test]
     fn session_timing_round_trips_and_obeys_selective_delivery() {
         let mut source = crate::codec::tests::rich_snapshot(1, 1);
         source.state.session.timing = d::SessionTiming {
@@ -1938,7 +1959,7 @@ mod demand_tests {
         let fewer_cars = |dto: &mut SnapshotDto| {
             dto.state.cars.pop();
         };
-        let cases: [(&str, Change, &Demand, bool); 12] = [
+        let cases: [(&str, Change, &Demand, bool); 16] = [
             ("igual", |_| {}, &cars, true),
             ("época", |dto| dto.epoch += 1, &session, false),
             ("sesión", |dto| dto.state.session.id ^= 1, &session, false),
@@ -1955,6 +1976,25 @@ mod demand_tests {
             ("coche sin entregar", other_car, &player, true),
             ("parrilla con coches", fewer_cars, &cars, false),
             ("parrilla sin entregar", fewer_cars, &session, true),
+            (
+                "situación",
+                |dto| dto.state.driving_situation = DrivingSituationDto::Garage,
+                &session,
+                false,
+            ),
+            ("orden", |dto| dto.state.cars.reverse(), &cars, true),
+            (
+                "circuito",
+                |dto| dto.state.session.track_name = QualityDto::Reliable("other".into()),
+                &session,
+                true,
+            ),
+            (
+                "fuente",
+                |dto| dto.origin.simulator = "other".into(),
+                &session,
+                true,
+            ),
             ("secuencia", |dto| dto.sequence += 1, &cars, true),
         ];
         for (name, change, delivered, same) in cases {

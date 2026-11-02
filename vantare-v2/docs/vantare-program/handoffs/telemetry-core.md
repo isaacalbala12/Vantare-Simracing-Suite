@@ -6,6 +6,28 @@
 Estado de la base indicada; releer la issue antes de ejecutar.
 [Histórico completo por SHA](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/ca17545f607b85f5d47dc9d060721b69e6a6a158/vantare-v2/docs/vantare-program/handoffs/telemetry-core.md): conserva IDs, decisiones, informes, fallos y evidencia de cada ronda. No copiar ese diario aquí.
 
+## VANTA-129 / #1868 · Recorrido telemetría → overlay (2026-11-02)
+
+Encargo aprobado: diseño externo `D:/VantareServer/evidence/revision-general/telemetria-overlay-DISENO.md`,
+pasos 0–10, PR draft por corte contra nightly, sin merge/promoción/release.
+Paso 0 en curso: rama `vantareapp/isa-1868-paso0-caracterizacion`, worktree
+`D:/VantareServer/worktrees/isa-1868-paso0`, base `nightly@a5e0a9fd2`.
+Solo tests de caracterización: demanda 16/250 ms con centinela de 5 s;
+fronteras de retención/situación, trackers, journal e hidratación; pausa con
+pipe real hasta la proyección compartida del host. No abre ventana GPUI.
+Reproducción RED y gates pendientes de cola; no afirmar todavía congelación
+reproducida. Goldens/corpus sin modificar. El paso 1 irá primero si se confirma.
+
+Decisiones: ACC experimental con golden; lectores v7–v10 y delta por Look
+se conservan. Fuera DTO v12, capacidades en núcleo y conectar ACC.
+Coordinación VANTA-130: paths/files, session_alerts, Hub y resolvedores de
+runtime quedan para ese frente. Su edición de exports de `ipc/src/lib.rs`
+precede al retiro del alias del paso 4. Pasos 7–8 se aplican tras la ola P4.
+Última lectura de Plane: En curso; GitHub Project Vantare: In Progress.
+Evidencia de gates prevista: `D:/VantareServer/evidence/isa-1868-paso0`.
+El texto inferior conserva la entrega histórica; no fija la versión actual
+(las fotos live de la base de este encargo son v11).
+
 ## 1. Resultado
 
 Adquisición neutral LMU/ACC, calidad/frescura, fusión y derivaciones, publicación de fotos y journal. El núcleo entrega hechos: no pinta UI ni recomienda estrategia.

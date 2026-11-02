@@ -721,6 +721,75 @@ mod tests {
     }
 
     #[test]
+    fn pause_retention_scope_characterization() {
+        type Change = fn(&mut Observation);
+        let cases: [(&str, Change, bool); 7] = [
+            ("same", |_| {}, true),
+            ("session", |o| o.state.session.id.0 += 1, false),
+            (
+                "player",
+                |o| o.state.player.as_mut().unwrap().car = CarId(1),
+                false,
+            ),
+            (
+                "track",
+                |o| o.state.session.track_name = Quality::Reliable("other".into()),
+                false,
+            ),
+            (
+                "kind",
+                |o| o.state.session.kind = Quality::Reliable(SessionKind::Practice),
+                false,
+            ),
+            ("source", |o| o.origin.source.simulator = "other", false),
+            (
+                "situation",
+                |o| o.state.driving_situation = vantare_domain::DrivingSituation::Garage,
+                true,
+            ),
+        ];
+        for (label, change, retained) in cases {
+            let mut core = Core::new(1);
+            core.observe(observation(ms(0), ms(0), 0.5)).unwrap();
+            let mut pause = observation(ms(100), ms(0), 0.9);
+            pause.state.source_state = SourceState::Paused;
+            change(&mut pause);
+            core.observe(pause).unwrap();
+            assert_eq!(
+                core.snapshot()
+                    .state
+                    .player
+                    .as_ref()
+                    .unwrap()
+                    .telemetry
+                    .throttle,
+                Quality::Reliable(if retained { 0.5 } else { 0.9 }),
+                "{label}"
+            );
+            let mut core = Core::new(1);
+            let mut garage = observation(ms(0), ms(0), 0.5);
+            garage.state.driving_situation = vantare_domain::DrivingSituation::Garage;
+            core.observe(garage.clone()).unwrap();
+            garage.origin.received_at = ms(200);
+            garage.origin.source_time = Some(ms(200));
+            change(&mut garage);
+            core.observe(garage.clone()).unwrap();
+            garage.origin.received_at = ms(250);
+            garage.origin.source_time = Some(ms(250));
+            core.observe(garage).unwrap();
+            assert_eq!(
+                core.snapshot().state.driving_situation,
+                if retained {
+                    vantare_domain::DrivingSituation::Garage
+                } else {
+                    vantare_domain::DrivingSituation::Unknown
+                },
+                "{label}: la confirmación de situación usa el ámbito de retención"
+            );
+        }
+    }
+
+    #[test]
     fn unchanged_pedals_with_advancing_source_stay_fresh_beyond_pipe_timeout() {
         let mut demand = vantare_ipc::Demand::default();
         demand.request(vantare_ipc::Signal::Pedals, 5000);

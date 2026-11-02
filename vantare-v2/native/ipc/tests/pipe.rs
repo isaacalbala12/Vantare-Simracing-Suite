@@ -62,6 +62,76 @@ fn snapshots_arrive_in_order() {
     assert!(subscriber.next(Duration::from_millis(100)).is_none());
 }
 
+/// Paso 0 de #1868: la transición no debe invalidar una caché que el emisor
+/// todavía considera hidratada. Se ejecuta explícitamente para acreditar RED.
+#[test]
+#[ignore = "#1868 paso 1: el publicador no reinicia cadencia al cambiar situación"]
+fn driving_situation_changes_keep_the_demanded_pipe_connected() {
+    use vantare_domain::{DrivingSituation, SourceState};
+    use vantare_ipc::{Demand, Signal};
+
+    let name = unique_name("situation");
+    let connections = Arc::new(AtomicU32::new(0));
+    let mut publisher = Publisher::new(&name, {
+        let connections = Arc::clone(&connections);
+        move |_| {
+            connections.fetch_add(1, Ordering::SeqCst);
+            true
+        }
+    })
+    .unwrap();
+    let mut demand = Demand::default();
+    demand.request(Signal::SessionClock, 16);
+    demand.request(Signal::Weather, 250);
+    // Centinela: mantiene una señal fuera de cadencia incluso con contención
+    // del servidor. No se usa el tiempo de pared como oráculo de reconexión.
+    demand.request(Signal::TrackName, 5000);
+    let mut subscriber = Subscriber::connect_requested(&name, demand.clone(), any_peer).unwrap();
+    let source = publisher.demand_source();
+    let deadline = Instant::now() + WAIT;
+    while source.mask() != demand.mask() {
+        assert!(Instant::now() < deadline, "saludo con demanda");
+        thread::yield_now();
+    }
+    let mut photo = (*snapshot(1, 1)).clone();
+    photo.state.source_state = SourceState::Live;
+    photo.state.driving_situation = DrivingSituation::OnTrack;
+    publisher.publish(Arc::new(photo.clone())).unwrap();
+    assert_eq!(next(&mut subscriber), (1, 1));
+
+    for situation in [
+        DrivingSituation::Garage,
+        DrivingSituation::OnTrack,
+        DrivingSituation::Unknown,
+        DrivingSituation::Replay,
+    ] {
+        photo.state.driving_situation = situation;
+        let deadline = Instant::now() + WAIT;
+        loop {
+            photo.sequence += 1;
+            publisher.publish(Arc::new(photo.clone())).unwrap();
+            // La espera permite que venza la señal de 16 ms sin sleeps;
+            // recibir una foto sincroniza cada transición con el consumidor.
+            let received = subscriber.next_photo(Duration::from_millis(16));
+            assert_eq!(
+                connections.load(Ordering::SeqCst),
+                1,
+                "reconexión en {situation:?}"
+            );
+            assert!(Instant::now() < deadline, "foto de {situation:?}");
+            if let Some(received) = received {
+                assert_eq!(received.snapshot.state.driving_situation, situation);
+                assert_eq!(
+                    received.snapshot.state.session.track_name,
+                    photo.state.session.track_name
+                );
+                assert_eq!(received.demand, demand);
+                break;
+            }
+        }
+    }
+}
+
 #[test]
 fn heartbeats_advance_activity_without_repeating_the_last_photo() {
     let name = unique_name("activity");

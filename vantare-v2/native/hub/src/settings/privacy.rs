@@ -5,6 +5,9 @@ use std::path::{Path, PathBuf};
 use vantare_services::diagnostics::{ConsentSaveError, PRIVACY_FILE, Privacy};
 #[path = "privacy_cleanup.rs"]
 mod cleanup;
+#[cfg(test)]
+#[path = "privacy_roots_tests.rs"]
+mod roots_tests;
 
 // El Hub aún muestra la interfaz en español; el idioma de widgets es independiente.
 const PRIVACY_POLICY_URL: &str = "https://vantare.app/privacidad";

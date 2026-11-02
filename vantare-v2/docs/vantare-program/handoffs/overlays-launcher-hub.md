@@ -844,9 +844,15 @@ idénticas escriben una vez (con lock real), diez ticks de 1 s escriben dos vece
 continuidad hasta detener el publicador, caducidad, reloj atrás y reinicio.
 La escritura sigue en UI; moverla es una mejora posterior, anotada en #1869.
 
-fmt/check/Clippy de Hub/IPC/UI PASS en tanda QA tras corregir una docstring;
-Nextest, lifecycle y telemetría en curso. Calidad: 468 huellas PASS. El paso 1
+fmt/check/Clippy de Hub/IPC/UI PASS en tanda QA tras corregir una docstring.
+Nextest: 1089 PASS, 10 skips existentes; el replay golden falló en su plazo
+existente de 2 s durante la tanda paralela y pasó aislado sin cambiar el test
+(1/1), seguido del resto del conjunto (1088/1088). Fallos previos conservados
+en evidencia, incluidos los asserts CLI del nombre antiguo ya corregidos.
+Lifecycle 25/25 y telemetría 33/33 (1 skip) PASS. Calidad: 468 huellas PASS.
+Todas las tandas finales usan raíces QA para native, LocalAppData y AppData;
+evidencia en `D:/VantareServer/evidence/isa-1869/paso2`. El paso 1
 (privacidad y guard QA por el incidente del arnés, recuperado por el orquestador)
 va en su rama independiente; no se incluye silenciosamente en este PR.
-Pendiente: cerrar gates y abrir draft a nightly. Sin merge, promoción, release,
+Entrega: draft a nightly, con SHA y enlace en #1869. Sin merge, promoción, release,
 instalación ni operaciones de este corte sobre datos reales.

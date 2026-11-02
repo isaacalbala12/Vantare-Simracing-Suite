@@ -40,6 +40,32 @@ paquete: ZIP embebido con SHA compilado o ZIP cuyo SHA procede del sobre
 Ed25519. Setup además instala el lanzador y ofrece Reparar/Desinstalar.
 No hay autoactualización del lanzador raíz; el paso 9 queda aparcado.
 
+**Frontera transitoria del paso 4, autorizada el 2-nov-2026:** el núcleo Rust
+realiza estado, ZIP, generaciones y datos en el proceso de Setup/Uninstall.
+No adelanta shell::sync ni porta la transacción Windows que retira el paso 5.
+Conserva una llamada PowerShell por operación de finalización, marcada
+`TODO(#1840 p5)`, mediante installer-shell.ps1:
+
+| Operación | Entrada y condición previa | Salida y recuperación |
+| --- | --- | --- |
+| FinalizeInstall | Raíz ya activada, versión del manifiesto, opciones anteriores/nuevas, identidad y contexto Windows | Progreso JSON acotado; exit0 o error. La transacción existente restaura registro/accesos por bytes y Rust restaura estado/metadatos/generación si falla |
+| FinalizeUninstall | Estado y binarios retirados por Rust; raíz/identidad/opciones verificadas. Rechaza state.json presente para impedir entrar al desinstalador PS | Mantiene propiedad de accesos, Run, registro, marker/hash y retirada de metadatos. El fallo queda visible y se puede reanudar |
+| Cleanup | Padre de Uninstall, raíz y marker/hash; temporal exclusivo poseído | Conserva espera30s, bloqueo de sesión, rechazo de instalación renovada, borrado del EXE propio y temporal. No usa cmd ni un contrato nuevo de autoborrado |
+
+Contrato de cada llamada: JSON máximo64KiB con operación, request, context y
+previousUi; progreso JSON por stdout, diagnóstico por stderr y código de salida.
+El código de salida decide el resultado. Líneas stdout que no sean progreso JSON
+válido se conservan como diagnóstico en el log, sin revertir una salida0;
+installer-shell dirige Write-Warning a stderr, incluidos fallos cosméticos.
+En QA, context inyecta HKCU y carpetas bajo el guard antes de cargar la biblioteca.
+No se exigen una llamada única total de Uninstall+Cleanup ni un nuevo ciclo de
+vida. La excepción completa cierra en el paso 5. Feed y Register siguen en PS
+hasta sus pasos previstos. Esto sustituye temporalmente la frase histórica
+«Setup deja de lanzar PowerShell»; nunca autoriza el driver PS para el núcleo.
+La consulta de objetivo para accesos y la persistencia de preferencias Windows
+siguen dentro de esa transacción heredada hasta p5. Rust aporta opciones/contexto;
+no obtiene de ella estado, versión instalada ni datos para decidir operaciones.
+
 ### Estado estable y versión instalada
 
 `state.json` **schema 1** conserva campos y significado. `active` y `previous`

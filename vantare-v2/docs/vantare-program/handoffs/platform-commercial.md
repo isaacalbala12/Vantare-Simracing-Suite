@@ -573,6 +573,57 @@ Sin merge/release del worker.
   en nightly cbe485786; no se mezcla aquí. Sin Plane, instalación real,
   secretos, Downloads, merge/release/promoción del worker ni CI watch.
 
+### Paso 3 integrado / inicio del paso 4 (2-nov-2026)
+
+- #1861 integrado por el orquestador en nightly399b0e9e7; CI5/5 verde
+  confirmada por él. Metadatos del PR y origin/nightly verificados; el worker
+  no vigila CI ni hizo merge/release. Resumen Plane actualizado; sigue En curso.
+- Paso4 asignado: escritura Rust en el mismo proceso de Setup/Uninstall,
+  descubrimiento y opciones sin PowerShell. Feed heredado permanece hasta p6/p7;
+  shell::sync idempotente corresponde al paso5. Sin cambios grandes fuera del
+  diseño sin revisión previa del orquestador.
+- Rama vantareapp/isa-1840-paso4-motor-escritura, worktree isa-1840-paso4,
+  base origin/nightly399b0e9e7. Dependencias aprobadas zip6.0.0/windows0.62,
+  ninguna otra; target propio. Gates agrupados y cola cedida a VANTA-128.
+- Frontera p4/p5 autorizada: una llamada PS por FinalizeInstall,
+  FinalizeUninstall y Cleanup, con contrato acotado y TODO(#1840 p5). Conserva
+  la transacción/guardas/accesos/Run/rollback por bytes; no se porta shell a Rust.
+  Estado, ZIP, generaciones, datos, descubrimiento y lectura de opciones en Rust;
+  la transacción heredada conserva preferencias Windows hasta p5.
+- Modelo c15223a27: Retire comparte Installation::read, sin otra interpretación
+  estructural en operaciones; regresión antes de borrar/finalizar y propiedad de
+  raíz con equivalencia Windows/Unicode. Catálogo explícito sin parser PS en build.rs.
+- c15223a27: fmt/check, tres Clippy -D warnings y Nextest652/652 PASS
+  (5 omitidos; uno es helper ejecutado por padre); auxiliares y TEST8/8 PASS.
+  Último escritor b380a10d7: corte real de salida ZIP con tamaño subdeclarado,
+  fmt/check, tres Clippy, Nextest47/47 y TEST8/8 PASS; lector/Hub no cambian.
+  Frontera transitoria20 comprobaciones preliminares PASS. Ensayos conservados:
+  01 se detuvo por copia QA incompleta;02 por readContext ausente en comparador;
+  arnés53a162fa7 y83a173934 corrige supuestos del comparador; smoke dirigido PASS.
+  Campaña final matrix-p4-04:88/88 idénticos,45 rechazos y cinco raíces nightly;
+  128 campos del lector y64 del contexto iguales. Auxiliares25+24+14+18+54+42+
+  48+20 PASS; guard7+5. Startup184.232 s; total1284.188 s, límites intactos.
+  Fuentes/copias QA/oráculo/lock y calidad468 PASS. Medición reproducible y
+  tablas de lectores/deuda en matrix/evidence-1840-p4.md. Pendiente revisión.
+  Zip/windows son solo dos aristas nuevas del lock, sin paquetes/versiones/checksums.
+- QA solo bajo D:/VantareServer/qa con guard, HKCU y carpetas inyectados;
+  nunca instalación/registro reales. Siguiente: revisión del PR draft por parte
+  del orquestador; QA física en VM/cuenta separada. Sin promoción ni release.
+- PR draft [#1866](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1866) contra nightly, enlazado T3; HEAD final en #1840/PR, sin CI watch.
+- Revisión antes de integrar: exit code como autoridad del finalizador; warnings
+  diagnosticados sin revertir exit0. Prefijo vacío cerrado, temporales retirados
+  tras replace fallido, guard solo TEST, catálogo actual validado y MinAnimate
+  REG_DWORD conservado. Tests de duplicado ZIP crudo y rollback exacto de
+  UI/Uninstall realmente modificados. Fuente 0bffdad11: fmt/check, cuatro
+  Clippy -D warnings, Nextest52/52 Installer y49/49 TEST PASS; un helper por
+  suite invocado por padre. Builds públicos/QA y guard ausente/presente PASS;
+  calidad468/468. Cola cedida tras la tanda; matriz afectada bajo QA nuevo:
+  matrix-p4-review-01,48/48 idénticas,45 rechazos y cinco raíces no beta PASS;
+  auxiliares25+24+14+18+54+42+48+24 y guard7+5 PASS. Startup256.082 s (exit0),
+  campaña906.403 s; presupuesto480 s/deadlines30 s intactos. Sin Record.
+  Medidas y limitaciones actualizadas en la evidencia; siguiente: integrar por
+  el orquestador tras revisar CI. Plane En curso; sin merge/release del worker.
+
 ### Antecedentes 0–1d (evidencia histórica conservada)
 
 - 0/#1842 integrado en216f9bda7, Characterize Windows PASS confirmado. 1a/#1846

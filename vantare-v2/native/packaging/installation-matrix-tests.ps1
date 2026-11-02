@@ -1,6 +1,6 @@
 ﻿#requires -Version 5.1
 [CmdletBinding()]
-param([string]$Root,[string]$LegacyPackage,[string]$TestVerifier,[string]$BootProbe,[string]$ReadProbe,[switch]$Record,
+param([string]$Root,[string]$LegacyPackage,[string]$TestVerifier,[string]$BootProbe,[string]$ReadProbe,[string]$WriteEngine,[switch]$Record,
       [ValidateSet('clean','nsis975','nsis975-incomplete974','rc-options','pending','boot','retained','retained-no-marker')]
       [string[]]$Cases=@('clean','nsis975','nsis975-incomplete974','rc-options','pending','boot','retained','retained-no-marker'),
       [ValidateSet('Probe','Install','Update','Repair','Check','Apply','Confirm','Timeout','Rollback','Uninstall','Cleanup')]
@@ -95,6 +95,7 @@ try {
             $info.FileName="$env:WINDIR/System32/WindowsPowerShell/v1.0/powershell.exe"
             $info.Arguments='-NoProfile -ExecutionPolicy Bypass -File "'+(Join-Path $PSScriptRoot 'matrix/worker.ps1')+'" -Root "'+$caseRoot+'" -Case '+$case+' -Operation '+$operation+' -Assets "'+$assets+'" -RegistryRoot "HKEY_CURRENT_USER\Software\VantareInstallerMatrix\'+$registryId+'\'+$name+'"'
             if($ReadProbe){$info.Arguments+=' -ReadProbe "'+$ReadProbe+'"'}
+            if($WriteEngine){$info.Arguments+=' -WriteEngine "'+$WriteEngine+'"'}
             $info.UseShellExecute=$false;$info.CreateNoWindow=$true
             # CodeDOM used by Add-Type also writes temporary compiler files.
             # Set this BEFORE process creation, so .NET never caches user TEMP.
@@ -180,6 +181,18 @@ try {
         if($startup.ExitCode -ne 0){throw ('MATRIX_STARTUP_FAILED: '+$startup.Stderr)}
         $startup.Stdout
     }finally{$env:TEMP=$savedStartupTemp;$env:TMP=$savedStartupTmp;$env:LOCALAPPDATA=$savedStartupLocal}
+    if($WriteEngine){
+        $savedBoundaryTemp=$env:TEMP;$savedBoundaryTmp=$env:TMP;$savedBoundaryLocal=$env:LOCALAPPDATA
+        try{
+            $env:TEMP=$qaMatrixRoot;$env:TMP=$qaMatrixRoot;$env:LOCALAPPDATA=Join-Path $qaMatrixRoot 'LocalAppData'
+            $boundary=Invoke-NativeProcess -Executable "$env:WINDIR/System32/WindowsPowerShell/v1.0/powershell.exe" -Arguments @(
+                '-NoProfile','-ExecutionPolicy','Bypass','-File',(Join-Path $PSScriptRoot 'matrix/writer-boundary-tests.ps1'),
+                '-Root',(Join-Path $qaMatrixRoot 'writer-boundary'),'-Assets',$assets,'-WriteEngine',$WriteEngine
+            ) -TimeoutMilliseconds 120000 -LogPath (Join-Path $qaMatrixRoot 'writer-boundary.log')
+            if($boundary.ExitCode -ne 0){throw ('MATRIX_WRITER_BOUNDARY_FAILED: '+$boundary.Stderr)}
+            $boundary.Stdout
+        }finally{$env:TEMP=$savedBoundaryTemp;$env:TMP=$savedBoundaryTmp;$env:LOCALAPPDATA=$savedBoundaryLocal}
+    }
     Write-NativeJson (Join-Path $qaMatrixRoot 'results.json') $rows
     if ($Record) { Write-NativeJson (Join-Path $qaMatrixRoot 'candidate-baseline.json') $rows }
 } finally {

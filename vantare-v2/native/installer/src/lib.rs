@@ -1,5 +1,5 @@
 #![deny(unsafe_code)]
-//! Shared installation reads; Setup transports the package, PowerShell owns writes.
+//! Shared installation reads and in-process mutations; GPUI only presents them.
 pub mod args;
 #[cfg(all(windows, feature = "parity-capture"))]
 mod batch;

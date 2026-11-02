@@ -105,7 +105,11 @@ function Test-MatrixProbeRejections([string]$Install,[string]$Driver,[string]$Re
                 # Read-NativeState and the common Rust reader accept nightly;
                 # only Setup's extra ExpectedChannel='beta' policy rejects it.
                 $legacyRead=Read-NativeState $Install $false
-                $context=& $Driver -RequestFile $Request
+                $commonContextRequest=[IO.File]::ReadAllText($Request)|ConvertFrom-Json
+                $commonContextRequest.readContext=$true
+                $commonContextPath=$Request+'.common.context.json'
+                Write-NativeJson $commonContextPath $commonContextRequest
+                $context=& $Driver -RequestFile $commonContextPath
                 $common=Invoke-NativeProcess -Executable $ReadProbe -Arguments @('--reader') -InputText $context -TimeoutMilliseconds 30000 -LogPath ($Request+'.common.log')
                 if($common.ExitCode){throw 'MATRIX_COMMON_READER_REJECTED_NIGHTLY'}
                 $read=$common.Stdout|ConvertFrom-Json

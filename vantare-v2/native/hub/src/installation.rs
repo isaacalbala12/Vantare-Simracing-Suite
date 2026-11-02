@@ -311,8 +311,8 @@ mod tests {
             .share_mode(7)
             .open(path)
             .expect("open owned classic-delete fixture");
-        let deleting: i32 = 1; // FILE_DISPOSITION_INFO uses BOOL, FileDispositionInfo=4.
-        // SAFETY: owned DELETE/read handle; correctly sized SDK BOOL buffer.
+        let deleting: i32 = 1; // FileDispositionInfo=4; BOOLEAN true plus zero padding.
+        // SAFETY: owned DELETE/read handle; initialized buffer starts with SDK BOOLEAN.
         assert_ne!(
             unsafe {
                 set_file_information(file.as_raw_handle(), 4, (&raw const deleting).cast(), 4)

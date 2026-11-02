@@ -166,6 +166,8 @@ impl Session {
             .as_deref()
             .ok_or_else(|| WriteError::new(1, "Falta raíz Cleanup"))?;
         self.context.validate_root(root)?;
+        // Observe renewal and the marker under the same exclusion as Cleanup.
+        let _session = disk::lock(root, "beta-session.lock")?;
         disk::ensure(
             !root.join("state.json").try_exists()? && !self.context.has_registration(request)?,
             "La instalación se ha renovado; se conserva el desinstalador",

@@ -232,13 +232,17 @@ fn legacy_run(context: &Context, root: &Path, identity: &str) -> Result<Option<(
     let value = super::platform::registry_string(&context.registry_prefix, RUN, &name, false)?;
     Ok(value
         .filter(|command| {
+            // The legacy PowerShell regex accepts ASCII flag case variants.
+            // Keep the stored command unchanged for a failed Run migration.
+            let normalized = command.to_ascii_lowercase();
+            let command = normalized.as_str();
             if let Some((exe, rest)) = command
                 .strip_prefix('"')
                 .and_then(|value| value.split_once('"'))
                 && let Some(tail) = rest.strip_prefix(
-                    " -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File \"",
+                    " -noprofile -executionpolicy bypass -windowstyle hidden -file \"",
                 )
-                && let Some((script, tail)) = tail.split_once("\" -Root \"")
+                && let Some((script, tail)) = tail.split_once("\" -root \"")
                 && let Some(directory) = tail.strip_suffix('"')
                 && same(Path::new(exe), &powershell().unwrap_or_default())
                 && same(Path::new(script), &root.join("beta.ps1"))

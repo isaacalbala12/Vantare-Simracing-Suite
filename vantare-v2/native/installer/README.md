@@ -205,7 +205,7 @@ antigua. Usa NSIS y candidate de la base pre-PR limpia `298abc33`, comprueba
 registro/accesos/hash/preferencias y datos exactos, y ejecuta Register real de B.
 La señal de readiness es una fixture; el arranque live requiere otro SID/VM.
 
-## Escritura Rust — #1840, paso 4
+## Escritura Rust — #1840, pasos4–5
 
 `operations` comparte instalación/actualización/reparación y retirada; `package`
 conserva SHA externo, miembros exactos, hashes/PE/sidecars, límites128/256/512MiB
@@ -214,8 +214,9 @@ porque un índice por nombre podría ocultar duplicados. `write_fs` mantiene
 NTFS/replace atómico, locks, guarda de imágenes vivas y copias verificadas con
 carpetas vacías; no mata procesos. Cancelación solo antes del punto copy.
 
-Las operaciones guardan state.json v1. Si finaliza mal shell, se restauran los
-bytes previos y se retiran solo generaciones nuevas no referenciadas. El feed
+Las operaciones guardan state.json v1. Si falla shell::sync, restauran el estado
+lógico y lo resincronizan; no guardan copias de registro, enlaces, UI o Uninstall
+por bytes. Se retiran solo generaciones nuevas no referenciadas. El feed
 PS conserva su propio consumidor hasta p6; no se retira todavía del producto.
 Una desinstalación interrumpida conserva datos/marker y puede reanudarse.
 
@@ -233,7 +234,7 @@ y rechazan un contexto aislado antes de preparar archivos.
 El código de salida del finalizador decide el resultado: un warning con exit0
 queda en el log y conserva la instalación. Las regresiones también comprueban
 temporales retirados tras fallar replace, catálogo actual y retirado, duplicados
-en el directorio ZIP crudo y rollback exacto de UI/Uninstall tras modificarlos.
+en el directorio ZIP crudo y recuperación de la proyección Windows tras un fallo.
 MinAnimate admite los mismos valores String/DWord que PowerShell.
 
 Paso4, campaña inicial: modelo c15223a27,652/652 Nextest Installer+Hub; escritor
@@ -245,3 +246,7 @@ Revisión de #1866 sobre 0bffdad11: fmt/check, cuatro Clippy -D warnings,
 Nextest52/52 Installer y49/49 TEST PASS; helper ejecutado por padre en ambas.
 Matriz afectada48/48 idénticas y24 comprobaciones de frontera PASS;
 Startup48 aserciones en256.082 s, dentro de480 s. Campaña completa previa88/88.
+
+Paso5 conserva destinos hasta6 y no migra Feed/Register/SetStartup. La matriz
+comprueba sincronización repetida, AppID, enlace ajeno, exclusión y retirada del
+temporal propio sin residuo; el ensayo de autoborrado POSIX sigue solo manual.

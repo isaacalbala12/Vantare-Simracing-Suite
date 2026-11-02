@@ -52,6 +52,11 @@ try{
     }
     Assert-Boundary ($explorer.NameSpace((Split-Path $appLink)).ParseName([IO.Path]::GetFileName($appLink)).ExtendedProperty('System.AppUserModel.ID') -ceq 'Vantare.SimracingSuite') 'Native shell persists AppUserModelID'
     Assert-Boundary (@(Get-ChildItem -LiteralPath (Split-Path $appLink) -Filter '*.lnk').Count -eq 2) 'Native shell sync creates no duplicate links'
+    New-Item -Path $run -Force|Out-Null
+    $lowerRun=('"'+$env:WINDIR+'\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "'+(Join-Path $install 'beta.ps1')+'" -Root "'+$install+'"').ToLowerInvariant()
+    Set-ItemProperty -LiteralPath $run -Name 'VantareNative.Hub' -Value $lowerRun
+    $migrated=Invoke-BoundaryWriter 'Sync' '0.0.988'
+    Assert-Boundary ($migrated.ExitCode -eq 0 -and $null -eq (Get-ItemProperty -LiteralPath $run).PSObject.Properties['VantareNative.Hub']) 'Native Run migration accepts the same flag and path case variants as PowerShell'
     $operation=[IO.File]::Open((Join-Path $install '.operation.lock'),[IO.FileMode]::OpenOrCreate,[IO.FileAccess]::ReadWrite,[IO.FileShare]::None)
     try{$blocked=Invoke-BoundaryWriter 'Sync' '0.0.988'}finally{$operation.Dispose()}
     Assert-Boundary ($blocked.ExitCode -ne 0 -and (Get-ItemProperty -LiteralPath $key).DisplayVersion -ceq $expectedVersion) 'Native shell sync respects the operation owner'

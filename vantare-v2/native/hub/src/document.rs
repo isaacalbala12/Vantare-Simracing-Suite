@@ -14,6 +14,7 @@ fn layout_file_error(error: vantare_ui::layout::Error) -> vantare_ipc::files::Er
 }
 
 pub struct Editor {
+    pub warning: Option<String>,
     document: Document,
     path: PathBuf,
     undo: Vec<Layout>,
@@ -30,8 +31,41 @@ impl Editor {
         }) {
             return Err("archivo de entorno no permitido".into());
         }
-        let document = Document::open(path.clone()).map_err(|error| error.to_string())?;
+        let opened = vantare_ipc::files::Doc::open_or_quarantine(
+            &path,
+            &vantare_ipc::files::Options {
+                limit: 1024 * 1024,
+                sibling_base: Some(path.with_extension("json")),
+                ..Default::default()
+            },
+            |bytes| {
+                let value: serde_json::Value = serde_json::from_slice(bytes).map_err(|error| {
+                    vantare_ipc::files::Error::InvalidInput(format!("JSON de layout: {error}"))
+                })?;
+                if value
+                    .get("version")
+                    .and_then(serde_json::Value::as_u64)
+                    .is_some_and(|v| v != 1)
+                {
+                    return Err(vantare_ipc::files::Error::Unsupported(
+                        "versión de layout desconocida; original protegido".into(),
+                    ));
+                }
+                Layout::from_json(bytes).map_err(layout_file_error)
+            },
+            Layout::default,
+        );
+        let preserve_backup = opened.warning.is_some();
+        let document = Document::from_observed(
+            path.clone(),
+            opened.observed,
+            opened.value,
+            std::fs::metadata(&path).and_then(|m| m.modified()).ok(),
+            preserve_backup,
+        )
+        .map_err(|error| error.to_string())?;
         Ok(Self {
+            warning: opened.warning,
             document,
             path,
             undo: vec![],
@@ -40,6 +74,9 @@ impl Editor {
         })
     }
     pub fn initialize(&mut self, monitor: (f32, f32, f32, f32)) -> Result<(), String> {
+        if let Some(warning) = &self.warning {
+            return Err(warning.clone());
+        }
         self.document
             .initialize(monitor)
             .map_err(|error| error.to_string())
@@ -74,10 +111,11 @@ impl Editor {
         &mut self,
         resolution: Option<vantare_ui::layout::CanvasResolution>,
     ) -> Result<(), String> {
-        self.change(|layout| {
+        self.change::<String>(|layout| {
             layout.canvas_resolution = resolution;
             Ok(())
         })
+        .map_err(Into::into)
     }
     pub(crate) fn persist(&mut self) -> Result<(), String> {
         self.document
@@ -88,25 +126,27 @@ impl Editor {
         &mut self,
         preferences: vantare_domain::format::Preferences,
     ) -> Result<(), vantare_ipc::files::Error> {
-        self.change_checked(|layout| {
+        self.change::<String>(|layout| {
             layout.preferences = preferences;
             Ok(())
         })
     }
     pub(crate) fn set_hide_off_track(&mut self, enabled: bool) -> Result<(), String> {
-        self.change(|layout| {
+        self.change::<String>(|layout| {
             layout.hide_off_track = enabled;
             Ok(())
         })
+        .map_err(Into::into)
     }
     pub(crate) fn set_performance(
         &mut self,
         preferences: vantare_ui::performance::Preferences,
     ) -> Result<(), String> {
-        self.change(|layout| {
+        self.change::<String>(|layout| {
             layout.performance = preferences;
             Ok(())
         })
+        .map_err(Into::into)
     }
     pub fn can_undo(&self) -> bool {
         !self.undo.is_empty()
@@ -130,7 +170,7 @@ impl Editor {
         item.id.clone_from(&id);
         item.x += 20.0;
         item.y += 20.0;
-        self.change(|layout| {
+        self.change::<String>(|layout| {
             layout.instances.push(item);
             if let Some(hz) = frequency {
                 layout.performance.widgets.insert(id.clone(), hz);
@@ -148,7 +188,7 @@ impl Editor {
     }
     pub fn back(&mut self) -> Result<(), String> {
         let id = self.selected.clone().ok_or("selecciona una instancia")?;
-        self.change(|layout| {
+        self.change::<String>(|layout| {
             let index = layout
                 .instances
                 .iter()
@@ -158,6 +198,7 @@ impl Editor {
             layout.instances.insert(0, item);
             Ok(())
         })
+        .map_err(Into::into)
     }
     pub fn selected(&self) -> Option<&Instance> {
         self.layout()
@@ -174,19 +215,13 @@ impl Editor {
         self.reconcile_selection();
         Ok(())
     }
-    fn change(
+    fn change<E: Into<vantare_ipc::files::Error>>(
         &mut self,
-        edit: impl FnOnce(&mut Layout) -> Result<(), String>,
-    ) -> Result<(), String> {
-        self.change_checked(edit).map_err(String::from)
-    }
-    fn change_checked(
-        &mut self,
-        edit: impl FnOnce(&mut Layout) -> Result<(), String>,
+        edit: impl FnOnce(&mut Layout) -> Result<(), E>,
     ) -> Result<(), vantare_ipc::files::Error> {
         let previous = self.layout().clone();
         let mut next = previous.clone();
-        edit(&mut next)?;
+        edit(&mut next).map_err(Into::into)?;
         crate::session_alerts::synchronize(&mut next, &previous);
         // La API común normaliza documentos externos; una entrada interactiva no finita es un error.
         if next.instances.iter().any(|item| {
@@ -216,7 +251,7 @@ impl Editor {
     }
     pub fn edit_selected(&mut self, edit: impl FnOnce(&mut Instance)) -> Result<(), String> {
         let id = self.selected.clone().ok_or("selecciona una instancia")?;
-        self.change(|layout| {
+        self.change::<String>(|layout| {
             let item = layout
                 .instances
                 .iter_mut()
@@ -225,6 +260,7 @@ impl Editor {
             edit(item);
             Ok(())
         })
+        .map_err(Into::into)
     }
     /// Ajustes con los que nace un widget nuevo; el catálogo los mide igual.
     pub(crate) fn new_settings(kind: Kind) -> Settings {
@@ -243,7 +279,7 @@ impl Editor {
         kinds: &[Kind],
         level: vantare_ui::performance::Level,
     ) -> Result<(), String> {
-        self.change(|layout| {
+        self.change::<String>(|layout| {
             for item in &mut layout.instances {
                 item.visible = kinds.contains(&item.settings.kind());
             }
@@ -274,12 +310,13 @@ impl Editor {
             layout.performance.level = level;
             Ok(())
         })
+        .map_err(Into::into)
     }
     /// Un solo paso de historial: Deshacer retira el widget, no solo su posición.
     pub fn add_at(&mut self, kind: Kind, (x, y): (f32, f32)) -> Result<(), String> {
         let id = self.next_id()?;
         let settings = Self::new_settings(kind);
-        self.change(|layout| {
+        self.change::<String>(|layout| {
             layout.instances.push(Instance {
                 off_track: vantare_ui::layout::OffTrack::default(),
                 geometry: vantare_ui::geometry::Geometry::default(),
@@ -305,15 +342,16 @@ impl Editor {
                 .unwrap_or_else(|| selected.id.clone()),
             _ => selected.id.clone(),
         };
-        self.change(|layout| {
+        self.change::<String>(|layout| {
             layout.instances.retain(|item| item.id != id);
             layout.performance.widgets.remove(&id);
             Ok(())
         })
+        .map_err(Into::into)
     }
     pub fn front(&mut self) -> Result<(), String> {
         let id = self.selected.clone().ok_or("selecciona una instancia")?;
-        self.change(|layout| {
+        self.change::<String>(|layout| {
             let index = layout
                 .instances
                 .iter()
@@ -323,6 +361,7 @@ impl Editor {
             layout.instances.push(item);
             Ok(())
         })
+        .map_err(Into::into)
     }
     pub fn undo(&mut self) -> Result<(), String> {
         if let Some(previous) = self.undo.last() {
@@ -391,6 +430,43 @@ pub(crate) mod tests {
             fs::remove_dir(self.path.parent().expect("directorio propio"))
                 .expect("limpiar directorio propio");
         }
+    }
+    #[test]
+    fn step5_future_layout_stays_intact_and_cannot_be_overwritten() {
+        let file = File::new();
+        let bytes = br#"{"version":99,"instances":[]}"#;
+        fs::write(&file.path, bytes).unwrap();
+        let mut editor = Editor::open(file.path.clone()).unwrap();
+        assert!(editor.warning.is_some());
+        let mut prefs = editor.layout().preferences;
+        prefs.units = vantare_domain::format::Units::Imperial;
+        assert!(editor.set_preferences(prefs).is_err());
+        assert_eq!(fs::read(&file.path).unwrap(), bytes);
+        assert!(!file.path.with_file_name("layout.json.invalid").exists());
+    }
+    #[test]
+    fn step5_busy_layout_remains_busy_in_settings_and_testing_center() {
+        use crate::files::Failure;
+        let file = File::new();
+        let mut editor = Editor::open(file.path.clone()).unwrap();
+        editor.add(Kind::Pedals).unwrap();
+        let bytes = fs::read(&file.path).unwrap();
+        let lock = fs::OpenOptions::new()
+            .write(true)
+            .open(file.path.with_extension("json.lock"))
+            .unwrap();
+        lock.try_lock().unwrap();
+        let mut prefs = editor.layout().preferences;
+        prefs.units = vantare_domain::format::Units::Imperial;
+        let error = editor.set_preferences(prefs).unwrap_err();
+        let failure = Failure::from(error);
+        assert_eq!(failure.kind(), crate::files::Kind::Busy);
+        assert!(!failure.kind().is_conflict());
+        assert_eq!(
+            crate::testing::diagnostic::error_code(failure.kind()),
+            crate::testing::diagnostic::ErrorCode::LocalError
+        );
+        assert_eq!(fs::read(&file.path).unwrap(), bytes);
     }
     #[test]
     fn add_at_places_and_selects_in_one_undoable_step() {

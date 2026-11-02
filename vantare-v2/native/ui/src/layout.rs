@@ -283,10 +283,9 @@ pub fn default_path() -> Result<PathBuf, Error> {
 
 fn write_error(error: vantare_ipc::files::Error) -> Error {
     match error {
-        vantare_ipc::files::Error::Conflict | vantare_ipc::files::Error::Busy => Error::Conflict,
-        vantare_ipc::files::Error::TooLarge | vantare_ipc::files::Error::ReadTooLarge { .. } => {
-            Error::Invalid("layout supera 1 MiB")
-        }
+        vantare_ipc::files::Error::Conflict => Error::Conflict,
+        vantare_ipc::files::Error::TooLarge { .. }
+        | vantare_ipc::files::Error::ReadTooLarge { .. } => Error::Invalid("layout supera 1 MiB"),
         error => Error::Io(error.into()),
     }
 }
@@ -312,6 +311,7 @@ pub struct Document {
     modified: Option<SystemTime>,
     unchanged: u64,
     layout: Layout,
+    preserve_backup: bool,
 }
 
 impl Document {
@@ -322,12 +322,25 @@ impl Document {
         let layout = bytes
             .as_deref()
             .map_or_else(|| Ok(Layout::default()), Layout::from_json)?;
+        Self::from_observed(path, bytes, layout, stamp, false)
+    }
+
+    /// Construye la vista del Hub tras archivar bytes dañados, conservando su CAS.
+    /// El lector de overlays sigue usando open/poll y su último layout válido.
+    pub fn from_observed(
+        path: PathBuf,
+        bytes: Option<Vec<u8>>,
+        layout: Layout,
+        stamp: Option<SystemTime>,
+        preserve_backup: bool,
+    ) -> Result<Self, Error> {
         Ok(Self {
             path,
             bytes,
             modified: stamp,
             unchanged: 0,
-            layout,
+            layout: layout.normalized()?,
+            preserve_backup,
         })
     }
 
@@ -376,7 +389,10 @@ impl Document {
             return Ok(());
         }
         match self.save(&crate::app::starter_layout(monitor)) {
-            Err(Error::Conflict) => {
+            Err(error)
+                if matches!(&error, Error::Conflict)
+                    || matches!(&error, Error::Io(io) if io.kind() == io::ErrorKind::WouldBlock) =>
+            {
                 // Espera solo al escritor inicial: el fichero aún puede no existir
                 // cuando try_lock detecta al otro proceso creando el documento.
                 let lock = OpenOptions::new()
@@ -402,7 +418,13 @@ impl Document {
         if bytes.len() as u64 > MAX_BYTES {
             return Err(Error::Invalid("layout supera 1 MiB"));
         }
-        persist(&self.path, self.bytes.as_deref(), &bytes, true)?;
+        persist(
+            &self.path,
+            self.bytes.as_deref(),
+            &bytes,
+            !self.preserve_backup,
+        )?;
+        self.preserve_backup = false;
         self.bytes = Some(bytes);
         self.layout = layout;
         self.modified = modified(&self.path);

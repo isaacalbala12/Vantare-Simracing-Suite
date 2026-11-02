@@ -630,14 +630,14 @@ impl Launcher {
                         self.close_form(window, cx);
                     }
                 }
-                Ok(_) => self.report(
+                Ok(_) => self.report::<String>(
                     Err(
                         "termina la cadena y cierra las apps iniciadas antes de borrar el perfil"
                             .into(),
                     ),
                     cx,
                 ),
-                Err(error) => self.report(Err(error), cx),
+                Err(error) => self.report::<String>(Err(error), cx),
             }
         } else if let Some(id) = self.pending_app_removal.clone()
             && self.edit(move |document| document.remove_app(&id), cx)
@@ -821,7 +821,7 @@ impl Launcher {
             .map(|n| format!("profile:{n}"))
             .find(|id| !self.store.document.profiles.iter().any(|p| &p.id == id))
         else {
-            self.report(Err("límite de perfiles alcanzado".into()), cx);
+            self.report::<String>(Err("límite de perfiles alcanzado".into()), cx);
             return;
         };
         let mut profile = source.map_or_else(
@@ -893,7 +893,7 @@ impl Launcher {
         let profile = match result {
             Ok(profile) => profile,
             Err(error) => {
-                self.report(Err(error), cx);
+                self.report::<String>(Err(error), cx);
                 return;
             }
         };
@@ -918,7 +918,7 @@ impl Launcher {
                     .as_ref()
                     .map_or(0, |draft| draft.steps.len()),
             ) {
-                self.report(Err(message.into()), cx);
+                self.report::<String>(Err(message.into()), cx);
             }
             return;
         }

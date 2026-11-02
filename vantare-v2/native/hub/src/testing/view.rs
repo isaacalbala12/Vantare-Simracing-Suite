@@ -165,13 +165,13 @@ impl Testing {
             participation_form: super::participation::Form::new(capture_questionnaire, cx),
         }
     }
-    pub fn persist(&mut self) -> Result<(), String> {
+    pub fn persist(&mut self) -> Result<(), crate::files::Error> {
         if self.store.dirty() {
             let result = self.store.save();
             if let Err(error) = &result {
                 self.observed.error(Module::TestingCenter, error.kind());
             }
-            result.map_err(|_| "No se pudo guardar el borrador de Testing Center; conserva la ventana y revisa el conflicto/acceso local".into())
+            result
         } else {
             Ok(())
         }

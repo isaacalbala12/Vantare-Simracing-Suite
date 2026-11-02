@@ -706,3 +706,9 @@ del supervisor usa el mismo aviso si omite renovar. NoCredential/RecoveryRequire
 ClockBehind frescos admiten consultas al helper; Logout sigue disponible con
 canal del núcleo autenticado, incluso ante denegación o caducidad. Sin conceder
 derechos ni saltar el ACK durable; ADR0102.
+
+Para la recuperación del Hub (#1869, paso 5), Document::from_observed conserva
+el CAS de los bytes archivados y evita sustituir el backup anterior en el primer
+guardado de reparación. Document::open/poll siguen rechazando documentos inválidos
+y conservando el último layout válido de los overlays. Un escritor ocupado llega
+como I/O WouldBlock con el error tipado dentro; no se convierte en conflicto.

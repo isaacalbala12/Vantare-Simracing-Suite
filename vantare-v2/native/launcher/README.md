@@ -20,3 +20,9 @@ El cierre normal de apps propias mata y recoge sus procesos. La API
 consulta el estado, sin `wait`: el supervisor la usa después de vencer P.
 La espera de confirmación pertenece al cierre normal o al arnés de pruebas,
 no al camino forzado. Sólo actúa mediante los handles de hijos registrados.
+
+El Hub abre un Launcher dañado con el catálogo por defecto y aviso de su copia
+`.invalid`, conservando bytes originales para el siguiente CAS. Una versión
+futura se protege sin copia ni importación Wails y no se puede sobrescribir.
+El residente también conserva los originales; sin perfiles válidos no hay nada
+que lanzar. La importación Wails activa se retira en el paso 9, no en este PR.

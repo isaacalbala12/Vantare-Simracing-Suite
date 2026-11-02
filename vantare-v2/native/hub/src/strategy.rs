@@ -105,7 +105,7 @@ impl Editor {
             .path
             .as_ref()
             .ok_or("Elige Guardar como para este documento nuevo")?;
-        files::save_checked(path, doc.bytes(), self.saved.as_deref(), LIMIT)?;
+        files::save_with_limit(path, doc.bytes(), self.saved.as_deref(), LIMIT)?;
         self.saved = Some(doc.bytes().to_vec());
         Ok(())
     }
@@ -115,7 +115,7 @@ impl Editor {
             return self.save();
         }
         // Never overwrite an unobserved target, even if the OS dialog accepts it.
-        files::save_checked(&path, doc.bytes(), None, LIMIT)?;
+        files::save_with_limit(&path, doc.bytes(), None, LIMIT)?;
         self.path = Some(path);
         self.saved = Some(doc.bytes().to_vec());
         Ok(())
@@ -479,11 +479,8 @@ impl Strategy {
         this.load_fields(cx);
         this
     }
-    fn outcome(&mut self, result: Result<(), String>, cx: &mut Context<Self>) {
-        self.outcome_checked(result.map_err(Into::into), cx);
-    }
-    fn outcome_checked(&mut self, result: Result<(), files::Error>, cx: &mut Context<Self>) {
-        self.error = result.err().map(Into::into);
+    fn outcome<E: Into<files::Error>>(&mut self, result: Result<(), E>, cx: &mut Context<Self>) {
+        self.error = result.err().map(|error| files::Failure::from(error.into()));
         cx.notify();
     }
     fn cancel_pending_calculation(&mut self) {
@@ -526,13 +523,10 @@ impl Strategy {
         }
         Ok(())
     }
-    pub fn persist(&mut self) -> Result<(), String> {
+    pub fn persist(&mut self) -> Result<(), files::Error> {
         self.ensure_clean_form()?;
-        self.editor.save().map_err(|error| {
-            let failure = crate::files::Failure::from(error);
-            let message = failure.to_string();
-            self.error = Some(failure);
-            message
+        self.editor.save().inspect_err(|error| {
+            self.error = Some(files::Failure::new(error.kind(), error.to_string()));
         })
     }
     fn load_fields(&mut self, cx: &mut Context<Self>) {
@@ -637,7 +631,7 @@ impl Strategy {
                 Ok(())
             }
         }) {
-            self.outcome(Err(error), cx);
+            self.outcome::<String>(Err(error), cx);
             return;
         }
         let picker = cx.prompt_for_paths(PathPromptOptions {
@@ -708,11 +702,11 @@ impl Strategy {
         if result.is_ok() {
             self.status = "Documento guardado de forma atómica.".into();
         }
-        self.outcome_checked(result, cx);
+        self.outcome(result, cx);
     }
     fn save_as(&mut self, cx: &mut Context<Self>) {
         if let Err(error) = self.ensure_clean_form() {
-            self.outcome(Err(error), cx);
+            self.outcome::<String>(Err(error), cx);
             return;
         }
         let picker = cx.prompt_for_new_path(&self.directory, Some("strategy-v2.json"));
@@ -731,7 +725,7 @@ impl Strategy {
                     this.status =
                         "Documento guardado; los archivos preexistentes no se sobrescriben.".into();
                 }
-                this.outcome_checked(result, cx);
+                this.outcome(result, cx);
             });
         })
         .detach();
@@ -761,7 +755,7 @@ impl Strategy {
         }
     }
     fn add_event(&mut self, cx: &mut Context<Self>) {
-        let result = (|| {
+        let result: Result<(), String> = (|| {
             let mut next = match &self.editor.document {
                 Some(doc) => doc.clone(),
                 None => Document::empty(&chrono::Utc::now().to_rfc3339())?,
@@ -947,21 +941,21 @@ impl Strategy {
             return;
         }
         if self.manual_source_status != SourceStatus::Open || self.editor.document.is_none() {
-            self.outcome(Err("source_not_open".into()), cx);
+            self.outcome::<String>(Err("source_not_open".into()), cx);
             return;
         }
         let input = self.prepare_input();
         let input = match input {
             Ok(input) => input,
             Err(error) => {
-                self.outcome(Err(error), cx);
+                self.outcome::<String>(Err(error), cx);
                 return;
             }
         };
         let input = match application::prepare_manual(input) {
             Ok(input) => input,
             Err(error) => {
-                self.outcome(Err(error), cx);
+                self.outcome::<String>(Err(error), cx);
                 return;
             }
         };

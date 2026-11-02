@@ -125,7 +125,7 @@ impl Store {
         }
         let bytes = serde_json::to_vec_pretty(&self.draft)
             .map_err(|_| "No se pudo codificar el borrador")?;
-        files::save_checked(&self.path, &bytes, self.saved.as_deref(), LIMIT)?;
+        files::save_with_limit(&self.path, &bytes, self.saved.as_deref(), LIMIT)?;
         self.saved = Some(bytes);
         Ok(())
     }
@@ -162,7 +162,7 @@ pub fn export(path: &Path, bytes: &[u8]) -> Result<(), files::Error> {
         return Err("Elige un archivo JSON local".into());
     }
     // Crear exclusivamente: un destino ya existente nunca se sobrescribe.
-    files::save_checked(path, bytes, None, 64 * 1024)
+    files::save_with_limit(path, bytes, None, 64 * 1024)
 }
 
 #[cfg(test)]

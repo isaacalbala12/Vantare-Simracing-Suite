@@ -81,7 +81,7 @@ pub(crate) struct Hub {
     settings: settings::State,
     home_previews: foundations::Previews,
     home_profile: Entity<orbit::Choice>,
-    status: Option<String>,
+    status: Option<crate::files::Failure>,
     subscriber: Subscriber,
     previous_source: Option<bool>,
     connection_incompatible: bool,
@@ -91,7 +91,7 @@ pub(crate) struct Hub {
 }
 
 impl Hub {
-    fn save(&mut self, cx: &mut Context<Self>) -> Result<(), String> {
+    fn save(&mut self, cx: &mut Context<Self>) -> Result<(), crate::files::Error> {
         // Studio confirma cada edición; guarda también los borradores locales pendientes.
         self.remote.update(cx, |remote, cx| remote.persist(cx))?;
         self.strategy.update(cx, |strategy, _| strategy.persist())?;
@@ -172,9 +172,11 @@ impl Hub {
         let errors = [
             (
                 TestingModule::Hub,
-                self.status.as_ref().map(|_| crate::files::Kind::Local),
+                self.status.as_ref().map(crate::files::Failure::kind),
             ),
             (
+                // scene.error procede solo de lectura/decodificación de fotos, no de guardados.
+                // Un fallo de persist() viaja tipado por Hub::save y se registra en Hub.
                 TestingModule::Workshop,
                 self.workshop
                     .read(cx)
@@ -269,7 +271,7 @@ impl Hub {
                     };
                     if let Err(error) = std::fs::write(PathBuf::from(root).join("hub-exit"), state)
                     {
-                        self.status = Some(format!("registrar cierre beta: {error}"));
+                        self.status = Some(format!("registrar cierre beta: {error}").into());
                         self.close_requested = false;
                         self.cancel_beta_restart();
                         cx.notify();
@@ -280,9 +282,9 @@ impl Hub {
             }
             Err(error) => {
                 self.notifications.update(cx, |center, cx| {
-                    center.report("hub.save", error.clone(), cx);
+                    center.report("hub.save", error.to_string(), cx);
                 });
-                self.status = Some(error);
+                self.status = Some(error.into());
                 self.close_requested = false;
                 self.cancel_beta_restart();
                 cx.notify();
@@ -569,7 +571,7 @@ impl Hub {
                 content.child(orbit::callout(vantare_ipc::INCOMPATIBLE_COMPONENTS, cx))
             })
             .when_some(self.status.clone(), |content, status| {
-                content.child(orbit::callout(status, cx))
+                content.child(orbit::callout(String::from(status), cx))
             })
             .when_some(self.shell.navigation_notice.clone(), |content, notice| {
                 content.child(orbit::callout(notice, cx))
@@ -608,7 +610,7 @@ impl Hub {
             })
             .when_some(self.status.clone(), |root, status| {
                 root.child(
-                    orbit::callout(status, cx)
+                    orbit::callout(String::from(status), cx)
                         .absolute()
                         .top(gpui::px(52.0))
                         .left(gpui::px(280.0)),
@@ -1386,7 +1388,17 @@ impl Hub {
             settings::State::new(prefs, appearance, testing_dir.clone(), privacy, window, cx);
         // Un appearance.json ilegible abre con valores por defecto y deja el
         // motivo visible en Ajustes, en lugar de tumbar el arranque.
-        settings.status = appearance_error;
+        settings.status = settings
+            .general
+            .as_ref()
+            .ok()
+            .and_then(|store| store.warning.clone());
+        if let Some(error) = appearance_error {
+            settings.status = Some(match settings.status.take() {
+                Some(previous) => format!("{previous}; {error}"),
+                None => error,
+            });
+        }
         if let Some(page) = capture.as_ref().and_then(|capture| capture.settings_page) {
             settings.select_demo_page(page);
         }
@@ -1436,7 +1448,7 @@ impl Hub {
             }
             if let Err(error) = this.save(cx) {
                 eprintln!("guardar antes de salir: {error}");
-                *failure_on_quit.borrow_mut() = Some(error);
+                *failure_on_quit.borrow_mut() = Some(error.to_string());
             }
             async {}
         })
@@ -1667,7 +1679,8 @@ pub fn run_with_access(mut options: Options, access: navigation::Access) -> Resu
                 && options.demo.is_none()
                 && (!interactive || background)
                 && settings::general::Store::load(&options.data_dir)
-                    .is_ok_and(|store| store.value.minimized);
+                    .value
+                    .minimized;
             let (minimized, activate) =
                 crate::installation::initial_window(minimized, interactive, background);
             let activate = activate && options.capture.is_none();

@@ -1520,7 +1520,7 @@ impl Hub {
         }
         let launcher = self.launcher.read(cx);
         if let Some(error) = launcher.global_hotkey_error() {
-            globals = globals.child(section_note(error, cx));
+            globals = globals.child(section_note(&error, cx));
         }
         let no_hotkeys = launcher
             .saved_profiles()

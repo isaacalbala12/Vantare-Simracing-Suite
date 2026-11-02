@@ -347,7 +347,7 @@ impl Workshop {
                     1 => {
                         this.select_widget(Kind::CATALOG[event.0], cx);
                         if let Err(error) = this.persist() {
-                            this.status = error;
+                            this.status = error.to_string();
                             this.tools_open = true;
                         }
                     }
@@ -536,7 +536,7 @@ impl Workshop {
         }
     }
 
-    pub fn persist(&mut self) -> Result<(), String> {
+    pub fn persist(&mut self) -> Result<(), files::Error> {
         let selection = Selection {
             settings: self.widget_settings.clone(),
             version: 1,
@@ -551,7 +551,12 @@ impl Workshop {
         };
         let data = serde_json::to_vec_pretty(&selection).map_err(|e| e.to_string())?;
         if self.saved.as_deref() != Some(data.as_slice()) {
-            files::save(&self.state_path, &data, self.saved.as_deref())?;
+            files::save_with_limit(
+                &self.state_path,
+                &data,
+                self.saved.as_deref(),
+                files::MAX_DOCUMENT,
+            )?;
         }
         self.saved = Some(data);
         self.status = "Selección guardada".into();
@@ -656,7 +661,7 @@ impl Workshop {
         let step = if forward { 1 } else { Kind::CATALOG.len() - 1 };
         self.select_widget(Kind::CATALOG[(index + step) % Kind::CATALOG.len()], cx);
         if let Err(error) = self.persist() {
-            self.status = error;
+            self.status = error.to_string();
         }
     }
 
@@ -673,7 +678,7 @@ impl Workshop {
             self.failed = FailedReload::default();
             self.rebuild(cx);
             if let Err(error) = self.persist() {
-                self.status = error;
+                self.status = error.to_string();
             }
         }
         cx.notify();
@@ -775,7 +780,7 @@ impl Workshop {
                     button("save-workshop", "Guardar selección", cx).on_click(cx.listener(
                         |this, _, _, cx| {
                             if let Err(error) = this.persist() {
-                                this.status = error;
+                                this.status = error.to_string();
                             }
                             cx.notify();
                         },

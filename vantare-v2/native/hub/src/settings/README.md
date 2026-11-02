@@ -1,5 +1,13 @@
 # Ajustes — feedback del 9 de octubre (#1496)
 
+General y Apariencia usan la recuperación común de documentos (#1869, paso 5):
+contenido dañado → copia `.invalid` durable, aviso y valores por defecto editables.
+El original queda intacto hasta guardar con comparación de sus bytes. Una versión
+de paleta desconocida o una copia fallida se conservan y no se pueden sobrescribir.
+Se conservan general.json, appearance.json y hub-zoom.json; la consolidación en
+hub-settings.json corresponde al paso 6 y su retirada será posterior a una release estable.
+
+
 Ocho pestañas en la topbar. Cuenta abre el perfil del piloto (#1612,
 [pilot](../pilot/README.md)). General usa Interfaz, Inicio, Avisos y Widgets;
 Apariencia ofrece Sistema/Claro/Oscuro y nueve temas con orbes claro/oscuro.

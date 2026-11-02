@@ -13,7 +13,7 @@ CI 5/5 SUCCESS verificada; [PR #1873](https://github.com/isaacalbala12/Vantare-S
 contra nightly. Diseño aprobado: `D:/VantareServer/evidence/revision-general/telemetria-overlay-DISENO.md`.
 Rama `vantareapp/isa-1868-paso0-caracterizacion`, worktree
 `D:/VantareServer/worktrees/isa-1868-paso0`, base `nightly@a5e0a9fd2`.
-El encargo completo tiene pasos 0–10: **2–10 siguen pendientes**.
+El encargo completo tiene pasos 0–10: **0–1 integrados; 2 + P3 en PR #1877 para revisión; 3–10 pendientes**.
 
 Paso 0, commit previo `01dff4c81`: RED con pipe real, 2 conexiones al pasar
 OnTrack→Garage, esperada 1 (0,301 s de test; RETRY=250 ms, sin medir pintado).
@@ -57,13 +57,34 @@ retirada por campo. Features dev de dependencias ya existentes; ningún paquete,
 versión o lock nuevo. P3 preparados con recepción por revisión y emisor de
 máscaras controladas, cancelación/cierre; pausa conserva datos lentos distintos
 del productor mientras el reloj nuevo sí llega. Altura única del banner.
+[PR draft #1877](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1877)
+listo para revisión de este corte. Código validado `c45dd614c`, base `bc239c063`.
 GREEN focal 2/2, run `bda8e0d8-96c3-4d29-8cf3-9042974af6ed`: 3857 fotos
-byte a byte PASS y regresión anidada PASS. [PR draft #1877](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1877),
-gates de cuatro crates en una tanda por cola, pendientes. Quality inicial
-rechazó editar el README congelado; restaurado byte a byte, explicación movida
-a runtime/README. Integridad y quality locales 468/468 PASS; corpus intacto.
-VANTA-130 reserva también ui/layout::default_path; no se edita.
-Siguiente: terminar gates y medir líneas separadas, sin regenerar goldens.
+byte a byte y regresión anidada PASS. Tanda final por `compilar.ps1`, target
+privado `native/target/gates`, jobs 4: fmt/check/Clippy `-D warnings` PASS;
+Nextest `ac178d0f-035d-447a-90ac-0a8d61ce982c`, 1261/1261 PASS (14 skips
+preexistentes), incluidos 34/34 de telemetría. Lifecycle runtime 25/25 PASS,
+binarios reales de overlays normal/QA; cola cedida al terminar.
+ACC mantiene sus hashes sobre 190471 lecturas (194,912 s en esta tanda).
+Integridad/quality 468/468 PASS; datos, hashes, fixtures y lock intactos.
+Fallos iniciales conservados: quality rechazó editar el README congelado
+(restaurado byte a byte; explicación en runtime/README); Clippy pidió un
+diagnóstico en vez de unwrap; el helper asumía una foto, pero existe una
+secuencia de doce: corrige la vista por foto y conserva los saltos de línea.
+Este último falló antes de comparar bytes; la comparación original ahora pasa.
+P3 comprobados: revisión exacta sin sondeos de 16 ms, completa→parcial con
+señal lenta rehidratada retenida, pausa con datos del productor distintos y
+reloj nuevo recibido; altura desde la constante del banner.
+Recuento respecto a base: producción +13/−3; tests +316/−61;
+docs +60/−4; configuración exclusiva de tests +8/−0.
+El helper test-support queda fuera de builds de producto. Evidencia, logs,
+SHA, contador y revisión del diff: `D:/VantareServer/evidence/isa-1868-paso2`.
+La revisión opcional DeepSeek no arrancó por saldo del proveedor; no se
+atribuye evidencia al subagente. Diff revisado en este worker.
+CI final y HEAD documental: consultar #1868 y #1877; no inferir checks de otro SHA.
+VANTA-130 reserva también ui/layout::default_path; no se ha editado.
+Siguiente: integrar/revisar este corte por el orquestador; paso 3 desde
+origin/nightly actualizado en rama/worktree nuevos. Se mantienen 3–10 pendientes.
 Sin merge, promoción ni release. QA física, píxeles y paint-stats/latencia
 no medidos en el servidor compartido. Ejecución Sol con esfuerzo medium fijado
 por esta sesión; no se ha supuesto high. El texto inferior conserva historia,

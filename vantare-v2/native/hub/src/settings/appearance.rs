@@ -343,7 +343,9 @@ mod tests {
         // motivo visible en Ajustes, en lugar de propagar el error al arranque.
         std::fs::write(&path, b"{ apariencia rota").expect("fixture corrupta");
         assert!(Store::load(path.clone()).is_err());
-        let (store, error) = Store::load_or_default(&path);
+        let (mut store, error) = Store::load_or_default(&path);
+        assert!(store.save(store.settings).is_err());
+        assert_eq!(std::fs::read(&path).unwrap(), b"{ apariencia rota");
         assert_eq!(store.settings, AppearanceSettings::default());
         assert_eq!(store.zoom_percent, 100);
         assert!(error.is_some(), "el error debe quedar visible en Ajustes");

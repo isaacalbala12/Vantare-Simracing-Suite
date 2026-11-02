@@ -16,9 +16,16 @@ y launcher quedaron intactos. Recuperación hecha por él, no por este worker.
 Regresión P1 corregida: Store inyectado en Loaded, arnés con Store QA explícito,
 guard de data_root en test/test-support y override QA en gates con restauración.
 Se activa la feature existente de services en dev-dependencies, sin paquete nuevo.
-Revalidación completa Hub/Services/lifecycle en cola; sin PR todavía.
-Agenda: caracterización 2/2 PASS tras corregir la creación de la carpeta QA;
-implementación y gates en su worktree independiente.
+Revalidación completa PASS con ROOT/LOCALAPPDATA/APPDATA bajo QA: fmt,
+check/Clippy Hub+Services, regresiones 16/16, Nextest 871/871 (9 skips),
+lifecycle 25/25 y 468 huellas. Código `5514cb657`; defensa APPDATA `c6e56a48b`.
+La prueba de entorno de gates cubre éxito y fallo simulado sin compilar.
+PR draft [#1874](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1874)
+a nightly, listo para revisión del orquestador; CI remota aún en curso al preparar
+esta actualización. No se verificó envío real de analítica ni instalación.
+Agenda: caracterización 2/2 y cinco regresiones PASS; se actualizaron las tres
+expectativas CLI del nombre del feed. La suite general encontró un plazo de 2 s
+en replay UI, sin cambios en sus fuentes; se repetirá aislado antes del resto.
 
 El orquestador aprobó heartbeat de agenda cada 5 s cuando no cambian eventos,
 publicación inmediata al cambiar y TTL de 10 s intacto, con reloj inyectado.
@@ -35,8 +42,9 @@ policy ni flujo. El orquestador reserva esas líneas con VANTA-129; aún sin edi
 
 Hallazgos independientes sin implementar: #1870 Calendario Inicio/menú,
 #1871 ImportLayout sin lector (#1840), #1872 Strategy con dos almacenes.
-Siguiente: terminar gates y entregar los PR draft de los bugs 1 y 2;
-solo raíces QA. Sin merge, promoción, release ni instalación.
+Siguiente: revisar #1874 y terminar los gates del paso 2; después completar
+la caracterización 0 pendiente antes de 3. Solo raíces QA. Sin merge, promoción,
+release ni instalación. Plane sigue En curso porque quedan pasos del encargo.
 
 ## VANTA-105 · RC4 entregada / seguimiento #1742 (21-oct-2026)
 

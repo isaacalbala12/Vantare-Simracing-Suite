@@ -368,6 +368,17 @@ mod tests {
     use super::*;
 
     #[test]
+    fn step6_cas_diagnostic_identifies_the_failed_document() {
+        let path = std::env::temp_dir().join(format!("vantare-step6-cas-{}.json",std::process::id()));
+        std::fs::write(&path,b"old").unwrap();
+        let result = save(&path,b"new",Mode::Observed(None),&Options::default()).unwrap_err();
+        assert!(result.kind().is_conflict());
+        assert!(result.to_string().contains(&path.display().to_string()));
+        assert_eq!(std::fs::read(&path).unwrap(),b"old");
+        std::fs::remove_file(path).unwrap();
+    }
+
+    #[test]
     fn step5_busy_does_not_offer_destructive_conflict_recovery() {
         assert!(!Error::Busy.kind().is_conflict());
         assert!(Error::Conflict.kind().is_conflict());

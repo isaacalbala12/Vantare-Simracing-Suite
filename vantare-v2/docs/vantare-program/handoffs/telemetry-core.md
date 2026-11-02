@@ -8,7 +8,8 @@ Estado de la base indicada; releer la issue antes de ejecutar.
 
 ## VANTA-129 / #1868 · Recorrido telemetría → overlay (2026-11-02)
 
-Grupo 0–1 preparado para revisión en [PR draft #1873](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1873)
+Grupo 0–1 integrado por el orquestador en `nightly@bc239c063541e9f641aafa3b846aae53e85635cf`,
+CI 5/5 SUCCESS verificada; [PR #1873](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1873)
 contra nightly. Diseño aprobado: `D:/VantareServer/evidence/revision-general/telemetria-overlay-DISENO.md`.
 Rama `vantareapp/isa-1868-paso0-caracterizacion`, worktree
 `D:/VantareServer/worktrees/isa-1868-paso0`, base `nightly@a5e0a9fd2`.
@@ -42,8 +43,13 @@ ipc/engineer_control, runtime/bin/vantare/main, runtime/rights/owner y
 services/app quedan reservadas; frescura/500 ms siguen en VANTA-129.
 Sus exports en ipc/lib preceden al paso 4; pasos 7–8 tras la ola P4.
 
-Siguiente: el orquestador revisa este grupo y autoriza su integración;
-continuar desde nightly actualizado en rama/worktree nuevos para el paso 2.
+Reanudado VANTA-129 En curso para pasos 2–10 y P3 de revisión de #1873.
+Corte actual: paso 2 + P3, rama `vantareapp/isa-1868-paso2-oraculo-p3`,
+worktree `D:/VantareServer/worktrees/isa-1868-paso2`, base `bc239c063`.
+P3: barrera explícita en pipe; parcial tras rehidratación con señal lenta
+retenida; pausa con hidratación parcial real; altura desde constante de banner.
+Paso 2: vista de oráculo estructurada; mismos bytes/hashes, sin regeneración.
+Siguiente: caracterizar primero los bytes actuales y entregar PR draft a nightly.
 Sin merge, promoción ni release. QA física, píxeles y paint-stats/latencia
 no medidos en el servidor compartido. Ejecución Sol con esfuerzo medium fijado
 por esta sesión; no se ha supuesto high. El texto inferior conserva historia,

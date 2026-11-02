@@ -83,6 +83,23 @@ fn legacy_dto(snapshot: &vantare_domain::Snapshot) -> String {
     legacy_fixture(&old)
 }
 
+#[test]
+fn oracle_view_removes_nested_timing_values_without_cutting_neighbor_text() {
+    use vantare_domain::{Quality, SessionKind, Snapshot};
+    let mut snapshot = Snapshot::default();
+    snapshot.origin.source.simulator = "acc";
+    let name = "pista, con \"next_kind\" y situación";
+    snapshot.state.session.track_name = Quality::Reliable(name.into());
+    snapshot.state.session.timing.next_kind =
+        Quality::Reliable(SessionKind::Other("carrera, siguiente".into()));
+    let view: serde_json::Value = serde_json::from_str(&legacy_dto(&snapshot))
+        .expect("vista de oráculo JSON íntegra incluso con valores anidados y comas");
+    assert_eq!(view["version"], 9);
+    assert_eq!(view["state"]["session"]["track_name"]["reliable"], name);
+    assert!(view["state"]["session"].get("next_kind").is_none());
+    assert!(view["state"].get("driving_situation").is_none());
+}
+
 struct Once(Option<Observation>);
 impl Adapter for Once {
     fn poll(&mut self, _: Duration) -> Result<Option<Observation>, AdapterError> {

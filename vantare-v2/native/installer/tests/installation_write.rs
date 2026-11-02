@@ -288,6 +288,36 @@ fn rejected_pending_upgrade_preserves_the_previous_reference() {
 }
 
 #[test]
+fn corrupt_auxiliary_metadata_is_rejected_without_erasing_it() {
+    for name in [
+        "boot-pending.json",
+        "update-status.json",
+        "retained-data.json",
+    ] {
+        let fixture = Fixture::new();
+        fixture
+            .install(&fixture.package("1.0.0"), Mode::Auto, false, false)
+            .expect("install");
+        let state = fs::read(fixture.root.join("state.json")).expect("state");
+        let path = fixture.root.join(name);
+        fs::write(&path, b"{ corrupt metadata").expect("corrupt fixture");
+        assert!(
+            fixture
+                .install(&fixture.package("1.0.1"), Mode::Auto, false, false)
+                .is_err()
+        );
+        assert_eq!(
+            fs::read(&path).expect("preserved metadata"),
+            b"{ corrupt metadata"
+        );
+        assert_eq!(
+            fs::read(fixture.root.join("state.json")).expect("preserved state"),
+            state
+        );
+    }
+}
+
+#[test]
 fn cancel_at_the_last_copy_checkpoint_never_activates_a_generation() {
     let fixture = Fixture::new();
     let result = fixture

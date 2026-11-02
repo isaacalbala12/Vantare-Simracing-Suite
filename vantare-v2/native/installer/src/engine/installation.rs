@@ -428,8 +428,9 @@ pub(super) fn tree(root: &Path) -> Result<Vec<PathBuf>, ReadError> {
 }
 
 impl Installation {
-    /// Logical rollback snapshot before a mutation. Display/Uninstall profiles
-    /// deliberately discard optional references and cannot preserve this document.
+    /// Logical rollback snapshot before a mutation. Validated/Uninstall profiles
+    /// may discard optional references and cannot preserve this document.
+    #[cfg(feature = "write-engine")]
     pub(super) fn state_document(root: &Path) -> Result<Value, ReadError> {
         json(
             &bytes(&root.join("state.json"), None, ReadProfile::Uninstall)?,

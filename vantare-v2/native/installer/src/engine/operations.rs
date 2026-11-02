@@ -69,7 +69,7 @@ impl Before {
             files.insert(
                 name,
                 if path.try_exists()? {
-                    disk::read_json(&path, Some(65536)).ok()
+                    Some(disk::read_json(&path, None)?)
                 } else {
                     None
                 },

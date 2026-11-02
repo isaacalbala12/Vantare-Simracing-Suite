@@ -569,6 +569,8 @@ mod tests {
 
     #[test]
     fn ipc_launch_consumes_request_and_runs_the_shared_chain_without_hub() {
+        // Las apps detached nacen bajo el Job del supervisor, también en el arnés.
+        super::super::win::adopt_self_in_job().expect("Job de sesión con breakaway permitido");
         let dir =
             std::env::temp_dir().join(format!("vantare-resident-chain-{}", std::process::id()));
         fs::create_dir_all(&dir).expect("directorio propio");

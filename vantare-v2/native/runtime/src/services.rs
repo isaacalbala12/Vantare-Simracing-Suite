@@ -154,6 +154,27 @@ impl Host {
         }
     }
 }
+/// EOF antes de la siguiente trama es desconexión; una trama truncada falla.
+fn read_request(reader: &mut impl std::io::Read) -> io::Result<Option<Request>> {
+    use std::io::{ErrorKind, Read};
+    let mut first = [0];
+    match reader.read_exact(&mut first) {
+        Ok(()) => protocol::read(&mut first.as_slice().chain(reader)).map(Some),
+        Err(error)
+            if matches!(
+                error.kind(),
+                ErrorKind::UnexpectedEof
+                    | ErrorKind::BrokenPipe
+                    | ErrorKind::ConnectionReset
+                    | ErrorKind::ConnectionAborted
+            ) =>
+        {
+            Ok(None)
+        }
+        Err(error) => Err(error),
+    }
+}
+
 fn serve(
     pipe: &mut Pipe,
     state: &Mutex<State>,
@@ -176,7 +197,9 @@ fn serve(
     }
     let mut sequence: u64 = 0;
     while !stop.is_set() {
-        let request: Request = protocol::read(pipe)?;
+        let Some(request) = read_request(pipe)? else {
+            return Ok(());
+        };
         if request.version != protocol::VERSION
             || request.nonce != nonce
             || Some(request.sequence) != sequence.checked_add(1)

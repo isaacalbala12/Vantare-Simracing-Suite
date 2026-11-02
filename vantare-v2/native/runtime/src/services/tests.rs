@@ -8,6 +8,9 @@ struct FixtureCredential {
     credential: CredentialV1,
 }
 
+#[path = "tests/framing.rs"]
+mod framing;
+
 #[path = "tests/authentication.rs"]
 mod authentication;
 #[path = "tests/notices.rs"]

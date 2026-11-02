@@ -356,7 +356,7 @@ fn supervise(
         for service in services.iter_mut() {
             if service.name == "Engineer" && !engineer_permitted {
                 if service.child.is_some() {
-                    shutdown(std::slice::from_mut(service), grace);
+                    shutdown(std::slice::from_mut(service), grace)?;
                     service.child = None;
                     service.start_at = Some(now);
                     service.restarts.attempts = 0;
@@ -416,22 +416,53 @@ fn supervise(
 /// Engineer si está habilitado, overlays, núcleo. A cada uno se le pide que termine y se
 /// le mata si pasa el plazo.
 #[cfg(windows)]
-fn shutdown(services: &mut [Service], grace: Duration) {
+fn shutdown(services: &mut [Service], grace: Duration) -> io::Result<()> {
+    let mut first_error = None;
     for service in services.iter_mut().rev() {
         let Some(child) = service.child.as_mut() else {
             continue;
         };
-        win::request_close(child);
-        if !win::wait_child(child, grace) {
-            log(format_args!(
-                "{} no terminó en {grace:?}: se le mata",
-                service.name
-            ));
-            let _ = child.kill();
+        let result = (|| {
+            if service.name == "overlays" {
+                // Paso 1: única señal para GPUI. El resto conserva WM_CLOSE
+                // hasta la consolidación del paso 2 del plan #1860.
+                drop(child.stdin.take());
+            } else {
+                win::request_close(child);
+            }
+            if !win::wait_child(child, grace) {
+                log(format_args!(
+                    "{} no terminó en {grace:?}: se le mata",
+                    service.name
+                ));
+                match child.kill() {
+                    Ok(()) => {
+                        child.wait()?;
+                        return Err(io::Error::new(
+                            io::ErrorKind::TimedOut,
+                            format!("cierre forzado de {} tras {grace:?}", service.name),
+                        ));
+                    }
+                    Err(_) if child.try_wait()?.is_some() => {}
+                    Err(error) => return Err(error),
+                }
+            }
+            let status = child.wait()?;
+            if !status.success() {
+                return Err(io::Error::other(format!(
+                    "{} cerró con {status}",
+                    service.name
+                )));
+            }
+            log(format_args!("{} cerrado", service.name));
+            Ok(())
+        })();
+        if let Err(error) = result {
+            log(format_args!("{} no se pudo cerrar: {error}", service.name));
+            first_error.get_or_insert(error);
         }
-        let _ = child.wait();
-        log(format_args!("{} cerrado", service.name));
     }
+    first_error.map_or(Ok(()), Err)
 }
 
 #[cfg(windows)]
@@ -460,6 +491,14 @@ fn start_remote_services(
             .overlays
             .args
             .extend(["--fuente".into(), format!("pipe:{photo}")]);
+    }
+    if !config
+        .overlays
+        .args
+        .iter()
+        .any(|arg| arg == "--control-stdin")
+    {
+        config.overlays.args.push("--control-stdin".into());
     }
     let nonce =
         vantare_services::random_id().map_err(|_| io::Error::other("bootstrap no disponible"))?;
@@ -573,8 +612,10 @@ fn run(mut config: Config) -> io::Result<ExitCode> {
     let outcome = supervise(&mut services, &stop, rights.as_ref(), config.grace);
     drop(resident);
     drop(remote.0); // Cierra el auxiliar mientras el núcleo sigue vivo.
-    shutdown(&mut services, config.grace);
-    shutdown(&mut diagnostics, config.grace);
+    let closed = shutdown(&mut services, config.grace);
+    let diagnostics_closed = shutdown(&mut diagnostics, config.grace);
+    closed?;
+    diagnostics_closed?;
     Ok(match outcome? {
         Outcome::Stopped => ExitCode::SUCCESS,
         Outcome::Finished(name) => {

@@ -276,6 +276,14 @@ fn configure(config: &mut Config) -> io::Result<()> {
             .args
             .extend(["--fuente".into(), format!("pipe:{pipe}")]);
     }
+    if !config
+        .overlays
+        .args
+        .iter()
+        .any(|arg| arg == "--control-stdin")
+    {
+        config.overlays.args.push("--control-stdin".into());
+    }
     if let Some(engineer) = &mut config.engineer
         && !engineer.args.iter().any(|arg| arg == "--pipe-name")
     {
@@ -422,6 +430,10 @@ fn shutdown_with_kill(
                 match kill(child) {
                     Ok(()) => {
                         child.wait()?;
+                        return Err(io::Error::new(
+                            io::ErrorKind::TimedOut,
+                            format!("cierre forzado de {} tras {grace:?}", service.name),
+                        ));
                     }
                     Err(_) if child.try_wait()?.is_some() => {}
                     Err(error) => return Err(error),

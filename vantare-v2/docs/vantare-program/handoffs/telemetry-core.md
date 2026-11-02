@@ -607,5 +607,13 @@ de conexión, con despertar TCP explícito para que el RED no bloquee la cola.
 Después se acotan accept, E/S y join del arnés, conservando Client::new y sus
 750 ms de producción y las aserciones de respuesta. Solo tests; sin cambiar
 runtime productivo, goldens o corpus. Evidencia D:/VantareServer/evidence/isa-1868-paso3b.
-Siguiente: caracterización previa y arreglo con gates por compilar.ps1 en target
-propio; telemetría #1498. Sin merge/promoción/release. Pasos 4–10 pendientes.
+Caracterización previa 4447da6cb y formato: RED acotado en 5,015 s,
+run 3bf46faa-9127-48c6-a488-4eeceda3d652, con despertar TCP y join tras finalización.
+Arreglo: accept no bloqueante con deadline; sockets de test con E/S acotada;
+join solo tras is_finished y espera finita. Todos los servidores HTTP comparten
+las guardas. El servidor parado exige petición GET recibida y liberación
+explícita tras el resultado del cliente: la guarda no puede producir un falso PASS.
+Client::new y DEADLINE=750 ms productivos, y las aserciones previas, intactos.
+Nextest ejecuta ese deadline solo y primero, antes de los corpus. Producción
+sin diferencias. Siguiente: gates runtime y telemetría en una tanda por compilar.ps1;
+lifecycle lo verifica la CI completa del mismo código para ceder la cola local. Sin merge/promoción/release. Pasos 4–10 pendientes.

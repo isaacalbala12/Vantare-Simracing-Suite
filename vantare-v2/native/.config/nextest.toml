@@ -44,6 +44,12 @@ threads-required = 'num-test-threads'
 priority = 100
 
 [[profile.default.overrides]]
+# #1881: mide el deadline REST real de 750 ms; corre solo antes de los corpus.
+filter = 'test(a_stalled_server_hits_the_request_deadline)'
+threads-required = 'num-test-threads'
+priority = 100
+
+[[profile.default.overrides]]
 # recovery levanta un Host de derechos y un proceso Engineer: su permiso vence
 # a los 2 s si el runner no programa el refresco. No compite con los corpus CPU
 # mientras mide checkpoint/ACK ni se relajan TTL, aserciones o reintentos.

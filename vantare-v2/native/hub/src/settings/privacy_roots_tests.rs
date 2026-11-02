@@ -58,6 +58,10 @@ fn root_guard_child() {
             vantare_services::diagnostics::data_root().expect("QA root"),
             expected.join("Vantare/native")
         );
+        assert_eq!(
+            super::root(&expected.join("hub")).expect("Hub uses diagnostics root"),
+            vantare_services::diagnostics::data_root().expect("recorder root")
+        );
     }
 }
 
@@ -109,6 +113,22 @@ fn hub_only_choice_is_adopted_byte_for_byte_once_without_touching_the_original()
         );
         std::fs::remove_dir_all(qa).expect("QA cleanup");
     }
+}
+
+#[test]
+fn revoked_choice_is_never_adopted_again_after_shared_file_disappears() {
+    let qa = qa();
+    let hub = qa.join("hub");
+    let shared = qa.join("Vantare/native");
+    let (_, original) = choice_at(&hub, true);
+    adopt(&hub, shared.clone()).expect("first adoption");
+    choice_at(&shared, false);
+    std::fs::remove_file(shared.join(PRIVACY_FILE)).expect("shared choice removed");
+    adopt(&hub, shared.clone()).expect("restart");
+    assert_eq!(Privacy::load(&shared).expect("safe default"), Privacy::default());
+    assert!(!shared.join(PRIVACY_FILE).exists());
+    assert_eq!(std::fs::read(hub.join(PRIVACY_FILE)).expect("original"), original);
+    std::fs::remove_dir_all(qa).expect("QA cleanup");
 }
 
 #[test]

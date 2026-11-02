@@ -13,7 +13,7 @@ CI 5/5 SUCCESS verificada; [PR #1873](https://github.com/isaacalbala12/Vantare-S
 contra nightly. Diseño aprobado: `D:/VantareServer/evidence/revision-general/telemetria-overlay-DISENO.md`.
 Rama `vantareapp/isa-1868-paso0-caracterizacion`, worktree
 `D:/VantareServer/worktrees/isa-1868-paso0`, base `nightly@a5e0a9fd2`.
-El encargo completo tiene pasos 0–10: **0–2 integrados; paso 3 en curso; 4–10 pendientes**.
+El encargo completo tiene pasos 0–10: **0–2 integrados; paso 3 en PR #1882 para revisión; 4–10 pendientes**.
 
 Paso 0, commit previo `01dff4c81`: RED con pipe real, 2 conexiones al pasar
 OnTrack→Garage, esperada 1 (0,301 s de test; RETRY=250 ms, sin medir pintado).
@@ -44,7 +44,7 @@ services/app quedan reservadas; frescura/500 ms siguen en VANTA-129.
 Sus exports en ipc/lib preceden al paso 4; pasos 7–8 tras la ola P4.
 
 Reanudado VANTA-129 En curso para pasos 2–10 y P3 de revisión de #1873.
-Corte actual: paso 2 + P3, rama `vantareapp/isa-1868-paso2-oraculo-p3`,
+Grupo integrado 2 + P3, rama `vantareapp/isa-1868-paso2-oraculo-p3`,
 worktree `D:/VantareServer/worktrees/isa-1868-paso2`, base `bc239c063`.
 P3: barrera explícita en pipe; parcial tras rehidratación con señal lenta
 retenida; pausa con hidratación parcial real; altura desde constante de banner.
@@ -104,8 +104,25 @@ campos omitidos/repetidos. La antigua comparación de dos codificadores se
 sustituye por JSON live contra las cuatro calidades originales, para no hacer
 una comparación tautológica una vez comparten camino. Se conservan pruebas
 por ID, máscaras parciales, omisión frente a Unavailable y codec existentes.
-Siguiente: fmt/check/Clippy, suite con telemetría y lifecycle en una tanda por cola;
-si cambia un golden se detiene el corte, sin regenerarlo.
+[PR draft #1882](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1882)
+listo para revisión del paso 3, código `f306cc601`, base `da4c2af08`.
+Gates locales en una tanda por compilar.ps1, target privado native/target/gates,
+jobs 4 y raíces QA aisladas: fmt/check/Clippy -D warnings PASS; Nextest
+`5a679bcd-7861-41d1-a1e2-9445e67758e7`, 1261/1261 PASS (14 skips preexistentes),
+incluidos 34/34 de telemetría; lifecycle runtime 25/25 PASS con overlays normal/QA.
+Cola liberada. ACC conserva sus hashes sobre 190471 lecturas; las 3857 fotos
+congeladas conservan sus bytes. Ninguna regeneración o cambio de datos/lock.
+CI del código f306cc601 5/5 SUCCESS: [run 41490639741](https://github.com/isaacalbala12/Vantare-Simracing-Suite/actions/runs/41490639741),
+job 125432756522, suite 2400/2400 PASS (24 skips), lifecycle runtime 25/25 y
+Engineer 5/5. Logs y SHA conservados. El último commit solo cierra este handoff;
+árbol native idéntico al validado. CI de ese HEAD documental: consultar #1882.
+Quality/integridad 468/468 PASS. Revisión del diff y comprobación mecánica:
+88 expresiones con la misma señal; serde/Boundary, conversores, decodificador
+prestado, enum/ALL y cadencias de demanda intactos. Sin dependencias nuevas.
+Líneas frente a da4c2af08: producción +373/−846 (neto −473), tests +39/−78;
+docs +55/−5. Evidencia y contador en D:/VantareServer/evidence/isa-1868-paso3.
+Plane Por revisar para este corte. Siguiente: revisión/integración por el
+orquestador y nuevo corte desde origin/nightly actualizado.
 Pasos 4–10 pendientes.
 Sin merge, promoción ni release. QA física, píxeles y paint-stats/latencia
 no medidos en el servidor compartido. Ejecución Sol con esfuerzo medium fijado

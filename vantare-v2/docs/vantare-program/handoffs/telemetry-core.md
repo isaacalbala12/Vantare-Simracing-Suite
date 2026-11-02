@@ -637,3 +637,21 @@ Estado del programa: 0–2 integrados; #1882 (paso 3) sigue abierto para revisi�
 Este complemento no adelanta pasos del diseño. VANTA-130 conserva ui/layout
 (persistencia/lectura, incluido error de tamaño) y diagnóstico de errores en hub/shell.
 Siguiente: revisión/integración por el orquestador; sin merge/promoción/release del worker. Sin merge/promoción/release. Pasos 4–10 pendientes.
+
+
+## VANTA-129 · reanudación tras #1885, paso 5 (2026-11-02)
+
+#1885/#1881 integrado por el orquestador en
+`nightly@56c6df494866f7d064042a5329787537f295147b`, CI 5/5 comunicada;
+merge verificado. Paso 3 continúa en draft #1882, HEAD `2c94a5760`,
+CI 5/5 SUCCESS verificada, sin conflictos. No se duplica ni se fusiona.
+VANTA-129 vuelve a En curso para el paso 5, siguiente en el orden del diseño.
+Rama `vantareapp/isa-1868-paso5-frescura`, worktree
+`D:/VantareServer/worktrees/isa-1868-paso5`, base `56c6df494`.
+Caracterización previa `08333e828`: retención del jugador con scoring vivo,
+pausa y límites exactos de confirmación (250 ms) y silencio (500 ms),
+para LMU, ACC y fuente desconocida. Ejecución por cola pendiente.
+Se consolidan constantes y vocabulario neutral; los detalles de simulador
+pertenecen al adaptador. Reservados ui/layout, hub/shell y cálculos de raíz
+de datos de VANTA-130. Sin goldens/corpus regenerados ni dependencias nuevas.
+0–2 integrados, 3 en revisión, 5 en curso; 4 y 6–10 pendientes.

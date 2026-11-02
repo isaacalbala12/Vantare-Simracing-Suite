@@ -1,4 +1,38 @@
-# Handoff vivo — Overlays, Studio, Launcher y Hub
+## VANTA-130 · paso 5 listo para revisión final (2-nov-2026)
+
+#1884 integrado por el orquestador en nightly ee74d36b64ff00a333c474d7e9518078d074ca7d,
+CI 5/5 SUCCESS verificada. Rama/worktree nuevos: vantareapp/isa-1869-paso5-documentos,
+D:/VantareServer/worktrees/isa-1869-paso5. PR draft #1887; código a2ed1b1c54c392e47476c7b3df403bad6742ab55.
+Los cinco P3 están resueltos: I/O con ruta/límite; Busy separado también en layout;
+Failure sin Deref; helpers únicos tipados/genéricos; tipo real de fallos de Hub.
+Workshop.scene.error solo lee/decodifica fotos; su persistencia viaja tipada por
+Hub::save. No se interpreta el texto para clasificar ni se cambia auth/policy.
+Doc::open_or_quarantine comparte la política de layout del Hub, Launcher, General
+y Apariencia: copia durable exclusiva .invalid, original intacto hasta guardar
+con CAS y aviso visible. Copias anteriores diferentes se conservan; versiones
+futuras, límites y copia fallida protegen el original. Se conserva el .bak anterior
+del layout durante el primer guardado de reparación. Overlays conserva su lector
+y último layout válido. Launcher mantiene JSON estricto (claves duplicadas),
+abre con aviso ante lectura bloqueada y no reimporta Wails en una carga protegida.
+No se intenta inicializar un layout protegido. Zoom conserva su lector hasta 6.
+Caracterización ca1b3ed84 + 7477154ca: 3/3 PASS; P3 2/2 RED antes del cambio.
+Validación: fmt/check/Clippy -D warnings de seis crates PASS; suite 1258/1258
+(11 skips incluyen replay aislado) + replay 1/1, lifecycle 25/25, telemetría 34/34
++ 1 skip, y regresiones finales 27/27 PASS sobre el código corregido. Integridad
+468 huellas PASS. Todas las tandas con ROOT/LOCALAPPDATA/APPDATA QA y target propio.
+El draft 6a6935278 falló en CI native format: se publicó antes del cierre; corregido
+con cargo fmt vía compilar.ps1 y fmt --check PASS antes de esta entrega. Fallos
+intermedios de tipos/Clippy/formato conservados; sin excepciones, cambios de límites,
+plazos o baselines. CI remota y HEAD final se verifican en #1869.
+Métricas finales: producción +449/-195 = +254; tests +430/-70 = +360; docs +104/-3 = +101. Tooling versionado 0.
+Diff completo revisado; Windows con ventana headless y bloqueos reales. Sin QA
+interactiva ni ejecución nativa Linux/macOS. Evidencia D:/VantareServer/evidence/isa-1869/paso5.
+Reserva ui/layout y hub/shell trasladada por el orquestador a VANTA-129 antes de editar.
+Sin host/motion/runtime/installer/packaging/installation.rs/licencias/auth/policy,
+instalación ni datos reales en esta entrega. Cola cedida; no merge/release/promoción propios.
+Issue y Plane se actualizan con esta entrega. Pasos 6-9 pendientes; 6+7 juntos según
+diseño aprobado y nuevo aviso previo de motion/host. Antiguos General/Appearance/zoom
+intactos; retirada tras release estable en otra tarea. Paso 10 fuera, ligado a #1840.
 
 ## VANTA-130 · #1869 · Revisión de #1884, P2/P3 (2-nov-2026)
 

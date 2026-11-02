@@ -436,22 +436,25 @@ runtime/domain/ipc/testdata: telemetría/lifecycle runtime omitidos por ámbito.
 Plane intacto. Siguiente: CI/revisión/integración de1d por el orquestador; después
 continúa el plan #1840. Actualizado el1-nov-2026, ejecutor.
 
-### Seguimiento 1c · test del hijo por handle (en curso, 2-nov-2026)
+### Seguimiento 1c · test del hijo por handle listo para revisión (2-nov-2026)
 
-- Encargo del orquestador tras entregar #1861: eliminar la consulta por PID del
-  test de registro, que falló en nightly durante VANTA-128. Log de origen:
-  D:/VantareServer/evidence/isa-1860-paso0/nextest-ci.log, installation.rs:309.
-- Rama vantareapp/isa-1840-1c-test-handle, base668d99c32, worktree propio
-  isa-1840-1c-test-handle; target exclusivo D:/VantareServer/targets/isa-1840-1c-handle.
-- Solo pruebas Windows: duplicar el handle del Child antes del cierre, exigir
-  que esté vivo antes y terminado después de drop/timeout. WaitForSingleObject
-  con cero espera; errores de Win32 fallan el test. Sin PowerShell/PID ni sleeps.
-  Frontera FFI acotada a una función de test; producción y dependencias intactas.
 - PR draft [#1862](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1862),
-  enlazado T3; código592c4533b publicado. Gates todavía pendientes.
-- Gates fmt/Clippy/Nextest Hub completo +20 rondas focales sin retries preparados
-  en un bloque por la cola. Aún pendientes; no se declara entrega de este seguimiento.
-- Sin Plane, instalación real, secretos, Downloads, merge/release ni CI watch.
+  enlazado T3. Rama vantareapp/isa-1840-1c-test-handle, base668d99c32;
+  worktree propio isa-1840-1c-test-handle, target exclusivo
+  D:/VantareServer/targets/isa-1840-1c-handle. Código formateado f07c9ae37.
+- Encargo posterior a #1861: resolver la ambigüedad del PID en el test1c que
+  falló en nightly/VANTA-128 (evidence/isa-1860-paso0/nextest-ci.log:309).
+  Duplica handle del Child, comprueba vivo antes y terminado tras drop/timeout
+  con WaitForSingleObject(handle,0); errores Win32 fallan. Sin espera añadida,
+  sleeps, consulta PID/PowerShell ni dependencia nueva. FFI acotada a tests.
+- Gates PASS en un solo bloque: fmt check, Hub Clippy all-targets -D warnings,
+  Nextest605/605 (4 omisiones existentes) y20 rondas focales sin retries:
+  80/80 PASS entre biblioteca y ejemplo. Calidad/retirada468, diff y prueba de
+  producción/deps/lock intactos PASS. Logs QA isa-1840/handle-logs.
+- Sin cambio de producto; matriz/telemetría/lifecycle runtime omitidos por ese
+  ámbito. TEMP/TMP QA con guard, sin Setup/Uninstall/beta/candidate reales.
+- Siguiente: revisión/CI/integración del orquestador. Sin Plane, secretos,
+  Downloads, merge/release/promoción del worker ni CI watch.
 
 <!-- isa1827-p10-worker -->
 ## VANTA-126 / #1827 — Paso 10 listo para revisión (2026-11-01)

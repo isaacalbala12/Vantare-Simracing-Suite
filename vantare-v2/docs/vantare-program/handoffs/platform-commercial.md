@@ -447,8 +447,10 @@ continúa el plan #1840. Actualizado el1-nov-2026, ejecutor.
   que esté vivo antes y terminado después de drop/timeout. WaitForSingleObject
   con cero espera; errores de Win32 fallan el test. Sin PowerShell/PID ni sleeps.
   Frontera FFI acotada a una función de test; producción y dependencias intactas.
+- PR draft [#1862](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1862),
+  enlazado T3; código592c4533b publicado. Gates todavía pendientes.
 - Gates fmt/Clippy/Nextest Hub completo +20 rondas focales sin retries preparados
-  en un bloque por la cola. Aún pendientes; sin PR/entrega de este seguimiento.
+  en un bloque por la cola. Aún pendientes; no se declara entrega de este seguimiento.
 - Sin Plane, instalación real, secretos, Downloads, merge/release ni CI watch.
 
 <!-- isa1827-p10-worker -->

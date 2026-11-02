@@ -321,20 +321,7 @@ pub fn run(mut config: Config) -> io::Result<ExitCode> {
         config.grace,
     );
     let closed = shutdown(&mut services, config.grace);
-    closed?;
-    Ok(match outcome? {
-        Outcome::Stopped => ExitCode::SUCCESS,
-        Outcome::Finished(name) => {
-            log(format_args!("{name} terminó: se cierra todo"));
-            ExitCode::SUCCESS
-        }
-        Outcome::Exhausted(name) => {
-            log(format_args!(
-                "{name}: presupuesto de reinicios agotado, se para"
-            ));
-            ExitCode::FAILURE
-        }
-    })
+    super::child_shutdown::finish_run(outcome, closed)
 }
 
 fn supervise(
@@ -354,7 +341,9 @@ fn supervise(
         for service in services.iter_mut() {
             if service.name == "Engineer" && !engineer_permitted {
                 if service.child.is_some() {
-                    shutdown(std::slice::from_mut(service), grace)?;
+                    if let Err(error) = shutdown(std::slice::from_mut(service), grace) {
+                        log(format_args!("Engineer revocado: cierre fallido: {error}"));
+                    }
                     service.child = None;
                     service.start_at = Some(now);
                     service.restarts.attempts = 0;
@@ -423,23 +412,9 @@ fn shutdown_with_kill(
                 exited = child.try_wait()?.is_some();
             }
             if !exited {
-                log(format_args!(
-                    "{} no terminó en {grace:?}: se le mata",
-                    service.name
-                ));
-                match kill(child) {
-                    Ok(()) => {
-                        child.wait()?;
-                        return Err(io::Error::new(
-                            io::ErrorKind::TimedOut,
-                            format!("cierre forzado de {} tras {grace:?}", service.name),
-                        ));
-                    }
-                    Err(_) if child.try_wait()?.is_some() => {}
-                    Err(error) => return Err(error),
-                }
+                return super::child_shutdown::force(child, service.name, grace, &mut kill);
             }
-            log(format_args!("{} cerrado", service.name));
+            super::child_shutdown::report(service.name, child.wait()?);
             Ok(())
         })();
         if let Err(error) = result {

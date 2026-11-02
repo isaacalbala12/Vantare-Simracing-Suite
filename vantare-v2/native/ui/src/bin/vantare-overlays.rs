@@ -15,7 +15,7 @@ use std::process::ExitCode;
 
 use vantare_domain::format::Preferences;
 
-const USAGE: &str = "uso: vantare-overlays [1|4|22 | --layout <layout.json>] [--fuente local|pipe[:<nombre>]]; sin número vigila el layout de LOCALAPPDATA";
+const USAGE: &str = "uso: vantare-overlays [1|4|22 | --layout <layout.json>] [--fuente local|pipe[:<nombre>]] [--control-stdin]; sin número vigila el layout de LOCALAPPDATA; --control-stdin cierra por EOF del supervisor";
 
 #[derive(Debug, PartialEq)]
 enum Feed {

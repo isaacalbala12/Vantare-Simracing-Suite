@@ -22,6 +22,7 @@
 
 #![cfg_attr(windows, windows_subsystem = "windows")]
 
+mod child_shutdown;
 #[cfg(unix)]
 mod unix;
 #[cfg(windows)]
@@ -356,7 +357,9 @@ fn supervise(
         for service in services.iter_mut() {
             if service.name == "Engineer" && !engineer_permitted {
                 if service.child.is_some() {
-                    shutdown(std::slice::from_mut(service), grace)?;
+                    if let Err(error) = shutdown(std::slice::from_mut(service), grace) {
+                        log(format_args!("Engineer revocado: cierre fallido: {error}"));
+                    }
                     service.child = None;
                     service.start_at = Some(now);
                     service.restarts.attempts = 0;
@@ -431,30 +434,9 @@ fn shutdown(services: &mut [Service], grace: Duration) -> io::Result<()> {
                 win::request_close(child);
             }
             if !win::wait_child(child, grace) {
-                log(format_args!(
-                    "{} no terminó en {grace:?}: se le mata",
-                    service.name
-                ));
-                match child.kill() {
-                    Ok(()) => {
-                        child.wait()?;
-                        return Err(io::Error::new(
-                            io::ErrorKind::TimedOut,
-                            format!("cierre forzado de {} tras {grace:?}", service.name),
-                        ));
-                    }
-                    Err(_) if child.try_wait()?.is_some() => {}
-                    Err(error) => return Err(error),
-                }
+                return child_shutdown::force(child, service.name, grace, Child::kill);
             }
-            let status = child.wait()?;
-            if !status.success() {
-                return Err(io::Error::other(format!(
-                    "{} cerró con {status}",
-                    service.name
-                )));
-            }
-            log(format_args!("{} cerrado", service.name));
+            child_shutdown::report(service.name, child.wait()?);
             Ok(())
         })();
         if let Err(error) = result {
@@ -614,21 +596,7 @@ fn run(mut config: Config) -> io::Result<ExitCode> {
     drop(remote.0); // Cierra el auxiliar mientras el núcleo sigue vivo.
     let closed = shutdown(&mut services, config.grace);
     let diagnostics_closed = shutdown(&mut diagnostics, config.grace);
-    closed?;
-    diagnostics_closed?;
-    Ok(match outcome? {
-        Outcome::Stopped => ExitCode::SUCCESS,
-        Outcome::Finished(name) => {
-            log(format_args!("{name} terminó: se cierra todo"));
-            ExitCode::SUCCESS
-        }
-        Outcome::Exhausted(name) => {
-            log(format_args!(
-                "{name}: presupuesto de reinicios agotado, se para"
-            ));
-            ExitCode::FAILURE
-        }
-    })
+    child_shutdown::finish_run(outcome, closed.and(diagnostics_closed))
 }
 
 #[cfg(unix)]

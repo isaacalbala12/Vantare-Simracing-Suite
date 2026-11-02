@@ -1227,6 +1227,8 @@ fn run_layout_feed<T: Send + 'static>(
         cx.on_app_quit(move |cx| {
             quit_screens.borrow_mut().usage.finish(cx);
             if controlled {
+                // Diagnóstico a stderr usado por la caracterización de cierre;
+                // no es un acuse de persistencia ni de envío de analítica.
                 eprintln!("vantare-overlays: on_app_quit completado");
             }
             async {}

@@ -4,6 +4,10 @@ Base caracterizada: `668d99c32`. El [paso 0, PR #1863](https://github.com/isaaca
 fijó el kill de overlays a 3 s con exit 0 y añadió la entrada QA que no se compila
 en producto. El paso 1 actualiza sólo el cierre: EOF, gancho GPUI, exit 0 sin kill;
 un cierre forzado pasa a ser fallo. Los demás casos se conservan.
+Una salida no cero tras pedir cierre se registra y no falla la sesión. La
+revocación de Engineer tampoco termina la sesión, incluso si hay que matarlo;
+el fallo sólo se propaga en el cierre final. Windows y Unix comparten esta
+política y conservan el motivo original de supervisión antes del error de cierre.
 `build-overlays.ps1` prepara el binario normal y una variante `parity-capture`
 en `target/debug/lifecycle/{normal,qa}`, conservando sus SHA-256. Se llama desde
 el gate lifecycle, dentro del turno de `compilar.ps1`.
@@ -14,6 +18,12 @@ para invocar directamente los manejadores de Abrir Hub/Salir de `tray.rs` por
 un mensaje dirigido al HWND del hijo propio. Usa el mismo GPUI y el canal de
 acciones real, sin abrir menús ni inyectar teclado/ratón. Otra fila prueba que
 el binario normal ignora esa entrada. No hay dependencia nueva ni stdin falso.
+
+La aserción de `on_app_quit` depende del diagnóstico a **stderr**
+`vantare-overlays: on_app_quit completado`, emitido después de `usage.finish()`.
+No acredita la persistencia ni la entrega remota de analítica. Se conserva ese
+diagnóstico porque el envío depende del consentimiento y del canal de derechos;
+exigirlo aquí ampliaría la prueba de cierre a servicios ajenos al escenario.
 
 Decisión del orquestador: los efectos de los manejadores son automáticos;
 el clic físico queda **manual y pendiente de Isaac**. Los intentos por teclado
@@ -48,6 +58,8 @@ No se reproduce la condición que decide parar en un segundo decisor de test.
 | Segundo supervisor con/sin Hub no arranca hijos; segundo beta falla por lock, no enfoca Hub | Reinicio/instancia real y matriz Hub con lock original | Paso 4: enfocar/abrir a través de sesión |
 | Caída núcleo cambia época; presupuesto agotado; colgado; Job; orden Engineer→overlays→núcleo. Un colgado muerto por plazo deja exit 1 y diagnóstico, y se recogen los demás hijos | Escenarios anteriores de `lifecycle.rs` (hijos sintéticos explícitos) | Paso 1 implementado; paso 2 reunirá presupuesto |
 | Heartbeat avanza sin fotos; kill no publica estado de cierre y caduca en frontera exacta | `engineer/tests/status_process.rs`: kill+wait, dos lecturas posteriores | #1852: no exigir igualdad a una lectura anterior al kill |
+| Revocar Engineer que sale con 7 o requiere kill conserva núcleo y overlays publicando; el Stop posterior sale con 0 | `engineer_revocation_failure_preserves_the_running_session` | Corrección de revisión del paso 1 |
+| Engineer sale con 7 tras el Stop: diagnóstico, sin fallo del supervisor | `requested_shutdown_accepts_a_nonzero_child_exit` | Sólo el kill forzado es fallo |
 
 Esta tabla es la fixture previa a `session::paso()`: todavía no existe esa
 máquina de estados. Las pruebas no acreditan guardar documentos en el Hub

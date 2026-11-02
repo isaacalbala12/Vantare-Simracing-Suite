@@ -310,7 +310,7 @@ mod tests {
             .access_mode(0x8001_0000)
             .share_mode(7)
             .open(path)
-            .unwrap();
+            .expect("open owned classic-delete fixture");
         let deleting: i32 = 1; // FILE_DISPOSITION_INFO uses BOOL, FileDispositionInfo=4.
         // SAFETY: owned DELETE/read handle; correctly sized SDK BOOL buffer.
         assert_ne!(

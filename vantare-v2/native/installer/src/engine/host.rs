@@ -382,7 +382,15 @@ impl Session {
                     package,
                     request.mode,
                     control,
-                    |control, restoring| self.sync(request, previous, restoring, control.warning),
+                    |control, restoring| {
+                        self.sync(
+                            request,
+                            previous,
+                            restoring,
+                            control.progress,
+                            control.warning,
+                        )
+                    },
                     || self.prepare_orphan(root, request),
                 )
             }
@@ -401,7 +409,7 @@ impl Session {
                     can_cancel: false,
                 });
                 operations::uninstall(root, control, |control| {
-                    self.sync(request, previous, false, control.warning)
+                    self.sync(request, previous, false, control.progress, control.warning)
                 })
             }
             "Cleanup" => self.cleanup(request),
@@ -413,6 +421,7 @@ impl Session {
         request: &Request,
         previous: Option<&super::context::Options>,
         restoring: bool,
+        progress: &mut dyn FnMut(Progress),
         warning: &mut dyn FnMut(&str),
     ) -> WriteResult<()> {
         let root = request
@@ -446,12 +455,13 @@ impl Session {
                     payload: &self.directory,
                     restoring,
                 },
+                progress,
                 warning,
             )
         }
         #[cfg(not(windows))]
         {
-            let _ = (root, previous, restoring, warning);
+            let _ = (root, previous, restoring, progress, warning);
             Err(WriteError::new(1, "Shell requiere Windows"))
         }
     }

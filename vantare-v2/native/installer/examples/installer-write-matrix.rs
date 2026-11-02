@@ -69,6 +69,7 @@ fn run() -> Result<u8, Box<dyn std::error::Error>> {
                 payload: &input.payload_directory,
                 restoring: false,
             },
+            &mut |_| {},
             &mut |message| eprintln!("{message}"),
         )?;
         return Ok(0);

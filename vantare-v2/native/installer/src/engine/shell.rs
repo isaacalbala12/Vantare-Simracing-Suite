@@ -19,6 +19,15 @@ pub struct Options<'a> {
     pub payload: &'a Path,
     pub restoring: bool,
 }
+fn report(progress: &mut dyn FnMut(crate::model::Progress), step: &str, percent: u8) {
+    progress(crate::model::Progress {
+        step: step.into(),
+        percent,
+        done: 0,
+        total: 0,
+        can_cancel: false,
+    });
+}
 fn powershell() -> Result<PathBuf> {
     Ok(PathBuf::from(
         std::env::var_os("WINDIR").ok_or_else(|| super::WriteError::new(1, "WINDIR ausente"))?,
@@ -286,6 +295,7 @@ pub fn sync(
     context: &Context,
     state: Option<&State>,
     options: &Options<'_>,
+    progress: &mut dyn FnMut(crate::model::Progress),
     warning: &mut dyn FnMut(&str),
 ) -> Result<()> {
     context.validate_root(root)?;
@@ -296,6 +306,23 @@ pub fn sync(
     )?;
     let request = options.request;
     let identity = context::identity(request)?;
+    let identity_file = root.join("registration-identity.txt");
+    if identity_file.try_exists()? {
+        ensure(
+            fs::metadata(&identity_file)?.len() <= 1024,
+            "Identidad de registro demasiado grande",
+        )?;
+        ensure(
+            fs::read_to_string(identity_file)?
+                .trim_start_matches('\u{feff}')
+                .trim()
+                == identity,
+            "La identidad de desinstalación no coincide",
+        )?;
+    }
+    if !options.restoring {
+        report(progress, "shortcuts", if state.is_some() { 84 } else { 72 });
+    }
     let folder_name = if request.qa {
         request
             .qa_shortcut_folder
@@ -334,7 +361,11 @@ pub fn sync(
         old,
     };
     let Some(state) = state else {
-        return remove_projection(&projection, options, warning);
+        remove_projection(&projection, options, warning)?;
+        if !options.restoring {
+            report(progress, "register", 88);
+        }
+        return Ok(());
     };
     let view = Installation::read(root, ReadProfile::Probe)?;
     ensure(
@@ -346,6 +377,9 @@ pub fn sync(
         .ok_or_else(|| super::WriteError::new(1, "Falta versión instalada"))?;
     let run = legacy_run(context, root, identity)?;
     let ui = prepare_projection(&projection, options, run.is_some())?;
+    if !options.restoring {
+        report(progress, "register", 93);
+    }
     project_links(&projection, state, warning)?;
     project_registration(&projection, options, version)?;
     project_preferences(&projection, state, options, &ui, run, warning)

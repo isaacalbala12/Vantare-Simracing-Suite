@@ -38,6 +38,8 @@ function Invoke-BoundaryWriter([string]$Operation,[string]$Version){
 try{
     $result=Invoke-BoundaryWriter 'Install' '0.0.988'
     Assert-Boundary ($result.ExitCode -eq 0) 'Rust Setup finalizes the legacy Windows projection'
+    $phases=@($result.Stdout -split "`r?`n"|Where-Object {$_}|ForEach-Object {$_|ConvertFrom-Json})
+    Assert-Boundary (@($phases|Where-Object {$_.step -ceq 'shortcuts' -and $_.percent -eq 84}).Count -eq 1 -and @($phases|Where-Object {$_.step -ceq 'register' -and $_.percent -eq 93}).Count -eq 1) 'Native Setup preserves its UI progress phases'
     $appLink=Join-Path $qaBoundaryRoot 'Programs/Vantare/Vantare Simracing Suite.lnk'
     $shell=New-Object -ComObject WScript.Shell
     $explorer=New-Object -ComObject Shell.Application
@@ -57,6 +59,10 @@ try{
     Set-ItemProperty -LiteralPath $run -Name 'VantareNative.Hub' -Value $lowerRun
     $migrated=Invoke-BoundaryWriter 'Sync' '0.0.988'
     Assert-Boundary ($migrated.ExitCode -eq 0 -and $null -eq (Get-ItemProperty -LiteralPath $run).PSObject.Properties['VantareNative.Hub']) 'Native Run migration accepts the same flag and path case variants as PowerShell'
+    $identityFile=Join-Path $install 'registration-identity.txt'
+    [IO.File]::WriteAllText($identityFile,'ForeignIdentity')
+    try{$blocked=Invoke-BoundaryWriter 'Sync' '0.0.988'}finally{Remove-Item -LiteralPath $identityFile}
+    Assert-Boundary ($blocked.ExitCode -ne 0 -and (Get-ItemProperty -LiteralPath $key).DisplayVersion -ceq $expectedVersion) 'Native shell refuses a mismatched registration identity'
     $operation=[IO.File]::Open((Join-Path $install '.operation.lock'),[IO.FileMode]::OpenOrCreate,[IO.FileAccess]::ReadWrite,[IO.FileShare]::None)
     try{$blocked=Invoke-BoundaryWriter 'Sync' '0.0.988'}finally{$operation.Dispose()}
     Assert-Boundary ($blocked.ExitCode -ne 0 -and (Get-ItemProperty -LiteralPath $key).DisplayVersion -ceq $expectedVersion) 'Native shell sync respects the operation owner'
@@ -105,6 +111,8 @@ try{
     Assert-Boundary ((Get-NativeDataIndex $data) -ceq $dataBefore) 'Partial uninstall preserves exact data'
     $result=Invoke-BoundaryWriter 'Uninstall' '0.0.988'
     Assert-Boundary ($result.ExitCode -eq 0) 'Rust Uninstall resumes when manifest and state are already removed'
+    $phases=@($result.Stdout -split "`r?`n"|Where-Object {$_}|ForEach-Object {$_|ConvertFrom-Json})
+    Assert-Boundary (@($phases|Where-Object {$_.step -ceq 'shortcuts' -and $_.percent -eq 72}).Count -eq 1 -and @($phases|Where-Object {$_.step -ceq 'register' -and $_.percent -eq 88}).Count -eq 1) 'Native Uninstall preserves its UI progress phases'
     Assert-Boundary (-not(Test-Path -LiteralPath $key) -and $null -eq (Get-ItemProperty -LiteralPath $run).PSObject.Properties['VantareNative.Hub']) 'Successful finalization retires registry and owned Run'
     Assert-Boundary ((Get-ItemProperty -LiteralPath $run).OtherApp -ceq 'foreign-app') 'Finalization preserves foreign Run value'
     $marker=Join-Path $install 'installer-cleanup.json';$exe=Join-Path $install 'Uninstall.exe'

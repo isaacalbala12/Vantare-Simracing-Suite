@@ -593,3 +593,19 @@ autoriza ejecutar esas features ni sustituye señales independientes para
 ## 10. Última actualización
 
 2026-10-14 · GitHub #1606 / Plane VANTA-46 · Codex CLI. Ronda 2: N1/N2/N3 con RED→GREEN y commits propios; todos los gates locales verdes, push/PR draft y trackers de revisión verificados. QA física y CI remota completa pendientes. HEAD/CI finales se releen en la issue y el buzón. El estado anterior #1564 se conserva en sus párrafos; no ejecutar otras issues desde este handoff.
+
+
+## VANTA-129 · Complemento REST #1881 (2026-11-02)
+
+Encargo explícito del orquestador: el siguiente PR incluye #1881, servidor
+LISTEN sin cliente y accept/join sin plazo. Se ejecuta como corte 3b independiente
+del DTO #1882, que sigue abierto para revisión, desde origin/nightly actualizado
+83716fe934ebb3abfaa4248112093086ecc4d654. Rama vantareapp/isa-1868-paso3b-rest-deadline,
+worktree D:/VantareServer/worktrees/isa-1868-paso3b. VANTA-129 En curso.
+Primero se extrae sin alterar el accept bloqueante y se caracteriza la ausencia
+de conexión, con despertar TCP explícito para que el RED no bloquee la cola.
+Después se acotan accept, E/S y join del arnés, conservando Client::new y sus
+750 ms de producción y las aserciones de respuesta. Solo tests; sin cambiar
+runtime productivo, goldens o corpus. Evidencia D:/VantareServer/evidence/isa-1868-paso3b.
+Siguiente: caracterización previa y arreglo con gates por compilar.ps1 en target
+propio; telemetría #1498. Sin merge/promoción/release. Pasos 4–10 pendientes.

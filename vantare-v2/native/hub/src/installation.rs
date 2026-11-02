@@ -242,7 +242,7 @@ mod tests {
         // SAFETY: the borrowed duplicate stays owned for this call. Zero checks
         // immediately: production kill/wait must already have reaped this child.
         match unsafe { wait_for_single_object(handle.as_raw_handle(), 0) } {
-            0 => Ok(true),     // WAIT_OBJECT_0
+            0 => Ok(true),                                    // WAIT_OBJECT_0
             0x102 => Ok(false), // WAIT_TIMEOUT: the same process is still running.
             u32::MAX => Err(std::io::Error::last_os_error()), // WAIT_FAILED
             _ => Err(std::io::Error::other("unexpected process wait result")),
@@ -253,8 +253,13 @@ mod tests {
     fn dropping_confirmation_reaps_the_blocked_registration_child() {
         let root = root();
         let confirmation = waiting(&root);
-        let handle = confirmation.child.as_ref().unwrap().as_handle()
-            .try_clone_to_owned().expect("retain owned registration process");
+        let handle = confirmation
+            .child
+            .as_ref()
+            .unwrap()
+            .as_handle()
+            .try_clone_to_owned()
+            .expect("retain owned registration process");
         assert!(!process_exited(handle.as_handle()).expect("blocked child"));
         drop(confirmation);
         assert!(process_exited(handle.as_handle()).expect("reaped child"));
@@ -315,8 +320,13 @@ mod tests {
         );
         assert!(root.join("hub-ready").exists());
         let mut confirmation = waiting(&root);
-        let handle = confirmation.child.as_ref().unwrap().as_handle()
-            .try_clone_to_owned().expect("retain owned registration process");
+        let handle = confirmation
+            .child
+            .as_ref()
+            .unwrap()
+            .as_handle()
+            .try_clone_to_owned()
+            .expect("retain owned registration process");
         assert!(!process_exited(handle.as_handle()).expect("blocked child"));
         confirmation.registration_deadline = std::time::Instant::now();
         assert!(confirmation.poll().expect("registration is cosmetic"));

@@ -1,5 +1,5 @@
 #requires -Version 5.1
-param([string]$Root,[string]$Case,[string]$Operation,[string]$Assets,[string]$RegistryRoot,[string]$ReadProbe)
+param([string]$Root,[string]$Case,[string]$Operation,[string]$Assets,[string]$RegistryRoot,[string]$ReadProbe,[string]$WriteEngine)
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'guard.ps1')
@@ -38,7 +38,7 @@ Write-NativeJson (Join-Path $qaCaseRoot 'before-data.json') (Get-MatrixData $qaI
 $null=Assert-MatrixRoot $qaInstallRoot
 try {
     switch ($Operation) {
-        {$_ -in @('Probe','Install','Repair','Uninstall','Cleanup')} {
+        {$_ -in @('Probe','Install','Repair','Uninstall','Cleanup') -or ($_ -ceq 'Update' -and $WriteEngine)} {
             $engine=Join-Path $qaCaseRoot ('VantareSetup-'+$PID+'-1-1')
             [IO.Directory]::CreateDirectory($engine) | Out-Null
             foreach ($name in @('beta.ps1','candidate.ps1')) { Copy-Item -LiteralPath (Join-Path $script:Packaging $name) -Destination $engine }
@@ -54,7 +54,7 @@ try {
                 size=1;desktop=$true;autostart=$true;processId=2147483647;
                 packageSha=(Get-NativeHash (Join-Path $engine 'package.zip'))
             }
-            if($Operation -ceq 'Probe' -and $ReadProbe){$requestValue.readContext=$true}
+            if($Operation -ceq 'Probe' -and $ReadProbe -and -not $WriteEngine){$requestValue.readContext=$true}
             Write-NativeJson $request $requestValue
             # Inject only OS folder resolution and explicit library root in a TEST
             # copy. The driver's operations/transactions remain byte-for-byte.
@@ -70,7 +70,28 @@ try {
             # Cleanup validates this exact temporary naming convention.
             $env:TEMP=$qaCaseRoot
             [Console]::SetIn([IO.StringReader]::new("continue`n"))
-            if($Operation -ceq 'Probe' -and $ReadProbe){
+            if($WriteEngine){
+                $contract=Join-Path $qaCaseRoot 'writer.json'
+                $context=@{localAppData=$env:LOCALAPPDATA;registryPrefix=$RegistryRoot.Substring('HKEY_CURRENT_USER\'.Length);shellRoot=$qaCaseRoot}
+                Write-NativeJson $contract @{request=$requestValue;context=$context;payloadDirectory=$engine}
+                if($Operation -ceq 'Probe'){
+                    $expected=& $driverPath -RequestFile $request
+                    if($LASTEXITCODE){throw 'MATRIX_LEGACY_PROBE_FAILED'}
+                    $actual=& $WriteEngine $contract
+                    if($LASTEXITCODE){throw 'MATRIX_WRITER_PROBE_FAILED'}
+                    $old=$expected|ConvertFrom-Json;$new=$actual|ConvertFrom-Json
+                    foreach($field in $old.PSObject.Properties){if($field.Value -cne $new.PSObject.Properties[$field.Name].Value){throw ('MATRIX_WRITER_CONTEXT_CHANGED: '+$field.Name)}}
+                    if($ReadProbe){
+                        Compare-MatrixProbe $driverPath $request $ReadProbe | Out-Null
+                        Compare-MatrixProbe $driverPath $request $ReadProbe $true | Out-Null
+                        Test-MatrixProbeRejections $qaInstallRoot $driverPath $request $ReadProbe
+                    }
+                    $actual
+                    exit 0
+                }
+                & $WriteEngine $contract
+                exit $LASTEXITCODE
+            }elseif($Operation -ceq 'Probe' -and $ReadProbe){
                 $actual=Compare-MatrixProbe $driverPath $request $ReadProbe
                 Compare-MatrixProbe $driverPath $request $ReadProbe $true | Out-Null
                 Test-MatrixProbeRejections $qaInstallRoot $driverPath $request $ReadProbe

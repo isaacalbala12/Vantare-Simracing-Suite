@@ -1,6 +1,6 @@
 ﻿#requires -Version 5.1
 [CmdletBinding()]
-param([string]$Root,[string]$LegacyPackage,[string]$TestVerifier,[string]$BootProbe,[string]$ReadProbe,[switch]$Record,
+param([string]$Root,[string]$LegacyPackage,[string]$TestVerifier,[string]$BootProbe,[string]$ReadProbe,[string]$WriteEngine,[switch]$Record,
       [ValidateSet('clean','nsis975','nsis975-incomplete974','rc-options','pending','boot','retained','retained-no-marker')]
       [string[]]$Cases=@('clean','nsis975','nsis975-incomplete974','rc-options','pending','boot','retained','retained-no-marker'),
       [ValidateSet('Probe','Install','Update','Repair','Check','Apply','Confirm','Timeout','Rollback','Uninstall','Cleanup')]
@@ -95,6 +95,7 @@ try {
             $info.FileName="$env:WINDIR/System32/WindowsPowerShell/v1.0/powershell.exe"
             $info.Arguments='-NoProfile -ExecutionPolicy Bypass -File "'+(Join-Path $PSScriptRoot 'matrix/worker.ps1')+'" -Root "'+$caseRoot+'" -Case '+$case+' -Operation '+$operation+' -Assets "'+$assets+'" -RegistryRoot "HKEY_CURRENT_USER\Software\VantareInstallerMatrix\'+$registryId+'\'+$name+'"'
             if($ReadProbe){$info.Arguments+=' -ReadProbe "'+$ReadProbe+'"'}
+            if($WriteEngine){$info.Arguments+=' -WriteEngine "'+$WriteEngine+'"'}
             $info.UseShellExecute=$false;$info.CreateNoWindow=$true
             # CodeDOM used by Add-Type also writes temporary compiler files.
             # Set this BEFORE process creation, so .NET never caches user TEMP.

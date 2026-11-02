@@ -2,6 +2,53 @@
 
 ## Seguimiento 5a tras integrar #1875
 
+### Revisión de #1883
+
+Fuente aade963fbf5717c88716256672bd26e829ee08fb. Fmt/check y Clippy de Installer
+normal/TEST -D warnings PASS; Nextest 62/62 y TEST 59/59 PASS, con 1 helper omitido
+preexistente en cada variante. Los dos tests nuevos pasan también aislados:
+una escritura interrumpida conserva InstallLocation antes de DisplayName y admite
+reintentar; el .lnk conserva una variable en GetPath(4) y GetPath(0) la expande.
+Hub solo cambia comentarios; sus gates no se repiten tras la campaña inicial.
+
+- InstallLocation es el primer valor de la proyección. El test corta la segunda
+  escritura real bajo HKCU inyectado y verifica propiedad, ausencia de metadatos
+  y reintento completo. Una clave ajena sin ubicación continúa protegida.
+- replace_temporary es el único dueño de retirar el temporal si falla replace;
+  el llamador conserva solo la limpieza ante fallo de write_new.
+- Los diez tests de Cleanup PS se ejecutan con o sin WriteEngine, antes de que
+  un rechazo del baseline pueda abortar las filas. Ejecución directa sin motor:
+  10/10 PASS en p5a-review-script-only-01.log.
+- El código documenta las lecturas posteriores del marcador ACK y los errores
+  de apertura/consulta que no se convierten en advertencias de registro.
+- Cleanup ×8 con WriteEngine y Record PASS. Comparación posterior de las ocho
+  capturas contra el baseline actualizado: 8/8 PASS. Solo cambia exit 1→0 en
+  retained-no-marker-cleanup; el SHA ea1be050950c38c661cd24fe36a3121fd91199e93a4835b87302fd970308b160
+  y el único archivo de datos quedan iguales. Diff exacto de 1 byte; otras 87 filas
+  intactas. Baseline bc65408c7; auditoría en baseline-audit.json.
+  Auxiliares 25/24/14/18/54/42/48/39/10 PASS; campaña 575,27 s, Startup 260,80 s
+  de 480 s, exit 0, medido por handle. Las 48 aserciones/deadlines de 30 s siguen iguales.
+  Normalizador intacto. El primer corte de 32 filas no ejecutó Cleanup y por
+  eso no detectó que su baseline aún reflejaba el resultado anterior.
+
+Logs de revisión: QA/isa-1840/p5a-review-logs; matriz nueva
+QA/isa-1840/matrix-p5a-review-cleanup-01, Cleanup en las ocho raíces, con
+WriteEngine y Record. El baseline versionado solo recibe la fila autorizada;
+las ocho capturas se contrastan después con él, conservando las otras 87 filas.
+
+Medición final de revisión: `python native/scripts/installer-lines.py --base ba8ea61af --head HEAD --projection`.
+
+| Perímetro | Antes | Después | Saldo |
+| --- | ---: | ---: | ---: |
+| Rust de producción | 11734 | 11888 | +154 |
+| PowerShell de producto | 2304 | 2305 | +1 |
+| Producción ampliada | 14038 | 14193 | +155 |
+| Tests Rust | 3131 | 3431 | +300 |
+| PS tests/tooling | 6158 | 6280 | +122 |
+| Documentación | 11273 | 11447 | +174 |
+
+### Primera entrega (anterior a la revisión)
+
 Base nightly `ba8ea61afa48bfc4e276823ab8f5ce39ff9aa14f`, CI 5/5 comunicada por
 el orquestador. Los resultados siguientes del paso 5 son históricos; el 5a va
 en rama/worktree propios isa-1840-paso5a-arreglos / isa-1840-paso5a.
@@ -32,7 +79,8 @@ en rama/worktree propios isa-1840-paso5a-arreglos / isa-1840-paso5a.
 - QA: 32 filas Install/Update/Repair/Uninstall sobre las 8 raíces; Cleanup se
   verifica por sus invariantes nuevas en tests directos/nativos y frontera,
   porque «sin marcador ya desinstalado» cambia legítimamente exit 1→0.
-  Se conservan baseline/normalizador y los casos de Probe sin cambios.
+  En ese corte se conservó el baseline y se omitió Cleanup. La revisión de arriba
+  corrige exclusivamente su fila autorizada; Probe y normalizador no cambian.
   Registro/arranque, Startup y frontera se ejecutan por el arnés existente.
 
 Rust probado en a07d2a8fe992bfa941f7d638c1fafc58768b49a0: fmt/check y Clippy
@@ -50,7 +98,7 @@ Rust probada solo cambian dos comentarios sobre el buffer BOOLEAN del test;
 el resto de ese commit incorpora Cleanup al arnés y documenta su cobertura.
 Target propio D:/VantareServer/targets/isa-1840-p5a; logs en QA/isa-1840/p5a-logs.
 
-Medición reproducible: `python native/scripts/installer-lines.py --base ba8ea61af --head HEAD --projection`.
+Medición reproducible: `python native/scripts/installer-lines.py --base ba8ea61af --head eb975199c --projection`.
 Líneas físicas; elementos Rust exclusivos de tests separados de producción.
 
 | Perímetro | Antes | Después | Saldo |

@@ -1,9 +1,12 @@
 # Caracterización del motor de instalación · VANTA-127 / #1840
 
-El seguimiento 5a añade `cleanup-tests.ps1` al gate con `-WriteEngine`: diez
+El seguimiento 5a añade `cleanup-tests.ps1` al gate con o sin `-WriteEngine`: diez
 comprobaciones de rechazo, espera de un padre propio y renovación bajo bloqueo.
 La regresión nativa del ACK fuerza delete-pending con error5 real y exige la
 confirmación del kernel; no amplía plazos. Evidencia en `evidence-1840-p5.md`.
+El baseline con WriteEngine actualiza solo `retained-no-marker-cleanup` de exit1
+a0: retirada ya hecha sin marcador, con SHA e índice de datos idénticos. Se
+contrasta Cleanup en las ocho raíces; el normalizador permanece intacto.
 
 Paso 3 añade `-ReadProbe <probe-read-matrix.exe>`: compara en cada raíz los ocho
 campos públicos del Probe heredado con el contexto completado por Rust, también

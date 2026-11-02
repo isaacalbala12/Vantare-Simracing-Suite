@@ -662,6 +662,21 @@ Sin merge/release del worker.
 
 ### Paso 5 integrado / paso 5a listo en PR draft (2-nov-2026)
 
+Revisión de #1883 aplicada sobre aade963fbf5717c88716256672bd26e829ee08fb:
+formato y Clippy Installer normal/TEST PASS; Nextest 62/62 y 59/59 PASS, con 1
+helper omitido preexistente por variante. Tests nuevos: interrupción tras escribir
+InstallLocation y enlace con variable de entorno real. Cleanup PS corre siempre,
+antes de las filas; sin motor también 10/10 PASS. Temporal: retirada no duplicada.
+ACK: lecturas posteriores y fallos de apertura/consulta documentados en código.
+Cleanup ×8 con WriteEngine/Record y contraste posterior 8/8 PASS: solo exit 1→0
+retained-no-marker-cleanup, SHA/datos iguales; diff exacto de 1 byte, otras 87 filas
+intactas (bc65408c7). Auxiliares 25/24/14/18/54/42/48/39/10 PASS; Startup 260,80 s
+de 480 s sin cambiar sus 48 aserciones/deadlines de 30 s. Campaña 575,27 s. Logs QA/isa-1840/
+p5a-review-logs. Producción 14193; métricas finales en evidencia p5.
+Pendiente revisión/CI del orquestador y después 5b; Plane En curso sin comentarios.
+
+Antecedente: primera entrega del 5a en eb975199c (antes de esta revisión).
+
 #1875 integrado por el orquestador en nightly `ba8ea61afa48bfc4e276823ab8f5ce39ff9aa14f`,
 CI 5/5 verde comunicada tras relanzamiento. Base remota y antecesor verificados.
 5a: guardas Cleanup bajo lock, opciones leídas, rutas COM, claves ajenas,

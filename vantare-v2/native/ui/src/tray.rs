@@ -27,6 +27,10 @@ pub enum Action {
 }
 
 const CALLBACK: u32 = WM_APP + 1;
+// Entrada exclusiva de QA: invoca los mismos manejadores sin automatizar el menú.
+// No se compila en el binario normal ni en distribución.
+#[cfg(feature = "parity-capture")]
+const LIFECYCLE_COMMAND: u32 = WM_APP + 0x1860;
 const TOGGLE: usize = 1;
 const HUB: usize = 2;
 const QUIT: usize = 3;
@@ -267,6 +271,20 @@ unsafe extern "system" fn procedure(
     lparam: LPARAM,
 ) -> LRESULT {
     match message {
+        #[cfg(feature = "parity-capture")]
+        LIFECYCLE_COMMAND => {
+            match wparam {
+                HUB => open_hub(),
+                QUIT => {
+                    send(Action::Quit);
+                    unsafe {
+                        DestroyWindow(window);
+                    }
+                }
+                _ => return 0,
+            }
+            1
+        }
         CALLBACK => {
             // Versión 0 de NOTIFYICON: el evento del ratón llega en `lparam`.
             if matches!(

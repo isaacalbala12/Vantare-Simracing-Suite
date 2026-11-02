@@ -1,7 +1,8 @@
 //! Caída, bloqueo, reconexión y cierre del launcher `vantare` con procesos de
 //! verdad. Sin arnés de `libtest`: este mismo ejecutable hace de núcleo y de
-//! overlays falsos (`lifecycle fake-core ...`), que hablan por un pipe real con
-//! `vantare-ipc`, y los escenarios corren uno tras otro.
+//! hijos sintéticos en las pruebas de fallo (`lifecycle fake-core ...`). La
+//! caracterización de Windows usa también el overlays GPUI real. Todos hablan
+//! por pipes reales con `vantare-ipc` y los escenarios corren uno tras otro.
 
 // Sin `#[test]` (arnés propio), clippy no lo trata como código de pruebas.
 #![allow(clippy::unwrap_used, clippy::cast_possible_truncation)]
@@ -19,12 +20,28 @@ use std::{env, thread};
 use vantare_domain::{Quality, Snapshot};
 use vantare_ipc::{Publisher, Subscriber};
 
+#[cfg(windows)]
+#[path = "lifecycle/characterization.rs"]
+mod characterization;
+
 fn main() -> ExitCode {
     let args: Vec<String> = env::args().skip(1).collect();
+    #[cfg(windows)]
+    if env::current_exe()
+        .unwrap()
+        .file_name()
+        .is_some_and(|name| name == "vantare-hub.exe")
+    {
+        return characterization::tray_hub_process(&args);
+    }
     match args.first().map(String::as_str) {
         Some("fake-core") => fake_core(&args[1..]),
         Some("fake-crash") => fake_crash(&args[1..]),
         Some("fake-overlays") => fake_overlays(&args[1..]),
+        #[cfg(windows)]
+        Some("manual-tray") => characterization::manual_tray(),
+        #[cfg(windows)]
+        Some("fake-hub") => characterization::fake_hub(&args[1..]),
         _ if args.iter().any(|arg| arg == "fake-engineer") => fake_engineer(&args),
         _ => run_scenarios(&args),
     }
@@ -383,6 +400,8 @@ impl Scenario {
             ])
             .args(["--log", &self.file("overlays.log")])
             .args(overlays)
+            .env("VANTARE_NATIVE_DATA_ROOT", &self.dir)
+            .env("LOCALAPPDATA", &self.dir)
             .stdin(Stdio::null())
             .stderr(File::create(self.file("launcher.log")).unwrap());
         command
@@ -431,6 +450,8 @@ impl Scenario {
     fn stop(&self) {
         let status = Command::new(env!("CARGO_BIN_EXE_vantare"))
             .args(["--parar", "--instancia", &self.instance])
+            .env("VANTARE_NATIVE_DATA_ROOT", &self.dir)
+            .env("LOCALAPPDATA", &self.dir)
             .status()
             .unwrap();
         assert!(status.success());
@@ -965,6 +986,8 @@ fn run_scenarios(filters: &[String]) -> ExitCode {
             a_hung_engineer_is_killed_by_the_grace_deadline,
         ),
     ];
+    #[cfg(windows)]
+    scenarios.extend(characterization::scenarios());
     #[cfg(windows)]
     scenarios.push((
         "process_observer_distinguishes_identity_and_terminated_processes",

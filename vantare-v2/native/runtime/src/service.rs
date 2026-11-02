@@ -180,6 +180,7 @@ pub fn drive_core_demanded<E>(
             freshness,
             &snapshot,
             core.freshness_reason(),
+            adapter.freshness_detail(&snapshot),
         );
         freshness = vantare_ipc::freshness::state(&snapshot);
         let idle = snapshot.sequence <= sent;

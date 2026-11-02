@@ -33,7 +33,8 @@ use publish::Publisher;
 
 /// Sin avance del reloj de la fuente durante este tiempo, el snapshot se
 /// publica como obsoleto (mismo límite que el `FreshnessGate` de ISA-1403).
-pub const STALL_LIMIT: Duration = Duration::from_millis(500);
+pub use vantare_domain::freshness::STALL_LIMIT;
+use vantare_domain::freshness::{Reason, player_clock_frozen};
 
 fn same_scope(a: &Snapshot, b: &Snapshot) -> bool {
     a.origin.source == b.origin.source
@@ -81,7 +82,7 @@ pub struct Core {
     last_advance: Duration,
     last_source_time: Option<Duration>,
     stale: bool,
-    freshness_reason: &'static str,
+    freshness_reason: Reason,
     /// Memoria entre fotos de las derivaciones (combustible y delta); fuera de
     /// `domain`, porque no es una señal publicada.
     trackers: Trackers,
@@ -111,7 +112,7 @@ impl Core {
             last_advance: Duration::ZERO,
             last_source_time: None,
             stale: false,
-            freshness_reason: "sin sesión admitida",
+            freshness_reason: Reason::Waiting,
             trackers: Trackers::default(),
             situation: situation::Tracker::default(),
             events: Journal::volatile(epoch),
@@ -188,7 +189,7 @@ impl Core {
     }
 
     pub fn freshness_reason(&self) -> &'static str {
-        self.freshness_reason
+        self.freshness_reason.text()
     }
 
     pub fn subscribe(&mut self) -> Reader {
@@ -243,7 +244,7 @@ impl Core {
             Ok(None) => Ok(()),
             Err(error) => {
                 if error == AdapterError::Disconnected {
-                    self.publish_stale("adaptador desconectado; degradación inmediata");
+                    self.publish_stale(Reason::Disconnected);
                 }
                 Err(Error::Adapter(error))
             }
@@ -285,24 +286,18 @@ impl Core {
         // Paused exige confirmaciones periódicas del adaptador. Su silencio
         // vuelve a caducar a los mismos 500 ms; no cambia el límite del núcleo.
         self.stale = self.is_stale_at(origin.received_at);
-        self.freshness_reason = match snapshot.state.source_state {
-            SourceState::Paused if origin.source.simulator == "acc" => {
-                "ACC graphics.status=PAUSE vigente"
-            }
-            SourceState::Paused => {
-                "SHM mCurrentET sin avance >=500ms; proceso vivo y REST de sesión <500ms"
-            }
-            SourceState::Stale if advanced && origin.source_time.is_some() => {
-                "adaptador: fuente caducada pese a un nuevo reloj de origen"
-            }
-            SourceState::Stale => "adaptador: reloj SHM mCurrentET >=500ms sin pausa confirmada",
-            SourceState::Live => "reloj de fuente avanzando",
-            SourceState::Waiting | SourceState::Lost => "sin sesión admitida",
+        self.freshness_reason = if snapshot.state.source_state == SourceState::Stale
+            && advanced
+            && origin.source_time.is_some()
+        {
+            Reason::AdapterStaleWithAdvance
+        } else {
+            Reason::of_source(snapshot.state.source_state)
         };
         if self.stale {
             degrade(&mut snapshot.state);
             snapshot.state.source_state = SourceState::Stale;
-            self.freshness_reason = "núcleo: origin.source_time sin avance >=500ms";
+            self.freshness_reason = Reason::Silence;
         }
         if !same_scope(&self.current, &snapshot) {
             self.situation.reset();
@@ -316,9 +311,9 @@ impl Core {
     pub fn tick(&mut self, now: Duration) {
         if self.is_stale_at(now) {
             let reason = if self.current.state.source_state == SourceState::Paused {
-                "núcleo: confirmación de pausa ausente >=500ms"
+                Reason::PauseSilence
             } else {
-                "núcleo: origin.source_time sin avance >=500ms"
+                Reason::Silence
             };
             self.publish_stale(reason);
         } else if let Some(situation) = self.situation.advance(now) {
@@ -345,7 +340,7 @@ impl Core {
         now.saturating_sub(self.last_advance) >= STALL_LIMIT
     }
 
-    fn publish_stale(&mut self, reason: &'static str) {
+    fn publish_stale(&mut self, reason: Reason) {
         self.situation.reset();
         if self.stale || self.current.sequence == 0 {
             return; // ya obsoleto, o nada que degradar
@@ -375,7 +370,7 @@ impl Core {
             // Los relojes de scoring y jugador no caducan en la misma vuelta.
             // Guardar el scoring más reciente y el último jugador válido, sin
             // publicar como frescas sus señales realmente caducadas en Live.
-            if self.current.state.capabilities.driver_inputs == vantare_domain::Capability::WithData
+            if player_clock_frozen(&self.current)
                 && let Some(previous) = &self.last_live
                 && same_scope(previous, &self.current)
             {
@@ -801,23 +796,62 @@ mod tests {
             frozen.origin.received_at = ms(100);
             frozen.origin.source_time = Some(ms(100));
             frozen.state.capabilities.driver_inputs = Capability::WithData;
-            frozen.state.player.as_mut().expect("player").telemetry.throttle = Quality::Stale(0.9);
+            frozen
+                .state
+                .player
+                .as_mut()
+                .expect("player")
+                .telemetry
+                .throttle = Quality::Stale(0.9);
             core.observe(frozen).expect("scoring live, player frozen");
-            assert_eq!(core.snapshot().state.player.as_ref().expect("player").telemetry.throttle, Quality::Stale(0.9));
+            assert_eq!(
+                core.snapshot()
+                    .state
+                    .player
+                    .as_ref()
+                    .expect("player")
+                    .telemetry
+                    .throttle,
+                Quality::Stale(0.9)
+            );
             let mut pause = live;
             pause.origin.received_at = ms(200);
             pause.state.source_state = SourceState::Paused;
             core.observe(pause).expect("confirmed by adapter");
-            assert_eq!(core.snapshot().state.player.as_ref().expect("player").telemetry.throttle, Quality::Reliable(0.5));
+            assert_eq!(
+                core.snapshot()
+                    .state
+                    .player
+                    .as_ref()
+                    .expect("player")
+                    .telemetry
+                    .throttle,
+                Quality::Reliable(0.5)
+            );
             core.tick(ms(449));
-            assert_ne!(core.snapshot().state.driving_situation, vantare_domain::DrivingSituation::Paused);
+            assert_ne!(
+                core.snapshot().state.driving_situation,
+                vantare_domain::DrivingSituation::Paused
+            );
             core.tick(ms(450));
-            assert_eq!(core.snapshot().state.driving_situation, vantare_domain::DrivingSituation::Paused);
+            assert_eq!(
+                core.snapshot().state.driving_situation,
+                vantare_domain::DrivingSituation::Paused
+            );
             core.tick(ms(699));
             assert_eq!(core.snapshot().state.source_state, SourceState::Paused);
             core.tick(ms(700));
             assert_eq!(core.snapshot().state.source_state, SourceState::Stale);
-            assert_eq!(core.snapshot().state.player.as_ref().expect("player").telemetry.throttle, Quality::Stale(0.5));
+            assert_eq!(
+                core.snapshot()
+                    .state
+                    .player
+                    .as_ref()
+                    .expect("player")
+                    .telemetry
+                    .throttle,
+                Quality::Stale(0.5)
+            );
         }
     }
 

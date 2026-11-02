@@ -108,3 +108,11 @@ rehidratar: llega el reloj nuevo y se conserva la señal lenta de la nueva
 situación. Usa el codec/suscriptor reales y cierra su hilo y pipe al terminar.
 La pausa se prueba con pipe real hasta `Overlay::project_snapshot`, llamada
 desde `Overlay::ingest`; no acredita una ventana GPUI ni una sesión física.
+
+
+## Registro de frescura — #1868, paso 5
+
+`freshness.log` conserva una línea por transición de estado/capacidades.
+El motivo usa el vocabulario neutral de domain y `detail` contiene el diagnóstico
+opcional del adaptador. La UI no inventa detalles que no recibe por el pipe.
+La raíz del registro y la política de fallos de escritura se conservan.

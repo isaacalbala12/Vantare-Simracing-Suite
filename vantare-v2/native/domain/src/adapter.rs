@@ -20,7 +20,7 @@
 
 use std::time::Duration;
 
-use crate::{Origin, State};
+use crate::{Origin, Snapshot, State};
 
 /// Lote que un adaptador produce en cada lectura, ya traducido al modelo común.
 /// El adaptador declara sus capacidades en `state.capabilities`, no las deduce
@@ -65,6 +65,12 @@ pub trait Adapter {
     /// [`AdapterError::Disconnected`] si la fuente no está; [`AdapterError::Rejected`]
     /// si su dato no se puede admitir. Ambos permiten volver a llamar.
     fn poll(&mut self, now: Duration) -> Result<Option<Observation>, AdapterError>;
+
+    /// Detalle local opcional de frescura, solo para diagnóstico. No cambia
+    /// la foto ni cruza el DTO. El núcleo no interpreta este texto.
+    fn freshness_detail(&self, _snapshot: &Snapshot) -> Option<&'static str> {
+        None
+    }
 
     /// Próximo instante útil en el mismo reloj de `poll`. `None` conserva el
     /// sondeo del consumidor para fuentes que no conocen su próxima lectura.

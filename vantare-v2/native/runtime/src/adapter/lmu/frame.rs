@@ -27,7 +27,7 @@ const MAX_SESSION_LAPS: u32 = 10_000;
 const DELTA_LIMIT_S: f64 = 10_000.0;
 /// Presupuesto de alineación igual al de frescura LMU; también en la grabadora,
 /// que admite frames con este módulo sin el reloj de frescura del adaptador.
-const MAX_SCORING_LAG_S: f64 = 0.5;
+use vantare_domain::freshness::STALL_LIMIT;
 
 pub(super) fn supports_build(build: &str) -> bool {
     SUPPORTED_BUILDS.contains(&build)
@@ -585,7 +585,7 @@ fn scoring_lag_s(scoring: Pose, telemetry: Pose, velocity: Option<[f64; 2]>) -> 
     // No extrapolar más allá del presupuesto de frescura de LMU (500 ms).
     // Un salto no compatible conserva las poses scoring originales, sin clamp
     // que invente movimiento para todos los rivales.
-    if lag.is_finite() && lag.abs() <= MAX_SCORING_LAG_S {
+    if lag.is_finite() && lag.abs() <= STALL_LIMIT.as_secs_f64() {
         lag
     } else {
         0.0

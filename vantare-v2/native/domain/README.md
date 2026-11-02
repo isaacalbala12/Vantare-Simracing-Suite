@@ -16,3 +16,16 @@ Ver [contrato y señales](../runtime/README.md).
 los dueños de derechos. Sólo SourceKind::Live + SourceState::Live es verdadero;
 Waiting, Paused, Stale, Lost y una grabación son falsos. No cambia la conservación
 de gracia durante Paused/Stale de la misma carrera ni el futuro contrato de sesión.
+
+
+## Frescura compartida — #1868, paso 5
+
+`freshness` posee `STALL_LIMIT` (500 ms), `SITUATION_CONFIRM` (250 ms) y
+`Reason`, vocabulario neutral para diagnósticos. No decide capacidades.
+`player_clock_frozen` nombra la convención vigente de driver_inputs=WithData;
+`shows_last_live` conserva la regla del host: Paused, o Live sin jugador ni
+posiciones WithData. Unsupported/Supported mantienen su comportamiento previo.
+El adaptador vigila sus bloques; Core vigila silencio y retiene la última foto
+viva durante pausa. El consumidor conserva su plazo Lost de cinco segundos.
+`Adapter::freshness_detail` es opcional, local y solo diagnóstico: sus detalles
+no cruzan Snapshot/DTO y el núcleo no los interpreta.

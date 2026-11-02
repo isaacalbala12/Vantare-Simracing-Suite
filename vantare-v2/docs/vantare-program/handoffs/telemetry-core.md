@@ -655,3 +655,12 @@ Se consolidan constantes y vocabulario neutral; los detalles de simulador
 pertenecen al adaptador. Reservados ui/layout, hub/shell y cálculos de raíz
 de datos de VANTA-130. Sin goldens/corpus regenerados ni dependencias nuevas.
 0–2 integrados, 3 en revisión, 5 en curso; 4 y 6–10 pendientes.
+
+Caracterización previa GREEN 4/4 en `08333e828` antes del refactor; incluye
+silencio/reanudación, retención de la misma sesión y pausa asentada sin muestras.
+Primer intento no ejecutó tests (Cargo desde vantare-v2 sin manifiesto); corregido
+el directorio a native y conservados ambos logs. Integridad 468/468 PASS.
+Cambio aplicado: constantes/predicados y Reason en domain, núcleo sin rama ACC,
+diagnóstico específico en los adaptadores mediante un método opcional del trait;
+el servicio lo añade fuera del núcleo. Sin cambios en Snapshot/DTO ni capacidades.
+Tanda conjunta de cuatro crates, telemetría y lifecycle por compilar.ps1 pendiente.

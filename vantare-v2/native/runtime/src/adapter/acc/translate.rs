@@ -19,7 +19,7 @@ use super::velocity::{Sample, Velocity};
 /// legitima no pasa de 104 coches; el margen absorbe entradas y salidas.
 const IDENTITY_BUDGET: usize = 512;
 
-const SHM_TTL: Duration = Duration::from_millis(500);
+const SHM_TTL: Duration = vantare_domain::freshness::STALL_LIMIT;
 
 #[cfg(test)]
 #[path = "../../../tests/acc/translation.rs"]

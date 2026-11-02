@@ -44,6 +44,7 @@ vantare-build-support.workspace = true
 serde_json = '1'
 
 [dev-dependencies]
+vantare-ipc = { workspace = true, features = ["test-support"] }
 # Aprobada por Isaac (#1537): lee los goldens gzip de runtime en los tests de
 # replay; misma versión que ya está en Cargo.lock (runtime). Nunca en producto.
 flate2 = "1.1.10"

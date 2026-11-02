@@ -1829,6 +1829,35 @@ mod demand_tests {
             !partial.covers(&requested),
             "el suscriptor rechaza esta primera entrega"
         );
+
+        source.sequence += 1;
+        let full = cadence.due(&requested, Duration::from_millis(16), true);
+        assert!(full.covers(&requested));
+        let mut rehydrated = SnapshotDto::selected(&source, &full).unwrap();
+        rehydrated.restore(None, &requested, &full).unwrap();
+        let held_weather = d::Snapshot::try_from(&rehydrated)
+            .unwrap()
+            .state
+            .session
+            .weather;
+
+        source.sequence += 1;
+        source.state.session.elapsed_s = d::Quality::Reliable(42.0);
+        source.state.session.weather.rain = d::Quality::Reliable(0.12345);
+        assert_ne!(source.state.session.weather, held_weather);
+        let partial = cadence.due(&requested, Duration::from_millis(32), false);
+        assert!(partial.contains(Signal::SessionClock));
+        assert!(!partial.contains(Signal::Weather));
+        let mut next = SnapshotDto::selected(&source, &partial).unwrap();
+        assert!(
+            next.same_scope(&rehydrated, &partial),
+            "el ámbito ya está rehidratado"
+        );
+        next.restore(Some(&rehydrated), &requested, &partial)
+            .unwrap();
+        let accepted = d::Snapshot::try_from(&next).unwrap();
+        assert_eq!(accepted.state.session.elapsed_s, d::Quality::Reliable(42.0));
+        assert_eq!(accepted.state.session.weather, held_weather);
     }
 
     #[test]

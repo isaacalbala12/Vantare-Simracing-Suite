@@ -175,6 +175,9 @@ impl From<serde_json::Error> for Error {
     }
 }
 
+#[cfg(all(any(test, feature = "test-support"), any(windows, unix)))]
+pub mod test_support;
+
 #[cfg(test)]
 mod tests {
     use super::*;

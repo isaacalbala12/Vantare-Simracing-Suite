@@ -100,19 +100,17 @@ fn ack_pending(
     observed: std::io::Result<bool>,
 ) -> std::io::Result<bool> {
     #[cfg(windows)]
-    if matches!(&observed, Ok(true))
+    if (matches!(&observed, Ok(true))
         || observed
             .as_ref()
-            .is_err_and(|error| error.raw_os_error() == Some(5))
+            .is_err_and(|error| error.raw_os_error() == Some(5)))
+        && let Some(file) = marker.as_ref()
+        && delete_pending(file)?
     {
-        if let Some(file) = marker.as_ref()
-            && delete_pending(file)?
-        {
-            // Release our shared handle so Windows can finish deleting the ACK.
-            // Retry within the existing budget; never infer deletion from AccessDenied alone.
-            marker.take();
-            return Ok(true);
-        }
+        // Release our shared handle so Windows can finish deleting the ACK.
+        // Retry within the existing budget; never infer deletion from AccessDenied alone.
+        marker.take();
+        return Ok(true);
     }
     if matches!(&observed, Ok(false)) {
         marker.take();

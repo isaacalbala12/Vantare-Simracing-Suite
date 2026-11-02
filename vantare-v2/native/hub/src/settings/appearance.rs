@@ -379,6 +379,11 @@ mod tests {
             assert_eq!(loaded.settings, wanted);
             assert_eq!(loaded.zoom_percent, zoom);
         }
+        let fixtures = std::path::PathBuf::from(std::env::var_os("VANTARE_NATIVE_DATA_ROOT").unwrap()).join("step67-fixtures");
+        std::fs::create_dir_all(&fixtures).unwrap();
+        for name in ["general.json", "appearance.json", "hub-zoom.json"] {
+            std::fs::copy(root.join(name), fixtures.join(name)).unwrap();
+        }
         std::fs::write(root.join("hub-zoom.json"), b"{").unwrap();
         let (mut broken, warning) = Store::load_or_default(&path);
         assert!(warning.is_some());

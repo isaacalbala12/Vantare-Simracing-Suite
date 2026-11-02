@@ -1992,6 +1992,7 @@ mod tests {
 
         for sequence in 2..=3 {
             photo.sequence = sequence;
+            photo.origin.received_at += Duration::from_millis(100);
             photo.state.source_state = SourceState::Paused;
             publisher.publish(Arc::new(photo.clone())).unwrap();
             let paused = subscriber.next(Duration::from_secs(10)).unwrap();

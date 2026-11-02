@@ -8,7 +8,8 @@ Es referencia histórica; la situación operativa de este archivo es la siguient
 
 ## Estado vigente
 
-VANTA-129 En curso. Pasos **0–3 y 5 integrados**; paso **9 y P3 en curso**;
+VANTA-129 En curso, corte preparado para revisión. Pasos **0–3 y 5 integrados**;
+paso **9 y P3 implementados y validados localmente**;
 pendientes **4, 6, 7, 8 y 10**. Plane es el tablero; GitHub/Project Vantare
 registra código y PRs. No tomar otros encargos desde el historial.
 
@@ -37,8 +38,15 @@ Caracterización ANTES: `e62b4edac` y formato `01f669509`.
 Sobre la primera base: 430/430 tests de runtime y 34/34 de telemetría PASS,
 con todos los bytes/hashes congelados. Tras trasladar a `9d4982e29`, 527/527
 unitarios runtime+ipc PASS (5 skips preexistentes), también antes del cambio.
-La tanda conjunta del refactor pasa fmt/check/Clippy de domain/ipc/runtime;
-Nextest con telemetría, bench y lifecycle siguen en ejecución.
+Código validado `80b735213`, árbol native `f83c2f0a1b4341d39268f2a2b638e691c6cb7656`.
+Tanda conjunta por compilar.ps1 para domain/ipc/runtime, target propio, jobs 4 y
+raíces QA: fmt/check/Clippy -D warnings PASS; **891/891** Nextest PASS (9 skips:
+8 preexistentes y el bench opt-in, ejecutado aparte), incluidos **34/34** de
+telemetría. Run `8a08934a-a18d-416c-99c0-4f4f207ac2a6`. Lifecycle runtime **25/25**
+PASS con overlays reales normal/QA. Cola liberada; quality/integridad 468/468 PASS.
+Las 3857 fotos LMU y hashes ACC de 190471 lecturas permanecen idénticos, sin
+regeneración; ACC completo 202,124 s. Sin nuevas dependencias o configuración.
+CI remota de este corte pendiente de publicación; no se le atribuye verde.
 
 P3 asignados: sustituir este diario por una única situación operativa con CI real;
 asociar el comentario de alineación de lmu/frame al uso del presupuesto;
@@ -50,12 +58,18 @@ calidades; codec y goldens conservan la cobertura de la entrada por valor.
 Coste del decode del Hub: por valor delega al lector prestado, que copia payloads
 al crear un Snapshot dueño. No se ha cambiado esa decisión del paso 3.
 El tramo Decode de paint-stats solo mide serde_json::from_slice (codec), no esa
-conversión. Se ha preparado un bench opt-in del DTO real de 47 coches, con setup
+conversión. Se ejecutó el bench opt-in del DTO real de 47 coches, con setup
 fuera del cronómetro, nueve rondas tras calentamiento y 128 fotos por ronda.
 Mide conversión por valor, incluidas copias/liberación del DTO, sin JSON ni drop
 de los Snapshot resultantes. Es orientativo en servidor compartido, perfil test;
 no compara con el decodificador antiguo por movimiento ni cuenta allocations.
-Resultados y revisión del parser se incorporarán al cierre de este corte.
+Bench 1/1 PASS, run `5d5cf6ce-c856-4985-af36-6158590c5d15`: medias por foto,
+mínimo **23,075 µs**, mediana entre rondas **26,560 µs**, máximo **37,209 µs**.
+No aísla el coste de las copias ni representa latencia Live o rendimiento Release.
+En 1248 scripts versionados/de evidencia buscados no se encontró ningún parser
+de freshness.log; el único literal era un generador del test IPC que comprueba
+reason y detail por separado. Los candidatos de reason= eran otros diagnósticos
+o generación de código. No se reescribieron scripts/evidencia históricos.
 
 Evidencia, comandos y recuento de producción/tests/docs separados:
 `D:/VantareServer/evidence/isa-1868-paso9`. Los fallos se conservan en sus logs.
@@ -83,9 +97,13 @@ No se regeneran goldens/corpus ni se cambian baselines o dependencias.
 VANTA-130 conserva cálculos de raíz de datos, persistencia/lectura y constructor
 desde bytes/default de ui/layout, escritor de workshop/state, hub/document y
 carga/avisos/diagnóstico de hub/shell. Sin sondeo/host/motion en su constructor.
-Este corte no toca UI, Hub, installer, packaging ni sus rutas reservadas.
+Siguen reservados files::future_version y texto CAS de ipc/files. El orquestador
+liberó ui/motion_policy, conexión reducedMotion del host y migración preferences
+de ui/layout al aplazar VANTA-130 ese grupo. Persistencia/lectura y default_path,
+y las demás zonas previas de VANTA-130, conservan su reserva.
+Este corte no toca UI, Hub, installer, packaging ni ninguna de esas zonas.
 
-Revisar el PR del paso 9 y sus P3 al terminar la tanda. Después, según el orden
+Revisar el PR del paso 9 y sus P3, con todos los gates locales verdes. Después, según el orden
 aprobado, paso 6 y paso 4. El **paso 4 no está hecho**: migra fixtures del repo
 a v11, conserva v7/v10 reales para probar los lectores y elimina el alias de
 fixtures; exige Snapshot== antes/después y paridad de píxeles sin rebaselinar.

@@ -1,5 +1,5 @@
 <!-- isa1860-arranque-cierre -->
-## VANTA-128 / #1860 — pasos 0 y 1 integrados; paso 2 en verificación
+## VANTA-128 / #1860 — pasos 0 y 1 integrados; paso 2 listo para revisión
 
 Paso 0 [#1863](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1863)
 integrado por el orquestador en nightly `aca51a15e3a6cf4aa53fc659c89011853a3da2ca`;
@@ -91,34 +91,54 @@ Plane En curso verificado; el worker no volvió a cambiar el estado.
   installation.rs, installer::engine ni Hub Ajustes/updates en el diff del paso 1.
   CI la vigila el orquestador. El worker no hizo merge, release ni promoción,
   ni tocó la instalación o el registro reales. Plane sigue En curso.
-- Paso 2 encargado por el orquestador: rama nueva
-  `vantareapp/isa-1860-paso2-supervision`, worktree
-  `D:/VantareServer/worktrees/isa-1860-paso2`, desde `origin/nightly@27fa423c0`.
-  En lectura del diseño: máquina pura con reloj inyectado, política de hijo,
-  un bucle Windows/Unix, EOF único y presupuesto absoluto que incluya residente,
-  Host y diagnóstico. Sin código de producto editado aún. Incluye los cuatro P3
-  de la re-revisión: filtrado de `--control-stdin`, doc-comments, barrera de
-  lifecycle sin escape por salida del supervisor y distinción Unix por status.code().
-  No tocar installation.rs, installer::engine ni packaging (VANTA-127 en paralelo).
-  Gates previstos en una tanda, respetando la cola. Los pasos 3 y siguientes
-  continúan pendientes; Hub de sesión, Apply e instalador no entran aquí.
-- Paso 2 implementado en la rama nueva indicada arriba; gates locales pendientes.
-  Un conductor Windows/Unix consume la máquina pura con reloj inyectado. EOF
-  sustituye WM_CLOSE para todos los hijos. El plazo P nace una vez e incluye
-  Resident, Host y diagnóstico; reserva del núcleo min(1 s, P/2).
-- Decisión expresa del orquestador: solicitudes Engineer→overlays→diagnóstico;
+- Paso 2 listo en PR draft [#1865](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1865)
+  a nightly, código probado `db515218fdc9b03ca4f333a09a1a4fd9e4d3f3f3`.
+  Rama `vantareapp/isa-1860-paso2-supervision`, worktree
+  `D:/VantareServer/worktrees/isa-1860-paso2`, base `origin/nightly@27fa423c0`;
+  target propio `D:/VantareServer/targets/isa-1860`. HEAD de entrega en el PR.
+- Un conductor Windows/Unix ejecuta la máquina pura con reloj inyectado y
+  política por hijo. EOF sustituye WM_CLOSE para núcleo, overlays, Engineer y
+  diagnóstico. Un único plazo P incluye Resident/Host/diagnóstico y no se renueva;
+  reserva del núcleo `min(1 s, P/2)`.
+- Decisión expresa del orquestador (§1): solicitudes Engineer→overlays→diagnóstico;
   en cierre normal todos los consumidores terminan antes del núcleo, sin exigir
-  orden de terminación entre consumidores (§1 del diseño). Engineer habilitado
-  que sale con 0 sigue terminando la sesión. Hub/Apply quedan para el paso 4.
-- Cancelar y consultar terminación sin joins bloqueantes; join sólo is_finished.
-  En plazo agotado se registra defecto y sale con fallo. Se conservan temp+rename
-  y los locks del SO; un test corta un worker durante una escritura y comprueba
-  recuperación del documento y ausencia de bloqueo retenido. Los archivos ancla
-  de lock pueden persistir. Unix mata/recoge explícitamente a todos los hijos;
-  sus pruebas portables no se ejecutan en este servidor Windows.
+  orden de terminación entre consumidores. Sólo se sustituye esa aserción de la
+  matriz. Engineer habilitado que sale con 0 sigue terminando la sesión.
+- Resident/Host se cancelan y consultan sin joins bloqueantes; join sólo si
+  is_finished. El camino normal conserva todo el cleanup y finish(). Al vencer P
+  se registra defecto y sale con fallo. Las apps propias Close::Started conservan
+  sus handles para cleanup aun con el worker bloqueado; un registro ocupado se
+  diagnostica y no añade espera por mutex.
+- Escrituras temp+rename conservadas. El corte durante la serialización real de
+  Store y un temporal parcial de Resident demuestra documento anterior íntegro,
+  recuperación y ningún lock retenido al salir. Los archivos ancla .lock pueden
+  persistir sin retener el bloqueo. Dos variantes: hijos colgados, y cooperativos
+  (el worker solo basta para fallar). P=1000 ms: salidas observadas 1016/1002 ms;
+  el arnés admite P+400 ms de planificación/recogida, el reloj puro prueba P exacto.
+  Unix recoge explícitamente los hijos sin Job; disponible, sin ejecutar aquí.
+- Fmt y Clippy all-targets runtime/UI -D warnings normal y UI parity-capture PASS.
+  Supervisor 38/38, lifecycle real 25/25, IPC diagnóstico 2/2 PASS. Cierres de
+  overlays reales 58–60 ms. Nextest ci **962/962 PASS**, telemetría incluida,
+  14 omisiones preexistentes, 1 lento, 113.781 s de ejecución.
+- Mutaciones **6/6 detectadas por aserción compilada**: renovar plazo, quitar
+  reserva, cerrar núcleo antes, no revocar Engineer, ocultar fallo del worker,
+  retener --control-stdin. Restauración exacta de 238 SHA-256; baseline final
+  supervisor 38/38 y argumento UI 1/1 PASS. Retirada 468/468, fragmento y diff PASS.
+  Evidencia `D:/VantareServer/evidence/isa-1860-paso2` (gates-restante.ps1,
+  nextest.log, lifecycle-ipc.log, mutations.json, scope.json, logs de intentos).
+- Se conservan los intentos anteriores. El test nuevo de estado final se corrige
+  leyendo el JSON completo: read_status descarta adrede heartbeat cero. La prueba
+  previa de lanzamiento necesita el Job real con breakaway: sin él Cargo/libtest
+  rechazaba CREATE_BREAKAWAY_FROM_JOB con error 5. Se añade contexto y diagnóstico,
+  conservando la exigencia de lanzamiento correcto; todos pasan en la tanda final.
 - P3 de #1864 incluidos: filtrado unitario --control-stdin, doc-comments,
-  espera de revocación sin escape al morir supervisor, y status.code() en Unix
-  para separar salida natural no cero del kill. Instalador/packaging intactos.
+  espera de revocación sin escape al morir supervisor, status.code() Unix para
+  distinguir salida natural no cero del kill. Sin dependencias nuevas.
+- CI la vigila el orquestador. Plane sigue En curso; sólo se actualiza el resumen.
+  Sin merge/release/promoción, instalación ni registro reales. Installation.rs,
+  installer::engine y packaging intactos; VANTA-127 continúa en paralelo.
+  Clic físico/candidata instalada pendientes de Isaac; Unix sin ejecutar.
+  Pasos 3 y siguientes pendientes; Hub de sesión y Apply quedan para el paso 4.
 <!-- /isa1860-arranque-cierre -->
 
 <!-- isa1827-simplificar-e -->

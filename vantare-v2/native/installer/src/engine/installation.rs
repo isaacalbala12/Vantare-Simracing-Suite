@@ -374,28 +374,6 @@ fn validate_catalogue_paths(current: &[&str], retired: &[&str]) -> Result<(), Re
     Ok(())
 }
 
-#[cfg(test)]
-mod catalogue_tests {
-    #[test]
-    fn current_and_retired_paths_both_require_safe_unique_catalogue_members() {
-        for invalid in [
-            "data/user.json",
-            "../outside",
-            "/rooted",
-            "C:/rooted",
-            ".env",
-            "bin//a.exe",
-        ] {
-            assert!(super::validate_catalogue_paths(&[invalid], &[]).is_err());
-            assert!(super::validate_catalogue_paths(&[], &[invalid]).is_err());
-        }
-        assert!(super::validate_catalogue_paths(&["bin/a.exe", "BIN/A.EXE"], &[]).is_err());
-        assert!(super::validate_catalogue_paths(&["bin/a.exe"], &["BIN/A.EXE"]).is_err());
-        super::validate_catalogue_paths(&["bin/a.exe"], &["bin/retired.exe"])
-            .expect("valid catalogue");
-    }
-}
-
 pub(super) fn hash_file(path: &Path) -> Result<String, ReadError> {
     reject_links(path).map_err(|_| ReadError::Invalid("Ruta de instalación no válida"))?;
     let mut hash = Sha256::new();
@@ -649,4 +627,26 @@ fn read_generation(
         manifest.installed(&directory, verify_files)?;
     }
     Ok(manifest)
+}
+
+#[cfg(test)]
+mod catalogue_tests {
+    #[test]
+    fn current_and_retired_paths_both_require_safe_unique_catalogue_members() {
+        for invalid in [
+            "data/user.json",
+            "../outside",
+            "/rooted",
+            "C:/rooted",
+            ".env",
+            "bin//a.exe",
+        ] {
+            assert!(super::validate_catalogue_paths(&[invalid], &[]).is_err());
+            assert!(super::validate_catalogue_paths(&[], &[invalid]).is_err());
+        }
+        assert!(super::validate_catalogue_paths(&["bin/a.exe", "BIN/A.EXE"], &[]).is_err());
+        assert!(super::validate_catalogue_paths(&["bin/a.exe"], &["BIN/A.EXE"]).is_err());
+        super::validate_catalogue_paths(&["bin/a.exe"], &["bin/retired.exe"])
+            .expect("valid catalogue");
+    }
 }

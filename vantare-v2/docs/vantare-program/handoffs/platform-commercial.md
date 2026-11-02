@@ -660,7 +660,27 @@ Sin merge/release del worker.
   Medidas y limitaciones actualizadas en la evidencia; siguiente: integrar por
   el orquestador tras revisar CI. Plane En curso; sin merge/release del worker.
 
-### Paso 4 integrado / paso 5 listo en PR draft (2-nov-2026)
+### Paso 5 integrado / paso 5a listo en PR draft (2-nov-2026)
+
+#1875 integrado por el orquestador en nightly `ba8ea61afa48bfc4e276823ab8f5ce39ff9aa14f`,
+CI 5/5 verde comunicada tras relanzamiento. Base remota y antecesor verificados.
+5a: guardas Cleanup bajo lock, opciones leídas, rutas COM, claves ajenas,
+bootstrap atómico, diagnóstico sin marker y MTA; prueba real de delete-pending
+sin ampliar plazos ni ignorar errores no probados. Rama/worktree propios
+isa-1840-paso5a-arreglos / isa-1840-paso5a. Rust probado en
+a07d2a8fe992bfa941f7d638c1fafc58768b49a0: formato y Clippy -D warnings
+Installer/Hub/TEST PASS; Nextest 668/668 y TEST 57/57 PASS (5 y 1 omitidos
+preexistentes). Matriz sobre a2b169b1cc7578dcf4fb7841cc8d3a002992f803:
+32 filas y auxiliares PASS; registro/arranque 42, Startup 48 (217,35 s de 480 s),
+frontera 39 y Cleanup 10. Dos comentarios Rust corregidos,
+sin cambios funcionales después de los gates. Evidencia en
+native/packaging/matrix/evidence-1840-p5.md y QA/isa-1840/p5a-logs.
+PR draft: https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1883. Producción ampliada 14038→14178 (+139 Rust/+1 PS);
+tests Rust +190 y PS tests/tooling +121. Después 5b con techo 12800 según
+replanteo aprobado, sin retirar LegacyRunner ni empezar 6.
+Plane En curso, sin comentarios ni cambio de estado; solo QA guardada.
+
+### Antecedente: paso 5 entregado
 
 - #1866 integrado por el orquestador en nightly
   def6fbb0954df46340545d189830676b493c734b; CI5/5 verde confirmada por él.

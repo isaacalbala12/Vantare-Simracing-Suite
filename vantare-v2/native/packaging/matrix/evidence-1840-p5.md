@@ -1,5 +1,79 @@
 # #1840 / VANTA-127 — shell nativo y Cleanup permanente, paso 5
 
+## Seguimiento 5a tras integrar #1875
+
+Base nightly `ba8ea61afa48bfc4e276823ab8f5ce39ff9aa14f`, CI 5/5 comunicada por
+el orquestador. Los resultados siguientes del paso 5 son históricos; el 5a va
+en rama/worktree propios isa-1840-paso5a-arreglos / isa-1840-paso5a.
+
+- Cleanup vuelve a comprobar state.json y marcador/hash dentro del lock tras
+  esperar al padre. Los diez tests directos incluyen rechazos de operación,
+  contenido temporal, schema, hash, marcador ausente y renovación; dos casos
+  tienen un hijo propio vivo, retenido por evento, con handle del EXE abierto.
+  Una renovación durante esa espera debe impedir el borrado; ningún PID ajeno
+  se mata. Los casos normales retiran el temporal completo.
+- remove_projection usa las opciones capturadas; una clave sin InstallLocation
+  es ajena. El bootstrap se escribe con temporal y replace, conservando el
+  anterior si Windows bloquea el destino. GetPath usa flags 0; un MTA ajeno se reutiliza
+  y nunca se desinicializa. El test verifica el apartamento después del Drop.
+- La retirada heredada sin marcador conserva el EXE y registra el residuo sin
+  fallar. Un estado renovado sigue siendo error, incluso sin marcador.
+- El ACK de arranque conserva un handle de atributos del marcador desde antes
+  de publicar hub-ready. Un AccessDenied solo equivale a borrado si el kernel
+  confirma DeletePending en ese handle; los demás errores se propagan.
+  [Contrato FILE_STANDARD_INFO](https://learn.microsoft.com/en-us/windows/win32/api/winbase/ns-winbase-file_standard_info).
+  Se libera la referencia al confirmar la solicitud de borrado: no hay un
+  bucle que ignore permisos ni se amplían los plazos de 10/30 s existentes.
+- En este Windows, DeleteFileW permite desaparición inmediata del nombre. La
+  regresión fuerza la disposición clásica con SetFileInformationByHandle,
+  mantiene un lector propio abierto y exige el error 5 real y DeletePending.
+  La inyección negativa comprueba error 5 sin borrado y error 32 aun con borrado.
+  No se reemplaza la condición por un sleep ni por «cualquier error es ausencia».
+- QA: 32 filas Install/Update/Repair/Uninstall sobre las 8 raíces; Cleanup se
+  verifica por sus invariantes nuevas en tests directos/nativos y frontera,
+  porque «sin marcador ya desinstalado» cambia legítimamente exit 1→0.
+  Se conservan baseline/normalizador y los casos de Probe sin cambios.
+  Registro/arranque, Startup y frontera se ejecutan por el arnés existente.
+
+Rust probado en a07d2a8fe992bfa941f7d638c1fafc58768b49a0: fmt/check y Clippy
+all-targets -D warnings (Installer/Hub y variante TEST) PASS; Nextest 668/668
+con 5 omitidos y TEST 57/57 con 1 omitido preexistente. La regresión de opciones
+capturadas también pasa de forma aislada. Auxiliares nuevos construidos.
+Matriz en a2b169b1cc7578dcf4fb7841cc8d3a002992f803: PASS, 32 filas y auxiliares.
+Guardas 7+5, biblioteca 25, contexto 24, historia 14, snapshots 18, inventario 54,
+registro/arranque 42, Startup 48, frontera 39 y Cleanup 10. Campaña: 746,16 s;
+Startup: 217,35 s (handle propio; startup-duration-01.json), exit0, presupuesto
+exterior 480 s sin cambiar sus 48 aserciones ni plazos internos. Probe y sus
+45 rechazos no se repiten: el lector no cambia. Integridad retirada 468/468 PASS.
+Desde la fuente
+Rust probada solo cambian dos comentarios sobre el buffer BOOLEAN del test;
+el resto de ese commit incorpora Cleanup al arnés y documenta su cobertura.
+Target propio D:/VantareServer/targets/isa-1840-p5a; logs en QA/isa-1840/p5a-logs.
+
+Medición reproducible: `python native/scripts/installer-lines.py --base ba8ea61af --head HEAD --projection`.
+Líneas físicas; elementos Rust exclusivos de tests separados de producción.
+
+| Perímetro | Antes | Después | Saldo |
+| --- | ---: | ---: | ---: |
+| Rust de producción | 11734 | 11873 | +139 |
+| PowerShell de producto | 2304 | 2305 | +1 |
+| Producción ampliada total | 14038 | 14178 | +140 |
+| Tests Rust | 3131 | 3321 | +190 |
+| PowerShell tests/tooling | 6158 | 6279 | +121 |
+| Documentación | 11273 | 11380 | +107 |
+
+Fixtures, tooling Rust/Python, C# y CI no cambian. El techo 12800 se aplica al
+paso 5b posterior, incluyendo estos arreglos en su base.
+
+Intentos anteriores conservados: tres fallos Clippy,
+ausencia inicial del auxiliar storage en el target nuevo, la diferencia de
+DeleteFileW/POSIX frente a disposición clásica y una fixture sin .vantare-native.
+Esta última se corrige con el marcador real, sin retirar su guarda. No se ocultan
+estos intentos como resultados PASS.
+El intento 7 abortó en Windows PowerShell 5 al tratar stderr normal de Cargo como
+error; el intento 8 ejecuta el arnés con pwsh. Ese aborto no fue un fallo del compilador.
+Sin pruebas en instalación/registro reales, VM o paquete distribuido firmado.
+
 **Decisión posterior:** el orquestador acepta la opción3 como excepción permanente.
 El ensayo fallido se conserva abajo como evidencia manual; no es el gate del paso5.
 Cleanup PowerShell se reduce a espera/exclusión, raíz/marker/hash y borrado propio.

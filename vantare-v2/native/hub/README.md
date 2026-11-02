@@ -1,5 +1,19 @@
 # Hub nativo (ISA-1430)
 
+## Instalación y versión — #1840, paso 3
+
+Ajustes lee estado/manifiesto desde `installer::engine`, dependencia sin features
+de GPUI/transporte del instalador. Conserva el perfil informativo: no autentica
+binarios ni el hash del manifiesto, y previous solo indica referencia estructural.
+Desarrollo, paquete portátil y estado inválido mantienen su clasificación previa.
+
+Cambio de comportamiento autorizado en commit separado: para Package, versión
+y canal mostrados y comparados con una oferta salen del manifiesto de la activa.
+Un binario discrepante ya no oculta una actualización. Development/Invalid usan
+identidad del binario como diagnóstico; durante Unread se muestra espera. El caso
+normal coincide con la presentación anterior. Las notificaciones y avisos de
+registro siguen leyendo sus propios documentos, sin conceder autoridad.
+
 ## Iniciar con Windows — #1840, paso 1d
 
 El interruptor usa SetStartup de la generación instalada y comparte el acceso

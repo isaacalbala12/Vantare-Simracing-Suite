@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "issue": "ISA-1840",
   "type": "fix",
-  "summary": "El inicio con Windows comparte Startup con el instalador y migra la Run antigua sin duplicar arranques.",
+  "summary": "El inicio con Windows comparte Startup con el instalador; Ajustes muestra la versión de la generación activa.",
   "technicalNotes": [
     "Paso 1a: el inventario instalado sale de su propio manifiesto, ligado por SHA-256 al estado; se retira la lista histórica congelada de 91 archivos.",
     "Los paquetes entrantes siguen exigiendo el inventario completo actual. Se conservan los controles de rutas conocidas, canal, archivos no enumerados, hashes, sidecars y puntos de reanálisis.",
@@ -22,7 +22,9 @@
     "Run solo se retira tras desinstalar correctamente; si Windows niega borrarla, se avisa y termina el resto. Mientras cambia inicio el Hub muestra progreso y solo bloquea ese interruptor.",
     "La migración verifica que exista un Startup propio: si falla, restaura la Run y Register informa del fallo. La reparación recrea un enlace ausente.",
     "El interruptor muestra el diagnóstico del script y permite reintentar; captura acotada en un temporal propio de la raíz, eliminado con el hijo.",
-    "Una preferencia legacy corrupta o mayor de 1024 B se trata como ausente para no bloquear Probe/Setup. El parámetro Startup conserva un valor inicial válido para closures PS5 y sigue siendo obligatorio al usar SetStartup."
+    "Una preferencia legacy corrupta o mayor de 1024 B se trata como ausente para no bloquear Probe/Setup. El parámetro Startup conserva un valor inicial válido para closures PS5 y sigue siendo obligatorio al usar SetStartup.",
+    "Paso 3: Probe de Setup y Ajustes comparten el lector Rust de instalación sin GPUI. Se conservan los perfiles de validación y los adaptadores PowerShell hasta los pasos 4–7.",
+    "Cambio de comportamiento autorizado en commit separado: Package muestra y compara actualizaciones con versión/canal del manifiesto activo; la identidad binaria queda como diagnóstico en desarrollo o instalación inválida."
   ],
   "testing": [
     "En QA aislada, pasar de una instalación de 109 archivos a una de 110, retirar un recurso en la siguiente, restaurar la anterior y desinstalar: todos los datos y las carpetas vacías de las tres generaciones se conservan.",
@@ -31,12 +33,14 @@
     "Repetir matriz de instalación y el histórico con el arnés aislado; rechazar los puntos de entrada históricos sin raíz, registro o shell.",
     "En matriz QA aislada, provocar fallo, bloqueo de Register y fallo del registro durante Confirm; comprobar app abierta, ACK confirmado, sin rollback y datos intactos. Repetir con WINDIR ausente, Run-BetaHub/Stage reales, ready concurrente y comprobación del hijo bloqueado recogido.",
     "Instalar con autostart apagado, activar/desactivar desde el comando del Hub y desinstalar: sin Run/Startup, otros valores y todos los datos intactos. Probar enlace ajeno, fallo de opciones con restauración exacta y reanudación sin registro.",
-    "En QA aislada, probar migración con ON/OFF o sin preferencia, bootstrap congelado, comandos ajenos, dos carreras con Register, desinstalación fallida y borrado Run denegado. Datos y carpetas vacías deben quedar intactos."
+    "En QA aislada, probar migración con ON/OFF o sin preferencia, bootstrap congelado, comandos ajenos, dos carreras con Register, desinstalación fallida y borrado Run denegado. Datos y carpetas vacías deben quedar intactos.",
+    "En QA aislada, comparar Probe antiguo y lector Rust (también Uninstall) para 975, RC, pendientes y datos conservados. Con manifiesto y binario discrepantes, Ajustes debe mostrar el manifiesto y no ocultar la oferta; el caso normal queda igual."
   ],
   "knownLimitations": [
     "Este cambio no renueva el bootstrap que ya quedó instalado en la raíz; los cambios de ese bootstrap siguen requiriendo Setup.",
     "Si Windows impide retirar la Run propia al desinstalar, queda apuntando al beta.ps1 ya eliminado y puede mostrar un error en el siguiente inicio de sesión hasta retirar ese valor.",
     "No se incluye el seguimiento de previous-unreadable de #1795 ni se publica una candidata o release.",
-    "Los scripts ya instalados en la raíz se renuevan mediante Setup. No se publica una candidata con este PR."
+    "Los scripts ya instalados en la raíz se renuevan mediante Setup. No se publica una candidata con este PR.",
+    "Este paso no retira el motor PowerShell de escritura ni modifica la instalación real. La reducción global de cinco lectores/reglas a uno queda para los pasos 4–7."
   ]
 }

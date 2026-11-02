@@ -1,0 +1,1 @@
+{"schema":1,"product":"vantare-native","candidate":true,"architecture":"windows-x64","version":"0.0.988","channel":"beta","data_schema":"opaque-v1","source_sha":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","source_dirty":false,"build_profile":"Debug","files":[{"path":"candidate.ps1","size":7,"sha256":"f16d05ec6b29248d2c61adb1e9263f78e4f7bace1b955014a2d17872cfe4064d"}]}

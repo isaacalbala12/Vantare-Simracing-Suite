@@ -1,5 +1,5 @@
 #requires -Version 5.1
-param([string]$Root,[string]$Case,[string]$Operation,[string]$Assets,[string]$RegistryRoot)
+param([string]$Root,[string]$Case,[string]$Operation,[string]$Assets,[string]$RegistryRoot,[string]$ReadProbe)
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'guard.ps1')
@@ -18,6 +18,7 @@ $Operation=$qaRequestedOperation
 if ($Root -cne $qaImportCallerRoot) { throw 'MATRIX_IMPORT_ROOT_CHANGED' }
 $null=Assert-MatrixRoot $Root
 . (Join-Path $PSScriptRoot 'fixtures.ps1')
+. (Join-Path $PSScriptRoot 'probe-parity.ps1')
 function Get-NativeShortcutFolder([string]$Name) {
     if ($Name -cnotin @('Programs','Startup','DesktopDirectory')) { throw 'MATRIX_FOLDER_REJECTED' }
     Join-Path $qaCaseRoot $Name
@@ -46,13 +47,15 @@ try {
             Copy-Item -LiteralPath "$env:WINDIR/System32/cmd.exe" -Destination (Join-Path $engine 'Uninstall.exe')
             [IO.File]::WriteAllText((Join-Path $engine 'installer-notices.txt'),'fixture')
             $request=Join-Path $qaCaseRoot 'request.json'
-            Write-NativeJson $request @{
+            $requestValue=@{
                 root=$qaInstallRoot;qa=$false;silent=$true;uninstall=($Operation -in @('Uninstall','Cleanup'));
                 operation=$(if($Operation -ceq 'Repair'){'Install'}else{$Operation});
                 version=$version;mode=$(if($Operation -ceq 'Repair'){'repair'}else{'auto'});
                 size=1;desktop=$true;autostart=$true;processId=2147483647;
                 packageSha=(Get-NativeHash (Join-Path $engine 'package.zip'))
             }
+            if($Operation -ceq 'Probe' -and $ReadProbe){$requestValue.readContext=$true}
+            Write-NativeJson $request $requestValue
             # Inject only OS folder resolution and explicit library root in a TEST
             # copy. The driver's operations/transactions remain byte-for-byte.
             $driver=Get-Content -LiteralPath (Join-Path $script:Packaging 'installer-driver.ps1') -Raw
@@ -67,7 +70,12 @@ try {
             # Cleanup validates this exact temporary naming convention.
             $env:TEMP=$qaCaseRoot
             [Console]::SetIn([IO.StringReader]::new("continue`n"))
-            & $driverPath -RequestFile $request
+            if($Operation -ceq 'Probe' -and $ReadProbe){
+                $actual=Compare-MatrixProbe $driverPath $request $ReadProbe
+                Compare-MatrixProbe $driverPath $request $ReadProbe $true | Out-Null
+                Test-MatrixProbeRejections $qaInstallRoot $driverPath $request $ReadProbe
+                $actual
+            }else{& $driverPath -RequestFile $request}
             exit $LASTEXITCODE
         }
         'Update' { $null=Update-NativeCandidate $qaInstallRoot (Join-Path $Assets 'v989.zip') (Get-NativeHash (Join-Path $Assets 'v989.zip')) }

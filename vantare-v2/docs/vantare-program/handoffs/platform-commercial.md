@@ -431,6 +431,54 @@ conservan la evidencia de sus ramas; no describen el estado de integración actu
 [#1840](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1840),
 area:plataforma, Project Vantare. Plane En curso; estados/CI del orquestador.
 Sin merge/release del worker.
+### Paso 3 · motor de lectura Rust, revisión profunda atendida (2-nov-2026)
+
+- PR draft [#1861](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1861),
+  enlazado T3. Rama vantareapp/isa-1840-paso3-engine-lectura; base inicial
+  5cc23113a, rebase limpio sobre nightly668d99c32 con paso2. Worktree propio
+  isa-1840-paso3; target D:/VantareServer/targets/isa-1840-p3.
+- Refactor e7deb1172: Installation::read/Manifest/State y perfiles conservados;
+  Setup recibe contexto del driver sin state/manifiesto y Hub comparte lector.
+  Sin defaults no compila GPUI/host/payload; árbol y check de biblioteca PASS.
+- Comportamiento autorizado separado c4b17382e +e7bae04ec: todo Ajustes Package
+  muestra versión/canal del manifiesto y compara ofertas con esa versión;
+  incluye carril Aplicación y notas. Development/Invalid usan identidad binaria,
+  Unread espera. Lectura inicial en background; test normal/discrepancia de disco.
+- sha2 adelantada autorizada; lock solo añade las dos listas installer/Hub,
+  sin paquetes/versiones/checksums. PS heredado hasta p4–7, sin afirmar 5→1 global.
+- Fuente Installer8dff23006: Clippy all-targets -D warnings +29 tests PASS.
+  Hub final e7bae04ec: fmt check/Clippy all-targets -D warnings +606/606 Nextest
+  PASS, 4 omisiones existentes. Logs final-04/final-05/final-07 en QA isa-1840/p3-logs.
+- Matriz matrix-p3-final-03: 88/88 idénticos al baseline +25 biblioteca +24 contexto
+  +14 seguridad +18 capturas +54 inventario +42 registro/arranque +48 Startup PASS.
+  Probe/Uninstall: 128 comparaciones; catálogos cuatro canales iguales. Guard7+5,
+  adaptador3rechazos+raíz ausente sin escritura, parser PS y calidad468 PASS.
+- Copias QA idénticas; candidate/beta/baseline/normalizador intactos. Medición
+  reproducible y tabla de lectores/reglas/retirada en matrix/evidence-1840-p3.md.
+  Este paso añade Rust conservando PS; no acredita ahorro global.
+- Ensayos y fallos intermedios conservados: disco, helper storage, invocaciones,
+  array PS5 y URI Unicode (una única diferencia, sin campaña completa PASS).
+  Los gates finales se agruparon tras ceder la cola a VANTA-128, sin bajar límites.
+- Revisión profunda: lector común admite canales cerrados; solo Setup exige beta.
+  Decisión corregida del orquestador: previous ausente sigue rechazado como PS.
+  Unread neutro y contraste de nueve rechazos por invariantes, sin texto de error.
+  Nota de vigencia del diseño actualizada; parser build.rs marcado deuda p4/p7.
+  Fuentes Rust b159cb781: fmt/check, Clippy Installer+Hub all-targets -D warnings,
+  Nextest636/636 PASS (4 omisiones existentes), build adaptador/check sin defaults.
+  Matriz review-02: 88/88 idénticos al baseline, 45/45 rechazos por motivo y cinco
+  raíces nightly comunes aceptadas/Setup rechazado; 128 campos iguales.
+  Guard7+5, parser PS, calidad468 y prueba de fuentes/lock PASS. Logs review-*.
+  Medición actualizada incluye diseño en ambos lados; sin ahorro global.
+  review-01 agotó presupuesto exterior Startup240 s, sin aserción fallida;
+  conserva88 filas+45 rechazos y42 registro/arranque PASS, sin campaña completa.
+  Autorizado480 s exterior, deadlines30 s/48 aserciones y CI mismo valor;
+  repetición íntegra review-02 PASS: Startup197,600 s; baseline/normalizador intactos.
+- Siguiente: revisión/CI/integración del orquestador y QA física en cuenta/VM.
+  Test1c por handle entregado aparte en #1862, integrado por el orquestador
+  en nightly cbe485786; no se mezcla aquí. Sin Plane, instalación real,
+  secretos, Downloads, merge/release/promoción del worker ni CI watch.
+
+### Antecedentes 0–1d (evidencia histórica conservada)
 
 - 0/#1842 integrado en216f9bda7, Characterize Windows PASS confirmado. 1a/#1846
   integrado en f8ccb1689: inventario instalado desde su manifest ligado por SHA,

@@ -7,10 +7,14 @@
 > aprobadas. Las cifras «después» son estimaciones para el recorrido completo.
 > Se sustituyen rutas locales del analista por marcadores reproducibles.
 
-**Notas de vigencia de la copia histórica (1-nov-2026, #1840):**
+**Notas de vigencia de la copia histórica (actualizadas 2-nov-2026, #1840):**
 
 - §4.5, paso 3: el alcance aceptado migra solo lecturas Rust de Probe/Hub;
   conserva perfiles y adaptadores PS hasta pasos 4–7. No acredita 5→1 global.
+  La afirmación de §4.5 sobre ausencia de cambios de comportamiento tiene una
+  excepción autorizada: Ajustes Package muestra versión/canal del manifiesto y
+  compara ofertas con esa versión, incluidos carril de Aplicación y notas.
+  Development/Invalid usan identidad binaria; Unread muestra un estado neutro.
 - §4.5, paso 1c: el aviso real vive en registration-status.json, separado del
   actualizador. startup-options.json de 1d también es contrato vigente; el
   recuento original de señales de §5 no los incluía y no es una medida actual.
@@ -617,6 +621,12 @@ Orden: 0 → 1a–1d (independientes; candidatos a la reconstrucción de RC9) �
 comportamiento. Los pasos 1c, 1d, 6 y 8 lo cambian a propósito, con su
 justificación. Cada paso deja el producto publicable: 4 y 5 conviven con el feed
 PS porque el formato en disco es el mismo.
+
+> Vigencia del paso 3 (2-nov-2026, #1840): además del refactor de lectura,
+> se autoriza la proyección canónica en Ajustes. Package muestra versión/canal
+> del manifiesto y los usa en ofertas/notas; solo Development/Invalid usan la
+> identidad del binario. Unread muestra un placeholder neutro. Esa excepción
+> sustituye la afirmación histórica de ausencia de cambios en el paso 3.
 
 Dependencias: el paso 4 añade dependencias directas del crate `installer` sobre
 crates **ya fijados en `Cargo.lock`**: `zip` 6.0.0, `windows` 0.62 (Shell,

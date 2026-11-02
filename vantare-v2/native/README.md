@@ -20,7 +20,7 @@ El workspace tiene 14 crates; `default-members` excluye storage, admin e install
 | `build-support` | Recurso Win32 compartido; icono en `native/assets/icon.ico`. |
 | `strategy` | Documento JSON y solver; miembro del mismo workspace. |
 | `admin` | Herramienta privada del owner, fuera del instalador público. |
-| `installer` | Setup/Uninstall Rust y GPUI con payload embebido; el motor de generaciones sigue en packaging. |
+| `installer` | Lector compartido installer::engine sin GPUI; Setup/Uninstall con UI/payload opcionales. Escrituras de generaciones aún en packaging hasta #1840 pasos 4–7. |
 
 `packaging/` contiene scripts de distribución; versión y contratos viven en ipc,
 el recurso Win32 vive en build-support. No es un crate.
@@ -35,6 +35,7 @@ y persistencia genérica; no verifica ni usa claims antes del ACK del núcleo.
 runtime → domain, ipc      ipc → domain, profiling      ui → domain, ipc
 engineer → domain, ipc, runtime (flujos neutrales y cierre; sin adaptadores)
 installer → build-support (build); GPUI fijado, sin runtime/domain/ipc
+hub → installer (default-features=false: solo lectura, sin UI ni transporte/payload)
 ```
 
 `domain` no depende de nada del workspace; `domain` y `ui` **nunca** dependen de

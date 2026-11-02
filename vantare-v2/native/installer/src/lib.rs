@@ -1,5 +1,5 @@
 #![deny(unsafe_code)]
-//! Setup transports the package; PowerShell retains ownership of generations and data.
+//! Shared installation reads; Setup transports the package, PowerShell owns writes.
 pub mod args;
 #[cfg(all(windows, feature = "parity-capture"))]
 mod batch;
@@ -12,6 +12,7 @@ pub mod engine;
 mod foreground;
 pub mod model;
 pub mod motion;
+#[cfg(feature = "transport")]
 pub mod payload;
 #[cfg(all(windows, feature = "ui"))]
 mod screens;
@@ -25,6 +26,7 @@ mod work;
 pub const VERSION: &str = env!("VANTARE_INSTALLER_VERSION");
 pub const QA: bool = cfg!(feature = "test-installer");
 
+#[cfg(feature = "transport")]
 pub fn entry(uninstall: bool) -> u8 {
     let mut args = match args::Args::from_process(uninstall) {
         Ok(args) => args,

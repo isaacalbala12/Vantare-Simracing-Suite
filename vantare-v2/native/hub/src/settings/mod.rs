@@ -286,7 +286,7 @@ impl State {
         // Licencias conserva su destino público, dentro de Cuenta en la beta.
         cx.observe_self(Hub::settings_account_destination).detach();
         let hub = cx.entity();
-        cx.defer(move |cx| hub.update(cx, Hub::settings_account_destination));
+        cx.defer(move |cx| hub.update(cx, Hub::finish_settings_initialization));
         cx.observe_window_bounds(window, |this, window, cx| {
             this.settings.panel_height = panel_height(f32::from(window.viewport_size().height));
             cx.notify();
@@ -473,6 +473,13 @@ fn search_text(value: &str) -> String {
         .collect()
 }
 impl Hub {
+    fn finish_settings_initialization(&mut self, cx: &mut Context<Self>) {
+        self.settings_account_destination(cx);
+        // Application's rail needs metadata before Updates is opened. Reuse
+        // the bounded background reader after Hub construction.
+        self.refresh_settings_update(cx);
+    }
+
     fn settings_performance_level(
         &mut self,
         level: vantare_ui::performance::Level,
@@ -678,7 +685,7 @@ impl Hub {
         self.settings.page = page;
         self.settings.panel_scroll = gpui::ScrollHandle::new();
         self.settings.status = None;
-        if page == Page::Updates {
+        if matches!(page, Page::Application | Page::Updates) {
             self.refresh_settings_update(cx);
         }
         cx.notify();

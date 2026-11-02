@@ -1,5 +1,32 @@
 # Handoff vivo — Overlays, Studio, Launcher y Hub
 
+## VANTA-130 · #1869 · Revisión de #1884, P2/P3 (2-nov-2026)
+
+El orquestador solicita corregir clasificación por texto, limpieza de huérfanos
+y contexto de lectura. Alcance ampliado aprobado: error local tipado hasta UI,
+con aviso ya trasladado a VANTA-129 para ui/layout y hub/shell (solo diagnóstico).
+Regresiones ANTES del arreglo: commit `1a6f46a82`, 4/4 fallan como se esperaba:
+conflicto en Testing Center y Ajustes, huérfano bloqueado y límite/ruta Engineer.
+Log RED en `D:/VantareServer/evidence/isa-1869/paso4/review`.
+
+Implementado `Kind` estable y `Failure` clonable con kind y texto. Los guardados
+conservan su tipo hasta el diagnóstico sanitizado y Launcher decide la recarga
+por kind. También se mantiene la clase al presentar errores de Calendario,
+Strategy y Engineer. No hay cambios de esquema, auth, policy ni proyección.
+Limpieza best effort con diagnóstico; lectura con ruta y límite concreto de
+Engineer. Cambios intencionados: show deja de generar .bak y logs de freshness
+usan temporal solo cuando falta la base; el guard QA y relativo siguen fallando.
+Revisión corregida en código `82a970a2a`, PR draft #1884 contra nightly.
+Tanda final compilar.ps1 de seis crates: fmt/check/Clippy PASS, dirigidas 11/11,
+suite 1245/1245 más replay aislado 1/1 (11 omitidos por perfil/filtro en suite),
+lifecycle 25/25, telemetría 34/34 y 1 omitido. El test Windows registra error 32
+al borrar el huérfano bloqueado y aun así publica los bytes esperados.
+Solo raíces QA; cola cedida. No sesión gráfica ni Linux/macOS reales.
+Fallos de adaptación de tipos y de estilo conservados en logs, sin excepciones
+ni debilitamiento de tests. Recuento completo del PR: producción +663/-467 (neto +196); tests +397/-16 (neto +381); docs +115/-6 (neto +109); tooling +0/-0 (neto +0).
+CI del nuevo HEAD pendiente. Paso 5 solo después de integrar este PR corregido.
+Sin merge, release, promoción, instalación ni acceso a datos reales por esta revisión.
+
 ## VANTA-130 · #1869 · Paso 4, escritor común y follow-ups (2-nov-2026)
 
 Proyecto Vantare / area:plataforma, Plane En curso. Rama

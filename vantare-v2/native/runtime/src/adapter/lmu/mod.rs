@@ -40,8 +40,9 @@ fn freshness_detail(snapshot: &vantare_domain::Snapshot) -> Option<&'static str>
 #[cfg(test)]
 mod freshness_diagnostic_tests {
     #[test]
-    fn detail_is_owned_by_the_adapter_and_never_changes_the_snapshot() {
+    fn trait_dispatch_keeps_adapter_specific_clock_diagnostics() {
         use vantare_domain::{Capability, Snapshot, SourceState};
+        let adapter: Box<dyn vantare_domain::Adapter> = Box::new(super::Replay::new("1.3.0.0", []));
         let mut s = Snapshot::default();
         for state in [
             SourceState::Waiting,
@@ -53,8 +54,7 @@ mod freshness_diagnostic_tests {
             s.state.source_state = state;
             for inputs in [Capability::Fresh, Capability::WithData] {
                 s.state.capabilities.driver_inputs = inputs;
-                let before = s.clone();
-                let detail = super::freshness_detail(&s);
+                let detail = adapter.freshness_detail(&s);
                 let expected = state == SourceState::Paused
                     || state == SourceState::Stale
                     || (state == SourceState::Live && inputs == Capability::WithData);
@@ -62,7 +62,6 @@ mod freshness_diagnostic_tests {
                 if let Some(detail) = detail {
                     assert!(detail.starts_with("LMU:"));
                 }
-                assert_eq!(s, before);
             }
         }
     }

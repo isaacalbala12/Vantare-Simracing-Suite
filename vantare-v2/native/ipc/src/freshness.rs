@@ -99,7 +99,14 @@ mod diagnostic_tests {
 
     #[test]
     fn transitions_log_neutral_reason_and_detail_without_repeating_or_pilot_data() {
-        let component = format!("freshness-paso5-{}", std::process::id());
+        let component = format!(
+            "freshness-paso5-{}-{}",
+            std::process::id(),
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("reloj de diagnóstico")
+                .as_nanos()
+        );
         let mut s = Snapshot::default();
         s.state.session.track_name =
             vantare_domain::Quality::Reliable("private-track-not-logged".into());

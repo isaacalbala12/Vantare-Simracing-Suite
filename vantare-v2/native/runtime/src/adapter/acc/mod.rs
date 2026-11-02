@@ -40,8 +40,12 @@ fn freshness_detail(snapshot: &vantare_domain::Snapshot) -> Option<&'static str>
 #[cfg(test)]
 mod freshness_diagnostic_tests {
     #[test]
-    fn detail_is_owned_by_the_adapter_and_never_changes_the_snapshot() {
+    fn trait_dispatch_keeps_adapter_specific_clock_diagnostics() {
         use vantare_domain::{Capability, Snapshot, SourceState};
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../testdata/acc/acc-sesion-udp-20260929.tar.gz");
+        let adapter: Box<dyn vantare_domain::Adapter> =
+            Box::new(super::open_acc_replay(&path).expect("corpus ACC verificado"));
         let mut s = Snapshot::default();
         for state in [
             SourceState::Waiting,
@@ -53,8 +57,7 @@ mod freshness_diagnostic_tests {
             s.state.source_state = state;
             for inputs in [Capability::Fresh, Capability::WithData] {
                 s.state.capabilities.driver_inputs = inputs;
-                let before = s.clone();
-                let detail = super::freshness_detail(&s);
+                let detail = adapter.freshness_detail(&s);
                 let expected = state == SourceState::Paused
                     || state == SourceState::Stale
                     || (state == SourceState::Live && inputs == Capability::WithData);
@@ -62,7 +65,6 @@ mod freshness_diagnostic_tests {
                 if let Some(detail) = detail {
                     assert!(detail.starts_with("ACC:"));
                 }
-                assert_eq!(s, before);
             }
         }
     }

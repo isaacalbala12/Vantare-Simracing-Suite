@@ -11,6 +11,9 @@ struct FixtureCredential {
 #[path = "tests/framing.rs"]
 mod framing;
 
+#[path = "tests/shutdown.rs"]
+mod shutdown;
+
 #[path = "tests/authentication.rs"]
 mod authentication;
 #[path = "tests/notices.rs"]

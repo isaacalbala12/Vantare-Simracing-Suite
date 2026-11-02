@@ -17,12 +17,25 @@
 //!   sale con código 0 ha terminado a propósito (overlays cerrado por el
 //!   usuario, replay acabado): el launcher cierra todo y sale con 0.
 //! - **Cierre** (Ctrl+C, cierre de consola o `vantare --parar`): primero
-//!   Engineer (si está habilitado), overlays y después el núcleo; a cada uno se le pide que termine y, pasado
-//!   el plazo, se le mata.
+//!   EOF a Engineer, overlays y diagnóstico; el núcleo sale tras los consumidores
+//!   o al comenzar su reserva min(1 s, P/2). Un único plazo P incluye los workers.
+//!   Un kill final es fallo; una salida no cero solicitada sólo se diagnostica.
+//!   La revocación conserva la sesión y el error original tiene prioridad.
 
 #![cfg_attr(windows, windows_subsystem = "windows")]
 
+mod background;
 mod child_shutdown;
+mod session;
+mod supervisor;
+#[cfg(test)]
+use session::Restarts;
+#[cfg(unix)]
+use unix as platform;
+#[cfg(unix)]
+use unix::{Instance, Stop};
+#[cfg(windows)]
+use win as platform;
 #[cfg(unix)]
 mod unix;
 #[cfg(windows)]
@@ -43,7 +56,7 @@ use vantare_ipc::product;
 
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, ExitCode, Stdio};
-use std::time::{Duration, Instant};
+use std::time::Duration;
 use std::{env, io};
 
 #[cfg(windows)]
@@ -232,35 +245,14 @@ fn object_name(kind: &str, instance: &str) -> String {
     format!("vantare-{kind}{suffix}")
 }
 
-/// Presupuesto de reinicios de un hijo con espera creciente.
-struct Restarts {
-    budget: u32,
-    attempts: u32,
-}
-
-impl Restarts {
-    /// Anota una caída tras `ran` en marcha. Devuelve cuánto esperar antes de
-    /// reiniciar, o `None` si el presupuesto se agotó.
-    fn crashed(&mut self, ran: Duration) -> Option<Duration> {
-        if ran >= STABLE {
-            self.attempts = 0;
-        }
-        self.attempts += 1;
-        let factor = 2_u32.saturating_pow(self.attempts - 1);
-        (self.attempts <= self.budget).then(|| BACKOFF.saturating_mul(factor).min(BACKOFF_CAP))
-    }
-}
-
+/// Proceso poseído; las decisiones y los relojes viven en `session::Session`.
 struct Service {
     name: &'static str,
     #[cfg(windows)]
     bootstrap: Option<String>,
     program: Program,
     child: Option<Child>,
-    started: Instant,
-    restarts: Restarts,
-    /// Cuándo (re)arrancar; `None` mientras corre.
-    start_at: Option<Instant>,
+    policy: session::Policy,
 }
 
 impl Service {
@@ -271,15 +263,13 @@ impl Service {
             bootstrap: None,
             program,
             child: None,
-            started: Instant::now(),
-            restarts: Restarts {
-                budget,
-                attempts: 0,
-            },
-            start_at: Some(Instant::now()),
+            policy: session::Policy::consumer(budget),
         }
     }
-
+    fn with_policy(mut self, policy: session::Policy) -> Self {
+        self.policy = policy;
+        self
+    }
     fn spawn(&mut self) -> io::Result<()> {
         let mut command = Command::new(&self.program.path);
         command.args(&self.program.args).stdin(Stdio::piped());
@@ -312,23 +302,29 @@ impl Service {
             }
         }
         log(format_args!("{} en marcha (pid {})", self.name, child.id()));
-        self.started = Instant::now();
-        self.start_at = None;
         self.child = Some(child);
         Ok(())
     }
 
-    /// Registra una caída y programa el reinicio; `false` si no quedan reinicios.
-    fn failed(&mut self) -> bool {
-        self.child = None;
-        match self.restarts.crashed(self.started.elapsed()) {
-            Some(delay) => {
-                log(format_args!("{}: reinicio en {delay:?}", self.name));
-                self.start_at = Some(Instant::now() + delay);
-                true
+    fn reap_on_exit(&mut self) {
+        if let Some(child) = &mut self.child
+            && !matches!(child.try_wait(), Ok(Some(_)))
+        {
+            match child.kill() {
+                Ok(()) => {
+                    let _reaped = child.wait();
+                }
+                Err(error) => log(format_args!(
+                    "{}: no se pudo recoger al salir: {error}",
+                    self.name
+                )),
             }
-            None => false,
         }
+    }
+}
+impl Drop for Service {
+    fn drop(&mut self) {
+        self.reap_on_exit();
     }
 }
 
@@ -338,113 +334,8 @@ fn engineer_allowed(policy: &vantare_ipc::control::Policy) -> bool {
 
 enum Outcome {
     Stopped,
-    /// Un hijo terminó a propósito.
     Finished(&'static str),
     Exhausted(&'static str),
-}
-
-#[cfg(windows)]
-fn supervise(
-    services: &mut [Service],
-    stop: &Stop,
-    rights: Option<&vantare_ipc::control::Feed>,
-    grace: Duration,
-) -> io::Result<Outcome> {
-    use std::os::windows::io::AsRawHandle;
-    loop {
-        let now = Instant::now();
-        let engineer_permitted = rights.is_some_and(|feed| engineer_allowed(&feed.policy()));
-        for service in services.iter_mut() {
-            if service.name == "Engineer" && !engineer_permitted {
-                if service.child.is_some() {
-                    if let Err(error) = shutdown(std::slice::from_mut(service), grace) {
-                        log(format_args!("Engineer revocado: cierre fallido: {error}"));
-                    }
-                    service.child = None;
-                    service.start_at = Some(now);
-                    service.restarts.attempts = 0;
-                }
-                continue;
-            }
-            if service.child.is_none()
-                && service.start_at.is_some_and(|at| at <= now)
-                && let Err(error) = service.spawn()
-            {
-                log(format_args!("{}: no arranca: {error}", service.name));
-                service.started = now;
-                if !service.failed() {
-                    return Ok(Outcome::Exhausted(service.name));
-                }
-            }
-        }
-        let mut handles = vec![stop.raw()];
-        let mut owners = vec![None];
-        for (index, service) in services.iter().enumerate() {
-            if let Some(child) = &service.child {
-                handles.push(child.as_raw_handle());
-                owners.push(Some(index));
-            }
-        }
-        let timeout = services
-            .iter()
-            .filter(|s| s.name != "Engineer" || engineer_permitted)
-            .filter_map(|s| s.start_at)
-            .min()
-            .map(|at| at.saturating_duration_since(Instant::now()))
-            .map_or(Some(Duration::from_millis(250)), |delay| {
-                Some(delay.min(Duration::from_millis(250)))
-            });
-        let Some(signaled) = win::wait_any(&handles, timeout)? else {
-            continue; // toca reiniciar a alguien
-        };
-        let Some(index) = owners[signaled] else {
-            return Ok(Outcome::Stopped);
-        };
-        let service = &mut services[index];
-        let status = service.child.as_mut().map(Child::wait).transpose()?;
-        if status.is_some_and(|s| s.success()) {
-            return Ok(Outcome::Finished(service.name));
-        }
-        log(format_args!(
-            "{} cayó: {}",
-            service.name,
-            status.map_or_else(String::new, |s| s.to_string())
-        ));
-        if !service.failed() {
-            return Ok(Outcome::Exhausted(service.name));
-        }
-    }
-}
-
-/// Engineer si está habilitado, overlays, núcleo. A cada uno se le pide que termine y se
-/// le mata si pasa el plazo.
-#[cfg(windows)]
-fn shutdown(services: &mut [Service], grace: Duration) -> io::Result<()> {
-    let mut first_error = None;
-    for service in services.iter_mut().rev() {
-        let Some(child) = service.child.as_mut() else {
-            continue;
-        };
-        let result = (|| {
-            if service.name == "overlays" {
-                // Paso 1: única señal para GPUI. El resto conserva WM_CLOSE
-                // hasta la consolidación del paso 2 del plan #1860.
-                drop(child.stdin.take());
-            } else {
-                win::request_close(child);
-            }
-            if !win::wait_child(child, grace) {
-                return child_shutdown::force(child, service.name, grace, Child::kill);
-            }
-            child_shutdown::report(service.name, child.wait()?);
-            Ok(())
-        })();
-        if let Err(error) = result {
-            log(format_args!("{} no se pudo cerrar: {error}", service.name));
-            first_error.get_or_insert(error);
-        }
-    }
-    first_error.map_or(Ok(()), Err)
 }
 
 #[cfg(windows)]
@@ -525,7 +416,7 @@ fn resident_settings(explicit: Option<PathBuf>) -> io::Result<PathBuf> {
 
 #[cfg(windows)]
 fn run(mut config: Config) -> io::Result<ExitCode> {
-    let Some(_instance) = Instance::acquire(&object_name("launcher", &config.instance))? else {
+    let Some(instance) = Instance::acquire(&object_name("launcher", &config.instance))? else {
         if let Some(profile) = config.launch {
             let path = resident_settings(config.launcher_file)?;
             let request = vantare_ipc::launcher::Request::Launch { profile };
@@ -538,65 +429,76 @@ fn run(mut config: Config) -> io::Result<ExitCode> {
     };
     let stop = Stop::create(&object_name("launcher-stop", &config.instance))?;
     win::adopt_self_in_job()?;
-    let resident = if config.instance.is_empty() || config.launcher_file.is_some() {
-        let path = resident_settings(config.launcher_file.clone())?;
-        Some(resident::Resident::start(
-            path,
-            config.launch.clone(),
-            config.instance.is_empty(),
-        )?)
-    } else {
-        None
-    };
-    vantare_services::diagnostics::record_usage(
-        &vantare_services::diagnostics::Usage::AppStarted {
-            version: product::VERSION.into(),
-            channel: product::CHANNEL.into(),
-        },
-    );
-    let remote = start_remote_services(&mut config)?;
-    let photo = config
-        .core
-        .args
-        .windows(2)
-        .find(|pair| pair[0] == "--pipe")
-        .map(|pair| pair[1].clone())
-        .ok_or_else(|| io::Error::other("falta pipe del núcleo"))?;
-    let rights = config
-        .engineer
-        .as_ref()
-        .map(|_| vantare_ipc::control::Feed::connect(&photo, config.core.path.clone()))
-        .transpose()?;
-    let mut core = Service::new("núcleo", config.core, config.restarts);
-    core.bootstrap = Some(remote.1);
-    let mut services = vec![
-        core,
-        Service::new("overlays", config.overlays, config.restarts),
-    ];
-    let mut diagnostics = Vec::new();
-    if vantare_services::diagnostics::configured() {
-        let mut diagnostic = Service::new(
-            "diagnóstico",
-            Program {
-                path: std::env::current_exe()?.with_file_name("vantare-services.exe"),
-                args: vec!["--diagnostics".into()],
+    let grace = config.grace;
+    let mut workers = background::Workers::default();
+    let setup = (|| -> io::Result<_> {
+        workers.resident = if config.instance.is_empty() || config.launcher_file.is_some() {
+            let path = resident_settings(config.launcher_file.clone())?;
+            Some(resident::Resident::start(
+                path,
+                config.launch.clone(),
+                config.instance.is_empty(),
+            )?)
+        } else {
+            None
+        };
+        vantare_services::diagnostics::record_usage(
+            &vantare_services::diagnostics::Usage::AppStarted {
+                version: product::VERSION.into(),
+                channel: product::CHANNEL.into(),
             },
-            0,
         );
-        match diagnostic.spawn() {
-            Ok(()) => diagnostics.push(diagnostic),
-            Err(error) => log(format_args!("diagnóstico no disponible: {error}")),
+        let remote = start_remote_services(&mut config)?;
+        workers.host = Some(remote.0);
+        let photo = config
+            .core
+            .args
+            .windows(2)
+            .find(|pair| pair[0] == "--pipe")
+            .map(|pair| pair[1].clone())
+            .ok_or_else(|| io::Error::other("falta pipe del núcleo"))?;
+        let rights = config
+            .engineer
+            .as_ref()
+            .map(|_| vantare_ipc::control::Feed::connect(&photo, config.core.path.clone()))
+            .transpose()?;
+        let mut core = Service::new("núcleo", config.core, config.restarts)
+            .with_policy(session::Policy::core(config.restarts));
+        core.bootstrap = Some(remote.1);
+        let mut services = vec![
+            core,
+            Service::new("overlays", config.overlays, config.restarts),
+        ];
+        if vantare_services::diagnostics::configured() {
+            let diagnostic = Service::new(
+                "diagnóstico",
+                Program {
+                    path: std::env::current_exe()?.with_file_name("vantare-services.exe"),
+                    args: vec!["--diagnostics".into()],
+                },
+                0,
+            );
+            services.push(diagnostic.with_policy(session::Policy::observer()));
         }
+        if let Some(engineer) = config.engineer {
+            services.push(
+                Service::new("Engineer", engineer, config.restarts)
+                    .with_policy(session::Policy::permitted(config.restarts)),
+            );
+        }
+        Ok((services, rights))
+    })();
+    match setup {
+        Ok((mut services, rights)) => supervisor::run(
+            &mut services,
+            &stop,
+            &instance,
+            rights.as_ref(),
+            grace,
+            &mut workers,
+        ),
+        Err(error) => supervisor::fail_setup(&stop, &instance, grace, &mut workers, error),
     }
-    if let Some(engineer) = config.engineer {
-        services.push(Service::new("Engineer", engineer, config.restarts));
-    }
-    let outcome = supervise(&mut services, &stop, rights.as_ref(), config.grace);
-    drop(resident);
-    drop(remote.0); // Cierra el auxiliar mientras el núcleo sigue vivo.
-    let closed = shutdown(&mut services, config.grace);
-    let diagnostics_closed = shutdown(&mut diagnostics, config.grace);
-    child_shutdown::finish_run(outcome, closed.and(diagnostics_closed))
 }
 
 #[cfg(unix)]

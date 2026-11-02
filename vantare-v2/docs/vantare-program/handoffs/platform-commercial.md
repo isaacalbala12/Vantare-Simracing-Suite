@@ -1,5 +1,5 @@
 <!-- isa1860-arranque-cierre -->
-## VANTA-128 / #1860 — pasos 0 y 1 integrados; paso 2 en análisis
+## VANTA-128 / #1860 — pasos 0 y 1 integrados; paso 2 en verificación
 
 Paso 0 [#1863](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1863)
 integrado por el orquestador en nightly `aca51a15e3a6cf4aa53fc659c89011853a3da2ca`;
@@ -102,6 +102,23 @@ Plane En curso verificado; el worker no volvió a cambiar el estado.
   No tocar installation.rs, installer::engine ni packaging (VANTA-127 en paralelo).
   Gates previstos en una tanda, respetando la cola. Los pasos 3 y siguientes
   continúan pendientes; Hub de sesión, Apply e instalador no entran aquí.
+- Paso 2 implementado en la rama nueva indicada arriba; gates locales pendientes.
+  Un conductor Windows/Unix consume la máquina pura con reloj inyectado. EOF
+  sustituye WM_CLOSE para todos los hijos. El plazo P nace una vez e incluye
+  Resident, Host y diagnóstico; reserva del núcleo min(1 s, P/2).
+- Decisión expresa del orquestador: solicitudes Engineer→overlays→diagnóstico;
+  en cierre normal todos los consumidores terminan antes del núcleo, sin exigir
+  orden de terminación entre consumidores (§1 del diseño). Engineer habilitado
+  que sale con 0 sigue terminando la sesión. Hub/Apply quedan para el paso 4.
+- Cancelar y consultar terminación sin joins bloqueantes; join sólo is_finished.
+  En plazo agotado se registra defecto y sale con fallo. Se conservan temp+rename
+  y los locks del SO; un test corta un worker durante una escritura y comprueba
+  recuperación del documento y ausencia de bloqueo retenido. Los archivos ancla
+  de lock pueden persistir. Unix mata/recoge explícitamente a todos los hijos;
+  sus pruebas portables no se ejecutan en este servidor Windows.
+- P3 de #1864 incluidos: filtrado unitario --control-stdin, doc-comments,
+  espera de revocación sin escape al morir supervisor, y status.code() en Unix
+  para separar salida natural no cero del kill. Instalador/packaging intactos.
 <!-- /isa1860-arranque-cierre -->
 
 <!-- isa1827-simplificar-e -->

@@ -10,12 +10,11 @@ use std::os::unix::net::{UnixListener, UnixStream};
 use std::path::PathBuf;
 use std::process::ExitCode;
 use std::thread;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
-use super::{Config, Outcome, Service, log, object_name};
+use super::{Config, Service, object_name};
 
 const POLL_INTERVAL: Duration = Duration::from_millis(25);
-const CLOSE_POLL: Duration = Duration::from_millis(10);
 #[cfg(target_os = "macos")]
 const MAX_SOCKET_PATH: usize = 103;
 #[cfg(not(target_os = "macos"))]
@@ -307,122 +306,44 @@ pub fn run(mut config: Config) -> io::Result<ExitCode> {
         .transpose()?;
 
     let mut services = vec![
-        Service::new("núcleo", config.core, config.restarts),
+        Service::new("núcleo", config.core, config.restarts)
+            .with_policy(super::session::Policy::core(config.restarts)),
         Service::new("overlays", config.overlays, config.restarts),
     ];
     if let Some(engineer) = config.engineer {
-        services.push(Service::new("Engineer", engineer, config.restarts));
+        services.push(
+            Service::new("Engineer", engineer, config.restarts)
+                .with_policy(super::session::Policy::permitted(config.restarts)),
+        );
     }
-    let outcome = supervise(
+    super::supervisor::run(
         &mut services,
         &stop,
         &instance,
         rights.as_ref(),
         config.grace,
-    );
-    let closed = shutdown(&mut services, config.grace);
-    super::child_shutdown::finish_run(outcome, closed)
+        &mut super::background::Workers::default(),
+    )
 }
 
-fn supervise(
-    services: &mut [Service],
+/// Primitiva de espera Unix. La política permanece en el bucle común.
+pub(super) fn wait(
     stop: &Stop,
     instance: &Instance,
-    rights: Option<&vantare_ipc::control::Feed>,
-    grace: Duration,
-) -> io::Result<Outcome> {
-    loop {
-        if stop.is_set()? {
-            return Ok(Outcome::Stopped);
-        }
-        instance.drain()?;
-        let now = Instant::now();
-        let engineer_permitted = rights.is_some_and(|feed| super::engineer_allowed(&feed.policy()));
-        for service in services.iter_mut() {
-            if service.name == "Engineer" && !engineer_permitted {
-                if service.child.is_some() {
-                    if let Err(error) = shutdown(std::slice::from_mut(service), grace) {
-                        log(format_args!("Engineer revocado: cierre fallido: {error}"));
-                    }
-                    service.child = None;
-                    service.start_at = Some(now);
-                    service.restarts.attempts = 0;
-                }
-                continue;
-            }
-            if service.child.is_none()
-                && service.start_at.is_some_and(|at| at <= now)
-                && let Err(error) = service.spawn()
-            {
-                log(format_args!("{}: no arranca: {error}", service.name));
-                service.started = now;
-                if !service.failed() {
-                    return Ok(Outcome::Exhausted(service.name));
-                }
-            }
-        }
-        for service in services.iter_mut() {
-            let status = match service.child.as_mut() {
-                Some(child) => child.try_wait()?,
-                None => continue,
-            };
-            let Some(status) = status else {
-                continue;
-            };
-            service.child = None;
-            if status.success() {
-                return Ok(Outcome::Finished(service.name));
-            }
-            log(format_args!("{} cayó: {status}", service.name));
-            if !service.failed() {
-                return Ok(Outcome::Exhausted(service.name));
-            }
-        }
-        let until_restart = services
-            .iter()
-            .filter(|service| service.name != "Engineer" || engineer_permitted)
-            .filter_map(|service| service.start_at)
-            .min()
-            .map(|at| at.saturating_duration_since(Instant::now()));
-        thread::sleep(until_restart.map_or(POLL_INTERVAL, |delay| delay.min(POLL_INTERVAL)));
+    _children: &[Service],
+    timeout: Duration,
+    listen_stop: bool,
+) -> io::Result<bool> {
+    instance.drain()?;
+    if listen_stop && stop.is_set()? {
+        return Ok(true);
     }
-}
-
-fn shutdown(services: &mut [Service], grace: Duration) -> io::Result<()> {
-    shutdown_with_kill(services, grace, std::process::Child::kill)
-}
-
-fn shutdown_with_kill(
-    services: &mut [Service],
-    grace: Duration,
-    mut kill: impl FnMut(&mut super::Child) -> io::Result<()>,
-) -> io::Result<()> {
-    let mut first_error = None;
-    for service in services.iter_mut().rev() {
-        let Some(child) = service.child.as_mut() else {
-            continue;
-        };
-        let result = (|| {
-            drop(child.stdin.take());
-            let deadline = Instant::now() + grace;
-            let mut exited = child.try_wait()?.is_some();
-            while !exited && Instant::now() < deadline {
-                let remaining = deadline.saturating_duration_since(Instant::now());
-                thread::sleep(remaining.min(CLOSE_POLL));
-                exited = child.try_wait()?.is_some();
-            }
-            if !exited {
-                return super::child_shutdown::force(child, service.name, grace, &mut kill);
-            }
-            super::child_shutdown::report(service.name, child.wait()?);
-            Ok(())
-        })();
-        if let Err(error) = result {
-            log(format_args!("{} no se pudo cerrar: {error}", service.name));
-            first_error.get_or_insert(error);
-        }
+    thread::sleep(timeout.min(POLL_INTERVAL));
+    if listen_stop {
+        stop.is_set()
+    } else {
+        Ok(false)
     }
-    first_error.map_or(Ok(()), Err)
 }
 
 #[cfg(test)]
@@ -595,78 +516,27 @@ mod tests {
     }
 
     #[test]
-    fn clean_child_exit_finishes_supervision() {
+    fn clean_child_exit_finishes_the_common_supervisor() {
         let stop = Stop::create(&unique_name("supervise-stop")).expect("parada");
         let instance = Instance::acquire(&unique_name("supervise-instance"))
             .expect("instancia")
             .expect("dueño");
         let mut services = [shell(&["-c", "exit 0"], 0)];
-        assert!(matches!(
-            supervise(
+        assert_eq!(
+            super::super::supervisor::run(
                 &mut services,
                 &stop,
                 &instance,
                 None,
-                Duration::from_millis(100)
+                Duration::from_millis(100),
+                &mut super::super::background::Workers::default()
             )
-            .expect("supervisión"),
-            Outcome::Finished("proceso de prueba")
-        ));
-    }
-
-    #[test]
-    fn shutdown_closes_stdin_before_forcing_a_child() {
-        let mut services = [shell(&["-c", "read -r value || exit 0"], 0)];
-        services[0].spawn().expect("arrancar hijo");
-        shutdown(&mut services, Duration::from_secs(1)).expect("cierre");
+            .expect("supervisión común"),
+            ExitCode::SUCCESS
+        );
         assert!(
-            services[0]
-                .child
-                .as_mut()
-                .expect("hijo recogible")
-                .try_wait()
-                .expect("estado del hijo")
-                .is_some_and(|status| status.success())
+            services[0].child.is_none(),
+            "recogido explícitamente sin Job"
         );
-    }
-
-    #[test]
-    fn shutdown_continues_after_a_kill_error_on_a_still_running_child() {
-        let mut services = [
-            shell(&["-c", "exec sleep 30"], 0),
-            shell(&["-c", "exec sleep 30"], 0),
-        ];
-        for service in &mut services {
-            service.spawn().expect("hijo real");
-        }
-        let mut visited = Vec::new();
-        let failed_pid = services[1].child.as_ref().expect("primero en cierre").id();
-        let result = shutdown_with_kill(&mut services, Duration::ZERO, |child| {
-            visited.push(child.id());
-            if child.id() == failed_pid {
-                Err(io::ErrorKind::PermissionDenied.into())
-            } else {
-                child.kill()
-            }
-        });
-        let other_exited = services[0]
-            .child
-            .as_mut()
-            .expect("segundo hijo")
-            .try_wait()
-            .expect("estado")
-            .is_some();
-        // Limpiar todos los hijos propios incluso si la regresión falla.
-        for service in &mut services {
-            let child = service.child.as_mut().expect("hijo propio");
-            let _killed = child.kill();
-            let _reaped = child.wait();
-        }
-        assert_eq!(
-            result.expect_err("conservar error").kind(),
-            io::ErrorKind::PermissionDenied
-        );
-        assert_eq!(visited.len(), 2, "el error no omite los demás servicios");
-        assert!(other_exited, "el otro servicio fue cerrado y recogido");
     }
 }

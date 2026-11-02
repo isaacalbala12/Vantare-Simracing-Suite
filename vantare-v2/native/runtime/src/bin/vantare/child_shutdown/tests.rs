@@ -75,6 +75,17 @@ fn an_exit_racing_a_failed_kill_is_clean() {
 }
 
 #[test]
+#[cfg(unix)]
+fn a_natural_nonzero_exit_racing_a_successful_kill_is_not_a_signal_kill() {
+    let mut child = waiting(7);
+    force(&mut child.0, "fixture", Duration::ZERO, |child| {
+        close_and_wait(child);
+        Ok(())
+    })
+    .expect("status.code distingue salida natural de SIGKILL");
+}
+
+#[test]
 fn actually_killing_the_blocked_child_is_a_shutdown_failure() {
     let mut child = waiting(0);
     assert_eq!(

@@ -27,7 +27,7 @@ pub(super) fn force(
         Ok(()) => {
             let status = child.wait()?;
             // Child::kill puede tener éxito aunque el hijo ya haya salido.
-            if status.success() {
+            if natural_exit(status) {
                 report(name, status);
                 return Ok(());
             }
@@ -44,6 +44,18 @@ pub(super) fn force(
             }
             None => Err(error),
         },
+    }
+}
+
+fn natural_exit(status: ExitStatus) -> bool {
+    #[cfg(unix)]
+    {
+        // SIGKILL no tiene código; una salida natural con código no fue un kill.
+        status.code().is_some()
+    }
+    #[cfg(not(unix))]
+    {
+        status.success()
     }
 }
 

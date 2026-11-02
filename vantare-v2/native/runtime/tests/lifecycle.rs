@@ -892,9 +892,7 @@ fn engineer_restart_is_isolated_and_stop_closes_it_before_overlays_and_core() {
     assert_eq!(scenario.exit_code(&mut launcher, LONG), 0);
     let status = scenario.lines("status");
     let at = |message: &str| status.iter().position(|line| line == message).unwrap();
-    assert!(
-        at("closed engineer") < at("closed overlays") && at("closed overlays") < at("closed core")
-    );
+    assert!(at("closed engineer") < at("closed core") && at("closed overlays") < at("closed core"));
 }
 
 fn engineer_revocation_failure_preserves_the_running_session() {
@@ -921,12 +919,11 @@ fn engineer_revocation_failure_preserves_the_running_session() {
         )
         .unwrap();
         scenario.wait_for("cierre revocado procesado", LONG, || {
-            (scenario
+            scenario
                 .lines("launcher.log")
                 .iter()
                 .any(|line| line.contains(diagnostic))
-                || launcher.0.try_wait().unwrap().is_some())
-            .then_some(())
+                .then_some(())
         });
         assert!(!alive(engineer.0));
         assert!(alive(core.0) && alive(overlays.0));

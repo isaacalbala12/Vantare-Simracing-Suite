@@ -512,9 +512,9 @@ Sin merge/release del worker.
   tablas de lectores/deuda en matrix/evidence-1840-p4.md. Pendiente revisión.
   Zip/windows son solo dos aristas nuevas del lock, sin paquetes/versiones/checksums.
 - QA solo bajo D:/VantareServer/qa con guard, HKCU y carpetas inyectados;
-  nunca instalación/registro reales. Siguiente: PR draft a nightly y revisión
+  nunca instalación/registro reales. Siguiente: revisión del PR draft por parte
   del orquestador; QA física en VM/cuenta separada. Sin promoción ni release.
-- PR draft pendiente de publicación; HEAD final y URL se registran en #1840.
+- PR draft [#1866](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1866) contra nightly, enlazado T3; HEAD final en #1840/PR, sin CI watch.
 
 ### Antecedentes 0–1d (evidencia histórica conservada)
 

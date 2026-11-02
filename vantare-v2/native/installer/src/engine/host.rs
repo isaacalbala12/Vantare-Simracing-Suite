@@ -419,6 +419,13 @@ impl Session {
             .ok_or_else(|| WriteError::new(1, "Falta raíz"))?;
         #[cfg(windows)]
         {
+            // Uninstall already owns the operation lock through its callback.
+            // Setup reacquires it after generation activation, as the old finalizer did.
+            let _operation = if request.uninstall {
+                None
+            } else {
+                Some(disk::lock(root, ".operation.lock")?)
+            };
             let view = super::Installation::read(
                 root,
                 if request.uninstall {

@@ -113,6 +113,12 @@ pub fn write_link(
     let arguments = wide(&value.arguments);
     let icon = wide(&value.icon);
     let destination = wide(path);
+    let persist: IPersistFile = link.cast().map_err(|cause| error(&cause))?;
+    if path.try_exists()? {
+        // Preserve fields outside the projection (description, hotkey, working directory).
+        unsafe { persist.Load(PCWSTR(destination.as_ptr()), STGM_READ) }
+            .map_err(|cause| error(&cause))?;
+    }
     unsafe {
         link.SetPath(PCWSTR(target.as_ptr()))
             .map_err(|cause| error(&cause))?;
@@ -122,7 +128,6 @@ pub fn write_link(
             link.SetIconLocation(PCWSTR(icon.as_ptr()), 0)
                 .map_err(|cause| error(&cause))?;
         }
-        let persist: IPersistFile = link.cast().map_err(|cause| error(&cause))?;
         persist
             .Save(PCWSTR(destination.as_ptr()), true)
             .map_err(|cause| error(&cause))?;
@@ -255,6 +260,23 @@ mod tests {
             arguments: "--beta -Root \"fixture\" --background".into(),
             icon: target,
         };
+        let initial = create_link().expect("initial link");
+        let initial_target = wide(&value.target);
+        let description = wide("description outside projection");
+        let destination = wide(&path);
+        unsafe {
+            initial
+                .SetPath(PCWSTR(initial_target.as_ptr()))
+                .expect("initial target");
+            initial
+                .SetDescription(PCWSTR(description.as_ptr()))
+                .expect("description");
+            initial
+                .cast::<IPersistFile>()
+                .expect("persist")
+                .Save(PCWSTR(destination.as_ptr()), true)
+                .expect("initial save");
+        }
         for _ in 0..2 {
             let mut warnings = Vec::new();
             write_link(&path, &value, true, &mut |message| {
@@ -275,6 +297,10 @@ mod tests {
                 persist
                     .Load(PCWSTR(file.as_ptr()), STGM_READ)
                     .expect("load brand");
+                let mut description = [0; 128];
+                link.GetDescription(&mut description)
+                    .expect("retained description");
+                assert_eq!(text(&description), "description outside projection");
                 let store: IPropertyStore = link.cast().expect("store");
                 let key = PROPERTYKEY {
                     fmtid: GUID::from_u128(0x9f4c2855_9f79_4b39_a8d0_e1d42de1d5f3),

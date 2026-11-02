@@ -52,6 +52,14 @@ try{
     }
     Assert-Boundary ($explorer.NameSpace((Split-Path $appLink)).ParseName([IO.Path]::GetFileName($appLink)).ExtendedProperty('System.AppUserModel.ID') -ceq 'Vantare.SimracingSuite') 'Native shell persists AppUserModelID'
     Assert-Boundary (@(Get-ChildItem -LiteralPath (Split-Path $appLink) -Filter '*.lnk').Count -eq 2) 'Native shell sync creates no duplicate links'
+    $operation=[IO.File]::Open((Join-Path $install '.operation.lock'),[IO.FileMode]::OpenOrCreate,[IO.FileAccess]::ReadWrite,[IO.FileShare]::None)
+    try{$blocked=Invoke-BoundaryWriter 'Sync' '0.0.988'}finally{$operation.Dispose()}
+    Assert-Boundary ($blocked.ExitCode -ne 0 -and (Get-ItemProperty -LiteralPath $key).DisplayVersion -ceq $expectedVersion) 'Native shell sync respects the operation owner'
+    $foreign=$shell.CreateShortcut($appLink);$foreign.TargetPath=Join-Path $qaBoundaryRoot 'foreign.exe';$foreign.Arguments='foreign';$foreign.Save()
+    $foreignBytes=[IO.File]::ReadAllBytes($appLink)
+    $blocked=Invoke-BoundaryWriter 'Sync' '0.0.988'
+    Assert-Boundary ($blocked.ExitCode -ne 0 -and [Convert]::ToBase64String([IO.File]::ReadAllBytes($appLink)) -ceq [Convert]::ToBase64String($foreignBytes)) 'Native shell sync refuses a foreign mandatory link without changing it'
+    $own=$shell.CreateShortcut($appLink);$own.TargetPath=$expectedTarget;$own.Arguments=$expectedArguments;$own.IconLocation=$expectedIcon;$own.Save()
     $motionKey='HKCU:/Control Panel/Desktop/WindowMetrics'
     New-Item -Path $motionKey -Force|Out-Null
     foreach($motionType in @('String','DWord')){

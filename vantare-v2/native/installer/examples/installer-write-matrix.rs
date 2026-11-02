@@ -53,6 +53,7 @@ fn run() -> Result<u8, Box<dyn std::error::Error>> {
             .ok_or("explicit QA root required")?;
         context.validate_root(root)?;
         let _session = vantare_installer::engine::write_fs::lock(root, "beta-session.lock")?;
+        let _operation = vantare_installer::engine::write_fs::lock(root, ".operation.lock")?;
         let view = vantare_installer::engine::Installation::read(
             root,
             vantare_installer::engine::ReadProfile::Probe,

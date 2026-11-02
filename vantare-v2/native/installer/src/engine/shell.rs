@@ -276,7 +276,7 @@ fn legacy_run(context: &Context, root: &Path, identity: &str) -> Result<Option<(
 }
 
 /// Rebuild from the resulting state, including after a failed Setup restores it.
-/// Caller owns beta-session.lock throughout mutation and synchronization.
+/// Caller owns beta-session.lock and .operation.lock throughout synchronization.
 pub fn sync(
     root: &Path,
     context: &Context,
@@ -477,10 +477,12 @@ fn prepare_projection(
             )?;
         }
     }
-    fs::copy(
-        options.payload.join("Uninstall.exe"),
-        root.join("Uninstall.exe"),
-    )?;
+    let incoming = options.payload.join("Uninstall.exe");
+    super::reject_links(&incoming).map_err(|cause| super::WriteError::new(1, cause))?;
+    installation::verify_pe(&incoming)?;
+    super::reject_links(&options.payload.join("installer-notices.txt"))
+        .map_err(|cause| super::WriteError::new(1, cause))?;
+    fs::copy(incoming, root.join("Uninstall.exe"))?;
     fs::copy(
         options.payload.join("installer-notices.txt"),
         root.join("installer-notices.txt"),
@@ -658,6 +660,50 @@ fn project_preferences(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn invalid_uninstaller_payload_never_replaces_the_existing_owned_file() {
+        let parent = if std::env::var("CI").as_deref() == Ok("true") {
+            PathBuf::from(std::env::var_os("RUNNER_TEMP").expect("CI root"))
+        } else {
+            PathBuf::from("D:/VantareServer/qa/isa-1840")
+        };
+        let id = disk::id().expect("ID");
+        let root = parent.join("p5-payload-tests").join(&id);
+        context::qa_path(&root).expect("QA guard");
+        let payload = root.join("payload");
+        fs::create_dir_all(&payload).expect("owned payload");
+        fs::write(payload.join("Uninstall.exe"), b"not a PE").expect("invalid incoming");
+        fs::write(root.join("Uninstall.exe"), b"preserved original").expect("original");
+        let context = Context::isolated(
+            root.join("LocalAppData"),
+            format!("Software\\VantareInstallerMatrix\\{id}"),
+            root.join("shell"),
+        )
+        .expect("context");
+        let projection = Projection {
+            root: &root,
+            context: &context,
+            identity: "VantareNativeBeta",
+            folder_name: "Vantare",
+            legacy: "Vantare Native Beta",
+            key: String::new(),
+            current: root.join("shell/Programs/Vantare"),
+            old: root.join("shell/Programs/Vantare Native Beta"),
+        };
+        let request = super::super::Request::new(&crate::args::Args::default(), "Install");
+        let options = Options {
+            request: &request,
+            previous: None,
+            payload: &payload,
+            restoring: false,
+        };
+        assert!(prepare_projection(&projection, &options, false).is_err());
+        assert_eq!(
+            fs::read(root.join("Uninstall.exe")).expect("original remains"),
+            b"preserved original"
+        );
+        assert!(!root.join("installer-ui.json").exists());
+    }
     #[test]
     fn startup_preserves_frozen_root_and_generation_capabilities() {
         let parent = if std::env::var("CI").as_deref() == Ok("true") {

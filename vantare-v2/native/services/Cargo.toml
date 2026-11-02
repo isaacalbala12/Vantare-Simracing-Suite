@@ -7,7 +7,7 @@ publish.workspace = true
 
 [features]
 # Inert in distribution; deterministic transport faults in consumer tests.
-test-support = []
+test-support = ["vantare-ipc/test-support"]
 default = ["network"]
 network = ["dep:ureq", "dep:url"]
 
@@ -36,3 +36,7 @@ windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_Graph
 
 [lints]
 workspace = true
+
+[dev-dependencies]
+# Guard QA del resolvedor también al probar services por separado.
+vantare-ipc = { workspace = true, features = ["test-support"] }

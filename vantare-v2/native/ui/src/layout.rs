@@ -275,8 +275,9 @@ impl From<io::Error> for Error {
 }
 
 pub fn default_path() -> Result<PathBuf, Error> {
-    let root = crate::paths::default_data_dir().map_err(Error::Invalid)?;
-    Ok(root.join("Vantare/native/layout.json"))
+    let root =
+        vantare_ipc::paths::Root::from_env().map_err(|error| Error::Invalid(error.message()))?;
+    Ok(root.layout())
 }
 
 fn read(path: &Path) -> Result<Option<Vec<u8>>, Error> {

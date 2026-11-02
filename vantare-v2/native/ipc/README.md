@@ -1,5 +1,15 @@
 # ipc — fotos versionadas
 
+## Rutas locales — #1869
+
+`paths::Root` posee el cálculo de base, native, Hub por defecto, layout,
+Engineer, Launcher, Services, rights y logs. Sus métodos solo producen rutas;
+los dueños de documentos conservan lectura, guardado y flags explícitos.
+Errores tipados distinguen base ausente, ruta relativa, plataforma y guard QA;
+la conversión a `io::Error` conserva su clase. La política de plataforma y la
+defensa de tests están en [native](../README.md#rutas-locales--1869-paso-3).
+No cambia ningún DTO ni la raíz física del Hub del paso 10.
+
 ## Contrato vigente de acceso
 
 Tres versiones independientes: servicios v19, control v7 y fotos v11. Se comprueba

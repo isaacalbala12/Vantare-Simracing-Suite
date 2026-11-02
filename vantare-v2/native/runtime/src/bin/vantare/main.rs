@@ -396,12 +396,7 @@ fn start_remote_services(
 fn resident_settings(explicit: Option<PathBuf>) -> io::Result<PathBuf> {
     let path = match explicit {
         Some(path) => path,
-        None => PathBuf::from(
-            env::var_os("VANTARE_NATIVE_DATA_ROOT")
-                .or_else(|| env::var_os("LOCALAPPDATA"))
-                .ok_or_else(|| io::Error::other("LOCALAPPDATA no definido"))?,
-        )
-        .join("Vantare/native/launcher.json"),
+        None => vantare_ipc::paths::Root::from_env()?.launcher(),
     };
     let path = if path.is_absolute() {
         path

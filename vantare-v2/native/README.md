@@ -3,6 +3,36 @@
 Los ejemplos Cargo muestran el comando interior: ejecutarlo siempre por la
 cola de `AGENTS.md`: `native/scripts/compilar.ps1` desde `vantare-v2/`. Usar target aislado y `-j 2` (o `CARGO_BUILD_JOBS` de la máquina, ver «Workers»).
 
+## Rutas locales — #1869, paso 3
+
+`ipc::paths::Root` calcula las rutas con una sola política, sin leer, copiar ni
+mover documentos. `VANTARE_NATIVE_DATA_ROOT` absoluto tiene prioridad en todas
+las plataformas; vacío equivale a ausencia. Un valor relativo da error explícito.
+Las bases de plataforma también deben ser absolutas.
+
+| Plataforma | Base sin override |
+| --- | --- |
+| Windows | `LOCALAPPDATA` |
+| Linux | `XDG_DATA_HOME`, o `HOME/.local/share` si está ausente o vacío |
+| macOS | `HOME/Library/Application Support` |
+
+Desde esa base, los documentos nativos siguen en `Vantare/native`, y el Hub de
+desarrollo en `VantareNative/hub`. Los flags explícitos, incluido `--data-dir`
+de la beta, conservan prioridad. Las rutas de Windows no se mudan; el paso 10
+de raíz física única queda fuera de esta entrega.
+En Linux, Services y Engineer dejan `XDG_CONFIG_HOME`: no se copia ni se lee
+la carpeta anterior, que se conserva. Linux/macOS solo tienen desarrollo,
+según decisión del orquestador; no hay migración de datos de usuarios allí.
+
+En tests y con `ipc/test-support`, `Root::from_env()` exige override QA absoluto
+y no permite fallback. Services/UI lo activan en dev-dependencies; Runtime lo
+recibe de `services/test-support` y Hub ya usa `ipc/test-support` en sus tests.
+Los casos de fallback y errores se prueban con entorno/plataforma inyectados,
+sin mutar el entorno global ni acceder al disco. Cada tanda conserva los tres
+overrides QA de native/LocalAppData/AppData.
+
+## Mapa de crates
+
 El workspace tiene 14 crates; `default-members` excluye storage, admin e installer.
 
 | Crate | Contiene |

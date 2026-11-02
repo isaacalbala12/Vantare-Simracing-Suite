@@ -64,10 +64,9 @@ fn persistence_paths(
     } else {
         match data_dir {
             Some(path) => path,
-            None => vantare_ui::paths::default_data_dir()
-                .map_err(str::to_owned)?
-                .join("VantareNative")
-                .join("hub"),
+            None => vantare_ipc::paths::Root::from_env()
+                .map_err(|error| error.to_string())?
+                .hub(),
         }
     };
     let (layout, engineer, launcher_file) = if let Some(root) = capture_root {
@@ -96,9 +95,9 @@ fn persistence_paths(
 }
 
 fn default_engineer_path() -> Result<PathBuf, String> {
-    vantare_ui::paths::default_data_dir()
-        .map(|root| root.join("Vantare/native/engineer.json"))
-        .map_err(str::to_owned)
+    vantare_ipc::paths::Root::from_env()
+        .map(|root| root.engineer())
+        .map_err(|error| error.to_string())
 }
 
 #[allow(clippy::struct_excessive_bools)] // Banderas independientes de la línea de órdenes.

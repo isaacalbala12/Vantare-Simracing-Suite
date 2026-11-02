@@ -5,7 +5,10 @@
 Proyecto Vantare / area:plataforma, Plane En curso. Rama
 `vantareapp/isa-1869-paso3-root`, worktree `D:/VantareServer/worktrees/isa-1869-paso3`,
 base nightly `bc239c063541e9f641aafa3b846aae53e85635cf`, actualizada antes de editar.
-Todavía no se escribe el resolvedor común. Caracterización previa 8/8 PASS:
+El orquestador integró #1874 en nightly `590a710bafd10d16406db2022ea6a1fa06319004`
+y #1876 en `3f2c1b3b093c81bd4b81325e4646b274c56fb35d`; ambos PRs MERGED y
+CI 5/5 SUCCESS verificados en GitHub. Se prepara rebase a ese nightly actualizado.
+Caracterización previa `0927f50ca`, 8/8 PASS antes del resolvedor común:
 fmt PASS, contratos de
 rutas con override absoluto beta para Hub/overlays, privacidad/servicios,
 Engineer, logs, residente y rights por canal; más tests existentes de argumentos
@@ -13,13 +16,22 @@ beta/MSIX y fallback de UI. Para medir las dos rutas privadas se extrae solo su
 cálculo a funciones puras; auth, policy y flujo siguen intactos.
 Todas las ejecuciones usarán native/LocalAppData/AppData QA, target propio y
 compilar.ps1. Evidencia `D:/VantareServer/evidence/isa-1869/paso3`.
+El resolvedor ya se conecta a los consumidores. Mantiene los destinos Windows,
+rechaza override relativo y conserva fallback de vacío solo en producto.
+El guard QA también vive en Root con la feature test-support existente;
+Services/UI la activan en tests y Runtime la recibe del soporte de Services.
+Los fallbacks se comprueban con entorno inyectado; ya no mutan el entorno de UI.
+Primera tanda del resolvedor: fmt/check de los cinco crates PASS; Clippy detectó
+tests antes de ítems productivos. Se mueven al final, sin desactivar reglas;
+fallo conservado. Pendiente: rebase y revalidar toda la tanda antes del draft.
 
 El orquestador confirmó base única en Linux/macOS, solo desarrollo, sin lector
 de compatibilidad XDG_CONFIG_HOME. También trasladó a VANTA-129 la reserva mínima
-de default_path() en ui/layout; aún sin tocar ese archivo, motion_policy o host.
-Paso 10 excluido. #1874 revisado (HEAD `1c1c6c21c`, 874+25 PASS) y #1876 revisado
-(HEAD `fae6374f0`, 1090+25+33 PASS) están en draft a nightly, sin merge/release
-por este worker. Handoff y resúmenes de ambas entregas constan en #1869 y Plane.
+de default_path() en ui/layout: solo se cambia esa función; motion_policy y host
+siguen intactos.
+Paso 10 excluido. Validación local entregada: #1874 (HEAD `1c1c6c21c`, 874+25 PASS)
+y #1876 (HEAD `fae6374f0`, 1090+25+33 PASS). Los merges los hizo el orquestador;
+este worker no ha hecho merge/release. Resúmenes e integración constan en #1869 y Plane.
 
 ## VANTA-130 · #1869 · Hub, ajustes y layouts (2-nov-2026)
 

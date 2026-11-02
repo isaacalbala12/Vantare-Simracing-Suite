@@ -68,6 +68,7 @@ pub struct Options {
     pub root: Option<PathBuf>,
 }
 pub struct Host {
+    #[cfg(test)]
     state: Arc<Mutex<State>>,
     stop: Arc<Event>,
     cancellation: Cancellation,
@@ -172,6 +173,7 @@ impl Host {
         };
         match server {
             Ok(server) => Ok(Self {
+                #[cfg(test)]
                 state,
                 stop,
                 cancellation,

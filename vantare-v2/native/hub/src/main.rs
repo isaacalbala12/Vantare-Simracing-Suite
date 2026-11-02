@@ -784,7 +784,7 @@ mod tests {
         assert_eq!(options.layout, root.join("layout.json"));
         assert_eq!(
             vantare_hub::calendar::Calendar::alert_path(&options.layout),
-            root.join("calendar-alerts.json")
+            root.join("session-alerts-feed.json")
         );
         let runtime = probe
             .lines()

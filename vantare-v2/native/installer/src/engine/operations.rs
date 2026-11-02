@@ -52,20 +52,13 @@ impl Control<'_> {
 }
 
 const METADATA: &[&str] = &[
-    "state.json",
-    "candidate.ps1",
-    "beta.ps1",
     "retained-data.json",
     "boot-pending.json",
     "update-status.json",
-    "registration-identity.txt",
-    "Uninstall.exe",
-    "uninstall-vantare.ps1",
-    "installer-ui.json",
-    "installer-notices.txt",
 ];
 struct Before {
-    files: BTreeMap<&'static str, Option<Vec<u8>>>,
+    state: Option<serde_json::Value>,
+    files: BTreeMap<&'static str, Option<serde_json::Value>>,
     generations: BTreeSet<String>,
 }
 impl Before {
@@ -76,13 +69,18 @@ impl Before {
             files.insert(
                 name,
                 if path.try_exists()? {
-                    Some(fs::read(path)?)
+                    Some(disk::read_json(&path, None)?)
                 } else {
                     None
                 },
             );
         }
         Ok(Self {
+            state: if root.join("state.json").try_exists()? {
+                Some(Installation::state_document(root)?)
+            } else {
+                None
+            },
             files,
             generations: generations(root)?
                 .into_iter()
@@ -92,18 +90,21 @@ impl Before {
     }
     fn restore(&self, root: &Path, control: &mut Control<'_>) {
         // State first; a denied file never prevents attempts on remaining metadata.
+        let restored = match &self.state {
+            Some(state) => serde_json::to_vec_pretty(state)
+                .map_err(WriteError::from)
+                .and_then(|bytes| disk::commit_raw(root, &bytes, &mut |_| Ok(()))),
+            None => disk::remove_file(&root.join("state.json")),
+        };
+        if let Err(cause) = restored {
+            (control.warning)(&format!("No se pudo restaurar el estado: {cause}"));
+        }
         for &name in METADATA {
             let path = root.join(name);
             let restored = match &self.files[name] {
-                Some(bytes) => {
-                    if fs::read(&path).ok().as_ref() == Some(bytes) {
-                        Ok(())
-                    } else if name == "state.json" {
-                        disk::commit_raw(root, bytes, &mut |_| Ok(()))
-                    } else {
-                        fs::write(&path, bytes).map_err(WriteError::from)
-                    }
-                }
+                Some(value) => serde_json::to_vec_pretty(value)
+                    .map_err(WriteError::from)
+                    .and_then(|bytes| fs::write(&path, bytes).map_err(WriteError::from)),
                 None => disk::remove_file(&path),
             };
             if let Err(error) = restored {
@@ -224,13 +225,13 @@ fn retained_source(root: &Path, incoming: &str) -> Result<Option<PathBuf>> {
 }
 
 /// Explicit Setup owns the session lock through generation and shell completion.
-/// TODO(#1840 p5): replace the sole PS finalizer with `engine::shell::sync`.
+/// Errors restore the logical state and re-project Windows, never saved link bytes.
 pub fn install(
     root: &Path,
     package: &Package<'_>,
     mode: Mode,
     control: &mut Control<'_>,
-    mut finalize: impl FnMut(&mut Control<'_>) -> Result<()>,
+    mut finalize: impl FnMut(&mut Control<'_>, bool) -> Result<()>,
     mut prepare: impl FnMut() -> Result<()>,
 ) -> Result<()> {
     let root = disk::open_root(root, true)?;
@@ -238,6 +239,8 @@ pub fn install(
         .map_err(|_| WriteError::new(2, "Cierra Vantare para continuar"))?;
     prepare()?;
     let before = Before::capture(&root)?;
+    let mut projected = false;
+    let mut changed = false;
     let result = (|| {
         let probe = root.join("staging").join(format!("setup-{}", disk::id()?));
         let incoming = package::expand(package.archive, package.sha256, &probe, "beta");
@@ -271,6 +274,7 @@ pub fn install(
                 ));
             }
             control.copy()?;
+            changed = true;
             activate(
                 &root,
                 package,
@@ -288,15 +292,22 @@ pub fn install(
             let source = retained_source(&root, &incoming.version)?;
             let _handles = disk::binary_guard(&root)?;
             control.copy()?;
+            changed = true;
             install_candidate(&root, package, source.as_deref(), control)?;
         }
         fs::write(root.join("candidate.ps1"), package.candidate)?;
         fs::write(root.join("beta.ps1"), package.beta)?;
         disk::remove_file(&root.join("retained-data.json"))?;
-        finalize(control)
+        projected = true;
+        finalize(control, false)
     })();
-    if result.is_err() {
+    if result.is_err() && changed {
         before.restore(&root, control);
+        if projected && let Err(cause) = finalize(control, true) {
+            (control.warning)(&format!(
+                "No se pudo resincronizar Windows tras restaurar el estado: {cause}"
+            ));
+        }
     }
     result
 }

@@ -38,6 +38,39 @@ function Invoke-BoundaryWriter([string]$Operation,[string]$Version){
 try{
     $result=Invoke-BoundaryWriter 'Install' '0.0.988'
     Assert-Boundary ($result.ExitCode -eq 0) 'Rust Setup finalizes the legacy Windows projection'
+    $phases=@($result.Stdout -split "`r?`n"|Where-Object {$_}|ForEach-Object {$_|ConvertFrom-Json})
+    Assert-Boundary (@($phases|Where-Object {$_.step -ceq 'shortcuts' -and $_.percent -eq 84}).Count -eq 1 -and @($phases|Where-Object {$_.step -ceq 'register' -and $_.percent -eq 93}).Count -eq 1) 'Native Setup preserves its UI progress phases'
+    $appLink=Join-Path $qaBoundaryRoot 'Programs/Vantare/Vantare Simracing Suite.lnk'
+    $shell=New-Object -ComObject WScript.Shell
+    $explorer=New-Object -ComObject Shell.Application
+    $before=$shell.CreateShortcut($appLink)
+    $expectedTarget=$before.TargetPath;$expectedArguments=$before.Arguments;$expectedIcon=$before.IconLocation
+    $expectedVersion=(Get-ItemProperty -LiteralPath $key).DisplayVersion
+    foreach($repeat in @(1,2)){
+        $result=Invoke-BoundaryWriter 'Sync' '0.0.988'
+        Assert-Boundary ($result.ExitCode -eq 0) ('Native shell sync repeat '+$repeat+' succeeds')
+        $actual=$shell.CreateShortcut($appLink)
+        Assert-Boundary ($actual.TargetPath -ceq $expectedTarget -and $actual.Arguments -ceq $expectedArguments -and $actual.IconLocation -ceq $expectedIcon -and (Get-ItemProperty -LiteralPath $key).DisplayVersion -ceq $expectedVersion) ('Native shell sync repeat '+$repeat+' preserves its projection')
+    }
+    Assert-Boundary ($explorer.NameSpace((Split-Path $appLink)).ParseName([IO.Path]::GetFileName($appLink)).ExtendedProperty('System.AppUserModel.ID') -ceq 'Vantare.SimracingSuite') 'Native shell persists AppUserModelID'
+    Assert-Boundary (@(Get-ChildItem -LiteralPath (Split-Path $appLink) -Filter '*.lnk').Count -eq 2) 'Native shell sync creates no duplicate links'
+    New-Item -Path $run -Force|Out-Null
+    $lowerRun=('"'+$env:WINDIR+'\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "'+(Join-Path $install 'beta.ps1')+'" -Root "'+$install+'"').ToLowerInvariant()
+    Set-ItemProperty -LiteralPath $run -Name 'VantareNative.Hub' -Value $lowerRun
+    $migrated=Invoke-BoundaryWriter 'Sync' '0.0.988'
+    Assert-Boundary ($migrated.ExitCode -eq 0 -and $null -eq (Get-ItemProperty -LiteralPath $run).PSObject.Properties['VantareNative.Hub']) 'Native Run migration accepts the same flag and path case variants as PowerShell'
+    $identityFile=Join-Path $install 'registration-identity.txt'
+    [IO.File]::WriteAllText($identityFile,'ForeignIdentity')
+    try{$blocked=Invoke-BoundaryWriter 'Sync' '0.0.988'}finally{Remove-Item -LiteralPath $identityFile}
+    Assert-Boundary ($blocked.ExitCode -ne 0 -and (Get-ItemProperty -LiteralPath $key).DisplayVersion -ceq $expectedVersion) 'Native shell refuses a mismatched registration identity'
+    $operation=[IO.File]::Open((Join-Path $install '.operation.lock'),[IO.FileMode]::OpenOrCreate,[IO.FileAccess]::ReadWrite,[IO.FileShare]::None)
+    try{$blocked=Invoke-BoundaryWriter 'Sync' '0.0.988'}finally{$operation.Dispose()}
+    Assert-Boundary ($blocked.ExitCode -ne 0 -and (Get-ItemProperty -LiteralPath $key).DisplayVersion -ceq $expectedVersion) 'Native shell sync respects the operation owner'
+    $foreign=$shell.CreateShortcut($appLink);$foreign.TargetPath=Join-Path $qaBoundaryRoot 'foreign.exe';$foreign.Arguments='foreign';$foreign.Save()
+    $foreignBytes=[IO.File]::ReadAllBytes($appLink)
+    $blocked=Invoke-BoundaryWriter 'Sync' '0.0.988'
+    Assert-Boundary ($blocked.ExitCode -ne 0 -and [Convert]::ToBase64String([IO.File]::ReadAllBytes($appLink)) -ceq [Convert]::ToBase64String($foreignBytes)) 'Native shell sync refuses a foreign mandatory link without changing it'
+    $own=$shell.CreateShortcut($appLink);$own.TargetPath=$expectedTarget;$own.Arguments=$expectedArguments;$own.IconLocation=$expectedIcon;$own.Save()
     $motionKey='HKCU:/Control Panel/Desktop/WindowMetrics'
     New-Item -Path $motionKey -Force|Out-Null
     foreach($motionType in @('String','DWord')){
@@ -61,7 +94,7 @@ try{
     try{$result=Invoke-BoundaryWriter 'Install' '0.0.989'}finally{$handle.Dispose()}
     Assert-Boundary ($result.ExitCode -ne 0) 'Locked mandatory shortcut rejects Windows finalization'
     Assert-Boundary ([Convert]::ToBase64String([IO.File]::ReadAllBytes((Join-Path $install 'state.json'))) -ceq [Convert]::ToBase64String($stateBytes)) 'Shell failure restores exact Rust state bytes'
-    Assert-Boundary ((Get-ItemProperty -LiteralPath $key).DisplayVersion -ceq '0.0.988') 'Shell transaction restores registry version'
+    Assert-Boundary ((Get-ItemProperty -LiteralPath $key).DisplayVersion -ceq '0.0.988') 'Shell resynchronization restores registry version without a byte transaction'
     Assert-Boundary ([Convert]::ToBase64String([IO.File]::ReadAllBytes($appLink)) -ceq [Convert]::ToBase64String($linkBytes)) 'Shell failure preserves owned shortcut bytes'
     Assert-Boundary ((Get-NativeDataIndex $data) -ceq $dataBefore) 'Shell failure preserves opaque data and empty folders'
     Assert-Boundary (@(Get-ChildItem -LiteralPath (Join-Path $install 'generations') -Directory).Count -eq 1) 'Failed generation is removed only after restoring its reference'
@@ -78,6 +111,8 @@ try{
     Assert-Boundary ((Get-NativeDataIndex $data) -ceq $dataBefore) 'Partial uninstall preserves exact data'
     $result=Invoke-BoundaryWriter 'Uninstall' '0.0.988'
     Assert-Boundary ($result.ExitCode -eq 0) 'Rust Uninstall resumes when manifest and state are already removed'
+    $phases=@($result.Stdout -split "`r?`n"|Where-Object {$_}|ForEach-Object {$_|ConvertFrom-Json})
+    Assert-Boundary (@($phases|Where-Object {$_.step -ceq 'shortcuts' -and $_.percent -eq 72}).Count -eq 1 -and @($phases|Where-Object {$_.step -ceq 'register' -and $_.percent -eq 88}).Count -eq 1) 'Native Uninstall preserves its UI progress phases'
     Assert-Boundary (-not(Test-Path -LiteralPath $key) -and $null -eq (Get-ItemProperty -LiteralPath $run).PSObject.Properties['VantareNative.Hub']) 'Successful finalization retires registry and owned Run'
     Assert-Boundary ((Get-ItemProperty -LiteralPath $run).OtherApp -ceq 'foreign-app') 'Finalization preserves foreign Run value'
     $marker=Join-Path $install 'installer-cleanup.json';$exe=Join-Path $install 'Uninstall.exe'
@@ -93,6 +128,7 @@ try{
     [IO.File]::WriteAllBytes($exe,$exeBytes)
     $result=Invoke-BoundaryWriter 'Cleanup' '0.0.988'
     Assert-Boundary ($result.ExitCode -eq 0 -and -not(Test-Path -LiteralPath $exe) -and -not(Test-Path -LiteralPath $marker)) 'Authorized Cleanup removes only its uninstaller and marker'
+    Assert-Boundary (@(Get-ChildItem -LiteralPath $qaBoundaryRoot -Directory -Filter 'VantareSetup-*').Count -eq 0) 'Authorized Cleanup leaves no owned temporary directory or executable'
     Assert-Boundary ((Get-NativeDataIndex $data) -ceq $dataBefore) 'Cleanup preserves exact data and empty directories'
     Write-NativeJson (Join-Path $qaBoundaryRoot 'result.json') @{checks=$passed;data_unchanged=$true;foreign_run_preserved=$true}
 }finally{

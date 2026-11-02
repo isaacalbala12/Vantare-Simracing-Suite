@@ -24,7 +24,14 @@ def git(*args):
     return subprocess.check_output(["git", *args], cwd=ROOT).decode("utf-8-sig")
 
 
-def category(path):
+def category(path, projection=False):
+    if projection and path in {
+        PREFIX + "native/hub/src/installation.rs",
+        PREFIX + "native/hub/src/settings/windows.rs",
+        PREFIX + "native/runtime/src/bin/vantare/beta.rs",
+        PREFIX + "native/runtime/src/bin/vantare/beta_indicator.rs",
+    }:
+        return "rust_production"
     if path.startswith(PREFIX + "native/installer/src/") and path.endswith(".rs"):
         return "rust_production"
     if path in {PREFIX + "native/hub/src/settings/mod.rs",
@@ -42,12 +49,15 @@ def category(path):
         return "rust_build_tooling"
     if path.startswith(PREFIX + "native/packaging/") and path.endswith(".ps1"):
         return "ps_product" if path.rsplit("/", 1)[1] in {
-            "candidate.ps1", "beta.ps1", "installer-driver.ps1", "installer-shell.ps1"} else "ps_tests_and_tooling"
+            "candidate.ps1", "beta.ps1", "installer-driver.ps1", "installer-shell.ps1", "installer-cleanup.ps1"} else "ps_tests_and_tooling"
+    if path == PREFIX + "native/packaging/matrix/cleanup-image-probe.cs":
+        return "cs_tests"
     if path in {PREFIX + "native/README.md", PREFIX + "native/installer/README.md",
                 PREFIX + "native/hub/README.md", PREFIX + "native/packaging/README.md",
                 PREFIX + "native/packaging/matrix/README.md",
                 PREFIX + "native/packaging/matrix/evidence-1840-p3.md",
                 PREFIX + "native/packaging/matrix/evidence-1840-p4.md",
+                PREFIX + "native/packaging/matrix/evidence-1840-p5.md",
                 PREFIX + "docs/adr/0103-instalacion-nativa.md",
                 PREFIX + "docs/vantare-program/handoffs/platform-commercial.md",
                 PREFIX + "docs/vantare-program/installer-design.md",
@@ -60,13 +70,13 @@ def category(path):
     return None
 
 
-def measure(ref):
+def measure(ref, projection=False):
     paths = (git("ls-tree", "-r", "--name-only", ref) if ref else
              git("ls-files", "--cached", "--others", "--exclude-standard")).splitlines()
     totals = defaultdict(int)
     files = {}
     for path in sorted(set(paths)):
-        kind = category(path)
+        kind = category(path, projection)
         if kind is None:
             continue
         if not ref and not (ROOT / path).is_file():
@@ -86,11 +96,14 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--base", required=True)
     parser.add_argument("--head")
+    parser.add_argument("--projection", action="store_true",
+                        help="include the four legacy Rust hosts targeted by steps 6-8")
     args = parser.parse_args()
-    before, after = measure(args.base), measure(args.head)
+    before, after = measure(args.base, args.projection), measure(args.head, args.projection)
     categories = sorted(before["totals"].keys() | after["totals"].keys())
     print(json.dumps({"base": git("rev-parse", args.base).strip(),
                       "head": git("rev-parse", args.head).strip() if args.head else "working-tree",
+                      "scope": "installer and selected Hub settings plus four legacy hosts" if args.projection else "installer and selected Hub settings",
                       "method": "physical lines; Rust test-only items excluded from production",
                       "delta": {key: after["totals"].get(key, 0) - before["totals"].get(key, 0) for key in categories},
                       "before": before, "after": after}, ensure_ascii=False, indent=2))

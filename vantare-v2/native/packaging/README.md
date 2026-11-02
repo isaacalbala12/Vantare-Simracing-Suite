@@ -1,12 +1,16 @@
 # Beta nativa — instalador y actualizaciones (#1454)
 
-Paso 4 de #1840: Setup/Uninstall usan el motor Rust para estado, ZIP,
-generaciones y datos; Context resuelve raíz, HKCU y opciones. El driver queda
-como oráculo y adaptador heredado. Una llamada por FinalizeInstall,
-FinalizeUninstall y Cleanup conserva la finalización Windows PowerShell actual,
-incluidas transacción, guardas, propiedad de accesos, Run y rollback por bytes.
-TODO(#1840 p5) retira esa frontera; Feed/Register y lanzamiento conservan sus
-pasos previstos. Contrato y medidas en [evidencia de paso 4](matrix/evidence-1840-p4.md).
+Paso5 de #1840: Setup/Uninstall usan el motor Rust para estado, ZIP, generaciones,
+datos y shell::sync nativo. Context resuelve raíz, HKCU y opciones. El driver
+queda como oráculo/adaptador heredado; Feed/Register/SetStartup y lanzamiento
+conservan sus pasos previstos. No hay puente temporal hacia Rust desde esos
+consumidores. Instalación/retirada ya no llaman a los finalizadores PS ni guardan
+copias por bytes: se restaura el estado lógico y se resincroniza Windows.
+installer-cleanup.ps1 es una excepción permanente mínima, fuera de ese motor:
+esperar al padre, exclusión, validar raíz/marker/hash y retirar solo EXE propio,
+marker y temporal. No tiene estado, registro, accesos o datos. powershell.exe
+vive fuera del árbol y deja la retirada sin residuos; ensayo POSIX fallido y
+razonamiento en [evidencia de paso5](matrix/evidence-1840-p5.md) y ADR0103.
 
 Desde el paso 3, Probe y Ajustes comparten Installation::read sin GPUI:
 activa sin rehash para Probe, anterior completa y Hub informativo. La versión

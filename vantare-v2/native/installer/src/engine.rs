@@ -1,7 +1,7 @@
 //! Installation engine independent of GPUI (ADR 0103, steps 3/4).
 //!
-//! Rust owns Setup/Uninstall mutations. Three legacy shell-finalization calls
-//! retire in step 5; candidate Get-NativeLaunchTarget in step 5; Read-NativeState and beta
+//! Rust owns Setup/Uninstall mutations and shell synchronization. Cleanup is
+//! the permanent minimal PowerShell exception in ADR0103. Read-NativeState and beta
 //! Uninstall-Beta retire as their consumers migrate in steps 4–6, with product
 //! PowerShell removed in step 7. No global five-to-one claim before that cut.
 #[cfg(feature = "transport")]
@@ -15,6 +15,10 @@ pub mod operations;
 pub mod package;
 #[cfg(all(windows, feature = "write-engine"))]
 mod platform;
+#[cfg(all(windows, feature = "transport"))]
+pub mod shell;
+#[cfg(all(windows, feature = "transport"))]
+mod shell_windows;
 pub mod validation;
 #[cfg(feature = "write-engine")]
 pub mod write_fs;

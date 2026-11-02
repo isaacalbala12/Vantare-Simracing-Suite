@@ -40,7 +40,7 @@ paquete: ZIP embebido con SHA compilado o ZIP cuyo SHA procede del sobre
 Ed25519. Setup además instala el lanzador y ofrece Reparar/Desinstalar.
 No hay autoactualización del lanzador raíz; el paso 9 queda aparcado.
 
-**Frontera transitoria del paso 4, autorizada el 2-nov-2026:** el núcleo Rust
+**Frontera histórica del paso 4, autorizada el 2-nov-2026:** el núcleo Rust
 realiza estado, ZIP, generaciones y datos en el proceso de Setup/Uninstall.
 No adelanta shell::sync ni porta la transacción Windows que retira el paso 5.
 Conserva una llamada PowerShell por operación de finalización, marcada
@@ -59,12 +59,36 @@ válido se conservan como diagnóstico en el log, sin revertir una salida0;
 installer-shell dirige Write-Warning a stderr, incluidos fallos cosméticos.
 En QA, context inyecta HKCU y carpetas bajo el guard antes de cargar la biblioteca.
 No se exigen una llamada única total de Uninstall+Cleanup ni un nuevo ciclo de
-vida. La excepción completa cierra en el paso 5. Feed y Register siguen en PS
+vida. El paso5 cierra FinalizeInstall/FinalizeUninstall; la decisión posterior
+conserva Cleanup permanentemente, como se detalla debajo. Feed y Register siguen en PS
 hasta sus pasos previstos. Esto sustituye temporalmente la frase histórica
 «Setup deja de lanzar PowerShell»; nunca autoriza el driver PS para el núcleo.
 La consulta de objetivo para accesos y la persistencia de preferencias Windows
 siguen dentro de esa transacción heredada hasta p5. Rust aporta opciones/contexto;
 no obtiene de ella estado, versión instalada ni datos para decidir operaciones.
+
+**Decisión permanente del paso5, 2-nov-2026:** Cleanup conserva un script mínimo
+ejecutado por powershell.exe de Windows, fuera del árbol retirado. Espera al padre,
+adquiere la exclusión de limpieza y valida raíz, temporal propio, marcador y SHA
+del Uninstall antes de retirar exclusivamente ese EXE, el marcador y su temporal.
+No lee ni escribe estado de instalación, registro, accesos o datos. Rust decide
+si procede limpiar y rechaza una instalación renovada; Setup no reemplaza un
+desinstalador pendiente bajo el mismo bloqueo de sesión.
+
+El ensayo QA de FileDispositionInfoEx(DELETE|POSIX) falló con ACCESS_DENIED(5)
+sobre una imagen propia sin ReadOnly en NTFS/Windows22631. No se ha medido NTSTATUS
+ni acreditado el caso de otro Windows/volumen o IGNORE_READONLY. Se conserva como
+diagnóstico manual, fuera de los gates: [evidencia p5](../../native/packaging/matrix/evidence-1840-p5.md).
+Dejar el EXE raíz podría hacerlo permanente en un equipo que nunca reinstale;
+una copia ejecutable temporal añade otro ciclo de vida y deja su propio residuo.
+La excepción conserva la desinstalación limpia ya probada sin ninguno de esos dos
+cambios. Es permanente, también después del paso7: no se promete cero PowerShell
+durante la limpieza del desinstalador. No autoriza cmd ni técnicas de autoborrado.
+FinalizeInstall y FinalizeUninstall pasan a shell::sync nativo: ante error se
+restaura el estado lógico y se resincroniza Windows, sin copias de deshacer por bytes.
+Es el único escritor Rust de esa proyección. El corte aceptado no adelanta
+Feed/Register/SetStartup: sus escritores y mecanismos heredados continúan hasta
+los pasos6–7, sin puente temporal. No se afirma convergencia global antes de retirarlos.
 
 ### Estado estable y versión instalada
 
@@ -113,10 +137,9 @@ Setup conserva descubrimiento de raíz/registro y opciones en el driver como
 contexto; `Installation::read` reúne la lectura de estado/manifiesto en Rust.
 El perfil del Hub sigue siendo informativo, sin conceder autoridad al paquete.
 Probe conserva el perfil real: activa ligada al SHA del manifiesto sin rehash
-de binarios, anterior con verificación completa. Uninstall interrumpido conserva
-temporalmente DisplayVersion como presentación heredada en todas las lecturas de
-Uninstall, incluidas las interrumpidas; se retira en el paso 4, sin decidir versión
-activa de una instalación completa.
+de binarios, anterior con verificación completa. Desde el paso 4, Uninstall
+interrumpido usa el manifiesto ligado si sobrevive o deja la versión ausente;
+DisplayVersion ya no sustituye la versión del motor.
 
 ### Confirmación, integración con Windows y rollback
 
@@ -196,7 +219,7 @@ ambos lados de esa condición. Su prueba usa la
 o cuenta aislada. Su Register puede volver a apuntar accesos a la generación
 antigua, limitación heredada aceptada hasta salir de LegacyRunner.
 
-El paso 7 retira PowerShell del producto nuevo, salvo la raíz LegacyRunner
+El paso 7 retira PowerShell del producto nuevo, salvo Cleanup permanente y la raíz LegacyRunner
 condicionada anterior, NSIS y operaciones Wails, incluidas ImportProfiles,
 ImportLayout y Start. Retira canales muertos, `_?=` y tests que leen scripts;
 reescribe README de packaging como contrato vigente. Build queda en tooling. MSIX

@@ -23,7 +23,6 @@ fn rights_root(channel: &str) -> std::io::Result<std::path::PathBuf> {
     Ok(vantare_ipc::paths::Root::from_env()?.rights().join(channel))
 }
 
-
 fn local_devices() -> Devices {
     Devices {
         legacy: vantare_services::license::installation::legacy_fingerprint().unwrap_or_else(

@@ -9,7 +9,6 @@ fn log_root() -> io::Result<std::path::PathBuf> {
     Ok(crate::paths::Root::from_env()?.logs())
 }
 
-
 pub fn state(snapshot: &Snapshot) -> (SourceState, Capability, Capability) {
     (
         snapshot.state.source_state,

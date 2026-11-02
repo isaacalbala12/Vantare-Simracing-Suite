@@ -78,6 +78,83 @@ mod tests {
     use std::io::{BufRead, BufReader, Write};
     use std::net::{TcpListener, TcpStream};
 
+    use std::time::Instant;
+
+    const HARNESS_LIMIT: Duration = Duration::from_secs(5);
+
+    fn finished_before<T>(worker: &std::thread::JoinHandle<T>, deadline: Instant) -> bool {
+        while !worker.is_finished() {
+            let remaining = deadline.saturating_duration_since(Instant::now());
+            if remaining.is_zero() {
+                return false;
+            }
+            // std no tiene join con plazo; el sondeo acotado evita girar la CPU.
+            std::thread::sleep(remaining.min(Duration::from_millis(5)));
+        }
+        true
+    }
+
+    fn join_for_test<T>(worker: std::thread::JoinHandle<T>) -> std::thread::Result<T> {
+        assert!(
+            finished_before(&worker, Instant::now() + HARNESS_LIMIT),
+            "el hilo del arnés REST no terminó dentro de su guarda"
+        );
+        // Solo se hace join una vez terminado, nunca sobre un accept/recv pendiente.
+        worker.join()
+    }
+
+    fn accept_for_test(listener: &TcpListener, deadline: Instant) -> std::io::Result<TcpStream> {
+        listener.set_nonblocking(true)?;
+        loop {
+            let remaining = deadline.saturating_duration_since(Instant::now());
+            if remaining.is_zero() {
+                return Err(std::io::ErrorKind::TimedOut.into());
+            }
+            match listener.accept() {
+                Ok((socket, _)) => {
+                    socket.set_nonblocking(false)?;
+                    socket.set_read_timeout(Some(HARNESS_LIMIT))?;
+                    socket.set_write_timeout(Some(HARNESS_LIMIT))?;
+                    return Ok(socket);
+                }
+                Err(error)
+                    if matches!(
+                        error.kind(),
+                        std::io::ErrorKind::WouldBlock | std::io::ErrorKind::Interrupted
+                    ) =>
+                {
+                    // std no ofrece accept con plazo; el sondeo solo espera hasta la guarda.
+                    std::thread::sleep(remaining.min(Duration::from_millis(5)));
+                }
+                Err(error) => return Err(error),
+            }
+        }
+    }
+
+    #[test]
+    fn an_unconnected_rest_server_hits_the_harness_deadline() {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap();
+        let worker = std::thread::spawn(move || {
+            accept_for_test(&listener, Instant::now() + Duration::from_millis(20)).map(drop)
+        });
+        let stopped_without_a_client = finished_before(&worker, Instant::now() + HARNESS_LIMIT);
+        if !stopped_without_a_client {
+            // Despierta el accept antiguo para registrar RED sin dejar el test colgado.
+            drop(TcpStream::connect_timeout(&address, HARNESS_LIMIT).unwrap());
+        }
+        assert!(
+            finished_before(&worker, Instant::now() + HARNESS_LIMIT),
+            "cleanup del servidor"
+        );
+        let result = join_for_test(worker).unwrap();
+        assert!(
+            stopped_without_a_client,
+            "el accept no respeta el plazo del arnés"
+        );
+        assert_eq!(result.unwrap_err().kind(), std::io::ErrorKind::TimedOut);
+    }
+
     fn read_request_line(socket: &TcpStream) -> String {
         let mut reader = BufReader::new(socket);
         let mut first = String::new();
@@ -106,7 +183,7 @@ mod tests {
         let status = status.to_owned();
         let body = body.to_vec();
         let handle = std::thread::spawn(move || {
-            let (mut socket, _) = listener.accept().unwrap();
+            let mut socket = accept_for_test(&listener, Instant::now() + HARNESS_LIMIT).unwrap();
             let request = read_request_line(&socket);
             before_response();
             let header = format!(
@@ -144,8 +221,7 @@ mod tests {
             Some(b"[]".to_vec())
         );
         assert!(
-            server
-                .join()
+            join_for_test(server)
                 .unwrap()
                 .starts_with("GET /rest/watch/standings ")
         );
@@ -156,19 +232,18 @@ mod tests {
             None
         );
         assert!(
-            server
-                .join()
+            join_for_test(server)
                 .unwrap()
                 .starts_with("GET /rest/watch/sessionInfo ")
         );
 
         let (port, server) = serve_once("200 OK", &vec![b'x'; MAX_RESPONSE_BYTES + 1]);
         assert_eq!(response_test_client(port).fetch(Endpoint::Standings), None);
-        server.join().unwrap();
+        join_for_test(server).unwrap();
 
         let (port, server) = serve_once("200 OK", b"  \n");
         assert_eq!(response_test_client(port).fetch(Endpoint::Standings), None);
-        server.join().unwrap();
+        join_for_test(server).unwrap();
     }
 
     #[test]
@@ -199,10 +274,9 @@ mod tests {
             response.recv_timeout(COMPLETION_LIMIT).unwrap(),
             Some(b"[]".to_vec())
         );
-        client.join().unwrap();
+        join_for_test(client).unwrap();
         assert!(
-            server
-                .join()
+            join_for_test(server)
                 .unwrap()
                 .starts_with("GET /rest/watch/standings ")
         );
@@ -213,14 +287,14 @@ mod tests {
         let listener = TcpListener::bind("127.0.0.1:0").unwrap();
         let port = listener.local_addr().unwrap().port();
         let server = std::thread::spawn(move || {
-            let (mut socket, _) = listener.accept().unwrap();
+            let mut socket = accept_for_test(&listener, Instant::now() + HARNESS_LIMIT).unwrap();
             read_request_line(&socket);
             socket
                 .write_all(b"HTTP/1.1 302 Found\r\nLocation: http://example.com/\r\nContent-Length: 0\r\nConnection: close\r\n\r\n")
                 .unwrap();
         });
         assert_eq!(Client::new(port).fetch(Endpoint::Standings), None);
-        server.join().unwrap();
+        join_for_test(server).unwrap();
     }
 
     #[test]
@@ -229,13 +303,17 @@ mod tests {
         let port = listener.local_addr().unwrap().port();
         let (release, hold) = std::sync::mpsc::channel::<()>();
         let server = std::thread::spawn(move || {
-            let (socket, _) = listener.accept().unwrap();
-            read_request_line(&socket);
-            hold.recv().unwrap();
+            let socket = accept_for_test(&listener, Instant::now() + HARNESS_LIMIT).unwrap();
+            let request = read_request_line(&socket);
+            hold.recv_timeout(HARNESS_LIMIT)
+                .expect("liberar el servidor después de vencer el cliente");
+            request
         });
         let response = Client::new(port).fetch(Endpoint::Standings);
-        release.send(()).unwrap();
-        server.join().unwrap();
+        let released = release.send(());
+        let request = join_for_test(server).unwrap();
+        released.expect("el servidor seguía esperando la liberación explícita");
+        assert!(request.starts_with("GET /rest/watch/standings "));
         assert_eq!(response, None);
     }
 

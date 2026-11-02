@@ -159,3 +159,12 @@ LMU existentes y elimina por claves los campos posteriores a v9. La feature
 `shift_remove` conserva el orden de los campos restantes y los bytes congelados.
 No se regeneran fixtures ni corpus. La prueba con comas y comillas en textos
 vecinos caracteriza la retirada de campos anidados sin recortar texto JSON.
+
+## #1881 · Guardas del arnés REST
+
+Los servidores de tests acotan accept, lectura/escritura y espera de finalización
+con una guarda de cinco segundos. El join se hace solo tras is_finished; los
+sondeos acotados suplen la ausencia de accept/join con plazo en std. El test de
+servidor parado mantiene Client::new y sus 750 ms reales: exige petición recibida
+y que el servidor espere liberación explícita después del resultado None. Si
+vence la guarda del servidor, el test falla; cerrar por guarda no puede hacerlo pasar.

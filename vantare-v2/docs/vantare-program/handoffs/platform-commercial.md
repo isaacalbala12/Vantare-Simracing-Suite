@@ -1,3 +1,41 @@
+## VANTA-126 / #1878 — tests independientes del tiempo encendido del runner
+
+- Rama `vantareapp/isa-1878-instant-tests`, base
+  `origin/nightly@3f2c1b3b093c81bd4b81325e4646b274c56fb35d`; worktree
+  `C:/VantareServer/wt/isa-1878-instant-tests`, target propio
+  `D:/VantareServer/targets/isa-1878`.
+- Siete tests de runtime/UI usan instantes del propio test y avanzan el tiempo,
+  en vez de restar al reloj real. Se conservan las aserciones de renovación,
+  silencio ACC, fin de animaciones y conservación del reloj al cambiar Look.
+- Inyección privada de tiempo en cuatro métodos de frame y en el grabador ACC;
+  los llamadores de producto conservan `Instant::now`. La sustitución del reloj
+  del servidor de renovación existe solo con `cfg(test)` y conserva el pipe real.
+- Gates acotados a runtime/UI por `compilar.ps1`, con telemetría y lifecycle.
+  La tanda prevista se interrumpió dos veces; se completó solo lo pendiente,
+  sin repetir fmt/check/Clippy aprobados.
+  Evidencia en `D:/VantareServer/evidence/isa-1878/gates.log`;
+  fmt, check all-targets y Clippy -D warnings PASS. Primera ejecución Nextest:
+  391 PASS, 2 fallos por helper services ausente y 579 sin ejecutar (fail-fast).
+  La preparación desactivó su feature requerida `network`; se conserva ese fallo
+  y se completa solo lo pendiente con el auxiliar correcto en otra entrada a la
+  cola (`remaining-gates.log`). Sin cambios adicionales al código probado
+  `c406047d82ffbab1faed7e240df1cf13f3ae9810`.
+- Nextest ci final: **971 PASS, 1 ABORT, 14 omitidos preexistentes**, 310,474 s.
+  Las siete pruebas modificadas y los corpus de telemetría pasan. El test REST
+  ajeno `a_stalled_server_hits_the_request_deadline` se detuvo tras 228,499 s:
+  servidor solo en LISTEN, sin conexión, accept/join sin plazo. Hallazgo separado
+  [#1881](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1881),
+  sin cambiar ni omitir ese test. Detenerlo liberó la cola.
+- Lifecycle runtime **25/25 PASS**, con overlays normal/QA reales preparados
+  dentro de su turno y target propio (`lifecycle-gate.log`). Cola liberada,
+  sin builds ni watchers propios pendientes. No hay prueba manual en un runner
+  recién reiniciado ni clic físico de bandeja; los relojes de tests son explícitos.
+- PR draft [#1880](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1880)
+  contra nightly, publicado y enlazado a este hilo T3. El HEAD final documental
+  y la CI vigente se registran en el PR y en #1878; el código sigue siendo c406047d8.
+- Plane permanece **Por testear**, verificado por lectura; Isaac pidió no cambiar
+  su estado. Sin merge ni release; siguiente paso: revisar el PR draft a nightly.
+
 <!-- isa1860-arranque-cierre -->
 ## VANTA-128 / #1860 — pasos 0–2 integrados; paso 3 listo para revisión
 

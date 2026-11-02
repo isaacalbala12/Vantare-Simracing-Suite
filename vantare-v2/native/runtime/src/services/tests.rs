@@ -742,18 +742,18 @@ fn hub_automatic_requests_obey_live_window_and_explicit_purchase_origin() {
     snapshot.state.session.id = vantare_domain::SessionId(91);
     core.publish(Arc::new(snapshot));
     let mut hub = Session::open(&photo);
+    // Advance the server's test clock; a prior attempt never predates boot.
+    let base = Instant::now();
+    let now = base + Duration::from_mins(15);
     {
         let mut state = services.state.lock().expect("state");
+        state.renewal_now = Some(now);
         state.renewal.observe(&confirmed_session());
-        state.core_retry_at = Some(Instant::now() + Duration::from_hours(1));
+        state.core_retry_at = Some(base + Duration::from_hours(1));
         state
             .renewal
-            .completed(protocol::RenewalOutcome::Transient, Instant::now());
-        state.renewal.attempted(
-            Instant::now()
-                .checked_sub(Duration::from_mins(15))
-                .expect("injected prior attempt"),
-        );
+            .completed(protocol::RenewalOutcome::Transient, base);
+        state.renewal.attempted(base);
     }
     assert!(matches!(
         hub.request(Command::LicenseRenewAutomatic),
@@ -776,6 +776,8 @@ fn hub_automatic_requests_obey_live_window_and_explicit_purchase_origin() {
             },
         );
     }
+    // Keep the purchase fixture on the same injected monotonic timeline.
+    services.state.lock().expect("state").purchase_until = Some(now + PURCHASE_CONFIRMATION_WINDOW);
     assert!(
         matches!(
             hub.request(Command::LicenseRenewAutomatic),
@@ -790,7 +792,7 @@ fn hub_automatic_requests_obey_live_window_and_explicit_purchase_origin() {
         services.state.lock().expect("state").client.is_none(),
         "live helper is closed after the request"
     );
-    services.state.lock().expect("state").purchase_until = Some(Instant::now());
+    services.state.lock().expect("state").purchase_until = Some(now);
     assert!(matches!(
         hub.request(Command::LicenseRenewAutomatic),
         Reply::LicenseStatus { .. }

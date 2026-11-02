@@ -158,7 +158,10 @@ impl Widget {
     }
 
     pub(crate) fn frame(&mut self, prefs: Preferences, reduced: bool) -> (Paint, Wake) {
-        let now = Instant::now();
+        self.frame_at(prefs, reduced, Instant::now())
+    }
+
+    fn frame_at(&mut self, prefs: Preferences, reduced: bool, now: Instant) -> (Paint, Wake) {
         let moving = !reduced && self.moving_at(now);
         let bars = if reduced {
             self.vm.pedals
@@ -530,8 +533,7 @@ mod tests {
             assert_eq!(widget.bars_at(at)[2], Some(expected));
             assert_eq!(widget.moving_at(at), moving);
         }
-        widget.started = Some(now.checked_sub(TRANSITION).expect("reloj del test"));
-        assert_eq!(widget.frame(prefs, false).1, Wake::Idle);
+        assert_eq!(widget.frame_at(prefs, false, now + TRANSITION).1, Wake::Idle);
         player.telemetry.throttle = Quality::Unavailable;
         snapshot.state.player = Some(player);
         assert!(widget.ingest(&snapshot, prefs));

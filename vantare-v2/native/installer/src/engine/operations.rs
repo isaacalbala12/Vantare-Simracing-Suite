@@ -1,6 +1,6 @@
-//! Generation mutations. Windows projection is one explicit finalizer until p5.
+//! Generation mutations. One bound installation snapshot per operation.
 use super::{
-    Generation, Installation, ReadProfile, State, WriteError, installation, package, validation,
+    Generation, Installation, State, WriteError, installation, package, validation,
     write_fs::{self as disk, Result, ensure},
 };
 use crate::model::{Mode, Progress};
@@ -19,6 +19,16 @@ pub struct Package<'a> {
     pub candidate: &'a [u8],
     pub beta: &'a [u8],
 }
+impl Package<'_> {
+    fn expand(&self, destination: &Path, channel: &str) -> Result<super::Manifest> {
+        let manifest = package::expand(self.archive, self.sha256, destination, channel)?;
+        ensure(
+            manifest.version == self.version,
+            "Versión del paquete incompatible",
+        )?;
+        Ok(manifest)
+    }
+}
 pub struct Control<'a> {
     pub cancel: &'a AtomicBool,
     pub progress: &'a mut dyn FnMut(Progress),
@@ -28,25 +38,13 @@ pub struct Control<'a> {
 }
 impl Control<'_> {
     fn copy(&mut self) -> Result<()> {
-        (self.progress)(Progress {
-            step: "copy".into(),
-            percent: 54,
-            done: 0,
-            total: 0,
-            can_cancel: true,
-        });
+        (self.progress)(Progress::step("copy", 54, true));
         if self.cancel.load(Ordering::Acquire) {
             return Err(WriteError::new(5, "Instalación cancelada antes de copiar"));
         }
         // Same boundary as the legacy driver's copy acknowledgement: the UI
         // must stop offering cancellation before any generation mutation.
-        (self.progress)(Progress {
-            step: "copy".into(),
-            percent: 54,
-            done: 0,
-            total: 0,
-            can_cancel: false,
-        });
+        (self.progress)(Progress::step("copy", 54, false));
         Ok(())
     }
 }
@@ -62,25 +60,14 @@ struct Before {
     generations: BTreeSet<String>,
 }
 impl Before {
-    fn capture(root: &Path) -> Result<Self> {
+    fn capture(root: &Path, view: &Installation) -> Result<Self> {
         let mut files = BTreeMap::new();
         for &name in METADATA {
             let path = root.join(name);
-            files.insert(
-                name,
-                if path.try_exists()? {
-                    Some(disk::read_json(&path, None)?)
-                } else {
-                    None
-                },
-            );
+            files.insert(name, disk::read_optional(&path, None)?);
         }
         Ok(Self {
-            state: if root.join("state.json").try_exists()? {
-                Some(Installation::state_document(root)?)
-            } else {
-                None
-            },
+            state: view.original_state.clone(),
             files,
             generations: generations(root)?
                 .into_iter()
@@ -88,8 +75,9 @@ impl Before {
                 .collect(),
         })
     }
-    fn restore(&self, root: &Path, control: &mut Control<'_>) {
-        // State first; a denied file never prevents attempts on remaining metadata.
+    fn restore(&self, root: &Path, control: &mut Control<'_>) -> bool {
+        // Without a restored state, neither old metadata nor its Windows
+        // projection is authoritative. Preserve the committed generation.
         let restored = match &self.state {
             Some(state) => serde_json::to_vec_pretty(state)
                 .map_err(WriteError::from)
@@ -98,6 +86,7 @@ impl Before {
         };
         if let Err(cause) = restored {
             (control.warning)(&format!("No se pudo restaurar el estado: {cause}"));
+            return false;
         }
         for &name in METADATA {
             let path = root.join(name);
@@ -115,12 +104,12 @@ impl Before {
             }
         }
         let cleanup = || -> Result<()> {
-            let view = Installation::read(root, ReadProfile::Probe)?;
             let mut referenced = BTreeSet::new();
-            if let Some(state) = view.state {
-                referenced.insert(state.active.generation);
-                if let Some(previous) = state.previous {
-                    referenced.insert(previous.generation);
+            if let Some(state) = &self.state {
+                for reference in [&state["active"], &state["previous"]] {
+                    if let Some(id) = reference["generation"].as_str() {
+                        referenced.insert(id.to_owned());
+                    }
                 }
             }
             for (name, directory) in generations(root)? {
@@ -138,6 +127,7 @@ impl Before {
                 "Rollback: se conservan las generaciones al no poder comprobarlas: {error}"
             ));
         }
+        true
     }
 }
 fn generations(root: &Path) -> Result<Vec<(String, PathBuf)>> {
@@ -161,49 +151,23 @@ fn generations(root: &Path) -> Result<Vec<(String, PathBuf)>> {
     }
     Ok(result)
 }
-fn state(root: &Path, repair: bool) -> Result<State> {
-    Installation::read(
-        root,
-        if repair {
-            ReadProfile::Probe
-        } else {
-            ReadProfile::Verified
-        },
-    )?
-    .state
-    .ok_or_else(|| WriteError::new(1, "No hay instalación activa"))
-}
-fn reference(id: String, directory: &Path) -> Result<Generation> {
-    Ok(Generation {
-        generation: id,
-        manifest_sha256: Some(installation::hash_file(&directory.join("manifest.json"))?),
-    })
-}
-fn retained_source(root: &Path, incoming: &str) -> Result<Option<PathBuf>> {
-    let retained = root.join("retained-data.json");
-    if retained.try_exists()? {
-        let saved = disk::read_json(&retained, None)?;
-        ensure(
-            saved["schema"] == 1,
-            "Referencia de datos conservados inválida",
-        )?;
-        let id = saved["generation"]
-            .as_str()
-            .ok_or_else(|| WriteError::new(1, "Referencia de datos conservados inválida"))?;
-        let version = saved["version"]
-            .as_str()
-            .ok_or_else(|| WriteError::new(1, "Versión conservada inválida"))?;
-        if validation::setup_version(incoming).map_err(|e| WriteError::new(1, e))?
-            < validation::setup_version(version).map_err(|e| WriteError::new(1, e))?
-        {
+fn retained_source(
+    root: &Path,
+    incoming: [u16; 3],
+    view: &Installation,
+) -> Result<Option<PathBuf>> {
+    if let Some(saved) = &view.retained {
+        if incoming < saved.version_parts {
             return Err(WriteError::new(
                 3,
                 "Tus datos pertenecen a una versión más reciente",
             ));
         }
-        let data = disk::generation(root, id)?.join("data");
-        ensure(data.is_dir(), "No se encuentran tus datos conservados")?;
-        return Ok(Some(data));
+        ensure(
+            view.data_path.is_dir(),
+            "No se encuentran tus datos conservados",
+        )?;
+        return Ok(Some(view.data_path.clone()));
     }
     let mut source = None;
     let mut index = None;
@@ -224,64 +188,64 @@ fn retained_source(root: &Path, incoming: &str) -> Result<Option<PathBuf>> {
     Ok(source)
 }
 
-/// Explicit Setup owns the session lock through generation and shell completion.
-/// Errors restore the logical state and re-project Windows, never saved link bytes.
+fn previous_generation(
+    view: &mut Installation,
+    root: &Path,
+    repair: bool,
+) -> Result<Option<Generation>> {
+    match view.verify(root) {
+        Ok(()) => Ok(view.state.as_ref().map(|state| state.active.clone())),
+        Err(error) if !repair => Err(error.into()),
+        Err(_) => Ok(view.usable_previous().cloned()),
+    }
+}
+
+/// Explicit Setup owns both locks through generation and shell completion.
+/// The finalizer receives the cached projection, including after rollback.
 pub fn install(
     root: &Path,
     package: &Package<'_>,
     mode: Mode,
     control: &mut Control<'_>,
-    mut finalize: impl FnMut(&mut Control<'_>, bool) -> Result<()>,
+    mut finalize: impl FnMut(&mut Control<'_>, bool, Option<(&State, &str)>) -> Result<()>,
     mut prepare: impl FnMut() -> Result<()>,
 ) -> Result<()> {
     let root = disk::open_root(root, true)?;
     let _session = disk::lock(&root, "beta-session.lock")
         .map_err(|_| WriteError::new(2, "Cierra Vantare para continuar"))?;
+    let _operation = disk::lock(&root, ".operation.lock")?;
     prepare()?;
-    let before = Before::capture(&root)?;
-    let mut projected = false;
+    let mut view = Installation::read(&root)?;
+    let before = Before::capture(&root, &view)?;
+    let stage = root.join("staging").join(format!("setup-{}", disk::id()?));
     let mut changed = false;
+    let mut projected = false;
     let result = (|| {
-        let probe = root.join("staging").join(format!("setup-{}", disk::id()?));
-        let incoming = package::expand(package.archive, package.sha256, &probe, "beta");
-        let cleanup = disk::remove_owned_tree(&root, &probe);
-        let incoming = incoming?;
-        cleanup?;
-        let next_version =
-            validation::setup_version(&incoming.version).map_err(|e| WriteError::new(1, e))?;
-        if root.join("state.json").try_exists()? {
-            let view = Installation::read(&root, ReadProfile::Probe)?;
-            let current = view
-                .manifest
-                .as_ref()
-                .ok_or_else(|| WriteError::new(1, "Falta manifiesto activo"))?;
+        let incoming = package.expand(&stage, "beta")?;
+        let source;
+        let previous;
+        let updating = view.state.is_some();
+        if let Some(current) = &view.manifest {
             ensure(
                 current.channel == "beta",
                 "Canal de instalación incompatible",
             )?;
-            let current_version =
-                validation::setup_version(&current.version).map_err(|e| WriteError::new(1, e))?;
-            if mode == Mode::Repair && current.version != package.version {
+            if (mode == Mode::Repair && incoming.version != current.version)
+                || incoming.version_parts < current.version_parts
+            {
                 return Err(WriteError::new(
                     3,
-                    "Reparar exige el Setup de la misma versión",
+                    "Setup incompatible con la versión instalada",
                 ));
             }
-            if next_version < current_version {
-                return Err(WriteError::new(
-                    3,
-                    "Ya tienes una versión más reciente de Vantare",
-                ));
-            }
-            control.copy()?;
-            changed = true;
-            activate(
-                &root,
-                package,
-                &incoming.version,
-                next_version == current_version,
-                control,
-            )?;
+            let repair = incoming.version_parts == current.version_parts;
+            previous = previous_generation(&mut view, &root, repair)?;
+            source = Some(view.data_path.clone());
+            ensure(
+                !root.join("boot-pending.json").try_exists()?,
+                "Hay un arranque pendiente de comprobar",
+            )
+            .map_err(|e| WriteError::new(4, e.to_string()))?;
         } else {
             if mode == Mode::Repair {
                 return Err(WriteError::new(
@@ -289,101 +253,98 @@ pub fn install(
                     "Reparar exige una instalación de la misma versión",
                 ));
             }
-            let source = retained_source(&root, &incoming.version)?;
-            let _handles = disk::binary_guard(&root)?;
-            control.copy()?;
-            changed = true;
-            install_candidate(&root, package, source.as_deref(), control)?;
+            source = retained_source(&root, incoming.version_parts, &view)?;
+            previous = None;
+        }
+        let _handles = disk::binary_guard(&root)?;
+        control.copy()?;
+        changed = true;
+        if updating {
+            disk::write_json(
+                &root.join("boot-pending.json"),
+                &json!({"schema":1,
+                "previous":previous.as_ref().map_or("",|reference|reference.generation.as_str()),"version":incoming.version}),
+            )?;
+        }
+        let next = apply_generation(
+            &root,
+            &stage,
+            &incoming,
+            source.as_deref(),
+            previous,
+            control,
+        )?;
+        if updating {
+            let temporary = root.join(format!("beta-{}.tmp", disk::id()?));
+            disk::write_json(
+                &temporary,
+                &json!({"schema":1,"state":"applied","message":"Instalación aplicada; comprobando el arranque","version":incoming.version,"notes":""}),
+            )?;
+            disk::replace_temporary(&temporary, &root.join("update-status.json"))?;
         }
         fs::write(root.join("candidate.ps1"), package.candidate)?;
         fs::write(root.join("beta.ps1"), package.beta)?;
         disk::remove_file(&root.join("retained-data.json"))?;
         projected = true;
-        finalize(control, false)
+        finalize(control, false, Some((&next, &incoming.version)))
     })();
-    if result.is_err() && changed {
-        before.restore(&root, control);
-        if projected && let Err(cause) = finalize(control, true) {
-            (control.warning)(&format!(
-                "No se pudo resincronizar Windows tras restaurar el estado: {cause}"
-            ));
+    if result.is_err()
+        && changed
+        && before.restore(&root, control)
+        && projected
+        && let Err(cause) = finalize(
+            control,
+            true,
+            view.state.as_ref().zip(view.installed_version()),
+        )
+    {
+        (control.warning)(&format!(
+            "No se pudo resincronizar Windows tras restaurar el estado: {cause}"
+        ));
+    }
+    // A failed authentication or cancellation cannot leave a partial staging tree.
+    if let Err(cause) = disk::remove_owned_tree(&root, &stage) {
+        if result.is_ok() {
+            return Err(cause);
         }
+        (control.warning)(&format!("No se pudo retirar el temporal: {cause}"));
     }
     result
 }
 
-fn install_candidate(
+fn apply_generation(
     root: &Path,
-    package: &Package<'_>,
+    stage: &Path,
+    incoming: &super::Manifest,
     source: Option<&Path>,
+    previous: Option<Generation>,
     control: &mut Control<'_>,
-) -> Result<()> {
-    let _lock = disk::lock(root, ".operation.lock")?;
-    ensure(
-        !root.join("state.json").try_exists()?,
-        "Ya instalado; utilice actualización",
-    )?;
+) -> Result<State> {
     let id = disk::id()?;
     let generation = disk::generation(root, &id)?;
-    package::expand(package.archive, package.sha256, &generation, "beta")?;
+    fs::create_dir_all(root.join("generations"))?;
+    fs::rename(stage, &generation)?;
     if let Some(source) = source {
         disk::copy_data(source, &generation.join("data"))?;
     } else {
         fs::create_dir(generation.join("data"))?;
     }
     (control.checkpoint)("staged")?;
-    fs::copy(generation.join("candidate.ps1"), root.join("candidate.ps1"))?;
     let next = State {
         schema: 1,
         product: "vantare-native".into(),
-        channel: "beta".into(),
-        active: reference(id, &generation)?,
-        previous: None,
+        channel: incoming.channel.clone(),
+        active: Generation {
+            generation: id,
+            manifest_sha256: Some(incoming.sha256().to_owned()),
+        },
+        previous,
     };
-    disk::commit(root, &next, control.checkpoint)?;
-    Installation::read(root, ReadProfile::Verified)?;
-    Ok(())
+    disk::commit_raw(root, &serde_json::to_vec_pretty(&next)?, control.checkpoint)?;
+    Ok(next)
 }
 
-fn activate(
-    root: &Path,
-    package: &Package<'_>,
-    version: &str,
-    repair: bool,
-    control: &mut Control<'_>,
-) -> Result<()> {
-    let before = state(root, repair)?;
-    let marker = root.join("boot-pending.json");
-    if marker.try_exists()? {
-        return Err(WriteError::new(4, "Hay un arranque pendiente de comprobar"));
-    }
-    let previous = if repair && Installation::read(root, ReadProfile::Verified).is_err() {
-        before
-            .previous
-            .as_ref()
-            .map_or("", |previous| previous.generation.as_str())
-    } else {
-        &before.active.generation
-    };
-    disk::write_json(
-        &marker,
-        &json!({"schema":1,"previous":previous,"version":version}),
-    )?;
-    if let Err(error) = update(root, package, repair, control) {
-        if state(root, repair).is_ok_and(|now| now.active.generation == before.active.generation) {
-            disk::remove_file(&marker)?;
-        }
-        return Err(error);
-    }
-    let temporary = root.join(format!("beta-{}.tmp", disk::id()?));
-    disk::write_json(
-        &temporary,
-        &json!({"schema":1,"state":"applied","message":"Instalación aplicada; comprobando el arranque","version":version,"notes":""}),
-    )?;
-    disk::replace_temporary(&temporary, &root.join("update-status.json"))
-}
-
-/// Shared generation update. The PS feed remains a legacy consumer until p6.
+/// Feed stays a PowerShell consumer until p6; this is the same native writer.
 pub fn update(
     root: &Path,
     package: &Package<'_>,
@@ -392,43 +353,30 @@ pub fn update(
 ) -> Result<()> {
     let root = disk::open_root(root, false)?;
     let _lock = disk::lock(&root, ".operation.lock")?;
-    let before = state(&root, repair)?;
-    let previous = if repair && Installation::read(&root, ReadProfile::Verified).is_err() {
-        before.previous.clone()
-    } else {
-        Some(before.active.clone())
-    };
+    let mut view = Installation::read(&root)?;
+    ensure(view.state.is_some(), "No hay instalación activa")?;
+    let previous = previous_generation(&mut view, &root, repair)?;
     let _handles = disk::binary_guard(&root)?;
-    let id = disk::id()?;
-    let generation = disk::generation(&root, &id)?;
-    let incoming = package::expand(
-        package.archive,
-        package.sha256,
-        &generation,
-        &before.channel,
-    )?;
-    if repair {
-        let current = Installation::read(&root, ReadProfile::Probe)?
-            .manifest
-            .ok_or_else(|| WriteError::new(1, "Falta manifiesto activo"))?;
+    let stage = root.join("staging").join(format!("update-{}", disk::id()?));
+    let result = (|| {
+        let incoming =
+            package.expand(&stage, &view.state.as_ref().expect("checked state").channel)?;
         ensure(
-            incoming.version == current.version,
+            !repair || Some(incoming.version.as_str()) == view.installed_version(),
             "La reparación exige la misma versión",
         )?;
-    }
-    let source = disk::generation(&root, &before.active.generation)?.join("data");
-    disk::copy_data(&source, &generation.join("data"))?;
-    (control.checkpoint)("staged")?;
-    let next = State {
-        schema: 1,
-        product: "vantare-native".into(),
-        channel: before.channel,
-        active: reference(id, &generation)?,
-        previous,
-    };
-    disk::commit(&root, &next, control.checkpoint)?;
-    Installation::read(&root, ReadProfile::Verified)?;
-    Ok(())
+        apply_generation(
+            &root,
+            &stage,
+            &incoming,
+            Some(&view.data_path),
+            previous,
+            control,
+        )?;
+        Ok(())
+    })();
+    let cleanup = disk::remove_owned_tree(&root, &stage);
+    result.and(cleanup)
 }
 
 pub fn uninstall(
@@ -443,30 +391,58 @@ pub fn uninstall(
     if !state_path.try_exists()? {
         return finalize(control);
     }
-    let state = Installation::read(&root, ReadProfile::Retire)?
-        .state
-        .ok_or_else(|| WriteError::new(1, "No hay instalación activa"))?;
+    let state =
+        State::read(&root)?.ok_or_else(|| WriteError::new(1, "No hay instalación activa"))?;
     drop(disk::binary_guard(&root)?);
-    super::validate_catalogue()?;
-    let retained = root.join("retained-data.json");
-    if !retained.try_exists()? {
-        let active = &state.active.generation;
-        let version = installation::retention_version(&root, &state)?;
-        disk::write_json(
-            &retained,
-            &json!({"schema":1,"generation":active,"version":version}),
-        )?;
-    }
-    let members = super::known_members("beta");
+    // Authenticate all referenced inventories before deleting any member. A
+    // generation without a state binding has no authority over foreign files.
+    let mut owned = Vec::new();
     for (id, directory) in generations(&root)? {
         ensure(
             validation::hex(&id, 32),
             "Generación ajena; no se desinstala",
         )?;
-        installation::tree(&directory)?;
+        let reference = std::iter::once(&state.active)
+            .chain(state.previous.iter())
+            .find(|reference| reference.generation == id);
+        let Some(reference) = reference else {
+            (control.warning)(&format!(
+                "Binarios conservados: {}; motivo: generación sin referencia SHA en active/previous (pendiente del paso 8)",
+                directory.display()
+            ));
+            continue;
+        };
+        let path = directory.join("manifest.json");
+        if !path.try_exists()? {
+            continue;
+        } // Retirement may already have removed it.
+        let manifest = super::Manifest::authenticated(&directory, reference, &state.channel)?;
+        owned.push((id, directory, manifest));
+    }
+    let retained = root.join("retained-data.json");
+    if !retained.try_exists()? {
+        let version = owned
+            .iter()
+            .find(|(id, _, _)| id == &state.active.generation)
+            .map(|(_, _, manifest)| &manifest.version)
+            .ok_or_else(|| {
+                WriteError::new(
+                    1,
+                    "No se puede autenticar la versión de los datos conservados",
+                )
+            })?;
+        disk::write_json(
+            &retained,
+            &json!({"schema":1,"generation":state.active.generation,"version":version}),
+        )?;
+    }
+    for (_, directory, manifest) in owned {
+        installation::walk(&directory, false)?;
+        // Manifest last: an interrupted retirement can resume from the binding.
+        let members: Vec<_> = manifest.files.into_iter().map(|file| file.path).collect();
         for member in members
             .iter()
-            .copied()
+            .map(String::as_str)
             .chain(std::iter::once("manifest.json"))
         {
             disk::remove_file(&directory.join(member))?;
@@ -474,15 +450,15 @@ pub fn uninstall(
         }
         let mut parents = BTreeSet::new();
         for member in &members {
-            let mut parent = Path::new(member).parent();
-            while let Some(path) = parent.filter(|p| !p.as_os_str().is_empty()) {
-                parents.insert(path.to_path_buf());
-                parent = path.parent();
-            }
+            parents.extend(
+                Path::new(member)
+                    .ancestors()
+                    .skip(1)
+                    .filter(|path| !path.as_os_str().is_empty())
+                    .map(Path::to_path_buf),
+            );
         }
-        let mut parents: Vec<_> = parents.into_iter().collect();
-        parents.sort_by_key(|path| std::cmp::Reverse(path.as_os_str().len()));
-        for parent in parents {
+        for parent in parents.iter().rev() {
             let path = directory.join(parent);
             if path.is_dir()
                 && fs::read_dir(&path)?.next().is_none()

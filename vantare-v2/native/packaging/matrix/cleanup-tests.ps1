@@ -1,4 +1,4 @@
-#requires -Version 5.1
+﻿#requires -Version 5.1
 param([Parameter(Mandatory)][string]$Root)
 $ErrorActionPreference='Stop'
 Set-StrictMode -Version Latest
@@ -11,7 +11,7 @@ function Assert-Cleanup([bool]$Condition,[string]$Message){if(-not $Condition){t
 function New-CleanupCase([string]$Name){
     $case=Assert-MatrixRoot (Join-Path $qaCleanupRoot $Name)
     $install=Join-Path $case 'install'
-    $temporary=Join-Path $case ('VantareSetup-'+$PID+'-1-1')
+    $temporary=Join-Path $case ('VantareSetup-'+[guid]::NewGuid().ToString('N'))
     foreach($path in @($install,$temporary)){[IO.Directory]::CreateDirectory($path)|Out-Null}
     Copy-Item -LiteralPath (Join-Path (Split-Path $PSScriptRoot -Parent) 'installer-cleanup.ps1') -Destination $temporary
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'guard.ps1') -Destination (Join-Path $temporary 'qa-guard.ps1')

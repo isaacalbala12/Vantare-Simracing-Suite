@@ -6,11 +6,10 @@ rust-version.workspace = true
 publish.workspace = true
 
 [features]
-default = ["ui", "transport"]
-transport = ["write-engine"]
-write-engine = ["dep:zip", "dep:windows"]
-ui = ["transport", "dep:gpui", "dep:gpui_platform"]
-setup-payload = ["transport"]
+default = ["ui", "write-engine"]
+write-engine = ["dep:zip", "dep:windows", "dep:windows-registry"]
+ui = ["write-engine", "dep:gpui", "dep:gpui_platform"]
+setup-payload = ["write-engine"]
 test-installer = []
 # QA: HWND oculto fuera de los monitores y PrintWindow del banco de #1675.
 parity-capture = ["ui", "dep:vantare-ui", "vantare-ui/parity-capture"]
@@ -24,6 +23,8 @@ sha2 = "0.10"
 zip = { version = "=6.0.0", default-features = false, features = ["deflate-flate2-zlib-rs"], optional = true }
 
 [target.'cfg(windows)'.dependencies]
+# Approved in p5b: existing locked package replaces hand-written registry handles.
+windows-registry = { version = "=0.6.1", optional = true }
 windows = { version = "0.62", optional = true, features = ["Win32_Foundation", "Win32_Globalization", "Win32_Storage_FileSystem", "Win32_System_Com", "Win32_System_Com_StructuredStorage", "Win32_System_Variant", "Win32_System_Registry", "Win32_System_Threading", "Win32_UI_Shell", "Win32_UI_Shell_PropertiesSystem", "Win32_Security", "Win32_Security_Authorization"] }
 gpui = { git = "https://github.com/zed-industries/zed", rev = "72d28c32c2ba77a579e1c02f984654518552124b", optional = true }
 gpui_platform = { git = "https://github.com/zed-industries/zed", rev = "72d28c32c2ba77a579e1c02f984654518552124b", features = ["font-kit"], optional = true }
@@ -43,21 +44,21 @@ workspace = true
 [[bin]]
 name = "vantare-setup"
 path = "src/bin/vantare-setup.rs"
-required-features = ["transport"]
+required-features = ["write-engine"]
 
 [[bin]]
 name = "vantare-uninstall"
 path = "src/bin/vantare-uninstall.rs"
-required-features = ["transport"]
+required-features = ["write-engine"]
 
 [[test]]
 name = "contract"
-required-features = ["transport"]
+required-features = ["write-engine"]
 
 [[example]]
 name = "installer-write-matrix"
-required-features = ["transport", "test-installer"]
+required-features = ["write-engine", "test-installer"]
 
 [[test]]
 name = "installation_write"
-required-features = ["transport"]
+required-features = ["write-engine"]

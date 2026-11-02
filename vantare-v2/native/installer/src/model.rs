@@ -46,7 +46,19 @@ pub struct Progress {
     pub can_cancel: bool,
 }
 
-pub use crate::engine::validation::setup_version as version;
+impl Progress {
+    pub fn step(step: &str, percent: u8, can_cancel: bool) -> Self {
+        Self {
+            step: step.into(),
+            percent,
+            done: 0,
+            total: 0,
+            can_cancel,
+        }
+    }
+}
+
+pub use crate::engine::validation::version;
 
 impl Info {
     pub fn allows(&self, mode: Mode) -> bool {

@@ -60,6 +60,7 @@ def category(path, projection=False):
                 PREFIX + "native/packaging/matrix/evidence-1840-p3.md",
                 PREFIX + "native/packaging/matrix/evidence-1840-p4.md",
                 PREFIX + "native/packaging/matrix/evidence-1840-p5.md",
+                PREFIX + "native/packaging/matrix/evidence-1840-p5b.md",
                 PREFIX + "docs/adr/0103-instalacion-nativa.md",
                 PREFIX + "docs/vantare-program/handoffs/platform-commercial.md",
                 PREFIX + "docs/vantare-program/installer-design.md",

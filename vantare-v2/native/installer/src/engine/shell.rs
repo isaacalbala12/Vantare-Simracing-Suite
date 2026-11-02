@@ -1,9 +1,9 @@
 //! Idempotent Windows projection. No registry/link byte snapshots.
 use super::{
-    Installation, ReadProfile, State,
+    State,
     context::{self, Context},
     installation,
-    shell_windows::{self as os, Link},
+    windows::{self as os, Link},
     write_fs::{self as disk, Result, ensure},
 };
 use serde_json::json;
@@ -12,27 +12,19 @@ use std::{
     path::{Path, PathBuf},
 };
 
-const RUN: &str = "Software\\Microsoft\\Windows\\CurrentVersion\\Run";
-pub struct Options<'a> {
-    pub request: &'a super::Request,
-    pub previous: Option<&'a context::Options>,
-    pub payload: &'a Path,
-    pub restoring: bool,
-}
-fn report(progress: &mut dyn FnMut(crate::model::Progress), step: &str, percent: u8) {
-    progress(crate::model::Progress {
-        step: step.into(),
-        percent,
-        done: 0,
-        total: 0,
-        can_cancel: false,
-    });
-}
+pub(crate) const RUN: &str = "Software\\Microsoft\\Windows\\CurrentVersion\\Run";
+const CURRENT: &str = "Vantare";
+const LEGACY: &str = "Vantare Native Beta";
+const MANDATORY: [&str; 3] = [
+    "Vantare Simracing Suite.lnk",
+    "Vantare.lnk",
+    "Desinstalar.lnk",
+];
+const LEGACY_LINK: &str = "Vantare Native Beta.lnk";
+pub use super::host::ShellOptions as Options;
+use super::powershell as powershell_path;
 fn powershell() -> Result<PathBuf> {
-    Ok(PathBuf::from(
-        std::env::var_os("WINDIR").ok_or_else(|| super::WriteError::new(1, "WINDIR ausente"))?,
-    )
-    .join("System32/WindowsPowerShell/v1.0/powershell.exe"))
+    powershell_path().map_err(|error| super::WriteError::new(1, error))
 }
 fn same(left: &Path, right: &Path) -> bool {
     context::same_path(left, right).unwrap_or(false)
@@ -134,9 +126,12 @@ fn folder(context: &Context, name: &str) -> Result<PathBuf> {
     super::reject_links(&path).map_err(|e| super::WriteError::new(1, e))?;
     Ok(path)
 }
-fn remove_owned(path: &Path, root: &Path) -> Result<()> {
+fn owned_at(path: &Path, root: &Path) -> Result<bool> {
     super::reject_links(path).map_err(|e| super::WriteError::new(1, e))?;
-    if path.try_exists()? && owned(&os::read_link(path)?, root)? {
+    Ok(path.try_exists()? && path.is_file() && owned(&os::read_link(path)?, root)?)
+}
+fn remove_owned(path: &Path, root: &Path) -> Result<()> {
+    if owned_at(path, root)? {
         disk::remove_file(path)?;
     }
     Ok(())
@@ -155,13 +150,10 @@ fn save(
     branded: bool,
     warning: &mut dyn FnMut(&str),
 ) -> Result<()> {
-    super::reject_links(path).map_err(|e| super::WriteError::new(1, e))?;
-    if path.try_exists()? {
-        ensure(
-            owned(&os::read_link(path)?, root)?,
-            "El acceso pertenece a otra instalación; se conserva",
-        )?;
-    }
+    ensure(
+        owned_at(path, root)? || !path.try_exists()?,
+        "El acceso pertenece a otra instalación; se conserva",
+    )?;
     fs::create_dir_all(path.parent().expect("shortcut folder"))?;
     os::write_link(path, value, branded, warning)
 }
@@ -174,38 +166,26 @@ enum OptionalAction {
 fn optional(
     context: &Context,
     root: &Path,
-    folder_name: &str,
     kind: &str,
-    action: Option<OptionalAction>,
+    action: OptionalAction,
     state: Option<&State>,
     warning: &mut dyn FnMut(&str),
 ) {
-    let Some(action) = action else {
-        return;
-    };
     let remove = action == OptionalAction::Remove;
     let existing_only = action == OptionalAction::Existing;
     let mut run = || -> Result<()> {
         let parent = folder(context, kind)?;
-        let visible = if kind == "Startup" || folder_name != "Vantare" {
-            folder_name
+        let name = if kind == "Startup" {
+            "Vantare.lnk"
         } else {
-            "Vantare Simracing Suite"
+            MANDATORY[0]
         };
-        let path = parent.join(format!("{visible}.lnk"));
-        let mut old = vec![parent.join(format!("{folder_name}.lnk"))];
-        if folder_name == "Vantare" {
-            old.push(parent.join("Vantare Native Beta.lnk"));
-        }
-        let old: Vec<_> = old
+        let path = parent.join(name);
+        let old: Vec<_> = [parent.join("Vantare.lnk"), parent.join(LEGACY_LINK)]
             .into_iter()
-            .filter(|p| {
-                p != &path
-                    && p.is_file()
-                    && os::read_link(p).is_ok_and(|l| owned(&l, root).unwrap_or(false))
-            })
+            .filter(|old| old != &path && owned_at(old, root).unwrap_or(false))
             .collect();
-        let is_owned = path.is_file() && owned(&os::read_link(&path)?, root)?;
+        let is_owned = owned_at(&path, root)?;
         if remove {
             remove_owned(&path, root)?;
             for path in old {
@@ -232,13 +212,9 @@ fn optional(
         warning(&format!("No se pudo sincronizar {kind}: {cause}"));
     }
 }
-fn legacy_run(context: &Context, root: &Path, identity: &str) -> Result<Option<(String, String)>> {
-    let name = if identity == "VantareNativeBeta" {
-        "VantareNative.Hub".into()
-    } else {
-        format!("{identity}.Hub")
-    };
-    let value = super::platform::registry_string(&context.registry_prefix, RUN, &name, false)?;
+fn legacy_run(context: &Context, root: &Path) -> Result<Option<(String, String)>> {
+    let name = "VantareNative.Hub".to_owned();
+    let value = super::windows::registry_string(&context.registry_prefix, RUN, &name, false)?;
     Ok(value
         .filter(|command| {
             // The legacy PowerShell regex accepts ASCII flag case variants.
@@ -293,55 +269,28 @@ fn legacy_run(context: &Context, root: &Path, identity: &str) -> Result<Option<(
 pub fn sync(
     root: &Path,
     context: &Context,
-    state: Option<&State>,
+    projection: Option<(&State, &str)>,
     options: &Options<'_>,
     progress: &mut dyn FnMut(crate::model::Progress),
     warning: &mut dyn FnMut(&str),
 ) -> Result<()> {
+    let state = projection.map(|(state, _)| state);
+    let version = projection.map(|(_, version)| version);
     context.validate_root(root)?;
     disk::open_root(root, false)?;
     ensure(
         state.is_some() == root.join("state.json").try_exists()?,
         "La proyección no corresponde al estado resultante",
     )?;
-    let request = options.request;
-    let identity = context::identity(request)?;
-    let identity_file = root.join("registration-identity.txt");
-    if identity_file.try_exists()? {
-        ensure(
-            fs::metadata(&identity_file)?.len() <= 1024,
-            "Identidad de registro demasiado grande",
-        )?;
-        ensure(
-            fs::read_to_string(identity_file)?
-                .trim_start_matches('\u{feff}')
-                .trim()
-                == identity,
-            "La identidad de desinstalación no coincide",
-        )?;
-    }
     if !options.restoring {
-        report(progress, "shortcuts", if state.is_some() { 84 } else { 72 });
+        progress(crate::model::Progress::step(
+            "shortcuts",
+            if state.is_some() { 84 } else { 72 },
+            false,
+        ));
     }
-    let folder_name = if request.qa {
-        request
-            .qa_shortcut_folder
-            .as_deref()
-            .expect("validated folder")
-    } else {
-        "Vantare"
-    };
-    let legacy = if request.qa {
-        request
-            .qa_legacy_shortcut_folder
-            .as_deref()
-            .expect("validated folder")
-    } else {
-        "Vantare Native Beta"
-    };
-    let key = format!("Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\{identity}");
-    if context.has_registration(request)? {
-        let registered = context.registration(request, "InstallLocation")?;
+    if context.has_registration()? {
+        let registered = context.install_location()?;
         ensure(
             registered
                 .as_deref()
@@ -351,103 +300,51 @@ pub fn sync(
     }
     let _apartment = os::Apartment::new()?;
     let programs = folder(context, "Programs")?;
-    let current = programs.join(folder_name);
-    let old = programs.join(legacy);
-    let projection = Projection {
-        root,
-        context,
-        identity,
-        folder_name,
-        legacy,
-        key,
-        current,
-        old,
-    };
     let Some(state) = state else {
-        remove_projection(&projection, options, warning)?;
+        remove_projection(root, context, &programs, options, warning)?;
         if !options.restoring {
-            report(progress, "register", 88);
+            progress(crate::model::Progress::step("register", 88, false));
         }
         return Ok(());
     };
-    let view = Installation::read(root, ReadProfile::Probe)?;
-    ensure(
-        serde_json::to_value(view.state.as_ref())? == serde_json::to_value(Some(state))?,
-        "La proyección no corresponde al estado resultante",
-    )?;
-    let version = view
-        .installed_version()
-        .ok_or_else(|| super::WriteError::new(1, "Falta versión instalada"))?;
-    let run = legacy_run(context, root, identity)?;
-    let ui = prepare_projection(&projection, options, run.is_some())?;
+    let version = version.expect("state projection");
+    let run = legacy_run(context, root)?;
+    let ui = prepare_projection(root, &programs.join(CURRENT), options, run.is_some())?;
     if !options.restoring {
-        report(progress, "register", 93);
+        progress(crate::model::Progress::step("register", 93, false));
     }
-    project_links(&projection, state, warning)?;
-    project_registration(&projection, options, version)?;
-    project_preferences(&projection, state, options, &ui, run, warning)
+    project_links(root, &programs, state, warning)?;
+    write_registration_values(root, version, |name, value| {
+        os::set(
+            &context.registry_prefix,
+            context::UNINSTALL_KEY,
+            name,
+            value,
+        )
+    })?;
+    for name in ["NoModify", "NoRepair"] {
+        os::dword(&context.registry_prefix, context::UNINSTALL_KEY, name, 1)?;
+    }
+    project_preferences(root, context, state, options, &ui, run, warning)
 }
 
-struct Projection<'a> {
-    root: &'a Path,
-    context: &'a Context,
-    identity: &'a str,
-    folder_name: &'a str,
-    legacy: &'a str,
-    key: String,
-    current: PathBuf,
-    old: PathBuf,
-}
 fn remove_projection(
-    projection: &Projection<'_>,
+    root: &Path,
+    context: &Context,
+    programs: &Path,
     options: &Options<'_>,
     warning: &mut dyn FnMut(&str),
 ) -> Result<()> {
-    let root = projection.root;
-    let context = projection.context;
-    let identity = projection.identity;
-    let folder_name = projection.folder_name;
-    let key = &projection.key;
-    let current = &projection.current;
-    let old = &projection.old;
     let marker = root.join("installer-cleanup.json");
-    if marker.try_exists()? {
-        let value = disk::read_json(&marker, Some(1024))?;
-        ensure(
-            value["schema"] == 1
-                && value["sha256"]
-                    .as_str()
-                    .is_some_and(|s| super::validation::hex(s, 64)),
-            "Marker de limpieza inválido",
-        )?;
-        if root.join("Uninstall.exe").try_exists()? {
-            ensure(
-                value["sha256"] == installation::hash_file(&root.join("Uninstall.exe"))?,
-                "El desinstalador cambió; se conserva",
-            )?;
-        }
-    }
-    for directory in [&current, &old] {
-        for name in [
-            "Vantare Simracing Suite.lnk",
-            "Vantare Native Beta.lnk",
-            "Vantare.lnk",
-            "Desinstalar.lnk",
-        ] {
+    context::cleanup_marker(root, options.previous.map(|ui| ui.sha256.as_str()))?;
+    for directory in [programs.join(CURRENT), programs.join(LEGACY)] {
+        for name in MANDATORY.into_iter().chain(std::iter::once(LEGACY_LINK)) {
             remove_owned(&directory.join(name), root)?;
         }
-        remove_empty(directory)?;
+        remove_empty(&directory)?;
     }
     for kind in ["DesktopDirectory", "Startup"] {
-        optional(
-            context,
-            root,
-            folder_name,
-            kind,
-            Some(OptionalAction::Remove),
-            None,
-            warning,
-        );
+        optional(context, root, kind, OptionalAction::Remove, None, warning);
     }
     if !options.restoring
         && let Some(ui) = options.previous
@@ -455,8 +352,8 @@ fn remove_projection(
     {
         disk::write_json(&marker, &json!({"schema":1,"sha256":ui.sha256}))?;
     }
-    let run = legacy_run(context, root, identity)?;
-    os::delete_key(&context.registry_prefix, key)?;
+    let run = legacy_run(context, root)?;
+    os::delete_key(&context.registry_prefix, context::UNINSTALL_KEY)?;
     for name in [
         "beta.ps1",
         "candidate.ps1",
@@ -479,20 +376,19 @@ fn remove_projection(
     Ok(())
 }
 fn prepare_projection(
-    projection: &Projection<'_>,
+    root: &Path,
+    current: &Path,
     options: &Options<'_>,
     has_run: bool,
 ) -> Result<context::Options> {
     let request = options.request;
-    let root = projection.root;
-    let current = &projection.current;
     let previous = options.previous;
     let autostart = if options.restoring {
         previous.is_some_and(|ui| ui.autostart)
     } else if has_run {
         previous
             .map(|ui| ui.autostart)
-            .or(context::startup_preference(root)?)
+            .or(context::startup_preference(root))
             .unwrap_or(true)
     } else {
         request.autostart
@@ -503,18 +399,12 @@ fn prepare_projection(
         request.desktop
     };
     // Validate all mandatory links before the first mandatory write.
-    for name in [
-        "Vantare Simracing Suite.lnk",
-        "Vantare.lnk",
-        "Desinstalar.lnk",
-    ] {
+    for name in MANDATORY {
         let path = current.join(name);
-        if path.try_exists()? {
-            ensure(
-                owned(&os::read_link(&path)?, root)?,
-                "El acceso pertenece a otra instalación; se conserva",
-            )?;
-        }
+        ensure(
+            owned_at(&path, root)? || !path.try_exists()?,
+            "El acceso pertenece a otra instalación; se conserva",
+        )?;
     }
     let incoming = options.payload.join("Uninstall.exe");
     super::reject_links(&incoming).map_err(|cause| super::WriteError::new(1, cause))?;
@@ -547,24 +437,24 @@ fn prepare_projection(
     Ok(ui)
 }
 fn project_links(
-    projection: &Projection<'_>,
+    root: &Path,
+    programs: &Path,
     state: &State,
     warning: &mut dyn FnMut(&str),
 ) -> Result<()> {
-    let root = projection.root;
-    let current = &projection.current;
-    let old = &projection.old;
+    let current = programs.join(CURRENT);
+    let old = programs.join(LEGACY);
     save(
-        &current.join("Vantare Simracing Suite.lnk"),
+        &current.join(MANDATORY[0]),
         root,
         &launch(root, Some(state), false)?,
         true,
         warning,
     )?;
-    disk::remove_file(&current.join("Vantare.lnk"))?;
+    disk::remove_file(&current.join(MANDATORY[1]))?;
     let uninstaller = root.join("Uninstall.exe");
     save(
-        &current.join("Desinstalar.lnk"),
+        &current.join(MANDATORY[2]),
         root,
         &Link {
             target: uninstaller.clone(),
@@ -574,40 +464,10 @@ fn project_links(
         false,
         warning,
     )?;
-    for name in ["Vantare Native Beta.lnk", "Vantare.lnk", "Desinstalar.lnk"] {
+    for name in [LEGACY_LINK, MANDATORY[1], MANDATORY[2]] {
         remove_owned(&old.join(name), root)?;
     }
-    remove_empty(old)?;
-    Ok(())
-}
-fn project_registration(
-    projection: &Projection<'_>,
-    options: &Options<'_>,
-    version: &str,
-) -> Result<()> {
-    let request = options.request;
-    let root = projection.root;
-    let context = projection.context;
-    let identity = projection.identity;
-    let folder_name = projection.folder_name;
-    let legacy = projection.legacy;
-    let key = &projection.key;
-    write_registration_values(root, version, |name, value| {
-        os::set(&context.registry_prefix, key, name, value)
-    })?;
-    for name in ["NoModify", "NoRepair"] {
-        os::dword(&context.registry_prefix, key, name, 1)?;
-    }
-    if request.qa {
-        fs::write(root.join("registration-identity.txt"), identity)?;
-        os::set(&context.registry_prefix, key, "ShortcutFolder", folder_name)?;
-        os::set(
-            &context.registry_prefix,
-            key,
-            "LegacyShortcutFolder",
-            legacy,
-        )?;
-    }
+    remove_empty(&old)?;
     Ok(())
 }
 fn write_registration_values(
@@ -632,7 +492,8 @@ fn write_registration_values(
     Ok(())
 }
 fn project_preferences(
-    projection: &Projection<'_>,
+    root: &Path,
+    context: &Context,
     state: &State,
     options: &Options<'_>,
     ui: &context::Options,
@@ -642,9 +503,6 @@ fn project_preferences(
     let previous = options.previous;
     let desktop = ui.desktop;
     let autostart = ui.autostart;
-    let root = projection.root;
-    let context = projection.context;
-    let folder_name = projection.folder_name;
     let suppress = run.as_ref().is_some_and(|(name, _)| {
         if let Err(cause) = os::delete_value(&context.registry_prefix, RUN, name) {
             warning(&cause.to_string());
@@ -653,52 +511,27 @@ fn project_preferences(
             false
         }
     });
-    for (kind, enabled, old_enabled) in [
-        (
-            "DesktopDirectory",
-            desktop,
-            previous.is_some_and(|ui| ui.desktop),
-        ),
-        (
-            "Startup",
-            autostart,
-            previous.is_some_and(|ui| ui.autostart),
-        ),
+    let desktop_action = if desktop {
+        OptionalAction::Create
+    } else if previous.is_some_and(|ui| ui.desktop) {
+        OptionalAction::Remove
+    } else {
+        OptionalAction::Existing
+    };
+    let startup_action = if autostart && !suppress {
+        OptionalAction::Create
+    } else {
+        OptionalAction::Remove
+    };
+    for (kind, action) in [
+        ("DesktopDirectory", desktop_action),
+        ("Startup", startup_action),
     ] {
-        optional(
-            context,
-            root,
-            folder_name,
-            kind,
-            ((old_enabled && !enabled) || (kind == "Startup" && (!autostart || suppress)))
-                .then_some(OptionalAction::Remove),
-            Some(state),
-            warning,
-        );
-        optional(
-            context,
-            root,
-            folder_name,
-            kind,
-            (enabled && !(kind == "Startup" && suppress)).then_some(OptionalAction::Create),
-            Some(state),
-            warning,
-        );
-    }
-    if !desktop {
-        optional(
-            context,
-            root,
-            folder_name,
-            "DesktopDirectory",
-            Some(OptionalAction::Existing),
-            Some(state),
-            warning,
-        );
+        optional(context, root, kind, action, Some(state), warning);
     }
     if let Some((name, command)) = run.filter(|_| !suppress && autostart) {
-        let path = folder(context, "Startup")?.join(format!("{folder_name}.lnk"));
-        if !path.is_file() || !owned(&os::read_link(&path)?, root)? {
+        let path = folder(context, "Startup")?.join("Vantare.lnk");
+        if !owned_at(&path, root)? {
             os::set(&context.registry_prefix, RUN, &name, &command)?;
             return Err(super::WriteError::new(
                 1,
@@ -738,7 +571,7 @@ mod tests {
             .is_err()
         );
         assert_eq!(
-            super::super::platform::registry_string(
+            super::super::windows::registry_string(
                 &context.registry_prefix,
                 key,
                 "InstallLocation",
@@ -748,7 +581,7 @@ mod tests {
             Some(root.display().to_string())
         );
         assert_eq!(
-            super::super::platform::registry_string(
+            super::super::windows::registry_string(
                 &context.registry_prefix,
                 key,
                 "DisplayName",
@@ -762,7 +595,7 @@ mod tests {
         })
         .expect("retry partial projection");
         assert_eq!(
-            super::super::platform::registry_string(
+            super::super::windows::registry_string(
                 &context.registry_prefix,
                 key,
                 "DisplayVersion",
@@ -808,12 +641,9 @@ mod tests {
                 root: Some(root.clone()),
                 ..Default::default()
             },
-            "Uninstall",
+            crate::engine::Operation::Uninstall,
         );
-        let key = format!(
-            "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\{}",
-            context::identity(&request).expect("request identity")
-        );
+        let key = context::UNINSTALL_KEY.to_owned();
         os::set(&context.registry_prefix, &key, "Foreign", "preserve")
             .expect("foreign key without location");
         assert!(
@@ -833,8 +663,7 @@ mod tests {
             .is_err()
         );
         assert_eq!(
-            context
-                .registration(&request, "Foreign")
+            os::registry_string(&context.registry_prefix, &key, "Foreign", false)
                 .expect("foreign value"),
             Some("preserve".into())
         );
@@ -873,30 +702,20 @@ mod tests {
         fs::create_dir_all(&payload).expect("owned payload");
         fs::write(payload.join("Uninstall.exe"), b"not a PE").expect("invalid incoming");
         fs::write(root.join("Uninstall.exe"), b"preserved original").expect("original");
-        let context = Context::isolated(
-            root.join("LocalAppData"),
-            format!("Software\\VantareInstallerMatrix\\{id}"),
-            root.join("shell"),
-        )
-        .expect("context");
-        let projection = Projection {
-            root: &root,
-            context: &context,
-            identity: "VantareNativeBeta",
-            folder_name: "Vantare",
-            legacy: "Vantare Native Beta",
-            key: String::new(),
-            current: root.join("shell/Programs/Vantare"),
-            old: root.join("shell/Programs/Vantare Native Beta"),
-        };
-        let request = super::super::Request::new(&crate::args::Args::default(), "Install");
+        let request = super::super::Request::new(
+            &crate::args::Args::default(),
+            crate::engine::Operation::Install,
+        );
         let options = Options {
             request: &request,
             previous: None,
             payload: &payload,
             restoring: false,
         };
-        assert!(prepare_projection(&projection, &options, false).is_err());
+        assert!(
+            prepare_projection(&root, &root.join("shell/Programs/Vantare"), &options, false)
+                .is_err()
+        );
         assert_eq!(
             fs::read(root.join("Uninstall.exe")).expect("original remains"),
             b"preserved original"

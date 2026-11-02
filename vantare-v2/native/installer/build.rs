@@ -1,7 +1,7 @@
 use std::{env, fs, path::PathBuf};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    if env::var_os("CARGO_FEATURE_TRANSPORT").is_some()
+    if env::var_os("CARGO_FEATURE_WRITE_ENGINE").is_some()
         && matches!(env::var("CARGO_CFG_TARGET_OS").as_deref(), Ok("windows"))
     {
         // Static imports resolve before entry(), including /S. Both installer
@@ -22,26 +22,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Err("SID de origen QA inválido".into());
     }
     println!("cargo:rustc-env=VANTARE_INSTALLER_QA_OWNER_SID={sid}");
-    for name in [
-        "VANTARE_INSTALLER_QA_IDENTITY",
-        "VANTARE_INSTALLER_QA_SHORTCUT_FOLDER",
-        "VANTARE_INSTALLER_QA_LEGACY_SHORTCUT_FOLDER",
-        "VANTARE_INSTALLER_QA_PREFIX",
-    ] {
-        println!("cargo:rerun-if-env-changed={name}");
-        let value = if env::var_os("CARGO_FEATURE_TEST_INSTALLER").is_some() {
-            let value = env::var(name).map_err(|_| format!("falta {name} en la build TEST"))?;
-            if value.trim().is_empty() || value.contains(['\r', '\n', '\0']) {
-                return Err(format!("{name} inválido").into());
-            }
-            value
-        } else {
-            String::new()
-        };
-        println!("cargo:rustc-env={name}={value}");
-    }
     let out = PathBuf::from(env::var_os("OUT_DIR").ok_or("OUT_DIR ausente")?);
-    if env::var_os("CARGO_FEATURE_TRANSPORT").is_none() {
+    if env::var_os("CARGO_FEATURE_WRITE_ENGINE").is_none() {
         return Ok(());
     }
     vantare_build_support::embed_installer(&version)?;

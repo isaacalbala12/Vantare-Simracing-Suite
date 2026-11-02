@@ -1,4 +1,4 @@
-#requires -Version 5.1
+﻿#requires -Version 5.1
 # Permanent ADR0103 exception: powershell.exe lives outside the tree it removes.
 # Cleanup only. No state, registry, shortcuts, generation or user-data operations.
 [CmdletBinding()]
@@ -22,7 +22,7 @@ if($contract.operation -cne 'Cleanup'){throw 'CLEANUP_OPERATION_REJECTED'}
 $root=Assert-CleanupPath $contract.root
 $temporary=Assert-CleanupPath $PSScriptRoot
 $prefix=[IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd('\','/')+[IO.Path]::DirectorySeparatorChar
-if(-not $temporary.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase) -or [IO.Path]::GetFileName($temporary) -cnotmatch '^VantareSetup-[0-9]+-[0-9]+-[0-9]+$'){throw 'CLEANUP_TEMP_REJECTED'}
+if(-not $temporary.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase) -or [IO.Path]::GetFileName($temporary) -cnotmatch '^VantareSetup-[a-f0-9]{32}$'){throw 'CLEANUP_TEMP_REJECTED'}
 if($temporary -ieq $root -or $temporary.StartsWith($root.TrimEnd('\','/')+'\',[StringComparison]::OrdinalIgnoreCase)){throw 'CLEANUP_TEMP_OVERLAPS_ROOT'}
 if($contract.qa){
     . (Join-Path $temporary 'qa-guard.ps1')

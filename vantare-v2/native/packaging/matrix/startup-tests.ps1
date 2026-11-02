@@ -1,11 +1,11 @@
 ﻿#requires -Version 5.1
-param([string]$Root,[string]$TestVerifier)
+param([string]$Root,[string]$TestVerifier,[string]$WriteEngine)
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'guard.ps1')
 $qaStartupRoot=Assert-MatrixRoot $Root
 if(Test-Path -LiteralPath $qaStartupRoot){throw 'STARTUP_TEST_NEEDS_FRESH_ROOT'}
-if(-not $TestVerifier){throw 'STARTUP_TEST_VERIFIER_REQUIRED'}
+if(-not $TestVerifier -or -not $WriteEngine){throw 'STARTUP_NATIVE_FIXTURES_REQUIRED'}
 foreach($path in @($env:TEMP,$env:TMP,$env:LOCALAPPDATA)){$null=Assert-MatrixRoot $path}
 [IO.Directory]::CreateDirectory($qaStartupRoot)|Out-Null
 $script:Packaging=Split-Path $PSScriptRoot -Parent
@@ -45,16 +45,6 @@ try{
     $boundary="Remove-PSDrive HKCU`nNew-PSDrive HKCU Registry '"+$hive+"' -Scope Global|Out-Null`n"+
         ". '"+(Join-Path $PSScriptRoot 'guard.ps1')+"'`n"+
         'function Get-NativeShortcutFolder([string]$Name){if($Name -cnotin @(''Programs'',''Startup'',''DesktopDirectory'')){throw ''STARTUP_FOLDER_REJECTED''};Join-Path '''+$shellRoot.Replace("'","''")+''' $Name}'
-    $driver=[IO.File]::ReadAllText((Join-Path $script:Packaging 'installer-driver.ps1'))
-    $import=". (Join-Path `$PSScriptRoot 'beta.ps1') -Library -Root `$PSScriptRoot"
-    $driverBoundary=$boundary+"`n"+$import+"`n"+
-        $boundary+"`n"+'$null=Assert-MatrixRoot (([IO.File]::ReadAllText($RequestFile)|ConvertFrom-Json).root)'
-    $driverBoundary+="`n"+'$fixtureRoot=([IO.File]::ReadAllText($RequestFile)|ConvertFrom-Json).root'+"`n"+
-        'if(Test-Path -LiteralPath (Join-Path $fixtureRoot ''fail-uninstall'')){function Get-NativeKnownMembers([string]$Channel){throw ''Synthetic uninstall failure''}}'+"`n"+
-        'if(Test-Path -LiteralPath (Join-Path $fixtureRoot ''deny-run'')){function Remove-ItemProperty([string]$LiteralPath,[string]$Name,[string]$ErrorAction){if($LiteralPath.EndsWith(''/Run'')){throw [UnauthorizedAccessException]::new(''Synthetic Run denial'')};Microsoft.PowerShell.Management\Remove-ItemProperty @PSBoundParameters}}'+"`n"
-    if(-not $driver.Contains($import)){throw 'STARTUP_DRIVER_IMPORT_CHANGED'}
-    $driverPath=Join-Path $engine 'installer-driver.ps1'
-    [IO.File]::WriteAllText($driverPath,$driver.Replace($import,$driverBoundary),[Text.UTF8Encoding]::new($true))
     $payload=Join-Path $qaStartupRoot 'payload'
     New-MatrixPayload $payload '1.0.0' $TestVerifier
     $zip=Join-Path $engine 'package.zip';New-NativeZip $payload $zip
@@ -62,17 +52,18 @@ try{
     [IO.File]::WriteAllText((Join-Path $engine 'installer-notices.txt'),'fixture')
     $install=Join-Path $qaStartupRoot 'instalacion con espacios'
     $request=@{operation='Install';root=$install;qa=$false;silent=$true;uninstall=$false;version='1.0.0';size=1;mode='auto';desktop=$false;autostart=$false;packageSha=(Get-NativeHash $zip)}
-    function Invoke-StartupDriver($Request){
+    function Invoke-StartupWriter($Request){
         $path=Join-Path $engine ('request-'+[guid]::NewGuid().ToString('N')+'.json')
-        Write-NativeJson $path $Request
-        $encoding=[Console]::InputEncoding
-        try{
-            [Console]::InputEncoding=[Text.UTF8Encoding]::new($false)
-            Invoke-NativeProcess -Executable "$env:WINDIR/System32/WindowsPowerShell/v1.0/powershell.exe" -Arguments @('-NoProfile','-ExecutionPolicy','Bypass','-File',$driverPath,'-RequestFile',$path) -InputText "continue`n" -TimeoutMilliseconds 30000 -LogPath ($path+'.log')
-        }finally{[Console]::InputEncoding=$encoding}
+        $log=$path+'.diagnostic.log'
+        $Request.logFile=$log
+        if(-not $Request.ContainsKey('processId')){$Request.processId=2147483647}
+        Write-NativeJson $path @{request=$Request;context=@{localAppData=$env:LOCALAPPDATA;registryPrefix=('Software\VantareInstallerMatrix\'+$hiveId);shellRoot=$shellRoot};payloadDirectory=$engine}
+        $result=Invoke-NativeProcess -Executable $WriteEngine -Arguments @($path) -TimeoutMilliseconds 30000 -LogPath ($path+'.log')
+        $result|Add-Member -NotePropertyName DiagnosticPath -NotePropertyValue $log
+        $result
     }
-    $result=Invoke-StartupDriver $request
-    Assert-Startup ($result.ExitCode -eq 0) 'Setup driver installs with Startup initially disabled'
+    $result=Invoke-StartupWriter $request
+    Assert-Startup ($result.ExitCode -eq 0) 'Native Setup installs with Startup initially disabled'
     $state=Read-NativeState $install
     $generation=Join-Path $install ('generations/'+$state.active.generation)
     $data=Join-Path $generation 'data'
@@ -223,11 +214,10 @@ function Sync-NativeOptionalShortcuts([string]$Directory,[string]$Folder,$Ui,[bo
     }
     $result=Invoke-Startup On
     Set-ItemProperty -LiteralPath $run -Name 'VantareNative.Hub' -Value $legacyCommand
-    $failUninstall=Join-Path $install 'fail-uninstall';[IO.File]::WriteAllText($failUninstall,'fail before removal')
+    $failUninstall=[IO.File]::Open((Join-Path $generation 'bin/vantare.exe'),[IO.FileMode]::Open,[IO.FileAccess]::Read,[IO.FileShare]::Read)
     $request.operation='Uninstall';$request.uninstall=$true
-    $result=Invoke-StartupDriver $request
+    try{$result=Invoke-StartupWriter $request}finally{$failUninstall.Dispose()}
     Assert-Startup ($result.ExitCode -ne 0 -and (Test-Path -LiteralPath (Join-Path $install 'state.json')) -and (Get-ItemProperty -LiteralPath $run).'VantareNative.Hub' -ceq $legacyCommand) 'A failed Uninstall never removes the valid legacy Run value'
-    Remove-Item -LiteralPath $failUninstall
     # The outer installed-uninstaller CLI calls beta in a second process.
     # Inject its OS boundaries as well; never let that child see the real HKCU.
     $rootBeta=Join-Path $install 'beta.ps1';$rootBetaSource=[IO.File]::ReadAllText($rootBeta)
@@ -239,15 +229,15 @@ function Sync-NativeOptionalShortcuts([string]$Directory,[string]$Folder,$Ui,[bo
     Assert-Startup ($result.ExitCode -ne 0 -and -not(Test-Path -LiteralPath (Join-Path $install 'state.json')) -and (Get-ItemProperty -LiteralPath $run).'VantareNative.Hub' -ceq $legacyCommand -and (Get-NativeDataIndex $data) -ceq $dataBefore) 'Outer finalizer failure after program removal still preserves Run and exact data'
     Remove-Item -LiteralPath $failShell
     $request.operation='Uninstall';$request.uninstall=$true
-    $result=Invoke-StartupDriver $request
-    Assert-Startup ($result.ExitCode -eq 0 -and -not(Test-Path -LiteralPath (Join-Path $install 'state.json'))) 'Installer driver resumes the partial uninstall after Hub activation'
+    $result=Invoke-StartupWriter $request
+    Assert-Startup ($result.ExitCode -eq 0 -and -not(Test-Path -LiteralPath (Join-Path $install 'state.json'))) 'Native Uninstall resumes the partial uninstall after Hub activation'
     $values=Get-ItemProperty -LiteralPath $run
     Assert-Startup ($null -eq $values.PSObject.Properties['VantareNative.Hub'] -and -not(Test-Path -LiteralPath $link)) 'Uninstall leaves neither legacy Run nor Startup'
     Assert-Startup ($values.OtherApp -ceq 'foreign-app' -and (Get-NativeDataIndex $data) -ceq $dataBefore) 'Uninstall preserves foreign Run value and exact user data including empty directories'
     # Resume an older partial uninstall which already removed registration but
     # left the legacy Run value. The deferred uninstaller marker binds ownership.
     Set-ItemProperty -LiteralPath $run -Name 'VantareNative.Hub' -Value $legacyCommand
-    $result=Invoke-StartupDriver $request
+    $result=Invoke-StartupWriter $request
     Assert-Startup ($result.ExitCode -eq 0) 'Hash-bound partial uninstall can resume without its registration key'
     $values=Get-ItemProperty -LiteralPath $run
     Assert-Startup ($null -eq $values.PSObject.Properties['VantareNative.Hub'] -and $values.OtherApp -ceq 'foreign-app' -and (Get-NativeDataIndex $data) -ceq $dataBefore) 'Resumed uninstall retires Run while preserving foreign value and data'
@@ -255,18 +245,18 @@ function Sync-NativeOptionalShortcuts([string]$Directory,[string]$Folder,$Ui,[bo
     $setupCommand=Legacy-StartupCommand $setupRoot
     Set-ItemProperty -LiteralPath $run -Name 'VantareNative.Hub' -Value $setupCommand
     $request=@{operation='Install';root=$setupRoot;qa=$false;silent=$true;uninstall=$false;version='1.0.0';size=1;mode='auto';desktop=$false;autostart=$false;packageSha=(Get-NativeHash $zip)}
-    $result=Invoke-StartupDriver $request
+    $result=Invoke-StartupWriter $request
     Assert-Startup ($result.ExitCode -eq 0 -and (Read-NativeInstallerUi $setupRoot).autostart -and (Test-Path -LiteralPath $link) -and $null -eq (Get-ItemProperty -LiteralPath $run).PSObject.Properties['VantareNative.Hub']) 'Setup adopts a valid old Run when no preference existed and never leaves two starts'
     Confirm-StartupFixture $setupRoot
     Remove-Item -LiteralPath $link
     Set-ItemProperty -LiteralPath $run -Name 'VantareNative.Hub' -Value $setupCommand
     $request.mode='repair'
-    $result=Invoke-StartupDriver $request
+    $result=Invoke-StartupWriter $request
     Assert-Startup ($result.ExitCode -eq 0 -and (Read-NativeInstallerUi $setupRoot).autostart -and (Test-Path -LiteralPath $link) -and $null -eq (Get-ItemProperty -LiteralPath $run).PSObject.Properties['VantareNative.Hub']) 'Setup repair recreates the missing Startup link and preserves ON while retiring legacy Run'
     Confirm-StartupFixture $setupRoot
     Write-NativeStartupPreference $setupRoot $false
     Set-ItemProperty -LiteralPath $run -Name 'VantareNative.Hub' -Value $setupCommand
-    $result=Invoke-StartupDriver $request
+    $result=Invoke-StartupWriter $request
     Assert-Startup ($result.ExitCode -eq 0 -and -not(Read-NativeInstallerUi $setupRoot).autostart -and -not(Test-Path -LiteralPath $link) -and $null -eq (Get-ItemProperty -LiteralPath $run).PSObject.Properties['VantareNative.Hub']) 'Setup respects an existing OFF preference and removes both owned startup routes'
     Confirm-StartupFixture $setupRoot
     $setupState=Read-NativeState $setupRoot
@@ -274,21 +264,24 @@ function Sync-NativeOptionalShortcuts([string]$Directory,[string]$Folder,$Ui,[bo
     [IO.Directory]::CreateDirectory((Join-Path $setupData 'empty'))|Out-Null
     [IO.File]::WriteAllText((Join-Path $setupData 'user.bin'),'setup user data')
     $setupDataBefore=Get-NativeDataIndex $setupData
-    [IO.File]::WriteAllText((Join-Path $setupRoot 'deny-run'),'inject denied Run deletion')
+    $savedRunAcl=Get-Acl -LiteralPath $run
+    $deniedRunAcl=Get-Acl -LiteralPath $run
+    $deniedRunAcl.AddAccessRule([Security.AccessControl.RegistryAccessRule]::new([Security.Principal.WindowsIdentity]::GetCurrent().User,[Security.AccessControl.RegistryRights]::SetValue,[Security.AccessControl.AccessControlType]::Deny))
     Set-ItemProperty -LiteralPath $run -Name 'VantareNative.Hub' -Value $setupCommand
+    Set-Acl -LiteralPath $run -AclObject $deniedRunAcl
     $request.operation='Uninstall';$request.uninstall=$true
-    $result=Invoke-StartupDriver $request
+    try{$result=Invoke-StartupWriter $request}finally{Set-Acl -LiteralPath $run -AclObject $savedRunAcl}
     $progressJson=$true
     foreach($line in ($result.Stdout -split "`n")){if($line.Trim()){try{$null=$line|ConvertFrom-Json}catch{$progressJson=$false}}}
-    Assert-Startup ($result.ExitCode -eq 0 -and -not(Test-Path -LiteralPath (Join-Path $setupRoot 'state.json')) -and (Get-ItemProperty -LiteralPath $run).'VantareNative.Hub' -ceq $setupCommand -and $result.Stderr.Contains('No se pudo retirar el inicio Run') -and $progressJson) 'Denied Run deletion warns on stderr and preserves valid JSON progress while Uninstall completes'
+    Assert-Startup ($result.ExitCode -eq 0 -and -not(Test-Path -LiteralPath (Join-Path $setupRoot 'state.json')) -and (Get-ItemProperty -LiteralPath $run).'VantareNative.Hub' -ceq $setupCommand -and (Test-Path -LiteralPath $result.DiagnosticPath) -and (Get-Item -LiteralPath $result.DiagnosticPath).Length -gt 0 -and $progressJson) 'Denied Run deletion records a diagnostic and preserves valid JSON progress while Uninstall completes'
     Assert-Startup ((Get-NativeDataIndex $setupData) -ceq $setupDataBefore) 'Run denial preserves exact user data and empty directories'
     $foreignRoot=Join-Path $qaStartupRoot 'foreign Run name'
     Set-ItemProperty -LiteralPath $run -Name 'VantareNative.Hub' -Value 'foreign-app-using-our-name'
     $request.root=$foreignRoot;$request.operation='Install';$request.uninstall=$false;$request.mode='auto'
-    $result=Invoke-StartupDriver $request
+    $result=Invoke-StartupWriter $request
     Assert-Startup ($result.ExitCode -eq 0 -and -not(Read-NativeInstallerUi $foreignRoot).autostart -and (Get-ItemProperty -LiteralPath $run).'VantareNative.Hub' -ceq 'foreign-app-using-our-name') 'Setup does not adopt a foreign command reusing the Run name'
     $request.operation='Uninstall';$request.uninstall=$true
-    $result=Invoke-StartupDriver $request
+    $result=Invoke-StartupWriter $request
     Assert-Startup ($result.ExitCode -eq 0 -and -not(Test-Path -LiteralPath (Join-Path $foreignRoot 'state.json')) -and (Get-ItemProperty -LiteralPath $run).'VantareNative.Hub' -ceq 'foreign-app-using-our-name') 'Uninstall preserves a foreign command reusing the Run name'
     $badIndex=0
     foreach($badPreference in @('{invalid',('{"schema":1,"autostart":true}'+(' '*1100)),'{"schema":1,"autostart":"true"}')){
@@ -297,13 +290,13 @@ function Sync-NativeOptionalShortcuts([string]$Directory,[string]$Folder,$Ui,[bo
         [IO.File]::WriteAllText((Join-Path $badRoot 'startup-options.json'),$badPreference)
         Set-ItemProperty -LiteralPath $run -Name 'VantareNative.Hub' -Value (Legacy-StartupCommand $badRoot)
         $request.root=$badRoot;$request.operation='Probe';$request.uninstall=$false;$request.mode='auto'
-        $result=Invoke-StartupDriver $request
+        $result=Invoke-StartupWriter $request
         Assert-Startup ($result.ExitCode -eq 0 -and -not($result.Stdout|ConvertFrom-Json).autostart -and $null -eq (Read-NativeStartupPreference $badRoot)) "Damaged legacy option $badIndex is no preference and Probe stays usable"
         $request.operation='Install'
-        $result=Invoke-StartupDriver $request
+        $result=Invoke-StartupWriter $request
         Assert-Startup ($result.ExitCode -eq 0 -and (Read-NativeInstallerUi $badRoot).autostart -and (Test-Path -LiteralPath $link) -and $null -eq (Get-ItemProperty -LiteralPath $run).PSObject.Properties['VantareNative.Hub']) "Setup recovers damaged legacy option $badIndex and migrates the valid Run"
         $request.operation='Uninstall';$request.uninstall=$true
-        $result=Invoke-StartupDriver $request
+        $result=Invoke-StartupWriter $request
         Assert-Startup ($result.ExitCode -eq 0 -and -not(Test-Path -LiteralPath $link)) "Recovered damaged option $badIndex uninstalls normally"
     }
     Write-NativeJson (Join-Path $qaStartupRoot 'result.json') @{checks=$passed;run_removed=$true;startup_removed=$true;data_unchanged=(((Get-NativeDataIndex $data) -ceq $dataBefore) -and ((Get-NativeDataIndex $setupData) -ceq $setupDataBefore))}

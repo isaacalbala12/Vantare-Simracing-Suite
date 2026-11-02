@@ -7,16 +7,6 @@ use std::{
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<_> = std::env::args().skip(1).collect();
-    if let [flag, channel] = args.as_slice()
-        && flag == "--members"
-        && vantare_installer::engine::validation::channel(channel)
-    {
-        println!(
-            "{}",
-            serde_json::to_string(&vantare_installer::engine::known_members(channel))?
-        );
-        return Ok(());
-    }
     let (uninstall, outcome, reader) = match args.as_slice() {
         [] => (false, false, false),
         [flag] if flag == "--uninstall" => (true, false, false),
@@ -39,7 +29,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 use vantare_installer::engine::ReadError;
                 let reason = match &error {
                     ReadError::Rejected(reason) => reason.code(),
-                    ReadError::Json(_) => "json",
                     ReadError::Io(error) if error.kind() == io::ErrorKind::NotFound => {
                         "io-not-found"
                     }
@@ -54,19 +43,33 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn read(
-    info: vantare_installer::model::Info,
+    mut info: vantare_installer::model::Info,
     uninstall: bool,
     reader: bool,
 ) -> Result<serde_json::Value, vantare_installer::engine::ReadError> {
-    use vantare_installer::engine::{Installation, ReadError, ReadProfile, complete_probe};
+    use vantare_installer::engine::{Installation, ReadError};
     if reader {
-        let installation = Installation::read(&info.root, ReadProfile::Probe)?;
+        let installation = Installation::read(&info.root)?;
         return Ok(
             serde_json::json!({"version":installation.installed_version(),
             "channel":installation.manifest.as_ref().map(|manifest| manifest.channel.as_str())}),
         );
     }
-    serde_json::to_value(complete_probe(info, uninstall)?).map_err(ReadError::Json)
+    if uninstall {
+        if let Some(state) = vantare_installer::engine::State::read(&info.root)? {
+            info.data_path = info
+                .root
+                .join("generations")
+                .join(state.active.generation)
+                .join("data");
+        }
+    } else {
+        let installation = Installation::read(&info.root)?;
+        info.installed_version = installation.installed_version().map(str::to_owned);
+        info.data_path = installation.data_path;
+    }
+    serde_json::to_value(info)
+        .map_err(|_| ReadError::Rejected(vantare_installer::engine::Rejection::State))
 }
 
 fn guard_root(path: &Path) -> Result<(), Box<dyn std::error::Error>> {

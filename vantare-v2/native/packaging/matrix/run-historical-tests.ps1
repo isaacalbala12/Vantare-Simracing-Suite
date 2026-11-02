@@ -1,4 +1,4 @@
-#requires -Version 5.1
+﻿#requires -Version 5.1
 param([string]$Root,[string]$LegacyPackage)
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
@@ -9,7 +9,7 @@ $source=Split-Path $PSScriptRoot -Parent
 [IO.Directory]::CreateDirectory($qaHarnessRoot)|Out-Null
 $engine=Join-Path $qaHarnessRoot 'packaging'
 [IO.Directory]::CreateDirectory($engine)|Out-Null
-foreach($name in @('candidate.ps1','beta.ps1','installer-driver.ps1','historical-inventory-tests.ps1','build-inventory-tests.ps1')){
+foreach($name in @('candidate.ps1','beta.ps1','historical-inventory-tests.ps1','build-inventory-tests.ps1')){
     Copy-Item -LiteralPath (Join-Path $source $name) -Destination $engine
     if((Get-FileHash (Join-Path $source $name)).Hash -cne (Get-FileHash (Join-Path $engine $name)).Hash){throw 'HISTORY_COPY_CHANGED'}
 }

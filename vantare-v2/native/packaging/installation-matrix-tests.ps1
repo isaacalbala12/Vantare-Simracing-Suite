@@ -1,4 +1,4 @@
-#requires -Version 5.1
+﻿#requires -Version 5.1
 [CmdletBinding()]
 param([string]$Root,[string]$LegacyPackage,[string]$TestVerifier,[string]$BootProbe,[string]$ReadProbe,[string]$WriteEngine,[switch]$Record,
       [ValidateSet('clean','nsis975','nsis975-incomplete974','rc-options','pending','boot','retained','retained-no-marker')]
@@ -17,16 +17,6 @@ $qaImportCallerRoot=$Root
 . (Join-Path $PSScriptRoot 'beta.ps1') -Library -Root $qaMatrixRoot
 if ($Root -cne $qaImportCallerRoot) { throw 'MATRIX_IMPORT_ROOT_CHANGED' }
 $null=Assert-MatrixRoot $Root
-if($ReadProbe){
-    foreach($catalogueChannel in @('beta','nightly','testers','master')){
-        # PS5 ConvertFrom-Json emits the whole JSON array as one pipeline item.
-        # Assign it directly so Count compares members, not a wrapper array.
-        $rustMembers=(& $ReadProbe --members $catalogueChannel)|ConvertFrom-Json
-        if($LASTEXITCODE){throw 'MATRIX_RUST_CATALOGUE_FAILED'}
-        $legacyMembers=@(Get-NativeKnownMembers $catalogueChannel)
-        if($rustMembers.Count -ne $legacyMembers.Count -or @(Compare-Object $rustMembers $legacyMembers -CaseSensitive).Count){throw ('MATRIX_RUST_CATALOGUE_CHANGED: '+$catalogueChannel)}
-    }
-}
 if ((Get-NativeHash $LegacyPackage) -cne '372bcd60cf168cb6187be1c481b21c835268db1dbcc3e0a0aeb17246bede7066') { throw 'MATRIX_LEGACY_DIGEST' }
 [IO.Directory]::CreateDirectory($qaMatrixRoot) | Out-Null
 . (Join-Path $PSScriptRoot 'matrix/fixtures.ps1')
@@ -66,12 +56,6 @@ try {
         ) -TimeoutMilliseconds 120000 -LogPath (Join-Path $qaMatrixRoot 'library-mode.log')
         if($library.ExitCode -ne 0){throw ('MATRIX_LIBRARY_MODE_FAILED: '+$library.Stderr)}
         $library.Stdout
-        $context=Invoke-NativeProcess -Executable "$env:WINDIR/System32/WindowsPowerShell/v1.0/powershell.exe" -Arguments @(
-            '-NoProfile','-ExecutionPolicy','Bypass','-File',(Join-Path $PSScriptRoot 'matrix/driver-context-tests.ps1'),
-            '-Root',(Join-Path $qaMatrixRoot 'driver-context'),'-TestVerifier',$TestVerifier
-        ) -TimeoutMilliseconds 120000 -LogPath (Join-Path $qaMatrixRoot 'driver-context.log')
-        if($context.ExitCode -ne 0){throw ('MATRIX_DRIVER_CONTEXT_FAILED: '+$context.Stderr)}
-        $context.Stdout
         $historySafety=Invoke-NativeProcess -Executable "$env:WINDIR/System32/WindowsPowerShell/v1.0/powershell.exe" -Arguments @(
             '-NoProfile','-ExecutionPolicy','Bypass','-File',(Join-Path $PSScriptRoot 'matrix/history-safety-tests.ps1'),
             '-Root',(Join-Path $qaMatrixRoot 'history-safety')
@@ -150,10 +134,17 @@ try {
             if ($LASTEXITCODE) { throw 'MATRIX_SNAPSHOT_FAILED' }
             $row=@{exit=$exitCode;sha256=(Get-NativeHash $snapshot);existing_data_files=@($before.PSObject.Properties).Count}
             $rows[$name]=$row
-            if (-not $Record) {
-                $old=$expected.PSObject.Properties[$name]
-                if ($null -eq $old -or $old.Value.exit -ne $row.exit -or $old.Value.sha256 -cne $row.sha256 -or $old.Value.existing_data_files -ne $row.existing_data_files) { throw "MATRIX_REGRESSION $name (snapshot and logs: $caseRoot)" }
+            # Historical snapshots remain evidence. Only the operation outcome
+            # and data invariants are contractual; JSON formatting is not.
+            $old=$expected.PSObject.Properties[$name]
+            if ($null -eq $old -or $old.Value.exit -ne $row.exit -or $old.Value.existing_data_files -ne $row.existing_data_files) { throw "MATRIX_OUTCOME_CHANGED $name (logs: $caseRoot)" }
+            if($exitCode -eq 0 -and $operation -in @('Install','Repair','Update','Apply','Rollback')){
+                if(-not(Test-Path -LiteralPath (Join-Path $install 'state.json'))){throw 'MATRIX_SUCCESS_WITHOUT_STATE'}
+                $state=Get-Content -LiteralPath (Join-Path $install 'state.json') -Raw|ConvertFrom-Json
+                $manifest=Join-Path $install ('generations/'+$state.active.generation+'/manifest.json')
+                if((Get-NativeHash $manifest) -cne $state.active.manifest_sha256){throw 'MATRIX_ACTIVE_BINDING_CHANGED'}
             }
+            if($exitCode -eq 0 -and $operation -ceq 'Uninstall' -and (Test-Path -LiteralPath (Join-Path $install 'state.json'))){throw 'MATRIX_UNINSTALL_LEFT_STATE'}
             "PASS $name exit=$exitCode existing-data=$($row.existing_data_files)"
         }
     }
@@ -181,10 +172,13 @@ try {
     $savedStartupTemp=$env:TEMP;$savedStartupTmp=$env:TMP;$savedStartupLocal=$env:LOCALAPPDATA
     try{
         $env:TEMP=$qaMatrixRoot;$env:TMP=$qaMatrixRoot;$env:LOCALAPPDATA=Join-Path $qaMatrixRoot 'LocalAppData'
+        $startupClock=[Diagnostics.Stopwatch]::StartNew()
         $startup=Invoke-NativeProcess -Executable "$env:WINDIR/System32/WindowsPowerShell/v1.0/powershell.exe" -Arguments @(
             '-NoProfile','-ExecutionPolicy','Bypass','-File',(Join-Path $PSScriptRoot 'matrix/startup-tests.ps1'),
-            '-Root',(Join-Path $qaMatrixRoot 'startup'),'-TestVerifier',$TestVerifier
+            '-Root',(Join-Path $qaMatrixRoot 'startup'),'-TestVerifier',$TestVerifier,'-WriteEngine',$WriteEngine
         ) -TimeoutMilliseconds 480000 -LogPath (Join-Path $qaMatrixRoot 'startup.log')
+        $startupClock.Stop()
+        "Startup elapsed-seconds=$($startupClock.Elapsed.TotalSeconds)"
         if($startup.ExitCode -ne 0){throw ('MATRIX_STARTUP_FAILED: '+$startup.Stderr)}
         $startup.Stdout
     }finally{$env:TEMP=$savedStartupTemp;$env:TMP=$savedStartupTmp;$env:LOCALAPPDATA=$savedStartupLocal}

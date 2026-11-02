@@ -1638,15 +1638,8 @@ pub fn run_with_access(mut options: Options, access: navigation::Access) -> Resu
                 vantare_ui::analytics::init(cx);
             }
             cx.set_global(orbit::theme::Theme::default());
-            let identity = match crate::installation::hub_identity() {
-                Ok(identity) => identity,
-                Err(error) => {
-                    *failure.borrow_mut() = Some(error);
-                    cx.quit();
-                    return;
-                }
-            };
-            cx.set_app_identity(&identity, "Vantare");
+            // QA redirects the OS context, never the product identity.
+            cx.set_app_identity("VantareNative.Hub", "Vantare");
             if let Err(error) = vantare_ui::efficiency::text::register_fonts(cx)
                 .and_then(|()| orbit::design::register_fonts(cx))
             {

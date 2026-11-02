@@ -1,6 +1,6 @@
 //! Explicit OS context. QA never falls back to real HKCU or shell folders.
 use super::{
-    Installation, ReadProfile, Request, installation, validation,
+    Installation, Request, installation, validation,
     write_fs::{self as disk, Result, WriteError, ensure},
 };
 use crate::model::Info;
@@ -67,63 +67,34 @@ impl Context {
             context.validate_isolation()?;
             return Ok(context);
         }
-        #[cfg(windows)]
-        {
-            Ok(Self {
-                local_app_data: std::env::var_os("LOCALAPPDATA")
-                    .ok_or_else(|| WriteError::new(1, "LOCALAPPDATA ausente"))?
-                    .into(),
-                registry_prefix: String::new(),
-                shell_root: None,
-            })
-        }
-        #[cfg(not(windows))]
-        {
-            Err(WriteError::new(1, "El instalador requiere Windows"))
-        }
+        Ok(Self {
+            local_app_data: std::env::var_os("LOCALAPPDATA")
+                .ok_or_else(|| WriteError::new(1, "LOCALAPPDATA ausente"))?
+                .into(),
+            registry_prefix: String::new(),
+            shell_root: None,
+        })
     }
     pub fn is_isolated(&self) -> bool {
         !self.registry_prefix.is_empty()
     }
     pub fn validate_root(&self, root: &Path) -> Result<()> {
+        self.validate_context()?;
         if self.is_isolated() {
-            self.validate_isolation()?;
             qa_path(root)?;
-        } else {
-            ensure(
-                self.shell_root.is_none() && !crate::QA,
-                "Contexto Windows incoherente",
-            )?;
         }
         disk::path(root)?;
         Ok(())
     }
-    pub fn registration(&self, request: &Request, name: &str) -> Result<Option<String>> {
-        self.registry(
-            &format!(
-                "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\{}",
-                identity(request)?
-            ),
-            name,
-        )
+    pub fn install_location(&self) -> Result<Option<String>> {
+        self.registry(UNINSTALL_KEY, "InstallLocation")
     }
-    pub fn has_registration(&self, request: &Request) -> Result<bool> {
+    pub fn has_registration(&self) -> Result<bool> {
         self.validate_context()?;
-        #[cfg(windows)]
-        {
-            super::platform::registry_exists(
-                &self.registry_prefix,
-                &format!(
-                    "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\{}",
-                    identity(request)?
-                ),
-            )
-        }
-        #[cfg(not(windows))]
-        {
-            let _ = request;
-            Err(WriteError::new(1, "Registro Windows no disponible"))
-        }
+        Ok(super::windows::registry_exists(
+            &self.registry_prefix,
+            UNINSTALL_KEY,
+        ))
     }
     fn validate_context(&self) -> Result<()> {
         if self.is_isolated() {
@@ -137,22 +108,14 @@ impl Context {
     }
     fn registry(&self, key: &str, name: &str) -> Result<Option<String>> {
         self.validate_context()?;
-        #[cfg(windows)]
-        {
-            super::platform::registry_string(
-                &self.registry_prefix,
-                key,
-                name,
-                key == "Control Panel\\Desktop\\WindowMetrics" && name == "MinAnimate",
-            )
-        }
-        #[cfg(not(windows))]
-        {
-            let _ = (key, name);
-            Err(WriteError::new(1, "Registro Windows no disponible"))
-        }
+        super::windows::registry_string(
+            &self.registry_prefix,
+            key,
+            name,
+            key == "Control Panel\\Desktop\\WindowMetrics" && name == "MinAnimate",
+        )
     }
-    pub fn probe(&self, request: &Request) -> Result<Info> {
+    pub fn resolve_root(&self, request: &Request) -> Result<PathBuf> {
         self.validate_context()?;
         if request.qa {
             ensure(
@@ -160,8 +123,7 @@ impl Context {
                 "Una petición QA necesita HKCU y carpetas inyectados",
             )?;
         }
-        identity(request)?;
-        let registered = self.registration(request, "InstallLocation")?;
+        let registered = self.install_location()?;
         let explicit = request
             .root
             .as_ref()
@@ -192,53 +154,45 @@ impl Context {
         }
         root = disk::path(&root)?;
         self.validate_root(&root)?;
-        if request.qa {
-            let prefix = Path::new(
-                request
-                    .qa_prefix
-                    .as_deref()
-                    .ok_or_else(|| WriteError::new(1, "Prefijo QA ausente"))?,
-            );
-            ensure(
-                root != prefix && root.starts_with(prefix),
-                "QA fuera de su prefijo",
-            )?;
-            for real in [
-                self.local_app_data.join("Programs/Vantare"),
-                self.local_app_data.join("Programs/Vantare Native Beta"),
-            ] {
-                ensure(
-                    !root.starts_with(&real) && !real.starts_with(&root),
-                    "QA no puede usar la instalación del usuario",
-                )?;
+        Ok(root)
+    }
+    pub fn probe(&self, request: &Request) -> Result<Info> {
+        let root = self.resolve_root(request)?;
+        let (installed_version, data_path) = if request.uninstall {
+            let state = super::State::read(&root)?;
+            let directory = state
+                .as_ref()
+                .map(|state| root.join("generations").join(&state.active.generation));
+            let version = directory
+                .as_ref()
+                .and_then(|directory| super::Manifest::read(&directory.join("manifest.json")).ok())
+                .map(|manifest| manifest.version);
+            (
+                version,
+                directory.map_or_else(
+                    || root.join("generations"),
+                    |directory| directory.join("data"),
+                ),
+            )
+        } else {
+            let view = Installation::read(&root)?;
+            if view
+                .manifest
+                .as_ref()
+                .is_some_and(|manifest| manifest.channel != "beta")
+            {
+                return Err(super::ReadError::Rejected(super::Rejection::Manifest).into());
             }
-        }
-        if root.try_exists()? {
-            installation::tree(&root)?;
-        }
-        let view = Installation::read(
-            &root,
-            if request.uninstall {
-                ReadProfile::Uninstall
-            } else {
-                ReadProfile::Probe
-            },
-        )?;
-        super::validate_setup_channel(view.manifest.as_ref(), request.uninstall)?;
-        let ui = options(&root, request.uninstall)?;
-        let desktop = ui.as_ref().map_or(!request.silent, |ui| ui.desktop);
-        let autostart = match ui {
-            Some(ui) => ui.autostart,
-            None => startup_preference(&root)?.unwrap_or(false),
+            (view.installed_version().map(str::to_owned), view.data_path)
         };
+        let (desktop, autostart) = preferences(&root, request.uninstall, request.silent)?;
         // DisplayVersion no longer supplies installation truth in p4. A partial
         // uninstall remains usable, but cannot invent a missing manifest version.
-        let installed_version = view.installed_version().map(str::to_owned);
         Ok(Info {
             root,
             version: request.version.clone(),
             installed_version,
-            data_path: view.data_path,
+            data_path,
             desktop,
             autostart,
             size: request.size,
@@ -254,14 +208,7 @@ impl Context {
 pub(crate) fn same_path(left: &Path, right: &Path) -> Result<bool> {
     let left: PathBuf = disk::path(left)?.components().collect();
     let right: PathBuf = disk::path(right)?.components().collect();
-    #[cfg(windows)]
-    {
-        super::platform::paths_equal(&left, &right)
-    }
-    #[cfg(not(windows))]
-    {
-        Ok(left == right)
-    }
+    super::windows::paths_equal(&left, &right)
 }
 
 pub fn qa_path(path: &Path) -> Result<()> {
@@ -285,55 +232,8 @@ pub fn qa_path(path: &Path) -> Result<()> {
 fn below_prefix(path: &Path, prefix: &Path) -> bool {
     !prefix.as_os_str().is_empty() && path != prefix && path.starts_with(prefix)
 }
-pub fn identity(request: &Request) -> Result<&str> {
-    if !request.qa {
-        return Ok("VantareNativeBeta");
-    }
-    let identity = request
-        .qa_identity
-        .as_deref()
-        .ok_or_else(|| WriteError::new(1, "Identidad QA ausente"))?;
-    ensure(
-        !identity.is_empty()
-            && identity.len() <= 64
-            && identity.bytes().all(|b| b.is_ascii_alphanumeric())
-            && !identity.eq_ignore_ascii_case("VantareNativeBeta"),
-        "Identidad QA inválida",
-    )?;
-    let folder = request
-        .qa_shortcut_folder
-        .as_deref()
-        .ok_or_else(|| WriteError::new(1, "Carpeta QA ausente"))?;
-    let legacy = request
-        .qa_legacy_shortcut_folder
-        .as_deref()
-        .ok_or_else(|| WriteError::new(1, "Carpeta QA antigua ausente"))?;
-    for value in [folder, legacy] {
-        ensure(
-            !value.is_empty()
-                && value.len() <= 64
-                && value.as_bytes()[0].is_ascii_alphanumeric()
-                && value
-                    .bytes()
-                    .all(|b| b.is_ascii_alphanumeric() || b == b' ' || b == b'-')
-                && !["Vantare", "Vantare Native Beta"]
-                    .iter()
-                    .any(|name| value.eq_ignore_ascii_case(name)),
-            "Carpeta QA inválida",
-        )?;
-    }
-    ensure(
-        !folder.eq_ignore_ascii_case(legacy),
-        "Carpetas QA repetidas",
-    )?;
-    disk::path(Path::new(
-        request
-            .qa_prefix
-            .as_deref()
-            .ok_or_else(|| WriteError::new(1, "Prefijo QA ausente"))?,
-    ))?;
-    Ok(identity)
-}
+pub(crate) const UNINSTALL_KEY: &str =
+    "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\VantareNativeBeta";
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Options {
@@ -346,10 +246,10 @@ pub struct Options {
 }
 pub fn options(root: &Path, verify_uninstaller: bool) -> Result<Option<Options>> {
     let path = root.join("installer-ui.json");
-    if !path.try_exists()? {
+    let Some(value) = disk::read_optional(&path, Some(4096))? else {
         return Ok(None);
-    }
-    let ui: Options = serde_json::from_value(disk::read_json(&path, Some(4096))?)?;
+    };
+    let ui: Options = serde_json::from_value(value)?;
     ensure(
         ui.schema == 1
             && ui.kind == "rust-gpui"
@@ -367,21 +267,42 @@ pub fn options(root: &Path, verify_uninstaller: bool) -> Result<Option<Options>>
     }
     Ok(Some(ui))
 }
-pub(crate) fn startup_preference(root: &Path) -> Result<Option<bool>> {
-    let path = root.join("startup-options.json");
-    if !path.try_exists()? {
+pub(crate) fn preferences(root: &Path, uninstall: bool, silent: bool) -> Result<(bool, bool)> {
+    Ok(match options(root, uninstall)? {
+        Some(ui) => (ui.desktop, ui.autostart),
+        None => (!silent, startup_preference(root).unwrap_or(false)),
+    })
+}
+pub(crate) fn startup_preference(root: &Path) -> Option<bool> {
+    // A malformed legacy preference is absence, as in PowerShell.
+    disk::read_optional(&root.join("startup-options.json"), Some(1024))
+        .ok()
+        .flatten()
+        .filter(|value| value.as_object().is_some_and(|map| map.len() == 2) && value["schema"] == 1)
+        .and_then(|value| value["autostart"].as_bool())
+}
+
+/// One Rust cleanup-marker contract. A cached hash is only supplied after the
+/// operation has verified installer-ui.json against its own image. PowerShell
+/// independently rechecks ownership after the parent exits (permanent boundary).
+pub(crate) fn cleanup_marker(root: &Path, verified_image: Option<&str>) -> Result<Option<String>> {
+    let Some(value) = disk::read_optional(&root.join("installer-cleanup.json"), Some(1024))? else {
         return Ok(None);
-    }
-    // Corrupt, oversized or wrongly typed legacy preference is absence, as PS.
-    let read = || -> Result<Option<bool>> {
-        let value = disk::read_json(&path, Some(1024))?;
-        Ok(
-            (value.as_object().is_some_and(|map| map.len() == 2) && value["schema"] == 1)
-                .then(|| value["autostart"].as_bool())
-                .flatten(),
-        )
     };
-    Ok(read().unwrap_or(None))
+    ensure(value["schema"] == 1, "Marker de limpieza inválido")?;
+    let hash = value["sha256"]
+        .as_str()
+        .filter(|hash| validation::hex(hash, 64))
+        .ok_or_else(|| WriteError::new(1, "Marker de limpieza inválido"))?;
+    let image = root.join("Uninstall.exe");
+    if image.try_exists()? {
+        let actual = match verified_image {
+            Some(hash) => hash.to_owned(),
+            None => installation::hash_file(&image)?,
+        };
+        ensure(hash == actual, "El desinstalador cambió; se conserva")?;
+    }
+    Ok(Some(hash.to_owned()))
 }
 
 #[cfg(all(test, windows))]

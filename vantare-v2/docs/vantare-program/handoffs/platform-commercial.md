@@ -1,5 +1,5 @@
 <!-- isa1860-arranque-cierre -->
-## VANTA-128 / #1860 — pasos 0–2 integrados; paso 3 en curso
+## VANTA-128 / #1860 — pasos 0–2 integrados; paso 3 listo para revisión
 
 Paso 0 [#1863](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1863)
 integrado por el orquestador en nightly `aca51a15e3a6cf4aa53fc659c89011853a3da2ca`;
@@ -146,14 +146,40 @@ Plane En curso verificado; el worker no volvió a cambiar el estado.
   release, promoción, instalación ni registro reales. Instalador, installation.rs
   y packaging intactos; VANTA-127 continúa en paralelo. Clic físico/candidata
   pendientes de Isaac; Unix sin ejecutar; pasos 3 y siguientes fuera del PR.
-- Paso 3 encargado: predicado Live único en domain, conservando los tests y la
-  semántica de Hub/Host/Owner. Incluye P3 de #1865: reintento acotado del lock
-  de procesos en force_cleanup, no reprogramar una revocación durante Stopping
-  y última cancelación del Host antes de abandonar el worker. Rama
-  `vantareapp/isa-1860-paso3-live`, worktree
-  `D:/VantareServer/worktrees/isa-1860-paso3`, base nightly `638e3e6f5`.
-  Gates nuevos pendientes. Pasos 4–5 reservados al worker del instalador
-  (VANTA-127 pasos 6–7); no tocar installer, installation.rs ni packaging.
+- Paso 3 listo en PR draft [#1867](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1867)
+  a nightly. Rama `vantareapp/isa-1860-paso3-live`, worktree
+  `D:/VantareServer/worktrees/isa-1860-paso3`, base
+  `638e3e6f5d3040269dbcf01fe0355e99b7a9c8a0`. Código probado
+  `491e3c94f2d4c8edc7161c026c1ea7749ee11e63`; HEAD final en PR/issue.
+  Después sólo cambia este handoff. Mismo target propio usado secuencialmente.
+- Live pasa de tres implementaciones a una en domain; Hub reexporta esa función
+  y Host/Owner la importan. Live/Live verdadero; las otras nueve combinaciones
+  falsas. Tests anteriores de los tres sitios conservados, incluidas pausa,
+  gracia, renovación y primera foto/flanco del Hub. No cambia contrato visible.
+- P3 de #1865: force_cleanup reintenta el registro de procesos hasta tres veces
+  a 20 ms antes de rendirse (hasta 60 ms de tolerancia después de P, sin renovar
+  el plazo ni esperar hijos). Prueba con registro ocupado, liberación por canales
+  y salida observable de app propia por handle; otra agota tres reintentos.
+  Exited en Killing revocado durante Stopping queda Reaped sin reprogramación;
+  prueba pura con reloj inyectado y salida 0/no 0. Última cancelación idempotente
+  de Host antes de mem::forget; sin joins. Esto sustituye el límite R1 del mutex.
+- Gates de domain/Hub/runtime en una sola tanda por compilar.ps1, respetando cola:
+  fmt y Clippy all-targets -D warnings PASS; supervisor 43/43, Host 2/2,
+  lifecycle real 25/25 e IPC 2/2 PASS. Tres cierres reales 59/59/59 ms, sin kill.
+  Nextest ci con telemetría **1362/1362 PASS**, 12 omisiones preexistentes,
+  cinco lentos, 315.017 s. **4/4 mutaciones compiladas detectadas por aserción**;
+  327 fuentes restauradas exactamente por SHA-256 y baselines domain 186/186,
+  supervisor 43/43 PASS. Retirada 468/468, fragmento/UTF-8/diff PASS.
+- Evidencia `D:/VantareServer/evidence/isa-1860-paso3` (gates.ps1, logs,
+  mutations.json, source-sha256.json, baselines). UI no cambia: imágenes GPUI
+  normal/QA del paso 2 verificadas por SHA-256 antes de lifecycle. Sin repetir
+  compilación tras el último cambio documental. Entorno de este turno declara
+  gpt-6.1-sol medium; no se afirma high ni se crean subagentes nuevos.
+- Plane sigue En curso: sólo resumen actualizado. CI/revisión a cargo del
+  orquestador. Sin merge/release/promoción ni instalación/registro reales por
+  el worker. Clic físico y candidata pendientes de Isaac; Unix sin ejecutar.
+  Pasos 4–5 van con VANTA-127 pasos 6–7. Installer, installation.rs y packaging
+  intactos; no se incorpora trabajo de esos pasos en este PR.
 <!-- /isa1860-arranque-cierre -->
 
 <!-- isa1827-simplificar-e -->

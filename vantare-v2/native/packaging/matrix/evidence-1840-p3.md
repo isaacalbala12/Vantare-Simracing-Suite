@@ -1,6 +1,6 @@
 # #1840 / VANTA-127 · paso 3, lectura Rust
 
-Estado: ajustes de revisión profunda en curso, [PR draft #1861](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1861)
+Estado: revisión profunda atendida y gates locales PASS, [PR draft #1861](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1861)
 publicado y enlazado a T3; gates locales completos sobre nightly actualizado. Base inicial
 `5cc23113afae7cfa44429f225f0aeb5f770c061c`; rebase sin conflictos sobre
 `668d99c32`, que incluye el paso 2 integrado por el orquestador en
@@ -176,7 +176,7 @@ python native/scripts/installer-lines.py --base 668d99c32 --head <SHA-final>
 Sin head mide el árbol de trabajo. Perímetro fijo publicado en el script:
 fuentes installer y Ajustes (mod.rs, updates.rs, view.rs y view/rail.rs),
 tests/fixtures/ejemplo de installer, scripts PS de
-packaging, README/handoff/fragmento de la entrega, build.rs, workflow y contador.
+packaging, README/handoff/diseño/fragmento de la entrega, build.rs, workflow y contador.
 Cuenta líneas físicas (comentarios y vacías incluidos), excluye items Rust
 exclusivos de test de producción con el clasificador existente y los suma a
 tests. Separa scripts PS de producto y tests/tooling, Rust build, Python y CI.
@@ -187,15 +187,15 @@ Medición final del perímetro publicado (líneas físicas):
 
 | Categoría | Antes | Después | Diferencia |
 | --- | ---: | ---: | ---: |
-| Rust producción | 7174 | 7727 | +553 |
-| Rust tests/ejemplo | 471 | 1016 | +545 |
+| Rust producción | 7174 | 7787 | +613 |
+| Rust tests/ejemplo | 471 | 1089 | +618 |
 | Fixtures JSON | 0 | 6 | +6 |
 | PowerShell producto | 2246 | 2252 | +6 |
-| PowerShell tests/tooling | 5787 | 5839 | +52 |
+| PowerShell tests/tooling | 5787 | 5926 | +139 |
 | Rust build/tooling | 74 | 155 | +81 |
-| Python tooling | 0 | 97 | +97 |
+| Python tooling | 0 | 98 | +98 |
 | CI | 469 | 471 | +2 |
-| Documentación | 8760 | 9088 | +328 |
+| Documentación | 9550 | 9987 | +437 |
 
 Este paso añade el lector Rust mientras conserva PS: no acredita reducción
 neta de producción. El ahorro global se medirá al retirar consumidores PS.
@@ -221,18 +221,67 @@ revisión/integración y vigila los checks remotos cuando exista PR.
 
 | Punto | Decisión y resultado preparado | Verificación |
 | --- | --- | --- |
-| 1, canales | Installation::read/Probe acepta todos los canales cerrados. La restricción beta pertenece solo a complete_probe de Setup, como al driver real | Test Rust nightly/testers/master + raíz nightly en contraste PS/Rust; pendiente de gate |
+| 1, canales | Installation::read/Probe acepta todos los canales cerrados. La restricción beta pertenece solo a complete_probe de Setup, como al driver real | Test Rust nightly/testers/master + raíz nightly en contraste PS/Rust; PASS: test Rust y cinco raíces nightly |
 | 2, previous ausente | Revisión corregida por el orquestador: se conserva el rechazo real del PS con StrictMode; no se amplía Rust | review-parity-02.log, motivo previous-missing; test existente conservado y tipado |
-| 3, Unread | Placeholder neutro; no versión «…», pill Instalada ni cabecera de versión vacía | Early return antes de construir la presentación instalada; gates UI pendientes |
-| 4, rechazos | Variantes tipadas Rust e IDs estructurados del ErrorRecord PS se traducen a invariantes. No se compara stderr/texto formateado ni solo exit!=0; un motivo desconocido falla | Nueve fallos aislados por raíz con estado, bytes restaurados; PS9/9 en review-legacy-rejections-02.log; diferencial completo pendiente |
+| 3, Unread | Placeholder neutro; no versión «…», pill Instalada ni cabecera de versión vacía | Early return antes de construir la presentación instalada; Clippy y Nextest Hub PASS |
+| 4, rechazos | Variantes tipadas Rust e IDs estructurados del ErrorRecord PS se traducen a invariantes. No se compara stderr/texto formateado ni solo exit!=0; un motivo desconocido falla | Nueve fallos aislados por raíz con estado, bytes restaurados; PS9/9 en review-legacy-rejections-02.log; 45/45 pares diferenciales PASS |
 | 5, diseño | Nota inicial y anotación en §4.5 precisan la excepción autorizada de Ajustes | Texto histórico conservado, anotación de vigencia explícita |
 | 6, catálogo | Parseo textual de candidate.ps1 en build.rs registrado como deuda transitoria de p4/p7 en #1840 | No se amplía ni generaliza el parser en este paso |
 
 Los resultados previos de este documento pertenecen a los HEAD indicados;
-no se presentan como gates de las correcciones de esta revisión. Nuevo bloque
-Rust único review-gates.ps1: fmt/Clippy/Nextest de Installer+Hub, build del
-adaptador y check del lector sin defaults. Después, matriz completa sin Record,
+no se presentan como gates de las correcciones de esta revisión. Bloque
+Rust único ejecutado review-gates.ps1: fmt/Clippy/Nextest de Installer+Hub, build del
+adaptador y check del lector sin defaults. Después se ejecutó la matriz completa sin Record,
 sin cambiar baseline ni snapshot.py. El primer ensayo PS aislado usaba una
 fixture de un solo miembro; se corrigió a dos miembros para contrastar los
 contratos pedidos. Un ensayo de mutación usó Write-NativeJson (CreateNew):
 se sustituyó por escritor exclusivo de fixtures QA, con guard y restauración.
+
+### Ensayo de revisión con presupuesto exterior 240 s
+
+review-matrix-01.log conserva 88/88 filas comparadas con baseline, 45 rechazos
+por invariante y cinco raíces nightly PASS. Biblioteca/contexto/seguridad/capturas,
+inventario y registro/arranque completaron sus gates. La campaña completa NO pasó:
+Startup agotó el presupuesto exterior de 240 s antes de terminar (damaged-option-2).
+No se registró ninguna aserción fallida; el padre conserva stdout/stderr incompletos
+en matrix-p3-review-01/startup.log. No se fabrica results.json del proceso abortado.
+
+El orquestador autorizó 480 s exclusivamente para el presupuesto exterior de
+Startup, manteniendo 30 s por operación y las 48 aserciones. El workflow CI usa
+el mismo installation-matrix-tests.ps1 y recibe ese valor sin override. Baseline,
+normalizador y startup-tests.ps1 conservan sus bytes. Se repite toda la campaña
+en matrix-p3-review-02 y se mide el tiempo total mediante StartTime/ExitTime del
+proceso real, con handle retenido por un observador externo de QA. Si supera
+480 s se detiene sin otra ampliación. Resultado final PASS; duración 197.600 s (ver cierre).
+
+
+### Cierre de la revisión
+
+- Fuentes Rust b159cb781: bloque único compilar.ps1, fmt/check, Clippy
+  Installer+Hub all-targets -D warnings y Nextest **636/636 PASS**,
+  cuatro omisiones existentes; build del adaptador y check sin defaults PASS.
+- review-matrix-02.log: **88/88 PASS**, objetos idénticos a baseline.json;
+  25 biblioteca +24 contexto +14 seguridad histórica +18 capturas crudas
+  +54 inventario +42 registro/arranque +48 Startup PASS. Sin Record.
+- **45/45 rechazos**: nueve defectos aislados en cinco raíces; invariantes PS
+  y Rust coinciden. Cinco raíces nightly aceptadas por los lectores comunes
+  y rechazadas por Setup beta. Se mantienen las 128 comparaciones de campos.
+- review-source-proof.json: resultados/baseline, copias QA, cuatro fuentes
+  candidate/beta/baseline/normalizador intactas y solo dos aristas del lock PASS.
+  Guard7+5, parser PS, calidad468 y diff check PASS.
+- review-smoke/02 conservaron un fallo estricto del arnés: el ErrorRecord
+  invocado desde driver lleva ID cualificado y sitúa InvocationInfo en el
+  llamador. Se clasifica previous ausente por ID/lector/invariante del JSON,
+  sin mensaje localizado. review-smoke-03 y la campaña completa PASS.
+- El diseño se añade al perímetro documental en ambos lados de la medición;
+  por eso cambia el total anterior de docs respecto a la primera entrega.
+  La medición sigue incluyendo comentarios y líneas vacías, sin ahorro global.
+- Startup completo: **197.600 s**, exit0, 48 aserciones
+  PASS, medido por tiempos del proceso real con handle retenido; JSON externo
+  review-startup-duration.json. Presupuesto exterior480 s compartido con CI;
+  deadlines30 s por operación intactos. Intento240 s fallido conservado arriba.
+
+Revisión aplicada en el mismo PR #1861. #1862, entregado por separado,
+integrado por el orquestador en nightly cbe485786 (metadatos verificados).
+CI remota no vigilada por el worker;
+QA física sigue pendiente en VM/cuenta separada. Sin Plane, merge ni release.

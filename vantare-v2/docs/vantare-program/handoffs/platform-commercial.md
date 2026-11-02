@@ -378,7 +378,7 @@ conservan la evidencia de sus ramas; no describen el estado de integración actu
 [#1840](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1840),
 area:plataforma, Project Vantare. Plane En curso; estados/CI del orquestador.
 Sin merge/release del worker.
-### Paso 3 · motor de lectura Rust, revisión profunda en curso (2-nov-2026)
+### Paso 3 · motor de lectura Rust, revisión profunda atendida (2-nov-2026)
 
 - PR draft [#1861](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1861),
   enlazado T3. Rama vantareapp/isa-1840-paso3-engine-lectura; base inicial
@@ -410,10 +410,19 @@ Sin merge/release del worker.
   Decisión corregida del orquestador: previous ausente sigue rechazado como PS.
   Unread neutro y contraste de nueve rechazos por invariantes, sin texto de error.
   Nota de vigencia del diseño actualizada; parser build.rs marcado deuda p4/p7.
-  Gates afectados en curso; resultados anteriores no validan este nuevo HEAD.
+  Fuentes Rust b159cb781: fmt/check, Clippy Installer+Hub all-targets -D warnings,
+  Nextest636/636 PASS (4 omisiones existentes), build adaptador/check sin defaults.
+  Matriz review-02: 88/88 idénticos al baseline, 45/45 rechazos por motivo y cinco
+  raíces nightly comunes aceptadas/Setup rechazado; 128 campos iguales.
+  Guard7+5, parser PS, calidad468 y prueba de fuentes/lock PASS. Logs review-*.
+  Medición actualizada incluye diseño en ambos lados; sin ahorro global.
+  review-01 agotó presupuesto exterior Startup240 s, sin aserción fallida;
+  conserva88 filas+45 rechazos y42 registro/arranque PASS, sin campaña completa.
+  Autorizado480 s exterior, deadlines30 s/48 aserciones y CI mismo valor;
+  repetición íntegra review-02 PASS: Startup197,600 s; baseline/normalizador intactos.
 - Siguiente: revisión/CI/integración del orquestador y QA física en cuenta/VM.
-  Encargo posterior autorizado: PR pequeño separado para test1c por handle,
-  en lugar de consulta por PID; no se mezcla aquí. Sin Plane, instalación real,
+  Test1c por handle entregado aparte en #1862, integrado por el orquestador
+  en nightly cbe485786; no se mezcla aquí. Sin Plane, instalación real,
   secretos, Downloads, merge/release/promoción del worker ni CI watch.
 
 ### Antecedentes 0–1d (evidencia histórica conservada)

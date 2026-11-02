@@ -6577,6 +6577,8 @@ dependencies = [
  "sha2",
  "vantare-build-support",
  "vantare-ui",
+ "windows 0.62.2",
+ "zip",
 ]
 
 [[package]]

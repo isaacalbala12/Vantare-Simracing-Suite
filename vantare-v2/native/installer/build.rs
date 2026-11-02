@@ -41,7 +41,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("cargo:rustc-env={name}={value}");
     }
     let out = PathBuf::from(env::var_os("OUT_DIR").ok_or("OUT_DIR ausente")?);
-    installed_members(&out)?;
     if env::var_os("CARGO_FEATURE_TRANSPORT").is_none() {
         return Ok(());
     }
@@ -76,80 +75,5 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         source = embedded;
     }
     fs::write(out.join("payload.rs"), source)?;
-    Ok(())
-}
-
-// One catalogue during the read-only transition: packaging owns these arrays
-// until package migration (step 4) and removal of product PS (step 7).
-fn installed_members(out: &std::path::Path) -> Result<(), Box<dyn std::error::Error>> {
-    let path = PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").ok_or("manifest dir")?)
-        .join("../packaging/candidate.ps1");
-    println!("cargo:rerun-if-changed={}", path.display());
-    let source = fs::read_to_string(path)?;
-    let literals = |body: &str| {
-        let mut values = Vec::new();
-        for line in body.lines() {
-            let code = line.split('#').next().unwrap_or_default();
-            for (index, token) in code.split('\'').enumerate() {
-                if index % 2 == 1 {
-                    values.push(token.to_owned());
-                }
-            }
-        }
-        values
-    };
-    let array = |name: &str| -> Result<Vec<String>, Box<dyn std::error::Error>> {
-        let prefix = format!("$script:{name} = @(");
-        let body = source
-            .split_once(&prefix)
-            .ok_or("catalogue missing")?
-            .1
-            .split_once(')')
-            .ok_or("catalogue not closed")?
-            .0;
-        Ok(literals(body))
-    };
-    let mut members = Vec::new();
-    for bin in array("NativeBuildBins")? {
-        members.push(format!("bin/{bin}.exe"));
-        members.push(format!("bin/{bin}.exe.sha256"));
-    }
-    members.extend(array("NativeFixtures")?);
-    let function = source
-        .split_once("function Get-NativeMembers(")
-        .ok_or("member function missing")?
-        .1
-        .split_once("\n}")
-        .ok_or("member function not closed")?
-        .0;
-    let extras = function
-        .split_once("+ @(")
-        .ok_or("extra members missing")?
-        .1
-        .split_once(')')
-        .ok_or("extra members not closed")?
-        .0;
-    members.extend(literals(extras));
-    let mut seen: std::collections::HashSet<_> =
-        members.iter().map(|p| p.to_ascii_lowercase()).collect();
-    for retired in array("NativeRetiredMembers")? {
-        let valid = retired.split('/').all(|segment| {
-            !segment.eq_ignore_ascii_case("data")
-                && segment.split('.').all(|part| {
-                    !part.is_empty()
-                        && part
-                            .bytes()
-                            .all(|b| b.is_ascii_alphanumeric() || b == b'_' || b == b'-')
-                })
-        });
-        if !valid || !seen.insert(retired.to_ascii_lowercase()) {
-            return Err("invalid or duplicate retired packaging member".into());
-        }
-        members.push(retired);
-    }
-    fs::write(
-        out.join("installed-members.rs"),
-        format!("const KNOWN_MEMBERS: &[&str] = &{members:?};\n"),
-    )?;
     Ok(())
 }

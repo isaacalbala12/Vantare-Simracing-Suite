@@ -2,7 +2,7 @@ use super::{
     reject_links,
     validation::{channel, hex, hub_version, package_version},
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 use std::{
@@ -18,8 +18,10 @@ pub enum ReadProfile {
     Hub,
     /// Setup Probe: bind manifest, check installed inventory; no active rehash.
     Probe,
+    /// Mutations authenticate the active binaries before copying or updating.
+    Verified,
     /// Legacy interrupted uninstall may have already removed manifest/bin.
-    /// Driver `DisplayVersion` remains a presentation fallback until step 4.
+    /// Surviving bound manifest may inform display; never uses registry fallback.
     Uninstall,
 }
 
@@ -95,7 +97,7 @@ impl From<serde_json::Error> for ReadError {
     }
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Generation {
     pub generation: String,
@@ -112,7 +114,7 @@ impl Generation {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct State {
     pub schema: u32,
@@ -209,7 +211,8 @@ impl Manifest {
         Ok(manifest)
     }
 
-    fn installed(&self, directory: &Path, verify_files: bool) -> Result<(), ReadError> {
+    pub(super) fn installed(&self, directory: &Path, verify_files: bool) -> Result<(), ReadError> {
+        validate_catalogue()?;
         let fields = &self.fields;
         require(
             fields.get("data_schema").and_then(Value::as_str) == Some("opaque-v1")
@@ -289,11 +292,11 @@ impl Manifest {
     }
 }
 
-// Generated at build time from the one existing packaging catalogue. Step 4
-// migrates package ownership; step 7 retires this legacy source with PowerShell.
-include!(concat!(env!("OUT_DIR"), "/installed-members.rs"));
+// Rust owns the catalogue from step 4. The matrix keeps the legacy PS catalogue
+// byte-compatible until its product consumers retire in steps 6/7.
+include!("members.rs");
 fn known_member(path: &str, channel: &str) -> bool {
-    KNOWN_MEMBERS.contains(&path)
+    (CURRENT_MEMBERS.contains(&path) || RETIRED_MEMBERS.contains(&path))
         && (channel != "beta"
             || !matches!(
                 path,
@@ -304,21 +307,37 @@ fn known_member(path: &str, channel: &str) -> bool {
 /// Transitional closed inventory, shared with the packaging catalogue until
 /// step 4 migrates package ownership and step 7 removes product PowerShell.
 pub fn known_members(channel: &str) -> Vec<&'static str> {
-    KNOWN_MEMBERS
+    CURRENT_MEMBERS
         .iter()
+        .chain(RETIRED_MEMBERS.iter())
         .copied()
         .filter(|path| known_member(path, channel))
         .collect()
 }
+pub fn current_members(channel: &str) -> Vec<&'static str> {
+    CURRENT_MEMBERS.iter().copied().filter(|path| known_member(path, channel)).collect()
+}
+pub fn validate_catalogue() -> Result<(), ReadError> {
+    let mut seen: HashSet<_> = CURRENT_MEMBERS.iter().map(|path| path.to_ascii_lowercase()).collect();
+    for path in RETIRED_MEMBERS {
+        let valid = path.split('/').all(|segment| {
+            !segment.eq_ignore_ascii_case("data") && segment.split('.').all(|part| {
+                !part.is_empty() && part.bytes().all(|b| b.is_ascii_alphanumeric() || matches!(b, b'_' | b'-'))
+            })
+        });
+        require(valid && seen.insert(path.to_ascii_lowercase()), "Catálogo de rutas retiradas inválido o duplicado")?;
+    }
+    Ok(())
+}
 
-fn hash_file(path: &Path) -> Result<String, ReadError> {
+pub(super) fn hash_file(path: &Path) -> Result<String, ReadError> {
     reject_links(path).map_err(|_| ReadError::Invalid("Ruta de instalación no válida"))?;
     let mut hash = Sha256::new();
     io::copy(&mut fs::File::open(path)?, &mut hash)?;
     Ok(format!("{:x}", hash.finalize()))
 }
 
-fn verify_pe(path: &Path) -> Result<(), ReadError> {
+pub(super) fn verify_pe(path: &Path) -> Result<(), ReadError> {
     let mut file = fs::File::open(path)?;
     let length = file.metadata()?.len();
     require(length >= 64, "Binario sin cabecera MZ")?;
@@ -338,7 +357,7 @@ fn verify_pe(path: &Path) -> Result<(), ReadError> {
     )
 }
 
-fn tree(root: &Path) -> Result<Vec<PathBuf>, ReadError> {
+pub(super) fn tree(root: &Path) -> Result<Vec<PathBuf>, ReadError> {
     let mut pending = vec![root.to_path_buf()];
     let mut files = Vec::new();
     while let Some(directory) = pending.pop() {
@@ -424,7 +443,7 @@ impl Installation {
             .join(&state.active.generation)
             .join("data");
         if profile != ReadProfile::Uninstall {
-            let manifest = read_generation(root, &state.active, &state.channel, profile, false)?;
+            let manifest = read_generation(root, &state.active, &state.channel, profile, profile == ReadProfile::Verified)?;
             if profile == ReadProfile::Hub {
                 require(
                     state.previous.as_ref().is_none_or(Generation::valid),
@@ -441,6 +460,11 @@ impl Installation {
                 state.previous = None;
             }
             installation.manifest = Some(manifest);
+        } else {
+            // P4 replaces the registry DisplayVersion projection. Read only a
+            // hash-bound manifest when it survives; missing/damaged program
+            // members never block the structurally valid uninstall profile.
+            installation.manifest = uninstall_manifest(root, &state).ok();
         }
         installation.state = Some(state);
         Ok(installation)
@@ -449,6 +473,16 @@ impl Installation {
     pub fn installed_version(&self) -> Option<&str> {
         self.manifest.as_ref().map(|m| m.version.as_str())
     }
+}
+
+fn uninstall_manifest(root: &Path, state: &State) -> Result<Manifest, ReadError> {
+    require(state.active.valid(), Rejection::Reference)?;
+    let path = root.join("generations").join(&state.active.generation).join("manifest.json");
+    let raw = bytes(&path, Some(65536), ReadProfile::Uninstall)?;
+    require(state.active.manifest_sha256.as_ref() == Some(&format!("{:x}", Sha256::digest(&raw))), Rejection::Binding)?;
+    let manifest = Manifest::decode(&raw, ReadProfile::Uninstall)?;
+    require(manifest.channel == state.channel, Rejection::Manifest)?;
+    Ok(manifest)
 }
 
 fn decode_state(
@@ -463,7 +497,7 @@ fn decode_state(
         value.is_object() && value["active"].is_object(),
         Rejection::State,
     )?;
-    if profile == ReadProfile::Probe {
+    if matches!(profile, ReadProfile::Probe | ReadProfile::Verified) {
         require(value.get("previous").is_some(), Rejection::MissingPrevious)?;
     }
     if let Some(map) = value.as_object_mut() {
@@ -486,7 +520,7 @@ fn decode_state(
     }
     let mut state: State = serde_json::from_value(value)?;
     let mut warning = None;
-    if profile == ReadProfile::Probe && !previous.is_null() {
+    if matches!(profile, ReadProfile::Probe | ReadProfile::Verified) && !previous.is_null() {
         match serde_json::from_value(previous) {
             Ok(reference) => state.previous = Some(reference),
             Err(_) => warning = Some("previous-corrupt"),

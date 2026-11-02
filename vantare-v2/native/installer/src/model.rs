@@ -36,7 +36,7 @@ pub struct Info {
     pub reduced_motion: bool,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Progress {
     pub step: String,

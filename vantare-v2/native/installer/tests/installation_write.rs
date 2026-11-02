@@ -154,28 +154,29 @@ impl Fixture {
             checkpoint: &mut checkpoint,
             warning: &mut warning,
         };
-        operations::install(
+        let mut restored = false;
+        let result = operations::install(
             &self.root,
             &package.borrowed(),
             mode,
             &mut control,
-            |_| {
-                if fail_finalize {
-                    fs::write(
-                        self.root.join("installer-ui.json"),
-                        b"partially replaced options",
-                    )?;
-                    fs::write(
-                        self.root.join("Uninstall.exe"),
-                        b"partially replaced uninstaller",
-                    )?;
+            |_, restoring| {
+                restored |= restoring;
+                if fail_finalize && !restoring {
                     Err(engine::WriteError::new(1, "injected finalizer failure"))
                 } else {
                     Ok(())
                 }
             },
             || Ok(()),
-        )
+        );
+        if fail_finalize {
+            assert!(
+                restored,
+                "Failed projection must be called again after restoring state"
+            );
+        }
+        result
     }
     fn active(&self) -> PathBuf {
         let state = Installation::read(&self.root, ReadProfile::Verified)
@@ -235,29 +236,16 @@ fn update_copies_exact_opaque_data_and_preserves_both_old_generations() {
 }
 
 #[test]
-fn failed_shell_finalization_restores_exact_state_and_metadata_bytes() {
+fn failed_shell_finalization_restores_the_logical_state_and_data() {
     let fixture = Fixture::new();
     fixture
         .install(&fixture.package("1.0.0"), Mode::Auto, false, false)
         .expect("install");
     fixture.write_data();
     let state = fs::read(fixture.root.join("state.json")).expect("state bytes");
-    let options = b"{\"desktop\":true,\"original\":\"exact bytes\"}\r\n";
-    fs::write(fixture.root.join("installer-ui.json"), options).expect("original options");
-    let uninstaller =
-        fs::read(fixture.active().join("bin/vantare.exe")).expect("inert original PE");
-    fs::write(fixture.root.join("Uninstall.exe"), &uninstaller).expect("original uninstaller");
     let data = disk::data_index(&fixture.data()).expect("data before");
     let result = fixture.install(&fixture.package("1.0.1"), Mode::Auto, true, false);
     assert!(result.is_err());
-    assert_eq!(
-        fs::read(fixture.root.join("installer-ui.json")).expect("restored options"),
-        options
-    );
-    assert_eq!(
-        fs::read(fixture.root.join("Uninstall.exe")).expect("restored uninstaller"),
-        uninstaller
-    );
     assert_eq!(
         fs::read(fixture.root.join("state.json")).expect("restored bytes"),
         state

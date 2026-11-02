@@ -13,7 +13,7 @@ use crate::{
 use serde::{Deserialize, Serialize};
 use std::{
     fs,
-    io::{BufRead, BufReader, Read, Write},
+    io::Write,
     path::{Path, PathBuf},
     process::{Command, Stdio},
     sync::{
@@ -120,7 +120,7 @@ impl Session {
                     for (name, bytes) in [
                         ("candidate.ps1", payload::CANDIDATE),
                         ("beta.ps1", payload::BETA),
-                        ("installer-shell.ps1", payload::SHELL_FINALIZER),
+                        ("installer-cleanup.ps1", payload::CLEANUP),
                         ("installer-notices.txt", payload::FONT_LICENSES.as_bytes()),
                     ] {
                         session.write(name, bytes)?;
@@ -152,7 +152,7 @@ impl Session {
         );
         command
             .args(["-NoProfile", "-ExecutionPolicy", "Bypass", "-File"])
-            .arg(self.directory.join("installer-shell.ps1"))
+            .arg(self.directory.join("installer-cleanup.ps1"))
             .arg("-RequestFile")
             .arg(self.directory.join("shell.json"));
         #[cfg(windows)]
@@ -162,90 +162,51 @@ impl Session {
         }
         Ok(command)
     }
-    fn shell_contract(
-        &self,
-        operation: &str,
-        request: &Request,
-        previous: Option<&super::context::Options>,
-    ) -> WriteResult<()> {
-        self.context.validate_root(
-            request
-                .root
-                .as_deref()
-                .ok_or_else(|| WriteError::new(1, "NATIVE_ROOT_REQUIRED"))?,
+    fn cleanup_contract(&self, request: &Request) -> WriteResult<()> {
+        let root = request
+            .root
+            .as_deref()
+            .ok_or_else(|| WriteError::new(1, "Falta raíz Cleanup"))?;
+        self.context.validate_root(root)?;
+        disk::ensure(
+            !root.join("state.json").try_exists()? && !self.context.has_registration(request)?,
+            "La instalación se ha renovado; se conserva el desinstalador",
         )?;
-        let mut resolved = request.clone();
-        if operation == "FinalizeInstall" {
-            super::Installation::read(
-                resolved
-                    .root
-                    .as_deref()
-                    .ok_or_else(|| WriteError::new(1, "Raíz ausente"))?,
-                super::ReadProfile::Probe,
-            )?
-            .installed_version()
-            .ok_or_else(|| WriteError::new(1, "Falta versión instalada"))?
-            .clone_into(&mut resolved.version);
+        let marker = disk::read_json(&root.join("installer-cleanup.json"), Some(1024))?;
+        disk::ensure(
+            marker["schema"] == 1
+                && marker["sha256"]
+                    .as_str()
+                    .is_some_and(|hash| super::validation::hex(hash, 64)),
+            "Marker de limpieza inválido",
+        )?;
+        let exe = root.join("Uninstall.exe");
+        if exe.try_exists()? {
+            disk::ensure(
+                marker["sha256"] == super::installation::hash_file(&exe)?,
+                "El desinstalador cambió; se conserva",
+            )?;
         }
         disk::write_json(
             &self.directory.join("shell.json"),
-            &serde_json::json!({
-                "operation":operation,"request":resolved,"context":self.context,"previousUi":previous
-            }),
+            &serde_json::json!({"operation":"Cleanup","root":root,"parentId":request.process_id,"qa":self.context.is_isolated()}),
         )
     }
-    /// TODO(#1840 p5): one PS call per finalization operation. It cannot mutate
-    /// generations/state/data; nonzero returns to the Rust metadata rollback.
-    fn finalize(
-        &self,
-        operation: &str,
-        request: &Request,
-        previous: Option<&super::context::Options>,
-        progress: &mut dyn FnMut(Progress),
-    ) -> WriteResult<()> {
-        self.shell_contract(operation, request, previous)?;
-        let mut log = fs::OpenOptions::new()
+    /// Permanent, file-only exception. The exit code is the authority; all output is diagnostic.
+    fn cleanup(&self, request: &Request) -> WriteResult<()> {
+        self.cleanup_contract(request)?;
+        let log = fs::OpenOptions::new()
             .append(true)
             .open(&request.log_file)?;
-        let mut child = self
+        let status = self
             .command()
-            .map_err(|error| WriteError::new(1, error))?
-            .stdout(Stdio::piped())
-            .stderr(Stdio::from(log.try_clone()?))
-            .spawn()?;
-        let stdout = child
-            .stdout
-            .take()
-            .ok_or_else(|| WriteError::new(1, "Falta salida de finalización"))?;
-        let mut reader = BufReader::new(stdout);
-        let mut bytes = Vec::new();
-        loop {
-            bytes.clear();
-            match reader.by_ref().take(8193).read_until(b'\n', &mut bytes) {
-                Ok(0) => break,
-                Ok(count) if count <= 8192 => match serde_json::from_slice::<Progress>(&bytes) {
-                    Ok(event) if event.percent <= 100 && event.done <= event.total => {
-                        progress(event);
-                    }
-                    _ => {
-                        let _ = log.write_all(&bytes);
-                    }
-                },
-                Ok(_) => {
-                    let _ = log.write_all(&bytes);
-                }
-                Err(error) => {
-                    let _ = writeln!(log, "Salida de finalización: {error}");
-                    break;
-                }
-            }
-        }
-        let status = child.wait()?;
-        // Cosmetic warnings and unrecognized output are diagnostics. The child
-        // exit status, not stdout formatting, decides whether to roll back.
+            .map_err(|cause| WriteError::new(1, cause))?
+            .stdout(Stdio::from(log.try_clone()?))
+            .stderr(Stdio::from(log))
+            .status()?;
         disk::ensure(
             status.success(),
-            "No se pudo finalizar la integración Windows; consulta el registro",
+            "No se pudo completar Cleanup; consulta el registro",
         )
     }
     fn extract(
@@ -421,7 +382,7 @@ impl Session {
                     package,
                     request.mode,
                     control,
-                    |control| self.finalize("FinalizeInstall", request, previous, control.progress),
+                    |control, restoring| self.sync(request, previous, restoring, control.warning),
                     || self.prepare_orphan(root, request),
                 )
             }
@@ -440,11 +401,51 @@ impl Session {
                     can_cancel: false,
                 });
                 operations::uninstall(root, control, |control| {
-                    self.finalize("FinalizeUninstall", request, previous, control.progress)
+                    self.sync(request, previous, false, control.warning)
                 })
             }
-            "Cleanup" => self.finalize("Cleanup", request, previous, control.progress),
+            "Cleanup" => self.cleanup(request),
             _ => Err(WriteError::new(1, "Operación del instalador no permitida")),
+        }
+    }
+    fn sync(
+        &self,
+        request: &Request,
+        previous: Option<&super::context::Options>,
+        restoring: bool,
+        warning: &mut dyn FnMut(&str),
+    ) -> WriteResult<()> {
+        let root = request
+            .root
+            .as_deref()
+            .ok_or_else(|| WriteError::new(1, "Falta raíz"))?;
+        #[cfg(windows)]
+        {
+            let view = super::Installation::read(
+                root,
+                if request.uninstall {
+                    super::ReadProfile::Uninstall
+                } else {
+                    super::ReadProfile::Probe
+                },
+            )?;
+            super::shell::sync(
+                root,
+                &self.context,
+                view.state.as_ref(),
+                &super::shell::Options {
+                    request,
+                    previous,
+                    payload: &self.directory,
+                    restoring,
+                },
+                warning,
+            )
+        }
+        #[cfg(not(windows))]
+        {
+            let _ = (root, previous, restoring, warning);
+            Err(WriteError::new(1, "Shell requiere Windows"))
         }
     }
     fn prepare_orphan(&self, root: &Path, request: &Request) -> WriteResult<()> {
@@ -479,13 +480,13 @@ impl Session {
         )?;
         disk::remove_file(&marker)
     }
-    /// Existing deferred self-removal stays in the shell boundary until p5.
+    /// Permanent, guarded PowerShell cleanup; no native self-delete workaround.
     pub fn schedule_cleanup(args: &Args) -> Result<(), String> {
         let mut session = Self::new()?;
         let mut request = Request::new(args, "Cleanup");
         request.root = Some(session.probe(&request)?.root);
         session
-            .shell_contract("Cleanup", &request, None)
+            .cleanup_contract(&request)
             .map_err(|error| error.to_string())?;
         let log = fs::OpenOptions::new()
             .write(true)
@@ -589,7 +590,7 @@ mod tests {
 exit EXIT_CODE
 "#
             .replace("EXIT_CODE", &code.to_string());
-            fs::write(session.directory.join("installer-shell.ps1"), script)
+            fs::write(session.directory.join("installer-cleanup.ps1"), script)
                 .expect("injected finalizer");
             let mut request = Request::new(
                 &Args {
@@ -600,11 +601,17 @@ exit EXIT_CODE
             );
             request.log_file = root.join("diagnostics.log");
             fs::write(&request.log_file, []).expect("owned log");
-            let mut events = Vec::new();
-            let result =
-                session.finalize("Cleanup", &request, None, &mut |event| events.push(event));
+            fs::create_dir_all(root.join("install")).expect("owned install root");
+            fs::write(root.join("install/Uninstall.exe"), b"owned fixture").expect("owned EXE");
+            let hash = crate::engine::installation::hash_file(&root.join("install/Uninstall.exe"))
+                .expect("hash");
+            disk::write_json(
+                &root.join("install/installer-cleanup.json"),
+                &serde_json::json!({"schema":1,"sha256":hash}),
+            )
+            .expect("marker");
+            let result = session.cleanup(&request);
             assert_eq!(result.is_ok(), code == 0);
-            assert_eq!(events.len(), 1);
             let log = fs::read_to_string(&request.log_file).expect("diagnostics");
             assert!(log.contains("injected cosmetic warning"));
             assert!(log.contains("\"percent\":255"));

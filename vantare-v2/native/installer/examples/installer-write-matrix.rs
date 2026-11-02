@@ -45,6 +45,33 @@ fn run() -> Result<u8, Box<dyn std::error::Error>> {
         return Ok(0);
     }
     qa_path(&input.payload_directory)?;
+    if input.request.operation == "Sync" {
+        let root = input
+            .request
+            .root
+            .as_deref()
+            .ok_or("explicit QA root required")?;
+        context.validate_root(root)?;
+        let _session = vantare_installer::engine::write_fs::lock(root, "beta-session.lock")?;
+        let view = vantare_installer::engine::Installation::read(
+            root,
+            vantare_installer::engine::ReadProfile::Probe,
+        )?;
+        let previous = vantare_installer::engine::context::options(root, true)?;
+        vantare_installer::engine::shell::sync(
+            root,
+            &context,
+            view.state.as_ref(),
+            &vantare_installer::engine::shell::Options {
+                request: &input.request,
+                previous: previous.as_ref(),
+                payload: &input.payload_directory,
+                restoring: false,
+            },
+            &mut |message| eprintln!("{message}"),
+        )?;
+        return Ok(0);
+    }
     let session = Session::with_context(context)?;
     let result = session.run_files(
         &input.request,

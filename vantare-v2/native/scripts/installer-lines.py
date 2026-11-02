@@ -42,12 +42,15 @@ def category(path):
         return "rust_build_tooling"
     if path.startswith(PREFIX + "native/packaging/") and path.endswith(".ps1"):
         return "ps_product" if path.rsplit("/", 1)[1] in {
-            "candidate.ps1", "beta.ps1", "installer-driver.ps1", "installer-shell.ps1"} else "ps_tests_and_tooling"
+            "candidate.ps1", "beta.ps1", "installer-driver.ps1", "installer-shell.ps1", "installer-cleanup.ps1"} else "ps_tests_and_tooling"
+    if path == PREFIX + "native/packaging/matrix/cleanup-image-probe.cs":
+        return "cs_tests"
     if path in {PREFIX + "native/README.md", PREFIX + "native/installer/README.md",
                 PREFIX + "native/hub/README.md", PREFIX + "native/packaging/README.md",
                 PREFIX + "native/packaging/matrix/README.md",
                 PREFIX + "native/packaging/matrix/evidence-1840-p3.md",
                 PREFIX + "native/packaging/matrix/evidence-1840-p4.md",
+                PREFIX + "native/packaging/matrix/evidence-1840-p5.md",
                 PREFIX + "docs/adr/0103-instalacion-nativa.md",
                 PREFIX + "docs/vantare-program/handoffs/platform-commercial.md",
                 PREFIX + "docs/vantare-program/installer-design.md",

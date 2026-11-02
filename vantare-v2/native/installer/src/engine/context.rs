@@ -367,7 +367,7 @@ pub fn options(root: &Path, verify_uninstaller: bool) -> Result<Option<Options>>
     }
     Ok(Some(ui))
 }
-fn startup_preference(root: &Path) -> Result<Option<bool>> {
+pub(crate) fn startup_preference(root: &Path) -> Result<Option<bool>> {
     let path = root.join("startup-options.json");
     if !path.try_exists()? {
         return Ok(None);

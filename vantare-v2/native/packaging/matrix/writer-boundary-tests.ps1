@@ -38,6 +38,20 @@ function Invoke-BoundaryWriter([string]$Operation,[string]$Version){
 try{
     $result=Invoke-BoundaryWriter 'Install' '0.0.988'
     Assert-Boundary ($result.ExitCode -eq 0) 'Rust Setup finalizes the legacy Windows projection'
+    $appLink=Join-Path $qaBoundaryRoot 'Programs/Vantare/Vantare Simracing Suite.lnk'
+    $shell=New-Object -ComObject WScript.Shell
+    $explorer=New-Object -ComObject Shell.Application
+    $before=$shell.CreateShortcut($appLink)
+    $expectedTarget=$before.TargetPath;$expectedArguments=$before.Arguments;$expectedIcon=$before.IconLocation
+    $expectedVersion=(Get-ItemProperty -LiteralPath $key).DisplayVersion
+    foreach($repeat in @(1,2)){
+        $result=Invoke-BoundaryWriter 'Sync' '0.0.988'
+        Assert-Boundary ($result.ExitCode -eq 0) ('Native shell sync repeat '+$repeat+' succeeds')
+        $actual=$shell.CreateShortcut($appLink)
+        Assert-Boundary ($actual.TargetPath -ceq $expectedTarget -and $actual.Arguments -ceq $expectedArguments -and $actual.IconLocation -ceq $expectedIcon -and (Get-ItemProperty -LiteralPath $key).DisplayVersion -ceq $expectedVersion) ('Native shell sync repeat '+$repeat+' preserves its projection')
+    }
+    Assert-Boundary ($explorer.NameSpace((Split-Path $appLink)).ParseName([IO.Path]::GetFileName($appLink)).ExtendedProperty('System.AppUserModel.ID') -ceq 'Vantare.SimracingSuite') 'Native shell persists AppUserModelID'
+    Assert-Boundary (@(Get-ChildItem -LiteralPath (Split-Path $appLink) -Filter '*.lnk').Count -eq 2) 'Native shell sync creates no duplicate links'
     $motionKey='HKCU:/Control Panel/Desktop/WindowMetrics'
     New-Item -Path $motionKey -Force|Out-Null
     foreach($motionType in @('String','DWord')){

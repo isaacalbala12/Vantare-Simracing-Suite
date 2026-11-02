@@ -9,6 +9,17 @@
 
 **Notas de vigencia de la copia histórica (actualizadas 2-nov-2026, #1840):**
 
+- §4.5, paso 4: excepción autorizada el 2-nov-2026. Estado, ZIP, generaciones,
+  copia de datos, descubrimiento y opciones pasan a Rust. Shell no se adelanta:
+  una llamada PS por FinalizeInstall, FinalizeUninstall y Cleanup conserva la
+  finalización actual, transacción, guardas, propiedad de accesos, Run y rollback
+  por bytes. TODO(#1840 p5) retira las tres llamadas mediante shell::sync.
+  JSON de entrada máximo64KiB: operación/request/context/previousUi; stdout de
+  progreso, stderr de diagnóstico y exit0/error. FinalizeUninstall exige estado
+  ya retirado. Cleanup mantiene su padre/plazo30s/marker/hash y rechazo de una
+  instalación renovada; sin cmd ni nuevo contrato de autoborrado. QA inyecta
+  HKCU/carpetas antes de cargar producto. El núcleo nunca escribe por el driver.
+
 - §4.5, paso 3: el alcance aceptado migra solo lecturas Rust de Probe/Hub;
   conserva perfiles y adaptadores PS hasta pasos 4–7. No acredita 5→1 global.
   La afirmación de §4.5 sobre ausencia de cambios de comportamiento tiene una

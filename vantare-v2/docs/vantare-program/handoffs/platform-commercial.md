@@ -490,6 +490,12 @@ Sin merge/release del worker.
 - Rama vantareapp/isa-1840-paso4-motor-escritura, worktree isa-1840-paso4,
   base origin/nightly399b0e9e7. Dependencias aprobadas zip6.0.0/windows0.62,
   ninguna otra; target propio. Gates agrupados y cola cedida a VANTA-128.
+- Frontera p4/p5 autorizada: una llamada PS por FinalizeInstall,
+  FinalizeUninstall y Cleanup, con contrato acotado y TODO(#1840 p5). Conserva
+  la transacción/guardas/accesos/Run/rollback por bytes; no se porta shell a Rust.
+  Estado, ZIP, generaciones, datos, descubrimiento y opciones están en Rust.
+- Implementación y tests preparados; todavía sin compilar ni campaña nueva.
+  Zip/windows son solo dos aristas nuevas del lock, sin paquetes/versiones.
 - QA solo bajo D:/VantareServer/qa con guard, HKCU y carpetas inyectados;
   nunca instalación/registro reales. Siguiente: contratos, implementación y
   pruebas de paridad antes de PR draft a nightly; sin promoción ni release.

@@ -4,26 +4,33 @@ Dos binarios x64 independientes, `vantare-setup` y `vantare-uninstall`, publicad
 como `VantareSetup.exe` y `Uninstall.exe`. GPUI usa el mismo commit fijado que la
 aplicación. No se añade ninguna dependencia externa al lock.
 
-El Setup contiene el ZIP ya validado, uninstaller y scripts de packaging. Rust
-los escribe en un temporal exclusivo y ejecuta el motor PS 5.1 x64 oculto para
-las escrituras. `candidate.ps1` y `beta.ps1` conservan autoridad sobre cambios
-de generaciones, locks, rollback y datos. Ambos scripts raíz se renuevan solo con Setup. El
-payload público excluye ambos binarios del instalador y el admin privado.
+El Setup contiene el ZIP validado y Uninstall. El núcleo Rust verifica el
+paquete y ejecuta install/update/repair/uninstall en el mismo proceso, conservando
+state.json v1, locks, datos opacos y códigos0–5. Probe descubre raíz/registro y
+opciones en Rust. No usa el driver PS para leer ni escribir la instalación.
+
+Excepción transitoria autorizada: una llamada PS por FinalizeInstall,
+FinalizeUninstall o Cleanup, solo para la finalización Windows actual. Conserva
+transacción/guardas/propiedad de accesos/Run y rollback por bytes. Contrato JSON
+máximo64KiB, progreso stdout/diagnóstico stderr/código de salida;
+TODO(#1840 p5) sustituye las tres llamadas por shell::sync. El núcleo no envía
+estado, ZIP ni datos a PowerShell. Feed y Register continúan heredados.
 
 ## Lectura compartida — #1840, paso 3
 
 `engine::Installation::read(root, profile)` es el único lector Rust de estado
 y manifiesto para Setup y Ajustes del Hub. `State`, `Generation` y `Manifest`
 reúnen los tipos; la versión instalada sale del manifiesto de la activa.
-No escribe instalación, registro, opciones ni datos. `complete_probe` combina
-ese resultado con el contexto del driver (raíz descubierta, opciones y movimiento).
-El driver recibe `readContext=true` y no lee state/manifest en esa ruta.
+El lector no escribe instalación, registro, opciones ni datos. Desde p4,
+Context::probe reúne descubrimiento HKCU, opciones y movimiento en Rust.
+complete_probe/readContext se conservan solo como adaptador de contraste p3
+y oráculo heredado del driver, no los invoca Setup.
 
 | Perfil | Contrato conservado |
 | --- | --- |
 | Probe | SHA del manifiesto activo, data presente, inventario cerrado y sin archivos ajenos; no rehash de sus binarios. Anterior con hash/tamaño/PE/sidecar completos o aviso y anterior no restaurable, sin reescribir estado |
 | Hub | Informativo: schema/canal/referencias y manifiesto, sin autenticar bytes/inventario/data; anterior solo estructural. Estado cerrado 16 KiB, manifiesto 1 MiB; portátil sin state conserva soporte |
-| Uninstall | Recuperación estructural aunque se hayan retirado binarios/manifiesto. Conserva DisplayVersion del contexto como presentación heredada hasta paso 4; nunca se usa para elegir la activa |
+| Uninstall | Recuperación estructural aunque se hayan retirado binarios/manifiesto. La lectura estructural permite reanudar la retirada; Context usa el manifiesto cuando existe y deja la versión ausente si ya se retiró, sin DisplayVersion |
 
 Probe conserva el límite de 64 KiB del manifiesto y el estado sin límite previo;
 no se endurecen esos contratos en este refactor. `validation` centraliza los
@@ -34,17 +41,16 @@ Solo `complete_probe` de Setup conserva ExpectedChannel=beta. La clave previous
 ausente se rechaza: con StrictMode el PS real no la trata como null. Los rechazos
 de contrato disponen de invariantes tipadas para el contraste de la matriz.
 Los adaptadores PS y sus reglas siguen hasta pasos 4–7; no se afirma 5→1 global.
-El catálogo cerrado se genera durante build desde el único catálogo PS vigente;
-la matriz compara ambos catálogos para los cuatro canales. Paso 4 migra esa fuente.
-El parseo textual de candidate.ps1 en build.rs queda como deuda transitoria de
-pasos 4/7, registrada en #1840; no es el formato futuro del catálogo Rust.
+El catálogo cerrado ahora pertenece a Rust (engine/members.rs). La matriz
+contrasta los cuatro canales con el adaptador PS heredado hasta su retirada p7.
+Build.rs ya no interpreta arrays ni funciones PowerShell para generar Rust.
 
 `default-features=false` compila el lector sin GPUI, host, scripts embebidos ni
-recursos/payload de Setup. `transport` habilita el host; `ui` lo incluye; las
+recursos/payload de Setup. `write-engine` habilita ZIP/operaciones sin GPUI; `transport` conecta Setup y la finalización Windows; `ui` lo incluye; las
 features por defecto conservan Setup/Uninstall. Hub depende solo del lector.
 sha2 0.10.9 ya fijada se adelanta con aprobación del orquestador; el lock cambia
 solo las listas de dependencias de installer/Hub, sin paquetes/versiones/checksums.
-zip y windows directos siguen pendientes del paso 4.
+zip6.0.0 y windows0.62 directos entran en p4, con aprobación; sin paquetes nuevos.
 
 Fixtures y Nextest: `tests/installation_read.rs` con `fixtures/state-*.json`,
 manifiesto 975 público versionado y RC; ausencia física, corrupción, schema futuro,
@@ -191,3 +197,26 @@ reinstalar B, tanto directamente como después de desinstalar desde la entrada
 antigua. Usa NSIS y candidate de la base pre-PR limpia `298abc33`, comprueba
 registro/accesos/hash/preferencias y datos exactos, y ejecuta Register real de B.
 La señal de readiness es una fixture; el arranque live requiere otro SID/VM.
+
+## Escritura Rust — #1840, paso 4
+
+`operations` comparte instalación/actualización/reparación y retirada; `package`
+conserva SHA externo, miembros exactos, hashes/PE/sidecars, límites128/256/512MiB
+y rechazo de enlaces. Comprueba también las entradas crudas del directorio ZIP,
+porque un índice por nombre podría ocultar duplicados. `write_fs` mantiene
+NTFS/replace atómico, locks, guarda de imágenes vivas y copias verificadas con
+carpetas vacías; no mata procesos. Cancelación solo antes del punto copy.
+
+Las operaciones guardan state.json v1. Si finaliza mal shell, se restauran los
+bytes previos y se retiran solo generaciones nuevas no referenciadas. El feed
+PS conserva su propio consumidor hasta p6; no se retira todavía del producto.
+Una desinstalación interrumpida conserva datos/marker y puede reanudarse.
+
+Pruebas Rust en tests/installation_write.rs. El helper ignorado de subprocess
+no es una omisión de cobertura: el test padre lo ejecuta antes/después del commit
+y exige exit90 y estado íntegro. El ejemplo installer-write-matrix, solo QA,
+inyecta HKCU/carpetas y usa el Session real; nunca se distribuye ni acepta rutas
+fuera del guard. En una build TEST, VANTARE_INSTALLER_QA_CONTEXT apunta a ese
+JSON explícito de contexto bajo QA; no cae a HKCU/carpetas reales.
+
+Gates y matriz de escritura pendientes de ejecutar en el corte de p4.

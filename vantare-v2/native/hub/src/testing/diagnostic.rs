@@ -62,9 +62,9 @@ impl ErrorCode {
     }
 }
 
-/// Solo reconoce mensajes internos exactos; nunca devuelve fragmentos del error.
-pub fn error_code(message: &str) -> ErrorCode {
-    if message == "conflicto: el documento cambió en disco; cargar antes de guardar" {
+/// La clasificacion no depende del mensaje ni expone texto privado.
+pub fn error_code(kind: vantare_ipc::files::Kind) -> ErrorCode {
+    if kind.is_conflict() {
         ErrorCode::Conflict
     } else {
         ErrorCode::LocalError
@@ -122,8 +122,8 @@ impl Observed {
             self.last_activity = Some(now);
         }
     }
-    pub fn error(&mut self, module: Module, message: &str) {
-        let code = error_code(message);
+    pub fn error(&mut self, module: Module, kind: vantare_ipc::files::Kind) {
+        let code = error_code(kind);
         self.section_error(module, code);
     }
     pub fn section_error(&mut self, module: Module, code: ErrorCode) {

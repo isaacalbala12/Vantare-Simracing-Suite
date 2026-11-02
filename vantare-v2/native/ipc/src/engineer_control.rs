@@ -227,7 +227,12 @@ fn decode(bytes: &[u8]) -> io::Result<Value> {
     serde_json::from_slice(bytes).map_err(|error| invalid(error.to_string()))
 }
 pub fn read(path: &Path) -> io::Result<Option<Vec<u8>>> {
-    crate::files::read_optional(path, MAX_BYTES).map_err(Into::into)
+    crate::files::read_optional(path, MAX_BYTES).map_err(|error| match error {
+        crate::files::Error::ReadTooLarge { .. } => {
+            invalid(format!("leer {}: Engineer supera 64 KiB", path.display()))
+        }
+        error => error.into(),
+    })
 }
 
 /// Conserva límites, bytes observados y nombres de hermanos legacy.
@@ -242,7 +247,12 @@ pub fn save(path: &Path, expected: Option<&[u8]>, bytes: &[u8]) -> io::Result<()
             ..Default::default()
         },
     )
-    .map_err(Into::into)
+    .map_err(|error| match error {
+        crate::files::Error::TooLarge => {
+            invalid(format!("{}: Engineer supera 64 KiB", path.display()))
+        }
+        error => error.into(),
+    })
 }
 
 /// Ausencia inicial usa los ajustes CLI. JSON roto/archivo retirado conserva lo
@@ -552,10 +562,17 @@ mod tests {
     }
     #[test]
     fn review_read_failure_keeps_the_path_and_engineer_limit() {
-        let root = std::env::temp_dir().join(format!("vantare-engineer-read-review-{}", std::process::id()));
+        let root = std::env::temp_dir().join(format!(
+            "vantare-engineer-read-review-{}",
+            std::process::id()
+        ));
         fs::create_dir_all(&root).expect("QA directory");
         let path = root.join("engineer.json");
-        fs::write(&path, vec![b' '; MAX_BYTES as usize + 1]).expect("oversized document");
+        fs::write(
+            &path,
+            vec![b' '; usize::try_from(MAX_BYTES).expect("limit") + 1],
+        )
+        .expect("oversized document");
         let error = read(&path).expect_err("bounded read");
         assert_eq!(error.kind(), io::ErrorKind::InvalidData);
         let message = error.to_string();
@@ -563,5 +580,4 @@ mod tests {
         assert!(message.contains("Engineer supera 64 KiB"));
         fs::remove_dir_all(root).expect("QA cleanup");
     }
-
 }

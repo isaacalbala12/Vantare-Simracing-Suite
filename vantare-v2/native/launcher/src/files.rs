@@ -4,7 +4,7 @@ use std::fs::OpenOptions;
 use std::path::Path;
 #[cfg(test)]
 use std::{fs, path::PathBuf};
-pub use vantare_ipc::files::MAX_DOCUMENT;
+pub use vantare_ipc::files::{Error, Failure, Kind, MAX_DOCUMENT};
 
 pub fn read(path: &Path, limit: u64) -> Result<Vec<u8>, String> {
     vantare_ipc::files::read(path, limit).map_err(|error| error.to_string())
@@ -20,6 +20,16 @@ pub fn save_with_limit(
     expected: Option<&[u8]>,
     limit: u64,
 ) -> Result<(), String> {
+    save_checked(path, data, expected, limit).map_err(|error| error.to_string())
+}
+
+/// Mantiene el tipo de error hasta el consumidor que lo clasifica.
+pub fn save_checked(
+    path: &Path,
+    data: &[u8],
+    expected: Option<&[u8]>,
+    limit: u64,
+) -> Result<(), Error> {
     vantare_ipc::files::save(
         path,
         data,
@@ -29,7 +39,6 @@ pub fn save_with_limit(
             ..Default::default()
         },
     )
-    .map_err(|error| error.to_string())
 }
 
 /// Ruta absoluta de Windows PowerShell.

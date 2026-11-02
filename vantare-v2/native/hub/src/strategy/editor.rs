@@ -314,7 +314,7 @@ impl Strategy {
                     )
                     .on_click(cx.listener(move |this, _, _, cx| {
                         if let Err(error) = this.ensure_clean_form() {
-                            this.error = Some(error);
+                            this.error = Some(error.into());
                         } else {
                             if item == EditorTab::Revisiones {
                                 this.load_revisions(cx);
@@ -360,7 +360,7 @@ impl Strategy {
                             ))
                             .on_click(cx.listener(|this, _, _, cx| {
                                 if let Err(error) = this.ensure_clean_form() {
-                                    this.error = Some(error);
+                                    this.error = Some(error.into());
                                 } else {
                                     this.edit_mode = false;
                                     this.page = Page::Assistant(AssistantStep::Sesiones);
@@ -423,7 +423,7 @@ impl Strategy {
                         )
                         .on_click(cx.listener(|this, _, _, cx| {
                             if let Err(error) = this.ensure_clean_form() {
-                                this.error = Some(error);
+                                this.error = Some(error.into());
                             } else {
                                 this.page = Page::Assistant(AssistantStep::Sesiones);
                                 this.error = None;
@@ -442,7 +442,8 @@ impl Strategy {
                         } else {
                             button("strategy-save-draft", "Guardar borrador", cx).on_click(
                                 cx.listener(|this, _, _, cx| {
-                                    this.error = this.save_application_draft().err();
+                                    this.error =
+                                        this.save_application_draft().err().map(Into::into);
                                     if this.error.is_none() {
                                         this.load_revisions(cx);
                                     }
@@ -467,7 +468,7 @@ impl Strategy {
                 button("strategy-finish-edit", "Volver a Carrera", cx).on_click(cx.listener(
                     |this, _, _, cx| {
                         if let Err(error) = this.ensure_clean_form() {
-                            this.error = Some(error);
+                            this.error = Some(error.into());
                         } else {
                             this.edit_mode = false;
                             this.error = None;

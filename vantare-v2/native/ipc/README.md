@@ -3,7 +3,7 @@
 ## Documentos locales — #1869, paso 4
 
 `files` comparte lectura acotada y guardado entre Launcher, layout, Engineer y
-Workshop. Rechaza componentes `.env*`, toma el lock del SO, limpia únicamente
+Workshop. Rechaza componentes `.env*`, toma el lock del SO, intenta retirar únicamente
 temporales numéricos del mismo documento, escribe y sincroniza un temporal
 exclusivo, lo cierra y renombra sin borrar primero el destino. `Observed`
 compara los bytes antes y después (`None` solo permite crear); `Replace` conserva la espera entre guardados
@@ -14,6 +14,22 @@ el lock: la segunda comparación reduce la carrera, pero no puede excluirlo.
 `launcher::files` conserva su API anterior y el límite por llamada: el documento
 de Strategy del Hub admite sus archivos de migración de hasta 12 MiB.
 El repositorio de Strategy conserva su escritor propio.
+
+La limpieza de huérfanos es best effort: un error de borrado, enumeración o
+inspección se registra y no impide intentar el guardado con otro temporal.
+Los errores de lectura incluyen la ruta y el límite; Engineer conserva el aviso
+«Engineer supera 64 KiB». `Kind` clasifica conflictos sin interpretar mensajes;
+`Failure` conserva kind y texto al clonar un error para UI. Testing Center,
+Ajustes, Launcher, Calendario, Strategy y Engineer mantienen ese tipo hasta el
+diagnóstico/presentación. El diagnóstico sanitizado recibe solo el kind.
+La fachada String sigue para consumidores que solo muestran el error;
+`save_checked` mantiene el tipo para quienes necesitan clasificarlo.
+
+Cambios intencionados del paso 4: `layout.show.json.bak` ya no se escribe
+(la solicitud es estado derivado); hide sigue retirando copias antiguas.
+Freshness recupera la carpeta temporal del sistema (`%TEMP%` en Windows)
+para `Vantare/native/logs` solo si falta la base. Una raíz relativa o la falta
+de override QA en tests siguen siendo errores y no usan ese fallback.
 
 ## Rutas locales — #1869
 

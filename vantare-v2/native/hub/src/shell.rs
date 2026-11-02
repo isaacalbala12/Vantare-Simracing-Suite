@@ -170,30 +170,58 @@ impl Hub {
         }
         let activity = self.subscriber.activity();
         let errors = [
-            (TestingModule::Hub, self.status.as_deref()),
+            (
+                TestingModule::Hub,
+                self.status.as_ref().map(|_| crate::files::Kind::Local),
+            ),
             (
                 TestingModule::Workshop,
-                self.workshop.read(cx).scene.error.as_deref(),
+                self.workshop
+                    .read(cx)
+                    .scene
+                    .error
+                    .as_ref()
+                    .map(|_| crate::files::Kind::Local),
             ),
             (
                 TestingModule::Launcher,
-                self.launcher.read(cx).error.as_deref(),
+                self.launcher
+                    .read(cx)
+                    .error
+                    .as_ref()
+                    .map(crate::files::Failure::kind),
             ),
             (
                 TestingModule::Calendar,
-                self.calendar.read(cx).error.as_deref(),
+                self.calendar
+                    .read(cx)
+                    .error
+                    .as_ref()
+                    .map(crate::files::Failure::kind),
             ),
             (
                 TestingModule::Strategy,
-                self.strategy.read(cx).error.as_deref(),
+                self.strategy
+                    .read(cx)
+                    .error
+                    .as_ref()
+                    .map(crate::files::Failure::kind),
             ),
             (
                 TestingModule::Engineer,
-                self.engineer.read(cx).error.as_deref(),
+                self.engineer
+                    .read(cx)
+                    .error
+                    .as_ref()
+                    .map(crate::files::Failure::kind),
             ),
             (
                 TestingModule::Notifications,
-                self.notifications.read(cx).error.as_deref(),
+                self.notifications
+                    .read(cx)
+                    .error
+                    .as_ref()
+                    .map(|_| crate::files::Kind::Local),
             ),
         ]
         .map(|(module, error)| (module, error.map(testing::diagnostic::error_code)));
@@ -989,8 +1017,9 @@ fn wire_sections(
             && let Some(error) = &launcher.read(cx).error
         {
             let error = error.clone();
-            this.notifications
-                .update(cx, |center, cx| center.report("hub.launcher", error, cx));
+            this.notifications.update(cx, |center, cx| {
+                center.report("hub.launcher", String::from(error), cx);
+            });
         }
         let running = launcher.read(cx).launch_progress().is_some();
         if this.settings.launcher_running
@@ -1013,8 +1042,9 @@ fn wire_sections(
     cx.observe(calendar, |this, calendar, cx| {
         if let Some(error) = &calendar.read(cx).error {
             let error = error.clone();
-            this.notifications
-                .update(cx, |center, cx| center.report("hub.calendar", error, cx));
+            this.notifications.update(cx, |center, cx| {
+                center.report("hub.calendar", String::from(error), cx);
+            });
         }
         // Seguimiento y reloj también repintan el carril del calendario.
         cx.notify();
@@ -1485,8 +1515,9 @@ fn wire_strategy(strategy: &Entity<Strategy>, cx: &mut Context<Hub>) {
     cx.observe(strategy, |this, strategy, cx| {
         if let Some(error) = &strategy.read(cx).error {
             let error = error.clone();
-            this.notifications
-                .update(cx, |center, cx| center.report("hub.strategy", error, cx));
+            this.notifications.update(cx, |center, cx| {
+                center.report("hub.strategy", String::from(error), cx);
+            });
         }
     })
     .detach();

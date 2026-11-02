@@ -176,7 +176,7 @@ fn whitelist_drops_personal_paths_names_tokens_and_snapshot_content() {
     let temp = Temp::new();
     let private = "María García C:\\Users\\María\\secret.txt /home/Maria token=eyJhbGciOiJIUzI1NiJ9 Bearer sk-private";
     let mut observed = Observed::default();
-    observed.error(Module::Engineer, private);
+    observed.error(Module::Engineer, crate::files::Error::from(private).kind());
     let mut snapshot = Snapshot::default();
     snapshot.origin.source.simulator = "Bearer sk-private";
     snapshot.origin.source.kind = SourceKind::Replay;
@@ -510,22 +510,37 @@ fn review_conflict_in_testing_center_keeps_its_diagnostic_classification() {
     store.save().expect("initial draft");
     fs::write(temp.draft(), b"external edit").expect("external writer");
     let error = store.save().expect_err("stale draft");
-    assert_eq!(super::diagnostic::error_code(&error), super::diagnostic::ErrorCode::Conflict);
-    assert_eq!(fs::read(temp.draft()).expect("external kept"), b"external edit");
+    assert_eq!(
+        super::diagnostic::error_code(error.kind()),
+        super::diagnostic::ErrorCode::Conflict
+    );
+    assert_eq!(
+        fs::read(temp.draft()).expect("external kept"),
+        b"external edit"
+    );
 }
 
 #[test]
 fn review_conflict_in_settings_keeps_its_diagnostic_classification() {
     let temp = Temp::new();
     let path = temp.0.join("layout.json");
-    fs::write(&path, serde_json::to_vec(&vantare_ui::layout::Layout::default()).expect("layout")).expect("seed");
+    fs::write(
+        &path,
+        serde_json::to_vec(&vantare_ui::layout::Layout::default()).expect("layout"),
+    )
+    .expect("seed");
     let mut editor = crate::document::Editor::open(path.clone()).expect("settings editor");
     fs::write(&path, b"external edit").expect("external writer");
     let preferences = vantare_domain::format::Preferences {
         language: vantare_domain::format::Language::En,
         ..Default::default()
     };
-    let error = editor.set_preferences(preferences).expect_err("stale settings");
-    assert_eq!(super::diagnostic::error_code(&error), super::diagnostic::ErrorCode::Conflict);
+    let error = editor
+        .set_preferences(preferences)
+        .expect_err("stale settings");
+    assert_eq!(
+        super::diagnostic::error_code(error.kind()),
+        super::diagnostic::ErrorCode::Conflict
+    );
     assert_eq!(fs::read(path).expect("external kept"), b"external edit");
 }

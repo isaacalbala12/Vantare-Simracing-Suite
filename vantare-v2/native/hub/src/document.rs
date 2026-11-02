@@ -5,6 +5,14 @@ use vantare_ui::{
     layout::{Document, Instance, Layout},
 };
 
+fn layout_file_error(error: vantare_ui::layout::Error) -> vantare_ipc::files::Error {
+    match error {
+        vantare_ui::layout::Error::Conflict => vantare_ipc::files::Error::Conflict,
+        vantare_ui::layout::Error::Io(error) => error.into(),
+        error => vantare_ipc::files::Error::Message(error.to_string()),
+    }
+}
+
 pub struct Editor {
     document: Document,
     path: PathBuf,
@@ -79,8 +87,8 @@ impl Editor {
     pub fn set_preferences(
         &mut self,
         preferences: vantare_domain::format::Preferences,
-    ) -> Result<(), String> {
-        self.change(|layout| {
+    ) -> Result<(), vantare_ipc::files::Error> {
+        self.change_checked(|layout| {
             layout.preferences = preferences;
             Ok(())
         })
@@ -170,6 +178,12 @@ impl Editor {
         &mut self,
         edit: impl FnOnce(&mut Layout) -> Result<(), String>,
     ) -> Result<(), String> {
+        self.change_checked(edit).map_err(String::from)
+    }
+    fn change_checked(
+        &mut self,
+        edit: impl FnOnce(&mut Layout) -> Result<(), String>,
+    ) -> Result<(), vantare_ipc::files::Error> {
         let previous = self.layout().clone();
         let mut next = previous.clone();
         edit(&mut next)?;
@@ -183,11 +197,9 @@ impl Editor {
         }) {
             return Err("posición u opacidad no finita".into());
         }
-        let next = next.normalized().map_err(|error| error.to_string())?;
+        let next = next.normalized().map_err(layout_file_error)?;
         if next != previous {
-            self.document
-                .save(&next)
-                .map_err(|error| error.to_string())?;
+            self.document.save(&next).map_err(layout_file_error)?;
             if self.undo.len() == 50 {
                 self.undo.remove(0);
             }

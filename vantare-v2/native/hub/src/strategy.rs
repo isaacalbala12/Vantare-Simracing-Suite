@@ -94,7 +94,7 @@ impl Editor {
         self.path = None;
         Ok(())
     }
-    pub fn save(&mut self) -> Result<(), String> {
+    pub fn save(&mut self) -> Result<(), files::Error> {
         let Some(doc) = &self.document else {
             return Ok(());
         };
@@ -105,17 +105,17 @@ impl Editor {
             .path
             .as_ref()
             .ok_or("Elige Guardar como para este documento nuevo")?;
-        files::save_with_limit(path, doc.bytes(), self.saved.as_deref(), LIMIT)?;
+        files::save_checked(path, doc.bytes(), self.saved.as_deref(), LIMIT)?;
         self.saved = Some(doc.bytes().to_vec());
         Ok(())
     }
-    pub fn save_as(&mut self, path: PathBuf) -> Result<(), String> {
+    pub fn save_as(&mut self, path: PathBuf) -> Result<(), files::Error> {
         let doc = self.document.as_ref().ok_or("Crea o abre un documento")?;
         if self.path.as_ref() == Some(&path) {
             return self.save();
         }
         // Never overwrite an unobserved target, even if the OS dialog accepts it.
-        files::save_with_limit(&path, doc.bytes(), None, LIMIT)?;
+        files::save_checked(&path, doc.bytes(), None, LIMIT)?;
         self.path = Some(path);
         self.saved = Some(doc.bytes().to_vec());
         Ok(())
@@ -192,7 +192,7 @@ pub struct Strategy {
     variant: usize,
     form: FormState,
     pub status: String,
-    pub error: Option<String>,
+    pub error: Option<crate::files::Failure>,
     result: Option<SolverOutcome>,
     last_input: Option<Input>,
     manual_source_status: SourceStatus,
@@ -278,7 +278,7 @@ impl Strategy {
         };
         match crate::demo::StrategyCaptureDemo::load() {
             Ok(demo) => strategy.capture_demo = Some(demo),
-            Err(error) => strategy.error = Some(error),
+            Err(error) => strategy.error = Some(error.into()),
         }
         if page == crate::demo::CaptureStrategyPage::Revisions {
             strategy.load_revisions(cx);
@@ -286,7 +286,7 @@ impl Strategy {
         strategy.manual_source_status = SourceStatus::Open;
         strategy.automatic = false;
         if let Err(error) = strategy.seed_capture_demo(cx) {
-            strategy.error = Some(error);
+            strategy.error = Some(error.into());
         }
         if page == crate::demo::CaptureStrategyPage::AssistantSesiones {
             strategy.automatic = true;
@@ -305,7 +305,7 @@ impl Strategy {
                 | crate::demo::CaptureStrategyPage::Stops
         ) && let Err(error) = strategy.load_capture_review(page)
         {
-            strategy.error = Some(error);
+            strategy.error = Some(error.into());
         }
         if matches!(
             page,
@@ -317,7 +317,7 @@ impl Strategy {
                 | crate::demo::CaptureStrategyPage::Stops
         ) && let Err(error) = strategy.load_capture_plan(page)
         {
-            strategy.error = Some(error);
+            strategy.error = Some(error.into());
         }
         strategy
     }
@@ -455,10 +455,9 @@ impl Strategy {
             status:
                 "Abre un documento V2 o crea uno. Los datos de cálculo se introducen manualmente."
                     .into(),
-            error: error
-                .or(garage_error)
-                .or(garage_detail_error)
-                .or(garage_veil_error),
+            error: [error, garage_error, garage_detail_error, garage_veil_error]
+                .into_iter()
+                .find_map(|error| error.map(Into::into)),
             result: None,
             last_input: None,
             manual_source_status,
@@ -481,7 +480,10 @@ impl Strategy {
         this
     }
     fn outcome(&mut self, result: Result<(), String>, cx: &mut Context<Self>) {
-        self.error = result.err();
+        self.outcome_checked(result.map_err(Into::into), cx);
+    }
+    fn outcome_checked(&mut self, result: Result<(), files::Error>, cx: &mut Context<Self>) {
+        self.error = result.err().map(Into::into);
         cx.notify();
     }
     fn cancel_pending_calculation(&mut self) {
@@ -526,7 +528,12 @@ impl Strategy {
     }
     pub fn persist(&mut self) -> Result<(), String> {
         self.ensure_clean_form()?;
-        self.editor.save()
+        self.editor.save().map_err(|error| {
+            let failure = crate::files::Failure::from(error);
+            let message = failure.to_string();
+            self.error = Some(failure);
+            message
+        })
     }
     fn load_fields(&mut self, cx: &mut Context<Self>) {
         self.fields.fill(String::new());
@@ -688,17 +695,20 @@ impl Strategy {
         }
     }
     fn save(&mut self, cx: &mut Context<Self>) {
-        let result = self.ensure_clean_form().and_then(|()| {
-            if self.editor.path.is_none() {
-                self.editor.save_as(self.directory.join("strategy-v2.json"))
-            } else {
-                self.editor.save()
-            }
-        });
+        let result = self
+            .ensure_clean_form()
+            .map_err(files::Error::from)
+            .and_then(|()| {
+                if self.editor.path.is_none() {
+                    self.editor.save_as(self.directory.join("strategy-v2.json"))
+                } else {
+                    self.editor.save()
+                }
+            });
         if result.is_ok() {
             self.status = "Documento guardado de forma atómica.".into();
         }
-        self.outcome(result, cx);
+        self.outcome_checked(result, cx);
     }
     fn save_as(&mut self, cx: &mut Context<Self>) {
         if let Err(error) = self.ensure_clean_form() {
@@ -712,6 +722,7 @@ impl Strategy {
                 let result = match response {
                     Ok(Ok(Some(path))) => this
                         .ensure_clean_form()
+                        .map_err(files::Error::from)
                         .and_then(|()| this.editor.save_as(path)),
                     Ok(Ok(None)) => return,
                     _ => Err("No se pudo abrir el selector de guardado".into()),
@@ -720,7 +731,7 @@ impl Strategy {
                     this.status =
                         "Documento guardado; los archivos preexistentes no se sobrescriben.".into();
                 }
-                this.outcome(result, cx);
+                this.outcome_checked(result, cx);
             });
         })
         .detach();
@@ -994,7 +1005,7 @@ impl Strategy {
                         .into();
                         this.result = Some(outcome);
                     }
-                    Err(error) => this.error = Some(error),
+                    Err(error) => this.error = Some(error.into()),
                 }
                 cx.notify();
             });
@@ -1489,12 +1500,7 @@ mod tests {
             .edit_sourced("/events/0/name", &json!("Edited"))
             .expect("edit");
         std::fs::write(&path, b"external bytes").expect("external mutation");
-        assert!(
-            restarted
-                .save()
-                .expect_err("conflict")
-                .contains("conflicto")
-        );
+        assert!(restarted.save().expect_err("conflict").kind().is_conflict());
         assert_eq!(
             files::read(&path, LIMIT).expect("retained"),
             b"external bytes"

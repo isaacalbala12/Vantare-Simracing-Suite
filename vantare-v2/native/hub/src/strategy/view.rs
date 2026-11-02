@@ -568,7 +568,7 @@ impl Strategy {
             ))
             .on_click(cx.listener(|this, _, _, cx| {
                 if let Err(error) = this.ensure_clean_form() {
-                    this.error = Some(error);
+                    this.error = Some(error.into());
                 } else {
                     this.automatic = false;
                     this.automatic_preparation = None;
@@ -703,7 +703,7 @@ impl Strategy {
             )
             .child(content)
             .when_some(self.error.clone(), |page, error| {
-                page.child(orbit::callout(error, cx))
+                page.child(orbit::callout(error.to_string(), cx))
             })
             .when(matches!(self.page, Page::Collection), |page| {
                 page.child(orbit::text(

@@ -331,7 +331,7 @@ impl Strategy {
                                             "No hay una proyección con sesiones y revisiones exactas para preparar automáticamente.".into(),
                                         );
                                     }
-                                    Err(error) => this.error = Some(error),
+                                    Err(error) => this.error = Some(error.into()),
                                 }
                             } else {
                                 this.add_event(cx);

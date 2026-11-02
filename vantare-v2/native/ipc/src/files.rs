@@ -9,6 +9,67 @@ use std::{
 pub const MAX_DOCUMENT: u64 = 5 * 1024 * 1024;
 static NEXT: AtomicU64 = AtomicU64::new(0);
 
+/// Clasificacion estable, independiente del texto mostrado al usuario.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Kind {
+    Conflict,
+    Busy,
+    InvalidInput,
+    #[default]
+    Local,
+}
+impl Kind {
+    pub const fn is_conflict(self) -> bool {
+        matches!(self, Self::Conflict | Self::Busy)
+    }
+}
+
+/// Error visible de UI: clonar el mensaje conserva su clasificacion.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Failure {
+    kind: Kind,
+    message: String,
+}
+impl Failure {
+    pub fn new(kind: Kind, message: String) -> Self {
+        Self { kind, message }
+    }
+    pub fn kind(&self) -> Kind {
+        self.kind
+    }
+}
+impl std::fmt::Display for Failure {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.message)
+    }
+}
+impl std::ops::Deref for Failure {
+    type Target = str;
+    fn deref(&self) -> &str {
+        &self.message
+    }
+}
+impl From<String> for Failure {
+    fn from(message: String) -> Self {
+        Self::new(Kind::Local, message)
+    }
+}
+impl From<&str> for Failure {
+    fn from(message: &str) -> Self {
+        message.to_owned().into()
+    }
+}
+impl From<Failure> for String {
+    fn from(failure: Failure) -> Self {
+        failure.message
+    }
+}
+impl From<Error> for Failure {
+    fn from(error: Error) -> Self {
+        Self::new(error.kind(), error.to_string())
+    }
+}
+
 #[derive(Debug)]
 pub enum Error {
     Io(io::Error),
@@ -16,11 +77,18 @@ pub enum Error {
     Busy,
     TooLarge,
     EnvironmentFile,
+    Message(String),
+    InvalidInput(String),
+    ReadTooLarge { path: PathBuf, limit: u64 },
 }
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Io(error) => write!(f, "{error}"),
+            Self::Message(message) | Self::InvalidInput(message) => f.write_str(message),
+            Self::ReadTooLarge { path, limit } => {
+                write!(f, "leer {}: supera {limit} bytes", path.display())
+            }
             Self::Conflict => {
                 f.write_str("conflicto: el documento cambió; cargar antes de guardar")
             }
@@ -31,6 +99,37 @@ impl std::fmt::Display for Error {
     }
 }
 impl std::error::Error for Error {}
+impl Error {
+    pub fn kind(&self) -> Kind {
+        match self {
+            Self::Conflict => Kind::Conflict,
+            Self::Busy => Kind::Busy,
+            Self::InvalidInput(_) | Self::TooLarge | Self::ReadTooLarge { .. } => {
+                Kind::InvalidInput
+            }
+            Self::Io(error) => error
+                .get_ref()
+                .and_then(|source| source.downcast_ref::<Self>())
+                .map_or(Kind::Local, Self::kind),
+            Self::EnvironmentFile | Self::Message(_) => Kind::Local,
+        }
+    }
+}
+impl From<String> for Error {
+    fn from(message: String) -> Self {
+        Self::Message(message)
+    }
+}
+impl From<&str> for Error {
+    fn from(message: &str) -> Self {
+        Self::Message(message.into())
+    }
+}
+impl From<Error> for String {
+    fn from(error: Error) -> Self {
+        error.to_string()
+    }
+}
 impl From<io::Error> for Error {
     fn from(error: io::Error) -> Self {
         Self::Io(error)
@@ -41,10 +140,11 @@ impl From<Error> for io::Error {
         match error {
             Error::Io(error) => error,
             Error::Busy => Self::new(io::ErrorKind::WouldBlock, error),
-            Error::Conflict => Self::other(error),
-            Error::TooLarge | Error::EnvironmentFile => {
-                Self::new(io::ErrorKind::InvalidData, error)
-            }
+            Error::Conflict | Error::Message(_) => Self::other(error),
+            Error::TooLarge
+            | Error::EnvironmentFile
+            | Error::InvalidInput(_)
+            | Error::ReadTooLarge { .. } => Self::new(io::ErrorKind::InvalidData, error),
         }
     }
 }
@@ -90,11 +190,22 @@ fn sibling(base: &Path, suffix: &str) -> PathBuf {
 pub fn read(path: &Path, limit: u64) -> Result<Vec<u8>, Error> {
     check_path(path)?;
     let mut bytes = Vec::new();
-    File::open(path)?
+    let context = |error: io::Error| {
+        Error::Io(io::Error::new(
+            error.kind(),
+            format!("leer {}: {error}", path.display()),
+        ))
+    };
+    File::open(path)
+        .map_err(context)?
         .take(limit.saturating_add(1))
-        .read_to_end(&mut bytes)?;
+        .read_to_end(&mut bytes)
+        .map_err(context)?;
     if bytes.len() as u64 > limit {
-        return Err(Error::TooLarge);
+        return Err(Error::ReadTooLarge {
+            path: path.to_owned(),
+            limit,
+        });
     }
     Ok(bytes)
 }
@@ -149,8 +260,9 @@ fn clean_orphans(base: &Path) -> io::Result<()> {
             && pid.parse::<u32>().is_ok()
             && sequence.parse::<u64>().is_ok()
             && entry.file_type()?.is_file()
+            && let Err(error) = fs::remove_file(entry.path())
         {
-            fs::remove_file(entry.path())?;
+            eprintln!("limpiar temporal {}: {error}", entry.path().display());
         }
     }
     Ok(())
@@ -190,7 +302,12 @@ fn persist(
         },
     }
     compare(path, mode, options.limit)?;
-    clean_orphans(base)?;
+    if let Err(error) = clean_orphans(base) {
+        eprintln!(
+            "limpiar temporales de {}: {error}; el guardado continua",
+            base.display()
+        );
+    }
     let (pending, mut file) = loop {
         let temporary = sibling(
             base,
@@ -323,7 +440,7 @@ mod tests {
         ));
         assert!(!path.exists());
         fs::write(&path, b"four").expect("large file");
-        assert!(matches!(read(&path, 3), Err(Error::TooLarge)));
+        assert!(matches!(read(&path, 3), Err(Error::ReadTooLarge { .. })));
         let environment = dir.join(".env.local");
         assert!(matches!(read(&environment, 3), Err(Error::EnvironmentFile)));
         assert!(matches!(
@@ -341,11 +458,15 @@ mod tests {
         let path = dir.join("document.json");
         let orphan = sibling(&path, ".123.4.tmp");
         fs::write(&orphan, b"held orphan").expect("seed orphan");
-        let held = OpenOptions::new().read(true).share_mode(0).open(&orphan).expect("deny delete");
-        save(&path, b"saved", Mode::Observed(None), &Options::default()).expect("cleanup is best effort");
+        let held = OpenOptions::new()
+            .read(true)
+            .share_mode(0)
+            .open(&orphan)
+            .expect("deny delete");
+        save(&path, b"saved", Mode::Observed(None), &Options::default())
+            .expect("cleanup is best effort");
         assert_eq!(fs::read(&path).expect("published"), b"saved");
         drop(held);
         fs::remove_dir_all(dir).expect("QA cleanup");
     }
-
 }

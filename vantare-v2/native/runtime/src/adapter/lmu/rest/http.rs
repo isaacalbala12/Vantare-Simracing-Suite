@@ -111,9 +111,15 @@ mod tests {
             // Despierta el accept antiguo para registrar RED sin dejar el test colgado.
             drop(TcpStream::connect_timeout(&address, HARNESS_LIMIT).unwrap());
         }
-        assert!(finished_before(&worker, Instant::now() + HARNESS_LIMIT), "cleanup del servidor");
+        assert!(
+            finished_before(&worker, Instant::now() + HARNESS_LIMIT),
+            "cleanup del servidor"
+        );
         let result = worker.join().unwrap();
-        assert!(stopped_without_a_client, "el accept no respeta el plazo del arnés");
+        assert!(
+            stopped_without_a_client,
+            "el accept no respeta el plazo del arnés"
+        );
         assert_eq!(result.unwrap_err().kind(), std::io::ErrorKind::TimedOut);
     }
 

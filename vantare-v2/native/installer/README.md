@@ -250,3 +250,7 @@ Startup48 aserciones en256.082 s, dentro de480 s. Campaña completa previa88/88.
 Paso5 conserva destinos hasta6 y no migra Feed/Register/SetStartup. La matriz
 comprueba sincronización repetida, AppID, enlace ajeno, exclusión y retirada del
 temporal propio sin residuo; el ensayo de autoborrado POSIX sigue solo manual.
+Fuente5f8507481: fmt/check y cinco Clippy -D warnings PASS; Nextest lectura20/20,
+Installer58/58 y TEST55/55 PASS. Los JSON auxiliares corruptos se rechazan antes
+de mutar, conservándolos; no se guardan sus bytes para deshacer. Campaña04:
+88/88 idénticas al baseline; Startup48 en191.997s, frontera37 PASS. [Evidencia del paso5](../packaging/matrix/evidence-1840-p5.md).

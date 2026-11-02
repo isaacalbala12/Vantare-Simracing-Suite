@@ -9,6 +9,22 @@
 
 **Notas de vigencia de la copia histórica (actualizadas 2-nov-2026, #1840):**
 
+- §4.5, pasos5/7: decisión posterior permanente. Solo Cleanup conserva un script
+  mínimo PowerShell: esperar al padre, exclusión, validar raíz/temporal/marcador/SHA
+  y borrar el EXE propio, marcador y temporal. Sin estado, registro, accesos o datos.
+  powershell.exe vive fuera del árbol y permite una retirada sin residuos. Se
+  descartan dejar Uninstall en la raíz para siempre o añadir otro ejecutable
+  temporal. El ensayo FileDispositionInfoEx(DELETE|POSIX), imagen propia sin
+  ReadOnly, falló ACCESS_DENIED(5) en NTFS/Windows22631; queda manual, no gate.
+  [Evidencia y límites](../../native/packaging/matrix/evidence-1840-p5.md).
+  FinalizeInstall/FinalizeUninstall pasan a shell::sync nativo; la recuperación
+  resincroniza desde el estado restaurado, sin copias de deshacer por bytes.
+  Esta decisión sustituye la retirada de las tres llamadas prevista abajo.
+  El paso5 acotado admite el aumento medido de Rust mientras Feed/Register/
+  SetStartup conservan PS; no hay puente ni convergencia global de escritores
+  todavía. La entrega proyecta pasos6–8 contra antes del paso0 y avisa si no
+  prevé una reducción clara, para replantear antes del paso6.
+
 - §4.5, paso 4: excepción autorizada el 2-nov-2026. Estado, ZIP, generaciones,
   copia de datos, descubrimiento y opciones pasan a Rust. Shell no se adelanta:
   una llamada PS por FinalizeInstall, FinalizeUninstall y Cleanup conserva la

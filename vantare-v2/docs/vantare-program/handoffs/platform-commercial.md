@@ -624,7 +624,7 @@ Sin merge/release del worker.
   Medidas y limitaciones actualizadas en la evidencia; siguiente: integrar por
   el orquestador tras revisar CI. Plane En curso; sin merge/release del worker.
 
-### Paso 4 integrado / preparación del paso 5 (2-nov-2026)
+### Paso 4 integrado / paso 5 verificado, PR en preparación (2-nov-2026)
 
 - #1866 integrado por el orquestador en nightly
   def6fbb0954df46340545d189830676b493c734b; CI5/5 verde confirmada por él.
@@ -654,6 +654,47 @@ Sin merge/release del worker.
   no prueba del EXE Rust distribuido. Detalle/reproducción/alternativas en
   native/packaging/matrix/evidence-1840-p5.md. Pendiente decisión del orquestador;
   sin código de producto, compilación Rust, cambio de dependencia o estado Plane.
+- Decisión posterior del orquestador: opción3 como excepción **permanente**.
+  Cleanup mínimo conserva espera al padre, exclusión, raíz/marker/hash y borrado,
+  sin estado/registro/accesos/datos. powershell.exe vive fuera del árbol y deja la
+  retirada limpia. Se descartan residuos en raíz/TEMP y otro ciclo de vida.
+  ADR/diseño actualizados; el ensayo POSIX queda manual y fuera de los gates.
+- Paso5 acotado aceptado aunque la medición inicial aumente producción:
+  +785 Rust y -67 PS. No se adelantan Feed/Register/SetStartup ni se crea puente.
+  La entrega incluirá la medición final y la proyección6–8 contra antes del paso0;
+  si no prevé reducción clara se señala para replantear antes del paso6.
+  Implementación nativa y recuperación lógica en verificación; aún sin PR final.
+  Medición final de código: Rust9785→10765 (+980), PS2366→2304 (-62),
+  producción conjunta +918. La medición inicial anterior no era el cierre.
+  Proyección ampliada contra antes del paso0: 10110→11226–12346 esperadas
+  al terminar8, +1116 a+2236; no da reducción clara. Replantear antes de6.
+  Tabla por paso, supuestos, categorías separadas y método reproducible en
+  native/packaging/matrix/evidence-1840-p5.md.
+- Se conservan las campañas fallidas01 (lock vacío nsis975-cleanup) y02
+  (previous omitido al restaurar boot-install). Corregidos sin tocar baseline
+  ni normalizador. Captura de documento lógico completo en el lector común,
+  sin copias de deshacer por bytes; regresión con previous no nulo.
+  Fuente de la campaña03: 8eb57d76b0945fd94dc6ac373b2962eefbde8af6.
+- Gates de la campaña03 PASS: fmt/check, cuatro Clippy -D warnings, Nextest57/57
+  y TEST54/54; un helper ejecutado por padre en cada suite. Binarios públicos
+  con Cleanup mínimo y sin guard QA; ejemplos QA reconstruidos. Calidad468/468.
+  Matriz nueva03:88/88 idénticas al baseline,45 rechazos diferenciales por
+  invariantes y5 raíces no beta. Auxiliares25/24/14/18/54/42/48/37 PASS;
+  guard7+5 PASS. Startup197.943s (<480),48 aserciones, plazos por operación30s.
+  Campaña1255.261s; logs y final-proof.json en QA/isa-1840/p5-logs.
+  Cola liberada antes de la matriz; perfil adicional sin features del Hub en cola.
+- Revisión final: la captura lógica no puede convertir JSON auxiliar corrupto
+  en ausente. Se rechaza antes de mutar y conserva sus bytes sin guardarlos para
+  deshacer; regresión con boot-pending/update-status/retained-data. Es el cambio
+  intencionado de comportamiento en ese caso de error. La tanda pendiente agrupa
+  perfil de lectura y repetición de gates del escritor; campaña final nueva después.
+- Fuente final5f85074818aee0d3243b19311c5cfc22ad21c95c: fmt/check, cinco
+  Clippy -D warnings y Nextest lectura20/20, Installer58/58, TEST55/55 PASS.
+  Builds públicos/QA PASS; guard ausente en build-public y presente en TEST.
+  Una tanda, compilar.ps1, target propio/jobs2; esperó2646s y liberó la cola.
+  Campaña final nueva04 PASS. Sin cambios de producto posteriores a ese SHA.
+  Resultado04: 88/88 idénticas al baseline;45 rechazos por invariantes,5 raíces no beta; auxiliares25/24/14/18/54/42/48/37 y guard7+5 PASS. Startup191.997s (<480); campaña1060.824s.
+  PR draft: PENDIENTE_PR_HANDOFF_05; CI a cargo del orquestador, no vigilada aquí.
 
 ### Antecedentes 0–1d (evidencia histórica conservada)
 

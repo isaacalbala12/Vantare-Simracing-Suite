@@ -624,7 +624,7 @@ Sin merge/release del worker.
   Medidas y limitaciones actualizadas en la evidencia; siguiente: integrar por
   el orquestador tras revisar CI. Plane En curso; sin merge/release del worker.
 
-### Paso 4 integrado / paso 5 verificado, PR en preparación (2-nov-2026)
+### Paso 4 integrado / paso 5 listo en PR draft (2-nov-2026)
 
 - #1866 integrado por el orquestador en nightly
   def6fbb0954df46340545d189830676b493c734b; CI5/5 verde confirmada por él.
@@ -663,7 +663,7 @@ Sin merge/release del worker.
   +785 Rust y -67 PS. No se adelantan Feed/Register/SetStartup ni se crea puente.
   La entrega incluirá la medición final y la proyección6–8 contra antes del paso0;
   si no prevé reducción clara se señala para replantear antes del paso6.
-  Implementación nativa y recuperación lógica en verificación; aún sin PR final.
+  Implementación nativa y recuperación lógica verificadas; PR final al cierre del bloque.
   Medición final de código: Rust9785→10765 (+980), PS2366→2304 (-62),
   producción conjunta +918. La medición inicial anterior no era el cierre.
   Proyección ampliada contra antes del paso0: 10110→11226–12346 esperadas
@@ -694,7 +694,7 @@ Sin merge/release del worker.
   Una tanda, compilar.ps1, target propio/jobs2; esperó2646s y liberó la cola.
   Campaña final nueva04 PASS. Sin cambios de producto posteriores a ese SHA.
   Resultado04: 88/88 idénticas al baseline;45 rechazos por invariantes,5 raíces no beta; auxiliares25/24/14/18/54/42/48/37 y guard7+5 PASS. Startup191.997s (<480); campaña1060.824s.
-  PR draft: PENDIENTE_PR_HANDOFF_05; CI a cargo del orquestador, no vigilada aquí.
+  PR draft: [#1875](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1875); CI a cargo del orquestador, no vigilada aquí.
 
 ### Antecedentes 0–1d (evidencia histórica conservada)
 

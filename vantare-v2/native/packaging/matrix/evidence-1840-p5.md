@@ -270,4 +270,4 @@ conservan además en attempt-12, sin atribuirlos al último código.
 Resultado04: **88/88 PASS**, JSON idéntico al baseline;45 rechazos diferenciales por8 invariantes y5 raíces no beta. Auxiliares25/24/14/18/54/42/48/37 y guard7+5 PASS.
 Startup04: **191.9965275s**, exit0,48 aserciones;480s exteriores y30s por operación intactos; tiempo total de campaña: **1060.8239226s**, guard previo aparte.
 Prueba final: `python D:/VantareServer/qa/isa-1840/p5-proof.py 04`; final-proof.json y matrix-04.log en QA/isa-1840/p5-logs; escritor SHA2566e20b51b5923f22079b2071d7bc3bd290e37fca802a6b3810461d720568ffd4c.
-PR draft: PENDIENTE_PR_05.
+PR draft: [#1875](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1875).

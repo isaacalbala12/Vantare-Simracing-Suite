@@ -184,6 +184,7 @@ pub(super) fn run(
     run_with_error(services, stop, instance, rights, grace, workers, None)
 }
 
+#[cfg(windows)]
 pub(super) fn fail_setup(
     stop: &Stop,
     instance: &Instance,

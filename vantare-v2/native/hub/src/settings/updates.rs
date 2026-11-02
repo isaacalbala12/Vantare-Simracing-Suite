@@ -194,9 +194,7 @@ mod tests {
                 .is_some_and(|(version, _)| offer.ready_for(version))
         );
         let mut rollback = state.clone();
-        rollback["previous"] =
-            serde_json::json!({"generation":"c".repeat(32), "manifest_sha256":"d".repeat(64)});
-        fs::write(root.join("state.json"), rollback.to_string()).expect("rollback disponible");
+        rollback["previous"] = serde_json::json!({"generation":"c".repeat(32), "manifest_sha256":state["active"]["manifest_sha256"]});
         let previous = root.join("generations").join("c".repeat(32));
         fs::create_dir_all(previous.join("data")).unwrap();
         fs::copy(
@@ -204,7 +202,6 @@ mod tests {
             previous.join("manifest.json"),
         )
         .unwrap();
-        rollback["previous"]["manifest_sha256"] = state["active"]["manifest_sha256"].clone();
         fs::write(root.join("state.json"), rollback.to_string()).unwrap();
         assert!(matches!(
             LocalUpdate::at(&exe),

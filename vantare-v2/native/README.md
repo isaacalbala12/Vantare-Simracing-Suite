@@ -163,18 +163,35 @@ fuera de adquisición. El servicio mantiene ambos ciclos hasta cancelación.
   toca el núcleo. Agotado el presupuesto, el launcher registra el motivo en
   stderr, cierra todo y sale con 1. Un hijo que sale con 0 ha terminado a
   propósito (overlays cerrado por el usuario, replay acabado): se cierra todo y
-  se sale con 0.
-- **Cierre ordenado.** Ctrl+C, cierre de consola o `vantare --parar`: primero
-  Engineer habilitado, overlays y después el núcleo. Overlays recibe sólo EOF
-  en su stdin (`--control-stdin`): pide `cx.quit()` y ejecuta los ganchos GPUI,
-  incluso con un layout vacío y `QuitMode::Explicit`. Los demás hijos conservan
-  `WM_CLOSE` y EOF hasta el paso 2 de #1860. Si un hijo sigue vivo pasado
-  `--plazo` (3 s), se le mata y el supervisor sale con fallo y diagnóstico;
-  continúa recogiendo los demás hijos. Un kill nunca acredita un cierre limpio.
+  se sale con 0. Diagnóstico es observer: se intenta arrancar una vez; ni su
+  fallo ni su salida terminan la sesión o provocan reinicio. Durante el cierre
+  comparte el plazo y un kill forzado suyo sí cuenta como defecto.
+- **Cierre ordenado.** Ctrl+C, cierre de consola o `vantare --parar` inicia
+  un único presupuesto `--plazo` P (3 s). Solicita EOF a Engineer habilitado,
+  overlays y diagnóstico, en ese orden; no usa `WM_CLOSE`. Los consumidores
+  pueden terminar en cualquier orden. El núcleo recibe EOF cuando todos los
+  consumidores y workers han terminado, o al comenzar su reserva
+  `min(1 s, P/2)`. Todos comparten el mismo vencimiento, sin sumar plazos.
+  Overlays (`--control-stdin`) pide `cx.quit()` y ejecuta los ganchos GPUI,
+  incluso con un layout vacío y `QuitMode::Explicit`.
+  Resident y Host reciben cancelación y se consultan sin joins bloqueantes;
+  sólo se recoge un hilo terminado. El camino normal conserva todo el cleanup
+  y `finish()`. Agotado P, un hijo vivo se mata y recoge explícitamente también
+  en Unix; un worker colgado se diagnostica y el supervisor sale con fallo.
+  Al salir el proceso, el SO libera los locks de sus hilos. Las escrituras de
+  documentos conservan temp+rename: un temporal incompleto no sustituye al
+  documento anterior. Los archivos ancla `.lock` pueden persistir sin retener
+  el bloqueo. El residente conserva los handles de apps propias para solicitar terminar
+  las configuradas con cierre al salir incluso si su worker no responde.
+  Después de P no espera la salida de esas apps; el cierre normal sí las recoge.
   Una salida no cero tras pedir cierre se registra sin fallar la sesión. La
   revocación de Engineer registra un fallo de cierre y conserva los demás hijos;
-  sólo el shutdown final propaga ese fallo. Una salida satisfactoria en carrera
-  con el kill es limpia. Un error de cierre no oculta el motivo de supervisión.
+  sólo el shutdown final propaga ese fallo. Una salida natural en carrera con
+  el kill es limpia (Windows: satisfactoria; Unix: código de salida presente).
+  Un error de cierre no oculta el motivo de supervisión. La máquina pura
+  `session::Session::paso` recibe el reloj y comparte el mismo conductor de E/S
+  entre Windows y Unix. Engineer con permiso que sale con 0 sigue terminando
+  la sesión; el cambio de política de Hub queda para el paso 4 de #1860.
 
 Las pruebas de caída (`runtime/tests/lifecycle.rs`, procesos de verdad sobre un
 pipe real) cubren: núcleo muerto (overlays sigue vivo, reconecta y acepta la

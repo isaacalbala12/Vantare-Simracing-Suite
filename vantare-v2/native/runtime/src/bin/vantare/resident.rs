@@ -22,16 +22,63 @@ use vantare_ipc::launcher::{Decision, Registration, Request, Status, request_pat
 pub struct Resident {
     stop: Arc<AtomicBool>,
     thread: Option<thread::JoinHandle<()>>,
+    processes: launcher::processes::Shared,
+    close_on_exit: Arc<Mutex<Vec<String>>>,
 }
 
 impl Resident {
+    pub fn request_shutdown(&self) {
+        self.stop.store(true, Ordering::Release);
+    }
+
+    pub fn poll_shutdown(&mut self) -> std::io::Result<bool> {
+        self.request_shutdown();
+        if self
+            .thread
+            .as_ref()
+            .is_some_and(thread::JoinHandle::is_finished)
+            && let Some(worker) = self.thread.take()
+            && worker.join().is_err()
+        {
+            return Err(std::io::Error::other(
+                "Launcher residente terminó con panic",
+            ));
+        }
+        Ok(self.thread.is_none())
+    }
+
+    /// Las apps del perfil pueden salir del Job. Al vencer P el supervisor
+    /// conserva sus handles originales y aplica sólo `Close::Started`, incluso
+    /// si el worker quedó bloqueado antes de llegar al cleanup normal. Sólo
+    /// solicita terminar: después de P no espera a que el proceso salga.
+    pub fn force_cleanup(&self) -> std::io::Result<()> {
+        let profiles = self
+            .close_on_exit
+            .try_lock()
+            .map_err(|_| std::io::Error::other("políticas Launcher ocupadas al cerrar"))?
+            .clone();
+        let mut processes = self
+            .processes
+            .try_lock()
+            .map_err(|_| std::io::Error::other("procesos Launcher ocupados al cerrar"))?;
+        let mut first = None;
+        for profile in profiles {
+            if let Err(error) = processes.request_close_profile(&profile) {
+                first.get_or_insert(error);
+            }
+        }
+        first.map_or(Ok(()), |error| Err(std::io::Error::other(error)))
+    }
+
     pub fn start(path: PathBuf, profile: Option<String>, startup: bool) -> std::io::Result<Self> {
         let stop = Arc::new(AtomicBool::new(false));
         let cancellation = stop.clone();
+        let mut owner = Owner::new(path, startup);
+        let processes = Arc::clone(&owner.processes);
+        let close_on_exit = Arc::clone(&owner.close_on_exit);
         let worker = thread::Builder::new()
             .name("launcher-residente".into())
             .spawn(move || {
-                let mut owner = Owner::new(path, startup);
                 owner.reload();
                 if let Some(profile) = profile {
                     owner.launch(&profile);
@@ -83,13 +130,15 @@ impl Resident {
         Ok(Self {
             stop,
             thread: Some(worker),
+            processes,
+            close_on_exit,
         })
     }
 }
 
 impl Drop for Resident {
     fn drop(&mut self) {
-        self.stop.store(true, Ordering::Release);
+        self.request_shutdown();
         if let Some(worker) = self.thread.take()
             && worker.join().is_err()
         {
@@ -109,6 +158,7 @@ struct Owner {
     decision_serial: u64,
     chain_decision: Option<u64>,
     processes: launcher::processes::Shared,
+    close_on_exit: Arc<Mutex<Vec<String>>>,
 }
 
 impl Owner {
@@ -124,6 +174,7 @@ impl Owner {
             decision_serial: vantare_ipc::launcher::now_ms(),
             chain_decision: None,
             processes: Arc::new(Mutex::new(launcher::processes::Processes::default())),
+            close_on_exit: Arc::new(Mutex::new(Vec::new())),
         }
     }
 
@@ -226,7 +277,22 @@ impl Owner {
         self.sync_startup(&document);
         self.bytes = Some(bytes);
         self.document = document;
+        self.remember_close_policy();
         self.publish();
+    }
+
+    fn remember_close_policy(&self) {
+        if let Ok(mut profiles) = self.close_on_exit.lock() {
+            *profiles = self
+                .document
+                .profiles
+                .iter()
+                .filter(|profile| {
+                    profile.effective_policy().exit == launcher::policy::Close::Started
+                })
+                .map(|profile| profile.id.clone())
+                .collect();
+        }
     }
 
     fn sync_startup(&mut self, document: &Document) {
@@ -400,6 +466,94 @@ mod tests {
     use super::*;
     use std::{fs, sync::mpsc};
 
+    struct ReleaseWorker(mpsc::Sender<()>);
+    impl Drop for ReleaseWorker {
+        fn drop(&mut self) {
+            let _released = self.0.send(());
+        }
+    }
+
+    #[test]
+    fn nonblocking_shutdown_keeps_the_final_atomic_status_cleanup() {
+        let dir = std::env::temp_dir().join(format!(
+            "resident-p2-{}",
+            vantare_services::random_id().expect("id")
+        ));
+        fs::create_dir(&dir).expect("raíz propia");
+        let path = dir.join("launcher.json");
+        let mut resident =
+            Resident::start(path.clone(), None, false).expect("residente sin registro Startup");
+        resident.request_shutdown();
+        let deadline = std::time::Instant::now() + Duration::from_secs(5);
+        while !resident.poll_shutdown().expect("recoger sólo al terminar") {
+            assert!(
+                std::time::Instant::now() < deadline,
+                "cleanup normal termina"
+            );
+            thread::yield_now();
+        }
+        let status: Status =
+            serde_json::from_slice(&fs::read(status_path(&path)).expect("documento final visible"))
+                .expect("estado final completo, sin aplicar TTL al heartbeat cero de cierre");
+        assert_eq!(status.updated_ms, 0);
+        assert!(resident.thread.is_none());
+        drop(resident);
+        fs::remove_dir_all(dir).expect("limpiar sólo raíz propia");
+    }
+
+    #[test]
+    fn forced_cleanup_closes_owned_profile_apps_even_when_the_worker_is_blocked() {
+        use std::os::windows::{
+            io::{AsHandle, AsRawHandle},
+            process::CommandExt,
+        };
+        use std::process::{Command, Stdio};
+        let mut child = Command::new("cmd.exe")
+            .args(["/D", "/C", "set /p line="])
+            .stdin(Stdio::piped())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .creation_flags(0x0800_0000)
+            .spawn()
+            .expect("app propia de perfil");
+        let _input = child.stdin.take();
+        let observed = child
+            .as_handle()
+            .try_clone_to_owned()
+            .expect("identidad por handle");
+        let processes = Arc::new(Mutex::new(launcher::processes::Processes::default()));
+        processes.lock().expect("registro").record(
+            "rig",
+            "fixture",
+            std::path::Path::new("cmd.exe"),
+            child,
+        );
+        let (release, wait) = mpsc::channel();
+        let mut resident = Resident {
+            stop: Arc::new(AtomicBool::new(false)),
+            thread: Some(thread::spawn(move || {
+                let _released = wait.recv();
+            })),
+            processes,
+            close_on_exit: Arc::new(Mutex::new(vec!["rig".into()])),
+        };
+        let release = ReleaseWorker(release);
+        resident.request_shutdown();
+        assert!(!resident.poll_shutdown().expect("worker todavía bloqueado"));
+        resident
+            .force_cleanup()
+            .expect("Close::Started sin depender del worker ni del Job");
+        // La espera pertenece al test, nunca al camino forzado del supervisor.
+        assert_eq!(
+            super::super::win::wait_any(&[observed.as_raw_handle()], Some(Duration::from_secs(5)))
+                .expect("salida de app propia"),
+            Some(0)
+        );
+        release.0.send(()).expect("liberar fixture");
+        // Drop normal recoge el worker liberado; no queda ningún hilo del test.
+        drop(resident);
+    }
+
     #[test]
     fn removal_between_existence_and_metadata_is_a_missing_document() {
         let dir =
@@ -424,6 +578,8 @@ mod tests {
 
     #[test]
     fn ipc_launch_consumes_request_and_runs_the_shared_chain_without_hub() {
+        // Las apps detached nacen bajo el Job del supervisor, también en el arnés.
+        super::super::win::adopt_self_in_job().expect("Job de sesión con breakaway permitido");
         let dir =
             std::env::temp_dir().join(format!("vantare-resident-chain-{}", std::process::id()));
         fs::create_dir_all(&dir).expect("directorio propio");
@@ -464,9 +620,15 @@ mod tests {
                 .progress
                 .recv_timeout(Duration::from_secs(20))
                 .expect("progreso real");
+            assert_ne!(
+                event.status,
+                launcher::chain::Status::Failed,
+                "{}",
+                event.message
+            );
             launched |= event.status == launcher::chain::Status::Launching;
             if event.status == launcher::chain::Status::Done {
-                assert!(event.success);
+                assert!(event.success, "{}", event.message);
                 break;
             }
         }

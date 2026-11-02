@@ -1,5 +1,5 @@
 <!-- isa1860-arranque-cierre -->
-## VANTA-128 / #1860 — paso 0 integrado; paso 1 corregido tras revisión
+## VANTA-128 / #1860 — pasos 0 y 1 integrados; paso 2 listo para revisión
 
 Paso 0 [#1863](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1863)
 integrado por el orquestador en nightly `aca51a15e3a6cf4aa53fc659c89011853a3da2ca`;
@@ -41,8 +41,10 @@ Plane En curso verificado; el worker no volvió a cambiar el estado.
 - El orquestador cerró la instalación real para dejar libre la sesión. El worker
   no la cerró ni la reabrió, ni tocó registro real. Sin cambios en installer::engine
   ni Hub Ajustes/updates; los demás pasos del diseño siguen pendientes.
-- Paso 1 listo en PR draft [#1864](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1864)
-  directamente a nightly. Rama `vantareapp/isa-1860-paso1-cierre-overlays`, worktree
+- Paso 1 [#1864](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1864)
+  integrado por el orquestador en nightly `27fa423c038c08020d7308e5542103074e854ba1`,
+  CI 5/5 verde comunicada por él. HEAD entregado `df151b356215e664afa7ae4e45879c429e11f82e`.
+  Rama `vantareapp/isa-1860-paso1-cierre-overlays`, worktree
   `D:/VantareServer/worktrees/isa-1860-paso1`, mismo target usado secuencialmente.
   Base `aca51a15e3a6cf4aa53fc659c89011853a3da2ca`; código probado
   `8d0c6ac4cc7a8277354c49b20ef077c4ac14009b`, HEAD de entrega en el PR.
@@ -85,10 +87,63 @@ Plane En curso verificado; el worker no volvió a cambiar el estado.
   real aceptado. Restauración SHA-256 exacta y baseline unitaria/procesos PASS.
   Evidencia: `D:/VantareServer/evidence/isa-1860-paso1/review-20261102-041053/`.
 - Clic físico y candidata instalada pendientes de Isaac; Unix sin ejecutar en
-  este host Windows. Los pasos 2 y siguientes siguen pendientes. Sin cambios en
+  este host Windows. Sin cambios en
   installation.rs, installer::engine ni Hub Ajustes/updates en el diff del paso 1.
   CI la vigila el orquestador. El worker no hizo merge, release ni promoción,
   ni tocó la instalación o el registro reales. Plane sigue En curso.
+- Paso 2 y revisión R1 listos en PR draft [#1865](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1865)
+  a nightly, código probado `746631b04a7a9af0f4ed259cd89c1c62c28dcc93`.
+  Rama `vantareapp/isa-1860-paso2-supervision`, worktree
+  `D:/VantareServer/worktrees/isa-1860-paso2`, base `origin/nightly@27fa423c0`;
+  target `D:/VantareServer/targets/isa-1860`. HEAD final en la descripción del PR.
+- Máquina pura con reloj inyectado, política por hijo y conductor Windows/Unix.
+  EOF para núcleo, overlays, Engineer y diagnóstico; P único incluye Resident/Host/
+  diagnóstico y no se renueva; reserva del núcleo min(1 s,P/2).
+  Solicitudes Engineer→overlays→diagnóstico; todos los consumidores antes del
+  núcleo en cierre normal, sin orden de terminación entre ellos (§1 aprobado).
+  Engineer habilitado que sale con 0 sigue terminando la sesión.
+- R1 (1): Host cancela idempotentemente en cada request/poll, sin already_stopping
+  ni consulta TOCTOU de state. Regresión por pipes reales con petición en curso,
+  slot ocupado o publicado tarde; se confirma cancelación, cleanup y núcleo vivo.
+  State queda sólo en tests para observarlo: en producto lo poseen los workers.
+- R1 (2): Kill sólo Closing→Killing y guardia del conductor antes de ejecutar;
+  Exited/Killed sobre Reaped o reprogramados se ignoran. Dos pruebas puras
+  cubren Kill único, eventos duplicados y presupuesto intacto. Una salida en
+  Killing revocado conserva la revocación y no consume reinicios.
+- R1 (3): cierre normal completo con finish()/cleanup y join sólo is_finished.
+  Después de P, force_cleanup solicita terminar apps Close::Started por sus
+  handles propios, sin wait (request_close_profile de launcher). Sólo el test
+  y el cierre normal esperan la confirmación. Mutex ocupado: diagnóstico, sin
+  espera adicional. No fue necesario abrir otra issue: el cambio es mínimo.
+- R1 (4–6): Unix distingue código natural u otra señal de SIGKILL, sin atribuir
+  una señal ajena a nuestro kill; test SIGTERM disponible, sin ejecución aquí.
+  Fragmento UTF-8 estricto y sin mojibake. README aclara que observer no reinicia
+  ni termina sesión al salir/caer; su kill durante cierre sí cuenta como defecto.
+- R1 (7–8): test before_overlays renombrado; dos casos de orden normal usan plazo
+  10 s sin cambiar aserciones. Colgados conservan 1,5 s. P+400 ms sólo informa;
+  la aserción exige código 1, el reloj puro comprueba P exacto. Se retira la
+  exclusividad de Nextest que sólo protegía la anterior cota temporal.
+- Datos temp+rename conservados. Corte en serialización real de Store y temporal
+  parcial de Resident: documento anterior íntegro, recuperación y locks libres,
+  con hijos colgados/cooperativos. Los archivos ancla .lock pueden persistir sin
+  retener el bloqueo. Unix recoge explícitamente a hijos sin Job, no ejecutado.
+- Gates runtime/UI/launcher por cola: fmt y Clippy all-targets -D warnings normal
+  y UI QA PASS; Host 2/2, supervisor 40/40, lifecycle real 25/25, IPC 2/2 PASS.
+  Nextest ci **1007/1007 PASS**, telemetría, 14 omisiones preexistentes, 1 lento,
+  124.712 s. Tiempos del cierre sólo diagnósticos: 1017/1004 ms con P=1000 ms.
+- **9/9 mutaciones compiladas detectadas por aserción**; 249 fuentes restauradas
+  exactamente por SHA-256. Baseline supervisor 40/40, UI 1/1 y Host 2/2 PASS.
+  Retirada 468/468, fragmento/UTF-8/diff PASS. Evidencia y logs de intentos en
+  `D:/VantareServer/evidence/isa-1860-paso2/review-r1` (gates.ps1, nextest.log,
+  mutations.json, source-sha256.json y baselines). Imágenes overlays normal/QA
+  reutilizadas sin cambios de UI y verificadas por SHA-256 antes del lifecycle.
+- Intentos R1 conservados: Clippy detectó state ya sin lector en producto; se
+  limita a cfg(test), sin allow. La prueba nueva detectó Backoff impropio de
+  Killing revocado; se corrige manteniendo la aserción. La tanda final pasa todo.
+- CI del orquestador; Plane En curso, sólo resumen actualizado. Sin merge,
+  release, promoción, instalación ni registro reales. Instalador, installation.rs
+  y packaging intactos; VANTA-127 continúa en paralelo. Clic físico/candidata
+  pendientes de Isaac; Unix sin ejecutar; pasos 3 y siguientes fuera del PR.
 <!-- /isa1860-arranque-cierre -->
 
 <!-- isa1827-simplificar-e -->

@@ -68,6 +68,7 @@ pub struct Options {
     pub root: Option<PathBuf>,
 }
 pub struct Host {
+    #[cfg(test)]
     state: Arc<Mutex<State>>,
     stop: Arc<Event>,
     cancellation: Cancellation,
@@ -75,6 +76,37 @@ pub struct Host {
     timer: Option<JoinHandle<()>>,
 }
 impl Host {
+    /// Inicia el cierre sin E/S ni joins en el hilo del supervisor.
+    /// El servidor conserva `finish()` completo. Repite la cancelación en cada
+    /// consulta para cubrir una publicación tardía o un slot ocupado.
+    pub fn request_shutdown(&self) {
+        self.stop.set();
+        // La petición puede publicar su cancelación después de observar Stop.
+        // Reintentar es idempotente y no depende de que state esté ocupado.
+        if let Ok(slot) = self.cancellation.try_lock()
+            && let Some(event) = &*slot
+        {
+            event.set();
+        }
+    }
+
+    /// Recoge únicamente hilos que ya han terminado. No espera al helper.
+    pub fn poll_shutdown(&mut self) -> io::Result<bool> {
+        self.request_shutdown();
+        let mut failed = false;
+        for worker in [&mut self.timer, &mut self.server] {
+            if worker.as_ref().is_some_and(JoinHandle::is_finished)
+                && let Some(worker) = worker.take()
+            {
+                failed |= worker.join().is_err();
+            }
+        }
+        if failed {
+            return Err(io::Error::other("worker de servicios terminó con panic"));
+        }
+        Ok(self.timer.is_none() && self.server.is_none())
+    }
+
     pub fn start(photo: &str, options: Options) -> io::Result<Self> {
         Self::start_with_peer(photo, options, Peer::is_image)
     }
@@ -122,6 +154,7 @@ impl Host {
                         }
                         if let Err(error) =
                             serve(&mut pipe, &state, &stop, &cancellation, &signing, &options)
+                            && !stop.is_set()
                         {
                             // No imprimir nonce, comandos ni datos del Hub.
                             eprintln!("vantare: canal de servicios cerrado: {:?}", error.kind());
@@ -140,6 +173,7 @@ impl Host {
         };
         match server {
             Ok(server) => Ok(Self {
+                #[cfg(test)]
                 state,
                 stop,
                 cancellation,
@@ -733,15 +767,9 @@ fn spawn_timer(
 }
 impl Drop for Host {
     fn drop(&mut self) {
-        self.stop.set();
-        // Si está libre, coordina el cierre del helper. Si hay E/S
-        // remota en vuelo, cancelación y cleanup conservan los derechos del núcleo. La respuesta
-        // HTTP sin ACK se descarta y la renovación posterior solicita otra.
-        if let Ok(mut state) = self.state.try_lock() {
-            finish(&mut state);
-        } else {
-            cancel(&self.cancellation);
-        }
+        self.request_shutdown();
+        // Fuera del presupuesto de sesión, Drop conserva la espera completa.
+        // La sesión llama poll_shutdown y sólo deja llegar aquí hilos recogidos.
         if let Some(thread) = self.timer.take() {
             let _joined = thread.join();
         }

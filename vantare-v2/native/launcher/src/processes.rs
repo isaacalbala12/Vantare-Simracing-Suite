@@ -67,17 +67,27 @@ impl Processes {
     }
 
     pub fn close_profile(&mut self, profile: &str) -> Result<(), String> {
-        self.close_matching(|s| s.profile == profile)
+        self.close_matching(|s| s.profile == profile, true)
+    }
+
+    /// Solicita terminar sólo apps propias; no espera su salida. El cierre
+    /// forzado de la sesión usa esto después de vencer su presupuesto.
+    pub fn request_close_profile(&mut self, profile: &str) -> Result<(), String> {
+        self.close_matching(|s| s.profile == profile, false)
     }
 
     pub fn restart(&mut self, path: &Path, pids: &[u32]) -> Result<(), String> {
         if !self.owns(path, pids)? {
             return Err("no se puede reiniciar una app abierta fuera de Vantare".into());
         }
-        self.close_matching(|s| pids.contains(&s.child.id()))
+        self.close_matching(|s| pids.contains(&s.child.id()), true)
     }
 
-    fn close_matching(&mut self, matches: impl Fn(&Started) -> bool) -> Result<(), String> {
+    fn close_matching(
+        &mut self,
+        matches: impl Fn(&Started) -> bool,
+        wait: bool,
+    ) -> Result<(), String> {
         let mut errors = Vec::new();
         for started in &mut self.started {
             if !matches(started) {
@@ -92,7 +102,9 @@ impl Processes {
                 {
                     // Child conserva el handle original de CreateProcess, no reabre el PID.
                     started.child.kill().map_err(|e| e.to_string())?;
-                    started.child.wait().map_err(|e| e.to_string())?;
+                    if wait {
+                        started.child.wait().map_err(|e| e.to_string())?;
+                    }
                 }
                 Ok::<(), String>(())
             })();

@@ -114,10 +114,7 @@ fn main() -> ExitCode {
     }
     vantare_services::diagnostics::install_panic_hook("vantare-overlays");
     let mut args: Vec<String> = std::env::args().skip(1).collect();
-    let controlled = args.iter().position(|arg| arg == "--control-stdin");
-    if let Some(index) = controlled {
-        args.remove(index);
-    }
+    let controlled = take_control_stdin(&mut args);
     let start_hidden = args.first().is_some_and(|arg| arg == "--start-hidden");
     if start_hidden {
         args.remove(0);
@@ -138,7 +135,7 @@ fn main() -> ExitCode {
         let _written = writeln!(std::io::stderr(), "{USAGE}");
         return ExitCode::from(2);
     };
-    let shutdown = match parent_shutdown(controlled.is_some()) {
+    let shutdown = match parent_shutdown(controlled) {
         Ok(shutdown) => shutdown,
         Err(error) => return failure(format_args!("vigilar stdin: {error}")),
     };
@@ -199,6 +196,14 @@ fn failure(error: impl std::fmt::Display) -> ExitCode {
     ExitCode::FAILURE
 }
 
+fn take_control_stdin(args: &mut Vec<String>) -> bool {
+    let Some(index) = args.iter().position(|arg| arg == "--control-stdin") else {
+        return false;
+    };
+    args.remove(index);
+    true
+}
+
 fn parent_shutdown(controlled: bool) -> std::io::Result<Option<flume::Receiver<()>>> {
     if !controlled {
         return Ok(None);
@@ -228,10 +233,34 @@ fn parent_shutdown(controlled: bool) -> std::io::Result<Option<flume::Receiver<(
 
 #[cfg(test)]
 mod tests {
-    use super::{Feed, parse};
+    use super::{Feed, parse, take_control_stdin};
 
     fn args(list: &[&str]) -> Vec<String> {
         list.iter().map(|s| (*s).into()).collect()
+    }
+
+    #[test]
+    fn control_stdin_is_removed_before_parsing_without_changing_other_arguments() {
+        for position in 0..=3 {
+            let expected = args(&["--start-hidden", "--layout", "saved.json"]);
+            let mut input = expected.clone();
+            input.insert(position, "--control-stdin".into());
+            assert!(take_control_stdin(&mut input));
+            assert_eq!(input, expected);
+        }
+        let mut input = args(&["4", "--fuente", "local"]);
+        let expected = input.clone();
+        assert!(!take_control_stdin(&mut input));
+        assert_eq!(input, expected);
+        input.push("--control-stdin".into());
+        assert!(take_control_stdin(&mut input));
+        assert_eq!(parse(&input), Some((Some(4), None, Feed::Local)));
+        let mut repeated = args(&["--control-stdin", "--control-stdin"]);
+        assert!(take_control_stdin(&mut repeated));
+        assert!(
+            parse(&repeated).is_none(),
+            "no aceptar silenciosamente duplicados"
+        );
     }
 
     #[test]

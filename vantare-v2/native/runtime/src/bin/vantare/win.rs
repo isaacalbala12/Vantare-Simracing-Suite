@@ -5,13 +5,12 @@ use std::ffi::c_void;
 use std::io;
 use std::mem::{size_of, zeroed};
 use std::os::windows::io::{AsRawHandle, FromRawHandle, OwnedHandle};
-use std::process::Child;
 use std::ptr::null;
 use std::sync::atomic::{AtomicPtr, Ordering};
 use std::time::Duration;
 
 use windows_sys::Win32::Foundation::{
-    ERROR_ACCESS_DENIED, ERROR_ALREADY_EXISTS, HANDLE, HWND, LPARAM, WAIT_OBJECT_0, WAIT_TIMEOUT,
+    ERROR_ACCESS_DENIED, ERROR_ALREADY_EXISTS, HANDLE, WAIT_OBJECT_0, WAIT_TIMEOUT,
 };
 use windows_sys::Win32::System::Console::SetConsoleCtrlHandler;
 use windows_sys::Win32::System::JobObjects::{
@@ -22,9 +21,6 @@ use windows_sys::Win32::System::JobObjects::{
 use windows_sys::Win32::System::Threading::{
     CreateEventW, CreateMutexW, EVENT_MODIFY_STATE, GetCurrentProcess, OpenEventW, SetEvent,
     WaitForMultipleObjects,
-};
-use windows_sys::Win32::UI::WindowsAndMessaging::{
-    EnumWindows, GetWindowThreadProcessId, PostMessageW, WM_CLOSE,
 };
 
 const INFINITE: u32 = u32::MAX;
@@ -164,31 +160,41 @@ pub fn wait_any(handles: &[HANDLE], timeout: Option<Duration>) -> io::Result<Opt
     }
 }
 
-/// Espera a que el hijo termine, hasta `timeout`.
-pub fn wait_child(child: &Child, timeout: Duration) -> bool {
+/// Primitiva de espera: ni política por hijo ni reloj de cierre propio.
+pub(super) fn wait(
+    stop: &Stop,
+    _instance: &Instance,
+    children: &[super::Service],
+    timeout: Duration,
+    listen_stop: bool,
+) -> io::Result<bool> {
+    let mut handles = Vec::new();
+    if listen_stop {
+        handles.push(stop.raw());
+    }
+    handles.extend(
+        children
+            .iter()
+            .filter_map(|service| service.child.as_ref().map(AsRawHandle::as_raw_handle)),
+    );
+    if handles.is_empty() {
+        std::thread::sleep(timeout);
+        return Ok(false);
+    }
+    Ok(wait_any(&handles, Some(timeout))? == Some(0) && listen_stop)
+}
+
+#[cfg(test)]
+pub(super) fn retain_process(pid: u32) -> io::Result<OwnedHandle> {
+    use windows_sys::Win32::System::Threading::{OpenProcess, PROCESS_SYNCHRONIZE};
+    // SAFETY: PID de un hijo observado por el test, acceso sólo de espera.
+    owned(unsafe { OpenProcess(PROCESS_SYNCHRONIZE, 0, pid) })
+}
+
+#[cfg(test)]
+pub(super) fn process_finished(handle: &OwnedHandle) -> bool {
     matches!(
-        wait_any(&[child.as_raw_handle()], Some(timeout)),
+        wait_any(&[handle.as_raw_handle()], Some(Duration::ZERO)),
         Ok(Some(_))
     )
-}
-
-/// Cierra stdin y manda `WM_CLOSE` a las ventanas del hijo. Sólo se usa para
-/// los hijos distintos de overlays, hasta el paso 2 de #1860. Overlays recibe
-/// únicamente EOF y pide `cx.quit()`; no depende de cerrar la última ventana.
-pub fn request_close(child: &mut Child) {
-    drop(child.stdin.take());
-    let pid = isize::try_from(child.id()).unwrap_or(-1);
-    // SAFETY: la callback tiene la firma de `WNDENUMPROC`; el PID viaja por valor en `lparam`.
-    unsafe { EnumWindows(Some(close_if_owned), pid) };
-}
-
-unsafe extern "system" fn close_if_owned(window: HWND, pid: LPARAM) -> i32 {
-    let mut owner = 0;
-    // SAFETY: `window` lo entrega `EnumWindows`; `owner` es un puntero válido.
-    unsafe { GetWindowThreadProcessId(window, &raw mut owner) };
-    if u32::try_from(pid) == Ok(owner) {
-        // SAFETY: `window` es un HWND válido; el mensaje no lleva punteros.
-        unsafe { PostMessageW(window, WM_CLOSE, 0, 0) };
-    }
-    1 // seguir enumerando
 }

@@ -478,6 +478,22 @@ Sin merge/release del worker.
   en nightly cbe485786; no se mezcla aquí. Sin Plane, instalación real,
   secretos, Downloads, merge/release/promoción del worker ni CI watch.
 
+### Paso 3 integrado / inicio del paso 4 (2-nov-2026)
+
+- #1861 integrado por el orquestador en nightly399b0e9e7; CI5/5 verde
+  confirmada por él. Metadatos del PR y origin/nightly verificados; el worker
+  no vigila CI ni hizo merge/release. Resumen Plane actualizado; sigue En curso.
+- Paso4 asignado: escritura Rust en el mismo proceso de Setup/Uninstall,
+  descubrimiento y opciones sin PowerShell. Feed heredado permanece hasta p6/p7;
+  shell::sync idempotente corresponde al paso5. Sin cambios grandes fuera del
+  diseño sin revisión previa del orquestador.
+- Rama vantareapp/isa-1840-paso4-motor-escritura, worktree isa-1840-paso4,
+  base origin/nightly399b0e9e7. Dependencias aprobadas zip6.0.0/windows0.62,
+  ninguna otra; target propio. Gates agrupados y cola cedida a VANTA-128.
+- QA solo bajo D:/VantareServer/qa con guard, HKCU y carpetas inyectados;
+  nunca instalación/registro reales. Siguiente: contratos, implementación y
+  pruebas de paridad antes de PR draft a nightly; sin promoción ni release.
+
 ### Antecedentes 0–1d (evidencia histórica conservada)
 
 - 0/#1842 integrado en216f9bda7, Characterize Windows PASS confirmado. 1a/#1846

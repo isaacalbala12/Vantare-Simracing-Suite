@@ -795,6 +795,21 @@ fn capability(has_data: bool, stale: bool) -> Capability {
 mod tests {
     use super::*;
 
+    #[test]
+    fn quality_constructor_characterization() {
+        for stale in [false, true] {
+            assert_eq!(quality(Some(7), stale), if stale { Quality::Stale(7) } else { Quality::Reliable(7) });
+            assert_eq!(estimate(Some(7), stale), if stale { Quality::Stale(7) } else { Quality::Estimated(7) });
+            assert_eq!(quality::<u8>(None, stale), Quality::Unavailable);
+            assert_eq!(estimate::<u8>(None, stale), Quality::Unavailable);
+        }
+        for value in [Quality::Reliable(7), Quality::Estimated(7), Quality::Stale(7), Quality::Unavailable] {
+            assert_eq!(stale_quality(value, false), value);
+            assert_eq!(stale_quality(value, true), if value == Quality::Reliable(7) { Quality::Stale(7) } else { value });
+        }
+    }
+
+
     const REAL_44: &[u8] = include_bytes!("../../../../../testdata/lmu-fixture.bin");
     const BUILD: &str = "1.3.0.0";
     const SCORING_BASE: usize = 2_192;

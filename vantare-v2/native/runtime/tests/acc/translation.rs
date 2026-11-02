@@ -1,6 +1,17 @@
 //! Vectores de regresión; NO son capturas ni evidencia de ACC en marcha.
 use super::*;
 
+    #[test]
+    fn quality_constructor_characterization() {
+        for stale in [false, true] {
+            assert_eq!(quality(Some(7), stale), if stale { Quality::Stale(7) } else { Quality::Reliable(7) });
+            assert_eq!(estimated(Some(7), stale), if stale { Quality::Stale(7) } else { Quality::Estimated(7) });
+            assert_eq!(quality::<u8>(None, stale), Quality::Unavailable);
+            assert_eq!(estimated::<u8>(None, stale), Quality::Unavailable);
+        }
+    }
+
+
 #[test]
 fn split_overtakes_keep_the_last_coherent_table_estimated_until_complete() {
     let mut t = setup();

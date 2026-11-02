@@ -96,10 +96,11 @@ pub fn expand(
             .write(true)
             .create_new(true)
             .open(&target)?;
-        ensure(
-            io::copy(&mut member, &mut output)? == member.size(),
-            "Tamaño ZIP extraído incorrecto",
-        )?;
+        // The backend bounds compressed input, not Deflate output. Never trust
+        // a forged directory size enough to write the entire expanded stream.
+        let declared = member.size();
+        let copied = io::copy(&mut member.by_ref().take(declared + 1), &mut output)?;
+        ensure(copied == declared, "Tamaño ZIP extraído incorrecto")?;
         output.sync_all()?;
     }
     let manifest = super::Manifest::read(

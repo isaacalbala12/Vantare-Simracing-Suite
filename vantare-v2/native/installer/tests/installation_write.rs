@@ -822,6 +822,55 @@ fn zip_links_duplicates_traversal_and_uncompressed_limits_are_rejected_before_ac
 }
 
 #[test]
+fn zip_uncompressed_size_is_a_streaming_limit_even_if_the_directory_lies() {
+    let fixture = Fixture::new();
+    let package = fixture.package("1.0.0");
+    let mut source = zip::ZipArchive::new(fs::File::open(&package.path).expect("source ZIP"))
+        .expect("source directory");
+    let path = fixture.path.join("understated-deflate.zip");
+    let mut writer = zip::ZipWriter::new(fs::File::create(&path).expect("deflated ZIP"));
+    for index in 0..source.len() {
+        let mut member = source.by_index(index).expect("source member");
+        writer
+            .start_file(
+                member.name().to_owned(),
+                zip::write::SimpleFileOptions::default()
+                    .compression_method(zip::CompressionMethod::Deflated),
+            )
+            .expect("deflated member");
+        std::io::copy(&mut member, &mut writer).expect("repack fixture");
+    }
+    writer.finish().expect("ZIP finish");
+    let mut bytes = fs::read(&path).expect("deflated bytes");
+    let eocd = bytes
+        .windows(4)
+        .rposition(|value| value == b"PK\x05\x06")
+        .expect("EOCD");
+    let directory = usize::try_from(u32::from_le_bytes(
+        bytes[eocd + 16..eocd + 20]
+            .try_into()
+            .expect("directory offset"),
+    ))
+    .expect("directory position");
+    assert_eq!(&bytes[..4], b"PK\x03\x04");
+    // Both headers agree on one byte; the real Deflate stream contains an inert
+    // PE fixture. The external SHA is valid, so this tests the extraction bound.
+    bytes[22..26].copy_from_slice(&1_u32.to_le_bytes());
+    bytes[directory + 24..directory + 28].copy_from_slice(&1_u32.to_le_bytes());
+    fs::write(&path, &bytes).expect("isolated malformed ZIP");
+    let sha = format!("{:x}", Sha256::digest(&bytes));
+    let destination = fixture.path.join("partial");
+    assert!(engine::package::expand(&path, &sha, &destination, "beta").is_err());
+    let written = fs::metadata(destination.join(engine::current_members("beta")[0]))
+        .expect("streaming started");
+    assert!(
+        written.len() <= 2,
+        "declared one byte, wrote {} bytes",
+        written.len()
+    );
+}
+
+#[test]
 fn abrupt_process_exit_on_both_sides_of_commit_never_leaves_torn_state() {
     let executable = std::env::current_exe().expect("owned libtest child");
     for point in ["before-commit", "after-commit"] {

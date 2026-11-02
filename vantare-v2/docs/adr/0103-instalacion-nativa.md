@@ -59,6 +59,9 @@ No se exigen una llamada única total de Uninstall+Cleanup ni un nuevo ciclo de
 vida. La excepción completa cierra en el paso 5. Feed y Register siguen en PS
 hasta sus pasos previstos. Esto sustituye temporalmente la frase histórica
 «Setup deja de lanzar PowerShell»; nunca autoriza el driver PS para el núcleo.
+La consulta de objetivo para accesos y la persistencia de preferencias Windows
+siguen dentro de esa transacción heredada hasta p5. Rust aporta opciones/contexto;
+no obtiene de ella estado, versión instalada ni datos para decidir operaciones.
 
 ### Estado estable y versión instalada
 

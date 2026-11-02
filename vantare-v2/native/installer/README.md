@@ -15,6 +15,8 @@ transacción/guardas/propiedad de accesos/Run y rollback por bytes. Contrato JSO
 máximo64KiB, progreso stdout/diagnóstico stderr/código de salida;
 TODO(#1840 p5) sustituye las tres llamadas por shell::sync. El núcleo no envía
 estado, ZIP ni datos a PowerShell. Feed y Register continúan heredados.
+La finalización conserva la consulta de objetivo para accesos y la persistencia
+de sus preferencias Windows hasta p5; Rust no usa su salida para leer estado.
 
 ## Lectura compartida — #1840, paso 3
 
@@ -224,4 +226,8 @@ inyecta HKCU/carpetas y usa el Session real; nunca se distribuye ni acepta rutas
 fuera del guard. En una build TEST, VANTARE_INSTALLER_QA_CONTEXT apunta a ese
 JSON explícito de contexto bajo QA; no cae a HKCU/carpetas reales.
 
-Gates y matriz de escritura pendientes de ejecutar en el corte de p4.
+Paso4 validado: modelo c15223a27,652/652 Nextest Installer+Hub; último escritor
+b380a10d7,47/47 Installer y TEST8/8. Fmt/check y Clippy -D warnings PASS.
+Matriz88/88 idéntica,45 rechazos y20 comprobaciones de frontera PASS;
+Startup48 aserciones en184.232 s. Evidencia y límites en
+[evidence-1840-p4.md](../packaging/matrix/evidence-1840-p4.md).

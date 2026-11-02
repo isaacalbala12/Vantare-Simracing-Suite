@@ -19,6 +19,9 @@
   ya retirado. Cleanup mantiene su padre/plazo30s/marker/hash y rechazo de una
   instalación renovada; sin cmd ni nuevo contrato de autoborrado. QA inyecta
   HKCU/carpetas antes de cargar producto. El núcleo nunca escribe por el driver.
+  La transacción conserva también la consulta del objetivo de accesos y la
+  persistencia de preferencias Windows; Rust no delega en ella sus decisiones
+  sobre estado, versión instalada, ZIP o datos. Esa proyección se retira en p5.
 
 - §4.5, paso 3: el alcance aceptado migra solo lecturas Rust de Probe/Hub;
   conserva perfiles y adaptadores PS hasta pasos 4–7. No acredita 5→1 global.

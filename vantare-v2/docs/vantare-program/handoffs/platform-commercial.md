@@ -493,12 +493,28 @@ Sin merge/release del worker.
 - Frontera p4/p5 autorizada: una llamada PS por FinalizeInstall,
   FinalizeUninstall y Cleanup, con contrato acotado y TODO(#1840 p5). Conserva
   la transacción/guardas/accesos/Run/rollback por bytes; no se porta shell a Rust.
-  Estado, ZIP, generaciones, datos, descubrimiento y opciones están en Rust.
-- Implementación y tests preparados; todavía sin compilar ni campaña nueva.
-  Zip/windows son solo dos aristas nuevas del lock, sin paquetes/versiones.
+  Estado, ZIP, generaciones, datos, descubrimiento y lectura de opciones en Rust;
+  la transacción heredada conserva preferencias Windows hasta p5.
+- Modelo c15223a27: Retire comparte Installation::read, sin otra interpretación
+  estructural en operaciones; regresión antes de borrar/finalizar y propiedad de
+  raíz con equivalencia Windows/Unicode. Catálogo explícito sin parser PS en build.rs.
+- c15223a27: fmt/check, tres Clippy -D warnings y Nextest652/652 PASS
+  (5 omitidos; uno es helper ejecutado por padre); auxiliares y TEST8/8 PASS.
+  Último escritor b380a10d7: corte real de salida ZIP con tamaño subdeclarado,
+  fmt/check, tres Clippy, Nextest47/47 y TEST8/8 PASS; lector/Hub no cambian.
+  Frontera transitoria20 comprobaciones preliminares PASS. Ensayos conservados:
+  01 se detuvo por copia QA incompleta;02 por readContext ausente en comparador;
+  arnés53a162fa7 y83a173934 corrige supuestos del comparador; smoke dirigido PASS.
+  Campaña final matrix-p4-04:88/88 idénticos,45 rechazos y cinco raíces nightly;
+  128 campos del lector y64 del contexto iguales. Auxiliares25+24+14+18+54+42+
+  48+20 PASS; guard7+5. Startup184.232 s; total1284.188 s, límites intactos.
+  Fuentes/copias QA/oráculo/lock y calidad468 PASS. Medición reproducible y
+  tablas de lectores/deuda en matrix/evidence-1840-p4.md. Pendiente revisión.
+  Zip/windows son solo dos aristas nuevas del lock, sin paquetes/versiones/checksums.
 - QA solo bajo D:/VantareServer/qa con guard, HKCU y carpetas inyectados;
-  nunca instalación/registro reales. Siguiente: contratos, implementación y
-  pruebas de paridad antes de PR draft a nightly; sin promoción ni release.
+  nunca instalación/registro reales. Siguiente: PR draft a nightly y revisión
+  del orquestador; QA física en VM/cuenta separada. Sin promoción ni release.
+- PR draft pendiente de publicación; HEAD final y URL se registran en #1840.
 
 ### Antecedentes 0–1d (evidencia histórica conservada)
 

@@ -9,6 +9,11 @@ target exclusivo `D:/VantareServer/targets/isa-1840-p4`.
 
 ## Alcance y frontera autorizada
 
+Revisión previa a integrar #1866: el exit code del finalizador es la autoridad;
+stdout no JSON se guarda como diagnóstico, y sus Write-Warning van a stderr.
+Exit0 conserva la instalación aunque emita un aviso; exit distinto de cero
+mantiene el rollback. No cambia el contrato transitorio ni adelanta shell::sync.
+
 Setup/Uninstall usan operaciones Rust en el proceso actual: ZIP, SHA,
 generaciones, commit state v1, copia de datos, reparación y retirada reanudable.
 Context::probe resuelve raíz/registro/opciones en Rust. El catálogo pertenece
@@ -125,15 +130,15 @@ cinco lectores/reglas a uno mientras queden adaptadores heredados.
 
 | Categoría | Antes | Después | Diferencia |
 | --- | ---: | ---: | ---: |
-| Rust producción | 7787 | 9741 | +1954 |
-| Rust tests y ejemplos QA | 1089 | 2155 | +1066 |
-| Fixtures versionadas | 6 | 6 | 0 |
-| PowerShell producto | 2252 | 2361 | +109 |
-| PowerShell tests/tooling | 5926 | 6061 | +135 |
+| Rust producción | 7787 | 9785 | +1998 |
+| Rust tests y ejemplos QA | 1089 | 2365 | +1276 |
+| Fixtures versionadas | 6 | 6 | +0 |
+| PowerShell producto | 2252 | 2366 | +114 |
+| PowerShell tests/tooling | 5926 | 6072 | +146 |
 | Rust build tooling | 155 | 79 | -76 |
 | Python tooling | 98 | 100 | +2 |
-| CI | 471 | 473 | +2 |
-| Documentación | 10279 | 10635 | +356 |
+| CI | 471 | 477 | +6 |
+| Documentación | 10279 | 10718 | +439 |
 
 El aumento es real: se conserva PS heredado y se añade el motor Rust. La retirada
 global y el ahorro neto no se adelantan al paso7.
@@ -223,3 +228,48 @@ No se cuentan como unificación global los lectores heredados que siguen vivos.
   petición completa en lugar de pedir contexto. Helper83a173934 lo hace explícito.
   probe-smoke-01 aislado PASS: nueve pares por invariantes y lector común nightly.
   matrix-04 repite la campaña íntegra sobre raíz nueva, sin Record.
+
+### Correcciones de revisión de #1866
+
+Fuente Rust congelada 0bffdad11f54add889556922e63b2d388c7a8bd1:
+
+- Finalizador inyectado con Write-Warning, progreso válido y salida no válida:
+  exit0 aceptado y exit7 rechazado; diagnóstico conservado en ambos casos.
+- Un prefijo QA vacío no acepta rutas. El guard se embebe solo con
+  test-installer; producto rechaza contexto aislado antes de preparar archivos.
+  Binarios públicos Setup/Uninstall inspeccionados tras build normal: guard
+  ausente; ejemplo QA inspeccionado después: guard presente. Hashes en
+  public-guard-proof.json y source-proof.json.
+- Fallar replace retira los temporales propios de estado y update-status;
+  se conservan los bytes de los destinos bloqueados. Catálogo actual y retirado
+  pasan por la misma validación require, incluidos duplicados entre listas.
+- El duplicado ZIP alcanza validate_central: segunda entrada consumida antes
+  del rechazo. El finalizador de fallo sustituye UI y Uninstall.exe antes de
+  fallar; la regresión exige restaurar ambos y state.json por bytes exactos.
+- MinAnimate lee String y REG_DWORD, sin ampliar los tipos de raíz/registro.
+  La frontera QA añade los cuatro casos String/DWord por 0/1 frente al PS real.
+
+Una tanda por compilar.ps1, target propio: fmt/check, Clippy del núcleo,
+transporte, Installer all-targets y TEST all-targets con -D warnings PASS;
+Nextest Installer52/52 (42.378 s) y TEST49/49 (38.541 s) PASS, un helper omitido
+por suite que ejecuta el test padre. Builds de producto y ejemplos QA PASS.
+Cola liberada antes de la matriz. Hub no se repite: no cambian su integración,
+perfiles ni dependencias; la validación del catálogo común se cubre en Installer.
+Conserva la evidencia completa del modelo anterior.
+Calidad/retirada468/468 PASS. No se relajan aserciones ni se omiten fallos:
+review-attempt-01 falló por semicolon_if_nothing_returned; review-attempt-02
+por items_after_test_module. Ambos logs se conservan y se repiten los gates
+completos sobre la fuente congelada. Logs locales p4-review-logs y
+p4-review-batch.log bajo D:/VantareServer/qa/isa-1840.
+
+Campaña nueva matrix-p4-review-01:48/48 filas de Probe/Install/Update/Repair/
+Uninstall/Cleanup idénticas al baseline;45 pares de rechazos por invariantes y
+cinco raíces no beta PASS. Auxiliares25+24+14+18+54+42+48+24 y guard7+5 PASS.
+Los cuatro casos MinAnimate String/DWord por 0/1 coinciden con PowerShell.
+Startup256.0824531 s, exit0, medido con handle retenido; presupuesto480 s y
+deadlines30 s intactos. Campaña906.4026532 s. Sin Record ni cambios de baseline,
+normalizador, candidate/beta/driver o lock de la entrega revisada.
+matrix-proof.json confirma filas, rechazos y copias de código ejecutado idénticas.
+El verificador adicional señaló primero esta evidencia documental editada durante
+la campaña; se acotó a PS/Python/JSON, sin cambiar ni repetir la matriz aprobada.
+Las filas de feed heredado conservan la campaña completa88/88 anterior.

@@ -54,6 +54,9 @@ Conserva una llamada PowerShell por operación de finalización, marcada
 
 Contrato de cada llamada: JSON máximo64KiB con operación, request, context y
 previousUi; progreso JSON por stdout, diagnóstico por stderr y código de salida.
+El código de salida decide el resultado. Líneas stdout que no sean progreso JSON
+válido se conservan como diagnóstico en el log, sin revertir una salida0;
+installer-shell dirige Write-Warning a stderr, incluidos fallos cosméticos.
 En QA, context inyecta HKCU y carpetas bajo el guard antes de cargar la biblioteca.
 No se exigen una llamada única total de Uninstall+Cleanup ni un nuevo ciclo de
 vida. La excepción completa cierra en el paso 5. Feed y Register siguen en PS

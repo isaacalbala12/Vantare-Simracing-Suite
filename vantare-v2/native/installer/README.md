@@ -225,9 +225,23 @@ y exige exit90 y estado íntegro. El ejemplo installer-write-matrix, solo QA,
 inyecta HKCU/carpetas y usa el Session real; nunca se distribuye ni acepta rutas
 fuera del guard. En una build TEST, VANTARE_INSTALLER_QA_CONTEXT apunta a ese
 JSON explícito de contexto bajo QA; no cae a HKCU/carpetas reales.
+El ejemplo exige las features `transport,test-installer` y las cuatro variables
+QA del builder descritas arriba; uso en [la matriz](../packaging/matrix/README.md).
+Solo `test-installer` embebe el guard; Setup/Uninstall de producto no lo incluyen
+y rechazan un contexto aislado antes de preparar archivos.
 
-Paso4 validado: modelo c15223a27,652/652 Nextest Installer+Hub; último escritor
+El código de salida del finalizador decide el resultado: un warning con exit0
+queda en el log y conserva la instalación. Las regresiones también comprueban
+temporales retirados tras fallar replace, catálogo actual y retirado, duplicados
+en el directorio ZIP crudo y rollback exacto de UI/Uninstall tras modificarlos.
+MinAnimate admite los mismos valores String/DWord que PowerShell.
+
+Paso4, campaña inicial: modelo c15223a27,652/652 Nextest Installer+Hub; escritor
 b380a10d7,47/47 Installer y TEST8/8. Fmt/check y Clippy -D warnings PASS.
 Matriz88/88 idéntica,45 rechazos y20 comprobaciones de frontera PASS;
 Startup48 aserciones en184.232 s. Evidencia y límites en
 [evidence-1840-p4.md](../packaging/matrix/evidence-1840-p4.md).
+Revisión de #1866 sobre 0bffdad11: fmt/check, cuatro Clippy -D warnings,
+Nextest52/52 Installer y49/49 TEST PASS; helper ejecutado por padre en ambas.
+Matriz afectada48/48 idénticas y24 comprobaciones de frontera PASS;
+Startup48 aserciones en256.082 s, dentro de480 s. Campaña completa previa88/88.

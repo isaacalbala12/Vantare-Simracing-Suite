@@ -515,6 +515,19 @@ Sin merge/release del worker.
   nunca instalación/registro reales. Siguiente: revisión del PR draft por parte
   del orquestador; QA física en VM/cuenta separada. Sin promoción ni release.
 - PR draft [#1866](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1866) contra nightly, enlazado T3; HEAD final en #1840/PR, sin CI watch.
+- Revisión antes de integrar: exit code como autoridad del finalizador; warnings
+  diagnosticados sin revertir exit0. Prefijo vacío cerrado, temporales retirados
+  tras replace fallido, guard solo TEST, catálogo actual validado y MinAnimate
+  REG_DWORD conservado. Tests de duplicado ZIP crudo y rollback exacto de
+  UI/Uninstall realmente modificados. Fuente 0bffdad11: fmt/check, cuatro
+  Clippy -D warnings, Nextest52/52 Installer y49/49 TEST PASS; un helper por
+  suite invocado por padre. Builds públicos/QA y guard ausente/presente PASS;
+  calidad468/468. Cola cedida tras la tanda; matriz afectada bajo QA nuevo:
+  matrix-p4-review-01,48/48 idénticas,45 rechazos y cinco raíces no beta PASS;
+  auxiliares25+24+14+18+54+42+48+24 y guard7+5 PASS. Startup256.082 s (exit0),
+  campaña906.403 s; presupuesto480 s/deadlines30 s intactos. Sin Record.
+  Medidas y limitaciones actualizadas en la evidencia; siguiente: integrar por
+  el orquestador tras revisar CI. Plane En curso; sin merge/release del worker.
 
 ### Antecedentes 0–1d (evidencia histórica conservada)
 

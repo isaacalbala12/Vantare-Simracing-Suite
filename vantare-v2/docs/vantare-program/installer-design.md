@@ -15,8 +15,11 @@
   finalización actual, transacción, guardas, propiedad de accesos, Run y rollback
   por bytes. TODO(#1840 p5) retira las tres llamadas mediante shell::sync.
   JSON de entrada máximo64KiB: operación/request/context/previousUi; stdout de
-  progreso, stderr de diagnóstico y exit0/error. FinalizeUninstall exige estado
-  ya retirado. Cleanup mantiene su padre/plazo30s/marker/hash y rechazo de una
+  progreso, stderr de diagnóstico y exit0/error. La salida del proceso es la
+  autoridad: stdout ajeno al progreso JSON va al log como diagnóstico, y
+  Write-Warning del finalizador va a stderr sin causar rollback.
+  FinalizeUninstall exige estado ya retirado. Cleanup mantiene su
+  padre/plazo30s/marker/hash y rechazo de una
   instalación renovada; sin cmd ni nuevo contrato de autoborrado. QA inyecta
   HKCU/carpetas antes de cargar producto. El núcleo nunca escribe por el driver.
   La transacción conserva también la consulta del objetivo de accesos y la

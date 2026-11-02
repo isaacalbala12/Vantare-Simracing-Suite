@@ -31,13 +31,21 @@ use vantare_runtime::core::Core;
 // Las fixtures guardadas conservan su orden y sus valores; solo cambia la
 // versión de la vista, nunca el archivo original ni su lector productivo.
 fn legacy_fixture(text: &str) -> String {
-    let mut view: serde_json::Value = serde_json::from_str(text).expect("fixture JSON íntegra");
-    assert!(
-        matches!(view["version"].as_u64(), Some(9..=11)),
-        "versión de fixture prevista"
-    );
-    view["version"] = serde_json::json!(9);
-    serde_json::to_string(&view).expect("vista v9 de fixture")
+    fn photo(mut view: serde_json::Value) -> String {
+        assert!(
+            matches!(view["version"].as_u64(), Some(9..=11)),
+            "versión de fixture prevista"
+        );
+        view["version"] = serde_json::json!(9);
+        serde_json::to_string(&view).expect("vista v9 de fixture")
+    }
+    match serde_json::from_str(text).expect("fixture JSON íntegra") {
+        serde_json::Value::Array(photos) => {
+            let rows = photos.into_iter().map(photo).collect::<Vec<_>>();
+            format!("[\n{}\n]\n", rows.join(",\n"))
+        }
+        view => photo(view),
+    }
 }
 
 fn legacy_dto(snapshot: &vantare_domain::Snapshot) -> String {

@@ -1,9 +1,5 @@
 # Hub nativo (ISA-1430)
 
-`--demo` sin `--data-dir` usa documentos por defecto en una carpeta temporal QA
-nueva bajo `vantare-hub-demo`, incluida privacidad. Las rutas explícitas se
-respetan; el operador debe elegir raíces QA para ellas.
-
 ## Instalación y versión — #1840, paso 3
 
 Ajustes lee estado/manifiesto desde `installer::engine`, dependencia sin features
@@ -202,6 +198,10 @@ Captura aislada con el harness existente, mutex y pantalla-ocupada:
 `parity-capture`, `VANTARE_CAPTURE_SESSION=practice|qualifying|race` selecciona
 la pestaña y presets D7; `VANTARE_CAPTURE_INSPECTOR=behavior` enfoca En pista.
 Estas escenas son QA declarada, no telemetría ni interacción física en juego.
+
+`--demo` sin `--data-dir` usa documentos por defecto en una carpeta temporal QA
+nueva bajo `vantare-hub-demo`, incluida privacidad. Las rutas explícitas se
+respetan; el operador debe elegir raíces QA para ellas.
 
 Proceso GPUI independiente, misma revisión y kit Eficiencia que `vantare-ui`.
 No usa Wails ni importa el runtime. Consume DTO/IPC del supervisor para cuenta,

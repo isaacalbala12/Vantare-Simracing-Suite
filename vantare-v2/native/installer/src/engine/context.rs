@@ -251,7 +251,7 @@ impl Context {
 }
 
 // Legacy root ownership compares normalized Windows paths without case sensitivity.
-fn same_path(left: &Path, right: &Path) -> Result<bool> {
+pub(crate) fn same_path(left: &Path, right: &Path) -> Result<bool> {
     let left: PathBuf = disk::path(left)?.components().collect();
     let right: PathBuf = disk::path(right)?.components().collect();
     #[cfg(windows)]

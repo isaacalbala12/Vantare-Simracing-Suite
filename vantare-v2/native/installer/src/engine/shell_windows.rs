@@ -258,15 +258,15 @@ mod tests {
         for _ in 0..2 {
             let mut warnings = Vec::new();
             write_link(&path, &value, true, &mut |message| {
-                warnings.push(message.to_owned())
+                warnings.push(message.to_owned());
             })
             .expect("save");
             assert!(warnings.is_empty(), "{warnings:?}");
             let actual = read_link(&path).expect("read");
             assert!(
-                super::super::platform::paths_equal(&actual.target, &value.target).expect("target")
+                super::super::context::same_path(&actual.target, &value.target).expect("target")
             );
-            assert!(super::super::platform::paths_equal(&actual.icon, &value.icon).expect("icon"));
+            assert!(super::super::context::same_path(&actual.icon, &value.icon).expect("icon"));
             assert_eq!(actual.arguments, value.arguments);
             let link = create_link().expect("link");
             let persist: IPersistFile = link.cast().expect("persist");

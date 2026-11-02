@@ -26,7 +26,7 @@ fn powershell() -> Result<PathBuf> {
     .join("System32/WindowsPowerShell/v1.0/powershell.exe"))
 }
 fn same(left: &Path, right: &Path) -> bool {
-    super::platform::paths_equal(left, right).unwrap_or(false)
+    context::same_path(left, right).unwrap_or(false)
 }
 fn argument_root(root: &Path) -> String {
     format!("-Root \"{}\"", root.display())
@@ -44,7 +44,11 @@ fn owned(link: &Link, root: &Path) -> Result<bool> {
                     "-File \"{}\"",
                     root.join("uninstall-vantare.ps1").display()
                 )) && link.arguments.contains("-Operation UninstallInstalled"))))
-        || (link.target.starts_with(root.join("generations"))
+        || (link
+            .target
+            .ancestors()
+            .skip(1)
+            .any(|parent| same(parent, &root.join("generations")))
             && link
                 .target
                 .file_name()
@@ -228,13 +232,17 @@ fn legacy_run(context: &Context, root: &Path, identity: &str) -> Result<Option<(
     let value = super::platform::registry_string(&context.registry_prefix, RUN, &name, false)?;
     Ok(value
         .filter(|command| {
-            if command
-                == &format!(
-                    "\"{}\" -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File \"{}\" {}",
-                    powershell().unwrap_or_default().display(),
-                    root.join("beta.ps1").display(),
-                    argument_root(root)
+            if let Some((exe, rest)) = command
+                .strip_prefix('"')
+                .and_then(|value| value.split_once('"'))
+                && let Some(tail) = rest.strip_prefix(
+                    " -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File \"",
                 )
+                && let Some((script, tail)) = tail.split_once("\" -Root \"")
+                && let Some(directory) = tail.strip_suffix('"')
+                && same(Path::new(exe), &powershell().unwrap_or_default())
+                && same(Path::new(script), &root.join("beta.ps1"))
+                && same(Path::new(directory), root)
             {
                 return true;
             }
@@ -242,16 +250,24 @@ fn legacy_run(context: &Context, root: &Path, identity: &str) -> Result<Option<(
                 let path = Path::new(path);
                 return same(path, &root.join("bin/vantare-hub.exe"))
                     || path
-                        .strip_prefix(root.join("generations"))
-                        .ok()
-                        .is_some_and(|p| {
-                            let parts: Vec<_> = p.components().collect();
-                            parts.len() == 3
-                                && super::validation::hex(
-                                    &parts[0].as_os_str().to_string_lossy(),
-                                    32,
-                                )
-                                && p.ends_with("bin/vantare-hub.exe")
+                        .parent()
+                        .filter(|bin| {
+                            bin.file_name()
+                                .is_some_and(|name| name.eq_ignore_ascii_case("bin"))
+                        })
+                        .and_then(Path::parent)
+                        .is_some_and(|generation| {
+                            path.file_name()
+                                .is_some_and(|name| name.eq_ignore_ascii_case("vantare-hub.exe"))
+                                && generation.file_name().is_some_and(|id| {
+                                    super::validation::hex(
+                                        &id.to_string_lossy().to_ascii_lowercase(),
+                                        32,
+                                    )
+                                })
+                                && generation
+                                    .parent()
+                                    .is_some_and(|parent| same(parent, &root.join("generations")))
                         });
             }
             false

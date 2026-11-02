@@ -160,7 +160,7 @@ impl Session {
         }
         Ok(command)
     }
-    fn cleanup_contract(&self, request: &Request) -> WriteResult<()> {
+    fn cleanup_contract(&self, request: &Request) -> WriteResult<bool> {
         let root = request
             .root
             .as_deref()
@@ -172,7 +172,11 @@ impl Session {
             !root.join("state.json").try_exists()? && !self.context.has_registration(request)?,
             "La instalación se ha renovado; se conserva el desinstalador",
         )?;
-        let marker = disk::read_json(&root.join("installer-cleanup.json"), Some(1024))?;
+        let marker_path = root.join("installer-cleanup.json");
+        if !marker_path.try_exists()? {
+            return Ok(false); // Legacy uninstall cannot prove ownership: retain its residue.
+        }
+        let marker = disk::read_json(&marker_path, Some(1024))?;
         disk::ensure(
             marker["schema"] == 1
                 && marker["sha256"]
@@ -190,14 +194,28 @@ impl Session {
         disk::write_json(
             &self.directory.join("shell.json"),
             &serde_json::json!({"operation":"Cleanup","root":root,"parentId":request.process_id,"qa":self.context.is_isolated()}),
-        )
+        )?;
+        Ok(true)
     }
     /// Permanent, file-only exception. The exit code is the authority; all output is diagnostic.
     fn cleanup(&self, request: &Request) -> WriteResult<()> {
-        self.cleanup_contract(request)?;
-        let log = fs::OpenOptions::new()
+        let needed = self.cleanup_contract(request)?;
+        let mut log = fs::OpenOptions::new()
             .append(true)
             .open(&request.log_file)?;
+        if !needed {
+            writeln!(
+                log,
+                "Cleanup sin marcador; residuo conservado: {}",
+                request
+                    .root
+                    .as_ref()
+                    .expect("validated root")
+                    .join("Uninstall.exe")
+                    .display()
+            )?;
+            return Ok(());
+        }
         let status = self
             .command()
             .map_err(|cause| WriteError::new(1, cause))?
@@ -502,14 +520,28 @@ impl Session {
         let mut session = Self::new()?;
         let mut request = Request::new(args, "Cleanup");
         request.root = Some(session.probe(&request)?.root);
-        session
+        let needed = session
             .cleanup_contract(&request)
             .map_err(|error| error.to_string())?;
-        let log = fs::OpenOptions::new()
+        let mut log = fs::OpenOptions::new()
             .write(true)
             .create_new(true)
             .open(log_path()?)
             .map_err(|error| error.to_string())?;
+        if !needed {
+            writeln!(
+                log,
+                "Cleanup sin marcador; residuo conservado: {}",
+                request
+                    .root
+                    .as_ref()
+                    .expect("validated root")
+                    .join("Uninstall.exe")
+                    .display()
+            )
+            .map_err(|error| error.to_string())?;
+            return Ok(());
+        }
         session
             .command()?
             .stdout(Stdio::null())
@@ -576,7 +608,7 @@ mod tests {
     use std::{fs, path::PathBuf};
 
     #[test]
-    fn warning_stdout_does_not_override_the_owned_finalizer_exit_status() {
+    fn cleanup_exit_status_is_authoritative_and_missing_marker_retains_legacy_residue() {
         for code in [0, 7] {
             let parent = if std::env::var("CI").as_deref() == Ok("true") {
                 PathBuf::from(std::env::var_os("RUNNER_TEMP").expect("CI root"))
@@ -584,7 +616,7 @@ mod tests {
                 PathBuf::from("D:/VantareServer/qa/isa-1840")
             };
             let id = disk::id().expect("ID");
-            let root = parent.join("p4-finalizer-tests").join(&id);
+            let root = parent.join("p5a-cleanup-tests").join(&id);
             qa_path(&root).expect("QA guard");
             let directory = root.join("transport");
             fs::create_dir_all(&directory).expect("owned transport");
@@ -632,6 +664,20 @@ exit EXIT_CODE
             let log = fs::read_to_string(&request.log_file).expect("diagnostics");
             assert!(log.contains("injected cosmetic warning"));
             assert!(log.contains("\"percent\":255"));
+            fs::remove_file(root.join("install/installer-cleanup.json"))
+                .expect("legacy marker absent");
+            fs::write(&request.log_file, []).expect("clear log");
+            assert!(session.cleanup(&request).is_ok());
+            assert!(root.join("install/Uninstall.exe").is_file());
+            assert!(
+                fs::metadata(&request.log_file)
+                    .expect("residue diagnostic")
+                    .len()
+                    > 0
+            );
+            fs::write(root.join("install/state.json"), b"{}").expect("renewed installation");
+            assert!(session.cleanup_contract(&request).is_err());
+            assert!(root.join("install/Uninstall.exe").is_file());
         }
     }
 }

@@ -340,9 +340,12 @@ pub fn sync(
         "Vantare Native Beta"
     };
     let key = format!("Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\{identity}");
-    if let Some(registered) = context.registration(request, "InstallLocation")? {
+    if context.has_registration(request)? {
+        let registered = context.registration(request, "InstallLocation")?;
         ensure(
-            same(Path::new(&registered), root),
+            registered
+                .as_deref()
+                .is_some_and(|path| same(Path::new(path), root)),
             "El registro pertenece a otra instalación",
         )?;
     }
@@ -447,8 +450,7 @@ fn remove_projection(
         );
     }
     if !options.restoring {
-        let ui = context::options(root, true)?;
-        if let Some(ui) = ui
+        if let Some(ui) = options.previous
             && !marker.try_exists()?
         {
             disk::write_json(&marker, &json!({"schema":1,"sha256":ui.sha256}))?;
@@ -536,11 +538,15 @@ fn prepare_projection(
     let temporary = root.join(format!("beta-{}.tmp", disk::id()?));
     disk::write_json(&temporary, &ui)?;
     disk::replace_temporary(&temporary, &root.join("installer-ui.json"))?;
-    // Preserve the frozen generation's existing uninstall bootstrap until p7.
-    fs::write(
-        root.join("uninstall-vantare.ps1"),
-        crate::payload::CANDIDATE,
-    )?;
+    // Root templates come from this Setup; rollback restores state/preferences,
+    // not previous candidate.ps1/beta.ps1 bytes. Retire this bootstrap in p7.
+    let temporary = root.join(format!("beta-{}.tmp", disk::id()?));
+    let result = disk::write_new(&temporary, crate::payload::CANDIDATE)
+        .and_then(|()| disk::replace_temporary(&temporary, &root.join("uninstall-vantare.ps1")));
+    if result.is_err() {
+        let _ = disk::remove_file(&temporary);
+    }
+    result?;
     Ok(ui)
 }
 fn project_links(
@@ -698,6 +704,87 @@ fn project_preferences(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn uninstall_uses_options_captured_before_metadata_changed() {
+        let parent = if std::env::var("CI").as_deref() == Ok("true") {
+            PathBuf::from(std::env::var_os("RUNNER_TEMP").expect("CI root"))
+        } else {
+            PathBuf::from("D:/VantareServer/qa/isa-1840")
+        };
+        let id = disk::id().expect("ID");
+        let root = parent.join("p5a-options-tests").join(&id);
+        context::qa_path(&root).expect("QA guard");
+        fs::create_dir_all(&root).expect("owned root");
+        fs::write(root.join("Uninstall.exe"), b"owned fixture").expect("fixture");
+        let previous = context::Options {
+            schema: 1,
+            kind: "rust-gpui".into(),
+            uninstaller: "Uninstall.exe".into(),
+            sha256: installation::hash_file(&root.join("Uninstall.exe")).expect("hash"),
+            desktop: false,
+            autostart: false,
+        };
+        fs::write(root.join("installer-ui.json"), b"{ changed metadata")
+            .expect("changed after capture");
+        let context = Context::isolated(
+            root.join("LocalAppData"),
+            format!("Software\\VantareInstallerMatrix\\{id}"),
+            root.join("shell"),
+        )
+        .expect("isolated context");
+        let request = super::super::Request::new(
+            &crate::args::Args {
+                root: Some(root.clone()),
+                ..Default::default()
+            },
+            "Uninstall",
+        );
+        let key = "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\VantareNativeBeta";
+        os::set(&context.registry_prefix, key, "Foreign", "preserve")
+            .expect("foreign key without location");
+        assert!(
+            sync(
+                &root,
+                &context,
+                None,
+                &Options {
+                    request: &request,
+                    previous: Some(&previous),
+                    payload: &root,
+                    restoring: false
+                },
+                &mut |_| {},
+                &mut |_| {}
+            )
+            .is_err()
+        );
+        assert_eq!(
+            context
+                .registration(&request, "Foreign")
+                .expect("foreign value"),
+            Some("preserve".into())
+        );
+        assert!(!root.join("installer-cleanup.json").exists());
+        os::delete_key(&context.registry_prefix, key).expect("remove owned QA fixture key");
+        sync(
+            &root,
+            &context,
+            None,
+            &Options {
+                request: &request,
+                previous: Some(&previous),
+                payload: &root,
+                restoring: false,
+            },
+            &mut |_| {},
+            &mut |_| {},
+        )
+        .expect("projection uses captured options");
+        let marker = disk::read_json(&root.join("installer-cleanup.json"), Some(1024))
+            .expect("cleanup marker");
+        assert_eq!(marker["sha256"], previous.sha256);
+        assert!(!root.join("installer-ui.json").exists());
+    }
     #[test]
     fn invalid_uninstaller_payload_never_replaces_the_existing_owned_file() {
         let parent = if std::env::var("CI").as_deref() == Ok("true") {

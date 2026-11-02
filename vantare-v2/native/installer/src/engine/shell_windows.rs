@@ -8,10 +8,11 @@ use std::{
 };
 use windows::{
     Win32::{
-        Foundation::PROPERTYKEY,
+        Foundation::{PROPERTYKEY, RPC_E_CHANGED_MODE},
         System::{
             Com::{
-                CLSCTX_INPROC_SERVER, COINIT_APARTMENTTHREADED, CoCreateInstance, CoInitializeEx,
+                APTTYPE, APTTYPE_MTA, APTTYPEQUALIFIER, CLSCTX_INPROC_SERVER,
+                COINIT_APARTMENTTHREADED, CoCreateInstance, CoGetApartmentType, CoInitializeEx,
                 CoTaskMemFree, CoUninitialize, IPersistFile, STGM_READ, STGM_READWRITE,
                 StructuredStorage::PROPVARIANT,
             },
@@ -38,18 +39,32 @@ fn text(value: &[u16]) -> String {
 fn error(value: &windows::core::Error) -> WriteError {
     WriteError::new(1, value.to_string())
 }
-pub struct Apartment;
+pub struct Apartment(bool);
 impl Apartment {
     pub fn new() -> Result<Self> {
-        unsafe { CoInitializeEx(None, COINIT_APARTMENTTHREADED).ok() }
-            .map_err(|cause| error(&cause))?;
-        Ok(Self)
+        match unsafe { CoInitializeEx(None, COINIT_APARTMENTTHREADED).ok() } {
+            Ok(()) => Ok(Self(true)),
+            Err(cause) if cause.code() == RPC_E_CHANGED_MODE => {
+                let mut kind = APTTYPE::default();
+                let mut qualifier = APTTYPEQUALIFIER::default();
+                unsafe { CoGetApartmentType(&raw mut kind, &raw mut qualifier) }
+                    .map_err(|cause| error(&cause))?;
+                if kind == APTTYPE_MTA {
+                    Ok(Self(false))
+                } else {
+                    Err(error(&cause))
+                }
+            }
+            Err(cause) => Err(error(&cause)),
+        }
     }
 }
 impl Drop for Apartment {
     fn drop(&mut self) {
-        unsafe {
-            CoUninitialize();
+        if self.0 {
+            unsafe {
+                CoUninitialize();
+            }
         }
     }
 }
@@ -90,7 +105,7 @@ pub fn read_link(path: &Path) -> Result<Link> {
     let mut icon = vec![0; 32768];
     let mut index = 0;
     unsafe {
-        link.GetPath(&mut target, std::ptr::null_mut(), 4)
+        link.GetPath(&mut target, std::ptr::null_mut(), 0)
             .map_err(|cause| error(&cause))?;
         link.GetArguments(&mut arguments)
             .map_err(|cause| error(&cause))?;
@@ -241,6 +256,25 @@ pub fn delete_key(prefix: &str, path: &str) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn existing_mta_remains_initialized_after_shell_apartment_is_dropped() {
+        std::thread::spawn(|| {
+            use windows::Win32::System::Com::COINIT_MULTITHREADED;
+            unsafe { CoInitializeEx(None, COINIT_MULTITHREADED).ok() }.expect("own MTA");
+            let owner = Apartment(true);
+            let borrowed = Apartment::new().expect("reuse existing MTA");
+            let _link = create_link().expect("shell COM works in MTA");
+            drop(borrowed);
+            let mut kind = APTTYPE::default();
+            let mut qualifier = APTTYPEQUALIFIER::default();
+            unsafe { CoGetApartmentType(&raw mut kind, &raw mut qualifier) }
+                .expect("caller MTA still initialized");
+            assert_eq!(kind, APTTYPE_MTA);
+            drop(owner);
+        })
+        .join()
+        .expect("MTA thread");
+    }
     #[test]
     fn native_shortcut_roundtrip_preserves_brand_and_repeated_projection() {
         let parent = if std::env::var("CI").as_deref() == Ok("true") {

@@ -32,6 +32,7 @@ try{$parent=[Diagnostics.Process]::GetProcessById([int]$contract.parentId)}catch
 if($null -ne $parent){try{if(-not $parent.WaitForExit(30000)){throw 'CLEANUP_PARENT_STILL_RUNNING'}}finally{$parent.Dispose()}}
 $session=[IO.File]::Open((Join-Path $root 'beta-session.lock'),[IO.FileMode]::OpenOrCreate,[IO.FileAccess]::ReadWrite,[IO.FileShare]::None)
 try{
+    if(Test-Path -LiteralPath (Join-Path $root 'state.json')){throw 'CLEANUP_INSTALLATION_RENEWED'}
     $files=@(Get-ChildItem -LiteralPath $temporary -Force)
     foreach($item in $files){
         $null=Assert-CleanupPath $item.FullName

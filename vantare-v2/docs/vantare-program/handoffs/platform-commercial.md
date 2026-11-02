@@ -91,54 +91,59 @@ Plane En curso verificado; el worker no volvió a cambiar el estado.
   installation.rs, installer::engine ni Hub Ajustes/updates en el diff del paso 1.
   CI la vigila el orquestador. El worker no hizo merge, release ni promoción,
   ni tocó la instalación o el registro reales. Plane sigue En curso.
-- Paso 2 listo en PR draft [#1865](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1865)
-  a nightly, código probado `db515218fdc9b03ca4f333a09a1a4fd9e4d3f3f3`.
+- Paso 2 y revisión R1 listos en PR draft [#1865](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1865)
+  a nightly, código probado `746631b04a7a9af0f4ed259cd89c1c62c28dcc93`.
   Rama `vantareapp/isa-1860-paso2-supervision`, worktree
   `D:/VantareServer/worktrees/isa-1860-paso2`, base `origin/nightly@27fa423c0`;
-  target propio `D:/VantareServer/targets/isa-1860`. HEAD de entrega en el PR.
-- Un conductor Windows/Unix ejecuta la máquina pura con reloj inyectado y
-  política por hijo. EOF sustituye WM_CLOSE para núcleo, overlays, Engineer y
-  diagnóstico. Un único plazo P incluye Resident/Host/diagnóstico y no se renueva;
-  reserva del núcleo `min(1 s, P/2)`.
-- Decisión expresa del orquestador (§1): solicitudes Engineer→overlays→diagnóstico;
-  en cierre normal todos los consumidores terminan antes del núcleo, sin exigir
-  orden de terminación entre consumidores. Sólo se sustituye esa aserción de la
-  matriz. Engineer habilitado que sale con 0 sigue terminando la sesión.
-- Resident/Host se cancelan y consultan sin joins bloqueantes; join sólo si
-  is_finished. El camino normal conserva todo el cleanup y finish(). Al vencer P
-  se registra defecto y sale con fallo. Las apps propias Close::Started conservan
-  sus handles para cleanup aun con el worker bloqueado; un registro ocupado se
-  diagnostica y no añade espera por mutex.
-- Escrituras temp+rename conservadas. El corte durante la serialización real de
-  Store y un temporal parcial de Resident demuestra documento anterior íntegro,
-  recuperación y ningún lock retenido al salir. Los archivos ancla .lock pueden
-  persistir sin retener el bloqueo. Dos variantes: hijos colgados, y cooperativos
-  (el worker solo basta para fallar). P=1000 ms: salidas observadas 1016/1002 ms;
-  el arnés admite P+400 ms de planificación/recogida, el reloj puro prueba P exacto.
-  Unix recoge explícitamente los hijos sin Job; disponible, sin ejecutar aquí.
-- Fmt y Clippy all-targets runtime/UI -D warnings normal y UI parity-capture PASS.
-  Supervisor 38/38, lifecycle real 25/25, IPC diagnóstico 2/2 PASS. Cierres de
-  overlays reales 58–60 ms. Nextest ci **962/962 PASS**, telemetría incluida,
-  14 omisiones preexistentes, 1 lento, 113.781 s de ejecución.
-- Mutaciones **6/6 detectadas por aserción compilada**: renovar plazo, quitar
-  reserva, cerrar núcleo antes, no revocar Engineer, ocultar fallo del worker,
-  retener --control-stdin. Restauración exacta de 238 SHA-256; baseline final
-  supervisor 38/38 y argumento UI 1/1 PASS. Retirada 468/468, fragmento y diff PASS.
-  Evidencia `D:/VantareServer/evidence/isa-1860-paso2` (gates-restante.ps1,
-  nextest.log, lifecycle-ipc.log, mutations.json, scope.json, logs de intentos).
-- Se conservan los intentos anteriores. El test nuevo de estado final se corrige
-  leyendo el JSON completo: read_status descarta adrede heartbeat cero. La prueba
-  previa de lanzamiento necesita el Job real con breakaway: sin él Cargo/libtest
-  rechazaba CREATE_BREAKAWAY_FROM_JOB con error 5. Se añade contexto y diagnóstico,
-  conservando la exigencia de lanzamiento correcto; todos pasan en la tanda final.
-- P3 de #1864 incluidos: filtrado unitario --control-stdin, doc-comments,
-  espera de revocación sin escape al morir supervisor, status.code() Unix para
-  distinguir salida natural no cero del kill. Sin dependencias nuevas.
-- CI la vigila el orquestador. Plane sigue En curso; sólo se actualiza el resumen.
-  Sin merge/release/promoción, instalación ni registro reales. Installation.rs,
-  installer::engine y packaging intactos; VANTA-127 continúa en paralelo.
-  Clic físico/candidata instalada pendientes de Isaac; Unix sin ejecutar.
-  Pasos 3 y siguientes pendientes; Hub de sesión y Apply quedan para el paso 4.
+  target `D:/VantareServer/targets/isa-1860`. HEAD final en la descripción del PR.
+- Máquina pura con reloj inyectado, política por hijo y conductor Windows/Unix.
+  EOF para núcleo, overlays, Engineer y diagnóstico; P único incluye Resident/Host/
+  diagnóstico y no se renueva; reserva del núcleo min(1 s,P/2).
+  Solicitudes Engineer→overlays→diagnóstico; todos los consumidores antes del
+  núcleo en cierre normal, sin orden de terminación entre ellos (§1 aprobado).
+  Engineer habilitado que sale con 0 sigue terminando la sesión.
+- R1 (1): Host cancela idempotentemente en cada request/poll, sin already_stopping
+  ni consulta TOCTOU de state. Regresión por pipes reales con petición en curso,
+  slot ocupado o publicado tarde; se confirma cancelación, cleanup y núcleo vivo.
+  State queda sólo en tests para observarlo: en producto lo poseen los workers.
+- R1 (2): Kill sólo Closing→Killing y guardia del conductor antes de ejecutar;
+  Exited/Killed sobre Reaped o reprogramados se ignoran. Dos pruebas puras
+  cubren Kill único, eventos duplicados y presupuesto intacto. Una salida en
+  Killing revocado conserva la revocación y no consume reinicios.
+- R1 (3): cierre normal completo con finish()/cleanup y join sólo is_finished.
+  Después de P, force_cleanup solicita terminar apps Close::Started por sus
+  handles propios, sin wait (request_close_profile de launcher). Sólo el test
+  y el cierre normal esperan la confirmación. Mutex ocupado: diagnóstico, sin
+  espera adicional. No fue necesario abrir otra issue: el cambio es mínimo.
+- R1 (4–6): Unix distingue código natural u otra señal de SIGKILL, sin atribuir
+  una señal ajena a nuestro kill; test SIGTERM disponible, sin ejecución aquí.
+  Fragmento UTF-8 estricto y sin mojibake. README aclara que observer no reinicia
+  ni termina sesión al salir/caer; su kill durante cierre sí cuenta como defecto.
+- R1 (7–8): test before_overlays renombrado; dos casos de orden normal usan plazo
+  10 s sin cambiar aserciones. Colgados conservan 1,5 s. P+400 ms sólo informa;
+  la aserción exige código 1, el reloj puro comprueba P exacto. Se retira la
+  exclusividad de Nextest que sólo protegía la anterior cota temporal.
+- Datos temp+rename conservados. Corte en serialización real de Store y temporal
+  parcial de Resident: documento anterior íntegro, recuperación y locks libres,
+  con hijos colgados/cooperativos. Los archivos ancla .lock pueden persistir sin
+  retener el bloqueo. Unix recoge explícitamente a hijos sin Job, no ejecutado.
+- Gates runtime/UI/launcher por cola: fmt y Clippy all-targets -D warnings normal
+  y UI QA PASS; Host 2/2, supervisor 40/40, lifecycle real 25/25, IPC 2/2 PASS.
+  Nextest ci **1007/1007 PASS**, telemetría, 14 omisiones preexistentes, 1 lento,
+  124.712 s. Tiempos del cierre sólo diagnósticos: 1017/1004 ms con P=1000 ms.
+- **9/9 mutaciones compiladas detectadas por aserción**; 249 fuentes restauradas
+  exactamente por SHA-256. Baseline supervisor 40/40, UI 1/1 y Host 2/2 PASS.
+  Retirada 468/468, fragmento/UTF-8/diff PASS. Evidencia y logs de intentos en
+  `D:/VantareServer/evidence/isa-1860-paso2/review-r1` (gates.ps1, nextest.log,
+  mutations.json, source-sha256.json y baselines). Imágenes overlays normal/QA
+  reutilizadas sin cambios de UI y verificadas por SHA-256 antes del lifecycle.
+- Intentos R1 conservados: Clippy detectó state ya sin lector en producto; se
+  limita a cfg(test), sin allow. La prueba nueva detectó Backoff impropio de
+  Killing revocado; se corrige manteniendo la aserción. La tanda final pasa todo.
+- CI del orquestador; Plane En curso, sólo resumen actualizado. Sin merge,
+  release, promoción, instalación ni registro reales. Instalador, installation.rs
+  y packaging intactos; VANTA-127 continúa en paralelo. Clic físico/candidata
+  pendientes de Isaac; Unix sin ejecutar; pasos 3 y siguientes fuera del PR.
 <!-- /isa1860-arranque-cierre -->
 
 <!-- isa1827-simplificar-e -->

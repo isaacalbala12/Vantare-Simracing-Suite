@@ -550,4 +550,18 @@ mod tests {
         fs::remove_file(path.with_extension("json.lock")).expect("limpiar lock");
         fs::remove_dir(root).expect("limpiar temporal");
     }
+    #[test]
+    fn review_read_failure_keeps_the_path_and_engineer_limit() {
+        let root = std::env::temp_dir().join(format!("vantare-engineer-read-review-{}", std::process::id()));
+        fs::create_dir_all(&root).expect("QA directory");
+        let path = root.join("engineer.json");
+        fs::write(&path, vec![b' '; MAX_BYTES as usize + 1]).expect("oversized document");
+        let error = read(&path).expect_err("bounded read");
+        assert_eq!(error.kind(), io::ErrorKind::InvalidData);
+        let message = error.to_string();
+        assert!(message.contains(&path.display().to_string()));
+        assert!(message.contains("Engineer supera 64 KiB"));
+        fs::remove_dir_all(root).expect("QA cleanup");
+    }
+
 }

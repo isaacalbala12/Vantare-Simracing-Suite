@@ -333,4 +333,19 @@ mod tests {
         assert!(!environment.exists());
         fs::remove_dir_all(dir).expect("QA cleanup");
     }
+    #[cfg(windows)]
+    #[test]
+    fn review_undeletable_orphan_does_not_prevent_a_save() {
+        use std::os::windows::fs::OpenOptionsExt as _;
+        let dir = directory();
+        let path = dir.join("document.json");
+        let orphan = sibling(&path, ".123.4.tmp");
+        fs::write(&orphan, b"held orphan").expect("seed orphan");
+        let held = OpenOptions::new().read(true).share_mode(0).open(&orphan).expect("deny delete");
+        save(&path, b"saved", Mode::Observed(None), &Options::default()).expect("cleanup is best effort");
+        assert_eq!(fs::read(&path).expect("published"), b"saved");
+        drop(held);
+        fs::remove_dir_all(dir).expect("QA cleanup");
+    }
+
 }

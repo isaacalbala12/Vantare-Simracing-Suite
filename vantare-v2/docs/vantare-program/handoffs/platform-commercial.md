@@ -436,6 +436,21 @@ runtime/domain/ipc/testdata: telemetría/lifecycle runtime omitidos por ámbito.
 Plane intacto. Siguiente: CI/revisión/integración de1d por el orquestador; después
 continúa el plan #1840. Actualizado el1-nov-2026, ejecutor.
 
+### Seguimiento 1c · test del hijo por handle (en curso, 2-nov-2026)
+
+- Encargo del orquestador tras entregar #1861: eliminar la consulta por PID del
+  test de registro, que falló en nightly durante VANTA-128. Log de origen:
+  D:/VantareServer/evidence/isa-1860-paso0/nextest-ci.log, installation.rs:309.
+- Rama vantareapp/isa-1840-1c-test-handle, base668d99c32, worktree propio
+  isa-1840-1c-test-handle; target exclusivo D:/VantareServer/targets/isa-1840-1c-handle.
+- Solo pruebas Windows: duplicar el handle del Child antes del cierre, exigir
+  que esté vivo antes y terminado después de drop/timeout. WaitForSingleObject
+  con cero espera; errores de Win32 fallan el test. Sin PowerShell/PID ni sleeps.
+  Frontera FFI acotada a una función de test; producción y dependencias intactas.
+- Gates fmt/Clippy/Nextest Hub completo +20 rondas focales sin retries preparados
+  en un bloque por la cola. Aún pendientes; sin PR/entrega de este seguimiento.
+- Sin Plane, instalación real, secretos, Downloads, merge/release ni CI watch.
+
 <!-- isa1827-p10-worker -->
 ## VANTA-126 / #1827 — Paso 10 listo para revisión (2026-11-01)
 

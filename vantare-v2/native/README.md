@@ -183,7 +183,9 @@ fuera de adquisición. El servicio mantiene ambos ciclos hasta cancelación.
   documento anterior. Los archivos ancla `.lock` pueden persistir sin retener
   el bloqueo. El residente conserva los handles de apps propias para solicitar terminar
   las configuradas con cierre al salir incluso si su worker no responde.
-  Después de P no espera la salida de esas apps; el cierre normal sí las recoge.
+  Si el registro de procesos está ocupado reintenta como máximo tres veces a
+  20 ms (tolerancia de hasta 60 ms después de P, sin renovar el plazo). No espera
+  la salida de esas apps; el cierre normal sí las recoge.
   Una salida no cero tras pedir cierre se registra sin fallar la sesión. La
   revocación de Engineer registra un fallo de cierre y conserva los demás hijos;
   sólo el shutdown final propaga ese fallo. Una salida natural en carrera con

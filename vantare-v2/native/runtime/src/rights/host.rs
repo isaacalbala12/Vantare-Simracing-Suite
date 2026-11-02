@@ -8,7 +8,7 @@ use std::{
     thread::{self, JoinHandle},
     time::{Duration, Instant},
 };
-use vantare_domain::{Snapshot, SourceKind, SourceState};
+use vantare_domain::{Snapshot, SourceKind, SourceState, is_live};
 use vantare_ipc::{
     Peer,
     control::{self, Command, Policy, Request, Response},
@@ -193,10 +193,6 @@ fn open_owner(
     Owner::open(root, Some(keys), devices, epoch, super::wall_now())
 }
 
-fn is_live(snapshot: &Snapshot) -> bool {
-    snapshot.origin.source.kind == SourceKind::Live
-        && snapshot.state.source_state == SourceState::Live
-}
 fn advance(
     state: &mut State,
     seen: &Observed,

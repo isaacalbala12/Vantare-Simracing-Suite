@@ -31,6 +31,9 @@ Policy.error es diagnóstico. ClockBehind.until_ms expresa la frontera en pared
 (lápida efectiva menos forward_millis), con fecha local para la vía manual.
 No se baja una lápida sana ni se reutiliza un candidate para recuperarla.
 
+La actividad Live se decide con `vantare_domain::is_live`, compartido con el
+Hub: sólo fuente Live en estado Live; sin cambiar pausa, gracia ni renovación.
+
 Gracia: una hora solo para derechos vigentes al entrar a una sesión Live reconocida.
 Se conservan identidad estable, hora original, reloj anti-retroceso y tolerancia
 ±300s. Paused y Stale de la misma carrera conservan la gracia; no la crean ni

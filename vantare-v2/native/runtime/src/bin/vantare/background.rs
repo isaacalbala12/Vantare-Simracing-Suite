@@ -88,6 +88,9 @@ impl Workers {
                 std::mem::forget(resident);
             }
             if let Some(host) = self.host.take() {
+                // El cleanup del residente puede haber dejado libre un slot
+                // ocupado: último intento idempotente antes de salir.
+                host.request_shutdown();
                 std::mem::forget(host);
             }
         }

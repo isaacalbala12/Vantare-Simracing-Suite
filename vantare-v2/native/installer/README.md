@@ -13,8 +13,9 @@ Paso5 implementa shell::sync nativo para instalación/retirada, con propiedad de
 accesos/Run y recuperación desde el estado lógico restaurado, sin copias de bytes.
 Excepción permanente autorizada: installer-cleanup.ps1 espera al padre y valida
 raíz, temporal, marcador y hash para retirar el Uninstall propio y su temporal.
-No consulta estado, registro, accesos ni datos; powershell.exe vive fuera del
-árbol borrado. Rust comprueba antes que no se haya renovado la instalación.
+No interpreta ni modifica estado, registro, accesos ni datos; powershell.exe vive
+fuera del árbol. Tras esperar al padre, vuelve a comprobar state.json y marker/hash
+bajo el bloqueo para rechazar una renovación concurrente.
 El ensayo POSIX falló ACCESS_DENIED y queda manual, documentado en la evidencia p5.
 Feed y Register continúan heredados hasta sus pasos previstos.
 

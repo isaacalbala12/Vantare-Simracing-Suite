@@ -8,10 +8,11 @@ use std::{
 };
 use windows::{
     Win32::{
-        Foundation::PROPERTYKEY,
+        Foundation::{PROPERTYKEY, RPC_E_CHANGED_MODE},
         System::{
             Com::{
-                CLSCTX_INPROC_SERVER, COINIT_APARTMENTTHREADED, CoCreateInstance, CoInitializeEx,
+                APTTYPE, APTTYPE_MTA, APTTYPEQUALIFIER, CLSCTX_INPROC_SERVER,
+                COINIT_APARTMENTTHREADED, CoCreateInstance, CoGetApartmentType, CoInitializeEx,
                 CoTaskMemFree, CoUninitialize, IPersistFile, STGM_READ, STGM_READWRITE,
                 StructuredStorage::PROPVARIANT,
             },
@@ -38,18 +39,32 @@ fn text(value: &[u16]) -> String {
 fn error(value: &windows::core::Error) -> WriteError {
     WriteError::new(1, value.to_string())
 }
-pub struct Apartment;
+pub struct Apartment(bool);
 impl Apartment {
     pub fn new() -> Result<Self> {
-        unsafe { CoInitializeEx(None, COINIT_APARTMENTTHREADED).ok() }
-            .map_err(|cause| error(&cause))?;
-        Ok(Self)
+        match unsafe { CoInitializeEx(None, COINIT_APARTMENTTHREADED).ok() } {
+            Ok(()) => Ok(Self(true)),
+            Err(cause) if cause.code() == RPC_E_CHANGED_MODE => {
+                let mut kind = APTTYPE::default();
+                let mut qualifier = APTTYPEQUALIFIER::default();
+                unsafe { CoGetApartmentType(&raw mut kind, &raw mut qualifier) }
+                    .map_err(|cause| error(&cause))?;
+                if kind == APTTYPE_MTA {
+                    Ok(Self(false))
+                } else {
+                    Err(error(&cause))
+                }
+            }
+            Err(cause) => Err(error(&cause)),
+        }
     }
 }
 impl Drop for Apartment {
     fn drop(&mut self) {
-        unsafe {
-            CoUninitialize();
+        if self.0 {
+            unsafe {
+                CoUninitialize();
+            }
         }
     }
 }
@@ -90,7 +105,7 @@ pub fn read_link(path: &Path) -> Result<Link> {
     let mut icon = vec![0; 32768];
     let mut index = 0;
     unsafe {
-        link.GetPath(&mut target, std::ptr::null_mut(), 4)
+        link.GetPath(&mut target, std::ptr::null_mut(), 0)
             .map_err(|cause| error(&cause))?;
         link.GetArguments(&mut arguments)
             .map_err(|cause| error(&cause))?;
@@ -241,6 +256,75 @@ pub fn delete_key(prefix: &str, path: &str) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn environment_shortcut_target_is_expanded_instead_of_returning_raw_path() {
+        let variable = if std::env::var("CI").as_deref() == Ok("true") {
+            "RUNNER_TEMP"
+        } else {
+            "TEMP"
+        };
+        let parent = PathBuf::from(std::env::var_os(variable).expect("QA temporary root"));
+        let name = format!(
+            "Vantare link env {}",
+            super::super::write_fs::id().expect("ID")
+        );
+        let root = parent.join(&name);
+        super::super::context::qa_path(&root).expect("QA guard");
+        std::fs::create_dir_all(&root).expect("owned root");
+        let target = root.join("fixture.exe");
+        std::fs::write(&target, b"inert fixture").expect("owned target");
+        let path = root.join("environment.lnk");
+        let _apartment = Apartment::new().expect("COM");
+        let link = create_link().expect("link");
+        let environment = wide(format!("%{variable}%\\{name}\\fixture.exe"));
+        let destination = wide(&path);
+        unsafe {
+            link.SetPath(PCWSTR(environment.as_ptr()))
+                .expect("environment target");
+            link.cast::<IPersistFile>()
+                .expect("persist")
+                .Save(PCWSTR(destination.as_ptr()), true)
+                .expect("save fixture");
+        }
+        let loaded = create_link().expect("load raw link");
+        unsafe {
+            loaded
+                .cast::<IPersistFile>()
+                .expect("persist")
+                .Load(PCWSTR(destination.as_ptr()), STGM_READ)
+                .expect("load fixture");
+            let mut raw = vec![0; 32768];
+            loaded
+                .GetPath(&mut raw, std::ptr::null_mut(), 4)
+                .expect("raw path");
+            assert!(
+                text(&raw).contains(&format!("%{variable}%")),
+                "fixture must exercise environment expansion"
+            );
+        }
+        let actual = read_link(&path).expect("expanded target");
+        assert!(super::super::context::same_path(&actual.target, &target).expect("same target"));
+    }
+    #[test]
+    fn existing_mta_remains_initialized_after_shell_apartment_is_dropped() {
+        std::thread::spawn(|| {
+            use windows::Win32::System::Com::COINIT_MULTITHREADED;
+            unsafe { CoInitializeEx(None, COINIT_MULTITHREADED).ok() }.expect("own MTA");
+            let owner = Apartment(true);
+            let borrowed = Apartment::new().expect("reuse existing MTA");
+            let link = create_link().expect("shell COM works in MTA");
+            drop(borrowed);
+            let mut kind = APTTYPE::default();
+            let mut qualifier = APTTYPEQUALIFIER::default();
+            unsafe { CoGetApartmentType(&raw mut kind, &raw mut qualifier) }
+                .expect("caller MTA still initialized");
+            assert_eq!(kind, APTTYPE_MTA);
+            drop(link);
+            drop(owner);
+        })
+        .join()
+        .expect("MTA thread");
+    }
     #[test]
     fn native_shortcut_roundtrip_preserves_brand_and_repeated_projection() {
         let parent = if std::env::var("CI").as_deref() == Ok("true") {

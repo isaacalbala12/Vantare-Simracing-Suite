@@ -11,7 +11,10 @@
 
 - §4.5, pasos5/7: decisión posterior permanente. Solo Cleanup conserva un script
   mínimo PowerShell: esperar al padre, exclusión, validar raíz/temporal/marcador/SHA
-  y borrar el EXE propio, marcador y temporal. Sin estado, registro, accesos o datos.
+  y borrar el EXE propio, marcador y temporal. No interpreta ni escribe estado,
+  registro, accesos o datos. Tras esperar al padre, comprueba de nuevo presencia
+  de state.json y marcador/hash dentro del bloqueo de sesión (revisión 5a).
+  Sin marcador heredado conserva el residuo y lo registra, sin falsear el resultado.
   powershell.exe vive fuera del árbol y permite una retirada sin residuos. Se
   descartan dejar Uninstall en la raíz para siempre o añadir otro ejecutable
   temporal. El ensayo FileDispositionInfoEx(DELETE|POSIX), imagen propia sin

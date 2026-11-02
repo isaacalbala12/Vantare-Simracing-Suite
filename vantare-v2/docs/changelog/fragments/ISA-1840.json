@@ -28,7 +28,8 @@
     "Paso 4: Setup y Uninstall ejecutan el motor Rust de escritura en el mismo proceso: ZIP autenticado, generaciones, commit atómico, copia opaca de datos, reparación y retirada reanudable. Conserva state.json v1 y los códigos de salida.",
     "La frontera transitoria conserva una llamada PowerShell por FinalizeInstall, FinalizeUninstall y Cleanup, con sus guardas, propiedad de accesos, Run y restauración por bytes; se retira en el paso 5. Feed, Register y lanzamiento heredados siguen en sus pasos previstos.",
     "El contexto de Windows y el catálogo pertenecen a Rust; build.rs deja de interpretar PowerShell. La versión de una retirada interrumpida sale del manifiesto ligado por SHA si sobrevive, o queda ausente, sin DisplayVersion.",
-    "Paso 5: Setup y Uninstall proyectan Windows mediante shell::sync Rust; ante un fallo restauran el estado y vuelven a sincronizar, sin copias de deshacer por bytes. Solo Cleanup conserva PowerShell como excepcion permanente minima, con marcador y hash; Feed/Register/SetStartup siguen pendientes."
+    "Paso 5: Setup y Uninstall proyectan Windows mediante shell::sync Rust; ante un fallo restauran el estado y vuelven a sincronizar, sin copias de deshacer por bytes. Solo Cleanup conserva PowerShell como excepcion permanente minima, con marcador y hash; Feed/Register/SetStartup siguen pendientes.",
+    "Paso 5a: la limpieza vuelve a comprobar la renovación después de esperar al padre; conserva claves ajenas y restos heredados sin marcador. Un registro interrumpido conserva su ubicación para reintentar. El Hub reconoce el ACK durante el borrado solo con confirmación del kernel, sin ampliar plazos."
   ],
   "testing": [
     "En QA aislada, pasar de una instalación de 109 archivos a una de 110, retirar un recurso en la siguiente, restaurar la anterior y desinstalar: todos los datos y las carpetas vacías de las tres generaciones se conservan.",
@@ -39,7 +40,8 @@
     "Instalar con autostart apagado, activar/desactivar desde el comando del Hub y desinstalar: sin Run/Startup, otros valores y todos los datos intactos. Probar enlace ajeno, fallo de opciones con restauración exacta y reanudación sin registro.",
     "En QA aislada, probar migración con ON/OFF o sin preferencia, bootstrap congelado, comandos ajenos, dos carreras con Register, desinstalación fallida y borrado Run denegado. Datos y carpetas vacías deben quedar intactos.",
     "En QA aislada, comparar Probe antiguo y lector Rust (también Uninstall) para 975, RC, pendientes y datos conservados. Con manifiesto y binario discrepantes, Ajustes debe mostrar el manifiesto y no ocultar la oferta; el caso normal queda igual.",
-    "En QA aislada, repetir shell::sync sin duplicados ni cambios de destino/version, comprobar AppID y descripcion conservada, rechazar acceso ajeno y lock ocupado, restaurar la proyeccion tras fallo y comprobar datos exactos y retirada del temporal Cleanup."
+    "En QA aislada, repetir shell::sync sin duplicados ni cambios de destino/version, comprobar AppID y descripcion conservada, rechazar acceso ajeno y lock ocupado, restaurar la proyeccion tras fallo y comprobar datos exactos y retirada del temporal Cleanup.",
+    "Paso 5a: probar Cleanup con padre propio vivo y renovación durante la espera, conservación de la clave ajena y del bootstrap bloqueado, reutilización de MTA, acceso con variable de entorno y corte del registro tras guardar su ubicación, y ACK con error 5 real durante delete-pending. Un error de permisos sin prueba de borrado debe seguir fallando."
   ],
   "knownLimitations": [
     "Este cambio no renueva el bootstrap que ya quedó instalado en la raíz; los cambios de ese bootstrap siguen requiriendo Setup.",

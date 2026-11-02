@@ -54,6 +54,17 @@ try{
     }
     Assert-Boundary ($explorer.NameSpace((Split-Path $appLink)).ParseName([IO.Path]::GetFileName($appLink)).ExtendedProperty('System.AppUserModel.ID') -ceq 'Vantare.SimracingSuite') 'Native shell persists AppUserModelID'
     Assert-Boundary (@(Get-ChildItem -LiteralPath (Split-Path $appLink) -Filter '*.lnk').Count -eq 2) 'Native shell sync creates no duplicate links'
+    Remove-ItemProperty -LiteralPath $key -Name InstallLocation
+    Set-ItemProperty -LiteralPath $key -Name Foreign -Value 'preserve'
+    $blocked=Invoke-BoundaryWriter 'Sync' '0.0.988'
+    Assert-Boundary ($blocked.ExitCode -ne 0 -and (Get-ItemProperty -LiteralPath $key).Foreign -ceq 'preserve' -and $null -eq (Get-ItemProperty -LiteralPath $key).PSObject.Properties['InstallLocation']) 'A registration without InstallLocation is foreign and remains untouched'
+    Remove-ItemProperty -LiteralPath $key -Name Foreign
+    Set-ItemProperty -LiteralPath $key -Name InstallLocation -Value $install
+    $bootstrap=Join-Path $install 'uninstall-vantare.ps1'
+    $bootstrapBytes=[IO.File]::ReadAllBytes($bootstrap)
+    $bootstrapLock=[IO.File]::Open($bootstrap,[IO.FileMode]::Open,[IO.FileAccess]::Read,[IO.FileShare]::Read)
+    try{$blocked=Invoke-BoundaryWriter 'Sync' '0.0.988'}finally{$bootstrapLock.Dispose()}
+    Assert-Boundary ($blocked.ExitCode -ne 0 -and [Convert]::ToBase64String([IO.File]::ReadAllBytes($bootstrap)) -ceq [Convert]::ToBase64String($bootstrapBytes) -and @(Get-ChildItem -LiteralPath $install -Filter 'beta-*.tmp').Count -eq 0) 'Locked bootstrap replacement preserves its bytes and removes the temporary'
     New-Item -Path $run -Force|Out-Null
     $lowerRun=('"'+$env:WINDIR+'\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "'+(Join-Path $install 'beta.ps1')+'" -Root "'+$install+'"').ToLowerInvariant()
     Set-ItemProperty -LiteralPath $run -Name 'VantareNative.Hub' -Value $lowerRun

@@ -38,6 +38,87 @@ pub(crate) struct BootConfirmation {
     registration_deadline: std::time::Instant,
     ack_deadline: std::time::Instant,
     warning: Option<String>,
+    ack_marker: Option<std::fs::File>,
+}
+
+#[cfg(windows)]
+fn open_ack_marker(root: &Path) -> std::io::Result<Option<std::fs::File>> {
+    use std::os::windows::fs::OpenOptionsExt;
+    // Capture precedes hub-ready. An unreadable marker fails boot here; unlike
+    // registration warnings, ownership/query errors are not cosmetic failures.
+    match std::fs::OpenOptions::new()
+        .access_mode(0x80)
+        .share_mode(7)
+        .custom_flags(0x0020_0000) // Open the marker itself, not a reparse target.
+        .open(root.join("boot-pending.json"))
+    {
+        Ok(file) => Ok(Some(file)),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
+        Err(error) => Err(error),
+    }
+}
+
+#[cfg(windows)]
+#[allow(unsafe_code)] // SDK FILE_STANDARD_INFO on an owned, borrowed file handle.
+fn delete_pending(file: &std::fs::File) -> std::io::Result<bool> {
+    use std::os::windows::io::AsRawHandle;
+    #[repr(C)]
+    #[derive(Default)]
+    struct StandardInfo {
+        _allocation_size: i64,
+        _end_of_file: i64,
+        _links: u32,
+        deleting: u8,
+        _directory: u8,
+    }
+    #[link(name = "kernel32")]
+    unsafe extern "system" {
+        #[link_name = "GetFileInformationByHandleEx"]
+        fn get_file_information_by_handle_ex(
+            handle: *mut std::ffi::c_void,
+            class: i32,
+            info: *mut std::ffi::c_void,
+            size: u32,
+        ) -> i32;
+    }
+    let mut info = StandardInfo::default();
+    // SAFETY: valid owned handle, FileStandardInfo=1 and a correctly sized SDK layout.
+    if unsafe {
+        get_file_information_by_handle_ex(
+            file.as_raw_handle(),
+            1,
+            (&raw mut info).cast(),
+            u32::try_from(std::mem::size_of::<StandardInfo>()).expect("SDK struct size"),
+        )
+    } == 0
+    {
+        return Err(std::io::Error::last_os_error());
+    }
+    Ok(info.deleting != 0)
+}
+
+fn ack_pending(
+    marker: &mut Option<std::fs::File>,
+    observed: std::io::Result<bool>,
+) -> std::io::Result<bool> {
+    #[cfg(windows)]
+    if (matches!(&observed, Ok(true))
+        || observed
+            .as_ref()
+            .is_err_and(|error| error.raw_os_error() == Some(5)))
+        && let Some(file) = marker.as_ref()
+        && delete_pending(file)?
+    // A failed kernel query remains an error, even for Ok(true).
+    {
+        // Windows has committed the deletion request: the ACK is logically gone.
+        // Release our reference; never infer deletion from AccessDenied alone.
+        marker.take();
+        return Ok(false);
+    }
+    if matches!(&observed, Ok(false)) {
+        marker.take();
+    }
+    observed
 }
 
 impl BootConfirmation {
@@ -48,12 +129,14 @@ impl BootConfirmation {
             let executable = std::env::current_exe().map_err(|error| error.to_string())?;
             let script = installed_script(&executable, root)?;
             let Some(windows) = std::env::var_os("WINDIR") else {
+                let marker = open_ack_marker(root).map_err(|error| error.to_string())?;
                 std::fs::write(root.join("hub-ready"), std::process::id().to_string())
                     .map_err(|error| format!("confirmar arranque: {error}"))?;
                 return Ok(Self::ready(
                     root,
                     None,
                     Some("No se pudo actualizar el registro de Vantare: falta WINDIR".into()),
+                    marker,
                 ));
             };
             let mut command = std::process::Command::new(
@@ -79,22 +162,29 @@ impl BootConfirmation {
         {
             std::fs::write(root.join("hub-ready"), std::process::id().to_string())
                 .map_err(|error| format!("confirmar arranque: {error}"))?;
-            Ok(Self::ready(root, None, None))
+            Ok(Self::ready(root, None, None, None))
         }
     }
 
-    fn ready(root: &Path, child: Option<std::process::Child>, warning: Option<String>) -> Self {
+    fn ready(
+        root: &Path,
+        child: Option<std::process::Child>,
+        warning: Option<String>,
+        ack_marker: Option<std::fs::File>,
+    ) -> Self {
         Self {
             child,
             root: root.into(),
             registration_deadline: std::time::Instant::now() + std::time::Duration::from_secs(30),
             ack_deadline: std::time::Instant::now() + std::time::Duration::from_secs(10),
             warning,
+            ack_marker,
         }
     }
 
     #[cfg(windows)]
     fn spawn(root: &Path, command: &mut std::process::Command) -> Result<Self, String> {
+        let marker = open_ack_marker(root).map_err(|error| error.to_string())?;
         // This must finish before even creating Register: its exit/latency is cosmetic.
         std::fs::write(root.join("hub-ready"), std::process::id().to_string())
             .map_err(|error| format!("confirmar arranque: {error}"))?;
@@ -107,7 +197,7 @@ impl BootConfirmation {
                 )),
             ),
         };
-        Ok(Self::ready(root, child, warning))
+        Ok(Self::ready(root, child, warning, marker))
     }
 
     pub(crate) fn poll(&mut self) -> Result<bool, String> {
@@ -135,11 +225,14 @@ impl BootConfirmation {
             }
         }
         // ACK still bounds real boot confirmation; registration owns a separate file.
-        if self
-            .root
-            .join("boot-pending.json")
-            .try_exists()
-            .map_err(|error| error.to_string())?
+        // Recheck the path on every poll, including after releasing ack_marker.
+        // We do not cache ACK for the rest of Register: a reappearing marker or
+        // later AccessDenied without the retained handle's proof still fails.
+        if ack_pending(
+            &mut self.ack_marker,
+            self.root.join("boot-pending.json").try_exists(),
+        )
+        .map_err(|error| error.to_string())?
         {
             if std::time::Instant::now() >= self.ack_deadline {
                 return Err("el supervisor no confirmó el arranque dentro del plazo".into());
@@ -205,6 +298,76 @@ impl Drop for BootConfirmation {
 mod tests {
     use super::*;
     use std::os::windows::io::{AsHandle, AsRawHandle, BorrowedHandle};
+
+    #[allow(unsafe_code)] // Force classic delete-pending, independently of POSIX unlink support.
+    fn request_classic_delete(path: &Path) -> std::fs::File {
+        use std::os::windows::fs::OpenOptionsExt;
+        #[link(name = "kernel32")]
+        unsafe extern "system" {
+            #[link_name = "SetFileInformationByHandle"]
+            fn set_file_information(
+                handle: *mut std::ffi::c_void,
+                class: i32,
+                info: *const std::ffi::c_void,
+                size: u32,
+            ) -> i32;
+        }
+        let file = std::fs::OpenOptions::new()
+            .access_mode(0x8001_0000)
+            .share_mode(7)
+            .open(path)
+            .expect("open owned classic-delete fixture");
+        let deleting: i32 = 1; // FileDispositionInfo=4; BOOLEAN true plus zero padding.
+        // SAFETY: owned DELETE/read handle; initialized buffer starts with SDK BOOLEAN.
+        assert_ne!(
+            unsafe {
+                set_file_information(file.as_raw_handle(), 4, (&raw const deleting).cast(), 4)
+            },
+            0,
+            "{}",
+            std::io::Error::last_os_error()
+        );
+        file
+    }
+
+    #[test]
+    fn deleting_ack_is_confirmed_only_with_kernel_evidence() {
+        let root = root();
+        let path = root.join("boot-pending.json");
+        std::fs::write(&path, b"pending").unwrap();
+        let mut marker = open_ack_marker(&root).unwrap();
+        assert!(!delete_pending(marker.as_ref().unwrap()).unwrap());
+        // An unrelated permission failure must remain an error, even with a valid handle.
+        assert_eq!(
+            ack_pending(&mut marker, Err(std::io::Error::from_raw_os_error(5)))
+                .unwrap_err()
+                .raw_os_error(),
+            Some(5)
+        );
+        let deleting = request_classic_delete(&path);
+        assert!(delete_pending(marker.as_ref().unwrap()).unwrap());
+        let error = path
+            .try_exists()
+            .expect_err("reproduce Windows delete-pending race");
+        assert_eq!(error.raw_os_error(), Some(5));
+        assert_eq!(
+            ack_pending(&mut marker, Err(std::io::Error::from_raw_os_error(32)))
+                .unwrap_err()
+                .raw_os_error(),
+            Some(32)
+        );
+        assert!(!ack_pending(&mut marker, Err(error)).unwrap());
+        assert!(marker.is_none());
+        drop(deleting);
+        assert!(!ack_pending(&mut marker, path.try_exists()).unwrap());
+        assert_eq!(
+            ack_pending(&mut marker, Err(std::io::Error::from_raw_os_error(5)))
+                .unwrap_err()
+                .raw_os_error(),
+            Some(5)
+        );
+        std::fs::remove_dir_all(root).unwrap();
+    }
 
     fn root() -> std::path::PathBuf {
         let root = std::env::temp_dir().join(format!("vantare-boot-{}-{}", std::process::id(), {

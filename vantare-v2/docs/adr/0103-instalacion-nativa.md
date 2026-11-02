@@ -71,9 +71,12 @@ no obtiene de ella estado, versión instalada ni datos para decidir operaciones.
 ejecutado por powershell.exe de Windows, fuera del árbol retirado. Espera al padre,
 adquiere la exclusión de limpieza y valida raíz, temporal propio, marcador y SHA
 del Uninstall antes de retirar exclusivamente ese EXE, el marcador y su temporal.
-No lee ni escribe estado de instalación, registro, accesos o datos. Rust decide
-si procede limpiar y rechaza una instalación renovada; Setup no reemplaza un
-desinstalador pendiente bajo el mismo bloqueo de sesión.
+No interpreta ni escribe estado de instalación, registro, accesos o datos. Rust
+decide si procede limpiar; tras esperar al padre, el script vuelve a comprobar
+la presencia de state.json y el marcador/hash dentro del bloqueo de sesión para
+rechazar una renovación concurrente (revisión 5a). Setup no reemplaza un
+desinstalador pendiente bajo ese mismo bloqueo. Si una retirada heredada carece
+de marcador, se conserva el EXE y se registra el residuo sin falsear su resultado.
 
 El ensayo QA de FileDispositionInfoEx(DELETE|POSIX) falló con ACCESS_DENIED(5)
 sobre una imagen propia sin ReadOnly en NTFS/Windows22631. No se ha medido NTSTATUS

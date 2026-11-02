@@ -1,6 +1,13 @@
 # Caracterización de arranque y cierre — #1860 / VANTA-128
 
-Base: `668d99c32`. Paso 0: pruebas y entrada QA que no se compila en producto.
+Base caracterizada: `668d99c32`. El [paso 0, PR #1863](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1863)
+fijó el kill de overlays a 3 s con exit 0 y añadió la entrada QA que no se compila
+en producto. El paso 1 actualiza sólo el cierre: EOF, gancho GPUI, exit 0 sin kill;
+un cierre forzado pasa a ser fallo. Los demás casos se conservan.
+Una salida no cero tras pedir cierre se registra y no falla la sesión. La
+revocación de Engineer tampoco termina la sesión, incluso si hay que matarlo;
+el fallo sólo se propaga en el cierre final. Windows y Unix comparten esta
+política y conservan el motivo original de supervisión antes del error de cierre.
 `build-overlays.ps1` prepara el binario normal y una variante `parity-capture`
 en `target/debug/lifecycle/{normal,qa}`, conservando sus SHA-256. Se llama desde
 el gate lifecycle, dentro del turno de `compilar.ps1`.
@@ -11,6 +18,12 @@ para invocar directamente los manejadores de Abrir Hub/Salir de `tray.rs` por
 un mensaje dirigido al HWND del hijo propio. Usa el mismo GPUI y el canal de
 acciones real, sin abrir menús ni inyectar teclado/ratón. Otra fila prueba que
 el binario normal ignora esa entrada. No hay dependencia nueva ni stdin falso.
+
+La aserción de `on_app_quit` depende del diagnóstico a **stderr**
+`vantare-overlays: on_app_quit completado`, emitido después de `usage.finish()`.
+No acredita la persistencia ni la entrega remota de analítica. Se conserva ese
+diagnóstico porque el envío depende del consentimiento y del canal de derechos;
+exigirlo aquí ampliaría la prueba de cierre a servicios ajenos al escenario.
 
 Decisión del orquestador: los efectos de los manejadores son automáticos;
 el clic físico queda **manual y pendiente de Isaac**. Los intentos por teclado
@@ -28,14 +41,14 @@ No se reproduce la condición que decide parar en un segundo decisor de test.
 
 | Fila actual | Evidencia de test | Cambio previsto |
 | --- | --- | --- |
-| Stop del supervisor: EOF + WM_CLOSE no terminan overlays; kill a 3 s y exit 0 | `real_overlays_stop_records_the_current_three_second_kill` | Paso 1: EOF, gancho de salida, exit 0 sin kill; kill es fallo |
-| X Hub beta en Waiting/Paused/Stale/Lost escribe idle y para overlays con kill | `real_overlays_hub_idle_live_and_paused_characterization` ejecuta `Run-BetaHub`; los tests de `hub::lifecycle` fijan también Paused | Paso 1 solo retira kill; paso 4 conserva sesión durante pausa |
+| Stop del supervisor: sólo EOF a overlays, gancho una vez y exit 0 sin kill, tres ciclos con layout guardado | `real_overlays_stop_exits_cleanly_on_eof_before_deadline` | Paso 1 implementado; presupuesto único pendiente del paso 2 |
+| X Hub beta en Waiting/Paused/Stale/Lost escribe idle y para overlays limpiamente | `real_overlays_hub_idle_live_and_paused_characterization` ejecuta `Run-BetaHub`; los tests de `hub::lifecycle` fijan también Paused | Paso 1 retira kill; paso 4 conservará sesión durante pausa |
 | Primera foto Live no cierra; flanco no-Live→Live cierra Hub; marcador live conserva overlays | Tests de `hub::lifecycle` en su crate y matriz de procesos con Hub falso | Paso 4: decide sesión con política del núcleo |
 | X Hub de bandeja no para overlays; restart-request queda sin consumidor | `real_overlays_tray_hub_is_unowned_and_restart_is_unconsumed`; manejador Abrir Hub y X del Hub falso en `real_overlays_tray_open_and_quit_leave_the_hub_alive` | Paso 4: un dueño para ambos caminos |
 | El siguiente arranque beta borra restart-request antiguo | Matriz Hub, antes de cerrar cada caso | Paso 4 retira ese canal |
 | Reiniciar el Hub beta con marcador live consume restart-request, abre otro Hub y llama Apply sin parar overlays | `beta_restart_live_reopens_hub_without_stopping_real_overlays`, bucle original; Apply es inerte | Paso 4: cierre y Apply con dueño único |
 | Caer el Hub beta antes de escribir hub-exit conserva overlays y el bucle beta sale con 0 | `crashed_beta_hub_without_marker_leaves_real_overlays_running` | Paso 4: política explícita de fallo del Hub |
-| Cerrar ventana de bandeja retira icono sin `cx.quit()` | `real_overlays_tray_close_does_not_quit_gpui` | Paso 1 atiende EOF; retirada de WM_CLOSE masivo en paso 2 |
+| Cerrar ventana de bandeja retira icono sin `cx.quit()`; EOF posterior sale limpiamente aun sin ese HWND | `real_overlays_tray_close_does_not_quit_gpui` | Paso 1 implementado; retirada general de WM_CLOSE en paso 2 |
 | Abrir Hub del menú crea Hub fuera del Job; abrir otra vez lo enfoca sin duplicarlo | `real_overlays_tray_open_and_quit_leave_the_hub_alive` | Paso 4: Hub hijo de sesión |
 | Manejador «Salir» real sale con 0, cierra núcleo y deja el Hub vivo | Misma prueba, invocación QA al mismo manejador que usa el menú | Paso 4: se recoge también Hub |
 | Binario normal ignora las entradas QA de Abrir/Salir | `normal_overlays_ignore_the_qa_handler_entry` | Se conserva |
@@ -43,8 +56,10 @@ No se reproduce la condición que decide parar en un segundo decisor de test.
 | Caída overlays: reinicios separados de 250/500 ms; núcleo no reinicia | `real_overlays_restart_backoff_and_single_instance` | Se conserva |
 | Matar supervisor recoge también el overlays real por su Job | `real_overlays_die_with_the_supervisor_job` | Se conserva |
 | Segundo supervisor con/sin Hub no arranca hijos; segundo beta falla por lock, no enfoca Hub | Reinicio/instancia real y matriz Hub con lock original | Paso 4: enfocar/abrir a través de sesión |
-| Caída núcleo cambia época; presupuesto agotado; colgado; Job; orden Engineer→overlays→núcleo | Escenarios anteriores de `lifecycle.rs` (hijos sintéticos explícitos) | Paso 1 cambia exit de cierre forzado; paso 2 reúne presupuesto |
+| Caída núcleo cambia época; presupuesto agotado; colgado; Job; orden Engineer→overlays→núcleo. Un colgado muerto por plazo deja exit 1 y diagnóstico, y se recogen los demás hijos | Escenarios anteriores de `lifecycle.rs` (hijos sintéticos explícitos) | Paso 1 implementado; paso 2 reunirá presupuesto |
 | Heartbeat avanza sin fotos; kill no publica estado de cierre y caduca en frontera exacta | `engineer/tests/status_process.rs`: kill+wait, dos lecturas posteriores | #1852: no exigir igualdad a una lectura anterior al kill |
+| Revocar Engineer que sale con 7 o requiere kill conserva núcleo y overlays publicando; el Stop posterior sale con 0 | `engineer_revocation_failure_preserves_the_running_session` | Corrección de revisión del paso 1 |
+| Engineer sale con 7 tras el Stop: diagnóstico, sin fallo del supervisor | `requested_shutdown_accepts_a_nonzero_child_exit` | Sólo el kill forzado es fallo |
 
 Esta tabla es la fixture previa a `session::paso()`: todavía no existe esa
 máquina de estados. Las pruebas no acreditan guardar documentos en el Hub

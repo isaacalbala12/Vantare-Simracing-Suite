@@ -211,7 +211,11 @@ fn fake_engineer(args: &[String]) -> ExitCode {
         thread::sleep(Duration::from_millis(10));
     }
     note(&status, "closed engineer");
-    ExitCode::SUCCESS
+    if args.iter().any(|arg| arg == "--exit-failure") {
+        ExitCode::from(7)
+    } else {
+        ExitCode::SUCCESS
+    }
 }
 
 fn fake_overlays(args: &[String]) -> ExitCode {
@@ -710,7 +714,8 @@ fn a_hung_overlays_does_not_block_the_core_and_is_killed_on_stop() {
 
     scenario.stop();
 
-    assert_eq!(scenario.exit_code(&mut launcher, LONG), 0);
+    // Paso 1: matar un hijo es fallo, aunque el resto salga limpio.
+    assert_eq!(scenario.exit_code(&mut launcher, LONG), 1);
     assert!(
         !alive(hung),
         "el colgado no atiende el cierre: debe morir por el plazo"
@@ -892,6 +897,63 @@ fn engineer_restart_is_isolated_and_stop_closes_it_before_overlays_and_core() {
     );
 }
 
+fn engineer_revocation_failure_preserves_the_running_session() {
+    for (tag, args, diagnostic) in [
+        ("revoke-nonzero", ["--exit-failure"], "Engineer cerró con"),
+        (
+            "revoke-forced",
+            ["--hang"],
+            "Engineer revocado: cierre fallido",
+        ),
+    ] {
+        let scenario = Scenario::new(tag);
+        let mut launcher = launch_engineer(&scenario, &args, 2);
+        let engineer = scenario.wait_for("Engineer", LONG, || {
+            scenario.starts("engineer").first().copied()
+        });
+        let core = scenario.wait_for("núcleo", LONG, || scenario.starts("core").first().copied());
+        let overlays = scenario.wait_for("overlays", LONG, || {
+            scenario.starts("overlays").first().copied()
+        });
+        fs::write(
+            format!("{}.engineer-access", scenario.file("status")),
+            "deny",
+        )
+        .unwrap();
+        scenario.wait_for("cierre revocado procesado", LONG, || {
+            (scenario
+                .lines("launcher.log")
+                .iter()
+                .any(|line| line.contains(diagnostic))
+                || launcher.0.try_wait().unwrap().is_some())
+            .then_some(())
+        });
+        assert!(!alive(engineer.0));
+        assert!(alive(core.0) && alive(overlays.0));
+        let mut watcher = Subscriber::connect(&scenario.pipe, |_| true).unwrap();
+        scenario.assert_core_progresses(&mut watcher);
+        scenario.stop();
+        assert_eq!(scenario.exit_code(&mut launcher, LONG), 0);
+    }
+}
+
+fn requested_shutdown_accepts_a_nonzero_child_exit() {
+    let scenario = Scenario::new("stop-nonzero");
+    let mut launcher = launch_engineer(&scenario, &["--exit-failure"], 2);
+    scenario.wait_for("Engineer", LONG, || {
+        scenario.starts("engineer").first().copied()
+    });
+    scenario.stop();
+    assert_eq!(scenario.exit_code(&mut launcher, LONG), 0);
+    assert!(
+        scenario
+            .lines("launcher.log")
+            .iter()
+            .any(|line| line.contains("Engineer cerró con"))
+    );
+    assert!(scenario.lines("status").contains(&"closed core".into()));
+}
+
 fn engineer_restart_budget_closes_every_child_after_exactly_two_retries() {
     let scenario = Scenario::new("engineer-budget");
     let mut launcher = launch_engineer(&scenario, &["--crash"], 2);
@@ -931,7 +993,8 @@ fn a_hung_engineer_is_killed_by_the_grace_deadline() {
         })
         .0;
     scenario.stop();
-    assert_eq!(scenario.exit_code(&mut launcher, LONG), 0);
+    // Paso 1: matar un hijo es fallo, aunque el resto salga limpio.
+    assert_eq!(scenario.exit_code(&mut launcher, LONG), 1);
     assert!(!alive(engineer));
     assert!(
         scenario
@@ -969,6 +1032,14 @@ fn engineer_dies_in_the_same_job_when_launcher_is_killed() {
 
 fn run_scenarios(filters: &[String]) -> ExitCode {
     let mut scenarios: Vec<(&str, fn())> = vec![
+        (
+            "engineer_revocation_failure_preserves_the_running_session",
+            engineer_revocation_failure_preserves_the_running_session,
+        ),
+        (
+            "requested_shutdown_accepts_a_nonzero_child_exit",
+            requested_shutdown_accepts_a_nonzero_child_exit,
+        ),
         (
             "engineer_policy_denies_start_and_revocation_preserves_other_children",
             engineer_policy_denies_start_and_revocation_preserves_other_children,

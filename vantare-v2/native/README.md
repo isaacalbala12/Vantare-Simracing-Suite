@@ -165,10 +165,16 @@ fuera de adquisición. El servicio mantiene ambos ciclos hasta cancelación.
   propósito (overlays cerrado por el usuario, replay acabado): se cierra todo y
   se sale con 0.
 - **Cierre ordenado.** Ctrl+C, cierre de consola o `vantare --parar`: primero
-  Engineer habilitado, overlays y después el núcleo. A cada hijo se le pide que termine
-  (`WM_CLOSE` a sus ventanas y fin de su stdin) y, si sigue vivo pasado
-  `--plazo` (3 s), se le mata. **Contrato para procesos sin ventana:** leer
-  stdin hasta EOF y terminar.
+  Engineer habilitado, overlays y después el núcleo. Overlays recibe sólo EOF
+  en su stdin (`--control-stdin`): pide `cx.quit()` y ejecuta los ganchos GPUI,
+  incluso con un layout vacío y `QuitMode::Explicit`. Los demás hijos conservan
+  `WM_CLOSE` y EOF hasta el paso 2 de #1860. Si un hijo sigue vivo pasado
+  `--plazo` (3 s), se le mata y el supervisor sale con fallo y diagnóstico;
+  continúa recogiendo los demás hijos. Un kill nunca acredita un cierre limpio.
+  Una salida no cero tras pedir cierre se registra sin fallar la sesión. La
+  revocación de Engineer registra un fallo de cierre y conserva los demás hijos;
+  sólo el shutdown final propaga ese fallo. Una salida satisfactoria en carrera
+  con el kill es limpia. Un error de cierre no oculta el motivo de supervisión.
 
 Las pruebas de caída (`runtime/tests/lifecycle.rs`, procesos de verdad sobre un
 pipe real) cubren: núcleo muerto (overlays sigue vivo, reconecta y acepta la

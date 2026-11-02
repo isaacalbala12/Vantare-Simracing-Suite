@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-1860",
+  "type": "fix",
+  "summary": "Al cerrar Vantare, los overlays terminan de forma ordenada, sin agotar los tres segundos de espera.",
+  "technicalNotes": [
+    "El supervisor pasa --control-stdin a overlays y sólo cierra ese pipe para pedir su salida. GPUI ejecuta on_app_quit incluso con un layout vacío; los demás hijos conservan el mecanismo actual hasta el paso 2.",
+    "Un kill forzado en el cierre final es fallo del supervisor, que continúa recogiendo los demás hijos. Revocar Engineer registra su fallo de cierre sin terminar la sesión; una salida no cero al atender el cierre sólo se diagnostica.",
+    "Una desconexión del Hub entre tramas ya no registra UnexpectedEof como error. Una trama truncada o inválida sigue fallando."
+  ],
+  "testing": [
+    "Cerrar tres veces el supervisor con overlays reales y layout guardado: debe salir con 0, ejecutar el gancho de salida y no registrar se le mata.",
+    "Destruir primero la ventana de bandeja y cerrar después el supervisor: EOF debe bastar para salir.",
+    "Comprobar desconexiones normales por pipe real sin diagnóstico de error y conservar el rechazo de tramas truncadas."
+  ],
+  "knownLimitations": [
+    "La política actual al cerrar el Hub durante una pausa y el Hub abierto desde bandeja se conserva hasta el paso 4 del plan.",
+    "El clic físico del menú y los cierres sobre la siguiente candidata instalada requieren verificación interactiva de Isaac."
+  ]
+}

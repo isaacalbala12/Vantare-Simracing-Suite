@@ -55,6 +55,13 @@ cargo run -p vantare-ui --release --bin vantare-overlays -- 4   # 1, 4 o 22 widg
 cargo run -p vantare-ui --release --bin vantare-overlays -- 4 --fuente local   # sin núcleo
 ```
 
+El supervisor añade `--control-stdin`: EOF pide `cx.quit()` desde GPUI y ejecuta
+los ganchos de salida (incluido el cierre de uso/analítica). No depende de cerrar
+ventanas ni del modo de salida por última ventana. El lector consume hasta EOF,
+con memoria acotada; un byte recibido no pide salir. Sin esa opción, el ejecutable
+y los hosts de biblioteca no vigilan stdin. La señal hacia overlays es sólo EOF;
+el cierre de los demás hijos se consolida en el paso 2 de #1860.
+
 El binario recibe los datos con `--fuente local|pipe[:<nombre>]`:
 
 - `pipe` (por defecto): `source::pipe_feed_observed` conecta un `ipc::Subscriber` al

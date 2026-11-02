@@ -1,9 +1,10 @@
 <!-- isa1860-arranque-cierre -->
-## VANTA-128 / #1860 — paso 0 listo; paso 1 preparado
+## VANTA-128 / #1860 — paso 0 integrado; paso 1 corregido tras revisión
 
-PR draft [#1863](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1863)
-a nightly. Código probado `f739f4feb21970c710236e2bddeea12a35661f59` (primer
-bloque `7488a40bf`); HEAD de entrega en el PR, con este handoff como único cambio posterior.
+Paso 0 [#1863](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1863)
+integrado por el orquestador en nightly `aca51a15e3a6cf4aa53fc659c89011853a3da2ca`;
+CI 5/5 verde comunicada por él. Código probado `f739f4feb21970c710236e2bddeea12a35661f59`
+(primer bloque `7488a40bf`); HEAD entregado `4914e4524b96798f99fac7571888e7431211bd66`.
 Base `origin/nightly@668d99c32f027c2f3f7c0abe6ae0306bff01a04c`.
 Rama `vantareapp/isa-1860-paso0-caracterizacion`, worktree
 `D:/VantareServer/worktrees/isa-1860-paso0`, target `D:/VantareServer/targets/isa-1860`.
@@ -40,15 +41,54 @@ Plane En curso verificado; el worker no volvió a cambiar el estado.
 - El orquestador cerró la instalación real para dejar libre la sesión. El worker
   no la cerró ni la reabrió, ni tocó registro real. Sin cambios en installer::engine
   ni Hub Ajustes/updates; los demás pasos del diseño siguen pendientes.
-- Paso 1 preparado, sin compilar ni publicar, en `bb9413fc8`, rama
-  `vantareapp/isa-1860-paso1-cierre-overlays`, worktree
-  `D:/VantareServer/worktrees/isa-1860-paso1`, desde el mismo nightly.
-  Sólo overlays recibirá EOF sin WM_CLOSE; el resto conserva el cierre actual
-  hasta el paso 2 (decisión confirmada). Incluye diagnóstico de kill y EOF normal
-  de servicios, con regresión de pipe/trama; fragmento ISA-1860 validado.
-  Espera la base del paso 0 para actualizar sus expectativas y pasar sus gates.
-- PR0 sólo está publicado como draft. CI la vigila el orquestador. El worker no
-  hizo merge, release ni promoción de canal. Plane sigue En curso.
+- Paso 1 listo en PR draft [#1864](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1864)
+  directamente a nightly. Rama `vantareapp/isa-1860-paso1-cierre-overlays`, worktree
+  `D:/VantareServer/worktrees/isa-1860-paso1`, mismo target usado secuencialmente.
+  Base `aca51a15e3a6cf4aa53fc659c89011853a3da2ca`; código probado
+  `8d0c6ac4cc7a8277354c49b20ef077c4ac14009b`, HEAD de entrega en el PR.
+- Sólo overlays recibe EOF sin WM_CLOSE mediante `--control-stdin`: pide
+  `cx.quit()` y ejecuta el gancho de uso/analítica una vez. El resto conserva el
+  cierre actual hasta el paso 2, según la decisión confirmada del orquestador.
+  Tres ciclos finales con layout guardado: **59, 58 y 59 ms**, frente al kill
+  anterior a 3 s. Salida 0 y sin kill, también tras destruir primero la bandeja.
+- Un kill forzado en el cierre final pasa a ser fallo con diagnóstico; se recogen los demás hijos.
+  EOF entre tramas de servicios es desconexión normal, sin aviso de error;
+  tramas truncadas o inválidas siguen fallando. No cambia el protocolo.
+- Gates iniciales tras rebase, antes de la revisión, todos por compilar.ps1: fmt, Clippy all-targets
+  runtime/Engineer/UI/Hub -D warnings y UI parity-capture PASS; lifecycle runtime
+  23/23, Engineer 5/5, status_process 2/2 e ipc_diagnostics 2/2 PASS.
+  Nextest ci con telemetría **1584/1584 PASS**, 18 omitidos preexistentes,
+  5 lentos, 330,577 s. Integridad retirada 468/468 y fragmento ISA-1860 PASS.
+- Mutaciones iniciales 4/4 detectadas por aserción compilada: EOF ignorado, kill aceptado
+  como éxito, trama truncada silenciada y EOF normal como error. Restauración
+  SHA-256 exacta, binarios normal/QA reconstruidos y baseline procesos/framing PASS.
+  La primera Nextest falló por la lista antigua de argumentos; se actualizó
+  manteniendo igualdad exacta y la repetición completa pasa. Evidencia inicial: `D:/VantareServer/evidence/isa-1860-paso1`,
+  `rebase-20261102-032333/`, `mutations/20261102-030137/` y `rebase-audit.txt`.
+- Revisión decidida por el orquestador: revocar Engineer registra el fallo de
+  cierre y conserva núcleo y overlays. Dos casos de procesos reales prueban
+  salida 7 y kill por plazo, continuidad de fotos y Stop posterior con 0.
+  Una salida no cero al atender el cierre sólo se diagnostica. La política de
+  Windows y Unix se comparte en `child_shutdown`, incluida la carrera de salida
+  satisfactoria entre plazo y kill y la prioridad del motivo de supervisión.
+- Se conserva el marcador de `on_app_quit`: es diagnóstico a stderr y la
+  caracterización depende de él; no acredita persistencia ni envío de analítica.
+  Justificación y alcance en README lifecycle. Comentario de win.rs y USAGE con
+  `--control-stdin` corregidos. Sin compatibilidad adicional entre generaciones,
+  conforme a la decisión de publicar runtime y UI juntos.
+- Gates de revisión en **una sola tanda**, sólo runtime/UI: fmt, Clippy
+  all-targets -D warnings y UI parity-capture PASS; overlays normal/QA
+  reconstruidos; lifecycle **25/25**, IPC **2/2**, Nextest ci con telemetría
+  **947/947 PASS** (14 omitidos preexistentes, 1 lento, 111,320 s).
+  Cinco mutaciones detectadas por aserción compilada: revocación fatal, salida
+  no cero fatal, carrera limpia tratada como kill, error original tapado y kill
+  real aceptado. Restauración SHA-256 exacta y baseline unitaria/procesos PASS.
+  Evidencia: `D:/VantareServer/evidence/isa-1860-paso1/review-20261102-041053/`.
+- Clic físico y candidata instalada pendientes de Isaac; Unix sin ejecutar en
+  este host Windows. Los pasos 2 y siguientes siguen pendientes. Sin cambios en
+  installation.rs, installer::engine ni Hub Ajustes/updates en el diff del paso 1.
+  CI la vigila el orquestador. El worker no hizo merge, release ni promoción,
+  ni tocó la instalación o el registro reales. Plane sigue En curso.
 <!-- /isa1860-arranque-cierre -->
 
 <!-- isa1827-simplificar-e -->

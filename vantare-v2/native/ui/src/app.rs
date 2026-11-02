@@ -1073,12 +1073,26 @@ impl LiveScreens {
     }
 }
 
+/// EOF del padre entra por GPUI y ejecuta sus ganchos, incluso sin ventanas.
+/// Los hosts de biblioteca y el ejecutable sin `--control-stdin` no lo instalan.
+fn install_parent_shutdown(shutdown: Option<flume::Receiver<()>>, cx: &mut App) {
+    if let Some(shutdown) = shutdown {
+        cx.spawn(async move |cx| {
+            if shutdown.recv_async().await.is_ok() {
+                cx.update(|cx| cx.quit());
+            }
+        })
+        .detach();
+    }
+}
+
 /// Vigila el documento cada 500 ms. El proceso sigue vivo incluso sin ventanas;
 /// solo cambia sus HWND cuando cambia el conjunto de monitores ocupados.
 pub fn run_layout_with_rights(
     path: PathBuf,
     snapshots: flume::Receiver<Arc<Snapshot>>,
     rights: Option<vantare_ipc::control::Feed>,
+    shutdown: Option<flume::Receiver<()>>,
 ) -> Result<(), crate::layout::Error> {
     run_layout_feed(
         path,
@@ -1087,6 +1101,7 @@ pub fn run_layout_with_rights(
         vantare_ipc::Photo::full,
         None,
         false,
+        shutdown,
     )
 }
 
@@ -1096,7 +1111,7 @@ pub fn run_layout_requested(
     rights: Option<vantare_ipc::control::Feed>,
     demand: crate::source::DemandHandle,
 ) -> Result<(), crate::layout::Error> {
-    run_layout_requested_hidden(path, photos, rights, demand, false)
+    run_layout_requested_hidden(path, photos, rights, demand, false, None)
 }
 
 pub fn run_layout_requested_hidden(
@@ -1105,6 +1120,7 @@ pub fn run_layout_requested_hidden(
     rights: Option<vantare_ipc::control::Feed>,
     demand: crate::source::DemandHandle,
     start_hidden: bool,
+    shutdown: Option<flume::Receiver<()>>,
 ) -> Result<(), crate::layout::Error> {
     run_layout_feed(
         path,
@@ -1113,6 +1129,7 @@ pub fn run_layout_requested_hidden(
         std::convert::identity,
         Some(demand),
         start_hidden,
+        shutdown,
     )
 }
 
@@ -1123,6 +1140,7 @@ fn run_layout_feed<T: Send + 'static>(
     decode: impl Fn(T) -> vantare_ipc::Photo + Send + 'static,
     demand: Option<crate::source::DemandHandle>,
     start_hidden: bool,
+    shutdown: Option<flume::Receiver<()>>,
 ) -> Result<(), crate::layout::Error> {
     #[cfg(windows)]
     let track_path = path.clone();
@@ -1204,12 +1222,19 @@ fn run_layout_feed<T: Send + 'static>(
             });
             screens.borrow_mut().shortcut_task = Some(task);
         }
+        let controlled = shutdown.is_some();
         let quit_screens = screens.clone();
         cx.on_app_quit(move |cx| {
             quit_screens.borrow_mut().usage.finish(cx);
+            if controlled {
+                // Diagnóstico a stderr usado por la caracterización de cierre;
+                // no es un acuse de persistencia ni de envío de analítica.
+                eprintln!("vantare-overlays: on_app_quit completado");
+            }
             async {}
         })
         .detach();
+        install_parent_shutdown(shutdown, cx);
         #[cfg(windows)]
         match crate::tray::spawn() {
             Ok(actions) => {
@@ -1327,7 +1352,7 @@ pub fn run_with_rights(
     rights: Option<vantare_ipc::control::Feed>,
 ) {
     let placed = (0..windows).map(|i| (kind_of(i), origin_of(i))).collect();
-    run_placed_authorized(placed, snapshots, prefs, rights, None);
+    run_placed_authorized(placed, snapshots, prefs, rights, None, None);
 }
 
 /// Abre los widgets y sus posiciones (px globales de pantalla) dados.
@@ -1336,7 +1361,7 @@ pub fn run_placed(
     snapshots: flume::Receiver<Arc<Snapshot>>,
     prefs: Preferences,
 ) {
-    run_placed_authorized(placed, snapshots, prefs, None, None);
+    run_placed_authorized(placed, snapshots, prefs, None, None, None);
 }
 
 /// Abre la campaña con un único aviso del estado de conexión en el host.
@@ -1346,9 +1371,10 @@ pub fn run_with_connection(
     prefs: Preferences,
     rights: Option<vantare_ipc::control::Feed>,
     connection: Option<vantare_ipc::ConnectionStatus>,
+    shutdown: Option<flume::Receiver<()>>,
 ) {
     let placed = (0..windows).map(|i| (kind_of(i), origin_of(i))).collect();
-    run_placed_authorized(placed, snapshots, prefs, rights, connection);
+    run_placed_authorized(placed, snapshots, prefs, rights, connection, shutdown);
 }
 
 fn run_placed_authorized(
@@ -1357,6 +1383,7 @@ fn run_placed_authorized(
     prefs: Preferences,
     rights: Option<vantare_ipc::control::Feed>,
     connection: Option<vantare_ipc::ConnectionStatus>,
+    shutdown: Option<flume::Receiver<()>>,
 ) {
     gpui_platform::application().run(move |cx: &mut App| {
         if !init(cx) {
@@ -1364,6 +1391,7 @@ fn run_placed_authorized(
         }
         crate::rights::install(rights, cx);
         crate::connection::install(connection, cx);
+        install_parent_shutdown(shutdown, cx);
         #[cfg(feature = "paint-stats")]
         crate::stats::report();
         let widgets = open_screens(cx, &placed, prefs);

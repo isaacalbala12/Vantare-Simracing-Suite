@@ -12,6 +12,73 @@ use vantare_services::protocol;
 const PRIVATE: &str = "private-test-payload-must-not-be-logged";
 
 #[test]
+fn normal_services_disconnects_do_not_emit_error_diagnostics() {
+    const CHILD: &str = "VANTARE_TEST_NORMAL_SERVICES_EOF";
+    if std::env::var_os(CHILD).is_none() {
+        let output = Command::new(std::env::current_exe().expect("test"))
+            .args([
+                "--exact",
+                "normal_services_disconnects_do_not_emit_error_diagnostics",
+                "--nocapture",
+            ])
+            .env(CHILD, "1")
+            .output()
+            .expect("subproceso IPC");
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(output.status.success(), "{stderr}");
+        assert!(!stderr.contains("canal de servicios cerrado"), "{stderr}");
+        return;
+    }
+    let photo = format!(
+        "vantare-normal-eof-{}",
+        vantare_services::random_id().expect("id")
+    );
+    let stop = Arc::new(Event::new().expect("evento"));
+    let supervisor = services::Host::start_with_peer(
+        &photo,
+        services::Options {
+            binary: PathBuf::from("never-start-services"),
+            hub: std::env::current_exe().expect("imagen test"),
+            core: control::CoreLink {
+                pipe: "never-connect-core".into(),
+                image: PathBuf::new(),
+                nonce: String::new(),
+            },
+            root: Some(std::env::temp_dir().join(&photo)),
+        },
+        |_, _| true,
+    )
+    .expect("supervisor");
+    for _ in 0..2 {
+        let mut pipe =
+            control::connect_ready(&services::pipe_name(&photo), &stop, Duration::from_secs(5))
+                .expect("conexión");
+        let _: protocol::SupervisorHello = protocol::read(&mut pipe).expect("saludo");
+        drop(pipe); // EOF antes de otra trama.
+    }
+    // El servidor es secuencial: este saludo prueba que procesó ambos EOF.
+    // Shutdown evita competir entre el último EOF y Drop al comprobar stderr.
+    let mut pipe =
+        control::connect_ready(&services::pipe_name(&photo), &stop, Duration::from_secs(5))
+            .expect("barrera tras EOF");
+    let hello: protocol::SupervisorHello = protocol::read(&mut pipe).expect("saludo final");
+    protocol::write(
+        &mut pipe,
+        &protocol::Request {
+            version: protocol::VERSION,
+            sequence: 1,
+            nonce: hello.nonce,
+            command: protocol::Command::Shutdown,
+        },
+    )
+    .expect("cierre de sesión IPC");
+    let response: protocol::Response = protocol::read(&mut pipe).expect("acuse");
+    assert!(matches!(response.reply, protocol::Reply::Closed));
+    drop(pipe);
+    drop(supervisor);
+}
+
+#[test]
 fn rejected_rights_and_services_requests_report_sanitized_local_diagnostics() {
     const CHILD: &str = "VANTARE_TEST_IPC_DIAGNOSTICS";
     if std::env::var_os(CHILD).is_none() {

@@ -172,10 +172,9 @@ pub fn wait_child(child: &Child, timeout: Duration) -> bool {
     )
 }
 
-/// Pide al hijo que termine por las buenas: `WM_CLOSE` a sus ventanas (overlays
-/// se cierra al cerrarse la última) y fin de su stdin (contrato de los procesos
-/// sin ventana: leer stdin hasta EOF y salir). Un hijo que no atienda ninguna
-/// de las dos acabará muerto por el plazo.
+/// Cierra stdin y manda `WM_CLOSE` a las ventanas del hijo. Sólo se usa para
+/// los hijos distintos de overlays, hasta el paso 2 de #1860. Overlays recibe
+/// únicamente EOF y pide `cx.quit()`; no depende de cerrar la última ventana.
 pub fn request_close(child: &mut Child) {
     drop(child.stdin.take());
     let pid = isize::try_from(child.id()).unwrap_or(-1);

@@ -29,7 +29,7 @@ pub(super) fn tray_hub_process(args: &[String]) -> ExitCode {
 pub(super) fn scenarios() -> Vec<(&'static str, fn())> {
     vec![
         (
-            "real_overlays_stop_records_the_current_three_second_kill",
+            "real_overlays_stop_exits_cleanly_on_eof_before_deadline",
             real_stop,
         ),
         (
@@ -233,14 +233,28 @@ impl Real {
     }
 
     fn stop(&mut self) {
+        let began = Instant::now();
         self.scenario.stop();
         assert_eq!(self.scenario.exit_code(&mut self.launcher, LONG), 0);
+        self.assert_clean_shutdown();
+        eprintln!(
+            "cierre EOF de overlays real: {} ms",
+            began.elapsed().as_millis()
+        );
+    }
+
+    fn assert_clean_shutdown(&self) {
         let log = self.scenario.lines("launcher.log");
-        // CAMBIA EN PASO 1: hoy el proceso real ignora EOF y WM_CLOSE y se mata.
         assert!(
-            log.iter()
-                .any(|line| line.contains("overlays no terminó en 3s: se le mata")),
+            !log.iter().any(|line| line.contains("se le mata")),
             "{log:?}"
+        );
+        assert_eq!(
+            log.iter()
+                .filter(|line| line.as_str() == "vantare-overlays: on_app_quit completado")
+                .count(),
+            1,
+            "el gancho de uso/analítica terminó una vez: {log:?}"
         );
     }
 }
@@ -281,14 +295,16 @@ fn tray(pid: u32) -> Option<HWND> {
 }
 
 fn real_stop() {
-    let mut real = Real::start("real-stop");
-    let overlays = real.ready();
-    real.stop();
-    assert!(!alive(overlays));
-    assert_eq!(
-        fs::read_to_string(real.scenario.file("layout.json")).unwrap(),
-        r#"{"version":1,"instances":[]}"#
-    );
+    for cycle in 0..3 {
+        let mut real = Real::start(&format!("real-stop-{cycle}"));
+        let overlays = real.ready();
+        real.stop();
+        assert!(!alive(overlays));
+        assert_eq!(
+            fs::read_to_string(real.scenario.file("layout.json")).unwrap(),
+            r#"{"version":1,"instances":[]}"#
+        );
+    }
 }
 
 fn hub_matrix() {
@@ -346,12 +362,7 @@ fn hub_matrix() {
         if stops {
             assert_eq!(real.scenario.exit_code(&mut real.launcher, LONG), 0);
             assert!(!alive(process));
-            assert!(
-                real.scenario
-                    .lines("launcher.log")
-                    .iter()
-                    .any(|line| line.contains("overlays no terminó en 3s"))
-            );
+            real.assert_clean_shutdown();
         } else {
             assert!(alive(process));
             real.stop();
@@ -434,8 +445,8 @@ fn tray_window_close() {
     use windows_sys::Win32::UI::WindowsAndMessaging::{PostMessageW, WM_CLOSE};
     let mut real = Real::start("tray-window-close");
     let process = real.ready();
-    // El supervisor actual manda esto además de cerrar stdin. Cerrar la bandeja
-    // retira su icono pero no envía Action::Quit al host GPUI (paso 1 usa EOF).
+    // WM_CLOSE sólo retira la bandeja. Su ausencia antes del EOF prueba que el
+    // cierre del supervisor no depende de ventanas ni de QuitMode::Explicit.
     let window = tray(process.pid).unwrap();
     // SAFETY: HWND observado del hijo propio; mensaje sin punteros.
     assert_ne!(unsafe { PostMessageW(window, WM_CLOSE, 0, 0) }, 0);
@@ -497,6 +508,7 @@ fn tray_open_and_quit() {
     assert_eq!(tray_actions::invoke(&real, 3), 1); // Salir → cx.quit() real.
     assert_eq!(real.scenario.exit_code(&mut real.launcher, LONG), 0);
     assert!(!alive(overlay));
+    real.assert_clean_shutdown();
     assert!(
         alive(hub),
         "CAMBIA EN PASO 4: hoy Salir deja el Hub fuera del Job"
@@ -635,6 +647,7 @@ pub(super) fn manual_tray() -> ExitCode {
     }
     assert_eq!(real.scenario.exit_code(&mut real.launcher, LONG), 0);
     assert!(!alive(overlay));
+    real.assert_clean_shutdown();
     assert!(alive(hub), "comportamiento actual: Hub fuera del Job");
     tray_actions::close_hub(hub.pid);
     real.scenario.wait_for("Hub de prueba cerrado", LONG, || {

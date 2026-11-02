@@ -22,6 +22,7 @@
 
 #![cfg_attr(windows, windows_subsystem = "windows")]
 
+mod child_shutdown;
 #[cfg(unix)]
 mod unix;
 #[cfg(windows)]
@@ -356,7 +357,9 @@ fn supervise(
         for service in services.iter_mut() {
             if service.name == "Engineer" && !engineer_permitted {
                 if service.child.is_some() {
-                    shutdown(std::slice::from_mut(service), grace);
+                    if let Err(error) = shutdown(std::slice::from_mut(service), grace) {
+                        log(format_args!("Engineer revocado: cierre fallido: {error}"));
+                    }
                     service.child = None;
                     service.start_at = Some(now);
                     service.restarts.attempts = 0;
@@ -416,22 +419,32 @@ fn supervise(
 /// Engineer si está habilitado, overlays, núcleo. A cada uno se le pide que termine y se
 /// le mata si pasa el plazo.
 #[cfg(windows)]
-fn shutdown(services: &mut [Service], grace: Duration) {
+fn shutdown(services: &mut [Service], grace: Duration) -> io::Result<()> {
+    let mut first_error = None;
     for service in services.iter_mut().rev() {
         let Some(child) = service.child.as_mut() else {
             continue;
         };
-        win::request_close(child);
-        if !win::wait_child(child, grace) {
-            log(format_args!(
-                "{} no terminó en {grace:?}: se le mata",
-                service.name
-            ));
-            let _ = child.kill();
+        let result = (|| {
+            if service.name == "overlays" {
+                // Paso 1: única señal para GPUI. El resto conserva WM_CLOSE
+                // hasta la consolidación del paso 2 del plan #1860.
+                drop(child.stdin.take());
+            } else {
+                win::request_close(child);
+            }
+            if !win::wait_child(child, grace) {
+                return child_shutdown::force(child, service.name, grace, Child::kill);
+            }
+            child_shutdown::report(service.name, child.wait()?);
+            Ok(())
+        })();
+        if let Err(error) = result {
+            log(format_args!("{} no se pudo cerrar: {error}", service.name));
+            first_error.get_or_insert(error);
         }
-        let _ = child.wait();
-        log(format_args!("{} cerrado", service.name));
     }
+    first_error.map_or(Ok(()), Err)
 }
 
 #[cfg(windows)]
@@ -460,6 +473,14 @@ fn start_remote_services(
             .overlays
             .args
             .extend(["--fuente".into(), format!("pipe:{photo}")]);
+    }
+    if !config
+        .overlays
+        .args
+        .iter()
+        .any(|arg| arg == "--control-stdin")
+    {
+        config.overlays.args.push("--control-stdin".into());
     }
     let nonce =
         vantare_services::random_id().map_err(|_| io::Error::other("bootstrap no disponible"))?;
@@ -573,21 +594,9 @@ fn run(mut config: Config) -> io::Result<ExitCode> {
     let outcome = supervise(&mut services, &stop, rights.as_ref(), config.grace);
     drop(resident);
     drop(remote.0); // Cierra el auxiliar mientras el núcleo sigue vivo.
-    shutdown(&mut services, config.grace);
-    shutdown(&mut diagnostics, config.grace);
-    Ok(match outcome? {
-        Outcome::Stopped => ExitCode::SUCCESS,
-        Outcome::Finished(name) => {
-            log(format_args!("{name} terminó: se cierra todo"));
-            ExitCode::SUCCESS
-        }
-        Outcome::Exhausted(name) => {
-            log(format_args!(
-                "{name}: presupuesto de reinicios agotado, se para"
-            ));
-            ExitCode::FAILURE
-        }
-    })
+    let closed = shutdown(&mut services, config.grace);
+    let diagnostics_closed = shutdown(&mut diagnostics, config.grace);
+    child_shutdown::finish_run(outcome, closed.and(diagnostics_closed))
 }
 
 #[cfg(unix)]
@@ -796,7 +805,7 @@ mod tests {
         assert!(config.core.args.iter().any(|arg| arg == "--managed-rights"));
         assert_eq!(
             config.overlays.args,
-            args(&["--fuente", &format!("pipe:{photo}")])
+            args(&["--fuente", &format!("pipe:{photo}"), "--control-stdin"])
         );
         assert!(
             config

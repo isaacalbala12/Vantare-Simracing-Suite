@@ -15,7 +15,7 @@ use std::process::ExitCode;
 
 use vantare_domain::format::Preferences;
 
-const USAGE: &str = "uso: vantare-overlays [1|4|22 | --layout <layout.json>] [--fuente local|pipe[:<nombre>]]; sin número vigila el layout de LOCALAPPDATA";
+const USAGE: &str = "uso: vantare-overlays [1|4|22 | --layout <layout.json>] [--fuente local|pipe[:<nombre>]] [--control-stdin]; sin número vigila el layout de LOCALAPPDATA; --control-stdin cierra por EOF del supervisor";
 
 #[derive(Debug, PartialEq)]
 enum Feed {
@@ -58,6 +58,22 @@ fn parse(args: &[String]) -> Option<(Option<usize>, Option<PathBuf>, Feed)> {
     Some((count, layout, feed))
 }
 
+fn rights_feed(feed: &Feed) -> std::io::Result<Option<vantare_ipc::control::Feed>> {
+    match feed {
+        Feed::Local => Ok(None),
+        Feed::Pipe(name) => {
+            let name = name
+                .clone()
+                .map_or_else(vantare_ipc::default_pipe_name, Ok)?;
+            vantare_ipc::control::Feed::connect(
+                &name,
+                std::env::current_exe()?.with_file_name("vantare-core.exe"),
+            )
+            .map(Some)
+        }
+    }
+}
+
 fn snapshot_feed(
     windows: Option<usize>,
     feed: Feed,
@@ -98,6 +114,10 @@ fn main() -> ExitCode {
     }
     vantare_services::diagnostics::install_panic_hook("vantare-overlays");
     let mut args: Vec<String> = std::env::args().skip(1).collect();
+    let controlled = args.iter().position(|arg| arg == "--control-stdin");
+    if let Some(index) = controlled {
+        args.remove(index);
+    }
     let start_hidden = args.first().is_some_and(|arg| arg == "--start-hidden");
     if start_hidden {
         args.remove(0);
@@ -118,28 +138,12 @@ fn main() -> ExitCode {
         let _written = writeln!(std::io::stderr(), "{USAGE}");
         return ExitCode::from(2);
     };
-    let rights = match &feed {
-        Feed::Local => None,
-        Feed::Pipe(name) => {
-            let result = (|| -> std::io::Result<_> {
-                let name = name
-                    .clone()
-                    .map_or_else(vantare_ipc::default_pipe_name, Ok)?;
-                vantare_ipc::control::Feed::connect(
-                    &name,
-                    std::env::current_exe()?.with_file_name("vantare-core.exe"),
-                )
-            })();
-            if let Ok(feed) = result {
-                Some(feed)
-            } else {
-                let _written = writeln!(
-                    std::io::stderr(),
-                    "vantare-overlays: control de derechos no disponible"
-                );
-                return ExitCode::FAILURE;
-            }
-        }
+    let shutdown = match parent_shutdown(controlled.is_some()) {
+        Ok(shutdown) => shutdown,
+        Err(error) => return failure(format_args!("vigilar stdin: {error}")),
+    };
+    let Ok(rights) = rights_feed(&feed) else {
+        return failure("control de derechos no disponible");
     };
     if windows.is_none()
         && let Feed::Pipe(name) = &feed
@@ -154,23 +158,21 @@ fn main() -> ExitCode {
                 .clone()
                 .map_or_else(vantare_ipc::default_pipe_name, Ok)?;
             let photos = vantare_ui::source::layout_feed(&name, handle.clone())?;
-            vantare_ui::run_layout_requested_hidden(path, photos, rights, handle, start_hidden)?;
+            vantare_ui::run_layout_requested_hidden(
+                path,
+                photos,
+                rights,
+                handle,
+                start_hidden,
+                shutdown,
+            )?;
             Ok(())
         })();
-        return match result {
-            Ok(()) => ExitCode::SUCCESS,
-            Err(error) => {
-                let _written = writeln!(std::io::stderr(), "vantare-overlays: {error}");
-                ExitCode::FAILURE
-            }
-        };
+        return result.map_or_else(failure, |()| ExitCode::SUCCESS);
     }
     let (snapshots, connection) = match snapshot_feed(windows, feed) {
         Ok(feed) => feed,
-        Err(error) => {
-            let _written = writeln!(std::io::stderr(), "vantare-overlays: {error}");
-            return ExitCode::FAILURE;
-        }
+        Err(error) => return failure(error),
     };
     if let Some(windows) = windows {
         vantare_ui::run_with_connection(
@@ -179,17 +181,49 @@ fn main() -> ExitCode {
             Preferences::default(),
             rights,
             connection,
+            shutdown,
         );
     } else {
         let result = layout
             .map_or_else(vantare_ui::layout::default_path, Ok)
-            .and_then(|path| vantare_ui::run_layout_with_rights(path, snapshots, rights));
+            .and_then(|path| vantare_ui::run_layout_with_rights(path, snapshots, rights, shutdown));
         if let Err(error) = result {
-            let _written = writeln!(std::io::stderr(), "vantare-overlays: {error}");
-            return ExitCode::FAILURE;
+            return failure(error);
         }
     }
     ExitCode::SUCCESS
+}
+
+fn failure(error: impl std::fmt::Display) -> ExitCode {
+    let _written = writeln!(std::io::stderr(), "vantare-overlays: {error}");
+    ExitCode::FAILURE
+}
+
+fn parent_shutdown(controlled: bool) -> std::io::Result<Option<flume::Receiver<()>>> {
+    if !controlled {
+        return Ok(None);
+    }
+    let (send, receive) = flume::bounded(1);
+    // El pipe pertenece al supervisor. EOF cancela el lector; si el usuario sale
+    // por bandeja, el proceso termina también este hilo, sin esperar al padre.
+    std::thread::Builder::new()
+        .name("overlays-parent-watch".into())
+        .spawn(move || {
+            match std::io::copy(&mut std::io::stdin().lock(), &mut std::io::sink()) {
+                Ok(_) => {
+                    let _sent = send.send(());
+                }
+                Err(error) => {
+                    // Un error de lectura no se presenta como un EOF limpio.
+                    let _written = writeln!(
+                        std::io::stderr(),
+                        "vantare-overlays: stdin falló: {:?}",
+                        error.kind()
+                    );
+                }
+            }
+        })?;
+    Ok(Some(receive))
 }
 
 #[cfg(test)]

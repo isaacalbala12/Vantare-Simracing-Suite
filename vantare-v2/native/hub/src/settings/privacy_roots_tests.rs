@@ -125,9 +125,38 @@ fn revoked_choice_is_never_adopted_again_after_shared_file_disappears() {
     choice_at(&shared, false);
     std::fs::remove_file(shared.join(PRIVACY_FILE)).expect("shared choice removed");
     adopt(&hub, shared.clone()).expect("restart");
-    assert_eq!(Privacy::load(&shared).expect("safe default"), Privacy::default());
+    assert_eq!(
+        Privacy::load(&shared).expect("safe default"),
+        Privacy::default()
+    );
     assert!(!shared.join(PRIVACY_FILE).exists());
-    assert_eq!(std::fs::read(hub.join(PRIVACY_FILE)).expect("original"), original);
+    assert_eq!(
+        std::fs::read(hub.join(PRIVACY_FILE)).expect("original"),
+        original
+    );
+    std::fs::remove_dir_all(qa).expect("QA cleanup");
+}
+
+#[test]
+fn shared_choice_created_at_the_save_boundary_wins_the_adoption_race() {
+    let qa = qa();
+    let (_, previous) = choice_at(&qa.join("hub"), true);
+    let shared = qa.join("Vantare/native");
+    // Estado exacto entre try_exists(false) y save(expected=None).
+    let (revoked, bytes) = choice_at(&shared, false);
+    publish_adoption(&shared.join(PRIVACY_FILE), &previous).expect("concurrent choice wins");
+    assert_eq!(Store::load(&shared).expect("load winner").value, revoked);
+    assert_eq!(
+        std::fs::read(shared.join(PRIVACY_FILE)).expect("winner bytes"),
+        bytes
+    );
+    adopt(&qa.join("hub"), shared.clone()).expect("both copies");
+    std::fs::remove_file(shared.join(PRIVACY_FILE)).expect("remove shared");
+    adopt(&qa.join("hub"), shared.clone()).expect("restart after both copies");
+    assert_eq!(
+        Privacy::load(&shared).expect("no resurrection"),
+        Privacy::default()
+    );
     std::fs::remove_dir_all(qa).expect("QA cleanup");
 }
 

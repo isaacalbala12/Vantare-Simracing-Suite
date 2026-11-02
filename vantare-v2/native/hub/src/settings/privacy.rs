@@ -25,25 +25,52 @@ fn adopt(data: &Path, shared: PathBuf) -> Result<PathBuf, String> {
     if data != shared.as_path() {
         let source = data.join(PRIVACY_FILE);
         let destination = shared.join(PRIVACY_FILE);
+        let adopted = data.join("privacy.json.adopted");
+        if adopted.try_exists().map_err(|error| error.to_string())? {
+            return Ok(shared);
+        }
         if source.try_exists().map_err(|error| error.to_string())? {
-            if destination
+            let bytes = if destination
                 .try_exists()
                 .map_err(|error| error.to_string())?
             {
                 eprintln!("privacidad: existen dos copias; se conserva la compartida");
+                None
             } else {
                 let bytes = crate::files::read(&source, 1024)?;
                 // Validar los mismos bytes que se adoptan, sin habilitar síes implícitos.
                 serde_json::from_slice::<Privacy>(&bytes)
                     .map_err(|error| format!("leer privacidad anterior: {error}"))?;
-                // expected=None protege una elección compartida creada entretanto.
-                // Se copian bytes y generación; el original del Hub queda intacto.
-                crate::files::save(&destination, &bytes, None)?;
+                Some(bytes)
+            };
+            // Marcar ANTES de publicar: tras caída, revocación o borrado nunca
+            // resucita un consentimiento antiguo. El original queda intacto.
+            if let Err(error) = crate::files::save(&adopted, b"adoption attempted\n", None) {
+                if adopted.try_exists().map_err(|error| error.to_string())? {
+                    return Ok(shared);
+                }
+                return Err(error);
+            }
+            if let Some(bytes) = bytes {
+                publish_adoption(&destination, &bytes)?;
                 eprintln!("privacidad: se adopta la decisión guardada por el Hub");
             }
         }
     }
     Ok(shared)
+}
+
+fn publish_adoption(destination: &Path, bytes: &[u8]) -> Result<(), String> {
+    if let Err(error) = crate::files::save(destination, bytes, None) {
+        // Una elección creada entretanto gana; Store::load la valida y carga.
+        if !destination
+            .try_exists()
+            .map_err(|error| error.to_string())?
+        {
+            return Err(error);
+        }
+    }
+    Ok(())
 }
 
 pub(in crate::shell) fn load(data: &Path, isolated: bool) -> Result<Store, String> {

@@ -75,10 +75,16 @@ Para QA aislada, `VANTARE_NATIVE_DATA_ROOT` funciona también en macOS/Linux;
 Privacidad usa siempre `<raíz>/Vantare/native` en arranque normal, también con
 `--data-dir` explícito. Si falta allí `privacy.json`, adopta los bytes válidos
 de la copia antigua del Hub sin tocar el original. Si existen ambas, manda la
-compartida y se registra la decisión. La adopción conserva los consentimientos
+compartida y se registra la decisión. La marca `privacy.json.adopted` en el Hub
+se guarda antes de copiar, también si ya existe la compartida. Nunca se readopta:
+si se interrumpe la copia o desaparece la compartida, se exige una decisión nueva.
+El original sigue intacto como copia. Una compartida creada durante la adopción
+gana sin conflicto para el usuario. La adopción conserva los consentimientos
 explícitos: puede hacer efectiva una aceptación que antes no llegaba al emisor;
 los síes implícitos antiguos siguen desactivados. Una raíz relativa falla sin
-recurrir a datos del usuario. Demo/captura eligen su `--data-dir` QA antes de
+recurrir a datos del usuario. `--demo` sin `--data-dir` crea rutas por defecto
+bajo un directorio temporal QA nuevo; las rutas explícitas siguen siendo elección
+del operador. Demo/captura eligen su raíz QA antes de
 cualquier lectura o limpieza de privacidad.
 La carga entrega el Store explícitamente a `Loaded`; el arnés de onboarding
 inyecta su Store QA y conserva las mismas comprobaciones de consentimiento.

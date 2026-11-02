@@ -1,5 +1,9 @@
 # Hub nativo (ISA-1430)
 
+`--demo` sin `--data-dir` usa documentos por defecto en una carpeta temporal QA
+nueva bajo `vantare-hub-demo`, incluida privacidad. Las rutas explícitas se
+respetan; el operador debe elegir raíces QA para ellas.
+
 ## Instalación y versión — #1840, paso 3
 
 Ajustes lee estado/manifiesto desde `installer::engine`, dependencia sin features

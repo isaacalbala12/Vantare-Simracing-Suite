@@ -4,6 +4,14 @@
 
 Proyecto Vantare, `area:plataforma`; Plane En curso verificado. Base
 `origin/nightly@a5e0a9fd24ad5294df6528dd47ad63a078820e27`.
+Revisión #1874: el test `e6e723189` reprodujo la readopción de un sí antiguo
+tras revocar y borrar la compartida. Se añade marca durable previa a la copia
+en el Hub (también si la compartida ya existe), original intacto y sin reintento
+tras interrupción; se requiere decisión nueva. Una compartida creada durante
+save gana y se carga. Subproceso QA comprueba root contra diagnostics::data_root.
+`--demo` sin directorio usa rutas temporales QA nuevas; las explícitas se respetan.
+Gates de revisión conjuntos con #1876 en cola; se conserva el fallo previo de
+Clippy por longitud de finish, corregido extrayendo el cálculo de la ruta demo.
 Primero bugs 1 y 2, cada uno con rama/worktree/PR draft propio a nightly.
 Caracterización 0.ii en `2fc4d46d8` (privacidad beta separada); 0.v en
 `adfbd0aba` (colisión de agenda y cambio de bytes cada segundo).
@@ -39,6 +47,8 @@ una release estable. Paso 10 excluido, va con #1840.
 Paso 3 autorizado solo para sustituir cálculos de ruta en rights/owner,
 bin/vantare/main, ipc/freshness, ipc/engineer_control y services/app, sin auth,
 policy ni flujo. El orquestador reserva esas líneas con VANTA-129; aún sin editar.
+Linux/macOS solo tienen desarrollo: el orquestador confirma base única sin
+compatibilidad con XDG_CONFIG_HOME; documentar el cambio en el paso 3.
 
 Hallazgos independientes sin implementar: #1870 Calendario Inicio/menú,
 #1871 ImportLayout sin lector (#1840), #1872 Strategy con dos almacenes.

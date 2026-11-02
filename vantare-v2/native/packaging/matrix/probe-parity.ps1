@@ -6,9 +6,21 @@ function Write-MatrixProbeFixtureJson([string]$Path,$Value) {
     [IO.File]::WriteAllText($Path,($Value|ConvertTo-Json -Depth 15),[Text.UTF8Encoding]::new($false))
 }
 
-function Get-MatrixProbeRejection($Failure) {
+function Get-MatrixProbeRejection($Failure,[string]$Root='') {
     $id=$Failure.FullyQualifiedErrorId
-    if($id -ceq 'PropertyNotFoundStrict' -and $Failure.InvocationInfo.Line -match '\$state\.previous') { return 'previous-missing' }
+    if($id -like 'PropertyNotFoundStrict*'){
+        if($Failure.InvocationInfo.Line -match '\$state\.previous'){return 'previous-missing'}
+        if($Root -and $Failure.ScriptStackTrace -match '^at Read-NativeState,'){
+            $null=Assert-MatrixRoot $Root
+            $document=[IO.File]::ReadAllText((Join-Path $Root 'state.json'))|ConvertFrom-Json
+            $keys=@($document.PSObject.Properties.Name)
+            $missing=@(@('schema','product','channel','active')|Where-Object {$_ -cnotin $keys})
+            # Advanced-script invocation qualifies the error ID and replaces
+            # InvocationInfo with the call site. Identify the missing member
+            # from the input and failing reader, never from a localized message.
+            if(-not $missing.Count -and 'previous' -cnotin $keys){return 'previous-missing'}
+        }
+    }
     if($id -like '*ConvertFromJsonCommand*'){return 'json'}
     $cause=$Failure.Exception.GetBaseException()
     if($cause -is [IO.FileNotFoundException] -or $cause -is [IO.DirectoryNotFoundException]){return 'io-not-found'}
@@ -21,7 +33,7 @@ function Get-MatrixProbeRejection($Failure) {
         'Generaci*n activa/anterior incompleta*' {return 'generation-binding'}
         'Lista de archivos inv*lida o duplicada*' {return 'inventory'}
         'Manifiesto, esquema o canal incompatible*' {return 'manifest-contract'}
-        default {throw ('MATRIX_UNCLASSIFIED_PS_REJECTION: '+$id)}
+        default {throw ('MATRIX_UNCLASSIFIED_PS_REJECTION: '+$id+'; line='+$Failure.InvocationInfo.Line+'; stack='+$Failure.ScriptStackTrace)}
     }
 }
 
@@ -42,7 +54,7 @@ function Compare-MatrixProbe([string]$Driver,[string]$Request,[string]$ReadProbe
     $result=Invoke-NativeProcess -Executable $ReadProbe -Arguments $probeArguments -InputText $context -TimeoutMilliseconds 30000 -LogPath ($prefix+'.rust.log')
     if($null -ne $failure){
         if(-not $result.ExitCode){throw 'MATRIX_RUST_ACCEPTED_PS_REJECTION'}
-        $legacyReason=Get-MatrixProbeRejection $failure
+        $legacyReason=Get-MatrixProbeRejection $failure $value.root
         $rustReason=($result.Stdout|ConvertFrom-Json).rejected
         if($rustReason -cne $legacyReason -or ($ExpectedRejection -and $legacyReason -cne $ExpectedRejection)){throw ('MATRIX_PROBE_REJECTION_CHANGED: '+$legacyReason+' / '+$rustReason+' / '+$ExpectedRejection)}
         Write-NativeJson ($prefix+'.rejection.json') @{legacy=$legacyReason;rust=$rustReason}

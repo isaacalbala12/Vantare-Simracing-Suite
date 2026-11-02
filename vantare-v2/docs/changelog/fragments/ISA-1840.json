@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "issue": "ISA-1840",
   "type": "fix",
-  "summary": "El inicio con Windows comparte Startup con el instalador; Ajustes muestra la versión de la generación activa.",
+  "summary": "Setup y Uninstall comparten el motor Rust y conservan los datos; Ajustes muestra la versión de la generación activa.",
   "technicalNotes": [
     "Paso 1a: el inventario instalado sale de su propio manifiesto, ligado por SHA-256 al estado; se retira la lista histórica congelada de 91 archivos.",
     "Los paquetes entrantes siguen exigiendo el inventario completo actual. Se conservan los controles de rutas conocidas, canal, archivos no enumerados, hashes, sidecars y puntos de reanálisis.",
@@ -24,7 +24,10 @@
     "El interruptor muestra el diagnóstico del script y permite reintentar; captura acotada en un temporal propio de la raíz, eliminado con el hijo.",
     "Una preferencia legacy corrupta o mayor de 1024 B se trata como ausente para no bloquear Probe/Setup. El parámetro Startup conserva un valor inicial válido para closures PS5 y sigue siendo obligatorio al usar SetStartup.",
     "Paso 3: Probe de Setup y Ajustes comparten el lector Rust de instalación sin GPUI. Se conservan los perfiles de validación y los adaptadores PowerShell hasta los pasos 4–7.",
-    "Cambio de comportamiento autorizado en commit separado: Package muestra y compara actualizaciones con versión/canal del manifiesto activo; la identidad binaria queda como diagnóstico en desarrollo o instalación inválida."
+    "Cambio de comportamiento autorizado en commit separado: Package muestra y compara actualizaciones con versión/canal del manifiesto activo; la identidad binaria queda como diagnóstico en desarrollo o instalación inválida.",
+    "Paso 4: Setup y Uninstall ejecutan el motor Rust de escritura en el mismo proceso: ZIP autenticado, generaciones, commit atómico, copia opaca de datos, reparación y retirada reanudable. Conserva state.json v1 y los códigos de salida.",
+    "La frontera transitoria conserva una llamada PowerShell por FinalizeInstall, FinalizeUninstall y Cleanup, con sus guardas, propiedad de accesos, Run y restauración por bytes; se retira en el paso 5. Feed, Register y lanzamiento heredados siguen en sus pasos previstos.",
+    "El contexto de Windows y el catálogo pertenecen a Rust; build.rs deja de interpretar PowerShell. La versión de una retirada interrumpida sale del manifiesto ligado por SHA si sobrevive, o queda ausente, sin DisplayVersion."
   ],
   "testing": [
     "En QA aislada, pasar de una instalación de 109 archivos a una de 110, retirar un recurso en la siguiente, restaurar la anterior y desinstalar: todos los datos y las carpetas vacías de las tres generaciones se conservan.",
@@ -41,6 +44,6 @@
     "Si Windows impide retirar la Run propia al desinstalar, queda apuntando al beta.ps1 ya eliminado y puede mostrar un error en el siguiente inicio de sesión hasta retirar ese valor.",
     "No se incluye el seguimiento de previous-unreadable de #1795 ni se publica una candidata o release.",
     "Los scripts ya instalados en la raíz se renuevan mediante Setup. No se publica una candidata con este PR.",
-    "Este paso no retira el motor PowerShell de escritura ni modifica la instalación real. La reducción global de cinco lectores/reglas a uno queda para los pasos 4–7."
+    "El paso 4 migra las escrituras de Setup y Uninstall; permanecen la finalización Windows transitoria y los consumidores heredados de feed, registro y lanzamiento. La retirada global de PowerShell y sus lectores/reglas culmina en el paso 7. No se modifica la instalación real durante esta entrega."
   ]
 }

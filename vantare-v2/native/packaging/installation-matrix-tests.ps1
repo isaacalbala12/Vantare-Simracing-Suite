@@ -181,6 +181,18 @@ try {
         if($startup.ExitCode -ne 0){throw ('MATRIX_STARTUP_FAILED: '+$startup.Stderr)}
         $startup.Stdout
     }finally{$env:TEMP=$savedStartupTemp;$env:TMP=$savedStartupTmp;$env:LOCALAPPDATA=$savedStartupLocal}
+    if($WriteEngine){
+        $savedBoundaryTemp=$env:TEMP;$savedBoundaryTmp=$env:TMP;$savedBoundaryLocal=$env:LOCALAPPDATA
+        try{
+            $env:TEMP=$qaMatrixRoot;$env:TMP=$qaMatrixRoot;$env:LOCALAPPDATA=Join-Path $qaMatrixRoot 'LocalAppData'
+            $boundary=Invoke-NativeProcess -Executable "$env:WINDIR/System32/WindowsPowerShell/v1.0/powershell.exe" -Arguments @(
+                '-NoProfile','-ExecutionPolicy','Bypass','-File',(Join-Path $PSScriptRoot 'matrix/writer-boundary-tests.ps1'),
+                '-Root',(Join-Path $qaMatrixRoot 'writer-boundary'),'-Assets',$assets,'-WriteEngine',$WriteEngine
+            ) -TimeoutMilliseconds 120000 -LogPath (Join-Path $qaMatrixRoot 'writer-boundary.log')
+            if($boundary.ExitCode -ne 0){throw ('MATRIX_WRITER_BOUNDARY_FAILED: '+$boundary.Stderr)}
+            $boundary.Stdout
+        }finally{$env:TEMP=$savedBoundaryTemp;$env:TMP=$savedBoundaryTmp;$env:LOCALAPPDATA=$savedBoundaryLocal}
+    }
     Write-NativeJson (Join-Path $qaMatrixRoot 'results.json') $rows
     if ($Record) { Write-NativeJson (Join-Path $qaMatrixRoot 'candidate-baseline.json') $rows }
 } finally {

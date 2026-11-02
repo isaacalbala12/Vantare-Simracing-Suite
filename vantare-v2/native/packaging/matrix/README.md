@@ -183,3 +183,11 @@ el test también simula esa omisión para demostrar el rechazo. Carpetas de prog
 no vacías conservan los archivos ajenos y no impiden retirar state.json/finalizar.
 La demostración del driver exige salida correcta, registro retirado y datos
 intactos. data_unchanged se calcula de los índices realmente comparados.
+
+Paso 4: `-WriteEngine` recibe el ejemplo QA `installer-write-matrix.exe`,
+compilado con `--no-default-features --features transport`. Usa las operaciones
+Rust de producto con contexto explícito de registro y carpetas. Conserva las
+88 instantáneas y el contraste del lector; Feed/Register siguen heredados.
+`writer-boundary-tests.ps1` fuerza fallos de la finalización Windows, comprueba
+la restauración por bytes, la retirada reanudable y las guardas de Cleanup.
+No se distribuye el ejemplo ni se modifica el baseline para aceptar diferencias.

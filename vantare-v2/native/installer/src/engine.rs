@@ -5,39 +5,28 @@
 //! Uninstall-Beta retire as their consumers migrate in steps 4–6, with product
 //! PowerShell removed in step 7. No global five-to-one claim before that cut.
 #[cfg(feature = "transport")]
+pub mod context;
+#[cfg(feature = "transport")]
 mod host;
 mod installation;
-pub mod validation;
-#[cfg(feature = "write-engine")]
-pub mod package;
 #[cfg(feature = "write-engine")]
 pub mod operations;
 #[cfg(feature = "write-engine")]
-pub mod write_fs;
+pub mod package;
 #[cfg(all(windows, feature = "write-engine"))]
 mod platform;
-#[cfg(feature = "transport")]
-pub mod context;
+pub mod validation;
+#[cfg(feature = "write-engine")]
+pub mod write_fs;
 
 #[cfg(feature = "transport")]
 pub use host::{Request, Session, headless, log_path};
 pub use installation::{
-    Generation, Installation, Manifest, ReadError, ReadProfile, Rejection, State, known_members, current_members, validate_catalogue,
+    Generation, Installation, Manifest, ReadError, ReadProfile, Rejection, State, current_members,
+    known_members, validate_catalogue,
 };
 #[cfg(feature = "write-engine")]
 pub use write_fs::WriteError;
-
-#[cfg(all(windows, feature = "transport"))]
-pub fn qa_launch_identity() -> Result<(), String> {
-    if crate::QA {
-        let owner = env!("VANTARE_INSTALLER_QA_OWNER_SID");
-        let current = platform::user_sid().map_err(|error| error.to_string())?;
-        if owner.is_empty() || current == owner {
-            return Err("Abrir el Hub QA requiere una cuenta/VM con SID distinto al de origen del paquete.".into());
-        }
-    }
-    Ok(())
-}
 
 pub fn reject_links(path: &std::path::Path) -> Result<(), String> {
     for ancestor in path.ancestors() {
@@ -57,8 +46,8 @@ pub fn reject_links(path: &std::path::Path) -> Result<(), String> {
     Ok(())
 }
 
-/// Complete the OS context using the one Rust state reader. The driver keeps
-/// discovery/options until step 4; it does not read installation state here.
+/// Legacy p3 contrast adapter. Production Setup uses Context::probe from p4;
+/// the matrix keeps this adapter until product PowerShell retires in p7.
 pub fn complete_probe(
     mut info: crate::model::Info,
     uninstall: bool,
@@ -81,7 +70,13 @@ pub fn complete_probe(
     Ok(info)
 }
 
-pub(super) fn validate_setup_channel(manifest: Option<&Manifest>, uninstall: bool) -> Result<(), ReadError> {
-    if !uninstall && manifest.is_some_and(|manifest| manifest.channel != "beta") { Err(Rejection::Manifest.into()) }
-    else { Ok(()) }
+pub(super) fn validate_setup_channel(
+    manifest: Option<&Manifest>,
+    uninstall: bool,
+) -> Result<(), ReadError> {
+    if !uninstall && manifest.is_some_and(|manifest| manifest.channel != "beta") {
+        Err(Rejection::Manifest.into())
+    } else {
+        Ok(())
+    }
 }

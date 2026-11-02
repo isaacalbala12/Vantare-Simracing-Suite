@@ -1,14 +1,19 @@
 # Beta nativa — instalador y actualizaciones (#1454)
 
-Paso 3 de #1840: Setup Probe y Ajustes comparten Installation::read de
-installer::engine, sin GPUI. El driver conserva descubrimiento/registro/opciones;
-readContext=true omite su lectura de state/manifiesto, que completa Rust. La
-petición Probe antigua y las escrituras PS conservan sus adaptadores hasta
-pasos 4–7. El lector conserva los perfiles existentes: activa sin rehash de
-binarios para Probe, anterior completa y Hub informativo. La versión instalada
-procede del manifiesto de la activa; DisplayVersion solo queda como presentación
-heredada del Probe de Uninstall hasta paso 4. No cambia ninguna operación de escritura.
-La tabla de retirada y medidas reales está en [evidencia de paso 3](matrix/evidence-1840-p3.md).
+Paso 4 de #1840: Setup/Uninstall usan el motor Rust para estado, ZIP,
+generaciones y datos; Context resuelve raíz, HKCU y opciones. El driver queda
+como oráculo y adaptador heredado. Una llamada por FinalizeInstall,
+FinalizeUninstall y Cleanup conserva la finalización Windows PowerShell actual,
+incluidas transacción, guardas, propiedad de accesos, Run y rollback por bytes.
+TODO(#1840 p5) retira esa frontera; Feed/Register y lanzamiento conservan sus
+pasos previstos. Contrato y medidas en [evidencia de paso 4](matrix/evidence-1840-p4.md).
+
+Desde el paso 3, Probe y Ajustes comparten Installation::read sin GPUI:
+activa sin rehash para Probe, anterior completa y Hub informativo. La versión
+procede del manifiesto activo. Desde p4, una desinstalación interrumpida usa
+el manifiesto ligado por SHA si sobrevive o deja la versión ausente, sin
+DisplayVersion. El adaptador readContext/complete_probe queda para contraste.
+La evidencia histórica de p3 está [aquí](matrix/evidence-1840-p3.md).
 
 Paso 1d de #1840: SetStartup comparte el acceso Startup del instalador y guarda
 la opción fuera de data/. Usa installer-ui.json cuando existe; las instalaciones

@@ -29,15 +29,18 @@ y oráculo heredado del driver, no los invoca Setup.
 | Perfil | Contrato conservado |
 | --- | --- |
 | Probe | SHA del manifiesto activo, data presente, inventario cerrado y sin archivos ajenos; no rehash de sus binarios. Anterior con hash/tamaño/PE/sidecar completos o aviso y anterior no restaurable, sin reescribir estado |
+| Verified | Mismas reglas que Probe, añadiendo hash/tamaño/PE/sidecar de la activa antes de mutaciones; reparar conserva Probe para permitir sustituir una activa dañada |
 | Hub | Informativo: schema/canal/referencias y manifiesto, sin autenticar bytes/inventario/data; anterior solo estructural. Estado cerrado 16 KiB, manifiesto 1 MiB; portátil sin state conserva soporte |
 | Uninstall | Recuperación estructural aunque se hayan retirado binarios/manifiesto. La lectura estructural permite reanudar la retirada; Context usa el manifiesto cuando existe y deja la versión ausente si ya se retiró, sin DisplayVersion |
+| Retire | Contrato estructural del escritor Uninstall-Beta: referencias active/previous y hashes sintácticos válidos, canal beta y previous presente; no exige integridad de binarios ya retirados |
 
 Probe conserva el límite de 64 KiB del manifiesto y el estado sin límite previo;
 no se endurecen esos contratos en este refactor. `validation` centraliza los
 perfiles existentes: packaging 3–4 componentes/sufijo, Hub con tope de 100 bytes,
 comparación Setup de tres u16 sin ceros iniciales. No son gramáticas equivalentes.
 El lector común Probe acepta los cuatro canales cerrados, como Read-NativeState.
-Solo `complete_probe` de Setup conserva ExpectedChannel=beta. La clave previous
+Setup conserva ExpectedChannel=beta en Context y en el adaptador `complete_probe`.
+La clave previous
 ausente se rechaza: con StrictMode el PS real no la trata como null. Los rechazos
 de contrato disponen de invariantes tipadas para el contraste de la matriz.
 Los adaptadores PS y sus reglas siguen hasta pasos 4–7; no se afirma 5→1 global.

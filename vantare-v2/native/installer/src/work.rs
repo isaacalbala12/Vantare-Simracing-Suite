@@ -56,19 +56,60 @@ impl Drop for Work {
 }
 
 pub fn open(root: PathBuf) -> Result<(), String> {
+    // CreateProcess can accept PowerShell even when its -File does not exist.
+    // Keep Setup open for that launch error instead of reporting a false success.
     if !root.join("beta.ps1").is_file() {
-        return Err("No se encuentra el lanzador de Vantare. Vuelve a ejecutar el instalador.".into());
+        return Err(
+            "No se encuentra el lanzador de Vantare. Vuelve a ejecutar el instalador.".into(),
+        );
     }
-    crate::engine::qa_launch_identity()?;
-    let installation = crate::engine::Installation::read(&root, crate::engine::ReadProfile::Verified)
-        .map_err(|error| error.to_string())?;
-    let state = installation.state.ok_or("No hay instalación activa")?;
-    let target = root.join("generations").join(state.active.generation).join("bin/vantare.exe");
-    let mut command = std::process::Command::new(target);
-    command.arg("--beta").arg("-Root").arg(root);
+    let windows = std::env::var_os("WINDIR").ok_or("Windows no está disponible")?;
+    let host = PathBuf::from(windows).join("System32/WindowsPowerShell/v1.0/powershell.exe");
+    if crate::QA {
+        let owner = env!("VANTARE_INSTALLER_QA_OWNER_SID");
+        let mut probe = std::process::Command::new(&host);
+        probe.args([
+            "-NoProfile",
+            "-Command",
+            "[Security.Principal.WindowsIdentity]::GetCurrent().User.Value",
+        ]);
+        #[cfg(windows)]
+        {
+            use std::os::windows::process::CommandExt;
+            probe.creation_flags(0x0800_0000);
+        }
+        let output = probe.output().map_err(|e| e.to_string())?;
+        let current = String::from_utf8_lossy(&output.stdout);
+        if owner.is_empty()
+            || !output.status.success()
+            || !current.trim().starts_with("S-1-")
+            || current.trim() == owner
+        {
+            return Err(
+                "Abrir el Hub QA requiere una cuenta/VM con SID distinto al de origen del paquete."
+                    .into(),
+            );
+        }
+    }
+    let mut command = std::process::Command::new(host);
+    command
+        .args([
+            "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-WindowStyle",
+            "Hidden",
+            "-File",
+        ])
+        .arg(root.join("beta.ps1"))
+        .arg("-Root")
+        .arg(root);
     #[cfg(windows)]
-    { use std::os::windows::process::CommandExt; command.creation_flags(0x0800_0000); }
-    command.spawn().map_err(|error| error.to_string())?;
+    {
+        use std::os::windows::process::CommandExt;
+        command.creation_flags(0x0800_0000);
+    }
+    command.spawn().map_err(|e| e.to_string())?;
     Ok(())
 }
 

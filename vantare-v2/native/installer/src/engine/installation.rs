@@ -23,6 +23,8 @@ pub enum ReadProfile {
     /// Legacy interrupted uninstall may have already removed manifest/bin.
     /// Surviving bound manifest may inform display; never uses registry fallback.
     Uninstall,
+    /// Writer retirement: legacy structural checks, including both SHA references.
+    Retire,
 }
 
 #[derive(Debug)]
@@ -122,6 +124,34 @@ pub struct State {
     pub channel: String,
     pub active: Generation,
     pub previous: Option<Generation>,
+}
+impl State {
+    fn validate(&self, profile: ReadProfile) -> Result<(), ReadError> {
+        let structural = matches!(profile, ReadProfile::Uninstall | ReadProfile::Retire);
+        let active_valid = if profile == ReadProfile::Uninstall {
+            hex(&self.active.generation, 32)
+        } else {
+            self.active.valid()
+        };
+        require(
+            self.schema == 1
+                && self.product == "vantare-native"
+                && channel(&self.channel)
+                && (!structural || (self.channel == "beta" && active_valid)),
+            Rejection::State,
+        )?;
+        require(
+            profile == ReadProfile::Uninstall || active_valid,
+            Rejection::Reference,
+        )?;
+        if profile == ReadProfile::Retire {
+            require(
+                self.previous.as_ref().is_none_or(Generation::valid),
+                Rejection::Reference,
+            )?;
+        }
+        Ok(())
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -304,8 +334,8 @@ fn known_member(path: &str, channel: &str) -> bool {
             ))
 }
 
-/// Transitional closed inventory, shared with the packaging catalogue until
-/// step 4 migrates package ownership and step 7 removes product PowerShell.
+/// Rust-owned closed inventory. Legacy PS catalogues remain differential
+/// oracles until their consumers migrate and product PowerShell retires in p7.
 pub fn known_members(channel: &str) -> Vec<&'static str> {
     CURRENT_MEMBERS
         .iter()
@@ -315,17 +345,31 @@ pub fn known_members(channel: &str) -> Vec<&'static str> {
         .collect()
 }
 pub fn current_members(channel: &str) -> Vec<&'static str> {
-    CURRENT_MEMBERS.iter().copied().filter(|path| known_member(path, channel)).collect()
+    CURRENT_MEMBERS
+        .iter()
+        .copied()
+        .filter(|path| known_member(path, channel))
+        .collect()
 }
 pub fn validate_catalogue() -> Result<(), ReadError> {
-    let mut seen: HashSet<_> = CURRENT_MEMBERS.iter().map(|path| path.to_ascii_lowercase()).collect();
+    let mut seen: HashSet<_> = CURRENT_MEMBERS
+        .iter()
+        .map(|path| path.to_ascii_lowercase())
+        .collect();
     for path in RETIRED_MEMBERS {
         let valid = path.split('/').all(|segment| {
-            !segment.eq_ignore_ascii_case("data") && segment.split('.').all(|part| {
-                !part.is_empty() && part.bytes().all(|b| b.is_ascii_alphanumeric() || matches!(b, b'_' | b'-'))
-            })
+            !segment.eq_ignore_ascii_case("data")
+                && segment.split('.').all(|part| {
+                    !part.is_empty()
+                        && part
+                            .bytes()
+                            .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'_' | b'-'))
+                })
         });
-        require(valid && seen.insert(path.to_ascii_lowercase()), "Catálogo de rutas retiradas inválido o duplicado")?;
+        require(
+            valid && seen.insert(path.to_ascii_lowercase()),
+            "Catálogo de rutas retiradas inválido o duplicado",
+        )?;
     }
     Ok(())
 }
@@ -422,28 +466,23 @@ impl Installation {
         };
         let (mut state, warning) = decode_state(&raw, profile)?;
         installation.previous_warning = warning;
-        let active_valid = if profile == ReadProfile::Uninstall {
-            hex(&state.active.generation, 32)
-        } else {
-            state.active.valid()
-        };
-        require(
-            state.schema == 1
-                && state.product == "vantare-native"
-                && channel(&state.channel)
-                && (profile != ReadProfile::Uninstall || (state.channel == "beta" && active_valid)),
-            Rejection::State,
-        )?;
-        require(
-            profile == ReadProfile::Uninstall || active_valid,
-            Rejection::Reference,
-        )?;
+        state.validate(profile)?;
         installation.data_path = root
             .join("generations")
             .join(&state.active.generation)
             .join("data");
-        if profile != ReadProfile::Uninstall {
-            let manifest = read_generation(root, &state.active, &state.channel, profile, profile == ReadProfile::Verified)?;
+        if matches!(profile, ReadProfile::Uninstall | ReadProfile::Retire) {
+            // Missing/damaged program members never block uninstall. Only a
+            // surviving hash-bound manifest may supply its displayed version.
+            installation.manifest = uninstall_manifest(root, &state).ok();
+        } else {
+            let manifest = read_generation(
+                root,
+                &state.active,
+                &state.channel,
+                profile,
+                profile == ReadProfile::Verified,
+            )?;
             if profile == ReadProfile::Hub {
                 require(
                     state.previous.as_ref().is_none_or(Generation::valid),
@@ -460,11 +499,6 @@ impl Installation {
                 state.previous = None;
             }
             installation.manifest = Some(manifest);
-        } else {
-            // P4 replaces the registry DisplayVersion projection. Read only a
-            // hash-bound manifest when it survives; missing/damaged program
-            // members never block the structurally valid uninstall profile.
-            installation.manifest = uninstall_manifest(root, &state).ok();
         }
         installation.state = Some(state);
         Ok(installation)
@@ -477,12 +511,39 @@ impl Installation {
 
 fn uninstall_manifest(root: &Path, state: &State) -> Result<Manifest, ReadError> {
     require(state.active.valid(), Rejection::Reference)?;
-    let path = root.join("generations").join(&state.active.generation).join("manifest.json");
+    let path = root
+        .join("generations")
+        .join(&state.active.generation)
+        .join("manifest.json");
     let raw = bytes(&path, Some(65536), ReadProfile::Uninstall)?;
-    require(state.active.manifest_sha256.as_ref() == Some(&format!("{:x}", Sha256::digest(&raw))), Rejection::Binding)?;
+    require(
+        state.active.manifest_sha256.as_ref() == Some(&format!("{:x}", Sha256::digest(&raw))),
+        Rejection::Binding,
+    )?;
     let manifest = Manifest::decode(&raw, ReadProfile::Uninstall)?;
     require(manifest.channel == state.channel, Rejection::Manifest)?;
     Ok(manifest)
+}
+
+// Preserve Uninstall-Beta's retention marker contract: only the numeric version
+// is required here, even if other manifest fields were damaged. This value never
+// supplies installed-version display or authorizes activation.
+#[cfg(feature = "write-engine")]
+pub(super) fn retention_version(root: &Path, state: &State) -> Result<String, ReadError> {
+    let path = root
+        .join("generations")
+        .join(&state.active.generation)
+        .join("manifest.json");
+    let value = json(
+        &bytes(&path, None, ReadProfile::Uninstall)?,
+        ReadProfile::Uninstall,
+    )?;
+    let version = value["version"]
+        .as_str()
+        .ok_or(ReadError::Invalid("Versión activa inválida"))?;
+    super::validation::setup_version(version)
+        .map_err(|_| ReadError::Invalid("Versión activa inválida"))?;
+    Ok(version.to_owned())
 }
 
 fn decode_state(
@@ -497,7 +558,10 @@ fn decode_state(
         value.is_object() && value["active"].is_object(),
         Rejection::State,
     )?;
-    if matches!(profile, ReadProfile::Probe | ReadProfile::Verified) {
+    if matches!(
+        profile,
+        ReadProfile::Probe | ReadProfile::Verified | ReadProfile::Retire
+    ) {
         require(value.get("previous").is_some(), Rejection::MissingPrevious)?;
     }
     if let Some(map) = value.as_object_mut() {
@@ -520,7 +584,9 @@ fn decode_state(
     }
     let mut state: State = serde_json::from_value(value)?;
     let mut warning = None;
-    if matches!(profile, ReadProfile::Probe | ReadProfile::Verified) && !previous.is_null() {
+    if profile == ReadProfile::Retire {
+        state.previous = serde_json::from_value(previous)?;
+    } else if matches!(profile, ReadProfile::Probe | ReadProfile::Verified) && !previous.is_null() {
         match serde_json::from_value(previous) {
             Ok(reference) => state.previous = Some(reference),
             Err(_) => warning = Some("previous-corrupt"),

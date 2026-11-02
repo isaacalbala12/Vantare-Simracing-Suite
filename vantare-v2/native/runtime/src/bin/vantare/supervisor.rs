@@ -87,6 +87,9 @@ impl Driver<'_> {
                     continue;
                 }
                 Action::Kill(index) => {
+                    if !self.machine.killing(index) {
+                        continue;
+                    }
                     let service = &mut self.services[index];
                     let mut reaped = true;
                     if let Some(child) = &mut service.child {

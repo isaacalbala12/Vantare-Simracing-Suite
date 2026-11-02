@@ -104,7 +104,7 @@ revocación, presupuesto de reinicios y conservación del motivo original.
 ejecuta dos variantes con un worker bloqueado durante una escritura: tres hijos
 que ignoran EOF, y tres hijos que atienden EOF. La segunda demuestra que el
 worker por sí solo hace fallar el cierre, aunque todos los hijos salgan limpios.
-verifica fallo dentro de P más margen del arnés, recogida explícita de los hijos,
+verifica salida con código 1, recogida explícita de los hijos,
 documento anterior completo, recuperación del almacenamiento real y locks
 liberados al salir. Los archivos ancla de lock no se borran: se prueba que
 pueden adquirirse otra vez. Resident y Host tienen además pruebas de cierre
@@ -114,3 +114,11 @@ pausa la serialización real de Store; no simula un fallo de disco dentro de
 cada syscall. El código de escritura atómica de ambos se conserva.
 En Unix el conductor recoge los hijos explícitamente sin Job; las pruebas
 portables quedan disponibles, pero no se ejecutan desde este servidor Windows.
+
+Revisión de #1865: el tiempo real P+400 ms se conserva sólo como referencia
+informativa, sin aserción de rendimiento; la salida debe ser código 1 y el
+reloj puro comprueba P exacto. Los dos casos de orden de cierre normal usan
+10 s de plazo del supervisor para reservar margen al núcleo bajo carga;
+conservan sus aserciones de orden. Los escenarios de colgado conservan 1,5 s.
+El cleanup forzado de apps propias sólo solicita terminar; la espera de su
+salida se hace en el test y en el cierre normal, nunca después de P.

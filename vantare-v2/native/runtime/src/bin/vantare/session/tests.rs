@@ -314,3 +314,136 @@ fn a_nonzero_exit_during_requested_closure_does_not_restart_or_replace_the_reaso
     );
     assert_eq!(session.phase, Phase::Finished(Reason::Failed));
 }
+
+#[test]
+fn kills_are_emitted_once_and_late_completion_cannot_reap_a_scheduled_child() {
+    let (mut session, now) = running(Duration::from_secs(1));
+    pulse(&mut session, now, false, false);
+    let deadline = now + Duration::from_secs(1);
+    assert_eq!(
+        pulse(&mut session, deadline, false, false),
+        vec![Action::Kill(2)]
+    );
+    assert!(pulse(&mut session, deadline, false, false).is_empty());
+    assert_eq!(
+        session.paso(
+            Event::Exited {
+                child: 2,
+                success: false
+            },
+            deadline
+        ),
+        vec![]
+    );
+    assert_eq!(session.children[2].state, ChildState::Waiting(deadline));
+    assert!(
+        session
+            .paso(
+                Event::Killed {
+                    child: 2,
+                    reaped: true
+                },
+                deadline
+            )
+            .is_empty()
+    );
+    assert_eq!(
+        pulse(&mut session, deadline, true, false),
+        vec![Action::Spawn(2)]
+    );
+    for event in [
+        Event::Exited {
+            child: 2,
+            success: true,
+        },
+        Event::Killed {
+            child: 2,
+            reaped: true,
+        },
+    ] {
+        assert!(session.paso(event, deadline).is_empty());
+        assert!(session.can_spawn(2));
+    }
+    session.paso(Event::Started(2), deadline);
+    session.paso(Event::Stop(Reason::Stopped), deadline);
+    let at = deadline + Duration::from_secs(1);
+    assert_eq!(
+        pulse(&mut session, at, false, true),
+        vec![
+            Action::Close(0),
+            Action::Kill(0),
+            Action::Kill(1),
+            Action::Kill(2),
+            Action::Kill(3)
+        ]
+    );
+    assert!(pulse(&mut session, at, false, true).is_empty());
+    for child in 0..4 {
+        session.paso(
+            Event::Exited {
+                child,
+                success: false,
+            },
+            at,
+        );
+        assert!(
+            session
+                .paso(
+                    Event::Killed {
+                        child,
+                        reaped: true
+                    },
+                    at
+                )
+                .is_empty()
+        );
+        assert!(
+            session
+                .paso(
+                    Event::Exited {
+                        child,
+                        success: true
+                    },
+                    at
+                )
+                .is_empty()
+        );
+        assert_eq!(session.children[child].state, ChildState::Reaped);
+    }
+    assert_eq!(session.phase, Phase::Finished(Reason::Stopped));
+}
+
+#[test]
+fn duplicate_exit_cannot_spend_restart_budget_or_stop_a_reprogrammed_child() {
+    let now = Instant::now();
+    let mut session = Session::new([Policy::consumer(2)], Duration::from_secs(1), now);
+    pulse(&mut session, now, true, false);
+    session.paso(Event::Started(0), now);
+    session.paso(
+        Event::Exited {
+            child: 0,
+            success: false,
+        },
+        now,
+    );
+    let waiting = session.children[0].state;
+    for event in [
+        Event::Exited {
+            child: 0,
+            success: true,
+        },
+        Event::Exited {
+            child: 0,
+            success: false,
+        },
+        Event::Killed {
+            child: 0,
+            reaped: true,
+        },
+    ] {
+        assert!(session.paso(event, now).is_empty());
+        assert_eq!(session.children[0].state, waiting);
+        assert_eq!(session.children[0].restarts.attempts, 1);
+        assert!(!session.stopping());
+    }
+}

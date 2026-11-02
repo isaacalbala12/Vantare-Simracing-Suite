@@ -49,7 +49,8 @@ impl Resident {
 
     /// Las apps del perfil pueden salir del Job. Al vencer P el supervisor
     /// conserva sus handles originales y aplica sólo `Close::Started`, incluso
-    /// si el worker quedó bloqueado antes de llegar al cleanup normal.
+    /// si el worker quedó bloqueado antes de llegar al cleanup normal. Sólo
+    /// solicita terminar: después de P no espera a que el proceso salga.
     pub fn force_cleanup(&self) -> std::io::Result<()> {
         let profiles = self
             .close_on_exit
@@ -62,7 +63,7 @@ impl Resident {
             .map_err(|_| std::io::Error::other("procesos Launcher ocupados al cerrar"))?;
         let mut first = None;
         for profile in profiles {
-            if let Err(error) = processes.close_profile(&profile) {
+            if let Err(error) = processes.request_close_profile(&profile) {
                 first.get_or_insert(error);
             }
         }
@@ -502,7 +503,10 @@ mod tests {
 
     #[test]
     fn forced_cleanup_closes_owned_profile_apps_even_when_the_worker_is_blocked() {
-        use std::os::windows::{io::AsHandle, process::CommandExt};
+        use std::os::windows::{
+            io::{AsHandle, AsRawHandle},
+            process::CommandExt,
+        };
         use std::process::{Command, Stdio};
         let mut child = Command::new("cmd.exe")
             .args(["/D", "/C", "set /p line="])
@@ -539,7 +543,12 @@ mod tests {
         resident
             .force_cleanup()
             .expect("Close::Started sin depender del worker ni del Job");
-        assert!(super::super::win::process_finished(&observed));
+        // La espera pertenece al test, nunca al camino forzado del supervisor.
+        assert_eq!(
+            super::super::win::wait_any(&[observed.as_raw_handle()], Some(Duration::from_secs(5)))
+                .expect("salida de app propia"),
+            Some(0)
+        );
         release.0.send(()).expect("liberar fixture");
         // Drop normal recoge el worker liberado; no queda ningún hilo del test.
         drop(resident);

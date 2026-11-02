@@ -76,14 +76,13 @@ pub struct Host {
 }
 impl Host {
     /// Inicia el cierre sin E/S ni joins en el hilo del supervisor.
-    /// El servidor conserva `finish()` completo; sólo se cancela una operación
-    /// que ya está ocupando el estado, como en el Drop anterior.
+    /// El servidor conserva `finish()` completo. Repite la cancelación en cada
+    /// consulta para cubrir una publicación tardía o un slot ocupado.
     pub fn request_shutdown(&self) {
-        let already_stopping = self.stop.is_set();
         self.stop.set();
-        if !already_stopping
-            && self.state.try_lock().is_err()
-            && let Ok(slot) = self.cancellation.try_lock()
+        // La petición puede publicar su cancelación después de observar Stop.
+        // Reintentar es idempotente y no depende de que state esté ocupado.
+        if let Ok(slot) = self.cancellation.try_lock()
             && let Some(event) = &*slot
         {
             event.set();

@@ -27,7 +27,7 @@ pub(super) fn force(
         Ok(()) => {
             let status = child.wait()?;
             // Child::kill puede tener éxito aunque el hijo ya haya salido.
-            if natural_exit(status) {
+            if exited_without_our_kill(status) {
                 report(name, status);
                 return Ok(());
             }
@@ -47,11 +47,13 @@ pub(super) fn force(
     }
 }
 
-fn natural_exit(status: ExitStatus) -> bool {
+fn exited_without_our_kill(status: ExitStatus) -> bool {
     #[cfg(unix)]
     {
-        // SIGKILL no tiene código; una salida natural con código no fue un kill.
-        status.code().is_some()
+        use std::os::unix::process::ExitStatusExt;
+        // Child::kill envía SIGKILL (9 en las plataformas Unix admitidas).
+        // Otra señal observada ganó la carrera: no acreditar nuestro kill.
+        status.code().is_some() || status.signal().is_some_and(|signal| signal != 9)
     }
     #[cfg(not(unix))]
     {

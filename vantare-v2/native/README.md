@@ -163,7 +163,9 @@ fuera de adquisición. El servicio mantiene ambos ciclos hasta cancelación.
   toca el núcleo. Agotado el presupuesto, el launcher registra el motivo en
   stderr, cierra todo y sale con 1. Un hijo que sale con 0 ha terminado a
   propósito (overlays cerrado por el usuario, replay acabado): se cierra todo y
-  se sale con 0.
+  se sale con 0. Diagnóstico es observer: se intenta arrancar una vez; ni su
+  fallo ni su salida terminan la sesión o provocan reinicio. Durante el cierre
+  comparte el plazo y un kill forzado suyo sí cuenta como defecto.
 - **Cierre ordenado.** Ctrl+C, cierre de consola o `vantare --parar` inicia
   un único presupuesto `--plazo` P (3 s). Solicita EOF a Engineer habilitado,
   overlays y diagnóstico, en ese orden; no usa `WM_CLOSE`. Los consumidores
@@ -179,8 +181,9 @@ fuera de adquisición. El servicio mantiene ambos ciclos hasta cancelación.
   Al salir el proceso, el SO libera los locks de sus hilos. Las escrituras de
   documentos conservan temp+rename: un temporal incompleto no sustituye al
   documento anterior. Los archivos ancla `.lock` pueden persistir sin retener
-  el bloqueo. El residente conserva los handles de apps propias para recoger
+  el bloqueo. El residente conserva los handles de apps propias para solicitar terminar
   las configuradas con cierre al salir incluso si su worker no responde.
+  Después de P no espera la salida de esas apps; el cierre normal sí las recoge.
   Una salida no cero tras pedir cierre se registra sin fallar la sesión. La
   revocación de Engineer registra un fallo de cierre y conserva los demás hijos;
   sólo el shutdown final propaga ese fallo. Una salida natural en carrera con

@@ -176,6 +176,10 @@ impl Session {
         )
     }
 
+    pub fn killing(&self, index: usize) -> bool {
+        matches!(self.children[index].state, ChildState::Killing { .. })
+    }
+
     /// Una transición completa. `now` es el único reloj de la máquina.
     pub fn paso(&mut self, event: Event, now: Instant) -> Vec<Action> {
         let mut actions = Vec::new();
@@ -194,6 +198,12 @@ impl Session {
                 success,
             } => {
                 let previous = self.children[index].state;
+                if !matches!(
+                    previous,
+                    ChildState::Alive(_) | ChildState::Closing { .. } | ChildState::Killing { .. }
+                ) {
+                    return actions;
+                }
                 let policy = self.children[index].policy;
                 self.children[index].state = ChildState::Reaped;
                 if let ChildState::Closing { revoked: true, .. } = previous {
@@ -211,10 +221,9 @@ impl Session {
                 }
             }
             Event::Killed { child, reaped } => {
-                let revoked = matches!(
-                    self.children[child].state,
-                    ChildState::Killing { revoked: true }
-                );
+                let ChildState::Killing { revoked } = self.children[child].state else {
+                    return actions;
+                };
                 self.children[child].state = ChildState::Reaped;
                 if revoked && !self.stopping() {
                     if reaped {

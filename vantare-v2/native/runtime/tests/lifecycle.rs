@@ -375,6 +375,16 @@ impl Scenario {
     }
 
     fn launcher_command(&self, launcher_args: &[&str], core: &str, overlays: &[&str]) -> Command {
+        self.launcher_command_with_grace(launcher_args, core, overlays, "1500")
+    }
+
+    fn launcher_command_with_grace(
+        &self,
+        launcher_args: &[&str],
+        core: &str,
+        overlays: &[&str],
+        grace: &str,
+    ) -> Command {
         let me = env::current_exe().unwrap();
         let mut command = Command::new(env!("CARGO_BIN_EXE_vantare"));
         command
@@ -384,7 +394,7 @@ impl Scenario {
                 "--overlays-bin",
                 me.to_str().unwrap(),
             ])
-            .args(["--instancia", &self.instance, "--plazo", "1500"])
+            .args(["--instancia", &self.instance, "--plazo", grace])
             .args(launcher_args)
             .args([
                 "--",
@@ -758,7 +768,7 @@ fn a_second_instance_starts_nothing() {
 
 fn stop_closes_overlays_before_the_core() {
     let scenario = Scenario::new("order");
-    let mut launcher = running(&scenario, &[], &[]);
+    let mut launcher = running(&scenario, &["--plazo", "10000"], &[]);
 
     scenario.stop();
 
@@ -814,12 +824,21 @@ fn children_die_with_the_launcher() {
 }
 
 fn launch_engineer(scenario: &Scenario, extra: &[&str], budget: u32) -> Launcher {
+    launch_engineer_with_grace(scenario, extra, budget, "1500")
+}
+
+fn launch_engineer_with_grace(
+    scenario: &Scenario,
+    extra: &[&str],
+    budget: u32,
+    grace: &str,
+) -> Launcher {
     let access = format!("{}.engineer-access", scenario.file("status"));
     if !std::path::Path::new(&access).exists() {
         fs::write(&access, "allow").expect("permiso sintético del escenario");
     }
     let me = env::current_exe().unwrap();
-    let mut command = scenario.launcher_command(
+    let mut command = scenario.launcher_command_with_grace(
         &[
             "--engineer",
             &scenario.file("cursor.json"),
@@ -830,6 +849,7 @@ fn launch_engineer(scenario: &Scenario, extra: &[&str], budget: u32) -> Launcher
         ],
         "fake-core",
         &[],
+        grace,
     );
     command
         .args(["--", "fake-engineer", "--status", &scenario.file("status")])
@@ -869,9 +889,9 @@ fn engineer_policy_denies_start_and_revocation_preserves_other_children() {
     assert_eq!(scenario.exit_code(&mut launcher, LONG), 0);
 }
 
-fn engineer_restart_is_isolated_and_stop_closes_it_before_overlays_and_core() {
+fn engineer_restart_is_isolated_and_stop_closes_consumers_before_the_core() {
     let scenario = Scenario::new("engineer-restart");
-    let mut launcher = launch_engineer(&scenario, &[], 2);
+    let mut launcher = launch_engineer_with_grace(&scenario, &[], 2, "10000");
     let first = scenario.wait_for("Engineer arrancado", LONG, || {
         scenario.starts("engineer").first().copied()
     });
@@ -1042,8 +1062,8 @@ fn run_scenarios(filters: &[String]) -> ExitCode {
             engineer_policy_denies_start_and_revocation_preserves_other_children,
         ),
         (
-            "engineer_restart_is_isolated_and_stop_closes_it_before_overlays_and_core",
-            engineer_restart_is_isolated_and_stop_closes_it_before_overlays_and_core,
+            "engineer_restart_is_isolated_and_stop_closes_consumers_before_the_core",
+            engineer_restart_is_isolated_and_stop_closes_consumers_before_the_core,
         ),
         (
             "engineer_restart_budget_closes_every_child_after_exactly_two_retries",

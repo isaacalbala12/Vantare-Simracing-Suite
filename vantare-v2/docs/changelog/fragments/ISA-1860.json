@@ -5,18 +5,18 @@
   "summary": "Al cerrar Vantare, todos los procesos comparten un solo plazo y los overlays terminan de forma ordenada.",
   "technicalNotes": [
     "El supervisor solicita sólo EOF a Engineer, overlays y diagnóstico, en ese orden. Núcleo recibe EOF tras los consumidores y workers o al comenzar su reserva min(1 s, P/2). Se retira EnumWindows/WM_CLOSE de los hijos.",
-    "Un kill forzado en el cierre final es fallo del supervisor, que continÃºa recogiendo los demÃ¡s hijos. Revocar Engineer registra su fallo de cierre sin terminar la sesiÃ³n; una salida no cero al atender el cierre sÃ³lo se diagnostica.",
-    "Una desconexiÃ³n del Hub entre tramas ya no registra UnexpectedEof como error. Una trama truncada o invÃ¡lida sigue fallando.",
+    "Un kill forzado en el cierre final es fallo del supervisor, que continúa recogiendo los demás hijos. Revocar Engineer registra su fallo de cierre sin terminar la sesión; una salida no cero al atender el cierre sólo se diagnostica.",
+    "Una desconexión del Hub entre tramas ya no registra UnexpectedEof como error. Una trama truncada o inválida sigue fallando.",
     "Windows y Unix comparten una máquina pura con reloj inyectado y un único plazo de cierre. Resident y Host se cancelan y sólo hacen join de hilos terminados; agotar el plazo registra defecto y devuelve fallo, conservando las escrituras atómicas."
   ],
   "testing": [
     "Cerrar tres veces el supervisor con overlays reales y layout guardado: debe salir con 0, ejecutar el gancho de salida y no registrar se le mata.",
-    "Destruir primero la ventana de bandeja y cerrar despuÃ©s el supervisor: EOF debe bastar para salir.",
-    "Comprobar desconexiones normales por pipe real sin diagnÃ³stico de error y conservar el rechazo de tramas truncadas.",
-    "Probar un worker que no responde con tres hijos que ignoran EOF: la sesión falla dentro del plazo más margen del arnés, recoge los hijos y libera los locks; el documento anterior queda íntegro y puede volver a guardarse."
+    "Destruir primero la ventana de bandeja y cerrar después el supervisor: EOF debe bastar para salir.",
+    "Comprobar desconexiones normales por pipe real sin diagnóstico de error y conservar el rechazo de tramas truncadas.",
+    "Probar un worker que no responde con hijos colgados y cooperativos: la sesión debe salir con código 1 y dejar documentos íntegros y locks libres; el tiempo medido es un diagnóstico informativo."
   ],
   "knownLimitations": [
-    "La polÃ­tica actual al cerrar el Hub durante una pausa y el Hub abierto desde bandeja se conserva hasta el paso 4 del plan.",
-    "El clic fÃ­sico del menÃº y los cierres sobre la siguiente candidata instalada requieren verificaciÃ³n interactiva de Isaac."
+    "La política actual al cerrar el Hub durante una pausa y el Hub abierto desde bandeja se conserva hasta el paso 4 del plan.",
+    "El clic físico del menú y los cierres sobre la siguiente candidata instalada requieren verificación interactiva de Isaac."
   ]
 }

@@ -115,3 +115,20 @@ fn supervision_error_has_priority_over_shutdown_error() {
         io::ErrorKind::TimedOut
     );
 }
+
+#[test]
+#[cfg(unix)]
+fn another_signal_racing_our_kill_is_not_reported_as_our_sigkill() {
+    let mut child = waiting(0);
+    force(&mut child.0, "fixture", Duration::ZERO, |child| {
+        assert!(
+            Command::new("kill")
+                .args(["-TERM", &child.id().to_string()])
+                .status()?
+                .success()
+        );
+        child.wait()?;
+        Ok(())
+    })
+    .expect("SIGTERM observada no es nuestro SIGKILL");
+}

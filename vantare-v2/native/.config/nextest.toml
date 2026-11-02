@@ -39,7 +39,7 @@ threads-required = 'num-test-threads'
 # threads-required = num-test-threads los ejecuta en serie: mide la suite al
 # cambiar la lista (nexte.st/docs/configuration/threads-required).
 [[profile.default.overrides]]
-filter = 'test(read_times_out_and_stop_interrupts) | test(a_client_that_never_speaks_does_not_hold_up_shutdown) | test(a_client_that_never_reads_blocks_neither_publish_nor_shutdown) | test(initial_feed_failure_denies_and_cancellation_finishes_promptly) | test(cancellation_interrupts_delay_and_probe_without_starting_the_next_step) | test(server_rejects_ack_ahead_and_cancels_a_peer_waiting_without_ack) | test(the_service_shuts_down_in_order_when_asked) | test(forced_worker_exit_releases_locks_and_keeps_documents)'
+filter = 'test(read_times_out_and_stop_interrupts) | test(a_client_that_never_speaks_does_not_hold_up_shutdown) | test(a_client_that_never_reads_blocks_neither_publish_nor_shutdown) | test(initial_feed_failure_denies_and_cancellation_finishes_promptly) | test(cancellation_interrupts_delay_and_probe_without_starting_the_next_step) | test(server_rejects_ack_ahead_and_cancels_a_peer_waiting_without_ack) | test(the_service_shuts_down_in_order_when_asked)'
 threads-required = 'num-test-threads'
 priority = 100
 

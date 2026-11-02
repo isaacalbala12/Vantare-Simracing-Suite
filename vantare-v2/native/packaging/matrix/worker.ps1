@@ -71,6 +71,8 @@ try {
             $env:TEMP=$qaCaseRoot
             [Console]::SetIn([IO.StringReader]::new("continue`n"))
             if($WriteEngine){
+                [Console]::OutputEncoding=[Text.UTF8Encoding]::new($false)
+                $OutputEncoding=[Text.UTF8Encoding]::new($false)
                 $contract=Join-Path $qaCaseRoot 'writer.json'
                 $context=@{localAppData=$env:LOCALAPPDATA;registryPrefix=$RegistryRoot.Substring('HKEY_CURRENT_USER\'.Length);shellRoot=$qaCaseRoot}
                 Write-NativeJson $contract @{request=$requestValue;context=$context;payloadDirectory=$engine}

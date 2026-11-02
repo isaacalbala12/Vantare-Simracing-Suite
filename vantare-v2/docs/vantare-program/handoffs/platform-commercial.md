@@ -645,6 +645,15 @@ Sin merge/release del worker.
   FileDispositionInfoEx con semántica POSIX, por handle propio, antes de escoger
   el contrato definitivo. Si no permite retirar la imagen, volver al orquestador
   para decidir residuo temporal explícito u otra política; no ampliar por cuenta propia.
+- Ensayo autorizado después y ejecutado: Windows22631/NTFS, copia propia sin
+  ReadOnly. Identidad/hash/raíz incorrectos rechazados; caso normal abre DELETE,
+  verifica SHA por handle y falla FileDispositionInfoEx(DELETE|POSIX) con
+  ERROR_ACCESS_DENIED(5). No se ha medido NTSTATUS ni se equipara a CANNOT_DELETE.
+  Campaña detenida; EXE/carpeta conservados y señalados explícitamente. IGNORE,
+  no NTFS/Windows antiguo y carpeta vacía no acreditados. Fixture C# de QA,
+  no prueba del EXE Rust distribuido. Detalle/reproducción/alternativas en
+  native/packaging/matrix/evidence-1840-p5.md. Pendiente decisión del orquestador;
+  sin código de producto, compilación Rust, cambio de dependencia o estado Plane.
 
 ### Antecedentes 0–1d (evidencia histórica conservada)
 

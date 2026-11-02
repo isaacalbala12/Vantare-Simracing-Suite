@@ -1,5 +1,5 @@
 //! Proceso Hub de ADR 0099: edición local, sin dependencia del runtime.
-#![deny(unsafe_code)] // Fronteras Win32 documentadas: launcher/windows y testing/windows (BCrypt).
+#![deny(unsafe_code)] // Win32: launcher/windows, testing/windows (BCrypt), installation::tests (espera por handle).
 
 pub mod analysis;
 pub mod calendar;

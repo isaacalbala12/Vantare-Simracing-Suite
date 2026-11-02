@@ -204,6 +204,7 @@ impl Drop for BootConfirmation {
 #[cfg(all(test, windows))]
 mod tests {
     use super::*;
+    use std::os::windows::io::{AsHandle, AsRawHandle, BorrowedHandle};
 
     fn root() -> std::path::PathBuf {
         let root = std::env::temp_dir().join(format!("vantare-boot-{}-{}", std::process::id(), {
@@ -230,21 +231,38 @@ mod tests {
         BootConfirmation::spawn(root, &mut command).expect("registration fixture")
     }
 
-    fn process_running(pid: u32) -> bool {
-        use std::os::windows::process::CommandExt;
-        std::process::Command::new("powershell.exe")
-            .args(["-NoProfile", "-NonInteractive", "-Command",
-                &format!("if(Get-Process -Id {pid} -ErrorAction SilentlyContinue){{exit 0}}else{{exit 1}}")])
-            .creation_flags(0x0800_0000).status().expect("query owned child PID").success()
+    #[allow(unsafe_code)] // Test-only Win32 boundary: query the owned process object.
+    fn process_exited(handle: BorrowedHandle<'_>) -> std::io::Result<bool> {
+        #[link(name = "kernel32")]
+        // SAFETY: DWORD WaitForSingleObject(HANDLE, DWORD), Windows SDK signature.
+        unsafe extern "system" {
+            #[link_name = "WaitForSingleObject"]
+            fn wait_for_single_object(handle: *mut std::ffi::c_void, milliseconds: u32) -> u32;
+        }
+        // SAFETY: the borrowed duplicate stays owned for this call. Zero checks
+        // immediately: production kill/wait must already have reaped this child.
+        match unsafe { wait_for_single_object(handle.as_raw_handle(), 0) } {
+            0 => Ok(true),                                    // WAIT_OBJECT_0
+            0x102 => Ok(false), // WAIT_TIMEOUT: the same process is still running.
+            u32::MAX => Err(std::io::Error::last_os_error()), // WAIT_FAILED
+            _ => Err(std::io::Error::other("unexpected process wait result")),
+        }
     }
 
     #[test]
     fn dropping_confirmation_reaps_the_blocked_registration_child() {
         let root = root();
         let confirmation = waiting(&root);
-        let pid = confirmation.child.as_ref().unwrap().id();
+        let handle = confirmation
+            .child
+            .as_ref()
+            .unwrap()
+            .as_handle()
+            .try_clone_to_owned()
+            .expect("retain owned registration process");
+        assert!(!process_exited(handle.as_handle()).expect("blocked child"));
         drop(confirmation);
-        assert!(!process_running(pid));
+        assert!(process_exited(handle.as_handle()).expect("reaped child"));
         std::fs::remove_dir_all(root).unwrap();
     }
 
@@ -302,11 +320,18 @@ mod tests {
         );
         assert!(root.join("hub-ready").exists());
         let mut confirmation = waiting(&root);
-        let pid = confirmation.child.as_ref().unwrap().id();
+        let handle = confirmation
+            .child
+            .as_ref()
+            .unwrap()
+            .as_handle()
+            .try_clone_to_owned()
+            .expect("retain owned registration process");
+        assert!(!process_exited(handle.as_handle()).expect("blocked child"));
         confirmation.registration_deadline = std::time::Instant::now();
         assert!(confirmation.poll().expect("registration is cosmetic"));
         assert!(confirmation.child.is_none());
-        assert!(!process_running(pid));
+        assert!(process_exited(handle.as_handle()).expect("reaped child"));
         assert!(
             std::fs::read_to_string(root.join("registration-status.json"))
                 .unwrap()

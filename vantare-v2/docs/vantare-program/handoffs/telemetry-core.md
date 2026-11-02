@@ -3,6 +3,9 @@
 
 # Handoff vivo — Telemetry Core
 
+**Estado vigente de VANTA-129:** ver [paso 5](#vanta-129--paso-5-2026-11-02).
+Los estados anteriores describen el momento de cada corte.
+
 Estado de la base indicada; releer la issue antes de ejecutar.
 [Histórico completo por SHA](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/ca17545f607b85f5d47dc9d060721b69e6a6a158/vantare-v2/docs/vantare-program/handoffs/telemetry-core.md): conserva IDs, decisiones, informes, fallos y evidencia de cada ronda. No copiar ese diario aquí.
 
@@ -639,28 +642,47 @@ Este complemento no adelanta pasos del diseño. VANTA-130 conserva ui/layout
 Siguiente: revisión/integración por el orquestador; sin merge/promoción/release del worker. Sin merge/promoción/release. Pasos 4–10 pendientes.
 
 
-## VANTA-129 · reanudación tras #1885, paso 5 (2026-11-02)
+## VANTA-129 · paso 5 (2026-11-02)
 
-#1885/#1881 integrado por el orquestador en
-`nightly@56c6df494866f7d064042a5329787537f295147b`, CI 5/5 comunicada;
-merge verificado. Paso 3 continúa en draft #1882, HEAD `2c94a5760`,
-CI 5/5 SUCCESS verificada, sin conflictos. No se duplica ni se fusiona.
-VANTA-129 vuelve a En curso para el paso 5, siguiente en el orden del diseño.
+0–2 integrados; paso 3 en draft [#1882](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1882),
+HEAD `2c94a5760`, CI 5/5 SUCCESS y sin conflictos. El orquestador integró
+#1885/#1881 en `nightly@56c6df494866f7d064042a5329787537f295147b`,
+merge y CI 5/5 verificados. VANTA-129 En curso para este corte del paso 5;
+4 y 6–10 pendientes, conforme al orden 3→5→6→4 del diseño aprobado.
+
 Rama `vantareapp/isa-1868-paso5-frescura`, worktree
-`D:/VantareServer/worktrees/isa-1868-paso5`, base `56c6df494`.
-Caracterización previa `08333e828`: retención del jugador con scoring vivo,
-pausa y límites exactos de confirmación (250 ms) y silencio (500 ms),
-para LMU, ACC y fuente desconocida. Ejecución por cola pendiente.
-Se consolidan constantes y vocabulario neutral; los detalles de simulador
-pertenecen al adaptador. Reservados ui/layout, hub/shell y cálculos de raíz
-de datos de VANTA-130. Sin goldens/corpus regenerados ni dependencias nuevas.
-0–2 integrados, 3 en revisión, 5 en curso; 4 y 6–10 pendientes.
+`D:/VantareServer/worktrees/isa-1868-paso5`, base origin/nightly `56c6df494`.
+`domain::freshness` posee 500/250 ms, Reason y los predicados nombrados.
+Núcleo sin rama de ACC; métodos opcionales del adaptador aportan el detalle
+local, también en replay. El servicio lo registra fuera del núcleo. No cambia
+Snapshot/DTO, capacidades, retención, relojes ni la proyección de los overlays.
+Solo cambia el vocabulario de freshness.log y añade detail del adaptador;
+la UI no inventa el detalle que no recibe por el pipe.
 
-Caracterización previa GREEN 4/4 en `08333e828` antes del refactor; incluye
-silencio/reanudación, retención de la misma sesión y pausa asentada sin muestras.
-Primer intento no ejecutó tests (Cargo desde vantare-v2 sin manifiesto); corregido
-el directorio a native y conservados ambos logs. Integridad 468/468 PASS.
-Cambio aplicado: constantes/predicados y Reason en domain, núcleo sin rama ACC,
-diagnóstico específico en los adaptadores mediante un método opcional del trait;
-el servicio lo añade fuera del núcleo. Sin cambios en Snapshot/DTO ni capacidades.
-Tanda conjunta de cuatro crates, telemetría y lifecycle por compilar.ps1 pendiente.
+Caracterización previa `08333e828`: GREEN 4/4, run
+`77f14347-0293-4bed-9e21-7c5738ea8ec5`, antes del refactor. Retención del
+jugador con scoring vivo y límites exactos de pausa/silencio en LMU/ACC/unknown.
+Primer comando falló antes de ejecutar tests por directorio sin Cargo.toml;
+corregido a native y ambos logs conservados.
+
+Tanda local por compilar.ps1, cuatro crates juntos, target propio y raíces QA:
+fmt/check/Clippy -D warnings PASS; 1275/1275 Nextest PASS (14 skips), incluidos
+34/34 de telemetría. Run `910879a0-fe31-4cad-8f25-66a487520e2d`.
+Lifecycle runtime 25/25 PASS con binarios reales normal/QA. Corpus ACC
+190471 lecturas, hashes conservados (193,880 s); fotos LMU y recorrido del
+corpus por todos los widgets PASS. Sin regenerar datos, goldens o fixtures.
+Código de esta tanda `fadae8744`. Revisión final `d6ecbb815`: Rust productivo
+idéntico, tests prueban el despacho por el trait y el registro es repetible.
+Fmt/Clippy runtime+ipc y 3/3 focales PASS, run
+`c95415ce-1351-41ee-ad8d-324c7984ee50`. Ambas tandas liberaron la cola.
+
+Revisión completa y mecánica: ámbito del núcleo, raíz de logs y rutas
+reservadas intactos; sin dependencias nuevas. Comparación de conflictos con
+#1882 limpia, sin fusionar ramas. La documentación IPC ocupa una zona distinta.
+No se tocaron ui/layout, hub/shell, installer o packaging. ACC experimental,
+lectores v7–v10 y formato delta por Look se conservan. Fuera DTO v12,
+capacidades en núcleo y conectar ACC. No se midieron píxeles o latencia física.
+Evidencia, scripts de revisión y contador por categorías:
+`D:/VantareServer/evidence/isa-1868-paso5`. Integridad/quality 468/468 PASS.
+PR/CI remota de este corte en preparación; consultar #1868 para HEAD actualizado.
+Sin merge, promoción ni release del worker.

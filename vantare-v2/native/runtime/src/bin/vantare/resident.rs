@@ -609,6 +609,12 @@ mod tests {
                 .progress
                 .recv_timeout(Duration::from_secs(20))
                 .expect("progreso real");
+            assert_ne!(
+                event.status,
+                launcher::chain::Status::Failed,
+                "{}",
+                event.message
+            );
             launched |= event.status == launcher::chain::Status::Launching;
             if event.status == launcher::chain::Status::Done {
                 assert!(event.success, "{}", event.message);

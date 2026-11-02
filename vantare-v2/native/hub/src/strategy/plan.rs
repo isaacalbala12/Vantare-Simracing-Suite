@@ -1481,12 +1481,15 @@ mod tests {
     #[test]
     fn plan_states_distinguish_idle_loading_partial_error_and_certificate() {
         assert_eq!(PlanState::from(None, false, false, false), PlanState::Idle);
-        assert_eq!(PlanState::from(None, true, false, false), PlanState::Loading);
-        assert_eq!(PlanState::from(None, false, false, true), PlanState::Editing);
         assert_eq!(
-            PlanState::from(None, false, true, false),
-            PlanState::Error
+            PlanState::from(None, true, false, false),
+            PlanState::Loading
         );
+        assert_eq!(
+            PlanState::from(None, false, false, true),
+            PlanState::Editing
+        );
+        assert_eq!(PlanState::from(None, false, true, false), PlanState::Error);
         assert_eq!(
             from_certificate(OptimalityStatus::NotProven, true),
             PlanState::Partial

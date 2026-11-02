@@ -432,11 +432,9 @@ impl Store {
 
     /// Importar solo al crear el store productivo, nunca al cargar fixtures/QA.
     pub fn load_production(path: PathBuf) -> Result<Self, String> {
-        if path
-            .try_exists()
-            .map_err(|e| format!("inspeccionar Launcher: {e}"))?
-        {
-            return Self::load(path);
+        match path.try_exists() {
+            Ok(false) => {}
+            Ok(true) | Err(_) => return Self::load(path),
         }
         // La beta mantiene datos propios; importar Wails requiere una acción explícita.
         if std::env::var_os("VANTARE_BETA_ROOT").is_some() {
@@ -477,7 +475,7 @@ impl Store {
                         "versión de Launcher desconocida; original protegido".into(),
                     ));
                 }
-                let document: Document = serde_json::from_value(value)
+                let document: Document = serde_json::from_slice(bytes)
                     .map_err(|e| files::Error::InvalidInput(format!("Launcher inválido: {e}")))?;
                 document.validate()?;
                 Ok(document)

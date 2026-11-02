@@ -14,6 +14,7 @@ su último layout válido hasta que se guarde un layout reparado.
 Una versión desconocida, un archivo demasiado grande o una copia fallida dejan
 el archivo protegido. El Hub muestra el aviso y las ediciones no lo sobrescriben.
 La política y los límites viven en [IPC](../ipc/README.md).
+El lector de hub-zoom.json se consolidará en el Store v2 del paso 6.
 Los errores Busy no abren el panel de conflicto ni ofrecen «Recargar datos locales».
 El diagnóstico de Hub conserva el tipo de los guardados al cerrar o usar Guardar.
 Workshop.scene.error se refiere solo a lectura/decodificación de fotos; por eso

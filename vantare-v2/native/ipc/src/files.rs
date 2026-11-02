@@ -388,7 +388,9 @@ mod tests {
         )
         .expect_err("oversize");
         assert!(error.to_string().contains(&path.display().to_string()));
-        assert!(matches!(&error, Error::TooLarge { path: reported, limit: 3 } if reported == &path));
+        assert!(
+            matches!(&error, Error::TooLarge { path: reported, limit: 3 } if reported == &path)
+        );
         assert!(error.to_string().contains("supera 3 bytes"));
         fs::write(dir.join("file"), b"parent is not a directory").unwrap();
         let blocked = dir.join("file/document.json");

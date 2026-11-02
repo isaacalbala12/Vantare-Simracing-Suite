@@ -74,12 +74,12 @@ impl Editor {
         })
     }
     pub fn initialize(&mut self, monitor: (f32, f32, f32, f32)) -> Result<(), String> {
+        if let Some(warning) = &self.warning {
+            return Err(warning.clone());
+        }
         self.document
             .initialize(monitor)
-            .map_err(|error| error.to_string())?;
-        self.warning
-            .as_ref()
-            .map_or(Ok(()), |warning| Err(warning.clone()))
+            .map_err(|error| error.to_string())
     }
     pub fn show_on_track(&self) -> Result<(), String> {
         vantare_ui::layout::Presentation::show(&self.path).map_err(|error| error.to_string())

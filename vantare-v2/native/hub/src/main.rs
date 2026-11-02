@@ -733,7 +733,7 @@ mod tests {
         .expect("argumentos beta");
         // El overlay no recibe --layout: lo resuelve desde la raíz heredada.
         let overlay_layout = root.join(native_root).join("Vantare/native/layout.json");
-        let expected = root.join("data/Vantare/native/calendar-alerts.json");
+        let expected = root.join("data/Vantare/native/session-alerts-feed.json");
         assert_eq!(
             vantare_hub::calendar::Calendar::alert_path(&options.layout),
             expected
@@ -807,7 +807,7 @@ mod tests {
     fn calendar_without_overrides_uses_the_platform_native_directory() {
         let root = vantare_ui::paths::default_data_dir().expect("raíz de datos");
         let expected_layout = root.join("Vantare/native/layout.json");
-        let expected_feed = root.join("Vantare/native/calendar-alerts.json");
+        let expected_feed = root.join("Vantare/native/session-alerts-feed.json");
         let hub = parse(&[]).expect("Hub sin overrides");
         let overlay_layout = vantare_ui::layout::default_path().expect("overlay sin overrides");
         assert_eq!(hub.layout, expected_layout);

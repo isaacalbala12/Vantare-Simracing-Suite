@@ -1804,15 +1804,7 @@ fn start_session_alerts(cx: &mut Context<Hub>) {
                     let now = chrono::Utc::now();
                     let calendar = hub.calendar.read(cx);
                     let result = calendar.alert_feed(now).and_then(|feed| {
-                        let path = Calendar::alert_path(hub.studio.read(cx).layout_path());
-                        let bytes = serde_json::to_vec(&feed).map_err(|e| e.to_string())?;
-                        let old = match std::fs::metadata(&path) {
-                            Ok(_) => Some(crate::files::read(&path, 65536)?),
-                            Err(e) if e.kind() == std::io::ErrorKind::NotFound => None,
-                            Err(e) => return Err(e.to_string()),
-                        };
-                        crate::files::save(&path, &bytes, old.as_deref())?;
-                        Ok(())
+                        Calendar::publish_alert_feed(hub.studio.read(cx).layout_path(), &feed)
                     });
                     if let Err(error) = result {
                         eprintln!("avisos de calendario: {error}");

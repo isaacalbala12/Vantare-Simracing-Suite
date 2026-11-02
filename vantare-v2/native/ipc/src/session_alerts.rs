@@ -2,7 +2,7 @@
 use serde::{Deserialize, Serialize};
 use vantare_domain::session_alerts::CalendarInput;
 
-pub const FILE: &str = "calendar-alerts.json";
+pub const FILE: &str = "session-alerts-feed.json";
 
 /// Agenda del layout compartido; nunca relativa al directorio privado del Hub.
 pub fn calendar_path(layout: &std::path::Path) -> std::path::PathBuf {

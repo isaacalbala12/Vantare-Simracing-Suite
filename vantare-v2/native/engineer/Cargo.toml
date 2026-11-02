@@ -23,6 +23,7 @@ windows-sys = { version = "=0.61.2", features = ["Win32_Foundation", "Win32_Medi
 workspace = true
 
 [dev-dependencies]
+vantare-services = { workspace = true, features = ["test-support"] }
 base64 = "0.22"
 ed25519-dalek = { version = "2", default-features = false, features = ["std", "zeroize"] }
 chrono = { version = "0.4", default-features = false, features = ["std", "serde"] }

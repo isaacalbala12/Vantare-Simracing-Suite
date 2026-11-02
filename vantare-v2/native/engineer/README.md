@@ -269,7 +269,7 @@ total (incluye I/O y cierre); no habilita Spotter en la radio productiva.
 ## Control local desde Hub — ISA-1428 / ISA-1430
 
 El Hub escribe `%LOCALAPPDATA%/Vantare/native/engineer.json` en Windows,
-`$XDG_CONFIG_HOME/Vantare/native/engineer.json` (o `~/.config`) en Linux y
+`$XDG_DATA_HOME/Vantare/native/engineer.json` (o `~/.local/share`) en Linux y
 `~/Library/Application Support/Vantare/native/engineer.json` en macOS; Engineer lo
 sondea cada turno (espera de hasta 50 ms, sin promesa bajo I/O bloqueado) y
 confirma sus ajustes efectivos en `engineer-status.json` del mismo directorio.

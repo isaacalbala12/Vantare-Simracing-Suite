@@ -1,5 +1,32 @@
 # Handoff vivo — Overlays, Studio, Launcher y Hub
 
+## VANTA-130 · #1869 · Paso 4, escritor común y follow-ups (2-nov-2026)
+
+Proyecto Vantare / area:plataforma, Plane En curso. Rama
+`vantareapp/isa-1869-paso4-escritor`, worktree `D:/VantareServer/worktrees/isa-1869-paso4`,
+base inicial nightly `3f2c1b3b0`, obtenida antes de editar. Caracterización de
+escritores 11/11 PASS ANTES de cambiar su implementación (fmt PASS):
+conflicto por bytes, locks, copia del layout, hermanos JSON y huérfanos de PID.
+Se ejecutan también los contratos existentes de L/A/E y Workshop. Solo raíces QA.
+
+Corrección de la entrega del paso 3: con override absoluto válido se conservan
+los destinos Windows. Con override vacío, **cinco consumidores pasan de CWD a
+LOCALAPPDATA**: rights/owner, supervisor/residente, freshness, Engineer y Services.
+Es la normalización justificada a la base común; no es cierto que el caso vacío
+quedase igual en todos. Un override relativo ahora da error explícito en todos.
+Diagnósticos también normaliza el vacío a LOCALAPPDATA en producto (antes fallaba).
+En test-support, ausente/vacío/relativo se rechazan y nunca hacen fallback real.
+Los ficheros anteriores de CWD no se mueven, borran ni sobrescriben con este cálculo.
+
+Follow-ups de #1879 solicitados por el orquestador para este PR: README Engineer
+con XDG_DATA_HOME; prueba real del fallback Windows; prueba de exactamente un
+test ejecutado por cada hijo; guard QA en Launcher/Admin/Engineer; fallback del
+log a temp_dir solo ante base ausente, conservando errores QA/relativos.
+#1879 recibió MERGE de review; el orquestador lo integrará tras CI verde y se
+rebasará este paso para incluir esos follow-ups sobre su base real.
+La reserva de persist/show/backup y workshop/state ya fue trasladada a VANTA-129.
+No se tocarán normalización, motion_policy, host, installer ni packaging.
+
 ## VANTA-130 · #1869 · Paso 3, resolvedor común (2-nov-2026)
 
 Proyecto Vantare / area:plataforma, Plane En curso. Rama

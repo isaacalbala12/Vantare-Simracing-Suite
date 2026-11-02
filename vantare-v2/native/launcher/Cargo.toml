@@ -12,3 +12,7 @@ serde_json = "1"
 
 [lints]
 workspace = true
+
+[dev-dependencies]
+# Los tests de este consumidor también exigen una raíz QA explícita.
+vantare-services = { workspace = true, features = ["test-support"] }

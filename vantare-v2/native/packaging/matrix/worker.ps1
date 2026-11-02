@@ -54,7 +54,9 @@ try {
                 size=1;desktop=$true;autostart=$true;processId=2147483647;
                 packageSha=(Get-NativeHash (Join-Path $engine 'package.zip'))
             }
-            if($Operation -ceq 'Probe' -and $ReadProbe -and -not $WriteEngine){$requestValue.readContext=$true}
+            # The p3 comparator toggles this existing property on a PSObject.
+            # Writer contrast first runs the complete legacy oracle (false).
+            if($Operation -ceq 'Probe' -and $ReadProbe){$requestValue.readContext=(-not [bool]$WriteEngine)}
             Write-NativeJson $request $requestValue
             # Inject only OS folder resolution and explicit library root in a TEST
             # copy. The driver's operations/transactions remain byte-for-byte.

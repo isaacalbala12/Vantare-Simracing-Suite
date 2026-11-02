@@ -236,10 +236,15 @@ impl Translator {
             .iter()
             .map(|vehicle| {
                 let id = self.car_id(vehicle);
-                let number = self.car_number(vehicle, now);
+                let details = self.car_details(vehicle, now);
+                let number = details
+                    .filter(|(_, fresh)| *fresh)
+                    .map_or_else(String::new, |(info, _)| info.number.clone());
+                let pit_stops = details
+                    .map(|(info, fresh)| Quality::from_source(info.pit_stops, stale || !fresh));
                 let mut car = self.car(vehicle, id, number, stale, race);
-                if let Some((info, fresh)) = self.car_details(vehicle, now) {
-                    car.pit_stops = quality(info.pit_stops, stale || !fresh);
+                if let Some(pit_stops) = pit_stops {
+                    car.pit_stops = pit_stops;
                 }
                 car
             })
@@ -259,7 +264,7 @@ impl Translator {
         if is_hypercar_class(&vehicle.class)
             && let Some((info, fresh)) = self.car_details(vehicle, now)
         {
-            player.fuel.energy = quality(info.energy, stale || !fresh);
+            player.fuel.energy = Quality::from_source(info.energy, stale || !fresh);
         }
         player
     }
@@ -298,20 +303,8 @@ impl Translator {
         stale
     }
 
-    /// Número de carrera del coche, casado por hueco y por etiqueta: si la
+    /// Fila REST del coche, casada por hueco y por etiqueta: si la
     /// etiqueta REST no coincide con la del frame, el hueco se reutilizó.
-    fn car_number(&self, vehicle: &Vehicle, now: Duration) -> String {
-        self.rest
-            .car_numbers(now, self.floor)
-            .iter()
-            .find(|entry| {
-                entry.slot == vehicle.slot
-                    && !entry.vehicle.is_empty()
-                    && entry.vehicle == vehicle.name.trim()
-            })
-            .map_or_else(String::new, |entry| entry.number.clone())
-    }
-
     fn car_details(&self, vehicle: &Vehicle, now: Duration) -> Option<(&rest::CarNumber, bool)> {
         let (rows, fresh) = self.rest.car_details(now, self.floor)?;
         let info = rows.iter().find(|entry| {
@@ -465,23 +458,23 @@ impl Translator {
                 name: vehicle.driver.clone(),
             },
             class,
-            position: quality(Some(vehicle.position), stale),
+            position: Quality::from_source(Some(vehicle.position), stale),
             // LMU no la trae en el frame: la deriva el núcleo con posición y clase.
             class_position: Quality::Unavailable,
-            laps: quality(Some(vehicle.laps), stale),
-            last_lap_s: quality(vehicle.last_lap_s, stale),
-            best_lap_s: quality(vehicle.best_lap_s, stale),
+            laps: Quality::from_source(Some(vehicle.laps), stale),
+            last_lap_s: Quality::from_source(vehicle.last_lap_s, stale),
+            best_lap_s: Quality::from_source(vehicle.best_lap_s, stale),
             last_sectors_s: vehicle
                 .last_sectors_s
                 .iter()
-                .map(|v| quality(*v, stale))
+                .map(|v| Quality::from_source(*v, stale))
                 .collect(),
             // Sin ninguno medido se quedan vacíos, como antes de leerlos (#1497).
             best_sectors_s: if vehicle.best_sectors_s.iter().any(Option::is_some) {
                 vehicle
                     .best_sectors_s
                     .iter()
-                    .map(|v| quality(*v, stale))
+                    .map(|v| Quality::from_source(*v, stale))
                     .collect()
             } else {
                 Vec::new()
@@ -489,24 +482,24 @@ impl Translator {
             current_sectors_s: vehicle
                 .current_sectors_s
                 .iter()
-                .map(|v| quality(Some(*v), stale))
+                .map(|v| Quality::from_source(Some(*v), stale))
                 .collect(),
-            estimated_lap_s: estimate(vehicle.estimated_lap_s, stale),
-            lap_distance_m: quality(vehicle.lap_distance_m, stale),
-            lap_elapsed_s: quality(vehicle.lap_progress_s, stale),
-            current_sector: quality(vehicle.sector, stale),
-            gap_leader: quality(
+            estimated_lap_s: Quality::from_estimate(vehicle.estimated_lap_s, stale),
+            lap_distance_m: Quality::from_source(vehicle.lap_distance_m, stale),
+            lap_elapsed_s: Quality::from_source(vehicle.lap_progress_s, stale),
+            current_sector: Quality::from_source(vehicle.sector, stale),
+            gap_leader: Quality::from_source(
                 gap(vehicle.time_behind_leader_s, vehicle.laps_behind_leader),
                 stale,
             ),
-            gap_ahead: quality(
+            gap_ahead: Quality::from_source(
                 gap(vehicle.time_behind_next_s, vehicle.laps_behind_next),
                 stale,
             ),
-            in_pits: quality(Some(vehicle.in_pit), stale),
-            pose: quality(vehicle.pose, stale),
-            velocity_mps: quality(vehicle.velocity_mps, stale),
-            pending_penalties: quality(Some(vehicle.pending_penalties), stale),
+            in_pits: Quality::from_source(Some(vehicle.in_pit), stale),
+            pose: Quality::from_source(vehicle.pose, stale),
+            velocity_mps: Quality::from_source(vehicle.velocity_mps, stale),
+            pending_penalties: Quality::from_source(Some(vehicle.pending_penalties), stale),
             ..Car::default()
         }
     }
@@ -538,7 +531,7 @@ impl Translator {
         Session {
             id: SessionId(self.session),
             kind: kind.map_or(Quality::Unavailable, |(kind, stale)| {
-                quality(
+                Quality::from_source(
                     Some(match kind {
                         Kind::Practice => SessionKind::Practice,
                         Kind::Qualifying => SessionKind::Qualifying,
@@ -551,18 +544,21 @@ impl Translator {
             // `mGamePhase` vale 0 en fixtures 1.4.x con la sesión en marcha;
             // REST tampoco aporta una fase verificada (evidencia en REVIEW.md).
             state: Quality::Unavailable,
-            elapsed_s: quality(elapsed, stale),
-            remaining_s: quality(remaining, stale),
+            elapsed_s: Quality::from_source(elapsed, stale),
+            remaining_s: Quality::from_source(remaining, stale),
             track_name: track.map_or(Quality::Unavailable, |(track, stale)| {
-                quality(Some(track), stale)
+                Quality::from_source(Some(track), stale)
             }),
             // Lo estima el núcleo con el ritmo de la clase.
             laps_remaining: Quality::Unavailable,
-            laps_total: quality(frame.maximum_laps, stale),
-            track_length_m: quality(frame.track_length_m, stale),
+            laps_total: Quality::from_source(frame.maximum_laps, stale),
+            track_length_m: Quality::from_source(frame.track_length_m, stale),
             timing: vantare_domain::SessionTiming {
-                scheduled_end_s: quality(frame.end_time_s.filter(|v| *v > 0.0), stale),
-                distance_to_start_line_m: estimate(frame.distance_to_start_line_m, stale),
+                scheduled_end_s: Quality::from_source(frame.end_time_s.filter(|v| *v > 0.0), stale),
+                distance_to_start_line_m: Quality::from_estimate(
+                    frame.distance_to_start_line_m,
+                    stale,
+                ),
                 // Las capturas actuales no prueban fase ni transiciones reales,
                 // y REST no anuncia la siguiente sesión. No inferirlas.
                 ..vantare_domain::SessionTiming::default()
@@ -577,34 +573,37 @@ fn player(vehicle: &Vehicle, car: CarId, stale: bool, telemetry_stale: bool) -> 
     Player {
         car,
         telemetry: inputs.map_or_else(Telemetry::default, |inputs| Telemetry {
-            throttle: quality(inputs.throttle, telemetry_stale),
-            brake: quality(inputs.brake, telemetry_stale),
-            clutch: quality(inputs.clutch, telemetry_stale),
-            steering: quality(inputs.steering, telemetry_stale),
-            gear: quality(inputs.gear, telemetry_stale),
-            speed_mps: quality(inputs.speed_mps, telemetry_stale),
-            engine_speed_rad_s: quality(
+            throttle: Quality::from_source(inputs.throttle, telemetry_stale),
+            brake: Quality::from_source(inputs.brake, telemetry_stale),
+            clutch: Quality::from_source(inputs.clutch, telemetry_stale),
+            steering: Quality::from_source(inputs.steering, telemetry_stale),
+            gear: Quality::from_source(inputs.gear, telemetry_stale),
+            speed_mps: Quality::from_source(inputs.speed_mps, telemetry_stale),
+            engine_speed_rad_s: Quality::from_source(
                 inputs.engine_rpm.map(|rpm| rpm * TAU / 60.0),
                 telemetry_stale,
             ),
         }),
         fuel: inputs.map_or_else(Fuel::default, |inputs| Fuel {
-            level_l: quality(inputs.fuel_level_l, telemetry_stale),
-            capacity_l: quality(inputs.fuel_capacity_l, telemetry_stale),
+            level_l: Quality::from_source(inputs.fuel_level_l, telemetry_stale),
+            capacity_l: Quality::from_source(inputs.fuel_capacity_l, telemetry_stale),
             ..Fuel::default()
         }),
         damage: inputs.map_or_else(Damage::default, |inputs| Damage {
             tyre_wear: inputs
                 .damage
                 .tyre_wear
-                .map(|value| stale_quality(value, telemetry_stale)),
+                .map(|value| Quality::stale_if(value, telemetry_stale)),
             ..Damage::default()
         }),
-        pit_limiter_active: quality(inputs.and_then(|i| i.pit_limiter_active), telemetry_stale),
-        pit_stop_stopped: quality(vehicle.pit_stop_stopped, stale),
+        pit_limiter_active: Quality::from_source(
+            inputs.and_then(|i| i.pit_limiter_active),
+            telemetry_stale,
+        ),
+        pit_stop_stopped: Quality::from_source(vehicle.pit_stop_stopped, stale),
         // LMU escribe 0 mientras no hay mejor vuelta: sin referencia no es un
         // delta, y un 0 fiable taparía el delta que deriva el núcleo.
-        delta_best_s: quality(
+        delta_best_s: Quality::from_source(
             inputs
                 .and_then(|inputs| inputs.delta_best_s)
                 .filter(|delta| *delta != 0.0 || vehicle.best_lap_s.is_some()),
@@ -619,17 +618,10 @@ fn player(vehicle: &Vehicle, car: CarId, stale: bool, telemetry_stale: bool) -> 
         // Los deltas frente a óptima y líder los deriva el núcleo (#1497).
         delta_optimal_s: Quality::Unavailable,
         delta_leader_s: Quality::Unavailable,
-        lap_invalid: quality(
+        lap_invalid: Quality::from_source(
             vehicle.lap_time_counts.map(|counts| !counts),
             telemetry_stale,
         ),
-    }
-}
-
-fn stale_quality<T>(value: Quality<T>, stale: bool) -> Quality<T> {
-    match value {
-        Quality::Reliable(value) if stale => Quality::Stale(value),
-        other => other,
     }
 }
 
@@ -652,11 +644,11 @@ fn weather(frame: &Frame, rest: Option<&rest::SessionInfo>, stale: bool) -> Weat
         }
     }
     Weather {
-        air_temperature_k: stale_quality(value.air_temperature_k, stale),
-        track_temperature_k: stale_quality(value.track_temperature_k, stale),
-        wind_speed_mps: stale_quality(value.wind_speed_mps, stale),
-        rain: stale_quality(value.rain, stale),
-        track_wetness: stale_quality(value.track_wetness, stale),
+        air_temperature_k: Quality::stale_if(value.air_temperature_k, stale),
+        track_temperature_k: Quality::stale_if(value.track_temperature_k, stale),
+        wind_speed_mps: Quality::stale_if(value.wind_speed_mps, stale),
+        rain: Quality::stale_if(value.rain, stale),
+        track_wetness: Quality::stale_if(value.track_wetness, stale),
         ..value
     }
 }
@@ -689,7 +681,7 @@ fn flags(
     if flags.is_empty() {
         Quality::Unavailable
     } else {
-        quality(Some(flags), stale)
+        Quality::from_source(Some(flags), stale)
     }
 }
 
@@ -763,21 +755,6 @@ fn capabilities(
     }
 }
 
-fn estimate<T>(value: Option<T>, stale: bool) -> Quality<T> {
-    match value {
-        Some(value) if !stale => Quality::Estimated(value),
-        _ => quality(value, stale),
-    }
-}
-
-fn quality<T>(value: Option<T>, stale: bool) -> Quality<T> {
-    match value {
-        Some(value) if stale => Quality::Stale(value),
-        Some(value) => Quality::Reliable(value),
-        None => Quality::Unavailable,
-    }
-}
-
 /// Hay valor, aunque esté caducado.
 fn has<T>(quality: &Quality<T>) -> bool {
     !matches!(quality, Quality::Unavailable)
@@ -799,7 +776,7 @@ mod tests {
     fn quality_constructor_characterization() {
         for stale in [false, true] {
             assert_eq!(
-                quality(Some(7), stale),
+                Quality::from_source(Some(7), stale),
                 if stale {
                     Quality::Stale(7)
                 } else {
@@ -807,15 +784,21 @@ mod tests {
                 }
             );
             assert_eq!(
-                estimate(Some(7), stale),
+                Quality::from_estimate(Some(7), stale),
                 if stale {
                     Quality::Stale(7)
                 } else {
                     Quality::Estimated(7)
                 }
             );
-            assert_eq!(quality::<u8>(None, stale), Quality::Unavailable);
-            assert_eq!(estimate::<u8>(None, stale), Quality::Unavailable);
+            assert_eq!(
+                Quality::<u8>::from_source(None, stale),
+                Quality::Unavailable
+            );
+            assert_eq!(
+                Quality::<u8>::from_estimate(None, stale),
+                Quality::Unavailable
+            );
         }
         for value in [
             Quality::Reliable(7),
@@ -823,9 +806,9 @@ mod tests {
             Quality::Stale(7),
             Quality::Unavailable,
         ] {
-            assert_eq!(stale_quality(value, false), value);
+            assert_eq!(Quality::stale_if(value, false), value);
             assert_eq!(
-                stale_quality(value, true),
+                Quality::stale_if(value, true),
                 if value == Quality::Reliable(7) {
                     Quality::Stale(7)
                 } else {

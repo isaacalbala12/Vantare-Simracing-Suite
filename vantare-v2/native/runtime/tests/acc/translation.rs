@@ -5,7 +5,7 @@ use super::*;
 fn quality_constructor_characterization() {
     for stale in [false, true] {
         assert_eq!(
-            quality(Some(7), stale),
+            Quality::from_source(Some(7), stale),
             if stale {
                 Quality::Stale(7)
             } else {
@@ -13,15 +13,21 @@ fn quality_constructor_characterization() {
             }
         );
         assert_eq!(
-            estimated(Some(7), stale),
+            Quality::from_estimate(Some(7), stale),
             if stale {
                 Quality::Stale(7)
             } else {
                 Quality::Estimated(7)
             }
         );
-        assert_eq!(quality::<u8>(None, stale), Quality::Unavailable);
-        assert_eq!(estimated::<u8>(None, stale), Quality::Unavailable);
+        assert_eq!(
+            Quality::<u8>::from_source(None, stale),
+            Quality::Unavailable
+        );
+        assert_eq!(
+            Quality::<u8>::from_estimate(None, stale),
+            Quality::Unavailable
+        );
     }
 }
 

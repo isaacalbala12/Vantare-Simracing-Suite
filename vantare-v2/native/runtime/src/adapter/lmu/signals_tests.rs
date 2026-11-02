@@ -426,13 +426,13 @@ fn all_telemetry_signals_follow_their_clock_and_recovery() {
                 .expect("paso")
                 .state;
             let p = state.player.as_ref().expect("jugador");
-            let expected = |q| stale_quality(q, stale);
+            let expected = |q| Quality::stale_if(q, stale);
             assert_eq!(p.telemetry.throttle, expected(initial.telemetry.throttle));
             assert_eq!(p.telemetry.brake, expected(initial.telemetry.brake));
             assert_eq!(p.telemetry.clutch, expected(initial.telemetry.clutch));
             assert_eq!(
                 p.telemetry.gear,
-                stale_quality(initial.telemetry.gear, stale)
+                Quality::stale_if(initial.telemetry.gear, stale)
             );
             assert_eq!(p.telemetry.speed_mps, expected(initial.telemetry.speed_mps));
             assert_eq!(

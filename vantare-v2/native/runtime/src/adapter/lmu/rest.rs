@@ -91,17 +91,9 @@ impl Cache {
         Ok(())
     }
 
-    /// Números vigentes. `floor`: una consulta iniciada antes del último cambio
-    /// de sesión podría nombrar un hueco de la memoria compartida ya reutilizado.
-    pub(super) fn car_numbers(&self, now: Duration, floor: Duration) -> &[CarNumber] {
-        match &self.car_numbers {
-            Some((rows, started)) if current(*started, now) && *started >= floor => rows,
-            _ => &[],
-        }
-    }
-
     /// Metadata por coche conserva su reloj, incluso tras caducar. El slot
     /// debe casarse además con la etiqueta SHM antes de usar estas señales.
+    /// Una consulta iniciada antes de `floor` pertenece a otra sesión.
     pub(super) fn car_details(
         &self,
         now: Duration,
@@ -510,11 +502,25 @@ mod tests {
             Err(DecodeError::Malformed)
         );
         // TTL contado desde el inicio de la consulta: 1 s + 2 s.
-        assert_eq!(cache.car_numbers(3 * S, Duration::ZERO).len(), 1);
-        assert!(cache.car_numbers(3 * S + S / 2, Duration::ZERO).is_empty());
-        // Reloj que retrocede o consulta anterior al cambio de sesión: descartado.
-        assert!(cache.car_numbers(S / 2, Duration::ZERO).is_empty());
-        assert!(cache.car_numbers(2 * S, 2 * S).is_empty());
+        let (rows, fresh) = cache
+            .car_details(3 * S, Duration::ZERO)
+            .expect("dato vigente");
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].number, "7");
+        assert!(fresh);
+        let (rows, fresh) = cache
+            .car_details(3 * S + S / 2, Duration::ZERO)
+            .expect("último dato");
+        assert_eq!(rows[0].number, "7");
+        assert!(!fresh);
+        // Reloj regresivo no acredita actualidad; el suelo descarta otra sesión.
+        assert!(
+            !cache
+                .car_details(S / 2, Duration::ZERO)
+                .expect("dato previo")
+                .1
+        );
+        assert!(cache.car_details(2 * S, 2 * S).is_none());
     }
 
     #[test]

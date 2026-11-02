@@ -7,8 +7,7 @@
 
 use vantare_domain::{Car, Player, Quality, Session};
 
-/// Subida de nivel que delata un repostaje (la misma que el combustible).
-const REFUEL_EPSILON_L: f64 = 0.05;
+use super::fuel::REFUEL_EPSILON_L;
 /// Parte de la vuelta a partir de la que el consumo previsto es estable.
 const MIN_LAP_FRACTION: f64 = 0.1;
 

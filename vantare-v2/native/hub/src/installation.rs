@@ -107,10 +107,10 @@ fn ack_pending(
         && let Some(file) = marker.as_ref()
         && delete_pending(file)?
     {
-        // Release our shared handle so Windows can finish deleting the ACK.
-        // Retry within the existing budget; never infer deletion from AccessDenied alone.
+        // Windows has committed the deletion request: the ACK is logically gone.
+        // Release our reference; never infer deletion from AccessDenied alone.
         marker.take();
-        return Ok(true);
+        return Ok(false);
     }
     if matches!(&observed, Ok(false)) {
         marker.take();
@@ -293,26 +293,39 @@ mod tests {
     use super::*;
     use std::os::windows::io::{AsHandle, AsRawHandle, BorrowedHandle};
 
-    #[allow(unsafe_code)] // Reproduce PowerShell/.NET DeleteFile, not Rust's POSIX unlink.
-    fn request_classic_delete(path: &Path) {
-        use std::os::windows::ffi::OsStrExt;
+    #[allow(unsafe_code)] // Force classic delete-pending, independently of POSIX unlink support.
+    fn request_classic_delete(path: &Path) -> std::fs::File {
+        use std::os::windows::fs::OpenOptionsExt;
         #[link(name = "kernel32")]
         unsafe extern "system" {
-            #[link_name = "DeleteFileW"]
-            fn delete_file(path: *const u16) -> i32;
+            #[link_name = "SetFileInformationByHandle"]
+            fn set_file_information(
+                handle: *mut std::ffi::c_void,
+                class: i32,
+                info: *const std::ffi::c_void,
+                size: u32,
+            ) -> i32;
         }
-        let path: Vec<u16> = path.as_os_str().encode_wide().chain(Some(0)).collect();
-        // SAFETY: NUL-terminated path to our isolated fixture, valid for the call.
+        let file = std::fs::OpenOptions::new()
+            .access_mode(0x8001_0000)
+            .share_mode(7)
+            .open(path)
+            .unwrap();
+        let deleting: i32 = 1; // FILE_DISPOSITION_INFO uses BOOL, FileDispositionInfo=4.
+        // SAFETY: owned DELETE/read handle; correctly sized SDK BOOL buffer.
         assert_ne!(
-            unsafe { delete_file(path.as_ptr()) },
+            unsafe {
+                set_file_information(file.as_raw_handle(), 4, (&raw const deleting).cast(), 4)
+            },
             0,
             "{}",
             std::io::Error::last_os_error()
         );
+        file
     }
 
     #[test]
-    fn deleting_ack_is_retried_only_with_kernel_evidence() {
+    fn deleting_ack_is_confirmed_only_with_kernel_evidence() {
         let root = root();
         let path = root.join("boot-pending.json");
         std::fs::write(&path, b"pending").unwrap();
@@ -325,14 +338,21 @@ mod tests {
                 .raw_os_error(),
             Some(5)
         );
-        request_classic_delete(&path);
+        let deleting = request_classic_delete(&path);
         assert!(delete_pending(marker.as_ref().unwrap()).unwrap());
         let error = path
             .try_exists()
             .expect_err("reproduce Windows delete-pending race");
         assert_eq!(error.raw_os_error(), Some(5));
-        assert!(ack_pending(&mut marker, Err(error)).unwrap());
+        assert_eq!(
+            ack_pending(&mut marker, Err(std::io::Error::from_raw_os_error(32)))
+                .unwrap_err()
+                .raw_os_error(),
+            Some(32)
+        );
+        assert!(!ack_pending(&mut marker, Err(error)).unwrap());
         assert!(marker.is_none());
+        drop(deleting);
         assert!(!ack_pending(&mut marker, path.try_exists()).unwrap());
         assert_eq!(
             ack_pending(&mut marker, Err(std::io::Error::from_raw_os_error(5)))

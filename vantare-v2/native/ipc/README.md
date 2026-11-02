@@ -86,7 +86,9 @@ antes de consolidarlas; «reinicia» significa descartar memoria anterior:
 
 El orden de coches no cambia la frontera IPC; cambiar sus IDs sí, cuando se
 entregan. El test de pipe `driving_situation_changes_keep_the_demanded_pipe_connected`
-queda ignorado hasta el paso 1 y se ejecuta explícitamente para reproducir el fallo.
+reproduce la reconexión en el commit previo de tests del paso 0. El paso 1 lo
+activa como regresión: `Boundary` compartida fuerza toda la demanda al cambiar
+de situación, también si la fuente sigue en Live. No cambia el DTO v11.
 Usa demanda de 16/250 ms y una señal centinela a 5 s para observar reconexiones
 sin inferirlas de un umbral de latencia. El test puro fija la cadencia a 16 ms.
 La pausa se prueba con pipe real hasta `Overlay::project_snapshot`, llamada

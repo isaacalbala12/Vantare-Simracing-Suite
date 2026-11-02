@@ -10,14 +10,18 @@ Estado de la base indicada; releer la issue antes de ejecutar.
 
 Encargo aprobado: diseño externo `D:/VantareServer/evidence/revision-general/telemetria-overlay-DISENO.md`,
 pasos 0–10, PR draft por corte contra nightly, sin merge/promoción/release.
-Paso 0 en curso: rama `vantareapp/isa-1868-paso0-caracterizacion`, worktree
+Grupo 0–1 en curso: rama `vantareapp/isa-1868-paso0-caracterizacion`, worktree
 `D:/VantareServer/worktrees/isa-1868-paso0`, base `nightly@a5e0a9fd2`.
 Tests previos publicados en `01dff4c81`; [PR draft #1873](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1873) contra nightly, todavía sin entrega final.
 Solo tests de caracterización: demanda 16/250 ms con centinela de 5 s;
 fronteras de retención/situación, trackers, journal e hidratación; pausa con
 pipe real hasta la proyección compartida del host. No abre ventana GPUI.
-Reproducción RED y gates pendientes de cola; no afirmar todavía congelación
-reproducida. Goldens/corpus sin modificar. El paso 1 irá primero si se confirma.
+RED confirmado en `01dff4c81`: el pipe acepta 2 conexiones al pasar
+OnTrack→Garage, esperada 1 (Nextest `2062a9cc-37ba-4687-b242-2ff49921da5d`,
+0,301 s; RETRY=250 ms, sin medir pintado). Paso 1 preparado como bug
+prioritario: `Boundary` compartida, reinicio de cadencia con situación y
+regresión activada. GREEN y gates aún pendientes de cola. Goldens intactos.
+Huellas de retirada: 468/468 PASS. Pasos 2–10 pendientes.
 
 Decisiones: ACC experimental con golden; lectores v7–v10 y delta por Look
 se conservan. Fuera DTO v12, capacidades en núcleo y conectar ACC.

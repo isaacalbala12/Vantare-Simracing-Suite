@@ -62,10 +62,9 @@ fn snapshots_arrive_in_order() {
     assert!(subscriber.next(Duration::from_millis(100)).is_none());
 }
 
-/// Paso 0 de #1868: la transición no debe invalidar una caché que el emisor
-/// todavía considera hidratada. Se ejecuta explícitamente para acreditar RED.
+/// Pasos 0–1 de #1868: una transición exige entregar de nuevo toda la demanda,
+/// sin descartar la conexión cuando todavía no vencen las señales lentas.
 #[test]
-#[ignore = "#1868 paso 1: el publicador no reinicia cadencia al cambiar situación"]
 fn driving_situation_changes_keep_the_demanded_pipe_connected() {
     use vantare_domain::{DrivingSituation, SourceState};
     use vantare_ipc::{Demand, Signal};

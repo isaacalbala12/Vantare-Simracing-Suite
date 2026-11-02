@@ -24,6 +24,53 @@ pub(crate) struct SnapshotDto {
     state: StateDto,
 }
 
+/// Frontera de hidratación compartida por emisor y receptor. La situación
+/// también invalida la caché, aunque la fuente continúe en Live.
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) struct Boundary {
+    epoch: u64,
+    session: u64,
+    source_state: SourceStateDto,
+    driving_situation: DrivingSituationDto,
+    player: Option<u32>,
+    cars: Vec<u32>,
+}
+
+impl Boundary {
+    pub(crate) fn of(snapshot: &d::Snapshot) -> Self {
+        let mut cars: Vec<_> = snapshot.state.cars.iter().map(|car| car.id.0).collect();
+        cars.sort_unstable();
+        Self {
+            epoch: snapshot.epoch,
+            session: snapshot.state.session.id.0,
+            source_state: source_state(snapshot.state.source_state),
+            driving_situation: snapshot.state.driving_situation.into(),
+            player: snapshot.state.player.as_ref().map(|player| player.car.0),
+            cars,
+        }
+    }
+
+    fn received(dto: &SnapshotDto, delivered: &crate::Demand) -> Self {
+        let mut cars = if delivered.car_data() {
+            dto.state.cars.iter().map(|car| car.id).collect()
+        } else {
+            Vec::new()
+        };
+        cars.sort_unstable();
+        Self {
+            epoch: dto.epoch,
+            session: dto.state.session.id,
+            source_state: dto.state.source_state.clone(),
+            driving_situation: dto.state.driving_situation,
+            player: delivered
+                .player_data()
+                .then(|| dto.state.player.as_ref().map(|player| player.car))
+                .flatten(),
+            cars,
+        }
+    }
+}
+
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 enum QualityDto<T> {
@@ -1645,20 +1692,7 @@ impl SnapshotDto {
     }
 
     pub(crate) fn same_scope(&self, old: &Self, delivered: &crate::Demand) -> bool {
-        self.epoch == old.epoch
-            && self.state.session.id == old.state.session.id
-            && self.state.source_state == old.state.source_state
-            && self.state.driving_situation == old.state.driving_situation
-            && (!delivered.player_data()
-                || self.state.player.as_ref().map(|p| p.car)
-                    == old.state.player.as_ref().map(|p| p.car))
-            && (!delivered.car_data()
-                || (self.state.cars.len() == old.state.cars.len()
-                    && self
-                        .state
-                        .cars
-                        .iter()
-                        .all(|car| old.state.cars.iter().any(|other| other.id == car.id))))
+        Boundary::received(self, delivered) == Boundary::received(old, delivered)
     }
 
     pub(crate) fn filter(&mut self, delivered: &crate::Demand) -> Result<(), Error> {
@@ -1744,6 +1778,37 @@ impl SnapshotDto {
 mod demand_tests {
     use super::*;
     use crate::{Demand, Signal};
+
+    #[test]
+    fn publisher_and_receiver_boundaries_agree_for_every_signal() {
+        let mut source = crate::codec::tests::rich_snapshot(1, 1);
+        for situation in [
+            d::DrivingSituation::Unknown,
+            d::DrivingSituation::OnTrack,
+            d::DrivingSituation::Garage,
+            d::DrivingSituation::Paused,
+            d::DrivingSituation::Replay,
+        ] {
+            source.state.driving_situation = situation;
+            for &signal in Signal::ALL {
+                let mut delivered = Demand::default();
+                delivered.request(signal, 250);
+                let dto = SnapshotDto::selected(&source, &delivered).unwrap();
+                let mut expected = Boundary::of(&source);
+                if !delivered.player_data() {
+                    expected.player = None;
+                }
+                if !delivered.car_data() {
+                    expected.cars.clear();
+                }
+                assert_eq!(
+                    Boundary::received(&dto, &delivered),
+                    expected,
+                    "{signal:?}/{situation:?}"
+                );
+            }
+        }
+    }
 
     #[test]
     fn situation_change_invalidates_hydration_between_slow_deliveries() {

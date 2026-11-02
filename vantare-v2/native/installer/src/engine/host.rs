@@ -225,7 +225,7 @@ impl Session {
                 Ok(0) => break,
                 Ok(count) if count <= 8192 => match serde_json::from_slice::<Progress>(&bytes) {
                     Ok(event) if event.percent <= 100 && event.done <= event.total => {
-                        progress(event)
+                        progress(event);
                     }
                     _ => {
                         let _ = log.write_all(&bytes);

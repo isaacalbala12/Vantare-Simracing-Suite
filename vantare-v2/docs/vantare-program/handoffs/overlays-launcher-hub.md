@@ -834,7 +834,10 @@ Revisión #1876: contrato de session-alerts.md actualizado (nombre, heartbeat,
 E/S reducida); prueba de diez publicaciones comprueba bytes, mtime y lock real.
 Reloj lento a 100 ms/tick sin esperas verifica cadencia por tiempo transcurrido.
 README recoge el margen aceptado de unos 5 s ante un parón de UI. Gates de
-revisión agrupados con #1874, targets y raíces QA separados; en curso.
+revisión agrupados con #1874, targets y raíces QA separados: fmt/check/Clippy
+PASS; Nextest 1090 PASS (replay aislado 1/1 + resto 1089/1089, 10 skips existentes),
+lifecycle 25/25 y telemetría 33/33 (1 skip) PASS. Código de revisión `9fb6c8987`;
+evidencia `D:/VantareServer/evidence/isa-1869/paso2/review-gates`. Cola cedida.
 
 Proyecto Vantare / area:plataforma. Rama `vantareapp/isa-1869-paso2-agenda`,
 worktree `D:/VantareServer/worktrees/isa-1869-paso2`; base nightly `a5e0a9fd2`.
@@ -851,7 +854,7 @@ continuidad hasta detener el publicador, caducidad, reloj atrás y reinicio.
 La escritura sigue en UI; moverla es una mejora posterior, anotada en #1869.
 
 fmt/check/Clippy de Hub/IPC/UI PASS en tanda QA tras corregir una docstring.
-Nextest: 1089 PASS, 10 skips existentes; el replay golden falló en su plazo
+Primera entrega: Nextest 1089 PASS, 10 skips existentes; el replay golden falló en su plazo
 existente de 2 s durante la tanda paralela y pasó aislado sin cambiar el test
 (1/1), seguido del resto del conjunto (1088/1088). Fallos previos conservados
 en evidencia, incluidos los asserts CLI del nombre antiguo ya corregidos.

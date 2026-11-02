@@ -5,7 +5,7 @@
 
 use std::time::Duration;
 
-pub(super) const STALL_LIMIT: Duration = Duration::from_millis(500);
+pub(super) use vantare_domain::freshness::STALL_LIMIT;
 
 #[derive(Default)]
 pub(super) struct Gate {

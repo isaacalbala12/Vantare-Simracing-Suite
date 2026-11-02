@@ -142,6 +142,7 @@ fn start_feed<T: Send + 'static>(
                         freshness,
                         &photo.snapshot,
                         vantare_ipc::freshness::source_reason(photo.snapshot.state.source_state),
+                        None,
                     );
                     freshness = vantare_ipc::freshness::state(&photo.snapshot);
                     send_latest(&tx, &oldest, convert(photo));

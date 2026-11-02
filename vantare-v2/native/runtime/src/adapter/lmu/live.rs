@@ -112,6 +112,10 @@ impl Default for Lmu {
 }
 
 impl Adapter for Lmu {
+    fn freshness_detail(&self, snapshot: &vantare_domain::Snapshot) -> Option<&'static str> {
+        super::freshness_detail(snapshot)
+    }
+
     fn poll(&mut self, now: Duration) -> Result<Option<Observation>, AdapterError> {
         if self.source.is_none() {
             self.connect(now)?;

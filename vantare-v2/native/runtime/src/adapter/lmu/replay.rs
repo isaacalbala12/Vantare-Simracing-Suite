@@ -92,6 +92,10 @@ impl Replay {
 }
 
 impl Adapter for Replay {
+    fn freshness_detail(&self, snapshot: &vantare_domain::Snapshot) -> Option<&'static str> {
+        super::freshness_detail(snapshot)
+    }
+
     /// Entrega como máximo un evento por llamada, el siguiente cuyo `at` ya ha
     /// llegado; sin más eventos devuelve `Ok(None)`.
     fn poll(&mut self, now: Duration) -> Result<Option<Observation>, AdapterError> {

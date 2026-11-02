@@ -123,6 +123,10 @@ pub fn open_acc_replay(path: &Path) -> io::Result<AccReplay> {
 }
 
 impl Adapter for AccReplay {
+    fn freshness_detail(&self, snapshot: &vantare_domain::Snapshot) -> Option<&'static str> {
+        super::freshness_detail(snapshot)
+    }
+
     fn poll(&mut self, now: Duration) -> Result<Option<Observation>, AdapterError> {
         if self.failed {
             return Err(AdapterError::Rejected(

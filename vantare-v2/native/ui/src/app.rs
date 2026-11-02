@@ -414,11 +414,7 @@ impl Overlay {
         } else {
             self.widget.ingest(snapshot, self.prefs)
         };
-        self.live_projection = paused
-            || (snapshot.state.source_state == vantare_domain::SourceState::Live
-                && snapshot.state.capabilities.driver_inputs
-                    != vantare_domain::Capability::WithData
-                && snapshot.state.capabilities.positions != vantare_domain::Capability::WithData);
+        self.live_projection = vantare_domain::freshness::shows_last_live(snapshot);
         changed || projected
     }
 

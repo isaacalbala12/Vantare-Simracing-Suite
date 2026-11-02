@@ -168,3 +168,13 @@ sondeos acotados suplen la ausencia de accept/join con plazo en std. El test de
 servidor parado mantiene Client::new y sus 750 ms reales: exige petición recibida
 y que el servidor espere liberación explícita después del resultado None. Si
 vence la guarda del servidor, el test falla; cerrar por guarda no puede hacerlo pasar.
+
+
+## Diagnóstico de frescura — #1868, paso 5
+
+El núcleo usa `domain::freshness::Reason`, sin ramas por simulador. LMU y ACC
+aportan el detalle mediante `Adapter::freshness_detail`, también en replay.
+El bucle lo añade al registro local junto al motivo neutral; no cambia la foto,
+el DTO, la caducidad por bloque, la recuperación, la retención o el plazo Lost.
+El presupuesto de alineación del scoring LMU y el TTL SHM de ACC comparten
+la constante de 500 ms; conservan sus comparaciones inclusivas/exclusivas.

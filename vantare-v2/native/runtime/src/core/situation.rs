@@ -1,5 +1,6 @@
 //! Situación central: 250 ms de confirmación antes de ocultar; recuperación inmediata.
 use std::time::Duration;
+use vantare_domain::freshness::{SITUATION_CONFIRM, STALL_LIMIT};
 use vantare_domain::{DrivingSituation as Situation, Quality, Snapshot, SourceState};
 
 fn reliable<T: Copy>(quality: &Quality<T>) -> Option<T> {
@@ -25,16 +26,17 @@ impl Tracker {
     pub(super) fn deadline(&self) -> Option<Duration> {
         self.pending
             .filter(|(candidate, _)| *candidate != self.confirmed)
-            .map(|(_, since)| since.saturating_add(Duration::from_millis(250)))
+            .map(|(_, since)| since.saturating_add(SITUATION_CONFIRM))
     }
 
     /// Un status SHM puede congelarse durante pausa. Se confirma dentro de su
     /// plazo vigente, sin inventar una segunda adquisición para el mismo dato.
     pub(super) fn advance(&mut self, now: Duration) -> Option<Situation> {
         let (candidate, since) = self.pending?;
-        if self.last.is_some_and(|last| {
-            now >= last && now.saturating_sub(last) < Duration::from_millis(500)
-        }) && now.saturating_sub(since) >= Duration::from_millis(250)
+        if self
+            .last
+            .is_some_and(|last| now >= last && now.saturating_sub(last) < STALL_LIMIT)
+            && now.saturating_sub(since) >= SITUATION_CONFIRM
             && candidate != self.confirmed
         {
             self.confirmed = candidate;
@@ -71,9 +73,10 @@ impl Tracker {
             }
         };
         let now = snapshot.origin.received_at;
-        if self.last.is_some_and(|last| {
-            now < last || now.saturating_sub(last) >= Duration::from_millis(500)
-        }) {
+        if self
+            .last
+            .is_some_and(|last| now < last || now.saturating_sub(last) >= STALL_LIMIT)
+        {
             self.reset();
         }
         self.last = Some(now);
@@ -85,7 +88,7 @@ impl Tracker {
                     now
                 }
             };
-            if now.saturating_sub(since) >= Duration::from_millis(250) {
+            if now.saturating_sub(since) >= SITUATION_CONFIRM {
                 self.confirmed = candidate;
             }
         } else {

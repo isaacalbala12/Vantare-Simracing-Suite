@@ -41,6 +41,13 @@ la conversión a `io::Error` conserva su clase. La política de plataforma y la
 defensa de tests están en [native](../README.md#rutas-locales--1869-paso-3).
 No cambia ningún DTO ni la raíz física del Hub del paso 10.
 
+## Registro de frescura — #1868, paso 5
+
+`freshness.log` conserva una línea por transición de estado/capacidades.
+El motivo usa el vocabulario neutral de domain y `detail` contiene el diagnóstico
+opcional del adaptador. La UI no inventa detalles que no recibe por el pipe.
+La raíz del registro y la política de fallos de escritura se conservan.
+
 ## Contrato vigente de acceso
 
 Tres versiones independientes: servicios v19, control v7 y fotos v11. Se comprueba

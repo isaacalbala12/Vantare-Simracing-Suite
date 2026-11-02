@@ -17,6 +17,7 @@ pub mod delta_trace;
 pub mod fastest_lap;
 mod flag;
 pub mod format;
+pub mod freshness;
 pub mod fuel_strategy;
 pub mod head_to_head;
 pub mod input_telemetry;

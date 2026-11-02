@@ -209,6 +209,10 @@ impl Default for Acc {
 }
 
 impl Adapter for Acc {
+    fn freshness_detail(&self, snapshot: &vantare_domain::Snapshot) -> Option<&'static str> {
+        super::freshness_detail(snapshot)
+    }
+
     fn poll(&mut self, now: Duration) -> Result<Option<Observation>, AdapterError> {
         if now < self.next_read {
             return Ok(None);

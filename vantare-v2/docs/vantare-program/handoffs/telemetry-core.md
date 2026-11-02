@@ -3,6 +3,9 @@
 
 # Handoff vivo — Telemetry Core
 
+**Estado vigente de VANTA-129:** ver [paso 5](#vanta-129--paso-5-2026-11-02).
+Los estados anteriores describen el momento de cada corte.
+
 Estado de la base indicada; releer la issue antes de ejecutar.
 [Histórico completo por SHA](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/ca17545f607b85f5d47dc9d060721b69e6a6a158/vantare-v2/docs/vantare-program/handoffs/telemetry-core.md): conserva IDs, decisiones, informes, fallos y evidencia de cada ronda. No copiar ese diario aquí.
 
@@ -676,3 +679,57 @@ Estado del programa: 0–2 integrados; #1882 (paso 3) sigue abierto para revisi�
 Este complemento no adelanta pasos del diseño. VANTA-130 conserva ui/layout
 (persistencia/lectura, incluido error de tamaño) y diagnóstico de errores en hub/shell.
 Siguiente: revisión/integración por el orquestador; sin merge/promoción/release del worker. Sin merge/promoción/release. Pasos 4–10 pendientes.
+
+
+## VANTA-129 · paso 5 (2026-11-02)
+
+0–2 integrados; paso 3 en draft [#1882](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1882),
+HEAD `2c94a5760`, CI 5/5 SUCCESS y sin conflictos. El orquestador integró
+#1885/#1881 en `nightly@56c6df494866f7d064042a5329787537f295147b`,
+merge y CI 5/5 verificados. VANTA-129 Por revisar para este corte del paso 5;
+4 y 6–10 pendientes, conforme al orden 3→5→6→4 del diseño aprobado.
+
+Rama `vantareapp/isa-1868-paso5-frescura`, worktree
+`D:/VantareServer/worktrees/isa-1868-paso5`, base origin/nightly `56c6df494`.
+`domain::freshness` posee 500/250 ms, Reason y los predicados nombrados.
+Núcleo sin rama de ACC; métodos opcionales del adaptador aportan el detalle
+local, también en replay. El servicio lo registra fuera del núcleo. No cambia
+Snapshot/DTO, capacidades, retención, relojes ni la proyección de los overlays.
+Solo cambia el vocabulario de freshness.log y añade detail del adaptador;
+la UI no inventa el detalle que no recibe por el pipe.
+
+Caracterización previa `08333e828`: GREEN 4/4, run
+`77f14347-0293-4bed-9e21-7c5738ea8ec5`, antes del refactor. Retención del
+jugador con scoring vivo y límites exactos de pausa/silencio en LMU/ACC/unknown.
+Primer comando falló antes de ejecutar tests por directorio sin Cargo.toml;
+corregido a native y ambos logs conservados.
+
+Tanda local por compilar.ps1, cuatro crates juntos, target propio y raíces QA:
+fmt/check/Clippy -D warnings PASS; 1275/1275 Nextest PASS (14 skips), incluidos
+34/34 de telemetría. Run `910879a0-fe31-4cad-8f25-66a487520e2d`.
+Lifecycle runtime 25/25 PASS con binarios reales normal/QA. Corpus ACC
+190471 lecturas, hashes conservados (193,880 s); fotos LMU y recorrido del
+corpus por todos los widgets PASS. Sin regenerar datos, goldens o fixtures.
+Código de esta tanda `fadae8744`. Revisión final `d6ecbb815`: Rust productivo
+idéntico, tests prueban el despacho por el trait y el registro es repetible.
+Fmt/Clippy runtime+ipc y 3/3 focales PASS, run
+`c95415ce-1351-41ee-ad8d-324c7984ee50`. Ambas tandas liberaron la cola.
+
+Revisión completa y mecánica: ámbito del núcleo, raíz de logs y rutas
+reservadas intactos; sin dependencias nuevas. Comparación de conflictos con
+#1882 limpia, sin fusionar ramas. La documentación IPC ocupa una zona distinta.
+No se tocaron ui/layout, hub/shell, installer o packaging. ACC experimental,
+lectores v7–v10 y formato delta por Look se conservan. Fuera DTO v12,
+capacidades en núcleo y conectar ACC. No se midieron píxeles o latencia física.
+Evidencia, scripts de revisión y contador por categorías:
+`D:/VantareServer/evidence/isa-1868-paso5`. Integridad/quality 468/468 PASS.
+[PR draft #1886](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1886)
+listo para revisión final contra nightly. Todos los gates locales requeridos PASS;
+CI remota pendiente de runner compartido al entregar, sin atribuirle verde.
+Código validado `d6ecbb815`, árbol native `ef1c7d0b107079d4497dc49947f5287eb5901b1b`;
+el cierre posterior solo cambia este handoff. HEAD/CI vigentes en #1868/#1886.
+Líneas: producción +164/−53 (neto +111, frente a reducción estimada en el diseño);
+tests +251/−0; docs en contador final. El vocabulario tipado y el método opcional
+con sus cuatro implementaciones explican el aumento de producción de este corte.
+Sesión gpt-6.1-sol medium; no se atribuye un nivel high no configurable aquí.
+Sin merge, promoción ni release del worker.

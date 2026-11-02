@@ -647,7 +647,7 @@ Siguiente: revisión/integración por el orquestador; sin merge/promoción/relea
 0–2 integrados; paso 3 en draft [#1882](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1882),
 HEAD `2c94a5760`, CI 5/5 SUCCESS y sin conflictos. El orquestador integró
 #1885/#1881 en `nightly@56c6df494866f7d064042a5329787537f295147b`,
-merge y CI 5/5 verificados. VANTA-129 En curso para este corte del paso 5;
+merge y CI 5/5 verificados. VANTA-129 Por revisar para este corte del paso 5;
 4 y 6–10 pendientes, conforme al orden 3→5→6→4 del diseño aprobado.
 
 Rama `vantareapp/isa-1868-paso5-frescura`, worktree
@@ -684,5 +684,13 @@ lectores v7–v10 y formato delta por Look se conservan. Fuera DTO v12,
 capacidades en núcleo y conectar ACC. No se midieron píxeles o latencia física.
 Evidencia, scripts de revisión y contador por categorías:
 `D:/VantareServer/evidence/isa-1868-paso5`. Integridad/quality 468/468 PASS.
-PR/CI remota de este corte en preparación; consultar #1868 para HEAD actualizado.
+[PR draft #1886](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1886)
+listo para revisión final contra nightly. Todos los gates locales requeridos PASS;
+CI remota pendiente de runner compartido al entregar, sin atribuirle verde.
+Código validado `d6ecbb815`, árbol native `ef1c7d0b107079d4497dc49947f5287eb5901b1b`;
+el cierre posterior solo cambia este handoff. HEAD/CI vigentes en #1868/#1886.
+Líneas: producción +164/−53 (neto +111, frente a reducción estimada en el diseño);
+tests +251/−0; docs en contador final. El vocabulario tipado y el método opcional
+con sus cuatro implementaciones explican el aumento de producción de este corte.
+Sesión gpt-6.1-sol medium; no se atribuye un nivel high no configurable aquí.
 Sin merge, promoción ni release del worker.

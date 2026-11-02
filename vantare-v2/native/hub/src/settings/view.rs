@@ -1179,7 +1179,9 @@ impl Hub {
             .settings
             .update
             .presentation(crate::version_label(), crate::product::CHANNEL);
-        let (version, installed_channel) = identity.unwrap_or(("…", ""));
+        let Some((version, installed_channel)) = identity else {
+            return section_body().child(section_note("Consultando la instalación", cx));
+        };
         let version = version.to_owned();
         let channel = match installed_channel {
             "master" | "stable" => Some("Estable"),
@@ -1294,7 +1296,9 @@ impl Hub {
             .settings
             .update
             .presentation(crate::version_label(), crate::product::CHANNEL);
-        let (version, channel) = identity.unwrap_or(("…", ""));
+        let Some((version, channel)) = identity else {
+            return section_body().child(section_note("Consultando la instalación", cx));
+        };
         let mut body = section_body().mt(px(-0.5));
         body = body.child(
             div()
@@ -1307,9 +1311,6 @@ impl Hub {
                 .child(orbit::pill("Instalada", Tone::Success, cx)),
         );
 
-        if identity.is_none() {
-            return body;
-        }
         match super::releases::news_for_channel(channel) {
             Ok(releases) => {
                 for release in releases {

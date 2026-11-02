@@ -165,13 +165,16 @@ impl Hub {
                 .settings
                 .update
                 .presentation(crate::version_label(), crate::product::CHANNEL)
-                .map_or("…", |(version, _)| version);
+                .map(|(version, _)| version.to_owned());
             rail.push(orbit::RailSection::new(
                 "Versión",
                 "v-download",
                 stack()
                     .gap(px(12.0))
-                    .child(text(version.to_owned(), 22.0, 700, orbit::ink(cx), cx))
+                    .child(match version {
+                        Some(version) => text(version, 22.0, 700, orbit::ink(cx), cx),
+                        None => text("Consultando la instalación", 13.0, 400, orbit::ink_2(cx), cx),
+                    })
                     .child(
                         orbit::small_button("settings-open-updates", "Actualizaciones", cx)
                             .self_start()

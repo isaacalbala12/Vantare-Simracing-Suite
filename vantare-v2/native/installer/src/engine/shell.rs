@@ -147,20 +147,26 @@ fn save(
     fs::create_dir_all(path.parent().expect("shortcut folder"))?;
     os::write_link(path, value, branded, warning)
 }
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum OptionalAction {
+    Remove,
+    Create,
+    Existing,
+}
 fn optional(
     context: &Context,
     root: &Path,
     folder_name: &str,
     kind: &str,
-    enabled: bool,
-    remove: bool,
-    existing_only: bool,
+    action: Option<OptionalAction>,
     state: Option<&State>,
     warning: &mut dyn FnMut(&str),
 ) {
-    if !enabled {
+    let Some(action) = action else {
         return;
-    }
+    };
+    let remove = action == OptionalAction::Remove;
+    let existing_only = action == OptionalAction::Existing;
     let mut run = || -> Result<()> {
         let parent = folder(context, kind)?;
         let visible = if kind == "Startup" || folder_name != "Vantare" {
@@ -295,80 +301,19 @@ pub fn sync(
     let programs = folder(context, "Programs")?;
     let current = programs.join(folder_name);
     let old = programs.join(legacy);
-    if state.is_none() {
-        let marker = root.join("installer-cleanup.json");
-        if marker.try_exists()? {
-            let value = disk::read_json(&marker, Some(1024))?;
-            ensure(
-                value["schema"] == 1
-                    && value["sha256"]
-                        .as_str()
-                        .is_some_and(|s| super::validation::hex(s, 64)),
-                "Marker de limpieza inválido",
-            )?;
-            if root.join("Uninstall.exe").try_exists()? {
-                ensure(
-                    value["sha256"] == installation::hash_file(&root.join("Uninstall.exe"))?,
-                    "El desinstalador cambió; se conserva",
-                )?;
-            }
-        }
-        for directory in [&current, &old] {
-            for name in [
-                "Vantare Simracing Suite.lnk",
-                "Vantare Native Beta.lnk",
-                "Vantare.lnk",
-                "Desinstalar.lnk",
-            ] {
-                remove_owned(&directory.join(name), root)?;
-            }
-            remove_empty(directory)?;
-        }
-        for kind in ["DesktopDirectory", "Startup"] {
-            optional(
-                context,
-                root,
-                folder_name,
-                kind,
-                true,
-                true,
-                false,
-                None,
-                warning,
-            );
-        }
-        if !options.restoring {
-            let ui = context::options(root, true)?;
-            if let Some(ui) = ui {
-                if !marker.try_exists()? {
-                    disk::write_json(&marker, &json!({"schema":1,"sha256":ui.sha256}))?;
-                }
-            }
-        }
-        let run = legacy_run(context, root, identity)?;
-        os::delete_key(&context.registry_prefix, &key)?;
-        for name in [
-            "beta.ps1",
-            "candidate.ps1",
-            "registration-identity.txt",
-            "uninstall-vantare.ps1",
-            "installer-ui.json",
-            "startup-options.json",
-            "installer-notices.txt",
-        ] {
-            disk::remove_file(&root.join(name))?;
-        }
-        if options.restoring {
-            disk::remove_file(&root.join("Uninstall.exe"))?;
-        }
-        if let Some((name, _)) = run {
-            if let Err(cause) = os::delete_value(&context.registry_prefix, RUN, &name) {
-                warning(&cause.to_string());
-            }
-        }
-        return Ok(());
-    }
-    let state = state.expect("installed state");
+    let projection = Projection {
+        root,
+        context,
+        identity,
+        folder_name,
+        legacy,
+        key,
+        current,
+        old,
+    };
+    let Some(state) = state else {
+        return remove_projection(&projection, options, warning);
+    };
     let view = Installation::read(root, ReadProfile::Probe)?;
     ensure(
         serde_json::to_value(view.state.as_ref())? == serde_json::to_value(Some(state))?,
@@ -377,11 +322,117 @@ pub fn sync(
     let version = view
         .installed_version()
         .ok_or_else(|| super::WriteError::new(1, "Falta versión instalada"))?;
-    let previous = options.previous;
     let run = legacy_run(context, root, identity)?;
+    let ui = prepare_projection(&projection, options, run.is_some())?;
+    project_links(&projection, state, warning)?;
+    project_registration(&projection, options, version)?;
+    project_preferences(&projection, state, options, &ui, run, warning)
+}
+
+struct Projection<'a> {
+    root: &'a Path,
+    context: &'a Context,
+    identity: &'a str,
+    folder_name: &'a str,
+    legacy: &'a str,
+    key: String,
+    current: PathBuf,
+    old: PathBuf,
+}
+fn remove_projection(
+    projection: &Projection<'_>,
+    options: &Options<'_>,
+    warning: &mut dyn FnMut(&str),
+) -> Result<()> {
+    let root = projection.root;
+    let context = projection.context;
+    let identity = projection.identity;
+    let folder_name = projection.folder_name;
+    let key = &projection.key;
+    let current = &projection.current;
+    let old = &projection.old;
+    let marker = root.join("installer-cleanup.json");
+    if marker.try_exists()? {
+        let value = disk::read_json(&marker, Some(1024))?;
+        ensure(
+            value["schema"] == 1
+                && value["sha256"]
+                    .as_str()
+                    .is_some_and(|s| super::validation::hex(s, 64)),
+            "Marker de limpieza inválido",
+        )?;
+        if root.join("Uninstall.exe").try_exists()? {
+            ensure(
+                value["sha256"] == installation::hash_file(&root.join("Uninstall.exe"))?,
+                "El desinstalador cambió; se conserva",
+            )?;
+        }
+    }
+    for directory in [&current, &old] {
+        for name in [
+            "Vantare Simracing Suite.lnk",
+            "Vantare Native Beta.lnk",
+            "Vantare.lnk",
+            "Desinstalar.lnk",
+        ] {
+            remove_owned(&directory.join(name), root)?;
+        }
+        remove_empty(directory)?;
+    }
+    for kind in ["DesktopDirectory", "Startup"] {
+        optional(
+            context,
+            root,
+            folder_name,
+            kind,
+            Some(OptionalAction::Remove),
+            None,
+            warning,
+        );
+    }
+    if !options.restoring {
+        let ui = context::options(root, true)?;
+        if let Some(ui) = ui
+            && !marker.try_exists()?
+        {
+            disk::write_json(&marker, &json!({"schema":1,"sha256":ui.sha256}))?;
+        }
+    }
+    let run = legacy_run(context, root, identity)?;
+    os::delete_key(&context.registry_prefix, &key)?;
+    for name in [
+        "beta.ps1",
+        "candidate.ps1",
+        "registration-identity.txt",
+        "uninstall-vantare.ps1",
+        "installer-ui.json",
+        "startup-options.json",
+        "installer-notices.txt",
+    ] {
+        disk::remove_file(&root.join(name))?;
+    }
+    if options.restoring {
+        disk::remove_file(&root.join("Uninstall.exe"))?;
+    }
+    if let Some((name, _)) = run
+        && let Err(cause) = os::delete_value(&context.registry_prefix, RUN, &name)
+    {
+        warning(&cause.to_string());
+    }
+    Ok(())
+}
+fn prepare_projection(
+    projection: &Projection<'_>,
+    options: &Options<'_>,
+    has_run: bool,
+) -> Result<context::Options> {
+    let request = options.request;
+    let root = projection.root;
+    let current = &projection.current;
+    let previous = options.previous;
     let autostart = if options.restoring {
         previous.is_some_and(|ui| ui.autostart)
-    } else if run.is_some() {
+    } else if has_run {
         previous
             .map(|ui| ui.autostart)
             .or(context::startup_preference(root)?)
@@ -432,6 +483,16 @@ pub fn sync(
         root.join("uninstall-vantare.ps1"),
         crate::payload::CANDIDATE,
     )?;
+    Ok(ui)
+}
+fn project_links(
+    projection: &Projection<'_>,
+    state: &State,
+    warning: &mut dyn FnMut(&str),
+) -> Result<()> {
+    let root = projection.root;
+    let current = &projection.current;
+    let old = &projection.old;
     save(
         &current.join("Vantare Simracing Suite.lnk"),
         root,
@@ -456,6 +517,21 @@ pub fn sync(
         remove_owned(&old.join(name), root)?;
     }
     remove_empty(&old)?;
+    Ok(())
+}
+fn project_registration(
+    projection: &Projection<'_>,
+    options: &Options<'_>,
+    version: &str,
+) -> Result<()> {
+    let request = options.request;
+    let uninstaller = projection.root.join("Uninstall.exe");
+    let root = projection.root;
+    let context = projection.context;
+    let identity = projection.identity;
+    let folder_name = projection.folder_name;
+    let legacy = projection.legacy;
+    let key = &projection.key;
     for (name, value) in [
         ("DisplayName", "Vantare Simracing Suite".to_owned()),
         ("DisplayVersion", version.to_owned()),
@@ -486,6 +562,22 @@ pub fn sync(
             legacy,
         )?;
     }
+    Ok(())
+}
+fn project_preferences(
+    projection: &Projection<'_>,
+    state: &State,
+    options: &Options<'_>,
+    ui: &context::Options,
+    run: Option<(String, String)>,
+    warning: &mut dyn FnMut(&str),
+) -> Result<()> {
+    let previous = options.previous;
+    let desktop = ui.desktop;
+    let autostart = ui.autostart;
+    let root = projection.root;
+    let context = projection.context;
+    let folder_name = projection.folder_name;
     let suppress = run.as_ref().is_some_and(|(name, _)| {
         if let Err(cause) = os::delete_value(&context.registry_prefix, RUN, name) {
             warning(&cause.to_string());
@@ -511,9 +603,8 @@ pub fn sync(
             root,
             folder_name,
             kind,
-            (old_enabled && !enabled) || (kind == "Startup" && (!autostart || suppress)),
-            true,
-            false,
+            ((old_enabled && !enabled) || (kind == "Startup" && (!autostart || suppress)))
+                .then_some(OptionalAction::Remove),
             Some(state),
             warning,
         );
@@ -522,9 +613,7 @@ pub fn sync(
             root,
             folder_name,
             kind,
-            enabled && !(kind == "Startup" && suppress),
-            false,
-            false,
+            (enabled && !(kind == "Startup" && suppress)).then_some(OptionalAction::Create),
             Some(state),
             warning,
         );
@@ -535,9 +624,7 @@ pub fn sync(
             root,
             folder_name,
             "DesktopDirectory",
-            true,
-            false,
-            true,
+            Some(OptionalAction::Existing),
             Some(state),
             warning,
         );

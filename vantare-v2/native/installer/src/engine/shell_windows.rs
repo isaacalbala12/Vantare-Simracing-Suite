@@ -15,7 +15,11 @@ use windows::{
                 CoTaskMemFree, CoUninitialize, IPersistFile, STGM_READ,
                 StructuredStorage::PROPVARIANT,
             },
-            Registry::*,
+            Registry::{
+                HKEY, HKEY_CURRENT_USER, KEY_SET_VALUE, REG_DWORD, REG_OPTION_NON_VOLATILE, REG_SZ,
+                RegCloseKey, RegCreateKeyExW, RegDeleteTreeW, RegDeleteValueW, RegOpenKeyExW,
+                RegSetValueExW,
+            },
         },
         UI::Shell::{
             FOLDERID_Desktop, FOLDERID_Programs, FOLDERID_Startup, IShellLinkW,
@@ -31,13 +35,14 @@ fn wide(value: impl AsRef<OsStr>) -> Vec<u16> {
 fn text(value: &[u16]) -> String {
     String::from_utf16_lossy(&value[..value.iter().position(|n| *n == 0).unwrap_or(value.len())])
 }
-fn error(value: windows::core::Error) -> WriteError {
+fn error(value: &windows::core::Error) -> WriteError {
     WriteError::new(1, value.to_string())
 }
 pub struct Apartment;
 impl Apartment {
     pub fn new() -> Result<Self> {
-        unsafe { CoInitializeEx(None, COINIT_APARTMENTTHREADED).ok() }.map_err(error)?;
+        unsafe { CoInitializeEx(None, COINIT_APARTMENTTHREADED).ok() }
+            .map_err(|cause| error(&cause))?;
         Ok(Self)
     }
 }
@@ -56,7 +61,8 @@ pub fn folder(name: &str) -> Result<PathBuf> {
         "Startup" => FOLDERID_Startup,
         _ => return Err(WriteError::new(1, "Carpeta Windows desconocida")),
     };
-    let value = unsafe { SHGetKnownFolderPath(&id, KF_FLAG_DONT_VERIFY, None) }.map_err(error)?;
+    let value = unsafe { SHGetKnownFolderPath(&raw const id, KF_FLAG_DONT_VERIFY, None) }
+        .map_err(|cause| error(&cause))?;
     let path = unsafe { value.to_string() }.map_err(|cause| WriteError::new(1, cause.to_string()));
     unsafe {
         CoTaskMemFree(Some(value.0.cast()));
@@ -70,23 +76,25 @@ pub struct Link {
     pub icon: PathBuf,
 }
 fn create_link() -> Result<IShellLinkW> {
-    unsafe { CoCreateInstance(&ShellLink, None, CLSCTX_INPROC_SERVER) }.map_err(error)
+    unsafe { CoCreateInstance(&ShellLink, None, CLSCTX_INPROC_SERVER) }
+        .map_err(|cause| error(&cause))
 }
 pub fn read_link(path: &Path) -> Result<Link> {
     let link = create_link()?;
-    let persist: IPersistFile = link.cast().map_err(error)?;
+    let persist: IPersistFile = link.cast().map_err(|cause| error(&cause))?;
     let path = wide(path);
-    unsafe { persist.Load(PCWSTR(path.as_ptr()), STGM_READ) }.map_err(error)?;
+    unsafe { persist.Load(PCWSTR(path.as_ptr()), STGM_READ) }.map_err(|cause| error(&cause))?;
     let mut target = vec![0; 32768];
     let mut arguments = vec![0; 32768];
     let mut icon = vec![0; 32768];
     let mut index = 0;
     unsafe {
         link.GetPath(&mut target, std::ptr::null_mut(), 4)
-            .map_err(error)?;
-        link.GetArguments(&mut arguments).map_err(error)?;
+            .map_err(|cause| error(&cause))?;
+        link.GetArguments(&mut arguments)
+            .map_err(|cause| error(&cause))?;
         link.GetIconLocation(&mut icon, &raw mut index)
-            .map_err(error)?;
+            .map_err(|cause| error(&cause))?;
     }
     Ok(Link {
         target: PathBuf::from(text(&target)),
@@ -106,17 +114,18 @@ pub fn write_link(
     let icon = wide(&value.icon);
     let destination = wide(path);
     unsafe {
-        link.SetPath(PCWSTR(target.as_ptr())).map_err(error)?;
+        link.SetPath(PCWSTR(target.as_ptr()))
+            .map_err(|cause| error(&cause))?;
         link.SetArguments(PCWSTR(arguments.as_ptr()))
-            .map_err(error)?;
+            .map_err(|cause| error(&cause))?;
         if !value.icon.as_os_str().is_empty() {
             link.SetIconLocation(PCWSTR(icon.as_ptr()), 0)
-                .map_err(error)?;
+                .map_err(|cause| error(&cause))?;
         }
-        let persist: IPersistFile = link.cast().map_err(error)?;
+        let persist: IPersistFile = link.cast().map_err(|cause| error(&cause))?;
         persist
             .Save(PCWSTR(destination.as_ptr()), true)
-            .map_err(error)?;
+            .map_err(|cause| error(&cause))?;
         if branded {
             let brand = || -> windows::core::Result<()> {
                 let store: IPropertyStore = link.cast()?;
@@ -125,7 +134,7 @@ pub fn write_link(
                     pid: 5,
                 };
                 let value = PROPVARIANT::from("Vantare.SimracingSuite");
-                store.SetValue(&key, &value)?;
+                store.SetValue(&raw const key, &raw const value)?;
                 store.Commit()?;
                 persist.Save(PCWSTR(destination.as_ptr()), true)
             };
@@ -174,7 +183,7 @@ fn key(prefix: &str, path: &str, create: bool) -> Result<Key> {
             )
         }
     };
-    status.ok().map_err(error)?;
+    status.ok().map_err(|cause| error(&cause))?;
     Ok(Key(handle))
 }
 pub fn set(prefix: &str, path: &str, name: &str, value: &str) -> Result<()> {
@@ -184,7 +193,7 @@ pub fn set(prefix: &str, path: &str, name: &str, value: &str) -> Result<()> {
     let bytes: Vec<_> = value.iter().flat_map(|n| n.to_le_bytes()).collect();
     unsafe { RegSetValueExW(handle.0, PCWSTR(name.as_ptr()), None, REG_SZ, Some(&bytes)) }
         .ok()
-        .map_err(error)
+        .map_err(|cause| error(&cause))
 }
 pub fn dword(prefix: &str, path: &str, name: &str, value: u32) -> Result<()> {
     let handle = key(prefix, path, true)?;
@@ -199,14 +208,14 @@ pub fn dword(prefix: &str, path: &str, name: &str, value: u32) -> Result<()> {
         )
     }
     .ok()
-    .map_err(error)
+    .map_err(|cause| error(&cause))
 }
 pub fn delete_value(prefix: &str, path: &str, name: &str) -> Result<()> {
     let handle = key(prefix, path, false)?;
     let name = wide(name);
     unsafe { RegDeleteValueW(handle.0, PCWSTR(name.as_ptr())) }
         .ok()
-        .map_err(error)
+        .map_err(|cause| error(&cause))
 }
 pub fn delete_key(prefix: &str, path: &str) -> Result<()> {
     let path = wide(if prefix.is_empty() {
@@ -218,7 +227,7 @@ pub fn delete_key(prefix: &str, path: &str) -> Result<()> {
     if status.0 == 2 {
         Ok(())
     } else {
-        status.ok().map_err(error)
+        status.ok().map_err(|cause| error(&cause))
     }
 }
 
@@ -271,7 +280,7 @@ mod tests {
                     fmtid: GUID::from_u128(0x9f4c2855_9f79_4b39_a8d0_e1d42de1d5f3),
                     pid: 5,
                 };
-                let variant = store.GetValue(&key).expect("brand");
+                let variant = store.GetValue(&raw const key).expect("brand");
                 let value = windows::core::BSTR::try_from(&variant).expect("brand string");
                 assert_eq!(value.to_string(), "Vantare.SimracingSuite");
             }

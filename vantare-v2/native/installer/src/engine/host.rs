@@ -118,8 +118,6 @@ impl Session {
                         transferred: false,
                     };
                     for (name, bytes) in [
-                        ("candidate.ps1", payload::CANDIDATE),
-                        ("beta.ps1", payload::BETA),
                         ("installer-cleanup.ps1", payload::CLEANUP),
                         ("installer-notices.txt", payload::FONT_LICENSES.as_bytes()),
                     ] {

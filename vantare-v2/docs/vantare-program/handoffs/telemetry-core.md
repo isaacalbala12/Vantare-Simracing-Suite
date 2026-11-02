@@ -12,6 +12,7 @@ Encargo aprobado: diseño externo `D:/VantareServer/evidence/revision-general/te
 pasos 0–10, PR draft por corte contra nightly, sin merge/promoción/release.
 Paso 0 en curso: rama `vantareapp/isa-1868-paso0-caracterizacion`, worktree
 `D:/VantareServer/worktrees/isa-1868-paso0`, base `nightly@a5e0a9fd2`.
+Tests previos publicados en `01dff4c81`; [PR draft #1873](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1873) contra nightly, todavía sin entrega final.
 Solo tests de caracterización: demanda 16/250 ms con centinela de 5 s;
 fronteras de retención/situación, trackers, journal e hidratación; pausa con
 pipe real hasta la proyección compartida del host. No abre ventana GPUI.

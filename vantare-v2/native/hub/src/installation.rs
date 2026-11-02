@@ -44,6 +44,8 @@ pub(crate) struct BootConfirmation {
 #[cfg(windows)]
 fn open_ack_marker(root: &Path) -> std::io::Result<Option<std::fs::File>> {
     use std::os::windows::fs::OpenOptionsExt;
+    // Capture precedes hub-ready. An unreadable marker fails boot here; unlike
+    // registration warnings, ownership/query errors are not cosmetic failures.
     match std::fs::OpenOptions::new()
         .access_mode(0x80)
         .share_mode(7)
@@ -106,6 +108,7 @@ fn ack_pending(
             .is_err_and(|error| error.raw_os_error() == Some(5)))
         && let Some(file) = marker.as_ref()
         && delete_pending(file)?
+    // A failed kernel query remains an error, even for Ok(true).
     {
         // Windows has committed the deletion request: the ACK is logically gone.
         // Release our reference; never infer deletion from AccessDenied alone.
@@ -222,6 +225,9 @@ impl BootConfirmation {
             }
         }
         // ACK still bounds real boot confirmation; registration owns a separate file.
+        // Recheck the path on every poll, including after releasing ack_marker.
+        // We do not cache ACK for the rest of Register: a reappearing marker or
+        // later AccessDenied without the retained handle's proof still fails.
         if ack_pending(
             &mut self.ack_marker,
             self.root.join("boot-pending.json").try_exists(),

@@ -540,12 +540,10 @@ fn prepare_projection(
     // Root templates come from this Setup; rollback restores state/preferences,
     // not previous candidate.ps1/beta.ps1 bytes. Retire this bootstrap in p7.
     let temporary = root.join(format!("beta-{}.tmp", disk::id()?));
-    let result = disk::write_new(&temporary, crate::payload::CANDIDATE)
-        .and_then(|()| disk::replace_temporary(&temporary, &root.join("uninstall-vantare.ps1")));
-    if result.is_err() {
+    disk::write_new(&temporary, crate::payload::CANDIDATE).inspect_err(|_| {
         let _ = disk::remove_file(&temporary);
-    }
-    result?;
+    })?;
+    disk::replace_temporary(&temporary, &root.join("uninstall-vantare.ps1"))?;
     Ok(ui)
 }
 fn project_links(
@@ -588,25 +586,15 @@ fn project_registration(
     version: &str,
 ) -> Result<()> {
     let request = options.request;
-    let uninstaller = projection.root.join("Uninstall.exe");
     let root = projection.root;
     let context = projection.context;
     let identity = projection.identity;
     let folder_name = projection.folder_name;
     let legacy = projection.legacy;
     let key = &projection.key;
-    for (name, value) in [
-        ("DisplayName", "Vantare Simracing Suite".to_owned()),
-        ("DisplayVersion", version.to_owned()),
-        ("InstallLocation", root.display().to_string()),
-        ("DisplayIcon", format!("\"{}\",0", uninstaller.display())),
-        (
-            "UninstallString",
-            format!("\"{}\" /D=\"{}\"", uninstaller.display(), root.display()),
-        ),
-    ] {
-        os::set(&context.registry_prefix, key, name, &value)?;
-    }
+    write_registration_values(root, version, |name, value| {
+        os::set(&context.registry_prefix, key, name, value)
+    })?;
     for name in ["NoModify", "NoRepair"] {
         os::dword(&context.registry_prefix, key, name, 1)?;
     }
@@ -619,6 +607,27 @@ fn project_registration(
             "LegacyShortcutFolder",
             legacy,
         )?;
+    }
+    Ok(())
+}
+fn write_registration_values(
+    root: &Path,
+    version: &str,
+    mut set: impl FnMut(&str, &str) -> Result<()>,
+) -> Result<()> {
+    let uninstaller = root.join("Uninstall.exe");
+    // Ownership must survive an interruption before any presentation metadata.
+    for (name, value) in [
+        ("InstallLocation", root.display().to_string()),
+        ("DisplayName", "Vantare Simracing Suite".to_owned()),
+        ("DisplayVersion", version.to_owned()),
+        ("DisplayIcon", format!("\"{}\",0", uninstaller.display())),
+        (
+            "UninstallString",
+            format!("\"{}\" /D=\"{}\"", uninstaller.display(), root.display()),
+        ),
+    ] {
+        set(name, &value)?;
     }
     Ok(())
 }
@@ -703,6 +712,67 @@ fn project_preferences(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn interrupted_registration_preserves_ownership_before_metadata_and_can_retry() {
+        let parent = if std::env::var("CI").as_deref() == Ok("true") {
+            PathBuf::from(std::env::var_os("RUNNER_TEMP").expect("CI root"))
+        } else {
+            PathBuf::from("D:/VantareServer/qa/isa-1840")
+        };
+        let id = disk::id().expect("ID");
+        let root = parent.join("p5a-registration-tests").join(&id);
+        let context = Context::isolated(
+            root.join("local"),
+            format!("Software\\VantareInstallerMatrix\\{id}"),
+            root.join("shell"),
+        )
+        .expect("isolated context");
+        let key = "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\VantareNativeBeta";
+        let mut writes = 0;
+        assert!(
+            write_registration_values(&root, "0.0.988", |name, value| {
+                writes += 1;
+                ensure(writes == 1, "injected interruption after ownership")?;
+                os::set(&context.registry_prefix, key, name, value)
+            })
+            .is_err()
+        );
+        assert_eq!(
+            super::super::platform::registry_string(
+                &context.registry_prefix,
+                key,
+                "InstallLocation",
+                false
+            )
+            .expect("ownership"),
+            Some(root.display().to_string())
+        );
+        assert_eq!(
+            super::super::platform::registry_string(
+                &context.registry_prefix,
+                key,
+                "DisplayName",
+                false
+            )
+            .expect("metadata absent"),
+            None
+        );
+        write_registration_values(&root, "0.0.988", |name, value| {
+            os::set(&context.registry_prefix, key, name, value)
+        })
+        .expect("retry partial projection");
+        assert_eq!(
+            super::super::platform::registry_string(
+                &context.registry_prefix,
+                key,
+                "DisplayVersion",
+                false
+            )
+            .expect("metadata"),
+            Some("0.0.988".into())
+        );
+        os::delete_key(&context.registry_prefix, key).expect("remove owned QA key");
+    }
     #[test]
     fn uninstall_uses_options_captured_before_metadata_changed() {
         let parent = if std::env::var("CI").as_deref() == Ok("true") {

@@ -1,4 +1,4 @@
-﻿#requires -Version 5.1
+#requires -Version 5.1
 [CmdletBinding()]
 param([string]$Root,[string]$LegacyPackage,[string]$TestVerifier,[string]$BootProbe,[string]$ReadProbe,[string]$WriteEngine,[switch]$Record,
       [ValidateSet('clean','nsis975','nsis975-incomplete974','rc-options','pending','boot','retained','retained-no-marker')]
@@ -84,6 +84,13 @@ try {
         if($snapshot.ExitCode -ne 0){throw ('MATRIX_SNAPSHOT_TEST_FAILED: '+$snapshot.Stderr)}
         $snapshot.Stdout
     } finally { $env:TEMP=$savedLibraryTemp;$env:TMP=$savedLibraryTmp;$env:LOCALAPPDATA=$savedLibraryLocal }
+    # File-only checks run in both backends, before any row baseline rejection.
+    $cleanup=Invoke-NativeProcess -Executable "$env:WINDIR/System32/WindowsPowerShell/v1.0/powershell.exe" -Arguments @(
+        '-NoProfile','-ExecutionPolicy','Bypass','-File',(Join-Path $PSScriptRoot 'matrix/cleanup-tests.ps1'),
+        '-Root',(Join-Path $qaMatrixRoot 'cleanup')
+    ) -TimeoutMilliseconds 120000 -LogPath (Join-Path $qaMatrixRoot 'cleanup.log')
+    if($cleanup.ExitCode -ne 0){throw ('MATRIX_CLEANUP_FAILED: '+$cleanup.Stderr)}
+    $cleanup.Stdout
     foreach ($case in $Cases) {
         foreach ($operation in $Operations) {
             $name=$case+'-'+$operation.ToLowerInvariant()
@@ -191,12 +198,6 @@ try {
             ) -TimeoutMilliseconds 120000 -LogPath (Join-Path $qaMatrixRoot 'writer-boundary.log')
             if($boundary.ExitCode -ne 0){throw ('MATRIX_WRITER_BOUNDARY_FAILED: '+$boundary.Stderr)}
             $boundary.Stdout
-            $cleanup=Invoke-NativeProcess -Executable "$env:WINDIR/System32/WindowsPowerShell/v1.0/powershell.exe" -Arguments @(
-                '-NoProfile','-ExecutionPolicy','Bypass','-File',(Join-Path $PSScriptRoot 'matrix/cleanup-tests.ps1'),
-                '-Root',(Join-Path $qaMatrixRoot 'cleanup')
-            ) -TimeoutMilliseconds 120000 -LogPath (Join-Path $qaMatrixRoot 'cleanup.log')
-            if($cleanup.ExitCode -ne 0){throw ('MATRIX_CLEANUP_FAILED: '+$cleanup.Stderr)}
-            $cleanup.Stdout
         }finally{$env:TEMP=$savedBoundaryTemp;$env:TMP=$savedBoundaryTmp;$env:LOCALAPPDATA=$savedBoundaryLocal}
     }
     Write-NativeJson (Join-Path $qaMatrixRoot 'results.json') $rows

@@ -257,6 +257,55 @@ pub fn delete_key(prefix: &str, path: &str) -> Result<()> {
 mod tests {
     use super::*;
     #[test]
+    fn environment_shortcut_target_is_expanded_instead_of_returning_raw_path() {
+        let variable = if std::env::var("CI").as_deref() == Ok("true") {
+            "RUNNER_TEMP"
+        } else {
+            "TEMP"
+        };
+        let parent = PathBuf::from(std::env::var_os(variable).expect("QA temporary root"));
+        let name = format!(
+            "Vantare link env {}",
+            super::super::write_fs::id().expect("ID")
+        );
+        let root = parent.join(&name);
+        super::super::context::qa_path(&root).expect("QA guard");
+        std::fs::create_dir_all(&root).expect("owned root");
+        let target = root.join("fixture.exe");
+        std::fs::write(&target, b"inert fixture").expect("owned target");
+        let path = root.join("environment.lnk");
+        let _apartment = Apartment::new().expect("COM");
+        let link = create_link().expect("link");
+        let environment = wide(format!("%{variable}%\\{name}\\fixture.exe"));
+        let destination = wide(&path);
+        unsafe {
+            link.SetPath(PCWSTR(environment.as_ptr()))
+                .expect("environment target");
+            link.cast::<IPersistFile>()
+                .expect("persist")
+                .Save(PCWSTR(destination.as_ptr()), true)
+                .expect("save fixture");
+        }
+        let loaded = create_link().expect("load raw link");
+        unsafe {
+            loaded
+                .cast::<IPersistFile>()
+                .expect("persist")
+                .Load(PCWSTR(destination.as_ptr()), STGM_READ)
+                .expect("load fixture");
+            let mut raw = vec![0; 32768];
+            loaded
+                .GetPath(&mut raw, std::ptr::null_mut(), 4)
+                .expect("raw path");
+            assert!(
+                text(&raw).contains(&format!("%{variable}%")),
+                "fixture must exercise environment expansion"
+            );
+        }
+        let actual = read_link(&path).expect("expanded target");
+        assert!(super::super::context::same_path(&actual.target, &target).expect("same target"));
+    }
+    #[test]
     fn existing_mta_remains_initialized_after_shell_apartment_is_dropped() {
         std::thread::spawn(|| {
             use windows::Win32::System::Com::COINIT_MULTITHREADED;

@@ -710,7 +710,8 @@ fn a_hung_overlays_does_not_block_the_core_and_is_killed_on_stop() {
 
     scenario.stop();
 
-    assert_eq!(scenario.exit_code(&mut launcher, LONG), 0);
+    // Paso 1: matar un hijo es fallo, aunque el resto salga limpio.
+    assert_eq!(scenario.exit_code(&mut launcher, LONG), 1);
     assert!(
         !alive(hung),
         "el colgado no atiende el cierre: debe morir por el plazo"
@@ -931,7 +932,8 @@ fn a_hung_engineer_is_killed_by_the_grace_deadline() {
         })
         .0;
     scenario.stop();
-    assert_eq!(scenario.exit_code(&mut launcher, LONG), 0);
+    // Paso 1: matar un hijo es fallo, aunque el resto salga limpio.
+    assert_eq!(scenario.exit_code(&mut launcher, LONG), 1);
     assert!(!alive(engineer));
     assert!(
         scenario

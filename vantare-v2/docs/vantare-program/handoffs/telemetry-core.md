@@ -615,5 +615,25 @@ las guardas. El servidor parado exige petición GET recibida y liberación
 explícita tras el resultado del cliente: la guarda no puede producir un falso PASS.
 Client::new y DEADLINE=750 ms productivos, y las aserciones previas, intactos.
 Nextest ejecuta ese deadline solo y primero, antes de los corpus. Producción
-sin diferencias. Siguiente: gates runtime y telemetría en una tanda por compilar.ps1;
-lifecycle lo verifica la CI completa del mismo código para ceder la cola local. Sin merge/promoción/release. Pasos 4–10 pendientes.
+sin diferencias. [PR draft #1885](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1885)
+listo para revisión del complemento #1881, código validado 645538a1f.
+Local, una tanda compilar.ps1 con target privado, jobs 4 y raíces QA aisladas:
+fmt/check/Clippy -D warnings PASS; 584/584 runtime PASS (8 skips preexistentes),
+incluidos 34/34 de telemetría, run 4c14cd7b-e621-4665-a137-5ae542512a5f.
+Sin cliente: RED previo 5,015 s → PASS 37 ms; deadline real PASS 773 ms.
+CI del código 5/5 SUCCESS, [run 41506258795](https://github.com/isaacalbala12/Vantare-Simracing-Suite/actions/runs/41506258795),
+job 125486553214: 2412/2412 PASS (24 skips), lifecycle runtime 25/25 y Engineer 5/5.
+Lifecycle no se duplicó localmente con builds GPUI: cambio solo del arnés,
+producto idéntico y cobertura completa del mismo código en CI. Cola local libre.
+Prefijo productivo anterior a cfg(test) idéntico a 83716fe93; un único accept
+bajo deadline y un único join tras finalización acotada. Ninguna aserción previa
+retirada; el servidor debe haber recibido GET y seguir esperando release tras None.
+Quality/integridad 468/468 PASS; sin dependencias, datos, goldens o corpus nuevos.
+Líneas frente a base: producción +0/−0; tests +95/−17; configuración tests +6/−0;
+docs +53/−0. Evidencia, logs y contador D:/VantareServer/evidence/isa-1868-paso3b.
+Último commit solo de handoff; árbol native idéntico al código validado. Para
+HEAD/CI documental y estado operativo final, consultar #1885/#1881 y Plane.
+Estado del programa: 0–2 integrados; #1882 (paso 3) sigue abierto para revisión.
+Este complemento no adelanta pasos del diseño. VANTA-130 conserva ui/layout
+(persistencia/lectura, incluido error de tamaño) y diagnóstico de errores en hub/shell.
+Siguiente: revisión/integración por el orquestador; sin merge/promoción/release del worker. Sin merge/promoción/release. Pasos 4–10 pendientes.

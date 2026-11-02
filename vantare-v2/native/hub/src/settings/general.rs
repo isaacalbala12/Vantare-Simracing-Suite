@@ -281,6 +281,16 @@ pub(super) fn wire(state: &super::State, cx: &mut gpui::Context<super::Hub>) {
 mod tests {
     use super::*;
     #[test]
+    fn step5_characterization_corrupt_general_is_preserved_and_rejected() {
+        let root = std::env::temp_dir().join(format!("vantare-step5-general-{}", std::process::id()));
+        std::fs::create_dir_all(&root).unwrap();
+        let path = root.join("general.json");
+        std::fs::write(&path, b"{").unwrap();
+        assert!(Store::load_with_startup(&root, None).is_err());
+        assert_eq!(std::fs::read(path).unwrap(), b"{");
+        std::fs::remove_dir_all(root).unwrap();
+    }
+    #[test]
     fn gpui_load_projects_startup_without_rewriting_or_creating_general() {
         let root =
             std::env::temp_dir().join(format!("vantare-startup-load-{}", std::process::id()));

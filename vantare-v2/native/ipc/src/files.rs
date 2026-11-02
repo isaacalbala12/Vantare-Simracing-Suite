@@ -343,6 +343,28 @@ fn persist(
 mod tests {
     use super::*;
 
+    #[test]
+    fn step5_busy_does_not_offer_destructive_conflict_recovery() {
+        assert!(!Error::Busy.kind().is_conflict());
+        assert!(Error::Conflict.kind().is_conflict());
+    }
+
+    #[test]
+    fn step5_write_diagnostics_include_destination_and_limit() {
+        let dir = directory();
+        let path = dir.join("document.json");
+        let error = save(&path, b"four", Mode::Replace, &Options {
+            limit: 3, ..Options::default()
+        }).expect_err("oversize");
+        assert!(error.to_string().contains(&path.display().to_string()));
+        assert!(error.to_string().contains('3'));
+        fs::write(dir.join("file"), b"parent is not a directory").unwrap();
+        let blocked = dir.join("file/document.json");
+        let error = save(&blocked, b"x", Mode::Replace, &Options::default()).unwrap_err();
+        assert!(error.to_string().contains(&blocked.display().to_string()));
+        fs::remove_dir_all(dir).unwrap();
+    }
+
     fn directory() -> PathBuf {
         let path = std::env::temp_dir().join(format!(
             "vantare-writer-{}-{}",

@@ -65,6 +65,16 @@ fn sibling(path: &Path, suffix: &str) -> PathBuf {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn step5_characterization_corrupt_launcher_is_preserved_and_rejected() {
+        let dir = std::env::temp_dir().join(format!("vantare-step5-launcher-{}", std::process::id()));
+        fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("launcher.json");
+        fs::write(&path, b"{").unwrap();
+        assert!(crate::Store::load(path.clone()).is_err());
+        assert_eq!(fs::read(path).unwrap(), b"{");
+        fs::remove_dir_all(dir).unwrap();
+    }
 
     #[test]
     fn saves_atomically_rejects_conflict_and_survives_a_residual_lock() {

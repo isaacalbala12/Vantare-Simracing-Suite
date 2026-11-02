@@ -354,6 +354,41 @@ mod tests {
     use super::*;
     use crate::orbit::theme::Scheme;
     #[test]
+    fn step67_characterization_serializers_and_corrupt_zoom() {
+        let root = directory("step67-characterization");
+        std::fs::create_dir_all(&root).unwrap();
+        let general = super::super::general::Preferences {
+            density: super::super::general::Density::Compact,
+            minimized: true,
+            ..Default::default()
+        };
+        let general_bytes = serde_json::to_vec(&general).unwrap();
+        std::fs::write(root.join("general.json"), &general_bytes).unwrap();
+        assert_eq!(super::super::general::Store::load(&root).value, general);
+        let path = root.join("appearance.json");
+        let mut store = Store::load(path.clone()).unwrap();
+        let wanted = AppearanceSettings {
+            palette: theme::Palette::Classic,
+            reduced_motion: true,
+            ..Default::default()
+        };
+        store.save(wanted).unwrap();
+        for zoom in [90, 100, 110, 125] {
+            store.save_zoom(zoom).unwrap();
+            let loaded = Store::load(path.clone()).unwrap();
+            assert_eq!(loaded.settings, wanted);
+            assert_eq!(loaded.zoom_percent, zoom);
+        }
+        std::fs::write(root.join("hub-zoom.json"), b"{").unwrap();
+        let (mut broken, warning) = Store::load_or_default(&path);
+        assert!(warning.is_some());
+        assert!(broken.save(wanted).is_err()); // defecto conocido, antes del Store v2
+        assert!(broken.save_zoom(100).is_err());
+        assert_eq!(std::fs::read(root.join("general.json")).unwrap(), general_bytes);
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn step5_future_palette_stays_intact_and_cannot_be_overwritten() {
         let dir = directory("future");
         std::fs::create_dir_all(&dir).unwrap();

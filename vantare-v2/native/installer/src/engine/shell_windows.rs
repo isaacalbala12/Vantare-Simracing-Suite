@@ -80,6 +80,7 @@ fn create_link() -> Result<IShellLinkW> {
         .map_err(|cause| error(&cause))
 }
 pub fn read_link(path: &Path) -> Result<Link> {
+    super::reject_links(path).map_err(|cause| WriteError::new(1, cause))?;
     let link = create_link()?;
     let persist: IPersistFile = link.cast().map_err(|cause| error(&cause))?;
     let path = wide(path);
@@ -108,6 +109,7 @@ pub fn write_link(
     branded: bool,
     warning: &mut dyn FnMut(&str),
 ) -> Result<()> {
+    super::reject_links(path).map_err(|cause| WriteError::new(1, cause))?;
     let link = create_link()?;
     let target = wide(&value.target);
     let arguments = wide(&value.arguments);

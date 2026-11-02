@@ -49,7 +49,7 @@ fn language_name(locale: &str) -> &'static str {
 #[allow(clippy::struct_excessive_bools)] // Estado independiente de captura, filtro y despliegue.
 pub struct Engineer {
     document: Document,
-    pub error: Option<String>,
+    pub error: Option<crate::files::Failure>,
     demo_error: Option<String>,
     demo: Option<DemoEngineer>,
     model: model::Model,
@@ -85,7 +85,7 @@ impl Engineer {
         }
         Self {
             document,
-            error,
+            error: error.map(Into::into),
             demo_error,
             demo,
             model,
@@ -105,9 +105,15 @@ impl Engineer {
         self.model.report().map(|report| &report.status)
     }
     pub fn change(&mut self, edit: impl FnOnce(&mut Settings)) -> Result<(), String> {
+        self.change_checked(edit).map_err(String::from)
+    }
+    fn change_checked(
+        &mut self,
+        edit: impl FnOnce(&mut Settings),
+    ) -> Result<(), crate::files::Error> {
         let mut next = self.settings().clone();
         edit(&mut next);
-        self.document.save(next).map_err(|error| error.to_string())
+        self.document.save(next).map_err(Into::into)
     }
     pub fn reload(&mut self) -> Result<(), String> {
         self.document.reload().map_err(|error| error.to_string())
@@ -116,7 +122,7 @@ impl Engineer {
         self.demo.is_none() && self.model.poll(self.model.now())
     }
     fn edit(&mut self, edit: impl FnOnce(&mut Settings), cx: &mut Context<Self>) {
-        self.error = self.change(edit).err();
+        self.error = self.change_checked(edit).err().map(Into::into);
         cx.notify();
     }
 }
@@ -619,7 +625,7 @@ impl Engineer {
                     .child(
                         action_button("Recargar ajustes", false, cx).on_click(cx.listener(
                             |this, _, _, cx| {
-                                this.error = this.reload().err();
+                                this.error = this.reload().err().map(Into::into);
                                 cx.notify();
                             },
                         )),
@@ -835,7 +841,7 @@ impl Engineer {
                     |this, _, _, cx| {
                         match this.model.prepare_export(this.model.now()) {
                             Ok(preview) => this.export_preview = Some(preview),
-                            Err(error) => this.error = Some(format!("informe: {error}")),
+                            Err(error) => this.error = Some(format!("informe: {error}").into()),
                         }
                         cx.notify();
                     },
@@ -1128,7 +1134,7 @@ impl Render for Engineer {
             .child(audio)
             .child(history);
         if let Some(error) = &self.error {
-            page = page.child(text(error.clone(), 16.0, 400, 0x00ff_8c7d, cx));
+            page = page.child(text(error.to_string(), 16.0, 400, 0x00ff_8c7d, cx));
         }
         surface::render(self, page, window, cx)
     }

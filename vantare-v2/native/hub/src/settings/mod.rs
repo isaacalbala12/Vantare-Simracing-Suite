@@ -548,9 +548,9 @@ impl Hub {
         match self.studio.update(cx, |studio, cx| studio.set_preferences(prefs, cx)) {
             Ok(()) => self.settings.status = Some("Formato guardado. Studio y Workshop actualizados; el overlay lo aplicará al recargar el diseño.".into()),
             Err(error) => {
-                self.notifications.update(cx, |center, cx| center.report("hub.preferences", error.clone(), cx));
-                self.testing.update(cx, |testing, _| testing.observed.error(Module::Hub, &error));
-                self.settings.status = Some(error);
+                self.notifications.update(cx, |center, cx| center.report("hub.preferences", error.to_string(), cx));
+                self.testing.update(cx, |testing, _| testing.observed.error(Module::Hub, error.kind()));
+                self.settings.status = Some(error.to_string());
             }
         }
         self.sync_settings_preferences(cx);

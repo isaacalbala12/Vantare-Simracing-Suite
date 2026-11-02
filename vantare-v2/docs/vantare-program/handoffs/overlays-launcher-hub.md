@@ -1,5 +1,79 @@
 # Handoff vivo — Overlays, Studio, Launcher y Hub
 
+## VANTA-130 · #1869 · Revisión de #1884, P2/P3 (2-nov-2026)
+
+El orquestador solicita corregir clasificación por texto, limpieza de huérfanos
+y contexto de lectura. Alcance ampliado aprobado: error local tipado hasta UI,
+con aviso ya trasladado a VANTA-129 para ui/layout y hub/shell (solo diagnóstico).
+Regresiones ANTES del arreglo: commit `1a6f46a82`, 4/4 fallan como se esperaba:
+conflicto en Testing Center y Ajustes, huérfano bloqueado y límite/ruta Engineer.
+Log RED en `D:/VantareServer/evidence/isa-1869/paso4/review`.
+
+Implementado `Kind` estable y `Failure` clonable con kind y texto. Los guardados
+conservan su tipo hasta el diagnóstico sanitizado y Launcher decide la recarga
+por kind. También se mantiene la clase al presentar errores de Calendario,
+Strategy y Engineer. No hay cambios de esquema, auth, policy ni proyección.
+Limpieza best effort con diagnóstico; lectura con ruta y límite concreto de
+Engineer. Cambios intencionados: show deja de generar .bak y logs de freshness
+usan temporal solo cuando falta la base; el guard QA y relativo siguen fallando.
+Revisión corregida en código `82a970a2a`, PR draft #1884 contra nightly.
+Tanda final compilar.ps1 de seis crates: fmt/check/Clippy PASS, dirigidas 11/11,
+suite 1245/1245 más replay aislado 1/1 (11 omitidos por perfil/filtro en suite),
+lifecycle 25/25, telemetría 34/34 y 1 omitido. El test Windows registra error 32
+al borrar el huérfano bloqueado y aun así publica los bytes esperados.
+Solo raíces QA; cola cedida. No sesión gráfica ni Linux/macOS reales.
+Fallos de adaptación de tipos y de estilo conservados en logs, sin excepciones
+ni debilitamiento de tests. Recuento completo del PR: producción +663/-467 (neto +196); tests +397/-16 (neto +381); docs +115/-6 (neto +109); tooling +0/-0 (neto +0).
+CI del nuevo HEAD pendiente. Paso 5 solo después de integrar este PR corregido.
+Sin merge, release, promoción, instalación ni acceso a datos reales por esta revisión.
+
+## VANTA-130 · #1869 · Paso 4, escritor común y follow-ups (2-nov-2026)
+
+Proyecto Vantare / area:plataforma, Plane En curso. Rama
+`vantareapp/isa-1869-paso4-escritor`, worktree `D:/VantareServer/worktrees/isa-1869-paso4`,
+base inicial nightly `3f2c1b3b0`, obtenida antes de editar. Caracterización de
+escritores ejecutada en `9d5b7209f`: 11/11 PASS ANTES de cambiar su implementación (fmt PASS):
+conflicto por bytes, locks, copia del layout, hermanos JSON y huérfanos de PID.
+Se ejecutan también los contratos existentes de L/A/E y Workshop. Solo raíces QA.
+
+Corrección de la entrega del paso 3: con override absoluto válido se conservan
+los destinos Windows. Con override vacío, **cinco consumidores pasan de CWD a
+LOCALAPPDATA**: rights/owner, supervisor/residente, freshness, Engineer y Services.
+Es la normalización justificada a la base común; no es cierto que el caso vacío
+quedase igual en todos. Un override relativo ahora da error explícito en todos.
+Diagnósticos también normaliza el vacío a LOCALAPPDATA en producto (antes fallaba).
+En test-support, ausente/vacío/relativo se rechazan y nunca hacen fallback real.
+Los ficheros anteriores de CWD no se mueven, borran ni sobrescriben con este cálculo.
+
+Follow-ups de #1879 solicitados por el orquestador para este PR: README Engineer
+con XDG_DATA_HOME; prueba real del fallback Windows; prueba de exactamente un
+test ejecutado por cada hijo; guard QA en Launcher/Admin/Engineer; fallback del
+log a temp_dir solo ante base ausente, conservando errores QA/relativos.
+#1879 integrado por el orquestador en nightly `c0780d1a4e472bbbd13612fb3e758f915d60f28c`, CI 5/5 SUCCESS verificada. Paso 4 rebasado sobre ese SHA; el commit de caracterización queda como `6e2a6bc7b`. La tanda previa se ejecutó antes del rebase; #1879 solo cambia rutas, no los escritores caracterizados con rutas QA explícitas.
+La reserva de persist/show/backup y workshop/state ya fue trasladada a VANTA-129.
+No se tocarán normalización, motion_policy, host, installer ni packaging.
+
+Implementación del paso 4 preparada: `ipc::files` comparte lectura acotada,
+lock del SO, doble comparación, temporal exclusivo cerrado tras fsync, rename
+sin borrar destino y limpieza de huérfanos numéricos bajo lock. Launcher conserva
+su fachada; layout, Engineer y Workshop lo consumen. Workshop mantiene la espera
+entre escritores; solo layout genera `.bak`; hide retira copias show antiguas.
+Los seis follow-ups están aplicados. Tests nuevos cubren fallo, edición externa,
+límites, exclusión, huérfanos ajenos conservados, fallback puro de Windows y
+exactamente un test por hijo. Tanda única de seis crates completada por compilar.ps1 con las tres raíces QA:
+fmt/check/Clippy PASS; contratos dirigidos 37/37; suite 1241/1241 más replay
+1/1 aislado (11 omitidos por perfil/filtro en la suite); lifecycle 25/25;
+telemetría 34/34, 1 omitido; integridad 468/468 PASS. Sin fallos. No se amplían
+plazos ni se debilitan las aserciones. La cola se obtuvo tras 2419 s y ya está cedida.
+PR draft https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1884 contra nightly; HEAD de código `a37545f80`.
+Líneas físicas respecto a c078: producción +305/−347 (−42), tests +314/−9 (+305), docs +72/−6 (+66); tooling 0.
+El último fetch de nightly ya incluye #1880 (`83716fe93`), sin archivos comunes
+con este diff; la base local validada es c078. CI del PR pendiente.
+No se ha hecho sesión gráfica, instalación, merge, release ni promoción.
+Solo QA; los tests de plataforma son puros, sin ejecución real en Linux/macOS.
+Siguiente paso: integrar el paso 4 tras review/CI y abrir una rama/worktree
+nuevos para el paso 5 sobre nightly actualizado. Pasos 5–9 pendientes; 10 fuera.
+
 ## VANTA-130 · #1869 · Paso 3, resolvedor común (2-nov-2026)
 
 Proyecto Vantare / area:plataforma, Plane En curso. Rama
@@ -18,7 +92,7 @@ beta/MSIX y fallback de UI. Para medir las dos rutas privadas se extrae solo su
 cálculo a funciones puras; auth, policy y flujo siguen intactos.
 Todas las ejecuciones usarán native/LocalAppData/AppData QA, target propio y
 compilar.ps1. Evidencia `D:/VantareServer/evidence/isa-1869/paso3`.
-El resolvedor ya se conecta a los consumidores. Mantiene los destinos Windows,
+El resolvedor ya se conecta a los consumidores. Mantiene los destinos Windows con override absoluto válido; el caso vacío cambia según la corrección anterior,
 rechaza override relativo y conserva fallback de vacío solo en producto.
 El guard QA también vive en Root con la feature test-support existente;
 Services/UI la activan en tests y Runtime la recibe del soporte de Services.

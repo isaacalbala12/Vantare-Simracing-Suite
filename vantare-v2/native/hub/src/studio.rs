@@ -404,9 +404,9 @@ impl Studio {
         &mut self,
         prefs: Preferences,
         cx: &mut Context<Self>,
-    ) -> Result<(), String> {
+    ) -> Result<(), vantare_ipc::files::Error> {
         let result = self.editor.set_preferences(prefs);
-        self.status.clone_from(&result);
+        self.status = result.as_ref().copied().map_err(ToString::to_string);
         if result.is_err() {
             cx.notify();
             return result;

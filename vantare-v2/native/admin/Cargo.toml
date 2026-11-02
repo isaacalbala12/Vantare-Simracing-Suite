@@ -27,3 +27,6 @@ workspace = true
 
 [build-dependencies]
 vantare-build-support.workspace = true
+
+[dev-dependencies]
+vantare-services = { workspace = true, features = ["test-support"] }

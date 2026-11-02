@@ -61,7 +61,7 @@ impl Draft {
             ..Self::default()
         }
     }
-    pub fn validate(&self) -> Result<(), String> {
+    pub fn validate(&self) -> Result<(), files::Error> {
         if self.schema_version != 1
             || self
                 .fields
@@ -69,7 +69,9 @@ impl Draft {
                 .zip(FIELD_LIMITS)
                 .any(|(field, limit)| *field != clean_field(field, limit))
         {
-            return Err("Borrador inválido o fuera de límites".into());
+            return Err(files::Error::InvalidInput(
+                "Borrador inválido o fuera de límites".into(),
+            ));
         }
         Ok(())
     }
@@ -87,7 +89,7 @@ impl Store {
             saved: None,
         }
     }
-    pub fn reload(&mut self) -> Result<(), String> {
+    pub fn reload(&mut self) -> Result<(), files::Error> {
         if !local_path(&self.path) {
             return Err("El borrador requiere una ruta local".into());
         }
@@ -116,14 +118,14 @@ impl Store {
                 serde_json::from_slice::<Draft>(bytes).map_or(true, |draft| draft != self.draft)
             })
     }
-    pub fn save(&mut self) -> Result<(), String> {
+    pub fn save(&mut self) -> Result<(), files::Error> {
         self.draft.validate()?;
         if !local_path(&self.path) {
             return Err("El borrador requiere una ruta local".into());
         }
         let bytes = serde_json::to_vec_pretty(&self.draft)
             .map_err(|_| "No se pudo codificar el borrador")?;
-        files::save_with_limit(&self.path, &bytes, self.saved.as_deref(), LIMIT)?;
+        files::save_checked(&self.path, &bytes, self.saved.as_deref(), LIMIT)?;
         self.saved = Some(bytes);
         Ok(())
     }
@@ -131,7 +133,7 @@ impl Store {
 
 /// No se puede anonimizar un nombre arbitrario en prosa con garantías. Por eso
 /// la lista blanca exporta solo el módulo y la presencia de los campos privados.
-pub fn export_bytes(draft: &Draft, diagnostic: &Diagnostic) -> Result<Vec<u8>, String> {
+pub fn export_bytes(draft: &Draft, diagnostic: &Diagnostic) -> Result<Vec<u8>, files::Error> {
     #[derive(Serialize)]
     #[serde(rename_all = "camelCase")]
     struct Report<'a> {
@@ -151,7 +153,7 @@ pub fn export_bytes(draft: &Draft, diagnostic: &Diagnostic) -> Result<Vec<u8>, S
     })
     .map_err(|_| "No se pudo codificar el informe".into())
 }
-pub fn export(path: &Path, bytes: &[u8]) -> Result<(), String> {
+pub fn export(path: &Path, bytes: &[u8]) -> Result<(), files::Error> {
     if !local_path(path)
         || path
             .extension()
@@ -160,7 +162,7 @@ pub fn export(path: &Path, bytes: &[u8]) -> Result<(), String> {
         return Err("Elige un archivo JSON local".into());
     }
     // Crear exclusivamente: un destino ya existente nunca se sobrescribe.
-    files::save_with_limit(path, bytes, None, 64 * 1024)
+    files::save_checked(path, bytes, None, 64 * 1024)
 }
 
 #[cfg(test)]

@@ -394,8 +394,9 @@ fn trash_mark() -> SvgMark {
     )
 }
 
-pub(super) fn error_panel(message: String, cx: &Context<Launcher>) -> gpui::Div {
-    let conflict = message.starts_with("conflicto:");
+pub(super) fn error_panel(error: crate::files::Failure, cx: &Context<Launcher>) -> gpui::Div {
+    let conflict = error.kind().is_conflict();
+    let message = String::from(error);
     let mut panel = div()
         .flex()
         .flex_col()

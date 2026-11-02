@@ -73,7 +73,7 @@ pub struct Launcher {
     pending_decision: Option<Decision>,
     resident_decision: Option<u64>,
     resident_answered: Option<u64>,
-    resident_error: Option<String>,
+    resident_error: Option<crate::files::Failure>,
     resident_status: Option<vantare_ipc::launcher::Status>,
     resident_status_sig: Option<(SystemTime, u64)>,
     exit_answer: Option<Action>,
@@ -95,7 +95,7 @@ pub struct Launcher {
     trigger: LmuTrigger,
     trigger_polling: bool,
     next_trigger: Instant,
-    pub error: Option<String>,
+    pub error: Option<crate::files::Failure>,
     status: String,
 }
 
@@ -288,7 +288,10 @@ impl Launcher {
     }
 
     fn report(&mut self, result: Result<(), String>, cx: &mut Context<Self>) {
-        self.error = result.err();
+        self.report_checked(result.map_err(Into::into), cx);
+    }
+    fn report_checked(&mut self, result: Result<(), crate::files::Error>, cx: &mut Context<Self>) {
+        self.error = result.err().map(Into::into);
         cx.notify();
     }
 
@@ -311,12 +314,14 @@ impl Launcher {
         cx: &mut Context<Self>,
     ) -> bool {
         let mut document = self.store.document.clone();
-        let result = edit(&mut document).and_then(|()| self.store.replace(document));
+        let result = edit(&mut document)
+            .map_err(crate::files::Error::from)
+            .and_then(|()| self.store.replace(document));
         let success = result.is_ok();
         if success {
             self.status = "Guardado local confirmado".into();
         }
-        self.report(result, cx);
+        self.report_checked(result, cx);
         success
     }
 
@@ -489,17 +494,22 @@ impl Launcher {
             .as_ref()
             .filter(|status| resident_is_fresh(status))
         {
-            let error = status.error.as_ref().or_else(|| {
-                status
-                    .profiles
-                    .iter()
-                    .find_map(|profile| profile.error.as_ref())
-            });
-            if error != self.resident_error.as_ref() || self.error.is_none() && error.is_some() {
+            let error = status
+                .error
+                .as_ref()
+                .or_else(|| {
+                    status
+                        .profiles
+                        .iter()
+                        .find_map(|profile| profile.error.as_ref())
+                })
+                .cloned()
+                .map(crate::files::Failure::from);
+            if error != self.resident_error || self.error.is_none() && error.is_some() {
                 if self.error.is_none() || self.error == self.resident_error {
-                    self.error = error.cloned();
+                    self.error.clone_from(&error);
                 }
-                self.resident_error = error.cloned();
+                self.resident_error = error;
                 cx.notify();
             }
             if self.chain.is_none() && !status.progress.is_empty() && self.status != status.progress

@@ -160,12 +160,12 @@ impl Doc {
             Err(error) => Err(format!("{}: {error}", self.path.display())),
         }
     }
-    fn write(&mut self, data: Vec<u8>) -> Result<(), String> {
-        files::save(&self.path, &data, self.seen.as_deref())?;
+    fn write(&mut self, data: Vec<u8>) -> Result<(), crate::files::Error> {
+        files::save_checked(&self.path, &data, self.seen.as_deref(), files::MAX_DOCUMENT)?;
         self.seen = Some(data);
         Ok(())
     }
-    fn json<T: Serialize>(&mut self, value: &T) -> Result<(), String> {
+    fn json<T: Serialize>(&mut self, value: &T) -> Result<(), crate::files::Error> {
         self.write(serde_json::to_vec_pretty(value).map_err(|error| error.to_string())?)
     }
 }
@@ -222,7 +222,7 @@ pub struct Calendar {
     ui: ui::State,
     /// Sube con cada cambio de horario, avisos o zona: invalida las cachés de pintado.
     revision: u64,
-    pub error: Option<String>,
+    pub error: Option<crate::files::Failure>,
 }
 
 impl Calendar {
@@ -339,7 +339,8 @@ impl Calendar {
             error: [following_error, alerts_error]
                 .into_iter()
                 .flatten()
-                .reduce(|a, b| format!("{a} {b}")),
+                .reduce(|a, b| format!("{a} {b}"))
+                .map(Into::into),
         };
         calendar.rebuild(Utc::now());
         Ok(calendar)
@@ -438,7 +439,7 @@ impl Calendar {
     }
 
     /// Alterna una favorita; el estado se guarda antes de cambiar la memoria.
-    pub fn follow(&mut self, id: String) -> Result<(), String> {
+    pub fn follow(&mut self, id: String) -> Result<(), crate::files::Error> {
         let mut next = self.following.series_ids.clone();
         if next.contains(&id) {
             next.retain(|item| item != &id);
@@ -455,7 +456,7 @@ impl Calendar {
         Ok(())
     }
 
-    fn save_alerts(&mut self, next: Alerts) -> Result<(), String> {
+    fn save_alerts(&mut self, next: Alerts) -> Result<(), crate::files::Error> {
         self.docs.alerts.json(&next)?;
         self.alerts = next;
         self.revision += 1;
@@ -464,21 +465,21 @@ impl Calendar {
     /// Cambia los avisos desde la interfaz: el error (si lo hay) se enseña y el
     /// cartel de «serie que ya no está» se rehace con lo que quede.
     pub(crate) fn update_alerts(&mut self, change: impl FnOnce(&mut Alerts) -> Result<(), String>) {
-        self.error = self.edit_alerts(change).err();
+        self.error = self.edit_alerts(change).err().map(Into::into);
         self.report_orphans();
     }
     /// Cambia los avisos con una función y los guarda; si falla, no cambia nada.
     pub(crate) fn edit_alerts(
         &mut self,
         change: impl FnOnce(&mut Alerts) -> Result<(), String>,
-    ) -> Result<(), String> {
+    ) -> Result<(), crate::files::Error> {
         let mut next = self.alerts.clone();
         change(&mut next)?;
         self.save_alerts(next)
     }
     pub(crate) fn set_utc(&mut self, utc: bool) {
         let prefs = Prefs { utc };
-        self.error = self.docs.prefs.json(&prefs).err();
+        self.error = self.docs.prefs.json(&prefs).err().map(Into::into);
         if self.error.is_none() {
             self.prefs = prefs;
             self.revision += 1;
@@ -517,7 +518,7 @@ impl Calendar {
         official: Option<&str>,
         fallback: Option<&str>,
         now: DateTime<Utc>,
-    ) -> Result<(), String> {
+    ) -> Result<(), crate::files::Error> {
         let mut changed = false;
         let mut failure = None;
         if let Some(data) = official {
@@ -541,7 +542,11 @@ impl Calendar {
         failure.map_or(Ok(()), Err)
     }
 
-    fn store_official(&mut self, data: &str, now: DateTime<Utc>) -> Result<bool, String> {
+    fn store_official(
+        &mut self,
+        data: &str,
+        now: DateTime<Utc>,
+    ) -> Result<bool, crate::files::Error> {
         if data.len() > 64 * 1024 {
             return Err("horario demasiado grande".into());
         }
@@ -579,7 +584,11 @@ impl Calendar {
         Ok(changed)
     }
 
-    fn store_fallback(&mut self, data: &str, now: DateTime<Utc>) -> Result<bool, String> {
+    fn store_fallback(
+        &mut self,
+        data: &str,
+        now: DateTime<Utc>,
+    ) -> Result<bool, crate::files::Error> {
         if data.len() > 64 * 1024 {
             return Err("respaldo demasiado grande".into());
         }
@@ -609,7 +618,7 @@ impl Calendar {
             Reply::Error { message } => {
                 self.refresh_failed = true;
                 self.stamps.checked = now.timestamp();
-                Err(message)
+                Err(message.into())
             }
             _ => Err("respuesta de horario inválida".into()),
         };
@@ -619,7 +628,10 @@ impl Calendar {
             } else {
                 "Vuelve a intentarlo."
             };
-            format!("No se pudo actualizar el horario: {error}. {retained}")
+            crate::files::Failure::new(
+                error.kind(),
+                format!("No se pudo actualizar el horario: {error}. {retained}"),
+            )
         });
         self.report_orphans();
         let week_after = self.week_from();
@@ -656,7 +668,7 @@ impl Calendar {
             self.error = Some(format!(
                 "Un aviso apunta a una serie que ya no está en el horario: {}. Puedes quitarlo en Avisos.",
                 gone.join(", ")
-            ));
+            ).into());
         }
     }
 

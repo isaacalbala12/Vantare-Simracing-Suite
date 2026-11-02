@@ -84,6 +84,15 @@ impl Root {
         Self::absolute(base)
     }
 
+    /// Politica pura para fixtures de plataforma, sin consultar el entorno ni abrir archivos.
+    #[cfg(feature = "test-support")]
+    pub fn resolve_fixture(
+        os: &str,
+        get: impl Fn(&str) -> Option<OsString>,
+    ) -> Result<Self, Error> {
+        Self::resolve(os, get)
+    }
+
     fn absolute(base: PathBuf) -> Result<Self, Error> {
         if !base.is_absolute() {
             return Err(Error::RelativePath);

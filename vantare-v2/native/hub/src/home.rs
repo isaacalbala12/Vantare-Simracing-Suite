@@ -807,7 +807,7 @@ pub fn render(
         })
         .when_some(
             calendar.error.clone().filter(|_| races_visible),
-            |view, error| view.child(orbit::callout(error, cx)),
+            |view, error| view.child(orbit::callout(error.to_string(), cx)),
         )
 }
 

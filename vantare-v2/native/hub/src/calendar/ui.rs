@@ -163,7 +163,7 @@ impl Calendar {
         acted
     }
     pub(super) fn toggle_fav(&mut self, id: &str, cx: &mut Context<Self>) {
-        self.error = self.follow(id.to_owned()).err();
+        self.error = self.follow(id.to_owned()).err().map(Into::into);
         cx.notify();
     }
     pub(super) fn toggle_slot_alert(
@@ -759,7 +759,7 @@ pub(super) fn render(
         ));
     }
     if let Some(error) = cal.error.clone() {
-        page = page.child(orbit::callout(error, cx));
+        page = page.child(orbit::callout(error.to_string(), cx));
     }
     let body = match cal.ui.view {
         View::Serie => serie::render(cal, cx),

@@ -1,34 +1,44 @@
-//! Archivos locales acotados. Escritura atómica y conflicto por bytes observados.
-use std::fs::{self, File, OpenOptions};
-use std::io::{Read, Write};
-use std::path::{Path, PathBuf};
-
-pub const MAX_DOCUMENT: u64 = 5 * 1024 * 1024;
-
-fn check_path(path: &Path) -> Result<(), String> {
-    if path.components().any(|part| {
-        part.as_os_str()
-            .to_string_lossy()
-            .to_ascii_lowercase()
-            .starts_with(".env")
-    }) {
-        return Err("no se admiten archivos de entorno".into());
-    }
-    Ok(())
-}
+//! Fachada compatible del escritor común de IPC.
+#[cfg(test)]
+use std::fs::OpenOptions;
+use std::path::Path;
+#[cfg(test)]
+use std::{fs, path::PathBuf};
+pub use vantare_ipc::files::{Error, Failure, Kind, MAX_DOCUMENT};
 
 pub fn read(path: &Path, limit: u64) -> Result<Vec<u8>, String> {
-    check_path(path)?;
-    let mut data = Vec::new();
-    File::open(path)
-        .map_err(|e| format!("leer {}: {e}", path.display()))?
-        .take(limit.saturating_add(1))
-        .read_to_end(&mut data)
-        .map_err(|e| format!("leer {}: {e}", path.display()))?;
-    if u64::try_from(data.len()).map_err(|e| e.to_string())? > limit {
-        return Err(format!("{} supera {limit} bytes", path.display()));
-    }
-    Ok(data)
+    vantare_ipc::files::read(path, limit).map_err(|error| error.to_string())
+}
+
+pub fn save(path: &Path, data: &[u8], expected: Option<&[u8]>) -> Result<(), String> {
+    save_with_limit(path, data, expected, MAX_DOCUMENT)
+}
+
+pub fn save_with_limit(
+    path: &Path,
+    data: &[u8],
+    expected: Option<&[u8]>,
+    limit: u64,
+) -> Result<(), String> {
+    save_checked(path, data, expected, limit).map_err(|error| error.to_string())
+}
+
+/// Mantiene el tipo de error hasta el consumidor que lo clasifica.
+pub fn save_checked(
+    path: &Path,
+    data: &[u8],
+    expected: Option<&[u8]>,
+    limit: u64,
+) -> Result<(), Error> {
+    vantare_ipc::files::save(
+        path,
+        data,
+        vantare_ipc::files::Mode::Observed(expected),
+        &vantare_ipc::files::Options {
+            limit,
+            ..Default::default()
+        },
+    )
 }
 
 /// Ruta absoluta de Windows PowerShell.
@@ -45,93 +55,11 @@ pub fn windows_powershell() -> Result<std::path::PathBuf, String> {
     )
 }
 
-/// Contador por proceso: hace unico el nombre del temporal de cada guardado.
-static NEXT_TEMP: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
-
+#[cfg(test)]
 fn sibling(path: &Path, suffix: &str) -> PathBuf {
     let mut name = path.as_os_str().to_os_string();
     name.push(suffix);
-    PathBuf::from(name)
-}
-
-/// `expected == None` solo permite crear. Un conflicto conserva ambos documentos.
-/// El lock coordina escritores Hub; una herramienta externa debe respetarlo.
-pub fn save(path: &Path, data: &[u8], expected: Option<&[u8]>) -> Result<(), String> {
-    save_with_limit(path, data, expected, MAX_DOCUMENT)
-}
-
-/// Strategy retains migration archives up to the product's 12 MiB document cap.
-pub fn save_with_limit(
-    path: &Path,
-    data: &[u8],
-    expected: Option<&[u8]>,
-    limit: u64,
-) -> Result<(), String> {
-    check_path(path)?;
-    if u64::try_from(data.len()).map_err(|e| e.to_string())? > limit {
-        return Err("documento demasiado grande".into());
-    }
-    if let Some(parent) = path.parent().filter(|p| !p.as_os_str().is_empty()) {
-        fs::create_dir_all(parent).map_err(|e| format!("crear {}: {e}", parent.display()))?;
-    }
-    let lock = sibling(path, ".lock");
-    // Cerrojo del SO: se libera solo al morir el proceso. El fichero de lock
-    // anterior se creaba con `create_new` y habia que borrarlo a mano, asi que
-    // una muerte durante el guardado dejaba TODO guardado posterior fallando
-    // para siempre, con el mensaje pidiendo intervencion manual.
-    let guard = OpenOptions::new()
-        .write(true)
-        .create(true)
-        .truncate(false)
-        .open(&lock)
-        .map_err(|e| format!("bloquear {}: {e}", path.display()))?;
-    guard.try_lock().map_err(|e| {
-        format!(
-            "bloquear {}: {e}; ya hay un guardado en curso",
-            path.display()
-        )
-    })?;
-    // Nombre unico por proceso y guardado. Con un `.tmp` fijo, un residuo de una
-    // muerte anterior hacia fallar `create_new` para siempre, y la limpieza de
-    // abajo tampoco lo borraba porque `created` nunca llegaba a ser true.
-    let temp = sibling(
-        path,
-        &format!(
-            ".{}.{}.tmp",
-            std::process::id(),
-            NEXT_TEMP.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
-        ),
-    );
-    let mut created = false;
-    let result = (|| {
-        let current = match fs::metadata(path) {
-            Ok(_) => Some(read(path, limit)?),
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => None,
-            Err(e) => return Err(format!("inspeccionar {}: {e}", path.display())),
-        };
-        if current.as_deref() != expected {
-            return Err("conflicto: el documento cambió en disco; cargar antes de guardar".into());
-        }
-        // No sobrescribir un temporal ajeno, aunque coincida tras reutilizar un PID.
-        let mut file = OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .open(&temp)
-            .map_err(|e| format!("crear temporal {}: {e}", temp.display()))?;
-        created = true;
-        file.write_all(data)
-            .and_then(|()| file.sync_all())
-            .map_err(|e| format!("guardar temporal {}: {e}", temp.display()))?;
-        drop(file);
-        fs::rename(&temp, path).map_err(|e| format!("reemplazar {}: {e}", path.display()))?;
-        created = false;
-        Ok(())
-    })();
-    if created && let Err(error) = fs::remove_file(&temp) {
-        eprintln!("limpiar {}: {error}", temp.display());
-    }
-    drop(guard);
-    result
+    name.into()
 }
 
 #[cfg(test)]

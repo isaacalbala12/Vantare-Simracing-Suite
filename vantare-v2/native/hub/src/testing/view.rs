@@ -167,17 +167,26 @@ impl Testing {
     }
     pub fn persist(&mut self) -> Result<(), String> {
         if self.store.dirty() {
-            self.store.save().map_err(|_| "No se pudo guardar el borrador de Testing Center; conserva la ventana y revisa el conflicto/acceso local".into())
+            let result = self.store.save();
+            if let Err(error) = &result {
+                self.observed.error(Module::TestingCenter, error.kind());
+            }
+            result.map_err(|_| "No se pudo guardar el borrador de Testing Center; conserva la ventana y revisa el conflicto/acceso local".into())
         } else {
             Ok(())
         }
     }
-    fn outcome(&mut self, result: Result<(), String>, message: &str, cx: &mut Context<Self>) {
+    fn outcome(
+        &mut self,
+        result: Result<(), crate::files::Error>,
+        message: &str,
+        cx: &mut Context<Self>,
+    ) {
         self.error = result.err().map(|error| {
-            self.observed.error(Module::TestingCenter, &error);
-            if super::diagnostic::error_code(&error) == super::diagnostic::ErrorCode::Conflict {
+            self.observed.error(Module::TestingCenter, error.kind());
+            if super::diagnostic::error_code(error.kind()) == super::diagnostic::ErrorCode::Conflict {
                 "Conflicto: el archivo cambió o ya existe. Tus cambios siguen aquí; recarga el borrador o elige otro destino.".into()
-            } else if error == "Borrador inválido o fuera de límites" {
+            } else if error.kind() == crate::files::Kind::InvalidInput {
                 "El borrador supera los límites indicados o contiene caracteres de control. Reduce el texto antes de guardar/exportar.".into()
             } else { "No se pudo completar la operación local. Se conservan los cambios y archivos anteriores.".into() }
         });

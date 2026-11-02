@@ -493,11 +493,16 @@ impl Store {
     }
 
     /// Confirmar en memoria solo después de escritura, sync y reemplazo atómicos.
-    pub fn replace(&mut self, document: Document) -> Result<(), String> {
+    pub fn replace(&mut self, document: Document) -> Result<(), files::Error> {
         document.validate()?;
         let bytes = serde_json::to_vec_pretty(&document)
             .map_err(|e| format!("serializar Launcher: {e}"))?;
-        files::save(&self.path, &bytes, self.saved.as_deref())?;
+        files::save_checked(
+            &self.path,
+            &bytes,
+            self.saved.as_deref(),
+            files::MAX_DOCUMENT,
+        )?;
         self.document = document;
         self.saved = Some(bytes);
         Ok(())

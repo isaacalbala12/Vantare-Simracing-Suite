@@ -1815,7 +1815,7 @@ impl Launcher {
             .gap(px(12.0))
             .child(heading)
             .when_some(self.error.clone(), |page, error| {
-                page.child(orbit::callout(error, cx))
+                page.child(orbit::callout(String::from(error), cx))
             })
             .child(div().flex_1().min_h_0().flex().gap(px(gap)).child(center))
     }

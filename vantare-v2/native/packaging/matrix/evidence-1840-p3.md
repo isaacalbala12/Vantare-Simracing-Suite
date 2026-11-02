@@ -63,7 +63,7 @@ la transición: build.rs lo extrae y la matriz compara los cuatro canales.
 La matriz añade ReadProbe: compara los ocho campos públicos de Probe viejo y
 Rust sobre la misma raíz, también en modo Uninstall. Las capturas siguen
 comparándose con el baseline existente, sin Record ni nuevas normalizaciones.
-La campaña nueva usa raíz con espacios/Unicode y el helper finito de PS5 con
+El ensayo adicional usa raíz con espacios/Unicode y el helper finito de PS5 con
 entrada UTF-8, stdout/stderr separados y plazo de 30 s; posee y recoge al hijo.
 El ejemplo rechaza raíz ajena, relativa o traversal.
 
@@ -78,8 +78,17 @@ Downloads. La 975 usa el ZIP ya disponible en QA, con digest público fijado.
 - `p3-guard-01`: PASS, siete rechazos raíz/reparse y cinco checks de bytes;
   raíz válida, sentinel intacto y ausencia de raíz sin escritura.
 - Parser PS, calidad/retirada 468/468 y diff intermedios: PASS.
-- Check final del lector sin defaults y Clippy final Installer/Hub all-targets
-  `-D warnings`: PASS. Nextest final retomado al observar D con 27–49 GB libres.
+- Clippy Installer/Hub all-targets `-D warnings` PASS sobre la base 668d99c32,
+  fuente 8dff23006: `clippy-all-final-04.log`. Nextest de esa misma fuente:
+  **635/635 PASS, 4 omitidos existentes**, `nextest-all-final-04.log` (216 s de tests).
+  El incremento de 634 a 635 corresponde a la nueva base integrada.
+- `finish-batch.log`: PASS fmt check, árbol normal sin GPUI/host/UI y check
+  de biblioteca sin defaults. Tres verificaciones agrupadas en una llamada a
+  compilar.ps1 después del turno de VANTA-128. Logs individuales final-05.
+- Los tres ejemplos normales de QA se construyeron con éxito: matrix-verifier,
+  boot-confirmation-matrix y probe-read-matrix (logs build-*-final). El ejemplo
+  usa dev-dependencies GPUI existentes al compilar tests; el árbol normal del
+  lector se verifica aparte, sin confundir ambos grafos.
 - `p3-logs/nextest-all-01.log`: no llegó a ejecutar tests. Link de Hub falló
   LNK1180 por espacio insuficiente; D tenía 65 MiB libres. Se pidió limpieza
   del servidor al orquestador; no se borran salidas ajenas ni se reduce la suite.
@@ -97,6 +106,8 @@ Downloads. La 975 usa el ZIP ya disponible en QA, con digest público fijado.
   Se repiten los gates tras conservar el SHA real/ausente de Uninstall parcial
   y el requisito previous del perfil Probe, con tests de lectura sin escritura.
 - `p3-guard-02`: PASS 7 rechazos y 5 checks de bytes sobre la copia actualizada.
+- `reader-guard-proof.json`: PASS tres rechazos del adaptador (raíz externa,
+  relativa y traversal); lectura válida de QA ausente sin crearla.
 - Un intento de fmt omitió manifest-path y falló sin ejecutar rustfmt. Se
   repitió con native/Cargo.toml explícito; no se oculta el intento.
 - Primer check se invocó sin el token cargo y falló antes del compilador.
@@ -104,8 +115,26 @@ Downloads. La 975 usa el ZIP ya disponible en QA, con digest público fijado.
 - Clippy inicial señaló docs, extensión, tamaño de función y estilo del test/
   arnés. Se corrigieron sin excepciones de lint ni retirar pruebas.
 
-Pendientes: fmt/check/clippy/Nextest finales de crates tocados, matriz completa,
-comparación de catálogos y fuentes/QA, fragmento, medición final y PR draft.
+Coordinación 2-nov: el orquestador pide ceder el siguiente turno a VANTA-128.
+Se cancela únicamente el bloque propio que esperaba fmt check/tree/check, antes
+de adquirir un hijo Cargo; se conserva el build del adaptador ya en marcha.
+Tras finalizar el gate de ciclo de vida de VANTA-128, el bloque agrupado PASS
+en una única llamada al wrapper (check del lector 3,69 s).
+
+- `matrix-final-01.log`: comparación de catálogos rechazada antes de crear
+  fixtures. PS5 envolvía el array JSON en otro array (Count=1); se corrige solo
+  el arnés asignando directamente ConvertFrom-Json. No se modifica catálogo,
+  baseline ni código Rust. Repetición en una raíz nueva Unicode/espacios.
+- `matrix-final-02.log`: cuatro Probe + cuatro Uninstall diferenciales y 37
+  filas del baseline PASS; se detiene en rc-options-check. La única diferencia
+  con una captura previa cuyo hash coincide con baseline es signed_payload.url:
+  la URI codifica ñ/espacio y el normalizador existente solo sustituye rutas
+  literales. `unicode-snapshot-proof.json` verifica todos los demás campos iguales.
+  No es una campaña completa PASS. Se conserva sin nuevos normalizadores, sin
+  Record y sin cambiar baseline; la campaña completa repite la raíz ASCII
+  habitual en matrix-p3-final-03. No se afirma cobertura Unicode completa.
+
+Pendientes: matriz completa, comparación de fuentes/QA, fragmento y medición final.
 Telemetría/lifecycle runtime no se requieren por ámbito: sin cambios propios
 runtime/domain/ipc/testdata ni ciclo de vida. QA física en VM/cuenta separada
 sigue pendiente; un arnés no demuestra instalación interactiva de producto.

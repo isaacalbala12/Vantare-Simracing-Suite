@@ -394,18 +394,18 @@ Sin merge/release del worker.
 - sha2 adelantada y arista Hub→installer autorizadas. Lock: solo esas dos listas,
   sin versiones/checksums/paquetes nuevos. PS heredado y sus perfiles continúan
   hasta pasos 4–7: no se afirma 5→1 global ni menor código en este paso.
-- Check del lector sin defaults y Clippy final de los dos crates PASS; Nextest
-  inicial falló antes de ejecutar por LNK1180: D solo 65 MiB libres. Log conservado
-  en QA isa-1840/p3-logs/nextest-all-01.log; limpieza del servidor pedida al orquestador.
-- Guard de copia QA PASS7+5; matriz completa pendiente, sin cambiar baseline. La extensión compara
-  Probe y Uninstall heredados/Rust, catálogos de cuatro canales y pipe UTF-8.
-- Intento focal Nextest sin defaults también falló por disco (os112), sin tests.
-  Limpieza exclusiva del incremental y parada de Cargo propuesta rechazadas por
-  revisión automática: blocked by policy. No ejecutadas ni reintentadas por otra vía.
+- Fuente 8dff23006: Clippy Installer/Hub all-targets -D warnings PASS y Nextest
+  **635/635 PASS**, 4 omisiones existentes. Logs final-04 en QA isa-1840/p3-logs.
+  Pendientes fmt check/check sin defaults, ejemplos y matriz diferencial completa.
+- Guard actual PASS7+5; candidate/beta y baseline intactos, copias QA idénticas,
+  parser PS y 468 huellas PASS. Extensión compara Probe/Uninstall y cuatro catálogos.
+- Fallos iniciales por disco, helper storage ausente e invocaciones corregidas
+  conservados en native/packaging/matrix/evidence-1840-p3.md. Limpieza/parada
+  propuesta rechazada por revisión automática; no ejecutada ni rodeada. Espacio
+  recuperado externamente; helper real construido conforme a README/DuckDB1.5.5.
 - Sin Plane, instalación real, secretos, Downloads, merge/release ni CI watch.
-  D ya tiene espacio por limpieza externa observada; Nextest final retomado.
-  Siguiente: gates completos y PR draft separado. No se declara
-  entrega ni CI remota del paso 3.
+  Siguiente: completar gates pendientes y entregar PR draft al orquestador.
+  QA física en cuenta/VM separada y CI remota no se acreditan aquí.
 
 
 ### Antecedentes 0–1d (evidencia histórica conservada)

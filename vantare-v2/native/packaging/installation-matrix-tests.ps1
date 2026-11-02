@@ -19,7 +19,9 @@ if ($Root -cne $qaImportCallerRoot) { throw 'MATRIX_IMPORT_ROOT_CHANGED' }
 $null=Assert-MatrixRoot $Root
 if($ReadProbe){
     foreach($catalogueChannel in @('beta','nightly','testers','master')){
-        $rustMembers=@((& $ReadProbe --members $catalogueChannel)|ConvertFrom-Json)
+        # PS5 ConvertFrom-Json emits the whole JSON array as one pipeline item.
+        # Assign it directly so Count compares members, not a wrapper array.
+        $rustMembers=(& $ReadProbe --members $catalogueChannel)|ConvertFrom-Json
         if($LASTEXITCODE){throw 'MATRIX_RUST_CATALOGUE_FAILED'}
         $legacyMembers=@(Get-NativeKnownMembers $catalogueChannel)
         if($rustMembers.Count -ne $legacyMembers.Count -or @(Compare-Object $rustMembers $legacyMembers -CaseSensitive).Count){throw ('MATRIX_RUST_CATALOGUE_CHANGED: '+$catalogueChannel)}

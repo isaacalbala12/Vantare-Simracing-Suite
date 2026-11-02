@@ -21,6 +21,7 @@ $previousPath = $env:PATH
 $previousIncremental = [Environment]::GetEnvironmentVariable('CARGO_INCREMENTAL', 'Process')
 $previousNativeRoot = [Environment]::GetEnvironmentVariable('VANTARE_NATIVE_DATA_ROOT', 'Process')
 $previousLocalData = [Environment]::GetEnvironmentVariable('LOCALAPPDATA', 'Process')
+$previousRoamingData = [Environment]::GetEnvironmentVariable('APPDATA', 'Process')
 $previousConfig = $null
 Push-Location $PSScriptRoot
 try {
@@ -34,6 +35,7 @@ try {
         [IO.Directory]::CreateDirectory($qaBase) | Out-Null
         $env:VANTARE_NATIVE_DATA_ROOT = $qaBase
         $env:LOCALAPPDATA = $qaBase
+        $env:APPDATA = $qaBase
     }
     if ($Gate -eq 'prueba') {
         . (Join-Path $PSScriptRoot 'packaging/build-config.ps1')
@@ -92,6 +94,8 @@ try {
     else { [Environment]::SetEnvironmentVariable('VANTARE_NATIVE_DATA_ROOT', $previousNativeRoot, 'Process') }
     if ($null -eq $previousLocalData) { Remove-Item Env:LOCALAPPDATA -ErrorAction SilentlyContinue }
     else { [Environment]::SetEnvironmentVariable('LOCALAPPDATA', $previousLocalData, 'Process') }
+    if ($null -eq $previousRoamingData) { Remove-Item Env:APPDATA -ErrorAction SilentlyContinue }
+    else { [Environment]::SetEnvironmentVariable('APPDATA', $previousRoamingData, 'Process') }
     if ($null -ne $previousConfig) { Restore-NativeBuildConfig $previousConfig }
     if ($null -eq $previousIncremental) { Remove-Item Env:CARGO_INCREMENTAL -ErrorAction SilentlyContinue }
     else { [Environment]::SetEnvironmentVariable('CARGO_INCREMENTAL', $previousIncremental, 'Process') }

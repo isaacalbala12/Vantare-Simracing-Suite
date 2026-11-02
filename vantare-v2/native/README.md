@@ -442,8 +442,8 @@ de bibliotecas del cargador de su sistema; esta variante se verificó en Windows
 
 ## Workers: caché y limpieza (#1465)
 
-Los gates (salvo el build `prueba`) fijan `VANTARE_NATIVE_DATA_ROOT` y
-`LOCALAPPDATA` en `<TargetDirectory>/qa-data` y restauran el entorno al acabar,
+Los gates (salvo el build `prueba`) fijan `VANTARE_NATIVE_DATA_ROOT`,
+`LOCALAPPDATA` y `APPDATA` en `<TargetDirectory>/qa-data` y restauran el entorno al acabar,
 también en fallo. En tests o con `services/test-support`, la raíz de diagnóstico
 rechaza la falta de override antes de recurrir a datos instalados (#1869, P1 QA).
 Los tests del Hub activan esa feature ya existente: `cfg(test)` no se propaga a

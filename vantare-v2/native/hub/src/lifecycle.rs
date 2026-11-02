@@ -21,10 +21,13 @@ mod tests {
         for (kind, state, closes_after_non_live) in [
             (SourceKind::Live, SourceState::Waiting, false),
             (SourceKind::Live, SourceState::Live, true),
+            // #1860 paso 0: hoy una pausa escribe idle; cambia en paso 4.
+            (SourceKind::Live, SourceState::Paused, false),
             (SourceKind::Live, SourceState::Stale, false),
             (SourceKind::Live, SourceState::Lost, false),
             (SourceKind::Replay, SourceState::Waiting, false),
             (SourceKind::Replay, SourceState::Live, false),
+            (SourceKind::Replay, SourceState::Paused, false),
             (SourceKind::Replay, SourceState::Stale, false),
             (SourceKind::Replay, SourceState::Lost, false),
         ] {
@@ -48,7 +51,12 @@ mod tests {
     }
     #[test]
     fn waiting_or_stale_to_live_edges_close_and_do_not_repeat() {
-        for state in [SourceState::Waiting, SourceState::Stale, SourceState::Lost] {
+        for state in [
+            SourceState::Waiting,
+            SourceState::Paused,
+            SourceState::Stale,
+            SourceState::Lost,
+        ] {
             let mut snapshot = Snapshot::default();
             snapshot.state.source_state = state;
             assert!(!should_close(None, &snapshot, false));

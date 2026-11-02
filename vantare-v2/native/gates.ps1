@@ -57,6 +57,10 @@ try {
     # Jobs de compilación: CARGO_BUILD_JOBS de la máquina o 2 (#1465). En nextest
     # `-j` son hilos de test; los jobs van en --build-jobs.
     $jobs = if ($env:CARGO_BUILD_JOBS) { $env:CARGO_BUILD_JOBS } else { '2' }
+    if ($Gate -eq 'lifecycle' -and $IsWindows) {
+        # Normal para cierre real; QA sólo para invocar los manejadores de bandeja.
+        & (Join-Path $PSScriptRoot 'runtime/tests/lifecycle/build-overlays.ps1') -TargetDirectory $TargetDirectory
+    }
     $jobsFlag = if ($Gate -in @('test', 'telemetria', 'completa')) { '--build-jobs' } else { '-j' }
     # --target-dir y no CARGO_TARGET_DIR: sccache mete las variables CARGO_* en su clave
     # y así comparte caché con los builds de los workers en sus targets propios.

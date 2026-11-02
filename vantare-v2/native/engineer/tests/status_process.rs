@@ -93,7 +93,15 @@ fn heartbeat_advances_without_photos_and_crashed_engineer_expires() {
     process.child.wait().expect("reap");
     let after_crash = process.report(|_| true);
     assert!(after_crash.status.active, "kill no publica un cierre falso");
-    assert_eq!(after_crash, next, "archivo conserva última evidencia");
+    assert!(
+        after_crash.runtime.as_ref().expect("v2").heartbeat_ms
+            >= next.runtime.as_ref().expect("v2").heartbeat_ms,
+        "el último heartbeat observado no retrocede al morir"
+    );
+    // Kill + wait es la barrera: antes de ella cabe otro heartbeat válido.
+    // Dos lecturas posteriores prueban que el proceso muerto ya no escribe.
+    let stopped = process.report(|_| true);
+    assert_eq!(after_crash, stopped, "archivo conserva última evidencia");
     let runtime = after_crash.runtime.expect("v2");
     assert!(!runtime.fresh(runtime.heartbeat_ms + HEARTBEAT_TIMEOUT_MS));
 }

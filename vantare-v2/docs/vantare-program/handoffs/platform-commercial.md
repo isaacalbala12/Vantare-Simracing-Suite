@@ -1,3 +1,56 @@
+<!-- isa1860-arranque-cierre -->
+## VANTA-128 / #1860 — paso 0 listo; paso 1 preparado
+
+PR draft [#1863](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1863)
+a nightly. Código probado `f739f4feb21970c710236e2bddeea12a35661f59` (primer
+bloque `7488a40bf`); HEAD de entrega en el PR, con este handoff como único cambio posterior.
+Base `origin/nightly@668d99c32f027c2f3f7c0abe6ae0306bff01a04c`.
+Rama `vantareapp/isa-1860-paso0-caracterizacion`, worktree
+`D:/VantareServer/worktrees/isa-1860-paso0`, target `D:/VantareServer/targets/isa-1860`.
+Plane En curso verificado; el worker no volvió a cambiar el estado.
+
+- Caracterización con overlays GPUI reales, layout/pipes/datos temporales y el
+  núcleo/Hub sintéticos identificados. Run-BetaHub se ejecuta desde su cuerpo
+  original por AST; Apply, instalación, registro y red quedan inertes.
+- Se fijan los resultados actuales: kill a 3 s con exit 0; Hub en Waiting/Live/
+  Paused/Stale/Lost; Hub de bandeja fuera del Job; Abrir Hub/Salir; backoff 250/500
+  ms; instancia única; Job; reinicio beta live sin Stop y caída Hub sin marcador.
+  La matriz señala los cambios de los pasos 1 y 4. Sin #[path] entre crates.
+- #1852: kill + wait es la barrera; dos lecturas posteriores prueban que el
+  fichero no cambia. Se mantienen el avance y la caducidad en frontera exacta.
+- Fmt y Clippy all-targets de runtime/Engineer/UI/Hub -D warnings PASS;
+  Clippy UI parity-capture PASS. Lifecycle final con services disponible:
+  runtime 23/23, Engineer 5/5 y status_process 2/2 PASS.
+- Nextest ci con telemetría: **1581/1581 PASS**, 18 omitidos preexistentes;
+  lifecycle se ejecuta aparte. Integridad retirada 468/468 PASS.
+- Mutaciones 3/3 detectadas por aserción: plazo 300 ms, idle invertido y
+  heartbeat congelado. Fuentes restauradas por SHA-256 y baseline completa PASS.
+  Evidencia local: `D:/VantareServer/evidence/isa-1860-paso0` (gates, prerrequisitos,
+  nextest-with-prerequisites.log, lifecycle-with-services.log y mutations/).
+- Se conservan los fallos anteriores: faltaban storage y services en el target
+  aislado (prerrequisitos ya preparados); installation.rs:309 falló una vez y
+  pasa en la suite final. El orquestador asigna ese test al worker del instalador
+  en otro PR; aquí no se toca, omite ni relaja.
+- Decisión del orquestador: NO SendInput. La fila automática llama a los
+  manejadores reales desde una entrada exclusiva de parity-capture; otra fila
+  prueba que el binario normal la ignora. El clic físico queda **pendiente de
+  Isaac**, no realizado ni acreditado. Pasos y cancelación en el
+  [README lifecycle](../../../native/runtime/tests/lifecycle/README.md), modo
+  opt-in manual-tray; sólo usa procesos y datos temporales propios.
+- El orquestador cerró la instalación real para dejar libre la sesión. El worker
+  no la cerró ni la reabrió, ni tocó registro real. Sin cambios en installer::engine
+  ni Hub Ajustes/updates; los demás pasos del diseño siguen pendientes.
+- Paso 1 preparado, sin compilar ni publicar, en `bb9413fc8`, rama
+  `vantareapp/isa-1860-paso1-cierre-overlays`, worktree
+  `D:/VantareServer/worktrees/isa-1860-paso1`, desde el mismo nightly.
+  Sólo overlays recibirá EOF sin WM_CLOSE; el resto conserva el cierre actual
+  hasta el paso 2 (decisión confirmada). Incluye diagnóstico de kill y EOF normal
+  de servicios, con regresión de pipe/trama; fragmento ISA-1860 validado.
+  Espera la base del paso 0 para actualizar sus expectativas y pasar sus gates.
+- PR0 sólo está publicado como draft. CI la vigila el orquestador. El worker no
+  hizo merge, release ni promoción de canal. Plane sigue En curso.
+<!-- /isa1860-arranque-cierre -->
+
 <!-- isa1827-simplificar-e -->
 ## VANTA-126 / #1827 — E listo para revisión
 

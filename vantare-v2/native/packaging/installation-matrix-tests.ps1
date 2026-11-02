@@ -1,6 +1,6 @@
 ﻿#requires -Version 5.1
 [CmdletBinding()]
-param([string]$Root,[string]$LegacyPackage,[string]$TestVerifier,[string]$BootProbe,[switch]$Record,
+param([string]$Root,[string]$LegacyPackage,[string]$TestVerifier,[string]$BootProbe,[string]$ReadProbe,[switch]$Record,
       [ValidateSet('clean','nsis975','nsis975-incomplete974','rc-options','pending','boot','retained','retained-no-marker')]
       [string[]]$Cases=@('clean','nsis975','nsis975-incomplete974','rc-options','pending','boot','retained','retained-no-marker'),
       [ValidateSet('Probe','Install','Update','Repair','Check','Apply','Confirm','Timeout','Rollback','Uninstall','Cleanup')]
@@ -17,6 +17,16 @@ $qaImportCallerRoot=$Root
 . (Join-Path $PSScriptRoot 'beta.ps1') -Library -Root $qaMatrixRoot
 if ($Root -cne $qaImportCallerRoot) { throw 'MATRIX_IMPORT_ROOT_CHANGED' }
 $null=Assert-MatrixRoot $Root
+if($ReadProbe){
+    foreach($catalogueChannel in @('beta','nightly','testers','master')){
+        # PS5 ConvertFrom-Json emits the whole JSON array as one pipeline item.
+        # Assign it directly so Count compares members, not a wrapper array.
+        $rustMembers=(& $ReadProbe --members $catalogueChannel)|ConvertFrom-Json
+        if($LASTEXITCODE){throw 'MATRIX_RUST_CATALOGUE_FAILED'}
+        $legacyMembers=@(Get-NativeKnownMembers $catalogueChannel)
+        if($rustMembers.Count -ne $legacyMembers.Count -or @(Compare-Object $rustMembers $legacyMembers -CaseSensitive).Count){throw ('MATRIX_RUST_CATALOGUE_CHANGED: '+$catalogueChannel)}
+    }
+}
 if ((Get-NativeHash $LegacyPackage) -cne '372bcd60cf168cb6187be1c481b21c835268db1dbcc3e0a0aeb17246bede7066') { throw 'MATRIX_LEGACY_DIGEST' }
 [IO.Directory]::CreateDirectory($qaMatrixRoot) | Out-Null
 . (Join-Path $PSScriptRoot 'matrix/fixtures.ps1')
@@ -84,6 +94,7 @@ try {
             $info=[Diagnostics.ProcessStartInfo]::new()
             $info.FileName="$env:WINDIR/System32/WindowsPowerShell/v1.0/powershell.exe"
             $info.Arguments='-NoProfile -ExecutionPolicy Bypass -File "'+(Join-Path $PSScriptRoot 'matrix/worker.ps1')+'" -Root "'+$caseRoot+'" -Case '+$case+' -Operation '+$operation+' -Assets "'+$assets+'" -RegistryRoot "HKEY_CURRENT_USER\Software\VantareInstallerMatrix\'+$registryId+'\'+$name+'"'
+            if($ReadProbe){$info.Arguments+=' -ReadProbe "'+$ReadProbe+'"'}
             $info.UseShellExecute=$false;$info.CreateNoWindow=$true
             # CodeDOM used by Add-Type also writes temporary compiler files.
             # Set this BEFORE process creation, so .NET never caches user TEMP.

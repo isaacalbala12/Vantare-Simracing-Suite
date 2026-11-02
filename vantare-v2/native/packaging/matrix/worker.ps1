@@ -1,5 +1,5 @@
 #requires -Version 5.1
-param([string]$Root,[string]$Case,[string]$Operation,[string]$Assets,[string]$RegistryRoot)
+param([string]$Root,[string]$Case,[string]$Operation,[string]$Assets,[string]$RegistryRoot,[string]$ReadProbe)
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'guard.ps1')
@@ -46,13 +46,15 @@ try {
             Copy-Item -LiteralPath "$env:WINDIR/System32/cmd.exe" -Destination (Join-Path $engine 'Uninstall.exe')
             [IO.File]::WriteAllText((Join-Path $engine 'installer-notices.txt'),'fixture')
             $request=Join-Path $qaCaseRoot 'request.json'
-            Write-NativeJson $request @{
+            $requestValue=@{
                 root=$qaInstallRoot;qa=$false;silent=$true;uninstall=($Operation -in @('Uninstall','Cleanup'));
                 operation=$(if($Operation -ceq 'Repair'){'Install'}else{$Operation});
                 version=$version;mode=$(if($Operation -ceq 'Repair'){'repair'}else{'auto'});
                 size=1;desktop=$true;autostart=$true;processId=2147483647;
                 packageSha=(Get-NativeHash (Join-Path $engine 'package.zip'))
             }
+            if($Operation -ceq 'Probe' -and $ReadProbe){$requestValue.readContext=$true}
+            Write-NativeJson $request $requestValue
             # Inject only OS folder resolution and explicit library root in a TEST
             # copy. The driver's operations/transactions remain byte-for-byte.
             $driver=Get-Content -LiteralPath (Join-Path $script:Packaging 'installer-driver.ps1') -Raw
@@ -67,7 +69,46 @@ try {
             # Cleanup validates this exact temporary naming convention.
             $env:TEMP=$qaCaseRoot
             [Console]::SetIn([IO.StringReader]::new("continue`n"))
-            & $driverPath -RequestFile $request
+            if($Operation -ceq 'Probe' -and $ReadProbe){
+                # Differential oracle: legacy Probe and Rust-completed context
+                # must return the same public fields on the same guarded root.
+                $legacyRequest=$requestValue.Clone();$legacyRequest.Remove('readContext')
+                Write-NativeJson ($request+'.legacy.json') $legacyRequest
+                $expected=& $driverPath -RequestFile ($request+'.legacy.json')
+                if($LASTEXITCODE){throw 'MATRIX_LEGACY_PROBE_FAILED'}
+                $context=& $driverPath -RequestFile $request
+                if($LASTEXITCODE){exit $LASTEXITCODE}
+                # The existing finite-process helper owns/waits the child,
+                # writes stdin as UTF-8 and drains warnings separately.
+                $readResult=Invoke-NativeProcess -Executable $ReadProbe -InputText $context -TimeoutMilliseconds 30000 -LogPath ($request+'.rust.log')
+                if($readResult.ExitCode){throw ('MATRIX_RUST_PROBE_FAILED: '+$readResult.Stderr)}
+                if($readResult.Stderr){[Console]::Error.Write($readResult.Stderr)}
+                $actual=$readResult.Stdout
+                $old=$expected|ConvertFrom-Json;$new=$actual|ConvertFrom-Json
+                if(@(Compare-Object @($old.PSObject.Properties.Name) @($new.PSObject.Properties.Name) -CaseSensitive).Count){throw 'MATRIX_PROBE_FIELDS_CHANGED'}
+                foreach($field in $old.PSObject.Properties){
+                    if($field.Value -cne $new.PSObject.Properties[$field.Name].Value){throw ('MATRIX_PROBE_VALUE_CHANGED: '+$field.Name)}
+                }
+                # The same root must retain interrupted-uninstall tolerance and
+                # its legacy registry version display until the step 4 writer.
+                $legacyRequest.uninstall=$true
+                Write-NativeJson ($request+'.uninstall-legacy.json') $legacyRequest
+                $uninstallExpected=& $driverPath -RequestFile ($request+'.uninstall-legacy.json')
+                if($LASTEXITCODE){throw 'MATRIX_LEGACY_UNINSTALL_PROBE_FAILED'}
+                $legacyRequest.readContext=$true
+                Write-NativeJson ($request+'.uninstall-context.json') $legacyRequest
+                $uninstallContext=& $driverPath -RequestFile ($request+'.uninstall-context.json')
+                if($LASTEXITCODE){throw 'MATRIX_UNINSTALL_CONTEXT_FAILED'}
+                $readResult=Invoke-NativeProcess -Executable $ReadProbe -Arguments @('--uninstall') -InputText $uninstallContext -TimeoutMilliseconds 30000 -LogPath ($request+'.uninstall-rust.log')
+                if($readResult.ExitCode){throw ('MATRIX_UNINSTALL_READ_FAILED: '+$readResult.Stderr)}
+                if($readResult.Stderr){[Console]::Error.Write($readResult.Stderr)}
+                $uninstallActual=$readResult.Stdout
+                $old=$uninstallExpected|ConvertFrom-Json;$new=$uninstallActual|ConvertFrom-Json
+                foreach($field in $old.PSObject.Properties){
+                    if($field.Value -cne $new.PSObject.Properties[$field.Name].Value){throw ('MATRIX_UNINSTALL_PROBE_VALUE_CHANGED: '+$field.Name)}
+                }
+                $actual
+            }else{& $driverPath -RequestFile $request}
             exit $LASTEXITCODE
         }
         'Update' { $null=Update-NativeCandidate $qaInstallRoot (Join-Path $Assets 'v989.zip') (Get-NativeHash (Join-Path $Assets 'v989.zip')) }

@@ -14,44 +14,6 @@ pub(super) enum LocalUpdate {
     },
     Invalid,
 }
-#[derive(Deserialize)]
-struct Manifest {
-    schema: u32,
-    product: String,
-    candidate: bool,
-    architecture: String,
-    version: String,
-    channel: String,
-}
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-struct Installation {
-    schema: u32,
-    product: String,
-    channel: String,
-    active: Generation,
-    previous: Option<Generation>,
-}
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-struct Generation {
-    generation: String,
-    manifest_sha256: String,
-}
-fn hex(value: &str, length: usize) -> bool {
-    value.len() == length
-        && value
-            .bytes()
-            .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
-}
-fn channel(value: &str) -> bool {
-    matches!(value, "nightly" | "testers" | "master" | "beta")
-}
-impl Generation {
-    fn valid(&self) -> bool {
-        hex(&self.generation, 32) && hex(&self.manifest_sha256, 64)
-    }
-}
 fn read<T: serde::de::DeserializeOwned>(path: &Path, limit: u64) -> Result<T, ()> {
     if !crate::testing::diagnostic::local_path(path) {
         return Err(());
@@ -72,6 +34,22 @@ fn read<T: serde::de::DeserializeOwned>(path: &Path, limit: u64) -> Result<T, ()
     serde_json::from_slice(&bytes).map_err(|_| ())
 }
 impl LocalUpdate {
+    /// #1840 step 3, authorized behavior change: installed metadata projects
+    /// from the active manifest; binary identity is only a diagnostic fallback.
+    pub(super) fn presentation<'a>(
+        &'a self,
+        binary_version: &'a str,
+        binary_channel: &'a str,
+    ) -> Option<(&'a str, &'a str)> {
+        match self {
+            Self::Package {
+                version, channel, ..
+            } => Some((version, channel)),
+            Self::Development | Self::Invalid => Some((binary_version, binary_channel)),
+            Self::Unread => None,
+        }
+    }
+
     pub(super) fn current() -> Self {
         match std::env::current_exe() {
             Ok(exe) => Self::at(&exe),
@@ -103,38 +81,32 @@ impl LocalUpdate {
         }
     }
     fn package(package: &Path) -> Result<Self, ()> {
-        let manifest: Manifest = read(&package.join("manifest.json"), 1024 * 1024)?;
-        if manifest.schema != 1
-            || manifest.product != "vantare-native"
-            || !manifest.candidate
-            || manifest.architecture != "windows-x64"
-            || !channel(&manifest.channel)
-            || !valid_version(&manifest.version)
-        {
-            return Err(());
-        }
-        let mut previous = false;
-        if let Some(generations) = package
+        use vantare_installer::engine::{Installation, Manifest, ReadProfile};
+        let (manifest, previous) = if let Some(generations) = package
             .parent()
             .filter(|parent| parent.file_name().is_some_and(|name| name == "generations"))
         {
-            let install = generations.parent().ok_or(())?;
-            let state: Installation = read(&install.join("state.json"), 16 * 1024)?;
-            if state.schema != 1
-                || state.product != "vantare-native"
-                || state.channel != manifest.channel
-                || !state.active.valid()
-                || state
-                    .previous
-                    .as_ref()
-                    .is_some_and(|generation| !generation.valid())
-                || package.file_name().and_then(|name| name.to_str())
-                    != Some(&state.active.generation)
+            let root = generations.parent().ok_or(())?;
+            if !crate::testing::diagnostic::local_path(root) {
+                return Err(());
+            }
+            let installation = Installation::read(root, ReadProfile::Hub).map_err(|_| ())?;
+            let state = installation.state.ok_or(())?;
+            if package.file_name().and_then(|name| name.to_str()) != Some(&state.active.generation)
             {
                 return Err(());
             }
-            previous = state.previous.is_some();
-        }
+            (installation.manifest.ok_or(())?, state.previous.is_some())
+        } else {
+            let path = package.join("manifest.json");
+            if !crate::testing::diagnostic::local_path(&path) {
+                return Err(());
+            }
+            (
+                Manifest::read(&path, ReadProfile::Hub).map_err(|_| ())?,
+                false,
+            )
+        };
         Ok(Self::Package {
             version: manifest.version,
             channel: manifest.channel,
@@ -142,34 +114,11 @@ impl LocalUpdate {
         })
     }
 }
-fn valid_version(value: &str) -> bool {
-    if value.len() > 100 {
-        return false;
-    }
-    let (numbers, suffix) = value
-        .split_once('-')
-        .map_or((value, None), |(a, b)| (a, Some(b)));
-    let parts: Vec<_> = numbers.split('.').collect();
-    (3..=4).contains(&parts.len())
-        && parts
-            .iter()
-            .all(|part| !part.is_empty() && part.bytes().all(|b| b.is_ascii_digit()))
-        && suffix.is_none_or(|suffix| {
-            !suffix.is_empty()
-                && suffix.len() <= 64
-                && suffix
-                    .as_bytes()
-                    .first()
-                    .is_some_and(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit())
-                && suffix
-                    .bytes()
-                    .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'.' || b == b'-')
-        })
-}
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use vantare_installer::engine::validation::{channel, hex, hub_version as valid_version};
     #[test]
     fn validates_only_packaging_versions_and_closed_channels() {
         assert_eq!(LocalUpdate::default(), LocalUpdate::Unread);
@@ -213,6 +162,29 @@ mod tests {
                 channel: "nightly".into(),
                 previous: false
             }
+        );
+        let installed = LocalUpdate::at(&exe);
+        // Normal case is identical. A mismatched running binary cannot replace
+        // the installed version/channel or suppress its staged update.
+        assert_eq!(
+            installed.presentation("1.2.3-local", "nightly"),
+            Some(("1.2.3-local", "nightly"))
+        );
+        assert_eq!(
+            installed.presentation("9.9.9", "master"),
+            Some(("1.2.3-local", "nightly"))
+        );
+        let offer = BetaStatus {
+            schema: 1,
+            state: "ready".into(),
+            message: String::new(),
+            version: "9.9.9".into(),
+            notes: String::new(),
+        };
+        assert!(
+            installed
+                .presentation("9.9.9", "master")
+                .is_some_and(|(version, _)| offer.ready_for(version))
         );
         let mut rollback = state.clone();
         rollback["previous"] =
@@ -259,6 +231,17 @@ mod tests {
             LocalUpdate::Development
         );
         fs::remove_dir_all(root).expect("limpiar fixture propia");
+    }
+
+    #[test]
+    fn only_development_and_invalid_use_the_binary_identity() {
+        for view in [LocalUpdate::Development, LocalUpdate::Invalid] {
+            assert_eq!(
+                view.presentation("0.0.988", "beta"),
+                Some(("0.0.988", "beta"))
+            );
+        }
+        assert_eq!(LocalUpdate::Unread.presentation("0.0.988", "beta"), None);
     }
 }
 

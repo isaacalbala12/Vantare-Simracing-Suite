@@ -6558,6 +6558,7 @@ dependencies = [
  "serde_json",
  "vantare-build-support",
  "vantare-domain",
+ "vantare-installer",
  "vantare-ipc",
  "vantare-launcher",
  "vantare-services",
@@ -6573,6 +6574,7 @@ dependencies = [
  "gpui_platform",
  "serde",
  "serde_json",
+ "sha2",
  "vantare-build-support",
  "vantare-ui",
 ]

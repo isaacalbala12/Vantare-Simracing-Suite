@@ -161,12 +161,17 @@ impl Hub {
             ));
         }
         if self.settings.page == Page::Application {
+            let version = self
+                .settings
+                .update
+                .presentation(crate::version_label(), crate::product::CHANNEL)
+                .map_or("…", |(version, _)| version);
             rail.push(orbit::RailSection::new(
                 "Versión",
                 "v-download",
                 stack()
                     .gap(px(12.0))
-                    .child(text(crate::version_label(), 22.0, 700, orbit::ink(cx), cx))
+                    .child(text(version.to_owned(), 22.0, 700, orbit::ink(cx), cx))
                     .child(
                         orbit::small_button("settings-open-updates", "Actualizaciones", cx)
                             .self_start()

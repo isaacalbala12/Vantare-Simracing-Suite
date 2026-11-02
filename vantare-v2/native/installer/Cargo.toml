@@ -6,9 +6,10 @@ rust-version.workspace = true
 publish.workspace = true
 
 [features]
-default = ["ui"]
-ui = ["dep:gpui", "dep:gpui_platform"]
-setup-payload = []
+default = ["ui", "transport"]
+transport = []
+ui = ["transport", "dep:gpui", "dep:gpui_platform"]
+setup-payload = ["transport"]
 test-installer = []
 # QA: HWND oculto fuera de los monitores y PrintWindow del banco de #1675.
 parity-capture = ["ui", "dep:vantare-ui", "vantare-ui/parity-capture"]
@@ -16,6 +17,8 @@ parity-capture = ["ui", "dep:vantare-ui", "vantare-ui/parity-capture"]
 [dependencies]
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+# ADR 0103 step 3: existing locked SHA, approved ahead of step 4 for reads.
+sha2 = "0.10"
 
 [target.'cfg(windows)'.dependencies]
 gpui = { git = "https://github.com/zed-industries/zed", rev = "72d28c32c2ba77a579e1c02f984654518552124b", optional = true }
@@ -36,7 +39,13 @@ workspace = true
 [[bin]]
 name = "vantare-setup"
 path = "src/bin/vantare-setup.rs"
+required-features = ["transport"]
 
 [[bin]]
 name = "vantare-uninstall"
 path = "src/bin/vantare-uninstall.rs"
+required-features = ["transport"]
+
+[[test]]
+name = "contract"
+required-features = ["transport"]

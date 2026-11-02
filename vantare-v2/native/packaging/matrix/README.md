@@ -1,5 +1,15 @@
 # Caracterización del motor de instalación · VANTA-127 / #1840
 
+Paso 3 añade `-ReadProbe <probe-read-matrix.exe>`: compara en cada raíz los ocho
+campos públicos del Probe heredado con el contexto completado por Rust, también
+en modo Uninstall. Las ocho capturas Probe conservan el baseline; no se regraba
+ni normaliza una diferencia nueva. CI construye ese ejemplo de tests, que nunca
+viaja en el producto. Compara además el catálogo Rust/PS en los cuatro canales.
+La ejecución sin ReadProbe conserva la caracterización heredada para contraste.
+La campaña local de paso 3 usa raíz con espacios/Unicode para probar la entrada
+UTF-8 del helper finito de PS5, con stdout/stderr drenados y plazo de 30 s.
+Los campos raíz/datos deben conservarse exactamente y el hijo queda recogido.
+
 Paso 1d añade startup-tests: comando del Hub y driver de Setup/Uninstall,
 Run propia/ajena con el mismo nombre, migración Run→opción/Startup con preferencia
 ON/OFF o sin ella y bootstrap raíz congelado. Dos barreras deterministas prueban
@@ -128,7 +138,7 @@ Normalizar el archivo de trabajo a la política del repo, no el snapshot.
 
 ## Reproducir y revisar cambios
 
-Desde `vantare-v2/`, construir `matrix-verifier` y `boot-confirmation-matrix` con `compilar.ps1`, target propio
+Desde `vantare-v2/`, construir `matrix-verifier`, `probe-read-matrix` y `boot-confirmation-matrix` con `compilar.ps1`, target propio
 y jobs autorizados; descargar el ZIP del tag `native-beta-v0.0.975` del repositorio
 de código (no Downloads). El arnés exige su SHA-256 público fijado antes de extraer.
 
@@ -137,7 +147,8 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File native/packaging/install
   -Root D:/VantareServer/qa/isa-1840/run-nuevo `
   -LegacyPackage D:/VantareServer/qa/isa-1840/vantare-native-amd64-package.zip `
   -TestVerifier D:/VantareServer/targets/isa-1840/debug/examples/matrix-verifier.exe `
-  -BootProbe D:/VantareServer/targets/isa-1840/debug/examples/boot-confirmation-matrix.exe
+  -BootProbe D:/VantareServer/targets/isa-1840/debug/examples/boot-confirmation-matrix.exe `
+  -ReadProbe D:/VantareServer/targets/isa-1840-p3/debug/examples/probe-read-matrix.exe
 ```
 
 `-Record` escribe un candidato **solo en QA**, nunca sobrescribe el baseline.

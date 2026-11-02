@@ -441,6 +441,8 @@ jobs:
           $env:CARGO_TARGET_DIR = Join-Path (Get-Location) 'native/target/gates'
           pwsh -NoProfile -File native/scripts/compilar.ps1 cargo build --manifest-path native/Cargo.toml -p vantare-services --example matrix-verifier --locked --offline -j 4
           if ($LASTEXITCODE) { throw 'matrix TEST verifier build failed' }
+          pwsh -NoProfile -File native/scripts/compilar.ps1 cargo build --manifest-path native/Cargo.toml -p vantare-installer --no-default-features --example probe-read-matrix --locked --offline -j 4
+          if ($LASTEXITCODE) { throw 'matrix read probe build failed' }
             pwsh -NoProfile -File native/scripts/compilar.ps1 cargo build --manifest-path native/Cargo.toml -p vantare-hub --example boot-confirmation-matrix --locked --offline -j 4
             if ($LASTEXITCODE) { throw 'matrix boot confirmation fixture build failed' }
           $legacy = Join-Path $env:RUNNER_TEMP 'matrix-legacy'
@@ -449,7 +451,7 @@ jobs:
           if ($LASTEXITCODE) { throw 'pinned historical package unavailable' }
           powershell.exe -NoProfile -ExecutionPolicy Bypass -File native/packaging/matrix/guard-tests.ps1 -Root "$env:RUNNER_TEMP/installation-matrix-guard"
           if ($LASTEXITCODE) { throw 'installation matrix isolation failed' }
-          powershell.exe -NoProfile -ExecutionPolicy Bypass -File native/packaging/installation-matrix-tests.ps1 -Root "$env:RUNNER_TEMP/installation-matrix" -LegacyPackage "$legacy/vantare-native-amd64-package.zip" -TestVerifier "$env:CARGO_TARGET_DIR/debug/examples/matrix-verifier.exe" -BootProbe "$env:CARGO_TARGET_DIR/debug/examples/boot-confirmation-matrix.exe"
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File native/packaging/installation-matrix-tests.ps1 -Root "$env:RUNNER_TEMP/installation-matrix" -LegacyPackage "$legacy/vantare-native-amd64-package.zip" -TestVerifier "$env:CARGO_TARGET_DIR/debug/examples/matrix-verifier.exe" -BootProbe "$env:CARGO_TARGET_DIR/debug/examples/boot-confirmation-matrix.exe" -ReadProbe "$env:CARGO_TARGET_DIR/debug/examples/probe-read-matrix.exe"
           if ($LASTEXITCODE) { throw 'installation matrix regression' }
 
       - name: Preserve installation matrix snapshots

@@ -22,7 +22,7 @@ pub mod orbit;
 pub mod pilot;
 pub use vantare_ipc::product;
 
-/// Identidad instalada compartida por todas las pantallas del Hub.
+/// Identidad del binario; Ajustes obtiene la instalación desde `installer::engine`.
 pub(crate) fn version_label() -> &'static str {
     product::VERSION
 }

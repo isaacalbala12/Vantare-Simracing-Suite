@@ -46,21 +46,7 @@ pub struct Progress {
     pub can_cancel: bool,
 }
 
-pub fn version(value: &str) -> Result<[u16; 3], String> {
-    let parts = value
-        .split('.')
-        .map(|part| {
-            if part.is_empty() || (part.len() > 1 && part.starts_with('0')) {
-                return Err("Versión inválida".to_owned());
-            }
-            part.parse::<u16>()
-                .map_err(|_| "Versión inválida".to_owned())
-        })
-        .collect::<Result<Vec<_>, _>>()?;
-    parts
-        .try_into()
-        .map_err(|_| "Versión debe tener tres componentes".into())
-}
+pub use crate::engine::validation::setup_version as version;
 
 impl Info {
     pub fn allows(&self, mode: Mode) -> bool {

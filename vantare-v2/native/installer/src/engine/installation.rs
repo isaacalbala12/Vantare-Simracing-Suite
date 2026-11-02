@@ -428,6 +428,15 @@ pub(super) fn tree(root: &Path) -> Result<Vec<PathBuf>, ReadError> {
 }
 
 impl Installation {
+    /// Logical rollback snapshot before a mutation. Display/Uninstall profiles
+    /// deliberately discard optional references and cannot preserve this document.
+    pub(super) fn state_document(root: &Path) -> Result<Value, ReadError> {
+        json(
+            &bytes(&root.join("state.json"), None, ReadProfile::Uninstall)?,
+            ReadProfile::Uninstall,
+        )
+    }
+
     pub fn read(root: &Path, profile: ReadProfile) -> Result<Self, ReadError> {
         let path = root.join("state.json");
         let mut installation = Self {

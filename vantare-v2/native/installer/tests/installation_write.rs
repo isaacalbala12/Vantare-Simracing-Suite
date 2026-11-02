@@ -265,6 +265,29 @@ fn failed_shell_finalization_restores_the_logical_state_and_data() {
 }
 
 #[test]
+fn rejected_pending_upgrade_preserves_the_previous_reference() {
+    let fixture = Fixture::new();
+    fixture
+        .install(&fixture.package("1.0.0"), Mode::Auto, false, false)
+        .expect("install");
+    fixture
+        .install(&fixture.package("1.0.1"), Mode::Auto, false, false)
+        .expect("upgrade");
+    let path = fixture.root.join("state.json");
+    let before: serde_json::Value =
+        serde_json::from_slice(&fs::read(&path).expect("state")).expect("JSON");
+    assert!(before["previous"].is_object());
+    assert!(
+        fixture
+            .install(&fixture.package("1.0.2"), Mode::Auto, false, false)
+            .is_err()
+    );
+    let after: serde_json::Value =
+        serde_json::from_slice(&fs::read(path).expect("state")).expect("JSON");
+    assert_eq!(after, before);
+}
+
+#[test]
 fn cancel_at_the_last_copy_checkpoint_never_activates_a_generation() {
     let fixture = Fixture::new();
     let result = fixture

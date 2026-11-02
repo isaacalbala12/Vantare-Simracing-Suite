@@ -57,7 +57,7 @@ const METADATA: &[&str] = &[
     "update-status.json",
 ];
 struct Before {
-    state: Option<State>,
+    state: Option<serde_json::Value>,
     files: BTreeMap<&'static str, Option<serde_json::Value>>,
     generations: BTreeSet<String>,
 }
@@ -77,7 +77,7 @@ impl Before {
         }
         Ok(Self {
             state: if root.join("state.json").try_exists()? {
-                Installation::read(root, ReadProfile::Uninstall)?.state
+                Some(Installation::state_document(root)?)
             } else {
                 None
             },
@@ -91,7 +91,9 @@ impl Before {
     fn restore(&self, root: &Path, control: &mut Control<'_>) {
         // State first; a denied file never prevents attempts on remaining metadata.
         let restored = match &self.state {
-            Some(state) => disk::commit(root, state, &mut |_| Ok(())),
+            Some(state) => serde_json::to_vec_pretty(state)
+                .map_err(WriteError::from)
+                .and_then(|bytes| disk::commit_raw(root, &bytes, &mut |_| Ok(()))),
             None => disk::remove_file(&root.join("state.json")),
         };
         if let Err(cause) = restored {

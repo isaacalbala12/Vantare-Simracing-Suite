@@ -121,7 +121,10 @@ Deno.test("1709: distinct rich and simple reports share account quota across IPs
   }
   eq(
     (await handleTestingReportSubmit(
-      request({ ...body, p_idempotency_key: `draft_${"5".repeat(64)}` }, "192.0.2.11"),
+      request(
+        { ...body, p_idempotency_key: `draft_${"5".repeat(64)}` },
+        "192.0.2.11",
+      ),
       f.deps,
     )).status,
     429,

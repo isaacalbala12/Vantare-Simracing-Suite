@@ -117,5 +117,4 @@ export function validateRichReport(body: Record<string, unknown>): void {
     ].includes(body.p_module) ||
     (Object.hasOwn(body, "p_batch_id") && !isUuid(body.p_batch_id))
   ) throw new NativeError(400, "invalid_request");
-
 }

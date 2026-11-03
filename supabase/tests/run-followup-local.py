@@ -225,6 +225,17 @@ def main():
                     concurrent_quota(connection, acceptance=True)
                 if args.regression == 'F1IP':
                     concurrent_quota(connection, admission=True)
+                    # This narrow harness predates the Clerk deletion schema;
+                    # the commercial runner exercises the real account guard.
+                    run('psql', *actor, '-c', '''
+                      create table public.account_identities(
+                        account_id uuid primary key, deleted_at timestamptz);
+                      create function private.guard_account_write() returns trigger
+                        language plpgsql as $$ begin
+                          if tg_op = 'DELETE' then return old; end if;
+                          return new;
+                        end $$;
+                    ''', log='fair-admission-identity-stub.log')
                     fair_migration = root / 'supabase/migrations/20261103093000_isa_1896_report_admission.sql'
                     run('psql', *actor, '-f', fair_migration, log='fair-admission-apply.log')
                     fair = run('psql', *connection, '-f', root / 'supabase/tests/testing_report_admission_v2.test.sql', log='fair-admission-test.log')

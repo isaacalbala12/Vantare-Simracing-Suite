@@ -195,7 +195,7 @@ Deno.test("invalid bodies spend IP admission but leave account quota available",
   eq(f.counts.get("accountaccount-a"), 1);
   eq(f.reports.length, 1);
 });
-Deno.test("same evidence-pending report consumes shared IP and account admission on every retry", async () => {
+Deno.test("same evidence-pending report spends coarse IP only on exact retries", async () => {
   const f = fixture();
   const pending = {
     ...f.deps,
@@ -209,16 +209,27 @@ Deno.test("same evidence-pending report consumes shared IP and account admission
       503,
     );
   }
-  eq(f.counts.get("accountaccount-a"), 5);
+  eq(f.counts.get("accountaccount-a"), 1);
   eq(
     (await handleTestingReportSubmit(request("account-a"), pending)).status,
-    429,
+    503,
   );
+  eq(
+    (await handleTestingReportSubmit(request("account-b"), pending)).status,
+    503,
+  );
+  eq(f.counts.get("accountaccount-b"), 1);
+  eq([...f.counts.values()].filter((count) => count === 7).length, 1);
+  for (let i = 7; i < 60; i++) {
+    eq(
+      (await handleTestingReportSubmit(request("account-a"), pending)).status,
+      503,
+    );
+  }
   eq(
     (await handleTestingReportSubmit(request("account-b"), pending)).status,
     429,
   );
-  eq(f.counts.get("accountaccount-b") ?? 0, 0);
 });
 Deno.test("missing trustworthy origin fails closed even with XFF", async () => {
   const f = fixture();

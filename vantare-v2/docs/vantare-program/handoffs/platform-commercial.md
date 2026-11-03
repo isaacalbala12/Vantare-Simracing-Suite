@@ -7486,3 +7486,18 @@ esta integración y su CI; sin autorizar promoción ni publicación.
   Worktree, targets y datos bajo raíz QA autorizada.
 - Sin cambios al verificador Ed25519/binding/TLS de producto, sin dependencias,
   cuentas o instalación reales. Sin merge, promoción, release ni despliegue.
+
+### Rebase solicitado por el orquestador (2026-11-03)
+
+- #1917 rebasado desde f693c6b8e sobre nightly a75c9b7aa (#1908/#1918)
+  y después cef0ec16c (#1922), llegado durante el trabajo. En lo ajeno manda nightly.
+  Supervisor conserva installed/restart; la entrada QA opt-in coexiste y respeta
+  el formato. Handoff completo de nightly conservado y sección propia añadida.
+- Regresión local focal: config 26, marcas QA 7 y publisher 13 PASS.
+  Fmt/Clippy QA de runtime/services/IPC PASS; Nextest focal rights/renewal/IPC
+  135/135 PASS y corpus de telemetría runtime 34/34 PASS (1 lento/1 omitido).
+  Todo Rust por cola, jobs2 y target propio; sin gate completo local.
+  Metadatos reales intactos. HEAD publicado y CI vigentes en #1916/PR.
+- P3 (#1919 / draft #1920) sigue aparte: ni oráculo nuevo, nota generada,
+  aclaración de clave fija ni ALLOWLIST se incorporan a #1917.
+- Sin merge, release, cuentas o carpeta reales; Plane permanece Por testear.

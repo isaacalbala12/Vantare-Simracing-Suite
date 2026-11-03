@@ -28,10 +28,10 @@ mod background;
 mod child_shutdown;
 #[cfg(windows)]
 mod installed;
-#[cfg(windows)]
-mod restart;
 #[cfg(all(windows, feature = "qa-e2e"))]
 mod qa_e2e;
+#[cfg(windows)]
+mod restart;
 mod session;
 mod supervisor;
 #[cfg(test)]

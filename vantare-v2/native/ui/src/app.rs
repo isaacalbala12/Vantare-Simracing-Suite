@@ -445,12 +445,25 @@ pub(crate) fn replace_if_changed<T: PartialEq>(current: &mut T, next: T) -> bool
     changed
 }
 
+fn visibility(
+    hidden_off_track: bool,
+    show_in: crate::session::ShowIn,
+    session: Option<crate::session::Session>,
+    denied: bool,
+) -> bool {
+    !hidden_off_track && !denied && show_in.allows(session)
+}
+
 impl Render for Overlay {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         #[cfg(feature = "paint-stats")]
         let _span = crate::profiling::begin(crate::profiling::Stage::Render);
-        if self.hidden_off_track || crate::rights::denied(self.kind, cx) || !self.shown_in_session()
-        {
+        if !visibility(
+            self.hidden_off_track,
+            self.show_in,
+            self.session,
+            crate::rights::denied(self.kind, cx),
+        ) {
             // Sin licencia el widget queda vacío: el aviso único lo pinta `Screen`.
             // Fuera de sus sesiones (#1564) tampoco pinta nada.
             return div()
@@ -1423,6 +1436,34 @@ fn run_placed_authorized(
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn visibility_preserves_missing_session_filters_off_track_and_rights() {
+        use crate::session::{Session, ShowIn};
+        let all = ShowIn::default();
+        let race = ShowIn {
+            practice: false,
+            qualifying: false,
+            race: true,
+        };
+        for (hidden, denied, show_in, session, expected) in [
+            (false, false, all, None, true),
+            (false, false, race, None, true),
+            (false, false, race, Some(Session::Practice), false),
+            (false, false, race, Some(Session::Qualifying), false),
+            (false, false, race, Some(Session::Race), true),
+            (true, false, all, None, false),
+            (true, false, all, Some(Session::Race), false),
+            (false, true, all, None, false),
+            (false, true, race, Some(Session::Race), false),
+            (true, true, race, Some(Session::Practice), false),
+        ] {
+            assert_eq!(
+                super::visibility(hidden, show_in, session, denied),
+                expected,
+                "{hidden}/{denied}/{show_in:?}/{session:?}"
+            );
+        }
+    }
     #[test]
     fn reduced_motion_covers_active_flags_records_and_pedal_transitions() {
         use vantare_domain::{Flag, FlagKind, FlagScope, Quality, SourceState};

@@ -61,7 +61,7 @@ for attempt in $(seq 1 2400); do
   sleep .1 # Bounded server readiness; not a simulated licensing wait.
 done
 test -f "$backend/qa-e2e-ready.json"
-"$deno" run --cached-only --frozen --config supabase/tests/license-e2e-deno.json --allow-env=POLAR_ENVIRONMENT,DENO_DEPLOYMENT_ID --allow-read="$run,$checkout/supabase" --allow-net=127.0.0.1 \
+"$deno" run --cached-only --frozen --config supabase/tests/license-e2e-deno.json --allow-env=POLAR_ENVIRONMENT,DENO_DEPLOYMENT_ID,REPORT_PROMOTION_ENABLED --allow-read="$run,$checkout/supabase" --allow-net=127.0.0.1 \
   supabase/tests/license-e2e-server.ts "$backend/qa-e2e-ready.json" "$run/clock.json" "$port"
 
 QA_ISOLATED_BACKEND

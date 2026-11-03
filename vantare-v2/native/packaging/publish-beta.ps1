@@ -28,6 +28,9 @@ $null = Read-BetaVersion $Version
 $output = Assert-NativePath $OutputDirectory
 $useLegacyNsis = [bool]$LegacyNsis -or $Version -ceq '0.0.976'
 if ($useLegacyNsis) { $compiler = Get-Command $NsisCompiler -ErrorAction Stop }
+. (Join-Path $PSScriptRoot 'no-qa.ps1')
+$publisherEnvironment=Import-NativeBuildConfig $publishConfigFile
+try {
 $artifacts = Build-NativeCandidate $output $Version 'beta' $BuildProfile ([bool]$AllowDirty) $publishConfigFile
 $manifest = [ordered]@{
     schema = 1; product = 'vantare-native'; channel = 'beta'; version = $Version
@@ -48,7 +51,10 @@ if ($useLegacyNsis) {
 }
 [IO.File]::WriteAllText((Join-Path $output 'vantare-native-amd64-package.zip.sha256'), "$($artifacts.sha256)  vantare-native-amd64-package.zip`n")
 $setup = Join-Path $output 'VantareSetup.exe'
+Assert-NativeDistributionBinary $setup
 [IO.File]::WriteAllText("$setup.sha256", "$(Get-NativeHash $setup)  VantareSetup.exe`n")
 # Solo imprime el comando; la publicación pertenece al orquestador.
 Write-Output "Listo: $output"
 Write-Output "gh release create native-beta-v$Version --repo $script:BetaRepository --prerelease --title 'Vantare $Version' --notes-file '<notas-revisadas>' '$output/VantareSetup.exe' '$output/VantareSetup.exe.sha256' '$output/vantare-native-amd64-package.zip' '$output/vantare-native-amd64-package.zip.sha256' '$output/vantare-native-beta.json'"
+
+} finally {Restore-NativeBuildConfig $publisherEnvironment}

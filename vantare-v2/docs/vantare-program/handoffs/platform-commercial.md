@@ -7449,44 +7449,40 @@ esta integración y su CI; sin autorizar promoción ni publicación.
   Python y diff PASS. Rollback/reaplicación incluidos; instancia local detenida.
   Evidencia review-r2 dentro de isa-1910-paso5b. CI del HEAD nuevo pendiente.
 
-## VANTA-126 / #1916 — vía QA E2E validada (2026-11-03)
+## VANTA-126 / #1916 — revisión de seguridad R1 (2026-11-03)
 
-- Issue [#1916](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1916),
-  Project Vantare / area:licencias; PR draft [#1917](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1917)
-  contra nightly. VANTA-126 permanece Por testear por instrucción de Isaac.
-- Base inicial ddebd895a; incorporado nightly 5f440c094 sólo en nuestra rama
-  `vantareapp/isa-1916-qa-e2e-licencias`. Código validado ffda1768d; build QA
-  del árbol Rust a0b9c9599 (después sólo cambió un fixture CRT y documentación).
-  Worktree, targets, binarios y datos manuales bajo D:/VantareServer/qa/licencias-e2e.
-- Feature qa-e2e opt-in en runtime/services/ipc: raíz con marcador y tres
-  overrides obligatorios, endpoints HTTP literales 127.0.0.1, reloj compartido,
-  IdP falso con PKCE, replay y conductor de los tres procesos reales. Sin
-  excepciones a Ed25519, binding, autoridad ni TLS fuera de la feature.
-- **10/10 PASA**, repetido tres veces. Última ejecución con builds finales:
-  e2e-1916-afdfc9ebe3eb4cc8b23fe08a7ae60ab3. PostgreSQL/PostgREST/Edge reales
-  locales, webhook HMAC real, corte TCP, Feed real y Store/DPAPI sintético.
-  No renderer Hub ni simulador físico. Pro vence a Gratis/Active en v1, que no
-  tiene caducidad global del sobre. Checkout/IdP son dobles, sin proveedores reales.
-- Informe con esperado/observado y evidencia sanitizada:
-  D:/VantareServer/evidence/licencias-e2e/INFORME.md. Incluye SHA de EXE, PID,
-  Policy, hashes de binding y ficheros. Los 16 elementos del native real
-  mantienen todos sus metadatos; no se leyó su contenido.
-- PASS: fmt; Clippy QA all-targets -D warnings; endpoint negativo; check y
-  Clippy del workspace sin feature; Nextest ci 2480/2480, telemetría incluida,
-  5 lentos/25 omitidos por runner. Calidad 468 huellas; ramas 45; Deno 197 y
-  fmt/lint/check; empaquetador histórico y CRT. Fallos previos de tooling y
-  tres lints QA conservados en evidencia, corregidos sin silenciar checks.
-- Distribución **PASS en CI** de ffda1768d, run 41704119009/job 126156591192:
-  tres controles QA optimizados rechazados y paquete release real construido
-  sin QA (20:19:06 UTC). Guard en grafo resuelto y bytes del payload. No se
-  distribuye ni instala ese candidato de comprobación.
-- Coordinación posterior: terminó la tanda completa ya en marcha (~22 min),
-  salida 0, se liberó la cola y se paró el conductor antes del siguiente lifecycle.
-  No más gates completos locales; sólo crates tocados (runtime/services/IPC,
-  núcleo dentro de runtime) y distribución si hace falta. Completo/lifecycle
-  queda en CI. El resto de checks de CI no se atribuye aún como verde.
-- No bug nuevo de producto/P0/P1 confirmado. Sigue #1914: comentario Plane sin
-  estado no funciona en la CLI; usar cliente existente con POST de comentario
-  y lectura posterior, sin PATCH de estado. Resultado final en comentario VANTA-126.
-- Siguiente: revisión del draft y cierre del resto de CI por el orquestador.
-  Sin merge a nightly, promoción, release, despliegue ni cuentas/instalación reales.
+- PR draft [#1917](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1917),
+  issue #1916 / Project Vantare / area:licencias, contra nightly 5f440c094.
+  #1915 cerrado por el orquestador y sustituido. Plane continúa Por testear.
+- La revisión invalida la cobertura anterior de distribución y las afirmaciones
+  completas de casos 5/7/9. El informe anterior se conserva separado; el vigente
+  está en D:/VantareServer/evidence/licencias-e2e/INFORME.md.
+- Candidate, Setup/Uninstall, publisher NSIS y MSIX limpian todas las variables
+  VANTARE_ heredadas antes de cargar configuración explícita. Se restauran al
+  salir. Sólo el hijo del script de build QA recibe la clave pública de fixture.
+- Scanner de todos los EXE del paquete: feature/identificadores QA, qa-rfc8032,
+  qa-fixture-public y clave RFC8032 en texto/bytes, también entre buffers.
+  Siete controles negativos y limpio PASS. Regresión de empaquetado release real
+  con entorno contaminado incluida en el gate de distribución y CI; su resultado
+  nuevo se debe comprobar, no se atribuye el PASS previo de ffda1768d a esta revisión.
+- Backend con realpath antes del límite, entorno limpio, lista de variables Deno,
+  volumen postgres 0700 y token aleatorio /qa/*. Sin chmod 777/allow-env abierto.
+- Retirado el interruptor QA del Feed. Caso 7 queda NO VERIFICABLE para
+  exclusividad de confirmación en UI; sólo acredita checkout sin concesión
+  inmediata y llegada posterior por Feed fresco. No se ejecuta renderer Hub.
+- Caso 5 exige binding ausente al recibir éxito, cierre abrupto y Feed válido
+  Gratis/NoCredential al restaurar; B no hereda Founders. Sin prueba de corte
+  eléctrico/fsync. Caso 9 separa pared +72h de monotónico 23h59m→24h01s.
+- Negativos: firma manipulada, binding ajeno y retroceso sólo de pared;
+  este último publica RecoveryRequired (ClockBehind corresponde a lápida futura).
+- Checks locales R1: config 26, CRT 27, publisher 13, scanner 7, formato y
+  Clippy QA de runtime/services/IPC, build de tres EXE y Deno fmt/lint/check PASS.
+  La preflight comercial local vuelve a ejecutar 197 tests. Completo/lifecycle
+  se delega a CI; no se repite el gate completo local por coordinación de cola.
+- E2E ampliado: 12 PASA / 1 NO VERIFICABLE / 0 FALLA (9 casos principales,
+  caso 7 parcial y tres negativos). Ejecución e2e-1916-63342a34f31b475e80fe677d02746da2,
+  tres EXE del árbol Rust d1f613317. Informe con hashes y observaciones sanitizadas.
+  Los 16 elementos reales conservan sus metadatos; no se leyó su contenido.
+  Worktree, targets y datos bajo raíz QA autorizada.
+- Sin cambios al verificador Ed25519/binding/TLS de producto, sin dependencias,
+  cuentas o instalación reales. Sin merge, promoción, release ni despliegue.

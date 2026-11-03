@@ -314,7 +314,7 @@ def run_cases(checkout, bins, job, backend):
             a.close(crash=True);app=None
             backend.control(mode="offline")
             app=App(a.root,bins,backend)
-            app.until(lambda p:p["state"]["kind"]=="revoked")
+            app.until(lambda p:p["version"]==7 and p["checked_at_ms"]>0 and p["state"]["kind"]=="no_credential" and p["catalog"]=="free")
             app.revoked_on_reply("restart after "+action)
             if action=="Logout": assert app.service("AccountPoll")["session"]=="SignedOut"
             app.close();app=None
@@ -323,9 +323,11 @@ def run_cases(checkout, bins, job, backend):
         a.login("b",check_revoked=True)
         a.close(crash=True);app=None
         app=App(a.root,bins,backend)
-        app.until(lambda p:p["state"]["kind"]=="revoked")
+        app.until(lambda p:p["version"]==7 and p["checked_at_ms"]>0 and p["state"]["kind"]=="no_credential" and p["catalog"]=="free")
         assert app.policy()["catalog"]!="founders"
+        assert app.service("AccountPoll")["session"]=="SignedIn"
         backend.control(mode="normal")
+        assert app.service("LicenseRenew")["result"]=="License"
         def b_pro(p):
             assert p["catalog"]!="founders", "B inherited A's Founders after durable revocation"
             return p["catalog"]=="pro"
@@ -392,7 +394,8 @@ def run_cases(checkout, bins, job, backend):
         before = backend.stats()["licenseRequests"]
         a.events.append({"daily_stage":"verified","requests":before})
         advance(a.root,wall_seconds=3*86400,monotonic_seconds=0)
-        a.until(lambda p:p["state"]["kind"]=="active" and p["catalog"]=="founders")
+        wall_target=json.loads((a.root/"clock.json").read_text())["wall_ms"]
+        a.until(lambda p:p["state"]["kind"]=="active" and p["catalog"]=="founders" and p["checked_at_ms"]>=wall_target)
         a.service("LicenseRenewAutomatic")
         assert backend.stats()["licenseRequests"]==before, "wall alone triggered perpetual renewal"
         a.events.append({"daily_stage":"wall +72h; monotonic unchanged","requests":before})
@@ -402,7 +405,9 @@ def run_cases(checkout, bins, job, backend):
         a.events.append({"daily_stage":"23h59m","requests":backend.stats()["licenseRequests"]})
         advance(a.root,wall_seconds=0,monotonic_seconds=61)
         wait_for(lambda: backend.stats()["licenseRequests"] > before)
-        a.events.append({"daily_stage":"24h01s","requests":backend.stats()["licenseRequests"]})
+        status=a.service("LicenseStatus")  # State mutex barrier: the automatic request has completed.
+        assert status.get("notice") is None
+        a.events.append({"daily_stage":"24h01s; wall +72h unchanged","requests":backend.stats()["licenseRequests"],"notice":status.get("notice")})
         a.until(lambda p: p["state"]["kind"] == "active" and p["signed_until_ms"] is None)
 
     def case10():
@@ -438,10 +443,7 @@ def run_cases(checkout, bins, job, backend):
         a=fresh("negative-clock",grant="founders")
         binding=a.binding()
         advance(a.root,wall_seconds=-3600,monotonic_seconds=0)
-        a.until(lambda p:p["state"]["kind"]=="clock_behind")
-        before=backend.stats()["licenseRequests"]
-        a.service("LicenseRenewAutomatic")
-        assert backend.stats()["licenseRequests"]==before
+        a.until(lambda p:p["state"]["kind"]=="recovery_required" and p["catalog"]=="free")
         assert a.binding()==binding
         advance(a.root,wall_seconds=3601,monotonic_seconds=0)
         a.until(lambda p:p["state"]["kind"]=="active")

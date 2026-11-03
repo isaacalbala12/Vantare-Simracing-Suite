@@ -15,7 +15,7 @@ import { loadPolarProductMap } from "../functions/_shared/mapping.ts";
 import { VALID_POLAR_PRODUCT_MAP_JSON } from "../functions/_shared/test-fixtures.ts";
 
 const [readyArgument, clockArgument, portText] = Deno.args;
-const safeRoot = await Deno.realPath("/mnt/d/VantareServer/qa/licencias-e2e");
+const safeRoot = "/mnt/d/VantareServer/qa/licencias-e2e";
 async function ownedPath(path: string, root: string): Promise<string> {
   const canonical = await Deno.realPath(path);
   if (!canonical.startsWith(root + "/")) throw Error("qa_path_escape");

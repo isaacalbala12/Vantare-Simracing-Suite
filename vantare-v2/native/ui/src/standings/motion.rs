@@ -877,7 +877,7 @@ impl Motion {
                     .insert(id, Tween::policy(0.0, 1.0, now, timing.fade, Curve::Linear));
             }
             let flash = old.and_then(|old| {
-                let old_leader = matches!(old.gap.as_str(), "Líder" | "Leader");
+                let old_leader = old.is_leader;
                 if sample.in_pits && !old.in_pits {
                     Some(Flash::Pit)
                 } else if sample.leader && !old_leader {

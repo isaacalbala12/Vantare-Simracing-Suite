@@ -136,13 +136,7 @@ impl Trace {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Status {
-    Ready,
-    Missing,
-    Stale,
-    Disconnected,
-}
+pub use crate::freshness::Status;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ViewModel {
@@ -178,17 +172,11 @@ pub fn project(snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
     let gear = displayed(&telemetry.gear);
     let speed_mps = nonnegative(&telemetry.speed_mps);
     let engine_speed = nonnegative(&telemetry.engine_speed_rad_s);
-    let status = if snapshot.state.source_state == SourceState::Lost {
-        Status::Disconnected
-    } else if snapshot.state.source_state == SourceState::Stale {
-        Status::Stale
-    } else if pedals.iter().all(Option::is_none)
+    let missing = pedals.iter().all(Option::is_none)
         && gear.is_none()
         && speed_mps.is_none()
-        && engine_speed.is_none()
-    {
-        Status::Missing
-    } else if matches!(telemetry.gear, Quality::Stale(_))
+        && engine_speed.is_none();
+    let stale = matches!(telemetry.gear, Quality::Stale(_))
         || [
             telemetry.clutch,
             telemetry.brake,
@@ -197,25 +185,18 @@ pub fn project(snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
             telemetry.engine_speed_rad_s,
         ]
         .iter()
-        .any(|q| matches!(q, Quality::Stale(v) if v.is_finite()))
-    {
-        Status::Stale
-    } else {
-        Status::Ready
-    };
-    let (speed_label, pedal_labels, missing, stale) = match prefs.language {
-        Language::Es => (
-            "VELOCIDAD",
-            ["EMBRAGUE", "FRENO", "ACELERADOR"],
-            "SIN DATOS",
-            "DATOS ANTIGUOS",
-        ),
-        Language::En => (
-            "SPEED",
-            ["CLUTCH", "BRAKE", "THROTTLE"],
-            "NO DATA",
-            "DATA OUT OF DATE",
-        ),
+        .any(|q| matches!(q, Quality::Stale(v) if v.is_finite()));
+    let status = Status::of(
+        snapshot,
+        crate::freshness::Signals {
+            disconnected: false,
+            stale: snapshot.state.source_state == SourceState::Stale || (!missing && stale),
+            missing,
+        },
+    );
+    let (speed_label, pedal_labels) = match prefs.language {
+        Language::Es => ("VELOCIDAD", ["EMBRAGUE", "FRENO", "ACELERADOR"]),
+        Language::En => ("SPEED", ["CLUTCH", "BRAKE", "THROTTLE"]),
     };
     // El productivo usa Math.round, KPH y R1; el formateador común usa km/h y R.
     // Estas adaptaciones concretas permanecen aquí hasta tener otro consumidor.
@@ -226,15 +207,7 @@ pub fn project(snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
     ViewModel {
         show_clutch: true,
         status,
-        status_text: match status {
-            Status::Ready => None,
-            Status::Missing => Some(missing),
-            Status::Stale => Some(stale),
-            Status::Disconnected => Some(match prefs.language {
-                Language::Es => "DESCONECTADO",
-                Language::En => "DISCONNECTED",
-            }),
-        },
+        status_text: status.text(prefs.language),
         gear: match gear {
             Some(g) if g < 0 => format!("R{}", i16::from(g).abs()),
             _ => format::gear(gear),

@@ -1,7 +1,9 @@
 # Medición #1461: coste de journal/Series y validación
 
-Solo diagnóstico, no optimización ni configuración de producto. El servicio
-lee `VANTARE_MEASUREMENT_MODE` una vez al arrancar. Sin variable (o `normal`)
+Solo diagnóstico, no optimización ni configuración de producto. Desde #1868
+el ejecutable del banco requiere la feature explícita bench. El binario normal
+rechaza cualquier VANTARE_MEASUREMENT_MODE antes de abrir derechos o flujos.
+En el build bench, el servicio lee `VANTARE_MEASUREMENT_MODE` una vez al arrancar. Sin variable (o `normal`)
 conserva el comportamiento productivo. Rechaza valores desconocidos y cualquier
 modo de medición con `--recording`; imprime el modo en stderr.
 
@@ -45,7 +47,9 @@ cruzan su frontera como máximo~1s. Conservar también la pasada sin diagnóstic
 para cuantificar su perturbación. No declarar top15funciones por muestreo a
 partir de estos contadores: publicar fases y límites explícitos.
 
-Desde `native/`, construir un único Release con símbolos para todos los brazos:
+Desde `native/`, construir un único Release con símbolos para todos los brazos.
+El comando Cargo del ejemplo es el interior; ejecutarlo por compilar.ps1
+en el worktree propio, con la cola y el límite de jobs de AGENTS.md:
 
 ```powershell
 $env:RUSTC_WRAPPER = (Get-Command sccache).Source
@@ -53,7 +57,7 @@ $env:CARGO_INCREMENTAL = '0'
 . ./packaging/build-config.ps1
 $previous = Import-NativeBuildConfig C:/tmp/beta/build-config/beta-dev-clerk.env
 try {
-  cargo build --release -j 2 -p vantare-runtime -p vantare-ui --bin vantare-core --bin vantare-overlays --features vantare-runtime/paint-stats,vantare-ui/paint-stats --config 'profile.release.debug="line-tables-only"'
+  cargo build --release -j 2 -p vantare-runtime -p vantare-ui --bin vantare-core --bin vantare-overlays --features vantare-runtime/bench,vantare-runtime/paint-stats,vantare-ui/paint-stats --config 'profile.release.debug="line-tables-only"'
 } finally { Restore-NativeBuildConfig $previous }
 $env:VANTARE_BETA_ROOT = 'C:/tmp/vantare-beta-isaac'
 $env:VANTARE_NATIVE_DATA_ROOT = 'C:/tmp/vantare-beta-isaac/data'

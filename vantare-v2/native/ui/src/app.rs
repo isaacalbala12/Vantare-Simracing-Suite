@@ -1126,7 +1126,8 @@ fn run_layout_feed<T: Send + 'static>(
     let presentation = crate::layout::Presentation::watch(&path)?;
     let document = crate::layout::Document::open(path.clone())?;
     let host = HostLayout {
-        layout: document.layout().clone(),
+        // El documento se aplica después de initialize, sin precopiar su layout.
+        layout: crate::layout::Layout::default(),
         watched: Some(WatchedLayout {
             document,
             presentation,
@@ -1149,7 +1150,7 @@ fn run_layout_feed<T: Send + 'static>(
 }
 
 fn run_host<T: Send + 'static>(
-    mut host: HostLayout,
+    host: HostLayout,
     snapshots: flume::Receiver<T>,
     rights: Option<vantare_ipc::control::Feed>,
     decode: impl Fn(T) -> vantare_ipc::Photo + Send + 'static,
@@ -1158,44 +1159,15 @@ fn run_host<T: Send + 'static>(
     shutdown: Option<flume::Receiver<()>>,
 ) {
     gpui_platform::application().run(move |cx: &mut App| {
-        if host.watched.is_some() {
-            crate::analytics::init(cx);
-        }
         if !init(cx) {
             return;
         }
         crate::rights::install(rights, cx);
+        // Ambos modos tienen Agenda vacía; solo el documento activa su sondeo.
         cx.set_global(crate::session_alerts::calendar::Agenda::default());
-        if let Some(watched) = &mut host.watched
-            && let Some(display) = cx.primary_display()
-        {
-            let bounds = display.bounds();
-            let monitor = (
-                f32::from(bounds.origin.x),
-                f32::from(bounds.origin.y),
-                f32::from(bounds.size.width),
-                f32::from(bounds.size.height),
-            );
-            if let Err(error) = watched.document.initialize(monitor) {
-                eprintln!("layout inicial no guardado: {error}");
-            }
-        }
-        // Windows usa LastWindowClosed por defecto. Un layout vacío debe poder
-        // recuperar sus ventanas al guardar el documento, sin reiniciar el proceso.
-        if let Some(watched) = &host.watched {
-            host.layout = watched.document.layout().clone();
-            cx.set_quit_mode(gpui::QuitMode::Explicit);
-        } else {
-            cx.on_window_closed(|cx, _| {
-                if cx.windows().is_empty() {
-                    cx.quit();
-                }
-            })
-            .detach();
-        }
         #[cfg(feature = "paint-stats")]
         crate::stats::report();
-        crate::connection::install(host.connection.take(), cx);
+        crate::connection::install(host.connection, cx);
         let screens = Rc::new(RefCell::new(LiveScreens {
             #[cfg(windows)]
             shortcut_task: None,
@@ -1208,47 +1180,64 @@ fn run_host<T: Send + 'static>(
             hidden: start_hidden,
             screens: Vec::new(),
             widgets: HashMap::new(),
-            prefs: host.layout.preferences,
+            prefs: Preferences::default(),
             last: None,
             last_demand: vantare_ipc::Demand::default(),
-            required: host.layout.demand(),
+            required: vantare_ipc::Demand::default(),
         }));
-        if let Some(demand) = &demand {
-            demand.set(host.layout.demand());
-        }
-        screens.borrow_mut().apply(&host.layout, cx);
-        #[cfg(windows)]
-        if host.watched.is_some() {
-            let weak = Rc::downgrade(&screens);
-            let task = cx.spawn(async move |cx| {
-                let mut delay = Duration::from_millis(500);
-                loop {
-                    cx.background_executor().timer(delay).await;
-                    let Some(screens) = weak.upgrade() else { break };
-                    let active = cx.update(|cx| {
-                        let screens = screens.borrow();
-                        let mut active = false;
-                        for live in screens
-                            .widgets
-                            .values()
-                            .filter(|widget| widget.instance.visible)
-                        {
-                            if matches!(&live.instance.settings, Settings::CarDamageVisual(settings)
-                                if !settings.toggle_key.is_empty())
-                            {
-                                active = true;
-                                live.view.update(cx, Overlay::poll_damage_shortcut);
-                            }
-                        }
-                        active
-                    });
-                    delay = Duration::from_millis(if active { 32 } else { 500 });
+        let controlled = shutdown.is_some();
+        install_parent_shutdown(shutdown, cx);
+        if let Some(mut watched) = host.watched {
+            crate::analytics::init(cx);
+            if let Some(display) = cx.primary_display() {
+                let bounds = display.bounds();
+                let monitor = (
+                    f32::from(bounds.origin.x),
+                    f32::from(bounds.origin.y),
+                    f32::from(bounds.size.width),
+                    f32::from(bounds.size.height),
+                );
+                if let Err(error) = watched.document.initialize(monitor) {
+                    eprintln!("layout inicial no guardado: {error}");
                 }
-            });
-            screens.borrow_mut().shortcut_task = Some(task);
-        }
-        if host.watched.is_some() {
-            let controlled = shutdown.is_some();
+            }
+            // El documento vacío debe recuperar ventanas sin salir del proceso.
+            cx.set_quit_mode(gpui::QuitMode::Explicit);
+            screens.borrow_mut().apply(watched.document.layout(), cx);
+            if let Some(demand) = &demand {
+                demand.set(screens.borrow().required.clone());
+            }
+            #[cfg(windows)]
+            {
+                let weak = Rc::downgrade(&screens);
+                let task = cx.spawn(async move |cx| {
+                    let mut delay = Duration::from_millis(500);
+                    loop {
+                        cx.background_executor().timer(delay).await;
+                        let Some(screens) = weak.upgrade() else { break };
+                        let active = cx.update(|cx| {
+                            let screens = screens.borrow();
+                            let mut active = false;
+                            for live in screens
+                                .widgets
+                                .values()
+                                .filter(|widget| widget.instance.visible)
+                            {
+                                if matches!(&live.instance.settings, Settings::CarDamageVisual(settings)
+                                    if !settings.toggle_key.is_empty())
+                                {
+                                    active = true;
+                                    live.view.update(cx, Overlay::poll_damage_shortcut);
+                                }
+                            }
+                            active
+                        });
+                        delay = Duration::from_millis(if active { 32 } else { 500 });
+                    }
+                });
+                screens.borrow_mut().shortcut_task = Some(task);
+            }
+
             let quit_screens = screens.clone();
             cx.on_app_quit(move |cx| {
                 quit_screens.borrow_mut().usage.finish(cx);
@@ -1260,40 +1249,35 @@ fn run_host<T: Send + 'static>(
                 async {}
             })
             .detach();
-        }
-        install_parent_shutdown(shutdown, cx);
-        #[cfg(windows)]
-        if host.watched.is_some() {
-            match crate::tray::spawn() {
-                Ok(actions) => {
-                    let tray_screens = screens.clone();
-                    cx.spawn(async move |cx| {
-                        while let Ok(action) = actions.recv_async().await {
-                            cx.update(|cx| match action {
-                                crate::tray::Action::Toggle => tray_screens.borrow_mut().toggle(cx),
-                                crate::tray::Action::Quit => cx.quit(),
-                            });
-                        }
-                    })
-                    .detach();
+
+            #[cfg(windows)]
+            {
+                match crate::tray::spawn() {
+                    Ok(actions) => {
+                        let tray_screens = screens.clone();
+                        cx.spawn(async move |cx| {
+                            while let Ok(action) = actions.recv_async().await {
+                                cx.update(|cx| match action {
+                                    crate::tray::Action::Toggle => {
+                                        tray_screens.borrow_mut().toggle(cx);
+                                    }
+                                    crate::tray::Action::Quit => cx.quit(),
+                                });
+                            }
+                        })
+                        .detach();
+                    }
+                    Err(error) => eprintln!("icono de bandeja no disponible: {error}"),
                 }
-                Err(error) => eprintln!("icono de bandeja no disponible: {error}"),
             }
-        }
-        let feed_screens = screens.clone();
-        cx.spawn(async move |cx| {
-            while let Ok(snapshot) = snapshots.recv_async().await {
-                cx.update(|cx| feed_screens.borrow_mut().ingest(decode(snapshot), cx));
-            }
-        })
-        .detach();
-        if let Some(WatchedLayout {
-            mut document,
-            mut presentation,
-            alerts_path,
-            ..
-        }) = host.watched
-        {
+            let WatchedLayout {
+                mut document,
+                mut presentation,
+                alerts_path,
+                ..
+            } = watched;
+            let watch_screens = screens.clone();
+
             cx.spawn(async move |cx| {
                 let mut last_error = None;
                 loop {
@@ -1301,12 +1285,12 @@ fn run_host<T: Send + 'static>(
                         .timer(Duration::from_millis(500))
                         .await;
                     cx.update(|cx| {
-                        screens.borrow_mut().sample_usage(cx);
+                        watch_screens.borrow_mut().sample_usage(cx);
                         crate::session_alerts::calendar::poll(&alerts_path, cx);
                     });
                     match presentation.poll() {
                         Ok(Some(showing)) => cx.update(|cx| {
-                            let mut screens = screens.borrow_mut();
+                            let mut screens = watch_screens.borrow_mut();
                             screens.hidden = !showing;
                             let layout = screens.layout.clone();
                             screens.apply(&layout, cx);
@@ -1320,7 +1304,7 @@ fn run_host<T: Send + 'static>(
                             if let Some(demand) = &demand {
                                 demand.set(document.layout().demand());
                             }
-                            cx.update(|cx| screens.borrow_mut().apply(document.layout(), cx));
+                            cx.update(|cx| watch_screens.borrow_mut().apply(document.layout(), cx));
                         }
                         Ok(false) => last_error = None,
                         Err(error) => {
@@ -1334,7 +1318,21 @@ fn run_host<T: Send + 'static>(
                 }
             })
             .detach();
+        } else {
+            screens.borrow_mut().apply(&host.layout, cx);
+            cx.on_window_closed(|cx, _| {
+                if cx.windows().is_empty() {
+                    cx.quit();
+                }
+            })
+            .detach();
         }
+        cx.spawn(async move |cx| {
+            while let Ok(snapshot) = snapshots.recv_async().await {
+                cx.update(|cx| screens.borrow_mut().ingest(decode(snapshot), cx));
+            }
+        })
+        .detach();
     });
 }
 

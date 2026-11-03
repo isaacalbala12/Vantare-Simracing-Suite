@@ -82,6 +82,8 @@ pub fn run_controlled(
 ) -> Result<(), Error> {
     use crate::flows::host::{EventHost, pipe_name};
     let measurement = std::env::var_os("VANTARE_MEASUREMENT_MODE");
+    check_measurement_support(measurement.is_some())?;
+    #[cfg(feature = "bench")]
     if measurement.is_some() && options.recording.is_some() {
         return Err(std::io::Error::new(
             std::io::ErrorKind::InvalidInput,
@@ -99,6 +101,7 @@ pub fn run_controlled(
         peer.is_image(&options.engineer_image)
     })?;
     let mut core = Core::with_event_base(events.base())?;
+    #[cfg(feature = "bench")]
     if let Some(mode) = measurement {
         let mode = mode.to_str().ok_or_else(|| {
             std::io::Error::new(
@@ -215,6 +218,19 @@ fn poll_wait(next: Option<Duration>, elapsed: Duration, speed: f64, idle: bool) 
     })
 }
 
+/// El binario normal rechaza la ablación antes de abrir derechos o flujos.
+#[cfg(any(windows, test))]
+fn check_measurement_support(requested: bool) -> std::io::Result<()> {
+    if requested && !cfg!(feature = "bench") {
+        Err(std::io::Error::new(
+            std::io::ErrorKind::Unsupported,
+            "VANTARE_MEASUREMENT_MODE requiere un build con feature bench",
+        ))
+    } else {
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -232,5 +248,25 @@ mod tests {
         assert_eq!(poll_wait(Some(IDLE), MAX_WAIT, 1.0, true), Duration::ZERO);
         assert_eq!(poll_wait(None, Duration::ZERO, 1.0, true), IDLE);
         assert_eq!(poll_wait(None, Duration::ZERO, 1.0, false), Duration::ZERO);
+    }
+}
+
+#[cfg(test)]
+mod measurement_tests {
+    #[cfg(not(feature = "bench"))]
+    #[test]
+    fn measurement_is_rejected_in_the_normal_build_before_io() {
+        assert!(super::check_measurement_support(false).is_ok());
+        assert_eq!(
+            super::check_measurement_support(true).unwrap_err().kind(),
+            std::io::ErrorKind::Unsupported
+        );
+    }
+
+    #[cfg(feature = "bench")]
+    #[test]
+    fn measurement_is_available_in_an_explicit_bench_build() {
+        assert!(super::check_measurement_support(false).is_ok());
+        assert!(super::check_measurement_support(true).is_ok());
     }
 }

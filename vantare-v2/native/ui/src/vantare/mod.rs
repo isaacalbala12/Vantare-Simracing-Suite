@@ -7,3 +7,26 @@ pub(crate) mod columns;
 pub(crate) mod motion;
 pub(crate) mod paint;
 pub(crate) mod style;
+
+pub(crate) fn waiting(facts: Option<(vantare_domain::SourceState, bool)>) -> bool {
+    facts.is_none_or(|(source, player_present)| {
+        !player_present
+            || matches!(
+                source,
+                vantare_domain::SourceState::Waiting | vantare_domain::SourceState::Lost
+            )
+    })
+}
+
+pub(crate) fn waiting_text(
+    language: vantare_domain::format::Language,
+    uppercase: bool,
+) -> &'static str {
+    use vantare_domain::format::Language::{En, Es};
+    match (language, uppercase) {
+        (Es, false) => "Esperando al simulador",
+        (En, false) => "Waiting for the simulator",
+        (Es, true) => "ESPERANDO AL SIMULADOR",
+        (En, true) => "WAITING FOR THE SIMULATOR",
+    }
+}

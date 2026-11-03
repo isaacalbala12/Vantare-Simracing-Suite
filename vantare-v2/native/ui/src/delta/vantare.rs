@@ -11,6 +11,7 @@ use crate::efficiency::text;
 use crate::look::{Accent, Tone};
 use crate::vantare::paint::{Face, Kit, round_rect};
 use crate::vantare::style::{Color, Style, Variant};
+use crate::vantare::waiting;
 use gpui::{App, BorderStyle, Corners, Edges, Hsla, linear_color_stop, linear_gradient, px, quad};
 use std::sync::{Arc, OnceLock};
 use std::time::{Duration, Instant};
@@ -107,15 +108,10 @@ struct Layout {
     items: Vec<(f32, Item)>,
 }
 
-fn waiting(board: Option<&Board>) -> bool {
-    board.is_none_or(|b| {
-        !b.player_present || matches!(b.source_state, SourceState::Waiting | SourceState::Lost)
-    })
-}
-
 /// Sin número que mostrar: aviso en lugar del número grande.
 fn message(board: Option<&Board>) -> bool {
-    waiting(board) || board.is_some_and(|b| b.phase == Phase::NoReference)
+    waiting(board.map(|b| (b.source_state, b.player_present)))
+        || board.is_some_and(|b| b.phase == Phase::NoReference)
 }
 
 /// Gris: vuelta invalidada o delta en pausa.
@@ -138,7 +134,7 @@ fn layout(board: Option<&Board>, options: &Options, style: &Style) -> Layout {
     let variant = options.variant(style);
     let mut items = Vec::new();
     let mut y = variant.padding_y;
-    let shown = board.filter(|b| !waiting(Some(b)));
+    let shown = board.filter(|b| !waiting(Some((b.source_state, b.player_present))));
     if shown.is_some_and(|b| b.banner.is_some()) {
         items.push((0.0, Item::Banner));
         // La placa de boxes del catálogo ocupa 27 px adicionales.
@@ -928,7 +924,7 @@ impl Painter<'_> {
             )
         } else {
             (
-                self.pick("ESPERANDO AL SIMULADOR", "WAITING FOR THE SIMULATOR"),
+                crate::vantare::waiting_text(self.language, true),
                 self.pick(
                     "Abre el simulador y entra en una sesión",
                     "Open the simulator and join a session",
@@ -1174,9 +1170,7 @@ mod tests {
             .as_array()
             .expect("fases")
             .iter()
-            .map(|f| {
-                vantare_ipc::snapshot_from_json(&f["snapshot"].to_string()).expect("foto")
-            })
+            .map(|f| vantare_ipc::snapshot_from_json(&f["snapshot"].to_string()).expect("foto"))
             .collect()
     }
 

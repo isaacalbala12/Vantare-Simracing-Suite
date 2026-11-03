@@ -10,13 +10,7 @@ pub enum Reference {
     SessionBest,
     PreviousLap,
 }
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Status {
-    Ready,
-    Missing,
-    Stale,
-    Disconnected,
-}
+pub use crate::freshness::Status;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Tone {
     Neutral,
@@ -103,7 +97,7 @@ fn lap_time(quality: &Quality<f64>) -> Option<f64> {
     value(quality).filter(|v| *v > 0.0)
 }
 fn status(
-    source: SourceState,
+    snapshot: &Snapshot,
     reference: Reference,
     capability: crate::Capability,
     values: (Quality<f64>, Quality<f64>, Quality<f64>),
@@ -113,15 +107,14 @@ fn status(
         || (reference == Reference::PersonalBest && capability == crate::Capability::WithData)
         || matches!(last, Quality::Stale(_))
         || matches!(best, Quality::Stale(_));
-    if matches!(source, SourceState::Waiting | SourceState::Lost) {
-        Status::Disconnected
-    } else if source == SourceState::Stale || has_old_values {
-        Status::Stale
-    } else if displayed(delta).is_some() {
-        Status::Ready
-    } else {
-        Status::Missing
-    }
+    Status::of(
+        snapshot,
+        crate::freshness::Signals {
+            disconnected: snapshot.state.source_state == SourceState::Waiting,
+            stale: snapshot.state.source_state == SourceState::Stale || has_old_values,
+            missing: displayed(delta).is_none(),
+        },
+    )
 }
 pub fn project(snapshot: &Snapshot, prefs: Preferences) -> Board {
     project_reference(snapshot, prefs, Reference::PersonalBest)
@@ -190,7 +183,7 @@ pub fn project_reference(snapshot: &Snapshot, _prefs: Preferences, reference: Re
     let best = observed.map_or(Quality::Unavailable, |c| c.best_lap_s);
     let seconds = displayed(delta);
     let status = status(
-        state.source_state,
+        snapshot,
         reference,
         state.capabilities.delta,
         (delta, last, best),
@@ -337,15 +330,7 @@ impl Board {
         format::lap_time(displayed(self.best_lap))
     }
     pub fn status_text(&self, language: Language) -> Option<&'static str> {
-        match (self.status, language) {
-            (Status::Ready, _) => None,
-            (Status::Missing, Language::Es) => Some("SIN DATOS"),
-            (Status::Missing, Language::En) => Some("NO DATA"),
-            (Status::Stale, Language::Es) => Some("DATOS ANTIGUOS"),
-            (Status::Stale, Language::En) => Some("DATA OUT OF DATE"),
-            (Status::Disconnected, Language::Es) => Some("DESCONECTADO"),
-            (Status::Disconnected, Language::En) => Some("DISCONNECTED"),
-        }
+        self.status.text(language)
     }
     pub fn reference_notice(&self, language: Language) -> Option<&'static str> {
         match (self.reference, language) {

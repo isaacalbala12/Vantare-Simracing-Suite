@@ -83,6 +83,7 @@ pub struct Board {
     pub source_state: SourceState,
     /// «Carrera», «Práctica»…; `—` sin sesión.
     pub session: String,
+    pub qualifying: bool,
     /// Vuelta en curso del líder, `14/38` o `14`; vacío fuera de carrera.
     pub lap: String,
     pub final_lap: bool,
@@ -156,6 +157,7 @@ pub struct Row {
     pub gap: String,
     pub interval: String,
     pub is_player: bool,
+    pub is_leader: bool,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -494,6 +496,7 @@ fn project_with_previous(
         footer_cells,
         source_state: state.source_state,
         session: kind.map_or_else(|| PLACEHOLDER.into(), |k| session_name(k, prefs)),
+        qualifying: kind == Some(&SessionKind::Qualifying),
         lap,
         final_lap,
         remaining: remaining(session.remaining_s.current().copied()),
@@ -800,6 +803,7 @@ fn row(
         gap: gap(car.gap_class_leader, leader, prefs),
         interval: gap(car.gap_class_ahead, leader, prefs),
         is_player: player == Some(car.id),
+        is_leader: leader,
     }
 }
 
@@ -944,24 +948,11 @@ fn surface(wetness: Option<f64>, prefs: Preferences) -> String {
 }
 
 fn banner(snapshot: &Snapshot, final_lap: bool) -> Option<Banner> {
-    let flags = snapshot.state.flags.current();
-    let yellow = |scope: fn(&FlagScope) -> Option<u8>| {
-        flags
-            .into_iter()
-            .flatten()
-            .filter(|flag| flag.kind == FlagKind::Yellow)
-            .find_map(|flag| scope(&flag.scope))
-    };
-    if yellow(|s| matches!(s, FlagScope::Session).then_some(0)).is_some() {
-        return Some(Banner::FullCourseYellow);
+    match crate::banner::yellow(snapshot) {
+        Some(crate::banner::Yellow::FullCourse) => Some(Banner::FullCourseYellow),
+        Some(crate::banner::Yellow::Sector(sector)) => Some(Banner::LocalYellow(sector + 1)),
+        None => final_lap.then_some(Banner::FinalLap),
     }
-    if let Some(sector) = yellow(|s| match s {
-        FlagScope::Sector(n) => Some(*n),
-        _ => None,
-    }) {
-        return Some(Banner::LocalYellow(sector + 1));
-    }
-    final_lap.then_some(Banner::FinalLap)
 }
 
 #[cfg(test)]

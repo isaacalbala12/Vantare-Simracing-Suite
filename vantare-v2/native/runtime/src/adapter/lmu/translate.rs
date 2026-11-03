@@ -979,6 +979,27 @@ mod tests {
     }
 
     #[test]
+    fn only_a_different_remembered_kind_changes_the_emitted_pause_to_stale() {
+        for (known_kind, expected) in [
+            (Kind::Practice, vantare_domain::SourceState::Paused),
+            (Kind::Race, vantare_domain::SourceState::Stale),
+        ] {
+            let raw = with_time(1000.0);
+            let mut t = Translator::new(SourceKind::Live);
+            let first = observe(&mut t, &raw, ms(0));
+            // El lector deriva kind de session_number. Solo se cambia el tipo
+            // recordado para aislarlo de la guarda independiente del número.
+            t.signature.as_mut().expect("sesión conocida").1 = known_kind;
+            t.rest
+                .accept_session(br#"{"session":"PRACTICE1"}"#, ms(500))
+                .unwrap();
+            let emitted = observe(&mut t, &raw, ms(500));
+            assert_eq!(emitted.state.source_state, expected, "{known_kind:?}");
+            assert_eq!(emitted.state.session.id, first.state.session.id);
+        }
+    }
+
+    #[test]
     fn pause_requires_the_known_kind_even_when_track_and_number_match() {
         let initial = with_time(1000.0);
         let mut t = Translator::new(SourceKind::Live);

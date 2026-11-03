@@ -2,7 +2,9 @@
 //! obsoletos (con aviso), y barras redondeadas como el renderer productivo.
 //! Steering ausente no invalida los pedales; conserva el volante neutro.
 
-use crate::format::{self, Language, Preferences};
+#[cfg(test)]
+use crate::format::Language;
+use crate::format::{self, Preferences};
 use crate::{Quality, Snapshot, SourceState};
 
 pub const WHEELS: &[&str] = &[
@@ -40,13 +42,7 @@ pub const WHEELS: &[&str] = &[
     "ligier-js-p325",
 ];
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Status {
-    Ready,
-    Missing,
-    Stale,
-    Disconnected,
-}
+pub use crate::freshness::Status;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ViewModel {
@@ -142,27 +138,15 @@ pub fn project(snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
         ]
         .iter()
         .any(|v| matches!(v, Quality::Stale(_)));
-    let status = if matches!(
-        snapshot.state.source_state,
-        SourceState::Waiting | SourceState::Lost
-    ) {
-        Status::Disconnected
-    } else if snapshot.state.source_state == SourceState::Stale || stale {
-        Status::Stale
-    } else if pedals.contains(&None) || speed.is_none() || rpm.is_none() || gear.is_none() {
-        Status::Missing
-    } else {
-        Status::Ready
-    };
-    let status_text = match (status, prefs.language) {
-        (Status::Ready, _) => "",
-        (Status::Missing, Language::Es) => "SIN DATOS",
-        (Status::Missing, Language::En) => "NO DATA",
-        (Status::Stale, Language::Es) => "DATOS ANTIGUOS",
-        (Status::Stale, Language::En) => "DATA OUT OF DATE",
-        (Status::Disconnected, Language::Es) => "DESCONECTADO",
-        (Status::Disconnected, Language::En) => "DISCONNECTED",
-    };
+    let status = Status::of(
+        snapshot,
+        crate::freshness::Signals {
+            disconnected: snapshot.state.source_state == SourceState::Waiting,
+            stale: snapshot.state.source_state == SourceState::Stale || stale,
+            missing: pedals.contains(&None) || speed.is_none() || rpm.is_none() || gear.is_none(),
+        },
+    );
+    let status_text = status.text(prefs.language).unwrap_or_default();
     // La conversión y las unidades siguen perteneciendo al formateador común.
     // El productivo usa Math.round: se prerredondea en la unidad visible
     // para que el formato al par no deje 2,5 km/h en 2 (ver input_telemetry).

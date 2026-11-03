@@ -2,9 +2,11 @@
 //! por clasificación. Los huecos vacíos pertenecen solo a la presentación.
 
 use crate::{
-    Car, CarId, DriverRating, FlagKind, FlagScope, Quality, SessionKind, Snapshot, SourceState,
+    Car, CarId, DriverRating, Quality, SessionKind, Snapshot, SourceState,
     format::{self, Language, PLACEHOLDER, Preferences},
 };
+#[cfg(test)]
+use crate::{FlagKind, FlagScope};
 use std::borrow::Cow;
 
 pub const RANGE: usize = 3;
@@ -956,25 +958,14 @@ fn pit_exit(cars: &[Car], me: CarId, loss: Quality<f64>) -> Option<PitExit> {
 }
 
 fn banner(snapshot: &Snapshot, in_pits: bool) -> Option<Banner> {
-    let flags = snapshot.state.flags.current();
-    let yellow = |scope: fn(&FlagScope) -> Option<u8>| {
-        flags
-            .into_iter()
-            .flatten()
-            .filter(|flag| flag.kind == FlagKind::Yellow)
-            .find_map(|flag| scope(&flag.scope))
-    };
     if in_pits {
         return Some(Banner::InPits);
     }
-    if yellow(|s| matches!(s, FlagScope::Session).then_some(0)).is_some() {
-        return Some(Banner::FullCourseYellow);
+    match crate::banner::yellow(snapshot) {
+        Some(crate::banner::Yellow::FullCourse) => Some(Banner::FullCourseYellow),
+        Some(crate::banner::Yellow::Sector(sector)) => Some(Banner::LocalYellow(sector + 1)),
+        None => None,
     }
-    yellow(|s| match s {
-        FlagScope::Sector(n) => Some(*n),
-        _ => None,
-    })
-    .map(|sector| Banner::LocalYellow(sector + 1))
 }
 
 #[cfg(test)]

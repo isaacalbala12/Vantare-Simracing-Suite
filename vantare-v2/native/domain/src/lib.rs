@@ -8,6 +8,7 @@
 #![forbid(unsafe_code)]
 
 mod adapter;
+mod banner;
 pub mod broadcast_tower;
 mod capability;
 pub mod car_damage_numbers;

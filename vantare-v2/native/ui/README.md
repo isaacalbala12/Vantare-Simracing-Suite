@@ -749,3 +749,22 @@ este puente. Tag/SHA mínimo pendiente de esa publicación, registrado en #1869;
 no se activa ahora. Los compañeros de avisos se normalizan dentro del Layout,
 también al leer documentos externos. La edición de contenido desde la miniatura
 conserva una operación pura con el documento anterior para preservar intención.
+
+## Recorrido de proyección — #1868, paso 8
+
+freshness::Status comparte clasificación y textos de los siete estados de
+widget. Cada proyección suministra sus hechos de ausencia/caducidad: la tabla
+de caracterización conserva, por ejemplo, clima disponible durante Waiting
+y ausencia antes de Stale en clima/Fuel. No se calculan capacidades en el host.
+Standings proyecta is_leader y qualifying; pintura y movimiento no deducen
+hechos de Líder/Leader ni de prefijos del nombre de sesión. Solo el tipo
+Qualifying produce Pole: un Other con nombre «Qual…» continúa siendo desconocido.
+La espera y su texto pertenecen al kit Vantare; la política de espectador de
+Standings se conserva. La selección de amarilla global antes de sector se
+comparte en domain/banner, conservando boxes/vuelta final e índices por widget.
+El formato del delta por Look no cambia.
+
+El host instala Agenda::default también en la campaña, pero solo el documento
+sondea el calendario. Los servicios del documento se instalan en un único
+bloque watched tras el cierre del padre; el layout se aplica después de
+initialize sin precopiarlo al crear el host.

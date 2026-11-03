@@ -7,9 +7,9 @@
 //! actuales; lo que la fuente no publica queda en `None` y se pinta `—`.
 
 use crate::format::{self, Language, Preferences};
-use crate::{
-    Capability, Car, FlagKind, FlagScope, Player, Quality, Snapshot, SourceState, TyreCompound,
-};
+use crate::{Capability, Car, Player, Quality, Snapshot, SourceState, TyreCompound};
+#[cfg(test)]
+use crate::{FlagKind, FlagScope};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Config {
@@ -44,13 +44,7 @@ impl LapsBasis {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Status {
-    Missing,
-    Stale,
-    Disconnected,
-    VirtualUnavailable,
-}
+pub use crate::freshness::Status;
 #[derive(Clone, Debug, PartialEq)]
 pub struct HistoryEntry {
     pub lap: u32,
@@ -223,7 +217,7 @@ pub fn project(snapshot: &Snapshot, prefs: Preferences) -> Board {
 pub fn project_with_config(snapshot: &Snapshot, _prefs: Preferences, content: Config) -> Board {
     let state = &snapshot.state;
     let raw = state.player.as_ref().map(|p| &p.fuel);
-    let status = status(state, content);
+    let status = status(snapshot, content);
     let live = state.source_state == SourceState::Live;
     let car = state.player_car().filter(|_| live);
     let player = state.player.as_ref().filter(|_| car.is_some());
@@ -326,22 +320,24 @@ pub fn project_with_config(snapshot: &Snapshot, _prefs: Preferences, content: Co
     }
 }
 
-fn status(state: &crate::State, content: Config) -> Option<Status> {
-    if state.source_state == SourceState::Lost {
-        Some(Status::Disconnected)
-    } else if state.source_state == SourceState::Waiting
+fn status(snapshot: &Snapshot, content: Config) -> Option<Status> {
+    let state = &snapshot.state;
+    let missing = state.source_state == SourceState::Waiting
         || state.player.is_none()
-        || state.capabilities.fuel < Capability::WithData
-    {
-        Some(Status::Missing)
-    } else if state.source_state == SourceState::Stale
-        || state.capabilities.fuel == Capability::WithData
-    {
-        Some(Status::Stale)
-    } else if content.virtual_energy {
-        Some(Status::VirtualUnavailable)
-    } else {
-        None
+        || state.capabilities.fuel < Capability::WithData;
+    match Status::of(
+        snapshot,
+        crate::freshness::Signals {
+            disconnected: false,
+            stale: !missing
+                && (state.source_state == SourceState::Stale
+                    || state.capabilities.fuel == Capability::WithData),
+            missing,
+        },
+    ) {
+        Status::Ready if content.virtual_energy => Some(Status::VirtualUnavailable),
+        Status::Ready => None,
+        status => Some(status),
     }
 }
 fn history(raw: Option<&crate::Fuel>) -> Vec<HistoryEntry> {
@@ -454,39 +450,18 @@ fn banner(snapshot: &Snapshot, in_pits: bool) -> Option<Banner> {
     if in_pits {
         return Some(Banner::InPits);
     }
-    let flags = snapshot.state.flags.current();
-    let yellow = |scope: fn(&FlagScope) -> Option<u8>| {
-        flags
-            .into_iter()
-            .flatten()
-            .filter(|flag| flag.kind == FlagKind::Yellow)
-            .find_map(|flag| scope(&flag.scope))
-    };
-    if yellow(|s| matches!(s, FlagScope::Session).then_some(0)).is_some() {
-        return Some(Banner::FullCourseYellow);
+    match crate::banner::yellow(snapshot) {
+        Some(crate::banner::Yellow::FullCourse) => Some(Banner::FullCourseYellow),
+        Some(crate::banner::Yellow::Sector(sector)) => {
+            sector.checked_add(1).map(Banner::LocalYellow)
+        }
+        None => None,
     }
-    yellow(|s| match s {
-        FlagScope::Sector(n) => Some(*n),
-        _ => None,
-    })
-    .and_then(|sector| sector.checked_add(1))
-    .map(Banner::LocalYellow)
 }
 
 impl Board {
     pub fn status_text(&self, language: Language) -> Option<&'static str> {
-        self.status.map(|status| match (status, language) {
-            (Status::Missing, Language::Es) => "SIN DATOS",
-            (Status::Missing, Language::En) => "NO DATA",
-            (Status::Stale, Language::Es) => "DATOS ANTIGUOS",
-            (Status::Stale, Language::En) => "DATA OUT OF DATE",
-            (Status::Disconnected, Language::Es) => "DESCONECTADO",
-            (Status::Disconnected, Language::En) => "DISCONNECTED",
-            (Status::VirtualUnavailable, Language::Es) => {
-                "ENERGÍA VIRTUAL NO DISPONIBLE EN LA SEÑAL EN VIVO"
-            }
-            (Status::VirtualUnavailable, Language::En) => "VIRTUAL ENERGY SIGNAL UNAVAILABLE",
-        })
+        self.status.and_then(|status| status.text(language))
     }
     pub fn history_rows(&self) -> impl Iterator<Item = (usize, &HistoryEntry)> {
         self.history

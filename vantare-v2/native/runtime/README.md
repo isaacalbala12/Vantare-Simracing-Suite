@@ -187,3 +187,20 @@ compatible con ese circuito nuevo no confirma una pausa de la sesión anterior.
 La misma firma conocida permite la pausa confirmada habitual. La ausencia de
 metadata no contradice por sí sola una firma anterior. El diseño usa
 `Scope::of(Source, &State)`; los lectores guardados v7–v10 se conservan.
+
+## Banco de medición — #1868, paso 10
+
+Las ablaciones normal/no-flows/no-validation/no-both y sus tests viven en
+core/bench.rs. El ejecutable de banco requiere la feature opt-in bench; las
+pruebas de ablación también se compilan con cfg(test), de modo que siguen en
+los gates normales de CI. El Core de producto no contiene
+sus dos flags; valida y alimenta journal/series en el recorrido de producto.
+El binario normal rechaza VANTARE_MEASUREMENT_MODE antes de abrir derechos o
+flujos, en lugar de aceptar una ablación. En el build de banco se conserva el
+rechazo de recording y los controles de modo y UTF-8.
+
+Compilar el banco explícitamente por compilar.ps1 con --features bench.
+Los tests measurement_modes_* se mantienen en la suite normal de tests y se
+repiten junto a la admisión del modo en el build bench. Los goldens y lifecycle
+de producto se ejecutan sin la feature bench.
+No se añaden dependencias ni cambia el DTO o la política de capacidades.

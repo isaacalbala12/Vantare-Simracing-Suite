@@ -121,8 +121,8 @@ del operador. Demo/captura eligen su raíz QA antes de
 cualquier lectura o limpieza de privacidad.
 La carga entrega el Store explícitamente a `Loaded`; el arnés de onboarding
 inyecta su Store QA y conserva las mismas comprobaciones de consentimiento.
-Los gates fijan también `LOCALAPPDATA` y `APPDATA` a su base QA, incluida la
-consulta del importador Wails mientras no se retire. En tests y con la feature
+Los gates fijan también `LOCALAPPDATA` y `APPDATA` a su base QA. El Launcher ya
+no consulta archivos Wails. En tests y con la feature
 `test-support`, `diagnostics::data_root()` rechaza la ausencia del override;
 no existe fallback hacia una instalación personal.
 
@@ -403,3 +403,16 @@ Apariencia: no se archiva todo el documento. El primer guardado conserva sus
 bytes originales en hub-settings.json.bak. Tras un conflicto se relee el ganador
 y se conserva el borrador; Reintentar guardado solo reaplica las claves editadas,
 sin reponer valores antiguos de otras secciones. Se puede hacer sin reiniciar.
+
+## Sin importación del consentimiento del instalador — #1869, paso 9
+
+installer-analytics-consent.json no tiene escritor de producto activo. El Hub ya
+no lo consulta para crear una decisión de uso: solo manda privacy.json y una
+nueva elección explícita del usuario. Si existe el archivo antiguo se conserva
+sin leerlo ni modificarlo. Las decisiones guardadas, incluidas las revocaciones,
+se mantienen. La adopción única de privacy.json compartido y su marca no cambian.
+
+Se conserva el reintento cancelable de limpieza de colas de diagnósticos ante
+Busy y la defensa frente a una respuesta tardía que pretenda sustituir una
+revocación manual. Solo se retiran su argumento import y la rama de importación;
+no se elimina el trabajo real de limpieza ni se cambia el envío de diagnósticos.

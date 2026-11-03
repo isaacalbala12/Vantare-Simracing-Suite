@@ -2,22 +2,26 @@
   "schemaVersion": 1,
   "issue": "ISA-1869",
   "type": "change",
-  "summary": "El Hub prepara la lectura de layouts futuros y recupera un tamaño de interfaz inválido sin perder los demás ajustes.",
+  "summary": "El Hub prepara layouts compatibles y recupera sus ajustes; el Launcher deja de buscar configuraciones antiguas.",
   "technicalNotes": [
     "General, Apariencia y Zoom se cargan una sola vez desde hub-settings.json v2. La migración conserva los archivos anteriores y archiva los datos dañados antes de permitir repararlos.",
     "Apariencia mantiene temporalmente un espejo compatible para que Reducir animaciones siga llegando a los overlays. Si falla el espejo, el ajuste nuevo queda guardado en el Hub y aparece un aviso.",
     "Los documentos actuales conservan su formato al guardar. El lector puente admite los formatos siguientes sin activar su migración.",
-    "Un conflicto relee el archivo y permite reintentar las claves editadas. El espejo nunca sustituye una Apariencia protegida y sus fallos aparecen en Diagnóstico."
+    "Un conflicto relee el archivo y permite reintentar las claves editadas. El espejo nunca sustituye una Apariencia protegida y sus fallos aparecen en Diagnóstico.",
+    "El Launcher ya no busca perfiles Wails al crear su archivo nativo. Los perfiles importados y su procedencia guardada se conservan.",
+    "El Hub deja de importar consentimiento del instalador: solo aplica privacy.json o una elección nueva del usuario; mantiene la limpieza de colas."
   ],
   "testing": [
     "En una raíz QA con ajustes anteriores, abrir el Hub y comprobar tema, zoom, densidad y arranque minimizado; comprobar que los originales conservan sus bytes.",
     "En QA, dañar hub-zoom.json antes de la primera apertura: comprobar copia .invalid, zoom 100 y guardado correcto.",
     "Cambiar Reducir animaciones y comprobar appearance.json y el lector de overlays. Simular un cambio externo del espejo y comprobar el aviso sin perder el ajuste guardado en v2.",
-    "En QA, dañar solo el zoom de hub-settings.json, guardar y verificar General, Apariencia y la copia .bak. Simular un conflicto y usar Reintentar guardado sin reiniciar."
+    "En QA, dañar solo el zoom de hub-settings.json, guardar y verificar General, Apariencia y la copia .bak. Simular un conflicto y usar Reintentar guardado sin reiniciar.",
+    "En QA, colocar un app-settings.json antiguo o dañado y abrir un Launcher nuevo: aparecen Creator y Pro sin modificar el archivo viejo. Reabrir perfiles ya importados y comprobar sus datos."
   ],
   "knownLimitations": [
     "General y Zoom no se replican a los archivos antiguos: un rollback conserva sus ajustes previos a la migración.",
     "8B y la retirada del espejo esperan una release publicada con el lector puente; la versión mínima compatible aún no tiene tag/SHA publicado.",
-    "Añadir un campo con la misma versión puede hacer que un lector estricto anterior archive el documento. Workshop dañado se sigue aparte en #1888."
+    "Añadir un campo con la misma versión puede hacer que un lector estricto anterior archive el documento. Workshop dañado se sigue aparte en #1888.",
+    "wails_import se conserva como dato compatible; se retira la importación activa, sin borrar archivos o perfiles históricos."
   ]
 }

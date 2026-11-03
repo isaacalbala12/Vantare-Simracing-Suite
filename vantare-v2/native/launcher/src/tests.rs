@@ -53,22 +53,6 @@ fn onboarding_acc_uses_steam_libraries_without_adding_a_launcher_app() {
 }
 
 #[test]
-fn isa1548_unc_portable_does_not_block_local_first_run_migration() {
-    let tree = Tree::new();
-    let settings = tree.file("roaming/configs/app-settings.json", b"{}");
-    let found = migration::source_in(&[
-        PathBuf::from(r"\\server\portable\configs"),
-        settings.parent().expect("configs").to_path_buf(),
-    ])
-    .expect("local fallback");
-    assert_eq!(found, Some(settings.clone()));
-    let native = tree.0.join("launcher.json");
-    Store::load_with_wails(native.clone(), found.as_deref()).expect("first migration");
-    assert!(native.is_file());
-    assert!(migration::read(std::path::Path::new(r"\\server\portable\app-settings.json")).is_err());
-}
-
-#[test]
 fn isa1548_global_steam_budget_warns_when_manifest_fallback_is_unavailable() {
     let tree = Tree::new();
     let filler = tree.0.join("a/steamapps/common");
@@ -123,7 +107,7 @@ fn legacy_import_keeps_its_origin_when_duplicated_without_marking_local_profiles
     document
         .profiles
         .push(Profile::new("local".into(), "Creado aquí".into()));
-    document.wails_import = Some(migration::Import {
+    document.wails_import = Some(legacy::Import {
         source: tree.0.join("wails.json"),
         launcher: std::collections::BTreeMap::from([(
             "launcherProfiles".into(),
@@ -299,7 +283,7 @@ fn actual_lnk_is_read_without_modification_or_execution() {
 fn fresh_install_seeds_templates_once_and_respects_explicit_empty_profiles() {
     let tree = Tree::new();
     let path = tree.0.join("launcher.json");
-    let mut store = Store::load_with_wails(path.clone(), None).expect("fresh install");
+    let mut store = Store::load_production(path.clone()).expect("fresh install");
     assert_eq!(
         store
             .document
@@ -322,19 +306,8 @@ fn fresh_install_seeds_templates_once_and_respects_explicit_empty_profiles() {
     empty.profiles.clear();
     store.replace(empty).expect("user deleted all profiles");
     assert!(
-        Store::load_with_wails(path, None)
+        Store::load_production(path)
             .expect("reload")
-            .document
-            .profiles
-            .is_empty()
-    );
-    let source = tree.file(
-        "wails.json",
-        br#"{"launcherProfiles":[],"launcherApps":{}}"#,
-    );
-    assert!(
-        Store::load_with_wails(tree.0.join("other.json"), Some(&source))
-            .expect("import empty")
             .document
             .profiles
             .is_empty()
@@ -390,129 +363,6 @@ fn editor_rejects_missing_steps_apps_duplicates_and_preserves_advanced_copies() 
         .expect("confirmed deletion");
     assert!(document.lmu_trigger_profile.is_none());
     assert!(document.remove_profile("source").is_err());
-}
-
-#[test]
-fn migration_imports_wails_once_without_modifying_source_or_other_settings() {
-    let tree = Tree::new();
-    let app = tree.file("herramienta.exe", b"fixture de ruta, no proceso");
-    let settings = serde_json::json!({
-        "schemaVersion": 7, "uiLocale": "es", "hotkeys": {"toggleOverlay":"ctrl+v"},
-        "launcherApps": {"custom:tool": {
-            "id":"custom:tool", "displayName":"Herramienta", "executablePath":"",
-            "userExecutablePath": app, "args": "--name \"nombre con espacios\" \"\"",
-            "isFavorite":true, "iconOverridePath":"icono.png"
-        }},
-        "launcherProfiles":[{
-            "id":"rig", "name":"Mi rig", "description":"Descripción", "notes":"Notas",
-            "isFavorite":true, "advanced":true, "hotkey":"ctrl+shift+r",
-            "launchOnWindowsStartup":true, "launchCount":7,
-            "lastLaunchedAt":"2026-09-30T12:00:00Z", "avgChainDurationMs":3000,
-            "steps":[{"appId":"custom:tool", "delay":7200, "argsOverride":"--flag"}],
-            "policy":{"alreadyRunning":"restart", "failure":"continue", "cancel":"close-started",
-                "exit":"leave", "retry":"all", "maxRetries":2, "firstStepDelay":4000}
-        }],
-        "launcherLmuTriggerEnabled":true, "launcherLmuTriggerProfileId":"rig"
-    });
-    let original = serde_json::to_vec(&settings).expect("JSON Wails");
-    let source = tree.file("configs/app-settings.json", &original);
-    let path = tree.0.join("launcher.json");
-    let imported = Store::load_with_wails(path.clone(), Some(&source)).expect("importar");
-    let profile = &imported.document.profiles[0];
-    assert_eq!(profile.name, "Mi rig");
-    assert_eq!(profile.steps[0].delay_seconds, 7200);
-    assert_eq!(profile.steps[0].args_override, Some(vec!["--flag".into()]));
-    assert_eq!(profile.first_step_delay, 4000);
-    assert_eq!(profile.notes, "Notas");
-    assert_eq!(profile.launch_count, 7);
-    assert_eq!(profile.hotkey, "ctrl+shift+r");
-    assert_eq!(
-        profile.policy.as_ref().expect("política").retry,
-        policy::Retry::All
-    );
-    let app = imported.document.apps.last().expect("app importada");
-    assert_eq!(app.args, ["--name", "nombre con espacios", ""]);
-    assert!(app.favorite);
-    assert_eq!(
-        imported.document.lmu_trigger_profile.as_deref(),
-        Some("rig")
-    );
-    let archive = &imported
-        .document
-        .wails_import
-        .as_ref()
-        .expect("archivo de migración")
-        .launcher;
-    assert!(!archive.contains_key("uiLocale"));
-    assert!(!archive.contains_key("hotkeys"));
-    assert_eq!(
-        archive["launcherApps"]["custom:tool"]["iconOverridePath"],
-        "icono.png"
-    );
-    assert_eq!(fs::read(&source).expect("original intacto"), original);
-    let saved = fs::read(&path).expect("creado atómicamente");
-    fs::write(&source, b"{").expect("Wails cambia después");
-    let reloaded = Store::load_with_wails(path.clone(), Some(&source)).expect("nativo prevalece");
-    assert_eq!(reloaded.document.profiles[0].name, "Mi rig");
-    assert_eq!(fs::read(path).expect("no reimporta"), saved);
-}
-
-#[test]
-fn migration_invalid_source_or_conflict_never_creates_partial_native_data() {
-    let tree = Tree::new();
-    let source = tree.file(
-        "app-settings.json",
-        br#"{"launcherProfiles":[{"id":"p","name":"P","steps":[{"appId":"missing","delay":0}]}]}"#,
-    );
-    let path = tree.0.join("launcher.json");
-    assert!(Store::load_with_wails(path.clone(), Some(&source)).is_err());
-    assert!(!path.exists());
-    fs::write(&source, br#"{"launcherProfiles":[],"launcherApps":{}}"#).expect("vacío explícito");
-    // Un fichero de lock residual no debe impedir cargar ni guardar.
-    tree.file("launcher.json.lock", b"lock ajeno");
-    Store::load_with_wails(path.clone(), Some(&source)).expect("un lock residual no debe bloquear");
-    let store = Store::load_with_wails(path, Some(&source)).expect("vacío conservado");
-    assert!(store.document.profiles.is_empty());
-}
-
-#[test]
-fn migration_uses_wails_directory_priority_and_does_not_mix_installations() {
-    let tree = Tree::new();
-    let portable = tree.0.join("portable/configs");
-    let installed = tree.0.join("roaming/configs");
-    tree.file("roaming/configs/app-settings.json", b"{}");
-    assert_eq!(
-        migration::source_in(&[portable.clone(), installed.clone()]).expect("fuente"),
-        Some(installed.join("app-settings.json"))
-    );
-    fs::create_dir_all(&portable).expect("portable sin ajustes");
-    assert!(
-        migration::source_in(&[portable.clone(), installed.clone()])
-            .expect("sin mezcla")
-            .is_none()
-    );
-    tree.file("portable/configs/app-settings.json", b"{}");
-    assert_eq!(
-        migration::source_in(&[portable.clone(), installed]).expect("portable"),
-        Some(portable.join("app-settings.json"))
-    );
-}
-
-#[test]
-fn migration_arguments_follow_wails_without_shell_execution() {
-    for (raw, expected) in [
-        (
-            r#"--name "dos palabras" """#,
-            vec!["--name", "dos palabras", ""],
-        ),
-        (r"--path C:\rig\app", vec!["--path", r"C:\rig\app"]),
-        (r#"--name \"quoted\""#, vec!["--name", "\"quoted\""]),
-        ("a & b", vec!["a", "&", "b"]),
-    ] {
-        assert_eq!(migration::parse_args(raw).expect("tokens"), expected);
-    }
-    assert!(migration::parse_args("a\0b").is_err());
-    assert!(migration::parse_args("\"abierta").is_err());
 }
 
 struct Tree(PathBuf);
@@ -1331,4 +1181,74 @@ fn discovery_prefers_the_root_executable_over_nested_copies() {
         },
     );
     assert_eq!(found.app("motec").expect("MoTeC").executable, Some(primary));
+}
+
+#[test]
+fn step9_production_does_not_read_wails() {
+    if let Some(root) = std::env::var_os("VANTARE_STEP9_CHILD_ROOT") {
+        let root = PathBuf::from(root);
+        let store = Store::load_production(root.join("launcher.json")).unwrap();
+        assert_eq!(
+            store
+                .document
+                .profiles
+                .iter()
+                .map(|profile| profile.id.as_str())
+                .collect::<Vec<_>>(),
+            ["creator", "pro"]
+        );
+        assert!(store.document.wails_import.is_none());
+        assert_eq!(
+            fs::read(root.join("configs/app-settings.json")).unwrap(),
+            b"{"
+        );
+        return;
+    }
+    let tree = Tree::new();
+    tree.file("configs/app-settings.json", b"{");
+    let output = std::process::Command::new(std::env::current_exe().unwrap())
+        .args([
+            "--exact",
+            "tests::step9_production_does_not_read_wails",
+            "--nocapture",
+        ])
+        .current_dir(&tree.0)
+        .env("VANTARE_STEP9_CHILD_ROOT", &tree.0)
+        .env("VANTARE_NATIVE_DATA_ROOT", &tree.0)
+        .env("LOCALAPPDATA", &tree.0)
+        .env("APPDATA", &tree.0)
+        .env_remove("VANTARE_BETA_ROOT")
+        .output()
+        .unwrap();
+    assert!(String::from_utf8_lossy(&output.stdout).contains("running 1 test"));
+    assert!(
+        output.status.success(),
+        "{}{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+#[test]
+fn step9_saved_archive_and_profile_provenance_survive_save_and_reopen() {
+    let tree = Tree::new();
+    let bytes = br#"{"version":1,"apps":[],"profiles":[{"id":"legacy","name":"Importado","favorite":false,"steps":[],"first_step_delay":0,"continue_on_error":false,"reuse_running":false,"max_retries":0}],"lmu_trigger_profile":null,"wails_import":{"source":"C:/qa/retired-wails/app-settings.json","launcher":{"launcherProfiles":[{"id":"legacy"}],"unknownArchivedSetting":{"keep":[1,true,"yes"]}}}}"#;
+    let mut value: serde_json::Value = serde_json::from_slice(bytes).unwrap();
+    value["apps"] = serde_json::to_value(Document::default().apps).unwrap();
+    let bytes = serde_json::to_vec(&value).unwrap();
+    let path = tree.file("launcher.json", &bytes);
+    let mut store = Store::load_production(path.clone()).unwrap();
+    assert!(store.warning.is_none());
+    assert!(store.document.profiles[0].imported);
+    assert_eq!(fs::read(&path).unwrap(), bytes);
+    let archive =
+        serde_json::from_slice::<serde_json::Value>(&bytes).unwrap()["wails_import"].clone();
+    let mut edited = store.document.clone();
+    edited.profiles[0].notes = "Mi nota actual".into();
+    store.replace(edited).unwrap();
+    let current: serde_json::Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+    assert_eq!(current["wails_import"], archive);
+    let loaded = Store::load_production(path).unwrap();
+    assert!(loaded.document.profiles[0].imported);
+    assert_eq!(loaded.document.profiles[0].notes, "Mi nota actual");
 }

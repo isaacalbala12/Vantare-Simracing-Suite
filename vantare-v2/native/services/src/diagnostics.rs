@@ -12,7 +12,6 @@ const FILE_LIMIT: u64 = 24 * 1024;
 const QUEUE_LIMIT: usize = 32;
 pub const PRIVACY_FILE: &str = "privacy.json";
 pub mod activity;
-pub mod installer;
 mod recorder;
 pub use recorder::Recorder;
 mod redaction;

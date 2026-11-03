@@ -1,9 +1,10 @@
-## VANTA-130 · 8A validado para revisión final (3-nov-2026)
+## VANTA-130 · 8A integrado en nightly (3-nov-2026)
 
 Rama vantareapp/isa-1869-paso8-compatibilidad; worktree
 D:/VantareServer/worktrees/isa-1869-paso8; base origin/nightly actualizado
 7e92e1a9e52d57db17263234ec62efc5774794cb. Código final
-b6713442cd51e2fb8f40baf12fc260be532603ea. [PR draft #1893](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1893) a nightly, CI remota pendiente.
+b6713442cd51e2fb8f40baf12fc260be532603ea. [#1893](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1893) integrado por el orquestador
+en nightly caf628641, revisión Sonnet MERGE comunicada y CI 5/5 verificada. Sin merge del worker.
 Lector puente layout v1/v2 y Store v2/v3, sin promover documentos actuales;
 normalización estructural en UI y movimiento explícito conservado al volver
 al puente. Espejo protegido con aviso/Diagnóstico, zoom aislado con copia .bak,
@@ -24,11 +25,41 @@ rebajados. Windows headless y archivos reales QA; sin prueba GUI ni Linux/macOS.
 
 8B y protección por sección no se activan: mínimo tag/SHA pendiente de release
 publicada con 8A. Formatos actuales, espejo y lectura de Apariencia conservados.
-9 sigue en su rama independiente: suite 935/935 PASS, lifecycle/telemetría en cola.
+9 se rebasa sobre 8A; resultados y estado en la entrada siguiente.
 Solo raíces QA en estos cortes; sin merge/release/promoción/instalación ni datos
 reales por el worker. Evidencia D:/VantareServer/evidence/isa-1869/paso8 y paso9.
-Cola de 8A cedida. Plane En curso hasta terminar la entrega del 9.
+Cola de 8A cedida. Plane Por revisar tras el rebase y validación del 9.
 Líneas físicas 8A: producción +389/-85; tests +439/-1; docs +371/-4; tooling 0.
+
+## VANTA-130 · paso 9 listo para revisión, sin importaciones activas (3-nov-2026)
+
+Rama vantareapp/isa-1869-paso9-retirar-importaciones, worktree
+D:/VantareServer/worktrees/isa-1869-paso9, base origin/nightly actualizado
+caf628641dddfe9bb785d7fa2745d8ee76a60ee9 (8A integrado). Código validado
+9f3b9d0111cf1c1aabe0d4dc4fc94bdba3ebbb90; rebase de 79aa00dda;
+conflictos documentales combinados según el orquestador, sin cambios de Rust.
+Caracterización 4d709d72e: procedencia de perfiles guardados 1 PASS y ausencia de
+importaciones 2 RED antes de producción. Retirados búsqueda/importación Wails y
+consentimiento del instalador. legacy::Import conserva exactamente su DTO;
+se mantienen perfiles, procedencia y metadatos guardados. Limpieza cancelable de
+colas y protección contra respuesta tardía siguen activas. No se toca ningún
+archivo real Wails ni de consentimiento. Installer/packaging/runtime/licencias,
+auth/policy intactos. Sin nuevas dependencias ni cambios de confianza.
+
+Por compilar.ps1, tres raíces QA y target propio: fmt/check/Clippy/captura PASS;
+6/6 regresiones y suite 945/945 PASS (4 slow, 9 skips) sobre la nueva base. La fixture adicional
+carecía del catálogo obligatorio: corregida en 79aa00dda sin debilitar aserciones
+de original, procedencia ni metadatos. Logs anteriores conservados. Integridad
+468 y fragmento válido. Lifecycle 25/25 y telemetría 34/34 PASS (1 slow, 1 skip);
+cola cedida. Sin excepciones, ampliación de límites ni cancelaciones en esta tanda.
+[PR draft #1894](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1894) a nightly; CI remota pendiente. Evidencia
+D:/VantareServer/evidence/isa-1869/paso9. 8A integrado como caf628641 en #1893;
+8B y protección por sección esperan release publicada del puente. Paso 10 fuera.
+Solo raíces QA en estos cortes; sin merge/release/promoción/instalación ni datos
+reales por este worker. Windows headless/FS probados; sin GUI ni Linux/macOS.
+Rebase: orden 8A → paso 9, fragmento combinado y referencias obsoletas corregidas.
+Gates de la nueva base completos PASS; evidencia paso9/rebase-8a.
+Líneas físicas 9: producción +27/-370; tests +93/-266; docs +113/-45; tooling 0.
 
 ## VANTA-130 · 8A autorizado; 8B espera release del puente (3-nov-2026)
 
@@ -40,7 +71,8 @@ P2 por sección sigue en 8B, Store v3/migrationPending. No marcador auxiliar.
 8A conserva v2, layout v1, espejo y lector actual; añade protección explícita del
 espejo aun si desaparece un origen protegido y su registro en Diagnóstico.
 P3: avisos persistentes y reparables, zoom aislado y reintento CAS sin reiniciar.
-Importador único para layouts sin movimiento aprobado; retirada en 8B.
+Prioridad de lectura: reducedMotion explícito gana frente a Apariencia;
+si falta el campo, se lee Apariencia como hoy hasta 8B.
 Reserva de ui/layout, hub/document, session_alerts y lectura opcional del host
 trasladada a VANTA-129 por el orquestador; dominio intacto. Caracterización y
 regresiones previas en 166f0e118/8799ba0d4, en ejecución QA por compilar.ps1.
@@ -59,7 +91,7 @@ Nueva rama `vantareapp/isa-1869-paso8-compatibilidad`, worktree
 lector puente sin emitir nuevos formatos primero; activación de layout v2 y
 retirada del espejo solo tras fijar lectores/escritores mínimos o demostrar
 rollback con datos separados. El lector viejo no se vuelve compatible por
-relajar el nuevo. Segundo punto de decisión: importación única de movimiento
+relajar el nuevo. Segundo punto de decisión: prioridad de lectura de reducedMotion
 para layouts v1 abiertos por overlays sin haber arrancado Hub. No se toca
 layout/motion/host hasta coordinar nuevas reservas a través del orquestador.
 

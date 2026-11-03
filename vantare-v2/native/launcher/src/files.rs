@@ -103,7 +103,7 @@ mod tests {
         let path = dir.join("launcher.json");
         let bytes = br#"{"version":99,"futureData":"preserve"}"#;
         fs::write(&path, bytes).unwrap();
-        let mut store = crate::Store::load_with_wails(path.clone(), None).unwrap();
+        let mut store = crate::Store::load_production(path.clone()).unwrap();
         assert!(store.warning.is_some());
         assert!(store.replace(store.document.clone()).is_err());
         assert_eq!(fs::read(&path).unwrap(), bytes);

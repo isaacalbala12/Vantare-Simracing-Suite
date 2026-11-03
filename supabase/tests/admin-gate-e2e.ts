@@ -131,6 +131,13 @@ async function fixture(active: boolean) {
         await sql(`set role service_role;
       select to_json(public.native_admin_begin(${literal(actor)}));`),
       ),
+    recordEffect: async (actor, event) =>
+      JSON.parse(
+        await sql(`set role service_role;
+        select to_json(public.native_admin_record_effect(${literal(actor)},${
+          literal(JSON.stringify(event))
+        }::jsonb));`),
+      ),
     execute: async (actor, issuer, action, _params, environment) => {
       assert(action === "get_rollout");
       return JSON.parse(
@@ -154,7 +161,7 @@ async function fixture(active: boolean) {
         "select coalesce((select requests from private.native_admin_gate_rate),0);",
       ),
     );
-  return { calls, call, used };
+  return { calls, call, used, deps };
 }
 Deno.test("R10 SQL E2E: active Gestión garbage cannot starve a real SQL owner", async () => {
   const { calls, call, used } = await fixture(true);
@@ -211,4 +218,71 @@ Deno.test("R10 SQL E2E: registered non-owner and unknown signed subjects cannot 
   }
   assert(await used() === 0 && calls.rpc === 0 && calls.clerk === 0);
   assert(await counts() === before);
+});
+
+Deno.test("R10 SQL E2E: Clerk intent/result persist when the following SQL state update fails", async () => {
+  const { deps } = await fixture(false);
+  const target = "00000000-0000-4000-8000-000000001925";
+  const targetSubject = "user_eeeeeeeeeeeeeeeeeeeeeeeeeee";
+  await sql(
+    `insert into public.profiles(id) values(${
+      literal(target)
+    }) on conflict do nothing;
+    insert into public.account_identities(issuer,subject,account_id) values(${
+      literal(config.issuer)
+    },${literal(targetSubject)},${literal(target)}) on conflict do nothing;`,
+  );
+  let unbanned = false;
+  const originalFetch = deps.fetch!;
+  deps.fetch = async (url, init?: RequestInit) => {
+    if (String(url).endsWith("/unban")) {
+      // The real service-only journal MUST already contain the intention.
+      assert(
+        Number(
+          await sql(
+            `select count(*) from private.admin_effects where outcome='started' and target_hash=encode(sha256(convert_to(${
+              literal(targetSubject)
+            },'UTF8')),'hex');`,
+          ),
+        ) === 1,
+      );
+      unbanned = true;
+      return new Response(null, { status: 200 });
+    }
+    return originalFetch(url, init);
+  };
+  deps.execute = async (actor, issuer, action, params, environment) => {
+    if (action === "set_blocked") {
+      throw new Error("synthetic state transaction failure");
+    }
+    assert(action === "get_account");
+    return JSON.parse(
+      await sql(
+        `set role service_role; select public.native_admin_execute(${
+          literal(actor)
+        },${literal(issuer)},${literal(action)},${
+          literal(JSON.stringify(params))
+        }::jsonb,${literal(environment)});`,
+      ),
+    );
+  };
+  const response = await handleNativeAdmin(
+    request({
+      version: 1,
+      action: "set_blocked",
+      account_id: target,
+      blocked: false,
+    }, { Authorization: "Bearer opaque-hub-fixture" }),
+    deps,
+  );
+  assert(response.status === 503 && unbanned);
+  const requestId = response.headers.get("X-Request-ID")!;
+  const outcomes = JSON.parse(
+    await sql(
+      `select json_agg(outcome order by occurred_at) from private.admin_effects where request_id=${
+        literal(requestId)
+      }::uuid;`,
+    ),
+  );
+  assert(JSON.stringify(outcomes) === JSON.stringify(["started", "succeeded"]));
 });

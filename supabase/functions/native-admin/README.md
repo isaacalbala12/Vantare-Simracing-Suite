@@ -262,3 +262,51 @@ retirada confirmada y pendiente por error. Cupones ajenos no se eliminan.
 
 Contrato, consentimiento, cuota, bajas y configuración futura: [MAIL.md](MAIL.md).
 Candidato local; ninguna clave ni despliegue se habilita por añadir el código.
+# Auditoría de escrituras externas · VANTA-132, paso 5a
+
+`set_blocked` y `delete_account` conservan su límite sandbox. Antes de cada
+ban/unban/borrado en Clerk y de cada llamada al drenaje de Storage se confirma
+una intención mediante `native_admin_record_effect`. Otra llamada registra
+`succeeded` si la operación devuelve éxito o `unknown` si devuelve error: un
+timeout no demuestra que el proveedor no haya aplicado la operación. No hay
+reintento automático. El drenaje se registra como una operación completa;
+este paso no cambia el algoritmo compartido ni sus escrituras internas.
+
+El identificador aleatorio `X-Request-ID` de la respuesta coincide con el del
+log de tiempos y agrupa los efectos. Cada efecto tiene otro UUID; los eventos
+incluyen acción, tipo, actor interno y SHA-256 del subject, sin correo, subject,
+URL, cuerpos ni errores de proveedor. Los UUID/hashes son seudónimos, no datos
+anónimos. La RPC vuelve a exigir owner activo y rechaza campos adicionales.
+El journal privado es de solo inserción; solo servicio puede leerlo/llamar RPC.
+
+Un fallo al guardar la intención impide la llamada externa. Un fallo al guardar
+el resultado devuelve 503 y deja la intención pendiente. Si el unban ya tuvo
+éxito y falla el cambio de estado SQL, queda registrado y se devuelve
+`account_change_incomplete`. El bloqueo local se conserva hasta confirmarlo.
+La lápida de borrado sigue precediendo las llamadas externas.
+
+Consulta manual de diagnóstico para Isaac (no se ejecuta contra producción
+desde agentes); sustituir el UUID por el recibido en la respuesta:
+
+```sql
+select i.request_id, i.effect_id, i.action, i.effect, i.actor, i.target_hash,
+       i.occurred_at, coalesce(r.outcome, 'pending') as outcome
+from private.admin_effects i
+left join private.admin_effects r
+  on r.effect_id = i.effect_id and r.outcome <> 'started'
+where i.outcome = 'started'
+  and i.request_id = '<REQUEST_UUID>'::uuid
+order by i.occurred_at;
+```
+
+`unknown`/`pending` requieren comprobar el estado externo antes de un reintento
+manual. Un efecto sin intención no llegó a invocarse desde este camino; los
+pasos posteriores tampoco se ejecutan tras un error. Si todas las escrituras
+externas constan como exitosas y la respuesta fue 503, revisar el estado SQL.
+No cambiar filas de auditoría para cerrar incidencias.
+
+Despliegue reservado a Isaac: migración primero, Edge después. Para revertir,
+Edge anterior primero y luego el `.down.sql`: elimina la RPC y conserva el
+journal, sus permisos y la evidencia. Reaplicar conserva los eventos.
+La auditoría de Polar/Brevo y su unificación/retención del paso 10 siguen
+pendientes; este PR no cambia billing, licencias ni `_shared`/`clerk-webhook`.

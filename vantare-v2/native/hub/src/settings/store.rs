@@ -333,14 +333,7 @@ impl Store {
         }
     }
     pub fn warning_text(&self) -> Option<String> {
-        let warnings: Vec<_> = self
-            .warning
-            .iter()
-            .chain(self.mirror_protected.iter())
-            .chain(self.mirror_warning.iter())
-            .map(String::as_str)
-            .collect();
-        (!warnings.is_empty()).then(|| warnings.join("; "))
+        self.warning.as_ref().or(self.mirror_warning.as_ref()).or(self.mirror_protected.as_ref()).cloned()
     }
     pub fn save_general(&mut self, general: Preferences) -> Result<(), String> {
         self.ensure_section(Legacy::General)?;

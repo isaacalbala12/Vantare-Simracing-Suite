@@ -2,7 +2,14 @@
 
 - Draft PR #1923 contra nightly, rama vantareapp/isa-1896-paso6b-jpeg-hardening, base a75c9b7aa (#1918 integrado). El validador exige H/V 1..4, referencias DQT y DHT definidas, DHT de hasta 256 simbolos y rechaza RST sin DRI. Dos SOS y dimensiones cero quedan cubiertos por tests. Capturas siguen desactivadas.
 - El PR de este bloque no conecta la subida. El `image/jpeg` y `nosniff` de Storage/descarga quedan pendientes de la ruta 6b; la descarga admin actual usa URL firmada directa y su cambio depende de VANTA-132 o autorizacion de Isaac. Paso 8 tambien depende del chequeo owner de `testing_contribution_review` en SQL admin.
-- #1905 ya estaba cerrado; sin despliegue, merge ni release. Deno 12 PASS, fmt/lint/diff check PASS. Produccion +19/-10, tests +74/-4, docs +6/-0 (este bloque).
+- #1905 ya estaba cerrado; #1923 integrado en nightly@404e8b357. La conexion de subida sigue condicionada al limite MCU ≤10, image/jpeg y nosniff; Huffman semantico y entropia son limites conocidos del validador estructural. Sin despliegue ni release. Deno 12 PASS, fmt/lint/diff check PASS. Produccion +19/-10, tests +74/-4, docs +6/-0 (este bloque).
+
+## 2026-11-04 - #1896 / VANTA-131 7b1: detener escritores legacy
+
+- Rama vantareapp/isa-1896-paso7b1-cerrar-escritores desde origin/nightly@cef0ec16c, sin tablas ni datos vaciados. Test de caracterizacion de grants anterior al cambio.
+- REVOKE EXECUTE de los cinco RPC legacy de envio/triage a public, anon, authenticated y service_role; el unico grant activo de envio era testing_center_report_submit_admitted para service_role y triage_report tambien seguia concedido. Se revoca ademas INSERT/UPDATE/DELETE directo de service_role en testing_center_reports, conservando SELECT.
+- Rollback repone solo los grants activos anteriores; runner lo ejecuta y conserva las suites historicas de admision/admin bajo el rollback. La matriz posterior comprueba anon, authenticated y el abuso de INSERT directo por service_role. Shared IP no interviene en ACL SQL; la cuota por IP se cubrio en paso 2.
+- El mapeo/verificacion/vaciado espera el contrato de archivo temporal para un rollback fiel; #1924 admin va despues. Sin despliegue, merge ni release.
 
 ## 2026-11-03 - #1896 / VANTA-131 paso 6a: validacion de capturas JPEG
 

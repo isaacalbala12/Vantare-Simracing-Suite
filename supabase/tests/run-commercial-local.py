@@ -48,6 +48,9 @@ parser.add_argument('--testing-identity', action='store_true', help='F1IP and tr
 parser.add_argument('--pilot-profile', action='store_true', help='Pilot live/deleted native-data regression after ALL migrations')
 parser.add_argument('--before-admin-deleted-reads', action='store_true', help='RED: omit r7 admin read fix')
 args=parser.parse_args()
+legacy_writers_enabled=(not args.baseline and not args.admin_effects_only and
+                        not args.upgrade and not any(
+                         value for name,value in vars(args).items() if name.startswith('before_')))
 if args.b01 and (not args.postgrest_bin or not args.deno_bin):
  parser.error('--b01 requires --postgrest-bin and --deno-bin')
 if args.b01:
@@ -154,6 +157,7 @@ $$;
   if args.storage_schema:
    run('psql',*conn,'-c',"create role supabase_storage_admin noinherit bypassrls; grant usage on schema storage to supabase_storage_admin; grant all on all tables in schema storage to supabase_storage_admin;")
   for m in sorted((ROOT/'supabase/migrations').glob('*.sql')):
+   if not legacy_writers_enabled and 'isa_1896_close_legacy_report_writers' in m.name: continue
    if args.before_deleted_authorizer and 'revoke_deleted_authorizer' in m.name: continue
    if args.before_posthog_consent_clear and any(n in m.name for n in ('posthog_consent_clear','revoke_deleted_authorizer')): continue
    if args.before_testing_identity and 'testing_server_identity' in m.name: continue
@@ -277,6 +281,7 @@ $$;
    if absent!='t': raise RuntimeError('step 7a rollback retained v2 keys')
    run('psql',*conn,'-f',ROOT/'supabase/migrations'/(report_v2+'.sql'))
    for name in ['testing_followup_F1IP.test.sql','testing_report_admission_v2.test.sql','commercial_testing_identity.test.sql','testing_step3_channel.test.sql','commercial_posthog_consent.test.sql','testing_report_rich_admission.test.sql','testing_report_legacy_closed.test.sql','testing_report_v2.test.sql','testing_center_agent_closeout_callbacks.test.sql']:
+    if legacy_writers_enabled and name=='testing_report_rich_admission.test.sql': continue
     result=run('psql',*conn,'-f',ROOT/'supabase/tests'/name)
     (OUT/(name+'.log')).write_text(result)
     if 'not ok ' in result or '# Looks like' in result: raise RuntimeError(result)
@@ -500,16 +505,28 @@ $$;
   if args.b01:
    print('B01 targeted gate PASS; unrelated SQL suites/write races not selected',flush=True)
    raise SystemExit(0)
+  if legacy_writers_enabled:
+   closed_stem='20261103231148_isa_1896_close_legacy_report_writers'
+   run('psql',*conn,'-f',ROOT/'supabase/rollbacks'/(closed_stem+'.down.sql'))
+   for name in ['testing_legacy_writers_rollback.test.sql',
+                'native_admin.test.sql','testing_report_rich_admission.test.sql']:
+    result=run('psql',*conn,'-f',ROOT/'supabase/tests'/name)
+    (OUT/(name+'.rollback.log')).write_text(result)
+    if 'not ok ' in result or '# Looks like' in result:
+     raise RuntimeError(name+' failed under writer rollback')
+   run('psql',*conn,'-f',ROOT/'supabase/migrations'/(closed_stem+'.sql'))
   suites=['clerk_identity_cutover_test.sql',
    'billing_owner_alert.test.sql',
    'billing_webhook_inbox.test.sql','billing_commercial_projection.test.sql',
    'billing_reconciliation.test.sql','billing_subscription_lifecycle.test.sql',
    'billing_observability.test.sql','operational_access.test.sql','billing_order_refund_ledger.test.sql',
-   'canonical_device_claim.test.sql','native_admin.test.sql','visual_roadmap_clickup.test.sql']
+   'canonical_device_claim.test.sql','visual_roadmap_clickup.test.sql']
+  if not legacy_writers_enabled: suites.append('native_admin.test.sql')
   suites.append('native_admin_characterization.test.sql')
-  suites.append('testing_legacy_writers_closed.test.sql')
+  if legacy_writers_enabled: suites.append('testing_legacy_writers_closed.test.sql')
   for optional in ['checkout_terminal_attempts.test.sql','commercial_tombstone.test.sql','commercial_data_boundary.test.sql','commercial_refunds.test.sql','commercial_admin_deleted.test.sql','commercial_storage_probe.test.sql','commercial_pilot_deletion.test.sql','testing_followup_F1IP.test.sql','commercial_testing_identity.test.sql','testing_step3_channel.test.sql','commercial_posthog_consent.test.sql','testing_report_rich_admission.test.sql','testing_report_legacy_closed.test.sql']:
-   if (ROOT/'supabase/tests'/optional).exists(): suites.append(optional)
+   if (ROOT/'supabase/tests'/optional).exists() and not (legacy_writers_enabled and optional=='testing_report_rich_admission.test.sql'):
+    suites.append(optional)
   if not (args.baseline or args.before_write_barrier or args.before_testing_identity):
    suites.append('testing_report_admission_v2.test.sql')
   if not (args.baseline or args.before_private_write_barriers or args.before_testing_identity):

@@ -1,3 +1,9 @@
+## 2026-11-03 - #1896 / VANTA-131 paso 6a: validacion de capturas JPEG
+
+- Draft PR #1906 contra nightly, rama vantareapp/isa-1896-paso6-capturas; base ddebd895a (paso 5a integrado).
+- Validador aislado de bytes JPEG en Edge: SHA, tamano, dimensiones y formato. Capturas y subida firmada siguen desactivadas hasta los pasos 7 y 6b.
+- Tests de caracterizacion antes del cambio; revision de seguridad del parser en curso. Sin despliegue ni merge.
+
 ## 2026-11-03 - #1896 / VANTA-131 paso 5a: retiradas de Linear y Codex
 
 - Draft PR #1903 contra nightly, rama vantareapp/isa-1896-paso5-retiradas; base 2e5f14a9d (paso 4 integrado).

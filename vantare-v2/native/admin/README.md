@@ -41,7 +41,7 @@ el almacén privado de la instalación anterior. En ambos sistemas el arranque
 directo usa un subdirectorio `admin` separado del Hub; `VANTARE_ADMIN_DATA_ROOT`
 permite otra ruta absoluta. No copia ni inspecciona tokens del Hub. Diagnóstico
 y sesión usan esa misma raíz privada. Cerrar sesión borra los datos en memoria
-y no cambia roles/grants.
+y no cambia roles ni permisos del producto.
 
 ## Configuración y contrato
 

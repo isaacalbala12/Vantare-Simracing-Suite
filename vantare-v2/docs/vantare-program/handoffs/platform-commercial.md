@@ -7285,7 +7285,7 @@ esta integración y su CI; sin autorizar promoción ni publicación.
 
 
 <!-- isa1910-pasos1y2 -->
-## VANTA-132 / #1910 · Pasos 1–2 · Gestión propia y sesión en memoria · PR draft #1913
+## VANTA-132 / #1910 · Pasos 1–2 · Entrega inicial de #1913 (histórico; revisión vigente al final)
 
 - Rama `vantareapp/isa-1910-paso1-identidad-admin`, worktree
   `D:/VantareServer/worktrees/isa-1910-paso1`; base inicial `ef47c16ad`, rebasada sobre #1912 `11cdd561c` y nightly `51797395b`.
@@ -7312,7 +7312,7 @@ esta integración y su CI; sin autorizar promoción ni publicación.
 
 
 
-### VANTA-132 · Corrección de seguridad de #1913 (en validación)
+### VANTA-132 · Corrección de seguridad de #1913 (lista para revisión)
 
 - La bandera gobierna TODO el cambio de sesión: inactiva conserva Store,
   restauración, complete/refresh persistentes, logout local y diagnóstico actual
@@ -7331,8 +7331,9 @@ esta integración y su CI; sin autorizar promoción ni publicación.
   a Isaac en un cliente de desarrollo antes de activar; bandera inactiva.
 - Caracterización previa a8ae2eef2: inactivo RED 1/1 y protocolo de revocación
   RED 2/2 ejecutados antes de cambiar cada camino. Evidencia security-red.log y
-  security-revocation-red.log. GREEN focal 24/24 PASS; gates completos aún en curso; no se
-  declaran aprobados los checks anteriores a esta corrección de producto.
+  security-revocation-red.log. GREEN focal 24/24 PASS; gates repetidos tras la corrección: check all-targets, Clippy -D warnings y Nextest admin/services 319/319 PASS (5 omisiones preexistentes); lifecycle 25/25 PASS. Fmt/diff y calidad 468 huellas PASS. Clippy R1 falló por un struct local después de sentencias; se movió al módulo y se conserva security-clippy-r1.log.
 - Sin producción, secretos, Store real, _shared propio, billing/licencias,
   despliegue, merge del worker ni release. HEAD y CI finales en #1910/#1913.
 
+
+- Base final origin/nightly 5f440c094 (#1912 integrado por el orquestador). Worktree isa-1910-paso1; rama vantareapp/isa-1910-paso1-identidad-admin. Todos los gates Rust por compilar.ps1 y target propio; cola cedida entre gates. Telemetría no aplica: no hay cambios runtime/domain/ipc/testdata. CI remota nueva pendiente; HEAD publicado en #1910/#1913.

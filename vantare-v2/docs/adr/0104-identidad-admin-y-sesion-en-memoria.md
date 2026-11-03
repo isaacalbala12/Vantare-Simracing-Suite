@@ -61,5 +61,5 @@ y [verificación OAuth](https://clerk.com/docs/guides/configure/auth-strategies/
 
 Esta entrega prepara código inactivo. Activar el cliente, desplegar la Edge y
 verificar la configuración real corresponden a Isaac. El rollback de binarios
-no recupera una sesión ya revocada: exige login nuevo. No hay migración SQL en
+no recupera una sesión ya retirada: exige login nuevo. No hay migración SQL en
 estos dos pasos.

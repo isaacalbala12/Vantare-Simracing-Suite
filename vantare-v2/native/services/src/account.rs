@@ -735,6 +735,11 @@ impl Account {
     }
 }
 
+#[derive(Deserialize)]
+struct RevokeError {
+    error: String,
+}
+
 fn revoke_refresh(http: &Http, issuer: &Url, client_id: &str, refresh: &Secret) -> Result<()> {
     if refresh.expose().is_empty() || refresh.expose().len() > 16 * 1024 {
         return Err(Error::Storage);
@@ -750,10 +755,6 @@ fn revoke_refresh(http: &Http, issuer: &Url, client_id: &str, refresh: &Secret) 
             ("token_type_hint", "refresh_token"),
         ],
     )?;
-    #[derive(Deserialize)]
-    struct RevokeError {
-        error: String,
-    }
     if response.status == 400
         && response.json::<RevokeError>().is_ok_and(|body| {
             matches!(

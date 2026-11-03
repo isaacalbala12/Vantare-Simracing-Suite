@@ -47,7 +47,7 @@ def main():
         expected_error, expected_count = 'testing_report_rate_limit', '5'
         if admission:
             call = "public.testing_report_admit('ip',repeat('b',64),date_trunc('week',clock_timestamp() at time zone 'UTC')::date)"
-            fixture = f"set role service_role; select {call} from generate_series(1,4);"
+            fixture = f"set role service_role; select {call} from generate_series(1,59);"
             setup = 'set role service_role;'
             sql = lambda suffix: f'select {call};'
         if acceptance:
@@ -101,7 +101,7 @@ def main():
                 if holder.returncode or contender.returncode or stdout.strip().splitlines()[-1:] != ['f']:
                     raise RuntimeError('concurrent admission quota not enforced')
                 output = run('psql', *connection, '-c', "select sum(attempts) from private.testing_report_attempts where scope='ip' and subject=repeat('b',64);", log='concurrent-count.log')
-                if output.strip() != '6':
+                if output.strip() != '61':
                     raise RuntimeError('denied concurrent admission not durable')
                 return
             if holder.returncode or contender.returncode != 1 or expected_error not in stderr:
@@ -216,6 +216,17 @@ def main():
                         admission_down = root / 'supabase/rollbacks' / admission.name.replace('.sql', '.down.sql')
                         run('psql', *actor, '-f', admission_down, log='admission-inert-down.log')
                         run('psql', *actor, '-f', admission, log='admission-reapply.log')
+                    run('psql', *actor, '-c', '''
+                      create table public.account_identities(
+                        account_id uuid primary key, deleted_at timestamptz);
+                      create function private.guard_account_write() returns trigger
+                        language plpgsql as $$ begin
+                          if tg_op = 'DELETE' then return old; end if;
+                          return new;
+                        end $$;
+                    ''', log='fair-admission-identity-stub.log')
+                    fair_migration = root / 'supabase/migrations/20261103093000_isa_1896_report_admission.sql'
+                    run('psql', *actor, '-f', fair_migration, log='fair-admission-apply.log')
                 output = run('psql', *connection, '-f', root / f'supabase/tests/testing_followup_{args.regression}.test.sql', log='regression.log')
                 plan = re.search(r'^1\.\.(\d+)$', output, re.M)
                 count = len(re.findall(r'^ok \d+\b', output, re.M))
@@ -225,9 +236,18 @@ def main():
                     concurrent_quota(connection, acceptance=True)
                 if args.regression == 'F1IP':
                     concurrent_quota(connection, admission=True)
-                    result = run('psql', *actor, '-f', admission_down, log='admission-active-down.log', expected=3)
-                    if 'testing_admission_rollback_requires_data_preservation' not in result:
-                        raise RuntimeError('admission rollback did not preserve used budgets')
+                    fair = run('psql', *connection, '-f', root / 'supabase/tests/testing_report_admission_v2.test.sql', log='fair-admission-test.log')
+                    fair_plan = re.search(r'^1\.\.(\d+)$', fair, re.M)
+                    fair_count = len(re.findall(r'^ok \d+\b', fair, re.M))
+                    if not fair_plan or fair_count != int(fair_plan[1]) or re.search(r'^not ok |^# Looks like', fair, re.M):
+                        raise RuntimeError('fair admission pgTAP failed/incomplete')
+                    fair_down = root / 'supabase/rollbacks/20261103093000_isa_1896_report_admission.down.sql'
+                    run('psql', *actor, '-f', fair_down, log='fair-admission-down.log')
+                    restored = run('psql', *actor, '-c', '''select
+                      (select max(attempts) from private.testing_report_attempts where scope='ip')<=21,
+                      to_regclass('private.testing_report_admitted_keys') is null;''', log='fair-admission-restored.log')
+                    if restored.strip() != 't|t':
+                        raise RuntimeError('fair admission rollback did not clamp the coarse counter')
                 print(f'PASS: {args.regression}, {count} pgTAP; local synthetic contracts only')
                 return
             output = run('psql', *connection, '-f', root / 'supabase/tests/testing_reports_followup.test.sql', log='pgtap.log')

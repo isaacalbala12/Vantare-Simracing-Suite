@@ -3,7 +3,11 @@ import { handleCorsPreflight } from "../_shared/cors.ts";
 import { isUuid, readJsonObject } from "../_shared/request.ts";
 import { jsonResponse } from "../_shared/responses.ts";
 import { getSupabaseAdmin } from "../_shared/supabase-admin.ts";
-import { type ReportRpc, submitRichReport } from "./rich-report.ts";
+import {
+  type ReportRpc,
+  submitRichReport,
+  validateRichReport,
+} from "./rich-report.ts";
 import {
   nativeBearer,
   NativeError,
@@ -83,6 +87,31 @@ function weekStart(now: Date): string {
   return day.toISOString().slice(0, 10);
 }
 
+function stableJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
+  if (value !== null && typeof value === "object") {
+    const body = value as Record<string, unknown>;
+    return `{${
+      Object.keys(body).sort().map((key) =>
+        `${JSON.stringify(key)}:${stableJson(body[key])}`
+      ).join(",")
+    }}`;
+  }
+  return JSON.stringify(value);
+}
+
+async function bodyDigest(body: Record<string, unknown>): Promise<string> {
+  const bytes = new Uint8Array(
+    await crypto.subtle.digest(
+      "SHA-256",
+      new TextEncoder().encode(stableJson(body)),
+    ),
+  );
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join(
+    "",
+  );
+}
+
 // Data JWTs are minted by native-account-authorize, not Supabase Auth sessions.
 // Verify signature and the closed bridge claims before resolving identity.
 export async function verifyBridgeAccount(
@@ -154,7 +183,13 @@ export type SubmitDeps = {
   now?: () => Date;
   salt?: string;
   account?: (request: Request) => Promise<string>;
-  admit?: (scope: string, subject: string, week: string) => Promise<boolean>;
+  admit?: (
+    scope: string,
+    subject: string,
+    week: string,
+    key?: string,
+    digest?: string,
+  ) => Promise<boolean>;
   submit?: (account: string, body: Record<string, unknown>) => Promise<void>;
   rpc?: ReportRpc;
 };
@@ -174,28 +209,45 @@ export async function handleTestingReportSubmit(
     if (!deps.admit) requireHostedGateway(Deno.env.get("SUPABASE_URL") ?? "");
     const now = (deps.now ?? (() => new Date()))();
     const week = weekStart(now);
-    const hash = await ipDigest(
-      request.headers.get("cf-connecting-ip") ?? "",
-      deps.salt ?? Deno.env.get("TESTING_REPORT_IP_SALT") ?? "",
-      week,
-    );
-    const admit = deps.admit ?? (async (scope, subject, week) => {
+    const admit = deps.admit ?? (async (scope, subject, week, key, digest) => {
       const { data, error } = await getSupabaseAdmin().rpc(
-        "testing_report_admit",
-        { p_scope: scope, p_subject: subject, p_week: week },
+        scope === "ip"
+          ? "testing_report_admit"
+          : "testing_report_admit_account",
+        scope === "ip"
+          ? { p_scope: scope, p_subject: subject, p_week: week }
+          : { p_account: subject, p_key: key, p_digest: digest, p_week: week },
       );
+      if (error?.code === "23505") {
+        throw new NativeError(409, "submit_failed");
+      }
+      if (error?.code === "28000") {
+        throw new NativeError(401, "unauthorized");
+      }
       if (error || typeof data !== "boolean") {
         throw new NativeError(503, "admission_unavailable");
       }
       return data;
     });
-    // Each RPC commits independently of later auth, body and submission errors.
-    if (!await admit("ip", hash, week)) {
-      throw new NativeError(429, "rate_limited");
-    }
-    const user = await (deps.account ?? ((r) => account(r, now)))(request);
-    if (!await admit("account", user, week)) {
-      throw new NativeError(429, "rate_limited");
+    let user: string;
+    try {
+      // The ES256 bearer signature and closed claims are checked locally first.
+      // A valid account never spends the shared-IP flood allowance.
+      user = await (deps.account ?? ((r) => account(r, now)))(request);
+    } catch (error) {
+      if (
+        error instanceof NativeError && [401, 403, 413].includes(error.status)
+      ) {
+        const hash = await ipDigest(
+          request.headers.get("cf-connecting-ip") ?? "",
+          deps.salt ?? Deno.env.get("TESTING_REPORT_IP_SALT") ?? "",
+          week,
+        );
+        if (!await admit("ip", hash, week)) {
+          throw new NativeError(429, "rate_limited");
+        }
+      }
+      throw error;
     }
     if (
       request.headers.get("content-type")?.split(";")[0].trim()
@@ -210,6 +262,18 @@ export async function handleTestingReportSubmit(
     }
     const body = parsed.value;
     if (Object.hasOwn(body, "p_contract_version")) {
+      validateRichReport(body);
+      if (
+        !await admit(
+          "account",
+          user,
+          week,
+          body.p_idempotency_key as string,
+          await bodyDigest(body),
+        )
+      ) {
+        throw new NativeError(429, "rate_limited");
+      }
       const receipt = await submitRichReport(
         user,
         body,
@@ -242,6 +306,17 @@ export async function handleTestingReportSubmit(
       !text(body.p_title, 120) || !text(body.p_body, 1000) ||
       (structured ? !structuredConsent(body) : body.p_consent !== true)
     ) throw new NativeError(400, "invalid_request");
+    if (
+      !await admit(
+        "account",
+        user,
+        week,
+        (body.p_id as string).toLowerCase(),
+        await bodyDigest(body),
+      )
+    ) {
+      throw new NativeError(429, "rate_limited");
+    }
     await (deps.submit ?? (async (user, body) => {
       const rpc = deps.rpc ??
         ((name, args) => getSupabaseAdmin().rpc(name, args));
@@ -255,6 +330,8 @@ export async function handleTestingReportSubmit(
         throw new NativeError(
           error.code === "54000"
             ? 429
+            : error.code === "28000"
+            ? 401
             : error.code === "23505"
             ? 409
             : error.code === "22023"

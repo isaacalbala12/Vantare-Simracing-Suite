@@ -1,3 +1,54 @@
+## 2026-11-03 - #1896 / VANTA-131 paso 2: bearer demasiado largo
+
+- La CI de 2e7e21ef9 termino 6/6 PASS. Un bearer de mas de 16 KiB se rechaza localmente con 413; ahora tambien consume el tope IP de fallos de autenticacion. Test RED previo y Deno 26 PASS/1 omitido.
+- HEAD de codigo 2f4b20e88; CI del nuevo HEAD pendiente. La firma ES256 sigue siendo local y las consultas a Clerk/Supabase ocurren despues de una firma valida.
+- No se edito _shared/native-auth.ts. Sin produccion, despliegue, merge propio ni release. #1901 espera integracion de #1900.
+
+## 2026-11-03 - #1896 / VANTA-131 paso 2: re-revision de seguridad
+
+- Firma ES256 del bearer verificada localmente; despues se consulta Clerk y se resuelve la cuenta. Un bearer ausente/invalido no llega a esas llamadas y solo entonces carga IP. 61 fallos no bloquean a un tester valido en la misma IP.
+- Rollback inmediato: recorta contadores IP a 21 y descarta claves de reintento, conserva contadores de cuenta. La caducidad de claves se limita a la propia cuenta. La ruta rica tiene test explicito 28000 a 401.
+- HEAD de codigo 7876d9b3e. Deno 25 PASS/1 omitido; PostgreSQL local admision v2, F1IP 28, identidad comercial y rollback/reapply PASS; RED de barreras esperado. CI del nuevo HEAD pendiente.
+- No se edito _shared/native-auth.ts reservado para VANTA-132. Sin produccion, despliegue, merge propio ni release. #1901 espera integracion de #1900.
+
+## 2026-11-03 - #1896 / VANTA-131 paso 2: arnes Edge real
+
+- Tercera CI encontro que el arnes comercial aun llamaba testing_report_admit para la cuenta, aunque la Edge real usa testing_report_admit_account. El arnes usa ya la misma RPC y comprueba cinco informes nuevos y reintento gratuito.
+- HEAD de codigo 12de94738; Deno check/fmt/lint PASS. La prueba integrada completa queda en la nueva CI.
+- Sin produccion, despliegue, merge propio ni release. #1901 espera integracion de #1900.
+
+## 2026-11-03 - #1896 / VANTA-131 paso 2: fixture Edge real
+
+- Segunda CI del rebase: comercial-report.ts todavia suponia que un reintento exacto agotaba la cuota. Se verifica ahora reintento permitido, dos informes nuevos hasta cinco y sexto rechazado.
+- HEAD de codigo a9944ca61. Deno check/fmt/lint PASS; Deno de admision 24 PASS, PostgreSQL local F1IP 28, admision v2 20 e identidad comercial PASS. CI del nuevo HEAD pendiente.
+- Sin produccion, despliegue, merge propio ni release. #1901 espera integracion de #1900.
+
+## 2026-11-03 - #1896 / VANTA-131 paso 2: CI y prueba historica
+
+- El primer CI del rebase detecto dos expectativas IP antiguas de #1897 en F1IP. Test actualizado al tope grueso de 60/dia; runner comercial ahora ejecuta tambien la admision v2.
+- HEAD de codigo 8f1daec4a, base nightly 7ff084c45. Deno 24 PASS/1 omitido; PostgreSQL local: F1IP 28, admision v2 20 y pruebas comerciales de identidad PASS. Control RED de barreras falla solo en las barreras esperadas.
+- El nuevo HEAD del PR #1900 queda pendiente de CI. Sin produccion, despliegue, merge propio ni release. Siguiente #1901 tras integrar #1900.
+
+## 2026-11-03 - #1896 / VANTA-131 paso 2: rebase de seguridad
+
+- #1899 integrado por Isaac en nightly 7ff084c45; PR draft #1900 rebasado sobre ese SHA. HEAD de codigo 659c1330b.
+- IP compartida: tope grueso de 60 peticiones/dia; la cuota de cuenta sigue en 5/dia y 20/semana solo tras autenticar. Test del atacante sin token y tester en la misma IP.
+- Claves de admision: purga en el borrado B03 y caducidad con la ventana de intentos. Edge convierte 28000 en 401. Runbook fija SQL antes de Edge y Edge antes de SQL al revertir.
+- Deno 24 PASS/1 omitido; PostgreSQL local: admision v2 y F1IP 28 PASS, incluidos rollback y ACL. CI del nuevo HEAD pendiente. Sin produccion, despliegue, merge propio ni release.
+
+## 2026-11-03 - #1896 / VANTA-131 paso 2: CI final
+
+- PR draft #1900: el test comercial encontro la barrera de borrado de cuenta ausente en las claves de admision. Se agrego trigger y carrera real con cuenta borrada.
+- HEAD 66b1660f9, base 71a12cc09. PostgreSQL LF/CRLF, marketing, promocion, calidad, GitGuardian y gates bloqueantes PASS.
+- PostgreSQL local ACL/reintento/cuota/rollback PASS. Produccion +153/-47, tests +244/-18, docs +7/-0 antes de esta nota. Sin merge, despliegue ni release.
+
+## 2026-11-03 - #1896 / VANTA-131 paso 2: admision justa
+
+- PR draft #1900 contra nightly, rama vantareapp/isa-1896-paso2-admision; base 71a12cc09, HEAD 112c5feb2.
+- La Edge valida antes de cargar la cuota de cuenta; repetir exactamente la misma clave y cuerpo no la vuelve a gastar. La IP sigue con tope por peticion.
+- PostgreSQL local y Deno en verde; migracion con rollback que protege claves activas. CI en curso.
+- El trigger por fila queda como red de seguridad. Sin merge, despliegue ni release. Siguiente: paso 3 en worktree aparte.
+
 - 2026-11-03 VANTA-131 paso 1: PR #1899 rebasado sobre nightly 6c83125e3 (paso 0 integrado). Se invierte la caracterizacion obsoleta de #1897: el recibo confirmado limpia imagenes. Sin merge propio ni despliegue. Gates y CI del nuevo HEAD en curso.
 ## 2026-11-03 - #1896 / VANTA-131 paso 1: contencion de capturas
 

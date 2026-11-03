@@ -16,14 +16,14 @@ const receipt = [{
   idempotent: false,
   created_at: "2026-10-19T00:00:00Z",
 }];
-function request(payload: unknown) {
+function request(payload: unknown, ip = "192.0.2.10") {
   return new Request(
     "https://example.invalid/functions/v1/testing-report-submit",
     {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        "cf-connecting-ip": "192.0.2.10",
+        "cf-connecting-ip": ip,
       },
       body: JSON.stringify(payload),
     },
@@ -56,13 +56,13 @@ Deno.test("1709: Rust Windows UTF-8 request contract with/without batch crosses 
     eq(response.status, 200);
     eq(response.headers.get("cache-control"), "no-store");
     eq(await response.json(), receipt);
-    eq(f.calls, ["ip", "auth", "account", {
+    eq(f.calls, ["auth", "account", {
       name: "testing_center_report_submit_admitted",
       payload: { ...payload, p_account: account },
     }]);
   }
 });
-Deno.test("1709: rich shapes reject identity spoofing, prose, diagnostics and invalid batches after admission", async () => {
+Deno.test("1709: rich shapes reject identity spoofing, prose, diagnostics and invalid batches before account admission", async () => {
   for (
     const change of [
       { p_account: account },
@@ -89,10 +89,10 @@ Deno.test("1709: rich shapes reject identity spoofing, prose, diagnostics and in
         .status,
       400,
     );
-    eq(f.calls, ["ip", "auth", "account"]);
+    eq(f.calls, ["auth"]);
   }
 });
-Deno.test("1709: rich and existing forms exhaust the same IP/account budget; retries consume admission", async () => {
+Deno.test("1709: distinct rich and simple reports share account quota across IPs", async () => {
   const f = fixture();
   const counts = new Map<string, number>();
   f.deps.admit = (scope, key) => {
@@ -110,15 +110,21 @@ Deno.test("1709: rich and existing forms exhaust the same IP/account budget; ret
     p_consent: true,
   };
   for (let i = 0; i < 5; i++) {
+    const unique = i % 2
+      ? { ...simple, p_id: `17090000-0000-4000-8000-00000000000${i}` }
+      : { ...body, p_idempotency_key: `draft_${String(i).repeat(64)}` };
     eq(
-      (await handleTestingReportSubmit(request(i % 2 ? simple : body), f.deps))
+      (await handleTestingReportSubmit(request(unique), f.deps))
         .status,
       200,
     );
   }
   eq(
     (await handleTestingReportSubmit(
-      request({ ...body, p_batch_id: batch }),
+      request(
+        { ...body, p_idempotency_key: `draft_${"5".repeat(64)}` },
+        "192.0.2.11",
+      ),
       f.deps,
     )).status,
     429,
@@ -135,7 +141,6 @@ Deno.test("1709: stable SQL failures preserve pending evidence, membership and c
     const [code, status, error] of [
       ["55000", 400, "evidence_not_ready"],
       ["42501", 403, "submit_failed"],
-      ["28000", 401, "submit_failed"],
       ["23505", 409, "submit_failed"],
       ["22023", 400, "submit_failed"],
       ["54000", 429, "submit_failed"],
@@ -151,6 +156,16 @@ Deno.test("1709: stable SQL failures preserve pending evidence, membership and c
     eq(response.status, status);
     eq(await response.json(), { error });
   }
+});
+Deno.test("deleted account SQLSTATE 28000 returns 401 on the rich route", async () => {
+  const f = fixture();
+  f.deps.rpc = () => Promise.resolve({ error: { code: "28000" } });
+  const response = await handleTestingReportSubmit(
+    request({ ...body, p_batch_id: batch }),
+    f.deps,
+  );
+  eq(response.status, 401);
+  eq(await response.json(), { error: "submit_failed" });
 });
 Deno.test("1709: malformed or expanded SQL receipt fails closed without forwarding data", async () => {
   for (

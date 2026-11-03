@@ -9,7 +9,7 @@ import {
   verifyBridgeAccount,
 } from "./index.ts";
 import { signDataToken } from "../native-account-authorize/index.ts";
-import { NativeError } from "../_shared/native-auth.ts";
+import { nativeBearer, NativeError } from "../_shared/native-auth.ts";
 
 function eq(actual: unknown, expected: unknown) {
   if (JSON.stringify(actual) !== JSON.stringify(expected)) {
@@ -30,6 +30,7 @@ const payload = {
 };
 function fixture() {
   const counts = new Map<string, number>();
+  const admitted = new Map<string, string>();
   const reports: unknown[] = [];
   return {
     counts,
@@ -39,11 +40,24 @@ function fixture() {
       salt: "synthetic-test-salt-only-32-characters",
       account: (request: Request) =>
         Promise.resolve(request.headers.get("authorization")!.slice(7)),
-      admit: (scope: string, key: string, _week: string) => {
+      admit: (
+        scope: string,
+        key: string,
+        _week: string,
+        reportKey?: string,
+        digest?: string,
+      ) => {
+        const report = `${key}:${reportKey}`;
+        if (scope === "account") {
+          const prior = admitted.get(report);
+          if (prior === digest) return Promise.resolve(true);
+          if (prior !== undefined) throw new NativeError(409, "submit_failed");
+        }
         const k = scope + key;
         const n = (counts.get(k) ?? 0) + 1;
         counts.set(k, n);
-        return Promise.resolve(n <= 5);
+        if (scope === "account" && n <= 5) admitted.set(report, digest!);
+        return Promise.resolve(n <= (scope === "ip" ? 60 : 5));
       },
       submit: (account: string, body: Record<string, unknown>) => {
         reports.push({ account, body });
@@ -72,13 +86,13 @@ function request(
     },
   );
 }
-Deno.test("F1: two accounts share IP; spoofed XFF cannot reset budget; normal submission works", async () => {
+Deno.test("F1: verified accounts on one IP use only their account budgets", async () => {
   const f = fixture();
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < 61; i++) {
     eq(
       (await handleTestingReportSubmit(
         request(
-          i % 2 ? "account-b" : "account-a",
+          `account-${i}`,
           undefined,
           payload,
           `198.51.100.${i}`,
@@ -88,11 +102,58 @@ Deno.test("F1: two accounts share IP; spoofed XFF cannot reset budget; normal su
       200,
     );
   }
+  eq(f.reports.length, 61);
+  eq([...f.counts.keys()].some((key) => key.startsWith("ip")), false);
+});
+
+Deno.test("61 requests without a bearer cannot block a tester on the same IP", async () => {
+  const f = fixture();
+  const auth = {
+    ...f.deps,
+    account: (input: Request) => {
+      const bearer = input.headers.get("authorization");
+      if (!bearer) throw new NativeError(401, "unauthorized");
+      return Promise.resolve(bearer.slice(7));
+    },
+  };
+  for (let i = 0; i < 61; i++) {
+    const attack = request("attacker", undefined, payload, `198.51.100.${i}`);
+    attack.headers.delete("authorization");
+    eq(
+      (await handleTestingReportSubmit(attack, auth)).status,
+      i < 60 ? 401 : 429,
+    );
+  }
+  eq((await handleTestingReportSubmit(request("tester"), auth)).status, 200);
   eq(
-    (await handleTestingReportSubmit(request("account-c"), f.deps)).status,
-    429,
+    f.counts.get([...f.counts.keys()].find((key) => key.startsWith("ip"))!),
+    61,
   );
-  eq(f.reports.length, 5);
+  eq(f.counts.get("accounttester"), 1);
+});
+
+Deno.test("oversized bearer consumes the failed-auth IP allowance", async () => {
+  const f = fixture();
+  const oversized = request("x".repeat(16 * 1024 + 1));
+  const response = await handleTestingReportSubmit(oversized, {
+    ...f.deps,
+    account: (input) => {
+      nativeBearer(input);
+      return Promise.resolve("tester");
+    },
+  });
+  eq(response.status, 413);
+  eq([...f.counts.keys()].filter((key) => key.startsWith("ip")).length, 1);
+});
+
+Deno.test("deleted account SQLSTATE maps to unauthorized on the simple write", async () => {
+  const f = fixture();
+  const response = await handleTestingReportSubmit(request("account-a"), {
+    ...f.deps,
+    submit: undefined,
+    rpc: () => Promise.resolve({ data: null, error: { code: "28000" } }),
+  });
+  eq(response.status, 401);
 });
 
 Deno.test("actual backend only accepts the managed Supabase project origin", () => {
@@ -118,7 +179,12 @@ Deno.test("F1: one account cannot reset quota with multiple IPs", async () => {
   for (let i = 1; i <= 6; i++) {
     eq(
       (await handleTestingReportSubmit(
-        request("account-a", `192.0.2.${i}`),
+        request("account-a", `192.0.2.${i}`, {
+          ...payload,
+          p_id: `16100000-0000-4000-8000-0000000000${
+            String(i).padStart(2, "0")
+          }`,
+        }),
         f.deps,
       )).status,
       i <= 5 ? 200 : 429,
@@ -126,7 +192,7 @@ Deno.test("F1: one account cannot reset quota with multiple IPs", async () => {
   }
   eq(f.reports.length, 5);
 });
-Deno.test("invalid bodies and exact retries consume durable admission before validation", async () => {
+Deno.test("invalid authenticated bodies spend neither IP nor account admission", async () => {
   const f = fixture();
   for (let i = 0; i < 5; i++) {
     eq(
@@ -138,12 +204,17 @@ Deno.test("invalid bodies and exact retries consume durable admission before val
     );
   }
   eq(
-    (await handleTestingReportSubmit(request("account-a"), f.deps)).status,
-    429,
+    (await handleTestingReportSubmit(
+      request("account-a", "192.0.2.11"),
+      f.deps,
+    )).status,
+    200,
   );
-  eq(f.reports.length, 0);
+  eq(f.counts.get("accountaccount-a"), 1);
+  eq([...f.counts.keys()].some((key) => key.startsWith("ip")), false);
+  eq(f.reports.length, 1);
 });
-Deno.test("same evidence-pending report consumes shared IP and account admission on every retry", async () => {
+Deno.test("same evidence-pending report spends no IP and one account slot", async () => {
   const f = fixture();
   const pending = {
     ...f.deps,
@@ -157,23 +228,46 @@ Deno.test("same evidence-pending report consumes shared IP and account admission
       503,
     );
   }
-  eq(f.counts.get("accountaccount-a"), 5);
+  eq(f.counts.get("accountaccount-a"), 1);
   eq(
     (await handleTestingReportSubmit(request("account-a"), pending)).status,
-    429,
+    503,
   );
   eq(
     (await handleTestingReportSubmit(request("account-b"), pending)).status,
-    429,
+    503,
   );
-  eq(f.counts.get("accountaccount-b") ?? 0, 0);
+  eq(f.counts.get("accountaccount-b"), 1);
+  for (let i = 7; i < 60; i++) {
+    eq(
+      (await handleTestingReportSubmit(request("account-a"), pending)).status,
+      503,
+    );
+  }
+  eq(
+    (await handleTestingReportSubmit(request("account-b"), pending)).status,
+    503,
+  );
+  eq([...f.counts.keys()].some((key) => key.startsWith("ip")), false);
 });
 Deno.test("missing trustworthy origin fails closed even with XFF", async () => {
   const f = fixture();
   const req = request("account-a");
+  req.headers.delete("authorization");
   req.headers.delete("cf-connecting-ip");
-  eq((await handleTestingReportSubmit(req, f.deps)).status, 503);
+  eq(
+    (await handleTestingReportSubmit(req, {
+      ...f.deps,
+      account: () => {
+        throw new NativeError(401, "unauthorized");
+      },
+    })).status,
+    503,
+  );
   eq(f.reports.length, 0);
+  const verified = request("account-a");
+  verified.headers.delete("cf-connecting-ip");
+  eq((await handleTestingReportSubmit(verified, f.deps)).status, 200);
 });
 Deno.test("salt/window rotate HMAC; canonical IPv6; no clear IP passed to store", async () => {
   const hash = await ipDigest(
@@ -258,7 +352,7 @@ Deno.test("bridge signature, issuer, expiry and identity are checked before acce
   }
 });
 
-Deno.test("JWT failure spends IP admission; upstream failure spends account admission", async () => {
+Deno.test("JWT failure spends IP admission; exact upstream retry spends one account slot", async () => {
   const f = fixture();
   const deny = {
     ...f.deps,
@@ -266,7 +360,7 @@ Deno.test("JWT failure spends IP admission; upstream failure spends account admi
       throw new NativeError(401, "unauthorized");
     },
   };
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < 60; i++) {
     eq(
       (await handleTestingReportSubmit(request("account-a"), deny)).status,
       401,
@@ -294,8 +388,9 @@ Deno.test("JWT failure spends IP admission; upstream failure spends account admi
       request("account-a", "192.0.2.6"),
       offline,
     )).status,
-    429,
+    503,
   );
+  eq(g.counts.get("accountaccount-a"), 1);
 });
 
 Deno.test("client account/IP fields and oversized bodies are denied before service submission", async () => {
@@ -324,18 +419,24 @@ Deno.test("client account/IP fields and oversized bodies are denied before servi
   eq(f.reports.length, 0);
 });
 
-Deno.test("missing salt/admission failure/malformed origin never silently bypass limits", async () => {
+Deno.test("failed auth needs a trustworthy IP and available coarse guard", async () => {
   const f = fixture();
+  const denied = {
+    ...f.deps,
+    account: () => {
+      throw new NativeError(401, "unauthorized");
+    },
+  };
   eq(
     (await handleTestingReportSubmit(request("account-a"), {
-      ...f.deps,
+      ...denied,
       salt: "",
     })).status,
     503,
   );
   eq(
     (await handleTestingReportSubmit(request("account-a"), {
-      ...f.deps,
+      ...denied,
       admit: () => {
         throw new Error("synthetic database failure");
       },
@@ -352,7 +453,7 @@ Deno.test("missing salt/admission failure/malformed origin never silently bypass
     ]
   ) {
     eq(
-      (await handleTestingReportSubmit(request("account-a", ip), f.deps))
+      (await handleTestingReportSubmit(request("account-a", ip), denied))
         .status,
       503,
     );
@@ -381,7 +482,7 @@ const structured = {
   },
   p_attachments: [{ kind: "app_log", content: "[]", sha256: "a".repeat(64) }],
 };
-Deno.test("F8: structured preview and exact retries retain all fields after IP/account admission", async () => {
+Deno.test("F8: structured preview and exact retries retain all fields after account admission", async () => {
   const f = fixture();
   for (let i = 0; i < 2; i++) {
     eq(
@@ -396,23 +497,21 @@ Deno.test("F8: structured preview and exact retries retain all fields after IP/a
     account: "account-a",
     body: structured,
   }]);
-  eq([...f.counts.values()], [2, 2]);
+  eq([...f.counts.values()], [1]);
 });
-Deno.test("F8: structured preview without IP/account admission never reaches storage", async () => {
-  for (const denied of ["ip", "account"]) {
-    const f = fixture();
-    eq(
-      (await handleTestingReportSubmit(
-        request("account-a", undefined, structured),
-        {
-          ...f.deps,
-          admit: (scope) => Promise.resolve(scope !== denied),
-        },
-      )).status,
-      429,
-    );
-    eq(f.reports.length, 0);
-  }
+Deno.test("F8: structured preview denied by account admission never reaches storage", async () => {
+  const f = fixture();
+  eq(
+    (await handleTestingReportSubmit(
+      request("account-a", undefined, structured),
+      {
+        ...f.deps,
+        admit: (scope) => Promise.resolve(scope !== "account"),
+      },
+    )).status,
+    429,
+  );
+  eq(f.reports.length, 0);
 });
 Deno.test("F8: partial structured fields, account injection and missing consent fail closed", async () => {
   for (
@@ -438,6 +537,7 @@ Deno.test("F8: partial structured fields, account injection and missing consent 
 
 Deno.test("F8: production submit dispatches the full package only to the service admission RPC", async () => {
   const f = fixture();
+  const simple = { ...payload, p_id: "16100000-0000-4000-8000-000000000012" };
   const calls: unknown[] = [];
   const deps = {
     ...f.deps,
@@ -459,12 +559,15 @@ Deno.test("F8: production submit dispatches the full package only to the service
     body: { ...structured, p_account: "verified-account" },
   }]);
   eq(
-    (await handleTestingReportSubmit(request("verified-account"), deps)).status,
+    (await handleTestingReportSubmit(
+      request("verified-account", undefined, simple),
+      deps,
+    )).status,
     200,
   );
   eq(calls[1], {
     name: "testing_report_submit_admitted",
-    body: { ...payload, p_account: "verified-account" },
+    body: { ...simple, p_account: "verified-account" },
   });
 });
 

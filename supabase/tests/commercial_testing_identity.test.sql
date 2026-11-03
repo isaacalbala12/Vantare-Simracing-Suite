@@ -95,6 +95,13 @@ select is(private.current_account(),null::uuid,'B01 identity boundary stays clos
 select throws_ok($$select public.testing_report_submit_admitted(
  '16090000-0000-0000-0000-000000000001','16090000-0000-0000-0000-000000000013','master','Synthetic','Synthetic',true)$$,'42501',null,'client cannot choose adapter account');
 reset role;
+select ok(public.testing_report_admit_account(
+ '16090000-0000-0000-0000-000000000001','deletion-key',repeat('a',64),
+ date_trunc('week',clock_timestamp() at time zone 'UTC')::date),
+ 'account admission key exists before Clerk deletion');
+select is((select count(*)::integer from private.testing_report_admitted_keys
+ where account_id='16090000-0000-0000-0000-000000000001'),1,
+ 'key retained until account deletion');
 select public.apply_clerk_user_event('r9-delete',repeat('d',64),'https://testing-r9.clerk.invalid','user_aaaaaaaaaaaaaaaaaaaaaaaaaaa','user.deleted',now(),null);
 -- Even restoring membership as an administrator cannot undo a tombstone.
 -- The normal membership barrier also correctly refuses resurrection.
@@ -107,6 +114,9 @@ select throws_ok($$select public.testing_contribution_submit_admitted(
  '[contenido retirado por privacidad]','[contenido retirado por privacidad]',pg_temp.ctx(),pg_temp.att())$$,'28000','account_deleted','deleted triage report denied');
 reset role;
 select is((select count(*)::integer from public.testing_contributions),0,'no report survives or returns after deletion');
+select is((select count(*)::integer from private.testing_report_admitted_keys
+ where account_id='16090000-0000-0000-0000-000000000001'),0,
+ 'b03 deletion purges admitted report keys');
 select is((select count(*)::integer from public.testing_contribution_context),0,'context purged');
 select is((select count(*)::integer from public.testing_contribution_attachments),0,'attachments purged');
 select * from finish();

@@ -14,6 +14,7 @@ import {
 function deps(overrides: AdminDeps = {}): AdminDeps {
   return {
     ...authDeps(),
+    ...{ gate: () => Promise.resolve(true) },
     environment: "sandbox",
     resolve: () => Promise.resolve(account),
     begin: () => Promise.resolve(true),
@@ -39,7 +40,7 @@ Deno.test("R10 P1 characterization: owner Hub OAuth grants admin access", async 
   assert((await response.json()).ok === true);
 });
 
-Deno.test("R10 P2 characterization: garbage bearer reaches Clerk before any SQL budget", async () => {
+Deno.test("R10 P2 characterization: garbage bearer reaches Clerk before owner SQL budget", async () => {
   const calls: string[] = [];
   const response = await handleNativeAdmin(
     request({ version: 1, action: "get_rollout" }, {

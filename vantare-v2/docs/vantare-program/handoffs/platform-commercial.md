@@ -5180,8 +5180,9 @@ Issue: https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1910.
 Project Vantare, area:plataforma; Plane En curso verificado. Base origin/nightly
 `ef47c16ad3dc0343798094e50d36676c1898d282`, rama
 `vantareapp/isa-1910-paso0-caracterizacion`, worktree
-`D:/VantareServer/worktrees/isa-1910-paso0`. PR/HEAD/CI se verifican en la issue.
+`D:/VantareServer/worktrees/isa-1910-paso0`. PR draft [#1911](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1911), código `689eda930`; HEAD/CI vigentes en la issue.
 
+- Medición: producción +0/−0, tests/tooling +374/−1, docs +33/−0.
 - Solo tests: OAuth del Hub aceptado como owner, bearer basura antes de cupo,
   coste de Clerk/resolve para no-owner y owner caducado, tres errores SQL como
   503 y desbloqueo Clerk previo a fallo SQL. Deno: 8 nuevos / 88 totales PASS,
@@ -5192,7 +5193,9 @@ Project Vantare, area:plataforma; Plane En curso verificado. Base origin/nightly
   `policy_version=2` no puede existir: CHECK 23514, sin relajar el schema.
   Borrado caracterizado por la entrada vigente prepare_account_deletion.
 - Nuevo test Rust de Command::Logout con sesión sintética y listener local:
-  comprueba que no hay HTTP. Fmt PASS; Nextest pendiente de la cola del repo.
+  comprueba que no hay HTTP. Fmt, Nextest admin completo, check all-targets y
+  Clippy -D warnings PASS; lifecycle pendiente de cola. Telemetría no aplica:
+  no cambia runtime/domain/ipc/testdata.
   No se ha abierto el almacén real. Harness medium heredado; sin subagentes.
 - Runner SQL local reproducible: run-admin-characterization-local.py --pg-bin
   <PostgreSQL/bin> --output <evidencia>, como usuario sin privilegios.

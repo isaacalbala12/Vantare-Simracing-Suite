@@ -242,11 +242,12 @@ def main():
                     if not fair_plan or fair_count != int(fair_plan[1]) or re.search(r'^not ok |^# Looks like', fair, re.M):
                         raise RuntimeError('fair admission pgTAP failed/incomplete')
                     fair_down = root / 'supabase/rollbacks/20261103093000_isa_1896_report_admission.down.sql'
-                    result = run('psql', *actor, '-f', fair_down, log='fair-admission-protected-down.log', expected=3)
-                    if 'testing_ip_counter_rollback_requires_data_preservation' not in result:
-                        raise RuntimeError('fair admission rollback did not protect coarse IP counts')
-                    run('psql', *actor, '-c', "delete from private.testing_report_attempts where scope='ip';", log='fair-admission-disposable-cleanup.log')
                     run('psql', *actor, '-f', fair_down, log='fair-admission-down.log')
+                    restored = run('psql', *actor, '-c', '''select
+                      (select max(attempts) from private.testing_report_attempts where scope='ip')<=21,
+                      to_regclass('private.testing_report_admitted_keys') is null;''', log='fair-admission-restored.log')
+                    if restored.strip() != 't|t':
+                        raise RuntimeError('fair admission rollback did not clamp the coarse counter')
                 print(f'PASS: {args.regression}, {count} pgTAP; local synthetic contracts only')
                 return
             output = run('psql', *connection, '-f', root / 'supabase/tests/testing_reports_followup.test.sql', log='pgtap.log')

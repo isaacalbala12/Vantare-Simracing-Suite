@@ -86,9 +86,9 @@ function request(
     },
   );
 }
-Deno.test("F1: 60 accounts share IP; spoofed XFF cannot reset coarse budget", async () => {
+Deno.test("F1: verified accounts on one IP use only their account budgets", async () => {
   const f = fixture();
-  for (let i = 0; i < 60; i++) {
+  for (let i = 0; i < 61; i++) {
     eq(
       (await handleTestingReportSubmit(
         request(
@@ -102,11 +102,8 @@ Deno.test("F1: 60 accounts share IP; spoofed XFF cannot reset coarse budget", as
       200,
     );
   }
-  eq(
-    (await handleTestingReportSubmit(request("account-c"), f.deps)).status,
-    429,
-  );
-  eq(f.reports.length, 60);
+  eq(f.reports.length, 61);
+  eq([...f.counts.keys()].some((key) => key.startsWith("ip")), false);
 });
 
 Deno.test("61 requests without a bearer cannot block a tester on the same IP", async () => {
@@ -120,7 +117,7 @@ Deno.test("61 requests without a bearer cannot block a tester on the same IP", a
     },
   };
   for (let i = 0; i < 61; i++) {
-    const attack = request("attacker");
+    const attack = request("attacker", undefined, payload, `198.51.100.${i}`);
     attack.headers.delete("authorization");
     eq(
       (await handleTestingReportSubmit(attack, auth)).status,
@@ -181,7 +178,7 @@ Deno.test("F1: one account cannot reset quota with multiple IPs", async () => {
   }
   eq(f.reports.length, 5);
 });
-Deno.test("invalid bodies spend IP admission but leave account quota available", async () => {
+Deno.test("invalid authenticated bodies spend neither IP nor account admission", async () => {
   const f = fixture();
   for (let i = 0; i < 5; i++) {
     eq(
@@ -200,9 +197,10 @@ Deno.test("invalid bodies spend IP admission but leave account quota available",
     200,
   );
   eq(f.counts.get("accountaccount-a"), 1);
+  eq([...f.counts.keys()].some((key) => key.startsWith("ip")), false);
   eq(f.reports.length, 1);
 });
-Deno.test("same evidence-pending report spends coarse IP only on exact retries", async () => {
+Deno.test("same evidence-pending report spends no IP and one account slot", async () => {
   const f = fixture();
   const pending = {
     ...f.deps,
@@ -226,7 +224,6 @@ Deno.test("same evidence-pending report spends coarse IP only on exact retries",
     503,
   );
   eq(f.counts.get("accountaccount-b"), 1);
-  eq([...f.counts.values()].filter((count) => count === 7).length, 1);
   for (let i = 7; i < 60; i++) {
     eq(
       (await handleTestingReportSubmit(request("account-a"), pending)).status,
@@ -235,15 +232,28 @@ Deno.test("same evidence-pending report spends coarse IP only on exact retries",
   }
   eq(
     (await handleTestingReportSubmit(request("account-b"), pending)).status,
-    429,
+    503,
   );
+  eq([...f.counts.keys()].some((key) => key.startsWith("ip")), false);
 });
 Deno.test("missing trustworthy origin fails closed even with XFF", async () => {
   const f = fixture();
   const req = request("account-a");
+  req.headers.delete("authorization");
   req.headers.delete("cf-connecting-ip");
-  eq((await handleTestingReportSubmit(req, f.deps)).status, 503);
+  eq(
+    (await handleTestingReportSubmit(req, {
+      ...f.deps,
+      account: () => {
+        throw new NativeError(401, "unauthorized");
+      },
+    })).status,
+    503,
+  );
   eq(f.reports.length, 0);
+  const verified = request("account-a");
+  verified.headers.delete("cf-connecting-ip");
+  eq((await handleTestingReportSubmit(verified, f.deps)).status, 200);
 });
 Deno.test("salt/window rotate HMAC; canonical IPv6; no clear IP passed to store", async () => {
   const hash = await ipDigest(
@@ -395,18 +405,24 @@ Deno.test("client account/IP fields and oversized bodies are denied before servi
   eq(f.reports.length, 0);
 });
 
-Deno.test("missing salt/admission failure/malformed origin never silently bypass limits", async () => {
+Deno.test("failed auth needs a trustworthy IP and available coarse guard", async () => {
   const f = fixture();
+  const denied = {
+    ...f.deps,
+    account: () => {
+      throw new NativeError(401, "unauthorized");
+    },
+  };
   eq(
     (await handleTestingReportSubmit(request("account-a"), {
-      ...f.deps,
+      ...denied,
       salt: "",
     })).status,
     503,
   );
   eq(
     (await handleTestingReportSubmit(request("account-a"), {
-      ...f.deps,
+      ...denied,
       admit: () => {
         throw new Error("synthetic database failure");
       },
@@ -423,7 +439,7 @@ Deno.test("missing salt/admission failure/malformed origin never silently bypass
     ]
   ) {
     eq(
-      (await handleTestingReportSubmit(request("account-a", ip), f.deps))
+      (await handleTestingReportSubmit(request("account-a", ip), denied))
         .status,
       503,
     );
@@ -452,7 +468,7 @@ const structured = {
   },
   p_attachments: [{ kind: "app_log", content: "[]", sha256: "a".repeat(64) }],
 };
-Deno.test("F8: structured preview and exact retries retain all fields after IP/account admission", async () => {
+Deno.test("F8: structured preview and exact retries retain all fields after account admission", async () => {
   const f = fixture();
   for (let i = 0; i < 2; i++) {
     eq(
@@ -467,23 +483,21 @@ Deno.test("F8: structured preview and exact retries retain all fields after IP/a
     account: "account-a",
     body: structured,
   }]);
-  eq([...f.counts.values()], [2, 1]);
+  eq([...f.counts.values()], [1]);
 });
-Deno.test("F8: structured preview without IP/account admission never reaches storage", async () => {
-  for (const denied of ["ip", "account"]) {
-    const f = fixture();
-    eq(
-      (await handleTestingReportSubmit(
-        request("account-a", undefined, structured),
-        {
-          ...f.deps,
-          admit: (scope) => Promise.resolve(scope !== denied),
-        },
-      )).status,
-      429,
-    );
-    eq(f.reports.length, 0);
-  }
+Deno.test("F8: structured preview denied by account admission never reaches storage", async () => {
+  const f = fixture();
+  eq(
+    (await handleTestingReportSubmit(
+      request("account-a", undefined, structured),
+      {
+        ...f.deps,
+        admit: (scope) => Promise.resolve(scope !== "account"),
+      },
+    )).status,
+    429,
+  );
+  eq(f.reports.length, 0);
 });
 Deno.test("F8: partial structured fields, account injection and missing consent fail closed", async () => {
   for (

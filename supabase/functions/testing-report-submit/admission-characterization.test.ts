@@ -24,7 +24,7 @@ function request(account: string, body: unknown = valid) {
   );
 }
 
-Deno.test("VANTA-131 step 2: malformed body and exact retry charge only IP per request", async () => {
+Deno.test("VANTA-131 step 2: authenticated malformed body and exact retry spare IP and account quota", async () => {
   const counts = new Map<string, number>();
   const admitted = new Map<string, string>();
   const deps = {
@@ -78,7 +78,7 @@ Deno.test("VANTA-131 step 2: malformed body and exact retry charge only IP per r
     throw new Error("changed body must not borrow a previously admitted key");
   }
   const ip = [...counts.entries()].find(([key]) => key.startsWith("ip:"))?.[1];
-  if (ip !== 4 || counts.get("account:account-a") !== 1) {
+  if (ip !== undefined || counts.get("account:account-a") !== 1) {
     throw new Error(
       `invalid body and exact retry must spare account quota: ip=${ip}, account=${
         counts.get("account:account-a")

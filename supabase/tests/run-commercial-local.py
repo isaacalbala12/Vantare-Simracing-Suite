@@ -234,6 +234,22 @@ $$;
   """).strip()
   assert role_contract=='t', 'managed product role attributes changed'
   (OUT/'managed-role-contract.log').write_text('Four product roles: safe attributes PASS\n')
+  if not (args.baseline or args.before_write_barrier or args.before_testing_identity):
+   admission='20261103093000_isa_1896_report_admission'
+   run('psql',*conn,'-c',"""insert into private.testing_report_attempts
+    (scope,subject,week_start,day_start,attempts) values
+    ('ip',repeat('f',64),date_trunc('week',now() at time zone 'UTC')::date,(now() at time zone 'UTC')::date,60),
+    ('account','18960000-0000-4000-8000-000000000092',date_trunc('week',now() at time zone 'UTC')::date,(now() at time zone 'UTC')::date,5);
+    insert into private.testing_report_admitted_keys(account_id,report_key,body_digest)
+    values('18960000-0000-4000-8000-000000000092','rollback-fixture',repeat('a',64));""")
+   run('psql',*conn,'-f',ROOT/'supabase/rollbacks'/(admission+'.down.sql'))
+   restored=run('psql',*conn,'-c',"""select
+    (select attempts from private.testing_report_attempts where scope='ip' and subject=repeat('f',64))=21,
+    (select attempts from private.testing_report_attempts where scope='account' and subject='18960000-0000-4000-8000-000000000092')=5,
+    to_regclass('private.testing_report_admitted_keys') is null;""").strip()
+   if restored!='t|t|t': raise RuntimeError('step 2 rollback lost quota data or retained retry keys')
+   run('psql',*conn,'-f',ROOT/'supabase/migrations'/(admission+'.sql'))
+   run('psql',*conn,'-c',"delete from private.testing_report_attempts where subject=repeat('f',64) or subject='18960000-0000-4000-8000-000000000092';")
   if args.testing_identity:
    for name in ['testing_followup_F1IP.test.sql','testing_report_admission_v2.test.sql','commercial_testing_identity.test.sql','commercial_posthog_consent.test.sql','testing_report_rich_admission.test.sql','testing_report_legacy_closed.test.sql']:
     result=run('psql',*conn,'-f',ROOT/'supabase/tests'/name)

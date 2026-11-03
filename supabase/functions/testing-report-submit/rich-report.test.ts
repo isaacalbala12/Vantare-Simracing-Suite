@@ -56,7 +56,7 @@ Deno.test("1709: Rust Windows UTF-8 request contract with/without batch crosses 
     eq(response.status, 200);
     eq(response.headers.get("cache-control"), "no-store");
     eq(await response.json(), receipt);
-    eq(f.calls, ["ip", "auth", "account", {
+    eq(f.calls, ["auth", "account", {
       name: "testing_center_report_submit_admitted",
       payload: { ...payload, p_account: account },
     }]);
@@ -89,7 +89,7 @@ Deno.test("1709: rich shapes reject identity spoofing, prose, diagnostics and in
         .status,
       400,
     );
-    eq(f.calls, ["ip", "auth"]);
+    eq(f.calls, ["auth"]);
   }
 });
 Deno.test("1709: distinct rich and simple reports share account quota across IPs", async () => {

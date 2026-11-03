@@ -14,7 +14,8 @@ su último layout válido hasta que se guarde un layout reparado.
 Una versión desconocida, un archivo demasiado grande o una copia fallida dejan
 el archivo protegido. El Hub muestra el aviso y las ediciones no lo sobrescriben.
 La política y los límites viven en [IPC](../ipc/README.md).
-El lector de hub-zoom.json se consolidará en el Store v2 del paso 6.
+El Store v2 recupera hub-zoom.json dañado con .invalid y 100, sin bloquear guardados.
+[Contrato de migración y espejo temporal](src/settings/README.md#store-único-v2--1869-paso-6).
 Los errores Busy no abren el panel de conflicto ni ofrecen «Recargar datos locales».
 El diagnóstico de Hub conserva el tipo de los guardados al cerrar o usar Guardar.
 Workshop.scene.error se refiere solo a lectura/decodificación de fotos; por eso
@@ -142,7 +143,7 @@ CPU (registro/topología Windows), RAM (GlobalMemoryStatusEx) y GPU (primer
 adaptador DXGI de hardware) ocurre una vez al abrir el asistente; no se envía.
 Un dato no disponible se muestra como tal y no se inventa. No hay medición en
 carrera ni ajuste continuo: se guarda la cadencia resuelta y la elección
-Automático en general.json. Los cinco niveles manuales siguen disponibles.
+Automático en el layout. Los cinco niveles manuales siguen disponibles.
 
 LMU usa el discovery del Launcher. ACC solo se marca para el onboarding a
 partir del manifest instalado en las bibliotecas Steam; no entra en el Launcher.

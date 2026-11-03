@@ -14,6 +14,7 @@ pub(in crate::shell) mod general;
 mod pilot;
 pub(in crate::shell) mod privacy;
 pub(crate) mod releases;
+pub(in crate::shell) mod store;
 #[cfg(test)]
 mod tests;
 mod text_rendering;
@@ -121,7 +122,8 @@ impl Page {
 }
 
 pub(super) struct State {
-    pub(in crate::shell) general: Result<general::Store, String>,
+    pub(in crate::shell) store: store::Store,
+    startup_task: Option<gpui::Task<()>>,
     general_focus: [FocusHandle; 7],
     global_hotkeys_focus: FocusHandle,
     zoom_focus: [FocusHandle; 3],
@@ -134,7 +136,6 @@ pub(super) struct State {
     privacy_policy_focus: FocusHandle,
     consent_focus: [FocusHandle; 4],
     usage_choice: Entity<orbit::Checkbox>,
-    pub(super) appearance: appearance::Store,
     pilot: Entity<crate::pilot::view::PilotEditor>,
     pilot_saved: Option<vantare_ipc::services_protocol::pilot_document::PilotState>,
     pilot_source: Option<Vec<u8>>,
@@ -278,7 +279,7 @@ impl State {
     }
     pub(super) fn new(
         prefs: Preferences,
-        appearance: appearance::Store,
+        store: store::Store,
         data: PathBuf,
         privacy: Result<privacy::Store, String>,
         window: &mut Window,
@@ -293,15 +294,12 @@ impl State {
             cx.notify();
         })
         .detach();
-        let appearance_settings = appearance.settings;
+        let appearance_settings = store.value.appearance;
         let (language, units) = Self::format_controls(prefs, window, cx);
         let query = cx.new(|cx| Input::new(String::new(), "Buscar ajustes…", cx));
         cx.observe(&query, |_, _, cx| cx.notify()).detach();
         let (event_filter, event_query) = Self::diagnostic_controls(window, cx);
-        let general: Result<_, String> = Ok(general::Store::load(&data));
-        let prefs = general
-            .as_ref()
-            .map_or_else(|_| general::Preferences::default(), |store| store.value);
+        let prefs = store.value.general;
         let usage_choice =
             cx.new(|cx| orbit::Checkbox::new("Acepto compartir datos de uso", false, cx));
         let consent_focus = [
@@ -311,7 +309,8 @@ impl State {
             usage_choice.read(cx).focus_handle(),
         ];
         let state = Self {
-            general,
+            store,
+            startup_task: None,
             general_focus: std::array::from_fn(|_| cx.focus_handle()),
             launcher_running: false,
             global_hotkeys_focus: cx.focus_handle(),
@@ -360,7 +359,6 @@ impl State {
                 window,
                 cx,
             ),
-            appearance,
             pilot: Self::pilot_editor(window, cx),
             pilot_saved: None,
             pilot_source: None,

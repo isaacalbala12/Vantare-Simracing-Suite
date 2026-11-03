@@ -12,6 +12,24 @@ pub use doc::Doc;
 pub const MAX_DOCUMENT: u64 = 5 * 1024 * 1024;
 static NEXT: AtomicU64 = AtomicU64::new(0);
 
+/// Una versión numérica distinta de la conocida se conserva; no es corrupción.
+/// Ausencia permite al lector aplicar su contrato histórico de campos por defecto.
+pub fn future_version(value: &serde_json::Value, field: &str, current: u64) -> Result<(), Error> {
+    if let Some(version) = value.get(field) {
+        let Some(version) = version.as_u64() else {
+            return Err(Error::InvalidInput(format!(
+                "{field} debe ser una versión entera"
+            )));
+        };
+        if version != current {
+            return Err(Error::Unsupported(format!(
+                "{field} {version} no compatible (actual {current}); original protegido"
+            )));
+        }
+    }
+    Ok(())
+}
+
 /// Clasificacion estable, independiente del texto mostrado al usuario.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum Kind {
@@ -39,6 +57,9 @@ impl Failure {
     }
     pub fn kind(&self) -> Kind {
         self.kind
+    }
+    pub fn as_str(&self) -> &str {
+        &self.message
     }
 }
 impl std::fmt::Display for Failure {
@@ -70,7 +91,7 @@ impl From<Error> for Failure {
 #[derive(Debug)]
 pub enum Error {
     Io(io::Error),
-    Conflict,
+    Conflict { path: PathBuf },
     Busy,
     TooLarge { path: PathBuf, limit: u64 },
     EnvironmentFile,
@@ -89,9 +110,11 @@ impl std::fmt::Display for Error {
             Self::ReadTooLarge { path, limit } => {
                 write!(f, "leer {}: supera {limit} bytes", path.display())
             }
-            Self::Conflict => {
-                f.write_str("conflicto: el documento cambió; cargar antes de guardar")
-            }
+            Self::Conflict { path } => write!(
+                f,
+                "conflicto en {}: el documento cambió; cargar antes de guardar",
+                path.display()
+            ),
             Self::Busy => f.write_str("ya hay un guardado en curso"),
             Self::TooLarge { path, limit } => {
                 write!(f, "guardar {}: supera {limit} bytes", path.display())
@@ -104,7 +127,7 @@ impl std::error::Error for Error {}
 impl Error {
     pub fn kind(&self) -> Kind {
         match self {
-            Self::Conflict => Kind::Conflict,
+            Self::Conflict { .. } => Kind::Conflict,
             Self::Busy => Kind::Busy,
             Self::InvalidInput(_) | Self::TooLarge { .. } | Self::ReadTooLarge { .. } => {
                 Kind::InvalidInput
@@ -143,7 +166,7 @@ impl From<Error> for io::Error {
             Error::Io(error) => error,
             Error::Busy => Self::new(io::ErrorKind::WouldBlock, error),
             Error::Unsupported(_) => Self::new(io::ErrorKind::Unsupported, error),
-            Error::Conflict | Error::Message(_) => Self::other(error),
+            Error::Conflict { .. } | Error::Message(_) => Self::other(error),
             Error::TooLarge { .. }
             | Error::EnvironmentFile
             | Error::InvalidInput(_)
@@ -237,7 +260,9 @@ fn compare(path: &Path, mode: Mode<'_>, limit: u64) -> Result<(), Error> {
     if let Mode::Observed(expected) = mode
         && read_optional(path, limit)?.as_deref() != expected
     {
-        return Err(Error::Conflict);
+        return Err(Error::Conflict {
+            path: path.to_path_buf(),
+        });
     }
     Ok(())
 }
@@ -368,9 +393,43 @@ mod tests {
     use super::*;
 
     #[test]
+    fn step6_versions_keep_unknown_documents_and_reject_invalid_tags() {
+        assert!(future_version(&serde_json::json!({}), "version", 1).is_ok());
+        assert!(future_version(&serde_json::json!({"version":1}), "version", 1).is_ok());
+        for version in [0, 2, 99] {
+            assert!(matches!(
+                future_version(&serde_json::json!({"version":version}), "version", 1),
+                Err(Error::Unsupported(_))
+            ));
+        }
+        assert!(matches!(
+            future_version(&serde_json::json!({"version":"1"}), "version", 1),
+            Err(Error::InvalidInput(_))
+        ));
+    }
+
+    #[test]
+    fn step6_cas_diagnostic_identifies_the_failed_document() {
+        let path =
+            std::env::temp_dir().join(format!("vantare-step6-cas-{}.json", std::process::id()));
+        std::fs::write(&path, b"old").unwrap();
+        let result = save(&path, b"new", Mode::Observed(None), &Options::default()).unwrap_err();
+        assert!(result.kind().is_conflict());
+        assert!(result.to_string().contains(&path.display().to_string()));
+        assert_eq!(std::fs::read(&path).unwrap(), b"old");
+        std::fs::remove_file(path).unwrap();
+    }
+
+    #[test]
     fn step5_busy_does_not_offer_destructive_conflict_recovery() {
         assert!(!Error::Busy.kind().is_conflict());
-        assert!(Error::Conflict.kind().is_conflict());
+        assert!(
+            Error::Conflict {
+                path: PathBuf::from("test.json")
+            }
+            .kind()
+            .is_conflict()
+        );
     }
 
     #[test]
@@ -435,7 +494,7 @@ mod tests {
             &options,
             || fs::write(&path, b"external"),
         );
-        assert!(matches!(result, Err(Error::Conflict)));
+        assert!(matches!(result, Err(Error::Conflict { .. })));
         assert_eq!(fs::read(&path).expect("external edit"), b"external");
         assert!(!fs::read_dir(&dir).expect("entries").any(|entry| {
             entry

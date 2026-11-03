@@ -524,7 +524,7 @@ impl Hub {
                         cx.listener(|hub, _, window, cx| hub.settings_zoom_change(0, window, cx)),
                     )
                     .child(text(
-                        format!("{}%", self.settings.appearance.zoom_percent),
+                        format!("{}%", self.settings.store.value.zoom),
                         13.0,
                         700,
                         orbit::ink(cx),
@@ -573,10 +573,7 @@ impl Hub {
             ][index],
             label,
             on,
-            self.settings
-                .general
-                .as_ref()
-                .is_ok_and(|store| toggle.enabled(store.startup_pending())),
+            toggle.enabled(self.settings.startup_task.is_some()),
             cx,
         )
         .track_focus(&self.settings.general_focus[index])
@@ -617,13 +614,7 @@ impl Hub {
             if index == 0 && !cfg!(windows) {
                 continue;
             }
-            let help = if index == 0
-                && self
-                    .settings
-                    .general
-                    .as_ref()
-                    .is_ok_and(super::general::Store::startup_pending)
-            {
+            let help = if index == 0 && self.settings.startup_task.is_some() {
                 super::general::STARTUP_PROGRESS
             } else {
                 help
@@ -690,9 +681,6 @@ impl Hub {
             } else {
                 self.shell.adapt.gap()
             }))
-            .when_some(self.settings.general.as_ref().err(), |body, error| {
-                body.child(section_note(error, cx))
-            })
             .child(section_surface(
                 "Interfaz",
                 None,
@@ -755,7 +743,7 @@ impl Hub {
     }
     #[allow(clippy::too_many_lines)] // Composición declarativa R4; solo añade Adapt explícito.
     fn settings_appearance(&self, cx: &mut Context<Self>) -> Div {
-        let settings = self.settings.appearance.settings;
+        let settings = self.settings.store.value.appearance;
         let mut palettes = div().w_full().grid().grid_cols(3).gap(px(10.0));
         for (index, palette) in orbit::theme::Palette::ALL.into_iter().enumerate() {
             palettes = palettes.child(
@@ -886,14 +874,14 @@ impl Hub {
                         })
                         .track_focus(&self.settings.appearance_focus[14])
                         .on_click(cx.listener(|hub, _, window, cx| {
-                            let mut settings = hub.settings.appearance.settings;
+                            let mut settings = hub.settings.store.value.appearance;
                             settings.reduced_motion = !settings.reduced_motion;
                             hub.settings_appearance_apply(settings, window, cx);
                         }))
                         .on_key_down(cx.listener(
                             |hub, event: &gpui::KeyDownEvent, window, cx| {
                                 if matches!(event.keystroke.key.as_str(), "enter" | "space") {
-                                    let mut settings = hub.settings.appearance.settings;
+                                    let mut settings = hub.settings.store.value.appearance;
                                     settings.reduced_motion = !settings.reduced_motion;
                                     hub.settings_appearance_apply(settings, window, cx);
                                     cx.stop_propagation();
@@ -909,7 +897,7 @@ impl Hub {
             })
     }
     fn settings_slider(&self, index: usize, cx: &mut Context<Self>) -> gpui::Stateful<Div> {
-        let settings = self.settings.appearance.settings;
+        let settings = self.settings.store.value.appearance;
         let (value, min, max, label) = if index == 0 {
             (settings.contrast, 80.0, 120.0, "Contraste")
         } else {
@@ -971,9 +959,9 @@ impl Hub {
         .on_key_down(
             cx.listener(move |hub, event: &gpui::KeyDownEvent, window, cx| {
                 let current = if index == 0 {
-                    hub.settings.appearance.settings.contrast
+                    hub.settings.store.value.appearance.contrast
                 } else {
-                    hub.settings.appearance.settings.glass_opacity
+                    hub.settings.store.value.appearance.glass_opacity
                 };
                 let (min, max) = if index == 0 { (80, 120) } else { (50, 100) };
                 let value = match event.keystroke.key.as_str() {
@@ -1520,7 +1508,7 @@ impl Hub {
         }
         let launcher = self.launcher.read(cx);
         if let Some(error) = launcher.global_hotkey_error() {
-            globals = globals.child(section_note(&error, cx));
+            globals = globals.child(section_note(error, cx));
         }
         let no_hotkeys = launcher
             .saved_profiles()
@@ -1802,7 +1790,7 @@ impl Hub {
                     ),
                     (
                         "Preferencias",
-                        if self.settings.general.is_ok() {
+                        if self.settings.store.warning.is_none() {
                             "Cargadas"
                         } else {
                             "Error local"

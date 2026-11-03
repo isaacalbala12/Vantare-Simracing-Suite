@@ -1,12 +1,37 @@
 # Ajustes — feedback del 9 de octubre (#1496)
 
-General y Apariencia usan la recuperación común de documentos (#1869, paso 5):
-contenido dañado → copia `.invalid` durable, aviso y valores por defecto editables.
-El original queda intacto hasta guardar con comparación de sus bytes. Una versión
-de paleta desconocida o una copia fallida se conservan y no se pueden sobrescribir.
-Se conservan general.json, appearance.json y hub-zoom.json; la consolidación en
-hub-settings.json corresponde al paso 6 y su retirada será posterior a una release estable.
+## Store único v2 — #1869, paso 6
 
+`<H>/hub-settings.json` (`<H>` = `--data-dir` actual) reúne
+`{version:2,general,appearance,zoom}`. Un solo Store se carga antes de abrir
+la ventana y pasa a Ajustes; tema, zoom y arranque minimizado usan esa carga.
+Startup sigue consultando al instalador y su tarea vive en el estado de UI;
+no se serializa en v2. Densidad, onboarding, temas y los cuatro zooms conservan
+los valores anteriores. La migración pura retira las lápidas y conserva el
+intercambio histórico de paletas únicamente en formatos sin paletteVersion.
+
+Si falta v2, se leen los originales v1, se publica v2 con CAS esperado ausente
+y se dejan byte a byte en su sitio. Un zoom dañado se copia en .invalid, usa
+100 y permite guardar. Si otro Hub publicó primero, se lee su documento ganador.
+Una versión desconocida o copia fallida conserva el archivo protegido.
+General y Zoom antiguos no se replican; su retirada será otra tarea tras una
+release estable. Volver a un binario viejo recupera sus ajustes anteriores.
+
+TODO(#1869 paso 7+8): Apariencia tiene un espejo temporal en appearance.json,
+en el formato actual paletteVersion:1. Solo después de un guardado de usuario
+correcto en v2 se actualiza ese espejo mediante el escritor común y su CAS.
+Así los overlays antiguos siguen viendo reducedMotion y el rollback ve la
+apariencia vigente. La migración inicial nunca reescribe el original. Si falla
+el espejo, v2 queda guardado y aplicado al Hub, con aviso visible y diagnóstico;
+el archivo externo no se pisa. Una nueva carga recoge sus bytes para reintentar.
+
+El paso 7 queda aplazado hasta el 8: un campo nuevo en layout.json con la misma
+versión rompe lectores viejos con deny_unknown_fields y puede impedir abrir el
+Hub anterior a #1887 después de un rollback. No se cambia el documento de layout; ui/layout solo adapta el error CAS tipado.
+motion_policy, host y domain::format::Preferences permanecen intactos. El lector antiguo continúa.
+Límite actual: añadir un campo sin subir version puede hacer que el lector
+estricto lo archive como corrupción. La política compatible se resolverá en 8.
+Workshop-selection dañado se sigue en #1888; no se implementa aquí. Paso 10 fuera.
 
 Ocho pestañas en la topbar. Cuenta abre el perfil del piloto (#1612,
 [pilot](../pilot/README.md)). General usa Interfaz, Inicio, Avisos y Widgets;
@@ -16,7 +41,7 @@ con detección de conflictos. Cada control tiene foco independiente; los
 selectores de esquema usan teclado y ratón. Reducir animaciones se guarda en el mismo Store y desactiva transiciones,
 latidos y carruseles del renderer compartido. Durante el arrastre de contraste
 y opacidad solo se previsualiza el valor: el tema se aplica al soltar.
-General guarda `general.json` con escritura atómica, límite de tamaño y detección
+General guarda su sección de `hub-settings.json` con escritura atómica, límite de tamaño y detección
  de cambios externos. Densidad, inicio con Windows, arranque minimizado, avisos
  de actualización, avisos del Launcher y toasts son preferencias reales.
 Inicio con Windows usa el acceso Startup del instalador, no crea valores Run.
@@ -307,10 +332,10 @@ en el informe externo, sin afirmar paridad total desde esta documentación.
 
 ## Temas conectados — worker Linux ISA-1430
 
-`appearance.json` vive en el directorio de datos del Hub (`--data-dir`); utiliza
+La sección appearance de `hub-settings.json` vive en el directorio de datos del Hub (`--data-dir`); utiliza
 el guardado atómico y la detección de conflictos de `files.rs`. Un fallo de disco
 se muestra en Ajustes y conserva el tema aplicado; los selectores vuelven al
-valor guardado. El arranque valida JSON y tamaño (16 KiB), y acota porcentajes.
+valor guardado. El arranque valida JSON y tamaño (32 KiB agregados; origen/espejo appearance 16 KiB), y acota porcentajes.
 La selección inicial es **Vantare oscuro**, contraste 100 y cristal 80, para
 conservar el Hub previo. `Sistema` guarda la preferencia y sigue los eventos de
 apariencia de GPUI (incluida la ruta Windows existente).

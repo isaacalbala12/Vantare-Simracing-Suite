@@ -283,7 +283,7 @@ pub fn default_path() -> Result<PathBuf, Error> {
 
 fn write_error(error: vantare_ipc::files::Error) -> Error {
     match error {
-        vantare_ipc::files::Error::Conflict => Error::Conflict,
+        vantare_ipc::files::Error::Conflict { .. } => Error::Conflict,
         vantare_ipc::files::Error::TooLarge { .. }
         | vantare_ipc::files::Error::ReadTooLarge { .. } => Error::Invalid("layout supera 1 MiB"),
         error => Error::Io(error.into()),

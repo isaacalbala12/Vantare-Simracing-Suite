@@ -185,10 +185,10 @@ impl Testing {
         self.error = result.err().map(|error| {
             self.observed.error(Module::TestingCenter, error.kind());
             if super::diagnostic::error_code(error.kind()) == super::diagnostic::ErrorCode::Conflict {
-                "Conflicto: el archivo cambió o ya existe. Tus cambios siguen aquí; recarga el borrador o elige otro destino.".into()
+                format!("Conflicto al guardar el borrador: {error}. Tus cambios siguen aquí; recarga el borrador o elige otro destino.")
             } else if error.kind() == crate::files::Kind::InvalidInput {
                 "El borrador supera los límites indicados o contiene caracteres de control. Reduce el texto antes de guardar/exportar.".into()
-            } else { "No se pudo completar la operación local. Se conservan los cambios y archivos anteriores.".into() }
+            } else { format!("No se pudo completar la operación del borrador: {error}. Se conservan los cambios y archivos anteriores.") }
         });
         if self.error.is_none() {
             self.status = message.into();

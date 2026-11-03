@@ -1,3 +1,64 @@
+## VANTA-130 · paso 6 listo para revisión final (3-nov-2026)
+
+PR draft [#1890](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1890)
+contra nightly. Rama `vantareapp/isa-1869-paso6-preferencias`, worktree
+`D:/VantareServer/worktrees/isa-1869-paso6`; base validada
+`b0e976036f09e9fb287f8072eb99bb9fa9f192f7` (#1887, CI 5/5).
+Código validado `1665ac778865c2bc99a4b0ff1857a77c802e6d7f`.
+Store único v2, migración pura, carga única, Zoom dañado recuperable y espejo
+Apariencia temporal con snapshot CAS de la misma lectura. Aviso de espejo fallido
+también en onboarding; v2 y archivo externo conservados. P2/P3 del encargo
+incluidos; Workshop separado en #1888. Formato del layout intacto; ui/layout
+solo adapta el error CAS. Motion/host/domain intactos. Paso 7 aplazado al 8,
+9 pendiente y 10 excluido. Espejo solo al guardar por acción del usuario;
+la migración conserva originales. General y Zoom no se replican.
+
+Caracterización previa 1/1 PASS; CAS diagnóstico 1/1 RED antes del arreglo.
+Final por compilar.ps1: fmt/check/Clippy de cuatro crates, check parity-capture,
+58/58 regresiones, preflight 1/1, suite 1183/1183 + replay aislado 1/1 PASS.
+Lifecycle 25/25 y telemetría 34/34 +1 skip PASS; suite incluye 11 skips
+(incluye replay ya ejecutado). Integridad 468 y fragmento ISA-1869 válidos.
+La primera suite encontró creación de ajustes ante una escena ausente:
+corregido al publicar tras la precarga que puede abortar, sin modificar el test.
+Logs de esa regresión y de Clippy conservados; sin excepciones ni plazos ampliados.
+Recuento físico del PR: producción +468/-378 (+90), tests +576/-457 (+119).
+Documentación y HEAD remoto finales se registran en #1869/PR tras este commit.
+Evidencia `D:/VantareServer/evidence/isa-1869/paso67`; método count-lines-v5.py.
+Solo QA, cola cedida; CI remota en curso, sin afirmar 5/5 para este PR.
+Plane En curso por los pasos restantes; sin merge/release/promoción/instalación.
+
+## VANTA-130 · decisión vigente: solo 6; 7 aplazado a 8 (3-nov-2026)
+
+El formato del layout queda intacto; ui/layout solo adapta el patrón del error CAS.
+Motion_policy/host intactos; su reserva se libera vía orquestador/VANTA-129.
+Añadir reducedMotion al layout v1 rompe el rollback con lectores estrictos viejos;
+7 espera una política compatible en 8. Domain Preferences queda intacto.
+Store v2 es autoridad. Solo después de guardar Apariencia por acción del usuario,
+se escribe appearance.json en formato actual como espejo temporal con CAS.
+Un fallo del espejo deja v2 guardado, aviso visible y diagnóstico.
+TODO(#1869 paso 7+8): retirar espejo y lector viejo juntos. La migración inicial
+conserva todos los originales; General/Zoom no se replican nunca.
+Las propuestas anteriores de agrupar 6+7 quedan sustituidas por esta decisión.
+
+## VANTA-130 · grupo 6+7 iniciado (3-nov-2026)
+
+Paso 5 #1887 integrado por el orquestador en nightly
+`b0e976036f09e9fb287f8072eb99bb9fa9f192f7`, DeepSeek MERGE y CI 5/5 SUCCESS
+verificadas. Rama nueva `vantareapp/isa-1869-paso6-preferencias`, worktree
+`D:/VantareServer/worktrees/isa-1869-paso6`, desde esa base exacta.
+Diseño aprobado en `D:/VantareServer/evidence/isa-1869/paso6-diseno.md`.
+Reserva de layout/motion/host trasladada a VANTA-129 mediante el orquestador.
+Caracterización previa `632fae40b` esperando cola antes de cambios de producción.
+
+Incluye P2 de zoom dañado (copia .invalid y guardar sin conflicto), Result muerto
+de General, helper future_version, contexto CAS, texto de borrador TC y hotkey
+prestado. Workshop dañado se registra aparte en #1888, no se implementa.
+Límite pendiente hasta paso 8: clave nueva con igual versión puede ser rechazada
+por un lector estricto y archivada como corrupción. Los tres originales v1 se
+conservan; retirarlos será otra tarea tras una release estable. Sin paso 10,
+installer, packaging ni datos reales. Gates por compilar.ps1 con raíces QA.
+Plane En curso; pasos 8–9 pendientes. No PR de este grupo todavía.
+
 ## VANTA-130 · paso 5 listo para revisión final (2-nov-2026)
 
 #1884 integrado por el orquestador en nightly ee74d36b64ff00a333c474d7e9518078d074ca7d,

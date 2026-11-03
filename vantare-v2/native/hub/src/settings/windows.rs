@@ -154,7 +154,7 @@ impl Drop for StartupChange {
 }
 
 /// Installer UI wins; legacy migrations persist a small root preference.
-pub(super) fn installed_startup() -> Option<bool> {
+pub(in crate::shell) fn installed_startup() -> Option<bool> {
     installed_startup_at(std::path::Path::new(&std::env::var_os(
         "VANTARE_BETA_ROOT",
     )?))

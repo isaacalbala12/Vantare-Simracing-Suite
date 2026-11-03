@@ -5,9 +5,11 @@ use vantare_ui::{
     layout::{Document, Instance, Layout},
 };
 
-fn layout_file_error(error: vantare_ui::layout::Error) -> vantare_ipc::files::Error {
+fn layout_file_error(error: vantare_ui::layout::Error, path: &Path) -> vantare_ipc::files::Error {
     match error {
-        vantare_ui::layout::Error::Conflict => vantare_ipc::files::Error::Conflict,
+        vantare_ui::layout::Error::Conflict => vantare_ipc::files::Error::Conflict {
+            path: path.to_path_buf(),
+        },
         vantare_ui::layout::Error::Io(error) => error.into(),
         error => vantare_ipc::files::Error::Message(error.to_string()),
     }
@@ -42,16 +44,8 @@ impl Editor {
                 let value: serde_json::Value = serde_json::from_slice(bytes).map_err(|error| {
                     vantare_ipc::files::Error::InvalidInput(format!("JSON de layout: {error}"))
                 })?;
-                if value
-                    .get("version")
-                    .and_then(serde_json::Value::as_u64)
-                    .is_some_and(|v| v != 1)
-                {
-                    return Err(vantare_ipc::files::Error::Unsupported(
-                        "versión de layout desconocida; original protegido".into(),
-                    ));
-                }
-                Layout::from_json(bytes).map_err(layout_file_error)
+                vantare_ipc::files::future_version(&value, "version", 1)?;
+                Layout::from_json(bytes).map_err(|error| layout_file_error(error, &path))
             },
             Layout::default,
         );
@@ -232,9 +226,13 @@ impl Editor {
         }) {
             return Err("posición u opacidad no finita".into());
         }
-        let next = next.normalized().map_err(layout_file_error)?;
+        let next = next
+            .normalized()
+            .map_err(|error| layout_file_error(error, &self.path))?;
         if next != previous {
-            self.document.save(&next).map_err(layout_file_error)?;
+            self.document
+                .save(&next)
+                .map_err(|error| layout_file_error(error, &self.path))?;
             if self.undo.len() == 50 {
                 self.undo.remove(0);
             }

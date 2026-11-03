@@ -170,6 +170,23 @@ mod tests {
     use super::*;
 
     #[test]
+    fn step6_draft_conflict_preserves_private_text_and_names_the_document() {
+        let root = std::env::temp_dir().join(format!("vantare-step6-draft-{}", std::process::id()));
+        let mut first = Store::new(&root);
+        let mut stale = Store::new(&root);
+        first.draft.fields[0] = "texto guardado".into();
+        first.save().unwrap();
+        stale.draft.fields[0] = "mi borrador pendiente".into();
+        let error = stale.save().unwrap_err();
+        assert!(error.kind().is_conflict());
+        assert!(error.to_string().contains("report-draft.json"));
+        assert_eq!(stale.draft.fields[0], "mi borrador pendiente");
+        stale.reload().unwrap();
+        assert_eq!(stale.draft.fields[0], "texto guardado");
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn cleaning_a_report_field_keeps_formatting_and_drops_invisibles() {
         // Los saltos de linea y tabuladores que el usuario escribe se conservan.
         assert_eq!(clean_field("uno\ndos\ttres", 4096), "uno\ndos\ttres");

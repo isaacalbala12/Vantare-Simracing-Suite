@@ -916,7 +916,7 @@ impl Hub {
     /// Paso opcional de aspecto: lee y escribe lo mismo que Ajustes › Apariencia.
     fn onboarding_look_choices(&self, s: f32, cx: &mut Context<Self>) -> Div {
         use orbit::theme::{Palette, Scheme};
-        let current = self.settings.appearance.settings;
+        let current = self.settings.store.value.appearance;
         // Las miniaturas siguen el modo visible; «Sistema» ya llega resuelto.
         let shown = cx.global::<orbit::theme::Theme>().scheme;
         let grid = div()

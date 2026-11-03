@@ -27,8 +27,8 @@ REAL = Path("C:/Users/Administrator/AppData/Local/Vantare/native")
 
 
 def metadata():
-    return sorted((str(p.relative_to(REAL)), p.stat().st_size, p.stat().st_mtime_ns)
-                  for p in REAL.rglob("*") if p.is_file()) if REAL.exists() else []
+    return sorted((str(p.relative_to(REAL)), p.is_dir(), p.stat().st_size, p.stat().st_mtime_ns)
+                  for p in REAL.rglob("*")) if REAL.exists() else []
 
 
 def wsl(path):
@@ -41,7 +41,15 @@ def wsl(path):
 def write_json(path, data):
     temporary = path.with_suffix(".new")
     temporary.write_text(json.dumps(data), encoding="utf-8")
-    temporary.replace(path)
+    deadline = time.monotonic() + 5
+    while True:
+        try:
+            temporary.replace(path)
+            break
+        except PermissionError:
+            if time.monotonic() >= deadline:
+                raise
+            time.sleep(.005)  # Synchronize with a Windows/WSL reader holding the old clock file.
 
 
 def owned(root, checkout):
@@ -145,7 +153,8 @@ class App:
 
     def service(self, command, **args):
         reply = self.call("service", command=dict(command=command, **args))
-        self.events.append({"command": command, "result": reply.get("result"), "session": reply.get("session")})
+        self.events.append({"command": command, "result": reply.get("result"), "session": reply.get("session"),
+                            "error": reply.get("message") if reply.get("result")=="Error" else None})
         return reply
 
     def policy(self):
@@ -171,7 +180,9 @@ class App:
     def binding(self):
         paths = list((self.root / "native").rglob("binding.dpapi"))
         assert len(paths) == 1, "one real core binding required"
-        return hashlib.sha256(paths[0].read_bytes()).hexdigest()
+        digest=hashlib.sha256(paths[0].read_bytes()).hexdigest()
+        self.events.append({"binding_sha256":digest})
+        return digest
 
     def close(self, crash=False):
         if self.child.poll() is None:
@@ -200,8 +211,10 @@ def run_cases(checkout, bins, job, backend):
         backend.control(grant=grant, seconds=seconds)
         app = App(root, bins, backend)
         app.login()
-        app.service("LicenseRenew")
+        # Let the real initial automatic renewal consume the confirmed-login check.
+        # A manual check here leaves that distinct pending check armed by design.
         app.until(lambda p: p["state"]["kind"] == "active" and (grant == "free" or p["catalog"] != "free"))
+        app.service("LicenseStatus")  # Supervisor-state barrier after the actual automatic ACK.
         return app
 
     def case1():
@@ -265,7 +278,7 @@ def run_cases(checkout, bins, job, backend):
         assert not list((a.root / "native").rglob("binding.dpapi"))
 
     def case6():
-        a = fresh(6)
+        a = fresh(6, seconds=180)  # Inside the last five minutes: documented one-minute floor.
         binding = a.binding()
         backend.control(mode="unauthorized")
         advance(a.root, 61)
@@ -299,6 +312,8 @@ def run_cases(checkout, bins, job, backend):
         before = backend.stats()["licenseRequests"]
         advance(a.root, 61)
         wait_for(lambda: backend.stats()["licenseRequests"] > before)
+        status=wait_for(lambda: (r if (r:=a.service("LicenseStatus")).get("policy",{}).get("catalog")=="pro" else None))
+        a.events.append({"core_while_feed_blocked":status["policy"]})
         assert a.policy()["catalog"] != "pro", "reply/HTTP bypassed the actual Feed"
         advance(a.root, feed=True)
         a.until(lambda p: p["catalog"] == "pro")
@@ -322,21 +337,26 @@ def run_cases(checkout, bins, job, backend):
         a = fresh(9, grant="founders")
         assert a.policy()["signed_until_ms"] is None
         before = backend.stats()["licenseRequests"]
-        advance(a.root, 86390)
+        a.events.append({"daily_stage":"verified","requests":before})
+        advance(a.root, 86340)
         a.service("LicenseRenewAutomatic")
         assert backend.stats()["licenseRequests"] == before, "perpetual renewed before 24h"
-        advance(a.root, 11)
+        a.events.append({"daily_stage":"23h59m","requests":backend.stats()["licenseRequests"]})
+        advance(a.root, 61)
         wait_for(lambda: backend.stats()["licenseRequests"] > before)
+        a.events.append({"daily_stage":"24h01s","requests":backend.stats()["licenseRequests"]})
         a.until(lambda p: p["state"]["kind"] == "active" and p["signed_until_ms"] is None)
 
     def case10():
         nonlocal app
-        a = fresh(10)
+        a = fresh(10, seconds=180)
         binding = a.binding()
         backend.control(mode="hold")
         advance(a.root, 61)
         wait_for(lambda: backend.stats()["held"])
         a.close(crash=True); app = None
+        paths=list((a.root / "native").rglob("binding.dpapi"))
+        assert len(paths)==1 and hashlib.sha256(paths[0].read_bytes()).hexdigest()==binding, "crash changed the durable binding"
         backend.control(mode="normal")
         before = backend.stats()["licenseRequests"]
         app = App(a.root, bins, backend)
@@ -379,6 +399,8 @@ def main():
             raise RuntimeError("not a qa-e2e binary")
     before = metadata()
     job = owned(QA / ("e2e-1916-" + uuid.uuid4().hex), checkout)
+    write_json(job/"binaries.json",{name:hashlib.sha256((bins/(name+".exe")).read_bytes()).hexdigest()
+                                  for name in ["vantare","vantare-core","vantare-services"]})
     with socket.socket() as probe:
         probe.bind(("127.0.0.1",0)); port = probe.getsockname()[1]
     backend = Backend(f"http://127.0.0.1:{port}")

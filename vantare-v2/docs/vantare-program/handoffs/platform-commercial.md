@@ -7461,13 +7461,17 @@ esta integración y su CI; sin autorizar promoción ni publicación.
   sólo loopback, reloj compartido, replay de fixture y conductor real de
   supervisor/helper/núcleo. PKCE usa copiar enlace y el IdP local; no hay
   sesiones prefabricadas ni excepciones a Ed25519/binding/ACK.
+- PR draft [#1917](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1917); sin merge.
 - Control de distribución en curso: grafo de features y marcador de los EXE
   copiados al paquete; gate distribution/CI construye el paquete release real
   y rechaza como control negativo los tres EXE QA.
 - Primeros builds QA compilan; Deno valida el servidor de test con config
   propia dom.iterable. Arranque local en depuración: sockets Unix demasiado
   largos resueltos con TCP exclusivamente; warm-up de import dinámico sigue CI.
-  Aún no hay PASA E2E ni gates completos acreditados. Logs de intentos en
+  Última pasada: 8/10 PASA con los tres procesos; quedan repetir Paused tras
+  resolver compartición del reloj y compra tras recompilar sandbox. La batería
+  histórica del empaquetador pasa tras cargar el guard sólo al construir.
+  Aún no hay diez PASA ni gates completos acreditados. Logs de intentos en
   `D:/VantareServer/evidence/licencias-e2e/isa-1916` y raíces e2e-1916-*.
 - Siguiente: ejecutar diez escenarios, corregir sólo tooling QA si falla,
   registrar bugs de producto sin arreglarlos y completar exclusión release,

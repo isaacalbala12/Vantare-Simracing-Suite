@@ -23,7 +23,6 @@ if ($MyInvocation.InvocationName -eq '.' -and -not $NativeLibrary) { throw 'NATI
 if ($NativeLibrary -and $MyInvocation.InvocationName -ne '.') { throw 'NATIVE_LIBRARY_REQUIRES_DOT_SOURCE' }
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
-. (Join-Path $PSScriptRoot 'no-qa.ps1')
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 Add-Type -AssemblyName System.IO.Compression
 
@@ -1257,6 +1256,7 @@ function Import-NativeProfiles([string]$Directory, [string[]]$Files, [double[]]$
 }
 
 function Build-NativeCandidate([string]$Destination, [string]$CandidateVersion, [string]$CandidateChannel, [string]$Profile, [bool]$PermitDirty) {
+    . (Join-Path $PSScriptRoot 'no-qa.ps1')
     if (Test-Path Env:DUCKDB_LIB_DIR) { throw [InvalidOperationException]::new('Empaquetado exige DuckDB bundled; retira DUCKDB_LIB_DIR del entorno de desarrollo.') }
     $native = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
     $sourceSha = (& git -C $native rev-parse HEAD).Trim()

@@ -147,7 +147,7 @@ async function handler(req:Request):Promise<Response> {
   if(route==="/functions/v1/native-account-authorize") return await handleNativeAccountAuthorize(req,{...native,
     resolve:(issuer,subject)=>resolveNativeAccount(issuer,subject,admin),signing:{privateJwk:ready.privateJwk,supabaseUrl:origin}});
   if(route.startsWith("/rest/v1/")) return await fetch(ready.postgrest+route.slice(8),{method:req.method,headers:req.headers,body:req.method==="GET"?undefined:await req.arrayBuffer()});
-  if(route==="/functions/v1/billing-checkout") return Response.json({url:"https://sandbox.polar.sh/checkout/qa-e2e-never-opened",reused:false});
+  if(route==="/functions/v1/native-billing-checkout") return Response.json({url:"https://sandbox.polar.sh/checkout/qa-e2e-never-opened",reused:false});
   if(route==="/functions/v1/billing-webhook") return await handleWebhookRequest(req,{
     getSecret:()=>"qa-e2e-webhook-local-only",getSupabase:()=>admin,now:()=>time,
     verifyWebhook:(body,headers)=>verifyStandardWebhook(body,headers,new TextEncoder().encode("qa-e2e-webhook-local-only"),300,time.getTime()/1000),

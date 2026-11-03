@@ -16,7 +16,7 @@ New-Item -Path $hive -Force|Out-Null
 Remove-PSDrive HKCU
 New-PSDrive HKCU Registry ('HKEY_CURRENT_USER\'+$hiveSuffix) -Scope Global|Out-Null
 $packaging=Split-Path $PSScriptRoot -Parent
-. (Join-Path $packaging 'candidate.ps1') -Library -Root $qaBoundaryRoot -Channel beta
+. (Join-Path $PSScriptRoot 'support.ps1')
 $passed=0
 function Assert-Boundary([bool]$Value,[string]$Message){if(-not $Value){throw $Message};$script:passed++;"PASS $Message"}
 $install=Join-Path $qaBoundaryRoot 'install'

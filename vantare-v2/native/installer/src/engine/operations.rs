@@ -730,6 +730,16 @@ pub fn discard_stale_boot_marker(root: &Path) -> Result<bool> {
                 })
         });
     if stale {
+        if marker["rejectOnRollback"] == true {
+            let version = marker["version"].as_str().expect("validated stale version");
+            publish_status(
+                &root,
+                "rollback",
+                "Se restauró la versión anterior",
+                version,
+                Some(version),
+            )?;
+        }
         disk::remove_file(&marker_path)?;
     }
     Ok(stale)
@@ -738,7 +748,7 @@ fn rollback_with_policy(root: &Path, reject_version: bool) -> Result<BootRecover
     let root = disk::open_root(root, false)?;
     let _session = disk::lock(&root, "beta-session.lock")?;
     let _operation = disk::lock(&root, ".operation.lock")?;
-    let marker = disk::read_json(&root.join("boot-pending.json"), Some(4096))?;
+    let mut marker = disk::read_json(&root.join("boot-pending.json"), Some(4096))?;
     let view = Installation::read_for_rollback(&root)?;
     let mut state = view
         .state
@@ -785,6 +795,8 @@ fn rollback_with_policy(root: &Path, reject_version: bool) -> Result<BootRecover
     }
     let prior = state.previous.take().expect("previous authenticated");
     state.previous = Some(std::mem::replace(&mut state.active, prior));
+    marker["rejectOnRollback"] = reject_version.into();
+    disk::publish_json(&root.join("boot-pending.json"), &marker)?;
     disk::commit_raw(&root, &serde_json::to_vec_pretty(&state)?, &mut |_| Ok(()))?;
     finish_rollback(&root, &active.version, reject_version, || {
         renew_launcher(&root, &state)

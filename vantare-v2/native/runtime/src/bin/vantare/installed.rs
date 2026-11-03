@@ -181,8 +181,12 @@ fn clear_ready(root: &Path) -> io::Result<()> {
     }
 }
 
-fn ready_token_matches(root: &Path, expected: &str) -> bool {
-    fs::read_to_string(root.join("hub-ready")).is_ok_and(|token| token == expected)
+fn ready_token_matches(root: &Path, expected: &str) -> io::Result<Option<bool>> {
+    match fs::read_to_string(root.join("hub-ready")) {
+        Ok(token) => Ok(Some(token == expected)),
+        Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(None),
+        Err(error) => Err(error),
+    }
 }
 
 fn recover_boot(root: &Path, context: &Context, reject_version: bool) -> io::Result<()> {
@@ -259,8 +263,8 @@ fn ready(
         if child.try_wait()?.is_some() {
             return Ok(false);
         }
-        if ready_token_matches(root, token) {
-            return Ok(true);
+        if let Some(matches) = ready_token_matches(root, token)? {
+            return Ok(matches);
         }
         if Instant::now() >= deadline {
             return Ok(false);
@@ -286,6 +290,10 @@ pub(super) fn session(args: &[String]) -> io::Result<ExitCode> {
     if std::env::var_os("VANTARE_NATIVE_DATA_ROOT").as_deref() != Some(data.as_os_str()) {
         return Err(io_error("Raíz de datos de sesión incompatible"));
     }
+    #[cfg(feature = "installer-qa")]
+    if let Some(probe) = std::env::var_os("VANTARE_QA_SESSION_PROBE") {
+        return qa_session(&root, Path::new(&probe));
+    }
     let bin = image
         .parent()
         .ok_or_else(|| io_error("Falta bin de la sesión"))?;
@@ -304,6 +312,81 @@ pub(super) fn session(args: &[String]) -> io::Result<ExitCode> {
     let mut config = super::parse(&command, bin).map_err(io_error)?;
     config.installation = Some(root);
     super::run(config)
+}
+
+#[cfg(feature = "installer-qa")]
+fn qa_session(root: &Path, probe: &Path) -> io::Result<ExitCode> {
+    use super::{Program, Service};
+    let context = Context::from_qa_env(root).map_err(io_error)?;
+    context.validate_root(root).map_err(io_error)?;
+    if !probe.is_file() {
+        return Err(io_error("Falta Hub QA"));
+    }
+    let token =
+        std::env::var("VANTARE_BOOT_TOKEN").map_err(|_| io_error("Falta token de arranque QA"))?;
+    let mut hub = Service::new(
+        "Hub QA",
+        Program {
+            path: probe.to_path_buf(),
+            args: vec![root.to_string_lossy().into_owned()],
+        },
+        0,
+    );
+    hub.boot_token = Some(
+        if std::env::var_os("VANTARE_QA_WRONG_BOOT_TOKEN").is_some() {
+            format!(
+                "{}{}",
+                if token.starts_with('0') { '1' } else { '0' },
+                &token[1..]
+            )
+        } else {
+            token
+        },
+    );
+    hub.spawn()?;
+    let deadline = Instant::now() + Duration::from_mins(1);
+    while !root.join("app-open").exists() {
+        if hub
+            .child
+            .as_mut()
+            .expect("spawned Hub")
+            .try_wait()?
+            .is_some()
+            || Instant::now() >= deadline
+        {
+            return Err(io_error("Hub QA no abrió"));
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    if std::env::var_os("VANTARE_QA_WRONG_BOOT_TOKEN").is_some() {
+        return Err(io_error("Hub QA publicó otro token"));
+    }
+    while !root.join("confirmation-complete").exists() {
+        if hub
+            .child
+            .as_mut()
+            .expect("spawned Hub")
+            .try_wait()?
+            .is_some()
+            || Instant::now() >= deadline
+        {
+            return Err(io_error("Hub QA no confirmó"));
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    while !root.join("allow-exit").exists() {
+        if Instant::now() >= deadline {
+            return Err(io_error("Sesión QA sin permiso de salida"));
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    drop(hub.child.as_mut().expect("spawned Hub").stdin.take());
+    let status = hub.child.as_mut().expect("spawned Hub").wait()?;
+    Ok(if status.success() {
+        ExitCode::SUCCESS
+    } else {
+        ExitCode::FAILURE
+    })
 }
 
 pub(super) fn apply(root: &Path) -> io::Result<ExitCode> {

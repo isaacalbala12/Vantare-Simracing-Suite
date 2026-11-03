@@ -280,7 +280,7 @@ impl Service {
         self.policy = policy;
         self
     }
-    fn spawn(&mut self) -> io::Result<()> {
+    fn command(&self) -> Command {
         let mut command = Command::new(&self.program.path);
         command.args(&self.program.args).stdin(Stdio::piped());
         #[cfg(windows)]
@@ -289,8 +289,14 @@ impl Service {
             command.creation_flags(0x0800_0000);
             if let Some(token) = &self.boot_token {
                 command.env("VANTARE_BOOT_TOKEN", token);
+            } else {
+                command.env_remove("VANTARE_BOOT_TOKEN");
             }
         }
+        command
+    }
+    fn spawn(&mut self) -> io::Result<()> {
+        let mut command = self.command();
         let child = command.spawn()?;
         #[cfg(windows)]
         let mut child = child;
@@ -680,6 +686,25 @@ mod tests {
         hub.boot_token = Some(token.into());
         hub.spawn().unwrap();
         assert!(hub.child.take().unwrap().wait().unwrap().success());
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn non_hub_services_remove_the_inherited_boot_token() {
+        let service = Service::new(
+            "núcleo",
+            Program {
+                path: PathBuf::from("core.exe"),
+                args: vec![],
+            },
+            0,
+        );
+        let command = service.command();
+        assert!(
+            command
+                .get_envs()
+                .any(|(name, value)| { name == "VANTARE_BOOT_TOKEN" && value.is_none() })
+        );
     }
 
     #[cfg(windows)]

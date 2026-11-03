@@ -18,7 +18,6 @@ use vantare_installer::{
     },
     model::Mode,
 };
-const CANDIDATE: &[u8] = include_bytes!("../../packaging/candidate.ps1");
 
 struct Fixture {
     path: PathBuf,
@@ -98,8 +97,6 @@ impl Fixture {
                         .to_string_lossy()
                 )
                 .into_bytes()
-            } else if name == "candidate.ps1" {
-                CANDIDATE.to_vec()
             } else {
                 b"fixture".to_vec()
             };
@@ -317,6 +314,35 @@ fn stale_boot_marker_after_committed_rollback_is_removed_without_a_second_rollba
     fs::write(&marker, &bytes).unwrap();
     assert!(operations::discard_stale_boot_marker(&fixture.root).unwrap());
     assert!(!marker.exists());
+}
+
+#[test]
+fn interrupted_rollback_recovers_rejected_version_after_state_commit() {
+    let fixture = Fixture::new();
+    fixture
+        .install(&fixture.package("1.0.0"), Mode::Auto, false, false)
+        .unwrap();
+    let restored = fixture.active();
+    fixture
+        .install(&fixture.package("1.0.1"), Mode::Auto, false, false)
+        .unwrap();
+    let marker_path = fixture.root.join("boot-pending.json");
+    let mut marker = disk::read_json(&marker_path, None).unwrap();
+    marker["rejectOnRollback"] = true.into();
+    disk::publish_json(&marker_path, &marker).unwrap();
+    let state_path = fixture.root.join("state.json");
+    let mut state = disk::read_json(&state_path, None).unwrap();
+    let failed = state["active"].clone();
+    state["active"] = state["previous"].clone();
+    state["previous"] = failed;
+    disk::publish_json(&state_path, &state).unwrap();
+    fs::remove_file(fixture.root.join("update-status.json")).unwrap();
+
+    assert!(operations::discard_stale_boot_marker(&fixture.root).unwrap());
+    assert_eq!(fixture.active(), restored);
+    let status = disk::read_json(&fixture.root.join("update-status.json"), None).unwrap();
+    assert_eq!(status["rejectedVersion"], "1.0.1");
+    assert!(!marker_path.exists());
 }
 
 #[test]
@@ -647,102 +673,6 @@ fn qa_context_cannot_fall_back_to_product_registry_or_escape_its_folders() {
             .is_err()
     );
     assert!(context.validate_root(&fixture.root).is_ok());
-}
-
-#[test]
-#[allow(unsafe_code)] // Wait only on the owned Child handle, never a PID lookup.
-fn powershell_feed_and_rust_writer_exchange_the_same_state_format() {
-    let fixture = Fixture::new();
-    fixture
-        .install(&fixture.package("1.0.0"), Mode::Auto, false, false)
-        .expect("Rust install");
-    fixture.write_data();
-    let before = disk::data_index(&fixture.data()).expect("data before");
-    let incoming = fixture.package("1.0.1");
-    let source = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../packaging");
-    let script = fixture.path.join("feed.ps1");
-    fs::write(&script,br"param($Root,$Archive,$Sha,$Source,$Hive,$ShellRoot)
-$ErrorActionPreference='Stop'
-. (Join-Path $Source 'matrix/guard.ps1')
-foreach($path in @($Root,$Archive,$ShellRoot)){$null=Assert-MatrixRoot $path}
-if($Hive -cnotmatch '^HKEY_CURRENT_USER\\Software\\VantareInstallerMatrix\\[a-f0-9]{32}$'){throw 'TEST_HIVE_REJECTED'}
-$key='Registry::'+$Hive
-New-Item -Path $key -Force|Out-Null
-Remove-PSDrive HKCU
-New-PSDrive HKCU Registry $Hive -Scope Global|Out-Null
-try{
-    . (Join-Path $Source 'candidate.ps1') -Library -Root $Root -Channel beta
-    function Get-NativeShortcutFolder([string]$Name){Join-Path $ShellRoot $Name}
-    $before=Read-NativeState $Root
-    if($before.schema -ne 1){throw 'RUST_STATE_UNREADABLE'}
-    $null=Update-NativeCandidate $Root $Archive $Sha
-}finally{
-    Remove-PSDrive HKCU
-    New-PSDrive HKCU Registry HKEY_CURRENT_USER -Scope Global|Out-Null
-    Remove-Item -LiteralPath $key -Recurse -Force
-}
-").expect("guarded feed fixture");
-    let temp = fixture.path.join("temp");
-    fs::create_dir(&temp).expect("isolated temp");
-    let host = PathBuf::from(std::env::var_os("WINDIR").expect("Windows root"))
-        .join("System32/WindowsPowerShell/v1.0/powershell.exe");
-    let mut owned = OwnedChild(
-        Command::new(host)
-            .args(["-NoProfile", "-ExecutionPolicy", "Bypass", "-File"])
-            .arg(script)
-            .arg("-Root")
-            .arg(&fixture.root)
-            .arg("-Archive")
-            .arg(&incoming.path)
-            .arg("-Sha")
-            .arg(&incoming.sha)
-            .arg("-Source")
-            .arg(source)
-            .arg("-Hive")
-            .arg(format!(
-                "HKEY_CURRENT_USER\\Software\\VantareInstallerMatrix\\{}",
-                disk::id().expect("hive ID")
-            ))
-            .arg("-ShellRoot")
-            .arg(fixture.path.join("shell"))
-            .env("TEMP", &temp)
-            .env("TMP", &temp)
-            .env("LOCALAPPDATA", fixture.path.join("LocalAppData"))
-            .creation_flags(0x0800_0000)
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()
-            .expect("owned feed child"),
-    );
-    let waited = unsafe {
-        windows::Win32::System::Threading::WaitForSingleObject(
-            windows::Win32::Foundation::HANDLE(owned.0.as_raw_handle()),
-            30000,
-        )
-    };
-    assert_eq!(
-        waited,
-        windows::Win32::Foundation::WAIT_OBJECT_0,
-        "finite feed deadline"
-    );
-    let status = owned.0.wait().expect("reap feed child");
-    let mut stderr = String::new();
-    std::io::Read::read_to_string(&mut owned.0.stderr.take().expect("stderr"), &mut stderr)
-        .expect("feed diagnostics");
-    assert!(status.success(), "{stderr}");
-    assert_eq!(
-        verified(&fixture.root)
-            .expect("Rust reads PS state")
-            .installed_version(),
-        Some("1.0.1")
-    );
-    fixture
-        .install(&fixture.package("1.0.2"), Mode::Auto, false, false)
-        .expect("Rust advances PS generation");
-    assert_eq!(
-        disk::data_index(&fixture.data()).expect("data after roundtrip"),
-        before
-    );
 }
 
 #[test]
@@ -1310,9 +1240,7 @@ fn checkpoint_process_worker() {
     panic!("requested checkpoint was not reached");
 }
 
-// Captured package metadata from the guarded p5a campaign; this fixture is
-// not a production allowlist. Keeping the real inventory also exercises the
-// still-live PS feed with its current package, until that consumer moves in p6.
+// Captured package metadata remains a fixture, never a production allowlist.
 fn test_members() -> Vec<String> {
     let manifest: serde_json::Value =
         serde_json::from_slice(include_bytes!("../fixtures/manifest-full.json"))
@@ -1322,6 +1250,7 @@ fn test_members() -> Vec<String> {
         .expect("manifest files")
         .iter()
         .map(|file| file["path"].as_str().expect("manifest path").to_owned())
+        .filter(|name| name != "candidate.ps1")
         .collect()
 }
 

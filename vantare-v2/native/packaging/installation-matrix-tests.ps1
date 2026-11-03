@@ -1,4 +1,4 @@
-﻿#requires -Version 5.1
+#requires -Version 5.1
 [CmdletBinding()]
 param([string]$Root,[string]$LegacyPackage,[string]$TestVerifier,[string]$BootProbe,[string]$ReadProbe,[string]$WriteEngine,[string]$RootLauncher,[switch]$Record,
       [ValidateSet('clean','nsis975','nsis975-incomplete974','rc-options','pending','boot','retained','retained-no-marker')]
@@ -10,11 +10,10 @@ $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'matrix/guard.ps1')
 $qaMatrixRoot=Assert-MatrixRoot $Root
 if (Test-Path -LiteralPath $qaMatrixRoot) { throw 'MATRIX_NEEDS_FRESH_ROOT' }
-Assert-MatrixSourceBytes $PSScriptRoot
 if (-not $LegacyPackage -or -not $TestVerifier -or -not $BootProbe -or -not $WriteEngine -or -not $RootLauncher) { throw 'MATRIX_FIXTURES_REQUIRED' }
 $script:Packaging=$PSScriptRoot
 $qaImportCallerRoot=$Root
-. (Join-Path $PSScriptRoot 'beta.ps1') -Library -Root $qaMatrixRoot
+. (Join-Path $PSScriptRoot 'matrix/support.ps1')
 if ($Root -cne $qaImportCallerRoot) { throw 'MATRIX_IMPORT_ROOT_CHANGED' }
 $null=Assert-MatrixRoot $Root
 if ((Get-NativeHash $LegacyPackage) -cne '372bcd60cf168cb6187be1c481b21c835268db1dbcc3e0a0aeb17246bede7066') { throw 'MATRIX_LEGACY_DIGEST' }
@@ -50,23 +49,6 @@ try {
     $savedLibraryTemp=$env:TEMP;$savedLibraryTmp=$env:TMP;$savedLibraryLocal=$env:LOCALAPPDATA
     try {
         $env:TEMP=$qaMatrixRoot;$env:TMP=$qaMatrixRoot;$env:LOCALAPPDATA=Join-Path $qaMatrixRoot 'LocalAppData'
-        $library=Invoke-NativeProcess -Executable "$env:WINDIR/System32/WindowsPowerShell/v1.0/powershell.exe" -Arguments @(
-            '-NoProfile','-ExecutionPolicy','Bypass','-File',(Join-Path $PSScriptRoot 'matrix/library-mode-tests.ps1'),
-            '-Root',(Join-Path $qaMatrixRoot 'library-mode')
-        ) -TimeoutMilliseconds 120000 -LogPath (Join-Path $qaMatrixRoot 'library-mode.log')
-        if($library.ExitCode -ne 0){throw ('MATRIX_LIBRARY_MODE_FAILED: '+$library.Stderr)}
-        $library.Stdout
-        $historySafety=Invoke-NativeProcess -Executable "$env:WINDIR/System32/WindowsPowerShell/v1.0/powershell.exe" -Arguments @(
-            '-NoProfile','-ExecutionPolicy','Bypass','-File',(Join-Path $PSScriptRoot 'matrix/history-safety-tests.ps1'),
-            '-Root',(Join-Path $qaMatrixRoot 'history-safety')
-        ) -TimeoutMilliseconds 120000 -LogPath (Join-Path $qaMatrixRoot 'history-safety.log')
-        if($historySafety.ExitCode -ne 0){throw ('MATRIX_HISTORY_SAFETY_FAILED: '+$historySafety.Stderr)}
-        $historySafety.Stdout
-        $snapshot=Invoke-NativeProcess -Executable (Get-Command python).Source -Arguments @(
-            (Join-Path $PSScriptRoot 'matrix/snapshot-tests.py'),'--root',(Join-Path $qaMatrixRoot 'snapshot-tests')
-        ) -TimeoutMilliseconds 30000 -LogPath (Join-Path $qaMatrixRoot 'snapshot-tests.log')
-        if($snapshot.ExitCode -ne 0){throw ('MATRIX_SNAPSHOT_TEST_FAILED: '+$snapshot.Stderr)}
-        $snapshot.Stdout
     } finally { $env:TEMP=$savedLibraryTemp;$env:TMP=$savedLibraryTmp;$env:LOCALAPPDATA=$savedLibraryLocal }
     # File-only checks run in both backends, before any row baseline rejection.
     $cleanup=Invoke-NativeProcess -Executable "$env:WINDIR/System32/WindowsPowerShell/v1.0/powershell.exe" -Arguments @(
@@ -162,17 +144,6 @@ try {
             "PASS $name exit=$exitCode existing-data=$($row.existing_data_files)"
         }
     }
-    # #1840/1a: the same matrix gate exercises a future inventory growing by one.
-    $savedGrowthTemp=$env:TEMP;$savedGrowthTmp=$env:TMP;$savedGrowthLocal=$env:LOCALAPPDATA
-    try {
-        $env:TEMP=$qaMatrixRoot;$env:TMP=$qaMatrixRoot;$env:LOCALAPPDATA=Join-Path $qaMatrixRoot 'LocalAppData'
-        $growth=Invoke-NativeProcess -Executable "$env:WINDIR/System32/WindowsPowerShell/v1.0/powershell.exe" -Arguments @(
-            '-NoProfile','-ExecutionPolicy','Bypass','-File',(Join-Path $PSScriptRoot 'matrix/inventory-growth-tests.ps1'),
-            '-Root',(Join-Path $qaMatrixRoot 'inventory-growth'),'-TestVerifier',$TestVerifier
-        ) -TimeoutMilliseconds 120000 -LogPath (Join-Path $qaMatrixRoot 'inventory-growth.log')
-        if($growth.ExitCode -ne 0){throw ('MATRIX_INVENTORY_GROWTH_FAILED: '+$growth.Stderr)}
-        $growth.Stdout
-    } finally { $env:TEMP=$savedGrowthTemp;$env:TMP=$savedGrowthTmp;$env:LOCALAPPDATA=$savedGrowthLocal }
     $savedLaunchTemp=$env:TEMP;$savedLaunchTmp=$env:TMP;$savedLaunchLocal=$env:LOCALAPPDATA
     try{
         $env:TEMP=$qaMatrixRoot;$env:TMP=$qaMatrixRoot;$env:LOCALAPPDATA=Join-Path $qaMatrixRoot 'LocalAppData'

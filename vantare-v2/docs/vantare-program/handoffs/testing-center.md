@@ -1,3 +1,10 @@
+## 2026-11-03 - #1896 / VANTA-131 paso 2: re-revision de seguridad
+
+- Firma ES256 del bearer verificada localmente; despues se consulta Clerk y se resuelve la cuenta. Un bearer ausente/invalido no llega a esas llamadas y solo entonces carga IP. 61 fallos no bloquean a un tester valido en la misma IP.
+- Rollback inmediato: recorta contadores IP a 21 y descarta claves de reintento, conserva contadores de cuenta. La caducidad de claves se limita a la propia cuenta. La ruta rica tiene test explicito 28000 a 401.
+- HEAD de codigo 7876d9b3e. Deno 25 PASS/1 omitido; PostgreSQL local admision v2, F1IP 28, identidad comercial y rollback/reapply PASS; RED de barreras esperado. CI del nuevo HEAD pendiente.
+- No se edito _shared/native-auth.ts reservado para VANTA-132. Sin produccion, despliegue, merge propio ni release. #1901 espera integracion de #1900.
+
 ## 2026-11-03 - #1896 / VANTA-131 paso 2: arnes Edge real
 
 - Tercera CI encontro que el arnes comercial aun llamaba testing_report_admit para la cuenta, aunque la Edge real usa testing_report_admit_account. El arnes usa ya la misma RPC y comprueba cinco informes nuevos y reintento gratuito.

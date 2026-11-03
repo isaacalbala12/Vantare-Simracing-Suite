@@ -16,6 +16,7 @@ begin
     where m.user_id=p_account and m.active
       and ((m.role in ('owner','primary_tester') and p_channel in ('nightly','testers'))
         or (m.role='tester' and p_channel='testers'))
+    for share
   ) then
     raise exception 'testing_membership_required' using errcode='42501';
   end if;

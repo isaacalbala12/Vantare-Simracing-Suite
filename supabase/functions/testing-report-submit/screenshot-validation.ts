@@ -32,38 +32,118 @@ function jpegDimensions(bytes: Uint8Array): [number, number] {
   }
   let offset = 2;
   let dimensions: [number, number] | null = null;
+  let components = 0;
+  const frameIds = new Set<number>();
+  let dqt = false;
+  let dht = false;
+  let jfif = false;
   while (offset < bytes.length - 2) {
-    if (bytes[offset++] !== 0xff) throw new EvidenceInvalid("format");
-    while (bytes[offset] === 0xff) offset++;
-    const marker = bytes[offset++];
+    if (bytes[offset] !== 0xff) throw new EvidenceInvalid("format");
+    const marker = bytes[offset + 1];
     if (
-      marker === undefined || marker === 0xd9 || marker === 0xd8 ||
-      marker === 0x01 || (marker >= 0xd0 && marker <= 0xd7)
+      marker === undefined || ![0xe0, 0xdb, 0xc4, 0xc0, 0xda].includes(marker)
     ) {
       throw new EvidenceInvalid("format");
     }
+    offset += 2;
     if (offset + 2 > bytes.length - 2) throw new EvidenceInvalid("format");
     const length = (bytes[offset] << 8) | bytes[offset + 1];
     if (length < 2 || offset + length > bytes.length - 2) {
       throw new EvidenceInvalid("format");
     }
-    if (marker === 0xc0) {
-      if (dimensions || length < 8 || bytes[offset + 2] !== 8) {
+    const start = offset + 2;
+    if (marker === 0xe0) {
+      if (
+        jfif || length !== 16 || bytes[start] !== 0x4a ||
+        bytes[start + 1] !== 0x46 || bytes[start + 2] !== 0x49 ||
+        bytes[start + 3] !== 0x46 || bytes[start + 4] !== 0 ||
+        bytes[start + 5] !== 1 || bytes[start + 12] !== 0 ||
+        bytes[start + 13] !== 0
+      ) throw new EvidenceInvalid("format");
+      jfif = true;
+    } else if (marker === 0xdb) {
+      // At least one 8-bit quantization table, with an exact segment size.
+      if ((length - 2) % 65 !== 0 || length < 67) {
         throw new EvidenceInvalid("format");
+      }
+      for (let index = start; index < offset + length; index += 65) {
+        if (bytes[index] > 3) throw new EvidenceInvalid("format");
+      }
+      dqt = true;
+    } else if (marker === 0xc4) {
+      let index = start;
+      while (index < offset + length) {
+        if (index + 17 > offset + length || (bytes[index] & 0xee) !== 0) {
+          throw new EvidenceInvalid("format");
+        }
+        let symbols = 0;
+        for (let n = 1; n <= 16; n++) symbols += bytes[index + n];
+        index += 17 + symbols;
+        if (symbols === 0 || index > offset + length) {
+          throw new EvidenceInvalid("format");
+        }
+      }
+      dht = true;
+    } else if (marker === 0xc0) {
+      components = bytes[start + 5];
+      if (
+        dimensions || bytes[start] !== 8 ||
+        ![1, 3].includes(components) || length !== 8 + components * 3
+      ) {
+        throw new EvidenceInvalid("format");
+      }
+      for (let index = start + 6; index < offset + length; index += 3) {
+        if (
+          frameIds.has(bytes[index]) || bytes[index + 1] === 0 ||
+          bytes[index + 2] > 3
+        ) {
+          throw new EvidenceInvalid("format");
+        }
+        frameIds.add(bytes[index]);
       }
       dimensions = [
-        (bytes[offset + 5] << 8) | bytes[offset + 6],
-        (bytes[offset + 3] << 8) | bytes[offset + 4],
+        (bytes[start + 3] << 8) | bytes[start + 4],
+        (bytes[start + 1] << 8) | bytes[start + 2],
       ];
-    } else if (marker === 0xda) {
-      if (!dimensions || offset + length >= bytes.length - 2) {
+      if (dimensions[0] === 0 || dimensions[1] === 0) {
         throw new EvidenceInvalid("format");
       }
-      return dimensions;
-    } else if (
-      marker === 0xe1 || (marker >= 0xc1 && marker <= 0xcf && marker !== 0xc4)
-    ) {
-      // No EXIF or alternative coding profiles cross the report boundary.
+    } else {
+      if (
+        !dimensions || !dqt || !dht ||
+        length !== 6 + components * 2 || bytes[start] !== components ||
+        bytes[offset + length - 3] !== 0 ||
+        bytes[offset + length - 2] !== 63 ||
+        bytes[offset + length - 1] !== 0
+      ) {
+        throw new EvidenceInvalid("format");
+      }
+      const scanIds = new Set<number>();
+      for (let index = start + 1; index < offset + length - 3; index += 2) {
+        if (
+          !frameIds.has(bytes[index]) || scanIds.has(bytes[index]) ||
+          (bytes[index + 1] & 0xee) !== 0
+        ) throw new EvidenceInvalid("format");
+        scanIds.add(bytes[index]);
+      }
+      offset += length;
+      const scanStart = offset;
+      while (offset < bytes.length - 1) {
+        if (bytes[offset] !== 0xff) {
+          offset++;
+          continue;
+        }
+        const next = bytes[offset + 1];
+        if (
+          next === 0xd9 && offset === bytes.length - 2 && offset > scanStart
+        ) {
+          return dimensions;
+        }
+        if (next !== 0 && !(next >= 0xd0 && next <= 0xd7)) {
+          throw new EvidenceInvalid("format");
+        }
+        offset += 2;
+      }
       throw new EvidenceInvalid("format");
     }
     offset += length;

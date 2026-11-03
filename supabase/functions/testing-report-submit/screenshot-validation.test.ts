@@ -136,4 +136,30 @@ Deno.test("SOF components, segment lengths and one MiB limit are enforced", asyn
     0xd9,
   ]);
   await denied(tooLarge, "size", { ...manifest, byteSize: tooLarge.length });
+  const sos = markerOffset(0xda);
+  const wrongScanComponent = new Uint8Array(jpeg);
+  wrongScanComponent[sos + 5] = 9;
+  await denied(wrongScanComponent, "format");
+});
+
+Deno.test("stuffed FF00 and restart markers remain valid scan data", async () => {
+  const sos = markerOffset(0xda);
+  const scanLength = (jpeg[sos + 2] << 8) | jpeg[sos + 3];
+  const bytes = Uint8Array.from([
+    ...jpeg.subarray(0, sos + 2 + scanLength),
+    0xff,
+    0x00,
+    0xff,
+    0xd0,
+    ...jpeg.subarray(sos + 2 + scanLength),
+  ]);
+  const hash = Array.from(
+    new Uint8Array(await crypto.subtle.digest("SHA-256", bytes)),
+    (byte) => byte.toString(16).padStart(2, "0"),
+  ).join("");
+  await validateEvidence(bytes, {
+    ...manifest,
+    byteSize: bytes.length,
+    sha256: hash,
+  });
 });

@@ -3,25 +3,6 @@ import {
   invalidPromotionGatewayConfig,
 } from "./verify-deploy-surface.ts";
 
-// The gateway validates Supabase Auth before feedback can inspect a native token.
-Deno.test("feedback gateway still requires a Supabase JWT", () => {
-  const config = Deno.readTextFileSync(
-    new URL("../../config.toml", import.meta.url),
-  )
-    .replaceAll("\r\n", "\n");
-  const feedback = Deno.readTextFileSync(
-    new URL("../testing-center-feedback/index.ts", import.meta.url),
-  );
-  if (
-    !config.includes(
-      "[functions.testing-center-feedback]\nverify_jwt = true",
-    ) ||
-    !feedback.includes("requireUserAuth")
-  ) {
-    throw new Error("feedback authentication characterization changed");
-  }
-});
-
 Deno.test("configured functions match directories and known inert functions stay out of wrappers", () => {
   const config = Deno.readTextFileSync(
     new URL("../../config.toml", import.meta.url),
@@ -67,6 +48,16 @@ Deno.test("configured functions match directories and known inert functions stay
         throw new Error(`inert function in ${wrapper}: ${name}`);
       }
     }
+  }
+});
+
+Deno.test("retired feedback endpoint is absent from deploy surfaces", () => {
+  const config = Deno.readTextFileSync(new URL("../../config.toml", import.meta.url));
+  const pilot = Deno.readTextFileSync(new URL("deploy-testing-center-pilot.ps1", import.meta.url));
+  if (config.includes("[functions.testing-center-feedback]") ||
+      pilot.includes('"testing-center-feedback"') ||
+      invalidDeployableDirectories([{ name: "testing-center-feedback", isDirectory: true } as Deno.DirEntry]).length !== 1) {
+    throw new Error("retired feedback endpoint remains deployable");
   }
 });
 

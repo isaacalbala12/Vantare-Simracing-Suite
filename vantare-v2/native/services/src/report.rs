@@ -1,5 +1,6 @@
 //! Intento manual reconstruible; restaurar no envía y el consentimiento es efímero.
 use crate::protocol::DraftState;
+use crate::protocol::report_document::SCREENSHOTS_AVAILABLE;
 pub use crate::protocol::report_document::{Draft, Fields, Preview, Receipt};
 use crate::storage::Read as Stored;
 use crate::{Error, Result, account::Identity, bridge::DataRequest, storage::Store};
@@ -369,7 +370,7 @@ pub struct Reports {
 
 impl Reports {
     pub fn restore(store: &Store, at_millis: u64) -> Result<Self> {
-        let attempt = store.read::<Attempt>("report-attempt")?.recover(
+        let mut attempt = store.read::<Attempt>("report-attempt")?.recover(
             store,
             "report-attempt",
             at_millis,
@@ -385,10 +386,22 @@ impl Reports {
                     }
             },
         )?;
-        Ok(Self {
+        if let Some(confirmed) = attempt.as_mut()
+            && matches!(confirmed.phase, Phase::Confirmed(_))
+            && !confirmed.images.is_empty()
+        {
+            let mut cleaned = confirmed.clone();
+            cleaned.images.clear();
+            if store.save("report-attempt", &cleaned).is_ok() {
+                *confirmed = cleaned;
+            }
+        }
+        let reports = Self {
             attempt,
             consent: None,
-        })
+        };
+        let _ = reports.confirmed_state(store);
+        Ok(reports)
     }
 
     pub fn cancel_preview(&mut self) {
@@ -412,6 +425,9 @@ impl Reports {
         images: Vec<screenshots::Screenshot>,
     ) -> Result<Preview> {
         request.check()?;
+        if !SCREENSHOTS_AVAILABLE && (!images.is_empty() || !draft.screenshots.is_empty()) {
+            return Err(Error::EvidencePending);
+        }
         screenshots::validate(&images)?;
         if draft
             .screenshots
@@ -438,12 +454,17 @@ impl Reports {
         if let Some(attempt) = &self.attempt {
             // Un rechazo definitivo permite corregir el borrador. Un resultado
             // incierto conserva exactamente lo que pudo llegar al servidor.
-            if !matches!(attempt.phase, Phase::Confirmed(_) | Phase::Rejected)
-                && (attempt.digest()? != candidate.digest()?
-                    || attempt.account_id != request.account_id()
-                    || &attempt.identity != request.binding().0)
-            {
-                return Err(Error::Conflict);
+            if !matches!(attempt.phase, Phase::Confirmed(_) | Phase::Rejected) {
+                if attempt.account_id != request.account_id()
+                    || &attempt.identity != request.binding().0
+                {
+                    return Err(Error::Authentication);
+                }
+                if (SCREENSHOTS_AVAILABLE || attempt.images.is_empty())
+                    && attempt.digest()? != candidate.digest()?
+                {
+                    return Err(Error::Conflict);
+                }
             }
             if matches!(attempt.phase, Phase::Confirmed(_))
                 && attempt.payload.idempotency_key == payload.idempotency_key
@@ -465,6 +486,9 @@ impl Reports {
             || attempt.payload.channel != channel
         {
             return Err(Error::Authentication);
+        }
+        if !SCREENSHOTS_AVAILABLE && !attempt.images.is_empty() {
+            return Err(Error::EvidencePending);
         }
         self.preview(request, attempt, true, None)
     }
@@ -569,6 +593,7 @@ impl Reports {
                         | Error::TooLarge
                         | Error::Protocol
                         | Error::Conflict
+                        | Error::EvidencePending
                 ) {
                     Phase::Rejected
                 } else {
@@ -580,6 +605,7 @@ impl Reports {
             }
         };
         attempt.phase = Phase::Confirmed(receipt.clone());
+        attempt.images.clear();
         store.save("report-attempt", &attempt)?;
         self.attempt = Some(attempt);
         // El recibo ya es durable. Solo se limpia el borrador del envío confirmado.
@@ -590,7 +616,32 @@ impl Reports {
             Ok(state) => state,
             Err(_) => DraftState::CleanupPending, // No borrar un borrador sin identificar.
         };
+        let draft_state = if draft_state == DraftState::Cleared {
+            self.confirmed_state(store)
+                .unwrap_or(DraftState::CleanupPending)
+        } else {
+            draft_state
+        };
         Ok((receipt, draft_state))
+    }
+
+    pub fn confirmed_state(&self, store: &Store) -> Result<DraftState> {
+        let state = self.draft_state(store)?;
+        if self.receipt().is_some() && state == DraftState::Cleared {
+            if let Some(attempt) = &self.attempt
+                && !attempt.images.is_empty()
+            {
+                let mut cleaned = attempt.clone();
+                cleaned.images.clear();
+                if store.save("report-attempt", &cleaned).is_err() {
+                    return Ok(DraftState::CleanupPending);
+                }
+            }
+            if store.remove("report-images").is_err() {
+                return Ok(DraftState::CleanupPending);
+            }
+        }
+        Ok(state)
     }
 
     pub fn draft_state(&self, store: &Store) -> Result<DraftState> {
@@ -618,6 +669,9 @@ impl Reports {
     }
 }
 fn submit_attempt(request: &DataRequest<'_>, attempt: &Attempt) -> Result<Receipt> {
+    if !SCREENSHOTS_AVAILABLE && !attempt.images.is_empty() {
+        return Err(Error::EvidencePending);
+    }
     attempt.payload.validate()?;
     // Both forms share the Edge IP/account admission before any report write.
     // Upload/finalize retain their durable batch, retry and receipt semantics.

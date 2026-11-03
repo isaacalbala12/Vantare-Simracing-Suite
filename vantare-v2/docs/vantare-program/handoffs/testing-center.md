@@ -1,3 +1,11 @@
+- 2026-11-03 VANTA-131 paso 1: PR #1899 rebasado sobre nightly 6c83125e3 (paso 0 integrado). Se invierte la caracterizacion obsoleta de #1897: el recibo confirmado limpia imagenes. Sin merge propio ni despliegue. Gates y CI del nuevo HEAD en curso.
+## 2026-11-03 - #1896 / VANTA-131 paso 1: contencion de capturas
+
+- PR draft #1899 contra nightly, rama vantareapp/isa-1896-paso1-capturas; base 6c83125e3, HEAD de codigo cf97e7b10.
+- Hub oculta capturas nuevas; Services bloquea subir o reintentar imagenes y conserva el borrador para enviarlo sin ellas.
+- El recibo confirmado limpia los JPEG antiguos sin borrar capturas de un borrador posterior. Tests de capturas 4/4; gates Rust completos en CI.
+- Sin merge, despliegue ni release. Siguiente: cerrar gates/CI y paso 2 en worktree aparte.
+
 ## 2026-11-03 - #1896 / VANTA-131: paso 0, caracterización Hub ↔ servidor
 
 - Rama `vantareapp/isa-1896-paso0-caracterizacion`, base `origin/nightly@20db71080`; solo pruebas, sin cambio de producto ni migración.

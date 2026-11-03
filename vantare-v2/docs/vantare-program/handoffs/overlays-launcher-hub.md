@@ -1,3 +1,29 @@
+## VANTA-130 · paso 6 integrado; diseño 8 + 7 pendiente de aprobación (3-nov-2026)
+
+#1890 integrado por el orquestador en nightly
+`b68a34311024ad56beac101a7e4e93e96e3fde8a`, DeepSeek MERGE comunicado por el
+orquestador y CI 5/5 SUCCESS verificada en GitHub. No merge por este worker.
+Nueva rama `vantareapp/isa-1869-paso8-compatibilidad`, worktree
+`D:/VantareServer/worktrees/isa-1869-paso8`, base nightly
+`7e92e1a9e52d57db17263234ec62efc5774794cb` (incluye #1890 y #1891).
+
+[Propuesta concreta 8 + 7](../../superpowers/plans/2026-11-03-isa-1869-layout-compatible.md):
+lector puente sin emitir nuevos formatos primero; activación de layout v2 y
+retirada del espejo solo tras fijar lectores/escritores mínimos o demostrar
+rollback con datos separados. El lector viejo no se vuelve compatible por
+relajar el nuevo. Segundo punto de decisión: importación única de movimiento
+para layouts v1 abiertos por overlays sin haber arrancado Hub. No se toca
+layout/motion/host hasta coordinar nuevas reservas a través del orquestador.
+
+Incluye diseño de protección por sección persistente (Store v3 preparado por
+lector puente), avisos que sobreviven a navegar y se resuelven al reparar,
+fallo de espejo en Diagnóstico, zoom v2 inválido aislado y reintento tras CAS.
+La normalización estructural de avisos pasa a UI; la intención de editar la mini
+conserva previous en una función pura del editor. Paso 9 en PR separado;
+wails_import guardado conserva compatibilidad, sin importación activa Wails.
+Paso 10 fuera. Solo docs: sin compilación, tests, fixtures ni uso de cola.
+Sin PR de implementación todavía; Plane En curso, pendiente de decisión.
+
 ## VANTA-130 · paso 6 listo para revisión final (3-nov-2026)
 
 PR draft [#1890](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1890)

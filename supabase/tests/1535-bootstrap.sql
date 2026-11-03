@@ -4,6 +4,9 @@ create schema auth;
 create table auth.users(id uuid primary key,raw_user_meta_data jsonb);
 create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
 grant usage on schema public,auth to anon,authenticated,service_role;
+-- Supabase grants new public RPCs to API roles unless each migration closes them.
+alter default privileges for role postgres in schema public
+  grant execute on functions to anon,authenticated,service_role;
 revoke create on schema public from public;
 create table public.profiles(id uuid primary key,display_name text default '');
 create table public.account_identities(issuer text,subject text,account_id uuid references public.profiles(id),primary key(issuer,subject));

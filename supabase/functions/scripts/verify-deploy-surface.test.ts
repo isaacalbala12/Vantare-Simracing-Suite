@@ -3,6 +3,73 @@ import {
   invalidPromotionGatewayConfig,
 } from "./verify-deploy-surface.ts";
 
+// The gateway validates Supabase Auth before feedback can inspect a native token.
+Deno.test("feedback gateway still requires a Supabase JWT", () => {
+  const config = Deno.readTextFileSync(
+    new URL("../../config.toml", import.meta.url),
+  )
+    .replaceAll("\r\n", "\n");
+  const feedback = Deno.readTextFileSync(
+    new URL("../testing-center-feedback/index.ts", import.meta.url),
+  );
+  if (
+    !config.includes(
+      "[functions.testing-center-feedback]\nverify_jwt = true",
+    ) ||
+    !feedback.includes("requireUserAuth")
+  ) {
+    throw new Error("feedback authentication characterization changed");
+  }
+});
+
+Deno.test("configured functions match directories and known inert functions stay out of wrappers", () => {
+  const config = Deno.readTextFileSync(
+    new URL("../../config.toml", import.meta.url),
+  );
+  const configured = new Set(
+    [...config.matchAll(/^\[functions\.([a-z0-9-]+)\]/gm)].map((match) =>
+      match[1]
+    ),
+  );
+  const directories = new Set(
+    [...Deno.readDirSync(new URL("../", import.meta.url))]
+      .filter((entry) =>
+        entry.isDirectory && !entry.name.startsWith("_") &&
+        entry.name !== "scripts"
+      )
+      .map((entry) => entry.name),
+  );
+  const unconfigured = [...directories].filter((name) => !configured.has(name))
+    .sort();
+  if (
+    [...configured].some((name) => !directories.has(name)) ||
+    JSON.stringify(unconfigured) !== JSON.stringify([
+        "testing-center-agent-callback",
+        "testing-center-agent-dispatch",
+      ])
+  ) {
+    throw new Error(
+      `unexpected configured function surface: ${JSON.stringify(unconfigured)}`,
+    );
+  }
+  for (const name of unconfigured) {
+    for (
+      const wrapper of [
+        "deploy-approved-functions.ps1",
+        "deploy-testing-center-pilot.ps1",
+      ]
+    ) {
+      if (
+        Deno.readTextFileSync(new URL(wrapper, import.meta.url)).includes(
+          `"${name}"`,
+        )
+      ) {
+        throw new Error(`inert function in ${wrapper}: ${name}`);
+      }
+    }
+  }
+});
+
 Deno.test("native account/admin are recognized without changing default commercial deploy", () => {
   const functions = [
     "native-account-authorize",

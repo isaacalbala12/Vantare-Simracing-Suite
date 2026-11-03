@@ -218,6 +218,24 @@ fn assert_durable_receipt(store: &Store, report_id: &str) {
     );
 }
 
+fn assert_confirmed_images_retained(store: &Store) {
+    assert!(matches!(
+        store
+            .read::<Vec<screenshots::Screenshot>>("report-images")
+            .expect("images remain after confirmation"),
+        Stored::Value(images) if images.len() == 1
+    ));
+    assert_eq!(
+        Reports::restore(store, 1_700_000_000_123)
+            .expect("confirmed attempt remains")
+            .attempt
+            .expect("persisted attempt")
+            .images
+            .len(),
+        1
+    );
+}
+
 fn fields() -> Fields {
     Fields {
         action_text: "Abrí el panel".into(),
@@ -335,6 +353,7 @@ fn screenshots_upload_then_finalize_then_attach_and_retry_after_validation() {
         .send(&request, &retry.id, &store)
         .expect("confirmed");
     assert!(load_draft(&store).expect("draft cleared").is_none());
+    assert_confirmed_images_retained(&store);
     for route in [
         "/functions/v1/native-account-authorize",
         "/rest/v1/rpc/testing_center_prepare_screenshot_batch",

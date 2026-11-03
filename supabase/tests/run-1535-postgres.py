@@ -50,7 +50,8 @@ def main():
                               '20261010000000_testing_participation.sql',
                               '20261010001000_visual_roadmap_clickup.sql'):
                 file(root / 'supabase/migrations' / migration, migration + '.log')
-            for suite, count in [('testing_participation', 20), ('visual_roadmap_clickup', 31)]:
+            for suite, count in [('testing_participation', 20), ('visual_roadmap_clickup', 31),
+                                 ('hub_server_acl_characterization', 39)]:
                 output = file(root / f'supabase/tests/{suite}.test.sql', suite + '.log')
                 if 'not ok ' in output or f'1..{count}' not in output or f'ok {count} ' not in output:
                     raise RuntimeError(f'{suite} pgTAP failed')
@@ -118,7 +119,7 @@ def main():
                 alter role vantare_roadmap_publisher login noinherit nosuperuser nocreatedb
                   nocreaterole noreplication nobypassrls connection limit 2;
                 """, name='role-repeat.log')
-            print('PASS: pgTAP 20+31, two-session approval expiry and lock wait, real LOGIN rejects forged owner claims, role repeat')
+            print('PASS: pgTAP 20+31+39, two-session approval expiry and lock wait, real LOGIN rejects forged owner claims, role repeat')
         finally:
             run('pg_ctl', '-D', data, '-m', 'fast', '-w', 'stop', name='stop.log')
 

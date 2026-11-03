@@ -72,6 +72,22 @@ El binario recibe los datos con `--fuente local|pipe[:<nombre>]`:
   los widgets reciben datos degradados y no conocen el transporte.
 - `local`: `source::local_feed()`, carrera sintética a 30 Hz, sin núcleo.
 
+La campaña y el documento guardado usan el mismo host: una entidad por ID de
+instancia y una ventana por monitor ocupado. La campaña construye un `Layout`
+en memoria con las posiciones originales, preferencias y ajustes por defecto;
+sus IDs distinguen también widgets repetidos y su cadencia 0 proyecta cada foto.
+No crea ni vigila documentos, bandeja o calendario. El layout guardado conserva
+su recarga, control de pista, bandeja, calendario y cadencias configuradas.
+`LiveWidget` guarda la `Instance` completa, sin volver a buscar sus filtros y
+geometría por ID en cada foto. La visibilidad combina situación, permiso y
+sesión mediante la misma función pura para render y contador de uso; sin tipo
+de sesión disponible se mantiene visible, como antes. Pausa conserva la última
+proyección viva y el banner común.
+
+`pipe_feed_observed` acepta una demanda observada opcional: la campaña pide sus
+señales y Workshop al guardar conserva el saludo completo legado con `None`.
+`layout_feed` conserva la cobertura de demanda junto a cada foto.
+
 ## Kit Eficiencia (ISA-1427)
 
 `vantare_ui::efficiency` reúne las primitivas visuales compartidas que consumen los 18 renderers del registro. Conserva Inter estática, kerning, cifras tabulares y tracking en em convertido a px; los rectángulos se ajustan a píxel después de sumar el origen del widget. GPUI se usa directamente, sin renderer alternativo ni dependencias nuevas.
@@ -97,7 +113,7 @@ la cadencia sigue en `Level::hz` y cualquier cambio necesita justificación.
 
 `Overlay::set_preview_scale` acepta un factor finito y positivo. Studio aplica
 el mismo factor a las posiciones del documento, los marcos y el renderer;
-`wanted_size` sigue devolviendo el tamaño lógico. El kit transforma quads,
+`frame_size` sigue devolviendo el tamaño lógico. El kit transforma quads,
 rutas, máscaras, imágenes, SVG, sombras y texto alrededor del origen del widget,
 sin cambiar el DPI de GPUI ni crear otro renderer. Las ventanas de overlay y
 OBS conservan el factor 1 y su camino de pintado. Al añadir una primitiva nueva,
@@ -278,7 +294,7 @@ fotogramas de ventana, `render` de cada widget y pintados reales):
   vistas notificadas; del resto GPUI copia las primitivas del fotograma anterior
   (`reuse_prepaint`/`reuse_paint`), sin ejecutar código de la vista. Esa copia sigue
   costando O(primitivas). Una vista cacheada se coloca y dimensiona por estilo, no
-  por contenido (por eso `Screen` lee `wanted_size()` del widget cada fotograma).
+  por contenido (por eso `Screen` lee `frame_size()` del widget cada fotograma).
 - **GPU, siempre la escena entera.** El renderer de Windows
   (`DirectXRenderer::draw`) limpia el render target, dibuja todos los lotes de
   primitivas de la escena y hace `Present(0, 0)`: no hay rectángulos sucios ni

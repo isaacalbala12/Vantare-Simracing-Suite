@@ -979,6 +979,49 @@ mod tests {
     }
 
     #[test]
+    fn pause_requires_the_known_kind_even_when_track_and_number_match() {
+        let initial = with_time(1000.0);
+        let mut t = Translator::new(SourceKind::Live);
+        observe(&mut t, &initial, ms(0));
+        let mut frame = frame::admit(&initial, "1.3.0.0").unwrap();
+        assert!(t.known_session_matches(&frame));
+        frame.kind = Some(Kind::Race);
+        assert!(!t.known_session_matches(&frame));
+    }
+
+    #[test]
+    fn pause_requires_the_known_number_even_when_track_and_kind_match() {
+        let initial = with_time(1000.0);
+        let mut t = Translator::new(SourceKind::Live);
+        observe(&mut t, &initial, ms(0));
+        let mut frame = frame::admit(&initial, "1.3.0.0").unwrap();
+        assert!(t.known_session_matches(&frame));
+        frame.session_number += 1;
+        assert!(!t.known_session_matches(&frame));
+    }
+
+    #[test]
+    fn stale_kind_or_number_changes_do_not_turn_matching_rest_into_a_pause() {
+        for (number, rest, expected) in [
+            (1_i32, "PRACTICE1", vantare_domain::SourceState::Paused),
+            (2, "PRACTICE2", vantare_domain::SourceState::Stale),
+            (10, "RACE", vantare_domain::SourceState::Stale),
+        ] {
+            let initial = with_time(1000.0);
+            let mut t = Translator::new(SourceKind::Live);
+            let first = observe(&mut t, &initial, ms(0));
+            let mut changed = initial;
+            changed[1_696..1_700].copy_from_slice(&number.to_le_bytes());
+            t.rest
+                .accept_session(format!(r#"{{"session":"{rest}"}}"#).as_bytes(), ms(500))
+                .unwrap();
+            let next = observe(&mut t, &changed, ms(500));
+            assert_eq!(next.state.source_state, expected, "{rest}");
+            assert_eq!(next.state.session.id, first.state.session.id, "{rest}");
+        }
+    }
+
+    #[test]
     fn a_new_track_or_a_clock_reset_starts_a_session_but_the_24h_wrap_does_not() {
         let mut t = translator();
         let first = observe(&mut t, REAL_44, ms(0));

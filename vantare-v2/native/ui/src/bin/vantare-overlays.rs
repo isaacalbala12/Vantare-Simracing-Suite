@@ -102,7 +102,7 @@ fn snapshot_feed(
                 }
                 let handle = vantare_ui::source::DemandHandle::new(demand);
                 connection = Some(handle.connection());
-                vantare_ui::source::pipe_feed_observed(&name, handle)
+                vantare_ui::source::pipe_feed_observed(&name, Some(handle))
             }),
     };
     Ok((snapshots?, connection))

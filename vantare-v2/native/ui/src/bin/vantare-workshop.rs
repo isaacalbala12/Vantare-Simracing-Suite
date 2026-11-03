@@ -152,7 +152,7 @@ fn save(file: &PathBuf, pipe: Option<String>) -> Result<(), String> {
         Some(name) => name,
         None => vantare_ipc::default_pipe_name().map_err(|e| e.to_string())?,
     };
-    let feed = source::pipe_feed(&name).map_err(|e| e.to_string())?;
+    let feed = source::pipe_feed_observed(&name, None).map_err(|e| e.to_string())?;
     let deadline = Instant::now() + SAVE_TIMEOUT;
     // La mejor foto vista: con todo fresco vale al instante; si no, la última
     // con posiciones frescas cuando se agote el tiempo.

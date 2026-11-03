@@ -114,12 +114,15 @@ impl LiveScreens {
                 let overlay = widget.view.read(cx);
                 !self.hidden
                     && self.last.is_some()
-                    && widget.visible
-                    && !overlay.hidden_off_track
-                    && overlay.shown_in_session()
-                    && !crate::rights::denied(overlay.kind, cx)
+                    && widget.instance.visible
+                    && super::visibility(
+                        overlay.hidden_off_track,
+                        overlay.show_in,
+                        overlay.session,
+                        crate::rights::denied(overlay.kind, cx),
+                    )
             })
-            .map(|widget| widget.settings.kind().name().to_owned())
+            .map(|widget| widget.instance.settings.kind().name().to_owned())
             .collect();
         for event in self
             .usage

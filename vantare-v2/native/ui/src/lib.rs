@@ -73,7 +73,7 @@ include!("registry.rs");
 // Hub incrusta el mismo renderer productivo.
 pub use app::{
     Overlay, layout_row, run_layout_requested, run_layout_requested_hidden, run_layout_with_rights,
-    run_placed, run_with_connection, run_with_rights,
+    run_placed, run_with_connection,
 };
 
 /// Requests a zoom change for this window only, via the vendored Windows backend.

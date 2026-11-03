@@ -1,4 +1,4 @@
-//! Fuentes de `Snapshot`s para [`crate::run_with_rights`]: pipe del núcleo o
+//! Fuentes de `Snapshot`s para [`crate::run_with_connection`]: pipe del núcleo o
 //! carrera sintética local para probar los widgets sin núcleo.
 
 use std::sync::{Arc, Mutex, PoisonError};
@@ -41,27 +41,15 @@ impl DemandHandle {
     }
 }
 
-pub fn pipe_feed(name: &str) -> Result<flume::Receiver<Arc<Snapshot>>, vantare_ipc::Error> {
-    start_feed(name, None, |photo| photo.snapshot)
-}
-
-pub fn pipe_feed_requested(
-    name: &str,
-    demand: Demand,
-) -> Result<flume::Receiver<Arc<Snapshot>>, vantare_ipc::Error> {
-    start_feed(name, Some(DemandHandle::new(demand)), |photo| {
-        photo.snapshot
-    })
-}
-
 /// Fuente con diagnóstico de conexión para el host de ventanas de medición.
+/// `None` conserva el saludo completo legado usado al guardar una escena.
 /// # Errors
 /// Los mismos que el transporte IPC.
 pub fn pipe_feed_observed(
     name: &str,
-    handle: DemandHandle,
+    handle: Option<DemandHandle>,
 ) -> Result<flume::Receiver<Arc<Snapshot>>, vantare_ipc::Error> {
-    start_feed(name, Some(handle), |photo| photo.snapshot)
+    start_feed(name, handle, |photo| photo.snapshot)
 }
 
 pub fn layout_feed(
@@ -487,7 +475,8 @@ mod tests {
         ] {
             demand.request(signal, 5000);
         }
-        let feed = pipe_feed_requested(&name, demand).expect("único consumidor");
+        let feed =
+            pipe_feed_observed(&name, Some(DemandHandle::new(demand))).expect("único consumidor");
         let deadline = Instant::now() + Duration::from_secs(3);
         while publisher.demand_source().mask() == 0 {
             assert!(Instant::now() < deadline, "saludo pendiente");

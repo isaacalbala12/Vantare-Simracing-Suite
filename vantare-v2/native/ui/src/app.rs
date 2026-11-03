@@ -445,12 +445,25 @@ pub(crate) fn replace_if_changed<T: PartialEq>(current: &mut T, next: T) -> bool
     changed
 }
 
+fn visibility(
+    hidden_off_track: bool,
+    show_in: crate::session::ShowIn,
+    session: Option<crate::session::Session>,
+    denied: bool,
+) -> bool {
+    !hidden_off_track && !denied && show_in.allows(session)
+}
+
 impl Render for Overlay {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         #[cfg(feature = "paint-stats")]
         let _span = crate::profiling::begin(crate::profiling::Stage::Render);
-        if self.hidden_off_track || crate::rights::denied(self.kind, cx) || !self.shown_in_session()
-        {
+        if !visibility(
+            self.hidden_off_track,
+            self.show_in,
+            self.session,
+            crate::rights::denied(self.kind, cx),
+        ) {
             // Sin licencia el widget queda vacío: el aviso único lo pinta `Screen`.
             // Fuera de sus sesiones (#1564) tampoco pinta nada.
             return div()
@@ -702,53 +715,6 @@ fn partition<T: Clone>(monitors: &[Bounds<Pixels>], placed: &[(T, (f32, f32))]) 
         .collect()
 }
 
-/// Abre una ventana por monitor que tenga widgets y devuelve los widgets
-/// creados. Los monitores sin widgets no reciben ventana.
-pub(crate) fn open_screens(
-    cx: &mut App,
-    placed: &[(Kind, (f32, f32))],
-    prefs: Preferences,
-) -> Vec<Entity<Overlay>> {
-    let displays = cx.displays();
-    let bounds: Vec<_> = displays.iter().map(|d| d.bounds()).collect();
-    let mut all = Vec::new();
-    let mut connection_owner = true;
-    for ((display, bounds), mine) in displays
-        .iter()
-        .zip(bounds.iter())
-        .zip(partition(&bounds, placed))
-    {
-        if mine.is_empty() {
-            continue;
-        }
-        let widgets: Vec<_> = mine
-            .into_iter()
-            .map(|(kind, at)| PlacedOverlay {
-                view: cx.new(|_| Overlay::new(kind, prefs)),
-                at,
-                opacity: 1.0,
-            })
-            .collect();
-        all.extend(widgets.iter().map(|placed| placed.view.clone()));
-        let mut options = popup(*bounds);
-        options.display_id = Some(display.id());
-        let origin = (f32::from(bounds.origin.x), f32::from(bounds.origin.y));
-        let opened = cx.open_window(options, move |_, cx| {
-            cx.new(|_| Screen {
-                connection_owner,
-                widgets,
-                origin,
-                hwnd: None,
-            })
-        });
-        connection_owner = false;
-        if let Err(error) = opened {
-            eprintln!("no se pudo abrir la ventana del monitor: {error}");
-        }
-    }
-    all
-}
-
 #[derive(Debug, PartialEq, Eq)]
 enum WindowAction {
     ReplaceContents,
@@ -776,7 +742,7 @@ struct LiveScreens {
     layout: crate::layout::Layout,
     /// Ruta del layout: la bandeja comparte el canal de pista con Studio (#1567).
     #[cfg(windows)]
-    path: PathBuf,
+    path: Option<PathBuf>,
     hidden: bool,
     screens: Vec<(DisplayId, WindowHandle<Screen>)>,
     widgets: HashMap<String, LiveWidget<Entity<Overlay>>>,
@@ -787,8 +753,7 @@ struct LiveScreens {
 }
 
 struct LiveWidget<T> {
-    settings: Settings,
-    visible: bool,
+    instance: crate::layout::Instance,
     view: T,
 }
 
@@ -802,8 +767,12 @@ fn reconcile_widgets<T>(
         .map(|instance| {
             let view = match previous.remove(&instance.id) {
                 Some(old)
-                    if old.settings == instance.settings
-                        || old.settings.look_change(&instance.settings).is_some() =>
+                    if old.instance.settings == instance.settings
+                        || old
+                            .instance
+                            .settings
+                            .look_change(&instance.settings)
+                            .is_some() =>
                 {
                     old.view
                 }
@@ -812,8 +781,7 @@ fn reconcile_widgets<T>(
             (
                 instance.id.clone(),
                 LiveWidget {
-                    settings: instance.settings.clone(),
-                    visible: instance.visible,
+                    instance: instance.clone(),
                     view,
                 },
             )
@@ -828,7 +796,9 @@ impl LiveScreens {
     #[cfg(windows)]
     fn toggle(&mut self, cx: &mut App) {
         self.hidden = !self.hidden;
-        Self::sync_track_request(&self.path, self.hidden);
+        if let Some(path) = &self.path {
+            Self::sync_track_request(path, self.hidden);
+        }
         let layout = self.layout.clone();
         self.apply(&layout, cx);
     }
@@ -876,7 +846,7 @@ impl LiveScreens {
             .filter_map(|i| {
                 self.widgets
                     .get(&i.id)
-                    .and_then(|old| old.settings.look_change(&i.settings))
+                    .and_then(|old| old.instance.settings.look_change(&i.settings))
                     .map(|_| i.id.clone())
             })
             .collect();
@@ -899,40 +869,28 @@ impl LiveScreens {
         // incluso oculta o fuera de un monitor; preferencias reproyectan sin reset.
         for (id, widget) in &self.widgets {
             widget.view.update(cx, |overlay, cx| {
-                overlay.hidden_off_track = layout
-                    .instances
-                    .iter()
-                    .find(|i| &i.id == id)
-                    .is_some_and(|i| {
-                        self.last.as_ref().is_some_and(|s| {
-                            i.hidden_off_track(layout.hide_off_track, s.state.driving_situation)
-                        })
-                    });
+                overlay.hidden_off_track = self.last.as_ref().is_some_and(|snapshot| {
+                    widget
+                        .instance
+                        .hidden_off_track(layout.hide_off_track, snapshot.state.driving_situation)
+                });
                 let reproject = overlay.prefs != self.prefs || !look_changes.contains(id);
                 overlay.prefs = self.prefs;
-                if let Some(instance) = layout.instances.iter().find(|i| &i.id == id) {
-                    overlay.set_show_in(instance.show_in);
-                }
+                overlay.set_show_in(widget.instance.show_in);
                 if let Some(snapshot) = &self.last {
                     overlay.update_session_visibility(snapshot);
                 }
-                if let Some(look) = widget.settings.look() {
+                if let Some(look) = widget.instance.settings.look() {
                     overlay.set_look(look);
                 }
-                overlay.set_frame_size(
-                    layout
-                        .instances
-                        .iter()
-                        .find(|i| &i.id == id)
-                        .and_then(|i| i.geometry.size),
-                );
+                overlay.set_frame_size(widget.instance.geometry.size);
                 cx.notify();
-                if widget.visible
+                if widget.instance.visible
                     && reproject
                     && let Some(snapshot) = self
                         .last
                         .as_deref()
-                        .filter(|_| self.last_demand.covers(&widget.settings.demand()))
+                        .filter(|_| self.last_demand.covers(&widget.instance.settings.demand()))
                 {
                     overlay.ingest(snapshot, cx);
                 }
@@ -1036,15 +994,14 @@ impl LiveScreens {
         self.last_demand = photo.demand;
         let now = Instant::now();
         let mut width_changed = false;
-        for (id, widget) in self.widgets.iter().filter(|(_, widget)| widget.visible) {
-            let hidden = self
-                .layout
-                .instances
-                .iter()
-                .find(|i| &i.id == id)
-                .is_some_and(|i| {
-                    i.hidden_off_track(self.layout.hide_off_track, snapshot.state.driving_situation)
-                });
+        for (id, widget) in self
+            .widgets
+            .iter()
+            .filter(|(_, widget)| widget.instance.visible)
+        {
+            let hidden = widget
+                .instance
+                .hidden_off_track(self.layout.hide_off_track, snapshot.state.driving_situation);
             let visibility_changed = widget.view.update(cx, |overlay, cx| {
                 let off_track_changed = overlay.update_off_track_visibility(hidden);
                 let session_changed = overlay.update_session_visibility(&snapshot);
@@ -1054,7 +1011,10 @@ impl LiveScreens {
                 }
                 changed
             });
-            let hz = self.layout.performance.hz(id, widget.settings.kind());
+            let hz = self
+                .layout
+                .performance
+                .hz(id, widget.instance.settings.kind());
             if visibility_changed
                 || self.cadences.entry(id.clone()).or_default().due(
                     hz,
@@ -1140,6 +1100,20 @@ pub fn run_layout_requested_hidden(
     )
 }
 
+struct WatchedLayout {
+    document: crate::layout::Document,
+    presentation: crate::layout::Presentation,
+    alerts_path: PathBuf,
+    #[cfg(windows)]
+    path: PathBuf,
+}
+
+struct HostLayout {
+    layout: crate::layout::Layout,
+    watched: Option<WatchedLayout>,
+    connection: Option<vantare_ipc::ConnectionStatus>,
+}
+
 fn run_layout_feed<T: Send + 'static>(
     path: PathBuf,
     snapshots: flume::Receiver<T>,
@@ -1149,19 +1123,52 @@ fn run_layout_feed<T: Send + 'static>(
     start_hidden: bool,
     shutdown: Option<flume::Receiver<()>>,
 ) -> Result<(), crate::layout::Error> {
-    #[cfg(windows)]
-    let track_path = path.clone();
-    let alerts_path = crate::session_alerts::calendar::path_for_layout(&path);
-    let mut presentation = crate::layout::Presentation::watch(&path)?;
-    let mut document = crate::layout::Document::open(path)?;
+    let presentation = crate::layout::Presentation::watch(&path)?;
+    let document = crate::layout::Document::open(path.clone())?;
+    let host = HostLayout {
+        layout: document.layout().clone(),
+        watched: Some(WatchedLayout {
+            document,
+            presentation,
+            alerts_path: crate::session_alerts::calendar::path_for_layout(&path),
+            #[cfg(windows)]
+            path,
+        }),
+        connection: demand.as_ref().map(crate::source::DemandHandle::connection),
+    };
+    run_host(
+        host,
+        snapshots,
+        rights,
+        decode,
+        demand,
+        start_hidden,
+        shutdown,
+    );
+    Ok(())
+}
+
+fn run_host<T: Send + 'static>(
+    mut host: HostLayout,
+    snapshots: flume::Receiver<T>,
+    rights: Option<vantare_ipc::control::Feed>,
+    decode: impl Fn(T) -> vantare_ipc::Photo + Send + 'static,
+    demand: Option<crate::source::DemandHandle>,
+    start_hidden: bool,
+    shutdown: Option<flume::Receiver<()>>,
+) {
     gpui_platform::application().run(move |cx: &mut App| {
-        crate::analytics::init(cx);
+        if host.watched.is_some() {
+            crate::analytics::init(cx);
+        }
         if !init(cx) {
             return;
         }
         crate::rights::install(rights, cx);
         cx.set_global(crate::session_alerts::calendar::Agenda::default());
-        if let Some(display) = cx.primary_display() {
+        if let Some(watched) = &mut host.watched
+            && let Some(display) = cx.primary_display()
+        {
             let bounds = display.bounds();
             let monitor = (
                 f32::from(bounds.origin.x),
@@ -1169,19 +1176,26 @@ fn run_layout_feed<T: Send + 'static>(
                 f32::from(bounds.size.width),
                 f32::from(bounds.size.height),
             );
-            if let Err(error) = document.initialize(monitor) {
+            if let Err(error) = watched.document.initialize(monitor) {
                 eprintln!("layout inicial no guardado: {error}");
             }
         }
         // Windows usa LastWindowClosed por defecto. Un layout vacío debe poder
         // recuperar sus ventanas al guardar el documento, sin reiniciar el proceso.
-        cx.set_quit_mode(gpui::QuitMode::Explicit);
+        if let Some(watched) = &host.watched {
+            host.layout = watched.document.layout().clone();
+            cx.set_quit_mode(gpui::QuitMode::Explicit);
+        } else {
+            cx.on_window_closed(|cx, _| {
+                if cx.windows().is_empty() {
+                    cx.quit();
+                }
+            })
+            .detach();
+        }
         #[cfg(feature = "paint-stats")]
         crate::stats::report();
-        crate::connection::install(
-            demand.as_ref().map(crate::source::DemandHandle::connection),
-            cx,
-        );
+        crate::connection::install(host.connection.take(), cx);
         let screens = Rc::new(RefCell::new(LiveScreens {
             #[cfg(windows)]
             shortcut_task: None,
@@ -1190,21 +1204,21 @@ fn run_layout_feed<T: Send + 'static>(
             usage_widgets: None,
             layout: crate::layout::Layout::default(),
             #[cfg(windows)]
-            path: track_path,
+            path: host.watched.as_ref().map(|watched| watched.path.clone()),
             hidden: start_hidden,
             screens: Vec::new(),
             widgets: HashMap::new(),
-            prefs: document.layout().preferences,
+            prefs: host.layout.preferences,
             last: None,
             last_demand: vantare_ipc::Demand::default(),
-            required: document.layout().demand(),
+            required: host.layout.demand(),
         }));
         if let Some(demand) = &demand {
-            demand.set(document.layout().demand());
+            demand.set(host.layout.demand());
         }
-        screens.borrow_mut().apply(document.layout(), cx);
+        screens.borrow_mut().apply(&host.layout, cx);
         #[cfg(windows)]
-        {
+        if host.watched.is_some() {
             let weak = Rc::downgrade(&screens);
             let task = cx.spawn(async move |cx| {
                 let mut delay = Duration::from_millis(500);
@@ -1214,8 +1228,12 @@ fn run_layout_feed<T: Send + 'static>(
                     let active = cx.update(|cx| {
                         let screens = screens.borrow();
                         let mut active = false;
-                        for live in screens.widgets.values().filter(|widget| widget.visible) {
-                            if matches!(&live.settings, Settings::CarDamageVisual(settings)
+                        for live in screens
+                            .widgets
+                            .values()
+                            .filter(|widget| widget.instance.visible)
+                        {
+                            if matches!(&live.instance.settings, Settings::CarDamageVisual(settings)
                                 if !settings.toggle_key.is_empty())
                             {
                                 active = true;
@@ -1229,34 +1247,38 @@ fn run_layout_feed<T: Send + 'static>(
             });
             screens.borrow_mut().shortcut_task = Some(task);
         }
-        let controlled = shutdown.is_some();
-        let quit_screens = screens.clone();
-        cx.on_app_quit(move |cx| {
-            quit_screens.borrow_mut().usage.finish(cx);
-            if controlled {
-                // Diagnóstico a stderr usado por la caracterización de cierre;
-                // no es un acuse de persistencia ni de envío de analítica.
-                eprintln!("vantare-overlays: on_app_quit completado");
-            }
-            async {}
-        })
-        .detach();
+        if host.watched.is_some() {
+            let controlled = shutdown.is_some();
+            let quit_screens = screens.clone();
+            cx.on_app_quit(move |cx| {
+                quit_screens.borrow_mut().usage.finish(cx);
+                if controlled {
+                    // Diagnóstico a stderr usado por la caracterización de cierre;
+                    // no es un acuse de persistencia ni de envío de analítica.
+                    eprintln!("vantare-overlays: on_app_quit completado");
+                }
+                async {}
+            })
+            .detach();
+        }
         install_parent_shutdown(shutdown, cx);
         #[cfg(windows)]
-        match crate::tray::spawn() {
-            Ok(actions) => {
-                let tray_screens = screens.clone();
-                cx.spawn(async move |cx| {
-                    while let Ok(action) = actions.recv_async().await {
-                        cx.update(|cx| match action {
-                            crate::tray::Action::Toggle => tray_screens.borrow_mut().toggle(cx),
-                            crate::tray::Action::Quit => cx.quit(),
-                        });
-                    }
-                })
-                .detach();
+        if host.watched.is_some() {
+            match crate::tray::spawn() {
+                Ok(actions) => {
+                    let tray_screens = screens.clone();
+                    cx.spawn(async move |cx| {
+                        while let Ok(action) = actions.recv_async().await {
+                            cx.update(|cx| match action {
+                                crate::tray::Action::Toggle => tray_screens.borrow_mut().toggle(cx),
+                                crate::tray::Action::Quit => cx.quit(),
+                            });
+                        }
+                    })
+                    .detach();
+                }
+                Err(error) => eprintln!("icono de bandeja no disponible: {error}"),
             }
-            Err(error) => eprintln!("icono de bandeja no disponible: {error}"),
         }
         let feed_screens = screens.clone();
         cx.spawn(async move |cx| {
@@ -1265,48 +1287,55 @@ fn run_layout_feed<T: Send + 'static>(
             }
         })
         .detach();
-        cx.spawn(async move |cx| {
-            let mut last_error = None;
-            loop {
-                cx.background_executor()
-                    .timer(Duration::from_millis(500))
-                    .await;
-                cx.update(|cx| {
-                    screens.borrow_mut().sample_usage(cx);
-                    crate::session_alerts::calendar::poll(&alerts_path, cx);
-                });
-                match presentation.poll() {
-                    Ok(Some(showing)) => cx.update(|cx| {
-                        let mut screens = screens.borrow_mut();
-                        screens.hidden = !showing;
-                        let layout = screens.layout.clone();
-                        screens.apply(&layout, cx);
-                    }),
-                    Ok(None) => {}
-                    Err(error) => eprintln!("solicitud de pista: {error}"),
-                }
-                match document.poll() {
-                    Ok(true) => {
-                        last_error = None;
-                        if let Some(demand) = &demand {
-                            demand.set(document.layout().demand());
-                        }
-                        cx.update(|cx| screens.borrow_mut().apply(document.layout(), cx));
+        if let Some(WatchedLayout {
+            mut document,
+            mut presentation,
+            alerts_path,
+            ..
+        }) = host.watched
+        {
+            cx.spawn(async move |cx| {
+                let mut last_error = None;
+                loop {
+                    cx.background_executor()
+                        .timer(Duration::from_millis(500))
+                        .await;
+                    cx.update(|cx| {
+                        screens.borrow_mut().sample_usage(cx);
+                        crate::session_alerts::calendar::poll(&alerts_path, cx);
+                    });
+                    match presentation.poll() {
+                        Ok(Some(showing)) => cx.update(|cx| {
+                            let mut screens = screens.borrow_mut();
+                            screens.hidden = !showing;
+                            let layout = screens.layout.clone();
+                            screens.apply(&layout, cx);
+                        }),
+                        Ok(None) => {}
+                        Err(error) => eprintln!("solicitud de pista: {error}"),
                     }
-                    Ok(false) => last_error = None,
-                    Err(error) => {
-                        let message = error.to_string();
-                        if last_error.as_ref() != Some(&message) {
-                            eprintln!("layout conservado: {message}");
-                            last_error = Some(message);
+                    match document.poll() {
+                        Ok(true) => {
+                            last_error = None;
+                            if let Some(demand) = &demand {
+                                demand.set(document.layout().demand());
+                            }
+                            cx.update(|cx| screens.borrow_mut().apply(document.layout(), cx));
+                        }
+                        Ok(false) => last_error = None,
+                        Err(error) => {
+                            let message = error.to_string();
+                            if last_error.as_ref() != Some(&message) {
+                                eprintln!("layout conservado: {message}");
+                                last_error = Some(message);
+                            }
                         }
                     }
                 }
-            }
-        })
-        .detach();
+            })
+            .detach();
+        }
     });
-    Ok(())
 }
 
 /// Registra las fuentes Inter embebidas; sin ellas el texto sale mal medido.
@@ -1350,18 +1379,6 @@ fn origin_of(index: usize) -> (f32, f32) {
     )
 }
 
-/// Abre la cuadrícula de widgets y reenvía cada foto a todas sus ventanas.
-/// Si se pasa `rights`, instala la política de acceso en los overlays.
-pub fn run_with_rights(
-    windows: usize,
-    snapshots: flume::Receiver<Arc<Snapshot>>,
-    prefs: Preferences,
-    rights: Option<vantare_ipc::control::Feed>,
-) {
-    let placed = (0..windows).map(|i| (kind_of(i), origin_of(i))).collect();
-    run_placed_authorized(placed, snapshots, prefs, rights, None, None);
-}
-
 /// Abre los widgets y sus posiciones (px globales de pantalla) dados.
 pub fn run_placed(
     placed: Vec<(Kind, (f32, f32))>,
@@ -1392,37 +1409,113 @@ fn run_placed_authorized(
     connection: Option<vantare_ipc::ConnectionStatus>,
     shutdown: Option<flume::Receiver<()>>,
 ) {
-    gpui_platform::application().run(move |cx: &mut App| {
-        if !init(cx) {
-            return;
-        }
-        crate::rights::install(rights, cx);
-        crate::connection::install(connection, cx);
-        install_parent_shutdown(shutdown, cx);
-        #[cfg(feature = "paint-stats")]
-        crate::stats::report();
-        let widgets = open_screens(cx, &placed, prefs);
-        let views: Vec<_> = widgets.iter().map(Entity::downgrade).collect();
-        cx.on_window_closed(|cx, _| {
-            if cx.windows().is_empty() {
-                cx.quit();
-            }
-        })
-        .detach();
-        cx.spawn(async move |cx| {
-            while let Ok(snapshot) = snapshots.recv_async().await {
-                for view in &views {
-                    // `Err`: la ventana ya se cerró; el resto sigue.
-                    let _ = view.update(cx, |overlay, cx| overlay.ingest(&snapshot, cx));
-                }
-            }
-        })
-        .detach();
-    });
+    let layout = campaign_layout(placed, prefs);
+    run_host(
+        HostLayout {
+            layout,
+            watched: None,
+            connection,
+        },
+        snapshots,
+        rights,
+        vantare_ipc::Photo::full,
+        None,
+        false,
+        shutdown,
+    );
+}
+
+fn campaign_layout(placed: Vec<(Kind, (f32, f32))>, prefs: Preferences) -> crate::layout::Layout {
+    let mut layout = crate::layout::Layout {
+        preferences: prefs,
+        ..Default::default()
+    };
+    for (index, (kind, (x, y))) in placed.into_iter().enumerate() {
+        let id = format!("campaign-{index}");
+        // La campaña de medición siempre ha proyectado cada foto.
+        layout.performance.widgets.insert(id.clone(), 0);
+        layout.instances.push(crate::layout::Instance {
+            id,
+            x,
+            y,
+            settings: Settings::default_for(kind),
+            visible: true,
+            opacity: 1.0,
+            geometry: crate::geometry::Geometry::default(),
+            off_track: crate::layout::OffTrack::default(),
+            show_in: crate::session::ShowIn::default(),
+        });
+    }
+    layout
 }
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn campaign_preserves_placements_duplicates_and_every_photo_cadence() {
+        let prefs = Preferences {
+            language: vantare_domain::format::Language::En,
+            units: vantare_domain::format::Units::Imperial,
+        };
+        let layout = campaign_layout(
+            vec![
+                (Kind::Standings, (-1800.0, 35.0)),
+                (Kind::Pedals, (80.0, 60.0)),
+                (Kind::Standings, (8000.0, 90.0)),
+            ],
+            prefs,
+        );
+        assert_eq!(layout.preferences, prefs);
+        assert!(!layout.hide_off_track);
+        assert_eq!(layout.instances.len(), 3);
+        for (instance, kind, at) in [
+            (&layout.instances[0], Kind::Standings, (-1800.0, 35.0)),
+            (&layout.instances[1], Kind::Pedals, (80.0, 60.0)),
+            (&layout.instances[2], Kind::Standings, (8000.0, 90.0)),
+        ] {
+            assert_eq!((instance.x, instance.y), at);
+            assert_eq!(instance.settings.kind(), kind);
+            assert!(instance.visible && instance.show_in.is_all());
+            assert_eq!(instance.opacity, 1.0);
+            assert_eq!(instance.geometry, crate::geometry::Geometry::default());
+            assert_eq!(layout.performance.hz(&instance.id, kind), 0);
+        }
+        let ids: std::collections::HashSet<_> = layout.instances.iter().map(|i| &i.id).collect();
+        assert_eq!(
+            ids.len(),
+            3,
+            "dos widgets del mismo tipo conservan entidades distintas"
+        );
+    }
+
+    #[test]
+    fn visibility_preserves_missing_session_filters_off_track_and_rights() {
+        use crate::session::{Session, ShowIn};
+        let all = ShowIn::default();
+        let race = ShowIn {
+            practice: false,
+            qualifying: false,
+            race: true,
+        };
+        for (hidden, denied, show_in, session, expected) in [
+            (false, false, all, None, true),
+            (false, false, race, None, true),
+            (false, false, race, Some(Session::Practice), false),
+            (false, false, race, Some(Session::Qualifying), false),
+            (false, false, race, Some(Session::Race), true),
+            (true, false, all, None, false),
+            (true, false, all, Some(Session::Race), false),
+            (false, true, all, None, false),
+            (false, true, race, Some(Session::Race), false),
+            (true, true, race, Some(Session::Practice), false),
+        ] {
+            assert_eq!(
+                super::visibility(hidden, show_in, session, denied),
+                expected,
+                "{hidden}/{denied}/{show_in:?}/{session:?}"
+            );
+        }
+    }
     #[test]
     fn reduced_motion_covers_active_flags_records_and_pedal_transitions() {
         use vantare_domain::{Flag, FlagKind, FlagScope, Quality, SourceState};
@@ -1795,7 +1888,7 @@ mod tests {
                 identity,
                 "misma entidad y su historia"
             );
-            assert_eq!(widgets["inputs"].visible, visible);
+            assert_eq!(widgets["inputs"].instance.visible, visible);
         }
         let latest = snapshots.last().expect("última foto");
         assert!(

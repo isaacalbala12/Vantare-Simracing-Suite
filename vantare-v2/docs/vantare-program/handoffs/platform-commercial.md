@@ -7833,8 +7833,8 @@ esta integración y su CI; sin autorizar promoción ni publicación.
 - Guard cerrado aprobado por el orquestador: cualquier fila en
   testing_center_reports aborta la migración, bajo lock SHARE, sin cambiar
   definiciones ni esconder datos. No hay tabla de mapping ni escrituras R6.
-- Orden de despliegue obligatorio (Isaac/R6): primero mapear, verificar y
-  vaciar las filas de origen/detener escritores legacy en R6/7b; después este
+- Orden de despliegue obligatorio (Isaac/R6): primero detener escritores legacy
+  en R6/7b; después mapear, verificar y vaciar las filas de origen; después este
   PR; al final retirar tablas/RPC antiguas en R6. Guard y rollback local se
   prueban con rechazo atómico. Si R6 desea conservar origen, el orquestador
   definirá antes un contrato de evidencia. Rollback admin restaura definiciones
@@ -7858,3 +7858,29 @@ esta integración y su CI; sin autorizar promoción ni publicación.
   cambia. Evidencia D:/VantareServer/evidence/isa-1910-paso7b; CI nueva pendiente.
 - PR draft [#1924](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1924)
   contra nightly, código validado 9c4adbe7f. Sin merge propio ni despliegue.
+
+### Review de #1924 · ajustes (2026-11-04)
+
+- Misma rama/PR. Caracterización b0647d0f0 previa a corregir producto: primer
+  RED por rollback no exacto; segundo RED por RPC legacy aún ejecutable.
+- Rollback conserva la línea con un espacio del cuerpo anterior. Se fijan los
+  cuatro digests históricos y el quinto de native_admin_reports; se exige
+  igualdad exacta después del down. DROP INDEX IF EXISTS permite índice ausente.
+  La advertencia de whitespace de esa única línea es intencional, requerida
+  para conservar el cuerpo byte a byte; no se cambia ninguna regla de lint.
+- Guard exige current_user SUPERUSER/BYPASSRLS antes de leer FORCE RLS. También
+  aborta si service_role/authenticated/anon conservan EXECUTE efectivo (PUBLIC
+  e herencia incluidos) de RPC legacy, otros escritores o callers indirectos.
+  Catálogo conservador: DML con referencia literal a testing_center_reports y
+  sus callers; solo excluye los dos cuerpos admin que aquí pierden esas ramas.
+  No hay REVOKE operativo aquí: R6/7b debe detener escritores primero, luego
+  mapear/verificar/vaciar origen; después este PR y al final retirar tablas/RPC.
+- El runner simula únicamente en fixture desechable los permisos cerrados de
+  R6, y los restaura para los oráculos históricos de intake/RLS. Probes de RPC
+  con los tres roles, escritor indirecto, ejecutor sin BYPASSRLS y origen no
+  vacío verifican rechazo sin cambios parciales. No son instrucciones de deploy.
+- EXPLAIN JSON debe contener el índice admin_effects_started_target_hash.
+  Trigger valida UUID antes del cast y compara id con UUID (sin id::text).
+  Test existente de fallo de release exige console.error y error original 404.
+- Diferido por revisión: test concurrente del guard. Distinguir 409 sigue en
+  paso 10; demás dependencias y P3 diferidos no cambian.

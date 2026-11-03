@@ -7,17 +7,20 @@ guard independently with a known RPC and a new indirect writer.
 LEGACY_WRITERS_SQL = r"""
 with recursive routines as (
  select p.oid,n.nspname,p.proname,
-  regexp_replace(lower(p.prosrc),'[[:space:]\"]','','g') body
+  replace(lower(p.prosrc),'"','') body,
+  regexp_replace(lower(p.prosrc),'[[:space:]\"]','','g') calls
  from pg_proc p join pg_namespace n on n.oid=p.pronamespace
  where p.prokind='f' and n.nspname not like 'pg_%' and n.nspname<>'information_schema'
  -- These two admin bodies lose their legacy branches in THIS migration.
  and not(n.nspname='private' and p.proname in
    ('native_admin_execute_v1','native_admin_execute_before_creator_coupon'))
 ), writers(oid) as (
- select oid from routines where body ~ '(insertinto|update|deletefrom)(only)?(public\.)?testing_center_reports([^a-z0-9_]|$)'
+ select oid from routines where (nspname='public' and proname='testing_center_report_submit_admitted')
+  -- Conservative: also catches dynamic SQL with a literal relation name.
+  or (body ~ '\mtesting_center_reports\M' and body ~ '\m(insert|update|delete)\M')
  union
  select caller.oid from writers w join routines callee on callee.oid=w.oid
- join routines caller on caller.body ~ ('(^|[^a-z0-9_])'||callee.proname||'\(')
+ join routines caller on caller.calls ~ ('(^|[^a-z0-9_])'||lower(callee.proname)||'\(')
 )
 select distinct oid from writers
 """

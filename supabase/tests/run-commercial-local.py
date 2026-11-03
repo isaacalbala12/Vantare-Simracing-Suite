@@ -13,6 +13,7 @@ from commercial_admin_gate import run_admin_gate_race, run_admin_gate_e2e
 from commercial_admin_effects import run_admin_effects_race
 from commercial_admin_owner import STEM as ADMIN_OWNER_STEM, SNAPSHOT as ADMIN_OWNER_SNAPSHOT, run_admin_owner_regressions, run_admin_owner_precheck
 from commercial_admin_report_root import run_admin_report_cutover
+from admin_legacy_writer_fixture import pause_legacy_writers, restore_legacy_writer_fixture_grants
 parser=argparse.ArgumentParser()
 parser.add_argument('--pg-bin', required=True)
 parser.add_argument('--docker', action='store_true', help='Own disposable Supabase PostgreSQL container; pg-bin supplies clients only')

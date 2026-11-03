@@ -7,7 +7,7 @@ do $$begin
   raise exception 'native_admin_rollback_requires_r6_restore' using errcode='55000';
  end if;
 end$$;
-drop index private.admin_effects_started_target_hash;
+drop index if exists private.admin_effects_started_target_hash;
 CREATE OR REPLACE FUNCTION private.native_admin_reports(p_issuer text)
  RETURNS TABLE(item jsonb)
  LANGUAGE sql
@@ -312,7 +312,7 @@ begin
    select account_id into v_account from public.testing_contributions where id::text=p_params->>'report_id';
   end if;
  end if;
-
+ 
   for v_lock_account in select distinct a from unnest(array[p_actor,v_account]) a where a is not null order by a loop
     if private.lock_account_write(v_lock_account) and (v_lock_account=p_actor or
       p_action not in ('search_accounts','get_account','get_rollout','list_reports','get_report')) then

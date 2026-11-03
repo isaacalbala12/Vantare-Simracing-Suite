@@ -413,13 +413,21 @@ auditoría resuelve la cuenta de un informe desde la misma raíz nueva.
 
 **Orden obligatorio, reservado a Isaac y coordinado con VANTA-131:**
 
-1. R6/7b mapea, verifica y vacía los registros del origen legacy, y detiene sus
-   escritores antiguos. Este PR no copia ni borra ninguna fila de R6.
+1. R6/7b detiene primero los escritores antiguos: retira EXECUTE efectivo para
+   service_role, authenticated y anon, también vía PUBLIC o roles heredados,
+   de la RPC legacy y de los demás escritores/callers. Después mapea, verifica
+   y vacía el origen. Este PR no revoca permisos ni copia o borra filas de R6.
 2. Aplicar `20261103224121_isa_1910_admin_report_root.sql` y publicar este PR.
    La migración bloquea escrituras al origen mientras verifica que esté vacío.
    Cualquier fila, también draft, aborta toda la transacción con
    `native_admin_legacy_reports_require_r6_mapping` (55000), antes de redefinir
    funciones o crear el índice. No hay tabla de mapping ni excepción manual.
+   También aborta con `native_admin_legacy_writers_still_callable` (55000) si
+   conserva EXECUTE alguno de esos roles. El inventario conservador del catálogo
+   incluye DML sobre la relación y llamadas indirectas; excluye solo los dos
+   cuerpos admin cuyas ramas legacy retira esta misma migración. El detalle del
+   error enumera las funciones que R6 debe cerrar. Exige current_user con
+   BYPASSRLS o SUPERUSER (42501), porque la tabla tiene FORCE RLS.
 3. R6/7b retira las tablas/RPC antiguas cuando haya cerrado sus demás lectores.
 
 Para revertir admin antes de retirar esas tablas, usar el `.down.sql` con psql:
@@ -429,6 +437,15 @@ el esquema y los datos de R6; el rollback lo exige explícitamente. El guard
 conservador no interpreta copias todavía retenidas en el origen como prueba de
 mapeo: cualquier futuro contrato que permita conservarlas lo define el
 orquestador con R6.
+
+El gate local simula el cierre de escritores de R6 solo en su base desechable,
+y restaura sus permisos únicamente para ejecutar los oráculos históricos de
+intake/RLS. No es un procedimiento de despliegue. Prueba rechazos atómicos para
+los tres roles, un escritor indirecto, un ejecutor sin BYPASSRLS y origen con
+filas. El rollback se compara con los cinco digests originales, incluido
+native_admin_reports; conserva intencionadamente una línea con un espacio en
+el cuerpo anterior para restaurarlo byte a byte. El test concurrente del guard
+queda diferido por decisión de revisión.
 
 El fallback de `claim` por `target_hash` está cubierto sin una fila de lease.
 Un índice parcial sobre ese hash para `outcome='started'` corresponde al

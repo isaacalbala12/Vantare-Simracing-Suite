@@ -3,11 +3,43 @@
 begin;
 set local lock_timeout='5s';
 lock table public.testing_center_reports in share mode;
-do $$begin
+do $cutover$
+declare v_callable text;
+begin
+ if not exists(select 1 from pg_roles where rolname=current_user and (rolsuper or rolbypassrls)) then
+  raise exception 'native_admin_cutover_requires_bypassrls' using errcode='42501';
+ end if;
  if exists(select 1 from public.testing_center_reports) then
   raise exception 'native_admin_legacy_reports_require_r6_mapping' using errcode='55000';
  end if;
-end$$;
+ -- A conservative inventory includes indirect callers and PUBLIC/inherited
+ -- EXECUTE via has_function_privilege. R6 owns the revokes, never this cutover.
+
+with recursive routines as (
+ select p.oid,n.nspname,p.proname,
+  replace(lower(p.prosrc),'"','') body,
+  regexp_replace(lower(p.prosrc),'[[:space:]\"]','','g') calls
+ from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+ where p.prokind='f' and n.nspname not like 'pg_%' and n.nspname<>'information_schema'
+ -- These two admin bodies lose their legacy branches in THIS migration.
+ and not(n.nspname='private' and p.proname in
+   ('native_admin_execute_v1','native_admin_execute_before_creator_coupon'))
+), writers(oid) as (
+ select oid from routines where (nspname='public' and proname='testing_center_report_submit_admitted')
+  -- Conservative: also catches dynamic SQL with a literal relation name.
+  or (body ~ '\mtesting_center_reports\M' and body ~ '\m(insert|update|delete)\M')
+ union
+ select caller.oid from writers w join routines callee on callee.oid=w.oid
+ join routines caller on caller.calls ~ ('(^|[^a-z0-9_])'||lower(callee.proname)||'\(')
+)
+select string_agg(distinct p.oid::regprocedure::text, ', ' order by p.oid::regprocedure::text)
+ into v_callable from writers w join pg_proc p on p.oid=w.oid
+ cross join (values ('service_role'),('authenticated'),('anon')) principal(name)
+ where has_function_privilege(principal.name,p.oid,'EXECUTE');
+ if v_callable is not null then
+  raise exception 'native_admin_legacy_writers_still_callable' using errcode='55000',detail=v_callable;
+ end if;
+end $cutover$;
 CREATE OR REPLACE FUNCTION private.native_admin_reports(p_issuer text)
  RETURNS TABLE(item jsonb)
  LANGUAGE sql
@@ -438,8 +470,8 @@ end $function$
 create or replace trigger a_account_write_barrier before insert or update or delete on public.admin_audit_log
  for each row execute function private.guard_account_write($guard_owners$select case when $1->>'action' in ('search_accounts','get_account','get_rollout','list_reports','get_report')
      then array[($1->>'actor_account_id')::uuid] else (select array_agg(distinct account order by account) filter(where account is not null) from (select a.account from public.profiles p1 cross join lateral (select (to_jsonb(p1)->>'id')::uuid as account) a(account) where p1.id=($1->>'actor_account_id')::uuid union
-        select p.id from public.profiles p where p.id::text=$1->>'target'
-        union select r.account_id from public.testing_contributions r where r.id::text=$1->>'target'
+        select p.id from public.profiles p where p.id=case when $1->>'target' ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' then ($1->>'target')::uuid end
+        union select r.account_id from public.testing_contributions r where r.id=case when $1->>'target' ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' then ($1->>'target')::uuid end
         union select (v#>>'{}')::uuid from jsonb_path_query($1,'$.**.account_id') v
         where v#>>'{}' ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$') owners(account)) end$guard_owners$,$guard_unresolved$select ($1->>'actor_account_id' is not null and not exists(select 1 from public.profiles p where p.id=($1->>'actor_account_id')::uuid))$guard_unresolved$);
 create index admin_effects_started_target_hash on private.admin_effects(target_hash) where outcome='started';

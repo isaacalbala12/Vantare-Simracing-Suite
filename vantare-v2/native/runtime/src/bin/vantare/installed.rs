@@ -524,10 +524,10 @@ mod tests {
         vantare_installer::engine::context::qa_path(&root).unwrap();
         fs::create_dir_all(&root).unwrap();
         fs::write(root.join("hub-ready"), b"aabb").unwrap();
-        assert!(!ready_token_matches(&root, "ccdd"));
-        assert!(ready_token_matches(&root, "aabb"));
+        assert_eq!(ready_token_matches(&root, "ccdd").unwrap(), Some(false));
+        assert_eq!(ready_token_matches(&root, "aabb").unwrap(), Some(true));
         clear_ready(&root).unwrap();
-        assert!(!ready_token_matches(&root, "aabb"));
+        assert_eq!(ready_token_matches(&root, "aabb").unwrap(), None);
         fs::create_dir(root.join("hub-ready")).unwrap();
         assert!(clear_ready(&root).is_err());
         fs::remove_dir(root.join("hub-ready")).unwrap();

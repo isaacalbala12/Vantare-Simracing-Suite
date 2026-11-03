@@ -582,31 +582,27 @@ conservan la evidencia de sus ramas; no describen el estado de integración actu
   que también incluye #1918. La medición final del paso 6 fue **11.944** líneas
   en el perímetro de `installer-lines.py --projection` y **876** netas fuera:
   **12.820** en total. La cifra **12.608** fue una revisión intermedia.
-- Isaac fija para el paso 7 **≤9.932** líneas del perímetro y **≤11.000** en
-  total al cerrar el PR. El objetivo total tras el paso 8, incluido K3, pasa
-  a **≤10.900**. Se mantienen el margen de hasta 150 líneas entre pasos y la
-  medición separada de tests y tooling. Balance de referencia: 14.180 al
-  inicio → aproximadamente 10.900 al final (−23 %).
-- En el paso 7 se completa K1 (lector, contexto y host; −300 a −350 estimadas)
-  y se simplifica el ciclo de `background::Feed` con `Workers` (−10 a −20).
-  `shell::sync` y `sync_running_with_context` solo se comparten si sale limpio
-  con tests. `qa_session` sigue contando como producción.
+- Isaac acepta el tamaño actual: paso 7 **≤10.300** líneas del perímetro y
+  **≤11.250** en total; final del paso 8, incluido K3 si sale limpio,
+  **≤11.250**. K1 ya no existe como ahorro: sus variantes se retiraron en
+  #1892 y la compatibilidad 975/988 permanece. No se hace otra pasada de
+  tamaño en este PR; cualquier rediseño futuro corresponde a la ronda general
+  con un diseño nuevo. Balance de referencia: 14.180 → aproximadamente
+  11.200 líneas (−21 %), sin LegacyRunner y con el mismo comportamiento.
+- El ciclo de `background::Feed` con `Workers` se simplificó y tiene regresión
+  de cancelación y recogida. `qa_session` sigue contando como producción.
 - Se descarta recortar a costa de la resistencia a cortes o del comportamiento:
   no unificar `operations::install/update`, `root/ready/recover_boot`, la
   renovación de `Vantare.exe` ni la validación de `update_feed/stage`; tampoco
   retirar la compatibilidad Run/accesos 975/988 o `retained-data`.
-- WIP rebasado en `vantareapp/isa-1840-paso7-retirar-powershell`, HEAD
-  `dfa55dc50`. La revisión del presupuesto detectó que las formas de acceso
-  975/988 del WIP se habían retirado; se restauraron en el árbol de trabajo
-  conforme a la decisión de conservar esa migración. Tras esa corrección, el
-  lector simplificado y el ciclo de Feed, la medición sin commit es **10.250**
-  líneas del perímetro y **958** netas fuera, **11.208** en total. Faltan 318
-  para el tope fijo y 208 para el tope total del paso 7. El K1 estimado en el
-  replanteo suponía quitar variantes de lectura y contexto heredado que #1892
-  ya había retirado, o compatibilidad 975/988 que Isaac ahora exige conservar;
-  no hay aún una poda segura de 318 líneas identificada. Los gates y la matriz
-  actuales siguen pendientes; no se abre PR ni se afirma cierre. Plane VANTA-127
-  permanece En curso; sin merge ni release.
+- WIP rebasado en `vantareapp/isa-1840-paso7-retirar-powershell` sobre
+  `a75c9b7aa`. Las formas de acceso y la raíz 975/988 se restauraron en el
+  árbol de trabajo conforme a la decisión vigente. La medición anterior a
+  los gates era **10.250** líneas del perímetro y **958** netas fuera,
+  **11.208** en total, dentro de los nuevos topes. Los P3 del paso 6 (sesión
+  real en la matriz, aislamiento del token y `rejectedVersion` tras crash)
+  están en este WIP; faltan su verificación final, PR draft y actualización
+  del HEAD. Plane VANTA-127 permanece En curso; sin merge ni release.
 
 ### Paso 2 · ADR 0103 listo para revisión (1-nov-2026)
 

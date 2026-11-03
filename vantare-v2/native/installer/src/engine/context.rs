@@ -165,12 +165,20 @@ impl Context {
                 "El desinstalador no pertenece a esta instalación",
             )?;
         }
-        let root = registered
+        let mut root = registered
             .as_ref()
             .map(PathBuf::from)
             .or_else(|| explicit.cloned())
             .unwrap_or_else(|| self.local_app_data.join("Programs/Vantare"));
-        let root = disk::path(&root)?;
+        if registered.is_none() && explicit.is_none() && !request.qa && !request.uninstall {
+            let old = self.local_app_data.join("Programs/Vantare Native Beta");
+            if old.join("state.json").try_exists()?
+                || old.join("retained-data.json").try_exists()?
+            {
+                root = old;
+            }
+        }
+        root = disk::path(&root)?;
         self.validate_root(&root)?;
         Ok(root)
     }

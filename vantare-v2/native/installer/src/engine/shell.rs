@@ -34,13 +34,34 @@ fn argument_root(root: &Path) -> String {
 }
 fn owned(link: &Link, root: &Path) -> Result<bool> {
     let root_arg = argument_root(root);
+    let ps = same(&link.target, &powershell()?);
     Ok((same(&link.target, &root.join("Vantare.exe"))
         && [
             format!("--root {root_arg}"),
             format!("--root {root_arg} --background"),
         ]
         .contains(&link.arguments))
-        || same(&link.target, &root.join("Uninstall.exe")))
+        || same(&link.target, &root.join("Uninstall.exe"))
+        || (ps
+            && link.arguments.contains(&root_arg)
+            && ["beta.ps1", "candidate.ps1"].iter().any(|name| {
+                link.arguments
+                    .contains(&format!("-File \"{}\"", root.join(name).display()))
+            }))
+        || (link
+            .target
+            .ancestors()
+            .skip(1)
+            .any(|parent| same(parent, &root.join("generations")))
+            && link
+                .target
+                .file_name()
+                .is_some_and(|n| n.eq_ignore_ascii_case("vantare.exe"))
+            && [
+                format!("--beta {root_arg}"),
+                format!("--beta {root_arg} --background"),
+            ]
+            .contains(&link.arguments)))
 }
 fn launch(root: &Path, startup: bool) -> Result<Link> {
     let target = root.join("Vantare.exe");
@@ -428,11 +449,7 @@ fn prepare_projection(
     disk::publish_json(&root.join("installer-ui.json"), &ui)?;
     Ok(ui)
 }
-fn project_links(
-    root: &Path,
-    programs: &Path,
-    warning: &mut dyn FnMut(&str),
-) -> Result<()> {
+fn project_links(root: &Path, programs: &Path, warning: &mut dyn FnMut(&str)) -> Result<()> {
     let current = programs.join(CURRENT);
     let old = programs.join(LEGACY);
     save(
@@ -754,7 +771,7 @@ mod tests {
         );
     }
     #[test]
-    fn shortcut_ownership_accepts_only_the_root_launcher_and_uninstaller() {
+    fn shortcut_ownership_preserves_foreign_targets_and_accepts_legacy_forms() {
         let root = Path::new("D:/VantareServer/qa/isa-1840/ownership");
         let args = argument_root(root);
         for arguments in [
@@ -763,7 +780,7 @@ mod tests {
         ] {
             let target = root.join("generations/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/bin/vantare.exe");
             assert!(
-                !owned(
+                owned(
                     &Link {
                         target,
                         arguments,
@@ -771,20 +788,7 @@ mod tests {
                     },
                     root
                 )
-                .expect("retired generation")
-            );
-        }
-        for arguments in [format!("--root {args}"), format!("--root {args} --background")] {
-            assert!(
-                owned(
-                    &Link {
-                        target: root.join("Vantare.exe"),
-                        arguments,
-                        icon: PathBuf::new()
-                    },
-                    root
-                )
-                .expect("owned root launcher")
+                .expect("owned generation")
             );
         }
         let legacy = Link {
@@ -795,7 +799,7 @@ mod tests {
             ),
             icon: PathBuf::new(),
         };
-        assert!(!owned(&legacy, root).expect("retired bootstrap"));
+        assert!(owned(&legacy, root).expect("owned bootstrap"));
         let foreign = Link {
             target: root.join("foreign.exe"),
             arguments: legacy.arguments,

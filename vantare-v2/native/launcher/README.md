@@ -1,8 +1,7 @@
 # Launcher compartido
 
 Motor sin GPUI consumido por Hub y supervisor `vantare` mediante Cargo.
-Conserva catálogo, documentos, discovery local, cadenas, políticas, migración
-Wails, procesos y disparadores. `files` conserva lectura acotada y guardado
+Conserva catálogo, documentos, discovery local, cadenas, políticas, compatibilidad de datos Wails ya guardados, procesos y disparadores. `files` conserva lectura acotada y guardado
 atómico para los consumidores anteriores del Hub. La presentación y las
 fixtures demo permanecen en `hub/src/launcher`.
 
@@ -25,4 +24,20 @@ El Hub abre un Launcher dañado con el catálogo por defecto y aviso de su copia
 `.invalid`, conservando bytes originales para el siguiente CAS. Una versión
 futura se protege sin copia ni importación Wails y no se puede sobrescribir.
 El residente también conserva los originales; sin perfiles válidos no hay nada
-que lanzar. La importación Wails activa se retira en el paso 9, no en este PR.
+que lanzar. La importación Wails activa está retirada en #1869, paso 9.
+
+## Primera apertura sin importación Wails — #1869, paso 9
+
+load_production solo lee el documento nativo. Si falta, publica las plantillas
+Creator y Pro con el escritor común/CAS. No busca configs junto al ejecutable,
+en CWD o APPDATA ni abre app-settings.json; esto también se aplica a desarrollo.
+Un documento nativo vacío se respeta. Uno dañado o protegido no se reinicializa
+por esta ruta. Los archivos Wails no se leen, reescriben, mueven ni eliminan.
+
+wails_import permanece como dato compatible dentro de launcher.json. El DTO
+legacy::Import conserva source y launcher en el mismo formato anterior, incluidos
+los valores archivados que el programa no interpreta. La procedencia de perfiles
+ya importados sigue marcándolos como imported y sus duplicados conservan esa
+procedencia; no se cambia el flujo de confianza o las políticas de ejecución.
+Eliminar el campo rompería documentos existentes con deny_unknown_fields.
+Retirar el importador no retira los perfiles ni la copia histórica guardada.

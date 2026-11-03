@@ -375,3 +375,11 @@ del supervisor usa el mismo aviso si omite renovar. NoCredential/RecoveryRequire
 ClockBehind frescos admiten consultas al helper; Logout sigue disponible con
 canal del núcleo autenticado, incluso ante denegación o caducidad. Sin conceder
 derechos ni saltar el ACK durable; ADR0102.
+
+## Consentimiento local sin importador del instalador — #1869, paso 9
+
+El lector diagnostics::installer se retira: ningún producto activo escribe su
+installer-analytics-consent.json. Privacy y su formato, controles explícitos,
+revocación y limpieza de colas permanecen. El nombre aparece en la regresión QA
+que demuestra que un archivo viejo no puede crear una decisión nueva. No se
+borra un archivo conservado del usuario ni se modifica código del instalador.

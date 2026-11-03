@@ -7228,6 +7228,7 @@ prueba física de pausa del simulador. Siguiente: revisar #1834 rebasado sobre
 esta integración y su CI; sin autorizar promoción ni publicación.
 <!-- /isa1827-paso6b -->
 
+
 ## VANTA-132 / #1910 — Paso 3: freno previo a Clerk (2026-11-03)
 
 - PR draft [#1912](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1912),
@@ -7263,6 +7264,7 @@ esta integración y su CI; sin autorizar promoción ni publicación.
   el rechazo de Gestión activa se prueba en local-auth.test.ts. #1913 se rebasa
   encima para revisión de seguridad. Reserva de native-auth.ts liberada sin
   modificar ningún _shared. Paso 4 espera R6/8; 11 pertenece a R6/12.
+
 ### VANTA-132 · Review de seguridad de #1912 (2026-11-03)
 
 - Decisión explícita del orquestador: en Hub inactivo se acepta agotar el cupo
@@ -7280,3 +7282,58 @@ esta integración y su CI; sin autorizar promoción ni publicación.
 - Caracterización previa ccc35c51d: 8 fallos nuevos reproducidos antes del cambio;
   Deno 142 PASS después. SQL/E2E y métricas finales en #1910 y el PR.
 - Corrección CI de tipos del fixture (run 41691373731): init tipado RequestInit y lib dom.iterable local al test. Reproducido TS2339 con Deno 2.7.13/TS5.9.2; deno check con y sin config, fmt y lint PASS en esa versión. Producto sin cambios.
+
+
+<!-- isa1910-pasos1y2 -->
+## VANTA-132 / #1910 · Pasos 1–2 · Entrega inicial de #1913 (histórico; revisión vigente al final)
+
+- Rama `vantareapp/isa-1910-paso1-identidad-admin`, worktree
+  `D:/VantareServer/worktrees/isa-1910-paso1`; base inicial `ef47c16ad`, rebasada sobre #1912 `11cdd561c` y nightly `51797395b`.
+  PR draft [#1913](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1913) contra nightly, apilado sobre #1912 por instrucción del orquestador; #1911 integrado como 70b2f2753. HEAD/CI vigentes en #1910.
+- Caracterización previa: metadata del Hub aceptada en admin PASS antes del
+  cambio; paso 0 demuestra el logout sin revocación. Paso 1 prepara valores
+  públicos compilados para cliente/callback propios, inactivos por defecto.
+- Decisión confirmada del orquestador: sesión/perfil solo en memoria; primer
+  arranque revoca el refresh antiguo antes de borrar. Fallo o daño conservan
+  blob/cuarentena, bloquean restauración, muestran aviso y reintentan al reiniciar.
+  La migración conserva todas las cuarentenas pendientes de revocación.
+- Tests exclusivamente con Store y HTTP sintéticos: dos modos, revocación
+  correcta/fallida, blob dañado, login/refresh/logout en memoria y diagnóstico
+  interactivo. Focales 18/18 y Nextest completo admin/services 314/314 PASS (5 omisiones preexistentes), check all-targets y Clippy -D warnings PASS; lifecycle 25/25 PASS. Fmt/diff y calidad 468 huellas PASS. Todo Rust por compilar.ps1, target propio y raíces QA. Primer rebase conserva árbol native 78216d6d6f4bdb742541e0233c8252aa3ffb3607. Rebase sobre #1912 conserva todo el código nativo de producción; añade/adapta únicamente el test heredado de logout a revocación HTTP. Nextest 314/314 y Clippy -D warnings de esa base repetidos PASS; lifecycle 25/25 no se repite porque su código y dependencias no cambiaron. Telemetría no aplica: sin cambios runtime/domain/ipc/testdata.
+- ADR 0104 registra el límite aprobado: el access JWT vive hasta exp; Isaac
+  creará Gestión con JWT y TTL de cinco minutos al activarlo. Sin jti, registro
+  de revocación, schema ni dependencia nueva. La configuración pública existente
+  de autenticación permite reutilizar el verificador sin editar `_shared`; reserva de native-auth.ts devuelta al orquestador. Se conservan los fallos iniciales de fixture/Clippy corregidos y el intento interrumpido en la evidencia D:/VantareServer/evidence/isa-1910-paso1.
+- #1911 integrado por el orquestador; #1912 rebasado sobre nightly 51797395b, HEAD 11cdd561c, Deno 131 y SQL 34 suites / 978 pgTAP PASS. Sin merge del worker.
+- Sin Store real, secretos, producción, billing/licencias, configuración SaaS,
+  despliegue, merge del worker ni release. Harness medium heredado; sin delegación.
+<!-- /isa1910-pasos1y2 -->
+
+
+
+
+### VANTA-132 · Corrección de seguridad de #1913 (lista para revisión)
+
+- La bandera gobierna TODO el cambio de sesión: inactiva conserva Store,
+  restauración, complete/refresh persistentes, logout local y diagnóstico actual
+  sin navegador. Solo activa usa memoria y login al abrir/diagnosticar.
+- Al activar, la sesión antigua del cliente compartido Hub se aparta con fecha
+  y se purga únicamente en local sin descifrar/revocar. Un blob antiguo dañado
+  también se elimina localmente. No se toca el Store del Hub.
+- Las sesiones guardadas del cliente Gestión propio se retiran tras revocar con
+  client_id. 400 invalid_token/invalid_grant/token_expired/token_revoked son
+  idempotentes; invalid_client, daño y red conservan el blob, no restauran y
+  muestran aviso/reintento al reiniciar. Se prueba que otro cliente no se revoca.
+- ADR 0104 y README corrigen «ambos modos» y documentan desbloqueo manual por
+  Isaac. FAPI documenta revocación por token, BAPI por concesión de aplicación:
+  no se asume aislamiento por dispositivo y nunca se revoca el antiguo Hub.
+  Verificar contrato real de revocación pública con client_id sigue reservado
+  a Isaac en un cliente de desarrollo antes de activar; bandera inactiva.
+- Caracterización previa a8ae2eef2: inactivo RED 1/1 y protocolo de revocación
+  RED 2/2 ejecutados antes de cambiar cada camino. Evidencia security-red.log y
+  security-revocation-red.log. GREEN focal 24/24 PASS; gates repetidos tras la corrección: check all-targets, Clippy -D warnings y Nextest admin/services 319/319 PASS (5 omisiones preexistentes); lifecycle 25/25 PASS. Fmt/diff y calidad 468 huellas PASS. Clippy R1 falló por un struct local después de sentencias; se movió al módulo y se conserva security-clippy-r1.log.
+- Sin producción, secretos, Store real, _shared propio, billing/licencias,
+  despliegue, merge del worker ni release. HEAD y CI finales en #1910/#1913.
+
+
+- Base final origin/nightly 5f440c094 (#1912 integrado por el orquestador). Worktree isa-1910-paso1; rama vantareapp/isa-1910-paso1-identidad-admin. Todos los gates Rust por compilar.ps1 y target propio; cola cedida entre gates. Telemetría no aplica: no hay cambios runtime/domain/ipc/testdata. CI remota nueva pendiente; HEAD publicado en #1910/#1913.

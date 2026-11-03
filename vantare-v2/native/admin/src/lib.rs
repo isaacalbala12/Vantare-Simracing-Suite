@@ -2,6 +2,7 @@
 #![forbid(unsafe_code)]
 mod cache;
 pub mod client;
+mod config;
 mod diagnostics;
 pub mod session;
 pub mod state;

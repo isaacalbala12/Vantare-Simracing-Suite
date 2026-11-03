@@ -41,17 +41,50 @@ el almacén privado de la instalación anterior. En ambos sistemas el arranque
 directo usa un subdirectorio `admin` separado del Hub; `VANTARE_ADMIN_DATA_ROOT`
 permite otra ruta absoluta. No copia ni inspecciona tokens del Hub. Diagnóstico
 y sesión usan esa misma raíz privada. Cerrar sesión borra los datos en memoria
-y no cambia roles/grants.
+y no cambia roles ni permisos del producto.
 
 ## Configuración y contrato
 
 Valores públicos compilados existentes: `VANTARE_ADMIN_URL` opcional (endpoint
 HTTPS exacto), `VANTARE_SUPABASE_URL`, `VANTARE_CLERK_ISSUER`,
 `VANTARE_CLERK_CLIENT_ID`, `VANTARE_CLERK_REDIRECT`, `VANTARE_BUILD_CHANNEL`.
-Reutiliza Account/PKCE/callback/refresh/Store. Nunca secretos en el cliente.
+Reutiliza Account/PKCE/callback/refresh. Nunca secretos en el cliente.
 POST bearer OAuth, `version:1` y JSON cerrado; contrato actualizado en
 [README del servidor](../../../supabase/functions/native-admin/README.md).
 
+La [ADR 0104](../../docs/adr/0104-identidad-admin-y-sesion-en-memoria.md) fija el
+cliente propio, inactivo por defecto. Al compilar con
+`VANTARE_ADMIN_AUTH_ENABLED=true` hacen falta los valores públicos
+`VANTARE_ADMIN_CLERK_CLIENT_ID` y `VANTARE_ADMIN_CLERK_REDIRECT`, distintos del
+cliente y socket callback del Hub. Isaac debe crear Gestión con tokens JWT,
+TTL de cinco minutos, y activar también la configuración de la Edge. Sin la
+bandera se mantiene el cliente Hub existente, aunque haya valores parciales.
+
+Con Gestión INACTIVA se conserva exactamente el camino anterior: sesión y perfil
+persistentes en el Store privado de admin, restauración al abrir, logout local
+sin revocación y diagnóstico sin abrir el navegador. No se ejecuta migración.
+
+Solo con Gestión ACTIVA la sesión y el perfil viven en memoria: login en cada
+apertura, también en `--diagnose-owner`. El Store guarda metadata OAuth pública.
+La migración aparta con fecha y elimina únicamente cuenta/perfil de la antigua
+instalación privada de admin; no revoca sus tokens del cliente Hub, para evitar
+retirar su concesión compartida. Un blob antiguo dañado tampoco se descifra.
+Para una sesión guardada del cliente Gestión propio, se revoca con `client_id`
+antes de borrar. Un 400 de token inválido/caducado/revocado equivale a éxito;
+invalid_client, daño o red fallida conservan el blob, muestran aviso y reintentan
+al reiniciar sin restaurar sesión. Logout activo limpia memoria e informa si
+no se pudo confirmar la revocación. Access JWT emitido vive hasta exp (TTL de
+cinco minutos más tolerancia de reloj de 60 s en la Edge).
+
+Si una migración activa sigue fallando: cerrar Gestión, corregir primero la
+conexión/configuración pública o permisos del directorio privado, y reiniciar.
+Si no se recupera, Isaac puede respaldar esa carpeta privada de Gestión y retirar
+su concesión **Gestión** en Clerk. Después, con la app cerrada, apartar solo
+`account.*`, sus cuarentenas y `account-profile.*` del namespace de Gestión,
+conservando la copia y metadata OAuth; al abrir pedirá login nuevo. No usar la
+carpeta ni la concesión del Hub ni borrar guardas de otros servicios. Esta es una
+operación manual de Isaac; el agente nunca abre ni manipula el Store real.
+La QA usa exclusivamente Store/HTTP sintéticos.
 Cada escritura pide confirmación y espera ACK y relectura; no hay cambios
 optimistas ni reintento automático. El Owner no tiene botones de bloqueo/borrado,
 y el servidor también lo protege. Borrar exige correo exacto normalizado en app

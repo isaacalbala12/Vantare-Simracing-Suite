@@ -213,6 +213,18 @@ impl State {
         self.users_cursor = None;
         self.confirmation = None;
     }
+
+    pub fn migration_pending(&mut self) {
+        self.clear_private();
+        self.busy = false;
+        self.message = "No se pudo retirar la sesión anterior. No se ha restaurado. Reinicia Gestión para volver a intentarlo.".into();
+    }
+    pub fn logout_failed(&mut self, error: Error) {
+        self.clear_private();
+        self.busy = false;
+        self.message =
+            format!("Sesión cerrada en este equipo. No se confirmó la revocación: {error}.");
+    }
     pub fn visible_reports(&self) -> impl Iterator<Item = (usize, &Report)> {
         self.reports
             .iter()

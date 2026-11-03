@@ -11,7 +11,6 @@ use vantare_services::storage::Read as Stored;
 use vantare_services::{
     Error, Result,
     account::{Account, OAuth},
-    config::BuildConfig,
     http::Http,
     storage::Store,
 };
@@ -28,6 +27,8 @@ pub enum Reply {
     Ready,
     OpenBrowser(String),
     LoggedOut,
+    LogoutFailed(Error),
+    MigrationPending,
     Data(Action, serde_json::Value, Vec<Result<Vec<u8>>>),
     Failed(Error),
     Prefetched(Action, Result<serde_json::Value>),
@@ -44,6 +45,7 @@ impl Worker {
             .name("vantare-admin-services".into())
             .spawn(move || {
                 let mut session: Option<Session> = None;
+                let mut migration_pending = false;
                 loop {
                     let command = if session.as_ref().is_some_and(|s| s.pending) {
                         commands.recv_timeout(Duration::from_millis(100))
@@ -67,8 +69,18 @@ impl Worker {
                             };
                             let started = Instant::now();
                             let result = (|| {
+                                if migration_pending {
+                                    return Ok(Reply::MigrationPending);
+                                }
                                 if session.is_none() {
-                                    session = Some(Session::open(&root)?);
+                                    match Session::open(&root) {
+                                        Ok(opened) => session = Some(opened),
+                                        Err(OpenError::Migration(_)) => {
+                                            migration_pending = true;
+                                            return Ok(Reply::MigrationPending);
+                                        }
+                                        Err(OpenError::Service(error)) => return Err(error),
+                                    }
                                 }
                                 session
                                     .as_mut()
@@ -79,7 +91,12 @@ impl Worker {
                                 label,
                                 started.elapsed().as_micros(),
                                 match &result {
-                                    Ok(Reply::Prefetched(_, Err(_))) | Err(_) => "error",
+                                    Ok(
+                                        Reply::MigrationPending
+                                        | Reply::LogoutFailed(_)
+                                        | Reply::Prefetched(_, Err(_)),
+                                    )
+                                    | Err(_) => "error",
                                     _ => "ok",
                                 },
                             );
@@ -117,33 +134,89 @@ impl Worker {
 struct Session {
     account: Account,
     store: Store,
+    ephemeral: bool,
     http: Http,
     client: Client,
     pending: bool,
 }
+#[derive(Debug)]
+enum OpenError {
+    Migration(Error),
+    Service(Error),
+}
+impl From<Error> for OpenError {
+    fn from(error: Error) -> Self {
+        Self::Service(error)
+    }
+}
+impl OpenError {
+    fn error(self) -> Error {
+        match self {
+            Self::Migration(error) | Self::Service(error) => error,
+        }
+    }
+}
 impl Session {
-    fn open(root: &std::path::Path) -> Result<Self> {
+    fn open(root: &std::path::Path) -> std::result::Result<Self, OpenError> {
         let client = Client::from_build()?;
-        let config = BuildConfig::load();
-        let oauth_config = config.native_oauth.ok_or(Error::Unconfigured)?;
-        // Misma carpeta y binding que App::ensure_account, no una segunda sesión.
-        let context = format!(
-            "v1|{}|{}|{}|{}",
-            oauth_config.issuer,
-            oauth_config.client_id,
-            config.channel.unwrap_or("unknown"),
-            config.supabase.as_ref().map_or("", url::Url::as_str)
-        );
-        let store = Store::open(root, &context)?;
-        let http = Http::default();
+        let config = crate::config::load()?;
+        Self::open_config(root, config, Http::default(), client)
+    }
+    fn open_config(
+        root: &std::path::Path,
+        config: crate::config::Config,
+        http: Http,
+        client: Client,
+    ) -> std::result::Result<Self, OpenError> {
+        let ephemeral = config.legacy.is_some();
+        if let Some((context, _)) = &config.legacy {
+            let legacy = Store::open(root, context).map_err(OpenError::Migration)?;
+            let at = now()?.saturating_mul(1000);
+            legacy
+                .quarantine_if_present("account", at)
+                .map_err(OpenError::Migration)?;
+            legacy
+                .quarantine_if_present("account-profile", at)
+                .map_err(OpenError::Migration)?;
+            // The old client is shared with Hub. Do not revoke its grant.
+            legacy
+                .discard_retired_session()
+                .map_err(OpenError::Migration)?;
+            legacy
+                .retire_cache("account-profile")
+                .map_err(OpenError::Migration)?;
+        }
+        let oauth_config = config.build.native_oauth.ok_or(Error::Unconfigured)?;
+        let store = Store::open(root, &config.context)?;
+        if ephemeral {
+            Account::retire_saved_session(
+                &http,
+                &store,
+                &oauth_config.issuer,
+                &oauth_config.client_id,
+            )
+            .map_err(OpenError::Migration)?;
+        }
         let oauth = load_oauth(&store, &http, oauth_config, now()?.saturating_mul(1000))?;
         Ok(Self {
-            account: Account::restore(oauth, &store)?,
+            account: if ephemeral {
+                Account::in_memory(oauth)?
+            } else {
+                Account::restore(oauth, &store)?
+            },
             store,
+            ephemeral,
             http,
             client,
             pending: false,
         })
+    }
+    fn complete(&mut self, completion: vantare_services::account::Completion) -> Result<()> {
+        if self.ephemeral {
+            self.account.complete_in_memory(completion)
+        } else {
+            self.account.complete(completion, &self.store)
+        }
     }
     fn refresh(&mut self) -> Result<()> {
         let time = now()?;
@@ -152,10 +225,7 @@ impl Session {
             .expires_at()
             .is_some_and(|expiry| expiry <= time.saturating_add(60))
         {
-            self.account.complete(
-                self.account.refresh()?.run(&self.http, now()?)?,
-                &self.store,
-            )?;
+            self.complete(self.account.refresh()?.run(&self.http, now()?)?)?;
         }
         Ok(())
     }
@@ -175,8 +245,16 @@ impl Session {
             }
             Command::Logout => {
                 self.pending = false;
-                self.account.logout(&self.store)?;
-                Ok(Reply::LoggedOut)
+                if !self.ephemeral {
+                    self.account.logout(&self.store)?;
+                    return Ok(Reply::LoggedOut);
+                }
+                let revoked = self.account.revoke_refresh(&self.http);
+                self.account.forget_in_memory()?;
+                Ok(match revoked {
+                    Ok(()) => Reply::LoggedOut,
+                    Err(error) => Reply::LogoutFailed(error),
+                })
             }
             Command::Restore => {
                 self.refresh()?;
@@ -205,12 +283,32 @@ impl Session {
     }
     fn poll(&mut self) -> Result<Option<Reply>> {
         if let Some(exchange) = self.account.poll_login()? {
-            self.account
-                .complete(exchange.run(&self.http, now()?)?, &self.store)?;
+            self.complete(exchange.run(&self.http, now()?)?)?;
             self.pending = false;
             return Ok(Some(Reply::Ready));
         }
         Ok(None)
+    }
+    fn prepare_diagnosis(&mut self, open: impl FnOnce(&str) -> Result<()>) -> Result<()> {
+        if self.ephemeral {
+            self.login_interactive(open)
+        } else {
+            self.refresh()
+        }
+    }
+    fn login_interactive(&mut self, open: impl FnOnce(&str) -> Result<()>) -> Result<()> {
+        let Reply::OpenBrowser(url) = self.handle(Command::Login)? else {
+            return Err(Error::Protocol);
+        };
+        open(&url)?;
+        while self.pending {
+            if self.poll()?.is_some() {
+                break;
+            }
+            // Same bounded PKCE polling as the worker; callback/timeout decides completion.
+            thread::sleep(Duration::from_millis(100));
+        }
+        Ok(())
     }
 }
 fn load_oauth(
@@ -259,17 +357,41 @@ fn now() -> Result<u64> {
         .map_err(|_| Error::Clock)
 }
 
+fn open_browser(url: &str) -> Result<()> {
+    #[cfg(windows)]
+    let mut command = {
+        use std::os::windows::process::CommandExt;
+        let mut command = std::process::Command::new("rundll32.exe");
+        command
+            .creation_flags(0x0800_0000)
+            .arg("url.dll,FileProtocolHandler");
+        command
+    };
+    #[cfg(target_os = "macos")]
+    let mut command = std::process::Command::new("open");
+    #[cfg(all(unix, not(target_os = "macos")))]
+    let mut command = std::process::Command::new("xdg-open");
+    command.arg(url).spawn().map_err(|_| Error::Offline)?;
+    Ok(())
+}
+
 /// Owner-only read-back using this app's isolated session. No credentials printed.
 pub fn diagnose_owner(root: &std::path::Path) -> Result<()> {
-    let mut session = Session::open(root)?;
-    session.refresh()?;
+    let mut session = Session::open(root).map_err(|failure| {
+        if matches!(failure, OpenError::Migration(_)) {
+            eprintln!("No se pudo retirar la sesión anterior. No se ha restaurado; reinicia Gestión para reintentar.");
+        }
+        failure.error()
+    })?;
+    session.prepare_diagnosis(open_browser)?;
     let _written = writeln!(
         std::io::stdout(),
         "restore signed_in={}",
         session.account.identity().is_some()
     );
     diagnose_pages(&session)?;
-    let issuer = BuildConfig::load()
+    let issuer = crate::config::load()?
+        .build
         .native_oauth
         .ok_or(Error::Unconfigured)?
         .issuer;
@@ -472,17 +594,20 @@ pub fn data_root() -> Result<PathBuf> {
 }
 
 #[cfg(test)]
+mod migration_tests;
+
+#[cfg(test)]
 mod tests {
     use super::*;
     #[test]
-    fn r10_characterization_logout_makes_no_http_request() {
-        let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("bind");
-        listener.set_nonblocking(true).expect("nonblocking");
-        let base = format!("http://{}", listener.local_addr().expect("address"));
+    fn r10_regression_active_logout_revokes_refresh_before_forgetting_session() {
+        let server =
+            vantare_services::test_http::Server::start_observed(vec![(200, String::new())]);
+        let base = server.base.as_str().trim_end_matches('/');
         let root = std::env::temp_dir().join(format!("admin-r10-logout-{}", std::process::id()));
         let store = Store::open(&root, "r10-synthetic-logout").expect("store");
         let oauth: OAuth = serde_json::from_value(serde_json::json!({
-            "issuer":format!("{base}/"), "client_id":"hub-fixture",
+            "issuer":format!("{base}/"), "client_id":"admin-fixture",
             "redirect":"http://127.0.0.1:0/callback",
             "authorization":format!("{base}/authorize"),
             "token":format!("{base}/token"), "userinfo":format!("{base}/userinfo")
@@ -495,7 +620,7 @@ mod tests {
                     "state":"SignedIn", "version":1,
                     "session": {
                         "identity":{"issuer":format!("{base}/"),"subject":"owner-fixture"},
-                        "client_id":"hub-fixture", "access":"synthetic-access",
+                        "client_id":"admin-fixture", "access":"synthetic-access",
                         "refresh":"synthetic-refresh", "expires_at":4_000_000_000_u64
                     }
                 }),
@@ -503,11 +628,14 @@ mod tests {
             .expect("synthetic session");
         let account = Account::restore(oauth, &store).expect("restore");
         assert!(account.identity().is_some());
+        let mut http = Http::default();
+        http.enable_loopback_for_test();
         let mut session = Session {
             account,
             store,
-            http: Http::default(),
-            client: crate::client::tests::loopback_client(&base),
+            ephemeral: true,
+            http,
+            client: crate::client::tests::loopback_client(base),
             pending: false,
         };
         assert!(matches!(
@@ -515,11 +643,43 @@ mod tests {
             Ok(Reply::LoggedOut)
         ));
         assert!(session.account.identity().is_none());
-        // Logout is synchronous: after its return there can be no in-flight request.
-        assert!(
-            matches!(listener.accept(), Err(error) if error.kind() == std::io::ErrorKind::WouldBlock)
-        );
+        let requests = server.finish_observed();
+        assert_eq!(requests.len(), 1);
+        assert!(requests[0].starts_with("POST /oauth/token/revoke "));
+        assert!(requests[0].contains("token=synthetic-refresh"));
         drop(session);
+        std::fs::remove_dir_all(root).expect("cleanup");
+    }
+    #[test]
+    fn r10_characterization_legacy_admin_accepts_cached_hub_oauth_metadata() {
+        let root =
+            std::env::temp_dir().join(format!("admin-r10-hub-metadata-{}", std::process::id()));
+        let store = Store::open(&root, "r10-synthetic-hub-context").expect("store");
+        let issuer = url::Url::parse("https://clerk.fixture.invalid/").expect("issuer");
+        let redirect = url::Url::parse("http://127.0.0.1:47813/callback").expect("redirect");
+        let oauth: OAuth = serde_json::from_value(serde_json::json!({
+            "issuer":issuer, "client_id":"hub-fixture", "redirect":redirect,
+            "authorization":issuer.join("authorize").expect("URL"),
+            "token":issuer.join("token").expect("URL"),
+            "userinfo":issuer.join("userinfo").expect("URL")
+        }))
+        .expect("metadata");
+        store
+            .save("oauth-metadata", &oauth)
+            .expect("metadata cache");
+        let loaded = load_oauth(
+            &store,
+            &Http::default(),
+            vantare_services::config::OAuthBuild {
+                issuer: issuer.clone(),
+                client_id: "hub-fixture".into(),
+                redirect_uri: redirect.clone(),
+            },
+            1_700_000_000_123,
+        )
+        .expect("cached metadata: no HTTP");
+        assert!(loaded.matches(&issuer, "hub-fixture", &redirect));
+        drop(store);
         std::fs::remove_dir_all(root).expect("cleanup");
     }
     #[test]

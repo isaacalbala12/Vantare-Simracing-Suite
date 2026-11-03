@@ -1,6 +1,7 @@
 use super::*;
 use crate::test_http::Server;
 use std::net::TcpStream;
+mod memory;
 
 fn oauth(server: &Server) -> OAuth {
     OAuth {

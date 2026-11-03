@@ -121,8 +121,8 @@ del operador. Demo/captura eligen su raíz QA antes de
 cualquier lectura o limpieza de privacidad.
 La carga entrega el Store explícitamente a `Loaded`; el arnés de onboarding
 inyecta su Store QA y conserva las mismas comprobaciones de consentimiento.
-Los gates fijan también `LOCALAPPDATA` y `APPDATA` a su base QA, incluida la
-consulta del importador Wails mientras no se retire. En tests y con la feature
+Los gates fijan también `LOCALAPPDATA` y `APPDATA` a su base QA. El Launcher ya
+no consulta archivos Wails. En tests y con la feature
 `test-support`, `diagnostics::data_root()` rechaza la ausencia del override;
 no existe fallback hacia una instalación personal.
 

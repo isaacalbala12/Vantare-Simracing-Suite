@@ -82,18 +82,17 @@ no se cuentan gaps >2 s ni el tiempo previo a aceptar. La cola puede llenarse y
 descartar observaciones: los resultados son uso observado de quienes consienten,
 no un censo ni un contador de facturación. No hay backfill ni envíos sintéticos.
 
-## Elección del instalador · pendiente #1591 / PR #1600
+## Consentimiento nativo — #1869, paso 9
 
-No se toca esa PR. Contrato preparado para su integración posterior:
-Setup escribirá, solo al confirmar una casilla apagada por defecto, el objeto
-`{"version":1,"usage":true,"explicit":true}` en
-`<raíz de diagnóstico>/installer-analytics-consent.json`, con guardado atómico.
-Rechazar puede escribir `usage:false`; ausencia no implica sí. La app valida el
-objeto cerrado y versión y lo consume únicamente si no hay decisión de uso
-guardada. Una reinstalación nunca sobrescribe una revocación en Ajustes.
-La elección no afecta `crashes`. Un documento inválido mantiene todo apagado y
-la pregunta de primer arranque. El mismo UUID de instalación se crea tras aceptar.
-No pasar tokens, IDs web ni consentimiento por query/argumentos del ejecutable.
+`installer-analytics-consent.json` es un archivo legado sin escritor de producto
+activo. El Hub ya no lo lee ni lo adopta: si existe se conserva sin modificarlo.
+El uso solo se habilita mediante la decisión guardada en `privacy.json` o una
+nueva elección explícita en la app. Sin decisión se mantiene apagado; los
+consentimientos existentes y las revocaciones conservan su valor.
+
+La limpieza cancelable de colas deshabilitadas y su protección contra respuestas
+tardías siguen activas. No cambia el consentimiento de `crashes`, el UUID ni el
+protocolo de envío. No pasar tokens, IDs web o consentimiento por argumentos.
 
 ## Embudo y límites que requieren coordinación
 

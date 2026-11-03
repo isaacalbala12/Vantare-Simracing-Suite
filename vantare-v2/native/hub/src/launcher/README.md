@@ -8,22 +8,18 @@ Notion no disponible; seguimiento pendiente del orquestador. Solo commits
 locales, sin push, PR, merge ni release. Evidencia externa:
 `C:/tmp/launcher-usabilidad-evidence/`.
 
-Migración de primer arranque productivo: `launcher.json` existente prevalece
-(también si está corrupto; no se sustituye). Si falta, se busca
-`app-settings.json` con el orden Wails: `configs` junto al Hub, `configs` en
-CWD, `vantare-v2/configs` en CWD, `%APPDATA%/Vantare/configs`. La primera
-carpeta existente manda, incluso si no tiene ajustes: no mezclar instalaciones.
-La importación valida y guarda atómicamente; un fallo no crea datos parciales
-ni altera Wails. Una vez creado el nativo, no se vuelve a importar. Un
-`--launcher-file` aislado y las capturas demo no importan datos del usuario.
+Primer arranque productivo — #1869, paso 9: si falta `launcher.json`, se crean
+las plantillas nativas Creator y Pro. No se busca ni se lee `app-settings.json`
+en carpetas portables, CWD o AppData. Los archivos Wails se conservan intactos.
+Un documento nativo existente se carga con su validación y avisos habituales;
+no se sustituye mediante una importación. Un documento con perfiles vacíos
+explícitos conserva esa elección al reabrir.
 
-Se conservan IDs, nombres, favoritos, rutas, tokens de argumentos con el
-contrato de Go (sin shell), pasos, delays, descripción, notas, historial y
-preferencias. Las claves Launcher originales quedan archivadas en
-`wails_import`, excluyendo otros ajustes. Los delays ya no se limitan a una
-hora; siguen siendo segundos enteros no negativos. Los documentos v1 siguen
-siendo legibles. Políticas/hotkeys/autostart importados se conservan para los
-hitos siguientes; esta sección se actualiza con su ejecución real.
+Los perfiles ya guardados conservan IDs, nombres, rutas, argumentos, pasos,
+delays, notas, historial y políticas. `wails_import` permanece como dato legado
+con el mismo formato y contenido; mantiene la procedencia de los perfiles sin
+volver a consultar el archivo antiguo. No cambian las comprobaciones de
+confianza ni la propiedad de los procesos.
 
 Entrega aislada para revisión de Claude Opus 5.5. Referencia:
 [GitHub #1430](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1430),
@@ -356,8 +352,9 @@ y verificar tecla real, conflicto con otras apps, inicio de sesión Windows y
 comportamiento durante Live. No hay cambios de registro ni atajos globales activos.
 
 ## Verificación manual pendiente del orquestador
-1. Importar una copia de configuración Wails con perfiles y apps, comprobar datos
-   y bytes originales, reiniciar y confirmar que no reimporta; probar nativo vacío.
+1. En QA, abrir un Launcher nuevo junto a un Wails inválido: comprobar plantillas
+   nativas y original intacto. Editar/reabrir perfiles nativos ya importados y un
+   documento con perfiles vacíos; conservar datos, procedencia y `wails_import`.
 2. Con apps reales: reutilizar externa, reiniciar propia, fallo/continuar/parar,
    cancelar en espera/sondeo, cerrar solo hijas propias y decidir al salir.
 3. Lanzar por fila, Inicio y Ctrl+K; retry selectivo y entero; validaciones, copiar,

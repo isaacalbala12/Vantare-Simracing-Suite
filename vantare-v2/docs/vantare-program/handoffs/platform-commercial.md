@@ -7408,3 +7408,33 @@ esta integración y su CI; sin autorizar promoción ni publicación.
   desechables detenidos; evidencia en D:/VantareServer/evidence/isa-1910-paso5b.
 - PR draft [#1922](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1922)
   a nightly; código validado c30004016, CI nueva pendiente y sin merge propio.
+
+### #1922 · Corrección de review R2
+
+- Elegido bloquear `claim` con la vista de pendientes, incluso tras caducar o
+  liberar el lease. Release marca vencimiento y retiene la petición; antes de
+  sustituirla se revisan todos sus efectos, incluido Polar. El hash de las
+  identidades cubre eventos Clerk antiguos. No se confía solo en la caducidad:
+  una llamada remota incierta podría completar tarde y deshacer un unban.
+- Reconcile exige unknown o intención anterior a now()-480s, owner revisor
+  vigente y ausencia de succeeded/failed. README aclara que service_role
+  autentica a p_reviewer; el UUID por sí mismo no demuestra identidad.
+- Release sobre cuenta borrada no escribe a través de la barrera. Su fallo
+  deja intacto el error original. Tests RED previos en f3bde7aa6.
+- Seis carreras reales observadas en pg_stat_activity: mismas intenciones y
+  resultados, finish frente a takeover, dos claims caducados y reconcile frente
+  a resultado en ambos órdenes. Casos secuenciales de token vigente pero lease
+  caducado, revisor no owner, reconcile de succeeded/failed y ventana de 480s.
+- Diferidos expresamente: set_blocked sin token durante solape de despliegue;
+  limpieza de leases caducados (conservar referencias pendientes); 503 cuando
+  release falla tras un cambio correcto. Lectura owner/retención en paso 10.
+- #1918 integrado en nightly a75c9b7aa según orquestador. Migración admin a
+  testing_contributions se hará en PR separado SOLO después del merge de #1922;
+  no se mezcla aquí. Pasos 4 y 11 siguen con sus dependencias de R6.
+- Gates limitados a admin: runner --admin-effects-only aplica schema desechable
+  y ejecuta suites de efectos/leases, sus carreras y E2E. Sin Rust ni servicios
+  reales; sin cambios _shared/clerk-webhook, billing/licencias ni despliegue.
+- Gates R2: Deno 2.7.13, 94 tests de admin PASS; SQL acotado 5 suites/69
+  comprobaciones PASS, seis carreras reales PASS, E2E 6/6 PASS. Check/lint/fmt,
+  Python y diff PASS. Rollback/reaplicación incluidos; instancia local detenida.
+  Evidencia review-r2 dentro de isa-1910-paso5b. CI del HEAD nuevo pendiente.

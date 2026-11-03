@@ -313,7 +313,8 @@ pendientes; este PR no cambia billing, licencias ni `_shared`/`clerk-webhook`.
 
 ## Auditoría y concurrencia · paso 5b (sustituye los detalles de 5a)
 
-La consulta vigente es `private.admin_pending_effects`, solo para servicio:
+La consulta de diagnóstico vigente es `private.admin_pending_effects`, privada
+y sin endpoint de lectura en la API:
 incluye intenciones sin resultado y resultados `unknown` sin reconciliar.
 `succeeded` cierra una operación; `failed` distingue rechazos definitivos HTTP
 401/403/422; el número HTTP queda en `provider_status`. Un DELETE de Clerk con
@@ -345,8 +346,13 @@ no hay nuevo endpoint de lectura ni política de retención en este cambio.
 Ban y unban adquieren un lease por cuenta de 480 segundos, sin renovación:
 supera los [400 segundos máximos del worker hosted de Supabase](https://supabase.com/docs/guides/functions/limits)
 con 80 segundos de margen. Una petición simultánea recibe 409 antes de escribir
-estado o invocar Clerk. Se libera al terminar, incluso si falla; tras un crash
-puede retomarse al caducar, con otro token. No exige desbloqueo manual.
+estado o invocar Clerk. Se libera al terminar, incluso si falla, conservando
+la referencia de petición con el vencimiento marcado. Sin efectos pendientes,
+tras un crash puede retomarse al caducar, con otro token. Si hay `unknown` o una
+intención sin cierre, `claim` devuelve 409 hasta reconciliar: caducar o liberar
+el lease no basta. La comprobación usa la vista de pendientes y la petición
+retenida; también hashes de identidades para los eventos Clerk anteriores al
+lease. Así una llamada tardía del proveedor no permite un cambio contrario.
 La escritura de estado requiere token, cuenta, actor y petición coincidentes,
 lease vigente y owner activo; mantiene el bloqueo SQL hasta commit. Un token
 anterior no puede escribir ni liberar el lease nuevo. Se conserva el orden de
@@ -361,3 +367,16 @@ rollback después de revertir/drain de Edge, mediante el `.down.sql` con psql:
 restaura la RPC anterior y conserva journal, estados ampliados y filas de lease.
 Reaplicar conserva evidencia. No cambia billing, licencias, `_shared` ni el
 comportamiento de cancelación de Polar. Auditoría Brevo pendiente.
+
+Reconciliar exige un resultado `unknown` o una intención de más de 480 segundos;
+no permite cerrar una intención reciente aún en vuelo ni efectos ya exitosos o
+rechazados. `p_reviewer` es una identidad que confía el `service_role`: este debe
+validar quién realiza la revisión antes de enviar su UUID. La RPC comprueba que
+ese UUID es owner activo, pero no demuestra por sí misma que el llamador sea
+esa persona. No está disponible para `anon`/`authenticated`.
+
+Si la cuenta está borrada, `release` respeta el resultado de la barrera y omite
+escribir en la fila. Un error de liberación conserva el error de la operación
+original. Quedan diferidos: proteger `set_blocked` sin token durante el solape
+de despliegue, limpiar leases caducados (sin eliminar referencias de efectos
+pendientes) y revisar el 503 cuando solo falla release tras un cambio correcto.

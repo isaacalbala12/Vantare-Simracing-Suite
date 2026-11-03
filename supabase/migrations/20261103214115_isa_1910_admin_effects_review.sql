@@ -67,6 +67,7 @@ begin
  perform private.native_admin_require_owner(p_reviewer);
  select * into v_start from private.admin_effects where effect_id=p_effect and outcome='started' for update;
  if not found or exists(select 1 from private.admin_effects where effect_id=p_effect and outcome in ('succeeded','failed'))
+  or not (v_start.occurred_at < now()-interval '480 seconds' or exists(select 1 from private.admin_effects where effect_id=p_effect and outcome='unknown'))
  then raise exception 'native_admin_invalid' using errcode='22023'; end if;
  insert into private.admin_effects(effect_id,outcome,request_id,actor,action,effect,target_hash)
  values(p_effect,'reconciled',v_start.request_id,p_reviewer,v_start.action,v_start.effect,v_start.target_hash)
@@ -101,6 +102,15 @@ begin
  perform private.lock_accounts_before_rows(array[p_actor,p_account]);
  perform private.native_admin_require_owner(p_actor);
  if p_request is null or p_account is null then raise exception 'native_admin_invalid' using errcode='22023'; end if;
+ -- Keep the previous request reference on release. Never overwrite it while
+ -- any of its effects is unresolved, including Polar effects with another hash.
+ -- The identity fallback also covers Clerk intents from pre-lease step 5a.
+ if exists(select 1 from private.admin_pending_effects e where
+   e.request_id=(select request_id from private.admin_change_leases where account_id=p_account)
+   or e.target_hash in (select encode(sha256(convert_to(i.subject,'UTF8')),'hex')
+                       from public.account_identities i where i.account_id=p_account))
+ then return null; end if;
+
  insert into private.admin_change_leases as l(account_id,actor,request_id,token,expires_at)
  values(p_account,p_actor,p_request,gen_random_uuid(),clock_timestamp()+interval '480 seconds')
  on conflict(account_id) do update set
@@ -116,8 +126,10 @@ create function public.native_admin_release_change(p_actor uuid,p_request uuid,p
 returns boolean language plpgsql security definer set search_path='' as $$
 begin
  -- Release is cleanup of an existing request, not a new owner operation.
- perform private.lock_account_write(p_account);
- delete from private.admin_change_leases where account_id=p_account and actor=p_actor and request_id=p_request and token=p_token;
+ if private.lock_account_write(p_account) then return true; end if;
+ -- Preserve the request link for pending effects; cleanup of expired leases is
+ -- a separate task and must not remove a row referenced by a pending effect.
+ update private.admin_change_leases set expires_at='-infinity'::timestamptz where account_id=p_account and actor=p_actor and request_id=p_request and token=p_token;
  return found;
 end;
 $$;

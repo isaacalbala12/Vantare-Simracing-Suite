@@ -658,17 +658,29 @@ export async function handleNativeAdmin(
       if (action === "set_blocked" && lease === null) {
         throw new NativeError(409, "account_conflict");
       }
+      let changeFailed = false;
       const releaseLease = async () => {
-        if (
-          lease !== null &&
-          !await (deps.releaseChange ?? releaseChange)(
-            actor,
-            requestId,
-            String(params.account_id),
-            lease,
-          )
-        ) {
-          throw new NativeError(503, "account_change_incomplete");
+        try {
+          if (
+            lease !== null &&
+            !await (deps.releaseChange ?? releaseChange)(
+              actor,
+              requestId,
+              String(params.account_id),
+              lease,
+            )
+          ) {
+            throw new NativeError(503, "account_change_incomplete");
+          }
+        } catch (error) {
+          if (!changeFailed) throw error;
+          // Preserve the operation error; never log identities, tokens or SQL.
+          console.info(
+            JSON.stringify({
+              event: "native_admin_release_failed",
+              request_id: requestId,
+            }),
+          );
         }
       };
       try {
@@ -863,6 +875,9 @@ export async function handleNativeAdmin(
           account_id: params.account_id,
           blocked: params.blocked,
         });
+      } catch (error) {
+        changeFailed = true;
+        throw error;
       } finally {
         await releaseLease();
       }

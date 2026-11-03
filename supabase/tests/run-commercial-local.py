@@ -206,7 +206,7 @@ $$;
    }
    if args.docker and m.name in existing_roles:
     run_existing_role_regression(run, conn, admin_conn(), migration_source, OUT, *existing_roles[m.name])
-   if 'isa_1770_terminal_checkout_attempts' in m.name:
+   if 'isa_1770_terminal_checkout_attempts' in m.name and not args.admin_effects_only:
     run_migration_lock_regression(run, conn, migration_source, OUT, BIN, ENV)
    try: result=run('psql',*conn,'-f',migration_source)
    except Exception as e:
@@ -238,7 +238,7 @@ $$;
   """).strip()
   assert role_contract=='t', 'managed product role attributes changed'
   (OUT/'managed-role-contract.log').write_text('Four product roles: safe attributes PASS\n')
-  if not (args.baseline or args.before_write_barrier or args.before_testing_identity):
+  if not (args.baseline or args.before_write_barrier or args.before_testing_identity or args.admin_effects_only):
    admission='20261103093000_isa_1896_report_admission'
    run('psql',*conn,'-c',"""insert into private.testing_report_attempts
     (scope,subject,week_start,day_start,attempts) values
@@ -254,7 +254,7 @@ $$;
    if restored!='t|t|t': raise RuntimeError('step 2 rollback lost quota data or retained retry keys')
    run('psql',*conn,'-f',ROOT/'supabase/migrations'/(admission+'.sql'))
    run('psql',*conn,'-c',"delete from private.testing_report_attempts where subject=repeat('f',64) or subject='18960000-0000-4000-8000-000000000092';")
-  if not args.baseline and not args.before_testing_identity:
+  if not args.baseline and not args.before_testing_identity and not args.admin_effects_only:
    for stem,suite,count in [
     ('20261103114000_isa_1896_calendar_acl','testing_step3_acl_rollback.test.sql',16),
     ('20261103114100_isa_1896_candidate_membership','testing_step3_channel_rollback.test.sql',1),
@@ -303,9 +303,9 @@ $$;
    run_storage_owners(BIN,conn,ENV,run,OUT)
    raise SystemExit(0)
   if args.writers:
-   if not args.admin_effects_only: run_write_races(BIN,conn,ENV,run,OUT,fixture_conn=admin_conn() if args.docker else None)
+   run_write_races(BIN,conn,ENV,run,OUT,fixture_conn=admin_conn() if args.docker else None)
    raise SystemExit(0)
-  if not args.baseline:
+  if not args.baseline and not args.admin_effects_only:
    run_tombstone_race(BIN,conn,ENV,run,OUT/'concurrency-results.log')
   if args.concurrency:
    raise SystemExit(0)
@@ -552,7 +552,7 @@ $$;
     (OUT/'owner-alert-edge.log').write_text(owner_tests.stdout+owner_tests.stderr,encoding='utf-8')
     if owner_tests.returncode: raise RuntimeError(owner_tests.stdout+owner_tests.stderr)
     print('Owner alert HMAC/durable ACK/email regressions PASS',flush=True)
-   run_write_races(BIN,conn,ENV,run,OUT,fixture_conn=admin_conn() if args.docker else None)
+   if not args.admin_effects_only: run_write_races(BIN,conn,ENV,run,OUT,fixture_conn=admin_conn() if args.docker else None)
  finally:
   if args.docker:
    (OUT/'postgres.log').write_text(docker('logs',container))

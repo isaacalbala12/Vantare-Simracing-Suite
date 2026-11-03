@@ -12,12 +12,24 @@ const target = "00000000-0000-4000-8000-000000001995";
 // R2: cleanup failure must preserve the original pre-effect error.
 Deno.test("5b R2: failed release never masks the original missing-account error", async () => {
   const f = fixture();
-  const response = await handleNativeAdmin(request({version:1,action:"set_blocked",account_id:target,blocked:false}),{
-    ...f.deps, execute:()=>Promise.reject({message:"native_admin_not_found"}),
-    releaseChange:()=>Promise.reject(new Error("synthetic release failure")),
-  });
-  assert(response.status===404 && (await response.json()).error==="not_found");
-  assert(f.calls.length===0);
+  const response = await handleNativeAdmin(
+    request({
+      version: 1,
+      action: "set_blocked",
+      account_id: target,
+      blocked: false,
+    }),
+    {
+      ...f.deps,
+      execute: () => Promise.reject({ message: "native_admin_not_found" }),
+      releaseChange: () =>
+        Promise.reject(new Error("synthetic release failure")),
+    },
+  );
+  assert(
+    response.status === 404 && (await response.json()).error === "not_found",
+  );
+  assert(f.calls.length === 0);
 });
 function fixture(status = 200, blocked = false, sqlFailure = false) {
   const calls: string[] = [];

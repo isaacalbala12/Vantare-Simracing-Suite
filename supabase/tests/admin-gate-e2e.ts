@@ -412,3 +412,93 @@ Deno.test("5b SQL E2E: concurrent ban/unban on one account cannot overlap", asyn
     ) === "f",
   );
 });
+
+Deno.test("5b R2 SQL E2E: unknown ban blocks unban until owner reconciliation", async () => {
+  const { deps } = await fixture(false);
+  const target = "00000000-0000-4000-8000-000000001980";
+  const targetSubject = "user_ggggggggggggggggggggggggggg";
+  await sql(
+    `insert into public.profiles(id) values(${
+      literal(target)
+    }) on conflict do nothing;
+    insert into public.account_identities(issuer,subject,account_id) values(${
+      literal(config.issuer)
+    },${literal(targetSubject)},${literal(target)}) on conflict do nothing;`,
+  );
+  deps.execute = async (actor, issuer, action, params, environment) =>
+    JSON.parse(
+      await sql(
+        `set role service_role; select public.native_admin_execute(${
+          literal(actor)
+        },${literal(issuer)},${literal(action)},${
+          literal(JSON.stringify(params))
+        }::jsonb,${literal(environment)});`,
+      ),
+    );
+  deps.finishChange = async (
+    actor,
+    issuer,
+    params,
+    environment,
+    request,
+    token,
+  ) =>
+    JSON.parse(
+      await sql(
+        `set role service_role; select public.native_admin_finish_change(${
+          literal(actor)
+        },${literal(issuer)},${literal(JSON.stringify(params))}::jsonb,${
+          literal(environment)
+        },${literal(request)},${literal(token)});`,
+      ),
+    );
+
+  const original = deps.fetch!;
+  const writes: string[] = [];
+  deps.fetch = async (url, init?: RequestInit) => {
+    if (String(url).endsWith("/ban")) {
+      writes.push("ban");
+      return new Response(null, { status: 503 });
+    }
+    if (String(url).endsWith("/unban")) {
+      writes.push("unban");
+      return new Response(null, { status: 200 });
+    }
+    return await original(url, init);
+  };
+  const call = (blocked: boolean) =>
+    handleNativeAdmin(
+      request({
+        version: 1,
+        action: "set_blocked",
+        account_id: target,
+        blocked,
+      }, { Authorization: "Bearer opaque-hub-fixture" }),
+      deps,
+    );
+  const ban = await call(true);
+  assert(ban.status === 503);
+  const requestId = ban.headers.get("X-Request-ID")!;
+  assert(
+    await sql(
+      `select latest_outcome from private.admin_pending_effects where request_id=${
+        literal(requestId)
+      }::uuid;`,
+    ) === "unknown",
+  );
+  assert((await call(false)).status === 409);
+  assert(JSON.stringify(writes) === JSON.stringify(["ban"]));
+  // Operator reads diagnostics locally; service invokes only the closed RPC.
+  const effectId = await sql(
+    `select effect_id from private.admin_pending_effects where request_id=${
+      literal(requestId)
+    }::uuid;`,
+  );
+  await sql(
+    `set role service_role; select public.native_admin_reconcile_effect(${
+      literal(account)
+    },${literal(effectId)});`,
+  );
+  assert((await call(false)).status === 200);
+  assert(JSON.stringify(writes) === JSON.stringify(["ban", "unban"]));
+});

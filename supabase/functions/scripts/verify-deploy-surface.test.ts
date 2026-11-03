@@ -69,6 +69,17 @@ Deno.test("retired feedback endpoint is absent from deploy surfaces", () => {
   }
 });
 
+Deno.test("retired Linear endpoints are absent from deploy surfaces", () => {
+  const config = Deno.readTextFileSync(new URL("../../config.toml", import.meta.url));
+  const pilot = Deno.readTextFileSync(new URL("deploy-testing-center-pilot.ps1", import.meta.url));
+  for (const name of ["testing-center-linear-webhook", "testing-center-linear-worker"]) {
+    if (config.includes(`[functions.${name}]`) || pilot.includes(`"${name}"`) ||
+      invalidDeployableDirectories([{ name, isDirectory: true } as Deno.DirEntry]).length !== 1) {
+      throw new Error(`retired Linear endpoint remains deployable: ${name}`);
+    }
+  }
+});
+
 Deno.test("native account/admin are recognized without changing default commercial deploy", () => {
   const functions = [
     "native-account-authorize",

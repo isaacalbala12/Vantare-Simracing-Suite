@@ -7,14 +7,16 @@ Historial y evidencia completos de los cortes anteriores
 ## Estado vigente
 
 VANTA-129 **Por revisar**: pasos **0–7 y 9 integrados**; grupo **8+10** y
-P3 de #1898 listo como PR draft a nightly, pendiente de integración.
+P3 de #1898 en [PR draft #1907](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1907)
+a nightly, pendiente de integración.
 #1898 integrado en 8066d1c8e52e8dd1c40e44cd145eac818c66aaf0, CI 5/5 SUCCESS
 verificada y Sonnet MERGE comunicado. Esa es la base actualizada de este grupo.
 Rama vantareapp/isa-1868-paso8-widgets, worktree
 D:/VantareServer/worktrees/isa-1868-paso8. Caracterización 6d43456b8;
 widgets 5e57c7b0a; código final 33be67d8a5a72caa6644f5d8cc72c20a4d807286,
 árbol nativo eb758629104a046c9b05098ad2ffdc9b423b6008.
-CI remota pendiente de publicación; validación local completa descrita abajo.
+CI remota pendiente al publicar #1907; [checks del PR](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1907/checks).
+Validación local completa descrita abajo.
 Plane es el tablero; GitHub/Project Vantare registra código y PRs.
 Riesgos abiertos: #1471, #1474, #1478, #1527 y #1561.
 

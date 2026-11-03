@@ -987,3 +987,18 @@ mod presentation_tests {
         fs::remove_dir_all(dir).expect("cleanup");
     }
 }
+
+#[cfg(test)]
+mod bridge_characterization {
+    use super::*;
+    #[test]
+    fn step8a_original_reader_rejects_new_version_and_reduced_motion() {
+        let mut value = serde_json::to_value(Layout::default()).unwrap();
+        assert_eq!(value["version"], 1);
+        value["reducedMotion"] = true.into();
+        assert!(Layout::from_json(&serde_json::to_vec(&value).unwrap()).is_err());
+        value.as_object_mut().unwrap().remove("reducedMotion");
+        value["version"] = 2.into();
+        assert!(Layout::from_json(&serde_json::to_vec(&value).unwrap()).is_err());
+    }
+}

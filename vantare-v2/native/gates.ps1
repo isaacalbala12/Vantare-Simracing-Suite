@@ -85,6 +85,13 @@ try {
     if ($Gate -in @('clippy', 'captura')) { $arguments += @('--', '-D', 'warnings') }
     & cargo @arguments
     if ($LASTEXITCODE) { throw "Gate $Gate falló (código $LASTEXITCODE)." }
+    if ($Gate -eq 'check') {
+        # El banco no forma parte del build normal, pero también debe compilar.
+        $bench = @('check', '-p', 'vantare-runtime', '--all-targets', '--features', 'bench',
+            '--target-dir', $TargetDirectory, '--locked', '--offline', '-j', $jobs)
+        & cargo @bench
+        if ($LASTEXITCODE) { throw "Check bench falló (código $LASTEXITCODE)." }
+    }
     if ($Gate -eq 'prueba') {
         Copy-Item -LiteralPath (Join-Path $directory 'duckdb.dll') -Destination (Join-Path $TargetDirectory 'prueba/duckdb.dll') -Force
         "Binarios públicos de prueba en $TargetDirectory/prueba; no distribuir ni medir rendimiento con este perfil."

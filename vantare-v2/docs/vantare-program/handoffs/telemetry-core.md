@@ -2,21 +2,20 @@
 
 Última actualización: 2026-11-03 · VANTA-129 / [#1868](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1868).
 Historial y evidencia completos de los cortes anteriores
-[en nightly@8066d1c8e](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/8066d1c8e52e8dd1c40e44cd145eac818c66aaf0/vantare-v2/docs/vantare-program/handoffs/telemetry-core.md).
+[en nightly@aae9c2cec](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/aae9c2cecb8053483e03c89778176a847c5ffd72/vantare-v2/docs/vantare-program/handoffs/telemetry-core.md).
 
 ## Estado vigente
 
-VANTA-129 **Por revisar**: pasos **0–7 y 9 integrados**; grupo **8+10** y
-P3 de #1898 en [PR draft #1907](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1907)
-a nightly, pendiente de integración.
-#1898 integrado en 8066d1c8e52e8dd1c40e44cd145eac818c66aaf0, CI 5/5 SUCCESS
-verificada y Sonnet MERGE comunicado. Esa es la base actualizada de este grupo.
-Rama vantareapp/isa-1868-paso8-widgets, worktree
-D:/VantareServer/worktrees/isa-1868-paso8. Caracterización 6d43456b8;
-widgets 5e57c7b0a; código final 33be67d8a5a72caa6644f5d8cc72c20a4d807286,
-árbol nativo eb758629104a046c9b05098ad2ffdc9b423b6008.
-CI remota pendiente al publicar #1907; [checks del PR](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1907/checks).
-Validación local completa descrita abajo.
+VANTA-129 **Por testear** por indicación del orquestador: pasos **0–10 integrados**.
+#1907 integrado en aae9c2cecb8053483e03c89778176a847c5ffd72; merge y CI **5/5
+SUCCESS** verificados en GitHub. El objetivo estructural se cumple; el saldo
+aceptado es −287 líneas de producción y no alcanza la estimación de tamaño.
+Cierre pequeño solicitado en rama vantareapp/isa-1868-cierre, worktree
+D:/VantareServer/worktrees/isa-1868-cierre desde ese origin/nightly actualizado.
+Este cierre no está integrado: completa el footer tipado, documenta espectador
+y añade check bench obligatorio al gate check. Validación local final completa;
+CI remota pendiente al publicar [PR draft #1909](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1909). Código 80828160f10f22f202e84a6de71971f13349a7ca,
+árbol nativo 374b3e128ed77267b5fdc925f469a70a880c30ef.
 Plane es el tablero; GitHub/Project Vantare registra código y PRs.
 Riesgos abiertos: #1471, #1474, #1478, #1527 y #1561.
 
@@ -31,8 +30,68 @@ Riesgos abiertos: #1471, #1474, #1478, #1527 y #1561.
 | 6, #1891 | 7e92e1a9e52d57db17263234ec62efc5774794cb | 5/5 SUCCESS verificado; DeepSeek MERGE comunicado |
 | 4, #1895 | 71a12cc092c7aeee2b76ec357936471e6bee1043 | 5/5 SUCCESS verificado; Sonnet MERGE comunicado |
 | 7, #1898 | 8066d1c8e52e8dd1c40e44cd145eac818c66aaf0 | 5/5 SUCCESS verificado; Sonnet MERGE comunicado |
+| 8+10, #1907 | aae9c2cecb8053483e03c89778176a847c5ffd72 | 5/5 SUCCESS verificado; integración por el orquestador |
 
-## Corte actual y verificación
+## Balance final del recorrido
+
+El objetivo estructural se cumple. El balance de tamaño integrado aceptado por
+el orquestador es **−287 líneas de producción**, frente a **−850/−900 estimadas**:
+el objetivo de tamaño no se alcanza. No se abre otra limpieza para perseguirlo.
+El delta de este cierre se mide aparte respecto a aae9c2cec.
+
+La tabla cuenta decisiones funcionales del diseño, no cada llamada o aparición
+textual. Las reglas distintas de Journal y del consumidor siguen separadas.
+
+| Decisión | Antes | Después |
+| --- | --- | --- |
+| Ámbito e hidratación | 7 criterios repartidos, con desacuerdo al cambiar situación | 2 fronteras explícitas: Scope (fuente/sesión/coche) y Boundary (hidratación); publicador y suscriptor usan el mismo Boundary |
+| Silencio y situación | 5 límites de frescura de 500 ms y umbrales dispersos de confirmación | STALL_LIMIT y SITUATION_CONFIRM (250 ms) compartidos |
+| Pausa | 4 capas reinterpretándola | Adaptador detecta, Core retiene; host consume predicados comunes |
+| Diagnóstico de frescura | Caso ACC y motivos propios dentro de Core | Reason neutral compartido más detalle del adaptador; mismo log y E/S de transiciones |
+| Señales del DTO | 3 mapas señal→campos | 1 tabla signal_fields! |
+| Codificación | 2 caminos | 1: selected(all) también produce la foto completa |
+| Decodificación | 2 caminos | 1 lector por referencia; el de valor delega |
+| Golden | Cirugía sobre texto JSON | oracle_view tipado, mismos bytes/hashes congelados |
+| Escenas activas | Fixtures v7/v10 y alias específico | v11 estricto; lectores externos v7–v10 conservados y probados con documentos reales |
+| Host | 2 hosts para campaña/layout | 1 host; campaña como Layout sintético, Instance retenida por widget |
+| Visibilidad | Sesión, derechos y presentación resueltos en varios lugares | 1 visibility() pura compartida por render y uso |
+| Estado sin datos | 7 enums | 1 Status::of; se conservan prioridades de cada proyección |
+| Espera | 4 funciones waiting y textos repetidos | 1 función y textos comunes; Standings admite espectador |
+| Amarilla | 3 selecciones global/sector | 1 selección común; boxes/vuelta final e índices siguen en cada widget |
+| Líder y clasificación | Texto traducido interpretado por consumidores | is_leader/qualifying proyectados; este cierre completa Footer::Session |
+| Quality de adaptadores | Constructores repetidos en LMU/ACC | from_source/from_estimate compartidos, must_use y un único test de contrato |
+| Fila REST y movimiento LMU | Dos casados de fila y cálculos repetidos de pose/velocidad | Fila única y un cálculo por coche, conservando vigencia/suelo |
+| Repostaje y spline | Constantes/ventanas duplicadas | Constante de repostaje y ventana spline ACC compartidas |
+| Medición | 2 flags de ablación en Core de producto | 0 flags en producto; banco opt-in bench, tests normales conservados y check bench obligatorio en gates.ps1 |
+
+Se conservan ACC experimental y su golden, lectores v7–v10, formato del delta
+por Look, cable v11, capacidades del adaptador y cola acotada. DTO v12,
+capacidades en Core y conectar ACC siguen fuera. Los cambios intencionados de
+Scope (calidad de metadatos ignorada y reset al cambiar fuente) están aceptados.
+
+## Cierre pequeño y verificación
+
+Caracterización ANTES sobre aae9c2cec: 17/17 tests de Standings Vantare PASS
+(run 0cddd061-f922-47f3-b3a7-0e481dfd9765), incluidos qualy, ES/EN y espectador.
+Los goldens y las 208 capturas aceptadas de #1907 son la base conservada; no
+se regeneran. La paridad visual comprueba el footer con las escenas existentes.
+Validación final sobre ese código y árbol nativo:
+- Fmt workspace/widget, check y Clippy -D warnings PASS (--all-targets),
+  domain/ipc/runtime/ui juntos por compilar.ps1; target privado y jobs 2.
+- Check de runtime --features bench --all-targets y parser de gates.ps1 PASS.
+  El comando añadido al gate check compila sin activar bench en producto.
+- Nextest CI 1.307/1.307 PASS, 15 skips; incluye telemetría 34/34 (#1498),
+  goldens LMU/ACC y replay a widgets. ACC completo 200,569 s.
+- Lifecycle 25/25 PASS con overlays reales normal/QA; capturador QA compila.
+- 208/208 PNG byteidénticos a la base aceptada, sin máscaras/tolerancias nuevas.
+  Trece lotes de 16, cero omisiones, un proceso/ventana por lote, sin foco.
+- Integridad y quality 468/468 PASS. Diff completo revisado. Cola cedida antes
+  de capturar; no se comparten targets ni se copian cachés.
+Recuento del cierre frente a aae9c2cec: producción +3/−3 (neto 0), tests +0/−0,
+tooling +7/−0; docs por separado en el PR. El saldo de producción queda en −287.
+Evidencia de este cierre: D:/VantareServer/evidence/isa-1868-cierre.
+
+## Histórico integrado: corte 8+10 y verificación
 
 Pasos 8+10 agrupados desde la misma base, con cambios de código separados.
 Los siete widgets comparten Status::of y sus textos; cada proyección conserva
@@ -122,6 +181,7 @@ texto CAS de ipc/files. No se modifican esos archivos o líneas, ni installer,
 packaging o hub/installation. La llamada MotionPolicy::apply_layout permanece
 idéntica en el host compartido.
 
-Revisar el grupo 8+10 y sus P3. Al integrarse este PR quedan los pasos 0–10
-en nightly. No se ha hecho merge, release ni promoción; corresponden al
-orquestador. La CI remota se verifica en el PR, separada de los gates locales.
+Revisar el PR pequeño de cierre y probar el recorrido integrado. Plane permanece
+Por testear; no se marca Entregado. El worker no hace merge, release ni
+promoción. Tras esta entrega no quedan más pasos de implementación del encargo;
+la revisión, integración del cierre y prueba de producto corresponden al orquestador/Isaac.

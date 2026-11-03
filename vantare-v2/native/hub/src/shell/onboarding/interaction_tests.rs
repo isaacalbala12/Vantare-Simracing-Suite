@@ -765,9 +765,11 @@ fn step8a_existing_v2_motion_remains_editable_without_writing_legacy_mirror() {
     gpui_platform::headless().run(|app| {
         let root = Root::new();
         let mut cx = context();
-        let mut layout = vantare_ui::layout::Layout::default();
-        layout.version = 2;
-        layout.reduced_motion = Some(false);
+        let layout = vantare_ui::layout::Layout {
+            version: 2,
+            reduced_motion: Some(false),
+            ..Default::default()
+        };
         std::fs::write(
             root.0.join("layout.json"),
             serde_json::to_vec(&layout).unwrap(),
@@ -779,9 +781,13 @@ fn step8a_existing_v2_motion_remains_editable_without_writing_legacy_mirror() {
         window
             .update(&mut cx, |hub, window, cx| {
                 assert!(!hub.settings_motion(cx));
-            assert!(!cx.try_global::<vantare_ui::MotionPolicy>().unwrap().0);
-            crate::orbit::theme::apply(hub.settings.store.value.appearance, window.appearance(), cx);
-            assert!(!cx.try_global::<vantare_ui::MotionPolicy>().unwrap().0);
+                assert!(!cx.try_global::<vantare_ui::MotionPolicy>().unwrap().0);
+                crate::orbit::theme::apply(
+                    hub.settings.store.value.appearance,
+                    window.appearance(),
+                    cx,
+                );
+                assert!(!cx.try_global::<vantare_ui::MotionPolicy>().unwrap().0);
                 hub.settings_reduced_motion(window, cx);
                 assert!(hub.settings_motion(cx));
                 assert_eq!(hub.studio.read(cx).home_layout().version, 2);

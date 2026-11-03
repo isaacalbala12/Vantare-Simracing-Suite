@@ -333,7 +333,11 @@ impl Store {
         }
     }
     pub fn warning_text(&self) -> Option<String> {
-        self.warning.as_ref().or(self.mirror_warning.as_ref()).or(self.mirror_protected.as_ref()).cloned()
+        self.warning
+            .as_ref()
+            .or(self.mirror_warning.as_ref())
+            .or(self.mirror_protected.as_ref())
+            .cloned()
     }
     pub fn save_general(&mut self, general: Preferences) -> Result<(), String> {
         self.ensure_section(Legacy::General)?;

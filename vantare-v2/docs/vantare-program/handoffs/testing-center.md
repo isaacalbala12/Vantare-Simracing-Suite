@@ -1,3 +1,10 @@
+## 2026-11-03 - #1896 / VANTA-131 paso 3: ACL y canales
+
+- PR draft #1901 contra nightly; rama vantareapp/isa-1896-paso3-acl-canal; base 8066d1c8e, HEAD ea0135bd2 antes de este handoff.
+- Los RPC privados del calendario quedan cerrados a anon/authenticated; la lectura publica sigue disponible. El servicio conserva acceso de confianza.
+- Informe simple: nightly/testers requieren membresia activa; master sigue abierto a cuenta verificada.
+- PostgreSQL comercial LF/CRLF y los demas checks remotos PASS; compilacion Python y diff PASS. Migraciones con rollback. Sin merge, despliegue ni release.
+
 ## 2026-11-03 - #1896 / VANTA-131 paso 2: bearer demasiado largo
 
 - La CI de 2e7e21ef9 termino 6/6 PASS. Un bearer de mas de 16 KiB se rechaza localmente con 413; ahora tambien consume el tope IP de fallos de autenticacion. Test RED previo y Deno 26 PASS/1 omitido.

@@ -10,8 +10,8 @@ $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'matrix/guard.ps1')
 $qaMatrixRoot=Assert-MatrixRoot $Root
 if (Test-Path -LiteralPath $qaMatrixRoot) { throw 'MATRIX_NEEDS_FRESH_ROOT' }
-if (-not $LegacyPackage -or -not $TestVerifier -or -not $BootProbe -or -not $WriteEngine -or -not $RootLauncher) { throw 'MATRIX_FIXTURES_REQUIRED' }
 Assert-MatrixSourceBytes $PSScriptRoot
+if (-not $LegacyPackage -or -not $TestVerifier -or -not $BootProbe -or -not $WriteEngine -or -not $RootLauncher) { throw 'MATRIX_FIXTURES_REQUIRED' }
 $script:Packaging=$PSScriptRoot
 $qaImportCallerRoot=$Root
 . (Join-Path $PSScriptRoot 'beta.ps1') -Library -Root $qaMatrixRoot

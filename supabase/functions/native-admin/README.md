@@ -16,8 +16,10 @@ VANTA-132 / #1910, paso 3, revisión del orquestador:
   `client_id`, audiencia o `azp` del cliente configurado, y `exp`/`nbf` válidos.
   No acepta JWT de sesión, del Hub ni tokens opacos. La firma se comprueba ANTES
   del contador y de la introspección: basura o firma falsa → 401, sin gastar
-  cupo ni llamadas de la API de Clerk. La introspección posterior conserva la
-  comprobación remota de revocación y el owner sigue decidiéndose en SQL.
+  cupo ni llamadas de la API de Clerk. Se mantiene la introspección posterior y
+  el owner sigue decidiéndose en SQL. Revocar el refresh no invalida un access
+  JWT ya emitido: vive hasta `exp`. Isaac configurará TTL de **cinco minutos**
+  al crear Gestión; no hay registro de revocación ni de `jti`.
 
 JWKS del issuer configurado: caché privada del handler 5 minutos, una carga
 concurrente, máximo 64 KiB/20 claves y backoff de 15 segundos si falla. Un `kid`

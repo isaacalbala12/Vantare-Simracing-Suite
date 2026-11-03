@@ -7279,3 +7279,4 @@ esta integración y su CI; sin autorizar promoción ni publicación.
   activar. No se ha usado ningún token/servicio real ni tocado _shared.
 - Caracterización previa ccc35c51d: 8 fallos nuevos reproducidos antes del cambio;
   Deno 142 PASS después. SQL/E2E y métricas finales en #1910 y el PR.
+- Corrección CI de tipos del fixture (run 41691373731): init tipado RequestInit y lib dom.iterable local al test. Reproducido TS2339 con Deno 2.7.13/TS5.9.2; deno check con y sin config, fmt y lint PASS en esa versión. Producto sin cambios.

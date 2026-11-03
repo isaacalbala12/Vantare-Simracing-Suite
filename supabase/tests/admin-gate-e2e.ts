@@ -1,3 +1,4 @@
+/// <reference lib="dom.iterable" />
 // Only the disposable PostgreSQL command supplied by run-commercial-local.py.
 // Clerk/JWKS are fixtures; JWT signatures, SQL gate, owner and actions are real.
 import {
@@ -98,7 +99,7 @@ async function fixture(active: boolean) {
         };
       },
     },
-    fetch: (input, init) => {
+    fetch: (input, init?: RequestInit) => {
       if (String(input).endsWith("/.well-known/jwks.json")) {
         calls.jwks++;
         return Promise.resolve(Response.json({ keys: [publicKey] }));

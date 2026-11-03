@@ -698,30 +698,84 @@ Sin merge/release del worker.
   Medidas y limitaciones actualizadas en la evidencia; siguiente: integrar por
   el orquestador tras revisar CI. Plane En curso; sin merge/release del worker.
 
-### Paso 5b en curso: poda antes del lanzador (2-nov-2026)
 
-Encargo del orquestador, #1840 / VANTA-127. Rama propia
-vantareapp/isa-1840-paso5b-poda, worktree D:/VantareServer/worktrees/isa-1840-paso5b,
-target exclusivo D:/VantareServer/targets/isa-1840-p5b. Base nightly83716fe93,
-con los cambios propios de #1883 incorporados como dependencia local hasta su
-integración. Punto anterior a la poda: dacce28a1b4ad1fc356dbd70e3046ffa39faac86;
-producción ampliada14194. Se retirará esa dependencia del diff al actualizar
-la base nightly antes de entregar el PR.
+### Paso 5b · poda lista para PR draft (3-nov-2026)
 
-- Dos perfiles Display/Verified, una lectura y verificación por operación,
-  inventario del manifiesto autenticado sin catálogo manual; State/versión comunes.
-- Una validación Rust del marker y una frontera Windows; se conserva la
-  comprobación independiente del script Cleanup permanente. Quitar identidad QA
-  paralela sin perder Context, HKCU/carpetas inyectados ni guard.
-- batch pasa a tooling y se mide aparte; borrar driver no ejecutado por producto.
-  Matriz por invariantes con45 rechazos por motivo, no bytes heredados de PS.
-- Techo obligatorio5b≤12800; siguientes6≤12200,7≤10080,8≤10110. Parar si no cabe.
-  windows-registry0.6.1 autorizada solo con ahorro real medido. Sin otras deps.
-- LegacyRunner se conserva hasta VM975/988 de Isaac y enmienda ADR; indicador
-  solo se retira tras medir Hub≤1,5s. Nada de paso6 ni consumidores adelantados.
-  Feed/Register/SetStartup siguen heredados. Solo QA guardada; Plane En curso.
+- Código del instalador c1f754198, base nightly b68a34311 tras rebase limpio. Producción simétrica actual: 14180 → 12771 (Rust10662 + PowerShell2109), 29 líneas bajo el tope12800. Los cortes originales 5→3→1→4→2→6 y las519 líneas reclasificadas se informan aparte.
+- Gates por la cola y target exclusivo: fmt/check, Clippy lector/Installer/TEST -D warnings, check Linux all-targets y builds lector/escritor/parity/Uninstall público/Setup payload PASS. Nextest lector17, Installer65 y TEST67 PASS; Hub627 PASS sobre nightly actual (4 omisiones previas). Un helper por perfil Installer se ejecuta desde su padre.
+- Reparar sin activa vuelve a rechazar con3 antes de preparar Cleanup, sin tocar marcador/datos. Uninstall conserva la lectura informativa parcial, pero exige referencias válidas antes de borrar; su versión solo procede del manifiesto ligado por SHA. Prueba CLI RED→GREEN: manifiesto válido pero SHA distinto ya no muestra versión; estado/manifiesto intactos.
+- Matriz05 completa bajo D:/VantareServer/qa con guard, HKCU y carpetas inyectados, sin Record: 88/88 filas, 45 rechazos por motivo, 48 Startup, 52 inventario, 42 Register/arranque y 39 frontera PASS; campaña879,40s, salida0. Matrices01–04 fallidas conservadas: precedencia de Repair, Apply sin pendiente y dos fallos de ACL en la prueba QA; se corrigieron sin bajar aserciones. Histórico14+156, workflow45 y calidad468 PASS. Baseline/candidate/beta/normalizador intactos.
+- Pendiente solo publicar PR draft y enlaces de seguimiento. Plane permanece En curso; sin merge, promoción, release ni instalación/registro reales.
 
-### Paso 5 integrado / paso 5a listo en PR draft (2-nov-2026)
+
+Rama/worktree y target propios: `vantareapp/isa-1840-paso5b-poda`,
+`D:/VantareServer/worktrees/isa-1840-paso5b`,
+`D:/VantareServer/targets/isa-1840-p5b`. Evidencia en
+[evidence-1840-p5b.md](../../../native/packaging/matrix/evidence-1840-p5b.md).
+No se empieza paso6. LegacyRunner y consumidores Feed/Register/SetStartup siguen.
+
+<details>
+<summary>Antecedentes del WIP y de la poda adicional</summary>
+
+5b, decisión de retirada autorizada: sin catálogo manual, solo active/previous
+ligados por SHA autorizan miembros. Los binarios huérfanos se conservan y el log
+debe indicar ruta y motivo; limpieza pendiente de decidir en el paso 8. Se mantienen
+los archivos ajenos de bin/. Test del residuo/diagnóstico y gates aún pendientes.
+
+
+### 5b detenido por el presupuesto obligatorio (2-nov-2026)
+
+- Base nightly `e8637bb68b8d8232921564acd44f1328c5024f13` (#1883 integrado,
+  CI5/5 comunicada por el orquestador); rama `vantareapp/isa-1840-paso5b-poda`,
+  worktree `D:/VantareServer/worktrees/isa-1840-paso5b`. HEAD local57f9cfe78 más
+  WIP sin commit ni push. No hay PR5b y no se empieza6.
+- Medición tras fmt: producción ampliada14194→13168; techo12800, exceso368.
+  Rust11889→11059 (-830), PS2305→2109 (-196). La bajada Rust incluye323 líneas
+  reclasificadas de batch; esa parte no se presenta como simplificación.
+  Rust tests3431→3397, PS tests/tooling6280→6010, tooling Rust318, fixtures6→565.
+- Método reproducible: `python native/scripts/installer-lines.py --base e8637bb68
+  --projection`, leyendo el worktree tras `cargo fmt --all` mediante compilar.ps1.
+  Evidencia `D:/VantareServer/qa/isa-1840/p5b-logs/lines-stop.json`, measure-01.log y
+  static-02.log (STOP128 antes de compilación). Primera espera static-01 cancelada
+  antes de ejecutar Cargo para ceder la cola; no se alteraron los límites.
+- Solo fmt y parseo estático PS. Check/Clippy/Nextest/matriz NO ejecutados; el WIP
+  no acredita compilación ni comportamiento. La poda está en revisión estática:
+  lector de dos perfiles, inventario del ZIP, caché de operación, Windows común,
+  identidad QA por Context, driver eliminado y matriz adaptándose a invariantes.
+- Las generaciones huérfanas quedan con ruta/motivo en el log, autorizado por el
+  orquestador; diseño/ADR actualizados, pruebas añadidas pero no ejecutadas.
+- Bloqueo comunicado al orquestador: decidir poda adicional concreta antes de
+  continuar, sin subir el techo ni retirar guardas, LegacyRunner o consumidores
+  de6–7. Plane En curso, solo resumen. Sin instalación/registro reales, secretos,
+  Downloads, merge, release ni watch de CI.
+
+
+### 5b reanudado: poda adicional aprobada y gates en cola
+
+- Propuesta Opus leída entera: instalador-PODA-5b.md. Bloques aplicados 5→3→1→4→2→6.
+  Mediciones de producción ampliada tras fmt:13037→12954→12907→12882→12861→12787.
+  Antes de la reserva se compiló el crate para x86_64-unknown-linux-gnu con
+  write-engine. Los jobs Linux de CI son Python; no se afirma que ejecuten Cargo.
+- WIP dentro del techo12800 tras los seis bloques, pendiente de la medición final
+  y los gates. El primer check Windows del escritor compiló después de corregir
+  marker y el ocultamiento de la proyección. Fmt/Clippy del lector inicial PASS.
+  El primer check Linux all-features pidió payload por setup-payload; el arnés lo
+  separa del check de código y construirá Setup con entradas QA autenticadas.
+- Tres cambios autorizados documentados y con tests añadidos: previous=active se
+  deshabilita como corrupto; REG_EXPAND_SZ falla antes de mutar; stdout del Cleanup
+  programado va al log. El temporal GUID conserva la regla cerrada del script.
+- Revisión estática de la caché: validar árbol antes de leer sidecars y no usar la
+  proyección antigua si no se pudo restaurar state.json. Regresiones añadidas.
+- Tanda final agrupada por compilar.ps1, target exclusivo isa-1840-p5b, actualmente
+  esperando el slot ocupado. Nextest/matriz pendientes; aún sin PR/push del WIP.
+  Cola y límites respetados. No se empieza el paso6 del recorrido.
+
+</details>
+
+### Pasos 5 y 5a integrados (2-nov-2026)
+
+#1883 integrado por el orquestador en nightly
+e8637bb68b8d8232921564acd44f1328c5024f13, CI 5/5 verde comunicada por él.
 
 Revisión de #1883 aplicada sobre aade963fbf5717c88716256672bd26e829ee08fb:
 formato y Clippy Installer normal/TEST PASS; Nextest 62/62 y 59/59 PASS, con 1
@@ -734,7 +788,7 @@ retained-no-marker-cleanup, SHA/datos iguales; diff exacto de 1 byte, otras 87 f
 intactas (bc65408c7). Auxiliares 25/24/14/18/54/42/48/39/10 PASS; Startup 260,80 s
 de 480 s sin cambiar sus 48 aserciones/deadlines de 30 s. Campaña 575,27 s. Logs QA/isa-1840/
 p5a-review-logs. Producción 14193; métricas finales en evidencia p5.
-Pendiente revisión/CI del orquestador y después 5b; Plane En curso sin comentarios.
+Siguiente: poda 5b en curso; Plane En curso sin comentarios.
 
 Antecedente: primera entrega del 5a en eb975199c (antes de esta revisión).
 

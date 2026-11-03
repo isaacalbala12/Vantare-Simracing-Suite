@@ -40,9 +40,11 @@ Hub y overlays deben salir de la misma generación, sin compatibilidad del nombr
 ## Instalación y versión — #1840, paso 3
 
 Ajustes lee estado/manifiesto desde `installer::engine`, dependencia sin features
-de GPUI/transporte del instalador. Conserva el perfil informativo: no autentica
-binarios ni el hash del manifiesto, y previous solo indica referencia estructural.
-Desarrollo, paquete portátil y estado inválido mantienen su clasificación previa.
+de GPUI del instalador. En el paso 5b comparte `Installation::read(root)`: liga
+el manifiesto por SHA y valida la estructura sin recalcular los hashes binarios.
+Solo ofrece volver si previous tiene un manifiesto ligado y estructura válida;
+previous igual a active queda corrupto. Desarrollo, paquete portátil y estado
+inválido mantienen su clasificación.
 
 Cambio de comportamiento autorizado en commit separado: para Package, versión
 y canal mostrados y comparados con una oferta salen del manifiesto de la activa.

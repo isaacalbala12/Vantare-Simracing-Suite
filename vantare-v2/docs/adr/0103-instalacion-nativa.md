@@ -247,8 +247,8 @@ en Cargo.lock al conectar el lector: ningún paquete, versión o checksum nuevo.
 
 ## Enmienda aprobada: poda 5b antes del paso 6
 
-El replanteo del 2-nov-2026 simplifica lo ya escrito: dos perfiles Rust,
-Display (manifiesto ligado por SHA, sin rehash de binarios) y Verified
+El replanteo del 2-nov-2026 simplifica lo ya escrito: dos fases Rust,
+read (manifiesto ligado por SHA, sin rehash de binarios) y verify
 (verificación de binarios), un único contrato de versión y lectura por operación.
 El estado y los manifiestos leídos se pasan a las operaciones y a shell::sync;
 no se vuelven a abrir para reconstruir una verdad ya validada en esa operación.
@@ -312,3 +312,43 @@ Complementa ADR 0099 en instalación y ciclo de vida; conserva ADR 0102 y los
 protocolos de acceso. Sustituye progresivamente la autoridad del recorrido
 PowerShell descrito en los README de packaging/installer. Hasta cada paso,
 esos README y su evidencia describen el producto que realmente se ejecuta.
+
+
+### Decisión 5b: inventario de retirada y generaciones huérfanas
+
+Uninstall solo retira miembros de los manifiestos ligados por SHA a `active` o
+`previous` en el estado leído bajo bloqueo. Conserva los archivos ajenos de
+`bin/`. Una generación sin referencia SHA queda intacta, incluidos sus binarios:
+el log identifica su ruta y el motivo. No se añade ningún inventario ni marcador.
+Este residuo está autorizado y pendiente del paso 8; allí se decidirá si un
+manifiesto autoconsistente basta para retirar binarios de una generación huérfana.
+Las carpetas `data/` se conservan en todos los casos. La matriz prueba tanto el
+residuo como su diagnóstico; ya no exige el snapshot PowerShell byte a byte.
+
+
+### Poda adicional 5b autorizada
+
+Se aplica la propuesta `D:/VantareServer/evidence/revision-general/instalador-PODA-5b.md`
+en el orden 5 → 3 → 1 → 4 → 2, midiendo producción tras cada bloque. El techo
+12800 no cambia. Las cifras válidas son las del script tras fmt, no las estimaciones.
+
+Cambios observables autorizados y sujetos a regresiones:
+
+- Una referencia previous igual a active se considera previous-corrupt y no
+  habilita una vuelta atrás a la misma generación.
+- REG_EXPAND_SZ deja de expandirse. Se rechaza explícitamente al leerlo; la raíz
+  y Run se comprueban antes de mutar, conservando la instalación si aparece.
+- Cleanup programado guarda también stdout en su log, como el modo síncrono.
+  Su código de salida sigue siendo la autoridad y el script sigue siendo la
+  excepción permanente mínima que valida propiedad después del padre.
+
+La API de lectura expresa las dos fases sin un enum de perfiles:
+`Installation::read(root)` liga y valida los metadatos; `verify(root)` añade
+integridad de binarios sobre lo ya leído. No introduce un tercer lector.
+La identidad del directorio temporal propio pasa a GUID; el script mantiene
+una regla cerrada del mismo nombre y conserva raíz, contenido, hash y bloqueo.
+
+Los jobs Linux actuales de policy/quality ejecutan tooling Python, no Cargo.
+La compatibilidad del crate en Linux se verifica expresamente con el target
+x86_64-unknown-linux-gnu antes de usar la reserva Windows del bloque 6 y se vuelve
+a comprobar en la tanda final; no se atribuye esa compilación a un job inexistente.

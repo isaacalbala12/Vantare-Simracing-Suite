@@ -21,41 +21,45 @@ Feed y Register continúan heredados hasta sus pasos previstos.
 
 ## Lectura compartida — #1840, paso 3
 
-`engine::Installation::read(root, profile)` es el único lector Rust de estado
+`engine::Installation::read(root)` es el único lector Rust de estado
 y manifiesto para Setup y Ajustes del Hub. `State`, `Generation` y `Manifest`
 reúnen los tipos; la versión instalada sale del manifiesto de la activa.
 El lector no escribe instalación, registro, opciones ni datos. Desde p4,
 Context::probe reúne descubrimiento HKCU, opciones y movimiento en Rust.
 La propiedad de la raíz conserva la comparación Windows sin distinguir
 mayúsculas, incluidos Unicode y separadores; no confunde raíces vecinas.
-complete_probe/readContext se conservan solo como adaptador de contraste p3
-y oráculo heredado del driver, no los invoca Setup.
+El paso 5b elimina complete_probe/readContext, el driver y el catálogo manual.
 
-| Perfil | Contrato conservado |
+| Fase | Contrato vigente |
 | --- | --- |
-| Probe | SHA del manifiesto activo, data presente, inventario cerrado y sin archivos ajenos; no rehash de sus binarios. Anterior con hash/tamaño/PE/sidecar completos o aviso y anterior no restaurable, sin reescribir estado |
-| Verified | Mismas reglas que Probe, añadiendo hash/tamaño/PE/sidecar de la activa antes de mutaciones; reparar conserva Probe para permitir sustituir una activa dañada |
-| Hub | Informativo: schema/canal/referencias y manifiesto, sin autenticar bytes/inventario/data; anterior solo estructural. Estado cerrado 16 KiB, manifiesto 1 MiB; portátil sin state conserva soporte |
-| Uninstall | Recuperación estructural aunque se hayan retirado binarios/manifiesto. La lectura estructural permite reanudar la retirada; Context usa el manifiesto cuando existe y deja la versión ausente si ya se retiró, sin DisplayVersion |
-| Retire | Contrato estructural del escritor Uninstall-Beta: referencias active/previous y hashes sintácticos válidos, canal beta y previous presente; no exige integridad de binarios ya retirados |
+| read | Metadatos ligados por SHA, esquema/canal, rutas seguras y data presente, sin recalcular hashes de binarios |
+| verify | Mismos metadatos más tamaño, SHA, PE x64 y sidecar de los binarios; una comprobación por generación única y operación |
 
-Probe conserva el límite de 64 KiB del manifiesto y el estado sin límite previo;
-no se endurecen esos contratos en este refactor. `validation` centraliza los
-perfiles existentes: packaging 3–4 componentes/sufijo, Hub con tope de 100 bytes,
-comparación Setup de tres u16 sin ceros iniciales. No son gramáticas equivalentes.
-El lector común Probe acepta los cuatro canales cerrados, como Read-NativeState.
-Setup conserva ExpectedChannel=beta en Context y en el adaptador `complete_probe`.
-La clave previous
-ausente se rechaza: con StrictMode el PS real no la trata como null. Los rechazos
-de contrato disponen de invariantes tipadas para el contraste de la matriz.
-Los adaptadores PS y sus reglas siguen hasta pasos 4–7; no se afirma 5→1 global.
-El catálogo cerrado ahora pertenece a Rust (engine/members.rs). La matriz
-contrasta los cuatro canales con el adaptador PS heredado hasta su retirada p7.
-Build.rs ya no interpreta arrays ni funciones PowerShell para generar Rust.
+La lectura acepta BOM, usan documentos de hasta 64 KiB y campos cerrados. La versión
+usa tres u16 sin ceros iniciales para todos los consumidores Rust. Setup mantiene
+su política beta; el lector común admite los cuatro canales cerrados hasta la
+retirada de compatibilidad de los pasos 6–7. Un estado ilegible se rechaza sin
+modificarlo. State conserva la lectura informativa de una retirada antigua parcial.
+Uninstall usa el mismo decodificador, pero exige previous presente y referencias
+SHA válidas antes de retirar miembros; no hay un tercer perfil de Installation.
 
-`default-features=false` compila el lector sin GPUI, host, scripts embebidos ni
-recursos/payload de Setup. `write-engine` habilita ZIP/operaciones sin GPUI; `transport` conecta Setup y la finalización Windows; `ui` lo incluye; las
-features por defecto conservan Setup/Uninstall. Hub depende solo del lector.
+Las mutaciones conservan el estado y los manifiestos leídos bajo los bloqueos y
+pasan la proyección resultante a shell::sync; no los vuelven a abrir al activar o
+resincronizar. La extracción autentica el SHA externo del ZIP en el mismo handle,
+deriva los nombres de su manifiesto y mantiene límites y validación central de
+duplicados. Así un recurso nuevo no requiere modificar el instalador (#1795).
+Los archivos ajenos en bin/ se conservan al desinstalar. Los binarios de generaciones
+huérfanas sin referencia SHA también se conservan, con ruta y motivo en el log;
+su limpieza se decide en el paso 8. No se crea otra lista ni marcador.
+
+Context mantiene HKCU y carpetas QA inyectados y el guard. Dentro de ese contexto
+se usan los nombres del producto, sin identidad QA paralela. El validador Rust del
+marcador de Cleanup es único; el script permanente vuelve a comprobarlo después
+del padre, bajo el bloqueo, por ser una frontera de proceso diferente.
+
+`default-features=false` compila solo lectura, sin GPUI ni scripts embebidos.
+`write-engine` reúne operaciones, contexto y shell solo en Windows y sin GPUI; `ui` añade Setup.
+Las features por defecto conservan Setup/Uninstall; Hub usa solo lectura.
 sha2 0.10.9 ya fijada se adelanta con aprobación del orquestador; el lock cambia
 solo las listas de dependencias de installer/Hub, sin paquetes/versiones/checksums.
 zip6.0.0 y windows0.62 directos entran en p4, con aprobación; sin paquetes nuevos.
@@ -67,14 +71,13 @@ estado grande, anterior dañada y perfiles de versión. La matriz usa el ejemplo
 no se distribuye ni crea un puente de producto. Véase
 [evidencia](../packaging/matrix/evidence-1840-p3.md).
 
-El motor se carga con `-Library -Root` explícitos. Probe descubre una instalación;
-las operaciones posteriores deben enviar raíz. La build pública omite identidad,
-carpetas y prefijo QA del protocolo. `test-installer` exige las cuatro variables
-`VANTARE_INSTALLER_QA_IDENTITY`, `VANTARE_INSTALLER_QA_SHORTCUT_FOLDER`,
-`VANTARE_INSTALLER_QA_LEGACY_SHORTCUT_FOLDER` y `VANTARE_INSTALLER_QA_PREFIX`;
-el builder las recibe mediante sus parámetros QaIdentity/QaShortcutFolder/
-QaLegacyShortcutFolder/QaPrefix. El driver rechaza una petición TEST incompleta
-o dirigida fuera del prefijo, a la identidad pública o a una instalación de usuario.
+Los adaptadores PowerShell conservados se cargan con `-Library -Root` explícitos.
+El motor Rust descubre la instalación en Probe y exige raíz en las operaciones.
+`test-installer` usa la identidad del producto dentro del contexto aislado;
+El builder exige salida bajo el guard QA. El ejecutable TEST recibe únicamente
+`VANTARE_INSTALLER_QA_CONTEXT`, un archivo JSON en QA con HKCU y carpetas inyectados.
+La guarda SID del origen se conserva para impedir que un Hub TEST use la instalación
+real. No se compilan nombres ni prefijos QA paralelos.
 
 La UI copia la ventana #E de `instalador-r3.html`: 720x460 lógicos, marca 240,
 footer solo a la derecha, Inter/Rajdhani 700/Space Mono y seis pantallas. Las
@@ -156,9 +159,7 @@ Desde native; envolver cada comando con `native/scripts/compilar.ps1` desde
 powershell -NoProfile -File packaging/candidate.ps1 -Operation Build `
   -Root D:/VantareServer/qa/build-context -Channel beta -Version 0.0.977 -OutputDirectory D:/VantareServer/qa/build-a
 powershell -NoProfile -File packaging/build-installer.ps1 -Version 0.0.977 `
-  -OutputDirectory D:/VantareServer/qa/build-a -TestInstaller `
-  -QaIdentity VantareNativeQA1840 -QaShortcutFolder 'Vantare QA1840' `
-  -QaLegacyShortcutFolder 'Vantare Legacy QA1840' -QaPrefix D:/VantareServer/qa/
+  -OutputDirectory D:/VantareServer/qa/build-a -TestInstaller
 ```
 
 El builder exige ZIP/version/bootstrap idénticos y construye primero Uninstall,
@@ -167,8 +168,8 @@ la UI, pero instalar falla explícitamente por payload ausente.
 Los EXE del builder enlazan CRT estático del toolchain: no requieren instalar
 VC Redist para abrir Setup. La lista de imports se comprueba en la evidencia;
 ICU/DirectWrite/D3D son componentes del Windows objetivo, no descargas de Setup.
-`test-installer` exige raíz bajo el prefijo inyectado por el builder; protege la instalación
-real incluso con rutas/registro externos. `parity-capture` solo existe en builds
+`test-installer` exige contexto HKCU/carpetas inyectado y raíces bajo el guard QA;
+rechaza el uso del contexto real. `parity-capture` solo existe en builds
 de QA; carga snapshot explícito y deshabilita acciones. Su script
 `installer-visual.ps1` exige pantalla libre/mutex y no cambia DPI global.
 Sin abrir ventanas en pantalla: `vantare-setup --capture-batch=<manifiesto>`
@@ -227,7 +228,7 @@ y exige exit90 y estado íntegro. El ejemplo installer-write-matrix, solo QA,
 inyecta HKCU/carpetas y usa el Session real; nunca se distribuye ni acepta rutas
 fuera del guard. En una build TEST, VANTARE_INSTALLER_QA_CONTEXT apunta a ese
 JSON explícito de contexto bajo QA; no cae a HKCU/carpetas reales.
-El ejemplo exige las features `transport,test-installer` y las cuatro variables
+El ejemplo exige las features `write-engine,test-installer` y el contexto aislado; ya no necesita las cuatro variables
 QA del builder descritas arriba; uso en [la matriz](../packaging/matrix/README.md).
 Solo `test-installer` embebe el guard; Setup/Uninstall de producto no lo incluyen
 y rechazan un contexto aislado antes de preparar archivos.
@@ -255,3 +256,27 @@ Fuente5f8507481: fmt/check y cinco Clippy -D warnings PASS; Nextest lectura20/20
 Installer58/58 y TEST55/55 PASS. Los JSON auxiliares corruptos se rechazan antes
 de mutar, conservándolos; no se guardan sus bytes para deshacer. Campaña04:
 88/88 idénticas al baseline; Startup48 en191.997s, frontera37 PASS. [Evidencia del paso5](../packaging/matrix/evidence-1840-p5.md).
+
+
+`fixtures/manifest-full.json` es metadato capturado de la campaña propia
+`D:/VantareServer/qa/isa-1840/matrix-p5a-review-cleanup-01/assets/v989/manifest.json`.
+Solo suministra rutas de un paquete real a los fixtures Rust del feed heredado;
+no se enlaza al producto ni autoriza sus miembros. Los tests recalculan los hashes
+de sus PE inertes y añaden un recurso nuevo para probar que Rust ya no depende
+de ese inventario. El producto solo usa el manifiesto del ZIP autenticado.
+
+
+Poda adicional 5b: la referencia previous igual a active produce previous-corrupt;
+no ofrece volver a la misma generación. Los valores REG_EXPAND_SZ se rechazan
+expresamente antes de modificar la instalación, sin expandirlos. Cleanup programado
+conserva también stdout en el log, con el código de salida como autoridad.
+La matriz usa un temporal propio con GUID y mantiene la validación cerrada de su
+nombre, raíz, contenido, marcador y hash. El lector sigue compilando para Linux;
+la mutación y las entradas de Setup/Uninstall se compilan para Windows.
+
+Los hashes de los binarios de cada generación se calculan una vez por mutación,
+reutilizando estado y manifiestos. La copia de datos mantiene sus comprobaciones
+antes/después para detectar cambios concurrentes: no se confunden con los antiguos
+recálculos completos de la generación anterior. Probe de la UI es una petición
+anterior y separada de la mutación. No se afirma unicidad global del motor mientras
+Feed, Register y SetStartup sigan en PowerShell hasta los pasos6–7.

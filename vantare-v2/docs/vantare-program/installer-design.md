@@ -9,7 +9,7 @@
 
 **Notas de vigencia de la copia histórica (actualizadas 2-nov-2026, #1840):**
 
-- Replanteo aprobado antes de6: paso5b de poda, perfiles Rust Display/Verified,
+- Replanteo aprobado antes de6: paso5b de poda, fases Rust read/verify,
   lectura/hash una vez por operación, inventario desde manifiesto autenticado,
   sin identidad QA paralela, marcador/Windows/versión comunes, batch a tooling
   y driver retirado. La matriz conserva invariantes y45 rechazos por motivo,
@@ -844,3 +844,43 @@ líneas de `.ps1` de producto en el inventario del paquete, 0 coincidencias de
   contrato supervisor ↔ overlays es del frente R2.
 - No se consultó ninguna instalación real; el estado «0 releases» del feed es
   del 1-nov-2026.
+
+
+### Decisión 5b: inventario de retirada y generaciones huérfanas
+
+Uninstall solo retira miembros de los manifiestos ligados por SHA a `active` o
+`previous` en el estado leído bajo bloqueo. Conserva los archivos ajenos de
+`bin/`. Una generación sin referencia SHA queda intacta, incluidos sus binarios:
+el log identifica su ruta y el motivo. No se añade ningún inventario ni marcador.
+Este residuo está autorizado y pendiente del paso 8; allí se decidirá si un
+manifiesto autoconsistente basta para retirar binarios de una generación huérfana.
+Las carpetas `data/` se conservan en todos los casos. La matriz prueba tanto el
+residuo como su diagnóstico; ya no exige el snapshot PowerShell byte a byte.
+
+
+### Poda adicional 5b autorizada
+
+Se aplica la propuesta `D:/VantareServer/evidence/revision-general/instalador-PODA-5b.md`
+en el orden 5 → 3 → 1 → 4 → 2, midiendo producción tras cada bloque. El techo
+12800 no cambia. Las cifras válidas son las del script tras fmt, no las estimaciones.
+
+Cambios observables autorizados y sujetos a regresiones:
+
+- Una referencia previous igual a active se considera previous-corrupt y no
+  habilita una vuelta atrás a la misma generación.
+- REG_EXPAND_SZ deja de expandirse. Se rechaza explícitamente al leerlo; la raíz
+  y Run se comprueban antes de mutar, conservando la instalación si aparece.
+- Cleanup programado guarda también stdout en su log, como el modo síncrono.
+  Su código de salida sigue siendo la autoridad y el script sigue siendo la
+  excepción permanente mínima que valida propiedad después del padre.
+
+La API de lectura expresa las dos fases sin un enum de perfiles:
+`Installation::read(root)` liga y valida los metadatos; `verify(root)` añade
+integridad de binarios sobre lo ya leído. No introduce un tercer lector.
+La identidad del directorio temporal propio pasa a GUID; el script mantiene
+una regla cerrada del mismo nombre y conserva raíz, contenido, hash y bloqueo.
+
+Los jobs Linux actuales de policy/quality ejecutan tooling Python, no Cargo.
+La compatibilidad del crate en Linux se verifica expresamente con el target
+x86_64-unknown-linux-gnu antes de usar la reserva Windows del bloque 6 y se vuelve
+a comprobar en la tanda final; no se atribuye esa compilación a un job inexistente.

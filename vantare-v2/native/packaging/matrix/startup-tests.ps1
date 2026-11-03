@@ -38,6 +38,8 @@ function Confirm-StartupFixture([string]$Directory){
         $process.Dispose()
     }
 }
+$primaryError=$null
+$cleanupError=$null
 try{
     $engine=Join-Path $qaStartupRoot 'engine'
     [IO.Directory]::CreateDirectory($engine)|Out-Null
@@ -270,14 +272,18 @@ function Sync-NativeOptionalShortcuts([string]$Directory,[string]$Folder,$Ui,[bo
         ('Software\VantareInstallerMatrix\'+$hiveId+'\Software\Microsoft\Windows\CurrentVersion\Run'),
         [Microsoft.Win32.RegistryKeyPermissionCheck]::ReadWriteSubTree,
         ([Security.AccessControl.RegistryRights]::ReadKey -bor [Security.AccessControl.RegistryRights]::ChangePermissions))
-    $savedRunAcl=$runAclKey.GetAccessControl()
     $deniedRunAcl=$runAclKey.GetAccessControl()
-    $deniedRunAcl.AddAccessRule([Security.AccessControl.RegistryAccessRule]::new([Security.Principal.WindowsIdentity]::GetCurrent().User,[Security.AccessControl.RegistryRights]::SetValue,[Security.AccessControl.AccessControlType]::Deny))
+    $denyRule=[Security.AccessControl.RegistryAccessRule]::new([Security.Principal.WindowsIdentity]::GetCurrent().User,[Security.AccessControl.RegistryRights]::SetValue,[Security.AccessControl.AccessControlType]::Deny)
+    $deniedRunAcl.AddAccessRule($denyRule)
     Set-ItemProperty -LiteralPath $run -Name 'VantareNative.Hub' -Value $setupCommand
     $runAclKey.SetAccessControl($deniedRunAcl)
     $request.operation='Uninstall';$request.uninstall=$true
     try{$result=Invoke-StartupWriter $request}finally{
-        try{$runAclKey.SetAccessControl($savedRunAcl)}finally{$runAclKey.Dispose()}
+        try{
+            $restoredRunAcl=$runAclKey.GetAccessControl()
+            $restoredRunAcl.RemoveAccessRuleSpecific($denyRule)
+            $runAclKey.SetAccessControl($restoredRunAcl)
+        }finally{$runAclKey.Dispose()}
     }
     $progressJson=$true
     foreach($line in ($result.Stdout -split "`n")){if($line.Trim()){try{$null=$line|ConvertFrom-Json}catch{$progressJson=$false}}}
@@ -308,10 +314,14 @@ function Sync-NativeOptionalShortcuts([string]$Directory,[string]$Folder,$Ui,[bo
         Assert-Startup ($result.ExitCode -eq 0 -and -not(Test-Path -LiteralPath $link)) "Recovered damaged option $badIndex uninstalls normally"
     }
     Write-NativeJson (Join-Path $qaStartupRoot 'result.json') @{checks=$passed;run_removed=$true;startup_removed=$true;data_unchanged=(((Get-NativeDataIndex $data) -ceq $dataBefore) -and ((Get-NativeDataIndex $setupData) -ceq $setupDataBefore))}
-}finally{
+}catch{$primaryError=$_}finally{
     Remove-PSDrive HKCU
     New-PSDrive HKCU Registry HKEY_CURRENT_USER -Scope Global|Out-Null
     if($hive -cnotmatch '^Registry::HKEY_CURRENT_USER\\Software\\VantareInstallerMatrix\\[a-f0-9]{32}$'){throw 'STARTUP_TEST_HIVE_REJECTED'}
-    Remove-Item -LiteralPath $hive -Recurse -Force
+    try {
+        [Microsoft.Win32.Registry]::CurrentUser.DeleteSubKeyTree(('Software\VantareInstallerMatrix\'+$hiveId),$false)
+    } catch {$cleanupError=$_}
 }
+if($primaryError){throw $primaryError}
+if($cleanupError){throw $cleanupError}
 "$passed startup lifecycle checks PASS"

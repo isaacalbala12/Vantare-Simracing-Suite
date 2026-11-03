@@ -43,6 +43,7 @@ type ObjectValue = Record<string, unknown>;
 export type AdminDeps = NativeAuthDeps & {
   adminAuth?: { enabled: boolean; clientId: string };
   verifyLocal?: ReturnType<typeof createLocalOAuthVerifier>;
+  preOwner?: (issuer: string, subject: string) => Promise<string>;
   gateRpc?: {
     rpc: (
       name: "native_admin_gate",
@@ -193,6 +194,19 @@ export function validateAdminRequest(
   })();
   if (!valid) throw new NativeError(400, "invalid_request");
   return { action, params };
+}
+
+async function preOwner(issuer: string, subject: string): Promise<string> {
+  const { data, error } = await getSupabaseAdmin().rpc(
+    "native_admin_preflight",
+    {
+      p_issuer: issuer,
+      p_subject: subject,
+    },
+  );
+  if (error) throw error;
+  if (!isUuid(data)) throw new NativeError(503, "bridge_unavailable");
+  return data;
 }
 
 export async function gate(
@@ -431,6 +445,8 @@ export async function handleNativeAdmin(
       clientId: Deno.env.get("CLERK_ADMIN_CLIENT_ID") ?? "",
     };
     let oauthDeps = deps;
+    let existingActor: string | undefined;
+    let localSubject: string | undefined;
     if (adminAuth.enabled) {
       const config = nativeConfig(deps);
       if (
@@ -442,11 +458,16 @@ export async function handleNativeAdmin(
         ...deps,
         config: { ...config, clientId: adminAuth.clientId },
       };
-      await timed(
+      const local = await timed(
         "verify_local",
         () =>
           (deps.verifyLocal ?? createLocalOAuthVerifier())(token, oauthDeps),
       );
+      existingActor = await timed(
+        "owner_preflight",
+        () => (deps.preOwner ?? preOwner)(local.issuer, local.subject),
+      );
+      localSubject = local.subject;
     }
     if (
       !(await timed(
@@ -468,6 +489,9 @@ export async function handleNativeAdmin(
       }
       throw error;
     }
+    if (localSubject !== undefined && identity.subject !== localSubject) {
+      throw new NativeError(401, "unauthorized");
+    }
     const actorUser = await timed("actor_profile", async () =>
       clerkUser(
         await clerkGet(`users/${encodeURIComponent(identity.subject)}`, deps),
@@ -478,7 +502,7 @@ export async function handleNativeAdmin(
     if (actorUser.banned || actorUser.locked) {
       throw new NativeError(403, "forbidden");
     }
-    const actor = await timed(
+    const actor = existingActor ?? await timed(
       "resolve_account",
       () =>
         (deps.resolve ?? resolveNativeAccount)(

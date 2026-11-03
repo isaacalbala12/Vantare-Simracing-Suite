@@ -23,4 +23,21 @@ begin
 end $$;
 revoke all on function public.native_admin_gate() from public,anon,authenticated;
 grant execute on function public.native_admin_gate() to service_role;
+
+-- Lookup only: never bootstrap profiles/identities for a JWT caller.
+create function public.native_admin_preflight(p_issuer text, p_subject text)
+returns uuid language plpgsql security definer set search_path='' as $$
+declare actor uuid;
+begin
+ select i.account_id into actor from public.account_identities i
+ join private.clerk_issuers c on c.issuer=i.issuer and c.enabled
+ where i.issuer=p_issuer and i.subject=p_subject and i.deleted_at is null;
+ if actor is null then
+  raise exception 'native_admin_forbidden' using errcode='42501';
+ end if;
+ perform private.native_admin_require_owner(actor);
+ return actor;
+end $$;
+revoke all on function public.native_admin_preflight(text,text) from public,anon,authenticated;
+grant execute on function public.native_admin_preflight(text,text) to service_role;
 commit;

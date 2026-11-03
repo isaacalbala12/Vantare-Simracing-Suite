@@ -10,22 +10,20 @@ VANTA-132 / #1910, paso 3, revisión del orquestador:
 - **Gestión inactiva (por defecto)**: mientras `CLERK_ADMIN_AUTH_ENABLED` no sea
   exactamente `true`, sigue el cliente del Hub y su introspección opaca. El
   contador global de 120/minuto precede a Clerk como red de seguridad. No cambia
-  el login actual ni se infiere activación por tener un ID configurado.
+  el login actual ni se infiere activación por tener un ID configurado. El orquestador acepta explícitamente que basura agote temporalmente el cupo de admin: prefiere proteger el cupo de Clerk de todo el producto aunque el owner reciba 429.
 - **Gestión activa**: exige `CLERK_ADMIN_CLIENT_ID` distinto del Hub. Solo JWT
   OAuth RS256, tipo `at+jwt`/`application/at+jwt`, firma JWKS, issuer exacto,
-  `client_id`, audiencia o `azp` del cliente configurado, y `exp`/`nbf` válidos.
+  `client_id`, audiencia o `azp` del cliente configurado, y `exp`/`nbf` válidos con 60 segundos de tolerancia de reloj.
   No acepta JWT de sesión, del Hub ni tokens opacos. La firma se comprueba ANTES
   del contador y de la introspección: basura o firma falsa → 401, sin gastar
-  cupo ni llamadas de la API de Clerk. Se mantiene la introspección posterior y
+  cupo ni llamadas de la API de Clerk. Después de la firma, native_admin_preflight busca una identidad ya existente y exige owner vigente mediante native_admin_require_owner, antes del cupo global y de Clerk. No crea cuentas; el modo activo nunca llama a native_resolve_account. Se mantiene la introspección posterior y
   el owner sigue decidiéndose en SQL. Revocar el refresh no invalida un access
   JWT ya emitido: vive hasta `exp`. Isaac configurará TTL de **cinco minutos**
   al crear Gestión; no hay registro de revocación ni de `jti`.
 
 JWKS del issuer configurado: caché privada del handler 5 minutos, una carga
-concurrente, máximo 64 KiB/20 claves y backoff de 15 segundos si falla. Un `kid`
-desconocido no fuerza recarga; una rotación puede requerir esperar al vencimiento
-de esa caché. No se usa el issuer ni una URL de claves enviados por el token.
-Crear el cliente Gestión con **tokens JWT**, comprobar sus claims y activar
+concurrente, máximo 64 KiB/20 claves y backoff de 15 segundos si falla. Un `kid` desconocido fuerza una sola recarga compartida antes de rechazarlo; el total de recargas por kid desconocido se limita a una cada 15 segundos para evitar abuso de JWKS. Una rotación durante ese enfriamiento puede necesitar esperar esos 15 segundos. No se usa el issuer ni una URL de claves enviados por el token.
+Crear el cliente Gestión con **tokens JWT**, comprobar con un token real que `typ` es `at+jwt`, comprobar sus claims y activar
 configuración/cliente Rust corresponde exclusivamente a Isaac; aquí queda
 inactivo. [Formato OAuth de Clerk](https://clerk.com/changelog/2026-01-08-jwt-oauth-access-tokens)
 y [verificación](https://clerk.com/docs/guides/configure/auth-strategies/oauth/verify-oauth-tokens).

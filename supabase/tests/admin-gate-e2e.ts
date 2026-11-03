@@ -66,6 +66,24 @@ async function fixture(active: boolean) {
     adminAuth: { enabled: active, clientId: adminClient },
     verifyLocal: createLocalOAuthVerifier(),
     environment: "sandbox",
+    preOwner: async (issuer, verifiedSubject) => {
+      try {
+        return JSON.parse(
+          await sql(`set role service_role;
+          select to_json(public.native_admin_preflight(${literal(issuer)},${
+            literal(verifiedSubject)
+          }));`),
+        );
+      } catch (error) {
+        if (
+          error instanceof Error &&
+          error.message.includes("native_admin_forbidden")
+        ) {
+          throw { message: "native_admin_forbidden" };
+        }
+        throw error;
+      }
+    },
     gateRpc: {
       rpc: async (name) => {
         assert(name === "native_admin_gate");
@@ -168,4 +186,28 @@ Deno.test("R10 SQL E2E: inactive Gestión preserves opaque Hub and its safety co
   );
   assert((await call("x")).status === 401 && await used() === 2);
   assert(calls.rpc === 2 && calls.clerk === 3 && calls.jwks === 0);
+});
+
+Deno.test("R10 SQL E2E: registered non-owner and unknown signed subjects cannot spend or create", async () => {
+  const { calls, call, used } = await fixture(true);
+  const nonOwner = "user_bbbbbbbbbbbbbbbbbbbbbbbbbbb";
+  const unknown = "user_ccccccccccccccccccccccccccc";
+  await sql(
+    `insert into public.profiles(id) values('00000000-0000-4000-8000-000000001919') on conflict do nothing;
+    insert into public.account_identities(issuer,subject,account_id) values(${
+      literal(config.issuer)
+    },${
+      literal(nonOwner)
+    },'00000000-0000-4000-8000-000000001919') on conflict do nothing;`,
+  );
+  const counts = () =>
+    sql(
+      "select (select count(*) from public.profiles)||':'||(select count(*) from public.account_identities);",
+    );
+  const before = await counts();
+  for (const sub of [nonOwner, unknown]) {
+    assert((await call(await signedJwt({ sub }))).status === 403);
+  }
+  assert(await used() === 0 && calls.rpc === 0 && calls.clerk === 0);
+  assert(await counts() === before);
 });

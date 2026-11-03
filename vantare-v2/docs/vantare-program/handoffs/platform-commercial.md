@@ -7263,3 +7263,19 @@ esta integración y su CI; sin autorizar promoción ni publicación.
   el rechazo de Gestión activa se prueba en local-auth.test.ts. #1913 se rebasa
   encima para revisión de seguridad. Reserva de native-auth.ts liberada sin
   modificar ningún _shared. Paso 4 espera R6/8; 11 pertenece a R6/12.
+### VANTA-132 · Review de seguridad de #1912 (2026-11-03)
+
+- Decisión explícita del orquestador: en Hub inactivo se acepta agotar el cupo
+  global de admin con basura para proteger el cupo Clerk de todo el producto.
+- Gestión: firma JWT → owner SQL existente → contador → Clerk → autorización
+  final SQL. native_admin_preflight solo busca identidad no borrada de issuer
+  habilitado y reutiliza native_admin_require_owner; nunca crea cuentas. El modo
+  activo omite por completo native_resolve_account. Migración y rollback incluyen
+  la nueva RPC, cerrada a anon/authenticated y abierta solo a service_role.
+- Reloj: 60 s de tolerancia exp/nbf, con tests de fronteras. Kid desconocido:
+  una recarga JWKS coalescida antes de 401, limitada globalmente a una por 15 s
+  para no abrir otro DoS; rotación concurrente probada con firma real.
+- Activación reservada a Isaac: comprobar con token real typ=at+jwt antes de
+  activar. No se ha usado ningún token/servicio real ni tocado _shared.
+- Caracterización previa ccc35c51d: 8 fallos nuevos reproducidos antes del cambio;
+  Deno 142 PASS después. SQL/E2E y métricas finales en #1910 y el PR.

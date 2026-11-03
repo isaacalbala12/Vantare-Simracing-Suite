@@ -98,8 +98,8 @@ async function readKeys(response: Response): Promise<Map<string, CryptoKey>> {
   return keys;
 }
 
-// One bounded cache owned by the serving handler. Unknown kids never trigger
-// refreshes; concurrent loads coalesce and failures back off, even under abuse.
+// One bounded handler cache. An unknown kid can force one coalesced reload,
+// at most once per 15 seconds across all unknown kids to bound unauthenticated I/O.
 export function createLocalOAuthVerifier() {
   let cache:
     | { issuer: string; until: number; keys: Map<string, CryptoKey> }
@@ -108,8 +108,16 @@ export function createLocalOAuthVerifier() {
     | { issuer: string; work: Promise<Map<string, CryptoKey>> }
     | undefined;
   let failure: { issuer: string; until: number } | undefined;
-  async function keys(deps: NativeAuthDeps, issuer: string, now: number) {
-    if (cache?.issuer === issuer && cache.until > now) return cache.keys;
+  let refreshUntil = 0;
+  async function keys(
+    deps: NativeAuthDeps,
+    issuer: string,
+    now: number,
+    force = false,
+  ) {
+    if (!force && cache?.issuer === issuer && cache.until > now) {
+      return cache.keys;
+    }
     if (failure?.issuer === issuer && failure.until > now) throw unavailable();
     if (!pending || pending.issuer !== issuer) {
       const work = (async () => {
@@ -140,7 +148,10 @@ export function createLocalOAuthVerifier() {
       if (pending === current) pending = undefined;
     }
   }
-  return async (token: string, deps: NativeAuthDeps): Promise<void> => {
+  return async (
+    token: string,
+    deps: NativeAuthDeps,
+  ): Promise<{ issuer: string; subject: string }> => {
     if (token.length > 16_384) throw unauthorized();
     const parts = token.split(".");
     if (parts.length !== 3 || parts[0].length > 2048) throw unauthorized();
@@ -165,15 +176,21 @@ export function createLocalOAuthVerifier() {
       (claims.aud !== undefined && !validAudience) ||
       typeof claims.sub !== "string" ||
       !/^user_[A-Za-z0-9_]{27}$/.test(claims.sub) ||
-      !Number.isSafeInteger(claims.exp) || Number(claims.exp) <= now / 1000 ||
+      !Number.isSafeInteger(claims.exp) ||
+      Number(claims.exp) <= now / 1000 - 60 ||
       (claims.nbf !== undefined &&
-        (!Number.isSafeInteger(claims.nbf) || Number(claims.nbf) > now / 1000))
+        (!Number.isSafeInteger(claims.nbf) ||
+          Number(claims.nbf) > now / 1000 + 60))
     ) {
       throw unauthorized();
     }
     const signature = bytes(parts[2]);
     if (signature.length > 1024) throw unauthorized();
-    const key = (await keys(deps, config.issuer, now)).get(header.kid);
+    let key = (await keys(deps, config.issuer, now)).get(header.kid);
+    if (!key && (pending?.issuer === config.issuer || now >= refreshUntil)) {
+      refreshUntil = now + 15_000;
+      key = (await keys(deps, config.issuer, now, true)).get(header.kid);
+    }
     if (
       !key ||
       !await crypto.subtle.verify(
@@ -183,5 +200,6 @@ export function createLocalOAuthVerifier() {
         new TextEncoder().encode(`${parts[0]}.${parts[1]}`),
       )
     ) throw unauthorized();
+    return { issuer: config.issuer, subject: claims.sub };
   };
 }

@@ -94,7 +94,7 @@ for (
       : kind === "Hub"
       ? await signedJwt({ client_id: config.clientId, aud: config.clientId })
       : kind === "expired"
-      ? await signedJwt({ exp: now.getTime() / 1000 - 1 })
+      ? await signedJwt({ exp: now.getTime() / 1000 - 61 })
       : kind === "issuer"
       ? await signedJwt({ iss: "https://foreign.invalid" })
       : kind === "session"
@@ -130,10 +130,10 @@ Deno.test("R10 JWKS cache coalesces concurrent verification and bounds unknown-k
   for (let n = 0; n < 5; n++) {
     assert((await call(unknown, deps)).status === 401);
   }
-  assert(calls.jwks === 1 && calls.gate === 10 && calls.verify === 10);
+  assert(Number(calls.jwks) === 2 && calls.gate === 10 && calls.verify === 10);
   at += 300_001;
   assert((await call(token, deps)).status === 200);
-  assert(Number(calls.jwks) === 2);
+  assert(Number(calls.jwks) === 3);
 });
 
 Deno.test("R10 JWKS outage backs off without spending counter or Clerk API quota", async () => {
@@ -154,7 +154,7 @@ Deno.test("R10 JWKS outage backs off without spending counter or Clerk API quota
 });
 
 for (const code of ["non-owner", "expired-owner"]) {
-  Deno.test(`R10 active Gestión still denies ${code} after valid signature`, async () => {
+  Deno.test(`R10 active Gestión still denies ${code} revoked after owner preflight`, async () => {
     const { calls, deps } = fixture();
     deps.begin = () => Promise.reject({ message: "native_admin_forbidden" });
     assert((await call(await signedJwt(), deps)).status === 403);
@@ -173,7 +173,7 @@ for (
     { client_id: "foreign-client" },
     { exp: "9999999999" },
     { exp: undefined },
-    { nbf: now.getTime() / 1000 + 60 },
+    { nbf: now.getTime() / 1000 + 61 },
     { sub: "owner" },
   ]
 ) {
@@ -197,30 +197,51 @@ for (const role of ["non-owner", "expired-owner", "unmapped"]) {
   Deno.test(`R10 owner preflight: ${role} cannot reach quota, Clerk or account creation`, async () => {
     const { calls, deps } = fixture();
     let resolved = 0;
-    const guarded = { ...deps,
+    const guarded = {
+      ...deps,
       preOwner: () => Promise.reject({ message: "native_admin_forbidden" }),
-      resolve: () => { resolved++; return Promise.resolve(account); },
+      resolve: () => {
+        resolved++;
+        return Promise.resolve(account);
+      },
     };
     assert((await call(await signedJwt(), guarded)).status === 403);
-    assert(calls.gate === 0 && calls.verify === 0 && calls.action === 0 && resolved === 0);
+    assert(
+      calls.gate === 0 && calls.verify === 0 && calls.action === 0 &&
+        resolved === 0,
+    );
   });
 }
 Deno.test("R10 active owner never calls account-creating resolver", async () => {
   const { deps } = fixture();
   let resolved = 0;
-  const response = await call(await signedJwt(), { ...deps,
-    resolve: () => { resolved++; return Promise.resolve(account); },
+  const response = await call(await signedJwt(), {
+    ...deps,
+    resolve: () => {
+      resolved++;
+      return Promise.resolve(account);
+    },
   });
   assert(response.status === 200 && resolved === 0);
 });
-for (const [offset, status] of [[-59,200],[-60,401],[-61,401]]) {
+for (const [offset, status] of [[-59, 200], [-60, 401], [-61, 401]]) {
   Deno.test(`R10 exp clock tolerance boundary ${offset}`, async () => {
-    assert((await call(await signedJwt({exp:now.getTime()/1000+offset}),fixture().deps)).status === status);
+    assert(
+      (await call(
+        await signedJwt({ exp: now.getTime() / 1000 + offset }),
+        fixture().deps,
+      )).status === status,
+    );
   });
 }
-for (const [offset, status] of [[59,200],[60,200],[61,401]]) {
+for (const [offset, status] of [[59, 200], [60, 200], [61, 401]]) {
   Deno.test(`R10 nbf clock tolerance boundary ${offset}`, async () => {
-    assert((await call(await signedJwt({nbf:now.getTime()/1000+offset}),fixture().deps)).status === status);
+    assert(
+      (await call(
+        await signedJwt({ nbf: now.getTime() / 1000 + offset }),
+        fixture().deps,
+      )).status === status,
+    );
   });
 }
 Deno.test("R10 JWKS rotation reloads once and coalesces concurrent new kids", async () => {
@@ -231,14 +252,18 @@ Deno.test("R10 JWKS rotation reloads once and coalesces concurrent new kids", as
   deps.fetch = (input, init) => {
     if (rotated && String(input).endsWith("/.well-known/jwks.json")) {
       calls.jwks++;
-      return Promise.resolve(Response.json({keys:[{...publicKey,kid:"rotated-fixture"}]}));
+      return Promise.resolve(
+        Response.json({ keys: [{ ...publicKey, kid: "rotated-fixture" }] }),
+      );
     }
-    return originalFetch(input,init);
+    return originalFetch(input, init);
   };
-  assert((await call(await signedJwt(),deps)).status === 200);
-  rotated=true;
-  const token=await signedJwt({}, {kid:"rotated-fixture"});
-  const responses=await Promise.all(Array.from({length:10},()=>call(token,deps)));
-  assert(responses.every(r=>r.status===200));
-  assert(calls.jwks===2);
+  assert((await call(await signedJwt(), deps)).status === 200);
+  rotated = true;
+  const token = await signedJwt({}, { kid: "rotated-fixture" });
+  const responses = await Promise.all(
+    Array.from({ length: 10 }, () => call(token, deps)),
+  );
+  assert(responses.every((r) => r.status === 200));
+  assert(calls.jwks === 2);
 });

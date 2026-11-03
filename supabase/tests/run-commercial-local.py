@@ -53,6 +53,9 @@ args=parser.parse_args()
 legacy_writers_enabled=(not args.baseline and not args.admin_effects_only and
                         not args.upgrade and not any(
                          value for name,value in vars(args).items() if name.startswith('before_')))
+owner_enabled=(not args.baseline and not args.admin_effects_only and
+               not args.upgrade and not any(
+                value for name,value in vars(args).items() if name.startswith('before_')))
 if args.qa_e2e and (not args.postgrest_bin or not args.deno_bin or args.b01):
  parser.error('--qa-e2e requires --postgrest-bin and --deno-bin, without --b01')
 if args.qa_e2e:
@@ -180,6 +183,7 @@ $$;
   legacy_acl_before=None
   for m in sorted((ROOT/'supabase/migrations').glob('*.sql')):
    if not legacy_writers_enabled and 'isa_1896_close_legacy_report_writers' in m.name: continue
+   if not owner_enabled and 'isa_1896_owner_unification' in m.name: continue
    if args.before_deleted_authorizer and 'revoke_deleted_authorizer' in m.name: continue
    if args.before_posthog_consent_clear and any(n in m.name for n in ('posthog_consent_clear','revoke_deleted_authorizer')): continue
    if args.before_testing_identity and 'testing_server_identity' in m.name: continue
@@ -282,6 +286,13 @@ $$;
    if restored!='t|t|t': raise RuntimeError('step 2 rollback lost quota data or retained retry keys')
    run('psql',*conn,'-f',ROOT/'supabase/migrations'/(admission+'.sql'))
    run('psql',*conn,'-c',"delete from private.testing_report_attempts where subject=repeat('f',64) or subject='18960000-0000-4000-8000-000000000092';")
+  if owner_enabled and not args.admin_effects_only:
+   owner_stem='20261103225029_isa_1896_owner_unification'
+   run('psql',*conn,'-f',ROOT/'supabase/rollbacks'/(owner_stem+'.down.sql'))
+   result=run('psql',*conn,'-f',ROOT/'supabase/tests/testing_owner_unification_rollback.test.sql')
+   (OUT/'testing_owner_unification_rollback.test.sql.log').write_text(result)
+   if 'not ok ' in result or '1..8' not in result:
+    raise RuntimeError('step 8 owner rollback failed')
   if not args.baseline and not args.before_testing_identity and not args.admin_effects_only:
    for stem,suite,count in [
     ('20261103114000_isa_1896_calendar_acl','testing_step3_acl_rollback.test.sql',16),
@@ -293,6 +304,25 @@ $$;
     if 'not ok ' in result or f'1..{count}' not in result:
      raise RuntimeError(suite+' failed after rollback')
     run('psql',*conn,'-f',ROOT/'supabase/migrations'/(stem+'.sql'))
+  if owner_enabled and not args.admin_effects_only:
+   run('psql',*conn,'-c',"""insert into public.profiles(id) values
+    ('13100000-0000-4000-8000-000000000009');
+    insert into public.testing_center_memberships(user_id,actor_id,role)
+    values('13100000-0000-4000-8000-000000000009','vanta131-backfill-owner','owner');""")
+   run('psql',*conn,'-f',ROOT/'supabase/migrations'/(owner_stem+'.sql'))
+   migrated=run('psql',*conn,'-At','-c',"""select private.is_owner('13100000-0000-4000-8000-000000000009')
+    and (select granted_by='migration:vanta131' from public.operational_access_assignments
+      where user_id='13100000-0000-4000-8000-000000000009' and role='owner');""").strip()
+   if migrated!='t': raise RuntimeError('step 8 legacy owner was not backfilled')
+   run('psql',*conn,'-f',ROOT/'supabase/rollbacks'/(owner_stem+'.down.sql'))
+   reverted=run('psql',*conn,'-At','-c',"""select (select status='revoked' and revoked_by='rollback:vanta131'
+    from public.operational_access_assignments where user_id='13100000-0000-4000-8000-000000000009'
+    and role='owner') and (select role='owner' from public.testing_center_memberships
+    where user_id='13100000-0000-4000-8000-000000000009');""").strip()
+   if reverted!='t': raise RuntimeError('step 8 rollback lost legacy membership or live grant')
+   run('psql',*conn,'-f',ROOT/'supabase/migrations'/(owner_stem+'.sql'))
+   if run('psql',*conn,'-At','-c',"select private.is_owner('13100000-0000-4000-8000-000000000009')").strip()!='t':
+    raise RuntimeError('step 8 reapply did not restore legacy owner')
   if args.testing_identity:
    agent_v2='20261103190100_isa_1896_agent_v2_read'
    run('psql',*conn,'-f',ROOT/'supabase/rollbacks'/(agent_v2+'.down.sql'))
@@ -566,7 +596,7 @@ $$;
   if legacy_writers_enabled:
    suites+=['testing_legacy_writers_closed.test.sql',
             'testing_legacy_admin_closed.test.sql']
-  suites.append('testing_owner_unification.test.sql')
+  if owner_enabled: suites.append('testing_owner_unification.test.sql')
   for optional in ['checkout_terminal_attempts.test.sql','commercial_tombstone.test.sql','commercial_data_boundary.test.sql','commercial_refunds.test.sql','commercial_admin_deleted.test.sql','commercial_storage_probe.test.sql','commercial_pilot_deletion.test.sql','testing_followup_F1IP.test.sql','commercial_testing_identity.test.sql','testing_step3_channel.test.sql','commercial_posthog_consent.test.sql','testing_report_rich_admission.test.sql','testing_report_legacy_closed.test.sql']:
    if (ROOT/'supabase/tests'/optional).exists() and not (legacy_writers_enabled and optional=='testing_report_rich_admission.test.sql'):
     suites.append(optional)

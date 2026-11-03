@@ -11,6 +11,13 @@
 - Rollback repone los grants anteriores, incluido ALL de service_role procedente de default privileges, y el runner compara un snapshot de relacl de las ocho tablas antes del up y despues del down. Conserva las suites historicas bajo rollback y un test reducido de lectura/cambio de estado admin con escritores cerrados. El test PostgREST de native-account-authorize exige 403 del RPC admitido cerrado. La cuota de IP compartida se cubrio en el paso 2. `hiddenReport` y testing_center_evidence_outbox quedan fuera; este ultimo solo escribe mediante security definer.
 - El RPC admin native_admin_execute('set_report_status') aun actualiza legacy y desaparecera en #1924, sin editar SQL admin aqui. El siguiente mapeo, verificacion y vaciado se hara en una sola transaccion con LOCK sobre padre e hijas, de modo que ese UPDATE no pueda intercalarse. Se conserva archivo privado completo con rollback; #1924 va despues. PostgreSQL local no disponible; CI 6/6 PASS en HEAD de codigo 393b3dc06. Sin despliegue, merge ni release.
 
+## 2026-11-03 - #1896 / VANTA-131 paso 8: autoridad owner
+
+- Rama vantareapp/isa-1896-paso8-owner, base origin/nightly@cef0ec16c. Test de caracterizacion de la divergencia owner en commits anteriores al cambio de produccion. La migracion usa private.is_owner con asignacion operativa activa, policy_version 1 y caducidad; el calendario y el rol de Testing Center consultan esa autoridad. El viejo oraculo publico is_active_owner se retira.
+- Las membresias owner sin ninguna decision operativa se pasan a asignaciones auditadas. Una asignacion revocada, caducada o de otro rol tiene prioridad y no se reabre. Rollback restaura la superficie anterior y revoca solo grants de esta migracion; el runner ejecuta down y reapply.
+- La RPC testing_contribution_review sigue con su chequeo directo de membresia en SQL admin. Su cambio se ha consultado para VANTA-132; este PR no edita SQL admin y no se integra como owner unico hasta cerrar esa dependencia. Sin despliegue ni merge.
+- Contrato 7b recibido: archivar padre e hijas completos en privado, mapear report_<hash> a testing_contributions, verificar recuentos/hashes y vaciar con LOCK; despues #1924 admin y por ultimo borrar tablas y archivo.
+
 ## 2026-11-03 - #1896 / VANTA-131 paso 6a: validacion de capturas JPEG
 
 - Draft PR #1906 contra nightly, rama vantareapp/isa-1896-paso6-capturas; base ddebd895a (paso 5a integrado).

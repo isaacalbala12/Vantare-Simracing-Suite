@@ -11,6 +11,7 @@ fn layout_file_error(error: vantare_ui::layout::Error, path: &Path) -> vantare_i
             path: path.to_path_buf(),
         },
         vantare_ui::layout::Error::Io(error) => error.into(),
+        error @ vantare_ui::layout::Error::Unsupported(_) => vantare_ipc::files::Error::Unsupported(error.to_string()),
         error => vantare_ipc::files::Error::Message(error.to_string()),
     }
 }
@@ -44,7 +45,9 @@ impl Editor {
                 let value: serde_json::Value = serde_json::from_slice(bytes).map_err(|error| {
                     vantare_ipc::files::Error::InvalidInput(format!("JSON de layout: {error}"))
                 })?;
-                vantare_ipc::files::future_version(&value, "version", 1)?;
+                if !matches!(value.get("version").and_then(serde_json::Value::as_u64), Some(1 | 2)) {
+                    return Err(vantare_ipc::files::Error::Unsupported("versión de layout no compatible; original protegido".into()));
+                }
                 Layout::from_json(bytes).map_err(|error| layout_file_error(error, &path))
             },
             Layout::default,
@@ -216,7 +219,7 @@ impl Editor {
         let previous = self.layout().clone();
         let mut next = previous.clone();
         edit(&mut next).map_err(Into::into)?;
-        crate::session_alerts::synchronize(&mut next, &previous);
+        crate::session_alerts::apply_companion_edit(&mut next, &previous);
         // La API común normaliza documentos externos; una entrada interactiva no finita es un error.
         if next.instances.iter().any(|item| {
             !item.x.is_finite()

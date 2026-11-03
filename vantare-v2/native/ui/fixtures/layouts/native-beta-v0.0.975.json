@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "instances": [
+    {
+      "id": "standings-main",
+      "x": 20.0,
+      "y": 20.0,
+      "visible": true,
+      "opacity": 1.0,
+      "settings": {
+        "kind": "standings",
+        "showSessionHeader": true,
+        "templateId": "signature",
+        "headerFirst": "none",
+        "headerSecond": "none",
+        "showSessionFooter": true,
+        "footerFirst": "track",
+        "footerSecond": "estimatedLaps",
+        "showBrand": false
+      }
+    },
+    {
+      "id": "radar-left",
+      "x": -1200.0,
+      "y": 50.0,
+      "visible": false,
+      "opacity": 0.5,
+      "settings": { "kind": "radar" }
+    },
+    {
+      "id": "pedals-main",
+      "x": 700.0,
+      "y": 20.0,
+      "visible": true,
+      "opacity": 1.0,
+      "settings": { "kind": "pedals", "transparentBackground": false }
+    }
+  ]
+}

@@ -1,7 +1,7 @@
 //! Unión de las dos piezas en el documento, con posiciones independientes.
 use vantare_ui::{Settings, layout::Layout};
 
-pub(crate) fn synchronize(layout: &mut Layout, previous: &Layout) {
+pub(crate) fn apply_companion_edit(layout: &mut Layout, previous: &Layout) {
     // Editar el contenido desde la mini actualiza también el aviso.
     let edits: Vec<_> = layout
         .instances
@@ -23,43 +23,6 @@ pub(crate) fn synchronize(layout: &mut Layout, previous: &Layout) {
     for (parent, settings) in edits {
         if let Some(item) = layout.instances.iter_mut().find(|i| i.id == parent) {
             item.settings = Settings::SessionAlerts(settings);
-        }
-    }
-    let parents: Vec<_> = layout
-        .instances
-        .iter()
-        .filter_map(|i| match &i.settings {
-            Settings::SessionAlerts(s) if s.companion_for.is_none() => Some((i.clone(), s.clone())),
-            _ => None,
-        })
-        .collect();
-    layout.instances.retain(|i| {
-        !matches!(&i.settings, Settings::SessionAlerts(s)
-        if s.companion_for.as_ref().is_some_and(|id| !parents.iter().any(|(p,_)| &p.id == id)))
-    });
-    for (parent, mut settings) in parents {
-        settings.companion_for = Some(parent.id.clone());
-        if let Some(mini) = layout.instances.iter_mut().find(|i| {
-            matches!(&i.settings,
-            Settings::SessionAlerts(s) if s.companion_for.as_ref()==Some(&parent.id))
-        }) {
-            mini.settings = Settings::SessionAlerts(settings);
-            mini.visible = parent.visible;
-            mini.show_in = parent.show_in;
-            mini.off_track = parent.off_track;
-            mini.opacity = parent.opacity;
-        } else {
-            let mut mini = parent.clone();
-            mini.id = format!("{}-mini", parent.id);
-            if layout.instances.iter().any(|i| i.id == mini.id) {
-                continue;
-            }
-            let width = layout.canvas_resolution.map_or(1920.0, |c| c.width);
-            mini.x = width - 226.0;
-            mini.y = 92.0;
-            mini.geometry = vantare_ui::geometry::Geometry::default();
-            mini.settings = Settings::SessionAlerts(settings);
-            layout.instances.push(mini);
         }
     }
 }

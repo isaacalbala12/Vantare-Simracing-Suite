@@ -3,7 +3,23 @@ use std::path::Path;
 #[derive(Clone, Copy, Default, PartialEq, Eq)]
 pub struct MotionPolicy(pub bool);
 impl gpui::Global for MotionPolicy {}
+#[derive(Clone, Copy, Default)]
+struct LayoutMotion(Option<bool>);
+impl gpui::Global for LayoutMotion {}
+
+pub(crate) fn apply_layout(value: Option<bool>, cx: &mut gpui::App) {
+    cx.set_global(LayoutMotion(value));
+    let current = cx.try_global::<MotionPolicy>().copied().unwrap_or_default();
+    let next = MotionPolicy::select(value, current);
+    if next != current {
+        cx.set_global(next);
+        cx.refresh_windows();
+    }
+}
 impl MotionPolicy {
+    fn select(layout: Option<bool>, legacy: Self) -> Self {
+        layout.map_or(legacy, Self)
+    }
     /// Lee la parte de apariencia que consume el host de overlays.
     pub fn load(path: &Path) -> Result<Self, String> {
         load(path)
@@ -54,6 +70,8 @@ pub(crate) fn install(cx: &mut gpui::App) {
                 Ok(policy) => {
                     last_error = None;
                     cx.update(|cx| {
+                        let explicit = cx.try_global::<LayoutMotion>().and_then(|value| value.0);
+                        let policy = MotionPolicy::select(explicit, policy);
                         if cx.try_global::<MotionPolicy>().copied() != Some(policy) {
                             cx.set_global(policy);
                             cx.refresh_windows();
@@ -83,5 +101,16 @@ mod tests {
             let stored: Stored = serde_json::from_value(settings).expect("settings");
             assert_eq!(stored.reduced_motion, enabled);
         }
+    }
+}
+
+#[cfg(test)]
+mod bridge_tests {
+    use super::*;
+    #[test]
+    fn step8a_absent_imports_appearance_but_explicit_values_always_win() {
+        assert!(MotionPolicy::select(None, MotionPolicy(true)).0);
+        assert!(!MotionPolicy::select(Some(false), MotionPolicy(true)).0);
+        assert!(MotionPolicy::select(Some(true), MotionPolicy(false)).0);
     }
 }

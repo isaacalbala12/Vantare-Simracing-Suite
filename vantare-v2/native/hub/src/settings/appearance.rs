@@ -113,16 +113,32 @@ impl Hub {
         self.settings.appearance_preview = [None, None];
         match self.settings.store.save_appearance(settings) {
             Ok(()) => {
-                theme::apply(
-                    self.settings.store.value.appearance,
-                    window.appearance(),
-                    cx,
-                );
                 self.settings.status = self.settings.store.mirror_warning.clone();
             }
             Err(error) => self.settings.status = Some(error),
         }
-        // Si falla el disco, los selectores vuelven a la configuración aplicada.
+        self.settings_apply_saved(window, cx);
+    }
+    fn settings_retry_save(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.settings.status = self.settings.store.retry().err();
+        if self.settings.status.is_none() {
+            self.settings.status = self.settings.store.mirror_warning.clone();
+        }
+        if let Err(error) = vantare_ui::set_window_zoom(window, self.settings.store.value.zoom) {
+            self.settings.status = Some(error);
+        }
+        self.settings_apply_saved(window, cx);
+    }
+    fn settings_apply_saved(&mut self, window: &Window, cx: &mut Context<Self>) {
+        if self.settings.store.mirror_warning.is_some() {
+            self.testing.update(cx, |testing, _| testing.observed.error(crate::testing::diagnostic::Module::Hub, vantare_ipc::files::Kind::Local));
+        }
+        theme::apply(self.settings.store.value.appearance, window.appearance(), cx);
+        // Si falla el disco, los selectores reflejan el documento releído.
+        self.settings.density.update(cx, |choice, cx| {
+            choice.state.selected = Some(self.settings.store.value.general.density as usize);
+            cx.notify();
+        });
         let saved = self.settings.store.value.appearance;
         self.settings.quick_theme.update(cx, |choice, cx| {
             choice.state.selected = theme::Palette::ALL

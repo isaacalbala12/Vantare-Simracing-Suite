@@ -8,8 +8,9 @@ Es referencia histórica; la situación operativa de este archivo es la siguient
 
 ## Estado vigente
 
-VANTA-129: pasos **0–3, 5, 6 y 9 integrados**; paso 4 verificado localmente,
-PR draft en preparación. Después quedan 7, 8 y 10.
+VANTA-129 **Por revisar**: pasos **0–3, 5, 6 y 9 integrados**; paso 4 en
+[PR draft #1895](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1895)
+contra nightly, sin integrar. Después quedan 7, 8 y 10.
 Plane es el tablero; GitHub/Project Vantare registra código y PRs.
 Riesgos abiertos: #1471, #1474, #1478, #1527 y #1561.
 
@@ -88,7 +89,9 @@ DeepSeek MERGE comunicado tras integrar 7e92e1a9e.
 Detalles completos del paso 6 [en el handoff integrado](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/7e92e1a9e52d57db17263234ec62efc5774794cb/vantare-v2/docs/vantare-program/handoffs/telemetry-core.md).
 Evidencia de este corte: D:/VantareServer/evidence/isa-1868-paso4, incluidos
 validation.json, pixel-parity-canonical.json, la sonda estricta, parches e inversión.
-CI de este corte: pendiente de publicar el PR; no se afirma verde remoto.
+CI de este corte: al publicar, cuatro checks SUCCESS y el gate bloqueante en
+curso en efba6053b. [Estado vivo de los checks](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1895/checks);
+la issue registra HEAD y la última verificación remota. No se afirma 5/5 aún.
 
 ## Contratos y límites que se conservan
 
@@ -118,5 +121,6 @@ cambian llamadas de tests, con el prefijo productivo idéntico al de la base.
 Este corte solo cambia lectores de fixtures de UI/Studio fuera de esas zonas;
 no cambia installer, packaging ni las rutas reservadas.
 
-Paso 4 verificado localmente; publicar el draft y actualizar issue/Plane con el
-enlace y la CI real. Después quedan 7, 8 y 10, coordinando las reservas vigentes.
+Paso 4 publicado para revisión; comprobar la CI final y recoger la revisión del
+orquestador. Después quedan 7, 8 y 10, coordinando las reservas vigentes.
+Sin merge, release ni promoción por el worker.

@@ -221,7 +221,7 @@ impl Store {
                 if !matches!(value.get("version").and_then(Value::as_u64), Some(2 | 3)) {
                     files::future_version(&value, "version", 3)?;
                 }
-                repair_zoom = !matches!(
+                let bad_zoom = !matches!(
                     value.get("zoom").and_then(Value::as_u64),
                     Some(90 | 100 | 110 | 125)
                 );

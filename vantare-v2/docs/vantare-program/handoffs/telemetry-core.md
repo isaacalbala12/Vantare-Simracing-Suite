@@ -8,10 +8,11 @@ Es referencia histórica; la situación operativa de este archivo es la siguient
 
 ## Estado vigente
 
-VANTA-129 **En curso**: pasos **0–3, 5 y 9 integrados**; paso 6 validado localmente,
-listo para publicar el PR draft, después paso 4. Pendientes también 7, 8 y 10.
-Plane es el tablero; GitHub/Project Vantare registra código y PRs.
-Riesgos abiertos: #1471, #1474, #1478, #1527 y #1561.
+VANTA-129 **Por revisar**: [PR draft #1891](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1891)
+contra nightly, paso 6 + P3, listo para revisión final con gates locales verdes.
+Pasos **0–3, 5 y 9 integrados**; paso **6 implementado y validado localmente**;
+pendientes **4, 7, 8 y 10**. Plane es el tablero; GitHub/Project Vantare
+registra código y PRs. Riesgos abiertos: #1471, #1474, #1478, #1527 y #1561.
 
 | Corte | Integración en nightly por el orquestador | CI del PR verificada |
 | --- | --- | --- |
@@ -60,7 +61,9 @@ propias de pasos 0/2 ya integrados, con rutas/tags/links/locks comprobados;
 D: pasó de 11,22 a 25,52 GB libres. Código y evidencia conservados, guard sin
 cambios; reanudación solo de lifecycle por cola completada. Cola liberada.
 Código validado `d1ccd82e04a390a0d1798979a7d6626643d06c11`, árbol native
-`928480e7c3b1c98063365af62a87e1f3ae928869`. Sin CI remota aún.
+`928480e7c3b1c98063365af62a87e1f3ae928869`. CI remota de #1891 en curso al publicar; sin atribuir verde.
+HEAD/CI de la entrega se verifican en #1868 y #1891; después de d1ccd82e0
+solo cambia este handoff fuera de native.
 
 P3 de #1889: constructores Quality con must_use; su test único vive en
 `domain/quality.rs`, retiradas las dos copias en LMU/ACC. Riesgos abiertos
@@ -106,7 +109,7 @@ de ui/layout al aplazar VANTA-130 ese grupo. Persistencia/lectura y default_path
 y las demás zonas previas de VANTA-130, conservan su reserva.
 Este corte no toca UI, Hub, installer, packaging ni ninguna de esas zonas.
 
-Paso 9 integrado y verificado. En curso paso 6 y sus P3, después paso 4. El **paso 4 no está hecho**: migra fixtures del repo
+Paso 9 integrado y verificado. Revisar #1891, paso 6 y sus P3; siguiente paso 4. El **paso 4 no está hecho**: migra fixtures del repo
 a v11, conserva v7/v10 reales para probar los lectores y elimina el alias de
 fixtures; exige Snapshot== antes/después y paridad de píxeles sin rebaselinar.
 Luego quedan host, proyecciones y medición de los pasos 7, 8 y 10.

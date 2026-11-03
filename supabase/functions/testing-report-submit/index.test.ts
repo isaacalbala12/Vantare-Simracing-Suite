@@ -9,7 +9,7 @@ import {
   verifyBridgeAccount,
 } from "./index.ts";
 import { signDataToken } from "../native-account-authorize/index.ts";
-import { NativeError } from "../_shared/native-auth.ts";
+import { nativeBearer, NativeError } from "../_shared/native-auth.ts";
 
 function eq(actual: unknown, expected: unknown) {
   if (JSON.stringify(actual) !== JSON.stringify(expected)) {
@@ -130,6 +130,20 @@ Deno.test("61 requests without a bearer cannot block a tester on the same IP", a
     61,
   );
   eq(f.counts.get("accounttester"), 1);
+});
+
+Deno.test("oversized bearer consumes the failed-auth IP allowance", async () => {
+  const f = fixture();
+  const oversized = request("x".repeat(16 * 1024 + 1));
+  const response = await handleTestingReportSubmit(oversized, {
+    ...f.deps,
+    account: (input) => {
+      nativeBearer(input);
+      return Promise.resolve("tester");
+    },
+  });
+  eq(response.status, 413);
+  eq([...f.counts.keys()].filter((key) => key.startsWith("ip")).length, 1);
 });
 
 Deno.test("deleted account SQLSTATE maps to unauthorized on the simple write", async () => {

@@ -82,7 +82,12 @@ try {
             $local=Join-Path $qaCaseRoot 'offer.json';[IO.File]::WriteAllText($local,$signed.Stdout)
             $null=Stage-BetaUpdate $qaInstallRoot $local
         }
-        'Apply' { $null=Apply-BetaUpdate $qaInstallRoot }
+        'Apply' {
+            $statePath=Join-Path $qaInstallRoot 'state.json'
+            $beforeState=if(Test-Path -LiteralPath $statePath){Get-NativeHash $statePath}else{$null}
+            $applied=Apply-BetaUpdate $qaInstallRoot
+            Write-NativeJson (Join-Path $qaCaseRoot 'apply-result.json') @{applied=[bool]$applied;beforeState=$beforeState}
+        }
         {$_ -in @('Confirm','Timeout')} {
             $info=[Diagnostics.ProcessStartInfo]::new()
             $info.FileName="$env:WINDIR/System32/cmd.exe"

@@ -138,7 +138,16 @@ try {
             # and data invariants are contractual; JSON formatting is not.
             $old=$expected.PSObject.Properties[$name]
             if ($null -eq $old -or $old.Value.exit -ne $row.exit -or $old.Value.existing_data_files -ne $row.existing_data_files) { throw "MATRIX_OUTCOME_CHANGED $name (logs: $caseRoot)" }
-            if($exitCode -eq 0 -and $operation -in @('Install','Repair','Update','Apply','Rollback')){
+            $requiresState=$operation -in @('Install','Repair','Update','Rollback')
+            if($exitCode -eq 0 -and $operation -ceq 'Apply'){
+                $apply=Get-Content -LiteralPath (Join-Path $caseRoot 'apply-result.json') -Raw|ConvertFrom-Json
+                $requiresState=$apply.applied
+                if(-not $apply.applied){
+                    $afterState=if(Test-Path -LiteralPath (Join-Path $install 'state.json')){Get-NativeHash (Join-Path $install 'state.json')}else{$null}
+                    if($afterState -cne $apply.beforeState){throw 'MATRIX_NOOP_APPLY_CHANGED_STATE'}
+                }
+            }
+            if($exitCode -eq 0 -and $requiresState){
                 if(-not(Test-Path -LiteralPath (Join-Path $install 'state.json'))){throw 'MATRIX_SUCCESS_WITHOUT_STATE'}
                 $state=Get-Content -LiteralPath (Join-Path $install 'state.json') -Raw|ConvertFrom-Json
                 $manifest=Join-Path $install ('generations/'+$state.active.generation+'/manifest.json')

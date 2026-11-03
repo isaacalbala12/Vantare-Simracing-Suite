@@ -29,7 +29,9 @@
 - Plane **Por testear**, no se mueve. Próximo paso: el orquestador acuerda
   una vía QA de identidad falsa/TLS/reloj para acreditar el recorrido completo.
   Esta revisión no habilita bypasses de producto ni autoriza usar cuentas reales.
-  Entrega aislada por PR draft a nightly; sin merge, release o promoción.
+  Entrega aislada por [PR draft #1915](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1915)
+  a nightly; sin merge, release o promoción. Código de tooling `6b02d39ad`;
+  el HEAD documental final se consulta en el PR. CI propia pendiente de revisión.
 
 ## VANTA-126 / #1878 — tests independientes del tiempo encendido del runner
 

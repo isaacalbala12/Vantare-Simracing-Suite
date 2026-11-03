@@ -1,13 +1,13 @@
 # ISA-1840 · Paso 6, lanzador y sesión
 
-Base medida: `71a12cc092c7aeee2b76ec357936471e6bee1043` de `nightly`.
+Base medida: `aae9c2cec` de `origin/nightly` (rebase sin conflictos).
 Rama: `vantareapp/isa-1840-paso6-lanzador-sesion`. QA exclusivamente bajo
 `D:/VantareServer/qa/isa-1840`, con HKCU y carpetas inyectadas. No se
 ejecutó Setup, Uninstall, beta.ps1 ni candidate.ps1 en una instalación real.
 
 ## Producción
 
-`python native/scripts/installer-lines.py --base 71a12cc092c7aeee2b76ec357936471e6bee1043 --projection`
+`python native/scripts/installer-lines.py --base aae9c2cec --projection`
 da 11 756 líneas en su perímetro fijo. La producción Rust de los módulos
 afectados fuera de ese perímetro suma 702; total 12 458. El exceso de 148
 sobre 12 310 queda dentro del margen autorizado de 150. El tope compensado

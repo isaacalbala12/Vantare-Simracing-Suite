@@ -7898,3 +7898,9 @@ esta integración y su CI; sin autorizar promoción ni publicación.
   Python PASS; Docker local no disponible, validación real de ese runner en CI.
   R6 debe revisar también los escritores enumerados en DETAIL, incluido
   apply_clerk_user_event; cerrar solo la RPC de intake no basta para el guard.
+- Revisado #1925 de R6 en bbac6c70c, sin modificarlo. Su private.is_owner(uuid)
+  requiere una costura admin en PR pequeño aparte: testing_contribution_review
+  y native_admin_require_owner deben usar esa autoridad preservando bloqueos,
+  con caracterización/migración/rollback propios. No se mezcla en #1924;
+  coordinar la integración conjunta con el orquestador antes de declarar owner
+  único. #1925 sigue bloqueado por esa dependencia, no se integra aquí.

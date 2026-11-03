@@ -12,6 +12,10 @@ create table private.testing_report_admitted_keys (
 );
 alter table private.testing_report_admitted_keys enable row level security;
 revoke all on private.testing_report_admitted_keys from public, anon, authenticated, service_role;
+create trigger a_account_write_barrier before insert or update or delete
+  on private.testing_report_admitted_keys for each row
+  execute function private.guard_account_write(
+    'select array[($1->>''account_id'')::uuid]', 'select false');
 
 create function public.testing_report_admit_account(
   p_account uuid, p_key text, p_digest text, p_week date

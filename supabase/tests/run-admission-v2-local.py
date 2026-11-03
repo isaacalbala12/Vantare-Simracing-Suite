@@ -50,6 +50,12 @@ def main():
               create schema private;
               grant usage on schema public to anon, authenticated, service_role;
               grant usage on schema private to service_role;
+              -- The complete commercial harness supplies the real deletion guard.
+              create function private.guard_account_write() returns trigger
+                language plpgsql as $$ begin
+                  if tg_op = 'DELETE' then return old; end if;
+                  return new;
+                end $$;
             ''')
             for migration in ('20261014022701_testing_report_ip_admission.sql',
                               '20261103093000_isa_1896_report_admission.sql'):
@@ -59,6 +65,10 @@ def main():
               declare a uuid := '16100000-0000-0000-0000-000000000091';
                 w date := date_trunc('week', clock_timestamp() at time zone 'UTC')::date;
               begin
+                if not exists(select 1 from pg_trigger where
+                  tgrelid='private.testing_report_admitted_keys'::regclass
+                  and tgname='a_account_write_barrier' and tgenabled='O')
+                then raise exception 'missing account deletion barrier'; end if;
                 if has_function_privilege('anon','public.testing_report_admit_account(uuid,text,text,date)','execute')
                   or has_function_privilege('authenticated','public.testing_report_admit_account(uuid,text,text,date)','execute')
                   or not has_function_privilege('service_role','public.testing_report_admit_account(uuid,text,text,date)','execute')

@@ -1,4 +1,4 @@
-//! Reintento cancelable de limpieza/importación; la UI solo recibe el resultado.
+//! Reintento cancelable de limpieza; la UI solo recibe el resultado.
 use std::{
     path::{Path, PathBuf},
     sync::mpsc,
@@ -34,25 +34,16 @@ impl Cleanup {
             }
         }
     }
-    fn attempt(root: &Path, import: Option<bool>) -> Result<Snapshot, ConsentSaveError> {
+    fn attempt(root: &Path) -> Result<Snapshot, ConsentSaveError> {
         let mut store = super::Store::read(root).map_err(ConsentSaveError::Failed)?;
         store
             .value
             .discard_disabled(root)
             .map_err(ConsentSaveError::from)?;
-        if !store.value.usage_decided
-            && let Some(usage) = import
-        {
-            let mut next = store.value;
-            next.usage = usage;
-            next.usage_decided = true;
-            store.save_typed(next)?;
-        }
         Ok((store.value, store.observed.take()))
     }
     pub fn start(
         root: PathBuf,
-        import: Option<bool>,
         observed: Option<Vec<u8>>,
     ) -> Result<Self, String> {
         let (cancel, stopped) = mpsc::channel();
@@ -66,7 +57,7 @@ impl Cleanup {
                         Ok(()) | Err(mpsc::RecvTimeoutError::Disconnected) => break,
                         Err(mpsc::RecvTimeoutError::Timeout) => {}
                     }
-                    match Self::attempt(&root, import) {
+                    match Self::attempt(&root) {
                         Ok(snapshot) => {
                             let _returned = reply.send(Ok(snapshot));
                             break;

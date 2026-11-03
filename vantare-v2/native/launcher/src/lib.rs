@@ -3,7 +3,7 @@
 
 pub mod chain;
 pub mod discovery;
-pub mod migration;
+pub mod legacy;
 pub mod policy;
 pub mod processes;
 #[cfg(windows)]
@@ -236,7 +236,7 @@ pub struct Document {
     pub profiles: Vec<Profile>,
     pub lmu_trigger_profile: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub wails_import: Option<migration::Import>,
+    pub wails_import: Option<legacy::Import>,
 }
 
 impl Default for Document {
@@ -430,28 +430,11 @@ impl Store {
         })
     }
 
-    /// Importar solo al crear el store productivo, nunca al cargar fixtures/QA.
+    /// Primera apertura nativa: no busca ni lee configuraciones de Wails.
     pub fn load_production(path: PathBuf) -> Result<Self, String> {
-        match path.try_exists() {
-            Ok(false) => {}
-            Ok(true) | Err(_) => return Self::load(path),
-        }
-        // La beta mantiene datos propios; importar Wails requiere una acción explícita.
-        if std::env::var_os("VANTARE_BETA_ROOT").is_some() {
-            return Self::load_with_wails(path, None);
-        }
-        let source = migration::source()?;
-        Self::load_with_wails(path, source.as_deref())
-    }
-
-    pub fn load_with_wails(path: PathBuf, source: Option<&Path>) -> Result<Self, String> {
         let mut store = Self::load(path)?;
         if store.saved.is_none() && store.warning.is_none() {
-            let document = match source {
-                Some(source) => migration::read(source)?,
-                None => Document::fresh_install(),
-            };
-            store.replace(document)?;
+            store.replace(Document::fresh_install())?;
         }
         Ok(store)
     }

@@ -118,33 +118,12 @@ impl Store {
     }
     pub fn load(root: &Path) -> Result<Self, String> {
         let mut store = Self::read(root)?;
-        let import = if store.value.usage_decided {
-            None
-        } else {
-            vantare_services::diagnostics::installer::choice(root)
-                .map_err(|error| format!("leer elección del instalador: {error}"))?
-        };
-        let mut deferred = match store.value.discard_disabled(root) {
-            Ok(()) => false,
-            Err(vantare_services::Error::Busy) => true,
-            Err(error) => return Err(format!("borrar informes pendientes: {error}")),
-        };
-        if !deferred && let Some(usage) = import {
-            let mut next = store.value;
-            next.usage = usage;
-            next.usage_decided = true;
-            match store.save_typed(next) {
-                Ok(()) => {}
-                Err(ConsentSaveError::Busy) => deferred = true,
-                Err(error) => return Err(error.to_string()),
+        match store.value.discard_disabled(root) {
+            Ok(()) => {}
+            Err(vantare_services::Error::Busy) => {
+                store.cleanup = Some(cleanup::Cleanup::start(root.to_owned(), store.observed.clone())?);
             }
-        }
-        if deferred {
-            store.cleanup = Some(cleanup::Cleanup::start(
-                root.to_owned(),
-                import,
-                store.observed.clone(),
-            )?);
+            Err(error) => return Err(format!("borrar informes pendientes: {error}")),
         }
         Ok(store)
     }
@@ -516,63 +495,6 @@ mod tests {
         });
     }
     #[test]
-    fn isa1609_busy_installer_import_keeps_privacy_available() {
-        let path = std::env::temp_dir().join(format!(
-            "vantare-busy-installer-{}",
-            vantare_services::random_id().expect("entropy")
-        ));
-        let mut initial = Store::load(&path).expect("initial");
-        initial
-            .save(Privacy {
-                crashes: true,
-                crashes_decided: true,
-                ..Privacy::default()
-            })
-            .expect("crash consent");
-        std::fs::write(
-            path.join(vantare_services::diagnostics::installer::CHOICE_FILE),
-            r#"{"version":1,"usage":true,"explicit":true}"#,
-        )
-        .expect("setup choice");
-        let guard = std::fs::OpenOptions::new()
-            .read(true)
-            .write(true)
-            .open(path.join("consent.lock"))
-            .expect("lock");
-        guard.try_lock().expect("crash POST");
-        let mut loaded = Store::load(&path);
-        if let Ok(store) = &mut loaded {
-            let previous = store.value;
-            let mut next = previous;
-            next.usage = true;
-            next.usage_decided = true;
-            assert!(
-                store.save(next).is_err(),
-                "Busy must not confirm a decision"
-            );
-            assert_eq!(store.value, previous);
-            assert_eq!(Privacy::load(&path).expect("disk while busy"), previous);
-        }
-        drop(guard);
-        let mut store = loaded.expect("load must not depend on installer write lock");
-        assert!(store.value.crashes);
-        assert!(!store.value.usage_decided);
-        store.cleanup.as_mut().expect("deferred import").finish();
-        store
-            .poll()
-            .expect("background reply")
-            .expect("import after POST");
-        assert!(store.value.usage && store.value.usage_decided);
-        let mut next = store.value;
-        next.usage = false;
-        store
-            .save(next)
-            .expect("revoke without restarting after import");
-        assert!(!store.value.usage);
-        assert!(!Privacy::load(&path).expect("disk").usage);
-        std::fs::remove_dir_all(path).expect("cleanup");
-    }
-    #[test]
     fn isa1609_completed_background_reply_cannot_restore_manual_revocation() {
         let path = std::env::temp_dir().join(format!(
             "vantare-privacy-reply-{}",
@@ -677,33 +599,6 @@ mod tests {
         next.usage = false;
         store.save(next).expect("revoke without restart");
         assert!(!store.value.usage);
-        std::fs::remove_dir_all(path).expect("cleanup");
-    }
-    #[test]
-    fn installer_choice_is_imported_once_and_never_overrides_revocation() {
-        let path = std::env::temp_dir().join(format!(
-            "vantare-usage-choice-{}",
-            vantare_services::random_id().expect("entropy")
-        ));
-        std::fs::create_dir_all(&path).expect("fixture");
-        std::fs::write(
-            path.join(vantare_services::diagnostics::installer::CHOICE_FILE),
-            r#"{"version":1,"usage":true,"explicit":true}"#,
-        )
-        .expect("installer choice");
-        let mut store = Store::load(&path).expect("first run");
-        assert!(store.value.usage && store.value.usage_decided);
-        assert!(!store.value.crashes && !store.value.crashes_decided);
-        std::fs::create_dir_all(path.join("usage")).expect("queue");
-        std::fs::write(path.join("usage/00.json"), b"pending").expect("pending");
-        let mut revoked = store.value;
-        revoked.usage = false;
-        store.save(revoked).expect("revoke");
-        assert!(!path.join("usage/00.json").exists());
-        assert_eq!(
-            Store::load(&path).expect("reinstall/restart").value,
-            store.value
-        );
         std::fs::remove_dir_all(path).expect("cleanup");
     }
     #[test]

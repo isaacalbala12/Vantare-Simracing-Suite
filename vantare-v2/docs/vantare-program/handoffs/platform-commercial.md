@@ -5178,11 +5178,11 @@ Evidencia anterior r1: `~/evidence/1627/RESUMEN.md` (histórica).
 
 Issue: https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1910.
 Project Vantare, area:plataforma; Plane En curso verificado. Base origin/nightly
-`ef47c16ad3dc0343798094e50d36676c1898d282`, rama
+`6a461ccf0f26ce58f22fbfdaff9a530d538622be` (rebase tras #1900/#1901), rama
 `vantareapp/isa-1910-paso0-caracterizacion`, worktree
 `D:/VantareServer/worktrees/isa-1910-paso0`. PR draft [#1911](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1911), código `689eda930`; HEAD/CI vigentes en la issue.
 
-- Medición: producción +0/−0, tests/tooling +374/−1, docs +33/−0.
+- Medición: producción +0/−0, tests/tooling +374/−0; docs y SHA finales en #1910.
 - Solo tests: OAuth del Hub aceptado como owner, bearer basura antes de cupo,
   coste de Clerk/resolve para no-owner y owner caducado, tres errores SQL como
   503 y desbloqueo Clerk previo a fallo SQL. Deno: 8 nuevos / 88 totales PASS,
@@ -5201,10 +5201,11 @@ Project Vantare, area:plataforma; Plane En curso verificado. Base origin/nightly
   <PostgreSQL/bin> --output <evidencia>, como usuario sin privilegios.
   La batería comercial incluye el nuevo SQL para CI LF/CRLF. Evidencia local:
   WSL /tmp/admin-1910-evidence; su servidor ya está parado.
-- Paso 1 espera coordinación solicitada a Isaac antes de tocar _shared/native-auth.ts.
+- Reserva de _shared/native-auth.ts para paso 1 confirmada por el orquestador.
   No hay cambios en _shared/clerk-webhook, billing ni licencias. Paso 4 espera
-  R6 paso 8; paso 11 pertenece a R6 paso 12. Siguiente: revisar paso 0 y cerrar
-  sus gates; luego preparar 1–3, con cliente admin inactivo hasta configuración.
+  R6 paso 8; paso 11 pertenece a R6 paso 12. Review inicial aprobada; siguiente: CI del rebase e integración del orquestador.
+  Pasos 1/2 en preparación; cliente admin inactivo hasta configuración de Isaac.
+  Rebase conserva ambas listas del runner (caracterización + canal de R6).
   Sin producción, despliegue, cambio externo de configuración, merge ni release.
 
 ## #1608 · R11 · Guarda y permisos de triage (15/10/2026)

@@ -7310,3 +7310,29 @@ esta integración y su CI; sin autorizar promoción ni publicación.
 <!-- /isa1910-pasos1y2 -->
 
 
+
+
+### VANTA-132 · Corrección de seguridad de #1913 (en validación)
+
+- La bandera gobierna TODO el cambio de sesión: inactiva conserva Store,
+  restauración, complete/refresh persistentes, logout local y diagnóstico actual
+  sin navegador. Solo activa usa memoria y login al abrir/diagnosticar.
+- Al activar, la sesión antigua del cliente compartido Hub se aparta con fecha
+  y se purga únicamente en local sin descifrar/revocar. Un blob antiguo dañado
+  también se elimina localmente. No se toca el Store del Hub.
+- Las sesiones guardadas del cliente Gestión propio se retiran tras revocar con
+  client_id. 400 invalid_token/invalid_grant/token_expired/token_revoked son
+  idempotentes; invalid_client, daño y red conservan el blob, no restauran y
+  muestran aviso/reintento al reiniciar. Se prueba que otro cliente no se revoca.
+- ADR 0104 y README corrigen «ambos modos» y documentan desbloqueo manual por
+  Isaac. FAPI documenta revocación por token, BAPI por concesión de aplicación:
+  no se asume aislamiento por dispositivo y nunca se revoca el antiguo Hub.
+  Verificar contrato real de revocación pública con client_id sigue reservado
+  a Isaac en un cliente de desarrollo antes de activar; bandera inactiva.
+- Caracterización previa a8ae2eef2: inactivo RED 1/1 y protocolo de revocación
+  RED 2/2 ejecutados antes de cambiar cada camino. Evidencia security-red.log y
+  security-revocation-red.log. GREEN focal 24/24 PASS; gates completos aún en curso; no se
+  declaran aprobados los checks anteriores a esta corrección de producto.
+- Sin producción, secretos, Store real, _shared propio, billing/licencias,
+  despliegue, merge del worker ni release. HEAD y CI finales en #1910/#1913.
+

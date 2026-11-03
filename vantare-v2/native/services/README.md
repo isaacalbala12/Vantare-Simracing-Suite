@@ -33,12 +33,12 @@ La operación de claves y recuperación sigue el [runbook BIL-08](../../docs/bil
 
 ### Cuenta y avisos
 
-Excepción privada de Gestión: [ADR 0104](../../docs/adr/0104-identidad-admin-y-sesion-en-memoria.md).
+Solo con Gestión activa (inactiva conserva íntegro el camino persistente): [ADR 0104](../../docs/adr/0104-identidad-admin-y-sesion-en-memoria.md).
 `Account::in_memory` / `complete_in_memory` / `forget_in_memory` no restauran ni
 escriben cuenta o perfil. `revoke_refresh` usa revocación FAPI de cliente público.
-`retire_saved_session` migra solo el Store antiguo de Gestión: cada blob se
+`retire_saved_session` retira sesiones guardadas del cliente Gestión propio: cada blob se
 elimina tras ACK de revocación; fallo o daño conservan el blob y bloquean el
-arranque. `Store::retire_cache` solo acepta documentos clasificados como caché.
+arranque. La migración del antiguo cliente compartido Hub descarta solo documentos locales, sin revocar su concesión. `Store::retire_cache` solo acepta documentos clasificados como caché.
 El camino persistente del Hub conserva su contrato.
 
 Account publica SignedOut, SignedIn, NeedsSignIn o Pending. Identidad/sesión y

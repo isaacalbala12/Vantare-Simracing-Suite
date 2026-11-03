@@ -60,16 +60,31 @@ cliente y socket callback del Hub. Isaac debe crear Gestión con tokens JWT,
 TTL de cinco minutos, y activar también la configuración de la Edge. Sin la
 bandera se mantiene el cliente Hub existente, aunque haya valores parciales.
 
-La sesión y el perfil viven solo en memoria: hay login en cada apertura,
-también en `--diagnose-owner`, que abre el navegador y espera PKCE. El Store
-guarda únicamente metadata OAuth pública. En el primer arranque se revoca el
-refresh de la sesión anterior antes de borrar cuenta y perfil locales; al
-cambiar de cliente se conserva primero una cuarentena con fecha. Un fallo
-conserva el blob y muestra un aviso: no restaura sesión y reintenta al reiniciar.
-Cerrar sesión revoca el refresh y limpia la memoria; si falla la red lo indica.
-El access JWT ya emitido sigue vivo hasta exp. La QA usa exclusivamente Store
-y servidor loopback sintéticos, nunca el almacén de una instalación real.
+Con Gestión INACTIVA se conserva exactamente el camino anterior: sesión y perfil
+persistentes en el Store privado de admin, restauración al abrir, logout local
+sin revocación y diagnóstico sin abrir el navegador. No se ejecuta migración.
 
+Solo con Gestión ACTIVA la sesión y el perfil viven en memoria: login en cada
+apertura, también en `--diagnose-owner`. El Store guarda metadata OAuth pública.
+La migración aparta con fecha y elimina únicamente cuenta/perfil de la antigua
+instalación privada de admin; no revoca sus tokens del cliente Hub, para evitar
+retirar su concesión compartida. Un blob antiguo dañado tampoco se descifra.
+Para una sesión guardada del cliente Gestión propio, se revoca con `client_id`
+antes de borrar. Un 400 de token inválido/caducado/revocado equivale a éxito;
+invalid_client, daño o red fallida conservan el blob, muestran aviso y reintentan
+al reiniciar sin restaurar sesión. Logout activo limpia memoria e informa si
+no se pudo confirmar la revocación. Access JWT emitido vive hasta exp (TTL de
+cinco minutos más tolerancia de reloj de 60 s en la Edge).
+
+Si una migración activa sigue fallando: cerrar Gestión, corregir primero la
+conexión/configuración pública o permisos del directorio privado, y reiniciar.
+Si no se recupera, Isaac puede respaldar esa carpeta privada de Gestión y retirar
+su concesión **Gestión** en Clerk. Después, con la app cerrada, apartar solo
+`account.*`, sus cuarentenas y `account-profile.*` del namespace de Gestión,
+conservando la copia y metadata OAuth; al abrir pedirá login nuevo. No usar la
+carpeta ni la concesión del Hub ni borrar guardas de otros servicios. Esta es una
+operación manual de Isaac; el agente nunca abre ni manipula el Store real.
+La QA usa exclusivamente Store/HTTP sintéticos.
 Cada escritura pide confirmación y espera ACK y relectura; no hay cambios
 optimistas ni reintento automático. El Owner no tiene botones de bloqueo/borrado,
 y el servidor también lo protege. Borrar exige correo exacto normalizado en app

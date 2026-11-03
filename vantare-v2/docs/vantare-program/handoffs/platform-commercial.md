@@ -7232,7 +7232,7 @@ esta integración y su CI; sin autorizar promoción ni publicación.
 
 - PR draft [#1912](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1912),
   rama `vantareapp/isa-1910-paso3-freno-clerk`, worktree
-  `D:/VantareServer/worktrees/isa-1910-paso3`, base origin/nightly `2e5f14a9d` (incluye #1911 y R6 #1902).
+  `D:/VantareServer/worktrees/isa-1910-paso3`, base origin/nightly `51797395b` (incluye #1911 y R6 #1902/#1903/#1906).
   HEAD/CI vigentes en #1910. Project Vantare / area:plataforma; Plane En curso.
 - Review del orquestador: mantener el Hub opaco mientras Gestión no esté activa.
   `CLERK_ADMIN_AUTH_ENABLED=true` exige su cliente distinto, JWT OAuth RS256,
@@ -7258,7 +7258,7 @@ esta integración y su CI; sin autorizar promoción ni publicación.
   legado conserva el riesgo de agotar el cupo con basura hasta activar Gestión.
 - Calidad 468 huellas PASS. Deno fmt sobre copia LF y lint 14 archivos PASS; el primer intento sin permisos de variables públicas queda en evidencia. Rust/lifecycle/telemetría no aplican a este paso.
   Sin producción, cambios SaaS, merge ni release; billing/licencias intactos.
-- Rebase completado tras integrar #1911 (70b2f2753) y R6 #1902 (2e5f14a9d).
+- Rebase completado tras integrar #1911 (70b2f2753) y R6 #1902, #1903 y #1906. Las dos últimas integraciones no cambian SQL ni native de admin; Deno 131 PASS repetidos, evidencia SQL conservada.
   P1/P2 de caracterización nombrados como compatibilidad explícita del legado;
   el rechazo de Gestión activa se prueba en local-auth.test.ts. #1913 se rebasa
   encima para revisión de seguridad. Reserva de native-auth.ts liberada sin

@@ -25,7 +25,10 @@ fn hub_serializes_the_shared_edge_utf8_report_contract() {
         "/../../../supabase/tests/fixtures/native-hub-report.json"
     )))
     .expect("shared UTF-8 contract consumed by Deno and real Edge harness");
-    assert_eq!(serde_json::to_value(submission).expect("JSON"), expected);
+    assert_eq!(
+        serde_json::to_value(v2_body(&submission).expect("v2 body")).expect("JSON"),
+        expected
+    );
 }
 
 #[test]

@@ -18,6 +18,17 @@ const baseFields = [
   "variant",
 ];
 
+function hasNul(value: unknown): boolean {
+  if (typeof value === "string") return value.includes("\u0000");
+  if (Array.isArray(value)) return value.some(hasNul);
+  if (value !== null && typeof value === "object") {
+    return Object.entries(value).some(([key, child]) =>
+      key.includes("\u0000") || hasNul(child)
+    );
+  }
+  return false;
+}
+
 export function validateReportV2(body: Record<string, unknown>): void {
   const extra = body.variant === "triage"
     ? ["context", "attachments"]
@@ -36,6 +47,7 @@ export function validateReportV2(body: Record<string, unknown>): void {
   const consent = record(context) ? context.consent : undefined;
   if (
     JSON.stringify(actual) !== JSON.stringify(fields) ||
+    hasNul(body) ||
     new TextEncoder().encode(JSON.stringify(body)).length > 64 * 1024 ||
     body.contract_version !== "testing.report.v2" ||
     !isUuid(body.report_id) ||
@@ -50,6 +62,28 @@ export function validateReportV2(body: Record<string, unknown>): void {
         Array.isArray(body.context) ||
         new TextEncoder().encode(JSON.stringify(body.context)).length >
           (body.variant === "diagnostic" ? 4096 : 48 * 1024))) ||
+    (body.variant === "diagnostic" && record(context) &&
+      Object.entries(context).some(([key, value]) =>
+        !["app_version", "os_family", "os_version", "module"].includes(key) ||
+        typeof value !== "string"
+      )) ||
+    (body.variant === "triage" && record(context) &&
+      Object.keys(context).some((key) =>
+        ![
+          "app_version",
+          "app_channel",
+          "game",
+          "game_version",
+          "system",
+          "telemetry_summary",
+          "posthog_session_id",
+          "consent",
+        ].includes(key)
+      )) ||
+    (body.variant === "triage" && record(consent) &&
+      Object.keys(consent).some((key) =>
+        !["version", "items", "accepted_at"].includes(key)
+      )) ||
     (body.attachments !== undefined &&
       (!Array.isArray(body.attachments) || body.attachments.length > 2)) ||
     (body.variant === "triage" &&
@@ -81,7 +115,7 @@ export async function submitReportV2(
         ? 403
         : error.code === "23505"
         ? 409
-        : error.code === "22023"
+        : error.code?.startsWith("22") || error.code === "23514"
         ? 400
         : error.code === "54000"
         ? 429

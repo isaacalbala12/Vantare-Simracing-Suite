@@ -18,6 +18,39 @@ create trigger a_account_write_barrier before insert or update or delete
       or ($1->>''contribution_id'' is not null and not exists
       (select 1 from public.testing_contributions where id=($1->>''contribution_id'')::uuid))');
 
+-- Existing child guards follow the legacy report FK. Preserve them and add
+-- the contribution lineage for the inert agent's retained ledgers.
+create function private.testing_center_v2_owner(p_reference text) returns uuid
+language sql stable security definer set search_path='' as $$
+  select c.account_id from public.testing_center_technical_issues i
+  join public.testing_contributions c on c.id=i.contribution_id
+  left join public.testing_center_agent_jobs j on j.technical_issue_id=i.technical_issue_id
+  where p_reference in (i.technical_issue_id,j.job_key,c.id::text)
+  limit 1
+$$;
+revoke all on function private.testing_center_v2_owner(text)
+  from public,anon,authenticated,service_role;
+do $guards$
+declare r record;
+begin
+  for r in select * from (values
+    ('testing_center_agent_jobs','technical_issue_id'),
+    ('testing_center_agent_effect_outbox','job_key'),
+    ('testing_center_agent_callbacks','job_key'),
+    ('testing_center_agent_reservations','job_key'),
+    ('testing_center_agent_audit','job_key'),
+    ('testing_center_agent_phase_callbacks','job_key'),
+    ('testing_center_audit','aggregate_id'),
+    ('testing_center_idempotency','aggregate_id')
+  ) as v(relation_name,reference_column) loop
+    execute format('create trigger b_account_write_barrier_v2 before insert or update or delete
+      on public.%I for each row execute function private.guard_account_write(%L,%L)',
+      r.relation_name,
+      format('select array_remove(array[private.testing_center_v2_owner($1->>%L)],null)',r.reference_column),
+      'select false');
+  end loop;
+end $guards$;
+
 create or replace function public.testing_center_get_agent_job_state(p_report_id text)
 returns table(state text,updated_at timestamptz)
 language sql stable security definer set search_path='' as $$

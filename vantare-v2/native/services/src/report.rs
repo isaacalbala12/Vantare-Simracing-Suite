@@ -668,24 +668,27 @@ impl Reports {
         })
     }
 }
+fn v2_body(payload: &Submission) -> Result<crate::protocol::report_document::ReportV2> {
+    crate::report_v2::build(
+        crate::report_v2::id_from_key(&payload.idempotency_key)?,
+        &payload.channel,
+        payload.action_text.clone(),
+        payload.observed_text.clone(),
+        payload.idempotency_key.clone(),
+        crate::report_v2::Kind::Diagnostic(serde_json::json!({
+            "app_version": payload.app_version,
+            "os_family": payload.os_family,
+            "os_version": payload.os_version,
+            "module": payload.module,
+        })),
+    )
+}
 fn submit_attempt(request: &DataRequest<'_>, attempt: &Attempt) -> Result<Receipt> {
     if !attempt.images.is_empty() {
         return Err(Error::EvidencePending);
     }
     attempt.payload.validate()?;
-    let submission = crate::report_v2::build(
-        crate::report_v2::id_from_key(&attempt.payload.idempotency_key)?,
-        &attempt.payload.channel,
-        attempt.payload.action_text.clone(),
-        attempt.payload.observed_text.clone(),
-        attempt.payload.idempotency_key.clone(),
-        crate::report_v2::Kind::Diagnostic(serde_json::json!({
-            "app_version": attempt.payload.app_version,
-            "os_family": attempt.payload.os_family,
-            "os_version": attempt.payload.os_version,
-            "module": attempt.payload.module,
-        })),
-    )?;
+    let submission = v2_body(&attempt.payload)?;
     let response = request
         .post("functions/v1/testing-report-submit", &submission)
         .map_err(|error| {

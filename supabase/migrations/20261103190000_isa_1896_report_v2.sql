@@ -22,7 +22,7 @@ create trigger a_account_write_barrier before insert or update or delete
 
 alter table public.testing_report_followup add column report_metadata jsonb
   check (report_metadata is null or (jsonb_typeof(report_metadata)='object'
-    and pg_column_size(report_metadata)<=4096));
+    and pg_column_size(report_metadata)<=8192));
 
 create function private.testing_report_v2_submit(p_account uuid,p_report jsonb)
 returns table(report_id uuid,report_state text,idempotent boolean,created_at timestamptz)
@@ -36,7 +36,7 @@ declare
   v_fields text[] := array['contract_version','report_id','channel','title','body','consent','idempotency_key','variant'];
 begin
   if p_account is null or jsonb_typeof(p_report) is distinct from 'object'
-    or pg_column_size(p_report)>65536 then
+    or octet_length(p_report::text)>98304 then
     raise exception 'testing_report_v2_invalid' using errcode='22023'; end if;
   v_variant := p_report->>'variant';
   if v_variant='triage' then
@@ -57,6 +57,13 @@ begin
     or (v_variant='triage' and (jsonb_typeof(p_report->'context') is distinct from 'object'
       or jsonb_typeof(p_report->'attachments') is distinct from 'array')) then
     raise exception 'testing_report_v2_invalid' using errcode='22023'; end if;
+  if v_variant='diagnostic' and (
+    octet_length((p_report->'context')::text)>8192
+    or (p_report->'context') - array['app_version','os_family','os_version','module'] <> '{}'::jsonb
+    or exists(select 1 from jsonb_each(p_report->'context') x where jsonb_typeof(x.value)<>'string')) then
+    raise exception 'testing_report_v2_invalid' using errcode='22023'; end if;
+  if v_variant='triage' and octet_length((p_report->'context')::text)>65536 then
+    raise exception 'testing_report_v2_invalid' using errcode='22023'; end if;
   v_id := (p_report->>'report_id')::uuid;
   v_key := p_report->>'idempotency_key';
   v_digest := encode(public.digest(convert_to(p_report::text,'UTF8'),'sha256'),'hex');
@@ -68,7 +75,7 @@ begin
   if found then
     if v_existing.payload_digest<>v_digest or v_existing.report_id<>v_id then
       raise exception 'testing_report_v2_conflict' using errcode='23505'; end if;
-    return query select c.id,c.state,true,c.created_at from public.testing_contributions c
+    return query select c.id,'received'::text,true,c.created_at from public.testing_contributions c
       where c.id=v_id and c.account_id=p_account;
     if not found then raise exception 'testing_report_v2_missing' using errcode='23505'; end if;
     return;
@@ -86,7 +93,7 @@ begin
   end if;
   insert into private.testing_report_v2_keys(account_id,idempotency_key,payload_digest,report_id)
     values(p_account,v_key,v_digest,v_id);
-  return query select c.id,c.state,false,c.created_at from public.testing_contributions c
+  return query select c.id,'received'::text,false,c.created_at from public.testing_contributions c
     where c.id=v_id and c.account_id=p_account;
 end $$;
 revoke all on function private.testing_report_v2_submit(uuid,jsonb)

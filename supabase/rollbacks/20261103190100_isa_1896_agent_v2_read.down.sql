@@ -5,6 +5,19 @@ do $$ begin
     raise exception 'testing_agent_v2_rollback_has_links' using errcode='55000';
   end if;
 end $$;
+do $guards$
+declare relation_name text;
+begin
+  foreach relation_name in array array[
+    'testing_center_agent_jobs','testing_center_agent_effect_outbox',
+    'testing_center_agent_callbacks','testing_center_agent_reservations',
+    'testing_center_agent_audit','testing_center_agent_phase_callbacks',
+    'testing_center_audit','testing_center_idempotency'
+  ] loop
+    execute format('drop trigger b_account_write_barrier_v2 on public.%I',relation_name);
+  end loop;
+end $guards$;
+drop function private.testing_center_v2_owner(text);
 create or replace function public.testing_center_get_agent_job_state(p_report_id text)
 returns table(state text,updated_at timestamptz)
 language sql stable security definer set search_path='' as $$

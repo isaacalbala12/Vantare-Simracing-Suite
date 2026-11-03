@@ -123,4 +123,56 @@ mod tests {
         assert_eq!(id_from_key(&key).unwrap(), id);
         assert!(id_from_key("draft_invalid").is_err());
     }
+
+    #[test]
+    fn simple_and_triage_wire_fixtures_match_rust_constructor() {
+        let cases = [
+            (
+                "native-report-v2-simple.json",
+                build(
+                    "18960000-0000-4000-8000-000000000091".into(),
+                    "master",
+                    "Informe simple".into(),
+                    "Descripción de prueba".into(),
+                    key_from_id("18960000-0000-4000-8000-000000000091"),
+                    Kind::Simple,
+                )
+                .unwrap(),
+            ),
+            (
+                "native-report-v2-triage.json",
+                build(
+                    "18960000-0000-4000-8000-000000000092".into(),
+                    "testers",
+                    "[contenido retirado por privacidad]".into(),
+                    "[contenido retirado por privacidad]".into(),
+                    key_from_id("18960000-0000-4000-8000-000000000092"),
+                    Kind::Triage(
+                        serde_json::json!({
+                            "app_version":"1.2.3",
+                            "app_channel":"testers",
+                            "game":"none",
+                            "system":{},
+                            "consent":{"version":"triage-v2","items":[],"accepted_at":"2026-10-13T00:00:00Z"}
+                        }),
+                        serde_json::json!([]),
+                    ),
+                )
+                .unwrap(),
+            ),
+        ];
+        let directory = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../../supabase/tests/fixtures");
+        for (name, dto) in cases {
+            let path = directory.join(name);
+            let expected = serde_json::to_value(dto).unwrap();
+            if std::env::var_os("VANTARE_WRITE_REPORT_V2_FIXTURES").is_some() {
+                std::fs::write(&path, serde_json::to_string_pretty(&expected).unwrap()).unwrap();
+            } else {
+                let actual: serde_json::Value =
+                    serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
+                assert_eq!(actual, expected);
+            }
+        }
+    }
 }

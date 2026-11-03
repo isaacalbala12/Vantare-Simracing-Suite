@@ -14,7 +14,7 @@ BEGIN
 END $$;
 
 set local search_path = public,extensions;
-select plan(47);
+select plan(54);
 
 select has_table('public','testing_center_agent_phase_callbacks','phase callback ledger exists');
 select ok((select relrowsecurity and relforcerowsecurity from pg_class where oid='public.testing_center_agent_phase_callbacks'::regclass),'phase callback ledger forces RLS');
@@ -245,6 +245,30 @@ select pg_temp.fixture_claims('00000000-0000-4000-8000-000000000325');
 set role authenticated;
 select is((select count(*)::integer from public.testing_center_get_agent_job_state('00000000-0000-4000-8000-000000000326')),0,'another user cannot load the agent state');
 select is((select count(*)::integer from public.testing_center_get_agent_job_state('report_'||repeat('a',64))),0,'old report IDs no longer authorize the v2 read');
+
+reset role;
+insert into public.testing_center_agent_callbacks(delivery_id,job_key,head_sha,callback_kind,outcome,payload_digest,disposition)
+select 'v2-callback',job_key,repeat('a',40),'fix','accepted',repeat('b',64),'applied'
+from public.testing_center_agent_jobs where technical_issue_id='issue_v2_'||repeat('a',64);
+insert into public.testing_center_agent_phase_callbacks(delivery_id,job_key,head_sha,phase,payload_digest,fencing_token,run_id,disposition)
+select 'v2-phase',job_key,repeat('a',40),'completed',repeat('b',64),1,1,'applied'
+from public.testing_center_agent_jobs where technical_issue_id='issue_v2_'||repeat('a',64);
+insert into public.testing_center_agent_audit(job_key,execution_generation,policy_version,from_state,to_state,actor,operation_digest)
+select job_key,1,'testing-center.autofix-policy.v2','triage_queued','triaged','orchestrator',repeat('b',64)
+from public.testing_center_agent_jobs where technical_issue_id='issue_v2_'||repeat('a',64);
+insert into public.testing_center_idempotency(idempotency_key,payload_digest,aggregate_id,from_state,to_state,origin)
+values ('v2-guard',repeat('b',64),'issue_v2_'||repeat('a',64),'reported','needs_info','orchestrator');
+insert into public.testing_center_audit(audit_id,aggregate_id,from_state,to_state,origin,actor_id,operation_digest)
+values ('v2-audit','issue_v2_'||repeat('a',64),'reported','needs_info','orchestrator','orchestrator',repeat('b',64));
+update public.account_identities set deleted_at=clock_timestamp()
+ where issuer='https://fixtures.clerk.invalid' and subject='user_'||replace('00000000-0000-4000-8000-000000000324','-','');
+select throws_ok($$update public.testing_center_agent_jobs set updated_at=clock_timestamp() where technical_issue_id='issue_v2_'||repeat('a',64)$$,'28000',null,'v2 job cannot change after account deletion');
+select throws_ok($$update public.testing_center_agent_callbacks set created_at=clock_timestamp() where delivery_id='v2-callback'$$,'28000',null,'v2 callback cannot change after deletion');
+select throws_ok($$update public.testing_center_agent_phase_callbacks set created_at=clock_timestamp() where delivery_id='v2-phase'$$,'28000',null,'v2 phase callback cannot change after deletion');
+select throws_ok($$update public.testing_center_agent_audit set created_at=clock_timestamp() where job_key=(select job_key from public.testing_center_agent_jobs where technical_issue_id='issue_v2_'||repeat('a',64))$$,'28000',null,'v2 agent audit cannot change after deletion');
+select throws_ok($$update public.testing_center_idempotency set created_at=clock_timestamp() where idempotency_key='v2-guard'$$,'28000',null,'v2 idempotency cannot change after deletion');
+select throws_ok($$update public.testing_center_audit set created_at=clock_timestamp() where audit_id='v2-audit'$$,'28000',null,'v2 issue audit cannot change after deletion');
+select ok((select count(*)=1 from public.testing_center_technical_issues where contribution_id='00000000-0000-4000-8000-000000000326'),'v2 link stays attached while account is deleted');
 
 select * from finish();
 rollback;

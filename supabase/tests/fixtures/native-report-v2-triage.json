@@ -1,0 +1,22 @@
+{
+  "attachments": [],
+  "body": "[contenido retirado por privacidad]",
+  "channel": "testers",
+  "consent": true,
+  "context": {
+    "app_channel": "testers",
+    "app_version": "1.2.3",
+    "consent": {
+      "accepted_at": "2026-10-13T00:00:00Z",
+      "items": [],
+      "version": "triage-v2"
+    },
+    "game": "none",
+    "system": {}
+  },
+  "contract_version": "testing.report.v2",
+  "idempotency_key": "draft_2558716a87f60701c28d001be75d2463cbfcb9f2ad205b039c3549ec741ecdb0",
+  "report_id": "18960000-0000-4000-8000-000000000092",
+  "title": "[contenido retirado por privacidad]",
+  "variant": "triage"
+}

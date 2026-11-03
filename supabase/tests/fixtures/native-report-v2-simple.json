@@ -1,0 +1,10 @@
+{
+  "body": "Descripción de prueba",
+  "channel": "master",
+  "consent": true,
+  "contract_version": "testing.report.v2",
+  "idempotency_key": "draft_aff1c00db17b8a5eec25a8f8f9f5e0813ae50509f9a1da28894efdd2cfdb27e7",
+  "report_id": "18960000-0000-4000-8000-000000000091",
+  "title": "Informe simple",
+  "variant": "simple"
+}

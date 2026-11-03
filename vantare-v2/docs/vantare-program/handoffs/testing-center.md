@@ -1,3 +1,9 @@
+## 2026-11-03 - #1896 / VANTA-131 paso 2: CI y prueba historica
+
+- El primer CI del rebase detecto dos expectativas IP antiguas de #1897 en F1IP. Test actualizado al tope grueso de 60/dia; runner comercial ahora ejecuta tambien la admision v2.
+- HEAD de codigo 8f1daec4a, base nightly 7ff084c45. Deno 24 PASS/1 omitido; PostgreSQL local: F1IP 28, admision v2 20 y pruebas comerciales de identidad PASS. Control RED de barreras falla solo en las barreras esperadas.
+- El nuevo HEAD del PR #1900 queda pendiente de CI. Sin produccion, despliegue, merge propio ni release. Siguiente #1901 tras integrar #1900.
+
 ## 2026-11-03 - #1896 / VANTA-131 paso 2: rebase de seguridad
 
 - #1899 integrado por Isaac en nightly 7ff084c45; PR draft #1900 rebasado sobre ese SHA. HEAD de codigo 659c1330b.

@@ -1,5 +1,11 @@
 # Testing Center — piloto remoto Supabase → Linear
 
+> **Archivo historico (#1903).** Los comandos de prueba que usan los helpers
+> Codex, Linear, GitHub o PostHog retirados ya no se ejecutan en este checkout.
+> La verificacion vigente de la superficie de despliegue es
+> `deno test --config supabase/functions/deno.json --allow-read supabase/functions/scripts/verify-deploy-surface.test.ts`.
+
+
 > **Histórico, no ejecutar.** Linear fue retirado el 2026-08-20. El PR #1903 elimina las funciones y el wrapper local del piloto. El proyecto Supabase de testing podría conservar funciones desplegadas: solo Isaac las retira, junto con los secretos y el webhook, siguiendo la lista operativa de la issue #1896. Los issues actuales viven en GitHub Issues.
 
 Estado: ISA-243 / TAU-07I desplegado exclusivamente en Supabase testing

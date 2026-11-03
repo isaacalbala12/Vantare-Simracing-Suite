@@ -34,12 +34,7 @@ Deno.test("configured functions match directories and known inert functions stay
     );
   }
   for (const name of unconfigured) {
-    for (
-      const wrapper of [
-        "deploy-approved-functions.ps1",
-        "deploy-testing-center-pilot.ps1",
-      ]
-    ) {
+    for (const wrapper of ["deploy-approved-functions.ps1"]) {
       if (
         Deno.readTextFileSync(new URL(wrapper, import.meta.url)).includes(
           `"${name}"`,
@@ -55,12 +50,8 @@ Deno.test("retired feedback endpoint is absent from deploy surfaces", () => {
   const config = Deno.readTextFileSync(
     new URL("../../config.toml", import.meta.url),
   );
-  const pilot = Deno.readTextFileSync(
-    new URL("deploy-testing-center-pilot.ps1", import.meta.url),
-  );
   if (
     config.includes("[functions.testing-center-feedback]") ||
-    pilot.includes('"testing-center-feedback"') ||
     invalidDeployableDirectories([
         { name: "testing-center-feedback", isDirectory: true } as Deno.DirEntry,
       ]).length !== 1

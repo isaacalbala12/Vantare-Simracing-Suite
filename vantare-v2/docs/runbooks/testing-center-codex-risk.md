@@ -1,5 +1,11 @@
 # Testing Center — política de riesgo Codex, sin ejecución
 
+> **Archivo historico (#1903).** Los comandos de prueba que usan los helpers
+> Codex, Linear, GitHub o PostHog retirados ya no se ejecutan en este checkout.
+> La verificacion vigente de la superficie de despliegue es
+> `deno test --config supabase/functions/deno.json --allow-read supabase/functions/scripts/verify-deploy-surface.test.ts`.
+
+
 Estado: TAU-06A / ISA-226 implementado en rama de issue. Este corte solo
 clasifica candidatos; no llama a Codex, no clona/escribe repositorios, no crea
 ramas o PRs y no efectúa red, deploy, asignaciones ni promociones.

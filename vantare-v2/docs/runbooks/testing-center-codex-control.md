@@ -1,5 +1,11 @@
 # Testing Center — control durable de Codex
 
+> **Archivo historico (#1903).** Los comandos de prueba que usan los helpers
+> Codex, Linear, GitHub o PostHog retirados ya no se ejecutan en este checkout.
+> La verificacion vigente de la superficie de despliegue es
+> `deno test --config supabase/functions/deno.json --allow-read supabase/functions/scripts/verify-deploy-surface.test.ts`.
+
+
 Estado: TAU-06F / ISA-231 implementado como adapter y dry-run. No existe
 endpoint desplegable, credencial, llamada a Codex, checkout, comando, red,
 write, rama, PR, workflow o promoción.

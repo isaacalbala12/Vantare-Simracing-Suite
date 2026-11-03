@@ -1,5 +1,11 @@
 # Testing Center — dispatch Codex firmado e inerte
 
+> **Archivo historico (#1903).** Los comandos de prueba que usan los helpers
+> Codex, Linear, GitHub o PostHog retirados ya no se ejecutan en este checkout.
+> La verificacion vigente de la superficie de despliegue es
+> `deno test --config supabase/functions/deno.json --allow-read supabase/functions/scripts/verify-deploy-surface.test.ts`.
+
+
 Estado: histórico. El workflow inerte y sus tests quedaron retirados en #1903; no hay contrato Codex ejecutable en este checkout. TAU-07A / ISA-234 se preparó sin ejecución. No existe caller, secreto,
 API, trigger automático, checkout efectivo, escritura de repo, rama, commit, PR,
 deploy, merge o promoción.

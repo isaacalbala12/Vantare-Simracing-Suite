@@ -1,5 +1,11 @@
 # Testing Center — GitHub delivery preparada, no activada
 
+> **Archivo historico (#1903).** Los comandos de prueba que usan los helpers
+> Codex, Linear, GitHub o PostHog retirados ya no se ejecutan en este checkout.
+> La verificacion vigente de la superficie de despliegue es
+> `deno test --config supabase/functions/deno.json --allow-read supabase/functions/scripts/verify-deploy-surface.test.ts`.
+
+
 Estado: TAU-05C / ISA-224 implementado en rama de issue. No hay GitHub App
 registrada, instalación, token, secreto real, endpoint desplegable, llamada de
 red, migración remota ni issue externa creada.

@@ -394,3 +394,70 @@ fn step6_concurrent_first_publication_loads_the_winner_instead_of_overwriting_it
     assert_eq!(adopted.value.zoom, 125);
     assert_eq!(root.read(FILE), before);
 }
+
+#[test]
+fn step8a_warning_clears_after_successful_repair() {
+    let root = Root::new();
+    root.write("general.json", b"{");
+    let mut store = root.load();
+    assert!(store.warning.is_some());
+    store.save_general(store.value.general).unwrap();
+    assert!(store.warning.is_none());
+    assert_eq!(root.read("general.json.invalid"), b"{");
+}
+
+#[test]
+fn step8a_bad_zoom_preserves_other_v2_sections() {
+    for zoom in [serde_json::json!(99), serde_json::json!(-1), serde_json::json!("bad"), Value::Null] {
+        let root = Root::new();
+        let mut value = serde_json::to_value(Document::default()).unwrap();
+        value["general"]["minimized"] = true.into();
+        value["appearance"]["palette"] = "ocean".into();
+        value["zoom"] = zoom;
+        let original = serde_json::to_vec(&value).unwrap();
+        root.write(FILE, &original);
+        let mut store = root.load();
+        assert!(store.value.general.minimized);
+        assert_eq!(store.value.appearance.palette, Palette::Ocean);
+        assert_eq!(store.value.zoom, 100);
+        assert!(store.warning.is_some());
+        assert_eq!(root.read(FILE), original);
+        store.save_zoom(110).unwrap();
+        assert!(store.warning.is_none());
+        assert!(root.load().value.general.minimized);
+        assert_eq!(root.load().value.appearance.palette, Palette::Ocean);
+    }
+}
+
+#[test]
+fn step8a_cas_conflict_reloads_and_can_retry_without_restart() {
+    let root = Root::new();
+    let mut first = root.load();
+    let mut stale = root.load();
+    let mut general = first.value.general;
+    general.minimized = true;
+    first.save_general(general).unwrap();
+    assert!(stale.save_zoom(125).is_err());
+    assert!(stale.value.general.minimized);
+    stale.save_zoom(125).unwrap();
+    let current = root.load();
+    assert!(current.value.general.minimized);
+    assert_eq!(current.value.zoom, 125);
+}
+
+#[test]
+fn step8a_protected_mirror_is_never_replaced_even_after_source_disappears() {
+    for bytes in [br#"{"paletteVersion":99}"#.to_vec(), vec![b' '; 16 * 1024 + 1]] {
+        let root = Root::new();
+        root.load();
+        root.write("appearance.json", &bytes);
+        let mut store = root.load();
+        assert!(store.warning.is_some());
+        fs::remove_file(root.0.join("appearance.json")).unwrap();
+        let next = AppearanceSettings { reduced_motion: true, ..store.value.appearance };
+        store.save_appearance(next).unwrap();
+        assert!(!root.0.join("appearance.json").exists());
+        assert!(store.mirror_warning.is_some());
+        assert_eq!(root.load().value.appearance, next);
+    }
+}

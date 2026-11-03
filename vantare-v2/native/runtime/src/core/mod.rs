@@ -9,6 +9,8 @@
 //! explícitamente fuera del hilo de adquisición si activa recording.
 //! Series consume la misma foto publicada, también su degradación a obsoleto.
 
+#[cfg(any(test, feature = "bench"))]
+mod bench;
 mod delta;
 mod derive;
 mod fuel;
@@ -85,7 +87,9 @@ pub struct Core {
     situation: situation::Tracker,
     events: Journal,
     series: Series,
+    #[cfg(any(test, feature = "bench"))]
     measurement_skip_flows: bool,
+    #[cfg(any(test, feature = "bench"))]
     measurement_skip_validation: bool,
 }
 
@@ -113,7 +117,9 @@ impl Core {
             situation: situation::Tracker::default(),
             events: Journal::volatile(epoch),
             series: Series::default(),
+            #[cfg(any(test, feature = "bench"))]
             measurement_skip_flows: false,
+            #[cfg(any(test, feature = "bench"))]
             measurement_skip_validation: false,
         }
     }
@@ -141,27 +147,6 @@ impl Core {
 
     pub fn events(&self) -> &Journal {
         &self.events
-    }
-
-    /// Ablación de diagnóstico: solo se configura al arrancar el banco, nunca
-    /// por IPC. La ruta normal conserva validación y los tres flujos.
-    #[cfg(any(windows, test))]
-    pub(crate) fn set_measurement_mode(&mut self, mode: &str) -> io::Result<()> {
-        let (flows, validation) = match mode {
-            "normal" => (false, false),
-            "no-flows" => (true, false),
-            "no-validation" => (false, true),
-            "no-both" => (true, true),
-            _ => {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidInput,
-                    "modo de medición desconocido",
-                ));
-            }
-        };
-        self.measurement_skip_flows = flows;
-        self.measurement_skip_validation = validation;
-        Ok(())
     }
 
     pub fn series(&self) -> &Series {
@@ -260,12 +245,16 @@ impl Core {
         let origin = observation.origin;
         let paused = observation.state.source_state == SourceState::Paused;
         let advanced = origin.source_time.is_none() || origin.source_time != self.last_source_time;
+        #[cfg(any(test, feature = "bench"))]
+        let validate = !self.measurement_skip_validation;
+        #[cfg(not(any(test, feature = "bench")))]
+        let validate = true;
         let mut snapshot = merge_validated(
             Some(&self.current),
             observation,
             self.epoch,
             &mut self.trackers,
-            !self.measurement_skip_validation,
+            validate,
         )?;
         self.demand_pending = false;
         if paused || advanced {
@@ -348,7 +337,11 @@ impl Core {
     }
 
     fn publish(&mut self, snapshot: Snapshot) {
-        if !self.measurement_skip_flows {
+        #[cfg(any(test, feature = "bench"))]
+        let flows = !self.measurement_skip_flows;
+        #[cfg(not(any(test, feature = "bench")))]
+        let flows = true;
+        if flows {
             {
                 #[cfg(feature = "paint-stats")]
                 let _span = crate::profiling::begin(crate::profiling::Stage::Journal);
@@ -430,7 +423,7 @@ mod tests {
         }
     }
 
-    fn ms(millis: u64) -> Duration {
+    pub(super) fn ms(millis: u64) -> Duration {
         Duration::from_millis(millis)
     }
 
@@ -450,7 +443,7 @@ mod tests {
     }
 
     /// Tres coches en pista; el jugador es el 2, con el 1 delante y el 3 detrás.
-    fn observation(at: Duration, source: Duration, throttle: f64) -> Observation {
+    pub(super) fn observation(at: Duration, source: Duration, throttle: f64) -> Observation {
         let mut cars = vec![car(1, 1, 10.0), car(2, 2, 0.0), car(3, 3, -10.0)];
         cars[1].gap_leader = Quality::Reliable(Gap::Time { seconds: 2.0 });
         cars[2].gap_leader = Quality::Reliable(Gap::Time { seconds: 5.0 });
@@ -481,66 +474,6 @@ mod tests {
         obs.origin.source_time = Some(source);
         obs.origin.received_at = at;
         obs
-    }
-
-    #[test]
-    fn measurement_modes_preserve_standings_for_valid_observations() {
-        let obs = observation(ms(0), ms(0), 0.25);
-        let mut baseline = Core::new(3);
-        baseline.observe(obs.clone()).unwrap();
-        let expected = standings::project(&baseline.snapshot(), Preferences::default());
-        for mode in ["normal", "no-flows", "no-validation", "no-both"] {
-            let mut core = Core::new(3);
-            core.set_measurement_mode(mode).unwrap();
-            core.observe(obs.clone()).unwrap();
-            assert_eq!(
-                standings::project(&core.snapshot(), Preferences::default()),
-                expected,
-                "{mode}"
-            );
-        }
-    }
-
-    #[test]
-    fn measurement_modes_isolate_flows_and_validation_but_keep_photos_and_staleness() {
-        for (mode, flows, validation) in [
-            ("normal", true, true),
-            ("no-flows", false, true),
-            ("no-validation", true, false),
-            ("no-both", false, false),
-        ] {
-            let mut core = Core::new(3);
-            core.set_measurement_mode(mode).unwrap();
-            let mut obs = observation(ms(0), ms(0), 0.25);
-            obs.state.cars[1].laps = Quality::Reliable(1);
-            obs.state.session.remaining_s = Quality::Reliable(f64::INFINITY);
-            core.observe(obs.clone()).unwrap();
-            assert_eq!(core.series().active().is_some(), flows, "{mode}");
-            assert_eq!(
-                core.snapshot().state.session.remaining_s == Quality::Unavailable,
-                validation,
-                "{mode}"
-            );
-            let tail = core.events().tail();
-            obs.origin.source_time = Some(ms(100));
-            obs.origin.received_at = ms(100);
-            obs.state.cars[1].in_pits = Quality::Reliable(true);
-            core.observe(obs.clone()).unwrap();
-            assert_eq!(core.events().tail().index > tail.index, flows, "{mode}");
-            obs.state.cars[2].id = obs.state.cars[0].id;
-            assert_eq!(core.observe(obs).is_err(), validation, "{mode}");
-            core.tick(ms(700));
-            assert_eq!(
-                core.snapshot().state.source_state,
-                SourceState::Stale,
-                "{mode}"
-            );
-            assert!(core.snapshot().sequence >= 3);
-        }
-        let mut core = Core::new(3);
-        assert!(core.set_measurement_mode("typo").is_err());
-        assert!(!core.measurement_skip_flows);
-        assert!(!core.measurement_skip_validation);
     }
 
     #[test]

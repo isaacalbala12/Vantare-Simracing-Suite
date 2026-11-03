@@ -6,6 +6,8 @@ rust-version.workspace = true
 publish.workspace = true
 
 [features]
+# Ablaciones de diagnóstico opt-in; nunca en builds de producto/distribución.
+bench = []
 # Consultas de CPU/reloj y marcas de fotos para diagnóstico local; no altera IPC.
 paint-stats = []
 

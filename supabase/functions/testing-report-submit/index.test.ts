@@ -143,6 +143,31 @@ Deno.test("invalid bodies and exact retries consume durable admission before val
   );
   eq(f.reports.length, 0);
 });
+Deno.test("same evidence-pending report consumes shared IP and account admission on every retry", async () => {
+  const f = fixture();
+  const pending = {
+    ...f.deps,
+    submit: () => {
+      throw new NativeError(503, "submit_failed");
+    },
+  };
+  for (let i = 0; i < 5; i++) {
+    eq(
+      (await handleTestingReportSubmit(request("account-a"), pending)).status,
+      503,
+    );
+  }
+  eq(f.counts.get("accountaccount-a"), 5);
+  eq(
+    (await handleTestingReportSubmit(request("account-a"), pending)).status,
+    429,
+  );
+  eq(
+    (await handleTestingReportSubmit(request("account-b"), pending)).status,
+    429,
+  );
+  eq(f.counts.get("accountaccount-b") ?? 0, 0);
+});
 Deno.test("missing trustworthy origin fails closed even with XFF", async () => {
   const f = fixture();
   const req = request("account-a");

@@ -13,7 +13,7 @@ BEGIN
   RETURN set_config('request.jwt.claim.sub',account,true);
 END $$;
 
-select plan(80);
+select plan(82);
 
 select has_table('public', 'testing_center_evidence_batches', 'private batch table exists');
 select has_table('public', 'testing_center_screenshot_evidence', 'private screenshot slot table exists');
@@ -478,8 +478,13 @@ select throws_ok(
   $$select * from public.testing_center_submit_report_with_evidence('testing-center.v1','nightly','Opened settings','Settings stays visible','Settings closed',null,'v0.4.0-nightly','windows','Windows 11','hub',false,false,null,null,'prepare-key',(select batch_id from prepared_result))$$,
   '55000', null, 'submit rejects a batch that is not fully ready'
 );
+select throws_ok(
+  $$select * from public.testing_center_submit_report_with_evidence('testing-center.v1','nightly','Opened settings','Settings stays visible','Settings closed',null,'v0.4.0-nightly','windows','Windows 11','hub',false,false,null,null,'prepare-key',(select batch_id from prepared_result))$$,
+  '55000', null, 'exact retry remains blocked while there is no validator'
+);
 reset role;
 set local role service_role;
+select is((select count(*)::integer from public.testing_center_screenshot_evidence where batch_id=(select batch_id from prepared_result) and state='ready'),0,'finalize never marks screenshots ready');
 update public.testing_center_screenshot_evidence
 set state='rejected',failure_code='validation_failed',validated_at=now(),updated_at=now()
 where evidence_id=(select (slots->0->>'evidenceId')::uuid from prepared_result);

@@ -70,11 +70,21 @@ Deno.test("retired feedback endpoint is absent from deploy surfaces", () => {
 });
 
 Deno.test("retired Linear endpoints are absent from deploy surfaces", () => {
-  const config = Deno.readTextFileSync(new URL("../../config.toml", import.meta.url));
-  const pilot = Deno.readTextFileSync(new URL("deploy-testing-center-pilot.ps1", import.meta.url));
-  for (const name of ["testing-center-linear-webhook", "testing-center-linear-worker"]) {
-    if (config.includes(`[functions.${name}]`) || pilot.includes(`"${name}"`) ||
-      invalidDeployableDirectories([{ name, isDirectory: true } as Deno.DirEntry]).length !== 1) {
+  const config = Deno.readTextFileSync(
+    new URL("../../config.toml", import.meta.url),
+  );
+  for (
+    const name of [
+      "testing-center-linear-webhook",
+      "testing-center-linear-worker",
+    ]
+  ) {
+    if (
+      config.includes(`[functions.${name}]`) ||
+      invalidDeployableDirectories([
+          { name, isDirectory: true } as Deno.DirEntry,
+        ]).length !== 1
+    ) {
       throw new Error(`retired Linear endpoint remains deployable: ${name}`);
     }
   }
@@ -171,6 +181,25 @@ Deno.test("native license is guarded and deployable in isolation", () => {
   }
 });
 
+Deno.test("retired testing pilot has no deploy wrapper or allowlist", () => {
+  const entries = [
+    { name: "testing-center-feedback", isDirectory: true },
+  ] as Deno.DirEntry[];
+  if (
+    invalidDeployableDirectories(entries).join() !== "testing-center-feedback"
+  ) {
+    throw new Error("retired testing pilot remains deployable");
+  }
+  try {
+    Deno.statSync(
+      new URL("./deploy-testing-center-pilot.ps1", import.meta.url),
+    );
+    throw new Error("retired pilot wrapper still exists");
+  } catch (error) {
+    if (!(error instanceof Deno.errors.NotFound)) throw error;
+  }
+});
+
 Deno.test("agent automation is recognized but remains absent from every deploy wrapper", () => {
   const entries = [
     { name: "testing-center-agent-dispatch", isDirectory: true },
@@ -179,12 +208,7 @@ Deno.test("agent automation is recognized but remains absent from every deploy w
   if (invalidDeployableDirectories(entries).length !== 0) {
     throw new Error("reviewed agent automation surface was rejected");
   }
-  for (
-    const wrapper of [
-      "deploy-approved-functions.ps1",
-      "deploy-testing-center-pilot.ps1",
-    ]
-  ) {
+  for (const wrapper of ["deploy-approved-functions.ps1"]) {
     const content = Deno.readTextFileSync(new URL(wrapper, import.meta.url));
     if (
       content.includes('"testing-center-agent-dispatch"') ||

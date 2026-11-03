@@ -7454,7 +7454,9 @@ esta integración y su CI; sin autorizar promoción ni publicación.
 - Encargo del orquestador tras la revisión parcial #1915; diseño comunicado
   antes de código y registrado en [#1916](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1916).
   Project Vantare / area:licencias. Plane sigue Por testear, sin cambio de estado.
-- Base `origin/nightly@ddebd895a388e7600eba87eea39b8be31a84cf7c`, rama
+- Base inicial `ddebd895a388e7600eba87eea39b8be31a84cf7c`; incorporado
+  `origin/nightly@5f440c0945f82d427ff56b769d4a7fa0e5156d10` en nuestra rama
+  para conservar el harness/admin y el handoff vigentes. Rama
   `vantareapp/isa-1916-qa-e2e-licencias`; checkout, targets y datos bajo
   `D:/VantareServer/qa/licencias-e2e`. Sin cuentas ni instalación reales.
 - Feature opt-in qa-e2e en runtime/services/ipc: raíz con marcador, endpoints
@@ -7468,11 +7470,14 @@ esta integración y su CI; sin autorizar promoción ni publicación.
 - Primeros builds QA compilan; Deno valida el servidor de test con config
   propia dom.iterable. Arranque local en depuración: sockets Unix demasiado
   largos resueltos con TCP exclusivamente; warm-up de import dinámico sigue CI.
-  Última pasada: 8/10 PASA con los tres procesos; quedan repetir Paused tras
-  resolver compartición del reloj y compra tras recompilar sandbox. La batería
-  histórica del empaquetador pasa tras cargar el guard sólo al construir.
-  Aún no hay diez PASA ni gates completos acreditados. Logs de intentos en
+  Dos pasadas 10/10 PASA, incluida e2e-1916-2d178117f94c46fe80728ee4d58cf691
+  sobre el backend actualizado: TCP cortado, compra por Feed y metadatos reales
+  intactos. Informe y evidencia sanitizada en D:/VantareServer/evidence/licencias-e2e/INFORME.md.
+  Batería histórica del empaquetador, 45 tests de ramas, Deno fmt/lint/check y
+  Clippy QA all-targets -D warnings PASS. Tres avisos QA corregidos sin silenciar
+  lints (conversiones comprobadas y punto y coma); logs previos conservados.
+  Endpoints negativos, build final y gates sin feature/distribución pendientes. Logs en
   `D:/VantareServer/evidence/licencias-e2e/isa-1916` y raíces e2e-1916-*.
-- Siguiente: ejecutar diez escenarios, corregir sólo tooling QA si falla,
+- Siguiente: repetir diez escenarios sobre backend actualizado,
   registrar bugs de producto sin arreglarlos y completar exclusión release,
   regresiones sin feature, telemetría y lifecycle. Sin merge/release/promoción.

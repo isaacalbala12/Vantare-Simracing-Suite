@@ -1,6 +1,7 @@
 -- VANTA-131 step 2. Disposable PostgreSQL only; no real users or IPs.
 begin;
-select plan(17);
+select plan(18);
+select ok(exists(select 1 from pg_trigger where tgrelid='private.testing_report_admitted_keys'::regclass and tgname='a_account_write_barrier' and tgenabled='O'), 'admission keys retain the deleted-account write barrier');
 select ok(not has_function_privilege('anon','public.testing_report_admit_account(uuid,text,text,date)','execute'),'anon cannot claim an account retry');
 select ok(not has_function_privilege('authenticated','public.testing_report_admit_account(uuid,text,text,date)','execute'),'client cannot claim an account retry');
 select ok(has_function_privilege('service_role','public.testing_report_admit_account(uuid,text,text,date)','execute'),'Edge service role may admit');

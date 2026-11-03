@@ -7568,4 +7568,6 @@ esta integración y su CI; sin autorizar promoción ni publicación.
   distinguir 409 y lectura/retención siguen en paso 10.
 - PR draft [#1927](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1927)
   contra nightly; código validado d2c247ca7 y push verificado. Dependencia #1925
-  explícita; CI nueva pendiente. No hay integración ni despliegue autorizado.
+  explícita. CI 41742042080 de ad02fb322 confirma el bloqueo esperado:
+  native_admin_requires_r6_owner_authority al aplicar toda la cadena sin R6.
+  No hay integración ni despliegue autorizado; no se debilita ese guard.

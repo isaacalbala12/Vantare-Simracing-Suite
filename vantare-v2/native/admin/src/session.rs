@@ -133,7 +133,8 @@ impl Worker {
 }
 struct Session {
     account: Account,
-    _store: Store,
+    store: Store,
+    ephemeral: bool,
     http: Http,
     client: Client,
     pending: bool,
@@ -167,7 +168,8 @@ impl Session {
         http: Http,
         client: Client,
     ) -> std::result::Result<Self, OpenError> {
-        if let Some((context, hub)) = &config.legacy {
+        let ephemeral = config.legacy.is_some();
+        if let Some((context, _)) = &config.legacy {
             let legacy = Store::open(root, context).map_err(OpenError::Migration)?;
             let at = now()?.saturating_mul(1000);
             legacy
@@ -176,21 +178,45 @@ impl Session {
             legacy
                 .quarantine_if_present("account-profile", at)
                 .map_err(OpenError::Migration)?;
-            Account::retire_saved_session(&http, &legacy, &hub.issuer, &hub.client_id)
+            // The old client is shared with Hub. Do not revoke its grant.
+            legacy
+                .discard_retired_session()
+                .map_err(OpenError::Migration)?;
+            legacy
+                .retire_cache("account-profile")
                 .map_err(OpenError::Migration)?;
         }
         let oauth_config = config.build.native_oauth.ok_or(Error::Unconfigured)?;
         let store = Store::open(root, &config.context)?;
-        Account::retire_saved_session(&http, &store, &oauth_config.issuer, &oauth_config.client_id)
+        if ephemeral {
+            Account::retire_saved_session(
+                &http,
+                &store,
+                &oauth_config.issuer,
+                &oauth_config.client_id,
+            )
             .map_err(OpenError::Migration)?;
+        }
         let oauth = load_oauth(&store, &http, oauth_config, now()?.saturating_mul(1000))?;
         Ok(Self {
-            account: Account::in_memory(oauth)?,
-            _store: store,
+            account: if ephemeral {
+                Account::in_memory(oauth)?
+            } else {
+                Account::restore(oauth, &store)?
+            },
+            store,
+            ephemeral,
             http,
             client,
             pending: false,
         })
+    }
+    fn complete(&mut self, completion: vantare_services::account::Completion) -> Result<()> {
+        if self.ephemeral {
+            self.account.complete_in_memory(completion)
+        } else {
+            self.account.complete(completion, &self.store)
+        }
     }
     fn refresh(&mut self) -> Result<()> {
         let time = now()?;
@@ -199,8 +225,7 @@ impl Session {
             .expires_at()
             .is_some_and(|expiry| expiry <= time.saturating_add(60))
         {
-            self.account
-                .complete_in_memory(self.account.refresh()?.run(&self.http, now()?)?)?;
+            self.complete(self.account.refresh()?.run(&self.http, now()?)?)?;
         }
         Ok(())
     }
@@ -220,6 +245,10 @@ impl Session {
             }
             Command::Logout => {
                 self.pending = false;
+                if !self.ephemeral {
+                    self.account.logout(&self.store)?;
+                    return Ok(Reply::LoggedOut);
+                }
                 let revoked = self.account.revoke_refresh(&self.http);
                 self.account.forget_in_memory()?;
                 Ok(match revoked {
@@ -254,12 +283,18 @@ impl Session {
     }
     fn poll(&mut self) -> Result<Option<Reply>> {
         if let Some(exchange) = self.account.poll_login()? {
-            self.account
-                .complete_in_memory(exchange.run(&self.http, now()?)?)?;
+            self.complete(exchange.run(&self.http, now()?)?)?;
             self.pending = false;
             return Ok(Some(Reply::Ready));
         }
         Ok(None)
+    }
+    fn prepare_diagnosis(&mut self, open: impl FnOnce(&str) -> Result<()>) -> Result<()> {
+        if self.ephemeral {
+            self.login_interactive(open)
+        } else {
+            self.refresh()
+        }
     }
     fn login_interactive(&mut self, open: impl FnOnce(&str) -> Result<()>) -> Result<()> {
         let Reply::OpenBrowser(url) = self.handle(Command::Login)? else {
@@ -348,7 +383,7 @@ pub fn diagnose_owner(root: &std::path::Path) -> Result<()> {
         }
         failure.error()
     })?;
-    session.login_interactive(open_browser)?;
+    session.prepare_diagnosis(open_browser)?;
     let _written = writeln!(
         std::io::stdout(),
         "restore signed_in={}",
@@ -565,14 +600,14 @@ mod migration_tests;
 mod tests {
     use super::*;
     #[test]
-    fn r10_regression_legacy_logout_revokes_refresh_before_forgetting_session() {
+    fn r10_regression_active_logout_revokes_refresh_before_forgetting_session() {
         let server =
             vantare_services::test_http::Server::start_observed(vec![(200, String::new())]);
         let base = server.base.as_str().trim_end_matches('/');
         let root = std::env::temp_dir().join(format!("admin-r10-logout-{}", std::process::id()));
         let store = Store::open(&root, "r10-synthetic-logout").expect("store");
         let oauth: OAuth = serde_json::from_value(serde_json::json!({
-            "issuer":format!("{base}/"), "client_id":"hub-fixture",
+            "issuer":format!("{base}/"), "client_id":"admin-fixture",
             "redirect":"http://127.0.0.1:0/callback",
             "authorization":format!("{base}/authorize"),
             "token":format!("{base}/token"), "userinfo":format!("{base}/userinfo")
@@ -585,7 +620,7 @@ mod tests {
                     "state":"SignedIn", "version":1,
                     "session": {
                         "identity":{"issuer":format!("{base}/"),"subject":"owner-fixture"},
-                        "client_id":"hub-fixture", "access":"synthetic-access",
+                        "client_id":"admin-fixture", "access":"synthetic-access",
                         "refresh":"synthetic-refresh", "expires_at":4_000_000_000_u64
                     }
                 }),
@@ -597,7 +632,8 @@ mod tests {
         http.enable_loopback_for_test();
         let mut session = Session {
             account,
-            _store: store,
+            store,
+            ephemeral: true,
             http,
             client: crate::client::tests::loopback_client(base),
             pending: false,

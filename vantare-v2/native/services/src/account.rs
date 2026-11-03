@@ -370,7 +370,12 @@ impl Account {
     /// Public-client FAPI revocation; no client secret and no access-token log.
     pub fn revoke_refresh(&self, http: &Http) -> Result<()> {
         if let Some(session) = &self.session {
-            revoke_refresh(http, &self.oauth.issuer, &session.refresh)?;
+            revoke_refresh(
+                http,
+                &self.oauth.issuer,
+                &self.oauth.client_id,
+                &session.refresh,
+            )?;
         }
         Ok(())
     }
@@ -401,7 +406,7 @@ impl Account {
                 version: 1,
                 session,
             } if session.identity.issuer == issuer.as_str() && session.client_id == client_id => {
-                revoke_refresh(http, issuer, &session.refresh)
+                revoke_refresh(http, issuer, client_id, &session.refresh)
             }
             _ => Err(Error::Storage),
         })?;
@@ -730,21 +735,36 @@ impl Account {
     }
 }
 
-fn revoke_refresh(http: &Http, issuer: &Url, refresh: &Secret) -> Result<()> {
+fn revoke_refresh(http: &Http, issuer: &Url, client_id: &str, refresh: &Secret) -> Result<()> {
     if refresh.expose().is_empty() || refresh.expose().len() > 16 * 1024 {
         return Err(Error::Storage);
     }
     let endpoint = issuer
         .join("/oauth/token/revoke")
         .map_err(|_| Error::Unconfigured)?;
-    http.post_form(
+    let response = http.post_form(
         &endpoint,
         &[
+            ("client_id", client_id),
             ("token", refresh.expose()),
             ("token_type_hint", "refresh_token"),
         ],
-    )?
-    .success()?;
+    )?;
+    #[derive(Deserialize)]
+    struct RevokeError {
+        error: String,
+    }
+    if response.status == 400
+        && response.json::<RevokeError>().is_ok_and(|body| {
+            matches!(
+                body.error.as_str(),
+                "invalid_token" | "invalid_grant" | "token_expired" | "token_revoked"
+            )
+        })
+    {
+        return Ok(());
+    }
+    response.success()?;
     Ok(())
 }
 

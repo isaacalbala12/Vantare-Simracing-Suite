@@ -79,6 +79,25 @@ fn prepare(base: &url::Url, active: bool, damaged: bool) -> PathBuf {
     root
 }
 
+fn prepare_gestion(base: &url::Url, damaged: bool) -> PathBuf {
+    let root = prepare(base, true, false);
+    let store = Store::open(&root, "admin-fixture-v2").expect("synthetic Gestion Store");
+    let saved = if damaged {
+        serde_json::json!({"damaged":true})
+    } else {
+        serde_json::json!({"state":"SignedIn","version":1,"session":{
+            "identity":{"issuer":base,"subject":"user_fixture"},"client_id":"admin-fixture",
+            "access":"synthetic-access","refresh":"synthetic-refresh","expires_at":4_000_000_000_u64
+        }})
+    };
+    store
+        .save("account", &saved)
+        .expect("synthetic Gestion session");
+    store
+        .save("account-profile", &serde_json::json!({"private":"fixture"}))
+        .expect("profile");
+    root
+}
 fn open(
     root: &std::path::Path,
     server: &Server,
@@ -95,19 +114,17 @@ fn open(
 }
 
 #[test]
-fn r10_admin_startup_revokes_legacy_refresh_without_restoring_in_either_mode() {
-    for active in [false, true] {
-        let server = Server::start_observed(vec![(200, String::new())]);
-        let root = prepare(&server.base, active, false);
-        let mut session = open(&root, &server, active).expect("retired");
+fn r10_active_migration_purges_old_hub_even_if_damaged_without_revoking_its_grant() {
+    for damaged in [false, true] {
+        let server = Server::start_observed(vec![]);
+        let root = prepare(&server.base, true, damaged);
+        let mut session = open(&root, &server, true).expect("local retirement");
         assert!(matches!(
             session.handle(Command::Restore),
             Ok(Reply::LoggedOut)
         ));
         assert!(session.account.identity().is_none());
-        let requests = server.finish_observed();
-        assert_eq!(requests.len(), 1);
-        assert!(requests[0].starts_with("POST /oauth/token/revoke "));
+        assert!(server.finish_observed().is_empty());
         drop(session);
         let old = Store::open(&root, "hub-fixture-v1").expect("Store");
         assert!(matches!(
@@ -122,50 +139,42 @@ fn r10_admin_startup_revokes_legacy_refresh_without_restoring_in_either_mode() {
         std::fs::remove_dir_all(root).expect("cleanup");
     }
 }
-
 #[test]
-fn r10_admin_failed_revocation_blocks_open_and_retries_only_on_new_startup() {
-    for active in [false, true] {
-        let server = Server::start_observed(vec![(503, "{}".into()), (200, String::new())]);
-        let root = prepare(&server.base, active, false);
-        assert!(matches!(
-            open(&root, &server, active),
-            Err(OpenError::Migration(Error::Offline))
-        ));
-        let mut state = crate::state::State::new(true, crate::state::Screen::Users);
-        state.migration_pending();
-        assert!(!state.signed_in && !state.busy && state.users.is_empty());
-        assert!(state.message.contains("Reinicia Gestión"));
-        let mut session = open(&root, &server, active).expect("next startup succeeds");
-        assert!(matches!(
-            session.handle(Command::Restore),
-            Ok(Reply::LoggedOut)
-        ));
-        drop(session);
-        assert_eq!(server.finish_observed().len(), 2);
-        std::fs::remove_dir_all(root).expect("cleanup");
-    }
+fn r10_gestion_revocation_failure_blocks_restore_and_retries_at_next_startup() {
+    let server = Server::start_observed(vec![(503, "{}".into()), (200, String::new())]);
+    let root = prepare_gestion(&server.base, false);
+    assert!(matches!(
+        open(&root, &server, true),
+        Err(OpenError::Migration(Error::Offline))
+    ));
+    let mut state = crate::state::State::new(true, crate::state::Screen::Users);
+    state.migration_pending();
+    assert!(!state.signed_in && !state.busy && state.users.is_empty());
+    assert!(state.message.contains("Reinicia Gestión"));
+    let mut session = open(&root, &server, true).expect("next startup");
+    assert!(matches!(
+        session.handle(Command::Restore),
+        Ok(Reply::LoggedOut)
+    ));
+    drop(session);
+    assert_eq!(server.finish_observed().len(), 2);
+    std::fs::remove_dir_all(root).expect("cleanup");
 }
-
 #[test]
-fn r10_admin_damaged_blob_blocks_open_without_network_or_restoration() {
-    for active in [false, true] {
-        let server = Server::start_observed(vec![]);
-        let root = prepare(&server.base, active, true);
-        assert!(matches!(
-            open(&root, &server, active),
-            Err(OpenError::Migration(Error::Storage))
-        ));
-        assert!(server.finish_observed().is_empty());
-        std::fs::remove_dir_all(root).expect("cleanup");
-    }
+fn r10_damaged_gestion_blob_blocks_restore_without_network() {
+    let server = Server::start_observed(vec![]);
+    let root = prepare_gestion(&server.base, true);
+    assert!(matches!(
+        open(&root, &server, true),
+        Err(OpenError::Migration(Error::Storage))
+    ));
+    assert!(server.finish_observed().is_empty());
+    std::fs::remove_dir_all(root).expect("cleanup");
 }
-
 #[test]
 fn r10_admin_diagnosis_logs_in_interactively_and_logout_revokes_once() {
     for revoke_status in [200, 503] {
         let server = Server::start_observed(vec![
-        (200,String::new()),
         (200,serde_json::json!({"access_token":"synthetic-access","refresh_token":"synthetic-new-refresh","expires_in":300,"token_type":"Bearer"}).to_string()),
         (200,"{\"sub\":\"user_fixture\"}".into()),
         (revoke_status,String::new()),
@@ -174,7 +183,7 @@ fn r10_admin_diagnosis_logs_in_interactively_and_logout_revokes_once() {
         let mut session = open(&root, &server, true).expect("session");
         let mut callback_socket = None;
         session
-            .login_interactive(|url| {
+            .prepare_diagnosis(|url| {
                 let login = url::Url::parse(url).expect("login URL");
                 let params = login
                     .query_pairs()
@@ -217,8 +226,8 @@ fn r10_admin_diagnosis_logs_in_interactively_and_logout_revokes_once() {
         }
         assert!(session.account.identity().is_none());
         let requests = server.finish_observed();
-        assert_eq!(requests.len(), 4);
-        assert!(requests[3].contains("token=synthetic-new-refresh"));
+        assert_eq!(requests.len(), 3);
+        assert!(requests[2].contains("token=synthetic-new-refresh"));
         drop(session);
         let store = Store::open(&root, "admin-fixture-v2").expect("synthetic Store");
         assert!(matches!(
@@ -236,12 +245,60 @@ fn r10_inactive_gestion_restores_disk_session_and_logout_does_not_revoke() {
     let root = prepare(&server.base, false, false);
     let opened = open(&root, &server, false);
     let restored = if let Ok(mut session) = opened {
-        let ready = matches!(session.handle(Command::Restore), Ok(Reply::Ready));
+        let mut browser = false;
+        session
+            .prepare_diagnosis(|_| {
+                browser = true;
+                Ok(())
+            })
+            .expect("legacy diagnosis");
+        let ready = !browser && matches!(session.handle(Command::Restore), Ok(Reply::Ready));
         let logged_out = matches!(session.handle(Command::Logout), Ok(Reply::LoggedOut));
         ready && logged_out
-    } else { false };
+    } else {
+        false
+    };
     let requests = server.finish_observed();
     std::fs::remove_dir_all(root).expect("cleanup");
-    assert!(restored, "inactive Gestión must preserve the persistent legacy path");
-    assert!(requests.is_empty(), "inactive legacy restore/logout makes no revocation request");
+    assert!(
+        restored,
+        "inactive Gestión must preserve the persistent legacy path"
+    );
+    assert!(
+        requests.is_empty(),
+        "inactive legacy restore/logout makes no revocation request"
+    );
+}
+#[test]
+fn r10_dead_gestion_refresh_allows_local_retirement_without_touching_hub() {
+    for code in [
+        "invalid_token",
+        "invalid_grant",
+        "token_expired",
+        "token_revoked",
+    ] {
+        let server =
+            Server::start_observed(vec![(400, serde_json::json!({"error":code}).to_string())]);
+        let root = prepare_gestion(&server.base, false);
+        let mut session = open(&root, &server, true).expect("already dead refresh");
+        assert!(matches!(
+            session.handle(Command::Restore),
+            Ok(Reply::LoggedOut)
+        ));
+        let requests = server.finish_observed();
+        assert_eq!(requests.len(), 1);
+        assert!(requests[0].contains("client_id=admin-fixture"));
+        drop(session);
+        let store = Store::open(&root, "admin-fixture-v2").expect("Store");
+        assert!(matches!(
+            store.read::<serde_json::Value>("account"),
+            Ok(Stored::Missing)
+        ));
+        assert!(matches!(
+            store.read::<serde_json::Value>("account-profile"),
+            Ok(Stored::Missing)
+        ));
+        drop(store);
+        std::fs::remove_dir_all(root).expect("cleanup");
+    }
 }

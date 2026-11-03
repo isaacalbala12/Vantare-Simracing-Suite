@@ -283,6 +283,15 @@ impl Store {
         Ok(())
     }
 
+    /// Local retirement of the old admin client shared with Hub. Never decrypt
+    /// or revoke that client's tokens: doing so could retire the Hub grant.
+    pub fn discard_retired_session(&self) -> Result<()> {
+        for path in self.retired_paths("account")? {
+            fs::remove_file(path).map_err(|_| Error::Storage)?;
+        }
+        Ok(())
+    }
+
     /// Purge only a declared cache, including its owned quarantine copies.
     pub fn retire_cache(&self, name: &str) -> Result<()> {
         if document_class(name)? != Class::Cache {

@@ -221,25 +221,58 @@ fn r10_memory_login_refresh_and_logout_never_write_account_or_profile() {
 
 #[test]
 fn r10_revocation_identifies_issuing_client_in_form() {
-    let server=Server::start_observed(vec![(200,String::new())]);
-    let (root,store)=crate::test_store("r10-revoke-client");
-    let account=super::super::fixture(&server.base,&store);
+    let server = Server::start_observed(vec![(200, String::new())]);
+    let (root, store) = crate::test_store("r10-revoke-client");
+    let account = super::super::fixture(&server.base, &store);
     account.revoke_refresh(&Http::default()).expect("revoke");
-    let requests=server.finish_observed();
-    assert_eq!(requests.len(),1);
+    let requests = server.finish_observed();
+    assert_eq!(requests.len(), 1);
     assert!(requests[0].contains("client_id=public-fixture"));
-    drop(account);drop(store);crate::cleanup_store(&root,"r10-revoke-client",&[]);
+    drop(account);
+    drop(store);
+    crate::cleanup_store(&root, "r10-revoke-client", &[]);
 }
 
 #[test]
 fn r10_revocation_treats_dead_tokens_as_success_but_keeps_configuration_errors() {
-    for code in ["invalid_token","invalid_grant","token_expired","token_revoked","invalid_client"] {
-        let server=Server::start_observed(vec![(400,serde_json::json!({"error":code}).to_string())]);
-        let (root,store)=crate::test_store("r10-revoke-idempotent");
-        let account=super::super::fixture(&server.base,&store);
-        let result=account.revoke_refresh(&Http::default());
-        assert_eq!(result.is_ok(),code!="invalid_client");
-        assert_eq!(server.finish_observed().len(),1);
-        drop(account);drop(store);crate::cleanup_store(&root,"r10-revoke-idempotent",&[]);
+    for code in [
+        "invalid_token",
+        "invalid_grant",
+        "token_expired",
+        "token_revoked",
+        "invalid_client",
+    ] {
+        let server =
+            Server::start_observed(vec![(400, serde_json::json!({"error":code}).to_string())]);
+        let (root, store) = crate::test_store("r10-revoke-idempotent");
+        let account = super::super::fixture(&server.base, &store);
+        let result = account.revoke_refresh(&Http::default());
+        assert_eq!(result.is_ok(), code != "invalid_client");
+        assert_eq!(server.finish_observed().len(), 1);
+        drop(account);
+        drop(store);
+        crate::cleanup_store(&root, "r10-revoke-idempotent", &[]);
     }
+}
+
+#[test]
+fn r10_retirement_never_revokes_another_clients_grant() {
+    let server = Server::start_observed(vec![]);
+    let (root, store) = crate::test_store("r10-grant-isolation");
+    let account = super::super::fixture(&server.base, &store);
+    drop(account);
+    let before = blobs(&root);
+    assert!(matches!(
+        Account::retire_saved_session(
+            &Http::default(),
+            &store,
+            &server.base,
+            "gestion-other-fixture"
+        ),
+        Err(Error::Storage)
+    ));
+    assert_eq!(blobs(&root), before);
+    assert!(server.finish_observed().is_empty());
+    drop(store);
+    crate::cleanup_store(&root, "r10-grant-isolation", &[]);
 }

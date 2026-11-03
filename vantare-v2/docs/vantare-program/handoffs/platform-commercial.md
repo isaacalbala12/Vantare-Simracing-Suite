@@ -7892,3 +7892,9 @@ esta integración y su CI; sin autorizar promoción ni publicación.
   Instancias locales detenidas. diff --check solo avisa del espacio intencional
   en down.sql:315. Rust/lifecycle/telemetría omitidos: ningún crate cambia.
   Evidencia review-r1 dentro de isa-1910-paso7b. CI del nuevo HEAD pendiente.
+- CI 41738959614 detectó otro aplicador de schema: run-admin-local.py no simulaba
+  el prerrequisito R6 y recibió el rechazo esperado del guard. Se adapta la misma
+  fixture local a ese runner; sin cambios en marketing ni permisos operativos.
+  Python PASS; Docker local no disponible, validación real de ese runner en CI.
+  R6 debe revisar también los escritores enumerados en DETAIL, incluido
+  apply_clerk_user_event; cerrar solo la RPC de intake no basta para el guard.

@@ -668,44 +668,36 @@ impl Reports {
         })
     }
 }
+fn v2_body(payload: &Submission) -> Result<crate::protocol::report_document::ReportV2> {
+    crate::report_v2::build(
+        crate::report_v2::id_from_key(&payload.idempotency_key)?,
+        &payload.channel,
+        payload.action_text.clone(),
+        payload.observed_text.clone(),
+        payload.idempotency_key.clone(),
+        crate::report_v2::Kind::Diagnostic(serde_json::json!({
+            "app_version": payload.app_version,
+            "os_family": payload.os_family,
+            "os_version": payload.os_version,
+            "module": payload.module,
+        })),
+    )
+}
 fn submit_attempt(request: &DataRequest<'_>, attempt: &Attempt) -> Result<Receipt> {
-    if !SCREENSHOTS_AVAILABLE && !attempt.images.is_empty() {
+    if !attempt.images.is_empty() {
         return Err(Error::EvidencePending);
     }
     attempt.payload.validate()?;
-    // Both forms share the Edge IP/account admission before any report write.
-    // Upload/finalize retain their durable batch, retry and receipt semantics.
-    let response = if attempt.images.is_empty() {
-        request.post("functions/v1/testing-report-submit", &attempt.payload)
-    } else {
-        screenshots::upload(
-            request,
-            &attempt.images,
-            &attempt.payload.channel,
-            &attempt.payload.idempotency_key,
-        )
-        .and_then(|batch| {
-            let mut body = serde_json::to_value(&attempt.payload).map_err(|_| Error::Protocol)?;
-            body["p_batch_id"] = batch.into();
-            request.post("functions/v1/testing-report-submit", &body)
-        })
-    }
-    .map_err(|error| {
-        if error == Error::Offline {
-            Error::Uncertain
-        } else {
-            error
-        }
-    })?;
-    if !attempt.images.is_empty()
-        && response.status == 400
-        && response
-            .json::<serde_json::Value>()
-            .ok()
-            .is_some_and(|body| body["error"] == "evidence_not_ready")
-    {
-        return Err(Error::EvidencePending);
-    }
+    let submission = v2_body(&attempt.payload)?;
+    let response = request
+        .post("functions/v1/testing-report-submit", &submission)
+        .map_err(|error| {
+            if error == Error::Offline {
+                Error::Uncertain
+            } else {
+                error
+            }
+        })?;
     let response = response.success().map_err(|error| {
         if error == Error::Offline {
             Error::Uncertain
@@ -722,8 +714,8 @@ fn submit_attempt(request: &DataRequest<'_>, attempt: &Attempt) -> Result<Receip
     Ok(receipt)
 }
 fn valid_receipt(receipt: &Receipt) -> Result<()> {
-    if !hex_id(&receipt.report_id, "report_")
-        || receipt.report_state != "submitted"
+    if !(crate::report_v2::valid_id(&receipt.report_id) && receipt.report_state == "received"
+        || hex_id(&receipt.report_id, "report_") && receipt.report_state == "submitted")
         || receipt.created_at.len() > 64
         || chrono::DateTime::parse_from_rfc3339(&receipt.created_at).is_err()
     {

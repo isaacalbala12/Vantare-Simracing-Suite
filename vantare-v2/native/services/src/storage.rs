@@ -465,11 +465,25 @@ mod tests {
             "issuer":issuer, "client_id":"public-fixture", "redirect":"http://127.0.0.1:0/callback",
             "authorization":"https://fixture.test/authorize", "token":"https://fixture.test/token", "userinfo":"https://fixture.test/userinfo"
         })).expect("OAuth fixture");
-        let payload: serde_json::Value = serde_json::from_str(include_str!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/../../../supabase/tests/fixtures/native-hub-report.json"
-        )))
-        .expect("shared payload");
+        // A durable confirmed attempt still contains the local v1 payload;
+        // only its outbound wire body is converted to testing.report.v2.
+        let payload = serde_json::json!({
+            "p_contract_version":"testing-center.v1",
+            "p_channel":"testers",
+            "p_action_text":"Informe estructurado",
+            "p_expected_text":"Revisión humana pendiente",
+            "p_observed_text":"Revisión humana pendiente",
+            "p_context_text":"",
+            "p_app_version":"1.2.3",
+            "p_os_family":"windows",
+            "p_os_version":"Windows 11",
+            "p_module":"hub",
+            "p_include_diagnostic":false,
+            "p_include_logs":false,
+            "p_diagnostic_payload":null,
+            "p_diagnostic_digest":null,
+            "p_idempotency_key":format!("draft_{}", "a".repeat(64)),
+        });
         let samples = [
             (
                 "roadmap",

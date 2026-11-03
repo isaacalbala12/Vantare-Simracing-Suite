@@ -264,7 +264,17 @@ $$;
      raise RuntimeError(suite+' failed after rollback')
     run('psql',*conn,'-f',ROOT/'supabase/migrations'/(stem+'.sql'))
   if args.testing_identity:
-   for name in ['testing_followup_F1IP.test.sql','testing_report_admission_v2.test.sql','commercial_testing_identity.test.sql','testing_step3_channel.test.sql','commercial_posthog_consent.test.sql','testing_report_rich_admission.test.sql','testing_report_legacy_closed.test.sql']:
+   agent_v2='20261103190100_isa_1896_agent_v2_read'
+   run('psql',*conn,'-f',ROOT/'supabase/rollbacks'/(agent_v2+'.down.sql'))
+   old_read=run('psql',*conn,'-At','-c',"select pg_get_functiondef('public.testing_center_get_agent_job_state(text)'::regprocedure) like '%testing_center_reports%'").strip()
+   if old_read!='t': raise RuntimeError('step 7a agent rollback lost old authorized read')
+   run('psql',*conn,'-f',ROOT/'supabase/migrations'/(agent_v2+'.sql'))
+   report_v2='20261103190000_isa_1896_report_v2'
+   run('psql',*conn,'-f',ROOT/'supabase/rollbacks'/(report_v2+'.down.sql'))
+   absent=run('psql',*conn,'-At','-c',"select to_regclass('private.testing_report_v2_keys') is null").strip()
+   if absent!='t': raise RuntimeError('step 7a rollback retained v2 keys')
+   run('psql',*conn,'-f',ROOT/'supabase/migrations'/(report_v2+'.sql'))
+   for name in ['testing_followup_F1IP.test.sql','testing_report_admission_v2.test.sql','commercial_testing_identity.test.sql','testing_step3_channel.test.sql','commercial_posthog_consent.test.sql','testing_report_rich_admission.test.sql','testing_report_legacy_closed.test.sql','testing_report_v2.test.sql','testing_center_agent_closeout_callbacks.test.sql']:
     result=run('psql',*conn,'-f',ROOT/'supabase/tests'/name)
     (OUT/(name+'.log')).write_text(result)
     if 'not ok ' in result or '# Looks like' in result: raise RuntimeError(result)
@@ -415,15 +425,6 @@ $$;
        except urllib.error.HTTPError as e: return e.code,None
       code,_=legacy_submit(tokens['valid'])
       assert code==403, f'closed legacy tester RPC expected 403, got {code}'
-      # Fixture represents an already server-validated JPEG, never real bytes.
-      run('psql',*conn,'-c',f"""
-       insert into public.testing_center_evidence_batches(batch_id,reporter_user_id,channel,idempotency_key,manifest_digest,state)
-        values('17090000-0000-4000-8000-000000000010','{account}','testers','draft_'||repeat('e',64),repeat('e',64),'ready');
-       insert into public.testing_center_screenshot_evidence(evidence_id,batch_id,position,object_path,media_type,byte_size,sha256,width,height,state,validated_at)
-        values('17090000-0000-4000-8000-000000000011','17090000-0000-4000-8000-000000000010',1,
-         'v1/0123456789abcdef0123456789abcdef/17090000-0000-4000-8000-000000000010/17090000-0000-4000-8000-000000000011',
-         'image/jpeg',100,repeat('e',64),10,10,'ready',now());
-      """)
       def report_edge(mode):
        report_script=ROOT/'supabase/tests/commercial-report.ts'
        if args.deno_bin.endswith('.exe'): report_script=wp(report_script)
@@ -435,14 +436,14 @@ $$;
        (OUT/('report-edge-'+mode+'.log')).write_text(result.stdout)
        return result.stdout
       edge_report=json.loads(report_edge('live'))
-      report_path='/testing_center_reports?report_id=eq.'+urllib.parse.quote(edge_report['report_id'],safe='')
-      def legacy_rows(token):
+      report_path='/testing_contributions?id=eq.'+urllib.parse.quote(edge_report['report_id'],safe='')
+      def contribution_rows(token):
        req=urllib.request.Request(f'http://127.0.0.1:{http_port}'+report_path,headers={'Authorization':'Bearer '+token})
        with urllib.request.urlopen(req,timeout=5) as r: return json.load(r)
-      assert len(legacy_rows(tokens['valid']))==1, 'own legacy report missing'
-      assert legacy_rows(tokens['other'])==[], 'legacy report leaked across identity'
+      assert len(contribution_rows(tokens['valid']))==1, 'own v2 report missing'
+      assert contribution_rows(tokens['other'])==[], 'v2 report leaked across identity'
       assert legacy_submit(tokens['other'])[0] in (401,403), 'mismatched legacy submit not denied'
-      (OUT/'legacy-report-jwt-results.log').write_text('ES256 legacy RPC 403; Edge plain/retry/ready image and shared durable quota PASS; own row 1; mismatched identity read 0 and submit denied\n')
+      (OUT/'legacy-report-jwt-results.log').write_text('ES256 legacy RPC 403; Edge v2 diagnostic/triage/simple and shared durable quota PASS; own contribution 1; mismatched identity read 0 and submit denied\n')
      # Anonymous may receive 401/403 or an empty RLS result; never private data.
      try: assert profiles(None)==[], 'anonymous read profile'
      except urllib.error.HTTPError as e: assert e.code in (401,403)
@@ -485,10 +486,10 @@ $$;
      assert profiles(tokens['valid'])==[], 'previous bearer read profile after deletion'
      if not args.baseline and not args.before_b01:
       report_edge('deleted')
-      assert legacy_rows(tokens['valid'])==[], 'previous bearer read legacy report after tombstone'
+      assert contribution_rows(tokens['valid'])==[], 'previous bearer read v2 report after tombstone'
       assert legacy_submit(tokens['valid'])[0] in (401,403), 'previous bearer submitted legacy report after tombstone'
       with (OUT/'legacy-report-jwt-results.log').open('a') as result_log:
-       result_log.write('same ES256 token after tombstone: legacy read 0; legacy submit denied\n')
+       result_log.write('same ES256 token after tombstone: v2 read 0; legacy submit denied\n')
      results.append('previous bearer after tombstone: denied '+str(code))
      with (OUT/'jwt-results.log').open('a') as result_log: result_log.write('\n'.join(results)+'\n')
      print('PostgREST real signed bridge JWT: own reset + '+str(len(results))+' denials PASS',flush=True)
@@ -508,6 +509,8 @@ $$;
    if (ROOT/'supabase/tests'/optional).exists(): suites.append(optional)
   if not (args.baseline or args.before_write_barrier or args.before_testing_identity):
    suites.append('testing_report_admission_v2.test.sql')
+  if not (args.baseline or args.before_private_write_barriers or args.before_testing_identity):
+   suites+=['testing_report_v2.test.sql','testing_center_agent_closeout_callbacks.test.sql']
   if not (args.baseline or args.before_deleted_authorizer or args.before_posthog_consent_clear): suites.append('commercial_private_writes.test.sql')
   if not (args.baseline or args.before_deleted_authorizer or args.before_posthog_consent_clear or args.before_private_write_barriers):
    suites+=['commercial_account_id.test.sql','report_creator_renewals.test.sql','founders_review_r2.test.sql']

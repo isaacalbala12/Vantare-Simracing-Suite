@@ -261,15 +261,33 @@ impl Testing {
 }
 
 fn new_uuid() -> Option<String> {
-    let id = vantare_services::random_id().ok()?;
-    (id.len() == 64).then(|| {
-        format!(
-            "{}-{}-{}-{}-{}",
-            &id[..8],
-            &id[8..12],
-            &id[12..16],
-            &id[16..20],
-            &id[20..32]
-        )
-    })
+    let mut id = vantare_services::random_id().ok()?;
+    if id.len() != 64 {
+        return None;
+    }
+    id.replace_range(12..13, "4");
+    id.replace_range(16..17, "8");
+    Some(format!(
+        "{}-{}-{}-{}-{}",
+        &id[..8],
+        &id[8..12],
+        &id[12..16],
+        &id[16..20],
+        &id[20..32]
+    ))
+}
+
+#[cfg(test)]
+mod uuid_tests {
+    #[test]
+    fn report_id_is_accepted_by_the_v2_edge_contract() {
+        for _ in 0..64 {
+            let id = super::new_uuid().expect("OS entropy");
+            assert_eq!(id.as_bytes()[14], b'4', "{id}");
+            assert!(
+                matches!(id.as_bytes()[19], b'8' | b'9' | b'a' | b'b'),
+                "{id}"
+            );
+        }
+    }
 }

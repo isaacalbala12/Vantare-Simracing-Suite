@@ -25,7 +25,10 @@ fn hub_serializes_the_shared_edge_utf8_report_contract() {
         "/../../../supabase/tests/fixtures/native-hub-report.json"
     )))
     .expect("shared UTF-8 contract consumed by Deno and real Edge harness");
-    assert_eq!(serde_json::to_value(submission).expect("JSON"), expected);
+    assert_eq!(
+        serde_json::to_value(v2_body(&submission).expect("v2 body")).expect("JSON"),
+        expected
+    );
 }
 
 #[test]
@@ -843,12 +846,20 @@ fn unauthorized_submission_preserves_draft_and_exact_retry() {
     );
 }
 
+fn assert_v2_diagnostic_sent(request: &str, key: &str) {
+    let sent: serde_json::Value =
+        serde_json::from_str(request.split("\r\n\r\n").nth(1).expect("body")).expect("JSON");
+    assert_eq!(sent["contract_version"], "testing.report.v2");
+    assert_eq!(sent["variant"], "diagnostic");
+    assert_eq!(sent["idempotency_key"], key);
+}
+
 #[test]
 fn durable_manual_retry_keeps_exact_payload_and_receipt_survives_cleanup_failure() {
-    let report_id = format!("report_{}", crate::random_id().expect("entropy"));
+    let report_id = "18960000-0000-4000-8000-000000000072";
     let server=Server::start(vec![
         (200,serde_json::json!({"version":1,"account_id":"550e8400-e29b-41d4-a716-446655440000","data_access_token":crate::random_id().expect("entropy"),"expires_at":160}).to_string()),
-        (503,"{}".into()),(200,serde_json::json!([{"report_id":report_id,"report_state":"submitted","idempotent":true,"created_at":"2026-09-30T10:00:00Z"}]).to_string())]);
+        (503,"{}".into()),(200,serde_json::json!([{"report_id":report_id,"report_state":"received","idempotent":true,"created_at":"2026-09-30T10:00:00Z"}]).to_string())]);
     let (root, store) = crate::test_store("report-retry");
     let account = account::fixture(&server.base, &store);
     let http = Http::default();
@@ -873,6 +884,7 @@ fn durable_manual_retry_keeps_exact_payload_and_receipt_survives_cleanup_failure
             .idempotency_key,
         draft.idempotency_key
     );
+    let expected_key = draft.idempotency_key.clone();
     let mut reports = Reports::restore(&store, 1_700_000_000_123).expect("restore");
     reports
         .prepare(&request, draft.clone(), environment())
@@ -897,6 +909,7 @@ fn durable_manual_retry_keeps_exact_payload_and_receipt_survives_cleanup_failure
         .recv_timeout(Duration::from_secs(3))
         .expect("first submit");
     assert!(first.starts_with("POST /functions/v1/testing-report-submit "));
+    assert_v2_diagnostic_sent(&first, &expected_key);
     assert!(matches!(
         store
             .fixture::<Attempt>("report-attempt")
@@ -935,7 +948,7 @@ fn durable_manual_retry_keeps_exact_payload_and_receipt_survives_cleanup_failure
         .recv_timeout(Duration::from_secs(3))
         .expect("retry submit");
     assert_text_only_retry(&first, &second, &retry);
-    assert_durable_receipt(&store, &report_id);
+    assert_durable_receipt(&store, report_id);
     server.finish();
     drop(store);
     crate::cleanup_store(

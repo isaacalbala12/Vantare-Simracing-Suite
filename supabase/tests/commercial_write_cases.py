@@ -222,3 +222,10 @@ CASES += [('testing-triage-review', 'insert into public.testing_contribution_rev
 # VANTA-131: admission keys are account-owned and must race the tombstone too.
 CASES += [('testing-admission-key',
            "insert into private.testing_report_admitted_keys(account_id,report_key,body_digest) values('{a}','{case}','{h}')")]
+
+# VANTA-131 7a: the new idempotency ledger and v2 agent link share the
+# account deletion barrier with their contribution root.
+CASES += [
+ ('testing-admitted-v2', "set local role service_role; select * from public.testing_report_v2_submit_admitted('{a}',jsonb_build_object('contract_version','testing.report.v2','report_id','{new_id}','channel','master','title','Fixture','body','Private body','consent',true,'idempotency_key','draft_{h}','variant','simple'))"),
+ ('testing-agent-v2-link', "update public.testing_center_technical_issues set report_id=null,contribution_id='{new_id}' where technical_issue_id='issue_{h}'"),
+]

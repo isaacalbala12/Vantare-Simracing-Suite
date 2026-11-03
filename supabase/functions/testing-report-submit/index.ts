@@ -1,13 +1,13 @@
 import { handleCorsPreflight } from "../_shared/cors.ts";
-import { isUuid, readJsonObject } from "../_shared/request.ts";
+import { readJsonObject } from "../_shared/request.ts";
 import { jsonResponse } from "../_shared/responses.ts";
 import { getSupabaseAdmin } from "../_shared/supabase-admin.ts";
 import { verifyBridgeAccount } from "../_shared/native-data.ts";
 import {
-  type ReportRpc,
-  submitRichReport,
-  validateRichReport,
-} from "./rich-report.ts";
+  type ReportV2Rpc,
+  submitReportV2,
+  validateReportV2,
+} from "./report-v2.ts";
 import {
   NativeError,
   requireUnblocked,
@@ -137,8 +137,7 @@ export type SubmitDeps = {
     key?: string,
     digest?: string,
   ) => Promise<boolean>;
-  submit?: (account: string, body: Record<string, unknown>) => Promise<void>;
-  rpc?: ReportRpc;
+  rpc?: ReportV2Rpc;
 };
 
 export async function handleTestingReportSubmit(
@@ -208,89 +207,27 @@ export async function handleTestingReportSubmit(
       );
     }
     const body = parsed.value;
-    if (Object.hasOwn(body, "p_contract_version")) {
-      validateRichReport(body);
+    if (body.contract_version === "testing.report.v2") {
+      validateReportV2(body);
       if (
         !await admit(
           "account",
           user,
           week,
-          body.p_idempotency_key as string,
+          body.idempotency_key as string,
           await bodyDigest(body),
         )
-      ) {
-        throw new NativeError(429, "rate_limited");
-      }
-      const receipt = await submitRichReport(
+      ) throw new NativeError(429, "rate_limited");
+      const receipt = await submitReportV2(
         user,
         body,
         deps.rpc ?? ((name, args) => getSupabaseAdmin().rpc(name, args)),
       );
       return jsonResponse(receipt, 200, { "Cache-Control": "no-store" });
     }
-    const structured = Object.hasOwn(body, "p_context") ||
-      Object.hasOwn(body, "p_attachments");
-    if (
-      !structured &&
-      new TextEncoder().encode(JSON.stringify(body)).length > 8192
-    ) {
-      throw new NativeError(413, "body_too_large");
-    }
-    const fields = structured
-      ? ["p_id", "p_channel", "p_title", "p_body", "p_context", "p_attachments"]
-      : ["p_id", "p_channel", "p_title", "p_body", "p_consent"];
-    const text = (value: unknown, max: number) =>
-      typeof value === "string" && value.trim().length > 0 &&
-      [...value].length <= max &&
-      new TextEncoder().encode(value).length <= max * 4;
-    if (
-      Object.keys(body).length !== fields.length || fields.some((field) =>
-        !Object.hasOwn(body, field)
-      ) ||
-      !isUuid(body.p_id) ||
-      typeof body.p_channel !== "string" ||
-      !["nightly", "testers", "master"].includes(body.p_channel) ||
-      !text(body.p_title, 120) || !text(body.p_body, 1000) ||
-      (structured ? !structuredConsent(body) : body.p_consent !== true)
-    ) throw new NativeError(400, "invalid_request");
-    if (
-      !await admit(
-        "account",
-        user,
-        week,
-        (body.p_id as string).toLowerCase(),
-        await bodyDigest(body),
-      )
-    ) {
-      throw new NativeError(429, "rate_limited");
-    }
-    await (deps.submit ?? (async (user, body) => {
-      const rpc = deps.rpc ??
-        ((name, args) => getSupabaseAdmin().rpc(name, args));
-      const { error } = await rpc(
-        structured
-          ? "testing_contribution_submit_admitted"
-          : "testing_report_submit_admitted",
-        { ...body, p_account: user },
-      );
-      if (error) {
-        throw new NativeError(
-          error.code === "54000"
-            ? 429
-            : error.code === "28000"
-            ? 401
-            : error.code === "42501"
-            ? 403
-            : error.code === "23505"
-            ? 409
-            : error.code === "22023"
-            ? 400
-            : 503,
-          "submit_failed",
-        );
-      }
-    }))(user, body);
-    return jsonResponse(null, 200, { "Cache-Control": "no-store" });
+    // The old RPCs remain in schema for admin migration in 7b, but the
+    // public submission boundary accepts only the new contribution contract.
+    throw new NativeError(400, "invalid_request");
   } catch (error) {
     // No logs of IPs, hashes, IDs, payloads, credentials or upstream errors.
     const failure = error instanceof NativeError
@@ -301,22 +238,6 @@ export async function handleTestingReportSubmit(
       ...(failure.status === 429 ? { "Retry-After": "86400" } : {}),
     });
   }
-}
-
-// Detailed closed shapes, consent items, hashes and exact retries are validated
-// again in SQL. Tester prose stays local under F7=C, including on this route.
-function structuredConsent(body: Record<string, unknown>): boolean {
-  const object = (value: unknown): value is Record<string, unknown> =>
-    value !== null && typeof value === "object" && !Array.isArray(value);
-  const context = body.p_context;
-  if (!object(context) || !object(context.consent)) return false;
-  const consent = context.consent;
-  return body.p_title === "[contenido retirado por privacidad]" &&
-    body.p_body === "[contenido retirado por privacidad]" &&
-    context.app_channel === body.p_channel &&
-    consent.version === "triage-v2" && Array.isArray(consent.items) &&
-    typeof consent.accepted_at === "string" &&
-    Array.isArray(body.p_attachments) && body.p_attachments.length <= 2;
 }
 
 if (import.meta.main) {

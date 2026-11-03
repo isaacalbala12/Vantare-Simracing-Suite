@@ -14,13 +14,14 @@ BEGIN
 END $$;
 
 set local search_path = public,extensions;
-select plan(45);
+select plan(54);
 
 select has_table('public','testing_center_agent_phase_callbacks','phase callback ledger exists');
 select ok((select relrowsecurity and relforcerowsecurity from pg_class where oid='public.testing_center_agent_phase_callbacks'::regclass),'phase callback ledger forces RLS');
 select ok(has_function_privilege('service_role','public.testing_center_record_agent_phase_callback(text,text,text,text,text,text,bigint,bigint,text)','execute'),'service role can apply phase callbacks');
 select ok(not has_function_privilege('authenticated','public.testing_center_record_agent_phase_callback(text,text,text,text,text,text,bigint,bigint,text)','execute'),'clients cannot apply phase callbacks');
 select ok(has_function_privilege('authenticated','public.testing_center_get_agent_job_state(text)','execute'),'authenticated tester can load its visible state');
+select ok(not has_function_privilege('anon','public.testing_center_get_agent_job_state(text)','execute'),'anon cannot load agent state');
 
 insert into auth.users(id,email) values
   ('00000000-0000-4000-8000-000000000324','isa324@example.invalid'),
@@ -35,7 +36,9 @@ DO $fixture$ BEGIN
       ON CONFLICT (id) DO NOTHING;
     INSERT INTO public.account_identities(issuer,subject,account_id)
       SELECT 'https://fixtures.clerk.invalid','user_'||replace(id::text,'-',''),id
-      FROM public.profiles ON CONFLICT (issuer,subject) DO NOTHING;
+      FROM public.profiles where id in
+        ('00000000-0000-4000-8000-000000000324','00000000-0000-4000-8000-000000000325')
+      ON CONFLICT (issuer,subject) DO NOTHING;
   END IF;
 END $fixture$;
 
@@ -219,13 +222,53 @@ select is((select callback_status from public.testing_center_record_agent_phase_
 select is((select state from public.testing_center_agent_jobs where job_key=(select job_key from isa324_jobs where n='f')),'needs_owner','stale pre-GREEN HEAD closes automation');
 
 reset role;
+insert into public.testing_contributions(id,account_id,channel,title,body) values
+  ('00000000-0000-4000-8000-000000000326','00000000-0000-4000-8000-000000000324',
+   'nightly','Synthetic','Synthetic');
+insert into public.testing_center_technical_issues(
+  technical_issue_id,report_id,contribution_id,state,flow_state,origin
+) values (
+  'issue_v2_'||repeat('a',64),null,'00000000-0000-4000-8000-000000000326',
+  'open','queued','orchestrator');
+insert into public.testing_center_agent_jobs(
+  job_key,technical_issue_id,execution_generation,policy_version,
+  report_digest,dossier_digest,nightly_base_sha,state
+) values (
+  public.testing_center_agent_job_key('issue_v2_'||repeat('a',64),repeat('a',64),repeat('a',40),'testing-center.autofix-policy.v2'),
+  'issue_v2_'||repeat('a',64),1,'testing-center.autofix-policy.v2',
+  repeat('a',64),repeat('d',64),repeat('a',40),'completed');
 select pg_temp.fixture_claims('00000000-0000-4000-8000-000000000324');
 set role authenticated;
-select is((select state from public.testing_center_get_agent_job_state('report_'||repeat('a',64))),'completed','reporter can load its own agent state');
+select is((select state from public.testing_center_get_agent_job_state('00000000-0000-4000-8000-000000000326')),'completed','reporter can load its v2 agent state');
 reset role;
 select pg_temp.fixture_claims('00000000-0000-4000-8000-000000000325');
 set role authenticated;
-select is((select count(*)::integer from public.testing_center_get_agent_job_state('report_'||repeat('a',64))),0,'another user cannot load the agent state');
+select is((select count(*)::integer from public.testing_center_get_agent_job_state('00000000-0000-4000-8000-000000000326')),0,'another user cannot load the agent state');
+select is((select count(*)::integer from public.testing_center_get_agent_job_state('report_'||repeat('a',64))),0,'old report IDs no longer authorize the v2 read');
+
+reset role;
+insert into public.testing_center_agent_callbacks(delivery_id,job_key,head_sha,callback_kind,outcome,payload_digest,disposition)
+select 'v2-callback',job_key,repeat('a',40),'fix','accepted',repeat('b',64),'applied'
+from public.testing_center_agent_jobs where technical_issue_id='issue_v2_'||repeat('a',64);
+insert into public.testing_center_agent_phase_callbacks(delivery_id,job_key,head_sha,phase,payload_digest,fencing_token,run_id,disposition)
+select 'v2-phase',job_key,repeat('a',40),'completed',repeat('b',64),1,1,'applied'
+from public.testing_center_agent_jobs where technical_issue_id='issue_v2_'||repeat('a',64);
+insert into public.testing_center_agent_audit(job_key,execution_generation,policy_version,from_state,to_state,actor,operation_digest)
+select job_key,1,'testing-center.autofix-policy.v2','triage_queued','triaged','orchestrator',repeat('b',64)
+from public.testing_center_agent_jobs where technical_issue_id='issue_v2_'||repeat('a',64);
+insert into public.testing_center_idempotency(idempotency_key,payload_digest,aggregate_id,from_state,to_state,origin)
+values ('v2-guard',repeat('b',64),'issue_v2_'||repeat('a',64),'reported','needs_info','orchestrator');
+insert into public.testing_center_audit(audit_id,aggregate_id,from_state,to_state,origin,actor_id,operation_digest)
+values ('v2-audit','issue_v2_'||repeat('a',64),'reported','needs_info','orchestrator','orchestrator',repeat('b',64));
+update public.account_identities set deleted_at=clock_timestamp()
+ where issuer='https://fixtures.clerk.invalid' and subject='user_'||replace('00000000-0000-4000-8000-000000000324','-','');
+select throws_ok($$update public.testing_center_agent_jobs set updated_at=clock_timestamp() where technical_issue_id='issue_v2_'||repeat('a',64)$$,'28000',null,'v2 job cannot change after account deletion');
+select throws_ok($$update public.testing_center_agent_callbacks set created_at=clock_timestamp() where delivery_id='v2-callback'$$,'28000',null,'v2 callback cannot change after deletion');
+select throws_ok($$update public.testing_center_agent_phase_callbacks set created_at=clock_timestamp() where delivery_id='v2-phase'$$,'28000',null,'v2 phase callback cannot change after deletion');
+select throws_ok($$update public.testing_center_agent_audit set created_at=clock_timestamp() where job_key=(select job_key from public.testing_center_agent_jobs where technical_issue_id='issue_v2_'||repeat('a',64))$$,'28000',null,'v2 agent audit cannot change after deletion');
+select throws_ok($$update public.testing_center_idempotency set created_at=clock_timestamp() where idempotency_key='v2-guard'$$,'28000',null,'v2 idempotency cannot change after deletion');
+select throws_ok($$update public.testing_center_audit set created_at=clock_timestamp() where audit_id='v2-audit'$$,'28000',null,'v2 issue audit cannot change after deletion');
+select ok((select count(*)=1 from public.testing_center_technical_issues where contribution_id='00000000-0000-4000-8000-000000000326'),'v2 link stays attached while account is deleted');
 
 select * from finish();
 rollback;

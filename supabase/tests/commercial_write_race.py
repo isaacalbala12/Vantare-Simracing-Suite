@@ -78,6 +78,8 @@ end $$;
                 # Keep the author's parent alive; deletion targets the reviewer.
                 # This separately exercises the review's direct identity FK.
                 sql("insert into public.testing_contributions(id,account_id,channel,title,body) values('{new_id}','{other}','master','Fixture','Private body')".format(**values))
+            if name == 'testing-agent-v2-link':
+                sql("insert into public.testing_contributions(id,account_id,channel,title,body) values('{new_id}','{a}','master','Fixture','Private body')".format(**values))
             if name.startswith('storage-bucket-child-'):
                 sql("insert into storage.buckets(id,name,owner_id) values('{case}','{case}','{a}')".format(**values))
                 if name == 'storage-bucket-child-part':
@@ -183,9 +185,9 @@ end $$;
                 # Every other route must reject with the typed tombstone error.
                 safe_success = name in ('grant', 'entitlement', 'operational', 'followup')
                 tombstone_receipt = b'|account_deleted|t' in stdout
-                # This descendant's contact is intentionally erased. After the
-                # observed UUID conflict/retry, its missing FK parent is 23503.
-                missing_erased_parent = name == 'mail-delivery' and sqlstate(stderr.decode()) == '23503'
+                # These descendants lose their parent on erasure. After the
+                # observed UUID conflict/retry, a missing FK parent is 23503.
+                missing_erased_parent = name in ('mail-delivery','testing-agent-v2-link') and sqlstate(stderr.decode()) == '23503'
                 check((write_exit == 0 and (safe_success or tombstone_receipt)) or
                     (write_exit != 0 and (sqlstate(stderr.decode()) == '28000' or missing_erased_parent)),
                     name + ': tombstone rejection or safe revoked/no-row result')

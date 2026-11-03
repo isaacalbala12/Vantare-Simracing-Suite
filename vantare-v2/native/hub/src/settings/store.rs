@@ -14,7 +14,14 @@ pub(in crate::shell) struct Document {
     pub version: u32,
     pub general: Preferences,
     pub appearance: AppearanceSettings,
+    #[serde(default = "default_zoom", deserialize_with = "read_zoom")]
     pub zoom: u16,
+    #[serde(
+        default,
+        rename = "migrationPending",
+        skip_serializing_if = "Vec::is_empty"
+    )]
+    pub migration_pending: Vec<Legacy>,
 }
 impl Default for Document {
     fn default() -> Self {
@@ -23,11 +30,13 @@ impl Default for Document {
             general: Preferences::default(),
             appearance: AppearanceSettings::default(),
             zoom: 100,
+            migration_pending: Vec::new(),
         }
     }
 }
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(super) enum Legacy {
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub(in crate::shell) enum Legacy {
     General,
     Appearance,
     Zoom,
@@ -116,6 +125,9 @@ pub(in crate::shell) struct Store {
     protected: bool,
     mirror: PathBuf,
     mirror_observed: Option<Vec<u8>>,
+    mirror_protected: Option<String>,
+    repair_zoom: bool,
+    pending: Option<(Document, Document)>,
 }
 impl Store {
     pub fn load(root: &Path, layout_preexisted: bool) -> Self {
@@ -190,9 +202,13 @@ impl Store {
             protected: false,
             mirror: root.join("appearance.json"),
             mirror_observed,
+            mirror_protected: None,
+            repair_zoom: false,
+            pending: None,
         }
     }
     fn open_current(root: &Path) -> Self {
+        let mut repair_zoom = false;
         let opened = Doc::open_or_quarantine(
             &root.join(FILE),
             &Options {
@@ -202,13 +218,20 @@ impl Store {
             |bytes| {
                 let value: Value = serde_json::from_slice(bytes)
                     .map_err(|e| Error::InvalidInput(e.to_string()))?;
-                files::future_version(&value, "version", 2)?;
+                if !matches!(value.get("version").and_then(Value::as_u64), Some(2 | 3)) {
+                    files::future_version(&value, "version", 3)?;
+                }
+                let bad_zoom = !matches!(
+                    value.get("zoom").and_then(Value::as_u64),
+                    Some(90 | 100 | 110 | 125)
+                );
                 let mut doc: Document = serde_json::from_slice(bytes)
                     .map_err(|e| Error::InvalidInput(e.to_string()))?;
-                if doc.version != 2 || !matches!(doc.zoom, 90 | 100 | 110 | 125) {
+                if doc.version == 2 && !doc.migration_pending.is_empty() {
                     return Err(Error::InvalidInput("Documento de ajustes no válido".into()));
                 }
                 clamp(&mut doc.appearance);
+                repair_zoom = bad_zoom;
                 Ok(doc)
             },
             Document::default,
@@ -226,10 +249,20 @@ impl Store {
             },
             AppearanceSettings::default,
         );
+        let mirror_protected = (mirror.warning.is_some() && mirror.observed.is_none())
+            .then(|| mirror.warning.clone().expect("protected mirror warning"));
         let mut store = Self::empty(root, opened.value, mirror.observed);
         store.protected = opened.warning.is_some() && opened.observed.is_none();
         store.observed = opened.observed;
+        store.mirror_protected = mirror_protected;
         store.warning = opened.warning.or(mirror.warning);
+        store.repair_zoom = repair_zoom && !store.protected;
+        if store.repair_zoom {
+            store.warning = Some(format!(
+                "{}: zoom inválido; se usa 100. Se conservará copia .bak al guardar.",
+                store.path.display()
+            ));
+        }
         store
     }
     fn commit(&mut self, value: Document) -> Result<(), Error> {
@@ -242,25 +275,78 @@ impl Store {
         }
         let bytes =
             serde_json::to_vec_pretty(&value).map_err(|e| Error::InvalidInput(e.to_string()))?;
-        files::save(
+        let result = files::save(
             &self.path,
             &bytes,
             Mode::Observed(self.observed.as_deref()),
             &Options {
                 limit: LIMIT,
+                backup: self.repair_zoom,
                 ..Default::default()
             },
-        )?;
+        );
+        if let Err(error) = result {
+            if error.kind().is_conflict() {
+                let previous = self.value.clone();
+                let root = self.path.parent().expect("settings parent");
+                let mut current = Self::open_current(root);
+                current.value.general.startup = previous.general.startup;
+                current.pending = Some((previous, value));
+                if self.mirror_protected.is_some() {
+                    current.mirror_protected.clone_from(&self.mirror_protected);
+                }
+                *self = current;
+            }
+            return Err(error);
+        }
+        self.warning = None;
+        self.repair_zoom = false;
+        self.pending = None;
         self.value = value;
         self.observed = Some(bytes);
         Ok(())
     }
+    fn ensure_section(&self, section: Legacy) -> Result<(), String> {
+        if self.value.migration_pending.contains(&section) {
+            return Err(format!(
+                "{}: {} pendiente de migración; sección protegida",
+                self.path.display(),
+                section.file()
+            ));
+        }
+        Ok(())
+    }
+    pub fn has_pending(&self) -> bool {
+        self.pending.is_some()
+    }
+    pub fn retry(&mut self) -> Result<(), String> {
+        let Some((base, desired)) = self.pending.clone() else {
+            return Ok(());
+        };
+        let next = rebase(&base, &desired, &self.value);
+        if base.appearance != desired.appearance {
+            self.save_appearance(next.appearance)
+        } else if base.general != desired.general {
+            self.save_general(next.general)
+        } else {
+            self.save_zoom(next.zoom)
+        }
+    }
+    pub fn warning_text(&self) -> Option<String> {
+        self.warning
+            .as_ref()
+            .or(self.mirror_warning.as_ref())
+            .or(self.mirror_protected.as_ref())
+            .cloned()
+    }
     pub fn save_general(&mut self, general: Preferences) -> Result<(), String> {
+        self.ensure_section(Legacy::General)?;
         let mut next = self.value.clone();
         next.general = general;
         self.commit(next).map_err(Into::into)
     }
     pub fn save_zoom(&mut self, zoom: u16) -> Result<(), String> {
+        self.ensure_section(Legacy::Zoom)?;
         if !matches!(zoom, 90 | 100 | 110 | 125) {
             return Err("Tamaño de interfaz no válido".into());
         }
@@ -269,29 +355,34 @@ impl Store {
         self.commit(next).map_err(Into::into)
     }
     pub fn save_appearance(&mut self, mut appearance: AppearanceSettings) -> Result<(), String> {
+        self.ensure_section(Legacy::Appearance)?;
         clamp(&mut appearance);
         let mut next = self.value.clone();
         next.appearance = appearance;
         self.commit(next).map_err(String::from)?;
         // TODO(#1869 paso 7+8): retirar el espejo cuando layout tenga una política compatible de versión.
-        let result = serde_json::to_vec_pretty(&super::appearance::StoredAppearance {
-            palette_version: 1,
-            settings: appearance,
-        })
-        .map_err(|e| Error::InvalidInput(e.to_string()))
-        .and_then(|bytes| {
-            files::save(
-                &self.mirror,
-                &bytes,
-                Mode::Observed(self.mirror_observed.as_deref()),
-                &Options {
-                    limit: 16 * 1024,
-                    ..Default::default()
-                },
-            )?;
-            self.mirror_observed = Some(bytes);
-            Ok(())
-        });
+        let result = if let Some(reason) = &self.mirror_protected {
+            Err(Error::Unsupported(format!("espejo protegido: {reason}")))
+        } else {
+            serde_json::to_vec_pretty(&super::appearance::StoredAppearance {
+                palette_version: 1,
+                settings: appearance,
+            })
+            .map_err(|e| Error::InvalidInput(e.to_string()))
+            .and_then(|bytes| {
+                files::save(
+                    &self.mirror,
+                    &bytes,
+                    Mode::Observed(self.mirror_observed.as_deref()),
+                    &Options {
+                        limit: 16 * 1024,
+                        ..Default::default()
+                    },
+                )?;
+                self.mirror_observed = Some(bytes);
+                Ok(())
+            })
+        };
         self.mirror_warning = result.err().map(|error| {
             format!(
                 "Ajustes guardados en {}; no se pudo actualizar el espejo {}: {error}",
@@ -308,6 +399,41 @@ impl Store {
 fn clamp(settings: &mut AppearanceSettings) {
     settings.contrast = settings.contrast.clamp(80, 120);
     settings.glass_opacity = settings.glass_opacity.clamp(50, 100);
+}
+
+fn read_zoom<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result<u16, D::Error> {
+    let value = Value::deserialize(deserializer)?;
+    Ok(match value.as_u64() {
+        Some(90) => 90,
+        Some(110) => 110,
+        Some(125) => 125,
+        _ => 100,
+    })
+}
+
+/// Solo reaplica las claves editadas; las otras decisiones del ganador sobreviven.
+fn rebase(base: &Document, desired: &Document, current: &Document) -> Document {
+    let base = serde_json::to_value(base).expect("settings serialize");
+    let desired = serde_json::to_value(desired).expect("settings serialize");
+    let startup = current.general.startup;
+    let mut current = serde_json::to_value(current).expect("settings serialize");
+    for section in ["general", "appearance"] {
+        for (key, value) in desired[section].as_object().expect("settings section") {
+            if base[section][key] != *value {
+                current[section][key] = value.clone();
+            }
+        }
+    }
+    if base["zoom"] != desired["zoom"] {
+        current["zoom"] = desired["zoom"].clone();
+    }
+    let mut next: Document = serde_json::from_value(current).expect("validated settings rebase");
+    next.general.startup = startup;
+    next
+}
+
+const fn default_zoom() -> u16 {
+    100
 }
 
 #[cfg(test)]

@@ -1,0 +1,19 @@
+{
+  "version": 2,
+  "instances": [],
+  "preferences": {
+    "units": "metric",
+    "language": "es"
+  },
+  "reducedMotion": true,
+  "extensions": {
+    "futureExample": {
+      "flag": true,
+      "list": [
+        1,
+        2,
+        3
+      ]
+    }
+  }
+}

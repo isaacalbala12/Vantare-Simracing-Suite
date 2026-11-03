@@ -151,6 +151,7 @@ pub(super) struct State {
     panel_height: f32,
     nav_focus: Vec<FocusHandle>,
     action_focus: [FocusHandle; 4],
+    retry_focus: FocusHandle,
     query: Entity<Input>,
     language: Entity<Choice>,
     units: Entity<Choice>,
@@ -328,6 +329,7 @@ impl State {
             panel_height: panel_height(f32::from(window.viewport_size().height)),
             nav_focus: (0..Page::ALL.len()).map(|_| cx.focus_handle()).collect(),
             action_focus: std::array::from_fn(|_| cx.focus_handle()),
+            retry_focus: cx.focus_handle(),
             query,
             quick_theme: Self::theme_control(appearance_settings.palette, window, cx),
             language,
@@ -589,7 +591,10 @@ impl Hub {
         }
         self.settings.busy = true;
         self.settings.status = None;
-        let observed: Observed = self.testing.read(cx).observed.clone();
+        let mut observed: Observed = self.testing.read(cx).observed.clone();
+        if self.settings.store.warning_text().is_some() {
+            observed.error(Module::Hub, vantare_ipc::files::Kind::Local);
+        }
         let data = self.settings.data.clone();
         cx.spawn(async move |this, cx| {
             let result = cx

@@ -708,3 +708,101 @@ fn step6_onboarding_reports_a_failed_mirror_without_reverting_v2() {
         app.quit();
     });
 }
+
+#[test]
+fn step8a_mirror_failure_reaches_sanitized_diagnostic() {
+    gpui_platform::headless().run(|app| {
+        let root = Root::new();
+        let mut cx = context();
+        let window = open(&root.0, &mut cx);
+        let foreign = br#"{"paletteVersion":1,"palette":"iris"}"#;
+        std::fs::write(root.0.join("appearance.json"), foreign).unwrap();
+        window
+            .update(&mut cx, |hub, window, cx| {
+                hub.onboarding_look(Some(Palette::Ocean), None, window, cx);
+                assert_eq!(hub.settings.store.value.appearance.palette, Palette::Ocean);
+                assert!(
+                    hub.testing
+                        .read(cx)
+                        .observed
+                        .errors
+                        .iter()
+                        .any(|error| error.module == crate::testing::diagnostic::Module::Hub)
+                );
+                assert!(
+                    hub.onboarding
+                        .as_ref()
+                        .unwrap()
+                        .error
+                        .as_ref()
+                        .unwrap()
+                        .contains("espejo")
+                );
+            })
+            .unwrap();
+        assert_eq!(
+            std::fs::read(root.0.join("appearance.json")).unwrap(),
+            foreign
+        );
+        assert_eq!(
+            crate::shell::settings::store::Store::load(&root.0, false)
+                .value
+                .appearance
+                .palette,
+            Palette::Ocean
+        );
+        draw(window, &mut cx);
+        window
+            .update(&mut cx, |_, window, _| window.remove_window())
+            .unwrap();
+        drop(cx);
+        app.quit();
+    });
+}
+
+#[test]
+fn step8a_existing_v2_motion_remains_editable_without_writing_legacy_mirror() {
+    gpui_platform::headless().run(|app| {
+        let root = Root::new();
+        let mut cx = context();
+        let layout = vantare_ui::layout::Layout {
+            version: 2,
+            reduced_motion: Some(false),
+            ..Default::default()
+        };
+        std::fs::write(
+            root.0.join("layout.json"),
+            serde_json::to_vec(&layout).unwrap(),
+        )
+        .unwrap();
+        let mirror = br#"{"paletteVersion":1,"reducedMotion":true}"#;
+        std::fs::write(root.0.join("appearance.json"), mirror).unwrap();
+        let window = open(&root.0, &mut cx);
+        window
+            .update(&mut cx, |hub, window, cx| {
+                assert!(!hub.settings_motion(cx));
+                assert!(!cx.try_global::<vantare_ui::MotionPolicy>().unwrap().0);
+                crate::orbit::theme::apply(
+                    hub.settings.store.value.appearance,
+                    window.appearance(),
+                    cx,
+                );
+                assert!(!cx.try_global::<vantare_ui::MotionPolicy>().unwrap().0);
+                hub.settings_reduced_motion(window, cx);
+                assert!(hub.settings_motion(cx));
+                assert_eq!(hub.studio.read(cx).home_layout().version, 2);
+                assert!(cx.try_global::<vantare_ui::MotionPolicy>().unwrap().0);
+            })
+            .unwrap();
+        assert_eq!(
+            std::fs::read(root.0.join("appearance.json")).unwrap(),
+            mirror
+        );
+        draw(window, &mut cx);
+        window
+            .update(&mut cx, |_, window, _| window.remove_window())
+            .unwrap();
+        drop(cx);
+        app.quit();
+    });
+}

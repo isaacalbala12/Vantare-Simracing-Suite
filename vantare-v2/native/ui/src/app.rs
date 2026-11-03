@@ -844,6 +844,7 @@ impl LiveScreens {
     }
 
     fn apply(&mut self, layout: &crate::layout::Layout, cx: &mut App) {
+        crate::MotionPolicy::apply_layout(layout.reduced_motion, cx);
         if self.layout.performance != layout.performance {
             self.cadences.clear();
         }

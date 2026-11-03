@@ -712,3 +712,24 @@ el CAS de los bytes archivados y evita sustituir el backup anterior en el primer
 guardado de reparación. Document::open/poll siguen rechazando documentos inválidos
 y conservando el último layout válido de los overlays. Un escritor ocupado llega
 como I/O WouldBlock con el error tipado dentro; no se convierte en conflicto.
+
+## Puente de formatos de layout — #1869, 8A
+
+La escritura nueva sigue en v1. El lector admite también v2, con reducedMotion
+opcional y extensions en raíz; guarda la versión leída y conserva las entradas
+de extensions desconocidas. Ausente no equivale a false. Un valor explícito gana
+frente a Apariencia; los layouts actuales mantienen el lector de Apariencia y
+el espejo del Hub. No se añade el campo mediante un guardado ordinario de v1.
+Preferencias de formato del dominio permanecen intactas.
+
+Añadir semántica nueva a un objeto cerrado exige una versión de documento o de
+contenido nueva; las adiciones compatibles usan extensions. Un formato futuro
+queda protegido sin .invalid; overlays mantiene el último válido. El corpus
+fixtures/layouts separa el formato nativo publicado de las entradas sintéticas
+futuras. Cambiar el parser nuevo no corrige los binarios estrictos anteriores.
+
+8B (migración y retirada del espejo) espera una release publicada que incluya
+este puente. Tag/SHA mínimo pendiente de esa publicación, registrado en #1869;
+no se activa ahora. Los compañeros de avisos se normalizan dentro del Layout,
+también al leer documentos externos. La edición de contenido desde la miniatura
+conserva una operación pura con el documento anterior para preservar intención.

@@ -1162,7 +1162,7 @@ pub fn apply(settings: AppearanceSettings, appearance: gpui::WindowAppearance, c
     let tokens = design_tokens(&resolved.skin);
     cx.set_global(tokens);
     cx.set_global(settings);
-    cx.set_global(vantare_ui::MotionPolicy(settings.reduced_motion));
+    vantare_ui::MotionPolicy::apply_appearance(settings.reduced_motion, cx);
     cx.set_global(resolved);
     cx.refresh_windows();
 }

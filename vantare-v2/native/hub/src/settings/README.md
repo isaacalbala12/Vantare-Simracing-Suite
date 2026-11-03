@@ -373,3 +373,33 @@ La opción global se guarda en `Layout.hideOffTrack`, con false por defecto.
 El toggle usa teclado/ratón y comunica los errores del guardado del Editor.
 Studio ofrece la excepción por widget; no existe una segunda preferencia en
 general.json. Ver [contrato](../../../runtime/README.md).
+
+## Lector puente — #1869, 8A; 8B aún inactivo
+
+Se leen hub-settings v2/v3 y layout v1/v2, conservando la versión que ya existía.
+El producto sigue creando Store v2 y layout v1; no publica migrationPending,
+reducedMotion ni extensiones nuevas sobre documentos actuales. Las entradas
+migrationPending del futuro Store v3 se leen para proteger su sección, pero su
+publicación y recuperación por sección pertenecen a 8B. No hay fichero auxiliar.
+
+Para activar 8B debe haberse publicado una release con el lector puente 8A,
+para que la generación anterior recuperable ya sepa leer los formatos nuevos.
+Versión mínima compatible pendiente del tag y SHA de esa primera release;
+nightly y una CI verde no satisfacen esa condición. 8B también retirará el espejo.
+Hasta entonces los cambios de movimiento llegan por el espejo y lector actuales.
+Si ya existe un layout v2 con movimiento explícito, este tiene prioridad y su
+control guarda en ese layout, sin escribir Apariencia. El dominio no cambia.
+
+Apariencia futura, ilegible o demasiado grande queda protegida para el espejo,
+incluso si el archivo desaparece después de cargarla. Guardar v2 sigue siendo
+válido; se avisa del salto y Diagnóstico registra un error local sanitizado,
+sin copiar rutas o mensajes privados al informe. Una carga nueva permite revisar
+un origen que el usuario haya reparado; el guardado no levanta esa protección.
+
+El aviso de carga se muestra desde el Store, sobrevive a navegar y se limpia
+tras un guardado correcto. Los avisos de espejo protegido permanecen mientras
+persista su causa. Un zoom inválido dentro de v2 usa 100 conservando General y
+Apariencia: no se archiva todo el documento. El primer guardado conserva sus
+bytes originales en hub-settings.json.bak. Tras un conflicto se relee el ganador
+y se conserva el borrador; Reintentar guardado solo reaplica las claves editadas,
+sin reponer valores antiguos de otras secciones. Se puede hacer sin reiniciar.

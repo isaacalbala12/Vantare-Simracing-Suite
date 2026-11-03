@@ -199,7 +199,8 @@ fn step6_zoom_general_and_appearance_share_one_cas_document() {
     }
     let before = stale.value.clone();
     assert!(stale.save_zoom(90).is_err());
-    assert_eq!(stale.value, before);
+    assert_ne!(stale.value, before);
+    assert_eq!(stale.value, store.value);
     assert!(store.save_zoom(99).is_err());
     for palette in Palette::ALL {
         for scheme in [Scheme::System, Scheme::Dark, Scheme::Light] {
@@ -393,4 +394,138 @@ fn step6_concurrent_first_publication_loads_the_winner_instead_of_overwriting_it
     let adopted = pending.publish_migration(&root.0, Vec::new());
     assert_eq!(adopted.value.zoom, 125);
     assert_eq!(root.read(FILE), before);
+}
+
+#[test]
+fn step8a_warning_clears_after_successful_repair() {
+    let root = Root::new();
+    root.write("general.json", b"{");
+    let mut store = root.load();
+    assert!(store.warning.is_some());
+    store.save_general(store.value.general).unwrap();
+    assert!(store.warning.is_none());
+    assert_eq!(root.read("general.json.invalid"), b"{");
+}
+
+#[test]
+fn step8a_bad_zoom_preserves_other_v2_sections() {
+    for zoom in [
+        serde_json::json!(99),
+        serde_json::json!(-1),
+        serde_json::json!("bad"),
+        Value::Null,
+    ] {
+        let root = Root::new();
+        let mut value = serde_json::to_value(Document::default()).unwrap();
+        value["general"]["minimized"] = true.into();
+        value["appearance"]["palette"] = "ocean".into();
+        value["zoom"] = zoom;
+        let original = serde_json::to_vec(&value).unwrap();
+        root.write(FILE, &original);
+        let mut store = root.load();
+        assert!(store.value.general.minimized);
+        assert_eq!(store.value.appearance.palette, Palette::Ocean);
+        assert_eq!(store.value.zoom, 100);
+        assert!(store.warning.is_some());
+        assert_eq!(root.read(FILE), original);
+        store.save_zoom(110).unwrap();
+        assert_eq!(root.read("hub-settings.json.bak"), original);
+        assert!(store.warning.is_none());
+        assert!(root.load().value.general.minimized);
+        assert_eq!(root.load().value.appearance.palette, Palette::Ocean);
+    }
+}
+
+#[test]
+fn step8a_cas_conflict_reloads_and_can_retry_without_restart() {
+    let root = Root::new();
+    let mut first = root.load();
+    let mut stale = root.load();
+    let mut general = first.value.general;
+    general.minimized = true;
+    first.save_general(general).unwrap();
+    assert!(stale.save_zoom(125).is_err());
+    assert!(stale.value.general.minimized);
+    stale.save_zoom(125).unwrap();
+    let current = root.load();
+    assert!(current.value.general.minimized);
+    assert_eq!(current.value.zoom, 125);
+}
+
+#[test]
+fn step8a_protected_mirror_is_never_replaced_even_after_source_disappears() {
+    for bytes in [
+        br#"{"paletteVersion":99}"#.to_vec(),
+        vec![b' '; 16 * 1024 + 1],
+    ] {
+        let root = Root::new();
+        root.load();
+        root.write("appearance.json", &bytes);
+        let mut store = root.load();
+        assert!(store.warning.is_some());
+        fs::remove_file(root.0.join("appearance.json")).unwrap();
+        let next = AppearanceSettings {
+            reduced_motion: true,
+            ..store.value.appearance
+        };
+        store.save_appearance(next).unwrap();
+        assert!(!root.0.join("appearance.json").exists());
+        assert!(store.mirror_warning.is_some());
+        assert_eq!(root.load().value.appearance, next);
+    }
+}
+
+#[test]
+fn step8a_store_v3_bridge_protects_only_marked_section_without_creating_v3() {
+    let root = Root::new();
+    let mut value = serde_json::to_value(Document::default()).unwrap();
+    value["version"] = 3.into();
+    value["migrationPending"] = serde_json::json!(["appearance"]);
+    root.write(FILE, &serde_json::to_vec(&value).unwrap());
+    let mut store = root.load();
+    assert!(store.save_appearance(store.value.appearance).is_err());
+    store.save_zoom(110).unwrap();
+    let current: Value = serde_json::from_slice(&root.read(FILE)).unwrap();
+    assert_eq!(current["version"], 3);
+    assert_eq!(
+        current["migrationPending"],
+        serde_json::json!(["appearance"])
+    );
+    let fresh = Root::new();
+    fresh.load().save_zoom(125).unwrap();
+    let current: Value = serde_json::from_slice(&fresh.read(FILE)).unwrap();
+    assert_eq!(current["version"], 2);
+    assert!(current.get("migrationPending").is_none());
+}
+#[test]
+fn step8a_retry_rebases_only_edited_keys_and_retains_draft() {
+    let root = Root::new();
+    let mut stale = root.load();
+    let mut winner = root.load();
+    let mut foreign = winner.value.appearance;
+    foreign.palette = Palette::Ocean;
+    winner.save_appearance(foreign).unwrap();
+    let wanted = AppearanceSettings {
+        reduced_motion: true,
+        ..stale.value.appearance
+    };
+    assert!(stale.save_appearance(wanted).is_err());
+    assert!(stale.has_pending());
+    stale.retry().unwrap();
+    assert!(!stale.has_pending());
+    assert!(stale.value.appearance.reduced_motion);
+    assert_eq!(stale.value.appearance.palette, Palette::Ocean);
+    assert_eq!(root.load().value, stale.value);
+}
+#[test]
+fn step8a_unreadable_mirror_remains_protected_after_directory_disappears() {
+    let root = Root::new();
+    root.load();
+    fs::create_dir(root.0.join("appearance.json")).unwrap();
+    let mut store = root.load();
+    fs::remove_dir(root.0.join("appearance.json")).unwrap();
+    store.save_appearance(store.value.appearance).unwrap();
+    assert!(!root.0.join("appearance.json").exists());
+    assert!(store.mirror_warning.is_some());
+    assert!(store.warning_text().is_some());
 }

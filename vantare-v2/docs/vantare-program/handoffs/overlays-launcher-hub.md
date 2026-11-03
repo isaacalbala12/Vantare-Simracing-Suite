@@ -1232,8 +1232,9 @@ carecía del catálogo obligatorio: corregida en 79aa00dda sin debilitar asercio
 de original, procedencia ni metadatos. Logs anteriores conservados. Integridad
 468 y fragmento válido. Lifecycle 25/25 y telemetría 34/34 PASS (1 slow, 1 skip);
 cola cedida. Sin excepciones, ampliación de límites ni cancelaciones en esta tanda.
-PR draft a nightly pendiente de abrir; CI remota pendiente. Evidencia
+[PR draft #1894](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1894) a nightly; CI remota pendiente. Evidencia
 D:/VantareServer/evidence/isa-1869/paso9. 8A entregado en PR draft #1893;
 8B y protección por sección esperan release publicada del puente. Paso 10 fuera.
 Solo raíces QA en estos cortes; sin merge/release/promoción/instalación ni datos
 reales por este worker. Windows headless/FS probados; sin GUI ni Linux/macOS.
+Líneas físicas 9: producción +27/-370; tests +93/-266; docs +71/-5; tooling 0.

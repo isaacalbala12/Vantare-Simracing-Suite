@@ -1213,7 +1213,7 @@ Integrado por el orquestador en nightly `3f2c1b3b0` (#1876), CI 5/5 verde.
 Código de revisión `9fb6c8987`, HEAD entregado `fae6374f0`. Sin merge propio,
 promoción a testers/master, release, instalación ni operaciones de este corte sobre datos reales.
 
-## VANTA-130 · paso 9 en validación, sin importaciones activas (3-nov-2026)
+## VANTA-130 · paso 9 listo para revisión, sin importaciones activas (3-nov-2026)
 
 Rama vantareapp/isa-1869-paso9-retirar-importaciones, worktree
 D:/VantareServer/worktrees/isa-1869-paso9, base origin/nightly actualizado
@@ -1230,8 +1230,9 @@ Por compilar.ps1, tres raíces QA y target propio: fmt/check/Clippy/captura PASS
 6/6 regresiones y suite 935/935 PASS (4 slow, 9 skips). La fixture adicional
 carecía del catálogo obligatorio: corregida en 79aa00dda sin debilitar aserciones
 de original, procedencia ni metadatos. Logs anteriores conservados. Integridad
-468 y fragmento válido. Lifecycle/telemetría en cola tras ceder la tanda de 8A.
-Sin PR del 9 todavía; no se afirma CI remota. Evidencia
+468 y fragmento válido. Lifecycle 25/25 y telemetría 34/34 PASS (1 slow, 1 skip);
+cola cedida. Sin excepciones, ampliación de límites ni cancelaciones en esta tanda.
+PR draft a nightly pendiente de abrir; CI remota pendiente. Evidencia
 D:/VantareServer/evidence/isa-1869/paso9. 8A entregado en PR draft #1893;
 8B y protección por sección esperan release publicada del puente. Paso 10 fuera.
 Solo raíces QA en estos cortes; sin merge/release/promoción/instalación ni datos

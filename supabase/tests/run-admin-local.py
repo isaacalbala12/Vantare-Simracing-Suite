@@ -1,6 +1,7 @@
 from pathlib import Path
 import subprocess,time,re,os,sys
 import argparse
+from admin_legacy_writer_fixture import pause_legacy_writers, restore_legacy_writer_fixture_grants
 args=argparse.ArgumentParser()
 args.add_argument('--output', type=Path, required=True)
 args.add_argument('--test', action='append')
@@ -17,6 +18,9 @@ def run(args,sql=None):
  if r.returncode: raise RuntimeError(r.stdout+r.stderr)
  return r.stdout+r.stderr
 def sql(s,actor='postgres'): return run(['docker','exec','-i',name,'psql','-X','-At','-v','ON_ERROR_STOP=1','-U',actor,'-d','admin_1627'],s)
+def legacy_fixture_run(program,*params):
+ assert program=='psql' and len(params)==2 and params[0]=='-c'
+ return sql(params[1])
 run(['docker','run','--rm','-d','--network','none','--name',name,'-e','POSTGRES_HOST_AUTH_METHOD=trust','public.ecr.aws/supabase/postgres:17.6.1.165'])
 try:
  for i in range(100):
@@ -33,9 +37,12 @@ create or replace function storage.foldername(text) returns text[] language sql 
  for f in sorted((root/'supabase/migrations').glob('*.sql')):
   source=f.read_text(encoding='utf-8')
   if opts.migration_newlines=='crlf': source=source.replace('\n','\r\n')
+  # Disposable fixture only: simulate R6 stopping writers before admin cutover.
+  paused_writers=pause_legacy_writers(legacy_fixture_run,[]) if f.name=='20261103224121_isa_1910_admin_report_root.sql' else None
   try: (out/('baseline-'+f.name+'.log')).write_text(sql(source,'supabase_admin' if f.name=='20261010001000_visual_roadmap_clickup.sql' else 'postgres'))
   except Exception as e:
    (out/('baseline-'+f.name+'.log')).write_text(str(e)); raise
+  if paused_writers is not None: restore_legacy_writer_fixture_grants(legacy_fixture_run,[],paused_writers)
  total=0
  for test in opts.test or ['native_admin.test.sql']:
   f=root/'supabase/tests'/test

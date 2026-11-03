@@ -6,6 +6,9 @@ use crate::{
 use url::Url;
 
 pub fn endpoint(text: &str) -> Result<Url> {
+    if !text.starts_with("http://127.0.0.1:") {
+        return Err(Error::Unconfigured);
+    }
     let url = Url::parse(text).map_err(|_| Error::Unconfigured)?;
     if url.scheme() != "http"
         || url.host_str() != Some("127.0.0.1")
@@ -58,6 +61,9 @@ mod tests {
         for value in [
             "https://127.0.0.1:1234",
             "http://localhost:1234",
+            "http://127.1:1234",
+            "http://2130706433:1234",
+            "http://0x7f000001:1234",
             "http://127.0.0.2:1234",
             "http://[::1]:1234",
             "http://example.invalid:1234",

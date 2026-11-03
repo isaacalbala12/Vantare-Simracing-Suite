@@ -84,10 +84,13 @@ pub fn tick() -> io::Result<Tick> {
     {
         return Err(invalid());
     }
-    let real = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map_err(|_| invalid())?
-        .as_millis() as u64;
+    let real = u64::try_from(
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_err(|_| invalid())?
+            .as_millis(),
+    )
+    .map_err(|_| invalid())?;
     tick.wall_ms = tick
         .wall_ms
         .checked_add(real.checked_sub(tick.real_anchor_ms).ok_or_else(invalid)?)

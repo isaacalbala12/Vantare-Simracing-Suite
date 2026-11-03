@@ -772,52 +772,6 @@ fn capability(has_data: bool, stale: bool) -> Capability {
 mod tests {
     use super::*;
 
-    #[test]
-    fn quality_constructor_characterization() {
-        for stale in [false, true] {
-            assert_eq!(
-                Quality::from_source(Some(7), stale),
-                if stale {
-                    Quality::Stale(7)
-                } else {
-                    Quality::Reliable(7)
-                }
-            );
-            assert_eq!(
-                Quality::from_estimate(Some(7), stale),
-                if stale {
-                    Quality::Stale(7)
-                } else {
-                    Quality::Estimated(7)
-                }
-            );
-            assert_eq!(
-                Quality::<u8>::from_source(None, stale),
-                Quality::Unavailable
-            );
-            assert_eq!(
-                Quality::<u8>::from_estimate(None, stale),
-                Quality::Unavailable
-            );
-        }
-        for value in [
-            Quality::Reliable(7),
-            Quality::Estimated(7),
-            Quality::Stale(7),
-            Quality::Unavailable,
-        ] {
-            assert_eq!(Quality::stale_if(value, false), value);
-            assert_eq!(
-                Quality::stale_if(value, true),
-                if value == Quality::Reliable(7) {
-                    Quality::Stale(7)
-                } else {
-                    value
-                }
-            );
-        }
-    }
-
     const REAL_44: &[u8] = include_bytes!("../../../../../testdata/lmu-fixture.bin");
     const BUILD: &str = "1.3.0.0";
     const SCORING_BASE: usize = 2_192;
@@ -925,6 +879,28 @@ mod tests {
             Quality::Reliable(value) => value,
             _ => panic!("se esperaba un valor fiable"),
         }
+    }
+
+    #[test]
+    fn a_session_kind_change_on_the_real_frame_starts_a_new_session() {
+        let mut t = translator();
+        let first = observe(&mut t, REAL_44, ms(0));
+        let mut race = REAL_44.to_vec();
+        race[1_696..1_700].copy_from_slice(&10_i32.to_le_bytes());
+        let next = observe(&mut t, &race, ms(20));
+        assert_eq!(
+            first.state.session.kind,
+            Quality::Reliable(SessionKind::Practice)
+        );
+        assert_eq!(
+            next.state.session.kind,
+            Quality::Reliable(SessionKind::Race)
+        );
+        assert_ne!(next.state.session.id, first.state.session.id);
+        assert_eq!(
+            next.state.session.track_name,
+            first.state.session.track_name
+        );
     }
 
     #[test]

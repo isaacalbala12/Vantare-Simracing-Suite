@@ -4,8 +4,8 @@
 use std::collections::HashSet;
 
 use vantare_domain::{
-    Car, CarId, Damage, Fuel, Gap, Observation, PitService, Player, Pose, Quality, Session,
-    SessionId, Snapshot, SourceState, State, Telemetry, Weather, degrade,
+    Car, CarId, Damage, Fuel, Gap, Observation, PitService, Player, Pose, Quality, Scope, Session,
+    Snapshot, Source, SourceState, State, Telemetry, Weather, degrade,
 };
 
 use super::derive::derive;
@@ -67,7 +67,7 @@ pub(super) fn merge_validated(
         let _span = crate::profiling::begin(crate::profiling::Stage::Derive);
         derive(&mut state);
         if state.source_state != SourceState::Paused {
-            trackers.derive(&mut state);
+            trackers.derive(origin.source, &mut state);
         }
     }
     let sequence = match previous {
@@ -87,8 +87,8 @@ pub(super) fn merge_validated(
 /// memoria de la derivación; lo posee el único escritor.
 #[derive(Debug, Default)]
 pub(super) struct Trackers {
-    /// Sesión y coche de los que son los datos acumulados.
-    identity: Option<(SessionId, CarId)>,
+    /// Fuente, sesión y coche de los datos acumulados.
+    scope: Option<Scope>,
     fuel: fuel::Tracker,
     energy: fuel::Tracker,
     delta: delta::Tracker,
@@ -97,21 +97,18 @@ pub(super) struct Trackers {
 }
 
 impl Trackers {
-    pub(super) fn derive(&mut self, state: &mut State) {
-        let identity = state
-            .player
-            .as_ref()
-            .map(|player| (state.session.id, player.car));
-        if let Some(identity) = identity {
-            if self.identity != Some(identity) {
-                // Sesión o coche del jugador nuevos: nada es comparable.
+    pub(super) fn derive(&mut self, source: Source, state: &mut State) {
+        if state.player.is_some() {
+            let scope = Scope::of(source, state);
+            if self.scope != Some(scope) {
+                // Fuente, sesión o coche nuevos: nada es comparable.
                 self.fuel.reset();
                 self.energy.reset();
                 self.delta.reset();
                 self.stint.reset();
                 self.trend.reset();
             }
-            self.identity = Some(identity);
+            self.scope = Some(scope);
         }
         let State {
             cars,
@@ -848,23 +845,37 @@ mod tests {
     }
 
     #[test]
-    fn tracker_scope_keeps_history_across_non_identity_changes() {
+    fn tracker_scope_retains_metadata_history_but_resets_on_source_change() {
         type Change = fn(&mut Observation);
-        let cases: [(&str, Change); 4] = [
-            ("track", |o| {
-                o.state.session.track_name = Quality::Reliable("other".into());
-            }),
-            ("kind", |o| {
-                o.state.session.kind = Quality::Reliable(vantare_domain::SessionKind::Race);
-            }),
-            ("source", |o| o.origin.source.simulator = "other"),
-            ("situation", |o| {
-                o.state.driving_situation = vantare_domain::DrivingSituation::Garage;
-            }),
+        let cases: [(&str, Change, bool); 4] = [
+            (
+                "track",
+                |o| {
+                    o.state.session.track_name = Quality::Stale("same".into());
+                },
+                true,
+            ),
+            (
+                "kind",
+                |o| {
+                    o.state.session.kind = Quality::Stale(vantare_domain::SessionKind::Race);
+                },
+                true,
+            ),
+            ("source", |o| o.origin.source.simulator = "other", false),
+            (
+                "situation",
+                |o| {
+                    o.state.driving_situation = vantare_domain::DrivingSituation::Garage;
+                },
+                true,
+            ),
         ];
-        for (label, change) in cases {
+        for (label, change, retained) in cases {
             let mut trackers = Trackers::default();
             let mut next = observation(vec![car(1, 1)]);
+            next.state.session.track_name = Quality::Reliable("same".into());
+            next.state.session.kind = Quality::Reliable(vantare_domain::SessionKind::Race);
             next.state.player = Some(Player {
                 car: CarId(1),
                 fuel: Fuel {
@@ -884,7 +895,11 @@ mod tests {
             let result = merge(None, next, 1, &mut trackers).unwrap();
             assert_eq!(
                 result.state.player.unwrap().fuel.per_lap_l,
-                Quality::Estimated(4.0),
+                if retained {
+                    Quality::Estimated(4.0)
+                } else {
+                    Quality::Unavailable
+                },
                 "{label}"
             );
         }

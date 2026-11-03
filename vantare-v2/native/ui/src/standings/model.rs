@@ -303,6 +303,8 @@ pub(crate) struct Labels {
 }
 
 pub(crate) fn labels(language: Language) -> Labels {
+    use vantare_domain::freshness::Status;
+    let text = |status: Status| status.text(language).unwrap_or_default();
     match language {
         Language::En => Labels {
             position: "POS",
@@ -316,9 +318,9 @@ pub(crate) fn labels(language: Language) -> Labels {
             last_lap: "LAST LAP",
             best_lap: "BEST LAP",
             pit: "PIT",
-            stale: "DATA OUT OF DATE",
-            disconnected: "DISCONNECTED",
-            missing: "NO DATA",
+            stale: text(Status::Stale),
+            disconnected: text(Status::Disconnected),
+            missing: text(Status::Missing),
             track: "TRACK",
             estimated_laps: "EST. LAPS LEFT",
         },
@@ -334,9 +336,9 @@ pub(crate) fn labels(language: Language) -> Labels {
             last_lap: "ÚLT. VUELTA",
             best_lap: "MEJOR V.",
             pit: "PIT",
-            stale: "DATOS ANTIGUOS",
-            disconnected: "DESCONECTADO",
-            missing: "SIN DATOS",
+            stale: text(Status::Stale),
+            disconnected: text(Status::Disconnected),
+            missing: text(Status::Missing),
             track: "PISTA",
             estimated_laps: "V. REST. EST.",
         },

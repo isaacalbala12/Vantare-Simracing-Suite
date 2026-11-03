@@ -13,11 +13,11 @@ use crate::vantare::columns::ColumnBoxes;
 use crate::vantare::motion::{Flash, Motion, Sample};
 use crate::vantare::paint::{BOX, Face, Kit, WHITE, round_rect};
 use crate::vantare::style::{Color, Style, Variant, with_opacity};
+use crate::vantare::waiting;
 use gpui::{App, BorderStyle, Corners, Edges, px, quad};
 use std::sync::{Arc, OnceLock};
 use std::time::{Duration, Instant};
 use vantare_domain::DriverRating;
-use vantare_domain::SourceState;
 #[cfg(test)]
 use vantare_domain::format::Preferences;
 use vantare_domain::format::{Language, PLACEHOLDER};
@@ -296,18 +296,12 @@ struct Plan {
     rows: (f32, f32),
 }
 
-fn waiting(board: Option<&Board>) -> bool {
-    board.is_none_or(|b| {
-        !b.player_present || matches!(b.source_state, SourceState::Waiting | SourceState::Lost)
-    })
-}
-
 fn plan(board: Option<&Board>, options: &Options, style: &Style) -> Plan {
     #[cfg(feature = "parity-capture")]
     crate::benchmark::mark(crate::benchmark::Work::Plan);
     let variant = options.variant(style);
     let g = &style.geometry;
-    let shown = board.filter(|b| !waiting(Some(b)));
+    let shown = board.filter(|b| !waiting(Some((b.source_state, b.player_present))));
     // Las columnas habilitadas conservan su espacio aunque el dato falte.
     let (columns, width) = options.layout(
         style,
@@ -721,7 +715,11 @@ impl Visual {
     }
 
     pub(crate) fn columns(&self) -> Option<ColumnBoxes> {
-        if waiting(self.board.as_deref()) {
+        if waiting(
+            self.board
+                .as_deref()
+                .map(|b| (b.source_state, b.player_present)),
+        ) {
             return None;
         }
         Some(ColumnBoxes {
@@ -1408,11 +1406,7 @@ impl Painter<'_> {
                     pulse / 2.0,
                     c.pulse.hsla(),
                 );
-                let text = if es {
-                    "Esperando al simulador"
-                } else {
-                    "Waiting for the simulator"
-                };
+                let text = crate::vantare::waiting_text(self.language, false);
                 let x = pad + pulse + g.cell_gap;
                 self.label(window, cx, text, x, None, top, h, Face::Body, &ink);
             }

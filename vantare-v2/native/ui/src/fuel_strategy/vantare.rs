@@ -11,6 +11,7 @@ use crate::efficiency::text;
 use crate::look::Accent;
 use crate::vantare::paint::{Face, Kit, round_rect};
 use crate::vantare::style::{Color, Style, Variant};
+use crate::vantare::waiting;
 use gpui::{App, BorderStyle, Corners, Edges, PathBuilder, point, px, quad};
 use std::sync::{Arc, OnceLock};
 use std::time::{Duration, Instant};
@@ -236,12 +237,6 @@ fn fraction(level: Option<f64>, capacity: Option<f64>) -> Option<f32> {
     (capacity > 0.0).then(|| (level / capacity).clamp(0.0, 1.0) as f32)
 }
 
-fn waiting(board: Option<&Board>) -> bool {
-    board.is_none_or(|b| {
-        !b.player_present || matches!(b.source_state, SourceState::Waiting | SourceState::Lost)
-    })
-}
-
 fn limiting(board: &Board) -> Tank {
     match board.limit {
         Resource::Fuel => board.fuel,
@@ -278,7 +273,7 @@ fn band(board: &Board) -> Option<Band> {
 fn lines(board: Option<&Board>, options: &Options, es: bool) -> Vec<Line> {
     let w = Words { es };
     let mut out = Vec::new();
-    let Some(board) = board.filter(|b| !waiting(Some(b))) else {
+    let Some(board) = board.filter(|b| !waiting(Some((b.source_state, b.player_present)))) else {
         out.push(header(None, options, &w));
         waiting_lines(board, options, &w, &mut out);
         return out;
@@ -346,7 +341,7 @@ fn waiting_lines(board: Option<&Board>, options: &Options, w: &Words, out: &mut 
                 "No car of your own · spectator",
             )
         } else {
-            w.pick("Esperando al simulador", "Waiting for the simulator")
+            crate::vantare::waiting_text(if w.es { Language::Es } else { Language::En }, false)
         }
         .into(),
         right: None,
@@ -1112,7 +1107,10 @@ impl Visual {
             self.language == Language::Es,
         );
         if let Some(session) = self.session.filter(|s| *s != crate::session::Session::Race)
-            && self.board.as_deref().is_some_and(|b| !waiting(Some(b)))
+            && self
+                .board
+                .as_deref()
+                .is_some_and(|b| !waiting(Some((b.source_state, b.player_present))))
         {
             let es = self.language == Language::Es;
             let label = match (session, es) {
@@ -1203,9 +1201,11 @@ impl Visual {
         (self.plan.width, self.plan.height)
     }
     fn low(&self) -> bool {
-        self.board
-            .as_deref()
-            .is_some_and(|b| !waiting(Some(b)) && b.plan == Plan::Now && b.service.is_none())
+        self.board.as_deref().is_some_and(|b| {
+            !waiting(Some((b.source_state, b.player_present)))
+                && b.plan == Plan::Now
+                && b.service.is_none()
+        })
     }
     pub(crate) fn wake(&self, motion: &Movement, now: Instant) -> Wake {
         #[cfg(feature = "parity-capture")]
@@ -2039,9 +2039,7 @@ mod tests {
             .as_array()
             .expect("fases")
             .iter()
-            .map(|f| {
-                vantare_ipc::snapshot_from_json(&f["snapshot"].to_string()).expect("foto")
-            })
+            .map(|f| vantare_ipc::snapshot_from_json(&f["snapshot"].to_string()).expect("foto"))
             .collect()
     }
 

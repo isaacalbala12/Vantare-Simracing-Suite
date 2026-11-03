@@ -4,13 +4,7 @@
 use crate::format::{self, Language, Preferences, Units};
 use crate::{Capability, Quality, Snapshot, SourceState};
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Status {
-    Ready,
-    Missing,
-    Stale,
-    Disconnected,
-}
+pub use crate::freshness::Status;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Metric {
@@ -46,27 +40,19 @@ pub fn project(snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
     let has_stale = signals.iter().any(
         |(signal, min, max)| matches!(signal, Quality::Stale(value) if valid(*value, *min, *max)),
     );
-    let status = if snapshot.state.source_state == SourceState::Lost {
-        Status::Disconnected
-    } else if !has_current && !has_stale {
-        Status::Missing
-    } else if snapshot.state.source_state == SourceState::Stale
-        || !has_current
-        || snapshot.state.capabilities.weather == Capability::WithData
-    {
-        Status::Stale
-    } else {
-        Status::Ready
-    };
-    let status_text = match (status, prefs.language) {
-        (Status::Ready, _) => "",
-        (Status::Missing, Language::Es) => "SIN DATOS",
-        (Status::Missing, Language::En) => "NO DATA",
-        (Status::Stale, Language::Es) => "DATOS ANTIGUOS",
-        (Status::Stale, Language::En) => "DATA OUT OF DATE",
-        (Status::Disconnected, Language::Es) => "DESCONECTADO",
-        (Status::Disconnected, Language::En) => "DISCONNECTED",
-    };
+    let missing = !has_current && !has_stale;
+    let status = Status::of(
+        snapshot,
+        crate::freshness::Signals {
+            disconnected: false,
+            stale: !missing
+                && (snapshot.state.source_state == SourceState::Stale
+                    || !has_current
+                    || snapshot.state.capabilities.weather == Capability::WithData),
+            missing,
+        },
+    );
+    let status_text = status.text(prefs.language).unwrap_or_default();
     let mut metrics = Vec::new();
     if status == Status::Ready {
         let labels = match prefs.language {

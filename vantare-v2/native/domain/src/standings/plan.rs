@@ -3,12 +3,7 @@ use super::{Board, Row};
 use crate::{Capability, CarId, SourceState};
 use std::sync::Arc;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Status {
-    Ready,
-    Stale,
-    Disconnected,
-}
+pub use crate::freshness::Status;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct SelectedRow {
@@ -36,12 +31,17 @@ pub struct Plan {
 }
 impl Plan {
     pub fn new(board: Arc<Board>, identity: String, sequence: u64) -> Self {
-        let status = match (board.source_state, board.capability) {
-            (SourceState::Waiting | SourceState::Lost, _) => Status::Disconnected,
-            (SourceState::Stale, _) | (_, Capability::WithData) => Status::Stale,
-            (_, Capability::Fresh) => Status::Ready,
-            _ => Status::Disconnected,
-        };
+        let status = Status::of_source(
+            board.source_state,
+            crate::freshness::Signals {
+                disconnected: board.source_state == SourceState::Waiting
+                    || (board.source_state != SourceState::Stale
+                        && board.capability < Capability::WithData),
+                stale: board.source_state == SourceState::Stale
+                    || board.capability == Capability::WithData,
+                missing: false,
+            },
+        );
         let mut classes = std::collections::HashMap::new();
         let mut rows = Vec::new();
         if status != Status::Disconnected {

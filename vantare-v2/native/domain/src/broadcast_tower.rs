@@ -4,13 +4,7 @@
 use crate::format::{self, Language, PLACEHOLDER, Preferences};
 use crate::{Capability, CarId, FlagKind, FlagScope, Gap, Quality, Snapshot, SourceState};
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Status {
-    Ready,
-    Missing,
-    Stale,
-    Disconnected,
-}
+pub use crate::freshness::Status;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Accent {
@@ -54,12 +48,15 @@ pub fn project(snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
 pub fn project_rows(snapshot: &Snapshot, prefs: Preferences, row_count: usize) -> ViewModel {
     let state = &snapshot.state;
     let available = !matches!(state.source_state, SourceState::Waiting | SourceState::Lost);
-    let status = match (state.source_state, state.capabilities.positions) {
-        (SourceState::Waiting | SourceState::Lost, _) => Status::Disconnected,
-        (SourceState::Stale, _) | (_, Capability::WithData) => Status::Stale,
-        (_, Capability::Fresh) if !state.cars.is_empty() => Status::Ready,
-        _ => Status::Missing,
-    };
+    let status = Status::of(
+        snapshot,
+        crate::freshness::Signals {
+            disconnected: state.source_state == SourceState::Waiting,
+            stale: state.source_state == SourceState::Stale
+                || state.capabilities.positions == Capability::WithData,
+            missing: state.capabilities.positions != Capability::Fresh || state.cars.is_empty(),
+        },
+    );
     let mut cars: Vec<_> = state.cars.iter().collect();
     let best_laps = state
         .session
@@ -253,15 +250,7 @@ fn short_name(name: &str) -> String {
 }
 
 pub fn status_text(status: Status, language: Language) -> &'static str {
-    match (status, language) {
-        (Status::Ready, _) => "",
-        (Status::Missing, Language::Es) => "SIN DATOS",
-        (Status::Missing, Language::En) => "NO DATA",
-        (Status::Stale, Language::Es) => "DATOS ANTIGUOS",
-        (Status::Stale, Language::En) => "DATA OUT OF DATE",
-        (Status::Disconnected, Language::Es) => "DESCONECTADO",
-        (Status::Disconnected, Language::En) => "DISCONNECTED",
-    }
+    status.text(language).unwrap_or_default()
 }
 
 fn current_lap(laps: Quality<u32>) -> Quality<u32> {

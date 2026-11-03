@@ -5,6 +5,60 @@ use std::time::Duration;
 pub const STALL_LIMIT: Duration = Duration::from_millis(500);
 pub const SITUATION_CONFIRM: Duration = Duration::from_millis(250);
 
+/// Estado común de presentación; Fuel conserva su caso de energía virtual.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Status {
+    Ready,
+    Missing,
+    Stale,
+    Disconnected,
+    VirtualUnavailable,
+}
+
+/// Hechos validados por la proyección, con su prioridad de ausencia/caducidad.
+/// No calcula capacidades ni normaliza señales.
+#[derive(Clone, Copy)]
+pub struct Signals {
+    pub disconnected: bool,
+    pub stale: bool,
+    pub missing: bool,
+}
+
+impl Status {
+    #[must_use]
+    pub fn of(snapshot: &Snapshot, signals: Signals) -> Self {
+        Self::of_source(snapshot.state.source_state, signals)
+    }
+
+    pub(crate) fn of_source(source: SourceState, signals: Signals) -> Self {
+        if source == SourceState::Lost || signals.disconnected {
+            Self::Disconnected
+        } else if signals.stale {
+            Self::Stale
+        } else if signals.missing {
+            Self::Missing
+        } else {
+            Self::Ready
+        }
+    }
+
+    #[must_use]
+    pub fn text(self, language: crate::format::Language) -> Option<&'static str> {
+        use crate::format::Language::{En, Es};
+        Some(match (self, language) {
+            (Self::Ready, _) => return None,
+            (Self::Missing, Es) => "SIN DATOS",
+            (Self::Missing, En) => "NO DATA",
+            (Self::Stale, Es) => "DATOS ANTIGUOS",
+            (Self::Stale, En) => "DATA OUT OF DATE",
+            (Self::Disconnected, Es) => "DESCONECTADO",
+            (Self::Disconnected, En) => "DISCONNECTED",
+            (Self::VirtualUnavailable, Es) => "ENERGÍA VIRTUAL NO DISPONIBLE EN LA SEÑAL EN VIVO",
+            (Self::VirtualUnavailable, En) => "VIRTUAL ENERGY SIGNAL UNAVAILABLE",
+        })
+    }
+}
+
 /// Motivo neutral de una transición; el adaptador puede añadir su diagnóstico.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Reason {
@@ -68,10 +122,8 @@ pub fn shows_last_live(snapshot: &Snapshot) -> bool {
 mod tests {
     use super::*;
 
-    #[test]
-    fn widget_status_characterization_keeps_missing_stale_and_waiting_distinct() {
-        use crate::{Car, CarId, Player, Quality, Telemetry, format::Preferences};
-        let prefs = Preferences::default();
+    fn widget_photo() -> Snapshot {
+        use crate::{Car, CarId, Player, Quality, Telemetry};
         let mut full = Snapshot::default();
         full.state.cars.push(Car {
             id: CarId(1),
@@ -101,6 +153,34 @@ mod tests {
         ] {
             *capability = Capability::Fresh;
         }
+        full
+    }
+
+    fn widget_statuses(photo: &Snapshot) -> [String; 7] {
+        let prefs = crate::format::Preferences::default();
+        let board = crate::standings::project(photo, prefs);
+        [
+            format!(
+                "{:?}",
+                crate::standings::Plan::new(std::sync::Arc::new(board), String::new(), 0).status
+            ),
+            format!("{:?}", crate::broadcast_tower::project(photo, prefs).status),
+            format!("{:?}", crate::delta::project(photo, prefs).status),
+            format!("{:?}", crate::input_telemetry::project(photo, prefs).status),
+            format!(
+                "{:?}",
+                crate::pedals_telemetry::project(photo, prefs).status
+            ),
+            format!("{:?}", crate::track_weather::project(photo, prefs).status),
+            crate::fuel_strategy::project(photo, prefs)
+                .status
+                .map_or_else(|| "Ready".into(), |status| format!("{status:?}")),
+        ]
+    }
+
+    #[test]
+    fn widget_status_characterization_keeps_missing_stale_and_waiting_distinct() {
+        let full = widget_photo();
         // Order: Standings, Broadcast, Delta, Input, Pedals, Weather, Fuel.
         for (filled, source, expected) in [
             (
@@ -161,32 +241,11 @@ mod tests {
                 Snapshot::default()
             };
             photo.state.source_state = source;
-            let board = crate::standings::project(&photo, prefs);
-            let observed = [
-                format!(
-                    "{:?}",
-                    crate::standings::Plan::new(std::sync::Arc::new(board), String::new(), 0)
-                        .status
-                ),
-                format!(
-                    "{:?}",
-                    crate::broadcast_tower::project(&photo, prefs).status
-                ),
-                format!("{:?}", crate::delta::project(&photo, prefs).status),
-                format!(
-                    "{:?}",
-                    crate::input_telemetry::project(&photo, prefs).status
-                ),
-                format!(
-                    "{:?}",
-                    crate::pedals_telemetry::project(&photo, prefs).status
-                ),
-                format!("{:?}", crate::track_weather::project(&photo, prefs).status),
-                crate::fuel_strategy::project(&photo, prefs)
-                    .status
-                    .map_or_else(|| "Ready".into(), |status| format!("{status:?}")),
-            ];
-            assert_eq!(observed, expected, "filled={filled}, source={source:?}");
+            assert_eq!(
+                widget_statuses(&photo),
+                expected,
+                "filled={filled}, source={source:?}"
+            );
         }
     }
 

@@ -12,11 +12,14 @@ use crate::vantare::columns::ColumnBoxes;
 use crate::vantare::motion::{Flash, Sample};
 use crate::vantare::paint::{BOX, Face, Kit, WHITE, round_rect, transparent};
 use crate::vantare::style::{ClassColors, Color, Style, Variant, with_opacity};
+use crate::vantare::waiting;
 use gpui::{App, BorderStyle, Corners, Edges, px, quad};
 use std::sync::Arc;
+#[cfg(test)]
+use vantare_domain::SourceState;
+use vantare_domain::TyreCompound;
 use vantare_domain::format::{Language, PLACEHOLDER};
 use vantare_domain::standings::{Banner, Board, Mark, Pit, Row};
-use vantare_domain::{SourceState, TyreCompound};
 
 // ---------------------------------------------------------------------------
 // Opciones
@@ -349,27 +352,13 @@ struct Plan {
     sector_times: Vec<Vec<Vec<String>>>,
 }
 
-fn waiting(board: Option<&Board>) -> bool {
-    board.is_none_or(|b| matches!(b.source_state, SourceState::Waiting | SourceState::Lost))
-}
-
-/// Líder de su clase (la proyección rotula su gap como «Líder»).
-fn is_leader(row: &Row) -> bool {
-    matches!(row.gap.as_str(), "Líder" | "Leader")
-}
-
-fn qualifying(board: &Board) -> bool {
-    let session = board.session.to_lowercase();
-    session.starts_with("clasi") || session.starts_with("qual")
-}
-
 fn gap_text(board: &Board, row: &Row) -> String {
     if board.gap_to_best_lap {
         row.classification_gap_s.map_or_else(
             || PLACEHOLDER.into(),
             |seconds| {
                 if seconds <= 1e-6 {
-                    if qualifying(board) { "Pole" } else { "" }.into()
+                    if board.qualifying { "Pole" } else { "" }.into()
                 } else {
                     format!("+{seconds:.3}")
                 }
@@ -442,7 +431,7 @@ fn plan(board: Option<&Board>, options: &Options, style: &Style) -> Plan {
     let (columns, width) = options.layout(style, options.driver_max(style));
     let mut items = Vec::new();
     let mut y = variant.padding_y + 1.0;
-    let shown = board.filter(|b| !waiting(Some(b)));
+    let shown = board.filter(|b| !waiting(Some((b.source_state, true))));
     if shown.is_some_and(|b| b.banner.is_some()) {
         items.push((0.0, Item::Banner));
         y += g.banner_height + g.banner_gap - variant.padding_y;
@@ -726,7 +715,7 @@ impl Visual {
                     position: row.position.parse().unwrap_or(u32::MAX),
                     fastest: row.best_mark == Mark::Fastest,
                     in_pits: row.pit == Pit::InPits,
-                    leader: is_leader(row),
+                    leader: row.is_leader,
                 })
             })
             .collect()
@@ -986,7 +975,9 @@ impl Painter<'_> {
             self.style.colors.header_em.hsla()
         };
         let em = self.ink(face, v.header_size, v.header_tracking, em_color);
-        let board = self.board.filter(|b| !waiting(Some(b)));
+        let board = self
+            .board
+            .filter(|b| !waiting(Some((b.source_state, true))));
         // Sin sesión se rotula el widget, no un guion suelto.
         let session = board.map_or_else(
             || {
@@ -1427,7 +1418,7 @@ impl Painter<'_> {
                     };
                     let class_leader = (is_gap
                         && !board.gap_to_best_lap
-                        && is_leader(row)
+                        && row.is_leader
                         && self.options.mode == Mode::AllClasses
                         && shown_group(board) != Some(gi))
                     .then_some(group.short.as_str());
@@ -2038,9 +2029,8 @@ mod tests {
                 let options = template(name, 8, mode);
                 let empty = plan(None, &options, &style);
                 for frame in scene["frames"].as_array().expect("fases") {
-                    let snapshot =
-                        vantare_ipc::snapshot_from_json(&frame["snapshot"].to_string())
-                            .expect("DTO");
+                    let snapshot = vantare_ipc::snapshot_from_json(&frame["snapshot"].to_string())
+                        .expect("DTO");
                     let board =
                         vantare_domain::standings::project(&snapshot, Preferences::default());
                     let plan = plan(Some(&board), &options, &style);
@@ -2198,8 +2188,8 @@ mod tests {
         let timing = state.style.motion.timing();
         let mut flashes = Vec::new();
         for frame in frames {
-            let photo = vantare_ipc::snapshot_from_json(&frame["snapshot"].to_string())
-                .expect("foto DTO");
+            let photo =
+                vantare_ipc::snapshot_from_json(&frame["snapshot"].to_string()).expect("foto DTO");
             assert!(state.ingest(project(&photo, Preferences::default())));
             let now = std::time::Instant::now();
             for sample in state.samples() {
@@ -2254,16 +2244,30 @@ mod tests {
             photo.state.session.kind = Quality::Reliable(SessionKind::Race);
             let leader = photo.state.cars.first_mut().expect("parrilla real");
             leader.id = CarId(9001);
-            leader.class = Some(Class { id: ClassId(9001), name: "LMGT3".into() });
+            leader.class = Some(Class {
+                id: ClassId(9001),
+                name: "LMGT3".into(),
+            });
             leader.position = Quality::Reliable(1);
             leader.class_position = Quality::Reliable(1);
-            let prefs = Preferences { language, ..Preferences::default() };
+            let prefs = Preferences {
+                language,
+                ..Preferences::default()
+            };
             let board = vantare_domain::standings::project(&photo, prefs);
             let row = board.row(CarId(9001)).expect("líder proyectado");
             crate::paint_tests::with_kit(520.0, language, |kit| {
                 let painted = crate::paint_tests::observe(|draw| {
-                    paint_gap_text(is_leader(row).then_some(row.class.as_ref()), &row.gap,
-                        508.0, 0.0, 24.0, kit.style.colors.value.hsla(), kit, draw);
+                    paint_gap_text(
+                        row.is_leader.then_some(row.class.as_ref()),
+                        &row.gap,
+                        508.0,
+                        0.0,
+                        24.0,
+                        kit.style.colors.value.hsla(),
+                        kit,
+                        draw,
+                    );
                 });
                 assert_eq!(painted[0].value, "1º GT3", "{language:?}");
             });
@@ -2273,6 +2277,11 @@ mod tests {
             let mut row = (**board.row(CarId(9001)).unwrap()).clone();
             row.classification_gap_s = Some(0.0);
             assert_eq!(gap_text(&board, &row), "Pole", "{language:?}");
+            // Tipo desconocido: su nombre no convierte la sesión en clasificación.
+            photo.state.session.kind = Quality::Reliable(SessionKind::Other("Qualifying?".into()));
+            let mut board = vantare_domain::standings::project(&photo, prefs);
+            board.gap_to_best_lap = true;
+            assert_eq!(gap_text(&board, &row), "", "{language:?}");
         }
     }
 
